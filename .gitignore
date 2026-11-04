@@ -1,0 +1,12 @@
+data/
+*.csv
+*.csv.gz
+*.npz
+*.pt
+checkpoints/
+runs/
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+target/
