@@ -53,7 +53,10 @@ def main():
     ap.add_argument("--lr", type=float, default=1e-3)
     ap.add_argument("--min-wr", type=float, default=0.0, help="train only on drafters at/above this win-rate bucket")
     ap.add_argument("--limit", type=int, default=0, help="train on the first N picks only (smoke test)")
+    ap.add_argument("--init", default="", help="start from this checkpoint (fine-tuning)")
+    ap.add_argument("--name", default="", help="results/checkpoint name (default: the model name)")
     a = ap.parse_args()
+    name = a.name or a.model
 
     device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
     torch.manual_seed(0)
@@ -68,6 +71,9 @@ def main():
     print(f"{a.model} on {device}: train {len(train['pick']):,}  val {len(val['pick']):,}  test {len(test['pick']):,}")
 
     model = MODELS[a.model](len(cards)).to(device)
+    if a.init:
+        model.load_state_dict(torch.load(a.init, map_location=device))
+        print(f"fine-tuning from {a.init}; before: val acc {float((predict(model, tv, device) == val['pick']).mean()):.1%}")
     print(f"params {sum(p.numel() for p in model.parameters()):,}")
     opt = torch.optim.AdamW(model.parameters(), lr=a.lr, weight_decay=0.01)
     steps = a.epochs * ((len(train["pick"]) + a.bs - 1) // a.bs)
@@ -91,14 +97,14 @@ def main():
         history.append({"epoch": ep + 1, "val_acc": val_acc, "seconds": round(time.time() - t0)})
         print(f"epoch {ep + 1}: val acc {val_acc:.1%}", flush=True)
 
-    r = report(a.model, predict(model, tte, device), test)
+    r = report(name, predict(model, tte, device), test)
     r.update(history=history, args=vars(a))
     out = DATA.parent / "results"
     out.mkdir(exist_ok=True)
-    (out / f"{a.model}.json").write_text(json.dumps(r, indent=1))
+    (out / f"{name}.json").write_text(json.dumps(r, indent=1))
     ck = DATA.parent / "checkpoints"
     ck.mkdir(exist_ok=True)
-    torch.save(model.state_dict(), ck / f"{a.model}.pt")
+    torch.save(model.state_dict(), ck / f"{name}.pt")
 
 
 if __name__ == "__main__":

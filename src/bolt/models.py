@@ -12,7 +12,7 @@ N_POS = 42  # 3 packs x 14 picks
 def to_vocab(token_logits: torch.Tensor, pack: torch.Tensor, n_cards: int) -> torch.Tensor:
     """Scatter per-slot logits onto the card vocabulary; everything not in the pack is -inf."""
     out = torch.full((pack.shape[0], n_cards + 1), float("-inf"), device=pack.device)
-    out = out.scatter_reduce(1, pack.long(), token_logits.masked_fill(pack == 0, float("-inf")), "amax")
+    out = out.scatter_reduce(1, pack.long(), token_logits.float().masked_fill(pack == 0, float("-inf")), "amax")
     return out[:, 1:]
 
 
