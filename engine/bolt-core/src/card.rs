@@ -134,6 +134,10 @@ pub struct Activated {
     pub sorcery: bool,
     /// Activated from the graveyard ("Return this card from your graveyard ...").
     pub from_graveyard: bool,
+    /// Remove this many incubation counters from the source as a cost.
+    pub remove_incubation: i32,
+    /// "Activate only once."
+    pub once: bool,
     pub ability: Ability,
 }
 
@@ -193,6 +197,16 @@ pub struct CardDef {
     pub ward_life: Option<i32>,
     /// "This spell can't be countered."
     pub uncounterable: bool,
+    /// "You have no maximum hand size."
+    pub no_max_hand_size: bool,
+    /// With kicker paid, this replaces `spell` (different targets).
+    pub kicked_spell: Option<Ability>,
+    /// "You may play an additional land on each of your turns."
+    pub extra_land_drops: u8,
+    /// Power and toughness each equal to the number of cards in opponents' graveyards.
+    pub pt_opponents_graveyards: bool,
+    /// "Hexproof from instants".
+    pub hexproof_from_instants: bool,
 }
 
 impl CardDef {
@@ -234,6 +248,11 @@ impl CardDef {
             cant_lose: false,
             ward_life: None,
             uncounterable: false,
+            no_max_hand_size: false,
+            kicked_spell: None,
+            extra_land_drops: 0,
+            pt_opponents_graveyards: false,
+            hexproof_from_instants: false,
         }
     }
 
@@ -276,6 +295,11 @@ impl CardDef {
             cant_lose: false,
             ward_life: None,
             uncounterable: false,
+            no_max_hand_size: false,
+            kicked_spell: None,
+            extra_land_drops: 0,
+            pt_opponents_graveyards: false,
+            hexproof_from_instants: false,
         }
     }
 
@@ -318,6 +342,11 @@ impl CardDef {
             cant_lose: false,
             ward_life: None,
             uncounterable: false,
+            no_max_hand_size: false,
+            kicked_spell: None,
+            extra_land_drops: 0,
+            pt_opponents_graveyards: false,
+            hexproof_from_instants: false,
         }
     }
 }

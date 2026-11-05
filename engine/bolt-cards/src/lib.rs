@@ -164,6 +164,11 @@ fn definition(o: &Oracle) -> (CardDef, bool) {
         cant_lose: false,
         ward_life: None,
         uncounterable: false,
+        no_max_hand_size: false,
+        kicked_spell: None,
+        extra_land_drops: 0,
+        pt_opponents_graveyards: false,
+        hexproof_from_instants: false,
     };
     let mut claimed = rest.is_empty();
     if let Some(s) = scripts::script(&o.name) {

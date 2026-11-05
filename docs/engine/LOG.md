@@ -130,3 +130,15 @@ One line per working step, newest last. The next session continues from the last
   creature (once each turn). 16 cards (Koma, Drakuseth, Arahbo, Scavenging Ooze, Grappling Kraken,
   Sire of Seven Deaths, Exemplar of Light, Zimone, ...): **206 supported, 249 tests.** 10,000 release
   fuzz games pass. **Next: the last ~35 tier-3 cards.**
+- 2026-11-05: **M3 batch 8.** Triggers that carry an amount ("that much", "that many"), all life loss
+  through one function, "whenever an opponent loses life", noncombat damage to an opponent, "whenever
+  you cast a spell", incubation counters, no maximum hand size; creature-type changes (gained types,
+  "becomes a Werewolf", types from statics, last known types for "if it wasn't a Demon"), permanent
+  keyword grants, "activate only once", kicked spells with different targets, extra land drops,
+  creature cards put onto the battlefield from a library look, "sacrifice, discard or lose life",
+  power and toughness from opponents' graveyards, mill until a land, life-total statics and hexproof
+  from instants. 12 cards (Bloodthirsty Conqueror, Niv-Mizzet, Drake Hatcher, Infernal Vessel,
+  Valkyrie's Call, Skyknight Squire, Mild-Mannered Librarian, Divine Resilience, Loot, Perforating
+  Artist, Consuming Aberration, Elenda): **218 supported, 261 tests.** 10,000 release fuzz games pass.
+  **Next: the last ~23 tier-3 cards (Witness Protection, Curator of Destinies, Kykar, Muldrotha, Time
+  Stop, Heraldic Banner, ...).**

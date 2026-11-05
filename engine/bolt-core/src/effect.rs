@@ -312,11 +312,37 @@ pub enum Effect {
     LoseUnlessDiscard {
         n: i32,
     },
+    /// Each opponent loses `n` life unless they sacrifice a nonland permanent or discard a card.
+    LoseUnlessSacrificeOrDiscard {
+        n: i32,
+    },
     /// Reveal cards from the top until a creature card; put it in your hand and the rest on the
     /// bottom in a random order.
     RevealUntilCreature,
     /// Double the +1/+1 counters on the permanent in `slot`.
     DoubleCounters(u8),
+    /// You gain life equal to the trigger's amount.
+    GainLifeAmount,
+    /// You draw cards equal to the trigger's amount.
+    DrawAmount,
+    /// Create tokens equal to the trigger's amount.
+    CreateTokensAmount {
+        def: usize,
+    },
+    /// Put incubation counters on the source equal to the trigger's amount.
+    IncubationAmount,
+    /// Each opponent reveals cards from the top until a land and puts them all into their graveyard.
+    OpponentsMillUntilLand,
+    /// Return a card from the graveyard to the battlefield under its owner's control with `counters`
+    /// +1/+1 counters, an extra creature type and keywords: the card in `slot`, or the source.
+    ReturnWith {
+        slot: Option<u8>,
+        counters: i32,
+        subtype: Option<&'static str>,
+        keywords: Keywords,
+    },
+    /// The source's creature types become just this one.
+    BecomeSubtype(&'static str),
     /// "When you do": trigger number `n` of the source triggers now (CR 603.12).
     Reflexive(usize),
     /// Until end of turn, the creature in `slot` gains the source's trigger number `trigger` as a
@@ -384,6 +410,10 @@ pub enum StaticCondition {
     Threshold,
     /// The source is untapped.
     Untapped,
+    /// The source has at least this many +1/+1 counters.
+    CountersAtLeast(i32),
+    /// Your life total is at least this.
+    LifeAtLeast(i32),
 }
 
 /// A static ability that changes characteristics (CR 604, 613 layers 6 and 7c).
@@ -393,6 +423,8 @@ pub struct Static {
     /// "During your turn".
     pub your_turn_only: bool,
     pub condition: Option<StaticCondition>,
+    /// An extra creature type it gives.
+    pub subtype: Option<&'static str>,
     pub power: i32,
     pub toughness: i32,
     pub keywords: Keywords,
@@ -404,12 +436,15 @@ pub enum Pick {
     Any,
     CreaturePowerAtMost(i32),
     InstantOrSorcery,
+    /// A creature card with mana value at most the number of lands you control.
+    CreatureMvAtMostLands,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum LookTo {
     Hand,
     Top,
+    Battlefield,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -437,6 +472,8 @@ pub enum Condition {
     Always,
     /// An opponent lost life this turn.
     OpponentLostLifeThisTurn,
+    /// The source wasn't this creature type when it left the battlefield.
+    SourceWasNot(&'static str),
     /// Threshold: seven or more cards in your graveyard.
     Threshold,
     /// The source was kicked.
@@ -517,6 +554,14 @@ pub enum When {
     OpponentCasts,
     /// "Whenever you put one or more +1/+1 counters on this creature", at most once each turn.
     CountersPutOnThis,
+    /// "Whenever an opponent loses life" (the amount travels with the trigger).
+    OpponentLosesLife,
+    /// "Whenever a source you control deals noncombat damage to an opponent" (with the amount).
+    YourSourceDealsNoncombatDamageToOpponent,
+    /// "Whenever you cast a spell".
+    YouCast,
+    /// "Whenever a nontoken creature you control without [subtype] dies"; slot 0 is that card.
+    YourNontokenCreatureDiesWithout(&'static str),
     /// "Whenever you gain life" (every time).
     YouGainLife,
     /// "Whenever you attack": once per combat, when you declare one or more attackers.

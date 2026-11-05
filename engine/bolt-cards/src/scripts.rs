@@ -42,6 +42,7 @@ pub fn token_defs() -> Vec<CardDef> {
         },
         token("Raccoon", "Raccoon", 3, 3, Keywords::NONE),
         token("Koma's Coil", "Serpent", 3, 3, Keywords::NONE),
+        token("Drake", "Drake", 2, 2, Keywords::FLYING),
     ]
 }
 
@@ -99,6 +100,7 @@ pub struct Tokens {
     pub scion: usize,
     pub raccoon: usize,
     pub komas_coil: usize,
+    pub drake: usize,
 }
 
 impl Tokens {
@@ -120,6 +122,7 @@ impl Tokens {
             scion: base + 13,
             raccoon: base + 14,
             komas_coil: base + 15,
+            drake: base + 16,
         }
     }
 }
@@ -264,6 +267,7 @@ const GAIN_LAND: [&str; 2] = [
 
 fn static_on(d: &mut CardDef, scope: Scope, your_turn_only: bool, keywords: Keywords) {
     d.statics.push(Static {
+        subtype: None,
         scope,
         your_turn_only,
         condition: None,
@@ -291,6 +295,7 @@ fn equip(d: &mut CardDef, cost: &str) {
 
 fn attached(d: &mut CardDef, your_turn_only: bool, power: i32, toughness: i32, keywords: Keywords) {
     d.statics.push(Static {
+        subtype: None,
         scope: Scope::Attached,
         your_turn_only,
         condition: None,
@@ -310,6 +315,7 @@ const ARTIFACT: Filter = Filter {
 
 fn threshold(d: &mut CardDef, power: i32, toughness: i32, keywords: Keywords) {
     d.statics.push(Static {
+        subtype: None,
         scope: Scope::This,
         your_turn_only: false,
         condition: Some(StaticCondition::Threshold),
@@ -1163,6 +1169,7 @@ pub fn script(name: &str) -> Option<Script> {
         ),
         "Empyrean Eagle" => s(&["Other creatures you control with flying get +1/+1."], |d, _| {
             d.statics.push(Static {
+                subtype: None,
                 scope: Scope::OtherYourFliers,
                 your_turn_only: false,
                 condition: None,
@@ -1380,6 +1387,7 @@ pub fn script(name: &str) -> Option<Script> {
         ),
                 "Anthem of Champions" => s(&["Creatures you control get +1/+1."], |d, _| {
             d.statics.push(Static {
+                subtype: None,
                 scope: Scope::YourCreatures,
                 your_turn_only: false,
                 condition: None,
@@ -1447,6 +1455,7 @@ pub fn script(name: &str) -> Option<Script> {
             &["This creature has hexproof as long as it's untapped.", "{T}: Add one mana of any color."],
             |d, _| {
                 d.statics.push(Static {
+                    subtype: None,
                     scope: Scope::This,
                     your_turn_only: false,
                     condition: Some(StaticCondition::Untapped),
@@ -1652,6 +1661,7 @@ pub fn script(name: &str) -> Option<Script> {
             ],
             |d, t| {
                 d.statics.push(Static {
+                    subtype: None,
                     scope: Scope::OtherYourSubtype("Cat"),
                     your_turn_only: false,
                     condition: None,
@@ -1807,6 +1817,160 @@ pub fn script(name: &str) -> Option<Script> {
                     ability: up_to(vec![f, f], vec![Effect::DoubleCounters(0), Effect::DoubleCounters(1)]),
                     ..Activated::default()
                 });
+            },
+        ),
+                "Bloodthirsty Conqueror" => s(&["Whenever an opponent loses life, you gain that much life."], |d, _| {
+            on(d, When::OpponentLosesLife, vec![], vec![Effect::GainLifeAmount])
+        }),
+        "Niv-Mizzet, Visionary" => s(
+            &[
+                "You have no maximum hand size.",
+                "Whenever a source you control deals noncombat damage to an opponent, you draw that many cards.",
+            ],
+            |d, _| {
+                d.no_max_hand_size = true;
+                on(d, When::YourSourceDealsNoncombatDamageToOpponent, vec![], vec![Effect::DrawAmount]);
+            },
+        ),
+        "Drake Hatcher" => s(
+            &[
+                "Vigilance, prowess",
+                "Whenever this creature deals combat damage to a player, put that many incubation counters on it.",
+                "Remove three incubation counters from this creature: Create a 2/2 blue Drake creature token with flying.",
+            ],
+            |d, t| {
+                d.keywords = d.keywords.with(Keywords::VIGILANCE);
+                on(d, When::YouCastNoncreature, vec![], vec![Effect::PumpSelf { power: 1, toughness: 1 }]);
+                on(d, When::DealsCombatDamageToPlayer, vec![], vec![Effect::IncubationAmount]);
+                let n = activated(d, "", false, vec![], vec![Effect::CreateToken { who: Who::You, def: t.drake, n: 1 }]);
+                d.activated[n].remove_incubation = 3;
+            },
+        ),
+        "Infernal Vessel" => s(
+            &["When this creature dies, if it wasn't a Demon, return it to the battlefield under its owner's control with two +1/+1 counters on it. It's a Demon in addition to its other types."],
+            |d, _| {
+                conditional(
+                    d,
+                    When::Dies,
+                    Condition::SourceWasNot("Demon"),
+                    vec![],
+                    vec![Effect::ReturnWith { slot: None, counters: 2, subtype: Some("Demon"), keywords: Keywords::NONE }],
+                )
+            },
+        ),
+        "Valkyrie's Call" => s(
+            &["Whenever a nontoken, non-Angel creature you control dies, return that card to the battlefield under its owner's control with a +1/+1 counter on it. It has flying and is an Angel in addition to its other types."],
+            |d, _| {
+                let that = Filter { triggering: true, ..graveyard_cards(true, Controller::Any) };
+                on(
+                    d,
+                    When::YourNontokenCreatureDiesWithout("Angel"),
+                    vec![that],
+                    vec![Effect::ReturnWith { slot: Some(0), counters: 1, subtype: Some("Angel"), keywords: Keywords::FLYING }],
+                )
+            },
+        ),
+        "Skyknight Squire" => s(
+            &[
+                "Whenever another creature you control enters, put a +1/+1 counter on this creature.",
+                "As long as this creature has three or more +1/+1 counters on it, it has flying and is a Knight in addition to its other types.",
+            ],
+            |d, _| {
+                on(d, When::AnotherCreatureYouControlEnters, vec![], vec![Effect::CountersSelf { n: 1 }]);
+                d.statics.push(Static {
+                    subtype: Some("Knight"),
+                    scope: Scope::This,
+                    your_turn_only: false,
+                    condition: Some(StaticCondition::CountersAtLeast(3)),
+                    power: 0,
+                    toughness: 0,
+                    keywords: Keywords::FLYING,
+                });
+            },
+        ),
+        "Mild-Mannered Librarian" => s(
+            &["{3}{G}: This creature becomes a Werewolf. Put two +1/+1 counters on it and you draw a card. Activate only once."],
+            |d, _| {
+                let n = activated(
+                    d,
+                    "{3}{G}",
+                    false,
+                    vec![],
+                    vec![Effect::BecomeSubtype("Werewolf"), Effect::CountersSelf { n: 2 }, draw(1)],
+                );
+                d.activated[n].once = true;
+            },
+        ),
+        "Divine Resilience" => s(
+            &[
+                "Kicker {2}{W}",
+                "Target creature you control gains indestructible until end of turn. If this spell was kicked, instead any number of target creatures you control gain indestructible until end of turn.",
+            ],
+            |d, _| {
+                d.kicker = ManaCost::parse("{2}{W}");
+                let grant = |slot| Effect::Grant { slot, keywords: Keywords::INDESTRUCTIBLE };
+                spell(d, vec![YOUR_CREATURE], vec![grant(0)]);
+                // "Any number": up to eight targets (see docs/engine/QUESTIONS.md).
+                d.kicked_spell = Some(up_to(vec![YOUR_CREATURE; 8], (0..8).map(grant).collect()));
+            },
+        ),
+        "Loot, Exuberant Explorer" => s(
+            &[
+                "You may play an additional land on each of your turns.",
+                "{4}{G}{G}, {T}: Look at the top six cards of your library. You may reveal a creature card with mana value less than or equal to the number of lands you control from among them and put it onto the battlefield. Put the rest on the bottom in a random order.",
+            ],
+            |d, _| {
+                d.extra_land_drops = 1;
+                let look = Effect::LookAtTop {
+                    n: 6,
+                    pick: Pick::CreatureMvAtMostLands,
+                    chosen_to: LookTo::Battlefield,
+                    rest_to: LookRest::BottomRandom,
+                };
+                activated(d, "{4}{G}{G}", true, vec![], vec![look]);
+            },
+        ),
+        "Perforating Artist" => s(
+            &["Raid — At the beginning of your end step, if you attacked this turn, each opponent loses 3 life unless that player sacrifices a nonland permanent of their choice or discards a card."],
+            |d, _| {
+                conditional(
+                    d,
+                    When::EndStep { your_turn_only: true },
+                    Condition::Attacked,
+                    vec![],
+                    vec![Effect::LoseUnlessSacrificeOrDiscard { n: 3 }],
+                )
+            },
+        ),
+        "Consuming Aberration" => s(
+            &[
+                "Consuming Aberration's power and toughness are each equal to the number of cards in your opponents' graveyards.",
+                "Whenever you cast a spell, each opponent reveals cards from the top of their library until they reveal a land card, then puts those cards into their graveyard.",
+            ],
+            |d, _| {
+                d.pt_opponents_graveyards = true;
+                on(d, When::YouCast, vec![], vec![Effect::OpponentsMillUntilLand]);
+            },
+        ),
+        "Elenda, Saint of Dusk" => s(
+            &[
+                "Lifelink, hexproof from instants",
+                "As long as your life total is greater than your starting life total, Elenda gets +1/+1 and has menace. Elenda gets an additional +5/+5 as long as your life total is at least 10 greater than your starting life total.",
+            ],
+            |d, _| {
+                d.keywords = d.keywords.with(Keywords::LIFELINK);
+                d.hexproof_from_instants = true;
+                let life = |at_least, power, keywords| Static {
+                    subtype: None,
+                    scope: Scope::This,
+                    your_turn_only: false,
+                    condition: Some(StaticCondition::LifeAtLeast(at_least)),
+                    power,
+                    toughness: power,
+                    keywords,
+                };
+                d.statics.push(life(21, 1, Keywords::MENACE));
+                d.statics.push(life(30, 5, Keywords::NONE));
             },
         ),
         _ => None,
@@ -2008,4 +2172,16 @@ pub const SCRIPTED: &[&str] = &[
     "Claws Out",
     "Spinner of Souls",
     "Zimone, Paradox Sculptor",
+    "Bloodthirsty Conqueror",
+    "Niv-Mizzet, Visionary",
+    "Drake Hatcher",
+    "Infernal Vessel",
+    "Valkyrie's Call",
+    "Skyknight Squire",
+    "Mild-Mannered Librarian",
+    "Divine Resilience",
+    "Loot, Exuberant Explorer",
+    "Perforating Artist",
+    "Consuming Aberration",
+    "Elenda, Saint of Dusk",
 ];

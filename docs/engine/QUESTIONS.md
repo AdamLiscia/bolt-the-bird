@@ -70,3 +70,17 @@ check.
 **Was:** costs first, then targets. **Now:** targets first, then costs, as CR 602.2b says. The fuzzer
 found a real difference: Cathar Commando's only legal target was the Treasure paying for it, and
 paying first left no target to choose. Covered by a regression test.
+
+## 2026-11-05: "Any number of targets" is capped at eight
+
+**Choice:** Divine Resilience's kicked mode ("any number of target creatures you control") offers up
+to eight targets.
+**Why:** the action space needs a fixed number of target slots. A Limited board almost never has more
+than eight creatures on one side. Raise the cap if a game ever needs it.
+
+## 2026-11-05: Types granted by static abilities don't feed other static abilities
+
+**Choice:** a creature type given by a static ability (Skyknight Squire becoming a Knight) counts
+everywhere except when working out other static abilities ("other Cats you control get +1/+1").
+**Why:** it avoids static abilities depending on each other (CR 613 layer dependencies). No FDN card
+grants a type that another FDN static ability then looks for.
