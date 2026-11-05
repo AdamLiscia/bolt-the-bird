@@ -15,3 +15,9 @@ One line per working step, newest last. The next session continues from the last
   Fuzzer: 10,000 random-agent games, no panic, every game ends, invariants checked after every action
   (6,261 games/s with checks, `cargo run --release --example random_games`). Simplifications are in
   QUESTIONS. **Next: M1 card data, loading real FDN creatures into `bolt-cards`.**
+- 2026-11-05: **M1 done.** `bolt-cards` loads all 286 FDN cards from `assets/FDN_oracle.json` in model
+  order (a card's index is its draft-model index). `supported()` derives support from rules text and is
+  pinned by a test: the 5 basics and the 8 keyword-only creatures (tier 1). Per-card tests, real-card
+  combat tests (Nighthawk vs. Serra Angel, Swiftblade Vindicator trampling over on the second strike,
+  Brazen Scourge's haste), and 300 fuzz games with real supported cards. 56 tests in the workspace.
+  **Next: M2, starting with targets (with a zone-change counter, see QUESTIONS) and the effect DSL.**
