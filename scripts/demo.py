@@ -20,7 +20,7 @@ from bolt.judge import DeckJudge
 from bolt.models import DraftTransformer
 from bolt.sim import PACK, pools_to_counts, run_tables
 
-RELEASE = "https://github.com/AdamLiscia/bolt-the-bird/releases/download/v0.1.0"
+RELEASE = "https://github.com/AdamLiscia/bolt-the-bird/releases/download/v0.2.0"
 MODELS = {"human_model.pt": "the human-imitation draft model", "bot.pt": "the RL-trained bot",
           "judge_b.pt": "judge B (held out from RL training)"}  # fmt: skip
 B, DIM, RESET = "\033[1m", "\033[2m", "\033[0m"
@@ -83,7 +83,7 @@ def main():
     print(f"\n{B}Judge B{RESET} (never seen by the bot during training), average pilot:")
     print(f"  Bolt the Bird's deck     {wr[0]:.1%}")
     print(f"  the next seat's deck     {wr[1]:.1%}   {DIM}(drafted like a person, built by the same builder){RESET}")
-    print(f"\n{DIM}One table is noisy. The README's +2.0 points is the average over 512 held-out tables.{RESET}\n")
+    print(f"\n{DIM}One table is noisy. The README's +3.9 points is the average over 512 held-out tables.{RESET}\n")
 
 
 if __name__ == "__main__":

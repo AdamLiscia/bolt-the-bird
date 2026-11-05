@@ -24,13 +24,14 @@ Bolt the Bird learns this in two stages:
    human's actual pick **70.5%** of the time on drafts it has never seen. The best bot that ignores your
    cards so far reaches 46.9%.
 2. **Improve.** In a simulated 8-player draft, the bot is rewarded for finished decks that win, not for
-   copying. After 19,200 practice drafts, its decks are judged **+2.0 points** better than the human
-   model's, by a judge it never trained against. Along the way it unlearned a human habit: taking
-   off-color rares for their collection value.
+   copying. After 70,400 practice drafts, its decks are judged **+3.9 points** better than the human
+   model's, by a judge it never trained against. Along the way it unlearned a human habit (taking
+   off-color rares for their collection value) and found an open lane: White-Red, one of the set's
+   two strongest pairs in real games, yet under 8% of the decks people play.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/figures/rl-curve-dark.png">
-  <img alt="Judged win-rate gain rises from 0 to +1.99 points over 150 training iterations while rares taken after pack 1 fall from 2.54 to 2.15" src="docs/figures/rl-curve-light.png">
+  <img alt="Judged win-rate gain rises from 0 to +3.85 points over 550 training iterations while rares taken after pack 1 fall from 2.54 to about 2.2" src="docs/figures/rl-curve-light.png">
 </picture>
 
 ## Results
@@ -40,7 +41,7 @@ Bolt the Bird learns this in two stages:
 | **Imitation** | 70.5% top-1 agreement with human picks (71.8% for strong drafters) | 546,149 picks from about 13,000 held-out drafts |
 | **Finding** | Humans take off-color rares 3.2× as often as off-color commons, and strong drafters do it just as much | Packs 2–3 of 131,183 drafts |
 | **Judge** | Predicts deck win rate, calibrated to within about a point | 78,379 held-out games |
-| **Learning to win** | +1.99 ± 0.18 points of judged win rate, 15% fewer late rares, still 90% human-like | 512 held-out tables, scored by a judge excluded from training |
+| **Learning to win** | +3.85 ± 0.23 points of judged win rate, 14% fewer late rares, 81% human-like | 512 held-out tables, scored by a judge excluded from training |
 
 Every number comes from a file in [`results/`](results/), and every chart is generated from those files
 by [`scripts/make_figures.py`](scripts/make_figures.py).
@@ -214,11 +215,25 @@ Tests verify that every seat ends with 42 cards and that no card is created or l
 | 0 | 60.02% | 60.02% | 0.00 | 2.54 | 100% |
 | 45 | 61.03% | 60.02% | +1.00 ± 0.13 | 2.37 | 95.9% |
 | 90 | 61.62% | 60.02% | +1.60 ± 0.17 | 2.32 | 93.3% |
-| 150 | **62.01%** | 60.02% | **+1.99 ± 0.18** | **2.15** | 90.3% |
+| 150 | 62.01% | 60.02% | +1.99 ± 0.18 | 2.15 | 90.3% |
+| 250 | 62.45% | 60.02% | +2.43 ± 0.20 | 2.16 | 88.3% |
+| 350 | 62.75% | 60.02% | +2.72 ± 0.21 | 2.13 | 86.0% |
+| 450 | 63.56% | 60.02% | +3.54 ± 0.22 | 2.21 | 84.6% |
+| 550 | **63.87%** | 60.02% | **+3.85 ± 0.23** | **2.18** | 81.2% |
 
 Each evaluation drafts 512 held-out tables twice: once with the bot in seat 0 and once with the human
-model, using the same packs and the same random seed. Judge B builds and scores both decks. The gain
-was still rising at iteration 150.
+model, using the same packs and the same random seed. Judge B builds and scores both decks. Training
+ran 550 iterations (70,400 drafts, about 7 hours on a laptop CPU) and stopped there on purpose: the last
+25 iterations added 0.02 points, and agreement with the human model had fallen to the 80% line set
+in advance as the limit for drift.
+
+**What it learned.** Over training, judge A's reward rose 3.2 points and judge B's verdict rose
+1.9. Most of the gain carries over to the judge the bot never saw, and the gap is the expected cost of
+optimizing against one model. The bot's decks keep a normal shape (14.6 creatures, 16 or 17 lands),
+but it now drafts White-Red at 45% of tables, against 19% for the iteration-150 bot. That is a real
+edge, not a judge exploit. In 17lands games, White-Red decks win 2.1 points more than their pilots'
+skill predicts, second only to Red-Green, yet they make up under 8% of games. Against seven human-like
+drafters, the lane is usually open. Source: [`scripts/archetypes.py`](scripts/archetypes.py).
 
 ### Design decisions
 
@@ -242,7 +257,9 @@ Apple's GPU, the NaN-poisoned model hung the machine. The fix masks before the a
 - **Win rates are predicted, not played.** Both judges learned from human-built decks, so they can
   share blind spots. The held-out judge rules out overfitting to judge A, but not a blind spot both
   judges have. Played games are the real test. See the roadmap.
-- **The opponents are simulated.** The other 7 seats are the human model, not real people.
+- **The opponents are simulated.** The other 7 seats are the human model, not real people. The
+  White-Red lean pays off because human-like drafters leave it open. A table of eight copies of the
+  bot would fight over it.
 - **One set.** Card IDs are Foundations-specific. A new set needs its own 17lands data and a retrain.
 - More in the [model card](docs/MODEL_CARD.md).
 
@@ -251,7 +268,7 @@ Apple's GPU, the NaN-poisoned model hung the machine. The fix masks before the a
 - [x] Imitation: draft like a person
 - [x] Judge, deck builder, draft simulator
 - [x] RL against a held-out-validated judge
-- [ ] Longer RL runs (the gain hadn't plateaued)
+- [x] Longer RL runs, to the point of diminishing returns
 - [ ] **A rules engine in Rust** (PyO3 bindings) to play the decks out, which replaces predicted win
       rates with played ones
 - [ ] A gameplay agent trained by self-play

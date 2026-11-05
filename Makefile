@@ -4,7 +4,7 @@
 PY ?= .venv/bin/python
 DEVICE ?= auto
 
-.PHONY: help install test lint format demo data prepare baselines draft-models rare-drafting judges builder rl card-audit figures reproduce
+.PHONY: help install test lint format demo data prepare baselines draft-models rare-drafting judges builder rl archetypes card-audit figures reproduce
 
 help:  ## List targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "} {printf "  \033[1m%-15s\033[0m %s\n", $$1, $$2}'
@@ -53,8 +53,12 @@ judges:  ## Full judge + judges A and B on disjoint halves (~3 min)
 builder:  ## Deck builder vs. real players' decks
 	$(PY) scripts/eval_builder.py
 
-rl:  ## Teach the bot to win (~2 h on CPU)
+rl:  ## Teach the bot to win: 150 iterations, then 400 more (~7 h on CPU)
 	$(PY) scripts/train_rl.py --device $(DEVICE)
+	$(PY) scripts/train_rl.py --device $(DEVICE) --resume checkpoints/bot_rl.pt --name rl_long --iters 400 --tables 128 --eval-every 25
+
+archetypes:  ## Win rate by color pair in real games, and what each drafter drafts
+	$(PY) scripts/archetypes.py
 
 card-audit:  ## Tier every card by rules complexity, and the build order
 	$(PY) scripts/card_audit.py
@@ -62,4 +66,4 @@ card-audit:  ## Tier every card by rules complexity, and the build order
 figures:  ## Regenerate every chart in docs/figures from results/
 	$(PY) scripts/make_figures.py
 
-reproduce: prepare baselines draft-models rare-drafting judges builder rl figures  ## Everything, end to end
+reproduce: prepare baselines draft-models rare-drafting judges builder rl archetypes figures  ## Everything, end to end

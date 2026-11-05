@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "bolt-the-bird"
-version = "0.1.0"
+version = "0.2.0"
 description = "An AI that drafts Magic: The Gathering, builds its deck, and learns to draft better than the humans it learned from."
 readme = "README.md"
 license = "MIT"

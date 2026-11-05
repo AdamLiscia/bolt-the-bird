@@ -1,6 +1,6 @@
 # Model card
 
-Four trained models make up Bolt the Bird v0.1.0. All four are trained for one set: Magic: The
+Four trained models make up Bolt the Bird v0.2.0. All four are trained for one set: Magic: The
 Gathering **Foundations (FDN)**, Arena **Premier Draft**.
 
 ## Data
@@ -49,12 +49,17 @@ drafts and games from Arena players who run its tracker, and publishes them with
 - **Training:** REINFORCE with a batch-mean baseline. The reward is judge A's predicted win rate of
   the deck the builder makes from the bot's 42 picks. A KL penalty (β=0.05) pulls toward the human
   model. Each iteration is 128 simulated 8-seat tables, with the 7 other seats run by the human
-  model (sampling). 150 iterations, 19,200 drafts, CPU.
+  model (sampling). 550 iterations, 70,400 drafts, about 7 hours on CPU. Training stopped when the
+  gain flattened (+0.02 points over the last 25 iterations) and agreement with the human model reached
+  the 80% drift limit.
 - **Evaluation:** 512 held-out tables (packs from test drafts), seat 0 greedy, with the same seed for
   bot and baseline. Decks are built and scored by **judge B**.
-- **Result:** +1.99 ± 0.18 points of judged win rate over the human model (62.01% vs. 60.02%).
-  Rares taken after pack 1 fell from 2.54 to 2.15 per draft. It agrees with the human model on 90.3%
-  of picks.
+- **Result:** +3.85 ± 0.23 points of judged win rate over the human model (63.87% vs. 60.02%).
+  Rares taken after pack 1 fell from 2.54 to 2.18 per draft. It agrees with the human model on 81%
+  of picks. v0.1.0 shipped the iteration-150 bot (+1.99 ± 0.18).
+- **Known bias:** it drafts White-Red at 45% of tables. In real 17lands games White-Red outperforms
+  its pilots' skill by 2.1 points while making up under 8% of games, so the lane is strong and usually open
+  against human-like drafters. It would be contested at a table of bots.
 
 ## Intended use
 

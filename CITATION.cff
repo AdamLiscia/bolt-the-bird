@@ -4,8 +4,8 @@ title: "Bolt the Bird: learning to draft Magic: The Gathering from human picks, 
 authors:
   - family-names: Liscia
     given-names: Adam
-version: 0.1.0
-date-released: 2026-11-04
+version: 0.2.0
+date-released: 2026-11-05
 license: MIT
 repository-code: "https://github.com/AdamLiscia/bolt-the-bird"
 keywords:

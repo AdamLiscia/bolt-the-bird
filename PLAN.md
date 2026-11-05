@@ -9,7 +9,7 @@ records choices with their reasons, so they don't get relitigated later.
 |---|---|---|
 | 1 | Imitation: DraftTransformer on human picks | Done (2026-11-04): 70.5% top-1 |
 | 2 | Judge, deck builder, draft simulator | Done (2026-11-04) |
-| 2b | RL against judge A, evaluated by judge B | v0.1 done: +1.99 pts over 150 iterations. A longer run is in progress |
+| 2b | RL against judge A, evaluated by judge B | Done (2026-11-05): +3.85 pts over 550 iterations, stopped at diminishing returns |
 | 3 | Rust rules engine with PyO3 bindings | Next |
 | 4 | Gameplay agent: rules-based, then imitation, then self-play | After 3 |
 
@@ -33,3 +33,5 @@ the whole set, and is useful early through drafts restricted to supported cards.
 | 2026-11-04 | RL on CPU | A NaN-gradient bug hung the Apple GPU. Fixed and covered by a test, but CPU is fast enough |
 | 2026-11-04 | Rust for the engine | Self-play needs millions of fast games. PyO3 keeps training in Python |
 | 2026-11-04 | Whole set, plus restricted drafts early | The card audit: partial card coverage covers few real decks |
+| 2026-11-05 | Stop RL at 550 iterations | Gain flat (+0.02 over 25 iterations) and agreement with the human model at the 80% drift limit |
+| 2026-11-05 | Keep the White-Red lean | Real games back it (+2.1 vs. pilot skill, under 8% of decks). Not a judge exploit |
