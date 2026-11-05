@@ -141,6 +141,8 @@ fn definition(o: &Oracle) -> (CardDef, bool) {
         keywords,
         mana: basic_color.map(|c| ManaSource::of(&[c])),
         spell: None,
+        modes: Vec::new(),
+        aura: false,
         triggers: Vec::new(),
         kicker: None,
         token: false,
@@ -161,7 +163,7 @@ fn definition(o: &Oracle) -> (CardDef, bool) {
             claimed = true;
         }
     }
-    let castable = types.is_permanent() || def.spell.is_some(); // lands are played, not cast
+    let castable = types.is_permanent() || def.spell.is_some() || !def.modes.is_empty(); // lands: played
     let supported = basic_color.is_some() || (castable && claimed && matches!(cost, Some(Some(_))));
     (def, supported)
 }

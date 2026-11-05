@@ -63,6 +63,8 @@ pub struct Object {
     pub counters: i32,
     /// Cast with kicker; remembered while it's on the stack and the battlefield.
     pub kicked: bool,
+    /// The object this Equipment or Aura is attached to, pinned to its zone-change count.
+    pub attached_to: Option<(ObjId, u32)>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -149,6 +151,8 @@ pub enum Action {
     CastWith(ObjId, ObjId),
     /// Cast from the graveyard for its flashback cost (CR 702.34).
     CastFlashback(ObjId),
+    /// Cast a modal spell choosing mode `n` (CR 700.2a).
+    CastModal(ObjId, u8),
     Target(Target),
     Yes,
     No,
@@ -295,6 +299,8 @@ pub struct StackItem {
     pub flashback: bool,
     /// The creature sacrificed or card discarded for an additional cost.
     pub extra: Option<ObjId>,
+    /// The chosen mode of a modal spell.
+    pub mode: Option<u8>,
 }
 
 /// How a spell is being cast.
@@ -303,6 +309,7 @@ pub struct CastMode {
     pub kicked: bool,
     pub flashback: bool,
     pub extra: Option<ObjId>,
+    pub mode: Option<u8>,
 }
 
 impl CastMode {
@@ -492,6 +499,7 @@ impl Game {
             zcc: 0,
             counters: 0,
             kicked: false,
+            attached_to: None,
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -539,6 +547,7 @@ impl Game {
                         Scope::This => src == id,
                         Scope::YourCreatures => mine && creature,
                         Scope::YourCreaturesWithCounters => mine && creature && o.counters > 0,
+                        Scope::Attached => so.attached_to == Some((id, o.zcc)),
                     };
                     applies && (!s.your_turn_only || self.active == so.controller)
                 })
@@ -585,6 +594,7 @@ impl Game {
                         kicked: false,
                         flashback: false,
                         extra: None,
+                        mode: None,
                     });
                 }
             }
@@ -659,6 +669,7 @@ impl Game {
         o.damage = 0;
         o.deathtouched = false;
         o.counters = 0;
+        o.attached_to = None;
         if to != Zone::Battlefield && to != Zone::Stack {
             o.controller = o.owner;
         }
@@ -695,6 +706,10 @@ impl Game {
                 if yes {
                     self.obj_mut(id).counters += n;
                 }
+            }
+            if def.types.land {
+                let controller = self.obj(id).controller;
+                self.fire(controller, When::LandYouControlEnters, None);
             }
             if def.types.creature {
                 let controller = self.obj(id).controller;
@@ -736,6 +751,7 @@ impl Game {
                     kicked: false,
                     flashback: false,
                     extra: None,
+                    mode: None,
                 });
             }
         }
@@ -756,6 +772,7 @@ impl Game {
                     kicked: false,
                     flashback: false,
                     extra: None,
+                    mode: None,
                 });
             }
         }
@@ -831,6 +848,7 @@ impl Game {
                         kicked: it.kicked,
                         flashback: it.flashback,
                         extra: it.extra,
+                        mode: it.mode,
                     };
                     options.retain(|&t| {
                         let chosen = match t {
@@ -857,10 +875,10 @@ impl Game {
     pub fn ability_of(&self, item: &StackItem) -> &Ability {
         let def = self.def_of(item.source);
         match item.kind {
-            StackKind::Spell => def
-                .spell
-                .as_ref()
-                .expect("only instants and sorceries have spell abilities"),
+            StackKind::Spell => match item.mode {
+                Some(m) => &def.modes[m as usize],
+                None => def.spell.as_ref().expect("a spell with an ability"),
+            },
             StackKind::Trigger(n) => &def.triggers[n].ability,
             StackKind::Activated(n) => &def.activated[n].ability,
         }
@@ -977,7 +995,7 @@ impl Game {
             }
             // CR 307.1, 302.1, 304.1, 702.8a: only instants and flash ignore sorcery timing.
             let timing = sorcery_timing || def.types.instant || def.keywords.has(Keywords::FLASH);
-            let castable = def.types.is_permanent() || def.spell.is_some();
+            let castable = def.types.is_permanent() || def.spell.is_some() || !def.modes.is_empty();
             if !timing || !castable {
                 continue;
             }
@@ -1008,6 +1026,20 @@ impl Game {
                     ..CastMode::default()
                 },
             )];
+        }
+        if !def.modes.is_empty() {
+            return (0..def.modes.len())
+                .filter(|&m| self.can_target_all(&def.modes[m], p))
+                .map(|m| {
+                    (
+                        Action::CastModal(c, m as u8),
+                        CastMode {
+                            mode: Some(m as u8),
+                            ..CastMode::default()
+                        },
+                    )
+                })
+                .collect();
         }
         let creatures = || {
             self.creatures(p)
@@ -1180,6 +1212,7 @@ impl Game {
             kicked: false,
             flashback: false,
             extra: None,
+            mode: None,
         };
         self.passes = 0;
         if self.def_of(id).activated[n].ability.targets.is_empty() {
@@ -1344,6 +1377,14 @@ impl Game {
                 },
             ),
             (Pending::Priority(p), Action::CastWith(c, x)) => self.cast(p, c, CastMode::with(x)),
+            (Pending::Priority(p), Action::CastModal(c, m)) => self.cast(
+                p,
+                c,
+                CastMode {
+                    mode: Some(m),
+                    ..CastMode::default()
+                },
+            ),
             (Pending::Priority(p), Action::CastFlashback(c)) => self.cast(
                 p,
                 c,
@@ -1378,6 +1419,7 @@ impl Game {
                             kicked: false,
                             flashback: false,
                             extra: None,
+                            mode: None,
                         });
                     }
                 }
@@ -1436,12 +1478,14 @@ impl Game {
             kicked: mode.kicked,
             flashback: mode.flashback,
             extra: mode.extra,
+            mode: mode.mode,
         };
-        let has_targets = self
-            .def_of(card)
-            .spell
-            .as_ref()
-            .is_some_and(|s| !s.targets.is_empty());
+        let def = self.def_of(card);
+        let ability = match mode.mode {
+            Some(m) => Some(&def.modes[m as usize]),
+            None => def.spell.as_ref(),
+        };
+        let has_targets = ability.is_some_and(|s| !s.targets.is_empty());
         if has_targets {
             self.choosing = Some(Choosing {
                 item,
@@ -1461,6 +1505,7 @@ impl Game {
             kicked: item.kicked,
             flashback: item.flashback,
             extra: item.extra,
+            mode: item.mode,
         };
         let cost = self.spell_cost(p, card, mode, &item.targets);
         // CR 601.2h: additional costs are paid with the mana. Mana first, so a creature can tap for
@@ -1488,6 +1533,7 @@ impl Game {
                             kicked: false,
                             flashback: false,
                             extra: None,
+                            mode: None,
                         });
                     }
                 }
@@ -1568,7 +1614,8 @@ impl Game {
         if fizzled && !condition_failed {
             self.events.push(Event::Fizzled { source });
         }
-        let has_ability = item.kind != StackKind::Spell || self.def_of(source).spell.is_some();
+        let has_ability =
+            item.kind != StackKind::Spell || self.def_of(source).spell.is_some() || item.mode.is_some();
         let acts = has_ability && !fizzled && !condition_failed;
         let (remaining, optional) = if acts {
             let a = self.ability_of(&item);
@@ -1609,6 +1656,12 @@ impl Game {
             if r.acts && self.def_of(source).types.is_permanent() {
                 self.move_to(source, Zone::Battlefield);
                 self.obj_mut(source).controller = r.item.controller;
+                // CR 303.4f: an Aura spell enters attached to its target.
+                if self.def_of(source).aura {
+                    if let Some(&Chosen::Object(t, z)) = r.item.targets.first() {
+                        self.obj_mut(source).attached_to = Some((t, z));
+                    }
+                }
             } else if self.obj(source).zone == Zone::Stack {
                 self.leave_stack(source, r.item.flashback);
             }
@@ -1812,6 +1865,10 @@ impl Game {
                         None => vec![],
                     },
                     Recipient::EachOpponent => vec![Target::Player(opponent(item.controller))],
+                    Recipient::EachPlayer => vec![
+                        Target::Player(item.controller),
+                        Target::Player(opponent(item.controller)),
+                    ],
                     Recipient::EachCreature { without_flying } => self
                         .battlefield
                         .iter()
@@ -1995,8 +2052,17 @@ impl Game {
                     self.obj_mut(src).counters += n;
                 }
             }
-            Effect::PumpAll { power, toughness } => {
-                for id in self.creatures(item.controller).collect::<Vec<_>>() {
+            Effect::PumpAll {
+                who,
+                power,
+                toughness,
+            } => {
+                let players = self.players_for(item, legal, who);
+                let ids: Vec<ObjId> = players
+                    .into_iter()
+                    .flat_map(|p| self.creatures(p).collect::<Vec<_>>())
+                    .collect();
+                for id in ids {
                     let zcc = self.obj(id).zcc;
                     self.until_eot.push(Modifier {
                         obj: id,
@@ -2006,6 +2072,43 @@ impl Game {
                         keywords: Keywords::NONE,
                         dies: None,
                     });
+                }
+            }
+            Effect::PumpAttached { power, toughness } => {
+                if let Some((id, zcc)) = self.obj(src).attached_to {
+                    if self.obj(id).zcc == zcc && self.obj(id).zone == Zone::Battlefield {
+                        self.until_eot.push(Modifier {
+                            obj: id,
+                            zcc,
+                            power,
+                            toughness,
+                            keywords: Keywords::NONE,
+                            dies: None,
+                        });
+                    }
+                }
+            }
+            Effect::Attach { slot } => {
+                // CR 701.3: attach the source if it's still on the battlefield.
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    if self.obj(src).zone == Zone::Battlefield {
+                        let zcc = self.obj(id).zcc;
+                        self.obj_mut(src).attached_to = Some((id, zcc));
+                    }
+                }
+            }
+            Effect::FightBetween { a, b } => {
+                if let (Some(x), Some(y)) = (
+                    Game::slot_object(item, legal, a),
+                    Game::slot_object(item, legal, b),
+                ) {
+                    let (px, py) = (self.power(x), self.power(y));
+                    if px > 0 {
+                        self.deal_damage(x, Target::Object(y), px);
+                    }
+                    if py > 0 {
+                        self.deal_damage(y, Target::Object(x), py);
+                    }
                 }
             }
             Effect::GrantSelf { keywords } => {
@@ -2067,6 +2170,7 @@ impl Game {
                     kicked: false,
                     flashback: false,
                     extra: None,
+                    mode: None,
                 });
             }
             Effect::GrantDiesTrigger { slot, trigger } => {
@@ -2426,10 +2530,48 @@ impl Game {
                 assigned.push((b, Target::Object(a), power));
             }
         }
+        let mut hit_player = Vec::new();
         for (source, target, amount) in assigned {
             self.deal_damage(source, target, amount);
+            if matches!(target, Target::Player(_)) && combat.attackers.contains(&source) {
+                hit_player.push(source);
+            }
+        }
+        // CR 510.3a: "deals combat damage to a player" triggers.
+        for a in hit_player {
+            self.fire_source(a, When::DealsCombatDamageToPlayer);
+            let zcc = self.obj(a).zcc;
+            let gear: Vec<ObjId> = self
+                .battlefield
+                .iter()
+                .copied()
+                .filter(|&e| self.obj(e).attached_to == Some((a, zcc)))
+                .collect();
+            for e in gear {
+                self.fire_source(e, When::EquippedDealsCombatDamageToPlayer);
+            }
         }
         self.state_based_actions();
+    }
+
+    /// Puts the triggers of one permanent that match `when` into the waiting list.
+    fn fire_source(&mut self, id: ObjId, when: When) {
+        let controller = self.obj(id).controller;
+        let whens: Vec<When> = self.def_of(id).triggers.iter().map(|tr| tr.when).collect();
+        for (n, w) in whens.into_iter().enumerate() {
+            if w == when {
+                self.triggered.push(StackItem {
+                    source: id,
+                    controller,
+                    kind: StackKind::Trigger(n),
+                    targets: Vec::new(),
+                    kicked: false,
+                    flashback: false,
+                    extra: None,
+                    mode: None,
+                });
+            }
+        }
     }
 
     /// CR 120.3: damage to a player is life loss; to a creature it is marked. Lifelink gains life
@@ -2478,6 +2620,21 @@ impl Game {
                 }
             }
             dies.extend(self.legend_rule_losers());
+            // CR 704.5m-n: an Aura attached to nothing legal goes to the graveyard; an Equipment
+            // becomes unattached.
+            for &id in &self.battlefield.clone() {
+                if let Some((t, z)) = self.obj(id).attached_to {
+                    let o = self.obj(t);
+                    let ok = o.zone == Zone::Battlefield && o.zcc == z && self.def_of(t).types.creature;
+                    if !ok {
+                        if self.def_of(id).aura {
+                            dies.push(id);
+                        } else {
+                            self.obj_mut(id).attached_to = None;
+                        }
+                    }
+                }
+            }
             // CR 704.5d: a token outside the battlefield ceases to exist.
             let ceased: Vec<ObjId> = self
                 .objects

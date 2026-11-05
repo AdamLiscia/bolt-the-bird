@@ -146,6 +146,10 @@ pub struct CardDef {
     pub mana: Option<ManaSource>,
     /// What an instant or sorcery does when it resolves.
     pub spell: Option<Ability>,
+    /// A modal spell's modes ("Choose one —"); the mode is chosen as it's cast (CR 700.2).
+    pub modes: Vec<Ability>,
+    /// An Aura: cast with a target (its `spell` ability) and attached to it on entering (CR 303.4).
+    pub aura: bool,
     /// Triggered abilities.
     pub triggers: Vec<Trigger>,
     /// Kicker cost (CR 702.33).
@@ -184,6 +188,8 @@ impl CardDef {
             keywords,
             mana: None,
             spell: None,
+            modes: Vec::new(),
+            aura: false,
             triggers: Vec::new(),
             kicker: None,
             token: false,
@@ -215,6 +221,8 @@ impl CardDef {
             keywords: Keywords::NONE,
             mana: None,
             spell: Some(ability),
+            modes: Vec::new(),
+            aura: false,
             triggers: Vec::new(),
             kicker: None,
             token: false,
@@ -246,6 +254,8 @@ impl CardDef {
             keywords: Keywords::NONE,
             mana: Some(ManaSource::of(&[color])),
             spell: None,
+            modes: Vec::new(),
+            aura: false,
             triggers: Vec::new(),
             kicker: None,
             token: false,

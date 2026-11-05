@@ -30,6 +30,7 @@ pub fn token_defs() -> Vec<CardDef> {
         food(),
         treasure(),
         token("Faerie", "Faerie", 1, 1, Keywords::FLYING),
+        token("Goblin", "Goblin", 1, 1, Keywords::NONE),
     ]
 }
 
@@ -82,6 +83,7 @@ pub struct Tokens {
     pub food: usize,
     pub treasure: usize,
     pub faerie: usize,
+    pub goblin: usize,
 }
 
 impl Tokens {
@@ -98,6 +100,7 @@ impl Tokens {
             food: base + 8,
             treasure: base + 9,
             faerie: base + 10,
+            goblin: base + 11,
         }
     }
 }
@@ -249,6 +252,40 @@ fn static_on(d: &mut CardDef, scope: Scope, your_turn_only: bool, keywords: Keyw
         keywords,
     });
 }
+
+fn modes(d: &mut CardDef, modes: Vec<Ability>) {
+    d.modes = modes;
+}
+
+/// "Equip {cost}": attach to target creature you control, as a sorcery (CR 702.6a).
+fn equip(d: &mut CardDef, cost: &str) {
+    let n = activated(
+        d,
+        cost,
+        false,
+        vec![YOUR_CREATURE],
+        vec![Effect::Attach { slot: 0 }],
+    );
+    d.activated[n].sorcery = true;
+}
+
+fn attached(d: &mut CardDef, your_turn_only: bool, power: i32, toughness: i32, keywords: Keywords) {
+    d.statics.push(Static {
+        scope: Scope::Attached,
+        your_turn_only,
+        power,
+        toughness,
+        keywords,
+    });
+}
+
+const ARTIFACT: Filter = Filter {
+    players: false,
+    creatures: false,
+    planeswalkers: false,
+    artifacts: true,
+    ..Filter::ANY
+};
 
 /// The script for a card, if one exists.
 pub fn script(name: &str) -> Option<Script> {
@@ -810,6 +847,147 @@ pub fn script(name: &str) -> Option<Script> {
             &["Whenever you draw your second card each turn, create a 1/1 blue Faerie creature token with flying."],
             |d, t| on(d, When::YouDrawSecond, vec![], vec![Effect::CreateToken { who: Who::You, def: t.faerie, n: 1 }]),
         ),
+        "Abrade" => s(
+            &["Choose one —", "• Abrade deals 3 damage to target creature.", "• Destroy target artifact."],
+            |d, _| {
+                modes(
+                    d,
+                    vec![
+                        Ability::new(vec![CREATURE], vec![damage(3, Recipient::Target(0))]),
+                        Ability::new(vec![ARTIFACT], vec![Effect::Destroy(0)]),
+                    ],
+                )
+            },
+        ),
+        "Bushwhack" => s(
+            &[
+                "Choose one —",
+                "• Search your library for a basic land card, reveal it, put it into your hand, then shuffle.",
+                "• Target creature you control fights target creature you don't control.",
+            ],
+            |d, _| {
+                modes(
+                    d,
+                    vec![
+                        Ability::new(vec![], vec![search(SearchFor::BasicLand, SearchTo::Hand)]),
+                        Ability::new(vec![YOUR_CREATURE, OPP_CREATURE], vec![Effect::FightBetween { a: 0, b: 1 }]),
+                    ],
+                )
+            },
+        ),
+        "Goblin Surprise" => s(
+            &[
+                "Choose one —",
+                "• Creatures you control get +2/+0 until end of turn.",
+                "• Create two 1/1 red Goblin creature tokens.",
+            ],
+            |d, t| {
+                modes(
+                    d,
+                    vec![
+                        Ability::new(vec![], vec![Effect::PumpAll { who: Who::You, power: 2, toughness: 0 }]),
+                        Ability::new(vec![], vec![Effect::CreateToken { who: Who::You, def: t.goblin, n: 2 }]),
+                    ],
+                )
+            },
+        ),
+        "Seeker's Folly" => s(
+            &[
+                "Choose one —",
+                "• Target opponent discards two cards.",
+                "• Creatures your opponents control get -1/-1 until end of turn.",
+            ],
+            |d, _| {
+                let opp = Filter::PLAYER.controlled_by(Controller::Opponent);
+                modes(
+                    d,
+                    vec![
+                        Ability::new(vec![opp], vec![Effect::Discard { who: Who::TargetPlayer(0), n: 2 }]),
+                        Ability::new(vec![], vec![Effect::PumpAll { who: Who::EachOpponent, power: -1, toughness: -1 }]),
+                    ],
+                )
+            },
+        ),
+        "Slagstorm" => s(
+            &[
+                "Choose one —",
+                "• Slagstorm deals 3 damage to each creature.",
+                "• Slagstorm deals 3 damage to each player.",
+            ],
+            |d, _| {
+                modes(
+                    d,
+                    vec![
+                        Ability::new(vec![], vec![damage(3, Recipient::EachCreature { without_flying: false })]),
+                        Ability::new(vec![], vec![damage(3, Recipient::EachPlayer)]),
+                    ],
+                )
+            },
+        ),
+        "Run Away Together" => s(
+            &["Choose two target creatures controlled by different players. Return those creatures to their owners' hands."],
+            |d, _| spell(d, vec![YOUR_CREATURE, OPP_CREATURE], vec![Effect::Bounce(0), Effect::Bounce(1)]),
+        ),
+        "Goldvein Pick" => s(
+            &[
+                "Equipped creature gets +1/+1.",
+                "Whenever equipped creature deals combat damage to a player, create a Treasure token.",
+                "Equip {1}",
+            ],
+            |d, t| {
+                attached(d, false, 1, 1, Keywords::NONE);
+                on(
+                    d,
+                    When::EquippedDealsCombatDamageToPlayer,
+                    vec![],
+                    vec![Effect::CreateToken { who: Who::You, def: t.treasure, n: 1 }],
+                );
+                equip(d, "{1}");
+            },
+        ),
+        "Quick-Draw Katana" => s(
+            &["During your turn, equipped creature gets +2/+0 and has first strike.", "Equip {2}"],
+            |d, _| {
+                attached(d, true, 2, 0, Keywords::FIRST_STRIKE);
+                equip(d, "{2}");
+            },
+        ),
+        "Swiftfoot Boots" => s(&["Equipped creature has hexproof and haste.", "Equip {1}"], |d, _| {
+            attached(d, false, 0, 0, Keywords::HEXPROOF.with(Keywords::HASTE));
+            equip(d, "{1}");
+        }),
+        "Adventuring Gear" => s(
+            &["Landfall — Whenever a land you control enters, equipped creature gets +2/+2 until end of turn.", "Equip {1}"],
+            |d, _| {
+                on(d, When::LandYouControlEnters, vec![], vec![Effect::PumpAttached { power: 2, toughness: 2 }]);
+                equip(d, "{1}");
+            },
+        ),
+        "Celestial Armor" => s(
+            &[
+                "When this Equipment enters, attach it to target creature you control. That creature gains hexproof and indestructible until end of turn.",
+                "Equipped creature gets +2/+0 and has flying.",
+                "Equip {3}{W}",
+            ],
+            |d, _| {
+                on(
+                    d,
+                    When::Enters,
+                    vec![YOUR_CREATURE],
+                    vec![
+                        Effect::Attach { slot: 0 },
+                        Effect::Grant { slot: 0, keywords: Keywords::HEXPROOF.with(Keywords::INDESTRUCTIBLE) },
+                    ],
+                );
+                attached(d, false, 2, 0, Keywords::FLYING);
+                equip(d, "{3}{W}");
+            },
+        ),
+        "Twinblade Blessing" => s(&["Enchant creature", "Enchanted creature has double strike."], |d, _| {
+            d.aura = true;
+            d.spell = Some(Ability::new(vec![CREATURE], vec![]));
+            attached(d, false, 0, 0, Keywords::DOUBLE_STRIKE);
+        }),
         _ => None,
     }
 }
@@ -907,4 +1085,16 @@ pub const SCRIPTED: &[&str] = &[
     "Vanguard Seraph",
     "Cat Collector",
     "Mischievous Mystic",
+    "Abrade",
+    "Bushwhack",
+    "Goblin Surprise",
+    "Seeker's Folly",
+    "Slagstorm",
+    "Run Away Together",
+    "Goldvein Pick",
+    "Quick-Draw Katana",
+    "Swiftfoot Boots",
+    "Adventuring Gear",
+    "Celestial Armor",
+    "Twinblade Blessing",
 ];

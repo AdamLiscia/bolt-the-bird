@@ -100,6 +100,7 @@ pub enum Who {
 pub enum Recipient {
     Target(u8),
     EachOpponent,
+    EachPlayer,
     /// Each creature, optionally only those without flying.
     EachCreature {
         without_flying: bool,
@@ -193,10 +194,25 @@ pub enum Effect {
     CountersSelf {
         n: i32,
     },
-    /// Creatures you control get +P/+T until end of turn.
+    /// Creatures `who` controls get +P/+T until end of turn.
     PumpAll {
+        who: Who,
         power: i32,
         toughness: i32,
+    },
+    /// The creature the source is attached to gets +P/+T until end of turn.
+    PumpAttached {
+        power: i32,
+        toughness: i32,
+    },
+    /// Attach the source (an Equipment or Aura) to the creature in `slot` (CR 701.3).
+    Attach {
+        slot: u8,
+    },
+    /// The creatures in slots `a` and `b` fight (CR 701.12).
+    FightBetween {
+        a: u8,
+        b: u8,
     },
     /// The source gains keywords until end of turn.
     GrantSelf {
@@ -266,6 +282,8 @@ pub enum Scope {
     YourCreatures,
     /// Creatures you control with a +1/+1 counter on them.
     YourCreaturesWithCounters,
+    /// The creature this Equipment or Aura is attached to.
+    Attached,
 }
 
 /// A static ability that changes characteristics (CR 604, 613 layers 6 and 7c).
@@ -343,6 +361,12 @@ pub enum When {
     YouGainLifeFirstTime { your_turn_only: bool },
     /// "Whenever you draw your second card each turn".
     YouDrawSecond,
+    /// Landfall: "Whenever a land you control enters".
+    LandYouControlEnters,
+    /// "Whenever this creature deals combat damage to a player".
+    DealsCombatDamageToPlayer,
+    /// "Whenever equipped creature deals combat damage to a player".
+    EquippedDealsCombatDamageToPlayer,
 }
 
 #[derive(Clone, Debug, PartialEq)]

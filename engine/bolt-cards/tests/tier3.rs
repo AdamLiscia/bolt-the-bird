@@ -423,3 +423,246 @@ fn activation_targets_are_chosen_before_costs_are_paid() {
     };
     assert!(ev.contains(&bolt_core::Event::Fizzled { source: cathar }));
 }
+
+// ---------------------------------------------------------------- modal spells
+
+#[test]
+fn abrade_has_two_modes() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Abrade");
+    let angel = put(&mut g, 1, "Serra Angel");
+    begin(&mut g);
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::CastModal(c, 0)));
+    assert!(
+        !legal.contains(&Action::CastModal(c, 1)),
+        "no artifact to destroy"
+    );
+    assert!(!legal.contains(&Action::Cast(c)), "a mode must be chosen");
+    act(&mut g, Action::CastModal(c, 0));
+    act(&mut g, Action::Target(obj(angel)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(angel).damage, 3);
+}
+
+#[test]
+fn bushwhack_fetches_or_fights() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Bushwhack");
+    let forest = library_card(&mut g, 0, "Forest");
+    begin(&mut g);
+    act(&mut g, Action::CastModal(c, 0));
+    resolve_all(&mut g, &[Action::Pick(forest)]);
+    assert_eq!(g.obj(forest).zone, Zone::Hand);
+
+    let mut g = table();
+    let c = hand(&mut g, 0, "Bushwhack");
+    let mine = put(&mut g, 0, "Serra Angel");
+    let theirs = put(&mut g, 1, "Savannah Lions");
+    begin(&mut g);
+    act(&mut g, Action::CastModal(c, 1));
+    act(&mut g, Action::Target(obj(mine)));
+    act(&mut g, Action::Target(obj(theirs)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(theirs).zone, Zone::Graveyard);
+    assert_eq!(g.obj(mine).damage, 2);
+}
+
+#[test]
+fn goblin_surprise_pumps_or_makes_goblins() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Goblin Surprise");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    let theirs = put(&mut g, 1, "Savannah Lions");
+    begin(&mut g);
+    act(&mut g, Action::CastModal(c, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.power(lions), g.power(theirs)), (4, 2), "only yours");
+
+    let mut g = table();
+    let c = hand(&mut g, 0, "Goblin Surprise");
+    begin(&mut g);
+    act(&mut g, Action::CastModal(c, 1));
+    resolve_all(&mut g, &[]);
+    assert_eq!(tokens_named(&g, 0, "Goblin"), 2);
+}
+
+#[test]
+fn seekers_folly() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Seeker's Folly");
+    let a = hand(&mut g, 1, "Stab");
+    let b = hand(&mut g, 1, "Forest");
+    begin(&mut g);
+    act(&mut g, Action::CastModal(c, 0));
+    act(&mut g, Action::Target(bolt_core::Target::Player(1)));
+    resolve_all(&mut g, &[Action::Discard(a), Action::Discard(b)]);
+    assert!(g.players[1].hand.is_empty());
+
+    let mut g = table();
+    let c = hand(&mut g, 0, "Seeker's Folly");
+    let lions = put(&mut g, 1, "Savannah Lions");
+    let mine = put(&mut g, 0, "Savannah Lions");
+    begin(&mut g);
+    act(&mut g, Action::CastModal(c, 1));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(lions).zone, Zone::Graveyard);
+    assert_eq!(g.obj(mine).zone, Zone::Battlefield);
+}
+
+#[test]
+fn slagstorm_hits_creatures_or_players() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Slagstorm");
+    let a = put(&mut g, 0, "Savannah Lions");
+    let b = put(&mut g, 1, "Serra Angel");
+    begin(&mut g);
+    act(&mut g, Action::CastModal(c, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(a).zone, Zone::Graveyard);
+    assert_eq!(g.obj(b).damage, 3, "flying doesn't help");
+
+    let mut g = table();
+    let c = hand(&mut g, 0, "Slagstorm");
+    begin(&mut g);
+    act(&mut g, Action::CastModal(c, 1));
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.players[0].life, g.players[1].life), (17, 17));
+}
+
+#[test]
+fn run_away_together_bounces_one_of_each() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Run Away Together");
+    let mine = put(&mut g, 0, "Savannah Lions");
+    let theirs = put(&mut g, 1, "Serra Angel");
+    begin(&mut g);
+    play(&mut g, c, false, &[obj(mine), obj(theirs)], &[]);
+    assert_eq!((g.obj(mine).zone, g.obj(theirs).zone), (Zone::Hand, Zone::Hand));
+}
+
+// ---------------------------------------------------------------- equipment and auras
+
+fn equip_to(g: &mut bolt_core::Game, gear: bolt_core::ObjId, creature: bolt_core::ObjId) {
+    act(g, Action::Activate(gear, g.def_of(gear).activated.len() - 1));
+    act(g, Action::Target(obj(creature)));
+    resolve_all(g, &[]);
+}
+
+#[test]
+fn goldvein_pick_pumps_and_makes_treasure_on_a_hit() {
+    let mut g = table();
+    let pick = put(&mut g, 0, "Goldvein Pick");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    begin(&mut g);
+    equip_to(&mut g, pick, lions);
+    assert_eq!((g.power(lions), g.toughness(lions)), (3, 2));
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(lions));
+    act(&mut g, Action::FinishAttacks);
+    while g.step != Step::CombatDamage || !g.items.is_empty() {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.players[1].life, 17);
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        g.permanents(0)
+            .filter(|&c| g.def_of(c).name == "Treasure")
+            .count(),
+        1
+    );
+}
+
+#[test]
+fn equip_is_sorcery_speed_and_moves_between_creatures() {
+    // CR 702.6a, 301.5c.
+    let mut g = table();
+    let boots = put(&mut g, 0, "Swiftfoot Boots");
+    let a = put(&mut g, 0, "Savannah Lions");
+    let b = put(&mut g, 0, "Serra Angel");
+    g.start_turn(3, 0);
+    assert!(
+        !g.legal_actions().contains(&Action::Activate(boots, 0)),
+        "not in upkeep"
+    );
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    equip_to(&mut g, boots, a);
+    assert!(g.keywords(a).has(Keywords::HEXPROOF) && g.keywords(a).has(Keywords::HASTE));
+    equip_to(&mut g, boots, b);
+    assert!(!g.keywords(a).has(Keywords::HEXPROOF), "moved off");
+    assert!(g.keywords(b).has(Keywords::HASTE));
+}
+
+#[test]
+fn swiftfoot_boots_give_haste_to_a_new_creature() {
+    let mut g = table();
+    let boots = put(&mut g, 0, "Swiftfoot Boots");
+    let fresh = hand(&mut g, 0, "Savannah Lions");
+    begin(&mut g);
+    play(&mut g, fresh, false, &[], &[]);
+    equip_to(&mut g, boots, fresh);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(g.legal_actions().contains(&Action::Attack(fresh)));
+}
+
+#[test]
+fn equipment_falls_off_when_its_creature_dies() {
+    // CR 704.5n.
+    let mut g = table();
+    let katana = put(&mut g, 0, "Quick-Draw Katana");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    let stab = hand(&mut g, 0, "Stab");
+    begin(&mut g);
+    equip_to(&mut g, katana, lions);
+    assert_eq!(g.power(lions), 4, "+2/+0 during your turn");
+    assert!(g.keywords(lions).has(Keywords::FIRST_STRIKE));
+    play(&mut g, stab, false, &[obj(lions)], &[]);
+    assert_eq!(g.obj(katana).zone, Zone::Battlefield);
+    assert_eq!(g.obj(katana).attached_to, None);
+}
+
+#[test]
+fn adventuring_gear_has_landfall() {
+    let mut g = lands(&[]);
+    let gear = put(&mut g, 0, "Adventuring Gear");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    let forest = hand(&mut g, 0, "Forest");
+    put(&mut g, 0, "Plains");
+    begin(&mut g);
+    equip_to(&mut g, gear, lions);
+    act(&mut g, Action::PlayLand(forest));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.power(lions), 4);
+}
+
+#[test]
+fn celestial_armor_attaches_on_entering() {
+    let mut g = table();
+    let armor = hand(&mut g, 0, "Celestial Armor");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    begin(&mut g);
+    play(&mut g, armor, false, &[], &[Action::Target(obj(lions))]);
+    assert_eq!(g.power(lions), 4);
+    let k = g.keywords(lions);
+    assert!(k.has(Keywords::FLYING) && k.has(Keywords::HEXPROOF) && k.has(Keywords::INDESTRUCTIBLE));
+}
+
+#[test]
+fn twinblade_blessing_is_an_aura() {
+    // CR 303.4: cast targeting a creature, enters attached, and goes to the graveyard without it.
+    let mut g = table();
+    let aura = hand(&mut g, 0, "Twinblade Blessing");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    let stab = hand(&mut g, 0, "Stab");
+    begin(&mut g);
+    play(&mut g, aura, false, &[obj(lions)], &[]);
+    assert!(g.keywords(lions).has(Keywords::DOUBLE_STRIKE));
+    play(&mut g, stab, false, &[obj(lions)], &[]);
+    assert_eq!(g.obj(aura).zone, Zone::Graveyard, "CR 704.5m");
+}

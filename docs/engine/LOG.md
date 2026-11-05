@@ -79,3 +79,11 @@ One line per working step, newest last. The next session continues from the last
   CR 602.2b order; QUESTIONS updated). 10,000 release fuzz games with all 104 cards pass.
   `examples/replay.rs` replays any fuzz seed. **Next: M3 batch 2: modal spells (Bushwhack, Goblin
   Surprise), equipment and auras, then the next cards in build order.**
+- 2026-11-05: **M3 batch 2.** Modal spells (`CastModal`, mode chosen on casting, CR 700.2),
+  Equipment and Auras (attachment pinned to the creature's zone-change count; equip at sorcery speed;
+  Auras cast with a target and enter attached; CR 704.5m-n unattach and Aura-to-graveyard), static
+  abilities on the attached creature, landfall, "deals combat damage to a player" triggers (the creature
+  or its Equipment), fights between two targets, each-player damage, pump for any player's creatures.
+  12 cards (Abrade, Bushwhack, Goblin Surprise, Seeker's Folly, Slagstorm, Run Away Together, Goldvein
+  Pick, Quick-Draw Katana, Swiftfoot Boots, Adventuring Gear, Celestial Armor, Twinblade Blessing):
+  **116 supported, 165 tests.** 10,000 release fuzz games pass. **Next: M3 batch 3 in build order.**
