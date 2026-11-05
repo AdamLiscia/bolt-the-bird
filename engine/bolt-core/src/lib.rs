@@ -11,10 +11,12 @@ pub mod mana;
 pub mod rng;
 
 pub use card::{CardDef, Keywords, Types};
-pub use effect::{Ability, Condition, Controller, Effect, Filter, Recipient, Trigger, When, Who};
+pub use effect::{
+    Ability, Condition, Controller, Effect, Filter, Recipient, SearchFor, SearchTo, Trigger, When, Who,
+};
 pub use game::{
-    Action, Chosen, Event, Game, Modifier, ObjId, Outcome, Pending, PlayerId, RulesError, StackItem,
-    StackKind, Step, Target, Zone,
+    Action, Chosen, Decision, Event, Game, Modifier, ObjId, Outcome, Pending, PlayerId, Resolving,
+    RulesError, StackItem, StackKind, Step, Target, Zone,
 };
 pub use mana::{ManaCost, ManaSource};
 

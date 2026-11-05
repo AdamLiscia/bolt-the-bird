@@ -25,6 +25,9 @@ pub struct Filter {
     pub enchantments: bool,
     /// Any nonland permanent.
     pub nonland_permanents: bool,
+    /// Spells on the stack. With `spell_creature`, only creature (true) or noncreature (false) spells.
+    pub spells: bool,
+    pub spell_creature: Option<bool>,
     pub controller: Controller,
     /// Creatures only if they have flying ("creature with flying").
     pub creature_needs_flying: bool,
@@ -43,6 +46,8 @@ impl Filter {
         artifacts: false,
         enchantments: false,
         nonland_permanents: false,
+        spells: false,
+        spell_creature: None,
         controller: Controller::Any,
         creature_needs_flying: false,
         creature_min_power: None,
@@ -129,16 +134,57 @@ pub enum Effect {
         slot: u8,
         keywords: Keywords,
     },
+    /// The source gets +P/+T until end of turn.
+    PumpSelf {
+        power: i32,
+        toughness: i32,
+    },
     /// +1/+1 counters (CR 122.1a).
     Counters {
         slot: u8,
         n: i32,
     },
-    /// Create `n` tokens of definition `def` under the ability's controller (CR 111).
+    /// Create `n` tokens of definition `def` for `who` (CR 111).
     CreateToken {
+        who: Who,
         def: usize,
         n: u8,
     },
+    /// One token for each other creature you control with the source's name (Hare Apparent).
+    CreateTokenPerNamesake {
+        def: usize,
+    },
+    /// `who` discards `n` cards of their choice (CR 701.9).
+    Discard {
+        who: Who,
+        n: u8,
+    },
+    /// "You may discard a card. If you do, draw a card."
+    MayDiscardToDraw,
+    /// The ability's controller chooses a nonland card from the hand of the player in `slot`, who
+    /// discards it.
+    ChooseDiscard {
+        slot: u8,
+    },
+    /// Look at the top `n` cards; put any number into the graveyard, the rest back on top (CR 701.25).
+    Surveil {
+        n: u8,
+    },
+    /// Search your library, then shuffle (CR 701.19). With kicker paid, `kicked_n` replaces `n`.
+    Search {
+        what: SearchFor,
+        to: SearchTo,
+        n: u8,
+        kicked_n: Option<u8>,
+    },
+    /// Counter the spell in `slot` (CR 701.5).
+    Counter(u8),
+    /// Return the permanent in `slot` to its owner's hand.
+    Bounce(u8),
+    /// The source creature fights the creature in `slot` (CR 701.12).
+    Fight(u8),
+    /// The owner of the creature in `slot` puts it on the top or bottom of their library.
+    Tuck(u8),
     /// The creature in slot `from` deals damage equal to its power to the one in slot `to`.
     Bite {
         from: u8,
@@ -148,6 +194,24 @@ pub enum Effect {
     ExileGraveyard {
         who: Who,
     },
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SearchFor {
+    BasicLand,
+    Any,
+    /// An instant or sorcery card with this mana value.
+    InstantOrSorceryWithManaValue(u32),
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SearchTo {
+    Hand,
+    Battlefield {
+        tapped: bool,
+    },
+    /// Shuffle, then put the card on top.
+    Top,
 }
 
 /// An intervening "if" clause, checked when the ability triggers and again on resolution
@@ -166,6 +230,8 @@ pub struct Ability {
     pub targets: Vec<Filter>,
     pub effects: Vec<Effect>,
     pub condition: Option<Condition>,
+    /// "You may ..." for the whole ability: the controller chooses on resolution.
+    pub optional: bool,
 }
 
 impl Ability {
@@ -174,7 +240,13 @@ impl Ability {
             targets,
             effects,
             condition: None,
+            optional: false,
         }
+    }
+
+    pub fn optional(mut self) -> Ability {
+        self.optional = true;
+        self
     }
 }
 
@@ -184,6 +256,8 @@ pub enum When {
     Enters,
     /// "When this creature dies" (CR 603.6c, 603.10a).
     Dies,
+    /// "Whenever you cast a noncreature spell" (prowess, CR 702.108).
+    YouCastNoncreature,
 }
 
 #[derive(Clone, Debug, PartialEq)]

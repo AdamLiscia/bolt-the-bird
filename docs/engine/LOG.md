@@ -32,6 +32,13 @@ One line per working step, newest last. The next session continues from the last
   bite damage, graveyard exile, intervening-if conditions (raid, "another Elf"). `bolt-cards`: card
   scripts that name the exact rules lines they implement, checked against Scryfall by a test; token
   definitions after the 286 cards. 22 tier-2 cards scripted, each with a test from its text. 35 cards
-  supported. 1,000 fuzz games with real cards. 97 tests.
+  supported. 1,000 fuzz games with real cards. 91 tests.
   **Next: M2 cards, batch 2. Choices during resolution (discard, "you may", surveil, search), then
   counterspells, fight, additional costs and cost reductions.**
+- 2026-11-05: **M2 cards, batch 2 (scripts).** Core: resolution can pause for a decision and resume
+  (`Pending::Decide`): "you may", discard, choose-a-card discard, surveil, library search (to hand,
+  battlefield or top), top-or-bottom. Also counterspells (spells as targets), bounce, fight, prowess
+  (cast triggers), and tokens for any player. 22 more cards scripted (57 supported); the drift test
+  confirms every script matches its card text, and 1,000 fuzz games pass.
+  **Next: a rules test for each batch-2 card, then the rest of tier 2 (additional costs, cost
+  reductions, "up to" targets, flashback, Food and Treasure).**

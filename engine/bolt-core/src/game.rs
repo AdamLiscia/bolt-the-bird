@@ -6,7 +6,11 @@
 use std::sync::Arc;
 
 use crate::card::{CardDef, Keywords};
-use crate::effect::{Ability, Condition, Controller, Effect, Filter, Recipient, When, Who};
+use std::collections::VecDeque;
+
+use crate::effect::{
+    Ability, Condition, Controller, Effect, Filter, Recipient, SearchFor, SearchTo, When, Who,
+};
 use crate::mana::{self, ManaCost, ManaSource};
 use crate::rng::Rng;
 
@@ -119,6 +123,8 @@ pub enum Pending {
     Discard(PlayerId),
     /// Choose the next target of the spell or ability being put on the stack (CR 601.2c, 603.3d).
     ChooseTarget(PlayerId),
+    /// A decision in the middle of a resolving spell or ability; see [`Game::decision`].
+    Decide(PlayerId),
     GameOver,
 }
 
@@ -133,6 +139,10 @@ pub enum Action {
     /// Cast with its kicker paid (CR 702.33).
     CastKicked(ObjId),
     Target(Target),
+    Yes,
+    No,
+    /// Choose a card for the current decision (a search, or a card from a revealed hand).
+    Pick(ObjId),
     Attack(ObjId),
     FinishAttacks,
     Block {
@@ -279,6 +289,37 @@ pub struct Choosing {
     pub cast: bool,
 }
 
+/// A spell or ability part-way through resolving (CR 608.2).
+#[derive(Clone, Debug, PartialEq)]
+pub struct Resolving {
+    pub item: StackItem,
+    pub legal: Vec<bool>,
+    pub remaining: VecDeque<Effect>,
+    /// False if the spell fizzled or its condition failed: it does nothing.
+    pub acts: bool,
+}
+
+/// A choice made while a spell or ability resolves.
+#[derive(Clone, Debug, PartialEq)]
+pub enum Decision {
+    /// "You may": `Yes` or `No`.
+    May,
+    /// Discard `left` more cards. Optional ones also allow `No`, and `then_draw` draws after.
+    Discard {
+        left: u8,
+        optional: bool,
+        then_draw: bool,
+    },
+    /// Choose a nonland card from `victim`'s hand for them to discard.
+    PickDiscard { victim: PlayerId },
+    /// Surveil: `Yes` puts the top of `cards` into the graveyard, `No` keeps it on top.
+    Surveil { cards: Vec<ObjId> },
+    /// `Pick` a matching library card, or `No` to find nothing (CR 701.19b).
+    Search { what: SearchFor, to: SearchTo, left: u8 },
+    /// `Yes` for the top of the library, `No` for the bottom.
+    Tuck { card: ObjId },
+}
+
 /// An until-end-of-turn change to one object (CR 611.2, 613).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Modifier {
@@ -307,6 +348,10 @@ pub struct Game {
     /// Triggered abilities waiting to be put on the stack (CR 603.3).
     pub triggered: Vec<StackItem>,
     pub choosing: Option<Choosing>,
+    /// The spell or ability that is resolving, while it waits on a decision.
+    pub resolving: Option<Resolving>,
+    /// The decision a resolving spell or ability is waiting on.
+    pub decision: Option<Decision>,
     pub until_eot: Vec<Modifier>,
     pub turn: u32,
     pub active: PlayerId,
@@ -365,6 +410,8 @@ impl Game {
             attacked_this_turn: [false; 2],
             triggered: Vec::new(),
             choosing: None,
+            resolving: None,
+            decision: None,
             until_eot: Vec::new(),
             turn: 0,
             active: first,
@@ -564,6 +611,7 @@ impl Game {
                 v
             }
             Pending::DeclareBlockers(p) => self.block_actions(p),
+            Pending::Decide(p) => self.decision_actions(p),
             Pending::ChooseTarget(_) => {
                 let c = self.choosing.as_ref().expect("choosing targets");
                 let filter = self.ability_of(&c.item).targets[c.item.targets.len()];
@@ -601,8 +649,21 @@ impl Game {
             Target::Player(p) => f.players && Game::controller_ok(f.controller, controller, p),
             Target::Object(id) => {
                 let o = self.obj(id);
-                if o.zone != Zone::Battlefield || !Game::controller_ok(f.controller, controller, o.controller)
-                {
+                if !Game::controller_ok(f.controller, controller, o.controller) {
+                    return false;
+                }
+                if o.zone == Zone::Stack {
+                    // A spell, already cast: one being cast isn't on the stack yet (CR 115.5).
+                    let is_spell = self
+                        .items
+                        .iter()
+                        .any(|i| i.kind == StackKind::Spell && i.source == id);
+                    return f.spells
+                        && is_spell
+                        && f.spell_creature
+                            .is_none_or(|c| c == self.def_of(id).types.creature);
+                }
+                if o.zone != Zone::Battlefield {
                     return false;
                 }
                 // CR 702.11b: hexproof stops opponents' spells and abilities from targeting it.
@@ -633,6 +694,12 @@ impl Game {
         (0..2)
             .map(Target::Player)
             .chain(self.battlefield.iter().map(|&id| Target::Object(id)))
+            .chain(
+                self.stack
+                    .iter()
+                    .filter(|_| f.spells)
+                    .map(|&id| Target::Object(id)),
+            )
             .filter(|&t| self.target_ok(f, controller, t))
             .collect()
     }
@@ -799,6 +866,7 @@ impl Game {
             (Pending::Priority(p), Action::Cast(c)) => self.cast(p, c, false),
             (Pending::Priority(p), Action::CastKicked(c)) => self.cast(p, c, true),
             (Pending::ChooseTarget(_), Action::Target(target)) => self.choose_target(target),
+            (Pending::Decide(p), a) => self.decide(p, a),
             (Pending::DeclareAttackers(_), Action::Attack(c)) => {
                 // CR 508.1f: attacking taps the creature unless it has vigilance.
                 if !self.keywords(c).has(Keywords::VIGILANCE) {
@@ -889,8 +957,26 @@ impl Game {
         for i in paid {
             self.obj_mut(sources[i].0).tapped = true;
         }
+        let noncreature = !self.def_of(card).types.creature;
         self.items.push(item);
         self.events.push(Event::Cast { card });
+        if noncreature {
+            // Prowess and other cast triggers of the caster's permanents.
+            for id in self.permanents(p).collect::<Vec<_>>() {
+                let whens: Vec<When> = self.def_of(id).triggers.iter().map(|tr| tr.when).collect();
+                for (n, w) in whens.into_iter().enumerate() {
+                    if w == When::YouCastNoncreature {
+                        self.triggered.push(StackItem {
+                            source: id,
+                            controller: p,
+                            kind: StackKind::Trigger(n),
+                            targets: Vec::new(),
+                            kicked: false,
+                        });
+                    }
+                }
+            }
+        }
         self.passes = 0;
         self.give_priority(p);
     }
@@ -927,7 +1013,6 @@ impl Game {
         self.passes = 0;
         if let Some(top) = self.items.pop() {
             self.resolve(top);
-            self.give_priority(self.active);
         } else {
             self.end_step();
         }
@@ -946,34 +1031,217 @@ impl Game {
         }
     }
 
+    /// CR 608.2: check targets, then carry out the effects in order. Pauses on decisions.
     fn resolve(&mut self, item: StackItem) {
         let source = item.source;
         let legal: Vec<bool> = (0..item.targets.len())
             .map(|i| self.still_legal(&item, i))
             .collect();
         let fizzled = !legal.is_empty() && !legal.iter().any(|&b| b);
-        let condition_failed = matches!(item.kind, StackKind::Trigger(_))
-            && !self.condition_holds(self.ability_of(&item), item.controller, source);
-        if condition_failed {
-            // CR 603.4: an intervening "if" that is false on resolution does nothing.
-        } else if fizzled {
+        let is_trigger = matches!(item.kind, StackKind::Trigger(_));
+        let condition_failed =
+            is_trigger && !self.condition_holds(self.ability_of(&item), item.controller, source);
+        if fizzled && !condition_failed {
             self.events.push(Event::Fizzled { source });
-        } else if item.kind != StackKind::Spell || self.def_of(source).spell.is_some() {
-            let effects = self.ability_of(&item).effects.clone();
-            for e in effects {
-                self.run_effect(&item, &legal, e);
-            }
         }
-        if item.kind == StackKind::Spell {
-            if !fizzled && self.def_of(source).types.is_permanent() {
+        let has_ability = is_trigger || self.def_of(source).spell.is_some();
+        let acts = has_ability && !fizzled && !condition_failed;
+        let (remaining, optional) = if acts {
+            let a = self.ability_of(&item);
+            (a.effects.iter().copied().collect(), a.optional)
+        } else {
+            (VecDeque::new(), false)
+        };
+        let fizzled_spell = fizzled && item.kind == StackKind::Spell;
+        let controller = item.controller;
+        self.resolving = Some(Resolving {
+            item,
+            legal,
+            remaining,
+            acts: !fizzled_spell,
+        });
+        if optional {
+            self.decision = Some(Decision::May);
+            self.pending = Pending::Decide(controller);
+            return;
+        }
+        self.continue_resolving();
+    }
+
+    /// Runs effects until one needs a decision, or until done.
+    fn continue_resolving(&mut self) {
+        loop {
+            if self.decision.is_some() || self.is_over() {
+                return;
+            }
+            let r = self.resolving.as_mut().expect("resolving");
+            let Some(e) = r.remaining.pop_front() else { break };
+            let (item, legal) = (r.item.clone(), r.legal.clone());
+            self.run_effect(&item, &legal, e);
+        }
+        let r = self.resolving.take().expect("resolving");
+        let source = r.item.source;
+        if r.item.kind == StackKind::Spell {
+            if r.acts && self.def_of(source).types.is_permanent() {
                 self.move_to(source, Zone::Battlefield);
-                self.obj_mut(source).controller = item.controller;
-            } else {
+                self.obj_mut(source).controller = r.item.controller;
+            } else if self.obj(source).zone == Zone::Stack {
                 self.move_to(source, Zone::Graveyard);
             }
-            if !fizzled {
+            if r.acts {
                 self.events.push(Event::Resolved { card: source });
             }
+        }
+        self.give_priority(self.active);
+    }
+
+    fn ask(&mut self, p: PlayerId, d: Decision) {
+        self.decision = Some(d);
+        self.pending = Pending::Decide(p);
+    }
+
+    fn library_matches(&self, p: PlayerId, what: SearchFor) -> Vec<ObjId> {
+        self.players[p]
+            .library
+            .iter()
+            .copied()
+            .filter(|&c| {
+                let d = self.def_of(c);
+                match what {
+                    SearchFor::Any => true,
+                    SearchFor::BasicLand => d.types.basic && d.types.land,
+                    SearchFor::InstantOrSorceryWithManaValue(mv) => {
+                        (d.types.instant || d.types.sorcery) && d.cost.mana_value() == mv
+                    }
+                }
+            })
+            .collect()
+    }
+
+    fn decision_actions(&self, p: PlayerId) -> Vec<Action> {
+        let hand = &self.players[p].hand;
+        match self.decision.as_ref().expect("a decision") {
+            Decision::May | Decision::Surveil { .. } | Decision::Tuck { .. } => vec![Action::Yes, Action::No],
+            Decision::Discard { optional, .. } => {
+                let mut v: Vec<Action> = hand.iter().map(|&c| Action::Discard(c)).collect();
+                if *optional {
+                    v.push(Action::No);
+                }
+                v
+            }
+            Decision::PickDiscard { victim } => self.players[*victim]
+                .hand
+                .iter()
+                .filter(|&&c| !self.def_of(c).types.land)
+                .map(|&c| Action::Pick(c))
+                .collect(),
+            Decision::Search { what, .. } => {
+                let mut v: Vec<Action> = self
+                    .library_matches(p, *what)
+                    .into_iter()
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
+        }
+    }
+
+    fn shuffle_library(&mut self, p: PlayerId) {
+        let mut lib = std::mem::take(&mut self.players[p].library);
+        self.rng.shuffle(&mut lib);
+        self.players[p].library = lib;
+    }
+
+    fn decide(&mut self, p: PlayerId, a: Action) {
+        let d = self.decision.take().expect("a decision");
+        match (d, a) {
+            (Decision::May, Action::Yes) => {}
+            (Decision::May, Action::No) => {
+                self.resolving.as_mut().expect("resolving").remaining.clear();
+            }
+            (
+                Decision::Discard {
+                    left,
+                    optional,
+                    then_draw,
+                },
+                Action::Discard(c),
+            ) => {
+                self.move_to(c, Zone::Graveyard);
+                if left > 1 && !self.players[p].hand.is_empty() {
+                    self.ask(
+                        p,
+                        Decision::Discard {
+                            left: left - 1,
+                            optional,
+                            then_draw,
+                        },
+                    );
+                } else if then_draw {
+                    self.draw(p);
+                }
+            }
+            (Decision::Discard { .. }, Action::No) => {}
+            (Decision::PickDiscard { .. }, Action::Pick(c)) => self.move_to(c, Zone::Graveyard),
+            (Decision::Surveil { mut cards }, choice) => {
+                let card = cards.remove(0);
+                if choice == Action::Yes {
+                    self.move_to(card, Zone::Graveyard);
+                }
+                if !cards.is_empty() {
+                    self.ask(p, Decision::Surveil { cards });
+                } else {
+                    // Kept cards stay on top in their original order.
+                }
+            }
+            (Decision::Search { what, to, left }, Action::Pick(c)) => {
+                match to {
+                    SearchTo::Hand => self.move_to(c, Zone::Hand),
+                    SearchTo::Battlefield { tapped } => {
+                        self.move_to(c, Zone::Battlefield);
+                        self.obj_mut(c).tapped = tapped;
+                    }
+                    SearchTo::Top => {}
+                }
+                if left > 1 && !self.library_matches(p, what).is_empty() {
+                    self.ask(
+                        p,
+                        Decision::Search {
+                            what,
+                            to,
+                            left: left - 1,
+                        },
+                    );
+                } else {
+                    self.finish_search(p, to, Some(c));
+                }
+            }
+            (Decision::Search { to, .. }, Action::No) => self.finish_search(p, to, None),
+            (Decision::Tuck { card }, choice) => {
+                let owner = self.obj(card).owner;
+                self.move_to(card, Zone::Library);
+                if choice == Action::No {
+                    let lib = &mut self.players[owner].library;
+                    let c = lib.pop().expect("just moved");
+                    lib.insert(0, c);
+                }
+            }
+            (d, a) => unreachable!("legal action {a:?} unhandled for {d:?}"),
+        }
+        if self.decision.is_none() {
+            self.continue_resolving();
+        }
+    }
+
+    /// CR 701.19: shuffle after searching. A card found "to the top" goes on top after the shuffle.
+    fn finish_search(&mut self, p: PlayerId, to: SearchTo, found: Option<ObjId>) {
+        self.shuffle_library(p);
+        if let (SearchTo::Top, Some(c)) = (to, found) {
+            let lib = &mut self.players[p].library;
+            let pos = lib.iter().position(|&x| x == c).expect("in library");
+            let card = lib.remove(pos);
+            lib.push(card);
         }
     }
 
@@ -1091,9 +1359,129 @@ impl Game {
                     self.obj_mut(id).counters += n;
                 }
             }
-            Effect::CreateToken { def, n } => {
+            Effect::CreateToken { who, def, n } => {
+                for p in self.players_for(item, legal, who) {
+                    for _ in 0..n {
+                        self.create_token(p, def);
+                    }
+                }
+            }
+            Effect::PumpSelf { power, toughness } => {
+                if self.obj(src).zone == Zone::Battlefield {
+                    let zcc = self.obj(src).zcc;
+                    self.until_eot.push(Modifier {
+                        obj: src,
+                        zcc,
+                        power,
+                        toughness,
+                        keywords: Keywords::NONE,
+                    });
+                }
+            }
+            Effect::CreateTokenPerNamesake { def } => {
+                let name = &self.def_of(src).name;
+                let n = self
+                    .creatures(item.controller)
+                    .filter(|&c| c != src && &self.def_of(c).name == name)
+                    .count();
                 for _ in 0..n {
                     self.create_token(item.controller, def);
+                }
+            }
+            Effect::Discard { who, n } => {
+                if let Some(p) = self.players_for(item, legal, who).into_iter().next() {
+                    if !self.players[p].hand.is_empty() {
+                        self.ask(
+                            p,
+                            Decision::Discard {
+                                left: n,
+                                optional: false,
+                                then_draw: false,
+                            },
+                        );
+                    }
+                }
+            }
+            Effect::MayDiscardToDraw => {
+                let p = item.controller;
+                if !self.players[p].hand.is_empty() {
+                    self.ask(
+                        p,
+                        Decision::Discard {
+                            left: 1,
+                            optional: true,
+                            then_draw: true,
+                        },
+                    );
+                }
+            }
+            Effect::ChooseDiscard { slot } => {
+                if let Some(victim) = self
+                    .players_for(item, legal, Who::TargetPlayer(slot))
+                    .into_iter()
+                    .next()
+                {
+                    let any = self.players[victim]
+                        .hand
+                        .iter()
+                        .any(|&c| !self.def_of(c).types.land);
+                    if any {
+                        self.ask(item.controller, Decision::PickDiscard { victim });
+                    }
+                }
+            }
+            Effect::Surveil { n } => {
+                let lib = &self.players[item.controller].library;
+                let cards: Vec<ObjId> = lib.iter().rev().take(n as usize).copied().collect();
+                if !cards.is_empty() {
+                    self.ask(item.controller, Decision::Surveil { cards });
+                }
+            }
+            Effect::Search {
+                what,
+                to,
+                n,
+                kicked_n,
+            } => {
+                let n = if item.kicked { kicked_n.unwrap_or(n) } else { n };
+                self.ask(item.controller, Decision::Search { what, to, left: n });
+            }
+            Effect::Counter(n) => {
+                if let Some(id) = Game::slot_object(item, legal, n) {
+                    if let Some(pos) = self
+                        .items
+                        .iter()
+                        .position(|i| i.kind == StackKind::Spell && i.source == id)
+                    {
+                        self.items.remove(pos);
+                        self.move_to(id, Zone::Graveyard);
+                    }
+                }
+            }
+            Effect::Bounce(n) => {
+                if let Some(id) = Game::slot_object(item, legal, n) {
+                    self.move_to(id, Zone::Hand);
+                }
+            }
+            Effect::Fight(n) => {
+                // CR 701.12b: if either creature is gone, no damage is dealt.
+                let me = src;
+                if let Some(them) = Game::slot_object(item, legal, n) {
+                    if self.obj(me).zone == Zone::Battlefield {
+                        let (a, b) = (self.power(me), self.power(them));
+                        if a > 0 {
+                            self.deal_damage(me, Target::Object(them), a);
+                        }
+                        if b > 0 {
+                            self.deal_damage(them, Target::Object(me), b);
+                        }
+                    }
+                }
+            }
+            Effect::Tuck(n) => {
+                if let Some(id) = Game::slot_object(item, legal, n) {
+                    let owner = self.obj(id).owner;
+                    self.ask(owner, Decision::Tuck { card: id });
                 }
             }
             Effect::Bite { from, to } => {
@@ -1547,8 +1935,13 @@ impl Game {
             .map(|i| i.source)
             .collect();
         let casting = self.choosing.as_ref().filter(|c| c.cast).map(|c| c.item.source);
+        let resolving = self
+            .resolving
+            .as_ref()
+            .filter(|r| r.item.kind == StackKind::Spell)
+            .map(|r| r.item.source);
         let mut on_stack = self.stack.clone();
-        on_stack.retain(|id| Some(*id) != casting);
+        on_stack.retain(|id| Some(*id) != casting && Some(*id) != resolving);
         if on_stack != spells {
             return Err(format!(
                 "stack cards {:?} disagree with spell items {spells:?}",

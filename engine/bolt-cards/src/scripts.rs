@@ -4,7 +4,9 @@
 //! supported only when its scripts and keywords account for every line, and a test checks each
 //! script's lines against the Scryfall text, so a script can't drift from its card.
 
-use bolt_core::effect::{Ability, Condition, Controller, Effect, Filter, Recipient, Trigger, When, Who};
+use bolt_core::effect::{
+    Ability, Condition, Controller, Effect, Filter, Recipient, SearchFor, SearchTo, Trigger, When, Who,
+};
 use bolt_core::{CardDef, Keywords, ManaCost};
 
 /// Token definitions, appended after the 286 cards. Indices are [`Tokens`] fields.
@@ -22,6 +24,8 @@ pub fn token_defs() -> Vec<CardDef> {
         token("Dragon", "Dragon", 4, 4, Keywords::FLYING),
         token("Soldier", "Soldier", 1, 1, Keywords::NONE),
         token("Elf Warrior", "Elf Warrior", 1, 1, Keywords::NONE),
+        token("Human", "Human", 1, 1, Keywords::NONE),
+        token("Rabbit", "Rabbit", 1, 1, Keywords::NONE),
     ]
 }
 
@@ -34,6 +38,8 @@ pub struct Tokens {
     pub dragon: usize,
     pub soldier: usize,
     pub elf_warrior: usize,
+    pub human: usize,
+    pub rabbit: usize,
 }
 
 impl Tokens {
@@ -45,6 +51,8 @@ impl Tokens {
             dragon: base + 3,
             soldier: base + 4,
             elf_warrior: base + 5,
+            human: base + 6,
+            rabbit: base + 7,
         }
     }
 }
@@ -93,6 +101,54 @@ const ART_ENCH: Filter = Filter {
     enchantments: true,
     ..Filter::ANY
 };
+
+fn may(d: &mut CardDef, when: When, targets: Vec<Filter>, effects: Vec<Effect>) {
+    d.triggers.push(Trigger {
+        when,
+        ability: Ability::new(targets, effects).optional(),
+    });
+}
+
+const SPELL: Filter = Filter {
+    players: false,
+    creatures: false,
+    planeswalkers: false,
+    spells: true,
+    ..Filter::ANY
+};
+const OPP_NONLAND: Filter = Filter {
+    players: false,
+    creatures: false,
+    planeswalkers: false,
+    nonland_permanents: true,
+    controller: Controller::Opponent,
+    ..Filter::ANY
+};
+const ARTIFACT_OR_ENCHANTMENT: Filter = Filter {
+    players: false,
+    creatures: false,
+    planeswalkers: false,
+    artifacts: true,
+    enchantments: true,
+    ..Filter::ANY
+};
+
+fn draw(n: u8) -> Effect {
+    Effect::Draw { who: Who::You, n }
+}
+
+fn discard(n: u8) -> Effect {
+    Effect::Discard { who: Who::You, n }
+}
+
+fn search(what: SearchFor, to: SearchTo) -> Effect {
+    Effect::Search {
+        what,
+        to,
+        n: 1,
+        kicked_n: None,
+    }
+}
 
 /// The script for a card, if one exists.
 pub fn script(name: &str) -> Option<Script> {
@@ -172,21 +228,21 @@ pub fn script(name: &str) -> Option<Script> {
         ),
         "Infestation Sage" => s(
             &["When this creature dies, create a 1/1 black and green Insect creature token with flying."],
-            |d, t| on(d, When::Dies, vec![], vec![Effect::CreateToken { def: t.insect, n: 1 }]),
+            |d, t| on(d, When::Dies, vec![], vec![Effect::CreateToken { who: Who::You, def: t.insect, n: 1 }]),
         ),
         "Guarded Heir" => s(&["When this creature enters, create two 3/3 white Knight creature tokens."], |d, t| {
-            on(d, When::Enters, vec![], vec![Effect::CreateToken { def: t.knight, n: 2 }])
+            on(d, When::Enters, vec![], vec![Effect::CreateToken { who: Who::You, def: t.knight, n: 2 }])
         }),
         "Prideful Parent" => s(&["When this creature enters, create a 1/1 white Cat creature token."], |d, t| {
-            on(d, When::Enters, vec![], vec![Effect::CreateToken { def: t.cat, n: 1 }])
+            on(d, When::Enters, vec![], vec![Effect::CreateToken { who: Who::You, def: t.cat, n: 1 }])
         }),
         "Dragon Trainer" => s(
             &["When this creature enters, create a 4/4 red Dragon creature token with flying."],
-            |d, t| on(d, When::Enters, vec![], vec![Effect::CreateToken { def: t.dragon, n: 1 }]),
+            |d, t| on(d, When::Enters, vec![], vec![Effect::CreateToken { who: Who::You, def: t.dragon, n: 1 }]),
         ),
         "Resolute Reinforcements" => s(
             &["When this creature enters, create a 1/1 white Soldier creature token."],
-            |d, t| on(d, When::Enters, vec![], vec![Effect::CreateToken { def: t.soldier, n: 1 }]),
+            |d, t| on(d, When::Enters, vec![], vec![Effect::CreateToken { who: Who::You, def: t.soldier, n: 1 }]),
         ),
         "Angel of Finality" => s(&["When this creature enters, exile target player's graveyard."], |d, _| {
             on(d, When::Enters, vec![Filter::PLAYER], vec![Effect::ExileGraveyard { who: Who::TargetPlayer(0) }])
@@ -206,7 +262,133 @@ pub fn script(name: &str) -> Option<Script> {
                     d,
                     Condition::ControlAnother("Elf".into()),
                     vec![],
-                    vec![Effect::CreateToken { def: t.elf_warrior, n: 1 }],
+                    vec![Effect::CreateToken { who: Who::You, def: t.elf_warrior, n: 1 }],
+                )
+            },
+        ),
+        "Burglar Rat" => s(&["When this creature enters, each opponent discards a card."], |d, _| {
+            on(d, When::Enters, vec![], vec![Effect::Discard { who: Who::EachOpponent, n: 1 }])
+        }),
+        "Icewind Elemental" => s(&["When this creature enters, draw a card, then discard a card."], |d, _| {
+            on(d, When::Enters, vec![], vec![draw(1), discard(1)])
+        }),
+        "Incinerating Blast" => s(
+            &["Incinerating Blast deals 6 damage to target creature.", "You may discard a card. If you do, draw a card."],
+            |d, _| spell(d, vec![CREATURE], vec![damage(6, Recipient::Target(0)), Effect::MayDiscardToDraw]),
+        ),
+        "Wary Thespian" => s(&["When this creature enters or dies, surveil 1."], |d, _| {
+            on(d, When::Enters, vec![], vec![Effect::Surveil { n: 1 }]);
+            on(d, When::Dies, vec![], vec![Effect::Surveil { n: 1 }]);
+        }),
+        "Lightshell Duo" => s(&["Prowess", "When this creature enters, surveil 2."], |d, _| {
+            on(d, When::YouCastNoncreature, vec![], vec![Effect::PumpSelf { power: 1, toughness: 1 }]);
+            on(d, When::Enters, vec![], vec![Effect::Surveil { n: 2 }]);
+        }),
+        "Uncharted Voyage" => s(
+            &["Target creature's owner puts it on their choice of the top or bottom of their library.", "Surveil 1."],
+            |d, _| spell(d, vec![CREATURE], vec![Effect::Tuck(0), Effect::Surveil { n: 1 }]),
+        ),
+        "Refute" => s(&["Counter target spell. Draw a card, then discard a card."], |d, _| {
+            spell(d, vec![SPELL], vec![Effect::Counter(0), draw(1), discard(1)])
+        }),
+        "Essence Scatter" => s(&["Counter target creature spell."], |d, _| {
+            spell(d, vec![Filter { spell_creature: Some(true), ..SPELL }], vec![Effect::Counter(0)])
+        }),
+        "Reclamation Sage" => s(
+            &["When this creature enters, you may destroy target artifact or enchantment."],
+            |d, _| may(d, When::Enters, vec![ARTIFACT_OR_ENCHANTMENT], vec![Effect::Destroy(0)]),
+        ),
+        "Affectionate Indrik" => s(
+            &["When this creature enters, you may have it fight target creature you don't control."],
+            |d, _| may(d, When::Enters, vec![OPP_CREATURE], vec![Effect::Fight(0)]),
+        ),
+        "Meteor Golem" => s(
+            &["When this creature enters, destroy target nonland permanent an opponent controls."],
+            |d, _| on(d, When::Enters, vec![OPP_NONLAND], vec![Effect::Destroy(0)]),
+        ),
+        "Bigfin Bouncer" => s(
+            &["When this creature enters, return target creature an opponent controls to its owner's hand."],
+            |d, _| on(d, When::Enters, vec![OPP_CREATURE], vec![Effect::Bounce(0)]),
+        ),
+        "Campus Guide" => s(
+            &["When this creature enters, you may search your library for a basic land card, reveal it, then shuffle and put that card on top."],
+            |d, _| may(d, When::Enters, vec![], vec![search(SearchFor::BasicLand, SearchTo::Top)]),
+        ),
+        "Solemn Simulacrum" => s(
+            &[
+                "When this creature enters, you may search your library for a basic land card, put that card onto the battlefield tapped, then shuffle.",
+                "When this creature dies, you may draw a card.",
+            ],
+            |d, _| {
+                let to = SearchTo::Battlefield { tapped: true };
+                may(d, When::Enters, vec![], vec![search(SearchFor::BasicLand, to)]);
+                may(d, When::Dies, vec![], vec![draw(1)]);
+            },
+        ),
+        "Micromancer" => s(
+            &["When this creature enters, you may search your library for an instant or sorcery card with mana value 1, reveal it, put it into your hand, then shuffle."],
+            |d, _| {
+                let what = SearchFor::InstantOrSorceryWithManaValue(1);
+                may(d, When::Enters, vec![], vec![search(what, SearchTo::Hand)])
+            },
+        ),
+        "Rune-Scarred Demon" => s(
+            &["When this creature enters, search your library for a card, put it into your hand, then shuffle."],
+            |d, _| on(d, When::Enters, vec![], vec![search(SearchFor::Any, SearchTo::Hand)]),
+        ),
+        "Grim Tutor" => s(
+            &["Search your library for a card, put that card into your hand, then shuffle. You lose 3 life."],
+            |d, _| {
+                spell(
+                    d,
+                    vec![],
+                    vec![search(SearchFor::Any, SearchTo::Hand), Effect::LoseLife { who: Who::You, n: 3 }],
+                )
+            },
+        ),
+        "Grow from the Ashes" => s(
+            &[
+                "Kicker {2}",
+                "Search your library for a basic land card, put it onto the battlefield, then shuffle. If this spell was kicked, instead search your library for two basic land cards, put them onto the battlefield, then shuffle.",
+            ],
+            |d, _| {
+                d.kicker = ManaCost::parse("{2}");
+                let to = SearchTo::Battlefield { tapped: false };
+                spell(d, vec![], vec![Effect::Search { what: SearchFor::BasicLand, to, n: 1, kicked_n: Some(2) }])
+            },
+        ),
+        "Pilfer" => s(
+            &["Target opponent reveals their hand. You choose a nonland card from it. That player discards that card."],
+            |d, _| {
+                let f = Filter::PLAYER.controlled_by(Controller::Opponent);
+                spell(d, vec![f], vec![Effect::ChooseDiscard { slot: 0 }])
+            },
+        ),
+        "Hare Apparent" => s(
+            &[
+                "When this creature enters, create a number of 1/1 white Rabbit creature tokens equal to the number of other creatures you control named Hare Apparent.",
+                "A deck can have any number of cards named Hare Apparent.",
+            ],
+            |d, t| on(d, When::Enters, vec![], vec![Effect::CreateTokenPerNamesake { def: t.rabbit }]),
+        ),
+        "Snakeskin Veil" => s(
+            &["Put a +1/+1 counter on target creature you control. It gains hexproof until end of turn."],
+            |d, _| {
+                spell(
+                    d,
+                    vec![YOUR_CREATURE],
+                    vec![Effect::Counters { slot: 0, n: 1 }, Effect::Grant { slot: 0, keywords: Keywords::HEXPROOF }],
+                )
+            },
+        ),
+        "Stroke of Midnight" => s(
+            &["Destroy target nonland permanent. Its controller creates a 1/1 white Human creature token."],
+            |d, t| {
+                let f = Filter { controller: Controller::Any, ..OPP_NONLAND };
+                spell(
+                    d,
+                    vec![f],
+                    vec![Effect::Destroy(0), Effect::CreateToken { who: Who::ControllerOf(0), def: t.human, n: 1 }],
                 )
             },
         ),
@@ -238,4 +420,26 @@ pub const SCRIPTED: &[&str] = &[
     "Gorehorn Raider",
     "Skyship Buccaneer",
     "Dwynen's Elite",
+    "Burglar Rat",
+    "Icewind Elemental",
+    "Incinerating Blast",
+    "Wary Thespian",
+    "Lightshell Duo",
+    "Uncharted Voyage",
+    "Refute",
+    "Essence Scatter",
+    "Reclamation Sage",
+    "Affectionate Indrik",
+    "Meteor Golem",
+    "Bigfin Bouncer",
+    "Campus Guide",
+    "Solemn Simulacrum",
+    "Micromancer",
+    "Rune-Scarred Demon",
+    "Grim Tutor",
+    "Grow from the Ashes",
+    "Pilfer",
+    "Hare Apparent",
+    "Snakeskin Veil",
+    "Stroke of Midnight",
 ];
