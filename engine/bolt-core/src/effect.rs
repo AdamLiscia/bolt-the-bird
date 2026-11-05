@@ -45,6 +45,8 @@ pub struct Filter {
     pub not_subtype: Option<&'static str>,
     /// Cards with mana value at most the source's power (last known if it left).
     pub mana_value_at_most_source_power: bool,
+    /// Any permanent, lands included.
+    pub any_permanent: bool,
     pub controller: Controller,
     /// Creatures only if they have flying ("creature with flying").
     pub creature_needs_flying: bool,
@@ -73,6 +75,7 @@ impl Filter {
         subtype: None,
         not_subtype: None,
         mana_value_at_most_source_power: false,
+        any_permanent: false,
         controller: Controller::Any,
         creature_needs_flying: false,
         creature_min_power: None,
@@ -294,6 +297,26 @@ pub enum Effect {
     ReturnFromGraveyard {
         pick: Pick,
     },
+    /// If the card in slot 0 was a creature card and is now exiled, put a +1/+1 counter on the source
+    /// and gain `life` (Scavenging Ooze).
+    CounterAndGainIfCreatureExiled {
+        life: i32,
+    },
+    /// Tap the creature in `slot` and put a stun counter on it (CR 122.1d).
+    TapAndStun(u8),
+    /// Stop here unless you control a creature with at least this power.
+    GateControlPowerAtLeast(i32),
+    /// "You may pay {cost}. If you do, ..." — the rest happens only if paid.
+    MayPay(crate::mana::ManaCost),
+    /// Each opponent loses `n` life unless they discard a card (their choice).
+    LoseUnlessDiscard {
+        n: i32,
+    },
+    /// Reveal cards from the top until a creature card; put it in your hand and the rest on the
+    /// bottom in a random order.
+    RevealUntilCreature,
+    /// Double the +1/+1 counters on the permanent in `slot`.
+    DoubleCounters(u8),
     /// "When you do": trigger number `n` of the source triggers now (CR 603.12).
     Reflexive(usize),
     /// Until end of turn, the creature in `slot` gains the source's trigger number `trigger` as a
@@ -350,6 +373,8 @@ pub enum Scope {
     Attached,
     /// Other creatures you control with flying (printed or granted until end of turn).
     OtherYourFliers,
+    /// Other creatures you control with this subtype.
+    OtherYourSubtype(&'static str),
 }
 
 /// A condition on a static ability ("as long as ...").
@@ -480,6 +505,18 @@ pub enum When {
     EquippedDealsCombatDamageToPlayer,
     /// "Whenever another nontoken creature dies" (any player's).
     AnotherNontokenCreatureDies,
+    /// "Whenever another nontoken creature you control dies".
+    AnotherNontokenCreatureYouControlDies,
+    /// "Whenever this or another nontoken [subtype] you control enters".
+    NontokenYouControlEntersWithSubtype(&'static str),
+    /// "Whenever a creature you control with power N or greater enters".
+    YourCreatureEntersWithPowerAtLeast(i32),
+    /// "Whenever you attack with N or more creatures".
+    YouAttackWithAtLeast(u8),
+    /// "Whenever an opponent casts a spell".
+    OpponentCasts,
+    /// "Whenever you put one or more +1/+1 counters on this creature", at most once each turn.
+    CountersPutOnThis,
     /// "Whenever you gain life" (every time).
     YouGainLife,
     /// "Whenever you attack": once per combat, when you declare one or more attackers.

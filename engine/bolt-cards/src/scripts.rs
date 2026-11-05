@@ -40,6 +40,8 @@ pub fn token_defs() -> Vec<CardDef> {
             scion.types.legendary = true;
             scion
         },
+        token("Raccoon", "Raccoon", 3, 3, Keywords::NONE),
+        token("Koma's Coil", "Serpent", 3, 3, Keywords::NONE),
     ]
 }
 
@@ -95,6 +97,8 @@ pub struct Tokens {
     pub goblin: usize,
     pub dragon_5: usize,
     pub scion: usize,
+    pub raccoon: usize,
+    pub komas_coil: usize,
 }
 
 impl Tokens {
@@ -114,6 +118,8 @@ impl Tokens {
             goblin: base + 11,
             dragon_5: base + 12,
             scion: base + 13,
+            raccoon: base + 14,
+            komas_coil: base + 15,
         }
     }
 }
@@ -1624,6 +1630,185 @@ pub fn script(name: &str) -> Option<Script> {
                 )
             },
         ),
+                "Mischievous Pup" => s(
+            &["When this creature enters, return up to one other target permanent you control to its owner's hand."],
+            |d, _| {
+                let f = Filter {
+                    players: false,
+                    creatures: false,
+                    planeswalkers: false,
+                    any_permanent: true,
+                    other: true,
+                    controller: Controller::You,
+                    ..Filter::ANY
+                };
+                d.triggers.push(Trigger { when: When::Enters, ability: up_to(vec![f], vec![Effect::Bounce(0)]) });
+            },
+        ),
+        "Arahbo, the First Fang" => s(
+            &[
+                "Other Cats you control get +1/+1.",
+                "Whenever Arahbo or another nontoken Cat you control enters, create a 1/1 white Cat creature token.",
+            ],
+            |d, t| {
+                d.statics.push(Static {
+                    scope: Scope::OtherYourSubtype("Cat"),
+                    your_turn_only: false,
+                    condition: None,
+                    power: 1,
+                    toughness: 1,
+                    keywords: Keywords::NONE,
+                });
+                on(
+                    d,
+                    When::NontokenYouControlEntersWithSubtype("Cat"),
+                    vec![],
+                    vec![Effect::CreateToken { who: Who::You, def: t.cat, n: 1 }],
+                );
+            },
+        ),
+        "Scavenging Ooze" => s(
+            &["{G}: Exile target card from a graveyard. If it was a creature card, put a +1/+1 counter on this creature and you gain 1 life."],
+            |d, _| {
+                activated(
+                    d,
+                    "{G}",
+                    false,
+                    vec![graveyard_cards(false, Controller::Any)],
+                    vec![Effect::Exile(0), Effect::CounterAndGainIfCreatureExiled { life: 1 }],
+                );
+            },
+        ),
+        "Garruk's Uprising" => s(
+            &[
+                "When this enchantment enters, if you control a creature with power 4 or greater, draw a card.",
+                "Creatures you control have trample.",
+                "Whenever a creature you control with power 4 or greater enters, draw a card.",
+            ],
+            |d, _| {
+                on_if(d, Condition::ControlPowerAtLeast(4), vec![], vec![draw(1)]);
+                static_on(d, Scope::YourCreatures, false, Keywords::TRAMPLE);
+                on(d, When::YourCreatureEntersWithPowerAtLeast(4), vec![], vec![draw(1)]);
+            },
+        ),
+        "Armasaur Guide" => s(
+            &["Whenever you attack with three or more creatures, put a +1/+1 counter on target creature you control."],
+            |d, _| on(d, When::YouAttackWithAtLeast(3), vec![YOUR_CREATURE], vec![Effect::Counters { slot: 0, n: 1 }]),
+        ),
+        "Grappling Kraken" => s(
+            &["Landfall — Whenever a land you control enters, tap target creature an opponent controls and put a stun counter on it."],
+            |d, _| on(d, When::LandYouControlEnters, vec![OPP_CREATURE], vec![Effect::TapAndStun(0)]),
+        ),
+        "Sylvan Scavenging" => s(
+            &[
+                "At the beginning of your end step, choose one —",
+                "• Put a +1/+1 counter on target creature you control.",
+                "• Create a 3/3 green Raccoon creature token if you control a creature with power 4 or greater.",
+            ],
+            |d, t| {
+                on_modal(
+                    d,
+                    When::EndStep { your_turn_only: true },
+                    None,
+                    vec![
+                        Ability::new(vec![YOUR_CREATURE], vec![Effect::Counters { slot: 0, n: 1 }]),
+                        Ability::new(
+                            vec![],
+                            vec![
+                                Effect::GateControlPowerAtLeast(4),
+                                Effect::CreateToken { who: Who::You, def: t.raccoon, n: 1 },
+                            ],
+                        ),
+                    ],
+                )
+            },
+        ),
+        "Frenzied Goblin" => s(
+            &["Whenever this creature attacks, you may pay {R}. If you do, target creature can't block this turn."],
+            |d, _| {
+                let r = ManaCost::parse("{R}").expect("cost");
+                on(
+                    d,
+                    When::Attacks,
+                    vec![CREATURE],
+                    vec![Effect::MayPay(r), Effect::Grant { slot: 0, keywords: Keywords::CANT_BLOCK }],
+                )
+            },
+        ),
+        "Sire of Seven Deaths" => s(&["Ward—Pay 7 life."], |d, _| d.ward_life = Some(7)),
+        "Koma, World-Eater" => s(
+            &[
+                "This spell can't be countered.",
+                "Trample, ward {4}",
+                "Whenever Koma deals combat damage to a player, create four 3/3 blue Serpent creature tokens named Koma's Coil.",
+            ],
+            |d, t| {
+                d.uncounterable = true;
+                d.keywords = d.keywords.with(Keywords::TRAMPLE);
+                d.ward = ManaCost::parse("{4}");
+                on(
+                    d,
+                    When::DealsCombatDamageToPlayer,
+                    vec![],
+                    vec![Effect::CreateToken { who: Who::You, def: t.komas_coil, n: 4 }],
+                );
+            },
+        ),
+        "Drakuseth, Maw of Flames" => s(
+            &["Whenever Drakuseth attacks, Drakuseth deals 4 damage to any target and 3 damage to each of up to two other targets."],
+            |d, _| {
+                let mut ability = Ability::new(
+                    vec![Filter::ANY, Filter::ANY, Filter::ANY],
+                    vec![damage(4, Recipient::Target(0)), damage(3, Recipient::Target(1)), damage(3, Recipient::Target(2))],
+                );
+                ability.min_targets = Some(1);
+                d.triggers.push(Trigger { when: When::Attacks, ability });
+            },
+        ),
+        "Painful Quandary" => s(
+            &["Whenever an opponent casts a spell, that player loses 5 life unless they discard a card."],
+            |d, _| on(d, When::OpponentCasts, vec![], vec![Effect::LoseUnlessDiscard { n: 5 }]),
+        ),
+        "Exemplar of Light" => s(
+            &[
+                "Whenever you gain life, put a +1/+1 counter on this creature.",
+                "Whenever you put one or more +1/+1 counters on this creature, draw a card. This ability triggers only once each turn.",
+            ],
+            |d, _| {
+                on(d, When::YouGainLife, vec![], vec![Effect::CountersSelf { n: 1 }]);
+                on(d, When::CountersPutOnThis, vec![], vec![draw(1)]);
+            },
+        ),
+        "Claws Out" => s(&["Affinity for Cats", "Creatures you control get +2/+2 until end of turn."], |d, _| {
+            d.reduction = Some(Reduction::PerYouControl("Cat"));
+            spell(d, vec![], vec![Effect::PumpAll { who: Who::You, power: 2, toughness: 2 }])
+        }),
+        "Spinner of Souls" => s(
+            &["Whenever another nontoken creature you control dies, you may reveal cards from the top of your library until you reveal a creature card. Put that card into your hand and the rest on the bottom of your library in a random order."],
+            |d, _| may(d, When::AnotherNontokenCreatureYouControlDies, vec![], vec![Effect::RevealUntilCreature]),
+        ),
+        "Zimone, Paradox Sculptor" => s(
+            &[
+                "At the beginning of combat on your turn, put a +1/+1 counter on each of up to two target creatures you control.",
+                "{G}{U}, {T}: Double the number of each kind of counter on up to two target creatures and/or artifacts you control.",
+            ],
+            |d, _| {
+                d.triggers.push(Trigger {
+                    when: When::BeginCombatYourTurn,
+                    ability: up_to(
+                        vec![YOUR_CREATURE, YOUR_CREATURE],
+                        vec![Effect::Counters { slot: 0, n: 1 }, Effect::Counters { slot: 1, n: 1 }],
+                    ),
+                });
+                let f = Filter { artifacts: true, ..YOUR_CREATURE };
+                d.activated.push(Activated {
+                    mana: ManaCost::parse("{G}{U}").expect("cost"),
+                    tap: true,
+                    ability: up_to(vec![f, f], vec![Effect::DoubleCounters(0), Effect::DoubleCounters(1)]),
+                    ..Activated::default()
+                });
+            },
+        ),
         _ => None,
     }
 }
@@ -1807,4 +1992,20 @@ pub const SCRIPTED: &[&str] = &[
     "Kiora, the Rising Tide",
     "Cephalid Inkmage",
     "Stromkirk Bloodthief",
+    "Mischievous Pup",
+    "Arahbo, the First Fang",
+    "Scavenging Ooze",
+    "Garruk's Uprising",
+    "Armasaur Guide",
+    "Grappling Kraken",
+    "Sylvan Scavenging",
+    "Frenzied Goblin",
+    "Sire of Seven Deaths",
+    "Koma, World-Eater",
+    "Drakuseth, Maw of Flames",
+    "Painful Quandary",
+    "Exemplar of Light",
+    "Claws Out",
+    "Spinner of Souls",
+    "Zimone, Paradox Sculptor",
 ];

@@ -116,6 +116,8 @@ pub enum Reduction {
     IfYouControl(String, u8),
     /// ... it targets a tapped creature.
     IfTargetsTapped(u8),
+    /// ... {1} less for each permanent you control with this subtype (affinity).
+    PerYouControl(&'static str),
 }
 
 /// An activated ability: "[cost]: [effect]" (CR 602).
@@ -187,6 +189,10 @@ pub struct CardDef {
     pub opponents_creatures_enter_tapped: bool,
     /// "You can't lose the game and your opponents can't win the game."
     pub cant_lose: bool,
+    /// "Ward—Pay N life."
+    pub ward_life: Option<i32>,
+    /// "This spell can't be countered."
+    pub uncounterable: bool,
 }
 
 impl CardDef {
@@ -226,6 +232,8 @@ impl CardDef {
             not_blocked_by: None,
             opponents_creatures_enter_tapped: false,
             cant_lose: false,
+            ward_life: None,
+            uncounterable: false,
         }
     }
 
@@ -266,6 +274,8 @@ impl CardDef {
             not_blocked_by: None,
             opponents_creatures_enter_tapped: false,
             cant_lose: false,
+            ward_life: None,
+            uncounterable: false,
         }
     }
 
@@ -306,6 +316,8 @@ impl CardDef {
             not_blocked_by: None,
             opponents_creatures_enter_tapped: false,
             cant_lose: false,
+            ward_life: None,
+            uncounterable: false,
         }
     }
 }

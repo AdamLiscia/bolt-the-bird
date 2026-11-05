@@ -122,3 +122,11 @@ One line per working step, newest last. The next session continues from the last
   are now counted with stdout and stderr captured separately (a combined capture was cutting the
   core crate's results off locally; CI's own log shows every test file running). 10,000 release fuzz
   games pass. **Next: the remaining ~50 tier-3 cards.**
+- 2026-11-05: **M3 batch 7.** Stun counters (CR 122.1d), "you may pay {R}" inside triggers, ward paid
+  in life, "can't be countered", affinity, "loses N life unless they discard", reveal until a creature,
+  doubling counters on targets, a power gate inside an effect, any-permanent targets, "other [type]
+  you control" statics, and triggers for nontoken creatures of a type entering (itself included),
+  big creatures entering, attacking with N or more, opponents casting, and counters being put on a
+  creature (once each turn). 16 cards (Koma, Drakuseth, Arahbo, Scavenging Ooze, Grappling Kraken,
+  Sire of Seven Deaths, Exemplar of Light, Zimone, ...): **206 supported, 249 tests.** 10,000 release
+  fuzz games pass. **Next: the last ~35 tier-3 cards.**
