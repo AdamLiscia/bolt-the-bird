@@ -21,7 +21,10 @@ def main():
     for c in cards:
         if "Planeswalker" not in c["type_line"]:
             continue
-        req = urllib.request.Request(API + urllib.parse.quote(c["name"]), headers={"User-Agent": "bolt-the-bird/0.2", "Accept": "application/json"})
+        req = urllib.request.Request(
+            API + urllib.parse.quote(c["name"]),
+            headers={"User-Agent": "bolt-the-bird/0.2", "Accept": "application/json"},
+        )
         with urllib.request.urlopen(req, timeout=30) as r:
             c["loyalty"] = json.load(r)["loyalty"]
         print(f"{c['name']}: {c['loyalty']}")
