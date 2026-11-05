@@ -15,20 +15,11 @@ records choices with their reasons, so they don't get relitigated later.
 
 ## Phase 3: the rules engine
 
-**Goal:** play decks out, so "judged win rate" becomes "played win rate."
-
-1. **Card audit.** Sort all 281 Foundations cards into tiers by rules complexity: vanilla and
-   keywords, simple spells, triggers, statics, and one-offs. Measure the share of real 17lands decks
-   each tier covers.
-2. **Rules core.** Zones, turn structure, priority, mana, casting and the stack, combat with
-   evergreen keywords, state-based actions.
-3. **Cards in tiers.** Data-driven definitions for the common patterns, and hand-written code for the
-   rest. Unsupported cards are listed, never silently skipped.
-4. **Testing.** Rules tests per card from the card's text. Random-agent fuzzing across thousands of
-   games to find crashes and rules violations.
-5. **Python bindings.** Expose state, legal actions and step, so gameplay agents train in Python.
-6. **Validation.** Play bot decks against human-model decks. Do played win rates rank decks the same
-   way the judges do?
+**Goal:** play decks out, so "judged win rate" becomes "played win rate." The working plan,
+milestones and session protocol are in [docs/engine/ENGINE_PLAN.md](docs/engine/ENGINE_PLAN.md). The
+card audit ([docs/engine/CARD_AUDIT.md](docs/engine/CARD_AUDIT.md)) found that Limited decks are
+diverse: 219 of 281 cards are needed before half of real decks are playable. So the engine aims for
+the whole set, and is useful early through drafts restricted to supported cards.
 
 ## Decision log
 
@@ -41,3 +32,4 @@ records choices with their reasons, so they don't get relitigated later.
 | 2026-11-04 | Two judges on disjoint halves | Grade the RL bot with a judge it never trained against |
 | 2026-11-04 | RL on CPU | A NaN-gradient bug hung the Apple GPU. Fixed and covered by a test, but CPU is fast enough |
 | 2026-11-04 | Rust for the engine | Self-play needs millions of fast games. PyO3 keeps training in Python |
+| 2026-11-04 | Whole set, plus restricted drafts early | The card audit: partial card coverage covers few real decks |

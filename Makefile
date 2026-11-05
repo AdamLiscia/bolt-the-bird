@@ -4,7 +4,7 @@
 PY ?= .venv/bin/python
 DEVICE ?= auto
 
-.PHONY: help install test lint format demo data prepare baselines draft-models rare-drafting judges builder rl figures reproduce
+.PHONY: help install test lint format demo data prepare baselines draft-models rare-drafting judges builder rl card-audit figures reproduce
 
 help:  ## List targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "} {printf "  \033[1m%-15s\033[0m %s\n", $$1, $$2}'
@@ -55,6 +55,9 @@ builder:  ## Deck builder vs. real players' decks
 
 rl:  ## Teach the bot to win (~2 h on CPU)
 	$(PY) scripts/train_rl.py --device $(DEVICE)
+
+card-audit:  ## Tier every card by rules complexity, and the build order
+	$(PY) scripts/card_audit.py
 
 figures:  ## Regenerate every chart in docs/figures from results/
 	$(PY) scripts/make_figures.py
