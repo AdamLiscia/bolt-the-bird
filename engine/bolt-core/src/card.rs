@@ -191,6 +191,14 @@ pub struct CardDef {
     pub doesnt_untap: bool,
     /// "Instant and sorcery spells you cast cost {N} less to cast."
     pub spell_discount: u8,
+    /// Doubling Season: tokens you'd create and counters you'd put on your permanents are doubled
+    /// (CR 614.1a).
+    pub doubles_tokens_and_counters: bool,
+    /// Twinflame Tyrant: damage your sources would deal to an opponent or their permanents is
+    /// doubled.
+    pub doubles_damage_to_opponents: bool,
+    /// Omniscience: you may cast spells from your hand without paying their mana costs.
+    pub free_from_hand: bool,
     /// "Enters with N +1/+1 counters if ..." (a replacement effect, CR 614.1c).
     pub enters_counters: Option<(i32, Condition)>,
     /// Ward {cost} (CR 702.21).
@@ -279,6 +287,9 @@ impl CardDef {
             cant_block: false,
             doesnt_untap: false,
             spell_discount: 0,
+            doubles_tokens_and_counters: false,
+            doubles_damage_to_opponents: false,
+            free_from_hand: false,
             enters_counters: None,
             ward: None,
             must_attack: false,
@@ -341,6 +352,9 @@ impl CardDef {
             cant_block: false,
             doesnt_untap: false,
             spell_discount: 0,
+            doubles_tokens_and_counters: false,
+            doubles_damage_to_opponents: false,
+            free_from_hand: false,
             enters_counters: None,
             ward: None,
             must_attack: false,
@@ -403,6 +417,9 @@ impl CardDef {
             cant_block: false,
             doesnt_untap: false,
             spell_discount: 0,
+            doubles_tokens_and_counters: false,
+            doubles_damage_to_opponents: false,
+            free_from_hand: false,
             enters_counters: None,
             ward: None,
             must_attack: false,

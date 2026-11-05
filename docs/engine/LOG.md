@@ -224,3 +224,10 @@ One line per working step, newest last. The next session continues from the last
   322 tests.** 10,000 release fuzz games pass. Also fixed CI's ruff format check on
   scripts/fetch_loyalty.py. **Next: the last tier-4 cards (Doubling Season, Thousand-Year Storm,
   Omniscience, Progenitus, ...).**
+- 2026-11-05 · Tier 4 batch 6: doubling and free spells. Doubling Season doubles tokens (copies
+  included) and every counter we track on your permanents: +1/+1, loyalty (starting loyalty and
+  plus costs), stun, incubation, revival. Twinflame Tyrant doubles damage your sources deal to an
+  opponent or their permanents; two of either multiply. Omniscience makes spells cast from your hand
+  cost nothing but additional costs; X is then 0, so choosing a bigger X pays normally (CR 107.3b).
+  6 tests: **271 supported, 328 tests.** 10,000 release fuzz games pass. **Next: Progenitus, Zul
+  Ashur, Involuntary Employment, Fiery Annihilation, then the rest of tier 4.**

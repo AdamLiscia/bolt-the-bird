@@ -2629,6 +2629,21 @@ pub fn script(name: &str) -> Option<Script> {
                 loyalty(d, -4, divided);
             },
         ),
+        "Doubling Season" => s(
+            &[
+                "If an effect would create one or more tokens under your control, it creates twice that many of those tokens instead.",
+                "If an effect would put one or more counters on a permanent you control, it puts twice that many of those counters on that permanent instead.",
+            ],
+            |d, _| d.doubles_tokens_and_counters = true,
+        ),
+        "Twinflame Tyrant" => s(
+            &["If a source you control would deal damage to an opponent or a permanent an opponent controls, it deals double that damage instead."],
+            |d, _| d.doubles_damage_to_opponents = true,
+        ),
+        "Omniscience" => s(
+            &["You may cast spells from your hand without paying their mana costs."],
+            |d, _| d.free_from_hand = true,
+        ),
         "Vivien Reid" => s(
             &[
                 "+1: Look at the top four cards of your library. You may reveal a creature or land card from among them and put it into your hand. Put the rest on the bottom of your library in a random order.",
@@ -2904,4 +2919,7 @@ pub const SCRIPTED: &[&str] = &[
     "Ajani, Caller of the Pride",
     "Vivien Reid",
     "Chandra, Flameshaper",
+    "Doubling Season",
+    "Twinflame Tyrant",
+    "Omniscience",
 ];

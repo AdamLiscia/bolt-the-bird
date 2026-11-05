@@ -75,6 +75,8 @@ pub struct Object {
     pub counter_trigger_turn: u32,
     /// Incubation counters.
     pub incubation: i32,
+    /// Cast from its owner's hand (for "cast spells from your hand" effects).
+    pub from_hand: bool,
     /// Creature types it has gained, a type that replaced its printed ones, and keywords gained for
     /// as long as it's on the battlefield.
     pub extra_subtypes: Vec<&'static str>,
@@ -575,7 +577,7 @@ pub struct Game {
     /// Set by "end the turn" while it resolves.
     pub end_turn: bool,
     /// The last token created, for "other" in the same effect.
-    pub last_created: Option<ObjId>,
+    pub last_created: Vec<ObjId>,
     /// How many permanents with a "loses all abilities" static are on the battlefield. Zero almost
     /// always, which lets ability-loss checks skip a battlefield scan.
     pub ability_loss_sources: u32,
@@ -664,7 +666,7 @@ impl Game {
             in_combat_damage: false,
             delayed_returns: Vec::new(),
             end_turn: false,
-            last_created: None,
+            last_created: Vec::new(),
             ability_loss_sources: 0,
             static_sources: Vec::new(),
             combat_damage_prevented: Vec::new(),
@@ -722,6 +724,7 @@ impl Game {
             stun: 0,
             counter_trigger_turn: 0,
             incubation: 0,
+            from_hand: false,
             extra_subtypes: Vec::new(),
             subtype_override: None,
             granted: Keywords::NONE,
@@ -1214,6 +1217,7 @@ impl Game {
                 );
             }
             if let Some(l) = def.loyalty {
+                let l = l * self.doubling(self.obj(id).controller);
                 self.obj_mut(id).loyalty = l; // CR 306.5b
             }
             if def.enters_with_x_counters {
@@ -1232,6 +1236,7 @@ impl Game {
                     _ => false,
                 };
                 if yes {
+                    let n = n * self.doubling(controller);
                     self.obj_mut(id).counters += n;
                 }
             }
@@ -1827,7 +1832,18 @@ impl Game {
     /// The mana a spell costs in `mode` with these targets (CR 601.2f).
     fn spell_cost(&self, p: PlayerId, c: ObjId, mode: CastMode, targets: &[Chosen]) -> ManaCost {
         let def = self.def_of(c);
-        let mut cost = if mode.alt {
+        let o = self.obj(c);
+        let in_hand = o.zone == Zone::Hand || (o.zone == Zone::Stack && o.from_hand);
+        // CR 107.3b, 118.9: cast without paying its mana cost, X is 0. Choosing a bigger X means
+        // paying the cost.
+        let free = in_hand
+            && mode.x == 0
+            && !mode.alt
+            && !mode.flashback
+            && self.permanents(p).any(|x| self.def_of(x).free_from_hand);
+        let mut cost = if free {
+            ManaCost::default()
+        } else if mode.alt {
             def.alt_cost.expect("has an alternative cost").0
         } else if mode.flashback {
             def.flashback.unwrap_or(def.cost)
@@ -1989,6 +2005,12 @@ impl Game {
     }
 
     fn pay_loyalty(&mut self, id: ObjId, cost: i32) {
+        // CR 606.4: a plus cost puts counters on, so Doubling Season doubles it.
+        let cost = if cost > 0 {
+            cost * self.doubling(self.obj(id).controller)
+        } else {
+            cost
+        };
         let turn = self.turn;
         let o = self.obj_mut(id);
         o.loyalty += cost;
@@ -2524,6 +2546,7 @@ impl Game {
     /// CR 601.2: move to the stack, choose targets, pay, then the caster gets priority again
     /// (CR 117.3c).
     fn cast(&mut self, p: PlayerId, card: ObjId, mode: CastMode) {
+        self.obj_mut(card).from_hand = self.obj(card).zone == Zone::Hand;
         self.move_to(card, Zone::Stack);
         self.obj_mut(card).controller = p;
         self.obj_mut(card).kicked = mode.kicked;
@@ -2894,7 +2917,8 @@ impl Game {
                 self.move_to(source, Zone::Battlefield);
                 self.obj_mut(source).controller = r.item.controller;
                 if self.def_of(source).revival_on_cast {
-                    self.obj_mut(source).revival = 8;
+                    let n = 8 * self.doubling(r.item.controller);
+                    self.obj_mut(source).revival = n;
                 }
                 // CR 303.4f: an Aura spell enters attached to its target.
                 if self.def_of(source).aura {
@@ -2948,6 +2972,7 @@ impl Game {
         if n <= 0 || self.obj(id).zone != Zone::Battlefield {
             return;
         }
+        let n = n * self.doubling(self.obj(id).controller);
         self.obj_mut(id).counters += n;
         if self.def_of(id).types.creature && !self.has_subtype(id, "Hydra") {
             let controller = self.obj(id).controller;
@@ -3890,7 +3915,8 @@ impl Game {
             Effect::TapAndStun(n) => {
                 if let Some(id) = Game::slot_object(item, legal, n) {
                     self.obj_mut(id).tapped = true;
-                    self.obj_mut(id).stun += 1;
+                    let n = self.doubling(self.obj(id).controller);
+                    self.obj_mut(id).stun += n;
                 }
             }
             Effect::GateControlPowerAtLeast(n) => {
@@ -3953,7 +3979,8 @@ impl Game {
             }
             Effect::IncubationAmount => {
                 if self.obj(src).zone == Zone::Battlefield {
-                    self.obj_mut(src).incubation += item.amount;
+                    let n = item.amount * self.doubling(self.obj(src).controller);
+                    self.obj_mut(src).incubation += n;
                 }
             }
             Effect::OpponentsMillUntilLand => {
@@ -4201,8 +4228,10 @@ impl Game {
                     .filter(|&&c| self.def_of(c).types.creature)
                     .count();
                 for _ in 0..n {
-                    let t = self.create_token(item.controller, def);
-                    self.obj_mut(t).tapped = tapped;
+                    self.create_token(item.controller, def);
+                    for t in self.last_created.clone() {
+                        self.obj_mut(t).tapped = tapped;
+                    }
                 }
             }
             Effect::CreateTokensPerLand { def } => {
@@ -4329,23 +4358,26 @@ impl Game {
                     // CR 707.2: the copy takes the original's printed values (its card), not its
                     // counters or other effects.
                     let def = self.obj(o).def;
-                    let id = self.add_card(item.controller, def, Zone::Hand);
-                    self.obj_mut(id).copy_token = true;
-                    self.move_to(id, Zone::Battlefield);
-                    self.last_created = Some(id);
-                    let ob = self.obj_mut(id);
-                    ob.extra_subtypes.extend(extra_subtype);
-                    if haste_and_sacrifice {
-                        ob.granted = ob.granted.with(Keywords::HASTE);
-                        ob.sacrifice_at_end = true;
+                    self.last_created.clear();
+                    for _ in 0..self.doubling(item.controller) {
+                        let id = self.add_card(item.controller, def, Zone::Hand);
+                        self.obj_mut(id).copy_token = true;
+                        self.move_to(id, Zone::Battlefield);
+                        self.last_created.push(id);
+                        let ob = self.obj_mut(id);
+                        ob.extra_subtypes.extend(extra_subtype);
+                        if haste_and_sacrifice {
+                            ob.granted = ob.granted.with(Keywords::HASTE);
+                            ob.sacrifice_at_end = true;
+                        }
                     }
                 }
             }
             Effect::ExileOtherTokensWithSubtype(sub) => {
-                let keep = self.last_created;
+                let keep = self.last_created.clone();
                 let others: Vec<ObjId> = self
                     .permanents(item.controller)
-                    .filter(|&c| Some(c) != keep && self.is_token(c) && self.has_subtype(c, sub))
+                    .filter(|&c| !keep.contains(&c) && self.is_token(c) && self.has_subtype(c, sub))
                     .collect();
                 for c in others {
                     self.move_to(c, Zone::Exile);
@@ -4353,6 +4385,11 @@ impl Game {
             }
             Effect::LoyaltySelf(n) => {
                 if self.obj(src).zone == Zone::Battlefield {
+                    let n = if n > 0 {
+                        n * self.doubling(self.obj(src).controller)
+                    } else {
+                        n
+                    };
                     self.obj_mut(src).loyalty += n;
                 }
             }
@@ -4494,12 +4531,24 @@ impl Game {
     }
 
     /// Creates a token on the battlefield. It is summoning sick like any new permanent.
-    fn create_token(&mut self, p: PlayerId, def: usize) -> ObjId {
-        let id = self.add_card(p, def, Zone::Battlefield);
-        self.last_created = Some(id);
-        self.obj_mut(id).since_turn = self.turn;
-        self.zone_triggers(id, Zone::Gone, Zone::Battlefield, p);
-        id
+    /// Doubling Season doubles tokens and counters (CR 614.1a).
+    fn create_token(&mut self, p: PlayerId, def: usize) {
+        self.last_created.clear();
+        for _ in 0..self.doubling(p) {
+            let id = self.add_card(p, def, Zone::Battlefield);
+            self.last_created.push(id);
+            self.obj_mut(id).since_turn = self.turn;
+            self.zone_triggers(id, Zone::Gone, Zone::Battlefield, p);
+        }
+    }
+
+    /// How many times over tokens and counters for `p` are made: 2 per Doubling Season.
+    fn doubling(&self, p: PlayerId) -> i32 {
+        let n = self
+            .permanents(p)
+            .filter(|&x| self.def_of(x).doubles_tokens_and_counters)
+            .count();
+        1 << n.min(10)
     }
 
     /// CR 701.8: destroy moves a permanent to its owner's graveyard, unless it is indestructible.
@@ -4758,9 +4807,10 @@ impl Game {
                     let o = self.obj(c);
                     if o.zcc == zcc && matches!(o.zone, Zone::Exile | Zone::Graveyard) {
                         self.move_to(c, Zone::Battlefield);
+                        let n = revival * self.doubling(self.obj(c).owner);
                         let o = self.obj_mut(c);
                         o.controller = o.owner;
-                        o.revival = revival;
+                        o.revival = n;
                     }
                 }
                 // CR 513.1: "at the beginning of the end step" triggers.
@@ -4967,6 +5017,24 @@ impl Game {
 
     /// CR 120.3: damage to a player is life loss; to a creature it is marked. Lifelink gains life
     /// for the source's controller (CR 702.15b).
+    /// Twinflame Tyrant: 2 per copy its controller has when damage goes to an opponent or a
+    /// permanent they control.
+    fn damage_doubling(&self, source: ObjId, target: Target) -> i32 {
+        let c = self.obj(source).controller;
+        let to_opponent = match target {
+            Target::Player(p) => p != c,
+            Target::Object(id) => self.obj(id).controller != c,
+        };
+        if !to_opponent {
+            return 1;
+        }
+        let n = self
+            .permanents(c)
+            .filter(|&x| self.def_of(x).doubles_damage_to_opponents)
+            .count();
+        1 << n.min(10)
+    }
+
     fn deal_damage(&mut self, source: ObjId, target: Target, amount: i32) {
         if let Target::Object(id) = target {
             if self.protected_from(id, source) {
@@ -4985,6 +5053,7 @@ impl Game {
                 return;
             }
         }
+        let amount = amount * self.damage_doubling(source, target);
         let k = self.keywords(source);
         match target {
             Target::Player(p) => {
