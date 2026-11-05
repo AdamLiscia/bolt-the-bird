@@ -842,3 +842,134 @@ fn an_offer_you_cant_refuse_pays_the_victim() {
         .count();
     assert_eq!(treasures, 2, "the countered spell's controller gets them");
 }
+
+// ---------------------------------------------------------------- additional costs, reductions, flashback
+
+/// A table where player 0 has exactly the lands named.
+fn lands(names: &[&str]) -> Game {
+    let mut g = Game::empty(fdn(), 1, 0);
+    g.auto_pass = false;
+    for p in 0..2 {
+        for _ in 0..10 {
+            g.add_card(p, id("Aegis Turtle"), Zone::Library);
+        }
+    }
+    for n in names {
+        put(&mut g, 0, n);
+    }
+    g
+}
+
+#[test]
+fn arbiter_of_woe_needs_a_sacrifice() {
+    let mut g = table();
+    let arbiter = hand(&mut g, 0, "Arbiter of Woe");
+    let victim = hand(&mut g, 1, "Stab");
+    begin(&mut g);
+    assert!(!g
+        .legal_actions()
+        .iter()
+        .any(|a| matches!(a, Action::CastWith(c, _) if *c == arbiter)));
+    let lions = put(&mut g, 0, "Savannah Lions");
+    assert!(g.legal_actions().contains(&Action::CastWith(arbiter, lions)));
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(arbiter)),
+        "the sacrifice isn't optional"
+    );
+    act(&mut g, Action::CastWith(arbiter, lions));
+    assert_eq!(g.obj(lions).zone, Zone::Graveyard);
+    let before = g.players[0].hand.len();
+    resolve_all(&mut g, &[Action::Discard(victim)]);
+    assert_eq!((g.players[0].life, g.players[1].life), (22, 18));
+    assert_eq!(g.players[0].hand.len(), before + 1);
+    assert_eq!(g.obj(victim).zone, Zone::Graveyard);
+}
+
+#[test]
+fn eaten_alive_sacrifice_or_pay() {
+    // Just a Swamp: only the sacrifice mode is affordable.
+    let mut g = lands(&["Swamp"]);
+    let eat = hand(&mut g, 0, "Eaten Alive");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    let angel = put(&mut g, 1, "Serra Angel");
+    begin(&mut g);
+    assert!(!g.legal_actions().contains(&Action::Cast(eat)));
+    act(&mut g, Action::CastWith(eat, lions));
+    act(&mut g, Action::Target(obj(angel)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(angel).zone, Zone::Exile);
+
+    // Five Swamps: pay {3}{B} more instead, no sacrifice.
+    let mut g = lands(&["Swamp", "Swamp", "Swamp", "Swamp", "Swamp"]);
+    let eat = hand(&mut g, 0, "Eaten Alive");
+    let angel = put(&mut g, 1, "Serra Angel");
+    begin(&mut g);
+    act(&mut g, Action::Cast(eat));
+    act(&mut g, Action::Target(obj(angel)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(angel).zone, Zone::Exile);
+    assert_eq!(g.permanents(0).filter(|&c| g.obj(c).tapped).count(), 5);
+}
+
+#[test]
+fn thrill_of_possibility_discards_as_a_cost() {
+    let mut g = table();
+    let thrill = hand(&mut g, 0, "Thrill of Possibility");
+    let junk = hand(&mut g, 0, "Forest");
+    begin(&mut g);
+    let before = g.players[0].hand.len();
+    act(&mut g, Action::CastWith(thrill, junk));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(junk).zone, Zone::Graveyard);
+    assert_eq!(g.players[0].hand.len(), before - 2 + 2);
+}
+
+#[test]
+fn arcane_epiphany_is_cheaper_with_a_wizard() {
+    let five = ["Island", "Island", "Island", "Island"];
+    let mut g = lands(&five);
+    let c = hand(&mut g, 0, "Arcane Epiphany");
+    begin(&mut g);
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(c)),
+        "four lands, costs five"
+    );
+    put(&mut g, 0, "Micromancer"); // a Human Wizard
+    assert!(g.legal_actions().contains(&Action::Cast(c)));
+    let before = g.players[0].hand.len();
+    play(&mut g, c, false, &[], &[]);
+    assert_eq!(g.players[0].hand.len(), before - 1 + 3);
+}
+
+#[test]
+fn luminous_rebuke_is_cheaper_against_a_tapped_creature() {
+    let mut g = lands(&["Plains", "Plains"]);
+    let c = hand(&mut g, 0, "Luminous Rebuke");
+    let fresh = put(&mut g, 1, "Serra Angel");
+    let tired = put(&mut g, 1, "Savannah Lions");
+    g.objects[tired.0 as usize].tapped = true;
+    begin(&mut g);
+    act(&mut g, Action::Cast(c));
+    assert_eq!(
+        g.legal_actions(),
+        vec![Action::Target(obj(tired))],
+        "only the affordable target"
+    );
+    let _ = fresh;
+    act(&mut g, Action::Target(obj(tired)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(tired).zone, Zone::Graveyard);
+}
+
+#[test]
+fn think_twice_flashes_back_then_is_exiled() {
+    // CR 702.34a.
+    let mut g = table();
+    let c = hand(&mut g, 0, "Think Twice");
+    begin(&mut g);
+    play(&mut g, c, false, &[], &[]);
+    assert_eq!(g.obj(c).zone, Zone::Graveyard);
+    act(&mut g, Action::CastFlashback(c));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(c).zone, Zone::Exile);
+}

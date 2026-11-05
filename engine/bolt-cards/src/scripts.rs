@@ -7,7 +7,7 @@
 use bolt_core::effect::{
     Ability, Condition, Controller, Effect, Filter, Recipient, SearchFor, SearchTo, Trigger, When, Who,
 };
-use bolt_core::{Activated, CardDef, Color, Keywords, ManaCost, ManaSource, Types};
+use bolt_core::{Activated, CardDef, Color, ExtraCost, Keywords, ManaCost, ManaSource, Reduction, Types};
 
 /// Token definitions, appended after the 286 cards. Indices are [`Tokens`] fields.
 pub fn token_defs() -> Vec<CardDef> {
@@ -452,6 +452,61 @@ pub fn script(name: &str) -> Option<Script> {
                 )
             },
         ),
+        "Arbiter of Woe" => s(
+            &[
+                "As an additional cost to cast this spell, sacrifice a creature.",
+                "When this creature enters, each opponent discards a card and loses 2 life. You draw a card and gain 2 life.",
+            ],
+            |d, _| {
+                d.extra_cost = Some(ExtraCost::SacrificeCreature);
+                on(
+                    d,
+                    When::Enters,
+                    vec![],
+                    vec![
+                        Effect::Discard { who: Who::EachOpponent, n: 1 },
+                        Effect::LoseLife { who: Who::EachOpponent, n: 2 },
+                        draw(1),
+                        Effect::GainLife { who: Who::You, n: 2 },
+                    ],
+                )
+            },
+        ),
+        "Eaten Alive" => s(
+            &[
+                "As an additional cost to cast this spell, sacrifice a creature or pay {3}{B}.",
+                "Exile target creature or planeswalker.",
+            ],
+            |d, _| {
+                d.extra_cost = Some(ExtraCost::SacrificeCreatureOrPay(ManaCost::parse("{3}{B}").expect("cost")));
+                spell(d, vec![Filter { players: false, ..Filter::ANY }], vec![Effect::Exile(0)])
+            },
+        ),
+        "Thrill of Possibility" => s(
+            &["As an additional cost to cast this spell, discard a card.", "Draw two cards."],
+            |d, _| {
+                d.extra_cost = Some(ExtraCost::Discard);
+                spell(d, vec![], vec![draw(2)])
+            },
+        ),
+        "Arcane Epiphany" => s(
+            &["This spell costs {1} less to cast if you control a Wizard.", "Draw three cards."],
+            |d, _| {
+                d.reduction = Some(Reduction::IfYouControl("Wizard".into(), 1));
+                spell(d, vec![], vec![draw(3)])
+            },
+        ),
+        "Luminous Rebuke" => s(
+            &["This spell costs {3} less to cast if it targets a tapped creature.", "Destroy target creature."],
+            |d, _| {
+                d.reduction = Some(Reduction::IfTargetsTapped(3));
+                spell(d, vec![CREATURE], vec![Effect::Destroy(0)])
+            },
+        ),
+        "Think Twice" => s(&["Draw a card.", "Flashback {2}{U}"], |d, _| {
+            d.flashback = ManaCost::parse("{2}{U}");
+            spell(d, vec![], vec![draw(1)])
+        }),
         _ => None,
     }
 }
@@ -505,4 +560,10 @@ pub const SCRIPTED: &[&str] = &[
     "Bake into a Pie",
     "Gleaming Barrier",
     "An Offer You Can't Refuse",
+    "Arbiter of Woe",
+    "Eaten Alive",
+    "Thrill of Possibility",
+    "Arcane Epiphany",
+    "Luminous Rebuke",
+    "Think Twice",
 ];

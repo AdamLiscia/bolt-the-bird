@@ -97,6 +97,25 @@ impl Types {
     }
 }
 
+/// An additional cost to cast a spell (CR 601.2b, 601.2h).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ExtraCost {
+    SacrificeCreature,
+    /// Discard a card other than the spell.
+    Discard,
+    /// Sacrifice a creature, or pay this mana instead.
+    SacrificeCreatureOrPay(ManaCost),
+}
+
+/// "This spell costs {N} less to cast if ..." (CR 601.2f).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Reduction {
+    /// ... you control a permanent with this subtype.
+    IfYouControl(String, u8),
+    /// ... it targets a tapped creature.
+    IfTargetsTapped(u8),
+}
+
 /// An activated ability: "[cost]: [effect]" (CR 602).
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Activated {
@@ -131,6 +150,10 @@ pub struct CardDef {
     pub activated: Vec<Activated>,
     /// A mana source that is sacrificed when used, like a Treasure.
     pub sac_for_mana: bool,
+    pub extra_cost: Option<ExtraCost>,
+    pub reduction: Option<Reduction>,
+    /// Flashback cost (CR 702.34).
+    pub flashback: Option<ManaCost>,
 }
 
 impl CardDef {
@@ -154,6 +177,9 @@ impl CardDef {
             token: false,
             activated: Vec::new(),
             sac_for_mana: false,
+            extra_cost: None,
+            reduction: None,
+            flashback: None,
         }
     }
 
@@ -178,6 +204,9 @@ impl CardDef {
             token: false,
             activated: Vec::new(),
             sac_for_mana: false,
+            extra_cost: None,
+            reduction: None,
+            flashback: None,
         }
     }
 
@@ -202,6 +231,9 @@ impl CardDef {
             token: false,
             activated: Vec::new(),
             sac_for_mana: false,
+            extra_cost: None,
+            reduction: None,
+            flashback: None,
         }
     }
 }

@@ -146,6 +146,9 @@ fn definition(o: &Oracle) -> (CardDef, bool) {
         token: false,
         activated: Vec::new(),
         sac_for_mana: false,
+        extra_cost: None,
+        reduction: None,
+        flashback: None,
     };
     let mut claimed = rest.is_empty();
     if let Some(s) = scripts::script(&o.name) {

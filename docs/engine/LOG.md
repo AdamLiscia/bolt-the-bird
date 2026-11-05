@@ -51,3 +51,11 @@ One line per working step, newest last. The next session continues from the last
   used, and the automatic payer spends it last. Food and Treasure tokens. 3 more cards (Bake into a Pie,
   Gleaming Barrier, An Offer You Can't Refuse): 60 supported, 115 tests.
   **Next: additional costs (sacrifice, discard), cost reductions, flashback, "up to" targets.**
+- 2026-11-05: **Costs.** Cast modes: additional costs as part of the cast action (`CastWith`:
+  sacrifice a creature, discard a card, or "sacrifice or pay"), cost reductions (if you control a
+  subtype; if it targets a tapped creature, with targets limited to affordable ones), flashback
+  (`CastFlashback`, exiled when it leaves the stack), and exile. 6 cards (Arbiter of Woe, Eaten Alive,
+  Thrill of Possibility, Arcane Epiphany, Luminous Rebuke, Think Twice): 66 supported, 121 tests.
+  **Next: the last 6 tier-2 cards: "up to" and graveyard targets (Felidar Savior, Macabre Waltz,
+  Soul-Shackled Zombie), reflexive triggers and tapping (Faebloom Trick), linked exile (Banishing
+  Light), and a granted dies trigger (Fake Your Own Death).**

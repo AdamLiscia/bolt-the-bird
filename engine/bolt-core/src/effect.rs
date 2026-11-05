@@ -179,6 +179,8 @@ pub enum Effect {
     },
     /// Counter the spell in `slot` (CR 701.5).
     Counter(u8),
+    /// Exile the permanent in `slot`.
+    Exile(u8),
     /// Return the permanent in `slot` to its owner's hand.
     Bounce(u8),
     /// The source creature fights the creature in `slot` (CR 701.12).

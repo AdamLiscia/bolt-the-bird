@@ -5,7 +5,7 @@
 
 use std::sync::Arc;
 
-use crate::card::{CardDef, Keywords};
+use crate::card::{CardDef, ExtraCost, Keywords, Reduction};
 use std::collections::VecDeque;
 
 use crate::effect::{
@@ -140,6 +140,10 @@ pub enum Action {
     Activate(ObjId, usize),
     /// Cast with its kicker paid (CR 702.33).
     CastKicked(ObjId),
+    /// Cast paying an additional cost with this creature (sacrifice) or card (discard).
+    CastWith(ObjId, ObjId),
+    /// Cast from the graveyard for its flashback cost (CR 702.34).
+    CastFlashback(ObjId),
     Target(Target),
     Yes,
     No,
@@ -282,6 +286,27 @@ pub struct StackItem {
     pub kind: StackKind,
     pub targets: Vec<Chosen>,
     pub kicked: bool,
+    /// Cast with flashback: exiled when it leaves the stack (CR 702.34a).
+    pub flashback: bool,
+    /// The creature sacrificed or card discarded for an additional cost.
+    pub extra: Option<ObjId>,
+}
+
+/// How a spell is being cast.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct CastMode {
+    pub kicked: bool,
+    pub flashback: bool,
+    pub extra: Option<ObjId>,
+}
+
+impl CastMode {
+    fn with(x: ObjId) -> CastMode {
+        CastMode {
+            extra: Some(x),
+            ..CastMode::default()
+        }
+    }
 }
 
 /// A stack entry whose targets are still being chosen.
@@ -577,6 +602,8 @@ impl Game {
                     kind: StackKind::Trigger(n),
                     targets: Vec::new(),
                     kicked: false,
+                    flashback: false,
+                    extra: None,
                 });
             }
         }
@@ -619,10 +646,32 @@ impl Game {
             Pending::ChooseTarget(_) => {
                 let c = self.choosing.as_ref().expect("choosing targets");
                 let filter = self.ability_of(&c.item).targets[c.item.targets.len()];
-                self.candidates(&filter, c.item.controller)
-                    .into_iter()
-                    .map(Action::Target)
-                    .collect()
+                let mut options = self.candidates(&filter, c.item.controller);
+                // A cost reduction that depends on the target: only offer targets you can afford.
+                let reduces = matches!(
+                    self.def_of(c.item.source).reduction,
+                    Some(Reduction::IfTargetsTapped(_))
+                );
+                if c.cast && reduces && c.item.targets.is_empty() {
+                    let it = &c.item;
+                    let mode = CastMode {
+                        kicked: it.kicked,
+                        flashback: it.flashback,
+                        extra: it.extra,
+                    };
+                    options.retain(|&t| {
+                        let chosen = match t {
+                            Target::Player(q) => Chosen::Player(q),
+                            Target::Object(x) => Chosen::Object(x, self.obj(x).zcc),
+                        };
+                        self.can_pay(
+                            it.controller,
+                            &self.spell_cost(it.controller, it.source, mode, &[chosen]),
+                            None,
+                        )
+                    });
+                }
+                options.into_iter().map(Action::Target).collect()
             }
         }
     }
@@ -720,8 +769,13 @@ impl Game {
         let mut v = vec![Action::PassPriority];
         let sorcery_timing =
             p == self.active && matches!(self.step, Step::Main1 | Step::Main2) && self.items.is_empty();
-        let sources: Vec<ManaSource> = self.untapped_sources(p).iter().map(|s| s.1).collect();
-        for &c in &self.players[p].hand {
+        let hand = self.players[p].hand.iter().map(|&c| (c, false));
+        let flashback = self.players[p]
+            .graveyard
+            .iter()
+            .filter(|&&c| self.def_of(c).flashback.is_some());
+        let candidates: Vec<(ObjId, bool)> = hand.chain(flashback.map(|&c| (c, true))).collect();
+        for (c, from_graveyard) in candidates {
             let def = self.def_of(c);
             if def.types.land {
                 // CR 305.2: one land per turn, at sorcery timing.
@@ -741,17 +795,119 @@ impl Game {
                     continue; // CR 601.2c: a spell needs a legal choice for every target.
                 }
             }
-            if mana::pay(&def.cost, &sources).is_some() {
-                v.push(Action::Cast(c));
-            }
-            if let Some(k) = def.kicker {
-                if mana::pay(&add_costs(&def.cost, &k), &sources).is_some() {
-                    v.push(Action::CastKicked(c));
+            for (action, mode) in self.cast_modes(p, c, from_graveyard) {
+                if self.mode_affordable(p, c, mode) {
+                    v.push(action);
                 }
             }
         }
         v.extend(self.activations(p));
         v
+    }
+
+    /// The ways to cast `c`: plain, kicked, flashback, or paying an additional cost with each
+    /// eligible creature or card.
+    fn cast_modes(&self, p: PlayerId, c: ObjId, from_graveyard: bool) -> Vec<(Action, CastMode)> {
+        let def = self.def_of(c);
+        if from_graveyard {
+            return vec![(
+                Action::CastFlashback(c),
+                CastMode {
+                    flashback: true,
+                    ..CastMode::default()
+                },
+            )];
+        }
+        let creatures = || {
+            self.creatures(p)
+                .map(|x| (Action::CastWith(c, x), CastMode::with(x)))
+        };
+        match &def.extra_cost {
+            Some(ExtraCost::SacrificeCreature) => creatures().collect(),
+            Some(ExtraCost::Discard) => self.players[p]
+                .hand
+                .iter()
+                .filter(|&&x| x != c)
+                .map(|&x| (Action::CastWith(c, x), CastMode::with(x)))
+                .collect(),
+            Some(ExtraCost::SacrificeCreatureOrPay(_)) => {
+                std::iter::once((Action::Cast(c), CastMode::default()))
+                    .chain(creatures())
+                    .collect()
+            }
+            None => {
+                let mut v = vec![(Action::Cast(c), CastMode::default())];
+                if def.kicker.is_some() {
+                    v.push((
+                        Action::CastKicked(c),
+                        CastMode {
+                            kicked: true,
+                            ..CastMode::default()
+                        },
+                    ));
+                }
+                v
+            }
+        }
+    }
+
+    /// The mana a spell costs in `mode` with these targets (CR 601.2f).
+    fn spell_cost(&self, p: PlayerId, c: ObjId, mode: CastMode, targets: &[Chosen]) -> ManaCost {
+        let def = self.def_of(c);
+        let mut cost = if mode.flashback {
+            def.flashback.expect("has flashback")
+        } else {
+            def.cost
+        };
+        if mode.kicked {
+            cost = add_costs(&cost, &def.kicker.expect("has kicker"));
+        }
+        if let (Some(ExtraCost::SacrificeCreatureOrPay(m)), None) = (&def.extra_cost, mode.extra) {
+            cost = add_costs(&cost, m);
+        }
+        let less = match &def.reduction {
+            Some(Reduction::IfYouControl(sub, n)) => {
+                let yes = self
+                    .permanents(p)
+                    .any(|x| self.def_of(x).subtypes.iter().any(|s| s == sub));
+                if yes {
+                    *n
+                } else {
+                    0
+                }
+            }
+            Some(Reduction::IfTargetsTapped(n)) => match targets.first() {
+                Some(&Chosen::Object(x, _)) if self.obj(x).tapped && self.def_of(x).types.creature => *n,
+                _ => 0,
+            },
+            None => 0,
+        };
+        cost.generic = cost.generic.saturating_sub(less);
+        cost
+    }
+
+    /// Whether some legal choice of targets makes the spell affordable in `mode`.
+    fn mode_affordable(&self, p: PlayerId, c: ObjId, mode: CastMode) -> bool {
+        if self.can_pay(p, &self.spell_cost(p, c, mode, &[]), None) {
+            return true;
+        }
+        if let Some(Reduction::IfTargetsTapped(_)) = self.def_of(c).reduction {
+            let f = self
+                .def_of(c)
+                .spell
+                .as_ref()
+                .and_then(|s| s.targets.first().copied());
+            return f.is_some_and(|f| {
+                self.candidates(&f, p).into_iter().any(|t| match t {
+                    Target::Object(x) => {
+                        let chosen = [Chosen::Object(x, self.obj(x).zcc)];
+                        self.can_pay(p, &self.spell_cost(p, c, mode, &chosen), None)
+                    }
+                    Target::Player(_) => false,
+                })
+            });
+        }
+        false
     }
 
     /// Whether a permanent can pay a {T} cost: creatures need to have been under your control since
@@ -826,6 +982,8 @@ impl Game {
             kind: StackKind::Activated(n),
             targets: Vec::new(),
             kicked: false,
+            flashback: false,
+            extra: None,
         };
         self.passes = 0;
         if a.ability.targets.is_empty() {
@@ -956,8 +1114,24 @@ impl Game {
                 self.passes = 0;
                 self.give_priority(p);
             }
-            (Pending::Priority(p), Action::Cast(c)) => self.cast(p, c, false),
-            (Pending::Priority(p), Action::CastKicked(c)) => self.cast(p, c, true),
+            (Pending::Priority(p), Action::Cast(c)) => self.cast(p, c, CastMode::default()),
+            (Pending::Priority(p), Action::CastKicked(c)) => self.cast(
+                p,
+                c,
+                CastMode {
+                    kicked: true,
+                    ..CastMode::default()
+                },
+            ),
+            (Pending::Priority(p), Action::CastWith(c, x)) => self.cast(p, c, CastMode::with(x)),
+            (Pending::Priority(p), Action::CastFlashback(c)) => self.cast(
+                p,
+                c,
+                CastMode {
+                    flashback: true,
+                    ..CastMode::default()
+                },
+            ),
             (Pending::Priority(p), Action::Activate(id, n)) => self.activate(p, id, n),
             (Pending::ChooseTarget(_), Action::Target(target)) => self.choose_target(target),
             (Pending::Decide(p), a) => self.decide(p, a),
@@ -1011,7 +1185,7 @@ impl Game {
 
     /// CR 601.2: move to the stack, choose targets, pay, then the caster gets priority again
     /// (CR 117.3c).
-    fn cast(&mut self, p: PlayerId, card: ObjId, kicked: bool) {
+    fn cast(&mut self, p: PlayerId, card: ObjId, mode: CastMode) {
         self.move_to(card, Zone::Stack);
         self.obj_mut(card).controller = p;
         let item = StackItem {
@@ -1019,7 +1193,9 @@ impl Game {
             controller: p,
             kind: StackKind::Spell,
             targets: Vec::new(),
-            kicked,
+            kicked: mode.kicked,
+            flashback: mode.flashback,
+            extra: mode.extra,
         };
         let has_targets = self
             .def_of(card)
@@ -1040,11 +1216,16 @@ impl Game {
 
     fn finish_cast(&mut self, item: StackItem) {
         let (p, card) = (item.controller, item.source);
-        let def = self.def_of(card);
-        let cost = match (item.kicked, def.kicker) {
-            (true, Some(k)) => add_costs(&def.cost, &k),
-            _ => def.cost,
+        let mode = CastMode {
+            kicked: item.kicked,
+            flashback: item.flashback,
+            extra: item.extra,
         };
+        let cost = self.spell_cost(p, card, mode, &item.targets);
+        // CR 601.2h: additional costs are paid with the mana.
+        if let Some(x) = item.extra {
+            self.move_to(x, Zone::Graveyard);
+        }
         self.pay_mana(p, &cost, None);
         let noncreature = !self.def_of(card).types.creature;
         self.items.push(item);
@@ -1061,6 +1242,8 @@ impl Game {
                             kind: StackKind::Trigger(n),
                             targets: Vec::new(),
                             kicked: false,
+                            flashback: false,
+                            extra: None,
                         });
                     }
                 }
@@ -1175,13 +1358,18 @@ impl Game {
                 self.move_to(source, Zone::Battlefield);
                 self.obj_mut(source).controller = r.item.controller;
             } else if self.obj(source).zone == Zone::Stack {
-                self.move_to(source, Zone::Graveyard);
+                self.leave_stack(source, r.item.flashback);
             }
             if r.acts {
                 self.events.push(Event::Resolved { card: source });
             }
         }
         self.give_priority(self.active);
+    }
+
+    /// A spell leaves the stack: to the graveyard, or to exile if it was cast with flashback.
+    fn leave_stack(&mut self, id: ObjId, flashback: bool) {
+        self.move_to(id, if flashback { Zone::Exile } else { Zone::Graveyard });
     }
 
     fn ask(&mut self, p: PlayerId, d: Decision) {
@@ -1542,9 +1730,14 @@ impl Game {
                         .iter()
                         .position(|i| i.kind == StackKind::Spell && i.source == id)
                     {
-                        self.items.remove(pos);
-                        self.move_to(id, Zone::Graveyard);
+                        let countered = self.items.remove(pos);
+                        self.leave_stack(id, countered.flashback);
                     }
+                }
+            }
+            Effect::Exile(n) => {
+                if let Some(id) = Game::slot_object(item, legal, n) {
+                    self.move_to(id, Zone::Exile);
                 }
             }
             Effect::Bounce(n) => {
