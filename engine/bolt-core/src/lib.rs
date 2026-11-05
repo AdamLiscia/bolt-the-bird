@@ -15,7 +15,7 @@ pub use effect::{
     Ability, Condition, Controller, Effect, Filter, Recipient, Scope, SearchFor, SearchTo, Static, Trigger,
     When, Who,
 };
-pub use effect::{LookRest, LookTo, Pick, StaticCondition};
+pub use effect::{EmblemKind, LookRest, LookTo, Pick, StaticCondition};
 pub use game::{
     Action, Chosen, Decision, Event, Game, Modifier, ObjId, Outcome, Pending, PlayerId, Resolving,
     RulesError, StackItem, StackKind, Step, Target, Zone,

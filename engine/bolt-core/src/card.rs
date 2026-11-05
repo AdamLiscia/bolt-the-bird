@@ -243,6 +243,9 @@ pub struct CardDef {
     pub enters_with_x_counters: bool,
     /// "+1/+1 for each creature card in your graveyard."
     pub pt_per_graveyard_creature: bool,
+    /// Starting loyalty (CR 306.5b) and loyalty abilities as (cost, ability) (CR 606).
+    pub loyalty: Option<i32>,
+    pub loyalty_abilities: Vec<(i32, Ability)>,
 }
 
 impl CardDef {
@@ -302,6 +305,8 @@ impl CardDef {
             mana_per_subtype: None,
             enters_with_x_counters: false,
             pt_per_graveyard_creature: false,
+            loyalty: None,
+            loyalty_abilities: Vec::new(),
         }
     }
 
@@ -362,6 +367,8 @@ impl CardDef {
             mana_per_subtype: None,
             enters_with_x_counters: false,
             pt_per_graveyard_creature: false,
+            loyalty: None,
+            loyalty_abilities: Vec::new(),
         }
     }
 
@@ -422,6 +429,8 @@ impl CardDef {
             mana_per_subtype: None,
             enters_with_x_counters: false,
             pt_per_graveyard_creature: false,
+            loyalty: None,
+            loyalty_abilities: Vec::new(),
         }
     }
 }

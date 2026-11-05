@@ -6,7 +6,7 @@
 use std::sync::Arc;
 
 use crate::card::{CardDef, ExtraCost, Keywords, Reduction};
-use crate::effect::{LookRest, LookTo, Pick, Scale, Scope, Static, StaticCondition};
+use crate::effect::{EmblemKind, LookRest, LookTo, Pick, Scale, Scope, Static, StaticCondition};
 use std::collections::VecDeque;
 
 use crate::effect::{
@@ -105,6 +105,9 @@ pub struct Object {
     pub sacrifice_at_end: bool,
     /// The turn it was last put into a graveyard.
     pub graveyard_turn: u32,
+    /// Loyalty (CR 306.5), and the turn a loyalty ability was last activated (CR 606.3).
+    pub loyalty: i32,
+    pub loyalty_turn: u32,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -197,6 +200,10 @@ pub enum Action {
     CastAlternative(ObjId),
     /// Cast with X chosen (CR 601.2b).
     CastX(ObjId, u8),
+    /// Attack a planeswalker instead of the defending player (CR 508.1b).
+    AttackPlaneswalker(ObjId, ObjId),
+    /// Activate loyalty ability number `n` (CR 606).
+    Loyalty(ObjId, usize),
     /// Activate an ability with {X} in its cost, optionally sacrificing another creature.
     ActivateX {
         id: ObjId,
@@ -305,6 +312,8 @@ pub struct Combat {
     /// (blocker, attacker) in declaration order.
     pub blocks: Vec<(ObjId, ObjId)>,
     pub first_strike_step: bool,
+    /// Attackers attacking a planeswalker instead of the player: (attacker, planeswalker).
+    pub at_planeswalker: Vec<(ObjId, ObjId)>,
 }
 
 impl Combat {
@@ -343,6 +352,8 @@ pub enum StackKind {
         life: i32,
         against: ObjId,
     },
+    /// Loyalty ability number `n` of the source.
+    Loyalty(usize),
 }
 
 /// The ability of a ward trigger, which has no targets or effects of its own.
@@ -414,6 +425,8 @@ pub struct Choosing {
     /// For an activated ability: its costs, paid once targets are chosen (CR 602.2b), as
     /// (ability number, creature to sacrifice).
     pub pay: Option<(usize, Option<ObjId>)>,
+    /// For a loyalty ability: its loyalty cost, paid once targets are chosen.
+    pub loyalty: Option<(ObjId, i32)>,
 }
 
 /// Until-end-of-turn effects, kept per object so a lookup touches only that object's effects (a
@@ -487,6 +500,8 @@ pub enum Decision {
         b: Vec<ObjId>,
         owner: PlayerId,
     },
+    /// Keep one permanent of permanent type `ty` (`Pick`); `kept` so far.
+    KeepOfType { ty: u8, kept: Vec<ObjId> },
     /// "You may pay {cost}": `Yes` (if affordable) or `No`.
     MayPay { cost: ManaCost },
     /// `Discard` a card, or `No` to lose `n` life.
@@ -561,6 +576,8 @@ pub struct Game {
     pub life_gained_this_turn: [i32; 2],
     /// Players with extra turns to take, last first (CR 500.7).
     pub extra_turns: Vec<PlayerId>,
+    /// Emblems: (owner, kind, the card that made it) (CR 114).
+    pub emblems: Vec<(PlayerId, EmblemKind, ObjId)>,
     /// Triggered abilities waiting to be put on the stack (CR 603.3).
     pub triggered: Vec<StackItem>,
     pub choosing: Option<Choosing>,
@@ -641,6 +658,7 @@ impl Game {
             combat_damage_prevented: Vec::new(),
             life_gained_this_turn: [0; 2],
             extra_turns: Vec::new(),
+            emblems: Vec::new(),
             triggered: Vec::new(),
             choosing: None,
             resolving: None,
@@ -709,6 +727,8 @@ impl Game {
             copy_token: false,
             sacrifice_at_end: false,
             graveyard_turn: 0,
+            loyalty: 0,
+            loyalty_turn: 0,
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -881,14 +901,30 @@ impl Game {
         } else {
             self.def_of(id).keywords.with(self.obj(id).granted)
         };
-        let k = self.modifiers(id).fold(printed, |k, m| k.with(m.keywords));
+        let mut k = self.modifiers(id).fold(printed, |k, m| k.with(m.keywords));
+        if self.emblem_anthem(id) {
+            k = k
+                .with(Keywords::VIGILANCE)
+                .with(Keywords::TRAMPLE)
+                .with(Keywords::INDESTRUCTIBLE);
+        }
         self.statics_on(id).fold(k, |k, s| k.with(s.keywords))
     }
 
     /// Power after counters, static effects and pump effects (layer 7).
+    fn emblem_anthem(&self, id: ObjId) -> bool {
+        let o = self.obj(id);
+        o.zone == Zone::Battlefield
+            && self.def_of(id).types.creature
+            && self
+                .emblems
+                .iter()
+                .any(|&(q, k, _)| q == o.controller && k == EmblemKind::VivienAnthem)
+    }
+
     fn opponents_graveyard_bonus(&self, id: ObjId) -> i32 {
         let d = self.def_of(id);
-        let mut b = 0;
+        let mut b = if self.emblem_anthem(id) { 2 } else { 0 };
         if d.pt_opponents_graveyards {
             b += self.players[opponent(self.obj(id).controller)].graveyard.len() as i32;
         }
@@ -1163,6 +1199,9 @@ impl Game {
                     None,
                 );
             }
+            if let Some(l) = def.loyalty {
+                self.obj_mut(id).loyalty = l; // CR 306.5b
+            }
             if def.enters_with_x_counters {
                 let x = self.obj(id).x as i32;
                 self.add_counters(id, x);
@@ -1363,7 +1402,15 @@ impl Game {
             Pending::Discard(p) => self.players[p].hand.iter().map(|&c| Action::Discard(c)).collect(),
             Pending::Priority(p) => self.priority_actions(p),
             Pending::DeclareAttackers(p) => {
-                let mut v: Vec<Action> = self.attack_candidates(p).map(Action::Attack).collect();
+                let walkers: Vec<ObjId> = self
+                    .permanents(opponent(p))
+                    .filter(|&w| self.def_of(w).types.planeswalker)
+                    .collect();
+                let mut v: Vec<Action> = Vec::new();
+                for c in self.attack_candidates(p) {
+                    v.push(Action::Attack(c));
+                    v.extend(walkers.iter().map(|&w| Action::AttackPlaneswalker(c, w)));
+                }
                 // CR 508.1d: creatures that attack each combat if able must be declared.
                 if !self.attack_candidates(p).any(|c| self.def_of(c).must_attack) {
                     v.push(Action::FinishAttacks);
@@ -1445,6 +1492,7 @@ impl Game {
                 None => &def.triggers[n].ability,
             },
             StackKind::Ward { .. } | StackKind::WardLife { .. } => &WARD_ABILITY,
+            StackKind::Loyalty(n) => &def.loyalty_abilities[n].1,
             StackKind::Activated(n) => &def.activated[n].ability,
         }
     }
@@ -1654,6 +1702,7 @@ impl Game {
             }
         }
         v.extend(self.activations(p));
+        v.extend(self.loyalty_actions(p, sorcery_timing));
         v
     }
 
@@ -1879,6 +1928,61 @@ impl Game {
     }
 
     /// Activated abilities `p` can activate now (CR 602.2, 602.5).
+    /// Loyalty abilities `p` can activate: sorcery timing, once per planeswalker per turn, and not
+    /// below zero loyalty (CR 606.3-606.6).
+    fn loyalty_actions(&self, p: PlayerId, sorcery_timing: bool) -> Vec<Action> {
+        let mut v = Vec::new();
+        if !sorcery_timing {
+            return v;
+        }
+        for id in self.permanents(p) {
+            let o = self.obj(id);
+            if o.loyalty_turn == self.turn && self.turn > 0 {
+                continue;
+            }
+            for (n, (cost, ability)) in self.def_of(id).loyalty_abilities.iter().enumerate() {
+                let item = StackItem {
+                    kind: StackKind::Loyalty(n),
+                    ..Game::casting(id, p)
+                };
+                if o.loyalty + cost >= 0 && self.trigger_can_target(&item, ability) {
+                    v.push(Action::Loyalty(id, n));
+                }
+            }
+        }
+        v
+    }
+
+    fn pay_loyalty(&mut self, id: ObjId, cost: i32) {
+        let turn = self.turn;
+        let o = self.obj_mut(id);
+        o.loyalty += cost;
+        o.loyalty_turn = turn;
+    }
+
+    fn activate_loyalty(&mut self, p: PlayerId, id: ObjId, n: usize) {
+        let (cost, ability) = self.def_of(id).loyalty_abilities[n].clone();
+        let item = StackItem {
+            kind: StackKind::Loyalty(n),
+            ..Game::casting(id, p)
+        };
+        self.passes = 0;
+        if ability.targets.is_empty() {
+            self.pay_loyalty(id, cost);
+            self.items.push(item);
+            self.give_priority(p);
+        } else {
+            self.choosing = Some(Choosing {
+                item,
+                then: p,
+                cast: false,
+                pay: None,
+                loyalty: Some((id, cost)),
+            });
+            self.pending = Pending::ChooseTarget(p);
+        }
+    }
+
     /// Untapped creatures `p` controls with this subtype, other than `except`.
     fn untapped_with(&self, p: PlayerId, sub: &str, except: ObjId) -> Vec<ObjId> {
         self.creatures(p)
@@ -1977,6 +2081,7 @@ impl Game {
                 then: p,
                 cast: false,
                 pay: Some((n, victim)),
+                loyalty: None,
             });
             self.pending = Pending::ChooseTarget(p);
         }
@@ -2000,6 +2105,7 @@ impl Game {
                 then: p,
                 cast: false,
                 pay: Some((n, victim)),
+                loyalty: None,
             });
             self.pending = Pending::ChooseTarget(p);
         }
@@ -2235,6 +2341,16 @@ impl Game {
                 },
             ),
             (Pending::Priority(p), Action::CastWith(c, x)) => self.cast(p, c, CastMode::with(x)),
+            (Pending::Priority(p), Action::Loyalty(id, n)) => self.activate_loyalty(p, id, n),
+            (Pending::DeclareAttackers(_), Action::AttackPlaneswalker(c, pw)) => {
+                self.apply(Action::Attack(c)).expect("the attacker is legal");
+                self.combat
+                    .as_mut()
+                    .expect("in combat")
+                    .at_planeswalker
+                    .push((c, pw));
+                return Ok(self.take_events());
+            }
             (Pending::Priority(p), Action::CastX(c, x)) => self.cast(
                 p,
                 c,
@@ -2397,6 +2513,7 @@ impl Game {
                 then: p,
                 cast: true,
                 pay: None,
+                loyalty: None,
             });
             self.pending = Pending::ChooseTarget(p);
         } else {
@@ -2428,6 +2545,14 @@ impl Game {
             self.fire(p, When::YouCastOnOpponentsTurn, None);
         }
         self.fire(opponent(p), When::OpponentCasts, None);
+        for (owner, kind, card) in self.emblems.clone() {
+            if let EmblemKind::OnAnySpellCast { trigger } = kind {
+                self.triggered.push(StackItem {
+                    kind: StackKind::Trigger(trigger),
+                    ..Game::casting(card, owner)
+                });
+            }
+        }
         self.fire(p, When::YouCast, None);
         self.ward_check(&item);
         let instant_or_sorcery = self.def_of(card).types.instant || self.def_of(card).types.sorcery;
@@ -2509,6 +2634,9 @@ impl Game {
         if c.cast {
             self.finish_cast(c.item);
         } else {
+            if let Some((pw, cost)) = c.loyalty {
+                self.pay_loyalty(pw, cost);
+            }
             if let Some((n, victim)) = c.pay {
                 self.pay_activation(c.item.controller, c.item.source, n, victim, c.item.x);
             }
@@ -2777,12 +2905,40 @@ impl Game {
         }
     }
 
+    /// Liliana's −9: walk the permanent types in order, asking which one to keep of each.
+    fn next_keep(&mut self, p: PlayerId, mut ty: u8, kept: Vec<ObjId>) {
+        while ty < 5 {
+            let any = self.permanents(p).any(|x| Game::has_type(self.def_of(x), ty));
+            if any {
+                self.ask(p, Decision::KeepOfType { ty, kept });
+                return;
+            }
+            ty += 1;
+        }
+        let doomed: Vec<ObjId> = self.permanents(p).filter(|x| !kept.contains(x)).collect();
+        for x in doomed {
+            self.move_to(x, Zone::Graveyard);
+        }
+    }
+
+    /// Permanent types in order: artifact, creature, enchantment, land, planeswalker.
+    fn has_type(d: &CardDef, ty: u8) -> bool {
+        match ty {
+            0 => d.types.artifact,
+            1 => d.types.creature,
+            2 => d.types.enchantment,
+            3 => d.types.land,
+            _ => d.types.planeswalker,
+        }
+    }
+
     fn picks(&self, c: ObjId, pick: Pick) -> bool {
         let d = self.def_of(c);
         match pick {
             Pick::Any => true,
             Pick::CreaturePowerAtMost(n) => d.types.creature && d.power <= n,
             Pick::InstantOrSorcery => d.types.instant || d.types.sorcery,
+            Pick::CreatureOrLand => d.types.creature || d.types.land,
             Pick::CreatureMvAtMostLands => {
                 let owner = self.obj(c).owner;
                 let lands = self
@@ -2825,6 +2981,11 @@ impl Game {
             Decision::May | Decision::Surveil { .. } | Decision::Tuck { .. } => vec![Action::Yes, Action::No],
             Decision::SacrificeCreatures { .. } => self.creatures(p).map(Action::Pick).collect(),
             Decision::ChooseColor { .. } => (0..5).map(Action::Mode).collect(),
+            Decision::KeepOfType { ty, .. } => self
+                .permanents(p)
+                .filter(|&x| Game::has_type(self.def_of(x), *ty))
+                .map(Action::Pick)
+                .collect(),
             Decision::GenesisPick { cards, x } => {
                 let mut v: Vec<Action> = cards
                     .iter()
@@ -2958,6 +3119,12 @@ impl Game {
             (Decision::PayWard { cost, .. }, Action::Yes) => self.pay_mana(p, &cost, None),
             (Decision::SacrificeAnother { .. }, Action::Pick(c)) => self.move_to(c, Zone::Graveyard),
             (Decision::MayPay { cost }, Action::Yes) => self.pay_mana(p, &cost, None),
+            (Decision::KeepOfType { ty, mut kept }, Action::Pick(c)) => {
+                if !kept.contains(&c) {
+                    kept.push(c);
+                }
+                self.next_keep(p, ty + 1, kept);
+            }
             (Decision::GenesisPick { mut cards, x }, Action::Pick(c)) => {
                 cards.retain(|&k| k != c);
                 self.move_to(c, Zone::Battlefield);
@@ -4107,6 +4274,22 @@ impl Game {
                     self.move_to(c, Zone::Exile);
                 }
             }
+            Effect::LoyaltySelf(n) => {
+                if self.obj(src).zone == Zone::Battlefield {
+                    self.obj_mut(src).loyalty += n;
+                }
+            }
+            Effect::CreateTokensPerLife { def } => {
+                let n = self.players[item.controller].life.max(0);
+                for _ in 0..n {
+                    self.create_token(item.controller, def);
+                }
+            }
+            Effect::Emblem(kind) => self.emblems.push((item.controller, kind, src)),
+            Effect::KeepOneOfEachType => {
+                let opp = opponent(item.controller);
+                self.next_keep(opp, 0, Vec::new());
+            }
             Effect::UntapSelf => {
                 if self.obj(src).zone == Zone::Battlefield {
                     self.obj_mut(src).tapped = false;
@@ -4284,6 +4467,7 @@ impl Game {
                     then,
                     cast: false,
                     pay: None,
+                    loyalty: None,
                 });
                 self.pending = Pending::ChooseTarget(who);
                 return false;
@@ -4592,7 +4776,14 @@ impl Game {
                 .filter(|&b| self.obj(b).zone == Zone::Battlefield)
                 .collect();
             if !combat.is_blocked(a) {
-                assigned.push((a, Target::Player(defender), power));
+                match combat.at_planeswalker.iter().find(|&&(x, _)| x == a) {
+                    // CR 506.4c: if the planeswalker left combat, the attacker deals no damage.
+                    Some(&(_, w)) if self.obj(w).zone == Zone::Battlefield => {
+                        assigned.push((a, Target::Object(w), power))
+                    }
+                    Some(_) => {}
+                    None => assigned.push((a, Target::Player(defender), power)),
+                }
                 continue;
             }
             // CR 509.1h: a blocked creature stays blocked; with no blockers left it deals no damage
@@ -4611,7 +4802,13 @@ impl Game {
                 left -= amount;
             }
             if left > 0 && k.has(Keywords::TRAMPLE) {
-                assigned.push((a, Target::Player(defender), left));
+                match combat.at_planeswalker.iter().find(|&&(x, _)| x == a) {
+                    Some(&(_, w)) if self.obj(w).zone == Zone::Battlefield => {
+                        assigned.push((a, Target::Object(w), left))
+                    }
+                    Some(_) => {}
+                    None => assigned.push((a, Target::Player(defender), left)),
+                }
             }
         }
         for &(b, a) in &combat.blocks {
@@ -4634,6 +4831,10 @@ impl Game {
         }
         self.in_combat_damage = false;
         // CR 510.3a: "deals combat damage to a player" triggers.
+        for &(a, _) in &hit_player {
+            let controller = self.obj(a).controller;
+            self.fire(controller, When::YourCreatureDealsCombatDamageToPlayer, None);
+        }
         for (a, amount) in hit_player {
             let before = self.triggered.len();
             self.fire_source(a, When::DealsCombatDamageToPlayer);
@@ -4713,6 +4914,9 @@ impl Game {
                     }
                 }
             }
+            Target::Object(id) if self.def_of(id).types.planeswalker && !self.def_of(id).types.creature => {
+                self.obj_mut(id).loyalty -= amount; // CR 120.3c
+            }
             Target::Object(id) => {
                 let o = self.obj_mut(id);
                 o.damage += amount;
@@ -4750,6 +4954,13 @@ impl Game {
                 }
             }
             dies.extend(self.legend_rule_losers());
+            // CR 704.5i: a planeswalker with no loyalty goes to the graveyard.
+            dies.extend(
+                self.battlefield
+                    .iter()
+                    .copied()
+                    .filter(|&w| self.def_of(w).types.planeswalker && self.obj(w).loyalty <= 0),
+            );
             // CR 704.5m-n: an Aura attached to nothing legal goes to the graveyard; an Equipment
             // becomes unattached.
             for &id in &self.battlefield.clone() {

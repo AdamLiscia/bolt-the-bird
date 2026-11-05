@@ -4,11 +4,11 @@
 //! supported only when its scripts and keywords account for every line, and a test checks each
 //! script's lines against the Scryfall text, so a script can't drift from its card.
 
-use bolt_core::effect::Scale;
 use bolt_core::effect::{
     Ability, Condition, Controller, Effect, Filter, Recipient, Scope, SearchFor, SearchTo, Static,
     StaticCondition, Trigger, When, Who,
 };
+use bolt_core::effect::{EmblemKind, Scale};
 use bolt_core::{
     Activated, CardDef, Color, ExtraCost, Keywords, LookRest, LookTo, ManaCost, ManaSource, Pick, Reduction,
     Types,
@@ -47,6 +47,9 @@ pub fn token_defs() -> Vec<CardDef> {
         token("Spirit", "Spirit", 1, 1, Keywords::FLYING),
         token("Fish", "Fish", 1, 1, Keywords::NONE),
         token("Rat", "Rat", 1, 1, Keywords::NONE),
+        token("Zombie", "Zombie", 2, 2, Keywords::NONE),
+        token("Ninja", "Ninja", 2, 1, Keywords::NONE),
+        token("Cat", "Cat", 2, 2, Keywords::NONE),
     ]
 }
 
@@ -104,6 +107,9 @@ pub struct Tokens {
     pub scion: usize,
     pub raccoon: usize,
     pub komas_coil: usize,
+    pub zombie: usize,
+    pub ninja: usize,
+    pub cat_2: usize,
     pub drake: usize,
     pub spirit: usize,
     pub fish: usize,
@@ -133,6 +139,9 @@ impl Tokens {
             spirit: base + 17,
             fish: base + 18,
             rat: base + 19,
+            zombie: base + 20,
+            ninja: base + 21,
+            cat_2: base + 22,
         }
     }
 }
@@ -381,6 +390,10 @@ fn lord(d: &mut CardDef, sub: &'static str) {
         toughness: 1,
         keywords: Keywords::NONE,
     });
+}
+
+fn loyalty(d: &mut CardDef, cost: i32, ability: Ability) {
+    d.loyalty_abilities.push((cost, ability));
 }
 
 /// The script for a card, if one exists.
@@ -2536,6 +2549,80 @@ pub fn script(name: &str) -> Option<Script> {
                 );
             },
         ),
+                "Liliana, Dreadhorde General" => s(
+            &[
+                "Whenever a creature you control dies, draw a card.",
+                "+1: Create a 2/2 black Zombie creature token.",
+                "−4: Each player sacrifices two creatures of their choice.",
+                "−9: Each opponent chooses a permanent they control of each permanent type and sacrifices the rest.",
+            ],
+            |d, t| {
+                on(d, When::CreatureYouControlDies, vec![], vec![draw(1)]);
+                loyalty(d, 1, Ability::new(vec![], vec![Effect::CreateToken { who: Who::You, def: t.zombie, n: 1 }]));
+                loyalty(
+                    d,
+                    -4,
+                    Ability::new(
+                        vec![],
+                        vec![
+                            Effect::SacrificeCreatures { who: Who::You, n: 2 },
+                            Effect::SacrificeCreatures { who: Who::EachOpponent, n: 2 },
+                        ],
+                    ),
+                );
+                loyalty(d, -9, Ability::new(vec![], vec![Effect::KeepOneOfEachType]));
+            },
+        ),
+        "Kaito, Cunning Infiltrator" => s(
+            &[
+                "Whenever a creature you control deals combat damage to a player, put a loyalty counter on Kaito.",
+                "+1: Up to one target creature you control can't be blocked this turn. Draw a card, then discard a card.",
+                "−2: Create a 2/1 blue Ninja creature token.",
+                "−9: You get an emblem with \"Whenever a player casts a spell, you create a 2/1 blue Ninja creature token.\"",
+            ],
+            |d, t| {
+                on(d, When::YourCreatureDealsCombatDamageToPlayer, vec![], vec![Effect::LoyaltySelf(1)]);
+                // Trigger 1 belongs to the emblem.
+                on(d, When::Never, vec![], vec![Effect::CreateToken { who: Who::You, def: t.ninja, n: 1 }]);
+                loyalty(
+                    d,
+                    1,
+                    up_to(vec![YOUR_CREATURE], vec![Effect::Grant { slot: 0, keywords: Keywords::UNBLOCKABLE }, draw(1), discard(1)]),
+                );
+                loyalty(d, -2, Ability::new(vec![], vec![Effect::CreateToken { who: Who::You, def: t.ninja, n: 1 }]));
+                loyalty(d, -9, Ability::new(vec![], vec![Effect::Emblem(EmblemKind::OnAnySpellCast { trigger: 1 })]));
+            },
+        ),
+        "Ajani, Caller of the Pride" => s(
+            &[
+                "+1: Put a +1/+1 counter on up to one target creature.",
+                "−3: Target creature gains flying and double strike until end of turn.",
+                "−8: Create X 2/2 white Cat creature tokens, where X is your life total.",
+            ],
+            |d, t| {
+                loyalty(d, 1, up_to(vec![CREATURE], vec![Effect::Counters { slot: 0, n: 1 }]));
+                loyalty(
+                    d,
+                    -3,
+                    Ability::new(vec![CREATURE], vec![Effect::Grant { slot: 0, keywords: Keywords::FLYING.with(Keywords::DOUBLE_STRIKE) }]),
+                );
+                loyalty(d, -8, Ability::new(vec![], vec![Effect::CreateTokensPerLife { def: t.cat_2 }]));
+            },
+        ),
+        "Vivien Reid" => s(
+            &[
+                "+1: Look at the top four cards of your library. You may reveal a creature or land card from among them and put it into your hand. Put the rest on the bottom of your library in a random order.",
+                "−3: Destroy target artifact, enchantment, or creature with flying.",
+                "−8: You get an emblem with \"Creatures you control get +2/+2 and have vigilance, trample, and indestructible.\"",
+            ],
+            |d, _| {
+                let look = Effect::LookAtTop { n: 4, pick: Pick::CreatureOrLand, chosen_to: LookTo::Hand, rest_to: LookRest::BottomRandom };
+                loyalty(d, 1, Ability::new(vec![], vec![look]));
+                let f = Filter { creature_needs_flying: true, ..ART_ENCH };
+                loyalty(d, -3, Ability::new(vec![f], vec![Effect::Destroy(0)]));
+                loyalty(d, -8, Ability::new(vec![], vec![Effect::Emblem(EmblemKind::VivienAnthem)]));
+            },
+        ),
         _ => None,
     }
 }
@@ -2792,4 +2879,8 @@ pub const SCRIPTED: &[&str] = &[
     "Homunculus Horde",
     "Extravagant Replication",
     "Abyssal Harvester",
+    "Liliana, Dreadhorde General",
+    "Kaito, Cunning Infiltrator",
+    "Ajani, Caller of the Pride",
+    "Vivien Reid",
 ];

@@ -207,3 +207,12 @@ One line per working step, newest last. The next session continues from the last
   Ajani, Vivien), Doubling Season, Twinflame Tyrant, Thousand-Year Storm, Omniscience, Progenitus,
   Etali, Giada, Zul Ashur, Quilled Greatwurm, Banner of Kinship, Bloom Tender, Fiery Annihilation,
   Involuntary Employment.**
+- 2026-11-05: **Tier 4, batch 4: planeswalkers.** Starting loyalty (CR 306.5b; fetched from
+  Scryfall by the new `scripts/fetch_loyalty.py`, which caught that Chandra starts at 6), loyalty
+  abilities once per turn at sorcery speed and never below zero (CR 606), damage to planeswalkers
+  removes loyalty (CR 120.3c), zero loyalty dies (CR 704.5i), attacking planeswalkers
+  (`AttackPlaneswalker`; no damage if it left, CR 506.4c), emblems (CR 114: Vivien's anthem, Kaito's
+  cast trigger), "keep one of each permanent type", and a trigger for any of your creatures dealing
+  combat damage to a player. 4 planeswalkers (Liliana, Kaito, Ajani, Vivien): **267 supported, 316
+  tests.** 10,000 release fuzz games pass. **Next: Chandra (mana pool, divided damage), then the
+  last tier-4 cards.**

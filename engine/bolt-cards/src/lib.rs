@@ -27,6 +27,9 @@ pub struct Oracle {
     pub rarity: String,
     #[serde(default)]
     pub colors: Vec<String>,
+    /// Starting loyalty, for planeswalkers (`scripts/fetch_loyalty.py`).
+    #[serde(default)]
+    pub loyalty: Option<String>,
 }
 
 /// The Scryfall data for every FDN card, in model order.
@@ -192,6 +195,9 @@ fn definition(o: &Oracle) -> (CardDef, bool) {
         mana_per_subtype: None,
         enters_with_x_counters: false,
         pt_per_graveyard_creature: false,
+        loyalty: o.loyalty.as_deref().and_then(|v| v.parse().ok()),
+
+        loyalty_abilities: Vec::new(),
     };
     let mut claimed = rest.is_empty();
     if let Some(s) = scripts::script(&o.name) {

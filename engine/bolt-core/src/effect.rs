@@ -448,6 +448,16 @@ pub enum Effect {
     },
     /// Exile all other tokens you control with this subtype (other than the one just created).
     ExileOtherTokensWithSubtype(&'static str),
+    /// Put loyalty counters on the source.
+    LoyaltySelf(i32),
+    /// Create a token for each point of your life total.
+    CreateTokensPerLife {
+        def: usize,
+    },
+    /// Each opponent keeps one permanent of each permanent type and sacrifices the rest.
+    KeepOneOfEachType,
+    /// You get an emblem (CR 114).
+    Emblem(EmblemKind),
     /// "When you do": trigger number `n` of the source triggers now (CR 603.12).
     Reflexive(usize),
     /// Until end of turn, the creature in `slot` gains the source's trigger number `trigger` as a
@@ -555,6 +565,15 @@ pub struct Static {
     pub keywords: Keywords,
 }
 
+/// What an emblem does (CR 114).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum EmblemKind {
+    /// Creatures you control get +2/+2 and have vigilance, trample and indestructible.
+    VivienAnthem,
+    /// Whenever a player casts a spell, its owner's card's trigger number `trigger` happens (Kaito).
+    OnAnySpellCast { trigger: usize },
+}
+
 /// Which looked-at card may be picked.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Pick {
@@ -563,6 +582,7 @@ pub enum Pick {
     InstantOrSorcery,
     /// A creature card with mana value at most the number of lands you control.
     CreatureMvAtMostLands,
+    CreatureOrLand,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -685,6 +705,8 @@ pub enum When {
     CountersPutOnThis,
     /// "Whenever one or more +1/+1 counters are put on another non-Hydra creature you control".
     CountersOnAnotherNonHydraYouControl,
+    /// "Whenever a creature you control deals combat damage to a player".
+    YourCreatureDealsCombatDamageToPlayer,
     /// "Whenever an opponent loses life" (the amount travels with the trigger).
     OpponentLosesLife,
     /// "Whenever a source you control deals noncombat damage to an opponent" (with the amount).
