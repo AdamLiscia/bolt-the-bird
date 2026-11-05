@@ -2,11 +2,12 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, engine]
   pull_request:
 
 jobs:
-  test:
+  python:
+    name: Python ${{ matrix.python-version }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -28,3 +29,24 @@ jobs:
           ruff format --check .
       - name: Test
         run: pytest
+
+  engine:
+    name: Rust engine
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: engine
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.92
+        with:
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: engine
+      - name: Format
+        run: cargo fmt --check
+      - name: Clippy
+        run: cargo clippy --all-targets -- -D warnings
+      - name: Test
+        run: cargo test

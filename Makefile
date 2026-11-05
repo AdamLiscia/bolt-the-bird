@@ -4,7 +4,7 @@
 PY ?= .venv/bin/python
 DEVICE ?= auto
 
-.PHONY: help install test lint format demo data prepare baselines draft-models rare-drafting judges builder rl archetypes card-audit figures reproduce
+.PHONY: help install test lint format demo data prepare baselines draft-models rare-drafting judges builder rl archetypes card-audit engine-test figures reproduce
 
 help:  ## List targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "} {printf "  \033[1m%-15s\033[0m %s\n", $$1, $$2}'
@@ -62,6 +62,9 @@ archetypes:  ## Win rate by color pair in real games, and what each drafter draf
 
 card-audit:  ## Tier every card by rules complexity, and the build order
 	$(PY) scripts/card_audit.py
+
+engine-test:  ## Format check, lint and test the Rust engine
+	cd engine && cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test
 
 figures:  ## Regenerate every chart in docs/figures from results/
 	$(PY) scripts/make_figures.py

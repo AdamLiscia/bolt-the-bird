@@ -1,0 +1,11 @@
+[package]
+name = "bolt-core"
+description = "Rules core for the Bolt the Bird Magic engine: state, turns, priority, stack, combat"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true

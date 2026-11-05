@@ -1,0 +1,14 @@
+[package]
+name = "bolt-cards"
+description = "Foundations (FDN) card definitions for the Bolt the Bird Magic engine"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+bolt-core = { path = "../bolt-core" }
+
+[lints]
+workspace = true
