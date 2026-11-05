@@ -1,0 +1,80 @@
+# Model card
+
+Four trained models make up Bolt the Bird v0.1.0. All four are trained for one set: Magic: The
+Gathering **Foundations (FDN)**, Arena **Premier Draft**.
+
+## Data
+
+[17lands public datasets](https://www.17lands.com/public_datasets) (CC BY 4.0). 17lands collects
+drafts and games from Arena players who run its tracker, and publishes them without player identities.
+
+| | Rows | Train | Val | Test |
+|---|---|---|---|---|
+| Picks | 5,530,605 from 132,431 drafts | 85% | 5% | 10% |
+| Games | 791,159 | 674,335 | 38,445 | 78,379 |
+
+- **Splits are by draft**, using a hash of `draft_id`, and the same hash splits picks and games.
+  No draft contributes to both training and evaluation.
+- **The two judges** split the training drafts again by a second, independent hash bit, so judge A
+  and judge B never see the same game.
+- **Known skew.** 17lands users are stronger than the average Arena player: the training games are
+  won 54.6% of the time, not 50%. Results describe this population.
+
+## Models
+
+### `human_model.pt`: DraftTransformer
+
+- **Task:** given the drafter's pool and the current pack, score each card in the pack.
+- **Architecture:** one token per pool card and per pack card, plus a draft-position token.
+  4-layer pre-norm transformer encoder, d=192, 6 heads, no sequence positions (a pool is a set).
+  1.84M parameters.
+- **Training:** cross-entropy against the human's pick. 3 epochs, AdamW, one-cycle LR (peak 1e-3),
+  batch 1024. About 4 h on an Apple M4 using PyTorch MPS.
+- **Result:** 70.5% top-1 agreement on 546,149 held-out picks (71.8% for drafters with a 58%+ game
+  win rate). Baselines: pick-order bot 46.9%, pool-aware MLP 68.8%.
+
+### `judge_a.pt` and `judge_b.pt`: DeckJudge
+
+- **Task:** predict P(win) for one game from a 40-card deck, the pilot's skill bucket, and play/draw.
+  Decks are scored with skill fixed at the median (0.54) and play/draw averaged.
+- **Architecture:** a linear layer from card counts to a 96-d embedding sum, then a 2-layer MLP, plus a
+  per-card linear term. 30 epochs, AdamW.
+- **Result:** test AUC 0.596 (judge A) and 0.597 (judge B). The full-data judge reaches 0.598,
+  against 0.584 for skill and play/draw alone. It is calibrated to within about a point across
+  predicted-win-rate quintiles.
+
+### `bot.pt`: the RL-trained drafter
+
+- **Init:** `human_model.pt`.
+- **Training:** REINFORCE with a batch-mean baseline. The reward is judge A's predicted win rate of
+  the deck the builder makes from the bot's 42 picks. A KL penalty (β=0.05) pulls toward the human
+  model. Each iteration is 128 simulated 8-seat tables, with the 7 other seats run by the human
+  model (sampling). 150 iterations, 19,200 drafts, CPU.
+- **Evaluation:** 512 held-out tables (packs from test drafts), seat 0 greedy, with the same seed for
+  bot and baseline. Decks are built and scored by **judge B**.
+- **Result:** +1.99 ± 0.18 points of judged win rate over the human model (62.01% vs. 60.02%).
+  Rares taken after pack 1 fell from 2.54 to 2.15 per draft. It agrees with the human model on 90.3%
+  of picks.
+
+## Intended use
+
+- Research and teaching: imitation learning, offline evaluation, reward models, RL fine-tuning
+  with a KL leash.
+- A practice drafting partner.
+
+## Out of scope
+
+- Other sets. Card IDs are FDN-specific, so another set needs its own data and a retrain.
+- Running against live Arena drafts. That is against the game's terms of service.
+- Claims about real game results. Every win rate here is **predicted by a judge**, not measured
+  in played games.
+
+## Limitations and risks
+
+- **The judges learned from human-built decks only.** They can share blind spots, so a bot can find
+  decks both judges overrate. The held-out judge B catches overfitting to judge A, but not a blind
+  spot the two judges share. Played games, the project's planned next phase, are the real test.
+- **Agreement with humans is a proxy, not a goal.** Humans disagree with each other, and they
+  rare-draft (see the README), so 100% is neither possible nor desirable.
+- **Opponents are simulated.** The 7 other seats are the imitation model, so the RL bot is
+  optimized against model-like neighbors, not real people.

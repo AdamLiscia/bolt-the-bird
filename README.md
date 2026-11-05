@@ -1,171 +1,287 @@
-# Bolt the Bird
+<h1 align="center">Bolt the Bird</h1>
 
-An AI that drafts Magic: The Gathering, builds a deck from what it drafted, and (eventually)
-plays it. Trained from scratch on real Arena data from
-[17lands](https://www.17lands.com/public_datasets). Set: Foundations (FDN), Premier Draft.
+<p align="center">
+  <b>An AI that learns to draft Magic: The Gathering from 5.5 million human picks,<br>then teaches itself to draft better than the people it learned from.</b>
+</p>
 
-The project has two goals. The first is to draft like a person: learn from 5.5 million real
-picks. The second is to draft *better* than the people it learned from, by rewarding finished
-decks that win instead of picks that match.
+<p align="center">
+  <a href="https://github.com/AdamLiscia/bolt-the-bird/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/AdamLiscia/bolt-the-bird/actions/workflows/ci.yml/badge.svg"></a>
+  <img alt="Python 3.11–3.13" src="https://img.shields.io/badge/python-3.11%E2%80%933.13-3776ab">
+  <img alt="PyTorch" src="https://img.shields.io/badge/PyTorch-2.x-ee4c2c">
+  <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-2ea44f"></a>
+</p>
 
-| Phase | What | Status |
+---
+
+In a Magic draft, eight players open packs, take one card, and pass the rest. Forty-two picks later,
+each player builds a deck from what they took. Good drafting means reading the table, committing to
+colors, and knowing when the shiny rare isn't worth it.
+
+Bolt the Bird learns this in two stages:
+
+1. **Imitate.** A transformer studies 5.5 million real picks from
+   [17lands](https://www.17lands.com/public_datasets) and learns to draft like a person. It matches the
+   human's actual pick **70.5%** of the time on drafts it has never seen. The best bot that ignores your
+   cards so far reaches 46.9%.
+2. **Improve.** In a simulated 8-player draft, the bot is rewarded for finished decks that win, not for
+   copying. After 19,200 practice drafts, its decks are judged **+2.0 points** better than the human
+   model's, by a judge it never trained against. Along the way it unlearned a human habit: taking
+   off-color rares for their collection value.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/figures/rl-curve-dark.png">
+  <img alt="Judged win-rate gain rises from 0 to +1.99 points over 150 training iterations while rares taken after pack 1 fall from 2.54 to 2.15" src="docs/figures/rl-curve-light.png">
+</picture>
+
+## Results
+
+| | Result | Measured on |
 |---|---|---|
-| 1 | Draft model trained on human picks | Done: 70.5% top-1 agreement on held-out drafts |
-| 2 | Deck judge, deck builder, draft simulator | Done |
-| 2b | Reinforcement learning against the judge | Done: +2.0 points of judged win rate over the human model |
-| 3 | Rust rules engine + a player trained by self-play | Planned ([PLAN.md](PLAN.md)) |
+| **Imitation** | 70.5% top-1 agreement with human picks (71.8% for strong drafters) | 546,149 picks from about 13,000 held-out drafts |
+| **Finding** | Humans take off-color rares 3.2× as often as off-color commons, and strong drafters do it just as much | Packs 2–3 of 131,183 drafts |
+| **Judge** | Predicts deck win rate, calibrated to within about a point | 78,379 held-out games |
+| **Learning to win** | +1.99 ± 0.18 points of judged win rate, 15% fewer late rares, still 90% human-like | 512 held-out tables, scored by a judge excluded from training |
 
-## Data
+Every number comes from a file in [`results/`](results/), and every chart is generated from those files
+by [`scripts/make_figures.py`](scripts/make_figures.py).
 
-17lands records Arena drafts and games from players who run its tracker, and publishes them
-anonymously.
+## How it works
 
-- **Picks:** 5,530,605 picks from 132,431 drafts. Each row has the pack, the drafter's pool so
-  far, the pick, and the player's rank and win-rate bucket.
-- **Games:** 791,159 games. Each row has the 40-card deck, cards drawn, play/draw, and the result.
+```mermaid
+flowchart LR
+    subgraph data [17lands data]
+        P[5.5M human picks]
+        G[791k games]
+    end
+    P -->|imitation| H[DraftTransformer<br/>the human model]
+    G -->|half A| JA[Judge A]
+    G -->|half B| JB[Judge B]
+    H -->|init + KL leash| BOT[RL bot]
+    H -->|7 opponents| SIM[8-seat draft simulator<br/>real packs]
+    BOT --> SIM
+    SIM -->|42 picks| DB[Deck builder]
+    DB -->|40-card deck| JA
+    JA -->|reward| BOT
+    DB -.->|evaluation only| JB
+```
 
-`scripts/prepare.py` streams the gzipped CSVs (about 7 GB of picks unpacked) into 114 MB of integer
-arrays without ever writing the CSV to disk. **Every split is by draft** (a hash of `draft_id`):
-85% train, 5% validation, 10% test. Splitting by pick would leak, because pick 4 of a draft
-reveals most of the pool from pick 3.
+- **The human model** is a transformer over a *set* of cards: one token per card in the pool and the
+  pack, plus a draft-position token. Attention lets each pack card weigh itself against what you've
+  taken and what you'd be passing.
+- **The judge** predicts a deck's game win rate. Player skill is a separate input, held fixed when
+  decks are scored. Without it, the judge would credit a strong player's deck for the player's skill.
+- **The deck builder** tries all ten color pairs and greedily adds whichever spell raises the
+  judged win rate most, with on-color dual lands and 16 or 17 lands.
+- **The RL loop** (REINFORCE) rewards picks from drafts whose decks the judge rates highly. A KL
+  penalty keeps the bot close to human drafting.
+- **Two judges on disjoint halves of the games** keep the result honest. The bot trains against
+  judge A and is graded only by judge B. A bot that learned to fool A gets no credit from B.
 
-## Phase 1: drafting like a person
+## Try it
 
-Each model sees the drafter's pool and the current pack, and scores every card in the pack.
+```bash
+git clone https://github.com/AdamLiscia/bolt-the-bird && cd bolt-the-bird
+make install        # .venv + the package
+python scripts/demo.py --seed 7
+```
 
-| Bot | Top-1 agreement, all drafters | Strong drafters (≥58% game win rate) |
+The demo needs no data download. Packs come from [`assets/`](assets/) (real opening packs from
+held-out drafts), and the trained models download from the
+[release](https://github.com/AdamLiscia/bolt-the-bird/releases) on first run.
+
+```text
+Bolt the Bird drafts seat 1 of 8. The other 7 seats draft like people. Table #7
+
+Pack 1
+  p1  R Chandra, Flameshaper                99%
+  p2  G Scavenging Ooze                     86%
+  p3  G Gnarlid Colony                      67%
+  p4  G Ambush Wolf                         51%   a person would likely take Reclamation Sage
+  p5  G Bite Down                           99%
+  ...
+The deck  RG 16 lands
+  1x R Abrade
+  2x G Apothecary Stomper
+  1x G Beast-Kin Ranger
+  ...
+Judge B (never seen by the bot during training), average pilot:
+  Bolt the Bird's deck     62.6%
+  the next seat's deck     57.2%
+```
+
+## Reproduce everything
+
+```bash
+make install
+make test          # 21 tests on synthetic data, about a second
+make data          # 17lands FDN picks + games, ~250 MB
+make reproduce     # every result and chart, end to end
+```
+
+| Step | Command | Time (Apple M4) |
 |---|---|---|
-| Random | 23.2% | 23.3% |
-| Ratings bot: highest games-in-hand win rate | 36.5% | 38.8% |
-| Pick-order bot: highest take rate when seen | 46.9% | 48.9% |
-| PoolMLP: summed pool embedding + MLP (145k params) | 68.8% | 70.1% |
-| **DraftTransformer** (1.8M params) | **70.5%** | **71.8%** |
+| Stream ~7 GB of CSV into 114 MB of arrays, without unpacking | `make prepare` | ~1 min |
+| Baselines | `make baselines` | ~1 min |
+| MLP + transformer | `make draft-models` | ~4 h |
+| Rare-drafting analysis | `make rare-drafting` | ~1 min |
+| Judges (full, A, B) | `make judges` | ~3 min |
+| Deck builder vs. humans | `make builder` | ~1 min |
+| RL | `make rl` | ~2 h (CPU) |
+| Charts | `make figures` | seconds |
 
-Measured on 546,149 picks from about 13,000 test drafts. The baselines' card ratings come from
-training data only.
+## The details
 
-- **Context is most of the win.** Both bots that ignore the pool top out at 47%. Seeing the pool
-  adds about 22 points. The gap is widest mid-pack, once the drafter is committed to colors
-  (`results/` has accuracy per pick number).
-- **The transformer adds 1.7 points over the MLP.** It's a real gap at this sample size, but a
-  modest one. The DraftTransformer gives each pool card and each pack card its own token, plus a
-  draft-position token, with no sequence positions because a pool is a set. Self-attention lets
-  each pack card look at the pool ("does this fit?") and at the rest of the pack ("what am I
-  passing?"). 4 layers, d=192, 3 epochs, about 4 h on an Apple M4 using PyTorch MPS.
-- **Copying only strong drafters didn't help.** Fine-tuning on players with a 58%+ game win rate
-  left accuracy unchanged (71.9% on strong drafters vs. 71.8%). The next finding explains why.
+### Data and splits
 
-## Finding: people rare-draft, and good players do it too
+17lands publishes Arena drafts and games from players who run its tracker. The pick data has a row
+per pick (the pack, the pool so far, the pick, and the player's rank and win-rate bucket). The game
+data has a row per game (the deck, cards drawn, play/draw, and the result).
 
-For each draft, take the drafter's two main colors from their final pool. Then, from pack 2
-onward, ask how often a card outside those colors gets taken when it's in the pack
-(`scripts/rare_drafting.py`).
+**Every split is by draft** (a hash of `draft_id`, 85/5/10). If picks were split one by one, pick 4 of
+a draft in the test set would reveal most of the pool from pick 3 in training. A test enforces this.
 
-| Off-color card in the pack, packs 2–3 | Taken |
-|---|---|
-| Rare or mythic | 11.2% |
-| Common or uncommon | 3.5% |
+### Drafting like a person
 
-Strong drafters do it at the same rate as everyone else (11.0% vs. 11.2%). On Arena you keep
-what you draft, so a rare can be worth more to your collection than to your deck. Drafts with
-two or more late off-color rare picks average 2.70 match wins, against 2.94 for drafts with
-none. That's a correlation, not proof: a drafter who never settles into colors would show both.
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/figures/scoreboard-dark.png">
+  <img alt="Top-1 agreement: random 23.2%, ratings bot 36.5%, pick-order bot 46.9%, MLP 68.8%, transformer 70.5%" src="docs/figures/scoreboard-light.png">
+</picture>
 
-The consequence is that rare-drafting can't be filtered out of the data. A bot that copies
-humans copies the habit. To draft better than people, the bot has to optimize for winning.
+| Bot | How it picks | All | Strong drafters |
+|---|---|---|---|
+| Random | uniformly | 23.2% | 23.3% |
+| Ratings bot | highest games-in-hand win rate (the 17lands stat) | 36.5% | 38.8% |
+| Pick-order bot | highest take rate when seen | 46.9% | 48.9% |
+| Pool-aware MLP | sums pool embeddings, scores pack cards (145k params) | 68.8% | 70.1% |
+| **DraftTransformer** | attention over pool + pack (1.8M params) | **70.5%** | **71.8%** |
 
-## Phase 2: a judge, a deck builder, a simulator
+The ratings and pick-order bots are computed from training data only. Seeing the pool is where the
+gain comes from. Bots that ignore the pool fall toward 35% mid-pack, once the drafter has committed
+to colors:
 
-**The judge** predicts a deck's game win rate. Player skill and play/draw are separate inputs:
-good players build better decks *and* pilot them better, so without the skill input the judge
-would credit the deck for the pilot. Decks are always scored with skill fixed at the median.
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/figures/by-pick-dark.png">
+  <img alt="Accuracy by pick: the transformer and MLP stay 23 to 32 points above the pick-order bot from pick 2 to pick 12" src="docs/figures/by-pick-light.png">
+</picture>
 
-| Model (78,379 held-out games) | Log loss | AUC |
+### Finding: people rare-draft, and good players do it too
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/figures/rare-drafting-dark.png">
+  <img alt="Off-color rares are taken 11.0% of the time by strong drafters and 11.2% by others; off-color commons 3.5% by both" src="docs/figures/rare-drafting-light.png">
+</picture>
+
+For each draft, we take the drafter's two main colors from their final pool and ask how often an
+off-color card is taken from pack 2 on ([`scripts/rare_drafting.py`](scripts/rare_drafting.py)).
+Off-color rares are taken 3.2× as often as off-color commons and uncommons, and strong drafters do it
+just as much as everyone else. On Arena you keep what you draft, so a rare can be worth more to a
+collection than to a deck.
+
+Drafts with two or more late off-color rare picks average 2.70 match wins, against 2.94 with none.
+That's a correlation, not causation.
+
+The consequence is that filtering to good players can't remove the habit. Fine-tuning on strong
+drafters only left accuracy unchanged (71.9% vs. 71.8%). **To draft better than people, the bot has
+to optimize for winning, not for agreement.**
+
+### The judge, the builder, the simulator
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/figures/judge-calibration-dark.png">
+  <img alt="Judge calibration: predicted 47.4, 52.1, 54.8, 57.4, 61.7 percent versus actual 46.3, 52.0, 54.8, 57.4, 62.1 percent" src="docs/figures/judge-calibration-light.png" width="460">
+</picture>
+
+| Judge (78,379 held-out games) | Log loss | AUC |
 |---|---|---|
 | Skill and play/draw only | 0.6772 | 0.584 |
-| + one weight per card (linear) | 0.6745 | 0.596 |
+| + one weight per card | 0.6745 | 0.596 |
 | + card interactions (embedding sum + MLP) | **0.6734** | **0.598** |
 
-AUC barely moves because one game of Magic is mostly noise, but the predictions hold up. Grouped
-into fifths by predicted win rate, held-out decks predicted at 47.4 / 52.1 / 54.8 / 57.4 / 61.7%
-actually won 46.3 / 52.0 / 54.8 / 57.4 / 62.1%. The cards the linear judge values most
-(Embercleave; Liliana, Dreadhorde General; Curator of Destinies; and so on) are the set's known
-bombs.
+A single game of Magic is mostly variance, so AUC moves little. Calibration is what matters for a
+reward, and it holds to within about a point. The cards the linear judge values most (Embercleave;
+Liliana, Dreadhorde General; Curator of Destinies) are the set's known bombs.
 
-**The deck builder** tries each of the 10 color pairs. For each, it greedily adds whichever
-castable spell raises the judged win rate most, includes on-color dual lands and fixers (land
-colors from Scryfall), and tries both 23 spells/17 lands and 24/16. On 966 real players' own
-final pools, its decks keep 79% of the player's spells, with matching creature and land counts
-(14.8 vs. 15.3 creatures, 16.6 vs. 16.7 lands). The judge rates them 57.9% against the
-humans' 54.5%. That figure comes from the same judge the builder optimizes, so read it as an
-upper bound.
+**The deck builder** was checked against 966 real players' own pools. It keeps 79% of their spells
+and matches their deck shape: 14.8 vs. 15.3 creatures, 16.6 vs. 16.7 lands.
 
-**The draft simulator** seats 8 drafters at a table with real opening packs from the data, 3
-packs of 14, passing left-right-left. The seat under test gets one model; the other 7 seats run
-the human-imitation model, sampling picks the way people make them.
+**The simulator** seats 8 drafters with real opening packs, 3 packs of 14, passing left-right-left.
+Tests verify that every seat ends with 42 cards and that no card is created or lost.
 
-## Phase 2b: learning to win
+### Learning to win
 
-Seat 0 starts as the human-imitation model. Each iteration drafts 128 simulated tables, builds
-seat 0's deck, and uses its judged win rate as the reward (REINFORCE with a batch-mean baseline).
-A KL penalty keeps the bot close to the human model, so it improves on human drafting instead of
-drifting into decks no one would build.
-
-**To catch reward hacking, two judges are trained on disjoint halves of the games.** The bot
-trains against judge A and is graded by judge B, building its decks with B too. A bot that only
-learned to fool A won't score with B.
-
-150 iterations × 128 tables (19,200 simulated drafts), CPU only, 2 h 6 min. Each evaluation
-drafts 512 held-out tables twice, with the same packs and the same seed: once with the bot in
-seat 0 and once with the human model. Judge B builds and scores both decks.
-
-| Iteration | Bot (judge B) | Human model (judge B) | Gain, points | Rares taken after pack 1 | Picks matching the human model |
+| Iteration | Bot (judge B) | Human model | Gain | Rares after pack 1 | Agreement with the human model |
 |---|---|---|---|---|---|
 | 0 | 60.02% | 60.02% | 0.00 | 2.54 | 100% |
 | 45 | 61.03% | 60.02% | +1.00 ± 0.13 | 2.37 | 95.9% |
 | 90 | 61.62% | 60.02% | +1.60 ± 0.17 | 2.32 | 93.3% |
 | 150 | **62.01%** | 60.02% | **+1.99 ± 0.18** | **2.15** | 90.3% |
 
-- **The gain holds on the judge the bot never trained against.** That rules out the most direct
-  form of reward hacking. Both judges still learned from the same kind of human-built decks, so
-  they can share blind spots. Only played games will settle that.
-- **It rare-drafts less without being told to:** 15% fewer rares after pack 1. Nothing in the
-  reward mentions rarity. It learned that some of those picks cost wins.
-- **It's still close to human drafting.** It agrees with the human model on 90% of picks, and the
-  KL penalty kept the divergence small (0.07 nats per pick).
-- **The gain was still rising at iteration 150.** Longer runs are the obvious next experiment.
+Each evaluation drafts 512 held-out tables twice: once with the bot in seat 0 and once with the human
+model, using the same packs and the same random seed. Judge B builds and scores both decks. The gain
+was still rising at iteration 150.
+
+### Design decisions
+
+| Decision | Why |
+|---|---|
+| Split by draft, not by pick | Picks within a draft share a pool, so splitting by pick leaks |
+| No positional encoding over the pool | A pool is a set. A test checks the model ignores pool order |
+| Skill as a judge input, fixed at scoring time | Separates deck quality from pilot quality |
+| Two judges on disjoint games | Catches reward hacking against the training judge |
+| KL leash to the human model | Improve on human drafting without drifting into decks no human would build |
+| Same packs and seed for bot and baseline | Paired comparison: the standard error is on the difference, which shrinks it |
+| Stream gzip, never unpack | ~7 GB of CSV becomes 114 MB of arrays on a laptop with 35 GB free |
+
+**One bug worth telling.** The first KL penalty used `torch.where` to zero out cards not in the pack.
+`-inf - -inf` is NaN, and `torch.where` hides that in the forward pass but not in the gradient. On
+Apple's GPU, the NaN-poisoned model hung the machine. The fix masks before the arithmetic.
+`tests/test_rl.py` keeps it fixed, and the old code fails that test.
 
 ## Limitations
 
-- **Agreement with humans is a proxy.** Strong drafters disagree with each other, so the ceiling
-  is well below 100%.
-- **The judge only knows human-built decks.** Decks far from that distribution may be scored
-  badly; the KL leash and the second judge are the guards.
-- **Deck quality is judged, not played.** Real validation needs games, which is what phase 3's
-  engine is for.
-- **One set so far.** Other sets need their own 17lands data and a retrain.
+- **Win rates are predicted, not played.** Both judges learned from human-built decks, so they can
+  share blind spots. The held-out judge rules out overfitting to judge A, but not a blind spot both
+  judges have. Played games are the real test. See the roadmap.
+- **The opponents are simulated.** The other 7 seats are the human model, not real people.
+- **One set.** Card IDs are Foundations-specific. A new set needs its own 17lands data and a retrain.
+- More in the [model card](docs/MODEL_CARD.md).
 
-## Reproduce
+## Roadmap
 
-```bash
-python -m venv .venv && .venv/bin/pip install -r requirements.txt
-# download draft_data_public.FDN.PremierDraft.csv.gz and game_data_public.FDN.PremierDraft.csv.gz
-# from 17lands into data/raw/
-python scripts/prepare.py                 # stream to compact arrays
-python scripts/card_info.py               # colors, rarity, land colors
-python scripts/baselines.py
-python scripts/train.py --model mlp --epochs 2
-python scripts/train.py --model transformer --epochs 3
-python scripts/rare_drafting.py
-python scripts/train_judge.py             # full judge + baselines
-python scripts/train_judge.py --half 0    # judge A
-python scripts/train_judge.py --half 1    # judge B
-python scripts/eval_builder.py
-python scripts/train_rl.py --device cpu   # or mps
+- [x] Imitation: draft like a person
+- [x] Judge, deck builder, draft simulator
+- [x] RL against a held-out-validated judge
+- [ ] Longer RL runs (the gain hadn't plateaued)
+- [ ] **A rules engine in Rust** (PyO3 bindings) to play the decks out, which replaces predicted win
+      rates with played ones
+- [ ] A gameplay agent trained by self-play
+- [ ] Draft practice against the bot on Nerd Leagues
+
+## Repository layout
+
+```text
+src/bolt/          the library
+  data.py            loading and the draft-level splits
+  models.py          PoolMLP, DraftTransformer
+  judge.py           DeckJudge
+  deckbuild.py       judge-guided deck builder
+  sim.py             8-seat draft simulator
+  rl.py              the KL penalty
+  cards.py           colors, rarity, castability, dual lands
+scripts/           one script per result (see the Makefile)
+tests/             21 tests on synthetic data
+results/           every number in this README
+assets/            card metadata and 3,000 real sample packs
+docs/              model card and figures
 ```
 
-Data: 17lands public datasets (CC BY 4.0). Card data: Scryfall.
+## Acknowledgments
 
-*Bolt the Bird is unofficial Fan Content permitted under the Fan Content Policy. Not
-approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the
-Coast. ©Wizards of the Coast LLC.*
+- Data: [17lands](https://www.17lands.com/public_datasets) public datasets (CC BY 4.0).
+- Card data and land colors: [Scryfall](https://scryfall.com).
+
+Code under the [MIT license](LICENSE). To cite this project, see [CITATION.cff](CITATION.cff).
+
+<sub>Bolt the Bird is unofficial Fan Content permitted under the Fan Content Policy. Not
+approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast.
+©Wizards of the Coast LLC.</sub>
