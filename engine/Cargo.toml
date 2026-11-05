@@ -7,7 +7,7 @@ version = "0.1.0"
 edition = "2021"
 license = "MIT"
 repository = "https://github.com/AdamLiscia/bolt-the-bird"
-rust-version = "1.80"
+rust-version = "1.92"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

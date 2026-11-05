@@ -1,7 +1,17 @@
 //! Rules core for the Bolt the Bird Magic engine.
 //!
-//! Game state is plain, cloneable data, and [`apply`]-style functions are the only things that
-//! change it. Rules cite the Comprehensive Rules (CR) section they follow.
+//! Game state is plain, cloneable data, and [`Game::apply`] is the only thing that changes it.
+//! Rules cite the Comprehensive Rules (CR) section they follow.
+
+pub mod card;
+pub mod fuzz;
+pub mod game;
+pub mod mana;
+pub mod rng;
+
+pub use card::{CardDef, Keywords, Types};
+pub use game::{Action, Event, Game, ObjId, Outcome, Pending, PlayerId, RulesError, Step, Target, Zone};
+pub use mana::{ManaCost, ManaSource};
 
 /// The five colors of Magic, in WUBRG order (CR 105.1).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]

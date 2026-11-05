@@ -16,3 +16,51 @@ and adds a failure mode before there's anything to expose. Nothing else depends 
 **Choice:** `rust-toolchain.toml` pins 1.92 with clippy and rustfmt. CI uses the same version.
 **Why:** a new clippy release can add lints, and with `-D warnings` that breaks CI with no code change.
 Upgrades become one deliberate commit.
+
+## 2026-11-05: Mana is paid automatically
+
+**Choice:** `Cast` picks which lands to tap. Colored pips are matched first by backtracking, narrowest
+sources first, so dual lands stay untapped as long as possible. Tapping lands is not an action.
+**Why:** tapping for mana one land at a time multiplies the action space for no strategic gain in
+almost every Limited game. Forge and most game-AI engines pay automatically.
+**To reverse:** add `Action::TapForMana(ObjId)` and a mana pool. Revisit for cards whose mana choice
+matters (mana abilities with costs, "spend only on" restrictions).
+
+## 2026-11-05: Combat damage is assigned automatically
+
+**Choice:** an attacker blocked by several creatures assigns lethal damage to each blocker in
+declaration order, and the rest goes to the last blocker, or with trample to the player. Deathtouch
+makes 1 damage lethal.
+**Why:** Foundations removed damage assignment order, so the attacking player divides damage freely.
+That's a large action space that rarely matters. The automatic split is what a player does almost
+every time.
+**To reverse:** add a `Pending::AssignDamage` decision with one action per split.
+
+## 2026-11-05: Legend rule keeps the newest
+
+**Choice:** with two legendary permanents of the same name, the engine keeps the one that entered
+last. The player would choose (CR 704.5j).
+**Why:** it's the usual choice, and it removes a rare decision. It's a one-line change to a
+`Pending::ChooseLegend`.
+
+## 2026-11-05: Priority passes itself when passing is the only legal action
+
+**Choice:** `Game::auto_pass` is on by default. The game moves on when the deciding player has
+nothing to do but pass.
+**Why:** most priority stops have only one option, and agents would spend most of their actions
+passing. No information is hidden, because there was no choice. Tests and viewers turn it off.
+
+## 2026-11-05: Mulligans are decided one player at a time
+
+**Choice:** the player who goes first finishes their mulligans, then the other player decides.
+CR 103.5 has both players decide each round together.
+**Why:** it's simpler and only reveals hand size, which is public anyway. Easy to change if a viewer
+needs the exact order.
+
+## 2026-11-05: Objects keep their ID across zone changes
+
+**Choice:** a card has one `ObjId` from library to graveyard. CR 400.7 says it becomes a new object
+each time it changes zones.
+**Why:** nothing in M1 can tell the difference. M2 brings targets and "that creature" references, and
+there zone changes must break them. Planned for M2: a per-object zone-change counter that targets
+check.
