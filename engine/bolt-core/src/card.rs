@@ -216,6 +216,13 @@ pub struct CardDef {
     pub leyline: bool,
     /// "You may cast spells as though they had flash."
     pub grants_flash: bool,
+    /// Colors, WUBRG (CR 105).
+    pub colors: [bool; 5],
+    /// "Enters with eight revival counters on it if you cast it."
+    pub revival_on_cast: bool,
+    /// "As this enters, choose a color", and "{T}: Add one mana of the chosen color".
+    pub choose_color: bool,
+    pub mana_of_chosen_color: bool,
 }
 
 impl CardDef {
@@ -265,6 +272,10 @@ impl CardDef {
             alt_cost: None,
             leyline: false,
             grants_flash: false,
+            colors: [false; 5],
+            revival_on_cast: false,
+            choose_color: false,
+            mana_of_chosen_color: false,
         }
     }
 
@@ -315,6 +326,10 @@ impl CardDef {
             alt_cost: None,
             leyline: false,
             grants_flash: false,
+            colors: [false; 5],
+            revival_on_cast: false,
+            choose_color: false,
+            mana_of_chosen_color: false,
         }
     }
 
@@ -365,6 +380,10 @@ impl CardDef {
             alt_cost: None,
             leyline: false,
             grants_flash: false,
+            colors: [false; 5],
+            revival_on_cast: false,
+            choose_color: false,
+            mana_of_chosen_color: false,
         }
     }
 }

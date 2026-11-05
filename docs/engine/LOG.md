@@ -150,3 +150,12 @@ One line per working step, newest last. The next session continues from the last
   Ravenous Amulet, Lathril): **225 supported, 269 tests.** 10,000 release fuzz games pass.
   **Next: batch 9b (Kykar, Nine-Lives Familiar, Time Stop, Witness Protection, Heraldic Banner,
   Strongbox Raider, Curator of Destinies).**
+- 2026-11-05: **M3 batch 9b.** Delayed "at the beginning of the next end step" returns (CR 603.7),
+  revival counters, ending the turn (CR 724), ability loss with a base 1/1 (layers 6 and 7b; a running
+  count of ability-loss Auras keeps the check free when there are none, and an invariant checks that
+  count), card colors and "choose a color" with mana of the chosen color, playing a card from exile
+  until the end of your next turn, and two piles chosen by the opponent. 7 cards (Kykar, Nine-Lives
+  Familiar, Time Stop, Witness Protection, Heraldic Banner, Strongbox Raider, Curator of Destinies):
+  **232 supported, 276 tests.** 10,000 release fuzz games pass, 920 games/s with checks. **Next: the
+  last 9 tier-3 cards (Imprisoned in the Moon, Soulstone Sanctuary, Kellan, Tinybones, Muldrotha,
+  Fishing Pole, Secluded Courtyard, Akroma's Memorial, Sphinx's Tutelage).**

@@ -43,6 +43,7 @@ pub fn token_defs() -> Vec<CardDef> {
         token("Raccoon", "Raccoon", 3, 3, Keywords::NONE),
         token("Koma's Coil", "Serpent", 3, 3, Keywords::NONE),
         token("Drake", "Drake", 2, 2, Keywords::FLYING),
+        token("Spirit", "Spirit", 1, 1, Keywords::FLYING),
     ]
 }
 
@@ -101,6 +102,7 @@ pub struct Tokens {
     pub raccoon: usize,
     pub komas_coil: usize,
     pub drake: usize,
+    pub spirit: usize,
 }
 
 impl Tokens {
@@ -123,6 +125,7 @@ impl Tokens {
             raccoon: base + 14,
             komas_coil: base + 15,
             drake: base + 16,
+            spirit: base + 17,
         }
     }
 }
@@ -268,6 +271,8 @@ const GAIN_LAND: [&str; 2] = [
 fn static_on(d: &mut CardDef, scope: Scope, your_turn_only: bool, keywords: Keywords) {
     d.statics.push(Static {
         subtype: None,
+        lose_abilities: false,
+        base_pt: None,
         scope,
         your_turn_only,
         condition: None,
@@ -296,6 +301,8 @@ fn equip(d: &mut CardDef, cost: &str) {
 fn attached(d: &mut CardDef, your_turn_only: bool, power: i32, toughness: i32, keywords: Keywords) {
     d.statics.push(Static {
         subtype: None,
+        lose_abilities: false,
+        base_pt: None,
         scope: Scope::Attached,
         your_turn_only,
         condition: None,
@@ -316,6 +323,8 @@ const ARTIFACT: Filter = Filter {
 fn threshold(d: &mut CardDef, power: i32, toughness: i32, keywords: Keywords) {
     d.statics.push(Static {
         subtype: None,
+        lose_abilities: false,
+        base_pt: None,
         scope: Scope::This,
         your_turn_only: false,
         condition: Some(StaticCondition::Threshold),
@@ -1170,6 +1179,8 @@ pub fn script(name: &str) -> Option<Script> {
         "Empyrean Eagle" => s(&["Other creatures you control with flying get +1/+1."], |d, _| {
             d.statics.push(Static {
                 subtype: None,
+                lose_abilities: false,
+                base_pt: None,
                 scope: Scope::OtherYourFliers,
                 your_turn_only: false,
                 condition: None,
@@ -1388,6 +1399,8 @@ pub fn script(name: &str) -> Option<Script> {
                 "Anthem of Champions" => s(&["Creatures you control get +1/+1."], |d, _| {
             d.statics.push(Static {
                 subtype: None,
+                lose_abilities: false,
+                base_pt: None,
                 scope: Scope::YourCreatures,
                 your_turn_only: false,
                 condition: None,
@@ -1456,6 +1469,8 @@ pub fn script(name: &str) -> Option<Script> {
             |d, _| {
                 d.statics.push(Static {
                     subtype: None,
+                    lose_abilities: false,
+                    base_pt: None,
                     scope: Scope::This,
                     your_turn_only: false,
                     condition: Some(StaticCondition::Untapped),
@@ -1662,6 +1677,8 @@ pub fn script(name: &str) -> Option<Script> {
             |d, t| {
                 d.statics.push(Static {
                     subtype: None,
+                    lose_abilities: false,
+                    base_pt: None,
                     scope: Scope::OtherYourSubtype("Cat"),
                     your_turn_only: false,
                     condition: None,
@@ -1879,6 +1896,8 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::AnotherCreatureYouControlEnters, vec![], vec![Effect::CountersSelf { n: 1 }]);
                 d.statics.push(Static {
                     subtype: Some("Knight"),
+                    lose_abilities: false,
+                    base_pt: None,
                     scope: Scope::This,
                     your_turn_only: false,
                     condition: Some(StaticCondition::CountersAtLeast(3)),
@@ -1962,6 +1981,8 @@ pub fn script(name: &str) -> Option<Script> {
                 d.hexproof_from_instants = true;
                 let life = |at_least, power, keywords| Static {
                     subtype: None,
+                    lose_abilities: false,
+                    base_pt: None,
                     scope: Scope::This,
                     your_turn_only: false,
                     condition: Some(StaticCondition::LifeAtLeast(at_least)),
@@ -2057,6 +2078,93 @@ pub fn script(name: &str) -> Option<Script> {
                     vec![Effect::LoseLife { who: Who::EachOpponent, n: 10 }, Effect::GainLife { who: Who::You, n: 10 }],
                 );
                 d.activated[n].tap_untapped = Some(("Elf", 10));
+            },
+        ),
+                "Kykar, Zephyr Awakener" => s(
+            &[
+                "Whenever you cast a noncreature spell, choose one —",
+                "• Exile another target creature you control. Return that card to the battlefield under its owner's control at the beginning of the next end step.",
+                "• Create a 1/1 white Spirit creature token with flying.",
+            ],
+            |d, t| {
+                let another = Filter { other: true, ..YOUR_CREATURE };
+                on_modal(
+                    d,
+                    When::YouCastNoncreature,
+                    None,
+                    vec![
+                        Ability::new(vec![another], vec![Effect::Flicker(0)]),
+                        Ability::new(vec![], vec![Effect::CreateToken { who: Who::You, def: t.spirit, n: 1 }]),
+                    ],
+                )
+            },
+        ),
+        "Nine-Lives Familiar" => s(
+            &[
+                "This creature enters with eight revival counters on it if you cast it.",
+                "When this creature dies, if it had a revival counter on it, return it to the battlefield with one fewer revival counter on it at the beginning of the next end step.",
+            ],
+            |d, _| {
+                d.revival_on_cast = true;
+                conditional(d, When::Dies, Condition::HadRevival, vec![], vec![Effect::ReturnNextEndStepWithFewerRevival]);
+            },
+        ),
+        "Time Stop" => s(&["End the turn."], |d, _| spell(d, vec![], vec![Effect::EndTheTurn])),
+        "Witness Protection" => s(
+            &[
+                "Enchant creature",
+                "Enchanted creature loses all abilities and is a green and white Citizen creature with base power and toughness 1/1 named Legitimate Businessperson.",
+            ],
+            |d, _| {
+                d.aura = true;
+                d.spell = Some(Ability::new(vec![CREATURE], vec![]));
+                d.statics.push(Static {
+                    subtype: None,
+                    lose_abilities: true,
+                    base_pt: Some((1, 1)),
+                    scope: Scope::Attached,
+                    your_turn_only: false,
+                    condition: None,
+                    power: 0,
+                    toughness: 0,
+                    keywords: Keywords::NONE,
+                });
+            },
+        ),
+        "Heraldic Banner" => s(
+            &[
+                "As this artifact enters, choose a color.",
+                "Creatures you control of the chosen color get +1/+0.",
+                "{T}: Add one mana of the chosen color.",
+            ],
+            |d, _| {
+                d.choose_color = true;
+                d.mana_of_chosen_color = true;
+                d.statics.push(Static {
+                    subtype: None,
+                    lose_abilities: false,
+                    base_pt: None,
+                    scope: Scope::YourCreaturesOfChosenColor,
+                    your_turn_only: false,
+                    condition: None,
+                    power: 1,
+                    toughness: 0,
+                    keywords: Keywords::NONE,
+                });
+            },
+        ),
+        "Strongbox Raider" => s(
+            &["Raid — When this creature enters, if you attacked this turn, exile the top two cards of your library. Choose one of them. Until the end of your next turn, you may play that card."],
+            |d, _| on_if(d, Condition::Attacked, vec![], vec![Effect::ExileTopChooseOneToPlay { n: 2 }]),
+        ),
+        "Curator of Destinies" => s(
+            &[
+                "This spell can't be countered.",
+                "When this creature enters, look at the top five cards of your library and separate them into a face-down pile and a face-up pile. An opponent chooses one of those piles. Put that pile into your hand and the other into your graveyard.",
+            ],
+            |d, _| {
+                d.uncounterable = true;
+                on(d, When::Enters, vec![], vec![Effect::Piles { n: 5 }]);
             },
         ),
         _ => None,
@@ -2277,4 +2385,11 @@ pub const SCRIPTED: &[&str] = &[
     "Sphinx of Forgotten Lore",
     "Ravenous Amulet",
     "Lathril, Blade of the Elves",
+    "Kykar, Zephyr Awakener",
+    "Nine-Lives Familiar",
+    "Time Stop",
+    "Witness Protection",
+    "Heraldic Banner",
+    "Strongbox Raider",
+    "Curator of Destinies",
 ];

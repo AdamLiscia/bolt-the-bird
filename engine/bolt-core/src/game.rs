@@ -87,6 +87,13 @@ pub struct Object {
     /// Soul counters, and how many it had when it last left the battlefield.
     pub soul: i32,
     pub last_soul: i32,
+    /// Revival counters, and how many when it last left the battlefield.
+    pub revival: i32,
+    pub last_revival: i32,
+    /// The color chosen as it entered (index into WUBRG).
+    pub chosen_color: Option<u8>,
+    /// Who may play this card from exile, and through which turn.
+    pub playable: Option<(PlayerId, u32)>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -419,6 +426,21 @@ pub enum Decision {
     ChooseMode,
     /// `Pick` a creature to sacrifice, `left` more to go.
     SacrificeCreatures { left: u8 },
+    /// Choose a color for `card` with `Mode(n)`, n in WUBRG order.
+    ChooseColor { card: ObjId },
+    /// Put the first of `rest` into pile A (`Yes`) or B (`No`).
+    SplitPiles {
+        rest: Vec<ObjId>,
+        a: Vec<ObjId>,
+        b: Vec<ObjId>,
+        owner: PlayerId,
+    },
+    /// The opponent takes pile A (`Yes`) or B (`No`) for the owner's hand.
+    ChoosePile {
+        a: Vec<ObjId>,
+        b: Vec<ObjId>,
+        owner: PlayerId,
+    },
     /// "You may pay {cost}": `Yes` (if affordable) or `No`.
     MayPay { cost: ManaCost },
     /// `Discard` a card, or `No` to lose `n` life.
@@ -474,6 +496,14 @@ pub struct Game {
     pub life_lost_this_turn: [bool; 2],
     /// True while combat damage is being dealt.
     pub in_combat_damage: bool,
+    /// Cards to return at the beginning of the next end step: (card, its zone-change count, revival
+    /// counters to return with).
+    pub delayed_returns: Vec<(ObjId, u32, i32)>,
+    /// Set by "end the turn" while it resolves.
+    pub end_turn: bool,
+    /// How many permanents with a "loses all abilities" static are on the battlefield. Zero almost
+    /// always, which lets ability-loss checks skip a battlefield scan.
+    pub ability_loss_sources: u32,
     /// Triggered abilities waiting to be put on the stack (CR 603.3).
     pub triggered: Vec<StackItem>,
     pub choosing: Option<Choosing>,
@@ -546,6 +576,9 @@ impl Game {
             creature_died_this_turn: false,
             life_lost_this_turn: [false; 2],
             in_combat_damage: false,
+            delayed_returns: Vec::new(),
+            end_turn: false,
+            ability_loss_sources: 0,
             triggered: Vec::new(),
             choosing: None,
             resolving: None,
@@ -571,6 +604,9 @@ impl Game {
     /// battlefield have been there since before turn 1, so they can attack.
     pub fn add_card(&mut self, owner: PlayerId, def: usize, zone: Zone) -> ObjId {
         assert!(def < self.defs.len(), "no card definition {def}");
+        if zone == Zone::Battlefield && self.defs[def].statics.iter().any(|s| s.lose_abilities) {
+            self.ability_loss_sources += 1;
+        }
         let id = ObjId(self.objects.len() as u32);
         self.objects.push(Object {
             id,
@@ -598,6 +634,10 @@ impl Game {
             flashback_eot: false,
             soul: 0,
             last_soul: 0,
+            revival: 0,
+            last_revival: 0,
+            chosen_color: None,
+            playable: None,
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -629,9 +669,35 @@ impl Game {
     }
 
     /// Keywords after granting effects (layer 6).
+    /// An Aura's "loses all abilities" effect on `id`, if any, with its base power and toughness.
+    /// Looked up directly (not through `statics_on`) so it can be used while computing statics.
+    fn ability_loss(&self, id: ObjId) -> Option<(i32, i32)> {
+        if self.ability_loss_sources == 0 {
+            return None;
+        }
+        let zcc = self.obj(id).zcc;
+        self.battlefield.iter().find_map(|&src| {
+            if self.obj(src).attached_to != Some((id, zcc)) {
+                return None;
+            }
+            self.def_of(src)
+                .statics
+                .iter()
+                .find(|s| s.lose_abilities)
+                .map(|s| s.base_pt.unwrap_or((0, 0)))
+        })
+    }
+
+    fn lost_abilities(&self, id: ObjId) -> bool {
+        self.obj(id).zone == Zone::Battlefield && self.ability_loss(id).is_some()
+    }
+
     /// Printed or gained creature types, ignoring types from static abilities (used while working
     /// out static abilities, so they don't depend on each other).
     fn has_base_subtype(&self, id: ObjId, s: &str) -> bool {
+        if self.lost_abilities(id) {
+            return s == "Citizen"; // Witness Protection
+        }
         let o = self.obj(id);
         if let Some(only) = o.subtype_override {
             return only == s;
@@ -652,6 +718,7 @@ impl Game {
         self.battlefield
             .iter()
             .filter(move |_| on_battlefield)
+            .filter(move |&&src| !self.lost_abilities(src))
             .flat_map(move |&src| {
                 let so = self.obj(src);
                 self.def_of(src).statics.iter().copied().filter(move |s| {
@@ -663,6 +730,12 @@ impl Game {
                         Scope::Attached => so.attached_to == Some((id, o.zcc)),
                         // Printed or granted-until-end-of-turn flying; static grants are left out
                         // so statics don't depend on each other (no FDN static grants flying).
+                        Scope::YourCreaturesOfChosenColor => {
+                            mine && creature
+                                && so
+                                    .chosen_color
+                                    .is_some_and(|c| self.def_of(id).colors[c as usize])
+                        }
                         Scope::OtherYourSubtype(sub) => {
                             mine && creature && src != id && self.has_base_subtype(id, sub)
                         }
@@ -689,11 +762,12 @@ impl Game {
 
     /// Keywords after granting effects (layer 6).
     pub fn keywords(&self, id: ObjId) -> Keywords {
-        let k = self
-            .modifiers(id)
-            .fold(self.def_of(id).keywords.with(self.obj(id).granted), |k, m| {
-                k.with(m.keywords)
-            });
+        let printed = if self.lost_abilities(id) {
+            Keywords::NONE
+        } else {
+            self.def_of(id).keywords.with(self.obj(id).granted)
+        };
+        let k = self.modifiers(id).fold(printed, |k, m| k.with(m.keywords));
         self.statics_on(id).fold(k, |k, s| k.with(s.keywords))
     }
 
@@ -707,7 +781,7 @@ impl Game {
     }
 
     pub fn power(&self, id: ObjId) -> i32 {
-        self.def_of(id).power
+        self.ability_loss(id).map_or(self.def_of(id).power, |pt| pt.0)
             + self.opponents_graveyard_bonus(id)
             + self.obj(id).counters
             + self.modifiers(id).map(|m| m.power).sum::<i32>()
@@ -715,7 +789,7 @@ impl Game {
     }
 
     pub fn toughness(&self, id: ObjId) -> i32 {
-        self.def_of(id).toughness
+        self.ability_loss(id).map_or(self.def_of(id).toughness, |pt| pt.1)
             + self.opponents_graveyard_bonus(id)
             + self.obj(id).counters
             + self.modifiers(id).map(|m| m.toughness).sum::<i32>()
@@ -725,7 +799,7 @@ impl Game {
     /// Puts triggers of `p`'s permanents that match `when` into the waiting list.
     fn fire(&mut self, p: PlayerId, when: When, except: Option<ObjId>) {
         for id in self.permanents(p).collect::<Vec<_>>() {
-            if Some(id) == except {
+            if Some(id) == except || self.lost_abilities(id) {
                 continue;
             }
             let whens: Vec<When> = self.def_of(id).triggers.iter().map(|tr| tr.when).collect();
@@ -816,6 +890,14 @@ impl Game {
     /// Moves a card between zones. Leaving the battlefield clears its per-permanent state (CR 400.7).
     fn move_to(&mut self, id: ObjId, to: Zone) {
         let (owner, from) = (self.obj(id).owner, self.obj(id).zone);
+        if self.def_of(id).statics.iter().any(|s| s.lose_abilities) {
+            if from == Zone::Battlefield {
+                self.ability_loss_sources -= 1;
+            }
+            if to == Zone::Battlefield {
+                self.ability_loss_sources += 1;
+            }
+        }
         if from == Zone::Battlefield {
             let p = self.power(id);
             self.obj_mut(id).last_power = p;
@@ -829,6 +911,9 @@ impl Game {
         let o = self.obj_mut(id);
         o.zone = to;
         o.zcc += 1;
+        if to != Zone::Exile {
+            o.playable = None;
+        }
         o.tapped = false;
         o.damage = 0;
         o.deathtouched = false;
@@ -841,6 +926,9 @@ impl Game {
             o.granted = Keywords::NONE;
             o.used_once = false;
             o.last_soul = o.soul;
+            o.last_revival = o.revival;
+            o.revival = 0;
+            o.chosen_color = None;
             o.soul = 0;
         }
         o.attached_to = None;
@@ -928,6 +1016,7 @@ impl Game {
                     Condition::Always => true,
                     Condition::OpponentLostLifeThisTurn => false,
                     Condition::SourceWasNot(_) => false,
+                    Condition::HadRevival => false,
                     _ => false,
                 };
                 if yes {
@@ -1354,7 +1443,16 @@ impl Game {
             let d = self.def_of(c);
             d.flashback.is_some() || (self.obj(c).flashback_eot && (d.types.instant || d.types.sorcery))
         });
-        let candidates: Vec<(ObjId, bool)> = hand.chain(flashback.map(|&c| (c, true))).collect();
+        let turn = self.turn;
+        let from_exile = self.exile.iter().copied().filter(move |&c| {
+            self.obj(c)
+                .playable
+                .is_some_and(|(q, until)| q == p && turn <= until)
+        });
+        let candidates: Vec<(ObjId, bool)> = hand
+            .chain(flashback.map(|&c| (c, true)))
+            .chain(from_exile.map(|c| (c, false)))
+            .collect();
         for (c, from_graveyard) in candidates {
             let def = self.def_of(c);
             if def.types.land {
@@ -1585,7 +1683,7 @@ impl Game {
         for id in self.permanents(p).chain(graveyard) {
             let in_graveyard = self.obj(id).zone == Zone::Graveyard;
             for (n, a) in self.def_of(id).activated.iter().enumerate() {
-                if a.from_graveyard != in_graveyard {
+                if a.from_graveyard != in_graveyard || (!in_graveyard && self.lost_abilities(id)) {
                     continue;
                 }
                 let uses_self = a.tap || a.sacrifice_self;
@@ -1680,7 +1778,15 @@ impl Game {
     fn untapped_sources(&self, p: PlayerId) -> Vec<(ObjId, ManaSource)> {
         self.permanents(p)
             .filter(|&id| self.can_tap(id))
-            .filter_map(|id| self.def_of(id).mana.map(|m| (id, m)))
+            .filter(|&id| !self.lost_abilities(id))
+            .filter_map(|id| {
+                let d = self.def_of(id);
+                if d.mana_of_chosen_color {
+                    let c = self.obj(id).chosen_color?;
+                    return Some((id, ManaSource::of(&[crate::Color::ALL[c as usize]])));
+                }
+                d.mana.map(|m| (id, m))
+            })
             .collect()
     }
 
@@ -2266,6 +2372,9 @@ impl Game {
             if r.acts && self.def_of(source).types.is_permanent() {
                 self.move_to(source, Zone::Battlefield);
                 self.obj_mut(source).controller = r.item.controller;
+                if self.def_of(source).revival_on_cast {
+                    self.obj_mut(source).revival = 8;
+                }
                 // CR 303.4f: an Aura spell enters attached to its target.
                 if self.def_of(source).aura {
                     if let Some(&Chosen::Object(t, z)) = r.item.targets.first() {
@@ -2278,8 +2387,34 @@ impl Game {
             if r.acts {
                 self.events.push(Event::Resolved { card: source });
             }
+            // "As this enters, choose a color" (CR 614.12).
+            if r.acts && self.def_of(source).choose_color && self.obj(source).zone == Zone::Battlefield {
+                self.ask(r.item.controller, Decision::ChooseColor { card: source });
+                return;
+            }
+        }
+        if self.end_turn {
+            self.end_the_turn();
+            return;
         }
         self.give_priority(self.active);
+    }
+
+    /// CR 724.1: exile every object on the stack, remove creatures from combat, and go to cleanup.
+    fn end_the_turn(&mut self) {
+        self.end_turn = false;
+        let spells: Vec<ObjId> = self
+            .items
+            .drain(..)
+            .filter(|i| i.kind == StackKind::Spell)
+            .map(|i| i.source)
+            .collect();
+        for s in spells {
+            self.move_to(s, Zone::Exile);
+        }
+        self.triggered.clear();
+        self.combat = None;
+        self.enter(Step::Cleanup);
     }
 
     /// A spell leaves the stack: to the graveyard, or to exile if it was cast with flashback.
@@ -2347,6 +2482,8 @@ impl Game {
         match self.decision.as_ref().expect("a decision") {
             Decision::May | Decision::Surveil { .. } | Decision::Tuck { .. } => vec![Action::Yes, Action::No],
             Decision::SacrificeCreatures { .. } => self.creatures(p).map(Action::Pick).collect(),
+            Decision::ChooseColor { .. } => (0..5).map(Action::Mode).collect(),
+            Decision::SplitPiles { .. } | Decision::ChoosePile { .. } => vec![Action::Yes, Action::No],
             Decision::MayPay { cost } => {
                 let mut v = Vec::new();
                 if self.can_pay(p, cost, None) {
@@ -2446,6 +2583,15 @@ impl Game {
 
     fn decide(&mut self, p: PlayerId, a: Action) {
         let d = self.decision.take().expect("a decision");
+        if let (Decision::ChooseColor { card }, Action::Mode(c)) = (&d, a) {
+            self.obj_mut(*card).chosen_color = Some(c);
+            if self.end_turn {
+                self.end_the_turn();
+            } else {
+                self.give_priority(self.active);
+            }
+            return;
+        }
         if let (Decision::ChooseMode, Action::Mode(m)) = (&d, a) {
             let (mut item, then) = self.mode_pending.take().expect("a modal trigger");
             item.mode = Some(m);
@@ -2457,6 +2603,36 @@ impl Game {
             (Decision::PayWard { cost, .. }, Action::Yes) => self.pay_mana(p, &cost, None),
             (Decision::SacrificeAnother { .. }, Action::Pick(c)) => self.move_to(c, Zone::Graveyard),
             (Decision::MayPay { cost }, Action::Yes) => self.pay_mana(p, &cost, None),
+            (
+                Decision::SplitPiles {
+                    mut rest,
+                    mut a,
+                    mut b,
+                    owner,
+                },
+                choice,
+            ) => {
+                let c = rest.remove(0);
+                if choice == Action::Yes {
+                    a.push(c)
+                } else {
+                    b.push(c)
+                }
+                if rest.is_empty() {
+                    self.ask(opponent(owner), Decision::ChoosePile { a, b, owner });
+                } else {
+                    self.ask(p, Decision::SplitPiles { rest, a, b, owner });
+                }
+            }
+            (Decision::ChoosePile { a, b, .. }, choice) => {
+                let (keep, lose) = if choice == Action::Yes { (a, b) } else { (b, a) };
+                for c in keep {
+                    self.move_to(c, Zone::Hand);
+                }
+                for c in lose {
+                    self.move_to(c, Zone::Graveyard);
+                }
+            }
             (Decision::SacrificeCreatures { left }, Action::Pick(c)) => {
                 self.move_to(c, Zone::Graveyard);
                 if left > 1 && self.creatures(p).next().is_some() {
@@ -2487,6 +2663,15 @@ impl Game {
                     match to {
                         LookTo::Hand => self.move_to(c, Zone::Hand),
                         LookTo::Battlefield => self.move_to(c, Zone::Battlefield),
+                        LookTo::PlayFromExile => {
+                            // Until the end of your next turn (CR 611.2c).
+                            let until = if self.active == p {
+                                self.turn + 2
+                            } else {
+                                self.turn + 1
+                            };
+                            self.obj_mut(c).playable = Some((p, until));
+                        }
                         LookTo::Top => {
                             let lib = &mut self.players[p].library;
                             let pos = lib.iter().position(|&x| x == c).expect("in library");
@@ -3247,6 +3432,62 @@ impl Game {
                     self.lose_life(opponent(item.controller), n);
                 }
             }
+            Effect::Flicker(n) => {
+                if let Some(id) = Game::slot_object(item, legal, n) {
+                    self.move_to(id, Zone::Exile);
+                    let zcc = self.obj(id).zcc;
+                    self.delayed_returns.push((id, zcc, 0));
+                }
+            }
+            Effect::ReturnNextEndStepWithFewerRevival => {
+                let o = self.obj(src);
+                if o.zone == Zone::Graveyard && o.last_revival > 0 {
+                    self.delayed_returns.push((src, o.zcc, o.last_revival - 1));
+                }
+            }
+            Effect::EndTheTurn => self.end_turn = true,
+            Effect::ExileTopChooseOneToPlay { n } => {
+                let p = item.controller;
+                let mut cards = Vec::new();
+                for _ in 0..n {
+                    if let Some(&c) = self.players[p].library.last() {
+                        self.move_to(c, Zone::Exile);
+                        cards.push(c);
+                    }
+                }
+                if !cards.is_empty() {
+                    self.ask(
+                        p,
+                        Decision::LookPick {
+                            cards,
+                            pick: Pick::Any,
+                            to: LookTo::PlayFromExile,
+                            rest: None,
+                        },
+                    );
+                }
+            }
+            Effect::Piles { n } => {
+                let p = item.controller;
+                let rest: Vec<ObjId> = self.players[p]
+                    .library
+                    .iter()
+                    .rev()
+                    .take(n as usize)
+                    .copied()
+                    .collect();
+                if !rest.is_empty() {
+                    self.ask(
+                        p,
+                        Decision::SplitPiles {
+                            rest,
+                            a: Vec::new(),
+                            b: Vec::new(),
+                            owner: p,
+                        },
+                    );
+                }
+            }
             Effect::UntapSelf => {
                 if self.obj(src).zone == Zone::Battlefield {
                     self.obj_mut(src).tapped = false;
@@ -3359,6 +3600,7 @@ impl Game {
             Some(Condition::CreatureDiedThisTurn) => self.creature_died_this_turn,
             Some(Condition::Always) => true,
             Some(Condition::OpponentLostLifeThisTurn) => self.life_lost_this_turn[opponent(controller)],
+            Some(Condition::HadRevival) => self.obj(source).last_revival > 0,
             Some(Condition::SourceWasNot(sub)) => {
                 let o = self.obj(source);
                 !self.def_of(source).subtypes.iter().any(|x| x == sub) && !o.last_subtypes.contains(sub)
@@ -3601,6 +3843,16 @@ impl Game {
                 self.give_priority(a);
             }
             Step::End => {
+                // Delayed "at the beginning of the next end step" returns (CR 603.7).
+                for (c, zcc, revival) in std::mem::take(&mut self.delayed_returns) {
+                    let o = self.obj(c);
+                    if o.zcc == zcc && matches!(o.zone, Zone::Exile | Zone::Graveyard) {
+                        self.move_to(c, Zone::Battlefield);
+                        let o = self.obj_mut(c);
+                        o.controller = o.owner;
+                        o.revival = revival;
+                    }
+                }
                 // CR 513.1: "at the beginning of the end step" triggers.
                 self.fire(a, When::EndStep { your_turn_only: true }, None);
                 self.fire(
@@ -3760,6 +4012,9 @@ impl Game {
 
     /// Puts the triggers of one permanent that match `when` into the waiting list.
     fn fire_source(&mut self, id: ObjId, when: When) {
+        if self.lost_abilities(id) {
+            return;
+        }
         let controller = self.obj(id).controller;
         let whens: Vec<When> = self.def_of(id).triggers.iter().map(|tr| tr.when).collect();
         for (n, w) in whens.into_iter().enumerate() {
@@ -3961,6 +4216,17 @@ impl Game {
             return Err(format!(
                 "stack cards {:?} disagree with spell items {spells:?}",
                 self.stack
+            ));
+        }
+        let loss = self
+            .battlefield
+            .iter()
+            .filter(|&&id| self.def_of(id).statics.iter().any(|s| s.lose_abilities))
+            .count() as u32;
+        if loss != self.ability_loss_sources {
+            return Err(format!(
+                "ability-loss count {} but {loss} on the battlefield",
+                self.ability_loss_sources
             ));
         }
         if self.is_over() != (self.pending == Pending::GameOver) {

@@ -357,6 +357,23 @@ pub enum Effect {
     SoulCounterSelf,
     /// Each opponent loses life equal to the source's soul counters (last known).
     OpponentsLoseSoul,
+    /// Exile the creature in `slot`; return it under its owner's control at the beginning of the
+    /// next end step.
+    Flicker(u8),
+    /// Return the source at the beginning of the next end step with one fewer revival counter.
+    ReturnNextEndStepWithFewerRevival,
+    /// End the turn (CR 724).
+    EndTheTurn,
+    /// Exile the top `n` cards of your library; choose one, which you may play until the end of
+    /// your next turn.
+    ExileTopChooseOneToPlay {
+        n: u8,
+    },
+    /// Look at the top `n` cards and split them into two piles; an opponent chooses one for your
+    /// hand, and the other goes to your graveyard.
+    Piles {
+        n: u8,
+    },
     /// "When you do": trigger number `n` of the source triggers now (CR 603.12).
     Reflexive(usize),
     /// Until end of turn, the creature in `slot` gains the source's trigger number `trigger` as a
@@ -415,6 +432,8 @@ pub enum Scope {
     OtherYourFliers,
     /// Other creatures you control with this subtype.
     OtherYourSubtype(&'static str),
+    /// Creatures you control of the source's chosen color.
+    YourCreaturesOfChosenColor,
 }
 
 /// A condition on a static ability ("as long as ...").
@@ -439,6 +458,9 @@ pub struct Static {
     pub condition: Option<StaticCondition>,
     /// An extra creature type it gives.
     pub subtype: Option<&'static str>,
+    /// The creature loses all abilities (layer 6) and has this base power and toughness (layer 7b).
+    pub lose_abilities: bool,
+    pub base_pt: Option<(i32, i32)>,
     pub power: i32,
     pub toughness: i32,
     pub keywords: Keywords,
@@ -459,6 +481,8 @@ pub enum LookTo {
     Hand,
     Top,
     Battlefield,
+    /// Stays in exile; you may play it until the end of your next turn.
+    PlayFromExile,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -488,6 +512,8 @@ pub enum Condition {
     OpponentLostLifeThisTurn,
     /// The source wasn't this creature type when it left the battlefield.
     SourceWasNot(&'static str),
+    /// The source had a revival counter when it left the battlefield.
+    HadRevival,
     /// Threshold: seven or more cards in your graveyard.
     Threshold,
     /// The source was kicked.

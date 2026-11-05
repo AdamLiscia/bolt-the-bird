@@ -25,6 +25,8 @@ pub struct Oracle {
     pub power: Option<String>,
     pub toughness: Option<String>,
     pub rarity: String,
+    #[serde(default)]
+    pub colors: Vec<String>,
 }
 
 /// The Scryfall data for every FDN card, in model order.
@@ -172,6 +174,18 @@ fn definition(o: &Oracle) -> (CardDef, bool) {
         alt_cost: None,
         leyline: false,
         grants_flash: false,
+        colors: {
+            let mut c = [false; 5];
+            for s in &o.colors {
+                if let Some(col) = s.chars().next().and_then(Color::from_symbol) {
+                    c[col as usize] = true;
+                }
+            }
+            c
+        },
+        revival_on_cast: false,
+        choose_color: false,
+        mana_of_chosen_color: false,
     };
     let mut claimed = rest.is_empty();
     if let Some(s) = scripts::script(&o.name) {
