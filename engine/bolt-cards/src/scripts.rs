@@ -2463,6 +2463,79 @@ pub fn script(name: &str) -> Option<Script> {
                 d.activated[n].sorcery = true;
             },
         ),
+                "Self-Reflection" => s(
+            &["Create a token that's a copy of target creature you control.", "Flashback {3}{U}"],
+            |d, _| {
+                d.flashback = ManaCost::parse("{3}{U}");
+                spell(
+                    d,
+                    vec![YOUR_CREATURE],
+                    vec![Effect::CopyToken { slot: Some(0), haste_and_sacrifice: false, extra_subtype: None }],
+                )
+            },
+        ),
+        "Electroduplicate" => s(
+            &[
+                "Create a token that's a copy of target creature you control, except it has haste and \"At the beginning of the end step, sacrifice this token.\"",
+                "Flashback {2}{R}{R}",
+            ],
+            |d, _| {
+                d.flashback = ManaCost::parse("{2}{R}{R}");
+                spell(
+                    d,
+                    vec![YOUR_CREATURE],
+                    vec![Effect::CopyToken { slot: Some(0), haste_and_sacrifice: true, extra_subtype: None }],
+                )
+            },
+        ),
+        "Homunculus Horde" => s(
+            &["Whenever you draw your second card each turn, create a token that's a copy of this creature."],
+            |d, _| {
+                on(
+                    d,
+                    When::YouDrawSecond,
+                    vec![],
+                    vec![Effect::CopyToken { slot: None, haste_and_sacrifice: false, extra_subtype: None }],
+                )
+            },
+        ),
+        "Extravagant Replication" => s(
+            &["At the beginning of your upkeep, create a token that's a copy of another target nonland permanent you control."],
+            |d, _| {
+                let f = Filter {
+                    players: false,
+                    creatures: false,
+                    planeswalkers: false,
+                    nonland_permanents: true,
+                    other: true,
+                    controller: Controller::You,
+                    ..Filter::ANY
+                };
+                on(
+                    d,
+                    When::Upkeep { your_turn_only: true },
+                    vec![f],
+                    vec![Effect::CopyToken { slot: Some(0), haste_and_sacrifice: false, extra_subtype: None }],
+                )
+            },
+        ),
+        "Abyssal Harvester" => s(
+            &["{T}: Exile target creature card from a graveyard that was put there this turn. Create a token that's a copy of it, except it's a Nightmare in addition to its other types. Then exile all other Nightmare tokens you control."],
+            |d, _| {
+                let f = Filter { put_there_this_turn: true, ..graveyard_cards(true, Controller::Any) };
+                activated(
+                    d,
+                    "",
+                    true,
+                    vec![f],
+                    vec![
+                        Effect::Exile(0),
+                        Effect::CopyToken { slot: Some(0), haste_and_sacrifice: false, extra_subtype: Some("Nightmare") },
+                        Effect::ExileOtherTokensWithSubtype("Nightmare"),
+                    ],
+                );
+            },
+        ),
         _ => None,
     }
 }
@@ -2714,4 +2787,9 @@ pub const SCRIPTED: &[&str] = &[
     "Exsanguinate",
     "Genesis Wave",
     "Fiend Artisan",
+    "Self-Reflection",
+    "Electroduplicate",
+    "Homunculus Horde",
+    "Extravagant Replication",
+    "Abyssal Harvester",
 ];

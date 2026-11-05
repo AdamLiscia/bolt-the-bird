@@ -198,3 +198,12 @@ One line per working step, newest last. The next session continues from the last
   Luminous Rebuke's cost reduction counted a tapped creature it couldn't legally target (hexproof
   from instants); fixed with a regression test. 10,000 release fuzz games pass. **Next: token copies
   (Self-Reflection, Electroduplicate, Homunculus Horde, Extravagant Replication, Abyssal Harvester).**
+- 2026-11-05: **Tier 4, batch 3: token copies.** Copy tokens take the original card's printed values
+  (CR 707.2) and are tokens for every rule (`is_token`), with "has haste and is sacrificed at the
+  beginning of the end step" and "also a Nightmare" exceptions, graveyard targets "put there this
+  turn", and "exile all other Nightmare tokens". 5 cards (Self-Reflection, Electroduplicate,
+  Homunculus Horde, Extravagant Replication, Abyssal Harvester): **263 supported, 308 tests.** 10,000
+  release fuzz games pass. **Next: the remaining tier-4 cards: planeswalkers (Liliana, Chandra, Kaito,
+  Ajani, Vivien), Doubling Season, Twinflame Tyrant, Thousand-Year Storm, Omniscience, Progenitus,
+  Etali, Giada, Zul Ashur, Quilled Greatwurm, Banner of Kinship, Bloom Tender, Fiery Annihilation,
+  Involuntary Employment.**

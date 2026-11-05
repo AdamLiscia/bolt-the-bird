@@ -47,6 +47,8 @@ pub struct Filter {
     pub mana_value_at_most_source_power: bool,
     /// Any permanent, lands included.
     pub any_permanent: bool,
+    /// Graveyard cards put there this turn.
+    pub put_there_this_turn: bool,
     /// Instant and sorcery cards only (graveyard targets).
     pub instant_or_sorcery: bool,
     pub controller: Controller,
@@ -78,6 +80,7 @@ impl Filter {
         not_subtype: None,
         mana_value_at_most_source_power: false,
         any_permanent: false,
+        put_there_this_turn: false,
         instant_or_sorcery: false,
         controller: Controller::Any,
         creature_needs_flying: false,
@@ -435,6 +438,16 @@ pub enum Effect {
     /// Reveal the top X cards; put any number of permanent cards with mana value X or less onto the
     /// battlefield and the rest into your graveyard.
     GenesisWave,
+    /// Create a token that's a copy of the permanent or card in `slot` (or the source), optionally
+    /// with haste and "sacrifice it at the beginning of the end step", or an extra creature type
+    /// (CR 707.2, 111.10).
+    CopyToken {
+        slot: Option<u8>,
+        haste_and_sacrifice: bool,
+        extra_subtype: Option<&'static str>,
+    },
+    /// Exile all other tokens you control with this subtype (other than the one just created).
+    ExileOtherTokensWithSubtype(&'static str),
     /// "When you do": trigger number `n` of the source triggers now (CR 603.12).
     Reflexive(usize),
     /// Until end of turn, the creature in `slot` gains the source's trigger number `trigger` as a

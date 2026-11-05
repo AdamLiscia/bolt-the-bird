@@ -99,6 +99,12 @@ pub struct Object {
     /// Bait counters (Fishing Pole) and a stash counter (Tinybones).
     pub bait: i32,
     pub stash: bool,
+    /// A token that's a copy of a card (its definition isn't a token's).
+    pub copy_token: bool,
+    /// Sacrifice it at the beginning of the next end step (Electroduplicate).
+    pub sacrifice_at_end: bool,
+    /// The turn it was last put into a graveyard.
+    pub graveyard_turn: u32,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -541,6 +547,8 @@ pub struct Game {
     pub delayed_returns: Vec<(ObjId, u32, i32)>,
     /// Set by "end the turn" while it resolves.
     pub end_turn: bool,
+    /// The last token created, for "other" in the same effect.
+    pub last_created: Option<ObjId>,
     /// How many permanents with a "loses all abilities" static are on the battlefield. Zero almost
     /// always, which lets ability-loss checks skip a battlefield scan.
     pub ability_loss_sources: u32,
@@ -627,6 +635,7 @@ impl Game {
             in_combat_damage: false,
             delayed_returns: Vec::new(),
             end_turn: false,
+            last_created: None,
             ability_loss_sources: 0,
             static_sources: Vec::new(),
             combat_damage_prevented: Vec::new(),
@@ -697,6 +706,9 @@ impl Game {
             playable: None,
             bait: 0,
             stash: false,
+            copy_token: false,
+            sacrifice_at_end: false,
+            graveyard_turn: 0,
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -749,6 +761,11 @@ impl Game {
 
     fn lost_abilities(&self, id: ObjId) -> bool {
         self.obj(id).zone == Zone::Battlefield && self.ability_loss(id).is_some()
+    }
+
+    /// Whether `id` is a token: a token card, or a copy token (CR 111.1).
+    pub fn is_token(&self, id: ObjId) -> bool {
+        self.def_of(id).token || self.obj(id).copy_token
     }
 
     /// Printed or gained creature types, ignoring types from static abilities (used while working
@@ -1035,6 +1052,10 @@ impl Game {
         }
         if from == Zone::Battlefield {
             o.bait = 0;
+            o.sacrifice_at_end = false;
+        }
+        if to == Zone::Graveyard {
+            o.graveyard_turn = turn;
         }
         o.tapped = false;
         o.damage = 0;
@@ -1088,7 +1109,7 @@ impl Game {
         if dies && self.def_of(id).types.creature {
             self.creature_died_this_turn = true;
             self.fire(last_controller, When::CreatureYouControlDies, Some(id));
-            if !self.def_of(id).token {
+            if !self.is_token(id) {
                 let was = |g: &Game, s: &str| {
                     g.def_of(id).subtypes.iter().any(|x| x == s) || g.obj(id).last_subtypes.contains(&s)
                 };
@@ -1183,7 +1204,7 @@ impl Game {
                 }
                 let subs = def.subtypes.clone();
                 let entering_power = self.power(id);
-                let entering_token = def.token;
+                let entering_token = self.is_token(id);
                 for any in self.permanents(controller).collect::<Vec<_>>() {
                     let whens: Vec<When> = self.def_of(any).triggers.iter().map(|tr| tr.when).collect();
                     for (n, w) in whens.into_iter().enumerate() {
@@ -1472,6 +1493,7 @@ impl Game {
                         && (!f.nonland_permanents || (d.types.is_permanent() && !d.types.land))
                         && (!f.permanent_cards || d.types.is_permanent())
                         && (!f.instant_or_sorcery || d.types.instant || d.types.sorcery)
+                        && (!f.put_there_this_turn || o.graveyard_turn == self.turn)
                         && f.max_mana_value.is_none_or(|m| d.cost.mana_value() <= m);
                 }
                 if o.zone != Zone::Battlefield {
@@ -4050,6 +4072,41 @@ impl Game {
                     );
                 }
             }
+            Effect::CopyToken {
+                slot,
+                haste_and_sacrifice,
+                extra_subtype,
+            } => {
+                let original = match slot {
+                    Some(n) => Game::slot_object(item, legal, n),
+                    None => Some(src),
+                };
+                if let Some(o) = original {
+                    // CR 707.2: the copy takes the original's printed values (its card), not its
+                    // counters or other effects.
+                    let def = self.obj(o).def;
+                    let id = self.add_card(item.controller, def, Zone::Hand);
+                    self.obj_mut(id).copy_token = true;
+                    self.move_to(id, Zone::Battlefield);
+                    self.last_created = Some(id);
+                    let ob = self.obj_mut(id);
+                    ob.extra_subtypes.extend(extra_subtype);
+                    if haste_and_sacrifice {
+                        ob.granted = ob.granted.with(Keywords::HASTE);
+                        ob.sacrifice_at_end = true;
+                    }
+                }
+            }
+            Effect::ExileOtherTokensWithSubtype(sub) => {
+                let keep = self.last_created;
+                let others: Vec<ObjId> = self
+                    .permanents(item.controller)
+                    .filter(|&c| Some(c) != keep && self.is_token(c) && self.has_subtype(c, sub))
+                    .collect();
+                for c in others {
+                    self.move_to(c, Zone::Exile);
+                }
+            }
             Effect::UntapSelf => {
                 if self.obj(src).zone == Zone::Battlefield {
                     self.obj_mut(src).tapped = false;
@@ -4178,6 +4235,7 @@ impl Game {
     /// Creates a token on the battlefield. It is summoning sick like any new permanent.
     fn create_token(&mut self, p: PlayerId, def: usize) -> ObjId {
         let id = self.add_card(p, def, Zone::Battlefield);
+        self.last_created = Some(id);
         self.obj_mut(id).since_turn = self.turn;
         self.zone_triggers(id, Zone::Gone, Zone::Battlefield, p);
         id
@@ -4418,6 +4476,16 @@ impl Game {
                 self.give_priority(a);
             }
             Step::End => {
+                // "At the beginning of the end step, sacrifice this token."
+                let doomed: Vec<ObjId> = self
+                    .battlefield
+                    .iter()
+                    .copied()
+                    .filter(|&c| self.obj(c).sacrifice_at_end)
+                    .collect();
+                for c in doomed {
+                    self.move_to(c, Zone::Graveyard);
+                }
                 // Delayed "at the beginning of the next end step" returns (CR 603.7).
                 for (c, zcc, revival) in std::mem::take(&mut self.delayed_returns) {
                     let o = self.obj(c);
@@ -4701,7 +4769,10 @@ impl Game {
             let ceased: Vec<ObjId> = self
                 .objects
                 .iter()
-                .filter(|o| self.defs[o.def].token && !matches!(o.zone, Zone::Battlefield | Zone::Gone))
+                .filter(|o| {
+                    (self.defs[o.def].token || o.copy_token)
+                        && !matches!(o.zone, Zone::Battlefield | Zone::Gone)
+                })
                 .map(|o| o.id)
                 .collect();
             for id in ceased {
