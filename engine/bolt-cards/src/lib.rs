@@ -158,6 +158,10 @@ fn definition(o: &Oracle) -> (CardDef, bool) {
         spell_discount: 0,
         enters_counters: None,
         ward: None,
+        must_attack: false,
+        not_blocked_by: None,
+        opponents_creatures_enter_tapped: false,
+        cant_lose: false,
     };
     let mut claimed = rest.is_empty();
     if let Some(s) = scripts::script(&o.name) {

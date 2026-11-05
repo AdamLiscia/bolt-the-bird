@@ -177,6 +177,14 @@ pub struct CardDef {
     pub enters_counters: Option<(i32, Condition)>,
     /// Ward {cost} (CR 702.21).
     pub ward: Option<ManaCost>,
+    /// "Attacks each combat if able" (CR 508.1d).
+    pub must_attack: bool,
+    /// "Can't be blocked by [subtype]".
+    pub not_blocked_by: Option<&'static str>,
+    /// "Creatures your opponents control enter tapped."
+    pub opponents_creatures_enter_tapped: bool,
+    /// "You can't lose the game and your opponents can't win the game."
+    pub cant_lose: bool,
 }
 
 impl CardDef {
@@ -212,6 +220,10 @@ impl CardDef {
             spell_discount: 0,
             enters_counters: None,
             ward: None,
+            must_attack: false,
+            not_blocked_by: None,
+            opponents_creatures_enter_tapped: false,
+            cant_lose: false,
         }
     }
 
@@ -248,6 +260,10 @@ impl CardDef {
             spell_discount: 0,
             enters_counters: None,
             ward: None,
+            must_attack: false,
+            not_blocked_by: None,
+            opponents_creatures_enter_tapped: false,
+            cant_lose: false,
         }
     }
 
@@ -284,6 +300,10 @@ impl CardDef {
             spell_discount: 0,
             enters_counters: None,
             ward: None,
+            must_attack: false,
+            not_blocked_by: None,
+            opponents_creatures_enter_tapped: false,
+            cant_lose: false,
         }
     }
 }

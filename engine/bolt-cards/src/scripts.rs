@@ -31,6 +31,7 @@ pub fn token_defs() -> Vec<CardDef> {
         treasure(),
         token("Faerie", "Faerie", 1, 1, Keywords::FLYING),
         token("Goblin", "Goblin", 1, 1, Keywords::NONE),
+        token("Dragon", "Dragon", 5, 5, Keywords::FLYING),
     ]
 }
 
@@ -84,6 +85,7 @@ pub struct Tokens {
     pub treasure: usize,
     pub faerie: usize,
     pub goblin: usize,
+    pub dragon_5: usize,
 }
 
 impl Tokens {
@@ -101,6 +103,7 @@ impl Tokens {
             treasure: base + 9,
             faerie: base + 10,
             goblin: base + 11,
+            dragon_5: base + 12,
         }
     }
 }
@@ -1359,6 +1362,134 @@ pub fn script(name: &str) -> Option<Script> {
                 d.mana = Some(ManaSource::of(&[Color::Red, Color::Green]));
             },
         ),
+                "Anthem of Champions" => s(&["Creatures you control get +1/+1."], |d, _| {
+            d.statics.push(Static {
+                scope: Scope::YourCreatures,
+                your_turn_only: false,
+                condition: None,
+                power: 1,
+                toughness: 1,
+                keywords: Keywords::NONE,
+            });
+        }),
+        "Crackling Cyclops" => s(
+            &["Whenever you cast a noncreature spell, this creature gets +3/+0 until end of turn."],
+            |d, _| on(d, When::YouCastNoncreature, vec![], vec![Effect::PumpSelf { power: 3, toughness: 0 }]),
+        ),
+        "Spitfire Lagac" => s(
+            &["Landfall — Whenever a land you control enters, this creature deals 1 damage to each opponent."],
+            |d, _| on(d, When::LandYouControlEnters, vec![], vec![damage(1, Recipient::EachOpponent)]),
+        ),
+        "Preposterous Proportions" => s(
+            &["Creatures you control get +10/+10 and gain vigilance until end of turn."],
+            |d, _| {
+                spell(
+                    d,
+                    vec![],
+                    vec![
+                        Effect::PumpAll { who: Who::You, power: 10, toughness: 10 },
+                        Effect::GrantAll { who: Who::You, keywords: Keywords::VIGILANCE },
+                    ],
+                )
+            },
+        ),
+        "Goblin Bushwhacker" => s(
+            &[
+                "Kicker {R}",
+                "When this creature enters, if it was kicked, creatures you control get +1/+0 and gain haste until end of turn.",
+            ],
+            |d, _| {
+                d.kicker = ManaCost::parse("{R}");
+                on_if(
+                    d,
+                    Condition::Kicked,
+                    vec![],
+                    vec![
+                        Effect::PumpAll { who: Who::You, power: 1, toughness: 0 },
+                        Effect::GrantAll { who: Who::You, keywords: Keywords::HASTE },
+                    ],
+                );
+            },
+        ),
+        "Burnished Hart" => s(
+            &["{3}, Sacrifice this creature: Search your library for up to two basic land cards, put them onto the battlefield tapped, then shuffle."],
+            |d, _| {
+                let to = SearchTo::Battlefield { tapped: true };
+                let n = activated(d, "{3}", false, vec![], vec![Effect::Search { what: SearchFor::BasicLand, to, n: 2, kicked_n: None }]);
+                d.activated[n].sacrifice_self = true;
+            },
+        ),
+        "Rite of the Dragoncaller" => s(
+            &["Whenever you cast an instant or sorcery spell, create a 5/5 red Dragon creature token with flying."],
+            |d, t| on(d, When::YouCastInstantOrSorcery, vec![], vec![Effect::CreateToken { who: Who::You, def: t.dragon_5, n: 1 }]),
+        ),
+        "Crypt Feaster" => s(
+            &["Threshold — Whenever this creature attacks, if there are seven or more cards in your graveyard, this creature gets +2/+0 until end of turn."],
+            |d, _| conditional(d, When::Attacks, Condition::Threshold, vec![], vec![Effect::PumpSelf { power: 2, toughness: 0 }]),
+        ),
+        "Paradise Druid" => s(
+            &["This creature has hexproof as long as it's untapped.", "{T}: Add one mana of any color."],
+            |d, _| {
+                d.statics.push(Static {
+                    scope: Scope::This,
+                    your_turn_only: false,
+                    condition: Some(StaticCondition::Untapped),
+                    power: 0,
+                    toughness: 0,
+                    keywords: Keywords::HEXPROOF,
+                });
+                d.mana = Some(ManaSource::of(&Color::ALL));
+            },
+        ),
+        "Condemn" => s(
+            &["Put target attacking creature on the bottom of its owner's library. Its controller gains life equal to its toughness."],
+            |d, _| spell(d, vec![Filter { in_combat: true, ..CREATURE }], vec![Effect::BottomAndGainToughness(0)]),
+        ),
+        "Aetherize" => s(&["Return all attacking creatures to their owner's hand."], |d, _| {
+            spell(d, vec![], vec![Effect::BounceAttackers])
+        }),
+        "Juggernaut" => s(
+            &["This creature attacks each combat if able.", "This creature can't be blocked by Walls."],
+            |d, _| {
+                d.must_attack = true;
+                d.not_blocked_by = Some("Wall");
+            },
+        ),
+        "Raise the Past" => s(
+            &["Return all creature cards with mana value 2 or less from your graveyard to the battlefield."],
+            |d, _| spell(d, vec![], vec![Effect::ReanimateAll { all_graveyards: false, max_mana_value: Some(2) }]),
+        ),
+        "Rise of the Dark Realms" => s(
+            &["Put all creature cards from all graveyards onto the battlefield under your control."],
+            |d, _| spell(d, vec![], vec![Effect::ReanimateAll { all_graveyards: true, max_mana_value: None }]),
+        ),
+        "Authority of the Consuls" => s(
+            &[
+                "Creatures your opponents control enter tapped.",
+                "Whenever a creature an opponent controls enters, you gain 1 life.",
+            ],
+            |d, _| {
+                d.opponents_creatures_enter_tapped = true;
+                on(d, When::CreatureOpponentControlsEnters, vec![], vec![Effect::GainLife { who: Who::You, n: 1 }]);
+            },
+        ),
+        "Mossborn Hydra" => s(
+            &[
+                "This creature enters with a +1/+1 counter on it.",
+                "Landfall — Whenever a land you control enters, double the number of +1/+1 counters on this creature.",
+            ],
+            |d, _| {
+                d.enters_counters = Some((1, Condition::Always));
+                on(d, When::LandYouControlEnters, vec![], vec![Effect::DoubleCountersSelf]);
+            },
+        ),
+        "Herald of Eternal Dawn" => s(&["You can't lose the game and your opponents can't win the game."], |d, _| {
+            d.cant_lose = true;
+        }),
+        "Bulk Up" => s(&["Double target creature's power until end of turn.", "Flashback {4}{R}{R}"], |d, _| {
+            d.flashback = ManaCost::parse("{4}{R}{R}");
+            spell(d, vec![CREATURE], vec![Effect::DoublePower(0)])
+        }),
         _ => None,
     }
 }
@@ -1513,4 +1644,22 @@ pub const SCRIPTED: &[&str] = &[
     "Apothecary Stomper",
     "Wardens of the Cycle",
     "Ruby, Daring Tracker",
+    "Anthem of Champions",
+    "Crackling Cyclops",
+    "Spitfire Lagac",
+    "Preposterous Proportions",
+    "Goblin Bushwhacker",
+    "Burnished Hart",
+    "Rite of the Dragoncaller",
+    "Crypt Feaster",
+    "Paradise Druid",
+    "Condemn",
+    "Aetherize",
+    "Juggernaut",
+    "Raise the Past",
+    "Rise of the Dark Realms",
+    "Authority of the Consuls",
+    "Mossborn Hydra",
+    "Herald of Eternal Dawn",
+    "Bulk Up",
 ];

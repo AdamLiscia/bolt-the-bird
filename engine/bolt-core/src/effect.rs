@@ -254,6 +254,21 @@ pub enum Effect {
     /// The source deals damage equal to its power to the target in `slot`, using its last known
     /// power if it has left the battlefield (CR 608.2h).
     DamageEqualSourcePower(u8),
+    /// Put the creature in `slot` on the bottom of its owner's library; its controller gains life
+    /// equal to its toughness (Condemn).
+    BottomAndGainToughness(u8),
+    /// Return all attacking creatures to their owners' hands.
+    BounceAttackers,
+    /// Put creature cards from graveyards onto the battlefield under your control: yours only, or
+    /// all graveyards; optionally only those with mana value at most `max_mana_value`.
+    ReanimateAll {
+        all_graveyards: bool,
+        max_mana_value: Option<u32>,
+    },
+    /// Double the +1/+1 counters on the source.
+    DoubleCountersSelf,
+    /// The creature in `slot` gets +X/+0 until end of turn, where X is its power (doubling it).
+    DoublePower(u8),
     /// "When you do": trigger number `n` of the source triggers now (CR 603.12).
     Reflexive(usize),
     /// Until end of turn, the creature in `slot` gains the source's trigger number `trigger` as a
@@ -317,6 +332,8 @@ pub enum Scope {
 pub enum StaticCondition {
     /// Threshold: seven or more cards in your graveyard.
     Threshold,
+    /// The source is untapped.
+    Untapped,
 }
 
 /// A static ability that changes characteristics (CR 604, 613 layers 6 and 7c).
@@ -345,6 +362,10 @@ pub enum Condition {
     ControlAnotherPowerAtLeast(i32),
     /// Morbid: a creature died this turn.
     CreatureDiedThisTurn,
+    /// Always true (an unconditional "enters with" counter).
+    Always,
+    /// Threshold: seven or more cards in your graveyard.
+    Threshold,
     /// The source was kicked.
     Kicked,
 }
@@ -433,6 +454,8 @@ pub enum When {
     YouCastInstantOrSorcery,
     /// "Whenever you cast a noncreature or [subtype] spell".
     YouCastNoncreatureOrSubtype(&'static str),
+    /// "Whenever a creature an opponent controls enters".
+    CreatureOpponentControlsEnters,
 }
 
 #[derive(Clone, Debug, PartialEq)]

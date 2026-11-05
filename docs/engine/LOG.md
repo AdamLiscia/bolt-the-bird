@@ -104,3 +104,11 @@ One line per working step, newest last. The next session continues from the last
   Prowler, Apothecary Stomper, Wardens of the Cycle): **161 supported, 207 tests** (per-binary count).
   10,000 release fuzz games pass. **Next: M3 batch 5: "look at the top N", optional costs in triggers,
   graveyard-activated abilities, and the rest of tier 3.**
+- 2026-11-05: **M3 batch 5.** Unconditional enters-with counters, threshold trigger conditions,
+  "as long as it's untapped" statics, Condemn, bounce all attackers, mass reanimation, counter and
+  power doubling, "attacks each combat if able" (CR 508.1d), "can't be blocked by Walls", opponents'
+  creatures entering tapped, and "you can't lose the game". 18 cards (Anthem of Champions, Juggernaut,
+  Paradise Druid, Mossborn Hydra, Herald of Eternal Dawn, Authority of the Consuls, ...): **179
+  supported, 222 tests** (counted from saved `cargo test` output; piping it live dropped binaries).
+  10,000 release fuzz games pass. **Next: the remaining ~60 tier-3 cards: library looks, optional
+  trigger costs, graveyard abilities, alternate ward costs.**

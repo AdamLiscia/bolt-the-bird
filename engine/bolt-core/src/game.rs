@@ -594,6 +594,7 @@ impl Game {
                     let condition_ok = match s.condition {
                         None => true,
                         Some(StaticCondition::Threshold) => self.players[so.controller].graveyard.len() >= 7,
+                        Some(StaticCondition::Untapped) => !so.tapped,
                     };
                     applies && condition_ok && (!s.your_turn_only || self.active == so.controller)
                 })
@@ -748,14 +749,27 @@ impl Game {
         if to == Zone::Battlefield {
             // Replacement effects on entering (CR 614.1c-d).
             let def = self.def_of(id).clone();
-            if def.enters_tapped {
+            let controller_now = self.obj(id).controller;
+            let opponent_forces_tapped = def.types.creature
+                && self
+                    .permanents(opponent(controller_now))
+                    .any(|c| self.def_of(c).opponents_creatures_enter_tapped);
+            if def.enters_tapped || opponent_forces_tapped {
                 self.obj_mut(id).tapped = true;
+            }
+            if def.types.creature {
+                self.fire(
+                    opponent(controller_now),
+                    When::CreatureOpponentControlsEnters,
+                    None,
+                );
             }
             if let Some((n, cond)) = def.enters_counters {
                 let controller = self.obj(id).controller;
                 let yes = match cond {
                     Condition::Kicked => self.obj(id).kicked,
                     Condition::Attacked => self.attacked_this_turn[controller],
+                    Condition::Always => true,
                     _ => false,
                 };
                 if yes {
@@ -906,7 +920,10 @@ impl Game {
             Pending::Priority(p) => self.priority_actions(p),
             Pending::DeclareAttackers(p) => {
                 let mut v: Vec<Action> = self.attack_candidates(p).map(Action::Attack).collect();
-                v.push(Action::FinishAttacks);
+                // CR 508.1d: creatures that attack each combat if able must be declared.
+                if !self.attack_candidates(p).any(|c| self.def_of(c).must_attack) {
+                    v.push(Action::FinishAttacks);
+                }
                 v
             }
             Pending::DeclareBlockers(p) => self.block_actions(p),
@@ -1383,6 +1400,10 @@ impl Game {
         if self.def_of(blocker).cant_block
             || self.keywords(blocker).has(Keywords::CANT_BLOCK)
             || self.keywords(attacker).has(Keywords::UNBLOCKABLE)
+            || self
+                .def_of(attacker)
+                .not_blocked_by
+                .is_some_and(|sub| self.def_of(blocker).subtypes.iter().any(|s| s == sub))
         {
             return false;
         }
@@ -2438,6 +2459,71 @@ impl Game {
                     }
                 }
             }
+            Effect::BottomAndGainToughness(n) => {
+                if let Some(id) = Game::slot_object(item, legal, n) {
+                    let (controller, toughness, owner) =
+                        (self.obj(id).controller, self.toughness(id), self.obj(id).owner);
+                    self.move_to(id, Zone::Library);
+                    let lib = &mut self.players[owner].library;
+                    let c = lib.pop().expect("just moved");
+                    lib.insert(0, c);
+                    if toughness > 0 {
+                        self.gain_life(controller, toughness);
+                    }
+                }
+            }
+            Effect::BounceAttackers => {
+                let attackers = self
+                    .combat
+                    .as_ref()
+                    .map(|c| c.attackers.clone())
+                    .unwrap_or_default();
+                for a in attackers {
+                    if self.obj(a).zone == Zone::Battlefield {
+                        self.move_to(a, Zone::Hand);
+                    }
+                }
+            }
+            Effect::ReanimateAll {
+                all_graveyards,
+                max_mana_value,
+            } => {
+                let players: Vec<PlayerId> = if all_graveyards {
+                    vec![0, 1]
+                } else {
+                    vec![item.controller]
+                };
+                let cards: Vec<ObjId> = players
+                    .iter()
+                    .flat_map(|&p| self.players[p].graveyard.clone())
+                    .filter(|&c| {
+                        let d = self.def_of(c);
+                        d.types.creature && max_mana_value.is_none_or(|m| d.cost.mana_value() <= m)
+                    })
+                    .collect();
+                for c in cards {
+                    self.move_to(c, Zone::Battlefield);
+                    self.obj_mut(c).controller = item.controller;
+                }
+            }
+            Effect::DoubleCountersSelf => {
+                if self.obj(src).zone == Zone::Battlefield {
+                    self.obj_mut(src).counters *= 2;
+                }
+            }
+            Effect::DoublePower(n) => {
+                if let Some(id) = Game::slot_object(item, legal, n) {
+                    let (power, zcc) = (self.power(id), self.obj(id).zcc);
+                    self.until_eot.push(Modifier {
+                        obj: id,
+                        zcc,
+                        power,
+                        toughness: 0,
+                        keywords: Keywords::NONE,
+                        dies: None,
+                    });
+                }
+            }
             Effect::UntapSelf => {
                 if self.obj(src).zone == Zone::Battlefield {
                     self.obj_mut(src).tapped = false;
@@ -2546,6 +2632,8 @@ impl Game {
                 .creatures(controller)
                 .any(|c| c != source && self.power(c) >= *n),
             Some(Condition::CreatureDiedThisTurn) => self.creature_died_this_turn,
+            Some(Condition::Always) => true,
+            Some(Condition::Threshold) => self.players[controller].graveyard.len() >= 7,
             Some(Condition::ControlAnother(sub)) => self
                 .creatures(controller)
                 .any(|id| id != source && self.def_of(id).subtypes.iter().any(|s| s == sub)),
@@ -3003,7 +3091,9 @@ impl Game {
             let mut lost = false;
             for p in 0..2 {
                 let pl = &self.players[p];
-                if !pl.lost && (pl.life <= 0 || pl.drew_from_empty) {
+                // "You can't lose the game" (Herald of Eternal Dawn).
+                let protected = self.permanents(p).any(|c| self.def_of(c).cant_lose);
+                if !pl.lost && !protected && (pl.life <= 0 || pl.drew_from_empty) {
                     self.players[p].lost = true; // CR 704.5a, 704.5b
                     self.events.push(Event::Lost { player: p });
                     lost = true;
