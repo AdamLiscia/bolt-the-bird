@@ -42,6 +42,12 @@ fn main() {
             return;
         }
         let a = legal[agent.below(legal.len())];
+        if std::env::var("TRACE").is_ok() {
+            eprintln!(
+                "turn {} step {:?} pending {:?} -> {a:?}",
+                g.turn, g.step, g.pending
+            );
+        }
         last.push(format!("{a:?}"));
         if last.len() > 6 {
             last.remove(0);

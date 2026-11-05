@@ -90,3 +90,20 @@ grants a type that another FDN static ability then looks for.
 **Choice:** a Leyline Axe in an opening hand always starts on the battlefield ("you may" is taken).
 **Why:** it's free and never worse than casting it for {4}. A pre-game decision would add a step to
 every game for a choice nobody declines.
+
+## 2026-11-05: Five tier-3 cards wait for a type layer
+
+**Choice:** Imprisoned in the Moon, Soulstone Sanctuary, Secluded Courtyard, Kellan and Muldrotha
+are deferred, and tier 4 starts first.
+**Why:** the first two change card types on the battlefield (a creature becomes a land, a land
+becomes a creature), which means reading types through a layer system instead of the printed card
+in about 30 places. Courtyard needs mana that can only be spent on some spells. These are worth
+doing together, once, rather than piecemeal for two cards.
+
+## 2026-11-05: The fuzzer stops games at 1,000 permanents
+
+**Choice:** a random game whose battlefield passes 1,000 permanents ends as a draw and is counted
+separately. The engine itself has no limit.
+**Why:** random players activate Krenko, Mob Boss every turn, and its Goblins double each time. At
+5,000+ Goblins each trigger costs a pass over the board, so a turn costs O(board²), and the next
+doubling never ends in practice. 4 of 10,000 fuzz games hit the cap.

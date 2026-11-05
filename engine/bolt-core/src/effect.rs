@@ -384,6 +384,42 @@ pub enum Effect {
     },
     /// Exile the card in `slot` from a graveyard with a stash counter on it.
     ExileWithStash(u8),
+    /// Prevent all combat damage that would be dealt to the creature in `slot` this turn.
+    PreventCombatDamageTo(u8),
+    /// +P/+T until end of turn, or the morbid amounts if a creature died this turn.
+    PumpMorbid {
+        slot: u8,
+        power: i32,
+        toughness: i32,
+        morbid_power: i32,
+        morbid_toughness: i32,
+    },
+    /// Gain 1 life for each attacking creature you control with this subtype.
+    GainLifePerAttacking(&'static str),
+    /// Create a token for each permanent you control with this subtype.
+    CreateTokensPerYouControl {
+        def: usize,
+        sub: &'static str,
+    },
+    /// Create a token (tapped or not) for each creature card in your graveyard.
+    CreateTokensPerGraveyardCreature {
+        def: usize,
+        tapped: bool,
+    },
+    /// Create a token for each land you control.
+    CreateTokensPerLand {
+        def: usize,
+    },
+    /// Draw a card for each different mana value among nonland permanents you control.
+    DrawPerDistinctManaValue,
+    /// Draw a card for each creature you control with a +1/+1 counter; those gain indestructible.
+    InspiringCall,
+    /// The player in `slot` loses life equal to the life you gained this turn.
+    LoseLifeEqualGainedThisTurn(u8),
+    /// Take an extra turn after this one (CR 500.7).
+    ExtraTurn,
+    /// The creature in `slot` gets +X/+X until end of turn, X the source's power.
+    PumpBySourcePower(u8),
     /// "When you do": trigger number `n` of the source triggers now (CR 603.12).
     Reflexive(usize),
     /// Until end of turn, the creature in `slot` gains the source's trigger number `trigger` as a
@@ -446,6 +482,13 @@ pub enum Scope {
     YourCreaturesOfChosenColor,
 }
 
+/// What a scaled static ability counts.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Scale {
+    /// Permanents you control with this subtype ("for each Forest you control").
+    PerYouControlSubtype(&'static str),
+}
+
 /// A condition on a static ability ("as long as ...").
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum StaticCondition {
@@ -473,6 +516,8 @@ pub struct Static {
     pub base_pt: Option<(i32, i32)>,
     /// Protection from these colors, WUBRG (CR 702.16).
     pub protection: [bool; 5],
+    /// Multiply power and toughness by a count.
+    pub scale: Option<Scale>,
     pub power: i32,
     pub toughness: i32,
     pub keywords: Keywords,

@@ -118,6 +118,12 @@ pub enum Reduction {
     IfTargetsTapped(u8),
     /// ... {1} less for each permanent you control with this subtype (affinity).
     PerYouControl(&'static str),
+    /// ... {1} less for each instant and sorcery card in your graveyard.
+    PerInstantSorceryInGraveyard,
+    /// ... {X} less, X the total power of creatures you control.
+    TotalPowerOfYourCreatures,
+    /// ... {1} less for each attacking creature you control.
+    PerAttackingCreature,
 }
 
 /// An activated ability: "[cost]: [effect]" (CR 602).
@@ -227,6 +233,12 @@ pub struct CardDef {
     pub mana_of_chosen_color: bool,
     /// Its controller may play opponents' stashed cards from exile during their turn (Tinybones).
     pub stash_player: bool,
+    /// "You have hexproof."
+    pub player_hexproof: bool,
+    /// "Prevent all noncombat damage that would be dealt to other creatures you control."
+    pub prevent_noncombat_to_others: bool,
+    /// "{T}: Add {C} for each [subtype] you control": the source makes this many of its mana.
+    pub mana_per_subtype: Option<&'static str>,
 }
 
 impl CardDef {
@@ -281,6 +293,9 @@ impl CardDef {
             choose_color: false,
             mana_of_chosen_color: false,
             stash_player: false,
+            player_hexproof: false,
+            prevent_noncombat_to_others: false,
+            mana_per_subtype: None,
         }
     }
 
@@ -336,6 +351,9 @@ impl CardDef {
             choose_color: false,
             mana_of_chosen_color: false,
             stash_player: false,
+            player_hexproof: false,
+            prevent_noncombat_to_others: false,
+            mana_per_subtype: None,
         }
     }
 
@@ -391,6 +409,9 @@ impl CardDef {
             choose_color: false,
             mana_of_chosen_color: false,
             stash_player: false,
+            player_hexproof: false,
+            prevent_noncombat_to_others: false,
+            mana_per_subtype: None,
         }
     }
 }

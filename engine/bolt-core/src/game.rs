@@ -6,7 +6,7 @@
 use std::sync::Arc;
 
 use crate::card::{CardDef, ExtraCost, Keywords, Reduction};
-use crate::effect::{LookRest, LookTo, Pick, Scope, Static, StaticCondition};
+use crate::effect::{LookRest, LookTo, Pick, Scale, Scope, Static, StaticCondition};
 use std::collections::VecDeque;
 
 use crate::effect::{
@@ -396,6 +396,26 @@ pub struct Choosing {
     pub pay: Option<(usize, Option<ObjId>)>,
 }
 
+/// Until-end-of-turn effects, kept per object so a lookup touches only that object's effects (a
+/// board can hold thousands of creatures, each pumped by "creatures you control get +1/+1").
+#[derive(Clone, Debug, Default)]
+pub struct Modifiers(std::collections::HashMap<ObjId, Vec<Modifier>>);
+
+impl Modifiers {
+    pub fn push(&mut self, m: Modifier) {
+        self.0.entry(m.obj).or_default().push(m);
+    }
+
+    pub fn clear(&mut self) {
+        self.0.clear();
+    }
+
+    /// The effects on one object, in the order they were created.
+    pub fn on(&self, id: ObjId) -> impl Iterator<Item = &Modifier> + '_ {
+        self.0.get(&id).into_iter().flatten()
+    }
+}
+
 /// A spell or ability part-way through resolving (CR 608.2).
 #[derive(Clone, Debug, PartialEq)]
 pub struct Resolving {
@@ -507,6 +527,15 @@ pub struct Game {
     /// How many permanents with a "loses all abilities" static are on the battlefield. Zero almost
     /// always, which lets ability-loss checks skip a battlefield scan.
     pub ability_loss_sources: u32,
+    /// Permanents on the battlefield whose cards have static abilities, so static lookups don't scan
+    /// the whole battlefield (a board can hold hundreds of tokens).
+    pub static_sources: Vec<ObjId>,
+    /// Creatures with combat damage to them prevented this turn.
+    pub combat_damage_prevented: Vec<(ObjId, u32)>,
+    /// Life gained by each player this turn.
+    pub life_gained_this_turn: [i32; 2],
+    /// Players with extra turns to take, last first (CR 500.7).
+    pub extra_turns: Vec<PlayerId>,
     /// Triggered abilities waiting to be put on the stack (CR 603.3).
     pub triggered: Vec<StackItem>,
     pub choosing: Option<Choosing>,
@@ -516,7 +545,7 @@ pub struct Game {
     pub decision: Option<Decision>,
     /// A modal trigger waiting for its mode, and who gets priority afterwards.
     pub mode_pending: Option<(StackItem, PlayerId)>,
-    pub until_eot: Vec<Modifier>,
+    pub until_eot: Modifiers,
     /// "Until this leaves the battlefield" exiles: (source, its zone-change count, exiled card).
     pub links: Vec<(ObjId, u32, ObjId)>,
     pub turn: u32,
@@ -582,12 +611,16 @@ impl Game {
             delayed_returns: Vec::new(),
             end_turn: false,
             ability_loss_sources: 0,
+            static_sources: Vec::new(),
+            combat_damage_prevented: Vec::new(),
+            life_gained_this_turn: [0; 2],
+            extra_turns: Vec::new(),
             triggered: Vec::new(),
             choosing: None,
             resolving: None,
             decision: None,
             mode_pending: None,
-            until_eot: Vec::new(),
+            until_eot: Modifiers::default(),
             links: Vec::new(),
             turn: 0,
             active: first,
@@ -609,6 +642,9 @@ impl Game {
         assert!(def < self.defs.len(), "no card definition {def}");
         if zone == Zone::Battlefield && self.defs[def].statics.iter().any(|s| s.lose_abilities) {
             self.ability_loss_sources += 1;
+        }
+        if zone == Zone::Battlefield && !self.defs[def].statics.is_empty() {
+            self.static_sources.push(ObjId(self.objects.len() as u32));
         }
         let id = ObjId(self.objects.len() as u32);
         self.objects.push(Object {
@@ -670,7 +706,7 @@ impl Game {
 
     fn modifiers(&self, id: ObjId) -> impl Iterator<Item = &Modifier> + '_ {
         let zcc = self.obj(id).zcc;
-        self.until_eot.iter().filter(move |m| m.obj == id && m.zcc == zcc)
+        self.until_eot.on(id).filter(move |m| m.zcc == zcc)
     }
 
     /// Keywords after granting effects (layer 6).
@@ -681,7 +717,7 @@ impl Game {
             return None;
         }
         let zcc = self.obj(id).zcc;
-        self.battlefield.iter().find_map(|&src| {
+        self.static_sources.iter().find_map(|&src| {
             if self.obj(src).attached_to != Some((id, zcc)) {
                 return None;
             }
@@ -720,48 +756,65 @@ impl Game {
         let o = self.obj(id);
         let on_battlefield = o.zone == Zone::Battlefield;
         let creature = self.def_of(id).types.creature;
-        self.battlefield
+        self.static_sources
             .iter()
             .filter(move |_| on_battlefield)
             .filter(move |&&src| !self.lost_abilities(src))
             .flat_map(move |&src| {
                 let so = self.obj(src);
-                self.def_of(src).statics.iter().copied().filter(move |s| {
-                    let mine = so.controller == o.controller;
-                    let applies = match s.scope {
-                        Scope::This => src == id,
-                        Scope::YourCreatures => mine && creature,
-                        Scope::YourCreaturesWithCounters => mine && creature && o.counters > 0,
-                        Scope::Attached => so.attached_to == Some((id, o.zcc)),
-                        // Printed or granted-until-end-of-turn flying; static grants are left out
-                        // so statics don't depend on each other (no FDN static grants flying).
-                        Scope::YourCreaturesOfChosenColor => {
-                            mine && creature
-                                && so
-                                    .chosen_color
-                                    .is_some_and(|c| self.def_of(id).colors[c as usize])
+                self.def_of(src)
+                    .statics
+                    .iter()
+                    .copied()
+                    .filter(move |s| {
+                        let mine = so.controller == o.controller;
+                        let applies = match s.scope {
+                            Scope::This => src == id,
+                            Scope::YourCreatures => mine && creature,
+                            Scope::YourCreaturesWithCounters => mine && creature && o.counters > 0,
+                            Scope::Attached => so.attached_to == Some((id, o.zcc)),
+                            // Printed or granted-until-end-of-turn flying; static grants are left out
+                            // so statics don't depend on each other (no FDN static grants flying).
+                            Scope::YourCreaturesOfChosenColor => {
+                                mine && creature
+                                    && so
+                                        .chosen_color
+                                        .is_some_and(|c| self.def_of(id).colors[c as usize])
+                            }
+                            Scope::OtherYourSubtype(sub) => {
+                                mine && creature && src != id && self.has_base_subtype(id, sub)
+                            }
+                            Scope::OtherYourFliers => {
+                                mine && creature
+                                    && src != id
+                                    && self
+                                        .modifiers(id)
+                                        .fold(self.def_of(id).keywords, |k, m| k.with(m.keywords))
+                                        .has(Keywords::FLYING)
+                            }
+                        };
+                        let condition_ok = match s.condition {
+                            None => true,
+                            Some(StaticCondition::Threshold) => {
+                                self.players[so.controller].graveyard.len() >= 7
+                            }
+                            Some(StaticCondition::Untapped) => !so.tapped,
+                            Some(StaticCondition::CountersAtLeast(n)) => so.counters >= n,
+                            Some(StaticCondition::LifeAtLeast(n)) => self.players[so.controller].life >= n,
+                        };
+                        applies && condition_ok && (!s.your_turn_only || self.active == so.controller)
+                    })
+                    .map(move |mut s| {
+                        if let Some(Scale::PerYouControlSubtype(sub)) = s.scale {
+                            let n = self
+                                .permanents(so.controller)
+                                .filter(|&x| self.has_base_subtype(x, sub))
+                                .count() as i32;
+                            s.power *= n;
+                            s.toughness *= n;
                         }
-                        Scope::OtherYourSubtype(sub) => {
-                            mine && creature && src != id && self.has_base_subtype(id, sub)
-                        }
-                        Scope::OtherYourFliers => {
-                            mine && creature
-                                && src != id
-                                && self
-                                    .modifiers(id)
-                                    .fold(self.def_of(id).keywords, |k, m| k.with(m.keywords))
-                                    .has(Keywords::FLYING)
-                        }
-                    };
-                    let condition_ok = match s.condition {
-                        None => true,
-                        Some(StaticCondition::Threshold) => self.players[so.controller].graveyard.len() >= 7,
-                        Some(StaticCondition::Untapped) => !so.tapped,
-                        Some(StaticCondition::CountersAtLeast(n)) => so.counters >= n,
-                        Some(StaticCondition::LifeAtLeast(n)) => self.players[so.controller].life >= n,
-                    };
-                    applies && condition_ok && (!s.your_turn_only || self.active == so.controller)
-                })
+                        s
+                    })
             })
     }
 
@@ -865,6 +918,7 @@ impl Game {
         self.players[p].life += n;
         self.events.push(Event::LifeGained { player: p, amount: n });
         self.life_gains_this_turn[p] += 1;
+        self.life_gained_this_turn[p] += n;
         self.fire(p, When::YouGainLife, None);
         if self.life_gains_this_turn[p] == 1 {
             self.fire(
@@ -916,6 +970,14 @@ impl Game {
     /// Moves a card between zones. Leaving the battlefield clears its per-permanent state (CR 400.7).
     fn move_to(&mut self, id: ObjId, to: Zone) {
         let (owner, from) = (self.obj(id).owner, self.obj(id).zone);
+        if !self.def_of(id).statics.is_empty() {
+            if from == Zone::Battlefield {
+                self.static_sources.retain(|&x| x != id);
+            }
+            if to == Zone::Battlefield {
+                self.static_sources.push(id);
+            }
+        }
         if self.def_of(id).statics.iter().any(|s| s.lose_abilities) {
             if from == Zone::Battlefield {
                 self.ability_loss_sources -= 1;
@@ -1162,8 +1224,8 @@ impl Game {
             let was = self.obj(id).zcc - 1;
             let granted: Vec<(ObjId, usize, PlayerId)> = self
                 .until_eot
-                .iter()
-                .filter(|m| m.obj == id && m.zcc == was)
+                .on(id)
+                .filter(|m| m.zcc == was)
                 .filter_map(|m| m.dies)
                 .collect();
             let now = self.obj(id).zcc;
@@ -1338,7 +1400,11 @@ impl Game {
     /// Whether `t` is a legal target for `f` for an ability controlled by `controller` (CR 115).
     pub fn target_ok(&self, f: &Filter, controller: PlayerId, t: Target) -> bool {
         match t {
-            Target::Player(p) => f.players && Game::controller_ok(f.controller, controller, p),
+            Target::Player(p) => {
+                f.players
+                    && Game::controller_ok(f.controller, controller, p)
+                    && (p == controller || !self.permanents(p).any(|x| self.def_of(x).player_hexproof))
+            }
             Target::Object(id) => {
                 let o = self.obj(id);
                 if !Game::controller_ok(f.controller, controller, o.controller) {
@@ -1630,6 +1696,23 @@ impl Game {
                     0
                 }
             }
+            Some(Reduction::PerInstantSorceryInGraveyard) => self.players[p]
+                .graveyard
+                .iter()
+                .filter(|&&x| self.def_of(x).types.instant || self.def_of(x).types.sorcery)
+                .count()
+                .min(255) as u8,
+            Some(Reduction::TotalPowerOfYourCreatures) => self
+                .creatures(p)
+                .map(|x| self.power(x).max(0))
+                .sum::<i32>()
+                .min(255) as u8,
+            Some(Reduction::PerAttackingCreature) => self.combat.as_ref().map_or(0, |c| {
+                c.attackers
+                    .iter()
+                    .filter(|&&a| self.obj(a).controller == p)
+                    .count()
+            }) as u8,
             Some(Reduction::PerYouControl(sub)) => {
                 self.permanents(p).filter(|&x| self.has_subtype(x, sub)).count() as u8
             }
@@ -1837,6 +1920,22 @@ impl Game {
     }
 
     fn untapped_sources(&self, p: PlayerId) -> Vec<(ObjId, ManaSource)> {
+        let base = self.single_sources(p);
+        let mut out = Vec::with_capacity(base.len());
+        for (id, m) in base {
+            // One activation makes this many mana; each is offered to the payer separately.
+            let n = self.def_of(id).mana_per_subtype.map_or(1, |sub| {
+                self.permanents(p)
+                    .filter(|&x| self.has_subtype(x, sub))
+                    .count()
+                    .max(1)
+            });
+            out.extend(std::iter::repeat_n((id, m), n));
+        }
+        out
+    }
+
+    fn single_sources(&self, p: PlayerId) -> Vec<(ObjId, ManaSource)> {
         self.permanents(p)
             .filter(|&id| self.can_tap(id))
             .filter(|&id| !self.lost_abilities(id))
@@ -1916,6 +2015,41 @@ impl Game {
         v
     }
 
+    /// Whether `action` is legal now. Same answer as `legal_actions().contains(&action)`, with fast
+    /// paths for declarations, whose full lists can run to hundreds of thousands of actions.
+    fn is_legal(&self, action: Action) -> bool {
+        match (self.pending, action) {
+            (Pending::DeclareBlockers(p), Action::Block { blocker, attacker }) => {
+                let combat = self.combat.as_ref().expect("blocks happen in combat");
+                let free = |b: ObjId| {
+                    let o = self.obj(b);
+                    o.zone == Zone::Battlefield
+                        && o.controller == p
+                        && self.def_of(b).types.creature
+                        && !o.tapped
+                        && !combat.is_blocking(b)
+                };
+                if !combat.attackers.contains(&attacker)
+                    || !free(blocker)
+                    || !self.can_block(blocker, attacker)
+                {
+                    return false;
+                }
+                // CR 702.111b: a first block on a menace attacker needs a second blocker available.
+                let menace_first =
+                    self.keywords(attacker).has(Keywords::MENACE) && !combat.is_blocked(attacker);
+                !menace_first
+                    || self
+                        .creatures(p)
+                        .filter(|&b| b != blocker && free(b) && self.can_block(b, attacker))
+                        .count()
+                        >= 1
+            }
+            (Pending::DeclareAttackers(p), Action::Attack(c)) => self.attack_candidates(p).any(|x| x == c),
+            _ => self.legal_actions().contains(&action),
+        }
+    }
+
     fn blocks_are_legal(&self, combat: &Combat) -> bool {
         combat
             .attackers
@@ -1930,7 +2064,7 @@ impl Game {
         if self.is_over() {
             return Err(RulesError::GameOver);
         }
-        if !self.legal_actions().contains(&action) {
+        if !self.is_legal(action) {
             return Err(RulesError::Illegal(action));
         }
         match (self.pending, action) {
@@ -3593,6 +3727,131 @@ impl Game {
                     }
                 }
             }
+            Effect::PreventCombatDamageTo(n) => {
+                if let Some(id) = Game::slot_object(item, legal, n) {
+                    let zcc = self.obj(id).zcc;
+                    self.combat_damage_prevented.push((id, zcc));
+                }
+            }
+            Effect::PumpMorbid {
+                slot,
+                power,
+                toughness,
+                morbid_power,
+                morbid_toughness,
+            } => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    let (p, t) = if self.creature_died_this_turn {
+                        (morbid_power, morbid_toughness)
+                    } else {
+                        (power, toughness)
+                    };
+                    let zcc = self.obj(id).zcc;
+                    self.until_eot.push(Modifier {
+                        obj: id,
+                        zcc,
+                        power: p,
+                        toughness: t,
+                        keywords: Keywords::NONE,
+                        dies: None,
+                    });
+                }
+            }
+            Effect::GainLifePerAttacking(sub) => {
+                let n = self.combat.as_ref().map_or(0, |c| {
+                    c.attackers
+                        .iter()
+                        .filter(|&&a| self.obj(a).controller == item.controller && self.has_subtype(a, sub))
+                        .count()
+                }) as i32;
+                if n > 0 {
+                    self.gain_life(item.controller, n);
+                }
+            }
+            Effect::CreateTokensPerYouControl { def, sub } => {
+                let n = self
+                    .permanents(item.controller)
+                    .filter(|&x| self.has_subtype(x, sub))
+                    .count();
+                for _ in 0..n {
+                    self.create_token(item.controller, def);
+                }
+            }
+            Effect::CreateTokensPerGraveyardCreature { def, tapped } => {
+                let n = self.players[item.controller]
+                    .graveyard
+                    .iter()
+                    .filter(|&&c| self.def_of(c).types.creature)
+                    .count();
+                for _ in 0..n {
+                    let t = self.create_token(item.controller, def);
+                    self.obj_mut(t).tapped = tapped;
+                }
+            }
+            Effect::CreateTokensPerLand { def } => {
+                let n = self
+                    .permanents(item.controller)
+                    .filter(|&x| self.def_of(x).types.land)
+                    .count();
+                for _ in 0..n {
+                    self.create_token(item.controller, def);
+                }
+            }
+            Effect::DrawPerDistinctManaValue => {
+                let mut mvs: Vec<u32> = self
+                    .permanents(item.controller)
+                    .filter(|&x| !self.def_of(x).types.land)
+                    .map(|x| self.def_of(x).cost.mana_value())
+                    .collect();
+                mvs.sort_unstable();
+                mvs.dedup();
+                for _ in 0..mvs.len() {
+                    self.draw(item.controller);
+                }
+            }
+            Effect::InspiringCall => {
+                let with: Vec<ObjId> = self
+                    .creatures(item.controller)
+                    .filter(|&c| self.obj(c).counters > 0)
+                    .collect();
+                for _ in 0..with.len() {
+                    self.draw(item.controller);
+                }
+                for c in with {
+                    let zcc = self.obj(c).zcc;
+                    self.until_eot.push(Modifier {
+                        obj: c,
+                        zcc,
+                        power: 0,
+                        toughness: 0,
+                        keywords: Keywords::INDESTRUCTIBLE,
+                        dies: None,
+                    });
+                }
+            }
+            Effect::LoseLifeEqualGainedThisTurn(n) => {
+                let x = self.life_gained_this_turn[item.controller];
+                if let Some(&Chosen::Player(q)) = item.targets.get(n as usize) {
+                    if x > 0 && legal[n as usize] {
+                        self.lose_life(q, x);
+                    }
+                }
+            }
+            Effect::ExtraTurn => self.extra_turns.push(item.controller),
+            Effect::PumpBySourcePower(n) => {
+                let x = self.power(src);
+                if let Some(id) = Game::slot_object(item, legal, n) {
+                    let zcc = self.obj(id).zcc;
+                    self.until_eot.push(Modifier {
+                        obj: id,
+                        zcc,
+                        power: x,
+                        toughness: x,
+                        keywords: Keywords::NONE,
+                        dies: None,
+                    });
+                }
+            }
             Effect::UntapSelf => {
                 if self.obj(src).zone == Zone::Battlefield {
                     self.obj_mut(src).tapped = false;
@@ -3842,11 +4101,12 @@ impl Game {
     fn begin_next_turn(&mut self) {
         self.attacked_this_turn = [false; 2];
         self.life_gains_this_turn = [0; 2];
+        self.life_gained_this_turn = [0; 2];
         self.draws_this_turn = [0; 2];
         self.creature_died_this_turn = false;
         self.life_lost_this_turn = [false; 2];
         self.turn += 1;
-        self.active = opponent(self.active);
+        self.active = self.extra_turns.pop().unwrap_or_else(|| opponent(self.active));
         self.events.push(Event::TurnBegan {
             turn: self.turn,
             active: self.active,
@@ -4013,6 +4273,7 @@ impl Game {
     /// CR 514.2: damage wears off. No player gets priority in cleanup (CR 514.3).
     fn finish_cleanup(&mut self) {
         self.until_eot.clear(); // CR 514.2
+        self.combat_damage_prevented.clear();
         for o in &mut self.objects {
             o.flashback_eot = false;
         }
@@ -4156,6 +4417,18 @@ impl Game {
         if let Target::Object(id) = target {
             if self.protected_from(id, source) {
                 return; // CR 702.16e: damage from a source of that color is prevented
+            }
+            let zcc = self.obj(id).zcc;
+            if self.in_combat_damage && self.combat_damage_prevented.contains(&(id, zcc)) {
+                return;
+            }
+            let controller = self.obj(id).controller;
+            if !self.in_combat_damage
+                && self
+                    .permanents(controller)
+                    .any(|b| b != id && self.def_of(b).prevent_noncombat_to_others)
+            {
+                return;
             }
         }
         let k = self.keywords(source);
@@ -4343,6 +4616,20 @@ impl Game {
             .iter()
             .filter(|&&id| self.def_of(id).statics.iter().any(|s| s.lose_abilities))
             .count() as u32;
+        let mut with_statics: Vec<ObjId> = self
+            .battlefield
+            .iter()
+            .copied()
+            .filter(|&id| !self.def_of(id).statics.is_empty())
+            .collect();
+        let mut listed = self.static_sources.clone();
+        with_statics.sort_unstable();
+        listed.sort_unstable();
+        if with_statics != listed {
+            return Err(format!(
+                "static sources {listed:?} but {with_statics:?} on the battlefield"
+            ));
+        }
         if loss != self.ability_loss_sources {
             return Err(format!(
                 "ability-loss count {} but {loss} on the battlefield",

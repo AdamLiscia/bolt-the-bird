@@ -187,6 +187,9 @@ fn definition(o: &Oracle) -> (CardDef, bool) {
         choose_color: false,
         mana_of_chosen_color: false,
         stash_player: false,
+        player_hexproof: false,
+        prevent_noncombat_to_others: false,
+        mana_per_subtype: None,
     };
     let mut claimed = rest.is_empty();
     if let Some(s) = scripts::script(&o.name) {

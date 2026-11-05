@@ -9,11 +9,19 @@ use crate::rng::Rng;
 /// Safety valve: no real game takes this many actions. Hitting it is reported as a bug.
 pub const MAX_ACTIONS: usize = 100_000;
 
+/// Random players can grow a board without limit (Krenko, Mob Boss doubles its Goblins every
+/// turn). Past this many permanents a game is stopped and reported as capped, not as a bug: by
+/// then each trigger costs O(board) state checks and a doubling board costs O(board²) per turn,
+/// which no real game reaches.
+pub const MAX_PERMANENTS: usize = 1_000;
+
 #[derive(Debug)]
 pub struct GameReport {
     pub outcome: Outcome,
     pub turns: u32,
     pub actions: usize,
+    /// Stopped at `MAX_PERMANENTS` (reported as a draw).
+    pub capped: bool,
 }
 
 /// Plays one game with uniformly random legal actions, checking invariants after every action.
@@ -33,6 +41,15 @@ pub fn random_game(
                 outcome,
                 turns: g.turn,
                 actions: n,
+                capped: false,
+            });
+        }
+        if g.battlefield.len() > MAX_PERMANENTS {
+            return Ok(GameReport {
+                outcome: Outcome::Draw,
+                turns: g.turn,
+                actions: n,
+                capped: true,
             });
         }
         let legal = g.legal_actions();

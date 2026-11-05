@@ -4,6 +4,7 @@
 //! supported only when its scripts and keywords account for every line, and a test checks each
 //! script's lines against the Scryfall text, so a script can't drift from its card.
 
+use bolt_core::effect::Scale;
 use bolt_core::effect::{
     Ability, Condition, Controller, Effect, Filter, Recipient, Scope, SearchFor, SearchTo, Static,
     StaticCondition, Trigger, When, Who,
@@ -45,6 +46,7 @@ pub fn token_defs() -> Vec<CardDef> {
         token("Drake", "Drake", 2, 2, Keywords::FLYING),
         token("Spirit", "Spirit", 1, 1, Keywords::FLYING),
         token("Fish", "Fish", 1, 1, Keywords::NONE),
+        token("Rat", "Rat", 1, 1, Keywords::NONE),
     ]
 }
 
@@ -105,6 +107,7 @@ pub struct Tokens {
     pub drake: usize,
     pub spirit: usize,
     pub fish: usize,
+    pub rat: usize,
 }
 
 impl Tokens {
@@ -129,6 +132,7 @@ impl Tokens {
             drake: base + 16,
             spirit: base + 17,
             fish: base + 18,
+            rat: base + 19,
         }
     }
 }
@@ -277,6 +281,7 @@ fn static_on(d: &mut CardDef, scope: Scope, your_turn_only: bool, keywords: Keyw
         lose_abilities: false,
         base_pt: None,
         protection: [false; 5],
+        scale: None,
         scope,
         your_turn_only,
         condition: None,
@@ -308,6 +313,7 @@ fn attached(d: &mut CardDef, your_turn_only: bool, power: i32, toughness: i32, k
         lose_abilities: false,
         base_pt: None,
         protection: [false; 5],
+        scale: None,
         scope: Scope::Attached,
         your_turn_only,
         condition: None,
@@ -331,6 +337,7 @@ fn threshold(d: &mut CardDef, power: i32, toughness: i32, keywords: Keywords) {
         lose_abilities: false,
         base_pt: None,
         protection: [false; 5],
+        scale: None,
         scope: Scope::This,
         your_turn_only: false,
         condition: Some(StaticCondition::Threshold),
@@ -358,6 +365,22 @@ fn conditional(
     let mut ability = Ability::new(targets, effects);
     ability.condition = Some(condition);
     d.triggers.push(Trigger { when, ability });
+}
+
+fn lord(d: &mut CardDef, sub: &'static str) {
+    d.statics.push(Static {
+        subtype: None,
+        lose_abilities: false,
+        base_pt: None,
+        protection: [false; 5],
+        scale: None,
+        scope: Scope::OtherYourSubtype(sub),
+        your_turn_only: false,
+        condition: None,
+        power: 1,
+        toughness: 1,
+        keywords: Keywords::NONE,
+    });
 }
 
 /// The script for a card, if one exists.
@@ -1188,6 +1211,7 @@ pub fn script(name: &str) -> Option<Script> {
                 lose_abilities: false,
                 base_pt: None,
                 protection: [false; 5],
+                scale: None,
                 scope: Scope::OtherYourFliers,
                 your_turn_only: false,
                 condition: None,
@@ -1409,6 +1433,7 @@ pub fn script(name: &str) -> Option<Script> {
                 lose_abilities: false,
                 base_pt: None,
                 protection: [false; 5],
+                scale: None,
                 scope: Scope::YourCreatures,
                 your_turn_only: false,
                 condition: None,
@@ -1480,6 +1505,7 @@ pub fn script(name: &str) -> Option<Script> {
                     lose_abilities: false,
                     base_pt: None,
                     protection: [false; 5],
+                    scale: None,
                     scope: Scope::This,
                     your_turn_only: false,
                     condition: Some(StaticCondition::Untapped),
@@ -1689,6 +1715,7 @@ pub fn script(name: &str) -> Option<Script> {
                     lose_abilities: false,
                     base_pt: None,
                     protection: [false; 5],
+                    scale: None,
                     scope: Scope::OtherYourSubtype("Cat"),
                     your_turn_only: false,
                     condition: None,
@@ -1909,6 +1936,7 @@ pub fn script(name: &str) -> Option<Script> {
                     lose_abilities: false,
                     base_pt: None,
                     protection: [false; 5],
+                    scale: None,
                     scope: Scope::This,
                     your_turn_only: false,
                     condition: Some(StaticCondition::CountersAtLeast(3)),
@@ -1995,6 +2023,7 @@ pub fn script(name: &str) -> Option<Script> {
                     lose_abilities: false,
                     base_pt: None,
                     protection: [false; 5],
+                    scale: None,
                     scope: Scope::This,
                     your_turn_only: false,
                     condition: Some(StaticCondition::LifeAtLeast(at_least)),
@@ -2135,6 +2164,7 @@ pub fn script(name: &str) -> Option<Script> {
                     lose_abilities: true,
                     base_pt: Some((1, 1)),
                     protection: [false; 5],
+                    scale: None,
                     scope: Scope::Attached,
                     your_turn_only: false,
                     condition: None,
@@ -2158,6 +2188,7 @@ pub fn script(name: &str) -> Option<Script> {
                     lose_abilities: false,
                     base_pt: None,
                     protection: [false; 5],
+                    scale: None,
                     scope: Scope::YourCreaturesOfChosenColor,
                     your_turn_only: false,
                     condition: None,
@@ -2194,6 +2225,7 @@ pub fn script(name: &str) -> Option<Script> {
                     lose_abilities: false,
                     base_pt: None,
                     protection: [false, false, true, true, false],
+                    scale: None,
                     scope: Scope::YourCreatures,
                     your_turn_only: false,
                     condition: None,
@@ -2239,6 +2271,155 @@ pub fn script(name: &str) -> Option<Script> {
                 d.stash_player = true;
                 let n = activated(d, "{3}{B}", true, vec![], vec![Effect::Discard { who: Who::EachOpponent, n: 1 }]);
                 d.activated[n].sorcery = true;
+            },
+        ),
+                "Fleeting Flight" => s(
+            &["Put a +1/+1 counter on target creature. It gains flying until end of turn. Prevent all combat damage that would be dealt to it this turn."],
+            |d, _| {
+                spell(
+                    d,
+                    vec![CREATURE],
+                    vec![
+                        Effect::Counters { slot: 0, n: 1 },
+                        Effect::Grant { slot: 0, keywords: Keywords::FLYING },
+                        Effect::PreventCombatDamageTo(0),
+                    ],
+                )
+            },
+        ),
+        "Tragic Banshee" => s(
+            &["Morbid — When this creature enters, target creature an opponent controls gets -1/-1 until end of turn. If a creature died this turn, that creature gets -13/-13 until end of turn instead."],
+            |d, _| {
+                on(
+                    d,
+                    When::Enters,
+                    vec![OPP_CREATURE],
+                    vec![Effect::PumpMorbid { slot: 0, power: -1, toughness: -1, morbid_power: -13, morbid_toughness: -13 }],
+                )
+            },
+        ),
+        "Tolarian Terror" => s(
+            &["This spell costs {1} less to cast for each instant and sorcery card in your graveyard.", "Ward {2}"],
+            |d, _| {
+                d.reduction = Some(Reduction::PerInstantSorceryInGraveyard);
+                d.ward = ManaCost::parse("{2}");
+            },
+        ),
+        "Dwynen, Gilt-Leaf Daen" => s(
+            &[
+                "Other Elf creatures you control get +1/+1.",
+                "Whenever Dwynen attacks, you gain 1 life for each attacking Elf you control.",
+            ],
+            |d, _| {
+                lord(d, "Elf");
+                on(d, When::Attacks, vec![], vec![Effect::GainLifePerAttacking("Elf")]);
+            },
+        ),
+        "Krenko, Mob Boss" => s(
+            &["{T}: Create X 1/1 red Goblin creature tokens, where X is the number of Goblins you control."],
+            |d, t| {
+                activated(d, "", true, vec![], vec![Effect::CreateTokensPerYouControl { def: t.goblin, sub: "Goblin" }]);
+            },
+        ),
+        "Revenge of the Rats" => s(
+            &["Create a tapped 1/1 black Rat creature token for each creature card in your graveyard.", "Flashback {2}{B}{B}"],
+            |d, t| {
+                d.flashback = ManaCost::parse("{2}{B}{B}");
+                spell(d, vec![], vec![Effect::CreateTokensPerGraveyardCreature { def: t.rat, tapped: true }])
+            },
+        ),
+        "Elvish Archdruid" => s(
+            &["Other Elf creatures you control get +1/+1.", "{T}: Add {G} for each Elf you control."],
+            |d, _| {
+                lord(d, "Elf");
+                d.mana = Some(ManaSource::of(&[Color::Green]));
+                d.mana_per_subtype = Some("Elf");
+            },
+        ),
+        "Lunar Insight" => s(
+            &["Draw a card for each different mana value among nonland permanents you control."],
+            |d, _| spell(d, vec![], vec![Effect::DrawPerDistinctManaValue]),
+        ),
+        "Inspiring Call" => s(
+            &["Draw a card for each creature you control with a +1/+1 counter on it. Those creatures gain indestructible until end of turn."],
+            |d, _| spell(d, vec![], vec![Effect::InspiringCall]),
+        ),
+        "Midnight Snack" => s(
+            &[
+                "Raid — At the beginning of your end step, if you attacked this turn, create a Food token.",
+                "{2}{B}, Sacrifice this enchantment: Target opponent loses X life, where X is the amount of life you gained this turn.",
+            ],
+            |d, t| {
+                conditional(
+                    d,
+                    When::EndStep { your_turn_only: true },
+                    Condition::Attacked,
+                    vec![],
+                    vec![Effect::CreateToken { who: Who::You, def: t.food, n: 1 }],
+                );
+                let opp = Filter::PLAYER.controlled_by(Controller::Opponent);
+                let n = activated(d, "{2}{B}", false, vec![opp], vec![Effect::LoseLifeEqualGainedThisTurn(0)]);
+                d.activated[n].sacrifice_self = true;
+            },
+        ),
+        "Crystal Barricade" => s(
+            &["You have hexproof.", "Prevent all noncombat damage that would be dealt to other creatures you control."],
+            |d, _| {
+                d.player_hexproof = true;
+                d.prevent_noncombat_to_others = true;
+            },
+        ),
+        "Blanchwood Armor" => s(&["Enchant creature", "Enchanted creature gets +1/+1 for each Forest you control."], |d, _| {
+            d.aura = true;
+            d.spell = Some(Ability::new(vec![CREATURE], vec![]));
+            d.statics.push(Static {
+                subtype: None,
+                lose_abilities: false,
+                base_pt: None,
+                protection: [false; 5],
+                scale: Some(Scale::PerYouControlSubtype("Forest")),
+                scope: Scope::Attached,
+                your_turn_only: false,
+                condition: None,
+                power: 1,
+                toughness: 1,
+                keywords: Keywords::NONE,
+            });
+        }),
+        "Brass's Bounty" => s(&["For each land you control, create a Treasure token."], |d, t| {
+            spell(d, vec![], vec![Effect::CreateTokensPerLand { def: t.treasure }])
+        }),
+        "Temporal Manipulation" => s(&["Take an extra turn after this one."], |d, _| {
+            spell(d, vec![], vec![Effect::ExtraTurn])
+        }),
+        "Ghalta, Primal Hunger" => s(
+            &["This spell costs {X} less to cast, where X is the total power of creatures you control."],
+            |d, _| d.reduction = Some(Reduction::TotalPowerOfYourCreatures),
+        ),
+        "Ashroot Animist" => s(
+            &["Whenever this creature attacks, another target creature you control gains trample and gets +X/+X until end of turn, where X is this creature's power."],
+            |d, _| {
+                let another = Filter { other: true, ..YOUR_CREATURE };
+                on(
+                    d,
+                    When::Attacks,
+                    vec![another],
+                    vec![Effect::Grant { slot: 0, keywords: Keywords::TRAMPLE }, Effect::PumpBySourcePower(0)],
+                )
+            },
+        ),
+        "Embercleave" => s(
+            &[
+                "This spell costs {1} less to cast for each attacking creature you control.",
+                "When Embercleave enters, attach it to target creature you control.",
+                "Equipped creature gets +1/+1 and has double strike and trample.",
+                "Equip {3}",
+            ],
+            |d, _| {
+                d.reduction = Some(Reduction::PerAttackingCreature);
+                on(d, When::Enters, vec![YOUR_CREATURE], vec![Effect::Attach { slot: 0 }]);
+                attached(d, false, 1, 1, Keywords::DOUBLE_STRIKE.with(Keywords::TRAMPLE));
+                equip(d, "{3}");
             },
         ),
         _ => None,
@@ -2470,4 +2651,21 @@ pub const SCRIPTED: &[&str] = &[
     "Sphinx's Tutelage",
     "Fishing Pole",
     "Tinybones, Bauble Burglar",
+    "Fleeting Flight",
+    "Tragic Banshee",
+    "Tolarian Terror",
+    "Dwynen, Gilt-Leaf Daen",
+    "Krenko, Mob Boss",
+    "Revenge of the Rats",
+    "Elvish Archdruid",
+    "Lunar Insight",
+    "Inspiring Call",
+    "Midnight Snack",
+    "Crystal Barricade",
+    "Blanchwood Armor",
+    "Brass's Bounty",
+    "Temporal Manipulation",
+    "Ghalta, Primal Hunger",
+    "Ashroot Animist",
+    "Embercleave",
 ];

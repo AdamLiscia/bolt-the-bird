@@ -172,3 +172,19 @@ One line per working step, newest last. The next session continues from the last
   10,000 release fuzz games pass. **Next: the last 5 tier-3 cards need card types that change on the
   battlefield (Imprisoned in the Moon, Soulstone Sanctuary), restricted mana (Secluded Courtyard),
   Kellan and Muldrotha. Then tier 4.**
+- 2026-11-05: **Tier 4, batch 1.** Damage prevention until end of turn, noncombat-damage prevention,
+  player hexproof, multi-mana sources (Elvish Archdruid), scaled statics ("for each Forest"), cost
+  reductions (per instant/sorcery in graveyard, total power, attacking creatures), extra turns, and
+  counting effects. 17 cards (Fleeting Flight, Tragic Banshee, Tolarian Terror, Dwynen, Krenko,
+  Revenge of the Rats, Elvish Archdruid, Lunar Insight, Inspiring Call, Midnight Snack, Crystal
+  Barricade, Blanchwood Armor, Brass's Bounty, Temporal Manipulation, Ghalta, Ashroot Animist,
+  Embercleave): **253 supported, 295 tests.** The last 5 tier-3 cards are deferred (QUESTIONS).
+  **Performance on huge boards.** The fuzzer hung twice (seeds 3660 and 5660): random players doubled
+  Krenko's Goblins to 5,000+. Fixes: an index of permanents with static abilities (lookups no longer
+  scan the board), a direct legality check for attack and block declarations (the full list can be
+  hundreds of thousands of actions), until-end-of-turn effects stored per object, an invariant for
+  the static index, and a 1,000-permanent cap in the fuzz harness only (QUESTIONS). New debugging
+  examples: `slow_seeds` (time each game, find hangs) and `time_step` (time one action).
+  10,000 release fuzz games pass at 1,121 games/s; 4 stopped at the cap. **Next: tier 4 batch 2: X
+  costs (Wildwood Scourge, Goblin Negotiation, Exsanguinate, Genesis Wave, Fiend Artisan), then token
+  copies.**

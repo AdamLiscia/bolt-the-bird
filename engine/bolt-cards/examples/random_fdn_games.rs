@@ -24,7 +24,7 @@ fn main() {
         .filter(|&i| mask[i] && !defs[i].types.land)
         .collect();
     let start = Instant::now();
-    let (mut turns, mut actions, mut draws) = (0u64, 0u64, 0u64);
+    let (mut turns, mut actions, mut draws, mut capped) = (0u64, 0u64, 0u64, 0u64);
     for seed in 0..n {
         let mut rng = Rng::new(seed);
         let a = random_deck(&lands, &spells, &mut rng);
@@ -32,15 +32,17 @@ fn main() {
         let r = random_game(defs.clone(), [&a, &b], seed, true).unwrap_or_else(|e| panic!("{e}"));
         turns += r.turns as u64;
         actions += r.actions as u64;
-        draws += (r.outcome == Outcome::Draw) as u64;
+        draws += (r.outcome == Outcome::Draw && !r.capped) as u64;
+        capped += r.capped as u64;
     }
     let secs = start.elapsed().as_secs_f64();
     println!(
         "{n} games with {} supported cards, no invariant broken. {:.0} games/s with checks. \
-         Avg {:.1} turns, {:.0} actions, {draws} draws",
+         Avg {:.1} turns, {:.0} actions, {draws} draws, {capped} stopped at {} permanents",
         spells.len() + lands.len(),
         n as f64 / secs,
         turns as f64 / n as f64,
         actions as f64 / n as f64,
+        bolt_core::fuzz::MAX_PERMANENTS,
     );
 }
