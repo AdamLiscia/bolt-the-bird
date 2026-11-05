@@ -4,13 +4,18 @@
 //! Rules cite the Comprehensive Rules (CR) section they follow.
 
 pub mod card;
+pub mod effect;
 pub mod fuzz;
 pub mod game;
 pub mod mana;
 pub mod rng;
 
 pub use card::{CardDef, Keywords, Types};
-pub use game::{Action, Event, Game, ObjId, Outcome, Pending, PlayerId, RulesError, Step, Target, Zone};
+pub use effect::{Ability, Controller, Effect, Filter, Recipient, Trigger, When, Who};
+pub use game::{
+    Action, Chosen, Event, Game, Modifier, ObjId, Outcome, Pending, PlayerId, RulesError, StackItem,
+    StackKind, Step, Target, Zone,
+};
 pub use mana::{ManaCost, ManaSource};
 
 /// The five colors of Magic, in WUBRG order (CR 105.1).

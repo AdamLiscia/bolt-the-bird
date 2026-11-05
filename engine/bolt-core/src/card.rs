@@ -1,5 +1,6 @@
 //! Card definitions: the printed characteristics an engine needs (CR 200-209).
 
+use crate::effect::{Ability, Trigger};
 use crate::mana::{ManaCost, ManaSource};
 
 /// Keyword abilities as a bit set (CR 702). Only the evergreen combat keywords exist so far.
@@ -108,6 +109,14 @@ pub struct CardDef {
     pub keywords: Keywords,
     /// What the permanent taps for, if it is a mana source (lands, for now).
     pub mana: Option<ManaSource>,
+    /// What an instant or sorcery does when it resolves.
+    pub spell: Option<Ability>,
+    /// Triggered abilities.
+    pub triggers: Vec<Trigger>,
+    /// Kicker cost (CR 702.33).
+    pub kicker: Option<ManaCost>,
+    /// A token, which ceases to exist outside the battlefield (CR 111.7, 704.5d).
+    pub token: bool,
 }
 
 impl CardDef {
@@ -125,6 +134,32 @@ impl CardDef {
             toughness,
             keywords,
             mana: None,
+            spell: None,
+            triggers: Vec::new(),
+            kicker: None,
+            token: false,
+        }
+    }
+
+    /// An instant or sorcery, mostly for tests.
+    pub fn spell(name: &str, cost: &str, instant: bool, ability: Ability) -> CardDef {
+        CardDef {
+            name: name.to_string(),
+            cost: ManaCost::parse(cost).expect("valid cost"),
+            types: Types {
+                instant,
+                sorcery: !instant,
+                ..Types::default()
+            },
+            subtypes: Vec::new(),
+            power: 0,
+            toughness: 0,
+            keywords: Keywords::NONE,
+            mana: None,
+            spell: Some(ability),
+            triggers: Vec::new(),
+            kicker: None,
+            token: false,
         }
     }
 
@@ -143,6 +178,10 @@ impl CardDef {
             toughness: 0,
             keywords: Keywords::NONE,
             mana: Some(ManaSource::of(&[color])),
+            spell: None,
+            triggers: Vec::new(),
+            kicker: None,
+            token: false,
         }
     }
 }

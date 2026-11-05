@@ -120,6 +120,10 @@ fn definition(o: &Oracle) -> (CardDef, bool) {
         toughness: stat(&o.toughness),
         keywords: if all_keywords { keywords } else { Keywords::NONE },
         mana: basic_color.map(|c| ManaSource::of(&[c])),
+        spell: None,
+        triggers: Vec::new(),
+        kicker: None,
+        token: false,
     };
     let supported =
         basic_color.is_some() || (types.creature && all_keywords && matches!(cost, Some(Some(_))));

@@ -21,3 +21,10 @@ One line per working step, newest last. The next session continues from the last
   combat tests (Nighthawk vs. Serra Angel, Swiftblade Vindicator trampling over on the second strike,
   Brazen Scourge's haste), and 300 fuzz games with real supported cards. 56 tests in the workspace.
   **Next: M2, starting with targets (with a zone-change counter, see QUESTIONS) and the effect DSL.**
+- 2026-11-05: **M2 mechanisms.** Stack entries for spells and triggered abilities, target choice as
+  a decision (`Pending::ChooseTarget`), target filters (any target, creature/player, controller,
+  flying, power, in combat, hexproof), zone-change counters so old targets fizzle (CR 400.7, 608.2b),
+  enters/dies triggers in APNAP order (removed when they have no legal target), kicker, instant and
+  sorcery timing, until-end-of-turn pumps and keyword grants, +1/+1 counters, and the effect DSL
+  (damage, destroy, draw, life, pump, grant, counters). 11 new stack tests, 67 total.
+  **Next: M2 cards, writing FDN tier-2 scripts in build order, each with a test from its text.**

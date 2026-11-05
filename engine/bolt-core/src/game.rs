@@ -6,7 +6,8 @@
 use std::sync::Arc;
 
 use crate::card::{CardDef, Keywords};
-use crate::mana::{self, ManaSource};
+use crate::effect::{Ability, Controller, Effect, Filter, Recipient, When, Who};
+use crate::mana::{self, ManaCost, ManaSource};
 use crate::rng::Rng;
 
 pub type PlayerId = usize;
@@ -48,6 +49,11 @@ pub struct Object {
     /// The turn this object came under its controller's control on the battlefield. A creature can
     /// attack only if this is before the current turn, or it has haste (CR 302.6).
     pub since_turn: u32,
+    /// Zone changes so far. A card that changes zones is a new object (CR 400.7), so a target
+    /// remembers this number and stops matching once it changes.
+    pub zcc: u32,
+    /// +1/+1 counters (CR 122.1a).
+    pub counters: i32,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -109,6 +115,8 @@ pub enum Pending {
     DeclareBlockers(PlayerId),
     /// Discard down to the maximum hand size (CR 514.1).
     Discard(PlayerId),
+    /// Choose the next target of the spell or ability being put on the stack (CR 601.2c, 603.3d).
+    ChooseTarget(PlayerId),
     GameOver,
 }
 
@@ -120,6 +128,9 @@ pub enum Action {
     PassPriority,
     PlayLand(ObjId),
     Cast(ObjId),
+    /// Cast with its kicker paid (CR 702.33).
+    CastKicked(ObjId),
+    Target(Target),
     Attack(ObjId),
     FinishAttacks,
     Block {
@@ -132,7 +143,7 @@ pub enum Action {
     Discard(ObjId),
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Target {
     Player(PlayerId),
     Object(ObjId),
@@ -158,6 +169,14 @@ pub enum Event {
     },
     Resolved {
         card: ObjId,
+    },
+    /// A spell or ability left the stack without resolving because every target was illegal
+    /// (CR 608.2b).
+    Fizzled {
+        source: ObjId,
+    },
+    Triggered {
+        source: ObjId,
     },
     Damage {
         source: ObjId,
@@ -225,14 +244,64 @@ impl Combat {
     }
 }
 
+/// What a stack entry is (CR 405).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum StackKind {
+    Spell,
+    /// Triggered ability number `n` of the source's card.
+    Trigger(usize),
+}
+
+/// A chosen target, pinned to the object it was when chosen (CR 400.7).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Chosen {
+    Player(PlayerId),
+    Object(ObjId, u32),
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct StackItem {
+    pub source: ObjId,
+    pub controller: PlayerId,
+    pub kind: StackKind,
+    pub targets: Vec<Chosen>,
+    pub kicked: bool,
+}
+
+/// A stack entry whose targets are still being chosen.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Choosing {
+    pub item: StackItem,
+    /// Who gets priority once the entry is on the stack.
+    pub then: PlayerId,
+    pub cast: bool,
+}
+
+/// An until-end-of-turn change to one object (CR 611.2, 613).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Modifier {
+    pub obj: ObjId,
+    pub zcc: u32,
+    pub power: i32,
+    pub toughness: i32,
+    pub keywords: Keywords,
+}
+
 #[derive(Clone, Debug)]
 pub struct Game {
     pub defs: Arc<Vec<CardDef>>,
     pub objects: Vec<Object>,
     pub players: [Player; 2],
     pub battlefield: Vec<ObjId>,
+    /// Cards on the stack (the zone). The stack's order and abilities are in `items`.
     pub stack: Vec<ObjId>,
+    /// The stack, bottom first: spells and abilities (CR 405.1).
+    pub items: Vec<StackItem>,
     pub exile: Vec<ObjId>,
+    /// Triggered abilities waiting to be put on the stack (CR 603.3).
+    pub triggered: Vec<StackItem>,
+    pub choosing: Option<Choosing>,
+    pub until_eot: Vec<Modifier>,
     pub turn: u32,
     pub active: PlayerId,
     /// The player who took the first turn.
@@ -284,7 +353,11 @@ impl Game {
             players: [Player::new(), Player::new()],
             battlefield: Vec::new(),
             stack: Vec::new(),
+            items: Vec::new(),
             exile: Vec::new(),
+            triggered: Vec::new(),
+            choosing: None,
+            until_eot: Vec::new(),
             turn: 0,
             active: first,
             first,
@@ -314,6 +387,8 @@ impl Game {
             damage: 0,
             deathtouched: false,
             since_turn: 0,
+            zcc: 0,
+            counters: 0,
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -339,16 +414,26 @@ impl Game {
         &self.defs[self.obj(id).def]
     }
 
-    pub fn keywords(&self, id: ObjId) -> Keywords {
-        self.def_of(id).keywords
+    fn modifiers(&self, id: ObjId) -> impl Iterator<Item = &Modifier> + '_ {
+        let zcc = self.obj(id).zcc;
+        self.until_eot.iter().filter(move |m| m.obj == id && m.zcc == zcc)
     }
 
+    /// Keywords after granting effects (layer 6).
+    pub fn keywords(&self, id: ObjId) -> Keywords {
+        self.modifiers(id)
+            .fold(self.def_of(id).keywords, |k, m| k.with(m.keywords))
+    }
+
+    /// Power after counters and pump effects (layer 7).
     pub fn power(&self, id: ObjId) -> i32 {
-        self.def_of(id).power
+        self.def_of(id).power + self.obj(id).counters + self.modifiers(id).map(|m| m.power).sum::<i32>()
     }
 
     pub fn toughness(&self, id: ObjId) -> i32 {
         self.def_of(id).toughness
+            + self.obj(id).counters
+            + self.modifiers(id).map(|m| m.toughness).sum::<i32>()
     }
 
     pub fn is_over(&self) -> bool {
@@ -386,6 +471,7 @@ impl Game {
     /// Moves a card between zones. Leaving the battlefield clears its per-permanent state (CR 400.7).
     fn move_to(&mut self, id: ObjId, to: Zone) {
         let (owner, from) = (self.obj(id).owner, self.obj(id).zone);
+        let last_controller = self.obj(id).controller;
         let list = self.zone_list(owner, from);
         let pos = list.iter().position(|&x| x == id).expect("object is in its zone");
         list.remove(pos);
@@ -393,9 +479,11 @@ impl Game {
         let turn = self.turn;
         let o = self.obj_mut(id);
         o.zone = to;
+        o.zcc += 1;
         o.tapped = false;
         o.damage = 0;
         o.deathtouched = false;
+        o.counters = 0;
         if to != Zone::Battlefield && to != Zone::Stack {
             o.controller = o.owner;
         }
@@ -408,6 +496,26 @@ impl Game {
             }
         }
         self.events.push(Event::Moved { card: id, from, to });
+        // CR 603.6a, 603.6c, 603.10a: enters and dies triggers.
+        let dies = from == Zone::Battlefield && to == Zone::Graveyard;
+        let enters = to == Zone::Battlefield;
+        let controller = if dies {
+            last_controller
+        } else {
+            self.obj(id).controller
+        };
+        let whens: Vec<When> = self.def_of(id).triggers.iter().map(|tr| tr.when).collect();
+        for (n, when) in whens.into_iter().enumerate() {
+            if (when == When::Dies && dies) || (when == When::Enters && enters) {
+                self.triggered.push(StackItem {
+                    source: id,
+                    controller,
+                    kind: StackKind::Trigger(n),
+                    targets: Vec::new(),
+                    kicked: false,
+                });
+            }
+        }
     }
 
     /// Draws a card. Drawing from an empty library loses at the next check (CR 704.5b).
@@ -443,14 +551,91 @@ impl Game {
                 v
             }
             Pending::DeclareBlockers(p) => self.block_actions(p),
+            Pending::ChooseTarget(_) => {
+                let c = self.choosing.as_ref().expect("choosing targets");
+                let filter = self.ability_of(&c.item).targets[c.item.targets.len()];
+                self.candidates(&filter, c.item.controller)
+                    .into_iter()
+                    .map(Action::Target)
+                    .collect()
+            }
         }
+    }
+
+    /// The ability a stack entry carries out.
+    pub fn ability_of(&self, item: &StackItem) -> &Ability {
+        let def = self.def_of(item.source);
+        match item.kind {
+            StackKind::Spell => def
+                .spell
+                .as_ref()
+                .expect("only instants and sorceries have spell abilities"),
+            StackKind::Trigger(n) => &def.triggers[n].ability,
+        }
+    }
+
+    fn controller_ok(c: Controller, controller: PlayerId, of: PlayerId) -> bool {
+        match c {
+            Controller::Any => true,
+            Controller::You => of == controller,
+            Controller::Opponent => of != controller,
+        }
+    }
+
+    /// Whether `t` is a legal target for `f` for an ability controlled by `controller` (CR 115).
+    pub fn target_ok(&self, f: &Filter, controller: PlayerId, t: Target) -> bool {
+        match t {
+            Target::Player(p) => f.players && Game::controller_ok(f.controller, controller, p),
+            Target::Object(id) => {
+                let o = self.obj(id);
+                if o.zone != Zone::Battlefield || !Game::controller_ok(f.controller, controller, o.controller)
+                {
+                    return false;
+                }
+                // CR 702.11b: hexproof stops opponents' spells and abilities from targeting it.
+                if o.controller != controller && self.keywords(id).has(Keywords::HEXPROOF) {
+                    return false;
+                }
+                let ty = &self.def_of(id).types;
+                let in_combat = self
+                    .combat
+                    .as_ref()
+                    .is_some_and(|c| c.attackers.contains(&id) || c.is_blocking(id));
+                let creature_ok = ty.creature
+                    && f.creatures
+                    && (!f.creature_needs_flying || self.keywords(id).has(Keywords::FLYING))
+                    && f.creature_min_power.is_none_or(|m| self.power(id) >= m)
+                    && (!f.in_combat || in_combat);
+                creature_ok
+                    || (ty.planeswalker && f.planeswalkers)
+                    || (ty.artifact && f.artifacts)
+                    || (ty.enchantment && f.enchantments)
+                    || (!ty.land && f.nonland_permanents)
+            }
+        }
+    }
+
+    /// Every legal target for `f`, players first.
+    pub fn candidates(&self, f: &Filter, controller: PlayerId) -> Vec<Target> {
+        (0..2)
+            .map(Target::Player)
+            .chain(self.battlefield.iter().map(|&id| Target::Object(id)))
+            .filter(|&t| self.target_ok(f, controller, t))
+            .collect()
+    }
+
+    fn can_target_all(&self, ability: &Ability, controller: PlayerId) -> bool {
+        ability
+            .targets
+            .iter()
+            .all(|f| !self.candidates(f, controller).is_empty())
     }
 
     fn priority_actions(&self, p: PlayerId) -> Vec<Action> {
         let mut v = vec![Action::PassPriority];
         let sorcery_timing =
-            p == self.active && matches!(self.step, Step::Main1 | Step::Main2) && self.stack.is_empty();
-        let sources = self.untapped_sources(p);
+            p == self.active && matches!(self.step, Step::Main1 | Step::Main2) && self.items.is_empty();
+        let sources: Vec<ManaSource> = self.untapped_sources(p).iter().map(|s| s.1).collect();
         for &c in &self.players[p].hand {
             let def = self.def_of(c);
             if def.types.land {
@@ -458,11 +643,26 @@ impl Game {
                 if sorcery_timing && self.players[p].lands_played == 0 {
                     v.push(Action::PlayLand(c));
                 }
-            } else if def.types.creature
-                && (sorcery_timing || def.keywords.has(Keywords::FLASH))
-                && mana::pay(&def.cost, &sources.iter().map(|s| s.1).collect::<Vec<_>>()).is_some()
-            {
+                continue;
+            }
+            // CR 307.1, 302.1, 304.1, 702.8a: only instants and flash ignore sorcery timing.
+            let timing = sorcery_timing || def.types.instant || def.keywords.has(Keywords::FLASH);
+            let castable = (def.types.creature && def.spell.is_none()) || def.spell.is_some();
+            if !timing || !castable {
+                continue;
+            }
+            if let Some(ability) = &def.spell {
+                if !self.can_target_all(ability, p) {
+                    continue; // CR 601.2c: a spell needs a legal choice for every target.
+                }
+            }
+            if mana::pay(&def.cost, &sources).is_some() {
                 v.push(Action::Cast(c));
+            }
+            if let Some(k) = def.kicker {
+                if mana::pay(&add_costs(&def.cost, &k), &sources).is_some() {
+                    v.push(Action::CastKicked(c));
+                }
             }
         }
         v
@@ -583,7 +783,9 @@ impl Game {
                 self.passes = 0;
                 self.give_priority(p);
             }
-            (Pending::Priority(p), Action::Cast(c)) => self.cast(p, c),
+            (Pending::Priority(p), Action::Cast(c)) => self.cast(p, c, false),
+            (Pending::Priority(p), Action::CastKicked(c)) => self.cast(p, c, true),
+            (Pending::ChooseTarget(_), Action::Target(target)) => self.choose_target(target),
             (Pending::DeclareAttackers(_), Action::Attack(c)) => {
                 // CR 508.1f: attacking taps the creature unless it has vigilance.
                 if !self.keywords(c).has(Keywords::VIGILANCE) {
@@ -631,20 +833,73 @@ impl Game {
         }
     }
 
-    /// CR 601.2: move to the stack, pay, then the caster gets priority again (CR 117.3c).
-    fn cast(&mut self, p: PlayerId, card: ObjId) {
+    /// CR 601.2: move to the stack, choose targets, pay, then the caster gets priority again
+    /// (CR 117.3c).
+    fn cast(&mut self, p: PlayerId, card: ObjId, kicked: bool) {
+        self.move_to(card, Zone::Stack);
+        self.obj_mut(card).controller = p;
+        let item = StackItem {
+            source: card,
+            controller: p,
+            kind: StackKind::Spell,
+            targets: Vec::new(),
+            kicked,
+        };
+        let has_targets = self
+            .def_of(card)
+            .spell
+            .as_ref()
+            .is_some_and(|s| !s.targets.is_empty());
+        if has_targets {
+            self.choosing = Some(Choosing {
+                item,
+                then: p,
+                cast: true,
+            });
+            self.pending = Pending::ChooseTarget(p);
+        } else {
+            self.finish_cast(item);
+        }
+    }
+
+    fn finish_cast(&mut self, item: StackItem) {
+        let (p, card) = (item.controller, item.source);
+        let def = self.def_of(card);
+        let cost = match (item.kicked, def.kicker) {
+            (true, Some(k)) => add_costs(&def.cost, &k),
+            _ => def.cost,
+        };
         let sources = self.untapped_sources(p);
-        let cost = self.def_of(card).cost;
         let paid = mana::pay(&cost, &sources.iter().map(|s| s.1).collect::<Vec<_>>())
             .expect("legal casts are payable");
         for i in paid {
             self.obj_mut(sources[i].0).tapped = true;
         }
-        self.move_to(card, Zone::Stack);
-        self.obj_mut(card).controller = p;
+        self.items.push(item);
         self.events.push(Event::Cast { card });
         self.passes = 0;
         self.give_priority(p);
+    }
+
+    fn choose_target(&mut self, target: Target) {
+        let c = self.choosing.as_mut().expect("choosing targets");
+        let chosen = match target {
+            Target::Player(p) => Chosen::Player(p),
+            Target::Object(id) => Chosen::Object(id, self.objects[id.0 as usize].zcc),
+        };
+        c.item.targets.push(chosen);
+        let c = self.choosing.as_ref().expect("choosing targets");
+        let done = c.item.targets.len() == self.ability_of(&c.item).targets.len();
+        if !done {
+            return;
+        }
+        let c = self.choosing.take().expect("choosing targets");
+        if c.cast {
+            self.finish_cast(c.item);
+        } else {
+            self.items.push(c.item);
+            self.give_priority(c.then);
+        }
     }
 
     /// CR 117.4: if both players pass in succession, the top of the stack resolves, or with an
@@ -656,7 +911,7 @@ impl Game {
             return;
         }
         self.passes = 0;
-        if let Some(&top) = self.stack.last() {
+        if let Some(top) = self.items.pop() {
             self.resolve(top);
             self.give_priority(self.active);
         } else {
@@ -664,23 +919,204 @@ impl Game {
         }
     }
 
-    fn resolve(&mut self, card: ObjId) {
-        let controller = self.obj(card).controller;
-        if self.def_of(card).types.is_permanent() {
-            self.move_to(card, Zone::Battlefield);
-            self.obj_mut(card).controller = controller;
-        } else {
-            self.move_to(card, Zone::Graveyard);
+    /// Whether a chosen target is still legal (CR 608.2b).
+    fn still_legal(&self, item: &StackItem, slot: usize) -> bool {
+        let f = &self.ability_of(item).targets[slot];
+        match item.targets[slot] {
+            Chosen::Player(p) => {
+                !self.players[p].lost && self.target_ok(f, item.controller, Target::Player(p))
+            }
+            Chosen::Object(id, zcc) => {
+                self.obj(id).zcc == zcc && self.target_ok(f, item.controller, Target::Object(id))
+            }
         }
-        self.events.push(Event::Resolved { card });
+    }
+
+    fn resolve(&mut self, item: StackItem) {
+        let source = item.source;
+        let legal: Vec<bool> = (0..item.targets.len())
+            .map(|i| self.still_legal(&item, i))
+            .collect();
+        let fizzled = !legal.is_empty() && !legal.iter().any(|&b| b);
+        if fizzled {
+            self.events.push(Event::Fizzled { source });
+        } else if item.kind != StackKind::Spell || self.def_of(source).spell.is_some() {
+            let effects = self.ability_of(&item).effects.clone();
+            for e in effects {
+                self.run_effect(&item, &legal, e);
+            }
+        }
+        if item.kind == StackKind::Spell {
+            if !fizzled && self.def_of(source).types.is_permanent() {
+                self.move_to(source, Zone::Battlefield);
+                self.obj_mut(source).controller = item.controller;
+            } else {
+                self.move_to(source, Zone::Graveyard);
+            }
+            if !fizzled {
+                self.events.push(Event::Resolved { card: source });
+            }
+        }
+    }
+
+    fn players_for(&self, item: &StackItem, legal: &[bool], who: Who) -> Vec<PlayerId> {
+        let slot_player = |n: u8| match item.targets[n as usize] {
+            Chosen::Player(p) if legal[n as usize] => Some(p),
+            Chosen::Object(id, _) if legal[n as usize] => Some(self.obj(id).controller),
+            _ => None,
+        };
+        match who {
+            Who::You => vec![item.controller],
+            Who::EachOpponent => vec![opponent(item.controller)],
+            Who::TargetPlayer(n) | Who::ControllerOf(n) => slot_player(n).into_iter().collect(),
+        }
+    }
+
+    fn slot_object(item: &StackItem, legal: &[bool], n: u8) -> Option<ObjId> {
+        match item.targets[n as usize] {
+            Chosen::Object(id, _) if legal[n as usize] => Some(id),
+            _ => None,
+        }
+    }
+
+    /// CR 608.2c: effects happen in the order written; illegal targets are skipped (CR 608.2b).
+    fn run_effect(&mut self, item: &StackItem, legal: &[bool], e: Effect) {
+        let src = item.source;
+        match e {
+            Effect::Damage { amount, kicked, to } => {
+                let amount = if item.kicked {
+                    kicked.unwrap_or(amount)
+                } else {
+                    amount
+                };
+                let targets: Vec<Target> = match to {
+                    Recipient::Target(n) => match item.targets[n as usize] {
+                        _ if !legal[n as usize] => vec![],
+                        Chosen::Player(p) => vec![Target::Player(p)],
+                        Chosen::Object(id, _) => vec![Target::Object(id)],
+                    },
+                    Recipient::EachOpponent => vec![Target::Player(opponent(item.controller))],
+                    Recipient::EachCreature { without_flying } => self
+                        .battlefield
+                        .iter()
+                        .copied()
+                        .filter(|&id| self.def_of(id).types.creature)
+                        .filter(|&id| !without_flying || !self.keywords(id).has(Keywords::FLYING))
+                        .map(Target::Object)
+                        .collect(),
+                };
+                for t in targets {
+                    self.deal_damage(src, t, amount);
+                }
+            }
+            Effect::DamageIfLifeIs { slot, life, amount } => {
+                if let Chosen::Player(p) = item.targets[slot as usize] {
+                    if legal[slot as usize] && self.players[p].life == life {
+                        self.deal_damage(src, Target::Player(p), amount);
+                    }
+                }
+            }
+            Effect::Destroy(n) => {
+                if let Some(id) = Game::slot_object(item, legal, n) {
+                    self.destroy(id);
+                }
+            }
+            Effect::Draw { who, n } => {
+                for p in self.players_for(item, legal, who) {
+                    for _ in 0..n {
+                        self.draw(p);
+                    }
+                }
+            }
+            Effect::GainLife { who, n } => {
+                for p in self.players_for(item, legal, who) {
+                    self.players[p].life += n;
+                    self.events.push(Event::LifeGained { player: p, amount: n });
+                }
+            }
+            Effect::LoseLife { who, n } => {
+                for p in self.players_for(item, legal, who) {
+                    self.players[p].life -= n;
+                    self.events.push(Event::LifeLost { player: p, amount: n });
+                }
+            }
+            Effect::Pump {
+                slot,
+                power,
+                toughness,
+            } => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    let zcc = self.obj(id).zcc;
+                    self.until_eot.push(Modifier {
+                        obj: id,
+                        zcc,
+                        power,
+                        toughness,
+                        keywords: Keywords::NONE,
+                    });
+                }
+            }
+            Effect::Grant { slot, keywords } => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    let zcc = self.obj(id).zcc;
+                    self.until_eot.push(Modifier {
+                        obj: id,
+                        zcc,
+                        power: 0,
+                        toughness: 0,
+                        keywords,
+                    });
+                }
+            }
+            Effect::Counters { slot, n } => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    self.obj_mut(id).counters += n;
+                }
+            }
+        }
+    }
+
+    /// CR 701.8: destroy moves a permanent to its owner's graveyard, unless it is indestructible.
+    fn destroy(&mut self, id: ObjId) {
+        if !self.keywords(id).has(Keywords::INDESTRUCTIBLE) {
+            self.move_to(id, Zone::Graveyard);
+        }
+    }
+
+    /// CR 603.3: triggered abilities go on the stack the next time a player would get priority,
+    /// active player's first (APNAP, CR 101.4). Returns false if a target choice is now pending.
+    fn put_triggers_on_stack(&mut self, then: PlayerId) -> bool {
+        let active = self.active;
+        self.triggered.sort_by_key(|t| t.controller != active);
+        while !self.triggered.is_empty() {
+            let item = self.triggered.remove(0);
+            self.events.push(Event::Triggered { source: item.source });
+            let ability = self.ability_of(&item).clone();
+            if ability.targets.is_empty() {
+                self.items.push(item);
+            } else if self.can_target_all(&ability, item.controller) {
+                let who = item.controller;
+                self.choosing = Some(Choosing {
+                    item,
+                    then,
+                    cast: false,
+                });
+                self.pending = Pending::ChooseTarget(who);
+                return false;
+            }
+            // CR 603.3d: with no legal targets, the ability is removed from the stack.
+        }
+        true
     }
 
     /// State-based actions run before any player would receive priority (CR 117.5, 704.3).
     fn give_priority(&mut self, p: PlayerId) {
         self.state_based_actions();
-        if !self.is_over() {
-            self.pending = Pending::Priority(p);
+        if self.is_over() || !self.put_triggers_on_stack(p) {
+            return;
         }
+        self.passes = if self.triggered.is_empty() { self.passes } else { 0 };
+        self.pending = Pending::Priority(p);
     }
 
     /// Passes priority automatically when passing is the only legal action. Nothing is hidden by
@@ -774,11 +1210,12 @@ impl Game {
                 }
             }
             Step::DeclareBlockers => {
-                let combat = self.combat.as_mut().expect("in combat");
-                combat.first_strike_step = combat.attackers.iter().any(|&id| {
-                    let k = self.defs[self.objects[id.0 as usize].def].keywords;
+                let attackers = self.combat.as_ref().expect("in combat").attackers.clone();
+                let fs = attackers.iter().any(|&id| {
+                    let k = self.keywords(id);
                     k.has(Keywords::FIRST_STRIKE) || k.has(Keywords::DOUBLE_STRIKE)
                 });
+                self.combat.as_mut().expect("in combat").first_strike_step = fs;
                 let d = opponent(a);
                 if self.block_actions(d) != [Action::FinishBlocks] {
                     self.pending = Pending::DeclareBlockers(d);
@@ -813,6 +1250,7 @@ impl Game {
 
     /// CR 514.2: damage wears off. No player gets priority in cleanup (CR 514.3).
     fn finish_cleanup(&mut self) {
+        self.until_eot.clear(); // CR 514.2
         for id in self.battlefield.clone() {
             let o = self.obj_mut(id);
             o.damage = 0;
@@ -1023,13 +1461,38 @@ impl Game {
             if o.damage < 0 {
                 return Err(format!("negative damage on {o:?}"));
             }
-            if o.zone != Zone::Battlefield && (o.tapped || o.damage != 0) {
+            if o.zone != Zone::Battlefield && (o.tapped || o.damage != 0 || o.counters != 0) {
                 return Err(format!("off-battlefield object carries state: {o:?}"));
             }
+        }
+        let spells: Vec<ObjId> = self
+            .items
+            .iter()
+            .filter(|i| i.kind == StackKind::Spell)
+            .map(|i| i.source)
+            .collect();
+        let casting = self.choosing.as_ref().filter(|c| c.cast).map(|c| c.item.source);
+        let mut on_stack = self.stack.clone();
+        on_stack.retain(|id| Some(*id) != casting);
+        if on_stack != spells {
+            return Err(format!(
+                "stack cards {:?} disagree with spell items {spells:?}",
+                self.stack
+            ));
         }
         if self.is_over() != (self.pending == Pending::GameOver) {
             return Err("result and pending disagree".into());
         }
         Ok(())
     }
+}
+
+/// The total of two mana costs (kicker on top of the base cost).
+fn add_costs(a: &ManaCost, b: &ManaCost) -> ManaCost {
+    let mut c = *a;
+    c.generic += b.generic;
+    for i in 0..5 {
+        c.colored[i] += b.colored[i];
+    }
+    c
 }
