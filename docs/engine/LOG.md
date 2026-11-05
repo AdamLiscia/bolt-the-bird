@@ -87,3 +87,11 @@ One line per working step, newest last. The next session continues from the last
   12 cards (Abrade, Bushwhack, Goblin Surprise, Seeker's Folly, Slagstorm, Run Away Together, Goldvein
   Pick, Quick-Draw Katana, Swiftfoot Boots, Adventuring Gear, Celestial Armor, Twinblade Blessing):
   **116 supported, 165 tests.** 10,000 release fuzz games pass. **Next: M3 batch 3 in build order.**
+- 2026-11-05: **M3 batch 3.** Triggers: every life gain, "whenever you attack", another creature of a
+  subtype entering, this or another creature dying, beginning of combat, end step, casting on an
+  opponent's turn. Morbid and "another creature with power 4+" conditions; threshold statics; mill;
+  keyword grants to all your creatures; "doesn't untap"; instant/sorcery discounts; "other creatures
+  with flying" statics. 25 cards: **141 supported, 187 tests** (counted from verbose `cargo test`; the
+  totals logged for the last two batches came from a quick count that undercounts, so they were low).
+  10,000 release fuzz games pass. **Next: M3 batch 4 in build order (ward, "look at the top N",
+  activated abilities from the graveyard, ETB modal triggers).**

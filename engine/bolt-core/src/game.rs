@@ -6,7 +6,7 @@
 use std::sync::Arc;
 
 use crate::card::{CardDef, ExtraCost, Keywords, Reduction};
-use crate::effect::{Scope, Static};
+use crate::effect::{Scope, Static, StaticCondition};
 use std::collections::VecDeque;
 
 use crate::effect::{
@@ -394,6 +394,8 @@ pub struct Game {
     /// Life-gain events and cards drawn by each player this turn.
     pub life_gains_this_turn: [u32; 2],
     pub draws_this_turn: [u32; 2],
+    /// Morbid: whether a creature died this turn.
+    pub creature_died_this_turn: bool,
     /// Triggered abilities waiting to be put on the stack (CR 603.3).
     pub triggered: Vec<StackItem>,
     pub choosing: Option<Choosing>,
@@ -461,6 +463,7 @@ impl Game {
             attacked_this_turn: [false; 2],
             life_gains_this_turn: [0; 2],
             draws_this_turn: [0; 2],
+            creature_died_this_turn: false,
             triggered: Vec::new(),
             choosing: None,
             resolving: None,
@@ -548,8 +551,22 @@ impl Game {
                         Scope::YourCreatures => mine && creature,
                         Scope::YourCreaturesWithCounters => mine && creature && o.counters > 0,
                         Scope::Attached => so.attached_to == Some((id, o.zcc)),
+                        // Printed or granted-until-end-of-turn flying; static grants are left out
+                        // so statics don't depend on each other (no FDN static grants flying).
+                        Scope::OtherYourFliers => {
+                            mine && creature
+                                && src != id
+                                && self
+                                    .modifiers(id)
+                                    .fold(self.def_of(id).keywords, |k, m| k.with(m.keywords))
+                                    .has(Keywords::FLYING)
+                        }
                     };
-                    applies && (!s.your_turn_only || self.active == so.controller)
+                    let condition_ok = match s.condition {
+                        None => true,
+                        Some(StaticCondition::Threshold) => self.players[so.controller].graveyard.len() >= 7,
+                    };
+                    applies && condition_ok && (!s.your_turn_only || self.active == so.controller)
                 })
             })
     }
@@ -606,6 +623,7 @@ impl Game {
         self.players[p].life += n;
         self.events.push(Event::LifeGained { player: p, amount: n });
         self.life_gains_this_turn[p] += 1;
+        self.fire(p, When::YouGainLife, None);
         if self.life_gains_this_turn[p] == 1 {
             self.fire(
                 p,
@@ -690,6 +708,10 @@ impl Game {
     /// CR 603.6a, 603.6c, 603.10a: enters and dies triggers.
     fn zone_triggers(&mut self, id: ObjId, from: Zone, to: Zone, last_controller: PlayerId) {
         let dies = from == Zone::Battlefield && to == Zone::Graveyard;
+        if dies && self.def_of(id).types.creature {
+            self.creature_died_this_turn = true;
+            self.fire(last_controller, When::CreatureYouControlDies, Some(id));
+        }
         if to == Zone::Battlefield {
             // Replacement effects on entering (CR 614.1c-d).
             let def = self.def_of(id).clone();
@@ -714,6 +736,30 @@ impl Game {
             if def.types.creature {
                 let controller = self.obj(id).controller;
                 self.fire(controller, When::AnotherCreatureYouControlEnters, Some(id));
+                let subs = def.subtypes.clone();
+                for other in self
+                    .permanents(controller)
+                    .filter(|&o| o != id)
+                    .collect::<Vec<_>>()
+                {
+                    let whens: Vec<When> = self.def_of(other).triggers.iter().map(|tr| tr.when).collect();
+                    for (n, w) in whens.into_iter().enumerate() {
+                        if let When::AnotherYouControlEntersWithSubtype(sub) = w {
+                            if subs.iter().any(|s| s == sub) {
+                                self.triggered.push(StackItem {
+                                    source: other,
+                                    controller,
+                                    kind: StackKind::Trigger(n),
+                                    targets: Vec::new(),
+                                    kicked: false,
+                                    flashback: false,
+                                    extra: None,
+                                    mode: None,
+                                });
+                            }
+                        }
+                    }
+                }
             }
         }
         if from == Zone::Battlefield {
@@ -763,7 +809,8 @@ impl Game {
         };
         let whens: Vec<When> = self.def_of(id).triggers.iter().map(|tr| tr.when).collect();
         for (n, when) in whens.into_iter().enumerate() {
-            if (when == When::Dies && dies) || (when == When::Enters && enters) {
+            let own_death = when == When::CreatureYouControlDies && dies && self.def_of(id).types.creature;
+            if (when == When::Dies && dies) || (when == When::Enters && enters) || own_death {
                 self.triggered.push(StackItem {
                     source: id,
                     controller,
@@ -917,6 +964,7 @@ impl Game {
                     return o.zone == Zone::Graveyard
                         && (!creature_only || d.types.creature)
                         && (!f.nonland_permanents || (d.types.is_permanent() && !d.types.land))
+                        && (!f.permanent_cards || d.types.is_permanent())
                         && f.max_mana_value.is_none_or(|m| d.cost.mana_value() <= m);
                 }
                 if o.zone != Zone::Battlefield {
@@ -1105,7 +1153,12 @@ impl Game {
             },
             None => 0,
         };
-        cost.generic = cost.generic.saturating_sub(less);
+        let discount: u8 = if def.types.instant || def.types.sorcery {
+            self.permanents(p).map(|x| self.def_of(x).spell_discount).sum()
+        } else {
+            0
+        };
+        cost.generic = cost.generic.saturating_sub(less + discount);
         cost
     }
 
@@ -1425,6 +1478,9 @@ impl Game {
                 }
             }
             (Pending::DeclareAttackers(_), Action::FinishAttacks) => {
+                if self.combat.as_ref().is_some_and(|c| !c.attackers.is_empty()) {
+                    self.fire(self.active, When::YouAttack, None);
+                }
                 self.passes = 0;
                 self.give_priority(self.active);
             }
@@ -1517,6 +1573,9 @@ impl Game {
             }
         }
         let noncreature = !self.def_of(card).types.creature;
+        if p != self.active {
+            self.fire(p, When::YouCastOnOpponentsTurn, None);
+        }
         self.items.push(item);
         self.events.push(Event::Cast { card });
         if noncreature {
@@ -2074,6 +2133,33 @@ impl Game {
                     });
                 }
             }
+            Effect::GrantAll { who, keywords } => {
+                let players = self.players_for(item, legal, who);
+                let ids: Vec<ObjId> = players
+                    .into_iter()
+                    .flat_map(|p| self.creatures(p).collect::<Vec<_>>())
+                    .collect();
+                for id in ids {
+                    let zcc = self.obj(id).zcc;
+                    self.until_eot.push(Modifier {
+                        obj: id,
+                        zcc,
+                        power: 0,
+                        toughness: 0,
+                        keywords,
+                        dies: None,
+                    });
+                }
+            }
+            Effect::Mill { who, n } => {
+                for p in self.players_for(item, legal, who) {
+                    for _ in 0..n {
+                        if let Some(&c) = self.players[p].library.last() {
+                            self.move_to(c, Zone::Graveyard);
+                        }
+                    }
+                }
+            }
             Effect::PumpAttached { power, toughness } => {
                 if let Some((id, zcc)) = self.obj(src).attached_to {
                     if self.obj(id).zcc == zcc && self.obj(id).zone == Zone::Battlefield {
@@ -2154,6 +2240,11 @@ impl Game {
                         amount: n,
                     });
                     self.gain_life(item.controller, n);
+                }
+            }
+            Effect::UntapSelf => {
+                if self.obj(src).zone == Zone::Battlefield {
+                    self.obj_mut(src).tapped = false;
                 }
             }
             Effect::Tap(n) => {
@@ -2255,6 +2346,10 @@ impl Game {
                 self.creatures(controller).any(|c| self.power(c) >= *n)
             }
             Some(Condition::Kicked) => self.obj(source).kicked,
+            Some(Condition::ControlAnotherPowerAtLeast(n)) => self
+                .creatures(controller)
+                .any(|c| c != source && self.power(c) >= *n),
+            Some(Condition::CreatureDiedThisTurn) => self.creature_died_this_turn,
             Some(Condition::ControlAnother(sub)) => self
                 .creatures(controller)
                 .any(|id| id != source && self.def_of(id).subtypes.iter().any(|s| s == sub)),
@@ -2372,6 +2467,7 @@ impl Game {
         self.attacked_this_turn = [false; 2];
         self.life_gains_this_turn = [0; 2];
         self.draws_this_turn = [0; 2];
+        self.creature_died_this_turn = false;
         self.turn += 1;
         self.active = opponent(self.active);
         self.events.push(Event::TurnBegan {
@@ -2389,7 +2485,9 @@ impl Game {
             Step::Untap => {
                 // CR 502.3: untap everything the active player controls. No priority (CR 502.4).
                 for id in self.permanents(a).collect::<Vec<_>>() {
-                    self.obj_mut(id).tapped = false;
+                    if !self.def_of(id).doesnt_untap {
+                        self.obj_mut(id).tapped = false;
+                    }
                 }
                 self.players[a].lands_played = 0;
                 self.enter(Step::Upkeep);
@@ -2442,7 +2540,30 @@ impl Game {
                     self.finish_cleanup();
                 }
             }
-            Step::Upkeep | Step::Main1 | Step::BeginCombat | Step::Main2 | Step::End => {
+            Step::BeginCombat => {
+                self.fire(a, When::BeginCombatYourTurn, None);
+                self.give_priority(a);
+            }
+            Step::End => {
+                // CR 513.1: "at the beginning of the end step" triggers.
+                self.fire(a, When::EndStep { your_turn_only: true }, None);
+                self.fire(
+                    a,
+                    When::EndStep {
+                        your_turn_only: false,
+                    },
+                    None,
+                );
+                self.fire(
+                    opponent(a),
+                    When::EndStep {
+                        your_turn_only: false,
+                    },
+                    None,
+                );
+                self.give_priority(a);
+            }
+            Step::Upkeep | Step::Main1 | Step::Main2 => {
                 self.give_priority(a);
             }
         }

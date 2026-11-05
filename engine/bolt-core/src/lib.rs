@@ -11,6 +11,7 @@ pub mod mana;
 pub mod rng;
 
 pub use card::{Activated, CardDef, ExtraCost, Keywords, Reduction, Types};
+pub use effect::StaticCondition;
 pub use effect::{
     Ability, Condition, Controller, Effect, Filter, Recipient, Scope, SearchFor, SearchTo, Static, Trigger,
     When, Who,

@@ -5,8 +5,8 @@
 //! script's lines against the Scryfall text, so a script can't drift from its card.
 
 use bolt_core::effect::{
-    Ability, Condition, Controller, Effect, Filter, Recipient, Scope, SearchFor, SearchTo, Static, Trigger,
-    When, Who,
+    Ability, Condition, Controller, Effect, Filter, Recipient, Scope, SearchFor, SearchTo, Static,
+    StaticCondition, Trigger, When, Who,
 };
 use bolt_core::{Activated, CardDef, Color, ExtraCost, Keywords, ManaCost, ManaSource, Reduction, Types};
 
@@ -247,6 +247,7 @@ fn static_on(d: &mut CardDef, scope: Scope, your_turn_only: bool, keywords: Keyw
     d.statics.push(Static {
         scope,
         your_turn_only,
+        condition: None,
         power: 0,
         toughness: 0,
         keywords,
@@ -273,6 +274,7 @@ fn attached(d: &mut CardDef, your_turn_only: bool, power: i32, toughness: i32, k
     d.statics.push(Static {
         scope: Scope::Attached,
         your_turn_only,
+        condition: None,
         power,
         toughness,
         keywords,
@@ -286,6 +288,17 @@ const ARTIFACT: Filter = Filter {
     artifacts: true,
     ..Filter::ANY
 };
+
+fn threshold(d: &mut CardDef, power: i32, toughness: i32, keywords: Keywords) {
+    d.statics.push(Static {
+        scope: Scope::This,
+        your_turn_only: false,
+        condition: Some(StaticCondition::Threshold),
+        power,
+        toughness,
+        keywords,
+    });
+}
 
 /// The script for a card, if one exists.
 pub fn script(name: &str) -> Option<Script> {
@@ -988,6 +1001,181 @@ pub fn script(name: &str) -> Option<Script> {
             d.spell = Some(Ability::new(vec![CREATURE], vec![]));
             attached(d, false, 0, 0, Keywords::DOUBLE_STRIKE);
         }),
+                "Sanguine Syphoner" => s(
+            &["Whenever this creature attacks, each opponent loses 1 life and you gain 1 life."],
+            |d, _| {
+                on(
+                    d,
+                    When::Attacks,
+                    vec![],
+                    vec![Effect::LoseLife { who: Who::EachOpponent, n: 1 }, Effect::GainLife { who: Who::You, n: 1 }],
+                )
+            },
+        ),
+        "Ajani's Pridemate" => s(&["Whenever you gain life, put a +1/+1 counter on this creature."], |d, _| {
+            on(d, When::YouGainLife, vec![], vec![Effect::CountersSelf { n: 1 }])
+        }),
+        "Marauding Blight-Priest" => s(&["Whenever you gain life, each opponent loses 1 life."], |d, _| {
+            on(d, When::YouGainLife, vec![], vec![Effect::LoseLife { who: Who::EachOpponent, n: 1 }])
+        }),
+        "Elfsworn Giant" => s(
+            &["Landfall — Whenever a land you control enters, create a 1/1 green Elf Warrior creature token."],
+            |d, t| on(d, When::LandYouControlEnters, vec![], vec![Effect::CreateToken { who: Who::You, def: t.elf_warrior, n: 1 }]),
+        ),
+        "Tatyova, Benthic Druid" => s(
+            &["Landfall — Whenever a land you control enters, you gain 1 life and draw a card."],
+            |d, _| on(d, When::LandYouControlEnters, vec![], vec![Effect::GainLife { who: Who::You, n: 1 }, draw(1)]),
+        ),
+        "Eager Trufflesnout" => s(
+            &["Whenever this creature deals combat damage to a player, create a Food token."],
+            |d, t| on(d, When::DealsCombatDamageToPlayer, vec![], vec![Effect::CreateToken { who: Who::You, def: t.food, n: 1 }]),
+        ),
+        "Elvish Regrower" => s(
+            &["When this creature enters, return target permanent card from your graveyard to your hand."],
+            |d, _| {
+                let f = Filter { permanent_cards: true, ..graveyard_cards(false, Controller::You) };
+                on(d, When::Enters, vec![f], vec![Effect::Bounce(0)])
+            },
+        ),
+        "Erudite Wizard" => s(
+            &["Whenever you draw your second card each turn, put a +1/+1 counter on this creature."],
+            |d, _| on(d, When::YouDrawSecond, vec![], vec![Effect::CountersSelf { n: 1 }]),
+        ),
+        "Fanatical Firebrand" => s(&["{T}, Sacrifice this creature: It deals 1 damage to any target."], |d, _| {
+            let n = activated(d, "", true, vec![Filter::ANY], vec![damage(1, Recipient::Target(0))]);
+            d.activated[n].sacrifice_self = true;
+        }),
+        "Axgard Cavalry" => s(&["{T}: Target creature gains haste until end of turn."], |d, _| {
+            activated(d, "", true, vec![CREATURE], vec![Effect::Grant { slot: 0, keywords: Keywords::HASTE }]);
+        }),
+        "Sure Strike" => s(&["Target creature gets +3/+0 and gains first strike until end of turn."], |d, _| {
+            spell(
+                d,
+                vec![CREATURE],
+                vec![Effect::Pump { slot: 0, power: 3, toughness: 0 }, Effect::Grant { slot: 0, keywords: Keywords::FIRST_STRIKE }],
+            )
+        }),
+        "Overrun" => s(&["Creatures you control get +3/+3 and gain trample until end of turn."], |d, _| {
+            spell(
+                d,
+                vec![],
+                vec![
+                    Effect::PumpAll { who: Who::You, power: 3, toughness: 3 },
+                    Effect::GrantAll { who: Who::You, keywords: Keywords::TRAMPLE },
+                ],
+            )
+        }),
+        "Heroic Reinforcements" => s(
+            &["Create two 1/1 white Soldier creature tokens. Until end of turn, creatures you control get +1/+1 and gain haste."],
+            |d, t| {
+                spell(
+                    d,
+                    vec![],
+                    vec![
+                        Effect::CreateToken { who: Who::You, def: t.soldier, n: 2 },
+                        Effect::PumpAll { who: Who::You, power: 1, toughness: 1 },
+                        Effect::GrantAll { who: Who::You, keywords: Keywords::HASTE },
+                    ],
+                )
+            },
+        ),
+        "Battlesong Berserker" => s(
+            &["Whenever you attack, target creature you control gets +1/+0 and gains menace until end of turn."],
+            |d, _| {
+                on(
+                    d,
+                    When::YouAttack,
+                    vec![YOUR_CREATURE],
+                    vec![Effect::Pump { slot: 0, power: 1, toughness: 0 }, Effect::Grant { slot: 0, keywords: Keywords::MENACE }],
+                )
+            },
+        ),
+        "Youthful Valkyrie" => s(
+            &["Whenever another Angel you control enters, put a +1/+1 counter on this creature."],
+            |d, _| on(d, When::AnotherYouControlEntersWithSubtype("Angel"), vec![], vec![Effect::CountersSelf { n: 1 }]),
+        ),
+        "Vengeful Bloodwitch" => s(
+            &["Whenever this creature or another creature you control dies, target opponent loses 1 life and you gain 1 life."],
+            |d, _| {
+                let opp = Filter::PLAYER.controlled_by(Controller::Opponent);
+                on(
+                    d,
+                    When::CreatureYouControlDies,
+                    vec![opp],
+                    vec![Effect::LoseLife { who: Who::TargetPlayer(0), n: 1 }, Effect::GainLife { who: Who::You, n: 1 }],
+                )
+            },
+        ),
+        "Nessian Hornbeetle" => s(
+            &["At the beginning of combat on your turn, if you control another creature with power 4 or greater, put a +1/+1 counter on this creature."],
+            |d, _| {
+                let mut ability = Ability::new(vec![], vec![Effect::CountersSelf { n: 1 }]);
+                ability.condition = Some(Condition::ControlAnotherPowerAtLeast(4));
+                d.triggers.push(Trigger { when: When::BeginCombatYourTurn, ability });
+            },
+        ),
+        "Brineborn Cutthroat" => s(
+            &["Whenever you cast a spell during an opponent's turn, put a +1/+1 counter on this creature."],
+            |d, _| on(d, When::YouCastOnOpponentsTurn, vec![], vec![Effect::CountersSelf { n: 1 }]),
+        ),
+        "Firebrand Archer" => s(
+            &["Whenever you cast a noncreature spell, this creature deals 1 damage to each opponent."],
+            |d, _| on(d, When::YouCastNoncreature, vec![], vec![damage(1, Recipient::EachOpponent)]),
+        ),
+        "Empyrean Eagle" => s(&["Other creatures you control with flying get +1/+1."], |d, _| {
+            d.statics.push(Static {
+                scope: Scope::OtherYourFliers,
+                your_turn_only: false,
+                condition: None,
+                power: 1,
+                toughness: 1,
+                keywords: Keywords::NONE,
+            });
+        }),
+        "Mocking Sprite" => s(&["Instant and sorcery spells you cast cost {1} less to cast."], |d, _| {
+            d.spell_discount = 1;
+        }),
+        "Slumbering Cerberus" => s(
+            &[
+                "This creature doesn't untap during your untap step.",
+                "Morbid — At the beginning of each end step, if a creature died this turn, untap this creature.",
+            ],
+            |d, _| {
+                d.doesnt_untap = true;
+                let mut ability = Ability::new(vec![], vec![Effect::UntapSelf]);
+                ability.condition = Some(Condition::CreatureDiedThisTurn);
+                d.triggers.push(Trigger { when: When::EndStep { your_turn_only: false }, ability });
+            },
+        ),
+        "Needletooth Pack" => s(
+            &["Morbid — At the beginning of your end step, if a creature died this turn, put two +1/+1 counters on target creature you control."],
+            |d, _| {
+                let mut ability = Ability::new(vec![YOUR_CREATURE], vec![Effect::Counters { slot: 0, n: 2 }]);
+                ability.condition = Some(Condition::CreatureDiedThisTurn);
+                d.triggers.push(Trigger { when: When::EndStep { your_turn_only: true }, ability });
+            },
+        ),
+        "Billowing Shriekmass" => s(
+            &[
+                "When this creature enters, mill three cards.",
+                "Threshold — This creature gets +2/+1 as long as there are seven or more cards in your graveyard.",
+            ],
+            |d, _| {
+                on(d, When::Enters, vec![], vec![Effect::Mill { who: Who::You, n: 3 }]);
+                threshold(d, 2, 1, Keywords::NONE);
+            },
+        ),
+        "Dreadwing Scavenger" => s(
+            &[
+                "Whenever this creature enters or attacks, draw a card, then discard a card.",
+                "Threshold — This creature gets +1/+1 and has deathtouch as long as there are seven or more cards in your graveyard.",
+            ],
+            |d, _| {
+                on(d, When::Enters, vec![], vec![draw(1), discard(1)]);
+                on(d, When::Attacks, vec![], vec![draw(1), discard(1)]);
+                threshold(d, 1, 1, Keywords::DEATHTOUCH);
+            },
+        ),
         _ => None,
     }
 }
@@ -1097,4 +1285,29 @@ pub const SCRIPTED: &[&str] = &[
     "Adventuring Gear",
     "Celestial Armor",
     "Twinblade Blessing",
+    "Sanguine Syphoner",
+    "Ajani's Pridemate",
+    "Marauding Blight-Priest",
+    "Elfsworn Giant",
+    "Tatyova, Benthic Druid",
+    "Eager Trufflesnout",
+    "Elvish Regrower",
+    "Erudite Wizard",
+    "Fanatical Firebrand",
+    "Axgard Cavalry",
+    "Sure Strike",
+    "Overrun",
+    "Heroic Reinforcements",
+    "Battlesong Berserker",
+    "Youthful Valkyrie",
+    "Vengeful Bloodwitch",
+    "Nessian Hornbeetle",
+    "Brineborn Cutthroat",
+    "Firebrand Archer",
+    "Empyrean Eagle",
+    "Mocking Sprite",
+    "Slumbering Cerberus",
+    "Needletooth Pack",
+    "Billowing Shriekmass",
+    "Dreadwing Scavenger",
 ];

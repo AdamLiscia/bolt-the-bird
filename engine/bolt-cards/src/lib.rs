@@ -154,6 +154,8 @@ fn definition(o: &Oracle) -> (CardDef, bool) {
         statics: Vec::new(),
         enters_tapped: false,
         cant_block: false,
+        doesnt_untap: false,
+        spell_discount: 0,
         enters_counters: None,
     };
     let mut claimed = rest.is_empty();

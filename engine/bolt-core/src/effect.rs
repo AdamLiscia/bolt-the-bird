@@ -35,6 +35,8 @@ pub struct Filter {
     pub other: bool,
     /// Cards with at most this mana value (graveyard targets).
     pub max_mana_value: Option<u32>,
+    /// Permanent cards only, lands included (graveyard targets).
+    pub permanent_cards: bool,
     pub controller: Controller,
     /// Creatures only if they have flying ("creature with flying").
     pub creature_needs_flying: bool,
@@ -58,6 +60,7 @@ impl Filter {
         graveyard: None,
         other: false,
         max_mana_value: None,
+        permanent_cards: false,
         controller: Controller::Any,
         creature_needs_flying: false,
         creature_min_power: None,
@@ -200,6 +203,16 @@ pub enum Effect {
         power: i32,
         toughness: i32,
     },
+    /// Creatures `who` controls gain keywords until end of turn.
+    GrantAll {
+        who: Who,
+        keywords: Keywords,
+    },
+    /// Put the top `n` cards of `who`'s library into their graveyard (CR 701.13).
+    Mill {
+        who: Who,
+        n: u8,
+    },
     /// The creature the source is attached to gets +P/+T until end of turn.
     PumpAttached {
         power: i32,
@@ -230,6 +243,8 @@ pub enum Effect {
         n: i32,
     },
     Tap(u8),
+    /// Untap the source.
+    UntapSelf,
     /// "When you do": trigger number `n` of the source triggers now (CR 603.12).
     Reflexive(usize),
     /// Until end of turn, the creature in `slot` gains the source's trigger number `trigger` as a
@@ -284,6 +299,15 @@ pub enum Scope {
     YourCreaturesWithCounters,
     /// The creature this Equipment or Aura is attached to.
     Attached,
+    /// Other creatures you control with flying (printed or granted until end of turn).
+    OtherYourFliers,
+}
+
+/// A condition on a static ability ("as long as ...").
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum StaticCondition {
+    /// Threshold: seven or more cards in your graveyard.
+    Threshold,
 }
 
 /// A static ability that changes characteristics (CR 604, 613 layers 6 and 7c).
@@ -292,6 +316,7 @@ pub struct Static {
     pub scope: Scope,
     /// "During your turn".
     pub your_turn_only: bool,
+    pub condition: Option<StaticCondition>,
     pub power: i32,
     pub toughness: i32,
     pub keywords: Keywords,
@@ -307,6 +332,10 @@ pub enum Condition {
     ControlAnother(String),
     /// You control a creature with at least this power.
     ControlPowerAtLeast(i32),
+    /// You control another creature with at least this power.
+    ControlAnotherPowerAtLeast(i32),
+    /// Morbid: a creature died this turn.
+    CreatureDiedThisTurn,
     /// The source was kicked.
     Kicked,
 }
@@ -367,6 +396,20 @@ pub enum When {
     DealsCombatDamageToPlayer,
     /// "Whenever equipped creature deals combat damage to a player".
     EquippedDealsCombatDamageToPlayer,
+    /// "Whenever you gain life" (every time).
+    YouGainLife,
+    /// "Whenever you attack": once per combat, when you declare one or more attackers.
+    YouAttack,
+    /// "Whenever another [subtype] you control enters".
+    AnotherYouControlEntersWithSubtype(&'static str),
+    /// "Whenever this creature or another creature you control dies".
+    CreatureYouControlDies,
+    /// "At the beginning of combat on your turn".
+    BeginCombatYourTurn,
+    /// "At the beginning of [your / each] end step".
+    EndStep { your_turn_only: bool },
+    /// "Whenever you cast a spell during an opponent's turn".
+    YouCastOnOpponentsTurn,
 }
 
 #[derive(Clone, Debug, PartialEq)]

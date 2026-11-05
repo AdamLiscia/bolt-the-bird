@@ -168,6 +168,10 @@ pub struct CardDef {
     pub enters_tapped: bool,
     /// "This creature can't block."
     pub cant_block: bool,
+    /// "This creature doesn't untap during your untap step."
+    pub doesnt_untap: bool,
+    /// "Instant and sorcery spells you cast cost {N} less to cast."
+    pub spell_discount: u8,
     /// "Enters with N +1/+1 counters if ..." (a replacement effect, CR 614.1c).
     pub enters_counters: Option<(i32, Condition)>,
 }
@@ -201,6 +205,8 @@ impl CardDef {
             statics: Vec::new(),
             enters_tapped: false,
             cant_block: false,
+            doesnt_untap: false,
+            spell_discount: 0,
             enters_counters: None,
         }
     }
@@ -234,6 +240,8 @@ impl CardDef {
             statics: Vec::new(),
             enters_tapped: false,
             cant_block: false,
+            doesnt_untap: false,
+            spell_discount: 0,
             enters_counters: None,
         }
     }
@@ -267,6 +275,8 @@ impl CardDef {
             statics: Vec::new(),
             enters_tapped: false,
             cant_block: false,
+            doesnt_untap: false,
+            spell_discount: 0,
             enters_counters: None,
         }
     }
