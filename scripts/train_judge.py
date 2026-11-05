@@ -77,20 +77,32 @@ class SkillOnly(torch.nn.Module):
 
 
 def main():
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--half", type=int, choices=[0, 1], help="train the MLP judge on one half of the training drafts only")
+    a = ap.parse_args()
     device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
     torch.manual_seed(0)
     cards = load_cards()
     g = load_games()
     g["deck"] = g["deck"][:, :len(cards)]
-    tr, va, te = (tensors(subset(g, g["split"] == s), device) for s in ("train", "val", "test"))
+    train_mask = g["split"] == "train"
+    if a.half is not None:
+        train_mask &= g["half"] == a.half
+    tr = tensors(subset(g, train_mask), device)
+    va, te = (tensors(subset(g, g["split"] == s), device) for s in ("val", "test"))
     print(f"games: train {len(tr[0]):,}  val {len(va[0]):,}  test {len(te[0]):,}   base win rate {float(tr[3].mean()):.1%}")
 
     results = {}
-    for name, model, epochs, lr, wd in [
+    runs = [
         ("skill-only", SkillOnly(), 4, 1e-2, 0.0),
         ("linear", JUDGES["linear"](len(cards)), 8, 3e-3, 1e-2),
         ("mlp", JUDGES["mlp"](len(cards)), 30, 2e-3, 1e-2),
-    ]:
+    ]
+    if a.half is not None:
+        runs = runs[-1:]
+    tag = "" if a.half is None else f"_h{a.half}"
+    for name, model, epochs, lr, wd in runs:
         print(f"{name}:")
         model = fit(model.to(device), tr, va, device, epochs, lr, wd)
         results[name] = evaluate(model, te)
@@ -98,7 +110,7 @@ def main():
         if name == "mlp":
             ck = DATA.parent / "checkpoints"
             ck.mkdir(exist_ok=True)
-            torch.save(model.state_dict(), ck / "judge.pt")
+            torch.save(model.state_dict(), ck / f"judge{tag}.pt")
             # Sanity check: judged win rate of the real decks, by actual result
             wr = model.win_rate(te[0]).cpu().numpy()
             won = te[3].cpu().numpy().astype(bool)
@@ -117,7 +129,7 @@ def main():
 
     res = DATA.parent / "results"
     res.mkdir(exist_ok=True)
-    (res / "judge.json").write_text(json.dumps(results, indent=1))
+    (res / f"judge{tag}.json").write_text(json.dumps(results, indent=1))
 
 
 if __name__ == "__main__":

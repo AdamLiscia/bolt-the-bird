@@ -14,6 +14,11 @@ def split_of(draft_key: str) -> str:
     return "test" if b < 10 else "val" if b < 15 else "train"
 
 
+def half_of(draft_key: str) -> int:
+    """Independent 50/50 split of drafts, for training two judges on disjoint games."""
+    return int(hashlib.md5(draft_key.encode()).hexdigest()[8:16], 16) % 2
+
+
 def load_cards(set_code="FDN") -> list[str]:
     return json.loads((DATA / f"{set_code}_cards.json").read_text())
 
@@ -29,7 +34,9 @@ def load_picks(set_code="FDN") -> dict:
 def load_games(set_code="FDN") -> dict:
     z = np.load(DATA / f"{set_code}_games.npz", allow_pickle=False)
     g = {k: z[k] for k in z.files}
-    g["split"] = np.array([split_of(k) for k in g.pop("draft_key")])
+    keys = g.pop("draft_key")
+    g["split"] = np.array([split_of(k) for k in keys])
+    g["half"] = np.array([half_of(k) for k in keys], dtype=np.int8)
     return g
 
 
