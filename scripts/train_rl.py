@@ -77,9 +77,12 @@ def main():
     ap.add_argument("--kl", type=float, default=0.05)
     ap.add_argument("--eval-every", type=int, default=15)
     ap.add_argument("--eval-tables", type=int, default=512)
+    ap.add_argument("--device", default="auto", help="cpu, mps, or auto. Smoke-test new code on cpu first.")
     a = ap.parse_args()
 
-    device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+    if a.device == "auto":
+        a.device = "mps" if torch.backends.mps.is_available() else "cpu"
+    device = torch.device(a.device)
     torch.manual_seed(0)
     cards = CardInfo()
     ref = DraftTransformer(cards.n).to(device)
@@ -133,6 +136,8 @@ def main():
         if not torch.isfinite(gnorm):
             raise RuntimeError(f"non-finite gradient at iteration {it}")
         opt.step()
+        if not all(torch.isfinite(p).all() for p in bot.parameters()):
+            raise RuntimeError(f"bot weights went non-finite at iteration {it}")
         row = {"iter": it, "reward": float(reward.mean()), "kl": kl_sum / n, "agree_with_human_model": agree / n,
                "seconds": round(time.time() - t0)}
         history.append(row)
