@@ -42,3 +42,7 @@ One line per working step, newest last. The next session continues from the last
   confirms every script matches its card text, and 1,000 fuzz games pass.
   **Next: a rules test for each batch-2 card, then the rest of tier 2 (additional costs, cost
   reductions, "up to" targets, flashback, Food and Treasure).**
+- 2026-11-05: **M2 batch-2 tests.** A rules test for each of the 22 batch-2 cards (decisions,
+  counterspells, fight, prowess, tutors, kicker search). 112 tests in the workspace.
+  **Next: the rest of tier 2: additional costs (sacrifice, discard), cost reductions, "up to" targets,
+  flashback, reflexive triggers, Food and Treasure tokens, and Banishing Light's linked exile.**

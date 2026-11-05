@@ -374,3 +374,387 @@ fn dwynens_elite_needs_another_elf() {
     cast(&mut g, c, &[], &[]);
     assert_eq!(tokens_named(&g, 0, "Elf Warrior"), 1);
 }
+
+// ---------------------------------------------------------------- batch 2: decisions
+
+/// Casts `card` (kicked or not) with `targets`, then passes until the stack is empty, answering
+/// trigger targets and resolution decisions from `answers` in order.
+fn play(g: &mut Game, card: ObjId, kicked: bool, targets: &[Target], answers: &[Action]) {
+    act(
+        g,
+        if kicked {
+            Action::CastKicked(card)
+        } else {
+            Action::Cast(card)
+        },
+    );
+    for &t in targets {
+        act(g, Action::Target(t));
+    }
+    resolve_all(g, answers);
+}
+
+fn resolve_all(g: &mut Game, answers: &[Action]) {
+    let mut answers = answers.iter();
+    while !g.items.is_empty() || matches!(g.pending, Pending::ChooseTarget(_) | Pending::Decide(_)) {
+        let a = match g.pending {
+            Pending::ChooseTarget(_) | Pending::Decide(_) => *answers
+                .next()
+                .unwrap_or_else(|| panic!("no answer for {:?}", g.legal_actions())),
+            _ => Action::PassPriority,
+        };
+        act(g, a);
+    }
+    assert!(answers.next().is_none(), "unused answers");
+}
+
+/// Adds a card to the bottom of a library, so the draw step doesn't draw it.
+fn library_card(g: &mut Game, p: usize, name: &str) -> ObjId {
+    let c = g.add_card(p, id(name), Zone::Library);
+    g.players[p].library.rotate_right(1);
+    c
+}
+
+#[test]
+fn burglar_rat_makes_the_opponent_discard() {
+    let mut g = table();
+    let rat = hand(&mut g, 0, "Burglar Rat");
+    let a = hand(&mut g, 1, "Stab");
+    hand(&mut g, 1, "Forest");
+    begin(&mut g);
+    play(&mut g, rat, false, &[], &[Action::Discard(a)]);
+    assert_eq!(g.obj(a).zone, Zone::Graveyard);
+    assert_eq!(g.players[1].hand.len(), 1, "the opponent chose which");
+}
+
+#[test]
+fn icewind_elemental_draws_then_discards() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Icewind Elemental");
+    let junk = hand(&mut g, 0, "Forest");
+    begin(&mut g);
+    let before = g.players[0].hand.len();
+    play(&mut g, c, false, &[], &[Action::Discard(junk)]);
+    assert_eq!(
+        g.players[0].hand.len(),
+        before - 1,
+        "cast it, drew one, discarded the Forest"
+    );
+    assert_eq!(g.obj(junk).zone, Zone::Graveyard);
+}
+
+#[test]
+fn incinerating_blast_may_loot() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Incinerating Blast");
+    let junk = hand(&mut g, 0, "Forest");
+    let angel = put(&mut g, 1, "Serra Angel");
+    begin(&mut g);
+    let before = g.players[0].hand.len();
+    play(&mut g, c, false, &[obj(angel)], &[Action::Discard(junk)]);
+    assert_eq!(g.obj(angel).zone, Zone::Graveyard);
+    assert_eq!(g.obj(junk).zone, Zone::Graveyard);
+    assert_eq!(
+        g.players[0].hand.len(),
+        before - 1,
+        "cast it, discarded one, drew one"
+    );
+
+    let mut g = table();
+    let c = hand(&mut g, 0, "Incinerating Blast");
+    hand(&mut g, 0, "Forest");
+    let angel = put(&mut g, 1, "Serra Angel");
+    begin(&mut g);
+    let before = g.players[0].hand.len();
+    play(&mut g, c, false, &[obj(angel)], &[Action::No]);
+    assert_eq!(
+        g.players[0].hand.len(),
+        before - 1,
+        "kept the Forest, drew nothing"
+    );
+}
+
+#[test]
+fn wary_thespian_surveils_on_entering_and_dying() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Wary Thespian");
+    let stab = hand(&mut g, 1, "Stab");
+    begin(&mut g);
+    let top = *g.players[0].library.last().unwrap();
+    play(&mut g, c, false, &[], &[Action::Yes]);
+    assert_eq!(g.obj(top).zone, Zone::Graveyard, "surveiled into the graveyard");
+    let top = *g.players[0].library.last().unwrap();
+    act(&mut g, Action::PassPriority);
+    act(&mut g, Action::Cast(stab));
+    act(&mut g, Action::Target(obj(c)));
+    resolve_all(&mut g, &[Action::No]);
+    assert_eq!(g.obj(c).zone, Zone::Graveyard);
+    assert_eq!(*g.players[0].library.last().unwrap(), top, "kept on top");
+}
+
+#[test]
+fn lightshell_duo_has_prowess() {
+    let mut g = table();
+    let duo = put(&mut g, 0, "Lightshell Duo");
+    let growth = hand(&mut g, 0, "Giant Growth");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    begin(&mut g);
+    play(&mut g, growth, false, &[obj(lions)], &[]);
+    assert_eq!((g.power(duo), g.toughness(duo)), (4, 5), "+1/+1 from prowess");
+
+    let mut g = table();
+    let duo = hand(&mut g, 0, "Lightshell Duo");
+    begin(&mut g);
+    play(&mut g, duo, false, &[], &[Action::Yes, Action::No]);
+    assert_eq!(g.players[0].graveyard.len(), 1, "surveil 2: one to the graveyard");
+}
+
+#[test]
+fn uncharted_voyage_lets_the_owner_choose_top_or_bottom() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Uncharted Voyage");
+    let angel = put(&mut g, 1, "Serra Angel");
+    begin(&mut g);
+    play(&mut g, c, false, &[obj(angel)], &[Action::No, Action::No]);
+    assert_eq!(g.players[1].library[0], angel, "the owner chose the bottom");
+}
+
+#[test]
+fn refute_counters_and_loots() {
+    let mut g = table();
+    let stab = hand(&mut g, 0, "Stab");
+    let refute = hand(&mut g, 1, "Refute");
+    let junk = hand(&mut g, 1, "Forest");
+    let lions = put(&mut g, 1, "Savannah Lions");
+    begin(&mut g);
+    act(&mut g, Action::Cast(stab));
+    act(&mut g, Action::Target(obj(lions)));
+    act(&mut g, Action::PassPriority);
+    act(&mut g, Action::Cast(refute));
+    act(&mut g, Action::Target(obj(stab)));
+    resolve_all(&mut g, &[Action::Discard(junk)]);
+    assert_eq!(g.obj(stab).zone, Zone::Graveyard);
+    assert_eq!(g.obj(lions).zone, Zone::Battlefield, "Stab never resolved");
+}
+
+#[test]
+fn essence_scatter_only_counters_creatures() {
+    let mut g = table();
+    let stab = hand(&mut g, 0, "Stab");
+    let lions = hand(&mut g, 0, "Savannah Lions");
+    let scatter = hand(&mut g, 1, "Essence Scatter");
+    let target = put(&mut g, 1, "Serra Angel");
+    begin(&mut g);
+    act(&mut g, Action::Cast(stab));
+    act(&mut g, Action::Target(obj(target)));
+    act(&mut g, Action::PassPriority);
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(scatter)),
+        "no creature spell to target"
+    );
+    resolve_all(&mut g, &[]);
+    act(&mut g, Action::Cast(lions));
+    act(&mut g, Action::PassPriority);
+    act(&mut g, Action::Cast(scatter));
+    act(&mut g, Action::Target(obj(lions)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(lions).zone, Zone::Graveyard);
+}
+
+#[test]
+fn reclamation_sage_may_destroy_an_enchantment() {
+    let mut g = table();
+    let sage = hand(&mut g, 0, "Reclamation Sage");
+    let light = put(&mut g, 1, "Banishing Light");
+    begin(&mut g);
+    play(
+        &mut g,
+        sage,
+        false,
+        &[],
+        &[Action::Target(obj(light)), Action::Yes],
+    );
+    assert_eq!(g.obj(light).zone, Zone::Graveyard);
+
+    let mut g = table();
+    let sage = hand(&mut g, 0, "Reclamation Sage");
+    begin(&mut g);
+    play(&mut g, sage, false, &[], &[]); // no target: the trigger is removed
+    assert_eq!(g.obj(sage).zone, Zone::Battlefield);
+}
+
+#[test]
+fn affectionate_indrik_fights() {
+    let mut g = table();
+    let indrik = hand(&mut g, 0, "Affectionate Indrik");
+    let lions = put(&mut g, 1, "Savannah Lions");
+    begin(&mut g);
+    play(
+        &mut g,
+        indrik,
+        false,
+        &[],
+        &[Action::Target(obj(lions)), Action::Yes],
+    );
+    assert_eq!(g.obj(lions).zone, Zone::Graveyard);
+    assert_eq!(g.obj(indrik).damage, 2, "fighting is both ways");
+}
+
+#[test]
+fn meteor_golem_cannot_hit_lands() {
+    let mut g = table();
+    let golem = hand(&mut g, 0, "Meteor Golem");
+    let angel = put(&mut g, 1, "Serra Angel");
+    begin(&mut g);
+    act(&mut g, Action::Cast(golem));
+    act(&mut g, Action::PassPriority);
+    act(&mut g, Action::PassPriority);
+    assert_eq!(g.legal_actions(), vec![Action::Target(obj(angel))]);
+}
+
+#[test]
+fn bigfin_bouncer_returns_to_hand() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Bigfin Bouncer");
+    let angel = put(&mut g, 1, "Serra Angel");
+    begin(&mut g);
+    play(&mut g, c, false, &[], &[Action::Target(obj(angel))]);
+    assert_eq!(g.obj(angel).zone, Zone::Hand);
+    assert!(g.players[1].hand.contains(&angel));
+}
+
+#[test]
+fn campus_guide_puts_a_basic_on_top() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Campus Guide");
+    let forest = library_card(&mut g, 0, "Forest");
+    begin(&mut g);
+    play(&mut g, c, false, &[], &[Action::Yes, Action::Pick(forest)]);
+    assert_eq!(*g.players[0].library.last().unwrap(), forest);
+}
+
+#[test]
+fn solemn_simulacrum_ramps_and_replaces_itself() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Solemn Simulacrum");
+    let stab = hand(&mut g, 1, "Stab");
+    let forest = library_card(&mut g, 0, "Forest");
+    begin(&mut g);
+    play(&mut g, c, false, &[], &[Action::Yes, Action::Pick(forest)]);
+    assert_eq!(g.obj(forest).zone, Zone::Battlefield);
+    assert!(g.obj(forest).tapped);
+    // Two Stabs' worth: -2/-2 kills the 2/2, and it may draw.
+    act(&mut g, Action::PassPriority);
+    act(&mut g, Action::Cast(stab));
+    act(&mut g, Action::Target(obj(c)));
+    let before = g.players[0].hand.len();
+    resolve_all(&mut g, &[Action::Yes]);
+    assert_eq!(g.players[0].hand.len(), before + 1);
+}
+
+#[test]
+fn micromancer_finds_a_one_mana_spell() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Micromancer");
+    let stab = library_card(&mut g, 0, "Stab");
+    let downfall = library_card(&mut g, 0, "Hero's Downfall");
+    begin(&mut g);
+    act(&mut g, Action::Cast(c));
+    resolve_all(&mut g, &[Action::Yes, Action::Pick(stab)]);
+    assert_eq!(g.obj(stab).zone, Zone::Hand);
+    assert_eq!(g.obj(downfall).zone, Zone::Library, "three mana: not eligible");
+}
+
+#[test]
+fn tutors() {
+    let mut g = table();
+    let demon = hand(&mut g, 0, "Rune-Scarred Demon");
+    let x = library_card(&mut g, 0, "Serra Angel");
+    begin(&mut g);
+    play(&mut g, demon, false, &[], &[Action::Pick(x)]);
+    assert_eq!(g.obj(x).zone, Zone::Hand);
+
+    let mut g = table();
+    let tutor = hand(&mut g, 0, "Grim Tutor");
+    let x = library_card(&mut g, 0, "Serra Angel");
+    begin(&mut g);
+    play(&mut g, tutor, false, &[], &[Action::Pick(x)]);
+    assert_eq!(g.obj(x).zone, Zone::Hand);
+    assert_eq!(g.players[0].life, 17);
+}
+
+#[test]
+fn grow_from_the_ashes_kicked_finds_two() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Grow from the Ashes");
+    let f1 = library_card(&mut g, 0, "Forest");
+    let f2 = library_card(&mut g, 0, "Island");
+    begin(&mut g);
+    play(&mut g, c, true, &[], &[Action::Pick(f1), Action::Pick(f2)]);
+    assert_eq!(
+        (g.obj(f1).zone, g.obj(f2).zone),
+        (Zone::Battlefield, Zone::Battlefield)
+    );
+    assert!(!g.obj(f1).tapped, "untapped");
+}
+
+#[test]
+fn pilfer_takes_a_nonland_card() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Pilfer");
+    let stab = hand(&mut g, 1, "Stab");
+    hand(&mut g, 1, "Forest");
+    begin(&mut g);
+    act(&mut g, Action::Cast(c));
+    act(&mut g, Action::Target(Target::Player(1)));
+    act(&mut g, Action::PassPriority);
+    act(&mut g, Action::PassPriority);
+    assert_eq!(
+        g.legal_actions(),
+        vec![Action::Pick(stab)],
+        "lands can't be chosen"
+    );
+    act(&mut g, Action::Pick(stab));
+    assert_eq!(g.obj(stab).zone, Zone::Graveyard);
+}
+
+#[test]
+fn hare_apparent_counts_the_other_hares() {
+    let mut g = table();
+    put(&mut g, 0, "Hare Apparent");
+    put(&mut g, 0, "Hare Apparent");
+    let c = hand(&mut g, 0, "Hare Apparent");
+    begin(&mut g);
+    play(&mut g, c, false, &[], &[]);
+    assert_eq!(tokens_named(&g, 0, "Rabbit"), 2);
+}
+
+#[test]
+fn snakeskin_veil_protects() {
+    let mut g = table();
+    let veil = hand(&mut g, 1, "Snakeskin Veil");
+    let stab = hand(&mut g, 0, "Stab");
+    let lions = put(&mut g, 1, "Savannah Lions");
+    begin(&mut g);
+    act(&mut g, Action::Cast(stab));
+    act(&mut g, Action::Target(obj(lions)));
+    act(&mut g, Action::PassPriority);
+    act(&mut g, Action::Cast(veil));
+    act(&mut g, Action::Target(obj(lions)));
+    act(&mut g, Action::PassPriority);
+    act(&mut g, Action::PassPriority); // the Veil resolves first
+    assert_eq!((g.power(lions), g.toughness(lions)), (3, 2));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(lions).zone, Zone::Battlefield, "hexproof made Stab fizzle");
+}
+
+#[test]
+fn stroke_of_midnight_leaves_a_human() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Stroke of Midnight");
+    let angel = put(&mut g, 1, "Serra Angel");
+    begin(&mut g);
+    play(&mut g, c, false, &[obj(angel)], &[]);
+    assert_eq!(g.obj(angel).zone, Zone::Graveyard);
+    assert_eq!(tokens_named(&g, 1, "Human"), 1, "its controller gets the token");
+}
