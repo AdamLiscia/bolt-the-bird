@@ -12,7 +12,7 @@ decks that win instead of picks that match.
 |---|---|---|
 | 1 | Draft model trained on human picks | Done: 70.5% top-1 agreement on held-out drafts |
 | 2 | Deck judge, deck builder, draft simulator | Done |
-| 2b | Reinforcement learning against the judge | Running |
+| 2b | Reinforcement learning against the judge | Done: +2.0 points of judged win rate over the human model |
 | 3 | Rust rules engine + a player trained by self-play | Planned ([PLAN.md](PLAN.md)) |
 
 ## Data
@@ -104,7 +104,7 @@ upper bound.
 packs of 14, passing left-right-left. The seat under test gets one model; the other 7 seats run
 the human-imitation model, sampling picks the way people make them.
 
-## Phase 2b: learning to win (running)
+## Phase 2b: learning to win
 
 Seat 0 starts as the human-imitation model. Each iteration drafts 128 simulated tables, builds
 seat 0's deck, and uses its judged win rate as the reward (REINFORCE with a batch-mean baseline).
@@ -113,7 +113,27 @@ drifting into decks no one would build.
 
 **To catch reward hacking, two judges are trained on disjoint halves of the games.** The bot
 trains against judge A and is graded by judge B, building its decks with B too. A bot that only
-learned to fool A won't score with B. Results will go here when the run finishes.
+learned to fool A won't score with B.
+
+150 iterations × 128 tables (19,200 simulated drafts), CPU only, 2 h 6 min. Each evaluation
+drafts 512 held-out tables twice, with the same packs and the same seed: once with the bot in
+seat 0 and once with the human model. Judge B builds and scores both decks.
+
+| Iteration | Bot (judge B) | Human model (judge B) | Gain, points | Rares taken after pack 1 | Picks matching the human model |
+|---|---|---|---|---|---|
+| 0 | 60.02% | 60.02% | 0.00 | 2.54 | 100% |
+| 45 | 61.03% | 60.02% | +1.00 ± 0.13 | 2.37 | 95.9% |
+| 90 | 61.62% | 60.02% | +1.60 ± 0.17 | 2.32 | 93.3% |
+| 150 | **62.01%** | 60.02% | **+1.99 ± 0.18** | **2.15** | 90.3% |
+
+- **The gain holds on the judge the bot never trained against.** That rules out the most direct
+  form of reward hacking. Both judges still learned from the same kind of human-built decks, so
+  they can share blind spots. Only played games will settle that.
+- **It rare-drafts less without being told to:** 15% fewer rares after pack 1. Nothing in the
+  reward mentions rarity. It learned that some of those picks cost wins.
+- **It's still close to human drafting.** It agrees with the human model on 90% of picks, and the
+  KL penalty kept the divergence small (0.07 nats per pick).
+- **The gain was still rising at iteration 150.** Longer runs are the obvious next experiment.
 
 ## Limitations
 
