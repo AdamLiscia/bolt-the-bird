@@ -8,6 +8,33 @@ pub struct ManaCost {
     pub generic: u8,
     /// Colored pips, indexed in WUBRG order.
     pub colored: [u8; 5],
+    /// Hybrid pips such as {B/G}, by color pair (see [`pair_index`]).
+    pub hybrid: [u8; 10],
+    /// How many {X} symbols (CR 107.3).
+    pub x: u8,
+}
+
+/// The ten two-color pairs, in a fixed order.
+pub const PAIRS: [(usize, usize); 10] = [
+    (0, 1),
+    (0, 2),
+    (0, 3),
+    (0, 4),
+    (1, 2),
+    (1, 3),
+    (1, 4),
+    (2, 3),
+    (2, 4),
+    (3, 4),
+];
+
+/// Index of a color pair in [`PAIRS`].
+pub fn pair_index(a: usize, b: usize) -> usize {
+    let (lo, hi) = if a < b { (a, b) } else { (b, a) };
+    PAIRS
+        .iter()
+        .position(|&p| p == (lo, hi))
+        .expect("two different colors")
 }
 
 impl ManaCost {
@@ -21,6 +48,15 @@ impl ManaCost {
             rest = &rest[end + 1..];
             if let Ok(n) = sym.parse::<u8>() {
                 cost.generic += n;
+            } else if sym == "X" {
+                cost.x += 1;
+            } else if let Some((a, b)) = sym.split_once('/') {
+                let ca = Color::from_symbol(a.chars().next()?)? as usize;
+                let cb = Color::from_symbol(b.chars().next()?)? as usize;
+                if a.len() != 1 || b.len() != 1 || ca == cb {
+                    return None;
+                }
+                cost.hybrid[pair_index(ca, cb)] += 1;
             } else {
                 let mut chars = sym.chars();
                 let c = Color::from_symbol(chars.next()?)?;
@@ -33,9 +69,19 @@ impl ManaCost {
         Some(cost)
     }
 
-    /// Mana value (CR 202.3).
+    /// Mana value (CR 202.3). {X} counts as 0 here; on the stack it counts as the chosen X.
     pub fn mana_value(&self) -> u32 {
-        self.generic as u32 + self.colored.iter().map(|&n| n as u32).sum::<u32>()
+        self.generic as u32
+            + self.colored.iter().map(|&n| n as u32).sum::<u32>()
+            + self.hybrid.iter().map(|&n| n as u32).sum::<u32>()
+    }
+
+    /// The cost with X fixed: each {X} becomes `x` generic mana.
+    pub fn with_x(&self, x: u8) -> ManaCost {
+        let mut c = *self;
+        c.generic = c.generic.saturating_add(x.saturating_mul(c.x));
+        c.x = 0;
+        c
     }
 }
 
@@ -68,9 +114,19 @@ impl ManaSource {
 pub fn pay(cost: &ManaCost, sources: &[ManaSource]) -> Option<Vec<usize>> {
     let mut order: Vec<usize> = (0..sources.len()).collect();
     order.sort_by_key(|&i| (sources[i].breadth(), i));
-    let pips: Vec<usize> = (0..5)
-        .flat_map(|c| std::iter::repeat_n(c, cost.colored[c] as usize))
-        .collect();
+    // Each pip is the set of colors that can pay it: one color, or two for hybrid.
+    let mut pips: Vec<[bool; 5]> = Vec::new();
+    for c in 0..5 {
+        let mut mask = [false; 5];
+        mask[c] = true;
+        pips.extend(std::iter::repeat_n(mask, cost.colored[c] as usize));
+    }
+    for (i, &(a, b)) in PAIRS.iter().enumerate() {
+        let mut mask = [false; 5];
+        mask[a] = true;
+        mask[b] = true;
+        pips.extend(std::iter::repeat_n(mask, cost.hybrid[i] as usize));
+    }
     let mut used = vec![false; sources.len()];
     let mut chosen = Vec::new();
     if !match_pips(&pips, sources, &order, &mut used, &mut chosen) {
@@ -91,17 +147,17 @@ pub fn pay(cost: &ManaCost, sources: &[ManaSource]) -> Option<Vec<usize>> {
 }
 
 fn match_pips(
-    pips: &[usize],
+    pips: &[[bool; 5]],
     sources: &[ManaSource],
     order: &[usize],
     used: &mut [bool],
     chosen: &mut Vec<usize>,
 ) -> bool {
-    let Some((&color, rest)) = pips.split_first() else {
+    let Some((&mask, rest)) = pips.split_first() else {
         return true;
     };
     for &i in order {
-        if !used[i] && sources[i].colors[color] {
+        if !used[i] && (0..5).any(|c| mask[c] && sources[i].colors[c]) {
             used[i] = true;
             chosen.push(i);
             if match_pips(rest, sources, order, used, chosen) {
@@ -127,8 +183,12 @@ mod tests {
         assert_eq!(c.mana_value(), 4);
         assert_eq!(ManaCost::parse("").unwrap().mana_value(), 0);
         assert_eq!(ManaCost::parse("{10}").unwrap().generic, 10);
-        assert_eq!(ManaCost::parse("{X}{R}"), None, "X costs are not supported yet");
-        assert_eq!(ManaCost::parse("{W/U}"), None, "hybrid is not supported yet");
+        let x = ManaCost::parse("{X}{R}").unwrap();
+        assert_eq!((x.x, x.mana_value()), (1, 1), "CR 202.3e: X is 0 off the stack");
+        assert_eq!(x.with_x(3).mana_value(), 4);
+        let h = ManaCost::parse("{B/G}{B/G}").unwrap();
+        assert_eq!((h.mana_value(), h.hybrid[pair_index(2, 4)]), (2, 2));
+        assert_eq!(ManaCost::parse("{W/W}"), None);
     }
 
     #[test]
@@ -141,6 +201,17 @@ mod tests {
         assert_eq!(got, vec![0, 1]);
         assert_eq!(pay(&cost, &[mountain, mountain]), None, "no white source");
         assert_eq!(pay(&cost, &[plains]), None, "not enough mana");
+    }
+
+    #[test]
+    fn hybrid_pips_take_either_color() {
+        let swamp = ManaSource::of(&[Black]);
+        let forest = ManaSource::of(&[Green]);
+        let mountain = ManaSource::of(&[Red]);
+        let cost = ManaCost::parse("{B/G}{B/G}").unwrap();
+        assert!(pay(&cost, &[swamp, forest]).is_some());
+        assert!(pay(&cost, &[forest, forest]).is_some());
+        assert!(pay(&cost, &[mountain, forest]).is_none());
     }
 
     #[test]

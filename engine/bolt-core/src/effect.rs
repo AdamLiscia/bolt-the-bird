@@ -420,6 +420,21 @@ pub enum Effect {
     ExtraTurn,
     /// The creature in `slot` gets +X/+X until end of turn, X the source's power.
     PumpBySourcePower(u8),
+    /// The source deals X damage (CR 107.3).
+    DamageX {
+        to: Recipient,
+    },
+    /// Each opponent loses X life; you gain life equal to the life lost.
+    DrainX,
+    /// X damage to the creature in `slot`, then a token for each point of excess damage
+    /// (CR 120.10).
+    DamageXExcessTokens {
+        slot: u8,
+        def: usize,
+    },
+    /// Reveal the top X cards; put any number of permanent cards with mana value X or less onto the
+    /// battlefield and the rest into your graveyard.
+    GenesisWave,
     /// "When you do": trigger number `n` of the source triggers now (CR 603.12).
     Reflexive(usize),
     /// Until end of turn, the creature in `slot` gains the source's trigger number `trigger` as a
@@ -453,6 +468,10 @@ pub enum SearchFor {
     Any,
     /// An instant or sorcery card with this mana value.
     InstantOrSorceryWithManaValue(u32),
+    /// A creature card with mana value at most X.
+    CreatureMvAtMostX,
+    /// A creature card with mana value at most this (X filled in on resolution).
+    CreatureMvAtMost(u32),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -651,6 +670,8 @@ pub enum When {
     OpponentCasts,
     /// "Whenever you put one or more +1/+1 counters on this creature", at most once each turn.
     CountersPutOnThis,
+    /// "Whenever one or more +1/+1 counters are put on another non-Hydra creature you control".
+    CountersOnAnotherNonHydraYouControl,
     /// "Whenever an opponent loses life" (the amount travels with the trigger).
     OpponentLosesLife,
     /// "Whenever a source you control deals noncombat damage to an opponent" (with the amount).

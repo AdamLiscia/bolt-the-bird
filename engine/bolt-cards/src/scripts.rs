@@ -2422,6 +2422,47 @@ pub fn script(name: &str) -> Option<Script> {
                 equip(d, "{3}");
             },
         ),
+                "Wildwood Scourge" => s(
+            &[
+                "This creature enters with X +1/+1 counters on it.",
+                "Whenever one or more +1/+1 counters are put on another non-Hydra creature you control, put a +1/+1 counter on this creature.",
+            ],
+            |d, _| {
+                d.enters_with_x_counters = true;
+                on(d, When::CountersOnAnotherNonHydraYouControl, vec![], vec![Effect::CountersSelf { n: 1 }]);
+            },
+        ),
+        "Goblin Negotiation" => s(
+            &["Goblin Negotiation deals X damage to target creature. Create a number of 1/1 red Goblin creature tokens equal to the amount of excess damage dealt to that creature this way."],
+            |d, t| spell(d, vec![CREATURE], vec![Effect::DamageXExcessTokens { slot: 0, def: t.goblin }]),
+        ),
+        "Exsanguinate" => s(
+            &["Each opponent loses X life. You gain life equal to the life lost this way."],
+            |d, _| spell(d, vec![], vec![Effect::DrainX]),
+        ),
+        "Genesis Wave" => s(
+            &["Reveal the top X cards of your library. You may put any number of permanent cards with mana value X or less from among them onto the battlefield. Then put all cards revealed this way that weren't put onto the battlefield into your graveyard."],
+            |d, _| spell(d, vec![], vec![Effect::GenesisWave]),
+        ),
+        "Fiend Artisan" => s(
+            &[
+                "This creature gets +1/+1 for each creature card in your graveyard.",
+                "{X}{B/G}, {T}, Sacrifice another creature: Search your library for a creature card with mana value X or less, put it onto the battlefield, then shuffle. Activate only as a sorcery.",
+            ],
+            |d, _| {
+                d.pt_per_graveyard_creature = true;
+                let to = SearchTo::Battlefield { tapped: false };
+                let n = activated(
+                    d,
+                    "{X}{B/G}",
+                    true,
+                    vec![],
+                    vec![Effect::Search { what: SearchFor::CreatureMvAtMostX, to, n: 1, kicked_n: None }],
+                );
+                d.activated[n].sacrifice_other_creature = true;
+                d.activated[n].sorcery = true;
+            },
+        ),
         _ => None,
     }
 }
@@ -2668,4 +2709,9 @@ pub const SCRIPTED: &[&str] = &[
     "Ghalta, Primal Hunger",
     "Ashroot Animist",
     "Embercleave",
+    "Wildwood Scourge",
+    "Goblin Negotiation",
+    "Exsanguinate",
+    "Genesis Wave",
+    "Fiend Artisan",
 ];

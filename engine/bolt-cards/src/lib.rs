@@ -190,6 +190,8 @@ fn definition(o: &Oracle) -> (CardDef, bool) {
         player_hexproof: false,
         prevent_noncombat_to_others: false,
         mana_per_subtype: None,
+        enters_with_x_counters: false,
+        pt_per_graveyard_creature: false,
     };
     let mut claimed = rest.is_empty();
     if let Some(s) = scripts::script(&o.name) {

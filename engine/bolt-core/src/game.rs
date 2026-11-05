@@ -63,6 +63,8 @@ pub struct Object {
     pub counters: i32,
     /// Cast with kicker; remembered while it's on the stack and the battlefield.
     pub kicked: bool,
+    /// X as cast, remembered like kicker.
+    pub x: u8,
     /// The object this Equipment or Aura is attached to, pinned to its zone-change count.
     pub attached_to: Option<(ObjId, u32)>,
     /// Power when it last left the battlefield (last known information, CR 608.2h).
@@ -187,6 +189,15 @@ pub enum Action {
     CastModal(ObjId, u8),
     /// Cast paying its alternative cost (CR 118.9).
     CastAlternative(ObjId),
+    /// Cast with X chosen (CR 601.2b).
+    CastX(ObjId, u8),
+    /// Activate an ability with {X} in its cost, optionally sacrificing another creature.
+    ActivateX {
+        id: ObjId,
+        n: usize,
+        victim: Option<ObjId>,
+        x: u8,
+    },
     Target(Target),
     Yes,
     No,
@@ -363,11 +374,14 @@ pub struct StackItem {
     pub amount: i32,
     /// Cast for its alternative cost.
     pub alt: bool,
+    /// The value chosen for X (CR 107.3).
+    pub x: u8,
 }
 
 /// How a spell is being cast.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct CastMode {
+    pub x: u8,
     pub alt: bool,
     pub kicked: bool,
     pub flashback: bool,
@@ -449,6 +463,9 @@ pub enum Decision {
     ChooseMode,
     /// `Pick` a creature to sacrifice, `left` more to go.
     SacrificeCreatures { left: u8 },
+    /// Genesis Wave: `Pick` permanent cards with mana value at most `x` one at a time, `No` to stop;
+    /// the rest of `cards` go to the graveyard.
+    GenesisPick { cards: Vec<ObjId>, x: u32 },
     /// Choose a color for `card` with `Mode(n)`, n in WUBRG order.
     ChooseColor { card: ObjId },
     /// Put the first of `rest` into pile A (`Yes`) or B (`No`).
@@ -660,6 +677,7 @@ impl Game {
             zcc: 0,
             counters: 0,
             kicked: false,
+            x: 0,
             attached_to: None,
             last_power: 0,
             stun: 0,
@@ -852,11 +870,20 @@ impl Game {
 
     /// Power after counters, static effects and pump effects (layer 7).
     fn opponents_graveyard_bonus(&self, id: ObjId) -> i32 {
-        if self.def_of(id).pt_opponents_graveyards {
-            self.players[opponent(self.obj(id).controller)].graveyard.len() as i32
-        } else {
-            0
+        let d = self.def_of(id);
+        let mut b = 0;
+        if d.pt_opponents_graveyards {
+            b += self.players[opponent(self.obj(id).controller)].graveyard.len() as i32;
         }
+        if d.pt_per_graveyard_creature {
+            let p = self.obj(id).controller;
+            b += self.players[p]
+                .graveyard
+                .iter()
+                .filter(|&&c| self.def_of(c).types.creature)
+                .count() as i32;
+        }
+        b
     }
 
     pub fn power(&self, id: ObjId) -> i32 {
@@ -895,6 +922,7 @@ impl Game {
                         mode: None,
                         amount: 0,
                         alt: false,
+                        x: 0,
                     });
                 }
             }
@@ -1033,6 +1061,7 @@ impl Game {
             o.since_turn = turn;
         } else if to != Zone::Stack {
             o.kicked = false;
+            o.x = 0;
         }
         if from == Zone::Battlefield {
             if let Some(c) = &mut self.combat {
@@ -1080,6 +1109,7 @@ impl Game {
                                     mode: None,
                                     amount: 0,
                                     alt: false,
+                                    x: 0,
                                 });
                             }
                         }
@@ -1111,6 +1141,10 @@ impl Game {
                     When::CreatureOpponentControlsEnters,
                     None,
                 );
+            }
+            if def.enters_with_x_counters {
+                let x = self.obj(id).x as i32;
+                self.add_counters(id, x);
             }
             if let Some((n, cond)) = def.enters_counters {
                 let controller = self.obj(id).controller;
@@ -1172,6 +1206,7 @@ impl Game {
                                 mode: None,
                                 amount: 0,
                                 alt: false,
+                                x: 0,
                             });
                         }
                     }
@@ -1196,6 +1231,7 @@ impl Game {
                                     mode: None,
                                     amount: 0,
                                     alt: false,
+                                    x: 0,
                                 });
                             }
                         }
@@ -1241,6 +1277,7 @@ impl Game {
                     mode: None,
                     amount: 0,
                     alt: false,
+                    x: 0,
                 });
             }
         }
@@ -1265,6 +1302,7 @@ impl Game {
                     mode: None,
                     amount: 0,
                     alt: false,
+                    x: 0,
                 });
             }
         }
@@ -1342,6 +1380,7 @@ impl Game {
                 if c.cast && reduces && c.item.targets.is_empty() {
                     let it = &c.item;
                     let mode = CastMode {
+                        x: it.x,
                         alt: it.alt,
                         kicked: it.kicked,
                         flashback: it.flashback,
@@ -1525,6 +1564,7 @@ impl Game {
             mode: None,
             amount: 0,
             alt: false,
+            x: 0,
         }
     }
 
@@ -1599,6 +1639,21 @@ impl Game {
     /// eligible creature or card.
     fn cast_modes(&self, p: PlayerId, c: ObjId, from_graveyard: bool) -> Vec<(Action, CastMode)> {
         let def = self.def_of(c);
+        if def.cost.x > 0 && !from_graveyard {
+            // One mode per affordable X (capped by the mana available).
+            let max = self.untapped_sources(p).len().min(30) as u8;
+            return (0..=max)
+                .map(|x| {
+                    (
+                        Action::CastX(c, x),
+                        CastMode {
+                            x,
+                            ..CastMode::default()
+                        },
+                    )
+                })
+                .collect();
+        }
         if from_graveyard {
             return vec![(
                 Action::CastFlashback(c),
@@ -1679,7 +1734,7 @@ impl Game {
         } else if mode.flashback {
             def.flashback.unwrap_or(def.cost)
         } else {
-            def.cost
+            def.cost.with_x(mode.x)
         };
         if mode.kicked {
             cost = add_costs(&cost, &def.kicker.expect("has kicker"));
@@ -1748,13 +1803,17 @@ impl Game {
                 .as_ref()
                 .and_then(|s| s.targets.first().copied());
             return f.is_some_and(|f| {
-                self.candidates(&f, p).into_iter().any(|t| match t {
-                    Target::Object(x) => {
-                        let chosen = [Chosen::Object(x, self.obj(x).zcc)];
-                        self.can_pay(p, &self.spell_cost(p, c, mode, &chosen), None)
-                    }
-                    Target::Player(_) => false,
-                })
+                let casting = Game::casting(c, p);
+                self.candidates(&f, p)
+                    .into_iter()
+                    .filter(|&t| self.slot_ok(&casting, &f, t))
+                    .any(|t| match t {
+                        Target::Object(x) => {
+                            let chosen = [Chosen::Object(x, self.obj(x).zcc)];
+                            self.can_pay(p, &self.spell_cost(p, c, mode, &chosen), None)
+                        }
+                        Target::Player(_) => false,
+                    })
             });
         }
         false
@@ -1841,7 +1900,21 @@ impl Game {
                 {
                     continue;
                 }
-                if a.sacrifice_other_creature {
+                if a.mana.x > 0 {
+                    let max = self.untapped_sources(p).len().min(30) as u8;
+                    let victims: Vec<Option<ObjId>> = if a.sacrifice_other_creature {
+                        self.creatures(p).filter(|&c| c != id).map(Some).collect()
+                    } else {
+                        vec![None]
+                    };
+                    for victim in victims {
+                        for x in 0..=max {
+                            if self.can_pay(p, &a.mana.with_x(x), uses_self.then_some(id)) {
+                                v.push(Action::ActivateX { id, n, victim, x });
+                            }
+                        }
+                    }
+                } else if a.sacrifice_other_creature {
                     v.extend(
                         self.creatures(p)
                             .filter(|&c| c != id)
@@ -1869,10 +1942,11 @@ impl Game {
             mode: None,
             amount: 0,
             alt: false,
+            x: 0,
         };
         self.passes = 0;
         if self.def_of(id).activated[n].ability.targets.is_empty() {
-            self.pay_activation(p, id, n, victim);
+            self.pay_activation(p, id, n, victim, 0);
             self.items.push(item);
             self.give_priority(p);
         } else {
@@ -1886,12 +1960,35 @@ impl Game {
         }
     }
 
-    fn pay_activation(&mut self, p: PlayerId, id: ObjId, n: usize, victim: Option<ObjId>) {
+    /// Activates an ability with {X} in its cost.
+    fn activate_x(&mut self, p: PlayerId, id: ObjId, n: usize, victim: Option<ObjId>, x: u8) {
+        let item = StackItem {
+            kind: StackKind::Activated(n),
+            x,
+            ..Game::casting(id, p)
+        };
+        self.passes = 0;
+        if self.def_of(id).activated[n].ability.targets.is_empty() {
+            self.pay_activation(p, id, n, victim, x);
+            self.items.push(item);
+            self.give_priority(p);
+        } else {
+            self.choosing = Some(Choosing {
+                item,
+                then: p,
+                cast: false,
+                pay: Some((n, victim)),
+            });
+            self.pending = Pending::ChooseTarget(p);
+        }
+    }
+
+    fn pay_activation(&mut self, p: PlayerId, id: ObjId, n: usize, victim: Option<ObjId>, x: u8) {
         let a = self.def_of(id).activated[n].clone();
         let uses_self = a.tap || a.sacrifice_self;
         // Mana first: a creature can tap for mana and then be sacrificed for the same cost
         // (CR 602.2b). The fuzzer found the reverse order failing.
-        self.pay_mana(p, &a.mana, uses_self.then_some(id));
+        self.pay_mana(p, &a.mana.with_x(x), uses_self.then_some(id));
         if let Some(v) = victim {
             if self.obj(v).zone == Zone::Battlefield {
                 self.move_to(v, Zone::Graveyard);
@@ -2116,6 +2213,17 @@ impl Game {
                 },
             ),
             (Pending::Priority(p), Action::CastWith(c, x)) => self.cast(p, c, CastMode::with(x)),
+            (Pending::Priority(p), Action::CastX(c, x)) => self.cast(
+                p,
+                c,
+                CastMode {
+                    x,
+                    ..CastMode::default()
+                },
+            ),
+            (Pending::Priority(p), Action::ActivateX { id, n, victim, x }) => {
+                self.activate_x(p, id, n, victim, x)
+            }
             (Pending::Priority(p), Action::CastAlternative(c)) => self.cast(
                 p,
                 c,
@@ -2169,6 +2277,7 @@ impl Game {
                             mode: None,
                             amount: 0,
                             alt: false,
+                            x: 0,
                         });
                     }
                 }
@@ -2239,6 +2348,7 @@ impl Game {
         self.move_to(card, Zone::Stack);
         self.obj_mut(card).controller = p;
         self.obj_mut(card).kicked = mode.kicked;
+        self.obj_mut(card).x = mode.x;
         let item = StackItem {
             source: card,
             controller: p,
@@ -2250,6 +2360,7 @@ impl Game {
             mode: mode.mode,
             amount: 0,
             alt: mode.alt,
+            x: mode.x,
         };
         let def = self.def_of(card);
         let ability = match mode.mode {
@@ -2274,6 +2385,7 @@ impl Game {
     fn finish_cast(&mut self, item: StackItem) {
         let (p, card) = (item.controller, item.source);
         let mode = CastMode {
+            x: item.x,
             alt: item.alt,
             kicked: item.kicked,
             flashback: item.flashback,
@@ -2323,6 +2435,7 @@ impl Game {
                             mode: None,
                             amount: 0,
                             alt: false,
+                            x: 0,
                         });
                     }
                 }
@@ -2345,6 +2458,7 @@ impl Game {
                             mode: None,
                             amount: 0,
                             alt: false,
+                            x: 0,
                         });
                     }
                 }
@@ -2374,7 +2488,7 @@ impl Game {
             self.finish_cast(c.item);
         } else {
             if let Some((n, victim)) = c.pay {
-                self.pay_activation(c.item.controller, c.item.source, n, victim);
+                self.pay_activation(c.item.controller, c.item.source, n, victim, c.item.x);
             }
             self.ward_check(&c.item);
             self.items.push(c.item);
@@ -2437,6 +2551,7 @@ impl Game {
                         mode: None,
                         amount: 0,
                         alt: false,
+                        x: 0,
                     });
                 }
                 if let Some(cost) = self.def_of(id).ward {
@@ -2454,6 +2569,7 @@ impl Game {
                         mode: None,
                         amount: 0,
                         alt: false,
+                        x: 0,
                     });
                 }
             }
@@ -2626,6 +2742,10 @@ impl Game {
             return;
         }
         self.obj_mut(id).counters += n;
+        if self.def_of(id).types.creature && !self.has_subtype(id, "Hydra") {
+            let controller = self.obj(id).controller;
+            self.fire(controller, When::CountersOnAnotherNonHydraYouControl, Some(id));
+        }
         if self.obj(id).counter_trigger_turn != self.turn {
             let before = self.triggered.len();
             self.fire_source(id, When::CountersPutOnThis);
@@ -2670,6 +2790,8 @@ impl Game {
                     SearchFor::InstantOrSorceryWithManaValue(mv) => {
                         (d.types.instant || d.types.sorcery) && d.cost.mana_value() == mv
                     }
+                    SearchFor::CreatureMvAtMost(mv) => d.types.creature && d.cost.mana_value() <= mv,
+                    SearchFor::CreatureMvAtMostX => false, // resolved to CreatureMvAtMost first
                 }
             })
             .collect()
@@ -2681,6 +2803,19 @@ impl Game {
             Decision::May | Decision::Surveil { .. } | Decision::Tuck { .. } => vec![Action::Yes, Action::No],
             Decision::SacrificeCreatures { .. } => self.creatures(p).map(Action::Pick).collect(),
             Decision::ChooseColor { .. } => (0..5).map(Action::Mode).collect(),
+            Decision::GenesisPick { cards, x } => {
+                let mut v: Vec<Action> = cards
+                    .iter()
+                    .copied()
+                    .filter(|&c| {
+                        let d = self.def_of(c);
+                        d.types.is_permanent() && d.cost.mana_value() <= *x
+                    })
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
             Decision::SplitPiles { .. } | Decision::ChoosePile { .. } => vec![Action::Yes, Action::No],
             Decision::MayPay { cost } => {
                 let mut v = Vec::new();
@@ -2801,6 +2936,18 @@ impl Game {
             (Decision::PayWard { cost, .. }, Action::Yes) => self.pay_mana(p, &cost, None),
             (Decision::SacrificeAnother { .. }, Action::Pick(c)) => self.move_to(c, Zone::Graveyard),
             (Decision::MayPay { cost }, Action::Yes) => self.pay_mana(p, &cost, None),
+            (Decision::GenesisPick { mut cards, x }, Action::Pick(c)) => {
+                cards.retain(|&k| k != c);
+                self.move_to(c, Zone::Battlefield);
+                if !cards.is_empty() {
+                    self.ask(p, Decision::GenesisPick { cards, x });
+                }
+            }
+            (Decision::GenesisPick { cards, .. }, Action::No) => {
+                for c in cards {
+                    self.move_to(c, Zone::Graveyard);
+                }
+            }
             (
                 Decision::SplitPiles {
                     mut rest,
@@ -3191,6 +3338,10 @@ impl Game {
                 kicked_n,
             } => {
                 let n = if item.kicked { kicked_n.unwrap_or(n) } else { n };
+                let what = match what {
+                    SearchFor::CreatureMvAtMostX => SearchFor::CreatureMvAtMost(item.x as u32),
+                    w => w,
+                };
                 self.ask(item.controller, Decision::Search { what, to, left: n });
             }
             Effect::Counter(n) => {
@@ -3852,6 +4003,53 @@ impl Game {
                     });
                 }
             }
+            Effect::DamageX { to } => {
+                self.run_effect(
+                    item,
+                    legal,
+                    Effect::Damage {
+                        amount: item.x as i32,
+                        kicked: None,
+                        to,
+                    },
+                );
+            }
+            Effect::DrainX => {
+                let opp = opponent(item.controller);
+                let x = item.x as i32;
+                if x > 0 {
+                    self.lose_life(opp, x);
+                    self.gain_life(item.controller, x);
+                }
+            }
+            Effect::DamageXExcessTokens { slot, def } => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    let x = item.x as i32;
+                    // CR 120.10: excess damage is damage beyond what was lethal.
+                    let lethal = (self.toughness(id) - self.obj(id).damage).max(0);
+                    let excess = (x - lethal).max(0);
+                    if x > 0 {
+                        self.deal_damage(src, Target::Object(id), x);
+                    }
+                    for _ in 0..excess {
+                        self.create_token(item.controller, def);
+                    }
+                }
+            }
+            Effect::GenesisWave => {
+                let p = item.controller;
+                let x = item.x as usize;
+                let cards: Vec<ObjId> = self.players[p].library.iter().rev().take(x).copied().collect();
+                if !cards.is_empty() {
+                    self.ask(
+                        p,
+                        Decision::GenesisPick {
+                            cards,
+                            x: item.x as u32,
+                        },
+                    );
+                }
+            }
             Effect::UntapSelf => {
                 if self.obj(src).zone == Zone::Battlefield {
                     self.obj_mut(src).tapped = false;
@@ -3874,6 +4072,7 @@ impl Game {
                     mode: None,
                     amount: 0,
                     alt: false,
+                    x: 0,
                 });
             }
             Effect::GrantDiesTrigger { slot, trigger } => {
@@ -4211,6 +4410,7 @@ impl Game {
                                 mode: None,
                                 amount: 0,
                                 alt: false,
+                                x: 0,
                             });
                         }
                     }
@@ -4406,6 +4606,7 @@ impl Game {
                     mode: None,
                     amount: 0,
                     alt: false,
+                    x: 0,
                 });
             }
         }

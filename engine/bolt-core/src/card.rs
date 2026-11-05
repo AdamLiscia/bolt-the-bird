@@ -239,6 +239,10 @@ pub struct CardDef {
     pub prevent_noncombat_to_others: bool,
     /// "{T}: Add {C} for each [subtype] you control": the source makes this many of its mana.
     pub mana_per_subtype: Option<&'static str>,
+    /// "This creature enters with X +1/+1 counters on it."
+    pub enters_with_x_counters: bool,
+    /// "+1/+1 for each creature card in your graveyard."
+    pub pt_per_graveyard_creature: bool,
 }
 
 impl CardDef {
@@ -296,6 +300,8 @@ impl CardDef {
             player_hexproof: false,
             prevent_noncombat_to_others: false,
             mana_per_subtype: None,
+            enters_with_x_counters: false,
+            pt_per_graveyard_creature: false,
         }
     }
 
@@ -354,6 +360,8 @@ impl CardDef {
             player_hexproof: false,
             prevent_noncombat_to_others: false,
             mana_per_subtype: None,
+            enters_with_x_counters: false,
+            pt_per_graveyard_creature: false,
         }
     }
 
@@ -412,6 +420,8 @@ impl CardDef {
             player_hexproof: false,
             prevent_noncombat_to_others: false,
             mana_per_subtype: None,
+            enters_with_x_counters: false,
+            pt_per_graveyard_creature: false,
         }
     }
 }

@@ -188,3 +188,13 @@ One line per working step, newest last. The next session continues from the last
   10,000 release fuzz games pass at 1,121 games/s; 4 stopped at the cap. **Next: tier 4 batch 2: X
   costs (Wildwood Scourge, Goblin Negotiation, Exsanguinate, Genesis Wave, Fiend Artisan), then token
   copies.**
+- 2026-11-05: **Tier 4, batch 2: X costs and hybrid mana.** {X} in costs (CR 107.3; X counts 0 in
+  mana value off the stack), `CastX` with one action per affordable X, X remembered on the spell and
+  the permanent ("enters with X counters"), activated abilities with {X} (`ActivateX`), hybrid pips
+  ({B/G}) in parsing and payment, X damage, X drain, excess-damage tokens (CR 120.10), Genesis Wave,
+  a creature tutor by X, "+1/+1 per creature card in your graveyard", and a trigger for counters put
+  on other non-Hydra creatures. 5 cards (Wildwood Scourge, Goblin Negotiation, Exsanguinate, Genesis
+  Wave, Fiend Artisan): **258 supported, 302 tests.** The fuzzer found one more bug (seed 5858):
+  Luminous Rebuke's cost reduction counted a tapped creature it couldn't legally target (hexproof
+  from instants); fixed with a regression test. 10,000 release fuzz games pass. **Next: token copies
+  (Self-Reflection, Electroduplicate, Homunculus Horde, Extravagant Replication, Abyssal Harvester).**
