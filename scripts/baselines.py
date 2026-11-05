@@ -1,16 +1,14 @@
 """Context-free baselines: bots that rank cards the same way no matter what you've already drafted.
 
-    python scripts/baselines.py
+python scripts/baselines.py
 """
+
 import json
-import sys
-from pathlib import Path
 
 import numpy as np
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
-from bolt.data import DATA, load_cards, load_games, load_picks, subset  # noqa: E402
-from bolt.evaluate import pick_from_scores, report  # noqa: E402
+from bolt.data import DATA, load_cards, load_games, load_picks, subset
+from bolt.evaluate import pick_from_scores, report
 
 
 def gih_wr(games: dict, n_cards: int, prior_games: int = 200) -> np.ndarray:

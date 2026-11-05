@@ -1,10 +1,11 @@
 """Card facts the simulator and deck builder need: colors, rarity, which cards are basic lands."""
+
 import json
 from itertools import combinations
 
 import numpy as np
 
-from .data import DATA
+from .data import ASSETS
 
 COLORS = "WUBRG"
 BASIC_OF = {"W": "Plains", "U": "Island", "B": "Swamp", "R": "Mountain", "G": "Forest"}
@@ -12,8 +13,9 @@ PAIRS = ["".join(p) for p in combinations(COLORS, 2)]
 
 
 class CardInfo:
-    def __init__(self, set_code="FDN"):
-        self.info = json.loads((DATA / f"{set_code}_card_info.json").read_text())
+    def __init__(self, set_code: str = "FDN", info: list[dict] | None = None):
+        """Loads assets/<set>_card_info.json, or takes `info` directly (tests)."""
+        self.info = info if info is not None else json.loads((ASSETS / f"{set_code}_card_info.json").read_text())
         self.names = [c["name"] for c in self.info]
         self.n = len(self.info)
         self.index = {n: i for i, n in enumerate(self.names)}

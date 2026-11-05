@@ -11,25 +11,25 @@ Each iteration:
 Evaluation never uses judge A: decks are built and scored by judge B, trained on a disjoint half
 of the games. If the bot only learned to fool judge A, judge B won't agree.
 
-    python scripts/train_rl.py --init checkpoints/transformer_strong.pt
+    python scripts/train_rl.py                                   # start from the human model
+    python scripts/train_rl.py --resume checkpoints/bot_rl.pt --name rl_long   # keep going
 """
+
 import argparse
 import copy
 import json
-import sys
 import time
-from pathlib import Path
 
 import numpy as np
 import torch
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
-from bolt.cards import CardInfo  # noqa: E402
-from bolt.data import DATA  # noqa: E402
-from bolt.deckbuild import build_decks  # noqa: E402
-from bolt.judge import DeckJudge  # noqa: E402
-from bolt.models import DraftTransformer  # noqa: E402
-from bolt.sim import opening_packs, pools_to_counts, run_tables  # noqa: E402
+from bolt.cards import CardInfo
+from bolt.data import DATA
+from bolt.deckbuild import build_decks
+from bolt.judge import DeckJudge
+from bolt.models import DraftTransformer
+from bolt.rl import masked_kl
+from bolt.sim import opening_packs, pools_to_counts, run_tables
 
 CK = DATA.parent / "checkpoints"
 torch.backends.mha.set_fastpath_enabled(False)  # the fused inference path hangs on MPS after a training step
@@ -39,16 +39,6 @@ def load_judge(name, n, device):
     j = DeckJudge(n).to(device)
     j.load_state_dict(torch.load(CK / name, map_location=device))
     return j.eval()
-
-
-def masked_kl(logits, ref_logits):
-    """KL(policy || ref) over the cards actually in the pack."""
-    valid = torch.isfinite(logits)
-    # Zero the out-of-pack slots *before* any arithmetic: -inf - -inf is NaN, and torch.where
-    # only hides that in the forward pass. Its gradient still comes back NaN and poisons the bot.
-    lp = torch.log_softmax(logits, 1).masked_fill(~valid, 0.0)
-    lq = torch.log_softmax(ref_logits, 1).masked_fill(~valid, 0.0)
-    return (lp.exp() * valid * (lp - lq)).sum(1)
 
 
 @torch.no_grad()
@@ -63,14 +53,25 @@ def evaluate(bot, ref, packs, judge, cards, device, n_tables, seed):
         late = pools[:, 0, 14:].long() - 1
         out[name] = {"wr": wr, "rares": float(cards.rare[late.cpu().numpy()].sum(1).mean())}
     d = out["bot"]["wr"] - out["human_model"]["wr"]
-    return {"bot_wr": float(out["bot"]["wr"].mean()), "human_model_wr": float(out["human_model"]["wr"].mean()),
-            "gain": float(d.mean()), "gain_se": float(d.std() / np.sqrt(len(d))),
-            "bot_late_rares": out["bot"]["rares"], "human_model_late_rares": out["human_model"]["rares"]}
+    return {
+        "bot_wr": float(out["bot"]["wr"].mean()),
+        "human_model_wr": float(out["human_model"]["wr"].mean()),
+        "gain": float(d.mean()),
+        "gain_se": float(d.std() / np.sqrt(len(d))),
+        "bot_late_rares": out["bot"]["rares"],
+        "human_model_late_rares": out["human_model"]["rares"],
+    }
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--init", default=str(CK / "transformer.pt"))
+    ap.add_argument(
+        "--init",
+        default=str(CK / "transformer.pt"),
+        help="the human-imitation model: the KL anchor, the 7 opponents, and the eval baseline",
+    )
+    ap.add_argument("--resume", default="", help="start the bot from this checkpoint instead of from --init")
+    ap.add_argument("--name", default="rl", help="writes checkpoints/bot_<name>.pt and results/<name>.json")
     ap.add_argument("--iters", type=int, default=150)
     ap.add_argument("--tables", type=int, default=128)
     ap.add_argument("--lr", type=float, default=3e-5)
@@ -89,6 +90,9 @@ def main():
     ref.load_state_dict(torch.load(a.init, map_location=device))
     ref.eval()
     bot = copy.deepcopy(ref)
+    if a.resume:
+        bot.load_state_dict(torch.load(a.resume, map_location=device))
+        print(f"resuming bot from {a.resume}", flush=True)
     judge_a = load_judge("judge_h0.pt", cards.n, device)
     judge_b = load_judge("judge_h1.pt", cards.n, device)
     train_packs, test_packs = opening_packs("train"), opening_packs("test")
@@ -101,9 +105,12 @@ def main():
         r = evaluate(bot, ref, test_packs, judge_b, cards, device, a.eval_tables, seed=12345)
         r["iter"] = it
         history.append({"eval": r})
-        print(f"  EVAL it {it}: bot {r['bot_wr']:.2%} vs human model {r['human_model_wr']:.2%}  "
-              f"gain {r['gain'] * 100:+.2f} ± {r['gain_se'] * 100:.2f} pts (judge B)  "
-              f"rares taken after pack 1: {r['bot_late_rares']:.2f} vs {r['human_model_late_rares']:.2f}", flush=True)
+        print(
+            f"  EVAL it {it}: bot {r['bot_wr']:.2%} vs human model {r['human_model_wr']:.2%}  "
+            f"gain {r['gain'] * 100:+.2f} ± {r['gain_se'] * 100:.2f} pts (judge B)  "
+            f"rares taken after pack 1: {r['bot_late_rares']:.2f} vs {r['human_model_late_rares']:.2f}",
+            flush=True,
+        )
 
     do_eval(0)
     t0 = time.time()
@@ -120,7 +127,7 @@ def main():
         kl_sum, agree = 0.0, 0.0
         opt.zero_grad(set_to_none=True)
         for s in range(0, n, 2048):
-            idx = perm[s:s + 2048]
+            idx = perm[s : s + 2048]
             args = (log["pool"][idx], log["pack"][idx], log["pack_number"][idx], log["pick_number"][idx])
             logits = bot(*args)
             with torch.no_grad():
@@ -138,15 +145,25 @@ def main():
         opt.step()
         if not all(torch.isfinite(p).all() for p in bot.parameters()):
             raise RuntimeError(f"bot weights went non-finite at iteration {it}")
-        row = {"iter": it, "reward": float(reward.mean()), "kl": kl_sum / n, "agree_with_human_model": agree / n,
-               "seconds": round(time.time() - t0)}
+        row = {
+            "iter": it,
+            "reward": float(reward.mean()),
+            "kl": kl_sum / n,
+            "agree_with_human_model": agree / n,
+            "seconds": round(time.time() - t0),
+        }
         history.append(row)
-        print(f"it {it:>3}  reward {row['reward']:.4f}  KL {row['kl']:.4f}  "
-              f"agrees with human model {row['agree_with_human_model']:.1%}  {row['seconds']}s", flush=True)
+        print(
+            f"it {it:>3}  reward {row['reward']:.4f}  KL {row['kl']:.4f}  "
+            f"agrees with human model {row['agree_with_human_model']:.1%}  {row['seconds']}s",
+            flush=True,
+        )
         if it % a.eval_every == 0 or it == a.iters:
             do_eval(it)
-            torch.save(bot.state_dict(), CK / "bot_rl.pt")
-            (DATA.parent / "results" / "rl.json").write_text(json.dumps({"args": vars(a), "history": history}, indent=1))
+            torch.save(bot.state_dict(), CK / f"bot_{a.name}.pt")
+            (DATA.parent / "results" / f"{a.name}.json").write_text(
+                json.dumps({"args": vars(a), "history": history}, indent=1)
+            )
 
 
 if __name__ == "__main__":

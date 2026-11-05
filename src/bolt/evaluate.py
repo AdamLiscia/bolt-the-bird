@@ -1,4 +1,5 @@
 """Pick-accuracy metrics shared by every bot."""
+
 import numpy as np
 
 from .data import STRONG_WR
@@ -24,6 +25,8 @@ def report(name: str, chosen: np.ndarray, picks: dict) -> dict:
         "acc_by_pick": [float(hit[first_pack_pick == k].mean()) for k in range(14)],
         "n": int(len(hit)),
     }
-    print(f"{name:<22} all {r['acc']:.1%}   strong drafters {r['acc_strong']:.1%}   "
-          f"pick1 {r['acc_by_pick'][0]:.1%}  pick5 {r['acc_by_pick'][4]:.1%}  pick9 {r['acc_by_pick'][8]:.1%}")
+    print(
+        f"{name:<22} all {r['acc']:.1%}   strong drafters {r['acc_strong']:.1%}   "
+        f"pick1 {r['acc_by_pick'][0]:.1%}  pick5 {r['acc_by_pick'][4]:.1%}  pick9 {r['acc_by_pick'][8]:.1%}"
+    )
     return r

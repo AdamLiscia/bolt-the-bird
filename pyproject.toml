@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bolt-the-bird"
+version = "0.1.0"
+description = "An AI that drafts Magic: The Gathering, builds its deck, and learns to draft better than the humans it learned from."
+readme = "README.md"
+license = "MIT"
+authors = [{ name = "Adam Liscia" }]
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=2.0",
+    "pandas>=2.2",
+    "torch>=2.4",
+]
+
+[project.optional-dependencies]
+figures = ["matplotlib>=3.8"]
+dev = ["pytest>=8", "ruff>=0.6", "matplotlib>=3.8"]
+
+[project.urls]
+Repository = "https://github.com/AdamLiscia/bolt-the-bird"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM"]
+ignore = ["E501"]

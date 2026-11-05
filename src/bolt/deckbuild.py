@@ -7,6 +7,7 @@ For each of the 10 two-color pairs:
   3. Try both 23 spells + 17 lands and 24 spells + 16 lands.
 The best (pair, land count) wins. Everything is batched: many pools x 10 pairs x every candidate.
 """
+
 import numpy as np
 import torch
 
@@ -36,7 +37,9 @@ def build_decks(pools: np.ndarray, judge, cards: CardInfo, device, chunk: int = 
     """pools: (N, n_cards) card counts. Returns (decks (N, n_cards), judged win rates (N,), labels)."""
     decks, scores, labels = [], [], []
     for s in range(0, len(pools), chunk):
-        d, w, lab = _build(torch.as_tensor(pools[s:s + chunk], dtype=torch.float32, device=device), judge, cards, device)
+        d, w, lab = _build(
+            torch.as_tensor(pools[s : s + chunk], dtype=torch.float32, device=device), judge, cards, device
+        )
         decks.append(d), scores.append(w), labels.extend(lab)
     return np.concatenate(decks), np.concatenate(scores), labels
 
@@ -66,7 +69,14 @@ def _build(pools, judge, cards: CardInfo, device):
         if can.any():
             rows, cols = can.nonzero(as_tuple=True)
             cand = spells[rows] + eye[cols]
-            lands = _lands(cand, fixers[rows], torch.full((len(rows),), float(n_lands), device=device), pidx[rows], colors, basic_cols)
+            lands = _lands(
+                cand,
+                fixers[rows],
+                torch.full((len(rows),), float(n_lands), device=device),
+                pidx[rows],
+                colors,
+                basic_cols,
+            )
             wr = judge.win_rate(cand + lands)
             best = torch.full((rows_all,), -1.0, device=device).scatter_reduce(0, rows, wr, "amax")
             hit = wr == best[rows]
@@ -89,5 +99,5 @@ def _build(pools, judge, cards: CardInfo, device):
     pair_i, build_i = best // len(builds), best % len(builds)
     decks = torch.stack([b[0] for b in builds], 1).reshape(n, P, len(builds), nc)
     deck = decks[torch.arange(n), pair_i, build_i]
-    labels = [f"{PAIRS[p]} {builds[b][2]} lands" for p, b in zip(pair_i.tolist(), build_i.tolist())]
+    labels = [f"{PAIRS[p]} {builds[b][2]} lands" for p, b in zip(pair_i.tolist(), build_i.tolist(), strict=True)]
     return deck.cpu().numpy(), flat.max(1).values.cpu().numpy(), labels

@@ -1,22 +1,20 @@
 """Train a draft model on human picks; report test accuracy in the same format as the baselines.
 
-    python scripts/train.py --model mlp
-    python scripts/train.py --model transformer --epochs 3
+python scripts/train.py --model mlp
+python scripts/train.py --model transformer --epochs 3
 """
+
 import argparse
 import json
-import sys
 import time
-from pathlib import Path
 
 import numpy as np
 import torch
 import torch.nn.functional as F
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
-from bolt.data import DATA, load_cards, load_picks, subset  # noqa: E402
-from bolt.evaluate import report  # noqa: E402
-from bolt.models import MODELS  # noqa: E402
+from bolt.data import DATA, load_cards, load_picks, subset
+from bolt.evaluate import report
+from bolt.models import MODELS
 
 FIELDS = ["pool", "pack", "pack_number", "pick_number", "pick"]
 
@@ -31,7 +29,7 @@ def batches(t: dict, bs: int, device, shuffle: bool, rng=None):
     n = len(t["pick"])
     order = torch.from_numpy(rng.permutation(n)) if shuffle else torch.arange(n)
     for i in range(0, n, bs):
-        idx = order[i:i + bs]
+        idx = order[i : i + bs]
         yield {k: v[idx].to(device) for k, v in t.items()}
 
 
@@ -73,7 +71,9 @@ def main():
     model = MODELS[a.model](len(cards)).to(device)
     if a.init:
         model.load_state_dict(torch.load(a.init, map_location=device))
-        print(f"fine-tuning from {a.init}; before: val acc {float((predict(model, tv, device) == val['pick']).mean()):.1%}")
+        print(
+            f"fine-tuning from {a.init}; before: val acc {float((predict(model, tv, device) == val['pick']).mean()):.1%}"
+        )
     print(f"params {sum(p.numel() for p in model.parameters()):,}")
     opt = torch.optim.AdamW(model.parameters(), lr=a.lr, weight_decay=0.01)
     steps = a.epochs * ((len(train["pick"]) + a.bs - 1) // a.bs)

@@ -1,20 +1,18 @@
 """Give the deck builder the exact pools real players drafted and compare its decks with theirs.
 
-    python scripts/eval_builder.py --n 2000
+python scripts/eval_builder.py --n 2000
 """
+
 import argparse
 import json
-import sys
-from pathlib import Path
 
 import numpy as np
 import torch
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
-from bolt.cards import CardInfo  # noqa: E402
-from bolt.data import DATA, split_of  # noqa: E402
-from bolt.deckbuild import build_decks  # noqa: E402
-from bolt.judge import DeckJudge  # noqa: E402
+from bolt.cards import CardInfo
+from bolt.data import DATA, split_of
+from bolt.deckbuild import build_decks
+from bolt.judge import DeckJudge
 
 
 def final_pools(n_cards):
@@ -50,8 +48,8 @@ def main():
     for i, k in enumerate(keys):  # the deck from each draft's first recorded game
         if k not in first and k in pools and split_of(k) == "test":
             first[k] = i
-    chosen = list(first)[:a.n]
-    human = decks[[first[k] for k in chosen]][:, :cards.n].astype(np.float32)
+    chosen = list(first)[: a.n]
+    human = decks[[first[k] for k in chosen]][:, : cards.n].astype(np.float32)
     pool = np.stack([pools[k] for k in chosen])
     ok = (human.sum(1) == 40) & (human <= pool + 20 * cards.basic).all(1)  # human deck came from this pool
     human, pool = human[ok], pool[ok]
@@ -60,7 +58,7 @@ def main():
         human_wr = judge.win_rate(torch.as_tensor(human, device=device)).cpu().numpy()
     built, built_wr, pairs = build_decks(pool, judge, cards, device)
     nonbasic = ~cards.basic
-    overlap = (np.minimum(built, human)[:, nonbasic].sum(1) / np.maximum(human[:, nonbasic].sum(1), 1))
+    overlap = np.minimum(built, human)[:, nonbasic].sum(1) / np.maximum(human[:, nonbasic].sum(1), 1)
 
     r = {
         "pools": int(len(pool)),

@@ -1,11 +1,14 @@
 """Load prepared arrays and split them by draft, so no draft is ever in two splits."""
+
 import hashlib
 import json
 from pathlib import Path
 
 import numpy as np
 
-DATA = Path(__file__).resolve().parents[2] / "data"
+ROOT = Path(__file__).resolve().parents[2]
+DATA = ROOT / "data"  # large, downloaded, gitignored
+ASSETS = ROOT / "assets"  # small, committed: card metadata and sample packs
 STRONG_WR = 0.58  # user_game_win_rate_bucket at or above this = "strong drafter"
 
 
@@ -20,7 +23,7 @@ def half_of(draft_key: str) -> int:
 
 
 def load_cards(set_code="FDN") -> list[str]:
-    return json.loads((DATA / f"{set_code}_cards.json").read_text())
+    return json.loads((ASSETS / f"{set_code}_cards.json").read_text())
 
 
 def load_picks(set_code="FDN") -> dict:

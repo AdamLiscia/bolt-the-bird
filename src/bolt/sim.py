@@ -5,6 +5,7 @@ we never have to model how Foundations boosters are put together. Seat 0 is the 
 the other 7 seats are the human-imitation model, sampling picks the way people make them.
 Many tables run at once, batched on the GPU.
 """
+
 import numpy as np
 import torch
 
@@ -21,8 +22,16 @@ def opening_packs(split: str) -> np.ndarray:
 
 
 @torch.no_grad()
-def run_tables(packs: np.ndarray, n_tables: int, seat0, others, device, gen: torch.Generator,
-               seat0_greedy: bool = False, temp: float = 1.0):
+def run_tables(
+    packs: np.ndarray,
+    n_tables: int,
+    seat0,
+    others,
+    device,
+    gen: torch.Generator,
+    seat0_greedy: bool = False,
+    temp: float = 1.0,
+):
     """Draft n_tables tables. seat0/others: models with the draft-model signature.
 
     Returns pools (T, 8, 42) of ids+1 in pick order, and seat 0's decision log for learning:
@@ -38,7 +47,7 @@ def run_tables(packs: np.ndarray, n_tables: int, seat0, others, device, gen: tor
         direction = 1 if rnd % 2 == 0 else -1
         for k in range(PACK):
             pos = rnd * PACK + k
-            pool_in = pools[:, :, :ROUNDS * PACK].reshape(T * SEATS, -1)
+            pool_in = pools[:, :, : ROUNDS * PACK].reshape(T * SEATS, -1)
             pack_in = cur.reshape(T * SEATS, -1)
             pn = torch.full((T * SEATS,), rnd, dtype=torch.int8, device=device)
             pk = torch.full((T * SEATS,), k, dtype=torch.int8, device=device)

@@ -3,6 +3,7 @@ the vocabulary; cards not in the pack are masked to -inf.
 
 Card ids are stored +1 so 0 can mean "empty slot".
 """
+
 import torch
 from torch import nn
 
@@ -62,7 +63,7 @@ class DraftTransformer(nn.Module):
         x = torch.cat([pos, pool_t, pack_t], 1)
         pad = torch.cat([torch.zeros(b, 1, dtype=torch.bool, device=pool.device), pool == 0, pack == 0], 1)
         h = self.norm(self.encoder(x, src_key_padding_mask=pad))
-        logits = self.head(h[:, 1 + pool.shape[1]:]).squeeze(-1)
+        logits = self.head(h[:, 1 + pool.shape[1] :]).squeeze(-1)
         return to_vocab(logits, pack, self.n_cards)
 
 

@@ -1,0 +1,53 @@
+{
+ "skill-only": {
+  "log_loss": 0.6772398352622986,
+  "auc": 0.583618198236329
+ },
+ "linear": {
+  "log_loss": 0.6745007634162903,
+  "auc": 0.5954874197618008
+ },
+ "linear_top_cards": [
+  "Embercleave",
+  "Liliana, Dreadhorde General",
+  "Curator of Destinies",
+  "Spinner of Souls",
+  "Scavenging Ooze",
+  "Celestial Armor",
+  "Sire of Seven Deaths",
+  "Sylvan Scavenging",
+  "Kiora, the Rising Tide",
+  "Bloodthirsty Conqueror"
+ ],
+ "mlp": {
+  "log_loss": 0.6734403371810913,
+  "auc": 0.5978476370756313
+ },
+ "calibration_by_judged_quintile": [
+  {
+   "judged": 0.4737085998058319,
+   "actual": 0.46334928229665073,
+   "games": 15675
+  },
+  {
+   "judged": 0.5209332704544067,
+   "actual": 0.5197754529216637,
+   "games": 15676
+  },
+  {
+   "judged": 0.547814667224884,
+   "actual": 0.5482039175652396,
+   "games": 15673
+  },
+  {
+   "judged": 0.5743885636329651,
+   "actual": 0.5740894303757096,
+   "games": 15677
+  },
+  {
+   "judged": 0.6173518300056458,
+   "actual": 0.6214440617425692,
+   "games": 15678
+  }
+ ]
+}

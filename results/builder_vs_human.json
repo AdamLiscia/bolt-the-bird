@@ -1,0 +1,9 @@
+{
+ "pools": 966,
+ "human_judged_wr": 0.5451947450637817,
+ "builder_judged_wr": 0.579264223575592,
+ "builder_better_share": 0.8944099378881988,
+ "spell_overlap_with_human": 0.7932040691375732,
+ "builder_rares_per_deck": 2.281573534011841,
+ "human_rares_per_deck": 2.497929573059082
+}

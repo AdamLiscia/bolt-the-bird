@@ -7,20 +7,18 @@ split by rarity and by how good the drafter is.
 
     python scripts/rare_drafting.py
 """
+
 import json
-import sys
-from pathlib import Path
 
 import numpy as np
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
-from bolt.data import DATA, STRONG_WR, load_picks  # noqa: E402
+from bolt.data import ASSETS, DATA, STRONG_WR, load_picks
 
 COLORS = "WUBRG"
 
 
 def main():
-    info = json.loads((DATA / "FDN_card_info.json").read_text())
+    info = json.loads((ASSETS / "FDN_card_info.json").read_text())
     n = len(info)
     cmask = np.zeros((n + 1, 5), bool)  # card id+1 -> colors
     for i, c in enumerate(info):
@@ -64,9 +62,11 @@ def main():
         took_off_rare = (off(pick) & is_rare[pick])[m]
         r["share_of_late_picks_off_color_rare"] = float(took_off_rare.mean())
         out[label] = r
-        print(f"{label:<7} off-color take rate, pack 2-3: rares {r['rare/mythic']:.1%}  "
-              f"commons/uncommons {r['common/uncommon']:.1%}   "
-              f"late picks that are off-color rares: {r['share_of_late_picks_off_color_rare']:.2%}")
+        print(
+            f"{label:<7} off-color take rate, pack 2-3: rares {r['rare/mythic']:.1%}  "
+            f"commons/uncommons {r['common/uncommon']:.1%}   "
+            f"late picks that are off-color rares: {r['share_of_late_picks_off_color_rare']:.2%}"
+        )
 
     # Do drafters who rare-draft more win less? (Correlation only: skill confounds it.)
     off_rare_pick = late & off(pick) & is_rare[pick]

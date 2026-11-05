@@ -1,0 +1,31 @@
+{
+ "all": {
+  "rare/mythic": 0.11154597427686733,
+  "common/uncommon": 0.035043717447086696,
+  "share_of_late_picks_off_color_rare": 0.021234360714867184
+ },
+ "strong": {
+  "rare/mythic": 0.10978279774510706,
+  "common/uncommon": 0.03479643411435963,
+  "share_of_late_picks_off_color_rare": 0.020803828827954944
+ },
+ "others": {
+  "rare/mythic": 0.11222937993579868,
+  "common/uncommon": 0.035139855083699496,
+  "share_of_late_picks_off_color_rare": 0.021402352570697104
+ },
+ "event_wins_by_late_off_color_rares": {
+  "0": {
+   "drafts": 75634,
+   "avg_wins": 2.939101462305312
+  },
+  "1": {
+   "drafts": 38734,
+   "avg_wins": 2.857050653172923
+  },
+  "2+": {
+   "drafts": 16815,
+   "avg_wins": 2.6986024382991376
+  }
+ }
+}
