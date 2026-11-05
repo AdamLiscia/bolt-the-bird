@@ -357,6 +357,8 @@ pub struct Modifier {
     pub power: i32,
     pub toughness: i32,
     pub keywords: Keywords,
+    /// A granted "when this creature dies" trigger: (card that has the trigger, its index, controller).
+    pub dies: Option<(ObjId, usize, PlayerId)>,
 }
 
 #[derive(Clone, Debug)]
@@ -382,6 +384,8 @@ pub struct Game {
     /// The decision a resolving spell or ability is waiting on.
     pub decision: Option<Decision>,
     pub until_eot: Vec<Modifier>,
+    /// "Until this leaves the battlefield" exiles: (source, its zone-change count, exiled card).
+    pub links: Vec<(ObjId, u32, ObjId)>,
     pub turn: u32,
     pub active: PlayerId,
     /// The player who took the first turn.
@@ -442,6 +446,7 @@ impl Game {
             resolving: None,
             decision: None,
             until_eot: Vec::new(),
+            links: Vec::new(),
             turn: 0,
             active: first,
             first,
@@ -587,6 +592,44 @@ impl Game {
     /// CR 603.6a, 603.6c, 603.10a: enters and dies triggers.
     fn zone_triggers(&mut self, id: ObjId, from: Zone, to: Zone, last_controller: PlayerId) {
         let dies = from == Zone::Battlefield && to == Zone::Graveyard;
+        if from == Zone::Battlefield {
+            // CR 610.3: cards exiled "until this leaves the battlefield" come back.
+            let left_zcc = self.obj(id).zcc - 1;
+            let back: Vec<ObjId> = self
+                .links
+                .iter()
+                .filter(|&&(src, z, _)| src == id && z == left_zcc)
+                .map(|&(_, _, card)| card)
+                .collect();
+            self.links.retain(|&(src, z, _)| !(src == id && z == left_zcc));
+            for card in back {
+                if self.obj(card).zone == Zone::Exile {
+                    self.move_to(card, Zone::Battlefield);
+                }
+            }
+        }
+        if dies {
+            // Granted "when this creature dies" triggers, from before it changed zones.
+            let was = self.obj(id).zcc - 1;
+            let granted: Vec<(ObjId, usize, PlayerId)> = self
+                .until_eot
+                .iter()
+                .filter(|m| m.obj == id && m.zcc == was)
+                .filter_map(|m| m.dies)
+                .collect();
+            let now = self.obj(id).zcc;
+            for (card, n, controller) in granted {
+                self.triggered.push(StackItem {
+                    source: card,
+                    controller,
+                    kind: StackKind::Trigger(n),
+                    targets: vec![Chosen::Object(id, now)],
+                    kicked: false,
+                    flashback: false,
+                    extra: None,
+                });
+            }
+        }
         let enters = to == Zone::Battlefield;
         let controller = if dies {
             last_controller
@@ -646,7 +689,24 @@ impl Game {
             Pending::ChooseTarget(_) => {
                 let c = self.choosing.as_ref().expect("choosing targets");
                 let filter = self.ability_of(&c.item).targets[c.item.targets.len()];
+                let ability = self.ability_of(&c.item);
                 let mut options = self.candidates(&filter, c.item.controller);
+                // CR 115.3: one object can't be chosen twice; "other" excludes the source.
+                options.retain(|&t| match t {
+                    Target::Object(x) => {
+                        let is_source = filter.other && x == c.item.source;
+                        let taken = c.item.targets.contains(&Chosen::Object(x, self.obj(x).zcc));
+                        !is_source && !taken
+                    }
+                    Target::Player(_) => true,
+                });
+                if ability.same_graveyard {
+                    if let Some(&Chosen::Object(first, _)) = c.item.targets.first() {
+                        let owner = self.obj(first).owner;
+                        options.retain(|&t| matches!(t, Target::Object(x) if self.obj(x).owner == owner));
+                    }
+                }
+                let can_stop = c.item.targets.len() >= ability.min_targets.unwrap_or(usize::MAX);
                 // A cost reduction that depends on the target: only offer targets you can afford.
                 let reduces = matches!(
                     self.def_of(c.item.source).reduction,
@@ -671,7 +731,11 @@ impl Game {
                         )
                     });
                 }
-                options.into_iter().map(Action::Target).collect()
+                let mut v: Vec<Action> = options.into_iter().map(Action::Target).collect();
+                if can_stop {
+                    v.push(Action::No); // "up to": stop choosing
+                }
+                v
             }
         }
     }
@@ -717,6 +781,9 @@ impl Game {
                         && f.spell_creature
                             .is_none_or(|c| c == self.def_of(id).types.creature);
                 }
+                if let Some(creature_only) = f.graveyard {
+                    return o.zone == Zone::Graveyard && (!creature_only || self.def_of(id).types.creature);
+                }
                 if o.zone != Zone::Battlefield {
                     return false;
                 }
@@ -745,6 +812,11 @@ impl Game {
 
     /// Every legal target for `f`, players first.
     pub fn candidates(&self, f: &Filter, controller: PlayerId) -> Vec<Target> {
+        let graveyards = self
+            .players
+            .iter()
+            .flat_map(|pl| pl.graveyard.iter())
+            .filter(|_| f.graveyard.is_some());
         (0..2)
             .map(Target::Player)
             .chain(self.battlefield.iter().map(|&id| Target::Object(id)))
@@ -754,13 +826,15 @@ impl Game {
                     .filter(|_| f.spells)
                     .map(|&id| Target::Object(id)),
             )
+            .chain(graveyards.map(|&id| Target::Object(id)))
             .filter(|&t| self.target_ok(f, controller, t))
             .collect()
     }
 
+    /// Whether every required target slot has a legal choice ("up to" slots are optional).
     fn can_target_all(&self, ability: &Ability, controller: PlayerId) -> bool {
-        ability
-            .targets
+        let required = ability.min_targets.unwrap_or(ability.targets.len());
+        ability.targets[..required]
             .iter()
             .all(|f| !self.candidates(f, controller).is_empty())
     }
@@ -786,7 +860,7 @@ impl Game {
             }
             // CR 307.1, 302.1, 304.1, 702.8a: only instants and flash ignore sorcery timing.
             let timing = sorcery_timing || def.types.instant || def.keywords.has(Keywords::FLASH);
-            let castable = (def.types.creature && def.spell.is_none()) || def.spell.is_some();
+            let castable = def.types.is_permanent() || def.spell.is_some();
             if !timing || !castable {
                 continue;
             }
@@ -1134,6 +1208,7 @@ impl Game {
             ),
             (Pending::Priority(p), Action::Activate(id, n)) => self.activate(p, id, n),
             (Pending::ChooseTarget(_), Action::Target(target)) => self.choose_target(target),
+            (Pending::ChooseTarget(_), Action::No) => self.finish_choosing(),
             (Pending::Decide(p), a) => self.decide(p, a),
             (Pending::DeclareAttackers(_), Action::Attack(c)) => {
                 // CR 508.1f: attacking taps the creature unless it has vigilance.
@@ -1262,9 +1337,12 @@ impl Game {
         c.item.targets.push(chosen);
         let c = self.choosing.as_ref().expect("choosing targets");
         let done = c.item.targets.len() == self.ability_of(&c.item).targets.len();
-        if !done {
-            return;
+        if done {
+            self.finish_choosing();
         }
+    }
+
+    fn finish_choosing(&mut self) {
         let c = self.choosing.take().expect("choosing targets");
         if c.cast {
             self.finish_cast(c.item);
@@ -1298,7 +1376,9 @@ impl Game {
                 !self.players[p].lost && self.target_ok(f, item.controller, Target::Player(p))
             }
             Chosen::Object(id, zcc) => {
-                self.obj(id).zcc == zcc && self.target_ok(f, item.controller, Target::Object(id))
+                self.obj(id).zcc == zcc
+                    && !(f.other && id == item.source)
+                    && self.target_ok(f, item.controller, Target::Object(id))
             }
         }
     }
@@ -1523,9 +1603,9 @@ impl Game {
     }
 
     fn players_for(&self, item: &StackItem, legal: &[bool], who: Who) -> Vec<PlayerId> {
-        let slot_player = |n: u8| match item.targets[n as usize] {
-            Chosen::Player(p) if legal[n as usize] => Some(p),
-            Chosen::Object(id, _) if legal[n as usize] => Some(self.obj(id).controller),
+        let slot_player = |n: u8| match item.targets.get(n as usize) {
+            Some(&Chosen::Player(p)) if legal[n as usize] => Some(p),
+            Some(&Chosen::Object(id, _)) if legal[n as usize] => Some(self.obj(id).controller),
             _ => None,
         };
         match who {
@@ -1536,8 +1616,8 @@ impl Game {
     }
 
     fn slot_object(item: &StackItem, legal: &[bool], n: u8) -> Option<ObjId> {
-        match item.targets[n as usize] {
-            Chosen::Object(id, _) if legal[n as usize] => Some(id),
+        match item.targets.get(n as usize) {
+            Some(&Chosen::Object(id, _)) if legal[n as usize] => Some(id),
             _ => None,
         }
     }
@@ -1553,10 +1633,11 @@ impl Game {
                     amount
                 };
                 let targets: Vec<Target> = match to {
-                    Recipient::Target(n) => match item.targets[n as usize] {
-                        _ if !legal[n as usize] => vec![],
-                        Chosen::Player(p) => vec![Target::Player(p)],
-                        Chosen::Object(id, _) => vec![Target::Object(id)],
+                    Recipient::Target(n) => match item.targets.get(n as usize) {
+                        _ if !legal.get(n as usize).copied().unwrap_or(false) => vec![],
+                        Some(&Chosen::Player(p)) => vec![Target::Player(p)],
+                        Some(&Chosen::Object(id, _)) => vec![Target::Object(id)],
+                        None => vec![],
                     },
                     Recipient::EachOpponent => vec![Target::Player(opponent(item.controller))],
                     Recipient::EachCreature { without_flying } => self
@@ -1573,7 +1654,7 @@ impl Game {
                 }
             }
             Effect::DamageIfLifeIs { slot, life, amount } => {
-                if let Chosen::Player(p) = item.targets[slot as usize] {
+                if let Some(&Chosen::Player(p)) = item.targets.get(slot as usize) {
                     if legal[slot as usize] && self.players[p].life == life {
                         self.deal_damage(src, Target::Player(p), amount);
                     }
@@ -1616,6 +1697,7 @@ impl Game {
                         power,
                         toughness,
                         keywords: Keywords::NONE,
+                        dies: None,
                     });
                 }
             }
@@ -1628,6 +1710,7 @@ impl Game {
                         power: 0,
                         toughness: 0,
                         keywords,
+                        dies: None,
                     });
                 }
             }
@@ -1652,6 +1735,7 @@ impl Game {
                         power,
                         toughness,
                         keywords: Keywords::NONE,
+                        dies: None,
                     });
                 }
             }
@@ -1732,6 +1816,71 @@ impl Game {
                     {
                         let countered = self.items.remove(pos);
                         self.leave_stack(id, countered.flashback);
+                    }
+                }
+            }
+            Effect::ExileUntilSourceLeaves(n) => {
+                // CR 610.3c: if the source already left, nothing is exiled.
+                if let Some(id) = Game::slot_object(item, legal, n) {
+                    if self.obj(src).zone == Zone::Battlefield {
+                        self.move_to(id, Zone::Exile);
+                        self.links.push((src, self.obj(src).zcc, id));
+                    }
+                }
+            }
+            Effect::DrainIfCreatureExiled { n } => {
+                let exiled_creature = (0..item.targets.len() as u8).any(|i| {
+                    Game::slot_object(item, legal, i)
+                        .is_some_and(|x| self.obj(x).zone == Zone::Exile && self.def_of(x).types.creature)
+                });
+                if exiled_creature {
+                    let opp = opponent(item.controller);
+                    self.players[opp].life -= n;
+                    self.events.push(Event::LifeLost {
+                        player: opp,
+                        amount: n,
+                    });
+                    self.players[item.controller].life += n;
+                    self.events.push(Event::LifeGained {
+                        player: item.controller,
+                        amount: n,
+                    });
+                }
+            }
+            Effect::Tap(n) => {
+                if let Some(id) = Game::slot_object(item, legal, n) {
+                    self.obj_mut(id).tapped = true;
+                }
+            }
+            Effect::Reflexive(n) => {
+                self.triggered.push(StackItem {
+                    source: src,
+                    controller: item.controller,
+                    kind: StackKind::Trigger(n),
+                    targets: Vec::new(),
+                    kicked: false,
+                    flashback: false,
+                    extra: None,
+                });
+            }
+            Effect::GrantDiesTrigger { slot, trigger } => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    let zcc = self.obj(id).zcc;
+                    self.until_eot.push(Modifier {
+                        obj: id,
+                        zcc,
+                        power: 0,
+                        toughness: 0,
+                        keywords: Keywords::NONE,
+                        dies: Some((src, trigger, item.controller)),
+                    });
+                }
+            }
+            Effect::ReturnTapped(n) => {
+                if let Some(id) = Game::slot_object(item, legal, n) {
+                    if self.obj(id).zone == Zone::Graveyard {
+                        self.move_to(id, Zone::Battlefield);
+                        self.obj_mut(id).tapped = true;
                     }
                 }
             }
@@ -1825,7 +1974,7 @@ impl Game {
                 continue;
             }
             self.events.push(Event::Triggered { source: item.source });
-            if ability.targets.is_empty() {
+            if ability.targets.len() == item.targets.len() {
                 self.items.push(item);
             } else if self.can_target_all(&ability, item.controller) {
                 let who = item.controller;

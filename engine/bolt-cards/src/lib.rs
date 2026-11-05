@@ -157,7 +157,7 @@ fn definition(o: &Oracle) -> (CardDef, bool) {
             claimed = true;
         }
     }
-    let castable = types.creature || def.spell.is_some();
+    let castable = (types.is_permanent() && !types.land) || def.spell.is_some();
     let supported = basic_color.is_some() || (castable && claimed && matches!(cost, Some(Some(_))));
     (def, supported)
 }

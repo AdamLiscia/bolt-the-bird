@@ -28,6 +28,7 @@ pub fn token_defs() -> Vec<CardDef> {
         token("Rabbit", "Rabbit", 1, 1, Keywords::NONE),
         food(),
         treasure(),
+        token("Faerie", "Faerie", 1, 1, Keywords::FLYING),
     ]
 }
 
@@ -78,6 +79,7 @@ pub struct Tokens {
     pub rabbit: usize,
     pub food: usize,
     pub treasure: usize,
+    pub faerie: usize,
 }
 
 impl Tokens {
@@ -93,6 +95,7 @@ impl Tokens {
             rabbit: base + 7,
             food: base + 8,
             treasure: base + 9,
+            faerie: base + 10,
         }
     }
 }
@@ -172,6 +175,24 @@ const ARTIFACT_OR_ENCHANTMENT: Filter = Filter {
     enchantments: true,
     ..Filter::ANY
 };
+
+/// Cards in a graveyard: creature cards only, or any card.
+const fn graveyard_cards(creatures_only: bool, controller: Controller) -> Filter {
+    Filter {
+        players: false,
+        creatures: false,
+        planeswalkers: false,
+        graveyard: Some(creatures_only),
+        controller,
+        ..Filter::ANY
+    }
+}
+
+fn up_to(targets: Vec<Filter>, effects: Vec<Effect>) -> Ability {
+    let mut a = Ability::new(targets, effects);
+    a.min_targets = Some(0);
+    a
+}
 
 fn draw(n: u8) -> Effect {
     Effect::Draw { who: Who::You, n }
@@ -507,6 +528,65 @@ pub fn script(name: &str) -> Option<Script> {
             d.flashback = ManaCost::parse("{2}{U}");
             spell(d, vec![], vec![draw(1)])
         }),
+        "Felidar Savior" => s(
+            &["When this creature enters, put a +1/+1 counter on each of up to two other target creatures you control."],
+            |d, _| {
+                let f = Filter { other: true, ..YOUR_CREATURE };
+                let ability =
+                    up_to(vec![f, f], vec![Effect::Counters { slot: 0, n: 1 }, Effect::Counters { slot: 1, n: 1 }]);
+                d.triggers.push(Trigger { when: When::Enters, ability });
+            },
+        ),
+        "Macabre Waltz" => s(
+            &["Return up to two target creature cards from your graveyard to your hand, then discard a card."],
+            |d, _| {
+                let f = graveyard_cards(true, Controller::You);
+                d.spell = Some(up_to(vec![f, f], vec![Effect::Bounce(0), Effect::Bounce(1), discard(1)]));
+            },
+        ),
+        "Soul-Shackled Zombie" => s(
+            &["When this creature enters, exile up to two target cards from a single graveyard. If at least one creature card was exiled this way, each opponent loses 2 life and you gain 2 life."],
+            |d, _| {
+                let f = graveyard_cards(false, Controller::Any);
+                let mut ability = up_to(
+                    vec![f, f],
+                    vec![Effect::Exile(0), Effect::Exile(1), Effect::DrainIfCreatureExiled { n: 2 }],
+                );
+                ability.same_graveyard = true;
+                d.triggers.push(Trigger { when: When::Enters, ability });
+            },
+        ),
+        "Faebloom Trick" => s(
+            &["Create two 1/1 blue Faerie creature tokens with flying. When you do, tap target creature an opponent controls."],
+            |d, t| {
+                spell(
+                    d,
+                    vec![],
+                    vec![Effect::CreateToken { who: Who::You, def: t.faerie, n: 2 }, Effect::Reflexive(0)],
+                );
+                on(d, When::Never, vec![OPP_CREATURE], vec![Effect::Tap(0)]);
+            },
+        ),
+        "Banishing Light" => s(
+            &["When this enchantment enters, exile target nonland permanent an opponent controls until this enchantment leaves the battlefield."],
+            |d, _| on(d, When::Enters, vec![OPP_NONLAND], vec![Effect::ExileUntilSourceLeaves(0)]),
+        ),
+        "Fake Your Own Death" => s(
+            &["Until end of turn, target creature gets +2/+0 and gains \"When this creature dies, return it to the battlefield tapped under its owner's control and you create a Treasure token.\""],
+            |d, t| {
+                spell(
+                    d,
+                    vec![CREATURE],
+                    vec![Effect::Pump { slot: 0, power: 2, toughness: 0 }, Effect::GrantDiesTrigger { slot: 0, trigger: 0 }],
+                );
+                on(
+                    d,
+                    When::Never,
+                    vec![graveyard_cards(true, Controller::Any)],
+                    vec![Effect::ReturnTapped(0), Effect::CreateToken { who: Who::You, def: t.treasure, n: 1 }],
+                );
+            },
+        ),
         _ => None,
     }
 }
@@ -566,4 +646,10 @@ pub const SCRIPTED: &[&str] = &[
     "Arcane Epiphany",
     "Luminous Rebuke",
     "Think Twice",
+    "Felidar Savior",
+    "Macabre Waltz",
+    "Soul-Shackled Zombie",
+    "Faebloom Trick",
+    "Banishing Light",
+    "Fake Your Own Death",
 ];

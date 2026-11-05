@@ -28,6 +28,11 @@ pub struct Filter {
     /// Spells on the stack. With `spell_creature`, only creature (true) or noncreature (false) spells.
     pub spells: bool,
     pub spell_creature: Option<bool>,
+    /// Cards in graveyards instead of permanents: `Some(true)` for creature cards only. The
+    /// controller restriction then means the graveyard's owner.
+    pub graveyard: Option<bool>,
+    /// "other": not the source of the ability.
+    pub other: bool,
     pub controller: Controller,
     /// Creatures only if they have flying ("creature with flying").
     pub creature_needs_flying: bool,
@@ -48,6 +53,8 @@ impl Filter {
         nonland_permanents: false,
         spells: false,
         spell_creature: None,
+        graveyard: None,
+        other: false,
         controller: Controller::Any,
         creature_needs_flying: false,
         creature_min_power: None,
@@ -179,8 +186,26 @@ pub enum Effect {
     },
     /// Counter the spell in `slot` (CR 701.5).
     Counter(u8),
-    /// Exile the permanent in `slot`.
+    /// Exile the permanent or card in `slot`.
     Exile(u8),
+    /// Exile it until the source leaves the battlefield (CR 610.3).
+    ExileUntilSourceLeaves(u8),
+    /// If a creature card was among the cards exiled from the target slots, each opponent loses
+    /// `n` life and you gain `n` life.
+    DrainIfCreatureExiled {
+        n: i32,
+    },
+    Tap(u8),
+    /// "When you do": trigger number `n` of the source triggers now (CR 603.12).
+    Reflexive(usize),
+    /// Until end of turn, the creature in `slot` gains the source's trigger number `trigger` as a
+    /// dies trigger, controlled by this ability's controller.
+    GrantDiesTrigger {
+        slot: u8,
+        trigger: usize,
+    },
+    /// Return the card in `slot` from a graveyard to the battlefield tapped, under its owner's control.
+    ReturnTapped(u8),
     /// Return the permanent in `slot` to its owner's hand.
     Bounce(u8),
     /// The source creature fights the creature in `slot` (CR 701.12).
@@ -234,6 +259,10 @@ pub struct Ability {
     pub condition: Option<Condition>,
     /// "You may ..." for the whole ability: the controller chooses on resolution.
     pub optional: bool,
+    /// "Up to N targets": only this many slots must be filled (CR 115.1, 601.2c).
+    pub min_targets: Option<usize>,
+    /// All graveyard targets must come from a single graveyard.
+    pub same_graveyard: bool,
 }
 
 impl Ability {
@@ -243,6 +272,8 @@ impl Ability {
             effects,
             condition: None,
             optional: false,
+            min_targets: None,
+            same_graveyard: false,
         }
     }
 
@@ -260,6 +291,8 @@ pub enum When {
     Dies,
     /// "Whenever you cast a noncreature spell" (prowess, CR 702.108).
     YouCastNoncreature,
+    /// Only by an effect: a reflexive trigger or a granted ability.
+    Never,
 }
 
 #[derive(Clone, Debug, PartialEq)]

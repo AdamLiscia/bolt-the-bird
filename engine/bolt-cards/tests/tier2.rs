@@ -973,3 +973,142 @@ fn think_twice_flashes_back_then_is_exiled() {
     resolve_all(&mut g, &[]);
     assert_eq!(g.obj(c).zone, Zone::Exile);
 }
+
+// ---------------------------------------------------------------- up to, graveyards, links, granted triggers
+
+#[test]
+fn felidar_savior_counters_up_to_two_others() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Felidar Savior");
+    let a = put(&mut g, 0, "Savannah Lions");
+    let b = put(&mut g, 0, "Healer's Hawk");
+    begin(&mut g);
+    act(&mut g, Action::Cast(c));
+    act(&mut g, Action::PassPriority);
+    act(&mut g, Action::PassPriority);
+    let legal = g.legal_actions();
+    assert!(!legal.contains(&Action::Target(obj(c))), "other creatures only");
+    assert!(legal.contains(&Action::No), "up to two: zero is fine");
+    act(&mut g, Action::Target(obj(a)));
+    assert!(
+        !g.legal_actions().contains(&Action::Target(obj(a))),
+        "not the same one twice"
+    );
+    act(&mut g, Action::Target(obj(b)));
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.power(a), g.power(b)), (3, 2));
+
+    // Choosing just one.
+    let mut g = table();
+    let c = hand(&mut g, 0, "Felidar Savior");
+    let a = put(&mut g, 0, "Savannah Lions");
+    begin(&mut g);
+    play(&mut g, c, false, &[], &[Action::Target(obj(a)), Action::No]);
+    assert_eq!(g.power(a), 3);
+}
+
+#[test]
+fn macabre_waltz_returns_creature_cards_from_your_graveyard() {
+    let mut g = table();
+    let w = hand(&mut g, 0, "Macabre Waltz");
+    let lions = g.add_card(0, id("Savannah Lions"), Zone::Graveyard);
+    let stab = g.add_card(0, id("Stab"), Zone::Graveyard);
+    let theirs = g.add_card(1, id("Serra Angel"), Zone::Graveyard);
+    begin(&mut g);
+    act(&mut g, Action::Cast(w));
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Target(obj(lions))));
+    assert!(!legal.contains(&Action::Target(obj(stab))), "creature cards only");
+    assert!(
+        !legal.contains(&Action::Target(obj(theirs))),
+        "your graveyard only"
+    );
+    act(&mut g, Action::Target(obj(lions)));
+    act(&mut g, Action::No);
+    resolve_all(&mut g, &[Action::Discard(lions)]);
+    assert_eq!(
+        g.obj(lions).zone,
+        Zone::Graveyard,
+        "returned, then discarded by choice"
+    );
+}
+
+#[test]
+fn soul_shackled_zombie_drains_if_a_creature_is_exiled() {
+    let mut g = table();
+    let z = hand(&mut g, 0, "Soul-Shackled Zombie");
+    let angel = g.add_card(1, id("Serra Angel"), Zone::Graveyard);
+    let stab = g.add_card(1, id("Stab"), Zone::Graveyard);
+    let mine = g.add_card(0, id("Savannah Lions"), Zone::Graveyard);
+    begin(&mut g);
+    act(&mut g, Action::Cast(z));
+    act(&mut g, Action::PassPriority);
+    act(&mut g, Action::PassPriority);
+    act(&mut g, Action::Target(obj(angel)));
+    assert!(
+        !g.legal_actions().contains(&Action::Target(obj(mine))),
+        "a single graveyard"
+    );
+    act(&mut g, Action::Target(obj(stab)));
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.obj(angel).zone, g.obj(stab).zone), (Zone::Exile, Zone::Exile));
+    assert_eq!((g.players[0].life, g.players[1].life), (22, 18));
+}
+
+#[test]
+fn faebloom_trick_taps_when_you_do() {
+    // CR 603.12: the reflexive trigger chooses its target after the spell resolves.
+    let mut g = table();
+    let c = hand(&mut g, 0, "Faebloom Trick");
+    let angel = put(&mut g, 1, "Serra Angel");
+    begin(&mut g);
+    play(&mut g, c, false, &[], &[Action::Target(obj(angel))]);
+    assert_eq!(tokens_named(&g, 0, "Faerie"), 2);
+    assert!(g.obj(angel).tapped);
+}
+
+#[test]
+fn banishing_light_returns_the_card_when_it_leaves() {
+    // CR 610.3.
+    let mut g = table();
+    let light = hand(&mut g, 0, "Banishing Light");
+    let angel = put(&mut g, 1, "Serra Angel");
+    let wings = hand(&mut g, 1, "Broken Wings");
+    begin(&mut g);
+    play(&mut g, light, false, &[], &[Action::Target(obj(angel))]);
+    assert_eq!(g.obj(angel).zone, Zone::Exile);
+    act(&mut g, Action::PassPriority);
+    act(&mut g, Action::Cast(wings));
+    act(&mut g, Action::Target(obj(light)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(light).zone, Zone::Graveyard);
+    assert_eq!(
+        g.obj(angel).zone,
+        Zone::Battlefield,
+        "back under its owner's control"
+    );
+    assert_eq!(g.obj(angel).controller, 1);
+}
+
+#[test]
+fn fake_your_own_death_brings_it_back() {
+    let mut g = table();
+    let fake = hand(&mut g, 0, "Fake Your Own Death");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    let stab = hand(&mut g, 1, "Stab");
+    begin(&mut g);
+    play(&mut g, fake, false, &[obj(lions)], &[]);
+    assert_eq!(g.power(lions), 4);
+    act(&mut g, Action::PassPriority);
+    act(&mut g, Action::Cast(stab));
+    act(&mut g, Action::Target(obj(lions)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(lions).zone, Zone::Battlefield, "died and came back");
+    assert!(g.obj(lions).tapped);
+    assert_eq!(g.power(lions), 2, "a new object: the pump is gone");
+    let treasure = g
+        .permanents(0)
+        .filter(|&c| g.def_of(c).name == "Treasure")
+        .count();
+    assert_eq!(treasure, 1);
+}

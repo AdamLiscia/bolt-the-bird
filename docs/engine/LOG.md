@@ -59,3 +59,12 @@ One line per working step, newest last. The next session continues from the last
   **Next: the last 6 tier-2 cards: "up to" and graveyard targets (Felidar Savior, Macabre Waltz,
   Soul-Shackled Zombie), reflexive triggers and tapping (Faebloom Trick), linked exile (Banishing
   Light), and a granted dies trigger (Fake Your Own Death).**
+- 2026-11-05: **M2 done.** "Up to N" targets (optional slots, no repeats, "other", a single
+  graveyard), cards in graveyards as targets, reflexive triggers ("when you do"), tapping, exile until
+  the source leaves (CR 610.3), dies triggers granted until end of turn, and any nonland permanent is
+  castable. The last 6 tier-2 cards (Felidar Savior, Macabre Waltz, Soul-Shackled Zombie, Faebloom
+  Trick, Banishing Light, Fake Your Own Death). **All 72 tier 0-2 cards are supported**, each with a
+  rules test. 127 tests. 10,000 release-mode fuzz games with all 72 cards: no invariant broken, 2,007
+  games/s with checks (`cargo run --release -p bolt-cards --example random_fdn_games`).
+  **Next: M3, tier 3 in build order (`CARD_AUDIT.md`), starting with the mechanisms most cards share:
+  static P/T effects (anthems), auras, equipment, and attack/block triggers.**
