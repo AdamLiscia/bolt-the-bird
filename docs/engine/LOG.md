@@ -95,3 +95,12 @@ One line per working step, newest last. The next session continues from the last
   totals logged for the last two batches came from a quick count that undercounts, so they were low).
   10,000 release fuzz games pass. **Next: M3 batch 4 in build order (ward, "look at the top N",
   activated abilities from the graveyard, ETB modal triggers).**
+- 2026-11-05: **M3 batch 4.** Ward (a trigger on being targeted by an opponent; the spell or ability
+  is countered unless its controller pays, CR 702.21), modal triggered abilities (mode chosen as the
+  trigger goes on the stack, CR 700.2b), upkeep triggers, draw triggers (yours and opponents'),
+  instant/sorcery and "noncreature or Dragon" cast triggers, destroy all creatures, "can't block this
+  turn", last known power for sacrificed sources (CR 608.2h), and "that creature" references that
+  aren't targets. 20 cards (including Day of Judgment, Phyrexian Arena, Archmage of Runes, Cackling
+  Prowler, Apothecary Stomper, Wardens of the Cycle): **161 supported, 207 tests** (per-binary count).
+  10,000 release fuzz games pass. **Next: M3 batch 5: "look at the top N", optional costs in triggers,
+  graveyard-activated abilities, and the rest of tier 3.**

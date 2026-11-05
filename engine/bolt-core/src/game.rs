@@ -65,6 +65,8 @@ pub struct Object {
     pub kicked: bool,
     /// The object this Equipment or Aura is attached to, pinned to its zone-change count.
     pub attached_to: Option<(ObjId, u32)>,
+    /// Power when it last left the battlefield (last known information, CR 608.2h).
+    pub last_power: i32,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -158,6 +160,8 @@ pub enum Action {
     No,
     /// Choose a card for the current decision (a search, or a card from a revealed hand).
     Pick(ObjId),
+    /// Choose mode `n` of a modal triggered ability.
+    Mode(u8),
     Attack(ObjId),
     FinishAttacks,
     Block {
@@ -279,7 +283,24 @@ pub enum StackKind {
     Trigger(usize),
     /// Activated ability number `n` of the source's card.
     Activated(usize),
+    /// A ward trigger of the source: counter the spell or ability from `against` unless its
+    /// controller pays `cost` (CR 702.21a).
+    Ward {
+        cost: ManaCost,
+        against: ObjId,
+    },
 }
+
+/// The ability of a ward trigger, which has no targets or effects of its own.
+static WARD_ABILITY: Ability = Ability {
+    targets: Vec::new(),
+    effects: Vec::new(),
+    condition: None,
+    optional: false,
+    min_targets: None,
+    same_graveyard: false,
+    modes: Vec::new(),
+};
 
 /// A chosen target, pinned to the object it was when chosen (CR 400.7).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -362,6 +383,10 @@ pub enum Decision {
     Search { what: SearchFor, to: SearchTo, left: u8 },
     /// `Yes` for the top of the library, `No` for the bottom.
     Tuck { card: ObjId },
+    /// Choose a mode (`Mode(n)`) for the modal trigger in `Game::mode_pending`.
+    ChooseMode,
+    /// Ward: `Yes` pays `cost`, `No` lets the spell or ability from `against` be countered.
+    PayWard { cost: ManaCost, against: ObjId },
 }
 
 /// An until-end-of-turn change to one object (CR 611.2, 613).
@@ -403,6 +428,8 @@ pub struct Game {
     pub resolving: Option<Resolving>,
     /// The decision a resolving spell or ability is waiting on.
     pub decision: Option<Decision>,
+    /// A modal trigger waiting for its mode, and who gets priority afterwards.
+    pub mode_pending: Option<(StackItem, PlayerId)>,
     pub until_eot: Vec<Modifier>,
     /// "Until this leaves the battlefield" exiles: (source, its zone-change count, exiled card).
     pub links: Vec<(ObjId, u32, ObjId)>,
@@ -468,6 +495,7 @@ impl Game {
             choosing: None,
             resolving: None,
             decision: None,
+            mode_pending: None,
             until_eot: Vec::new(),
             links: Vec::new(),
             turn: 0,
@@ -503,6 +531,7 @@ impl Game {
             counters: 0,
             kicked: false,
             attached_to: None,
+            last_power: 0,
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -674,6 +703,10 @@ impl Game {
     /// Moves a card between zones. Leaving the battlefield clears its per-permanent state (CR 400.7).
     fn move_to(&mut self, id: ObjId, to: Zone) {
         let (owner, from) = (self.obj(id).owner, self.obj(id).zone);
+        if from == Zone::Battlefield {
+            let p = self.power(id);
+            self.obj_mut(id).last_power = p;
+        }
         let last_controller = self.obj(id).controller;
         let list = self.zone_list(owner, from);
         let pos = list.iter().position(|&x| x == id).expect("object is in its zone");
@@ -735,7 +768,20 @@ impl Game {
             }
             if def.types.creature {
                 let controller = self.obj(id).controller;
+                let before = self.triggered.len();
                 self.fire(controller, When::AnotherCreatureYouControlEnters, Some(id));
+                // "that creature": fill in the entering creature for abilities that refer to it.
+                let zcc = self.obj(id).zcc;
+                for i in before..self.triggered.len() {
+                    let refers = self
+                        .ability_of(&self.triggered[i])
+                        .targets
+                        .first()
+                        .is_some_and(|f| f.triggering);
+                    if refers {
+                        self.triggered[i].targets = vec![Chosen::Object(id, zcc)];
+                    }
+                }
                 let subs = def.subtypes.clone();
                 for other in self
                     .permanents(controller)
@@ -832,6 +878,8 @@ impl Game {
                 self.move_to(card, Zone::Hand);
                 self.events.push(Event::Drew { player: p, card });
                 self.draws_this_turn[p] += 1;
+                self.fire(p, When::YouDraw, None);
+                self.fire(opponent(p), When::OpponentDraws, None);
                 if self.draws_this_turn[p] == 2 {
                     self.fire(p, When::YouDrawSecond, None);
                 }
@@ -926,7 +974,11 @@ impl Game {
                 Some(m) => &def.modes[m as usize],
                 None => def.spell.as_ref().expect("a spell with an ability"),
             },
-            StackKind::Trigger(n) => &def.triggers[n].ability,
+            StackKind::Trigger(n) => match item.mode {
+                Some(m) => &def.triggers[n].ability.modes[m as usize],
+                None => &def.triggers[n].ability,
+            },
+            StackKind::Ward { .. } => &WARD_ABILITY,
             StackKind::Activated(n) => &def.activated[n].ability,
         }
     }
@@ -971,7 +1023,7 @@ impl Game {
                     return false;
                 }
                 // CR 702.11b: hexproof stops opponents' spells and abilities from targeting it.
-                if o.controller != controller && self.keywords(id).has(Keywords::HEXPROOF) {
+                if o.controller != controller && !f.triggering && self.keywords(id).has(Keywords::HEXPROOF) {
                     return false;
                 }
                 let ty = &self.def_of(id).types;
@@ -1328,7 +1380,10 @@ impl Game {
 
     /// Whether `blocker` may block `attacker`, ignoring menace (CR 509.1b, 702.9b, 702.17b).
     fn can_block(&self, blocker: ObjId, attacker: ObjId) -> bool {
-        if self.def_of(blocker).cant_block || self.keywords(attacker).has(Keywords::UNBLOCKABLE) {
+        if self.def_of(blocker).cant_block
+            || self.keywords(blocker).has(Keywords::CANT_BLOCK)
+            || self.keywords(attacker).has(Keywords::UNBLOCKABLE)
+        {
             return false;
         }
         let b = self.keywords(blocker);
@@ -1576,8 +1631,37 @@ impl Game {
         if p != self.active {
             self.fire(p, When::YouCastOnOpponentsTurn, None);
         }
+        self.ward_check(&item);
+        let instant_or_sorcery = self.def_of(card).types.instant || self.def_of(card).types.sorcery;
         self.items.push(item);
         self.events.push(Event::Cast { card });
+        if instant_or_sorcery {
+            self.fire(p, When::YouCastInstantOrSorcery, None);
+        }
+        // "Whenever you cast a noncreature or [subtype] spell".
+        let (creature, subs) = (
+            self.def_of(card).types.creature,
+            self.def_of(card).subtypes.clone(),
+        );
+        for id in self.permanents(p).collect::<Vec<_>>() {
+            let whens: Vec<When> = self.def_of(id).triggers.iter().map(|tr| tr.when).collect();
+            for (n, w) in whens.into_iter().enumerate() {
+                if let When::YouCastNoncreatureOrSubtype(sub) = w {
+                    if !creature || subs.iter().any(|s| s == sub) {
+                        self.triggered.push(StackItem {
+                            source: id,
+                            controller: p,
+                            kind: StackKind::Trigger(n),
+                            targets: Vec::new(),
+                            kicked: false,
+                            flashback: false,
+                            extra: None,
+                            mode: None,
+                        });
+                    }
+                }
+            }
+        }
         if noncreature {
             // Prowess and other cast triggers of the caster's permanents.
             for id in self.permanents(p).collect::<Vec<_>>() {
@@ -1624,6 +1708,7 @@ impl Game {
             if let Some((n, victim)) = c.pay {
                 self.pay_activation(c.item.controller, c.item.source, n, victim);
             }
+            self.ward_check(&c.item);
             self.items.push(c.item);
             self.give_priority(c.then);
         }
@@ -1661,8 +1746,68 @@ impl Game {
     }
 
     /// CR 608.2: check targets, then carry out the effects in order. Pauses on decisions.
+    /// CR 702.21a: whenever a permanent with ward becomes the target of a spell or ability an
+    /// opponent controls, its ward triggers.
+    fn ward_check(&mut self, item: &StackItem) {
+        for &t in &item.targets {
+            if let Chosen::Object(id, _) = t {
+                let o = self.obj(id);
+                if o.zone != Zone::Battlefield || o.controller == item.controller {
+                    continue;
+                }
+                if let Some(cost) = self.def_of(id).ward {
+                    self.triggered.push(StackItem {
+                        source: id,
+                        controller: o.controller,
+                        kind: StackKind::Ward {
+                            cost,
+                            against: item.source,
+                        },
+                        targets: Vec::new(),
+                        kicked: false,
+                        flashback: false,
+                        extra: None,
+                        mode: None,
+                    });
+                }
+            }
+        }
+    }
+
+    /// Counters the topmost spell or ability on the stack from `source` (CR 701.5).
+    fn counter_from(&mut self, source: ObjId) {
+        if let Some(pos) = self.items.iter().rposition(|i| i.source == source) {
+            let countered = self.items.remove(pos);
+            if countered.kind == StackKind::Spell {
+                self.leave_stack(source, countered.flashback);
+            }
+            self.events.push(Event::Fizzled { source });
+        }
+    }
+
     fn resolve(&mut self, item: StackItem) {
         let source = item.source;
+        if let StackKind::Ward { cost, against } = item.kind {
+            self.resolving = Some(Resolving {
+                item,
+                legal: Vec::new(),
+                remaining: VecDeque::new(),
+                acts: true,
+            });
+            if self.items.iter().any(|i| i.source == against) {
+                let payer = self
+                    .items
+                    .iter()
+                    .rev()
+                    .find(|i| i.source == against)
+                    .expect("on the stack")
+                    .controller;
+                self.ask(payer, Decision::PayWard { cost, against });
+                return;
+            }
+            self.continue_resolving();
+            return;
+        }
         let legal: Vec<bool> = (0..item.targets.len())
             .map(|i| self.still_legal(&item, i))
             .collect();
@@ -1763,6 +1908,25 @@ impl Game {
         let hand = &self.players[p].hand;
         match self.decision.as_ref().expect("a decision") {
             Decision::May | Decision::Surveil { .. } | Decision::Tuck { .. } => vec![Action::Yes, Action::No],
+            Decision::ChooseMode => {
+                let (item, _) = self.mode_pending.as_ref().expect("a modal trigger");
+                let StackKind::Trigger(n) = item.kind else {
+                    unreachable!("only triggers are modal here")
+                };
+                let modes = &self.def_of(item.source).triggers[n].ability.modes;
+                (0..modes.len())
+                    .filter(|&m| self.can_target_all(&modes[m], item.controller))
+                    .map(|m| Action::Mode(m as u8))
+                    .collect()
+            }
+            Decision::PayWard { cost, .. } => {
+                let mut v = Vec::new();
+                if self.can_pay(p, cost, None) {
+                    v.push(Action::Yes);
+                }
+                v.push(Action::No);
+                v
+            }
             Decision::Discard { optional, .. } => {
                 let mut v: Vec<Action> = hand.iter().map(|&c| Action::Discard(c)).collect();
                 if *optional {
@@ -1796,7 +1960,16 @@ impl Game {
 
     fn decide(&mut self, p: PlayerId, a: Action) {
         let d = self.decision.take().expect("a decision");
+        if let (Decision::ChooseMode, Action::Mode(m)) = (&d, a) {
+            let (mut item, then) = self.mode_pending.take().expect("a modal trigger");
+            item.mode = Some(m);
+            self.triggered.insert(0, item);
+            self.give_priority(then);
+            return;
+        }
         match (d, a) {
+            (Decision::PayWard { cost, .. }, Action::Yes) => self.pay_mana(p, &cost, None),
+            (Decision::PayWard { against, .. }, Action::No) => self.counter_from(against),
             (Decision::May, Action::Yes) => {}
             (Decision::May, Action::No) => {
                 self.resolving.as_mut().expect("resolving").remaining.clear();
@@ -2242,6 +2415,29 @@ impl Game {
                     self.gain_life(item.controller, n);
                 }
             }
+            Effect::DestroyAllCreatures => {
+                let all: Vec<ObjId> = self
+                    .battlefield
+                    .iter()
+                    .copied()
+                    .filter(|&c| self.def_of(c).types.creature)
+                    .collect();
+                for c in all {
+                    self.destroy(c);
+                }
+            }
+            Effect::DamageEqualSourcePower(n) => {
+                let power = if self.obj(src).zone == Zone::Battlefield {
+                    self.power(src)
+                } else {
+                    self.obj(src).last_power
+                };
+                if let Some(id) = Game::slot_object(item, legal, n) {
+                    if power > 0 {
+                        self.deal_damage(src, Target::Object(id), power);
+                    }
+                }
+            }
             Effect::UntapSelf => {
                 if self.obj(src).zone == Zone::Battlefield {
                     self.obj_mut(src).tapped = false;
@@ -2382,7 +2578,25 @@ impl Game {
             if !self.condition_holds(&ability, item.controller, item.source) {
                 continue;
             }
-            self.events.push(Event::Triggered { source: item.source });
+            if item.mode.is_none() && !ability.modes.is_empty() {
+                // CR 700.2b: the mode is chosen as the trigger goes on the stack.
+                let any = ability
+                    .modes
+                    .iter()
+                    .any(|m| self.can_target_all(m, item.controller));
+                if any {
+                    self.events.push(Event::Triggered { source: item.source });
+                    let who = item.controller;
+                    self.mode_pending = Some((item, then));
+                    self.decision = Some(Decision::ChooseMode);
+                    self.pending = Pending::Decide(who);
+                    return false;
+                }
+                continue;
+            }
+            if item.mode.is_none() {
+                self.events.push(Event::Triggered { source: item.source });
+            }
             if ability.targets.len() == item.targets.len() {
                 self.items.push(item);
             } else if self.can_target_all(&ability, item.controller) {
@@ -2563,7 +2777,25 @@ impl Game {
                 );
                 self.give_priority(a);
             }
-            Step::Upkeep | Step::Main1 | Step::Main2 => {
+            Step::Upkeep => {
+                self.fire(a, When::Upkeep { your_turn_only: true }, None);
+                self.fire(
+                    a,
+                    When::Upkeep {
+                        your_turn_only: false,
+                    },
+                    None,
+                );
+                self.fire(
+                    opponent(a),
+                    When::Upkeep {
+                        your_turn_only: false,
+                    },
+                    None,
+                );
+                self.give_priority(a);
+            }
+            Step::Main1 | Step::Main2 => {
                 self.give_priority(a);
             }
         }

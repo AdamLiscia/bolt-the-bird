@@ -34,6 +34,7 @@ keywords! {
     HEXPROOF = 12, "Hexproof";
     FLASH = 13, "Flash";
     UNBLOCKABLE = 14, "Can't be blocked";
+    CANT_BLOCK = 15, "Can't block";
 }
 
 impl Keywords {
@@ -174,6 +175,8 @@ pub struct CardDef {
     pub spell_discount: u8,
     /// "Enters with N +1/+1 counters if ..." (a replacement effect, CR 614.1c).
     pub enters_counters: Option<(i32, Condition)>,
+    /// Ward {cost} (CR 702.21).
+    pub ward: Option<ManaCost>,
 }
 
 impl CardDef {
@@ -208,6 +211,7 @@ impl CardDef {
             doesnt_untap: false,
             spell_discount: 0,
             enters_counters: None,
+            ward: None,
         }
     }
 
@@ -243,6 +247,7 @@ impl CardDef {
             doesnt_untap: false,
             spell_discount: 0,
             enters_counters: None,
+            ward: None,
         }
     }
 
@@ -278,6 +283,7 @@ impl CardDef {
             doesnt_untap: false,
             spell_discount: 0,
             enters_counters: None,
+            ward: None,
         }
     }
 }

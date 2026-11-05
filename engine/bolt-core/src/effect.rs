@@ -37,6 +37,9 @@ pub struct Filter {
     pub max_mana_value: Option<u32>,
     /// Permanent cards only, lands included (graveyard targets).
     pub permanent_cards: bool,
+    /// Not a target: the object that caused the trigger ("that creature"). Filled in when the
+    /// ability triggers; hexproof doesn't apply.
+    pub triggering: bool,
     pub controller: Controller,
     /// Creatures only if they have flying ("creature with flying").
     pub creature_needs_flying: bool,
@@ -61,6 +64,7 @@ impl Filter {
         other: false,
         max_mana_value: None,
         permanent_cards: false,
+        triggering: false,
         controller: Controller::Any,
         creature_needs_flying: false,
         creature_min_power: None,
@@ -245,6 +249,11 @@ pub enum Effect {
     Tap(u8),
     /// Untap the source.
     UntapSelf,
+    /// Destroy all creatures (CR 701.8).
+    DestroyAllCreatures,
+    /// The source deals damage equal to its power to the target in `slot`, using its last known
+    /// power if it has left the battlefield (CR 608.2h).
+    DamageEqualSourcePower(u8),
     /// "When you do": trigger number `n` of the source triggers now (CR 603.12).
     Reflexive(usize),
     /// Until end of turn, the creature in `slot` gains the source's trigger number `trigger` as a
@@ -352,6 +361,9 @@ pub struct Ability {
     pub min_targets: Option<usize>,
     /// All graveyard targets must come from a single graveyard.
     pub same_graveyard: bool,
+    /// A modal triggered ability's modes ("choose one —"): if not empty, the controller picks one as
+    /// the ability goes on the stack (CR 700.2b), and its targets come from that mode.
+    pub modes: Vec<Ability>,
 }
 
 impl Ability {
@@ -363,6 +375,7 @@ impl Ability {
             optional: false,
             min_targets: None,
             same_graveyard: false,
+            modes: Vec::new(),
         }
     }
 
@@ -410,6 +423,16 @@ pub enum When {
     EndStep { your_turn_only: bool },
     /// "Whenever you cast a spell during an opponent's turn".
     YouCastOnOpponentsTurn,
+    /// "At the beginning of [your / each] upkeep".
+    Upkeep { your_turn_only: bool },
+    /// "Whenever you draw a card".
+    YouDraw,
+    /// "Whenever an opponent draws a card".
+    OpponentDraws,
+    /// "Whenever you cast an instant or sorcery spell".
+    YouCastInstantOrSorcery,
+    /// "Whenever you cast a noncreature or [subtype] spell".
+    YouCastNoncreatureOrSubtype(&'static str),
 }
 
 #[derive(Clone, Debug, PartialEq)]

@@ -300,6 +300,26 @@ fn threshold(d: &mut CardDef, power: i32, toughness: i32, keywords: Keywords) {
     });
 }
 
+/// A modal triggered ability: "choose one —" (CR 700.2b).
+fn on_modal(d: &mut CardDef, when: When, condition: Option<Condition>, modes: Vec<Ability>) {
+    let mut ability = Ability::new(vec![], vec![]);
+    ability.condition = condition;
+    ability.modes = modes;
+    d.triggers.push(Trigger { when, ability });
+}
+
+fn conditional(
+    d: &mut CardDef,
+    when: When,
+    condition: Condition,
+    targets: Vec<Filter>,
+    effects: Vec<Effect>,
+) {
+    let mut ability = Ability::new(targets, effects);
+    ability.condition = Some(condition);
+    d.triggers.push(Trigger { when, ability });
+}
+
 /// The script for a card, if one exists.
 pub fn script(name: &str) -> Option<Script> {
     let s = |lines, build| Some(Script { lines, build });
@@ -1176,6 +1196,169 @@ pub fn script(name: &str) -> Option<Script> {
                 threshold(d, 1, 1, Keywords::DEATHTOUCH);
             },
         ),
+                "Diregraf Ghoul" => s(&["This creature enters tapped."], |d, _| d.enters_tapped = true),
+        "Dauntless Veteran" => s(
+            &["Whenever this creature attacks, creatures you control get +1/+1 until end of turn."],
+            |d, _| on(d, When::Attacks, vec![], vec![Effect::PumpAll { who: Who::You, power: 1, toughness: 1 }]),
+        ),
+        "Shivan Dragon" => s(&["{R}: This creature gets +1/+0 until end of turn."], |d, _| {
+            activated(d, "{R}", false, vec![], vec![Effect::PumpSelf { power: 1, toughness: 0 }]);
+        }),
+        "Zombify" => s(&["Return target creature card from your graveyard to the battlefield."], |d, _| {
+            spell(d, vec![graveyard_cards(true, Controller::You)], vec![Effect::Reanimate(0)])
+        }),
+        "Day of Judgment" => s(&["Destroy all creatures."], |d, _| spell(d, vec![], vec![Effect::DestroyAllCreatures])),
+        "Phyrexian Arena" => s(&["At the beginning of your upkeep, you draw a card and lose 1 life."], |d, _| {
+            on(d, When::Upkeep { your_turn_only: true }, vec![], vec![draw(1), Effect::LoseLife { who: Who::You, n: 1 }])
+        }),
+        "Scrawling Crawler" => s(
+            &[
+                "At the beginning of your upkeep, each player draws a card.",
+                "Whenever an opponent draws a card, that player loses 1 life.",
+            ],
+            |d, _| {
+                on(
+                    d,
+                    When::Upkeep { your_turn_only: true },
+                    vec![],
+                    vec![draw(1), Effect::Draw { who: Who::EachOpponent, n: 1 }],
+                );
+                on(d, When::OpponentDraws, vec![], vec![Effect::LoseLife { who: Who::EachOpponent, n: 1 }]);
+            },
+        ),
+        "Rune-Sealed Wall" => s(&["{T}: Surveil 1."], |d, _| {
+            activated(d, "", true, vec![], vec![Effect::Surveil { n: 1 }]);
+        }),
+        "Searslicer Goblin" => s(
+            &["Raid — At the beginning of your end step, if you attacked this turn, create a 1/1 red Goblin creature token."],
+            |d, t| {
+                conditional(
+                    d,
+                    When::EndStep { your_turn_only: true },
+                    Condition::Attacked,
+                    vec![],
+                    vec![Effect::CreateToken { who: Who::You, def: t.goblin, n: 1 }],
+                )
+            },
+        ),
+        "Good-Fortune Unicorn" => s(
+            &["Whenever another creature you control enters, put a +1/+1 counter on that creature."],
+            |d, _| {
+                let that = Filter { triggering: true, ..CREATURE };
+                on(d, When::AnotherCreatureYouControlEnters, vec![that], vec![Effect::Counters { slot: 0, n: 1 }])
+            },
+        ),
+        "Clinquant Skymage" => s(&["Whenever you draw a card, put a +1/+1 counter on this creature."], |d, _| {
+            on(d, When::YouDraw, vec![], vec![Effect::CountersSelf { n: 1 }])
+        }),
+        "Archmage of Runes" => s(
+            &[
+                "Instant and sorcery spells you cast cost {1} less to cast.",
+                "Whenever you cast an instant or sorcery spell, draw a card.",
+            ],
+            |d, _| {
+                d.spell_discount = 1;
+                on(d, When::YouCastInstantOrSorcery, vec![], vec![draw(1)]);
+            },
+        ),
+        "Balmor, Battlemage Captain" => s(
+            &["Whenever you cast an instant or sorcery spell, creatures you control get +1/+0 and gain trample until end of turn."],
+            |d, _| {
+                on(
+                    d,
+                    When::YouCastInstantOrSorcery,
+                    vec![],
+                    vec![
+                        Effect::PumpAll { who: Who::You, power: 1, toughness: 0 },
+                        Effect::GrantAll { who: Who::You, keywords: Keywords::TRAMPLE },
+                    ],
+                )
+            },
+        ),
+        "Firespitter Whelp" => s(
+            &["Whenever you cast a noncreature or Dragon spell, this creature deals 1 damage to each opponent."],
+            |d, _| on(d, When::YouCastNoncreatureOrSubtype("Dragon"), vec![], vec![damage(1, Recipient::EachOpponent)]),
+        ),
+        "Sower of Chaos" => s(&["{2}{R}: Target creature can't block this turn."], |d, _| {
+            activated(d, "{2}{R}", false, vec![CREATURE], vec![Effect::Grant { slot: 0, keywords: Keywords::CANT_BLOCK }]);
+        }),
+        "Heartfire Immolator" => s(
+            &["Prowess", "{R}, Sacrifice this creature: It deals damage equal to its power to target creature or planeswalker."],
+            |d, _| {
+                on(d, When::YouCastNoncreature, vec![], vec![Effect::PumpSelf { power: 1, toughness: 1 }]);
+                let f = Filter { players: false, ..Filter::ANY };
+                let n = activated(d, "{R}", false, vec![f], vec![Effect::DamageEqualSourcePower(0)]);
+                d.activated[n].sacrifice_self = true;
+            },
+        ),
+        "Cackling Prowler" => s(
+            &[
+                "Ward {2}",
+                "Morbid — At the beginning of your end step, if a creature died this turn, put a +1/+1 counter on this creature.",
+            ],
+            |d, _| {
+                d.ward = ManaCost::parse("{2}");
+                conditional(
+                    d,
+                    When::EndStep { your_turn_only: true },
+                    Condition::CreatureDiedThisTurn,
+                    vec![],
+                    vec![Effect::CountersSelf { n: 1 }],
+                );
+            },
+        ),
+        "Apothecary Stomper" => s(
+            &[
+                "When this creature enters, choose one —",
+                "• Put two +1/+1 counters on target creature you control.",
+                "• You gain 4 life.",
+            ],
+            |d, _| {
+                on_modal(
+                    d,
+                    When::Enters,
+                    None,
+                    vec![
+                        Ability::new(vec![YOUR_CREATURE], vec![Effect::Counters { slot: 0, n: 2 }]),
+                        Ability::new(vec![], vec![Effect::GainLife { who: Who::You, n: 4 }]),
+                    ],
+                )
+            },
+        ),
+        "Wardens of the Cycle" => s(
+            &[
+                "Morbid — At the beginning of your end step, if a creature died this turn, choose one —",
+                "• You gain 2 life.",
+                "• You draw a card and you lose 1 life.",
+            ],
+            |d, _| {
+                on_modal(
+                    d,
+                    When::EndStep { your_turn_only: true },
+                    Some(Condition::CreatureDiedThisTurn),
+                    vec![
+                        Ability::new(vec![], vec![Effect::GainLife { who: Who::You, n: 2 }]),
+                        Ability::new(vec![], vec![draw(1), Effect::LoseLife { who: Who::You, n: 1 }]),
+                    ],
+                )
+            },
+        ),
+        "Ruby, Daring Tracker" => s(
+            &[
+                "Whenever Ruby attacks while you control a creature with power 4 or greater, Ruby gets +2/+2 until end of turn.",
+                "{T}: Add {R} or {G}.",
+            ],
+            |d, _| {
+                conditional(
+                    d,
+                    When::Attacks,
+                    Condition::ControlPowerAtLeast(4),
+                    vec![],
+                    vec![Effect::PumpSelf { power: 2, toughness: 2 }],
+                );
+                d.mana = Some(ManaSource::of(&[Color::Red, Color::Green]));
+            },
+        ),
         _ => None,
     }
 }
@@ -1310,4 +1493,24 @@ pub const SCRIPTED: &[&str] = &[
     "Needletooth Pack",
     "Billowing Shriekmass",
     "Dreadwing Scavenger",
+    "Diregraf Ghoul",
+    "Dauntless Veteran",
+    "Shivan Dragon",
+    "Zombify",
+    "Day of Judgment",
+    "Phyrexian Arena",
+    "Scrawling Crawler",
+    "Rune-Sealed Wall",
+    "Searslicer Goblin",
+    "Good-Fortune Unicorn",
+    "Clinquant Skymage",
+    "Archmage of Runes",
+    "Balmor, Battlemage Captain",
+    "Firespitter Whelp",
+    "Sower of Chaos",
+    "Heartfire Immolator",
+    "Cackling Prowler",
+    "Apothecary Stomper",
+    "Wardens of the Cycle",
+    "Ruby, Daring Tracker",
 ];
