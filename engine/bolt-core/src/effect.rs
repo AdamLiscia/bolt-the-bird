@@ -40,6 +40,11 @@ pub struct Filter {
     /// Not a target: the object that caused the trigger ("that creature"). Filled in when the
     /// ability triggers; hexproof doesn't apply.
     pub triggering: bool,
+    /// Only cards or permanents with this subtype, or without it.
+    pub subtype: Option<&'static str>,
+    pub not_subtype: Option<&'static str>,
+    /// Cards with mana value at most the source's power (last known if it left).
+    pub mana_value_at_most_source_power: bool,
     pub controller: Controller,
     /// Creatures only if they have flying ("creature with flying").
     pub creature_needs_flying: bool,
@@ -65,6 +70,9 @@ impl Filter {
         max_mana_value: None,
         permanent_cards: false,
         triggering: false,
+        subtype: None,
+        not_subtype: None,
+        mana_value_at_most_source_power: false,
         controller: Controller::Any,
         creature_needs_flying: false,
         creature_min_power: None,
@@ -269,6 +277,23 @@ pub enum Effect {
     DoubleCountersSelf,
     /// The creature in `slot` gets +X/+0 until end of turn, where X is its power (doubling it).
     DoublePower(u8),
+    /// "You may sacrifice another creature. If you do, ..." — the rest of the effects happen only
+    /// if a creature is sacrificed.
+    MaySacrificeAnother,
+    /// Return the source from your graveyard to the battlefield tapped.
+    ReturnSelfTapped,
+    /// Look at the top `n` cards of your library; you may pick one that matches `pick` and put it
+    /// `chosen_to`; the rest go `rest_to`.
+    LookAtTop {
+        n: u8,
+        pick: Pick,
+        chosen_to: LookTo,
+        rest_to: LookRest,
+    },
+    /// Choose a card matching `pick` in your graveyard (not targeted) and return it to your hand.
+    ReturnFromGraveyard {
+        pick: Pick,
+    },
     /// "When you do": trigger number `n` of the source triggers now (CR 603.12).
     Reflexive(usize),
     /// Until end of turn, the creature in `slot` gains the source's trigger number `trigger` as a
@@ -348,6 +373,27 @@ pub struct Static {
     pub keywords: Keywords,
 }
 
+/// Which looked-at card may be picked.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Pick {
+    Any,
+    CreaturePowerAtMost(i32),
+    InstantOrSorcery,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum LookTo {
+    Hand,
+    Top,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum LookRest {
+    Graveyard,
+    /// The bottom of the library in a random order.
+    BottomRandom,
+}
+
 /// An intervening "if" clause, checked when the ability triggers and again on resolution
 /// (CR 603.4).
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -364,6 +410,8 @@ pub enum Condition {
     CreatureDiedThisTurn,
     /// Always true (an unconditional "enters with" counter).
     Always,
+    /// An opponent lost life this turn.
+    OpponentLostLifeThisTurn,
     /// Threshold: seven or more cards in your graveyard.
     Threshold,
     /// The source was kicked.
@@ -430,6 +478,8 @@ pub enum When {
     DealsCombatDamageToPlayer,
     /// "Whenever equipped creature deals combat damage to a player".
     EquippedDealsCombatDamageToPlayer,
+    /// "Whenever another nontoken creature dies" (any player's).
+    AnotherNontokenCreatureDies,
     /// "Whenever you gain life" (every time).
     YouGainLife,
     /// "Whenever you attack": once per combat, when you declare one or more attackers.

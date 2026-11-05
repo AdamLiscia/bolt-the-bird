@@ -130,6 +130,8 @@ pub struct Activated {
     pub sacrifice_other_creature: bool,
     /// "Activate only as a sorcery."
     pub sorcery: bool,
+    /// Activated from the graveyard ("Return this card from your graveyard ...").
+    pub from_graveyard: bool,
     pub ability: Ability,
 }
 

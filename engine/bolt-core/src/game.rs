@@ -6,7 +6,7 @@
 use std::sync::Arc;
 
 use crate::card::{CardDef, ExtraCost, Keywords, Reduction};
-use crate::effect::{Scope, Static, StaticCondition};
+use crate::effect::{LookRest, LookTo, Pick, Scope, Static, StaticCondition};
 use std::collections::VecDeque;
 
 use crate::effect::{
@@ -385,6 +385,15 @@ pub enum Decision {
     Tuck { card: ObjId },
     /// Choose a mode (`Mode(n)`) for the modal trigger in `Game::mode_pending`.
     ChooseMode,
+    /// `Pick` another creature to sacrifice, or `No`.
+    SacrificeAnother { source: ObjId },
+    /// `Pick` one of `cards` that matches, or `No`; then `cards` that weren't picked go to `rest`.
+    LookPick {
+        cards: Vec<ObjId>,
+        pick: Pick,
+        to: LookTo,
+        rest: Option<LookRest>,
+    },
     /// Ward: `Yes` pays `cost`, `No` lets the spell or ability from `against` be countered.
     PayWard { cost: ManaCost, against: ObjId },
 }
@@ -421,6 +430,8 @@ pub struct Game {
     pub draws_this_turn: [u32; 2],
     /// Morbid: whether a creature died this turn.
     pub creature_died_this_turn: bool,
+    /// Whether each player lost life this turn.
+    pub life_lost_this_turn: [bool; 2],
     /// Triggered abilities waiting to be put on the stack (CR 603.3).
     pub triggered: Vec<StackItem>,
     pub choosing: Option<Choosing>,
@@ -491,6 +502,7 @@ impl Game {
             life_gains_this_turn: [0; 2],
             draws_this_turn: [0; 2],
             creature_died_this_turn: false,
+            life_lost_this_turn: [false; 2],
             triggered: Vec::new(),
             choosing: None,
             resolving: None,
@@ -745,6 +757,10 @@ impl Game {
         if dies && self.def_of(id).types.creature {
             self.creature_died_this_turn = true;
             self.fire(last_controller, When::CreatureYouControlDies, Some(id));
+            if !self.def_of(id).token {
+                self.fire(0, When::AnotherNontokenCreatureDies, Some(id));
+                self.fire(1, When::AnotherNontokenCreatureDies, Some(id));
+            }
         }
         if to == Zone::Battlefield {
             // Replacement effects on entering (CR 614.1c-d).
@@ -770,6 +786,7 @@ impl Game {
                     Condition::Kicked => self.obj(id).kicked,
                     Condition::Attacked => self.attacked_this_turn[controller],
                     Condition::Always => true,
+                    Condition::OpponentLostLifeThisTurn => false,
                     _ => false,
                 };
                 if yes {
@@ -936,7 +953,7 @@ impl Game {
                 // CR 115.3: one object can't be chosen twice; "other" excludes the source.
                 options.retain(|&t| match t {
                     Target::Object(x) => {
-                        let is_source = filter.other && x == c.item.source;
+                        let is_source = !self.slot_ok(&c.item, &filter, Target::Object(x));
                         let taken = c.item.targets.contains(&Chosen::Object(x, self.obj(x).zcc));
                         !is_source && !taken
                     }
@@ -1017,6 +1034,12 @@ impl Game {
                 if !Game::controller_ok(f.controller, controller, o.controller) {
                     return false;
                 }
+                let subs = &self.def_of(id).subtypes;
+                if f.subtype.is_some_and(|s| !subs.iter().any(|x| x == s))
+                    || f.not_subtype.is_some_and(|s| subs.iter().any(|x| x == s))
+                {
+                    return false;
+                }
                 if o.zone == Zone::Stack {
                     // A spell, already cast: one being cast isn't on the stack yet (CR 115.5).
                     let is_spell = self
@@ -1081,6 +1104,36 @@ impl Game {
             .chain(graveyards.map(|&id| Target::Object(id)))
             .filter(|&t| self.target_ok(f, controller, t))
             .collect()
+    }
+
+    /// Target legality that depends on the stack entry itself: "other" and "mana value at most the
+    /// source's power".
+    fn slot_ok(&self, item: &StackItem, f: &Filter, t: Target) -> bool {
+        let Target::Object(x) = t else { return true };
+        if f.other && x == item.source {
+            return false;
+        }
+        if f.mana_value_at_most_source_power {
+            let s = self.obj(item.source);
+            let power = if s.zone == Zone::Battlefield {
+                self.power(item.source)
+            } else {
+                s.last_power
+            };
+            if self.def_of(x).cost.mana_value() as i32 > power {
+                return false;
+            }
+        }
+        true
+    }
+
+    fn trigger_can_target(&self, item: &StackItem, ability: &Ability) -> bool {
+        let required = ability.min_targets.unwrap_or(ability.targets.len());
+        ability.targets[..required].iter().all(|f| {
+            self.candidates(f, item.controller)
+                .into_iter()
+                .any(|t| self.slot_ok(item, f, t))
+        })
     }
 
     /// Whether every required target slot has a legal choice ("up to" slots are optional).
@@ -1295,8 +1348,13 @@ impl Game {
     /// Activated abilities `p` can activate now (CR 602.2, 602.5).
     fn activations(&self, p: PlayerId) -> Vec<Action> {
         let mut v = Vec::new();
-        for id in self.permanents(p) {
+        let graveyard = self.players[p].graveyard.iter().copied();
+        for id in self.permanents(p).chain(graveyard) {
+            let in_graveyard = self.obj(id).zone == Zone::Graveyard;
             for (n, a) in self.def_of(id).activated.iter().enumerate() {
+                if a.from_graveyard != in_graveyard {
+                    continue;
+                }
                 let uses_self = a.tap || a.sacrifice_self;
                 let sorcery_ok = !a.sorcery
                     || (p == self.active
@@ -1760,7 +1818,7 @@ impl Game {
             }
             Chosen::Object(id, zcc) => {
                 self.obj(id).zcc == zcc
-                    && !(f.other && id == item.source)
+                    && self.slot_ok(item, f, Target::Object(id))
                     && self.target_ok(f, item.controller, Target::Object(id))
             }
         }
@@ -1902,6 +1960,15 @@ impl Game {
         self.move_to(id, if flashback { Zone::Exile } else { Zone::Graveyard });
     }
 
+    fn picks(&self, c: ObjId, pick: Pick) -> bool {
+        let d = self.def_of(c);
+        match pick {
+            Pick::Any => true,
+            Pick::CreaturePowerAtMost(n) => d.types.creature && d.power <= n,
+            Pick::InstantOrSorcery => d.types.instant || d.types.sorcery,
+        }
+    }
+
     fn ask(&mut self, p: PlayerId, d: Decision) {
         self.decision = Some(d);
         self.pending = Pending::Decide(p);
@@ -1929,6 +1996,25 @@ impl Game {
         let hand = &self.players[p].hand;
         match self.decision.as_ref().expect("a decision") {
             Decision::May | Decision::Surveil { .. } | Decision::Tuck { .. } => vec![Action::Yes, Action::No],
+            Decision::SacrificeAnother { source } => {
+                let mut v: Vec<Action> = self
+                    .creatures(p)
+                    .filter(|&c| c != *source)
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
+            Decision::LookPick { cards, pick, .. } => {
+                let mut v: Vec<Action> = cards
+                    .iter()
+                    .copied()
+                    .filter(|&c| self.picks(c, *pick))
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
             Decision::ChooseMode => {
                 let (item, _) = self.mode_pending.as_ref().expect("a modal trigger");
                 let StackKind::Trigger(n) = item.kind else {
@@ -1990,6 +2076,44 @@ impl Game {
         }
         match (d, a) {
             (Decision::PayWard { cost, .. }, Action::Yes) => self.pay_mana(p, &cost, None),
+            (Decision::SacrificeAnother { .. }, Action::Pick(c)) => self.move_to(c, Zone::Graveyard),
+            (Decision::SacrificeAnother { .. }, Action::No) => {
+                self.resolving.as_mut().expect("resolving").remaining.clear();
+            }
+            (Decision::LookPick { cards, to, rest, .. }, choice) => {
+                let chosen = match choice {
+                    Action::Pick(c) => Some(c),
+                    _ => None,
+                };
+                if let Some(c) = chosen {
+                    match to {
+                        LookTo::Hand => self.move_to(c, Zone::Hand),
+                        LookTo::Top => {
+                            let lib = &mut self.players[p].library;
+                            let pos = lib.iter().position(|&x| x == c).expect("in library");
+                            let card = lib.remove(pos);
+                            lib.push(card);
+                        }
+                    }
+                }
+                let mut others: Vec<ObjId> = cards.into_iter().filter(|&c| Some(c) != chosen).collect();
+                match rest {
+                    Some(LookRest::Graveyard) => {
+                        for c in others {
+                            self.move_to(c, Zone::Graveyard);
+                        }
+                    }
+                    Some(LookRest::BottomRandom) => {
+                        self.rng.shuffle(&mut others);
+                        let lib = &mut self.players[p].library;
+                        lib.retain(|x| !others.contains(x));
+                        for c in others {
+                            lib.insert(0, c);
+                        }
+                    }
+                    None => {}
+                }
+            }
             (Decision::PayWard { against, .. }, Action::No) => self.counter_from(against),
             (Decision::May, Action::Yes) => {}
             (Decision::May, Action::No) => {
@@ -2162,6 +2286,7 @@ impl Game {
             Effect::LoseLife { who, n } => {
                 for p in self.players_for(item, legal, who) {
                     self.players[p].life -= n;
+                    self.life_lost_this_turn[p] = true;
                     self.events.push(Event::LifeLost { player: p, amount: n });
                 }
             }
@@ -2429,6 +2554,7 @@ impl Game {
                 if exiled_creature {
                     let opp = opponent(item.controller);
                     self.players[opp].life -= n;
+                    self.life_lost_this_turn[opp] = true;
                     self.events.push(Event::LifeLost {
                         player: opp,
                         amount: n,
@@ -2522,6 +2648,59 @@ impl Game {
                         keywords: Keywords::NONE,
                         dies: None,
                     });
+                }
+            }
+            Effect::MaySacrificeAnother => {
+                let any = self.creatures(item.controller).any(|c| c != src);
+                if any {
+                    self.ask(item.controller, Decision::SacrificeAnother { source: src });
+                } else {
+                    self.resolving.as_mut().expect("resolving").remaining.clear();
+                }
+            }
+            Effect::ReturnSelfTapped => {
+                if self.obj(src).zone == Zone::Graveyard {
+                    self.move_to(src, Zone::Battlefield);
+                    self.obj_mut(src).tapped = true;
+                }
+            }
+            Effect::LookAtTop {
+                n,
+                pick,
+                chosen_to,
+                rest_to,
+            } => {
+                let lib = &self.players[item.controller].library;
+                let cards: Vec<ObjId> = lib.iter().rev().take(n as usize).copied().collect();
+                if !cards.is_empty() {
+                    self.ask(
+                        item.controller,
+                        Decision::LookPick {
+                            cards,
+                            pick,
+                            to: chosen_to,
+                            rest: Some(rest_to),
+                        },
+                    );
+                }
+            }
+            Effect::ReturnFromGraveyard { pick } => {
+                let cards: Vec<ObjId> = self.players[item.controller]
+                    .graveyard
+                    .iter()
+                    .copied()
+                    .filter(|&c| self.picks(c, pick))
+                    .collect();
+                if !cards.is_empty() {
+                    self.ask(
+                        item.controller,
+                        Decision::LookPick {
+                            cards,
+                            pick,
+                            to: LookTo::Hand,
+                            rest: None,
+                        },
+                    );
                 }
             }
             Effect::UntapSelf => {
@@ -2633,6 +2812,7 @@ impl Game {
                 .any(|c| c != source && self.power(c) >= *n),
             Some(Condition::CreatureDiedThisTurn) => self.creature_died_this_turn,
             Some(Condition::Always) => true,
+            Some(Condition::OpponentLostLifeThisTurn) => self.life_lost_this_turn[opponent(controller)],
             Some(Condition::Threshold) => self.players[controller].graveyard.len() >= 7,
             Some(Condition::ControlAnother(sub)) => self
                 .creatures(controller)
@@ -2687,7 +2867,7 @@ impl Game {
             }
             if ability.targets.len() == item.targets.len() {
                 self.items.push(item);
-            } else if self.can_target_all(&ability, item.controller) {
+            } else if self.trigger_can_target(&item, &ability) {
                 let who = item.controller;
                 self.choosing = Some(Choosing {
                     item,
@@ -2770,6 +2950,7 @@ impl Game {
         self.life_gains_this_turn = [0; 2];
         self.draws_this_turn = [0; 2];
         self.creature_died_this_turn = false;
+        self.life_lost_this_turn = [false; 2];
         self.turn += 1;
         self.active = opponent(self.active);
         self.events.push(Event::TurnBegan {
@@ -3022,6 +3203,7 @@ impl Game {
         match target {
             Target::Player(p) => {
                 self.players[p].life -= amount;
+                self.life_lost_this_turn[p] = true;
                 self.events.push(Event::LifeLost { player: p, amount });
             }
             Target::Object(id) => {

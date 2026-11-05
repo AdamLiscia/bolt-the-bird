@@ -8,7 +8,10 @@ use bolt_core::effect::{
     Ability, Condition, Controller, Effect, Filter, Recipient, Scope, SearchFor, SearchTo, Static,
     StaticCondition, Trigger, When, Who,
 };
-use bolt_core::{Activated, CardDef, Color, ExtraCost, Keywords, ManaCost, ManaSource, Reduction, Types};
+use bolt_core::{
+    Activated, CardDef, Color, ExtraCost, Keywords, LookRest, LookTo, ManaCost, ManaSource, Pick, Reduction,
+    Types,
+};
 
 /// Token definitions, appended after the 286 cards. Indices are [`Tokens`] fields.
 pub fn token_defs() -> Vec<CardDef> {
@@ -32,6 +35,11 @@ pub fn token_defs() -> Vec<CardDef> {
         token("Faerie", "Faerie", 1, 1, Keywords::FLYING),
         token("Goblin", "Goblin", 1, 1, Keywords::NONE),
         token("Dragon", "Dragon", 5, 5, Keywords::FLYING),
+        {
+            let mut scion = token("Scion of the Deep", "Octopus", 8, 8, Keywords::NONE);
+            scion.types.legendary = true;
+            scion
+        },
     ]
 }
 
@@ -86,6 +94,7 @@ pub struct Tokens {
     pub faerie: usize,
     pub goblin: usize,
     pub dragon_5: usize,
+    pub scion: usize,
 }
 
 impl Tokens {
@@ -104,6 +113,7 @@ impl Tokens {
             faerie: base + 10,
             goblin: base + 11,
             dragon_5: base + 12,
+            scion: base + 13,
         }
     }
 }
@@ -1490,6 +1500,130 @@ pub fn script(name: &str) -> Option<Script> {
             d.flashback = ManaCost::parse("{4}{R}{R}");
             spell(d, vec![CREATURE], vec![Effect::DoublePower(0)])
         }),
+                "Vampire Gourmand" => s(
+            &["Whenever this creature attacks, you may sacrifice another creature. If you do, draw a card and this creature can't be blocked this turn."],
+            |d, _| {
+                on(
+                    d,
+                    When::Attacks,
+                    vec![],
+                    vec![Effect::MaySacrificeAnother, draw(1), Effect::GrantSelf { keywords: Keywords::UNBLOCKABLE }],
+                )
+            },
+        ),
+        "High-Society Hunter" => s(
+            &[
+                "Whenever this creature attacks, you may sacrifice another creature. If you do, put a +1/+1 counter on this creature.",
+                "Whenever another nontoken creature dies, draw a card.",
+            ],
+            |d, _| {
+                on(d, When::Attacks, vec![], vec![Effect::MaySacrificeAnother, Effect::CountersSelf { n: 1 }]);
+                on(d, When::AnotherNontokenCreatureDies, vec![], vec![draw(1)]);
+            },
+        ),
+        "Reassembling Skeleton" => s(&["{1}{B}: Return this card from your graveyard to the battlefield tapped."], |d, _| {
+            let n = activated(d, "{1}{B}", false, vec![], vec![Effect::ReturnSelfTapped]);
+            d.activated[n].from_graveyard = true;
+        }),
+        "Gutless Plunderer" => s(
+            &["Raid — When this creature enters, if you attacked this turn, look at the top three cards of your library. You may put one of those cards back on top of your library. Put the rest into your graveyard."],
+            |d, _| {
+                on_if(
+                    d,
+                    Condition::Attacked,
+                    vec![],
+                    vec![Effect::LookAtTop { n: 3, pick: Pick::Any, chosen_to: LookTo::Top, rest_to: LookRest::Graveyard }],
+                )
+            },
+        ),
+        "Squad Rallier" => s(
+            &["{2}{W}: Look at the top four cards of your library. You may reveal a creature card with power 2 or less from among them and put it into your hand. Put the rest on the bottom of your library in a random order."],
+            |d, _| {
+                let look = Effect::LookAtTop {
+                    n: 4,
+                    pick: Pick::CreaturePowerAtMost(2),
+                    chosen_to: LookTo::Hand,
+                    rest_to: LookRest::BottomRandom,
+                };
+                activated(d, "{2}{W}", false, vec![], vec![look]);
+            },
+        ),
+        "Inspiration from Beyond" => s(
+            &[
+                "Mill three cards, then return an instant or sorcery card from your graveyard to your hand.",
+                "Flashback {5}{U}{U}",
+            ],
+            |d, _| {
+                d.flashback = ManaCost::parse("{5}{U}{U}");
+                spell(
+                    d,
+                    vec![],
+                    vec![Effect::Mill { who: Who::You, n: 3 }, Effect::ReturnFromGraveyard { pick: Pick::InstantOrSorcery }],
+                )
+            },
+        ),
+        "Alesha, Who Laughs at Fate" => s(
+            &[
+                "Whenever Alesha attacks, put a +1/+1 counter on it.",
+                "Raid — At the beginning of your end step, if you attacked this turn, return target creature card with mana value less than or equal to Alesha's power from your graveyard to the battlefield.",
+            ],
+            |d, _| {
+                on(d, When::Attacks, vec![], vec![Effect::CountersSelf { n: 1 }]);
+                let f = Filter { mana_value_at_most_source_power: true, ..graveyard_cards(true, Controller::You) };
+                conditional(d, When::EndStep { your_turn_only: true }, Condition::Attacked, vec![f], vec![Effect::Reanimate(0)]);
+            },
+        ),
+        "Fiendish Panda" => s(
+            &[
+                "Whenever you gain life, put a +1/+1 counter on this creature.",
+                "When this creature dies, return another target non-Bear creature card with mana value less than or equal to this creature's power from your graveyard to the battlefield.",
+            ],
+            |d, _| {
+                on(d, When::YouGainLife, vec![], vec![Effect::CountersSelf { n: 1 }]);
+                let f = Filter {
+                    other: true,
+                    not_subtype: Some("Bear"),
+                    mana_value_at_most_source_power: true,
+                    ..graveyard_cards(true, Controller::You)
+                };
+                on(d, When::Dies, vec![f], vec![Effect::Reanimate(0)]);
+            },
+        ),
+        "Kiora, the Rising Tide" => s(
+            &[
+                "When Kiora enters, draw two cards, then discard two cards.",
+                "Threshold — Whenever Kiora attacks, if there are seven or more cards in your graveyard, you may create Scion of the Deep, a legendary 8/8 blue Octopus creature token.",
+            ],
+            |d, t| {
+                on(d, When::Enters, vec![], vec![draw(2), discard(2)]);
+                let mut ability = Ability::new(vec![], vec![Effect::CreateToken { who: Who::You, def: t.scion, n: 1 }]).optional();
+                ability.condition = Some(Condition::Threshold);
+                d.triggers.push(Trigger { when: When::Attacks, ability });
+            },
+        ),
+        "Cephalid Inkmage" => s(
+            &[
+                "When this creature enters, surveil 3.",
+                "Threshold — This creature can't be blocked as long as there are seven or more cards in your graveyard.",
+            ],
+            |d, _| {
+                on(d, When::Enters, vec![], vec![Effect::Surveil { n: 3 }]);
+                threshold(d, 0, 0, Keywords::UNBLOCKABLE);
+            },
+        ),
+        "Stromkirk Bloodthief" => s(
+            &["At the beginning of your end step, if an opponent lost life this turn, put a +1/+1 counter on target Vampire you control."],
+            |d, _| {
+                let f = Filter { subtype: Some("Vampire"), ..YOUR_CREATURE };
+                conditional(
+                    d,
+                    When::EndStep { your_turn_only: true },
+                    Condition::OpponentLostLifeThisTurn,
+                    vec![f],
+                    vec![Effect::Counters { slot: 0, n: 1 }],
+                )
+            },
+        ),
         _ => None,
     }
 }
@@ -1662,4 +1796,15 @@ pub const SCRIPTED: &[&str] = &[
     "Mossborn Hydra",
     "Herald of Eternal Dawn",
     "Bulk Up",
+    "Vampire Gourmand",
+    "High-Society Hunter",
+    "Reassembling Skeleton",
+    "Gutless Plunderer",
+    "Squad Rallier",
+    "Inspiration from Beyond",
+    "Alesha, Who Laughs at Fate",
+    "Fiendish Panda",
+    "Kiora, the Rising Tide",
+    "Cephalid Inkmage",
+    "Stromkirk Bloodthief",
 ];

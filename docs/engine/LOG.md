@@ -112,3 +112,13 @@ One line per working step, newest last. The next session continues from the last
   supported, 222 tests** (counted from saved `cargo test` output; piping it live dropped binaries).
   10,000 release fuzz games pass. **Next: the remaining ~60 tier-3 cards: library looks, optional
   trigger costs, graveyard abilities, alternate ward costs.**
+- 2026-11-05: **M3 batch 6.** Optional "sacrifice another creature" inside triggers, abilities
+  activated from the graveyard, "look at the top N" with a pick and the rest to the graveyard or the
+  bottom in random order, choosing a card from your graveyard, target limits by the source's power
+  (last known, for dies triggers), subtype filters, "an opponent lost life this turn", and
+  another-nontoken-creature-dies triggers. 11 cards (Vampire Gourmand, High-Society Hunter,
+  Reassembling Skeleton, Gutless Plunderer, Squad Rallier, Inspiration from Beyond, Alesha, Fiendish
+  Panda, Kiora, Cephalid Inkmage, Stromkirk Bloodthief): **190 supported, 233 tests.** Test totals
+  are now counted with stdout and stderr captured separately (a combined capture was cutting the
+  core crate's results off locally; CI's own log shows every test file running). 10,000 release fuzz
+  games pass. **Next: the remaining ~50 tier-3 cards.**
