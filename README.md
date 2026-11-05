@@ -255,7 +255,7 @@ Apple's GPU, the NaN-poisoned model hung the machine. The fix masks before the a
 - [ ] **A rules engine in Rust** (PyO3 bindings) to play the decks out, which replaces predicted win
       rates with played ones
 - [ ] A gameplay agent trained by self-play
-- [ ] Draft practice against the bot on Nerd Leagues
+- [ ] Draft practice against the bot on [Nerd Leagues](https://nerdleagues.com)
 
 ## Repository layout
 
