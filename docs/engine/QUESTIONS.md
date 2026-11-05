@@ -65,8 +65,8 @@ each time it changes zones.
 there zone changes must break them. Planned for M2: a per-object zone-change counter that targets
 check.
 
-## 2026-11-05: Activated-ability costs are paid before targets are chosen
+## 2026-11-05: ~~Activated-ability costs are paid before targets are chosen~~ (reversed)
 
-**Choice:** activating pays the costs first, then asks for targets. CR 602.2 chooses targets first.
-**Why:** it's simpler, and the only visible difference is a sacrificed creature being able to target
-itself, which no FDN ability does. Easy to reorder if a card ever needs it.
+**Was:** costs first, then targets. **Now:** targets first, then costs, as CR 602.2b says. The fuzzer
+found a real difference: Cathar Commando's only legal target was the Treasure paying for it, and
+paying first left no target to choose. Covered by a regression test.

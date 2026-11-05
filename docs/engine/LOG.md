@@ -68,3 +68,14 @@ One line per working step, newest last. The next session continues from the last
   games/s with checks (`cargo run --release -p bolt-cards --example random_fdn_games`).
   **Next: M3, tier 3 in build order (`CARD_AUDIT.md`), starting with the mechanisms most cards share:
   static P/T effects (anthems), auras, equipment, and attack/block triggers.**
+- 2026-11-05: **M3 batch 1.** Core: lands that enter tapped, enters-with-counters replacements
+  (kicked, raid), triggers for another creature entering, attacking, first life gain each turn and the
+  second card drawn; static abilities (layer 6/7 keywords and P/T: this, your creatures, your creatures
+  with counters, "during your turn"); sorcery-speed abilities; "sacrifice another creature" costs;
+  "can't block" and "can't be blocked"; graveyard targets by mana value. 32 cards, including all ten
+  gain lands, Evolving Wilds, Rogue's Passage and Llanowar Elves: **104 supported, 152 tests.**
+  **The fuzzer found two real bugs**, both fixed with regression tests: sacrificing a creature that
+  had paid mana for the same cost, and activated abilities paying costs before choosing targets (now
+  CR 602.2b order; QUESTIONS updated). 10,000 release fuzz games with all 104 cards pass.
+  `examples/replay.rs` replays any fuzz seed. **Next: M3 batch 2: modal spells (Bushwhack, Goblin
+  Surprise), equipment and auras, then the next cards in build order.**

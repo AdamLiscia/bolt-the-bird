@@ -33,6 +33,8 @@ pub struct Filter {
     pub graveyard: Option<bool>,
     /// "other": not the source of the ability.
     pub other: bool,
+    /// Cards with at most this mana value (graveyard targets).
+    pub max_mana_value: Option<u32>,
     pub controller: Controller,
     /// Creatures only if they have flying ("creature with flying").
     pub creature_needs_flying: bool,
@@ -55,6 +57,7 @@ impl Filter {
         spell_creature: None,
         graveyard: None,
         other: false,
+        max_mana_value: None,
         controller: Controller::Any,
         creature_needs_flying: false,
         creature_min_power: None,
@@ -186,6 +189,21 @@ pub enum Effect {
     },
     /// Counter the spell in `slot` (CR 701.5).
     Counter(u8),
+    /// Put `n` +1/+1 counters on the source.
+    CountersSelf {
+        n: i32,
+    },
+    /// Creatures you control get +P/+T until end of turn.
+    PumpAll {
+        power: i32,
+        toughness: i32,
+    },
+    /// The source gains keywords until end of turn.
+    GrantSelf {
+        keywords: Keywords,
+    },
+    /// Return the card in `slot` from a graveyard to the battlefield under your control.
+    Reanimate(u8),
     /// Exile the permanent or card in `slot`.
     Exile(u8),
     /// Exile it until the source leaves the battlefield (CR 610.3).
@@ -241,6 +259,26 @@ pub enum SearchTo {
     Top,
 }
 
+/// What a static ability affects.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Scope {
+    This,
+    YourCreatures,
+    /// Creatures you control with a +1/+1 counter on them.
+    YourCreaturesWithCounters,
+}
+
+/// A static ability that changes characteristics (CR 604, 613 layers 6 and 7c).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Static {
+    pub scope: Scope,
+    /// "During your turn".
+    pub your_turn_only: bool,
+    pub power: i32,
+    pub toughness: i32,
+    pub keywords: Keywords,
+}
+
 /// An intervening "if" clause, checked when the ability triggers and again on resolution
 /// (CR 603.4).
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -249,6 +287,10 @@ pub enum Condition {
     Attacked,
     /// You control another creature with this subtype.
     ControlAnother(String),
+    /// You control a creature with at least this power.
+    ControlPowerAtLeast(i32),
+    /// The source was kicked.
+    Kicked,
 }
 
 /// A spell's effect or a triggered ability: target slots, then effects in order.
@@ -293,6 +335,14 @@ pub enum When {
     YouCastNoncreature,
     /// Only by an effect: a reflexive trigger or a granted ability.
     Never,
+    /// "Whenever another creature you control enters".
+    AnotherCreatureYouControlEnters,
+    /// "Whenever this creature attacks" (CR 508.3a).
+    Attacks,
+    /// "Whenever you gain life for the first time each turn" (or "during each of your turns").
+    YouGainLifeFirstTime { your_turn_only: bool },
+    /// "Whenever you draw your second card each turn".
+    YouDrawSecond,
 }
 
 #[derive(Clone, Debug, PartialEq)]

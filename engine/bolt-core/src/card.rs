@@ -1,6 +1,6 @@
 //! Card definitions: the printed characteristics an engine needs (CR 200-209).
 
-use crate::effect::{Ability, Trigger};
+use crate::effect::{Ability, Condition, Static, Trigger};
 use crate::mana::{ManaCost, ManaSource};
 
 /// Keyword abilities as a bit set (CR 702). Only the evergreen combat keywords exist so far.
@@ -33,6 +33,7 @@ keywords! {
     INDESTRUCTIBLE = 11, "Indestructible";
     HEXPROOF = 12, "Hexproof";
     FLASH = 13, "Flash";
+    UNBLOCKABLE = 14, "Can't be blocked";
 }
 
 impl Keywords {
@@ -124,6 +125,10 @@ pub struct Activated {
     pub tap: bool,
     /// "Sacrifice this ..." in the cost.
     pub sacrifice_self: bool,
+    /// "Sacrifice another creature" in the cost.
+    pub sacrifice_other_creature: bool,
+    /// "Activate only as a sorcery."
+    pub sorcery: bool,
     pub ability: Ability,
 }
 
@@ -154,6 +159,13 @@ pub struct CardDef {
     pub reduction: Option<Reduction>,
     /// Flashback cost (CR 702.34).
     pub flashback: Option<ManaCost>,
+    pub statics: Vec<Static>,
+    /// "This ... enters tapped."
+    pub enters_tapped: bool,
+    /// "This creature can't block."
+    pub cant_block: bool,
+    /// "Enters with N +1/+1 counters if ..." (a replacement effect, CR 614.1c).
+    pub enters_counters: Option<(i32, Condition)>,
 }
 
 impl CardDef {
@@ -180,6 +192,10 @@ impl CardDef {
             extra_cost: None,
             reduction: None,
             flashback: None,
+            statics: Vec::new(),
+            enters_tapped: false,
+            cant_block: false,
+            enters_counters: None,
         }
     }
 
@@ -207,6 +223,10 @@ impl CardDef {
             extra_cost: None,
             reduction: None,
             flashback: None,
+            statics: Vec::new(),
+            enters_tapped: false,
+            cant_block: false,
+            enters_counters: None,
         }
     }
 
@@ -234,6 +254,10 @@ impl CardDef {
             extra_cost: None,
             reduction: None,
             flashback: None,
+            statics: Vec::new(),
+            enters_tapped: false,
+            cant_block: false,
+            enters_counters: None,
         }
     }
 }

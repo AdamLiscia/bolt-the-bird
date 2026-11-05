@@ -12,7 +12,8 @@ pub mod rng;
 
 pub use card::{Activated, CardDef, ExtraCost, Keywords, Reduction, Types};
 pub use effect::{
-    Ability, Condition, Controller, Effect, Filter, Recipient, SearchFor, SearchTo, Trigger, When, Who,
+    Ability, Condition, Controller, Effect, Filter, Recipient, Scope, SearchFor, SearchTo, Static, Trigger,
+    When, Who,
 };
 pub use game::{
     Action, Chosen, Decision, Event, Game, Modifier, ObjId, Outcome, Pending, PlayerId, Resolving,

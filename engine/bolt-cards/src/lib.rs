@@ -149,6 +149,10 @@ fn definition(o: &Oracle) -> (CardDef, bool) {
         extra_cost: None,
         reduction: None,
         flashback: None,
+        statics: Vec::new(),
+        enters_tapped: false,
+        cant_block: false,
+        enters_counters: None,
     };
     let mut claimed = rest.is_empty();
     if let Some(s) = scripts::script(&o.name) {
@@ -157,7 +161,7 @@ fn definition(o: &Oracle) -> (CardDef, bool) {
             claimed = true;
         }
     }
-    let castable = (types.is_permanent() && !types.land) || def.spell.is_some();
+    let castable = types.is_permanent() || def.spell.is_some(); // lands are played, not cast
     let supported = basic_color.is_some() || (castable && claimed && matches!(cost, Some(Some(_))));
     (def, supported)
 }

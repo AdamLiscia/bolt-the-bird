@@ -5,7 +5,8 @@
 //! script's lines against the Scryfall text, so a script can't drift from its card.
 
 use bolt_core::effect::{
-    Ability, Condition, Controller, Effect, Filter, Recipient, SearchFor, SearchTo, Trigger, When, Who,
+    Ability, Condition, Controller, Effect, Filter, Recipient, Scope, SearchFor, SearchTo, Static, Trigger,
+    When, Who,
 };
 use bolt_core::{Activated, CardDef, Color, ExtraCost, Keywords, ManaCost, ManaSource, Reduction, Types};
 
@@ -53,6 +54,7 @@ fn food() -> CardDef {
         tap: true,
         sacrifice_self: true,
         ability: Ability::new(vec![], vec![Effect::GainLife { who: Who::You, n: 3 }]),
+        ..Activated::default()
     });
     d
 }
@@ -209,6 +211,43 @@ fn search(what: SearchFor, to: SearchTo) -> Effect {
         n: 1,
         kicked_n: None,
     }
+}
+
+fn activated(d: &mut CardDef, cost: &str, tap: bool, targets: Vec<Filter>, effects: Vec<Effect>) -> usize {
+    d.activated.push(Activated {
+        mana: ManaCost::parse(cost).expect("cost"),
+        tap,
+        ability: Ability::new(targets, effects),
+        ..Activated::default()
+    });
+    d.activated.len() - 1
+}
+
+/// A gain land: enters tapped, gains 1 life, taps for either of two colors.
+fn gain_land(d: &mut CardDef, a: Color, b: Color) {
+    d.enters_tapped = true;
+    d.mana = Some(ManaSource::of(&[a, b]));
+    on(
+        d,
+        When::Enters,
+        vec![],
+        vec![Effect::GainLife { who: Who::You, n: 1 }],
+    );
+}
+
+const GAIN_LAND: [&str; 2] = [
+    "This land enters tapped.",
+    "When this land enters, you gain 1 life.",
+];
+
+fn static_on(d: &mut CardDef, scope: Scope, your_turn_only: bool, keywords: Keywords) {
+    d.statics.push(Static {
+        scope,
+        your_turn_only,
+        power: 0,
+        toughness: 0,
+        keywords,
+    });
 }
 
 /// The script for a card, if one exists.
@@ -587,6 +626,190 @@ pub fn script(name: &str) -> Option<Script> {
                 );
             },
         ),
+        "Bloodfell Caves" => s(
+            &[GAIN_LAND[0], GAIN_LAND[1], "{T}: Add {B} or {R}."],
+            |d, _| gain_land(d, Color::Black, Color::Red),
+        ),
+        "Blossoming Sands" => s(
+            &[GAIN_LAND[0], GAIN_LAND[1], "{T}: Add {G} or {W}."],
+            |d, _| gain_land(d, Color::Green, Color::White),
+        ),
+        "Dismal Backwater" => s(
+            &[GAIN_LAND[0], GAIN_LAND[1], "{T}: Add {U} or {B}."],
+            |d, _| gain_land(d, Color::Blue, Color::Black),
+        ),
+        "Jungle Hollow" => s(
+            &[GAIN_LAND[0], GAIN_LAND[1], "{T}: Add {B} or {G}."],
+            |d, _| gain_land(d, Color::Black, Color::Green),
+        ),
+        "Rugged Highlands" => s(
+            &[GAIN_LAND[0], GAIN_LAND[1], "{T}: Add {R} or {G}."],
+            |d, _| gain_land(d, Color::Red, Color::Green),
+        ),
+        "Scoured Barrens" => s(
+            &[GAIN_LAND[0], GAIN_LAND[1], "{T}: Add {W} or {B}."],
+            |d, _| gain_land(d, Color::White, Color::Black),
+        ),
+        "Swiftwater Cliffs" => s(
+            &[GAIN_LAND[0], GAIN_LAND[1], "{T}: Add {U} or {R}."],
+            |d, _| gain_land(d, Color::Blue, Color::Red),
+        ),
+        "Thornwood Falls" => s(
+            &[GAIN_LAND[0], GAIN_LAND[1], "{T}: Add {G} or {U}."],
+            |d, _| gain_land(d, Color::Green, Color::Blue),
+        ),
+        "Tranquil Cove" => s(
+            &[GAIN_LAND[0], GAIN_LAND[1], "{T}: Add {W} or {U}."],
+            |d, _| gain_land(d, Color::White, Color::Blue),
+        ),
+        "Wind-Scarred Crag" => s(
+            &[GAIN_LAND[0], GAIN_LAND[1], "{T}: Add {R} or {W}."],
+            |d, _| gain_land(d, Color::Red, Color::White),
+        ),
+        "Evolving Wilds" => s(
+            &["{T}, Sacrifice this land: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle."],
+            |d, _| {
+                let n = activated(d, "", true, vec![], vec![search(SearchFor::BasicLand, SearchTo::Battlefield { tapped: true })]);
+                d.activated[n].sacrifice_self = true;
+            },
+        ),
+        "Rogue's Passage" => s(
+            &["{T}: Add {C}.", "{4}, {T}: Target creature can't be blocked this turn."],
+            |d, _| {
+                d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                activated(d, "{4}", true, vec![CREATURE], vec![Effect::Grant { slot: 0, keywords: Keywords::UNBLOCKABLE }]);
+            },
+        ),
+        "Llanowar Elves" => s(&["{T}: Add {G}."], |d, _| d.mana = Some(ManaSource::of(&[Color::Green]))),
+        "Dazzling Angel" => s(&["Whenever another creature you control enters, you gain 1 life."], |d, _| {
+            on(d, When::AnotherCreatureYouControlEnters, vec![], vec![Effect::GainLife { who: Who::You, n: 1 }])
+        }),
+        "Beast-Kin Ranger" => s(
+            &["Whenever another creature you control enters, this creature gets +1/+0 until end of turn."],
+            |d, _| on(d, When::AnotherCreatureYouControlEnters, vec![], vec![Effect::PumpSelf { power: 1, toughness: 0 }]),
+        ),
+        "Hungry Ghoul" => s(
+            &["{1}, Sacrifice another creature: Put a +1/+1 counter on this creature."],
+            |d, _| {
+                let n = activated(d, "{1}", false, vec![], vec![Effect::CountersSelf { n: 1 }]);
+                d.activated[n].sacrifice_other_creature = true;
+            },
+        ),
+        "Cathar Commando" => s(
+            &["{1}, Sacrifice this creature: Destroy target artifact or enchantment."],
+            |d, _| {
+                let n = activated(d, "{1}", false, vec![ARTIFACT_OR_ENCHANTMENT], vec![Effect::Destroy(0)]);
+                d.activated[n].sacrifice_self = true;
+            },
+        ),
+        "Strix Lookout" => s(&["{1}{U}, {T}: Draw a card, then discard a card."], |d, _| {
+            activated(d, "{1}{U}", true, vec![], vec![draw(1), discard(1)]);
+        }),
+        "Spectral Sailor" => s(&["{3}{U}: Draw a card."], |d, _| {
+            activated(d, "{3}{U}", false, vec![], vec![draw(1)]);
+        }),
+        "Treetop Snarespinner" => s(
+            &["{2}{G}: Put a +1/+1 counter on target creature you control. Activate only as a sorcery."],
+            |d, _| {
+                let n = activated(d, "{2}{G}", false, vec![YOUR_CREATURE], vec![Effect::Counters { slot: 0, n: 1 }]);
+                d.activated[n].sorcery = true;
+            },
+        ),
+        "Bite Down" => s(
+            &["Target creature you control deals damage equal to its power to target creature or planeswalker you don't control."],
+            |d, _| {
+                let theirs = Filter { players: false, ..Filter::ANY }.controlled_by(Controller::Opponent);
+                spell(d, vec![YOUR_CREATURE, theirs], vec![Effect::Bite { from: 0, to: 1 }])
+            },
+        ),
+        "Vampire Soulcaller" => s(
+            &["This creature can't block.", "When this creature enters, return target creature card from your graveyard to your hand."],
+            |d, _| {
+                d.cant_block = true;
+                on(d, When::Enters, vec![graveyard_cards(true, Controller::You)], vec![Effect::Bounce(0)]);
+            },
+        ),
+        "Elementalist Adept" => s(&["Prowess"], |d, _| {
+            on(d, When::YouCastNoncreature, vec![], vec![Effect::PumpSelf { power: 1, toughness: 1 }]);
+        }),
+        "Ambush Wolf" => s(&["When this creature enters, exile up to one target card from a graveyard."], |d, _| {
+            let ability = up_to(vec![graveyard_cards(false, Controller::Any)], vec![Effect::Exile(0)]);
+            d.triggers.push(Trigger { when: When::Enters, ability });
+        }),
+        "Goblin Boarders" => s(
+            &["Raid — This creature enters with a +1/+1 counter on it if you attacked this turn."],
+            |d, _| d.enters_counters = Some((1, Condition::Attacked)),
+        ),
+        "Gnarlid Colony" => s(
+            &[
+                "Kicker {2}{G}",
+                "If this creature was kicked, it enters with two +1/+1 counters on it.",
+                "Each creature you control with a +1/+1 counter on it has trample.",
+            ],
+            |d, _| {
+                d.kicker = ManaCost::parse("{2}{G}");
+                d.enters_counters = Some((2, Condition::Kicked));
+                static_on(d, Scope::YourCreaturesWithCounters, false, Keywords::TRAMPLE);
+            },
+        ),
+        "Inspiring Paladin" => s(
+            &[
+                "During your turn, this creature has first strike.",
+                "During your turn, creatures you control with +1/+1 counters on them have first strike.",
+            ],
+            |d, _| {
+                static_on(d, Scope::This, true, Keywords::FIRST_STRIKE);
+                static_on(d, Scope::YourCreaturesWithCounters, true, Keywords::FIRST_STRIKE);
+            },
+        ),
+        "Courageous Goblin" => s(
+            &["Whenever this creature attacks while you control a creature with power 4 or greater, this creature gets +1/+0 and gains menace until end of turn."],
+            |d, _| {
+                let mut ability = Ability::new(
+                    vec![],
+                    vec![Effect::PumpSelf { power: 1, toughness: 0 }, Effect::GrantSelf { keywords: Keywords::MENACE }],
+                );
+                ability.condition = Some(Condition::ControlPowerAtLeast(4));
+                d.triggers.push(Trigger { when: When::Attacks, ability });
+            },
+        ),
+        "Sun-Blessed Healer" => s(
+            &[
+                "Kicker {1}{W}",
+                "When this creature enters, if it was kicked, return target nonland permanent card with mana value 2 or less from your graveyard to the battlefield.",
+            ],
+            |d, _| {
+                d.kicker = ManaCost::parse("{1}{W}");
+                let f = Filter {
+                    nonland_permanents: true,
+                    max_mana_value: Some(2),
+                    ..graveyard_cards(false, Controller::You)
+                };
+                on_if(d, Condition::Kicked, vec![f], vec![Effect::Reanimate(0)]);
+            },
+        ),
+        "Vanguard Seraph" => s(&["Whenever you gain life for the first time each turn, surveil 1."], |d, _| {
+            on(d, When::YouGainLifeFirstTime { your_turn_only: false }, vec![], vec![Effect::Surveil { n: 1 }])
+        }),
+        "Cat Collector" => s(
+            &[
+                "When this creature enters, create a Food token.",
+                "Whenever you gain life for the first time during each of your turns, create a 1/1 white Cat creature token.",
+            ],
+            |d, t| {
+                on(d, When::Enters, vec![], vec![Effect::CreateToken { who: Who::You, def: t.food, n: 1 }]);
+                on(
+                    d,
+                    When::YouGainLifeFirstTime { your_turn_only: true },
+                    vec![],
+                    vec![Effect::CreateToken { who: Who::You, def: t.cat, n: 1 }],
+                );
+            },
+        ),
+        "Mischievous Mystic" => s(
+            &["Whenever you draw your second card each turn, create a 1/1 blue Faerie creature token with flying."],
+            |d, t| on(d, When::YouDrawSecond, vec![], vec![Effect::CreateToken { who: Who::You, def: t.faerie, n: 1 }]),
+        ),
         _ => None,
     }
 }
@@ -652,4 +875,36 @@ pub const SCRIPTED: &[&str] = &[
     "Faebloom Trick",
     "Banishing Light",
     "Fake Your Own Death",
+    "Bloodfell Caves",
+    "Blossoming Sands",
+    "Dismal Backwater",
+    "Jungle Hollow",
+    "Rugged Highlands",
+    "Scoured Barrens",
+    "Swiftwater Cliffs",
+    "Thornwood Falls",
+    "Tranquil Cove",
+    "Wind-Scarred Crag",
+    "Evolving Wilds",
+    "Rogue's Passage",
+    "Llanowar Elves",
+    "Dazzling Angel",
+    "Beast-Kin Ranger",
+    "Hungry Ghoul",
+    "Cathar Commando",
+    "Strix Lookout",
+    "Spectral Sailor",
+    "Treetop Snarespinner",
+    "Bite Down",
+    "Vampire Soulcaller",
+    "Elementalist Adept",
+    "Ambush Wolf",
+    "Goblin Boarders",
+    "Gnarlid Colony",
+    "Inspiring Paladin",
+    "Courageous Goblin",
+    "Sun-Blessed Healer",
+    "Vanguard Seraph",
+    "Cat Collector",
+    "Mischievous Mystic",
 ];

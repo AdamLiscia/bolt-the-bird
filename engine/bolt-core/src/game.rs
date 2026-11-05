@@ -6,6 +6,7 @@
 use std::sync::Arc;
 
 use crate::card::{CardDef, ExtraCost, Keywords, Reduction};
+use crate::effect::{Scope, Static};
 use std::collections::VecDeque;
 
 use crate::effect::{
@@ -60,6 +61,8 @@ pub struct Object {
     pub zcc: u32,
     /// +1/+1 counters (CR 122.1a).
     pub counters: i32,
+    /// Cast with kicker; remembered while it's on the stack and the battlefield.
+    pub kicked: bool,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -138,6 +141,8 @@ pub enum Action {
     Cast(ObjId),
     /// Activate ability number `n` of a permanent (CR 602).
     Activate(ObjId, usize),
+    /// Activate, sacrificing this other creature as part of the cost.
+    ActivateWith(ObjId, usize, ObjId),
     /// Cast with its kicker paid (CR 702.33).
     CastKicked(ObjId),
     /// Cast paying an additional cost with this creature (sacrifice) or card (discard).
@@ -316,6 +321,9 @@ pub struct Choosing {
     /// Who gets priority once the entry is on the stack.
     pub then: PlayerId,
     pub cast: bool,
+    /// For an activated ability: its costs, paid once targets are chosen (CR 602.2b), as
+    /// (ability number, creature to sacrifice).
+    pub pay: Option<(usize, Option<ObjId>)>,
 }
 
 /// A spell or ability part-way through resolving (CR 608.2).
@@ -376,6 +384,9 @@ pub struct Game {
     pub gone: Vec<ObjId>,
     /// Whether each player attacked with a creature this turn (raid).
     pub attacked_this_turn: [bool; 2],
+    /// Life-gain events and cards drawn by each player this turn.
+    pub life_gains_this_turn: [u32; 2],
+    pub draws_this_turn: [u32; 2],
     /// Triggered abilities waiting to be put on the stack (CR 603.3).
     pub triggered: Vec<StackItem>,
     pub choosing: Option<Choosing>,
@@ -441,6 +452,8 @@ impl Game {
             exile: Vec::new(),
             gone: Vec::new(),
             attacked_this_turn: [false; 2],
+            life_gains_this_turn: [0; 2],
+            draws_this_turn: [0; 2],
             triggered: Vec::new(),
             choosing: None,
             resolving: None,
@@ -478,6 +491,7 @@ impl Game {
             since_turn: 0,
             zcc: 0,
             counters: 0,
+            kicked: false,
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -509,20 +523,91 @@ impl Game {
     }
 
     /// Keywords after granting effects (layer 6).
-    pub fn keywords(&self, id: ObjId) -> Keywords {
-        self.modifiers(id)
-            .fold(self.def_of(id).keywords, |k, m| k.with(m.keywords))
+    /// Static abilities on the battlefield that apply to `id` right now (CR 604.2, 611.3).
+    fn statics_on(&self, id: ObjId) -> impl Iterator<Item = Static> + '_ {
+        let o = self.obj(id);
+        let on_battlefield = o.zone == Zone::Battlefield;
+        let creature = self.def_of(id).types.creature;
+        self.battlefield
+            .iter()
+            .filter(move |_| on_battlefield)
+            .flat_map(move |&src| {
+                let so = self.obj(src);
+                self.def_of(src).statics.iter().copied().filter(move |s| {
+                    let mine = so.controller == o.controller;
+                    let applies = match s.scope {
+                        Scope::This => src == id,
+                        Scope::YourCreatures => mine && creature,
+                        Scope::YourCreaturesWithCounters => mine && creature && o.counters > 0,
+                    };
+                    applies && (!s.your_turn_only || self.active == so.controller)
+                })
+            })
     }
 
-    /// Power after counters and pump effects (layer 7).
+    /// Keywords after granting effects (layer 6).
+    pub fn keywords(&self, id: ObjId) -> Keywords {
+        let k = self
+            .modifiers(id)
+            .fold(self.def_of(id).keywords, |k, m| k.with(m.keywords));
+        self.statics_on(id).fold(k, |k, s| k.with(s.keywords))
+    }
+
+    /// Power after counters, static effects and pump effects (layer 7).
     pub fn power(&self, id: ObjId) -> i32 {
-        self.def_of(id).power + self.obj(id).counters + self.modifiers(id).map(|m| m.power).sum::<i32>()
+        self.def_of(id).power
+            + self.obj(id).counters
+            + self.modifiers(id).map(|m| m.power).sum::<i32>()
+            + self.statics_on(id).map(|s| s.power).sum::<i32>()
     }
 
     pub fn toughness(&self, id: ObjId) -> i32 {
         self.def_of(id).toughness
             + self.obj(id).counters
             + self.modifiers(id).map(|m| m.toughness).sum::<i32>()
+            + self.statics_on(id).map(|s| s.toughness).sum::<i32>()
+    }
+
+    /// Puts triggers of `p`'s permanents that match `when` into the waiting list.
+    fn fire(&mut self, p: PlayerId, when: When, except: Option<ObjId>) {
+        for id in self.permanents(p).collect::<Vec<_>>() {
+            if Some(id) == except {
+                continue;
+            }
+            let whens: Vec<When> = self.def_of(id).triggers.iter().map(|tr| tr.when).collect();
+            for (n, w) in whens.into_iter().enumerate() {
+                if w == when {
+                    self.triggered.push(StackItem {
+                        source: id,
+                        controller: p,
+                        kind: StackKind::Trigger(n),
+                        targets: Vec::new(),
+                        kicked: false,
+                        flashback: false,
+                        extra: None,
+                    });
+                }
+            }
+        }
+    }
+
+    /// CR 119.3: gaining life, with "first time each turn" triggers.
+    fn gain_life(&mut self, p: PlayerId, n: i32) {
+        self.players[p].life += n;
+        self.events.push(Event::LifeGained { player: p, amount: n });
+        self.life_gains_this_turn[p] += 1;
+        if self.life_gains_this_turn[p] == 1 {
+            self.fire(
+                p,
+                When::YouGainLifeFirstTime {
+                    your_turn_only: false,
+                },
+                None,
+            );
+            if self.active == p {
+                self.fire(p, When::YouGainLifeFirstTime { your_turn_only: true }, None);
+            }
+        }
     }
 
     pub fn is_over(&self) -> bool {
@@ -579,6 +664,8 @@ impl Game {
         }
         if to == Zone::Battlefield {
             o.since_turn = turn;
+        } else if to != Zone::Stack {
+            o.kicked = false;
         }
         if from == Zone::Battlefield {
             if let Some(c) = &mut self.combat {
@@ -592,6 +679,28 @@ impl Game {
     /// CR 603.6a, 603.6c, 603.10a: enters and dies triggers.
     fn zone_triggers(&mut self, id: ObjId, from: Zone, to: Zone, last_controller: PlayerId) {
         let dies = from == Zone::Battlefield && to == Zone::Graveyard;
+        if to == Zone::Battlefield {
+            // Replacement effects on entering (CR 614.1c-d).
+            let def = self.def_of(id).clone();
+            if def.enters_tapped {
+                self.obj_mut(id).tapped = true;
+            }
+            if let Some((n, cond)) = def.enters_counters {
+                let controller = self.obj(id).controller;
+                let yes = match cond {
+                    Condition::Kicked => self.obj(id).kicked,
+                    Condition::Attacked => self.attacked_this_turn[controller],
+                    _ => false,
+                };
+                if yes {
+                    self.obj_mut(id).counters += n;
+                }
+            }
+            if def.types.creature {
+                let controller = self.obj(id).controller;
+                self.fire(controller, When::AnotherCreatureYouControlEnters, Some(id));
+            }
+        }
         if from == Zone::Battlefield {
             // CR 610.3: cards exiled "until this leaves the battlefield" come back.
             let left_zcc = self.obj(id).zcc - 1;
@@ -658,6 +767,10 @@ impl Game {
             Some(card) => {
                 self.move_to(card, Zone::Hand);
                 self.events.push(Event::Drew { player: p, card });
+                self.draws_this_turn[p] += 1;
+                if self.draws_this_turn[p] == 2 {
+                    self.fire(p, When::YouDrawSecond, None);
+                }
             }
             None => self.players[p].drew_from_empty = true,
         }
@@ -782,7 +895,11 @@ impl Game {
                             .is_none_or(|c| c == self.def_of(id).types.creature);
                 }
                 if let Some(creature_only) = f.graveyard {
-                    return o.zone == Zone::Graveyard && (!creature_only || self.def_of(id).types.creature);
+                    let d = self.def_of(id);
+                    return o.zone == Zone::Graveyard
+                        && (!creature_only || d.types.creature)
+                        && (!f.nonland_permanents || (d.types.is_permanent() && !d.types.land))
+                        && f.max_mana_value.is_none_or(|m| d.cost.mana_value() <= m);
                 }
                 if o.zone != Zone::Battlefield {
                     return false;
@@ -1027,29 +1144,34 @@ impl Game {
         for id in self.permanents(p) {
             for (n, a) in self.def_of(id).activated.iter().enumerate() {
                 let uses_self = a.tap || a.sacrifice_self;
+                let sorcery_ok = !a.sorcery
+                    || (p == self.active
+                        && matches!(self.step, Step::Main1 | Step::Main2)
+                        && self.items.is_empty());
                 if (a.tap && !self.can_tap(id))
+                    || !sorcery_ok
                     || !self.can_pay(p, &a.mana, uses_self.then_some(id))
                     || !self.can_target_all(&a.ability, p)
                 {
                     continue;
                 }
-                v.push(Action::Activate(id, n));
+                if a.sacrifice_other_creature {
+                    v.extend(
+                        self.creatures(p)
+                            .filter(|&c| c != id)
+                            .map(|c| Action::ActivateWith(id, n, c)),
+                    );
+                } else {
+                    v.push(Action::Activate(id, n));
+                }
             }
         }
         v
     }
 
     /// CR 602.2: pay the costs, then the ability goes on the stack (targets chosen as a decision).
-    fn activate(&mut self, p: PlayerId, id: ObjId, n: usize) {
-        let a = self.def_of(id).activated[n].clone();
-        let uses_self = a.tap || a.sacrifice_self;
-        self.pay_mana(p, &a.mana, uses_self.then_some(id));
-        if a.tap {
-            self.obj_mut(id).tapped = true;
-        }
-        if a.sacrifice_self {
-            self.move_to(id, Zone::Graveyard);
-        }
+    /// CR 602.2: announce, choose targets, then pay the costs.
+    fn activate(&mut self, p: PlayerId, id: ObjId, n: usize, victim: Option<ObjId>) {
         let item = StackItem {
             source: id,
             controller: p,
@@ -1060,7 +1182,8 @@ impl Game {
             extra: None,
         };
         self.passes = 0;
-        if a.ability.targets.is_empty() {
+        if self.def_of(id).activated[n].ability.targets.is_empty() {
+            self.pay_activation(p, id, n, victim);
             self.items.push(item);
             self.give_priority(p);
         } else {
@@ -1068,8 +1191,28 @@ impl Game {
                 item,
                 then: p,
                 cast: false,
+                pay: Some((n, victim)),
             });
             self.pending = Pending::ChooseTarget(p);
+        }
+    }
+
+    fn pay_activation(&mut self, p: PlayerId, id: ObjId, n: usize, victim: Option<ObjId>) {
+        let a = self.def_of(id).activated[n].clone();
+        let uses_self = a.tap || a.sacrifice_self;
+        // Mana first: a creature can tap for mana and then be sacrificed for the same cost
+        // (CR 602.2b). The fuzzer found the reverse order failing.
+        self.pay_mana(p, &a.mana, uses_self.then_some(id));
+        if let Some(v) = victim {
+            if self.obj(v).zone == Zone::Battlefield {
+                self.move_to(v, Zone::Graveyard);
+            }
+        }
+        if a.tap {
+            self.obj_mut(id).tapped = true;
+        }
+        if a.sacrifice_self {
+            self.move_to(id, Zone::Graveyard);
         }
     }
 
@@ -1099,6 +1242,9 @@ impl Game {
 
     /// Whether `blocker` may block `attacker`, ignoring menace (CR 509.1b, 702.9b, 702.17b).
     fn can_block(&self, blocker: ObjId, attacker: ObjId) -> bool {
+        if self.def_of(blocker).cant_block || self.keywords(attacker).has(Keywords::UNBLOCKABLE) {
+            return false;
+        }
         let b = self.keywords(blocker);
         !self.keywords(attacker).has(Keywords::FLYING) || b.has(Keywords::FLYING) || b.has(Keywords::REACH)
     }
@@ -1206,7 +1352,10 @@ impl Game {
                     ..CastMode::default()
                 },
             ),
-            (Pending::Priority(p), Action::Activate(id, n)) => self.activate(p, id, n),
+            (Pending::Priority(p), Action::Activate(id, n)) => self.activate(p, id, n, None),
+            (Pending::Priority(p), Action::ActivateWith(id, n, victim)) => {
+                self.activate(p, id, n, Some(victim))
+            }
             (Pending::ChooseTarget(_), Action::Target(target)) => self.choose_target(target),
             (Pending::ChooseTarget(_), Action::No) => self.finish_choosing(),
             (Pending::Decide(p), a) => self.decide(p, a),
@@ -1217,6 +1366,21 @@ impl Game {
                 }
                 self.combat.as_mut().expect("in combat").attackers.push(c);
                 self.attacked_this_turn[self.active] = true;
+                // CR 508.3a: "whenever this creature attacks".
+                let whens: Vec<When> = self.def_of(c).triggers.iter().map(|tr| tr.when).collect();
+                for (n, w) in whens.into_iter().enumerate() {
+                    if w == When::Attacks {
+                        self.triggered.push(StackItem {
+                            source: c,
+                            controller: self.active,
+                            kind: StackKind::Trigger(n),
+                            targets: Vec::new(),
+                            kicked: false,
+                            flashback: false,
+                            extra: None,
+                        });
+                    }
+                }
             }
             (Pending::DeclareAttackers(_), Action::FinishAttacks) => {
                 self.passes = 0;
@@ -1263,6 +1427,7 @@ impl Game {
     fn cast(&mut self, p: PlayerId, card: ObjId, mode: CastMode) {
         self.move_to(card, Zone::Stack);
         self.obj_mut(card).controller = p;
+        self.obj_mut(card).kicked = mode.kicked;
         let item = StackItem {
             source: card,
             controller: p,
@@ -1282,6 +1447,7 @@ impl Game {
                 item,
                 then: p,
                 cast: true,
+                pay: None,
             });
             self.pending = Pending::ChooseTarget(p);
         } else {
@@ -1297,11 +1463,14 @@ impl Game {
             extra: item.extra,
         };
         let cost = self.spell_cost(p, card, mode, &item.targets);
-        // CR 601.2h: additional costs are paid with the mana.
-        if let Some(x) = item.extra {
-            self.move_to(x, Zone::Graveyard);
-        }
+        // CR 601.2h: additional costs are paid with the mana. Mana first, so a creature can tap for
+        // mana and then be sacrificed.
         self.pay_mana(p, &cost, None);
+        if let Some(x) = item.extra {
+            if self.obj(x).zone != Zone::Graveyard {
+                self.move_to(x, Zone::Graveyard);
+            }
+        }
         let noncreature = !self.def_of(card).types.creature;
         self.items.push(item);
         self.events.push(Event::Cast { card });
@@ -1347,6 +1516,9 @@ impl Game {
         if c.cast {
             self.finish_cast(c.item);
         } else {
+            if let Some((n, victim)) = c.pay {
+                self.pay_activation(c.item.controller, c.item.source, n, victim);
+            }
             self.items.push(c.item);
             self.give_priority(c.then);
         }
@@ -1674,8 +1846,7 @@ impl Game {
             }
             Effect::GainLife { who, n } => {
                 for p in self.players_for(item, legal, who) {
-                    self.players[p].life += n;
-                    self.events.push(Event::LifeGained { player: p, amount: n });
+                    self.gain_life(p, n);
                 }
             }
             Effect::LoseLife { who, n } => {
@@ -1819,6 +1990,45 @@ impl Game {
                     }
                 }
             }
+            Effect::CountersSelf { n } => {
+                if self.obj(src).zone == Zone::Battlefield {
+                    self.obj_mut(src).counters += n;
+                }
+            }
+            Effect::PumpAll { power, toughness } => {
+                for id in self.creatures(item.controller).collect::<Vec<_>>() {
+                    let zcc = self.obj(id).zcc;
+                    self.until_eot.push(Modifier {
+                        obj: id,
+                        zcc,
+                        power,
+                        toughness,
+                        keywords: Keywords::NONE,
+                        dies: None,
+                    });
+                }
+            }
+            Effect::GrantSelf { keywords } => {
+                if self.obj(src).zone == Zone::Battlefield {
+                    let zcc = self.obj(src).zcc;
+                    self.until_eot.push(Modifier {
+                        obj: src,
+                        zcc,
+                        power: 0,
+                        toughness: 0,
+                        keywords,
+                        dies: None,
+                    });
+                }
+            }
+            Effect::Reanimate(n) => {
+                if let Some(id) = Game::slot_object(item, legal, n) {
+                    if self.obj(id).zone == Zone::Graveyard {
+                        self.move_to(id, Zone::Battlefield);
+                        self.obj_mut(id).controller = item.controller;
+                    }
+                }
+            }
             Effect::ExileUntilSourceLeaves(n) => {
                 // CR 610.3c: if the source already left, nothing is exiled.
                 if let Some(id) = Game::slot_object(item, legal, n) {
@@ -1840,11 +2050,7 @@ impl Game {
                         player: opp,
                         amount: n,
                     });
-                    self.players[item.controller].life += n;
-                    self.events.push(Event::LifeGained {
-                        player: item.controller,
-                        amount: n,
-                    });
+                    self.gain_life(item.controller, n);
                 }
             }
             Effect::Tap(n) => {
@@ -1941,6 +2147,10 @@ impl Game {
         match &ability.condition {
             None => true,
             Some(Condition::Attacked) => self.attacked_this_turn[controller],
+            Some(Condition::ControlPowerAtLeast(n)) => {
+                self.creatures(controller).any(|c| self.power(c) >= *n)
+            }
+            Some(Condition::Kicked) => self.obj(source).kicked,
             Some(Condition::ControlAnother(sub)) => self
                 .creatures(controller)
                 .any(|id| id != source && self.def_of(id).subtypes.iter().any(|s| s == sub)),
@@ -1982,6 +2192,7 @@ impl Game {
                     item,
                     then,
                     cast: false,
+                    pay: None,
                 });
                 self.pending = Pending::ChooseTarget(who);
                 return false;
@@ -2055,6 +2266,8 @@ impl Game {
 
     fn begin_next_turn(&mut self) {
         self.attacked_this_turn = [false; 2];
+        self.life_gains_this_turn = [0; 2];
+        self.draws_this_turn = [0; 2];
         self.turn += 1;
         self.active = opponent(self.active);
         self.events.push(Event::TurnBegan {
@@ -2241,8 +2454,7 @@ impl Game {
         });
         if k.has(Keywords::LIFELINK) {
             let c = self.obj(source).controller;
-            self.players[c].life += amount;
-            self.events.push(Event::LifeGained { player: c, amount });
+            self.gain_life(c, amount);
         }
     }
 
