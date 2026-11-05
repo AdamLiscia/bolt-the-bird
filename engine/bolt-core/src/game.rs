@@ -136,6 +136,8 @@ pub enum Action {
     PassPriority,
     PlayLand(ObjId),
     Cast(ObjId),
+    /// Activate ability number `n` of a permanent (CR 602).
+    Activate(ObjId, usize),
     /// Cast with its kicker paid (CR 702.33).
     CastKicked(ObjId),
     Target(Target),
@@ -262,6 +264,8 @@ pub enum StackKind {
     Spell,
     /// Triggered ability number `n` of the source's card.
     Trigger(usize),
+    /// Activated ability number `n` of the source's card.
+    Activated(usize),
 }
 
 /// A chosen target, pinned to the object it was when chosen (CR 400.7).
@@ -632,6 +636,7 @@ impl Game {
                 .as_ref()
                 .expect("only instants and sorceries have spell abilities"),
             StackKind::Trigger(n) => &def.triggers[n].ability,
+            StackKind::Activated(n) => &def.activated[n].ability,
         }
     }
 
@@ -745,12 +750,100 @@ impl Game {
                 }
             }
         }
+        v.extend(self.activations(p));
         v
+    }
+
+    /// Whether a permanent can pay a {T} cost: creatures need to have been under your control since
+    /// your turn began, or haste (CR 302.6).
+    fn can_tap(&self, id: ObjId) -> bool {
+        let o = self.obj(id);
+        !o.tapped
+            && (!self.def_of(id).types.creature
+                || o.since_turn < self.turn
+                || self.keywords(id).has(Keywords::HASTE))
+    }
+
+    /// Taps (and sacrifices, for Treasure-like sources) what pays `cost`. Never uses `exclude`.
+    fn pay_mana(&mut self, p: PlayerId, cost: &ManaCost, exclude: Option<ObjId>) {
+        let sources: Vec<(ObjId, ManaSource)> = self
+            .untapped_sources(p)
+            .into_iter()
+            .filter(|s| Some(s.0) != exclude)
+            .collect();
+        let paid = mana::pay(cost, &sources.iter().map(|s| s.1).collect::<Vec<_>>()).expect("payable");
+        for i in paid {
+            let id = sources[i].0;
+            self.obj_mut(id).tapped = true;
+            if self.def_of(id).sac_for_mana {
+                self.move_to(id, Zone::Graveyard);
+            }
+        }
+    }
+
+    fn can_pay(&self, p: PlayerId, cost: &ManaCost, exclude: Option<ObjId>) -> bool {
+        let sources: Vec<ManaSource> = self
+            .untapped_sources(p)
+            .into_iter()
+            .filter(|s| Some(s.0) != exclude)
+            .map(|s| s.1)
+            .collect();
+        mana::pay(cost, &sources).is_some()
+    }
+
+    /// Activated abilities `p` can activate now (CR 602.2, 602.5).
+    fn activations(&self, p: PlayerId) -> Vec<Action> {
+        let mut v = Vec::new();
+        for id in self.permanents(p) {
+            for (n, a) in self.def_of(id).activated.iter().enumerate() {
+                let uses_self = a.tap || a.sacrifice_self;
+                if (a.tap && !self.can_tap(id))
+                    || !self.can_pay(p, &a.mana, uses_self.then_some(id))
+                    || !self.can_target_all(&a.ability, p)
+                {
+                    continue;
+                }
+                v.push(Action::Activate(id, n));
+            }
+        }
+        v
+    }
+
+    /// CR 602.2: pay the costs, then the ability goes on the stack (targets chosen as a decision).
+    fn activate(&mut self, p: PlayerId, id: ObjId, n: usize) {
+        let a = self.def_of(id).activated[n].clone();
+        let uses_self = a.tap || a.sacrifice_self;
+        self.pay_mana(p, &a.mana, uses_self.then_some(id));
+        if a.tap {
+            self.obj_mut(id).tapped = true;
+        }
+        if a.sacrifice_self {
+            self.move_to(id, Zone::Graveyard);
+        }
+        let item = StackItem {
+            source: id,
+            controller: p,
+            kind: StackKind::Activated(n),
+            targets: Vec::new(),
+            kicked: false,
+        };
+        self.passes = 0;
+        if a.ability.targets.is_empty() {
+            self.items.push(item);
+            self.give_priority(p);
+        } else {
+            self.choosing = Some(Choosing {
+                item,
+                then: p,
+                cast: false,
+            });
+            self.pending = Pending::ChooseTarget(p);
+        }
     }
 
     fn untapped_sources(&self, p: PlayerId) -> Vec<(ObjId, ManaSource)> {
         self.permanents(p)
-            .filter(|&id| !self.obj(id).tapped)
+            .filter(|&id| self.can_tap(id))
             .filter_map(|id| self.def_of(id).mana.map(|m| (id, m)))
             .collect()
     }
@@ -865,6 +958,7 @@ impl Game {
             }
             (Pending::Priority(p), Action::Cast(c)) => self.cast(p, c, false),
             (Pending::Priority(p), Action::CastKicked(c)) => self.cast(p, c, true),
+            (Pending::Priority(p), Action::Activate(id, n)) => self.activate(p, id, n),
             (Pending::ChooseTarget(_), Action::Target(target)) => self.choose_target(target),
             (Pending::Decide(p), a) => self.decide(p, a),
             (Pending::DeclareAttackers(_), Action::Attack(c)) => {
@@ -951,12 +1045,7 @@ impl Game {
             (true, Some(k)) => add_costs(&def.cost, &k),
             _ => def.cost,
         };
-        let sources = self.untapped_sources(p);
-        let paid = mana::pay(&cost, &sources.iter().map(|s| s.1).collect::<Vec<_>>())
-            .expect("legal casts are payable");
-        for i in paid {
-            self.obj_mut(sources[i].0).tapped = true;
-        }
+        self.pay_mana(p, &cost, None);
         let noncreature = !self.def_of(card).types.creature;
         self.items.push(item);
         self.events.push(Event::Cast { card });
@@ -1044,7 +1133,7 @@ impl Game {
         if fizzled && !condition_failed {
             self.events.push(Event::Fizzled { source });
         }
-        let has_ability = is_trigger || self.def_of(source).spell.is_some();
+        let has_ability = item.kind != StackKind::Spell || self.def_of(source).spell.is_some();
         let acts = has_ability && !fizzled && !condition_failed;
         let (remaining, optional) = if acts {
             let a = self.ability_of(&item);

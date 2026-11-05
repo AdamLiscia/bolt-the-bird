@@ -64,3 +64,9 @@ each time it changes zones.
 **Why:** nothing in M1 can tell the difference. M2 brings targets and "that creature" references, and
 there zone changes must break them. Planned for M2: a per-object zone-change counter that targets
 check.
+
+## 2026-11-05: Activated-ability costs are paid before targets are chosen
+
+**Choice:** activating pays the costs first, then asks for targets. CR 602.2 chooses targets first.
+**Why:** it's simpler, and the only visible difference is a sacrificed creature being able to target
+itself, which no FDN ability does. Easy to reorder if a card ever needs it.

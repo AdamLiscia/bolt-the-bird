@@ -144,6 +144,8 @@ fn definition(o: &Oracle) -> (CardDef, bool) {
         triggers: Vec::new(),
         kicker: None,
         token: false,
+        activated: Vec::new(),
+        sac_for_mana: false,
     };
     let mut claimed = rest.is_empty();
     if let Some(s) = scripts::script(&o.name) {

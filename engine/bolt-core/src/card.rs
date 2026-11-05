@@ -97,8 +97,19 @@ impl Types {
     }
 }
 
+/// An activated ability: "[cost]: [effect]" (CR 602).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Activated {
+    pub mana: ManaCost,
+    /// {T} in the cost.
+    pub tap: bool,
+    /// "Sacrifice this ..." in the cost.
+    pub sacrifice_self: bool,
+    pub ability: Ability,
+}
+
 /// The printed card. Shared by every copy; per-copy state lives on the game object.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct CardDef {
     pub name: String,
     pub cost: ManaCost,
@@ -117,6 +128,9 @@ pub struct CardDef {
     pub kicker: Option<ManaCost>,
     /// A token, which ceases to exist outside the battlefield (CR 111.7, 704.5d).
     pub token: bool,
+    pub activated: Vec<Activated>,
+    /// A mana source that is sacrificed when used, like a Treasure.
+    pub sac_for_mana: bool,
 }
 
 impl CardDef {
@@ -138,6 +152,8 @@ impl CardDef {
             triggers: Vec::new(),
             kicker: None,
             token: false,
+            activated: Vec::new(),
+            sac_for_mana: false,
         }
     }
 
@@ -160,6 +176,8 @@ impl CardDef {
             triggers: Vec::new(),
             kicker: None,
             token: false,
+            activated: Vec::new(),
+            sac_for_mana: false,
         }
     }
 
@@ -182,6 +200,8 @@ impl CardDef {
             triggers: Vec::new(),
             kicker: None,
             token: false,
+            activated: Vec::new(),
+            sac_for_mana: false,
         }
     }
 }

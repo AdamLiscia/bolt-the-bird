@@ -758,3 +758,87 @@ fn stroke_of_midnight_leaves_a_human() {
     assert_eq!(g.obj(angel).zone, Zone::Graveyard);
     assert_eq!(tokens_named(&g, 1, "Human"), 1, "its controller gets the token");
 }
+
+// ---------------------------------------------------------------- Food and Treasure
+
+fn token_of(g: &Game, p: usize, name: &str) -> ObjId {
+    g.permanents(p)
+        .find(|&c| g.def_of(c).token && g.def_of(c).name == name)
+        .expect("the token")
+}
+
+#[test]
+fn bake_into_a_pie_and_its_food() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Bake into a Pie");
+    let angel = put(&mut g, 1, "Serra Angel");
+    begin(&mut g);
+    play(&mut g, c, false, &[obj(angel)], &[]);
+    assert_eq!(g.obj(angel).zone, Zone::Graveyard);
+    let food = token_of(&g, 0, "Food");
+    // {2}, {T}, sacrifice: gain 3 life. It uses the stack.
+    act(&mut g, Action::Activate(food, 0));
+    assert_eq!(
+        g.obj(food).zone,
+        Zone::Gone,
+        "sacrificed as a cost; a token ceases to exist"
+    );
+    assert_eq!(g.items.len(), 1);
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].life, 23);
+}
+
+#[test]
+fn treasure_pays_for_a_spell_only_when_needed() {
+    // CR 111.10a. Gleaming Barrier dies and leaves a Treasure, which then pays for white mana that
+    // the Mountains can't make. The spare Mountain stays untapped.
+    let mut g = Game::empty(fdn(), 1, 0);
+    g.auto_pass = false;
+    for p in 0..2 {
+        for _ in 0..10 {
+            g.add_card(p, id("Aegis Turtle"), Zone::Library);
+        }
+    }
+    for _ in 0..6 {
+        put(&mut g, 0, "Mountain");
+    }
+    let barrier = put(&mut g, 0, "Gleaming Barrier");
+    let blast = hand(&mut g, 0, "Incinerating Blast");
+    let lions = hand(&mut g, 0, "Savannah Lions");
+    begin(&mut g);
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(lions)),
+        "no white mana yet"
+    );
+    play(&mut g, blast, false, &[obj(barrier)], &[Action::No]);
+    assert_eq!(g.obj(barrier).zone, Zone::Graveyard);
+    let treasure = token_of(&g, 0, "Treasure");
+    act(&mut g, Action::Cast(lions));
+    assert_eq!(g.obj(treasure).zone, Zone::Gone, "sacrificed for mana");
+    let untapped = g
+        .permanents(0)
+        .filter(|&c| g.def_of(c).name == "Mountain" && !g.obj(c).tapped)
+        .count();
+    assert_eq!(untapped, 1);
+}
+
+#[test]
+fn an_offer_you_cant_refuse_pays_the_victim() {
+    let mut g = table();
+    let stab = hand(&mut g, 0, "Stab");
+    let offer = hand(&mut g, 1, "An Offer You Can't Refuse");
+    let lions = put(&mut g, 1, "Savannah Lions");
+    begin(&mut g);
+    act(&mut g, Action::Cast(stab));
+    act(&mut g, Action::Target(obj(lions)));
+    act(&mut g, Action::PassPriority);
+    act(&mut g, Action::Cast(offer));
+    act(&mut g, Action::Target(obj(stab)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(lions).zone, Zone::Battlefield);
+    let treasures = g
+        .permanents(0)
+        .filter(|&c| g.def_of(c).name == "Treasure")
+        .count();
+    assert_eq!(treasures, 2, "the countered spell's controller gets them");
+}

@@ -46,3 +46,8 @@ One line per working step, newest last. The next session continues from the last
   counterspells, fight, prowess, tutors, kicker search). 112 tests in the workspace.
   **Next: the rest of tier 2: additional costs (sacrifice, discard), cost reductions, "up to" targets,
   flashback, reflexive triggers, Food and Treasure tokens, and Banishing Light's linked exile.**
+- 2026-11-05: **Activated abilities.** `Action::Activate`, with mana, {T} and sacrifice-this costs (CR
+  602); {T} needs no summoning sickness (CR 302.6). Treasure is a mana source that is sacrificed when
+  used, and the automatic payer spends it last. Food and Treasure tokens. 3 more cards (Bake into a Pie,
+  Gleaming Barrier, An Offer You Can't Refuse): 60 supported, 115 tests.
+  **Next: additional costs (sacrifice, discard), cost reductions, flashback, "up to" targets.**

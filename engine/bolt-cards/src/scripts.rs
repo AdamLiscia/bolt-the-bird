@@ -7,7 +7,7 @@
 use bolt_core::effect::{
     Ability, Condition, Controller, Effect, Filter, Recipient, SearchFor, SearchTo, Trigger, When, Who,
 };
-use bolt_core::{CardDef, Keywords, ManaCost};
+use bolt_core::{Activated, CardDef, Color, Keywords, ManaCost, ManaSource, Types};
 
 /// Token definitions, appended after the 286 cards. Indices are [`Tokens`] fields.
 pub fn token_defs() -> Vec<CardDef> {
@@ -26,7 +26,43 @@ pub fn token_defs() -> Vec<CardDef> {
         token("Elf Warrior", "Elf Warrior", 1, 1, Keywords::NONE),
         token("Human", "Human", 1, 1, Keywords::NONE),
         token("Rabbit", "Rabbit", 1, 1, Keywords::NONE),
+        food(),
+        treasure(),
     ]
+}
+
+fn artifact_token(name: &str) -> CardDef {
+    CardDef {
+        name: name.to_string(),
+        types: Types {
+            artifact: true,
+            ..Types::default()
+        },
+        subtypes: vec![name.to_string()],
+        token: true,
+        ..CardDef::default()
+    }
+}
+
+/// "{2}, {T}, Sacrifice this token: You gain 3 life." (CR 111.10b)
+fn food() -> CardDef {
+    let mut d = artifact_token("Food");
+    d.activated.push(Activated {
+        mana: ManaCost::parse("{2}").expect("cost"),
+        tap: true,
+        sacrifice_self: true,
+        ability: Ability::new(vec![], vec![Effect::GainLife { who: Who::You, n: 3 }]),
+    });
+    d
+}
+
+/// "{T}, Sacrifice this token: Add one mana of any color." A mana ability, so it never uses the
+/// stack; the automatic payer spends it only when nothing else works (CR 111.10a).
+fn treasure() -> CardDef {
+    let mut d = artifact_token("Treasure");
+    d.mana = Some(ManaSource::of(&Color::ALL));
+    d.sac_for_mana = true;
+    d
 }
 
 /// Where each token definition lives in the full definition list.
@@ -40,6 +76,8 @@ pub struct Tokens {
     pub elf_warrior: usize,
     pub human: usize,
     pub rabbit: usize,
+    pub food: usize,
+    pub treasure: usize,
 }
 
 impl Tokens {
@@ -53,6 +91,8 @@ impl Tokens {
             elf_warrior: base + 5,
             human: base + 6,
             rabbit: base + 7,
+            food: base + 8,
+            treasure: base + 9,
         }
     }
 }
@@ -392,6 +432,26 @@ pub fn script(name: &str) -> Option<Script> {
                 )
             },
         ),
+        "Bake into a Pie" => s(&["Destroy target creature. Create a Food token."], |d, t| {
+            spell(
+                d,
+                vec![CREATURE],
+                vec![Effect::Destroy(0), Effect::CreateToken { who: Who::You, def: t.food, n: 1 }],
+            )
+        }),
+        "Gleaming Barrier" => s(&["When this creature dies, create a Treasure token."], |d, t| {
+            on(d, When::Dies, vec![], vec![Effect::CreateToken { who: Who::You, def: t.treasure, n: 1 }])
+        }),
+        "An Offer You Can't Refuse" => s(
+            &["Counter target noncreature spell. Its controller creates two Treasure tokens."],
+            |d, t| {
+                spell(
+                    d,
+                    vec![Filter { spell_creature: Some(false), ..SPELL }],
+                    vec![Effect::Counter(0), Effect::CreateToken { who: Who::ControllerOf(0), def: t.treasure, n: 2 }],
+                )
+            },
+        ),
         _ => None,
     }
 }
@@ -442,4 +502,7 @@ pub const SCRIPTED: &[&str] = &[
     "Hare Apparent",
     "Snakeskin Veil",
     "Stroke of Midnight",
+    "Bake into a Pie",
+    "Gleaming Barrier",
+    "An Offer You Can't Refuse",
 ];
