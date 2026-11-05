@@ -24,44 +24,38 @@ fn defs() -> Arc<Vec<CardDef>> {
     let mut hunter = CardDef::creature("Hunter", "{1}{R}", 1, 1, Keywords::NONE);
     hunter.triggers.push(Trigger {
         when: When::Enters,
-        ability: Ability {
-            targets: vec![],
-            effects: vec![Effect::Draw { who: Who::You, n: 1 }],
-        },
+        ability: Ability::new(vec![], vec![Effect::Draw { who: Who::You, n: 1 }]),
     });
     let mut sage = CardDef::creature("Sage", "{R}", 1, 1, Keywords::NONE);
     sage.triggers.push(Trigger {
         when: When::Dies,
-        ability: Ability {
-            targets: vec![],
-            effects: vec![Effect::GainLife { who: Who::You, n: 3 }],
-        },
+        ability: Ability::new(vec![], vec![Effect::GainLife { who: Who::You, n: 3 }]),
     });
     let mut blast = CardDef::spell(
         "Blast",
         "{R}",
         true,
-        Ability {
-            targets: vec![any],
-            effects: vec![Effect::Damage {
+        Ability::new(
+            vec![any],
+            vec![Effect::Damage {
                 amount: 2,
                 kicked: Some(4),
                 to: Recipient::Target(0),
             }],
-        },
+        ),
     );
     blast.kicker = Some(bolt_core::ManaCost::parse("{4}").unwrap());
     let mut pinger = CardDef::creature("Pinger", "{1}{R}", 2, 2, Keywords::NONE);
     pinger.triggers.push(Trigger {
         when: When::Enters,
-        ability: Ability {
-            targets: vec![Filter::CREATURE.controlled_by(Controller::Opponent)],
-            effects: vec![Effect::Damage {
+        ability: Ability::new(
+            vec![Filter::CREATURE.controlled_by(Controller::Opponent)],
+            vec![Effect::Damage {
                 amount: 1,
                 kicked: None,
                 to: Recipient::Target(0),
             }],
-        },
+        ),
     });
     Arc::new(vec![
         CardDef::basic_land("Mountain", Color::Red),
@@ -70,27 +64,27 @@ fn defs() -> Arc<Vec<CardDef>> {
             "Shock",
             "{R}",
             true,
-            Ability {
-                targets: vec![any],
-                effects: vec![Effect::Damage {
+            Ability::new(
+                vec![any],
+                vec![Effect::Damage {
                     amount: 2,
                     kicked: None,
                     to: Recipient::Target(0),
                 }],
-            },
+            ),
         ),
         CardDef::spell(
             "Boost",
             "{R}",
             true,
-            Ability {
-                targets: vec![Filter::CREATURE],
-                effects: vec![Effect::Pump {
+            Ability::new(
+                vec![Filter::CREATURE],
+                vec![Effect::Pump {
                     slot: 0,
                     power: 3,
                     toughness: 3,
                 }],
-            },
+            ),
         ),
         hunter,
         sage,
@@ -98,14 +92,14 @@ fn defs() -> Arc<Vec<CardDef>> {
             "Spite",
             "{R}",
             false,
-            Ability {
-                targets: vec![],
-                effects: vec![Effect::Damage {
+            Ability::new(
+                vec![],
+                vec![Effect::Damage {
                     amount: 3,
                     kicked: None,
                     to: Recipient::EachOpponent,
                 }],
-            },
+            ),
         ),
         blast,
         CardDef::creature("Warded", "{1}{R}", 2, 2, Keywords::HEXPROOF),

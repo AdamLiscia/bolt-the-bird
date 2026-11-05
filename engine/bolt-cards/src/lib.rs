@@ -6,6 +6,8 @@
 //! [`supported`] is the source of truth for restricted drafts: a card is playable only if every
 //! line of its rules text is implemented. Unsupported cards are listed, never skipped.
 
+pub mod scripts;
+
 use std::sync::{Arc, OnceLock};
 
 use bolt_core::{CardDef, Color, Keywords, ManaCost, ManaSource, Types};
@@ -31,12 +33,26 @@ pub fn oracle() -> &'static [Oracle] {
     CELL.get_or_init(|| serde_json::from_str(ORACLE).expect("assets/FDN_oracle.json parses"))
 }
 
-/// Card definitions for all of FDN, in model order. Unsupported cards still get their printed
-/// characteristics, so decks load whole; [`supported`] says which ones the engine can play.
+/// Card definitions for all of FDN in model order, then the token definitions. Unsupported cards
+/// still get their printed characteristics, so decks load whole; [`supported`] says which ones the
+/// engine can play.
 pub fn fdn() -> Arc<Vec<CardDef>> {
     static CELL: OnceLock<Arc<Vec<CardDef>>> = OnceLock::new();
-    CELL.get_or_init(|| Arc::new(oracle().iter().map(|o| definition(o).0).collect()))
-        .clone()
+    CELL.get_or_init(|| {
+        let mut defs: Vec<CardDef> = oracle().iter().map(|o| definition(o).0).collect();
+        defs.extend(scripts::token_defs());
+        Arc::new(defs)
+    })
+    .clone()
+}
+
+/// Number of real cards (tokens follow them in [`fdn`]).
+pub fn card_count() -> usize {
+    oracle().len()
+}
+
+fn tokens() -> scripts::Tokens {
+    scripts::Tokens::starting_at(card_count())
 }
 
 /// Whether the engine implements every rule on each card, by model index.
@@ -79,8 +95,15 @@ fn abilities(text: &str) -> Vec<String> {
         .collect()
 }
 
+/// Whether an ability line is only implemented keywords, e.g. `Flying, vigilance`.
+fn keyword_line(line: &str) -> Option<Keywords> {
+    line.split(',').try_fold(Keywords::NONE, |k, w| {
+        Keywords::named(w.trim()).map(|x| k.with(x))
+    })
+}
+
 /// Builds the definition and decides support. A card is supported when its cost parses and every
-/// ability line is a comma-separated list of implemented keywords, or when it is a basic land.
+/// ability line is either implemented keywords or claimed by its script.
 fn definition(o: &Oracle) -> (CardDef, bool) {
     let types = Types::parse(&o.type_line);
     let subtypes = o
@@ -91,42 +114,46 @@ fn definition(o: &Oracle) -> (CardDef, bool) {
         .unwrap_or_default();
     let cost = o.mana_cost.as_deref().map(ManaCost::parse);
     let mut keywords = Keywords::NONE;
-    let mut all_keywords = true;
+    let mut rest = Vec::new();
     for line in abilities(o.oracle_text.as_deref().unwrap_or("")) {
-        for word in line.split(',') {
-            match Keywords::named(word.trim()) {
-                Some(k) => keywords = keywords.with(k),
-                None => all_keywords = false,
-            }
+        match keyword_line(&line) {
+            Some(k) => keywords = keywords.with(k),
+            None => rest.push(line),
         }
     }
-    let basic_color = types.basic.then(|| {
-        let sub = o.type_line.rsplit(' ').next().unwrap_or("");
-        match sub {
+    let basic_color = types
+        .basic
+        .then(|| match o.type_line.rsplit(' ').next().unwrap_or("") {
             "Plains" => Color::White,
             "Island" => Color::Blue,
             "Swamp" => Color::Black,
             "Mountain" => Color::Red,
             _ => Color::Green,
-        }
-    });
+        });
     let stat = |s: &Option<String>| s.as_deref().and_then(|v| v.parse().ok()).unwrap_or(0);
-    let def = CardDef {
+    let mut def = CardDef {
         name: o.name.clone(),
         cost: cost.flatten().unwrap_or_default(),
         types,
         subtypes,
         power: stat(&o.power),
         toughness: stat(&o.toughness),
-        keywords: if all_keywords { keywords } else { Keywords::NONE },
+        keywords,
         mana: basic_color.map(|c| ManaSource::of(&[c])),
         spell: None,
         triggers: Vec::new(),
         kicker: None,
         token: false,
     };
-    let supported =
-        basic_color.is_some() || (types.creature && all_keywords && matches!(cost, Some(Some(_))));
+    let mut claimed = rest.is_empty();
+    if let Some(s) = scripts::script(&o.name) {
+        if s.lines == rest.as_slice() {
+            (s.build)(&mut def, &tokens());
+            claimed = true;
+        }
+    }
+    let castable = types.creature || def.spell.is_some();
+    let supported = basic_color.is_some() || (castable && claimed && matches!(cost, Some(Some(_))));
     (def, supported)
 }
 
@@ -137,31 +164,52 @@ mod tests {
     #[test]
     fn all_cards_load_in_model_order() {
         let defs = fdn();
-        assert_eq!(defs.len(), 286);
+        assert_eq!(card_count(), 286);
         assert_eq!(defs[0].name, "Abrade", "same order as assets/FDN_cards.json");
     }
 
     #[test]
-    fn supported_cards_are_pinned() {
-        // Changing this list is a deliberate act: each new card needs its own rules test.
-        assert_eq!(
-            supported(),
-            [
-                "Aegis Turtle",
-                "Brazen Scourge",
-                "Forest",
-                "Healer's Hawk",
-                "Island",
-                "Mountain",
-                "Plains",
-                "Quakestrider Ceratops",
-                "Savannah Lions",
-                "Serra Angel",
-                "Swamp",
-                "Swiftblade Vindicator",
-                "Vampire Nighthawk",
-            ]
-        );
+    fn support_is_basics_keyword_creatures_and_scripts() {
+        // Changing this is a deliberate act: each new card needs its own rules test.
+        let keyword_only = [
+            "Aegis Turtle",
+            "Brazen Scourge",
+            "Healer's Hawk",
+            "Quakestrider Ceratops",
+            "Savannah Lions",
+            "Serra Angel",
+            "Swiftblade Vindicator",
+            "Vampire Nighthawk",
+        ];
+        let basics = ["Forest", "Island", "Mountain", "Plains", "Swamp"];
+        let mut expected: Vec<&str> = keyword_only
+            .iter()
+            .chain(&basics)
+            .chain(scripts::SCRIPTED)
+            .copied()
+            .collect();
+        expected.sort_unstable();
+        let mut got = supported();
+        got.sort_unstable();
+        assert_eq!(got, expected);
+    }
+
+    #[test]
+    fn every_script_matches_its_card_text() {
+        for &name in scripts::SCRIPTED {
+            let i = index_of(name).unwrap_or_else(|| panic!("{name} is not in FDN"));
+            assert!(
+                supported_mask()[i],
+                "{name}: script lines don't match the card text"
+            );
+        }
+    }
+
+    #[test]
+    fn tokens_follow_the_cards() {
+        let defs = fdn();
+        assert_eq!(defs.len(), card_count() + scripts::token_defs().len());
+        assert!(defs[card_count()..].iter().all(|d| d.token));
     }
 
     #[test]

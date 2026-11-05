@@ -6,7 +6,7 @@
 use std::sync::Arc;
 
 use crate::card::{CardDef, Keywords};
-use crate::effect::{Ability, Controller, Effect, Filter, Recipient, When, Who};
+use crate::effect::{Ability, Condition, Controller, Effect, Filter, Recipient, When, Who};
 use crate::mana::{self, ManaCost, ManaSource};
 use crate::rng::Rng;
 
@@ -31,6 +31,8 @@ pub enum Zone {
     Graveyard,
     Stack,
     Exile,
+    /// Tokens that left the battlefield cease to exist (CR 111.7, 704.5d).
+    Gone,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -298,6 +300,10 @@ pub struct Game {
     /// The stack, bottom first: spells and abilities (CR 405.1).
     pub items: Vec<StackItem>,
     pub exile: Vec<ObjId>,
+    /// Tokens that have ceased to exist.
+    pub gone: Vec<ObjId>,
+    /// Whether each player attacked with a creature this turn (raid).
+    pub attacked_this_turn: [bool; 2],
     /// Triggered abilities waiting to be put on the stack (CR 603.3).
     pub triggered: Vec<StackItem>,
     pub choosing: Option<Choosing>,
@@ -355,6 +361,8 @@ impl Game {
             stack: Vec::new(),
             items: Vec::new(),
             exile: Vec::new(),
+            gone: Vec::new(),
+            attacked_this_turn: [false; 2],
             triggered: Vec::new(),
             choosing: None,
             until_eot: Vec::new(),
@@ -465,6 +473,7 @@ impl Game {
             Zone::Battlefield => &mut self.battlefield,
             Zone::Stack => &mut self.stack,
             Zone::Exile => &mut self.exile,
+            Zone::Gone => &mut self.gone,
         }
     }
 
@@ -496,7 +505,11 @@ impl Game {
             }
         }
         self.events.push(Event::Moved { card: id, from, to });
-        // CR 603.6a, 603.6c, 603.10a: enters and dies triggers.
+        self.zone_triggers(id, from, to, last_controller);
+    }
+
+    /// CR 603.6a, 603.6c, 603.10a: enters and dies triggers.
+    fn zone_triggers(&mut self, id: ObjId, from: Zone, to: Zone, last_controller: PlayerId) {
         let dies = from == Zone::Battlefield && to == Zone::Graveyard;
         let enters = to == Zone::Battlefield;
         let controller = if dies {
@@ -792,6 +805,7 @@ impl Game {
                     self.obj_mut(c).tapped = true;
                 }
                 self.combat.as_mut().expect("in combat").attackers.push(c);
+                self.attacked_this_turn[self.active] = true;
             }
             (Pending::DeclareAttackers(_), Action::FinishAttacks) => {
                 self.passes = 0;
@@ -938,7 +952,11 @@ impl Game {
             .map(|i| self.still_legal(&item, i))
             .collect();
         let fizzled = !legal.is_empty() && !legal.iter().any(|&b| b);
-        if fizzled {
+        let condition_failed = matches!(item.kind, StackKind::Trigger(_))
+            && !self.condition_holds(self.ability_of(&item), item.controller, source);
+        if condition_failed {
+            // CR 603.4: an intervening "if" that is false on resolution does nothing.
+        } else if fizzled {
             self.events.push(Event::Fizzled { source });
         } else if item.kind != StackKind::Spell || self.def_of(source).spell.is_some() {
             let effects = self.ability_of(&item).effects.clone();
@@ -1073,7 +1091,49 @@ impl Game {
                     self.obj_mut(id).counters += n;
                 }
             }
+            Effect::CreateToken { def, n } => {
+                for _ in 0..n {
+                    self.create_token(item.controller, def);
+                }
+            }
+            Effect::Bite { from, to } => {
+                let (Some(a), Some(b)) = (
+                    Game::slot_object(item, legal, from),
+                    Game::slot_object(item, legal, to),
+                ) else {
+                    return; // CR 701.12b-style: no damage if either is gone
+                };
+                let power = self.power(a);
+                if power > 0 {
+                    self.deal_damage(a, Target::Object(b), power);
+                }
+            }
+            Effect::ExileGraveyard { who } => {
+                for p in self.players_for(item, legal, who) {
+                    for c in self.players[p].graveyard.clone() {
+                        self.move_to(c, Zone::Exile);
+                    }
+                }
+            }
         }
+    }
+
+    fn condition_holds(&self, ability: &Ability, controller: PlayerId, source: ObjId) -> bool {
+        match &ability.condition {
+            None => true,
+            Some(Condition::Attacked) => self.attacked_this_turn[controller],
+            Some(Condition::ControlAnother(sub)) => self
+                .creatures(controller)
+                .any(|id| id != source && self.def_of(id).subtypes.iter().any(|s| s == sub)),
+        }
+    }
+
+    /// Creates a token on the battlefield. It is summoning sick like any new permanent.
+    fn create_token(&mut self, p: PlayerId, def: usize) -> ObjId {
+        let id = self.add_card(p, def, Zone::Battlefield);
+        self.obj_mut(id).since_turn = self.turn;
+        self.zone_triggers(id, Zone::Gone, Zone::Battlefield, p);
+        id
     }
 
     /// CR 701.8: destroy moves a permanent to its owner's graveyard, unless it is indestructible.
@@ -1090,8 +1150,11 @@ impl Game {
         self.triggered.sort_by_key(|t| t.controller != active);
         while !self.triggered.is_empty() {
             let item = self.triggered.remove(0);
-            self.events.push(Event::Triggered { source: item.source });
             let ability = self.ability_of(&item).clone();
+            if !self.condition_holds(&ability, item.controller, item.source) {
+                continue;
+            }
+            self.events.push(Event::Triggered { source: item.source });
             if ability.targets.is_empty() {
                 self.items.push(item);
             } else if self.can_target_all(&ability, item.controller) {
@@ -1172,6 +1235,7 @@ impl Game {
     }
 
     fn begin_next_turn(&mut self) {
+        self.attacked_this_turn = [false; 2];
         self.turn += 1;
         self.active = opponent(self.active);
         self.events.push(Event::TurnBegan {
@@ -1383,6 +1447,16 @@ impl Game {
                 }
             }
             dies.extend(self.legend_rule_losers());
+            // CR 704.5d: a token outside the battlefield ceases to exist.
+            let ceased: Vec<ObjId> = self
+                .objects
+                .iter()
+                .filter(|o| self.defs[o.def].token && !matches!(o.zone, Zone::Battlefield | Zone::Gone))
+                .map(|o| o.id)
+                .collect();
+            for id in ceased {
+                self.move_to(id, Zone::Gone);
+            }
             dies.sort_unstable();
             dies.dedup();
             let mut lost = false;
@@ -1454,6 +1528,7 @@ impl Game {
         mark(&self.battlefield, Zone::Battlefield, None)?;
         mark(&self.stack, Zone::Stack, None)?;
         mark(&self.exile, Zone::Exile, None)?;
+        mark(&self.gone, Zone::Gone, None)?;
         if let Some(i) = seen.iter().position(|&n| n != 1) {
             return Err(format!("object {i} is listed in {} zones", seen[i]));
         }

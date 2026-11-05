@@ -189,13 +189,13 @@ fn brazen_scourge_attacks_the_turn_it_arrives() {
 fn random_games_with_supported_fdn_cards() {
     let defs = fdn();
     let mask = bolt_cards::supported_mask();
-    let lands: Vec<usize> = (0..defs.len())
+    let lands: Vec<usize> = (0..mask.len())
         .filter(|&i| mask[i] && defs[i].types.land)
         .collect();
-    let spells: Vec<usize> = (0..defs.len())
+    let spells: Vec<usize> = (0..mask.len())
         .filter(|&i| mask[i] && !defs[i].types.land)
         .collect();
-    for seed in 0..300 {
+    for seed in 0..1000 {
         let mut rng = Rng::new(seed);
         let a = bolt_core::fuzz::random_deck(&lands, &spells, &mut rng);
         let b = bolt_core::fuzz::random_deck(&lands, &spells, &mut rng);

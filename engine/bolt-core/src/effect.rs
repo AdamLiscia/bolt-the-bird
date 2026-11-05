@@ -134,6 +134,30 @@ pub enum Effect {
         slot: u8,
         n: i32,
     },
+    /// Create `n` tokens of definition `def` under the ability's controller (CR 111).
+    CreateToken {
+        def: usize,
+        n: u8,
+    },
+    /// The creature in slot `from` deals damage equal to its power to the one in slot `to`.
+    Bite {
+        from: u8,
+        to: u8,
+    },
+    /// Exile a player's graveyard.
+    ExileGraveyard {
+        who: Who,
+    },
+}
+
+/// An intervening "if" clause, checked when the ability triggers and again on resolution
+/// (CR 603.4).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Condition {
+    /// Raid: you attacked this turn.
+    Attacked,
+    /// You control another creature with this subtype.
+    ControlAnother(String),
 }
 
 /// A spell's effect or a triggered ability: target slots, then effects in order.
@@ -141,6 +165,17 @@ pub enum Effect {
 pub struct Ability {
     pub targets: Vec<Filter>,
     pub effects: Vec<Effect>,
+    pub condition: Option<Condition>,
+}
+
+impl Ability {
+    pub fn new(targets: Vec<Filter>, effects: Vec<Effect>) -> Ability {
+        Ability {
+            targets,
+            effects,
+            condition: None,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

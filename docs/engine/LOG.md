@@ -28,3 +28,10 @@ One line per working step, newest last. The next session continues from the last
   sorcery timing, until-end-of-turn pumps and keyword grants, +1/+1 counters, and the effect DSL
   (damage, destroy, draw, life, pump, grant, counters). 11 new stack tests, 67 total.
   **Next: M2 cards, writing FDN tier-2 scripts in build order, each with a test from its text.**
+- 2026-11-05: **M2 cards, batch 1.** Core: tokens (cease to exist off the battlefield, CR 704.5d),
+  bite damage, graveyard exile, intervening-if conditions (raid, "another Elf"). `bolt-cards`: card
+  scripts that name the exact rules lines they implement, checked against Scryfall by a test; token
+  definitions after the 286 cards. 22 tier-2 cards scripted, each with a test from its text. 35 cards
+  supported. 1,000 fuzz games with real cards. 97 tests.
+  **Next: M2 cards, batch 2. Choices during resolution (discard, "you may", surveil, search), then
+  counterspells, fight, additional costs and cost reductions.**
