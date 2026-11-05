@@ -186,6 +186,7 @@ fn definition(o: &Oracle) -> (CardDef, bool) {
         revival_on_cast: false,
         choose_color: false,
         mana_of_chosen_color: false,
+        stash_player: false,
     };
     let mut claimed = rest.is_empty();
     if let Some(s) = scripts::script(&o.name) {

@@ -159,3 +159,16 @@ One line per working step, newest last. The next session continues from the last
   **232 supported, 276 tests.** 10,000 release fuzz games pass, 920 games/s with checks. **Next: the
   last 9 tier-3 cards (Imprisoned in the Moon, Soulstone Sanctuary, Kellan, Tinybones, Muldrotha,
   Fishing Pole, Secluded Courtyard, Akroma's Memorial, Sphinx's Tutelage).**
+- 2026-11-05: **M3 batch 10a.** Protection from colors (CR 702.16: no targeting, blocking or damage
+  from sources of that color), repeated mill on shared colors, bait counters with an "equipped creature
+  becomes untapped" trigger and a "tap the equipped creature" cost, opponent-discard triggers, and
+  stashed cards playable from exile with any mana. 4 cards (Akroma's Memorial, Sphinx's Tutelage,
+  Fishing Pole, Tinybones): **236 supported, 282 tests.**
+  **Two bugs caught before commit.** (1) An editing slip glued the untap-step code onto a comment, so
+  nothing untapped; the Fishing Pole test caught it, the fix is in, and a new core test
+  (`permanents_untap_in_the_untap_step`) guards it. The editing tool that caused it is fixed too. (2)
+  The fuzzer found activated abilities and modal triggers using a shallow target check that ignored
+  protection (seed 6555); all target checks now use the full rules, with a regression test.
+  10,000 release fuzz games pass. **Next: the last 5 tier-3 cards need card types that change on the
+  battlefield (Imprisoned in the Moon, Soulstone Sanctuary), restricted mana (Secluded Courtyard),
+  Kellan and Muldrotha. Then tier 4.**

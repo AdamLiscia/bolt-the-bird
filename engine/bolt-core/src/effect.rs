@@ -374,6 +374,16 @@ pub enum Effect {
     Piles {
         n: u8,
     },
+    /// The player in `slot` mills two; repeat while two nonland cards sharing a color were milled.
+    TutelageMill(u8),
+    /// Put a bait counter on the source.
+    BaitCounterSelf,
+    /// Remove a bait counter from the source; if you do, create a token.
+    RemoveBaitForToken {
+        def: usize,
+    },
+    /// Exile the card in `slot` from a graveyard with a stash counter on it.
+    ExileWithStash(u8),
     /// "When you do": trigger number `n` of the source triggers now (CR 603.12).
     Reflexive(usize),
     /// Until end of turn, the creature in `slot` gains the source's trigger number `trigger` as a
@@ -461,6 +471,8 @@ pub struct Static {
     /// The creature loses all abilities (layer 6) and has this base power and toughness (layer 7b).
     pub lose_abilities: bool,
     pub base_pt: Option<(i32, i32)>,
+    /// Protection from these colors, WUBRG (CR 702.16).
+    pub protection: [bool; 5],
     pub power: i32,
     pub toughness: i32,
     pub keywords: Keywords,
@@ -604,6 +616,10 @@ pub enum When {
     YourNontokenCreatureDiesWithout(&'static str),
     /// "At the beginning of combat on your turn", for a card in your graveyard.
     BeginCombatYourTurnFromGraveyard,
+    /// "Whenever an opponent discards a card"; slot 0 is that card.
+    OpponentDiscards,
+    /// "Whenever equipped creature becomes untapped".
+    EquippedBecomesUntapped,
     /// "Whenever you gain life" (every time).
     YouGainLife,
     /// "Whenever you attack": once per combat, when you declare one or more attackers.

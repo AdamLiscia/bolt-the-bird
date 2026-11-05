@@ -140,6 +140,8 @@ pub struct Activated {
     pub once: bool,
     /// "Tap N untapped [subtype] you control" (other than the source) as a cost.
     pub tap_untapped: Option<(&'static str, u8)>,
+    /// Tap the creature this is attached to as part of the cost (Fishing Pole).
+    pub tap_attached: bool,
     pub ability: Ability,
 }
 
@@ -223,6 +225,8 @@ pub struct CardDef {
     /// "As this enters, choose a color", and "{T}: Add one mana of the chosen color".
     pub choose_color: bool,
     pub mana_of_chosen_color: bool,
+    /// Its controller may play opponents' stashed cards from exile during their turn (Tinybones).
+    pub stash_player: bool,
 }
 
 impl CardDef {
@@ -276,6 +280,7 @@ impl CardDef {
             revival_on_cast: false,
             choose_color: false,
             mana_of_chosen_color: false,
+            stash_player: false,
         }
     }
 
@@ -330,6 +335,7 @@ impl CardDef {
             revival_on_cast: false,
             choose_color: false,
             mana_of_chosen_color: false,
+            stash_player: false,
         }
     }
 
@@ -384,6 +390,7 @@ impl CardDef {
             revival_on_cast: false,
             choose_color: false,
             mana_of_chosen_color: false,
+            stash_player: false,
         }
     }
 }

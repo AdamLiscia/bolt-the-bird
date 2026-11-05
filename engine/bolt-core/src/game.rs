@@ -94,6 +94,9 @@ pub struct Object {
     pub chosen_color: Option<u8>,
     /// Who may play this card from exile, and through which turn.
     pub playable: Option<(PlayerId, u32)>,
+    /// Bait counters (Fishing Pole) and a stash counter (Tinybones).
+    pub bait: i32,
+    pub stash: bool,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -638,6 +641,8 @@ impl Game {
             last_revival: 0,
             chosen_color: None,
             playable: None,
+            bait: 0,
+            stash: false,
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -762,6 +767,27 @@ impl Game {
 
     /// Keywords after granting effects (layer 6).
     pub fn keywords(&self, id: ObjId) -> Keywords {
+        self.keywords_inner(id)
+    }
+
+    /// Colors `id` has protection from.
+    pub fn protection(&self, id: ObjId) -> [bool; 5] {
+        let mut p = [false; 5];
+        for s in self.statics_on(id) {
+            for (i, x) in s.protection.iter().enumerate() {
+                p[i] |= *x;
+            }
+        }
+        p
+    }
+
+    /// Whether `id` has protection from any of `source`'s colors.
+    fn protected_from(&self, id: ObjId, source: ObjId) -> bool {
+        let p = self.protection(id);
+        self.def_of(source).colors.iter().zip(p).any(|(c, pr)| *c && pr)
+    }
+
+    fn keywords_inner(&self, id: ObjId) -> Keywords {
         let printed = if self.lost_abilities(id) {
             Keywords::NONE
         } else {
@@ -914,6 +940,12 @@ impl Game {
         if to != Zone::Exile {
             o.playable = None;
         }
+        if to != Zone::Exile && to != Zone::Stack {
+            o.stash = false;
+        }
+        if from == Zone::Battlefield {
+            o.bait = 0;
+        }
         o.tapped = false;
         o.damage = 0;
         o.deathtouched = false;
@@ -952,6 +984,16 @@ impl Game {
     /// CR 603.6a, 603.6c, 603.10a: enters and dies triggers.
     fn zone_triggers(&mut self, id: ObjId, from: Zone, to: Zone, last_controller: PlayerId) {
         let dies = from == Zone::Battlefield && to == Zone::Graveyard;
+        if from == Zone::Hand && to == Zone::Graveyard {
+            // A card going from hand to graveyard was discarded (CR 701.9).
+            let owner = self.obj(id).owner;
+            let now = self.obj(id).zcc;
+            let before = self.triggered.len();
+            self.fire(opponent(owner), When::OpponentDiscards, None);
+            for t in &mut self.triggered[before..] {
+                t.targets = vec![Chosen::Object(id, now)];
+            }
+        }
         if dies && self.def_of(id).types.creature {
             self.creature_died_this_turn = true;
             self.fire(last_controller, When::CreatureYouControlDies, Some(id));
@@ -1379,6 +1421,9 @@ impl Game {
     /// source's power".
     fn slot_ok(&self, item: &StackItem, f: &Filter, t: Target) -> bool {
         let Target::Object(x) = t else { return true };
+        if self.protected_from(x, item.source) {
+            return false; // CR 702.16c
+        }
         let from_instant = item.kind == StackKind::Spell && self.def_of(item.source).types.instant;
         if from_instant && self.def_of(x).hexproof_from_instants && self.obj(x).controller != item.controller
         {
@@ -1426,14 +1471,6 @@ impl Game {
         })
     }
 
-    /// Whether every required target slot has a legal choice ("up to" slots are optional).
-    fn can_target_all(&self, ability: &Ability, controller: PlayerId) -> bool {
-        let required = ability.min_targets.unwrap_or(ability.targets.len());
-        ability.targets[..required]
-            .iter()
-            .all(|f| !self.candidates(f, controller).is_empty())
-    }
-
     fn priority_actions(&self, p: PlayerId) -> Vec<Action> {
         let mut v = vec![Action::PassPriority];
         let sorcery_timing =
@@ -1445,9 +1482,12 @@ impl Game {
         });
         let turn = self.turn;
         let from_exile = self.exile.iter().copied().filter(move |&c| {
-            self.obj(c)
-                .playable
-                .is_some_and(|(q, until)| q == p && turn <= until)
+            let o = self.obj(c);
+            let stashed = o.stash
+                && o.owner != p
+                && self.active == p
+                && self.permanents(p).any(|x| self.def_of(x).stash_player);
+            stashed || o.playable.is_some_and(|(q, until)| q == p && turn <= until)
         });
         let candidates: Vec<(ObjId, bool)> = hand
             .chain(flashback.map(|&c| (c, true)))
@@ -1605,6 +1645,11 @@ impl Game {
             0
         };
         cost.generic = cost.generic.saturating_sub(less + discount);
+        if self.obj(c).stash {
+            // "Mana of any type can be spent": colored pips become generic.
+            cost.generic += cost.colored.iter().sum::<u8>();
+            cost.colored = [0; 5];
+        }
         cost
     }
 
@@ -1694,11 +1739,22 @@ impl Game {
                 if (a.tap && !self.can_tap(id))
                     || self.obj(id).incubation < a.remove_incubation
                     || (a.once && self.obj(id).used_once)
+                    || (a.tap_attached
+                        && !self
+                            .obj(id)
+                            .attached_to
+                            .is_some_and(|(c, z)| self.obj(c).zcc == z && self.can_tap(c)))
                     || a.tap_untapped
                         .is_some_and(|(sub, n)| self.untapped_with(p, sub, id).len() < n as usize)
                     || !sorcery_ok
                     || !self.can_pay(p, &a.mana, uses_self.then_some(id))
-                    || !self.can_target_all(&a.ability, p)
+                    || !self.trigger_can_target(
+                        &StackItem {
+                            kind: StackKind::Activated(n),
+                            ..Game::casting(id, p)
+                        },
+                        &a.ability,
+                    )
                 {
                     continue;
                 }
@@ -1765,6 +1821,11 @@ impl Game {
         if a.once {
             self.obj_mut(id).used_once = true;
         }
+        if a.tap_attached {
+            if let Some((c, _)) = self.obj(id).attached_to {
+                self.obj_mut(c).tapped = true;
+            }
+        }
         if let Some((sub, n)) = a.tap_untapped {
             for c in self.untapped_with(p, sub, id).into_iter().take(n as usize) {
                 self.obj_mut(c).tapped = true;
@@ -1809,6 +1870,9 @@ impl Game {
 
     /// Whether `blocker` may block `attacker`, ignoring menace (CR 509.1b, 702.9b, 702.17b).
     fn can_block(&self, blocker: ObjId, attacker: ObjId) -> bool {
+        if self.protected_from(attacker, blocker) {
+            return false; // CR 702.16f
+        }
         if self.def_of(blocker).cant_block
             || self.keywords(blocker).has(Keywords::CANT_BLOCK)
             || self.keywords(attacker).has(Keywords::UNBLOCKABLE)
@@ -2538,7 +2602,7 @@ impl Game {
                 };
                 let modes = &self.def_of(item.source).triggers[n].ability.modes;
                 (0..modes.len())
-                    .filter(|&m| self.can_target_all(&modes[m], item.controller))
+                    .filter(|&m| self.trigger_can_target(item, &modes[m]))
                     .map(|m| Action::Mode(m as u8))
                     .collect()
             }
@@ -3488,6 +3552,47 @@ impl Game {
                     );
                 }
             }
+            Effect::TutelageMill(n) => {
+                if let Some(Chosen::Player(q)) = item.targets.get(n as usize).copied() {
+                    loop {
+                        let mut milled = Vec::new();
+                        for _ in 0..2 {
+                            if let Some(&c) = self.players[q].library.last() {
+                                self.move_to(c, Zone::Graveyard);
+                                milled.push(c);
+                            }
+                        }
+                        let nonland: Vec<[bool; 5]> = milled
+                            .iter()
+                            .filter(|&&c| !self.def_of(c).types.land)
+                            .map(|&c| self.def_of(c).colors)
+                            .collect();
+                        let share = nonland.len() == 2 && (0..5).any(|i| nonland[0][i] && nonland[1][i]);
+                        if !share || milled.len() < 2 {
+                            break;
+                        }
+                    }
+                }
+            }
+            Effect::BaitCounterSelf => {
+                if self.obj(src).zone == Zone::Battlefield {
+                    self.obj_mut(src).bait += 1;
+                }
+            }
+            Effect::RemoveBaitForToken { def } => {
+                if self.obj(src).bait > 0 {
+                    self.obj_mut(src).bait -= 1;
+                    self.create_token(item.controller, def);
+                }
+            }
+            Effect::ExileWithStash(n) => {
+                if let Some(id) = Game::slot_object(item, legal, n) {
+                    if self.obj(id).zone == Zone::Graveyard {
+                        self.move_to(id, Zone::Exile);
+                        self.obj_mut(id).stash = true;
+                    }
+                }
+            }
             Effect::UntapSelf => {
                 if self.obj(src).zone == Zone::Battlefield {
                     self.obj_mut(src).tapped = false;
@@ -3640,10 +3745,7 @@ impl Game {
             }
             if item.mode.is_none() && !ability.modes.is_empty() {
                 // CR 700.2b: the mode is chosen as the trigger goes on the stack.
-                let any = ability
-                    .modes
-                    .iter()
-                    .any(|m| self.can_target_all(m, item.controller));
+                let any = ability.modes.iter().any(|m| self.trigger_can_target(&item, m));
                 if any {
                     self.events.push(Event::Triggered { source: item.source });
                     let who = item.controller;
@@ -3763,7 +3865,20 @@ impl Game {
                     if self.obj(id).stun > 0 && self.obj(id).tapped {
                         self.obj_mut(id).stun -= 1; // CR 122.1d: a stun counter is removed instead
                     } else if !self.def_of(id).doesnt_untap {
+                        let was_tapped = self.obj(id).tapped;
                         self.obj_mut(id).tapped = false;
+                        if was_tapped && self.def_of(id).types.creature {
+                            let zcc = self.obj(id).zcc;
+                            let gear: Vec<ObjId> = self
+                                .battlefield
+                                .iter()
+                                .copied()
+                                .filter(|&e| self.obj(e).attached_to == Some((id, zcc)))
+                                .collect();
+                            for e in gear {
+                                self.fire_source(e, When::EquippedBecomesUntapped);
+                            }
+                        }
                     }
                 }
                 self.players[a].lands_played = 0;
@@ -4038,6 +4153,11 @@ impl Game {
     /// CR 120.3: damage to a player is life loss; to a creature it is marked. Lifelink gains life
     /// for the source's controller (CR 702.15b).
     fn deal_damage(&mut self, source: ObjId, target: Target, amount: i32) {
+        if let Target::Object(id) = target {
+            if self.protected_from(id, source) {
+                return; // CR 702.16e: damage from a source of that color is prevented
+            }
+        }
         let k = self.keywords(source);
         match target {
             Target::Player(p) => {

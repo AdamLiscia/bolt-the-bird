@@ -215,3 +215,22 @@ fn defs_are_shared_not_copied() {
     let h = g.clone();
     assert!(Arc::ptr_eq(&g.defs, &h.defs));
 }
+
+#[test]
+fn permanents_untap_in_the_untap_step() {
+    // CR 502.3. A regression test: a bad edit once left this branch commented out, and nothing else
+    // in the suite noticed.
+    let mut g = manual();
+    let land = put(&mut g, 0, PLAINS);
+    let bear = put(&mut g, 0, BEAR);
+    let theirs = put(&mut g, 1, BEAR);
+    for id in [land, bear, theirs] {
+        g.objects[id.0 as usize].tapped = true;
+    }
+    g.start_turn(3, 0);
+    assert!(
+        !g.obj(land).tapped && !g.obj(bear).tapped,
+        "the active player's permanents untap"
+    );
+    assert!(g.obj(theirs).tapped, "the other player's don't");
+}

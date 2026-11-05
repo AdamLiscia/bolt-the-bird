@@ -44,6 +44,7 @@ pub fn token_defs() -> Vec<CardDef> {
         token("Koma's Coil", "Serpent", 3, 3, Keywords::NONE),
         token("Drake", "Drake", 2, 2, Keywords::FLYING),
         token("Spirit", "Spirit", 1, 1, Keywords::FLYING),
+        token("Fish", "Fish", 1, 1, Keywords::NONE),
     ]
 }
 
@@ -103,6 +104,7 @@ pub struct Tokens {
     pub komas_coil: usize,
     pub drake: usize,
     pub spirit: usize,
+    pub fish: usize,
 }
 
 impl Tokens {
@@ -126,6 +128,7 @@ impl Tokens {
             komas_coil: base + 15,
             drake: base + 16,
             spirit: base + 17,
+            fish: base + 18,
         }
     }
 }
@@ -273,6 +276,7 @@ fn static_on(d: &mut CardDef, scope: Scope, your_turn_only: bool, keywords: Keyw
         subtype: None,
         lose_abilities: false,
         base_pt: None,
+        protection: [false; 5],
         scope,
         your_turn_only,
         condition: None,
@@ -303,6 +307,7 @@ fn attached(d: &mut CardDef, your_turn_only: bool, power: i32, toughness: i32, k
         subtype: None,
         lose_abilities: false,
         base_pt: None,
+        protection: [false; 5],
         scope: Scope::Attached,
         your_turn_only,
         condition: None,
@@ -325,6 +330,7 @@ fn threshold(d: &mut CardDef, power: i32, toughness: i32, keywords: Keywords) {
         subtype: None,
         lose_abilities: false,
         base_pt: None,
+        protection: [false; 5],
         scope: Scope::This,
         your_turn_only: false,
         condition: Some(StaticCondition::Threshold),
@@ -1181,6 +1187,7 @@ pub fn script(name: &str) -> Option<Script> {
                 subtype: None,
                 lose_abilities: false,
                 base_pt: None,
+                protection: [false; 5],
                 scope: Scope::OtherYourFliers,
                 your_turn_only: false,
                 condition: None,
@@ -1401,6 +1408,7 @@ pub fn script(name: &str) -> Option<Script> {
                 subtype: None,
                 lose_abilities: false,
                 base_pt: None,
+                protection: [false; 5],
                 scope: Scope::YourCreatures,
                 your_turn_only: false,
                 condition: None,
@@ -1471,6 +1479,7 @@ pub fn script(name: &str) -> Option<Script> {
                     subtype: None,
                     lose_abilities: false,
                     base_pt: None,
+                    protection: [false; 5],
                     scope: Scope::This,
                     your_turn_only: false,
                     condition: Some(StaticCondition::Untapped),
@@ -1679,6 +1688,7 @@ pub fn script(name: &str) -> Option<Script> {
                     subtype: None,
                     lose_abilities: false,
                     base_pt: None,
+                    protection: [false; 5],
                     scope: Scope::OtherYourSubtype("Cat"),
                     your_turn_only: false,
                     condition: None,
@@ -1898,6 +1908,7 @@ pub fn script(name: &str) -> Option<Script> {
                     subtype: Some("Knight"),
                     lose_abilities: false,
                     base_pt: None,
+                    protection: [false; 5],
                     scope: Scope::This,
                     your_turn_only: false,
                     condition: Some(StaticCondition::CountersAtLeast(3)),
@@ -1983,6 +1994,7 @@ pub fn script(name: &str) -> Option<Script> {
                     subtype: None,
                     lose_abilities: false,
                     base_pt: None,
+                    protection: [false; 5],
                     scope: Scope::This,
                     your_turn_only: false,
                     condition: Some(StaticCondition::LifeAtLeast(at_least)),
@@ -2122,6 +2134,7 @@ pub fn script(name: &str) -> Option<Script> {
                     subtype: None,
                     lose_abilities: true,
                     base_pt: Some((1, 1)),
+                    protection: [false; 5],
                     scope: Scope::Attached,
                     your_turn_only: false,
                     condition: None,
@@ -2144,6 +2157,7 @@ pub fn script(name: &str) -> Option<Script> {
                     subtype: None,
                     lose_abilities: false,
                     base_pt: None,
+                    protection: [false; 5],
                     scope: Scope::YourCreaturesOfChosenColor,
                     your_turn_only: false,
                     condition: None,
@@ -2165,6 +2179,66 @@ pub fn script(name: &str) -> Option<Script> {
             |d, _| {
                 d.uncounterable = true;
                 on(d, When::Enters, vec![], vec![Effect::Piles { n: 5 }]);
+            },
+        ),
+                "Akroma's Memorial" => s(
+            &["Creatures you control have flying, first strike, vigilance, trample, haste, and protection from black and from red."],
+            |d, _| {
+                let k = Keywords::FLYING
+                    .with(Keywords::FIRST_STRIKE)
+                    .with(Keywords::VIGILANCE)
+                    .with(Keywords::TRAMPLE)
+                    .with(Keywords::HASTE);
+                d.statics.push(Static {
+                    subtype: None,
+                    lose_abilities: false,
+                    base_pt: None,
+                    protection: [false, false, true, true, false],
+                    scope: Scope::YourCreatures,
+                    your_turn_only: false,
+                    condition: None,
+                    power: 0,
+                    toughness: 0,
+                    keywords: k,
+                });
+            },
+        ),
+        "Sphinx's Tutelage" => s(
+            &[
+                "Whenever you draw a card, target opponent mills two cards. If two nonland cards that share a color were milled this way, repeat this process.",
+                "{5}{U}: Draw a card, then discard a card.",
+            ],
+            |d, _| {
+                let opp = Filter::PLAYER.controlled_by(Controller::Opponent);
+                on(d, When::YouDraw, vec![opp], vec![Effect::TutelageMill(0)]);
+                activated(d, "{5}{U}", false, vec![], vec![draw(1), discard(1)]);
+            },
+        ),
+        "Fishing Pole" => s(
+            &[
+                "Equipped creature has \"{1}, {T}, Tap Fishing Pole: Put a bait counter on Fishing Pole.\"",
+                "Whenever equipped creature becomes untapped, remove a bait counter from this Equipment. If you do, create a 1/1 blue Fish creature token.",
+                "Equip {2}",
+            ],
+            |d, t| {
+                let n = activated(d, "{1}", true, vec![], vec![Effect::BaitCounterSelf]);
+                d.activated[n].tap_attached = true;
+                on(d, When::EquippedBecomesUntapped, vec![], vec![Effect::RemoveBaitForToken { def: t.fish }]);
+                equip(d, "{2}");
+            },
+        ),
+        "Tinybones, Bauble Burglar" => s(
+            &[
+                "Whenever an opponent discards a card, exile it from their graveyard with a stash counter on it.",
+                "During your turn, you may play cards you don't own with stash counters on them from exile, and mana of any type can be spent to cast those spells.",
+                "{3}{B}, {T}: Each opponent discards a card. Activate only as a sorcery.",
+            ],
+            |d, _| {
+                let that = Filter { triggering: true, ..graveyard_cards(false, Controller::Any) };
+                on(d, When::OpponentDiscards, vec![that], vec![Effect::ExileWithStash(0)]);
+                d.stash_player = true;
+                let n = activated(d, "{3}{B}", true, vec![], vec![Effect::Discard { who: Who::EachOpponent, n: 1 }]);
+                d.activated[n].sorcery = true;
             },
         ),
         _ => None,
@@ -2392,4 +2466,8 @@ pub const SCRIPTED: &[&str] = &[
     "Heraldic Banner",
     "Strongbox Raider",
     "Curator of Destinies",
+    "Akroma's Memorial",
+    "Sphinx's Tutelage",
+    "Fishing Pole",
+    "Tinybones, Bauble Burglar",
 ];
