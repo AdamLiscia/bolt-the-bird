@@ -1973,6 +1973,92 @@ pub fn script(name: &str) -> Option<Script> {
                 d.statics.push(life(30, 5, Keywords::NONE));
             },
         ),
+                "Blasphemous Edict" => s(
+            &[
+                "You may pay {B} rather than pay this spell's mana cost if there are thirteen or more creatures on the battlefield.",
+                "Each player sacrifices thirteen creatures of their choice.",
+            ],
+            |d, _| {
+                d.alt_cost = Some((ManaCost::parse("{B}").expect("cost"), 13));
+                spell(
+                    d,
+                    vec![],
+                    vec![
+                        Effect::SacrificeCreatures { who: Who::You, n: 13 },
+                        Effect::SacrificeCreatures { who: Who::EachOpponent, n: 13 },
+                    ],
+                )
+            },
+        ),
+        "Leyline Axe" => s(
+            &[
+                "If this card is in your opening hand, you may begin the game with it on the battlefield.",
+                "Equipped creature gets +1/+1 and has double strike and trample.",
+                "Equip {3}",
+            ],
+            |d, _| {
+                d.leyline = true;
+                attached(d, false, 1, 1, Keywords::DOUBLE_STRIKE.with(Keywords::TRAMPLE));
+                equip(d, "{3}");
+            },
+        ),
+        "High Fae Trickster" => s(&["You may cast spells as though they had flash."], |d, _| d.grants_flash = true),
+        "Flamewake Phoenix" => s(
+            &[
+                "This creature attacks each combat if able.",
+                "Ferocious — At the beginning of combat on your turn, if you control a creature with power 4 or greater, you may pay {R}. If you do, return this card from your graveyard to the battlefield.",
+            ],
+            |d, _| {
+                d.must_attack = true;
+                conditional(
+                    d,
+                    When::BeginCombatYourTurnFromGraveyard,
+                    Condition::ControlPowerAtLeast(4),
+                    vec![],
+                    vec![
+                        Effect::MayPay(ManaCost::parse("{R}").expect("cost")),
+                        Effect::ReturnWith { slot: None, counters: 0, subtype: None, keywords: Keywords::NONE },
+                    ],
+                );
+            },
+        ),
+        "Sphinx of Forgotten Lore" => s(
+            &["Whenever this creature attacks, target instant or sorcery card in your graveyard gains flashback until end of turn. The flashback cost is equal to that card's mana cost."],
+            |d, _| {
+                let f = Filter { instant_or_sorcery: true, ..graveyard_cards(false, Controller::You) };
+                on(d, When::Attacks, vec![f], vec![Effect::GrantFlashback(0)]);
+            },
+        ),
+        "Ravenous Amulet" => s(
+            &[
+                "{1}, {T}, Sacrifice a creature: Draw a card and put a soul counter on this artifact. Activate only as a sorcery.",
+                "{4}, {T}, Sacrifice this artifact: Each opponent loses life equal to the number of soul counters on this artifact.",
+            ],
+            |d, _| {
+                let n = activated(d, "{1}", true, vec![], vec![draw(1), Effect::SoulCounterSelf]);
+                d.activated[n].sacrifice_other_creature = true;
+                d.activated[n].sorcery = true;
+                let m = activated(d, "{4}", true, vec![], vec![Effect::OpponentsLoseSoul]);
+                d.activated[m].sacrifice_self = true;
+            },
+        ),
+        "Lathril, Blade of the Elves" => s(
+            &[
+                "Whenever Lathril deals combat damage to a player, create that many 1/1 green Elf Warrior creature tokens.",
+                "{T}, Tap ten untapped Elves you control: Each opponent loses 10 life and you gain 10 life.",
+            ],
+            |d, t| {
+                on(d, When::DealsCombatDamageToPlayer, vec![], vec![Effect::CreateTokensAmount { def: t.elf_warrior }]);
+                let n = activated(
+                    d,
+                    "",
+                    true,
+                    vec![],
+                    vec![Effect::LoseLife { who: Who::EachOpponent, n: 10 }, Effect::GainLife { who: Who::You, n: 10 }],
+                );
+                d.activated[n].tap_untapped = Some(("Elf", 10));
+            },
+        ),
         _ => None,
     }
 }
@@ -2184,4 +2270,11 @@ pub const SCRIPTED: &[&str] = &[
     "Perforating Artist",
     "Consuming Aberration",
     "Elenda, Saint of Dusk",
+    "Blasphemous Edict",
+    "Leyline Axe",
+    "High Fae Trickster",
+    "Flamewake Phoenix",
+    "Sphinx of Forgotten Lore",
+    "Ravenous Amulet",
+    "Lathril, Blade of the Elves",
 ];

@@ -82,6 +82,11 @@ pub struct Object {
     pub last_subtypes: Vec<&'static str>,
     /// An "activate only once" ability has been used.
     pub used_once: bool,
+    /// Flashback granted until end of turn.
+    pub flashback_eot: bool,
+    /// Soul counters, and how many it had when it last left the battlefield.
+    pub soul: i32,
+    pub last_soul: i32,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -170,6 +175,8 @@ pub enum Action {
     CastFlashback(ObjId),
     /// Cast a modal spell choosing mode `n` (CR 700.2a).
     CastModal(ObjId, u8),
+    /// Cast paying its alternative cost (CR 118.9).
+    CastAlternative(ObjId),
     Target(Target),
     Yes,
     No,
@@ -344,11 +351,14 @@ pub struct StackItem {
     pub mode: Option<u8>,
     /// For triggers that refer to "that much" or "that many": the amount.
     pub amount: i32,
+    /// Cast for its alternative cost.
+    pub alt: bool,
 }
 
 /// How a spell is being cast.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct CastMode {
+    pub alt: bool,
     pub kicked: bool,
     pub flashback: bool,
     pub extra: Option<ObjId>,
@@ -407,6 +417,8 @@ pub enum Decision {
     Tuck { card: ObjId },
     /// Choose a mode (`Mode(n)`) for the modal trigger in `Game::mode_pending`.
     ChooseMode,
+    /// `Pick` a creature to sacrifice, `left` more to go.
+    SacrificeCreatures { left: u8 },
     /// "You may pay {cost}": `Yes` (if affordable) or `No`.
     MayPay { cost: ManaCost },
     /// `Discard` a card, or `No` to lose `n` life.
@@ -583,6 +595,9 @@ impl Game {
             granted: Keywords::NONE,
             last_subtypes: Vec::new(),
             used_once: false,
+            flashback_eot: false,
+            soul: 0,
+            last_soul: 0,
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -726,6 +741,7 @@ impl Game {
                         extra: None,
                         mode: None,
                         amount: 0,
+                        alt: false,
                     });
                 }
             }
@@ -824,6 +840,8 @@ impl Game {
             o.last_subtypes = last;
             o.granted = Keywords::NONE;
             o.used_once = false;
+            o.last_soul = o.soul;
+            o.soul = 0;
         }
         o.attached_to = None;
         if to != Zone::Battlefield && to != Zone::Stack {
@@ -869,6 +887,7 @@ impl Game {
                                     extra: None,
                                     mode: None,
                                     amount: 0,
+                                    alt: false,
                                 });
                             }
                         }
@@ -959,6 +978,7 @@ impl Game {
                                 extra: None,
                                 mode: None,
                                 amount: 0,
+                                alt: false,
                             });
                         }
                     }
@@ -982,6 +1002,7 @@ impl Game {
                                     extra: None,
                                     mode: None,
                                     amount: 0,
+                                    alt: false,
                                 });
                             }
                         }
@@ -1026,6 +1047,7 @@ impl Game {
                     extra: None,
                     mode: None,
                     amount: 0,
+                    alt: false,
                 });
             }
         }
@@ -1049,6 +1071,7 @@ impl Game {
                     extra: None,
                     mode: None,
                     amount: 0,
+                    alt: false,
                 });
             }
         }
@@ -1126,6 +1149,7 @@ impl Game {
                 if c.cast && reduces && c.item.targets.is_empty() {
                     let it = &c.item;
                     let mode = CastMode {
+                        alt: it.alt,
                         kicked: it.kicked,
                         flashback: it.flashback,
                         extra: it.extra,
@@ -1211,6 +1235,7 @@ impl Game {
                         && (!creature_only || d.types.creature)
                         && (!f.nonland_permanents || (d.types.is_permanent() && !d.types.land))
                         && (!f.permanent_cards || d.types.is_permanent())
+                        && (!f.instant_or_sorcery || d.types.instant || d.types.sorcery)
                         && f.max_mana_value.is_none_or(|m| d.cost.mana_value() <= m);
                 }
                 if o.zone != Zone::Battlefield {
@@ -1299,6 +1324,7 @@ impl Game {
             extra: None,
             mode: None,
             amount: 0,
+            alt: false,
         }
     }
 
@@ -1324,10 +1350,10 @@ impl Game {
         let sorcery_timing =
             p == self.active && matches!(self.step, Step::Main1 | Step::Main2) && self.items.is_empty();
         let hand = self.players[p].hand.iter().map(|&c| (c, false));
-        let flashback = self.players[p]
-            .graveyard
-            .iter()
-            .filter(|&&c| self.def_of(c).flashback.is_some());
+        let flashback = self.players[p].graveyard.iter().filter(|&&c| {
+            let d = self.def_of(c);
+            d.flashback.is_some() || (self.obj(c).flashback_eot && (d.types.instant || d.types.sorcery))
+        });
         let candidates: Vec<(ObjId, bool)> = hand.chain(flashback.map(|&c| (c, true))).collect();
         for (c, from_graveyard) in candidates {
             let def = self.def_of(c);
@@ -1343,7 +1369,9 @@ impl Game {
                 continue;
             }
             // CR 307.1, 302.1, 304.1, 702.8a: only instants and flash ignore sorcery timing.
-            let timing = sorcery_timing || def.types.instant || def.keywords.has(Keywords::FLASH);
+            let flash_all = self.permanents(p).any(|x| self.def_of(x).grants_flash);
+            let timing =
+                sorcery_timing || flash_all || def.types.instant || def.keywords.has(Keywords::FLASH);
             let castable = def.types.is_permanent() || def.spell.is_some() || !def.modes.is_empty();
             if !timing || !castable {
                 continue;
@@ -1409,6 +1437,22 @@ impl Game {
             }
             None => {
                 let mut v = vec![(Action::Cast(c), CastMode::default())];
+                if let Some((_, needed)) = def.alt_cost {
+                    let creatures = self
+                        .battlefield
+                        .iter()
+                        .filter(|&&x| self.def_of(x).types.creature)
+                        .count();
+                    if creatures >= needed as usize {
+                        v.push((
+                            Action::CastAlternative(c),
+                            CastMode {
+                                alt: true,
+                                ..CastMode::default()
+                            },
+                        ));
+                    }
+                }
                 if def.kicker.is_some() {
                     v.push((
                         Action::CastKicked(c),
@@ -1426,8 +1470,10 @@ impl Game {
     /// The mana a spell costs in `mode` with these targets (CR 601.2f).
     fn spell_cost(&self, p: PlayerId, c: ObjId, mode: CastMode, targets: &[Chosen]) -> ManaCost {
         let def = self.def_of(c);
-        let mut cost = if mode.flashback {
-            def.flashback.expect("has flashback")
+        let mut cost = if mode.alt {
+            def.alt_cost.expect("has an alternative cost").0
+        } else if mode.flashback {
+            def.flashback.unwrap_or(def.cost)
         } else {
             def.cost
         };
@@ -1526,6 +1572,13 @@ impl Game {
     }
 
     /// Activated abilities `p` can activate now (CR 602.2, 602.5).
+    /// Untapped creatures `p` controls with this subtype, other than `except`.
+    fn untapped_with(&self, p: PlayerId, sub: &str, except: ObjId) -> Vec<ObjId> {
+        self.creatures(p)
+            .filter(|&c| c != except && !self.obj(c).tapped && self.has_subtype(c, sub))
+            .collect()
+    }
+
     fn activations(&self, p: PlayerId) -> Vec<Action> {
         let mut v = Vec::new();
         let graveyard = self.players[p].graveyard.iter().copied();
@@ -1543,6 +1596,8 @@ impl Game {
                 if (a.tap && !self.can_tap(id))
                     || self.obj(id).incubation < a.remove_incubation
                     || (a.once && self.obj(id).used_once)
+                    || a.tap_untapped
+                        .is_some_and(|(sub, n)| self.untapped_with(p, sub, id).len() < n as usize)
                     || !sorcery_ok
                     || !self.can_pay(p, &a.mana, uses_self.then_some(id))
                     || !self.can_target_all(&a.ability, p)
@@ -1576,6 +1631,7 @@ impl Game {
             extra: None,
             mode: None,
             amount: 0,
+            alt: false,
         };
         self.passes = 0;
         if self.def_of(id).activated[n].ability.targets.is_empty() {
@@ -1610,6 +1666,11 @@ impl Game {
         self.obj_mut(id).incubation -= a.remove_incubation;
         if a.once {
             self.obj_mut(id).used_once = true;
+        }
+        if let Some((sub, n)) = a.tap_untapped {
+            for c in self.untapped_with(p, sub, id).into_iter().take(n as usize) {
+                self.obj_mut(c).tapped = true;
+            }
         }
         if a.sacrifice_self {
             self.move_to(id, Zone::Graveyard);
@@ -1751,6 +1812,14 @@ impl Game {
                 },
             ),
             (Pending::Priority(p), Action::CastWith(c, x)) => self.cast(p, c, CastMode::with(x)),
+            (Pending::Priority(p), Action::CastAlternative(c)) => self.cast(
+                p,
+                c,
+                CastMode {
+                    alt: true,
+                    ..CastMode::default()
+                },
+            ),
             (Pending::Priority(p), Action::CastModal(c, m)) => self.cast(
                 p,
                 c,
@@ -1795,6 +1864,7 @@ impl Game {
                             extra: None,
                             mode: None,
                             amount: 0,
+                            alt: false,
                         });
                     }
                 }
@@ -1840,6 +1910,19 @@ impl Game {
         if p == self.first {
             self.pending = Pending::Mulligan(opponent(p));
         } else {
+            // CR 103.6a: leylines may begin the game on the battlefield (always taken; QUESTIONS).
+            for q in 0..2 {
+                let leylines: Vec<ObjId> = self.players[q]
+                    .hand
+                    .iter()
+                    .copied()
+                    .filter(|&c| self.def_of(c).leyline)
+                    .collect();
+                for c in leylines {
+                    self.move_to(c, Zone::Battlefield);
+                }
+            }
+            self.triggered.clear();
             self.turn = 0;
             self.active = opponent(self.first);
             self.begin_next_turn();
@@ -1862,6 +1945,7 @@ impl Game {
             extra: mode.extra,
             mode: mode.mode,
             amount: 0,
+            alt: mode.alt,
         };
         let def = self.def_of(card);
         let ability = match mode.mode {
@@ -1886,6 +1970,7 @@ impl Game {
     fn finish_cast(&mut self, item: StackItem) {
         let (p, card) = (item.controller, item.source);
         let mode = CastMode {
+            alt: item.alt,
             kicked: item.kicked,
             flashback: item.flashback,
             extra: item.extra,
@@ -1933,6 +2018,7 @@ impl Game {
                             extra: None,
                             mode: None,
                             amount: 0,
+                            alt: false,
                         });
                     }
                 }
@@ -1954,6 +2040,7 @@ impl Game {
                             extra: None,
                             mode: None,
                             amount: 0,
+                            alt: false,
                         });
                     }
                 }
@@ -2045,6 +2132,7 @@ impl Game {
                         extra: None,
                         mode: None,
                         amount: 0,
+                        alt: false,
                     });
                 }
                 if let Some(cost) = self.def_of(id).ward {
@@ -2061,6 +2149,7 @@ impl Game {
                         extra: None,
                         mode: None,
                         amount: 0,
+                        alt: false,
                     });
                 }
             }
@@ -2257,6 +2346,7 @@ impl Game {
         let hand = &self.players[p].hand;
         match self.decision.as_ref().expect("a decision") {
             Decision::May | Decision::Surveil { .. } | Decision::Tuck { .. } => vec![Action::Yes, Action::No],
+            Decision::SacrificeCreatures { .. } => self.creatures(p).map(Action::Pick).collect(),
             Decision::MayPay { cost } => {
                 let mut v = Vec::new();
                 if self.can_pay(p, cost, None) {
@@ -2367,6 +2457,12 @@ impl Game {
             (Decision::PayWard { cost, .. }, Action::Yes) => self.pay_mana(p, &cost, None),
             (Decision::SacrificeAnother { .. }, Action::Pick(c)) => self.move_to(c, Zone::Graveyard),
             (Decision::MayPay { cost }, Action::Yes) => self.pay_mana(p, &cost, None),
+            (Decision::SacrificeCreatures { left }, Action::Pick(c)) => {
+                self.move_to(c, Zone::Graveyard);
+                if left > 1 && self.creatures(p).next().is_some() {
+                    self.ask(p, Decision::SacrificeCreatures { left: left - 1 });
+                }
+            }
             (Decision::MayPay { .. }, Action::No) => {
                 self.resolving.as_mut().expect("resolving").remaining.clear();
             }
@@ -3117,6 +3213,40 @@ impl Game {
                 let opp = opponent(item.controller);
                 self.ask(opp, Decision::LoseOrDiscard { n, sacrifice: true });
             }
+            Effect::SacrificeCreatures { who, n } => {
+                for p in self.players_for(item, legal, who) {
+                    let mine: Vec<ObjId> = self.creatures(p).collect();
+                    if mine.len() <= n as usize {
+                        for c in mine {
+                            self.move_to(c, Zone::Graveyard);
+                        }
+                    } else {
+                        self.ask(p, Decision::SacrificeCreatures { left: n });
+                        return;
+                    }
+                }
+            }
+            Effect::GrantFlashback(n) => {
+                if let Some(id) = Game::slot_object(item, legal, n) {
+                    self.obj_mut(id).flashback_eot = true;
+                }
+            }
+            Effect::SoulCounterSelf => {
+                if self.obj(src).zone == Zone::Battlefield {
+                    self.obj_mut(src).soul += 1;
+                }
+            }
+            Effect::OpponentsLoseSoul => {
+                let o = self.obj(src);
+                let n = if o.zone == Zone::Battlefield {
+                    o.soul
+                } else {
+                    o.last_soul
+                };
+                if n > 0 {
+                    self.lose_life(opponent(item.controller), n);
+                }
+            }
             Effect::UntapSelf => {
                 if self.obj(src).zone == Zone::Battlefield {
                     self.obj_mut(src).tapped = false;
@@ -3138,6 +3268,7 @@ impl Game {
                     extra: None,
                     mode: None,
                     amount: 0,
+                    alt: false,
                 });
             }
             Effect::GrantDiesTrigger { slot, trigger } => {
@@ -3448,6 +3579,25 @@ impl Game {
             }
             Step::BeginCombat => {
                 self.fire(a, When::BeginCombatYourTurn, None);
+                for c in self.players[a].graveyard.clone() {
+                    let whens: Vec<When> = self.def_of(c).triggers.iter().map(|tr| tr.when).collect();
+                    for (n, w) in whens.into_iter().enumerate() {
+                        if w == When::BeginCombatYourTurnFromGraveyard {
+                            self.triggered.push(StackItem {
+                                source: c,
+                                controller: a,
+                                kind: StackKind::Trigger(n),
+                                targets: Vec::new(),
+                                kicked: false,
+                                flashback: false,
+                                extra: None,
+                                mode: None,
+                                amount: 0,
+                                alt: false,
+                            });
+                        }
+                    }
+                }
                 self.give_priority(a);
             }
             Step::End => {
@@ -3496,6 +3646,9 @@ impl Game {
     /// CR 514.2: damage wears off. No player gets priority in cleanup (CR 514.3).
     fn finish_cleanup(&mut self) {
         self.until_eot.clear(); // CR 514.2
+        for o in &mut self.objects {
+            o.flashback_eot = false;
+        }
         for id in self.battlefield.clone() {
             let o = self.obj_mut(id);
             o.damage = 0;
@@ -3621,6 +3774,7 @@ impl Game {
                     extra: None,
                     mode: None,
                     amount: 0,
+                    alt: false,
                 });
             }
         }

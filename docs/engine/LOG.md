@@ -142,3 +142,11 @@ One line per working step, newest last. The next session continues from the last
   Artist, Consuming Aberration, Elenda): **218 supported, 261 tests.** 10,000 release fuzz games pass.
   **Next: the last ~23 tier-3 cards (Witness Protection, Curator of Destinies, Kykar, Muldrotha, Time
   Stop, Heraldic Banner, ...).**
+- 2026-11-05: **M3 batch 9a.** Alternative costs (CR 118.9), each player sacrificing creatures of
+  their choice, leylines (CR 103.6a), "cast spells as though they had flash", triggers from the
+  graveyard, flashback granted until end of turn for the card's mana cost, soul counters with last known
+  count, "tap N untapped [type] you control" costs, instant/sorcery graveyard targets. 7 cards
+  (Blasphemous Edict, Leyline Axe, High Fae Trickster, Flamewake Phoenix, Sphinx of Forgotten Lore,
+  Ravenous Amulet, Lathril): **225 supported, 269 tests.** 10,000 release fuzz games pass.
+  **Next: batch 9b (Kykar, Nine-Lives Familiar, Time Stop, Witness Protection, Heraldic Banner,
+  Strongbox Raider, Curator of Destinies).**

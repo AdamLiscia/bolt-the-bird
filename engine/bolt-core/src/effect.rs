@@ -47,6 +47,8 @@ pub struct Filter {
     pub mana_value_at_most_source_power: bool,
     /// Any permanent, lands included.
     pub any_permanent: bool,
+    /// Instant and sorcery cards only (graveyard targets).
+    pub instant_or_sorcery: bool,
     pub controller: Controller,
     /// Creatures only if they have flying ("creature with flying").
     pub creature_needs_flying: bool,
@@ -76,6 +78,7 @@ impl Filter {
         not_subtype: None,
         mana_value_at_most_source_power: false,
         any_permanent: false,
+        instant_or_sorcery: false,
         controller: Controller::Any,
         creature_needs_flying: false,
         creature_min_power: None,
@@ -343,6 +346,17 @@ pub enum Effect {
     },
     /// The source's creature types become just this one.
     BecomeSubtype(&'static str),
+    /// `who` sacrifices `n` creatures of their choice (all of them if they have `n` or fewer).
+    SacrificeCreatures {
+        who: Who,
+        n: u8,
+    },
+    /// The instant or sorcery card in `slot` gains flashback until end of turn, for its mana cost.
+    GrantFlashback(u8),
+    /// Put a soul counter on the source.
+    SoulCounterSelf,
+    /// Each opponent loses life equal to the source's soul counters (last known).
+    OpponentsLoseSoul,
     /// "When you do": trigger number `n` of the source triggers now (CR 603.12).
     Reflexive(usize),
     /// Until end of turn, the creature in `slot` gains the source's trigger number `trigger` as a
@@ -562,6 +576,8 @@ pub enum When {
     YouCast,
     /// "Whenever a nontoken creature you control without [subtype] dies"; slot 0 is that card.
     YourNontokenCreatureDiesWithout(&'static str),
+    /// "At the beginning of combat on your turn", for a card in your graveyard.
+    BeginCombatYourTurnFromGraveyard,
     /// "Whenever you gain life" (every time).
     YouGainLife,
     /// "Whenever you attack": once per combat, when you declare one or more attackers.

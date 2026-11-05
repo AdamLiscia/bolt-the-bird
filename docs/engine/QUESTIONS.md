@@ -84,3 +84,9 @@ than eight creatures on one side. Raise the cap if a game ever needs it.
 everywhere except when working out other static abilities ("other Cats you control get +1/+1").
 **Why:** it avoids static abilities depending on each other (CR 613 layer dependencies). No FDN card
 grants a type that another FDN static ability then looks for.
+
+## 2026-11-05: Leylines always begin the game on the battlefield
+
+**Choice:** a Leyline Axe in an opening hand always starts on the battlefield ("you may" is taken).
+**Why:** it's free and never worse than casting it for {4}. A pre-game decision would add a step to
+every game for a choice nobody declines.

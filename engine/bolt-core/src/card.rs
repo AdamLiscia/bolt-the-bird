@@ -138,6 +138,8 @@ pub struct Activated {
     pub remove_incubation: i32,
     /// "Activate only once."
     pub once: bool,
+    /// "Tap N untapped [subtype] you control" (other than the source) as a cost.
+    pub tap_untapped: Option<(&'static str, u8)>,
     pub ability: Ability,
 }
 
@@ -207,6 +209,13 @@ pub struct CardDef {
     pub pt_opponents_graveyards: bool,
     /// "Hexproof from instants".
     pub hexproof_from_instants: bool,
+    /// "You may pay {cost} rather than pay this spell's mana cost if there are N or more creatures
+    /// on the battlefield."
+    pub alt_cost: Option<(ManaCost, u8)>,
+    /// "If this card is in your opening hand, you may begin the game with it on the battlefield."
+    pub leyline: bool,
+    /// "You may cast spells as though they had flash."
+    pub grants_flash: bool,
 }
 
 impl CardDef {
@@ -253,6 +262,9 @@ impl CardDef {
             extra_land_drops: 0,
             pt_opponents_graveyards: false,
             hexproof_from_instants: false,
+            alt_cost: None,
+            leyline: false,
+            grants_flash: false,
         }
     }
 
@@ -300,6 +312,9 @@ impl CardDef {
             extra_land_drops: 0,
             pt_opponents_graveyards: false,
             hexproof_from_instants: false,
+            alt_cost: None,
+            leyline: false,
+            grants_flash: false,
         }
     }
 
@@ -347,6 +362,9 @@ impl CardDef {
             extra_land_drops: 0,
             pt_opponents_graveyards: false,
             hexproof_from_instants: false,
+            alt_cost: None,
+            leyline: false,
+            grants_flash: false,
         }
     }
 }
