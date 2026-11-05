@@ -216,3 +216,11 @@ One line per working step, newest last. The next session continues from the last
   combat damage to a player. 4 planeswalkers (Liliana, Kaito, Ajani, Vivien): **267 supported, 316
   tests.** 10,000 release fuzz games pass. **Next: Chandra (mana pool, divided damage), then the
   last tier-4 cards.**
+- 2026-11-05 · Tier 4 batch 5: Chandra, Flameshaper. Mana pools (CR 106.4): effects add mana to a
+  per-player pool that auto-payment spends before tapping anything, emptied as each step ends (CR
+  500.4). Divided damage (CR 601.2d): after the targets, the controller picks each target's share
+  (at least 1 each, the last gets the rest) before costs are paid, and a target that's gone at
+  resolution gets nothing. +2's exiled card is playable this turn only. 6 tests: **268 supported,
+  322 tests.** 10,000 release fuzz games pass. Also fixed CI's ruff format check on
+  scripts/fetch_loyalty.py. **Next: the last tier-4 cards (Doubling Season, Thousand-Year Storm,
+  Omniscience, Progenitus, ...).**

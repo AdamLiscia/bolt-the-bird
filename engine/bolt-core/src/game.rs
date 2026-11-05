@@ -121,6 +121,9 @@ pub struct Player {
     pub mulligans: u8,
     pub drew_from_empty: bool,
     pub lost: bool,
+    /// Mana added by an effect, spent before any permanent is tapped; empties at the end of each
+    /// step and phase (CR 106.4, 500.4).
+    pub pool: Vec<ManaSource>,
 }
 
 impl Player {
@@ -132,6 +135,7 @@ impl Player {
             graveyard: Vec::new(),
             lands_played: 0,
             mulligans: 0,
+            pool: Vec::new(),
             drew_from_empty: false,
             lost: false,
         }
@@ -173,6 +177,9 @@ pub enum Pending {
     ChooseTarget(PlayerId),
     /// A decision in the middle of a resolving spell or ability; see [`Game::decision`].
     Decide(PlayerId),
+    /// Divide the damage of the spell or ability being put on the stack: how much the next target
+    /// gets (CR 601.2d).
+    Divide(PlayerId),
     GameOver,
 }
 
@@ -228,6 +235,8 @@ pub enum Action {
     ResetBlocks,
     FinishBlocks,
     Discard(ObjId),
+    /// How much of a divided amount the next target gets.
+    Amount(u8),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -365,6 +374,7 @@ static WARD_ABILITY: Ability = Ability {
     min_targets: None,
     same_graveyard: false,
     modes: Vec::new(),
+    divide: 0,
 };
 
 /// A chosen target, pinned to the object it was when chosen (CR 400.7).
@@ -393,6 +403,8 @@ pub struct StackItem {
     pub alt: bool,
     /// The value chosen for X (CR 107.3).
     pub x: u8,
+    /// How divided damage is split among the targets, in target order (CR 601.2d).
+    pub division: Vec<u8>,
 }
 
 /// How a spell is being cast.
@@ -976,6 +988,7 @@ impl Game {
                         amount: 0,
                         alt: false,
                         x: 0,
+                        division: Vec::new(),
                     });
                 }
             }
@@ -1167,6 +1180,7 @@ impl Game {
                                     amount: 0,
                                     alt: false,
                                     x: 0,
+                                    division: Vec::new(),
                                 });
                             }
                         }
@@ -1267,6 +1281,7 @@ impl Game {
                                 amount: 0,
                                 alt: false,
                                 x: 0,
+                                division: Vec::new(),
                             });
                         }
                     }
@@ -1292,6 +1307,7 @@ impl Game {
                                     amount: 0,
                                     alt: false,
                                     x: 0,
+                                    division: Vec::new(),
                                 });
                             }
                         }
@@ -1338,6 +1354,7 @@ impl Game {
                     amount: 0,
                     alt: false,
                     x: 0,
+                    division: Vec::new(),
                 });
             }
         }
@@ -1363,6 +1380,7 @@ impl Game {
                     amount: 0,
                     alt: false,
                     x: 0,
+                    division: Vec::new(),
                 });
             }
         }
@@ -1419,6 +1437,14 @@ impl Game {
             }
             Pending::DeclareBlockers(p) => self.block_actions(p),
             Pending::Decide(p) => self.decision_actions(p),
+            Pending::Divide(_) => {
+                let c = self.choosing.as_ref().expect("dividing");
+                let total = self.ability_of(&c.item).divide;
+                let given: u8 = c.item.division.iter().sum();
+                // Every target after this one still needs at least 1 (CR 601.2d).
+                let after = (c.item.targets.len() - c.item.division.len() - 1) as u8;
+                (1..=total - given - after).map(Action::Amount).collect()
+            }
             Pending::ChooseTarget(_) => {
                 let c = self.choosing.as_ref().expect("choosing targets");
                 let filter = self.ability_of(&c.item).targets[c.item.targets.len()];
@@ -1635,6 +1661,7 @@ impl Game {
             amount: 0,
             alt: false,
             x: 0,
+            division: Vec::new(),
         }
     }
 
@@ -1712,7 +1739,7 @@ impl Game {
         let def = self.def_of(c);
         if def.cost.x > 0 && !from_graveyard {
             // One mode per affordable X (capped by the mana available).
-            let max = self.untapped_sources(p).len().min(30) as u8;
+            let max = (self.untapped_sources(p).len() + self.players[p].pool.len()).min(30) as u8;
             return (0..=max)
                 .map(|x| {
                     (
@@ -1907,9 +1934,16 @@ impl Game {
             .into_iter()
             .filter(|s| Some(s.0) != exclude)
             .collect();
-        let paid = mana::pay(cost, &sources.iter().map(|s| s.1).collect::<Vec<_>>()).expect("payable");
+        let pool = self.players[p].pool.clone();
+        let all: Vec<ManaSource> = pool.iter().copied().chain(sources.iter().map(|s| s.1)).collect();
+        let mut paid = mana::pay(cost, &all).expect("payable");
+        paid.sort_unstable_by(|a, b| b.cmp(a));
         for i in paid {
-            let id = sources[i].0;
+            if i < pool.len() {
+                self.players[p].pool.remove(i);
+                continue;
+            }
+            let id = sources[i - pool.len()].0;
             self.obj_mut(id).tapped = true;
             if self.def_of(id).sac_for_mana {
                 self.move_to(id, Zone::Graveyard);
@@ -1924,7 +1958,8 @@ impl Game {
             .filter(|s| Some(s.0) != exclude)
             .map(|s| s.1)
             .collect();
-        mana::pay(cost, &sources).is_some()
+        let all: Vec<ManaSource> = self.players[p].pool.iter().copied().chain(sources).collect();
+        mana::pay(cost, &all).is_some()
     }
 
     /// Activated abilities `p` can activate now (CR 602.2, 602.5).
@@ -2027,7 +2062,7 @@ impl Game {
                     continue;
                 }
                 if a.mana.x > 0 {
-                    let max = self.untapped_sources(p).len().min(30) as u8;
+                    let max = (self.untapped_sources(p).len() + self.players[p].pool.len()).min(30) as u8;
                     let victims: Vec<Option<ObjId>> = if a.sacrifice_other_creature {
                         self.creatures(p).filter(|&c| c != id).map(Some).collect()
                     } else {
@@ -2069,6 +2104,7 @@ impl Game {
             amount: 0,
             alt: false,
             x: 0,
+            division: Vec::new(),
         };
         self.passes = 0;
         if self.def_of(id).activated[n].ability.targets.is_empty() {
@@ -2392,6 +2428,10 @@ impl Game {
             }
             (Pending::ChooseTarget(_), Action::Target(target)) => self.choose_target(target),
             (Pending::ChooseTarget(_), Action::No) => self.finish_choosing(),
+            (Pending::Divide(_), Action::Amount(n)) => {
+                self.choosing.as_mut().expect("dividing").item.division.push(n);
+                self.finish_choosing();
+            }
             (Pending::Decide(p), a) => self.decide(p, a),
             (Pending::DeclareAttackers(_), Action::Attack(c)) => {
                 // CR 508.1f: attacking taps the creature unless it has vigilance.
@@ -2416,6 +2456,7 @@ impl Game {
                             amount: 0,
                             alt: false,
                             x: 0,
+                            division: Vec::new(),
                         });
                     }
                 }
@@ -2499,6 +2540,7 @@ impl Game {
             amount: 0,
             alt: mode.alt,
             x: mode.x,
+            division: Vec::new(),
         };
         let def = self.def_of(card);
         let ability = match mode.mode {
@@ -2583,6 +2625,7 @@ impl Game {
                             amount: 0,
                             alt: false,
                             x: 0,
+                            division: Vec::new(),
                         });
                     }
                 }
@@ -2606,6 +2649,7 @@ impl Game {
                             amount: 0,
                             alt: false,
                             x: 0,
+                            division: Vec::new(),
                         });
                     }
                 }
@@ -2630,7 +2674,18 @@ impl Game {
     }
 
     fn finish_choosing(&mut self) {
-        let c = self.choosing.take().expect("choosing targets");
+        let mut c = self.choosing.take().expect("choosing targets");
+        let total = self.ability_of(&c.item).divide;
+        let k = c.item.targets.len();
+        if total > 0 && k > 0 && c.item.division.len() < k {
+            if c.item.division.len() + 1 < k {
+                self.pending = Pending::Divide(c.item.controller);
+                self.choosing = Some(c);
+                return;
+            }
+            let given: u8 = c.item.division.iter().sum();
+            c.item.division.push(total - given);
+        }
         if c.cast {
             self.finish_cast(c.item);
         } else {
@@ -2702,6 +2757,7 @@ impl Game {
                         amount: 0,
                         alt: false,
                         x: 0,
+                        division: Vec::new(),
                     });
                 }
                 if let Some(cost) = self.def_of(id).ward {
@@ -2720,6 +2776,7 @@ impl Game {
                         amount: 0,
                         alt: false,
                         x: 0,
+                        division: Vec::new(),
                     });
                 }
             }
@@ -3197,6 +3254,9 @@ impl Game {
                     match to {
                         LookTo::Hand => self.move_to(c, Zone::Hand),
                         LookTo::Battlefield => self.move_to(c, Zone::Battlefield),
+                        LookTo::PlayFromExileThisTurn => {
+                            self.obj_mut(c).playable = Some((p, self.turn));
+                        }
                         LookTo::PlayFromExile => {
                             // Until the end of your next turn (CR 611.2c).
                             let until = if self.active == p {
@@ -3984,7 +4044,20 @@ impl Game {
                 }
             }
             Effect::EndTheTurn => self.end_turn = true,
-            Effect::ExileTopChooseOneToPlay { n } => {
+            Effect::AddMana { color, n } => {
+                let m = ManaSource::of(&[color]);
+                self.players[item.controller]
+                    .pool
+                    .extend(std::iter::repeat_n(m, n as usize));
+            }
+            Effect::DividedDamage => {
+                for (i, &n) in item.division.iter().enumerate() {
+                    if let Some(id) = Game::slot_object(item, legal, i as u8) {
+                        self.deal_damage(src, Target::Object(id), n as i32);
+                    }
+                }
+            }
+            Effect::ExileTopChooseOneToPlay { n, this_turn } => {
                 let p = item.controller;
                 let mut cards = Vec::new();
                 for _ in 0..n {
@@ -3999,7 +4072,11 @@ impl Game {
                         Decision::LookPick {
                             cards,
                             pick: Pick::Any,
-                            to: LookTo::PlayFromExile,
+                            to: if this_turn {
+                                LookTo::PlayFromExileThisTurn
+                            } else {
+                                LookTo::PlayFromExile
+                            },
                             rest: None,
                         },
                     );
@@ -4313,6 +4390,7 @@ impl Game {
                     amount: 0,
                     alt: false,
                     x: 0,
+                    division: Vec::new(),
                 });
             }
             Effect::GrantDiesTrigger { slot, trigger } => {
@@ -4557,6 +4635,10 @@ impl Game {
 
     fn enter(&mut self, step: Step) {
         self.step = step;
+        // CR 500.4: mana empties from each pool as a step or phase ends.
+        for pl in &mut self.players {
+            pl.pool.clear();
+        }
         let a = self.active;
         match step {
             Step::PreGame => unreachable!("the game never returns to pre-game"),
@@ -4653,6 +4735,7 @@ impl Game {
                                 amount: 0,
                                 alt: false,
                                 x: 0,
+                                division: Vec::new(),
                             });
                         }
                     }
@@ -4876,6 +4959,7 @@ impl Game {
                     amount: 0,
                     alt: false,
                     x: 0,
+                    division: Vec::new(),
                 });
             }
         }

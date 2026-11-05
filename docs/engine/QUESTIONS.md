@@ -107,3 +107,10 @@ separately. The engine itself has no limit.
 **Why:** random players activate Krenko, Mob Boss every turn, and its Goblins double each time. At
 5,000+ Goblins each trigger costs a pass over the board, so a turn costs O(board²), and the next
 doubling never ends in practice. 4 of 10,000 fuzz games hit the cap.
+
+## 2026-11-05: Mana in the pool is spent before lands
+
+**Choice:** when paying a cost, auto-payment uses mana already in the pool (Chandra's {R}{R}{R})
+before tapping any permanent.
+**Why:** pool mana empties at the end of the step, so spending it first never costs the player
+anything a land could have done. It keeps payment automatic (see the first entry).

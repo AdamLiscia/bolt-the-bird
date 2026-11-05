@@ -2213,7 +2213,7 @@ pub fn script(name: &str) -> Option<Script> {
         ),
         "Strongbox Raider" => s(
             &["Raid — When this creature enters, if you attacked this turn, exile the top two cards of your library. Choose one of them. Until the end of your next turn, you may play that card."],
-            |d, _| on_if(d, Condition::Attacked, vec![], vec![Effect::ExileTopChooseOneToPlay { n: 2 }]),
+            |d, _| on_if(d, Condition::Attacked, vec![], vec![Effect::ExileTopChooseOneToPlay { n: 2, this_turn: false }]),
         ),
         "Curator of Destinies" => s(
             &[
@@ -2609,6 +2609,26 @@ pub fn script(name: &str) -> Option<Script> {
                 loyalty(d, -8, Ability::new(vec![], vec![Effect::CreateTokensPerLife { def: t.cat_2 }]));
             },
         ),
+        "Chandra, Flameshaper" => s(
+            &[
+                "+2: Add {R}{R}{R}. Exile the top three cards of your library. Choose one. You may play that card this turn.",
+                "+1: Create a token that's a copy of target creature you control, except it has haste and \"At the beginning of the end step, sacrifice this token.\"",
+                "−4: Chandra deals 8 damage divided as you choose among any number of target creatures and/or planeswalkers.",
+            ],
+            |d, _| {
+                let mana = Effect::AddMana { color: Color::Red, n: 3 };
+                let exile = Effect::ExileTopChooseOneToPlay { n: 3, this_turn: true };
+                loyalty(d, 2, Ability::new(vec![], vec![mana, exile]));
+                let copy = Effect::CopyToken { slot: Some(0), haste_and_sacrifice: true, extra_subtype: None };
+                loyalty(d, 1, Ability::new(vec![YOUR_CREATURE], vec![copy]));
+                // "Any number": up to eight targets, each getting at least 1 of the 8 (see
+                // docs/engine/QUESTIONS.md).
+                let creature_or_walker = Filter { players: false, ..Filter::ANY };
+                let mut divided = up_to(vec![creature_or_walker; 8], vec![Effect::DividedDamage]);
+                divided.divide = 8;
+                loyalty(d, -4, divided);
+            },
+        ),
         "Vivien Reid" => s(
             &[
                 "+1: Look at the top four cards of your library. You may reveal a creature or land card from among them and put it into your hand. Put the rest on the bottom of your library in a random order.",
@@ -2883,4 +2903,5 @@ pub const SCRIPTED: &[&str] = &[
     "Kaito, Cunning Infiltrator",
     "Ajani, Caller of the Pride",
     "Vivien Reid",
+    "Chandra, Flameshaper",
 ];

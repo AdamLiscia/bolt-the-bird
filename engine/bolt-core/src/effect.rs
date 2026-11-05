@@ -371,7 +371,17 @@ pub enum Effect {
     /// your next turn.
     ExileTopChooseOneToPlay {
         n: u8,
+        /// Playable only this turn, instead of until the end of your next turn.
+        this_turn: bool,
     },
+    /// Add `n` mana of one color to your mana pool (CR 106.4).
+    AddMana {
+        color: crate::Color,
+        n: u8,
+    },
+    /// Deal the damage divided as the ability was put on the stack to each of its targets (CR
+    /// 601.2d); see [`Ability::divide`].
+    DividedDamage,
     /// Look at the top `n` cards and split them into two piles; an opponent chooses one for your
     /// hand, and the other goes to your graveyard.
     Piles {
@@ -592,6 +602,8 @@ pub enum LookTo {
     Battlefield,
     /// Stays in exile; you may play it until the end of your next turn.
     PlayFromExile,
+    /// Stays in exile; you may play it this turn.
+    PlayFromExileThisTurn,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -644,6 +656,9 @@ pub struct Ability {
     /// A modal triggered ability's modes ("choose one —"): if not empty, the controller picks one as
     /// the ability goes on the stack (CR 700.2b), and its targets come from that mode.
     pub modes: Vec<Ability>,
+    /// "N damage divided as you choose among" its targets: the total, divided as it goes on the
+    /// stack with at least 1 to each target (CR 601.2d). Zero for everything else.
+    pub divide: u8,
 }
 
 impl Ability {
@@ -656,6 +671,7 @@ impl Ability {
             min_targets: None,
             same_graveyard: false,
             modes: Vec::new(),
+            divide: 0,
         }
     }
 
