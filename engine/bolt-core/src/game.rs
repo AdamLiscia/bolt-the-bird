@@ -5,7 +5,7 @@
 
 use std::sync::Arc;
 
-use crate::card::{CardDef, ExtraCost, Keywords, Reduction};
+use crate::card::{CardDef, ExtraCost, Keywords, Reduction, Types};
 use crate::effect::{EmblemKind, LookRest, LookTo, Pick, Scale, Scope, Static, StaticCondition};
 use std::collections::VecDeque;
 
@@ -27,6 +27,9 @@ pub const MAX_HAND: usize = 7;
 /// stay far below it, even with a thousand permanents; reaching it means an engine loop that never
 /// ends, so the action panics rather than eat the machine's memory.
 pub const WORK_BUDGET: u64 = 1_000_000;
+
+/// Land subtypes in FDN (CR 205.3i); every other subtype is a creature type.
+const LAND_TYPES: [&str; 5] = ["Plains", "Island", "Swamp", "Mountain", "Forest"];
 
 /// A game object: one physical card, wherever it is.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -106,6 +109,8 @@ pub struct Object {
     pub chosen_color: Option<u8>,
     /// The creature type chosen as it entered (CR 614.12).
     pub chosen_type: Option<String>,
+    /// Became a creature with this base power and toughness (Soulstone Sanctuary).
+    pub animated: Option<(i32, i32)>,
     pub fellowship: i32,
     /// Who may play this card from exile, and through which turn.
     pub playable: Option<(PlayerId, u32)>,
@@ -786,6 +791,7 @@ impl Game {
             last_revival: 0,
             chosen_color: None,
             chosen_type: None,
+            animated: None,
             fellowship: 0,
             playable: None,
             bait: 0,
@@ -845,6 +851,64 @@ impl Game {
         })
     }
 
+    /// Its card types now (CR 205.1, layer 4): printed, except on the battlefield, where it may
+    /// have become a creature (Soulstone Sanctuary) or only a land (Imprisoned in the Moon).
+    pub fn types_of(&self, id: ObjId) -> Types {
+        let o = self.obj(id);
+        let mut t = self.defs[o.def].types;
+        // The common case: nothing on the battlefield changes types.
+        if o.zone != Zone::Battlefield || (o.animated.is_none() && self.ability_loss_sources == 0) {
+            return t;
+        }
+        if o.animated.is_some() {
+            t.creature = true;
+        }
+        if self.attached_static(id).is_some_and(|s| s.becomes_land) {
+            t = Types {
+                land: true,
+                legendary: t.legendary,
+                basic: t.basic,
+                ..Types::default()
+            };
+        }
+        t
+    }
+
+    /// Its colors now (CR 105, layer 5).
+    pub fn colors_of(&self, id: ObjId) -> [bool; 5] {
+        let printed = self.def_of(id).colors;
+        if self.obj(id).zone != Zone::Battlefield {
+            return printed;
+        }
+        self.attached_static(id)
+            .and_then(|s| s.set_colors)
+            .unwrap_or(printed)
+    }
+
+    /// The ability-removing static of an Aura attached to `id`, if any (Witness Protection,
+    /// Imprisoned in the Moon). Cheap when no such Aura is on the battlefield.
+    fn attached_static(&self, id: ObjId) -> Option<Static> {
+        if self.ability_loss_sources == 0 {
+            return None;
+        }
+        let zcc = self.obj(id).zcc;
+        self.static_sources.iter().find_map(|&src| {
+            if self.obj(src).attached_to != Some((id, zcc)) {
+                return None;
+            }
+            self.def_of(src)
+                .statics
+                .iter()
+                .copied()
+                .find(|s| s.lose_abilities)
+        })
+    }
+
+    /// Mana sources `p` could tap now, one entry per mana. Public for tests and agents.
+    pub fn mana_sources(&self, p: PlayerId) -> Vec<(ObjId, ManaSource)> {
+        self.untapped_sources(p)
+    }
+
     fn lost_abilities(&self, id: ObjId) -> bool {
         self.obj(id).zone == Zone::Battlefield && self.ability_loss(id).is_some()
     }
@@ -864,6 +928,9 @@ impl Game {
         if let Some(only) = o.subtype_override {
             return only == s;
         }
+        if o.animated.is_some() && o.zone == Zone::Battlefield && !LAND_TYPES.contains(&s) {
+            return true; // "all creature types"
+        }
         self.def_of(id).subtypes.iter().any(|x| x == s) || o.extra_subtypes.contains(&s)
     }
 
@@ -876,7 +943,7 @@ impl Game {
     fn statics_on(&self, id: ObjId) -> impl Iterator<Item = Static> + '_ {
         let o = self.obj(id);
         let on_battlefield = o.zone == Zone::Battlefield;
-        let creature = self.def_of(id).types.creature;
+        let creature = self.types_of(id).creature;
         self.static_sources
             .iter()
             .filter(move |_| on_battlefield)
@@ -905,9 +972,7 @@ impl Game {
                             }
                             Scope::YourCreaturesOfChosenColor => {
                                 mine && creature
-                                    && so
-                                        .chosen_color
-                                        .is_some_and(|c| self.def_of(id).colors[c as usize])
+                                    && so.chosen_color.is_some_and(|c| self.colors_of(id)[c as usize])
                             }
                             Scope::OtherYourSubtype(sub) => {
                                 mine && creature && src != id && self.has_base_subtype(id, sub)
@@ -975,7 +1040,7 @@ impl Game {
             return true;
         }
         let p = self.protection(id);
-        self.def_of(source).colors.iter().zip(p).any(|(c, pr)| *c && pr)
+        self.colors_of(source).iter().zip(p).any(|(c, pr)| *c && pr)
     }
 
     fn keywords_inner(&self, id: ObjId) -> Keywords {
@@ -985,6 +1050,9 @@ impl Game {
             self.def_of(id).keywords.with(self.obj(id).granted)
         };
         let mut k = self.modifiers(id).fold(printed, |k, m| k.with(m.keywords));
+        if self.obj(id).animated.is_some() {
+            k = k.with(Keywords::VIGILANCE);
+        }
         if self.emblem_anthem(id) {
             k = k
                 .with(Keywords::VIGILANCE)
@@ -998,7 +1066,7 @@ impl Game {
     fn emblem_anthem(&self, id: ObjId) -> bool {
         let o = self.obj(id);
         o.zone == Zone::Battlefield
-            && self.def_of(id).types.creature
+            && self.types_of(id).creature
             && self
                 .emblems
                 .iter()
@@ -1016,23 +1084,27 @@ impl Game {
             b += self.players[p]
                 .graveyard
                 .iter()
-                .filter(|&&c| self.def_of(c).types.creature)
+                .filter(|&&c| self.types_of(c).creature)
                 .count() as i32;
         }
         b
     }
 
     pub fn power(&self, id: ObjId) -> i32 {
-        self.ability_loss(id).map_or(self.def_of(id).power, |pt| pt.0)
-            + self.opponents_graveyard_bonus(id)
+        self.ability_loss(id).map_or(
+            self.obj(id).animated.map_or(self.def_of(id).power, |pt| pt.0),
+            |pt| pt.0,
+        ) + self.opponents_graveyard_bonus(id)
             + self.obj(id).counters
             + self.modifiers(id).map(|m| m.power).sum::<i32>()
             + self.statics_on(id).map(|s| s.power).sum::<i32>()
     }
 
     pub fn toughness(&self, id: ObjId) -> i32 {
-        self.ability_loss(id).map_or(self.def_of(id).toughness, |pt| pt.1)
-            + self.opponents_graveyard_bonus(id)
+        self.ability_loss(id).map_or(
+            self.obj(id).animated.map_or(self.def_of(id).toughness, |pt| pt.1),
+            |pt| pt.1,
+        ) + self.opponents_graveyard_bonus(id)
             + self.obj(id).counters
             + self.modifiers(id).map(|m| m.toughness).sum::<i32>()
             + self.statics_on(id).map(|s| s.toughness).sum::<i32>()
@@ -1112,7 +1184,7 @@ impl Game {
     }
 
     pub fn creatures(&self, p: PlayerId) -> impl Iterator<Item = ObjId> + '_ {
-        self.permanents(p).filter(|&id| self.def_of(id).types.creature)
+        self.permanents(p).filter(|&id| self.types_of(id).creature)
     }
 
     /// Events since the last call, oldest first.
@@ -1155,7 +1227,7 @@ impl Game {
                 to = Zone::Library;
                 shuffle = true;
             } else if from == Zone::Battlefield
-                && self.def_of(id).types.creature
+                && self.types_of(id).creature
                 && o.exile_if_dies == Some((o.zcc, self.turn))
             {
                 to = Zone::Exile;
@@ -1222,6 +1294,7 @@ impl Game {
             o.revival = 0;
             o.chosen_color = None;
             o.chosen_type = None;
+            o.animated = None;
             o.fellowship = 0;
             o.soul = 0;
         }
@@ -1262,7 +1335,7 @@ impl Game {
                 t.targets = vec![Chosen::Object(id, now)];
             }
         }
-        if dies && self.def_of(id).types.creature {
+        if dies && self.types_of(id).creature {
             self.creature_died_this_turn = true;
             self.fire(last_controller, When::CreatureYouControlDies, Some(id));
             if !self.is_token(id) {
@@ -1492,7 +1565,7 @@ impl Game {
         };
         let whens: Vec<When> = self.def_of(id).triggers.iter().map(|tr| tr.when).collect();
         for (n, when) in whens.into_iter().enumerate() {
-            let own_death = when == When::CreatureYouControlDies && dies && self.def_of(id).types.creature;
+            let own_death = when == When::CreatureYouControlDies && dies && self.types_of(id).creature;
             if (when == When::Dies && dies) || (when == When::Enters && enters) || own_death {
                 self.triggered.push(StackItem {
                     source: id,
@@ -1548,7 +1621,7 @@ impl Game {
             Pending::DeclareAttackers(p) => {
                 let walkers: Vec<ObjId> = self
                     .permanents(opponent(p))
-                    .filter(|&w| self.def_of(w).types.planeswalker)
+                    .filter(|&w| self.types_of(w).planeswalker)
                     .collect();
                 let mut v: Vec<Action> = Vec::new();
                 for c in self.attack_candidates(p) {
@@ -1694,8 +1767,7 @@ impl Game {
                         .any(|i| i.kind == StackKind::Spell && i.source == id);
                     return f.spells
                         && is_spell
-                        && f.spell_creature
-                            .is_none_or(|c| c == self.def_of(id).types.creature);
+                        && f.spell_creature.is_none_or(|c| c == self.types_of(id).creature);
                 }
                 if let Some(creature_only) = f.graveyard {
                     let d = self.def_of(id);
@@ -1714,7 +1786,7 @@ impl Game {
                 if o.controller != controller && !f.triggering && self.keywords(id).has(Keywords::HEXPROOF) {
                     return false;
                 }
-                let ty = &self.def_of(id).types;
+                let ty = &self.types_of(id);
                 let in_combat = self
                     .combat
                     .as_ref()
@@ -1727,6 +1799,7 @@ impl Game {
                 creature_ok
                     || (ty.planeswalker && f.planeswalkers)
                     || (ty.artifact && f.artifacts)
+                    || (ty.land && f.lands)
                     || (ty.enchantment && f.enchantments)
                     || (!ty.land && f.nonland_permanents)
                     || f.any_permanent
@@ -1763,7 +1836,7 @@ impl Game {
             return false; // CR 702.16c
         }
         let from_instant = matches!(item.kind, StackKind::Spell | StackKind::SpellCopy)
-            && self.def_of(item.source).types.instant;
+            && self.types_of(item.source).instant;
         if from_instant && self.def_of(x).hexproof_from_instants && self.obj(x).controller != item.controller
         {
             return false;
@@ -1971,7 +2044,7 @@ impl Game {
                     let creatures = self
                         .battlefield
                         .iter()
-                        .filter(|&&x| self.def_of(x).types.creature)
+                        .filter(|&&x| self.types_of(x).creature)
                         .count();
                     if creatures >= needed as usize {
                         v.push((
@@ -2035,7 +2108,7 @@ impl Game {
             Some(Reduction::PerInstantSorceryInGraveyard) => self.players[p]
                 .graveyard
                 .iter()
-                .filter(|&&x| self.def_of(x).types.instant || self.def_of(x).types.sorcery)
+                .filter(|&&x| self.types_of(x).instant || self.types_of(x).sorcery)
                 .count()
                 .min(255) as u8,
             Some(Reduction::TotalPowerOfYourCreatures) => self
@@ -2053,7 +2126,7 @@ impl Game {
                 self.permanents(p).filter(|&x| self.has_subtype(x, sub)).count() as u8
             }
             Some(Reduction::IfTargetsTapped(n)) => match targets.first() {
-                Some(&Chosen::Object(x, _)) if self.obj(x).tapped && self.def_of(x).types.creature => *n,
+                Some(&Chosen::Object(x, _)) if self.obj(x).tapped && self.types_of(x).creature => *n,
                 _ => 0,
             },
             None => 0,
@@ -2105,7 +2178,7 @@ impl Game {
     fn can_tap(&self, id: ObjId) -> bool {
         let o = self.obj(id);
         !o.tapped
-            && (!self.def_of(id).types.creature
+            && (!self.types_of(id).creature
                 || o.since_turn < self.turn
                 || self.keywords(id).has(Keywords::HASTE))
     }
@@ -2408,7 +2481,7 @@ impl Game {
             .enumerate()
             .filter(|(_, o)| o.owner == p || (o.zone == Zone::Battlefield && o.controller == p))
             .filter(|(_, o)| o.zone != Zone::Gone)
-            .filter(|(i, _)| self.def_of(ObjId(*i as u32)).types.creature)
+            .filter(|(i, _)| self.types_of(ObjId(*i as u32)).creature)
             .flat_map(|(i, _)| self.def_of(ObjId(i as u32)).subtypes.iter().cloned())
             .collect();
         v.sort();
@@ -2433,7 +2506,7 @@ impl Game {
             if self.def_of(id).vivid_mana {
                 // One mana of each color among permanents you control.
                 for c in 0..5 {
-                    if self.permanents(p).any(|x| self.def_of(x).colors[c]) {
+                    if self.permanents(p).any(|x| self.colors_of(x)[c]) {
                         out.push((id, ManaSource::of(&[crate::Color::ALL[c]])));
                     }
                 }
@@ -2454,8 +2527,20 @@ impl Game {
     fn single_sources(&self, p: PlayerId) -> Vec<(ObjId, ManaSource)> {
         self.permanents(p)
             .filter(|&id| self.can_tap(id))
-            .filter(|&id| !self.lost_abilities(id))
             .filter_map(|id| {
+                if self.lost_abilities(id) {
+                    // Imprisoned in the Moon grants "{T}: Add {C}"; other ability loss leaves none.
+                    let land = self.attached_static(id).is_some_and(|s| s.becomes_land);
+                    return land.then(|| {
+                        (
+                            id,
+                            ManaSource {
+                                colorless: true,
+                                ..ManaSource::default()
+                            },
+                        )
+                    });
+                }
                 let d = self.def_of(id);
                 if d.vivid_mana {
                     return Some((id, ManaSource::default()));
@@ -2544,7 +2629,7 @@ impl Game {
                     let o = self.obj(b);
                     o.zone == Zone::Battlefield
                         && o.controller == p
-                        && self.def_of(b).types.creature
+                        && self.types_of(b).creature
                         && !o.tapped
                         && !combat.is_blocking(b)
                 };
@@ -2883,7 +2968,7 @@ impl Game {
                 self.move_to(x, Zone::Graveyard);
             }
         }
-        let noncreature = !self.def_of(card).types.creature;
+        let noncreature = !self.types_of(card).creature;
         if p != self.active {
             self.fire(p, When::YouCastOnOpponentsTurn, None);
         }
@@ -2898,7 +2983,7 @@ impl Game {
         }
         self.fire(p, When::YouCast, None);
         self.ward_check(&item);
-        let instant_or_sorcery = self.def_of(card).types.instant || self.def_of(card).types.sorcery;
+        let instant_or_sorcery = self.types_of(card).instant || self.types_of(card).sorcery;
         if instant_or_sorcery {
             self.cast_snapshots.push(item.clone());
         }
@@ -2916,10 +3001,7 @@ impl Game {
             }
         }
         // "Whenever you cast a noncreature or [subtype] spell".
-        let (creature, subs) = (
-            self.def_of(card).types.creature,
-            self.def_of(card).subtypes.clone(),
-        );
+        let (creature, subs) = (self.types_of(card).creature, self.def_of(card).subtypes.clone());
         for id in self.permanents(p).collect::<Vec<_>>() {
             let whens: Vec<When> = self.def_of(id).triggers.iter().map(|tr| tr.when).collect();
             for (n, w) in whens.into_iter().enumerate() {
@@ -3251,7 +3333,7 @@ impl Game {
         let r = self.resolving.take().expect("resolving");
         let source = r.item.source;
         if r.item.kind == StackKind::Spell {
-            if r.acts && self.def_of(source).types.is_permanent() {
+            if r.acts && self.types_of(source).is_permanent() {
                 self.move_to(source, Zone::Battlefield);
                 self.obj_mut(source).controller = r.item.controller;
                 if self.def_of(source).revival_on_cast {
@@ -3333,7 +3415,7 @@ impl Game {
         }
         let n = n * self.doubling(self.obj(id).controller);
         self.obj_mut(id).counters += n;
-        if self.def_of(id).types.creature && !self.has_subtype(id, "Hydra") {
+        if self.types_of(id).creature && !self.has_subtype(id, "Hydra") {
             let controller = self.obj(id).controller;
             self.fire(controller, When::CountersOnAnotherNonHydraYouControl, Some(id));
         }
@@ -3349,7 +3431,7 @@ impl Game {
     /// Liliana's −9: walk the permanent types in order, asking which one to keep of each.
     fn next_keep(&mut self, p: PlayerId, mut ty: u8, kept: Vec<ObjId>) {
         while ty < 5 {
-            let any = self.permanents(p).any(|x| Game::has_type(self.def_of(x), ty));
+            let any = self.permanents(p).any(|x| Game::has_type(self.types_of(x), ty));
             if any {
                 self.ask(p, Decision::KeepOfType { ty, kept });
                 return;
@@ -3363,13 +3445,13 @@ impl Game {
     }
 
     /// Permanent types in order: artifact, creature, enchantment, land, planeswalker.
-    fn has_type(d: &CardDef, ty: u8) -> bool {
+    fn has_type(t: Types, ty: u8) -> bool {
         match ty {
-            0 => d.types.artifact,
-            1 => d.types.creature,
-            2 => d.types.enchantment,
-            3 => d.types.land,
-            _ => d.types.planeswalker,
+            0 => t.artifact,
+            1 => t.creature,
+            2 => t.enchantment,
+            3 => t.land,
+            _ => t.planeswalker,
         }
     }
 
@@ -3382,10 +3464,7 @@ impl Game {
             Pick::CreatureOrLand => d.types.creature || d.types.land,
             Pick::CreatureMvAtMostLands => {
                 let owner = self.obj(c).owner;
-                let lands = self
-                    .permanents(owner)
-                    .filter(|&x| self.def_of(x).types.land)
-                    .count() as u32;
+                let lands = self.permanents(owner).filter(|&x| self.types_of(x).land).count() as u32;
                 d.types.creature && d.cost.mana_value() <= lands
             }
         }
@@ -3427,7 +3506,7 @@ impl Game {
             }
             Decision::KeepOfType { ty, .. } => self
                 .permanents(p)
-                .filter(|&x| Game::has_type(self.def_of(x), *ty))
+                .filter(|&x| Game::has_type(self.types_of(x), *ty))
                 .map(Action::Pick)
                 .collect(),
             Decision::GenesisPick { cards, x } => {
@@ -3457,7 +3536,7 @@ impl Game {
                 if *sacrifice {
                     v.extend(
                         self.permanents(p)
-                            .filter(|&x| !self.def_of(x).types.land)
+                            .filter(|&x| !self.types_of(x).land)
                             .map(Action::Pick),
                     );
                 }
@@ -3520,7 +3599,7 @@ impl Game {
             Decision::PickDiscard { victim } => self.players[*victim]
                 .hand
                 .iter()
-                .filter(|&&c| !self.def_of(c).types.land)
+                .filter(|&&c| !self.types_of(c).land)
                 .map(|&c| Action::Pick(c))
                 .collect(),
             Decision::Search { what, .. } => {
@@ -3833,7 +3912,7 @@ impl Game {
                         .battlefield
                         .iter()
                         .copied()
-                        .filter(|&id| self.def_of(id).types.creature)
+                        .filter(|&id| self.types_of(id).creature)
                         .filter(|&id| !without_flying || !self.keywords(id).has(Keywords::FLYING))
                         .map(Target::Object)
                         .collect(),
@@ -3969,10 +4048,7 @@ impl Game {
                     .into_iter()
                     .next()
                 {
-                    let any = self.players[victim]
-                        .hand
-                        .iter()
-                        .any(|&c| !self.def_of(c).types.land);
+                    let any = self.players[victim].hand.iter().any(|&c| !self.types_of(c).land);
                     if any {
                         self.ask(item.controller, Decision::PickDiscard { victim });
                     }
@@ -4135,7 +4211,7 @@ impl Game {
             Effect::DrainIfCreatureExiled { n } => {
                 let exiled_creature = (0..item.targets.len() as u8).any(|i| {
                     Game::slot_object(item, legal, i)
-                        .is_some_and(|x| self.obj(x).zone == Zone::Exile && self.def_of(x).types.creature)
+                        .is_some_and(|x| self.obj(x).zone == Zone::Exile && self.types_of(x).creature)
                 });
                 if exiled_creature {
                     let opp = opponent(item.controller);
@@ -4148,7 +4224,7 @@ impl Game {
                     .battlefield
                     .iter()
                     .copied()
-                    .filter(|&c| self.def_of(c).types.creature)
+                    .filter(|&c| self.types_of(c).creature)
                     .collect();
                 for c in all {
                     self.destroy(c);
@@ -4286,7 +4362,7 @@ impl Game {
             }
             Effect::CounterAndGainIfCreatureExiled { life } => {
                 let exiled = Game::slot_object(item, legal, 0)
-                    .is_some_and(|x| self.obj(x).zone == Zone::Exile && self.def_of(x).types.creature);
+                    .is_some_and(|x| self.obj(x).zone == Zone::Exile && self.types_of(x).creature);
                 if exiled {
                     self.add_counters(src, 1);
                     self.gain_life(item.controller, life);
@@ -4319,7 +4395,7 @@ impl Game {
                 let mut found = None;
                 while let Some(&c) = self.players[p].library.last() {
                     self.players[p].library.pop();
-                    if self.def_of(c).types.creature {
+                    if self.types_of(c).creature {
                         found = Some(c);
                         break;
                     }
@@ -4371,7 +4447,7 @@ impl Game {
                 let n = lib
                     .iter()
                     .rev()
-                    .position(|&c| self.def_of(c).types.land)
+                    .position(|&c| self.types_of(c).land)
                     .map_or(lib.len(), |i| i + 1);
                 let revealed: Vec<ObjId> = lib.iter().rev().take(n).copied().collect();
                 for c in revealed {
@@ -4485,12 +4561,17 @@ impl Game {
                     self.obj_mut(id).playable = Some((item.controller, turn));
                 }
             }
+            Effect::BecomeCreatureSelf { power, toughness } => {
+                if self.obj(src).zone == Zone::Battlefield {
+                    self.obj_mut(src).animated = Some((power, toughness));
+                }
+            }
             Effect::ExileTopOfEachCastFree => {
                 let p = item.controller;
                 for q in [p, opponent(p)] {
                     if let Some(&c) = self.players[q].library.last() {
                         self.move_to(c, Zone::Exile);
-                        if !self.def_of(c).types.land {
+                        if !self.types_of(c).land {
                             self.obj_mut(c).cast_free = true;
                             self.free_casts.push(c);
                         }
@@ -4596,8 +4677,8 @@ impl Game {
                             .collect();
                         let nonland: Vec<[bool; 5]> = milled
                             .iter()
-                            .filter(|&&c| !self.def_of(c).types.land)
-                            .map(|&c| self.def_of(c).colors)
+                            .filter(|&&c| !self.types_of(c).land)
+                            .map(|&c| self.colors_of(c))
                             .collect();
                         let share = nonland.len() == 2 && (0..5).any(|i| nonland[0][i] && nonland[1][i]);
                         if !share || milled.len() < 2 {
@@ -4679,7 +4760,7 @@ impl Game {
                 let n = self.players[item.controller]
                     .graveyard
                     .iter()
-                    .filter(|&&c| self.def_of(c).types.creature)
+                    .filter(|&&c| self.types_of(c).creature)
                     .count();
                 for _ in 0..n {
                     self.create_token(item.controller, def);
@@ -4691,7 +4772,7 @@ impl Game {
             Effect::CreateTokensPerLand { def } => {
                 let n = self
                     .permanents(item.controller)
-                    .filter(|&x| self.def_of(x).types.land)
+                    .filter(|&x| self.types_of(x).land)
                     .count();
                 for _ in 0..n {
                     self.create_token(item.controller, def);
@@ -4700,7 +4781,7 @@ impl Game {
             Effect::DrawPerDistinctManaValue => {
                 let mut mvs: Vec<u32> = self
                     .permanents(item.controller)
-                    .filter(|&x| !self.def_of(x).types.land)
+                    .filter(|&x| !self.types_of(x).land)
                     .map(|x| self.def_of(x).cost.mana_value())
                     .collect();
                 mvs.sort_unstable();
@@ -5156,7 +5237,7 @@ impl Game {
                     } else if !self.def_of(id).doesnt_untap {
                         let was_tapped = self.obj(id).tapped;
                         self.obj_mut(id).tapped = false;
-                        if was_tapped && self.def_of(id).types.creature {
+                        if was_tapped && self.types_of(id).creature {
                             let zcc = self.obj(id).zcc;
                             let gear: Vec<ObjId> = self
                                 .battlefield
@@ -5448,7 +5529,7 @@ impl Game {
             }
         }
         for (source, amount) in dealt {
-            if self.obj(source).controller != active || !self.def_of(source).types.creature {
+            if self.obj(source).controller != active || !self.types_of(source).creature {
                 continue;
             }
             let zcc = self.obj(source).zcc;
@@ -5563,7 +5644,7 @@ impl Game {
                     }
                 }
             }
-            Target::Object(id) if self.def_of(id).types.planeswalker && !self.def_of(id).types.creature => {
+            Target::Object(id) if self.types_of(id).planeswalker && !self.types_of(id).creature => {
                 self.obj_mut(id).loyalty -= amount; // CR 120.3c
             }
             Target::Object(id) => {
@@ -5591,7 +5672,7 @@ impl Game {
             self.work();
             let mut dies = Vec::new();
             for &id in &self.battlefield {
-                if !self.defs[self.objects[id.0 as usize].def].types.creature {
+                if !self.types_of(id).creature {
                     continue;
                 }
                 let o = self.obj(id);
@@ -5609,14 +5690,25 @@ impl Game {
                 self.battlefield
                     .iter()
                     .copied()
-                    .filter(|&w| self.def_of(w).types.planeswalker && self.obj(w).loyalty <= 0),
+                    .filter(|&w| self.types_of(w).planeswalker && self.obj(w).loyalty <= 0),
             );
             // CR 704.5m-n: an Aura attached to nothing legal goes to the graveyard; an Equipment
             // becomes unattached.
             for &id in &self.battlefield.clone() {
                 if let Some((t, z)) = self.obj(id).attached_to {
                     let o = self.obj(t);
-                    let ok = o.zone == Zone::Battlefield && o.zcc == z && self.def_of(t).types.creature;
+                    let ty = self.types_of(t);
+                    // An Aura checks its own "enchant" restriction (CR 303.4d); Equipment needs a
+                    // creature (CR 301.5c).
+                    let fits = match self.def_of(id).spell.as_ref().and_then(|s| s.targets.first()) {
+                        Some(f) if self.def_of(id).aura => {
+                            (ty.creature && f.creatures)
+                                || (ty.land && f.lands)
+                                || (ty.planeswalker && f.planeswalkers)
+                        }
+                        _ => ty.creature,
+                    };
+                    let ok = o.zone == Zone::Battlefield && o.zcc == z && fits;
                     if !ok {
                         if self.def_of(id).aura {
                             dies.push(id);

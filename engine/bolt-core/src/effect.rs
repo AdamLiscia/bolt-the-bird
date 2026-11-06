@@ -61,6 +61,8 @@ pub struct Filter {
     /// Only a permanent attached to the object in the first target slot ("Equipment attached to
     /// that creature").
     pub attached_to_first_target: bool,
+    /// Lands.
+    pub lands: bool,
 }
 
 impl Filter {
@@ -90,6 +92,7 @@ impl Filter {
         creature_min_power: None,
         in_combat: false,
         attached_to_first_target: false,
+        lands: false,
     };
 
     pub const CREATURE: Filter = Filter {
@@ -182,6 +185,12 @@ pub enum Effect {
     Counters {
         slot: u8,
         n: i32,
+    },
+    /// The source becomes a creature with this base power and toughness, vigilance and every
+    /// creature type, and stays one (Soulstone Sanctuary). It's still a land.
+    BecomeCreatureSelf {
+        power: i32,
+        toughness: i32,
     },
     /// Exile the top card of each player's library; you may cast any number of spells from among
     /// them without paying their mana costs (Etali).
@@ -596,6 +605,12 @@ pub struct Static {
     pub power: i32,
     pub toughness: i32,
     pub keywords: Keywords,
+    /// Sets the colors of what it applies to (Witness Protection: green and white; Imprisoned in
+    /// the Moon: colorless).
+    pub set_colors: Option<[bool; 5]>,
+    /// What it applies to is a land and no other card type, with "{T}: Add {C}" (Imprisoned in the
+    /// Moon). Supertypes stay.
+    pub becomes_land: bool,
 }
 
 /// What an emblem does (CR 114).

@@ -297,6 +297,8 @@ fn static_on(d: &mut CardDef, scope: Scope, your_turn_only: bool, keywords: Keyw
         power: 0,
         toughness: 0,
         keywords,
+        set_colors: None,
+        becomes_land: false,
     });
 }
 
@@ -329,6 +331,8 @@ fn attached(d: &mut CardDef, your_turn_only: bool, power: i32, toughness: i32, k
         power,
         toughness,
         keywords,
+        set_colors: None,
+        becomes_land: false,
     });
 }
 
@@ -353,6 +357,8 @@ fn threshold(d: &mut CardDef, power: i32, toughness: i32, keywords: Keywords) {
         power,
         toughness,
         keywords,
+        set_colors: None,
+        becomes_land: false,
     });
 }
 
@@ -389,6 +395,8 @@ fn lord(d: &mut CardDef, sub: &'static str) {
         power: 1,
         toughness: 1,
         keywords: Keywords::NONE,
+        set_colors: None,
+        becomes_land: false,
     });
 }
 
@@ -1230,7 +1238,7 @@ pub fn script(name: &str) -> Option<Script> {
                 condition: None,
                 power: 1,
                 toughness: 1,
-                keywords: Keywords::NONE,
+                keywords: Keywords::NONE, set_colors: None, becomes_land: false,
             });
         }),
         "Mocking Sprite" => s(&["Instant and sorcery spells you cast cost {1} less to cast."], |d, _| {
@@ -1452,7 +1460,7 @@ pub fn script(name: &str) -> Option<Script> {
                 condition: None,
                 power: 1,
                 toughness: 1,
-                keywords: Keywords::NONE,
+                keywords: Keywords::NONE, set_colors: None, becomes_land: false,
             });
         }),
         "Crackling Cyclops" => s(
@@ -1524,7 +1532,7 @@ pub fn script(name: &str) -> Option<Script> {
                     condition: Some(StaticCondition::Untapped),
                     power: 0,
                     toughness: 0,
-                    keywords: Keywords::HEXPROOF,
+                    keywords: Keywords::HEXPROOF, set_colors: None, becomes_land: false,
                 });
                 d.mana = Some(ManaSource::of(&Color::ALL));
             },
@@ -1734,7 +1742,7 @@ pub fn script(name: &str) -> Option<Script> {
                     condition: None,
                     power: 1,
                     toughness: 1,
-                    keywords: Keywords::NONE,
+                    keywords: Keywords::NONE, set_colors: None, becomes_land: false,
                 });
                 on(
                     d,
@@ -1955,7 +1963,7 @@ pub fn script(name: &str) -> Option<Script> {
                     condition: Some(StaticCondition::CountersAtLeast(3)),
                     power: 0,
                     toughness: 0,
-                    keywords: Keywords::FLYING,
+                    keywords: Keywords::FLYING, set_colors: None, becomes_land: false,
                 });
             },
         ),
@@ -2042,7 +2050,7 @@ pub fn script(name: &str) -> Option<Script> {
                     condition: Some(StaticCondition::LifeAtLeast(at_least)),
                     power,
                     toughness: power,
-                    keywords,
+                    keywords, set_colors: None, becomes_land: false,
                 };
                 d.statics.push(life(21, 1, Keywords::MENACE));
                 d.statics.push(life(30, 5, Keywords::NONE));
@@ -2183,7 +2191,7 @@ pub fn script(name: &str) -> Option<Script> {
                     condition: None,
                     power: 0,
                     toughness: 0,
-                    keywords: Keywords::NONE,
+                    keywords: Keywords::NONE, set_colors: Some([true, false, false, false, true]), becomes_land: false,
                 });
             },
         ),
@@ -2207,7 +2215,7 @@ pub fn script(name: &str) -> Option<Script> {
                     condition: None,
                     power: 1,
                     toughness: 0,
-                    keywords: Keywords::NONE,
+                    keywords: Keywords::NONE, set_colors: None, becomes_land: false,
                 });
             },
         ),
@@ -2244,7 +2252,7 @@ pub fn script(name: &str) -> Option<Script> {
                     condition: None,
                     power: 0,
                     toughness: 0,
-                    keywords: k,
+                    keywords: k, set_colors: None, becomes_land: false,
                 });
             },
         ),
@@ -2396,7 +2404,7 @@ pub fn script(name: &str) -> Option<Script> {
                 condition: None,
                 power: 1,
                 toughness: 1,
-                keywords: Keywords::NONE,
+                keywords: Keywords::NONE, set_colors: None, becomes_land: false,
             });
         }),
         "Brass's Bounty" => s(&["For each land you control, create a Treasure token."], |d, t| {
@@ -2739,7 +2747,7 @@ pub fn script(name: &str) -> Option<Script> {
                     condition: None,
                     power: 1,
                     toughness: 1,
-                    keywords: Keywords::NONE,
+                    keywords: Keywords::NONE, set_colors: None, becomes_land: false,
                 });
             },
         ),
@@ -2762,6 +2770,46 @@ pub fn script(name: &str) -> Option<Script> {
                 "Etali, Primal Storm" => s(
             &["Whenever Etali attacks, exile the top card of each player's library, then you may cast any number of spells from among those cards without paying their mana costs."],
             |d, _| on(d, When::Attacks, vec![], vec![Effect::ExileTopOfEachCastFree]),
+        ),
+        "Imprisoned in the Moon" => s(
+            &[
+                "Enchant creature, land, or planeswalker",
+                "Enchanted permanent is a colorless land with \"{T}: Add {C}\" and loses all other card types and abilities.",
+            ],
+            |d, _| {
+                d.aura = true;
+                let f = Filter { players: false, lands: true, ..Filter::ANY };
+                d.spell = Some(Ability::new(vec![f], vec![]));
+                d.statics.push(Static {
+                    subtype: None,
+                    lose_abilities: true,
+                    base_pt: None,
+                    protection: [false; 5],
+                    scale: None,
+                    scope: Scope::Attached,
+                    your_turn_only: false,
+                    condition: None,
+                    power: 0,
+                    toughness: 0,
+                    keywords: Keywords::NONE,
+                    set_colors: Some([false; 5]),
+                    becomes_land: true,
+                });
+            },
+        ),
+        "Soulstone Sanctuary" => s(
+            &[
+                "{T}: Add {C}.",
+                "{4}: This land becomes a 3/3 creature with vigilance and all creature types. It's still a land.",
+            ],
+            |d, _| {
+                d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                d.activated.push(Activated {
+                    mana: ManaCost::parse("{4}").expect("cost"),
+                    ability: Ability::new(vec![], vec![Effect::BecomeCreatureSelf { power: 3, toughness: 3 }]),
+                    ..Activated::default()
+                });
+            },
         ),
         "Vivien Reid" => s(
             &[
@@ -3051,4 +3099,6 @@ pub const SCRIPTED: &[&str] = &[
     "Quilled Greatwurm",
     "Thousand-Year Storm",
     "Etali, Primal Storm",
+    "Imprisoned in the Moon",
+    "Soulstone Sanctuary",
 ];

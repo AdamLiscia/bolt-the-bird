@@ -276,3 +276,12 @@ One line per working step, newest last. The next session continues from the last
   stay exiled. 3 tests: **281 supported, 354 tests.** 10,000 release fuzz games pass under the
   guard. **Next: the five deferred cards (Kellan, Muldrotha, Imprisoned in the Moon, Soulstone
   Sanctuary, Secluded Courtyard), which need type changes and restricted mana.**
+- 2026-11-06 · Type layer, batch 1. `types_of` and `colors_of` give a permanent's types and
+  colors now (layers 4 and 5); every battlefield type check goes through them (45 sites), while
+  cards elsewhere keep their printed types. Imprisoned in the Moon (enchanted permanent is only a
+  colorless land with "{T}: Add {C}"; supertypes stay; a planeswalker or creature stops being one)
+  and Soulstone Sanctuary ({4}: a 3/3 vigilance creature land with every creature type, with no
+  end date). Fixes: Aura legality now uses the Aura's own enchant restriction instead of assuming
+  "enchant creature"; Witness Protection now makes the creature green and white. 4 tests: **283
+  supported, 358 tests.** 10,000 release fuzz games pass under the guard (~900 games/s; ~5% from
+  the type lookup, the rest from the new cards). **Next: Kellan, Secluded Courtyard, Muldrotha.**
