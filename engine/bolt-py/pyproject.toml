@@ -1,0 +1,14 @@
+[build-system]
+requires = ["maturin>=1.7,<2"]
+build-backend = "maturin"
+
+[project]
+name = "bolt-engine"
+description = "Python bindings for the Bolt the Bird Magic engine"
+requires-python = ">=3.11"
+license = "MIT"
+dynamic = ["version"]
+
+[tool.maturin]
+features = ["extension-module"]
+module-name = "bolt_engine"

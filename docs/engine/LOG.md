@@ -301,3 +301,12 @@ One line per working step, newest last. The next session continues from the last
   land uses your land drop. 4 tests: **all 286 FDN cards supported, 366 tests.** 10,000 release
   fuzz games with every card pass under the guard (850 games/s). **M3 and M4 are done. Next: M5,
   the PyO3 bindings (`bolt_engine.Game` in Python) and a rules-based baseline player.**
+- 2026-11-06 · M5 part 1: Python bindings. New crate `engine/bolt-py` (pyo3 0.30, abi3 for
+  Python ≥ 3.11, built with maturin; `make engine-py`). `bolt_engine.Game(deck_a, deck_b, seed,
+  first)` takes card numbers and rejects unsupported ones; `legal_actions()` returns flat
+  `(kind, a, b, c)` tuples and `step(i)` applies one; `observation(player)` gives what that player
+  can see (their hand, not the opponent's); `clone()` copies for search; `result()`, `to_act()`,
+  `pending()`. 6 Python tests (random games finish, hidden hands, replay). CI's engine job now
+  builds the wheel and runs them. The crate only warns on unsafe code, because pyo3's macros
+  expand to some; the workspace still forbids it everywhere else. **Next: the rules-based
+  baseline player and a games/second benchmark.**

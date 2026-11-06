@@ -50,3 +50,12 @@ jobs:
         run: cargo clippy --all-targets -- -D warnings
       - name: Test
         run: cargo test
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Python bindings
+        run: |
+          pip install "maturin>=1.7,<2" pytest
+          maturin build --release -m bolt-py/Cargo.toml -o dist
+          pip install dist/*.whl
+          cd .. && pytest tests/test_bolt_engine.py --noconftest -p no:cacheprovider -o addopts=""
