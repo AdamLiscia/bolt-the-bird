@@ -14,3 +14,7 @@ target/
 .pytest_cache/
 .ruff_cache/
 *.egg-info/
+
+# Rust
+engine/target/
+engine/dist/

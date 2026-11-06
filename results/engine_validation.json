@@ -1,0 +1,64 @@
+{
+  "setup": {
+    "tables": 512,
+    "h2h_games_per_table": 40,
+    "field_decks": 64,
+    "games_per_field_deck": 4,
+    "pilot": "rules-based baseline on both sides (bolt_core::baseline)",
+    "draft": "test packs, seed 12345, seat 0 greedy; decks by bolt.deckbuild, scored by judge B"
+  },
+  "judge_b": {
+    "bot": 0.6387384255067445,
+    "human_model": 0.6002398728160188,
+    "gap": 0.038498552690725774,
+    "gap_se": 0.0022876320709141434
+  },
+  "head_to_head": {
+    "bot_win_rate": 0.5136474609375,
+    "se": 0.008040966551623775,
+    "tables_bot_ahead": 0.482421875,
+    "corr_with_judge_gap": {
+      "pearson": 0.0422302254975013,
+      "spearman": 0.036513497642508094
+    }
+  },
+  "gauntlet": {
+    "bot": 0.5110044933500744,
+    "human_model": 0.4950579083155072,
+    "gap": 0.015946585034567213,
+    "gap_se": 0.006442003555941996,
+    "corr_with_judge_b": {
+      "pearson": 0.14235922661938757,
+      "spearman": 0.134739590783921
+    },
+    "by_judge_quintile": [
+      {
+        "judge_b": 0.5522632972496312,
+        "played": 0.4851821101916376,
+        "decks": 205
+      },
+      {
+        "judge_b": 0.5905534023191871,
+        "played": 0.48303389953542397,
+        "decks": 205
+      },
+      {
+        "judge_b": 0.6161559130631241,
+        "played": 0.48988377903244623,
+        "decks": 204
+      },
+      {
+        "judge_b": 0.6443169256535972,
+        "played": 0.5243743648373983,
+        "decks": 205
+      },
+      {
+        "judge_b": 0.6941399478330845,
+        "played": 0.532617716802168,
+        "decks": 205
+      }
+    ]
+  },
+  "timeouts": 11,
+  "seconds": 326
+}

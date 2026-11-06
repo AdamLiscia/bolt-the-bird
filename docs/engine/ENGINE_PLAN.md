@@ -79,3 +79,9 @@ Each milestone ends with tests passing, CI green, a commit, and a `LOG.md` entry
 6. **Stop and write it up instead of retrying** if: a test failure can't be explained after two
    attempts, anything hangs, or the next step needs a decision only Adam can make.
 7. Heavy compute (RL, long fuzzing) runs on the **CPU**, one job at a time. Never on the Apple GPU.
+8. **Every test, fuzz or long run goes through `scripts/guard.sh`** with a time limit and a 2 GB
+   memory cap, e.g. `scripts/guard.sh 300 2000 -- cargo test`. Nothing runs unattended in the
+   background. On 2026-11-05 an engine loop that never ended grew two fuzz runs to ~42 GB each
+   and restarted the laptop. The engine also stops any single action past `WORK_BUDGET` (a
+   million zone changes) with a panic naming the seed. After a hang, rerun only that seed until
+   it's fixed.

@@ -120,7 +120,8 @@
 "W"
 ],
 "rarity": "mythic",
-"layout": "normal"
+"layout": "normal",
+"loyalty": "4"
 },
 {
 "name": "Akroma's Memorial",
@@ -877,7 +878,8 @@
 "R"
 ],
 "rarity": "mythic",
-"layout": "normal"
+"layout": "normal",
+"loyalty": "6"
 },
 {
 "name": "Claws Out",
@@ -2491,7 +2493,8 @@
 "U"
 ],
 "rarity": "mythic",
-"layout": "normal"
+"layout": "normal",
+"loyalty": "3"
 },
 {
 "name": "Kellan, Planar Trailblazer",
@@ -2641,7 +2644,8 @@
 "B"
 ],
 "rarity": "mythic",
-"layout": "normal"
+"layout": "normal",
+"loyalty": "6"
 },
 {
 "name": "Llanowar Elves",
@@ -4412,7 +4416,8 @@
 "G"
 ],
 "rarity": "mythic",
-"layout": "normal"
+"layout": "normal",
+"loyalty": "5"
 },
 {
 "name": "Wardens of the Cycle",

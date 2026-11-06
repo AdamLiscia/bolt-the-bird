@@ -1,0 +1,28 @@
+[package]
+name = "bolt-py"
+description = "Python bindings for the Bolt the Bird Magic engine"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[lib]
+name = "bolt_engine"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+bolt-core = { path = "../bolt-core" }
+bolt-cards = { path = "../bolt-cards" }
+pyo3 = { version = "0.30", features = ["abi3-py311"] }
+
+[features]
+# Set by maturin when building the wheel; plain `cargo test` links libpython instead.
+extension-module = ["pyo3/extension-module"]
+
+# The workspace forbids unsafe code; pyo3's macros expand to some, so this crate only warns.
+[lints.rust]
+unsafe_code = "warn"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
