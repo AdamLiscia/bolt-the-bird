@@ -164,6 +164,8 @@ fn definition(o: &Oracle) -> (CardDef, bool) {
         doubles_tokens_and_counters: false,
         doubles_damage_to_opponents: false,
         free_from_hand: false,
+        protection_from_everything: false,
+        shuffle_instead_of_graveyard: false,
         enters_counters: None,
         ward: None,
         must_attack: false,

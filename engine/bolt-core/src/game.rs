@@ -23,6 +23,10 @@ pub const STARTING_LIFE: i32 = 20;
 pub const HAND_SIZE: usize = 7;
 /// Maximum hand size, enforced in the cleanup step (CR 402.2, 514.1).
 pub const MAX_HAND: usize = 7;
+/// The most work (zone changes and state-based-action passes) one action may do. Real actions
+/// stay far below it, even with a thousand permanents; reaching it means an engine loop that never
+/// ends, so the action panics rather than eat the machine's memory.
+pub const WORK_BUDGET: u64 = 1_000_000;
 
 /// A game object: one physical card, wherever it is.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -77,6 +81,8 @@ pub struct Object {
     pub incubation: i32,
     /// Cast from its owner's hand (for "cast spells from your hand" effects).
     pub from_hand: bool,
+    /// Exiled instead if it would die during this turn, while it is this object: (zcc, turn).
+    pub exile_if_dies: Option<(u32, u32)>,
     /// Creature types it has gained, a type that replaced its printed ones, and keywords gained for
     /// as long as it's on the battlefield.
     pub extra_subtypes: Vec<&'static str>,
@@ -578,6 +584,12 @@ pub struct Game {
     pub end_turn: bool,
     /// The last token created, for "other" in the same effect.
     pub last_created: Vec<ObjId>,
+    /// Permanents controlled until end of turn: (object, zcc, who controlled it before).
+    pub control_until_eot: Vec<(ObjId, u32, PlayerId)>,
+    /// Work done by the current action (zone changes and state-based-action passes). An engine
+    /// bug that loops forever would otherwise grow the event list until the machine runs out of
+    /// memory; past [`WORK_BUDGET`] the action panics instead.
+    pub work: u64,
     /// How many permanents with a "loses all abilities" static are on the battlefield. Zero almost
     /// always, which lets ability-loss checks skip a battlefield scan.
     pub ability_loss_sources: u32,
@@ -667,6 +679,8 @@ impl Game {
             delayed_returns: Vec::new(),
             end_turn: false,
             last_created: Vec::new(),
+            control_until_eot: Vec::new(),
+            work: 0,
             ability_loss_sources: 0,
             static_sources: Vec::new(),
             combat_damage_prevented: Vec::new(),
@@ -725,6 +739,7 @@ impl Game {
             counter_trigger_turn: 0,
             incubation: 0,
             from_hand: false,
+            exile_if_dies: None,
             extra_subtypes: Vec::new(),
             subtype_override: None,
             granted: Keywords::NONE,
@@ -906,6 +921,12 @@ impl Game {
 
     /// Whether `id` has protection from any of `source`'s colors.
     fn protected_from(&self, id: ObjId, source: ObjId) -> bool {
+        if self.def_of(id).protection_from_everything
+            && self.obj(id).zone == Zone::Battlefield
+            && !self.lost_abilities(id)
+        {
+            return true;
+        }
         let p = self.protection(id);
         self.def_of(source).colors.iter().zip(p).any(|(c, pr)| *c && pr)
     }
@@ -1065,8 +1086,34 @@ impl Game {
     }
 
     /// Moves a card between zones. Leaving the battlefield clears its per-permanent state (CR 400.7).
+    /// Counts one unit of work toward [`WORK_BUDGET`].
+    fn work(&mut self) {
+        self.work += 1;
+        assert!(
+            self.work <= WORK_BUDGET,
+            "runaway action: over {WORK_BUDGET} zone changes or state-based-action passes \
+             (an engine loop that never ends)"
+        );
+    }
+
     fn move_to(&mut self, id: ObjId, to: Zone) {
+        self.work();
         let (owner, from) = (self.obj(id).owner, self.obj(id).zone);
+        // Replacement effects on going to a graveyard (CR 614.6).
+        let mut to = to;
+        let mut shuffle = false;
+        if to == Zone::Graveyard {
+            let o = self.obj(id);
+            if self.def_of(id).shuffle_instead_of_graveyard {
+                to = Zone::Library;
+                shuffle = true;
+            } else if from == Zone::Battlefield
+                && self.def_of(id).types.creature
+                && o.exile_if_dies == Some((o.zcc, self.turn))
+            {
+                to = Zone::Exile;
+            }
+        }
         if !self.def_of(id).statics.is_empty() {
             if from == Zone::Battlefield {
                 self.static_sources.retain(|&x| x != id);
@@ -1140,6 +1187,11 @@ impl Game {
             if let Some(c) = &mut self.combat {
                 c.attackers.retain(|&a| a != id);
             }
+        }
+        if shuffle {
+            let mut lib = std::mem::take(&mut self.players[owner].library);
+            self.rng.shuffle(&mut lib);
+            self.players[owner].library = lib;
         }
         self.events.push(Event::Moved { card: id, from, to });
         self.zone_triggers(id, from, to, last_controller);
@@ -1638,6 +1690,14 @@ impl Game {
         if f.other && x == item.source {
             return false;
         }
+        if f.attached_to_first_target {
+            let Some(&Chosen::Object(c, zcc)) = item.targets.first() else {
+                return false;
+            };
+            if self.obj(x).attached_to != Some((c, zcc)) {
+                return false;
+            }
+        }
         if f.mana_value_at_most_source_power {
             let s = self.obj(item.source);
             let power = if s.zone == Zone::Battlefield {
@@ -1697,9 +1757,16 @@ impl Game {
                 && self.permanents(p).any(|x| self.def_of(x).stash_player);
             stashed || o.playable.is_some_and(|(q, until)| q == p && turn <= until)
         });
+        // Cards an effect lets you cast from your graveyard this turn (Zul Ashur).
+        let from_graveyard = self.players[p].graveyard.iter().copied().filter(move |&c| {
+            self.obj(c)
+                .playable
+                .is_some_and(|(q, until)| q == p && turn <= until)
+        });
         let candidates: Vec<(ObjId, bool)> = hand
             .chain(flashback.map(|&c| (c, true)))
             .chain(from_exile.map(|c| (c, false)))
+            .chain(from_graveyard.map(|c| (c, false)))
             .collect();
         for (c, from_graveyard) in candidates {
             let def = self.def_of(c);
@@ -2350,6 +2417,7 @@ impl Game {
         if !self.is_legal(action) {
             return Err(RulesError::Illegal(action));
         }
+        self.work = 0;
         match (self.pending, action) {
             (Pending::Mulligan(p), Action::Keep) => {
                 let n = self.players[p].mulligans;
@@ -3984,13 +4052,18 @@ impl Game {
                 }
             }
             Effect::OpponentsMillUntilLand => {
+                // Reveal until a land, then put every revealed card into the graveyard (so a card
+                // that goes elsewhere instead, like Progenitus, is not revealed again).
                 let opp = opponent(item.controller);
-                while let Some(&c) = self.players[opp].library.last() {
-                    let land = self.def_of(c).types.land;
+                let lib = &self.players[opp].library;
+                let n = lib
+                    .iter()
+                    .rev()
+                    .position(|&c| self.def_of(c).types.land)
+                    .map_or(lib.len(), |i| i + 1);
+                let revealed: Vec<ObjId> = lib.iter().rev().take(n).copied().collect();
+                for c in revealed {
                     self.move_to(c, Zone::Graveyard);
-                    if land {
-                        break;
-                    }
                 }
             }
             Effect::ReturnWith {
@@ -4071,6 +4144,35 @@ impl Game {
                 }
             }
             Effect::EndTheTurn => self.end_turn = true,
+            Effect::GainControlUntilEot(n) => {
+                if let Some(id) = Game::slot_object(item, legal, n) {
+                    let (before, zcc) = (self.obj(id).controller, self.obj(id).zcc);
+                    if before != item.controller {
+                        self.control_until_eot.push((id, zcc, before));
+                        let turn = self.turn;
+                        let o = self.obj_mut(id);
+                        o.controller = item.controller;
+                        o.since_turn = turn; // CR 302.6
+                    }
+                }
+            }
+            Effect::UntapTarget(n) => {
+                if let Some(id) = Game::slot_object(item, legal, n) {
+                    self.obj_mut(id).tapped = false;
+                }
+            }
+            Effect::ExileIfDiesThisTurn(n) => {
+                if let Some(id) = Game::slot_object(item, legal, n) {
+                    let (zcc, turn) = (self.obj(id).zcc, self.turn);
+                    self.obj_mut(id).exile_if_dies = Some((zcc, turn));
+                }
+            }
+            Effect::PlayableThisTurn(n) => {
+                if let Some(id) = Game::slot_object(item, legal, n) {
+                    let turn = self.turn;
+                    self.obj_mut(id).playable = Some((item.controller, turn));
+                }
+            }
             Effect::AddMana { color, n } => {
                 let m = ManaSource::of(&[color]);
                 self.players[item.controller]
@@ -4133,13 +4235,18 @@ impl Game {
             Effect::TutelageMill(n) => {
                 if let Some(Chosen::Player(q)) = item.targets.get(n as usize).copied() {
                     loop {
-                        let mut milled = Vec::new();
-                        for _ in 0..2 {
-                            if let Some(&c) = self.players[q].library.last() {
-                                self.move_to(c, Zone::Graveyard);
-                                milled.push(c);
-                            }
+                        // The two are milled together; a card that goes somewhere else instead
+                        // (Progenitus) wasn't milled (CR 701.13), so every repeat shrinks the
+                        // library by two and the loop ends.
+                        let lib = &self.players[q].library;
+                        let top: Vec<ObjId> = lib.iter().rev().take(2).copied().collect();
+                        for &c in &top {
+                            self.move_to(c, Zone::Graveyard);
                         }
+                        let milled: Vec<ObjId> = top
+                            .into_iter()
+                            .filter(|&c| self.obj(c).zone == Zone::Graveyard)
+                            .collect();
                         let nonland: Vec<[bool; 5]> = milled
                             .iter()
                             .filter(|&&c| !self.def_of(c).types.land)
@@ -4858,6 +4965,14 @@ impl Game {
     /// CR 514.2: damage wears off. No player gets priority in cleanup (CR 514.3).
     fn finish_cleanup(&mut self) {
         self.until_eot.clear(); // CR 514.2
+        for (id, zcc, before) in std::mem::take(&mut self.control_until_eot) {
+            if self.obj(id).zcc == zcc && self.obj(id).zone == Zone::Battlefield {
+                let turn = self.turn;
+                let o = self.obj_mut(id);
+                o.controller = before;
+                o.since_turn = turn;
+            }
+        }
         self.combat_damage_prevented.clear();
         for o in &mut self.objects {
             o.flashback_eot = false;
@@ -5092,6 +5207,7 @@ impl Game {
     /// CR 704: repeat until none apply.
     fn state_based_actions(&mut self) {
         loop {
+            self.work();
             let mut dies = Vec::new();
             for &id in &self.battlefield {
                 if !self.defs[self.objects[id.0 as usize].def].types.creature {

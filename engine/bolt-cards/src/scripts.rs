@@ -2644,6 +2644,68 @@ pub fn script(name: &str) -> Option<Script> {
             &["You may cast spells from your hand without paying their mana costs."],
             |d, _| d.free_from_hand = true,
         ),
+                "Progenitus" => s(
+            &[
+                "Protection from everything",
+                "If Progenitus would be put into a graveyard from anywhere, reveal Progenitus and shuffle it into its owner's library instead.",
+            ],
+            |d, _| {
+                d.protection_from_everything = true;
+                d.shuffle_instead_of_graveyard = true;
+            },
+        ),
+        "Zul Ashur, Lich Lord" => s(
+            &[
+                "Ward—Pay 2 life.",
+                "{T}: You may cast target Zombie creature card from your graveyard this turn.",
+            ],
+            |d, _| {
+                d.ward_life = Some(2);
+                let zombie = Filter { subtype: Some("Zombie"), ..graveyard_cards(true, Controller::You) };
+                d.activated.push(Activated {
+                    tap: true,
+                    ability: Ability::new(vec![zombie], vec![Effect::PlayableThisTurn(0)]),
+                    ..Activated::default()
+                });
+            },
+        ),
+        "Involuntary Employment" => s(
+            &["Gain control of target creature until end of turn. Untap that creature. It gains haste until end of turn. Create a Treasure token."],
+            |d, t| {
+                spell(
+                    d,
+                    vec![CREATURE],
+                    vec![
+                        Effect::GainControlUntilEot(0),
+                        Effect::UntapTarget(0),
+                        Effect::Grant { slot: 0, keywords: Keywords::HASTE },
+                        Effect::CreateToken { who: Who::You, def: t.treasure, n: 1 },
+                    ],
+                )
+            },
+        ),
+        "Fiery Annihilation" => s(
+            &["Fiery Annihilation deals 5 damage to target creature. Exile up to one target Equipment attached to that creature. If that creature would die this turn, exile it instead."],
+            |d, _| {
+                let equipment = Filter {
+                    creatures: false,
+                    artifacts: true,
+                    subtype: Some("Equipment"),
+                    attached_to_first_target: true,
+                    ..Filter::ANY
+                };
+                let mut a = Ability::new(
+                    vec![CREATURE, Filter { players: false, planeswalkers: false, ..equipment }],
+                    vec![
+                        Effect::Damage { amount: 5, kicked: None, to: Recipient::Target(0) },
+                        Effect::Exile(1),
+                        Effect::ExileIfDiesThisTurn(0),
+                    ],
+                );
+                a.min_targets = Some(1);
+                d.spell = Some(a);
+            },
+        ),
         "Vivien Reid" => s(
             &[
                 "+1: Look at the top four cards of your library. You may reveal a creature or land card from among them and put it into your hand. Put the rest on the bottom of your library in a random order.",
@@ -2922,4 +2984,8 @@ pub const SCRIPTED: &[&str] = &[
     "Doubling Season",
     "Twinflame Tyrant",
     "Omniscience",
+    "Progenitus",
+    "Zul Ashur, Lich Lord",
+    "Involuntary Employment",
+    "Fiery Annihilation",
 ];

@@ -64,7 +64,8 @@ card-audit:  ## Tier every card by rules complexity, and the build order
 	$(PY) scripts/card_audit.py
 
 engine-test:  ## Format check, lint and test the Rust engine
-	cd engine && cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test
+	cd engine && cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test --no-run
+	cd engine && ../scripts/guard.sh 600 2000 -- cargo test
 
 figures:  ## Regenerate every chart in docs/figures from results/
 	$(PY) scripts/make_figures.py

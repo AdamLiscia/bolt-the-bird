@@ -58,6 +58,9 @@ pub struct Filter {
     pub creature_min_power: Option<i32>,
     /// Creatures only if attacking or blocking.
     pub in_combat: bool,
+    /// Only a permanent attached to the object in the first target slot ("Equipment attached to
+    /// that creature").
+    pub attached_to_first_target: bool,
 }
 
 impl Filter {
@@ -86,6 +89,7 @@ impl Filter {
         creature_needs_flying: false,
         creature_min_power: None,
         in_combat: false,
+        attached_to_first_target: false,
     };
 
     pub const CREATURE: Filter = Filter {
@@ -374,6 +378,14 @@ pub enum Effect {
         /// Playable only this turn, instead of until the end of your next turn.
         this_turn: bool,
     },
+    /// Gain control of the permanent in `slot` until end of turn (CR 613.1b).
+    GainControlUntilEot(u8),
+    /// Untap the permanent in `slot`.
+    UntapTarget(u8),
+    /// "If that creature would die this turn, exile it instead" for the creature in `slot`.
+    ExileIfDiesThisTurn(u8),
+    /// You may cast the card in `slot` (in your graveyard) this turn.
+    PlayableThisTurn(u8),
     /// Add `n` mana of one color to your mana pool (CR 106.4).
     AddMana {
         color: crate::Color,

@@ -231,3 +231,19 @@ One line per working step, newest last. The next session continues from the last
   cost nothing but additional costs; X is then 0, so choosing a bigger X pays normally (CR 107.3b).
   6 tests: **271 supported, 328 tests.** 10,000 release fuzz games pass. **Next: Progenitus, Zul
   Ashur, Involuntary Employment, Fiery Annihilation, then the rest of tier 4.**
+- 2026-11-06 · **Incident and safeguards.** On 2026-11-05 seed 206 looped forever: Progenitus
+  (protection from everything, shuffles itself into the library instead of a graveyard) made two
+  "mill until" effects repeat endlessly. The event list grew without limit; two unattended fuzz runs
+  reached ~42 GB each and the laptop restarted. Fixes: Consuming Aberration now reveals until a
+  land and *then* moves the cards, as printed; Sphinx's Tutelage mills its two cards together and
+  doesn't count one that went elsewhere (CR 701.13). Each has a regression test. Safeguards: the
+  engine panics past `WORK_BUDGET` (1,000,000 zone changes or SBA passes in one action), the fuzz
+  harness reports that panic with its seed (checked by putting the old loop back: seed 206 failed
+  in seconds), and `scripts/guard.sh` caps every run's time and memory (session protocol rule 8).
+- 2026-11-06 · Tier 4 batch 7: Progenitus (protection from everything: no targeting, damage or
+  blocks; shuffled into the library instead of a graveyard), Zul Ashur (cast a Zombie from your
+  graveyard this turn; ward 2 life), Involuntary Employment (control until end of turn, untap,
+  haste, Treasure), Fiery Annihilation (Equipment target must be attached to the creature; exile
+  instead of dying for the rest of the turn). 11 tests: **275 supported, 339 tests.** 10,000
+  release fuzz games pass under the guard. **Next: Quilled Greatwurm, Giada, Banner of Kinship,
+  Bloom Tender, then Thousand-Year Storm, Etali and the deferred type-changing cards.**

@@ -199,6 +199,11 @@ pub struct CardDef {
     pub doubles_damage_to_opponents: bool,
     /// Omniscience: you may cast spells from your hand without paying their mana costs.
     pub free_from_hand: bool,
+    /// Protection from everything (CR 702.16j).
+    pub protection_from_everything: bool,
+    /// "If this would be put into a graveyard from anywhere, shuffle it into its owner's library
+    /// instead."
+    pub shuffle_instead_of_graveyard: bool,
     /// "Enters with N +1/+1 counters if ..." (a replacement effect, CR 614.1c).
     pub enters_counters: Option<(i32, Condition)>,
     /// Ward {cost} (CR 702.21).
@@ -290,6 +295,8 @@ impl CardDef {
             doubles_tokens_and_counters: false,
             doubles_damage_to_opponents: false,
             free_from_hand: false,
+            protection_from_everything: false,
+            shuffle_instead_of_graveyard: false,
             enters_counters: None,
             ward: None,
             must_attack: false,
@@ -355,6 +362,8 @@ impl CardDef {
             doubles_tokens_and_counters: false,
             doubles_damage_to_opponents: false,
             free_from_hand: false,
+            protection_from_everything: false,
+            shuffle_instead_of_graveyard: false,
             enters_counters: None,
             ward: None,
             must_attack: false,
@@ -420,6 +429,8 @@ impl CardDef {
             doubles_tokens_and_counters: false,
             doubles_damage_to_opponents: false,
             free_from_hand: false,
+            protection_from_everything: false,
+            shuffle_instead_of_graveyard: false,
             enters_counters: None,
             ward: None,
             must_attack: false,

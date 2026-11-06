@@ -57,9 +57,17 @@ pub fn random_game(
             return Err(format!("seed {seed}: no legal actions but the game is not over"));
         }
         let action = legal[rng.below(legal.len())];
-        let events = g
-            .apply(action)
-            .map_err(|e| format!("seed {seed}: legal action rejected: {e}"))?;
+        // A runaway action panics (see `WORK_BUDGET`); report it with its seed.
+        let applied =
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| g.apply(action))).map_err(|e| {
+                let msg = e
+                    .downcast_ref::<String>()
+                    .cloned()
+                    .or_else(|| e.downcast_ref::<&str>().map(|s| s.to_string()))
+                    .unwrap_or_default();
+                format!("seed {seed}: {action:?} panicked: {msg}")
+            })?;
+        let events = applied.map_err(|e| format!("seed {seed}: legal action rejected: {e}"))?;
         if check {
             for e in &events {
                 match *e {
