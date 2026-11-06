@@ -163,3 +163,13 @@ cap only catches games like that one. The engine itself has no cap; this is the 
 stopped is hard in general. The validation found one: Bloodthirsty Conqueror and Marauding
 Blight-Priest trigger each other forever when the opponent can't lose (Herald of Eternal Dawn).
 Real turns resolve a few dozen entries, so the threshold only catches loops like that one.
+
+## Rollout pilot: what it searches and what it guesses (2026-11-06)
+
+- **Searches only priority, attack and block decisions.** Mulligans, targets, discards and choices in
+  the middle of a resolving spell go to the baseline. Determinizing mid-resolution could redeal
+  cards a decision is looking at, and those decisions are a small share of the game.
+- **Revealed cards are guessed again.** The opponent's hand is redealt from their hand and library
+  together, even if a card was revealed or bounced there earlier. Tracking what each player has seen
+  would make it stronger; it isn't needed to beat the baseline. Cards the stack or an exile link
+  still names keep their identity.

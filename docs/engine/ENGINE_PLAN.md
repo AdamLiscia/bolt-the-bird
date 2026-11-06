@@ -57,6 +57,7 @@ Each milestone ends with tests passing, CI green, a commit, and a `LOG.md` entry
 | M4 | Complex cards | Tier 4, one at a time, each with tests |
 | M5 | Python bindings and a baseline player | `bolt_engine.Game` in Python; a rules-based player (attack when safe, block to survive, curve out); games/second benchmarked |
 | M6 | Validation | Play the RL bot's decks against the human model's decks, thousands of games per pairing. Compare played win rates with judge B's predictions |
+| M7 | A stronger pilot | A search pilot (rollouts with the baseline, no peeking at hidden cards) beats the baseline clearly; M6 rerun with it on both sides |
 
 ## Testing rules
 

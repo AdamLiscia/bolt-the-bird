@@ -333,3 +333,11 @@ One line per working step, newest last. The next session continues from the last
   the harness (11 games), and endless mandatory loops are draws in the engine (CR 104.4b). **The
   plan's milestones M0–M6 are done.** Open for Adam: whether to merge `engine` into main, add the
   played-game result to the README and model card, and build a stronger pilot.
+- 2026-11-06 — **M7 started: rollout pilot.** `engine` merged into main (48c97cb). Added
+  `Pending::player`, `Game::determinize(viewer, seed)` (redeals the opponent's hand and library and
+  reshuffles your own library, keeping any card the stack or a link still refers to) and
+  `bolt_core::rollout`: flat Monte Carlo over up to N candidate moves at priority, attack and block
+  decisions, baseline playouts in guessed worlds, common random numbers. 6 tests (one a regression
+  for a trigger whose hidden source got redealt, found by the bench). `rollout_bench`: 8 rollouts ×
+  6 candidates beats the baseline 72.5% ± 3.1 (200 games, 3.4 s/game/thread); 24 × 10 is no
+  better (73.0%), 4 × 6 is 74.5% ± 2.9 at 2.75 s. Next: Python binding and the M6 rerun.

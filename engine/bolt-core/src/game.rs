@@ -219,6 +219,26 @@ pub enum Pending {
     GameOver,
 }
 
+impl Pending {
+    /// The player who has to act, or `None` once the game is over.
+    pub fn player(&self) -> Option<PlayerId> {
+        match *self {
+            Pending::Mulligan(p)
+            | Pending::Bottom(p, _)
+            | Pending::Priority(p)
+            | Pending::DeclareAttackers(p)
+            | Pending::DeclareBlockers(p)
+            | Pending::Discard(p)
+            | Pending::ChooseTarget(p)
+            | Pending::Decide(p)
+            | Pending::Divide(p)
+            | Pending::RemoveCounters(p)
+            | Pending::FreeCast(p) => Some(p),
+            Pending::GameOver => None,
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Action {
     Keep,
@@ -1216,6 +1236,46 @@ impl Game {
 
     pub fn is_over(&self) -> bool {
         self.result.is_some()
+    }
+
+    /// Replaces what `viewer` can't see with a guess, for search: the opponent's hand and library
+    /// are redealt from the same cards, `viewer`'s own library is reshuffled, and the game's random
+    /// numbers are reseeded. Everything `viewer` can see stays as it is (hand sizes, library sizes,
+    /// every public zone). Cards that were revealed earlier are redealt too.
+    pub fn determinize(&mut self, viewer: PlayerId, seed: u64) {
+        let mut rng = Rng::new(seed);
+        let opp = opponent(viewer);
+        // A hidden card something still refers to (a trigger it put on the stack, a link) keeps its
+        // identity: the rules already know which card it is.
+        let items = self
+            .items
+            .iter()
+            .chain(&self.triggered)
+            .chain(&self.cast_snapshots)
+            .chain(self.choosing.as_ref().map(|c| &c.item))
+            .chain(self.mode_pending.as_ref().map(|m| &m.0));
+        let mut pinned: Vec<ObjId> = items.flat_map(|i| [Some(i.source), i.extra]).flatten().collect();
+        pinned.extend(&self.free_casts);
+        pinned.extend(self.links.iter().flat_map(|&(a, _, b)| [a, b]));
+        pinned.extend(self.emblems.iter().map(|e| e.2));
+        let mut redeal = |g: &mut Game, mut ids: Vec<ObjId>| {
+            ids.retain(|c| !pinned.contains(c));
+            let mut defs: Vec<usize> = ids.iter().map(|&c| g.obj(c).def).collect();
+            rng.shuffle(&mut defs);
+            for (c, d) in ids.into_iter().zip(defs) {
+                g.obj_mut(c).def = d;
+            }
+        };
+        let hidden: Vec<ObjId> = self.players[opp]
+            .hand
+            .iter()
+            .chain(&self.players[opp].library)
+            .copied()
+            .collect();
+        redeal(self, hidden);
+        let mine = self.players[viewer].library.clone();
+        redeal(self, mine);
+        self.rng = Rng::new(rng.next_u64());
     }
 
     /// Permanents on the battlefield controlled by `p`.

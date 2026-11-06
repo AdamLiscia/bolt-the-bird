@@ -10,6 +10,7 @@ pub mod fuzz;
 pub mod game;
 pub mod mana;
 pub mod rng;
+pub mod rollout;
 
 pub use card::{Activated, CardDef, ExtraCost, Keywords, Reduction, Stage, Types};
 pub use effect::{
