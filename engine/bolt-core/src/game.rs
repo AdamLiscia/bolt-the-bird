@@ -361,6 +361,9 @@ impl Combat {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum StackKind {
     Spell,
+    /// A copy of a spell (CR 707.10): its source is the copied card, and it ceases to exist when
+    /// it leaves the stack instead of moving the card.
+    SpellCopy,
     /// Triggered ability number `n` of the source's card.
     Trigger(usize),
     /// Activated ability number `n` of the source's card.
@@ -601,6 +604,10 @@ pub struct Game {
     /// bug that loops forever would otherwise grow the event list until the machine runs out of
     /// memory; past [`WORK_BUDGET`] the action panics instead.
     pub work: u64,
+    /// Instants and sorceries each player has cast this turn.
+    pub instants_sorceries_cast: [u32; 2],
+    /// Each instant or sorcery cast this turn as it was put on the stack, for copying it.
+    pub cast_snapshots: Vec<StackItem>,
     /// Set just before casting from the graveyard by removing counters (Quilled Greatwurm).
     removal_to_cast: u8,
     /// How many permanents with a "loses all abilities" static are on the battlefield. Zero almost
@@ -694,6 +701,8 @@ impl Game {
             last_created: Vec::new(),
             control_until_eot: Vec::new(),
             work: 0,
+            instants_sorceries_cast: [0; 2],
+            cast_snapshots: Vec::new(),
             removal_to_cast: 0,
             ability_loss_sources: 0,
             static_sources: Vec::new(),
@@ -1615,7 +1624,7 @@ impl Game {
     pub fn ability_of(&self, item: &StackItem) -> &Ability {
         let def = self.def_of(item.source);
         match item.kind {
-            StackKind::Spell => match item.mode {
+            StackKind::Spell | StackKind::SpellCopy => match item.mode {
                 Some(m) => &def.modes[m as usize],
                 None if item.kicked && def.kicked_spell.is_some() => {
                     def.kicked_spell.as_ref().expect("kicked")
@@ -1734,7 +1743,8 @@ impl Game {
         if self.protected_from(x, item.source) {
             return false; // CR 702.16c
         }
-        let from_instant = item.kind == StackKind::Spell && self.def_of(item.source).types.instant;
+        let from_instant = matches!(item.kind, StackKind::Spell | StackKind::SpellCopy)
+            && self.def_of(item.source).types.instant;
         if from_instant && self.def_of(x).hexproof_from_instants && self.obj(x).controller != item.controller
         {
             return false;
@@ -2865,10 +2875,21 @@ impl Game {
         self.fire(p, When::YouCast, None);
         self.ward_check(&item);
         let instant_or_sorcery = self.def_of(card).types.instant || self.def_of(card).types.sorcery;
+        if instant_or_sorcery {
+            self.cast_snapshots.push(item.clone());
+        }
         self.items.push(item);
         self.events.push(Event::Cast { card });
         if instant_or_sorcery {
             self.fire(p, When::YouCastInstantOrSorcery, None);
+            let earlier = self.instants_sorceries_cast[p];
+            self.instants_sorceries_cast[p] += 1;
+            let before = self.triggered.len();
+            self.fire(p, When::YouCastInstantOrSorceryCounted, None);
+            for t in &mut self.triggered[before..] {
+                t.amount = earlier as i32;
+                t.extra = Some(card);
+            }
         }
         // "Whenever you cast a noncreature or [subtype] spell".
         let (creature, subs) = (
@@ -3118,8 +3139,9 @@ impl Game {
         if fizzled && !condition_failed {
             self.events.push(Event::Fizzled { source });
         }
-        let has_ability =
-            item.kind != StackKind::Spell || self.def_of(source).spell.is_some() || item.mode.is_some();
+        let has_ability = !matches!(item.kind, StackKind::Spell | StackKind::SpellCopy)
+            || self.def_of(source).spell.is_some()
+            || item.mode.is_some();
         let acts = has_ability && !fizzled && !condition_failed;
         let (remaining, optional) = if acts {
             let a = self.ability_of(&item);
@@ -4387,6 +4409,23 @@ impl Game {
                     self.obj_mut(id).playable = Some((item.controller, turn));
                 }
             }
+            Effect::CopySpellPerAmount => {
+                let snap = item
+                    .extra
+                    .and_then(|c| self.cast_snapshots.iter().rev().find(|s| s.source == c))
+                    .cloned();
+                if let Some(snap) = snap {
+                    for _ in 0..item.amount.max(0) {
+                        let copy = StackItem {
+                            kind: StackKind::SpellCopy,
+                            controller: item.controller,
+                            ..snap.clone()
+                        };
+                        self.ward_check(&copy);
+                        self.items.push(copy);
+                    }
+                }
+            }
             Effect::CountersAmount(n) => {
                 if let Some(id) = Game::slot_object(item, legal, n) {
                     self.add_counters(id, item.amount);
@@ -4994,6 +5033,8 @@ impl Game {
     }
 
     fn begin_next_turn(&mut self) {
+        self.instants_sorceries_cast = [0; 2];
+        self.cast_snapshots.clear();
         self.attacked_this_turn = [false; 2];
         self.life_gains_this_turn = [0; 2];
         self.life_gained_this_turn = [0; 2];

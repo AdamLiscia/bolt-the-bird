@@ -2754,6 +2754,11 @@ pub fn script(name: &str) -> Option<Script> {
                 d.graveyard_cast_remove_counters = 6;
             },
         ),
+                "Thousand-Year Storm" => s(
+            &["Whenever you cast an instant or sorcery spell, copy it for each other instant and sorcery spell you've cast before it this turn. You may choose new targets for the copies."],
+            // The copies keep the original's targets (see docs/engine/QUESTIONS.md).
+            |d, _| on(d, When::YouCastInstantOrSorceryCounted, vec![], vec![Effect::CopySpellPerAmount]),
+        ),
         "Vivien Reid" => s(
             &[
                 "+1: Look at the top four cards of your library. You may reveal a creature or land card from among them and put it into your hand. Put the rest on the bottom of your library in a random order.",
@@ -3040,4 +3045,5 @@ pub const SCRIPTED: &[&str] = &[
     "Giada, Font of Hope",
     "Banner of Kinship",
     "Quilled Greatwurm",
+    "Thousand-Year Storm",
 ];

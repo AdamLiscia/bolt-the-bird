@@ -183,6 +183,8 @@ pub enum Effect {
         slot: u8,
         n: i32,
     },
+    /// Copy the triggering spell once per the trigger's amount, with the same targets (CR 707.10).
+    CopySpellPerAmount,
     /// "that many" +1/+1 counters on the object in `slot`: the trigger's amount.
     CountersAmount(u8),
     /// Create `n` tokens of definition `def` for `who` (CR 111).
@@ -780,6 +782,9 @@ pub enum When {
     OpponentDraws,
     /// "Whenever you cast an instant or sorcery spell".
     YouCastInstantOrSorcery,
+    /// Like `YouCastInstantOrSorcery`, with the spell in `extra` and, as the amount, how many
+    /// instants and sorceries you cast before it this turn (Thousand-Year Storm).
+    YouCastInstantOrSorceryCounted,
     /// "Whenever you cast a noncreature or [subtype] spell".
     YouCastNoncreatureOrSubtype(&'static str),
     /// "Whenever a creature an opponent controls enters".

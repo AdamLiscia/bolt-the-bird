@@ -130,3 +130,12 @@ removes a stun counter first, then a +1/+1 counter, then a revival counter.
 **Why:** losing a stun counter helps you and losing a revival counter hurts most, so this order is
 what a player would choose. Picking the counter kind as well would add a second choice per counter
 for almost no gain.
+
+## 2026-11-06: Spell copies keep the original's targets
+
+**Choice:** Thousand-Year Storm's copies always have the same targets as the original. The engine
+doesn't offer "you may choose new targets for the copies".
+**Why:** keeping the targets is always a legal choice. Offering new ones would mean choosing
+targets in the middle of a resolving ability, once per copy, which the casting pipeline doesn't
+support yet. Copies also can't be targeted by counterspells (spells are targeted by their card,
+which a copy doesn't have). Both are worth revisiting if Storm turns out to matter in games.

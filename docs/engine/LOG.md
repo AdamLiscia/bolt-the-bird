@@ -260,3 +260,11 @@ One line per working step, newest last. The next session continues from the last
   (Pending::RemoveCounters). 3 tests: **279 supported, 346 tests.** 10,000 release fuzz games pass
   under the guard (932 games/s; Greatwurm games build bigger boards). **Next: Thousand-Year Storm
   (copying spells), then Etali, then the deferred type-changing cards.**
+- 2026-11-06 · Tier 4 batch 10: Thousand-Year Storm and spell copies (CR 707.10). A copy is a
+  stack entry of kind `SpellCopy`, built from a snapshot of the spell taken as it was cast (so it
+  copies kicker, X, mode and targets even if the original has left the stack). It resolves like the
+  spell and then ceases to exist instead of moving the card. Instants and sorceries are counted per
+  player per turn, including ones cast before the Storm arrived. 5 tests: **280 supported, 351
+  tests.** 10,000 release fuzz games pass under the guard. **Next: Etali (cast spells from exile
+  for free), then the deferred cards: Kellan, Muldrotha, Imprisoned in the Moon, Soulstone
+  Sanctuary, Secluded Courtyard.**
