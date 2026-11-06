@@ -146,3 +146,20 @@ which a copy doesn't have). Both are worth revisiting if Storm turns out to matt
 **Choice:** a spell cast from the graveyard with Muldrotha is cast without kicker, and with X = 0.
 **Why:** both are legal ways to cast it, and each extra option is another action per graveyard
 card per type. Few FDN permanents have kicker or X. Add them if games show they matter.
+
+## 2026-11-06: Played games stop at 200 turns
+
+**Choice:** `bolt_engine.play_baseline` stops a game after turn 200 and reports "timeout"; the
+validation counts it as a draw and reports how many there were.
+**Why:** some boards can't end under the rules. With a Herald of Eternal Dawn on each side ("you
+can't lose the game") a validation game reached turn 1,773 with both players at 19 life. In real
+play someone concedes or the round's time runs out. Limited games end long before turn 200, so the
+cap only catches games like that one. The engine itself has no cap; this is the harness.
+
+## 2026-11-06: A turn that resolves 10,000 spells and abilities is a draw
+
+**Choice:** if one turn resolves more than 10,000 stack entries, the game ends in a draw.
+**Why:** CR 104.4b makes an endless loop of mandatory actions a draw, but proving a loop can't be
+stopped is hard in general. The validation found one: Bloodthirsty Conqueror and Marauding
+Blight-Priest trigger each other forever when the opponent can't lose (Herald of Eternal Dawn).
+Real turns resolve a few dozen entries, so the threshold only catches loops like that one.

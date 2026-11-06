@@ -210,3 +210,31 @@ fn sphinxs_tutelage_doesnt_count_a_progenitus_that_went_back() {
     }
     assert_eq!(g.obj(prog).zone, Zone::Library);
 }
+
+#[test]
+fn an_endless_mandatory_loop_is_a_draw() {
+    // CR 104.4b. Bloodthirsty Conqueror and Marauding Blight-Priest feed each other forever when
+    // the opponent can't lose (Herald of Eternal Dawn).
+    let mut g = table();
+    g.auto_pass = true;
+    begin(&mut g);
+    put(&mut g, 0, "Bloodthirsty Conqueror");
+    put(&mut g, 0, "Marauding Blight-Priest");
+    put(&mut g, 1, "Herald of Eternal Dawn");
+    let bolt = hand(&mut g, 0, "Burst Lightning");
+    act(&mut g, Action::Cast(bolt));
+    act(&mut g, Action::Target(Target::Player(1)));
+    let mut n = 0;
+    while g.result.is_none() {
+        let legal = g.legal_actions();
+        let a = if legal.contains(&Action::PassPriority) {
+            Action::PassPriority
+        } else {
+            legal[0]
+        };
+        act(&mut g, a);
+        n += 1;
+        assert!(n < 200_000, "the loop never ended");
+    }
+    assert_eq!(g.result, Some(bolt_core::Outcome::Draw));
+}

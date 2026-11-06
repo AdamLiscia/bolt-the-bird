@@ -28,6 +28,10 @@ pub const MAX_HAND: usize = 7;
 /// ends, so the action panics rather than eat the machine's memory.
 pub const WORK_BUDGET: u64 = 1_000_000;
 
+/// Spells and abilities one turn may resolve before the game is a draw (CR 104.4b: a loop of
+/// mandatory actions with no way to stop). Real turns resolve a few dozen.
+pub const RESOLUTIONS_PER_TURN: u32 = 10_000;
+
 /// What mana is being spent on, for mana that can only pay for some things.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum PayFor {
@@ -607,6 +611,8 @@ pub struct Game {
     /// Life-gain events and cards drawn by each player this turn.
     pub life_gains_this_turn: [u32; 2],
     pub draws_this_turn: [u32; 2],
+    /// Stack entries resolved this turn, for [`RESOLUTIONS_PER_TURN`].
+    pub resolutions_this_turn: u32,
     /// Morbid: whether a creature died this turn.
     pub creature_died_this_turn: bool,
     /// Whether each player lost life this turn.
@@ -722,6 +728,7 @@ impl Game {
             attacked_this_turn: [false; 2],
             life_gains_this_turn: [0; 2],
             draws_this_turn: [0; 2],
+            resolutions_this_turn: 0,
             creature_died_this_turn: false,
             life_lost_this_turn: [false; 2],
             in_combat_damage: false,
@@ -3348,6 +3355,13 @@ impl Game {
 
     /// CR 608.2: check targets, then carry out the effects in order. Pauses on decisions.
     fn resolve(&mut self, item: StackItem) {
+        self.resolutions_this_turn += 1;
+        if self.resolutions_this_turn > RESOLUTIONS_PER_TURN {
+            // CR 104.4b: an endless loop of mandatory actions is a draw.
+            self.result = Some(Outcome::Draw);
+            self.pending = Pending::GameOver;
+            return;
+        }
         let source = item.source;
         if let StackKind::WardLife { life, against } = item.kind {
             self.resolving = Some(Resolving {
@@ -5323,6 +5337,7 @@ impl Game {
         self.life_gains_this_turn = [0; 2];
         self.life_gained_this_turn = [0; 2];
         self.draws_this_turn = [0; 2];
+        self.resolutions_this_turn = 0;
         self.creature_died_this_turn = false;
         self.life_lost_this_turn = [false; 2];
         self.turn += 1;

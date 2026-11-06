@@ -14,6 +14,8 @@ so this tests the decks under simple play, not under expert play.
 
     python scripts/engine_validate.py            # full run, results/engine_validation.json
     python scripts/engine_validate.py --smoke    # a minute-long check
+
+The drafted decks are cached in data/engine_decks_<tables>.json (drafting takes a few minutes).
 """
 
 import argparse
@@ -59,9 +61,14 @@ def draft(tables: int, cards: CardInfo):
     return out
 
 
+TIMEOUTS = [0]  # games stopped at the turn limit, counted as draws
+
+
 def score(result: str, seat: int) -> float:
-    """1 for a win by `seat`, 0.5 for a draw, 0 for a loss."""
-    return 0.5 if result == "draw" else float(result == f"p{seat}")
+    """1 for a win by `seat`, 0.5 for a draw or a timeout, 0 for a loss."""
+    if result == "timeout":
+        TIMEOUTS[0] += 1
+    return 0.5 if result in ("draw", "timeout") else float(result == f"p{seat}")
 
 
 def match(a: list[int], b: list[int], games: int, seed: int) -> float:
@@ -98,7 +105,14 @@ def main():
 
     t0 = time.time()
     cards = CardInfo()
-    d = draft(a.tables, cards)
+    cache = ROOT / "data" / f"engine_decks_{a.tables}.json"
+    if cache.exists():
+        d = json.loads(cache.read_text())
+        for side in d.values():
+            side["judge_b"] = np.array(side["judge_b"])
+    else:
+        d = draft(a.tables, cards)
+        cache.write_text(json.dumps({k: {"decks": v["decks"], "judge_b": v["judge_b"].tolist()} for k, v in d.items()}))
     bot, hum = d["bot"], d["human_model"]
     print(f"drafted and built {2 * a.tables} decks in {time.time() - t0:.0f}s", flush=True)
 
@@ -167,6 +181,7 @@ def main():
                 for q in range(5)
             ],
         },
+        "timeouts": TIMEOUTS[0],
         "seconds": round(time.time() - t0),
     }
     with open(a.out, "w") as f:

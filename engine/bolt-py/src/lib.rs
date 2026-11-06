@@ -291,8 +291,12 @@ impl Game {
     }
 }
 
+/// A played game stops here as "timeout": some boards can never end (two Herald of Eternal Dawn,
+/// "you can't lose the game"), and real games end long before (see docs/engine/QUESTIONS.md).
+const MAX_TURNS: u32 = 200;
+
 /// Plays a whole game with the rules-based baseline on both sides, in Rust. Returns the result
-/// ("p0", "p1" or "draw") and the number of turns. Raises if a game runs past the action cap.
+/// ("p0", "p1", "draw", or "timeout" past 200 turns) and the number of turns.
 #[pyfunction]
 #[pyo3(signature = (deck_a, deck_b, seed, first = 0))]
 fn play_baseline(
@@ -305,6 +309,9 @@ fn play_baseline(
     for _ in 0..100_000 {
         if g.g.is_over() {
             return Ok((g.result().expect("over"), g.g.turn));
+        }
+        if g.g.turn > MAX_TURNS {
+            return Ok(("timeout", g.g.turn));
         }
         let a = bolt_core::baseline::choose(&g.g, &g.legal);
         g.g.apply(a).map_err(|e| PyValueError::new_err(e.to_string()))?;
