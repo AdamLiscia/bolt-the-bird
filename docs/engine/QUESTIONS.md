@@ -99,6 +99,7 @@ are deferred, and tier 4 starts first.
 becomes a creature), which means reading types through a layer system instead of the printed card
 in about 30 places. Courtyard needs mana that can only be spent on some spells. These are worth
 doing together, once, rather than piecemeal for two cards.
+**Resolved 2026-11-06:** all five are in, on `types_of`/`colors_of`, stages and `PayFor`.
 
 ## 2026-11-05: The fuzzer stops games at 1,000 permanents
 
