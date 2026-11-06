@@ -285,3 +285,13 @@ One line per working step, newest last. The next session continues from the last
   "enchant creature"; Witness Protection now makes the creature green and white. 4 tests: **283
   supported, 358 tests.** 10,000 release fuzz games pass under the guard (~900 games/s; ~5% from
   the type lookup, the rest from the new cards). **Next: Kellan, Secluded Courtyard, Muldrotha.**
+- 2026-11-06 · Type layer, batch 2: Kellan and Secluded Courtyard. Stages (`CardDef.stages`,
+  `Object.stage`): Kellan's abilities move him Scout → Detective → Rogue only from the right
+  stage; each stage sets his creature types and base P/T, keywords gained stay, and the gained
+  combat-damage trigger exists only from stage 1 (checked as it would trigger). Copies start at
+  stage 0, since "becomes" isn't copiable (CR 707.2). Mana now knows what it pays for (`PayFor`:
+  spell, ability or other): Secluded Courtyard chooses a creature type as it enters (land plays
+  can now ask), taps for {C} for anything and for any color only for creature spells of that type
+  or abilities of creature sources of that type. 4 tests: **285 supported, 362 tests.** 10,000
+  release fuzz games pass under the guard. **Next: Muldrotha, the last card, then M5 (PyO3
+  bindings).**

@@ -11,7 +11,7 @@ use bolt_core::effect::{
 use bolt_core::effect::{EmblemKind, Scale};
 use bolt_core::{
     Activated, CardDef, Color, ExtraCost, Keywords, LookRest, LookTo, ManaCost, ManaSource, Pick, Reduction,
-    Types,
+    Stage, Types,
 };
 
 /// Token definitions, appended after the 286 cards. Indices are [`Tokens`] fields.
@@ -2811,6 +2811,41 @@ pub fn script(name: &str) -> Option<Script> {
                 });
             },
         ),
+        "Kellan, Planar Trailblazer" => s(
+            &[
+                "{1}{R}: If Kellan is a Scout, it becomes a Human Faerie Detective and gains \"Whenever Kellan deals combat damage to a player, exile the top card of your library. You may play that card this turn.\"",
+                "{2}{R}: If Kellan is a Detective, it becomes a 3/2 Human Faerie Rogue and gains double strike.",
+            ],
+            |d, _| {
+                d.stages = vec![
+                    Stage { subtypes: &["Human", "Faerie", "Detective"], base_pt: None, keywords: Keywords::NONE },
+                    Stage { subtypes: &["Human", "Faerie", "Rogue"], base_pt: Some((3, 2)), keywords: Keywords::DOUBLE_STRIKE },
+                ];
+                for (cost, from, to) in [("{1}{R}", "Scout", 1), ("{2}{R}", "Detective", 2)] {
+                    d.activated.push(Activated {
+                        mana: ManaCost::parse(cost).expect("cost"),
+                        ability: Ability::new(vec![], vec![Effect::AdvanceStage { if_subtype: from, to }]),
+                        ..Activated::default()
+                    });
+                }
+                // The gained trigger, live from stage 1 on (it stays once Kellan is a Rogue).
+                let mut gained = Ability::new(vec![], vec![Effect::ExileTopChooseOneToPlay { n: 1, this_turn: true }]);
+                gained.condition = Some(Condition::StageAtLeast(1));
+                d.triggers.push(Trigger { when: When::DealsCombatDamageToPlayer, ability: gained });
+            },
+        ),
+        "Secluded Courtyard" => s(
+            &[
+                "As this land enters, choose a creature type.",
+                "{T}: Add {C}.",
+                "{T}: Add one mana of any color. Spend this mana only to cast a creature spell of the chosen type or activate an ability of a creature source of the chosen type.",
+            ],
+            |d, _| {
+                d.choose_creature_type = true;
+                d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                d.any_color_for_chosen_type = true;
+            },
+        ),
         "Vivien Reid" => s(
             &[
                 "+1: Look at the top four cards of your library. You may reveal a creature or land card from among them and put it into your hand. Put the rest on the bottom of your library in a random order.",
@@ -3101,4 +3136,6 @@ pub const SCRIPTED: &[&str] = &[
     "Etali, Primal Storm",
     "Imprisoned in the Moon",
     "Soulstone Sanctuary",
+    "Kellan, Planar Trailblazer",
+    "Secluded Courtyard",
 ];

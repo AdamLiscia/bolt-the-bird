@@ -186,6 +186,11 @@ pub enum Effect {
         slot: u8,
         n: i32,
     },
+    /// If the source has this subtype, it becomes stage `to` (Kellan).
+    AdvanceStage {
+        if_subtype: &'static str,
+        to: u8,
+    },
     /// The source becomes a creature with this base power and toughness, vigilance and every
     /// creature type, and stays one (Soulstone Sanctuary). It's still a land.
     BecomeCreatureSelf {
@@ -655,6 +660,9 @@ pub enum LookRest {
 /// (CR 603.4).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Condition {
+    /// The source has reached at least this stage (a gained triggered ability, Kellan). Checked
+    /// when the ability would trigger.
+    StageAtLeast(u8),
     /// Raid: you attacked this turn.
     Attacked,
     /// You control another creature with this subtype.

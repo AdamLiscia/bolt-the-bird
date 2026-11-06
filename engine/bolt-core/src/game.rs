@@ -28,6 +28,14 @@ pub const MAX_HAND: usize = 7;
 /// ends, so the action panics rather than eat the machine's memory.
 pub const WORK_BUDGET: u64 = 1_000_000;
 
+/// What mana is being spent on, for mana that can only pay for some things.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum PayFor {
+    Spell(ObjId),
+    Ability(ObjId),
+    Other,
+}
+
 /// Land subtypes in FDN (CR 205.3i); every other subtype is a creature type.
 const LAND_TYPES: [&str; 5] = ["Plains", "Island", "Swamp", "Mountain", "Forest"];
 
@@ -111,6 +119,8 @@ pub struct Object {
     pub chosen_type: Option<String>,
     /// Became a creature with this base power and toughness (Soulstone Sanctuary).
     pub animated: Option<(i32, i32)>,
+    /// The stage it has become (Kellan); 0 is as printed.
+    pub stage: u8,
     pub fellowship: i32,
     /// Who may play this card from exile, and through which turn.
     pub playable: Option<(PlayerId, u32)>,
@@ -792,6 +802,7 @@ impl Game {
             chosen_color: None,
             chosen_type: None,
             animated: None,
+            stage: 0,
             fellowship: 0,
             playable: None,
             bait: 0,
@@ -931,6 +942,10 @@ impl Game {
         if o.animated.is_some() && o.zone == Zone::Battlefield && !LAND_TYPES.contains(&s) {
             return true; // "all creature types"
         }
+        if o.stage > 0 {
+            let st = &self.def_of(id).stages[o.stage as usize - 1];
+            return st.subtypes.contains(&s) || o.extra_subtypes.contains(&s);
+        }
         self.def_of(id).subtypes.iter().any(|x| x == s) || o.extra_subtypes.contains(&s)
     }
 
@@ -1053,6 +1068,11 @@ impl Game {
         if self.obj(id).animated.is_some() {
             k = k.with(Keywords::VIGILANCE);
         }
+        if !self.lost_abilities(id) {
+            for s in &self.def_of(id).stages[..self.obj(id).stage as usize] {
+                k = k.with(s.keywords);
+            }
+        }
         if self.emblem_anthem(id) {
             k = k
                 .with(Keywords::VIGILANCE)
@@ -1090,21 +1110,30 @@ impl Game {
         b
     }
 
+    /// Base power and toughness: printed, or set by becoming a creature or a stage.
+    fn base_pt(&self, id: ObjId) -> (i32, i32) {
+        let o = self.obj(id);
+        let d = self.def_of(id);
+        if let Some(pt) = o.animated {
+            return pt;
+        }
+        (1..=o.stage as usize)
+            .rev()
+            .find_map(|s| d.stages[s - 1].base_pt)
+            .unwrap_or((d.power, d.toughness))
+    }
+
     pub fn power(&self, id: ObjId) -> i32 {
-        self.ability_loss(id).map_or(
-            self.obj(id).animated.map_or(self.def_of(id).power, |pt| pt.0),
-            |pt| pt.0,
-        ) + self.opponents_graveyard_bonus(id)
+        self.ability_loss(id).map_or(self.base_pt(id).0, |pt| pt.0)
+            + self.opponents_graveyard_bonus(id)
             + self.obj(id).counters
             + self.modifiers(id).map(|m| m.power).sum::<i32>()
             + self.statics_on(id).map(|s| s.power).sum::<i32>()
     }
 
     pub fn toughness(&self, id: ObjId) -> i32 {
-        self.ability_loss(id).map_or(
-            self.obj(id).animated.map_or(self.def_of(id).toughness, |pt| pt.1),
-            |pt| pt.1,
-        ) + self.opponents_graveyard_bonus(id)
+        self.ability_loss(id).map_or(self.base_pt(id).1, |pt| pt.1)
+            + self.opponents_graveyard_bonus(id)
             + self.obj(id).counters
             + self.modifiers(id).map(|m| m.toughness).sum::<i32>()
             + self.statics_on(id).map(|s| s.toughness).sum::<i32>()
@@ -1295,6 +1324,7 @@ impl Game {
             o.chosen_color = None;
             o.chosen_type = None;
             o.animated = None;
+            o.stage = 0;
             o.fellowship = 0;
             o.soul = 0;
         }
@@ -1699,7 +1729,7 @@ impl Game {
                             it.controller,
                             &self.spell_cost(it.controller, it.source, mode, &[chosen]),
                             None,
-                            Some(it.source),
+                            PayFor::Spell(it.source),
                         )
                     });
                 }
@@ -2147,7 +2177,7 @@ impl Game {
 
     /// Whether some legal choice of targets makes the spell affordable in `mode`.
     fn mode_affordable(&self, p: PlayerId, c: ObjId, mode: CastMode) -> bool {
-        if self.can_pay_for(p, &self.spell_cost(p, c, mode, &[]), None, Some(c)) {
+        if self.can_pay_for(p, &self.spell_cost(p, c, mode, &[]), None, PayFor::Spell(c)) {
             return true;
         }
         if let Some(Reduction::IfTargetsTapped(_)) = self.def_of(c).reduction {
@@ -2164,7 +2194,7 @@ impl Game {
                     .any(|t| match t {
                         Target::Object(x) => {
                             let chosen = [Chosen::Object(x, self.obj(x).zcc)];
-                            self.can_pay_for(p, &self.spell_cost(p, c, mode, &chosen), None, Some(c))
+                            self.can_pay_for(p, &self.spell_cost(p, c, mode, &chosen), None, PayFor::Spell(c))
                         }
                         Target::Player(_) => false,
                     })
@@ -2185,11 +2215,11 @@ impl Game {
 
     /// Taps (and sacrifices, for Treasure-like sources) what pays `cost`. Never uses `exclude`.
     fn pay_mana(&mut self, p: PlayerId, cost: &ManaCost, exclude: Option<ObjId>) {
-        self.pay_mana_for(p, cost, exclude, None);
+        self.pay_mana_for(p, cost, exclude, PayFor::Other);
     }
 
     /// Pays `cost`, for casting `spell` if given (restricted mana can then help).
-    fn pay_mana_for(&mut self, p: PlayerId, cost: &ManaCost, exclude: Option<ObjId>, spell: Option<ObjId>) {
+    fn pay_mana_for(&mut self, p: PlayerId, cost: &ManaCost, exclude: Option<ObjId>, spell: PayFor) {
         let sources = self.payment_sources(p, exclude, spell);
         let pool = self.players[p].pool.clone();
         let all: Vec<ManaSource> = pool.iter().copied().chain(sources.iter().map(|s| s.1)).collect();
@@ -2209,7 +2239,7 @@ impl Game {
     }
 
     fn can_pay(&self, p: PlayerId, cost: &ManaCost, exclude: Option<ObjId>) -> bool {
-        self.can_pay_for(p, cost, exclude, None)
+        self.can_pay_for(p, cost, exclude, PayFor::Other)
     }
 
     /// The sources that may pay: not `exclude`, and restricted mana only for a spell it allows.
@@ -2217,25 +2247,41 @@ impl Game {
         &self,
         p: PlayerId,
         exclude: Option<ObjId>,
-        spell: Option<ObjId>,
+        spell: PayFor,
     ) -> Vec<(ObjId, ManaSource)> {
         self.untapped_sources(p)
             .into_iter()
             .filter(|s| Some(s.0) != exclude)
             .filter(|s| match self.def_of(s.0).mana_only_for_subtype {
                 None => true,
-                Some(sub) => spell.is_some_and(|c| self.has_base_subtype(c, sub)),
+                // Giada: "Spend this mana only to cast an Angel spell."
+                Some(sub) => matches!(spell, PayFor::Spell(c) if self.has_base_subtype(c, sub)),
+            })
+            .map(|(id, m)| {
+                // Secluded Courtyard: any color, but only for its chosen type.
+                if !self.def_of(id).any_color_for_chosen_type {
+                    return (id, m);
+                }
+                let Some(t) = self.obj(id).chosen_type.as_deref() else {
+                    return (id, m);
+                };
+                let allowed = match spell {
+                    PayFor::Spell(c) => self.def_of(c).types.creature && self.has_base_subtype(c, t),
+                    PayFor::Ability(src) => self.types_of(src).creature && self.has_subtype(src, t),
+                    PayFor::Other => false,
+                };
+                if allowed {
+                    let mut any = ManaSource::of(&crate::Color::ALL);
+                    any.colorless = true;
+                    (id, any)
+                } else {
+                    (id, m)
+                }
             })
             .collect()
     }
 
-    fn can_pay_for(
-        &self,
-        p: PlayerId,
-        cost: &ManaCost,
-        exclude: Option<ObjId>,
-        spell: Option<ObjId>,
-    ) -> bool {
+    fn can_pay_for(&self, p: PlayerId, cost: &ManaCost, exclude: Option<ObjId>, spell: PayFor) -> bool {
         let sources: Vec<ManaSource> = self
             .payment_sources(p, exclude, spell)
             .into_iter()
@@ -2340,7 +2386,7 @@ impl Game {
                     || a.tap_untapped
                         .is_some_and(|(sub, n)| self.untapped_with(p, sub, id).len() < n as usize)
                     || !sorcery_ok
-                    || !self.can_pay(p, &a.mana, uses_self.then_some(id))
+                    || !self.can_pay_for(p, &a.mana, uses_self.then_some(id), PayFor::Ability(id))
                     || !self.trigger_can_target(
                         &StackItem {
                             kind: StackKind::Activated(n),
@@ -2360,7 +2406,12 @@ impl Game {
                     };
                     for victim in victims {
                         for x in 0..=max {
-                            if self.can_pay(p, &a.mana.with_x(x), uses_self.then_some(id)) {
+                            if self.can_pay_for(
+                                p,
+                                &a.mana.with_x(x),
+                                uses_self.then_some(id),
+                                PayFor::Ability(id),
+                            ) {
                                 v.push(Action::ActivateX { id, n, victim, x });
                             }
                         }
@@ -2444,7 +2495,7 @@ impl Game {
         let uses_self = a.tap || a.sacrifice_self;
         // Mana first: a creature can tap for mana and then be sacrificed for the same cost
         // (CR 602.2b). The fuzzer found the reverse order failing.
-        self.pay_mana(p, &a.mana.with_x(x), uses_self.then_some(id));
+        self.pay_mana_for(p, &a.mana.with_x(x), uses_self.then_some(id), PayFor::Ability(id));
         if let Some(v) = victim {
             if self.obj(v).zone == Zone::Battlefield {
                 self.move_to(v, Zone::Graveyard);
@@ -2715,7 +2766,17 @@ impl Game {
                 self.move_to(c, Zone::Battlefield);
                 self.players[p].lands_played += 1;
                 self.passes = 0;
-                self.give_priority(p);
+                // "As this land enters, choose a creature type" (Secluded Courtyard).
+                let options = if self.def_of(c).choose_creature_type {
+                    self.creature_types_known_to(p)
+                } else {
+                    Vec::new()
+                };
+                if options.is_empty() {
+                    self.give_priority(p);
+                } else {
+                    self.ask(p, Decision::ChooseCreatureType { card: c, options });
+                }
             }
             (Pending::Priority(p), Action::Cast(c)) => self.cast(p, c, CastMode::default()),
             (Pending::Priority(p), Action::CastFromGraveyard(c)) => {
@@ -2962,7 +3023,7 @@ impl Game {
         let cost = self.spell_cost(p, card, mode, &item.targets);
         // CR 601.2h: additional costs are paid with the mana. Mana first, so a creature can tap for
         // mana and then be sacrificed.
-        self.pay_mana_for(p, &cost, None, Some(card));
+        self.pay_mana_for(p, &cost, None, PayFor::Spell(card));
         if let Some(x) = item.extra {
             if self.obj(x).zone != Zone::Graveyard {
                 self.move_to(x, Zone::Graveyard);
@@ -4561,6 +4622,11 @@ impl Game {
                     self.obj_mut(id).playable = Some((item.controller, turn));
                 }
             }
+            Effect::AdvanceStage { if_subtype, to } => {
+                if self.obj(src).zone == Zone::Battlefield && self.has_base_subtype(src, if_subtype) {
+                    self.obj_mut(src).stage = to;
+                }
+            }
             Effect::BecomeCreatureSelf { power, toughness } => {
                 if self.obj(src).zone == Zone::Battlefield {
                     self.obj_mut(src).animated = Some((power, toughness));
@@ -5043,6 +5109,7 @@ impl Game {
         match &ability.condition {
             None => true,
             Some(Condition::Attacked) => self.attacked_this_turn[controller],
+            Some(Condition::StageAtLeast(_)) => true, // checked as it triggered
             Some(Condition::ControlPowerAtLeast(n)) => {
                 self.creatures(controller).any(|c| self.power(c) >= *n)
             }
@@ -5571,8 +5638,19 @@ impl Game {
             return;
         }
         let controller = self.obj(id).controller;
-        let whens: Vec<When> = self.def_of(id).triggers.iter().map(|tr| tr.when).collect();
-        for (n, w) in whens.into_iter().enumerate() {
+        let stage = self.obj(id).stage;
+        let whens: Vec<(When, Option<Condition>)> = self
+            .def_of(id)
+            .triggers
+            .iter()
+            .map(|tr| (tr.when, tr.ability.condition.clone()))
+            .collect();
+        for (n, (w, cond)) in whens.into_iter().enumerate() {
+            if let Some(Condition::StageAtLeast(s)) = cond {
+                if stage < s {
+                    continue; // not gained yet
+                }
+            }
             if w == when {
                 self.triggered.push(StackItem {
                     source: id,

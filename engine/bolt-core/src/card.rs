@@ -57,6 +57,15 @@ impl Keywords {
     }
 }
 
+/// What a permanent becomes at a stage: its creature subtypes, base power and toughness, and
+/// keywords gained (kept at later stages).
+#[derive(Clone, Debug, PartialEq)]
+pub struct Stage {
+    pub subtypes: &'static [&'static str],
+    pub base_pt: Option<(i32, i32)>,
+    pub keywords: Keywords,
+}
+
 /// Card types and supertypes (CR 205).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Types {
@@ -256,6 +265,12 @@ pub struct CardDef {
     /// "You may cast this card from your graveyard by removing N counters from among creatures you
     /// control in addition to paying its other costs."
     pub graveyard_cast_remove_counters: u8,
+    /// Its "{T}: Add one mana of any color" can pay only for creature spells of its chosen
+    /// creature type or abilities of creature sources of that type (Secluded Courtyard). Its plain
+    /// mana is in `mana`.
+    pub any_color_for_chosen_type: bool,
+    /// Stages it can "become" (Kellan): stage `n` (1-based) uses `stages[n - 1]`.
+    pub stages: Vec<Stage>,
     pub mana_of_chosen_color: bool,
     /// Its controller may play opponents' stashed cards from exile during their turn (Tinybones).
     pub stash_player: bool,
@@ -334,6 +349,8 @@ impl CardDef {
             mana_only_for_subtype: None,
             other_subtype_enter_bonus: None,
             graveyard_cast_remove_counters: 0,
+            any_color_for_chosen_type: false,
+            stages: Vec::new(),
             mana_of_chosen_color: false,
             stash_player: false,
             player_hexproof: false,
@@ -406,6 +423,8 @@ impl CardDef {
             mana_only_for_subtype: None,
             other_subtype_enter_bonus: None,
             graveyard_cast_remove_counters: 0,
+            any_color_for_chosen_type: false,
+            stages: Vec::new(),
             mana_of_chosen_color: false,
             stash_player: false,
             player_hexproof: false,
@@ -478,6 +497,8 @@ impl CardDef {
             mana_only_for_subtype: None,
             other_subtype_enter_bonus: None,
             graveyard_cast_remove_counters: 0,
+            any_color_for_chosen_type: false,
+            stages: Vec::new(),
             mana_of_chosen_color: false,
             stash_player: false,
             player_hexproof: false,
