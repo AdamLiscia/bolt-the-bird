@@ -5,7 +5,7 @@
 //! - DECKS: one deck per line, card numbers separated by spaces.
 //! - JOBS: one game per line: `id deck_a deck_b seed first`.
 //! - OUT: appended one line per finished game: `id result turns`, with result `p0`, `p1`, `draw`
-//!   or `timeout` (past 200 turns). Jobs already in OUT are skipped, so a run can stop and resume.
+//!   or `timeout` (past 200 turns, or past 180 s of play). Jobs already in OUT are skipped, so a run can stop and resume.
 //! - PILOT: `baseline` or `rollout`.
 //! - SECONDS: stop starting new games after this long (default: no limit), so a run fits inside a
 //!   time limit and finishes the games it began.
@@ -21,6 +21,9 @@ use bolt_cards::fdn;
 use bolt_core::{baseline, rollout, Game, Outcome};
 
 const MAX_TURNS: u32 = 200;
+/// A game still going after this long (only ever the rollout pilot) stops as a timeout, so every
+/// game finishes inside a guarded run. Each one is logged as slow.
+const GAME_SECONDS: u64 = 180;
 
 struct Job {
     id: u64,
@@ -31,6 +34,7 @@ struct Job {
 }
 
 fn play(decks: &[Vec<usize>], j: &Job, cfg: Option<&rollout::Config>) -> (&'static str, u32) {
+    let started = Instant::now();
     let mut g = Game::new(fdn(), [&decks[j.a], &decks[j.b]], j.seed, j.first);
     for n in 0..100_000u64 {
         if let Some(o) = g.result {
@@ -41,7 +45,7 @@ fn play(decks: &[Vec<usize>], j: &Job, cfg: Option<&rollout::Config>) -> (&'stat
             };
             return (r, g.turn);
         }
-        if g.turn > MAX_TURNS {
+        if g.turn > MAX_TURNS || started.elapsed().as_secs() >= GAME_SECONDS {
             return ("timeout", g.turn);
         }
         let legal = g.legal_actions();
@@ -127,7 +131,15 @@ fn main() {
                 }
                 let i = next.fetch_add(1, Ordering::Relaxed);
                 let Some(j) = jobs.get(i) else { return };
+                let t = Instant::now();
                 let (r, turns) = play(&decks, j, cfg.as_ref());
+                if t.elapsed().as_secs() >= 60 {
+                    eprintln!(
+                        "slow: job {} took {}s, {r} after {turns} turns",
+                        j.id,
+                        t.elapsed().as_secs()
+                    );
+                }
                 let mut f = out.lock().expect("lock");
                 writeln!(f, "{} {r} {turns}", j.id).expect("write");
                 f.flush().expect("flush");

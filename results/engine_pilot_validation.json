@@ -10,6 +10,17 @@
       "gap_se": 0.009040574581152632,
       "corr_with_judge_b": 0.16272315941075532,
       "timeouts": 0
+    },
+    "rollout": {
+      "tables": 512,
+      "games": 16384,
+      "bot": 0.5,
+      "human_model": 0.49212646484375,
+      "gap": 0.00787353515625,
+      "gap_se": 0.00875349223041617,
+      "corr_with_judge_b": 0.12617401804658698,
+      "timeouts": 3
     }
-  }
+  },
+  "note": "same games for ['baseline', 'rollout']; tables differ only if a run is unfinished"
 }

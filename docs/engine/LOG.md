@@ -342,3 +342,7 @@ One line per working step, newest last. The next session continues from the last
   6 candidates beats the baseline 72.5% ± 3.1 (200 games, 3.4 s/game/thread); 24 × 10 is no
   better (73.0%), 4 × 6 is 74.5% ± 2.9 at 2.75 s. Next: Python binding and the M6 rerun.
 - 2026-11-06 — Test that Bloodthirsty Conqueror + Marauding Blight-Priest wins when the opponent can lose (Adam flagged the draw rule); only a Herald of Eternal Dawn board makes it a CR 104.4b draw. Also added `pilot_games` (resumable, threaded runner) and `scripts/engine_pilot_validate.py`; baseline control on the M7 game sample: gap +1.50 ± 0.90 (M6: +1.59).
+- 2026-11-06 — **M7 done.** Rollout pilot on both sides, 16,384 games in guarded 6-minute chunks
+  (180 s cap per game, 3 hit it): bot decks +0.79 ± 0.88 pts over the human model's, baseline on the
+  same games +1.50 ± 0.90, judge B +3.85. A stronger pilot doesn't move played results toward judge
+  B; written up in VALIDATION.md. Open for Adam: what to say publicly about the RL result.
