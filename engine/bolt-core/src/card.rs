@@ -253,6 +253,9 @@ pub struct CardDef {
     /// "Each other [subtype] you control enters with an additional +1/+1 counter on it for each
     /// [subtype] you already control" (Giada).
     pub other_subtype_enter_bonus: Option<&'static str>,
+    /// "You may cast this card from your graveyard by removing N counters from among creatures you
+    /// control in addition to paying its other costs."
+    pub graveyard_cast_remove_counters: u8,
     pub mana_of_chosen_color: bool,
     /// Its controller may play opponents' stashed cards from exile during their turn (Tinybones).
     pub stash_player: bool,
@@ -330,6 +333,7 @@ impl CardDef {
             vivid_mana: false,
             mana_only_for_subtype: None,
             other_subtype_enter_bonus: None,
+            graveyard_cast_remove_counters: 0,
             mana_of_chosen_color: false,
             stash_player: false,
             player_hexproof: false,
@@ -401,6 +405,7 @@ impl CardDef {
             vivid_mana: false,
             mana_only_for_subtype: None,
             other_subtype_enter_bonus: None,
+            graveyard_cast_remove_counters: 0,
             mana_of_chosen_color: false,
             stash_player: false,
             player_hexproof: false,
@@ -472,6 +477,7 @@ impl CardDef {
             vivid_mana: false,
             mana_only_for_subtype: None,
             other_subtype_enter_bonus: None,
+            graveyard_cast_remove_counters: 0,
             mana_of_chosen_color: false,
             stash_player: false,
             player_hexproof: false,

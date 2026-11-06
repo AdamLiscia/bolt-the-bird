@@ -191,6 +191,8 @@ pub enum Pending {
     /// Divide the damage of the spell or ability being put on the stack: how much the next target
     /// gets (CR 601.2d).
     Divide(PlayerId),
+    /// Remove a counter from a creature you control, as a cost of the spell being cast.
+    RemoveCounters(PlayerId),
     GameOver,
 }
 
@@ -248,6 +250,8 @@ pub enum Action {
     Discard(ObjId),
     /// How much of a divided amount the next target gets.
     Amount(u8),
+    /// Cast from the graveyard by removing counters (Quilled Greatwurm).
+    CastFromGraveyard(ObjId),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -450,6 +454,8 @@ pub struct Choosing {
     pub pay: Option<(usize, Option<ObjId>)>,
     /// For a loyalty ability: its loyalty cost, paid once targets are chosen.
     pub loyalty: Option<(ObjId, i32)>,
+    /// Counters still to remove from creatures you control as an additional cost.
+    pub remove_counters: u8,
 }
 
 /// Until-end-of-turn effects, kept per object so a lookup touches only that object's effects (a
@@ -595,6 +601,8 @@ pub struct Game {
     /// bug that loops forever would otherwise grow the event list until the machine runs out of
     /// memory; past [`WORK_BUDGET`] the action panics instead.
     pub work: u64,
+    /// Set just before casting from the graveyard by removing counters (Quilled Greatwurm).
+    removal_to_cast: u8,
     /// How many permanents with a "loses all abilities" static are on the battlefield. Zero almost
     /// always, which lets ability-loss checks skip a battlefield scan.
     pub ability_loss_sources: u32,
@@ -686,6 +694,7 @@ impl Game {
             last_created: Vec::new(),
             control_until_eot: Vec::new(),
             work: 0,
+            removal_to_cast: 0,
             ability_loss_sources: 0,
             static_sources: Vec::new(),
             combat_damage_prevented: Vec::new(),
@@ -1531,6 +1540,11 @@ impl Game {
             }
             Pending::DeclareBlockers(p) => self.block_actions(p),
             Pending::Decide(p) => self.decision_actions(p),
+            Pending::RemoveCounters(p) => self
+                .creatures(p)
+                .filter(|&c| Game::removable_counters(self.obj(c)) > 0)
+                .map(Action::Pick)
+                .collect(),
             Pending::Divide(_) => {
                 let c = self.choosing.as_ref().expect("dividing");
                 let total = self.ability_of(&c.item).divide;
@@ -1838,9 +1852,29 @@ impl Game {
                 }
             }
         }
+        // Cast from the graveyard by removing counters from your creatures.
+        let available: i32 = self
+            .creatures(p)
+            .map(|c| Game::removable_counters(self.obj(c)))
+            .sum();
+        for &c in &self.players[p].graveyard {
+            let n = self.def_of(c).graveyard_cast_remove_counters;
+            if n > 0
+                && sorcery_timing
+                && available >= n as i32
+                && self.mode_affordable(p, c, CastMode::default())
+            {
+                v.push(Action::CastFromGraveyard(c));
+            }
+        }
         v.extend(self.activations(p));
         v.extend(self.loyalty_actions(p, sorcery_timing));
         v
+    }
+
+    /// Counters a cost like "remove six counters from among creatures you control" can use.
+    fn removable_counters(o: &Object) -> i32 {
+        o.counters.max(0) + o.stun.max(0) + o.revival.max(0)
     }
 
     /// The ways to cast `c`: plain, kicked, flashback, or paying an additional cost with each
@@ -2166,6 +2200,7 @@ impl Game {
                 cast: false,
                 pay: None,
                 loyalty: Some((id, cost)),
+                remove_counters: 0,
             });
             self.pending = Pending::ChooseTarget(p);
         }
@@ -2272,6 +2307,7 @@ impl Game {
                 cast: false,
                 pay: Some((n, victim)),
                 loyalty: None,
+                remove_counters: 0,
             });
             self.pending = Pending::ChooseTarget(p);
         }
@@ -2296,6 +2332,7 @@ impl Game {
                 cast: false,
                 pay: Some((n, victim)),
                 loyalty: None,
+                remove_counters: 0,
             });
             self.pending = Pending::ChooseTarget(p);
         }
@@ -2562,6 +2599,27 @@ impl Game {
                 self.give_priority(p);
             }
             (Pending::Priority(p), Action::Cast(c)) => self.cast(p, c, CastMode::default()),
+            (Pending::Priority(p), Action::CastFromGraveyard(c)) => {
+                self.removal_to_cast = self.def_of(c).graveyard_cast_remove_counters;
+                self.cast(p, c, CastMode::default());
+            }
+            (Pending::RemoveCounters(_), Action::Pick(c)) => {
+                // Stun counters first (losing one helps you), then +1/+1, then revival.
+                let o = self.obj_mut(c);
+                if o.stun > 0 {
+                    o.stun -= 1;
+                } else if o.counters > 0 {
+                    o.counters -= 1;
+                } else {
+                    o.revival -= 1;
+                }
+                let ch = self.choosing.as_mut().expect("casting");
+                ch.remove_counters -= 1;
+                if ch.remove_counters == 0 {
+                    let ch = self.choosing.take().expect("casting");
+                    self.finish_cast(ch.item);
+                }
+            }
             (Pending::Priority(p), Action::CastKicked(c)) => self.cast(
                 p,
                 c,
@@ -2744,13 +2802,27 @@ impl Game {
             None => def.spell.as_ref(),
         };
         let has_targets = ability.is_some_and(|s| !s.targets.is_empty());
-        if has_targets {
+        let removal = std::mem::take(&mut self.removal_to_cast);
+        if removal > 0 {
+            // Quilled Greatwurm has no targets, so costs come next (CR 601.2h).
+            debug_assert!(!has_targets);
             self.choosing = Some(Choosing {
                 item,
                 then: p,
                 cast: true,
                 pay: None,
                 loyalty: None,
+                remove_counters: removal,
+            });
+            self.pending = Pending::RemoveCounters(p);
+        } else if has_targets {
+            self.choosing = Some(Choosing {
+                item,
+                then: p,
+                cast: true,
+                pay: None,
+                loyalty: None,
+                remove_counters: 0,
             });
             self.pending = Pending::ChooseTarget(p);
         } else {
@@ -4315,6 +4387,11 @@ impl Game {
                     self.obj_mut(id).playable = Some((item.controller, turn));
                 }
             }
+            Effect::CountersAmount(n) => {
+                if let Some(id) = Game::slot_object(item, legal, n) {
+                    self.add_counters(id, item.amount);
+                }
+            }
             Effect::AddMana { color, n } => {
                 let m = ManaSource::of(&[color]);
                 self.players[item.controller]
@@ -4844,6 +4921,7 @@ impl Game {
                     cast: false,
                     pay: None,
                     loyalty: None,
+                    remove_counters: 0,
                 });
                 self.pending = Pending::ChooseTarget(who);
                 return false;
@@ -5212,6 +5290,7 @@ impl Game {
             }
         }
         let mut hit_player = Vec::new();
+        let events_before = self.events.len();
         self.in_combat_damage = true;
         for (source, target, amount) in assigned {
             self.deal_damage(source, target, amount);
@@ -5220,6 +5299,36 @@ impl Game {
             }
         }
         self.in_combat_damage = false;
+        // "Whenever a creature you control deals combat damage during your turn": once per creature
+        // per step, with the total it dealt (CR 510.3a).
+        let active = self.active;
+        let watching = self.permanents(active).any(|x| {
+            self.def_of(x)
+                .triggers
+                .iter()
+                .any(|t| t.when == When::YourCreatureDealsCombatDamageOnYourTurn)
+        });
+        let mut dealt: Vec<(ObjId, i32)> = Vec::new();
+        for e in self.events[events_before..].iter().filter(|_| watching) {
+            if let Event::Damage { source, amount, .. } = *e {
+                match dealt.iter_mut().find(|d| d.0 == source) {
+                    Some(d) => d.1 += amount,
+                    None => dealt.push((source, amount)),
+                }
+            }
+        }
+        for (source, amount) in dealt {
+            if self.obj(source).controller != active || !self.def_of(source).types.creature {
+                continue;
+            }
+            let zcc = self.obj(source).zcc;
+            let before = self.triggered.len();
+            self.fire(active, When::YourCreatureDealsCombatDamageOnYourTurn, None);
+            for t in &mut self.triggered[before..] {
+                t.targets = vec![Chosen::Object(source, zcc)];
+                t.amount = amount;
+            }
+        }
         // CR 510.3a: "deals combat damage to a player" triggers.
         for &(a, _) in &hit_player {
             let controller = self.obj(a).controller;

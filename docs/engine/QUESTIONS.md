@@ -122,3 +122,11 @@ own (hand, library, graveyard, exile), sorted, capped at 64.
 **Why:** any creature type is legal (CR 205.3m), but a type that's on no card you could ever control
 does nothing. You know your own deck, so offering its types hides nothing. If you own no creature
 cards the choice is skipped, since every type would do nothing.
+
+## 2026-11-06: Which kind of counter Quilled Greatwurm's cost removes
+
+**Choice:** you pick the creature for each of the six counters. From that creature the engine
+removes a stun counter first, then a +1/+1 counter, then a revival counter.
+**Why:** losing a stun counter helps you and losing a revival counter hurts most, so this order is
+what a player would choose. Picking the counter kind as well would add a second choice per counter
+for almost no gain.

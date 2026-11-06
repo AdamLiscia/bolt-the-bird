@@ -2743,6 +2743,17 @@ pub fn script(name: &str) -> Option<Script> {
                 });
             },
         ),
+        "Quilled Greatwurm" => s(
+            &[
+                "Whenever a creature you control deals combat damage during your turn, put that many +1/+1 counters on it.",
+                "You may cast this card from your graveyard by removing six counters from among creatures you control in addition to paying its other costs.",
+            ],
+            |d, _| {
+                let it = Filter { triggering: true, ..YOUR_CREATURE };
+                on(d, When::YourCreatureDealsCombatDamageOnYourTurn, vec![it], vec![Effect::CountersAmount(0)]);
+                d.graveyard_cast_remove_counters = 6;
+            },
+        ),
         "Vivien Reid" => s(
             &[
                 "+1: Look at the top four cards of your library. You may reveal a creature or land card from among them and put it into your hand. Put the rest on the bottom of your library in a random order.",
@@ -3028,4 +3039,5 @@ pub const SCRIPTED: &[&str] = &[
     "Bloom Tender",
     "Giada, Font of Hope",
     "Banner of Kinship",
+    "Quilled Greatwurm",
 ];

@@ -253,3 +253,10 @@ One line per working step, newest last. The next session continues from the last
   enters; fellowship counters pump that type). 4 tests: **278 supported, 343 tests.** 10,000
   release fuzz games pass under the guard. **Next: Quilled Greatwurm (removing counters as a
   casting cost), then Thousand-Year Storm, Etali and the deferred type-changing cards.**
+- 2026-11-06 · Tier 4 batch 9: Quilled Greatwurm. New trigger "whenever a creature you control
+  deals combat damage during your turn", once per creature per damage step with the total it dealt
+  (to players, creatures or planeswalkers); the counters go on only if it survived. Casting it from
+  the graveyard costs its mana plus six counters removed from your creatures, one pick at a time
+  (Pending::RemoveCounters). 3 tests: **279 supported, 346 tests.** 10,000 release fuzz games pass
+  under the guard (932 games/s; Greatwurm games build bigger boards). **Next: Thousand-Year Storm
+  (copying spells), then Etali, then the deferred type-changing cards.**

@@ -183,6 +183,8 @@ pub enum Effect {
         slot: u8,
         n: i32,
     },
+    /// "that many" +1/+1 counters on the object in `slot`: the trigger's amount.
+    CountersAmount(u8),
     /// Create `n` tokens of definition `def` for `who` (CR 111).
     CreateToken {
         who: Who,
@@ -739,6 +741,9 @@ pub enum When {
     CountersOnAnotherNonHydraYouControl,
     /// "Whenever a creature you control deals combat damage to a player".
     YourCreatureDealsCombatDamageToPlayer,
+    /// "Whenever a creature you control deals combat damage during your turn": the creature fills
+    /// a triggering slot, and the amount is the damage it dealt this step.
+    YourCreatureDealsCombatDamageOnYourTurn,
     /// "Whenever an opponent loses life" (the amount travels with the trigger).
     OpponentLosesLife,
     /// "Whenever a source you control deals noncombat damage to an opponent" (with the amount).

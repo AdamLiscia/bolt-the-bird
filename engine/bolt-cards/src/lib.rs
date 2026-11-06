@@ -197,6 +197,7 @@ fn definition(o: &Oracle) -> (CardDef, bool) {
         vivid_mana: false,
         mana_only_for_subtype: None,
         other_subtype_enter_bonus: None,
+        graveyard_cast_remove_counters: 0,
         mana_of_chosen_color: false,
         stash_player: false,
         player_hexproof: false,
