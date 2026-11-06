@@ -295,3 +295,9 @@ One line per working step, newest last. The next session continues from the last
   or abilities of creature sources of that type. 4 tests: **285 supported, 362 tests.** 10,000
   release fuzz games pass under the guard. **Next: Muldrotha, the last card, then M5 (PyO3
   bindings).**
+- 2026-11-06 · Muldrotha, the last card. During your turn you may play one land and cast one
+  permanent spell of each permanent type (artifact, creature, enchantment, planeswalker) from your
+  graveyard; a card with two types is cast as the one you pick (`CastFromGraveyardAs`), and the
+  land uses your land drop. 4 tests: **all 286 FDN cards supported, 366 tests.** 10,000 release
+  fuzz games with every card pass under the guard (850 games/s). **M3 and M4 are done. Next: M5,
+  the PyO3 bindings (`bolt_engine.Game` in Python) and a rules-based baseline player.**

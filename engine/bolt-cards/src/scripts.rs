@@ -2846,6 +2846,10 @@ pub fn script(name: &str) -> Option<Script> {
                 d.any_color_for_chosen_type = true;
             },
         ),
+                "Muldrotha, the Gravetide" => s(
+            &["During each of your turns, you may play a land and cast a permanent spell of each permanent type from your graveyard."],
+            |d, _| d.graveyard_permanents = true,
+        ),
         "Vivien Reid" => s(
             &[
                 "+1: Look at the top four cards of your library. You may reveal a creature or land card from among them and put it into your hand. Put the rest on the bottom of your library in a random order.",
@@ -3138,4 +3142,5 @@ pub const SCRIPTED: &[&str] = &[
     "Soulstone Sanctuary",
     "Kellan, Planar Trailblazer",
     "Secluded Courtyard",
+    "Muldrotha, the Gravetide",
 ];

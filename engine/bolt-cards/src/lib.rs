@@ -199,6 +199,7 @@ fn definition(o: &Oracle) -> (CardDef, bool) {
         other_subtype_enter_bonus: None,
         graveyard_cast_remove_counters: 0,
         any_color_for_chosen_type: false,
+        graveyard_permanents: false,
         stages: Vec::new(),
         mana_of_chosen_color: false,
         stash_player: false,

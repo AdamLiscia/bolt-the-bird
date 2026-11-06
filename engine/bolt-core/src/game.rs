@@ -271,6 +271,9 @@ pub enum Action {
     Amount(u8),
     /// Cast from the graveyard by removing counters (Quilled Greatwurm).
     CastFromGraveyard(ObjId),
+    /// Cast a permanent spell from your graveyard as permanent type `t` (0 artifact, 1 creature,
+    /// 2 enchantment, 4 planeswalker) with Muldrotha.
+    CastFromGraveyardAs(ObjId, u8),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -625,6 +628,9 @@ pub struct Game {
     pub work: u64,
     /// Instants and sorceries each player has cast this turn.
     pub instants_sorceries_cast: [u32; 2],
+    /// Permanent types (artifact, creature, enchantment, land, planeswalker) each player has
+    /// played from their graveyard with Muldrotha this turn.
+    pub graveyard_types_used: [[bool; 5]; 2],
     /// Each instant or sorcery cast this turn as it was put on the stack, for copying it.
     pub cast_snapshots: Vec<StackItem>,
     /// Cards that may be cast for free right after the ability that exiled them resolves, and who
@@ -725,6 +731,7 @@ impl Game {
             control_until_eot: Vec::new(),
             work: 0,
             instants_sorceries_cast: [0; 2],
+            graveyard_types_used: [[false; 5]; 2],
             cast_snapshots: Vec::new(),
             free_casts: Vec::new(),
             free_caster: 0,
@@ -1947,10 +1954,18 @@ impl Game {
                 .playable
                 .is_some_and(|(q, until)| q == p && turn <= until)
         });
+        // Muldrotha: a land from your graveyard, during your turn.
+        let muldrotha = p == self.active && self.permanents(p).any(|x| self.def_of(x).graveyard_permanents);
+        let grave_land = self.players[p]
+            .graveyard
+            .iter()
+            .copied()
+            .filter(move |&c| muldrotha && !self.graveyard_types_used[p][3] && self.def_of(c).types.land);
         let candidates: Vec<(ObjId, bool)> = hand
             .chain(flashback.map(|&c| (c, true)))
             .chain(from_exile.map(|c| (c, false)))
             .chain(from_graveyard.map(|c| (c, false)))
+            .chain(grave_land.map(|c| (c, false)))
             .collect();
         for (c, from_graveyard) in candidates {
             let def = self.def_of(c);
@@ -1981,6 +1996,30 @@ impl Game {
             for (action, mode) in self.cast_modes(p, c, from_graveyard) {
                 if self.mode_affordable(p, c, mode) {
                     v.push(action);
+                }
+            }
+        }
+        // Muldrotha: one permanent spell of each permanent type from your graveyard.
+        if muldrotha {
+            let flash_all = self.permanents(p).any(|x| self.def_of(x).grants_flash);
+            for &c in &self.players[p].graveyard {
+                let def = self.def_of(c);
+                let timing = sorcery_timing || flash_all || def.keywords.has(Keywords::FLASH);
+                if def.types.land || !def.types.is_permanent() || !timing {
+                    continue;
+                }
+                if let Some(ability) = &def.spell {
+                    if !self.trigger_can_target(&Game::casting(c, p), ability) {
+                        continue; // an Aura needs something to enchant
+                    }
+                }
+                if !self.mode_affordable(p, c, CastMode::default()) {
+                    continue;
+                }
+                for t in [0u8, 1, 2, 4] {
+                    if Game::has_type(def.types, t) && !self.graveyard_types_used[p][t as usize] {
+                        v.push(Action::CastFromGraveyardAs(c, t));
+                    }
                 }
             }
         }
@@ -2763,6 +2802,9 @@ impl Game {
             }
             (Pending::Priority(p), Action::PassPriority) => self.pass(p),
             (Pending::Priority(p), Action::PlayLand(c)) => {
+                if self.obj(c).zone == Zone::Graveyard {
+                    self.graveyard_types_used[p][3] = true; // Muldrotha's land
+                }
                 self.move_to(c, Zone::Battlefield);
                 self.players[p].lands_played += 1;
                 self.passes = 0;
@@ -2779,6 +2821,10 @@ impl Game {
                 }
             }
             (Pending::Priority(p), Action::Cast(c)) => self.cast(p, c, CastMode::default()),
+            (Pending::Priority(p), Action::CastFromGraveyardAs(c, t)) => {
+                self.graveyard_types_used[p][t as usize] = true;
+                self.cast(p, c, CastMode::default());
+            }
             (Pending::Priority(p), Action::CastFromGraveyard(c)) => {
                 self.removal_to_cast = self.def_of(c).graveyard_cast_remove_counters;
                 self.cast(p, c, CastMode::default());
@@ -5271,6 +5317,7 @@ impl Game {
 
     fn begin_next_turn(&mut self) {
         self.instants_sorceries_cast = [0; 2];
+        self.graveyard_types_used = [[false; 5]; 2];
         self.cast_snapshots.clear();
         self.attacked_this_turn = [false; 2];
         self.life_gains_this_turn = [0; 2];

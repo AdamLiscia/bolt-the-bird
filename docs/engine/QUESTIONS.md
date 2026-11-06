@@ -139,3 +139,9 @@ doesn't offer "you may choose new targets for the copies".
 targets in the middle of a resolving ability, once per copy, which the casting pipeline doesn't
 support yet. Copies also can't be targeted by counterspells (spells are targeted by their card,
 which a copy doesn't have). Both are worth revisiting if Storm turns out to matter in games.
+
+## 2026-11-06: Muldrotha's graveyard casts are plain casts
+
+**Choice:** a spell cast from the graveyard with Muldrotha is cast without kicker, and with X = 0.
+**Why:** both are legal ways to cast it, and each extra option is another action per graveyard
+card per type. Few FDN permanents have kicker or X. Add them if games show they matter.

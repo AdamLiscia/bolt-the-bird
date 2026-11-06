@@ -269,6 +269,9 @@ pub struct CardDef {
     /// creature type or abilities of creature sources of that type (Secluded Courtyard). Its plain
     /// mana is in `mana`.
     pub any_color_for_chosen_type: bool,
+    /// Muldrotha: during each of your turns, play a land and cast a permanent spell of each
+    /// permanent type from your graveyard.
+    pub graveyard_permanents: bool,
     /// Stages it can "become" (Kellan): stage `n` (1-based) uses `stages[n - 1]`.
     pub stages: Vec<Stage>,
     pub mana_of_chosen_color: bool,
@@ -350,6 +353,7 @@ impl CardDef {
             other_subtype_enter_bonus: None,
             graveyard_cast_remove_counters: 0,
             any_color_for_chosen_type: false,
+            graveyard_permanents: false,
             stages: Vec::new(),
             mana_of_chosen_color: false,
             stash_player: false,
@@ -424,6 +428,7 @@ impl CardDef {
             other_subtype_enter_bonus: None,
             graveyard_cast_remove_counters: 0,
             any_color_for_chosen_type: false,
+            graveyard_permanents: false,
             stages: Vec::new(),
             mana_of_chosen_color: false,
             stash_player: false,
@@ -498,6 +503,7 @@ impl CardDef {
             other_subtype_enter_bonus: None,
             graveyard_cast_remove_counters: 0,
             any_color_for_chosen_type: false,
+            graveyard_permanents: false,
             stages: Vec::new(),
             mana_of_chosen_color: false,
             stash_player: false,
