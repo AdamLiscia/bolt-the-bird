@@ -18,3 +18,4 @@ target/
 # Rust
 engine/target/
 engine/dist/
+engine/*.txt
