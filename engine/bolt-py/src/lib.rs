@@ -291,6 +291,30 @@ impl Game {
     }
 }
 
+/// Plays a whole game with the rules-based baseline on both sides, in Rust. Returns the result
+/// ("p0", "p1" or "draw") and the number of turns. Raises if a game runs past the action cap.
+#[pyfunction]
+#[pyo3(signature = (deck_a, deck_b, seed, first = 0))]
+fn play_baseline(
+    deck_a: Vec<usize>,
+    deck_b: Vec<usize>,
+    seed: u64,
+    first: usize,
+) -> PyResult<(&'static str, u32)> {
+    let mut g = Game::new(deck_a, deck_b, seed, first)?;
+    for _ in 0..100_000 {
+        if g.g.is_over() {
+            return Ok((g.result().expect("over"), g.g.turn));
+        }
+        let a = bolt_core::baseline::choose(&g.g, &g.legal);
+        g.g.apply(a).map_err(|e| PyValueError::new_err(e.to_string()))?;
+        g.refresh();
+    }
+    Err(PyValueError::new_err(format!(
+        "seed {seed}: no result after 100,000 actions"
+    )))
+}
+
 /// Every card name, by card number: FDN in model order, then tokens.
 #[pyfunction]
 fn card_names() -> Vec<String> {
@@ -313,6 +337,7 @@ fn supported() -> Vec<&'static str> {
 fn bolt_engine(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<Game>()?;
     m.add_function(wrap_pyfunction!(card_names, m)?)?;
+    m.add_function(wrap_pyfunction!(play_baseline, m)?)?;
     m.add_function(wrap_pyfunction!(index_of, m)?)?;
     m.add_function(wrap_pyfunction!(supported, m)?)?;
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;

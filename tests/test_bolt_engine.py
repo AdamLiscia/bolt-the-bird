@@ -91,3 +91,10 @@ def test_the_baseline_player_beats_random():
             g.step(g.baseline() if g.to_act() == smart else rng.randrange(n))
         wins += g.result() == f"p{smart}"
     assert wins >= 28, wins
+
+
+def test_play_baseline_runs_a_whole_game_in_rust():
+    a, b = deck(random.Random(1)), deck(random.Random(2))
+    result, turns = be.play_baseline(a, b, seed=5)
+    assert result in {"p0", "p1", "draw"} and turns > 0
+    assert be.play_baseline(a, b, seed=5) == (result, turns), "deterministic"
