@@ -238,3 +238,31 @@ fn an_endless_mandatory_loop_is_a_draw() {
     }
     assert_eq!(g.result, Some(bolt_core::Outcome::Draw));
 }
+
+#[test]
+fn conqueror_and_blight_priest_kill_an_opponent_who_can_lose() {
+    // The same loop without Herald of Eternal Dawn: each pass drains the opponent by 1, and state-
+    // based actions end the game once their life hits 0 (CR 704.5a), so it's a win, not a draw.
+    let mut g = table();
+    g.auto_pass = true;
+    begin(&mut g);
+    put(&mut g, 0, "Bloodthirsty Conqueror");
+    put(&mut g, 0, "Marauding Blight-Priest");
+    let bolt = hand(&mut g, 0, "Burst Lightning");
+    act(&mut g, Action::Cast(bolt));
+    act(&mut g, Action::Target(Target::Player(1)));
+    let mut n = 0;
+    while g.result.is_none() {
+        let legal = g.legal_actions();
+        let a = if legal.contains(&Action::PassPriority) {
+            Action::PassPriority
+        } else {
+            legal[0]
+        };
+        act(&mut g, a);
+        n += 1;
+        assert!(n < 10_000, "the loop never ended");
+    }
+    assert_eq!(g.result, Some(bolt_core::Outcome::Winner(0)));
+    assert!(g.players[1].life <= 0);
+}

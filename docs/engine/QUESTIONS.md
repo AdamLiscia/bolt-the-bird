@@ -163,6 +163,8 @@ cap only catches games like that one. The engine itself has no cap; this is the 
 stopped is hard in general. The validation found one: Bloodthirsty Conqueror and Marauding
 Blight-Priest trigger each other forever when the opponent can't lose (Herald of Eternal Dawn).
 Real turns resolve a few dozen entries, so the threshold only catches loops like that one.
+Without Herald the same combo is a win, not a draw: the opponent's life hits 0 and state-based
+actions end the game (test `conqueror_and_blight_priest_kill_an_opponent_who_can_lose`).
 
 ## Rollout pilot: what it searches and what it guesses (2026-11-06)
 
