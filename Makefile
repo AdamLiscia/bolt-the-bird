@@ -4,7 +4,7 @@
 PY ?= .venv/bin/python
 DEVICE ?= auto
 
-.PHONY: help install test lint format demo data prepare baselines draft-models rare-drafting judges builder rl archetypes card-audit engine-test engine-py figures reproduce
+.PHONY: help install test lint format demo data prepare baselines draft-models rare-drafting judges builder rl archetypes card-audit engine-test engine-py engine-validate figures reproduce
 
 help:  ## List targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "} {printf "  \033[1m%-15s\033[0m %s\n", $$1, $$2}'
@@ -69,6 +69,9 @@ engine-test:  ## Format check, lint and test the Rust engine
 
 engine-py:  ## Build the engine's Python bindings (bolt_engine) into the venv
 	cd engine/bolt-py && VIRTUAL_ENV=$(abspath .venv) ../../scripts/guard.sh 900 4000 -- $(abspath .venv)/bin/maturin develop --release
+
+engine-validate: engine-py  ## M6: play the bot's and human model's decks in the engine (results/engine_validation.json)
+	scripts/guard.sh 1800 6000 -- $(PY) scripts/engine_validate.py
 
 figures:  ## Regenerate every chart in docs/figures from results/
 	$(PY) scripts/make_figures.py

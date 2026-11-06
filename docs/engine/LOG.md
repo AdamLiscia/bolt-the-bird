@@ -322,3 +322,14 @@ One line per working step, newest last. The next session continues from the last
   games/s** (277 actions a game). From Python with simpler two-color decks: ~1,000 games/s and
   115–134k actions/s. 2 Rust tests and 1 Python test: **368 Rust tests, 7 Python binding tests.**
   **M5 is done. Next: M6, validation against judge B.**
+- 2026-11-06 · **M6: validation in played games** (`scripts/engine_validate.py`, `make
+  engine-validate`, write-up in `docs/engine/VALIDATION.md`). The RL evaluation's 512 held-out
+  tables, drafted by the bot and by the human model, built as usual (judge B reproduces exactly:
+  63.87% vs 60.02%), then played by the baseline pilot: 20,480 head-to-head games and 258,048
+  gauntlet games against 64 human-model decks, in 326 s. **The bot's decks win more played games,
+  +1.59 ± 0.64 points in the gauntlet (judge B predicted +3.85); head-to-head 51.4% ± 0.8.**
+  Judge B's per-deck scores correlate 0.14 with played win rate; the top two quintiles play about
+  4 points better than the rest. Two endless games turned up and are handled: 200-turn timeout in
+  the harness (11 games), and endless mandatory loops are draws in the engine (CR 104.4b). **The
+  plan's milestones M0–M6 are done.** Open for Adam: whether to merge `engine` into main, add the
+  played-game result to the README and model card, and build a stronger pilot.
