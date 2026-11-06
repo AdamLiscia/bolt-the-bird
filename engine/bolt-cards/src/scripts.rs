@@ -2706,6 +2706,43 @@ pub fn script(name: &str) -> Option<Script> {
                 d.spell = Some(a);
             },
         ),
+        "Bloom Tender" => s(
+            &["Vivid — {T}: For each color among permanents you control, add one mana of that color."],
+            |d, _| d.vivid_mana = true,
+        ),
+        "Giada, Font of Hope" => s(
+            &[
+                "Each other Angel you control enters with an additional +1/+1 counter on it for each Angel you already control.",
+                "{T}: Add {W}. Spend this mana only to cast an Angel spell.",
+            ],
+            |d, _| {
+                d.other_subtype_enter_bonus = Some("Angel");
+                d.mana = Some(ManaSource::of(&[Color::White]));
+                d.mana_only_for_subtype = Some("Angel");
+            },
+        ),
+        "Banner of Kinship" => s(
+            &[
+                "As this artifact enters, choose a creature type. This artifact enters with a fellowship counter on it for each creature you control of the chosen type.",
+                "Creatures you control of the chosen type get +1/+1 for each fellowship counter on this artifact.",
+            ],
+            |d, _| {
+                d.choose_creature_type = true;
+                d.statics.push(Static {
+                    subtype: None,
+                    lose_abilities: false,
+                    base_pt: None,
+                    protection: [false; 5],
+                    scale: Some(Scale::PerFellowshipCounter),
+                    scope: Scope::YourCreaturesOfChosenType,
+                    your_turn_only: false,
+                    condition: None,
+                    power: 1,
+                    toughness: 1,
+                    keywords: Keywords::NONE,
+                });
+            },
+        ),
         "Vivien Reid" => s(
             &[
                 "+1: Look at the top four cards of your library. You may reveal a creature or land card from among them and put it into your hand. Put the rest on the bottom of your library in a random order.",
@@ -2988,4 +3025,7 @@ pub const SCRIPTED: &[&str] = &[
     "Zul Ashur, Lich Lord",
     "Involuntary Employment",
     "Fiery Annihilation",
+    "Bloom Tender",
+    "Giada, Font of Hope",
+    "Banner of Kinship",
 ];

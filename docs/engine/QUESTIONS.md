@@ -114,3 +114,11 @@ doubling never ends in practice. 4 of 10,000 fuzz games hit the cap.
 before tapping any permanent.
 **Why:** pool mana empties at the end of the step, so spending it first never costs the player
 anything a land could have done. It keeps payment automatic (see the first entry).
+
+## 2026-11-06: Which creature types Banner of Kinship offers
+
+**Choice:** the type list is every creature type among creatures you control and creature cards you
+own (hand, library, graveyard, exile), sorted, capped at 64.
+**Why:** any creature type is legal (CR 205.3m), but a type that's on no card you could ever control
+does nothing. You know your own deck, so offering its types hides nothing. If you own no creature
+cards the choice is skipped, since every type would do nothing.

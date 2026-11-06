@@ -247,3 +247,9 @@ One line per working step, newest last. The next session continues from the last
   instead of dying for the rest of the turn). 11 tests: **275 supported, 339 tests.** 10,000
   release fuzz games pass under the guard. **Next: Quilled Greatwurm, Giada, Banner of Kinship,
   Bloom Tender, then Thousand-Year Storm, Etali and the deferred type-changing cards.**
+- 2026-11-06 · Tier 4 batch 8: Bloom Tender (vivid: one mana of each color among your
+  permanents), Giada (Angels enter with a counter per Angel already there; her {W} pays only for
+  Angel spells, the engine's first restricted mana), Banner of Kinship (choose a creature type as it
+  enters; fellowship counters pump that type). 4 tests: **278 supported, 343 tests.** 10,000
+  release fuzz games pass under the guard. **Next: Quilled Greatwurm (removing counters as a
+  casting cost), then Thousand-Year Storm, Etali and the deferred type-changing cards.**

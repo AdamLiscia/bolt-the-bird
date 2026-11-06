@@ -544,6 +544,8 @@ pub enum Scope {
     OtherYourSubtype(&'static str),
     /// Creatures you control of the source's chosen color.
     YourCreaturesOfChosenColor,
+    /// Creatures you control of the source's chosen creature type.
+    YourCreaturesOfChosenType,
 }
 
 /// What a scaled static ability counts.
@@ -551,6 +553,8 @@ pub enum Scope {
 pub enum Scale {
     /// Permanents you control with this subtype ("for each Forest you control").
     PerYouControlSubtype(&'static str),
+    /// Fellowship counters on the source.
+    PerFellowshipCounter,
 }
 
 /// A condition on a static ability ("as long as ...").

@@ -102,6 +102,9 @@ pub struct Object {
     pub last_revival: i32,
     /// The color chosen as it entered (index into WUBRG).
     pub chosen_color: Option<u8>,
+    /// The creature type chosen as it entered (CR 614.12).
+    pub chosen_type: Option<String>,
+    pub fellowship: i32,
     /// Who may play this card from exile, and through which turn.
     pub playable: Option<(PlayerId, u32)>,
     /// Bait counters (Fishing Pole) and a stash counter (Tinybones).
@@ -507,6 +510,8 @@ pub enum Decision {
     GenesisPick { cards: Vec<ObjId>, x: u32 },
     /// Choose a color for `card` with `Mode(n)`, n in WUBRG order.
     ChooseColor { card: ObjId },
+    /// Choose a creature type for `card` from `options` (by index).
+    ChooseCreatureType { card: ObjId, options: Vec<String> },
     /// Put the first of `rest` into pile A (`Yes`) or B (`No`).
     SplitPiles {
         rest: Vec<ObjId>,
@@ -751,6 +756,8 @@ impl Game {
             revival: 0,
             last_revival: 0,
             chosen_color: None,
+            chosen_type: None,
+            fellowship: 0,
             playable: None,
             bait: 0,
             stash: false,
@@ -860,6 +867,13 @@ impl Game {
                             Scope::Attached => so.attached_to == Some((id, o.zcc)),
                             // Printed or granted-until-end-of-turn flying; static grants are left out
                             // so statics don't depend on each other (no FDN static grants flying).
+                            Scope::YourCreaturesOfChosenType => {
+                                mine && creature
+                                    && so
+                                        .chosen_type
+                                        .as_deref()
+                                        .is_some_and(|t| self.has_base_subtype(id, t))
+                            }
                             Scope::YourCreaturesOfChosenColor => {
                                 mine && creature
                                     && so
@@ -890,6 +904,10 @@ impl Game {
                         applies && condition_ok && (!s.your_turn_only || self.active == so.controller)
                     })
                     .map(move |mut s| {
+                        if let Some(Scale::PerFellowshipCounter) = s.scale {
+                            s.power *= so.fellowship;
+                            s.toughness *= so.fellowship;
+                        }
                         if let Some(Scale::PerYouControlSubtype(sub)) = s.scale {
                             let n = self
                                 .permanents(so.controller)
@@ -1171,6 +1189,8 @@ impl Game {
             o.last_revival = o.revival;
             o.revival = 0;
             o.chosen_color = None;
+            o.chosen_type = None;
+            o.fellowship = 0;
             o.soul = 0;
         }
         o.attached_to = None;
@@ -1275,6 +1295,23 @@ impl Game {
             if def.enters_with_x_counters {
                 let x = self.obj(id).x as i32;
                 self.add_counters(id, x);
+            }
+            // Giada: each other Angel you control enters with a counter per Angel already there.
+            let controller = self.obj(id).controller;
+            let bonus: i32 = self
+                .permanents(controller)
+                .filter(|&x| x != id)
+                .filter_map(|x| self.def_of(x).other_subtype_enter_bonus)
+                .filter(|&sub| self.has_base_subtype(id, sub))
+                .map(|sub| {
+                    self.permanents(controller)
+                        .filter(|&x| x != id && self.has_base_subtype(x, sub))
+                        .count() as i32
+                })
+                .sum();
+            if bonus > 0 {
+                let n = bonus * self.doubling(controller);
+                self.obj_mut(id).counters += n;
             }
             if let Some((n, cond)) = def.enters_counters {
                 let controller = self.obj(id).controller;
@@ -1543,10 +1580,11 @@ impl Game {
                             Target::Player(q) => Chosen::Player(q),
                             Target::Object(x) => Chosen::Object(x, self.obj(x).zcc),
                         };
-                        self.can_pay(
+                        self.can_pay_for(
                             it.controller,
                             &self.spell_cost(it.controller, it.source, mode, &[chosen]),
                             None,
+                            Some(it.source),
                         )
                     });
                 }
@@ -1974,7 +2012,7 @@ impl Game {
 
     /// Whether some legal choice of targets makes the spell affordable in `mode`.
     fn mode_affordable(&self, p: PlayerId, c: ObjId, mode: CastMode) -> bool {
-        if self.can_pay(p, &self.spell_cost(p, c, mode, &[]), None) {
+        if self.can_pay_for(p, &self.spell_cost(p, c, mode, &[]), None, Some(c)) {
             return true;
         }
         if let Some(Reduction::IfTargetsTapped(_)) = self.def_of(c).reduction {
@@ -1991,7 +2029,7 @@ impl Game {
                     .any(|t| match t {
                         Target::Object(x) => {
                             let chosen = [Chosen::Object(x, self.obj(x).zcc)];
-                            self.can_pay(p, &self.spell_cost(p, c, mode, &chosen), None)
+                            self.can_pay_for(p, &self.spell_cost(p, c, mode, &chosen), None, Some(c))
                         }
                         Target::Player(_) => false,
                     })
@@ -2012,11 +2050,12 @@ impl Game {
 
     /// Taps (and sacrifices, for Treasure-like sources) what pays `cost`. Never uses `exclude`.
     fn pay_mana(&mut self, p: PlayerId, cost: &ManaCost, exclude: Option<ObjId>) {
-        let sources: Vec<(ObjId, ManaSource)> = self
-            .untapped_sources(p)
-            .into_iter()
-            .filter(|s| Some(s.0) != exclude)
-            .collect();
+        self.pay_mana_for(p, cost, exclude, None);
+    }
+
+    /// Pays `cost`, for casting `spell` if given (restricted mana can then help).
+    fn pay_mana_for(&mut self, p: PlayerId, cost: &ManaCost, exclude: Option<ObjId>, spell: Option<ObjId>) {
+        let sources = self.payment_sources(p, exclude, spell);
         let pool = self.players[p].pool.clone();
         let all: Vec<ManaSource> = pool.iter().copied().chain(sources.iter().map(|s| s.1)).collect();
         let mut paid = mana::pay(cost, &all).expect("payable");
@@ -2035,17 +2074,42 @@ impl Game {
     }
 
     fn can_pay(&self, p: PlayerId, cost: &ManaCost, exclude: Option<ObjId>) -> bool {
-        let sources: Vec<ManaSource> = self
-            .untapped_sources(p)
+        self.can_pay_for(p, cost, exclude, None)
+    }
+
+    /// The sources that may pay: not `exclude`, and restricted mana only for a spell it allows.
+    fn payment_sources(
+        &self,
+        p: PlayerId,
+        exclude: Option<ObjId>,
+        spell: Option<ObjId>,
+    ) -> Vec<(ObjId, ManaSource)> {
+        self.untapped_sources(p)
             .into_iter()
             .filter(|s| Some(s.0) != exclude)
+            .filter(|s| match self.def_of(s.0).mana_only_for_subtype {
+                None => true,
+                Some(sub) => spell.is_some_and(|c| self.has_base_subtype(c, sub)),
+            })
+            .collect()
+    }
+
+    fn can_pay_for(
+        &self,
+        p: PlayerId,
+        cost: &ManaCost,
+        exclude: Option<ObjId>,
+        spell: Option<ObjId>,
+    ) -> bool {
+        let sources: Vec<ManaSource> = self
+            .payment_sources(p, exclude, spell)
+            .into_iter()
             .map(|s| s.1)
             .collect();
         let all: Vec<ManaSource> = self.players[p].pool.iter().copied().chain(sources).collect();
         mana::pay(cost, &all).is_some()
     }
 
-    /// Activated abilities `p` can activate now (CR 602.2, 602.5).
     /// Loyalty abilities `p` can activate: sorcery timing, once per planeswalker per turn, and not
     /// below zero loyalty (CR 606.3-606.6).
     fn loyalty_actions(&self, p: PlayerId, sorcery_timing: bool) -> Vec<Action> {
@@ -2114,6 +2178,7 @@ impl Game {
             .collect()
     }
 
+    /// Activated abilities `p` can activate now (CR 602.2, 602.5).
     fn activations(&self, p: PlayerId) -> Vec<Action> {
         let mut v = Vec::new();
         let graveyard = self.players[p].graveyard.iter().copied();
@@ -2269,10 +2334,46 @@ impl Game {
         }
     }
 
+    /// Creature types `p` could sensibly name: those of creatures they control and of creature
+    /// cards they own (a player knows their own deck), sorted. Public for tests and agents.
+    pub fn creature_types_known_to(&self, p: PlayerId) -> Vec<String> {
+        let mut v: Vec<String> = self
+            .objects
+            .iter()
+            .enumerate()
+            .filter(|(_, o)| o.owner == p || (o.zone == Zone::Battlefield && o.controller == p))
+            .filter(|(_, o)| o.zone != Zone::Gone)
+            .filter(|(i, _)| self.def_of(ObjId(*i as u32)).types.creature)
+            .flat_map(|(i, _)| self.def_of(ObjId(i as u32)).subtypes.iter().cloned())
+            .collect();
+        v.sort();
+        v.dedup();
+        v.truncate(64);
+        v
+    }
+
+    /// The options of a pending creature-type choice.
+    pub fn creature_type_options(&self) -> Vec<String> {
+        match &self.decision {
+            Some(Decision::ChooseCreatureType { options, .. }) => options.clone(),
+            _ => Vec::new(),
+        }
+    }
+
+    /// Untapped mana sources, one entry per mana each can make.
     fn untapped_sources(&self, p: PlayerId) -> Vec<(ObjId, ManaSource)> {
         let base = self.single_sources(p);
         let mut out = Vec::with_capacity(base.len());
         for (id, m) in base {
+            if self.def_of(id).vivid_mana {
+                // One mana of each color among permanents you control.
+                for c in 0..5 {
+                    if self.permanents(p).any(|x| self.def_of(x).colors[c]) {
+                        out.push((id, ManaSource::of(&[crate::Color::ALL[c]])));
+                    }
+                }
+                continue;
+            }
             // One activation makes this many mana; each is offered to the payer separately.
             let n = self.def_of(id).mana_per_subtype.map_or(1, |sub| {
                 self.permanents(p)
@@ -2291,6 +2392,9 @@ impl Game {
             .filter(|&id| !self.lost_abilities(id))
             .filter_map(|id| {
                 let d = self.def_of(id);
+                if d.vivid_mana {
+                    return Some((id, ManaSource::default()));
+                }
                 if d.mana_of_chosen_color {
                     let c = self.obj(id).chosen_color?;
                     return Some((id, ManaSource::of(&[crate::Color::ALL[c as usize]])));
@@ -2667,7 +2771,7 @@ impl Game {
         let cost = self.spell_cost(p, card, mode, &item.targets);
         // CR 601.2h: additional costs are paid with the mana. Mana first, so a creature can tap for
         // mana and then be sacrificed.
-        self.pay_mana(p, &cost, None);
+        self.pay_mana_for(p, &cost, None, Some(card));
         if let Some(x) = item.extra {
             if self.obj(x).zone != Zone::Graveyard {
                 self.move_to(x, Zone::Graveyard);
@@ -3005,6 +3109,23 @@ impl Game {
                 self.ask(r.item.controller, Decision::ChooseColor { card: source });
                 return;
             }
+            if r.acts
+                && self.def_of(source).choose_creature_type
+                && self.obj(source).zone == Zone::Battlefield
+            {
+                // With no creature cards to name, any choice does nothing; skip it.
+                let options = self.creature_types_known_to(r.item.controller);
+                if !options.is_empty() {
+                    self.ask(
+                        r.item.controller,
+                        Decision::ChooseCreatureType {
+                            card: source,
+                            options,
+                        },
+                    );
+                    return;
+                }
+            }
         }
         if self.end_turn {
             self.end_the_turn();
@@ -3131,6 +3252,9 @@ impl Game {
             Decision::May | Decision::Surveil { .. } | Decision::Tuck { .. } => vec![Action::Yes, Action::No],
             Decision::SacrificeCreatures { .. } => self.creatures(p).map(Action::Pick).collect(),
             Decision::ChooseColor { .. } => (0..5).map(Action::Mode).collect(),
+            Decision::ChooseCreatureType { options, .. } => {
+                (0..options.len() as u8).map(Action::Mode).collect()
+            }
             Decision::KeepOfType { ty, .. } => self
                 .permanents(p)
                 .filter(|&x| Game::has_type(self.def_of(x), *ty))
@@ -3249,6 +3373,24 @@ impl Game {
 
     fn decide(&mut self, p: PlayerId, a: Action) {
         let d = self.decision.take().expect("a decision");
+        if let (Decision::ChooseCreatureType { card, options }, Action::Mode(i)) = (&d, a) {
+            let t = options[i as usize].clone();
+            let (card, owner) = (*card, self.obj(*card).controller);
+            let n = self
+                .creatures(owner)
+                .filter(|&x| self.has_base_subtype(x, &t))
+                .count() as i32;
+            let n = n * self.doubling(owner);
+            let o = self.obj_mut(card);
+            o.chosen_type = Some(t);
+            o.fellowship = n;
+            if self.end_turn {
+                self.end_the_turn();
+            } else {
+                self.give_priority(self.active);
+            }
+            return;
+        }
         if let (Decision::ChooseColor { card }, Action::Mode(c)) = (&d, a) {
             self.obj_mut(*card).chosen_color = Some(c);
             if self.end_turn {

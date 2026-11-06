@@ -243,6 +243,16 @@ pub struct CardDef {
     pub revival_on_cast: bool,
     /// "As this enters, choose a color", and "{T}: Add one mana of the chosen color".
     pub choose_color: bool,
+    /// "As this enters, choose a creature type" (CR 614.12); also gives it a fellowship counter for
+    /// each creature you control of that type (Banner of Kinship).
+    pub choose_creature_type: bool,
+    /// Vivid: one activation adds one mana of each color among permanents you control.
+    pub vivid_mana: bool,
+    /// Its mana can be spent only to cast spells with this subtype.
+    pub mana_only_for_subtype: Option<&'static str>,
+    /// "Each other [subtype] you control enters with an additional +1/+1 counter on it for each
+    /// [subtype] you already control" (Giada).
+    pub other_subtype_enter_bonus: Option<&'static str>,
     pub mana_of_chosen_color: bool,
     /// Its controller may play opponents' stashed cards from exile during their turn (Tinybones).
     pub stash_player: bool,
@@ -316,6 +326,10 @@ impl CardDef {
             colors: [false; 5],
             revival_on_cast: false,
             choose_color: false,
+            choose_creature_type: false,
+            vivid_mana: false,
+            mana_only_for_subtype: None,
+            other_subtype_enter_bonus: None,
             mana_of_chosen_color: false,
             stash_player: false,
             player_hexproof: false,
@@ -383,6 +397,10 @@ impl CardDef {
             colors: [false; 5],
             revival_on_cast: false,
             choose_color: false,
+            choose_creature_type: false,
+            vivid_mana: false,
+            mana_only_for_subtype: None,
+            other_subtype_enter_bonus: None,
             mana_of_chosen_color: false,
             stash_player: false,
             player_hexproof: false,
@@ -450,6 +468,10 @@ impl CardDef {
             colors: [false; 5],
             revival_on_cast: false,
             choose_color: false,
+            choose_creature_type: false,
+            vivid_mana: false,
+            mana_only_for_subtype: None,
+            other_subtype_enter_bonus: None,
             mana_of_chosen_color: false,
             stash_player: false,
             player_hexproof: false,
