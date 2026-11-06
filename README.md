@@ -28,6 +28,9 @@ Bolt the Bird learns this in two stages:
    model's, by a judge it never trained against. Along the way it unlearned a human habit (taking
    off-color rares for their collection value) and found an open lane: White-Red, one of the set's
    two strongest pairs in real games, yet under 8% of the decks people play.
+3. **Play it out.** A Magic rules engine written in Rust plays every card in the set. Over 290,000
+   played games, the bot's decks do win more often, but by **about 1 point**, not 3.9. The judge
+   was right about the direction and overstated the size. Testing a stronger player didn't close the gap.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/figures/rl-curve-dark.png">
@@ -42,6 +45,7 @@ Bolt the Bird learns this in two stages:
 | **Finding** | Humans take off-color rares 3.2× as often as off-color commons, and strong drafters do it just as much | Packs 2–3 of 131,183 drafts |
 | **Judge** | Predicts deck win rate, calibrated to within about a point | 78,379 held-out games |
 | **Learning to win** | +3.85 ± 0.23 points of judged win rate, 14% fewer late rares, 81% human-like | 512 held-out tables, scored by a judge excluded from training |
+| **Playing it out** | +1.59 ± 0.64 points of played win rate (rules-based pilot); +0.79 ± 0.88 (search pilot) | The same 1,024 decks in the Rust engine: 258,048 and 16,384 games |
 
 Every number comes from a file in [`results/`](results/), and every chart is generated from those files
 by [`scripts/make_figures.py`](scripts/make_figures.py).
@@ -235,6 +239,32 @@ edge, not a judge exploit. In 17lands games, White-Red decks win 2.1 points more
 skill predicts, second only to Red-Green, yet they make up under 8% of games. Against seven human-like
 drafters, the lane is usually open. Source: [`scripts/archetypes.py`](scripts/archetypes.py).
 
+### Playing it out
+
+A judge is a model, and a model can be fooled. So the decks were played out in a rules engine
+written for this project ([`engine/`](engine/), Rust with Python bindings). It implements all 286
+Foundations cards, each with a test written from its rules text (376 tests in all), and plays about
+300 games a second with the rules-based pilot.
+
+The same 512 tables were drafted by the bot and by the human model, and every deck played a fixed
+field of 64 human-model decks. Two pilots played both sides: a rules-based player (curve out, attack
+when it's safe, block to survive), and a search player that plays each candidate move out in
+games where the hidden cards are guessed again, then keeps the best. The search player beats the
+rules-based one 72.5% of the time.
+
+| | Bot decks | Human-model decks | Gap |
+|---|---|---|---|
+| Judge B (predicted) | 63.87% | 60.02% | **+3.85 ± 0.23** |
+| Played, rules-based pilot (258,048 games) | 51.10% | 49.51% | **+1.59 ± 0.64** |
+| Played, search pilot (16,384 games) | 50.00% | 49.21% | **+0.79 ± 0.88** |
+
+The bot's decks win more played games, so the improvement is real. It is about a third of what the
+judge predicted, though, and the stronger pilot showed no more of it, so a weak pilot isn't what hides
+the rest. The judge's per-deck scores also track played results only loosely (correlation
+0.13–0.16). The likeliest reading: the bot found deck traits that both judges rate more highly than
+actual play does, the shared blind spot this project's design could not rule out. Details:
+[`docs/engine/VALIDATION.md`](docs/engine/VALIDATION.md).
+
 ### Design decisions
 
 | Decision | Why |
@@ -254,9 +284,12 @@ Apple's GPU, the NaN-poisoned model hung the machine. The fix masks before the a
 
 ## Limitations
 
-- **Win rates are predicted, not played.** Both judges learned from human-built decks, so they can
-  share blind spots. The held-out judge rules out overfitting to judge A, but not a blind spot both
-  judges have. Played games are the real test. See the roadmap.
+- **The judge overstates the edge.** Played games show about +1 point where judge B says +3.85.
+  Both judges learned from human-built decks, so they share blind spots, and the bot found some.
+  The next step is a reward from played games, not from a judge.
+- **The pilots are not experts.** Both engine pilots play far below a strong human: neither one
+  plans turns ahead, and both assume the opponent won't respond. Decks that reward skilled play
+  can look worse here than they are.
 - **The opponents are simulated.** The other 7 seats are the human model, not real people. The
   White-Red lean pays off because human-like drafters leave it open. A table of eight copies of the
   bot would fight over it.
@@ -269,8 +302,8 @@ Apple's GPU, the NaN-poisoned model hung the machine. The fix masks before the a
 - [x] Judge, deck builder, draft simulator
 - [x] RL against a held-out-validated judge
 - [x] Longer RL runs, to the point of diminishing returns
-- [ ] **A rules engine in Rust** (PyO3 bindings) to play the decks out, which replaces predicted win
-      rates with played ones
+- [x] A rules engine in Rust (PyO3 bindings) that plays the decks out: all 286 cards, played win
+      rates alongside the judged ones
 - [ ] A gameplay agent trained by self-play
 - [ ] Draft practice against the bot on [Nerd Leagues](https://nerdleagues.com)
 
@@ -285,6 +318,7 @@ src/bolt/          the library
   sim.py             8-seat draft simulator
   rl.py              the KL penalty
   cards.py           colors, rarity, castability, dual lands
+engine/            the Rust rules engine: bolt-core (rules, pilots), bolt-cards (the set), bolt-py
 scripts/           one script per result (see the Makefile)
 tests/             21 tests on synthetic data
 results/           every number in this README
