@@ -78,3 +78,16 @@ def test_clones_are_independent_and_games_replay_exactly():
     assert h.turn == 0 and not h.is_over()
     play_random(h, random.Random(0))
     assert (g.result(), g.turn) == (h.result(), h.turn)
+
+
+def test_the_baseline_player_beats_random():
+    rng = random.Random(11)
+    wins = 0
+    for seed in range(40):
+        g = be.Game(deck(rng), deck(rng), seed=seed)
+        smart = seed % 2
+        while not g.is_over():
+            n = len(g.legal_actions())
+            g.step(g.baseline() if g.to_act() == smart else rng.randrange(n))
+        wins += g.result() == f"p{smart}"
+    assert wins >= 28, wins

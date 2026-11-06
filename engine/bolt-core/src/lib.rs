@@ -3,6 +3,7 @@
 //! Game state is plain, cloneable data, and [`Game::apply`] is the only thing that changes it.
 //! Rules cite the Comprehensive Rules (CR) section they follow.
 
+pub mod baseline;
 pub mod card;
 pub mod effect;
 pub mod fuzz;

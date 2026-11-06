@@ -310,3 +310,15 @@ One line per working step, newest last. The next session continues from the last
   builds the wheel and runs them. The crate only warns on unsafe code, because pyo3's macros
   expand to some; the workspace still forbids it everywhere else. **Next: the rules-based
   baseline player and a games/second benchmark.**
+- 2026-11-06 · M5 part 2: the rules-based baseline player (`bolt_core::baseline::choose`, and
+  `Game.baseline()` in Python). Mulligans to 2–5 lands; in its own main phases plays a land, then
+  the biggest spell it can cast (curve out), then a plus loyalty ability; attacks with creatures
+  no untapped blocker can kill, or with everything when it's lethal; blocks when the blocker
+  survives or trades up, chumps when the damage would be lethal, and checks each block on a cloned
+  game, so a menace attacker never gets a lone blocker it would have to take back (two seeds looped
+  on that before the check); aims harmful effects at the opponent's biggest creature and helpful
+  ones at its own. Results (`examples/baseline_bench`, 2,000 games, random FDN decks, seats
+  alternated): **beats a random player 86.6% of the time**; baseline against itself runs **307
+  games/s** (277 actions a game). From Python with simpler two-color decks: ~1,000 games/s and
+  115–134k actions/s. 2 Rust tests and 1 Python test: **368 Rust tests, 7 Python binding tests.**
+  **M5 is done. Next: M6, validation against judge B.**

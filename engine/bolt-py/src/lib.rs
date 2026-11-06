@@ -151,6 +151,19 @@ impl Game {
         Ok(self.g.is_over())
     }
 
+    /// The index in `legal_actions()` the rules-based baseline player would choose.
+    fn baseline(&self) -> PyResult<usize> {
+        if self.legal.is_empty() {
+            return Err(PyValueError::new_err("the game is over"));
+        }
+        let a = bolt_core::baseline::choose(&self.g, &self.legal);
+        Ok(self
+            .legal
+            .iter()
+            .position(|&x| x == a)
+            .expect("the baseline picks a legal action"))
+    }
+
     /// Who must act now (0 or 1), or None when the game is over.
     fn to_act(&self) -> Option<i64> {
         let (_, p) = pending(&self.g.pending);
