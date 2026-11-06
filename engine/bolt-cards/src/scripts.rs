@@ -2759,6 +2759,10 @@ pub fn script(name: &str) -> Option<Script> {
             // The copies keep the original's targets (see docs/engine/QUESTIONS.md).
             |d, _| on(d, When::YouCastInstantOrSorceryCounted, vec![], vec![Effect::CopySpellPerAmount]),
         ),
+                "Etali, Primal Storm" => s(
+            &["Whenever Etali attacks, exile the top card of each player's library, then you may cast any number of spells from among those cards without paying their mana costs."],
+            |d, _| on(d, When::Attacks, vec![], vec![Effect::ExileTopOfEachCastFree]),
+        ),
         "Vivien Reid" => s(
             &[
                 "+1: Look at the top four cards of your library. You may reveal a creature or land card from among them and put it into your hand. Put the rest on the bottom of your library in a random order.",
@@ -3046,4 +3050,5 @@ pub const SCRIPTED: &[&str] = &[
     "Banner of Kinship",
     "Quilled Greatwurm",
     "Thousand-Year Storm",
+    "Etali, Primal Storm",
 ];

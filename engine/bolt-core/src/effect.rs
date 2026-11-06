@@ -183,6 +183,9 @@ pub enum Effect {
         slot: u8,
         n: i32,
     },
+    /// Exile the top card of each player's library; you may cast any number of spells from among
+    /// them without paying their mana costs (Etali).
+    ExileTopOfEachCastFree,
     /// Copy the triggering spell once per the trigger's amount, with the same targets (CR 707.10).
     CopySpellPerAmount,
     /// "that many" +1/+1 counters on the object in `slot`: the trigger's amount.

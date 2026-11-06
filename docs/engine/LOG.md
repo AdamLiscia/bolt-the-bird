@@ -268,3 +268,11 @@ One line per working step, newest last. The next session continues from the last
   tests.** 10,000 release fuzz games pass under the guard. **Next: Etali (cast spells from exile
   for free), then the deferred cards: Kellan, Muldrotha, Imprisoned in the Moon, Soulstone
   Sanctuary, Secluded Courtyard.**
+- 2026-11-06 · Tier 4 batch 11: Etali, Primal Storm. Its attack trigger exiles the top card of
+  each library; then a free-cast window (`Pending::FreeCast`) opens before anyone gets priority:
+  the controller may cast any of the exiled nonland cards (theirs or the opponent's) without paying
+  mana costs and at any timing, one after another, or pass. CR 608.2g puts spells cast during
+  resolution on the stack once the ability finishes, so the window is equivalent. Cards not cast
+  stay exiled. 3 tests: **281 supported, 354 tests.** 10,000 release fuzz games pass under the
+  guard. **Next: the five deferred cards (Kellan, Muldrotha, Imprisoned in the Moon, Soulstone
+  Sanctuary, Secluded Courtyard), which need type changes and restricted mana.**

@@ -83,6 +83,8 @@ pub struct Object {
     pub from_hand: bool,
     /// Exiled instead if it would die during this turn, while it is this object: (zcc, turn).
     pub exile_if_dies: Option<(u32, u32)>,
+    /// May be cast without paying its mana cost, during an open free-cast window (Etali).
+    pub cast_free: bool,
     /// Creature types it has gained, a type that replaced its printed ones, and keywords gained for
     /// as long as it's on the battlefield.
     pub extra_subtypes: Vec<&'static str>,
@@ -193,6 +195,8 @@ pub enum Pending {
     Divide(PlayerId),
     /// Remove a counter from a creature you control, as a cost of the spell being cast.
     RemoveCounters(PlayerId),
+    /// Cast any of [`Game::free_casts`] without paying mana costs, or pass to stop (Etali).
+    FreeCast(PlayerId),
     GameOver,
 }
 
@@ -608,6 +612,10 @@ pub struct Game {
     pub instants_sorceries_cast: [u32; 2],
     /// Each instant or sorcery cast this turn as it was put on the stack, for copying it.
     pub cast_snapshots: Vec<StackItem>,
+    /// Cards that may be cast for free right after the ability that exiled them resolves, and who
+    /// may cast them (CR 608.2g: spells cast during resolution go on the stack afterward).
+    pub free_casts: Vec<ObjId>,
+    pub free_caster: PlayerId,
     /// Set just before casting from the graveyard by removing counters (Quilled Greatwurm).
     removal_to_cast: u8,
     /// How many permanents with a "loses all abilities" static are on the battlefield. Zero almost
@@ -703,6 +711,8 @@ impl Game {
             work: 0,
             instants_sorceries_cast: [0; 2],
             cast_snapshots: Vec::new(),
+            free_casts: Vec::new(),
+            free_caster: 0,
             removal_to_cast: 0,
             ability_loss_sources: 0,
             static_sources: Vec::new(),
@@ -763,6 +773,7 @@ impl Game {
             incubation: 0,
             from_hand: false,
             exile_if_dies: None,
+            cast_free: false,
             extra_subtypes: Vec::new(),
             subtype_override: None,
             granted: Keywords::NONE,
@@ -1179,6 +1190,9 @@ impl Game {
         let o = self.obj_mut(id);
         o.zone = to;
         o.zcc += 1;
+        if to != Zone::Stack {
+            o.cast_free = false;
+        }
         if to != Zone::Exile {
             o.playable = None;
         }
@@ -1549,6 +1563,11 @@ impl Game {
             }
             Pending::DeclareBlockers(p) => self.block_actions(p),
             Pending::Decide(p) => self.decision_actions(p),
+            Pending::FreeCast(p) => {
+                let mut v = vec![Action::PassPriority];
+                v.extend(self.free_cast_actions(p));
+                v
+            }
             Pending::RemoveCounters(p) => self
                 .creatures(p)
                 .filter(|&c| Game::removable_counters(self.obj(c)) > 0)
@@ -1985,11 +2004,10 @@ impl Game {
         let in_hand = o.zone == Zone::Hand || (o.zone == Zone::Stack && o.from_hand);
         // CR 107.3b, 118.9: cast without paying its mana cost, X is 0. Choosing a bigger X means
         // paying the cost.
-        let free = in_hand
+        let free = (o.cast_free || (in_hand && self.permanents(p).any(|x| self.def_of(x).free_from_hand)))
             && mode.x == 0
             && !mode.alt
-            && !mode.flashback
-            && self.permanents(p).any(|x| self.def_of(x).free_from_hand);
+            && !mode.flashback;
         let mut cost = if free {
             ManaCost::default()
         } else if mode.alt {
@@ -2569,7 +2587,13 @@ impl Game {
             return Err(RulesError::Illegal(action));
         }
         self.work = 0;
-        match (self.pending, action) {
+        // In a free-cast window, casting works as it does with priority.
+        let pending = match (self.pending, action) {
+            (Pending::FreeCast(p), a) if a != Action::PassPriority => Pending::Priority(p),
+            (pending, _) => pending,
+        };
+        match (pending, action) {
+            (Pending::FreeCast(_), Action::PassPriority) => self.close_free_casts(),
             (Pending::Mulligan(p), Action::Keep) => {
                 let n = self.players[p].mulligans;
                 if n > 0 {
@@ -2944,7 +2968,55 @@ impl Game {
             }
         }
         self.passes = 0;
-        self.give_priority(p);
+        if self.free_casts.is_empty() {
+            self.give_priority(p);
+        } else {
+            self.open_free_casts();
+        }
+    }
+
+    /// The casts open in a free-cast window: spells only (no lands), any timing (CR 608.2g).
+    fn free_cast_actions(&self, p: PlayerId) -> Vec<Action> {
+        let mut v = Vec::new();
+        for &c in &self.free_casts {
+            let def = self.def_of(c);
+            if self.obj(c).zone != Zone::Exile || def.types.land {
+                continue;
+            }
+            let castable = def.types.is_permanent() || def.spell.is_some() || !def.modes.is_empty();
+            if !castable {
+                continue;
+            }
+            if let Some(ability) = &def.spell {
+                if !self.trigger_can_target(&Game::casting(c, p), ability) {
+                    continue;
+                }
+            }
+            for (action, mode) in self.cast_modes(p, c, false) {
+                if self.mode_affordable(p, c, mode) {
+                    v.push(action);
+                }
+            }
+        }
+        v
+    }
+
+    /// Offers the free casts, or closes the window if nothing can be cast.
+    fn open_free_casts(&mut self) {
+        let p = self.free_caster;
+        if self.free_cast_actions(p).is_empty() {
+            self.close_free_casts();
+        } else {
+            self.pending = Pending::FreeCast(p);
+        }
+    }
+
+    /// Cards not cast stay in exile; priority goes to the active player (CR 117.3b).
+    fn close_free_casts(&mut self) {
+        for c in std::mem::take(&mut self.free_casts) {
+            self.obj_mut(c).cast_free = false;
+        }
+        self.give_priority(self.active);
     }
 
     fn choose_target(&mut self, target: Target) {
@@ -3223,6 +3295,10 @@ impl Game {
         }
         if self.end_turn {
             self.end_the_turn();
+            return;
+        }
+        if !self.free_casts.is_empty() {
+            self.open_free_casts();
             return;
         }
         self.give_priority(self.active);
@@ -4408,6 +4484,19 @@ impl Game {
                     let turn = self.turn;
                     self.obj_mut(id).playable = Some((item.controller, turn));
                 }
+            }
+            Effect::ExileTopOfEachCastFree => {
+                let p = item.controller;
+                for q in [p, opponent(p)] {
+                    if let Some(&c) = self.players[q].library.last() {
+                        self.move_to(c, Zone::Exile);
+                        if !self.def_of(c).types.land {
+                            self.obj_mut(c).cast_free = true;
+                            self.free_casts.push(c);
+                        }
+                    }
+                }
+                self.free_caster = p;
             }
             Effect::CopySpellPerAmount => {
                 let snap = item
