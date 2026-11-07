@@ -59,33 +59,49 @@ each out 4 times with the baseline in worlds where the hidden cards are guessed 
 **72.5% ± 3.1** on random decks (`rollout_bench`, 200 games).
 
 **Setup** (`scripts/engine_pilot_validate.py`, `engine/bolt-cards/examples/pilot_games.rs`,
-`results/engine_pilot_validation.json`): the same 1,024 M6 decks. Each table's bot deck and
-human-model deck play the same 16 opponents from M6's 64-deck field with the same seeds, one game
-each (16,384 games per pilot, about 70 minutes on 8 CPU threads for the rollout pilot). The search
-pilot is far too slow for M6's 258,000 games, so this is a sample of the gauntlet; the baseline
-plays the identical games as a control. Three rollout games stopped at the 180-second cap and count
-as draws.
+`scripts/engine_pilot_overnight.sh`): the same 1,024 M6 decks. Each table's bot deck and
+human-model deck play every deck of a 64-deck human-model field once, with the same seeds, so the
+gap between them is paired: 65,408 games per pilot per field, about 4½ hours on 8 CPU threads for
+the rollout pilot. Field A is M6's field (`results/engine_pilot_validation.json`). Fields B and C
+are replications: 64 other human-model decks each, no deck shared between fields, new seeds
+(`results/engine_pilot_validation_b.json`, `_c`). The baseline plays the identical games as a
+control. Rollout games stopped at the 180-second cap (4 in A, 5 in B) count as draws.
 
-| | Judge B (predicted) | Played, baseline pilot | Played, rollout pilot |
-|---|---|---|---|
-| Bot decks | 63.87% | 50.54% | 50.00% |
-| Human-model decks | 60.02% | 49.04% | 49.21% |
-| Gap | **+3.85 ± 0.23** | **+1.50 ± 0.90** | **+0.79 ± 0.88** |
-| Correlation with judge B, per deck | | 0.16 | 0.13 |
+Gap: the bot decks' played win rate minus the human-model decks', in points, ± one standard error
+over the 512 tables.
 
-The baseline column reproduces M6 (+1.59 ± 0.64) on this smaller sample. The paired difference
-between the pilots is −0.71 ± 0.90: no change within the noise. Pooling both pilots, the bot's
-decks win **+1.1 ± 0.8** points more played games.
+| Field | Judge B (predicted) | Played, baseline pilot | Played, rollout pilot | Rollout − baseline |
+|---|---|---|---|---|
+| A | +3.85 ± 0.23 | +1.45 ± 0.73 | −0.16 ± 0.64 | −1.61 ± 0.51 |
+| B | +3.85 ± 0.23 | +1.53 ± 0.71 | −0.09 ± 0.65 | |
+| C | +3.85 ± 0.23 | +1.64 ± 0.70 | (running) | |
+| **A + B** | **+3.85 ± 0.23** | **+1.49 ± 0.68** | **−0.13 ± 0.61** | **−1.62 ± 0.42** |
+
+Win rates behind field A: bot decks 51.04% / 49.26% (baseline / rollout), human-model decks
+49.59% / 49.43%; field B: 52.44% / 50.93% and 50.91% / 51.02%. Per-deck correlation with judge B's
+predicted win rate is 0.12 (baseline) and 0.14–0.15 (rollout).
+
+**The first sample was high.** M7 first ran 16 of the 64 field opponents per deck (16,384 games):
+baseline +1.50 ± 0.90, rollout +0.79 ± 0.88, difference −0.71 ± 0.90, which read as "no change".
+The full round-robin on field A put the rollout gap at −0.16, and field B repeated it.
+
+**More fields won't shrink the error much.** A table's gap on field A and on field B correlate
+0.74 (rollout) and 0.79 (baseline): the result is mostly set by the 512 deck pairs, not by which
+opponents they meet. Adding field B moved the rollout error from ±0.64 to ±0.61. Tightening it
+needs more drafts (new tables), not more games.
 
 ## What M7 says
 
-- **A stronger pilot doesn't move played results toward judge B.** If judge B's +3.85 were real
-  and the baseline was just too weak to show it, a pilot that beats the baseline 72% of the time
-  should have shown more of it. It shows the same or less.
-- **So judge B probably overstates the bot's edge.** The bot's decks look slightly better in played
-  games (+1 to +1.5 points, about one to two standard errors), well short of +3.85. The RL bot was
-  trained against judge A and evaluated by judge B; they learned from different halves of the
-  same kind of human game data, and the bot may have found deck traits both reward more than play
-  does (the shared blind spot the README already names as a limit).
-- **Caveat:** the rollout pilot is still the baseline underneath, plus search. It plays much better
-  than the baseline but not like a strong human, and judge B learned from human games.
+- **The bot's edge depends on how well the decks are played.** With the baseline on both sides the
+  bot's decks win about 1.5 points more often, on three separate fields. With the rollout pilot on
+  both sides the edge is gone (−0.1 ± 0.6), and the drop is about four standard errors.
+- **Either way, judge B overstates it.** It predicts +3.85. A stronger pilot moves played results
+  further from that, not closer. The RL bot was trained against judge A and evaluated by judge B;
+  they learned from different halves of the same kind of human game data, and the bot found deck
+  traits both reward more than play does (the shared blind spot the README already names).
+- **A guess at why, not tested:** whatever the bot's decks do better pays off when both sides play
+  by simple rules, and a pilot that looks ahead neutralizes it.
+- **Caveat:** the rollout pilot is still weak. It searches only its next move, assumes the opponent
+  never responds (no counterspells or tricks in its playouts), and leaves targets, discards and
+  mulligans to the baseline. Strong play may change the answer again; a self-play pilot is the
+  test for that.
