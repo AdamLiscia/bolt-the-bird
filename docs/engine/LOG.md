@@ -346,3 +346,4 @@ One line per working step, newest last. The next session continues from the last
   (180 s cap per game, 3 hit it): bot decks +0.79 ± 0.88 pts over the human model's, baseline on the
   same games +1.50 ± 0.90, judge B +3.85. A stronger pilot doesn't move played results toward judge
   B; written up in VALIDATION.md. Open for Adam: what to say publicly about the RL result.
+- 2026-11-07 — M7 round-robin: `engine_pilot_validate.py extend` adds 49,024 games so every deck meets the whole 64-deck field once (analyze now scores finished pairs only; unchanged on the 16k sample). Baseline on all 65,408: done in 12 s. Rollout pilot running overnight with Adam's OK via `scripts/engine_pilot_overnight.sh` (guarded 10-min chunks, 2 GB, stops on any failure, 9 h cap).

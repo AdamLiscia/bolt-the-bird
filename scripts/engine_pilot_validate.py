@@ -10,6 +10,10 @@ same games too, as a control.
     engine/target/release/examples/pilot_games data/m7/decks.txt data/m7/jobs.txt \\
         data/m7/games_rollout.txt rollout 540        # resumable; repeat until nothing is left
     python scripts/engine_pilot_validate.py analyze
+
+`extend` adds games against every field opponent a deck hasn't met yet (a full round-robin),
+appended after the existing jobs and ordered opponent-round first, so a run stopped partway still
+covers every table evenly. `analyze` scores each table on the games both of its decks finished.
 """
 
 import argparse
@@ -45,6 +49,33 @@ def prepare(games: int):
     print(f"{len(jobs)} games: {TABLES} tables x 2 decks x {games} opponents")
 
 
+def extend():
+    """Append games so every deck meets all 63 other field decks, keeping the existing jobs."""
+    jobs = (DIR / "jobs.txt").read_text().split("\n")
+    jobs = [j for j in jobs if j]
+    meta = json.loads((DIR / "meta.json").read_text())
+    assert len(jobs) == len(meta)
+    field = np.random.default_rng(0).choice(TABLES, size=FIELD, replace=False)
+    met = {t: set() for t in range(TABLES)}
+    for m in meta:
+        met[m["table"]].add(m["opp"])
+    rng = np.random.default_rng(2)
+    left = {t: [int(x) for x in rng.permutation([int(f) for f in field if f != t and f not in met[t]])] for t in range(TABLES)}
+    added = 0
+    for k in range(max(len(v) for v in left.values())):
+        for t in range(TABLES):
+            if k >= len(left[t]):
+                continue
+            f, seed = left[t][k], int(rng.integers(2**62))
+            for side, deck in (("bot", t), ("human_model", TABLES + t)):
+                jobs.append(f"{len(jobs)} {deck} {TABLES + f} {seed} {(len(met[t]) + k) % 2}")
+                meta.append({"table": t, "side": side, "opp": f})
+                added += 1
+    (DIR / "jobs.txt").write_text("\n".join(jobs) + "\n")
+    (DIR / "meta.json").write_text(json.dumps(meta))
+    print(f"added {added} games; {len(jobs)} in all")
+
+
 def scores(pilot: str, meta: list) -> np.ndarray | None:
     """Player 0's score per job (nan if not played), or None if nothing was played."""
     f = DIR / f"games_{pilot}.txt"
@@ -72,13 +103,16 @@ def analyze():
         if got is None:
             continue
         s, timeouts = got
+        # Jobs come in pairs (bot deck, then human-model deck, same opponent and seed); a pair
+        # counts only when both games finished, so the comparison stays paired.
+        pair_done = ~np.isnan(s[0::2]) & ~np.isnan(s[1::2])
+        done = np.repeat(pair_done, 2)
         played = {side: np.full(TABLES, np.nan) for side in judge}
         for side, mask in (("bot", bot), ("human_model", ~bot)):
             for t in range(TABLES):
-                x = s[mask & (table == t)]
-                if len(x) and not np.isnan(x).any():
+                x = s[mask & (table == t) & done]
+                if len(x):
                     played[side][t] = x.mean()
-        # Only tables where both decks played every game.
         ok = ~np.isnan(played["bot"]) & ~np.isnan(played["human_model"])
         gap = played["bot"][ok] - played["human_model"][ok]
         all_j = np.concatenate([judge["bot"][ok], judge["human_model"][ok]])
@@ -86,6 +120,7 @@ def analyze():
         out[pilot] = {
             "tables": int(ok.sum()),
             "games": int((~np.isnan(s)).sum()),
+            "paired_games": int(done.sum()),
             "bot": float(played["bot"][ok].mean()),
             "human_model": float(played["human_model"][ok].mean()),
             "gap": float(gap.mean()),
@@ -106,10 +141,10 @@ def analyze():
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("step", choices=["prepare", "analyze"])
+    ap.add_argument("step", choices=["prepare", "extend", "analyze"])
     ap.add_argument("--games", type=int, default=8, help="field opponents per deck, one game each")
     a = ap.parse_args()
-    prepare(a.games) if a.step == "prepare" else analyze()
+    {"prepare": lambda: prepare(a.games), "extend": extend, "analyze": analyze}[a.step]()
 
 
 if __name__ == "__main__":
