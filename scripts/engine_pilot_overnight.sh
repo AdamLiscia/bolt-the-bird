@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Plays the rollout pilot's remaining M7 games in guarded chunks until none are left or HOURS pass.
 #
-#     scripts/engine_pilot_overnight.sh [HOURS] [SET]      # default 9 hours, set a (b: data/m7b)
+#     scripts/engine_pilot_overnight.sh [HOURS] [SET]      # default 9 hours, set a (b, c: data/m7b, data/m7c)
 #
 # Every chunk goes through scripts/guard.sh (10 minutes, 2 GB): the runner stops starting games
 # after 380 s and caps each game at 180 s, so a healthy chunk ends before the guard does. Any
@@ -11,7 +11,7 @@ set -u
 cd "$(dirname "$0")/.."
 hours=${1:-9}
 set_=${2:-a}
-d=data/m7; [ "$set_" = b ] && d=data/m7b
+d=data/m7; [ "$set_" != a ] && d=data/m7$set_
 end=$(($(date +%s) + hours * 3600))
 log=$d/overnight.log
 echo "$(date '+%F %T') start, until $(date -r "$end" '+%F %T')" >>"$log"
