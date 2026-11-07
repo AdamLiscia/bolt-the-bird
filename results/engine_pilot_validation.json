@@ -3,23 +3,25 @@
   "pilots": {
     "baseline": {
       "tables": 512,
-      "games": 16384,
-      "bot": 0.50537109375,
-      "human_model": 0.49041748046875,
-      "gap": 0.01495361328125,
-      "gap_se": 0.009040574581152632,
-      "corr_with_judge_b": 0.16272315941075532,
+      "games": 65408,
+      "paired_games": 65408,
+      "bot": 0.5103999546595981,
+      "human_model": 0.49588593982514884,
+      "gap": 0.014514014834449404,
+      "gap_se": 0.007321604998696727,
+      "corr_with_judge_b": 0.12490479329440002,
       "timeouts": 0
     },
     "rollout": {
       "tables": 512,
-      "games": 16384,
-      "bot": 0.5,
-      "human_model": 0.49212646484375,
-      "gap": 0.00787353515625,
-      "gap_se": 0.00875349223041617,
-      "corr_with_judge_b": 0.12617401804658698,
-      "timeouts": 3
+      "games": 65408,
+      "paired_games": 65408,
+      "bot": 0.4926355755518353,
+      "human_model": 0.4942672971695188,
+      "gap": -0.0016317216176835315,
+      "gap_se": 0.00643052239047195,
+      "corr_with_judge_b": 0.14453053445913214,
+      "timeouts": 4
     }
   },
   "note": "same games for ['baseline', 'rollout']; tables differ only if a run is unfinished"

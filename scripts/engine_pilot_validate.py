@@ -14,6 +14,10 @@ same games too, as a control.
 `extend` adds games against every field opponent a deck hasn't met yet (a full round-robin),
 appended after the existing jobs and ordered opponent-round first, so a run stopped partway still
 covers every table evenly. `analyze` scores each table on the games both of its decks finished.
+
+`--set b` is the replication: a second 64-deck field with no deck in common with the first, new
+seeds, a full round-robin from the start (`prepare --set b`), in data/m7b, results in
+results/engine_pilot_validation_b.json.
 """
 
 import argparse
@@ -26,6 +30,38 @@ ROOT = Path(__file__).resolve().parents[1]
 DIR = ROOT / "data" / "m7"
 TABLES = 512
 FIELD = 64
+SUFFIX = ""
+
+
+def field_of(set_: str) -> np.ndarray:
+    a = np.random.default_rng(0).choice(TABLES, size=FIELD, replace=False)  # M6's field
+    if set_ == "a":
+        return a
+    rest = np.array([t for t in range(TABLES) if t not in set(a.tolist())])
+    return np.random.default_rng(10).choice(rest, size=FIELD, replace=False)
+
+
+def prepare_b():
+    """Every deck against every deck of the second field once, round-major."""
+    d = json.loads((ROOT / "data" / f"engine_decks_{TABLES}.json").read_text())
+    decks = d["bot"]["decks"] + d["human_model"]["decks"]
+    DIR.mkdir(parents=True, exist_ok=True)
+    (DIR / "decks.txt").write_text("\n".join(" ".join(map(str, x)) for x in decks) + "\n")
+    field = [int(f) for f in field_of("b")]
+    rng = np.random.default_rng(11)
+    order = {t: [int(x) for x in rng.permutation([f for f in field if f != t])] for t in range(TABLES)}
+    jobs, meta = [], []
+    for k in range(FIELD):
+        for t in range(TABLES):
+            if k >= len(order[t]):
+                continue
+            f, seed = order[t][k], int(rng.integers(2**62))
+            for side, deck in (("bot", t), ("human_model", TABLES + t)):
+                jobs.append(f"{len(jobs)} {deck} {TABLES + f} {seed} {k % 2}")
+                meta.append({"table": t, "side": side, "opp": f})
+    (DIR / "jobs.txt").write_text("\n".join(jobs) + "\n")
+    (DIR / "meta.json").write_text(json.dumps(meta))
+    print(f"{len(jobs)} games: {TABLES} tables x 2 decks x the whole second field")
 
 
 def prepare(games: int):
@@ -135,7 +171,7 @@ def analyze():
     if {"baseline", "rollout"} <= out.keys():
         both = [p for p in out]
         res["note"] = f"same games for {both}; tables differ only if a run is unfinished"
-    (ROOT / "results" / "engine_pilot_validation.json").write_text(json.dumps(res, indent=2) + "\n")
+    (ROOT / "results" / f"engine_pilot_validation{SUFFIX}.json").write_text(json.dumps(res, indent=2) + "\n")
     print(json.dumps(res, indent=2))
 
 
@@ -143,7 +179,13 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("step", choices=["prepare", "extend", "analyze"])
     ap.add_argument("--games", type=int, default=8, help="field opponents per deck, one game each")
+    ap.add_argument("--set", default="a", choices=["a", "b"], help="b: the replication field")
     a = ap.parse_args()
+    global DIR, SUFFIX
+    if a.set == "b":
+        DIR, SUFFIX = ROOT / "data" / "m7b", "_b"
+        {"prepare": prepare_b, "analyze": analyze}[a.step]()
+        return
     {"prepare": lambda: prepare(a.games), "extend": extend, "analyze": analyze}[a.step]()
 
 
