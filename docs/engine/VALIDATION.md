@@ -65,7 +65,7 @@ gap between them is paired: 65,408 games per pilot per field, about 4½ hours on
 the rollout pilot. Field A is M6's field (`results/engine_pilot_validation.json`). Fields B and C
 are replications: 64 other human-model decks each, no deck shared between fields, new seeds
 (`results/engine_pilot_validation_b.json`, `_c`). The baseline plays the identical games as a
-control. Rollout games stopped at the 180-second cap (4 in A, 5 in B) count as draws.
+control. Rollout games stopped at the 180-second cap (4 in A, 5 in B, 5 in C) count as draws.
 
 Gap: the bot decks' played win rate minus the human-model decks', in points, ± one standard error
 over the 512 tables.
@@ -73,9 +73,9 @@ over the 512 tables.
 | Field | Judge B (predicted) | Played, baseline pilot | Played, rollout pilot | Rollout − baseline |
 |---|---|---|---|---|
 | A | +3.85 ± 0.23 | +1.45 ± 0.73 | −0.16 ± 0.64 | −1.61 ± 0.51 |
-| B | +3.85 ± 0.23 | +1.53 ± 0.71 | −0.09 ± 0.65 | |
-| C | +3.85 ± 0.23 | +1.64 ± 0.70 | (running) | |
-| **A + B** | **+3.85 ± 0.23** | **+1.49 ± 0.68** | **−0.13 ± 0.61** | **−1.62 ± 0.42** |
+| B | +3.85 ± 0.23 | +1.53 ± 0.71 | −0.09 ± 0.65 | −1.63 ± 0.50 |
+| C | +3.85 ± 0.23 | +1.64 ± 0.70 | −0.37 ± 0.62 | −2.02 ± 0.50 |
+| **A + B + C** | **+3.85 ± 0.23** | **+1.54 ± 0.66** | **−0.21 ± 0.58** | **−1.75 ± 0.38** |
 
 Win rates behind field A: bot decks 51.04% / 49.26% (baseline / rollout), human-model decks
 49.59% / 49.43%; field B: 52.44% / 50.93% and 50.91% / 51.02%. Per-deck correlation with judge B's
@@ -94,7 +94,7 @@ needs more drafts (new tables), not more games.
 
 - **The bot's edge depends on how well the decks are played.** With the baseline on both sides the
   bot's decks win about 1.5 points more often, on three separate fields. With the rollout pilot on
-  both sides the edge is gone (−0.1 ± 0.6), and the drop is about four standard errors.
+  both sides the edge is gone (−0.21 ± 0.58), on all three fields, and the drop is more than four standard errors.
 - **Either way, judge B overstates it.** It predicts +3.85. A stronger pilot moves played results
   further from that, not closer. The RL bot was trained against judge A and evaluated by judge B;
   they learned from different halves of the same kind of human game data, and the bot found deck

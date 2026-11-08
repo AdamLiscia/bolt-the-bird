@@ -10,7 +10,7 @@ records choices with their reasons, so they don't get relitigated later.
 | 1 | Imitation: DraftTransformer on human picks | Done (2026-11-04): 70.5% top-1 |
 | 2 | Judge, deck builder, draft simulator | Done (2026-11-04) |
 | 2b | RL against judge A, evaluated by judge B | Done (2026-11-05): +3.85 pts over 550 iterations, stopped at diminishing returns |
-| 3 | Rust rules engine with PyO3 bindings | Done (2026-11-06): all 286 cards; played edge +1.59 ± 0.64 (rules-based pilot), +0.79 ± 0.88 (search pilot) vs. +3.85 judged |
+| 3 | Rust rules engine with PyO3 bindings | Done (2026-11-06): all 286 cards; played edge +1.54 ± 0.66 (rules-based pilot), −0.21 ± 0.58 (search pilot) vs. +3.85 judged |
 | 4 | Gameplay agent: rules-based, then imitation, then self-play | Rules-based and search pilots done; next |
 
 ## Phase 3: the rules engine
@@ -36,3 +36,4 @@ the whole set, and is useful early through drafts restricted to supported cards.
 | 2026-11-05 | Stop RL at 550 iterations | Gain flat (+0.02 over 25 iterations) and agreement with the human model at the 80% drift limit |
 | 2026-11-05 | Keep the White-Red lean | Real games back it (+2.1 vs. pilot skill, under 8% of decks). Not a judge exploit |
 | 2026-11-06 | Report judged and played results side by side | Played games show about a third of the judged edge. Both numbers are kept, with the gap explained |
+| 2026-11-07 | Report the round-robin, not the 16k sample | Full round-robins on three fields: the search pilot's edge is −0.21 ± 0.58, not +0.79. The judged edge doesn't survive stronger play |

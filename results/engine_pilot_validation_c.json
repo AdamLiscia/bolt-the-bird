@@ -1,0 +1,28 @@
+{
+  "judge_b_gap": 0.038498552690725774,
+  "pilots": {
+    "baseline": {
+      "tables": 512,
+      "games": 65408,
+      "paired_games": 65408,
+      "bot": 0.4928007579985119,
+      "human_model": 0.4763554164341518,
+      "gap": 0.01644534156436012,
+      "gap_se": 0.007003533496733378,
+      "corr_with_judge_b": 0.13549609793830494,
+      "timeouts": 0
+    },
+    "rollout": {
+      "tables": 512,
+      "games": 65408,
+      "paired_games": 65408,
+      "bot": 0.4809727744450645,
+      "human_model": 0.4847162640283978,
+      "gap": -0.0037434895833333348,
+      "gap_se": 0.006233583308939969,
+      "corr_with_judge_b": 0.1567745725210173,
+      "timeouts": 5
+    }
+  },
+  "note": "same games for ['baseline', 'rollout']; tables differ only if a run is unfinished"
+}

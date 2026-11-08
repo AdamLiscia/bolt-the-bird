@@ -28,9 +28,10 @@ Bolt the Bird learns this in two stages:
    model's, by a judge it never trained against. Along the way it unlearned a human habit (taking
    off-color rares for their collection value) and found an open lane: White-Red, one of the set's
    two strongest pairs in real games, yet under 8% of the decks people play.
-3. **Play it out.** A Magic rules engine written in Rust plays every card in the set. Over 290,000
-   played games, the bot's decks do win more often, but by **about 1 point**, not 3.9. The judge
-   was right about the direction and overstated the size. Testing a stronger player didn't close the gap.
+3. **Play it out.** A Magic rules engine written in Rust plays every card in the set. Over 670,000
+   played games, the bot's decks win about **1.5 points** more often when both sides play by simple
+   rules, and **nothing** more once both sides use a stronger search player. The judge's +3.9 doesn't
+   survive being played, and finding that out is what the engine was built for.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/figures/rl-curve-dark.png">
@@ -45,7 +46,7 @@ Bolt the Bird learns this in two stages:
 | **Finding** | Humans take off-color rares 3.2× as often as off-color commons, and strong drafters do it just as much | Packs 2–3 of 131,183 drafts |
 | **Judge** | Predicts deck win rate, calibrated to within about a point | 78,379 held-out games |
 | **Learning to win** | +3.85 ± 0.23 points of judged win rate, 14% fewer late rares, 81% human-like | 512 held-out tables, scored by a judge excluded from training |
-| **Playing it out** | +1.59 ± 0.64 points of played win rate (rules-based pilot); +0.79 ± 0.88 (search pilot) | The same 1,024 decks in the Rust engine: 258,048 and 16,384 games |
+| **Playing it out** | +1.54 ± 0.66 points of played win rate (rules-based pilot); −0.21 ± 0.58 (search pilot) | The same 1,024 decks in the Rust engine, each against every deck of three separate 64-deck fields |
 
 Every number comes from a file in [`results/`](results/), and every chart is generated from those files
 by [`scripts/make_figures.py`](scripts/make_figures.py).
@@ -246,8 +247,9 @@ written for this project ([`engine/`](engine/), Rust with Python bindings). It i
 Foundations cards, each with a test written from its rules text (376 tests in all), and plays about
 300 games a second with the rules-based pilot.
 
-The same 512 tables were drafted by the bot and by the human model, and every deck played a fixed
-field of 64 human-model decks. Two pilots played both sides: a rules-based player (curve out, attack
+The same 512 tables were drafted by the bot and by the human model, and every deck played every
+deck of three separate fields of 64 human-model decks, once each, with the same seeds for the bot's
+deck and the human model's. Two pilots played both sides: a rules-based player (curve out, attack
 when it's safe, block to survive), and a search player that plays each candidate move out in
 games where the hidden cards are guessed again, then keeps the best. The search player beats the
 rules-based one 72.5% of the time.
@@ -255,14 +257,18 @@ rules-based one 72.5% of the time.
 | | Bot decks | Human-model decks | Gap |
 |---|---|---|---|
 | Judge B (predicted) | 63.87% | 60.02% | **+3.85 ± 0.23** |
-| Played, rules-based pilot (258,048 games) | 51.10% | 49.51% | **+1.59 ± 0.64** |
-| Played, search pilot (16,384 games) | 50.00% | 49.21% | **+0.79 ± 0.88** |
+| Played, rules-based pilot (196,224 games) | 50.92% | 49.38% | **+1.54 ± 0.66** |
+| Played, search pilot (196,224 games) | 49.43% | 49.64% | **−0.21 ± 0.58** |
 
-The bot's decks win more played games, so the improvement is real. It is about a third of what the
-judge predicted, though, and the stronger pilot showed no more of it, so a weak pilot isn't what hides
-the rest. The judge's per-deck scores also track played results only loosely (correlation
-0.13–0.16). The likeliest reading: the bot found deck traits that both judges rate more highly than
-actual play does, the shared blind spot this project's design could not rule out. Details:
+With simple pilots the bot's decks win more, on each of the three fields (+1.45, +1.53, +1.64).
+Give both sides a player that looks ahead and the edge disappears (−0.16, −0.09, −0.37): the drop
+is −1.75 ± 0.38, more than four standard errors, so it isn't noise. Whatever the bot learned to
+value pays off against simple play and gets neutralized by better play. Either way, the judge
+overstated it, and its per-deck scores track played results only loosely (correlation 0.12–0.15).
+The likeliest reason is a shared blind spot: both judges learned from human-built decks and rate
+some deck traits more highly than play does, and the bot found them. Two judges on separate data
+can't catch a blind spot they share; playing the games can. An earlier rules-based run against one
+field (258,048 games) gave +1.59 ± 0.64. Details:
 [`docs/engine/VALIDATION.md`](docs/engine/VALIDATION.md).
 
 ### Design decisions
@@ -284,7 +290,8 @@ Apple's GPU, the NaN-poisoned model hung the machine. The fix masks before the a
 
 ## Limitations
 
-- **The judge overstates the edge.** Played games show about +1 point where judge B says +3.85.
+- **The judged edge doesn't hold up in play.** Judge B says +3.85; played games show +1.5 with
+  simple pilots and about zero with a stronger one.
   Both judges learned from human-built decks, so they share blind spots, and the bot found some.
   The next step is a reward from played games, not from a judge.
 - **The pilots are not experts.** Both engine pilots play far below a strong human: neither one

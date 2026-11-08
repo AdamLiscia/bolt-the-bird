@@ -57,10 +57,11 @@ drafts and games from Arena players who run its tracker, and publishes them with
 - **Result:** +3.85 ± 0.23 points of judged win rate over the human model (63.87% vs. 60.02%).
   Rares taken after pack 1 fell from 2.54 to 2.18 per draft. It agrees with the human model on 81%
   of picks. v0.1.0 shipped the iteration-150 bot (+1.99 ± 0.18).
-- **Played result:** in the project's Rust rules engine, the same decks win **+1.59 ± 0.64** points
-  more played games than the human model's with a rules-based pilot (258,048 games), and
-  **+0.79 ± 0.88** with a stronger search pilot (16,384 games). The edge is real but about a third
-  of the judged one. See `docs/engine/VALIDATION.md`.
+- **Played result:** in the project's Rust rules engine, the same decks win **+1.54 ± 0.66** points
+  more played games than the human model's with a rules-based pilot, and **−0.21 ± 0.58** with a
+  search pilot that beats it 72.5% of the time (each deck against every deck of three separate
+  64-deck fields, 196,224 games per pilot). The judged edge does not survive play. See
+  `docs/engine/VALIDATION.md`.
 - **Known bias:** it drafts White-Red at 45% of tables. In real 17lands games White-Red outperforms
   its pilots' skill by 2.1 points while making up under 8% of games, so the lane is strong and usually open
   against human-like drafters. It would be contested at a table of bots.
@@ -83,8 +84,8 @@ drafts and games from Arena players who run its tracker, and publishes them with
 - **The judges learned from human-built decks only.** They can share blind spots, so a bot can find
   decks both judges overrate. The held-out judge B catches overfitting to judge A, but not a blind
   spot the two judges share. Played games in the rules engine suggest this happened: judge B
-  predicts +3.85 points, play shows about +1, and judge B's per-deck scores correlate only 0.13–0.16
-  with played win rates.
+  predicts +3.85 points, play shows +1.5 with simple pilots and about zero with a stronger one, and
+  judge B's per-deck scores correlate only 0.12–0.15 with played win rates.
 - **Agreement with humans is a proxy, not a goal.** Humans disagree with each other, and they
   rare-draft (see the README), so 100% is neither possible nor desirable.
 - **Opponents are simulated.** The 7 other seats are the imitation model, so the RL bot is
