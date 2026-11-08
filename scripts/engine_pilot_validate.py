@@ -138,7 +138,9 @@ def analyze():
     table = np.array([m["table"] for m in meta])
     bot = np.array([m["side"] == "bot" for m in meta])
     out = {}
-    for pilot in ("baseline", "rollout"):
+    # baseline, rollout (4 x 6) and any other search size (games_r<R>c<C>.txt)
+    names = sorted(f.stem[len("games_"):] for f in DIR.glob("games_*.txt"))
+    for pilot in sorted(names, key=lambda n: (n != "baseline", n != "rollout", n)):
         got = scores(pilot, meta)
         if got is None:
             continue
