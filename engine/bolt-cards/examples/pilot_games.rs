@@ -5,7 +5,9 @@
 //! - DECKS: one deck per line, card numbers separated by spaces.
 //! - JOBS: one game per line: `id deck_a deck_b seed first`.
 //! - OUT: appended one line per finished game: `id result turns`, with result `p0`, `p1`, `draw`
-//!   or `timeout` (past 200 turns, or past 180 s of play). Jobs already in OUT are skipped, so a run can stop and resume.
+//!   or `timeout` (past 200 turns, or past 180 s of play), or `error` if the engine panicked (logged
+//!   to stderr with the job id; the run goes on). Jobs already in OUT are skipped, so a run can stop
+//!   and resume.
 //! - PILOT: `baseline` or `rollout`.
 //! - SECONDS: stop starting new games after this long (default: no limit), so a run fits inside a
 //!   time limit and finishes the games it began.
@@ -132,7 +134,15 @@ fn main() {
                 let i = next.fetch_add(1, Ordering::Relaxed);
                 let Some(j) = jobs.get(i) else { return };
                 let t = Instant::now();
-                let (r, turns) = play(&decks, j, cfg.as_ref());
+                // A panic in one game is recorded and logged, not allowed to end the run. On
+                // 2026-11-08 one game panicked with an impossible index and replayed cleanly 400 times.
+                let (r, turns) = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                    play(&decks, j, cfg.as_ref())
+                }))
+                .unwrap_or_else(|_| {
+                    eprintln!("panic: job {} (seed {})", j.id, j.seed);
+                    ("error", 0)
+                });
                 if t.elapsed().as_secs() >= 60 {
                     eprintln!(
                         "slow: job {} took {}s, {r} after {turns} turns",

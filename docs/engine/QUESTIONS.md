@@ -175,3 +175,17 @@ actions end the game (test `conqueror_and_blight_priest_kill_an_opponent_who_can
   together, even if a card was revealed or bounced there earlier. Tracking what each player has seen
   would make it stronger; it isn't needed to beat the baseline. Cards the stack or an exile link
   still names keep their identity.
+
+## 2026-11-08 — An index panic that doesn't reproduce
+
+During the strength-ladder run (rollout 1 × 2, field A) one game panicked at `game.rs:863`
+(`Game::obj`): "index out of bounds: the len is 80 but the index is 1457127744". It was job 63372
+(decks 454 vs 657, seed 828471360064592330, player 1 first): the only job that chunk started and
+never finished. Replayed 400 times, 8 at a time, with the same binary, it played the identical
+game every time (p0 wins on turn 16) and never panicked. The engine has no `unsafe`, no iterated
+hash maps, and no clock in its rules, and an ObjId is only ever made from `objects.len()`, so a
+value like 1,457,127,744 shouldn't be reachable. Unexplained after two attempts, so per rule 6 it
+is written up, not chased: `pilot_games` now records a panicking game as `error` (logged with job
+id and seed) and keeps going, and `analyze` drops that pair. If it happens again, the seeds from
+the log are the starting point; a second case that also replays cleanly points at the machine
+(a memory error) rather than the engine.

@@ -126,6 +126,8 @@ def scores(pilot: str, meta: list) -> np.ndarray | None:
     for line in f.read_text().split("\n"):
         if len(line.split()) == 3:  # a run killed mid-write can leave a partial last line
             i, r, _ = line.split()
+            if r == "error":  # the engine panicked: no result, so the pair drops out
+                continue
             s[int(i)] = {"p0": 1.0, "p1": 0.0}.get(r, 0.5)
             timeouts += r == "timeout"
     return s, timeouts
