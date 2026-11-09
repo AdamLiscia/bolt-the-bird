@@ -74,6 +74,7 @@ fn main() {
             rollouts: num(7, 4) as u32,
             max_candidates: num(8, 6) as usize,
             max_actions: 5_000,
+            max_objects: 2_000,
         }),
         p => panic!("unknown pilot {p:?}"),
     };

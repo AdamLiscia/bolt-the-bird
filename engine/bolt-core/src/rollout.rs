@@ -21,6 +21,10 @@ pub struct Config {
     pub max_candidates: usize,
     /// A rollout still going after this many actions counts as a draw.
     pub max_actions: u32,
+    /// A rollout whose game has made more objects than this counts as a draw. Some boards grow
+    /// exponentially (Homunculus Horde copying itself with an extra draw each turn), and each action
+    /// gets slower as they do: one decision once ran for minutes.
+    pub max_objects: usize,
 }
 
 impl Default for Config {
@@ -29,6 +33,7 @@ impl Default for Config {
             rollouts: 16,
             max_candidates: 8,
             max_actions: 5_000,
+            max_objects: 2_000,
         }
     }
 }
@@ -66,9 +71,13 @@ fn candidates(g: &Game, legal: &[Action], max: usize) -> Vec<Action> {
     out
 }
 
-/// Plays `g` to the end with the baseline on both sides: 1 if `p` wins, 0.5 for a draw.
-fn playout(mut g: Game, p: PlayerId, max_actions: u32) -> f64 {
-    for _ in 0..max_actions {
+/// Plays `g` to the end with the baseline on both sides: 1 if `p` wins, 0.5 for a draw (or past
+/// either limit).
+fn playout(mut g: Game, p: PlayerId, cfg: &Config) -> f64 {
+    for _ in 0..cfg.max_actions {
+        if g.objects.len() > cfg.max_objects {
+            return 0.5;
+        }
         if let Some(o) = g.result {
             return match o {
                 Outcome::Winner(w) => (w == p) as u8 as f64,
@@ -108,7 +117,7 @@ pub fn choose(g: &Game, legal: &[Action], cfg: &Config, seed: u64) -> Action {
             let mut h = g.clone();
             h.determinize(p, w);
             total += match h.apply(a) {
-                Ok(_) => playout(h, p, cfg.max_actions),
+                Ok(_) => playout(h, p, cfg),
                 Err(_) => 0.0,
             };
         }

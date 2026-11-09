@@ -200,3 +200,12 @@ legal moves inside a playout, over and over. Guess, not checked: a playout's boa
 (a token loop?) so each action gets slower, within the 5,000-action playout cap. Stopped here per
 rule 6. Next: rerun only this seed; log the playout's object count and actions per second, then fix
 the cause (and give `choose` a time or work budget so one decision can't stall a run).
+
+**Resolved 2026-11-08 (same night).** Not a loop and not a rules bug. In some of the pilot's guessed
+worlds deck 666's Homunculus Horde (a token copy of itself whenever you draw your second card each
+turn) meets Phyrexian Arena's extra draw: every Horde copies itself every turn, so the board doubles
+(2,128 objects by turn 34, 4,178 by turn 38 in one world) and each action slows with it. That is
+correct Magic; the baseline pilots just don't close the game. Fix: `rollout::Config::max_objects`
+(2,000): a playout whose game has made more objects than that counts as a draw, like one past
+`max_actions`. Test: `a_playout_past_the_object_limit_counts_as_a_draw` (fails without the limit).
+Job 36149 now finishes in 32 s. `examples/replay_job.rs` is the tool that found it.

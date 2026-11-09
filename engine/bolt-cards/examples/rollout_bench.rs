@@ -57,6 +57,7 @@ fn main() {
         rollouts: rollouts as u32,
         max_candidates: cands as usize,
         max_actions: 5_000,
+        max_objects: 2_000,
     };
     let defs = fdn();
     let mask = supported_mask();

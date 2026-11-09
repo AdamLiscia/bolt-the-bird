@@ -119,6 +119,7 @@ fn the_rollout_pilot_plays_legal_moves_to_the_end() {
         rollouts: 2,
         max_candidates: 4,
         max_actions: 3_000,
+        max_objects: 2_000,
     };
     for seed in 0..3 {
         let (a, b) = decks(100 + seed);
@@ -147,11 +148,35 @@ fn the_rollout_pilot_is_deterministic() {
         rollouts: 3,
         max_candidates: 6,
         max_actions: 3_000,
+        max_objects: 2_000,
     };
     assert_eq!(
         rollout::choose(&g, &legal, &cfg, 1),
         rollout::choose(&g, &legal, &cfg, 1)
     );
+}
+
+/// A playout whose board grows past `max_objects` stops and counts as a draw, so a board that
+/// doubles every turn (Homunculus Horde with an extra draw) can't stall one decision for minutes.
+/// With a limit below the starting board, every playout is a draw and the baseline's pick stands.
+#[test]
+fn a_playout_past_the_object_limit_counts_as_a_draw() {
+    let cfg = rollout::Config {
+        rollouts: 3,
+        max_candidates: 6,
+        max_actions: 3_000,
+        max_objects: 1,
+    };
+    let mut searched = 0;
+    for seed in 0..12 {
+        let g = midgame(200 + seed);
+        let legal = g.legal_actions();
+        if legal.len() > 1 && matches!(g.pending, Pending::Priority(_)) {
+            searched += 1;
+        }
+        assert_eq!(rollout::choose(&g, &legal, &cfg, seed), baseline::choose(&g, &legal), "seed {seed}");
+    }
+    assert!(searched > 0, "no position had a real choice");
 }
 
 /// Regression: a trigger whose source card is in a hidden zone (shuffled or drawn since) kept
