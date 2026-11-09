@@ -11,8 +11,16 @@ Each iteration:
 Evaluation never uses judge A: decks are built and scored by judge B, trained on a disjoint half
 of the games. If the bot only learned to fool judge A, judge B won't agree.
 
+With --reward played, step 2's reward is a played win rate instead: all 8 decks at the table are
+built, and seat 0's deck plays each tablemate --games times in the Rust engine with the smart
+player (bolt.played). The judge rewards decks that only beat players who never look ahead
+(docs/engine/VALIDATION.md); this reward comes from players who do. A played evaluation then runs
+every --played-eval-every iterations: the bot's and the human model's decks from the same test
+tables each play the same field opponents with the same seeds.
+
     python scripts/train_rl.py                                   # start from the human model
     python scripts/train_rl.py --resume checkpoints/bot_rl.pt --name rl_long   # keep going
+    python scripts/train_rl.py --reward played --device cpu --name rl_played --iters 300
 """
 
 import argparse
@@ -28,6 +36,7 @@ from bolt.data import DATA
 from bolt.deckbuild import build_decks
 from bolt.judge import DeckJudge
 from bolt.models import DraftTransformer
+from bolt.played import deck_lists, played_rewards, score
 from bolt.rl import masked_kl
 from bolt.sim import opening_packs, pools_to_counts, run_tables
 
@@ -63,6 +72,38 @@ def evaluate(bot, ref, packs, judge, cards, device, n_tables, seed):
     }
 
 
+FIELD, FIELD_GAMES = 64, 16
+
+
+def played_field(cards, n_tables):
+    """Field A (M6's 64 human-model decks), and each eval table's 16 opponents and seeds."""
+    d = json.loads((DATA / "engine_decks_512.json").read_text())
+    field = np.random.default_rng(0).choice(512, size=FIELD, replace=False)
+    rng = np.random.default_rng(3)
+    opps = [rng.choice([f for f in field if f != t], size=FIELD_GAMES, replace=False) for t in range(n_tables)]
+    seeds = rng.integers(2**62, size=(n_tables, FIELD_GAMES))
+    return d["human_model"]["decks"], opps, seeds
+
+
+@torch.no_grad()
+def played_side(model, ref, packs, judge, cards, device, n_tables, field, a):
+    """One side's played score per eval table: its deck vs the table's field opponents."""
+    import bolt_engine as be
+
+    decks, opps, seeds = field
+    g = torch.Generator().manual_seed(12345)
+    pools, _ = run_tables(packs, n_tables, model, ref, device, g, seat0_greedy=True)
+    built, _, _ = build_decks(pools_to_counts(pools[:, 0], cards.n), judge, cards, device)
+    mine = deck_lists(built)
+    jobs, owner = [], []
+    for t in range(n_tables):
+        for k, f in enumerate(opps[t]):
+            jobs.append((mine[t], decks[int(f)], int(seeds[t, k]), k % 2))
+            owner.append(t)
+    res = be.play_games(jobs, pilot="smart", rollouts=a.rollouts, candidates=a.candidates, threads=a.threads)
+    return score(res, np.array(owner), n_tables)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument(
@@ -79,6 +120,13 @@ def main():
     ap.add_argument("--eval-every", type=int, default=15)
     ap.add_argument("--eval-tables", type=int, default=512)
     ap.add_argument("--device", default="auto", help="cpu, mps, or auto. Smoke-test new code on cpu first.")
+    ap.add_argument("--reward", choices=["judge", "played"], default="judge")
+    ap.add_argument("--games", type=int, default=2, help="played reward: games against each tablemate")
+    ap.add_argument("--rollouts", type=int, default=1, help="smart player: playouts per option")
+    ap.add_argument("--candidates", type=int, default=2, help="smart player: options considered")
+    ap.add_argument("--threads", type=int, default=8)
+    ap.add_argument("--played-eval-every", type=int, default=30)
+    ap.add_argument("--played-eval-tables", type=int, default=256)
     a = ap.parse_args()
 
     if a.device == "auto":
@@ -100,6 +148,30 @@ def main():
     gen = torch.Generator().manual_seed(1)
     history = []
 
+    field = played_field(cards, a.played_eval_tables) if a.reward == "played" else None
+    ref_played = None
+
+    def do_played_eval(it):
+        nonlocal ref_played
+        bot.eval()
+        args = (test_packs, judge_b, cards, device, a.played_eval_tables, field, a)
+        if ref_played is None:
+            ref_played = played_side(ref, ref, *args)[0]
+        mine, errors = played_side(bot, ref, *args)
+        d = mine - ref_played
+        r = {
+            "iter": it,
+            "played_gain": float(np.nanmean(d)),
+            "played_gain_se": float(np.nanstd(d) / np.sqrt(np.isfinite(d).sum())),
+            "errors": errors,
+        }
+        history.append({"played_eval": r})
+        print(
+            f"  PLAYED EVAL it {it}: gain {r['played_gain'] * 100:+.2f} ± {r['played_gain_se'] * 100:.2f} pts "
+            f"(smart {a.rollouts} x {a.candidates}, {a.played_eval_tables} tables x {FIELD_GAMES} field games)",
+            flush=True,
+        )
+
     def do_eval(it):
         bot.eval()
         r = evaluate(bot, ref, test_packs, judge_b, cards, device, a.eval_tables, seed=12345)
@@ -113,12 +185,23 @@ def main():
         )
 
     do_eval(0)
+    if a.reward == "played":
+        do_played_eval(0)
     t0 = time.time()
     for it in range(1, a.iters + 1):
         bot.eval()
         pools, log = run_tables(train_packs, a.tables, bot, ref, device, gen)
-        counts = pools_to_counts(pools[:, 0], cards.n)
-        _, reward, _ = build_decks(counts, judge_a, cards, device)
+        errors = 0
+        if a.reward == "played":
+            # Every seat's deck, built the usual way; seat 0 plays the other seven.
+            built, _, _ = build_decks(pools_to_counts(pools.reshape(-1, 42), cards.n), judge_a, cards, device)
+            lists = deck_lists(built)
+            decks = [lists[8 * t : 8 * t + 8] for t in range(a.tables)]
+            reward, errors = played_rewards(decks, a.games, 10_000_000 * it, a.rollouts, a.candidates, a.threads)
+            reward = np.nan_to_num(reward, nan=float(np.nanmean(reward)))
+        else:
+            counts = pools_to_counts(pools[:, 0], cards.n)
+            _, reward, _ = build_decks(counts, judge_a, cards, device)
         adv = (reward - reward.mean()) / (reward.std() + 1e-6)
         adv_rows = torch.as_tensor(np.repeat(adv, 42), dtype=torch.float32, device=device)
 
@@ -151,6 +234,7 @@ def main():
             "kl": kl_sum / n,
             "agree_with_human_model": agree / n,
             "seconds": round(time.time() - t0),
+            "errors": errors,
         }
         history.append(row)
         print(
@@ -158,6 +242,8 @@ def main():
             f"agrees with human model {row['agree_with_human_model']:.1%}  {row['seconds']}s",
             flush=True,
         )
+        if a.reward == "played" and (it % a.played_eval_every == 0 or it == a.iters):
+            do_played_eval(it)
         if it % a.eval_every == 0 or it == a.iters:
             do_eval(it)
             torch.save(bot.state_dict(), CK / f"bot_{a.name}.pt")
