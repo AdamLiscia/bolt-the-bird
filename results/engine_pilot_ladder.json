@@ -19,7 +19,7 @@
     },
     {
       "pilot": "r1c2",
-      "label": "Search 1 x 2",
+      "label": "Smart 1 x 2",
       "beats_baseline": 0.65,
       "beats_baseline_se": 0.034,
       "gap": 0.003043038504464285,
@@ -34,7 +34,7 @@
     },
     {
       "pilot": "r2c4",
-      "label": "Search 2 x 4",
+      "label": "Smart 2 x 4",
       "beats_baseline": 0.7,
       "beats_baseline_se": 0.031,
       "gap": -0.001266479492187501,
@@ -49,7 +49,7 @@
     },
     {
       "pilot": "rollout",
-      "label": "Search 4 x 6",
+      "label": "Smart 4 x 6",
       "beats_baseline": 0.745,
       "beats_baseline_se": 0.029,
       "gap": -0.0021030486576140883,

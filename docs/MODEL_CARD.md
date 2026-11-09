@@ -59,7 +59,7 @@ drafts and games from Arena players who run its tracker, and publishes them with
   of picks. v0.1.0 shipped the iteration-150 bot (+1.99 ± 0.18).
 - **Played result:** in the project's Rust rules engine, the same decks win **+1.54 ± 0.66** points
   more played games than the human model's with a rules-based pilot, and **−0.21 ± 0.58** with a
-  search pilot that beats it 74.5% of the time (each deck against every deck of three separate
+  smart player (it plays each candidate move out before choosing) that beats it 74.5% of the time (each deck against every deck of three separate
   64-deck fields, 196,224 games per pilot). The judged edge does not survive play. See
   `docs/engine/VALIDATION.md`.
 - **Known bias:** it drafts White-Red at 45% of tables. In real 17lands games White-Red outperforms

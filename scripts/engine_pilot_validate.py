@@ -186,9 +186,9 @@ def analyze():
 # Strength against the baseline, from `rollout_bench` (200 games each, 2026-11-07/08; LOG.md).
 LADDER = [
     ("baseline", "Rules-based", 0.5, 0.0),
-    ("r1c2", "Search 1 x 2", 0.650, 0.034),
-    ("r2c4", "Search 2 x 4", 0.700, 0.031),
-    ("rollout", "Search 4 x 6", 0.745, 0.029),
+    ("r1c2", "Smart 1 x 2", 0.650, 0.034),
+    ("r2c4", "Smart 2 x 4", 0.700, 0.031),
+    ("rollout", "Smart 4 x 6", 0.745, 0.029),
 ]
 
 

@@ -231,7 +231,7 @@ def pilot_ladder(t, theme):
     ax.set_xlim(-0.4, len(rows) - 0.4)
     ax.set_ylim(-2, 4.6)
     ax.set_ylabel("Points of played win rate (95% CI)", color=t["ink2"], fontsize=9)
-    title(fig, t, "The bot's edge disappears at the first bit of search",
+    title(fig, t, "The bot's edge disappears once players think ahead",
           f"Bot decks minus human-model decks, both sides played by the same pilot; "
           f"{lad['games_per_pilot']:,} games per pilot")  # fmt: skip
     fig.subplots_adjust(left=0.08, right=0.98, top=0.8, bottom=0.17)

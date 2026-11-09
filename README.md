@@ -30,7 +30,7 @@ Bolt the Bird learns this in two stages:
    two strongest pairs in real games, yet under 8% of the decks people play.
 3. **Play it out.** A Magic rules engine written in Rust plays every card in the set. Over 670,000
    played games, the bot's decks win about **1.5 points** more often when both sides play by simple
-   rules, and **nothing** more once both sides use a stronger search player. The judge's +3.9 doesn't
+   rules, and **nothing** more once both sides use a smart player that thinks a move ahead. The judge's +3.9 doesn't
    survive being played, and finding that out is what the engine was built for.
 
 <picture>
@@ -46,7 +46,7 @@ Bolt the Bird learns this in two stages:
 | **Finding** | Humans take off-color rares 3.2× as often as off-color commons, and strong drafters do it just as much | Packs 2–3 of 131,183 drafts |
 | **Judge** | Predicts deck win rate, calibrated to within about a point | 78,379 held-out games |
 | **Learning to win** | +3.85 ± 0.23 points of judged win rate, 14% fewer late rares, 81% human-like | 512 held-out tables, scored by a judge excluded from training |
-| **Playing it out** | +1.54 ± 0.66 points of played win rate (rules-based pilot); −0.21 ± 0.58 (search pilot) | The same 1,024 decks in the Rust engine, each against every deck of three separate 64-deck fields |
+| **Playing it out** | +1.54 ± 0.66 points of played win rate (rules-based player); −0.21 ± 0.58 (smart player) | The same 1,024 decks in the Rust engine, each against every deck of three separate 64-deck fields |
 
 Every number comes from a file in [`results/`](results/), and every chart is generated from those files
 by [`scripts/make_figures.py`](scripts/make_figures.py).
@@ -250,15 +250,15 @@ Foundations cards, each with a test written from its rules text (376 tests in al
 The same 512 tables were drafted by the bot and by the human model, and every deck played every
 deck of three separate fields of 64 human-model decks, once each, with the same seeds for the bot's
 deck and the human model's. Two pilots played both sides: a rules-based player (curve out, attack
-when it's safe, block to survive), and a search player that plays each candidate move out in
-games where the hidden cards are guessed again, then keeps the best. The search player beats the
+when it's safe, block to survive), and a smart player that plays each candidate move out in
+games where the hidden cards are guessed again, then keeps the best. The smart player beats the
 rules-based one 74.5% of the time.
 
 | | Bot decks | Human-model decks | Gap |
 |---|---|---|---|
 | Judge B (predicted) | 63.87% | 60.02% | **+3.85 ± 0.23** |
-| Played, rules-based pilot (196,224 games) | 50.92% | 49.38% | **+1.54 ± 0.66** |
-| Played, search pilot (196,224 games) | 49.43% | 49.64% | **−0.21 ± 0.58** |
+| Played, rules-based player (196,224 games) | 50.92% | 49.38% | **+1.54 ± 0.66** |
+| Played, smart player (196,224 games) | 49.43% | 49.64% | **−0.21 ± 0.58** |
 
 With simple pilots the bot's decks win more, on each of the three fields (+1.45, +1.53, +1.64).
 Give both sides a player that looks ahead and the edge disappears (−0.16, −0.09, −0.37): the drop
@@ -271,17 +271,17 @@ can't catch a blind spot they share; playing the games can. An earlier rules-bas
 field (258,048 games) gave +1.59 ± 0.64. Details:
 [`docs/engine/VALIDATION.md`](docs/engine/VALIDATION.md).
 
-**Where the edge goes.** Two weaker search pilots fill in the gap between the two: one that plays
+**Where the edge goes.** Two weaker smart players fill in the gap between the two: one that plays
 out only 2 moves, once each, and one that plays out 4 moves twice each. They beat the rules-based
-pilot 65% and 70% of the time; the full search pilot beats it 74.5%. Each played the same three
+pilot 65% and 70% of the time; the full smart player beats it 74.5%. Each played the same three
 round-robins.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/figures/pilot-ladder-dark.png">
-  <img alt="The bot decks' played edge is +1.54 points with the rules-based pilot, +0.30 with the weakest search pilot, −0.13 and −0.21 with the stronger ones; judge B predicted +3.85" src="docs/figures/pilot-ladder-light.png">
+  <img alt="The bot decks' played edge is +1.54 points with the rules-based pilot, +0.30 with the weakest smart player, −0.13 and −0.21 with the stronger ones; judge B predicted +3.85" src="docs/figures/pilot-ladder-light.png">
 </picture>
 
-It's a cliff, not a slope. The weakest search already takes away 1.24 ± 0.26 of the 1.54 points;
+It's a cliff, not a slope. The weakest smart player already takes away 1.24 ± 0.26 of the 1.54 points;
 by the 2 × 4 pilot it's all gone. (The bars are wide because they include how much the 512 deck
 pairs differ; each drop is measured on the same decks and games, so it's much tighter.) The bot
 learned to build decks that beat a player who never looks ahead. To learn decks that beat
