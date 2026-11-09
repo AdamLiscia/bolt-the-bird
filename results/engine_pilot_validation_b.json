@@ -36,14 +36,14 @@
     },
     "r2c4": {
       "tables": 512,
-      "games": 36309,
-      "paired_games": 36308,
-      "bot": 0.5116551959325397,
-      "human_model": 0.5130898127480159,
-      "gap": -0.0014346168154761897,
-      "gap_se": 0.007095888969337631,
-      "corr_with_judge_b": 0.10428333752948521,
-      "timeouts": 1
+      "games": 65408,
+      "paired_games": 65408,
+      "bot": 0.5094095865885416,
+      "human_model": 0.5111444866846478,
+      "gap": -0.0017349000961061516,
+      "gap_se": 0.006680750617766302,
+      "corr_with_judge_b": 0.11760995762718869,
+      "timeouts": 2
     }
   },
   "note": "same games for ['baseline', 'rollout', 'r1c2', 'r2c4']; tables differ only if a run is unfinished"

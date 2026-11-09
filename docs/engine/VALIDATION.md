@@ -105,3 +105,23 @@ needs more drafts (new tables), not more games.
   never responds (no counterspells or tricks in its playouts), and leaves targets, discards and
   mulligans to the baseline. Strong play may change the answer again; a self-play pilot is the
   test for that.
+
+## The strength ladder (2026-11-09)
+
+The same three round-robins with two weaker search pilots in between (`scripts/engine_pilot_ladder.sh`;
+strength from `rollout_bench`, 200 games each against the baseline). Gap in points, averaged per
+table over fields A, B and C (196,224 games per pilot):
+
+| Pilot | Beats the baseline | A | B | C | **All three** | Change from baseline |
+|---|---|---|---|---|---|---|
+| Baseline | 50% | +1.45 | +1.53 | +1.64 | **+1.54 ± 0.66** | |
+| Rollout 1 × 2 | 65.0% ± 3.4 | +0.27 | −0.01 | +0.65 | **+0.30 ± 0.64** | −1.24 ± 0.26 |
+| Rollout 2 × 4 | 70.0% ± 3.1 | +0.24 | −0.17 | −0.45 | **−0.13 ± 0.60** | −1.67 ± 0.32 |
+| Rollout 4 × 6 | 74.5% ± 2.9 | −0.16 | −0.09 | −0.37 | **−0.21 ± 0.58** | −1.75 ± 0.38 |
+
+**It's a cliff.** The weakest search, one playout of two moves, already removes about 80% of the
+edge (−1.24 of −1.54, nearly five standard errors). The rest goes by 2 × 4. The bot's decks are
+better only against a pilot that never looks ahead. Two fixes landed during these runs: a
+panicking game is recorded and the run goes on (none recurred), and playouts past 2,000 objects
+count as a draw (QUESTIONS.md, 2026-11-08). Field B's 2 × 4 run had 36,308 games before that
+fix and the rest after.
