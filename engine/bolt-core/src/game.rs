@@ -2059,6 +2059,16 @@ impl Game {
                 if !self.trigger_can_target(&Game::casting(c, p), ability) {
                     continue; // CR 601.2c: a spell needs a legal choice for every target.
                 }
+                // CR 601.2a: the card is on the stack by the time targets are chosen. Leaving a
+                // graveyard can shrink a target (Consuming Aberration counts that graveyard), so
+                // check again from there. Rare enough that a scratch copy is cheap.
+                if self.obj(c).zone == Zone::Graveyard && !ability.targets.is_empty() {
+                    let mut after = self.clone();
+                    after.move_to(c, Zone::Stack);
+                    if !after.trigger_can_target(&Game::casting(c, p), ability) {
+                        continue;
+                    }
+                }
             }
             for (action, mode) in self.cast_modes(p, c, from_graveyard) {
                 if self.mode_affordable(p, c, mode) {

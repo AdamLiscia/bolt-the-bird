@@ -125,6 +125,36 @@ fn sphinx_of_forgotten_lore_grants_flashback() {
     assert_eq!(g.obj(stab).zone, Zone::Exile, "flashback exiles it");
 }
 
+/// Regression (2026-11-09, found by played-reward training): a spell cast from the graveyard
+/// moves to the stack before its targets are chosen (CR 601.2a, 601.2c). Here Make Your Move's
+/// only possible target is a Consuming Aberration at exactly 4 power, counting the caster's
+/// graveyard. Once Make Your Move leaves that graveyard the Aberration is a 3/3, so the cast has
+/// no legal target and isn't offered. With one more card there it's still 4 and the cast is fine.
+#[test]
+fn a_graveyard_cast_checks_targets_after_the_card_leaves_the_graveyard() {
+    let mut g = table();
+    let sphinx = put(&mut g, 0, "Sphinx of Forgotten Lore");
+    let mym = g.add_card(0, id("Make Your Move"), Zone::Graveyard);
+    for _ in 0..3 {
+        g.add_card(0, id("Stab"), Zone::Graveyard);
+    }
+    let ab = put(&mut g, 1, "Consuming Aberration");
+    begin(&mut g);
+    attack_with(&mut g, &[sphinx]);
+    resolve_all(&mut g, &[Action::Target(obj(mym))]);
+    assert_eq!(g.power(ab), 4);
+    assert!(
+        !g.legal_actions().contains(&Action::CastFlashback(mym)),
+        "no legal target once it's on the stack"
+    );
+    g.add_card(0, id("Stab"), Zone::Graveyard);
+    assert_eq!(g.power(ab), 5);
+    act(&mut g, Action::CastFlashback(mym));
+    act(&mut g, Action::Target(obj(ab)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(ab).zone, Zone::Graveyard);
+}
+
 #[test]
 fn ravenous_amulet_collects_souls() {
     let mut g = table();

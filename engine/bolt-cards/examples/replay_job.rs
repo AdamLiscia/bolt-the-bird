@@ -55,6 +55,17 @@ fn main() {
                     while h.result.is_none() && k < 5_000 {
                         let ta = Instant::now();
                         let l = h.legal_actions();
+                        if l.is_empty() {
+                            println!(
+                                "NO LEGAL ACTIONS: world {w} first {first:?} action {k}, turn {}, step {:?}, pending {:?}\n  resolving {:?}\n  choosing {:?}",
+                                h.turn, h.step, h.pending, h.resolving, h.choosing
+                            );
+                            if let Some(c) = &h.choosing {
+                                let d = h.def_of(c.item.source);
+                                println!("  casting {:?}", d.name);
+                            }
+                            break;
+                        }
                         h.apply(baseline::choose(&h, &l)).expect("legal");
                         let ms = ta.elapsed().as_millis();
                         if ms > worst.0 {

@@ -1,0 +1,13 @@
+{
+  "tables": 128,
+  "games_per_tablemate_per_half": 2,
+  "pilot": "smart 1 x 2",
+  "seconds_per_half": [
+    111,
+    155
+  ],
+  "reward_sd_across_tables": 0.18684928239560417,
+  "split_half_corr": 0.5559694476891888,
+  "reliability_both_halves": 0.7146277178062508,
+  "corr_with_judge_a": 0.11365425924800036
+}
