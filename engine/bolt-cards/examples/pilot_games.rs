@@ -19,13 +19,8 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
-use bolt_cards::fdn;
-use bolt_core::{baseline, rollout, Game, Outcome};
-
-const MAX_TURNS: u32 = 200;
-/// A game still going after this long (only ever the rollout pilot) stops as a timeout, so every
-/// game finishes inside a guarded run. Each one is logged as slow.
-const GAME_SECONDS: u64 = 180;
+use bolt_cards::play::{play_game, Job as Game1, Pilot};
+use bolt_core::rollout;
 
 struct Job {
     id: u64,
@@ -35,29 +30,18 @@ struct Job {
     first: usize,
 }
 
-fn play(decks: &[Vec<usize>], j: &Job, cfg: Option<&rollout::Config>) -> (&'static str, u32) {
-    let started = Instant::now();
-    let mut g = Game::new(fdn(), [&decks[j.a], &decks[j.b]], j.seed, j.first);
-    for n in 0..100_000u64 {
-        if let Some(o) = g.result {
-            let r = match o {
-                Outcome::Winner(0) => "p0",
-                Outcome::Winner(_) => "p1",
-                Outcome::Draw => "draw",
-            };
-            return (r, g.turn);
-        }
-        if g.turn > MAX_TURNS || started.elapsed().as_secs() >= GAME_SECONDS {
-            return ("timeout", g.turn);
-        }
-        let legal = g.legal_actions();
-        let action = match cfg {
-            Some(c) => rollout::choose(&g, &legal, c, j.seed.wrapping_mul(1_000_003).wrapping_add(n)),
-            None => baseline::choose(&g, &legal),
-        };
-        g.apply(action).expect("pilots pick legal actions");
+fn play(decks: &[Vec<usize>], j: &Job, pilot: &Pilot) -> (&'static str, u32) {
+    let g = Game1 {
+        a: decks[j.a].clone(),
+        b: decks[j.b].clone(),
+        seed: j.seed,
+        first: j.first,
+    };
+    let r = play_game(&g, pilot);
+    if r.result == "error" {
+        eprintln!("panic: job {} (seed {})", j.id, j.seed);
     }
-    ("timeout", g.turn)
+    (r.result, r.turns)
 }
 
 fn main() {
@@ -68,9 +52,9 @@ fn main() {
     );
     let num = |i: usize, d: u64| args.get(i).and_then(|s| s.parse().ok()).unwrap_or(d);
     let (seconds, threads) = (num(5, u64::MAX), num(6, 8) as usize);
-    let cfg = match args[4].as_str() {
-        "baseline" => None,
-        "rollout" => Some(rollout::Config {
+    let pilot = match args[4].as_str() {
+        "baseline" => Pilot::Baseline,
+        "rollout" => Pilot::Smart(rollout::Config {
             rollouts: num(7, 4) as u32,
             max_candidates: num(8, 6) as usize,
             max_actions: 5_000,
@@ -135,15 +119,8 @@ fn main() {
                 let i = next.fetch_add(1, Ordering::Relaxed);
                 let Some(j) = jobs.get(i) else { return };
                 let t = Instant::now();
-                // A panic in one game is recorded and logged, not allowed to end the run. On
-                // 2026-11-08 one game panicked with an impossible index and replayed cleanly 400 times.
-                let (r, turns) = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                    play(&decks, j, cfg.as_ref())
-                }))
-                .unwrap_or_else(|_| {
-                    eprintln!("panic: job {} (seed {})", j.id, j.seed);
-                    ("error", 0)
-                });
+                // A panic in one game is recorded as "error" and logged, not allowed to end the run.
+                let (r, turns) = play(&decks, j, &pilot);
                 if t.elapsed().as_secs() >= 60 {
                     eprintln!(
                         "slow: job {} took {}s, {r} after {turns} turns",

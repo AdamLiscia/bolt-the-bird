@@ -6,6 +6,7 @@
 //! [`supported`] is the source of truth for restricted drafts: a card is playable only if every
 //! line of its rules text is implemented. Unsupported cards are listed, never skipped.
 
+pub mod play;
 pub mod scripts;
 
 use std::sync::{Arc, OnceLock};

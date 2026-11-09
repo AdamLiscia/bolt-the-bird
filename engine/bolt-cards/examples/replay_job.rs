@@ -25,7 +25,12 @@ fn main() {
         max_objects: 2_000,
     };
     let stop: Option<u64> = a.get(5).and_then(|s| s.parse().ok());
-    let mut g = Game::new(fdn(), [&decks[j[1] as usize], &decks[j[2] as usize]], j[3], j[4] as usize);
+    let mut g = Game::new(
+        fdn(),
+        [&decks[j[1] as usize], &decks[j[2] as usize]],
+        j[3],
+        j[4] as usize,
+    );
     for n in 0..100_000u64 {
         if g.result.is_some() {
             println!("over: {:?} turn {}", g.result, g.turn);
@@ -56,7 +61,12 @@ fn main() {
                             worst = (ms, h.objects.len(), h.turn);
                         }
                         if ms > 2_000 {
-                            println!("    slow action {k}: {ms} ms, turn {} objects {} legal {}", h.turn, h.objects.len(), l.len());
+                            println!(
+                                "    slow action {k}: {ms} ms, turn {} objects {} legal {}",
+                                h.turn,
+                                h.objects.len(),
+                                l.len()
+                            );
                         }
                         k += 1;
                     }
@@ -86,7 +96,10 @@ fn main() {
                 let tl = t.elapsed().as_millis();
                 let act = baseline::choose(&h, &legal);
                 if k >= 170 {
-                    println!("about to: action {k} turn {} {act:?} pending {:?} legal {:?}", h.turn, h.pending, legal);
+                    println!(
+                        "about to: action {k} turn {} {act:?} pending {:?} legal {:?}",
+                        h.turn, h.pending, legal
+                    );
                 }
                 h.apply(act).expect("legal");
                 let ms = t.elapsed().as_millis();
@@ -101,13 +114,23 @@ fn main() {
         }
         let legal = g.legal_actions();
         if std::env::var("EVERY").is_ok() {
-            eprintln!("start decision {n}: turn {} objects {} legal {}", g.turn, g.objects.len(), legal.len());
+            eprintln!(
+                "start decision {n}: turn {} objects {} legal {}",
+                g.turn,
+                g.objects.len(),
+                legal.len()
+            );
         }
         let t = Instant::now();
         let act = rollout::choose(&g, &legal, &cfg, j[3].wrapping_mul(1_000_003).wrapping_add(n));
         let ms = t.elapsed().as_millis();
         if ms > 200 {
-            println!("decision {n}: turn {} objects {} legal {} took {ms} ms", g.turn, g.objects.len(), legal.len());
+            println!(
+                "decision {n}: turn {} objects {} legal {} took {ms} ms",
+                g.turn,
+                g.objects.len(),
+                legal.len()
+            );
         }
         g.apply(act).expect("legal");
     }

@@ -322,6 +322,59 @@ fn play_baseline(
     )))
 }
 
+fn check_decks(a: &[usize], b: &[usize], first: usize) -> PyResult<()> {
+    let mask = bolt_cards::supported_mask();
+    for &c in a.iter().chain(b) {
+        if c >= mask.len() || !mask[c] {
+            return Err(PyValueError::new_err(format!(
+                "card {c} is not a supported FDN card"
+            )));
+        }
+    }
+    if first > 1 {
+        return Err(PyValueError::new_err("first must be 0 or 1"));
+    }
+    Ok(())
+}
+
+/// Plays many whole games in Rust, on up to `threads` threads, with Python's lock released.
+///
+/// `jobs` is a list of `(deck_a, deck_b, seed, first)`; deck_a is player 0. `pilot` is
+/// "baseline" (the rules-based player) or "smart" (plays each of `candidates` moves out
+/// `rollouts` times before choosing). Returns `(result, turns)` per job, in order, with result
+/// "p0", "p1", "draw", "timeout", or "error" if the engine panicked.
+#[pyfunction]
+#[pyo3(signature = (jobs, pilot = "smart", rollouts = 1, candidates = 2, threads = 8))]
+fn play_games(
+    py: Python<'_>,
+    jobs: Vec<(Vec<usize>, Vec<usize>, u64, usize)>,
+    pilot: &str,
+    rollouts: u32,
+    candidates: usize,
+    threads: usize,
+) -> PyResult<Vec<(&'static str, u32)>> {
+    let pilot = match pilot {
+        "baseline" => bolt_cards::play::Pilot::Baseline,
+        "smart" => bolt_cards::play::Pilot::Smart(bolt_core::rollout::Config {
+            rollouts,
+            max_candidates: candidates,
+            ..Default::default()
+        }),
+        p => {
+            return Err(PyValueError::new_err(format!(
+                "unknown pilot {p:?}: baseline or smart"
+            )))
+        }
+    };
+    let mut js = Vec::with_capacity(jobs.len());
+    for (a, b, seed, first) in jobs {
+        check_decks(&a, &b, first)?;
+        js.push(bolt_cards::play::Job { a, b, seed, first });
+    }
+    let out = py.detach(|| bolt_cards::play::play_many(&js, &pilot, threads));
+    Ok(out.into_iter().map(|r| (r.result, r.turns)).collect())
+}
+
 /// Every card name, by card number: FDN in model order, then tokens.
 #[pyfunction]
 fn card_names() -> Vec<String> {
@@ -345,6 +398,7 @@ fn bolt_engine(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<Game>()?;
     m.add_function(wrap_pyfunction!(card_names, m)?)?;
     m.add_function(wrap_pyfunction!(play_baseline, m)?)?;
+    m.add_function(wrap_pyfunction!(play_games, m)?)?;
     m.add_function(wrap_pyfunction!(index_of, m)?)?;
     m.add_function(wrap_pyfunction!(supported, m)?)?;
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;

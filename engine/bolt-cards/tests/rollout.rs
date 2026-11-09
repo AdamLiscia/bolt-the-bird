@@ -174,7 +174,11 @@ fn a_playout_past_the_object_limit_counts_as_a_draw() {
         if legal.len() > 1 && matches!(g.pending, Pending::Priority(_)) {
             searched += 1;
         }
-        assert_eq!(rollout::choose(&g, &legal, &cfg, seed), baseline::choose(&g, &legal), "seed {seed}");
+        assert_eq!(
+            rollout::choose(&g, &legal, &cfg, seed),
+            baseline::choose(&g, &legal),
+            "seed {seed}"
+        );
     }
     assert!(searched > 0, "no position had a real choice");
 }

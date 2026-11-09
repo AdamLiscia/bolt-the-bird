@@ -98,3 +98,27 @@ def test_play_baseline_runs_a_whole_game_in_rust():
     result, turns = be.play_baseline(a, b, seed=5)
     assert result in {"p0", "p1", "draw", "timeout"} and turns > 0
     assert be.play_baseline(a, b, seed=5) == (result, turns), "deterministic"
+
+
+def test_play_games_plays_a_batch_on_threads_in_order():
+    rng = random.Random(7)
+    jobs = [(deck(rng), deck(rng), s, s % 2) for s in range(8)]
+    smart = be.play_games(jobs, pilot="smart", rollouts=1, candidates=2, threads=4)
+    assert len(smart) == 8
+    assert all(r in ("p0", "p1", "draw", "timeout") and t >= 1 for r, t in smart)
+    # Order and results don't depend on the thread count.
+    assert be.play_games(jobs, pilot="smart", rollouts=1, candidates=2, threads=1) == smart
+    # The baseline pilot here is the same player as play_baseline.
+    base = be.play_games(jobs, pilot="baseline", threads=3)
+    assert base == [be.play_baseline(a, b, seed=s, first=f) for a, b, s, f in jobs]
+
+
+def test_play_games_rejects_bad_input():
+    rng = random.Random(8)
+    good = deck(rng)
+    with pytest.raises(ValueError):
+        be.play_games([(good, [10_000] * 40, 1, 0)])
+    with pytest.raises(ValueError):
+        be.play_games([(good, good, 1, 2)])
+    with pytest.raises(ValueError):
+        be.play_games([(good, good, 1, 0)], pilot="genius")
