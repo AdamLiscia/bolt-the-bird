@@ -252,7 +252,7 @@ deck of three separate fields of 64 human-model decks, once each, with the same 
 deck and the human model's. Two pilots played both sides: a rules-based player (curve out, attack
 when it's safe, block to survive), and a search player that plays each candidate move out in
 games where the hidden cards are guessed again, then keeps the best. The search player beats the
-rules-based one 72.5% of the time.
+rules-based one 74.5% of the time.
 
 | | Bot decks | Human-model decks | Gap |
 |---|---|---|---|
