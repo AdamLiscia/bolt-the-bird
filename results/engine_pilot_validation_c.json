@@ -22,7 +22,18 @@
       "gap_se": 0.006233583308939969,
       "corr_with_judge_b": 0.1567745725210173,
       "timeouts": 5
+    },
+    "r1c2": {
+      "tables": 512,
+      "games": 65408,
+      "paired_games": 65408,
+      "bot": 0.48285541837177576,
+      "human_model": 0.47631569514198907,
+      "gap": 0.006539723229786705,
+      "gap_se": 0.007081041980457729,
+      "corr_with_judge_b": 0.11449790086550703,
+      "timeouts": 2
     }
   },
-  "note": "same games for ['baseline', 'rollout']; tables differ only if a run is unfinished"
+  "note": "same games for ['baseline', 'rollout', 'r1c2']; tables differ only if a run is unfinished"
 }

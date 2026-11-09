@@ -22,7 +22,29 @@
       "gap_se": 0.00643052239047195,
       "corr_with_judge_b": 0.14453053445913214,
       "timeouts": 4
+    },
+    "r1c2": {
+      "tables": 512,
+      "games": 65408,
+      "paired_games": 65408,
+      "bot": 0.49870106530567954,
+      "human_model": 0.49603659009176587,
+      "gap": 0.002664475213913691,
+      "gap_se": 0.006905427771349043,
+      "corr_with_judge_b": 0.09980050622439678,
+      "timeouts": 2
+    },
+    "r2c4": {
+      "tables": 512,
+      "games": 65408,
+      "paired_games": 65408,
+      "bot": 0.49442036946614587,
+      "human_model": 0.4919857449001736,
+      "gap": 0.0024346245659722216,
+      "gap_se": 0.0065735943210941524,
+      "corr_with_judge_b": 0.11087251342215385,
+      "timeouts": 3
     }
   },
-  "note": "same games for ['baseline', 'rollout']; tables differ only if a run is unfinished"
+  "note": "same games for ['baseline', 'rollout', 'r1c2', 'r2c4']; tables differ only if a run is unfinished"
 }

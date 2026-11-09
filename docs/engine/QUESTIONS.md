@@ -189,3 +189,14 @@ is written up, not chased: `pilot_games` now records a panicking game as `error`
 id and seed) and keeps going, and `analyze` drops that pair. If it happens again, the seeds from
 the log are the starting point; a second case that also replays cleanly points at the machine
 (a memory error) rather than the engine.
+
+## 2026-11-08 — A rollout decision that never finishes (reproducible)
+
+Field B, rollout 2 × 4, job 36149 (`36149 666 862 1665606242745551370 1` in data/m7b/jobs.txt).
+Alone, it runs past 300 s without finishing, every time; memory stays low. The per-game 180 s cap
+never fires because the time goes into a single `rollout::choose` call. `sample` puts nearly all
+of it under `choose → apply → settle → legal_actions → spell_cost` (plus Vec allocation): listing
+legal moves inside a playout, over and over. Guess, not checked: a playout's board grows very large
+(a token loop?) so each action gets slower, within the 5,000-action playout cap. Stopped here per
+rule 6. Next: rerun only this seed; log the playout's object count and actions per second, then fix
+the cause (and give `choose` a time or work budget so one decision can't stall a run).
