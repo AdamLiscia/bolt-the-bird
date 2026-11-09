@@ -208,9 +208,39 @@ def rl_curve(t, theme):
     save(fig, "rl-curve", theme)
 
 
+def pilot_ladder(t, theme):
+    lad = load("engine_pilot_ladder")
+    rows = lad["pilots"]
+    x = np.arange(len(rows))
+    gap = np.array([r["gap"] for r in rows]) * 100
+    ci = np.array([r["gap_se"] for r in rows]) * 196
+    judged = lad["judge_b_gap"] * 100
+    fig, ax = figure(t, w=8, h=3.9)
+    style(ax, t, "y")
+    ax.axhline(0, color=t["ink2"], linewidth=1)
+    ax.axhline(judged, color=t["s2"], linewidth=1.5, linestyle="--")
+    ax.text(len(rows) - 0.55, judged + 0.18, f"Judge B predicted +{judged:.2f}", ha="right", va="bottom",
+            fontsize=9.5, color=t["ink"])  # fmt: skip
+    ax.errorbar(x, gap, yerr=ci, color=t["s1"], linewidth=2, marker="o", markersize=7, capsize=0, elinewidth=1.5)
+    for xi, g in zip(x, gap, strict=True):
+        ax.annotate(f"{g:+.2f}", (xi, g), textcoords="offset points", xytext=(10, 4), ha="left",
+                    color=t["ink"], fontweight="bold", fontsize=10)  # fmt: skip
+    labels = [f"{r['label'].replace(' x ', ' × ')}\nbeats rules-based {r['beats_baseline'] * 100:g}%" if r["pilot"] != "baseline"
+              else f"{r['label']}\n(the reference)" for r in rows]  # fmt: skip
+    ax.set_xticks(x, labels, color=t["ink"], fontsize=9)
+    ax.set_xlim(-0.4, len(rows) - 0.4)
+    ax.set_ylim(-2, 4.6)
+    ax.set_ylabel("Points of played win rate (95% CI)", color=t["ink2"], fontsize=9)
+    title(fig, t, "The bot's edge disappears at the first bit of search",
+          f"Bot decks minus human-model decks, both sides played by the same pilot; "
+          f"{lad['games_per_pilot']:,} games per pilot")  # fmt: skip
+    fig.subplots_adjust(left=0.08, right=0.98, top=0.8, bottom=0.17)
+    save(fig, "pilot-ladder", theme)
+
+
 def main():
     for theme, t in THEMES.items():
-        for draw in (scoreboard, by_pick, rare_drafting, calibration, rl_curve):
+        for draw in (scoreboard, by_pick, rare_drafting, calibration, rl_curve, pilot_ladder):
             draw(t, theme)
     print("wrote", sorted(p.name for p in OUT.glob("*.png")))
 

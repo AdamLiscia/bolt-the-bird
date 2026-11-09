@@ -183,9 +183,55 @@ def analyze():
     print(json.dumps(res, indent=2))
 
 
+# Strength against the baseline, from `rollout_bench` (200 games each, 2026-11-07/08; LOG.md).
+LADDER = [
+    ("baseline", "Rules-based", 0.5, 0.0),
+    ("r1c2", "Search 1 x 2", 0.650, 0.034),
+    ("r2c4", "Search 2 x 4", 0.700, 0.031),
+    ("rollout", "Search 4 x 6", 0.745, 0.029),
+]
+
+
+def ladder():
+    """Pool each pilot's per-table gap over fields a, b and c into results/engine_pilot_ladder.json."""
+    gaps = {}
+    for set_, d in (("a", "m7"), ("b", "m7b"), ("c", "m7c")):
+        meta = json.loads((ROOT / "data" / d / "meta.json").read_text())
+        table = np.array([m["table"] for m in meta])
+        bot = np.array([m["side"] == "bot" for m in meta])
+        for name, *_ in LADDER:
+            s = np.full(len(meta), np.nan)
+            for line in (ROOT / "data" / d / f"games_{name}.txt").read_text().split("\n"):
+                x = line.split()
+                if len(x) == 3 and x[1] != "error":
+                    s[int(x[0])] = {"p0": 1.0, "p1": 0.0}.get(x[1], 0.5)
+            assert not np.isnan(s).any(), f"{d} {name} unfinished"
+            g = [s[(table == t) & bot].mean() - s[(table == t) & ~bot].mean() for t in range(TABLES)]
+            gaps[(name, set_)] = np.array(g)
+    se = lambda x: float(x.std() / np.sqrt(len(x)))  # noqa: E731
+    base = sum(gaps[("baseline", f)] for f in "abc") / 3
+    out = []
+    for name, label, wr, wr_se in LADDER:
+        pooled = sum(gaps[(name, f)] for f in "abc") / 3
+        out.append({
+            "pilot": name, "label": label, "beats_baseline": wr, "beats_baseline_se": wr_se,
+            "gap": float(pooled.mean()), "gap_se": se(pooled),
+            "change_from_baseline": float((pooled - base).mean()), "change_se": se(pooled - base),
+            "by_field": {f: float(gaps[(name, f)].mean()) for f in "abc"},
+        })  # fmt: skip
+    d = json.loads((ROOT / "data" / f"engine_decks_{TABLES}.json").read_text())
+    res = {
+        "judge_b_gap": float((np.array(d["bot"]["judge_b"]) - np.array(d["human_model"]["judge_b"])).mean()),
+        "games_per_pilot": 3 * len(json.loads((ROOT / "data" / "m7" / "meta.json").read_text())),
+        "pilots": out,
+    }
+    (ROOT / "results" / "engine_pilot_ladder.json").write_text(json.dumps(res, indent=2) + "\n")
+    print(json.dumps(res, indent=2))
+
+
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("step", choices=["prepare", "extend", "analyze"])
+    ap.add_argument("step", choices=["prepare", "extend", "analyze", "ladder"])
     ap.add_argument("--games", type=int, default=8, help="field opponents per deck, one game each")
     ap.add_argument("--set", default="a", choices=["a", "b", "c"], help="b, c: replication fields")
     a = ap.parse_args()
@@ -194,7 +240,7 @@ def main():
         DIR, SUFFIX = ROOT / "data" / f"m7{a.set}", f"_{a.set}"
         {"prepare": lambda: prepare_rr(a.set), "analyze": analyze}[a.step]()
         return
-    {"prepare": lambda: prepare(a.games), "extend": extend, "analyze": analyze}[a.step]()
+    {"prepare": lambda: prepare(a.games), "extend": extend, "analyze": analyze, "ladder": ladder}[a.step]()
 
 
 if __name__ == "__main__":

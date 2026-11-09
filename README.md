@@ -271,6 +271,22 @@ can't catch a blind spot they share; playing the games can. An earlier rules-bas
 field (258,048 games) gave +1.59 ± 0.64. Details:
 [`docs/engine/VALIDATION.md`](docs/engine/VALIDATION.md).
 
+**Where the edge goes.** Two weaker search pilots fill in the gap between the two: one that plays
+out only 2 moves, once each, and one that plays out 4 moves twice each. They beat the rules-based
+pilot 65% and 70% of the time; the full search pilot beats it 74.5%. Each played the same three
+round-robins.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/figures/pilot-ladder-dark.png">
+  <img alt="The bot decks' played edge is +1.54 points with the rules-based pilot, +0.30 with the weakest search pilot, −0.13 and −0.21 with the stronger ones; judge B predicted +3.85" src="docs/figures/pilot-ladder-light.png">
+</picture>
+
+It's a cliff, not a slope. The weakest search already takes away 1.24 ± 0.26 of the 1.54 points;
+by the 2 × 4 pilot it's all gone. (The bars are wide because they include how much the 512 deck
+pairs differ; each drop is measured on the same decks and games, so it's much tighter.) The bot
+learned to build decks that beat a player who never looks ahead. To learn decks that beat
+players who do, it needs a reward from games played by players who do.
+
 ### Design decisions
 
 | Decision | Why |
