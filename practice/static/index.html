@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bolt Draft Practice</title>
+<style>
+:root {
+  --bg: #12161c; --surface: #1b2129; --raised: #232b35; --ink: #eef1f5; --ink2: #b4bcc8; --ink3: #8d96a3;
+  --rule: #2e3742; --accent: #3987e5; --good: #3fb37f; --bad: #e0705a; --gold: #e0a645;
+  --W: #e6dcb4; --U: #2f6fb5; --B: #6b6475; --R: #c8402a; --G: #2e7d4f; --M: #c9a227; --C: #8e97a3;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+header { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 12px 16px; border-bottom: 1px solid var(--rule); background: var(--surface); position: sticky; top: 0; z-index: 5; }
+header h1 { font-size: 1.05rem; margin: 0; letter-spacing: .02em; }
+header .where { color: var(--ink2); font-variant-numeric: tabular-nums; }
+header .spacer { flex: 1; }
+button { font: inherit; border-radius: 8px; border: 1px solid var(--rule); background: var(--raised); color: var(--ink); padding: 8px 14px; cursor: pointer; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+button:disabled { opacity: .5; cursor: default; }
+button:focus-visible, .card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+label.toggle { display: inline-flex; gap: 8px; align-items: center; color: var(--ink2); cursor: pointer; user-select: none; }
+main { display: grid; grid-template-columns: minmax(0, 1fr) 290px; gap: 16px; padding: 16px; max-width: 1400px; margin: 0 auto; }
+@media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+.panel { background: var(--surface); border: 1px solid var(--rule); border-radius: 12px; padding: 14px; min-width: 0; }
+.panel h2 { font-size: .8rem; letter-spacing: .08em; text-transform: uppercase; color: var(--ink3); margin: 0 0 10px; font-weight: 600; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+@media (max-width: 520px) { .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; } }
+.card { position: relative; border-radius: 4.5% / 3.3%; cursor: pointer; transition: transform .08s ease; }
+.card img { width: 100%; aspect-ratio: 488 / 680; display: block; border-radius: 4.5% / 3.3%; background: var(--raised); }
+.card:hover { transform: translateY(-2px); }
+.card.selected { box-shadow: 0 0 0 3px var(--accent); }
+.card.top { box-shadow: 0 0 0 3px var(--gold); }
+.card.selected.top { box-shadow: 0 0 0 3px var(--accent), 0 0 0 6px var(--gold); }
+.badge { position: absolute; left: 6px; bottom: 6px; background: rgba(10, 12, 16, .85); color: #fff; font: 600 .75rem/1 system-ui; padding: 4px 6px; border-radius: 4px; font-variant-numeric: tabular-nums; }
+.badge.top { background: var(--gold); color: #1b1408; }
+.actions { display: flex; gap: 10px; align-items: center; margin-top: 14px; flex-wrap: wrap; }
+.hint { color: var(--ink3); font-size: .88rem; }
+.colors { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.chip { display: inline-flex; align-items: center; gap: 5px; font-size: .8rem; color: var(--ink2); }
+.dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; flex: none; }
+.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; font-size: .88rem; }
+.list li { display: flex; gap: 8px; align-items: center; padding: 3px 6px; border-radius: 6px; }
+.list li:hover { background: var(--raised); }
+.list li .n { color: var(--ink3); margin-left: auto; font-variant-numeric: tabular-nums; }
+.list li.clickable { cursor: pointer; }
+.group { margin-bottom: 10px; }
+.group h3 { font-size: .78rem; color: var(--ink3); margin: 6px 0 4px; font-weight: 600; }
+.preview { position: fixed; pointer-events: none; width: 230px; z-index: 20; border-radius: 4.5% / 3.3%; box-shadow: 0 10px 30px rgba(0, 0, 0, .5); display: none; }
+.center { display: grid; place-items: center; min-height: 60vh; text-align: center; padding: 24px; }
+.center p { max-width: 560px; color: var(--ink2); margin: 12px auto 20px; }
+.deckcols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 700px) { .deckcols { grid-template-columns: 1fr; } }
+.basics { display: flex; gap: 10px; flex-wrap: wrap; margin: 8px 0 16px; }
+.basic { display: flex; align-items: center; gap: 6px; background: var(--raised); border-radius: 8px; padding: 4px 8px; }
+.basic button { padding: 2px 9px; }
+.count { font-weight: 700; font-variant-numeric: tabular-nums; }
+.count.ok { color: var(--good); } .count.low { color: var(--bad); }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.tile { background: var(--raised); border-radius: 10px; padding: 14px; }
+.tile .big { font-size: 2rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.tile .sub { color: var(--ink2); font-size: .88rem; }
+table { border-collapse: collapse; width: 100%; font-size: .88rem; }
+th, td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--rule); }
+td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+.agree { color: var(--good); }
+.err { color: var(--bad); }
+.spinner { width: 36px; height: 36px; border: 4px solid var(--rule); border-top-color: var(--accent); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 12px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.note { color: var(--ink3); font-size: .85rem; margin-top: 10px; }
+.stack { display: grid; gap: 16px; padding: 16px; max-width: 1100px; margin: 0 auto; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Bolt Draft Practice</h1>
+  <span class="where" id="where"></span>
+  <span class="spacer"></span>
+  <label class="toggle"><input type="checkbox" id="coachToggle"> Show Bolt's picks</label>
+  <button id="newBtn">New draft</button>
+</header>
+<div id="app"></div>
+<img class="preview" id="preview" alt="">
+
+<script>
+const $ = (s, el = document) => el.querySelector(s);
+const app = $("#app");
+let CARDS = [], draft = null, selected = null, deck = null, pool = null, suggestion = null;
+const COLOR_NAMES = { W: "White", U: "Blue", B: "Black", R: "Red", G: "Green", M: "Multicolor", C: "Colorless & lands" };
+const ORDER = "WUBRGMC";
+const coachOn = () => $("#coachToggle").checked;
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+try { $("#coachToggle").checked = localStorage.getItem("boltCoach") === "1"; } catch (e) {}
+
+async function api(path, opts = {}) {
+  const r = await fetch(path, { headers: { "Content-Type": "application/json" }, ...opts });
+  if (r.status === 401) { location.reload(); throw new Error("log in"); }
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok) throw Object.assign(new Error("request failed"), { detail: body.detail });
+  return body;
+}
+const card = id => CARDS[id];
+const colorKey = id => { const col = card(id).color || ""; return col.length > 1 ? "M" : col.length === 1 ? col : "C"; };
+const isBasic = id => card(id).rarity === "basic";
+const countsOf = list => { const c = {}; list.forEach(id => c[id] = (c[id] || 0) + 1); return c; };
+const byColorThenName = (a, b) => ORDER.indexOf(colorKey(+a)) - ORDER.indexOf(colorKey(+b)) || card(+a).name.localeCompare(card(+b).name);
+
+// Hovering a card name shows the card (not on touch screens).
+document.addEventListener("mousemove", e => {
+  const p = $("#preview");
+  const t = e.target.closest("[data-preview]");
+  if (!t || matchMedia("(hover: none)").matches) { p.style.display = "none"; return; }
+  p.src = card(+t.dataset.preview).image;
+  p.style.display = "block";
+  p.style.left = (e.clientX + 250 > innerWidth ? e.clientX - 250 : e.clientX + 20) + "px";
+  p.style.top = Math.max(8, Math.min(e.clientY - 150, innerHeight - 330)) + "px";
+});
+
+function poolPanel(ids) {
+  const groups = {};
+  for (const id of ids) (groups[colorKey(id)] ||= []).push(id);
+  const keys = ORDER.split("").filter(k => groups[k]);
+  const chips = keys.map(k => `<span class="chip"><i class="dot" style="background:var(--${k})"></i>${groups[k].length}</span>`).join("");
+  const lists = keys.map(k => {
+    const c = countsOf(groups[k]);
+    const items = Object.keys(c).sort(byColorThenName)
+      .map(id => `<li data-preview="${id}">${esc(card(+id).name)}<span class="n">${c[id] > 1 ? "×" + c[id] : ""}</span></li>`).join("");
+    return `<div class="group"><h3>${COLOR_NAMES[k]}</h3><ul class="list">${items}</ul></div>`;
+  }).join("");
+  return `<div class="panel"><h2>Your picks (${ids.length})</h2><div class="colors">${chips}</div>${lists || '<p class="hint">Nothing yet.</p>'}</div>`;
+}
+
+// ---------- the draft
+function renderDraft(msg = "") {
+  if (draft.done) return loadDeck();
+  $("#where").textContent = `Pack ${draft.round} · Pick ${draft.pick}`;
+  const top = draft.coach.indexOf(Math.max(...draft.coach));
+  const cards = draft.pack.map((id, i) => {
+    const showTop = coachOn() && i === top;
+    return `<div class="card${i === selected ? " selected" : ""}${showTop ? " top" : ""}" tabindex="0" data-i="${i}" title="${esc(card(id).name)}">
+      <img src="${card(id).image}" alt="${esc(card(id).name)}">
+      ${coachOn() ? `<span class="badge${showTop ? " top" : ""}">${showTop ? "Bolt · " : ""}${Math.round(draft.coach[i] * 100)}%</span>` : ""}</div>`;
+  }).join("");
+  const name = selected === null ? "card" : esc(card(draft.pack[selected]).name);
+  app.innerHTML = `<main><section class="panel"><h2>Pick a card · ${draft.pack.length} in this pack</h2>
+    <div class="grid">${cards}</div>
+    <div class="actions"><button class="primary" id="takeBtn" ${selected === null ? "disabled" : ""}>Take ${name}</button>
+    <span class="hint">Click a card, then Take. Double-click takes it straight away.</span><span class="err">${esc(msg)}</span></div></section>
+    <aside>${poolPanel(draft.pool)}</aside></main>`;
+  app.querySelectorAll(".card").forEach(el => {
+    el.onclick = () => { selected = +el.dataset.i; renderDraft(); };
+    el.ondblclick = () => { selected = +el.dataset.i; take(); };
+    el.onkeydown = e => { if (e.key === "Enter") { selected = +el.dataset.i; take(); } };
+  });
+  $("#takeBtn").onclick = take;
+}
+async function take() {
+  if (selected === null) return;
+  const i = selected;
+  selected = null;
+  try {
+    draft = await api(`/api/draft/${draft.id}/pick`, { method: "POST", body: JSON.stringify({ index: i }) });
+    renderDraft();
+  } catch (e) { renderDraft(e.detail || "That pick didn't go through."); }
+}
+
+// ---------- deck building
+async function loadDeck() {
+  $("#where").textContent = "Build your deck";
+  app.innerHTML = `<div class="center"><div><div class="spinner"></div><p>Building every deck at the table…</p></div></div>`;
+  suggestion = await api(`/api/draft/${draft.id}/deck`);
+  pool = suggestion.pool;
+  if (!deck) deck = suggestion.deck.slice();
+  renderDeck();
+}
+function renderDeck(msg = "") {
+  $("#where").textContent = "Build your deck";
+  const inDeck = countsOf(deck.filter(id => !isBasic(id)));
+  const inPool = countsOf(pool.filter(id => !isBasic(id)));
+  const side = {};
+  for (const id in inPool) { const left = inPool[id] - (inDeck[id] || 0); if (left > 0) side[id] = left; }
+  const row = (id, n, where) => `<li class="clickable" data-id="${id}" data-where="${where}" data-preview="${id}">
+    <i class="dot" style="background:var(--${colorKey(+id)})"></i>${esc(card(+id).name)}<span class="n">${n > 1 ? "×" + n : ""}</span></li>`;
+  const basicIds = CARDS.filter(c => c.rarity === "basic").map(c => c.id);
+  const basicsIn = countsOf(deck.filter(isBasic));
+  const n = deck.length;
+  app.innerHTML = `<div class="stack"><section class="panel">
+    <h2>Your deck: <span class="count ${n >= 40 ? "ok" : "low"}">${n}</span> / 40 cards · Bolt's builder suggested ${esc(suggestion.label)}</h2>
+    <div class="basics">${basicIds.map(id => `<span class="basic"><span data-preview="${id}">${esc(card(id).name)}</span>
+      <button data-basic="${id}" data-d="-1" aria-label="Remove a ${esc(card(id).name)}">−</button><span class="count">${basicsIn[id] || 0}</span>
+      <button data-basic="${id}" data-d="1" aria-label="Add a ${esc(card(id).name)}">+</button></span>`).join("")}</div>
+    <div class="deckcols">
+      <div><h2>In the deck · click to bench</h2><ul class="list">${Object.keys(inDeck).sort(byColorThenName).map(id => row(id, inDeck[id], "deck")).join("")}</ul></div>
+      <div><h2>Sideboard · click to add</h2><ul class="list">${Object.keys(side).sort(byColorThenName).map(id => row(id, side[id], "side")).join("") || '<li class="hint">Empty</li>'}</ul></div>
+    </div>
+    <div class="actions"><button class="primary" id="gradeBtn" ${n < 40 ? "disabled" : ""}>Grade my draft</button>
+      <button id="resetBtn">Reset to Bolt's build</button><span class="err">${esc(msg)}</span></div>
+    <p class="note">Grading plays your deck against the other seven decks at your table, many times each, in the rules engine. It takes about 15 seconds.</p>
+  </section></div>`;
+  app.querySelectorAll("[data-where]").forEach(el => el.onclick = () => {
+    const id = +el.dataset.id;
+    if (el.dataset.where === "deck") deck.splice(deck.indexOf(id), 1); else deck.push(id);
+    renderDeck();
+  });
+  app.querySelectorAll("[data-basic]").forEach(el => el.onclick = () => {
+    const id = +el.dataset.basic;
+    if (+el.dataset.d > 0) deck.push(id); else if (deck.includes(id)) deck.splice(deck.indexOf(id), 1);
+    renderDeck();
+  });
+  $("#resetBtn").onclick = () => { deck = suggestion.deck.slice(); renderDeck(); };
+  $("#gradeBtn").onclick = gradeIt;
+}
+
+// ---------- grades
+async function gradeIt() {
+  $("#where").textContent = "Grading";
+  app.innerHTML = `<div class="center"><div><div class="spinner"></div><p>Playing your deck and Bolt's against the seven decks at your table…</p></div></div>`;
+  try {
+    renderGrades(await api(`/api/draft/${draft.id}/grade`, { method: "POST", body: JSON.stringify({ deck }) }));
+  } catch (e) { renderDeck(Array.isArray(e.detail) ? e.detail.join("; ") : (e.detail || "Grading failed.")); }
+}
+const pct = x => (100 * x).toFixed(1) + "%";
+function renderGrades(g) {
+  $("#where").textContent = "Your grades";
+  const d = g.difference.points, se = g.difference.se_points;
+  const verdict = Math.abs(d) < 2 * se ? "too close to call" : d > 0 ? "your deck did better" : "Bolt's deck did better";
+  const picks = g.picks.map(e => {
+    const p = e.position, agree = e.took === e.coach_top;
+    return `<tr><td>Pack ${Math.floor(p / 14) + 1}, pick ${p % 14 + 1}</td><td data-preview="${e.took}">${esc(card(e.took).name)}</td>
+      <td data-preview="${e.coach_top}">${agree ? "<span class='agree'>Same</span>" : esc(card(e.coach_top).name)}</td>
+      <td class="n">${Math.round(e.coach_prob_took * 100)}%</td><td class="n">${Math.round(e.coach_prob_top * 100)}%</td></tr>`;
+  }).join("");
+  const opp = g.by_opponent.map((x, i) => `<tr><td>Seat ${i + 2}</td><td>${esc(g.table_labels[i])}</td><td class="n">${x === null ? "–" : pct(x)}</td></tr>`).join("");
+  const bolt = countsOf(g.bolt_deck.filter(id => !isBasic(id)));
+  const boltList = Object.keys(bolt).sort(byColorThenName)
+    .map(id => `<li data-preview="${id}"><i class="dot" style="background:var(--${colorKey(+id)})"></i>${esc(card(+id).name)}<span class="n">${bolt[id] > 1 ? "×" + bolt[id] : ""}</span></li>`).join("");
+  app.innerHTML = `<div class="stack">
+    <section class="panel"><h2>How your draft did</h2>
+    <div class="tiles">
+      <div class="tile"><div class="sub">Your deck wins</div><div class="big">${pct(g.you.win_rate)}</div>
+        <div class="sub">likely ${pct(g.you.low)} to ${pct(g.you.high)}, over ${g.you.games} games</div></div>
+      <div class="tile"><div class="sub">Bolt drafting your seat wins</div><div class="big">${pct(g.bolt.win_rate)}</div>
+        <div class="sub">same packs, same opponents · ${esc(g.bolt_label)}</div></div>
+      <div class="tile"><div class="sub">Difference</div><div class="big">${d >= 0 ? "+" : "−"}${Math.abs(d).toFixed(1)}</div>
+        <div class="sub">points, give or take ${se.toFixed(1)}: ${verdict}</div></div>
+      <div class="tile"><div class="sub">You picked what Bolt would</div><div class="big">${Math.round(g.agreement * 100)}%</div>
+        <div class="sub">of your 42 picks</div></div>
+    </div>
+    <p class="note">Both decks play the other seven decks at your table, the same games for each, with Bolt's smart player running both sides. This grades the deck, not how you'd play it, and the opponents are bots that draft like people.</p>
+    </section>
+    <section class="panel"><h2>Pick by pick</h2><div style="overflow-x:auto"><table>
+      <thead><tr><th>Pick</th><th>You took</th><th>Bolt would take</th><th class="n">Bolt liked yours</th><th class="n">Bolt liked its pick</th></tr></thead>
+      <tbody>${picks}</tbody></table></div></section>
+    <section class="panel"><h2>Against each deck at your table</h2>
+      <table><thead><tr><th></th><th>Their deck</th><th class="n">You win</th></tr></thead><tbody>${opp}</tbody></table>
+      <h2 style="margin-top:16px">Bolt's deck from your seat</h2><ul class="list">${boltList}</ul></section>
+    <div class="actions"><button class="primary" id="againBtn">Draft again</button></div></div>`;
+  $("#againBtn").onclick = newDraft;
+}
+
+async function newDraft() {
+  selected = null; deck = null;
+  app.innerHTML = `<div class="center"><div class="spinner"></div></div>`;
+  draft = await api("/api/draft", { method: "POST" });
+  try { localStorage.setItem("boltDraft", draft.id); } catch (e) {}
+  renderDraft();
+}
+$("#newBtn").onclick = () => {
+  if (draft && !draft.done && draft.picks > 0 && !window.confirm("Start over? This draft will be lost.")) return;
+  newDraft();
+};
+$("#coachToggle").onchange = () => {
+  try { localStorage.setItem("boltCoach", coachOn() ? "1" : "0"); } catch (e) {}
+  if (draft && !draft.done) renderDraft();
+};
+
+(async function start() {
+  CARDS = await api("/api/cards");
+  let id = null;
+  try { id = localStorage.getItem("boltDraft"); } catch (e) {}
+  if (id) { try { draft = await api(`/api/draft/${id}`); return renderDraft(); } catch (e) {} }
+  app.innerHTML = `<div class="center"><div><h2>Draft against Bolt's bots</h2>
+    <p>You take one seat at an 8-player Foundations draft. The other seven seats are bots that draft like people. Real packs, passed left, right, left.
+    When you're done, build your deck. Bolt plays it out against the table to grade it, and shows how it would have drafted your seat.</p>
+    <button class="primary" id="startBtn">Start a draft</button></div></div>`;
+  $("#startBtn").onclick = newDraft;
+})();
+</script>
+</body>
+</html>
