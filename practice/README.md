@@ -22,6 +22,7 @@ Needs the checkpoints in `checkpoints/` (`human_model.pt`, `judge_b.pt` and the 
 
 ## Share it with friends (ngrok)
 
+    # Same Wi-Fi: PRACTICE_HOST=0.0.0.0 python -m practice, then friends open http://<your IP>:8765
     PRACTICE_PASSWORD=pick-a-password python -m practice
     ngrok http 8765                  # in a second terminal; send friends the https link + password
 
