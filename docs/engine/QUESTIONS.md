@@ -209,3 +209,17 @@ correct Magic; the baseline pilots just don't close the game. Fix: `rollout::Con
 (2,000): a playout whose game has made more objects than that counts as a draw, like one past
 `max_actions`. Test: `a_playout_past_the_object_limit_counts_as_a_draw` (fails without the limit).
 Job 36149 now finishes in 32 s. `examples/replay_job.rs` is the tool that found it.
+
+## 2026-11-09 — A second memory corruption, in the played-reward training run
+
+The training run (`train_rl.py --reward played`) died at 19:53 after iteration 139: SIGABRT,
+"pointer being freed was not allocated", in `drop_in_place<Game>` inside `baseline::choose`
+inside `rollout::choose`, on a `play_many` worker thread (crash report
+~/Library/Logs/DiagnosticReports/Python-2026-11-09-195342.ips). With the 2026-11-08 impossible
+index, that's two cases of corruption that safe Rust (no `unsafe` in bolt-core or bolt-cards)
+shouldn't allow, both in long multithreaded runs. Candidates, none confirmed: a silent stack overflow
+on a worker thread (2 MiB default stacks; the engine's resolve/trigger paths nest), or a hardware
+memory error. Cheap mitigations: game threads now get 64 MiB stacks, and the round-robin driver
+retries a chunk after an abort (up to 3). If it recurs with the bigger stacks, the stack theory is
+out; next would be running a long batch under a debug build with overflow checks, or on another
+machine.

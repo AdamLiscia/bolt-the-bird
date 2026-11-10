@@ -14,6 +14,8 @@ use crate::fdn;
 pub const MAX_TURNS: u32 = 200;
 /// A game still going after this long is a timeout (only ever the smart pilot, on huge boards).
 pub const GAME_SECONDS: u64 = 180;
+/// Stack for each game thread (reserved, not used up front).
+pub const STACK_BYTES: usize = 64 << 20;
 
 /// Who plays both sides.
 #[derive(Clone, Copy, Debug)]
@@ -94,12 +96,17 @@ pub fn play_many(jobs: &[Job], pilot: &Pilot, threads: usize) -> Vec<Played> {
     let out = Mutex::new(vec![None; jobs.len()]);
     std::thread::scope(|s| {
         for _ in 0..threads.max(1).min(jobs.len().max(1)) {
-            s.spawn(|| loop {
-                let i = next.fetch_add(1, Ordering::Relaxed);
-                let Some(j) = jobs.get(i) else { return };
-                let r = play_game(j, pilot);
-                out.lock().expect("no thread panics while holding it")[i] = Some(r);
-            });
+            // Big stacks: twice now a long run hit memory corruption that safe code shouldn't
+            // allow (QUESTIONS.md); a silent stack overflow is one way to get it.
+            let builder = std::thread::Builder::new().stack_size(STACK_BYTES);
+            builder
+                .spawn_scoped(s, || loop {
+                    let i = next.fetch_add(1, Ordering::Relaxed);
+                    let Some(j) = jobs.get(i) else { return };
+                    let r = play_game(j, pilot);
+                    out.lock().expect("no thread panics while holding it")[i] = Some(r);
+                })
+                .expect("spawn a game thread");
         }
     });
     out.into_inner()

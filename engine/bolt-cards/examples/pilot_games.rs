@@ -112,27 +112,30 @@ fn main() {
                 out.clone(),
                 played.clone(),
             );
-            std::thread::spawn(move || loop {
-                if start.elapsed().as_secs() >= seconds {
-                    return;
-                }
-                let i = next.fetch_add(1, Ordering::Relaxed);
-                let Some(j) = jobs.get(i) else { return };
-                let t = Instant::now();
-                // A panic in one game is recorded as "error" and logged, not allowed to end the run.
-                let (r, turns) = play(&decks, j, &pilot);
-                if t.elapsed().as_secs() >= 60 {
-                    eprintln!(
-                        "slow: job {} took {}s, {r} after {turns} turns",
-                        j.id,
-                        t.elapsed().as_secs()
-                    );
-                }
-                let mut f = out.lock().expect("lock");
-                writeln!(f, "{} {r} {turns}", j.id).expect("write");
-                f.flush().expect("flush");
-                played.fetch_add(1, Ordering::Relaxed);
-            })
+            let builder = std::thread::Builder::new().stack_size(bolt_cards::play::STACK_BYTES);
+            builder
+                .spawn(move || loop {
+                    if start.elapsed().as_secs() >= seconds {
+                        return;
+                    }
+                    let i = next.fetch_add(1, Ordering::Relaxed);
+                    let Some(j) = jobs.get(i) else { return };
+                    let t = Instant::now();
+                    // A panic in one game is recorded as "error" and logged, not allowed to end the run.
+                    let (r, turns) = play(&decks, j, &pilot);
+                    if t.elapsed().as_secs() >= 60 {
+                        eprintln!(
+                            "slow: job {} took {}s, {r} after {turns} turns",
+                            j.id,
+                            t.elapsed().as_secs()
+                        );
+                    }
+                    let mut f = out.lock().expect("lock");
+                    writeln!(f, "{} {r} {turns}", j.id).expect("write");
+                    f.flush().expect("flush");
+                    played.fetch_add(1, Ordering::Relaxed);
+                })
+                .expect("spawn a game thread")
         })
         .collect();
     for h in handles {
