@@ -223,3 +223,15 @@ memory error. Cheap mitigations: game threads now get 64 MiB stacks, and the rou
 retries a chunk after an abort (up to 3). If it recurs with the bigger stacks, the stack theory is
 out; next would be running a long batch under a debug build with overflow checks, or on another
 machine.
+
+**Investigated 2026-11-10.** (1) The stack-overflow theory is out: on this Mac (rustc 1.92,
+aarch64-apple-darwin) a worker thread that overflows a 256 KiB stack with a 200 KB frame is caught
+("has overflowed its stack", abort), so overflow can't corrupt memory silently. (2) No unsafe
+code: the workspace sets `unsafe_code = "forbid"`, and pilot_games links only std and serde /
+serde_json (card data at startup). (3) No silent damage to results: every stored rules-based game
+(294,336: fields A, B, C and the played-reward bot's three) replayed with identical results, as did
+a sample of the played-reward bot's smart-player games (6,541 at 1 × 2, 3,271 at 4 × 6, all played
+after the last engine fixes). Conclusion: most likely a rare hardware memory error on this laptop
+(no ECC); a compiler bug can't be ruled out. Results stand. The runner already survives it
+(per-game panic catch, chunk retries after an abort). If it keeps happening: Apple Diagnostics'
+memory test, or rerun the same batch on another machine.
