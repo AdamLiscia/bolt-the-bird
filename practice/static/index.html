@@ -136,7 +136,12 @@ function renderDraft(msg = "") {
   if (draft.done) return loadDeck();
   $("#where").textContent = `Pack ${draft.round} · Pick ${draft.pick}`;
   const top = draft.coach.indexOf(Math.max(...draft.coach));
-  const cards = draft.pack.map((id, i) => {
+  // Shown rarest first, like Arena; i stays the card's position in the pack, which is what a pick sends.
+  const RANK = { mythic: 0, rare: 1, uncommon: 2, common: 3, basic: 4 };
+  const rank = id => (card(id).types || []).join(" ").includes("Land") && card(id).rarity === "common" ? 3.5 : RANK[card(id).rarity] ?? 3;
+  const order = draft.pack.map((id, i) => i).sort((a, b) =>
+    rank(draft.pack[a]) - rank(draft.pack[b]) || byColorThenName(draft.pack[a], draft.pack[b]));
+  const cards = order.map(i => [draft.pack[i], i]).map(([id, i]) => {
     const showTop = coachOn() && i === top;
     return `<div class="card${i === selected ? " selected" : ""}${showTop ? " top" : ""}" tabindex="0" data-i="${i}" title="${esc(card(id).name)}">
       <img src="${card(id).image}" alt="${esc(card(id).name)}">

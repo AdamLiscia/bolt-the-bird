@@ -117,7 +117,8 @@ def create_app(kit: Kit, password: str | None = None) -> FastAPI:
 
     @app.get("/")
     def index():
-        return FileResponse(HERE / "static" / "index.html")
+        # no-cache: the browser checks for a newer page each time instead of reusing an old copy
+        return FileResponse(HERE / "static" / "index.html", headers={"Cache-Control": "no-cache"})
 
     @app.get("/api/cards")
     def cards():
