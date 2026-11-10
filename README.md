@@ -17,7 +17,7 @@ In a Magic draft, eight players open packs, take one card, and pass the rest. Fo
 each player builds a deck from what they took. Good drafting means reading the table, committing to
 colors, and knowing when the shiny rare isn't worth it.
 
-Bolt the Bird learns this in two stages:
+Bolt the Bird got there in four steps:
 
 1. **Imitate.** A transformer studies 5.5 million real picks from
    [17lands](https://www.17lands.com/public_datasets) and learns to draft like a person. It matches the
@@ -28,10 +28,14 @@ Bolt the Bird learns this in two stages:
    model's, by a judge it never trained against. Along the way it unlearned a human habit (taking
    off-color rares for their collection value) and found an open lane: White-Red, one of the set's
    two strongest pairs in real games, yet under 8% of the decks people play.
-3. **Play it out.** A Magic rules engine written in Rust plays every card in the set. Over 670,000
-   played games, the bot's decks win about **1.5 points** more often when both sides play by simple
-   rules, and **nothing** more once both sides use a smart player that thinks a move ahead. The judge's +3.9 doesn't
-   survive being played, and finding that out is what the engine was built for.
+3. **Play it out.** A Magic rules engine written in Rust plays every card in the set. Played out,
+   that judged edge mostly disappears: about **1.5 points** when both sides play by simple rules,
+   and **nothing** once both sides use a smart player that thinks a move ahead. Finding that out is
+   what the engine was built for.
+4. **Learn from real games.** Retrained with played games as the reward instead of the judge, the
+   bot's decks win **55.5%** of games against the same human-style opponents that the human
+   model's decks beat 49.6% of the time: **+5.9 points**, even when both sides are played by a
+   stronger smart player than the one it trained against.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/figures/rl-curve-dark.png">
@@ -47,6 +51,7 @@ Bolt the Bird learns this in two stages:
 | **Judge** | Predicts deck win rate, calibrated to within about a point | 78,379 held-out games |
 | **Learning to win** | +3.85 ± 0.23 points of judged win rate, 14% fewer late rares, 81% human-like | 512 held-out tables, scored by a judge excluded from training |
 | **Playing it out** | +1.54 ± 0.66 points of played win rate (rules-based player); −0.21 ± 0.58 (smart player) | The same 1,024 decks in the Rust engine, each against every deck of three separate 64-deck fields |
+| **Learning from real games** | +5.91 ± 0.50 points of played win rate with the strongest smart player (55.5% vs. 49.6%); +8.06 ± 0.57 with the rules-based player | The same tables and fields; the bot trained only against a weaker smart player |
 
 Every number comes from a file in [`results/`](results/), and every chart is generated from those files
 by [`scripts/make_figures.py`](scripts/make_figures.py).
@@ -287,6 +292,39 @@ pairs differ; each drop is measured on the same decks and games, so it's much ti
 learned to build decks that beat a player who never looks ahead. To learn decks that beat
 players who do, it needs a reward from games played by players who do.
 
+### Learning from real games
+
+So the judge came out of the reward. In the same training loop, each practice draft's finished deck
+now plays its 7 tablemates' decks, twice each, in the engine, with the weakest smart player (1 × 2)
+on both sides. Its win rate is the reward. Everything else is unchanged: 128 tables per
+iteration, the same leash to the human model. A check first ([`scripts/played_reward_check.py`](scripts/played_reward_check.py)):
+two independent sets of those games agree on which decks are better (split-half correlation
+0.56), so the reward is noisy but learnable. Judge A, by contrast, barely predicts them (0.11).
+
+Training ([`scripts/train_rl.py`](scripts/train_rl.py) `--reward played`) ran 139 iterations,
+about 250,000 games, before an engine crash stopped it (see Limitations). The iteration-135 bot
+then drafted the same 512 held-out tables and played the same three round-robins as before, the
+human model's decks playing the identical games:
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/figures/played-reward-dark.png">
+  <img alt="Trained on played games, the bot's decks win +8.06 points more than the human model's with the rules-based pilot, +7.81 with the 1 × 2 smart player and +5.91 with the 4 × 6 smart player; the judge-trained bot falls from +1.54 to −0.21" src="docs/figures/played-reward-light.png">
+</picture>
+
+| Pilot on both sides | Played-reward bot | Human model | Gap | Judge-trained bot's gap |
+|---|---|---|---|---|
+| Rules-based | 57.4% | 49.4% | **+8.06 ± 0.57** | +1.54 |
+| Smart 1 × 2 (trained against) | 57.2% | 49.4% | **+7.81 ± 0.54** | +0.30 |
+| Smart 4 × 6 (never trained against) | 55.5% | 49.6% | **+5.91 ± 0.50** | −0.21 |
+
+Every field agrees: +5.89, +5.79 and +6.04 with the 4 × 6 player. The edge holds with the
+rules-based pilot, which the bot never trained with, and with the stronger smart player, which it
+never saw. It does shrink from about 8 points to about 6 as play improves, so part of what it
+learned pays off most against weaker play. Judge B rates the same change at only +0.6 points: the
+bot learned things the judge can't see. (The 2 × 4 player wasn't run for this bot.) Details:
+[`docs/engine/VALIDATION.md`](docs/engine/VALIDATION.md); numbers in
+[`results/engine_pilot_rl_played135.json`](results/engine_pilot_rl_played135.json).
+
 ### Design decisions
 
 | Decision | Why |
@@ -307,9 +345,12 @@ Apple's GPU, the NaN-poisoned model hung the machine. The fix masks before the a
 ## Limitations
 
 - **The judged edge doesn't hold up in play.** Judge B says +3.85; played games show +1.5 with
-  simple pilots and about zero with a stronger one.
-  Both judges learned from human-built decks, so they share blind spots, and the bot found some.
-  The next step is a reward from played games, not from a judge.
+  simple pilots and about zero with a stronger one. Both judges learned from human-built decks,
+  so they share blind spots, and the bot found some. Rewarding played games instead fixed it.
+- **The played-reward bot is one short run.** Training stopped at iteration 139 when the engine
+  crashed with memory corruption that safe Rust shouldn't allow; the cause isn't found yet
+  ([`docs/engine/QUESTIONS.md`](docs/engine/QUESTIONS.md)). It trained against one weak pilot, and
+  its edge shrinks as the pilot gets stronger.
 - **The pilots are not experts.** Both engine pilots play far below a strong human: neither one
   plans turns ahead, and both assume the opponent won't respond. Decks that reward skilled play
   can look worse here than they are.
@@ -327,6 +368,7 @@ Apple's GPU, the NaN-poisoned model hung the machine. The fix masks before the a
 - [x] Longer RL runs, to the point of diminishing returns
 - [x] A rules engine in Rust (PyO3 bindings) that plays the decks out: all 286 cards, played win
       rates alongside the judged ones
+- [x] RL rewarded by played games instead of a judge
 - [ ] A gameplay agent trained by self-play
 - [ ] Draft practice against the bot on [Nerd Leagues](https://nerdleagues.com)
 

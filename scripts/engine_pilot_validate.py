@@ -277,8 +277,9 @@ def newbot(checkpoint: str, name: str):
 
 
 def newbot_analyze(name: str):
-    """The new bot's gap per pilot and field, paired with the human-model games already played."""
-    res = {}
+    """The new bot's gap per pilot and field, paired with the human-model games already played,
+    and pooled per table over the three fields ("all") once every table has finished on all three."""
+    res, pooled = {}, {}
     for set_, d in (("a", "m7"), ("b", "m7b"), ("c", "m7c")):
         meta = json.loads((ROOT / "data" / d / "meta.json").read_text())
         table = np.array([m["table"] for m in meta])
@@ -303,7 +304,14 @@ def newbot_analyze(name: str):
             res.setdefault(pilot, {})[set_] = {
                 "gap": float(per.mean()), "gap_se": float(per.std() / np.sqrt(len(per))),
                 "pairs": int(done.sum()), "tables": int(len(per)),
+                "bot_win_rate": float(np.mean(s[0::2][done])), "human_model_win_rate": float(np.mean(s[1::2][done])),
             }  # fmt: skip
+            if len(per) == TABLES:
+                pooled.setdefault(pilot, []).append(per)
+    for pilot, fields in pooled.items():
+        if len(fields) == 3:  # every table on all three fields
+            g = sum(fields) / 3
+            res[pilot]["all"] = {"gap": float(g.mean()), "gap_se": float(g.std() / np.sqrt(len(g)))}
     (ROOT / "results" / f"engine_pilot_{name}.json").write_text(json.dumps(res, indent=2) + "\n")
     print(json.dumps(res, indent=2))
 

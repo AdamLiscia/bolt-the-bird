@@ -238,9 +238,50 @@ def pilot_ladder(t, theme):
     save(fig, "pilot-ladder", theme)
 
 
+def played_reward(t, theme):
+    """The judge-trained bot and the played-reward bot at each pilot strength."""
+    lad = load("engine_pilot_ladder")
+    new = load("engine_pilot_rl_played135")
+    rows = lad["pilots"]
+    x = np.arange(len(rows))
+    judged = lad["judge_b_gap"] * 100
+    fig, ax = figure(t, w=8, h=4.1)
+    style(ax, t, "y")
+    ax.axhline(0, color=t["ink2"], linewidth=1)
+    ax.axhline(judged, color=t["s2"], linewidth=1.5, linestyle="--")
+    ax.text(-0.3, judged + 0.2, f"Judge B's prediction for the old bot: +{judged:.2f}", ha="left", va="bottom",
+            fontsize=9, color=t["ink"])  # fmt: skip
+    old = np.array([r["gap"] for r in rows]) * 100
+    old_ci = np.array([r["gap_se"] for r in rows]) * 196
+    ax.errorbar(x, old, yerr=old_ci, color=t["ink2"], linewidth=2, marker="o", markersize=7, capsize=0,
+                elinewidth=1.5, label="Trained on the judge's score")  # fmt: skip
+    have = [i for i, r in enumerate(rows) if "all" in new.get(r["pilot"], {})]
+    ng = np.array([new[rows[i]["pilot"]]["all"]["gap"] for i in have]) * 100
+    nci = np.array([new[rows[i]["pilot"]]["all"]["gap_se"] for i in have]) * 196
+    ax.errorbar(have, ng, yerr=nci, color=t["s1"], linewidth=2.5, marker="o", markersize=8, capsize=0,
+                elinewidth=1.5, label="Trained on played games")  # fmt: skip
+    for xi, g in zip(have, ng, strict=True):
+        ax.annotate(f"{g:+.2f}", (xi, g), textcoords="offset points", xytext=(10, 4), ha="left",
+                    color=t["ink"], fontweight="bold", fontsize=10)  # fmt: skip
+    for xi, g in zip(x, old, strict=True):
+        ax.annotate(f"{g:+.2f}", (xi, g), textcoords="offset points", xytext=(10, -14), ha="left",
+                    color=t["ink2"], fontsize=9)  # fmt: skip
+    labels = [f"{r['label'].replace(' x ', ' × ')}\nbeats rules-based {r['beats_baseline'] * 100:g}%" if r["pilot"] != "baseline"
+              else f"{r['label']}\n(the reference)" for r in rows]  # fmt: skip
+    ax.set_xticks(x, labels, color=t["ink"], fontsize=9)
+    ax.set_xlim(-0.4, len(rows) - 0.4)
+    ax.set_ylim(-2, 10)
+    ax.set_ylabel("Points of played win rate (95% CI)", color=t["ink2"], fontsize=9)
+    ax.legend(frameon=False, fontsize=9, labelcolor=t["ink"], loc="upper right")
+    title(fig, t, "Trained on real games, the bot's edge holds up",
+          "Bot decks minus human-model decks, both sides played by the same pilot, three fields of opponents")
+    fig.subplots_adjust(left=0.08, right=0.98, top=0.8, bottom=0.16)
+    save(fig, "played-reward", theme)
+
+
 def main():
     for theme, t in THEMES.items():
-        for draw in (scoreboard, by_pick, rare_drafting, calibration, rl_curve, pilot_ladder):
+        for draw in (scoreboard, by_pick, rare_drafting, calibration, rl_curve, pilot_ladder, played_reward):
             draw(t, theme)
     print("wrote", sorted(p.name for p in OUT.glob("*.png")))
 

@@ -125,3 +125,35 @@ better only against a pilot that never looks ahead. Two fixes landed during thes
 panicking game is recorded and the run goes on (none recurred), and playouts past 2,000 objects
 count as a draw (QUESTIONS.md, 2026-11-08). Field B's 2 × 4 run had 36,308 games before that
 fix and the rest after.
+
+## The played-reward bot (2026-11-10)
+
+The strength ladder says the judge rewards decks that only beat a pilot who never looks ahead. So
+`train_rl.py --reward played` replaces judge A with played games: each practice table's seat-0
+deck plays its 7 tablemates twice each with smart 1 × 2 on both sides, and the win rate is the
+reward (`bolt.played`, `bolt_engine.play_games`). Before training, `scripts/played_reward_check.py`
+showed the reward is learnable: split-half correlation 0.56 over 128 tables (reliability 0.71
+with both halves), and judge A tracks it at only 0.11.
+
+Training: 128 tables, KL 0.05, lr 3e-5 as before; ~210 s per iteration. Played evals during
+training (256 test tables × 16 field-A games, smart 1 × 2): +2.73 (iteration 30), +5.44 (60),
++7.01 (90), +7.34 (120); judge B meanwhile +0.2 to +0.7. The run stopped at iteration 139 (memory
+corruption, QUESTIONS.md); checkpoint 135 is evaluated.
+
+Evaluation (`engine_pilot_validate.py newbot`, `results/engine_pilot_rl_played135.json`): the
+same 512 test tables drafted exactly as in M6 (the script checks the human-model side reproduces
+`data/engine_decks_512.json`), the bot's decks through the same three round-robins, paired with the
+human-model games already played. 98,112 bot-side games per pilot.
+
+| Pilot | A | B | C | **All three** | Win rate (bot / human model) | Judge-trained bot |
+|---|---|---|---|---|---|---|
+| Rules-based | +7.89 | +7.77 | +8.50 | **+8.06 ± 0.57** | 57.4% / 49.4% | +1.54 |
+| Smart 1 × 2 (trained against) | +7.62 | +7.32 | +8.47 | **+7.81 ± 0.54** | 57.2% / 49.4% | +0.30 |
+| Smart 4 × 6 (never seen) | +5.89 | +5.79 | +6.04 | **+5.91 ± 0.50** | 55.5% / 49.6% | −0.21 |
+
+**What it says.** A reward from played games fixes what the judge got wrong: the edge holds with
+a pilot the bot never trained with and with a stronger one it never saw, on every field. It shrinks
+from about 8 points to about 6 as play gets stronger, so part of it is tuned to weaker play. Judge B
+rates the bot only +0.63 ± 0.21 better: what it learned is mostly invisible to the judge. Caveats:
+one run, cut short; the pilots are still far below a strong human; opponents are human-model
+decks, not people.
