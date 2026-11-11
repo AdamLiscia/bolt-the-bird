@@ -21,6 +21,8 @@ tables each play the same field opponents with the same seeds.
     python scripts/train_rl.py                                   # start from the human model
     python scripts/train_rl.py --resume checkpoints/bot_rl.pt --name rl_long   # keep going
     python scripts/train_rl.py --reward played --device cpu --name rl_played --iters 300
+    python scripts/train_rl.py --reward played --device cpu --resume checkpoints/bot_rl_played_it135.pt \\
+        --start-iter 136 --iters 250 --name rl_played_b                    # pick a stopped run back up
 """
 
 import argparse
@@ -112,6 +114,8 @@ def main():
         help="the human-imitation model: the KL anchor, the 7 opponents, and the eval baseline",
     )
     ap.add_argument("--resume", default="", help="start the bot from this checkpoint instead of from --init")
+    ap.add_argument("--start-iter", type=int, default=1,
+                    help="number iterations from here (a resumed run): fresh packs and game seeds, evals on schedule")  # fmt: skip
     ap.add_argument("--name", default="rl", help="writes checkpoints/bot_<name>.pt and results/<name>.json")
     ap.add_argument("--iters", type=int, default=150)
     ap.add_argument("--tables", type=int, default=128)
@@ -145,7 +149,7 @@ def main():
     judge_b = load_judge("judge_h1.pt", cards.n, device)
     train_packs, test_packs = opening_packs("train"), opening_packs("test")
     opt = torch.optim.Adam(bot.parameters(), lr=a.lr)
-    gen = torch.Generator().manual_seed(1)
+    gen = torch.Generator().manual_seed(1 if a.start_iter == 1 else 1_000 + a.start_iter)
     history = []
 
     field = played_field(cards, a.played_eval_tables) if a.reward == "played" else None
@@ -184,11 +188,11 @@ def main():
             flush=True,
         )
 
-    do_eval(0)
+    do_eval(a.start_iter - 1)
     if a.reward == "played":
-        do_played_eval(0)
+        do_played_eval(a.start_iter - 1)
     t0 = time.time()
-    for it in range(1, a.iters + 1):
+    for it in range(a.start_iter, a.iters + 1):
         bot.eval()
         pools, log = run_tables(train_packs, a.tables, bot, ref, device, gen)
         errors = 0
