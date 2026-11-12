@@ -26,12 +26,15 @@ def score(results, owner: np.ndarray, n_tables: int):
     return np.array([np.nanmean(s[owner == t]) for t in range(n_tables)]), errors
 
 
-def played_rewards(decks, games: int, seed: int, rollouts: int = 1, candidates: int = 2, threads: int = 8):
-    """Seat 0's played win rate at each table, and how many games crashed."""
-    import bolt_engine as be
+def played_rewards(decks, games: int, seed: int, rollouts: int = 1, candidates: int = 2, threads: int = 8, play=None):
+    """Seat 0's played win rate at each table, and how many games crashed. `play` defaults to
+    `bolt_engine.play_games`; training passes a `bolt.engine_worker.SafePlayer`'s."""
+    if play is None:
+        import bolt_engine as be
 
+        play = be.play_games
     jobs, owner = table_jobs(decks, games, seed)
-    res = be.play_games(jobs, pilot="smart", rollouts=rollouts, candidates=candidates, threads=threads)
+    res = play(jobs, pilot="smart", rollouts=rollouts, candidates=candidates, threads=threads)
     return score(res, owner, len(decks))
 
 

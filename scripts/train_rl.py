@@ -36,6 +36,7 @@ import torch
 from bolt.cards import CardInfo
 from bolt.data import DATA
 from bolt.deckbuild import build_decks
+from bolt.engine_worker import SafePlayer
 from bolt.judge import DeckJudge
 from bolt.models import DraftTransformer
 from bolt.played import deck_lists, played_rewards, score
@@ -88,10 +89,8 @@ def played_field(cards, n_tables):
 
 
 @torch.no_grad()
-def played_side(model, ref, packs, judge, cards, device, n_tables, field, a):
+def played_side(model, ref, packs, judge, cards, device, n_tables, field, a, play):
     """One side's played score per eval table: its deck vs the table's field opponents."""
-    import bolt_engine as be
-
     decks, opps, seeds = field
     g = torch.Generator().manual_seed(12345)
     pools, _ = run_tables(packs, n_tables, model, ref, device, g, seat0_greedy=True)
@@ -102,7 +101,7 @@ def played_side(model, ref, packs, judge, cards, device, n_tables, field, a):
         for k, f in enumerate(opps[t]):
             jobs.append((mine[t], decks[int(f)], int(seeds[t, k]), k % 2))
             owner.append(t)
-    res = be.play_games(jobs, pilot="smart", rollouts=a.rollouts, candidates=a.candidates, threads=a.threads)
+    res = play(jobs, pilot="smart", rollouts=a.rollouts, candidates=a.candidates, threads=a.threads)
     return score(res, np.array(owner), n_tables)
 
 
@@ -153,12 +152,14 @@ def main():
     history = []
 
     field = played_field(cards, a.played_eval_tables) if a.reward == "played" else None
+    # Engine games run in a separate process, restarted if it crashes (bolt.engine_worker).
+    player = SafePlayer() if a.reward == "played" else None
     ref_played = None
 
     def do_played_eval(it):
         nonlocal ref_played
         bot.eval()
-        args = (test_packs, judge_b, cards, device, a.played_eval_tables, field, a)
+        args = (test_packs, judge_b, cards, device, a.played_eval_tables, field, a, player.play_games)
         if ref_played is None:
             ref_played = played_side(ref, ref, *args)[0]
         mine, errors = played_side(bot, ref, *args)
@@ -201,7 +202,9 @@ def main():
             built, _, _ = build_decks(pools_to_counts(pools.reshape(-1, 42), cards.n), judge_a, cards, device)
             lists = deck_lists(built)
             decks = [lists[8 * t : 8 * t + 8] for t in range(a.tables)]
-            reward, errors = played_rewards(decks, a.games, 10_000_000 * it, a.rollouts, a.candidates, a.threads)
+            reward, errors = played_rewards(
+                decks, a.games, 10_000_000 * it, a.rollouts, a.candidates, a.threads, play=player.play_games
+            )
             reward = np.nan_to_num(reward, nan=float(np.nanmean(reward)))
         else:
             counts = pools_to_counts(pools[:, 0], cards.n)
@@ -239,6 +242,7 @@ def main():
             "agree_with_human_model": agree / n,
             "seconds": round(time.time() - t0),
             "errors": errors,
+            "engine_restarts": player.restarts if player else 0,
         }
         history.append(row)
         print(
