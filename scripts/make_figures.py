@@ -241,7 +241,7 @@ def pilot_ladder(t, theme):
 def played_reward(t, theme):
     """The judge-trained bot and the played-reward bot at each pilot strength."""
     lad = load("engine_pilot_ladder")
-    new = load("engine_pilot_rl_played135")
+    new = load("engine_pilot_rl_played250")
     rows = lad["pilots"]
     x = np.arange(len(rows))
     judged = lad["judge_b_gap"] * 100

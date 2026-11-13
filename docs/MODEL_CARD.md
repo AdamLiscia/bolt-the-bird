@@ -62,12 +62,12 @@ drafts and games from Arena players who run its tracker, and publishes them with
   smart player (it plays each candidate move out before choosing) that beats it 74.5% of the time (each deck against every deck of three separate
   64-deck fields, 196,224 games per pilot). The judged edge does not survive play. See
   `docs/engine/VALIDATION.md`.
-- **Played-reward bot (2026-11-10, `checkpoints/bot_rl_played_it135.pt`, not yet released):** the
+- **Played-reward bot (2026-11-12, `checkpoints/bot_rl_played_it250.pt`, not yet released):** the
   same RL with played games as the reward (seat 0's deck against its 7 tablemates, smart 1 × 2
-  player) instead of judge A; stopped at iteration 139 by an engine crash, iteration 135
-  evaluated. Same tables and round-robins: **+5.91 ± 0.50** points with the 4 × 6 smart player it
-  never trained against (55.5% vs. 49.6%), +7.81 ± 0.54 with the 1 × 2 it trained against,
-  +8.06 ± 0.57 with the rules-based pilot. Judge B rates it only +0.63 ± 0.21.
+  player) instead of judge A, 250 iterations. Same tables and round-robins: **+8.88 ± 0.54**
+  points with the 4 × 6 smart player it never trained against (58.5% vs. 49.6%), +11.23 ± 0.59
+  with the 1 × 2 it trained against, +12.26 ± 0.63 with the rules-based pilot. Judge B rates it
+  only +0.93 ± 0.23. (At iteration 135: +5.91, +7.81, +8.06.)
 - **Known bias:** it drafts White-Red at 45% of tables. In real 17lands games White-Red outperforms
   its pilots' skill by 2.1 points while making up under 8% of games, so the lane is strong and usually open
   against human-like drafters. It would be contested at a table of bots.

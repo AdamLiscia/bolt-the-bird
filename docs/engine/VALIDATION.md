@@ -157,3 +157,23 @@ from about 8 points to about 6 as play gets stronger, so part of it is tuned to 
 rates the bot only +0.63 ± 0.21 better: what it learned is mostly invisible to the judge. Caveats:
 one run, cut short; the pilots are still far below a strong human; opponents are human-model
 decks, not people.
+
+## The played-reward bot, finished (2026-11-12)
+
+The run resumed from checkpoint 135 (rl_played_b, which died at 171 with the third memory
+corruption) and from 165 (rl_played_c, engine games in a restartable worker process, no crash and
+no restart in ~150k games) to iteration 250. Played evals during training (smart 1 × 2, 256 tables
+× 16 field-A games): +8.34 (135), +9.46 (150), +9.61 (165, 180), +10.88 (210), +11.25 (240),
++11.40 (250); judge B +0.6 to +0.9 throughout. Same evaluation as for iteration 135
+(`results/engine_pilot_rl_played250.json`):
+
+| Pilot | A | B | C | **All three** | Win rate (bot / human model) | Iteration 135 |
+|---|---|---|---|---|---|---|
+| Rules-based | +12.17 | +12.08 | +12.53 | **+12.26 ± 0.63** | 61.6% / 49.4% | +8.06 |
+| Smart 1 × 2 (trained against) | +11.20 | +10.88 | +11.61 | **+11.23 ± 0.59** | 60.7% / 49.4% | +7.81 |
+| Smart 4 × 6 (never seen) | +8.88 | +8.82 | +8.94 | **+8.88 ± 0.54** | 58.5% / 49.6% | +5.91 |
+
+From 135 to 250 the edge grew by +4.2, +3.4 and +3.0 points with the three pilots: almost as much
+with the stronger pilot it never trained against as with the one it did, so the extra training
+made better decks rather than decks tuned to its training pilot. The drop from the 1 × 2 to the
+4 × 6 pilot is about the same at both checkpoints (−1.9 and −2.4).

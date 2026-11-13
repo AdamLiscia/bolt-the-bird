@@ -11,7 +11,7 @@ records choices with their reasons, so they don't get relitigated later.
 | 2 | Judge, deck builder, draft simulator | Done (2026-11-04) |
 | 2b | RL against judge A, evaluated by judge B | Done (2026-11-05): +3.85 pts over 550 iterations, stopped at diminishing returns |
 | 3 | Rust rules engine with PyO3 bindings | Done (2026-11-06): all 286 cards; played edge +1.54 ± 0.66 (rules-based player), −0.21 ± 0.58 (smart player) vs. +3.85 judged |
-| 3b | RL rewarded by played games | Done (2026-11-10): +5.91 ± 0.50 pts played with the 4 × 6 smart player it never trained against, +8.06 with the rules-based pilot; run stopped at iteration 139 by an engine crash |
+| 3b | RL rewarded by played games | Done (2026-11-12): 250 iterations; +8.88 ± 0.54 pts played with the 4 × 6 smart player it never trained against (58.5% vs. 49.6%), +12.26 with the rules-based pilot |
 | 4 | Gameplay agent: rules-based, then imitation, then self-play | Rules-based and smart players done; imitation possible from 17lands replay data; next |
 
 ## Phase 3: the rules engine
