@@ -270,9 +270,9 @@ def played_reward(t, theme):
               else f"{r['label']}\n(the reference)" for r in rows]  # fmt: skip
     ax.set_xticks(x, labels, color=t["ink"], fontsize=9)
     ax.set_xlim(-0.4, len(rows) - 0.4)
-    ax.set_ylim(-2, 10)
+    ax.set_ylim(-2, max(10, float((ng + nci).max()) + 1.5))
     ax.set_ylabel("Points of played win rate (95% CI)", color=t["ink2"], fontsize=9)
-    ax.legend(frameon=False, fontsize=9, labelcolor=t["ink"], loc="upper right")
+    ax.legend(frameon=False, fontsize=9, labelcolor=t["ink"], loc="center left", bbox_to_anchor=(0.0, 0.5))
     title(fig, t, "Trained on real games, the bot's edge holds up",
           "Bot decks minus human-model decks, both sides played by the same pilot, three fields of opponents")
     fig.subplots_adjust(left=0.08, right=0.98, top=0.8, bottom=0.16)
