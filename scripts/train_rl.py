@@ -40,7 +40,7 @@ from bolt.engine_worker import SafePlayer
 from bolt.judge import DeckJudge
 from bolt.models import DraftTransformer
 from bolt.played import deck_lists, played_rewards, score
-from bolt.rl import masked_kl
+from bolt.rl import masked_kl, ppo_loss
 from bolt.sim import opening_packs, pools_to_counts, run_tables
 
 CK = DATA.parent / "checkpoints"
@@ -120,6 +120,15 @@ def main():
     ap.add_argument("--tables", type=int, default=128)
     ap.add_argument("--lr", type=float, default=3e-5)
     ap.add_argument("--kl", type=float, default=0.05)
+    ap.add_argument(
+        "--algo",
+        choices=["reinforce", "ppo"],
+        default="reinforce",
+        help="reinforce: one step per batch of drafts; ppo: several clipped steps on the same drafts",
+    )
+    ap.add_argument("--ppo-epochs", type=int, default=4, help="ppo: passes over each batch of drafts")
+    ap.add_argument("--ppo-clip", type=float, default=0.2, help="ppo: how far one batch may move a pick's probability")
+    ap.add_argument("--ppo-minibatch", type=int, default=1024, help="ppo: picks per step")
     ap.add_argument("--eval-every", type=int, default=15)
     ap.add_argument("--eval-tables", type=int, default=512)
     ap.add_argument("--device", default="auto", help="cpu, mps, or auto. Smoke-test new code on cpu first.")
@@ -213,10 +222,52 @@ def main():
         adv_rows = torch.as_tensor(np.repeat(adv, 42), dtype=torch.float32, device=device)
 
         n = len(log["action"])
+
+        def state(idx, log=log):
+            return (log["pool"][idx], log["pack"][idx], log["pack_number"][idx], log["pick_number"][idx])
+
+        if a.algo == "ppo":
+            # The chosen cards' log-probabilities when these drafts were played, then several clipped
+            # steps on the same drafts (bolt.rl.ppo_loss).
+            with torch.no_grad():
+                old_lp = torch.cat([
+                    torch.log_softmax(bot(*state(torch.arange(s, min(s + 2048, n), device=device))), 1)
+                    .gather(1, log["action"][s : s + 2048].long()[:, None]).squeeze(1)
+                    for s in range(0, n, 2048)
+                ])  # fmt: skip
+            clipped, steps = 0.0, 0
+            for _ in range(a.ppo_epochs):
+                perm = torch.randperm(n, device=device)
+                for s in range(0, n, a.ppo_minibatch):
+                    idx = perm[s : s + a.ppo_minibatch]
+                    logits = bot(*state(idx))
+                    with torch.no_grad():
+                        ref_logits = ref(*state(idx))
+                    loss, st = ppo_loss(logits, ref_logits, log["action"][idx].long(), old_lp[idx], adv_rows[idx],
+                                        a.ppo_clip, a.kl)  # fmt: skip
+                    opt.zero_grad(set_to_none=True)
+                    loss.backward()
+                    gnorm = torch.nn.utils.clip_grad_norm_(bot.parameters(), 1.0)
+                    if not torch.isfinite(gnorm):
+                        raise RuntimeError(f"non-finite gradient at iteration {it}")
+                    opt.step()
+                    clipped, steps = clipped + st["clipped"], steps + 1
+            if not all(torch.isfinite(p).all() for p in bot.parameters()):
+                raise RuntimeError(f"bot weights went non-finite at iteration {it}")
+            with torch.no_grad():  # KL and agreement after the update, for the log
+                kl_sum, agree = 0.0, 0.0
+                for s in range(0, n, 2048):
+                    idx = torch.arange(s, min(s + 2048, n), device=device)
+                    logits, ref_logits = bot(*state(idx)), ref(*state(idx))
+                    kl_sum += masked_kl(logits, ref_logits).sum().item()
+                    agree += (logits.argmax(1) == ref_logits.argmax(1)).sum().item()
+            ppo_clipped = clipped / max(1, steps)
         perm = torch.randperm(n, device=device)
-        kl_sum, agree = 0.0, 0.0
-        opt.zero_grad(set_to_none=True)
-        for s in range(0, n, 2048):
+        if a.algo == "reinforce":
+            kl_sum, agree = 0.0, 0.0
+            opt.zero_grad(set_to_none=True)
+            ppo_clipped = None
+        for s in range(0, n, 2048) if a.algo == "reinforce" else ():
             idx = perm[s : s + 2048]
             args = (log["pool"][idx], log["pack"][idx], log["pack_number"][idx], log["pick_number"][idx])
             logits = bot(*args)
@@ -229,12 +280,13 @@ def main():
             loss.backward()
             kl_sum += kl.sum().item()
             agree += (logits.argmax(1) == ref_logits.argmax(1)).sum().item()
-        gnorm = torch.nn.utils.clip_grad_norm_(bot.parameters(), 1.0)
-        if not torch.isfinite(gnorm):
-            raise RuntimeError(f"non-finite gradient at iteration {it}")
-        opt.step()
-        if not all(torch.isfinite(p).all() for p in bot.parameters()):
-            raise RuntimeError(f"bot weights went non-finite at iteration {it}")
+        if a.algo == "reinforce":
+            gnorm = torch.nn.utils.clip_grad_norm_(bot.parameters(), 1.0)
+            if not torch.isfinite(gnorm):
+                raise RuntimeError(f"non-finite gradient at iteration {it}")
+            opt.step()
+            if not all(torch.isfinite(p).all() for p in bot.parameters()):
+                raise RuntimeError(f"bot weights went non-finite at iteration {it}")
         row = {
             "iter": it,
             "reward": float(reward.mean()),
@@ -243,6 +295,7 @@ def main():
             "seconds": round(time.time() - t0),
             "errors": errors,
             "engine_restarts": player.restarts if player else 0,
+            "ppo_clipped": ppo_clipped,
         }
         history.append(row)
         print(
