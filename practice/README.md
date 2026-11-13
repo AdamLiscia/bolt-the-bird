@@ -18,7 +18,7 @@ to Nerd Leagues.
     python -m practice               # http://localhost:8765
 
 Needs the checkpoints in `checkpoints/` (`human_model.pt`, `judge_b.pt` and the played-reward bot
-`bot_rl_played_it135.pt`). Drafts live in memory and are gone when the server stops.
+`bot_rl_played_it250.pt`). Drafts live in memory and are gone when the server stops.
 
 ## Share it with friends (ngrok)
 

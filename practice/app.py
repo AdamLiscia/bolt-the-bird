@@ -75,7 +75,7 @@ def load_kit() -> Kit:
     return Kit(
         packs=np.load(ASSETS / "FDN_sample_packs.npy"),
         bots=load(DraftTransformer, "human_model.pt"),
-        coach=load(DraftTransformer, "bot_rl_played_it135.pt"),
+        coach=load(DraftTransformer, "bot_rl_played_it250.pt"),
         build=build,
         play=be.play_games,
         cards=info.info,
