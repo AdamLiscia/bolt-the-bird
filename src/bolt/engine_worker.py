@@ -11,9 +11,25 @@ imports the engine and nothing else (no PyTorch).
 """
 
 import multiprocessing as mp
+import os
 import sys
+import threading
+import time
 from concurrent.futures import ProcessPoolExecutor
 from concurrent.futures.process import BrokenProcessPool
+
+
+def _exit_with_parent(parent: int) -> None:
+    """Runs in the worker: if the training process that started it goes away (stopped by hand or
+    killed by a guard), the worker exits too instead of lingering."""
+
+    def watch():
+        while True:
+            if os.getppid() != parent:
+                os._exit(0)
+            time.sleep(2)
+
+    threading.Thread(target=watch, daemon=True).start()
 
 
 def _play(jobs, **kw):
@@ -30,7 +46,9 @@ class SafePlayer:
         self._pool = None
 
     def _start(self):
-        self._pool = ProcessPoolExecutor(max_workers=1, mp_context=mp.get_context("spawn"))
+        self._pool = ProcessPoolExecutor(
+            max_workers=1, mp_context=mp.get_context("spawn"), initializer=_exit_with_parent, initargs=(os.getpid(),)
+        )
 
     def play_games(self, jobs, **kw):
         for attempt in range(self.retries + 1):
