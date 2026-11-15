@@ -68,6 +68,10 @@ drafts and games from Arena players who run its tracker, and publishes them with
   points with the 4 × 6 smart player it never trained against (58.5% vs. 49.6%), +11.23 ± 0.59
   with the 1 × 2 it trained against, +12.26 ± 0.63 with the rules-based pilot. Judge B rates it
   only +0.93 ± 0.23. (At iteration 135: +5.91, +7.81, +8.06.)
+- **PPO bot (2026-11-15, `checkpoints/bot_rl_ppo_it345.pt`, not yet released):** the same reward,
+  trained on from the played-reward bot with PPO. **+12.67 ± 0.56** points with the 4 × 6 smart
+  player (62.3% vs. 49.6%), +16.00 ± 0.62 with 1 × 2, +17.36 ± 0.66 with the rules-based pilot.
+  It agrees with the human model on 80% of picks (the played-reward bot: 86%).
 - **Known bias:** it drafts White-Red at 45% of tables. In real 17lands games White-Red outperforms
   its pilots' skill by 2.1 points while making up under 8% of games, so the lane is strong and usually open
   against human-like drafters. It would be contested at a table of bots.

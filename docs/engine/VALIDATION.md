@@ -177,3 +177,38 @@ From 135 to 250 the edge grew by +4.2, +3.4 and +3.0 points with the three pilot
 with the stronger pilot it never trained against as with the one it did, so the extra training
 made better decks rather than decks tuned to its training pilot. The drop from the 1 × 2 to the
 4 × 6 pilot is about the same at both checkpoints (−1.9 and −2.4).
+
+## PPO (2026-11-15)
+
+`train_rl.py --algo ppo` replaces the one REINFORCE step per batch with PPO's clipped objective:
+several steps on the same drafts (4 epochs, minibatch 1,024 picks, clip 0.2), with the same KL leash
+to the human model (`bolt.rl.ppo_loss`, tests in `tests/test_rl.py`, including one showing the
+gradient equals REINFORCE's before the policy moves). Same reward: seat 0's deck against its 7
+tablemates, smart 1 × 2.
+
+**Continued from the round-250 bot** (rl_ppo_from250): the smart 1 × 2 played eval went from
++11.40 (250), where REINFORCE had levelled off, to +14.45 (270), +16.11 (285), +18.92 (300),
++18.95 (315), +16.32 (330), +17.47 (345). Iteration 345 (`checkpoints/bot_rl_ppo_it345.pt`), same
+evaluation as before (`results/engine_pilot_rl_ppo345.json`):
+
+| Pilot | A | B | C | **All three** | Win rate (bot / human model) | REINFORCE, round 250 |
+|---|---|---|---|---|---|---|
+| Rules-based | +17.14 | +17.14 | +17.78 | **+17.36 ± 0.66** | 66.7% / 49.4% | +12.26 |
+| Smart 1 × 2 (trained against) | +16.06 | +15.37 | +16.56 | **+16.00 ± 0.62** | 65.4% / 49.4% | +11.23 |
+| Smart 4 × 6 (never seen) | +12.93 | +12.66 | +12.42 | **+12.67 ± 0.56** | 62.3% / 49.6% | +8.88 |
+
+PPO added about 3.8 points against the stronger pilot it never trained against, nearly as much as
+against its training pilot (+4.8), so the gain is real, not tuning to the 1 × 2 pilot. It drafts
+further from people (KL to the human model 0.09 → 0.19, agreement 86% → 80%), and judge B moves
+only +0.9 → +1.4.
+
+**From scratch** (rl_ppo_scratch, the same start as the first REINFORCE run): +12.15 at iteration
+30, where REINFORCE had +2.73 at 30 and +11.40 at 250, so about 8 times fewer iterations to the same
+level. It peaked at +19.29 (90) and +19.43 (120), then over-optimized: +18.03 (150), +17.65 (180),
++16.72 (210), while KL rose to 0.25 and agreement fell to 77%. Only the last checkpoint was kept that
+run; `train_rl.py` now keeps every one, and a rerun to 125 (rl_ppo_scratch2) recovers the peak.
+PPO needs early stopping or a firmer leash than REINFORCE did.
+
+The evaluation's field C finished in a second sitting (84% overnight, the rest on 2026-11-15).
+Two more engine memory corruptions during these runs (2026-11-13 in pilot_games, 2026-11-15 in
+the training worker) were retried with no lost games.

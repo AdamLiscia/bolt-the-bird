@@ -33,9 +33,10 @@ Bolt the Bird got there in four steps:
    and **nothing** once both sides use a smart player that thinks a move ahead. Finding that out is
    what the engine was built for.
 4. **Learn from real games.** Retrained with played games as the reward instead of the judge, the
-   bot's decks win **58.5%** of games against the same human-style opponents that the human
-   model's decks beat 49.6% of the time: **+8.9 points**, even when both sides are played by a
-   stronger smart player than the one it trained against.
+   bot's decks win **62.3%** of games against the same human-style opponents that the human
+   model's decks beat 49.6% of the time: **+12.7 points**, even when both sides are played by a
+   stronger smart player than the one it trained against. Switching the learning method to PPO
+   reached the old method's best result in about 8 times fewer training rounds.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/figures/rl-curve-dark.png">
@@ -51,7 +52,7 @@ Bolt the Bird got there in four steps:
 | **Judge** | Predicts deck win rate, calibrated to within about a point | 78,379 held-out games |
 | **Learning to win** | +3.85 ± 0.23 points of judged win rate, 14% fewer late rares, 81% human-like | 512 held-out tables, scored by a judge excluded from training |
 | **Playing it out** | +1.54 ± 0.66 points of played win rate (rules-based player); −0.21 ± 0.58 (smart player) | The same 1,024 decks in the Rust engine, each against every deck of three separate 64-deck fields |
-| **Learning from real games** | +8.88 ± 0.54 points of played win rate with the strongest smart player (58.5% vs. 49.6%); +12.26 ± 0.63 with the rules-based player | The same tables and fields; the bot trained only against a weaker smart player |
+| **Learning from real games** | +12.67 ± 0.56 points of played win rate with the strongest smart player (62.3% vs. 49.6%); +17.36 ± 0.66 with the rules-based player | PPO; the same tables and fields; the bot trained only against a weaker smart player |
 
 Every number comes from a file in [`results/`](results/), and every chart is generated from those files
 by [`scripts/make_figures.py`](scripts/make_figures.py).
@@ -329,6 +330,23 @@ training made better decks, not just decks tuned to its training pilot. (The 2 �
 for these bots.) Details: [`docs/engine/VALIDATION.md`](docs/engine/VALIDATION.md); numbers in
 [`results/engine_pilot_rl_played250.json`](results/engine_pilot_rl_played250.json) and
 [`results/engine_pilot_rl_played135.json`](results/engine_pilot_rl_played135.json).
+
+**Then PPO.** The learning method above takes one small step per batch of drafts. PPO takes several
+careful steps on the same drafts, clipped so no batch moves a pick too far (`train_rl.py --algo
+ppo`). Continued from the round-250 bot, it pushed past where the old method had levelled off. Its
+iteration-345 bot, through the same evaluation:
+
+| Pilot on both sides | PPO bot | Human model | Gap | Round-250 bot's gap |
+|---|---|---|---|---|
+| Rules-based | 66.7% | 49.4% | **+17.36 ± 0.66** | +12.26 |
+| Smart 1 × 2 (trained against) | 65.4% | 49.4% | **+16.00 ± 0.62** | +11.23 |
+| Smart 4 × 6 (never trained against) | 62.3% | 49.6% | **+12.67 ± 0.56** | +8.88 |
+
+Started from scratch instead, PPO reached the old method's best result in 30 iterations instead of
+250. It also over-optimizes: it peaked around iteration 120 and then got worse as it drifted further
+from human drafting, so it needs early stopping or a firmer leash. Details:
+[`docs/engine/VALIDATION.md`](docs/engine/VALIDATION.md) ("PPO");
+[`results/engine_pilot_rl_ppo345.json`](results/engine_pilot_rl_ppo345.json).
 
 ### Design decisions
 
