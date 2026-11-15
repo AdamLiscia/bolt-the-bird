@@ -308,6 +308,9 @@ def main():
         if it % a.eval_every == 0 or it == a.iters:
             do_eval(it)
             torch.save(bot.state_dict(), CK / f"bot_{a.name}.pt")
+            # Keep every checkpoint too: a run can peak and then get worse (PPO from scratch peaked
+            # at iteration 120 and fell by 210, and only the last save was kept).
+            torch.save(bot.state_dict(), CK / f"bot_{a.name}_it{it}.pt")
             (DATA.parent / "results" / f"{a.name}.json").write_text(
                 json.dumps({"args": vars(a), "history": history}, indent=1)
             )
