@@ -20,8 +20,8 @@ from bolt.judge import DeckJudge
 from bolt.models import DraftTransformer
 from bolt.sim import PACK, pools_to_counts, run_tables
 
-RELEASE = "https://github.com/AdamLiscia/bolt-the-bird/releases/download/v0.2.0"
-MODELS = {"human_model.pt": "the human-imitation draft model", "bot.pt": "the RL-trained bot",
+RELEASE = "https://github.com/AdamLiscia/bolt-the-bird/releases/download/v0.3.0"
+MODELS = {"human_model.pt": "the human-imitation draft model", "bot_ppo.pt": "the bot (PPO, trained on played games)",
           "judge_b.pt": "judge B (held out from RL training)"}  # fmt: skip
 B, DIM, RESET = "\033[1m", "\033[2m", "\033[0m"
 PIP = {"W": "\033[97mW", "U": "\033[94mU", "B": "\033[90mB", "R": "\033[91mR", "G": "\033[92mG"}
@@ -50,7 +50,7 @@ def main():
     cards = CardInfo()
     human, bot = DraftTransformer(cards.n).eval(), DraftTransformer(cards.n).eval()
     human.load_state_dict(checkpoint("human_model.pt"))
-    bot.load_state_dict(checkpoint("bot.pt"))
+    bot.load_state_dict(checkpoint("bot_ppo.pt"))
     judge = DeckJudge(cards.n).eval()
     judge.load_state_dict(checkpoint("judge_b.pt"))
     packs = np.load(ASSETS / "FDN_sample_packs.npy")
@@ -83,7 +83,9 @@ def main():
     print(f"\n{B}Judge B{RESET} (never seen by the bot during training), average pilot:")
     print(f"  Bolt the Bird's deck     {wr[0]:.1%}")
     print(f"  the next seat's deck     {wr[1]:.1%}   {DIM}(drafted like a person, built by the same builder){RESET}")
-    print(f"\n{DIM}One table is noisy. The README's +3.9 points is the average over 512 held-out tables.{RESET}\n")
+    print(
+        f"\n{DIM}One table is noisy, and the judge only predicts. Played out in the rules engine over 512 held-out tables, this bot's decks win 62% of games where human-style decks win 50% (README).{RESET}\n"
+    )
 
 
 if __name__ == "__main__":
