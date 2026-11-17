@@ -279,9 +279,36 @@ def played_reward(t, theme):
     save(fig, "played-reward", theme)
 
 
+def tournament(t, theme):
+    """The deck tournament's leaderboard with the smart 4 x 6 pilot: average win rate vs the others."""
+    r = load("engine_tournament")
+    avg = r["pilots"]["rollout"]["average_win_rate"]
+    order = sorted(avg, key=lambda n: avg[n])
+    label = {"human_model": "Human-style (imitation)", "judge": "Judge-trained",
+             "reinforce250": "Played games", "ppo345": "PPO, continued",
+             "ppo_scratch125": "PPO, from scratch"}  # fmt: skip
+    played = {"reinforce250", "ppo345", "ppo_scratch125"}
+    fig, ax = figure(t, w=8, h=3.4)
+    y = np.arange(len(order))
+    vals = [avg[n] * 100 for n in order]
+    ax.barh(y, vals, color=[t["s1"] if n in played else t["muted"] for n in order], height=0.62)
+    ax.axvline(50, color=t["ink2"], linewidth=1)
+    for yi, v in zip(y, vals, strict=True):
+        ax.text(v + 0.6, yi, f"{v:.1f}%", va="center", fontsize=10, color=t["ink"], fontweight="bold")
+    ax.set_yticks(y, [label[n] for n in order], color=t["ink"], fontsize=10)
+    ax.set_xlim(30, 66)
+    style(ax, t, "x")
+    ax.set_xlabel("Average win rate against the other four bots' decks (smart 4 × 6 player on both sides)",
+                  color=t["ink2"], fontsize=9)  # fmt: skip
+    title(fig, t, "Deck tournament: every bot's decks against every other's",
+          "Same 512 held-out tables and opening packs; 20 games per table per pairing; 102,400 games")
+    fig.subplots_adjust(left=0.24, right=0.97, top=0.8, bottom=0.17)
+    save(fig, "tournament", theme)
+
+
 def main():
     for theme, t in THEMES.items():
-        for draw in (scoreboard, by_pick, rare_drafting, calibration, rl_curve, pilot_ladder, played_reward):
+        for draw in (scoreboard, by_pick, rare_drafting, calibration, rl_curve, pilot_ladder, played_reward, tournament):
             draw(t, theme)
     print("wrote", sorted(p.name for p in OUT.glob("*.png")))
 

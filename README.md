@@ -52,6 +52,7 @@ Bolt the Bird got there in four steps:
 | **Judge** | Predicts deck win rate, calibrated to within about a point | 78,379 held-out games |
 | **Learning to win** | +3.85 ± 0.23 points of judged win rate, 14% fewer late rares, 81% human-like | 512 held-out tables, scored by a judge excluded from training |
 | **Playing it out** | +1.54 ± 0.66 points of played win rate (rules-based player); −0.21 ± 0.58 (smart player) | The same 1,024 decks in the Rust engine, each against every deck of three separate 64-deck fields |
+| **Tournament** | PPO bots' decks beat the judge-trained bot's 63–64% and the human model's 62–64% head to head; judge-trained vs. human model 50.1% | Five bots' decks from the same 512 tables, every pairing, 102,400 games, smart 4 × 6 player |
 | **Learning from real games** | +12.67 ± 0.56 points of played win rate with the strongest smart player (62.3% vs. 49.6%); +17.36 ± 0.66 with the rules-based player | PPO; the same tables and fields; the bot trained only against a weaker smart player |
 
 Every number comes from a file in [`results/`](results/), and every chart is generated from those files
@@ -347,6 +348,34 @@ Started from scratch instead, PPO reached the old method's best result in 30 ite
 from human drafting, so it needs early stopping or a firmer leash. Details:
 [`docs/engine/VALIDATION.md`](docs/engine/VALIDATION.md) ("PPO");
 [`results/engine_pilot_rl_ppo345.json`](results/engine_pilot_rl_ppo345.json).
+
+### The tournament
+
+The last test puts the bots straight against each other. Each of five bots drafted the same 512
+held-out tables from the same opening packs. Every bot's deck then played every other bot's deck
+from the same table, 20 games per table per pairing, with the smart 4 × 6 player on both sides
+(102,400 games; [`scripts/engine_tournament.py`](scripts/engine_tournament.py)).
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/figures/tournament-dark.png">
+  <img alt="Average win rate against the other four bots' decks: PPO from scratch 58.4%, PPO continued 57.3%, played games 52.7%, human-style 40.9%, judge-trained 40.7%" src="docs/figures/tournament-light.png">
+</picture>
+
+Head to head (row's win rate against column, ± about 0.7 points):
+
+| | Human-style | Judge-trained | Played games | PPO, continued | PPO, from scratch |
+|---|---|---|---|---|---|
+| **Human-style** | | 49.9% | 40.6% | 37.5% | 35.7% |
+| **Judge-trained** | 50.1% | | 40.1% | 36.9% | 35.5% |
+| **Played games** | 59.4% | 59.9% | | 45.8% | 45.7% |
+| **PPO, continued** | 62.5% | 63.1% | 54.2% | | 49.7% |
+| **PPO, from scratch** | 64.3% | 64.5% | 54.3% | 50.3% | |
+
+Every step of the project beats the one before it, except the judge: its bot ties the human
+model's decks head to head (50.1%), exactly what the round-robins said. Rewarding played games is
+what made the difference, and PPO added more. The two PPO bots tie each other; the one trained from
+scratch got there with about a third of the training. With the rules-based pilot the order is the
+same. Numbers in [`results/engine_tournament.json`](results/engine_tournament.json).
 
 ### Design decisions
 
