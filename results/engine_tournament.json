@@ -1,0 +1,153 @@
+{
+  "bots": {
+    "human_model": "Human-style (imitation)",
+    "judge": "Trained on the judge",
+    "reinforce250": "Played games, first method (round 250)",
+    "ppo345": "PPO, continued (round 345)",
+    "ppo_scratch125": "PPO from scratch (round 125)"
+  },
+  "pilots": {
+    "baseline": {
+      "pairs": {
+        "human_model vs judge": {
+          "win_rate": 0.482421875,
+          "se": 0.008544625413383994,
+          "games": 10240,
+          "tables": 512
+        },
+        "human_model vs reinforce250": {
+          "win_rate": 0.37021484374999997,
+          "se": 0.00782549611604482,
+          "games": 10240,
+          "tables": 512
+        },
+        "human_model vs ppo345": {
+          "win_rate": 0.32646484374999996,
+          "se": 0.007807347267356674,
+          "games": 10240,
+          "tables": 512
+        },
+        "human_model vs ppo_scratch125": {
+          "win_rate": 0.309423828125,
+          "se": 0.007383588808106675,
+          "games": 10240,
+          "tables": 512
+        },
+        "judge vs reinforce250": {
+          "win_rate": 0.38828125,
+          "se": 0.007432067297418295,
+          "games": 10240,
+          "tables": 512
+        },
+        "judge vs ppo345": {
+          "win_rate": 0.3353515625,
+          "se": 0.006978531400511639,
+          "games": 10240,
+          "tables": 512
+        },
+        "judge vs ppo_scratch125": {
+          "win_rate": 0.32666015625,
+          "se": 0.006879697787718799,
+          "games": 10240,
+          "tables": 512
+        },
+        "reinforce250 vs ppo345": {
+          "win_rate": 0.437841796875,
+          "se": 0.0072100318177712565,
+          "games": 10240,
+          "tables": 512
+        },
+        "reinforce250 vs ppo_scratch125": {
+          "win_rate": 0.410498046875,
+          "se": 0.007096175933781125,
+          "games": 10240,
+          "tables": 512
+        },
+        "ppo345 vs ppo_scratch125": {
+          "win_rate": 0.48496093749999997,
+          "se": 0.007089789734521659,
+          "games": 10240,
+          "tables": 512
+        }
+      },
+      "average_win_rate": {
+        "human_model": 0.37213134765625,
+        "judge": 0.3919677734375,
+        "reinforce250": 0.5224609375,
+        "ppo345": 0.59632568359375,
+        "ppo_scratch125": 0.6171142578125001
+      }
+    },
+    "rollout": {
+      "pairs": {
+        "human_model vs judge": {
+          "win_rate": 0.49921875,
+          "se": 0.00772001841389728,
+          "games": 10240,
+          "tables": 512
+        },
+        "human_model vs reinforce250": {
+          "win_rate": 0.40625,
+          "se": 0.0070475072471362175,
+          "games": 10240,
+          "tables": 512
+        },
+        "human_model vs ppo345": {
+          "win_rate": 0.375390625,
+          "se": 0.007377067631687998,
+          "games": 10240,
+          "tables": 512
+        },
+        "human_model vs ppo_scratch125": {
+          "win_rate": 0.357080078125,
+          "se": 0.006785517100993036,
+          "games": 10240,
+          "tables": 512
+        },
+        "judge vs reinforce250": {
+          "win_rate": 0.4013671875,
+          "se": 0.006684723455933266,
+          "games": 10240,
+          "tables": 512
+        },
+        "judge vs ppo345": {
+          "win_rate": 0.36918945312499996,
+          "se": 0.006408464336913869,
+          "games": 10240,
+          "tables": 512
+        },
+        "judge vs ppo_scratch125": {
+          "win_rate": 0.3546875,
+          "se": 0.006374268134498915,
+          "games": 10240,
+          "tables": 512
+        },
+        "reinforce250 vs ppo345": {
+          "win_rate": 0.458447265625,
+          "se": 0.0060563696554929635,
+          "games": 10240,
+          "tables": 512
+        },
+        "reinforce250 vs ppo_scratch125": {
+          "win_rate": 0.456640625,
+          "se": 0.006340868328270476,
+          "games": 10240,
+          "tables": 512
+        },
+        "ppo345 vs ppo_scratch125": {
+          "win_rate": 0.49658203125,
+          "se": 0.005819859775114865,
+          "games": 10240,
+          "tables": 512
+        }
+      },
+      "average_win_rate": {
+        "human_model": 0.40948486328125,
+        "judge": 0.40650634765625,
+        "reinforce250": 0.52686767578125,
+        "ppo345": 0.5733886718750001,
+        "ppo_scratch125": 0.58375244140625
+      }
+    }
+  }
+}
