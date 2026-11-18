@@ -28,7 +28,7 @@ tempo, when to attack), and leaves targets and instant-speed play to search and 
 | P0 | **Replay data.** Parse rows into per-turn decision records from the user's side; map 17lands card ids to engine cards; coverage and sanity statistics | Records for every game; card coverage measured; tests on the parser |
 | P1 | **Turn-level imitation models** (PyTorch): what to cast from hand, which creatures attack, which block; held-out games | Beats simple baselines (cast the most expensive castable card; attack with everything that survives) on held-out turns |
 | P2 | **The imitation player in the engine**: engine positions mapped to the same features; the models choose casts, attacks and blocks, the existing pilots handle targets and the rest | Wins more than the rules-based pilot, measured on fixed deck pairs with sides swapped |
-| P3 | **Self-play with PPO**: a policy and value network over engine positions and legal actions, started from P1/P2, reward only for winning, KL leash to the imitation player, every checkpoint kept | Beats the smart 4 × 6 player; a held-out deck set confirms it |
+| P3 | **Self-play with PPO** (design: [P3_DESIGN.md](P3_DESIGN.md)): a policy and value network over engine positions and legal actions, started from P1/P2, reward only for winning, KL leash to the imitation player, every checkpoint kept | Beats the smart 4 × 6 player; a held-out deck set confirms it |
 | P4 | **Close the loop**: re-grade the drafting bots with the strong player | The tournament rerun with the new pilot |
 
 ## Lessons carried over from the drafting work
