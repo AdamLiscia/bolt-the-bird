@@ -13,6 +13,7 @@ that dies (the engine's rare memory corruption) has its share rerun in a fresh p
 
 import contextlib
 import multiprocessing as mp
+import os
 from concurrent.futures import ProcessPoolExecutor
 from concurrent.futures.process import BrokenProcessPool
 
@@ -118,6 +119,22 @@ def run_games(net, jobs, seats=("net", "rules"), sample=True, seed=0, smart=(1, 
     return {"results": results, "steps": steps}
 
 
+def _die_with_parent(parent: int) -> None:
+    """Pool initializer: a worker whose parent is gone exits instead of playing on (2026-11-18:
+    workers of killed evaluations looped for two hours at full CPU)."""
+    import os
+    import threading
+    import time
+
+    def watch():
+        while True:
+            time.sleep(1)
+            if os.getppid() != parent:
+                os._exit(1)
+
+    threading.Thread(target=watch, daemon=True).start()
+
+
 def _worker(args):
     torch.set_num_threads(1)
     net_state, jobs, kw = args
@@ -154,7 +171,8 @@ def run_parallel(net, jobs, workers=6, chunk=None, seed=0, retries=2, compact=Fa
         todo = [k for k in parts if k not in done]
         if not todo:
             break
-        with ProcessPoolExecutor(workers, mp_context=mp.get_context("spawn")) as ex:
+        with ProcessPoolExecutor(workers, mp_context=mp.get_context("spawn"), initializer=_die_with_parent,
+                                 initargs=(os.getpid(),)) as ex:  # fmt: skip
             futs = {k: ex.submit(_worker, (net_state, parts[k], {**kw, "seed": seed + k, "game_offset": k, "compact": compact}))
                     for k in todo}  # fmt: skip
             for k, f in futs.items():

@@ -116,3 +116,32 @@ def test_labelled_games_follow_the_network_but_record_the_smart_players_choice()
             i = 0 if len(legal) == 1 else g.baseline()
         g.step(i)
         moves += 1
+
+
+def test_workers_exit_when_their_parent_dies():
+    """2026-11-18: killed evaluations left workers looping for two hours at full CPU."""
+    import os
+    import signal
+    import subprocess
+    import sys
+    import time
+
+    code = ("import sys; sys.path.insert(0, 'tests'); from test_play_runner import jobs; "
+            "from bolt.play_runner import run_parallel; print('go', flush=True); "
+            "run_parallel(None, jobs(400) * 20, seats=('smart', 'smart'), workers=2, chunk=400)")  # fmt: skip
+    p = subprocess.Popen([sys.executable, "-c", code], stdout=subprocess.PIPE, text=True)
+    assert p.stdout.readline().strip() == "go"
+    time.sleep(8)
+    kids = subprocess.run(["pgrep", "-P", str(p.pid)], capture_output=True, text=True).stdout.split()
+    busy = [k for k in kids if float(subprocess.run(["ps", "-o", "%cpu=", "-p", k], capture_output=True,
+                                                     text=True).stdout or 0) > 20]  # fmt: skip
+    assert len(busy) == 2, "both workers are playing"
+    os.kill(p.pid, signal.SIGKILL)
+    p.wait()
+    deadline, alive = time.time() + 15, kids
+    while alive and time.time() < deadline:
+        time.sleep(0.5)
+        alive = [k for k in alive if subprocess.run(["kill", "-0", k], capture_output=True).returncode == 0]
+    for k in alive:
+        subprocess.run(["kill", "-9", k], capture_output=True)
+    assert not alive, f"orphaned workers kept running: {alive}"
