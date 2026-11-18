@@ -120,7 +120,9 @@ def main():
     valid = subset(valid, np.sort(keep))
     torch.manual_seed(0)
     net = PlayNet(len(be.card_names()), dim=a.dim, layers=a.layers).to(device)
-    if a.init and not a.resume:
+    ck_dir = ROOT / "checkpoints" / "play" / a.name
+    resuming = a.resume and any(ck_dir.glob("step_*.pt"))
+    if a.init and not resuming:  # --resume with nothing saved yet still starts from --init
         net.load_state_dict(torch.load(a.init, map_location=device, weights_only=False)["model"])
         print(f"starting from {a.init}", flush=True)
     opt = torch.optim.AdamW(net.parameters(), lr=a.lr, weight_decay=0.01)
