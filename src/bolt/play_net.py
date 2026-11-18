@@ -16,6 +16,7 @@ from bolt.play_encoding import FEATS, GLOBAL_NAMES, KINDS, ZONE
 class PlayNet(nn.Module):
     def __init__(self, n_cards: int, dim: int = 128, layers: int = 4, heads: int = 4, dropout: float = 0.0):
         super().__init__()
+        self.config = {"n_cards": n_cards, "dim": dim, "layers": layers, "heads": heads, "dropout": dropout}
         self.card = nn.Embedding(n_cards + 2, dim, padding_idx=0)
         self.zone = nn.Embedding(len(ZONE), dim)
         self.feats = nn.Linear(len(FEATS), dim)
