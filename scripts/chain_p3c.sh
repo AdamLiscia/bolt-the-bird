@@ -6,7 +6,7 @@ cd "$(dirname "$0")/.."
 echo "== data $(date +%T)"
 scripts/guard.sh 7200 3000 -- .venv/bin/python scripts/gen_distill.py --shards 40 --workers 4
 echo "== train $(date +%T)"
-scripts/guard.sh 14400 3000 -- .venv/bin/python scripts/train_distill.py --name distill1 --resume
+scripts/guard.sh 14400 3000 -- .venv/bin/python scripts/train_distill.py --name distill1 --resume --device cpu --threads 4 --epochs 2
 echo "== eval $(date +%T)"
 scripts/guard.sh 7200 3000 -- .venv/bin/python scripts/eval_play.py --ckpt checkpoints/play/distill1/best.pt \
   --pairs 500 --workers 4 --name play_eval_distill1
