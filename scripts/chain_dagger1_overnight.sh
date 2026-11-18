@@ -1,15 +1,12 @@
 #!/usr/bin/env bash
-# 2026-11-18 evening: the laptop slowed to ~0.6 steps/s, past chain_dagger1.sh's 5-hour training limit.
-# At the step-2,000 checkpoint, stop that chain and resume training under a 12-hour limit, then evaluate.
-# One job at a time; the same 3 GB cap.
+# Backup for chain_dagger1.sh (2026-11-18 evening, when the laptop slowed past its 5-hour training limit):
+# waits for that chain to exit; if the evaluation never ran, resumes training from the last checkpoint
+# under a 12-hour limit and evaluates. Does nothing if the main chain finished. One job at a time.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-until [ -f checkpoints/play/distill2/step_2000.pt ]; do sleep 20; done
-sleep 30  # let the checkpoint finish writing and grading
-pkill -f "scripts/chain_dagger1.sh" || true
-pkill -f "train_distill.py --name distill2" || true
-sleep 5
-echo "== train (overnight) $(date +%T)"
+while pgrep -f "bash scripts/chain_dagger1.sh" >/dev/null; do sleep 30; done
+if [ -f results/play_eval_distill2.json ]; then echo "== main chain finished; nothing to do $(date +%T)"; exit 0; fi
+echo "== train (backup, resumed) $(date +%T)"
 scripts/guard.sh 43200 3000 -- .venv/bin/python scripts/train_distill.py --name distill2 --resume \
   --init checkpoints/play/distill1/best.pt --data data/distill data/dagger1 --epochs 1 --lr 1.5e-4 \
   --device cpu --threads 4
