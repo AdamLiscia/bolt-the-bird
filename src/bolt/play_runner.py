@@ -42,8 +42,12 @@ def _forward(net, encs, chunk=256):
 
 
 def run_games(net, jobs, seats=("net", "rules"), sample=True, seed=0, smart=(1, 2), record=None,
-              max_turns=MAX_TURNS, game_offset=0, max_moves=MAX_MOVES):  # fmt: skip
-    """jobs: (deck_a, deck_b, seed, first). Returns {"results": [{"result", "turn"}], "steps": [...]}."""
+              max_turns=MAX_TURNS, game_offset=0, max_moves=MAX_MOVES, label_with=None):  # fmt: skip
+    """jobs: (deck_a, deck_b, seed, first). Returns {"results": [{"result", "turn"}], "steps": [...]}.
+
+    label_with=(rollouts, candidates): recorded network steps get the smart player's choice in that
+    position as "action" (the label) and the network's own move as "played", which is what the game
+    follows (DAgger: the teacher labels the positions the student reaches)."""
     record = {i for i, s in enumerate(seats) if s == "net"} if record is None else set(record)
     gen = torch.Generator().manual_seed(seed)
     games = [be.Game(a, b, seed=s, first=f) for a, b, s, f in jobs]
@@ -95,8 +99,17 @@ def run_games(net, jobs, seats=("net", "rules"), sample=True, seed=0, smart=(1, 
                 lp = torch.log_softmax(lg[: len(enc["act_kind"])], 0)
                 i = int(torch.multinomial(lp.exp(), 1, generator=gen)) if sample else int(lp.argmax())
                 if who in record:
-                    steps.append({"game": game_offset + gi, "seat": who, "enc": enc, "action": i,
-                                  "logp": float(lp[i]), "value": v})  # fmt: skip
+                    step = {"game": game_offset + gi, "seat": who, "enc": enc, "action": i, "logp": float(lp[i]),
+                            "value": v}  # fmt: skip
+                    if label_with is not None:
+                        seed_ = (jobs[gi][2] * 1_000_003 + moves[gi]) % 2**64
+                        step["played"] = i
+                        try:
+                            step["action"] = games[gi].smart(label_with[0], label_with[1], seed_)
+                        except Exception:
+                            step = None
+                    if step is not None:
+                        steps.append(step)
                 try:
                     play(gi, i)
                 except Exception:

@@ -91,3 +91,28 @@ def test_compact_workers_return_the_same_arrays_as_compacting_afterwards():
 def test_a_game_that_never_ends_its_turn_stops_at_the_move_cap():
     out = run_games(None, jobs(2), seats=("rules", "rules"), max_moves=30)
     assert [r["result"] for r in out["results"]] == ["timeout", "timeout"]
+
+
+def test_labelled_games_follow_the_network_but_record_the_smart_players_choice():
+    js = jobs(3)
+    plain = run_games(net(), js, seats=("net", "rules"), sample=False)
+    lab = run_games(net(), js, seats=("net", "rules"), sample=False, label_with=(1, 2))
+    assert lab["results"] == plain["results"], "the network's moves are still the ones played"
+    assert [s["played"] for s in lab["steps"]] == [s["action"] for s in plain["steps"]]
+    assert any(s["action"] != s["played"] for s in lab["steps"]), "labels come from the smart player"
+    # replay game 0 and check each label is what the smart player picks in that exact position
+    a, b, seed, first = js[0]
+    g = be.Game(a, b, seed=seed, first=first)
+    own = iter([s for s in lab["steps"] if s["game"] == 0])
+    moves = 0
+    while not g.is_over() and g.turn <= 200:
+        who = g.to_act()
+        legal = g.legal_actions()
+        if who == 0 and len(legal) > 1:
+            s = next(own)
+            assert s["action"] == g.smart(1, 2, (seed * 1_000_003 + moves) % 2**64)
+            i = s["played"]
+        else:
+            i = 0 if len(legal) == 1 else g.baseline()
+        g.step(i)
+        moves += 1

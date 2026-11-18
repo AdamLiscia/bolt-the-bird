@@ -90,7 +90,8 @@ def evaluate(net, arr, device, value_weight, bs=128):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--name", default="distill1")
-    ap.add_argument("--data", default="data/distill")
+    ap.add_argument("--data", nargs="+", default=["data/distill"], help="one or more shard folders")
+    ap.add_argument("--init", default=None, help="start from these weights (a best.pt) instead of scratch")
     ap.add_argument("--valid", type=int, default=2)
     ap.add_argument("--valid-rows", type=int, default=40_000)
     ap.add_argument("--epochs", type=int, default=3)
@@ -109,13 +110,19 @@ def main():
     a = ap.parse_args()
     torch.set_num_threads(a.threads)
     device = torch.device(("mps" if torch.backends.mps.is_available() else "cpu") if a.device == "auto" else a.device)
-    shards = sorted((ROOT / a.data).glob("shard_*.npz"))
-    train, valid_paths = shards[: -a.valid], shards[-a.valid :]
+    train, valid_paths = [], []
+    for d in a.data:  # the last --valid shards of each folder are held out
+        shards = sorted((ROOT / d).glob("shard_*.npz"))
+        train += shards[: -a.valid]
+        valid_paths += shards[-a.valid :]
     valid = concat([load(p) for p in valid_paths])
     keep = np.random.default_rng(0).permutation(len(valid["action"]))[: a.valid_rows]
     valid = subset(valid, np.sort(keep))
     torch.manual_seed(0)
     net = PlayNet(len(be.card_names()), dim=a.dim, layers=a.layers).to(device)
+    if a.init and not a.resume:
+        net.load_state_dict(torch.load(a.init, map_location=device, weights_only=False)["model"])
+        print(f"starting from {a.init}", flush=True)
     opt = torch.optim.AdamW(net.parameters(), lr=a.lr, weight_decay=0.01)
     total = a.epochs * sum(int(np.load(p)["action"].shape[0]) for p in train) // a.batch
     sched = torch.optim.lr_scheduler.LambdaLR(opt, lambda s: min(1.0, s / 1000) * max(0.05, 1 - s / max(1, total)))
