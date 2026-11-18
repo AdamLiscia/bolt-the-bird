@@ -22,6 +22,9 @@ import torch
 from bolt.play_encoding import collate, encode
 
 MAX_TURNS = 200  # the engine's own limit (bolt-cards play.rs)
+# A player can loop inside one turn (activating an ability forever), where the turn limit never
+# triggers; normal games take a few hundred moves. Capped games count as timeouts.
+MAX_MOVES = 20_000
 
 
 def _result(g) -> str:
@@ -39,7 +42,7 @@ def _forward(net, encs, chunk=256):
 
 
 def run_games(net, jobs, seats=("net", "rules"), sample=True, seed=0, smart=(1, 2), record=None,
-              max_turns=MAX_TURNS, game_offset=0):  # fmt: skip
+              max_turns=MAX_TURNS, game_offset=0, max_moves=MAX_MOVES):  # fmt: skip
     """jobs: (deck_a, deck_b, seed, first). Returns {"results": [{"result", "turn"}], "steps": [...]}."""
     record = {i for i, s in enumerate(seats) if s == "net"} if record is None else set(record)
     gen = torch.Generator().manual_seed(seed)
@@ -62,7 +65,7 @@ def run_games(net, jobs, seats=("net", "rules"), sample=True, seed=0, smart=(1, 
                     if g.is_over():
                         results[gi] = {"result": _result(g), "turn": g.turn}
                         break
-                    if g.turn > max_turns:
+                    if g.turn > max_turns or moves[gi] >= max_moves:
                         results[gi] = {"result": "timeout", "turn": g.turn}
                         break
                     who = g.to_act()

@@ -86,3 +86,8 @@ def test_compact_workers_return_the_same_arrays_as_compacting_afterwards():
     assert arr["results"] == full["results"]
     for k, v in want.items():
         assert np.array_equal(arr["arrays"][k], v), k
+
+
+def test_a_game_that_never_ends_its_turn_stops_at_the_move_cap():
+    out = run_games(None, jobs(2), seats=("rules", "rules"), max_moves=30)
+    assert [r["result"] for r in out["results"]] == ["timeout", "timeout"]

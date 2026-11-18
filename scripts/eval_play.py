@@ -40,7 +40,8 @@ def match(net, me, opp, jobs, workers):
 
 def summary(s):
     s = np.array(s)
-    return {"win_rate": float(s.mean()), "se": float(s.std() / np.sqrt(len(s))), "games": len(s)}
+    return {"win_rate": float(s.mean()), "se": float(s.std() / np.sqrt(len(s))), "games": len(s),
+            "draws_or_timeouts": int((s == 0.5).sum())}  # fmt: skip
 
 
 def main():
