@@ -72,3 +72,17 @@ def test_parallel_workers_give_the_same_games():
     one = run_games(None, js, seats=("rules", "rules"))
     many = run_parallel(None, js, seats=("rules", "rules"), workers=2)
     assert one["results"] == many["results"]
+
+
+def test_compact_workers_return_the_same_arrays_as_compacting_afterwards():
+    import numpy as np
+
+    from bolt.play_data import to_arrays
+
+    js = jobs(6)
+    full = run_games(None, js, seats=("rules", "rules"), record=(0, 1))
+    arr = run_parallel(None, js, seats=("rules", "rules"), record=(0, 1), workers=2, chunk=2, compact=True)
+    want = to_arrays(full["steps"], full["results"])
+    assert arr["results"] == full["results"]
+    for k, v in want.items():
+        assert np.array_equal(arr["arrays"][k], v), k

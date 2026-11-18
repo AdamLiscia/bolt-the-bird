@@ -17,7 +17,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from bolt.play_data import save, to_arrays  # noqa: E402
+from bolt.play_data import save  # noqa: E402
 from bolt.play_runner import run_parallel  # noqa: E402
 
 
@@ -45,10 +45,10 @@ def main():
             jobs.append((decks[d1], decks[d2], 7_000_000 + k * 10_000 + i, i % 2))
         t = time.time()
         r = run_parallel(None, jobs, workers=a.workers, chunk=20, seats=("smart", "smart"), record=(0, 1),
-                         smart=(a.rollouts, a.candidates))  # fmt: skip
-        save(path, to_arrays(r["steps"], r["results"]))
+                         smart=(a.rollouts, a.candidates), compact=True)  # fmt: skip
+        save(path, r["arrays"])
         kinds = {x: sum(g["result"] == x for g in r["results"]) for x in ("p0", "p1", "draw", "timeout", "error")}
-        print(json.dumps({"shard": k, "decisions": len(r["steps"]), "seconds": round(time.time() - t), **kinds}),
+        print(json.dumps({"shard": k, "decisions": len(r["arrays"]["action"]), "seconds": round(time.time() - t), **kinds}),
               flush=True)  # fmt: skip
 
 

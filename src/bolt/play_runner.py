@@ -105,6 +105,7 @@ def run_games(net, jobs, seats=("net", "rules"), sample=True, seed=0, smart=(1, 
 def _worker(args):
     torch.set_num_threads(1)
     net_state, jobs, kw = args
+    compact = kw.pop("compact", False)
     net = None
     if net_state is not None:
         from bolt.play_net import PlayNet
@@ -113,11 +114,22 @@ def _worker(args):
         net = PlayNet(**config)
         net.load_state_dict(state)
         net.eval()
-    return run_games(net, jobs, **kw)
+    out = run_games(net, jobs, **kw)
+    if compact:  # arrays, not Python dicts: ~30x smaller to send back and to hold
+        from bolt.play_data import to_arrays
+
+        off = kw.get("game_offset", 0)
+        for st in out["steps"]:
+            st["game"] -= off
+        arr = to_arrays(out["steps"], out["results"])
+        arr["game"] += off
+        out = {"results": out["results"], "arrays": arr}
+    return out
 
 
-def run_parallel(net, jobs, workers=6, chunk=None, seed=0, retries=2, **kw):
-    """run_games split across spawn worker processes; results in job order."""
+def run_parallel(net, jobs, workers=6, chunk=None, seed=0, retries=2, compact=False, **kw):
+    """run_games split across spawn worker processes; results in job order. With compact=True the
+    workers return recorded steps as bolt.play_data arrays ("arrays") instead of "steps"."""
     net_state = None if net is None else (net.config, {k: v.cpu() for k, v in net.state_dict().items()})
     chunk = chunk or max(1, -(-len(jobs) // workers))
     parts = {k: jobs[k : k + chunk] for k in range(0, len(jobs), chunk)}
@@ -127,7 +139,7 @@ def run_parallel(net, jobs, workers=6, chunk=None, seed=0, retries=2, **kw):
         if not todo:
             break
         with ProcessPoolExecutor(workers, mp_context=mp.get_context("spawn")) as ex:
-            futs = {k: ex.submit(_worker, (net_state, parts[k], {**kw, "seed": seed + k, "game_offset": k}))
+            futs = {k: ex.submit(_worker, (net_state, parts[k], {**kw, "seed": seed + k, "game_offset": k, "compact": compact}))
                     for k in todo}  # fmt: skip
             for k, f in futs.items():
                 with contextlib.suppress(BrokenProcessPool):  # rerun in a fresh pool
@@ -135,8 +147,10 @@ def run_parallel(net, jobs, workers=6, chunk=None, seed=0, retries=2, **kw):
     missing = [k for k in parts if k not in done]
     if missing:
         raise RuntimeError(f"worker processes kept dying on job chunks {missing}")
-    out = {"results": [], "steps": []}
-    for k in sorted(done):
-        out["results"] += done[k]["results"]
-        out["steps"] += done[k]["steps"]
-    return out
+    keys = sorted(done)
+    results = [r for k in keys for r in done[k]["results"]]
+    if compact:
+        from bolt.play_data import concat
+
+        return {"results": results, "arrays": concat([done[k]["arrays"] for k in keys])}
+    return {"results": results, "steps": [st for k in keys for st in done[k]["steps"]]}
