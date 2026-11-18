@@ -1,0 +1,102 @@
+{
+ "args": {
+  "task": "block",
+  "name": "block1",
+  "epochs": 2,
+  "shards": 0,
+  "batch": 512,
+  "lr": 0.0003,
+  "dim": 128,
+  "layers": 3,
+  "save_every": 2000,
+  "resume": false,
+  "device": "auto"
+ },
+ "history": [
+  {
+   "step": 2000,
+   "epoch": 0,
+   "valid": {
+    "slot_accuracy": 0.8464854273818271,
+    "turn_exact": 0.7088918952158406,
+    "chosen_rate": 0.18447220181239285,
+    "loss": 0.3284733319484855
+   },
+   "tag": "periodic"
+  },
+  {
+   "step": 4000,
+   "epoch": 0,
+   "valid": {
+    "slot_accuracy": 0.8474650991917707,
+    "turn_exact": 0.7114746033698192,
+    "chosen_rate": 0.18447220181239285,
+    "loss": 0.32254214522334546
+   },
+   "tag": "periodic"
+  },
+  {
+   "step": 4719,
+   "epoch": 1,
+   "valid": {
+    "slot_accuracy": 0.8512368356600539,
+    "turn_exact": 0.7189767556266142,
+    "chosen_rate": 0.18447220181239285,
+    "loss": 0.32016778918829164
+   },
+   "tag": "end of epoch 1"
+  },
+  {
+   "step": 6000,
+   "epoch": 1,
+   "valid": {
+    "slot_accuracy": 0.8487876561351947,
+    "turn_exact": 0.7163940474726356,
+    "chosen_rate": 0.18447220181239285,
+    "loss": 0.3190585948227223
+   },
+   "tag": "periodic"
+  },
+  {
+   "step": 8000,
+   "epoch": 1,
+   "valid": {
+    "slot_accuracy": 0.8524124418319863,
+    "turn_exact": 0.7194687000368958,
+    "chosen_rate": 0.18447220181239285,
+    "loss": 0.3152785781285754
+   },
+   "tag": "periodic"
+  },
+  {
+   "step": 9438,
+   "epoch": 2,
+   "valid": {
+    "slot_accuracy": 0.8511388684790595,
+    "turn_exact": 0.7189767556266142,
+    "chosen_rate": 0.18447220181239285,
+    "loss": 0.3131360093718334
+   },
+   "tag": "end of epoch 2"
+  }
+ ],
+ "test": {
+  "model": {
+   "slot_accuracy": 0.8480979754762531,
+   "turn_exact": 0.7169632034955931,
+   "chosen_rate": 0.18991562492530537,
+   "loss": 0.3202964277502888
+  },
+  "rows": 133654,
+  "baseline_all": {
+   "slot_accuracy": 0.18991562492530537,
+   "turn_exact": 0.09775240546485701,
+   "chosen_rate": 0.18991562492530537
+  },
+  "baseline_none": {
+   "slot_accuracy": 0.8100843750746947,
+   "turn_exact": 0.6715100184057342,
+   "chosen_rate": 0.18991562492530537
+  }
+ }
+}

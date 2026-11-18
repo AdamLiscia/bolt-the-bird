@@ -1,0 +1,146 @@
+{
+ "args": {
+  "task": "attack",
+  "name": "attack1",
+  "epochs": 2,
+  "shards": 0,
+  "batch": 512,
+  "lr": 0.0003,
+  "dim": 128,
+  "layers": 3,
+  "save_every": 2000,
+  "resume": false,
+  "device": "auto"
+ },
+ "history": [
+  {
+   "step": 2000,
+   "epoch": 0,
+   "valid": {
+    "slot_accuracy": 0.7625339963187825,
+    "turn_exact": 0.63842101840411,
+    "chosen_rate": 0.45322930688717344,
+    "loss": 0.4802763493173321
+   },
+   "tag": "periodic"
+  },
+  {
+   "step": 4000,
+   "epoch": 0,
+   "valid": {
+    "slot_accuracy": 0.7709678305541057,
+    "turn_exact": 0.6483709436170905,
+    "chosen_rate": 0.45322930688717344,
+    "loss": 0.46765635197235655
+   },
+   "tag": "periodic"
+  },
+  {
+   "step": 6000,
+   "epoch": 0,
+   "valid": {
+    "slot_accuracy": 0.775198483558144,
+    "turn_exact": 0.6566950640567081,
+    "chosen_rate": 0.45322930688717344,
+    "loss": 0.45590375861048954
+   },
+   "tag": "periodic"
+  },
+  {
+   "step": 8000,
+   "epoch": 0,
+   "valid": {
+    "slot_accuracy": 0.7775885277876982,
+    "turn_exact": 0.6547440983286726,
+    "chosen_rate": 0.45322930688717344,
+    "loss": 0.4595879550957591
+   },
+   "tag": "periodic"
+  },
+  {
+   "step": 8870,
+   "epoch": 1,
+   "valid": {
+    "slot_accuracy": 0.7825609186560809,
+    "turn_exact": 0.6659946673603434,
+    "chosen_rate": 0.45322930688717344,
+    "loss": 0.4513370387361288
+   },
+   "tag": "end of epoch 1"
+  },
+  {
+   "step": 10000,
+   "epoch": 1,
+   "valid": {
+    "slot_accuracy": 0.781571934836955,
+    "turn_exact": 0.6661897639331469,
+    "chosen_rate": 0.45322930688717344,
+    "loss": 0.4509045771700652
+   },
+   "tag": "periodic"
+  },
+  {
+   "step": 12000,
+   "epoch": 1,
+   "valid": {
+    "slot_accuracy": 0.784950962885635,
+    "turn_exact": 0.6681407296611823,
+    "chosen_rate": 0.45322930688717344,
+    "loss": 0.44944651636041916
+   },
+   "tag": "periodic"
+  },
+  {
+   "step": 14000,
+   "epoch": 1,
+   "valid": {
+    "slot_accuracy": 0.785115793522156,
+    "turn_exact": 0.6708070494894973,
+    "chosen_rate": 0.45322930688717344,
+    "loss": 0.4468120311395302
+   },
+   "tag": "periodic"
+  },
+  {
+   "step": 16000,
+   "epoch": 1,
+   "valid": {
+    "slot_accuracy": 0.7878080272519986,
+    "turn_exact": 0.6736034336996813,
+    "chosen_rate": 0.45322930688717344,
+    "loss": 0.4411805458936191
+   },
+   "tag": "periodic"
+  },
+  {
+   "step": 17740,
+   "epoch": 2,
+   "valid": {
+    "slot_accuracy": 0.7862146644322958,
+    "turn_exact": 0.6723027898809911,
+    "chosen_rate": 0.45322930688717344,
+    "loss": 0.4425318911240409
+   },
+   "tag": "end of epoch 2"
+  }
+ ],
+ "test": {
+  "model": {
+   "slot_accuracy": 0.7855810019867905,
+   "turn_exact": 0.6652354219198503,
+   "chosen_rate": 0.44793400633625086,
+   "loss": 0.4443565425252038
+  },
+  "rows": 252228,
+  "baseline_all": {
+   "slot_accuracy": 0.44793400633625086,
+   "turn_exact": 0.3907654978828679,
+   "chosen_rate": 0.44793400633625086
+  },
+  "baseline_none": {
+   "slot_accuracy": 0.5520659936637491,
+   "turn_exact": 0.3677426772602566,
+   "chosen_rate": 0.44793400633625086
+  }
+ }
+}

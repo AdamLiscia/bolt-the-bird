@@ -66,12 +66,23 @@ def zones_of(obs: dict, me: int, first: int, attackers: list[int] | None = None,
 
 
 class ImitationPlayer:
-    def __init__(self, cast_model, attack_model, block_model, threshold: float = 0.5):
+    def __init__(self, cast_model, attack_model, block_model, threshold: float = 0.5,
+                 attack_threshold: float | None = None, main2_fallback: bool = False):  # fmt: skip
         self.models = {"cast": cast_model, "attack": attack_model, "block": block_model}
         for m in self.models.values():
             m.eval()
         self.threshold = threshold
+        self.attack_threshold = threshold if attack_threshold is None else attack_threshold
+        # The player never casts at instant speed, so a card held "for later" may never be used;
+        # with main2_fallback it casts what's left in the second main phase, the rules-based way.
+        self.main2_fallback = main2_fallback
         self.plans: dict = {}
+        self._last_turn = -1
+
+    def reset(self) -> None:
+        """Forget the plans; call between games (play_game does)."""
+        self.plans = {}
+        self._last_turn = -1
 
     @torch.no_grad()
     def _scores(self, task: str, obs: dict, me: int, first: int, attackers=None) -> tuple[dict, dict]:
@@ -84,6 +95,9 @@ class ImitationPlayer:
         obs = game.observation(me)
         legal = obs["legal_actions"]
         kind, _ = obs["pending"]
+        if obs["turn"] < self._last_turn:
+            self.reset()  # a new game started without reset(): plans are per game
+        self._last_turn = obs["turn"]
         key = (id(game), obs["turn"])
         try:
             if kind == "Priority" and obs["active"] == me and obs["step"] in MAIN and not obs["stack"]:
@@ -105,14 +119,8 @@ class ImitationPlayer:
     def _main(self, game, obs, legal, me, first, key) -> int:
         plan = self.plans.get(("cast", key))
         if plan is None:
-            scores, by_id = self._scores("cast", obs, me, first)
-            hand_cards = dict(obs["players"][me]["hand"] or [])
-            land_ids = {i for i, c in hand_cards.items() if any(a[0] == "PlayLand" and a[1] == i for a in legal)}
-            wanted = {i: p for i, p in scores.items() if p >= self.threshold}
-            lands = sorted((p, i) for i, p in wanted.items() if i in land_ids)
-            for _, i in lands[:-1]:
-                wanted.pop(i)  # one land a turn: keep the best-scoring one
-            plan = self.plans[("cast", key)] = wanted
+            scores, _ = self._scores("cast", obs, me, first)
+            plan = self.plans[("cast", key)] = self._cast_plan(scores, dict(obs["players"][me]["hand"] or []), legal)
         best = None
         for i, a in enumerate(legal):
             castable = (a[0] == "PlayLand" or a[0].startswith("Cast")) and a[1] in plan
@@ -121,14 +129,39 @@ class ImitationPlayer:
         if best is not None:
             plan.pop(legal[best][1])
             return best
+        if self.main2_fallback and obs["step"] == "Main2":
+            return game.baseline()
         p = self._pick(legal, ("PassPriority",))
         return p if p is not None else game.baseline()
+
+    def _cast_plan(self, scores: dict, hand: dict, legal) -> dict:
+        """Which hand cards to play this turn, with a priority each. The model can't tell copies of
+        a card apart and splits its confidence across them (three Plains at 0.4 each), so scores are
+        pooled by card: a land is played if the lands' scores add up past the threshold (the
+        best-scoring land, first, since it makes mana), and a spell is cast as many times as its
+        copies' scores round to."""
+        land_ids = {a[1] for a in legal if a[0] == "PlayLand"}
+        by_card: dict = {}
+        for i, card in hand.items():
+            by_card.setdefault(card, []).append(i)
+        plan = {}
+        land_cards = {c: ids for c, ids in by_card.items() if any(i in land_ids for i in ids)}
+        if land_cards and sum(scores.get(i, 0) for ids in land_cards.values() for i in ids) >= self.threshold:
+            best = max(land_cards, key=lambda c: sum(scores.get(i, 0) for i in land_cards[c]))
+            plan[next(i for i in land_cards[best] if i in land_ids)] = 10.0
+        for card, ids in by_card.items():
+            if card in land_cards:
+                continue
+            total = sum(scores.get(i, 0) for i in ids)
+            for i in ids[: min(len(ids), int(total / self.threshold / 2 + 0.5))]:
+                plan[i] = total
+        return plan
 
     def _attack(self, obs, legal, me, first, key) -> int:
         plan = self.plans.get(("attack", key))
         if plan is None:
             scores, _ = self._scores("attack", obs, me, first)
-            plan = self.plans[("attack", key)] = {i for i, p in scores.items() if p >= self.threshold}
+            plan = self.plans[("attack", key)] = {i for i, p in scores.items() if p >= self.attack_threshold}
         for i, a in enumerate(legal):
             if a[0] == "Attack" and a[1] in plan:
                 plan.discard(a[1])
@@ -169,15 +202,23 @@ def play_game(deck_a, deck_b, seed: int, first: int, players, max_turns: int = 2
     import bolt_engine as be
 
     g = be.Game(deck_a, deck_b, seed=seed, first=first)
+    for p in players:
+        if p is not None:
+            p.reset()
+    result = "timeout"
     for _ in range(100_000):
         if g.is_over():
-            return g.result()
+            result = g.result()
+            break
         if g.turn > max_turns:
-            return "timeout"
+            break
         who = g.to_act()
         p = players[who]
         g.step(p.choose(g, who, first) if p is not None else g.baseline())
-    return "timeout"
+    for p in players:
+        if p is not None:
+            p.reset()
+    return result
 
 
 __all__ = ["ZONES", "ImitationPlayer", "play_game", "zones_of"]

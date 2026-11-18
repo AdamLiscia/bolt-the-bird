@@ -54,14 +54,14 @@ def load_models(names: list[str], stub: bool):
 _PLAYER = None
 
 
-def _init(names, stub):
+def _init(names, stub, options=None):
     global _PLAYER
     import torch
 
     from bolt.imitation_player import ImitationPlayer
 
     torch.set_num_threads(1)
-    _PLAYER = ImitationPlayer(*load_models(names, stub))
+    _PLAYER = ImitationPlayer(*load_models(names, stub), **(options or {}))
 
 
 def _game(job):
@@ -82,6 +82,8 @@ def main():
     ap.add_argument("--workers", type=int, default=6)
     ap.add_argument("--stub", action="store_true")
     ap.add_argument("--name", default="imitation_eval")
+    ap.add_argument("--attack-threshold", type=float, default=None)
+    ap.add_argument("--main2-fallback", action="store_true")
     a = ap.parse_args()
     lines = (ROOT / "data" / "m7" / "decks.txt").read_text().split("\n")
     decks = [list(map(int, x.split())) for x in lines[512:1024]]
@@ -93,10 +95,11 @@ def main():
             # the player under test sits at seat 0 with d1, then at seat 1 with d1 (the other side has d2)
             jobs.append((d1, d2, seed, first, 0, control))
             jobs.append((d2, d1, seed, first, 1, control))
+    options = {"attack_threshold": a.attack_threshold, "main2_fallback": a.main2_fallback}
     t0 = time.time()
-    with mp.get_context("spawn").Pool(a.workers, initializer=_init, initargs=(a.models, a.stub)) as pool:
+    with mp.get_context("spawn").Pool(a.workers, initializer=_init, initargs=(a.models, a.stub, options)) as pool:
         res = pool.map(_game, jobs, chunksize=4)
-    out = {"pairs": a.pairs, "models": a.models, "stub": a.stub, "seconds": round(time.time() - t0)}
+    out = {"pairs": a.pairs, "models": a.models, "stub": a.stub, "options": options, "seconds": round(time.time() - t0)}
     for label, control in (("imitation_vs_rules", False), ("control_rules_vs_rules", True)):
         s = np.array([r[0] for r, j in zip(res, jobs, strict=True) if j[5] == control])
         kinds = [r[1] for r, j in zip(res, jobs, strict=True) if j[5] == control]

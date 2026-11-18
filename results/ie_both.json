@@ -1,0 +1,26 @@
+{
+  "pairs": 1500,
+  "models": [
+    "cast1",
+    "attack1",
+    "block1"
+  ],
+  "stub": false,
+  "options": {
+    "attack_threshold": 0.35,
+    "main2_fallback": true
+  },
+  "seconds": 16,
+  "imitation_vs_rules": {
+    "win_rate": 0.39416666666666667,
+    "se": 0.008917198841855283,
+    "games": 3000,
+    "draws_or_timeouts": 3
+  },
+  "control_rules_vs_rules": {
+    "win_rate": 0.4861666666666667,
+    "se": 0.009123692701889874,
+    "games": 3000,
+    "draws_or_timeouts": 1
+  }
+}
