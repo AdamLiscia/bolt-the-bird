@@ -12,12 +12,20 @@ stops the run. results/play_<name>.json holds the history.
 
 import argparse
 import json
+import os
 import sys
+import threading
 import time
 from pathlib import Path
 
-import numpy as np
-import torch
+# A hard ceiling on graphics memory (a fraction of what macOS recommends for the GPU, ~3 GB on the
+# 16 GB laptop): past it, allocation fails with an error instead of pushing the Mac into swap.
+# 2026-11-18: training's graphics memory, invisible to guard.sh, swapped the laptop until it lagged.
+os.environ.setdefault("PYTORCH_MPS_HIGH_WATERMARK_RATIO", "0.3")
+os.environ.setdefault("PYTORCH_MPS_LOW_WATERMARK_RATIO", "0.2")  # must sit below the high one
+
+import numpy as np  # noqa: E402
+import torch  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
@@ -37,7 +45,16 @@ def losses(net, arr, idx, device, value_weight):
 
 
 @torch.no_grad()
-def evaluate(net, arr, device, value_weight, bs=512):
+def gpu_mb(device) -> float:
+    return torch.mps.driver_allocated_memory() / 2**20 if device.type == "mps" else 0.0
+
+
+def release(device) -> None:
+    if device.type == "mps":
+        torch.mps.empty_cache()
+
+
+def evaluate(net, arr, device, value_weight, bs=128):
     net.eval()
     tot = np.zeros(4)
     n = len(arr["action"])
@@ -45,6 +62,7 @@ def evaluate(net, arr, device, value_weight, bs=512):
         idx = np.arange(s, min(n, s + bs))
         tot += np.array([float(v) for v in losses(net, arr, idx, device, value_weight)]) * len(idx)
     net.train()
+    release(device)  # grading batches differ in shape from training ones; hand their memory back
     loss, ce, mse, agree = tot / n
     return {"loss": loss, "policy_ce": ce, "value_mse": mse, "agreement": agree}
 
@@ -64,6 +82,9 @@ def main():
     ap.add_argument("--every", type=int, default=2000)
     ap.add_argument("--resume", action="store_true")
     ap.add_argument("--device", default="auto")
+    ap.add_argument("--max-gpu-mb", type=float, default=3000, help="stop cleanly above this much graphics memory")
+    ap.add_argument("--stall-minutes", type=float, default=10, help="exit if no training step completes for this long")
+    ap.add_argument("--max-steps", type=int, default=None, help="stop after this many steps (tests)")
     a = ap.parse_args()
     device = torch.device(("mps" if torch.backends.mps.is_available() else "cpu") if a.device == "auto" else a.device)
     shards = sorted((ROOT / a.data).glob("shard_*.npz"))
@@ -104,6 +125,18 @@ def main():
         results.write_text(json.dumps({"args": vars(a), "history": state["history"]}, indent=1))
         print(json.dumps({k: round(x, 4) if isinstance(x, float) else x for k, x in v.items()}), flush=True)
 
+    beat = {"t": time.time()}
+
+    def watchdog():  # a stalled run (swapping, hung) ends itself rather than lingering
+        while True:
+            time.sleep(30)
+            if time.time() - beat["t"] > a.stall_minutes * 60:
+                print(f"STALL: no training step for {a.stall_minutes} minutes at step {state['step']}; exiting",
+                      flush=True)  # fmt: skip
+                os._exit(3)
+
+    threading.Thread(target=watchdog, daemon=True).start()
+    t_last = time.time()
     net.train()
     while state["epoch"] < a.epochs:
         if state["order"] is None:
@@ -124,8 +157,21 @@ def main():
                 sched.step()
                 state["step"] += 1
                 state["batch_pos"] = s + a.batch  # a resume continues inside the shard, not from its start
+                beat["t"] = time.time()
+                if state["step"] % 200 == 0:
+                    mb = gpu_mb(device)
+                    rate = 200 / (time.time() - t_last)
+                    t_last = time.time()
+                    print(json.dumps({"progress": state["step"], "steps_per_s": round(rate, 2), "gpu_mb": round(mb)}),
+                          flush=True)  # fmt: skip
+                    if mb > a.max_gpu_mb:
+                        raise SystemExit(f"graphics memory {mb:.0f} MB over {a.max_gpu_mb:.0f} at step "
+                                         f"{state['step']}: stopping (resume from the last checkpoint)")  # fmt: skip
                 if state["step"] % a.every == 0:
                     checkpoint()
+                    beat["t"] = time.time()
+                if a.max_steps and state["step"] >= a.max_steps:
+                    return
             state["shard_pos"] += 1
             state["batch_pos"] = 0
         state["epoch"] += 1
