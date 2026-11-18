@@ -70,6 +70,36 @@ pub fn encode(a: &Action) -> Encoded {
     }
 }
 
+/// The objects an action names, in the slots `encode` puts them in (a, b, c); `None` where that
+/// slot is a number or unused.
+pub fn objects(a: &Action) -> [Option<ObjId>; 3] {
+    use Action::*;
+    match *a {
+        Bottom(c)
+        | PlayLand(c)
+        | Cast(c)
+        | Activate(c, _)
+        | CastKicked(c)
+        | CastFlashback(c)
+        | CastModal(c, _)
+        | CastAlternative(c)
+        | CastX(c, _)
+        | Loyalty(c, _)
+        | Pick(c)
+        | Attack(c)
+        | Discard(c)
+        | CastFromGraveyard(c)
+        | CastFromGraveyardAs(c, _) => [Some(c), None, None],
+        Target(bolt_core::Target::Object(c)) => [Some(c), None, None],
+        ActivateWith(c, _, v) => [Some(c), None, Some(v)],
+        CastWith(c, x) => [Some(c), Some(x), None],
+        AttackPlaneswalker(c, w) => [Some(c), Some(w), None],
+        ActivateX { id: c, victim, .. } => [Some(c), None, victim],
+        Block { blocker, attacker } => [Some(blocker), Some(attacker), None],
+        _ => [None, None, None],
+    }
+}
+
 /// What the pending choice is and who makes it.
 pub fn pending(p: &Pending) -> (&'static str, i64) {
     use Pending::*;
@@ -277,6 +307,30 @@ impl Game {
             .collect();
         d.set_item("stack", stack)?;
         d.set_item("legal_actions", self.legal_actions())?;
+        // The card behind each object a move names (-1 where the slot isn't an object), so a move
+        // that names a card the player can't otherwise see (a library search) still says which.
+        let legal_cards: Vec<(i64, i64, i64)> = self
+            .legal
+            .iter()
+            .map(|a| {
+                let o = objects(a).map(|c| c.map_or(-1, |c| g.obj(c).def as i64));
+                (o[0], o[1], o[2])
+            })
+            .collect();
+        d.set_item("legal_cards", legal_cards)?;
+        match &g.combat {
+            Some(c) => {
+                let e = PyDict::new(py);
+                e.set_item(
+                    "attackers",
+                    c.attackers.iter().map(|&a| id(a)).collect::<Vec<_>>(),
+                )?;
+                let blocks: Vec<(i64, i64)> = c.blocks.iter().map(|&(b, a)| (id(b), id(a))).collect();
+                e.set_item("blocks", blocks)?;
+                d.set_item("combat", e)?;
+            }
+            None => d.set_item("combat", py.None())?,
+        }
         Ok(d)
     }
 

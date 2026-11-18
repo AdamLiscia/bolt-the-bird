@@ -122,3 +122,31 @@ def test_play_games_rejects_bad_input():
         be.play_games([(good, good, 1, 2)])
     with pytest.raises(ValueError):
         be.play_games([(good, good, 1, 0)], pilot="genius")
+
+
+def test_observation_shows_combat_and_the_cards_each_move_names():
+    rng = random.Random(11)
+    g = be.Game(deck(rng), deck(rng), seed=11)
+    saw_attack = saw_block = False
+    for _ in range(3000):
+        if g.is_over():
+            break
+        who = g.to_act()
+        obs = g.observation(who)
+        assert len(obs["legal_cards"]) == len(obs["legal_actions"])
+        field = {e["id"]: e["card"] for e in obs["battlefield"]}
+        for (kind, a, b, _c), (ca, cb, _cc) in zip(obs["legal_actions"], obs["legal_cards"], strict=True):
+            if kind in ("Attack", "Block") and a in field:
+                assert ca == field[a], "the card named by the move"
+            if kind == "Block":
+                assert cb == field[b] and b in obs["combat"]["attackers"]
+                saw_block = True
+            if kind in ("PassPriority", "Yes", "No", "Mode", "Amount", "TargetPlayer"):
+                assert ca == -1
+        if obs["combat"] and obs["combat"]["attackers"]:
+            saw_attack = True
+            assert all(a in field for a in obs["combat"]["attackers"])
+            for blocker, attacker in obs["combat"]["blocks"]:
+                assert attacker in obs["combat"]["attackers"]
+        g.step(g.baseline())
+    assert saw_attack and saw_block
