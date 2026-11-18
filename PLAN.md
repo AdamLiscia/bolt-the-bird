@@ -13,7 +13,7 @@ records choices with their reasons, so they don't get relitigated later.
 | 3 | Rust rules engine with PyO3 bindings | Done (2026-11-06): all 286 cards; played edge +1.54 ± 0.66 (rules-based player), −0.21 ± 0.58 (smart player) vs. +3.85 judged |
 | 3b | RL rewarded by played games | Done (2026-11-12): 250 iterations; +8.88 ± 0.54 pts played with the 4 × 6 smart player it never trained against (58.5% vs. 49.6%), +12.26 with the rules-based pilot |
 | 3c | PPO for the played-reward drafter | Done (2026-11-15): +12.67 ± 0.56 pts with the 4 × 6 smart player (62.3% vs. 49.6%); from scratch it matches the old method's best in 30 iterations instead of 250, then over-optimizes past ~120 |
-| 4 | Gameplay agent: rules-based, then imitation, then self-play | Rules-based and smart players done; imitation possible from 17lands replay data; next |
+| 4 | Gameplay agent: rules-based, then imitation, then self-play | Started 2026-11-17: plan in [docs/play/PLAN.md](docs/play/PLAN.md) |
 
 ## Phase 3: the rules engine
 
