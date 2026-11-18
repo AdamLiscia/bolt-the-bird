@@ -33,8 +33,8 @@ def score(results, seat):
 
 def match(net, me, opp, jobs, workers):
     """`me` against `opp`, `me` in each seat in turn. Returns the score list from `me`'s side."""
-    a = run_parallel(net, jobs, workers=workers, seats=(me, opp), sample=False, chunk=20)
-    b = run_parallel(net, jobs, workers=workers, seats=(opp, me), sample=False, chunk=20)
+    a = run_parallel(net, jobs, workers=workers, seats=(me, opp), sample=False, chunk=20, record=())
+    b = run_parallel(net, jobs, workers=workers, seats=(opp, me), sample=False, chunk=20, record=())
     return score(a["results"], 0) + score(b["results"], 1)
 
 
