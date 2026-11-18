@@ -35,13 +35,33 @@ import bolt_engine as be  # noqa: E402
 from bolt.play_data import batch, concat, load  # noqa: E402
 from bolt.play_net import PlayNet  # noqa: E402
 
+BIG_OBJECTS, BIG_MOVES = 128, 256
+
+
+def groups(arr, idx):
+    """The batch split so one huge position (token-filled boards: up to ~460 objects, ~1,600 moves)
+    can't pad all the others to its size: the ordinary rows together, each huge one on its own."""
+    idx = np.asarray(idx)
+    n_obj = arr["obj_off"][idx + 1] - arr["obj_off"][idx]
+    n_act = arr["act_off"][idx + 1] - arr["act_off"][idx]
+    big = (n_obj > BIG_OBJECTS) | (n_act > BIG_MOVES)
+    out = [idx[~big]] if (~big).any() else []
+    return out + [idx[k : k + 1] for k in np.flatnonzero(big)]
+
 
 def losses(net, arr, idx, device, value_weight):
-    x, action, z = batch(arr, idx, device)
-    logits, value = net(x)
-    ce = torch.nn.functional.cross_entropy(logits, action)
-    mse = torch.nn.functional.mse_loss(value, z)
-    return ce + value_weight * mse, ce, mse, (logits.argmax(1) == action).float().mean()
+    """Mean over the batch of (total, policy CE, value MSE, agreement), the same as one big batch."""
+    n = len(idx)
+    tot = ce_t = mse_t = agree_t = 0.0
+    for g in groups(arr, idx):
+        x, action, z = batch(arr, g, device)
+        logits, value = net(x)
+        ce = torch.nn.functional.cross_entropy(logits, action, reduction="sum")
+        mse = torch.nn.functional.mse_loss(value, z, reduction="sum")
+        tot = tot + (ce + value_weight * mse) / n
+        ce_t, mse_t = ce_t + ce.detach() / n, mse_t + mse.detach() / n
+        agree_t = agree_t + (logits.argmax(1) == action).float().sum().detach() / n
+    return tot, ce_t, mse_t, agree_t
 
 
 @torch.no_grad()
