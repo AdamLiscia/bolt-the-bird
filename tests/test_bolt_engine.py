@@ -150,3 +150,16 @@ def test_observation_shows_combat_and_the_cards_each_move_names():
                 assert attacker in obs["combat"]["attackers"]
         g.step(g.baseline())
     assert saw_attack and saw_block
+
+
+def test_smart_choice_move_by_move_matches_the_engines_own_smart_games():
+    rng = random.Random(21)
+    jobs = [(deck(rng), deck(rng), s, s % 2) for s in range(4)]
+    whole = be.play_games(jobs, pilot="smart", rollouts=1, candidates=2, threads=2)
+    for (a, b, seed, first), expect in zip(jobs, whole, strict=True):
+        g = be.Game(a, b, seed=seed, first=first)
+        n = 0
+        while not g.is_over() and g.turn <= 200:
+            g.step(g.smart(1, 2, seed * 1_000_003 + n))
+            n += 1
+        assert (g.result(), g.turn) == expect
