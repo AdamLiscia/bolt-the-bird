@@ -85,7 +85,7 @@ def test_compact_workers_return_the_same_arrays_as_compacting_afterwards():
     want = to_arrays(full["steps"], full["results"])
     assert arr["results"] == full["results"]
     for k, v in want.items():
-        assert np.array_equal(arr["arrays"][k], v), k
+        assert np.array_equal(arr["arrays"][k], v, equal_nan=v.dtype.kind == "f"), k
 
 
 def test_a_game_that_never_ends_its_turn_stops_at_the_move_cap():

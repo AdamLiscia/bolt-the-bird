@@ -38,6 +38,9 @@ def to_arrays(steps: list[dict], results: list[dict]) -> dict:
         "seat": np.asarray([s["seat"] for s in steps], dtype=np.int8),
         "game": np.asarray([s["game"] for s in steps], dtype=np.int32),
         "z": np.asarray([z(s) for s in steps], dtype=np.int8),
+        # the network's own probability of the move it played and its value estimate (NaN for teacher steps)
+        "logp": np.asarray([np.nan if s.get("logp") is None else s["logp"] for s in steps], dtype=np.float32),
+        "value": np.asarray([np.nan if s.get("value") is None else s["value"] for s in steps], dtype=np.float32),
     }  # fmt: skip
 
 
@@ -55,7 +58,8 @@ def load(path) -> dict:
 
 def concat(parts: list[dict]) -> dict:
     out = {}
-    for k in parts[0]:
+    keys = [k for k in parts[0] if all(k in p for p in parts)]  # older shards lack logp/value
+    for k in keys:
         if k in ("obj_off", "act_off"):
             offs, base = [np.zeros(1, np.int64)], 0
             for p in parts:
@@ -65,6 +69,20 @@ def concat(parts: list[dict]) -> dict:
         else:
             out[k] = np.concatenate([p[k] for p in parts])
     return out
+
+
+BIG_OBJECTS, BIG_MOVES = 128, 256
+
+
+def groups(arr, idx):
+    """idx split so one huge position (token-filled boards: up to ~460 objects, ~1,600 moves) can't
+    pad all the others to its size: the ordinary rows together, each huge one on its own."""
+    idx = np.asarray(idx)
+    n_obj = arr["obj_off"][idx + 1] - arr["obj_off"][idx]
+    n_act = arr["act_off"][idx + 1] - arr["act_off"][idx]
+    big = (n_obj > BIG_OBJECTS) | (n_act > BIG_MOVES)
+    out = [idx[~big]] if (~big).any() else []
+    return out + [idx[k : k + 1] for k in np.flatnonzero(big)]
 
 
 def batch(arr: dict, idx, device="cpu"):

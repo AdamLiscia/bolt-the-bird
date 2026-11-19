@@ -32,21 +32,8 @@ sys.path.insert(0, str(ROOT / "src"))
 
 import bolt_engine as be  # noqa: E402
 
-from bolt.play_data import batch, concat, load  # noqa: E402
+from bolt.play_data import batch, concat, groups, load  # noqa: E402
 from bolt.play_net import PlayNet  # noqa: E402
-
-BIG_OBJECTS, BIG_MOVES = 128, 256
-
-
-def groups(arr, idx):
-    """The batch split so one huge position (token-filled boards: up to ~460 objects, ~1,600 moves)
-    can't pad all the others to its size: the ordinary rows together, each huge one on its own."""
-    idx = np.asarray(idx)
-    n_obj = arr["obj_off"][idx + 1] - arr["obj_off"][idx]
-    n_act = arr["act_off"][idx + 1] - arr["act_off"][idx]
-    big = (n_obj > BIG_OBJECTS) | (n_act > BIG_MOVES)
-    out = [idx[~big]] if (~big).any() else []
-    return out + [idx[k : k + 1] for k in np.flatnonzero(big)]
 
 
 def losses(net, arr, idx, device, value_weight):

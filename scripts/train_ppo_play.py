@@ -1,0 +1,188 @@
+"""P3d: self-play PPO for the play network (docs/play/P3_DESIGN.md).
+
+    python scripts/train_ppo_play.py --name ppo1                 # fresh, from --init
+    python scripts/train_ppo_play.py --name ppo1 --resume        # after a stop or a crash
+
+Each iteration: --games games on the training decks (data/m7/decks.txt lines 0-511) against a league
+(bolt.play_ppo.league: the rules-based player, the smart 1 x 2 player, past checkpoints, itself), the
+network sampling its moves; then --epochs passes of clipped PPO over the recorded moves, advantage =
+result - value estimate (standardised), with a KL leash to --init that decays over --kl-iters.
+Every iteration's weights are kept (checkpoints/play/<name>/iter_N.pt); state.pt holds everything
+needed to resume, written atomically. Every --eval-every iterations: greedy play against the
+rules-based and smart players on unseen decks (lines 512-1023), into results/ppo_play_<name>.json.
+"""
+
+import argparse
+import json
+import os
+import random
+import sys
+import threading
+import time
+from pathlib import Path
+
+import numpy as np
+import torch
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "src"))
+sys.path.insert(0, str(ROOT / "scripts"))
+
+from bolt.play_data import concat  # noqa: E402
+from bolt.play_net import PlayNet  # noqa: E402
+from bolt.play_ppo import league, ppo_step  # noqa: E402
+from bolt.play_runner import run_parallel  # noqa: E402
+
+
+def load_net(path):
+    c = torch.load(path, map_location="cpu", weights_only=False)
+    net = PlayNet(**c["config"])
+    net.load_state_dict(c["model"])
+    return net
+
+
+def save_atomic(obj, path: Path):
+    tmp = path.with_suffix(".tmp")
+    torch.save(obj, tmp)
+    tmp.replace(path)
+
+
+def evaluate(net, pairs, workers):
+    from eval_play import match, summary
+
+    lines = (ROOT / "data" / "m7" / "decks.txt").read_text().split("\n")
+    decks = [list(map(int, x.split())) for x in lines[512:1024]]
+    jobs = [(decks[i % 512], decks[(i + 1) % 512], 9_000 + i, i % 2) for i in range(pairs)]
+    net.eval()
+    return {opp: summary(match(net, "net", opp, jobs, workers))["win_rate"] for opp in ("rules", "smart")}
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--name", default="ppo1")
+    ap.add_argument("--init", default="checkpoints/play/distill2/step_17353.pt")
+    ap.add_argument("--iters", type=int, default=1000)
+    ap.add_argument("--games", type=int, default=320)
+    ap.add_argument("--workers", type=int, default=4)
+    ap.add_argument("--threads", type=int, default=4)
+    ap.add_argument("--epochs", type=int, default=2)
+    ap.add_argument("--batch", type=int, default=256)
+    ap.add_argument("--lr", type=float, default=2e-5)
+    ap.add_argument("--clip", type=float, default=0.2)
+    ap.add_argument("--kl", type=float, default=0.05)
+    ap.add_argument("--kl-final", type=float, default=0.005)
+    ap.add_argument("--kl-iters", type=int, default=100)
+    ap.add_argument("--value-coef", type=float, default=0.5)
+    ap.add_argument("--past-every", type=int, default=10)
+    ap.add_argument("--eval-every", type=int, default=10)
+    ap.add_argument("--eval-pairs", type=int, default=200)
+    ap.add_argument("--stall-minutes", type=float, default=30)
+    ap.add_argument("--resume", action="store_true")
+    a = ap.parse_args()
+    torch.set_num_threads(a.threads)
+    ck = ROOT / "checkpoints" / "play" / a.name
+    ck.mkdir(parents=True, exist_ok=True)
+    results = ROOT / "results" / f"ppo_play_{a.name}.json"
+    net = load_net(ROOT / a.init)
+    ref = load_net(ROOT / a.init).eval()
+    for p in ref.parameters():
+        p.requires_grad_(False)
+    opt = torch.optim.AdamW(net.parameters(), lr=a.lr, weight_decay=0.0)
+    state = {"iter": 0, "history": [], "evals": [], "past": [], "best": None}
+    if a.resume and (ck / "state.pt").exists():
+        s = torch.load(ck / "state.pt", map_location="cpu", weights_only=False)
+        net.load_state_dict(s["model"])
+        opt.load_state_dict(s["opt"])
+        state = s["state"]
+        print(f"resumed at iteration {state['iter']}", flush=True)
+    lines = (ROOT / "data" / "m7" / "decks.txt").read_text().split("\n")
+    decks = [list(map(int, x.split())) for x in lines[:512]]
+
+    beat = {"t": time.time()}
+
+    def watchdog():
+        while True:
+            time.sleep(30)
+            if time.time() - beat["t"] > a.stall_minutes * 60:
+                print(f"STALL: no progress for {a.stall_minutes} minutes at iteration {state['iter']}; exiting",
+                      flush=True)  # fmt: skip
+                os._exit(3)
+
+    threading.Thread(target=watchdog, daemon=True).start()
+
+    def write_results():
+        results.write_text(json.dumps({"args": vars(a), "history": state["history"], "evals": state["evals"]},
+                                      indent=1))  # fmt: skip
+
+    if state["iter"] == 0 and not state["evals"]:
+        e = evaluate(net, a.eval_pairs, a.workers)
+        state["evals"].append({"iter": 0, **e})
+        print(json.dumps({"eval": 0, **e}), flush=True)
+        write_results()
+
+    while state["iter"] < a.iters:
+        it = state["iter"] + 1
+        t0 = time.time()
+        rng = random.Random(it)
+        kl_coef = a.kl + (a.kl_final - a.kl) * min(1.0, (it - 1) / max(1, a.kl_iters))
+        net.eval()
+        parts, won = [], {}
+        for k, (seats, n) in enumerate(league(a.games, state["past"])):
+            jobs = []
+            for i in range(n):
+                d1, d2 = rng.sample(range(512), 2)
+                jobs.append((decks[d1], decks[d2], 20_000_000 + it * 10_000 + k * 1_000 + i, i % 2))
+            opp = load_net(ck / rng.choice(state["past"])) if "opp" in seats else None
+            record = tuple(i for i, s in enumerate(seats) if s == "net")
+            r = run_parallel(net, jobs, workers=a.workers, chunk=20, seats=seats, sample=True, seed=it * 100 + k,
+                             record=record, opp_net=opp, compact=True)  # fmt: skip
+            parts.append(r["arrays"])
+            other = [s for s in seats if s != "net"]
+            label = other[0] if other else "self"
+            me = seats.index("net")
+            w = [1.0 if x["result"] == f"p{me}" else 0.5 if x["result"] in ("draw", "timeout") else 0.0
+                 for x in r["results"]]  # fmt: skip
+            won.setdefault(label, []).extend(w)
+            beat["t"] = time.time()
+        arr = concat(parts)
+        n = len(arr["action"])
+        adv = arr["z"].astype(np.float32) - arr["value"]
+        adv = torch.as_tensor((adv - adv.mean()) / (adv.std() + 1e-6))
+        t1 = time.time()
+        net.train()
+        sums, steps = {"loss": 0.0, "clipped": 0.0, "kl": 0.0, "value_mse": 0.0}, 0
+        prng = np.random.default_rng(it)
+        for _ in range(a.epochs):
+            perm = prng.permutation(n)
+            for s in range(0, n - a.batch + 1, a.batch):
+                idx = np.sort(perm[s : s + a.batch])
+                st = ppo_step(net, ref, opt, arr, idx, adv[idx], a.clip, kl_coef, a.value_coef)
+                for key in sums:
+                    sums[key] += st[key]
+                steps += 1
+                beat["t"] = time.time()
+        state["iter"] = it
+        torch.save({"config": net.config, "model": net.state_dict()}, ck / f"iter_{it}.pt")
+        if it % a.past_every == 0:
+            state["past"].append(f"iter_{it}.pt")
+        row = {"iter": it, "games": a.games, "decisions": n, "kl_coef": round(kl_coef, 4),
+               **{f"won_{k}": round(float(np.mean(v)), 3) for k, v in won.items()},
+               **{k: round(v / max(1, steps), 4) for k, v in sums.items()},
+               "play_s": round(t1 - t0), "update_s": round(time.time() - t1), "time": time.strftime("%H:%M:%S")}  # fmt: skip
+        state["history"].append(row)
+        print(json.dumps(row), flush=True)
+        if it % a.eval_every == 0:
+            e = evaluate(net, a.eval_pairs, a.workers)
+            state["evals"].append({"iter": it, **e})
+            score = (e["rules"] + e["smart"]) / 2
+            if state["best"] is None or score > state["best"]["score"]:
+                state["best"] = {"iter": it, "score": score}
+                torch.save({"config": net.config, "model": net.state_dict()}, ck / "best.pt")
+            print(json.dumps({"eval": it, **e, "best_iter": state["best"]["iter"]}), flush=True)
+            beat["t"] = time.time()
+        save_atomic({"model": net.state_dict(), "opt": opt.state_dict(), "state": state}, ck / "state.pt")
+        write_results()
+
+
+if __name__ == "__main__":
+    main()

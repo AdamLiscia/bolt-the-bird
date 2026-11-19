@@ -43,13 +43,14 @@ def _forward(net, encs, chunk=256):
 
 
 def run_games(net, jobs, seats=("net", "rules"), sample=True, seed=0, smart=(1, 2), record=None,
-              max_turns=MAX_TURNS, game_offset=0, max_moves=MAX_MOVES, label_with=None):  # fmt: skip
+              max_turns=MAX_TURNS, game_offset=0, max_moves=MAX_MOVES, label_with=None, opp_net=None):  # fmt: skip
     """jobs: (deck_a, deck_b, seed, first). Returns {"results": [{"result", "turn"}], "steps": [...]}.
 
     label_with=(rollouts, candidates): recorded network steps get the smart player's choice in that
     position as "action" (the label) and the network's own move as "played", which is what the game
     follows (DAgger: the teacher labels the positions the student reaches)."""
     record = {i for i, s in enumerate(seats) if s == "net"} if record is None else set(record)
+    # seat "opp": another network (a past checkpoint) samples its moves; it is never recorded
     gen = torch.Generator().manual_seed(seed)
     games = [be.Game(a, b, seed=s, first=f) for a, b, s, f in jobs]
     moves = [0] * len(games)
@@ -75,7 +76,7 @@ def run_games(net, jobs, seats=("net", "rules"), sample=True, seed=0, smart=(1, 
                         break
                     who = g.to_act()
                     seat = seats[who]
-                    if seat == "net":
+                    if seat in ("net", "opp"):
                         obs = g.observation(who)
                         if len(obs["legal_actions"]) == 1:
                             play(gi, 0)
@@ -95,11 +96,16 @@ def run_games(net, jobs, seats=("net", "rules"), sample=True, seed=0, smart=(1, 
             except Exception:  # an engine error ends that game, not the batch
                 results[gi] = {"result": "error", "turn": g.turn}
         if waiting:
-            logits, values = _forward(net, [e for _, _, e in waiting])
-            for (gi, who, enc), lg, v in zip(waiting, logits, values, strict=True):
+            mine = [w for w in waiting if seats[w[1]] == "net"]
+            theirs = [w for w in waiting if seats[w[1]] == "opp"]
+            logits, values = _forward(net, [e for _, _, e in mine]) if mine else ([], [])
+            if theirs:
+                lo, vo = _forward(opp_net, [e for _, _, e in theirs])
+                logits, values = logits + lo, values + vo
+            for (gi, who, enc), lg, v in zip(mine + theirs, logits, values, strict=True):
                 lp = torch.log_softmax(lg[: len(enc["act_kind"])], 0)
                 i = int(torch.multinomial(lp.exp(), 1, generator=gen)) if sample else int(lp.argmax())
-                if who in record:
+                if who in record and seats[who] == "net":
                     step = {"game": game_offset + gi, "seat": who, "enc": enc, "action": i, "logp": float(lp[i]),
                             "value": v}  # fmt: skip
                     if label_with is not None:
@@ -135,18 +141,28 @@ def _die_with_parent(parent: int) -> None:
     threading.Thread(target=watch, daemon=True).start()
 
 
+def _load(net_state):
+    if net_state is None:
+        return None
+    from bolt.play_net import PlayNet
+
+    config, state = net_state
+    net = PlayNet(**config)
+    net.load_state_dict(state)
+    return net.eval()
+
+
+def _state(net):
+    return None if net is None else (net.config, {k: v.cpu() for k, v in net.state_dict().items()})
+
+
 def _worker(args):
     torch.set_num_threads(1)
     net_state, jobs, kw = args
     compact = kw.pop("compact", False)
-    net = None
-    if net_state is not None:
-        from bolt.play_net import PlayNet
-
-        config, state = net_state
-        net = PlayNet(**config)
-        net.load_state_dict(state)
-        net.eval()
+    net = _load(net_state)
+    if "opp_net" in kw:
+        kw["opp_net"] = _load(kw["opp_net"])
     out = run_games(net, jobs, **kw)
     if compact:  # arrays, not Python dicts: ~30x smaller to send back and to hold
         from bolt.play_data import to_arrays
@@ -163,7 +179,9 @@ def _worker(args):
 def run_parallel(net, jobs, workers=6, chunk=None, seed=0, retries=2, compact=False, **kw):
     """run_games split across spawn worker processes; results in job order. With compact=True the
     workers return recorded steps as bolt.play_data arrays ("arrays") instead of "steps"."""
-    net_state = None if net is None else (net.config, {k: v.cpu() for k, v in net.state_dict().items()})
+    net_state = _state(net)
+    if kw.get("opp_net") is not None:
+        kw["opp_net"] = _state(kw["opp_net"])
     chunk = chunk or max(1, -(-len(jobs) // workers))
     parts = {k: jobs[k : k + chunk] for k in range(0, len(jobs), chunk)}
     done: dict = {}
