@@ -1,0 +1,17 @@
+{
+  "ckpt": "checkpoints/play/distill2/step_16000.pt",
+  "pairs": 500,
+  "net_vs_rules": {
+    "win_rate": 0.441,
+    "se": 0.0156849928275406,
+    "games": 1000,
+    "draws_or_timeouts": 2
+  },
+  "net_vs_smart": {
+    "win_rate": 0.3595,
+    "se": 0.015149579202076872,
+    "games": 1000,
+    "draws_or_timeouts": 3
+  },
+  "seconds": 173
+}

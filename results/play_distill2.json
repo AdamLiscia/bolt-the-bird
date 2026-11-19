@@ -1,0 +1,108 @@
+{
+ "args": {
+  "name": "distill2",
+  "data": [
+   "data/distill",
+   "data/dagger1"
+  ],
+  "init": "checkpoints/play/distill1/best.pt",
+  "valid": 2,
+  "valid_rows": 40000,
+  "epochs": 1,
+  "batch": 256,
+  "lr": 0.00015,
+  "dim": 128,
+  "layers": 4,
+  "value_weight": 0.25,
+  "every": 2000,
+  "resume": true,
+  "device": "cpu",
+  "threads": 4,
+  "max_gpu_mb": 3000,
+  "stall_minutes": 10,
+  "max_steps": null
+ },
+ "history": [
+  {
+   "loss": 1.0642510275363921,
+   "policy_ce": 0.854657377076149,
+   "value_mse": 0.838374603843689,
+   "agreement": 0.7618,
+   "step": 2000,
+   "epoch": 0,
+   "time": "18:25:04"
+  },
+  {
+   "loss": 0.978290559387207,
+   "policy_ce": 0.7793896792650222,
+   "value_mse": 0.7956035255536437,
+   "agreement": 0.815775,
+   "step": 4000,
+   "epoch": 0,
+   "time": "18:54:05"
+  },
+  {
+   "loss": 1.023690346956253,
+   "policy_ce": 0.8265703222036361,
+   "value_mse": 0.7884801045417785,
+   "agreement": 0.775325,
+   "step": 6000,
+   "epoch": 0,
+   "time": "19:13:28"
+  },
+  {
+   "loss": 1.0778418905258178,
+   "policy_ce": 0.8934346170425415,
+   "value_mse": 0.737629101267457,
+   "agreement": 0.752325,
+   "step": 8000,
+   "epoch": 0,
+   "time": "19:29:22"
+  },
+  {
+   "loss": 1.0427236199140548,
+   "policy_ce": 0.8686673543453216,
+   "value_mse": 0.6962250807337463,
+   "agreement": 0.80785,
+   "step": 10000,
+   "epoch": 0,
+   "time": "19:47:26"
+  },
+  {
+   "loss": 1.296589425611496,
+   "policy_ce": 1.124969091784954,
+   "value_mse": 0.6864813380554319,
+   "agreement": 0.7994,
+   "step": 12000,
+   "epoch": 0,
+   "time": "20:03:24"
+  },
+  {
+   "loss": 1.0272227091073989,
+   "policy_ce": 0.8470660084724426,
+   "value_mse": 0.7206268066048622,
+   "agreement": 0.79685,
+   "step": 14000,
+   "epoch": 0,
+   "time": "20:18:55"
+  },
+  {
+   "loss": 1.0008381376028062,
+   "policy_ce": 0.8631120533704758,
+   "value_mse": 0.5509043452739716,
+   "agreement": 0.84165,
+   "step": 16000,
+   "epoch": 0,
+   "time": "20:34:29"
+  },
+  {
+   "loss": 1.135356578373909,
+   "policy_ce": 0.9911626491844654,
+   "value_mse": 0.576775721526146,
+   "agreement": 0.81205,
+   "step": 17353,
+   "epoch": 1,
+   "time": "20:44:54"
+  }
+ ]
+}
