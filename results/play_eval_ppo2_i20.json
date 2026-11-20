@@ -1,0 +1,17 @@
+{
+  "ckpt": "checkpoints/play/ppo2/iter_20.pt",
+  "pairs": 500,
+  "net_vs_rules": {
+    "win_rate": 0.5605,
+    "se": 0.015671303391868847,
+    "games": 1000,
+    "draws_or_timeouts": 3
+  },
+  "net_vs_smart": {
+    "win_rate": 0.4845,
+    "se": 0.015795877626773386,
+    "games": 1000,
+    "draws_or_timeouts": 1
+  },
+  "seconds": 92
+}
