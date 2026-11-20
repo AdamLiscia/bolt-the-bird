@@ -30,7 +30,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from bolt.play_data import concat  # noqa: E402
 from bolt.play_net import PlayNet  # noqa: E402
-from bolt.play_ppo import league, ppo_step  # noqa: E402
+from bolt.play_ppo import gae, league, ppo_step  # noqa: E402
 from bolt.play_runner import run_parallel  # noqa: E402
 
 
@@ -73,6 +73,7 @@ def main():
     ap.add_argument("--kl-final", type=float, default=0.005)
     ap.add_argument("--kl-iters", type=int, default=100)
     ap.add_argument("--value-coef", type=float, default=0.5)
+    ap.add_argument("--lam", type=float, default=1.0, help="GAE lambda: 1 = result minus value; lower = per-step")
     ap.add_argument("--past-every", type=int, default=10)
     ap.add_argument("--eval-every", type=int, default=10)
     ap.add_argument("--eval-pairs", type=int, default=200)
@@ -136,7 +137,9 @@ def main():
             record = tuple(i for i, s in enumerate(seats) if s == "net")
             r = run_parallel(net, jobs, workers=a.workers, chunk=20, seats=seats, sample=True, seed=it * 100 + k,
                              record=record, opp_net=opp, compact=True)  # fmt: skip
-            parts.append(r["arrays"])
+            part = r["arrays"]
+            part["adv"], part["ret"] = gae(part, lam=a.lam)  # per matchup: game numbers restart per call
+            parts.append(part)
             other = [s for s in seats if s != "net"]
             label = other[0] if other else "self"
             me = seats.index("net")
@@ -146,8 +149,9 @@ def main():
             beat["t"] = time.time()
         arr = concat(parts)
         n = len(arr["action"])
-        adv = arr["z"].astype(np.float32) - arr["value"]
+        adv = arr["adv"]
         adv = torch.as_tensor((adv - adv.mean()) / (adv.std() + 1e-6))
+        ret = torch.as_tensor(arr["ret"])
         t1 = time.time()
         net.train()
         sums, steps = {"loss": 0.0, "clipped": 0.0, "kl": 0.0, "value_mse": 0.0}, 0
@@ -156,7 +160,7 @@ def main():
             perm = prng.permutation(n)
             for s in range(0, n - a.batch + 1, a.batch):
                 idx = np.sort(perm[s : s + a.batch])
-                st = ppo_step(net, ref, opt, arr, idx, adv[idx], a.clip, kl_coef, a.value_coef)
+                st = ppo_step(net, ref, opt, arr, idx, adv[idx], a.clip, kl_coef, a.value_coef, ret=ret[idx])
                 for key in sums:
                     sums[key] += st[key]
                 steps += 1

@@ -70,3 +70,56 @@ def test_the_league_mixes_fixed_players_past_selves_and_self_play():
     assert sum(n for _, n in first) == 100
     later = league(n_games=100, past=["step_1.pt", "step_2.pt"])
     assert any("opp" in s for s, _ in later) and sum(n for _, n in later) == 100
+
+
+def fake(values, z, games, seats):
+    return {"value": np.asarray(values, np.float32), "z": np.asarray(z, np.int8),
+            "game": np.asarray(games, np.int32), "seat": np.asarray(seats, np.int8)}  # fmt: skip
+
+
+def test_gae_with_lambda_one_is_the_result_minus_the_value():
+    from bolt.play_ppo import gae
+
+    a = fake([0.1, -0.2, 0.5, 0.3, 0.0], [1, 1, 1, -1, -1], [0, 0, 0, 0, 0], [0, 0, 0, 1, 1])
+    adv, ret = gae(a, lam=1.0)
+    assert np.allclose(adv, a["z"] - a["value"]) and np.allclose(ret, a["z"])
+
+
+def test_gae_with_lambda_zero_credits_each_move_with_the_change_it_made():
+    from bolt.play_ppo import gae
+
+    a = fake([0.1, -0.2, 0.5], [1, 1, 1], [3, 3, 3], [0, 0, 0])
+    adv, ret = gae(a, lam=0.0)
+    assert np.allclose(adv, [-0.2 - 0.1, 0.5 + 0.2, 1 - 0.5]) and np.allclose(ret, adv + a["value"])
+
+
+def test_gae_keeps_games_and_seats_apart_even_when_their_steps_interleave():
+    from bolt.play_ppo import gae
+
+    # game 0 seat 0, game 1 seat 0 and game 0 seat 1, interleaved in recording order
+    a = fake([0.2, 0.0, 0.4, -0.5, 0.6, 0.1], [1, -1, 1, -1, 1, -1], [0, 1, 0, 1, 0, 0], [0, 0, 0, 0, 0, 1])
+    adv, _ = gae(a, lam=0.5)
+    one = fake([0.2, 0.4, 0.6], [1, 1, 1], [0, 0, 0], [0, 0, 0])
+    two = fake([0.0, -0.5], [-1, -1], [1, 1], [0, 0])
+    three = fake([0.1], [-1], [0], [1])
+    assert np.allclose(adv[[0, 2, 4]], gae(one, lam=0.5)[0])
+    assert np.allclose(adv[[1, 3]], gae(two, lam=0.5)[0])
+    assert np.allclose(adv[[5]], gae(three, lam=0.5)[0])
+
+
+def test_the_value_head_regresses_to_the_given_returns():
+    m = net(2).train()
+    out = run_games(m.eval(), jobs(2), seats=("net", "rules"), sample=True, seed=5)
+    arr = to_arrays(out["steps"], out["results"])
+    idx = np.arange(len(arr["action"]))
+    x, _, _ = batch(arr, idx)
+    target = torch.full((len(idx),), 0.7)
+    opt = torch.optim.Adam(m.parameters(), lr=3e-3)
+    m.train()
+    with torch.no_grad():
+        before = ((m(x)[1] - target) ** 2).mean().item()
+    for _ in range(5):
+        ppo_step(m, None, opt, arr, idx, torch.zeros(len(idx)), clip=0.2, kl_coef=0.0, value_coef=1.0, ret=target)
+    with torch.no_grad():
+        after = ((m(x)[1] - target) ** 2).mean().item()
+    assert after < before
