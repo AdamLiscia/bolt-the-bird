@@ -31,10 +31,10 @@ def score(results, seat):
     return s
 
 
-def match(net, me, opp, jobs, workers):
+def match(net, me, opp, jobs, workers, smart=(1, 2)):
     """`me` against `opp`, `me` in each seat in turn. Returns the score list from `me`'s side."""
-    a = run_parallel(net, jobs, workers=workers, seats=(me, opp), sample=False, chunk=20, record=())
-    b = run_parallel(net, jobs, workers=workers, seats=(opp, me), sample=False, chunk=20, record=())
+    a = run_parallel(net, jobs, workers=workers, seats=(me, opp), sample=False, chunk=20, record=(), smart=smart)
+    b = run_parallel(net, jobs, workers=workers, seats=(opp, me), sample=False, chunk=20, record=(), smart=smart)
     return score(a["results"], 0) + score(b["results"], 1)
 
 
@@ -52,6 +52,8 @@ def main():
     ap.add_argument("--opponents", nargs="+", default=["rules", "smart"])
     ap.add_argument("--no-control", action="store_true")
     ap.add_argument("--name", default="play_eval")
+    ap.add_argument("--smart", type=int, nargs=2, default=[1, 2], metavar=("ROLLOUTS", "CANDIDATES"),
+                    help="the smart player's search: 1 2 (fast) or 4 6 (the strongest)")  # fmt: skip
     a = ap.parse_args()
     if a.ckpt:
         c = torch.load(a.ckpt, map_location="cpu", weights_only=False)
@@ -65,12 +67,12 @@ def main():
     decks = [list(map(int, x.split())) for x in lines[512:1024]]
     jobs = [(decks[i % 512], decks[(i + 1) % 512], 9_000 + i, i % 2) for i in range(a.pairs)]
     t = time.time()
-    out = {"ckpt": a.ckpt, "pairs": a.pairs}
+    out = {"ckpt": a.ckpt, "pairs": a.pairs, "smart": a.smart}
     for opp in a.opponents:
-        out[f"net_vs_{opp}"] = summary(match(net, "net", opp, jobs, a.workers))
+        out[f"net_vs_{opp}"] = summary(match(net, "net", opp, jobs, a.workers, tuple(a.smart)))
         print(opp, out[f"net_vs_{opp}"], flush=True)
     if not a.no_control:
-        out["control_smart_vs_rules"] = summary(match(None, "smart", "rules", jobs, a.workers))
+        out["control_smart_vs_rules"] = summary(match(None, "smart", "rules", jobs, a.workers, tuple(a.smart)))
     out["seconds"] = round(time.time() - t)
     (ROOT / "results" / f"{a.name}.json").write_text(json.dumps(out, indent=2) + "\n")
     print(json.dumps(out, indent=2))
