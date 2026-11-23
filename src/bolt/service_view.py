@@ -7,6 +7,7 @@ stable object ids and readable move labels. No game logic here.
 import bolt_engine as be
 
 _NAMES = be.card_names()
+COLORS = ("White", "Blue", "Black", "Red", "Green")  # the engine's Mode index for ChooseColor (WUBRG)
 
 
 def name(card_index: int) -> str:
@@ -49,7 +50,18 @@ def _label(kind: str, cards: list, nums: tuple, me: int, values: tuple) -> str:
     }.get(kind, kind)  # fmt: skip
 
 
+def _decision_label(dec: dict, i: int) -> str | None:
+    """A Mode choice inside a resolving decision that has its own meaning, or None."""
+    source = f"{name(dec['card_def'])}: " if dec.get("card_def") is not None else ""
+    if dec.get("kind") == "ChooseColor" and 0 <= i < 5:
+        return f"{source}choose {COLORS[i]}"
+    if dec.get("kind") == "ChooseCreatureType" and 0 <= i < len(dec.get("options", [])):
+        return f"{source}choose {dec['options'][i]}"
+    return None
+
+
 def actions(obs: dict, me: int) -> list[dict]:
+    dec = obs.get("decision") or {}
     out = []
     for k, ((kind, a, b, c), cards) in enumerate(zip(obs["legal_actions"], obs["legal_cards"], strict=True)):
         values = (a, b, c)
@@ -58,8 +70,10 @@ def actions(obs: dict, me: int) -> list[dict]:
         nums = tuple(values[s] for s in range(3) if cards[s] < 0 and values[s] >= 0)
         if kind in ("Mode", "Amount", "TargetPlayer"):
             nums = ()
-        act = {"index": k, "kind": kind, "label": _label(kind, names, nums, me, values), "objects": objects,
-               "cards": names}  # fmt: skip
+        label = _label(kind, names, nums, me, values)
+        if kind == "Mode" and dec:
+            label = _decision_label(dec, a) or label
+        act = {"index": k, "kind": kind, "label": label, "objects": objects, "cards": names}
         if kind == "TargetPlayer":
             act["player"] = a
         elif kind in ("Mode", "Amount"):
@@ -69,6 +83,17 @@ def actions(obs: dict, me: int) -> list[dict]:
         elif nums:
             act["number"] = nums[0]
         out.append(act)
+    return out
+
+
+def _pending(kind: str, who: int, dec: dict | None) -> dict:
+    out = {"kind": kind, "player": who}
+    if dec:  # what a "Decide" is about: "ChooseColor", "ChooseCreatureType", "ChooseMode", "May", ...
+        out["choice"] = dec.get("kind")
+        if dec.get("card_def") is not None:
+            out["card"] = {"id": dec.get("card"), "name": name(dec["card_def"])}
+        if dec.get("options"):
+            out["options"] = list(dec["options"])
     return out
 
 
@@ -102,7 +127,7 @@ def state(game, seat: int, version: int, game_id: str) -> dict:
     return {
         "game_id": game_id, "version": version, "seat": seat, "turn": obs["turn"], "step": obs["step"],
         "active": obs["active"], "to_act": None if over else game.to_act(),
-        "pending": {"kind": kind, "player": who}, "over": over, "result": result,
+        "pending": _pending(kind, who, obs.get("decision")), "over": over, "result": result,
         "view": {
             "players": players, "battlefield": battlefield,
             "stack": [{"id": i, "name": name(c), "controller": ctl} for i, c, ctl in obs["stack"]],

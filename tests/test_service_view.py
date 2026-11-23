@@ -51,3 +51,18 @@ def test_names_come_from_the_engine():
     for _g, _who, s in states(80):
         for o in s["view"]["battlefield"]:
             assert o["name"] in names
+
+
+def test_color_and_creature_type_choices_read_as_what_they_are():
+    from bolt.service_view import actions, name
+
+    banner = be.index_of("Heraldic Banner")
+    base = {"legal_cards": [(-1, -1, -1)] * 5, "decision": {"kind": "ChooseColor", "card": 9, "card_def": banner}}
+    obs = {**base, "legal_actions": [("Mode", m, -1, -1) for m in range(5)]}
+    labels = [a["label"] for a in actions(obs, 0)]
+    assert labels == [f"{name(banner)}: choose {c}" for c in ("White", "Blue", "Black", "Red", "Green")]
+    obs = {"legal_actions": [("Mode", 0, -1, -1), ("Mode", 1, -1, -1)], "legal_cards": [(-1, -1, -1)] * 2,
+           "decision": {"kind": "ChooseCreatureType", "card": 9, "card_def": banner, "options": ["Elf", "Goblin"]}}  # fmt: skip
+    assert [a["label"] for a in actions(obs, 0)] == [f"{name(banner)}: choose Elf", f"{name(banner)}: choose Goblin"]
+    obs = {"legal_actions": [("Mode", 0, -1, -1)], "legal_cards": [(-1, -1, -1)], "decision": {"kind": "ChooseMode"}}
+    assert actions(obs, 0)[0]["label"] == "Choose mode 1", "other Mode choices keep the plain label"

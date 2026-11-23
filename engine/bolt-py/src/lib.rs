@@ -378,6 +378,31 @@ impl Game {
         d.set_item("active", g.active)?;
         let (kind, who) = pending(&g.pending);
         d.set_item("pending", (kind, who))?;
+        // What a "Decide" is about: its kind (ChooseColor, ChooseCreatureType, ChooseMode, May, ...),
+        // the card asking where there is one, and named options (creature types), so a UI can say
+        // "choose Red" instead of "mode 4". Mode(i) for ChooseColor is a WUBRG index.
+        match (&g.pending, &g.decision) {
+            (Pending::Decide(_), Some(dec)) => {
+                let e = PyDict::new(py);
+                let dbg = format!("{dec:?}");
+                let name = dbg.split([' ', '{', '(']).next().unwrap_or("").to_string();
+                e.set_item("kind", name)?;
+                match dec {
+                    bolt_core::Decision::ChooseColor { card } | bolt_core::Decision::Tuck { card } => {
+                        e.set_item("card", id(*card))?;
+                        e.set_item("card_def", g.obj(*card).def as i64)?;
+                    }
+                    bolt_core::Decision::ChooseCreatureType { card, options } => {
+                        e.set_item("card", id(*card))?;
+                        e.set_item("card_def", g.obj(*card).def as i64)?;
+                        e.set_item("options", options.clone())?;
+                    }
+                    _ => {}
+                }
+                d.set_item("decision", e)?;
+            }
+            _ => d.set_item("decision", py.None())?,
+        }
         d.set_item("result", self.result())?;
         let players = PyList::empty(py);
         for (p, pl) in g.players.iter().enumerate() {

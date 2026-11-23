@@ -196,6 +196,11 @@ to the human's first decision.
 
 - `version` increases with every action; send it back with `act`.
 - `to_act` is the seat that must decide; it is the human's seat unless `over`.
+- When `pending.kind` is `Decide`, `pending.choice` says what it's about (`ChooseColor`,
+  `ChooseCreatureType`, `ChooseMode`, `May`, `Search`, `Surveil`, ...), with `pending.card`
+  (`{"id", "name"}`) when a card is asking and `pending.options` for named choices. `Mode` moves of a
+  `ChooseColor` are labelled "Heraldic Banner: choose Red": `number` 0–4 is White, Blue, Black, Red,
+  Green. (Needs the engine build after 2026-11-23; older builds omit `choice` and label "Choose mode N".)
 - `pending.kind`: `Mulligan`, `Bottom`, `Priority`, `DeclareAttackers`, `DeclareBlockers`, `Discard`,
   `ChooseTarget`, `Decide`, `Divide`, `RemoveCounters`, `FreeCast`, `GameOver`.
 - `step`: `PreGame`, `Untap`, `Upkeep`, `Draw`, `Main1`, `BeginCombat`, `DeclareAttackers`,
