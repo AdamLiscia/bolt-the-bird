@@ -42,6 +42,10 @@ kill_tree() {
   kill -KILL $pids 2>/dev/null
 }
 
+# Stopping the guard (kill, Ctrl-C) stops everything it started: otherwise the command lives on
+# without its limits (2026-11-23: a stopped guard left the Bolt service holding its port).
+trap 'kill_tree; exit 143' TERM INT HUP
+
 start=$(date +%s)
 while kill -0 "$root" 2>/dev/null; do
   pids=$(tree | paste -sd, -)
