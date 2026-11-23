@@ -1,7 +1,7 @@
 # Bolt service API (v1)
 
 The contract between the Bolt service (this repo) and Nerd Leagues. This file is the source of truth;
-change it here first. Status: **built and tested** (`src/bolt/service.py`, `tests/test_service.py`), run locally only (2026-11-22). The engine event log (below) is partial: decisions only, for now.
+change it here first. Status: **built and tested** (`src/bolt/service.py`, `tests/test_service.py`), run locally only (2026-11-22).
 
 Scope: Foundations (FDN) only. Draft against Bolt, get a bot-drafted deck, and play a game against
 Bolt. Admin-only on the Nerd Leagues side (NL owns sign-in, gating, the UI and card images). Bolt never
@@ -23,7 +23,7 @@ touches the NL database; NL never imports Bolt code. Star Trek (1v1 Commander) c
 |---|---|---|
 | 401 | missing or wrong `X-Bolt-Key` | `{"error": "unauthorized"}` |
 | 404 | unknown or expired `game_id` | `{"error": "no such game"}` |
-| 409 | `version` mismatch (stale or repeated action), or not that seat's turn | `{"error": "...", "state": <current state>}` |
+| 409 | `version` mismatch (stale or repeated action), or not that seat's turn | `{"error": "...", "state": <current state>}`: the state is nested under `"state"` |
 | 422 | unknown card names, bad deck, invalid action index, unsupported set | `{"error": "...", "unknown_names": [...]}` (names when relevant) |
 | 429 | too many live games | `{"error": "too many games", "limit": N}` |
 
@@ -224,18 +224,34 @@ the current state; an index outside `legal_actions` → 422.
 
 ```json
 {"events": [
-  {"n": 0, "turn": 1, "kind": "TurnBegan", "player": 0},
-  {"n": 1, "turn": 1, "kind": "Moved", "id": 12, "name": "Savannah Lions", "from": "Hand", "to": "Battlefield"},
-  {"n": 2, "turn": 2, "kind": "Damage", "source": 51, "target": {"player": 0}, "amount": 1},
-  {"n": 3, "turn": 2, "kind": "LifeLost", "player": 0, "amount": 1}
-], "next": 4}
+  {"n": 0, "turn": 1, "kind": "Action", "seat": 0, "move": "Keep", "label": "Keep hand"},
+  {"n": 1, "turn": 1, "kind": "TurnBegan", "player": 0},
+  {"n": 2, "turn": 1, "kind": "Action", "seat": 0, "move": "PlayLand", "label": "Play Plains"},
+  {"n": 3, "turn": 1, "kind": "Moved", "id": 12, "name": "Plains", "owner": 0, "from": "Hand", "to": "Battlefield"},
+  {"n": 4, "turn": 2, "kind": "Drew", "player": 1},
+  {"n": 5, "turn": 2, "kind": "Cast", "id": 51, "name": "Shock"},
+  {"n": 6, "turn": 2, "kind": "Damage", "id": 51, "name": "Shock", "target_player": 0, "amount": 2},
+  {"n": 7, "turn": 2, "kind": "LifeLost", "player": 0, "amount": 2}
+], "next": 8}
 ```
 
-**Today the log has only `Action` entries** (every decision, both seats: `{n, turn, kind: "Action", seat, move, label}`; the bot's hidden choices are masked, e.g. "Puts a card on the bottom"). The engine's own events below are being added.
-Ordered and append-only; `since` returns only newer events. Kinds come from the engine: `TurnBegan`,
-`Drew`, `Moved`, `Cast`, `Resolved`, `Fizzled`, `Triggered`, `Damage`, `LifeGained`, `LifeLost`, `Lost`,
-`GameOver`, plus `Action` entries for each decision (seat, kind, label), so the log alone can replay a
-game. A `Drew` event in the opponent's view carries no card name.
+Ordered and append-only from the human seat's point of view; `since` returns only newer events, and
+`next` is the index to ask for next time. Each `Action` (one decision, either seat) is followed by the
+engine events it caused:
+
+| `kind` | Fields |
+|---|---|
+| `Action` | `seat`, `move` (a legal-action kind), `label` (the bot's hidden choices read "Puts a card on the bottom" / "Chooses a card") |
+| `TurnBegan` | `player` (whose turn) |
+| `Drew` | `player`; `id`, `name` only when the human drew it |
+| `Moved` | `owner`, `from`, `to` (zones: `Library`, `Hand`, `Battlefield`, `Graveyard`, `Stack`, `Exile`, `Gone` for tokens that left); `id`, `name` unless the move is hidden from the human (the bot's library and hand) |
+| `Cast`, `Resolved`, `Triggered`, `Fizzled` | `id`, `name` (the spell or the source) |
+| `Damage` | `id`, `name` (source), `amount`, and `target_player` or `target`/`target_name` |
+| `LifeGained`, `LifeLost` | `player`, `amount` |
+| `Lost` | `player` (lost the game) |
+
+The opening hands aren't logged (only the mulligan decisions), and a runaway game's engine events stop
+being recorded after 200,000.
 
 ### `DELETE /v1/game/{game_id}`
 

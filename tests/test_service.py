@@ -147,7 +147,17 @@ def test_a_whole_game_against_the_bot(client):
     assert s["over"] and s["result"]["outcome"] in ("win", "draw", "timeout")
     assert "Priority" in seen and len(seen) >= 3
     log = client.get(f"/v1/game/{gid}/log", headers=KEY).json()
-    assert log["events"] and all(e["n"] == i for i, e in enumerate(log["events"]))
+    ev = log["events"]
+    assert ev and all(e["n"] == i for i, e in enumerate(ev))
+    kinds = {e["kind"] for e in ev}
+    assert {"Action", "TurnBegan", "Drew", "Moved", "Cast"} <= kinds and kinds & {"Damage", "LifeLost"}
+    for e in ev:
+        if e["kind"] == "Drew":
+            assert ("name" in e) == (e["player"] == 0), "the bot's draws are hidden from the human"
+        if e["kind"] == "Moved" and e.get("owner") == 1 and {e["from"], e["to"]} <= {"Library", "Hand"}:
+            assert "name" not in e, "the bot's hidden card moves are masked"
+    later = client.get(f"/v1/game/{gid}/log?since=5", headers=KEY).json()
+    assert later["events"] == ev[5:] and later["next"] == len(ev)
     assert client.get(f"/v1/game/{gid}?seat=0", headers=KEY).json()["over"]
     assert client.delete(f"/v1/game/{gid}", headers=KEY).status_code == 200
     assert client.get(f"/v1/game/{gid}?seat=0", headers=KEY).status_code == 404

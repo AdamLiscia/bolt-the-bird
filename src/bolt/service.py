@@ -56,7 +56,6 @@ def load_kit() -> Kit:
     from bolt.models import DraftTransformer
     from bolt.play_net import PlayNet
 
-    torch.set_grad_enabled(False)
     info = CardInfo()
     ck = ROOT / "checkpoints"
 
@@ -146,6 +145,7 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
     lock = threading.Lock()  # models and games are used one request at a time
     games: dict[str, dict] = {}
     names = kit.info.names
+    names_all = be.card_names()  # the engine's objects, tokens included
 
     @app.exception_handler(ApiError)
     async def api_error(_request: Request, e: ApiError):
@@ -203,7 +203,8 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
         counts = np.zeros((1, kit.info.n))
         for c in pool:
             counts[0, c] += 1
-        decks, scores, labels = build_decks(counts, kit.judge, kit.info, torch.device("cpu"))
+        with torch.no_grad():
+            decks, scores, labels = build_decks(counts, kit.judge, kit.info, torch.device("cpu"))
         deck = np.asarray(decks[0]).astype(int)
         basics = {kit.info.basic_id[col]: col for col in BASIC_NAMES}
         main = [{"name": names[c], "qty": int(n)} for c, n in enumerate(deck) if n and c not in basics]
@@ -312,6 +313,31 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
         with torch.no_grad():
             return int(kit.net(collate([encode(g.observation(who), who)]))[0][0].argmax())
 
+    public = {"Battlefield", "Graveyard", "Stack", "Exile", "Gone"}
+
+    def engine_events(rec, turn: int):
+        """The engine's events since the last call, named, from the human seat's point of view."""
+        g, me = rec["game"], rec["human"]
+        for e in g.events(rec["engine_n"]):
+            rec["engine_n"] += 1
+            kind = e["kind"]
+            if kind == "TurnBegan":
+                rec["turn"] = e["turn"]
+            out = {"n": len(rec["events"]), "turn": rec.get("turn", turn), "kind": kind}
+            for k in ("player", "amount", "from", "to", "owner", "target_player"):
+                if k in e:
+                    out[k] = e[k]
+            visible = True
+            if kind == "Drew":
+                visible = e["player"] == me
+            elif kind == "Moved":
+                visible = e["owner"] == me or bool({e["from"], e["to"]} & public)
+            if "id" in e and visible:
+                out["id"], out["name"] = e["id"], names_all[e["card"]]
+            if "target" in e:
+                out["target"], out["target_name"] = e["target"], names_all[e["target_card"]]
+            rec["events"].append(out)
+
     def apply(rec, i: int):
         g = rec["game"]
         who = g.to_act()
@@ -325,6 +351,7 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
         rec["version"] += 1
         rec["events"].append({"n": len(rec["events"]), "turn": obs["turn"], "kind": "Action", "seat": who,
                               "move": a["kind"], "label": label})  # fmt: skip
+        engine_events(rec, obs["turn"])
 
     def advance(rec):
         """Bot moves and forced moves until the human must decide, or the game ends."""
@@ -372,7 +399,7 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
                 raise ApiError(429, "too many games", limit=max_games)
             gid = "g_" + secrets.token_hex(6)
             rec = {"game": be.Game(a, b, seed=seed, first=first), "human": body.human_seat, "pilot": body.pilot,
-                   "seed": seed, "version": 0, "moves": 0, "events": [], "used": time.time()}  # fmt: skip
+                   "seed": seed, "version": 0, "moves": 0, "events": [], "engine_n": 0, "used": time.time()}  # fmt: skip
             games[gid] = rec
             advance(rec)
             return {"game_id": gid, "state": view(rec, gid)}
@@ -424,6 +451,7 @@ def main():
     if not key:
         raise SystemExit("set BOLT_KEY (the shared secret Nerd Leagues sends as X-Bolt-Key)")
     torch.set_num_threads(int(os.environ.get("BOLT_THREADS", "2")))
+    torch.set_grad_enabled(False)  # the service only runs models forward (process-wide, so not in load_kit)
     uvicorn.run(create_app(load_kit(), key=key), host="127.0.0.1", port=int(os.environ.get("BOLT_PORT", "8766")))
 
 

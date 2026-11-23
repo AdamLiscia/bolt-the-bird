@@ -125,7 +125,12 @@ pub fn pending(p: &Pending) -> (&'static str, i64) {
 pub struct Game {
     g: Core,
     legal: Vec<Action>,
+    /// Every event so far, collected from each move's `apply` (the core hands them back and forgets
+    /// them). Capped so a runaway game can't grow it without bound.
+    log: Vec<bolt_core::Event>,
 }
+
+const MAX_LOG: usize = 200_000;
 
 impl Game {
     fn refresh(&mut self) {
@@ -158,6 +163,7 @@ impl Game {
         let mut g = Game {
             g: Core::new(defs, [&deck_a, &deck_b], seed, first),
             legal: Vec::new(),
+            log: Vec::new(),
         };
         g.refresh();
         Ok(g)
@@ -174,9 +180,13 @@ impl Game {
             .legal
             .get(i)
             .ok_or_else(|| PyIndexError::new_err(format!("{i} is not a legal action index")))?;
-        self.g
+        let ev = self
+            .g
             .apply(a)
             .map_err(|e| PyValueError::new_err(e.to_string()))?;
+        if self.log.len() < MAX_LOG {
+            self.log.extend(ev);
+        }
         self.refresh();
         Ok(self.g.is_over())
     }
@@ -266,6 +276,96 @@ impl Game {
     }
 
     /// What `player` can see: everything public, plus their own hand.
+    /// The game's events from index `since` on, as dicts: `kind` plus its fields. Objects are
+    /// given as `id` (stable within the game) and `card` (the card number); zones by name.
+    #[pyo3(signature = (since = 0))]
+    fn events<'py>(&self, py: Python<'py>, since: usize) -> PyResult<Vec<Bound<'py, PyDict>>> {
+        use bolt_core::Event::*;
+        let g = &self.g;
+        let zone = |z: &bolt_core::Zone| format!("{z:?}");
+        let mut out = Vec::new();
+        for e in self.log.iter().skip(since) {
+            let d = PyDict::new(py);
+            let obj = |d: &Bound<'py, PyDict>, key: &str, oid: bolt_core::ObjId| -> PyResult<()> {
+                d.set_item(key, id(oid))?;
+                let o = g.obj(oid);
+                let card_key = if key == "id" {
+                    "card".to_string()
+                } else {
+                    format!("{key}_card")
+                };
+                d.set_item(card_key, o.def as i64)?;
+                if key == "id" {
+                    d.set_item("owner", o.owner as i64)?;
+                }
+                Ok(())
+            };
+            match e {
+                TurnBegan { turn, active } => {
+                    d.set_item("kind", "TurnBegan")?;
+                    d.set_item("turn", *turn)?;
+                    d.set_item("player", *active as i64)?;
+                }
+                Drew { player, card } => {
+                    d.set_item("kind", "Drew")?;
+                    d.set_item("player", *player as i64)?;
+                    obj(&d, "id", *card)?;
+                }
+                Moved { card, from, to } => {
+                    d.set_item("kind", "Moved")?;
+                    obj(&d, "id", *card)?;
+                    d.set_item("from", zone(from))?;
+                    d.set_item("to", zone(to))?;
+                }
+                Cast { card } => {
+                    d.set_item("kind", "Cast")?;
+                    obj(&d, "id", *card)?;
+                }
+                Resolved { card } => {
+                    d.set_item("kind", "Resolved")?;
+                    obj(&d, "id", *card)?;
+                }
+                Fizzled { source } => {
+                    d.set_item("kind", "Fizzled")?;
+                    obj(&d, "id", *source)?;
+                }
+                Triggered { source } => {
+                    d.set_item("kind", "Triggered")?;
+                    obj(&d, "id", *source)?;
+                }
+                Damage {
+                    source,
+                    target,
+                    amount,
+                } => {
+                    d.set_item("kind", "Damage")?;
+                    obj(&d, "id", *source)?;
+                    match target {
+                        bolt_core::Target::Player(p) => d.set_item("target_player", *p as i64)?,
+                        bolt_core::Target::Object(t) => obj(&d, "target", *t)?,
+                    }
+                    d.set_item("amount", *amount)?;
+                }
+                LifeGained { player, amount } => {
+                    d.set_item("kind", "LifeGained")?;
+                    d.set_item("player", *player as i64)?;
+                    d.set_item("amount", *amount)?;
+                }
+                LifeLost { player, amount } => {
+                    d.set_item("kind", "LifeLost")?;
+                    d.set_item("player", *player as i64)?;
+                    d.set_item("amount", *amount)?;
+                }
+                Lost { player } => {
+                    d.set_item("kind", "Lost")?;
+                    d.set_item("player", *player as i64)?;
+                }
+            }
+            out.push(d);
+        }
+        Ok(out)
+    }
+
     fn observation<'py>(&self, py: Python<'py>, player: usize) -> PyResult<Bound<'py, PyDict>> {
         if player > 1 {
             return Err(PyValueError::new_err("player must be 0 or 1"));

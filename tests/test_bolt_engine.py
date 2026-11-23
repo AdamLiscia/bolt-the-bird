@@ -163,3 +163,22 @@ def test_smart_choice_move_by_move_matches_the_engines_own_smart_games():
             g.step(g.smart(1, 2, seed * 1_000_003 + n))
             n += 1
         assert (g.result(), g.turn) == expect
+
+
+def test_the_event_list_follows_the_game():
+    rng = random.Random(31)
+    g = be.Game(deck(rng), deck(rng), seed=31)
+    for _ in range(400):
+        if g.is_over():
+            break
+        g.step(g.baseline())
+    ev = g.events(0)
+    kinds = {e["kind"] for e in ev}
+    assert {"TurnBegan", "Drew", "Moved", "Cast"} <= kinds
+    assert g.events(len(ev)) == [] and g.events(len(ev) - 3) == ev[-3:]
+    for e in ev:
+        if e["kind"] in ("Drew", "Moved", "Cast", "Resolved"):
+            assert 0 <= e["card"] < len(be.card_names()) and e["id"] >= 0
+    lost = [sum(e["amount"] for e in ev if e["kind"] == k and e["player"] == p) for k in ("LifeLost", "LifeGained") for p in (0, 1)]
+    lives = [g.observation(0)["players"][p]["life"] for p in (0, 1)]
+    assert lives == [20 - lost[0] + lost[2], 20 - lost[1] + lost[3]], "life totals add up from the events"
