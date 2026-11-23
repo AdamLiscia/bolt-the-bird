@@ -29,8 +29,10 @@ def test_every_call_needs_the_key(client):
     assert h["ok"] and h["sets"] == ["FDN"]
 
 
-def test_the_card_list_is_the_286_fdn_cards(names):
+def test_the_card_list_is_the_286_fdn_cards(client, names):
     assert len(names) == 286 and "Savannah Lions" in names and "Plains" in names
+    cards = client.get("/v1/cards?set=FDN", headers=KEY).json()["cards"]
+    assert all(c["image"].startswith("https://cards.scryfall.io/normal/") for c in cards), "a Scryfall image for each"
 
 
 def test_batched_picks_return_a_name_from_each_seats_own_pack(client, names):

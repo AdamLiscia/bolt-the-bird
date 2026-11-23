@@ -39,7 +39,8 @@ touches the NL database; NL never imports Bolt code. Star Trek (1v1 Commander) c
 
 Exact English card names as Scryfall spells them (front face for double-faced cards), e.g.
 `"Savannah Lions"`, `"Llanowar Elves"`. The FDN vocabulary is the 286 cards in
-`GET /v1/cards?set=FDN` (returns `{"cards": [{"name", "rarity", "colors", "types"}]}`),
+`GET /v1/cards?set=FDN` (returns `{"cards": [{"name", "rarity", "colors", "types", "image"}]}`; `image` is
+Scryfall's "normal" image URL for hotlinking, or `null` if a card has none),
 which includes the basic lands. Any name outside it → 422 with `unknown_names`; nothing is dropped
 silently. Inside a game, objects carry both an object `id` and the card `name` (see below).
 

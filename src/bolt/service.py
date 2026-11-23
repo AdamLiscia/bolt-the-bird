@@ -46,6 +46,7 @@ class Kit:
     packs: Any  # (n, 15) real FDN opening packs, ids + 1
     net: Any  # PlayNet, the trained player
     models: dict = field(default_factory=dict)
+    images: dict = field(default_factory=dict)  # card name -> Scryfall "normal" image URL (hotlinked by NL)
 
 
 def load_kit() -> Kit:
@@ -64,13 +65,16 @@ def load_kit() -> Kit:
         m.load_state_dict(torch.load(ck / f, map_location="cpu"))
         return m.eval()
 
+    import json
+
+    images = json.loads((ROOT / "practice" / "fdn_images.json").read_text())
     c = torch.load(ck / "play" / "play_v2_ppo3_i850.pt", map_location="cpu", weights_only=False)
     net = PlayNet(**c["config"])
     net.load_state_dict(c["model"])
     return Kit(info=info, bolt=load(DraftTransformer, "bot_ppo.pt"), human=load(DraftTransformer, "human_model.pt"),
                judge=load(DeckJudge, "judge_b.pt"), packs=np.load(ASSETS / "FDN_sample_packs.npy"), net=net.eval(),
                models={"drafter": "bot_ppo.pt", "human_drafter": "human_model.pt",
-                       "player": "play_v2_ppo3_i850.pt"})  # fmt: skip
+                       "player": "play_v2_ppo3_i850.pt"}, images=images)  # fmt: skip
 
 
 # ---- request bodies -------------------------------------------------------------------------------
@@ -218,8 +222,8 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
     @router.get("/cards")
     def cards(set: str = "FDN"):  # noqa: A002 (the API's parameter name)
         check_set(set)
-        return {"cards": [{"name": c["name"], "rarity": c["rarity"], "colors": c["color"], "types": c["types"]}
-                          for c in kit.info.info]}  # fmt: skip
+        return {"cards": [{"name": c["name"], "rarity": c["rarity"], "colors": c["color"], "types": c["types"],
+                           "image": kit.images.get(c["name"]) or None} for c in kit.info.info]}  # fmt: skip
 
     @router.post("/draft/picks")
     def draft_picks(body: PicksBody):
