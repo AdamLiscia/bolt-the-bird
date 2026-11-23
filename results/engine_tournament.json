@@ -148,6 +148,77 @@
         "ppo345": 0.5733886718750001,
         "ppo_scratch125": 0.58375244140625
       }
+    },
+    "network": {
+      "pairs": {
+        "human_model vs judge": {
+          "win_rate": 0.437744140625,
+          "se": 0.007195143768597779,
+          "games": 10240,
+          "tables": 512
+        },
+        "human_model vs reinforce250": {
+          "win_rate": 0.3861328125,
+          "se": 0.006724905476738979,
+          "games": 10240,
+          "tables": 512
+        },
+        "human_model vs ppo345": {
+          "win_rate": 0.37763671875000004,
+          "se": 0.006991857542212411,
+          "games": 10240,
+          "tables": 512
+        },
+        "human_model vs ppo_scratch125": {
+          "win_rate": 0.362060546875,
+          "se": 0.007074829984596047,
+          "games": 10240,
+          "tables": 512
+        },
+        "judge vs reinforce250": {
+          "win_rate": 0.44648437500000004,
+          "se": 0.006561866911368922,
+          "games": 10240,
+          "tables": 512
+        },
+        "judge vs ppo345": {
+          "win_rate": 0.42626953125,
+          "se": 0.006319174323375603,
+          "games": 10240,
+          "tables": 512
+        },
+        "judge vs ppo_scratch125": {
+          "win_rate": 0.423876953125,
+          "se": 0.0064497437560899875,
+          "games": 10240,
+          "tables": 512
+        },
+        "reinforce250 vs ppo345": {
+          "win_rate": 0.468505859375,
+          "se": 0.005908495919404909,
+          "games": 10240,
+          "tables": 512
+        },
+        "reinforce250 vs ppo_scratch125": {
+          "win_rate": 0.48486328125,
+          "se": 0.005940258928585474,
+          "games": 10240,
+          "tables": 512
+        },
+        "ppo345 vs ppo_scratch125": {
+          "win_rate": 0.49306640625000003,
+          "se": 0.005700276787106818,
+          "games": 10240,
+          "tables": 512
+        }
+      },
+      "average_win_rate": {
+        "human_model": 0.3908935546875,
+        "judge": 0.4647216796875,
+        "reinforce250": 0.53018798828125,
+        "ppo345": 0.55516357421875,
+        "ppo_scratch125": 0.559033203125
+      }
     }
   }
 }
