@@ -19,6 +19,10 @@ pub type PlayerId = usize;
 
 /// Starting life total (CR 103.4).
 pub const STARTING_LIFE: i32 = 20;
+/// Commander (CR 903.7): each player starts at 40.
+pub const COMMANDER_LIFE: i32 = 40;
+/// Commander (CR 903.10a, 704.6c): 21 or more combat damage from one commander loses the game.
+pub const COMMANDER_DAMAGE_LOSS: i32 = 21;
 /// Opening hand size (CR 103.5).
 pub const HAND_SIZE: usize = 7;
 /// Maximum hand size, enforced in the cleanup step (CR 402.2, 514.1).
@@ -57,6 +61,8 @@ pub enum Zone {
     Exile,
     /// Tokens that left the battlefield cease to exist (CR 111.7, 704.5d).
     Gone,
+    /// Commander: where each player's commander starts and returns to (CR 408, 903.6).
+    Command,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -96,6 +102,9 @@ pub struct Object {
     pub incubation: i32,
     /// Cast from its owner's hand (for "cast spells from your hand" effects).
     pub from_hand: bool,
+    /// Commander: cast from the command zone, and the tax that cast paid (CR 903.8).
+    pub from_command: bool,
+    pub commander_tax: u8,
     /// Exiled instead if it would die during this turn, while it is this object: (zcc, turn).
     pub exile_if_dies: Option<(u32, u32)>,
     /// May be cast without paying its mana cost, during an open free-cast window (Etali).
@@ -706,6 +715,13 @@ pub struct Game {
     passes: u8,
     rng: Rng,
     events: Vec<Event>,
+    /// Commander (CR 903): the command zone, each player's commander, how many times each player
+    /// has cast theirs from the command zone (the tax), and the combat damage each player has taken
+    /// from the opponent's commander. Empty, `None` and zero in a Limited game.
+    pub command: Vec<ObjId>,
+    pub commanders: [Option<ObjId>; 2],
+    pub commander_casts: [u8; 2],
+    pub commander_damage: [i32; 2],
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -731,6 +747,41 @@ impl Game {
         g.events.clear();
         g.pending = Pending::Mulligan(first);
         g
+    }
+
+    /// A 1v1 Commander game (CR 903): 40 life, each player's commander in the command zone and
+    /// the rest of the deck (99 cards) shuffled as the library. Deck legality (singleton, color
+    /// identity, 100 cards) is the caller's job.
+    pub fn new_commander(
+        defs: Arc<Vec<CardDef>>,
+        decks: [&[usize]; 2],
+        commanders: [usize; 2],
+        seed: u64,
+        first: PlayerId,
+    ) -> Game {
+        let mut g = Game::empty(defs, seed, first);
+        for (p, deck) in decks.iter().enumerate() {
+            g.players[p].life = COMMANDER_LIFE;
+            let c = g.add_card(p, commanders[p], Zone::Command);
+            g.commanders[p] = Some(c);
+            for &d in deck.iter() {
+                g.add_card(p, d, Zone::Library);
+            }
+            let mut lib = std::mem::take(&mut g.players[p].library);
+            g.rng.shuffle(&mut lib);
+            g.players[p].library = lib;
+            for _ in 0..HAND_SIZE {
+                g.draw(p);
+            }
+        }
+        g.events.clear();
+        g.pending = Pending::Mulligan(first);
+        g
+    }
+
+    /// Moves a card to another zone as an effect would (replacements apply; for tests and tools).
+    pub fn move_card(&mut self, id: ObjId, to: Zone) {
+        self.move_to(id, to);
     }
 
     /// A game with no cards, for building test positions with [`Game::add_card`] and
@@ -787,6 +838,10 @@ impl Game {
             passes: 0,
             rng: Rng::new(seed),
             events: Vec::new(),
+            command: Vec::new(),
+            commanders: [None, None],
+            commander_casts: [0, 0],
+            commander_damage: [0, 0],
         }
     }
 
@@ -821,6 +876,8 @@ impl Game {
             counter_trigger_turn: 0,
             incubation: 0,
             from_hand: false,
+            from_command: false,
+            commander_tax: 0,
             exile_if_dies: None,
             cast_free: false,
             extra_subtypes: Vec::new(),
@@ -1304,6 +1361,7 @@ impl Game {
             Zone::Stack => &mut self.stack,
             Zone::Exile => &mut self.exile,
             Zone::Gone => &mut self.gone,
+            Zone::Command => &mut self.command,
         }
     }
 
@@ -1324,6 +1382,13 @@ impl Game {
         // Replacement effects on going to a graveyard (CR 614.6).
         let mut to = to;
         let mut shuffle = false;
+        // CR 903.9: a commander that would go to a graveyard, exile, a hand or a library goes to the
+        // command zone instead. (The owner may choose; always choosing it is what players do.)
+        if self.commanders.contains(&Some(id))
+            && matches!(to, Zone::Graveyard | Zone::Exile | Zone::Hand | Zone::Library)
+        {
+            to = Zone::Command;
+        }
         if to == Zone::Graveyard {
             let o = self.obj(id);
             if self.def_of(id).shuffle_instead_of_graveyard {
@@ -2028,7 +2093,13 @@ impl Game {
             .iter()
             .copied()
             .filter(move |&c| muldrotha && !self.graveyard_types_used[p][3] && self.def_of(c).types.land);
+        let command = self
+            .command
+            .iter()
+            .copied()
+            .filter(move |&c| self.obj(c).owner == p);
         let candidates: Vec<(ObjId, bool)> = hand
+            .chain(command.map(|c| (c, false)))
             .chain(flashback.map(|&c| (c, true)))
             .chain(from_exile.map(|c| (c, false)))
             .chain(from_graveyard.map(|c| (c, false)))
@@ -2239,6 +2310,15 @@ impl Game {
         if mode.kicked {
             cost = add_costs(&cost, &def.kicker.expect("has kicker"));
         }
+        // CR 903.8: commander tax.
+        let tax = if o.zone == Zone::Command {
+            self.commander_casts[o.owner].saturating_mul(2)
+        } else if o.zone == Zone::Stack && o.from_command {
+            o.commander_tax
+        } else {
+            0
+        };
+        cost.generic = cost.generic.saturating_add(tax);
         if let (Some(ExtraCost::SacrificeCreatureOrPay(m)), None) = (&def.extra_cost, mode.extra) {
             cost = add_costs(&cost, m);
         }
@@ -3080,6 +3160,14 @@ impl Game {
     /// (CR 117.3c).
     fn cast(&mut self, p: PlayerId, card: ObjId, mode: CastMode) {
         self.obj_mut(card).from_hand = self.obj(card).zone == Zone::Hand;
+        let from_command = self.obj(card).zone == Zone::Command;
+        self.obj_mut(card).from_command = from_command;
+        if from_command {
+            // CR 903.8: {2} more for each earlier cast from the command zone.
+            let owner = self.obj(card).owner;
+            self.obj_mut(card).commander_tax = self.commander_casts[owner].saturating_mul(2);
+            self.commander_casts[owner] = self.commander_casts[owner].saturating_add(1);
+        }
         self.move_to(card, Zone::Stack);
         self.obj_mut(card).controller = p;
         self.obj_mut(card).kicked = mode.kicked;
@@ -5703,7 +5791,17 @@ impl Game {
         let events_before = self.events.len();
         self.in_combat_damage = true;
         for (source, target, amount) in assigned {
+            let before = match target {
+                Target::Player(d) => self.players[d].life,
+                Target::Object(_) => 0,
+            };
             self.deal_damage(source, target, amount);
+            if let Target::Player(d) = target {
+                // CR 903.10a: combat damage from the opponent's commander.
+                if self.commanders.contains(&Some(source)) && self.obj(source).owner != d {
+                    self.commander_damage[d] += (before - self.players[d].life).max(0);
+                }
+            }
             if matches!(target, Target::Player(_)) && combat.attackers.contains(&source) {
                 hit_player.push((source, amount));
             }
@@ -5948,7 +6046,8 @@ impl Game {
                 let pl = &self.players[p];
                 // "You can't lose the game" (Herald of Eternal Dawn).
                 let protected = self.permanents(p).any(|c| self.def_of(c).cant_lose);
-                if !pl.lost && !protected && (pl.life <= 0 || pl.drew_from_empty) {
+                let commander_dead = self.commander_damage[p] >= COMMANDER_DAMAGE_LOSS; // CR 704.6c
+                if !pl.lost && !protected && (pl.life <= 0 || pl.drew_from_empty || commander_dead) {
                     self.players[p].lost = true; // CR 704.5a, 704.5b
                     self.events.push(Event::Lost { player: p });
                     lost = true;

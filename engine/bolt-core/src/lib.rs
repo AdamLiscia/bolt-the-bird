@@ -20,7 +20,7 @@ pub use effect::{
 pub use effect::{EmblemKind, LookRest, LookTo, Pick, StaticCondition};
 pub use game::{
     Action, Chosen, Decision, Event, Game, Modifier, ObjId, Outcome, Pending, PlayerId, Resolving,
-    RulesError, StackItem, StackKind, Step, Target, Zone,
+    RulesError, StackItem, StackKind, Step, Target, Zone, COMMANDER_DAMAGE_LOSS, COMMANDER_LIFE,
 };
 pub use mana::{ManaCost, ManaSource};
 
