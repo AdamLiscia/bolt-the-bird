@@ -47,6 +47,7 @@ class Kit:
     net: Any  # PlayNet, the trained player
     models: dict = field(default_factory=dict)
     images: dict = field(default_factory=dict)  # card name -> Scryfall "normal" image URL (hotlinked by NL)
+    tokens: list = field(default_factory=list)  # assets/FDN_token_images.json: the engine's tokens
 
 
 def load_kit() -> Kit:
@@ -67,13 +68,14 @@ def load_kit() -> Kit:
     import json
 
     images = json.loads((ROOT / "practice" / "fdn_images.json").read_text())
+    tokens = json.loads((ASSETS / "FDN_token_images.json").read_text())
     c = torch.load(ck / "play" / "play_v2_ppo3_i850.pt", map_location="cpu", weights_only=False)
     net = PlayNet(**c["config"])
     net.load_state_dict(c["model"])
     return Kit(info=info, bolt=load(DraftTransformer, "bot_ppo.pt"), human=load(DraftTransformer, "human_model.pt"),
                judge=load(DeckJudge, "judge_b.pt"), packs=np.load(ASSETS / "FDN_sample_packs.npy"), net=net.eval(),
                models={"drafter": "bot_ppo.pt", "human_drafter": "human_model.pt",
-                       "player": "play_v2_ppo3_i850.pt"}, images=images)  # fmt: skip
+                       "player": "play_v2_ppo3_i850.pt"}, images=images, tokens=tokens)  # fmt: skip
 
 
 # ---- request bodies -------------------------------------------------------------------------------
@@ -228,8 +230,12 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
     @router.get("/cards")
     def cards(set: str = "FDN"):  # noqa: A002 (the API's parameter name)
         check_set(set)
-        return {"cards": [{"name": c["name"], "rarity": c["rarity"], "colors": c["color"], "types": c["types"],
-                           "image": kit.images.get(c["name"]) or None} for c in kit.info.info]}  # fmt: skip
+        cards_ = [{"card_id": i, "name": c["name"], "rarity": c["rarity"], "colors": c["color"], "types": c["types"],
+                   "image": kit.images.get(c["name"]) or None, "token": False} for i, c in enumerate(kit.info.info)]  # fmt: skip
+        cards_ += [{"card_id": t["card_id"], "name": t["name"], "rarity": "token", "colors": t["colors"],
+                    "types": t["types"], "image": t["image"], "token": True, "power": t["power"],
+                    "toughness": t["toughness"]} for t in kit.tokens]  # fmt: skip
+        return {"cards": cards_}
 
     @router.post("/draft/picks")
     def draft_picks(body: PicksBody):

@@ -16,7 +16,7 @@ def name(card_index: int) -> str:
 
 def _obj(pair) -> dict:
     i, c = pair[0], pair[1]
-    return {"id": i, "name": name(c)}
+    return {"id": i, "name": name(c), "card_id": c}
 
 
 def _label(kind: str, cards: list, nums: tuple, me: int, values: tuple) -> str:
@@ -111,7 +111,8 @@ def state(game, seat: int, version: int, game_id: str) -> dict:
     battlefield = []
     for e in obs["battlefield"]:
         battlefield.append({
-            "id": e["id"], "name": name(e["card"]), "controller": e["controller"], "owner": e["owner"],
+            "id": e["id"], "name": name(e["card"]), "card_id": e["card"], "controller": e["controller"],
+            "owner": e["owner"],
             "tapped": e["tapped"], "creature": e["creature"], "land": e["land"], "power": e.get("power"),
             "toughness": e.get("toughness"), "damage": e["damage"], "counters": e["counters"],
             "loyalty": e["loyalty"], "attached_to": e["attached_to"], "entered_turn": e["entered_turn"],
@@ -130,7 +131,7 @@ def state(game, seat: int, version: int, game_id: str) -> dict:
         "pending": _pending(kind, who, obs.get("decision")), "over": over, "result": result,
         "view": {
             "players": players, "battlefield": battlefield,
-            "stack": [{"id": i, "name": name(c), "controller": ctl} for i, c, ctl in obs["stack"]],
+            "stack": [{"id": i, "name": name(c), "card_id": c, "controller": ctl} for i, c, ctl in obs["stack"]],
             "exile": [_obj(x) for x in obs["exile"]],
             "combat": None if not combat else {"attackers": list(combat["attackers"]),
                                                "blocks": [list(x) for x in combat["blocks"]]},

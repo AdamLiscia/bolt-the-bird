@@ -39,9 +39,14 @@ touches the NL database; NL never imports Bolt code. Star Trek (1v1 Commander) c
 
 Exact English card names as Scryfall spells them (front face for double-faced cards), e.g.
 `"Savannah Lions"`, `"Llanowar Elves"`. The FDN vocabulary is the 286 cards in
-`GET /v1/cards?set=FDN` (returns `{"cards": [{"name", "rarity", "colors", "types", "image"}]}`; `image` is
-Scryfall's "normal" image URL for hotlinking, or `null` if a card has none),
-which includes the basic lands. Any name outside it → 422 with `unknown_names`; nothing is dropped
+`GET /v1/cards?set=FDN` (returns `{"cards": [{"card_id", "name", "rarity", "colors", "types", "image",
+"token"}]}`; `image` is Scryfall's "normal" image URL for hotlinking, or `null` if a card has none),
+which includes the basic lands. The list also has the engine's 23 tokens (`"token": true`, `"rarity":
+"token"`, plus `power` and `toughness`), with images from Scryfall's FDN token printings (set tfdn). Two
+token names repeat with different stats (Cat 1/1 and 2/2, Dragon 4/4 and 5/5), so match game objects on
+**`card_id`**, which every card in this list and every object in a game view carries; names alone are
+ambiguous for those. Tokens can't be drafted or put in decks. Any name outside the 286 → 422 with
+`unknown_names`; nothing is dropped
 silently. Inside a game, objects carry both an object `id` and the card `name` (see below).
 
 ## Drafting

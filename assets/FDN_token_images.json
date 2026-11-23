@@ -1,0 +1,279 @@
+[
+ {
+  "card_id": 286,
+  "name": "Insect",
+  "power": 1,
+  "toughness": 1,
+  "colors": "BG",
+  "types": [
+   "Creature"
+  ],
+  "image": "https://cards.scryfall.io/normal/front/5/9/59c2cbd7-79bb-4d93-b2b6-5d3abe88a012.jpg?1783908587",
+  "scryfall_number": "21"
+ },
+ {
+  "card_id": 287,
+  "name": "Knight",
+  "power": 3,
+  "toughness": 3,
+  "colors": "W",
+  "types": [
+   "Creature"
+  ],
+  "image": "https://cards.scryfall.io/normal/front/0/d/0d287806-07bb-4709-9260-b9ef34fe2a13.jpg?1783908592",
+  "scryfall_number": "4"
+ },
+ {
+  "card_id": 288,
+  "name": "Cat",
+  "power": 1,
+  "toughness": 1,
+  "colors": "W",
+  "types": [
+   "Creature"
+  ],
+  "image": "https://cards.scryfall.io/normal/front/2/8/2885d54c-9fb2-4f01-8937-54f8ac1ce5bc.jpg?1783908593",
+  "scryfall_number": "1"
+ },
+ {
+  "card_id": 289,
+  "name": "Dragon",
+  "power": 4,
+  "toughness": 4,
+  "colors": "R",
+  "types": [
+   "Creature"
+  ],
+  "image": "https://cards.scryfall.io/normal/front/5/5/55c6be20-b65a-4b1e-8133-4c2d88c1f6f9.jpg?1783908588",
+  "scryfall_number": "16"
+ },
+ {
+  "card_id": 290,
+  "name": "Soldier",
+  "power": 1,
+  "toughness": 1,
+  "colors": "W",
+  "types": [
+   "Creature"
+  ],
+  "image": "https://cards.scryfall.io/normal/front/d/0/d093322e-a717-4e2d-8199-fa560792bcf6.jpg?1783908591",
+  "scryfall_number": "6"
+ },
+ {
+  "card_id": 291,
+  "name": "Elf Warrior",
+  "power": 1,
+  "toughness": 1,
+  "colors": "G",
+  "types": [
+   "Creature"
+  ],
+  "image": "https://cards.scryfall.io/normal/front/3/1/315c45f4-7bc9-45d5-bbf5-2533cf80af60.jpg?1783908587",
+  "scryfall_number": "19"
+ },
+ {
+  "card_id": 292,
+  "name": "Human",
+  "power": 1,
+  "toughness": 1,
+  "colors": "W",
+  "types": [
+   "Creature"
+  ],
+  "image": "https://cards.scryfall.io/normal/front/0/6/06af3d5a-7b38-42f6-822f-da4e04a7f265.jpg?1783908592",
+  "scryfall_number": "3"
+ },
+ {
+  "card_id": 293,
+  "name": "Rabbit",
+  "power": 1,
+  "toughness": 1,
+  "colors": "W",
+  "types": [
+   "Creature"
+  ],
+  "image": "https://cards.scryfall.io/normal/front/6/3/63ae4f9c-ad6e-4d6a-89f1-653916bf5373.jpg?1783908592",
+  "scryfall_number": "5"
+ },
+ {
+  "card_id": 294,
+  "name": "Food",
+  "power": null,
+  "toughness": null,
+  "colors": "",
+  "types": [
+   "Artifact"
+  ],
+  "image": "https://cards.scryfall.io/normal/front/6/f/6f1077f8-9e2a-4155-a7f0-4604bc0f94e8.jpg?1783908587",
+  "scryfall_number": "22"
+ },
+ {
+  "card_id": 295,
+  "name": "Treasure",
+  "power": null,
+  "toughness": null,
+  "colors": "",
+  "types": [
+   "Artifact"
+  ],
+  "image": "https://cards.scryfall.io/normal/front/2/1/21210145-8edd-41f5-9a64-9f0b5be79864.jpg?1783908587",
+  "scryfall_number": "23"
+ },
+ {
+  "card_id": 296,
+  "name": "Faerie",
+  "power": 1,
+  "toughness": 1,
+  "colors": "U",
+  "types": [
+   "Creature"
+  ],
+  "image": "https://cards.scryfall.io/normal/front/d/1/d1c0556e-ba3c-4a8e-b704-8eaa7c4dba1c.jpg?1783908591",
+  "scryfall_number": "9"
+ },
+ {
+  "card_id": 297,
+  "name": "Goblin",
+  "power": 1,
+  "toughness": 1,
+  "colors": "R",
+  "types": [
+   "Creature"
+  ],
+  "image": "https://cards.scryfall.io/normal/front/7/0/70f8a1de-cd4c-4afa-bf03-0245d375d42e.jpg?1783908589",
+  "scryfall_number": "18"
+ },
+ {
+  "card_id": 298,
+  "name": "Dragon",
+  "power": 5,
+  "toughness": 5,
+  "colors": "R",
+  "types": [
+   "Creature"
+  ],
+  "image": "https://cards.scryfall.io/normal/front/a/5/a5d4dd3b-0a5f-4d2c-aa6b-3c47e71e8c39.jpg?1783908588",
+  "scryfall_number": "17"
+ },
+ {
+  "card_id": 299,
+  "name": "Scion of the Deep",
+  "power": 8,
+  "toughness": 8,
+  "colors": "U",
+  "types": [
+   "Legendary",
+   "Creature"
+  ],
+  "image": "https://cards.scryfall.io/normal/front/2/6/26c478f7-b426-4055-8d06-e5782226c826.jpg?1783908590",
+  "scryfall_number": "13"
+ },
+ {
+  "card_id": 300,
+  "name": "Raccoon",
+  "power": 3,
+  "toughness": 3,
+  "colors": "G",
+  "types": [
+   "Creature"
+  ],
+  "image": "https://cards.scryfall.io/normal/front/1/b/1b8d8730-d6bd-4525-96e9-0513ed02de37.jpg?1794912210",
+  "scryfall_number": "20"
+ },
+ {
+  "card_id": 301,
+  "name": "Koma's Coil",
+  "power": 3,
+  "toughness": 3,
+  "colors": "U",
+  "types": [
+   "Creature"
+  ],
+  "image": "https://cards.scryfall.io/normal/front/c/e/cef25434-cd23-4dcf-b77e-36e648a8de23.jpg?1783908590",
+  "scryfall_number": "11"
+ },
+ {
+  "card_id": 302,
+  "name": "Drake",
+  "power": 2,
+  "toughness": 2,
+  "colors": "U",
+  "types": [
+   "Creature"
+  ],
+  "image": "https://cards.scryfall.io/normal/front/f/4/f4a73034-e20f-4e7e-ac15-3460b1e9c69b.jpg?1783908592",
+  "scryfall_number": "8"
+ },
+ {
+  "card_id": 303,
+  "name": "Spirit",
+  "power": 1,
+  "toughness": 1,
+  "colors": "W",
+  "types": [
+   "Creature"
+  ],
+  "image": "https://cards.scryfall.io/normal/front/2/7/278adad2-49a6-4baa-8dbe-93474545eef7.jpg?1783908592",
+  "scryfall_number": "7"
+ },
+ {
+  "card_id": 304,
+  "name": "Fish",
+  "power": 1,
+  "toughness": 1,
+  "colors": "U",
+  "types": [
+   "Creature"
+  ],
+  "image": "https://cards.scryfall.io/normal/front/4/4/44057462-40b7-4709-afac-2ce03d53d525.jpg?1783908592",
+  "scryfall_number": "10"
+ },
+ {
+  "card_id": 305,
+  "name": "Rat",
+  "power": 1,
+  "toughness": 1,
+  "colors": "B",
+  "types": [
+   "Creature"
+  ],
+  "image": "https://cards.scryfall.io/normal/front/5/c/5cad84b0-2bbf-479c-ae46-f725892d04d1.jpg?1783908589",
+  "scryfall_number": "14"
+ },
+ {
+  "card_id": 306,
+  "name": "Zombie",
+  "power": 2,
+  "toughness": 2,
+  "colors": "B",
+  "types": [
+   "Creature"
+  ],
+  "image": "https://cards.scryfall.io/normal/front/e/2/e29a360b-11fd-42ba-82ba-de8f7e136c20.jpg?1783908588",
+  "scryfall_number": "15"
+ },
+ {
+  "card_id": 307,
+  "name": "Ninja",
+  "power": 2,
+  "toughness": 1,
+  "colors": "U",
+  "types": [
+   "Creature"
+  ],
+  "image": "https://cards.scryfall.io/normal/front/a/e/aeec04b1-475c-4e55-b72f-327ea5258146.jpg?1783908590",
+  "scryfall_number": "12"
+ },
+ {
+  "card_id": 308,
+  "name": "Cat",
+  "power": 2,
+  "toughness": 2,
+  "colors": "W",
+  "types": [
+   "Creature"
+  ],
+  "image": "https://cards.scryfall.io/normal/front/d/1/d16213b5-c0da-4a24-9f2e-b9432652859e.jpg?1783908592",
+  "scryfall_number": "2"
+ }
+]

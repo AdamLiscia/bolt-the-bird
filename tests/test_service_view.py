@@ -66,3 +66,11 @@ def test_color_and_creature_type_choices_read_as_what_they_are():
     assert [a["label"] for a in actions(obs, 0)] == [f"{name(banner)}: choose Elf", f"{name(banner)}: choose Goblin"]
     obs = {"legal_actions": [("Mode", 0, -1, -1)], "legal_cards": [(-1, -1, -1)], "decision": {"kind": "ChooseMode"}}
     assert actions(obs, 0)[0]["label"] == "Choose mode 1", "other Mode choices keep the plain label"
+
+
+def test_every_object_carries_its_card_number():
+    for _g, _who, s in states(120):
+        objs = s["view"]["battlefield"] + s["view"]["stack"] + s["view"]["exile"]
+        objs += [o for p in s["view"]["players"] for o in (p["hand"] or []) + p["graveyard"]]
+        for o in objs:
+            assert be.card_names()[o["card_id"]] == o["name"]

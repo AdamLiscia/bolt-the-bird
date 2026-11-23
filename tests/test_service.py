@@ -19,7 +19,7 @@ def client():
 
 @pytest.fixture(scope="module")
 def names(client):
-    return [c["name"] for c in client.get("/v1/cards?set=FDN", headers=KEY).json()["cards"]]
+    return [c["name"] for c in client.get("/v1/cards?set=FDN", headers=KEY).json()["cards"] if not c["token"]]
 
 
 def test_every_call_needs_the_key(client):
@@ -33,6 +33,11 @@ def test_the_card_list_is_the_286_fdn_cards(client, names):
     assert len(names) == 286 and "Savannah Lions" in names and "Plains" in names
     cards = client.get("/v1/cards?set=FDN", headers=KEY).json()["cards"]
     assert all(c["image"].startswith("https://cards.scryfall.io/normal/") for c in cards), "a Scryfall image for each"
+    assert sorted(c["card_id"] for c in cards) == list(range(309)), "every card and token, numbered as in games"
+    tokens = [c for c in cards if c["token"]]
+    assert len(tokens) == 23 and all(c["rarity"] == "token" for c in tokens)
+    cats = sorted((c["power"], c["toughness"], c["image"]) for c in tokens if c["name"] == "Cat")
+    assert [x[:2] for x in cats] == [(1, 1), (2, 2)] and cats[0][2] != cats[1][2], "same name, different printing"
 
 
 def test_batched_picks_return_a_name_from_each_seats_own_pack(client, names):
