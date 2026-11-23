@@ -130,6 +130,11 @@ class GameBody(BaseModel):
     seed: int | None = None
     first: int | None = None
     frames: bool = False
+    human_seats: list[int] | None = None  # [0, 1]: two people, no bot seat
+
+
+class ConcedeBody(BaseModel):
+    seat: int
 
 
 class ActBody(BaseModel):
@@ -140,6 +145,7 @@ class ActBody(BaseModel):
 
 
 MAX_FRAMES = 40
+SEAT_FRAMES = 300  # boards kept per human seat for GET /frames
 
 
 # ---- the service ----------------------------------------------------------------------------------
@@ -325,10 +331,12 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
             return int(kit.net(collate([encode(g.observation(who), who)]))[0][0].argmax())
 
     public = {"Battlefield", "Graveyard", "Stack", "Exile", "Gone"}
+    hidden_moves = {"Bottom": "Puts a card on the bottom", "Pick": "Chooses a card"}
 
     def engine_events(rec, turn: int):
-        """The engine's events since the last call, named, from the human seat's point of view."""
-        g, me = rec["game"], rec["human"]
+        """The engine's events since the last call, named. Hidden details are marked per seat
+        (`_hide`: the seats that may not see the card) and masked when a seat reads the log."""
+        g = rec["game"]
         for e in g.events(rec["engine_n"]):
             rec["engine_n"] += 1
             kind = e["kind"]
@@ -338,68 +346,93 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
             for k in ("player", "amount", "from", "to", "owner", "target_player"):
                 if k in e:
                     out[k] = e[k]
-            visible = True
+            hide = []
             if kind == "Drew":
-                visible = e["player"] == me
-            elif kind == "Moved":
-                visible = e["owner"] == me or bool({e["from"], e["to"]} & public)
-            if "id" in e and visible:
-                out["id"], out["name"] = e["id"], names_all[e["card"]]
+                hide = [s for s in (0, 1) if s != e["player"]]
+            elif kind == "Moved" and not ({e["from"], e["to"]} & public):
+                hide = [s for s in (0, 1) if s != e["owner"]]
+            if "id" in e:
+                out["id"], out["name"], out["_hide"] = e["id"], names_all[e["card"]], hide
             if "target" in e:
                 out["target"], out["target_name"] = e["target"], names_all[e["target_card"]]
             rec["events"].append(out)
 
-    def apply(rec, i: int):
-        g = rec["game"]
-        who = g.to_act()
-        obs = g.observation(who)
-        acts = actions(obs, who)
-        a = acts[i]
-        hidden = who != rec["human"] and a["kind"] in ("Bottom", "Pick")
-        label = {"Bottom": "Puts a card on the bottom", "Pick": "Chooses a card"}[a["kind"]] if hidden else a["label"]
-        g.step(i)
-        rec["moves"] += 1
-        rec["version"] += 1
-        rec["events"].append({"n": len(rec["events"]), "turn": obs["turn"], "kind": "Action", "seat": who,
-                              "move": a["kind"], "label": label})  # fmt: skip
-        engine_events(rec, obs["turn"])
+    def seat_event(e: dict, seat: int) -> dict:
+        """One log entry as `seat` may see it."""
+        out = {k: v for k, v in e.items() if not k.startswith("_")}
+        if seat in e.get("_hide", []):
+            out.pop("id", None)
+            out.pop("name", None)
+        if e["kind"] == "Action" and e["seat"] != seat and e["move"] in hidden_moves:
+            out["label"] = hidden_moves[e["move"]]
+        return out
 
-    def snapshot(rec, gid: str, frames: list | None):
-        """Add the human seat's current view to `frames` if anything visible changed."""
+    def snapshot(rec, gid: str, frames: list | None, seat: int):
+        """Add `seat`'s current view to `frames` if anything visible to it changed."""
         if frames is None:
             return
-        f = state(rec["game"], rec["human"], version=rec["version"], game_id=gid)
+        f = state(rec["game"], seat, version=rec["version"], game_id=gid)
         f["legal_actions"] = []
         f["event_n"] = len(rec["events"])
         if frames and (frames[-1]["view"], frames[-1]["turn"]) == (f["view"], f["turn"]):
             return  # nothing visible changed (a step change alone doesn't make a frame)
         frames.append(f)
 
+    def remember(rec, gid: str):
+        """Every human seat's frames since its last look, for GET /frames (a waiting player's boards)."""
+        for seat in rec["humans"]:
+            snapshot(rec, gid, rec["seat_frames"][seat], seat)
+            del rec["seat_frames"][seat][:-SEAT_FRAMES]
+
+    def apply(rec, i: int, gid: str = ""):
+        g = rec["game"]
+        who = g.to_act()
+        obs = g.observation(who)
+        a = actions(obs, who)[i]
+        g.step(i)
+        rec["moves"] += 1
+        rec["version"] += 1
+        rec["events"].append({"n": len(rec["events"]), "turn": obs["turn"], "kind": "Action", "seat": who,
+                              "move": a["kind"], "label": a["label"]})  # fmt: skip
+        engine_events(rec, obs["turn"])
+        remember(rec, gid)
+
     def trim(frames: list) -> list:
         half = MAX_FRAMES // 2
         return frames if len(frames) <= MAX_FRAMES else frames[:half] + frames[-half:]
 
-    def advance(rec, gid: str = "", frames: list | None = None):
-        """Bot moves and forced moves until the human must decide, or the game ends."""
+    def advance(rec, gid: str = "", frames: list | None = None, seat: int = 0):
+        """Bot moves and forced moves until a human seat must decide, or the game ends."""
         g = rec["game"]
-        while not g.is_over():
+        while not g.is_over() and rec.get("conceded") is None:
             if g.turn > MAX_TURNS or rec["moves"] >= MAX_MOVES:
                 rec["timeout"] = True
                 return
             who = g.to_act()
             n = len(g.legal_actions())
-            if who == rec["human"]:
+            if who in rec["humans"]:
                 if n > 1:
                     return
-                apply(rec, 0)
+                apply(rec, 0, gid)
             else:
-                apply(rec, 0 if n == 1 else bot_move(rec))
-            snapshot(rec, gid, frames)
+                apply(rec, 0 if n == 1 else bot_move(rec), gid)
+            snapshot(rec, gid, frames, seat)
 
-    def view(rec, gid: str) -> dict:
-        s = state(rec["game"], rec["human"], version=rec["version"], game_id=gid)
+    def finished(rec) -> dict | None:
+        if rec.get("conceded") is not None:
+            return {"winner": 1 - rec["conceded"], "outcome": "concede", "conceded": rec["conceded"]}
         if rec.get("timeout"):
-            s.update(over=True, to_act=None, legal_actions=[], result={"winner": None, "outcome": "timeout"})
+            return {"winner": None, "outcome": "timeout"}
+        return None
+
+    def view(rec, gid: str, seat: int | None = None) -> dict:
+        seat = rec["human"] if seat is None else seat
+        s = state(rec["game"], seat, version=rec["version"], game_id=gid)
+        if seat in rec["humans"] and s.get("to_act") in rec["humans"] and s["to_act"] != seat:
+            s["legal_actions"] = []  # the other player's decision
+        end = finished(rec)
+        if end:
+            s.update(over=True, to_act=None, legal_actions=[], result=end)
         return s
 
     def get(gid: str) -> dict:
@@ -410,12 +443,19 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
         rec["used"] = time.time()
         return rec
 
+    def seat_of(rec, seat: int | None) -> int:
+        seat = rec["human"] if seat is None else seat
+        if seat not in rec["humans"]:
+            raise ApiError(422, f"seat {seat} isn't a human seat in this game ({sorted(rec['humans'])})")
+        return seat
+
     @router.post("/game")
     def new_game(body: GameBody):
         check_set(body.set)
-        if body.human_seat not in (0, 1):
-            raise ApiError(422, "human_seat must be 0 or 1")
-        if body.pilot not in ("network", "smart", "smart_strong", "rules"):
+        humans = body.human_seats if body.human_seats is not None else [body.human_seat]
+        if not humans or not set(humans) <= {0, 1} or len(set(humans)) != len(humans):
+            raise ApiError(422, "human_seats must be [0], [1] or [0, 1] (or human_seat 0 or 1)")
+        if len(humans) == 1 and body.pilot not in ("network", "smart", "smart_strong", "rules"):
             raise ApiError(422, "pilot must be network, smart, smart_strong or rules")
         a, b = deck_ids(body.deck_a), deck_ids(body.deck_b)
         seed = body.seed if body.seed is not None else secrets.randbelow(2**31)
@@ -427,47 +467,94 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
             gid = "g_" + secrets.token_hex(6)
             game = be.Game(a, b, seed=seed, first=first)
             game.auto_pass = False  # forced passes go through `advance`, so frames can catch every moment
-            rec = {"game": game, "human": body.human_seat, "pilot": body.pilot,
-                   "seed": seed, "version": 0, "moves": 0, "events": [], "engine_n": 0, "used": time.time()}  # fmt: skip
+            rec = {"game": game, "human": humans[0], "humans": set(humans),
+                   "pilot": body.pilot if len(humans) == 1 else None, "seed": seed, "version": 0, "moves": 0,
+                   "events": [], "engine_n": 0, "used": time.time(), "seat_frames": {s: [] for s in humans}}  # fmt: skip
             games[gid] = rec
             frames = [] if body.frames else None
-            advance(rec, gid, frames)
-            out = {"game_id": gid, "state": view(rec, gid)}
+            advance(rec, gid, frames, humans[0])
+            out = {"game_id": gid, "human_seats": sorted(humans), "state": view(rec, gid)}
             if frames is not None:
                 out["frames"] = trim(frames)
             return out
 
     @router.get("/game/{gid}")
-    def show(gid: str, seat: int):
+    def show(gid: str, seat: int | None = None):
         with lock:
             rec = get(gid)
-            if seat != rec["human"]:
-                raise ApiError(422, "only the human seat's view is served")
-            return view(rec, gid)
+            return view(rec, gid, seat_of(rec, seat))
 
     @router.post("/game/{gid}/act")
     def act(gid: str, body: ActBody):
         with lock:
             rec = get(gid)
-            cur = view(rec, gid)
-            if body.seat != rec["human"] or cur["over"] or body.version != rec["version"]:
+            if body.seat not in rec["humans"]:  # e.g. the bot's seat: not yours to play (409, as for a wrong turn)
+                raise ApiError(409, "not a human seat in this game", state=view(rec, gid))
+            seat = body.seat
+            cur = view(rec, gid, seat)
+            if cur["over"] or cur["to_act"] != seat or body.version != rec["version"]:
                 raise ApiError(409, "stale version, game over, or not that seat's turn", state=cur)
             if not 0 <= body.action_index < len(cur["legal_actions"]):
                 raise ApiError(422, f"action_index must be 0-{len(cur['legal_actions']) - 1}")
             frames = [] if body.frames else None
-            apply(rec, body.action_index)
-            snapshot(rec, gid, frames)  # your own move, resolved as far as it goes (lands tapped, spell cast)
-            advance(rec, gid, frames)
-            out = view(rec, gid)
+            apply(rec, body.action_index, gid)
+            snapshot(rec, gid, frames, seat)  # your own move, resolved as far as it goes (lands tapped, spell cast)
+            advance(rec, gid, frames, seat)
+            out = view(rec, gid, seat)
             if frames is not None:
                 out["frames"] = trim(frames)
             return out
 
-    @router.get("/game/{gid}/log")
-    def log(gid: str, since: int = 0):
+    @router.get("/game/{gid}/frames")
+    def seat_frames(gid: str, seat: int | None = None, since: int = 0):
+        """`seat`'s boards after `since` (a version), for a player who was waiting."""
         with lock:
             rec = get(gid)
-            ev = rec["events"][max(0, since) :]
+            seat = seat_of(rec, seat)
+            fr = [f for f in rec["seat_frames"][seat] if f["version"] > since]
+            return {"frames": trim(fr), "version": rec["version"]}
+
+    @router.get("/game/{gid}/version")
+    def version(gid: str):
+        with lock:
+            rec = get(gid)
+            v = view(rec, gid)
+            return {"version": rec["version"], "to_act": v["to_act"], "over": v["over"]}
+
+    @router.get("/game/{gid}/wait")
+    async def wait(gid: str, version: int, seat: int | None = None, timeout: float = 25.0):
+        """Long-poll: returns as soon as the game's version differs from `version`, or after `timeout`."""
+        import asyncio
+
+        end = time.time() + max(0.0, min(timeout, 30.0))
+        while True:
+            rec = games.get(gid)
+            if rec is None:
+                raise ApiError(404, "no such game")
+            over = rec["game"].is_over() or finished(rec) is not None
+            if rec["version"] != version or over or time.time() >= end:
+                to_act = None if over else rec["game"].to_act()
+                return {"version": rec["version"], "to_act": to_act, "over": over, "changed": rec["version"] != version}
+            await asyncio.sleep(0.2)
+
+    @router.post("/game/{gid}/concede")
+    def concede(gid: str, body: ConcedeBody):
+        with lock:
+            rec = get(gid)
+            seat = seat_of(rec, body.seat)
+            if finished(rec) is None and not rec["game"].is_over():
+                rec["conceded"] = seat
+                rec["version"] += 1
+                rec["events"].append({"n": len(rec["events"]), "turn": rec["game"].turn, "kind": "Conceded",
+                                      "player": seat})  # fmt: skip
+            return view(rec, gid, seat)
+
+    @router.get("/game/{gid}/log")
+    def log(gid: str, since: int = 0, seat: int | None = None):
+        with lock:
+            rec = get(gid)
+            seat = seat_of(rec, seat)
+            ev = [seat_event(e, seat) for e in rec["events"][max(0, since) :]]
             return {"events": ev, "next": len(rec["events"])}
 
     @router.delete("/game/{gid}")

@@ -245,3 +245,54 @@ def test_frames_show_the_board_between_decisions(client):
     plain = client.post(f"/v1/game/{gid}/act", headers=KEY, json={"seat": 0, "action_index": 0, "version": -1}).json()
     assert "frames" not in plain.get("state", {}), "frames only when asked"
     client.delete(f"/v1/game/{gid}", headers=KEY)
+
+
+def test_two_people_at_one_game(client):
+    r = client.post("/v1/game", headers=KEY, json={"set": "FDN", "deck_a": deck_of(client, 21), "deck_b": deck_of(client, 22),
+                                                   "human_seats": [0, 1], "seed": 31, "first": 0})  # fmt: skip
+    assert r.status_code == 200, r.text
+    gid = r.json()["game_id"]
+    client.cleanup.append(gid)
+    assert r.json()["human_seats"] == [0, 1]
+    acted = {0: 0, 1: 0}
+    for _ in range(600):
+        v = client.get(f"/v1/game/{gid}/version", headers=KEY).json()
+        if v["over"]:
+            break
+        me = v["to_act"]
+        s = client.get(f"/v1/game/{gid}?seat={me}", headers=KEY).json()
+        other = client.get(f"/v1/game/{gid}?seat={1 - me}", headers=KEY).json()
+        assert s["legal_actions"] and other["legal_actions"] == [], "only the deciding seat gets moves"
+        assert s["view"]["players"][1 - me]["hand"] is None and other["view"]["players"][me]["hand"] is None
+        wrong = client.post(
+            f"/v1/game/{gid}/act", headers=KEY, json={"seat": 1 - me, "action_index": 0, "version": s["version"]}
+        )
+        assert wrong.status_code == 409 and wrong.json()["state"]["seat"] == 1 - me
+        r = client.post(f"/v1/game/{gid}/act", headers=KEY,
+                        json={"seat": me, "action_index": choose(s["legal_actions"])["index"], "version": s["version"]})  # fmt: skip
+        assert r.status_code == 200, r.text
+        acted[me] += 1
+        if acted[0] > 3 and acted[1] > 3:
+            break
+    assert acted[0] and acted[1], "both people played"
+    # the waiting player's boards since an earlier version
+    fr = client.get(f"/v1/game/{gid}/frames?seat=1&since=0", headers=KEY).json()
+    assert fr["frames"] and all(f["seat"] == 1 and f["view"]["players"][0]["hand"] is None for f in fr["frames"])
+    assert client.get(f"/v1/game/{gid}/frames?seat=1&since={fr['version']}", headers=KEY).json()["frames"] == []
+    # each seat's log masks the other's draws
+    for seat in (0, 1):
+        for e in client.get(f"/v1/game/{gid}/log?seat={seat}", headers=KEY).json()["events"]:
+            if e["kind"] == "Drew":
+                assert ("name" in e) == (e["player"] == seat)
+    # long-poll: returns at once if the version already moved, else after the timeout
+    v = client.get(f"/v1/game/{gid}/version", headers=KEY).json()
+    assert client.get(f"/v1/game/{gid}/wait?version={v['version'] - 1}&timeout=5", headers=KEY).json()["changed"]
+    t = client.get(f"/v1/game/{gid}/wait?version={v['version']}&timeout=0.3", headers=KEY).json()
+    assert not t["changed"] and t["version"] == v["version"]
+    # concede
+    end = client.post(f"/v1/game/{gid}/concede", headers=KEY, json={"seat": 1}).json()
+    assert end["over"] and end["result"] == {"winner": 0, "outcome": "concede", "conceded": 1}
+    assert client.get(f"/v1/game/{gid}?seat=0", headers=KEY).json()["result"]["outcome"] == "concede"
+    log = client.get(f"/v1/game/{gid}/log?seat=0", headers=KEY).json()["events"]
+    assert log[-1]["kind"] == "Conceded" and log[-1]["player"] == 1
+    client.delete(f"/v1/game/{gid}", headers=KEY)

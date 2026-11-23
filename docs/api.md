@@ -125,7 +125,7 @@ Response: `{"picks": [{"pack_number", "pick_number", "name"}] (42), "deck": <as 
 
 ## Games
 
-One game is one human seat against one bot seat, 20 life, 40-card decks (at least 40, FDN names only,
+A game is one human seat against one bot seat, or two people with no bot (`human_seats: [0, 1]`, below); 20 life, 40-card decks (at least 40, FDN names only,
 any number of copies, as in Limited). The engine plays every FDN card's rules; the
 service keeps game state in memory.
 
@@ -290,6 +290,28 @@ engine events it caused:
 
 The opening hands aren't logged (only the mulligan decisions), and a runaway game's engine events stop
 being recorded after 200,000.
+
+### Two people at one game
+
+`POST /v1/game` with `"human_seats": [0, 1]` (and no `pilot`) makes a game the engine never plays for;
+forced single-move decisions still play themselves. The response adds `"human_seats": [0, 1]`. Then:
+
+- `GET /v1/game/{id}?seat=N`: either seat's state, its own hidden information only. The seat that isn't
+  deciding gets `legal_actions: []`.
+- `POST /v1/game/{id}/act` is accepted only from the seat that must decide (`to_act`) with the current
+  `version`; anything else is a 409 whose `state` is that seat's view. (In a game against the bot,
+  acting as the bot's seat is a 409 too.)
+- `GET /v1/game/{id}/frames?seat=N&since=V` → `{"frames": [...], "version"}`: that seat's boards after
+  version `V` (the same frames as above, at most 40, deduplicated, from the last 300 kept per seat), so
+  the waiting player can play back the other's turn.
+- `GET /v1/game/{id}/log?seat=N&since=…`: the log as seat N may see it (the other's draws and hidden
+  moves without names; their hidden choices masked). `seat` defaults to the first human seat.
+- `GET /v1/game/{id}/version` → `{"version", "to_act", "over"}`, cheap.
+- `GET /v1/game/{id}/wait?version=V&timeout=25` → the same plus `"changed"`: a long-poll that returns as soon
+  as the version differs from `V` or the game ends, else after `timeout` seconds (at most 30).
+- `POST /v1/game/{id}/concede {"seat": N}`: ends the game; `result` is
+  `{"winner": 1 - N, "outcome": "concede", "conceded": N}`, and the log gets a `Conceded` entry. Works in
+  bot games too.
 
 ### `DELETE /v1/game/{game_id}`
 
