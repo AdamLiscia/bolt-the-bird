@@ -284,7 +284,7 @@ def newbot_analyze(name: str):
         meta = json.loads((ROOT / "data" / d / "meta.json").read_text())
         table = np.array([m["table"] for m in meta])
         bot = np.array([m["side"] == "bot" for m in meta])
-        for pilot in ("baseline", "r1c2", "r2c4", "rollout"):
+        for pilot in ("baseline", "r1c2", "r2c4", "rollout", "network"):
             new_f = ROOT / "data" / f"m7_{name}" / set_ / f"games_{pilot}.txt"
             old_f = ROOT / "data" / d / f"games_{pilot}.txt"
             if not new_f.exists() or not old_f.exists():
