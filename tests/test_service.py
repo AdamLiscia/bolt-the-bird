@@ -297,3 +297,20 @@ def test_two_people_at_one_game(client):
     log = client.get(f"/v1/game/{gid}/log?seat=0", headers=KEY).json()["events"]
     assert log[-1]["kind"] == "Conceded" and log[-1]["player"] == 1
     client.delete(f"/v1/game/{gid}", headers=KEY)
+
+
+def test_random_decks_can_be_human_style_any_seat_or_a_color(client):
+    a = client.post("/v1/deck/random", headers=KEY, json={"set": "FDN", "seed": 3, "drafter": "human"}).json()
+    b = client.post("/v1/deck/random", headers=KEY, json={"set": "FDN", "seed": 3, "drafter": "human"}).json()
+    assert a == b and a["drafter"] == "human" and len(a["picks"]) == 42 and a["deck"]["cards"] == 40
+    r = client.post("/v1/deck/random", headers=KEY, json={"set": "FDN", "seed": 4, "seat": "random"}).json()
+    assert 0 <= r["seat"] < 8 and len(r["picks"]) == 42
+    assert r["drafter"] == ("bolt" if r["seat"] == 0 else "human")
+    for col in ("U", "B", "R"):
+        c = client.post("/v1/deck/random", headers=KEY, json={"set": "FDN", "seed": 5, "colors": [col]}).json()
+        if c["colors_matched"]:
+            assert col in c["deck"]["colors"]
+        pool = [p["name"] for p in c["picks"]]
+        assert all(pool.count(x["name"]) >= x["qty"] for x in c["deck"]["main"]), "that seat's own picks"
+    bad = client.post("/v1/deck/random", headers=KEY, json={"set": "FDN", "seat": 9})
+    assert bad.status_code == 422

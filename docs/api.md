@@ -120,12 +120,23 @@ the judge's estimate (a model, not played games); NL may hide it.
 ### `POST /v1/deck/random`
 
 ```json
-{"set": "FDN", "seed": 1234, "seat": 0, "drafters": "human"}
+{"set": "FDN", "seed": 1234, "drafter": "human", "drafters": "human", "seat": 0, "colors": ["B"]}
 ```
 
-Runs a full 8-seat draft with real FDN packs: seat `seat` is drafted by Bolt (`bot_ppo`), the other 7 by
-`drafters` (`"human"` default, or `"bolt"`). For "skip the draft" mode. Same seed → same draft.
-Response: `{"picks": [{"pack_number", "pick_number", "name"}] (42), "deck": <as /deck/build>}`.
+Runs a full 8-seat draft with real FDN packs and returns one seat's 42 picks and built deck, for "skip
+the draft" mode. Same request and seed → same result.
+
+- `drafter` (seat 0): `"bolt"` (default; the strongest drafter, but it leans green-white: 34 of 40 deals) or
+  `"human"` (the imitation model, sampling its picks the way people vary: all 10 color pairs, none more
+  than 7 of 40).
+- `drafters` (the other 7 seats): `"human"` (default) or `"bolt"`.
+- `seat`: which seat's deck to return, 0–7 or `"random"` (default 0, the `drafter`'s).
+- `colors`: an optional soft preference, one color or a pair: the returned deck is whichever of the 8
+  (or the chosen seat's, if it matches) shares the most of those colors. With `["B"]`, 20 of 20 deals
+  were black.
+
+Response: `{"seed", "seat", "drafter" (who drafted that seat), "picks": [{"pack_number", "pick_number",
+"name"}] (42), "deck": <as /deck/build>, "colors_matched": true | false | null}`.
 
 ## Games
 

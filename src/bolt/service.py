@@ -112,8 +112,10 @@ class BuildBody(BaseModel):
 class RandomBody(BaseModel):
     set: str
     seed: int | None = None
-    seat: int = 0
-    drafters: str = "human"
+    seat: int | str = 0  # 0-7, or "random"
+    drafters: str = "human"  # the other 7 seats
+    drafter: str = "bolt"  # seat 0: "bolt" (strongest; leans green-white) or "human" (varied, like people)
+    colors: list[str] | None = None  # a soft preference: the deck among the 8 that best matches
 
 
 class Card(BaseModel):
@@ -210,20 +212,27 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
             out.append(sorted(ranked, key=lambda x: -x["score"]))
         return out
 
-    def build(pool: list[int]) -> dict:
+    def build_many(pools: list[list[int]]) -> list[dict]:
         from bolt.deckbuild import build_decks
 
-        counts = np.zeros((1, kit.info.n))
-        for c in pool:
-            counts[0, c] += 1
+        counts = np.zeros((len(pools), kit.info.n))
+        for i, pool in enumerate(pools):
+            for c in pool:
+                counts[i, c] += 1
         with torch.no_grad():
             decks, scores, labels = build_decks(counts, kit.judge, kit.info, torch.device("cpu"))
-        deck = np.asarray(decks[0]).astype(int)
         basics = {kit.info.basic_id[col]: col for col in BASIC_NAMES}
-        main = [{"name": names[c], "qty": int(n)} for c, n in enumerate(deck) if n and c not in basics]
-        lands = {basics[c]: int(deck[c]) for c in basics if deck[c]}
-        return {"main": main, "lands": lands, "colors": str(labels[0]).split()[0], "cards": int(deck.sum()),
-                "judged_win_rate": float(np.asarray(scores).reshape(-1)[0])}  # fmt: skip
+        out = []
+        for i in range(len(pools)):
+            deck = np.asarray(decks[i]).astype(int)
+            main = [{"name": names[c], "qty": int(n)} for c, n in enumerate(deck) if n and c not in basics]
+            lands = {basics[c]: int(deck[c]) for c in basics if deck[c]}
+            out.append({"main": main, "lands": lands, "colors": str(labels[i]).split()[0], "cards": int(deck.sum()),
+                        "judged_win_rate": float(np.asarray(scores).reshape(-1)[i])})  # fmt: skip
+        return out
+
+    def build(pool: list[int]) -> dict:
+        return build_many([pool])[0]
 
     router = APIRouter()
 
@@ -283,21 +292,45 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
     @router.post("/deck/random")
     def deck_random(body: RandomBody):
         check_set(body.set)
-        if body.drafters not in ("human", "bolt"):
-            raise ApiError(422, "drafters must be 'human' or 'bolt'")
+        if body.drafters not in ("human", "bolt") or body.drafter not in ("human", "bolt"):
+            raise ApiError(422, "drafter and drafters must be 'human' or 'bolt'")
+        if body.seat != "random" and body.seat not in range(8):
+            raise ApiError(422, "seat must be 0-7 or 'random'")
+        wanted = {c.upper() for c in body.colors or []}
+        if not wanted <= set("WUBRG"):
+            raise ApiError(422, "colors are W, U, B, R, G")
         seed = body.seed if body.seed is not None else secrets.randbelow(2**31)
+        rng = np.random.default_rng(seed)
         with lock:
             others = kit.human if body.drafters == "human" else kit.bolt
-            d = PracticeDraft(kit.packs, others, kit.bolt, kit.info.n, seed)
-            picks = []
+            mine = kit.bolt if body.drafter == "bolt" else kit.human
+            d = PracticeDraft(kit.packs, others, mine, kit.info.n, seed)
             while not d.done:
-                probs = d.coach()
-                i = int(np.argmax(probs))
-                picks.append({"pack_number": d.round + 1, "pick_number": d.pick_number + 1,
-                              "name": names[d.human_pack()[i]]})  # fmt: skip
+                probs = np.asarray(d.coach(), dtype=float)
+                # Bolt takes its best card; the human model samples, the way people's picks vary
+                i = (
+                    int(np.argmax(probs))
+                    if body.drafter == "bolt"
+                    else int(rng.choice(len(probs), p=probs / probs.sum()))
+                )
                 d.pick(i)
-            deck = build(d.pools()[0])
-        return {"seed": seed, "seat": body.seat, "picks": picks, "deck": deck}
+            pools = d.pools()
+            seats = list(range(8)) if body.seat == "random" or wanted else [int(body.seat)]
+            decks = build_many([pools[s] for s in seats]) if len(seats) > 1 else [build(pools[seats[0]])]
+            if wanted:
+                score = [len(wanted & set(x["colors"])) for x in decks]
+                best = [k for k, v in enumerate(score) if v == max(score)]
+                k = 0 if 0 in best and body.seat != "random" else int(rng.choice(best))
+            elif body.seat == "random":
+                k = int(rng.integers(8))
+            else:
+                k = 0
+            seat, deck = seats[k], decks[k]
+        picks = [{"pack_number": pos // 14 + 1, "pick_number": pos % 14 + 1, "name": names[c]}
+                 for pos, c in enumerate(pools[seat])]  # fmt: skip
+        drafter = body.drafter if seat == 0 else body.drafters
+        return {"seed": seed, "seat": seat, "drafter": drafter, "picks": picks, "deck": deck,
+                "colors_matched": bool(wanted & set(deck["colors"])) if wanted else None}  # fmt: skip
 
     # ---- games --------------------------------------------------------------------------------
 
