@@ -101,6 +101,34 @@ fn witness_protection_makes_a_vanilla_one_one() {
 }
 
 #[test]
+fn witness_protection_takes_away_lifelink_in_combat() {
+    // CR 613 layer 6: "loses all abilities" removes lifelink too, so the enchanted Hawk's combat
+    // damage gains its controller nothing, while an unenchanted Hawk still does (CR 702.15b).
+    let mut g = table();
+    let aura = hand(&mut g, 0, "Witness Protection");
+    let plain = put(&mut g, 0, "Healer's Hawk");
+    let covered = put(&mut g, 0, "Healer's Hawk");
+    begin(&mut g);
+    play(&mut g, aura, false, &[obj(covered)], &[]);
+    assert!(!g.keywords(covered).has(Keywords::LIFELINK));
+    assert!(g.keywords(plain).has(Keywords::LIFELINK));
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(plain));
+    act(&mut g, Action::Attack(covered));
+    act(&mut g, Action::FinishAttacks);
+    for _ in 0..20 {
+        if g.players[1].life < 20 {
+            break;
+        }
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.players[1].life, 18, "both Hawks hit (the covered one as a 1/1)");
+    assert_eq!(g.players[0].life, 21, "only the unenchanted Hawk's damage gains life");
+}
+
+#[test]
 fn heraldic_banner_picks_a_color() {
     let mut g = lands(&["Plains", "Plains", "Plains"]);
     let banner = hand(&mut g, 0, "Heraldic Banner");
