@@ -1,7 +1,7 @@
 # Bolt service API (v1)
 
 The contract between the Bolt service (this repo) and Nerd Leagues. This file is the source of truth;
-change it here first. Status: **contract only — the service is not built yet** (2026-11-22).
+change it here first. Status: **built and tested** (`src/bolt/service.py`, `tests/test_service.py`), run locally only (2026-11-22). The engine event log (below) is partial: decisions only, for now.
 
 Scope: Foundations (FDN) only. Draft against Bolt, get a bot-drafted deck, and play a game against
 Bolt. Admin-only on the Nerd Leagues side (NL owns sign-in, gating, the UI and card images). Bolt never
@@ -39,7 +39,7 @@ touches the NL database; NL never imports Bolt code. Star Trek (1v1 Commander) c
 
 Exact English card names as Scryfall spells them (front face for double-faced cards), e.g.
 `"Savannah Lions"`, `"Llanowar Elves"`. The FDN vocabulary is the 286 cards in
-`GET /v1/cards?set=FDN` (returns `{"cards": [{"name", "rarity", "colors", "mana_value", "type_line"}]}`),
+`GET /v1/cards?set=FDN` (returns `{"cards": [{"name", "rarity", "colors", "types"}]}`),
 which includes the basic lands. Any name outside it → 422 with `unknown_names`; nothing is dropped
 silently. Inside a game, objects carry both an object `id` and the card `name` (see below).
 
@@ -133,8 +133,9 @@ service keeps game state in memory.
   and `FinishBlocks`. Targets are chosen as a separate decision after casting (`pending.kind =
   "ChooseTarget"`), and so are yes/no choices (`"Decide"`), amounts (`"Divide"`), discards and
   mulligans.
-- **Passing priority is an action** (`PassPriority`), offered at every priority point. The service
-  auto-passes points where passing is the only legal action; it does not auto-pass anything else.
+- **Passing priority is an action** (`PassPriority`), offered at every priority point. The service plays
+  any decision with exactly one legal move by itself (a forced pass, a forced "done blocking"); every real
+  choice comes to you.
 - **Object ids** are integers, unique within a game, and **stable across zone changes** (a creature that
   dies keeps its id in the graveyard). Tokens get new ids. Ids are meaningless across games.
 - **Hidden information.** A seat's view shows its own hand, both battlefields, both graveyards, exile,
@@ -229,6 +230,7 @@ the current state; an index outside `legal_actions` → 422.
 ], "next": 4}
 ```
 
+**Today the log has only `Action` entries** (every decision, both seats: `{n, turn, kind: "Action", seat, move, label}`; the bot's hidden choices are masked, e.g. "Puts a card on the bottom"). The engine's own events below are being added.
 Ordered and append-only; `since` returns only newer events. Kinds come from the engine: `TurnBegan`,
 `Drew`, `Moved`, `Cast`, `Resolved`, `Fizzled`, `Triggered`, `Damage`, `LifeGained`, `LifeLost`, `Lost`,
 `GameOver`, plus `Action` entries for each decision (seat, kind, label), so the log alone can replay a
