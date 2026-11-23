@@ -220,6 +220,17 @@ Applies the human's move, then lets the bot act (and auto-passes forced passes) 
 decide again or the game ends. Returns the new state. Wrong `version` or not that seat's turn → 409 with
 the current state; an index outside `legal_actions` → 422.
 
+### Frames: the board between your decisions (optional)
+
+Add `"frames": true` to `POST /v1/game` or `POST /v1/game/{id}/act`, and the response gains
+`"frames": [state, ...]`: the human seat's view after your own move (lands tapped, spell cast), then
+after each move the bot or a forced move makes until your next decision, through steps and the next
+turn's untap. Each frame has the same shape as a state, with `legal_actions` empty and an `event_n`:
+the log index (`n`) of the next event at that moment, so a recap can be synced to the frames.
+Frames where nothing visible changed (view, step and turn all the same) are skipped; at most 40 are
+returned (the first 20 and the last 20 when there are more). The final state is the usual response
+body, not a frame. Without `"frames"`, responses are unchanged.
+
 ### `GET /v1/game/{game_id}/log?since=0` → events
 
 ```json

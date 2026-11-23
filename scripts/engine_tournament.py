@@ -57,7 +57,7 @@ def analyze():
     meta = json.loads((OUT / "meta.json").read_text())
     names = [b[0] for b in BOTS]
     out = {"bots": {b[0]: b[1] for b in BOTS}, "pilots": {}}
-    for pilot in ("baseline", "rollout"):
+    for pilot in ("baseline", "rollout", "network"):
         f = OUT / f"games_{pilot}.txt"
         if not f.exists():
             continue

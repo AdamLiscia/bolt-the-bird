@@ -127,12 +127,17 @@ class GameBody(BaseModel):
     pilot: str = "network"
     seed: int | None = None
     first: int | None = None
+    frames: bool = False
 
 
 class ActBody(BaseModel):
     seat: int
     action_index: int
     version: int
+    frames: bool = False
+
+
+MAX_FRAMES = 40
 
 
 # ---- the service ----------------------------------------------------------------------------------
@@ -353,7 +358,22 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
                               "move": a["kind"], "label": label})  # fmt: skip
         engine_events(rec, obs["turn"])
 
-    def advance(rec):
+    def snapshot(rec, gid: str, frames: list | None):
+        """Add the human seat's current view to `frames` if anything visible changed."""
+        if frames is None:
+            return
+        f = state(rec["game"], rec["human"], version=rec["version"], game_id=gid)
+        f["legal_actions"] = []
+        f["event_n"] = len(rec["events"])
+        if frames and (frames[-1]["view"], frames[-1]["step"], frames[-1]["turn"]) == (f["view"], f["step"], f["turn"]):
+            return
+        frames.append(f)
+
+    def trim(frames: list) -> list:
+        half = MAX_FRAMES // 2
+        return frames if len(frames) <= MAX_FRAMES else frames[:half] + frames[-half:]
+
+    def advance(rec, gid: str = "", frames: list | None = None):
         """Bot moves and forced moves until the human must decide, or the game ends."""
         g = rec["game"]
         while not g.is_over():
@@ -368,6 +388,7 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
                 apply(rec, 0)
             else:
                 apply(rec, 0 if n == 1 else bot_move(rec))
+            snapshot(rec, gid, frames)
 
     def view(rec, gid: str) -> dict:
         s = state(rec["game"], rec["human"], version=rec["version"], game_id=gid)
@@ -401,8 +422,12 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
             rec = {"game": be.Game(a, b, seed=seed, first=first), "human": body.human_seat, "pilot": body.pilot,
                    "seed": seed, "version": 0, "moves": 0, "events": [], "engine_n": 0, "used": time.time()}  # fmt: skip
             games[gid] = rec
-            advance(rec)
-            return {"game_id": gid, "state": view(rec, gid)}
+            frames = [] if body.frames else None
+            advance(rec, gid, frames)
+            out = {"game_id": gid, "state": view(rec, gid)}
+            if frames is not None:
+                out["frames"] = trim(frames)
+            return out
 
     @router.get("/game/{gid}")
     def show(gid: str, seat: int):
@@ -421,9 +446,14 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
                 raise ApiError(409, "stale version, game over, or not that seat's turn", state=cur)
             if not 0 <= body.action_index < len(cur["legal_actions"]):
                 raise ApiError(422, f"action_index must be 0-{len(cur['legal_actions']) - 1}")
+            frames = [] if body.frames else None
             apply(rec, body.action_index)
-            advance(rec)
-            return view(rec, gid)
+            snapshot(rec, gid, frames)  # your own move, resolved as far as it goes (lands tapped, spell cast)
+            advance(rec, gid, frames)
+            out = view(rec, gid)
+            if frames is not None:
+                out["frames"] = trim(frames)
+            return out
 
     @router.get("/game/{gid}/log")
     def log(gid: str, since: int = 0):

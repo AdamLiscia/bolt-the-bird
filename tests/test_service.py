@@ -203,3 +203,35 @@ def test_bad_decks_and_the_game_limit(client, names):
     assert r.status_code == 429
     for g in ids:
         client.delete(f"/v1/game/{g}", headers=KEY)
+
+
+def test_frames_show_the_board_between_decisions(client):
+    r = client.post("/v1/game", headers=KEY, json={"set": "FDN", "deck_a": deck_of(client, 8), "deck_b": deck_of(client, 9),
+                                                   "human_seat": 0, "pilot": "network", "seed": 12, "first": 0,
+                                                   "frames": True})  # fmt: skip
+    gid, s = r.json()["game_id"], r.json()["state"]
+    client.cleanup.append(gid)
+    assert "frames" in r.json()
+    saw_frames = False
+    for _ in range(400):
+        if s["over"]:
+            break
+        r = client.post(f"/v1/game/{gid}/act", headers=KEY,
+                        json={"seat": 0, "action_index": choose(s["legal_actions"])["index"], "version": s["version"],
+                              "frames": True})  # fmt: skip
+        body = r.json()
+        frames = body.get("frames")
+        assert frames is not None and len(frames) <= 40
+        last_n = -1
+        for f in frames:
+            assert f["legal_actions"] == [] and f["view"]["players"][1]["hand"] is None
+            assert f["event_n"] >= last_n
+            last_n = f["event_n"]
+        for a, b in zip(frames, frames[1:], strict=False):
+            assert (a["view"], a["step"], a["turn"]) != (b["view"], b["step"], b["turn"]), "no repeated frames"
+        saw_frames |= len(frames) > 1
+        s = {k: v for k, v in body.items() if k != "frames"}
+    assert saw_frames, "a bot turn shows up as several frames"
+    plain = client.post(f"/v1/game/{gid}/act", headers=KEY, json={"seat": 0, "action_index": 0, "version": -1}).json()
+    assert "frames" not in plain.get("state", {}), "frames only when asked"
+    client.delete(f"/v1/game/{gid}", headers=KEY)
