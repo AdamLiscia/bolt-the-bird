@@ -229,7 +229,11 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
 
     @router.get("/health")
     def health():
-        return {"ok": True, "api": "v1", "sets": SETS, "models": kit.models,
+        probe = be.Game([0] * 40, [0] * 40, seed=0).observation(0)  # what the installed engine reports
+        features = ["frames", "tokens", "card_id", "human_seats", "wait", "concede"]
+        if "decision" in probe:
+            features.append("decision_details")
+        return {"ok": True, "api": "v1", "sets": SETS, "models": kit.models, "features": features,
                 "engine": f"bolt-engine {pkg_version('bolt-engine')}", "games_live": len(games),
                 "games_limit": max_games}  # fmt: skip
 

@@ -32,8 +32,12 @@ touches the NL database; NL never imports Bolt code. Star Trek (1v1 Commander) c
 ```json
 {"ok": true, "api": "v1", "sets": ["FDN"],
  "models": {"drafter": "bot_ppo.pt", "human_drafter": "human_model.pt", "player": "play_v2_ppo3_i850.pt"},
+ "features": ["frames", "tokens", "card_id", "human_seats", "wait", "concede", "decision_details"],
  "engine": "bolt-engine 0.1.0", "games_live": 3, "games_limit": 20}
 ```
+
+`features` lists what this build supports; `decision_details` (pending.choice and the readable
+decision labels) appears only once the engine build that reports decisions is installed.
 
 ## Card identity
 

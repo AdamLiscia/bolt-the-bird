@@ -27,6 +27,7 @@ def test_every_call_needs_the_key(client):
     assert client.get("/v1/health", headers={"X-Bolt-Key": "wrong"}).status_code == 401
     h = client.get("/v1/health", headers=KEY).json()
     assert h["ok"] and h["sets"] == ["FDN"]
+    assert {"frames", "tokens", "human_seats", "wait", "concede"} <= set(h["features"])
 
 
 def test_the_card_list_is_the_286_fdn_cards(client, names):
