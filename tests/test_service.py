@@ -212,7 +212,7 @@ def test_frames_show_the_board_between_decisions(client):
     gid, s = r.json()["game_id"], r.json()["state"]
     client.cleanup.append(gid)
     assert "frames" in r.json()
-    saw_frames = False
+    saw_frames = saw_damage = False
     for _ in range(400):
         if s["over"]:
             break
@@ -222,16 +222,21 @@ def test_frames_show_the_board_between_decisions(client):
         body = r.json()
         frames = body.get("frames")
         assert frames is not None and len(frames) <= 40
+        if frames:
+            assert frames[0]["turn"] == s["turn"], "the first frame is right after your own move"
+        lives = [[p["life"] for p in f["view"]["players"]] for f in frames]
+        saw_damage |= any(a != b and a[0] > b[0] for a, b in zip(lives, lives[1:], strict=False))
         last_n = -1
         for f in frames:
             assert f["legal_actions"] == [] and f["view"]["players"][1]["hand"] is None
             assert f["event_n"] >= last_n
             last_n = f["event_n"]
         for a, b in zip(frames, frames[1:], strict=False):
-            assert (a["view"], a["step"], a["turn"]) != (b["view"], b["step"], b["turn"]), "no repeated frames"
+            assert (a["view"], a["turn"]) != (b["view"], b["turn"]), "no repeated boards"
         saw_frames |= len(frames) > 1
         s = {k: v for k, v in body.items() if k != "frames"}
     assert saw_frames, "a bot turn shows up as several frames"
+    assert saw_damage, "damage to you shows up between frames, not only on your next board"
     plain = client.post(f"/v1/game/{gid}/act", headers=KEY, json={"seat": 0, "action_index": 0, "version": -1}).json()
     assert "frames" not in plain.get("state", {}), "frames only when asked"
     client.delete(f"/v1/game/{gid}", headers=KEY)

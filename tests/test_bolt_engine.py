@@ -146,7 +146,7 @@ def test_observation_shows_combat_and_the_cards_each_move_names():
         if obs["combat"] and obs["combat"]["attackers"]:
             saw_attack = True
             assert all(a in field for a in obs["combat"]["attackers"])
-            for blocker, attacker in obs["combat"]["blocks"]:
+            for _blocker, attacker in obs["combat"]["blocks"]:
                 assert attacker in obs["combat"]["attackers"]
         g.step(g.baseline())
     assert saw_attack and saw_block
@@ -179,6 +179,30 @@ def test_the_event_list_follows_the_game():
     for e in ev:
         if e["kind"] in ("Drew", "Moved", "Cast", "Resolved"):
             assert 0 <= e["card"] < len(be.card_names()) and e["id"] >= 0
-    lost = [sum(e["amount"] for e in ev if e["kind"] == k and e["player"] == p) for k in ("LifeLost", "LifeGained") for p in (0, 1)]
+    lost = [
+        sum(e["amount"] for e in ev if e["kind"] == k and e["player"] == p)
+        for k in ("LifeLost", "LifeGained")
+        for p in (0, 1)
+    ]
     lives = [g.observation(0)["players"][p]["life"] for p in (0, 1)]
     assert lives == [20 - lost[0] + lost[2], 20 - lost[1] + lost[3]], "life totals add up from the events"
+
+
+def test_turning_auto_pass_off_changes_no_decision():
+    rng = random.Random(41)
+    a, b = deck(rng), deck(rng)
+    on = be.Game(a, b, seed=41)
+    off = be.Game(a, b, seed=41)
+    off.auto_pass = False
+    for _ in range(5000):
+        if on.is_over():
+            break
+        while not off.is_over() and len(off.legal_actions()) == 1 and off.legal_actions()[0][0] == "PassPriority":
+            off.step(0)  # the passes auto-pass would have made
+        assert on.legal_actions() == off.legal_actions()
+        i = on.baseline()
+        on.step(i)
+        off.step(i)
+    while not off.is_over() and len(off.legal_actions()) == 1 and off.legal_actions()[0][0] == "PassPriority":
+        off.step(0)
+    assert on.result() == off.result() and on.turn == off.turn

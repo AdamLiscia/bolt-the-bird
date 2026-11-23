@@ -365,8 +365,8 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
         f = state(rec["game"], rec["human"], version=rec["version"], game_id=gid)
         f["legal_actions"] = []
         f["event_n"] = len(rec["events"])
-        if frames and (frames[-1]["view"], frames[-1]["step"], frames[-1]["turn"]) == (f["view"], f["step"], f["turn"]):
-            return
+        if frames and (frames[-1]["view"], frames[-1]["turn"]) == (f["view"], f["turn"]):
+            return  # nothing visible changed (a step change alone doesn't make a frame)
         frames.append(f)
 
     def trim(frames: list) -> list:
@@ -419,7 +419,9 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
             if len(games) >= max_games:
                 raise ApiError(429, "too many games", limit=max_games)
             gid = "g_" + secrets.token_hex(6)
-            rec = {"game": be.Game(a, b, seed=seed, first=first), "human": body.human_seat, "pilot": body.pilot,
+            game = be.Game(a, b, seed=seed, first=first)
+            game.auto_pass = False  # forced passes go through `advance`, so frames can catch every moment
+            rec = {"game": game, "human": body.human_seat, "pilot": body.pilot,
                    "seed": seed, "version": 0, "moves": 0, "events": [], "engine_n": 0, "used": time.time()}  # fmt: skip
             games[gid] = rec
             frames = [] if body.frames else None

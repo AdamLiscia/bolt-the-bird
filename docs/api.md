@@ -227,7 +227,8 @@ Add `"frames": true` to `POST /v1/game` or `POST /v1/game/{id}/act`, and the res
 after each move the bot or a forced move makes until your next decision, through steps and the next
 turn's untap. Each frame has the same shape as a state, with `legal_actions` empty and an `event_n`:
 the log index (`n`) of the next event at that moment, so a recap can be synced to the frames.
-Frames where nothing visible changed (view, step and turn all the same) are skipped; at most 40 are
+A new frame is taken whenever the view or the turn changes (combat damage, a land, a cast, an untap); a
+step change with nothing visible changing doesn't make one, though each frame carries its `step`; at most 40 are
 returned (the first 20 and the last 20 when there are more). The final state is the usual response
 body, not a frame. Without `"frames"`, responses are unchanged.
 
