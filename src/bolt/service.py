@@ -204,7 +204,7 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
         basics = {kit.info.basic_id[col]: col for col in BASIC_NAMES}
         main = [{"name": names[c], "qty": int(n)} for c, n in enumerate(deck) if n and c not in basics]
         lands = {basics[c]: int(deck[c]) for c in basics if deck[c]}
-        return {"main": main, "lands": lands, "colors": str(labels[0]), "cards": int(deck.sum()),
+        return {"main": main, "lands": lands, "colors": str(labels[0]).split()[0], "cards": int(deck.sum()),
                 "judged_win_rate": float(np.asarray(scores).reshape(-1)[0])}  # fmt: skip
 
     router = APIRouter()

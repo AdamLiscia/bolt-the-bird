@@ -75,6 +75,7 @@ def test_a_random_bot_draft_gives_42_picks_and_a_40_card_deck(client):
     }
     deck = a["deck"]
     assert sum(x["qty"] for x in deck["main"]) + sum(deck["lands"].values()) == deck["cards"] == 40
+    assert set(deck["colors"]) <= set("WUBRG") and 1 <= len(deck["colors"]) <= 2
     pool = [p["name"] for p in a["picks"]]
     for x in deck["main"]:
         assert pool.count(x["name"]) >= x["qty"], "the deck only uses drafted cards (and basics)"
