@@ -100,6 +100,21 @@ pub fn objects(a: &Action) -> [Option<ObjId>; 3] {
     }
 }
 
+/// A mana cost in Scryfall notation, e.g. `{2}{W}`.
+fn cost_text(c: &bolt_core::ManaCost) -> String {
+    let mut out = String::new();
+    if c.x > 0 {
+        out.push_str(&"{X}".repeat(c.x as usize));
+    }
+    if c.generic > 0 || (c.colored.iter().all(|&n| n == 0) && c.hybrid.iter().all(|&n| n == 0)) {
+        out.push_str(&format!("{{{}}}", c.generic));
+    }
+    for (i, sym) in ["W", "U", "B", "R", "G"].iter().enumerate() {
+        out.push_str(&format!("{{{sym}}}").repeat(c.colored[i] as usize));
+    }
+    out
+}
+
 /// What the pending choice is and who makes it.
 pub fn pending(p: &Pending) -> (&'static str, i64) {
     use Pending::*;
@@ -378,25 +393,65 @@ impl Game {
         d.set_item("active", g.active)?;
         let (kind, who) = pending(&g.pending);
         d.set_item("pending", (kind, who))?;
-        // What a "Decide" is about: its kind (ChooseColor, ChooseCreatureType, ChooseMode, May, ...),
-        // the card asking where there is one, and named options (creature types), so a UI can say
-        // "choose Red" instead of "mode 4". Mode(i) for ChooseColor is a WUBRG index.
+        // What a "Decide" is about, for a UI: its kind (May, Surveil, Tuck, ChooseColor, MayPay, ...),
+        // the spell or ability asking (`source`), and the cards, amounts or costs it involves. Cards
+        // the decider is looking at (surveil, a tucked card, a look-and-pick) are only in the
+        // decider's own view. Mode(i) for ChooseColor is a WUBRG index.
         match (&g.pending, &g.decision) {
-            (Pending::Decide(_), Some(dec)) => {
+            (Pending::Decide(q), Some(dec)) => {
+                use bolt_core::Decision as D;
                 let e = PyDict::new(py);
+                let mine = *q == player;
                 let dbg = format!("{dec:?}");
-                let name = dbg.split([' ', '{', '(']).next().unwrap_or("").to_string();
-                e.set_item("kind", name)?;
+                e.set_item("kind", dbg.split([' ', '{', '(']).next().unwrap_or(""))?;
+                if let Some(r) = &g.resolving {
+                    e.set_item("source", (id(r.item.source), g.obj(r.item.source).def as i64))?;
+                }
+                let objs = |v: &[ObjId]| -> Vec<(i64, i64)> {
+                    v.iter().map(|&c| (id(c), g.obj(c).def as i64)).collect()
+                };
+                let one = |c: ObjId| -> (i64, i64) { (id(c), g.obj(c).def as i64) };
                 match dec {
-                    bolt_core::Decision::ChooseColor { card } | bolt_core::Decision::Tuck { card } => {
-                        e.set_item("card", id(*card))?;
-                        e.set_item("card_def", g.obj(*card).def as i64)?;
-                    }
-                    bolt_core::Decision::ChooseCreatureType { card, options } => {
-                        e.set_item("card", id(*card))?;
-                        e.set_item("card_def", g.obj(*card).def as i64)?;
+                    D::ChooseColor { card } => e.set_item("card", one(*card))?,
+                    D::ChooseCreatureType { card, options } => {
+                        e.set_item("card", one(*card))?;
                         e.set_item("options", options.clone())?;
                     }
+                    D::Surveil { cards } if mine => e.set_item("cards", objs(cards))?,
+                    D::Tuck { card } if mine => e.set_item("card", one(*card))?,
+                    D::LookPick { cards, .. } if mine => e.set_item("cards", objs(cards))?,
+                    D::GenesisPick { cards, x } => {
+                        e.set_item("cards", objs(cards))?;
+                        e.set_item("x", *x)?;
+                    }
+                    D::SplitPiles { rest, a, b, .. } => {
+                        if let Some(&c) = rest.first() {
+                            e.set_item("card", one(c))?;
+                        }
+                        e.set_item("a", objs(a))?;
+                        e.set_item("b", objs(b))?;
+                    }
+                    D::ChoosePile { a, b, .. } => {
+                        e.set_item("a", objs(a))?;
+                        e.set_item("b", objs(b))?;
+                    }
+                    D::MayPay { cost } => e.set_item("cost", cost_text(cost))?,
+                    D::PayWard { cost, against } => {
+                        e.set_item("cost", cost_text(cost))?;
+                        e.set_item("card", one(*against))?;
+                    }
+                    D::PayWardLife { life, against } => {
+                        e.set_item("life", *life)?;
+                        e.set_item("card", one(*against))?;
+                    }
+                    D::LoseOrDiscard { n, .. } => e.set_item("life", *n)?,
+                    D::Discard { left, optional, .. } => {
+                        e.set_item("left", *left)?;
+                        e.set_item("optional", *optional)?;
+                    }
+                    D::SacrificeAnother { source } => e.set_item("card", one(*source))?,
+                    D::SacrificeCreatures { left } => e.set_item("left", *left)?,
+                    D::Search { what, .. } => e.set_item("what", format!("{what:?}"))?,
                     _ => {}
                 }
                 d.set_item("decision", e)?;

@@ -201,11 +201,27 @@ to the human's first decision.
 
 - `version` increases with every action; send it back with `act`.
 - `to_act` is the seat that must decide; it is the human's seat unless `over`.
-- When `pending.kind` is `Decide`, `pending.choice` says what it's about (`ChooseColor`,
-  `ChooseCreatureType`, `ChooseMode`, `May`, `Search`, `Surveil`, ...), with `pending.card`
-  (`{"id", "name"}`) when a card is asking and `pending.options` for named choices. `Mode` moves of a
-  `ChooseColor` are labelled "Heraldic Banner: choose Red": `number` 0–4 is White, Blue, Black, Red,
-  Green. (Needs the engine build after 2026-11-23; older builds omit `choice` and label "Choose mode N".)
+- When `pending.kind` is `Decide`, `pending.choice` says what it's about, and moves get real labels
+  (needs the engine build after 2026-11-23; older builds omit these and label `Yes`/`No`/`Choose mode N`):
+
+  | `choice` | Extra `pending` fields | Move labels |
+  |---|---|---|
+  | `May` | `source`, `source_text` | "Wary Thespian: yes" / "…: no" (show `source_text` as the prompt) |
+  | `Surveil` | `source`, `cards` (decider only: the top card first; one decision per card) | "Put Forest into your graveyard" / "Keep Forest on top" |
+  | `Tuck` | `card` (decider only) | "Put Forest on top of your library" / "Put Forest on the bottom" |
+  | `MayPay` | `source`, `cost` | "Pay {2} (Card)" / "Don't pay" |
+  | `PayWard`, `PayWardLife` | `card` (the targeted permanent), `cost` or `life` | "Pay ward {1} for X" / "Don't pay (X is countered)" |
+  | `ChooseColor` | `card` | "Heraldic Banner: choose Red" (`number` 0–4 = White, Blue, Black, Red, Green) |
+  | `ChooseCreatureType` | `card`, `options` | "Heraldic Banner: choose Elf" |
+  | `SplitPiles`, `ChoosePile` | `card`, `pile_a`, `pile_b` | "Put X in pile A / B", "Choose pile A / B" |
+  | `Search`, `LookPick` | `source`, `what` / `cards` (decider only) | "Take X" / "Find nothing", "Take nothing" |
+  | `SacrificeCreatures`, `SacrificeAnother`, `KeepOfType`, `GenesisPick`, `PickDiscard` | `left`, `card`, `cards`, `x` | "Sacrifice X", "Keep X", "Put onto the battlefield: X", "Make them discard X"; `No`: "Don't sacrifice", "Done choosing" |
+  | `Discard`, `LoseOrDiscard` | `left`, `optional`, `life` | "Discard X"; `No`: "Don't discard" / "Lose N life instead" |
+  | `ChooseMode` | `source` | "Choose mode N" |
+
+  `source`, `card` and each entry of `cards`, `pile_a`, `pile_b` are `{"id", "name", "card_id"}`. Yes/No moves
+  about one card (surveil, tuck, ward) carry its id in `objects`. FDN has no scry; when Star Trek's scry
+  arrives it will be one decision per card, like surveil.
 - `pending.kind`: `Mulligan`, `Bottom`, `Priority`, `DeclareAttackers`, `DeclareBlockers`, `Discard`,
   `ChooseTarget`, `Decide`, `Divide`, `RemoveCounters`, `FreeCast`, `GameOver`.
 - `step`: `PreGame`, `Untap`, `Upkeep`, `Draw`, `Main1`, `BeginCombat`, `DeclareAttackers`,
