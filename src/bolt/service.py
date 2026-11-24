@@ -168,6 +168,12 @@ class GameBody(BaseModel):
     first: int | None = None
     frames: bool = False
     human_seats: list[int] | None = None  # [0, 1]: two people, no bot seat
+    manual_mana_seats: list[int] = []  # human seats that tap their own mana (TapForMana moves)
+
+
+class ManaBody(BaseModel):
+    seat: int
+    manual: bool
 
 
 class ConcedeBody(BaseModel):
@@ -490,11 +496,14 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
                 rec["timeout"] = True
                 return
             who = g.to_act()
-            n = len(g.legal_actions())
+            legal = g.legal_actions()
+            n = len(legal)
             if who in rec["humans"]:
-                if n > 1:
+                # Tapping mana isn't a reason to stop: with nothing else to do, the pass is forced.
+                real = [i for i, a in enumerate(legal) if a[0] != "TapForMana"]
+                if len(real) > 1:
                     return
-                apply(rec, 0, gid)
+                apply(rec, real[0], gid)
             else:
                 apply(rec, 0 if n == 1 else bot_move(rec), gid)
             snapshot(rec, gid, frames, seat)
@@ -548,6 +557,11 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
             gid = "g_" + secrets.token_hex(6)
             game = be.Game(a, b, seed=seed, first=first)
             game.auto_pass = False  # forced passes go through `advance`, so frames can catch every moment
+            game.smart_pay = True  # keep the colors the hand still needs (both seats)
+            for s in body.manual_mana_seats:
+                if s not in humans:
+                    raise ApiError(422, f"manual_mana_seats: seat {s} isn't a human seat")
+                game.set_manual_mana(s, True)
             rec = {"game": game, "human": humans[0], "humans": set(humans),
                    "pilot": body.pilot if len(humans) == 1 else None, "seed": seed, "version": 0, "moves": 0,
                    "events": [], "engine_n": 0, "used": time.time(), "seat_frames": {s: [] for s in humans}}  # fmt: skip
@@ -573,6 +587,18 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
             s["legal_actions"] = []
             s["spectate"] = True
             return s
+
+    @router.post("/game/{gid}/mana")
+    def set_mana(gid: str, body: ManaBody):
+        """Switch a human seat between Auto (the engine pays) and Manual (TapForMana moves)."""
+        with lock:
+            rec = get(gid)
+            if body.seat not in rec["humans"]:
+                raise ApiError(409, "not a human seat in this game", state=view(rec, gid))
+            rec["game"].set_manual_mana(body.seat, body.manual)
+            rec["version"] += 1
+            advance(rec, gid, None, body.seat)
+            return view(rec, gid, body.seat)
 
     @router.post("/game/{gid}/act")
     def act(gid: str, body: ActBody):

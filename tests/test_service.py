@@ -431,3 +431,36 @@ def test_spectating_shows_the_bots_hand_read_only():
     assert s["view"]["players"][0]["hand"] is None, "the other side stays hidden"
     assert c.get(f"/v1/game/{gid}?seat=1&spectate=1").status_code in (401, 403), "needs the key"
     assert c.get(f"/v1/game/{gid}?seat=2&spectate=1", headers=h).status_code == 422
+
+
+def test_manual_mana_taps_a_land_into_the_pool_and_can_be_switched_off():
+    from bolt.service import create_app, load_kit
+
+    c = TestClient(create_app(load_kit(), key="k"))
+    h = {"X-Bolt-Key": "k"}
+    deck = [{"name": "Forest", "qty": 20}, {"name": "Llanowar Elves", "qty": 20}]
+    base = {"set": "FDN", "deck_a": deck, "deck_b": deck, "human_seat": 0, "pilot": "rules", "seed": 5}
+    assert c.post("/v1/game", headers=h, json={**base, "manual_mana_seats": [1]}).status_code == 422
+    g = c.post("/v1/game", headers=h, json={**base, "manual_mana_seats": [0]}).json()
+    gid, s = g["game_id"], g["state"]
+    tap = None
+    for _ in range(300):
+        moves = s["legal_actions"]
+        tap = next((m for m in moves if m["kind"] == "TapForMana"), None)
+        if tap:
+            break
+        pick = next((m for m in moves if m["kind"] in ("Keep", "PlayLand")), None)
+        pick = pick or next(m for m in moves if m["kind"] == "PassPriority")
+        s = c.post(f"/v1/game/{gid}/act", headers=h,
+                   json={"seat": 0, "action_index": pick["index"], "version": s["version"]}).json()  # fmt: skip
+    assert tap, "a Forest to tap"
+    assert tap["label"] == "Tap Forest for {G}" and tap["color"] == "G" and tap["cards"] == ["Forest"]
+    s = c.post(f"/v1/game/{gid}/act", headers=h,
+               json={"seat": 0, "action_index": tap["index"], "version": s["version"]}).json()  # fmt: skip
+    me = s["view"]["players"][0]
+    assert me["pool"] == 1 and me["pool_colors"]["G"] == 1
+    assert any(m["kind"] == "Cast" for m in s["legal_actions"]), "the floating {G} casts Llanowar Elves"
+    off = c.post(f"/v1/game/{gid}/mana", headers=h, json={"seat": 0, "manual": False}).json()
+    assert off["version"] > s["version"]
+    assert not any(m["kind"] == "TapForMana" for m in off["legal_actions"])
+    assert c.post(f"/v1/game/{gid}/mana", headers=h, json={"seat": 1, "manual": True}).status_code == 409

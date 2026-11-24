@@ -8,6 +8,7 @@ import bolt_engine as be
 
 _NAMES = be.card_names()
 COLORS = ("White", "Blue", "Black", "Red", "Green")  # the engine's Mode index for ChooseColor (WUBRG)
+SACRIFICE_FOR_MANA = {"Treasure"}  # tokens whose mana ability sacrifices them
 
 
 def name(card_index: int) -> str:
@@ -29,6 +30,10 @@ def _label(kind: str, cards: list, nums: tuple, me: int, values: tuple) -> str:
         return simple[kind]
     if kind == "TargetPlayer":
         return "Target yourself" if a == me else "Target opponent"
+    if kind == "TapForMana":
+        sym = "WUBRGC"[b] if 0 <= b <= 5 else "C"
+        verb = "Sacrifice" if c in SACRIFICE_FOR_MANA else "Tap"
+        return f"{verb} {c} for {{{sym}}}"
     if kind == "Mode":
         return f"Choose mode {a + 1}"
     if kind == "Amount":
@@ -129,7 +134,7 @@ def actions(obs: dict, me: int) -> list[dict]:
         objects = [values[s] for s in range(3) if cards[s] >= 0]
         names = [name(cards[s]) for s in range(3) if cards[s] >= 0]
         nums = tuple(values[s] for s in range(3) if cards[s] < 0 and values[s] >= 0)
-        if kind in ("Mode", "Amount", "TargetPlayer"):
+        if kind in ("Mode", "Amount", "TargetPlayer", "TapForMana"):
             nums = ()
         label = _label(kind, names, nums, me, values)
         if dec and kind in ("Mode", "Pick", "Yes", "No"):
@@ -141,6 +146,8 @@ def actions(obs: dict, me: int) -> list[dict]:
         act = {"index": k, "kind": kind, "label": label, "objects": objects, "cards": names}
         if kind == "TargetPlayer":
             act["player"] = a
+        elif kind == "TapForMana":
+            act["color"] = "WUBRGC"[b] if 0 <= b <= 5 else "C"
         elif kind in ("Mode", "Amount"):
             act["number"] = a
         elif kind == "ActivateX":
@@ -188,7 +195,7 @@ def state(game, seat: int, version: int, game_id: str) -> dict:
     for p, pl in enumerate(obs["players"]):
         players.append({
             "seat": p, "life": pl["life"], "hand_size": pl["hand_size"], "library": pl["library"],
-            "lands_played": pl["lands_played"], "pool": pl["pool"],
+            "lands_played": pl["lands_played"], "pool": pl["pool"], "pool_colors": pl.get("pool_colors"),
             "hand": None if pl["hand"] is None else [_obj(x) for x in pl["hand"]],
             "graveyard": [_obj(x) for x in pl["graveyard"]],
         })  # fmt: skip

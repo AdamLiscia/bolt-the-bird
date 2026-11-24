@@ -380,6 +380,34 @@ Ends and frees a game.
 - Bot moves: `network`, `smart` and `rules` take milliseconds per decision; `smart_strong` takes longer (tens of milliseconds, more on big boards).
 
 
+### Paying mana
+
+Every service game uses the **smart auto-payer** for both seats: floating mana is spent first, colored
+costs take the narrowest sources, and generic costs take the sources whose colors the rest of the hand
+(and your permanents' activated abilities) need least, so an Island stays up for the blue card still in
+hand. Research runs keep the engine's older payer, so stored results replay identically.
+
+**Manual mana** (human seats): `POST /v1/game {..., "manual_mana_seats": [0]}` (default `[]`), or switch
+any time with `POST /v1/game/{id}/mana {"seat": 0, "manual": true|false}` (returns the state; the version
+bumps because the legal moves change; 409 for a seat that isn't human). While a manual seat has
+priority, `legal_actions` also offer:
+
+```json
+{"index": 7, "kind": "TapForMana", "label": "Tap Forest for {G}", "objects": [41], "cards": ["Forest"], "color": "G"}
+```
+
+- One move per source and color it can make: a dual land offers two, Evolving Wilds none (not a mana
+  ability). `color` is one of `W U B R G C`. Treasure reads "Sacrifice Treasure for {R}". Mana creatures
+  are offered when they can tap. Sources whose mana is restricted (only for some spells) stay automatic.
+- The mana floats in the pool until the step ends (CR 500.4). Casting or activating spends floating mana
+  first and auto-pays the rest from untapped sources, so Manual never blocks a cast: cast moves are legal
+  whenever pool plus untapped sources can pay.
+- Tap moves alone aren't a decision: when a manual seat could only pass or tap, the pass is forced as
+  before.
+- `view.players[n].pool` is the total floating mana; `pool_colors` is
+  `{"W", "U", "B", "R", "G", "C", "any"}` counts ("any": mana that can be several colors).
+- Bots never get TapForMana, and auto seats never see it.
+
 ### Spectating a seat (stream mode)
 
 `GET /v1/game/{id}?seat=N&spectate=1` returns seat N's view, the bot's seat included, read-only:

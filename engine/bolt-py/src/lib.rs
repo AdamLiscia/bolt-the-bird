@@ -67,6 +67,7 @@ pub fn encode(a: &Action) -> Encoded {
         Amount(n) => ("Amount", n as i64, -1, -1),
         CastFromGraveyard(c) => ("CastFromGraveyard", id(c), -1, -1),
         CastFromGraveyardAs(c, t) => ("CastFromGraveyardAs", id(c), t as i64, -1),
+        TapForMana(c, color) => ("TapForMana", id(c), color as i64, -1),
     }
 }
 
@@ -89,7 +90,8 @@ pub fn objects(a: &Action) -> [Option<ObjId>; 3] {
         | Attack(c)
         | Discard(c)
         | CastFromGraveyard(c)
-        | CastFromGraveyardAs(c, _) => [Some(c), None, None],
+        | CastFromGraveyardAs(c, _)
+        | TapForMana(c, _) => [Some(c), None, None],
         Target(bolt_core::Target::Object(c)) => [Some(c), None, None],
         ActivateWith(c, _, v) => [Some(c), None, Some(v)],
         CastWith(c, x) => [Some(c), Some(x), None],
@@ -278,6 +280,27 @@ impl Game {
     #[setter]
     fn set_auto_pass(&mut self, on: bool) {
         self.g.auto_pass = on;
+        self.refresh();
+    }
+
+    /// The smart auto-payer: floating mana first, then keep the colors the hand still needs.
+    #[getter]
+    fn get_smart_pay(&self) -> bool {
+        self.g.smart_pay
+    }
+
+    #[setter]
+    fn set_smart_pay(&mut self, on: bool) {
+        self.g.smart_pay = on;
+    }
+
+    /// Whether player `p` taps their own mana (TapForMana moves at priority).
+    fn manual_mana(&self, p: usize) -> bool {
+        self.g.manual_mana[p.min(1)]
+    }
+
+    fn set_manual_mana(&mut self, p: usize, on: bool) {
+        self.g.manual_mana[p.min(1)] = on;
         self.refresh();
     }
 
@@ -493,6 +516,24 @@ impl Game {
             e.set_item("graveyard", grave)?;
             e.set_item("lands_played", pl.lands_played)?;
             e.set_item("pool", pl.pool.len())?;
+            // Floating mana by color (W U B R G C); "any" counts mana that can be any of several colors.
+            let pc = PyDict::new(py);
+            let mut counts = [0usize; 7];
+            for m in &pl.pool {
+                let n = m.colors.iter().filter(|&&b| b).count();
+                let k = if n == 1 {
+                    m.colors.iter().position(|&b| b).unwrap()
+                } else if n == 0 {
+                    5
+                } else {
+                    6
+                };
+                counts[k] += 1;
+            }
+            for (k, name) in ["W", "U", "B", "R", "G", "C", "any"].iter().enumerate() {
+                pc.set_item(name, counts[k])?;
+            }
+            e.set_item("pool_colors", pc)?;
             players.append(e)?;
         }
         d.set_item("players", players)?;
