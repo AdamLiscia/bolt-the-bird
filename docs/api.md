@@ -408,6 +408,19 @@ priority, `legal_actions` also offer:
   `{"W", "U", "B", "R", "G", "C", "any"}` counts ("any": mana that can be several colors).
 - Bots never get TapForMana, and auto seats never see it.
 
+### Player counters (names reserved; added as the engine models them)
+
+For stream overlays. A field appears only once the engine models it, so a missing field means "not in this
+game"; show an icon only when present and active.
+
+| Field | Where | Status |
+|---|---|---|
+| `commander_damage` | per player: `{"<source commander card_id>": n}`, damage taken from each commander | Ships with Commander games (the Star Trek precon work); the engine already tracks it, Limited games omit it |
+| `poison`, `energy`, `experience` | per player, integers | Not modeled (no Foundations or Tarkir card uses them) |
+| `monarch`, `initiative` | game level: the seat that has it, or null | Not modeled |
+| `city_blessing` | game level: list of seats | Not modeled |
+| `day_night` | game level: `"day"`, `"night"` or null | Not modeled |
+
 ### Spectating a seat (stream mode)
 
 `GET /v1/game/{id}?seat=N&spectate=1` returns seat N's view, the bot's seat included, read-only:
