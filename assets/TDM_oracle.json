@@ -216,6 +216,28 @@
 "collector_number": "37"
 },
 {
+"name": "Anafenza, Unyielding Lineage",
+"mana_cost": "{2}{W}",
+"cmc": 3.0,
+"type_line": "Legendary Creature \u2014 Spirit Soldier",
+"oracle_text": "Flash\nFirst strike\nWhenever another nontoken creature you control dies, Anafenza endures 2. (Put two +1/+1 counters on it or create a 2/2 white Spirit creature token.)",
+"power": "2",
+"toughness": "2",
+"keywords": [
+"First strike",
+"Flash",
+"Endure"
+],
+"colors": [
+"W"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "2"
+},
+{
 "name": "Arashin Sunshield",
 "mana_cost": "{3}{W}",
 "cmc": 4.0,
@@ -389,6 +411,28 @@
 "loyalty": null,
 "produced_mana": null,
 "collector_number": "4"
+},
+{
+"name": "Betor, Kin to All",
+"mana_cost": "{2}{W}{B}{G}",
+"cmc": 5.0,
+"type_line": "Legendary Creature \u2014 Spirit Dragon",
+"oracle_text": "Flying\nAt the beginning of your end step, if creatures you control have total toughness 10 or greater, draw a card. Then if creatures you control have total toughness 20 or greater, untap each creature you control. Then if creatures you control have total toughness 40 or greater, each opponent loses half their life, rounded up.",
+"power": "5",
+"toughness": "7",
+"keywords": [
+"Flying"
+],
+"colors": [
+"B",
+"G",
+"W"
+],
+"rarity": "mythic",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "172"
 },
 {
 "name": "Bewildering Blizzard",
@@ -1331,6 +1375,24 @@
 "collector_number": "181"
 },
 {
+"name": "Elspeth, Storm Slayer",
+"mana_cost": "{3}{W}{W}",
+"cmc": 5.0,
+"type_line": "Legendary Planeswalker \u2014 Elspeth",
+"oracle_text": "If one or more tokens would be created under your control, twice that many of those tokens are created instead.\n+1: Create a 1/1 white Soldier creature token.\n0: Put a +1/+1 counter on each creature you control. Those creatures gain flying until your next turn.\n\u22123: Destroy target creature an opponent controls with mana value 3 or greater.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"W"
+],
+"rarity": "mythic",
+"layout": "normal",
+"loyalty": "5",
+"produced_mana": null,
+"collector_number": "11"
+},
+{
 "name": "Embermouth Sentinel",
 "mana_cost": "{2}",
 "cmc": 2.0,
@@ -1486,6 +1548,28 @@
 "loyalty": null,
 "produced_mana": null,
 "collector_number": "183"
+},
+{
+"name": "Felothar, Dawn of the Abzan",
+"mana_cost": "{W}{B}{G}",
+"cmc": 3.0,
+"type_line": "Legendary Creature \u2014 Human Warrior",
+"oracle_text": "Trample\nWhenever Felothar enters or attacks, you may sacrifice a nonland permanent. When you do, put a +1/+1 counter on each creature you control.",
+"power": "3",
+"toughness": "3",
+"keywords": [
+"Trample"
+],
+"colors": [
+"B",
+"G",
+"W"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "184"
 },
 {
 "name": "Feral Deathgorger",
@@ -2455,6 +2539,28 @@
 "collector_number": "147"
 },
 {
+"name": "Kotis, the Fangkeeper",
+"mana_cost": "{1}{B}{G}{U}",
+"cmc": 4.0,
+"type_line": "Legendary Creature \u2014 Zombie Warrior",
+"oracle_text": "Indestructible\nWhenever Kotis deals combat damage to a player, exile the top X cards of their library, where X is the amount of damage dealt. You may cast any number of spells with mana value X or less from among them without paying their mana costs.",
+"power": "2",
+"toughness": "1",
+"keywords": [
+"Indestructible"
+],
+"colors": [
+"B",
+"G",
+"U"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "202"
+},
+{
 "name": "Krotiq Nestguard",
 "mana_cost": "{2}{G}",
 "cmc": 3.0,
@@ -2985,6 +3091,26 @@
 "collector_number": "114"
 },
 {
+"name": "Narset, Jeskai Waymaster",
+"mana_cost": "{U}{R}{W}",
+"cmc": 3.0,
+"type_line": "Legendary Creature \u2014 Human Monk",
+"oracle_text": "At the beginning of your end step, you may discard your hand. If you do, draw cards equal to the number of spells you've cast this turn.",
+"power": "3",
+"toughness": "4",
+"keywords": [],
+"colors": [
+"R",
+"U",
+"W"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "209"
+},
+{
 "name": "Nature's Rhythm",
 "mana_cost": "{X}{G}{G}",
 "cmc": 2.0,
@@ -3003,6 +3129,28 @@
 "loyalty": null,
 "produced_mana": null,
 "collector_number": "150"
+},
+{
+"name": "Neriv, Heart of the Storm",
+"mana_cost": "{1}{R}{W}{B}",
+"cmc": 4.0,
+"type_line": "Legendary Creature \u2014 Spirit Dragon",
+"oracle_text": "Flying\nIf a creature you control that entered this turn would deal damage, it deals twice that much damage instead.",
+"power": "4",
+"toughness": "5",
+"keywords": [
+"Flying"
+],
+"colors": [
+"B",
+"R",
+"W"
+],
+"rarity": "mythic",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "210"
 },
 {
 "name": "New Way Forward",
@@ -3863,6 +4011,27 @@
 "collector_number": "158"
 },
 {
+"name": "Sarkhan, Dragon Ascendant",
+"mana_cost": "{1}{R}",
+"cmc": 2.0,
+"type_line": "Legendary Creature \u2014 Human Druid",
+"oracle_text": "When Sarkhan enters, you may behold a Dragon. If you do, create a Treasure token. (To behold a Dragon, choose a Dragon you control or reveal a Dragon card from your hand.)\nWhenever a Dragon you control enters, put a +1/+1 counter on Sarkhan. Until end of turn, Sarkhan becomes a Dragon in addition to his other types and gains flying.",
+"power": "2",
+"toughness": "2",
+"keywords": [
+"Behold",
+"Treasure"
+],
+"colors": [
+"R"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "118"
+},
+{
 "name": "Scalding Tarn",
 "mana_cost": "",
 "cmc": 0.0,
@@ -3959,6 +4128,29 @@
 "collector_number": "222"
 },
 {
+"name": "Shiko, Paragon of the Way",
+"mana_cost": "{2}{U}{R}{W}",
+"cmc": 5.0,
+"type_line": "Legendary Creature \u2014 Spirit Dragon",
+"oracle_text": "Flying, vigilance\nWhen Shiko enters, exile target nonland card with mana value 3 or less from your graveyard. Copy it, then you may cast the copy without paying its mana cost. (A copy of a permanent spell becomes a token.)",
+"power": "4",
+"toughness": "5",
+"keywords": [
+"Flying",
+"Vigilance"
+],
+"colors": [
+"R",
+"U",
+"W"
+],
+"rarity": "mythic",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "223"
+},
+{
 "name": "Shock Brigade",
 "mana_cost": "{1}{R}",
 "cmc": 2.0,
@@ -4016,6 +4208,24 @@
 "loyalty": null,
 "produced_mana": null,
 "collector_number": "56"
+},
+{
+"name": "Sidisi, Regent of the Mire",
+"mana_cost": "{1}{B}",
+"cmc": 2.0,
+"type_line": "Legendary Creature \u2014 Zombie Snake Warlock",
+"oracle_text": "{T}, Sacrifice a creature you control with mana value X other than Sidisi: Return target creature card with mana value X plus 1 from your graveyard to the battlefield. Activate only as a sorcery.",
+"power": "1",
+"toughness": "3",
+"keywords": [],
+"colors": [
+"B"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "92"
 },
 {
 "name": "Sinkhole Surveyor",
@@ -4479,6 +4689,26 @@
 "collector_number": "126"
 },
 {
+"name": "Surrak, Elusive Hunter",
+"mana_cost": "{2}{G}",
+"cmc": 3.0,
+"type_line": "Legendary Creature \u2014 Human Warrior",
+"oracle_text": "This spell can't be countered.\nTrample\nWhenever a creature you control or a creature spell you control becomes the target of a spell or ability an opponent controls, draw a card.",
+"power": "4",
+"toughness": "3",
+"keywords": [
+"Trample"
+],
+"colors": [
+"G"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "161"
+},
+{
 "name": "Swamp",
 "mana_cost": "",
 "cmc": 0.0,
@@ -4534,6 +4764,26 @@
 "loyalty": null,
 "produced_mana": null,
 "collector_number": "162"
+},
+{
+"name": "Taigam, Master Opportunist",
+"mana_cost": "{1}{U}",
+"cmc": 2.0,
+"type_line": "Legendary Creature \u2014 Human Monk",
+"oracle_text": "Flurry \u2014 Whenever you cast your second spell each turn, copy it, then exile the spell you cast with four time counters on it. If it doesn't have suspend, it gains suspend. (At the beginning of its owner's upkeep, they remove a time counter. When the last is removed, they may play it without paying its mana cost. If it's a creature, it has haste.)",
+"power": "2",
+"toughness": "2",
+"keywords": [
+"Flurry"
+],
+"colors": [
+"U"
+],
+"rarity": "mythic",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "60"
 },
 {
 "name": "Teeming Dragonstorm",
@@ -4672,6 +4922,29 @@
 "loyalty": null,
 "produced_mana": null,
 "collector_number": "127"
+},
+{
+"name": "Teval, Arbiter of Virtue",
+"mana_cost": "{2}{B}{G}{U}",
+"cmc": 5.0,
+"type_line": "Legendary Creature \u2014 Spirit Dragon",
+"oracle_text": "Flying, lifelink\nSpells you cast have delve. (Each card you exile from your graveyard while casting those spells pays for {1}.)\nWhenever you cast a spell, you lose life equal to its mana value.",
+"power": "6",
+"toughness": "6",
+"keywords": [
+"Flying",
+"Lifelink"
+],
+"colors": [
+"B",
+"G",
+"U"
+],
+"rarity": "mythic",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "230"
 },
 {
 "name": "The Sibsig Ceremony",
@@ -4824,6 +5097,24 @@
 "collector_number": "232"
 },
 {
+"name": "Ugin, Eye of the Storms",
+"mana_cost": "{7}",
+"cmc": 7.0,
+"type_line": "Legendary Planeswalker \u2014 Ugin",
+"oracle_text": "When you cast this spell, exile up to one target permanent that's one or more colors.\nWhenever you cast a colorless spell, exile up to one target permanent that's one or more colors.\n+2: You gain 3 life and draw a card.\n0: Add {C}{C}{C}.\n\u221211: Search your library for any number of colorless nonland cards, exile them, then shuffle. Until end of turn, you may cast those cards without paying their mana costs.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [],
+"rarity": "mythic",
+"layout": "normal",
+"loyalty": "7",
+"produced_mana": [
+"C"
+],
+"collector_number": "1"
+},
+{
 "name": "Unburied Earthcarver",
 "mana_cost": "{1}{B}",
 "cmc": 2.0,
@@ -4974,6 +5265,29 @@
 "loyalty": null,
 "produced_mana": null,
 "collector_number": "63"
+},
+{
+"name": "Ureni, the Song Unending",
+"mana_cost": "{5}{G}{U}{R}",
+"cmc": 8.0,
+"type_line": "Legendary Creature \u2014 Spirit Dragon",
+"oracle_text": "Flying, protection from white and from black\nWhen Ureni enters, it deals X damage divided as you choose among any number of target creatures and/or planeswalkers your opponents control, where X is the number of lands you control.",
+"power": "10",
+"toughness": "10",
+"keywords": [
+"Flying",
+"Protection"
+],
+"colors": [
+"G",
+"R",
+"U"
+],
+"rarity": "mythic",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "233"
 },
 {
 "name": "Venerated Stormsinger",
@@ -5365,5 +5679,27 @@
 "loyalty": null,
 "produced_mana": null,
 "collector_number": "133"
+},
+{
+"name": "Zurgo, Thunder's Decree",
+"mana_cost": "{R}{W}{B}",
+"cmc": 3.0,
+"type_line": "Legendary Creature \u2014 Orc Warrior",
+"oracle_text": "Mobilize 2 (Whenever this creature attacks, create two tapped and attacking 1/1 red Warrior creature tokens. Sacrifice them at the beginning of the next end step.)\nDuring your end step, Warrior tokens you control have \"This token can't be sacrificed.\"",
+"power": "2",
+"toughness": "4",
+"keywords": [
+"Mobilize"
+],
+"colors": [
+"B",
+"R",
+"W"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "237"
 }
 ]

@@ -8,6 +8,7 @@ Fields as in assets/FDN_oracle.json. Two-faced cards keep their front face's cha
 """
 
 import argparse
+import csv
 import gzip
 import json
 import time
@@ -23,7 +24,7 @@ HEADERS = {"User-Agent": "BoltTheBird/0.4", "Accept": "application/json"}
 
 def names_in_model_order(code: str) -> list[str]:
     with gzip.open(DATA / "raw" / f"draft_data_public.{code}.PremierDraft.csv.gz", "rt") as f:
-        header = f.readline().strip().split(",")
+        header = next(csv.reader(f))  # quoted: some names contain commas ("Ugin, Eye of the Storms")
     return [h.removeprefix("pack_card_") for h in header if h.startswith("pack_card_")]
 
 

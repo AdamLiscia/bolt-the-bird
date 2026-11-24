@@ -355,13 +355,13 @@ mod tests {
     #[test]
     fn tarkir_loads_in_model_order_with_its_own_tokens() {
         let t = set("TDM").unwrap();
-        assert_eq!(t.card_count(), 270);
+        assert_eq!(t.card_count(), 286);
         assert_eq!(
             t.oracle[0].name, "Abzan Devotee",
             "the 17lands draft data's column order"
         );
-        assert_eq!(t.defs.len(), 270 + scripts::token_defs().len());
-        assert!(t.defs[270..].iter().all(|d| d.token));
+        assert_eq!(t.defs.len(), 286 + scripts::token_defs().len());
+        assert!(t.defs[286..].iter().all(|d| d.token));
         for basic in ["Plains", "Island", "Swamp", "Mountain", "Forest"] {
             let i = t.index_of(basic).unwrap();
             assert!(t.supported[i], "{basic}");
