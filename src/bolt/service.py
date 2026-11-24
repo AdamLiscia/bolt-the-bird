@@ -396,6 +396,11 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
             return g.smart(1, 2, seed)
         if pilot == "smart_strong":
             return g.smart(4, 6, seed)
+        if g.observation(g.to_act())["pending"][0] == "ChooseTarget":
+            # The network can't see the spell it's targeting for (the engine's view shows it only after
+            # targets are chosen), so it aims pumps at the opponent's creatures 65% of the time. Until it's
+            # retrained with that input, the smart player chooses its targets (it never made that mistake).
+            return g.smart(1, 2, seed)
         from bolt.play_encoding import collate, encode
 
         who = g.to_act()

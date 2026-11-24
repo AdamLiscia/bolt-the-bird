@@ -364,3 +364,50 @@ def test_choose_a_deck_from_a_whole_table(client):
         client.post("/v1/draft/table", headers=KEY, json={"set": "FDN", "seed": 9, "drafters": "mix"}).json()
         == r.json()
     )
+
+
+def test_the_network_pilot_never_pumps_the_opponents_creatures():
+    """2026-11-23: the network couldn't see the spell it was targeting for and aimed Giant Growth and
+    friends at the opponent's creatures; the service now has the smart player choose its targets."""
+    import json
+    import re
+
+    from bolt.service import create_app, load_kit
+
+    app = create_app(load_kit(), key="k")
+    with open("assets/FDN_oracle.json") as f:
+        oracle = {c["name"]: c.get("oracle_text") or "" for c in json.load(f)}
+    good = {
+        n for n, t in oracle.items() if re.search(r"[Tt]arget creature gets \+\d+/\+\d+|Enchanted creature gets \+", t)
+    }
+    c = TestClient(app)
+    deck = [{"name": n, "qty": 2} for n in ("Giant Growth", "Blanchwood Armor", "Sure Strike", "Fleeting Flight")]
+    deck += [{"name": "Llanowar Elves", "qty": 4}, {"name": "Savannah Lions", "qty": 4}, {"name": "Forest", "qty": 12},
+             {"name": "Mountain", "qty": 4}, {"name": "Plains", "qty": 4}, {"name": "Island", "qty": 4}]  # fmt: skip
+    wrong = right = 0
+    for seed in range(6):
+        g = c.post("/v1/game", headers={"X-Bolt-Key": "k"}, json={"set": "FDN", "deck_a": deck, "deck_b": deck,
+                   "human_seat": 0, "pilot": "network", "seed": seed}).json()  # fmt: skip
+        gid, s = g["game_id"], g["state"]
+        for _ in range(500):
+            if s["over"]:
+                break
+            pick = next((a for a in s["legal_actions"] if a["kind"] == "PassPriority"), s["legal_actions"][0])
+            s = c.post(f"/v1/game/{gid}/act", headers={"X-Bolt-Key": "k"},
+                       json={"seat": 0, "action_index": pick["index"], "version": s["version"]}).json()  # fmt: skip
+            if "game_id" not in s:
+                break
+        log = c.get(f"/v1/game/{gid}/log", headers={"X-Bolt-Key": "k"}).json()["events"]
+        cast = None
+        for e in log:
+            if e["kind"] == "Action" and e["seat"] == 1:
+                if e["move"].startswith("Cast"):
+                    cast = e["cards"][0] if e["cards"] else None
+                elif e["move"] == "Target" and cast in good and e["objects"]:
+                    owner = next((x.get("owner") for x in log if x.get("id") == e["objects"][0] and "owner" in x), None)
+                    if owner is not None:
+                        wrong += owner == 0
+                        right += owner == 1
+        c.delete(f"/v1/game/{gid}", headers={"X-Bolt-Key": "k"})
+    assert right > 0, "the test saw Bolt aim some pumps"
+    assert wrong == 0, f"pumped the opponent's creature {wrong} times ({right} its own)"
