@@ -13,6 +13,17 @@
 
 ---
 
+**TL;DR**
+- Learns to draft Magic: The Gathering from **5.5 million** real picks; matches the human's pick **70.5%** of the time.
+- Retrained on games actually played in a **Rust rules engine** that plays every card in the set: its decks win **62%** of games where human-style decks win 50%.
+- A second network taught itself to play by **self-play** (about 790,000 games) and beats the strongest hand-built player **58%** of the time.
+- You can play it: a FastAPI service runs drafts and games against Bolt, in testing on Nerd Leagues.
+
+*Prefer plain English? Read the whole story at three reading levels (Easy, Hobbyist, Technical):*
+**[adamliscia.com/bolt](https://adamliscia.com/bolt/)**
+
+---
+
 In a Magic draft, eight players open packs, take one card, and pass the rest. Forty-two picks later,
 each player builds a deck from what they took. Good drafting means reading the table, committing to
 colors, and knowing when the shiny rare isn't worth it.
