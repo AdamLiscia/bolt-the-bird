@@ -1,0 +1,136 @@
+{
+  "_about": "Every number Bolt's public writeups quote, in one place. When a result changes: update the result files and PLAN.md, change the number here, then run `python scripts/check_writeups.py` and fix each writeup it flags. Each fact lists the spellings writeups may use, and the stale spellings that must be gone. Stale spellings are checked only in headline_only writeups (site, resumes, LinkedIn); technical docs keep version history.",
+  "updated": "2026-11-24",
+  "facts": {
+    "picks": {
+      "value": "5,530,605 human picks",
+      "any_of": [
+        "5.5 million",
+        "5.5M",
+        "5,530,605"
+      ]
+    },
+    "match": {
+      "value": "70.5% top-1 vs 46.9% pick-order",
+      "any_of": [
+        "70.5%"
+      ]
+    },
+    "drafter_win": {
+      "value": "62.3% vs 49.6% (+12.67 ± 0.56), smart 4 × 6",
+      "any_of": [
+        "62%",
+        "62.3%",
+        "+12.7",
+        "+12.67"
+      ],
+      "stale": [
+        "56% of games",
+        "59% of games",
+        "58.5% vs"
+      ]
+    },
+    "player_hard": {
+      "value": "learned player v3 57.9% vs smart 4 × 6",
+      "any_of": [
+        "58%",
+        "57.9%"
+      ]
+    },
+    "selfplay": {
+      "value": "about 790,000 self-play games",
+      "any_of": [
+        "790,000"
+      ],
+      "stale": [
+        "611,000"
+      ]
+    },
+    "engine_cards": {
+      "value": "all 286 Foundations cards",
+      "any_of": [
+        "286",
+        "every card in the set"
+      ]
+    },
+    "online": {
+      "value": "Nerd Leagues admin-only, in testing",
+      "any_of": [
+        "in testing",
+        "In testing",
+        "admin-only",
+        "Now in testing"
+      ]
+    }
+  },
+  "writeups": {
+    "README.md": [
+      "picks",
+      "match",
+      "drafter_win",
+      "player_hard",
+      "selfplay",
+      "engine_cards"
+    ],
+    "docs/MODEL_CARD.md": [
+      "player_hard",
+      "selfplay"
+    ],
+    "~/life/career/site/bolt/index.html": [
+      "picks",
+      "match",
+      "drafter_win",
+      "player_hard",
+      "selfplay",
+      "engine_cards",
+      "online"
+    ],
+    "~/life/career/site/index.html": [
+      "drafter_win",
+      "player_hard",
+      "selfplay"
+    ],
+    "~/life/career/resume/master.md": [
+      "picks",
+      "match",
+      "drafter_win",
+      "player_hard",
+      "selfplay",
+      "engine_cards",
+      "online"
+    ],
+    "~/life/career/resume/variants/ai.md": [
+      "drafter_win",
+      "player_hard",
+      "selfplay",
+      "online"
+    ],
+    "~/life/career/resume/variants/ml.md": [
+      "drafter_win",
+      "player_hard",
+      "selfplay",
+      "online"
+    ],
+    "~/life/career/resume/variants/fde.md": [
+      "drafter_win",
+      "player_hard",
+      "selfplay",
+      "online"
+    ],
+    "~/life/career/linkedin-update-2026-11-24.md": [
+      "drafter_win",
+      "player_hard",
+      "selfplay",
+      "online"
+    ]
+  },
+  "headline_only": [
+    "~/life/career/site/bolt/index.html",
+    "~/life/career/site/index.html",
+    "~/life/career/resume/master.md",
+    "~/life/career/resume/variants/ai.md",
+    "~/life/career/resume/variants/ml.md",
+    "~/life/career/resume/variants/fde.md",
+    "~/life/career/linkedin-update-2026-11-24.md"
+  ]
+}
