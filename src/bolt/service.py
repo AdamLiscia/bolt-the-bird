@@ -118,6 +118,41 @@ class RandomBody(BaseModel):
     colors: list[str] | None = None  # a soft preference: the deck among the 8 that best matches
 
 
+class DraftBody(BaseModel):
+    set: str
+    seed: int | None = None
+    human_seat: int = 0
+    bots: str = "mix"  # "human", "bolt", or "mix" (one Bolt, six human-style)
+
+
+class DraftPickBody(BaseModel):
+    version: int
+    card_id: int | None = None
+    id: int | None = None  # the card's position in the pack, instead of card_id
+
+
+class TableBody(BaseModel):
+    set: str
+    seed: int | None = None
+    drafters: str = "mix"  # "human", "bolt", or "mix" (seat 0 Bolt, seven human-style)
+
+
+class Mix:
+    """Bot seats for a mixed table: the first row (seat 1) is Bolt, the rest are the human model."""
+
+    def __init__(self, bolt, human):
+        self.bolt, self.human = bolt, human
+
+    def __call__(self, pool, pack, pn, pk):
+        out = self.human(pool, pack, pn, pk)
+        out[:1] = self.bolt(pool[:1], pack[:1], pn[:1], pk[:1])
+        return out
+
+
+RARITY = {"mythic": 0, "rare": 1, "uncommon": 2, "common": 3}
+MAX_DRAFTS = 50
+
+
 class Card(BaseModel):
     name: str
     qty: int = 1
@@ -600,6 +635,129 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
             get(gid)
             games.pop(gid, None)
             return {"ok": True}
+
+    # ---- drafting against bots, and whole bot tables ------------------------------------------
+
+    drafts: dict[str, dict] = {}
+
+    def bot_models(kind: str):
+        if kind not in ("human", "bolt", "mix"):
+            raise ApiError(422, "bots / drafters must be 'human', 'bolt' or 'mix'")
+        return {"human": kit.human, "bolt": kit.bolt, "mix": Mix(kit.bolt, kit.human)}[kind]
+
+    def card(c: int) -> dict:
+        return {"name": names[c], "card_id": c}
+
+    def highlights(deck: dict, order: list[int]) -> list[str]:
+        """The deck's three standouts: rarest first, then the earliest picked."""
+        first = {}
+        for pos, c in enumerate(order):
+            first.setdefault(names[c], pos)
+        main = [x["name"] for x in deck["main"]]
+        rank = sorted(main, key=lambda n: (RARITY.get(kit.info.info[kit.info.index[n]]["rarity"], 4), first.get(n, 99)))
+        return rank[:3]
+
+    def draft_state(did: str) -> dict:
+        rec = drafts[did]
+        d = rec["draft"]
+        out = {"draft_id": did, "version": len(d.log), "done": d.done, "picks_left": 42 - len(d.log),
+               "pool": [card(c) for c in d.pools()[0]], "pack_number": None, "pick_number": None, "pack": []}  # fmt: skip
+        if not d.done:
+            out.update(pack_number=d.round + 1, pick_number=d.pick_number + 1,
+                       pack=[{"id": i, **card(c)} for i, c in enumerate(d.human_pack())])  # fmt: skip
+        return out
+
+    def get_draft(did: str) -> dict:
+        now = time.time()
+        for k in [k for k, r in drafts.items() if now - r["used"] > IDLE_SECONDS]:
+            drafts.pop(k, None)
+        if did not in drafts:
+            raise ApiError(404, "no such draft")
+        drafts[did]["used"] = now
+        return drafts[did]
+
+    @router.post("/draft")
+    def new_draft(body: DraftBody):
+        check_set(body.set)
+        if body.human_seat != 0:
+            raise ApiError(422, "human_seat must be 0 (the other seats are bots)")
+        bots = bot_models(body.bots)
+        seed = body.seed if body.seed is not None else secrets.randbelow(2**31)
+        with lock:
+            if len(drafts) >= MAX_DRAFTS:
+                drafts.pop(min(drafts, key=lambda k: drafts[k]["used"]))
+            did = "d_" + secrets.token_hex(6)
+            drafts[did] = {"draft": PracticeDraft(kit.packs, bots, kit.bolt, kit.info.n, seed), "bots": body.bots,
+                           "seed": seed, "used": time.time()}  # fmt: skip
+            return {"draft_id": did, "seed": seed, "state": draft_state(did)}
+
+    @router.get("/draft/{did}")
+    def show_draft(did: str):
+        with lock:
+            get_draft(did)
+            return draft_state(did)
+
+    @router.post("/draft/{did}/pick")
+    def draft_pick_card(did: str, body: DraftPickBody):
+        with lock:
+            d = get_draft(did)["draft"]
+            if d.done or body.version != len(d.log):
+                raise ApiError(409, "stale version, or the draft is over", state=draft_state(did))
+            pack = d.human_pack()
+            if body.id is not None:
+                i = body.id
+            elif body.card_id is not None and body.card_id in pack:
+                i = pack.index(body.card_id)
+            else:
+                raise ApiError(422, "pick a card in your pack: card_id, or id (its position)")
+            if not 0 <= i < len(pack):
+                raise ApiError(422, f"id must be 0-{len(pack) - 1}")
+            d.pick(i)
+            return draft_state(did)
+
+    @router.get("/draft/{did}/table")
+    def draft_table(did: str):
+        """After the draft: what the 7 bots took, and their built decks (to choose an opponent)."""
+        with lock:
+            rec = get_draft(did)
+            d = rec["draft"]
+            if not d.done:
+                raise ApiError(409, "the table is shown once the draft is done", state=draft_state(did))
+            if "table" not in rec:
+                pools = d.pools()
+                decks = build_many(pools[1:])
+                kind = rec["bots"]
+                rec["table"] = [{"seat": s, "drafter": ("bolt" if kind == "mix" and s == 1 else
+                                 "human" if kind == "mix" else kind), "picks": [card(c) for c in pools[s]],
+                                 "deck": decks[s - 1], "colors": decks[s - 1]["colors"],
+                                 "highlights": highlights(decks[s - 1], pools[s])} for s in range(1, 8)]  # fmt: skip
+            return {"seats": rec["table"]}
+
+    @router.post("/draft/table")
+    def whole_table(body: TableBody):
+        """A whole table drafted by bots: all 8 seats' decks, to choose from."""
+        check_set(body.set)
+        if body.drafters not in ("human", "bolt", "mix"):
+            raise ApiError(422, "drafters must be 'human', 'bolt' or 'mix'")
+        seed = body.seed if body.seed is not None else secrets.randbelow(2**31)
+        rng = np.random.default_rng(seed)
+        first = "human" if body.drafters == "human" else "bolt"
+        with lock:
+            others = kit.bolt if body.drafters == "bolt" else kit.human
+            d = PracticeDraft(kit.packs, others, kit.bolt if first == "bolt" else kit.human, kit.info.n, seed)
+            while not d.done:
+                probs = np.asarray(d.coach(), dtype=float)
+                i = int(np.argmax(probs)) if first == "bolt" else int(rng.choice(len(probs), p=probs / probs.sum()))
+                d.pick(i)
+            pools = d.pools()
+            decks = build_many(pools)
+        seats = []
+        for s in range(8):
+            drafter = first if s == 0 else ("bolt" if body.drafters == "bolt" else "human")
+            seats.append({"seat": s, "drafter": drafter, "colors": decks[s]["colors"], "cards": decks[s]["cards"],
+                          "deck": decks[s], "picks": [card(c) for c in pools[s]],
+                          "highlights": highlights(decks[s], pools[s])})  # fmt: skip
+        return {"seed": seed, "seats": seats}
 
     app.include_router(router, prefix="/v1")
     app.include_router(router)

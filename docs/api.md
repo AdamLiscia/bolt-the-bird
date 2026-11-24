@@ -138,6 +138,42 @@ the draft" mode. Same request and seed → same result.
 Response: `{"seed", "seat", "drafter" (who drafted that seat), "picks": [{"pack_number", "pick_number",
 "name"}] (42), "deck": <as /deck/build>, "colors_matched": true | false | null}`.
 
+### Drafting against 7 bots
+
+`POST /v1/draft {"set": "FDN", "seed"?, "human_seat": 0, "bots": "mix"}` → `{"draft_id", "seed", "state"}`.
+`bots`: `"human"` (7 human-style seats), `"bolt"` (7 Bolts) or `"mix"` (default: seat 1 Bolt, seats 2–7
+human-style, like Bolt's own test tables). The person is always seat 0. Kept in memory for 6 hours idle,
+at most 50 drafts (the oldest is dropped).
+
+State (`GET /v1/draft/{id}`, and every pick's response), the person's seat only:
+
+```json
+{"draft_id": "d_…", "version": 3, "done": false, "picks_left": 39, "pack_number": 1, "pick_number": 4,
+ "pack": [{"id": 0, "name": "Savannah Lions", "card_id": 210}],
+ "pool": [{"name": "…", "card_id": 17}]}
+```
+
+`pack[].id` is the card's position in the pack. When `done`, `pack` is empty and `pool` holds the 42 picks
+(in pick order): pass their names to `/v1/deck/build` for the Auto-build button, then to `/v1/game`.
+
+`POST /v1/draft/{id}/pick {"card_id": 210, "version": 3}` (or `"id"`: the position): the bots pick at the
+same time, packs pass, and the next state comes back. A stale or repeated `version` → 409 with the
+current state; a card not in your pack → 422.
+
+`GET /v1/draft/{id}/table`, once the draft is done (409 before): `{"seats": [{"seat": 1–7, "drafter",
+"picks", "deck" (as /deck/build), "colors", "highlights"}]}`: what the bots took and their decks, to
+choose an opponent.
+
+### Choosing from a whole bot table
+
+`POST /v1/draft/table {"set": "FDN", "seed"?, "drafters": "mix"}` → `{"seed", "seats": [{"seat": 0–7,
+"drafter", "colors", "cards", "deck" (as /deck/build, with `judged_win_rate`), "picks", "highlights"}]}`.
+`drafters`: `"mix"` (seat 0 Bolt, seats 1–7 human-style), `"human"` or `"bolt"`. `highlights` are the deck's
+three standouts (rarest first, then the earliest picked). Same seed → same table.
+
+`/v1/deck/build` takes any pool of FDN card names (any draft: NL's Battlefield drafts too), as long as
+it holds enough playables for 40 cards (basics are added).
+
 ## Games
 
 A game is one human seat against one bot seat, or two people with no bot (`human_seats: [0, 1]`, below); 20 life, 40-card decks (at least 40, FDN names only,

@@ -314,3 +314,46 @@ def test_random_decks_can_be_human_style_any_seat_or_a_color(client):
         assert all(pool.count(x["name"]) >= x["qty"] for x in c["deck"]["main"]), "that seat's own picks"
     bad = client.post("/v1/deck/random", headers=KEY, json={"set": "FDN", "seat": 9})
     assert bad.status_code == 422
+
+
+def test_a_person_drafts_with_seven_bots(client):
+    r = client.post("/v1/draft", headers=KEY, json={"set": "FDN", "seed": 8, "bots": "mix"})
+    assert r.status_code == 200, r.text
+    did, s = r.json()["draft_id"], r.json()["state"]
+    assert (s["pack_number"], s["pick_number"], s["picks_left"], s["done"]) == (1, 1, 42, False)
+    assert len(s["pack"]) >= 14 and all({"id", "name", "card_id"} <= set(c) for c in s["pack"])
+    assert client.get(f"/v1/draft/{did}/table", headers=KEY).status_code == 409, "the table only after the draft"
+    first = s["pack"][0]
+    for _ in range(42):
+        c = s["pack"][0]
+        r = client.post(f"/v1/draft/{did}/pick", headers=KEY, json={"card_id": c["card_id"], "version": s["version"]})
+        assert r.status_code == 200, r.text
+        again = client.post(
+            f"/v1/draft/{did}/pick", headers=KEY, json={"card_id": c["card_id"], "version": s["version"]}
+        )
+        assert again.status_code == 409, "a repeated click is refused"
+        s = r.json()
+    assert s["done"] and len(s["pool"]) == 42 and s["pool"][0]["name"] == first["name"]
+    deck = client.post(
+        "/v1/deck/build", headers=KEY, json={"set": "FDN", "pool": [c["name"] for c in s["pool"]]}
+    ).json()
+    assert deck["cards"] == 40
+    t = client.get(f"/v1/draft/{did}/table", headers=KEY).json()["seats"]
+    assert [x["seat"] for x in t] == list(range(1, 8)) and all(
+        len(x["picks"]) == 42 and x["deck"]["cards"] == 40 for x in t
+    )
+    assert [x["drafter"] for x in t] == ["bolt"] + ["human"] * 6, "mix: one Bolt, six human-style"
+
+
+def test_choose_a_deck_from_a_whole_table(client):
+    r = client.post("/v1/draft/table", headers=KEY, json={"set": "FDN", "seed": 9, "drafters": "mix"})
+    assert r.status_code == 200, r.text
+    seats = r.json()["seats"]
+    assert [x["seat"] for x in seats] == list(range(8)) and seats[0]["drafter"] == "bolt"
+    for x in seats:
+        assert x["deck"]["cards"] == 40 and x["colors"] == x["deck"]["colors"] and 0 < x["deck"]["judged_win_rate"] < 1
+        assert 1 <= len(x["highlights"]) <= 3 and all(h in [p["name"] for p in x["picks"]] for h in x["highlights"])
+    assert (
+        client.post("/v1/draft/table", headers=KEY, json={"set": "FDN", "seed": 9, "drafters": "mix"}).json()
+        == r.json()
+    )
