@@ -1,0 +1,15 @@
+{
+  "ckpt": "checkpoints/play/ppo4/best.pt",
+  "pairs": 500,
+  "smart": [
+    4,
+    6
+  ],
+  "net_vs_smart": {
+    "win_rate": 0.579,
+    "se": 0.01556467153524288,
+    "games": 1000,
+    "draws_or_timeouts": 6
+  },
+  "seconds": 202
+}

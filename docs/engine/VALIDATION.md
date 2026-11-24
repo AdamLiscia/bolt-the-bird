@@ -212,3 +212,23 @@ PPO needs early stopping or a firmer leash than REINFORCE did.
 The evaluation's field C finished in a second sitting (84% overnight, the rest on 2026-11-15).
 Two more engine memory corruptions during these runs (2026-11-13 in pilot_games, 2026-11-15 in
 the training worker) were retried with no lost games.
+
+## Re-graded by the learned player (2026-11-23)
+
+P4 of the play phase (`docs/play/`): the same games, with the learned player (`play_v2_ppo3_i850.pt`,
+which beats smart 4 × 6 55.0% head to head) piloting both sides, greedy. `scripts/play_jobs_network.py`
+plays the existing job files and writes the same result lines; with the rules-based player on both sides
+it reproduces the engine's own results exactly (a test). All three fields, 65,408 games each.
+
+| Gap to the human model's decks, fields a / b / c | Rules-based | Smart 4 × 6 | **Learned player** |
+|---|---|---|---|
+| Judge-trained bot | +1.45 / +1.53 / +1.64 | −0.16 / −0.09 / −0.37 | **+4.67 / +4.64 / +4.82** (each ± 0.60–0.63) |
+| PPO bot (round 345) | +17.14 / +17.14 / +17.78 | +12.93 / +12.66 / +12.42 | **+12.64 / +12.56 / +12.51**; pooled **+12.57 ± 0.58** |
+
+Tournament (102,400 games, average win rate against the other four): PPO from scratch 55.9%, PPO continued
+55.5%, played games 53.0%, judge-trained 46.5%, human-style 39.1% (smart 4 × 6: 58.4, 57.3, 52.7, 40.7,
+40.9). The PPO bot's edge doesn't move; the judge-trained bot's, which the smart player erased, comes back,
+and its per-deck results now track judge B a little better (correlation 0.21 on field a, was 0.12–0.15).
+776, 756 and 862 of the 65,408 games per field (about 1.2%) hit the 20,000-move cap and count as draws.
+The learned player here is v2, before the targeting fix (README, "A blind spot a person found").
+
