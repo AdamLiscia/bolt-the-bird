@@ -79,7 +79,10 @@ def main():
         t1 = time.time()
         r, err = played_reward(decks, a.games, 10_000_000 * (h + 1), a.rollouts, a.candidates, a.threads)
         secs = time.time() - t1
-        print(f"half {h}: {7 * a.games * a.tables} games in {secs:.0f}s, mean reward {r.mean():.3f}, errors {err}", flush=True)
+        print(
+            f"half {h}: {7 * a.games * a.tables} games in {secs:.0f}s, mean reward {r.mean():.3f}, errors {err}",
+            flush=True,
+        )
         halves.append((r, secs))
     r0, r1 = halves[0][0], halves[1][0]
     split = float(np.corrcoef(r0, r1)[0, 1])

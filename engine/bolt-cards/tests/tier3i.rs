@@ -125,7 +125,10 @@ fn witness_protection_takes_away_lifelink_in_combat() {
         act(&mut g, Action::PassPriority);
     }
     assert_eq!(g.players[1].life, 18, "both Hawks hit (the covered one as a 1/1)");
-    assert_eq!(g.players[0].life, 21, "only the unenchanted Hawk's damage gains life");
+    assert_eq!(
+        g.players[0].life, 21,
+        "only the unenchanted Hawk's damage gains life"
+    );
 }
 
 #[test]

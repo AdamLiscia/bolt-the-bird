@@ -100,7 +100,10 @@ def extend():
     for m in meta:
         met[m["table"]].add(m["opp"])
     rng = np.random.default_rng(2)
-    left = {t: [int(x) for x in rng.permutation([int(f) for f in field if f != t and f not in met[t]])] for t in range(TABLES)}
+    left = {
+        t: [int(x) for x in rng.permutation([int(f) for f in field if f != t and f not in met[t]])]
+        for t in range(TABLES)
+    }
     added = 0
     for k in range(max(len(v) for v in left.values())):
         for t in range(TABLES):
@@ -141,7 +144,7 @@ def analyze():
     bot = np.array([m["side"] == "bot" for m in meta])
     out = {}
     # baseline, rollout (4 x 6) and any other search size (games_r<R>c<C>.txt)
-    names = sorted(f.stem[len("games_"):] for f in DIR.glob("games_*.txt"))
+    names = sorted(f.stem[len("games_") :] for f in DIR.glob("games_*.txt"))
     for pilot in sorted(names, key=lambda n: (n != "baseline", n != "rollout", n)):
         got = scores(pilot, meta)
         if got is None:
