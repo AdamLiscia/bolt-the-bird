@@ -69,13 +69,13 @@ def load_kit() -> Kit:
 
     images = json.loads((ROOT / "practice" / "fdn_images.json").read_text())
     tokens = json.loads((ASSETS / "FDN_token_images.json").read_text())
-    c = torch.load(ck / "play" / "play_v2_ppo3_i850.pt", map_location="cpu", weights_only=False)
+    c = torch.load(ck / "play" / "play_v3_ppo4_i170.pt", map_location="cpu", weights_only=False)
     net = PlayNet(**c["config"])
     net.load_state_dict(c["model"])
     return Kit(info=info, bolt=load(DraftTransformer, "bot_ppo.pt"), human=load(DraftTransformer, "human_model.pt"),
                judge=load(DeckJudge, "judge_b.pt"), packs=np.load(ASSETS / "FDN_sample_packs.npy"), net=net.eval(),
                models={"drafter": "bot_ppo.pt", "human_drafter": "human_model.pt",
-                       "player": "play_v2_ppo3_i850.pt"}, images=images, tokens=tokens)  # fmt: skip
+                       "player": "play_v3_ppo4_i170.pt"}, images=images, tokens=tokens)  # fmt: skip
 
 
 # ---- request bodies -------------------------------------------------------------------------------
