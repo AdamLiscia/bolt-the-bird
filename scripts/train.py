@@ -100,6 +100,9 @@ def main():
         val_acc = float((predict(model, tv, device) == val["pick"]).mean())
         history.append({"epoch": ep + 1, "val_acc": val_acc, "seconds": round(time.time() - t0)})
         print(f"epoch {ep + 1}: val acc {val_acc:.1%}", flush=True)
+        ck_dir = DATA.parent / "checkpoints"
+        ck_dir.mkdir(exist_ok=True)
+        torch.save(model.state_dict(), ck_dir / f"{name}_epoch{ep + 1}.pt")  # a stop loses one epoch at most
 
     r = report(name, predict(model, tte, device), test)
     r.update(history=history, args=vars(a))
