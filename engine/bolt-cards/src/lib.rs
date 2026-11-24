@@ -1,7 +1,9 @@
-//! Foundations (FDN) card definitions.
+//! Card definitions, one card set at a time.
 //!
-//! [`fdn`] returns all 286 cards in the same order as `assets/FDN_cards.json`, so a card's index here
-//! is its index in the draft models, and a drafted deck plays without translation.
+//! [`fdn`] returns all 286 Foundations cards in the same order as `assets/FDN_cards.json`, so a card's
+//! index here is its index in the draft models, and a drafted deck plays without translation. Other
+//! sets ([`set`], e.g. Tarkir: Dragonstorm, "TDM") work the same way from `assets/{SET}_oracle.json`:
+//! each set is its own numbering, and scripts are shared by card name, so a reprint plays the same.
 //!
 //! [`supported`] is the source of truth for restricted drafts: a card is playable only if every
 //! line of its rules text is implemented. Unsupported cards are listed, never skipped.
@@ -15,6 +17,72 @@ use bolt_core::{CardDef, Color, Keywords, ManaCost, ManaSource, Types};
 use serde::Deserialize;
 
 const ORACLE: &str = include_str!("../../../assets/FDN_oracle.json");
+const TDM_ORACLE: &str = include_str!("../../../assets/TDM_oracle.json");
+
+/// The sets the engine knows, by code.
+pub const SETS: &[&str] = &["FDN", "TDM"];
+
+/// One card set: its cards in model order, their definitions (then the token definitions) and
+/// which cards the engine fully implements.
+pub struct CardSet {
+    pub code: &'static str,
+    pub oracle: Vec<Oracle>,
+    pub defs: Arc<Vec<CardDef>>,
+    pub supported: Vec<bool>,
+}
+
+impl CardSet {
+    fn load(code: &'static str, json: &str) -> CardSet {
+        let oracle: Vec<Oracle> =
+            serde_json::from_str(json).unwrap_or_else(|e| panic!("assets/{code}_oracle.json: {e}"));
+        let tokens = scripts::Tokens::starting_at(oracle.len());
+        let built: Vec<(CardDef, bool)> = oracle.iter().map(|o| definition(o, &tokens)).collect();
+        let supported = built.iter().map(|b| b.1).collect();
+        let mut defs: Vec<CardDef> = built.into_iter().map(|b| b.0).collect();
+        defs.extend(scripts::token_defs());
+        CardSet {
+            code,
+            oracle,
+            defs: Arc::new(defs),
+            supported,
+        }
+    }
+
+    /// Number of real cards (tokens follow them in `defs`).
+    pub fn card_count(&self) -> usize {
+        self.oracle.len()
+    }
+
+    /// Model index of a card by exact name.
+    pub fn index_of(&self, name: &str) -> Option<usize> {
+        self.oracle.iter().position(|o| o.name == name)
+    }
+
+    /// Names of the cards the engine fully implements, in model order.
+    pub fn supported_names(&self) -> Vec<&str> {
+        self.oracle
+            .iter()
+            .zip(&self.supported)
+            .filter(|(_, &ok)| ok)
+            .map(|(o, _)| o.name.as_str())
+            .collect()
+    }
+}
+
+/// A card set by code ("FDN", "TDM"), or None for a set the engine doesn't have.
+pub fn set(code: &str) -> Option<&'static CardSet> {
+    static FDN: OnceLock<CardSet> = OnceLock::new();
+    static TDM: OnceLock<CardSet> = OnceLock::new();
+    match code {
+        "FDN" => Some(FDN.get_or_init(|| CardSet::load("FDN", ORACLE))),
+        "TDM" => Some(TDM.get_or_init(|| CardSet::load("TDM", TDM_ORACLE))),
+        _ => None,
+    }
+}
+
+fn fdn_set() -> &'static CardSet {
+    set("FDN").expect("FDN")
+}
 
 /// One card as Scryfall describes it (`assets/FDN_oracle.json`, written by `scripts/card_audit.py`).
 #[derive(Clone, Debug, Deserialize)]
@@ -35,21 +103,14 @@ pub struct Oracle {
 
 /// The Scryfall data for every FDN card, in model order.
 pub fn oracle() -> &'static [Oracle] {
-    static CELL: OnceLock<Vec<Oracle>> = OnceLock::new();
-    CELL.get_or_init(|| serde_json::from_str(ORACLE).expect("assets/FDN_oracle.json parses"))
+    &fdn_set().oracle
 }
 
 /// Card definitions for all of FDN in model order, then the token definitions. Unsupported cards
 /// still get their printed characteristics, so decks load whole; [`supported`] says which ones the
 /// engine can play.
 pub fn fdn() -> Arc<Vec<CardDef>> {
-    static CELL: OnceLock<Arc<Vec<CardDef>>> = OnceLock::new();
-    CELL.get_or_init(|| {
-        let mut defs: Vec<CardDef> = oracle().iter().map(|o| definition(o).0).collect();
-        defs.extend(scripts::token_defs());
-        Arc::new(defs)
-    })
-    .clone()
+    fdn_set().defs.clone()
 }
 
 /// Number of real cards (tokens follow them in [`fdn`]).
@@ -57,14 +118,9 @@ pub fn card_count() -> usize {
     oracle().len()
 }
 
-fn tokens() -> scripts::Tokens {
-    scripts::Tokens::starting_at(card_count())
-}
-
 /// Whether the engine implements every rule on each card, by model index.
 pub fn supported_mask() -> &'static [bool] {
-    static CELL: OnceLock<Vec<bool>> = OnceLock::new();
-    CELL.get_or_init(|| oracle().iter().map(|o| definition(o).1).collect())
+    &fdn_set().supported
 }
 
 /// Names of the cards the engine fully implements, in model order.
@@ -110,7 +166,7 @@ fn keyword_line(line: &str) -> Option<Keywords> {
 
 /// Builds the definition and decides support. A card is supported when its cost parses and every
 /// ability line is either implemented keywords or claimed by its script.
-fn definition(o: &Oracle) -> (CardDef, bool) {
+fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
     let types = Types::parse(&o.type_line);
     let subtypes = o
         .type_line
@@ -216,7 +272,7 @@ fn definition(o: &Oracle) -> (CardDef, bool) {
     let mut claimed = rest.is_empty();
     if let Some(s) = scripts::script(&o.name) {
         if s.lines == rest.as_slice() {
-            (s.build)(&mut def, &tokens());
+            (s.build)(&mut def, tokens);
             claimed = true;
         }
     }
@@ -286,6 +342,41 @@ mod tests {
         names.sort_unstable();
         names.dedup();
         assert_eq!(names.len(), supported().len());
+    }
+
+    #[test]
+    fn foundations_is_unchanged_by_the_set_list() {
+        let f = set("FDN").unwrap();
+        assert!(Arc::ptr_eq(&f.defs, &fdn()), "fdn() is the FDN set");
+        assert_eq!(f.card_count(), 286);
+        assert!(set("XYZ").is_none());
+    }
+
+    #[test]
+    fn tarkir_loads_in_model_order_with_its_own_tokens() {
+        let t = set("TDM").unwrap();
+        assert_eq!(t.card_count(), 270);
+        assert_eq!(
+            t.oracle[0].name, "Abzan Devotee",
+            "the 17lands draft data's column order"
+        );
+        assert_eq!(t.defs.len(), 270 + scripts::token_defs().len());
+        assert!(t.defs[270..].iter().all(|d| d.token));
+        for basic in ["Plains", "Island", "Swamp", "Mountain", "Forest"] {
+            let i = t.index_of(basic).unwrap();
+            assert!(t.supported[i], "{basic}");
+        }
+    }
+
+    #[test]
+    fn a_reprint_plays_the_same_in_both_sets() {
+        // Scripts are keyed by name: a card in both sets is supported in both.
+        let (f, t) = (set("FDN").unwrap(), set("TDM").unwrap());
+        for name in t.supported_names() {
+            if let Some(i) = f.index_of(name) {
+                assert!(f.supported[i], "{name}");
+            }
+        }
     }
 
     #[test]

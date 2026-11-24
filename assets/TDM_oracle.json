@@ -1,0 +1,5369 @@
+[
+{
+"name": "Abzan Devotee",
+"mana_cost": "{1}{B}",
+"cmc": 2.0,
+"type_line": "Creature \u2014 Dog Cleric",
+"oracle_text": "{1}: Add {W}, {B}, or {G}. Activate only once each turn.\n{2}{B}: Return this card from your graveyard to your hand.",
+"power": "2",
+"toughness": "1",
+"keywords": [],
+"colors": [
+"B"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"B",
+"G",
+"W"
+],
+"collector_number": "68"
+},
+{
+"name": "Abzan Monument",
+"mana_cost": "{2}",
+"cmc": 2.0,
+"type_line": "Artifact",
+"oracle_text": "When this artifact enters, search your library for a basic Plains, Swamp, or Forest card, reveal it, put it into your hand, then shuffle.\n{1}{W}{B}{G}, {T}, Sacrifice this artifact: Create an X/X white Spirit creature token, where X is the greatest toughness among creatures you control. Activate only as a sorcery.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "238"
+},
+{
+"name": "Adorned Crocodile",
+"mana_cost": "{4}{B}",
+"cmc": 5.0,
+"type_line": "Creature \u2014 Crocodile",
+"oracle_text": "When this creature dies, create a 2/2 black Zombie Druid creature token.\nRenew \u2014 {B}, Exile this card from your graveyard: Put a +1/+1 counter on target creature. Activate only as a sorcery.",
+"power": "5",
+"toughness": "3",
+"keywords": [
+"Renew"
+],
+"colors": [
+"B"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "69"
+},
+{
+"name": "Aegis Sculptor",
+"mana_cost": "{3}{U}",
+"cmc": 4.0,
+"type_line": "Creature \u2014 Bird Wizard",
+"oracle_text": "Flying\nWard {2} (Whenever this creature becomes the target of a spell or ability an opponent controls, counter it unless that player pays {2}.)\nAt the beginning of your upkeep, you may exile two cards from your graveyard. If you do, put a +1/+1 counter on this creature.",
+"power": "2",
+"toughness": "3",
+"keywords": [
+"Flying",
+"Ward"
+],
+"colors": [
+"U"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "35"
+},
+{
+"name": "Agent of Kotis",
+"mana_cost": "{1}{U}",
+"cmc": 2.0,
+"type_line": "Creature \u2014 Human Rogue",
+"oracle_text": "Renew \u2014 {3}{U}, Exile this card from your graveyard: Put two +1/+1 counters on target creature. Activate only as a sorcery.",
+"power": "2",
+"toughness": "1",
+"keywords": [
+"Renew"
+],
+"colors": [
+"U"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "36"
+},
+{
+"name": "Aggressive Negotiations",
+"mana_cost": "{2}{B}",
+"cmc": 3.0,
+"type_line": "Sorcery",
+"oracle_text": "Target opponent reveals their hand. You choose a nonland card from it and exile that card. Put a +1/+1 counter on up to one target creature you control.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"B"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "70"
+},
+{
+"name": "Ainok Wayfarer",
+"mana_cost": "{1}{G}",
+"cmc": 2.0,
+"type_line": "Creature \u2014 Dog Scout",
+"oracle_text": "When this creature enters, mill three cards. You may put a land card from among them into your hand. If you don't, put a +1/+1 counter on this creature. (To mill three cards, put the top three cards of your library into your graveyard.)",
+"power": "1",
+"toughness": "1",
+"keywords": [
+"Mill"
+],
+"colors": [
+"G"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "134"
+},
+{
+"name": "Alchemist's Assistant",
+"mana_cost": "{1}{B}",
+"cmc": 2.0,
+"type_line": "Creature \u2014 Monkey",
+"oracle_text": "Lifelink\nRenew \u2014 {1}{B}, Exile this card from your graveyard: Put a lifelink counter on target creature. Activate only as a sorcery.",
+"power": "2",
+"toughness": "1",
+"keywords": [
+"Lifelink",
+"Renew"
+],
+"colors": [
+"B"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "71"
+},
+{
+"name": "Alesha's Legacy",
+"mana_cost": "{1}{B}",
+"cmc": 2.0,
+"type_line": "Instant",
+"oracle_text": "Target creature you control gains deathtouch and indestructible until end of turn. (Damage and effects that say \"destroy\" don't destroy it.)",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"B"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "72"
+},
+{
+"name": "All-Out Assault",
+"mana_cost": "{2}{R}{W}{B}",
+"cmc": 5.0,
+"type_line": "Enchantment",
+"oracle_text": "Creatures you control get +1/+1 and have deathtouch.\nWhen this enchantment enters, if it's your main phase, there is an additional combat phase after this phase followed by an additional main phase. When you next attack this turn, untap each creature you control.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"B",
+"R",
+"W"
+],
+"rarity": "mythic",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "167"
+},
+{
+"name": "Ambling Stormshell",
+"mana_cost": "{3}{U}{U}",
+"cmc": 5.0,
+"type_line": "Creature \u2014 Turtle",
+"oracle_text": "Ward {2}\nWhenever this creature attacks, put three stun counters on it and draw three cards. (If a permanent with a stun counter would become untapped, remove one from it instead.)\nWhenever you cast a Turtle spell, untap this creature.",
+"power": "5",
+"toughness": "9",
+"keywords": [
+"Ward"
+],
+"colors": [
+"U"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "37"
+},
+{
+"name": "Arashin Sunshield",
+"mana_cost": "{3}{W}",
+"cmc": 4.0,
+"type_line": "Creature \u2014 Human Warrior",
+"oracle_text": "When this creature enters, exile up to two target cards from a single graveyard.\n{W}, {T}: Tap target creature.",
+"power": "3",
+"toughness": "4",
+"keywords": [],
+"colors": [
+"W"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "3"
+},
+{
+"name": "Arid Mesa",
+"mana_cost": "",
+"cmc": 0.0,
+"type_line": "Land",
+"oracle_text": "{T}, Pay 1 life, Sacrifice this land: Search your library for a Mountain or Plains card, put it onto the battlefield, then shuffle.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "244"
+},
+{
+"name": "Armament Dragon",
+"mana_cost": "{3}{W}{B}{G}",
+"cmc": 6.0,
+"type_line": "Creature \u2014 Dragon",
+"oracle_text": "Flying\nWhen this creature enters, distribute three +1/+1 counters among one, two, or three target creatures you control.",
+"power": "3",
+"toughness": "4",
+"keywords": [
+"Flying"
+],
+"colors": [
+"B",
+"G",
+"W"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "168"
+},
+{
+"name": "Attuned Hunter",
+"mana_cost": "{2}{G}",
+"cmc": 3.0,
+"type_line": "Creature \u2014 Human Ranger",
+"oracle_text": "Trample\nWhenever one or more cards leave your graveyard during your turn, put a +1/+1 counter on this creature.",
+"power": "3",
+"toughness": "3",
+"keywords": [
+"Trample"
+],
+"colors": [
+"G"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "135"
+},
+{
+"name": "Auroral Procession",
+"mana_cost": "{G}{U}",
+"cmc": 2.0,
+"type_line": "Instant",
+"oracle_text": "Return target card from your graveyard to your hand.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"G",
+"U"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "169"
+},
+{
+"name": "Avenger of the Fallen",
+"mana_cost": "{2}{B}",
+"cmc": 3.0,
+"type_line": "Creature \u2014 Human Warrior",
+"oracle_text": "Deathtouch\nMobilize X, where X is the number of creature cards in your graveyard. (Whenever this creature attacks, create X tapped and attacking 1/1 red Warrior creature tokens. Sacrifice them at the beginning of the next end step.)",
+"power": "2",
+"toughness": "4",
+"keywords": [
+"Mobilize",
+"Deathtouch"
+],
+"colors": [
+"B"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "73"
+},
+{
+"name": "Awaken the Honored Dead",
+"mana_cost": "{B}{G}{U}",
+"cmc": 3.0,
+"type_line": "Enchantment \u2014 Saga",
+"oracle_text": "(As this Saga enters and after your draw step, add a lore counter. Sacrifice after III.)\nI \u2014 Destroy target nonland permanent.\nII \u2014 Mill three cards.\nIII \u2014 You may discard a card. When you do, return target creature or land card from your graveyard to your hand.",
+"power": null,
+"toughness": null,
+"keywords": [
+"Mill"
+],
+"colors": [
+"B",
+"G",
+"U"
+],
+"rarity": "rare",
+"layout": "saga",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "170"
+},
+{
+"name": "Barrensteppe Siege",
+"mana_cost": "{2}{W}{B}",
+"cmc": 4.0,
+"type_line": "Enchantment",
+"oracle_text": "As this enchantment enters, choose Abzan or Mardu.\n\u2022 Abzan \u2014 At the beginning of your end step, put a +1/+1 counter on each creature you control.\n\u2022 Mardu \u2014 At the beginning of your end step, if a creature died under your control this turn, each opponent sacrifices a creature of their choice.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"B",
+"W"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "171"
+},
+{
+"name": "Bearer of Glory",
+"mana_cost": "{1}{W}",
+"cmc": 2.0,
+"type_line": "Creature \u2014 Human Soldier",
+"oracle_text": "During your turn, this creature has first strike.\n{4}{W}: Creatures you control get +1/+1 until end of turn.",
+"power": "2",
+"toughness": "1",
+"keywords": [],
+"colors": [
+"W"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "4"
+},
+{
+"name": "Bewildering Blizzard",
+"mana_cost": "{4}{U}{U}",
+"cmc": 6.0,
+"type_line": "Instant",
+"oracle_text": "Draw three cards. Creatures your opponents control get -3/-0 until end of turn.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"U"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "38"
+},
+{
+"name": "Bloodfell Caves",
+"mana_cost": "",
+"cmc": 0.0,
+"type_line": "Land",
+"oracle_text": "This land enters tapped.\nWhen this land enters, you gain 1 life.\n{T}: Add {B} or {R}.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"B",
+"R"
+],
+"collector_number": "250"
+},
+{
+"name": "Bloomvine Regent",
+"mana_cost": "{3}{G}{G}",
+"cmc": 5.0,
+"type_line": "Creature \u2014 Dragon",
+"oracle_text": "Flying\nWhenever this creature or another Dragon you control enters, you gain 3 life.",
+"power": "4",
+"toughness": "5",
+"keywords": [
+"Flying"
+],
+"colors": [
+"G"
+],
+"rarity": "rare",
+"layout": "adventure",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "136"
+},
+{
+"name": "Blossoming Sands",
+"mana_cost": "",
+"cmc": 0.0,
+"type_line": "Land",
+"oracle_text": "This land enters tapped.\nWhen this land enters, you gain 1 life.\n{T}: Add {G} or {W}.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"G",
+"W"
+],
+"collector_number": "251"
+},
+{
+"name": "Bone-Cairn Butcher",
+"mana_cost": "{1}{R}{W}{B}",
+"cmc": 4.0,
+"type_line": "Creature \u2014 Demon",
+"oracle_text": "Mobilize 2 (Whenever this creature attacks, create two tapped and attacking 1/1 red Warrior creature tokens. Sacrifice them at the beginning of the next end step.)\nAttacking tokens you control have deathtouch.",
+"power": "4",
+"toughness": "4",
+"keywords": [
+"Mobilize"
+],
+"colors": [
+"B",
+"R",
+"W"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "173"
+},
+{
+"name": "Boulderborn Dragon",
+"mana_cost": "{5}",
+"cmc": 5.0,
+"type_line": "Artifact Creature \u2014 Dragon",
+"oracle_text": "Flying, vigilance\nWhenever this creature attacks, surveil 1. (Look at the top card of your library. You may put it into your graveyard.)",
+"power": "3",
+"toughness": "3",
+"keywords": [
+"Flying",
+"Surveil",
+"Vigilance"
+],
+"colors": [],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "239"
+},
+{
+"name": "Breaching Dragonstorm",
+"mana_cost": "{4}{R}",
+"cmc": 5.0,
+"type_line": "Enchantment",
+"oracle_text": "When this enchantment enters, exile cards from the top of your library until you exile a nonland card. You may cast it without paying its mana cost if that spell's mana value is 8 or less. If you don't, put that card into your hand.\nWhen a Dragon you control enters, return this enchantment to its owner's hand.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"R"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "101"
+},
+{
+"name": "Call the Spirit Dragons",
+"mana_cost": "{W}{U}{B}{R}{G}",
+"cmc": 5.0,
+"type_line": "Enchantment",
+"oracle_text": "Dragons you control have indestructible.\nAt the beginning of your upkeep, for each color, put a +1/+1 counter on a Dragon you control of that color. If you put +1/+1 counters on five Dragons this way, you win the game.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"B",
+"G",
+"R",
+"U",
+"W"
+],
+"rarity": "mythic",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "174"
+},
+{
+"name": "Caustic Exhale",
+"mana_cost": "{B}",
+"cmc": 1.0,
+"type_line": "Instant",
+"oracle_text": "As an additional cost to cast this spell, behold a Dragon or pay {1}. (To behold a Dragon, choose a Dragon you control or reveal a Dragon card from your hand.)\nTarget creature gets -3/-3 until end of turn.",
+"power": null,
+"toughness": null,
+"keywords": [
+"Behold"
+],
+"colors": [
+"B"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "74"
+},
+{
+"name": "Champion of Dusan",
+"mana_cost": "{2}{G}",
+"cmc": 3.0,
+"type_line": "Creature \u2014 Human Warrior",
+"oracle_text": "Trample\nRenew \u2014 {1}{G}, Exile this card from your graveyard: Put a +1/+1 counter and a trample counter on target creature. Activate only as a sorcery.",
+"power": "4",
+"toughness": "2",
+"keywords": [
+"Renew",
+"Trample"
+],
+"colors": [
+"G"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "137"
+},
+{
+"name": "Channeled Dragonfire",
+"mana_cost": "{R}",
+"cmc": 1.0,
+"type_line": "Sorcery",
+"oracle_text": "Channeled Dragonfire deals 2 damage to any target.\nHarmonize {5}{R}{R} (You may cast this card from your graveyard for its harmonize cost. You may tap a creature you control to reduce that cost by {X}, where X is its power. Then exile this spell.)",
+"power": null,
+"toughness": null,
+"keywords": [
+"Harmonize"
+],
+"colors": [
+"R"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "102"
+},
+{
+"name": "Clarion Conqueror",
+"mana_cost": "{2}{W}",
+"cmc": 3.0,
+"type_line": "Creature \u2014 Dragon",
+"oracle_text": "Flying\nActivated abilities of artifacts, creatures, and planeswalkers can't be activated.",
+"power": "3",
+"toughness": "3",
+"keywords": [
+"Flying"
+],
+"colors": [
+"W"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "5"
+},
+{
+"name": "Constrictor Sage",
+"mana_cost": "{4}{U}",
+"cmc": 5.0,
+"type_line": "Creature \u2014 Snake Wizard",
+"oracle_text": "When this creature enters, tap target creature an opponent controls and put a stun counter on it. (If a permanent with a stun counter would become untapped, remove one from it instead.)\nRenew \u2014 {2}{U}, Exile this card from your graveyard: Tap target creature an opponent controls and put a stun counter on it. Activate only as a sorcery.",
+"power": "4",
+"toughness": "4",
+"keywords": [
+"Renew"
+],
+"colors": [
+"U"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "39"
+},
+{
+"name": "Coordinated Maneuver",
+"mana_cost": "{1}{W}",
+"cmc": 2.0,
+"type_line": "Instant",
+"oracle_text": "Choose one \u2014\n\u2022 Coordinated Maneuver deals damage equal to the number of creatures you control to target creature or planeswalker.\n\u2022 Destroy target enchantment.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"W"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "6"
+},
+{
+"name": "Cori Mountain Monastery",
+"mana_cost": "",
+"cmc": 0.0,
+"type_line": "Land",
+"oracle_text": "This land enters tapped unless you control a Plains or an Island.\n{T}: Add {R}.\n{3}{R}, {T}: Exile the top card of your library. Until the end of your next turn, you may play that card.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"R"
+],
+"collector_number": "252"
+},
+{
+"name": "Cori Mountain Stalwart",
+"mana_cost": "{1}{R}{W}",
+"cmc": 3.0,
+"type_line": "Creature \u2014 Human Monk",
+"oracle_text": "Flurry \u2014 Whenever you cast your second spell each turn, this creature deals 2 damage to each opponent and you gain 2 life.",
+"power": "3",
+"toughness": "3",
+"keywords": [
+"Flurry"
+],
+"colors": [
+"R",
+"W"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "175"
+},
+{
+"name": "Cori-Steel Cutter",
+"mana_cost": "{1}{R}",
+"cmc": 2.0,
+"type_line": "Artifact \u2014 Equipment",
+"oracle_text": "Equipped creature gets +1/+1 and has trample and haste.\nFlurry \u2014 Whenever you cast your second spell each turn, create a 1/1 white Monk creature token with prowess. You may attach this Equipment to it. (Whenever you cast a noncreature spell, the token gets +1/+1 until end of turn.)\nEquip {1}{R}",
+"power": null,
+"toughness": null,
+"keywords": [
+"Flurry",
+"Equip"
+],
+"colors": [
+"R"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "103"
+},
+{
+"name": "Corroding Dragonstorm",
+"mana_cost": "{1}{B}",
+"cmc": 2.0,
+"type_line": "Enchantment",
+"oracle_text": "When this enchantment enters, each opponent loses 2 life and you gain 2 life. Surveil 2. (Look at the top two cards of your library, then put any number of them into your graveyard and the rest on top of your library in any order.)\nWhen a Dragon you control enters, return this enchantment to its owner's hand.",
+"power": null,
+"toughness": null,
+"keywords": [
+"Surveil"
+],
+"colors": [
+"B"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "75"
+},
+{
+"name": "Craterhoof Behemoth",
+"mana_cost": "{5}{G}{G}{G}",
+"cmc": 8.0,
+"type_line": "Creature \u2014 Beast",
+"oracle_text": "Haste\nWhen this creature enters, creatures you control gain trample and get +X/+X until end of turn, where X is the number of creatures you control.",
+"power": "5",
+"toughness": "5",
+"keywords": [
+"Haste"
+],
+"colors": [
+"G"
+],
+"rarity": "mythic",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "138"
+},
+{
+"name": "Cruel Truths",
+"mana_cost": "{3}{B}",
+"cmc": 4.0,
+"type_line": "Instant",
+"oracle_text": "Surveil 2, then draw two cards. You lose 2 life. (To surveil 2, look at the top two cards of your library, then put any number of them into your graveyard and the rest on top of your library in any order.)",
+"power": null,
+"toughness": null,
+"keywords": [
+"Surveil"
+],
+"colors": [
+"B"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "76"
+},
+{
+"name": "Dalkovan Encampment",
+"mana_cost": "",
+"cmc": 0.0,
+"type_line": "Land",
+"oracle_text": "This land enters tapped unless you control a Swamp or a Mountain.\n{T}: Add {W}.\n{2}{W}, {T}: Whenever you attack this turn, create two 1/1 red Warrior creature tokens that are tapped and attacking. Sacrifice them at the beginning of the next end step.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"W"
+],
+"collector_number": "253"
+},
+{
+"name": "Dalkovan Packbeasts",
+"mana_cost": "{2}{W}",
+"cmc": 3.0,
+"type_line": "Creature \u2014 Ox",
+"oracle_text": "Vigilance\nMobilize 3 (Whenever this creature attacks, create three tapped and attacking 1/1 red Warrior creature tokens. Sacrifice them at the beginning of the next end step.)",
+"power": "0",
+"toughness": "4",
+"keywords": [
+"Vigilance",
+"Mobilize"
+],
+"colors": [
+"W"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "7"
+},
+{
+"name": "Death Begets Life",
+"mana_cost": "{5}{B}{G}{U}",
+"cmc": 8.0,
+"type_line": "Sorcery",
+"oracle_text": "Destroy all creatures and enchantments. Draw a card for each permanent destroyed this way.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"B",
+"G",
+"U"
+],
+"rarity": "mythic",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "176"
+},
+{
+"name": "Defibrillating Current",
+"mana_cost": "{2/R}{2/W}{2/B}",
+"cmc": 6.0,
+"type_line": "Sorcery",
+"oracle_text": "Defibrillating Current deals 4 damage to target creature or planeswalker and you gain 2 life.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"B",
+"R",
+"W"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "177"
+},
+{
+"name": "Delta Bloodflies",
+"mana_cost": "{1}{B}",
+"cmc": 2.0,
+"type_line": "Creature \u2014 Insect",
+"oracle_text": "Flying\nWhenever this creature attacks, if you control a creature with a counter on it, each opponent loses 1 life.",
+"power": "1",
+"toughness": "2",
+"keywords": [
+"Flying"
+],
+"colors": [
+"B"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "77"
+},
+{
+"name": "Descendant of Storms",
+"mana_cost": "{W}",
+"cmc": 1.0,
+"type_line": "Creature \u2014 Human Soldier",
+"oracle_text": "Whenever this creature attacks, you may pay {1}{W}. If you do, it endures 1. (Put a +1/+1 counter on it or create a 1/1 white Spirit creature token.)",
+"power": "2",
+"toughness": "1",
+"keywords": [
+"Endure"
+],
+"colors": [
+"W"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "8"
+},
+{
+"name": "Desperate Measures",
+"mana_cost": "{B}",
+"cmc": 1.0,
+"type_line": "Instant",
+"oracle_text": "Target creature gets +1/-1 until end of turn. When it dies under your control this turn, draw two cards.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"B"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "78"
+},
+{
+"name": "Devoted Duelist",
+"mana_cost": "{1}{R}",
+"cmc": 2.0,
+"type_line": "Creature \u2014 Goblin Monk",
+"oracle_text": "Haste\nFlurry \u2014 Whenever you cast your second spell each turn, this creature deals 1 damage to each opponent.",
+"power": "2",
+"toughness": "1",
+"keywords": [
+"Flurry",
+"Haste"
+],
+"colors": [
+"R"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "104"
+},
+{
+"name": "Dirgur Island Dragon",
+"mana_cost": "{5}{U}",
+"cmc": 6.0,
+"type_line": "Creature \u2014 Dragon",
+"oracle_text": "Flying\nWard {2} (Whenever this creature becomes the target of a spell or ability an opponent controls, counter it unless that player pays {2}.)",
+"power": "4",
+"toughness": "4",
+"keywords": [
+"Flying",
+"Ward"
+],
+"colors": [
+"U"
+],
+"rarity": "common",
+"layout": "adventure",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "40"
+},
+{
+"name": "Dismal Backwater",
+"mana_cost": "",
+"cmc": 0.0,
+"type_line": "Land",
+"oracle_text": "This land enters tapped.\nWhen this land enters, you gain 1 life.\n{T}: Add {U} or {B}.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"B",
+"U"
+],
+"collector_number": "254"
+},
+{
+"name": "Dispelling Exhale",
+"mana_cost": "{1}{U}",
+"cmc": 2.0,
+"type_line": "Instant",
+"oracle_text": "As an additional cost to cast this spell, you may behold a Dragon. (You may choose a Dragon you control or reveal a Dragon card from your hand.)\nCounter target spell unless its controller pays {2}. If a Dragon was beheld, counter that spell unless its controller pays {4} instead.",
+"power": null,
+"toughness": null,
+"keywords": [
+"Behold"
+],
+"colors": [
+"U"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "41"
+},
+{
+"name": "Disruptive Stormbrood",
+"mana_cost": "{4}{G}",
+"cmc": 5.0,
+"type_line": "Creature \u2014 Dragon",
+"oracle_text": "Flying\nWhen this creature enters, destroy up to one target artifact or enchantment.",
+"power": "3",
+"toughness": "3",
+"keywords": [
+"Flying"
+],
+"colors": [
+"G"
+],
+"rarity": "uncommon",
+"layout": "adventure",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "178"
+},
+{
+"name": "Dracogenesis",
+"mana_cost": "{6}{R}{R}",
+"cmc": 8.0,
+"type_line": "Enchantment",
+"oracle_text": "You may cast Dragon spells without paying their mana costs.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"R"
+],
+"rarity": "mythic",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "105"
+},
+{
+"name": "Dragon Sniper",
+"mana_cost": "{G}",
+"cmc": 1.0,
+"type_line": "Creature \u2014 Human Archer",
+"oracle_text": "Reach, vigilance, deathtouch",
+"power": "1",
+"toughness": "1",
+"keywords": [
+"Reach",
+"Vigilance",
+"Deathtouch"
+],
+"colors": [
+"G"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "139"
+},
+{
+"name": "Dragon's Prey",
+"mana_cost": "{2}{B}",
+"cmc": 3.0,
+"type_line": "Instant",
+"oracle_text": "This spell costs {2} more to cast if it targets a Dragon.\nDestroy target creature.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"B"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "79"
+},
+{
+"name": "Dragonback Assault",
+"mana_cost": "{3}{G}{U}{R}",
+"cmc": 6.0,
+"type_line": "Enchantment",
+"oracle_text": "When this enchantment enters, it deals 3 damage to each creature and each planeswalker.\nLandfall \u2014 Whenever a land you control enters, create a 4/4 red Dragon creature token with flying.",
+"power": null,
+"toughness": null,
+"keywords": [
+"Landfall"
+],
+"colors": [
+"G",
+"R",
+"U"
+],
+"rarity": "mythic",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "179"
+},
+{
+"name": "Dragonback Lancer",
+"mana_cost": "{3}{W}",
+"cmc": 4.0,
+"type_line": "Creature \u2014 Human Soldier",
+"oracle_text": "Flying\nMobilize 1 (Whenever this creature attacks, create a tapped and attacking 1/1 red Warrior creature token. Sacrifice it at the beginning of the next end step.)",
+"power": "3",
+"toughness": "3",
+"keywords": [
+"Flying",
+"Mobilize"
+],
+"colors": [
+"W"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "9"
+},
+{
+"name": "Dragonbroods' Relic",
+"mana_cost": "{1}{G}",
+"cmc": 2.0,
+"type_line": "Artifact",
+"oracle_text": "{T}, Tap an untapped creature you control: Add one mana of any color.\n{3}{W}{U}{B}{R}{G}, Sacrifice this artifact: Create a 4/4 Dragon creature token named Reliquary Dragon that's all colors. It has flying, lifelink, and \"When this token enters, it deals 3 damage to any target.\" Activate only as a sorcery.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"G"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"B",
+"G",
+"R",
+"U",
+"W"
+],
+"collector_number": "140"
+},
+{
+"name": "Dragonclaw Strike",
+"mana_cost": "{2/G}{2/U}{2/R}",
+"cmc": 6.0,
+"type_line": "Sorcery",
+"oracle_text": "Double the power and toughness of target creature you control until end of turn. Then it fights up to one target creature an opponent controls. (Each deals damage equal to its power to the other.)",
+"power": null,
+"toughness": null,
+"keywords": [
+"Fight",
+"Double"
+],
+"colors": [
+"G",
+"R",
+"U"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "180"
+},
+{
+"name": "Dragonfire Blade",
+"mana_cost": "{1}",
+"cmc": 1.0,
+"type_line": "Artifact \u2014 Equipment",
+"oracle_text": "Equipped creature gets +2/+2 and has hexproof from monocolored.\nEquip {4}. This ability costs {1} less to activate for each color of the creature it targets.",
+"power": null,
+"toughness": null,
+"keywords": [
+"Equip"
+],
+"colors": [],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "240"
+},
+{
+"name": "Dragonologist",
+"mana_cost": "{2}{U}",
+"cmc": 3.0,
+"type_line": "Creature \u2014 Human Wizard",
+"oracle_text": "When this creature enters, look at the top six cards of your library. You may reveal an instant, sorcery, or Dragon card from among them and put it into your hand. Put the rest on the bottom of your library in a random order.\nUntapped Dragons you control have hexproof.",
+"power": "1",
+"toughness": "3",
+"keywords": [],
+"colors": [
+"U"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "42"
+},
+{
+"name": "Dragonstorm Forecaster",
+"mana_cost": "{U}",
+"cmc": 1.0,
+"type_line": "Creature \u2014 Human Scout",
+"oracle_text": "{2}, {T}: Search your library for a card named Dragonstorm Globe or Boulderborn Dragon, reveal it, put it into your hand, then shuffle.",
+"power": "0",
+"toughness": "3",
+"keywords": [],
+"colors": [
+"U"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "43"
+},
+{
+"name": "Dragonstorm Globe",
+"mana_cost": "{3}",
+"cmc": 3.0,
+"type_line": "Artifact",
+"oracle_text": "Each Dragon you control enters with an additional +1/+1 counter on it.\n{T}: Add one mana of any color.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"B",
+"G",
+"R",
+"U",
+"W"
+],
+"collector_number": "241"
+},
+{
+"name": "Dusyut Earthcarver",
+"mana_cost": "{5}{G}",
+"cmc": 6.0,
+"type_line": "Creature \u2014 Elephant Druid",
+"oracle_text": "Reach\nWhen this creature enters, it endures 3. (Put three +1/+1 counters on it or create a 3/3 white Spirit creature token.)",
+"power": "4",
+"toughness": "4",
+"keywords": [
+"Reach",
+"Endure"
+],
+"colors": [
+"G"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "141"
+},
+{
+"name": "Duty Beyond Death",
+"mana_cost": "{1}{W}",
+"cmc": 2.0,
+"type_line": "Instant",
+"oracle_text": "As an additional cost to cast this spell, sacrifice a creature.\nCreatures you control gain indestructible until end of turn. Put a +1/+1 counter on each creature you control. (Damage and effects that say \"destroy\" don't destroy those creatures.)",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"W"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "10"
+},
+{
+"name": "Eerie Ultimatum",
+"mana_cost": "{W}{W}{B}{B}{B}{G}{G}",
+"cmc": 7.0,
+"type_line": "Sorcery",
+"oracle_text": "Return any number of permanent cards with different names from your graveyard to the battlefield.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"B",
+"G",
+"W"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "184"
+},
+{
+"name": "Effortless Master",
+"mana_cost": "{2}{U}{R}",
+"cmc": 4.0,
+"type_line": "Creature \u2014 Orc Monk",
+"oracle_text": "Vigilance\nMenace (This creature can't be blocked except by two or more creatures.)\nThis creature enters with two +1/+1 counters on it if you've cast two or more spells this turn.",
+"power": "4",
+"toughness": "3",
+"keywords": [
+"Vigilance",
+"Menace"
+],
+"colors": [
+"R",
+"U"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "181"
+},
+{
+"name": "Embermouth Sentinel",
+"mana_cost": "{2}",
+"cmc": 2.0,
+"type_line": "Artifact Creature \u2014 Chimera",
+"oracle_text": "When this creature enters, you may search your library for a basic land card, reveal it, then shuffle and put that card on top. If you control a Dragon, put that card onto the battlefield tapped instead.",
+"power": "2",
+"toughness": "1",
+"keywords": [],
+"colors": [],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "242"
+},
+{
+"name": "Emergent Ultimatum",
+"mana_cost": "{B}{B}{G}{G}{G}{U}{U}",
+"cmc": 7.0,
+"type_line": "Sorcery",
+"oracle_text": "Search your library for up to three monocolored cards with different names and exile them. An opponent chooses one of those cards. Shuffle that card into your library. You may cast the other cards without paying their mana costs. Exile Emergent Ultimatum.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"B",
+"G",
+"U"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "185"
+},
+{
+"name": "Encroaching Dragonstorm",
+"mana_cost": "{3}{G}",
+"cmc": 4.0,
+"type_line": "Enchantment",
+"oracle_text": "When this enchantment enters, search your library for up to two basic land cards, put them onto the battlefield tapped, then shuffle.\nWhen a Dragon you control enters, return this enchantment to its owner's hand.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"G"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "142"
+},
+{
+"name": "Equilibrium Adept",
+"mana_cost": "{3}{R}",
+"cmc": 4.0,
+"type_line": "Creature \u2014 Dog Monk",
+"oracle_text": "When this creature enters, exile the top card of your library. Until the end of your next turn, you may play that card.\nFlurry \u2014 Whenever you cast your second spell each turn, this creature gains double strike until end of turn.",
+"power": "2",
+"toughness": "4",
+"keywords": [
+"Flurry"
+],
+"colors": [
+"R"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "106"
+},
+{
+"name": "Eshki Dragonclaw",
+"mana_cost": "{1}{G}{U}{R}",
+"cmc": 4.0,
+"type_line": "Legendary Creature \u2014 Human Warrior",
+"oracle_text": "Vigilance, trample, ward {1}\nAt the beginning of combat on your turn, if you've cast both a creature spell and a noncreature spell this turn, draw a card and put two +1/+1 counters on Eshki Dragonclaw.",
+"power": "4",
+"toughness": "4",
+"keywords": [
+"Vigilance",
+"Trample",
+"Ward"
+],
+"colors": [
+"G",
+"R",
+"U"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "182"
+},
+{
+"name": "Essence Anchor",
+"mana_cost": "{2}{U}",
+"cmc": 3.0,
+"type_line": "Artifact",
+"oracle_text": "At the beginning of your upkeep, surveil 1. (Look at the top card of your library. You may put it into your graveyard.)\n{T}: Create a 2/2 black Zombie Druid creature token. Activate only during your turn and only if a card left your graveyard this turn.",
+"power": null,
+"toughness": null,
+"keywords": [
+"Surveil"
+],
+"colors": [
+"U"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "44"
+},
+{
+"name": "Evolving Wilds",
+"mana_cost": "",
+"cmc": 0.0,
+"type_line": "Land",
+"oracle_text": "{T}, Sacrifice this land: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "255"
+},
+{
+"name": "Fangkeeper's Familiar",
+"mana_cost": "{1}{B}{G}{U}",
+"cmc": 4.0,
+"type_line": "Creature \u2014 Snake",
+"oracle_text": "Flash\nWhen this creature enters, choose one \u2014\n\u2022 You gain 3 life and surveil 3. (Look at the top three cards of your library, then put any number of them into your graveyard and the rest on top of your library in any order.)\n\u2022 Destroy target enchantment.\n\u2022 Counter target creature spell.",
+"power": "3",
+"toughness": "3",
+"keywords": [
+"Surveil",
+"Flash"
+],
+"colors": [
+"B",
+"G",
+"U"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "183"
+},
+{
+"name": "Feral Deathgorger",
+"mana_cost": "{5}{B}",
+"cmc": 6.0,
+"type_line": "Creature \u2014 Dragon",
+"oracle_text": "Flying, deathtouch\nWhen this creature enters, exile up to two target cards from a single graveyard.",
+"power": "3",
+"toughness": "5",
+"keywords": [
+"Deathtouch",
+"Flying"
+],
+"colors": [
+"B"
+],
+"rarity": "common",
+"layout": "adventure",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "80"
+},
+{
+"name": "Fire-Rim Form",
+"mana_cost": "{1}{R}",
+"cmc": 2.0,
+"type_line": "Enchantment \u2014 Aura",
+"oracle_text": "Flash\nEnchant creature\nWhen this Aura enters, enchanted creature gains first strike until end of turn.\nEnchanted creature gets +2/+0.",
+"power": null,
+"toughness": null,
+"keywords": [
+"Enchant",
+"Flash"
+],
+"colors": [
+"R"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "107"
+},
+{
+"name": "Flamehold Grappler",
+"mana_cost": "{U}{R}{W}",
+"cmc": 3.0,
+"type_line": "Creature \u2014 Human Monk",
+"oracle_text": "First strike\nWhen this creature enters, copy the next spell you cast this turn when you cast it. You may choose new targets for the copy. (A copy of a permanent spell becomes a token.)",
+"power": "3",
+"toughness": "3",
+"keywords": [
+"First strike"
+],
+"colors": [
+"R",
+"U",
+"W"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "185"
+},
+{
+"name": "Fleeting Effigy",
+"mana_cost": "{R}",
+"cmc": 1.0,
+"type_line": "Creature \u2014 Elemental",
+"oracle_text": "Haste\nAt the beginning of your end step, return this creature to its owner's hand. (Return it only if it's on the battlefield.)\n{2}{R}: This creature gets +2/+0 until end of turn.",
+"power": "2",
+"toughness": "2",
+"keywords": [
+"Haste"
+],
+"colors": [
+"R"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "108"
+},
+{
+"name": "Focus the Mind",
+"mana_cost": "{4}{U}",
+"cmc": 5.0,
+"type_line": "Instant",
+"oracle_text": "This spell costs {2} less to cast if you've cast another spell this turn.\nDraw three cards, then discard a card.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"U"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "45"
+},
+{
+"name": "Forest",
+"mana_cost": "",
+"cmc": 0.0,
+"type_line": "Basic Land \u2014 Forest",
+"oracle_text": "({T}: Add {G}.)",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"G"
+],
+"collector_number": "285"
+},
+{
+"name": "Formation Breaker",
+"mana_cost": "{1}{G}",
+"cmc": 2.0,
+"type_line": "Creature \u2014 Beast",
+"oracle_text": "Creatures with power less than this creature's power can't block it.\nAs long as you control a creature with a counter on it, this creature gets +1/+2.",
+"power": "2",
+"toughness": "1",
+"keywords": [],
+"colors": [
+"G"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "143"
+},
+{
+"name": "Fortress Kin-Guard",
+"mana_cost": "{1}{W}",
+"cmc": 2.0,
+"type_line": "Creature \u2014 Dog Soldier",
+"oracle_text": "When this creature enters, it endures 1. (Put a +1/+1 counter on it or create a 1/1 white Spirit creature token.)",
+"power": "1",
+"toughness": "2",
+"keywords": [
+"Endure"
+],
+"colors": [
+"W"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "12"
+},
+{
+"name": "Fresh Start",
+"mana_cost": "{1}{U}",
+"cmc": 2.0,
+"type_line": "Enchantment \u2014 Aura",
+"oracle_text": "Flash\nEnchant creature\nEnchanted creature gets -5/-0 and loses all abilities.",
+"power": null,
+"toughness": null,
+"keywords": [
+"Enchant",
+"Flash"
+],
+"colors": [
+"U"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "46"
+},
+{
+"name": "Frontier Bivouac",
+"mana_cost": "",
+"cmc": 0.0,
+"type_line": "Land",
+"oracle_text": "This land enters tapped.\n{T}: Add {G}, {U}, or {R}.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"G",
+"R",
+"U"
+],
+"collector_number": "256"
+},
+{
+"name": "Frontline Rush",
+"mana_cost": "{R}{W}",
+"cmc": 2.0,
+"type_line": "Instant",
+"oracle_text": "Choose one \u2014\n\u2022 Create two 1/1 red Goblin creature tokens.\n\u2022 Target creature gets +X/+X until end of turn, where X is the number of creatures you control.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"R",
+"W"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "186"
+},
+{
+"name": "Frostcliff Siege",
+"mana_cost": "{1}{U}{R}",
+"cmc": 3.0,
+"type_line": "Enchantment",
+"oracle_text": "As this enchantment enters, choose Jeskai or Temur.\n\u2022 Jeskai \u2014 Whenever one or more creatures you control deal combat damage to a player, draw a card.\n\u2022 Temur \u2014 Creatures you control get +1/+0 and have trample and haste.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"R",
+"U"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "187"
+},
+{
+"name": "Furious Forebear",
+"mana_cost": "{1}{W}",
+"cmc": 2.0,
+"type_line": "Creature \u2014 Spirit Warrior",
+"oracle_text": "Whenever a creature you control dies while this card is in your graveyard, you may pay {1}{W}. If you do, return this card from your graveyard to your hand.",
+"power": "3",
+"toughness": "1",
+"keywords": [],
+"colors": [
+"W"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "13"
+},
+{
+"name": "Genesis Ultimatum",
+"mana_cost": "{G}{G}{U}{U}{U}{R}{R}",
+"cmc": 7.0,
+"type_line": "Sorcery",
+"oracle_text": "Look at the top five cards of your library. Put any number of permanent cards from among them onto the battlefield and the rest into your hand. Exile Genesis Ultimatum.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"G",
+"R",
+"U"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "189"
+},
+{
+"name": "Glacial Dragonhunt",
+"mana_cost": "{U}{R}",
+"cmc": 2.0,
+"type_line": "Sorcery",
+"oracle_text": "Draw a card, then you may discard a card. When you discard a nonland card this way, Glacial Dragonhunt deals 3 damage to target creature.\nHarmonize {4}{U}{R} (You may cast this card from your graveyard for its harmonize cost. You may tap a creature you control to reduce that cost by {X}, where X is its power. Then exile this spell.)",
+"power": null,
+"toughness": null,
+"keywords": [
+"Harmonize"
+],
+"colors": [
+"R",
+"U"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "188"
+},
+{
+"name": "Glacierwood Siege",
+"mana_cost": "{1}{G}{U}",
+"cmc": 3.0,
+"type_line": "Enchantment",
+"oracle_text": "As this enchantment enters, choose Temur or Sultai.\n\u2022 Temur \u2014 Whenever you cast an instant or sorcery spell, target player mills four cards.\n\u2022 Sultai \u2014 You may play lands from your graveyard.",
+"power": null,
+"toughness": null,
+"keywords": [
+"Mill"
+],
+"colors": [
+"G",
+"U"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "189"
+},
+{
+"name": "Great Arashin City",
+"mana_cost": "",
+"cmc": 0.0,
+"type_line": "Land",
+"oracle_text": "This land enters tapped unless you control a Forest or a Plains.\n{T}: Add {B}.\n{1}{B}, {T}, Exile a creature card from your graveyard: Create a 1/1 white Spirit creature token.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"B"
+],
+"collector_number": "257"
+},
+{
+"name": "Gurmag Nightwatch",
+"mana_cost": "{2/B}{2/G}{2/U}",
+"cmc": 6.0,
+"type_line": "Creature \u2014 Human Ranger",
+"oracle_text": "When this creature enters, look at the top three cards of your library. You may put one of those cards back on top of your library. Put the rest into your graveyard.",
+"power": "3",
+"toughness": "3",
+"keywords": [],
+"colors": [
+"B",
+"G",
+"U"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "190"
+},
+{
+"name": "Gurmag Rakshasa",
+"mana_cost": "{4}{B}{B}",
+"cmc": 6.0,
+"type_line": "Creature \u2014 Demon",
+"oracle_text": "Menace (This creature can't be blocked except by two or more creatures.)\nWhen this creature enters, target creature an opponent controls gets -2/-2 until end of turn and target creature you control gets +2/+2 until end of turn.",
+"power": "5",
+"toughness": "5",
+"keywords": [
+"Menace"
+],
+"colors": [
+"B"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "81"
+},
+{
+"name": "Hardened Tactician",
+"mana_cost": "{1}{W}{B}",
+"cmc": 3.0,
+"type_line": "Creature \u2014 Human Warrior",
+"oracle_text": "{1}, Sacrifice a token: Draw a card.",
+"power": "2",
+"toughness": "4",
+"keywords": [],
+"colors": [
+"B",
+"W"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "191"
+},
+{
+"name": "Herd Heirloom",
+"mana_cost": "{1}{G}",
+"cmc": 2.0,
+"type_line": "Artifact",
+"oracle_text": "{T}: Add one mana of any color. Spend this mana only to cast a creature spell.\n{T}: Until end of turn, target creature you control with power 4 or greater gains trample and \"Whenever this creature deals combat damage to a player, draw a card.\"",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"G"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"B",
+"G",
+"R",
+"U",
+"W"
+],
+"collector_number": "144"
+},
+{
+"name": "Heritage Reclamation",
+"mana_cost": "{1}{G}",
+"cmc": 2.0,
+"type_line": "Instant",
+"oracle_text": "Choose one \u2014\n\u2022 Destroy target artifact.\n\u2022 Destroy target enchantment.\n\u2022 Exile up to one target card from a graveyard. Draw a card.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"G"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "145"
+},
+{
+"name": "Highspire Bell-Ringer",
+"mana_cost": "{2}{U}",
+"cmc": 3.0,
+"type_line": "Creature \u2014 Djinn Monk",
+"oracle_text": "Flying\nThe second spell you cast each turn costs {1} less to cast.",
+"power": "1",
+"toughness": "4",
+"keywords": [
+"Flying"
+],
+"colors": [
+"U"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "47"
+},
+{
+"name": "Hollowmurk Siege",
+"mana_cost": "{B}{G}",
+"cmc": 2.0,
+"type_line": "Enchantment",
+"oracle_text": "As this enchantment enters, choose Sultai or Abzan.\n\u2022 Sultai \u2014 Whenever a counter is put on a creature you control, draw a card. This ability triggers only once each turn.\n\u2022 Abzan \u2014 Whenever you attack, put a +1/+1 counter on target attacking creature. It gains menace until end of turn.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"B",
+"G"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "192"
+},
+{
+"name": "Host of the Hereafter",
+"mana_cost": "{2}{B}{G}",
+"cmc": 4.0,
+"type_line": "Creature \u2014 Zombie Warlock",
+"oracle_text": "This creature enters with two +1/+1 counters on it.\nWhenever this creature or another creature you control dies, if it had counters on it, put its counters on up to one target creature you control.",
+"power": "2",
+"toughness": "2",
+"keywords": [],
+"colors": [
+"B",
+"G"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "193"
+},
+{
+"name": "Humbling Elder",
+"mana_cost": "{U}",
+"cmc": 1.0,
+"type_line": "Creature \u2014 Human Monk",
+"oracle_text": "Flash\nWhen this creature enters, target creature an opponent controls gets -2/-0 until end of turn.",
+"power": "1",
+"toughness": "2",
+"keywords": [
+"Flash"
+],
+"colors": [
+"U"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "48"
+},
+{
+"name": "Hundred-Battle Veteran",
+"mana_cost": "{3}{B}",
+"cmc": 4.0,
+"type_line": "Creature \u2014 Zombie Warrior",
+"oracle_text": "As long as there are three or more different kinds of counters among creatures you control, this creature gets +2/+4.\nYou may cast this card from your graveyard. If you do, it enters with a finality counter on it. (If a creature with a finality counter on it would die, exile it instead.)",
+"power": "4",
+"toughness": "2",
+"keywords": [],
+"colors": [
+"B"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "82"
+},
+{
+"name": "Iceridge Serpent",
+"mana_cost": "{4}{U}",
+"cmc": 5.0,
+"type_line": "Creature \u2014 Serpent",
+"oracle_text": "When this creature enters, return target creature an opponent controls to its owner's hand.",
+"power": "3",
+"toughness": "3",
+"keywords": [],
+"colors": [
+"U"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "49"
+},
+{
+"name": "Inevitable Defeat",
+"mana_cost": "{1}{R}{W}{B}",
+"cmc": 4.0,
+"type_line": "Instant",
+"oracle_text": "This spell can't be countered.\nExile target nonland permanent. Its controller loses 3 life and you gain 3 life.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"B",
+"R",
+"W"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "194"
+},
+{
+"name": "Inspired Ultimatum",
+"mana_cost": "{U}{U}{R}{R}{R}{W}{W}",
+"cmc": 7.0,
+"type_line": "Sorcery",
+"oracle_text": "Target player gains 5 life, Inspired Ultimatum deals 5 damage to any target, then you draw five cards.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"R",
+"U",
+"W"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "191"
+},
+{
+"name": "Inspirited Vanguard",
+"mana_cost": "{4}{G}",
+"cmc": 5.0,
+"type_line": "Creature \u2014 Human Soldier",
+"oracle_text": "Whenever this creature enters or attacks, it endures 2. (Put two +1/+1 counters on it or create a 2/2 white Spirit creature token.)",
+"power": "3",
+"toughness": "2",
+"keywords": [
+"Endure"
+],
+"colors": [
+"G"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "146"
+},
+{
+"name": "Iridescent Tiger",
+"mana_cost": "{4}{R}",
+"cmc": 5.0,
+"type_line": "Creature \u2014 Cat",
+"oracle_text": "When this creature enters, if you cast it, add {W}{U}{B}{R}{G}.",
+"power": "3",
+"toughness": "4",
+"keywords": [],
+"colors": [
+"R"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"B",
+"G",
+"R",
+"U",
+"W"
+],
+"collector_number": "109"
+},
+{
+"name": "Island",
+"mana_cost": "",
+"cmc": 0.0,
+"type_line": "Basic Land \u2014 Island",
+"oracle_text": "({T}: Add {U}.)",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"U"
+],
+"collector_number": "279"
+},
+{
+"name": "Jade-Cast Sentinel",
+"mana_cost": "{4}",
+"cmc": 4.0,
+"type_line": "Artifact Creature \u2014 Ape Snake",
+"oracle_text": "Reach\n{2}, {T}: Put target card from a graveyard on the bottom of its owner's library.",
+"power": "1",
+"toughness": "5",
+"keywords": [
+"Reach"
+],
+"colors": [],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "243"
+},
+{
+"name": "Jeskai Brushmaster",
+"mana_cost": "{1}{U}{R}{W}",
+"cmc": 4.0,
+"type_line": "Creature \u2014 Orc Monk",
+"oracle_text": "Double strike\nProwess (Whenever you cast a noncreature spell, this creature gets +1/+1 until end of turn.)",
+"power": "2",
+"toughness": "4",
+"keywords": [
+"Prowess",
+"Double strike"
+],
+"colors": [
+"R",
+"U",
+"W"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "195"
+},
+{
+"name": "Jeskai Devotee",
+"mana_cost": "{1}{R}",
+"cmc": 2.0,
+"type_line": "Creature \u2014 Orc Monk",
+"oracle_text": "Flurry \u2014 Whenever you cast your second spell each turn, this creature gets +1/+1 until end of turn.\n{1}: Add {U}, {R}, or {W}. Activate only once each turn.",
+"power": "2",
+"toughness": "2",
+"keywords": [
+"Flurry"
+],
+"colors": [
+"R"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"R",
+"U",
+"W"
+],
+"collector_number": "110"
+},
+{
+"name": "Jeskai Monument",
+"mana_cost": "{2}",
+"cmc": 2.0,
+"type_line": "Artifact",
+"oracle_text": "When this artifact enters, search your library for a basic Island, Mountain, or Plains card, reveal it, put it into your hand, then shuffle.\n{1}{U}{R}{W}, {T}, Sacrifice this artifact: Create two 1/1 white Bird creature tokens with flying. Activate only as a sorcery.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "244"
+},
+{
+"name": "Jeskai Revelation",
+"mana_cost": "{4}{U}{R}{W}",
+"cmc": 7.0,
+"type_line": "Instant",
+"oracle_text": "Return target spell or permanent to its owner's hand. Jeskai Revelation deals 4 damage to any target. Create two 1/1 white Monk creature tokens with prowess. Draw two cards. You gain 4 life.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"R",
+"U",
+"W"
+],
+"rarity": "mythic",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "196"
+},
+{
+"name": "Jeskai Shrinekeeper",
+"mana_cost": "{2}{U}{R}{W}",
+"cmc": 5.0,
+"type_line": "Creature \u2014 Dragon",
+"oracle_text": "Flying, haste\nWhenever this creature deals combat damage to a player, you gain 1 life and draw a card.",
+"power": "3",
+"toughness": "3",
+"keywords": [
+"Flying",
+"Haste"
+],
+"colors": [
+"R",
+"U",
+"W"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "197"
+},
+{
+"name": "Jungle Hollow",
+"mana_cost": "",
+"cmc": 0.0,
+"type_line": "Land",
+"oracle_text": "This land enters tapped.\nWhen this land enters, you gain 1 life.\n{T}: Add {B} or {G}.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"B",
+"G"
+],
+"collector_number": "258"
+},
+{
+"name": "Karakyk Guardian",
+"mana_cost": "{3}{G}{U}{R}",
+"cmc": 6.0,
+"type_line": "Creature \u2014 Dragon",
+"oracle_text": "Flying, vigilance, trample\nThis creature has hexproof as long as it hasn't dealt damage yet. (It can't be the target of spells or abilities your opponents control.)",
+"power": "6",
+"toughness": "5",
+"keywords": [
+"Flying",
+"Vigilance",
+"Trample"
+],
+"colors": [
+"G",
+"R",
+"U"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "198"
+},
+{
+"name": "Kheru Goldkeeper",
+"mana_cost": "{1}{B}{G}{U}",
+"cmc": 4.0,
+"type_line": "Creature \u2014 Dragon",
+"oracle_text": "Flying\nWhenever one or more cards leave your graveyard during your turn, create a Treasure token. (It's an artifact with \"{T}, Sacrifice this token: Add one mana of any color.\")\nRenew \u2014 {2}{B}{G}{U}, Exile this card from your graveyard: Put two +1/+1 counters and a flying counter on target creature. Activate only as a sorcery.",
+"power": "3",
+"toughness": "3",
+"keywords": [
+"Flying",
+"Renew",
+"Treasure"
+],
+"colors": [
+"B",
+"G",
+"U"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"B",
+"G",
+"R",
+"U",
+"W"
+],
+"collector_number": "199"
+},
+{
+"name": "Kin-Tree Nurturer",
+"mana_cost": "{2}{B}",
+"cmc": 3.0,
+"type_line": "Creature \u2014 Human Druid",
+"oracle_text": "Lifelink\nWhen this creature enters, it endures 1. (Put a +1/+1 counter on it or create a 1/1 white Spirit creature token.)",
+"power": "2",
+"toughness": "1",
+"keywords": [
+"Lifelink",
+"Endure"
+],
+"colors": [
+"B"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "83"
+},
+{
+"name": "Kin-Tree Severance",
+"mana_cost": "{2/W}{2/B}{2/G}",
+"cmc": 6.0,
+"type_line": "Instant",
+"oracle_text": "Exile target permanent with mana value 3 or greater.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"B",
+"G",
+"W"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "200"
+},
+{
+"name": "Kishla Skimmer",
+"mana_cost": "{G}{U}",
+"cmc": 2.0,
+"type_line": "Creature \u2014 Bird Scout",
+"oracle_text": "Flying\nWhenever a card leaves your graveyard during your turn, draw a card. This ability triggers only once each turn.",
+"power": "2",
+"toughness": "2",
+"keywords": [
+"Flying"
+],
+"colors": [
+"G",
+"U"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "201"
+},
+{
+"name": "Kishla Trawlers",
+"mana_cost": "{2}{U}",
+"cmc": 3.0,
+"type_line": "Creature \u2014 Human Citizen",
+"oracle_text": "When this creature enters, you may exile a creature card from your graveyard. When you do, return target instant or sorcery card from your graveyard to your hand.",
+"power": "3",
+"toughness": "2",
+"keywords": [],
+"colors": [
+"U"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "50"
+},
+{
+"name": "Kishla Village",
+"mana_cost": "",
+"cmc": 0.0,
+"type_line": "Land",
+"oracle_text": "This land enters tapped unless you control an Island or a Swamp.\n{T}: Add {G}.\n{3}{G}, {T}: Surveil 2. (Look at the top two cards of your library, then put any number of them into your graveyard and the rest on top of your library in any order.)",
+"power": null,
+"toughness": null,
+"keywords": [
+"Surveil"
+],
+"colors": [],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"G"
+],
+"collector_number": "259"
+},
+{
+"name": "Knockout Maneuver",
+"mana_cost": "{2}{G}",
+"cmc": 3.0,
+"type_line": "Sorcery",
+"oracle_text": "Put a +1/+1 counter on target creature you control, then it deals damage equal to its power to target creature an opponent controls.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"G"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "147"
+},
+{
+"name": "Krotiq Nestguard",
+"mana_cost": "{2}{G}",
+"cmc": 3.0,
+"type_line": "Creature \u2014 Insect",
+"oracle_text": "Defender\n{2}{G}: This creature can attack this turn as though it didn't have defender.",
+"power": "4",
+"toughness": "4",
+"keywords": [
+"Defender"
+],
+"colors": [
+"G"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "148"
+},
+{
+"name": "Krumar Initiate",
+"mana_cost": "{1}{B}",
+"cmc": 2.0,
+"type_line": "Creature \u2014 Human Cleric",
+"oracle_text": "{X}{B}, {T}, Pay X life: This creature endures X. Activate only as a sorcery. (Put X +1/+1 counters on it or create an X/X white Spirit creature token.)",
+"power": "2",
+"toughness": "2",
+"keywords": [
+"Endure"
+],
+"colors": [
+"B"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "84"
+},
+{
+"name": "Lasyd Prowler",
+"mana_cost": "{2}{G}{G}",
+"cmc": 4.0,
+"type_line": "Creature \u2014 Snake Ranger",
+"oracle_text": "When this creature enters, you may mill cards equal to the number of lands you control.\nRenew \u2014 {1}{G}, Exile this card from your graveyard: Put X +1/+1 counters on target creature, where X is the number of land cards in your graveyard. Activate only as a sorcery.",
+"power": "5",
+"toughness": "5",
+"keywords": [
+"Renew",
+"Mill"
+],
+"colors": [
+"G"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "149"
+},
+{
+"name": "Lie in Wait",
+"mana_cost": "{B}{G}{U}",
+"cmc": 3.0,
+"type_line": "Sorcery",
+"oracle_text": "Return target creature card from your graveyard to your hand. Lie in Wait deals damage equal to that card's power to target creature.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"B",
+"G",
+"U"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "203"
+},
+{
+"name": "Lightfoot Technique",
+"mana_cost": "{1}{W}",
+"cmc": 2.0,
+"type_line": "Instant",
+"oracle_text": "Put a +1/+1 counter on target creature. It gains flying and indestructible until end of turn. (Damage and effects that say \"destroy\" don't destroy it.)",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"W"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "14"
+},
+{
+"name": "Lotuslight Dancers",
+"mana_cost": "{2}{B}{G}{U}",
+"cmc": 5.0,
+"type_line": "Creature \u2014 Zombie Bard",
+"oracle_text": "Lifelink\nWhen this creature enters, search your library for a black card, a green card, and a blue card. Put those cards into your graveyard, then shuffle.",
+"power": "3",
+"toughness": "6",
+"keywords": [
+"Lifelink"
+],
+"colors": [
+"B",
+"G",
+"U"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "204"
+},
+{
+"name": "Loxodon Battle Priest",
+"mana_cost": "{4}{W}",
+"cmc": 5.0,
+"type_line": "Creature \u2014 Elephant Cleric",
+"oracle_text": "At the beginning of combat on your turn, put a +1/+1 counter on another target creature you control.",
+"power": "3",
+"toughness": "5",
+"keywords": [],
+"colors": [
+"W"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "15"
+},
+{
+"name": "Maelstrom of the Spirit Dragon",
+"mana_cost": "",
+"cmc": 0.0,
+"type_line": "Land",
+"oracle_text": "{T}: Add {C}.\n{T}: Add one mana of any color. Spend this mana only to cast a Dragon spell or an Omen spell.\n{4}, {T}, Sacrifice this land: Search your library for a Dragon card, reveal it, put it into your hand, then shuffle.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"B",
+"C",
+"G",
+"R",
+"U",
+"W"
+],
+"collector_number": "260"
+},
+{
+"name": "Magmatic Hellkite",
+"mana_cost": "{2}{R}{R}",
+"cmc": 4.0,
+"type_line": "Creature \u2014 Dragon",
+"oracle_text": "Flying\nWhen this creature enters, destroy target nonbasic land an opponent controls. Its controller searches their library for a basic land card, puts it onto the battlefield tapped with a stun counter on it, then shuffles. (If a permanent with a stun counter would become untapped, remove one from it instead.)",
+"power": "4",
+"toughness": "5",
+"keywords": [
+"Flying"
+],
+"colors": [
+"R"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "111"
+},
+{
+"name": "Mammoth Bellow",
+"mana_cost": "{2}{G}{U}{R}",
+"cmc": 5.0,
+"type_line": "Sorcery",
+"oracle_text": "Create a 5/5 green Elephant creature token.\nHarmonize {5}{G}{U}{R} (You may cast this card from your graveyard for its harmonize cost. You may tap a creature you control to reduce that cost by {X}, where X is its power. Then exile this spell.)",
+"power": null,
+"toughness": null,
+"keywords": [
+"Harmonize"
+],
+"colors": [
+"G",
+"R",
+"U"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "205"
+},
+{
+"name": "Marang River Regent",
+"mana_cost": "{4}{U}{U}",
+"cmc": 6.0,
+"type_line": "Creature \u2014 Dragon",
+"oracle_text": "Flying\nWhen this creature enters, return up to two other target nonland permanents to their owners' hands.",
+"power": "6",
+"toughness": "7",
+"keywords": [
+"Flying"
+],
+"colors": [
+"U"
+],
+"rarity": "rare",
+"layout": "adventure",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "51"
+},
+{
+"name": "Mardu Devotee",
+"mana_cost": "{W}",
+"cmc": 1.0,
+"type_line": "Creature \u2014 Human Scout",
+"oracle_text": "When this creature enters, scry 2. (Look at the top two cards of your library, then put any number of them on the bottom and the rest on top in any order.)\n{1}: Add {R}, {W}, or {B}. Activate only once each turn.",
+"power": "1",
+"toughness": "2",
+"keywords": [
+"Scry"
+],
+"colors": [
+"W"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"B",
+"R",
+"W"
+],
+"collector_number": "16"
+},
+{
+"name": "Mardu Monument",
+"mana_cost": "{2}",
+"cmc": 2.0,
+"type_line": "Artifact",
+"oracle_text": "When this artifact enters, search your library for a basic Mountain, Plains, or Swamp card, reveal it, put it into your hand, then shuffle.\n{2}{R}{W}{B}, {T}, Sacrifice this artifact: Create three 1/1 red Warrior creature tokens. They gain menace and haste until end of turn. Activate only as a sorcery. (A creature with menace can't be blocked except by two or more creatures.)",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "245"
+},
+{
+"name": "Mardu Siegebreaker",
+"mana_cost": "{1}{R}{W}{B}",
+"cmc": 4.0,
+"type_line": "Creature \u2014 Human Warrior",
+"oracle_text": "Deathtouch, haste\nWhen this creature enters, exile up to one other target creature you control until this creature leaves the battlefield.\nWhenever this creature attacks, for each opponent, create a tapped token that's a copy of the exiled card attacking that opponent. At the beginning of your next end step, sacrifice those tokens.",
+"power": "4",
+"toughness": "4",
+"keywords": [
+"Haste",
+"Deathtouch"
+],
+"colors": [
+"B",
+"R",
+"W"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "206"
+},
+{
+"name": "Marsh Flats",
+"mana_cost": "",
+"cmc": 0.0,
+"type_line": "Land",
+"oracle_text": "{T}, Pay 1 life, Sacrifice this land: Search your library for a Plains or Swamp card, put it onto the battlefield, then shuffle.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "248"
+},
+{
+"name": "Marshal of the Lost",
+"mana_cost": "{2}{W}{B}",
+"cmc": 4.0,
+"type_line": "Creature \u2014 Orc Warrior",
+"oracle_text": "Deathtouch\nWhenever you attack, target creature gets +X/+X until end of turn, where X is the number of attacking creatures.",
+"power": "3",
+"toughness": "3",
+"keywords": [
+"Deathtouch"
+],
+"colors": [
+"B",
+"W"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "207"
+},
+{
+"name": "Meticulous Artisan",
+"mana_cost": "{3}{R}",
+"cmc": 4.0,
+"type_line": "Creature \u2014 Djinn Artificer",
+"oracle_text": "Prowess (Whenever you cast a noncreature spell, this creature gets +1/+1 until end of turn.)\nWhen this creature enters, create a Treasure token. (It's an artifact with \"{T}, Sacrifice this token: Add one mana of any color.\")",
+"power": "3",
+"toughness": "3",
+"keywords": [
+"Prowess",
+"Treasure"
+],
+"colors": [
+"R"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"B",
+"G",
+"R",
+"U",
+"W"
+],
+"collector_number": "112"
+},
+{
+"name": "Mistrise Village",
+"mana_cost": "",
+"cmc": 0.0,
+"type_line": "Land",
+"oracle_text": "This land enters tapped unless you control a Mountain or a Forest.\n{T}: Add {U}.\n{U}, {T}: The next spell you cast this turn can't be countered.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"U"
+],
+"collector_number": "261"
+},
+{
+"name": "Misty Rainforest",
+"mana_cost": "",
+"cmc": 0.0,
+"type_line": "Land",
+"oracle_text": "{T}, Pay 1 life, Sacrifice this land: Search your library for a Forest or Island card, put it onto the battlefield, then shuffle.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "250"
+},
+{
+"name": "Molten Exhale",
+"mana_cost": "{1}{R}",
+"cmc": 2.0,
+"type_line": "Sorcery",
+"oracle_text": "You may cast this spell as though it had flash if you behold a Dragon as an additional cost to cast it. (To behold a Dragon, choose a Dragon you control or reveal a Dragon card from your hand.)\nMolten Exhale deals 4 damage to target creature or planeswalker.",
+"power": null,
+"toughness": null,
+"keywords": [
+"Behold"
+],
+"colors": [
+"R"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "113"
+},
+{
+"name": "Monastery Messenger",
+"mana_cost": "{2/U}{2/R}{2/W}",
+"cmc": 6.0,
+"type_line": "Creature \u2014 Bird Scout",
+"oracle_text": "Flying, vigilance\nWhen this creature enters, put up to one target noncreature, nonland card from your graveyard on top of your library.",
+"power": "2",
+"toughness": "3",
+"keywords": [
+"Flying",
+"Vigilance"
+],
+"colors": [
+"R",
+"U",
+"W"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "208"
+},
+{
+"name": "Mountain",
+"mana_cost": "",
+"cmc": 0.0,
+"type_line": "Basic Land \u2014 Mountain",
+"oracle_text": "({T}: Add {R}.)",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"R"
+],
+"collector_number": "283"
+},
+{
+"name": "Mox Jasper",
+"mana_cost": "{0}",
+"cmc": 0.0,
+"type_line": "Legendary Artifact",
+"oracle_text": "{T}: Add one mana of any color. Activate only if you control a Dragon.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [],
+"rarity": "mythic",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"B",
+"G",
+"R",
+"U",
+"W"
+],
+"collector_number": "246"
+},
+{
+"name": "Mystic Monastery",
+"mana_cost": "",
+"cmc": 0.0,
+"type_line": "Land",
+"oracle_text": "This land enters tapped.\n{T}: Add {U}, {R}, or {W}.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"R",
+"U",
+"W"
+],
+"collector_number": "262"
+},
+{
+"name": "Naga Fleshcrafter",
+"mana_cost": "{3}{U}",
+"cmc": 4.0,
+"type_line": "Creature \u2014 Snake Shapeshifter",
+"oracle_text": "You may have this creature enter as a copy of any creature on the battlefield.\nRenew \u2014 {2}{U}, Exile this card from your graveyard: Put a +1/+1 counter on target nonlegendary creature you control. Each other creature you control becomes a copy of that creature until end of turn. Activate only as a sorcery.",
+"power": "0",
+"toughness": "0",
+"keywords": [
+"Renew"
+],
+"colors": [
+"U"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "52"
+},
+{
+"name": "Narset's Rebuke",
+"mana_cost": "{4}{R}",
+"cmc": 5.0,
+"type_line": "Instant",
+"oracle_text": "Narset's Rebuke deals 5 damage to target creature. Add {U}{R}{W}. If that creature would die this turn, exile it instead.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"R"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"R",
+"U",
+"W"
+],
+"collector_number": "114"
+},
+{
+"name": "Nature's Rhythm",
+"mana_cost": "{X}{G}{G}",
+"cmc": 2.0,
+"type_line": "Sorcery",
+"oracle_text": "Search your library for a creature card with mana value X or less, put it onto the battlefield, then shuffle.\nHarmonize {X}{G}{G}{G}{G} (You may cast this card from your graveyard for its harmonize cost. You may tap a creature you control to reduce that cost by an amount of generic mana equal to its power. Then exile this spell.)",
+"power": null,
+"toughness": null,
+"keywords": [
+"Harmonize"
+],
+"colors": [
+"G"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "150"
+},
+{
+"name": "New Way Forward",
+"mana_cost": "{2}{U}{R}{W}",
+"cmc": 5.0,
+"type_line": "Instant",
+"oracle_text": "The next time a source of your choice would deal damage to you this turn, prevent that damage. When damage is prevented this way, New Way Forward deals that much damage to that source's controller and you draw that many cards.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"R",
+"U",
+"W"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "211"
+},
+{
+"name": "Nightblade Brigade",
+"mana_cost": "{2}{B}",
+"cmc": 3.0,
+"type_line": "Creature \u2014 Goblin Soldier",
+"oracle_text": "Deathtouch\nMobilize 1 (Whenever this creature attacks, create a tapped and attacking 1/1 red Warrior creature token. Sacrifice it at the beginning of the next end step.)\nWhen this creature enters, surveil 1. (Look at the top card of your library. You may put it into your graveyard.)",
+"power": "1",
+"toughness": "3",
+"keywords": [
+"Surveil",
+"Mobilize",
+"Deathtouch"
+],
+"colors": [
+"B"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "85"
+},
+{
+"name": "Nomad Outpost",
+"mana_cost": "",
+"cmc": 0.0,
+"type_line": "Land",
+"oracle_text": "This land enters tapped.\n{T}: Add {R}, {W}, or {B}.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"B",
+"R",
+"W"
+],
+"collector_number": "263"
+},
+{
+"name": "Opulent Palace",
+"mana_cost": "",
+"cmc": 0.0,
+"type_line": "Land",
+"oracle_text": "This land enters tapped.\n{T}: Add {B}, {G}, or {U}.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"B",
+"G",
+"U"
+],
+"collector_number": "264"
+},
+{
+"name": "Osseous Exhale",
+"mana_cost": "{1}{W}",
+"cmc": 2.0,
+"type_line": "Instant",
+"oracle_text": "As an additional cost to cast this spell, you may behold a Dragon. (You may choose a Dragon you control or reveal a Dragon card from your hand.)\nOsseous Exhale deals 5 damage to target attacking or blocking creature. If a Dragon was beheld, you gain 2 life.",
+"power": null,
+"toughness": null,
+"keywords": [
+"Behold"
+],
+"colors": [
+"W"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "17"
+},
+{
+"name": "Overwhelming Surge",
+"mana_cost": "{2}{R}",
+"cmc": 3.0,
+"type_line": "Instant",
+"oracle_text": "Choose one or both \u2014\n\u2022 Overwhelming Surge deals 3 damage to target creature.\n\u2022 Destroy target noncreature artifact.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"R"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "115"
+},
+{
+"name": "Perennation",
+"mana_cost": "{3}{W}{B}{G}",
+"cmc": 6.0,
+"type_line": "Sorcery",
+"oracle_text": "Return target permanent card from your graveyard to the battlefield with a hexproof counter and an indestructible counter on it.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"B",
+"G",
+"W"
+],
+"rarity": "mythic",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "212"
+},
+{
+"name": "Piercing Exhale",
+"mana_cost": "{1}{G}",
+"cmc": 2.0,
+"type_line": "Instant",
+"oracle_text": "As an additional cost to cast this spell, you may behold a Dragon. (You may choose a Dragon you control or reveal a Dragon card from your hand.)\nTarget creature you control deals damage equal to its power to target creature or planeswalker. If a Dragon was beheld, surveil 2.",
+"power": null,
+"toughness": null,
+"keywords": [
+"Surveil",
+"Behold"
+],
+"colors": [
+"G"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "151"
+},
+{
+"name": "Plains",
+"mana_cost": "",
+"cmc": 0.0,
+"type_line": "Basic Land \u2014 Plains",
+"oracle_text": "({T}: Add {W}.)",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"W"
+],
+"collector_number": "277"
+},
+{
+"name": "Poised Practitioner",
+"mana_cost": "{2}{W}",
+"cmc": 3.0,
+"type_line": "Creature \u2014 Human Monk",
+"oracle_text": "Flurry \u2014 Whenever you cast your second spell each turn, put a +1/+1 counter on this creature. Scry 1. (Look at the top card of your library. You may put that card on the bottom.)",
+"power": "2",
+"toughness": "3",
+"keywords": [
+"Flurry",
+"Scry"
+],
+"colors": [
+"W"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "18"
+},
+{
+"name": "Purging Stormbrood",
+"mana_cost": "{4}{B}",
+"cmc": 5.0,
+"type_line": "Creature \u2014 Dragon",
+"oracle_text": "Flying\nWard\u2014Pay 2 life.\nWhen this creature enters, remove all counters from up to one target creature.",
+"power": "4",
+"toughness": "4",
+"keywords": [
+"Flying",
+"Ward"
+],
+"colors": [
+"B"
+],
+"rarity": "uncommon",
+"layout": "adventure",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "213"
+},
+{
+"name": "Qarsi Revenant",
+"mana_cost": "{1}{B}{B}",
+"cmc": 3.0,
+"type_line": "Creature \u2014 Vampire",
+"oracle_text": "Flying, deathtouch, lifelink\nRenew \u2014 {2}{B}, Exile this card from your graveyard: Put a flying counter, a deathtouch counter, and a lifelink counter on target creature. Activate only as a sorcery.",
+"power": "3",
+"toughness": "3",
+"keywords": [
+"Deathtouch",
+"Flying",
+"Lifelink",
+"Renew"
+],
+"colors": [
+"B"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "86"
+},
+{
+"name": "Rainveil Rejuvenator",
+"mana_cost": "{3}{G}",
+"cmc": 4.0,
+"type_line": "Creature \u2014 Elephant Druid",
+"oracle_text": "When this creature enters, you may mill three cards. (You may put the top three cards of your library into your graveyard.)\n{T}: Add an amount of {G} equal to this creature's power.",
+"power": "2",
+"toughness": "4",
+"keywords": [
+"Mill"
+],
+"colors": [
+"G"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"G"
+],
+"collector_number": "152"
+},
+{
+"name": "Rakshasa's Bargain",
+"mana_cost": "{2/B}{2/G}{2/U}",
+"cmc": 6.0,
+"type_line": "Instant",
+"oracle_text": "Look at the top four cards of your library. Put two of them into your hand and the rest into your graveyard.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"B",
+"G",
+"U"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "214"
+},
+{
+"name": "Rally the Monastery",
+"mana_cost": "{3}{W}",
+"cmc": 4.0,
+"type_line": "Instant",
+"oracle_text": "This spell costs {2} less to cast if you've cast another spell this turn.\nChoose one \u2014\n\u2022 Create two 1/1 white Monk creature tokens with prowess.\n\u2022 Up to two target creatures you control each get +2/+2 until end of turn.\n\u2022 Destroy target creature with power 4 or greater.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"W"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "19"
+},
+{
+"name": "Rebellious Strike",
+"mana_cost": "{1}{W}",
+"cmc": 2.0,
+"type_line": "Instant",
+"oracle_text": "Target creature gets +3/+0 until end of turn.\nDraw a card.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"W"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "20"
+},
+{
+"name": "Rediscover the Way",
+"mana_cost": "{U}{R}{W}",
+"cmc": 3.0,
+"type_line": "Enchantment \u2014 Saga",
+"oracle_text": "(As this Saga enters and after your draw step, add a lore counter. Sacrifice after III.)\nI, II \u2014 Look at the top three cards of your library. Put one of them into your hand and the rest on the bottom of your library in any order.\nIII \u2014 Whenever you cast a noncreature spell this turn, target creature you control gains double strike until end of turn.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"R",
+"U",
+"W"
+],
+"rarity": "rare",
+"layout": "saga",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "215"
+},
+{
+"name": "Reigning Victor",
+"mana_cost": "{2/R}{2/W}{2/B}",
+"cmc": 6.0,
+"type_line": "Creature \u2014 Orc Warrior",
+"oracle_text": "Mobilize 1 (Whenever this creature attacks, create a tapped and attacking 1/1 red Warrior creature token. Sacrifice it at the beginning of the next end step.)\nWhen this creature enters, target creature gets +1/+0 and gains indestructible until end of turn. (Damage and effects that say \"destroy\" don't destroy it.)",
+"power": "3",
+"toughness": "3",
+"keywords": [
+"Mobilize"
+],
+"colors": [
+"B",
+"R",
+"W"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "216"
+},
+{
+"name": "Reputable Merchant",
+"mana_cost": "{2/W}{2/B}{2/G}",
+"cmc": 6.0,
+"type_line": "Creature \u2014 Human Citizen",
+"oracle_text": "When this creature enters or dies, put a +1/+1 counter on target creature you control.",
+"power": "2",
+"toughness": "2",
+"keywords": [],
+"colors": [
+"B",
+"G",
+"W"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "217"
+},
+{
+"name": "Rescue Leopard",
+"mana_cost": "{2}{R}",
+"cmc": 3.0,
+"type_line": "Creature \u2014 Cat",
+"oracle_text": "Whenever this creature becomes tapped, you may discard a card. If you do, draw a card.",
+"power": "4",
+"toughness": "2",
+"keywords": [],
+"colors": [
+"R"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "116"
+},
+{
+"name": "Reverberating Summons",
+"mana_cost": "{1}{R}",
+"cmc": 2.0,
+"type_line": "Enchantment",
+"oracle_text": "At the beginning of each combat, if you've cast two or more spells this turn, this enchantment becomes a 3/3 Monk creature with haste in addition to its other types until end of turn.\n{1}{R}, Discard your hand, Sacrifice this enchantment: Draw two cards.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"R"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "117"
+},
+{
+"name": "Revival of the Ancestors",
+"mana_cost": "{1}{W}{B}{G}",
+"cmc": 4.0,
+"type_line": "Enchantment \u2014 Saga",
+"oracle_text": "(As this Saga enters and after your draw step, add a lore counter. Sacrifice after III.)\nI \u2014 Create three 1/1 white Spirit creature tokens.\nII \u2014 Distribute three +1/+1 counters among one, two, or three target creatures you control.\nIII \u2014 Creatures you control gain trample and lifelink until end of turn.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"B",
+"G",
+"W"
+],
+"rarity": "rare",
+"layout": "saga",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "218"
+},
+{
+"name": "Riling Dawnbreaker",
+"mana_cost": "{4}{W}",
+"cmc": 5.0,
+"type_line": "Creature \u2014 Dragon",
+"oracle_text": "Flying, vigilance\nAt the beginning of combat on your turn, another target creature you control gets +1/+0 until end of turn.",
+"power": "3",
+"toughness": "4",
+"keywords": [
+"Flying",
+"Vigilance"
+],
+"colors": [
+"W"
+],
+"rarity": "common",
+"layout": "adventure",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "21"
+},
+{
+"name": "Ringing Strike Mastery",
+"mana_cost": "{U}",
+"cmc": 1.0,
+"type_line": "Enchantment \u2014 Aura",
+"oracle_text": "Enchant creature\nWhen this Aura enters, tap enchanted creature.\nEnchanted creature doesn't untap during its controller's untap step.\nEnchanted creature has \"{5}: Untap this creature.\"",
+"power": null,
+"toughness": null,
+"keywords": [
+"Enchant"
+],
+"colors": [
+"U"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "53"
+},
+{
+"name": "Rite of Renewal",
+"mana_cost": "{3}{G}",
+"cmc": 4.0,
+"type_line": "Sorcery",
+"oracle_text": "Return up to two target permanent cards from your graveyard to your hand. Target player shuffles up to four target cards from their graveyard into their library. Exile Rite of Renewal.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"G"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "153"
+},
+{
+"name": "Riverwalk Technique",
+"mana_cost": "{3}{U}",
+"cmc": 4.0,
+"type_line": "Instant",
+"oracle_text": "Choose one \u2014\n\u2022 The owner of target nonland permanent puts it on their choice of the top or bottom of their library.\n\u2022 Counter target noncreature spell.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"U"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "54"
+},
+{
+"name": "Riverwheel Sweep",
+"mana_cost": "{2/U}{2/R}{2/W}",
+"cmc": 6.0,
+"type_line": "Sorcery",
+"oracle_text": "Tap target creature. Put three stun counters on it. (If a permanent with a stun counter would become untapped, remove one from it instead.)\nExile the top two cards of your library. Choose one of them. Until the end of your next turn, you may play that card.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"R",
+"U",
+"W"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "219"
+},
+{
+"name": "Roamer's Routine",
+"mana_cost": "{2}{G}",
+"cmc": 3.0,
+"type_line": "Sorcery",
+"oracle_text": "Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.\nHarmonize {4}{G} (You may cast this card from your graveyard for its harmonize cost. You may tap a creature you control to reduce that cost by {X}, where X is its power. Then exile this spell.)",
+"power": null,
+"toughness": null,
+"keywords": [
+"Harmonize"
+],
+"colors": [
+"G"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "154"
+},
+{
+"name": "Roar of Endless Song",
+"mana_cost": "{2}{G}{U}{R}",
+"cmc": 5.0,
+"type_line": "Enchantment \u2014 Saga",
+"oracle_text": "(As this Saga enters and after your draw step, add a lore counter. Sacrifice after III.)\nI, II \u2014 Create a 5/5 green Elephant creature token.\nIII \u2014 Double the power and toughness of each creature you control until end of turn.",
+"power": null,
+"toughness": null,
+"keywords": [
+"Double"
+],
+"colors": [
+"G",
+"R",
+"U"
+],
+"rarity": "rare",
+"layout": "saga",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "220"
+},
+{
+"name": "Roiling Dragonstorm",
+"mana_cost": "{1}{U}",
+"cmc": 2.0,
+"type_line": "Enchantment",
+"oracle_text": "When this enchantment enters, draw two cards, then discard a card.\nWhen a Dragon you control enters, return this enchantment to its owner's hand.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"U"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "55"
+},
+{
+"name": "Rot-Curse Rakshasa",
+"mana_cost": "{1}{B}",
+"cmc": 2.0,
+"type_line": "Creature \u2014 Demon",
+"oracle_text": "Trample\nDecayed (This creature can't block. When it attacks, sacrifice it at end of combat.)\nRenew \u2014 {X}{B}{B}, Exile this card from your graveyard: Put a decayed counter on each of X target creatures. Activate only as a sorcery.",
+"power": "5",
+"toughness": "5",
+"keywords": [
+"Renew",
+"Trample",
+"Decayed"
+],
+"colors": [
+"B"
+],
+"rarity": "mythic",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "87"
+},
+{
+"name": "Rugged Highlands",
+"mana_cost": "",
+"cmc": 0.0,
+"type_line": "Land",
+"oracle_text": "This land enters tapped.\nWhen this land enters, you gain 1 life.\n{T}: Add {R} or {G}.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"G",
+"R"
+],
+"collector_number": "265"
+},
+{
+"name": "Ruinous Ultimatum",
+"mana_cost": "{R}{R}{W}{W}{W}{B}{B}",
+"cmc": 7.0,
+"type_line": "Sorcery",
+"oracle_text": "Destroy all nonland permanents your opponents control.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"B",
+"R",
+"W"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "479"
+},
+{
+"name": "Runescale Stormbrood",
+"mana_cost": "{3}{R}",
+"cmc": 4.0,
+"type_line": "Creature \u2014 Dragon",
+"oracle_text": "Flying\nWhenever you cast a noncreature spell or a Dragon spell, this creature gets +2/+0 until end of turn.",
+"power": "2",
+"toughness": "4",
+"keywords": [
+"Flying"
+],
+"colors": [
+"R"
+],
+"rarity": "uncommon",
+"layout": "adventure",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "221"
+},
+{
+"name": "Sage of the Fang",
+"mana_cost": "{2}{G}",
+"cmc": 3.0,
+"type_line": "Creature \u2014 Human Druid",
+"oracle_text": "When this creature enters, put a +1/+1 counter on target creature.\nRenew \u2014 {3}{G}, Exile this card from your graveyard: Put a +1/+1 counter on target creature, then double the number of +1/+1 counters on that creature. Activate only as a sorcery.",
+"power": "2",
+"toughness": "2",
+"keywords": [
+"Renew",
+"Double"
+],
+"colors": [
+"G"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "155"
+},
+{
+"name": "Sage of the Skies",
+"mana_cost": "{2}{W}",
+"cmc": 3.0,
+"type_line": "Creature \u2014 Human Monk",
+"oracle_text": "When you cast this spell, if you've cast another spell this turn, copy this spell. (The copy becomes a token.)\nFlying, lifelink",
+"power": "2",
+"toughness": "3",
+"keywords": [
+"Flying",
+"Lifelink"
+],
+"colors": [
+"W"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "22"
+},
+{
+"name": "Sagu Pummeler",
+"mana_cost": "{3}{G}",
+"cmc": 4.0,
+"type_line": "Creature \u2014 Beast",
+"oracle_text": "Reach\nRenew \u2014 {4}{G}, Exile this card from your graveyard: Put two +1/+1 counters and a reach counter on target creature. Activate only as a sorcery.",
+"power": "4",
+"toughness": "4",
+"keywords": [
+"Reach",
+"Renew"
+],
+"colors": [
+"G"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "156"
+},
+{
+"name": "Sagu Wildling",
+"mana_cost": "{4}{G}",
+"cmc": 5.0,
+"type_line": "Creature \u2014 Dragon",
+"oracle_text": "Flying\nWhen this creature enters, you gain 3 life.",
+"power": "3",
+"toughness": "3",
+"keywords": [
+"Flying"
+],
+"colors": [
+"G"
+],
+"rarity": "common",
+"layout": "adventure",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "157"
+},
+{
+"name": "Salt Road Packbeast",
+"mana_cost": "{5}{W}",
+"cmc": 6.0,
+"type_line": "Creature \u2014 Beast",
+"oracle_text": "Affinity for creatures (This spell costs {1} less to cast for each creature you control.)\nWhen this creature enters, draw a card.",
+"power": "4",
+"toughness": "3",
+"keywords": [
+"Affinity"
+],
+"colors": [
+"W"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "23"
+},
+{
+"name": "Salt Road Skirmish",
+"mana_cost": "{3}{B}",
+"cmc": 4.0,
+"type_line": "Sorcery",
+"oracle_text": "Destroy target creature. Create two 1/1 red Warrior creature tokens. They gain haste until end of turn. Sacrifice them at the beginning of the next end step.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"B"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "88"
+},
+{
+"name": "Sandskitter Outrider",
+"mana_cost": "{3}{B}",
+"cmc": 4.0,
+"type_line": "Creature \u2014 Goblin Soldier",
+"oracle_text": "Menace (This creature can't be blocked except by two or more creatures.)\nWhen this creature enters, it endures 2. (Put two +1/+1 counters on it or create a 2/2 white Spirit creature token.)",
+"power": "2",
+"toughness": "1",
+"keywords": [
+"Menace",
+"Endure"
+],
+"colors": [
+"B"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "89"
+},
+{
+"name": "Sandsteppe Citadel",
+"mana_cost": "",
+"cmc": 0.0,
+"type_line": "Land",
+"oracle_text": "This land enters tapped.\n{T}: Add {W}, {B}, or {G}.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"B",
+"G",
+"W"
+],
+"collector_number": "266"
+},
+{
+"name": "Sarkhan's Resolve",
+"mana_cost": "{1}{G}",
+"cmc": 2.0,
+"type_line": "Instant",
+"oracle_text": "Choose one \u2014\n\u2022 Target creature gets +3/+3 until end of turn.\n\u2022 Destroy target creature with flying.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"G"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "158"
+},
+{
+"name": "Scalding Tarn",
+"mana_cost": "",
+"cmc": 0.0,
+"type_line": "Land",
+"oracle_text": "{T}, Pay 1 life, Sacrifice this land: Search your library for an Island or Mountain card, put it onto the battlefield, then shuffle.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "254"
+},
+{
+"name": "Scavenger Regent",
+"mana_cost": "{3}{B}",
+"cmc": 4.0,
+"type_line": "Creature \u2014 Dragon",
+"oracle_text": "Flying\nWard\u2014Discard a card.",
+"power": "4",
+"toughness": "4",
+"keywords": [
+"Flying",
+"Ward"
+],
+"colors": [
+"B"
+],
+"rarity": "rare",
+"layout": "adventure",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "90"
+},
+{
+"name": "Scoured Barrens",
+"mana_cost": "",
+"cmc": 0.0,
+"type_line": "Land",
+"oracle_text": "This land enters tapped.\nWhen this land enters, you gain 1 life.\n{T}: Add {W} or {B}.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"B",
+"W"
+],
+"collector_number": "267"
+},
+{
+"name": "Seize Opportunity",
+"mana_cost": "{2}{R}",
+"cmc": 3.0,
+"type_line": "Instant",
+"oracle_text": "Choose one \u2014\n\u2022 Exile the top two cards of your library. Until the end of your next turn, you may play those cards.\n\u2022 Up to two target creatures each get +2/+1 until end of turn.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"R"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "119"
+},
+{
+"name": "Severance Priest",
+"mana_cost": "{W}{B}{G}",
+"cmc": 3.0,
+"type_line": "Creature \u2014 Djinn Cleric",
+"oracle_text": "Deathtouch\nWhen this creature enters, target opponent reveals their hand. You may choose a nonland card from it. If you do, exile that card.\nWhen this creature leaves the battlefield, the exiled card's owner creates an X/X white Spirit creature token, where X is the mana value of the exiled card.",
+"power": "3",
+"toughness": "3",
+"keywords": [
+"Deathtouch"
+],
+"colors": [
+"B",
+"G",
+"W"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "222"
+},
+{
+"name": "Shock Brigade",
+"mana_cost": "{1}{R}",
+"cmc": 2.0,
+"type_line": "Creature \u2014 Goblin Soldier",
+"oracle_text": "Menace (This creature can't be blocked except by two or more creatures.)\nMobilize 1 (Whenever this creature attacks, create a tapped and attacking 1/1 red Warrior creature token. Sacrifice it at the beginning of the next end step.)",
+"power": "1",
+"toughness": "3",
+"keywords": [
+"Menace",
+"Mobilize"
+],
+"colors": [
+"R"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "120"
+},
+{
+"name": "Shocking Sharpshooter",
+"mana_cost": "{1}{R}",
+"cmc": 2.0,
+"type_line": "Creature \u2014 Human Archer",
+"oracle_text": "Reach\nWhenever another creature you control enters, this creature deals 1 damage to target opponent.",
+"power": "1",
+"toughness": "3",
+"keywords": [
+"Reach"
+],
+"colors": [
+"R"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "121"
+},
+{
+"name": "Sibsig Appraiser",
+"mana_cost": "{2}{U}",
+"cmc": 3.0,
+"type_line": "Creature \u2014 Zombie Advisor",
+"oracle_text": "When this creature enters, look at the top two cards of your library. Put one of them into your hand and the other into your graveyard.",
+"power": "2",
+"toughness": "1",
+"keywords": [],
+"colors": [
+"U"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "56"
+},
+{
+"name": "Sinkhole Surveyor",
+"mana_cost": "{1}{B}",
+"cmc": 2.0,
+"type_line": "Creature \u2014 Bird Scout",
+"oracle_text": "Flying\nWhenever this creature attacks, you lose 1 life and this creature endures 1. (Put a +1/+1 counter on it or create a 1/1 white Spirit creature token.)",
+"power": "1",
+"toughness": "3",
+"keywords": [
+"Endure",
+"Flying"
+],
+"colors": [
+"B"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "93"
+},
+{
+"name": "Skirmish Rhino",
+"mana_cost": "{W}{B}{G}",
+"cmc": 3.0,
+"type_line": "Creature \u2014 Rhino",
+"oracle_text": "Trample\nWhen this creature enters, each opponent loses 2 life and you gain 2 life.",
+"power": "3",
+"toughness": "4",
+"keywords": [
+"Trample"
+],
+"colors": [
+"B",
+"G",
+"W"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "224"
+},
+{
+"name": "Smile at Death",
+"mana_cost": "{3}{W}{W}",
+"cmc": 5.0,
+"type_line": "Enchantment",
+"oracle_text": "At the beginning of your upkeep, return up to two target creature cards with power 2 or less from your graveyard to the battlefield. Put a +1/+1 counter on each of those creatures.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"W"
+],
+"rarity": "mythic",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "24"
+},
+{
+"name": "Snakeskin Veil",
+"mana_cost": "{G}",
+"cmc": 1.0,
+"type_line": "Instant",
+"oracle_text": "Put a +1/+1 counter on target creature you control. It gains hexproof until end of turn. (It can't be the target of spells or abilities your opponents control.)",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"G"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "159"
+},
+{
+"name": "Snowmelt Stag",
+"mana_cost": "{3}{U}",
+"cmc": 4.0,
+"type_line": "Creature \u2014 Elemental Elk",
+"oracle_text": "Vigilance\nDuring your turn, this creature has base power and toughness 5/2.\n{5}{U}{U}: This creature can't be blocked this turn.",
+"power": "2",
+"toughness": "5",
+"keywords": [
+"Vigilance"
+],
+"colors": [
+"U"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "57"
+},
+{
+"name": "Songcrafter Mage",
+"mana_cost": "{G}{U}{R}",
+"cmc": 3.0,
+"type_line": "Creature \u2014 Human Bard",
+"oracle_text": "Flash\nWhen this creature enters, target instant or sorcery card in your graveyard gains harmonize until end of turn. Its harmonize cost is equal to its mana cost. (You may cast that card from your graveyard for its harmonize cost. You may tap a creature you control to reduce that cost by {X}, where X is its power. Then exile the spell.)",
+"power": "3",
+"toughness": "2",
+"keywords": [
+"Flash"
+],
+"colors": [
+"G",
+"R",
+"U"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "225"
+},
+{
+"name": "Sonic Shrieker",
+"mana_cost": "{2}{R}{W}{B}",
+"cmc": 5.0,
+"type_line": "Creature \u2014 Dragon",
+"oracle_text": "Flying\nWhen this creature enters, it deals 2 damage to any target and you gain 2 life. If a player is dealt damage this way, they discard a card.",
+"power": "4",
+"toughness": "4",
+"keywords": [
+"Flying"
+],
+"colors": [
+"B",
+"R",
+"W"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "226"
+},
+{
+"name": "Spectral Denial",
+"mana_cost": "{X}{U}",
+"cmc": 1.0,
+"type_line": "Instant",
+"oracle_text": "This spell costs {1} less to cast for each creature you control with power 4 or greater.\nCounter target spell unless its controller pays {X}.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"U"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "58"
+},
+{
+"name": "Stadium Headliner",
+"mana_cost": "{R}",
+"cmc": 1.0,
+"type_line": "Creature \u2014 Goblin Warrior",
+"oracle_text": "Mobilize 1 (Whenever this creature attacks, create a tapped and attacking 1/1 red Warrior creature token. Sacrifice it at the beginning of the next end step.)\n{1}{R}, Sacrifice this creature: It deals damage equal to the number of creatures you control to target creature.",
+"power": "1",
+"toughness": "1",
+"keywords": [
+"Mobilize"
+],
+"colors": [
+"R"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "122"
+},
+{
+"name": "Stalwart Successor",
+"mana_cost": "{1}{B}{G}",
+"cmc": 3.0,
+"type_line": "Creature \u2014 Human Warrior",
+"oracle_text": "Menace (This creature can't be blocked except by two or more creatures.)\nWhenever one or more counters are put on a creature you control, if it's the first time counters have been put on that creature this turn, put a +1/+1 counter on that creature.",
+"power": "3",
+"toughness": "2",
+"keywords": [
+"Menace"
+],
+"colors": [
+"B",
+"G"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "227"
+},
+{
+"name": "Starry-Eyed Skyrider",
+"mana_cost": "{2}{W}",
+"cmc": 3.0,
+"type_line": "Creature \u2014 Human Scout",
+"oracle_text": "Flying\nWhenever this creature attacks, another target creature you control gains flying until end of turn.\nAttacking tokens you control have flying.",
+"power": "1",
+"toughness": "3",
+"keywords": [
+"Flying"
+],
+"colors": [
+"W"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "25"
+},
+{
+"name": "Static Snare",
+"mana_cost": "{4}{W}",
+"cmc": 5.0,
+"type_line": "Enchantment",
+"oracle_text": "Flash\nThis spell costs {1} less to cast for each attacking creature.\nWhen this enchantment enters, exile target artifact or creature an opponent controls until this enchantment leaves the battlefield.",
+"power": null,
+"toughness": null,
+"keywords": [
+"Flash"
+],
+"colors": [
+"W"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "26"
+},
+{
+"name": "Stillness in Motion",
+"mana_cost": "{1}{U}",
+"cmc": 2.0,
+"type_line": "Enchantment",
+"oracle_text": "At the beginning of your upkeep, mill three cards. Then if your library has no cards in it, exile this enchantment and put five cards from your graveyard on top of your library in any order.",
+"power": null,
+"toughness": null,
+"keywords": [
+"Mill"
+],
+"colors": [
+"U"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "59"
+},
+{
+"name": "Stormbeacon Blade",
+"mana_cost": "{1}{W}",
+"cmc": 2.0,
+"type_line": "Artifact \u2014 Equipment",
+"oracle_text": "Equipped creature gets +3/+0.\nWhenever equipped creature attacks, draw a card if you control three or more attacking creatures.\nEquip {2} ({2}: Attach to target creature you control. Equip only as a sorcery.)",
+"power": null,
+"toughness": null,
+"keywords": [
+"Equip"
+],
+"colors": [
+"W"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "27"
+},
+{
+"name": "Stormplain Detainment",
+"mana_cost": "{2}{W}",
+"cmc": 3.0,
+"type_line": "Enchantment",
+"oracle_text": "When this enchantment enters, exile target nonland permanent an opponent controls until this enchantment leaves the battlefield.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"W"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "28"
+},
+{
+"name": "Stormscale Scion",
+"mana_cost": "{4}{R}{R}",
+"cmc": 6.0,
+"type_line": "Creature \u2014 Dragon",
+"oracle_text": "Flying\nOther Dragons you control get +1/+1.\nStorm (When you cast this spell, copy it for each spell cast before it this turn. Copies become tokens.)",
+"power": "4",
+"toughness": "4",
+"keywords": [
+"Flying",
+"Storm"
+],
+"colors": [
+"R"
+],
+"rarity": "mythic",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "123"
+},
+{
+"name": "Stormshriek Feral",
+"mana_cost": "{4}{R}",
+"cmc": 5.0,
+"type_line": "Creature \u2014 Dragon",
+"oracle_text": "Flying, haste\n{1}{R}: This creature gets +1/+0 until end of turn.",
+"power": "3",
+"toughness": "3",
+"keywords": [
+"Flying",
+"Haste"
+],
+"colors": [
+"R"
+],
+"rarity": "common",
+"layout": "adventure",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "124"
+},
+{
+"name": "Strategic Betrayal",
+"mana_cost": "{1}{B}",
+"cmc": 2.0,
+"type_line": "Sorcery",
+"oracle_text": "Target opponent exiles a creature they control and their graveyard.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"B"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "94"
+},
+{
+"name": "Sultai Devotee",
+"mana_cost": "{1}{G}",
+"cmc": 2.0,
+"type_line": "Creature \u2014 Zombie Snake Druid",
+"oracle_text": "Deathtouch\n{1}: Add {B}, {G}, or {U}. Activate only once each turn.",
+"power": "2",
+"toughness": "1",
+"keywords": [
+"Deathtouch"
+],
+"colors": [
+"G"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"B",
+"G",
+"U"
+],
+"collector_number": "160"
+},
+{
+"name": "Sultai Monument",
+"mana_cost": "{2}",
+"cmc": 2.0,
+"type_line": "Artifact",
+"oracle_text": "When this artifact enters, search your library for a basic Swamp, Forest, or Island card, reveal it, put it into your hand, then shuffle.\n{2}{B}{G}{U}, {T}, Sacrifice this artifact: Create two 2/2 black Zombie Druid creature tokens. Activate only as a sorcery.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "247"
+},
+{
+"name": "Summit Intimidator",
+"mana_cost": "{3}{R}",
+"cmc": 4.0,
+"type_line": "Creature \u2014 Yeti",
+"oracle_text": "Reach\nWhen this creature enters, target creature can't block this turn.",
+"power": "4",
+"toughness": "3",
+"keywords": [
+"Reach"
+],
+"colors": [
+"R"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "125"
+},
+{
+"name": "Sunpearl Kirin",
+"mana_cost": "{1}{W}",
+"cmc": 2.0,
+"type_line": "Creature \u2014 Kirin",
+"oracle_text": "Flash\nFlying\nWhen this creature enters, return up to one other target nonland permanent you control to its owner's hand. If it was a token, draw a card.",
+"power": "2",
+"toughness": "1",
+"keywords": [
+"Flying",
+"Flash"
+],
+"colors": [
+"W"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "29"
+},
+{
+"name": "Sunset Strikemaster",
+"mana_cost": "{1}{R}",
+"cmc": 2.0,
+"type_line": "Creature \u2014 Human Monk",
+"oracle_text": "{T}: Add {R}.\n{2}{R}, {T}, Sacrifice this creature: It deals 6 damage to target creature with flying.",
+"power": "3",
+"toughness": "1",
+"keywords": [],
+"colors": [
+"R"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"R"
+],
+"collector_number": "126"
+},
+{
+"name": "Swamp",
+"mana_cost": "",
+"cmc": 0.0,
+"type_line": "Basic Land \u2014 Swamp",
+"oracle_text": "({T}: Add {B}.)",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"B"
+],
+"collector_number": "281"
+},
+{
+"name": "Swiftwater Cliffs",
+"mana_cost": "",
+"cmc": 0.0,
+"type_line": "Land",
+"oracle_text": "This land enters tapped.\nWhen this land enters, you gain 1 life.\n{T}: Add {U} or {R}.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"R",
+"U"
+],
+"collector_number": "268"
+},
+{
+"name": "Synchronized Charge",
+"mana_cost": "{1}{G}",
+"cmc": 2.0,
+"type_line": "Sorcery",
+"oracle_text": "Distribute two +1/+1 counters among one or two target creatures you control. Creatures you control with counters on them gain vigilance and trample until end of turn.\nHarmonize {4}{G} (You may cast this card from your graveyard for its harmonize cost. You may tap a creature you control to reduce that cost by {X}, where X is its power. Then exile this spell.)",
+"power": null,
+"toughness": null,
+"keywords": [
+"Harmonize"
+],
+"colors": [
+"G"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "162"
+},
+{
+"name": "Teeming Dragonstorm",
+"mana_cost": "{3}{W}",
+"cmc": 4.0,
+"type_line": "Enchantment",
+"oracle_text": "When this enchantment enters, create two 2/2 white Soldier creature tokens.\nWhen a Dragon you control enters, return this enchantment to its owner's hand.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"W"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "30"
+},
+{
+"name": "Tempest Hawk",
+"mana_cost": "{2}{W}",
+"cmc": 3.0,
+"type_line": "Creature \u2014 Bird",
+"oracle_text": "Flying\nWhenever this creature deals combat damage to a player, you may search your library for a card named Tempest Hawk, reveal it, put it into your hand, then shuffle.\nA deck can have any number of cards named Tempest Hawk.",
+"power": "2",
+"toughness": "2",
+"keywords": [
+"Flying"
+],
+"colors": [
+"W"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "31"
+},
+{
+"name": "Temur Battlecrier",
+"mana_cost": "{G}{U}{R}",
+"cmc": 3.0,
+"type_line": "Creature \u2014 Orc Ranger",
+"oracle_text": "During your turn, spells you cast cost {1} less to cast for each creature you control with power 4 or greater.",
+"power": "4",
+"toughness": "3",
+"keywords": [],
+"colors": [
+"G",
+"R",
+"U"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "228"
+},
+{
+"name": "Temur Devotee",
+"mana_cost": "{1}{U}",
+"cmc": 2.0,
+"type_line": "Creature \u2014 Human Druid",
+"oracle_text": "Defender\n{1}: Add {G}, {U}, or {R}. Activate only once each turn.",
+"power": "3",
+"toughness": "3",
+"keywords": [
+"Defender"
+],
+"colors": [
+"U"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"G",
+"R",
+"U"
+],
+"collector_number": "61"
+},
+{
+"name": "Temur Monument",
+"mana_cost": "{2}",
+"cmc": 2.0,
+"type_line": "Artifact",
+"oracle_text": "When this artifact enters, search your library for a basic Forest, Island, or Mountain card, reveal it, put it into your hand, then shuffle.\n{3}{G}{U}{R}, {T}, Sacrifice this artifact: Create a 5/5 green Elephant creature token. Activate only as a sorcery.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "248"
+},
+{
+"name": "Temur Tawnyback",
+"mana_cost": "{2/G}{2/U}{2/R}",
+"cmc": 6.0,
+"type_line": "Creature \u2014 Beast",
+"oracle_text": "When this creature enters, draw a card, then discard a card.",
+"power": "4",
+"toughness": "3",
+"keywords": [],
+"colors": [
+"G",
+"R",
+"U"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "229"
+},
+{
+"name": "Tersa Lightshatter",
+"mana_cost": "{2}{R}",
+"cmc": 3.0,
+"type_line": "Legendary Creature \u2014 Orc Wizard",
+"oracle_text": "Haste\nWhen Tersa Lightshatter enters, discard up to two cards, then draw that many cards.\nWhenever Tersa Lightshatter attacks, if there are seven or more cards in your graveyard, exile a card at random from your graveyard. You may play that card this turn.",
+"power": "3",
+"toughness": "3",
+"keywords": [
+"Haste"
+],
+"colors": [
+"R"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "127"
+},
+{
+"name": "The Sibsig Ceremony",
+"mana_cost": "{B}{B}{B}",
+"cmc": 3.0,
+"type_line": "Legendary Enchantment",
+"oracle_text": "Creature spells you cast cost {2} less to cast.\nWhenever a creature you control enters, if you cast it, destroy that creature, then create a 2/2 black Zombie Druid creature token.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"B"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "91"
+},
+{
+"name": "Thornwood Falls",
+"mana_cost": "",
+"cmc": 0.0,
+"type_line": "Land",
+"oracle_text": "This land enters tapped.\nWhen this land enters, you gain 1 life.\n{T}: Add {G} or {U}.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"G",
+"U"
+],
+"collector_number": "269"
+},
+{
+"name": "Thunder of Unity",
+"mana_cost": "{R}{W}{B}",
+"cmc": 3.0,
+"type_line": "Enchantment \u2014 Saga",
+"oracle_text": "(As this Saga enters and after your draw step, add a lore counter. Sacrifice after III.)\nI \u2014 You draw two cards and you lose 2 life.\nII, III \u2014 Whenever a creature you control enters this turn, each opponent loses 1 life and you gain 1 life.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"B",
+"R",
+"W"
+],
+"rarity": "rare",
+"layout": "saga",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "231"
+},
+{
+"name": "Trade Route Envoy",
+"mana_cost": "{3}{G}",
+"cmc": 4.0,
+"type_line": "Creature \u2014 Dog Soldier",
+"oracle_text": "When this creature enters, draw a card if you control a creature with a counter on it. If you don't draw a card this way, put a +1/+1 counter on this creature.",
+"power": "4",
+"toughness": "3",
+"keywords": [],
+"colors": [
+"G"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "163"
+},
+{
+"name": "Tranquil Cove",
+"mana_cost": "",
+"cmc": 0.0,
+"type_line": "Land",
+"oracle_text": "This land enters tapped.\nWhen this land enters, you gain 1 life.\n{T}: Add {W} or {U}.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"U",
+"W"
+],
+"collector_number": "270"
+},
+{
+"name": "Traveling Botanist",
+"mana_cost": "{1}{G}",
+"cmc": 2.0,
+"type_line": "Creature \u2014 Dog Scout",
+"oracle_text": "Whenever this creature becomes tapped, look at the top card of your library. If it's a land card, you may reveal it and put it into your hand. If you don't put the card into your hand, you may put it into your graveyard.",
+"power": "2",
+"toughness": "3",
+"keywords": [],
+"colors": [
+"G"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "164"
+},
+{
+"name": "Twin Bolt",
+"mana_cost": "{1}{R}",
+"cmc": 2.0,
+"type_line": "Instant",
+"oracle_text": "Twin Bolt deals 2 damage divided as you choose among one or two targets.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"R"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "128"
+},
+{
+"name": "Twinmaw Stormbrood",
+"mana_cost": "{5}{W}",
+"cmc": 6.0,
+"type_line": "Creature \u2014 Dragon",
+"oracle_text": "Flying\nWhen this creature enters, you gain 5 life.",
+"power": "5",
+"toughness": "4",
+"keywords": [
+"Flying"
+],
+"colors": [
+"W"
+],
+"rarity": "uncommon",
+"layout": "adventure",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "232"
+},
+{
+"name": "Unburied Earthcarver",
+"mana_cost": "{1}{B}",
+"cmc": 2.0,
+"type_line": "Creature \u2014 Human Warrior",
+"oracle_text": "{2}, Sacrifice another creature: Put a +1/+1 counter on this creature.",
+"power": "2",
+"toughness": "2",
+"keywords": [],
+"colors": [
+"B"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "95"
+},
+{
+"name": "Underfoot Underdogs",
+"mana_cost": "{2}{R}",
+"cmc": 3.0,
+"type_line": "Creature \u2014 Goblin Warrior",
+"oracle_text": "When this creature enters, create a 1/1 red Goblin creature token.\n{1}, {T}: Target creature you control with power 2 or less can't be blocked this turn.",
+"power": "1",
+"toughness": "2",
+"keywords": [],
+"colors": [
+"R"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "129"
+},
+{
+"name": "Undergrowth Leopard",
+"mana_cost": "{1}{G}",
+"cmc": 2.0,
+"type_line": "Creature \u2014 Cat",
+"oracle_text": "Vigilance\n{1}, Sacrifice this creature: Destroy target artifact or enchantment.",
+"power": "2",
+"toughness": "2",
+"keywords": [
+"Vigilance"
+],
+"colors": [
+"G"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "165"
+},
+{
+"name": "Unending Whisper",
+"mana_cost": "{U}",
+"cmc": 1.0,
+"type_line": "Sorcery",
+"oracle_text": "Draw a card.\nHarmonize {5}{U} (You may cast this card from your graveyard for its harmonize cost. You may tap a creature you control to reduce that cost by {X}, where X is its power. Then exile this spell.)",
+"power": null,
+"toughness": null,
+"keywords": [
+"Harmonize"
+],
+"colors": [
+"U"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "62"
+},
+{
+"name": "United Battlefront",
+"mana_cost": "{3}{W}",
+"cmc": 4.0,
+"type_line": "Sorcery",
+"oracle_text": "Look at the top seven cards of your library. Put up to two noncreature, nonland permanent cards with mana value 3 or less from among them onto the battlefield. Put the rest on the bottom of your library in a random order.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"W"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "32"
+},
+{
+"name": "Unrooted Ancestor",
+"mana_cost": "{2}{B}",
+"cmc": 3.0,
+"type_line": "Creature \u2014 Spirit Cleric",
+"oracle_text": "Flash\n{1}, Sacrifice another creature: This creature gains indestructible until end of turn. Tap it. (Damage and effects that say \"destroy\" don't destroy it.)",
+"power": "3",
+"toughness": "2",
+"keywords": [
+"Flash"
+],
+"colors": [
+"B"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "96"
+},
+{
+"name": "Unsparing Boltcaster",
+"mana_cost": "{2}{R}",
+"cmc": 3.0,
+"type_line": "Creature \u2014 Ogre Wizard",
+"oracle_text": "When this creature enters, it deals 5 damage to target creature an opponent controls that was dealt damage this turn.",
+"power": "3",
+"toughness": "3",
+"keywords": [],
+"colors": [
+"R"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "130"
+},
+{
+"name": "Ureni's Rebuff",
+"mana_cost": "{1}{U}",
+"cmc": 2.0,
+"type_line": "Sorcery",
+"oracle_text": "Return target creature to its owner's hand.\nHarmonize {5}{U} (You may cast this card from your graveyard for its harmonize cost. You may tap a creature you control to reduce that cost by {X}, where X is its power. Then exile this spell.)",
+"power": null,
+"toughness": null,
+"keywords": [
+"Harmonize"
+],
+"colors": [
+"U"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "63"
+},
+{
+"name": "Venerated Stormsinger",
+"mana_cost": "{3}{B}",
+"cmc": 4.0,
+"type_line": "Creature \u2014 Orc Cleric",
+"oracle_text": "Mobilize 1 (Whenever this creature attacks, create a tapped and attacking 1/1 red Warrior creature token. Sacrifice it at the beginning of the next end step.)\nWhenever this creature or another creature you control dies, each opponent loses 1 life and you gain 1 life.",
+"power": "3",
+"toughness": "3",
+"keywords": [
+"Mobilize"
+],
+"colors": [
+"B"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "97"
+},
+{
+"name": "Verdant Catacombs",
+"mana_cost": "",
+"cmc": 0.0,
+"type_line": "Land",
+"oracle_text": "{T}, Pay 1 life, Sacrifice this land: Search your library for a Swamp or Forest card, put it onto the battlefield, then shuffle.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "260"
+},
+{
+"name": "Veteran Ice Climber",
+"mana_cost": "{1}{U}",
+"cmc": 2.0,
+"type_line": "Creature \u2014 Human Scout",
+"oracle_text": "Vigilance\nThis creature can't be blocked.\nWhenever this creature attacks, up to one target player mills cards equal to this creature's power. (They put that many cards from the top of their library into their graveyard.)",
+"power": "1",
+"toughness": "3",
+"keywords": [
+"Vigilance",
+"Mill"
+],
+"colors": [
+"U"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "64"
+},
+{
+"name": "Voice of Victory",
+"mana_cost": "{1}{W}",
+"cmc": 2.0,
+"type_line": "Creature \u2014 Human Bard",
+"oracle_text": "Mobilize 2 (Whenever this creature attacks, create two tapped and attacking 1/1 red Warrior creature tokens. Sacrifice them at the beginning of the next end step.)\nYour opponents can't cast spells during your turn.",
+"power": "1",
+"toughness": "3",
+"keywords": [
+"Mobilize"
+],
+"colors": [
+"W"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "33"
+},
+{
+"name": "Wail of War",
+"mana_cost": "{2}{B}",
+"cmc": 3.0,
+"type_line": "Instant",
+"oracle_text": "Choose one \u2014\n\u2022 Creatures target opponent controls get -1/-1 until end of turn.\n\u2022 Return up to two target creature cards from your graveyard to your hand.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"B"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "98"
+},
+{
+"name": "War Effort",
+"mana_cost": "{3}{R}",
+"cmc": 4.0,
+"type_line": "Enchantment",
+"oracle_text": "Creatures you control get +1/+0.\nWhenever you attack, create a 1/1 red Warrior creature token that's tapped and attacking. Sacrifice it at the beginning of the next end step.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"R"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "131"
+},
+{
+"name": "Warden of the Grove",
+"mana_cost": "{2}{G}",
+"cmc": 3.0,
+"type_line": "Creature \u2014 Hydra",
+"oracle_text": "At the beginning of your end step, put a +1/+1 counter on this creature.\nWhenever another nontoken creature you control enters, it endures X, where X is the number of counters on this creature. (Put X +1/+1 counters on the creature that entered or create an X/X white Spirit creature token.)",
+"power": "2",
+"toughness": "2",
+"keywords": [
+"Endure"
+],
+"colors": [
+"G"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "166"
+},
+{
+"name": "Watcher of the Wayside",
+"mana_cost": "{3}",
+"cmc": 3.0,
+"type_line": "Artifact Creature \u2014 Golem",
+"oracle_text": "When this creature enters, target player mills two cards. You gain 2 life. (To mill two cards, a player puts the top two cards of their library into their graveyard.)",
+"power": "3",
+"toughness": "2",
+"keywords": [
+"Mill"
+],
+"colors": [],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "249"
+},
+{
+"name": "Wayspeaker Bodyguard",
+"mana_cost": "{3}{W}",
+"cmc": 4.0,
+"type_line": "Creature \u2014 Orc Monk",
+"oracle_text": "When this creature enters, return target nonland permanent card with mana value 2 or less from your graveyard to your hand.\nFlurry \u2014 Whenever you cast your second spell each turn, tap target creature an opponent controls.",
+"power": "3",
+"toughness": "4",
+"keywords": [
+"Flurry"
+],
+"colors": [
+"W"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "34"
+},
+{
+"name": "Whirlwing Stormbrood",
+"mana_cost": "{4}{U}",
+"cmc": 5.0,
+"type_line": "Creature \u2014 Dragon",
+"oracle_text": "Flash\nFlying\nYou may cast sorcery spells and Dragon spells as though they had flash.",
+"power": "4",
+"toughness": "3",
+"keywords": [
+"Flying",
+"Flash"
+],
+"colors": [
+"U"
+],
+"rarity": "uncommon",
+"layout": "adventure",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "234"
+},
+{
+"name": "Wild Ride",
+"mana_cost": "{R}",
+"cmc": 1.0,
+"type_line": "Sorcery",
+"oracle_text": "Target creature gets +3/+0 and gains haste until end of turn.\nHarmonize {4}{R} (You may cast this card from your graveyard for its harmonize cost. You may tap a creature you control to reduce that cost by {X}, where X is its power. Then exile this spell.)",
+"power": null,
+"toughness": null,
+"keywords": [
+"Harmonize"
+],
+"colors": [
+"R"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "132"
+},
+{
+"name": "Wind-Scarred Crag",
+"mana_cost": "",
+"cmc": 0.0,
+"type_line": "Land",
+"oracle_text": "This land enters tapped.\nWhen this land enters, you gain 1 life.\n{T}: Add {R} or {W}.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": [
+"R",
+"W"
+],
+"collector_number": "271"
+},
+{
+"name": "Windcrag Siege",
+"mana_cost": "{1}{R}{W}",
+"cmc": 3.0,
+"type_line": "Enchantment",
+"oracle_text": "As this enchantment enters, choose Mardu or Jeskai.\n\u2022 Mardu \u2014 If a creature attacking causes a triggered ability of a permanent you control to trigger, that ability triggers an additional time.\n\u2022 Jeskai \u2014 At the beginning of your upkeep, create a 1/1 red Goblin creature token. It gains lifelink and haste until end of turn.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"R",
+"W"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "235"
+},
+{
+"name": "Wingblade Disciple",
+"mana_cost": "{2}{U}",
+"cmc": 3.0,
+"type_line": "Creature \u2014 Human Monk",
+"oracle_text": "Flying\nFlurry \u2014 Whenever you cast your second spell each turn, create a 1/1 white Bird creature token with flying.",
+"power": "2",
+"toughness": "2",
+"keywords": [
+"Flying",
+"Flurry"
+],
+"colors": [
+"U"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "65"
+},
+{
+"name": "Wingspan Stride",
+"mana_cost": "{U}",
+"cmc": 1.0,
+"type_line": "Enchantment \u2014 Aura",
+"oracle_text": "Enchant creature\nEnchanted creature gets +1/+1 and has flying.\n{2}{U}: Return this Aura to its owner's hand.",
+"power": null,
+"toughness": null,
+"keywords": [
+"Enchant"
+],
+"colors": [
+"U"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "66"
+},
+{
+"name": "Winternight Stories",
+"mana_cost": "{2}{U}",
+"cmc": 3.0,
+"type_line": "Sorcery",
+"oracle_text": "Draw three cards. Then discard two cards unless you discard a creature card.\nHarmonize {4}{U} (You may cast this card from your graveyard for its harmonize cost. You may tap a creature you control to reduce that cost by {X}, where X is its power. Then exile this spell.)",
+"power": null,
+"toughness": null,
+"keywords": [
+"Harmonize"
+],
+"colors": [
+"U"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "67"
+},
+{
+"name": "Worthy Cost",
+"mana_cost": "{B}",
+"cmc": 1.0,
+"type_line": "Sorcery",
+"oracle_text": "As an additional cost to cast this spell, sacrifice a creature.\nExile target creature or planeswalker.",
+"power": null,
+"toughness": null,
+"keywords": [],
+"colors": [
+"B"
+],
+"rarity": "common",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "99"
+},
+{
+"name": "Yathan Roadwatcher",
+"mana_cost": "{1}{W}{B}{G}",
+"cmc": 4.0,
+"type_line": "Creature \u2014 Human Scout",
+"oracle_text": "When this creature enters, if you cast it, mill four cards. When you do, return target creature card with mana value 3 or less from your graveyard to the battlefield.",
+"power": "3",
+"toughness": "3",
+"keywords": [
+"Mill"
+],
+"colors": [
+"B",
+"G",
+"W"
+],
+"rarity": "rare",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "236"
+},
+{
+"name": "Yathan Tombguard",
+"mana_cost": "{2}{B}",
+"cmc": 3.0,
+"type_line": "Creature \u2014 Human Warrior",
+"oracle_text": "Menace (This creature can't be blocked except by two or more creatures.)\nWhenever a creature you control with a counter on it deals combat damage to a player, you draw a card and you lose 1 life.",
+"power": "2",
+"toughness": "3",
+"keywords": [
+"Menace"
+],
+"colors": [
+"B"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "100"
+},
+{
+"name": "Zurgo's Vanguard",
+"mana_cost": "{2}{R}",
+"cmc": 3.0,
+"type_line": "Creature \u2014 Dog Soldier",
+"oracle_text": "Mobilize 1 (Whenever this creature attacks, create a tapped and attacking 1/1 red Warrior creature token. Sacrifice it at the beginning of the next end step.)\nZurgo's Vanguard's power is equal to the number of creatures you control.",
+"power": "*",
+"toughness": "3",
+"keywords": [
+"Mobilize"
+],
+"colors": [
+"R"
+],
+"rarity": "uncommon",
+"layout": "normal",
+"loyalty": null,
+"produced_mana": null,
+"collector_number": "133"
+}
+]
