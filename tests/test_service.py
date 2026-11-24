@@ -411,3 +411,23 @@ def test_the_network_pilot_never_pumps_the_opponents_creatures():
         c.delete(f"/v1/game/{gid}", headers={"X-Bolt-Key": "k"})
     assert right > 0, "the test saw Bolt aim some pumps"
     assert wrong == 0, f"pumped the opponent's creature {wrong} times ({right} its own)"
+
+
+def test_spectating_shows_the_bots_hand_read_only():
+    from bolt.service import create_app, load_kit
+
+    c = TestClient(create_app(load_kit(), key="k"))
+    h = {"X-Bolt-Key": "k"}
+    deck = [{"name": "Savannah Lions", "qty": 17}, {"name": "Plains", "qty": 17}, {"name": "Llanowar Elves", "qty": 6}]
+    g = c.post("/v1/game", headers=h, json={"set": "FDN", "deck_a": deck, "deck_b": deck, "human_seat": 0,
+                                           "pilot": "rules", "seed": 3}).json()  # fmt: skip
+    gid = g["game_id"]
+    assert c.get(f"/v1/game/{gid}?seat=1", headers=h).status_code == 422, "still not a seat you play"
+    s = c.get(f"/v1/game/{gid}?seat=1&spectate=1", headers=h).json()
+    bot = s["view"]["players"][1]
+    assert s["spectate"] is True and s["legal_actions"] == [] and s["seat"] == 1
+    assert bot["hand"] is not None and len(bot["hand"]) == bot["hand_size"]
+    assert all({"id", "name", "card_id"} <= set(x) for x in bot["hand"])
+    assert s["view"]["players"][0]["hand"] is None, "the other side stays hidden"
+    assert c.get(f"/v1/game/{gid}?seat=1&spectate=1").status_code in (401, 403), "needs the key"
+    assert c.get(f"/v1/game/{gid}?seat=2&spectate=1", headers=h).status_code == 422

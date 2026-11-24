@@ -377,6 +377,15 @@ Ends and frees a game.
 - Games longer than 200 turns, or 20,000 decisions, end as `"timeout"`.
 - Bot moves: `network`, `smart` and `rules` take milliseconds per decision; `smart_strong` takes longer (tens of milliseconds, more on big boards).
 
+
+### Spectating a seat (stream mode)
+
+`GET /v1/game/{id}?seat=N&spectate=1` returns seat N's view, the bot's seat included, read-only:
+`legal_actions` is `[]` and `"spectate": true`. `view.players[N].hand` holds that seat's cards
+(`id`, `name`, `card_id`); the other seat's hand stays hidden as usual. It needs `X-Bolt-Key` like every
+call: the caller decides who may see it (Nerd Leagues shows Bolt's hand only when the streamer opts in).
+Without `spectate`, a seat that isn't a human seat is still 422.
+
 ## Versioning
 
 Breaking changes get `/v2`; additive fields can appear in v1 at any time, so ignore fields you don't

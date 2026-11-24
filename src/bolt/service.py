@@ -560,10 +560,19 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
             return out
 
     @router.get("/game/{gid}")
-    def show(gid: str, seat: int | None = None):
+    def show(gid: str, seat: int | None = None, spectate: bool = False):
         with lock:
             rec = get(gid)
-            return view(rec, gid, seat_of(rec, seat))
+            if not spectate:
+                return view(rec, gid, seat_of(rec, seat))
+            # Read-only view of any seat, the bot's included (a streamer showing Bolt's hand). The caller
+            # holds the service key and decides who may see it; nothing here can act for that seat.
+            if seat not in (0, 1):
+                raise ApiError(422, "spectate needs seat 0 or 1")
+            s = view(rec, gid, seat)
+            s["legal_actions"] = []
+            s["spectate"] = True
+            return s
 
     @router.post("/game/{gid}/act")
     def act(gid: str, body: ActBody):
