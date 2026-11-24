@@ -36,7 +36,7 @@ def main():
     cards = load_cards(set_code)
     n = len(cards)
     picks = load_picks(set_code)
-    games = load_games()
+    games = load_games(set_code)
     train, test = subset(picks, picks["split"] == "train"), subset(picks, picks["split"] == "test")
     gtrain = subset(games, games["split"] == "train")
     print(f"train picks {len(train['pick']):,}  test picks {len(test['pick']):,}  train games {len(gtrain['won']):,}\n")
