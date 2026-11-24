@@ -151,11 +151,13 @@ def actions(obs: dict, me: int) -> list[dict]:
     return out
 
 
-def _pending(kind: str, who: int, dec: dict | None, choosing: dict | None = None) -> dict:
+def _pending(kind: str, who: int, dec: dict | None, choosing: dict | None = None, bottom_left=None) -> dict:
     """pending, plus what a "Decide" is about: choice (May, Surveil, Tuck, ChooseColor, MayPay, ...),
     source (the asking card) with its rules text, the card or cards involved (looked-at cards only
     reach the decider's view), and any options, cost, life or count."""
     out = {"kind": kind, "player": who}
+    if kind == "Bottom" and bottom_left is not None:  # London mulligan: cards still to put on the bottom
+        out["left"] = bottom_left
     if choosing and kind in ("ChooseTarget", "Divide"):  # what the targets are for
         out["source"] = _ref((choosing["id"], choosing["card"]))
         out["source_text"] = ORACLE.get(out["source"]["name"], "")
@@ -210,7 +212,7 @@ def state(game, seat: int, version: int, game_id: str) -> dict:
     return {
         "game_id": game_id, "version": version, "seat": seat, "turn": obs["turn"], "step": obs["step"],
         "active": obs["active"], "to_act": None if over else game.to_act(),
-        "pending": _pending(kind, who, obs.get("decision"), obs.get("choosing")), "over": over, "result": result,
+        "pending": _pending(kind, who, obs.get("decision"), obs.get("choosing"), obs.get("bottom_left")), "over": over, "result": result,
         "view": {
             "players": players, "battlefield": battlefield,
             "stack": [{"id": i, "name": name(c), "card_id": c, "controller": ctl} for i, c, ctl in obs["stack"]],

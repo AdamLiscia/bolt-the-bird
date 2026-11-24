@@ -393,6 +393,11 @@ impl Game {
         d.set_item("active", g.active)?;
         let (kind, who) = pending(&g.pending);
         d.set_item("pending", (kind, who))?;
+        // London mulligan: how many cards are still to go on the bottom.
+        match g.pending {
+            Pending::Bottom(_, n) => d.set_item("bottom_left", n)?,
+            _ => d.set_item("bottom_left", py.None())?,
+        }
         // The spell or ability whose targets are being chosen (or damage divided): it isn't on the
         // stack yet (the stack holds entries once their targets are set), but the player choosing
         // targets needs to know what for (2026-11-23: without it the trained player aimed Giant

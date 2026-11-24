@@ -252,6 +252,8 @@ to the human's first decision.
 
 - `version` increases with every action; send it back with `act`.
 - `to_act` is the seat that must decide; it is the human's seat unless `over`.
+- When `pending.kind` is `Bottom` (London mulligan), `pending.left` is how many cards are still to go on the
+  bottom.
 - When `pending.kind` is `ChooseTarget` (or `Divide`), `pending.source` (`{"id", "name", "card_id"}`),
   `pending.source_text` and `pending.spell` say which spell or ability the targets are for (it isn't on
   the stack until its targets are chosen). Needs the engine build after 2026-11-23.
