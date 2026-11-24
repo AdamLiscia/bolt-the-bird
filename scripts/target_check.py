@@ -8,7 +8,6 @@ from bolt.play_net import PlayNet
 from bolt.play_encoding import encode, collate
 torch.set_num_threads(2); torch.set_grad_enabled(False)
 oracle = {c["name"]: c.get("oracle_text") or "" for c in json.load(open("assets/FDN_oracle.json"))}
-import os
 HARM = "--harm" in sys.argv
 harm = {n for n, t in oracle.items() if re.search(r"[Dd]estroy target creature|deals \d+ damage to target creature|[Ee]xile target creature|[Tt]arget creature gets -\d+/-\d+", t)}
 good = {n for n, t in oracle.items() if re.search(r"[Tt]arget creature( you control)? gets \+\d+/\+\d+|[Tt]arget creature( you control)? gains|Enchanted creature gets \+\d+/\+\d+|\+1/\+1 counters? on target creature", t)
