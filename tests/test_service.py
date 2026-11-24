@@ -162,6 +162,13 @@ def test_a_whole_game_against_the_bot(client):
             assert ("name" in e) == (e["player"] == 0), "the bot's draws are hidden from the human"
         if e["kind"] == "Moved" and e.get("owner") == 1 and {e["from"], e["to"]} <= {"Library", "Hand"}:
             assert "name" not in e, "the bot's hidden card moves are masked"
+    acts = [e for e in ev if e["kind"] == "Action"]
+    assert all("objects" in e and len(e["objects"]) == len(e["cards"]) for e in acts)
+    named = [e for e in acts if e["move"] in ("Target", "Attack", "Block", "Cast")]
+    assert named and all(e["objects"] for e in named), "the exact objects a move names"
+    for e in acts:
+        if e["seat"] == 1 and e["move"] in ("Bottom", "Pick"):
+            assert e["objects"] == [] and e["cards"] == []
     later = client.get(f"/v1/game/{gid}/log?since=5", headers=KEY).json()
     assert later["events"] == ev[5:] and later["next"] == len(ev)
     assert client.get(f"/v1/game/{gid}?seat=0", headers=KEY).json()["over"]

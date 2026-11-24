@@ -437,6 +437,7 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
             out.pop("name", None)
         if e["kind"] == "Action" and e["seat"] != seat and e["move"] in hidden_moves:
             out["label"] = hidden_moves[e["move"]]
+            out["objects"], out["cards"] = [], []  # which card stays hidden
         return out
 
     def snapshot(rec, gid: str, frames: list | None, seat: int):
@@ -464,8 +465,11 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
         g.step(i)
         rec["moves"] += 1
         rec["version"] += 1
-        rec["events"].append({"n": len(rec["events"]), "turn": obs["turn"], "kind": "Action", "seat": who,
-                              "move": a["kind"], "label": a["label"]})  # fmt: skip
+        entry = {"n": len(rec["events"]), "turn": obs["turn"], "kind": "Action", "seat": who, "move": a["kind"],
+                 "label": a["label"], "objects": a["objects"], "cards": a["cards"]}  # fmt: skip
+        if "player" in a:
+            entry["player"] = a["player"]
+        rec["events"].append(entry)
         engine_events(rec, obs["turn"])
         remember(rec, gid)
 

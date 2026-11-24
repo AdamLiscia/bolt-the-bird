@@ -330,7 +330,7 @@ engine events it caused:
 
 | `kind` | Fields |
 |---|---|
-| `Action` | `seat`, `move` (a legal-action kind), `label` (the bot's hidden choices read "Puts a card on the bottom" / "Chooses a card") |
+| `Action` | `seat`, `move` (a legal-action kind), `label`, `objects` and `cards` (the ids and names the move named: targets, attackers, blocker and attacker, the card cast), `player` for `TargetPlayer`. The other seat's hidden choices read "Puts a card on the bottom" / "Chooses a card" with empty `objects` |
 | `TurnBegan` | `player` (whose turn) |
 | `Drew` | `player`; `id`, `name` only when the human drew it |
 | `Moved` | `owner`, `from`, `to` (zones: `Library`, `Hand`, `Battlefield`, `Graveyard`, `Stack`, `Exile`, `Gone` for tokens that left); `id`, `name` unless the move is hidden from the human (the bot's library and hand) |
