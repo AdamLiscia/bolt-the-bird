@@ -30,9 +30,12 @@ def take_rate(picks: dict, n_cards: int) -> np.ndarray:
 
 
 def main():
-    cards = load_cards()
+    import sys
+
+    set_code = sys.argv[sys.argv.index("--set") + 1] if "--set" in sys.argv else "FDN"
+    cards = load_cards(set_code)
     n = len(cards)
-    picks = load_picks()
+    picks = load_picks(set_code)
     games = load_games()
     train, test = subset(picks, picks["split"] == "train"), subset(picks, picks["split"] == "test")
     gtrain = subset(games, games["split"] == "train")
@@ -46,7 +49,9 @@ def main():
     ]
     out = DATA.parent / "results"
     out.mkdir(exist_ok=True)
-    (out / "baselines.json").write_text(json.dumps(results, indent=1))
+    (out / ("baselines.json" if set_code == "FDN" else f"{set_code}_baselines.json")).write_text(
+        json.dumps(results, indent=1)
+    )
 
 
 if __name__ == "__main__":
