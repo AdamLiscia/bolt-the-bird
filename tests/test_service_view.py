@@ -107,3 +107,12 @@ def test_every_object_carries_its_card_number():
         objs += [o for p in s["view"]["players"] for o in (p["hand"] or []) + p["graveyard"]]
         for o in objs:
             assert be.card_names()[o["card_id"]] == o["name"]
+
+
+def test_a_target_choice_names_what_the_targets_are_for():
+    from bolt.service_view import _pending
+
+    gg = be.index_of("Giant Growth")
+    p = _pending("ChooseTarget", 1, None, {"id": 40, "card": gg, "controller": 1, "spell": True, "targets_chosen": 0})
+    assert p["source"] == {"id": 40, "name": "Giant Growth", "card_id": gg} and p["spell"] is True
+    assert "+3/+3" in p["source_text"]

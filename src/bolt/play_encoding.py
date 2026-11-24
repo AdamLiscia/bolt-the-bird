@@ -61,6 +61,11 @@ def encode(obs: dict, me: int) -> dict:
         add(i, c, "exile")
     for i, c, ctrl in obs["stack"]:
         add(i, c, "my_stack" if ctrl == me else "opp_stack")
+    # The spell or ability whose targets are being chosen: on its way to the stack (the engine lists it
+    # only once its targets are set). Without it a target choice can't tell a pump from removal.
+    ch = obs.get("choosing")
+    if ch and ch["id"] not in {x for x in obj_id}:
+        add(ch["id"], ch["card"], "my_stack" if ch["controller"] == me else "opp_stack")
 
     kind, _ = obs["pending"]
     p = obs["players"]

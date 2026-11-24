@@ -393,6 +393,22 @@ impl Game {
         d.set_item("active", g.active)?;
         let (kind, who) = pending(&g.pending);
         d.set_item("pending", (kind, who))?;
+        // The spell or ability whose targets are being chosen (or damage divided): it isn't on the
+        // stack yet (the stack holds entries once their targets are set), but the player choosing
+        // targets needs to know what for (2026-11-23: without it the trained player aimed Giant
+        // Growth at the opponent's creatures). Public: a spell being cast is on the stack.
+        match (&g.pending, &g.choosing) {
+            (Pending::ChooseTarget(_) | Pending::Divide(_), Some(c)) => {
+                let e = PyDict::new(py);
+                e.set_item("id", id(c.item.source))?;
+                e.set_item("card", g.obj(c.item.source).def as i64)?;
+                e.set_item("controller", c.item.controller as i64)?;
+                e.set_item("spell", c.cast)?;
+                e.set_item("targets_chosen", c.item.targets.len())?;
+                d.set_item("choosing", e)?;
+            }
+            _ => d.set_item("choosing", py.None())?,
+        }
         // What a "Decide" is about, for a UI: its kind (May, Surveil, Tuck, ChooseColor, MayPay, ...),
         // the spell or ability asking (`source`), and the cards, amounts or costs it involves. Cards
         // the decider is looking at (surveil, a tucked card, a look-and-pick) are only in the

@@ -252,6 +252,9 @@ to the human's first decision.
 
 - `version` increases with every action; send it back with `act`.
 - `to_act` is the seat that must decide; it is the human's seat unless `over`.
+- When `pending.kind` is `ChooseTarget` (or `Divide`), `pending.source` (`{"id", "name", "card_id"}`),
+  `pending.source_text` and `pending.spell` say which spell or ability the targets are for (it isn't on
+  the stack until its targets are chosen). Needs the engine build after 2026-11-23.
 - When `pending.kind` is `Decide`, `pending.choice` says what it's about, and moves get real labels
   (needs the engine build after 2026-11-23; older builds omit these and label `Yes`/`No`/`Choose mode N`):
 

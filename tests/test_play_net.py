@@ -102,3 +102,21 @@ def test_a_batch_of_positions_gives_a_distribution_over_each_ones_legal_moves():
         assert torch.isfinite(logits[i, :n]).all() and torch.isinf(logits[i, n:]).all()
         assert abs(torch.softmax(logits[i], 0).sum().item() - 1) < 1e-5
     assert ((value >= -1) & (value <= 1)).all()
+
+
+def test_the_spell_being_targeted_for_is_in_the_input():
+    """2026-11-23: while targets are chosen, the spell isn't on the stack yet; without it in the input
+    the network couldn't tell Giant Growth from Stab."""
+    obs, me = positions(30, seed=6)[-1]
+    gg = be.index_of("Giant Growth")
+    plain = encode({**obs, "choosing": None}, me)
+    seen = encode(
+        {**obs, "choosing": {"id": 999, "card": gg, "controller": me, "spell": True, "targets_chosen": 0}}, me
+    )
+    assert len(seen["card"]) == len(plain["card"]) + 1
+    k = seen["obj_id"].index(999)
+    assert seen["card"][k] == gg + 1 and seen["zone"][k] == ZONE["my_stack"]
+    other = encode(
+        {**obs, "choosing": {"id": 999, "card": gg, "controller": 1 - me, "spell": True, "targets_chosen": 0}}, me
+    )
+    assert other["zone"][other["obj_id"].index(999)] == ZONE["opp_stack"]
