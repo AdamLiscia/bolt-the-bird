@@ -20,7 +20,8 @@ def fetch(url: str, dest) -> None:
         print(f"  have {dest.name}")
         return
     tmp = dest.with_suffix(dest.suffix + ".part")
-    with urllib.request.urlopen(url) as r, open(tmp, "wb") as f:
+    req = urllib.request.Request(url, headers={"User-Agent": "bolt-the-bird/0.4"})  # the default agent gets a 403
+    with urllib.request.urlopen(req) as r, open(tmp, "wb") as f:
         total = int(r.headers.get("Content-Length", 0))
         done = 0
         while chunk := r.read(1 << 20):
