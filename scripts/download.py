@@ -12,7 +12,7 @@ import urllib.request
 
 from bolt.data import DATA
 
-BASE = "https://17lands-public.s3.amazonaws.com/analysis_data"
+BASE = "https://data.17landscapes.com/analysis_data"  # moved from 17lands-public.s3 (403 since ~2026-11), per 17lands.com/public_datasets
 
 
 def fetch(url: str, dest) -> None:
