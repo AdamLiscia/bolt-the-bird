@@ -1313,6 +1313,11 @@ pub enum Effect {
         toughness: i32,
         subtype: &'static str,
     },
+    /// Soulbond, as the source enters: you may pair it with another unpaired creature you control.
+    SoulbondPairOnEnter,
+    /// Soulbond, as another creature enters: pair the source with the creature in `slot`, if both
+    /// are unpaired.
+    SoulbondPairWith(u8),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

@@ -257,6 +257,8 @@ pub struct Object {
     pub face_down: bool,
     /// Conduit of Worlds: the turn it may be cast from its owner's graveyard (if no spell was cast).
     pub conduit_turn: u32,
+    /// Soulbond: the creature it's paired with (CR 702.95), and that creature's zcc.
+    pub paired_with: Option<(ObjId, u32)>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -596,6 +598,17 @@ pub fn face_down_def() -> &'static CardDef {
     })
 }
 
+/// "{1}{U}: Exile this creature, then return it to the battlefield under your control." (granted by
+/// Deadeye Navigator's soulbond).
+fn soulbond_flicker_ability() -> &'static Activated {
+    static A: std::sync::OnceLock<Activated> = std::sync::OnceLock::new();
+    A.get_or_init(|| Activated {
+        mana: ManaCost::parse("{1}{U}").expect("cost"),
+        ability: Ability::new(Vec::new(), vec![Effect::ExileSelfReturn { transformed: false }]),
+        ..Activated::default()
+    })
+}
+
 /// "{1}: This creature fights target creature you don't control." (granted by The Grand Evolution).
 fn granted_fight_ability() -> &'static Activated {
     static A: std::sync::OnceLock<Activated> = std::sync::OnceLock::new();
@@ -907,6 +920,8 @@ pub enum Decision {
     ScrollRackExile { exiled: Vec<ObjId> },
     /// `Pick` a land card from your hand to put onto the battlefield, or `No`.
     LandFromHand,
+    /// Soulbond: `Pick` another unpaired creature you control to pair with `source`, or `No`.
+    SoulbondPair { source: ObjId },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -1487,6 +1502,7 @@ impl Game {
             copy_exceptions: false,
             face_down: false,
             conduit_turn: 0,
+            paired_with: None,
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -3703,10 +3719,52 @@ impl Game {
             return &own[n];
         }
         let kept: Option<&Activated> = self.kept_activated(id).nth(n - own.len());
-        match kept {
-            Some(a) => a,
-            None => granted_fight_ability(),
+        if let Some(a) = kept {
+            return a;
         }
+        // After its own and kept abilities: the granted fight (if it has it now), then soulbond's.
+        let k = n - own.len() - self.kept_activated(id).count();
+        let fight_now = self.granted_fight_of(id).is_some();
+        if k == 0 && fight_now {
+            return granted_fight_ability();
+        }
+        if k == usize::from(fight_now) && self.soulbond_granted_of(id).is_some() {
+            return soulbond_flicker_ability();
+        }
+        // Its source changed since it was activated: the granted ability it was.
+        if self.granted_fight.iter().any(|e| e.0 == id) {
+            granted_fight_ability()
+        } else {
+            soulbond_flicker_ability()
+        }
+    }
+
+    /// The creature `id` is paired with, if the pairing still holds: both on the battlefield under
+    /// one controller, each paired with the other (CR 702.95c).
+    pub fn paired_partner(&self, id: ObjId) -> Option<ObjId> {
+        let o = self.obj(id);
+        let (x, zcc) = o.paired_with?;
+        let other = self.obj(x);
+        let back = other.paired_with == Some((id, o.zcc));
+        (o.zone == Zone::Battlefield
+            && other.zone == Zone::Battlefield
+            && other.zcc == zcc
+            && other.controller == o.controller
+            && back)
+            .then_some(x)
+    }
+
+    /// Deadeye Navigator's granted ability, if `id` has it now (paired with a soulbond source).
+    fn soulbond_granted_of(&self, id: ObjId) -> Option<&'static Activated> {
+        let x = self.paired_partner(id)?;
+        (self.def_of(id).soulbond_flicker || self.def_of(x).soulbond_flicker).then(soulbond_flicker_ability)
+    }
+
+    /// Pairs two creatures (soulbond).
+    fn pair(&mut self, a: ObjId, b: ObjId) {
+        let (za, zb) = (self.obj(a).zcc, self.obj(b).zcc);
+        self.obj_mut(a).paired_with = Some((b, zb));
+        self.obj_mut(b).paired_with = Some((a, za));
     }
 
     /// The granted fight ability, if `id` has it now.
@@ -5284,6 +5342,7 @@ impl Game {
                 .iter()
                 .chain(self.kept_activated(id))
                 .chain(self.granted_fight_of(id))
+                .chain(self.soulbond_granted_of(id))
                 .enumerate()
                 .filter(|_| !self.obj(id).face_down)
             {
@@ -7588,6 +7647,15 @@ impl Game {
             }
             Decision::SacrificeOneOf { cards } => cards.iter().copied().map(Action::Pick).collect(),
             Decision::HandToTop { .. } => hand.iter().copied().map(Action::Pick).collect(),
+            Decision::SoulbondPair { source } => {
+                let mut v: Vec<Action> = self
+                    .creatures(p)
+                    .filter(|&c| c != *source && self.paired_partner(c).is_none())
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
             Decision::LandFromHand => {
                 let mut v: Vec<Action> = hand
                     .iter()
@@ -8640,6 +8708,12 @@ impl Game {
             (Decision::ScrollRackExile { exiled }, Action::No) => self.scroll_rack_finish(p, exiled),
             (Decision::LandFromHand, Action::Pick(c)) => self.move_to(c, Zone::Battlefield),
             (Decision::LandFromHand, Action::No) => {}
+            (Decision::SoulbondPair { source }, Action::Pick(c)) => {
+                if self.obj(source).zone == Zone::Battlefield {
+                    self.pair(source, c);
+                }
+            }
+            (Decision::SoulbondPair { .. }, Action::No) => {}
             (Decision::LandsFromHand, choice) => {
                 if let Action::Pick(land) = choice {
                     self.move_to(land, Zone::Battlefield);
@@ -10410,6 +10484,27 @@ impl Game {
                     if self.obj(id).zone == Zone::Battlefield {
                         self.obj_mut(id).eot_creature =
                             Some((u32::MAX, power, toughness, subtype, Keywords::NONE));
+                    }
+                }
+            }
+            Effect::SoulbondPairOnEnter => {
+                let p = item.controller;
+                let open = self
+                    .creatures(p)
+                    .any(|c| c != src && self.paired_partner(c).is_none());
+                if self.obj(src).zone == Zone::Battlefield && self.paired_partner(src).is_none() && open {
+                    self.ask(p, Decision::SoulbondPair { source: src });
+                }
+            }
+            Effect::SoulbondPairWith(n) => {
+                if let Some(c) = Game::slot_object(item, legal, n) {
+                    let both = self.obj(src).zone == Zone::Battlefield
+                        && self.obj(c).zone == Zone::Battlefield
+                        && self.obj(c).controller == item.controller
+                        && self.paired_partner(src).is_none()
+                        && self.paired_partner(c).is_none();
+                    if both {
+                        self.pair(src, c);
                     }
                 }
             }

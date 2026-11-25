@@ -531,3 +531,9 @@ Bear Umbra's attack trigger is `When::EquippedAttacks`, which fires for anything
 
 Merged tarkir 00f0db4 (lane B's Glarb clones and Zimone) after Aesi batch 3: end-of-block conflicts, tarkir's side
 first; tests/pg_c.rs is tarkir's file with lane C's tests appended (lane B's `lb_` block comes first).
+
+WIP (not verified): Deadeye Navigator. Soulbond as `CardDef::soulbond_flicker`, `Object::paired_with`
+(`Game::paired_partner` checks the pairing still holds), `Decision::SoulbondPair`, `Effect::{SoulbondPairOnEnter,
+SoulbondPairWith}`; the granted "{1}{U}: Exile this creature, then return it" comes after kept abilities and any
+granted fight ability in `activated_of` and the activation list. Committed unbuilt and untested at the
+coordinator's request (usage limit): build, test and finish before relying on it. Aesi lane C is otherwise 23 of 24.

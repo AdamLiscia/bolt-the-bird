@@ -642,6 +642,10 @@ pub struct CardDef {
     /// A modal double-faced card (CR 712.12): its `back` is played or cast instead of its front (a
     /// land back is played as a land, with `Object::transformed` set as it enters).
     pub modal_back: bool,
+    /// Soulbond (CR 702.95) with "As long as this is paired with another creature, each of those
+    /// creatures has \"{1}{U}: Exile this creature, then return it to the battlefield under your
+    /// control.\"" (Deadeye Navigator): the granted ability (see `Game::activated_of`).
+    pub soulbond_flicker: bool,
 }
 
 /// What entering makes triggers happen again (see [`CardDef::entering_triggers_again`]).
@@ -860,6 +864,7 @@ impl CardDef {
             plaza_mana: false,
             umbra_armor: false,
             modal_back: false,
+            soulbond_flicker: false,
         }
     }
 
@@ -1046,6 +1051,7 @@ impl CardDef {
             plaza_mana: false,
             umbra_armor: false,
             modal_back: false,
+            soulbond_flicker: false,
         }
     }
 
@@ -1232,6 +1238,7 @@ impl CardDef {
             plaza_mana: false,
             umbra_armor: false,
             modal_back: false,
+            soulbond_flicker: false,
         }
     }
 }

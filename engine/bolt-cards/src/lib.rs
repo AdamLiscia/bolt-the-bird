@@ -428,6 +428,7 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         plaza_mana: false,
         umbra_armor: false,
         modal_back: false,
+        soulbond_flicker: false,
     };
     def.color_identity = color_identity(o);
     def.phyrexian = phyrexian;
