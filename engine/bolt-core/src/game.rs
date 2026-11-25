@@ -932,6 +932,10 @@ pub enum Decision {
     /// Ward—sacrifice permanents: `Pick` one (`left` more, `picked` so far), or before the first, `No`
     /// lets the spell or ability from `against` be countered.
     PayWardSacrifice { left: u8, against: ObjId, picked: bool },
+    /// Sneak Attack: `Pick` a creature card in your hand to put onto the battlefield, or `No`.
+    SneakAttack,
+    /// `Pick` one of `cards` (exiled) to put onto the battlefield, or `No` to stop; the rest stay.
+    ExiledToBattlefield { cards: Vec<ObjId> },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -3295,6 +3299,17 @@ impl Game {
                 let x = self.obj(id).x as i32;
                 self.add_counters(id, x);
             }
+            // Displaced Dinosaurs: a historic permanent you control becomes a 7/7 Dinosaur.
+            let historic =
+                def.types.artifact || def.types.legendary || def.subtypes.iter().any(|s| s == "Saga");
+            let controller = self.obj(id).controller;
+            if historic
+                && self
+                    .permanents(controller)
+                    .any(|x| x != id && self.def_of(x).historic_become_dinosaurs && !self.lost_abilities(x))
+            {
+                self.obj_mut(id).eot_creature = Some((u32::MAX, 7, 7, "Dinosaur", Keywords::NONE));
+            }
             if def.enters_counters_greatest_exiled_mv {
                 let mv = self
                     .exile
@@ -4990,6 +5005,7 @@ impl Game {
                 self.gain_life(p, henge); // The Great Henge
             }
             self.become_tapped(id);
+            self.land_tapped_for_mana(p, id);
             if self.def_of(id).mana_taps_creature {
                 if let Some(c) = self.relic_partner(p, exclude) {
                     self.become_tapped(c);
@@ -5073,6 +5089,18 @@ impl Game {
         v
     }
 
+    /// Vorinclex: an opponent's land tapped for mana doesn't untap during its controller's next
+    /// untap step.
+    fn land_tapped_for_mana(&mut self, p: PlayerId, id: ObjId) {
+        if self.types_of(id).land
+            && self
+                .permanents(opponent(p))
+                .any(|x| self.def_of(x).vorinclex && !self.lost_abilities(x))
+        {
+            self.obj_mut(id).skip_untap = true;
+        }
+    }
+
     fn tap_for_mana(&mut self, p: PlayerId, id: ObjId, c: u8) {
         let made: Vec<ManaSource> = self
             .untapped_sources(p)
@@ -5106,6 +5134,7 @@ impl Game {
             self.gain_life(p, henge); // The Great Henge
         }
         self.become_tapped(id);
+        self.land_tapped_for_mana(p, id);
         if self.def_of(id).mana_taps_creature {
             if let Some(partner) = self.relic_partner(p, None) {
                 self.become_tapped(partner);
@@ -5819,6 +5848,12 @@ impl Game {
                 n
             };
             let n = n.max(self.def_of(id).mana_amount as usize); // Sol Ring: {C}{C}
+                                                                 // Vorinclex: "Whenever you tap a land for mana, add one mana of any type that land produced."
+            let n = if self.types_of(id).land && self.permanents(p).any(|x| self.def_of(x).vorinclex) {
+                n * 2
+            } else {
+                n
+            };
             let fero = self.def_of(id).ferocious_mana_amount as usize;
             let n = if fero > 0 && self.creatures(p).any(|c| self.power(c) >= 4) {
                 n.max(fero) // Ferocious: "{T}: Add {G}{G}{G}{G}"
@@ -6669,6 +6704,22 @@ impl Game {
     fn finish_cast(&mut self, item: StackItem) {
         let (p, card) = (item.controller, item.source);
         let flashback_cast = item.flashback;
+        // Terror of the Peaks: "cost an additional 3 life" for each of its controller's such targets.
+        let tax: i32 = item
+            .targets
+            .iter()
+            .filter_map(|t| match *t {
+                Chosen::Object(x, _)
+                    if self.obj(x).zone == Zone::Battlefield && self.obj(x).controller != p =>
+                {
+                    Some(self.def_of(x).targeted_life_tax)
+                }
+                _ => None,
+            })
+            .sum();
+        if tax > 0 {
+            self.lose_life(p, tax);
+        }
         if self.turn > 0 && self.obj(card).conduit_turn == self.turn {
             self.obj_mut(card).conduit_turn = 0;
             self.no_more_spells_turn[p] = self.turn; // Conduit of Worlds
@@ -7771,6 +7822,21 @@ impl Game {
                 }
                 v
             }
+            Decision::SneakAttack => {
+                let mut v: Vec<Action> = hand
+                    .iter()
+                    .copied()
+                    .filter(|&x| self.def_of(x).types.creature)
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
+            Decision::ExiledToBattlefield { cards } => {
+                let mut v: Vec<Action> = cards.iter().copied().map(Action::Pick).collect();
+                v.push(Action::No);
+                v
+            }
             Decision::LandFromHand => {
                 let mut v: Vec<Action> = hand
                     .iter()
@@ -8823,6 +8889,30 @@ impl Game {
             (Decision::ScrollRackExile { exiled }, Action::No) => self.scroll_rack_finish(p, exiled),
             (Decision::LandFromHand, Action::Pick(c)) => self.move_to(c, Zone::Battlefield),
             (Decision::LandFromHand, Action::No) => {}
+            (Decision::SneakAttack, Action::Pick(c)) => {
+                self.move_to(c, Zone::Battlefield);
+                if self.obj(c).zone == Zone::Battlefield {
+                    let zcc = self.obj(c).zcc;
+                    self.until_eot.push(Modifier {
+                        obj: c,
+                        zcc,
+                        power: 0,
+                        toughness: 0,
+                        keywords: Keywords::HASTE,
+                        dies: None,
+                    });
+                    self.obj_mut(c).sacrifice_at_end = true;
+                }
+            }
+            (Decision::SneakAttack, Action::No) => {}
+            (Decision::ExiledToBattlefield { mut cards }, Action::Pick(c)) => {
+                cards.retain(|&x| x != c);
+                self.move_to(c, Zone::Battlefield);
+                if !cards.is_empty() {
+                    self.ask(p, Decision::ExiledToBattlefield { cards });
+                }
+            }
+            (Decision::ExiledToBattlefield { .. }, Action::No) => {}
             (Decision::SacrificePermanents { left }, Action::Pick(c)) => {
                 self.move_to(c, Zone::Graveyard);
                 if left > 1 && self.permanents(p).any(|x| !self.cant_be_sacrificed(x)) {
@@ -10736,6 +10826,59 @@ impl Game {
                     .count();
                 for _ in 0..n {
                     self.create_token(p, def);
+                }
+            }
+            Effect::EachExileUntilNonlandCastFree => {
+                let p = item.controller;
+                for q in [p, opponent(p)] {
+                    while let Some(&c) = self.players[q].library.last() {
+                        self.move_to(c, Zone::Exile);
+                        if !self.types_of(c).land {
+                            self.obj_mut(c).cast_free = true;
+                            self.free_casts.push(c);
+                            break;
+                        }
+                    }
+                }
+                self.free_caster = p;
+            }
+            Effect::PoisonAmountToOpponent => {
+                let q = opponent(item.controller);
+                self.players[q].poison += item.amount.max(0);
+            }
+            Effect::SneakAttack => {
+                let p = item.controller;
+                if self.players[p]
+                    .hand
+                    .iter()
+                    .any(|&x| self.def_of(x).types.creature)
+                {
+                    self.ask(p, Decision::SneakAttack);
+                }
+            }
+            Effect::AddRedOrGreenPerCreature => {
+                let p = item.controller;
+                let n = self.creatures(p).count();
+                for _ in 0..n {
+                    self.players[p]
+                        .pool
+                        .push(ManaSource::of(&[crate::Color::Red, crate::Color::Green]));
+                }
+            }
+            Effect::ExileTopPutCreaturesAndLands(n) => {
+                let p = item.controller;
+                let mut cards = Vec::new();
+                for _ in 0..n {
+                    if let Some(&c) = self.players[p].library.last() {
+                        self.move_to(c, Zone::Exile);
+                        let t = self.def_of(c).types;
+                        if t.creature || t.land {
+                            cards.push(c);
+                        }
+                    }
+                }
+                if !cards.is_empty() {
+                    self.ask(p, Decision::ExiledToBattlefield { cards });
                 }
             }
             Effect::BecomeCopyOfSlotUntilEot(n) => {
@@ -13232,9 +13375,11 @@ impl Game {
     /// Whether `id` has infect (Triumph of the Hordes grants it until end of turn).
     fn has_infect(&self, id: ObjId) -> bool {
         let (zcc, turn) = (self.obj(id).zcc, self.turn);
-        self.infect_until_eot
-            .iter()
-            .any(|&(c, z, t)| c == id && z == zcc && t == turn)
+        (self.def_of(id).infect && !self.lost_abilities(id))
+            || self
+                .infect_until_eot
+                .iter()
+                .any(|&(c, z, t)| c == id && z == zcc && t == turn)
     }
 
     /// Roaming Throne: each waiting trigger of another creature its controller controls of the chosen

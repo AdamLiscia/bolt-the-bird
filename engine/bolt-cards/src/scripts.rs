@@ -168,6 +168,7 @@ pub fn token_defs() -> Vec<CardDef> {
             t
         },
         token("Wurm", "Wurm", 5, 5, Keywords::TRAMPLE), // Worldspine Wurm's green 5/5s
+        token("Satyr", "Satyr", 2, 2, Keywords::HASTE), // Xenagos, the Reveler's red and green 2/2
     ]
 }
 
@@ -269,6 +270,7 @@ pub struct Tokens {
     pub forest_dryad: usize,
     pub ashaya: usize,
     pub wurm_5: usize,
+    pub satyr: usize,
 }
 
 impl Tokens {
@@ -334,6 +336,7 @@ impl Tokens {
             forest_dryad: base + 57,
             ashaya: base + 58,
             wurm_5: base + 59,
+            satyr: base + 60,
         }
     }
 }

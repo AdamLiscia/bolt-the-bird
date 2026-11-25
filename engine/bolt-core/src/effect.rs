@@ -1345,6 +1345,19 @@ pub enum Effect {
     TreasuresPerOpponentArtifact {
         def: usize,
     },
+    /// Each player exiles cards from the top of their library until they exile a nonland card; you
+    /// may cast any number of those nonland cards without paying their mana costs (Etali).
+    EachExileUntilNonlandCastFree,
+    /// The damaged player (the opponent) gets poison counters equal to the trigger's amount.
+    PoisonAmountToOpponent,
+    /// You may put a creature card from your hand onto the battlefield; it gains haste, and you
+    /// sacrifice it at the beginning of the next end step (Sneak Attack).
+    SneakAttack,
+    /// Add X mana in any combination of {R} and/or {G}, X the creatures you control (Xenagos).
+    AddRedOrGreenPerCreature,
+    /// Exile the top `n` cards; put any number of creature and/or land cards from among them onto
+    /// the battlefield (Xenagos, the Reveler's −6).
+    ExileTopPutCreaturesAndLands(u8),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

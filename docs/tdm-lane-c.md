@@ -558,3 +558,17 @@ Core: `CardDef::{ward_sacrifice, enters_counters_greatest_exiled_mv}`, `Reductio
 `Effect::{SacrificePermanents (annihilator N), AnnihilatorPerCounters, OwnerShufflesGraveyardIntoLibrary,
 RevealTopCreatureToBattlefieldElseMayBottom, CreaturesToOwners, ExileTopHalfOfLibrary, TreasuresPerOpponentArtifact}`,
 `Game::sacrifice_permanents`. Annihilator is the attack trigger "defending player sacrifices N" (one opponent).
+
+Merged origin/tarkir a48163c (queue files, bolt.jobs) as 17f7972. From here on Etali's list is its "C" entry in
+handoff/lanes/queue.json (cards listed under an earlier deck belong to that deck's lane).
+
+Etali batch 3 (7): Displaced Dinosaurs, Vorinclex, Voice of Hunger, Blightsteel Colossus, Etali, Primal Conqueror //
+Etali, Primal Sickness, Sneak Attack, Terror of the Peaks, Xenagos, the Reveler.
+Core: `CardDef::{infect (in has_infect), historic_become_dinosaurs (applied as a permanent enters), vorinclex,
+targeted_life_tax}`, `Game::land_tapped_for_mana` (Vorinclex's freeze, in both mana payment paths but not the
+two-mana Signet plan), `Decision::{SneakAttack, ExiledToBattlefield}`, `Effect::{EachExileUntilNonlandCastFree,
+PoisonAmountToOpponent, SneakAttack, AddRedOrGreenPerCreature, ExileTopPutCreaturesAndLands}`. Token: Satyr 2/2 haste
+at base+60.
+Shortcuts: Vorinclex's mana trigger doubles the land's mana (a mana ability's trigger resolves at once). Etali's
+{9}{G/P} is two abilities ({9}{G}, or {9} and 2 life). Terror of the Peaks' 3 life is paid as the spell is cast; it
+doesn't stop a player with less life from casting it. Xenagos's {R}/{G} mana is pool entries that can be either.

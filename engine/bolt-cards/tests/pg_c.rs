@@ -2100,3 +2100,157 @@ fn cavern_hoard_dragon_costs_less_and_makes_treasures() {
     }
     assert_eq!(tokens(&g, 0, "Treasure").len(), 3);
 }
+
+#[test]
+fn displaced_dinosaurs_makes_historic_permanents_seven_seven_dinosaurs() {
+    let mut g = table();
+    put(&mut g, 0, "Displaced Dinosaurs");
+    let tiny = hand(&mut g, 0, "Tinybones, Bauble Burglar");
+    play(&mut g, tiny, false, &[], &[]);
+    assert_eq!((g.power(tiny), g.toughness(tiny)), (7, 7));
+    assert!(g.has_subtype(tiny, "Dinosaur"));
+    let signet = hand(&mut g, 0, "Arcane Signet");
+    play(&mut g, signet, false, &[], &[]);
+    assert!(g.types_of(signet).creature && g.types_of(signet).artifact);
+    assert_eq!(g.power(signet), 7);
+}
+
+#[test]
+fn vorinclex_doubles_your_land_mana_and_freezes_opponents_lands() {
+    let mut g = game(&["Vorinclex, Voice of Hunger", "Forest"]);
+    let f = g.permanents(0).find(|&x| g.def_of(x).name == "Forest").unwrap();
+    assert_eq!(g.mana_sources(0).iter().filter(|&&(x, _)| x == f).count(), 2);
+    to_main1(&mut g, 4, 1);
+    let think = hand(&mut g, 1, "Think Twice");
+    act(&mut g, Action::Cast(think));
+    resolve_all(&mut g, &[]);
+    let tapped: Vec<ObjId> = g.permanents(1).filter(|&x| g.obj(x).tapped).collect();
+    assert_eq!(tapped.len(), 2);
+    assert!(tapped.iter().all(|&x| g.obj(x).skip_untap));
+}
+
+#[test]
+fn blightsteel_colossus_deals_poison() {
+    let mut g = game(&["Blightsteel Colossus"]);
+    let b = g.permanents(0).next().unwrap();
+    assert!(g.keywords(b).has(Keywords::INDESTRUCTIBLE) && g.keywords(b).has(Keywords::TRAMPLE));
+    while g.step != Step::DeclareAttackers {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(b));
+    act(&mut g, Action::FinishAttacks);
+    while g.step != Step::Main2 && !g.is_over() {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.players[1].poison, 11);
+    assert_eq!(g.players[1].life, 40);
+}
+
+#[test]
+fn etali_exiles_until_nonland_casts_free_and_transforms() {
+    let mut g = table();
+    let mine = top(&mut g, "Think Twice");
+    let theirs = g.add_card(1, cid("Hungry Ghoul"), Zone::Library);
+    let etali = hand(&mut g, 0, "Etali, Primal Conqueror // Etali, Primal Sickness");
+    play(&mut g, etali, false, &[], &[]);
+    assert_eq!(g.obj(mine).zone, Zone::Exile);
+    assert_eq!(g.obj(theirs).zone, Zone::Exile);
+    assert!(g.legal_actions().contains(&Action::Cast(theirs)), "cast it free");
+    act(&mut g, Action::Cast(theirs));
+    for _ in 0..20 {
+        if g.items.is_empty() && !matches!(g.pending, Pending::Decide(_) | Pending::ChooseTarget(_)) {
+            break;
+        }
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.obj(theirs).zone, Zone::Battlefield);
+    assert_eq!(g.obj(theirs).controller, 0);
+    let mut lands = vec!["Etali, Primal Conqueror // Etali, Primal Sickness"];
+    lands.extend(["Forest"; 10]);
+    let mut g = game(&lands);
+    let etali = g.permanents(0).find(|&x| g.types_of(x).creature).unwrap();
+    let life = g.players[0].life;
+    act(&mut g, Action::Activate(etali, 1));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].life, life - 2, "{{G/P}} paid with 2 life");
+    assert_eq!(g.def_of(etali).name, "Etali, Primal Sickness");
+    assert!(g.keywords(etali).has(Keywords::INDESTRUCTIBLE));
+    while g.step != Step::DeclareAttackers {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(etali));
+    act(&mut g, Action::FinishAttacks);
+    while g.step != Step::Main2 && !g.is_over() {
+        let a = if matches!(g.pending, Pending::Decide(_)) {
+            g.legal_actions()[0]
+        } else {
+            Action::PassPriority
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.players[1].poison, 11);
+}
+
+#[test]
+fn sneak_attack_puts_a_hasty_creature_in_until_end_of_turn() {
+    let mut g = game(&["Sneak Attack", "Mountain"]);
+    let sa = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "Sneak Attack")
+        .unwrap();
+    let pal = hand(&mut g, 0, "Palinchron");
+    act(&mut g, Action::Activate(sa, 0));
+    resolve_all(&mut g, &[Action::Pick(pal)]);
+    assert_eq!(g.obj(pal).zone, Zone::Battlefield);
+    assert!(g.keywords(pal).has(Keywords::HASTE));
+    while g.turn == 3 {
+        let a = match g.legal_actions()[0] {
+            d @ Action::Discard(_) => d,
+            _ if matches!(g.pending, Pending::DeclareAttackers(_)) => Action::FinishAttacks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.obj(pal).zone, Zone::Graveyard);
+}
+
+#[test]
+fn terror_of_the_peaks_throws_entering_creatures_power() {
+    let mut g = table();
+    let terror = put(&mut g, 0, "Terror of the Peaks");
+    assert_eq!(g.def_of(terror).targeted_life_tax, 3);
+    let ghoul = hand(&mut g, 0, "Hungry Ghoul");
+    let life = g.players[1].life;
+    play(&mut g, ghoul, false, &[], &[Action::Target(Target::Player(1))]);
+    assert_eq!(g.players[1].life, life - 2);
+}
+
+#[test]
+fn xenagos_the_reveler_makes_mana_satyrs_and_digs() {
+    let mut g = table();
+    put(&mut g, 0, "Hungry Ghoul");
+    put(&mut g, 0, "Aegis Turtle");
+    let x = hand(&mut g, 0, "Xenagos, the Reveler");
+    play(&mut g, x, false, &[], &[]);
+    g.manual_mana[0] = true;
+    act(&mut g, Action::Loyalty(x, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].pool.len(), 2);
+    assert!(g.players[0].pool.iter().all(|m| m.colors[3] && m.colors[4]));
+    to_main1(&mut g, 5, 0);
+    act(&mut g, Action::Loyalty(x, 1));
+    resolve_all(&mut g, &[]);
+    assert_eq!(tokens(&g, 0, "Satyr").len(), 1);
+    g.objects[x.0 as usize].loyalty = 6;
+    let land = top(&mut g, "Forest");
+    let beast = top(&mut g, "Avenger of Zendikar");
+    top(&mut g, "Think Twice");
+    to_main1(&mut g, 7, 0);
+    act(&mut g, Action::Loyalty(x, 2));
+    resolve_all(
+        &mut g,
+        &[Action::Pick(beast), Action::Pick(land), Action::No, Action::Yes],
+    ); // then Avenger's landfall
+    assert_eq!(g.obj(beast).zone, Zone::Battlefield);
+    assert_eq!(g.obj(land).zone, Zone::Battlefield);
+}

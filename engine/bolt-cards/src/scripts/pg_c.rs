@@ -877,6 +877,76 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::DealsCombatDamageToPlayer, vec![], vec![Effect::TreasuresPerOpponentArtifact { def: t.treasure }]);
             },
         ),
+        "Displaced Dinosaurs" => s(
+            &["As a historic permanent you control enters, it becomes a 7/7 Dinosaur creature in addition to its other types."],
+            |d, _| d.historic_become_dinosaurs = true,
+        ),
+        "Vorinclex, Voice of Hunger" => s(
+            &[
+                "Whenever you tap a land for mana, add one mana of any type that land produced.",
+                "Whenever an opponent taps a land for mana, that land doesn't untap during its controller's next untap step.",
+            ],
+            // Mana abilities' triggers resolve at once (CR 605.4a): the land's mana is simply doubled.
+            |d, _| d.vorinclex = true,
+        ),
+        "Blightsteel Colossus" => s(
+            &[
+                "Trample, infect, indestructible",
+                "If Blightsteel Colossus would be put into a graveyard from anywhere, reveal Blightsteel Colossus and shuffle it into its owner's library instead.",
+            ],
+            |d, _| {
+                d.keywords = d.keywords.with(Keywords::TRAMPLE).with(Keywords::INDESTRUCTIBLE);
+                d.infect = true;
+                d.shuffle_instead_of_graveyard = true;
+            },
+        ),
+        "Etali, Primal Conqueror // Etali, Primal Sickness" => s(
+            &[
+                "When Etali enters, each player exiles cards from the top of their library until they exile a nonland card. You may cast any number of spells from among the nonland cards exiled this way without paying their mana costs.",
+                "{9}{G/P}: Transform Etali. Activate only as a sorcery.",
+                "Back: Whenever Etali deals combat damage to a player, they get that many poison counters.",
+            ],
+            |d, _| {
+                on(d, When::Enters, vec![], vec![Effect::EachExileUntilNonlandCastFree]);
+                // {G/P}: {G}, or 2 life instead (one ability for each way to pay).
+                for (cost, life) in [("{9}{G}", 0), ("{9}", 2)] {
+                    let n = activated(d, cost, false, vec![], vec![Effect::TransformSelf]);
+                    d.activated[n].sorcery = true;
+                    d.activated[n].life = life;
+                }
+                let b = d.back.as_mut().expect("Etali, Primal Sickness");
+                on(b, When::DealsCombatDamageToPlayer, vec![], vec![Effect::PoisonAmountToOpponent]);
+            },
+        ),
+        "Sneak Attack" => s(
+            &["{R}: You may put a creature card from your hand onto the battlefield. That creature gains haste. Sacrifice the creature at the beginning of the next end step."],
+            |d, _| {
+                activated(d, "{R}", false, vec![], vec![Effect::SneakAttack]);
+            },
+        ),
+        "Terror of the Peaks" => s(
+            &[
+                "Spells your opponents cast that target this creature cost an additional 3 life to cast.",
+                "Whenever another creature you control enters, this creature deals damage equal to that creature's power to any target.",
+            ],
+            |d, _| {
+                d.targeted_life_tax = 3;
+                let it = Filter { triggering: true, ..CREATURE };
+                on(d, When::AnotherCreatureYouControlEnters, vec![it, Filter::ANY], vec![Effect::DamageEqualSlotPower { from: 0, to: 1 }]);
+            },
+        ),
+        "Xenagos, the Reveler" => s(
+            &[
+                "+1: Add X mana in any combination of {R} and/or {G}, where X is the number of creatures you control.",
+                "0: Create a 2/2 red and green Satyr creature token with haste.",
+                "−6: Exile the top seven cards of your library. You may put any number of creature and/or land cards from among them onto the battlefield.",
+            ],
+            |d, t| {
+                loyalty(d, 1, Ability::new(vec![], vec![Effect::AddRedOrGreenPerCreature]));
+                loyalty(d, 0, Ability::new(vec![], vec![Effect::CreateToken { who: Who::You, def: t.satyr, n: 1 }]));
+                loyalty(d, -6, Ability::new(vec![], vec![Effect::ExileTopPutCreaturesAndLands(7)]));
+            },
+        ),
         _ => None,
     }
 }
@@ -989,4 +1059,11 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Purphoros, God of the Forge",
     "Conjurer's Closet",
     "Cavern-Hoard Dragon",
+    "Displaced Dinosaurs",
+    "Vorinclex, Voice of Hunger",
+    "Blightsteel Colossus",
+    "Etali, Primal Conqueror // Etali, Primal Sickness",
+    "Sneak Attack",
+    "Terror of the Peaks",
+    "Xenagos, the Reveler",
 ];

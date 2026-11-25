@@ -660,6 +660,17 @@ pub struct CardDef {
     /// "Enters with a number of +1/+1 counters on it equal to the greatest mana value among cards
     /// in exile." (Ulamog, the Defiler)
     pub enters_counters_greatest_exiled_mv: bool,
+    /// Infect (CR 702.90), printed (Blightsteel Colossus).
+    pub infect: bool,
+    /// "As a historic permanent you control enters, it becomes a 7/7 Dinosaur creature in addition
+    /// to its other types." (Displaced Dinosaurs)
+    pub historic_become_dinosaurs: bool,
+    /// Vorinclex, Voice of Hunger: your lands make twice the mana, and an opponent's land tapped for
+    /// mana doesn't untap during its controller's next untap step.
+    pub vorinclex: bool,
+    /// "Spells your opponents cast that target this creature cost an additional N life to cast."
+    /// (Terror of the Peaks: 3)
+    pub targeted_life_tax: i32,
 }
 
 /// What entering makes triggers happen again (see [`CardDef::entering_triggers_again`]).
@@ -884,6 +895,10 @@ impl CardDef {
             shuffle_on_resolve: false,
             ward_sacrifice: 0,
             enters_counters_greatest_exiled_mv: false,
+            infect: false,
+            historic_become_dinosaurs: false,
+            vorinclex: false,
+            targeted_life_tax: 0,
         }
     }
 
@@ -1076,6 +1091,10 @@ impl CardDef {
             shuffle_on_resolve: false,
             ward_sacrifice: 0,
             enters_counters_greatest_exiled_mv: false,
+            infect: false,
+            historic_become_dinosaurs: false,
+            vorinclex: false,
+            targeted_life_tax: 0,
         }
     }
 
@@ -1268,6 +1287,10 @@ impl CardDef {
             shuffle_on_resolve: false,
             ward_sacrifice: 0,
             enters_counters_greatest_exiled_mv: false,
+            infect: false,
+            historic_become_dinosaurs: false,
+            vorinclex: false,
+            targeted_life_tax: 0,
         }
     }
 }

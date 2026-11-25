@@ -434,6 +434,10 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         shuffle_on_resolve: false,
         ward_sacrifice: 0,
         enters_counters_greatest_exiled_mv: false,
+        infect: false,
+        historic_become_dinosaurs: false,
+        vorinclex: false,
+        targeted_life_tax: 0,
     };
     def.color_identity = color_identity(o);
     def.phyrexian = phyrexian;
