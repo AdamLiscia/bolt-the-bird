@@ -225,6 +225,8 @@ pub struct Activated {
     pub once_each_turn: bool,
     /// Remove this many of the source's own kind of counters as a cost (Hoofprints of the Stag).
     pub remove_kind_counters: i32,
+    /// "Activate only if you control N or more permanents." (Temple of Cultivation)
+    pub min_permanents: u8,
 }
 
 /// The printed card. Shared by every copy; per-copy state lives on the game object.
@@ -564,6 +566,12 @@ pub struct CardDef {
     /// triggered ability of another creature you control of the chosen type triggers, it triggers an
     /// additional time."
     pub doubles_chosen_type_triggers: bool,
+    /// A transforming double-faced card's back face (CR 712): what the permanent is while it's
+    /// transformed (`Object::transformed`). Its own `back` is `None`.
+    pub back: Option<Box<CardDef>>,
+    /// `alt_cost` is offered only while you control a commander (Deflecting Swat: "If you control a
+    /// commander, you may cast this spell without paying its mana cost.").
+    pub alt_cost_needs_commander: bool,
 }
 
 /// What entering makes triggers happen again (see [`CardDef::entering_triggers_again`]).
@@ -761,6 +769,8 @@ impl CardDef {
             power_per_attack_this_turn: false,
             green_permanents_pay_life_for_g: false,
             doubles_chosen_type_triggers: false,
+            back: None,
+            alt_cost_needs_commander: false,
         }
     }
 
@@ -926,6 +936,8 @@ impl CardDef {
             power_per_attack_this_turn: false,
             green_permanents_pay_life_for_g: false,
             doubles_chosen_type_triggers: false,
+            back: None,
+            alt_cost_needs_commander: false,
         }
     }
 
@@ -1091,6 +1103,8 @@ impl CardDef {
             power_per_attack_this_turn: false,
             green_permanents_pay_life_for_g: false,
             doubles_chosen_type_triggers: false,
+            back: None,
+            alt_cost_needs_commander: false,
         }
     }
 }

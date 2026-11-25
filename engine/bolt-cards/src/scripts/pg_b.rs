@@ -459,6 +459,61 @@ pub fn script(name: &str) -> Option<Script> {
                 d.doubles_chosen_type_triggers = true;
             },
         ),
+        // ---- Xenagos finish: changing targets and transforming double-faced cards ----
+        "Deflecting Swat" => s(
+            &[
+                "If you control a commander, you may cast this spell without paying its mana cost.",
+                "You may choose new targets for target spell or ability.",
+            ],
+            |d, _| {
+                d.alt_cost = Some((ManaCost::default(), 0));
+                d.alt_cost_needs_commander = true;
+                let spell_or_ability = Filter { abilities: true, ..SPELL };
+                spell(d, vec![spell_or_ability], vec![Effect::ChangeTargets(0)]);
+            },
+        ),
+        "Ojer Kaslem, Deepest Growth // Temple of Cultivation" => s(
+            &[
+                "Whenever Ojer Kaslem deals combat damage to a player, reveal that many cards from the top of your library. You may put a creature card and/or a land card from among them onto the battlefield. Put the rest on the bottom in a random order.",
+                "When Ojer Kaslem dies, return it to the battlefield tapped and transformed under its owner's control.",
+                "Back: {T}: Add {G}.",
+                "Back: {2}{G}, {T}: Transform this land. Activate only if you control ten or more permanents and only as a sorcery.",
+            ],
+            |d, _| {
+                on(d, When::DealsCombatDamageToPlayer, vec![], vec![Effect::RevealAmountPutCreatureAndLand]);
+                on(d, When::Dies, vec![], vec![Effect::ReturnSelfTappedTransformed]);
+                let b = d.back.as_mut().expect("Temple of Cultivation");
+                b.mana = Some(ManaSource::of(&[Color::Green]));
+                let n = activated(b, "{2}{G}", true, vec![], vec![Effect::TransformSelf]);
+                b.activated[n].sorcery = true;
+                b.activated[n].min_permanents = 10;
+            },
+        ),
+        "Vorinclex // The Grand Evolution" => s(
+            &[
+                "When Vorinclex enters, search your library for up to two Forest cards, reveal them, put them into your hand, then shuffle.",
+                "{6}{G}{G}: Exile Vorinclex, then return it to the battlefield transformed under its owner's control. Activate only as a sorcery.",
+                "Back: I — Mill ten cards. Put up to two creature cards from among the milled cards onto the battlefield.",
+                "Back: II — Distribute seven +1/+1 counters among any number of target creatures you control.",
+                "Back: III — Until end of turn, creatures you control gain \"{1}: This creature fights target creature you don't control.\" Exile this Saga, then return it to the battlefield .",
+            ],
+            |d, _| {
+                let two = Effect::Search { what: forest(), to: SearchTo::Hand, n: 2, kicked_n: None };
+                on(d, When::Enters, vec![], vec![two]);
+                let n = activated(d, "{6}{G}{G}", false, vec![], vec![Effect::ExileSelfReturn { transformed: true }]);
+                d.activated[n].sorcery = true;
+                let b = d.back.as_mut().expect("The Grand Evolution");
+                chapter(b, 1, Ability::new(vec![], vec![Effect::MillPutCreatures { n: 10, up_to: 2 }]));
+                let mut seven = up_to(vec![YOUR_CREATURE; 7], vec![Effect::DividedCounters]);
+                seven.divide = 7;
+                chapter(b, 2, seven);
+                chapter(
+                    b,
+                    3,
+                    Ability::new(vec![], vec![Effect::GrantFightAbilityEot, Effect::ExileSelfReturn { transformed: false }]),
+                );
+            },
+        ),
         _ => None,
     }
 }
@@ -520,4 +575,7 @@ pub const PG_B_SCRIPTED: &[&str] = &[
     "Defiler of Vigor",
     "World at War",
     "Roaming Throne",
+    "Deflecting Swat",
+    "Ojer Kaslem, Deepest Growth // Temple of Cultivation",
+    "Vorinclex // The Grand Evolution",
 ];

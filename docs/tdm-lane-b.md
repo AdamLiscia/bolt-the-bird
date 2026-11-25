@@ -427,3 +427,41 @@ type. `Game::triggered_scanned` keeps each waiting trigger from being doubled tw
 - Ojer Kaslem, Deepest Growth // Temple of Cultivation and Vorinclex // The Grand Evolution:
   transforming double-faced cards; the back faces aren't in the card data, and the engine has no
   transform.
+
+### Xenagos finish 2026-11-25
+
+Deflecting Swat, Ojer Kaslem, Deepest Growth // Temple of Cultivation, Vorinclex // The Grand
+Evolution: Xenagos's deck is complete.
+
+Data: `scripts/fetch_oracle.py` keeps a `back` face (name, mana_cost, type_line, oracle_text, power,
+toughness, colors, loyalty) for `transform` and `modal_dfc` layouts, and `--refresh NAME...` re-fetches
+only those cards in place. The two DFCs were refreshed in `assets/PG_oracle.json`, then CMD rebuilt
+(`make_cmd_set.py`). Other DFCs in PG have no `back` yet: refresh them as they're scripted.
+
+Transform (CR 701.28, 712):
+- `Oracle::back` / `BackFace`; `CardDef::back: Option<Box<CardDef>>` is built from the back face
+  (keyword lines become its keywords); its other lines must be claimed by the front's script as
+  `"Back: <line>"`, and the script builds the back through `d.back`. Color identity counts the back.
+- `Object::transformed`; `Game::def_of` returns the back face while it's set, so types, P/T,
+  abilities, mana and triggers all follow (`types_of` and `has_base_subtype` now go through
+  `def_of`). Cleared when it leaves the battlefield, dropping leave triggers collected from the back
+  face (as for copies).
+- `Effect::TransformSelf`, `Effect::ReturnSelfTappedTransformed`, `Effect::ExileSelfReturn {
+  transformed }`. `Activated::min_permanents` ("Activate only if you control ten or more permanents").
+- Not done: copying a transformed permanent copies its front; transforming doesn't re-register
+  static abilities (neither card has one).
+
+Changing targets (CR 115.7): `Filter::abilities` (an ability on the stack is targeted as its source:
+the topmost one), `Effect::ChangeTargets(slot)`, `Decision::ChooseNewTarget { item, slot }`
+answered with `Target` or `No`. New targets must pass the same checks as when chosen (`candidates`,
+`slot_ok`), can't be the current one, one another slot holds, or the spell itself. Ward isn't
+re-checked for a new target. `CardDef::alt_cost_needs_commander` (Swat's free cast).
+
+Also: `Effect::RevealAmountPutCreatureAndLand`, `Effect::MillPutCreatures`,
+`Decision::PutPicksOntoBattlefield`; `Effect::GrantFightAbilityEot` with `Game::granted_fight`: the
+granted "{1}: fights target creature you don't control" is activated as ability number
+`activated.len()` of the creature (`Game::activated_of`), so no new action kinds.
+
+bolt-py: `transformed` on battlefield objects; `ChooseNewTarget` (`card`, `slot`, `current` /
+`current_player`) and `PutPicksOntoBattlefield` (`cards`, `left`) decision details. Service: `face`,
+`back` on view objects, `back_name` / `back_image` in `/v1/cards` (docs/api.md).

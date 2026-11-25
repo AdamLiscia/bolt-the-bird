@@ -61,18 +61,28 @@ def _label(kind: str, cards: list, nums: tuple, me: int, values: tuple) -> str:
     }.get(kind, kind)  # fmt: skip
 
 
-def _oracle() -> dict:
+def _oracle_rows() -> list:
     import json
     from pathlib import Path
 
     path = Path(__file__).resolve().parents[2] / "assets" / f"{SET}_oracle.json"
     try:
-        return {c["name"]: c.get("oracle_text") or "" for c in json.loads(path.read_text())}
+        return json.loads(path.read_text())
     except (OSError, ValueError):
-        return {}
+        return []
 
 
-ORACLE = _oracle()
+_ROWS = _oracle_rows()
+ORACLE = {c["name"]: c.get("oracle_text") or "" for c in _ROWS}
+BACKS = {c["name"]: c["back"]["name"] for c in _ROWS if c.get("back")}  # double-faced card -> back face name
+
+
+def back_image(card_name: str) -> str:
+    """Scryfall's image of a double-faced card's back face (the by-name image link with face=back)."""
+    import urllib.parse
+
+    q = urllib.parse.urlencode({"exact": card_name, "format": "image", "version": "normal", "face": "back"})
+    return f"https://api.scryfall.com/cards/named?{q}"
 
 
 def _ref(pair) -> dict:
@@ -117,7 +127,7 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         return None
     if kind == "Pick":
         verb = {"SacrificeCreatures": "Sacrifice", "SacrificeAnother": "Sacrifice", "Search": "Take",
-                "LookPick": "Take", "KeepOfType": "Keep", "ScryOrder": "Put on top:", "GenesisPick": "Put onto the battlefield:",
+                "LookPick": "Take", "KeepOfType": "Keep", "ScryOrder": "Put on top:", "GenesisPick": "Put onto the battlefield:", "PutPicksOntoBattlefield": "Put onto the battlefield:",
                 "PickDiscard": "Make them discard", "EnterAsCopy": f"{card or 'It'} enters as a copy of"}.get(d)  # fmt: skip
         return f"{verb} {card_name}" if verb else None
     yes = kind == "Yes"
@@ -139,6 +149,8 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         "CommanderToCommandZone": (f"Move {subject} to the command zone", f"Leave {subject} there"),
         "ChoosePile": ("Choose pile A", "Choose pile B"),
     }
+    if d == "PutPicksOntoBattlefield" and not yes:
+        return "Done choosing"
     if d in labels:
         return labels[d][0 if yes else 1]
     if not yes:
@@ -159,6 +171,14 @@ def actions(obs: dict, me: int) -> list[dict]:
         if kind in ("Mode", "Amount", "TargetPlayer", "TapForMana"):
             nums = ()
         label = _label(kind, names, nums, me, values)
+        if dec.get("kind") == "ChooseNewTarget" and kind in ("Target", "TargetPlayer", "No"):
+            what = name(dec["card"][1]) if dec.get("card") else "it"
+            if kind == "No":
+                label = "Keep the targets"
+            elif kind == "TargetPlayer":
+                label = f"Change the target of {what} to {'yourself' if a == me else 'your opponent'}"
+            else:
+                label = f"Change the target of {what} to {names[0] if names else ''}"
         if dec and kind in ("Mode", "Pick", "Yes", "No", "Amount"):
             label = _decision_label(dec, kind, a, names[0] if names else "") or label
             if kind in ("Yes", "No") and not objects:
@@ -241,6 +261,7 @@ def state(game, seat: int, version: int, game_id: str) -> dict:
             "toughness": e.get("toughness"), "damage": e["damage"], "counters": e["counters"],
             "loyalty": e["loyalty"], "attached_to": e["attached_to"], "entered_turn": e["entered_turn"],
             "entered_this_turn": e["entered_turn"] == obs["turn"],
+            "transformed": bool(e.get("transformed")),
         })  # fmt: skip
     combat = obs.get("combat")
     result = None
@@ -263,7 +284,23 @@ def state(game, seat: int, version: int, game_id: str) -> dict:
         "legal_actions": [] if seat != game.to_act() or over else actions(obs, seat),
     }  # fmt: skip
     _commander_view(out, obs)
+    _faces(out)
     return out
+
+
+def _faces(out: dict) -> None:
+    """Double-faced cards (docs/api.md): `face` ("front"/"back": back only for a transformed permanent)
+    and `back` {name, image} on every such object the view shows."""
+    view = out["view"]
+    zones = [view["battlefield"], view["stack"], view["exile"]]
+    zones += [pl["graveyard"] for pl in view["players"]] + [pl["hand"] or [] for pl in view["players"]]
+    zones += [pl.get("command", []) for pl in view["players"]]
+    for zone in zones:
+        for o in zone:
+            transformed = o.pop("transformed", False)
+            if o["name"] in BACKS:
+                o["face"] = "back" if transformed else "front"
+                o["back"] = {"name": BACKS[o["name"]], "image": back_image(o["name"])}
 
 
 def _commander_view(out: dict, obs: dict) -> None:

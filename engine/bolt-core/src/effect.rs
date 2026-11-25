@@ -93,6 +93,9 @@ pub struct Filter {
     pub nontoken: bool,
     /// Permanents that entered the battlefield this turn.
     pub entered_this_turn: bool,
+    /// Abilities on the stack too ("target spell or ability"): an activated or triggered ability is
+    /// targeted as its source object (the topmost of that source's abilities).
+    pub abilities: bool,
 }
 
 impl Filter {
@@ -138,6 +141,7 @@ impl Filter {
         nonlegendary: false,
         nontoken: false,
         entered_this_turn: false,
+        abilities: false,
     };
 
     pub const CREATURE: Filter = Filter {
@@ -1191,6 +1195,33 @@ pub enum Effect {
     /// You may put a creature card with mana value at most the lands you control from your hand or
     /// graveyard onto the battlefield with two +1/+1 counters (Nissa of Shadowed Boughs).
     CreatureFromHandOrGraveyardMvAtMostLands,
+    /// Transform the source (CR 701.28): a transforming double-faced permanent turns over to its other
+    /// face. Nothing else changes; it's the same object.
+    TransformSelf,
+    /// Return the source from your graveyard to the battlefield tapped and transformed, under its
+    /// owner's control (Ojer Kaslem).
+    ReturnSelfTappedTransformed,
+    /// Exile the source, then return it to the battlefield under its owner's control, transformed
+    /// (`true`) or front face up (`false`) (Vorinclex, The Grand Evolution).
+    ExileSelfReturn {
+        transformed: bool,
+    },
+    /// Reveal the top N cards (N the trigger's amount, "that many"); you may put a creature card
+    /// and/or a land card from among them onto the battlefield; the rest go on the bottom in a
+    /// random order (Ojer Kaslem).
+    RevealAmountPutCreatureAndLand,
+    /// Mill `n`; put up to `up_to` creature cards from among the milled cards onto the battlefield
+    /// (The Grand Evolution).
+    MillPutCreatures {
+        n: u8,
+        up_to: u8,
+    },
+    /// Until end of turn, creatures you control gain "{1}: This creature fights target creature you
+    /// don't control." (The Grand Evolution; see `Game::granted_fight`.)
+    GrantFightAbilityEot,
+    /// "You may choose new targets for" the spell or ability in `slot` (Deflecting Swat): each of its
+    /// targets in turn, as `Decision::ChooseNewTarget`.
+    ChangeTargets(u8),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
