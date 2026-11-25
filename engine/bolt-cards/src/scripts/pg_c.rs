@@ -431,6 +431,40 @@ pub fn script(name: &str) -> Option<Script> {
                 activated(d, "", true, vec![], vec![Effect::DrawThenSourceOnTop]);
             },
         ),
+        // ---- lane B: Glarb's clones and Zimone (copy exceptions, manifest dread) ----
+        "Phyrexian Metamorph" => s(
+            &["You may have this creature enter as a copy of any artifact or creature on the battlefield, except it's an artifact in addition to its other types."],
+            |d, _| {
+                d.enter_as_copy = true;
+                d.copy_artifact = true;
+            },
+        ),
+        "Sakashima of a Thousand Faces" => s(
+            &[
+                "You may have Sakashima enter as a copy of another creature you control, except it has Sakashima's other abilities.",
+                "The \"legend rule\" doesn't apply to permanents you control.",
+                "Partner",
+            ],
+            |d, _| {
+                d.enter_as_copy = true;
+                d.copy_only_yours = true;
+                d.copy_keeps_abilities = true;
+                d.no_legend_rule = true;
+            },
+        ),
+        "Sakashima the Impostor" => s(
+            &["You may have Sakashima the Impostor enter as a copy of any creature on the battlefield, except its name is Sakashima the Impostor, it's legendary in addition to its other types, and it has \"{2}{U}{U}: Return Sakashima the Impostor to its owner's hand at the beginning of the next end step.\""],
+            |d, _| {
+                d.enter_as_copy = true;
+                d.copy_keeps_name = true;
+                let n = activated(d, "{2}{U}{U}", false, vec![], vec![Effect::ReturnSelfToHandAtNextEnd]);
+                d.activated[n].copy_only = true;
+            },
+        ),
+        "Zimone, Mystery Unraveler" => s(
+            &["Landfall — Whenever a land you control enters, manifest dread if this is the first time this ability has resolved this turn. Otherwise, you may turn a permanent you control face up."],
+            |d, _| on(d, When::LandYouControlEnters, vec![], vec![Effect::ManifestDreadFirstElseTurnFaceUp]),
+        ),
         _ => None,
     }
 }
@@ -492,4 +526,9 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Will of the Abzan",
     "Koma, Cosmos Serpent",
     "Sensei's Divining Top",
+    // lane B
+    "Phyrexian Metamorph",
+    "Sakashima of a Thousand Faces",
+    "Sakashima the Impostor",
+    "Zimone, Mystery Unraveler",
 ];

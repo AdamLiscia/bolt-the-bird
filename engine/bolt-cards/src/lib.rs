@@ -212,7 +212,18 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         .nth(1)
         .map(|s| s.split_whitespace().map(String::from).collect())
         .unwrap_or_default();
-    let cost = o.mana_cost.as_deref().map(ManaCost::parse);
+    // Phyrexian pips ({U/P}) parse as their color; `CardDef::phyrexian` remembers them.
+    let mut phyrexian = [0u8; 5];
+    let plain_cost = o.mana_cost.as_deref().map(|c| {
+        let mut out = c.to_string();
+        for (i, sym) in ["W", "U", "B", "R", "G"].iter().enumerate() {
+            let p = format!("{{{sym}/P}}");
+            phyrexian[i] = out.matches(&p).count() as u8;
+            out = out.replace(&p, &format!("{{{sym}}}"));
+        }
+        out
+    });
+    let cost = plain_cost.as_deref().map(ManaCost::parse);
     let mut keywords = Keywords::NONE;
     let mut rest = Vec::new();
     for line in abilities(o.oracle_text.as_deref().unwrap_or("")) {
@@ -402,8 +413,15 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         last_mode_needs_commander: false,
         back: None,
         alt_cost_needs_commander: false,
+        phyrexian: [0; 5],
+        copy_artifact: false,
+        copy_keeps_name: false,
+        copy_only_yours: false,
+        copy_keeps_abilities: false,
+        no_legend_rule: false,
     };
     def.color_identity = color_identity(o);
+    def.phyrexian = phyrexian;
     // An Omen's spell half: its lines must be claimed too, written "Omen: <line>" in the script.
     if let Some(face) = &o.omen {
         rest.extend(

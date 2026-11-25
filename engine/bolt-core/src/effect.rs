@@ -1236,6 +1236,12 @@ pub enum Effect {
     /// "You may choose new targets for" the spell or ability in `slot` (Deflecting Swat): each of its
     /// targets in turn, as `Decision::ChooseNewTarget`.
     ChangeTargets(u8),
+    /// Return the source to its owner's hand at the beginning of the next end step (Sakashima the
+    /// Impostor's kept ability).
+    ReturnSelfToHandAtNextEnd,
+    /// Zimone: the first time this ability resolves this turn, manifest dread (CR 701.62);
+    /// otherwise you may turn a face-down permanent you control face up.
+    ManifestDreadFirstElseTurnFaceUp,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

@@ -249,6 +249,12 @@ pub struct Object {
     /// A transforming double-faced permanent with its back face up (CR 712.8e): its characteristics
     /// are its definition's `back`. Front face up again once it leaves the battlefield (CR 711.8).
     pub transformed: bool,
+    /// It entered as a copy with its own card's exceptions (`CardDef::copy_artifact`,
+    /// `copy_keeps_name`, `copy_keeps_abilities` of `printed_def`); cleared when it leaves.
+    pub copy_exceptions: bool,
+    /// Face down (CR 708): a 2/2 creature with no name, abilities, types other than creature, color or
+    /// mana cost (manifest, CR 701.40). Face up again when it leaves the battlefield.
+    pub face_down: bool,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -574,6 +580,17 @@ fn offspring_ability() -> &'static Ability {
     A.get_or_init(|| Ability::new(Vec::new(), vec![Effect::OffspringCopy]))
 }
 
+/// What a face-down permanent is (CR 708.2a): a 2/2 creature with no name, text, subtypes, color
+/// or mana cost.
+pub fn face_down_def() -> &'static CardDef {
+    static D: std::sync::OnceLock<CardDef> = std::sync::OnceLock::new();
+    D.get_or_init(|| {
+        let mut d = CardDef::creature("", "", 2, 2, Keywords::NONE);
+        d.colors = [false; 5];
+        d
+    })
+}
+
 /// "{1}: This creature fights target creature you don't control." (granted by The Grand Evolution).
 fn granted_fight_ability() -> &'static Activated {
     static A: std::sync::OnceLock<Activated> = std::sync::OnceLock::new();
@@ -874,6 +891,11 @@ pub enum Decision {
     /// Choose a new target for target number `slot` of the stack entry `items[item]` (CR 115.7):
     /// `Target` a legal new one, or `No` to keep it.
     ChooseNewTarget { item: usize, slot: u8 },
+    /// Manifest dread (CR 701.62): `Pick` which of `cards` (the top two) to manifest; the other
+    /// goes to the graveyard.
+    ManifestDread { cards: Vec<ObjId> },
+    /// `Pick` a face-down permanent you control to turn face up, or `No` (Zimone).
+    TurnFaceUp,
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -1436,6 +1458,8 @@ impl Game {
             eternalized: false,
             attacks_turn: (0, 0),
             transformed: false,
+            copy_exceptions: false,
+            face_down: false,
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -1459,6 +1483,9 @@ impl Game {
 
     pub fn def_of(&self, id: ObjId) -> &CardDef {
         let o = self.obj(id);
+        if o.face_down {
+            return face_down_def();
+        }
         let d = &self.defs[o.def];
         match &d.back {
             Some(back) if o.transformed => back,
@@ -1496,6 +1523,10 @@ impl Game {
     pub fn types_of(&self, id: ObjId) -> Types {
         let o = self.obj(id);
         let mut t = self.def_of(id).types;
+        if let Some(p) = self.copy_printed(id) {
+            t.artifact |= p.copy_artifact; // "except it's an artifact in addition"
+            t.legendary |= p.copy_keeps_name; // "it's legendary in addition"
+        }
         if o.not_legendary {
             t.legendary = false;
         }
@@ -1525,6 +1556,41 @@ impl Game {
             };
         }
         t
+    }
+
+    /// The clone's own card, while it's a copy with that card's exceptions (`Object::copy_exceptions`).
+    pub fn copy_printed(&self, id: ObjId) -> Option<&CardDef> {
+        let o = self.obj(id);
+        if !o.copy_exceptions {
+            return None;
+        }
+        o.printed_def.map(|d| &self.defs[d])
+    }
+
+    /// Its name now: its card's, or a copy's that keeps its own name (Sakashima the Impostor).
+    pub fn name_of(&self, id: ObjId) -> &str {
+        match self.copy_printed(id) {
+            Some(p) if p.copy_keeps_name => &p.name,
+            _ => &self.def_of(id).name,
+        }
+    }
+
+    /// Whether `p` controls a permanent that turns the legend rule off for them.
+    fn legend_rule_off(&self, p: PlayerId) -> bool {
+        self.permanents(p).any(|x| {
+            self.def_of(x).no_legend_rule
+                || self
+                    .copy_printed(x)
+                    .is_some_and(|d| d.copy_keeps_abilities && d.no_legend_rule)
+        })
+    }
+
+    /// Activated abilities its own card lends a copy that keeps them (`Activated::copy_only`).
+    fn kept_activated<'a>(&'a self, id: ObjId) -> impl Iterator<Item = &'a Activated> + 'a {
+        self.copy_printed(id)
+            .filter(|d| d.copy_keeps_abilities || d.copy_keeps_name)
+            .into_iter()
+            .flat_map(|d| d.activated.iter().filter(|a| a.copy_only))
     }
 
     /// Its colors now (CR 105, layer 5).
@@ -3333,6 +3399,8 @@ impl Game {
             }
             // CR 711.8: a transformed permanent that leaves is front face up again; leave triggers
             // collected from its back face would point at the front's abilities, so they're dropped.
+            self.obj_mut(id).copy_exceptions = false;
+            self.obj_mut(id).face_down = false;
             if self.obj(id).transformed {
                 self.obj_mut(id).transformed = false;
                 self.triggered
@@ -3509,7 +3577,11 @@ impl Game {
         if n < own.len() {
             return &own[n];
         }
-        granted_fight_ability()
+        let kept: Option<&Activated> = self.kept_activated(id).nth(n - own.len());
+        match kept {
+            Some(a) => a,
+            None => granted_fight_ability(),
+        }
     }
 
     /// The granted fight ability, if `id` has it now.
@@ -3728,6 +3800,23 @@ impl Game {
             .filter(|&t| !it.targets.contains(&chosen(t)))
             .filter(|&t| t != Target::Object(it.source))
             .collect()
+    }
+
+    /// Manifest `card` (CR 701.40a): put it onto the battlefield face down as a 2/2 creature.
+    fn manifest(&mut self, p: PlayerId, card: ObjId) {
+        self.obj_mut(card).face_down = true;
+        self.move_to(card, Zone::Battlefield);
+        if self.obj(card).zone == Zone::Battlefield {
+            self.obj_mut(card).controller = p;
+        } else {
+            self.obj_mut(card).face_down = false;
+        }
+    }
+
+    /// Whether an effect can turn `x` face up: a face-down permanent card (CR 701.40c: an instant or
+    /// sorcery stays face down).
+    fn can_turn_face_up(&self, x: ObjId) -> bool {
+        self.obj(x).face_down && self.defs[self.obj(x).def].types.is_permanent()
     }
 
     /// Asks `p` about the next of `items[item]`'s targets, from `slot` on, that can change.
@@ -4152,7 +4241,19 @@ impl Game {
             None => {
                 let mut v = vec![(Action::Cast(c), CastMode::default())];
                 // Defiler of Vigor: a green permanent spell may cost {G} less for 2 life.
+                // Phyrexian mana (CR 107.4f): every Phyrexian pip paid with 2 life.
+                let life_pips: u8 = def.phyrexian.iter().sum();
+                if life_pips > 0 && def.alt_cost.is_none() && self.players[p].life >= 2 * life_pips as i32 {
+                    v.push((
+                        Action::CastAlternative(c),
+                        CastMode {
+                            alt: true,
+                            ..CastMode::default()
+                        },
+                    ));
+                }
                 let defiler = def.alt_cost.is_none()
+                    && life_pips == 0
                     && def.types.is_permanent()
                     && def.colors[4]
                     && def.cost.colored[4] > 0
@@ -4247,6 +4348,13 @@ impl Game {
         } else if mode.alt {
             match def.alt_cost {
                 Some((c, _)) => c,
+                None if def.phyrexian.iter().any(|&n| n > 0) => {
+                    let mut c = def.cost.with_x(mode.x);
+                    for (k, &n) in def.phyrexian.iter().enumerate() {
+                        c.colored[k] = c.colored[k].saturating_sub(n);
+                    }
+                    c
+                }
                 None => {
                     // Defiler of Vigor: 2 life paid, {G} less.
                     let mut c = def.cost.with_x(mode.x);
@@ -4987,9 +5095,14 @@ impl Game {
                 .def_of(id)
                 .activated
                 .iter()
+                .chain(self.kept_activated(id))
                 .chain(self.granted_fight_of(id))
                 .enumerate()
+                .filter(|_| !self.obj(id).face_down)
             {
+                if a.copy_only && n < self.def_of(id).activated.len() {
+                    continue; // only a copy that keeps it has it
+                }
                 if a.from_hand_discard != in_hand
                     || (!in_hand && a.from_graveyard != in_graveyard)
                     || (!in_graveyard && self.lost_abilities(id))
@@ -5171,12 +5284,32 @@ impl Game {
                 }
             }
         }
+        // A face-down creature card may be turned face up for its mana cost (CR 701.40b).
+        for id in self.permanents(p).collect::<Vec<_>>() {
+            let o = self.obj(id);
+            if o.face_down && self.defs[o.def].types.creature {
+                let cost = self.defs[o.def].cost;
+                if cost.x == 0 && self.can_pay_for(p, &cost, None, PayFor::Ability(id)) {
+                    v.push(Action::Activate(id, 0));
+                }
+            }
+        }
         v
     }
 
     /// CR 602.2: pay the costs, then the ability goes on the stack (targets chosen as a decision).
     /// CR 602.2: announce, choose targets, then pay the costs.
     fn activate(&mut self, p: PlayerId, id: ObjId, n: usize, victim: Option<ObjId>) {
+        if self.obj(id).face_down {
+            // CR 701.40b: turning a manifested creature card face up for its mana cost is a special
+            // action; it doesn't use the stack.
+            let cost = self.defs[self.obj(id).def].cost;
+            self.pay_mana_for(p, &cost, None, PayFor::Ability(id));
+            self.obj_mut(id).face_down = false;
+            self.passes = 0;
+            self.give_priority(p);
+            return;
+        }
         let granted = self.activated_of(id, n).granted_to_attached;
         let extra = if granted {
             self.obj(id).attached_to.map(|(c, _)| c)
@@ -6034,6 +6167,13 @@ impl Game {
     /// nonland permanent.
     fn copy_option(&self, clone: ObjId, x: ObjId) -> bool {
         let t = self.types_of(x);
+        let d = self.def_of(clone);
+        if d.copy_artifact {
+            return t.artifact || t.creature;
+        }
+        if d.copy_only_yours {
+            return t.creature && self.obj(x).controller == self.obj(clone).controller;
+        }
         if self.def_of(clone).enter_as_copy_nonland {
             !t.land
         } else {
@@ -6187,7 +6327,9 @@ impl Game {
             .filter(|_| item.flashback && (self.def_of(card).harmonize || self.obj(card).harmonize_eot));
         self.pay_mana_for(p, &cost, harmonized, pay_for_spell(card, item.mode));
         if item.alt && self.def_of(card).alt_cost.is_none() {
-            self.lose_life(p, 2); // Defiler of Vigor's optional additional cost
+            let pips: u8 = self.def_of(card).phyrexian.iter().sum();
+            // Phyrexian pips paid with life, or Defiler of Vigor's optional additional cost.
+            self.lose_life(p, if pips > 0 { 2 * pips as i32 } else { 2 });
         }
         if self.types_of(card).is_permanent() && self.def_of(card).colors[4] {
             self.fire(p, When::YouCastGreenPermanent, None);
@@ -7195,6 +7337,16 @@ impl Game {
                 v.push(Action::No);
                 v
             }
+            Decision::ManifestDread { cards } => cards.iter().map(|&c| Action::Pick(c)).collect(),
+            Decision::TurnFaceUp => {
+                let mut v: Vec<Action> = self
+                    .permanents(p)
+                    .filter(|&x| self.can_turn_face_up(x))
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
             Decision::ChooseNewTarget { item, slot } => {
                 let mut v: Vec<Action> = self
                     .new_target_options(*item, *slot as usize)
@@ -7481,6 +7633,7 @@ impl Game {
             if let Action::Pick(of) = a {
                 let def = self.obj(of).def;
                 self.become_copy(card, def);
+                self.obj_mut(card).copy_exceptions = true;
                 if let Some(l) = self.defs[def].loyalty {
                     self.obj_mut(card).loyalty = l; // a copied planeswalker enters with its loyalty
                 }
@@ -8232,6 +8385,16 @@ impl Game {
                     self.put_among_rest(p, rest, false);
                 }
             }
+            (Decision::ManifestDread { cards }, Action::Pick(c)) => {
+                self.manifest(p, c);
+                for x in cards {
+                    if x != c && self.obj(x).zone == Zone::Library {
+                        self.move_to(x, Zone::Graveyard);
+                    }
+                }
+            }
+            (Decision::TurnFaceUp, Action::Pick(c)) => self.obj_mut(c).face_down = false,
+            (Decision::TurnFaceUp, _) => {}
             (Decision::ChooseNewTarget { item, slot }, choice) => {
                 if let Action::Target(t) = choice {
                     let chosen = match t {
@@ -9786,6 +9949,32 @@ impl Game {
                 for c in mine {
                     let zcc = self.obj(c).zcc;
                     self.granted_fight.push((c, zcc, turn));
+                }
+            }
+            Effect::ReturnSelfToHandAtNextEnd => {
+                if self.obj(src).zone == Zone::Battlefield {
+                    let zcc = self.obj(src).zcc;
+                    self.return_to_hand_at_end.push((src, zcc));
+                }
+            }
+            Effect::ManifestDreadFirstElseTurnFaceUp => {
+                let turn = self.turn;
+                let o = self.obj_mut(src);
+                o.resolved_this_turn = if o.resolved_this_turn.0 == turn {
+                    (turn, o.resolved_this_turn.1 + 1)
+                } else {
+                    (turn, 1)
+                };
+                let p = item.controller;
+                if self.obj(src).resolved_this_turn.1 == 1 {
+                    let cards: Vec<ObjId> = self.players[p].library.iter().rev().take(2).copied().collect();
+                    match cards.len() {
+                        0 => {}
+                        1 => self.manifest(p, cards[0]),
+                        _ => self.ask(p, Decision::ManifestDread { cards }),
+                    }
+                } else if self.permanents(p).any(|x| self.can_turn_face_up(x)) {
+                    self.ask(p, Decision::TurnFaceUp);
                 }
             }
             Effect::ChangeTargets(slot) => {
@@ -13322,13 +13511,13 @@ impl Game {
     fn legend_rule_losers(&self) -> Vec<ObjId> {
         let mut out = Vec::new();
         for (i, &a) in self.battlefield.iter().enumerate() {
-            let da = self.def_of(a);
-            if !self.types_of(a).legendary {
+            if !self.types_of(a).legendary || self.legend_rule_off(self.obj(a).controller) {
                 continue;
             }
+            let name = self.name_of(a);
             let newer = self.battlefield[i + 1..].iter().any(|&b| {
                 self.obj(b).controller == self.obj(a).controller
-                    && self.def_of(b).name == da.name
+                    && self.name_of(b) == name
                     && self.types_of(b).legendary
             });
             if newer {

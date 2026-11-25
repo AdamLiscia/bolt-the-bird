@@ -465,3 +465,25 @@ granted "{1}: fights target creature you don't control" is activated as ability 
 bolt-py: `transformed` on battlefield objects; `ChooseNewTarget` (`card`, `slot`, `current` /
 `current_player`) and `PutPicksOntoBattlefield` (`cards`, `left`) decision details. Service: `face`,
 `back` on view objects, `back_name` / `back_image` in `/v1/cards` (docs/api.md).
+
+### Glarb: clones and Zimone (2026-11-25)
+
+Phyrexian Metamorph, Sakashima of a Thousand Faces, Sakashima the Impostor, Zimone, Mystery
+Unraveler (scripts in pg_c.rs, tests in tests/pg_c.rs, in one lane B block).
+
+- Phyrexian mana: `CardDef::phyrexian` (pips by color; `definition()` parses `{U/P}` as `{U}` and
+  counts it). `Action::CastAlternative` pays every Phyrexian pip with 2 life.
+- Copy exceptions on `EnterAsCopy` (`Object::copy_exceptions`, read from the clone's own card in
+  `printed_def` via `Game::copy_printed`): `copy_artifact` (artifact-or-creature options, artifact
+  in addition), `copy_only_yours`, `copy_keeps_name` (`Game::name_of`, legendary, used by the legend
+  rule), `copy_keeps_abilities` (`no_legend_rule`, and `Activated::copy_only` abilities, activated
+  past the copied card's own as `Game::activated_of` numbers them). `CardDef::no_legend_rule`.
+  `Effect::ReturnSelfToHandAtNextEnd`.
+- Face down (CR 708): `Object::face_down`; `def_of` returns `face_down_def()` (a 2/2 with no name,
+  text or color); cleared when it leaves the battlefield. `Effect::ManifestDreadFirstElseTurnFaceUp`
+  (Zimone, counting `resolved_this_turn`), `Decision::ManifestDread`, `Decision::TurnFaceUp`.
+  Turning a manifested creature card face up for its mana cost is offered as `Action::Activate(id, 0)`
+  and is a special action (no stack). bolt-py hides the card (-2) from the other player in the
+  observation and the event log; the service shows "Face-down creature".
+- Not done: the play model's own features (bolt-py encoders other than the observation) aren't
+  masked; nothing triggers on "turned face up"; Phyrexian pips can't be split between life and mana.
