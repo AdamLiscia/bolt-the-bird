@@ -245,7 +245,7 @@ def state(game, seat: int, version: int, game_id: str) -> dict:
         result = {"winner": 0 if r == "p0" else 1 if r == "p1" else None,
                   "outcome": "win" if r in ("p0", "p1") else "draw"}  # fmt: skip
     kind, who = obs["pending"]
-    return {
+    out = {
         "game_id": game_id, "version": version, "seat": seat, "turn": obs["turn"], "step": obs["step"],
         "active": obs["active"], "to_act": None if over else game.to_act(),
         "pending": _pending(kind, who, obs.get("decision"), obs.get("choosing"), obs.get("bottom_left")), "over": over, "result": result,
@@ -258,3 +258,26 @@ def state(game, seat: int, version: int, game_id: str) -> dict:
         },
         "legal_actions": [] if seat != game.to_act() or over else actions(obs, seat),
     }  # fmt: skip
+    _commander_view(out, obs)
+    return out
+
+
+def _commander_view(out: dict, obs: dict) -> None:
+    """Commander games only (docs/api.md): each player's command zone and commander damage taken, and
+    `commander: true` plus `owner` on every commander object the view shows."""
+    owners = dict(obs.get("commanders") or [])
+    if not owners:
+        return
+    view = out["view"]
+    for p, (pl, raw) in enumerate(zip(view["players"], obs["players"], strict=True)):
+        pl["command"] = [{"id": i, "name": name(c), "card_id": c, "tax": tax, "commander": True, "owner": p}
+                         for i, c, tax in raw.get("command", [])]  # fmt: skip
+        pl["commander_damage"] = [{"id": i, "name": name(c), "card_id": c, "owner": o, "damage": n}
+                                  for i, c, o, n in raw.get("commander_damage", [])]  # fmt: skip
+    zones = [view["battlefield"], view["stack"], view["exile"]]
+    zones += [pl["graveyard"] for pl in view["players"]] + [pl["hand"] or [] for pl in view["players"]]
+    for zone in zones:
+        for o in zone:
+            if o["id"] in owners:
+                o["commander"] = True
+                o["owner"] = owners[o["id"]]
