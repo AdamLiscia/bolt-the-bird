@@ -795,8 +795,6 @@ pub enum Effect {
     /// The source deals damage equal to the trigger's amount to the controller of the object in
     /// `extra`, and you draw that many cards (New Way Forward).
     DamageExtrasControllerAndDrawAmount,
-    /// Each creature without this subtype gets -X/-X until end of turn (X the spell's X).
-    ShrinkAllWithoutSubtypeX(&'static str),
     /// "Counter target spell unless its controller pays {X}", X this spell's X.
     CounterUnlessPaysX(u8),
     /// "You may discard a card. When you discard a nonland card this way, ...": the source's trigger
@@ -1233,6 +1231,12 @@ pub enum When {
     CreatureYouControlEntersThisTurn,
     /// "Whenever another nontoken creature you control enters": slot 0 (triggering) is that creature.
     AnotherNontokenCreatureYouControlEnters,
+    /// "Whenever one or more cards leave your graveyard during your turn" (cards leaving between two
+    /// times triggers are put on the stack count as one event).
+    CardsLeaveYourGraveyardDuringYourTurn,
+    /// "Whenever a card leaves your graveyard during your turn, ... This ability triggers only once
+    /// each turn."
+    CardLeavesYourGraveyardOnceEachTurn,
 }
 
 #[derive(Clone, Debug, PartialEq)]

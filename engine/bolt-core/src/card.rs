@@ -187,6 +187,10 @@ pub struct Activated {
     pub discard_hand: bool,
     /// "Pay X life" in the cost of an ability with {X} (Krumar Initiate).
     pub life_x: bool,
+    /// "Activate only during your turn."
+    pub your_turn_only: bool,
+    /// "Activate only if a card left your graveyard this turn."
+    pub if_card_left_graveyard: bool,
 }
 
 /// The printed card. Shared by every copy; per-copy state lives on the game object.
@@ -369,14 +373,15 @@ pub struct CardDef {
     /// "You may cast this card from your graveyard. If you do, it enters with a finality counter on
     /// it."
     pub cast_from_graveyard_finality: bool,
+    /// "During your turn, spells you cast cost {1} less to cast for each creature you control with
+    /// power 4 or greater." (Temur Battlecrier)
+    pub your_turn_discount_per_big_creature: bool,
     /// Its mana ability also costs "Tap an untapped creature you control" (Dragonbroods' Relic). The
     /// payer taps an untapped creature that isn't itself a mana source.
     pub mana_taps_creature: bool,
     /// "{T}: Add one mana of any color. Spend this mana only to cast a Dragon spell or an Omen
     /// spell." Its plain mana is in `mana` (Maelstrom of the Spirit Dragon).
     pub any_color_for_dragon_or_omen: bool,
-    /// "Ward—Discard a card."
-    pub ward_discard: bool,
 }
 
 /// An Omen spell half: its name, cost, whether it's an instant, and what it does.
@@ -494,9 +499,9 @@ impl CardDef {
             doubles_damage_of_new_creatures: false,
             doubles_tokens: false,
             cast_from_graveyard_finality: false,
+            your_turn_discount_per_big_creature: false,
             mana_taps_creature: false,
             any_color_for_dragon_or_omen: false,
-            ward_discard: false,
         }
     }
 
@@ -593,9 +598,9 @@ impl CardDef {
             doubles_damage_of_new_creatures: false,
             doubles_tokens: false,
             cast_from_graveyard_finality: false,
+            your_turn_discount_per_big_creature: false,
             mana_taps_creature: false,
             any_color_for_dragon_or_omen: false,
-            ward_discard: false,
         }
     }
 
@@ -692,9 +697,9 @@ impl CardDef {
             doubles_damage_of_new_creatures: false,
             doubles_tokens: false,
             cast_from_graveyard_finality: false,
+            your_turn_discount_per_big_creature: false,
             mana_taps_creature: false,
             any_color_for_dragon_or_omen: false,
-            ward_discard: false,
         }
     }
 }
