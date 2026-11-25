@@ -1002,6 +1002,11 @@ pub enum Effect {
     LinkedOwnerCreatesXx {
         def: usize,
     },
+    /// The opponent may accept the offer: if they decline, the rest of the effects don't happen.
+    OpponentMay,
+    /// The creature in `slot` explores (CR 701.44): reveal the top card; a land goes to hand, else
+    /// a +1/+1 counter on the creature and its controller may put the card into the graveyard.
+    Explore(u8),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1087,6 +1092,8 @@ pub enum Scale {
     PerCreatureYouControl,
     /// Other creatures you control with base power 1 (Zinnia).
     PerOtherYourCreatureBasePowerOne,
+    /// Creatures you control with base power or toughness 1 (Sword of the Squeak).
+    PerYourCreatureBasePowerOrToughnessOne,
 }
 
 /// A condition on a static ability ("as long as ...").
@@ -1110,6 +1117,8 @@ pub enum StaticCondition {
     CounterKindsAmongYoursAtLeast(u8),
     /// The source has at least this many quest counters.
     QuestCountersAtLeast(i32),
+    /// Its controller has the city's blessing (ascend).
+    CitysBlessing,
 }
 
 /// A static ability that changes characteristics (CR 604, 613 layers 6 and 7c).
@@ -1461,6 +1470,13 @@ pub enum When {
     CreatureYouControlAttacks,
     /// "Whenever another [A] or [B] you control enters" (any permanent with one of the subtypes).
     AnotherYouControlEntersWithAnySubtype(&'static [&'static str]),
+    /// "Whenever another creature you control with base power N enters" (that creature is the
+    /// trigger's first target, if its first filter is `triggering`).
+    AnotherCreatureYouControlEntersWithBasePower(i32),
+    /// "Whenever another creature you control enters, if it wasn't cast".
+    AnotherCreatureYouControlEntersNotCast,
+    /// "Whenever you expend N": as you spend your Nth total mana on spells this turn.
+    Expend(u8),
 }
 
 #[derive(Clone, Debug, PartialEq)]

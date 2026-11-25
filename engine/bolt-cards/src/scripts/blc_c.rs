@@ -538,6 +538,84 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::Dies, vec![], vec![Effect::CreateTokensPerLastCounters { def: t.squid }]);
             },
         ),
+        "Tempt with Bunnies" => s(
+            &["Tempting Offer — Draw a card and create a 1/1 white Rabbit creature token. Then each opponent may draw a card and create a 1/1 white Rabbit creature token. For each opponent who does, you draw a card and you create a 1/1 white Rabbit creature token."],
+            |d, t| {
+                let rabbit = |who| Effect::CreateToken { who, def: t.rabbit, n: 1 };
+                spell(
+                    d,
+                    vec![],
+                    vec![
+                        draw(1),
+                        rabbit(Who::You),
+                        // One opponent in a 1v1 game.
+                        Effect::OpponentMay,
+                        Effect::Draw { who: Who::EachOpponent, n: 1 },
+                        rabbit(Who::EachOpponent),
+                        draw(1),
+                        rabbit(Who::You),
+                    ],
+                );
+            },
+        ),
+        "Path of Discovery" => s(&["Whenever a creature you control enters, it explores."], |d, _| {
+            let it = Filter { triggering: true, ..CREATURE };
+            on(d, When::AnotherCreatureYouControlEnters, vec![it], vec![Effect::Explore(0), Effect::Mill { who: Who::You, n: 1 }]);
+        }),
+        "Tendershoot Dryad" => s(
+            &["Ascend", "At the beginning of each upkeep, create a 1/1 green Saproling creature token.", "Saprolings you control get +2/+2 as long as you have the city's blessing."],
+            |d, t| {
+                d.ascend = true;
+                on(d, When::Upkeep { your_turn_only: false }, vec![], vec![Effect::CreateToken { who: Who::You, def: t.saproling, n: 1 }]);
+                lord(d, "Saproling"); // the Dryad is no Saproling, so "other" changes nothing
+                let st = d.statics.last_mut().expect("just added");
+                (st.power, st.toughness) = (2, 2);
+                st.condition = Some(StaticCondition::CitysBlessing);
+            },
+        ),
+        "Wandertale Mentor" => s(&["Whenever you expend 4, put a +1/+1 counter on this creature.", "{T}: Add {R} or {G}."], |d, _| {
+            on(d, When::Expend(4), vec![], vec![Effect::CountersSelf { n: 1 }]);
+            d.mana = Some(ManaSource::of(&[Color::Red, Color::Green]));
+        }),
+        "Trailtracker Scout" => s(
+            &["{T}: Add one mana of any color.", "Whenever you expend 8, return up to one target permanent card from your graveyard to your hand."],
+            |d, _| {
+                d.mana = Some(ManaSource::of(&Color::ALL));
+                let card = Filter { permanent_cards: true, ..graveyard_cards(false, Controller::You) };
+                d.triggers.push(Trigger { when: When::Expend(8), ability: up_to(vec![card], vec![Effect::Bounce(0)]) });
+            },
+        ),
+        "Sword of the Squeak" => s(
+            &[
+                "Equipped creature gets +1/+1 for each creature you control with base power or toughness 1.",
+                "Whenever a Hamster, Mouse, Rat, or Squirrel you control enters, you may attach this Equipment to that creature.",
+                "Equip {2}",
+            ],
+            |d, _| {
+                attached(d, false, 1, 1, Keywords::NONE);
+                d.statics.last_mut().expect("just added").scale = Some(Scale::PerYourCreatureBasePowerOrToughnessOne);
+                const KIN: &[&str] = &["Hamster", "Mouse", "Rat", "Squirrel"];
+                let it = Filter { triggering: true, ..CREATURE };
+                may(d, When::AnotherYouControlEntersWithAnySubtype(KIN), vec![it], vec![Effect::Attach { slot: 0 }]);
+                equip(d, "{2}");
+            },
+        ),
+        "Rapid Augmenter" => s(
+            &[
+                "Whenever another creature you control with base power 1 enters, it gains haste until end of turn.",
+                "Whenever another creature you control enters, if it wasn't cast, put a +1/+1 counter on this creature and this creature can't be blocked this turn.",
+            ],
+            |d, _| {
+                let it = Filter { triggering: true, ..CREATURE };
+                on(d, When::AnotherCreatureYouControlEntersWithBasePower(1), vec![it], vec![Effect::Grant { slot: 0, keywords: Keywords::HASTE }]);
+                on(
+                    d,
+                    When::AnotherCreatureYouControlEntersNotCast,
+                    vec![],
+                    vec![Effect::CountersSelf { n: 1 }, Effect::GrantSelf { keywords: Keywords::UNBLOCKABLE }],
+                );
+            },
+        ),
         _ => None,
     }
 }
@@ -624,4 +702,11 @@ pub const BLC_C_SCRIPTED: &[&str] = &[
     "Skyclave Apparition",
     "Squirrel Nest",
     "Chasm Skulker",
+    "Tempt with Bunnies",
+    "Path of Discovery",
+    "Tendershoot Dryad",
+    "Wandertale Mentor",
+    "Trailtracker Scout",
+    "Sword of the Squeak",
+    "Rapid Augmenter",
 ];

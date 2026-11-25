@@ -474,6 +474,8 @@ pub struct CardDef {
     /// "This creature enters with a number of +1/+1 counters on it equal to one plus the number of
     /// other creatures you control." (Boss's Chauffeur)
     pub enters_counters_one_plus_others: bool,
+    /// Ascend (CR 702.131): with ten or more permanents, you get the city's blessing for the game.
+    pub ascend: bool,
 }
 
 /// An Omen spell half: its name, cost, whether it's an instant, and what it does.
@@ -624,6 +626,7 @@ impl CardDef {
             counter_creatures_tap_for_green: false,
             max_hand_size: 0,
             enters_counters_one_plus_others: false,
+            ascend: false,
         }
     }
 
@@ -753,6 +756,7 @@ impl CardDef {
             counter_creatures_tap_for_green: false,
             max_hand_size: 0,
             enters_counters_one_plus_others: false,
+            ascend: false,
         }
     }
 
@@ -882,6 +886,7 @@ impl CardDef {
             counter_creatures_tap_for_green: false,
             max_hand_size: 0,
             enters_counters_one_plus_others: false,
+            ascend: false,
         }
     }
 }
