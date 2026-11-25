@@ -85,6 +85,8 @@ pub struct Filter {
     pub creature_or_land: bool,
     /// Nonland cards (graveyard targets).
     pub nonland_cards: bool,
+    /// Tokens only.
+    pub tokens_only: bool,
 }
 
 impl Filter {
@@ -126,6 +128,7 @@ impl Filter {
         colored: false,
         creature_or_land: false,
         nonland_cards: false,
+        tokens_only: false,
     };
 
     pub const CREATURE: Filter = Filter {
@@ -852,6 +855,17 @@ pub enum Effect {
     /// Search for up to three monocolored cards with different names and exile them; an opponent
     /// chooses one to shuffle back; you may cast the others free (Emergent Ultimatum).
     SearchMonocoloredOpponentPicks,
+    /// Discard a card unless you attacked this turn (Chart a Course).
+    DiscardUnlessAttacked,
+    /// Offspring: create a 1/1 token copy of the source.
+    OffspringCopy,
+    /// Add X mana in any combination of colors (X the ability's X): X any-color mana in the pool.
+    AddManaAnyColorsX,
+    /// Create a token that's a copy of the token in `slot`; two if it has this subtype (Hazel).
+    CopyTokenTwiceIfSubtype {
+        slot: u8,
+        sub: &'static str,
+    },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -931,6 +945,8 @@ pub enum Scale {
     PerFellowshipCounter,
     /// Creatures you control ("power is equal to the number of creatures you control").
     PerCreatureYouControl,
+    /// Other creatures you control with base power 1 (Zinnia).
+    PerOtherYourCreatureBasePowerOne,
 }
 
 /// A condition on a static ability ("as long as ...").

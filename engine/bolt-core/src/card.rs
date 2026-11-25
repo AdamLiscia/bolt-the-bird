@@ -143,6 +143,8 @@ pub enum Reduction {
     MoreIfTargetsSubtype(&'static str, u8),
     /// ... {1} less for each creature you control with power N or greater (Spectral Denial).
     PerCreatureYouControlPowerAtLeast(i32),
+    /// ... {1} less for each creature on the battlefield (Blasphemous Act).
+    PerCreatureOnBattlefield,
 }
 
 /// An activated ability: "[cost]: [effect]" (CR 602).
@@ -193,6 +195,8 @@ pub struct Activated {
     pub if_card_left_graveyard: bool,
     /// "This ability costs {1} less to activate for each color of the creature it targets."
     pub less_per_target_color: bool,
+    /// "Tap X untapped tokens you control" in the cost (activated with `Action::ActivateX`).
+    pub tap_x_untapped_tokens: bool,
 }
 
 /// The printed card. Shared by every copy; per-copy state lives on the game object.
@@ -405,6 +409,15 @@ pub struct CardDef {
     pub animates_big_noncreatures_your_turn: bool,
     /// "Equipped creature ... has hexproof from monocolored." (Dragonfire Blade)
     pub equipped_hexproof_from_monocolored: bool,
+    /// "This land enters tapped unless you control N or more basic lands." (0: no such rule)
+    pub enters_tapped_unless_basics: u8,
+    /// "This land enters tapped unless you control N or fewer other lands."
+    pub enters_tapped_unless_at_most_lands: Option<u8>,
+    /// "Offspring {cost}": an optional additional cost (cast with `Action::CastKicked`); if paid,
+    /// when it enters, create a 1/1 token copy of it.
+    pub offspring: Option<ManaCost>,
+    /// Zinnia: "Creature spells you cast gain offspring {cost} as you cast them."
+    pub grants_offspring: Option<ManaCost>,
 }
 
 /// An Omen spell half: its name, cost, whether it's an instant, and what it does.
@@ -534,6 +547,10 @@ impl CardDef {
             mana_amount: 0,
             animates_big_noncreatures_your_turn: false,
             equipped_hexproof_from_monocolored: false,
+            enters_tapped_unless_basics: 0,
+            enters_tapped_unless_at_most_lands: None,
+            offspring: None,
+            grants_offspring: None,
         }
     }
 
@@ -642,6 +659,10 @@ impl CardDef {
             mana_amount: 0,
             animates_big_noncreatures_your_turn: false,
             equipped_hexproof_from_monocolored: false,
+            enters_tapped_unless_basics: 0,
+            enters_tapped_unless_at_most_lands: None,
+            offspring: None,
+            grants_offspring: None,
         }
     }
 
@@ -750,6 +771,10 @@ impl CardDef {
             mana_amount: 0,
             animates_big_noncreatures_your_turn: false,
             equipped_hexproof_from_monocolored: false,
+            enters_tapped_unless_basics: 0,
+            enters_tapped_unless_at_most_lands: None,
+            offspring: None,
+            grants_offspring: None,
         }
     }
 }
