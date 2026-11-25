@@ -798,6 +798,8 @@ pub enum Effect {
     /// "If this is the second time this ability has resolved this turn, you draw `n` cards." (Ms.
     /// Bumbleflower; counted per source, each turn)
     DrawIfSecondResolutionThisTurn(u8),
+    /// Discard a card unless you attacked this turn (Chart a Course).
+    DiscardUnlessAttacked,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

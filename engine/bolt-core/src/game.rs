@@ -2310,9 +2310,21 @@ impl Game {
                 self.permanents(controller_now)
                     .any(|x| x != id && subs.iter().any(|&sub| self.has_subtype(x, sub)))
             });
+            let lands_other: Vec<ObjId> = self
+                .permanents(controller_now)
+                .filter(|&x| x != id && self.types_of(x).land)
+                .collect();
+            let few_basics = def.enters_tapped_unless_basics > 0
+                && lands_other.iter().filter(|&&x| self.types_of(x).basic).count()
+                    < def.enters_tapped_unless_basics as usize;
+            let many_lands = def
+                .enters_tapped_unless_at_most_lands
+                .is_some_and(|n| lands_other.len() > n as usize);
             if def.enters_tapped
                 || opponent_forces_tapped
                 || (def.enters_tapped_unless.is_some() && !unless_ok)
+                || few_basics
+                || many_lands
             {
                 self.obj_mut(id).tapped = true;
             }
@@ -3265,6 +3277,9 @@ impl Game {
                 }
             }
             Some(Reduction::PerCreatureYouControl) => self.creatures(p).count().min(255) as u8,
+            Some(Reduction::PerCreatureOnBattlefield) => {
+                (self.creatures(0).count() + self.creatures(1).count()).min(255) as u8
+            }
             Some(Reduction::PerAnyAttackingCreature) => {
                 self.combat.as_ref().map_or(0, |c| c.attackers.len()).min(255) as u8
             }
@@ -6852,6 +6867,19 @@ impl Game {
                 for c in self.creatures(p).collect::<Vec<_>>() {
                     let zcc = self.obj(c).zcc;
                     self.until_your_next_turn.push((c, zcc, keywords, p));
+                }
+            }
+            Effect::DiscardUnlessAttacked => {
+                let p = item.controller;
+                if !self.attacked_this_turn[p] && !self.players[p].hand.is_empty() {
+                    self.ask(
+                        p,
+                        Decision::Discard {
+                            left: 1,
+                            optional: false,
+                            then_draw: 0,
+                        },
+                    );
                 }
             }
             Effect::DrawIfSecondResolutionThisTurn(n) => {
