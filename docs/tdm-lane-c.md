@@ -536,3 +536,15 @@ Aesi batch 4 (1): Deadeye Navigator (verified after the WIP commit c672eb1; it p
 (`Game::paired_partner` checks the pairing still holds), `Decision::SoulbondPair`, `Effect::{SoulbondPairOnEnter,
 SoulbondPairWith}`; the granted "{1}{U}: Exile this creature, then return it" comes after kept abilities and any
 granted fight ability in `activated_of` and the activation list. Aesi lane C: 24 of 24.
+
+## Playgroup 2026-11-25: Etali, Primal Conqueror (RuricMo), lane C (round 2)
+
+List: the Etali deck's cards in ~/bolt-handoff/playgroup_all.json card_order that set_support for CMD shows as "no"
+(57). Etali's back face refreshed first (`fetch_oracle.py --set PG --refresh`, then `make_cmd_set.py`).
+
+Etali batch 1 (9): Green Sun's Zenith, Bane of Progress, Silverback Elder, Temple of the False God, Circle of Dreams
+Druid, Tribute to the World Tree, Parallel Lives, Spire Garden, Worldspine Wurm.
+Core: `CardDef::{mana_per_creature, mana_only_with_lands, shuffle_on_resolve}`, `SearchFor::{GreenCreatureMvAtMostX,
+ColoredCreatureMvAtMost}`, `When::PutIntoGraveyardFromAnywhere` (fired from `move_to` for the card itself),
+`Effect::{DestroyArtifactsEnchantmentsCountersSelf, DrawIfPowerThreeElseTwoCounters}`. Token: Wurm 5/5 trample at
+base+59.

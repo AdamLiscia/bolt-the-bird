@@ -167,6 +167,7 @@ pub fn token_defs() -> Vec<CardDef> {
             t.types.legendary = true;
             t
         },
+        token("Wurm", "Wurm", 5, 5, Keywords::TRAMPLE), // Worldspine Wurm's green 5/5s
     ]
 }
 
@@ -267,6 +268,7 @@ pub struct Tokens {
     pub bird_2: usize,
     pub forest_dryad: usize,
     pub ashaya: usize,
+    pub wurm_5: usize,
 }
 
 impl Tokens {
@@ -331,6 +333,7 @@ impl Tokens {
             bird_2: base + 56,
             forest_dryad: base + 57,
             ashaya: base + 58,
+            wurm_5: base + 59,
         }
     }
 }

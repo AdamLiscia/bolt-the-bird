@@ -1834,3 +1834,128 @@ fn deadeye_navigator_pairs_and_grants_a_flicker() {
         "Navigator itself flickers and pairs on entering"
     );
 }
+
+// ---- Etali, Primal Conqueror (RuricMo) ----
+
+#[test]
+fn green_suns_zenith_fetches_a_green_creature_and_shuffles_itself_in() {
+    let mut g = table();
+    let big = g.add_card(0, cid("Avenger of Zendikar"), Zone::Library); // mana value 7
+    let small = g.add_card(0, cid("Hungry Ghoul"), Zone::Library); // black
+    let elf = g.add_card(0, cid("Circle of Dreams Druid"), Zone::Library);
+    let gsz = hand(&mut g, 0, "Green Sun's Zenith");
+    act(&mut g, Action::CastX(gsz, 3));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    let legal = g.legal_actions();
+    assert!(!legal.contains(&Action::Pick(big)) && !legal.contains(&Action::Pick(small)));
+    resolve_all(&mut g, &[Action::Pick(elf)]);
+    assert_eq!(g.obj(elf).zone, Zone::Battlefield);
+    assert_eq!(g.obj(gsz).zone, Zone::Library);
+}
+
+#[test]
+fn bane_of_progress_destroys_artifacts_and_enchantments_and_grows() {
+    let mut g = table();
+    put(&mut g, 1, "Arcane Signet");
+    put(&mut g, 1, "Exploration");
+    put(&mut g, 0, "Sensei's Divining Top");
+    let bane = hand(&mut g, 0, "Bane of Progress");
+    play(&mut g, bane, false, &[], &[]);
+    assert!(g
+        .battlefield
+        .iter()
+        .all(|&x| !g.types_of(x).artifact && !g.types_of(x).enchantment));
+    assert_eq!(g.power(bane), 5);
+}
+
+#[test]
+fn silverback_elder_triggers_on_creature_spells() {
+    let mut g = table();
+    put(&mut g, 0, "Silverback Elder");
+    let ghoul = hand(&mut g, 0, "Hungry Ghoul");
+    let life = g.players[0].life;
+    act(&mut g, Action::Cast(ghoul));
+    resolve_all(&mut g, &[Action::Mode(2)]);
+    assert_eq!(g.players[0].life, life + 4);
+    let forest = top(&mut g, "Forest");
+    let turtle = hand(&mut g, 0, "Aegis Turtle");
+    act(&mut g, Action::Cast(turtle));
+    resolve_all(&mut g, &[Action::Mode(1), Action::Pick(forest)]);
+    assert_eq!(g.obj(forest).zone, Zone::Battlefield);
+    assert!(g.obj(forest).tapped);
+}
+
+#[test]
+fn temple_of_the_false_god_needs_five_lands() {
+    let mut g = game(&["Temple of the False God", "Forest", "Forest", "Forest"]);
+    let t = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "Temple of the False God")
+        .unwrap();
+    assert!(!g.mana_sources(0).iter().any(|&(x, _)| x == t));
+    put(&mut g, 0, "Forest");
+    assert_eq!(
+        g.mana_sources(0)
+            .iter()
+            .filter(|&&(x, m)| x == t && m.colorless)
+            .count(),
+        2
+    );
+}
+
+#[test]
+fn circle_of_dreams_druid_taps_for_a_green_per_creature() {
+    let g = game(&["Circle of Dreams Druid", "Hungry Ghoul", "Aegis Turtle"]);
+    let c = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "Circle of Dreams Druid")
+        .unwrap();
+    assert_eq!(g.mana_sources(0).iter().filter(|&&(x, _)| x == c).count(), 3);
+}
+
+#[test]
+fn tribute_to_the_world_tree_draws_for_big_and_grows_small() {
+    let mut g = table();
+    put(&mut g, 0, "Tribute to the World Tree");
+    let n = g.players[0].hand.len();
+    let turtle = hand(&mut g, 0, "Aegis Turtle");
+    play(&mut g, turtle, false, &[], &[]);
+    assert_eq!(g.power(turtle), 2, "two +1/+1 counters");
+    let pal = hand(&mut g, 0, "Palinchron");
+    play(&mut g, pal, false, &[], &[]);
+    assert_eq!(g.players[0].hand.len(), n + 1, "power 4: a card");
+}
+
+#[test]
+fn parallel_lives_doubles_tokens() {
+    let mut g = table();
+    put(&mut g, 0, "Parallel Lives");
+    let atw = hand(&mut g, 0, "Awaken the Woods");
+    act(&mut g, Action::CastX(atw, 2));
+    resolve_all(&mut g, &[]);
+    assert_eq!(tokens(&g, 0, "Forest Dryad").len(), 4);
+}
+
+#[test]
+fn spire_garden_enters_tapped_and_taps_for_red_or_green() {
+    let mut g = game(&[]);
+    let sg = hand(&mut g, 0, "Spire Garden");
+    act(&mut g, Action::PlayLand(sg));
+    assert!(g.obj(sg).tapped);
+    let g = game(&["Spire Garden"]);
+    let sg = g.permanents(0).next().unwrap();
+    assert_eq!(colors(&g, sg), [false, false, false, true, true]);
+}
+
+#[test]
+fn worldspine_wurm_leaves_three_wurms_and_shuffles_itself_in() {
+    let mut g = table();
+    let w = put(&mut g, 0, "Worldspine Wurm");
+    assert!(g.keywords(w).has(Keywords::TRAMPLE));
+    let dam = hand(&mut g, 0, "Damnation");
+    play(&mut g, dam, false, &[], &[]);
+    assert_eq!(tokens(&g, 0, "Wurm").len(), 3);
+    assert_eq!(g.obj(w).zone, Zone::Library);
+}

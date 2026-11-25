@@ -1318,6 +1318,12 @@ pub enum Effect {
     /// Soulbond, as another creature enters: pair the source with the creature in `slot`, if both
     /// are unpaired.
     SoulbondPairWith(u8),
+    /// Destroy all artifacts and enchantments; a +1/+1 counter on the source for each one destroyed
+    /// (Bane of Progress).
+    DestroyArtifactsEnchantmentsCountersSelf,
+    /// The creature in `slot`: draw a card if its power is 3 or greater, else two +1/+1 counters on it
+    /// (Tribute to the World Tree).
+    DrawIfPowerThreeElseTwoCounters(u8),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1348,6 +1354,10 @@ pub enum SearchFor {
     Land,
     /// A creature card with mana value at least this (Fierce Empath).
     CreatureMvAtLeast(u32),
+    /// A green creature card with mana value at most X (resolved to `ColoredCreatureMvAtMost`).
+    GreenCreatureMvAtMostX,
+    /// A creature card of this color (WUBRG index) with mana value at most this.
+    ColoredCreatureMvAtMost(u8, u32),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1875,6 +1885,8 @@ pub enum When {
     YouCastGreenPermanent,
     /// "Whenever one or more land cards are put into your graveyard from your library".
     LandCardsMilledToYourGraveyard,
+    /// "When this is put into a graveyard from anywhere" (the source itself; Worldspine Wurm).
+    PutIntoGraveyardFromAnywhere,
 }
 
 #[derive(Clone, Debug, PartialEq)]

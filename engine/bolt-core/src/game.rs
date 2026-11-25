@@ -2848,6 +2848,9 @@ impl Game {
                 self.lands_milled_pending[owner] = true;
             }
         }
+        if to == Zone::Graveyard && from != Zone::Graveyard && !self.is_token(id) {
+            self.fire_source(id, When::PutIntoGraveyardFromAnywhere);
+        }
         if from == Zone::Graveyard && to != Zone::Graveyard && !self.is_token(id) {
             self.graveyard_left_this_turn[owner] = true;
             self.graveyard_leave_any_pending[owner] = true;
@@ -5770,6 +5773,8 @@ impl Game {
             // "an amount of {G} equal to this creature's power"
             let n = if self.def_of(id).mana_equal_power {
                 self.power(id).max(0) as usize
+            } else if self.def_of(id).mana_per_creature {
+                self.creatures(p).count() // Circle of Dreams Druid
             } else {
                 n
             };
@@ -5803,6 +5808,10 @@ impl Game {
                     });
                 }
                 let d = self.def_of(id);
+                let need = d.mana_only_with_lands as usize;
+                if need > 0 && self.permanents(p).filter(|&x| self.types_of(x).land).count() < need {
+                    return None; // Temple of the False God
+                }
                 if d.mana_taps_creature && self.relic_partner(p, None).is_none() {
                     return None; // "Tap an untapped creature you control"
                 }
@@ -7241,7 +7250,8 @@ impl Game {
         }
         if r.item.kind == StackKind::Spell {
             let omen = r.item.mode == Some(OMEN_MODE);
-            if omen && self.obj(source).zone == Zone::Stack {
+            let shuffles = self.def_of(source).shuffle_on_resolve;
+            if (omen || shuffles) && self.obj(source).zone == Zone::Stack {
                 // An Omen: "Then shuffle this card into its owner's library."
                 let owner = self.obj(source).owner;
                 self.move_to(source, Zone::Library);
@@ -7494,6 +7504,10 @@ impl Game {
                     SearchFor::ColorlessNonland => !d.types.land && !d.colors.iter().any(|&c| c),
                     SearchFor::Land => d.types.land,
                     SearchFor::CreatureMvAtLeast(mv) => d.types.creature && d.cost.mana_value() >= mv,
+                    SearchFor::GreenCreatureMvAtMostX => false, // resolved first
+                    SearchFor::ColoredCreatureMvAtMost(c, mv) => {
+                        d.types.creature && d.colors[c as usize] && d.cost.mana_value() <= mv
+                    }
                 }
             })
             .collect()
@@ -9148,6 +9162,7 @@ impl Game {
                 let n = if item.kicked { kicked_n.unwrap_or(n) } else { n };
                 let what = match what {
                     SearchFor::CreatureMvAtMostX => SearchFor::CreatureMvAtMost(item.x as u32),
+                    SearchFor::GreenCreatureMvAtMostX => SearchFor::ColoredCreatureMvAtMost(4, item.x as u32),
                     w => w,
                 };
                 let to = match to {
@@ -10505,6 +10520,34 @@ impl Game {
                         && self.paired_partner(c).is_none();
                     if both {
                         self.pair(src, c);
+                    }
+                }
+            }
+            Effect::DestroyArtifactsEnchantmentsCountersSelf => {
+                let all: Vec<ObjId> = self
+                    .battlefield
+                    .iter()
+                    .copied()
+                    .filter(|&x| {
+                        let t = self.types_of(x);
+                        t.artifact || t.enchantment
+                    })
+                    .collect();
+                let mut n = 0;
+                for x in all {
+                    self.destroy(x);
+                    if self.obj(x).zone != Zone::Battlefield {
+                        n += 1;
+                    }
+                }
+                self.add_counters(src, n);
+            }
+            Effect::DrawIfPowerThreeElseTwoCounters(n) => {
+                if let Some(c) = Game::slot_object(item, legal, n) {
+                    if self.power(c) >= 3 {
+                        self.draw(item.controller);
+                    } else {
+                        self.add_counters(c, 2);
                     }
                 }
             }

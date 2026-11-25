@@ -748,6 +748,73 @@ pub fn script(name: &str) -> Option<Script> {
                 may(d, When::AnotherCreatureYouControlEnters, vec![it], vec![Effect::SoulbondPairWith(0)]);
             },
         ),
+        // ---- Etali, Primal Conqueror (RuricMo) ----
+        "Green Sun's Zenith" => s(
+            &["Search your library for a green creature card with mana value X or less, put it onto the battlefield, then shuffle. Shuffle Green Sun's Zenith into its owner's library."],
+            |d, _| {
+                spell(d, vec![], vec![search(SearchFor::GreenCreatureMvAtMostX, SearchTo::Battlefield { tapped: false })]);
+                d.shuffle_on_resolve = true;
+            },
+        ),
+        "Bane of Progress" => s(
+            &["When this creature enters, destroy all artifacts and enchantments. Put a +1/+1 counter on this creature for each permanent destroyed this way."],
+            |d, _| on(d, When::Enters, vec![], vec![Effect::DestroyArtifactsEnchantmentsCountersSelf]),
+        ),
+        "Silverback Elder" => s(
+            &[
+                "Whenever you cast a creature spell, choose one —",
+                "• Destroy target artifact or enchantment.",
+                "• Look at the top five cards of your library. You may put a land card from among them onto the battlefield tapped. Put the rest on the bottom of your library in a random order.",
+                "• You gain 4 life.",
+            ],
+            |d, _| {
+                let look = Effect::LookAtTop { n: 5, pick: Pick::Land, chosen_to: LookTo::BattlefieldTapped, rest_to: LookRest::BottomRandom };
+                on_modal(
+                    d,
+                    When::YouCastCreature,
+                    None,
+                    vec![
+                        Ability::new(vec![ARTIFACT_OR_ENCHANTMENT], vec![Effect::Destroy(0)]),
+                        Ability::new(vec![], vec![look]),
+                        Ability::new(vec![], vec![Effect::GainLife { who: Who::You, n: 4 }]),
+                    ],
+                );
+            },
+        ),
+        "Temple of the False God" => s(&["{T}: Add {C}{C}. Activate only if you control five or more lands."], |d, _| {
+            d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+            d.mana_amount = 2;
+            d.mana_only_with_lands = 5;
+        }),
+        "Circle of Dreams Druid" => s(&["{T}: Add {G} for each creature you control."], |d, _| {
+            d.mana = Some(ManaSource::of(&[Color::Green]));
+            d.mana_per_creature = true;
+        }),
+        "Tribute to the World Tree" => s(
+            &["Whenever a creature you control enters, draw a card if its power is 3 or greater. Otherwise, put two +1/+1 counters on it."],
+            |d, _| {
+                let it = Filter { triggering: true, ..CREATURE };
+                on(d, When::AnotherCreatureYouControlEnters, vec![it], vec![Effect::DrawIfPowerThreeElseTwoCounters(0)]);
+            },
+        ),
+        "Parallel Lives" => s(
+            &["If an effect would create one or more tokens under your control, it creates twice that many of those tokens instead."],
+            |d, _| d.doubles_tokens = true,
+        ),
+        "Spire Garden" => s(&["This land enters tapped unless you have two or more opponents.", "{T}: Add {R} or {G}."], |d, _| {
+            d.enters_tapped = true; // a two-player game: one opponent
+            dual(d, Color::Red, Color::Green);
+        }),
+        "Worldspine Wurm" => s(
+            &[
+                "When this creature dies, create three 5/5 green Wurm creature tokens with trample.",
+                "When Worldspine Wurm is put into a graveyard from anywhere, shuffle it into its owner's library.",
+            ],
+            |d, t| {
+                on(d, When::Dies, vec![], vec![Effect::CreateToken { who: Who::You, def: t.wurm_5, n: 3 }]);
+                on(d, When::PutIntoGraveyardFromAnywhere, vec![], vec![Effect::ShuffleSourceFromGraveyardIntoLibrary]);
+            },
+        ),
         _ => None,
     }
 }
@@ -844,4 +911,13 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Khalni Ambush // Khalni Territory",
     "Nissa, Vastwood Seer // Nissa, Sage Animist",
     "Deadeye Navigator",
+    "Green Sun's Zenith",
+    "Bane of Progress",
+    "Silverback Elder",
+    "Temple of the False God",
+    "Circle of Dreams Druid",
+    "Tribute to the World Tree",
+    "Parallel Lives",
+    "Spire Garden",
+    "Worldspine Wurm",
 ];

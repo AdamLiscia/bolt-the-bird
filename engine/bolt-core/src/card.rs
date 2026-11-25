@@ -646,6 +646,13 @@ pub struct CardDef {
     /// creatures has \"{1}{U}: Exile this creature, then return it to the battlefield under your
     /// control.\"" (Deadeye Navigator): the granted ability (see `Game::activated_of`).
     pub soulbond_flicker: bool,
+    /// "{T}: Add {G} for each creature you control." (Circle of Dreams Druid)
+    pub mana_per_creature: bool,
+    /// Its mana ability works only while you control at least this many lands (Temple of the False
+    /// God: 5); 0: always.
+    pub mana_only_with_lands: u8,
+    /// "Shuffle this card into its owner's library" as it resolves (Green Sun's Zenith).
+    pub shuffle_on_resolve: bool,
 }
 
 /// What entering makes triggers happen again (see [`CardDef::entering_triggers_again`]).
@@ -865,6 +872,9 @@ impl CardDef {
             umbra_armor: false,
             modal_back: false,
             soulbond_flicker: false,
+            mana_per_creature: false,
+            mana_only_with_lands: 0,
+            shuffle_on_resolve: false,
         }
     }
 
@@ -1052,6 +1062,9 @@ impl CardDef {
             umbra_armor: false,
             modal_back: false,
             soulbond_flicker: false,
+            mana_per_creature: false,
+            mana_only_with_lands: 0,
+            shuffle_on_resolve: false,
         }
     }
 
@@ -1239,6 +1252,9 @@ impl CardDef {
             umbra_armor: false,
             modal_back: false,
             soulbond_flicker: false,
+            mana_per_creature: false,
+            mana_only_with_lands: 0,
+            shuffle_on_resolve: false,
         }
     }
 }

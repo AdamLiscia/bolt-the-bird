@@ -429,6 +429,9 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         umbra_armor: false,
         modal_back: false,
         soulbond_flicker: false,
+        mana_per_creature: false,
+        mana_only_with_lands: 0,
+        shuffle_on_resolve: false,
     };
     def.color_identity = color_identity(o);
     def.phyrexian = phyrexian;
