@@ -3887,6 +3887,15 @@ impl Game {
         } else {
             0
         };
+        // Goblin Anarchomancer: "Each spell you cast that's red or green costs {1} less to cast."
+        let second = second
+            + if def.colors[3] || def.colors[4] {
+                self.permanents(p)
+                    .map(|x| self.def_of(x).red_green_spell_discount)
+                    .sum::<u8>()
+            } else {
+                0
+            };
         // Temur Battlecrier: during your turn, {1} less for each creature you control with power 4+.
         let battle: u8 = if self.active == p {
             let crier = self
@@ -4055,6 +4064,10 @@ impl Game {
                 continue;
             }
             let id = sources[i - pool.len()].0;
+            let tomb = self.def_of(id).mana_tap_damage;
+            if tomb > 0 && !self.obj(id).tapped {
+                self.deal_damage(id, Target::Player(p), tomb as i32); // Ancient Tomb
+            }
             self.become_tapped(id);
             if self.def_of(id).mana_taps_creature {
                 if let Some(c) = self.relic_partner(p, exclude) {
@@ -4160,6 +4173,10 @@ impl Game {
         }
         if self.def_of(id).pain_colored && c != 5 {
             self.deal_damage(id, Target::Player(p), 1);
+        }
+        let tomb = self.def_of(id).mana_tap_damage;
+        if tomb > 0 && !self.obj(id).tapped {
+            self.deal_damage(id, Target::Player(p), tomb as i32); // Ancient Tomb
         }
         self.become_tapped(id);
         if self.def_of(id).mana_taps_creature {
@@ -5306,6 +5323,18 @@ impl Game {
                 self.combat.as_mut().expect("in combat").blocks.clear();
             }
             (Pending::DeclareBlockers(_), Action::FinishBlocks) => {
+                let blockers: Vec<ObjId> = self
+                    .combat
+                    .as_ref()
+                    .map(|c| c.blocks.iter().map(|b| b.0).collect())
+                    .unwrap_or_default();
+                let mut seen = Vec::new();
+                for b in blockers {
+                    if !seen.contains(&b) {
+                        seen.push(b);
+                        self.fire_source(b, When::Blocks);
+                    }
+                }
                 self.passes = 0;
                 self.give_priority(self.active);
             }
@@ -6334,6 +6363,7 @@ impl Game {
                     SearchFor::Subtype(sub) => d.subtypes.iter().any(|s| s == sub),
                     SearchFor::ColorlessNonland => !d.types.land && !d.colors.iter().any(|&c| c),
                     SearchFor::Land => d.types.land,
+                    SearchFor::CreatureMvAtLeast(mv) => d.types.creature && d.cost.mana_value() >= mv,
                 }
             })
             .collect()
@@ -10184,6 +10214,19 @@ impl Game {
                 let n = self.creatures(opponent(item.controller)).count() as i32;
                 self.gain_life(item.controller, n);
             }
+            Effect::GrantAllPermanentsYouControl(keywords) => {
+                for id in self.permanents(item.controller).collect::<Vec<_>>() {
+                    let zcc = self.obj(id).zcc;
+                    self.until_eot.push(Modifier {
+                        obj: id,
+                        zcc,
+                        power: 0,
+                        toughness: 0,
+                        keywords,
+                        dies: None,
+                    });
+                }
+            }
             Effect::CopyAttachedNonlegendaryHaste => {
                 let Some((c, zcc)) = self.obj(src).attached_to else {
                     return;
@@ -11254,7 +11297,11 @@ impl Game {
         } else {
             1
         };
-        neriv * violence * self.opponent_damage_doubling(source, target)
+        let fiery = self
+            .permanents(c)
+            .filter(|&x| self.def_of(x).triples_your_damage && !self.lost_abilities(x))
+            .count() as u32;
+        neriv * violence * 3i32.pow(fiery.min(10)) * self.opponent_damage_doubling(source, target)
     }
 
     fn opponent_damage_doubling(&self, source: ObjId, target: Target) -> i32 {

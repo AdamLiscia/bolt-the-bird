@@ -345,6 +345,9 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         ascend: false,
         extra_land_drop_each_player: false,
         colored_mana_only_if_you_control: None,
+        mana_tap_damage: 0,
+        triples_your_damage: false,
+        red_green_spell_discount: 0,
     };
     def.color_identity = color_identity(o);
     // An Omen's spell half: its lines must be claimed too, written "Omen: <line>" in the script.

@@ -487,6 +487,12 @@ pub struct CardDef {
     /// Its colored mana works only while you control a permanent with this subtype (Tainted Wood:
     /// "{T}: Add {B} or {G}. Activate only if you control a Swamp."); its {C} always works.
     pub colored_mana_only_if_you_control: Option<&'static str>,
+    /// Its mana ability also deals this much damage to you each time it's activated (Ancient Tomb).
+    pub mana_tap_damage: u8,
+    /// Fiery Emancipation: damage a source you control would deal is tripled.
+    pub triples_your_damage: bool,
+    /// "Each spell you cast that's red or green costs {N} less to cast." (Goblin Anarchomancer)
+    pub red_green_spell_discount: u8,
 }
 
 /// An Omen spell half: its name, cost, whether it's an instant, and what it does.
@@ -640,6 +646,9 @@ impl CardDef {
             ascend: false,
             extra_land_drop_each_player: false,
             colored_mana_only_if_you_control: None,
+            mana_tap_damage: 0,
+            triples_your_damage: false,
+            red_green_spell_discount: 0,
         }
     }
 
@@ -772,6 +781,9 @@ impl CardDef {
             ascend: false,
             extra_land_drop_each_player: false,
             colored_mana_only_if_you_control: None,
+            mana_tap_damage: 0,
+            triples_your_damage: false,
+            red_green_spell_discount: 0,
         }
     }
 
@@ -904,6 +916,9 @@ impl CardDef {
             ascend: false,
             extra_land_drop_each_player: false,
             colored_mana_only_if_you_control: None,
+            mana_tap_damage: 0,
+            triples_your_damage: false,
+            red_green_spell_discount: 0,
         }
     }
 }

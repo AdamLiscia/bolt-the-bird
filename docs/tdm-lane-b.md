@@ -321,3 +321,19 @@ Paused on 2026-11-25 for the playgroup (Xenagos) list. Left on the BLC list:
 - Not claimable: Brightcap Badger // Fungus Frolic and Dusk // Dawn (the oracle data has only the
   front face).
 - Staged but not applied: Wizard Class and Kodama of the East Tree (`/tmp/laneb_batch13.py`).
+
+## Playgroup: Xenagos (Adam), 2026-11-25
+
+The "B_xenagos" list in `~/bolt-handoff/pg_lanes_round0.json` (58 cards), in `scripts/pg_b.rs` and
+`tests/pg_b.rs`.
+
+### PG batch 1: 19 cards
+
+Birds of Paradise, Elvish Mystic, Lotus Petal, Nature's Lore, Three Visits, Skyshroud Claim,
+Kodama's Reach, Wooded Foothills, Aggravated Assault, Seize the Day, Grim Monolith, Hull Breach,
+Heroic Intervention, Fire-Lit Thicket, Ancient Tomb, Fiery Emancipation, Goblin Anarchomancer, Elder
+Gargaroth, Fierce Empath.
+
+Core: `CardDef::mana_tap_damage` (Ancient Tomb, both payment paths), `triples_your_damage`,
+`red_green_spell_discount`; `Effect::GrantAllPermanentsYouControl`; `SearchFor::CreatureMvAtLeast`;
+`When::Blocks` (fired once per blocker as blocks are finished).

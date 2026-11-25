@@ -1084,6 +1084,8 @@ pub enum Effect {
     /// Cascade (CR 702.85) for the spell in the trigger's `extra`: exile from the top until a nonland
     /// card with lesser mana value; you may cast it free; the rest go to the bottom in a random order.
     Cascade,
+    /// Permanents you control gain these keywords until end of turn (Heroic Intervention).
+    GrantAllPermanentsYouControl(Keywords),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1112,6 +1114,8 @@ pub enum SearchFor {
     ColorlessNonland,
     /// Any land card.
     Land,
+    /// A creature card with mana value at least this (Fierce Empath).
+    CreatureMvAtLeast(u32),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1585,6 +1589,8 @@ pub enum When {
     OpponentCastsSecondSpell,
     /// "Enchantment spells you cast from your hand have cascade": when you cast one, with it in `extra`.
     YouCastEnchantmentFromHand,
+    /// "Whenever this creature blocks" (CR 509.1i), as blockers are declared.
+    Blocks,
 }
 
 #[derive(Clone, Debug, PartialEq)]
