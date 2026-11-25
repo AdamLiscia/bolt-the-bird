@@ -29,6 +29,13 @@ fn colorless(d: &mut CardDef) {
     });
 }
 
+/// A karoo: enters tapped, returns a land you control to its owner's hand, and taps for two mana.
+fn karoo(d: &mut CardDef, a: Color, b: Color) {
+    d.enters_tapped = true;
+    on(d, When::Enters, vec![], vec![Effect::ReturnLandYouControl]);
+    d.paid_mana = Some((ManaCost::default(), [ManaSource::of(&[a]), ManaSource::of(&[b])]));
+}
+
 pub fn script(name: &str) -> Option<Script> {
     let s = |lines, build| Some(Script { lines, build });
     match name {
@@ -733,6 +740,104 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::EndStep { your_turn_only: true }, vec![], vec![Effect::CreateTokensPerSpellCastThisTurn { def: t.storm_crow }]);
             },
         ),
+        "Golgari Rot Farm" => s(
+            &["This land enters tapped.", "When this land enters, return a land you control to its owner's hand.", "{T}: Add {B}{G}."],
+            |d, _| karoo(d, Color::Black, Color::Green),
+        ),
+        "Gruul Turf" => s(
+            &["This land enters tapped.", "When this land enters, return a land you control to its owner's hand.", "{T}: Add {R}{G}."],
+            |d, _| karoo(d, Color::Red, Color::Green),
+        ),
+        "Loyal Warhound" => s(
+            &["When this creature enters, if an opponent controls more lands than you, search your library for a basic Plains card, put it onto the battlefield tapped, then shuffle."],
+            |d, _| {
+                let plains = SearchFor::LandTypes { types: land_types(&["Plains"]), basic: true };
+                conditional(
+                    d,
+                    When::Enters,
+                    Condition::OpponentControlsMoreLands,
+                    vec![],
+                    vec![search(plains, SearchTo::Battlefield { tapped: true })],
+                );
+            },
+        ),
+        "Warstorm Surge" => s(&["Whenever a creature you control enters, it deals damage equal to its power to any target."], |d, _| {
+            let that = Filter { triggering: true, ..CREATURE };
+            on(d, When::AnotherCreatureYouControlEnters, vec![that, Filter::ANY], vec![Effect::DamageEqualSlotPower { from: 0, to: 1 }]);
+        }),
+        "Rites of Flourishing" => s(
+            &[
+                "At the beginning of each player's draw step, that player draws an additional card.",
+                "Each player may play an additional land on each of their turns.",
+            ],
+            |d, _| {
+                on(d, When::EachDrawStep, vec![], vec![Effect::ActivePlayerDraws(1)]);
+                d.extra_land_drop_each_player = true;
+            },
+        ),
+        "Garruk, Cursed Huntsman" => s(
+            &[
+                "0: Create two 2/2 black and green Wolf creature tokens with \"When this token dies, put a loyalty counter on each Garruk you control.\"",
+                "\u{2212}3: Destroy target creature. Draw a card.",
+                "\u{2212}6: You get an emblem with \"Creatures you control get +3/+3 and have trample.\"",
+            ],
+            |d, t| {
+                loyalty(d, 0, Ability::new(vec![], vec![Effect::CreateToken { who: Who::You, def: t.garruk_wolf, n: 2 }]));
+                loyalty(d, -3, Ability::new(vec![CREATURE], vec![Effect::Destroy(0), draw(1)]));
+                loyalty(d, -6, Ability::new(vec![], vec![Effect::Emblem(EmblemKind::GarrukAnthem)]));
+            },
+        ),
+        "Plaguecrafter" => s(
+            &["When this creature enters, each player sacrifices a creature or planeswalker of their choice. Each player who can't discards a card."],
+            |d, _| {
+                // Each player in turn order (you, then your opponent).
+                on(
+                    d,
+                    When::Enters,
+                    vec![],
+                    vec![
+                        Effect::SacrificeCreatureOrPlaneswalkerElseDiscard { who: Who::You },
+                        Effect::SacrificeCreatureOrPlaneswalkerElseDiscard { who: Who::EachOpponent },
+                    ],
+                );
+            },
+        ),
+        "Chaos Warp" => s(
+            &["The owner of target permanent shuffles it into their library, then reveals the top card of their library. If it's a permanent card, they put it onto the battlefield."],
+            |d, _| {
+                let any = Filter { players: false, creatures: false, planeswalkers: false, any_permanent: true, ..Filter::ANY };
+                spell(d, vec![any], vec![Effect::ChaosWarp(0)]);
+            },
+        ),
+        "Decree of Pain" => s(
+            &[
+                "Destroy all creatures. They can't be regenerated. Draw a card for each creature destroyed this way.",
+                "Cycling {3}{B}{B}",
+                "When you cycle this card, all creatures get -2/-2 until end of turn.",
+            ],
+            |d, _| {
+                // The engine has no regeneration.
+                spell(d, vec![], vec![Effect::DestroyAllCreaturesDrawPerDestroyed]);
+                cycling(d, "{3}{B}{B}");
+                on(
+                    d,
+                    When::YouCycleThis,
+                    vec![],
+                    vec![
+                        Effect::PumpAll { who: Who::You, power: -2, toughness: -2 },
+                        Effect::PumpAll { who: Who::EachOpponent, power: -2, toughness: -2 },
+                    ],
+                );
+            },
+        ),
+        "Spore Frog" => s(&["Sacrifice this creature: Prevent all combat damage that would be dealt this turn."], |d, _| {
+            let n = activated(d, "", false, vec![], vec![Effect::PreventAllCombatDamageThisTurn]);
+            d.activated[n].sacrifice_self = true;
+        }),
+        "Riot Control" => s(
+            &["You gain 1 life for each creature your opponents control. Prevent all damage that would be dealt to you this turn."],
+            |d, _| spell(d, vec![], vec![Effect::GainLifePerOpponentCreature, Effect::PreventAllDamageToYouThisTurn]),
+        ),
         _ => None,
     }
 }
@@ -849,4 +954,15 @@ pub const BLC_B_SCRIPTED: &[&str] = &[
     "Curiosity Crafter",
     "Triskaidekaphile",
     "Murmuration",
+    "Golgari Rot Farm",
+    "Gruul Turf",
+    "Loyal Warhound",
+    "Warstorm Surge",
+    "Rites of Flourishing",
+    "Garruk, Cursed Huntsman",
+    "Plaguecrafter",
+    "Chaos Warp",
+    "Decree of Pain",
+    "Spore Frog",
+    "Riot Control",
 ];

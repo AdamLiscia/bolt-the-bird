@@ -447,6 +447,8 @@ pub struct CardDef {
     /// The snarls: "As this land enters, you may reveal a [A] or [B] card from your hand. If you don't, it
     /// enters tapped." (revealed whenever there is one).
     pub enters_tapped_unless_reveal: Option<[&'static str; 2]>,
+    /// "Each player may play an additional land on each of their turns." (Rites of Flourishing)
+    pub extra_land_drop_each_player: bool,
 }
 
 /// An Omen spell half: its name, cost, whether it's an instant, and what it does.
@@ -589,6 +591,7 @@ impl CardDef {
             doubles_your_creatures_damage: false,
             paid_mana: None,
             enters_tapped_unless_reveal: None,
+            extra_land_drop_each_player: false,
         }
     }
 
@@ -710,6 +713,7 @@ impl CardDef {
             doubles_your_creatures_damage: false,
             paid_mana: None,
             enters_tapped_unless_reveal: None,
+            extra_land_drop_each_player: false,
         }
     }
 
@@ -831,6 +835,7 @@ impl CardDef {
             doubles_your_creatures_damage: false,
             paid_mana: None,
             enters_tapped_unless_reveal: None,
+            extra_land_drop_each_player: false,
         }
     }
 }

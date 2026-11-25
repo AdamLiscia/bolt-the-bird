@@ -783,6 +783,10 @@ pub enum Decision {
     EnterAsCopy { card: ObjId },
     /// `Pick` a creature you control to return to its owner's hand.
     ReturnOwnCreature,
+    /// `Pick` a land you control to return to its owner's hand.
+    ReturnOwnLand,
+    /// `Pick` a creature or planeswalker you control to sacrifice.
+    SacrificeCreatureOrPlaneswalker,
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -982,6 +986,10 @@ pub struct Game {
     pub extra_lands_this_turn: [u8; 2],
     /// "Becomes a copy ... until end of turn": (object, its zcc, the card it was before).
     pub copy_until_eot: Vec<(ObjId, u32, usize)>,
+    /// "Prevent all combat damage that would be dealt this turn": the turn it applies to (Spore Frog).
+    pub combat_damage_prevented_turn: Option<u32>,
+    /// "Prevent all damage that would be dealt to you this turn", per player (Riot Control).
+    pub damage_to_player_prevented_turn: [Option<u32>; 2],
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -1160,6 +1168,8 @@ impl Game {
             commander_damage_from: Vec::new(),
             commander_auto_return: [false; 2],
             extra_lands_this_turn: [0; 2],
+            combat_damage_prevented_turn: None,
+            damage_to_player_prevented_turn: [None; 2],
         }
     }
 
@@ -1592,6 +1602,9 @@ impl Game {
         if self.has_emblem(id, EmblemKind::ElspethAnthem) {
             k = k.with(Keywords::FLYING);
         }
+        if self.has_emblem(id, EmblemKind::GarrukAnthem) {
+            k = k.with(Keywords::TRAMPLE);
+        }
         if self.has_emblem(id, EmblemKind::VivienAnthem) {
             k = k
                 .with(Keywords::VIGILANCE)
@@ -1611,6 +1624,19 @@ impl Game {
             })
     }
 
+    /// Garruk, Cursed Huntsman's emblem: +3/+3 for each one its controller has.
+    fn garruk_emblems(&self, id: ObjId) -> i32 {
+        let o = self.obj(id);
+        if o.zone != Zone::Battlefield || !self.types_of(id).creature {
+            return 0;
+        }
+        3 * self
+            .emblems
+            .iter()
+            .filter(|&&(q, k, _)| q == o.controller && k == EmblemKind::GarrukAnthem)
+            .count() as i32
+    }
+
     fn has_emblem(&self, id: ObjId, kind: EmblemKind) -> bool {
         let o = self.obj(id);
         o.zone == Zone::Battlefield
@@ -1624,6 +1650,7 @@ impl Game {
     fn opponents_graveyard_bonus(&self, id: ObjId) -> i32 {
         let d = self.def_of(id);
         let mut b = if self.emblem_anthem(id) { 2 } else { 0 };
+        b += self.garruk_emblems(id);
         if d.pt_opponents_graveyards {
             b += self.players[opponent(self.obj(id).controller)].graveyard.len() as i32;
         }
@@ -3222,7 +3249,12 @@ impl Game {
                     + self
                         .permanents(p)
                         .map(|x| self.def_of(x).extra_land_drops)
-                        .sum::<u8>();
+                        .sum::<u8>()
+                    + self
+                        .battlefield
+                        .iter()
+                        .filter(|&&x| self.def_of(x).extra_land_drop_each_player && !self.lost_abilities(x))
+                        .count() as u8;
                 if sorcery_timing && self.players[p].lands_played < drops {
                     v.push(Action::PlayLand(c));
                 }
@@ -4461,6 +4493,7 @@ impl Game {
         }
         if a.from_hand_discard && self.obj(id).zone == Zone::Hand {
             self.move_to(id, Zone::Graveyard); // cycling: "Discard this card"
+            self.fire_source(id, When::YouCycleThis);
         }
     }
 
@@ -6216,6 +6249,17 @@ impl Game {
             }
             Decision::EndureOther { .. } => vec![Action::Yes, Action::No],
             Decision::ReturnOwnCreature => self.creatures(p).map(Action::Pick).collect(),
+            Decision::ReturnOwnLand => self
+                .permanents(p)
+                .filter(|&c| self.types_of(c).land)
+                .map(Action::Pick)
+                .collect(),
+            Decision::SacrificeCreatureOrPlaneswalker => self
+                .permanents(p)
+                .filter(|&c| self.types_of(c).creature || self.types_of(c).planeswalker)
+                .filter(|&c| !self.cant_be_sacrificed(c))
+                .map(Action::Pick)
+                .collect(),
             Decision::SearchMonoNames { picked } => {
                 let mut v: Vec<Action> = self.players[p]
                     .library
@@ -6690,6 +6734,8 @@ impl Game {
             }
             (Decision::DiscardReflexive { .. }, Action::No) => {}
             (Decision::ReturnOwnCreature, Action::Pick(c)) => self.move_to(c, Zone::Hand),
+            (Decision::ReturnOwnLand, Action::Pick(c)) => self.move_to(c, Zone::Hand),
+            (Decision::SacrificeCreatureOrPlaneswalker, Action::Pick(c)) => self.move_to(c, Zone::Graveyard),
             (Decision::SearchMonoNames { mut picked }, Action::Pick(c)) => {
                 picked.push(c);
                 let more = self.players[p]
@@ -9472,6 +9518,110 @@ impl Game {
                     self.create_token(item.controller, def);
                 }
             }
+            Effect::ReturnLandYouControl => {
+                let p = item.controller;
+                if self.permanents(p).any(|c| self.types_of(c).land) {
+                    self.ask(p, Decision::ReturnOwnLand);
+                }
+            }
+            Effect::DamageEqualSlotPower { from, to } => {
+                let Some(Chosen::Object(a, _)) = item.targets.get(from as usize).copied() else {
+                    return;
+                };
+                let power = if self.obj(a).zone == Zone::Battlefield {
+                    self.power(a)
+                } else {
+                    self.obj(a).last_power // CR 608.2h: last known information
+                };
+                let target = match item.targets.get(to as usize) {
+                    Some(&Chosen::Object(b, _)) if legal[to as usize] => Target::Object(b),
+                    Some(&Chosen::Player(q)) if legal[to as usize] => Target::Player(q),
+                    _ => return,
+                };
+                if power > 0 {
+                    self.deal_damage(a, target, power);
+                }
+            }
+            Effect::ActivePlayerDraws(n) => {
+                for _ in 0..n {
+                    self.draw(self.active);
+                }
+            }
+            Effect::LoyaltyEachYouControlSubtype(sub) => {
+                let p = item.controller;
+                for w in self.permanents(p).collect::<Vec<_>>() {
+                    if self.types_of(w).planeswalker && self.has_subtype(w, sub) {
+                        self.obj_mut(w).loyalty += self.doubling(p);
+                    }
+                }
+            }
+            Effect::SacrificeCreatureOrPlaneswalkerElseDiscard { who } => {
+                for p in self.players_for(item, legal, who) {
+                    let mine: Vec<ObjId> = self
+                        .permanents(p)
+                        .filter(|&c| self.types_of(c).creature || self.types_of(c).planeswalker)
+                        .filter(|&c| !self.cant_be_sacrificed(c))
+                        .collect();
+                    match mine.len() {
+                        0 => {
+                            if !self.players[p].hand.is_empty() {
+                                self.ask(
+                                    p,
+                                    Decision::Discard {
+                                        left: 1,
+                                        optional: false,
+                                        then_draw: 0,
+                                    },
+                                );
+                                return;
+                            }
+                        }
+                        1 => self.move_to(mine[0], Zone::Graveyard),
+                        _ => {
+                            self.ask(p, Decision::SacrificeCreatureOrPlaneswalker);
+                            return;
+                        }
+                    }
+                }
+            }
+            Effect::ChaosWarp(slot) => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    let owner = self.obj(id).owner;
+                    self.move_to(id, Zone::Library);
+                    self.shuffle_library(owner);
+                    if let Some(&top) = self.players[owner].library.last() {
+                        if self.types_of(top).is_permanent() {
+                            self.move_to(top, Zone::Battlefield);
+                        }
+                    }
+                }
+            }
+            Effect::DestroyAllCreaturesDrawPerDestroyed => {
+                let all: Vec<ObjId> = self
+                    .battlefield
+                    .iter()
+                    .copied()
+                    .filter(|&c| self.types_of(c).creature)
+                    .collect();
+                let mut n = 0;
+                for c in all {
+                    self.destroy(c);
+                    if self.obj(c).zone != Zone::Battlefield {
+                        n += 1;
+                    }
+                }
+                for _ in 0..n {
+                    self.draw(item.controller);
+                }
+            }
+            Effect::PreventAllCombatDamageThisTurn => self.combat_damage_prevented_turn = Some(self.turn),
+            Effect::PreventAllDamageToYouThisTurn => {
+                self.damage_to_player_prevented_turn[item.controller] = Some(self.turn)
+            }
+            Effect::GainLifePerOpponentCreature => {
+                let n = self.creatures(opponent(item.controller)).count() as i32;
+                self.gain_life(item.controller, n);
+            }
         }
     }
 
@@ -9512,6 +9662,10 @@ impl Game {
                 self.cast_creature_noncreature[controller] == [true, true]
             }
             Some(Condition::HandSizeExactly(n)) => self.players[controller].hand.len() == *n as usize,
+            Some(Condition::OpponentControlsMoreLands) => {
+                let lands = |q: PlayerId| self.permanents(q).filter(|&x| self.types_of(x).land).count();
+                lands(opponent(controller)) > lands(controller)
+            }
             Some(Condition::Both(a, b)) => {
                 let one = |c: &Condition| Ability {
                     condition: Some(c.clone()),
@@ -9855,6 +10009,8 @@ impl Game {
                 if self.turn > 1 {
                     self.draw(a);
                 }
+                self.fire(a, When::EachDrawStep, None);
+                self.fire(opponent(a), When::EachDrawStep, None);
                 self.give_priority(a);
             }
             Step::DeclareAttackers => {
@@ -10357,6 +10513,14 @@ impl Game {
     }
 
     fn deal_damage(&mut self, source: ObjId, target: Target, amount: i32) {
+        if self.in_combat_damage && self.combat_damage_prevented_turn == Some(self.turn) {
+            return; // Spore Frog
+        }
+        if let Target::Player(p) = target {
+            if self.damage_to_player_prevented_turn[p] == Some(self.turn) {
+                return; // Riot Control
+            }
+        }
         if let Target::Object(id) = target {
             if self.protected_from(id, source) {
                 return; // CR 702.16e: damage from a source of that color is prevented

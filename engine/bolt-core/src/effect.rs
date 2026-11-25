@@ -945,6 +945,34 @@ pub enum Effect {
     CreateTokensPerSpellCastThisTurn {
         def: usize,
     },
+    /// Return a land you control (your choice, not targeted) to its owner's hand (the karoo lands).
+    ReturnLandYouControl,
+    /// The creature in slot `from` deals damage equal to its power (last known if it left) to the
+    /// target in slot `to`, a player or a permanent (Warstorm Surge).
+    DamageEqualSlotPower {
+        from: u8,
+        to: u8,
+    },
+    /// The active player draws `n` cards (Rites of Flourishing: "that player draws").
+    ActivePlayerDraws(u8),
+    /// Put a loyalty counter on each planeswalker you control with this subtype (Garruk's Wolves).
+    LoyaltyEachYouControlSubtype(&'static str),
+    /// `who` sacrifices a creature or planeswalker of their choice; if they can't, they discard a
+    /// card (Plaguecrafter).
+    SacrificeCreatureOrPlaneswalkerElseDiscard {
+        who: Who,
+    },
+    /// The owner of the permanent in `slot` shuffles it into their library, then reveals the top
+    /// card; a permanent card goes onto the battlefield (Chaos Warp).
+    ChaosWarp(u8),
+    /// Destroy all creatures, then draw a card for each one destroyed (Decree of Pain).
+    DestroyAllCreaturesDrawPerDestroyed,
+    /// Prevent all combat damage that would be dealt this turn (Spore Frog).
+    PreventAllCombatDamageThisTurn,
+    /// Prevent all damage that would be dealt to you this turn (Riot Control).
+    PreventAllDamageToYouThisTurn,
+    /// Gain 1 life for each creature your opponents control (Riot Control).
+    GainLifePerOpponentCreature,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1089,6 +1117,8 @@ pub enum EmblemKind {
     OnAnySpellCast { trigger: usize },
     /// Creatures you control get +2/+2 and have flying (Elspeth, Sun's Champion).
     ElspethAnthem,
+    /// Creatures you control get +3/+3 and have trample (Garruk, Cursed Huntsman).
+    GarrukAnthem,
 }
 
 /// Which looked-at card may be picked.
@@ -1183,6 +1213,8 @@ pub enum Condition {
     YourMainPhase,
     /// You have exactly this many cards in your hand (Triskaidekaphile).
     HandSizeExactly(u8),
+    /// An opponent controls more lands than you (Loyal Warhound).
+    OpponentControlsMoreLands,
 }
 
 /// A spell's effect or a triggered ability: target slots, then effects in order.
@@ -1382,6 +1414,11 @@ pub enum When {
     OpponentCastsNoncreature,
     /// "Whenever a creature token you control deals combat damage to a player" (each one).
     YourCreatureTokenDealsCombatDamageToPlayer,
+    /// "At the beginning of each player's draw step" (either player's permanent; the active player is
+    /// "that player").
+    EachDrawStep,
+    /// "When you cycle this card": from the graveyard, as its cycling ability is activated.
+    YouCycleThis,
 }
 
 #[derive(Clone, Debug, PartialEq)]

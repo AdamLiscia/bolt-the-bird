@@ -234,3 +234,23 @@ Core:
 - `When::OpponentCastsNoncreature`, `When::YourCreatureTokenDealsCombatDamageToPlayer`.
 - `Effect::DoublePowerSelf`, `CreateTokensAmountTapped`, `WinTheGame`, `CreateTokensPerSpellCastThisTurn`.
 - Tokens: Thopter (1/1 flying artifact), Storm Crow (1/2 flying Bird).
+
+### Batch 9: 11 cards
+
+Golgari Rot Farm, Gruul Turf, Loyal Warhound, Warstorm Surge, Rites of Flourishing, Garruk, Cursed
+Huntsman, Plaguecrafter, Chaos Warp, Decree of Pain, Spore Frog, Riot Control.
+
+Core:
+- Karoos: `paid_mana` with an empty cost; `Effect::ReturnLandYouControl` (`Decision::ReturnOwnLand`).
+- `Effect::DamageEqualSlotPower` (a triggering creature hits any target, last-known power),
+  `ActivePlayerDraws` with `When::EachDrawStep` (fired for both players' permanents),
+  `CardDef::extra_land_drop_each_player`.
+- Garruk: Wolf token, `Effect::LoyaltyEachYouControlSubtype`, `EmblemKind::GarrukAnthem`.
+- `Effect::SacrificeCreatureOrPlaneswalkerElseDiscard` (`Decision::SacrificeCreatureOrPlaneswalker`):
+  Plaguecrafter asks you, then your opponent (not simultaneous; nothing is hidden, so the order
+  only matters for who sees whose choice).
+- `Effect::ChaosWarp`, `DestroyAllCreaturesDrawPerDestroyed`; `When::YouCycleThis` fired from the
+  graveyard as a cycling cost is paid.
+- `Game::combat_damage_prevented_turn` (Spore Frog) and `damage_to_player_prevented_turn` (Riot
+  Control), checked at the top of `deal_damage`; `Effect::GainLifePerOpponentCreature`.
+- `Condition::OpponentControlsMoreLands`.

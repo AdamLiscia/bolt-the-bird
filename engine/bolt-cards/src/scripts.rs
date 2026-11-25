@@ -111,6 +111,18 @@ pub fn token_defs() -> Vec<CardDef> {
             thopter
         },
         token("Storm Crow", "Bird", 1, 2, Keywords::FLYING), // Murmuration's blue Birds
+        {
+            // Garruk, Cursed Huntsman: "2/2 black and green Wolf creature tokens with \"When this
+            // token dies, put a loyalty counter on each Garruk you control.\""
+            let mut wolf = token("Wolf", "Wolf", 2, 2, Keywords::NONE);
+            on(
+                &mut wolf,
+                When::Dies,
+                vec![],
+                vec![Effect::LoyaltyEachYouControlSubtype("Garruk")],
+            );
+            wolf
+        },
     ]
 }
 
@@ -194,6 +206,7 @@ pub struct Tokens {
     pub spider: usize,
     pub thopter: usize,
     pub storm_crow: usize,
+    pub garruk_wolf: usize,
 }
 
 impl Tokens {
@@ -241,6 +254,7 @@ impl Tokens {
             spider: base + 39,
             thopter: base + 40,
             storm_crow: base + 41,
+            garruk_wolf: base + 42,
         }
     }
 }
