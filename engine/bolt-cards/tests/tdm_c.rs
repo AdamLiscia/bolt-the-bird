@@ -713,3 +713,212 @@ fn duty_beyond_death_sacrifices_then_protects_and_grows_the_rest() {
     assert_eq!(g.obj(theirs).counters, 0, "yours only");
     assert!(!g.keywords(theirs).has(Keywords::INDESTRUCTIBLE));
 }
+
+// ---- round 3, batch 2: the Sieges ----
+
+/// Cast a Siege from hand on turn 3 and choose mode `m`.
+fn siege_in_mode(g: &mut Game, name: &str, m: u8) -> bolt_core::ObjId {
+    let c = hand(g, 0, name);
+    begin(g);
+    act(g, Action::Cast(c));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(g, Action::PassPriority);
+    }
+    assert_eq!(g.legal_actions(), [Action::Mode(0), Action::Mode(1)], "two modes");
+    act(g, Action::Mode(m));
+    resolve_all(g, &[]);
+    assert_eq!(g.obj(c).zone, Zone::Battlefield);
+    assert_eq!(g.obj(c).chosen_mode, Some(m));
+    c
+}
+
+#[test]
+fn windcrag_siege_mardu_doubles_attack_triggers() {
+    let mut g = table();
+    let p = put(&mut g, 0, "Dalkovan Packbeasts"); // Mobilize 3
+    siege_in_mode(&mut g, "Windcrag Siege", 0);
+    attack_with(&mut g, p);
+    assert_eq!(tokens(&g, 0, "Warrior").len(), 6, "mobilize triggered twice");
+}
+
+#[test]
+fn windcrag_siege_jeskai_makes_a_lifelink_haste_goblin_each_upkeep() {
+    let mut g = table();
+    let p = put(&mut g, 0, "Dalkovan Packbeasts");
+    siege_in_mode(&mut g, "Windcrag Siege", 1);
+    assert!(tokens(&g, 0, "Goblin").is_empty());
+    g.start_turn(5, 0);
+    while g.step == Step::Upkeep || !g.items.is_empty() {
+        act(&mut g, Action::PassPriority);
+    }
+    let goblin = tokens(&g, 0, "Goblin");
+    assert_eq!(goblin.len(), 1);
+    let k = g.keywords(goblin[0]);
+    assert!(k.has(Keywords::LIFELINK) && k.has(Keywords::HASTE));
+    let mut g2 = g.clone();
+    while g2.pending != Pending::DeclareAttackers(0) {
+        act(&mut g2, Action::PassPriority);
+    }
+    act(&mut g2, Action::Attack(p));
+    act(&mut g2, Action::FinishAttacks);
+    resolve_all(&mut g2, &[]);
+    assert_eq!(
+        tokens(&g2, 0, "Warrior").len(),
+        3,
+        "Jeskai doesn't double attack triggers"
+    );
+}
+
+#[test]
+fn frostcliff_siege_jeskai_draws_once_per_combat_damage_step() {
+    let mut g = table();
+    let a = put(&mut g, 0, "Unburied Earthcarver");
+    let b = put(&mut g, 0, "Summit Intimidator");
+    siege_in_mode(&mut g, "Frostcliff Siege", 0);
+    g.start_turn(5, 0);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(a));
+    act(&mut g, Action::Attack(b));
+    act(&mut g, Action::FinishAttacks);
+    let cards = g.players[0].hand.len();
+    through_combat_damage(&mut g);
+    assert_eq!(g.players[0].hand.len(), cards + 1, "one card for two creatures");
+}
+
+#[test]
+fn frostcliff_siege_temur_pumps_your_creatures_with_trample_and_haste() {
+    let mut g = table();
+    let mine = put(&mut g, 0, "Unburied Earthcarver");
+    let theirs = put(&mut g, 1, "Unburied Earthcarver");
+    siege_in_mode(&mut g, "Frostcliff Siege", 1);
+    assert_eq!((g.power(mine), g.toughness(mine)), (3, 2));
+    let k = g.keywords(mine);
+    assert!(k.has(Keywords::TRAMPLE) && k.has(Keywords::HASTE));
+    assert_eq!(g.power(theirs), 2, "yours only");
+    assert!(!g.keywords(theirs).has(Keywords::TRAMPLE));
+}
+
+#[test]
+fn hollowmurk_siege_sultai_draws_on_the_first_counter_each_turn() {
+    let mut g = table();
+    let mine = put(&mut g, 0, "Unburied Earthcarver");
+    let theirs = put(&mut g, 1, "Unburied Earthcarver");
+    siege_in_mode(&mut g, "Hollowmurk Siege", 0);
+    let first = hand(&mut g, 0, "Lightfoot Technique");
+    let second = hand(&mut g, 0, "Lightfoot Technique");
+    let n = g.players[0].hand.len();
+    play(&mut g, first, false, &[obj(theirs)], &[]);
+    assert_eq!(g.players[0].hand.len(), n - 1, "not on an opponent's creature");
+    play(&mut g, second, false, &[obj(mine)], &[]);
+    assert_eq!(g.players[0].hand.len(), n - 2 + 1, "drew one");
+    let third = hand(&mut g, 0, "Lightfoot Technique");
+    play(&mut g, third, false, &[obj(mine)], &[]);
+    assert_eq!(
+        g.players[0].hand.len(),
+        n - 1,
+        "cast one, drew none: only once each turn"
+    );
+    // A later turn: an endure Spirit's counters as it enters count too (CR 122.6).
+    main_phase_turn_5(&mut g);
+    let kin = hand(&mut g, 0, "Fortress Kin-Guard"); // enters, endures 1
+    let n = g.players[0].hand.len();
+    play(&mut g, kin, false, &[], &[Action::No]); // endure: make a Spirit, not a counter
+    assert_eq!(tokens(&g, 0, "Spirit").len(), 1);
+    assert_eq!(g.players[0].hand.len(), n - 1 + 1, "the Spirit's counter drew");
+}
+
+#[test]
+fn hollowmurk_siege_abzan_grows_an_attacker_and_gives_it_menace() {
+    let mut g = table();
+    let a = put(&mut g, 0, "Unburied Earthcarver");
+    siege_in_mode(&mut g, "Hollowmurk Siege", 1);
+    g.start_turn(5, 0);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(a));
+    act(&mut g, Action::FinishAttacks);
+    resolve_all(&mut g, &[Action::Target(obj(a))]);
+    assert_eq!(g.obj(a).counters, 1);
+    assert!(g.keywords(a).has(Keywords::MENACE));
+}
+
+#[test]
+fn glacierwood_siege_temur_mills_four_on_each_instant_or_sorcery() {
+    let mut g = table();
+    siege_in_mode(&mut g, "Glacierwood Siege", 0);
+    let spell = hand(&mut g, 0, "Unending Whisper");
+    let lib = g.players[1].library.len();
+    play(&mut g, spell, false, &[], &[Action::Target(Target::Player(1))]);
+    assert_eq!(g.players[1].library.len(), lib - 4);
+    let creature = hand(&mut g, 0, "Unburied Earthcarver");
+    play(&mut g, creature, false, &[], &[]);
+    assert_eq!(g.players[1].library.len(), lib - 4, "creature spells don't");
+}
+
+#[test]
+fn glacierwood_siege_sultai_plays_lands_from_the_graveyard_with_your_land_drop() {
+    let mut g = tdm_lands(&["Forest", "Forest", "Island"]);
+    let a = g.add_card(0, tid("Forest"), Zone::Graveyard);
+    let b = g.add_card(0, tid("Island"), Zone::Graveyard);
+    let c = hand(&mut g, 0, "Glacierwood Siege");
+    begin(&mut g);
+    assert!(
+        !g.legal_actions().contains(&Action::PlayLand(a)),
+        "not without the Siege"
+    );
+    act(&mut g, Action::Cast(c));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Mode(1));
+    resolve_all(&mut g, &[]);
+    assert!(g.legal_actions().contains(&Action::PlayLand(a)));
+    act(&mut g, Action::PlayLand(a));
+    assert_eq!(g.obj(a).zone, Zone::Battlefield);
+    assert!(!g.legal_actions().contains(&Action::PlayLand(b)), "one land drop");
+}
+
+#[test]
+fn barrensteppe_siege_abzan_puts_a_counter_on_each_creature_at_your_end_step() {
+    let mut g = table();
+    let a = put(&mut g, 0, "Unburied Earthcarver");
+    let b = put(&mut g, 0, "Arashin Sunshield");
+    let theirs = put(&mut g, 1, "Unburied Earthcarver");
+    siege_in_mode(&mut g, "Barrensteppe Siege", 0);
+    to_next_turn(&mut g);
+    assert_eq!((g.obj(a).counters, g.obj(b).counters), (1, 1));
+    assert_eq!(g.obj(theirs).counters, 0);
+    to_next_turn(&mut g); // the opponent's end step: nothing
+    assert_eq!(g.obj(a).counters, 1, "your end step only");
+}
+
+#[test]
+fn barrensteppe_siege_mardu_makes_them_sacrifice_if_yours_died() {
+    let mut g = table();
+    let e = put(&mut g, 0, "Unburied Earthcarver");
+    let fodder = put(&mut g, 0, "Summit Intimidator");
+    let theirs = put(&mut g, 1, "Loxodon Battle Priest");
+    let mut quiet = table();
+    let q_theirs = put(&mut quiet, 1, "Loxodon Battle Priest");
+    siege_in_mode(&mut quiet, "Barrensteppe Siege", 1);
+    to_next_turn(&mut quiet);
+    assert_eq!(
+        quiet.obj(q_theirs).zone,
+        Zone::Battlefield,
+        "no creature of yours died"
+    );
+
+    siege_in_mode(&mut g, "Barrensteppe Siege", 1);
+    act(&mut g, Action::ActivateWith(e, 0, fodder));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(fodder).zone, Zone::Graveyard);
+    to_next_turn(&mut g);
+    assert_eq!(
+        g.obj(theirs).zone,
+        Zone::Graveyard,
+        "each opponent sacrificed one"
+    );
+}

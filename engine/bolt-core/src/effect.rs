@@ -672,6 +672,8 @@ pub enum StaticCondition {
     CountersAtLeast(i32),
     /// Your life total is at least this.
     LifeAtLeast(i32),
+    /// The source's mode, chosen as it entered, is this one (the Sieges).
+    ChosenMode(u8),
 }
 
 /// A static ability that changes characteristics (CR 604, 613 layers 6 and 7c).
@@ -776,6 +778,12 @@ pub enum Condition {
     Threshold,
     /// The source was kicked.
     Kicked,
+    /// The source's mode, chosen as it entered, is this one (the Sieges).
+    ChosenMode(u8),
+    /// Both conditions hold.
+    Both(Box<Condition>, Box<Condition>),
+    /// A creature died under your control this turn.
+    CreatureDiedUnderYourControlThisTurn,
 }
 
 /// A spell's effect or a triggered ability: target slots, then effects in order.
@@ -908,6 +916,12 @@ pub enum When {
     YouCastNoncreatureOrSubtype(&'static str),
     /// "Whenever a creature an opponent controls enters".
     CreatureOpponentControlsEnters,
+    /// "Whenever one or more creatures you control deal combat damage to a player": once per
+    /// combat damage step.
+    YourCreaturesDealCombatDamageToPlayer,
+    /// "Whenever a counter is put on a creature you control. This ability triggers only once each
+    /// turn." (Counters it enters with count, CR 122.6.)
+    CounterPutOnYourCreatureOnceEachTurn,
 }
 
 #[derive(Clone, Debug, PartialEq)]

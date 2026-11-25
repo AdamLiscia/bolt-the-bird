@@ -104,3 +104,29 @@ Mechanics added (bolt-core):
 - `Recipient::EachCreatureAndPlaneswalker`.
 
 Cards: Twin Bolt, Unsparing Boltcaster, Smile at Death, Hardened Tactician, Fire-Rim Form, Krotiq Nestguard, Ruinous Ultimatum, Death Begets Life, Dragonback Assault, Duty Beyond Death.
+
+## Round 3, batch 2: the Sieges (5 cards)
+
+Mechanics added (bolt-core, all at the end of their enum or struct):
+- "As this enters, choose [A] or [B]": `CardDef::enter_modes`, `Object::chosen_mode`, and
+  `Decision::ChooseEnterMode { card }` (`Mode(0)` is the first clan named). The choice is asked as the spell
+  resolves, the same way `choose_color` works. **A Siege put onto the battlefield without being cast (for
+  example by Perennation) gets no choice, so it has no mode and neither ability.** The mode is cleared
+  when the object enters and kept after it leaves, so a trigger already on the stack still resolves.
+- `Condition::ChosenMode(u8)`, `StaticCondition::ChosenMode(u8)`: an ability that exists only in one mode.
+- `Condition::Both(Box<Condition>, Box<Condition>)`, `Condition::CreatureDiedUnderYourControlThisTurn`
+  (tracked in `Game::creature_died_under`, reset each turn).
+- `When::YourCreaturesDealCombatDamageToPlayer`: "one or more creatures you control deal combat damage to
+  a player", once per combat damage step.
+- `When::CounterPutOnYourCreatureOnceEachTurn` (`Object::once_each_turn`): fired from one hook,
+  `counter_put_on`, for +1/+1 counters, stun counters, keyword counters, and counters a creature enters
+  with (subtype bonus, `enters_counters`, the endure Spirit; CR 122.6).
+- `CardDef::attack_triggers_again_in_mode`: in that mode, the active player's "attacks" and "you attack"
+  triggers (mobilize included) trigger an additional time per such Siege.
+- `CardDef::graveyard_lands_in_mode`: in that mode, lands can be played from your graveyard using your
+  normal land drops (this doesn't use Muldrotha's once-per-type allowance).
+
+Cards: Windcrag Siege, Frostcliff Siege, Hollowmurk Siege, Glacierwood Siege, Barrensteppe Siege.
+
+Merge note: the keyword-counter hook is one added line in `Effect::KeywordCounter`, which on tarkir now
+writes `keyword_counters`.

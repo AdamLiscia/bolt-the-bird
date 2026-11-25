@@ -321,6 +321,13 @@ pub struct CardDef {
     pub behold: Behold,
     /// "Each <subtype> you control enters with an additional +1/+1 counter on it" (Dragonstorm Globe).
     pub subtype_enters_with_counter: Option<&'static str>,
+    /// "As this enters, choose [A] or [B]": a mode, 0 or 1, chosen as it resolves (the Sieges).
+    pub enter_modes: bool,
+    /// In this chosen mode: "If a creature attacking causes a triggered ability of a permanent you
+    /// control to trigger, that ability triggers an additional time." (Windcrag Siege)
+    pub attack_triggers_again_in_mode: Option<u8>,
+    /// In this chosen mode: "You may play lands from your graveyard." (Glacierwood Siege)
+    pub graveyard_lands_in_mode: Option<u8>,
 }
 
 /// An Omen spell half: its name, cost, whether it's an instant, and what it does.
@@ -424,6 +431,9 @@ impl CardDef {
             omen: None,
             flash_sorceries_and_dragons: false,
             subtype_enters_with_counter: None,
+            enter_modes: false,
+            attack_triggers_again_in_mode: None,
+            graveyard_lands_in_mode: None,
         }
     }
 
@@ -506,6 +516,9 @@ impl CardDef {
             omen: None,
             flash_sorceries_and_dragons: false,
             subtype_enters_with_counter: None,
+            enter_modes: false,
+            attack_triggers_again_in_mode: None,
+            graveyard_lands_in_mode: None,
         }
     }
 
@@ -588,6 +601,9 @@ impl CardDef {
             omen: None,
             flash_sorceries_and_dragons: false,
             subtype_enters_with_counter: None,
+            enter_modes: false,
+            attack_triggers_again_in_mode: None,
+            graveyard_lands_in_mode: None,
         }
     }
 }

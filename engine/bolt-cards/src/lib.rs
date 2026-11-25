@@ -287,6 +287,9 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         omen: None,
         flash_sorceries_and_dragons: false,
         subtype_enters_with_counter: None,
+        enter_modes: false,
+        attack_triggers_again_in_mode: None,
+        graveyard_lands_in_mode: None,
     };
     // An Omen's spell half: its lines must be claimed too, written "Omen: <line>" in the script.
     if let Some(face) = &o.omen {
