@@ -815,6 +815,68 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::PutIntoGraveyardFromAnywhere, vec![], vec![Effect::ShuffleSourceFromGraveyardIntoLibrary]);
             },
         ),
+        "Ulamog, the Infinite Gyre" => s(
+            &[
+                "When you cast this spell, destroy target permanent.",
+                "Annihilator 4",
+                "When Ulamog is put into a graveyard from anywhere, its owner shuffles their graveyard into their library.",
+            ],
+            |d, _| {
+                let any = Filter { players: false, creatures: false, planeswalkers: false, any_permanent: true, ..Filter::ANY };
+                on(d, When::CastThisSpell, vec![any], vec![Effect::Destroy(0)]);
+                on(d, When::Attacks, vec![], vec![Effect::SacrificePermanents { who: Who::EachOpponent, n: 4 }]);
+                on(d, When::PutIntoGraveyardFromAnywhere, vec![], vec![Effect::OwnerShufflesGraveyardIntoLibrary]);
+            },
+        ),
+        "Lurking Predators" => s(
+            &["Whenever an opponent casts a spell, reveal the top card of your library. If it's a creature card, put it onto the battlefield. Otherwise, you may put that card on the bottom of your library."],
+            |d, _| on(d, When::OpponentCasts, vec![], vec![Effect::RevealTopCreatureToBattlefieldElseMayBottom]),
+        ),
+        "Ulamog, the Defiler" => s(
+            &[
+                "When you cast this spell, target opponent exiles the top half of their library, rounded up.",
+                "Ward—Sacrifice two permanents.",
+                "Ulamog enters with a number of +1/+1 counters on it equal to the greatest mana value among cards in exile.",
+                "Ulamog has annihilator X, where X is the number of +1/+1 counters on it.",
+            ],
+            |d, _| {
+                let opp = Filter::PLAYER.controlled_by(Controller::Opponent);
+                on(d, When::CastThisSpell, vec![opp], vec![Effect::ExileTopHalfOfLibrary(0)]);
+                d.ward_sacrifice = 2;
+                d.enters_counters_greatest_exiled_mv = true;
+                on(d, When::Attacks, vec![], vec![Effect::AnnihilatorPerCounters]);
+            },
+        ),
+        "Homeward Path" => s(&["{T}: Add {C}.", "{T}: Each player gains control of all creatures they own."], |d, _| {
+            d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+            activated(d, "", true, vec![], vec![Effect::CreaturesToOwners]);
+        }),
+        "Purphoros, God of the Forge" => s(
+            &[
+                "As long as your devotion to red is less than five, Purphoros isn't a creature.",
+                "Whenever another creature you control enters, Purphoros deals 2 damage to each opponent.",
+                "{2}{R}: Creatures you control get +1/+0 until end of turn.",
+            ],
+            |d, _| {
+                d.creature_unless_devotion = Some(([false, false, false, true, false], 5));
+                on(d, When::AnotherCreatureYouControlEnters, vec![], vec![damage(2, Recipient::EachOpponent)]);
+                activated(d, "{2}{R}", false, vec![], vec![Effect::PumpAll { who: Who::You, power: 1, toughness: 0 }]);
+            },
+        ),
+        "Conjurer's Closet" => s(
+            &["At the beginning of your end step, you may exile target creature you control, then return that card to the battlefield under your control."],
+            |d, _| may(d, When::EndStep { your_turn_only: true }, vec![YOUR_CREATURE], vec![Effect::BlinkSlot(0)]),
+        ),
+        "Cavern-Hoard Dragon" => s(
+            &[
+                "This spell costs {X} less to cast, where X is the greatest number of artifacts an opponent controls.",
+                "Whenever this creature deals combat damage to a player, you create a Treasure token for each artifact that player controls.",
+            ],
+            |d, t| {
+                d.reduction = Some(Reduction::GreatestArtifactsAnOpponentControls);
+                on(d, When::DealsCombatDamageToPlayer, vec![], vec![Effect::TreasuresPerOpponentArtifact { def: t.treasure }]);
+            },
+        ),
         _ => None,
     }
 }
@@ -920,4 +982,11 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Parallel Lives",
     "Spire Garden",
     "Worldspine Wurm",
+    "Ulamog, the Infinite Gyre",
+    "Lurking Predators",
+    "Ulamog, the Defiler",
+    "Homeward Path",
+    "Purphoros, God of the Forge",
+    "Conjurer's Closet",
+    "Cavern-Hoard Dragon",
 ];

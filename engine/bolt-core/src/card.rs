@@ -158,6 +158,8 @@ pub enum Reduction {
     Delirium(u8),
     /// ... {X} less, X the greatest power among creatures you control (The Great Henge).
     GreatestPowerAmongYourCreatures,
+    /// ... {X} less, X the greatest number of artifacts an opponent controls (Cavern-Hoard Dragon).
+    GreatestArtifactsAnOpponentControls,
 }
 
 /// An activated ability: "[cost]: [effect]" (CR 602).
@@ -653,6 +655,11 @@ pub struct CardDef {
     pub mana_only_with_lands: u8,
     /// "Shuffle this card into its owner's library" as it resolves (Green Sun's Zenith).
     pub shuffle_on_resolve: bool,
+    /// "Ward—Sacrifice N permanents." (Ulamog, the Defiler: 2); 0: none.
+    pub ward_sacrifice: u8,
+    /// "Enters with a number of +1/+1 counters on it equal to the greatest mana value among cards
+    /// in exile." (Ulamog, the Defiler)
+    pub enters_counters_greatest_exiled_mv: bool,
 }
 
 /// What entering makes triggers happen again (see [`CardDef::entering_triggers_again`]).
@@ -875,6 +882,8 @@ impl CardDef {
             mana_per_creature: false,
             mana_only_with_lands: 0,
             shuffle_on_resolve: false,
+            ward_sacrifice: 0,
+            enters_counters_greatest_exiled_mv: false,
         }
     }
 
@@ -1065,6 +1074,8 @@ impl CardDef {
             mana_per_creature: false,
             mana_only_with_lands: 0,
             shuffle_on_resolve: false,
+            ward_sacrifice: 0,
+            enters_counters_greatest_exiled_mv: false,
         }
     }
 
@@ -1255,6 +1266,8 @@ impl CardDef {
             mana_per_creature: false,
             mana_only_with_lands: 0,
             shuffle_on_resolve: false,
+            ward_sacrifice: 0,
+            enters_counters_greatest_exiled_mv: false,
         }
     }
 }

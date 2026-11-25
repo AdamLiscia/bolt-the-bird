@@ -1324,6 +1324,27 @@ pub enum Effect {
     /// The creature in `slot`: draw a card if its power is 3 or greater, else two +1/+1 counters on it
     /// (Tribute to the World Tree).
     DrawIfPowerThreeElseTwoCounters(u8),
+    /// `who` sacrifices `n` permanents of their choice (annihilator, CR 702.86).
+    SacrificePermanents {
+        who: Who,
+        n: u8,
+    },
+    /// Annihilator X, X the +1/+1 counters on the source (Ulamog, the Defiler).
+    AnnihilatorPerCounters,
+    /// The source's owner shuffles their graveyard into their library (Ulamog, the Infinite Gyre).
+    OwnerShufflesGraveyardIntoLibrary,
+    /// Reveal the top card of your library: a creature card goes onto the battlefield; otherwise
+    /// you may put it on the bottom (Lurking Predators).
+    RevealTopCreatureToBattlefieldElseMayBottom,
+    /// Each player gains control of all creatures they own (Homeward Path).
+    CreaturesToOwners,
+    /// The player in `slot` exiles the top half of their library, rounded up (Ulamog, the Defiler).
+    ExileTopHalfOfLibrary(u8),
+    /// You create a Treasure for each artifact the opponent controls (Cavern-Hoard Dragon's combat
+    /// damage trigger; one opponent).
+    TreasuresPerOpponentArtifact {
+        def: usize,
+    },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

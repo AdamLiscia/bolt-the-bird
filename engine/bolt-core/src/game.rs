@@ -565,6 +565,11 @@ pub enum StackKind {
     WardDiscard {
         against: ObjId,
     },
+    /// Ward—sacrifice `n` permanents (Ulamog, the Defiler).
+    WardSacrifice {
+        n: u8,
+        against: ObjId,
+    },
 }
 
 /// The ability of a ward trigger, which has no targets or effects of its own.
@@ -922,6 +927,11 @@ pub enum Decision {
     LandFromHand,
     /// Soulbond: `Pick` another unpaired creature you control to pair with `source`, or `No`.
     SoulbondPair { source: ObjId },
+    /// `Pick` a permanent you control to sacrifice, `left` more to go.
+    SacrificePermanents { left: u8 },
+    /// Ward—sacrifice permanents: `Pick` one (`left` more, `picked` so far), or before the first, `No`
+    /// lets the spell or ability from `against` be countered.
+    PayWardSacrifice { left: u8, against: ObjId, picked: bool },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -2033,6 +2043,21 @@ impl Game {
                 .emblems
                 .iter()
                 .any(|&(q, k, _)| q == o.controller && k == kind)
+    }
+
+    /// `p` sacrifices `n` permanents of their choice: all of them if they have `n` or fewer.
+    fn sacrifice_permanents(&mut self, p: PlayerId, n: u8) {
+        let mine: Vec<ObjId> = self
+            .permanents(p)
+            .filter(|&x| !self.cant_be_sacrificed(x))
+            .collect();
+        if mine.len() <= n as usize {
+            for x in mine {
+                self.move_to(x, Zone::Graveyard);
+            }
+        } else {
+            self.ask(p, Decision::SacrificePermanents { left: n });
+        }
     }
 
     /// How many card types are among cards in `p`'s graveyard (delirium).
@@ -3270,6 +3295,15 @@ impl Game {
                 let x = self.obj(id).x as i32;
                 self.add_counters(id, x);
             }
+            if def.enters_counters_greatest_exiled_mv {
+                let mv = self
+                    .exile
+                    .iter()
+                    .map(|&c| self.def_of(c).cost.mana_value())
+                    .max()
+                    .unwrap_or(0);
+                self.add_counters(id, mv as i32);
+            }
             // Giada: each other Angel you control enters with a counter per Angel already there.
             let controller = self.obj(id).controller;
             let bonus: i32 = self
@@ -3797,9 +3831,10 @@ impl Game {
                 Some(m) => &def.triggers[n].ability.modes[m as usize],
                 None => &def.triggers[n].ability,
             },
-            StackKind::Ward { .. } | StackKind::WardLife { .. } | StackKind::WardDiscard { .. } => {
-                &WARD_ABILITY
-            }
+            StackKind::Ward { .. }
+            | StackKind::WardLife { .. }
+            | StackKind::WardDiscard { .. }
+            | StackKind::WardSacrifice { .. } => &WARD_ABILITY,
             // A transformed planeswalker that left (its −N took the last loyalty) is front face up
             // again; its ability still resolves from the back face it was activated on.
             StackKind::Loyalty(n) => match def.loyalty_abilities.get(n) {
@@ -4721,6 +4756,11 @@ impl Game {
                 self.combat.as_ref().map_or(0, |c| c.attackers.len()).min(255) as u8
             }
             Some(Reduction::MoreIfTargetsSubtype(..)) => 0,
+            Some(Reduction::GreatestArtifactsAnOpponentControls) => self
+                .permanents(opponent(p))
+                .filter(|&x| self.types_of(x).artifact)
+                .count()
+                .min(255) as u8,
             Some(Reduction::IfTargetsTapped(n)) => match targets.first() {
                 Some(&Chosen::Object(x, _)) if self.obj(x).tapped && self.types_of(x).creature => *n,
                 _ => 0,
@@ -7074,6 +7114,16 @@ impl Game {
                         ..Game::casting(id, controller)
                     });
                 }
+                let n = self.def_of(id).ward_sacrifice;
+                if n > 0 {
+                    self.triggered.push(StackItem {
+                        kind: StackKind::WardSacrifice {
+                            n,
+                            against: item.source,
+                        },
+                        ..Game::casting(id, controller)
+                    });
+                }
                 if let Some(cost) = self.def_of(id).ward {
                     self.triggered.push(StackItem {
                         source: id,
@@ -7139,6 +7189,41 @@ impl Game {
                     self.counter_from(against);
                 } else {
                     self.ask(payer, Decision::PayWardDiscard { against });
+                    return;
+                }
+            }
+            self.continue_resolving();
+            return;
+        }
+        if let StackKind::WardSacrifice { n, against } = item.kind {
+            self.resolving = Some(Resolving {
+                item,
+                legal: Vec::new(),
+                remaining: VecDeque::new(),
+                acts: true,
+            });
+            if let Some(payer) = self
+                .items
+                .iter()
+                .rev()
+                .find(|i| i.source == against)
+                .map(|i| i.controller)
+            {
+                let have = self
+                    .permanents(payer)
+                    .filter(|&x| !self.cant_be_sacrificed(x))
+                    .count();
+                if have < n as usize {
+                    self.counter_from(against);
+                } else {
+                    self.ask(
+                        payer,
+                        Decision::PayWardSacrifice {
+                            left: n,
+                            against,
+                            picked: false,
+                        },
+                    );
                     return;
                 }
             }
@@ -7668,6 +7753,22 @@ impl Game {
                     .map(Action::Pick)
                     .collect();
                 v.push(Action::No);
+                v
+            }
+            Decision::SacrificePermanents { .. } => self
+                .permanents(p)
+                .filter(|&x| !self.cant_be_sacrificed(x))
+                .map(Action::Pick)
+                .collect(),
+            Decision::PayWardSacrifice { picked, .. } => {
+                let mut v: Vec<Action> = self
+                    .permanents(p)
+                    .filter(|&x| !self.cant_be_sacrificed(x))
+                    .map(Action::Pick)
+                    .collect();
+                if !picked {
+                    v.push(Action::No);
+                }
                 v
             }
             Decision::LandFromHand => {
@@ -8722,6 +8823,26 @@ impl Game {
             (Decision::ScrollRackExile { exiled }, Action::No) => self.scroll_rack_finish(p, exiled),
             (Decision::LandFromHand, Action::Pick(c)) => self.move_to(c, Zone::Battlefield),
             (Decision::LandFromHand, Action::No) => {}
+            (Decision::SacrificePermanents { left }, Action::Pick(c)) => {
+                self.move_to(c, Zone::Graveyard);
+                if left > 1 && self.permanents(p).any(|x| !self.cant_be_sacrificed(x)) {
+                    self.ask(p, Decision::SacrificePermanents { left: left - 1 });
+                }
+            }
+            (Decision::PayWardSacrifice { left, against, .. }, Action::Pick(c)) => {
+                self.move_to(c, Zone::Graveyard);
+                if left > 1 {
+                    self.ask(
+                        p,
+                        Decision::PayWardSacrifice {
+                            left: left - 1,
+                            against,
+                            picked: true,
+                        },
+                    );
+                }
+            }
+            (Decision::PayWardSacrifice { against, .. }, Action::No) => self.counter_from(against),
             (Decision::SoulbondPair { source }, Action::Pick(c)) => {
                 if self.obj(source).zone == Zone::Battlefield {
                     self.pair(source, c);
@@ -10549,6 +10670,72 @@ impl Game {
                     } else {
                         self.add_counters(c, 2);
                     }
+                }
+            }
+            Effect::SacrificePermanents { who, n } => {
+                for q in self.players_for(item, legal, who) {
+                    self.sacrifice_permanents(q, n);
+                    if self.decision.is_some() {
+                        return;
+                    }
+                }
+            }
+            Effect::AnnihilatorPerCounters => {
+                let n = self.obj(src).counters.clamp(0, 255) as u8;
+                if n > 0 {
+                    self.sacrifice_permanents(opponent(item.controller), n);
+                }
+            }
+            Effect::OwnerShufflesGraveyardIntoLibrary => {
+                let owner = self.obj(src).owner;
+                for c in self.players[owner].graveyard.clone() {
+                    self.move_to(c, Zone::Library);
+                }
+                self.shuffle_library(owner);
+            }
+            Effect::RevealTopCreatureToBattlefieldElseMayBottom => {
+                let p = item.controller;
+                if let Some(&c) = self.players[p].library.last() {
+                    if self.def_of(c).types.creature {
+                        self.move_to(c, Zone::Battlefield);
+                    } else {
+                        self.ask(p, Decision::Tuck { card: c });
+                    }
+                }
+            }
+            Effect::CreaturesToOwners => {
+                let turn = self.turn;
+                for c in self.battlefield.clone() {
+                    let o = self.obj(c);
+                    if self.types_of(c).creature && o.controller != o.owner {
+                        let o = self.obj_mut(c);
+                        o.controller = o.owner;
+                        o.since_turn = turn;
+                    }
+                }
+            }
+            Effect::ExileTopHalfOfLibrary(n) => {
+                if let Some(q) = self
+                    .players_for(item, legal, Who::TargetPlayer(n))
+                    .first()
+                    .copied()
+                {
+                    let half = self.players[q].library.len().div_ceil(2);
+                    for _ in 0..half {
+                        if let Some(&c) = self.players[q].library.last() {
+                            self.move_to(c, Zone::Exile);
+                        }
+                    }
+                }
+            }
+            Effect::TreasuresPerOpponentArtifact { def } => {
+                let p = item.controller;
+                let n = self
+                    .permanents(opponent(p))
+                    .filter(|&x| self.types_of(x).artifact)
+                    .count();
+                for _ in 0..n {
+                    self.create_token(p, def);
                 }
             }
             Effect::BecomeCopyOfSlotUntilEot(n) => {

@@ -432,6 +432,8 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         mana_per_creature: false,
         mana_only_with_lands: 0,
         shuffle_on_resolve: false,
+        ward_sacrifice: 0,
+        enters_counters_greatest_exiled_mv: false,
     };
     def.color_identity = color_identity(o);
     def.phyrexian = phyrexian;

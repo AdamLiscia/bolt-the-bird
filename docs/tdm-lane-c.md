@@ -548,3 +548,13 @@ Core: `CardDef::{mana_per_creature, mana_only_with_lands, shuffle_on_resolve}`, 
 ColoredCreatureMvAtMost}`, `When::PutIntoGraveyardFromAnywhere` (fired from `move_to` for the card itself),
 `Effect::{DestroyArtifactsEnchantmentsCountersSelf, DrawIfPowerThreeElseTwoCounters}`. Token: Wurm 5/5 trample at
 base+59.
+
+Merged tarkir 8e8df2a (desktop lanes setup) after Etali batch 1: no conflicts.
+
+Etali batch 2 (7): Ulamog, the Infinite Gyre, Lurking Predators, Ulamog, the Defiler, Homeward Path, Purphoros,
+Conjurer's Closet, Cavern-Hoard Dragon.
+Core: `CardDef::{ward_sacrifice, enters_counters_greatest_exiled_mv}`, `Reduction::GreatestArtifactsAnOpponentControls`,
+`StackKind::WardSacrifice` (with `Decision::PayWardSacrifice`), `Decision::SacrificePermanents`,
+`Effect::{SacrificePermanents (annihilator N), AnnihilatorPerCounters, OwnerShufflesGraveyardIntoLibrary,
+RevealTopCreatureToBattlefieldElseMayBottom, CreaturesToOwners, ExileTopHalfOfLibrary, TreasuresPerOpponentArtifact}`,
+`Game::sacrifice_permanents`. Annihilator is the attack trigger "defending player sacrifices N" (one opponent).
