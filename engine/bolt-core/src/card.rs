@@ -151,6 +151,8 @@ pub enum Reduction {
     PerCreatureOnBattlefield,
     /// ... {1} less for each token you control (affinity for tokens).
     PerTokenYouControl,
+    /// ... {1} less for each creature that attacked this turn (Rowdy Research).
+    PerCreatureAttackedThisTurn,
     /// Delirium: ... {n} less with four or more card types among cards in your graveyard.
     Delirium(u8),
 }
@@ -217,6 +219,10 @@ pub struct Activated {
     pub sacrifice_creature: bool,
     /// "Activate only if you created a token this turn."
     pub if_created_token_this_turn: bool,
+    /// "Activate only once each turn."
+    pub once_each_turn: bool,
+    /// Remove this many of the source's own kind of counters as a cost (Hoofprints of the Stag).
+    pub remove_kind_counters: i32,
 }
 
 /// The printed card. Shared by every copy; per-copy state lives on the game object.
@@ -479,6 +485,17 @@ pub struct CardDef {
     pub enters_counters_one_plus_others: bool,
     /// Ascend (CR 702.131): with ten or more permanents, you get the city's blessing for the game.
     pub ascend: bool,
+    /// "Each player may play an additional land on each of their turns." (Rites of Flourishing)
+    pub extra_land_drop_each_player: bool,
+    /// Its colored mana works only while you control a permanent with this subtype (Tainted Wood:
+    /// "{T}: Add {B} or {G}. Activate only if you control a Swamp."); its {C} always works.
+    pub colored_mana_only_if_you_control: Option<&'static str>,
+    /// Its mana ability also deals this much damage to you each time it's activated (Ancient Tomb).
+    pub mana_tap_damage: u8,
+    /// Fiery Emancipation: damage a source you control would deal is tripled.
+    pub triples_your_damage: bool,
+    /// "Each spell you cast that's red or green costs {N} less to cast." (Goblin Anarchomancer)
+    pub red_green_spell_discount: u8,
     /// "As this land enters, you may pay 2 life. If you don't, it enters tapped." (shock lands)
     pub shock_land: bool,
     /// "You may play lands from your graveyard."
@@ -658,6 +675,11 @@ impl CardDef {
             max_hand_size: 0,
             enters_counters_one_plus_others: false,
             ascend: false,
+            extra_land_drop_each_player: false,
+            colored_mana_only_if_you_control: None,
+            mana_tap_damage: 0,
+            triples_your_damage: false,
+            red_green_spell_discount: 0,
             shock_land: false,
             lands_from_graveyard: false,
             lands_from_top: false,
@@ -796,6 +818,11 @@ impl CardDef {
             max_hand_size: 0,
             enters_counters_one_plus_others: false,
             ascend: false,
+            extra_land_drop_each_player: false,
+            colored_mana_only_if_you_control: None,
+            mana_tap_damage: 0,
+            triples_your_damage: false,
+            red_green_spell_discount: 0,
             shock_land: false,
             lands_from_graveyard: false,
             lands_from_top: false,
@@ -934,6 +961,11 @@ impl CardDef {
             max_hand_size: 0,
             enters_counters_one_plus_others: false,
             ascend: false,
+            extra_land_drop_each_player: false,
+            colored_mana_only_if_you_control: None,
+            mana_tap_damage: 0,
+            triples_your_damage: false,
+            red_green_spell_discount: 0,
             shock_land: false,
             lands_from_graveyard: false,
             lands_from_top: false,

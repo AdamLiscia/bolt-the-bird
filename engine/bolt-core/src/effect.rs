@@ -91,6 +91,8 @@ pub struct Filter {
     pub nonlegendary: bool,
     /// Nontoken permanents only.
     pub nontoken: bool,
+    /// Permanents that entered the battlefield this turn.
+    pub entered_this_turn: bool,
 }
 
 impl Filter {
@@ -135,6 +137,7 @@ impl Filter {
         tokens_only: false,
         nonlegendary: false,
         nontoken: false,
+        entered_this_turn: false,
     };
 
     pub const CREATURE: Filter = Filter {
@@ -1007,6 +1010,82 @@ pub enum Effect {
     /// The creature in `slot` explores (CR 701.44): reveal the top card; a land goes to hand, else
     /// a +1/+1 counter on the creature and its controller may put the card into the graveyard.
     Explore(u8),
+    /// Return a land you control (your choice, not targeted) to its owner's hand (the karoo lands).
+    ReturnLandYouControl,
+    /// The creature in slot `from` deals damage equal to its power (last known if it left) to the
+    /// target in slot `to`, a player or a permanent (Warstorm Surge).
+    DamageEqualSlotPower {
+        from: u8,
+        to: u8,
+    },
+    /// The active player draws `n` cards (Rites of Flourishing: "that player draws").
+    ActivePlayerDraws(u8),
+    /// Put a loyalty counter on each planeswalker you control with this subtype (Garruk's Wolves).
+    LoyaltyEachYouControlSubtype(&'static str),
+    /// `who` sacrifices a creature or planeswalker of their choice; if they can't, they discard a
+    /// card (Plaguecrafter).
+    SacrificeCreatureOrPlaneswalkerElseDiscard {
+        who: Who,
+    },
+    /// The owner of the permanent in `slot` shuffles it into their library, then reveals the top
+    /// card; a permanent card goes onto the battlefield (Chaos Warp).
+    ChaosWarp(u8),
+    /// Destroy all creatures, then draw a card for each one destroyed (Decree of Pain).
+    DestroyAllCreaturesDrawPerDestroyed,
+    /// Prevent all combat damage that would be dealt this turn (Spore Frog).
+    PreventAllCombatDamageThisTurn,
+    /// Prevent all damage that would be dealt to you this turn (Riot Control).
+    PreventAllDamageToYouThisTurn,
+    /// Gain 1 life for each creature your opponents control (Riot Control).
+    GainLifePerOpponentCreature,
+    /// Untap all lands you control.
+    UntapLandsYouControl,
+    /// Create tokens (`def`) equal to the source's power (last known), untapped (Jacked Rabbit).
+    CreateTokensPower {
+        def: usize,
+    },
+    /// Parley (Selvala): each player reveals their top card; for each nonland card, add {G} and you
+    /// gain 1 life; then each player draws a card.
+    SelvalaParley,
+    /// Each creature without one of these subtypes gets -X/-X until end of turn, X the creatures you
+    /// control with one of them (Swarmyard Massacre).
+    ShrinkAllWithoutSubtypesPerYours(&'static [&'static str]),
+    /// The land in `slot` becomes a creature with this base power and toughness, creature type and
+    /// keywords until end of turn; it's still a land (Llanowar Loamspeaker).
+    SlotBecomesCreatureUntilEot {
+        slot: u8,
+        power: i32,
+        toughness: i32,
+        subtype: &'static str,
+        keywords: crate::Keywords,
+    },
+    /// Set the base power and toughness of each creature you control to X/X until end of turn, X the
+    /// cards in your hand on resolution (Jolrael).
+    YourCreaturesBasePtHandSize,
+    /// You gain 1 life for each creature card in your graveyard (Skyfisher Spider).
+    GainLifePerCreatureCardInGraveyard,
+    /// Exile the source from its owner's graveyard.
+    ExileSourceFromGraveyard,
+    /// Evolve (CR 702.100): if the creature in `slot` has greater power or toughness than the source,
+    /// put a +1/+1 counter on the source (checked as it resolves).
+    Evolve(u8),
+    /// Put `n` of the source's own kind of counter on it (hoofprint, acorn: `Object::kind_counters`).
+    KindCounterSelf(i32),
+    /// "You may sacrifice a token. If you do, ...": the rest only if one is sacrificed.
+    MaySacrificeToken,
+    /// Create a token that's a copy of the creature the source is attached to, except it isn't
+    /// legendary; it has haste (Helm of the Host).
+    CopyAttachedNonlegendaryHaste,
+    /// Tempting offer (Tempt with Discovery), after your first land: each opponent may search for a
+    /// land card and put it onto the battlefield; remembered for `SearchLandIfTempted`.
+    TemptOpponentsLand,
+    /// For each opponent who searched this way, search for a land card and put it onto the battlefield.
+    SearchLandIfTempted,
+    /// Cascade (CR 702.85) for the spell in the trigger's `extra`: exile from the top until a nonland
+    /// card with lesser mana value; you may cast it free; the rest go to the bottom in a random order.
+    Cascade,
+    /// Permanents you control gain these keywords until end of turn (Heroic Intervention).
+    GrantAllPermanentsYouControl(Keywords),
     /// Destroy the permanent in `slot`; its controller may search for a basic land card and put it
     /// onto the battlefield (untapped) (Assassin's Trophy).
     DestroyControllerMayFetchBasic(u8),
@@ -1047,6 +1126,10 @@ pub enum SearchFor {
     Subtype(&'static str),
     /// A colorless nonland card.
     ColorlessNonland,
+    /// Any land card.
+    Land,
+    /// A creature card with mana value at least this (Fierce Empath).
+    CreatureMvAtLeast(u32),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1108,6 +1191,10 @@ pub enum Scale {
     PerOtherYourCreatureBasePowerOne,
     /// Creatures you control with base power or toughness 1 (Sword of the Squeak).
     PerYourCreatureBasePowerOrToughnessOne,
+    /// Colors among permanents you control (Faeburrow Elder).
+    PerColorAmongYourPermanents,
+    /// The source's own kind of counters (Chitterspitter's acorn counters).
+    PerKindCounter,
 }
 
 /// A condition on a static ability ("as long as ...").
@@ -1171,6 +1258,8 @@ pub enum EmblemKind {
     OnAnySpellCast { trigger: usize },
     /// Creatures you control get +2/+2 and have flying (Elspeth, Sun's Champion).
     ElspethAnthem,
+    /// Creatures you control get +3/+3 and have trample (Garruk, Cursed Huntsman).
+    GarrukAnthem,
 }
 
 /// Which looked-at card may be picked.
@@ -1267,6 +1356,10 @@ pub enum Condition {
     HandSizeExactly(u8),
     /// You control a creature with the greatest power, or tied for it, among all creatures.
     ControlGreatestPower,
+    /// An opponent controls more lands than you (Loyal Warhound).
+    OpponentControlsMoreLands,
+    /// The source's X (as it was cast) is at least this (ravenous: "If X is 5 or more").
+    XAtLeast(u8),
 }
 
 /// A spell's effect or a triggered ability: target slots, then effects in order.
@@ -1491,6 +1584,27 @@ pub enum When {
     AnotherCreatureYouControlEntersNotCast,
     /// "Whenever you expend N": as you spend your Nth total mana on spells this turn.
     Expend(u8),
+    /// "At the beginning of each player's draw step" (either player's permanent; the active player is
+    /// "that player").
+    EachDrawStep,
+    /// "When you cycle this card": from the graveyard, as its cycling ability is activated.
+    YouCycleThis,
+    /// "Whenever equipped creature dies".
+    EquippedDies,
+    /// "Whenever a creature you control leaves the battlefield" (any zone it goes to).
+    CreatureYouControlLeavesBattlefield,
+    /// "Whenever an opponent casts a noncreature spell with mana value less than this creature's
+    /// power" (Pollywog Prodigy): checked as it triggers.
+    OpponentCastsNoncreatureMvBelowPower,
+    /// "Whenever an opponent attacks with creatures, if two or more of those creatures are attacking
+    /// you and/or planeswalkers you control" (two players: two or more attackers).
+    OpponentAttacksWithAtLeastTwo,
+    /// "Whenever an opponent casts their second spell each turn".
+    OpponentCastsSecondSpell,
+    /// "Enchantment spells you cast from your hand have cascade": when you cast one, with it in `extra`.
+    YouCastEnchantmentFromHand,
+    /// "Whenever this creature blocks" (CR 509.1i), as blockers are declared.
+    Blocks,
     /// "Whenever you scry or surveil".
     YouScryOrSurveil,
 }
