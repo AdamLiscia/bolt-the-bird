@@ -177,6 +177,8 @@ pub struct Activated {
     /// An Aura's ability its enchanted creature has ("Enchanted creature has \"{5}: Untap this
     /// creature.\""): activated by that creature's controller, with the creature in `extra`.
     pub granted_to_attached: bool,
+    /// "Discard your hand" in the cost.
+    pub discard_hand: bool,
 }
 
 /// The printed card. Shared by every copy; per-copy state lives on the game object.
@@ -359,6 +361,8 @@ pub struct CardDef {
     /// "You may cast this card from your graveyard. If you do, it enters with a finality counter on
     /// it."
     pub cast_from_graveyard_finality: bool,
+    /// "Ward—Discard a card."
+    pub ward_discard: bool,
 }
 
 /// An Omen spell half: its name, cost, whether it's an instant, and what it does.
@@ -476,6 +480,7 @@ impl CardDef {
             doubles_damage_of_new_creatures: false,
             doubles_tokens: false,
             cast_from_graveyard_finality: false,
+            ward_discard: false,
         }
     }
 
@@ -572,6 +577,7 @@ impl CardDef {
             doubles_damage_of_new_creatures: false,
             doubles_tokens: false,
             cast_from_graveyard_finality: false,
+            ward_discard: false,
         }
     }
 
@@ -668,6 +674,7 @@ impl CardDef {
             doubles_damage_of_new_creatures: false,
             doubles_tokens: false,
             cast_from_graveyard_finality: false,
+            ward_discard: false,
         }
     }
 }

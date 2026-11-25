@@ -77,6 +77,8 @@ pub struct Filter {
     pub noncreature: bool,
     /// Nonbasic permanents only ("nonbasic land").
     pub nonbasic: bool,
+    /// Creature or land cards only (graveyard targets).
+    pub creature_or_land: bool,
 }
 
 impl Filter {
@@ -114,6 +116,7 @@ impl Filter {
         was_dealt_damage: false,
         noncreature: false,
         nonbasic: false,
+        creature_or_land: false,
     };
 
     pub const CREATURE: Filter = Filter {
@@ -709,6 +712,39 @@ pub enum Effect {
     SpiritDragonsUpkeep,
     /// Creatures you control gain these keywords until your next turn.
     GrantAllUntilYourNextTurn(crate::Keywords),
+    /// For the rest of this turn, the source's trigger number `trigger` triggers on `when` (one of
+    /// `When::CreatureYouControlEntersThisTurn` or `When::YouCastNoncreature`): a delayed triggered
+    /// ability (CR 603.7).
+    DelayedThisTurn {
+        when: When,
+        trigger: usize,
+    },
+    /// "You may discard a card. When you do, ...": the rest only if a card is discarded.
+    MayDiscardThen,
+    /// Exile cards from the top until a nonland card; you may cast it without paying its mana cost
+    /// if its mana value is at most `max_mv`, or else it goes to your hand (Breaching Dragonstorm).
+    ExileUntilNonlandCastFree {
+        max_mv: u32,
+    },
+    /// The source becomes a creature with this base power and toughness, creature type and keywords
+    /// until end of turn, in addition to its other types.
+    BecomeCreatureUntilEot {
+        power: i32,
+        toughness: i32,
+        subtype: &'static str,
+        keywords: crate::Keywords,
+    },
+    /// "The next time a source of your choice would deal damage to you this turn, prevent that
+    /// damage. When damage is prevented this way, ..." (the source's trigger number `trigger`, with
+    /// the amount and the source in `extra`).
+    PreventNextFromChosenSource {
+        trigger: usize,
+    },
+    /// The source deals damage equal to the trigger's amount to the controller of the object in
+    /// `extra`, and you draw that many cards (New Way Forward).
+    DamageExtrasControllerAndDrawAmount,
+    /// Each creature without this subtype gets -X/-X until end of turn (X the spell's X).
+    ShrinkAllWithoutSubtypeX(&'static str),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -880,6 +916,8 @@ pub enum LookRest {
     BottomRandom,
     /// Each one you may put into your graveyard; the rest stay on top (Traveling Botanist).
     MayGraveyard,
+    /// The bottom of the library in the order you choose; one card must be taken if any can.
+    BottomAnyOrderTakeOne,
 }
 
 /// An intervening "if" clause, checked when the ability triggers and again on resolution
@@ -1083,6 +1121,10 @@ pub enum When {
     CreatureYouControlWithCountersDies,
     /// "When you cast this spell" (from the stack).
     YouCastThis,
+    /// "At the beginning of each combat" (every player's).
+    BeginCombatEachTurn,
+    /// Only as a delayed trigger: "Whenever a creature you control enters this turn".
+    CreatureYouControlEntersThisTurn,
 }
 
 #[derive(Clone, Debug, PartialEq)]

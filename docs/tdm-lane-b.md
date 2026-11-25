@@ -160,14 +160,32 @@ Mechanics added (appended at the end of their enums and structs):
 
 Known limit: Host of the Hereafter's last-known counters (+1/+1, stun, keyword) don't include a finality counter.
 
+## Batch 7 (engine core): delayed "this turn" triggers, Saga chapters, free casts, prevention shields (7)
+
+Mechanics added (appended at the end of their enums and structs):
+- `Effect::DelayedThisTurn { when, trigger }` with `Game::delayed_this_turn` (cleared each turn): `When::CreatureYouControlEntersThisTurn` (a delayed-only event) and `When::YouCastNoncreature`.
+- `LookRest::BottomAnyOrderTakeOne` with `Decision::BottomOrder` (each card picked goes under the one before; one must be taken).
+- `Effect::MayDiscardThen` with `Decision::MayDiscardOrStop`, then a reflexive trigger; `Filter::creature_or_land` for graveyard cards.
+- `Effect::ExileUntilNonlandCastFree { max_mv }` through the free-cast window, with `Game::free_casts_to_hand` (not cast: into your hand).
+- `Effect::BecomeCreatureUntilEot` with `Object::eot_creature` (a creature, base P/T, a creature type and keywords this turn only, in addition to its other types); `When::BeginCombatEachTurn`; `Activated::discard_hand`.
+- `Effect::PreventNextFromChosenSource` with `Decision::ChooseDamageSource` and `Game::damage_shields` (checked in `deal_damage` for damage to a player), then a reflexive trigger with the amount and the source; `Effect::DamageExtrasControllerAndDrawAmount`.
+- Built but not used by a card yet: `CardDef::ward_discard` (`StackKind::WardDiscard`, `Decision::PayWardDiscard`) and `Effect::ShrinkAllWithoutSubtypeX`. They're for Scavenger Regent, whose Omen half has {X}: casting an X Omen needs a new `Action` (e.g. `CastOmenX`), and `bolt-py`'s action encoding (and `src/bolt/play_encoding.py`) has to learn it, so I left the card for the lead.
+
+| Card | Test |
+|---|---|
+| Thunder of Unity | `thunder_of_unity_draws_then_drains_for_creatures_entering_that_turn` |
+| Rediscover the Way | `rediscover_the_way_digs_and_then_gives_double_strike_on_noncreature_spells` |
+| Awaken the Honored Dead | `awaken_the_honored_dead_destroys_mills_and_trades_a_discard_for_a_card` |
+| Bloomvine Regent | `bloomvine_regent_gains_life_for_dragons_and_its_omen_fetches_forests` |
+| Breaching Dragonstorm | `breaching_dragonstorm_casts_the_first_nonland_free_or_hands_it_over` |
+| Reverberating Summons | `reverberating_summons_becomes_a_hasty_monk_after_two_spells`, `reverberating_summons_cashes_in_your_hand_for_two_cards` |
+| New Way Forward | `new_way_forward_turns_prevented_damage_back_on_its_source` |
+
 ## Needs core
 
 Cards from the lane's list, in list order, skipped because the engine can't do them exactly yet. (Sultai Monument, Fleeting Effigy, Encroaching Dragonstorm, Misty Rainforest and Arid Mesa were done by the lead in Tarkir batch 8.)
 
 - Rite of Renewal: no "shuffle target cards from a graveyard into their library", and no "exile this spell" on resolution.
-- Breaching Dragonstorm: no exile-until-nonland with cast-free-if-MV-8-or-less; no self-bounce.
-- Reverberating Summons: no "becomes a creature if you've cast two or more spells this turn"; no "discard your hand" cost.
-- New Way Forward: no prevention of the next damage from a chosen source with a reflexive redirect.
 - Teval, Arbiter of Virtue: no delve granted to your spells; no lose-life-equal-to-mana-value cast trigger.
 - Shiko, Paragon of the Way: no exile-then-cast-a-copy-free from the graveyard.
 
@@ -176,3 +194,4 @@ Cards from the lane's list, in list order, skipped because the engine can't do t
 Round 2 (after the chunk 1 merge, e5c03c9): the cards left on the list after Inspired Ultimatum
 (Misty Rainforest, Arid Mesa, Emergent Ultimatum, Ruinous Ultimatum) all need core, and every
 earlier card on the list was already assessed. No new cards were scripted; the list is used up.
+- Scavenger Regent: an X cost on an Omen half needs a new `Action` and a change to the Python action encoding (ward—discard and the -X/-X effect are built).
