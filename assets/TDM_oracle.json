@@ -489,7 +489,13 @@
 "layout": "adventure",
 "loyalty": null,
 "produced_mana": null,
-"collector_number": "136"
+"collector_number": "136",
+"omen": {
+"name": "Claim Territory",
+"mana_cost": "{2}{G}",
+"type_line": "Sorcery \u2014 Omen",
+"oracle_text": "Search your library for up to two basic Forest cards, reveal them, put one onto the battlefield tapped and the other into your hand, then shuffle. (Also shuffle this card.)"
+}
 },
 {
 "name": "Blossoming Sands",
@@ -1008,7 +1014,13 @@
 "layout": "adventure",
 "loyalty": null,
 "produced_mana": null,
-"collector_number": "40"
+"collector_number": "40",
+"omen": {
+"name": "Skimming Strike",
+"mana_cost": "{1}{U}",
+"type_line": "Instant \u2014 Omen",
+"oracle_text": "Tap up to one target creature. Draw a card. (Then shuffle this card into its owner's library.)"
+}
 },
 {
 "name": "Dismal Backwater",
@@ -1067,7 +1079,13 @@
 "layout": "adventure",
 "loyalty": null,
 "produced_mana": null,
-"collector_number": "178"
+"collector_number": "178",
+"omen": {
+"name": "Petty Revenge",
+"mana_cost": "{1}{B}",
+"type_line": "Sorcery \u2014 Omen",
+"oracle_text": "Destroy target creature with power 3 or less. (Then shuffle this card into its owner's library.)"
+}
 },
 {
 "name": "Dracogenesis",
@@ -1590,7 +1608,13 @@
 "layout": "adventure",
 "loyalty": null,
 "produced_mana": null,
-"collector_number": "80"
+"collector_number": "80",
+"omen": {
+"name": "Dusk Sight",
+"mana_cost": "{1}{B}",
+"type_line": "Sorcery \u2014 Omen",
+"oracle_text": "Put a +1/+1 counter on up to one target creature. Draw a card. (Then shuffle this card into its owner's library.)"
+}
 },
 {
 "name": "Fire-Rim Form",
@@ -2782,7 +2806,13 @@
 "layout": "adventure",
 "loyalty": null,
 "produced_mana": null,
-"collector_number": "51"
+"collector_number": "51",
+"omen": {
+"name": "Coil and Catch",
+"mana_cost": "{3}{U}",
+"type_line": "Instant \u2014 Omen",
+"oracle_text": "Draw three cards, then discard a card. (Then shuffle this card into its owner's library.)"
+}
 },
 {
 "name": "Mardu Devotee",
@@ -3371,7 +3401,13 @@
 "layout": "adventure",
 "loyalty": null,
 "produced_mana": null,
-"collector_number": "213"
+"collector_number": "213",
+"omen": {
+"name": "Absorb Essence",
+"mana_cost": "{1}{W}",
+"type_line": "Instant \u2014 Omen",
+"oracle_text": "Target creature gets +2/+2 and gains lifelink and hexproof until end of turn. (Then shuffle this card into its owner's library.)"
+}
 },
 {
 "name": "Qarsi Revenant",
@@ -3611,7 +3647,13 @@
 "layout": "adventure",
 "loyalty": null,
 "produced_mana": null,
-"collector_number": "21"
+"collector_number": "21",
+"omen": {
+"name": "Signaling Roar",
+"mana_cost": "{1}{W}",
+"type_line": "Sorcery \u2014 Omen",
+"oracle_text": "Create a 2/2 white Soldier creature token. (Then shuffle this card into its owner's library.)"
+}
 },
 {
 "name": "Ringing Strike Mastery",
@@ -3828,7 +3870,13 @@
 "layout": "adventure",
 "loyalty": null,
 "produced_mana": null,
-"collector_number": "221"
+"collector_number": "221",
+"omen": {
+"name": "Chilling Screech",
+"mana_cost": "{1}{U}",
+"type_line": "Instant \u2014 Omen",
+"oracle_text": "Counter target spell with mana value 2 or less. (Then shuffle this card into its owner's library.)"
+}
 },
 {
 "name": "Sage of the Fang",
@@ -3911,7 +3959,13 @@
 "layout": "adventure",
 "loyalty": null,
 "produced_mana": null,
-"collector_number": "157"
+"collector_number": "157",
+"omen": {
+"name": "Roost Seek",
+"mana_cost": "{G}",
+"type_line": "Sorcery \u2014 Omen",
+"oracle_text": "Search your library for a basic land card, reveal it, put it into your hand, then shuffle. (Also shuffle this card.)"
+}
 },
 {
 "name": "Salt Road Packbeast",
@@ -4066,7 +4120,13 @@
 "layout": "adventure",
 "loyalty": null,
 "produced_mana": null,
-"collector_number": "90"
+"collector_number": "90",
+"omen": {
+"name": "Exude Toxin",
+"mana_cost": "{X}{B}{B}",
+"type_line": "Sorcery \u2014 Omen",
+"oracle_text": "Each non-Dragon creature gets -X/-X until end of turn. (Then shuffle this card into its owner's library.)"
+}
 },
 {
 "name": "Scoured Barrens",
@@ -4567,7 +4627,13 @@
 "layout": "adventure",
 "loyalty": null,
 "produced_mana": null,
-"collector_number": "124"
+"collector_number": "124",
+"omen": {
+"name": "Flush Out",
+"mana_cost": "{1}{R}",
+"type_line": "Sorcery \u2014 Omen",
+"oracle_text": "Discard a card. If you do, draw two cards. (Then shuffle this card into its owner's library.)"
+}
 },
 {
 "name": "Strategic Betrayal",
@@ -5094,7 +5160,13 @@
 "layout": "adventure",
 "loyalty": null,
 "produced_mana": null,
-"collector_number": "232"
+"collector_number": "232",
+"omen": {
+"name": "Charring Bite",
+"mana_cost": "{1}{R}",
+"type_line": "Sorcery \u2014 Omen",
+"oracle_text": "Charring Bite deals 5 damage to target creature without flying. (Then shuffle this card into its owner's library.)"
+}
 },
 {
 "name": "Ugin, Eye of the Storms",
@@ -5479,7 +5551,13 @@
 "layout": "adventure",
 "loyalty": null,
 "produced_mana": null,
-"collector_number": "234"
+"collector_number": "234",
+"omen": {
+"name": "Dynamic Soar",
+"mana_cost": "{2}{G}",
+"type_line": "Sorcery \u2014 Omen",
+"oracle_text": "Put three +1/+1 counters on target creature you control. (Then shuffle this card into its owner's library.)"
+}
 },
 {
 "name": "Wild Ride",

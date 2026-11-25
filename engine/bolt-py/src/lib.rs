@@ -69,6 +69,7 @@ pub fn encode(a: &Action) -> Encoded {
         CastFromGraveyardAs(c, t) => ("CastFromGraveyardAs", id(c), t as i64, -1),
         TapForMana(c, color) => ("TapForMana", id(c), color as i64, -1),
         CastHarmonize(c, cr) => ("CastHarmonize", id(c), id(cr), -1),
+        CastOmen(c) => ("CastOmen", id(c), -1, -1),
     }
 }
 
@@ -92,7 +93,8 @@ pub fn objects(a: &Action) -> [Option<ObjId>; 3] {
         | Discard(c)
         | CastFromGraveyard(c)
         | CastFromGraveyardAs(c, _)
-        | TapForMana(c, _) => [Some(c), None, None],
+        | TapForMana(c, _)
+        | CastOmen(c) => [Some(c), None, None],
         Target(bolt_core::Target::Object(c)) => [Some(c), None, None],
         ActivateWith(c, _, v) => [Some(c), None, Some(v)],
         CastWith(c, x) | CastHarmonize(c, x) => [Some(c), Some(x), None],

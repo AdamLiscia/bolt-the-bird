@@ -99,6 +99,18 @@ pub struct Oracle {
     /// Starting loyalty, for planeswalkers (`scripts/fetch_loyalty.py`).
     #[serde(default)]
     pub loyalty: Option<String>,
+    /// The Omen half of a Tarkir: Dragonstorm Omen card.
+    #[serde(default)]
+    pub omen: Option<OmenFace>,
+}
+
+/// An Omen card's spell half, as Scryfall describes it.
+#[derive(Clone, Debug, Deserialize)]
+pub struct OmenFace {
+    pub name: String,
+    pub mana_cost: Option<String>,
+    pub type_line: String,
+    pub oracle_text: Option<String>,
 }
 
 /// The Scryfall data for every FDN card, in model order.
@@ -272,13 +284,30 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         second_spell_discount: 0,
         filter_mana: None,
         harmonize: false,
+        omen: None,
         subtype_enters_with_counter: None,
     };
+    // An Omen's spell half: its lines must be claimed too, written "Omen: <line>" in the script.
+    if let Some(face) = &o.omen {
+        rest.extend(
+            abilities(face.oracle_text.as_deref().unwrap_or(""))
+                .into_iter()
+                .map(|l| format!("Omen: {l}")),
+        );
+    }
     let mut claimed = rest.is_empty();
     if let Some(s) = scripts::script(&o.name) {
         if s.lines == rest.as_slice() {
             (s.build)(&mut def, tokens);
             claimed = true;
+            if let (Some(face), Some(half)) = (&o.omen, def.omen.as_mut()) {
+                half.name = face.name.clone();
+                half.instant = face.type_line.contains("Instant");
+                match face.mana_cost.as_deref().map(ManaCost::parse) {
+                    Some(Some(c)) => half.cost = c,
+                    _ => claimed = false,
+                }
+            }
         }
     }
     let castable = types.is_permanent() || def.spell.is_some() || !def.modes.is_empty(); // lands: played

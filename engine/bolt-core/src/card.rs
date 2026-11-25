@@ -217,6 +217,9 @@ pub struct CardDef {
     /// Harmonize (Tarkir: Dragonstorm): cast from the graveyard for `flashback` (the harmonize cost),
     /// optionally tapping an untapped creature you control to pay {X} less, X its power; then exile.
     pub harmonize: bool,
+    /// The Omen half (Tarkir: Dragonstorm): cast instead as this instant or sorcery; it then shuffles
+    /// into its owner's library.
+    pub omen: Option<Omen>,
     /// Doubling Season: tokens you'd create and counters you'd put on your permanents are doubled
     /// (CR 614.1a).
     pub doubles_tokens_and_counters: bool,
@@ -314,6 +317,15 @@ pub struct CardDef {
     pub subtype_enters_with_counter: Option<&'static str>,
 }
 
+/// An Omen spell half: its name, cost, whether it's an instant, and what it does.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Omen {
+    pub name: String,
+    pub cost: ManaCost,
+    pub instant: bool,
+    pub spell: Ability,
+}
+
 /// How a card uses behold (see [`CardDef::behold`]).
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum Behold {
@@ -403,6 +415,7 @@ impl CardDef {
             second_spell_discount: 0,
             filter_mana: None,
             harmonize: false,
+            omen: None,
             subtype_enters_with_counter: None,
         }
     }
@@ -483,6 +496,7 @@ impl CardDef {
             second_spell_discount: 0,
             filter_mana: None,
             harmonize: false,
+            omen: None,
             subtype_enters_with_counter: None,
         }
     }
@@ -563,6 +577,7 @@ impl CardDef {
             second_spell_discount: 0,
             filter_mana: None,
             harmonize: false,
+            omen: None,
             subtype_enters_with_counter: None,
         }
     }

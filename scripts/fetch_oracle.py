@@ -46,6 +46,10 @@ def flat(c: dict) -> dict:
     face = c["card_faces"][0] if "card_faces" in c and "oracle_text" not in c else c
     d = {k: face.get(k, c.get(k)) for k in KEEP}
     d["name"] = c["name"]
+    if c.get("layout") == "adventure" and len(c.get("card_faces", [])) > 1:
+        # Tarkir's Omens use the adventure layout: the second face is the spell half.
+        o = c["card_faces"][1]
+        d["omen"] = {k: o.get(k) for k in ("name", "mana_cost", "type_line", "oracle_text")}
     return d
 
 

@@ -314,6 +314,8 @@ pub enum Action {
     TapForMana(ObjId, u8),
     /// Cast with harmonize from the graveyard, tapping this creature to pay {X} less (X its power).
     CastHarmonize(ObjId, ObjId),
+    /// Cast the card's Omen half (Tarkir: Dragonstorm).
+    CastOmen(ObjId),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -486,6 +488,9 @@ pub struct StackItem {
     /// How divided damage is split among the targets, in target order (CR 601.2d).
     pub division: Vec<u8>,
 }
+
+/// `CastMode::mode` (and `StackItem::mode`) for a spell cast as its Omen half.
+pub const OMEN_MODE: u8 = 255;
 
 /// How a spell is being cast.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -1936,6 +1941,7 @@ impl Game {
         let def = self.def_of(item.source);
         match item.kind {
             StackKind::Spell | StackKind::SpellCopy => match item.mode {
+                Some(OMEN_MODE) => &def.omen.as_ref().expect("an Omen").spell,
                 Some(m) => &def.modes[m as usize],
                 None if item.kicked && def.kicked_spell.is_some() => {
                     def.kicked_spell.as_ref().expect("kicked")
@@ -2176,6 +2182,19 @@ impl Game {
             }
             // CR 307.1, 302.1, 304.1, 702.8a: only instants and flash ignore sorcery timing.
             let flash_all = self.permanents(p).any(|x| self.def_of(x).grants_flash);
+            // An Omen half from hand, with its own type's timing and targets.
+            if let (Some(o), Zone::Hand) = (&def.omen, self.obj(c).zone) {
+                let omen_mode = CastMode {
+                    mode: Some(OMEN_MODE),
+                    ..CastMode::default()
+                };
+                if (sorcery_timing || flash_all || o.instant)
+                    && self.trigger_can_target(&Game::casting(c, p), &o.spell)
+                    && self.mode_affordable(p, c, omen_mode)
+                {
+                    v.push(Action::CastOmen(c));
+                }
+            }
             let normal_timing =
                 sorcery_timing || flash_all || def.types.instant || def.keywords.has(Keywords::FLASH);
             // Molten Exhale: as though it had flash, if a Dragon is beheld (then only that way).
@@ -2392,6 +2411,8 @@ impl Game {
             def.alt_cost.expect("has an alternative cost").0
         } else if mode.flashback {
             def.flashback.unwrap_or(def.cost)
+        } else if mode.mode == Some(OMEN_MODE) {
+            def.omen.as_ref().expect("an Omen").cost
         } else {
             def.cost.with_x(mode.x)
         };
@@ -3328,6 +3349,14 @@ impl Game {
                     ..CastMode::default()
                 },
             ),
+            (Pending::Priority(p), Action::CastOmen(c)) => self.cast(
+                p,
+                c,
+                CastMode {
+                    mode: Some(OMEN_MODE),
+                    ..CastMode::default()
+                },
+            ),
             (Pending::Priority(p), Action::CastFlashback(c)) => self.cast(
                 p,
                 c,
@@ -3467,6 +3496,7 @@ impl Game {
         };
         let def = self.def_of(card);
         let ability = match mode.mode {
+            Some(OMEN_MODE) => def.omen.as_ref().map(|o| &o.spell),
             Some(m) => Some(&def.modes[m as usize]),
             None if mode.kicked && def.kicked_spell.is_some() => def.kicked_spell.as_ref(),
             None => def.spell.as_ref(),
@@ -3901,7 +3931,13 @@ impl Game {
         let r = self.resolving.take().expect("resolving");
         let source = r.item.source;
         if r.item.kind == StackKind::Spell {
-            if r.acts && self.types_of(source).is_permanent() {
+            let omen = r.item.mode == Some(OMEN_MODE);
+            if omen && self.obj(source).zone == Zone::Stack {
+                // An Omen: "Then shuffle this card into its owner's library."
+                let owner = self.obj(source).owner;
+                self.move_to(source, Zone::Library);
+                self.shuffle_library(owner);
+            } else if r.acts && self.types_of(source).is_permanent() {
                 self.move_to(source, Zone::Battlefield);
                 self.obj_mut(source).controller = r.item.controller;
                 if self.def_of(source).revival_on_cast {
