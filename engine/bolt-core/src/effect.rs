@@ -1249,6 +1249,12 @@ pub enum Effect {
     MilledLandsToBattlefieldTapped,
     /// You get `n` {E} (energy counters, CR 122.1).
     Energy(u8),
+    /// Return the source to its owner's hand at the beginning of the next end step (Sakashima the
+    /// Impostor's kept ability).
+    ReturnSelfToHandAtNextEnd,
+    /// Zimone: the first time this ability resolves this turn, manifest dread (CR 701.62);
+    /// otherwise you may turn a face-down permanent you control face up.
+    ManifestDreadFirstElseTurnFaceUp,
     /// Look at the top card of the library of the player in `slot`; you may put it on the bottom.
     LookTopMayBottom(u8),
     /// Draw `draw` cards, then put `back` cards from your hand on top of your library in any order.

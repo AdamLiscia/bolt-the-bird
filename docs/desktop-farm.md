@@ -11,6 +11,18 @@ The desktop (i9-9900K, 16 threads, 32 GB, AMD GPU so CPU only, WSL2) lost power 
 September and November, for hours to days each time. Adam's requirement: **every job on it survives a power
 cut** without losing more than a few minutes of work and without counting anything twice.
 
+## Setting up a clone (the desktop)
+
+```bash
+python3 -m venv .venv && .venv/bin/pip install -e ".[dev,practice]"   # practice: tests/test_service.py needs fastapi
+source ~/.cargo/env && make engine-py                                   # the Rust engine into the venv (maturin, in dev)
+# The gitignored files the tests and the first job need, from S3 (profile bolt-desktop):
+aws s3 cp s3://nerdleagues-bolt-checkpoints-011834/data/m7/decks.txt data/m7/decks.txt --profile bolt-desktop
+aws s3 cp s3://nerdleagues-bolt-checkpoints-011834/data/m7/meta.json data/m7/meta.json --profile bolt-desktop
+aws s3 cp s3://nerdleagues-bolt-checkpoints-011834/checkpoints/play/play_v3_ppo4_i170.pt checkpoints/play/ --profile bolt-desktop
+aws s3 cp s3://nerdleagues-bolt-checkpoints-011834/checkpoints/play/play_v2_ppo3_i850.pt checkpoints/play/ --profile bolt-desktop
+```
+
 ## The pieces
 
 | Piece | Where | Reuses |

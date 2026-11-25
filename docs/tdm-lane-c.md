@@ -528,3 +528,6 @@ Assets: Khalni Ambush and Nissa, Vastwood Seer refreshed with `fetch_oracle.py -
 PYTHONPATH=src:scripts so it writes this worktree's assets; the venv's `bolt` points at ~/bolt-the-bird), then
 `make_cmd_set.py`. Only their `back` keys changed.
 Bear Umbra's attack trigger is `When::EquippedAttacks`, which fires for anything attached (Auras too).
+
+Merged tarkir 00f0db4 (lane B's Glarb clones and Zimone) after Aesi batch 3: end-of-block conflicts, tarkir's side
+first; tests/pg_c.rs is tarkir's file with lane C's tests appended (lane B's `lb_` block comes first).

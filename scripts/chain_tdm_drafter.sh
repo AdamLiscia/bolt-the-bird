@@ -5,7 +5,7 @@ set -uo pipefail
 cd "$(dirname "$0")/.."
 # The guard counts process memory, not Apple-GPU memory (2026-11-24: 8.3 GB, the Mac swapped during a
 # stream). Cap the GPU allocator too.
-export PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.35
+export PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.35 PYTORCH_MPS_LOW_WATERMARK_RATIO=0.3
 echo "== baselines $(date +%T)"
 scripts/guard.sh 1800 4000 -- .venv/bin/python scripts/baselines.py --set TDM 2>&1 | grep -v Warn | tail -8
 echo "== mlp $(date +%T)"

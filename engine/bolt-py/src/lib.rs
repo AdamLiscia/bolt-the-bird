@@ -398,7 +398,9 @@ impl Game {
                 } else {
                     format!("{key}_card")
                 };
-                d.set_item(card_key, o.def as i64)?;
+                // A card now face down on the battlefield isn't named in the log (CR 708.5).
+                let hidden = o.face_down && o.zone == bolt_core::Zone::Battlefield;
+                d.set_item(card_key, if hidden { -2 } else { o.def as i64 })?;
                 if key == "id" {
                     d.set_item("owner", o.owner as i64)?;
                 }
@@ -475,7 +477,16 @@ impl Game {
             return Err(PyValueError::new_err("player must be 0 or 1"));
         }
         let g = &self.g;
-        let card = |c: ObjId| (id(c), g.obj(c).def as i64);
+        // A face-down permanent's card is hidden from the other player (CR 708.5): -2.
+        let seen = |c: ObjId| -> i64 {
+            let o = g.obj(c);
+            if o.face_down && o.zone == bolt_core::Zone::Battlefield && o.controller != player {
+                -2
+            } else {
+                o.def as i64
+            }
+        };
+        let card = |c: ObjId| (id(c), seen(c));
         let d = PyDict::new(py);
         d.set_item("turn", g.turn)?;
         d.set_item("step", format!("{:?}", g.step))?;
@@ -495,7 +506,7 @@ impl Game {
             (Pending::ChooseTarget(_) | Pending::Divide(_), Some(c)) => {
                 let e = PyDict::new(py);
                 e.set_item("id", id(c.item.source))?;
-                e.set_item("card", g.obj(c.item.source).def as i64)?;
+                e.set_item("card", seen(c.item.source))?;
                 e.set_item("controller", c.item.controller as i64)?;
                 e.set_item("spell", c.cast)?;
                 e.set_item("targets_chosen", c.item.targets.len())?;
@@ -515,12 +526,10 @@ impl Game {
                 let dbg = format!("{dec:?}");
                 e.set_item("kind", dbg.split([' ', '{', '(']).next().unwrap_or(""))?;
                 if let Some(r) = &g.resolving {
-                    e.set_item("source", (id(r.item.source), g.obj(r.item.source).def as i64))?;
+                    e.set_item("source", (id(r.item.source), seen(r.item.source)))?;
                 }
-                let objs = |v: &[ObjId]| -> Vec<(i64, i64)> {
-                    v.iter().map(|&c| (id(c), g.obj(c).def as i64)).collect()
-                };
-                let one = |c: ObjId| -> (i64, i64) { (id(c), g.obj(c).def as i64) };
+                let objs = |v: &[ObjId]| -> Vec<(i64, i64)> { v.iter().map(|&c| (id(c), seen(c))).collect() };
+                let one = |c: ObjId| -> (i64, i64) { (id(c), seen(c)) };
                 match dec {
                     D::ChooseColor { card } => e.set_item("card", one(*card))?,
                     D::ChooseCreatureType { card, options } => {
@@ -666,7 +675,7 @@ impl Game {
             let o = g.obj(c);
             let e = PyDict::new(py);
             e.set_item("id", id(c))?;
-            e.set_item("card", o.def)?;
+            e.set_item("card", seen(c))?;
             e.set_item("controller", o.controller)?;
             e.set_item("owner", o.owner)?;
             e.set_item("tapped", o.tapped)?;
@@ -684,6 +693,8 @@ impl Game {
             e.set_item("entered_turn", o.since_turn)?;
             // A transformed double-faced permanent shows its back face (`card` stays the card).
             e.set_item("transformed", o.transformed)?;
+            // Face down (manifest dread): a 2/2 with no name; `card` is -2 for the other player.
+            e.set_item("face_down", o.face_down)?;
             field.append(e)?;
         }
         d.set_item("battlefield", field)?;
@@ -692,7 +703,7 @@ impl Game {
         let stack: Vec<(i64, i64, usize)> = g
             .items
             .iter()
-            .map(|i| (id(i.source), g.obj(i.source).def as i64, i.controller))
+            .map(|i| (id(i.source), seen(i.source), i.controller))
             .collect();
         d.set_item("stack", stack)?;
         d.set_item("legal_actions", self.legal_actions())?;
@@ -702,7 +713,7 @@ impl Game {
             .legal
             .iter()
             .map(|a| {
-                let o = objects(a).map(|c| c.map_or(-1, |c| g.obj(c).def as i64));
+                let o = objects(a).map(|c| c.map_or(-1, seen));
                 (o[0], o[1], o[2])
             })
             .collect();

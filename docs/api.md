@@ -534,6 +534,14 @@ source's topmost ability on the stack. `PutPicksOntoBattlefield` (Ojer Kaslem's 
 Grand Evolution's milled ones): `cards`, `left`; `Pick` moves "Put onto the battlefield: X", `No`
 "Done choosing".
 
+**Face-down permanents** (2026-11-25; manifest dread, Zimone). A face-down permanent is a 2/2
+creature with no name. Battlefield objects carry `face_down` (true/false). The controller sees the
+card behind it as usual; for the other seat its `name` is `"Face-down creature"` and `card_id` is
+`null`, everywhere the view or a move names it (moves keep the object `id`). The event log doesn't
+name a card while it's face down. Turning a manifested creature card face up for its mana cost is an
+`Activate` move on it (ability 1; it doesn't use the stack). New decisions: `ManifestDread` (`Pick`
+which of the top two to manifest) and `TurnFaceUp` (`Pick` a face-down permanent, or `No`).
+
 `GET /v1/cards?set=BLC` lists the 300 non-basic cards of the four precons plus their tokens, with the
 same fields as FDN. `GET /v1/precons?set=BLC` lists the four decks (name, commander, 99 cards) as the
 handoff file has them, so Nerd Leagues can offer "play a precon" without building decks itself.
