@@ -196,6 +196,10 @@ pub struct Object {
     pub harmonize_eot: bool,
     /// A commander just put into a graveyard or exile whose owner hasn't chosen yet (CR 903.9a).
     pub commander_choice_pending: bool,
+    /// How many times this object's abilities resolved this turn: (turn, count).
+    pub resolved_this_turn: (u32, u32),
+    /// How many times this commander has been cast from the command zone (its own tax, CR 903.8).
+    pub command_zone_casts: u8,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -729,6 +733,25 @@ pub enum Decision {
     GraveyardShuffle { owner: PlayerId, left: u8, picked: bool },
 }
 
+/// Options for [`Game::new_commander_with`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct CommanderOptions {
+    /// Each player's starting life (CR 903.7: 40).
+    pub starting_life: i32,
+    /// With `Game::commander_choice` on, these seats' commanders go to the command zone without
+    /// asking.
+    pub auto_command_zone: [bool; 2],
+}
+
+impl Default for CommanderOptions {
+    fn default() -> Self {
+        CommanderOptions {
+            starting_life: COMMANDER_LIFE,
+            auto_command_zone: [false; 2],
+        }
+    }
+}
+
 /// An until-end-of-turn change to one object (CR 611.2, 613).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Modifier {
@@ -896,6 +919,13 @@ pub struct Game {
     pub commander_choice: bool,
     /// Who gets priority once a pending commander choice is made.
     commander_choice_then: PlayerId,
+    /// Each seat's second commander, if it has partners (CR 702.124).
+    pub partners: [Option<ObjId>; 2],
+    /// Combat damage dealt to a player by one commander object (CR 903.10a): (commander, player,
+    /// damage). A mirror match's two commanders are two objects, so two entries.
+    pub commander_damage_from: Vec<(ObjId, PlayerId, i32)>,
+    /// With `commander_choice` on, this seat's commanders go to the command zone without asking.
+    pub commander_auto_return: [bool; 2],
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -933,11 +963,41 @@ impl Game {
         seed: u64,
         first: PlayerId,
     ) -> Game {
+        Game::new_commander_with(
+            defs,
+            decks,
+            [&[commanders[0]], &[commanders[1]]],
+            CommanderOptions::default(),
+            seed,
+            first,
+        )
+    }
+
+    /// A 1v1 Commander game with options: one or two commanders per seat (partners, each with its
+    /// own tax), the starting life, and whether each seat's commanders always go to the command zone
+    /// when `commander_choice` is on.
+    pub fn new_commander_with(
+        defs: Arc<Vec<CardDef>>,
+        decks: [&[usize]; 2],
+        commanders: [&[usize]; 2],
+        options: CommanderOptions,
+        seed: u64,
+        first: PlayerId,
+    ) -> Game {
+        assert!(
+            commanders.iter().all(|c| (1..=2).contains(&c.len())),
+            "one or two commanders a seat"
+        );
         let mut g = Game::empty(defs, seed, first);
+        g.commander_auto_return = options.auto_command_zone;
         for (p, deck) in decks.iter().enumerate() {
-            g.players[p].life = COMMANDER_LIFE;
-            let c = g.add_card(p, commanders[p], Zone::Command);
+            g.players[p].life = options.starting_life;
+            let c = g.add_card(p, commanders[p][0], Zone::Command);
             g.commanders[p] = Some(c);
+            if let Some(&second) = commanders[p].get(1) {
+                let c2 = g.add_card(p, second, Zone::Command);
+                g.partners[p] = Some(c2);
+            }
             for &d in deck.iter() {
                 g.add_card(p, d, Zone::Library);
             }
@@ -1039,6 +1099,9 @@ impl Game {
             graveyard_leave_pending: [false; 2],
             commander_choice: false,
             commander_choice_then: 0,
+            partners: [None, None],
+            commander_damage_from: Vec::new(),
+            commander_auto_return: [false; 2],
         }
     }
 
@@ -1117,6 +1180,8 @@ impl Game {
             eot_creature: None,
             harmonize_eot: false,
             commander_choice_pending: false,
+            resolved_this_turn: (0, 0),
+            command_zone_casts: 0,
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -1173,6 +1238,9 @@ impl Game {
         let o = self.obj(id);
         let mut t = self.defs[o.def].types;
         // The common case: nothing on the battlefield changes types.
+        if self.bello_animates(id) {
+            t.creature = true;
+        }
         if o.zone != Zone::Battlefield
             || (o.animated.is_none() && o.eot_creature.is_none() && self.ability_loss_sources == 0)
         {
@@ -1247,6 +1315,9 @@ impl Game {
     /// out static abilities, so they don't depend on each other).
     fn has_base_subtype(&self, id: ObjId, s: &str) -> bool {
         if self.eot_creature(id).is_some_and(|e| e.3 == s) {
+            return true;
+        }
+        if s == "Elemental" && self.bello_animates(id) {
             return true;
         }
         if self.lost_abilities(id) && !self.loses_abilities_only(id) {
@@ -1420,6 +1491,9 @@ impl Game {
         if let Some((_, _, _, _, kw)) = self.eot_creature(id) {
             k = k.with(kw);
         }
+        if self.bello_animates(id) {
+            k = k.with(Keywords::INDESTRUCTIBLE).with(Keywords::HASTE);
+        }
         if !self.lost_abilities(id) {
             for s in &self.def_of(id).stages[..self.obj(id).stage as usize] {
                 k = k.with(s.keywords);
@@ -1468,6 +1542,9 @@ impl Game {
         let d = self.def_of(id);
         if let Some((_, p, t, _, _)) = self.eot_creature(id) {
             return (p, t);
+        }
+        if self.bello_animates(id) {
+            return (4, 4);
         }
         if let Some(pt) = o.animated {
             return pt;
@@ -1633,16 +1710,58 @@ impl Game {
     /// checked: its owner chooses whether to move it to the command zone. Asks, and returns true,
     /// if there's such a choice to make before `then` gets priority.
     fn ask_commander_choice(&mut self, then: PlayerId) -> bool {
-        let Some(c) = self.commanders.iter().flatten().copied().find(|&c| {
-            self.obj(c).commander_choice_pending && matches!(self.obj(c).zone, Zone::Graveyard | Zone::Exile)
-        }) else {
+        let Some(c) = self
+            .commanders
+            .iter()
+            .chain(&self.partners)
+            .flatten()
+            .copied()
+            .find(|&c| {
+                self.obj(c).commander_choice_pending
+                    && matches!(self.obj(c).zone, Zone::Graveyard | Zone::Exile)
+            })
+        else {
             return false;
         };
         self.obj_mut(c).commander_choice_pending = false;
-        self.commander_choice_then = then;
         let owner = self.obj(c).owner;
+        if self.commander_auto_return[owner] {
+            self.move_to(c, Zone::Command);
+            return self.ask_commander_choice(then);
+        }
+        self.commander_choice_then = then;
         self.ask(owner, Decision::CommanderToCommandZone { card: c });
         true
+    }
+
+    /// Bello: the Bello that makes `id` a 4/4 Elemental creature right now, if any: `id` is a
+    /// non-Equipment artifact or non-Aura enchantment with mana value 4 or greater on the
+    /// battlefield, and its controller controls Bello during their own turn.
+    fn bello_for(&self, id: ObjId) -> Option<ObjId> {
+        let o = self.obj(id);
+        if o.zone != Zone::Battlefield || self.active != o.controller {
+            return None;
+        }
+        let d = self.def_of(id);
+        let sub = |s: &str| d.subtypes.iter().any(|x| x == s);
+        let fits = (d.types.artifact && !sub("Equipment")) || (d.types.enchantment && !sub("Aura"));
+        if !fits || d.cost.mana_value() < 4 {
+            return None;
+        }
+        self.battlefield.iter().copied().find(|&b| {
+            self.obj(b).controller == o.controller
+                && self.def_of(b).animates_big_noncreatures_your_turn
+                && self.ability_loss(b).is_none()
+        })
+    }
+
+    fn bello_animates(&self, id: ObjId) -> bool {
+        self.bello_for(id).is_some()
+    }
+
+    /// Whether `id` is a commander (either of a seat's partners).
+    pub fn is_commander(&self, id: ObjId) -> bool {
+        self.commanders.contains(&Some(id)) || self.partners.contains(&Some(id))
     }
 
     /// Whether `p` controls a creature with a counter on it.
@@ -1935,7 +2054,7 @@ impl Game {
         // CR 903.9: a commander that would go to a graveyard, exile, a hand or a library goes to the
         // command zone instead. (The owner may choose; always choosing it is what players do.)
         let choose_later = self.commander_choice && matches!(to, Zone::Graveyard | Zone::Exile);
-        if self.commanders.contains(&Some(id))
+        if self.is_commander(id)
             && matches!(to, Zone::Graveyard | Zone::Exile | Zone::Hand | Zone::Library)
             && !choose_later
         {
@@ -1985,9 +2104,8 @@ impl Game {
                 self.graveyard_leave_pending[owner] = true;
             }
         }
-        let commander_waits = self.commander_choice
-            && matches!(to, Zone::Graveyard | Zone::Exile)
-            && self.commanders.contains(&Some(id));
+        let commander_waits =
+            self.commander_choice && matches!(to, Zone::Graveyard | Zone::Exile) && self.is_commander(id);
         let o = self.obj_mut(id);
         o.zone = to;
         o.commander_choice_pending = commander_waits;
@@ -3149,7 +3267,7 @@ impl Game {
         }
         // CR 903.8: commander tax.
         let tax = if o.zone == Zone::Command {
-            self.commander_casts[o.owner].saturating_mul(2)
+            o.command_zone_casts.saturating_mul(2)
         } else if o.zone == Zone::Stack && o.from_command {
             o.commander_tax
         } else {
@@ -3940,6 +4058,7 @@ impl Game {
             } else {
                 n
             };
+            let n = n.max(self.def_of(id).mana_amount as usize); // Sol Ring: {C}{C}
             out.extend(std::iter::repeat_n((id, m), n));
         }
         out
@@ -3973,6 +4092,35 @@ impl Game {
                 }
                 if d.vivid_mana {
                     return Some((id, ManaSource::default()));
+                }
+                if d.mana_commander_identity {
+                    // CR 903.4f: no commander (or a colorless one) means no mana.
+                    let mut identity = self.commanders[p].map(|c| self.def_of(c).color_identity)?;
+                    if let Some(c2) = self.partners[p] {
+                        for (i, has) in identity.iter_mut().zip(self.def_of(c2).color_identity) {
+                            *i |= has;
+                        }
+                    }
+                    let colors: Vec<crate::Color> = crate::Color::ALL
+                        .into_iter()
+                        .filter(|&c| identity[c as usize])
+                        .collect();
+                    return (!colors.is_empty()).then(|| (id, ManaSource::of(&colors)));
+                }
+                if d.mana_opponent_land_colors {
+                    let mut could = [false; 5];
+                    for l in self.permanents(opponent(p)).filter(|&l| self.types_of(l).land) {
+                        if let Some(m) = self.def_of(l).mana {
+                            for (c, has) in could.iter_mut().zip(m.colors) {
+                                *c |= has;
+                            }
+                        }
+                    }
+                    let colors: Vec<crate::Color> = crate::Color::ALL
+                        .into_iter()
+                        .filter(|&c| could[c as usize])
+                        .collect();
+                    return (!colors.is_empty()).then(|| (id, ManaSource::of(&colors)));
                 }
                 if d.mana_of_chosen_color {
                     let c = self.obj(id).chosen_color?;
@@ -4407,7 +4555,9 @@ impl Game {
         if from_command {
             // CR 903.8: {2} more for each earlier cast from the command zone.
             let owner = self.obj(card).owner;
-            self.obj_mut(card).commander_tax = self.commander_casts[owner].saturating_mul(2);
+            let casts = self.obj(card).command_zone_casts;
+            self.obj_mut(card).commander_tax = casts.saturating_mul(2);
+            self.obj_mut(card).command_zone_casts = casts.saturating_add(1);
             self.commander_casts[owner] = self.commander_casts[owner].saturating_add(1);
         }
         self.move_to(card, Zone::Stack);
@@ -7016,6 +7166,20 @@ impl Game {
                     self.until_your_next_turn.push((c, zcc, keywords, p));
                 }
             }
+            Effect::DrawIfSecondResolutionThisTurn(n) => {
+                let turn = self.turn;
+                let o = self.obj_mut(src);
+                o.resolved_this_turn = if o.resolved_this_turn.0 == turn {
+                    (turn, o.resolved_this_turn.1 + 1)
+                } else {
+                    (turn, 1)
+                };
+                if o.resolved_this_turn.1 == 2 {
+                    for _ in 0..n {
+                        self.draw(item.controller);
+                    }
+                }
+            }
             Effect::TapAttached => {
                 if let Some((c, zcc)) = self.obj(src).attached_to {
                     if self.obj(c).zcc == zcc && self.obj(c).zone == Zone::Battlefield {
@@ -8820,8 +8984,17 @@ impl Game {
             self.deal_damage(source, target, amount);
             if let Target::Player(d) = target {
                 // CR 903.10a: combat damage from the opponent's commander.
-                if self.commanders.contains(&Some(source)) && self.obj(source).owner != d {
-                    self.commander_damage[d] += (before - self.players[d].life).max(0);
+                if self.is_commander(source) && self.obj(source).owner != d {
+                    let dealt = (before - self.players[d].life).max(0);
+                    self.commander_damage[d] += dealt;
+                    match self
+                        .commander_damage_from
+                        .iter_mut()
+                        .find(|e| e.0 == source && e.1 == d)
+                    {
+                        Some(e) => e.2 += dealt,
+                        None => self.commander_damage_from.push((source, d, dealt)),
+                    }
                 }
             }
             if matches!(target, Target::Player(_)) && combat.attackers.contains(&source) {
@@ -8885,6 +9058,13 @@ impl Game {
             self.fire_source(a, When::DealsCombatDamageToPlayer);
             for t in &mut self.triggered[before..] {
                 t.amount = amount;
+            }
+            if let Some(bello) = self.bello_for(a) {
+                let controller = self.obj(a).controller;
+                self.triggered.push(StackItem {
+                    kind: StackKind::Trigger(0),
+                    ..Game::casting(bello, controller)
+                });
             }
             let zcc = self.obj(a).zcc;
             let turn = self.turn;
@@ -9151,7 +9331,14 @@ impl Game {
                 let pl = &self.players[p];
                 // "You can't lose the game" (Herald of Eternal Dawn).
                 let protected = self.permanents(p).any(|c| self.def_of(c).cant_lose);
-                let commander_dead = self.commander_damage[p] >= COMMANDER_DAMAGE_LOSS; // CR 704.6c
+                // CR 704.6c: 21 combat damage from one commander. `commander_damage` is the total from
+                // the opponent's commanders: the same thing when they have only one.
+                let one_commander = self.partners[opponent(p)].is_none();
+                let commander_dead = self
+                    .commander_damage_from
+                    .iter()
+                    .any(|e| e.1 == p && e.2 >= COMMANDER_DAMAGE_LOSS)
+                    || (one_commander && self.commander_damage[p] >= COMMANDER_DAMAGE_LOSS);
                 if !pl.lost && !protected && (pl.life <= 0 || pl.drew_from_empty || commander_dead) {
                     self.players[p].lost = true; // CR 704.5a, 704.5b
                     self.events.push(Event::Lost { player: p });

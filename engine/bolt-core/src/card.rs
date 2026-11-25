@@ -388,6 +388,19 @@ pub struct CardDef {
     pub warrior_tokens_unsacrificeable_end_step: bool,
     /// "Creature spells you cast cost {N} less to cast." (The Sibsig Ceremony)
     pub creature_spell_discount: u8,
+    /// Its color identity (CR 903.4), WUBRG: set from the rules text when the set loads.
+    pub color_identity: [bool; 5],
+    /// "{T}: Add one mana of any color in your commander's color identity." (no commander: no mana)
+    pub mana_commander_identity: bool,
+    /// "{T}: Add one mana of any color that a land an opponent controls could produce."
+    pub mana_opponent_land_colors: bool,
+    /// One activation of its mana ability makes this many mana (Sol Ring: 2); 0 means 1.
+    pub mana_amount: u8,
+    /// Bello: "During your turn, each non-Equipment artifact and non-Aura enchantment you control
+    /// with mana value 4 or greater is a 4/4 Elemental creature in addition to its other types and
+    /// has indestructible, haste, and \"Whenever this creature deals combat damage to a player, draw
+    /// a card.\"" (its trigger number 0 is that draw)
+    pub animates_big_noncreatures_your_turn: bool,
 }
 
 /// An Omen spell half: its name, cost, whether it's an instant, and what it does.
@@ -511,6 +524,11 @@ impl CardDef {
             opponents_cant_cast_your_turn: false,
             warrior_tokens_unsacrificeable_end_step: false,
             creature_spell_discount: 0,
+            color_identity: [false; 5],
+            mana_commander_identity: false,
+            mana_opponent_land_colors: false,
+            mana_amount: 0,
+            animates_big_noncreatures_your_turn: false,
         }
     }
 
@@ -613,6 +631,11 @@ impl CardDef {
             opponents_cant_cast_your_turn: false,
             warrior_tokens_unsacrificeable_end_step: false,
             creature_spell_discount: 0,
+            color_identity: [false; 5],
+            mana_commander_identity: false,
+            mana_opponent_land_colors: false,
+            mana_amount: 0,
+            animates_big_noncreatures_your_turn: false,
         }
     }
 
@@ -715,6 +738,11 @@ impl CardDef {
             opponents_cant_cast_your_turn: false,
             warrior_tokens_unsacrificeable_end_step: false,
             creature_spell_discount: 0,
+            color_identity: [false; 5],
+            mana_commander_identity: false,
+            mana_opponent_land_colors: false,
+            mana_amount: 0,
+            animates_big_noncreatures_your_turn: false,
         }
     }
 }

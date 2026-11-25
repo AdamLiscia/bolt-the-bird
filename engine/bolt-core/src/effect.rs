@@ -834,6 +834,9 @@ pub enum Effect {
         slot: u8,
         n: u8,
     },
+    /// "If this is the second time this ability has resolved this turn, you draw `n` cards." (Ms.
+    /// Bumbleflower; counted per source, each turn)
+    DrawIfSecondResolutionThisTurn(u8),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

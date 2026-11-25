@@ -594,6 +594,7 @@ pub fn script(name: &str) -> Option<Script> {
     script_core(name)
         .or_else(|| tdm_b::script(name))
         .or_else(|| tdm_c::script(name))
+        .or_else(|| blc_b::script(name))
 }
 
 // Parallel lanes for plain Tarkir cards (no engine-core changes): each owns its module and test file.
@@ -601,6 +602,9 @@ mod tdm_b;
 mod tdm_c;
 pub use tdm_b::TDM_B_SCRIPTED;
 pub use tdm_c::TDM_C_SCRIPTED;
+// Bloomburrow Commander, lane B.
+mod blc_b;
+pub use blc_b::BLC_B_SCRIPTED;
 
 fn script_core(name: &str) -> Option<Script> {
     let s = |lines, build| Some(Script { lines, build });
