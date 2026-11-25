@@ -1080,6 +1080,37 @@ pub fn script(name: &str) -> Option<Script> {
                 activated(d, "{G}", true, vec![], vec![Effect::CreateToken { who: Who::You, def: t.squirrel, n: 1 }]);
             },
         ),
+        "Teapot Slinger" => s(&["Whenever you expend 4, this creature deals 2 damage to each opponent."], |d, _| {
+            on(d, When::YouExpend(4), vec![], vec![damage(2, Recipient::EachOpponent)])
+        }),
+        "Helm of the Host" => s(
+            &[
+                "At the beginning of combat on your turn, create a token that's a copy of equipped creature, except the token isn't legendary. That token gains haste.",
+                "Equip {5}",
+            ],
+            |d, _| {
+                on(d, When::BeginCombatYourTurn, vec![], vec![Effect::CopyAttachedNonlegendaryHaste]);
+                equip(d, "{5}");
+            },
+        ),
+        "Tempt with Discovery" => s(
+            &["Tempting offer — Search your library for a land card and put it onto the battlefield. Each opponent may search their library for a land card and put it onto the battlefield. For each opponent who searches a library this way, search your library for a land card and put it onto the battlefield. Then each player who searched a library this way shuffles."],
+            |d, _| {
+                spell(
+                    d,
+                    vec![],
+                    vec![
+                        search(SearchFor::Land, SearchTo::Battlefield { tapped: false }),
+                        Effect::TemptOpponentsLand,
+                        Effect::SearchLandIfTempted,
+                    ],
+                );
+            },
+        ),
+        "Wildsear, Scouring Maw" => s(
+            &["Enchantment spells you cast from your hand have cascade."],
+            |d, _| on(d, When::YouCastEnchantmentFromHand, vec![], vec![Effect::Cascade]),
+        ),
         _ => None,
     }
 }
@@ -1227,4 +1258,8 @@ pub const BLC_B_SCRIPTED: &[&str] = &[
     "Mangara, the Diplomat",
     "Hoofprints of the Stag",
     "Chitterspitter",
+    "Teapot Slinger",
+    "Helm of the Host",
+    "Tempt with Discovery",
+    "Wildsear, Scouring Maw",
 ];

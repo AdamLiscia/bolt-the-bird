@@ -291,3 +291,33 @@ Core:
 - Elemental 4/4 flying token.
 
 Notes: evolve compares only as it resolves (not also as it triggers).
+
+### Batch 12: 4 cards
+
+Teapot Slinger, Helm of the Host, Tempt with Discovery, Wildsear, Scouring Maw.
+
+Core:
+- Expend: `Game::mana_spent_on_spells` (reset each turn), `When::YouExpend(n)` fired for each total
+  passed as a spell's cost is paid.
+- `Object::not_legendary` (read by `types_of`; the legend rule now uses `types_of` for both
+  permanents) and `Effect::CopyAttachedNonlegendaryHaste`.
+- Tempting offer: `SearchFor::Land`, `Effect::TemptOpponentsLand` (`Decision::TemptOffer`, the
+  opponent's land search on Yes) and `SearchLandIfTempted` (`Game::tempt_accepted`).
+- Cascade: `When::YouCastEnchantmentFromHand` and `Effect::Cascade`; the card hit is offered in the
+  free-cast window, and `Game::free_casts_to_bottom` puts it on the bottom if not cast.
+
+### Paused
+
+Paused on 2026-11-25 for the playgroup (Xenagos) list. Left on the BLC list:
+- Not attempted, need core: Path of Ancestry (spent-mana tracking), Alchemist's Talent and
+  Gourmand's Talent (Class levels plus granted abilities / Treasure-mana tracking), Baird (attack
+  tax), Bloodroot Apothecary (toxic, poison), Bootleggers' Stash (granted land ability), Calamity of
+  Cinders (convoke), Chatterfang (forestwalk, token replacement), Communal Brewing (counters on a cast
+  creature), Esika's Chariot (crew), Forgotten Ancient (moving counters), Grothama, Illusionist's
+  Gambit, Insatiable Frugivore, Martial Impetus (goad), Moonstone Eulogist and Ravenous Squirrel
+  ("whenever you sacrifice"), Mosswort Bridge (hideaway), Pyreswipe Hawk (control for as long as),
+  Rain of Riches, Rootcast Apprenticeship (repeated modes), Sunbird's Invocation, Tenuous Truce
+  (enchant opponent), The Odd Acorn Gang (granted Squirrel ability), Wolfwillow Haven.
+- Not claimable: Brightcap Badger // Fungus Frolic and Dusk // Dawn (the oracle data has only the
+  front face).
+- Staged but not applied: Wizard Class and Kodama of the East Tree (`/tmp/laneb_batch13.py`).

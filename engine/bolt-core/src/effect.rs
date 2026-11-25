@@ -1029,6 +1029,17 @@ pub enum Effect {
     KindCounterSelf(i32),
     /// "You may sacrifice a token. If you do, ...": the rest only if one is sacrificed.
     MaySacrificeToken,
+    /// Create a token that's a copy of the creature the source is attached to, except it isn't
+    /// legendary; it has haste (Helm of the Host).
+    CopyAttachedNonlegendaryHaste,
+    /// Tempting offer (Tempt with Discovery), after your first land: each opponent may search for a
+    /// land card and put it onto the battlefield; remembered for `SearchLandIfTempted`.
+    TemptOpponentsLand,
+    /// For each opponent who searched this way, search for a land card and put it onto the battlefield.
+    SearchLandIfTempted,
+    /// Cascade (CR 702.85) for the spell in the trigger's `extra`: exile from the top until a nonland
+    /// card with lesser mana value; you may cast it free; the rest go to the bottom in a random order.
+    Cascade,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1055,6 +1066,8 @@ pub enum SearchFor {
     Subtype(&'static str),
     /// A colorless nonland card.
     ColorlessNonland,
+    /// Any land card.
+    Land,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1503,6 +1516,10 @@ pub enum When {
     OpponentAttacksWithAtLeastTwo,
     /// "Whenever an opponent casts their second spell each turn".
     OpponentCastsSecondSpell,
+    /// "Whenever you expend N" (Bloomburrow): as you spend your Nth total mana on spells this turn.
+    YouExpend(u8),
+    /// "Enchantment spells you cast from your hand have cascade": when you cast one, with it in `extra`.
+    YouCastEnchantmentFromHand,
 }
 
 #[derive(Clone, Debug, PartialEq)]

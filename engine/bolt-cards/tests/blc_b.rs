@@ -2276,3 +2276,104 @@ fn chitterspitter_eats_tokens_for_acorns_that_pump_squirrels() {
     }
     assert_eq!(g.obj(c).kind_counters, 1);
 }
+
+// ---- batch 12 ----
+
+#[test]
+fn teapot_slinger_pings_when_you_spend_your_fourth_mana() {
+    let mut g = table();
+    let t = put(&mut g, 0, "Teapot Slinger");
+    assert!(g.keywords(t).has(Keywords::MENACE));
+    let life = g.players[1].life;
+    let a = hand(&mut g, 0, "Sakura-Tribe Elder"); // 2 mana
+    play(&mut g, a, false, &[], &[]);
+    assert_eq!(g.players[1].life, life, "two spent");
+    let b = hand(&mut g, 0, "Lotus Cobra"); // 2 more: the fourth
+    play(&mut g, b, false, &[], &[]);
+    assert_eq!(g.players[1].life, life - 2);
+    let c = hand(&mut g, 0, "Sakura-Tribe Elder");
+    play(&mut g, c, false, &[], &[]);
+    assert_eq!(
+        g.players[1].life,
+        life - 2,
+        "once a turn: the fourth is already spent"
+    );
+}
+
+#[test]
+fn helm_of_the_host_copies_the_equipped_creature_without_the_legend_rule() {
+    let mut g = table();
+    let helm = put(&mut g, 0, "Helm of the Host");
+    let jazal = put(&mut g, 0, "Jazal Goldmane"); // legendary
+    act(&mut g, Action::Activate(helm, 0));
+    resolve_all(&mut g, &[Action::Target(obj(jazal))]);
+    attack(&mut g, &[]);
+    let copies = tokens_named(&g, 0, "Jazal Goldmane");
+    assert_eq!(copies.len(), 1);
+    assert!(!g.types_of(copies[0]).legendary);
+    assert!(g.keywords(copies[0]).has(Keywords::HASTE));
+    assert_eq!(g.obj(jazal).zone, Zone::Battlefield, "no legend rule");
+}
+
+#[test]
+fn tempt_with_discovery_gives_you_a_land_and_another_if_they_accept() {
+    let mut g = table();
+    let forest = g.add_card(0, bid("Forest"), Zone::Library);
+    let mountain = g.add_card(0, bid("Mountain"), Zone::Library);
+    let theirs = *g.players[1].library.last().unwrap();
+    let t = hand(&mut g, 0, "Tempt with Discovery");
+    play(
+        &mut g,
+        t,
+        false,
+        &[],
+        &[
+            Action::Pick(forest),
+            Action::Yes,
+            Action::Pick(theirs),
+            Action::Pick(mountain),
+        ],
+    );
+    assert_eq!(g.obj(forest).zone, Zone::Battlefield);
+    assert!(!g.obj(forest).tapped);
+    assert_eq!(g.obj(theirs).zone, Zone::Battlefield);
+    assert_eq!(g.obj(mountain).zone, Zone::Battlefield);
+
+    let mut g = table();
+    let forest = g.add_card(0, bid("Forest"), Zone::Library);
+    let t = hand(&mut g, 0, "Tempt with Discovery");
+    let lands = g.permanents(0).count();
+    play(&mut g, t, false, &[], &[Action::Pick(forest), Action::No]);
+    assert_eq!(g.permanents(0).count(), lands + 1, "declined: just one");
+}
+
+#[test]
+fn wildsear_gives_enchantments_from_hand_cascade() {
+    let mut g = table();
+    let w = put(&mut g, 0, "Wildsear, Scouring Maw");
+    assert!(g.keywords(w).has(Keywords::TRAMPLE));
+    let ring = g.add_card(0, bid("Sol Ring"), Zone::Library); // mana value 1
+    let plains = g.add_card(0, bid("Plains"), Zone::Library); // on top: skipped
+    let m = hand(&mut g, 0, "Murmuration"); // mana value 5
+    act(&mut g, Action::Cast(m));
+    while !matches!(g.pending, Pending::FreeCast(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Cast(ring));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(ring).zone, Zone::Battlefield, "cast free");
+    assert_eq!(g.obj(m).zone, Zone::Battlefield);
+    assert_eq!(
+        g.players[0].library.first(),
+        Some(&plains),
+        "the rest on the bottom"
+    );
+
+    // Not from hand, or not an enchantment: no cascade.
+    let mut g = table();
+    put(&mut g, 0, "Wildsear, Scouring Maw");
+    let ring = g.add_card(0, bid("Sol Ring"), Zone::Library);
+    let elder = hand(&mut g, 0, "Sakura-Tribe Elder");
+    play(&mut g, elder, false, &[], &[]);
+    assert_eq!(g.obj(ring).zone, Zone::Library);
+}
