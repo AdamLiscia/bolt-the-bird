@@ -981,3 +981,55 @@ fn defiler_of_vigor_trades_life_for_green_and_grows_the_team() {
     let ring = hand(&mut g, 0, "Sol Ring"); // colorless: no option
     assert!(!g.legal_actions().contains(&Action::CastAlternative(ring)));
 }
+
+#[test]
+fn world_at_war_adds_a_late_combat_and_rebounds() {
+    let mut g = table();
+    let valet = put(&mut g, 0, "Devilish Valet");
+    let w = hand(&mut g, 0, "World at War");
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    play(&mut g, w, false, &[], &[]);
+    assert_eq!(g.obj(w).zone, Zone::Exile, "rebound: exiled from hand");
+    let life = g.players[1].life;
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(valet));
+    act(&mut g, Action::FinishAttacks);
+    // Through main phase 2, then the additional combat: the Valet untaps as it begins.
+    let mut seen_main2 = false;
+    while g.pending != Pending::DeclareAttackers(0) {
+        if g.step == Step::Main2 {
+            seen_main2 = true;
+        }
+        let a = match g.pending {
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert!(seen_main2, "after the second main phase");
+    assert!(!g.obj(valet).tapped, "untapped: it attacked this turn");
+    act(&mut g, Action::Attack(valet));
+    act(&mut g, Action::FinishAttacks);
+    while g.step != Step::Main2 {
+        let a = match g.pending {
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.players[1].life, life - 2);
+    // Next upkeep: cast it free from exile.
+    g.start_turn(7, 0);
+    while !matches!(g.pending, Pending::FreeCast(0)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(g.legal_actions().contains(&Action::Cast(w)));
+    act(&mut g, Action::Cast(w));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(w).zone, Zone::Graveyard, "cast from exile: no rebound");
+}

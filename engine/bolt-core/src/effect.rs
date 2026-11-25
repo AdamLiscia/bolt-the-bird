@@ -1163,6 +1163,13 @@ pub enum Effect {
     /// "There's an additional combat phase after this [main] phase. At the beginning of that combat,
     /// untap all creatures you control." (Moraug: no additional main phase follows it.)
     AdditionalCombatAfterMainUntap,
+    /// "After the second main phase this turn, there's an additional combat phase followed by an
+    /// additional main phase. At the beginning of that combat, untap all creatures that attacked this
+    /// turn." (World at War)
+    AdditionalCombatAfterSecondMainUntapAttackers,
+    /// Rebound (CR 702.88): cast from hand, the spell is exiled as it resolves; at the beginning of
+    /// your next upkeep, you may cast it from exile without paying its mana cost.
+    Rebound,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

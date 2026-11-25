@@ -439,6 +439,13 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::YouCastGreenPermanent, vec![], vec![Effect::CountersAll { who: Who::You, n: 1 }]);
             },
         ),
+        "World at War" => s(
+            &[
+                "After the second main phase this turn, there's an additional combat phase followed by an additional main phase. At the beginning of that combat, untap all creatures that attacked this turn.",
+                "Rebound",
+            ],
+            |d, _| spell(d, vec![], vec![Effect::AdditionalCombatAfterSecondMainUntapAttackers, Effect::Rebound]),
+        ),
         _ => None,
     }
 }
@@ -498,4 +505,5 @@ pub const PG_B_SCRIPTED: &[&str] = &[
     "Fanatic of Rhonas",
     "Moraug, Fury of Akoum",
     "Defiler of Vigor",
+    "World at War",
 ];

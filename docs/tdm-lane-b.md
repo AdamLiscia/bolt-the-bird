@@ -406,3 +406,10 @@ Core:
 - Defiler of Vigor: `CardDef::green_permanents_pay_life_for_g` offers `Action::CastAlternative` for a
   green permanent spell with a {G} in its cost (cards without their own alternative cost): {G} less
   and 2 life as it's cast. `When::YouCastGreenPermanent`.
+
+### PG batch 7: World at War
+
+`Effect::AdditionalCombatAfterSecondMainUntapAttackers` (`Game::combats_after_main2`: the turn's
+second main phase goes on to a combat, which untaps the creatures that attacked this turn as it
+begins, then a main phase) and rebound (`Effect::Rebound`, `Game::rebound`: cast from hand, exiled
+as it resolves; offered in the free-cast window at its owner's next upkeep, as suspend is).

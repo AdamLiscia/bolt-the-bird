@@ -1056,6 +1056,13 @@ pub struct Game {
     pub extra_combats_untap_only: Vec<usize>,
     /// The current additional combat is one of those.
     pub combat_untap_only: bool,
+    /// Additional combats (each followed by a main phase) to come after this turn's second main
+    /// phase (World at War).
+    pub combats_after_main2: u8,
+    /// Untap the creatures that attacked this turn as the next combat begins (World at War).
+    pub untap_attackers_at_combat: bool,
+    /// Rebound cards in exile, castable free at their owner's next upkeep: (card, its zcc).
+    pub rebound: Vec<(ObjId, u32)>,
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -1252,6 +1259,9 @@ impl Game {
             must_be_blocked: Vec::new(),
             extra_combats_untap_only: Vec::new(),
             combat_untap_only: false,
+            combats_after_main2: 0,
+            untap_attackers_at_combat: false,
+            rebound: Vec::new(),
         }
     }
 
@@ -10761,6 +10771,16 @@ impl Game {
                     ob.extra_subtypes.push("Zombie");
                 }
             }
+            Effect::AdditionalCombatAfterSecondMainUntapAttackers => {
+                self.combats_after_main2 = self.combats_after_main2.saturating_add(1);
+            }
+            Effect::Rebound => {
+                if self.obj(src).zone == Zone::Stack && self.obj(src).from_hand {
+                    self.move_to(src, Zone::Exile);
+                    let zcc = self.obj(src).zcc;
+                    self.rebound.push((src, zcc));
+                }
+            }
             Effect::AdditionalCombatAfterMainUntap => {
                 if matches!(self.step, Step::Main1 | Step::Main2) {
                     let resume = if self.step == Step::Main1 {
@@ -11444,6 +11464,13 @@ impl Game {
                 self.extra_main_resume = self.extra_combat_resume.take();
                 Step::Main2
             }
+            Step::Main2 if self.extra_main_resume.is_none() && self.combats_after_main2 > 0 => {
+                // World at War: after the second main phase, a combat and then a main phase.
+                self.combats_after_main2 -= 1;
+                self.extra_combat_resume = Some(Step::End);
+                self.untap_attackers_at_combat = true;
+                Step::BeginCombat
+            }
             Step::Main2 => self.extra_main_resume.take().unwrap_or(Step::End),
             Step::End => Step::Cleanup,
             Step::Cleanup => {
@@ -11469,6 +11496,8 @@ impl Game {
         self.combats_this_turn = 0;
         self.extra_combats_untap_only.clear();
         self.combat_untap_only = false;
+        self.combats_after_main2 = 0;
+        self.untap_attackers_at_combat = false;
         self.copy_next_spell.clear();
         self.delayed_this_turn.clear();
         self.damage_shields.clear();
@@ -11612,6 +11641,14 @@ impl Game {
             }
             Step::BeginCombat => {
                 self.combats_this_turn = self.combats_this_turn.saturating_add(1);
+                if std::mem::take(&mut self.untap_attackers_at_combat) {
+                    // World at War: "untap all creatures that attacked this turn".
+                    for c in self.attacked_creatures_this_turn.clone() {
+                        if self.obj(c).zone == Zone::Battlefield {
+                            self.untap_by_effect(c);
+                        }
+                    }
+                }
                 if self.combat_untap_only {
                     // Moraug: "At the beginning of that combat, untap all creatures you control."
                     for c in self.creatures(a).collect::<Vec<_>>() {
@@ -11720,11 +11757,25 @@ impl Game {
                         ready.push(c);
                     }
                 }
-                if !ready.is_empty() {
+                // Rebound: "you may cast this card from exile without paying its mana cost."
+                let (now, later): (Vec<_>, Vec<_>) = std::mem::take(&mut self.rebound)
+                    .into_iter()
+                    .partition(|&(c, _)| self.obj(c).owner == a);
+                self.rebound = later;
+                let rebounds: Vec<ObjId> = now
+                    .into_iter()
+                    .filter(|&(c, z)| self.obj(c).zcc == z && self.obj(c).zone == Zone::Exile)
+                    .map(|(c, _)| c)
+                    .collect();
+                if !ready.is_empty() || !rebounds.is_empty() {
                     for c in ready {
                         let o = self.obj_mut(c);
                         o.cast_free = true;
                         o.suspend_haste = true;
+                        self.free_casts.push(c);
+                    }
+                    for c in rebounds {
+                        self.obj_mut(c).cast_free = true;
                         self.free_casts.push(c);
                     }
                     self.free_caster = a;
