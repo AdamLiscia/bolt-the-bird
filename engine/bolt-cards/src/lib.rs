@@ -429,6 +429,10 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         umbra_armor: false,
         modal_back: false,
         soulbond_flicker: false,
+        green_spell_discount: 0,
+        forests_add_g: false,
+        buyback_sacrifice: None,
+        x_is_snow_spent: false,
     };
     def.color_identity = color_identity(o);
     def.phyrexian = phyrexian;

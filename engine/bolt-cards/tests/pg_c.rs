@@ -1085,6 +1085,7 @@ fn nissa_worldsoul_speaker_gets_energy_on_landfall_and_spends_eight_for_a_perman
     assert_eq!(g.players[0].energy, 0);
     assert_eq!(g.obj(nissa).zone, Zone::Battlefield);
 }
+
 // ---- lane B: Phyrexian Metamorph, the Sakashimas, Zimone ----
 
 fn lb_has(g: &Game, a: Action) -> bool {
