@@ -591,6 +591,9 @@ pub struct CardDef {
     /// "You may pay N {E} rather than pay the mana cost for permanent spells you cast." (Nissa,
     /// Worldsoul Speaker: 8); cast with `Action::CastWith(card, this permanent)`.
     pub permanents_for_energy: u8,
+    /// Split second (CR 702.61): while it's on the stack, players can't cast spells or activate
+    /// abilities that aren't mana abilities.
+    pub split_second: bool,
 }
 
 /// What entering makes triggers happen again (see [`CardDef::entering_triggers_again`]).
@@ -795,6 +798,7 @@ impl CardDef {
             back: None,
             alt_cost_needs_commander: false,
             permanents_for_energy: 0,
+            split_second: false,
         }
     }
 
@@ -967,6 +971,7 @@ impl CardDef {
             back: None,
             alt_cost_needs_commander: false,
             permanents_for_energy: 0,
+            split_second: false,
         }
     }
 
@@ -1139,6 +1144,7 @@ impl CardDef {
             back: None,
             alt_cost_needs_commander: false,
             permanents_for_energy: 0,
+            split_second: false,
         }
     }
 }

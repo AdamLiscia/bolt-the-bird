@@ -403,6 +403,7 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         back: None,
         alt_cost_needs_commander: false,
         permanents_for_energy: 0,
+        split_second: false,
     };
     def.color_identity = color_identity(o);
     // An Omen's spell half: its lines must be claimed too, written "Omen: <line>" in the script.

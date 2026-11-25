@@ -249,6 +249,8 @@ pub struct Object {
     /// A transforming double-faced permanent with its back face up (CR 712.8e): its characteristics
     /// are its definition's `back`. Front face up again once it leaves the battlefield (CR 711.8).
     pub transformed: bool,
+    /// Conduit of Worlds: the turn it may be cast from its owner's graveyard (if no spell was cast).
+    pub conduit_turn: u32,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -877,6 +879,10 @@ pub enum Decision {
     /// Choose a new target for target number `slot` of the stack entry `items[item]` (CR 115.7):
     /// `Target` a legal new one, or `No` to keep it.
     ChooseNewTarget { item: usize, slot: u8 },
+    /// `Pick` a card in your hand to put on top of your library, `left` more to go.
+    HandToTop { left: u8 },
+    /// Scroll Rack: `Pick` a card in your hand to exile face down (`exiled` so far), or `No` to stop.
+    ScrollRackExile { exiled: Vec<ObjId> },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -1135,6 +1141,11 @@ pub struct Game {
     /// Land cards went from a library to each player's graveyard since triggers were last put on the
     /// stack (Hedge Shredder).
     pub lands_milled_pending: [bool; 2],
+    /// "Whenever this creature becomes tapped" granted until end of turn: (creature, zcc, card with
+    /// the trigger, its index, turn) (Legolas's Quick Reflexes).
+    pub granted_tapped: Vec<(ObjId, u32, ObjId, usize, u32)>,
+    /// The turn each player can't cast additional spells (Conduit of Worlds); 0: never.
+    pub no_more_spells_turn: [u32; 2],
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -1340,6 +1351,8 @@ impl Game {
             triggered_scanned: 0,
             granted_fight: Vec::new(),
             lands_milled_pending: [false; 2],
+            granted_tapped: Vec::new(),
+            no_more_spells_turn: [0; 2],
         }
     }
 
@@ -1443,6 +1456,7 @@ impl Game {
             eternalized: false,
             attacks_turn: (0, 0),
             transformed: false,
+            conduit_turn: 0,
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -2026,6 +2040,17 @@ impl Game {
         self.obj_mut(id).tapped = true;
         if self.obj(id).zone == Zone::Battlefield {
             self.fire_source(id, When::BecomesTapped);
+            let (zcc, turn) = (self.obj(id).zcc, self.turn);
+            for (c, z, src, n, t) in self.granted_tapped.clone() {
+                if c == id && z == zcc && t == turn {
+                    let controller = self.obj(id).controller;
+                    self.triggered.push(StackItem {
+                        kind: StackKind::Trigger(n),
+                        extra: Some(id),
+                        ..Game::casting(src, controller)
+                    });
+                }
+            }
         }
     }
 
@@ -2426,10 +2451,11 @@ impl Game {
 
     /// Voice of Victory: `p` can't cast spells while an opponent with it takes their turn.
     fn cant_cast_now(&self, p: PlayerId) -> bool {
-        self.active != p
-            && self
-                .permanents(self.active)
-                .any(|x| self.def_of(x).opponents_cant_cast_your_turn && !self.lost_abilities(x))
+        (self.turn > 0 && self.no_more_spells_turn[p] == self.turn)
+            || self.active != p
+                && self
+                    .permanents(self.active)
+                    .any(|x| self.def_of(x).opponents_cant_cast_your_turn && !self.lost_abilities(x))
     }
 
     /// Glacierwood Siege (Sultai): `p` may play lands from their graveyard.
@@ -3841,6 +3867,14 @@ impl Game {
     }
 
     fn priority_actions(&self, p: PlayerId) -> Vec<Action> {
+        // Split second: only mana abilities (added by the caller) while it's on the stack.
+        if self
+            .items
+            .iter()
+            .any(|i| i.kind == StackKind::Spell && self.def_of(i.source).split_second)
+        {
+            return vec![Action::PassPriority];
+        }
         let mut v = vec![Action::PassPriority];
         let sorcery_timing =
             p == self.active && matches!(self.step, Step::Main1 | Step::Main2) && self.items.is_empty();
@@ -3861,10 +3895,12 @@ impl Game {
             stashed || o.playable.is_some_and(|(q, until)| q == p && turn <= until)
         });
         // Cards an effect lets you cast from your graveyard this turn (Zul Ashur).
+        let conduit_ok = self.spells_cast[p] == 0;
         let from_graveyard = self.players[p].graveyard.iter().copied().filter(move |&c| {
             self.obj(c)
                 .playable
                 .is_some_and(|(q, until)| q == p && turn <= until)
+                || (conduit_ok && turn > 0 && self.obj(c).conduit_turn == turn)
         });
         // Muldrotha: a land from your graveyard, during your turn.
         let muldrotha = p == self.active && self.permanents(p).any(|x| self.def_of(x).graveyard_permanents);
@@ -6223,6 +6259,10 @@ impl Game {
     fn finish_cast(&mut self, item: StackItem) {
         let (p, card) = (item.controller, item.source);
         let flashback_cast = item.flashback;
+        if self.turn > 0 && self.obj(card).conduit_turn == self.turn {
+            self.obj_mut(card).conduit_turn = 0;
+            self.no_more_spells_turn[p] = self.turn; // Conduit of Worlds
+        }
         let mode = CastMode {
             x: item.x,
             alt: item.alt,
@@ -7243,6 +7283,12 @@ impl Game {
                 v
             }
             Decision::SacrificeOneOf { cards } => cards.iter().copied().map(Action::Pick).collect(),
+            Decision::HandToTop { .. } => hand.iter().copied().map(Action::Pick).collect(),
+            Decision::ScrollRackExile { .. } => {
+                let mut v: Vec<Action> = hand.iter().copied().map(Action::Pick).collect();
+                v.push(Action::No);
+                v
+            }
             Decision::ReturnOtherPermanent { except } => {
                 let mut v: Vec<Action> = self.players[p]
                     .graveyard
@@ -8241,6 +8287,22 @@ impl Game {
             }
             (Decision::ReturnOtherPermanent { .. }, Action::Pick(c)) => self.move_to(c, Zone::Battlefield),
             (Decision::ReturnOtherPermanent { .. }, Action::No) => {}
+            (Decision::HandToTop { left }, Action::Pick(c)) => {
+                self.move_to(c, Zone::Library); // on top; the next one goes over it
+                if left > 1 && !self.players[p].hand.is_empty() {
+                    self.ask(p, Decision::HandToTop { left: left - 1 });
+                }
+            }
+            (Decision::ScrollRackExile { mut exiled }, Action::Pick(c)) => {
+                self.move_to(c, Zone::Exile);
+                exiled.push(c);
+                if self.players[p].hand.is_empty() {
+                    self.scroll_rack_finish(p, exiled);
+                } else {
+                    self.ask(p, Decision::ScrollRackExile { exiled });
+                }
+            }
+            (Decision::ScrollRackExile { exiled }, Action::No) => self.scroll_rack_finish(p, exiled),
             (Decision::LandsFromHand, choice) => {
                 if let Action::Pick(land) = choice {
                     self.move_to(land, Zone::Battlefield);
@@ -8305,6 +8367,33 @@ impl Game {
         }
         if self.decision.is_none() {
             self.continue_resolving();
+        }
+    }
+
+    /// Scroll Rack: that many cards from the top of the library into the hand, then the exiled cards
+    /// on top in any order (`ScryOrder`).
+    fn scroll_rack_finish(&mut self, p: PlayerId, exiled: Vec<ObjId>) {
+        for _ in 0..exiled.len() {
+            if let Some(&c) = self.players[p].library.last() {
+                self.move_to(c, Zone::Hand);
+            }
+        }
+        let mut back = Vec::new();
+        for c in exiled {
+            if self.obj(c).zone == Zone::Exile {
+                self.move_to(c, Zone::Library);
+                back.push(c);
+            }
+        }
+        if back.len() > 1 {
+            back.reverse(); // the last one put back is on top
+            self.ask(
+                p,
+                Decision::ScryOrder {
+                    kept: back,
+                    placed: Vec::new(),
+                },
+            );
         }
     }
 
@@ -9856,6 +9945,81 @@ impl Game {
             Effect::Energy(n) => {
                 let p = item.controller;
                 self.players[p].energy += n as u32;
+            }
+            Effect::LookTopMayBottom(n) => {
+                if let Some(q) = self
+                    .players_for(item, legal, Who::TargetPlayer(n))
+                    .first()
+                    .copied()
+                {
+                    if let Some(&card) = self.players[q].library.last() {
+                        self.ask(item.controller, Decision::Tuck { card });
+                    }
+                }
+            }
+            Effect::DrawThenPutBack { draw, back } => {
+                let p = item.controller;
+                for _ in 0..draw {
+                    self.draw(p);
+                }
+                if back > 0 && !self.players[p].hand.is_empty() {
+                    self.ask(p, Decision::HandToTop { left: back });
+                }
+            }
+            Effect::ExileLibraryShuffleHandIn(n) => {
+                if let Some(q) = self
+                    .players_for(item, legal, Who::TargetPlayer(n))
+                    .first()
+                    .copied()
+                {
+                    for c in self.players[q].library.clone() {
+                        self.move_to(c, Zone::Exile);
+                    }
+                    for c in self.players[q].hand.clone() {
+                        self.move_to(c, Zone::Library);
+                    }
+                    self.shuffle_library(q);
+                }
+            }
+            Effect::ScrollRack => {
+                let p = item.controller;
+                if !self.players[p].hand.is_empty() {
+                    self.ask(p, Decision::ScrollRackExile { exiled: Vec::new() });
+                }
+            }
+            Effect::ConduitCast(n) => {
+                let p = item.controller;
+                if self.spells_cast[p] == 0 {
+                    if let Some(id) = Game::slot_object(item, legal, n) {
+                        if self.obj(id).zone == Zone::Graveyard {
+                            self.obj_mut(id).conduit_turn = self.turn;
+                        }
+                    }
+                }
+            }
+            Effect::GrantTappedTrigger { slot, trigger } => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    let entry = (id, self.obj(id).zcc, src, trigger, self.turn);
+                    self.granted_tapped.push(entry);
+                }
+            }
+            Effect::ExtraDealsDamageEqualPower(n) => {
+                if let (Some(c), Some(&t)) = (item.extra, item.targets.get(n as usize)) {
+                    if legal.get(n as usize) == Some(&true) {
+                        let amount = if self.obj(c).zone == Zone::Battlefield {
+                            self.power(c)
+                        } else {
+                            self.obj(c).last_power
+                        };
+                        let to = match t {
+                            Chosen::Player(q) => Target::Player(q),
+                            Chosen::Object(x, _) => Target::Object(x),
+                        };
+                        if amount > 0 {
+                            self.deal_damage(c, to, amount);
+                        }
+                    }
+                }
             }
             Effect::DrawThenSourceOnTop => {
                 let p = item.controller;
@@ -12452,6 +12616,7 @@ impl Game {
         self.delayed_on_attack.clear();
         self.dies_under_control.clear();
         self.granted_combat_damage.clear();
+        self.granted_tapped.clear();
         self.delayed_on_next_attack.clear();
         self.extra_combats.clear();
         self.extra_combat_resume = None;

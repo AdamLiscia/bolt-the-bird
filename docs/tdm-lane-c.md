@@ -476,3 +476,15 @@ creature (crew 1 never needs two). A crewed Vehicle is an artifact creature unti
 Hedge Shredder returns the land cards milled this turn that are still in your graveyard. Nissa's energy cast is
 `CastWith(permanent card, Nissa)`, mapped to an alternative cost of eight {E} (not for spells with a sacrifice or
 discard cost of their own).
+
+PG batch 8 (4): Jace, the Mind Sculptor, Scroll Rack, Conduit of Worlds, Legolas's Quick Reflexes. (Lane B takes
+Phyrexian Metamorph, both Sakashimas and Zimone, which finishes Glarb.)
+Core: `CardDef::split_second` (priority offers only `PassPriority` while one is on the stack; mana moves are added by
+the caller), `Object::conduit_turn`, `Game::{granted_tapped, no_more_spells_turn}` (the latter in `cant_cast_now`),
+`Decision::{HandToTop, ScrollRackExile}`, `Effect::{LookTopMayBottom, DrawThenPutBack, ExileLibraryShuffleHandIn,
+ScrollRack, ConduitCast, GrantTappedTrigger, ExtraDealsDamageEqualPower}`.
+Shortcuts: Jace's and Scroll Rack's "in any order" is the order picked (Jace: each card goes over the last;
+Scroll Rack: `ScryOrder`). Conduit's "you may cast that card" is deferred: the card stays castable from the
+graveyard for the rest of the turn while you haven't cast a spell, and casting it locks out further spells. The
+granted "becomes tapped" trigger is Legolas's own `When::Never` trigger, with the tapped creature as the item's
+`extra`, like the granted combat-damage triggers.

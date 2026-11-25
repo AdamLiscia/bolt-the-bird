@@ -454,6 +454,58 @@ pub fn script(name: &str) -> Option<Script> {
                 d.permanents_for_energy = 8;
             },
         ),
+        "Jace, the Mind Sculptor" => s(
+            &[
+                "+2: Look at the top card of target player's library. You may put that card on the bottom of that player's library.",
+                "0: Draw three cards, then put two cards from your hand on top of your library in any order.",
+                "−1: Return target creature to its owner's hand.",
+                "−12: Exile all cards from target player's library, then that player shuffles their hand into their library.",
+            ],
+            |d, _| {
+                loyalty(d, 2, Ability::new(vec![Filter::PLAYER], vec![Effect::LookTopMayBottom(0)]));
+                loyalty(d, 0, Ability::new(vec![], vec![Effect::DrawThenPutBack { draw: 3, back: 2 }]));
+                loyalty(d, -1, Ability::new(vec![CREATURE], vec![Effect::Bounce(0)]));
+                loyalty(d, -12, Ability::new(vec![Filter::PLAYER], vec![Effect::ExileLibraryShuffleHandIn(0)]));
+            },
+        ),
+        "Scroll Rack" => s(
+            &["{1}, {T}: Exile any number of cards from your hand face down. Put that many cards from the top of your library into your hand. Then look at the exiled cards and put them on top of your library in any order."],
+            |d, _| {
+                activated(d, "{1}", true, vec![], vec![Effect::ScrollRack]);
+            },
+        ),
+        "Conduit of Worlds" => s(
+            &[
+                "You may play lands from your graveyard.",
+                "{T}: Choose target nonland permanent card in your graveyard. If you haven't cast a spell this turn, you may cast that card. If you do, you can't cast additional spells this turn. Activate only as a sorcery.",
+            ],
+            |d, _| {
+                d.lands_from_graveyard = true;
+                // The card stays castable for the rest of the turn while no spell has been cast.
+                let card = Filter { nonland_permanents: true, ..graveyard_cards(false, Controller::You) };
+                let n = activated(d, "", true, vec![card], vec![Effect::ConduitCast(0)]);
+                d.activated[n].sorcery = true;
+            },
+        ),
+        "Legolas's Quick Reflexes" => s(
+            &[
+                "Split second",
+                "Untap target creature. Until end of turn, it gains reach, hexproof, and \"Whenever this creature becomes tapped, it deals damage equal to its power to up to one target creature.\"",
+            ],
+            |d, _| {
+                d.split_second = true;
+                d.triggers.push(Trigger { when: When::Never, ability: up_to(vec![CREATURE], vec![Effect::ExtraDealsDamageEqualPower(0)]) });
+                spell(
+                    d,
+                    vec![CREATURE],
+                    vec![
+                        Effect::UntapTarget(0),
+                        Effect::Grant { slot: 0, keywords: Keywords::REACH.with(Keywords::HEXPROOF) },
+                        Effect::GrantTappedTrigger { slot: 0, trigger: 0 },
+                    ],
+                );
+            },
+        ),
         _ => None,
     }
 }
@@ -517,4 +569,8 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Sensei's Divining Top",
     "Hedge Shredder",
     "Nissa, Worldsoul Speaker",
+    "Jace, the Mind Sculptor",
+    "Scroll Rack",
+    "Conduit of Worlds",
+    "Legolas's Quick Reflexes",
 ];

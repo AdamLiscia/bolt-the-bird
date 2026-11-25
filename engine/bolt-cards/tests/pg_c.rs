@@ -1085,3 +1085,107 @@ fn nissa_worldsoul_speaker_gets_energy_on_landfall_and_spends_eight_for_a_perman
     assert_eq!(g.players[0].energy, 0);
     assert_eq!(g.obj(nissa).zone, Zone::Battlefield);
 }
+
+#[test]
+fn jace_the_mind_sculptor_fateseals_brainstorms_and_bounces() {
+    let mut g = table();
+    let jace = hand(&mut g, 0, "Jace, the Mind Sculptor");
+    play(&mut g, jace, false, &[], &[]);
+    assert_eq!(g.obj(jace).loyalty, 3);
+    let theirs = *g.players[1].library.last().unwrap();
+    act(&mut g, Action::Loyalty(jace, 0));
+    resolve_all(&mut g, &[Action::Target(Target::Player(1)), Action::No]);
+    assert_eq!(g.players[1].library[0], theirs, "on the bottom");
+    assert_eq!(g.obj(jace).loyalty, 5);
+    to_main1(&mut g, 5, 0);
+    let a = hand(&mut g, 0, "Forest");
+    let b = hand(&mut g, 0, "Island");
+    let n = g.players[0].hand.len();
+    act(&mut g, Action::Loyalty(jace, 1));
+    resolve_all(&mut g, &[Action::Pick(a), Action::Pick(b)]);
+    assert_eq!(g.players[0].hand.len(), n + 1, "three drawn, two back");
+    let lib = &g.players[0].library;
+    assert_eq!(&lib[lib.len() - 2..], &[a, b], "b on top");
+    to_main1(&mut g, 7, 0);
+    let bear = put(&mut g, 1, "Hungry Ghoul");
+    act(&mut g, Action::Loyalty(jace, 2));
+    resolve_all(&mut g, &[Action::Target(obj(bear))]);
+    assert_eq!(g.obj(bear).zone, Zone::Hand);
+    assert_eq!(g.obj(jace).loyalty, 4);
+    g.objects[jace.0 as usize].loyalty = 12;
+    to_main1(&mut g, 9, 0);
+    let their_hand = g.players[1].hand.len();
+    act(&mut g, Action::Loyalty(jace, 3));
+    resolve_all(&mut g, &[Action::Target(Target::Player(1))]);
+    assert_eq!(
+        g.players[1].library.len(),
+        their_hand,
+        "their hand became their library"
+    );
+    assert!(g.players[1].hand.is_empty());
+}
+
+#[test]
+fn scroll_rack_swaps_cards_from_hand_with_the_top_of_the_library() {
+    let mut g = table();
+    let rack = put(&mut g, 0, "Scroll Rack");
+    let x = hand(&mut g, 0, "Forest");
+    let y = hand(&mut g, 0, "Island");
+    let t1 = top(&mut g, "Swamp");
+    let t2 = top(&mut g, "Mountain");
+    act(&mut g, Action::Activate(rack, 0));
+    resolve_all(
+        &mut g,
+        &[Action::Pick(x), Action::Pick(y), Action::No, Action::Pick(x)],
+    );
+    assert_eq!(g.obj(t1).zone, Zone::Hand);
+    assert_eq!(g.obj(t2).zone, Zone::Hand);
+    let lib = &g.players[0].library;
+    assert_eq!(&lib[lib.len() - 2..], &[y, x], "x chosen for the top");
+    assert!(g.obj(rack).tapped);
+}
+
+#[test]
+fn conduit_of_worlds_casts_a_permanent_card_from_the_graveyard_as_the_only_spell() {
+    let mut g = table();
+    let conduit = put(&mut g, 0, "Conduit of Worlds");
+    let land = g.add_card(0, cid("Forest"), Zone::Graveyard);
+    assert!(g.legal_actions().contains(&Action::PlayLand(land)));
+    let ghoul = g.add_card(0, cid("Hungry Ghoul"), Zone::Graveyard);
+    let other = hand(&mut g, 0, "Burglar Rat");
+    act(&mut g, Action::Activate(conduit, 0));
+    resolve_all(&mut g, &[Action::Target(obj(ghoul))]);
+    assert!(g.legal_actions().contains(&Action::Cast(ghoul)));
+    act(&mut g, Action::Cast(ghoul));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(ghoul).zone, Zone::Battlefield);
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(other)),
+        "no additional spells this turn"
+    );
+}
+
+#[test]
+fn legolass_quick_reflexes_has_split_second_and_grants_a_tap_trigger() {
+    let mut g = game(&["Hungry Ghoul", "Forest", "Island"]);
+    let mine = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "Hungry Ghoul")
+        .unwrap();
+    let theirs = put(&mut g, 1, "Burglar Rat");
+    g.objects[mine.0 as usize].tapped = true;
+    let lql = hand(&mut g, 0, "Legolas's Quick Reflexes");
+    act(&mut g, Action::Cast(lql));
+    act(&mut g, Action::Target(obj(mine)));
+    assert_eq!(g.legal_actions(), vec![Action::PassPriority], "split second");
+    resolve_all(&mut g, &[]);
+    assert!(!g.obj(mine).tapped);
+    assert!(g.keywords(mine).has(Keywords::REACH) && g.keywords(mine).has(Keywords::HEXPROOF));
+    while g.step != Step::DeclareAttackers {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(mine));
+    act(&mut g, Action::FinishAttacks);
+    resolve_all(&mut g, &[Action::Target(obj(theirs))]);
+    assert_eq!(g.obj(theirs).zone, Zone::Graveyard, "2 damage to a 1/1");
+}

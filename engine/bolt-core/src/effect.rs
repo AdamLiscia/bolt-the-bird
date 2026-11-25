@@ -1243,6 +1243,30 @@ pub enum Effect {
     MilledLandsToBattlefieldTapped,
     /// You get `n` {E} (energy counters, CR 122.1).
     Energy(u8),
+    /// Look at the top card of the library of the player in `slot`; you may put it on the bottom.
+    LookTopMayBottom(u8),
+    /// Draw `draw` cards, then put `back` cards from your hand on top of your library in any order.
+    DrawThenPutBack {
+        draw: u8,
+        back: u8,
+    },
+    /// Exile all cards from the library of the player in `slot`; then that player shuffles their
+    /// hand into their library.
+    ExileLibraryShuffleHandIn(u8),
+    /// Scroll Rack: exile any number of cards from your hand face down, put that many cards from the
+    /// top of your library into your hand, then put the exiled cards on top in any order.
+    ScrollRack,
+    /// Conduit of Worlds: if you haven't cast a spell this turn, you may cast the card in `slot` from
+    /// your graveyard this turn; if you do, you can't cast additional spells this turn.
+    ConduitCast(u8),
+    /// Until end of turn, the creature in `slot` gains "Whenever this creature becomes tapped, ..."
+    /// (the source's trigger number `trigger`; the tapped creature is the item's `extra`).
+    GrantTappedTrigger {
+        slot: u8,
+        trigger: usize,
+    },
+    /// The creature in the item's `extra` deals damage equal to its power to the target in `slot`.
+    ExtraDealsDamageEqualPower(u8),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
