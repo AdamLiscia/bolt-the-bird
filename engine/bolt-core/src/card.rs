@@ -319,6 +319,10 @@ pub struct CardDef {
     pub behold: Behold,
     /// "Each <subtype> you control enters with an additional +1/+1 counter on it" (Dragonstorm Globe).
     pub subtype_enters_with_counter: Option<&'static str>,
+    /// "This land enters tapped unless you control a [type] or a [type]."
+    pub enters_tapped_unless: Option<[&'static str; 2]>,
+    /// "Creatures with power less than this creature's power can't block it."
+    pub not_blocked_by_lesser_power: bool,
 }
 
 /// An Omen spell half: its name, cost, whether it's an instant, and what it does.
@@ -422,6 +426,8 @@ impl CardDef {
             omen: None,
             flash_sorceries_and_dragons: false,
             subtype_enters_with_counter: None,
+            enters_tapped_unless: None,
+            not_blocked_by_lesser_power: false,
         }
     }
 
@@ -504,6 +510,8 @@ impl CardDef {
             omen: None,
             flash_sorceries_and_dragons: false,
             subtype_enters_with_counter: None,
+            enters_tapped_unless: None,
+            not_blocked_by_lesser_power: false,
         }
     }
 
@@ -586,6 +594,8 @@ impl CardDef {
             omen: None,
             flash_sorceries_and_dragons: false,
             subtype_enters_with_counter: None,
+            enters_tapped_unless: None,
+            not_blocked_by_lesser_power: false,
         }
     }
 }

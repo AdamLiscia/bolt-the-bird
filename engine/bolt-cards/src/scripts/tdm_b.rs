@@ -18,6 +18,12 @@ const ENCHANTMENT: Filter = Filter {
     ..Filter::ANY
 };
 
+/// "This land enters tapped unless you control a [type] or a [type]." / "{T}: Add {C}."
+fn slow_land(d: &mut CardDef, unless: [&'static str; 2], color: Color) {
+    d.enters_tapped_unless = Some(unless);
+    d.mana = Some(ManaSource::of(&[color]));
+}
+
 pub fn script(name: &str) -> Option<Script> {
     let s = |lines, build| Some(Script { lines, build });
     match name {
@@ -137,6 +143,130 @@ pub fn script(name: &str) -> Option<Script> {
                 )
             },
         ),
+        // ---- Lane B batch 2: slow lands, becomes tapped, a creature with a counter, X = creatures ----
+        "Cori Mountain Monastery" => s(
+            &[
+                "This land enters tapped unless you control a Plains or an Island.",
+                "{T}: Add {R}.",
+                "{3}{R}, {T}: Exile the top card of your library. Until the end of your next turn, you may play that card.",
+            ],
+            |d, _| {
+                slow_land(d, ["Plains", "Island"], Color::Red);
+                activated(d, "{3}{R}", true, vec![], vec![Effect::ExileTopChooseOneToPlay { n: 1, this_turn: false }]);
+            },
+        ),
+        "Kishla Village" => s(
+            &["This land enters tapped unless you control an Island or a Swamp.", "{T}: Add {G}.", "{3}{G}, {T}: Surveil 2."],
+            |d, _| {
+                slow_land(d, ["Island", "Swamp"], Color::Green);
+                activated(d, "{3}{G}", true, vec![], vec![Effect::Surveil { n: 2 }]);
+            },
+        ),
+        "Rescue Leopard" => s(
+            &["Whenever this creature becomes tapped, you may discard a card. If you do, draw a card."],
+            |d, _| on(d, When::BecomesTapped, vec![], vec![Effect::MayDiscardToDraw]),
+        ),
+        "Traveling Botanist" => s(
+            &["Whenever this creature becomes tapped, look at the top card of your library. If it's a land card, you may reveal it and put it into your hand. If you don't put the card into your hand, you may put it into your graveyard."],
+            |d, _| {
+                let look = Effect::LookAtTop { n: 1, pick: Pick::Land, chosen_to: LookTo::Hand, rest_to: LookRest::MayGraveyard };
+                on(d, When::BecomesTapped, vec![], vec![look]);
+            },
+        ),
+        "Trade Route Envoy" => s(
+            &["When this creature enters, draw a card if you control a creature with a counter on it. If you don't draw a card this way, put a +1/+1 counter on this creature."],
+            |d, _| on(d, When::Enters, vec![], vec![Effect::DrawIfCounterElseCounterSelf]),
+        ),
+        "Delta Bloodflies" => s(
+            &["Whenever this creature attacks, if you control a creature with a counter on it, each opponent loses 1 life."],
+            |d, _| {
+                conditional(
+                    d,
+                    When::Attacks,
+                    Condition::ControlCreatureWithCounter,
+                    vec![],
+                    vec![Effect::LoseLife { who: Who::EachOpponent, n: 1 }],
+                )
+            },
+        ),
+        "Formation Breaker" => s(
+            &[
+                "Creatures with power less than this creature's power can't block it.",
+                "As long as you control a creature with a counter on it, this creature gets +1/+2.",
+            ],
+            |d, _| {
+                d.not_blocked_by_lesser_power = true;
+                static_on(d, Scope::This, false, Keywords::NONE);
+                let st = d.statics.last_mut().expect("just added");
+                st.condition = Some(StaticCondition::ControlCreatureWithCounter);
+                st.power = 1;
+                st.toughness = 2;
+            },
+        ),
+        "Coordinated Maneuver" => s(
+            &[
+                "Choose one —",
+                "• Coordinated Maneuver deals damage equal to the number of creatures you control to target creature or planeswalker.",
+                "• Destroy target enchantment.",
+            ],
+            |d, _| {
+                modes(
+                    d,
+                    vec![
+                        Ability::new(vec![CREATURE_OR_PLANESWALKER], vec![Effect::DamagePerCreatures(0)]),
+                        Ability::new(vec![ENCHANTMENT], vec![Effect::Destroy(0)]),
+                    ],
+                )
+            },
+        ),
+        "Frontline Rush" => s(
+            &[
+                "Choose one —",
+                "• Create two 1/1 red Goblin creature tokens.",
+                "• Target creature gets +X/+X until end of turn, where X is the number of creatures you control.",
+            ],
+            |d, t| {
+                modes(
+                    d,
+                    vec![
+                        Ability::new(vec![], vec![Effect::CreateToken { who: Who::You, def: t.goblin, n: 2 }]),
+                        Ability::new(vec![CREATURE], vec![Effect::PumpPerCreatures { slot: 0, attacking: false }]),
+                    ],
+                )
+            },
+        ),
+        "Marshal of the Lost" => s(
+            &["Whenever you attack, target creature gets +X/+X until end of turn, where X is the number of attacking creatures."],
+            |d, _| on(d, When::YouAttack, vec![CREATURE], vec![Effect::PumpPerCreatures { slot: 0, attacking: true }]),
+        ),
+        "Craterhoof Behemoth" => s(
+            &["When this creature enters, creatures you control gain trample and get +X/+X until end of turn, where X is the number of creatures you control."],
+            |d, _| {
+                on(
+                    d,
+                    When::Enters,
+                    vec![],
+                    vec![Effect::GrantAll { who: Who::You, keywords: Keywords::TRAMPLE }, Effect::PumpYoursPerCreatures],
+                )
+            },
+        ),
+        "Duty Beyond Death" => s(
+            &[
+                "As an additional cost to cast this spell, sacrifice a creature.",
+                "Creatures you control gain indestructible until end of turn. Put a +1/+1 counter on each creature you control.",
+            ],
+            |d, _| {
+                d.extra_cost = Some(ExtraCost::SacrificeCreature);
+                spell(
+                    d,
+                    vec![],
+                    vec![
+                        Effect::GrantAll { who: Who::You, keywords: Keywords::INDESTRUCTIBLE },
+                        Effect::CountersAll { who: Who::You, n: 1 },
+                    ],
+                );
+            },
+        ),
         _ => None,
     }
 }
@@ -158,4 +288,16 @@ pub const TDM_B_SCRIPTED: &[&str] = &[
     "Gurmag Rakshasa",
     "Skirmish Rhino",
     "Inspired Ultimatum",
+    "Cori Mountain Monastery",
+    "Kishla Village",
+    "Rescue Leopard",
+    "Traveling Botanist",
+    "Trade Route Envoy",
+    "Delta Bloodflies",
+    "Formation Breaker",
+    "Coordinated Maneuver",
+    "Frontline Rush",
+    "Marshal of the Lost",
+    "Craterhoof Behemoth",
+    "Duty Beyond Death",
 ];

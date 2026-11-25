@@ -23,15 +23,40 @@ Card scripts only, on existing engine rules.
 | Skirmish Rhino | `skirmish_rhino_drains_two` |
 | Inspired Ultimatum | `inspired_ultimatum_gains_five_deals_five_draws_five` |
 
+## Batch 2 (engine core): slow lands, becomes tapped, a creature with a counter, X = creatures (12)
+
+Mechanics added (new variants and fields appended at the end of their enums and structs):
+- `CardDef::enters_tapped_unless: Option<[&str; 2]>`: "This land enters tapped unless you control a [type] or a [type]."
+- `When::BecomesTapped`: fired by `Game::become_tapped` wherever a permanent goes from untapped to tapped (attacking, {T} costs, mana, harmonize, `Tap`, `TapAndStun`). Entering tapped doesn't count.
+- `Condition::ControlCreatureWithCounter` and `StaticCondition::ControlCreatureWithCounter`, using `Game::has_counter` (any kind: +1/+1, stun, keyword, incubation, soul, revival, fellowship, bait, loyalty). `Object::keyword_counter` records keyword counters, which otherwise only live in `granted`.
+- `CardDef::not_blocked_by_lesser_power`: "Creatures with power less than this creature's power can't block it."
+- `LookRest::MayGraveyard`: cards not taken may each go to the graveyard (a surveil).
+- Effects: `PumpPerCreatures { slot, attacking }`, `DamagePerCreatures(slot)`, `PumpYoursPerCreatures`, `CountersAll { who, n }`, `DrawIfCounterElseCounterSelf`.
+
+| Card | Test |
+|---|---|
+| Cori Mountain Monastery | `slow_lands_enter_tapped_unless_you_control_one_of_two_types`, `cori_mountain_monastery_exiles_the_top_card_to_play` |
+| Kishla Village | `slow_lands_enter_tapped_unless_you_control_one_of_two_types`, `kishla_village_surveils_two` |
+| Rescue Leopard | `rescue_leopard_loots_when_it_becomes_tapped`, `rescue_leopard_doesnt_trigger_entering_tapped_or_already_tapped` |
+| Traveling Botanist | `traveling_botanist_takes_a_land_or_may_bin_a_nonland` |
+| Trade Route Envoy | `trade_route_envoy_draws_with_a_countered_creature_or_grows`, `trade_route_envoy_counts_any_kind_of_counter_but_only_yours` |
+| Delta Bloodflies | `delta_bloodflies_drains_on_attack_only_with_a_countered_creature` |
+| Formation Breaker | `formation_breaker_cant_be_blocked_by_smaller_creatures_and_grows_with_counters` |
+| Coordinated Maneuver | `coordinated_maneuver_deals_damage_per_creature_or_destroys_an_enchantment` |
+| Frontline Rush | `frontline_rush_makes_goblins_or_pumps_per_creature` |
+| Marshal of the Lost | `marshal_of_the_lost_pumps_by_the_number_of_attackers` |
+| Craterhoof Behemoth | `craterhoof_behemoth_pumps_and_tramples_your_team` |
+| Duty Beyond Death | `duty_beyond_death_protects_and_grows_your_creatures` |
+
+Not in this batch: Mistrise Village (needs "the next spell you cast this turn can't be countered").
+
 ## Needs core
 
 Cards from the lane's list, in list order, skipped because the engine can't do them exactly yet.
 
-- Rescue Leopard: no `When` for "whenever this creature becomes tapped".
 - Embermouth Sentinel: the search destination depends on controlling a Dragon (top of library vs battlefield tapped); no condition-dependent `SearchTo` and no negated condition.
 - Seize Opportunity: no effect for "exile the top two, you may play *those cards*" (both, not choose one); `ExileTopChooseOneToPlay` picks one.
 - Tempest Hawk: no `SearchFor` by card name; no deckbuilding exemption ("any number of cards named ...").
-- Trade Route Envoy: no condition "you control a creature with a counter on it", and no draw-else-counter effect.
 - Wingspan Stride: no effect that returns the source permanent from the battlefield to its owner's hand (`ReturnSelfToHand` only works from the graveyard).
 - Ringing Strike Mastery: no "enchanted creature doesn't untap" static, and no way for an Aura to grant an activated ability ("{5}: Untap this creature").
 - Fresh Start: the lose-all-abilities static forces a base P/T (`base_pt: None` becomes 0/0); needs "loses all abilities" without setting base P/T, plus -5/-0.
@@ -65,8 +90,8 @@ Cards from the lane's list, in list order, skipped because the engine can't do t
 - Narset, Jeskai Waymaster: no "discard your hand, draw equal to spells cast this turn".
 - New Way Forward: no prevention of the next damage from a chosen source with a reflexive redirect.
 - Clarion Conqueror: no static that stops activated abilities of artifacts, creatures and planeswalkers.
-- Dalkovan Encampment: no "enters tapped unless you control a Swamp or a Mountain"; no delayed "whenever you attack this turn" trigger.
-- Great Arashin City: no "enters tapped unless ..."; no "exile a creature card from your graveyard" cost.
+- Dalkovan Encampment: the slow-land part now exists (`enters_tapped_unless`); still no delayed "whenever you attack this turn" trigger.
+- Great Arashin City: the slow-land part now exists; still no "exile a creature card from your graveyard" cost.
 - Glacierwood Siege: no "as this enters, choose Temur or Sultai" modes; no play-lands-from-graveyard.
 - Barrensteppe Siege: no "choose Abzan or Mardu" modes; no each-opponent-sacrifices with a died-under-your-control condition.
 - Yathan Roadwatcher: no "if you cast it" condition; no reflexive reanimation with a mana-value filter after a mill.

@@ -586,6 +586,25 @@ pub enum Effect {
     ExileGraveyard {
         who: Who,
     },
+    /// The creature in `slot` gets +X/+X until end of turn, X the number of creatures you control
+    /// (or, with `attacking`, the number of attacking creatures), counted on resolution.
+    PumpPerCreatures {
+        slot: u8,
+        attacking: bool,
+    },
+    /// The source deals damage equal to the number of creatures you control to the target in `slot`.
+    DamagePerCreatures(u8),
+    /// Creatures you control get +X/+X until end of turn, X the number of creatures you control
+    /// (Craterhoof Behemoth), counted once on resolution (CR 608.2h).
+    PumpYoursPerCreatures,
+    /// Put `n` +1/+1 counters on each creature `who` controls.
+    CountersAll {
+        who: Who,
+        n: i32,
+    },
+    /// "Draw a card if you control a creature with a counter on it. If you don't draw a card this
+    /// way, put a +1/+1 counter on this creature." (Trade Route Envoy)
+    DrawIfCounterElseCounterSelf,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -659,6 +678,8 @@ pub enum StaticCondition {
     CountersAtLeast(i32),
     /// Your life total is at least this.
     LifeAtLeast(i32),
+    /// Its controller controls a creature with a counter (of any kind) on it.
+    ControlCreatureWithCounter,
 }
 
 /// A static ability that changes characteristics (CR 604, 613 layers 6 and 7c).
@@ -732,6 +753,8 @@ pub enum LookRest {
     GraveyardElseCounter,
     /// The bottom of the library in a random order.
     BottomRandom,
+    /// Each one you may put into your graveyard; the rest stay on top (Traveling Botanist).
+    MayGraveyard,
 }
 
 /// An intervening "if" clause, checked when the ability triggers and again on resolution
@@ -763,6 +786,8 @@ pub enum Condition {
     Threshold,
     /// The source was kicked.
     Kicked,
+    /// You control a creature with a counter (of any kind) on it.
+    ControlCreatureWithCounter,
 }
 
 /// A spell's effect or a triggered ability: target slots, then effects in order.
@@ -897,6 +922,8 @@ pub enum When {
     CreatureOpponentControlsEnters,
     /// A Saga's chapter ability, when its Nth lore counter is put on it (CR 714.2).
     Chapter(u8),
+    /// "Whenever this creature becomes tapped" (CR 603.2; entering tapped isn't becoming tapped).
+    BecomesTapped,
 }
 
 #[derive(Clone, Debug, PartialEq)]
