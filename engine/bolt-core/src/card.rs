@@ -147,6 +147,8 @@ pub enum Reduction {
     PerCreatureYouControlPowerAtLeast(i32),
     /// ... {1} less for each creature on the battlefield (Blasphemous Act).
     PerCreatureOnBattlefield,
+    /// ... {1} less for each token you control (affinity for tokens).
+    PerTokenYouControl,
 }
 
 /// An activated ability: "[cost]: [effect]" (CR 602).
@@ -204,6 +206,8 @@ pub struct Activated {
     pub from_hand_discard: bool,
     /// The stack item's amount is the sacrificed creature's power (Greater Good).
     pub amount_from_victim_power: bool,
+    /// "Sacrifice a creature" in the cost: any creature you control, this one included.
+    pub sacrifice_creature: bool,
 }
 
 /// The printed card. Shared by every copy; per-copy state lives on the game object.
@@ -448,6 +452,15 @@ pub struct CardDef {
     pub enters_tapped_unless_reveal: Option<[&'static str; 2]>,
     /// "Power and toughness are each equal to the number of cards in your hand."
     pub pt_hand_size: bool,
+    /// "Creatures you control with power or toughness 1 or less can't be blocked." (Tetsuko)
+    pub small_creatures_unblockable: bool,
+    /// Vanishing N (CR 702.63): enters with N time counters (the upkeep removal is a trigger).
+    pub vanishing: u8,
+    /// "Creature spells you cast with power 4 or greater cost {N} less to cast." (Goreclaw)
+    pub big_creature_spell_discount: u8,
+    /// "Each other non-[subtype] creature you control enters with an additional +1/+1 counter on
+    /// it." (Grumgully: "Human")
+    pub other_non_subtype_enters_with_counter: Option<&'static str>,
 }
 
 /// An Omen spell half: its name, cost, whether it's an instant, and what it does.
@@ -591,6 +604,10 @@ impl CardDef {
             paid_mana: None,
             enters_tapped_unless_reveal: None,
             pt_hand_size: false,
+            small_creatures_unblockable: false,
+            vanishing: 0,
+            big_creature_spell_discount: 0,
+            other_non_subtype_enters_with_counter: None,
         }
     }
 
@@ -713,6 +730,10 @@ impl CardDef {
             paid_mana: None,
             enters_tapped_unless_reveal: None,
             pt_hand_size: false,
+            small_creatures_unblockable: false,
+            vanishing: 0,
+            big_creature_spell_discount: 0,
+            other_non_subtype_enters_with_counter: None,
         }
     }
 
@@ -835,6 +856,10 @@ impl CardDef {
             paid_mana: None,
             enters_tapped_unless_reveal: None,
             pt_hand_size: false,
+            small_creatures_unblockable: false,
+            vanishing: 0,
+            big_creature_spell_discount: 0,
+            other_non_subtype_enters_with_counter: None,
         }
     }
 }

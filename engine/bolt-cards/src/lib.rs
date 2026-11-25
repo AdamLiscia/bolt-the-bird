@@ -331,6 +331,10 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         paid_mana: None,
         enters_tapped_unless_reveal: None,
         pt_hand_size: false,
+        small_creatures_unblockable: false,
+        vanishing: 0,
+        big_creature_spell_discount: 0,
+        other_non_subtype_enters_with_counter: None,
     };
     def.color_identity = color_identity(o);
     // An Omen's spell half: its lines must be claimed too, written "Omen: <line>" in the script.
