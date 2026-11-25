@@ -574,3 +574,138 @@ fn rite_of_replication_copies_a_creature_once_or_five_times() {
     play(&mut g, c2, true, &[obj(t)], &[]);
     assert_eq!(copies(&g), 6);
 }
+
+#[test]
+fn avenger_of_zendikar_makes_a_plant_per_land_and_grows_them_on_landfall() {
+    let mut g = table();
+    let lands = g.permanents(0).filter(|&x| g.types_of(x).land).count();
+    let a = hand(&mut g, 0, "Avenger of Zendikar");
+    play(&mut g, a, false, &[], &[]);
+    let plants = tokens(&g, 0, "Plant");
+    assert_eq!(plants.len(), lands);
+    assert_eq!((g.power(plants[0]), g.toughness(plants[0])), (0, 1));
+    let f = hand(&mut g, 0, "Forest");
+    act(&mut g, Action::PlayLand(f));
+    resolve_all(&mut g, &[Action::Yes]);
+    assert_eq!((g.power(plants[0]), g.toughness(plants[0])), (1, 2));
+}
+
+#[test]
+fn scute_swarm_makes_insects_then_copies_itself_at_six_lands() {
+    let mut g = game(&["Forest"; 4]);
+    put(&mut g, 0, "Scute Swarm");
+    let f = hand(&mut g, 0, "Forest");
+    act(&mut g, Action::PlayLand(f));
+    resolve_all(&mut g, &[]);
+    let bugs = tokens(&g, 0, "Insect");
+    assert_eq!(bugs.len(), 1);
+    assert!(!g.keywords(bugs[0]).has(Keywords::FLYING));
+    let mut g = game(&["Forest"; 5]);
+    put(&mut g, 0, "Scute Swarm");
+    let f = hand(&mut g, 0, "Forest");
+    act(&mut g, Action::PlayLand(f));
+    resolve_all(&mut g, &[]);
+    assert_eq!(tokens(&g, 0, "Scute Swarm").len(), 1, "six lands: a copy");
+}
+
+#[test]
+fn wayward_swordtooth_needs_the_citys_blessing_to_attack() {
+    let mut g = game(&[]);
+    let w = put(&mut g, 0, "Wayward Swordtooth");
+    put(&mut g, 1, "Morbid Opportunist");
+    assert_eq!(land_drops(&mut g), 2);
+    assert!(!g.city_blessing[0]);
+    g.start_turn(5, 0);
+    while g.step != Step::Main2 && g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.step, Step::Main2, "no blessing: nothing can attack");
+    let _ = w;
+    let mut g = table(); // 25 lands: the blessing
+    let w = put(&mut g, 0, "Wayward Swordtooth");
+    put(&mut g, 1, "Morbid Opportunist");
+    g.start_turn(5, 0);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(g.city_blessing[0]);
+    assert!(g.legal_actions().contains(&Action::Attack(w)));
+}
+
+#[test]
+fn retreat_to_coralhelm_taps_or_untaps_a_creature_or_scries_on_landfall() {
+    let mut g = game(&[]);
+    put(&mut g, 0, "Retreat to Coralhelm");
+    let theirs = put(&mut g, 1, "Morbid Opportunist");
+    let f = hand(&mut g, 0, "Forest");
+    act(&mut g, Action::PlayLand(f));
+    resolve_all(&mut g, &[Action::Mode(0), Action::Target(obj(theirs))]);
+    assert!(g.obj(theirs).tapped);
+}
+
+#[test]
+fn guardian_project_draws_for_a_new_name_only() {
+    let mut g = table();
+    put(&mut g, 0, "Guardian Project");
+    let n = g.players[0].hand.len();
+    let a = hand(&mut g, 0, "Morbid Opportunist");
+    play(&mut g, a, false, &[], &[]);
+    assert_eq!(g.players[0].hand.len(), n + 1, "a new name: a card");
+    let b = hand(&mut g, 0, "Morbid Opportunist");
+    play(&mut g, b, false, &[], &[]);
+    assert_eq!(g.players[0].hand.len(), n + 1, "the same name: no card");
+}
+
+#[test]
+fn dryad_of_the_ilysian_grove_makes_lands_every_type() {
+    let mut g = game(&["Forest"]);
+    let f = g.permanents(0).find(|&x| g.types_of(x).land).unwrap();
+    assert!(!g.has_subtype(f, "Island"));
+    put(&mut g, 0, "Dryad of the Ilysian Grove");
+    assert!(g.has_subtype(f, "Island") && g.has_subtype(f, "Mountain"));
+    assert_eq!(colors(&g, f), [true; 5]);
+    assert_eq!(land_drops(&mut g), 2);
+}
+
+#[test]
+fn clever_impersonator_copies_a_nonland_permanent() {
+    let mut g = table();
+    let signet = put(&mut g, 1, "Arcane Signet");
+    let c = hand(&mut g, 0, "Clever Impersonator");
+    act(&mut g, Action::Cast(c));
+    while !matches!(g.pending, Pending::Decide(0)) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Pick(signet));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.def_of(c).name, "Arcane Signet");
+}
+
+#[test]
+fn teval_mills_returns_a_land_and_makes_zombies_when_cards_leave_the_graveyard() {
+    let mut g = table();
+    let t = put(&mut g, 0, "Teval, the Balanced Scale");
+    put(&mut g, 1, "Morbid Opportunist");
+    g.start_turn(5, 0);
+    for n in ["Forest", "Morbid Opportunist", "Arcane Signet"] {
+        top(&mut g, n);
+    }
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(t));
+    act(&mut g, Action::FinishAttacks);
+    while !matches!(g.pending, Pending::Decide(0)) {
+        act(&mut g, Action::PassPriority);
+    }
+    let land = g.players[0]
+        .graveyard
+        .iter()
+        .copied()
+        .find(|&c| g.types_of(c).land)
+        .expect("milled");
+    act(&mut g, Action::Pick(land));
+    resolve_all(&mut g, &[]); // the Zombie Druid trigger
+    assert!(g.obj(land).zone == Zone::Battlefield && g.obj(land).tapped);
+    assert_eq!(tokens(&g, 0, "Zombie Druid").len(), 1);
+}

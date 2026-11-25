@@ -1155,6 +1155,13 @@ pub enum Effect {
         toughness: i32,
         keywords: Keywords,
     },
+    /// Tap or untap the permanent in `slot` (the controller's choice: it toggles).
+    TapOrUntap(u8),
+    /// Draw a card if the creature in `slot` doesn't have the same name as another creature you
+    /// control or a creature card in your graveyard (Guardian Project).
+    DrawIfUniqueName(u8),
+    /// You may return a land card from your graveyard to the battlefield tapped.
+    ReturnLandFromGraveyardTapped,
     /// The source must be blocked each combat this turn if able (Anzrag).
     MustBeBlockedThisTurnSelf,
     /// Eternalize (CR 702.129): create a token that's a copy of the source card (in exile), except
@@ -1360,6 +1367,8 @@ pub enum LookTo {
     PlayFromExile,
     /// Stays in exile; you may play it this turn.
     PlayFromExileThisTurn,
+    /// Onto the battlefield tapped.
+    BattlefieldTapped,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1699,6 +1708,8 @@ pub enum When {
     /// "Whenever one or more creatures you control with trample deal combat damage to a player": the
     /// amount is the damage those creatures dealt (Quartzwood Crasher).
     YourTramplersDealCombatDamageToPlayer,
+    /// "Whenever one or more cards leave your graveyard" (any turn).
+    CardsLeaveYourGraveyard,
     /// "Whenever this creature becomes blocked" (CR 509.3c), as blockers are finished.
     BecomesBlocked,
     /// "Whenever you cast a green permanent spell".

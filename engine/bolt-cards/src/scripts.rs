@@ -142,6 +142,8 @@ pub fn token_defs() -> Vec<CardDef> {
         token("Octopus", "Octopus", 8, 8, Keywords::NONE), // Octomancer's gift: a blue 8/8
         token("Elemental", "Elemental", 4, 4, Keywords::FLYING), // Hoofprints of the Stag: white 4/4
         token("Dinosaur Beast", "Dinosaur Beast", 0, 0, Keywords::TRAMPLE), // Quartzwood Crasher's X/X
+        token("Plant", "Plant", 0, 1, Keywords::NONE),     // Avenger of Zendikar
+        token("Insect", "Insect", 1, 1, Keywords::NONE),   // Scute Swarm's green 1/1
     ]
 }
 
@@ -235,6 +237,8 @@ pub struct Tokens {
     pub octopus: usize,
     pub elemental_4: usize,
     pub dinosaur_beast: usize,
+    pub plant: usize,
+    pub insect_green: usize,
 }
 
 impl Tokens {
@@ -292,6 +296,8 @@ impl Tokens {
             octopus: base + 49,
             elemental_4: base + 50,
             dinosaur_beast: base + 51,
+            plant: base + 52,
+            insect_green: base + 53,
         }
     }
 }

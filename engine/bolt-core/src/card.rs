@@ -540,6 +540,12 @@ pub struct CardDef {
     /// Unleash (CR 702.98): "you may have this creature enter with a +1/+1 counter on it" (asked as
     /// the spell resolves, like the Sieges' modes); it can't block while it has one (its script).
     pub unleash: bool,
+    /// "This creature can't attack or block unless you have the city's blessing."
+    pub fights_only_with_blessing: bool,
+    /// "Lands you control are every basic land type in addition to their other types."
+    pub lands_every_basic_type: bool,
+    /// `enter_as_copy` of any nonland permanent, not just a creature (Clever Impersonator).
+    pub enter_as_copy_nonland: bool,
     /// Entwine {cost} (CR 702.42): the last of its modes is all the others, for this much more.
     pub entwine: Option<ManaCost>,
     /// "Cast this spell only during combat on your turn."
@@ -739,6 +745,9 @@ impl CardDef {
             cant_attack_twice_per_turn: false,
             lands_are_forests: false,
             unleash: false,
+            fights_only_with_blessing: false,
+            lands_every_basic_type: false,
+            enter_as_copy_nonland: false,
             entwine: None,
             cast_only_during_your_combat: false,
             ferocious_mana_amount: 0,
@@ -899,6 +908,9 @@ impl CardDef {
             cant_attack_twice_per_turn: false,
             lands_are_forests: false,
             unleash: false,
+            fights_only_with_blessing: false,
+            lands_every_basic_type: false,
+            enter_as_copy_nonland: false,
             entwine: None,
             cast_only_during_your_combat: false,
             ferocious_mana_amount: 0,
@@ -1059,6 +1071,9 @@ impl CardDef {
             cant_attack_twice_per_turn: false,
             lands_are_forests: false,
             unleash: false,
+            fights_only_with_blessing: false,
+            lands_every_basic_type: false,
+            enter_as_copy_nonland: false,
             entwine: None,
             cast_only_during_your_combat: false,
             ferocious_mana_amount: 0,
