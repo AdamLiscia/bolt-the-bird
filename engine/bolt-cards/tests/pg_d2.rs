@@ -459,3 +459,153 @@ fn shinka_gives_a_legendary_creature_first_strike() {
     resolve_all(&mut g, &[]);
     assert!(g.keywords(legend).has(Keywords::FIRST_STRIKE));
 }
+
+// ---- Henrika Domnathi ----
+
+#[test]
+fn diabolic_intent_sacrifices_a_creature_to_tutor() {
+    let mut g = table();
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Library);
+    let t = hand(&mut g, 0, "Diabolic Intent");
+    assert!(!has(&g, Action::Cast(t)), "the sacrifice is required");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    act(&mut g, Action::CastWith(t, lions));
+    assert!(in_graveyard(&g, 0, lions));
+    resolve_all(&mut g, &[Action::Pick(ring)]);
+    assert_eq!(g.obj(ring).zone, Zone::Hand);
+}
+
+#[test]
+fn cordial_vampire_grows_vampires_whenever_a_creature_dies() {
+    let mut g = table();
+    let cordial = put(&mut g, 0, "Cordial Vampire");
+    let hexmage = put(&mut g, 0, "Vampire Hexmage"); // a Vampire
+    let lions = put(&mut g, 1, "Savannah Lions");
+    let kill = hand(&mut g, 0, "Hero's Downfall");
+    play(&mut g, kill, false, &[obj(lions)], &[]);
+    assert_eq!((g.obj(cordial).counters, g.obj(hexmage).counters), (1, 1));
+    let kill = hand(&mut g, 0, "Hero's Downfall");
+    play(&mut g, kill, false, &[obj(cordial)], &[]);
+    assert_eq!(g.obj(hexmage).counters, 2, "its own death counts too");
+}
+
+#[test]
+fn sheoldred_the_apocalypse_gains_on_your_draws_and_drains_theirs() {
+    let mut g = table();
+    put(&mut g, 0, "Sheoldred, the Apocalypse");
+    g.start_turn(4, 1);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.players[1].life, 38, "the opponent's draw step");
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.players[0].life, 42, "your draw step");
+}
+
+#[test]
+fn diabolic_edict_makes_the_target_player_sacrifice() {
+    let mut g = table();
+    let lions = put(&mut g, 1, "Savannah Lions");
+    let angel = put(&mut g, 1, "Serra Angel");
+    let e = hand(&mut g, 0, "Diabolic Edict");
+    play(&mut g, e, false, &[Target::Player(1)], &[Action::Pick(lions)]);
+    assert!(in_graveyard(&g, 1, lions));
+    assert_eq!(g.obj(angel).zone, Zone::Battlefield);
+}
+
+#[test]
+fn diresight_surveils_two_draws_two_and_costs_two_life() {
+    let mut g = table();
+    let a = g.add_card(0, cid("Sol Ring"), Zone::Library);
+    let b = g.add_card(0, cid("Savannah Lions"), Zone::Library); // on top
+    let d = hand(&mut g, 0, "Diresight");
+    play(&mut g, d, false, &[], &[Action::Yes, Action::No]);
+    assert!(in_graveyard(&g, 0, b), "surveiled away");
+    assert_eq!(g.obj(a).zone, Zone::Hand, "kept on top, then drawn");
+    assert_eq!(g.players[0].life, 38);
+}
+
+#[test]
+fn kokusho_drains_five_when_it_dies() {
+    let mut g = table();
+    let k = put(&mut g, 0, "Kokusho, the Evening Star");
+    let kill = hand(&mut g, 0, "Hero's Downfall");
+    play(&mut g, kill, false, &[obj(k)], &[]);
+    assert_eq!((g.players[0].life, g.players[1].life), (45, 35));
+}
+
+// ---- Korvold, Fae-Cursed King ----
+
+#[test]
+fn deserted_temple_untaps_a_land() {
+    let mut g = table();
+    let temple = put(&mut g, 0, "Deserted Temple");
+    let lands = hand(&mut g, 0, "Savage Lands");
+    act(&mut g, Action::PlayLand(lands));
+    assert!(g.obj(lands).tapped, "enters tapped");
+    act(&mut g, Action::Activate(temple, 0));
+    act(&mut g, Action::Target(obj(lands)));
+    resolve_all(&mut g, &[]);
+    assert!(!g.obj(lands).tapped);
+    assert!(g.obj(temple).tapped);
+    assert_eq!(
+        g.def_of(lands).mana.map(|m| m.colors),
+        Some([false, false, true, true, true]),
+        "Savage Lands: {{B}}, {{R}}, or {{G}}"
+    );
+}
+
+#[test]
+fn rakdos_carnarium_bounces_a_land_and_makes_two() {
+    let mut g = game(&["Swamp"]);
+    let swamp = g.permanents(0).find(|&x| g.def_of(x).name == "Swamp").unwrap();
+    let c = hand(&mut g, 0, "Rakdos Carnarium");
+    act(&mut g, Action::PlayLand(c));
+    assert!(g.obj(c).tapped);
+    resolve_all(&mut g, &[Action::Pick(swamp)]);
+    assert_eq!(g.obj(swamp).zone, Zone::Hand);
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    // {B}{R} from one land: a {1}{B} spell.
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Library);
+    let t = hand(&mut g, 0, "Demonic Tutor");
+    play(&mut g, t, false, &[], &[Action::Pick(ring)]);
+    assert_eq!(g.obj(ring).zone, Zone::Hand);
+}
+
+#[test]
+fn shadowblood_ridge_turns_one_into_black_and_red() {
+    let mut g = game(&["Shadowblood Ridge", "Plains"]);
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Library);
+    let t = hand(&mut g, 0, "Vampiric Tutor"); // {B}: only the Ridge makes black
+    play(&mut g, t, false, &[], &[Action::Pick(ring)]);
+    assert_eq!(g.players[0].library.last(), Some(&ring));
+}
+
+#[test]
+fn souls_fire_deals_your_creatures_power_to_any_target() {
+    let mut g = table();
+    let angel = put(&mut g, 0, "Serra Angel"); // 4/4
+    let f = hand(&mut g, 0, "Soul's Fire");
+    play(&mut g, f, false, &[obj(angel), Target::Player(1)], &[]);
+    assert_eq!(g.players[1].life, 36);
+}
+
+#[test]
+fn thrors_map_finds_a_basic_and_loots() {
+    let mut g = table();
+    let forest = g.add_card(0, cid("Forest"), Zone::Library);
+    let map = hand(&mut g, 0, "Thrór's Map");
+    play(&mut g, map, false, &[], &[Action::Pick(forest)]);
+    assert_eq!(g.obj(forest).zone, Zone::Hand);
+    let n = g.players[0].hand.len();
+    act(&mut g, Action::Activate(map, 0));
+    resolve_all(&mut g, &[Action::Discard(forest)]);
+    assert!(in_graveyard(&g, 0, forest));
+    assert_eq!(g.players[0].hand.len(), n, "drew one, discarded one");
+}

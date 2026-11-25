@@ -163,6 +163,86 @@ pub fn script(name: &str) -> Option<Script> {
                 activated(d, "{R}", true, vec![legend], vec![Effect::Grant { slot: 0, keywords: Keywords::FIRST_STRIKE }]);
             },
         ),
+        // ---- Henrika Domnathi ----
+        "Diabolic Intent" => s(
+            &[
+                "As an additional cost to cast this spell, sacrifice a creature.",
+                "Search your library for a card, put that card into your hand, then shuffle.",
+            ],
+            |d, _| {
+                d.extra_cost = Some(ExtraCost::SacrificeCreature);
+                spell(d, vec![], vec![search(SearchFor::Any, SearchTo::Hand)]);
+            },
+        ),
+        "Cordial Vampire" => s(
+            &["Whenever this creature or another creature dies, put a +1/+1 counter on each Vampire you control."],
+            |d, _| {
+                for when in [When::Dies, When::AnotherCreatureDies] {
+                    on(d, when, vec![], vec![Effect::CountersOnYourSubtype("Vampire")]);
+                }
+            },
+        ),
+        "Sheoldred, the Apocalypse" => s(
+            &["Whenever you draw a card, you gain 2 life.", "Whenever an opponent draws a card, they lose 2 life."],
+            |d, _| {
+                on(d, When::YouDraw, vec![], vec![Effect::GainLife { who: Who::You, n: 2 }]);
+                // 1v1: "they" is the one opponent.
+                on(d, When::OpponentDraws, vec![], vec![Effect::LoseLife { who: Who::EachOpponent, n: 2 }]);
+            },
+        ),
+        "Diabolic Edict" => s(&["Target player sacrifices a creature of their choice."], |d, _| {
+            spell(d, vec![Filter::PLAYER], vec![Effect::SacrificeCreatures { who: Who::TargetPlayer(0), n: 1 }])
+        }),
+        "Diresight" => s(&["Surveil 2, then draw two cards. You lose 2 life."], |d, _| {
+            spell(d, vec![], vec![Effect::Surveil { n: 2 }, draw(2), Effect::LoseLife { who: Who::You, n: 2 }])
+        }),
+        "Kokusho, the Evening Star" => s(
+            &["When Kokusho dies, each opponent loses 5 life. You gain life equal to the life lost this way."],
+            |d, _| {
+                // 1v1, and the engine has no life-loss replacement effects: the life lost is 5.
+                let drain = vec![Effect::LoseLife { who: Who::EachOpponent, n: 5 }, Effect::GainLife { who: Who::You, n: 5 }];
+                on(d, When::Dies, vec![], drain);
+            },
+        ),
+        // ---- Korvold, Fae-Cursed King ----
+        "Deserted Temple" => s(&["{T}: Add {C}.", "{1}, {T}: Untap target land."], |d, _| {
+            d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+            let land = Filter { players: false, creatures: false, planeswalkers: false, lands: true, ..Filter::ANY };
+            activated(d, "{1}", true, vec![land], vec![Effect::UntapTarget(0)]);
+        }),
+        "Rakdos Carnarium" => s(
+            &[
+                "This land enters tapped.",
+                "When this land enters, return a land you control to its owner's hand.",
+                "{T}: Add {B}{R}.",
+            ],
+            |d, _| {
+                d.enters_tapped = true;
+                on(d, When::Enters, vec![], vec![Effect::ReturnLandYouControl]);
+                d.paid_mana = Some((ManaCost::default(), [ManaSource::of(&[Color::Black]), ManaSource::of(&[Color::Red])]));
+            },
+        ),
+        "Savage Lands" => s(&["This land enters tapped.", "{T}: Add {B}, {R}, or {G}."], |d, _| {
+            d.enters_tapped = true;
+            d.mana = Some(ManaSource::of(&[Color::Black, Color::Red, Color::Green]));
+        }),
+        "Shadowblood Ridge" => s(&["{1}, {T}: Add {B}{R}."], |d, _| {
+            let br = [ManaSource::of(&[Color::Black]), ManaSource::of(&[Color::Red])];
+            d.paid_mana = Some((ManaCost::parse("{1}").expect("a mana cost"), br));
+        }),
+        "Soul's Fire" => s(&["Target creature you control deals damage equal to its power to any target."], |d, _| {
+            spell(d, vec![YOUR_CREATURE, Filter::ANY], vec![Effect::DamageEqualSlotPower { from: 0, to: 1 }])
+        }),
+        "Thrór's Map" => s(
+            &[
+                "When Thrór's Map enters, search your library for a basic land card, reveal it, put it into your hand, then shuffle.",
+                "{2}, {T}: Draw a card, then discard a card.",
+            ],
+            |d, _| {
+                on(d, When::Enters, vec![], vec![search(SearchFor::BasicLand, SearchTo::Hand)]);
+                activated(d, "{2}", true, vec![], vec![draw(1), discard(1)]);
+            },
+        ),
         _ => None,
     }
 }
@@ -238,4 +318,18 @@ pub const PG_D2_SCRIPTED: &[&str] = &[
     "Akroma, Angel of Wrath",
     "Flagstones of Trokair",
     "Shinka, the Bloodsoaked Keep",
+    // Henrika Domnathi
+    "Diabolic Intent",
+    "Cordial Vampire",
+    "Sheoldred, the Apocalypse",
+    "Diabolic Edict",
+    "Diresight",
+    "Kokusho, the Evening Star",
+    // Korvold, Fae-Cursed King
+    "Deserted Temple",
+    "Rakdos Carnarium",
+    "Savage Lands",
+    "Shadowblood Ridge",
+    "Soul's Fire",
+    "Thrór's Map",
 ];
