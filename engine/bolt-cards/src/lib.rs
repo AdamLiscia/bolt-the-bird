@@ -18,9 +18,11 @@ use serde::Deserialize;
 
 const ORACLE: &str = include_str!("../../../assets/FDN_oracle.json");
 const TDM_ORACLE: &str = include_str!("../../../assets/TDM_oracle.json");
+/// Bloomburrow Commander (BLC): the four precons' cards, from `scripts/fetch_oracle.py --names`.
+const BLC_ORACLE: &str = include_str!("../../../assets/BLC_oracle.json");
 
 /// The sets the engine knows, by code.
-pub const SETS: &[&str] = &["FDN", "TDM"];
+pub const SETS: &[&str] = &["FDN", "TDM", "BLC"];
 
 /// One card set: its cards in model order, their definitions (then the token definitions) and
 /// which cards the engine fully implements.
@@ -73,9 +75,11 @@ impl CardSet {
 pub fn set(code: &str) -> Option<&'static CardSet> {
     static FDN: OnceLock<CardSet> = OnceLock::new();
     static TDM: OnceLock<CardSet> = OnceLock::new();
+    static BLC: OnceLock<CardSet> = OnceLock::new();
     match code {
         "FDN" => Some(FDN.get_or_init(|| CardSet::load("FDN", ORACLE))),
         "TDM" => Some(TDM.get_or_init(|| CardSet::load("TDM", TDM_ORACLE))),
+        "BLC" => Some(BLC.get_or_init(|| CardSet::load("BLC", BLC_ORACLE))),
         _ => None,
     }
 }
@@ -304,7 +308,13 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         your_turn_discount_per_big_creature: false,
         mana_taps_creature: false,
         any_color_for_dragon_or_omen: false,
+        color_identity: [false; 5],
+        mana_commander_identity: false,
+        mana_opponent_land_colors: false,
+        mana_amount: 0,
+        animates_big_noncreatures_your_turn: false,
     };
+    def.color_identity = color_identity(o);
     // An Omen's spell half: its lines must be claimed too, written "Omen: <line>" in the script.
     if let Some(face) = &o.omen {
         rest.extend(
@@ -507,6 +517,15 @@ mod tests {
         for basic in ["Plains", "Island", "Swamp", "Mountain", "Forest"] {
             let i = t.index_of(basic).unwrap();
             assert!(t.supported[i], "{basic}");
+        }
+    }
+
+    #[test]
+    fn every_bloomburrow_commander_script_matches_its_card_text() {
+        let t = set("BLC").unwrap();
+        for &name in scripts::BLC_B_SCRIPTED {
+            let i = t.index_of(name).unwrap_or_else(|| panic!("{name} is not in BLC"));
+            assert!(t.supported[i], "{name}: script lines don't match the card text");
         }
     }
 

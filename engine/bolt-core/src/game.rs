@@ -194,6 +194,8 @@ pub struct Object {
     pub eot_creature: Option<(u32, i32, i32, &'static str, Keywords)>,
     /// A commander just put into a graveyard or exile whose owner hasn't chosen yet (CR 903.9a).
     pub commander_choice_pending: bool,
+    /// How many times this object's abilities resolved this turn: (turn, count).
+    pub resolved_this_turn: (u32, u32),
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -1103,6 +1105,7 @@ impl Game {
             enters_with_finality: false,
             eot_creature: None,
             commander_choice_pending: false,
+            resolved_this_turn: (0, 0),
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -1159,6 +1162,9 @@ impl Game {
         let o = self.obj(id);
         let mut t = self.defs[o.def].types;
         // The common case: nothing on the battlefield changes types.
+        if self.bello_animates(id) {
+            t.creature = true;
+        }
         if o.zone != Zone::Battlefield
             || (o.animated.is_none() && o.eot_creature.is_none() && self.ability_loss_sources == 0)
         {
@@ -1233,6 +1239,9 @@ impl Game {
     /// out static abilities, so they don't depend on each other).
     fn has_base_subtype(&self, id: ObjId, s: &str) -> bool {
         if self.eot_creature(id).is_some_and(|e| e.3 == s) {
+            return true;
+        }
+        if s == "Elemental" && self.bello_animates(id) {
             return true;
         }
         if self.lost_abilities(id) && !self.loses_abilities_only(id) {
@@ -1406,6 +1415,9 @@ impl Game {
         if let Some((_, _, _, _, kw)) = self.eot_creature(id) {
             k = k.with(kw);
         }
+        if self.bello_animates(id) {
+            k = k.with(Keywords::INDESTRUCTIBLE).with(Keywords::HASTE);
+        }
         if !self.lost_abilities(id) {
             for s in &self.def_of(id).stages[..self.obj(id).stage as usize] {
                 k = k.with(s.keywords);
@@ -1454,6 +1466,9 @@ impl Game {
         let d = self.def_of(id);
         if let Some((_, p, t, _, _)) = self.eot_creature(id) {
             return (p, t);
+        }
+        if self.bello_animates(id) {
+            return (4, 4);
         }
         if let Some(pt) = o.animated {
             return pt;
@@ -1629,6 +1644,31 @@ impl Game {
         let owner = self.obj(c).owner;
         self.ask(owner, Decision::CommanderToCommandZone { card: c });
         true
+    }
+
+    /// Bello: the Bello that makes `id` a 4/4 Elemental creature right now, if any: `id` is a
+    /// non-Equipment artifact or non-Aura enchantment with mana value 4 or greater on the
+    /// battlefield, and its controller controls Bello during their own turn.
+    fn bello_for(&self, id: ObjId) -> Option<ObjId> {
+        let o = self.obj(id);
+        if o.zone != Zone::Battlefield || self.active != o.controller {
+            return None;
+        }
+        let d = self.def_of(id);
+        let sub = |s: &str| d.subtypes.iter().any(|x| x == s);
+        let fits = (d.types.artifact && !sub("Equipment")) || (d.types.enchantment && !sub("Aura"));
+        if !fits || d.cost.mana_value() < 4 {
+            return None;
+        }
+        self.battlefield.iter().copied().find(|&b| {
+            self.obj(b).controller == o.controller
+                && self.def_of(b).animates_big_noncreatures_your_turn
+                && self.ability_loss(b).is_none()
+        })
+    }
+
+    fn bello_animates(&self, id: ObjId) -> bool {
+        self.bello_for(id).is_some()
     }
 
     /// Whether `p` controls a creature with a counter on it.
@@ -3872,6 +3912,7 @@ impl Game {
             } else {
                 n
             };
+            let n = n.max(self.def_of(id).mana_amount as usize); // Sol Ring: {C}{C}
             out.extend(std::iter::repeat_n((id, m), n));
         }
         out
@@ -3905,6 +3946,30 @@ impl Game {
                 }
                 if d.vivid_mana {
                     return Some((id, ManaSource::default()));
+                }
+                if d.mana_commander_identity {
+                    // CR 903.4f: no commander (or a colorless one) means no mana.
+                    let identity = self.commanders[p].map(|c| self.def_of(c).color_identity)?;
+                    let colors: Vec<crate::Color> = crate::Color::ALL
+                        .into_iter()
+                        .filter(|&c| identity[c as usize])
+                        .collect();
+                    return (!colors.is_empty()).then(|| (id, ManaSource::of(&colors)));
+                }
+                if d.mana_opponent_land_colors {
+                    let mut could = [false; 5];
+                    for l in self.permanents(opponent(p)).filter(|&l| self.types_of(l).land) {
+                        if let Some(m) = self.def_of(l).mana {
+                            for (c, has) in could.iter_mut().zip(m.colors) {
+                                *c |= has;
+                            }
+                        }
+                    }
+                    let colors: Vec<crate::Color> = crate::Color::ALL
+                        .into_iter()
+                        .filter(|&c| could[c as usize])
+                        .collect();
+                    return (!colors.is_empty()).then(|| (id, ManaSource::of(&colors)));
                 }
                 if d.mana_of_chosen_color {
                     let c = self.obj(id).chosen_color?;
@@ -6704,6 +6769,20 @@ impl Game {
                     self.until_your_next_turn.push((c, zcc, keywords, p));
                 }
             }
+            Effect::DrawIfSecondResolutionThisTurn(n) => {
+                let turn = self.turn;
+                let o = self.obj_mut(src);
+                o.resolved_this_turn = if o.resolved_this_turn.0 == turn {
+                    (turn, o.resolved_this_turn.1 + 1)
+                } else {
+                    (turn, 1)
+                };
+                if o.resolved_this_turn.1 == 2 {
+                    for _ in 0..n {
+                        self.draw(item.controller);
+                    }
+                }
+            }
             Effect::TapAttached => {
                 if let Some((c, zcc)) = self.obj(src).attached_to {
                     if self.obj(c).zcc == zcc && self.obj(c).zone == Zone::Battlefield {
@@ -8569,6 +8648,13 @@ impl Game {
             self.fire_source(a, When::DealsCombatDamageToPlayer);
             for t in &mut self.triggered[before..] {
                 t.amount = amount;
+            }
+            if let Some(bello) = self.bello_for(a) {
+                let controller = self.obj(a).controller;
+                self.triggered.push(StackItem {
+                    kind: StackKind::Trigger(0),
+                    ..Game::casting(bello, controller)
+                });
             }
             let zcc = self.obj(a).zcc;
             let turn = self.turn;

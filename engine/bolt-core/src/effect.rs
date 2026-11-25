@@ -795,6 +795,9 @@ pub enum Effect {
     /// The source deals damage equal to the trigger's amount to the controller of the object in
     /// `extra`, and you draw that many cards (New Way Forward).
     DamageExtrasControllerAndDrawAmount,
+    /// "If this is the second time this ability has resolved this turn, you draw `n` cards." (Ms.
+    /// Bumbleflower; counted per source, each turn)
+    DrawIfSecondResolutionThisTurn(u8),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
