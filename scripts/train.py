@@ -55,6 +55,9 @@ def main():
     ap.add_argument("--limit", type=int, default=0, help="train on the first N picks only (smoke test)")
     ap.add_argument("--init", default="", help="start from this checkpoint (fine-tuning)")
     ap.add_argument("--name", default="", help="results/checkpoint name (default: the model name)")
+    ap.add_argument(
+        "--resume", type=int, default=0, help="continue from this epoch's checkpoint (fresh optimizer state)"
+    )
     a = ap.parse_args()
     name = a.name or (a.model if a.set == "FDN" else f"{a.set}_{a.model}")
     if a.set != "FDN" and not name.startswith(a.set + "_"):
@@ -84,7 +87,15 @@ def main():
     sched = torch.optim.lr_scheduler.OneCycleLR(opt, a.lr, total_steps=steps, pct_start=0.05)
 
     history, step, t0 = [], 0, time.time()
-    for ep in range(a.epochs):
+    if a.resume:
+        model.load_state_dict(
+            torch.load(DATA.parent / "checkpoints" / f"{name}_epoch{a.resume}.pt", map_location=device)
+        )
+        for _ in range(a.resume * ((len(train["pick"]) + a.bs - 1) // a.bs)):
+            sched.step()  # the learning rate picks up where that epoch left it
+            step += 1
+        print(f"resumed after epoch {a.resume}", flush=True)
+    for ep in range(a.resume, a.epochs):
         run = 0.0
         for b in batches(tt, a.bs, device, True, rng):
             loss = F.cross_entropy(model(b["pool"], b["pack"], b["pack_number"], b["pick_number"]), b["pick"])
@@ -98,6 +109,8 @@ def main():
                 print(f"  step {step}/{steps}  loss {run / 20:.3f}  {time.time() - t0:.0f}s", flush=True)
                 run = 0.0
         val_acc = float((predict(model, tv, device) == val["pick"]).mean())
+        if device.type == "mps":
+            torch.mps.empty_cache()  # validation's buffers fragmented the capped pool (2026-11-24 OOM in epoch 2)
         history.append({"epoch": ep + 1, "val_acc": val_acc, "seconds": round(time.time() - t0)})
         print(f"epoch {ep + 1}: val acc {val_acc:.1%}", flush=True)
         ck_dir = DATA.parent / "checkpoints"
