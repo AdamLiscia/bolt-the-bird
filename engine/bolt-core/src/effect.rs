@@ -1205,6 +1205,13 @@ pub enum Effect {
     LookTopReorder(u8),
     /// Draw a card, then put the source on top of its owner's library (Sensei's Divining Top).
     DrawThenSourceOnTop,
+    /// The source becomes an artifact creature until end of turn (crew, CR 702.122a).
+    CrewedSelf,
+    /// Put the land cards milled into your graveyard this turn onto the battlefield tapped (Hedge
+    /// Shredder: "put them").
+    MilledLandsToBattlefieldTapped,
+    /// You get `n` {E} (energy counters, CR 122.1).
+    Energy(u8),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1750,6 +1757,8 @@ pub enum When {
     BecomesBlocked,
     /// "Whenever you cast a green permanent spell".
     YouCastGreenPermanent,
+    /// "Whenever one or more land cards are put into your graveyard from your library".
+    LandCardsMilledToYourGraveyard,
 }
 
 #[derive(Clone, Debug, PartialEq)]

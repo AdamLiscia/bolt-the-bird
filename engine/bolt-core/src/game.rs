@@ -264,6 +264,8 @@ pub struct Player {
     pub pool: Vec<ManaSource>,
     /// Poison counters (CR 122.1f): ten or more and the player loses (CR 704.5c).
     pub poison: i32,
+    /// Energy counters (CR 122.1).
+    pub energy: u32,
 }
 
 impl Player {
@@ -279,6 +281,7 @@ impl Player {
             drew_from_empty: false,
             poison: 0,
             lost: false,
+            energy: 0,
         }
     }
 }
@@ -1093,6 +1096,9 @@ pub struct Game {
     pub rebound: Vec<(ObjId, u32)>,
     /// How many waiting triggers (from the front of `triggered`) Roaming Throne has already looked at.
     pub triggered_scanned: usize,
+    /// Land cards went from a library to each player's graveyard since triggers were last put on the
+    /// stack (Hedge Shredder).
+    pub lands_milled_pending: [bool; 2],
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -1296,6 +1302,7 @@ impl Game {
             untap_attackers_at_combat: false,
             rebound: Vec::new(),
             triggered_scanned: 0,
+            lands_milled_pending: [false; 2],
         }
     }
 
@@ -2085,6 +2092,9 @@ impl Game {
             if std::mem::take(&mut self.creatures_milled_pending[p]) {
                 self.fire(p, When::CreatureCardsMilledToYourGraveyard, None);
             }
+            if std::mem::take(&mut self.lands_milled_pending[p]) {
+                self.fire(p, When::LandCardsMilledToYourGraveyard, None);
+            }
         }
         for p in 0..2 {
             if !std::mem::take(&mut self.graveyard_leave_pending[p]) {
@@ -2574,6 +2584,9 @@ impl Game {
             }
             if from == Zone::Library && self.def_of(id).types.creature {
                 self.creatures_milled_pending[owner] = true;
+            }
+            if from == Zone::Library && self.def_of(id).types.land {
+                self.lands_milled_pending[owner] = true;
             }
         }
         if from == Zone::Graveyard && to != Zone::Graveyard && !self.is_token(id) {
@@ -4001,6 +4014,23 @@ impl Game {
                         },
                     ));
                 }
+                // Nissa, Worldsoul Speaker: pay eight {E} rather than the mana cost of a permanent spell.
+                if def.types.is_permanent() && !def.types.land {
+                    let energy = self.players[p].energy;
+                    if let Some(x) = self.permanents(p).find(|&x| {
+                        let n = self.def_of(x).permanents_for_energy;
+                        n > 0 && energy >= n as u32 && !self.lost_abilities(x)
+                    }) {
+                        v.push((
+                            Action::CastWith(c, x),
+                            CastMode {
+                                alt: true,
+                                extra: Some(x),
+                                ..CastMode::default()
+                            },
+                        ));
+                    }
+                }
                 // Force of Vigor: exile a card of that color from your hand instead, not on your turn.
                 if let (Some(color), false) = (def.pitch_not_your_turn, p == self.active) {
                     for &x in &self.players[p].hand {
@@ -4072,7 +4102,11 @@ impl Game {
             && !mode.alt
             && !mode.flashback;
         let pitched = def.pitch_not_your_turn.is_some() && mode.extra.is_some() && !mode.flashback;
-        let mut cost = if free || pitched {
+        let energized = mode.alt
+            && mode
+                .extra
+                .is_some_and(|x| self.def_of(x).permanents_for_energy > 0);
+        let mut cost = if free || pitched || energized {
             ManaCost::default()
         } else if mode.alt {
             match def.alt_cost {
@@ -4948,6 +4982,13 @@ impl Game {
                             .filter(|&c| c != id && self.def_of(c).types.creature)
                             .map(|c| Action::ActivateWith(id, n, c)),
                     );
+                } else if a.crew > 0 {
+                    // Crew: tap an untapped creature with enough power (summoning sickness doesn't matter).
+                    v.extend(
+                        self.creatures(p)
+                            .filter(|&c| c != id && !self.obj(c).tapped && self.power(c) >= a.crew as i32)
+                            .map(|c| Action::ActivateWith(id, n, c)),
+                    );
                 } else if a.sacrifice_other_creature {
                     v.extend(
                         self.creatures(p)
@@ -5086,7 +5127,9 @@ impl Game {
         }
         self.pay_mana_for(p, &cost, exclude, PayFor::Ability(id));
         if let Some(v) = victim {
-            if a.exile_creature_card {
+            if a.crew > 0 {
+                self.become_tapped(v); // crew taps, it doesn't sacrifice
+            } else if a.exile_creature_card {
                 if self.obj(v).zone == Zone::Graveyard {
                     self.move_to(v, Zone::Exile);
                 }
@@ -5598,7 +5641,17 @@ impl Game {
                     ..CastMode::default()
                 },
             ),
-            (Pending::Priority(p), Action::CastWith(c, x)) => self.cast(p, c, CastMode::with(x)),
+            (Pending::Priority(p), Action::CastWith(c, x)) => {
+                // Nissa, Worldsoul Speaker: casting "with" her pays energy instead of mana.
+                let energy = self.def_of(x).permanents_for_energy > 0
+                    && self.obj(x).zone == Zone::Battlefield
+                    && self.def_of(c).extra_cost.is_none();
+                let mode = CastMode {
+                    alt: energy,
+                    ..CastMode::with(x)
+                };
+                self.cast(p, c, mode)
+            }
             (Pending::Priority(p), Action::Loyalty(id, n)) => self.activate_loyalty(p, id, n),
             (Pending::DeclareAttackers(_), Action::AttackPlaneswalker(c, pw)) => {
                 self.apply(Action::Attack(c)).expect("the attacker is legal");
@@ -6009,7 +6062,13 @@ impl Game {
             .extra
             .filter(|_| item.flashback && (self.def_of(card).harmonize || self.obj(card).harmonize_eot));
         self.pay_mana_for(p, &cost, harmonized, pay_for_spell(card, item.mode));
-        if item.alt && self.def_of(card).alt_cost.is_none() {
+        let energy_by = item
+            .extra
+            .filter(|&x| item.alt && self.def_of(x).permanents_for_energy > 0);
+        if let Some(x) = energy_by {
+            let n = self.def_of(x).permanents_for_energy as u32;
+            self.players[p].energy = self.players[p].energy.saturating_sub(n);
+        } else if item.alt && self.def_of(card).alt_cost.is_none() {
             self.lose_life(p, 2); // Defiler of Vigor's optional additional cost
         }
         if self.types_of(card).is_permanent() && self.def_of(card).colors[4] {
@@ -6037,7 +6096,7 @@ impl Game {
         if delved > 0 {
             self.exile_for_delve(p, card, delved);
         }
-        if let Some(x) = item.extra {
+        if let Some(x) = item.extra.filter(|_| energy_by.is_none()) {
             if harmonized.is_some() {
                 self.become_tapped(x); // harmonize taps the creature; it isn't sacrificed
             } else if self.def_of(card).pitch_not_your_turn.is_some() && !item.flashback {
@@ -9436,6 +9495,32 @@ impl Game {
                         },
                     );
                 }
+            }
+            Effect::CrewedSelf => {
+                if self.obj(src).zone == Zone::Battlefield {
+                    let d = self.def_of(src);
+                    let (pw, t) = (d.power, d.toughness);
+                    let turn = self.turn;
+                    self.obj_mut(src).eot_creature = Some((turn, pw, t, "Vehicle", Keywords::NONE));
+                }
+            }
+            Effect::MilledLandsToBattlefieldTapped => {
+                let p = item.controller;
+                let turn = self.turn;
+                let lands: Vec<ObjId> = self.players[p]
+                    .graveyard
+                    .iter()
+                    .copied()
+                    .filter(|&c| self.def_of(c).types.land && self.obj(c).milled_turn == turn)
+                    .collect();
+                for c in lands {
+                    self.move_to(c, Zone::Battlefield);
+                    self.obj_mut(c).tapped = true;
+                }
+            }
+            Effect::Energy(n) => {
+                let p = item.controller;
+                self.players[p].energy += n as u32;
             }
             Effect::DrawThenSourceOnTop => {
                 let p = item.controller;
