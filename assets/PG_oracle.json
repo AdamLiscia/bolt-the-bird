@@ -19684,7 +19684,17 @@
 "produced_mana": [
 "G"
 ],
-"collector_number": "192"
+"collector_number": "192",
+"back": {
+"name": "Khalni Territory",
+"mana_cost": "",
+"type_line": "Land",
+"oracle_text": "This land enters tapped.\n{T}: Add {G}.",
+"power": null,
+"toughness": null,
+"colors": [],
+"loyalty": null
+}
 },
 {
 "name": "Khalni Garden",
@@ -25011,7 +25021,19 @@
 "layout": "transform",
 "loyalty": null,
 "produced_mana": null,
-"collector_number": "189"
+"collector_number": "189",
+"back": {
+"name": "Nissa, Sage Animist",
+"mana_cost": "",
+"type_line": "Legendary Planeswalker \u2014 Nissa",
+"oracle_text": "+1: Reveal the top card of your library. If it's a land card, put it onto the battlefield. Otherwise, put it into your hand.\n\u22122: Create Ashaya, the Awoken World, a legendary 4/4 green Elemental creature token.\n\u22127: Untap up to six target lands. They become 6/6 Elemental creatures. They're still lands.",
+"power": null,
+"toughness": null,
+"colors": [
+"G"
+],
+"loyalty": "3"
+}
 },
 {
 "name": "Nissa, Voice of Zendikar",

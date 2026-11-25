@@ -1473,3 +1473,162 @@ fn three_steps_ahead_pays_for_each_chosen_mode() {
     );
     assert_eq!(g.players[0].hand.len(), n + 1);
 }
+
+#[test]
+fn plaza_of_heroes_makes_any_color_for_legends_and_protects_one() {
+    let mut g = game(&["Plaza of Heroes", "Forest"]);
+    let plaza = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "Plaza of Heroes")
+        .unwrap();
+    let rat = hand(&mut g, 0, "Burglar Rat");
+    let tiny = hand(&mut g, 0, "Tinybones, Bauble Burglar");
+    assert!(!g.legal_actions().contains(&Action::Cast(rat)));
+    assert!(g.legal_actions().contains(&Action::Cast(tiny)));
+    play(&mut g, tiny, false, &[], &[]);
+    assert_eq!(g.obj(tiny).zone, Zone::Battlefield);
+    let _ = plaza;
+    let mut g = table();
+    let plaza = put(&mut g, 0, "Plaza of Heroes");
+    assert_eq!(colors(&g, plaza), [false; 5]);
+    let tiny = put(&mut g, 0, "Tinybones, Bauble Burglar");
+    assert_eq!(
+        colors(&g, plaza),
+        [false, false, true, false, false],
+        "Tinybones is black"
+    );
+    act(&mut g, Action::Activate(plaza, 0));
+    resolve_all(&mut g, &[Action::Target(obj(tiny))]);
+    assert_eq!(g.obj(plaza).zone, Zone::Exile);
+    assert!(g.keywords(tiny).has(Keywords::HEXPROOF) && g.keywords(tiny).has(Keywords::INDESTRUCTIBLE));
+}
+
+#[test]
+fn bear_umbra_pumps_untaps_lands_on_attack_and_saves_its_creature() {
+    let mut lands = vec!["Hungry Ghoul"];
+    for land in ["Plains", "Island", "Swamp", "Mountain", "Forest"] {
+        lands.extend([land; 5]);
+    }
+    let mut g = game(&lands);
+    let ghoul = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "Hungry Ghoul")
+        .unwrap();
+    let umbra = hand(&mut g, 0, "Bear Umbra");
+    play(&mut g, umbra, false, &[obj(ghoul)], &[]);
+    assert_eq!(g.power(ghoul), 4);
+    assert!(g.permanents(0).any(|x| g.obj(x).tapped));
+    while g.step != Step::DeclareAttackers {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(ghoul));
+    act(&mut g, Action::FinishAttacks);
+    resolve_all(&mut g, &[]);
+    assert!(
+        g.permanents(0)
+            .filter(|&x| g.types_of(x).land)
+            .all(|x| !g.obj(x).tapped),
+        "untap all lands you control"
+    );
+    while g.step != Step::Main2 {
+        act(&mut g, Action::PassPriority);
+    }
+    let dam = hand(&mut g, 0, "Damnation");
+    play(&mut g, dam, false, &[], &[]);
+    assert_eq!(g.obj(ghoul).zone, Zone::Battlefield, "umbra armor");
+    assert_eq!(g.obj(umbra).zone, Zone::Graveyard);
+}
+
+#[test]
+fn shifting_woodland_becomes_a_copy_of_a_graveyard_card_with_delirium() {
+    let mut g = game(&[]);
+    let sw = hand(&mut g, 0, "Shifting Woodland");
+    act(&mut g, Action::PlayLand(sw));
+    resolve_all(&mut g, &[]);
+    assert!(g.obj(sw).tapped, "no Forest");
+    let mut g = game(&["Forest", "Forest", "Forest", "Forest"]);
+    let sw = hand(&mut g, 0, "Shifting Woodland");
+    act(&mut g, Action::PlayLand(sw));
+    resolve_all(&mut g, &[]);
+    assert!(!g.obj(sw).tapped);
+    let ghoul = g.add_card(0, cid("Hungry Ghoul"), Zone::Graveyard);
+    g.add_card(0, cid("Forest"), Zone::Graveyard);
+    g.add_card(0, cid("Arcane Signet"), Zone::Graveyard);
+    assert!(
+        !g.legal_actions().contains(&Action::Activate(sw, 0)),
+        "three card types"
+    );
+    g.add_card(0, cid("Think Twice"), Zone::Graveyard);
+    act(&mut g, Action::Activate(sw, 0));
+    resolve_all(&mut g, &[Action::Target(obj(ghoul))]);
+    assert_eq!(g.def_of(sw).name, "Hungry Ghoul");
+    assert!(g.types_of(sw).creature);
+    while g.turn == 3 {
+        let a = match g.legal_actions()[0] {
+            d @ Action::Discard(_) => d, // cleanup: down to seven
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.def_of(sw).name, "Shifting Woodland");
+}
+
+#[test]
+fn khalni_ambush_fights_or_is_played_as_khalni_territory() {
+    let mut g = table();
+    let k = hand(&mut g, 0, "Khalni Ambush // Khalni Territory");
+    assert!(g.legal_actions().contains(&Action::PlayLand(k)));
+    act(&mut g, Action::PlayLand(k));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.def_of(k).name, "Khalni Territory");
+    assert!(g.types_of(k).land && g.obj(k).tapped);
+    let mut g = table();
+    let ghoul = put(&mut g, 0, "Hungry Ghoul");
+    let rat = put(&mut g, 1, "Burglar Rat");
+    let k = hand(&mut g, 0, "Khalni Ambush // Khalni Territory");
+    play(&mut g, k, false, &[obj(ghoul), obj(rat)], &[]);
+    assert_eq!(g.obj(rat).zone, Zone::Graveyard);
+    assert_eq!(g.obj(ghoul).zone, Zone::Battlefield);
+    assert_eq!(g.obj(k).zone, Zone::Graveyard);
+}
+
+#[test]
+fn nissa_vastwood_seer_finds_a_forest_and_flips_into_a_planeswalker_at_seven_lands() {
+    let mut g = table();
+    let forest = top(&mut g, "Forest");
+    let nissa = hand(&mut g, 0, "Nissa, Vastwood Seer // Nissa, Sage Animist");
+    play(&mut g, nissa, false, &[], &[Action::Yes, Action::Pick(forest)]);
+    assert_eq!(g.obj(forest).zone, Zone::Hand);
+    act(&mut g, Action::PlayLand(forest));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(nissa).zone, Zone::Battlefield);
+    assert_eq!(g.def_of(nissa).name, "Nissa, Sage Animist");
+    assert_eq!(g.obj(nissa).loyalty, 3);
+    let land = top(&mut g, "Island");
+    act(&mut g, Action::Loyalty(nissa, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        g.obj(land).zone,
+        Zone::Battlefield,
+        "a land: onto the battlefield"
+    );
+    to_main1(&mut g, 5, 0);
+    act(&mut g, Action::Loyalty(nissa, 1));
+    resolve_all(&mut g, &[]);
+    let ashaya = tokens(&g, 0, "Ashaya, the Awoken World");
+    assert_eq!(ashaya.len(), 1);
+    assert!(g.types_of(ashaya[0]).legendary);
+    assert_eq!(g.power(ashaya[0]), 4);
+    g.objects[nissa.0 as usize].loyalty = 7;
+    to_main1(&mut g, 7, 0);
+    let six: Vec<ObjId> = g.permanents(0).filter(|&x| g.types_of(x).land).take(6).collect();
+    act(&mut g, Action::Loyalty(nissa, 2));
+    let targets: Vec<Action> = six.iter().map(|&x| Action::Target(obj(x))).collect();
+    resolve_all(&mut g, &targets);
+    for &x in &six {
+        assert!(g.types_of(x).creature && g.types_of(x).land);
+        assert_eq!(g.power(x), 6);
+    }
+    to_main1(&mut g, 9, 0);
+    assert!(g.types_of(six[0]).creature, "for good");
+}

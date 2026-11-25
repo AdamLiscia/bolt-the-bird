@@ -237,6 +237,9 @@ pub struct Activated {
     pub not_your_turn_only: bool,
     /// "This ability costs {1} less to activate for each legendary creature you control." (Otawara)
     pub less_per_legendary_creature: bool,
+    /// "Activate only if there are four or more card types among cards in your graveyard."
+    /// (delirium)
+    pub needs_delirium: bool,
 }
 
 /// The printed card. Shared by every copy; per-copy state lives on the game object.
@@ -610,6 +613,16 @@ pub struct CardDef {
     /// Spree (CR 702.172): the additional cost of each mode in `modes` (a mode there is one
     /// combination of the chosen + modes).
     pub mode_costs: Vec<ManaCost>,
+    /// Plaza of Heroes: "{T}: Add one mana of any color. Spend this mana only to cast a legendary
+    /// spell." and "{T}: Add one mana of any color among legendary permanents you control." (its
+    /// {C} is in `mana`).
+    pub plaza_mana: bool,
+    /// Umbra armor (CR 702.89): if the enchanted creature would be destroyed, instead remove all
+    /// damage from it and destroy this Aura.
+    pub umbra_armor: bool,
+    /// A modal double-faced card (CR 712.12): its `back` is played or cast instead of its front (a
+    /// land back is played as a land, with `Object::transformed` set as it enters).
+    pub modal_back: bool,
 }
 
 /// What entering makes triggers happen again (see [`CardDef::entering_triggers_again`]).
@@ -819,6 +832,9 @@ impl CardDef {
             mana_legendary_colors: false,
             keeps_green_mana: false,
             mode_costs: Vec::new(),
+            plaza_mana: false,
+            umbra_armor: false,
+            modal_back: false,
         }
     }
 
@@ -996,6 +1012,9 @@ impl CardDef {
             mana_legendary_colors: false,
             keeps_green_mana: false,
             mode_costs: Vec::new(),
+            plaza_mana: false,
+            umbra_armor: false,
+            modal_back: false,
         }
     }
 
@@ -1173,6 +1192,9 @@ impl CardDef {
             mana_legendary_colors: false,
             keeps_green_mana: false,
             mode_costs: Vec::new(),
+            plaza_mana: false,
+            umbra_armor: false,
+            modal_back: false,
         }
     }
 }

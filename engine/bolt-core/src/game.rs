@@ -1953,6 +1953,47 @@ impl Game {
                 .any(|&(q, k, _)| q == o.controller && k == kind)
     }
 
+    /// How many card types are among cards in `p`'s graveyard (delirium).
+    fn graveyard_card_types(&self, p: PlayerId) -> usize {
+        let mut kinds = [false; 7];
+        for &c in &self.players[p].graveyard {
+            let t = self.def_of(c).types;
+            let flags = [
+                t.land,
+                t.creature,
+                t.artifact,
+                t.enchantment,
+                t.instant,
+                t.sorcery,
+                t.planeswalker,
+            ];
+            for (k, f) in kinds.iter_mut().zip(flags) {
+                *k |= f;
+            }
+        }
+        kinds.iter().filter(|&&k| k).count()
+    }
+
+    /// Umbra armor: an Aura with it on `id` is destroyed instead, and `id` loses all damage.
+    /// Returns whether one did.
+    fn use_umbra_armor(&mut self, id: ObjId) -> bool {
+        if self.obj(id).zone != Zone::Battlefield {
+            return false;
+        }
+        let zcc = self.obj(id).zcc;
+        let aura = self.battlefield.iter().copied().find(|&a| {
+            self.obj(a).attached_to == Some((id, zcc))
+                && self.def_of(a).umbra_armor
+                && !self.lost_abilities(a)
+        });
+        let Some(aura) = aura else { return false };
+        let o = self.obj_mut(id);
+        o.damage = 0;
+        o.deathtouched = false;
+        self.destroy(aura);
+        true
+    }
+
     /// How many legendary creatures `p` controls (Otawara's discount).
     fn legendary_creatures(&self, p: PlayerId) -> u8 {
         self.creatures(p)
@@ -3626,7 +3667,15 @@ impl Game {
             StackKind::Ward { .. } | StackKind::WardLife { .. } | StackKind::WardDiscard { .. } => {
                 &WARD_ABILITY
             }
-            StackKind::Loyalty(n) => &def.loyalty_abilities[n].1,
+            // A transformed planeswalker that left (its −N took the last loyalty) is front face up
+            // again; its ability still resolves from the back face it was activated on.
+            StackKind::Loyalty(n) => match def.loyalty_abilities.get(n) {
+                Some(a) => &a.1,
+                None => {
+                    let printed = &self.defs[self.obj(item.source).def];
+                    &printed.back.as_ref().expect("a back face").loyalty_abilities[n].1
+                }
+            },
             StackKind::Offspring => offspring_ability(),
             StackKind::Activated(n) => &self.activated_of(item.source, n).ability,
         }
@@ -3729,6 +3778,7 @@ impl Game {
                     && (!f.noncreature || !ty.creature)
                     && (!f.nonbasic || !ty.basic)
                     && (!f.nonlegendary || !ty.legendary)
+                    && (!f.legendary_only || ty.legendary)
                     && (!f.tokens_only || self.is_token(id))
                     && (!f.entered_this_turn || o.since_turn == self.turn)
                     && (!f.nontoken || !self.is_token(id))
@@ -3989,7 +4039,10 @@ impl Game {
         let cant_cast = self.cant_cast_now(p);
         for (c, from_graveyard) in candidates {
             let def = self.def_of(c);
-            if def.types.land {
+            // A modal double-faced card with a land back: played as that land, or cast as its front.
+            let mdfc_land =
+                def.modal_back && !def.types.land && def.back.as_ref().is_some_and(|b| b.types.land);
+            if def.types.land || mdfc_land {
                 // CR 305.2: one land per turn, at sorcery timing.
                 let drops = 1
                     + self.extra_lands_this_turn[p]
@@ -4005,7 +4058,9 @@ impl Game {
                 if sorcery_timing && self.players[p].lands_played < drops {
                     v.push(Action::PlayLand(c));
                 }
-                continue;
+                if def.types.land {
+                    continue;
+                }
             }
             if cant_cast {
                 continue; // Voice of Victory
@@ -4791,6 +4846,7 @@ impl Game {
                 || d.mana_only_for_creatures
                 || d.any_color_for_dragon_or_omen
                 || d.any_color_for_legendary
+                || d.plaza_mana
             {
                 continue;
             }
@@ -4876,6 +4932,14 @@ impl Game {
                 Some(sub) => matches!(spell, PayFor::Spell(c) if self.has_base_subtype(c, sub)),
             })
             .map(|(id, m)| {
+                // Plaza of Heroes: any color for a legendary spell.
+                if self.def_of(id).plaza_mana
+                    && matches!(spell, PayFor::Spell(c) if self.def_of(c).types.legendary)
+                {
+                    let mut any = ManaSource::of(&crate::Color::ALL);
+                    any.colorless = true;
+                    return (id, any);
+                }
                 // Delighted Halfling: any color, only for a legendary spell.
                 if self.def_of(id).any_color_for_legendary {
                     if matches!(spell, PayFor::Spell(c) if self.def_of(c).types.legendary) {
@@ -5142,6 +5206,7 @@ impl Game {
                     || self.permanents(p).count() < a.min_permanents as usize
                     || (a.your_turn_only && p != self.active)
                     || (a.not_your_turn_only && p == self.active)
+                    || (a.needs_delirium && self.graveyard_card_types(p) < 4)
                     || (a.if_card_left_graveyard && !self.graveyard_left_this_turn[p])
                     || (a.if_created_token_this_turn && self.token_created_turn[p] != self.turn)
                     || self.players[p].life < a.life
@@ -5571,6 +5636,19 @@ impl Game {
                         .collect();
                     return (!colors.is_empty()).then(|| (id, ManaSource::of(&colors)));
                 }
+                if d.plaza_mana {
+                    // {C}, or a color among legendary permanents you control.
+                    let mut m = ManaSource {
+                        colorless: true,
+                        ..ManaSource::default()
+                    };
+                    for l in self.permanents(p).filter(|&l| self.types_of(l).legendary) {
+                        for (c, has) in m.colors.iter_mut().zip(self.colors_of(l)) {
+                            *c |= has;
+                        }
+                    }
+                    return Some((id, m));
+                }
                 if d.mana_legendary_colors {
                     let mut could = [false; 5];
                     for l in self.permanents(p).filter(|&l| {
@@ -5878,6 +5956,9 @@ impl Game {
             (Pending::Priority(p), Action::PlayLand(c)) => {
                 if self.obj(c).zone == Zone::Graveyard && !self.siege_graveyard_lands(p) {
                     self.graveyard_types_used[p][3] = true; // Muldrotha's land
+                }
+                if self.def_of(c).modal_back && !self.def_of(c).types.land {
+                    self.obj_mut(c).transformed = true; // its land face (CR 712.12)
                 }
                 self.move_to(c, Zone::Battlefield);
                 self.players[p].lands_played += 1;
@@ -10156,6 +10237,28 @@ impl Game {
                     }
                 }
             }
+            Effect::SlotBecomesCreatureForGood {
+                slot,
+                power,
+                toughness,
+                subtype,
+            } => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    if self.obj(id).zone == Zone::Battlefield {
+                        self.obj_mut(id).eot_creature =
+                            Some((u32::MAX, power, toughness, subtype, Keywords::NONE));
+                    }
+                }
+            }
+            Effect::BecomeCopyOfSlotUntilEot(n) => {
+                if let Some(card) = Game::slot_object(item, legal, n) {
+                    if self.obj(src).zone == Zone::Battlefield {
+                        let (zcc, before, of) = (self.obj(src).zcc, self.obj(src).def, self.obj(card).def);
+                        self.copy_until_eot.push((src, zcc, before));
+                        self.become_copy(src, of);
+                    }
+                }
+            }
             Effect::LookTopMayBottom(n) => {
                 if let Some(q) = self
                     .players_for(item, legal, Who::TargetPlayer(n))
@@ -12401,6 +12504,12 @@ impl Game {
             Some(Condition::ControlCreatureWithCounter) => self.controls_creature_with_counter(controller),
             Some(Condition::CastIt) => self.obj(source).was_cast,
             Some(Condition::CastFromHand) => self.obj(source).was_cast && self.obj(source).from_hand,
+            Some(Condition::ControlLandsAtLeast(n)) => {
+                self.permanents(controller)
+                    .filter(|&x| self.types_of(x).land)
+                    .count()
+                    >= *n as usize
+            }
             Some(Condition::CastTwoSpellsThisTurn) => self.spells_cast[controller] >= 2,
             Some(Condition::ChosenMode(m)) => self.obj(source).chosen_mode == Some(*m),
             Some(Condition::CreatureDiedUnderYourControlThisTurn) => self.creature_died_under[controller],
@@ -12574,14 +12683,14 @@ impl Game {
         if self.keywords(id).has(Keywords::INDESTRUCTIBLE) {
             return;
         }
-        if !self.use_regen_shield(id) {
+        if !self.use_regen_shield(id) && !self.use_umbra_armor(id) {
             self.move_to(id, Zone::Graveyard);
         }
     }
 
     /// "Destroy ... It can't be regenerated."
     fn destroy_no_regen(&mut self, id: ObjId) {
-        if !self.keywords(id).has(Keywords::INDESTRUCTIBLE) {
+        if !self.keywords(id).has(Keywords::INDESTRUCTIBLE) && !self.use_umbra_armor(id) {
             self.move_to(id, Zone::Graveyard);
         }
     }
@@ -13700,6 +13809,12 @@ impl Game {
             for id in regenerate {
                 self.use_regen_shield(id);
                 dies.retain(|&d| d != id);
+            }
+            // Umbra armor saves a creature destroyed by lethal damage (not by zero toughness).
+            for id in dies.clone() {
+                if self.toughness(id) > 0 && self.use_umbra_armor(id) {
+                    dies.retain(|&d| d != id);
+                }
             }
             dies.extend(self.legend_rule_losers());
             // CR 714.4: a Saga with lore counters at least its final chapter, and no chapter ability

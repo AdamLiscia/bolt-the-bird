@@ -98,6 +98,8 @@ pub struct Filter {
     pub abilities: bool,
     /// With `spells`: only enchantment, instant or sorcery spells (Swan Song).
     pub spells_enchantment_instant_sorcery: bool,
+    /// Legendary permanents only.
+    pub legendary_only: bool,
 }
 
 impl Filter {
@@ -145,6 +147,7 @@ impl Filter {
         entered_this_turn: false,
         abilities: false,
         spells_enchantment_instant_sorcery: false,
+        legendary_only: false,
     };
 
     pub const CREATURE: Filter = Filter {
@@ -1294,6 +1297,16 @@ pub enum Effect {
         slot: u8,
         n: u8,
     },
+    /// The source becomes a copy of the card in `slot` until end of turn (Shifting Woodland).
+    BecomeCopyOfSlotUntilEot(u8),
+    /// The permanent in `slot` becomes a `power`/`toughness` creature with `subtype` for good. It's
+    /// still a land (Nissa, Sage Animist's −7).
+    SlotBecomesCreatureForGood {
+        slot: u8,
+        power: i32,
+        toughness: i32,
+        subtype: &'static str,
+    },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1580,6 +1593,8 @@ pub enum Condition {
     SourceInGraveyardOrExile,
     /// It was cast from its owner's hand ("if you cast it from your hand").
     CastFromHand,
+    /// Its controller controls at least this many lands.
+    ControlLandsAtLeast(u8),
 }
 
 /// A spell's effect or a triggered ability: target slots, then effects in order.

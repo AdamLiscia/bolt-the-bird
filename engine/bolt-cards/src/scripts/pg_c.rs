@@ -619,6 +619,88 @@ pub fn script(name: &str) -> Option<Script> {
                 d.mode_costs = ["{1}{U}", "{3}", "{2}", "{4}{U}", "{3}{U}", "{5}", "{6}{U}"].map(cost).to_vec();
             },
         ),
+        "Plaza of Heroes" => s(
+            &[
+                "{T}: Add {C}.",
+                "{T}: Add one mana of any color. Spend this mana only to cast a legendary spell.",
+                "{T}: Add one mana of any color among legendary permanents you control.",
+                "{3}, {T}, Exile this land: Target legendary creature gains hexproof and indestructible until end of turn.",
+            ],
+            |d, _| {
+                d.plaza_mana = true;
+                let legend = Filter { legendary_only: true, ..CREATURE };
+                let n = activated(d, "{3}", true, vec![legend], vec![Effect::Grant { slot: 0, keywords: Keywords::HEXPROOF.with(Keywords::INDESTRUCTIBLE) }]);
+                d.activated[n].exile_self = true;
+            },
+        ),
+        "Bear Umbra" => s(
+            &[
+                "Enchant creature",
+                "Enchanted creature gets +2/+2 and has \"Whenever this creature attacks, untap all lands you control.\"",
+                "Umbra armor",
+            ],
+            |d, _| {
+                d.aura = true;
+                d.spell = Some(Ability::new(vec![CREATURE], vec![]));
+                attached(d, false, 2, 2, Keywords::NONE);
+                on(d, When::EquippedAttacks, vec![], vec![Effect::UntapLandsYouControl]);
+                d.umbra_armor = true;
+            },
+        ),
+        "Shifting Woodland" => s(
+            &[
+                "This land enters tapped unless you control a Forest.",
+                "{T}: Add {G}.",
+                "Delirium — {2}{G}{G}: This land becomes a copy of target permanent card in your graveyard until end of turn. Activate only if there are four or more card types among cards in your graveyard.",
+            ],
+            |d, _| {
+                d.enters_tapped_unless = Some(["Forest", "Forest"]);
+                d.mana = Some(ManaSource::of(&[Color::Green]));
+                let card = Filter { permanent_cards: true, ..graveyard_cards(false, Controller::You) };
+                let n = activated(d, "{2}{G}{G}", false, vec![card], vec![Effect::BecomeCopyOfSlotUntilEot(0)]);
+                d.activated[n].needs_delirium = true;
+            },
+        ),
+        "Khalni Ambush // Khalni Territory" => s(
+            &[
+                "Target creature you control fights target creature you don't control.",
+                "Back: This land enters tapped.",
+                "Back: {T}: Add {G}.",
+            ],
+            |d, _| {
+                spell(d, vec![YOUR_CREATURE, OPP_CREATURE], vec![Effect::FightBetween { a: 0, b: 1 }]);
+                d.modal_back = true;
+                let b = d.back.as_mut().expect("Khalni Territory");
+                b.enters_tapped = true;
+                b.mana = Some(ManaSource::of(&[Color::Green]));
+            },
+        ),
+        "Nissa, Vastwood Seer // Nissa, Sage Animist" => s(
+            &[
+                "When Nissa enters, you may search your library for a basic Forest card, reveal it, put it into your hand, then shuffle.",
+                "Whenever a land you control enters, if you control seven or more lands, exile Nissa, then return her to the battlefield transformed under her owner's control.",
+                "Back: +1: Reveal the top card of your library. If it's a land card, put it onto the battlefield. Otherwise, put it into your hand.",
+                "Back: −2: Create Ashaya, the Awoken World, a legendary 4/4 green Elemental creature token.",
+                "Back: −7: Untap up to six target lands. They become 6/6 Elemental creatures. They're still lands.",
+            ],
+            |d, t| {
+                let forest = SearchFor::LandTypes { types: [false, false, false, false, true], basic: true };
+                may(d, When::Enters, vec![], vec![search(forest, SearchTo::Hand)]);
+                let mut flip = Ability::new(vec![], vec![Effect::ExileSelfReturn { transformed: true }]);
+                flip.condition = Some(Condition::ControlLandsAtLeast(7));
+                d.triggers.push(Trigger { when: When::LandYouControlEnters, ability: flip });
+                let b = d.back.as_mut().expect("Nissa, Sage Animist");
+                loyalty(b, 1, Ability::new(vec![], vec![Effect::RevealTopLandToBattlefieldElseHand]));
+                loyalty(b, -2, Ability::new(vec![], vec![Effect::CreateToken { who: Who::You, def: t.ashaya, n: 1 }]));
+                let land = Filter { players: false, creatures: false, planeswalkers: false, lands: true, ..Filter::ANY };
+                let mut effects = Vec::new();
+                for slot in 0..6 {
+                    effects.push(Effect::UntapTarget(slot));
+                    effects.push(Effect::SlotBecomesCreatureForGood { slot, power: 6, toughness: 6, subtype: "Elemental" });
+                }
+                loyalty(b, -7, up_to(vec![land; 6], effects));
+            },
+        ),
         _ => None,
     }
 }
@@ -704,4 +786,9 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Otawara, Soaring City",
     "Scatter to the Winds",
     "Three Steps Ahead",
+    "Plaza of Heroes",
+    "Bear Umbra",
+    "Shifting Woodland",
+    "Khalni Ambush // Khalni Territory",
+    "Nissa, Vastwood Seer // Nissa, Sage Animist",
 ];

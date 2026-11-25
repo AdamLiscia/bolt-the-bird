@@ -513,3 +513,18 @@ Shortcuts: awaken is cast as a {3} kicker (the same total as the awaken cost), l
 creature for good (`eot_creature` with turn `u32::MAX`, cleared when it leaves). Spree is one mode per combination of
 + modes (seven for Three Steps Ahead), each with its summed additional cost in `mode_costs`. Omnath keeps only
 single-green pool entries; its bonus counts them.
+
+Aesi batch 3 (5): Plaza of Heroes, Bear Umbra, Shifting Woodland, Khalni Ambush // Khalni Territory, Nissa, Vastwood
+Seer // Nissa, Sage Animist.
+Core: `CardDef::{plaza_mana, umbra_armor, modal_back}`, `Activated::needs_delirium` (`Game::graveyard_card_types`),
+`Filter::legendary_only`, `Condition::ControlLandsAtLeast`, `Effect::{BecomeCopyOfSlotUntilEot (the existing
+copy_until_eot, undone in cleanup), SlotBecomesCreatureForGood}`, `Game::use_umbra_armor` (in `destroy`,
+`destroy_no_regen`, and state-based lethal damage). Token: Ashaya, the Awoken World (legendary 4/4 Elemental) at
+base+58.
+Modal double-faced cards: `modal_back` with a land back offers `PlayLand` from hand and sets `transformed` as it
+enters (the front is still castable). A loyalty ability on the stack whose planeswalker left (−7 at 7 loyalty) and
+turned front face up resolves from the back face's abilities.
+Assets: Khalni Ambush and Nissa, Vastwood Seer refreshed with `fetch_oracle.py --set PG --refresh` (run with
+PYTHONPATH=src:scripts so it writes this worktree's assets; the venv's `bolt` points at ~/bolt-the-bird), then
+`make_cmd_set.py`. Only their `back` keys changed.
+Bear Umbra's attack trigger is `When::EquippedAttacks`, which fires for anything attached (Auras too).
