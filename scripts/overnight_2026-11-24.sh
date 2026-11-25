@@ -8,7 +8,7 @@
 #   3. Watchdog: if free memory < 20%, stop job 2 first, then job 1.
 set -uo pipefail
 cd "$(dirname "$0")/.."
-export PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.35
+export PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.35 PYTORCH_MPS_LOW_WATERMARK_RATIO=0.3
 log() { echo "$(date +%T) $*"; }
 
 log "drafter start"
