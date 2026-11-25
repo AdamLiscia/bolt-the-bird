@@ -71,6 +71,8 @@ pub struct Filter {
     pub attached_to_first_target: bool,
     /// Lands.
     pub lands: bool,
+    /// Creatures that were dealt damage this turn.
+    pub was_dealt_damage: bool,
 }
 
 impl Filter {
@@ -105,6 +107,7 @@ impl Filter {
         in_combat: false,
         attached_to_first_target: false,
         lands: false,
+        was_dealt_damage: false,
     };
 
     pub const CREATURE: Filter = Filter {
@@ -148,6 +151,8 @@ pub enum Recipient {
     EachCreature {
         without_flying: bool,
     },
+    /// Each creature and each planeswalker.
+    EachCreatureAndPlaneswalker,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -597,6 +602,11 @@ pub enum Effect {
     /// Creatures you control get +X/+X until end of turn, X the number of creatures you control
     /// (Craterhoof Behemoth), counted once on resolution (CR 608.2h).
     PumpYoursPerCreatures,
+    /// The creature the source is attached to gains keywords until end of turn (an Aura's enters
+    /// trigger: "enchanted creature gains first strike until end of turn").
+    GrantAttached(Keywords),
+    /// The source can attack this turn as though it didn't have defender.
+    AttackDespiteDefenderSelf,
     /// Put `n` +1/+1 counters on each creature `who` controls.
     CountersAll {
         who: Who,
@@ -605,6 +615,10 @@ pub enum Effect {
     /// "Draw a card if you control a creature with a counter on it. If you don't draw a card this
     /// way, put a +1/+1 counter on this creature." (Trade Route Envoy)
     DrawIfCounterElseCounterSelf,
+    /// Destroy all nonland permanents your opponents control.
+    DestroyOpponentsNonland,
+    /// Destroy all creatures and enchantments, then draw a card for each permanent destroyed.
+    DestroyCreaturesAndEnchantmentsDraw,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

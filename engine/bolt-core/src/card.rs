@@ -170,6 +170,8 @@ pub struct Activated {
     /// "Exile this card from your graveyard" in the cost (renew).
     pub exile_self: bool,
     pub ability: Ability,
+    /// "Sacrifice a token" in the cost.
+    pub sacrifice_token: bool,
 }
 
 /// The printed card. Shared by every copy; per-copy state lives on the game object.

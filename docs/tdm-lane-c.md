@@ -87,3 +87,20 @@ Assessed after the merge at e5c03c9. Every remaining card needs core:
 - Ugin, Eye of the Storms: a "when you cast this spell" trigger, a "whenever you cast a colorless spell" trigger, a "permanent that's one or more colors" filter, and the -11 search.
 - All-Out Assault: an additional combat phase and main phase, and "when you next attack this turn, untap each creature you control".
 - Craterhoof Behemoth: +X/+X for your creatures, where X is the number of creatures you control.
+
+## Round 3, batch 1: core mechanics (10 cards)
+
+Engine-core work allowed from here on. New variants and fields all go at the end of their enum or struct.
+
+Mechanics added (bolt-core):
+- `Filter::was_dealt_damage`: creatures with damage marked this turn (damage is marked until cleanup, so this is exact).
+- `Filter::creature_max_power` now also applies to graveyard cards (their printed power).
+- Divided damage: one player can't fill two slots of a single divided "target" word (CR 115.3). The check applies only to abilities with `divide > 0`. `Effect::DividedDamage` now damages players too ("any target").
+- `Activated::sacrifice_token` ("Sacrifice a token"): `ActivateWith(source, n, token)`. The token being sacrificed is kept out of the mana payment, so a Treasure can't pay {1} and also be the sacrifice.
+- `Effect::GrantAttached(Keywords)`: the enchanted or equipped creature gains keywords until end of turn.
+- `Effect::AttackDespiteDefenderSelf` and `Object::defender_ignored_turn`: it can attack this turn as though it didn't have defender. This resets when it leaves the battlefield.
+- `Effect::CountersAll { who, n }`: +1/+1 counters on each creature a player controls.
+- `Effect::DestroyOpponentsNonland`, `Effect::DestroyCreaturesAndEnchantmentsDraw` (draws one for each permanent that actually left; indestructible survivors don't count).
+- `Recipient::EachCreatureAndPlaneswalker`.
+
+Cards: Twin Bolt, Unsparing Boltcaster, Smile at Death, Hardened Tactician, Fire-Rim Form, Krotiq Nestguard, Ruinous Ultimatum, Death Begets Life, Dragonback Assault, Duty Beyond Death.
