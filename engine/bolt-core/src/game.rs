@@ -1078,6 +1078,11 @@ impl Game {
                         let mine = so.controller == o.controller;
                         let applies = match s.scope {
                             Scope::This => src == id,
+                            Scope::YourAttackingTokens => {
+                                mine && creature
+                                    && self.is_token(id)
+                                    && self.combat.as_ref().is_some_and(|c| c.attackers.contains(&id))
+                            }
                             Scope::YourCreatures => mine && creature,
                             Scope::YourCreaturesWithCounters => mine && creature && o.counters > 0,
                             Scope::Attached => so.attached_to == Some((id, o.zcc)),
@@ -1118,6 +1123,11 @@ impl Game {
                         applies && condition_ok && (!s.your_turn_only || self.active == so.controller)
                     })
                     .map(move |mut s| {
+                        if let Some(Scale::PerCreatureYouControl) = s.scale {
+                            let n = self.creatures(so.controller).count() as i32;
+                            s.power *= n;
+                            s.toughness *= n;
+                        }
                         if let Some(Scale::PerFellowshipCounter) = s.scale {
                             s.power *= so.fellowship;
                             s.toughness *= so.fellowship;
@@ -4461,6 +4471,30 @@ impl Game {
             Effect::Counters { slot, n } => {
                 if let Some(id) = Game::slot_object(item, legal, slot) {
                     self.add_counters(id, n);
+                }
+            }
+            Effect::Mobilize { def, n } => {
+                let p = item.controller;
+                let n = n.map_or_else(
+                    || {
+                        self.players[p]
+                            .graveyard
+                            .iter()
+                            .filter(|&&c| self.def_of(c).types.creature)
+                            .count()
+                    },
+                    |n| n as usize,
+                );
+                for _ in 0..n {
+                    self.create_token(p, def);
+                    for id in self.last_created.clone() {
+                        let o = self.obj_mut(id);
+                        o.tapped = true;
+                        o.sacrifice_at_end = true;
+                        if let Some(c) = self.combat.as_mut() {
+                            c.attackers.push(id); // CR 506.3a: attacking without being declared
+                        }
+                    }
                 }
             }
             Effect::CreateToken { who, def, n } => {

@@ -50,6 +50,7 @@ pub fn token_defs() -> Vec<CardDef> {
         token("Zombie", "Zombie", 2, 2, Keywords::NONE),
         token("Ninja", "Ninja", 2, 1, Keywords::NONE),
         token("Cat", "Cat", 2, 2, Keywords::NONE),
+        token("Warrior", "Warrior", 1, 1, Keywords::NONE), // Tarkir's mobilize tokens (red)
     ]
 }
 
@@ -114,6 +115,7 @@ pub struct Tokens {
     pub spirit: usize,
     pub fish: usize,
     pub rat: usize,
+    pub warrior: usize,
 }
 
 impl Tokens {
@@ -142,6 +144,7 @@ impl Tokens {
             zombie: base + 20,
             ninja: base + 21,
             cat_2: base + 22,
+            warrior: base + 23,
         }
     }
 }
@@ -305,6 +308,17 @@ fn static_on(d: &mut CardDef, scope: Scope, your_turn_only: bool, keywords: Keyw
         set_colors: None,
         becomes_land: false,
     });
+}
+
+/// "Mobilize N": whenever this creature attacks, N 1/1 red Warrior tokens tapped and attacking, sacrificed
+/// at the next end step. `None` for "Mobilize X, where X is the number of creature cards in your graveyard."
+fn mobilize(d: &mut CardDef, t: &Tokens, n: Option<u8>) {
+    on(
+        d,
+        When::Attacks,
+        vec![],
+        vec![Effect::Mobilize { def: t.warrior, n }],
+    );
 }
 
 fn modes(d: &mut CardDef, modes: Vec<Ability>) {
@@ -3127,6 +3141,55 @@ pub fn script(name: &str) -> Option<Script> {
                 activated(d, "{2}", true, vec![card], vec![Effect::ToLibrary(0, false)]);
             },
         ),
+        // ---- TDM batch 4: mobilize ----
+        "Dalkovan Packbeasts" => s(&["Mobilize 3"], |d, t| mobilize(d, t, Some(3))),
+        "Dragonback Lancer" => s(&["Mobilize 1"], |d, t| mobilize(d, t, Some(1))),
+        "Shock Brigade" => s(&["Mobilize 1"], |d, t| mobilize(d, t, Some(1))),
+        "Nightblade Brigade" => s(&["Mobilize 1", "When this creature enters, surveil 1."], |d, t| {
+            mobilize(d, t, Some(1));
+            on(d, When::Enters, vec![], vec![Effect::Surveil { n: 1 }]);
+        }),
+        "Reigning Victor" => s(
+            &["Mobilize 1", "When this creature enters, target creature gets +1/+0 and gains indestructible until end of turn."],
+            |d, t| {
+                mobilize(d, t, Some(1));
+                on(
+                    d,
+                    When::Enters,
+                    vec![CREATURE],
+                    vec![Effect::Pump { slot: 0, power: 1, toughness: 0 }, Effect::Grant { slot: 0, keywords: Keywords::INDESTRUCTIBLE }],
+                );
+            },
+        ),
+        "Avenger of the Fallen" => s(&["Mobilize X, where X is the number of creature cards in your graveyard."], |d, t| {
+            mobilize(d, t, None)
+        }),
+        "Venerated Stormsinger" => s(
+            &["Mobilize 1", "Whenever this creature or another creature you control dies, each opponent loses 1 life and you gain 1 life."],
+            |d, t| {
+                mobilize(d, t, Some(1));
+                on(
+                    d,
+                    When::CreatureYouControlDies,
+                    vec![],
+                    vec![Effect::LoseLife { who: Who::EachOpponent, n: 1 }, Effect::GainLife { who: Who::You, n: 1 }],
+                );
+            },
+        ),
+        "Bone-Cairn Butcher" => s(&["Mobilize 2", "Attacking tokens you control have deathtouch."], |d, t| {
+            mobilize(d, t, Some(2));
+            static_on(d, Scope::YourAttackingTokens, false, Keywords::DEATHTOUCH);
+        }),
+        "Zurgo's Vanguard" => s(
+            &["Mobilize 1", "Zurgo's Vanguard's power is equal to the number of creatures you control."],
+            |d, t| {
+                mobilize(d, t, Some(1));
+                static_on(d, Scope::This, false, Keywords::NONE);
+                let st = d.statics.last_mut().expect("just added");
+                st.power = 1;
+                st.scale = Some(Scale::PerCreatureYouControl);
+            },
+        ),
         _ => None,
     }
 }
@@ -3441,4 +3504,13 @@ pub const TDM_SCRIPTED: &[&str] = &[
     "Riverwheel Sweep",
     "Temur Tawnyback",
     "Jade-Cast Sentinel",
+    "Dalkovan Packbeasts",
+    "Dragonback Lancer",
+    "Shock Brigade",
+    "Nightblade Brigade",
+    "Reigning Victor",
+    "Avenger of the Fallen",
+    "Venerated Stormsinger",
+    "Bone-Cairn Butcher",
+    "Zurgo's Vanguard",
 ];

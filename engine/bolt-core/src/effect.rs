@@ -219,6 +219,13 @@ pub enum Effect {
         def: usize,
         n: u8,
     },
+    /// Mobilize (Tarkir: Dragonstorm): create this many 1/1 red Warrior tokens (`def`) tapped and
+    /// attacking; sacrifice them at the beginning of the next end step. `None`: X, the number of
+    /// creature cards in your graveyard.
+    Mobilize {
+        def: usize,
+        n: Option<u8>,
+    },
     /// One token for each other creature you control with the source's name (Hare Apparent).
     CreateTokenPerNamesake {
         def: usize,
@@ -570,6 +577,8 @@ pub enum SearchTo {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Scope {
     This,
+    /// Attacking tokens you control (Bone-Cairn Butcher).
+    YourAttackingTokens,
     YourCreatures,
     /// Creatures you control with a +1/+1 counter on them.
     YourCreaturesWithCounters,
@@ -592,6 +601,8 @@ pub enum Scale {
     PerYouControlSubtype(&'static str),
     /// Fellowship counters on the source.
     PerFellowshipCounter,
+    /// Creatures you control ("power is equal to the number of creatures you control").
+    PerCreatureYouControl,
 }
 
 /// A condition on a static ability ("as long as ...").

@@ -656,3 +656,129 @@ fn jade_cast_sentinel_bottoms_a_graveyard_card() {
         "the bottom of its owner's library"
     );
 }
+
+// ---- batch 4: mobilize ----
+
+/// Attack with `attacker` on a later turn (not summoning sick); stops after attacks are declared and
+/// the attack triggers have resolved.
+fn attack_with(g: &mut Game, attacker: ObjId) {
+    g.start_turn(5, 0);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(g, Action::PassPriority);
+    }
+    act(g, Action::Attack(attacker));
+    act(g, Action::FinishAttacks);
+    resolve_all(g, &[]);
+}
+
+#[test]
+fn mobilize_makes_attacking_warriors_that_leave_at_the_end_step() {
+    let mut g = table();
+    let p = put(&mut g, 0, "Dalkovan Packbeasts"); // Mobilize 3
+    let life = g.players[1].life;
+    attack_with(&mut g, p);
+    let warriors = tokens(&g, 0, "Warrior");
+    assert_eq!(warriors.len(), 3);
+    let combat = g.combat.as_ref().expect("in combat");
+    assert!(warriors
+        .iter()
+        .all(|w| g.obj(*w).tapped && combat.attackers.contains(w)));
+    while g.step != bolt_core::Step::End {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(
+        g.players[1].life,
+        life - 3,
+        "three 1/1s unblocked (the Packbeasts are 0/4)"
+    );
+    while !matches!(g.step, bolt_core::Step::Cleanup) && g.turn == 5 {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(tokens(&g, 0, "Warrior").is_empty(), "sacrificed at the end step");
+}
+
+#[test]
+fn avenger_of_the_fallen_mobilizes_one_per_creature_card_in_the_graveyard() {
+    let mut g = table();
+    let a = put(&mut g, 0, "Avenger of the Fallen");
+    for n in ["Humbling Elder", "Iceridge Serpent"] {
+        g.add_card(0, tid(n), Zone::Graveyard);
+    }
+    g.add_card(0, tid("Rebellious Strike"), Zone::Graveyard); // not a creature
+    attack_with(&mut g, a);
+    assert_eq!(tokens(&g, 0, "Warrior").len(), 2);
+}
+
+#[test]
+fn venerated_stormsinger_drains_when_its_warrior_is_sacrificed() {
+    let mut g = table();
+    let s = put(&mut g, 0, "Venerated Stormsinger");
+    attack_with(&mut g, s);
+    assert_eq!(tokens(&g, 0, "Warrior").len(), 1);
+    // Block nothing; at the end step the Warrior is sacrificed: a creature you control dies.
+    let before = (g.players[0].life, g.players[1].life);
+    while g.turn == 5 && !tokens(&g, 0, "Warrior").is_empty() {
+        act(&mut g, Action::PassPriority);
+    }
+    resolve_all(&mut g, &[]);
+    let after = (g.players[0].life, g.players[1].life);
+    assert_eq!(after.0, before.0 + 1);
+    assert_eq!(
+        after.1,
+        before.1 - 1 - 1 - 3,
+        "1 drained, plus 1 (Warrior) and 3 (Stormsinger) combat damage"
+    );
+}
+
+#[test]
+fn bone_cairn_butcher_gives_attacking_tokens_deathtouch() {
+    let mut g = table();
+    let b = put(&mut g, 0, "Bone-Cairn Butcher");
+    attack_with(&mut g, b);
+    let w = tokens(&g, 0, "Warrior");
+    assert_eq!(w.len(), 2);
+    assert!(w.iter().all(|&x| g.keywords(x).has(Keywords::DEATHTOUCH)));
+    assert!(!g.keywords(b).has(Keywords::DEATHTOUCH), "tokens only");
+}
+
+#[test]
+fn zurgos_vanguard_counts_your_creatures() {
+    let mut g = table();
+    let v = put(&mut g, 0, "Zurgo's Vanguard");
+    assert_eq!(g.power(v), 1);
+    put(&mut g, 0, "Humbling Elder");
+    assert_eq!(g.power(v), 2);
+    attack_with(&mut g, v);
+    assert_eq!(g.power(v), 3, "its mobilized Warrior counts too");
+}
+
+#[test]
+fn reigning_victor_and_nightblade_brigade_enter_with_their_triggers() {
+    let mut g = table();
+    let mine = put(&mut g, 0, "Humbling Elder");
+    let rv = hand(&mut g, 0, "Reigning Victor");
+    begin(&mut g);
+    let p = g.power(mine);
+    play(&mut g, rv, false, &[], &[Action::Target(obj(mine))]);
+    assert_eq!(g.power(mine), p + 1);
+    assert!(g.keywords(mine).has(Keywords::INDESTRUCTIBLE));
+    let nb = hand(&mut g, 0, "Nightblade Brigade");
+    let top = *g.players[0].library.last().unwrap();
+    play(&mut g, nb, false, &[], &[Action::Yes]);
+    assert_eq!(g.obj(top).zone, Zone::Graveyard, "surveil 1");
+    assert!(g.keywords(nb).has(Keywords::DEATHTOUCH));
+}
+
+#[test]
+fn shock_brigade_and_dragonback_lancer_mobilize_one() {
+    for (name, kw) in [
+        ("Shock Brigade", Keywords::MENACE),
+        ("Dragonback Lancer", Keywords::FLYING),
+    ] {
+        let mut g = table();
+        let c = put(&mut g, 0, name);
+        assert!(g.keywords(c).has(kw), "{name}");
+        attack_with(&mut g, c);
+        assert_eq!(tokens(&g, 0, "Warrior").len(), 1, "{name}");
+    }
+}
