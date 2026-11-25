@@ -326,3 +326,21 @@ Tarkir cards still not done (needs core):
 - Taigam, Master Opportunist: suspend (time counters, upkeep removal, casting free when the last is removed),
   plus copying the second spell and exiling the original.
 - Scavenger Regent: on hold (needs a new Action, per the coordinator).
+
+## Bloomburrow Commander (BLC), lane C, batch 1 (11 cards)
+
+Module `engine/bolt-cards/src/scripts/blc_c.rs` (after `blc_b` in `script()`), tests in
+`engine/bolt-cards/tests/blc_c.rs`, checked by `every_bloomburrow_commander_script_matches_its_card_text`.
+Range: `shared_order` 150-299 in ~/bolt-handoff/blc.json, skipping lane B's names.
+
+Mechanics added (bolt-core, all at the end of their enum or struct): `Effect::BlinkSlot`,
+`Effect::DrawPerCreatureYouControl`, `Effect::GainLifePerCreaturePowerAtLeast`, `Effect::CreateTokensX`,
+`Effect::ReturnCreatureYouControl` (with `Decision::ReturnOwnCreature`), `Effect::BounceAllCreatures`,
+`When::AnotherCreatureDies` (any player's, tokens included). Casting: an X spell's targets are checked for
+each X (a "mana value X" target), and a spell with a kicked version is castable when either version has legal
+targets, each way only with its own targets.
+
+Cards: Toski, Bearer of Secrets, Tear Asunder, Ogre Slumlord, Tireless Provisioner, Starstorm, Restoration
+Angel, Poison-Tip Archer, Shamanic Revelation, Stolen by the Fae, Time Wipe, Perplexing Test.
+
+Not attempted (Tarkir, judged too large for the time left): Naga Fleshcrafter (clones) and Taigam (suspend).

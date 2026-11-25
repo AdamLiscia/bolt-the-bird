@@ -884,6 +884,25 @@ pub enum Effect {
     DrawX,
     /// Add one mana of any color (into the pool).
     AddManaAnyColor,
+    /// Exile the permanent in `slot`, then return that card to the battlefield under your control.
+    BlinkSlot(u8),
+    /// Draw a card for each creature you control.
+    DrawPerCreatureYouControl,
+    /// Gain `per` life for each creature you control with power `power` or greater.
+    GainLifePerCreaturePowerAtLeast {
+        per: i32,
+        power: i32,
+    },
+    /// Create X tokens of `def` (X the spell's X).
+    CreateTokensX {
+        def: usize,
+    },
+    /// Return a creature you control (your choice, not targeted) to its owner's hand.
+    ReturnCreatureYouControl,
+    /// Return all creature tokens (`tokens`) or all nontoken creatures to their owners' hands.
+    BounceAllCreatures {
+        tokens: bool,
+    },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1303,6 +1322,8 @@ pub enum When {
     /// "Whenever a creature you control enters, if you cast it": fired as a cast creature spell
     /// resolves; slot 0 (triggering) is that creature.
     CastCreatureYouControlEnters,
+    /// "Whenever another creature dies" (any player's, tokens included).
+    AnotherCreatureDies,
 }
 
 #[derive(Clone, Debug, PartialEq)]
