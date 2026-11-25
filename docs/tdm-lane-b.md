@@ -351,8 +351,8 @@ Core:
 - `Scope::OtherYourCreatures`, `Scope::EachLand` (with a static subtype: Yavimaya's Forests;
   `CardDef::lands_are_forests` adds {G} to lands with plain mana).
 - Mana: `extra_color_if_you_control` (Verge), `mana_own_land_colors` (Reflecting Pool),
-  `mana_tap_life` (Great Henge), shock lands (`CardDef::shock`, `Decision::Shock` when played; put
-  onto the battlefield another way, a shock land enters tapped, with no life payment offered).
+  `mana_tap_life` (Great Henge). Stomping Ground uses lane C's `CardDef::shock_land` (my own shock
+  field was dropped in the merge with tarkir d506a28).
 - Damage: `damage_cant_be_prevented`, `your_combat_damage_cant_be_prevented` (both skip the
   turn-scoped prevention and protection in `deal_damage`), `When::YourSourceDealsFiveOrMoreToPlayer`,
   `When::DealsSixOrMoreToOpponent`, `When::YourCreatureDealsCombatDamageToPlayerAmount`,

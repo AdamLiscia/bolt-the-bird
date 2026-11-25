@@ -36,6 +36,7 @@ keywords! {
     UNBLOCKABLE = 14, "Can't be blocked";
     CANT_BLOCK = 15, "Can't block";
     ISLANDWALK = 16, "Islandwalk";
+    SHROUD = 17, "Shroud";
 }
 
 impl Keywords {
@@ -152,6 +153,8 @@ pub enum Reduction {
     PerTokenYouControl,
     /// ... {1} less for each creature that attacked this turn (Rowdy Research).
     PerCreatureAttackedThisTurn,
+    /// Delirium: ... {n} less with four or more card types among cards in your graveyard.
+    Delirium(u8),
     /// ... {X} less, X the greatest power among creatures you control (The Great Henge).
     GreatestPowerAmongYourCreatures,
 }
@@ -495,6 +498,23 @@ pub struct CardDef {
     pub triples_your_damage: bool,
     /// "Each spell you cast that's red or green costs {N} less to cast." (Goblin Anarchomancer)
     pub red_green_spell_discount: u8,
+    /// "As this land enters, you may pay 2 life. If you don't, it enters tapped." (shock lands)
+    pub shock_land: bool,
+    /// "You may play lands from your graveyard."
+    pub lands_from_graveyard: bool,
+    /// "You may play lands from the top of your library."
+    pub lands_from_top: bool,
+    /// "You may cast spells with mana value N or greater from the top of your library." (Glarb: 4)
+    pub top_spells_min_mana_value: Option<u32>,
+    /// "You may cast [subtype] spells from the top of your library." (Traveling Chocobo: Bird)
+    pub top_spells_subtype: Option<&'static str>,
+    /// "If a [kind] entering causes a triggered ability of a permanent you control to trigger, that
+    /// ability triggers an additional time."
+    pub entering_triggers_again: Option<EntryDoubler>,
+    /// "Untap all permanents you control during each other player's untap step." (Seedborn Muse)
+    pub untaps_on_others_untap: bool,
+    /// Power and toughness each equal to the number of lands you control.
+    pub pt_lands: bool,
     /// The Theros gods: "As long as your devotion to [colors] is less than N, this isn't a creature."
     pub creature_unless_devotion: Option<([bool; 5], u8)>,
     /// Its mana ability also gains you this much life each time it's activated (The Great Henge).
@@ -503,8 +523,6 @@ pub struct CardDef {
     pub extra_color_if_you_control: Option<(crate::Color, [&'static str; 2])>,
     /// "{T}: Add one mana of any type that a land you control could produce." (Reflecting Pool)
     pub mana_own_land_colors: bool,
-    /// A shock land: "As this land enters, you may pay 2 life. If you don't, it enters tapped." (asked when played; put onto the battlefield another way, it enters tapped)
-    pub shock: bool,
     /// Power and toughness each equal to half the highest life total among your opponents, rounded up (Malignus).
     pub pt_half_highest_opponent_life: bool,
     /// "Damage that would be dealt by this creature can't be prevented."
@@ -519,6 +537,17 @@ pub struct CardDef {
     pub cant_attack_twice_per_turn: bool,
     /// "Each land is a Forest in addition to its other land types." (lands with plain mana also tap for {G})
     pub lands_are_forests: bool,
+}
+
+/// What entering makes triggers happen again (see [`CardDef::entering_triggers_again`]).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum EntryDoubler {
+    /// Any permanent (Yarok).
+    Permanent,
+    /// A land (Ancient Greenwarden).
+    Land,
+    /// A land or a permanent with this subtype (Traveling Chocobo: Bird).
+    LandOrSubtype(&'static str),
 }
 
 /// An Omen spell half: its name, cost, whether it's an instant, and what it does.
@@ -675,11 +704,18 @@ impl CardDef {
             mana_tap_damage: 0,
             triples_your_damage: false,
             red_green_spell_discount: 0,
+            shock_land: false,
+            lands_from_graveyard: false,
+            lands_from_top: false,
+            top_spells_min_mana_value: None,
+            top_spells_subtype: None,
+            entering_triggers_again: None,
+            untaps_on_others_untap: false,
+            pt_lands: false,
             creature_unless_devotion: None,
             mana_tap_life: 0,
             extra_color_if_you_control: None,
             mana_own_land_colors: false,
-            shock: false,
             pt_half_highest_opponent_life: false,
             damage_cant_be_prevented: false,
             your_combat_damage_cant_be_prevented: false,
@@ -822,11 +858,18 @@ impl CardDef {
             mana_tap_damage: 0,
             triples_your_damage: false,
             red_green_spell_discount: 0,
+            shock_land: false,
+            lands_from_graveyard: false,
+            lands_from_top: false,
+            top_spells_min_mana_value: None,
+            top_spells_subtype: None,
+            entering_triggers_again: None,
+            untaps_on_others_untap: false,
+            pt_lands: false,
             creature_unless_devotion: None,
             mana_tap_life: 0,
             extra_color_if_you_control: None,
             mana_own_land_colors: false,
-            shock: false,
             pt_half_highest_opponent_life: false,
             damage_cant_be_prevented: false,
             your_combat_damage_cant_be_prevented: false,
@@ -969,11 +1012,18 @@ impl CardDef {
             mana_tap_damage: 0,
             triples_your_damage: false,
             red_green_spell_discount: 0,
+            shock_land: false,
+            lands_from_graveyard: false,
+            lands_from_top: false,
+            top_spells_min_mana_value: None,
+            top_spells_subtype: None,
+            entering_triggers_again: None,
+            untaps_on_others_untap: false,
+            pt_lands: false,
             creature_unless_devotion: None,
             mana_tap_life: 0,
             extra_color_if_you_control: None,
             mana_own_land_colors: false,
-            shock: false,
             pt_half_highest_opponent_life: false,
             damage_cant_be_prevented: false,
             your_combat_damage_cant_be_prevented: false,

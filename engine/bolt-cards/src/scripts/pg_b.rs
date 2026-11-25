@@ -140,7 +140,7 @@ pub fn script(name: &str) -> Option<Script> {
         }),
         "Stomping Ground" => s(&["As this land enters, you may pay 2 life. If you don't, it enters tapped."], |d, _| {
             d.mana = Some(ManaSource::of(&[Color::Red, Color::Green]));
-            d.shock = true;
+            d.shock_land = true; // lane C's shock lands: asked before anyone next gets priority
         }),
         "Kessig Wolf Run" => s(&["{T}: Add {C}.", "{X}{R}{G}, {T}: Target creature gets +X/+0 and gains trample until end of turn."], |d, _| {
             d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });

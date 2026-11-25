@@ -407,3 +407,24 @@ Talent, Gilded Lotus ("three mana of any one color": the payer has no one-color 
 Kwain (both players choose), Maskwood Nexus, Mr. Foxglove, Perch Protection, Plumb the Forbidden, Promise of
 Loyalty, Raging Ravine, Realm-Cloaked Giant (adventure), Rolling Hamsphere (crew), Rose Room Treasurer, Saw in
 Half, Shield Broker, Simic Ascendancy, Storm of Souls, Swarmyard (regeneration), Tamiyo, Woe Strider (escape).
+
+## Playgroup 2026-11-25: Glarb, Calamity's Augur (DonSpider), lane C
+
+List: "C_glarb" in ~/bolt-handoff/pg_lanes_round0.json. Module `scripts/pg_c.rs`, tests `tests/pg_c.rs`.
+
+PG batch 1 (17): Bloodstained Mire, Polluted Delta, Windswept Heath, Drowned Catacomb, Sunken Hollow, Undergrowth
+Stadium (one opponent: always tapped), Undercity Sewers, Underground Mortuary, Hedge Maze, Zagoth Triome, Breeding
+Pool, Overgrown Tomb, Watery Grave, Damnation, Exploration, Azusa, Aesi.
+Core: shock lands, `CardDef::shock_land` with `Decision::ShockLand` (Yes: pay 2 life; No: tapped), asked from
+`give_priority` via `Object::shock_pending`, so a fetched shock land asks too, before anyone can act.
+
+PG batch 2 (17): Glarb, Oracle of Mul Daya, Traveling Chocobo, Crucible of Worlds, Icetill Explorer, Ancient
+Greenwarden, Yarok, Seedborn Muse, Lumra, Ob Nixilis the Fallen, Doom Whisperer, Matoya, Lightning Greaves,
+Assassin's Trophy, Cyclonic Rift, Drag to the Roots, Rite of Replication.
+Core: `CardDef::{lands_from_graveyard, lands_from_top, top_spells_min_mana_value, top_spells_subtype,
+entering_triggers_again (new enum EntryDoubler), untaps_on_others_untap, pt_lands}`, `Keywords::SHROUD` (bit 17),
+`Reduction::Delirium`, `When::YouScryOrSurveil`, `Effect::{DestroyControllerMayFetchBasic, BounceOpponentsNonland,
+CountersOnYourSubtype, ReturnLandsFromGraveyardTapped, InsectOrCopyWithSixLands}`. `zone_triggers` now wraps
+`zone_triggers_once` to repeat an entering's triggers for each doubler. "Look at the top card any time" and "play
+with the top card revealed" are information only. Overload is cast as a {5} kicker on Cyclonic Rift (the same
+total cost); kicked plays the overloaded text.
