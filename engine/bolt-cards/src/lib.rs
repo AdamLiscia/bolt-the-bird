@@ -371,6 +371,7 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         fights_only_with_blessing: false,
         lands_every_basic_type: false,
         enter_as_copy_nonland: false,
+        protection_from_planeswalkers_and: None,
         entwine: None,
         cast_only_during_your_combat: false,
         ferocious_mana_amount: 0,

@@ -1162,6 +1162,17 @@ pub enum Effect {
     DrawIfUniqueName(u8),
     /// You may return a land card from your graveyard to the battlefield tapped.
     ReturnLandFromGraveyardTapped,
+    /// Sacrifice a land (your choice); if you don't, sacrifice the source (The Gitrog Monster).
+    SacrificeLandOrSource,
+    /// Put one of the creature cards put into your graveyard from your library this turn onto the
+    /// battlefield (Colossal Grave-Reaver).
+    MilledCreatureToBattlefield,
+    /// Reveal the top `n` cards: lands into your hand, the rest into your graveyard.
+    RevealTopLandsToHandRestGraveyard(u8),
+    /// Put any number of land cards from your hand onto the battlefield tapped.
+    LandsFromHandTapped,
+    /// Return all permanent cards from your graveyard to your hand.
+    ReturnPermanentCardsToHand,
     /// The source must be blocked each combat this turn if able (Anzrag).
     MustBeBlockedThisTurnSelf,
     /// Eternalize (CR 702.129): create a token that's a copy of the source card (in exile), except
@@ -1341,6 +1352,8 @@ pub enum EmblemKind {
     ElspethAnthem,
     /// Creatures you control get +3/+3 and have trample (Garruk, Cursed Huntsman).
     GarrukAnthem,
+    /// "You have no maximum hand size."
+    NoMaxHandSize,
 }
 
 /// Which looked-at card may be picked.
@@ -1710,6 +1723,10 @@ pub enum When {
     YourTramplersDealCombatDamageToPlayer,
     /// "Whenever one or more cards leave your graveyard" (any turn).
     CardsLeaveYourGraveyard,
+    /// "Whenever one or more land cards are put into your graveyard from anywhere".
+    LandCardsToYourGraveyard,
+    /// "Whenever one or more creature cards are put into your graveyard from your library".
+    CreatureCardsMilledToYourGraveyard,
     /// "Whenever this creature becomes blocked" (CR 509.3c), as blockers are finished.
     BecomesBlocked,
     /// "Whenever you cast a green permanent spell".
