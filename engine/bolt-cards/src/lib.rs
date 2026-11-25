@@ -296,6 +296,8 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         mana_only_if_you_control: None,
         mana_equal_power: false,
         free_subtype_spells: None,
+        mana_taps_creature: false,
+        any_color_for_dragon_or_omen: false,
     };
     // An Omen's spell half: its lines must be claimed too, written "Omen: <line>" in the script.
     if let Some(face) = &o.omen {

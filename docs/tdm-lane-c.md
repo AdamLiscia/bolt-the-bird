@@ -196,3 +196,30 @@ Still needing core (assessed, not done):
 - All-Out Assault: an extra combat and main phase, and a delayed untap trigger.
 - Maelstrom of the Spirit Dragon: mana spendable on Dragon spells or Omen spells. Payment only knows the card
   (`PayFor::Spell(card)`), not whether it is being cast as its Omen half.
+
+## Round 3, batch 5 (5 cards)
+
+Mechanics added (bolt-core, all at the end of their enum or struct):
+- `Ability::divide_lands`: the divided total is the number of lands its controller controls as it goes on the
+  stack. No more targets than the total are offered (each needs at least 1), and one player can't fill two
+  slots of a divided ability.
+- `Activated::sacrifice_mv_x` and `Filter::mana_value_is_x`: "Sacrifice a creature you control with mana value
+  X other than this", offered as `ActivateX { victim, x }` with X the victim's mana value plus 1, and only when
+  a target of that mana value exists.
+- `CardDef::mana_taps_creature`: the mana ability also taps an untapped creature you control. The payer picks
+  one that isn't a mana source itself (lowest power), so it can't be one the same payment needs. A creature
+  that is also a mana source is never tapped for it, which only ever makes the Relic unavailable, never
+  illegal.
+- The Reliquary Dragon token (`Tokens::reliquary_dragon`, the last token): 4/4, all colors, flying, lifelink,
+  "When this token enters, it deals 3 damage to any target."
+- Additional combat and main phases: `Effect::AdditionalCombatAndMain` with `Game::extra_combats`,
+  `extra_combat_resume` and `extra_main_resume` (CR 500.8). An extra combat comes right after the current main
+  phase, then an extra main phase (a `Main2`), then whatever came next (the regular combat, or the end step).
+- `Condition::YourMainPhase`; `Effect::DelayedOnNextAttackThisTurn(n)` (`Game::delayed_on_next_attack`,
+  removed when it triggers); `Effect::UntapCreaturesYouControl`.
+- `PayFor::OmenSpell` (via `pay_for_spell(card, mode)`): mana payment knows a card is being cast as its Omen
+  half. `CardDef::any_color_for_dragon_or_omen`: any color only for a Dragon spell or an Omen spell; plain {C}
+  otherwise. Kept out of manual mana, like other restricted sources. `SearchFor::Subtype`.
+
+Cards: Ureni, the Song Unending, Sidisi, Regent of the Mire, Dragonbroods' Relic, All-Out Assault, Maelstrom of
+the Spirit Dragon.

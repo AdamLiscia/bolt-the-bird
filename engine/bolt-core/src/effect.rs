@@ -75,6 +75,8 @@ pub struct Filter {
     pub was_dealt_damage: bool,
     /// Noncreature permanents only ("noncreature artifact").
     pub noncreature: bool,
+    /// Cards whose mana value is the ability's X.
+    pub mana_value_is_x: bool,
 }
 
 impl Filter {
@@ -111,6 +113,7 @@ impl Filter {
         lands: false,
         was_dealt_damage: false,
         noncreature: false,
+        mana_value_is_x: false,
     };
 
     pub const CREATURE: Filter = Filter {
@@ -694,6 +697,13 @@ pub enum Effect {
     LinkedOwnerCreatesSpirit {
         spirit: usize,
     },
+    /// "There is an additional combat phase after this phase followed by an additional main phase"
+    /// (cast during a main phase).
+    AdditionalCombatAndMain,
+    /// "When you next attack this turn, ...": the source's trigger number `n`, once.
+    DelayedOnNextAttackThisTurn(usize),
+    /// Untap each creature you control.
+    UntapCreaturesYouControl,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -714,6 +724,8 @@ pub enum SearchFor {
     },
     /// A card with one of these names.
     Named(&'static [&'static str]),
+    /// A card with this subtype ("a Dragon card").
+    Subtype(&'static str),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -902,6 +914,8 @@ pub enum Condition {
     CreatureDiedUnderYourControlThisTurn,
     /// You've cast both a creature spell and a noncreature spell this turn.
     CastCreatureAndNoncreatureThisTurn,
+    /// It's your main phase.
+    YourMainPhase,
 }
 
 /// A spell's effect or a triggered ability: target slots, then effects in order.
@@ -922,6 +936,9 @@ pub struct Ability {
     /// "N damage divided as you choose among" its targets: the total, divided as it goes on the
     /// stack with at least 1 to each target (CR 601.2d). Zero for everything else.
     pub divide: u8,
+    /// The divided total is the number of lands you control as it goes on the stack, instead of
+    /// `divide` (Ureni: "X damage divided ..., where X is the number of lands you control").
+    pub divide_lands: bool,
 }
 
 impl Ability {
@@ -935,6 +952,7 @@ impl Ability {
             same_graveyard: false,
             modes: Vec::new(),
             divide: 0,
+            divide_lands: false,
         }
     }
 

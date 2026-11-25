@@ -42,6 +42,17 @@ enum PayFor {
     Spell(ObjId),
     Ability(ObjId),
     Other,
+    /// A card cast as its Omen half: an Omen spell (not a Dragon or other creature spell).
+    OmenSpell(ObjId),
+}
+
+/// What a spell's mana pays for: the card, or the card cast as its Omen half.
+fn pay_for_spell(c: ObjId, mode: Option<u8>) -> PayFor {
+    if mode == Some(OMEN_MODE) {
+        PayFor::OmenSpell(c)
+    } else {
+        PayFor::Spell(c)
+    }
 }
 
 /// Land subtypes in FDN (CR 205.3i); every other subtype is a creature type.
@@ -478,6 +489,7 @@ static WARD_ABILITY: Ability = Ability {
     same_graveyard: false,
     modes: Vec::new(),
     divide: 0,
+    divide_lands: false,
 };
 
 /// A chosen target, pinned to the object it was when chosen (CR 400.7).
@@ -804,6 +816,15 @@ pub struct Game {
     pub cast_creature_noncreature: [[bool; 2]; 2],
     /// Delayed "whenever you attack this turn" triggers: (source, trigger number, controller, turn).
     pub delayed_on_attack: Vec<(ObjId, usize, PlayerId, u32)>,
+    /// Delayed "when you next attack this turn" triggers, removed as they trigger.
+    pub delayed_on_next_attack: Vec<(ObjId, usize, PlayerId, u32)>,
+    /// Additional combat phases still to come this turn, each with the step to go to after the
+    /// additional main phase that follows it (CR 500.8).
+    pub extra_combats: Vec<Step>,
+    /// The step after the additional main phase of the combat in progress, and of the main phase
+    /// in progress.
+    pub extra_combat_resume: Option<Step>,
+    pub extra_main_resume: Option<Step>,
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -931,6 +952,10 @@ impl Game {
             creature_died_under: [false; 2],
             cast_creature_noncreature: [[false; 2]; 2],
             delayed_on_attack: Vec::new(),
+            delayed_on_next_attack: Vec::new(),
+            extra_combats: Vec::new(),
+            extra_combat_resume: None,
+            extra_main_resume: None,
         }
     }
 
@@ -1470,6 +1495,30 @@ impl Game {
             .collect();
         for _ in 0..k {
             self.triggered.extend(new.iter().cloned());
+        }
+    }
+
+    /// The creature Dragonbroods' Relic taps as part of its mana cost: an untapped creature `p`
+    /// controls that isn't a mana source itself (so it can't be needed for the same payment), not
+    /// `exclude`, lowest power first.
+    fn relic_partner(&self, p: PlayerId, exclude: Option<ObjId>) -> Option<ObjId> {
+        self.creatures(p)
+            .filter(|&c| !self.obj(c).tapped && Some(c) != exclude)
+            .filter(|&c| self.def_of(c).mana.is_none() && self.def_of(c).filter_mana.is_none())
+            .min_by_key(|&c| self.power(c))
+    }
+
+    /// The amount a divided ability divides: fixed, or the lands its controller controls.
+    fn divide_total(&self, item: &StackItem) -> u8 {
+        let a = self.ability_of(item);
+        if a.divide_lands {
+            let lands = self
+                .permanents(item.controller)
+                .filter(|&x| self.types_of(x).land)
+                .count();
+            lands.min(u8::MAX as usize) as u8
+        } else {
+            a.divide
         }
     }
 
@@ -2199,7 +2248,7 @@ impl Game {
                 .collect(),
             Pending::Divide(_) => {
                 let c = self.choosing.as_ref().expect("dividing");
-                let total = self.ability_of(&c.item).divide;
+                let total = self.divide_total(&c.item);
                 let given: u8 = c.item.division.iter().sum();
                 // Every target after this one still needs at least 1 (CR 601.2d).
                 let after = (c.item.targets.len() - c.item.division.len() - 1) as u8;
@@ -2218,8 +2267,14 @@ impl Game {
                         !is_source && !taken
                     }
                     // CR 115.3: one player can't fill two slots of a single "divided" target word.
-                    Target::Player(p) => ability.divide == 0 || !c.item.targets.contains(&Chosen::Player(p)),
+                    Target::Player(p) => {
+                        self.divide_total(&c.item) == 0 || !c.item.targets.contains(&Chosen::Player(p))
+                    }
                 });
+                // Each target of a divided amount gets at least 1, so no more targets than the total.
+                if ability.divide_lands && c.item.targets.len() >= self.divide_total(&c.item) as usize {
+                    options.clear();
+                }
                 if ability.same_graveyard {
                     if let Some(&Chosen::Object(first, _)) = c.item.targets.first() {
                         let owner = self.obj(first).owner;
@@ -2251,7 +2306,7 @@ impl Game {
                             it.controller,
                             &self.spell_cost(it.controller, it.source, mode, &[chosen]),
                             None,
-                            PayFor::Spell(it.source),
+                            pay_for_spell(it.source, mode.mode),
                         )
                     });
                 }
@@ -2407,6 +2462,9 @@ impl Game {
             return false;
         }
         if f.other && x == item.source {
+            return false;
+        }
+        if f.mana_value_is_x && self.def_of(x).cost.mana_value() != item.x as u32 {
             return false;
         }
         if f.attached_to_first_target {
@@ -2874,7 +2932,12 @@ impl Game {
 
     /// Whether some legal choice of targets makes the spell affordable in `mode`.
     fn mode_affordable(&self, p: PlayerId, c: ObjId, mode: CastMode) -> bool {
-        if self.can_pay_for(p, &self.spell_cost(p, c, mode, &[]), None, PayFor::Spell(c)) {
+        if self.can_pay_for(
+            p,
+            &self.spell_cost(p, c, mode, &[]),
+            None,
+            pay_for_spell(c, mode.mode),
+        ) {
             return true;
         }
         if let Some(Reduction::IfTargetsTapped(_)) = self.def_of(c).reduction {
@@ -2891,7 +2954,12 @@ impl Game {
                     .any(|t| match t {
                         Target::Object(x) => {
                             let chosen = [Chosen::Object(x, self.obj(x).zcc)];
-                            self.can_pay_for(p, &self.spell_cost(p, c, mode, &chosen), None, PayFor::Spell(c))
+                            self.can_pay_for(
+                                p,
+                                &self.spell_cost(p, c, mode, &chosen),
+                                None,
+                                pay_for_spell(c, mode.mode),
+                            )
                         }
                         Target::Player(_) => false,
                     })
@@ -2943,6 +3011,11 @@ impl Game {
             }
             let id = sources[i - pool.len()].0;
             self.become_tapped(id);
+            if self.def_of(id).mana_taps_creature {
+                if let Some(c) = self.relic_partner(p, exclude) {
+                    self.become_tapped(c);
+                }
+            }
             if self.def_of(id).sac_for_mana {
                 self.move_to(id, Zone::Graveyard);
             }
@@ -2964,7 +3037,7 @@ impl Game {
             }
         };
         for &c in &self.players[p].hand {
-            if matches!(spell, PayFor::Spell(s) if s == c) {
+            if matches!(spell, PayFor::Spell(s) | PayFor::OmenSpell(s) if s == c) {
                 continue;
             }
             add(&self.def_of(c).cost);
@@ -2997,7 +3070,11 @@ impl Game {
         let mut v = Vec::new();
         for (id, m) in self.untapped_sources(p) {
             let d = self.def_of(id);
-            if seen.contains(&id) || d.mana_only_for_subtype.is_some() || d.any_color_for_chosen_type {
+            if seen.contains(&id)
+                || d.mana_only_for_subtype.is_some()
+                || d.any_color_for_chosen_type
+                || d.any_color_for_dragon_or_omen
+            {
                 continue;
             }
             seen.push(id);
@@ -3036,6 +3113,11 @@ impl Game {
             self.players[p].pool.push(one);
         }
         self.become_tapped(id);
+        if self.def_of(id).mana_taps_creature {
+            if let Some(partner) = self.relic_partner(p, None) {
+                self.become_tapped(partner);
+            }
+        }
         if self.def_of(id).sac_for_mana {
             self.move_to(id, Zone::Graveyard);
         }
@@ -3062,6 +3144,20 @@ impl Game {
                 Some(sub) => matches!(spell, PayFor::Spell(c) if self.has_base_subtype(c, sub)),
             })
             .map(|(id, m)| {
+                // Maelstrom of the Spirit Dragon: any color, only for a Dragon spell or an Omen spell.
+                if self.def_of(id).any_color_for_dragon_or_omen {
+                    let allowed = match spell {
+                        PayFor::Spell(c) => self.has_base_subtype(c, "Dragon"),
+                        PayFor::OmenSpell(_) => true,
+                        _ => false,
+                    };
+                    if allowed {
+                        let mut any = ManaSource::of(&crate::Color::ALL);
+                        any.colorless = true;
+                        return (id, any);
+                    }
+                    return (id, m);
+                }
                 // Secluded Courtyard: any color, but only for its chosen type.
                 if !self.def_of(id).any_color_for_chosen_type {
                     return (id, m);
@@ -3072,7 +3168,7 @@ impl Game {
                 let allowed = match spell {
                     PayFor::Spell(c) => self.def_of(c).types.creature && self.has_base_subtype(c, t),
                     PayFor::Ability(src) => self.types_of(src).creature && self.has_subtype(src, t),
-                    PayFor::Other => false,
+                    PayFor::Other | PayFor::OmenSpell(_) => false,
                 };
                 if allowed {
                     let mut any = ManaSource::of(&crate::Color::ALL);
@@ -3234,14 +3330,35 @@ impl Game {
                     || !sorcery_ok
                     || self.players[p].life < a.life
                     || !self.can_pay_for(p, &a.mana, uses_self.then_some(id), PayFor::Ability(id))
-                    || !self.trigger_can_target(
-                        &StackItem {
-                            kind: StackKind::Activated(n),
-                            ..Game::casting(id, p)
-                        },
-                        &a.ability,
-                    )
+                    || (!a.sacrifice_mv_x
+                        && !self.trigger_can_target(
+                            &StackItem {
+                                kind: StackKind::Activated(n),
+                                ..Game::casting(id, p)
+                            },
+                            &a.ability,
+                        ))
                 {
+                    continue;
+                }
+                if a.sacrifice_mv_x {
+                    // Sidisi: each other creature you control, with X its mana value plus 1.
+                    for c in self.creatures(p).filter(|&c| c != id).collect::<Vec<_>>() {
+                        let x = (self.def_of(c).cost.mana_value() + 1).min(u8::MAX as u32) as u8;
+                        let item = StackItem {
+                            kind: StackKind::Activated(n),
+                            x,
+                            ..Game::casting(id, p)
+                        };
+                        if self.trigger_can_target(&item, &a.ability) {
+                            v.push(Action::ActivateX {
+                                id,
+                                n,
+                                victim: Some(c),
+                                x,
+                            });
+                        }
+                    }
                     continue;
                 }
                 if a.mana.x > 0 {
@@ -3482,6 +3599,9 @@ impl Game {
                     });
                 }
                 let d = self.def_of(id);
+                if d.mana_taps_creature && self.relic_partner(p, None).is_none() {
+                    return None; // "Tap an untapped creature you control"
+                }
                 if d.mana_only_if_you_control
                     .is_some_and(|sub| !self.permanents(p).any(|x| self.has_subtype(x, sub)))
                 {
@@ -3841,6 +3961,17 @@ impl Game {
                             });
                         }
                     }
+                    // "When you next attack this turn": once.
+                    let (now, later): (Vec<_>, Vec<_>) = std::mem::take(&mut self.delayed_on_next_attack)
+                        .into_iter()
+                        .partition(|&(_, _, controller, t)| controller == active && t == turn);
+                    self.delayed_on_next_attack = later;
+                    for (source, n, controller, _) in now {
+                        self.triggered.push(StackItem {
+                            kind: StackKind::Trigger(n),
+                            ..Game::casting(source, controller)
+                        });
+                    }
                 }
                 let count = self.combat.as_ref().map_or(0, |c| c.attackers.len()) as u8;
                 for n in 1..=count {
@@ -3982,7 +4113,7 @@ impl Game {
         let harmonized = item
             .extra
             .filter(|_| item.flashback && self.def_of(card).harmonize);
-        self.pay_mana_for(p, &cost, harmonized, PayFor::Spell(card));
+        self.pay_mana_for(p, &cost, harmonized, pay_for_spell(card, item.mode));
         if let Some(x) = item.extra {
             if harmonized.is_some() {
                 self.become_tapped(x); // harmonize taps the creature; it isn't sacrificed
@@ -4152,7 +4283,7 @@ impl Game {
 
     fn finish_choosing(&mut self) {
         let mut c = self.choosing.take().expect("choosing targets");
-        let total = self.ability_of(&c.item).divide;
+        let total = self.divide_total(&c.item);
         let k = c.item.targets.len();
         if total > 0 && k > 0 && c.item.division.len() < k {
             if c.item.division.len() + 1 < k {
@@ -4575,6 +4706,7 @@ impl Game {
                     SearchFor::CreatureMvAtMost(mv) => d.types.creature && d.cost.mana_value() <= mv,
                     SearchFor::CreatureMvAtMostX => false, // resolved to CreatureMvAtMost first
                     SearchFor::Named(names) => names.contains(&d.name.as_str()),
+                    SearchFor::Subtype(sub) => d.subtypes.iter().any(|s| s == sub),
                 }
             })
             .collect()
@@ -5902,6 +6034,27 @@ impl Game {
                     self.counter_put_on(src);
                 }
             }
+            Effect::AdditionalCombatAndMain => {
+                // After this main phase: the combat, then a main phase, then what came next.
+                let resume = if self.step == Step::Main1 {
+                    Step::BeginCombat
+                } else {
+                    Step::End
+                };
+                if matches!(self.step, Step::Main1 | Step::Main2) {
+                    let resume = self.extra_main_resume.unwrap_or(resume);
+                    self.extra_combats.push(resume);
+                }
+            }
+            Effect::DelayedOnNextAttackThisTurn(trigger) => {
+                let entry = (src, trigger, item.controller, self.turn);
+                self.delayed_on_next_attack.push(entry);
+            }
+            Effect::UntapCreaturesYouControl => {
+                for c in self.creatures(item.controller).collect::<Vec<_>>() {
+                    self.untap_by_effect(c);
+                }
+            }
             Effect::DelayedOnAttackThisTurn(trigger) => {
                 let entry = (src, trigger, item.controller, self.turn);
                 self.delayed_on_attack.push(entry);
@@ -6999,6 +7152,9 @@ impl Game {
             Some(Condition::CastTwoSpellsThisTurn) => self.spells_cast[controller] >= 2,
             Some(Condition::ChosenMode(m)) => self.obj(source).chosen_mode == Some(*m),
             Some(Condition::CreatureDiedUnderYourControlThisTurn) => self.creature_died_under[controller],
+            Some(Condition::YourMainPhase) => {
+                self.active == controller && matches!(self.step, Step::Main1 | Step::Main2)
+            }
             Some(Condition::CastCreatureAndNoncreatureThisTurn) => {
                 self.cast_creature_noncreature[controller] == [true, true]
             }
@@ -7135,6 +7291,12 @@ impl Game {
             Step::Untap => Step::Upkeep,
             Step::Upkeep => Step::Draw,
             Step::Draw => Step::Main1,
+            // CR 500.8: an additional combat phase comes right after this main phase.
+            Step::Main1 | Step::Main2 if !self.extra_combats.is_empty() => {
+                self.extra_combat_resume = self.extra_combats.pop();
+                self.extra_main_resume = None;
+                Step::BeginCombat
+            }
             Step::Main1 => Step::BeginCombat,
             Step::BeginCombat => Step::DeclareAttackers,
             Step::DeclareAttackers => {
@@ -7154,8 +7316,12 @@ impl Game {
             }
             Step::FirstStrikeDamage => Step::CombatDamage,
             Step::CombatDamage => Step::EndCombat,
-            Step::EndCombat => Step::Main2,
-            Step::Main2 => Step::End,
+            Step::EndCombat => {
+                // After an additional combat: its additional main phase (a Main2), then onward.
+                self.extra_main_resume = self.extra_combat_resume.take();
+                Step::Main2
+            }
+            Step::Main2 => self.extra_main_resume.take().unwrap_or(Step::End),
             Step::End => Step::Cleanup,
             Step::Cleanup => {
                 self.begin_next_turn();
@@ -7170,6 +7336,10 @@ impl Game {
         self.spells_cast = [0; 2];
         self.cast_creature_noncreature = [[false; 2]; 2];
         self.delayed_on_attack.clear();
+        self.delayed_on_next_attack.clear();
+        self.extra_combats.clear();
+        self.extra_combat_resume = None;
+        self.extra_main_resume = None;
         self.graveyard_types_used = [[false; 5]; 2];
         self.cast_snapshots.clear();
         self.attacked_this_turn = [false; 2];
