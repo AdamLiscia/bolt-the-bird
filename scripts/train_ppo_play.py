@@ -30,16 +30,17 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from bolt.backup import upload_quietly  # noqa: E402
 from bolt.play_data import concat  # noqa: E402
-from bolt.play_net import PlayNet  # noqa: E402
 from bolt.play_ppo import gae, league, ppo_step  # noqa: E402
 from bolt.play_runner import run_parallel  # noqa: E402
 
+# One deck per line (card numbers of BOLT_PLAY_SET): lines 0-511 train, 512-1023 evaluate.
+DECKS = Path(os.environ.get("BOLT_DECKS", str(ROOT / "data" / "m7" / "decks.txt")))
+
 
 def load_net(path):
-    c = torch.load(path, map_location="cpu", weights_only=False)
-    net = PlayNet(**c["config"])
-    net.load_state_dict(c["model"])
-    return net
+    from bolt.play_net import load_checkpoint
+
+    return load_checkpoint(path)
 
 
 def save_atomic(obj, path: Path):
@@ -51,7 +52,7 @@ def save_atomic(obj, path: Path):
 def evaluate(net, pairs, workers):
     from eval_play import match, summary
 
-    lines = (ROOT / "data" / "m7" / "decks.txt").read_text().split("\n")
+    lines = DECKS.read_text().split("\n")
     decks = [list(map(int, x.split())) for x in lines[512:1024]]
     jobs = [(decks[i % 512], decks[(i + 1) % 512], 9_000 + i, i % 2) for i in range(pairs)]
     net.eval()
@@ -97,7 +98,7 @@ def main():
         opt.load_state_dict(s["opt"])
         state = s["state"]
         print(f"resumed at iteration {state['iter']}", flush=True)
-    lines = (ROOT / "data" / "m7" / "decks.txt").read_text().split("\n")
+    lines = DECKS.read_text().split("\n")
     decks = [list(map(int, x.split())) for x in lines[:512]]
 
     beat = {"t": time.time()}

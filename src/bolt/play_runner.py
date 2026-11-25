@@ -22,6 +22,10 @@ import torch
 
 from bolt.play_encoding import collate, encode
 
+# The card set games are played in (BOLT_PLAY_SET, default FDN: the engine's original call).
+PLAY_SET = os.environ.get("BOLT_PLAY_SET", "FDN").upper()
+SET_KW = {} if PLAY_SET == "FDN" else {"set": PLAY_SET}
+
 MAX_TURNS = 200  # the engine's own limit (bolt-cards play.rs)
 # A player can loop inside one turn (activating an ability forever), where the turn limit never
 # triggers; normal games take a few hundred moves. Capped games count as timeouts.
@@ -52,7 +56,7 @@ def run_games(net, jobs, seats=("net", "rules"), sample=True, seed=0, smart=(1, 
     record = {i for i, s in enumerate(seats) if s == "net"} if record is None else set(record)
     # seat "opp": another network (a past checkpoint) samples its moves; it is never recorded
     gen = torch.Generator().manual_seed(seed)
-    games = [be.Game(a, b, seed=s, first=f) for a, b, s, f in jobs]
+    games = [be.Game(a, b, seed=s, first=f, **SET_KW) for a, b, s, f in jobs]
     moves = [0] * len(games)
     results: list = [None] * len(games)
     steps = []
@@ -144,12 +148,10 @@ def _die_with_parent(parent: int) -> None:
 def _load(net_state):
     if net_state is None:
         return None
-    from bolt.play_net import PlayNet
+    from bolt.play_net import load_checkpoint
 
     config, state = net_state
-    net = PlayNet(**config)
-    net.load_state_dict(state)
-    return net.eval()
+    return load_checkpoint({"config": config, "model": state}).eval()
 
 
 def _state(net):
