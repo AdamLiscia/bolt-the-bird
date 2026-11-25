@@ -825,6 +825,11 @@ pub struct Game {
     /// in progress.
     pub extra_combat_resume: Option<Step>,
     pub extra_main_resume: Option<Step>,
+    /// Delayed "copy the next spell you cast this turn" triggers: (source, trigger, controller, turn).
+    pub copy_next_spell: Vec<(ObjId, usize, PlayerId, u32)>,
+    /// Spell copies waiting to go on the stack once the ability that made them finishes resolving
+    /// (their controller chooses new targets then).
+    pub pending_copies: Vec<StackItem>,
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -956,6 +961,8 @@ impl Game {
             extra_combats: Vec::new(),
             extra_combat_resume: None,
             extra_main_resume: None,
+            copy_next_spell: Vec::new(),
+            pending_copies: Vec::new(),
         }
     }
 
@@ -2361,6 +2368,9 @@ impl Game {
                 let o = self.obj(id);
                 if !Game::controller_ok(f.controller, controller, o.controller) {
                     return false;
+                }
+                if f.colored && o.zone == Zone::Battlefield && !self.colors_of(id).iter().any(|&c| c) {
+                    return false; // "a permanent that's one or more colors"
                 }
                 if f.subtype.is_some_and(|s| !self.has_subtype(id, s))
                     || f.not_subtype.is_some_and(|s| self.has_subtype(id, s))
@@ -4152,6 +4162,32 @@ impl Game {
         }
         self.items.push(item);
         self.events.push(Event::Cast { card });
+        // "When you cast this spell" (Ugin): triggers from the stack.
+        let whens: Vec<When> = self.def_of(card).triggers.iter().map(|tr| tr.when).collect();
+        for (n, w) in whens.into_iter().enumerate() {
+            if w == When::CastThisSpell {
+                self.triggered.push(StackItem {
+                    kind: StackKind::Trigger(n),
+                    ..Game::casting(card, p)
+                });
+            }
+        }
+        if !self.colors_of(card).iter().any(|&c| c) {
+            self.fire(p, When::YouCastColorless, None);
+        }
+        // "Copy the next spell you cast this turn when you cast it" (Flamehold Grappler).
+        let turn = self.turn;
+        let (now, later): (Vec<_>, Vec<_>) = std::mem::take(&mut self.copy_next_spell)
+            .into_iter()
+            .partition(|&(_, _, q, t)| q == p && t == turn);
+        self.copy_next_spell = later;
+        for (source, n, controller, _) in now {
+            self.triggered.push(StackItem {
+                kind: StackKind::Trigger(n),
+                extra: Some(card),
+                ..Game::casting(source, controller)
+            });
+        }
         if instant_or_sorcery {
             self.fire(p, When::YouCastInstantOrSorcery, None);
             let earlier = self.instants_sorceries_cast[p];
@@ -4523,6 +4559,19 @@ impl Game {
         }
         let r = self.resolving.take().expect("resolving");
         let source = r.item.source;
+        // CR 707.10f: a copy of a permanent spell becomes a token as it resolves.
+        if r.item.kind == StackKind::SpellCopy && r.acts && self.types_of(source).is_permanent() {
+            let def = self.obj(source).def;
+            let id = self.add_card(r.item.controller, def, Zone::Hand);
+            self.obj_mut(id).copy_token = true;
+            self.move_to(id, Zone::Battlefield);
+            self.obj_mut(id).controller = r.item.controller;
+            if self.def_of(id).aura {
+                if let Some(&Chosen::Object(t, z)) = r.item.targets.first() {
+                    self.obj_mut(id).attached_to = Some((t, z));
+                }
+            }
+        }
         if r.item.kind == StackKind::Spell {
             let omen = r.item.mode == Some(OMEN_MODE);
             if omen && self.obj(source).zone == Zone::Stack {
@@ -4586,6 +4635,33 @@ impl Game {
         if !self.free_casts.is_empty() {
             self.open_free_casts();
             return;
+        }
+        // Spell copies: onto the stack, choosing new targets if it has any (CR 707.10c).
+        while !self.pending_copies.is_empty() {
+            let copy = self.pending_copies.remove(0);
+            let d = self.def_of(copy.source);
+            let targeted = d.spell.is_some() || copy.mode.is_some();
+            if targeted && !self.ability_of(&copy).targets.is_empty() {
+                let mut fresh = copy.clone();
+                fresh.targets.clear();
+                fresh.division.clear();
+                let ability = self.ability_of(&fresh).clone();
+                if self.trigger_can_target(&fresh, &ability) {
+                    let p = copy.controller;
+                    self.choosing = Some(Choosing {
+                        item: fresh,
+                        then: self.active,
+                        cast: false,
+                        pay: None,
+                        loyalty: None,
+                        remove_counters: 0,
+                    });
+                    self.pending = Pending::ChooseTarget(p);
+                    return;
+                }
+            }
+            self.ward_check(&copy);
+            self.items.push(copy);
         }
         self.give_priority(self.active);
     }
@@ -4707,6 +4783,7 @@ impl Game {
                     SearchFor::CreatureMvAtMostX => false, // resolved to CreatureMvAtMost first
                     SearchFor::Named(names) => names.contains(&d.name.as_str()),
                     SearchFor::Subtype(sub) => d.subtypes.iter().any(|s| s == sub),
+                    SearchFor::ColorlessNonland => !d.types.land && !d.colors.iter().any(|&c| c),
                 }
             })
             .collect()
@@ -5323,6 +5400,13 @@ impl Game {
                         self.obj_mut(c).tapped = tapped;
                     }
                     SearchTo::Top | SearchTo::TopOrTappedIfYouControl(_) => {}
+                    SearchTo::ExileCastFreeThisTurn => {
+                        self.move_to(c, Zone::Exile);
+                        let turn = self.turn;
+                        let o = self.obj_mut(c);
+                        o.playable = Some((p, turn));
+                        o.cast_free = true;
+                    }
                 }
                 if left > 1 && !self.library_matches(p, what).is_empty() {
                     self.ask(
@@ -6049,6 +6133,34 @@ impl Game {
             Effect::DelayedOnNextAttackThisTurn(trigger) => {
                 let entry = (src, trigger, item.controller, self.turn);
                 self.delayed_on_next_attack.push(entry);
+            }
+            Effect::AddColorless(n) => {
+                for _ in 0..n {
+                    self.players[item.controller].pool.push(ManaSource {
+                        colorless: true,
+                        ..ManaSource::default()
+                    });
+                }
+            }
+            Effect::CopyNextSpellThisTurn(trigger) => {
+                let entry = (src, trigger, item.controller, self.turn);
+                self.copy_next_spell.push(entry);
+            }
+            Effect::CopySpellNewTargets => {
+                let spell = item.extra.and_then(|c| {
+                    self.items
+                        .iter()
+                        .rev()
+                        .find(|i| i.kind == StackKind::Spell && i.source == c)
+                        .cloned()
+                });
+                if let Some(spell) = spell {
+                    self.pending_copies.push(StackItem {
+                        kind: StackKind::SpellCopy,
+                        controller: item.controller,
+                        ..spell
+                    });
+                }
             }
             Effect::UntapCreaturesYouControl => {
                 for c in self.creatures(item.controller).collect::<Vec<_>>() {
@@ -7340,6 +7452,7 @@ impl Game {
         self.extra_combats.clear();
         self.extra_combat_resume = None;
         self.extra_main_resume = None;
+        self.copy_next_spell.clear();
         self.graveyard_types_used = [[false; 5]; 2];
         self.cast_snapshots.clear();
         self.attacked_this_turn = [false; 2];

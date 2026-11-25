@@ -1797,3 +1797,147 @@ fn maelstrom_sacrifices_to_find_a_dragon() {
     assert_eq!(g.obj(d).zone, Zone::Hand);
     assert_eq!(g.obj(m).zone, Zone::Graveyard);
 }
+
+#[test]
+fn flamehold_grappler_copies_the_next_spell_with_new_targets() {
+    let mut g = table();
+    let fg = hand(&mut g, 0, "Flamehold Grappler");
+    let theirs = put(&mut g, 1, "Unburied Earthcarver"); // 2/2
+    let bolt = hand(&mut g, 0, "Channeled Dragonfire"); // 2 damage to any target
+    let later = hand(&mut g, 0, "Channeled Dragonfire");
+    begin(&mut g);
+    assert!(g.def_of(fg).keywords.has(Keywords::FIRST_STRIKE));
+    play(&mut g, fg, false, &[], &[]);
+    let life = g.players[1].life;
+    act(&mut g, Action::Cast(bolt));
+    act(&mut g, Action::Target(Target::Player(1)));
+    resolve_all(&mut g, &[Action::Target(obj(theirs))]); // the copy's new target
+    assert_eq!(g.obj(theirs).zone, Zone::Graveyard, "the copy hit the creature");
+    assert_eq!(g.players[1].life, life - 2, "the original hit the player");
+    play(&mut g, later, false, &[Target::Player(1)], &[]);
+    assert_eq!(g.players[1].life, life - 4, "only the next spell is copied");
+}
+
+#[test]
+fn flamehold_grappler_copies_a_creature_spell_as_a_token() {
+    let mut g = table();
+    let fg = hand(&mut g, 0, "Flamehold Grappler");
+    let c = hand(&mut g, 0, "Unburied Earthcarver");
+    begin(&mut g);
+    play(&mut g, fg, false, &[], &[]);
+    play(&mut g, c, false, &[], &[]);
+    assert_eq!(g.obj(c).zone, Zone::Battlefield);
+    let copies: Vec<_> = g
+        .permanents(0)
+        .filter(|&x| x != c && g.def_of(x).name == "Unburied Earthcarver")
+        .collect();
+    assert_eq!(copies.len(), 1);
+    assert!(
+        g.is_token(copies[0]),
+        "a copy of a permanent spell becomes a token"
+    );
+}
+
+#[test]
+fn ugin_exiles_a_colored_permanent_when_cast_and_on_colorless_spells() {
+    let mut g = table();
+    let ugin = hand(&mut g, 0, "Ugin, Eye of the Storms");
+    let red = put(&mut g, 1, "War Effort");
+    let artifact = put(&mut g, 1, "Jeskai Monument"); // colorless
+    let creature = put(&mut g, 1, "Unburied Earthcarver");
+    let land = g.permanents(1).find(|&x| g.types_of(x).land).unwrap();
+    let mono = hand(&mut g, 0, "Jeskai Monument");
+    let colored = hand(&mut g, 0, "Lightfoot Technique");
+    begin(&mut g);
+    act(&mut g, Action::Cast(ugin));
+    to_target_choice(&mut g);
+    let legal = g.legal_actions();
+    assert!(
+        !legal.contains(&Action::Target(obj(artifact))),
+        "one or more colors"
+    );
+    assert!(!legal.contains(&Action::Target(obj(land))), "lands are colorless");
+    act(&mut g, Action::Target(obj(red)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(red).zone, Zone::Exile, "the cast trigger");
+    assert_eq!(g.obj(ugin).zone, Zone::Battlefield);
+    assert_eq!(g.obj(ugin).loyalty, 7);
+
+    // The Monument's own enters search finds nothing (No).
+    play(
+        &mut g,
+        mono,
+        false,
+        &[],
+        &[Action::Target(obj(creature)), Action::No],
+    );
+    assert_eq!(
+        g.obj(creature).zone,
+        Zone::Exile,
+        "a colorless spell: exile another"
+    );
+    let mine = put(&mut g, 0, "Unburied Earthcarver");
+    put(&mut g, 0, "Plains"); // the Plains paid for Ugin
+    play(&mut g, colored, false, &[obj(mine)], &[]);
+    assert!(
+        g.items.is_empty() && g.obj(mine).counters == 1,
+        "a colored spell: no trigger"
+    );
+}
+
+#[test]
+fn ugin_loyalty_abilities() {
+    let mut g = table();
+    let u = hand(&mut g, 0, "Ugin, Eye of the Storms");
+    begin(&mut g);
+    g.move_card(u, Zone::Battlefield);
+    let (life, cards) = (g.players[0].life, g.players[0].hand.len());
+    act(&mut g, Action::Loyalty(u, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        (g.players[0].life, g.players[0].hand.len()),
+        (life + 3, cards + 1),
+        "+2"
+    );
+    assert_eq!(g.obj(u).loyalty, 9);
+
+    let mut g2 = table();
+    let u2 = hand(&mut g2, 0, "Ugin, Eye of the Storms");
+    begin(&mut g2);
+    g2.move_card(u2, Zone::Battlefield);
+    act(&mut g2, Action::Loyalty(u2, 1));
+    resolve_all(&mut g2, &[]);
+    assert_eq!(g2.players[0].pool.len(), 3, "0: {{C}}{{C}}{{C}}");
+    assert!(g2.players[0].pool.iter().all(|m| m.colorless));
+
+    let mut g3 = tdm_lands(&[]);
+    let u3 = hand(&mut g3, 0, "Ugin, Eye of the Storms");
+    begin(&mut g3);
+    g3.move_card(u3, Zone::Battlefield);
+    g3.objects[u3.0 as usize].loyalty = 11;
+    let dragon = g3.add_card(0, tid("Boulderborn Dragon"), Zone::Library); // a colorless artifact creature
+    let mox = g3.add_card(0, tid("Mox Jasper"), Zone::Library);
+    let colored = g3.add_card(0, tid("Unburied Earthcarver"), Zone::Library);
+    act(&mut g3, Action::Loyalty(u3, 2));
+    while !matches!(g3.pending, Pending::Decide(_)) {
+        act(&mut g3, Action::PassPriority);
+    }
+    assert!(
+        !g3.legal_actions().contains(&Action::Pick(colored)),
+        "colorless nonland cards"
+    );
+    act(&mut g3, Action::Pick(dragon));
+    act(&mut g3, Action::Pick(mox)); // the last match: the search ends
+    resolve_all(&mut g3, &[]);
+    assert_eq!(
+        (g3.obj(dragon).zone, g3.obj(mox).zone),
+        (Zone::Exile, Zone::Exile)
+    );
+    assert!(
+        g3.legal_actions().contains(&Action::Cast(dragon)),
+        "free this turn, with no lands"
+    );
+    act(&mut g3, Action::Cast(dragon));
+    resolve_all(&mut g3, &[]);
+    assert_eq!(g3.obj(dragon).zone, Zone::Battlefield);
+}

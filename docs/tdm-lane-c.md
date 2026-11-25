@@ -223,3 +223,21 @@ Mechanics added (bolt-core, all at the end of their enum or struct):
 
 Cards: Ureni, the Song Unending, Sidisi, Regent of the Mire, Dragonbroods' Relic, All-Out Assault, Maelstrom of
 the Spirit Dragon.
+
+## Round 3, batch 6 (2 cards)
+
+Mechanics added (bolt-core, all at the end of their enum or struct):
+- Spell copies with new targets: `Effect::CopyNextSpellThisTurn(n)` (`Game::copy_next_spell`; the delayed
+  trigger fires from `finish_cast` with the spell in `extra`) and `Effect::CopySpellNewTargets`, which queues
+  the copy in `Game::pending_copies`. When the ability finishes resolving, a copy with targets goes through the
+  normal target choice (any legal targets, so "may choose new targets" includes the old ones); if no full set
+  of targets is possible it keeps the original ones. A copy of a permanent spell becomes a token as it resolves
+  (CR 707.10f), attached to its target if it's an Aura.
+- `When::CastThisSpell` (triggers from the stack as the spell is cast) and `When::YouCastColorless`.
+- `Filter::colored` ("a permanent that's one or more colors"), `Effect::AddColorless(n)`,
+  `SearchFor::ColorlessNonland`, `SearchTo::ExileCastFreeThisTurn`.
+
+Cards: Flamehold Grappler, Ugin, Eye of the Storms.
+
+Known edge: with two copy triggers from one cast (two Grapplers), the second copy waits for the next ability to
+finish resolving if the first one needed a target choice.

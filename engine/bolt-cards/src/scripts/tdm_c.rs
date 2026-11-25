@@ -557,6 +557,31 @@ pub fn script(name: &str) -> Option<Script> {
                 d.activated[n].sacrifice_self = true;
             },
         ),
+        "Flamehold Grappler" => s(
+            &["When this creature enters, copy the next spell you cast this turn when you cast it. You may choose new targets for the copy."],
+            |d, _| {
+                on(d, When::Enters, vec![], vec![Effect::CopyNextSpellThisTurn(1)]);
+                on(d, When::Never, vec![], vec![Effect::CopySpellNewTargets]);
+            },
+        ),
+        "Ugin, Eye of the Storms" => s(
+            &[
+                "When you cast this spell, exile up to one target permanent that's one or more colors.",
+                "Whenever you cast a colorless spell, exile up to one target permanent that's one or more colors.",
+                "+2: You gain 3 life and draw a card.",
+                "0: Add {C}{C}{C}.",
+                "−11: Search your library for any number of colorless nonland cards, exile them, then shuffle. Until end of turn, you may cast those cards without paying their mana costs.",
+            ],
+            |d, _| {
+                let colored = Filter { players: false, creatures: false, planeswalkers: false, any_permanent: true, colored: true, ..Filter::ANY };
+                d.triggers.push(Trigger { when: When::CastThisSpell, ability: up_to(vec![colored], vec![Effect::Exile(0)]) });
+                d.triggers.push(Trigger { when: When::YouCastColorless, ability: up_to(vec![colored], vec![Effect::Exile(0)]) });
+                loyalty(d, 2, Ability::new(vec![], vec![Effect::GainLife { who: Who::You, n: 3 }, draw(1)]));
+                loyalty(d, 0, Ability::new(vec![], vec![Effect::AddColorless(3)]));
+                let all = Effect::Search { what: SearchFor::ColorlessNonland, to: SearchTo::ExileCastFreeThisTurn, n: u8::MAX, kicked_n: None };
+                loyalty(d, -11, Ability::new(vec![], vec![all]));
+            },
+        ),
         _ => None,
     }
 }
@@ -617,4 +642,6 @@ pub const TDM_C_SCRIPTED: &[&str] = &[
     "Dragonbroods' Relic",
     "All-Out Assault",
     "Maelstrom of the Spirit Dragon",
+    "Flamehold Grappler",
+    "Ugin, Eye of the Storms",
 ];

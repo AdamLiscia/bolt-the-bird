@@ -77,6 +77,8 @@ pub struct Filter {
     pub noncreature: bool,
     /// Cards whose mana value is the ability's X.
     pub mana_value_is_x: bool,
+    /// Permanents that are one or more colors.
+    pub colored: bool,
 }
 
 impl Filter {
@@ -114,6 +116,7 @@ impl Filter {
         was_dealt_damage: false,
         noncreature: false,
         mana_value_is_x: false,
+        colored: false,
     };
 
     pub const CREATURE: Filter = Filter {
@@ -704,6 +707,13 @@ pub enum Effect {
     DelayedOnNextAttackThisTurn(usize),
     /// Untap each creature you control.
     UntapCreaturesYouControl,
+    /// "Copy the next spell you cast this turn when you cast it": the source's trigger number `n`
+    /// triggers when you next cast a spell this turn, with that spell in `extra`.
+    CopyNextSpellThisTurn(usize),
+    /// Copy the spell in `extra` (still on the stack); its controller may choose new targets.
+    CopySpellNewTargets,
+    /// Add `n` colorless mana.
+    AddColorless(u8),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -726,6 +736,8 @@ pub enum SearchFor {
     Named(&'static [&'static str]),
     /// A card with this subtype ("a Dragon card").
     Subtype(&'static str),
+    /// A colorless nonland card.
+    ColorlessNonland,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -739,6 +751,8 @@ pub enum SearchTo {
     /// On top, or onto the battlefield tapped instead if you control a permanent with this subtype
     /// (Embermouth Sentinel). Decided as the search resolves.
     TopOrTappedIfYouControl(&'static str),
+    /// Exile it; you may cast it without paying its mana cost this turn (Ugin's −11).
+    ExileCastFreeThisTurn,
 }
 
 /// What a static ability affects.
@@ -1078,6 +1092,10 @@ pub enum When {
     YourCreatureTargetedByOpponent,
     /// "When this creature leaves the battlefield" (any zone it goes to).
     LeavesBattlefield,
+    /// "When you cast this spell": triggers from the stack as the spell becomes cast (CR 601.2i).
+    CastThisSpell,
+    /// "Whenever you cast a colorless spell".
+    YouCastColorless,
 }
 
 #[derive(Clone, Debug, PartialEq)]
