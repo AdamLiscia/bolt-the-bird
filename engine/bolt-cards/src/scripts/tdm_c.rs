@@ -582,6 +582,152 @@ pub fn script(name: &str) -> Option<Script> {
                 loyalty(d, -11, Ability::new(vec![], vec![all]));
             },
         ),
+        // ---- lane C round 3, batch 7: high-pick uncommons ----
+        "Spectral Denial" => s(
+            &[
+                "This spell costs {1} less to cast for each creature you control with power 4 or greater.",
+                "Counter target spell unless its controller pays {X}.",
+            ],
+            |d, _| {
+                d.reduction = Some(Reduction::PerCreatureYouControlPowerAtLeast(4));
+                spell(d, vec![SPELL], vec![Effect::CounterUnlessPaysX(0)]);
+            },
+        ),
+        "Rally the Monastery" => s(
+            &[
+                "This spell costs {2} less to cast if you've cast another spell this turn.",
+                "Choose one —",
+                "• Create two 1/1 white Monk creature tokens with prowess.",
+                "• Up to two target creatures you control each get +2/+2 until end of turn.",
+                "• Destroy target creature with power 4 or greater.",
+            ],
+            |d, t| {
+                d.reduction = Some(Reduction::IfCastAnotherSpell(2));
+                let big = Filter { creature_min_power: Some(4), ..CREATURE };
+                modes(
+                    d,
+                    vec![
+                        Ability::new(vec![], vec![Effect::CreateToken { who: Who::You, def: t.monk, n: 2 }]),
+                        up_to(
+                            vec![YOUR_CREATURE, YOUR_CREATURE],
+                            vec![Effect::Pump { slot: 0, power: 2, toughness: 2 }, Effect::Pump { slot: 1, power: 2, toughness: 2 }],
+                        ),
+                        Ability::new(vec![big], vec![Effect::Destroy(0)]),
+                    ],
+                );
+            },
+        ),
+        "Glacial Dragonhunt" => s(
+            &[
+                "Draw a card, then you may discard a card. When you discard a nonland card this way, Glacial Dragonhunt deals 3 damage to target creature.",
+                "Harmonize {4}{U}{R}",
+            ],
+            |d, _| {
+                spell(d, vec![], vec![draw(1), Effect::MayDiscardReflexiveIfNonland(0)]);
+                on(d, When::Never, vec![CREATURE], vec![damage(3, Recipient::Target(0))]);
+                harmonize(d, "{4}{U}{R}");
+            },
+        ),
+        "Synchronized Charge" => s(
+            &[
+                "Distribute two +1/+1 counters among one or two target creatures you control. Creatures you control with counters on them gain vigilance and trample until end of turn.",
+                "Harmonize {4}{G}",
+            ],
+            |d, _| {
+                let mut a = up_to(
+                    vec![YOUR_CREATURE, YOUR_CREATURE],
+                    vec![Effect::DividedCounters, Effect::GrantYourCreaturesWithCounters(Keywords::VIGILANCE.with(Keywords::TRAMPLE))],
+                );
+                a.min_targets = Some(1);
+                a.divide = 2;
+                d.spell = Some(a);
+                harmonize(d, "{4}{G}");
+            },
+        ),
+        "Winternight Stories" => s(
+            &["Draw three cards. Then discard two cards unless you discard a creature card.", "Harmonize {4}{U}"],
+            |d, _| {
+                spell(d, vec![], vec![draw(3), Effect::DiscardTwoUnlessCreature]);
+                harmonize(d, "{4}{U}");
+            },
+        ),
+        "Krumar Initiate" => s(
+            &["{X}{B}, {T}, Pay X life: This creature endures X. Activate only as a sorcery."],
+            |d, t| {
+                let n = activated(d, "{X}{B}", true, vec![], vec![Effect::EndureX { spirit: t.spirit_endure }]);
+                let a = &mut d.activated[n];
+                a.life_x = true;
+                a.sorcery = true;
+            },
+        ),
+        "Sinkhole Surveyor" => s(
+            &["Whenever this creature attacks, you lose 1 life and this creature endures 1."],
+            |d, t| on(d, When::Attacks, vec![], vec![Effect::LoseLife { who: Who::You, n: 1 }, endure(1, t)]),
+        ),
+        "Qarsi Revenant" => s(
+            &["Renew — {2}{B}, Exile this card from your graveyard: Put a flying counter, a deathtouch counter, and a lifelink counter on target creature. Activate only as a sorcery."],
+            |d, _| {
+                let k = Keywords::FLYING.with(Keywords::DEATHTOUCH).with(Keywords::LIFELINK);
+                renew(d, "{2}{B}", vec![CREATURE], vec![Effect::KeywordCounter { slot: 0, keywords: k }]);
+            },
+        ),
+        "Stadium Headliner" => s(
+            &["Mobilize 1", "{1}{R}, Sacrifice this creature: It deals damage equal to the number of creatures you control to target creature."],
+            |d, t| {
+                mobilize(d, t, Some(1));
+                let n = activated(d, "{1}{R}", false, vec![CREATURE], vec![Effect::DamageEqualCreaturesYouControl(0)]);
+                d.activated[n].sacrifice_self = true;
+            },
+        ),
+        "Lasyd Prowler" => s(
+            &[
+                "When this creature enters, you may mill cards equal to the number of lands you control.",
+                "Renew — {1}{G}, Exile this card from your graveyard: Put X +1/+1 counters on target creature, where X is the number of land cards in your graveyard. Activate only as a sorcery.",
+            ],
+            |d, _| {
+                may(d, When::Enters, vec![], vec![Effect::MillLandsYouControl]);
+                renew(d, "{1}{G}", vec![CREATURE], vec![Effect::CountersPerLandCardInGraveyard(0)]);
+            },
+        ),
+        "Warden of the Grove" => s(
+            &[
+                "At the beginning of your end step, put a +1/+1 counter on this creature.",
+                "Whenever another nontoken creature you control enters, it endures X, where X is the number of counters on this creature.",
+            ],
+            |d, t| {
+                on(d, When::EndStep { your_turn_only: true }, vec![], vec![Effect::CountersSelf { n: 1 }]);
+                let that = Filter { triggering: true, ..CREATURE };
+                on(
+                    d,
+                    When::AnotherNontokenCreatureYouControlEnters,
+                    vec![that],
+                    vec![Effect::SlotEnduresSourceCounters { slot: 0, spirit: t.spirit_endure }],
+                );
+            },
+        ),
+        "Cori-Steel Cutter" => s(
+            &[
+                "Equipped creature gets +1/+1 and has trample and haste.",
+                "Flurry — Whenever you cast your second spell each turn, create a 1/1 white Monk creature token with prowess. You may attach this Equipment to it.",
+                "Equip {1}{R}",
+            ],
+            |d, t| {
+                attached(d, false, 1, 1, Keywords::TRAMPLE.with(Keywords::HASTE));
+                flurry(
+                    d,
+                    vec![],
+                    vec![Effect::CreateToken { who: Who::You, def: t.monk, n: 1 }, Effect::MayContinue, Effect::AttachToCreated],
+                );
+                equip(d, "{1}{R}");
+            },
+        ),
+        "Songcrafter Mage" => s(
+            &["When this creature enters, target instant or sorcery card in your graveyard gains harmonize until end of turn. Its harmonize cost is equal to its mana cost."],
+            |d, _| {
+                let card = Filter { instant_or_sorcery: true, ..graveyard_cards(false, Controller::You) };
+                on(d, When::Enters, vec![card], vec![Effect::GrantHarmonize(0)]);
+            },
+        ),
         _ => None,
     }
 }
@@ -644,4 +790,17 @@ pub const TDM_C_SCRIPTED: &[&str] = &[
     "Maelstrom of the Spirit Dragon",
     "Flamehold Grappler",
     "Ugin, Eye of the Storms",
+    "Spectral Denial",
+    "Rally the Monastery",
+    "Glacial Dragonhunt",
+    "Synchronized Charge",
+    "Winternight Stories",
+    "Krumar Initiate",
+    "Sinkhole Surveyor",
+    "Qarsi Revenant",
+    "Stadium Headliner",
+    "Lasyd Prowler",
+    "Warden of the Grove",
+    "Cori-Steel Cutter",
+    "Songcrafter Mage",
 ];

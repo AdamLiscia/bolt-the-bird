@@ -141,6 +141,8 @@ pub enum Reduction {
     PerCreatureYouControl,
     /// ... {n} MORE if it targets a permanent with this subtype (Dragon's Prey).
     MoreIfTargetsSubtype(&'static str, u8),
+    /// ... {1} less for each creature you control with power N or greater (Spectral Denial).
+    PerCreatureYouControlPowerAtLeast(i32),
 }
 
 /// An activated ability: "[cost]: [effect]" (CR 602).
@@ -183,6 +185,8 @@ pub struct Activated {
     pub sacrifice_mv_x: bool,
     /// "Discard your hand" in the cost.
     pub discard_hand: bool,
+    /// "Pay X life" in the cost of an ability with {X} (Krumar Initiate).
+    pub life_x: bool,
 }
 
 /// The printed card. Shared by every copy; per-copy state lives on the game object.

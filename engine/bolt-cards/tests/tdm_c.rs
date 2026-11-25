@@ -1941,3 +1941,331 @@ fn ugin_loyalty_abilities() {
     resolve_all(&mut g3, &[]);
     assert_eq!(g3.obj(dragon).zone, Zone::Battlefield);
 }
+
+// ---- round 3, batch 7: uncommons ----
+
+#[test]
+fn spectral_denial_costs_less_per_big_creature_and_counters_unless_x_is_paid() {
+    let mut g = table();
+    put(&mut g, 0, "Summit Intimidator"); // power 4
+    put(&mut g, 0, "Unburied Earthcarver"); // power 2: doesn't count
+    let bolt = hand(&mut g, 0, "Twin Bolt");
+    let d = hand(&mut g, 0, "Spectral Denial");
+    begin(&mut g);
+    let life = g.players[1].life;
+    act(&mut g, Action::Cast(bolt));
+    act(&mut g, Action::Target(Target::Player(1)));
+    act(&mut g, Action::No);
+    let n = paid(&mut g, |g| {
+        act(g, Action::CastX(d, 2));
+        act(g, Action::Target(obj(bolt)));
+    });
+    assert_eq!(
+        n, 2,
+        "{{2}}{{U}} minus {{1}} for one creature with power 4 or greater"
+    );
+    resolve_all(&mut g, &[Action::No]); // the bolt's controller doesn't pay {2}
+    assert_eq!(g.obj(bolt).zone, Zone::Graveyard);
+    assert_eq!(g.players[1].life, life, "countered");
+}
+
+#[test]
+fn rally_the_monastery_modes_and_discount() {
+    let mut g = table();
+    let big = put(&mut g, 1, "Summit Intimidator"); // power 4
+    let small = put(&mut g, 1, "Unburied Earthcarver");
+    let r = hand(&mut g, 0, "Rally the Monastery");
+    begin(&mut g);
+    let n = paid(&mut g, |g| {
+        act(g, Action::CastModal(r, 0));
+        resolve_all(g, &[]);
+    });
+    assert_eq!(n, 4, "full price as the first spell");
+    let monks = tokens(&g, 0, "Monk");
+    assert_eq!(monks.len(), 2);
+    assert_eq!((g.power(monks[0]), g.toughness(monks[0])), (1, 1));
+
+    let r2 = hand(&mut g, 0, "Rally the Monastery");
+    let n = paid(&mut g, |g| {
+        act(g, Action::CastModal(r2, 2));
+        assert!(
+            !g.legal_actions().contains(&Action::Target(obj(small))),
+            "power 4 or greater"
+        );
+        act(g, Action::Target(obj(big)));
+        resolve_all(g, &[]);
+    });
+    assert_eq!(n, 2, "{{2}} less after another spell");
+    assert_eq!(g.obj(big).zone, Zone::Graveyard);
+
+    put(&mut g, 0, "Plains"); // the payer spent the Plains first
+    let r3 = hand(&mut g, 0, "Rally the Monastery");
+    act(&mut g, Action::CastModal(r3, 1));
+    act(&mut g, Action::Target(obj(monks[0])));
+    act(&mut g, Action::Target(obj(monks[1])));
+    resolve_all(&mut g, &[]);
+    assert!(g.power(monks[0]) >= 3 && g.toughness(monks[1]) >= 3, "+2/+2 each");
+}
+
+#[test]
+fn glacial_dragonhunt_loots_and_shoots_for_a_nonland_discard() {
+    let mut g = table();
+    let theirs = put(&mut g, 1, "Summit Intimidator"); // 4/3
+    let spell = hand(&mut g, 0, "Twin Bolt");
+    let land = hand(&mut g, 0, "Forest");
+    let c = hand(&mut g, 0, "Glacial Dragonhunt");
+    let c2 = hand(&mut g, 0, "Glacial Dragonhunt");
+    begin(&mut g);
+    play(&mut g, c, false, &[], &[Action::Discard(land)]);
+    assert_eq!(g.obj(land).zone, Zone::Graveyard);
+    assert_eq!(g.obj(theirs).damage, 0, "a land: no damage");
+    play(
+        &mut g,
+        c2,
+        false,
+        &[],
+        &[Action::Discard(spell), Action::Target(obj(theirs))],
+    );
+    assert_eq!(g.obj(theirs).zone, Zone::Graveyard, "3 damage");
+    assert!(g.def_of(c).harmonize);
+}
+
+#[test]
+fn synchronized_charge_distributes_counters_and_pumps_countered_creatures() {
+    let mut g = table();
+    let a = put(&mut g, 0, "Unburied Earthcarver");
+    let b = put(&mut g, 0, "Summit Intimidator");
+    let had = put(&mut g, 0, "Arashin Sunshield");
+    let none = put(&mut g, 0, "Loxodon Battle Priest");
+    let shield = hand(&mut g, 0, "Lightfoot Technique");
+    let c = hand(&mut g, 0, "Synchronized Charge");
+    begin(&mut g);
+    play(&mut g, shield, false, &[obj(had)], &[]);
+    act(&mut g, Action::Cast(c));
+    act(&mut g, Action::Target(obj(a)));
+    act(&mut g, Action::Target(obj(b)));
+    act(&mut g, Action::Amount(1));
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.obj(a).counters, g.obj(b).counters), (1, 1));
+    for x in [a, b, had] {
+        let k = g.keywords(x);
+        assert!(k.has(Keywords::VIGILANCE) && k.has(Keywords::TRAMPLE));
+    }
+    assert!(!g.keywords(none).has(Keywords::TRAMPLE), "no counters");
+}
+
+#[test]
+fn winternight_stories_draws_three_then_discards_a_creature_or_two_cards() {
+    let mut g = table();
+    let creature = hand(&mut g, 0, "Unburied Earthcarver");
+    let c = hand(&mut g, 0, "Winternight Stories");
+    begin(&mut g);
+    let n = g.players[0].hand.len();
+    play(&mut g, c, false, &[], &[Action::Discard(creature)]);
+    assert_eq!(
+        g.players[0].hand.len(),
+        n - 1 + 3 - 1,
+        "a creature card: just one"
+    );
+
+    let c2 = hand(&mut g, 0, "Winternight Stories");
+    let spell = hand(&mut g, 0, "Twin Bolt");
+    let n = g.players[0].hand.len();
+    act(&mut g, Action::Cast(c2));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Discard(spell));
+    assert!(
+        matches!(g.pending, Pending::Decide(_)),
+        "a noncreature card: discard another"
+    );
+    let other = g.players[0].hand[0];
+    act(&mut g, Action::Discard(other));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].hand.len(), n - 1 + 3 - 2);
+}
+
+#[test]
+fn krumar_initiate_pays_x_life_to_endure_x() {
+    let mut g = table();
+    let k = put(&mut g, 0, "Krumar Initiate");
+    main_phase_turn_5(&mut g);
+    g.players[0].life = 3;
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::ActivateX {
+        id: k,
+        n: 0,
+        victim: None,
+        x: 3
+    }));
+    assert!(
+        !legal.contains(&Action::ActivateX {
+            id: k,
+            n: 0,
+            victim: None,
+            x: 4
+        }),
+        "X life at most your life"
+    );
+    let n = paid(&mut g, |g| {
+        act(
+            g,
+            Action::ActivateX {
+                id: k,
+                n: 0,
+                victim: None,
+                x: 2,
+            },
+        );
+        resolve_all(g, &[Action::Yes]); // counters, not a Spirit
+    });
+    assert_eq!(n, 3, "{{2}}{{B}}");
+    assert_eq!(g.players[0].life, 1);
+    assert_eq!(g.obj(k).counters, 2);
+    assert!(g.obj(k).tapped);
+}
+
+#[test]
+fn sinkhole_surveyor_pays_a_life_to_endure_when_attacking() {
+    let mut g = table();
+    let s = put(&mut g, 0, "Sinkhole Surveyor");
+    assert!(g.keywords(s).has(Keywords::FLYING));
+    let life = g.players[0].life;
+    g.start_turn(5, 0);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(s));
+    act(&mut g, Action::FinishAttacks);
+    resolve_all(&mut g, &[Action::Yes]);
+    assert_eq!(g.players[0].life, life - 1);
+    assert_eq!(g.obj(s).counters, 1);
+}
+
+#[test]
+fn qarsi_revenant_renews_three_keyword_counters() {
+    let mut g = table();
+    let q = g.add_card(0, tid("Qarsi Revenant"), Zone::Graveyard);
+    let mine = put(&mut g, 0, "Unburied Earthcarver");
+    begin(&mut g);
+    act(&mut g, Action::Activate(q, 0));
+    act(&mut g, Action::Target(obj(mine)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(q).zone, Zone::Exile);
+    let k = g.keywords(mine);
+    assert!(k.has(Keywords::FLYING) && k.has(Keywords::DEATHTOUCH) && k.has(Keywords::LIFELINK));
+}
+
+#[test]
+fn stadium_headliner_sacrifices_to_deal_damage_per_creature() {
+    let mut g = table();
+    let h = put(&mut g, 0, "Stadium Headliner");
+    put(&mut g, 0, "Unburied Earthcarver");
+    put(&mut g, 0, "Summit Intimidator");
+    let theirs = put(&mut g, 1, "Arashin Sunshield"); // 3/4
+    begin(&mut g);
+    act(&mut g, Action::Activate(h, 0));
+    act(&mut g, Action::Target(obj(theirs)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(h).zone, Zone::Graveyard);
+    assert_eq!(g.obj(theirs).damage, 2, "two creatures left once it's sacrificed");
+}
+
+#[test]
+fn lasyd_prowler_mills_by_lands_and_renews_by_land_cards() {
+    let mut g = tdm_lands(&["Forest", "Forest", "Forest", "Forest"]);
+    let p = hand(&mut g, 0, "Lasyd Prowler");
+    begin(&mut g);
+    let lib = g.players[0].library.len();
+    play(&mut g, p, false, &[], &[Action::Yes]);
+    assert_eq!(g.players[0].library.len(), lib - 4, "four lands");
+    let lands_in_yard = g.players[0]
+        .graveyard
+        .iter()
+        .filter(|&&c| g.def_of(c).types.land)
+        .count() as i32;
+    assert_eq!(lands_in_yard, 4, "the library is Plains");
+    let p2 = g.add_card(0, tid("Lasyd Prowler"), Zone::Graveyard);
+    let mine = put(&mut g, 0, "Unburied Earthcarver");
+    for f in g
+        .permanents(0)
+        .filter(|&x| g.types_of(x).land)
+        .collect::<Vec<_>>()
+    {
+        g.objects[f.0 as usize].tapped = false;
+    }
+    act(&mut g, Action::Activate(p2, 0));
+    act(&mut g, Action::Target(obj(mine)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(mine).counters, lands_in_yard);
+}
+
+#[test]
+fn warden_of_the_grove_grows_and_makes_newcomers_endure() {
+    let mut g = table();
+    let w = put(&mut g, 0, "Warden of the Grove");
+    let c = hand(&mut g, 0, "Unburied Earthcarver");
+    begin(&mut g);
+    to_next_turn(&mut g);
+    assert_eq!(g.obj(w).counters, 1, "your end step");
+    to_next_turn(&mut g);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    play(&mut g, c, false, &[], &[Action::Yes]);
+    assert_eq!(g.obj(c).counters, 1, "endures X = 1");
+    let goblin = g.add_card(0, set_token(&g, "Goblin"), Zone::Battlefield);
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(goblin).counters, 0, "nontoken only");
+}
+
+#[test]
+fn cori_steel_cutter_equips_and_makes_a_monk_on_the_second_spell() {
+    let mut g = table();
+    let cutter = put(&mut g, 0, "Cori-Steel Cutter");
+    let a = hand(&mut g, 0, "Lightfoot Technique");
+    let b = hand(&mut g, 0, "Lightfoot Technique");
+    let mine = put(&mut g, 0, "Unburied Earthcarver");
+    begin(&mut g);
+    play(&mut g, a, false, &[obj(mine)], &[]);
+    assert!(tokens(&g, 0, "Monk").is_empty(), "the first spell");
+    put(&mut g, 0, "Plains");
+    play(&mut g, b, false, &[obj(mine)], &[Action::Yes]);
+    let monk = tokens(&g, 0, "Monk");
+    assert_eq!(monk.len(), 1);
+    assert_eq!(
+        g.obj(cutter).attached_to.map(|(c, _)| c),
+        Some(monk[0]),
+        "attached to it"
+    );
+    let k = g.keywords(monk[0]);
+    assert!(k.has(Keywords::TRAMPLE) && k.has(Keywords::HASTE));
+    assert_eq!(g.toughness(monk[0]), 2, "1/1 plus +1/+1");
+}
+
+#[test]
+fn songcrafter_mage_gives_a_graveyard_spell_harmonize_for_its_mana_cost() {
+    let mut g = table();
+    let spell = g.add_card(0, tid("Channeled Dragonfire"), Zone::Graveyard); // {R}, harmonize {5}{R}{R}
+    let lf = g.add_card(0, tid("Lightfoot Technique"), Zone::Graveyard); // {1}{W}, no harmonize
+    let m = hand(&mut g, 0, "Songcrafter Mage");
+    begin(&mut g);
+    assert!(g.def_of(m).keywords.has(Keywords::FLASH));
+    assert!(!g.legal_actions().contains(&Action::CastFlashback(lf)));
+    play(&mut g, m, false, &[], &[Action::Target(obj(lf))]);
+    assert!(
+        g.legal_actions().contains(&Action::CastFlashback(lf)),
+        "harmonize until end of turn"
+    );
+    let mine = put(&mut g, 0, "Unburied Earthcarver");
+    put(&mut g, 0, "Plains");
+    let n = paid(&mut g, |g| {
+        act(g, Action::CastFlashback(lf));
+        act(g, Action::Target(obj(mine)));
+        resolve_all(g, &[]);
+    });
+    assert_eq!(n, 2, "its mana cost, {{1}}{{W}}");
+    assert_eq!(g.obj(lf).zone, Zone::Exile, "then exiled");
+    assert_eq!(g.obj(spell).zone, Zone::Graveyard);
+}

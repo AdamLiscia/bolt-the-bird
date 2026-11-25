@@ -797,6 +797,37 @@ pub enum Effect {
     DamageExtrasControllerAndDrawAmount,
     /// Each creature without this subtype gets -X/-X until end of turn (X the spell's X).
     ShrinkAllWithoutSubtypeX(&'static str),
+    /// "Counter target spell unless its controller pays {X}", X this spell's X.
+    CounterUnlessPaysX(u8),
+    /// "You may discard a card. When you discard a nonland card this way, ...": the source's trigger
+    /// number `n` (a reflexive trigger).
+    MayDiscardReflexiveIfNonland(usize),
+    /// Creatures you control with counters on them gain keywords until end of turn.
+    GrantYourCreaturesWithCounters(Keywords),
+    /// "Discard two cards unless you discard a creature card."
+    DiscardTwoUnlessCreature,
+    /// "This creature endures X", X the ability's X.
+    EndureX {
+        spirit: usize,
+    },
+    /// The source deals damage equal to the number of creatures you control to the creature in `slot`.
+    DamageEqualCreaturesYouControl(u8),
+    /// Mill cards equal to the number of lands you control.
+    MillLandsYouControl,
+    /// +1/+1 counters on the creature in `slot`, one per land card in your graveyard.
+    CountersPerLandCardInGraveyard(u8),
+    /// The creature in `slot` endures X, X the number of counters on the source (Warden of the Grove).
+    SlotEnduresSourceCounters {
+        slot: u8,
+        spirit: usize,
+    },
+    /// "You may ..." for the rest of the effects.
+    MayContinue,
+    /// Attach the source (an Equipment) to the token just created.
+    AttachToCreated,
+    /// The instant or sorcery card in `slot` gains harmonize until end of turn, its harmonize cost its
+    /// mana cost (Songcrafter Mage).
+    GrantHarmonize(u8),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1200,6 +1231,8 @@ pub enum When {
     BeginCombatEachTurn,
     /// Only as a delayed trigger: "Whenever a creature you control enters this turn".
     CreatureYouControlEntersThisTurn,
+    /// "Whenever another nontoken creature you control enters": slot 0 (triggering) is that creature.
+    AnotherNontokenCreatureYouControlEnters,
 }
 
 #[derive(Clone, Debug, PartialEq)]

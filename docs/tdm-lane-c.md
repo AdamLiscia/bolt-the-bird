@@ -241,3 +241,31 @@ Cards: Flamehold Grappler, Ugin, Eye of the Storms.
 
 Known edge: with two copy triggers from one cast (two Grapplers), the second copy waits for the next ability to
 finish resolving if the first one needed a target choice.
+
+## Round 3, batch 7: high-pick uncommons, then rares on small mechanics (13 cards)
+
+Mechanics added (bolt-core, all at the end of their enum or struct):
+- `Reduction::PerCreatureYouControlPowerAtLeast(n)`; `Effect::CounterUnlessPaysX(slot)` (the spell's X).
+- `Effect::MayDiscardReflexiveIfNonland(n)` with `Decision::DiscardReflexive`: "you may discard a card. When
+  you discard a nonland card this way, ..." (the reflexive trigger's source is the spell).
+- `Effect::GrantYourCreaturesWithCounters(Keywords)`: the creatures are fixed as it resolves (CR 611.2c).
+- `Effect::DiscardTwoUnlessCreature` with `Decision::DiscardTwoUnlessCreature`.
+- `Activated::life_x` ("Pay X life", only X up to your life is offered) and `Effect::EndureX`.
+- `Effect::DamageEqualCreaturesYouControl(slot)` (counted on resolution, after the sacrifice),
+  `Effect::MillLandsYouControl`, `Effect::CountersPerLandCardInGraveyard(slot)`.
+- `When::AnotherNontokenCreatureYouControlEnters` (the entering creature fills a triggering slot) and
+  `Effect::SlotEnduresSourceCounters` with `Decision::EndureOther`: another creature endures X, X the number of
+  counters on the source (+1/+1, stun and keyword counters).
+- `Effect::MayContinue` ("You may ..." for the rest of the effects) and `Effect::AttachToCreated`.
+- `Effect::GrantHarmonize(slot)` and `Object::harmonize_eot`: harmonize until end of turn for its mana cost,
+  including the tap-a-creature reduction.
+
+Cards: Spectral Denial, Rally the Monastery, Glacial Dragonhunt, Synchronized Charge, Winternight Stories, Krumar
+Initiate, Sinkhole Surveyor, Qarsi Revenant, Stadium Headliner, Lasyd Prowler, Warden of the Grove, Cori-Steel
+Cutter, Songcrafter Mage.
+
+Assessed and left (needs core):
+- Rite of Renewal: "up to two" targets of yours, then a required target player and "up to four" cards from that
+  player's graveyard. Target slots are filled in order with one minimum count, so the four can't be chosen
+  after skipping the two, and no filter ties cards to the player in another slot. It also needs "shuffle
+  target cards into their library".
