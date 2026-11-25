@@ -13,6 +13,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
+from bolt.backup import upload_quietly
 from bolt.data import DATA, load_cards, load_picks, subset
 from bolt.evaluate import report
 from bolt.models import MODELS
@@ -116,6 +117,7 @@ def main():
         ck_dir = DATA.parent / "checkpoints"
         ck_dir.mkdir(exist_ok=True)
         torch.save(model.state_dict(), ck_dir / f"{name}_epoch{ep + 1}.pt")  # a stop loses one epoch at most
+        upload_quietly(ck_dir / f"{name}_epoch{ep + 1}.pt")
 
     r = report(name, predict(model, tte, device), test)
     r.update(history=history, args=vars(a))
@@ -125,6 +127,7 @@ def main():
     ck = DATA.parent / "checkpoints"
     ck.mkdir(exist_ok=True)
     torch.save(model.state_dict(), ck / f"{name}.pt")
+    upload_quietly(ck / f"{name}.pt")
 
 
 if __name__ == "__main__":
