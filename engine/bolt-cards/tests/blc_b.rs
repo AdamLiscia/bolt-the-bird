@@ -820,3 +820,165 @@ fn loran_destroys_an_artifact_and_draws_for_both() {
     resolve_all(&mut g, &[Action::Target(Target::Player(1))]);
     assert_eq!((g.players[0].hand.len(), g.players[1].hand.len()), (a + 1, b + 1));
 }
+
+// ---- Batch 5 ----
+
+#[test]
+fn cycling_lands_enter_tapped_and_cycle_from_hand() {
+    for (name, color) in [("Tranquil Thicket", 4), ("Barren Moor", 2), ("Forgotten Cave", 3)] {
+        let mut g = table();
+        let l = hand(&mut g, 0, name);
+        let other = hand(&mut g, 0, name);
+        act(&mut g, Action::PlayLand(l));
+        assert!(g.obj(l).tapped);
+        assert!(g.def_of(l).mana.unwrap().colors[color]);
+        assert!(
+            !g.legal_actions().contains(&Action::Activate(l, 0)),
+            "no cycling on the battlefield"
+        );
+        let n = g.players[0].hand.len();
+        act(&mut g, Action::Activate(other, 0));
+        resolve_all(&mut g, &[]);
+        assert_eq!(g.obj(other).zone, Zone::Graveyard, "{name} discarded");
+        assert_eq!(g.players[0].hand.len(), n, "and a card drawn");
+    }
+}
+
+#[test]
+fn explore_gives_an_extra_land_drop_and_a_card() {
+    let mut g = table();
+    let a = hand(&mut g, 0, "Forest");
+    let b = hand(&mut g, 0, "Forest");
+    act(&mut g, Action::PlayLand(a));
+    assert!(!g.legal_actions().contains(&Action::PlayLand(b)));
+    let e = hand(&mut g, 0, "Explore");
+    play(&mut g, e, false, &[], &[]);
+    assert!(g.legal_actions().contains(&Action::PlayLand(b)));
+}
+
+#[test]
+fn coiling_oracle_puts_a_land_down_or_takes_the_card() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Coiling Oracle");
+    let top = *g.players[0].library.last().unwrap(); // a Plains
+    play(&mut g, c, false, &[], &[]);
+    assert_eq!(g.obj(top).zone, Zone::Battlefield);
+    let c = hand(&mut g, 0, "Coiling Oracle");
+    let spell = g.add_card(0, bid("Harmonize"), Zone::Library);
+    play(&mut g, c, false, &[], &[]);
+    assert_eq!(g.obj(spell).zone, Zone::Hand);
+}
+
+#[test]
+fn maelstrom_pulse_takes_every_copy() {
+    let mut g = table();
+    let a = put(&mut g, 1, "Sol Ring");
+    let b = put(&mut g, 1, "Sol Ring");
+    let mine = put(&mut g, 0, "Sol Ring");
+    let other = put(&mut g, 1, "Mind Stone");
+    let c = hand(&mut g, 0, "Maelstrom Pulse");
+    play(&mut g, c, false, &[obj(a)], &[]);
+    for x in [a, b, mine] {
+        assert_eq!(g.obj(x).zone, Zone::Graveyard);
+    }
+    assert_eq!(g.obj(other).zone, Zone::Battlefield);
+}
+
+#[test]
+fn plumecreed_escort_and_ornithopter() {
+    let mut g = table();
+    let mender = put(&mut g, 0, "Circuit Mender");
+    let p = hand(&mut g, 0, "Plumecreed Escort");
+    assert!(g.def_of(p).keywords.has(Keywords::FLASH));
+    play(&mut g, p, false, &[], &[Action::Target(obj(mender))]);
+    assert!(g.keywords(mender).has(Keywords::HEXPROOF));
+    let o = put(&mut g, 0, "Ornithopter of Paradise");
+    assert!(g.keywords(o).has(Keywords::FLYING));
+    assert!(g
+        .mana_sources(0)
+        .iter()
+        .any(|&(x, m)| x == o && m.colors == [true; 5]));
+}
+
+#[test]
+fn haywire_mite_gains_on_death_and_exiles_noncreature_artifacts() {
+    let mut g = table();
+    let mite = put(&mut g, 0, "Haywire Mite");
+    let ring = put(&mut g, 1, "Sol Ring");
+    let thopter = put(&mut g, 1, "Ornithopter of Paradise");
+    act(&mut g, Action::Activate(mite, 0));
+    assert!(
+        !g.legal_actions().contains(&Action::Target(obj(thopter))),
+        "noncreature only"
+    );
+    act(&mut g, Action::Target(obj(ring)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(ring).zone, Zone::Exile);
+    assert_eq!(g.obj(mite).zone, Zone::Graveyard);
+    assert_eq!(g.players[0].life, 42, "it died");
+}
+
+#[test]
+fn cut_a_deal_and_pull_from_tomorrow_draw() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Cut a Deal");
+    let (a, b) = (g.players[0].hand.len(), g.players[1].hand.len());
+    play(&mut g, c, false, &[], &[]);
+    assert_eq!((g.players[0].hand.len(), g.players[1].hand.len()), (a, b + 1));
+    let p = hand(&mut g, 0, "Pull from Tomorrow");
+    let junk = hand(&mut g, 0, "Sol Ring");
+    let n = g.players[0].hand.len();
+    act(&mut g, Action::CastX(p, 3));
+    resolve_all(&mut g, &[Action::Discard(junk)]);
+    assert_eq!(g.players[0].hand.len(), n - 1 + 3 - 1);
+}
+
+#[test]
+fn hanged_executioner_makes_a_spirit_and_exiles_itself_to_exile_a_creature() {
+    let mut g = table();
+    let h = hand(&mut g, 0, "Hanged Executioner");
+    play(&mut g, h, false, &[], &[]);
+    let spirit = named(&g, 0, "Spirit");
+    assert_eq!(spirit.len(), 1);
+    assert!(g.keywords(spirit[0]).has(Keywords::FLYING));
+    let theirs = put(&mut g, 1, "Circuit Mender");
+    act(&mut g, Action::Activate(h, 0));
+    act(&mut g, Action::Target(obj(theirs)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(h).zone, Zone::Exile);
+    assert_eq!(g.obj(theirs).zone, Zone::Exile);
+}
+
+#[test]
+fn inferno_titan_divides_three_damage_and_firebreathes() {
+    let mut g = table();
+    let a = put(&mut g, 1, "Agate Instigator"); // 1/3
+    let t = hand(&mut g, 0, "Inferno Titan");
+    act(&mut g, Action::Cast(t));
+    while !matches!(g.pending, Pending::ChooseTarget(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Target(obj(a)));
+    act(&mut g, Action::Target(Target::Player(1)));
+    act(&mut g, Action::No);
+    act(&mut g, Action::Amount(2));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(a).damage, 2);
+    assert_eq!(g.players[1].life, 39);
+    let p = g.power(t);
+    act(&mut g, Action::Activate(t, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.power(t), p + 1);
+}
+
+#[test]
+fn lotus_cobra_adds_mana_on_landfall() {
+    let mut g = table();
+    put(&mut g, 0, "Lotus Cobra");
+    let l = hand(&mut g, 0, "Forest");
+    act(&mut g, Action::PlayLand(l));
+    assert!(!g.items.is_empty(), "a trigger, on the stack");
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].pool.len(), 1);
+    assert_eq!(g.players[0].pool[0].colors, [true; 5]);
+}

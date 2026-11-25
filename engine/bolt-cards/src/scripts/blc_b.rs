@@ -9,6 +9,19 @@ fn dual(d: &mut CardDef, a: Color, b: Color) {
     d.mana = Some(ManaSource::of(&[a, b]));
 }
 
+/// "Cycling {cost}": "{cost}, Discard this card: Draw a card." from your hand.
+fn cycling(d: &mut CardDef, cost: &str) {
+    let n = activated(d, cost, false, vec![], vec![draw(1)]);
+    d.activated[n].from_hand_discard = true;
+}
+
+/// "This land enters tapped." / "{T}: Add {C}." / "Cycling {C}" (the cycling lands).
+fn cycling_land(d: &mut CardDef, color: Color, cost: &str) {
+    d.enters_tapped = true;
+    d.mana = Some(ManaSource::of(&[color]));
+    cycling(d, cost);
+}
+
 fn colorless(d: &mut CardDef) {
     d.mana = Some(ManaSource {
         colorless: true,
@@ -363,6 +376,78 @@ pub fn script(name: &str) -> Option<Script> {
                 activated(d, "", true, vec![opp], vec![draw(1), Effect::Draw { who: Who::TargetPlayer(0), n: 1 }]);
             },
         ),
+        // ---- Batch 5: cycling, an extra land, and more ----
+        "Tranquil Thicket" => s(&["This land enters tapped.", "{T}: Add {G}.", "Cycling {G}"], |d, _| cycling_land(d, Color::Green, "{G}")),
+        "Barren Moor" => s(&["This land enters tapped.", "{T}: Add {B}.", "Cycling {B}"], |d, _| cycling_land(d, Color::Black, "{B}")),
+        "Forgotten Cave" => s(&["This land enters tapped.", "{T}: Add {R}.", "Cycling {R}"], |d, _| cycling_land(d, Color::Red, "{R}")),
+        "Explore" => s(&["You may play an additional land this turn.", "Draw a card."], |d, _| {
+            spell(d, vec![], vec![Effect::ExtraLandThisTurn, draw(1)])
+        }),
+        "Coiling Oracle" => s(
+            &["When this creature enters, reveal the top card of your library. If it's a land card, put it onto the battlefield. Otherwise, put that card into your hand."],
+            |d, _| on(d, When::Enters, vec![], vec![Effect::RevealTopLandToBattlefieldElseHand]),
+        ),
+        "Maelstrom Pulse" => s(
+            &["Destroy target nonland permanent and all other permanents with the same name as that permanent."],
+            |d, _| {
+                let nonland = Filter { controller: Controller::Any, ..OPP_NONLAND };
+                spell(d, vec![nonland], vec![Effect::DestroyWithSameName(0)]);
+            },
+        ),
+        "Plumecreed Escort" => s(&["When this creature enters, target creature you control gains hexproof until end of turn."], |d, _| {
+            on(d, When::Enters, vec![YOUR_CREATURE], vec![Effect::Grant { slot: 0, keywords: Keywords::HEXPROOF }])
+        }),
+        "Haywire Mite" => s(
+            &[
+                "When this creature dies, you gain 2 life.",
+                "{G}, Sacrifice this creature: Exile target noncreature artifact or noncreature enchantment.",
+            ],
+            |d, _| {
+                on(d, When::Dies, vec![], vec![Effect::GainLife { who: Who::You, n: 2 }]);
+                let f = Filter { noncreature: true, ..ARTIFACT_OR_ENCHANTMENT };
+                let n = activated(d, "{G}", false, vec![f], vec![Effect::Exile(0)]);
+                d.activated[n].sacrifice_self = true;
+            },
+        ),
+        "Ornithopter of Paradise" => s(&["{T}: Add one mana of any color."], |d, _| {
+            d.mana = Some(ManaSource::of(&Color::ALL));
+        }),
+        "Cut a Deal" => s(
+            &["Each opponent draws a card, then you draw a card for each opponent who drew a card this way."],
+            |d, _| spell(d, vec![], vec![Effect::Draw { who: Who::EachOpponent, n: 1 }, draw(1)]),
+        ),
+        "Pull from Tomorrow" => s(&["Draw X cards, then discard a card."], |d, _| {
+            spell(d, vec![], vec![Effect::DrawX, discard(1)])
+        }),
+        "Hanged Executioner" => s(
+            &[
+                "When this creature enters, create a 1/1 white Spirit creature token with flying.",
+                "{3}{W}, Exile this creature: Exile target creature.",
+            ],
+            |d, t| {
+                on(d, When::Enters, vec![], vec![Effect::CreateToken { who: Who::You, def: t.spirit, n: 1 }]);
+                let n = activated(d, "{3}{W}", false, vec![CREATURE], vec![Effect::Exile(0)]);
+                d.activated[n].exile_self = true;
+            },
+        ),
+        "Inferno Titan" => s(
+            &[
+                "{R}: This creature gets +1/+0 until end of turn.",
+                "Whenever this creature enters or attacks, it deals 3 damage divided as you choose among one, two, or three targets.",
+            ],
+            |d, _| {
+                activated(d, "{R}", false, vec![], vec![Effect::PumpSelf { power: 1, toughness: 0 }]);
+                for when in [When::Enters, When::Attacks] {
+                    let mut a = up_to(vec![Filter::ANY; 3], vec![Effect::DividedDamage]);
+                    a.min_targets = Some(1);
+                    a.divide = 3;
+                    d.triggers.push(Trigger { when, ability: a });
+                }
+            },
+        ),
+        "Lotus Cobra" => s(&["Landfall — Whenever a land you control enters, add one mana of any color."], |d, _| {
+            on(d, When::LandYouControlEnters, vec![], vec![Effect::AddManaAnyColor])
+        }),
         _ => None,
     }
 }
@@ -418,4 +503,18 @@ pub const BLC_B_SCRIPTED: &[&str] = &[
     "Prosperous Innkeeper",
     "Rampaging Baloths",
     "Loran of the Third Path",
+    "Tranquil Thicket",
+    "Barren Moor",
+    "Forgotten Cave",
+    "Explore",
+    "Coiling Oracle",
+    "Maelstrom Pulse",
+    "Plumecreed Escort",
+    "Haywire Mite",
+    "Ornithopter of Paradise",
+    "Cut a Deal",
+    "Pull from Tomorrow",
+    "Hanged Executioner",
+    "Inferno Titan",
+    "Lotus Cobra",
 ];

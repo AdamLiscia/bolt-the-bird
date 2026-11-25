@@ -191,6 +191,9 @@ pub struct Activated {
     pub if_card_left_graveyard: bool,
     /// "Tap X untapped tokens you control" in the cost (activated with `Action::ActivateX`).
     pub tap_x_untapped_tokens: bool,
+    /// Activated from your hand, discarding this card as a cost (cycling: "{cost}, Discard this
+    /// card: Draw a card.").
+    pub from_hand_discard: bool,
 }
 
 /// The printed card. Shared by every copy; per-copy state lives on the game object.
