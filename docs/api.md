@@ -415,7 +415,7 @@ game"; show an icon only when present and active.
 
 | Field | Where | Status |
 |---|---|---|
-| `commander_damage` | per player: `{"<source commander card_id>": n}`, damage taken from each commander | Ships with Commander games (see *Commander games* below, Bloomburrow first); the engine already tracks it, Limited games omit it |
+| `commander_damage` | per player: a list of `{id, name, card_id, owner, damage}`, one per commander object (see *Commander games*) | Ships with Commander games (see *Commander games* below, Bloomburrow first); the engine already tracks it, Limited games omit it |
 | `poison`, `energy`, `experience` | per player, integers | Not modeled (no Foundations or Tarkir card uses them) |
 | `monarch`, `initiative` | game level: the seat that has it, or null | Not modeled |
 | `city_blessing` | game level: list of seats | Not modeled |
@@ -432,8 +432,16 @@ Request: `POST /v1/game` with `"format": "commander"` and a commander per seat. 
 ```json
 {"set": "BLC", "format": "commander",
  "commander_a": "Bello, Bard of the Brambles", "deck_a": [{"name": "Sol Ring", "qty": 1}, ...],
- "commander_b": "...", "deck_b": [...], "human_seat": 0, "pilot": "smart", "seed": 7}
+ "commander_b": "...", "deck_b": [...], "human_seat": 0, "pilot": "smart", "seed": 7,
+ "starting_life": 40, "auto_command_zone": [false, true]}
 ```
+
+- `commander_a` / `commander_b`: a name **or a list of names** (partners, for later sets; BLC has none).
+  The deck is the other cards, so with two commanders it is 98.
+- `starting_life`: optional, default 40 (Commander's rule). Duel-style 1v1 tables often use 20–30.
+- `auto_command_zone`: optional, per seat, default `false` for a human seat. `true` answers the
+  command-zone choice (below) with "move it" automatically, so it never prompts. Bot seats always move
+  their commander unless a later version says otherwise.
 
 - Validation runs before the game exists. Any problem returns 422 `{"error": "invalid_deck", "seat": 0,
   "problems": ["..."]}` listing every problem, not just the first. The checks: the commander is a
@@ -454,8 +462,12 @@ State additions (per player in `view.players[n]`):
 | Field | Meaning |
 |---|---|
 | `command` | `[{"id", "name", "card_id", "tax"}]`: the cards in that player's command zone; `tax` is the generic mana the next cast adds |
-| `commander_damage` | `{"<source commander card_id>": n}`: combat damage taken from each commander (see Player counters) |
-| `life` | starts at 40 |
+| `commander_damage` | `[{"id", "name", "card_id", "owner", "damage"}]`: combat damage this player took from each commander, one entry per commander **object** (`id`), so a mirror match (both seats on Bello) stays two entries; `owner` is the seat that commander belongs to |
+| `life` | starts at `starting_life` (40 by default) |
+
+Every game object that is a commander also carries `"commander": true` and `"owner": <seat>`, in every
+zone the view shows (battlefield, stack, graveyard, exile, command), so the page can badge it without
+matching names.
 
 `GET /v1/cards?set=BLC` lists the 300 non-basic cards of the four precons plus their tokens, with the
 same fields as FDN. `GET /v1/precons?set=BLC` lists the four decks (name, commander, 99 cards) as the
