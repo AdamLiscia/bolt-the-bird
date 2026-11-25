@@ -509,6 +509,10 @@ pub enum StackKind {
     Loyalty(usize),
     /// Offspring's "when this creature enters, create a 1/1 token copy of it" (CR 702.175).
     Offspring,
+    /// Ward—discard a card.
+    WardDiscard {
+        against: ObjId,
+    },
 }
 
 /// The ability of a ward trigger, which has no targets or effects of its own.
@@ -757,6 +761,12 @@ pub enum Decision {
     SearchMonoNames { picked: Vec<ObjId> },
     /// The opponent `Pick`s one of `cards` (exiled) to shuffle into `caster`'s library.
     OpponentShufflesOne { cards: Vec<ObjId>, caster: PlayerId },
+    /// Ward—discard a card: `Discard` one, or `No` lets the spell or ability from `against` be
+    /// countered.
+    PayWardDiscard { against: ObjId },
+    /// Choose X for a spell cast with `mode` (an Omen or harmonize cast whose cost has {X}):
+    /// `Amount(x)` for each X you can pay, 0 through `max`.
+    ChooseCastX { card: ObjId, mode: CastMode, max: u8 },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -2887,7 +2897,9 @@ impl Game {
                 Some(m) => &def.triggers[n].ability.modes[m as usize],
                 None => &def.triggers[n].ability,
             },
-            StackKind::Ward { .. } | StackKind::WardLife { .. } => &WARD_ABILITY,
+            StackKind::Ward { .. } | StackKind::WardLife { .. } | StackKind::WardDiscard { .. } => {
+                &WARD_ABILITY
+            }
             StackKind::Loyalty(n) => &def.loyalty_abilities[n].1,
             StackKind::Offspring => offspring_ability(),
             StackKind::Activated(n) => &def.activated[n].ability,
@@ -3413,9 +3425,9 @@ impl Game {
         } else if mode.alt {
             def.alt_cost.expect("has an alternative cost").0
         } else if mode.flashback {
-            def.flashback.unwrap_or(def.cost)
+            def.flashback.unwrap_or(def.cost).with_x(mode.x)
         } else if mode.mode == Some(OMEN_MODE) {
-            def.omen.as_ref().expect("an Omen").cost
+            def.omen.as_ref().expect("an Omen").cost.with_x(mode.x)
         } else {
             def.cost.with_x(mode.x)
         };
@@ -4617,7 +4629,7 @@ impl Game {
                     ..CastMode::default()
                 },
             ),
-            (Pending::Priority(p), Action::CastHarmonize(c, cr)) => self.cast(
+            (Pending::Priority(p), Action::CastHarmonize(c, cr)) => self.cast_maybe_x(
                 p,
                 c,
                 CastMode {
@@ -4626,7 +4638,7 @@ impl Game {
                     ..CastMode::default()
                 },
             ),
-            (Pending::Priority(p), Action::CastOmen(c)) => self.cast(
+            (Pending::Priority(p), Action::CastOmen(c)) => self.cast_maybe_x(
                 p,
                 c,
                 CastMode {
@@ -4781,6 +4793,22 @@ impl Game {
 
     /// CR 601.2: move to the stack, choose targets, pay, then the caster gets priority again
     /// (CR 117.3c).
+    /// Cast with `mode`, first asking for X when that mode's cost has {X} (an Omen or harmonize
+    /// cast: no action carries X there, so it's a decision answered with `Amount`).
+    fn cast_maybe_x(&mut self, p: PlayerId, card: ObjId, mode: CastMode) {
+        let def = self.def_of(card);
+        let has_x = if mode.mode == Some(OMEN_MODE) {
+            def.omen.as_ref().is_some_and(|o| o.cost.x > 0)
+        } else {
+            mode.flashback && def.flashback.is_some_and(|f| f.x > 0)
+        };
+        if !has_x {
+            return self.cast(p, card, mode);
+        }
+        let max = (self.untapped_sources(p).len() + self.players[p].pool.len()).min(30) as u8;
+        self.ask(p, Decision::ChooseCastX { card, mode, max });
+    }
+
     fn cast(&mut self, p: PlayerId, card: ObjId, mode: CastMode) {
         // Offspring is paid "as you cast" (CR 702.175a): fixed now, even if Zinnia leaves.
         let offspring = mode.kicked && self.offspring_cost(p, card).is_some();
@@ -5203,6 +5231,12 @@ impl Game {
                         division: Vec::new(),
                     });
                 }
+                if self.def_of(id).ward_discard {
+                    self.triggered.push(StackItem {
+                        kind: StackKind::WardDiscard { against: item.source },
+                        ..Game::casting(id, controller)
+                    });
+                }
                 if let Some(cost) = self.def_of(id).ward {
                     self.triggered.push(StackItem {
                         source: id,
@@ -5250,6 +5284,30 @@ impl Game {
             return;
         }
         let source = item.source;
+        if let StackKind::WardDiscard { against } = item.kind {
+            self.resolving = Some(Resolving {
+                item,
+                legal: Vec::new(),
+                remaining: VecDeque::new(),
+                acts: true,
+            });
+            if let Some(payer) = self
+                .items
+                .iter()
+                .rev()
+                .find(|i| i.source == against)
+                .map(|i| i.controller)
+            {
+                if self.players[payer].hand.is_empty() {
+                    self.counter_from(against);
+                } else {
+                    self.ask(payer, Decision::PayWardDiscard { against });
+                    return;
+                }
+            }
+            self.continue_resolving();
+            return;
+        }
         if let StackKind::WardLife { life, against } = item.kind {
             self.resolving = Some(Resolving {
                 item,
@@ -5655,6 +5713,20 @@ impl Game {
                 v.push(Action::No);
                 v
             }
+            Decision::PayWardDiscard { .. } => {
+                let mut v: Vec<Action> = self.players[p]
+                    .hand
+                    .iter()
+                    .copied()
+                    .map(Action::Discard)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
+            Decision::ChooseCastX { card, mode, max } => (0..=*max)
+                .filter(|&x| self.mode_affordable(p, *card, CastMode { x, ..*mode }))
+                .map(Action::Amount)
+                .collect(),
             Decision::PayWardLife { life, .. } => {
                 let mut v = Vec::new();
                 if self.players[p].life >= *life {
@@ -5892,6 +5964,10 @@ impl Game {
 
     fn decide(&mut self, p: PlayerId, a: Action) {
         let d = self.decision.take().expect("a decision");
+        if let (Decision::ChooseCastX { card, mode, .. }, Action::Amount(x)) = (&d, a) {
+            let (card, mode) = (*card, *mode);
+            return self.cast(p, card, CastMode { x, ..mode });
+        }
         if let Decision::CommanderToCommandZone { card } = d {
             if a == Action::Yes && matches!(self.obj(card).zone, Zone::Graveyard | Zone::Exile) {
                 self.move_to(card, Zone::Command);
@@ -6016,6 +6092,8 @@ impl Game {
                 self.lose_life(p, life);
             }
             (Decision::PayWardLife { against, .. }, Action::No) => self.counter_from(against),
+            (Decision::PayWardDiscard { .. }, Action::Discard(c)) => self.move_to(c, Zone::Graveyard),
+            (Decision::PayWardDiscard { against }, Action::No) => self.counter_from(against),
             (Decision::SacrificeNonland, Action::Pick(c)) => self.move_to(c, Zone::Graveyard),
             (Decision::MayDiscardOrStop, Action::Discard(c)) => self.move_to(c, Zone::Graveyard),
             (Decision::MayDiscardOrStop, Action::No) => {
@@ -7577,6 +7655,24 @@ impl Game {
                 for c in self.creatures(item.controller).collect::<Vec<_>>() {
                     let n = self.obj(c).counters;
                     self.add_counters(c, n);
+                }
+            }
+            Effect::ShrinkAllWithoutSubtypeX(sub) => {
+                let x = item.x as i32;
+                let ids: Vec<ObjId> = (0..2)
+                    .flat_map(|q| self.creatures(q).collect::<Vec<_>>())
+                    .filter(|&c| !self.has_subtype(c, sub))
+                    .collect();
+                for id in ids {
+                    let zcc = self.obj(id).zcc;
+                    self.until_eot.push(Modifier {
+                        obj: id,
+                        zcc,
+                        power: -x,
+                        toughness: -x,
+                        keywords: Keywords::NONE,
+                        dies: None,
+                    });
                 }
             }
             Effect::ExileControllerGainsPower(slot) => {

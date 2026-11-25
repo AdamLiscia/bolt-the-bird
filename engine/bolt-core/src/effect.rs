@@ -887,6 +887,8 @@ pub enum Effect {
     /// Exile the creature in `slot`; its controller gains life equal to its power (Swords to
     /// Plowshares).
     ExileControllerGainsPower(u8),
+    /// Each creature without this subtype gets -X/-X until end of turn, X the spell's X (Exude Toxin).
+    ShrinkAllWithoutSubtypeX(&'static str),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

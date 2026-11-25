@@ -3870,6 +3870,25 @@ fn script_core(name: &str) -> Option<Script> {
                 );
             },
         ),
+        // ---- TDM batch 10 (2026-11-25): X in an Omen or harmonize cost, ward—discard ----
+        "Scavenger Regent" => s(
+            &["Ward—Discard a card.", "Omen: Each non-Dragon creature gets -X/-X until end of turn."],
+            |d, _| {
+                d.ward_discard = true;
+                omen(d, Ability::new(vec![], vec![Effect::ShrinkAllWithoutSubtypeX("Dragon")]));
+            },
+        ),
+        "Nature's Rhythm" => s(
+            &[
+                "Search your library for a creature card with mana value X or less, put it onto the battlefield, then shuffle.",
+                "Harmonize {X}{G}{G}{G}{G}",
+            ],
+            |d, _| {
+                let to = SearchTo::Battlefield { tapped: false };
+                spell(d, vec![], vec![Effect::Search { what: SearchFor::CreatureMvAtMostX, to, n: 1, kicked_n: None }]);
+                harmonize(d, "{X}{G}{G}{G}{G}");
+            },
+        ),
         _ => None,
     }
 }
@@ -4154,6 +4173,8 @@ pub const SCRIPTED: &[&str] = &[
 /// Tarkir: Dragonstorm cards with scripts (each with a test in tests/tdm.rs); `lib.rs` checks every one
 /// is fully supported in the TDM set. Progress: docs/tdm-progress.md.
 pub const TDM_SCRIPTED: &[&str] = &[
+    "Scavenger Regent",
+    "Nature's Rhythm",
     "Sibsig Appraiser",
     "Iceridge Serpent",
     "Boulderborn Dragon",

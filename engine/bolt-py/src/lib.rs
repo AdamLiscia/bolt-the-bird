@@ -497,6 +497,11 @@ impl Game {
                         e.set_item("life", *life)?;
                         e.set_item("card", one(*against))?;
                     }
+                    D::PayWardDiscard { against } => e.set_item("card", one(*against))?,
+                    D::ChooseCastX { card, max, .. } => {
+                        e.set_item("card", one(*card))?;
+                        e.set_item("max", *max)?;
+                    }
                     D::LoseOrDiscard { n, .. } => e.set_item("life", *n)?,
                     D::Endure { n, .. } => e.set_item("x", *n)?,
                     D::Discard { left, optional, .. } => {

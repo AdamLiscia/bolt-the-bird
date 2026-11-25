@@ -19,6 +19,7 @@ import json
 import time
 import urllib.parse
 import urllib.request
+from pathlib import Path
 
 from bolt.data import ASSETS, DATA
 
@@ -34,8 +35,10 @@ def names_in_model_order(code: str) -> list[str]:
 
 
 def fetch_set(code: str) -> dict:
-    out, url = {}, "https://api.scryfall.com/cards/search?" + urllib.parse.urlencode(
-        {"q": f"e:{code.lower()} (is:booster or t:basic)", "unique": "cards"}
+    out, url = (
+        {},
+        "https://api.scryfall.com/cards/search?"
+        + urllib.parse.urlencode({"q": f"e:{code.lower()} (is:booster or t:basic)", "unique": "cards"}),
     )
     while url:
         page = json.load(urllib.request.urlopen(urllib.request.Request(url, headers=HEADERS)))
@@ -48,7 +51,7 @@ def fetch_set(code: str) -> dict:
 
 
 def names_from_file(path: str) -> list[str]:
-    data = json.loads(open(path).read())
+    data = json.loads(Path(path).read_text())
     if isinstance(data, list):
         return data
     names = list(data["shared_order"])

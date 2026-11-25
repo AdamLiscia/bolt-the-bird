@@ -1734,3 +1734,110 @@ fn purging_stormbrood_strips_counters_and_absorb_essence_pumps() {
     assert_eq!((g.power(mine), g.toughness(mine)), (pw + 2, t + 2));
     assert!(g.keywords(mine).has(Keywords::LIFELINK) && g.keywords(mine).has(Keywords::HEXPROOF));
 }
+
+// ---- batch 10: X in an Omen or harmonize cost, ward—discard ----
+
+#[test]
+fn scavenger_regent_omen_asks_for_x_and_shrinks_only_non_dragons() {
+    let mut g = table();
+    let regent = hand(&mut g, 0, "Scavenger Regent"); // Omen: Exude Toxin, {X}{B}{B}
+    let theirs = put(&mut g, 1, "Iceridge Serpent");
+    let dragon = put(&mut g, 1, "Dirgur Island Dragon");
+    let t = g.def_of(theirs).toughness as u8;
+    begin(&mut g);
+    assert!(g.legal_actions().contains(&Action::CastOmen(regent)));
+    let n = paid(&mut g, |g| {
+        act(g, Action::CastOmen(regent));
+        assert!(
+            matches!(g.pending, Pending::Decide(0)),
+            "X is asked as a decision"
+        );
+        let legal = g.legal_actions();
+        assert!(legal.contains(&Action::Amount(0)) && legal.contains(&Action::Amount(t)));
+        assert!(
+            !legal.contains(&Action::Amount(30)),
+            "only an X you can pay is offered"
+        );
+        act(g, Action::Amount(t));
+        resolve_all(g, &[]);
+    });
+    assert_eq!(n, t as usize + 2, "{{X}}{{B}}{{B}} with X = {t}");
+    assert_eq!(g.obj(theirs).zone, Zone::Graveyard, "-X/-X kills the non-Dragon");
+    assert_eq!(g.obj(dragon).zone, Zone::Battlefield, "Dragons are spared");
+    assert_eq!(
+        g.obj(regent).zone,
+        Zone::Library,
+        "an Omen shuffles into the library"
+    );
+}
+
+#[test]
+fn scavenger_regent_ward_discard_counters_unless_a_card_is_discarded() {
+    for discard in [false, true] {
+        let mut g = table();
+        let regent = put(&mut g, 1, "Scavenger Regent");
+        let fire = hand(&mut g, 0, "Channeled Dragonfire"); // 2 damage to any target
+        let spare = hand(&mut g, 0, "Iceridge Serpent");
+        begin(&mut g);
+        act(&mut g, Action::Cast(fire));
+        act(&mut g, Action::Target(obj(regent)));
+        let answer = if discard {
+            Action::Discard(spare)
+        } else {
+            Action::No
+        };
+        let mut asked = false;
+        for _ in 0..50 {
+            if g.items.is_empty() && !matches!(g.pending, Pending::Decide(_)) {
+                break;
+            }
+            if matches!(g.pending, Pending::Decide(0)) {
+                assert!(g.legal_actions().contains(&Action::Discard(spare)));
+                assert!(g.legal_actions().contains(&Action::No));
+                asked = true;
+                act(&mut g, answer);
+            } else {
+                act(&mut g, Action::PassPriority);
+            }
+        }
+        assert!(asked, "the spell's controller is asked to discard");
+        assert_eq!(g.obj(fire).zone, Zone::Graveyard);
+        if discard {
+            assert_eq!(g.obj(spare).zone, Zone::Graveyard);
+            assert_eq!(g.obj(regent).damage, 2, "paid the ward: the spell resolves");
+        } else {
+            assert_eq!(g.obj(spare).zone, Zone::Hand);
+            assert_eq!(g.obj(regent).damage, 0, "didn't pay: countered");
+        }
+    }
+}
+
+#[test]
+fn natures_rhythm_from_hand_and_by_harmonize_with_x() {
+    // From hand: an ordinary X spell.
+    let mut g = table();
+    let rhythm = hand(&mut g, 0, "Nature's Rhythm");
+    begin(&mut g);
+    let small = g.add_card(0, tid("Iceridge Serpent"), Zone::Library); // after the draw step
+    let mv = g.def_of(small).cost.mana_value() as u8;
+    act(&mut g, Action::CastX(rhythm, mv));
+    resolve_all(&mut g, &[Action::Pick(small)]);
+    assert_eq!(g.obj(small).zone, Zone::Battlefield);
+    assert_eq!(g.obj(rhythm).zone, Zone::Graveyard);
+
+    // From the graveyard: harmonize, tapping a creature, then X as a decision.
+    let mut g = table();
+    let rhythm = g.add_card(0, tid("Nature's Rhythm"), Zone::Graveyard);
+    let tapper = put(&mut g, 0, "Iceridge Serpent");
+    begin(&mut g);
+    let small = g.add_card(0, tid("Iceridge Serpent"), Zone::Library);
+    let mv = g.def_of(small).cost.mana_value() as u8;
+    assert!(g.legal_actions().contains(&Action::CastHarmonize(rhythm, tapper)));
+    act(&mut g, Action::CastHarmonize(rhythm, tapper));
+    assert!(matches!(g.pending, Pending::Decide(0)));
+    act(&mut g, Action::Amount(mv));
+    resolve_all(&mut g, &[Action::Pick(small)]);
+    assert!(g.obj(tapper).tapped);
+    assert_eq!(g.obj(small).zone, Zone::Battlefield);
+    assert_eq!(g.obj(rhythm).zone, Zone::Exile, "harmonize exiles it");
+}

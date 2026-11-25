@@ -112,7 +112,10 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
     labels = {
         "Surveil": (f"Put {subject} into your graveyard", f"Keep {subject} on top"),
         "Scry": (f"Put {subject} on the bottom", f"Keep {subject} on top"),
-        "Endure": (f"{src}: put {dec.get('x', 0)} +1/+1 counters on it", f"{src}: create a {dec.get('x', 0)}/{dec.get('x', 0)} Spirit token"),
+        "Endure": (
+            f"{src}: put {dec.get('x', 0)} +1/+1 counters on it",
+            f"{src}: create a {dec.get('x', 0)}/{dec.get('x', 0)} Spirit token",
+        ),
         "Tuck": (f"Put {subject} on top of your library", f"Put {subject} on the bottom"),
         "May": (f"{src}: yes", f"{src}: no"),
         "MayPay": (f"Pay {dec.get('cost', '')} ({src})", "Don't pay"),
@@ -125,7 +128,7 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
     if d in labels:
         return labels[d][0 if yes else 1]
     if not yes:
-        return {"Discard": "Don't discard", "LoseOrDiscard": f"Lose {dec.get('life', 0)} life instead",
+        return {"Discard": "Don't discard", "PayWardDiscard": "Don't discard (it's countered)", "LoseOrDiscard": f"Lose {dec.get('life', 0)} life instead",
                 "SacrificeAnother": "Don't sacrifice", "Search": "Find nothing", "LookPick": "Take nothing",
                 "GenesisPick": "Done choosing"}.get(d)  # fmt: skip
     return None
@@ -146,7 +149,16 @@ def actions(obs: dict, me: int) -> list[dict]:
             label = _decision_label(dec, kind, a, names[0] if names else "") or label
             if kind in ("Yes", "No") and not objects:
                 oid, subject = _subject(dec)  # the card the yes/no is about (surveil, tuck, ward)
-                if oid is not None and dec.get("kind") in ("Surveil", "Scry", "Tuck", "PayWard", "PayWardLife", "PayOrCountered", "SplitPiles"):
+                if oid is not None and dec.get("kind") in (
+                    "Surveil",
+                    "Scry",
+                    "Tuck",
+                    "PayWard",
+                    "PayWardLife",
+                    "PayWardDiscard",
+                    "PayOrCountered",
+                    "SplitPiles",
+                ):
                     objects, names = [oid], [subject]
         act = {"index": k, "kind": kind, "label": label, "objects": objects, "cards": names}
         if kind == "TargetPlayer":

@@ -47,6 +47,21 @@ def main():
         "test in `engine/bolt-cards/tests/tdm.rs`. Order: commons and uncommons by how often 17lands drafters "
         "picked them, then rares; a set keyword is built once, then every card that uses it.",
         "",
+        "## Before the play network can use this engine (retraining)",
+        "",
+        "The trained player (`play_v3_ppo4_i170.pt`) was built on Foundations. Tarkir changes what it sees:",
+        "",
+        "- **Action kinds:** `CastHarmonize` and `CastOmen` are new (`src/bolt/play_encoding.py` `KINDS` "
+        "doesn't list them; `encode` maps both to one shared unknown-kind slot, so the network can't tell them apart). X for an Omen or harmonize cast is chosen "
+        "with the existing `Amount` action (decision `ChooseCastX`), so it adds no kind.",
+        "- **Cards:** every Tarkir card and token is new to the card embedding (`card_names()` grows).",
+        "- **Decisions:** new decision kinds (`ChooseCastX`, `PayWardDiscard`, `ChooseEnterMode`, "
+        "`CommanderToCommandZone`, ...) arrive under the existing `pending_Decide` feature.",
+        "",
+        "So the network needs its action-kind and card tables padded (old rows kept, new rows initialised), "
+        "then fine-tuning or PPO on Tarkir games before the service switches to the tarkir engine. Not "
+        "started: ask the Nerd Leagues orchestrator first.",
+        "",
         "## Remaining",
         "",
         "| # | Card | Rarity | Picks | Needs a new mechanic |",
