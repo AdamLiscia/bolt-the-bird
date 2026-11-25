@@ -57,6 +57,20 @@ def engine_game(a: list[int], b: list[int], seed: int, first: int = 0):
     return be.Game(a, b, seed=seed, first=first, set=SET)
 
 
+def load_cmd_kit() -> Kit:
+    """The Commander pool (every scripted card across sets): no drafting, no bot, no judge."""
+    import json
+
+    from bolt.cards import CardInfo
+    from bolt.data import ASSETS
+
+    images = json.loads((ASSETS / "CMD_card_images.json").read_text())
+    tokens = [{"card_id": i, "name": n, "power": pw, "toughness": t, "colors": c, "types": ty, "image": None}
+              for i, n, pw, t, c, ty in be.token_info("CMD")]  # fmt: skip
+    return Kit(info=CardInfo("CMD"), bolt=None, human=None, judge=None, packs=None, net=None,
+               models={"drafter": None, "human_drafter": None, "player": None}, images=images, tokens=tokens)  # fmt: skip
+
+
 def load_set_kit(code: str) -> Kit:
     """A set without a trained player or deck judge (Tarkir): one drafter, trained on 17lands human picks,
     plays both drafting roles; decks are built by a simple rule (`simple_build`)."""
@@ -113,6 +127,8 @@ def simple_build(info, pool: list[int]) -> dict:
 
 
 def load_kit() -> Kit:
+    if SET == "CMD":
+        return load_cmd_kit()
     if SET != "FDN":
         return load_set_kit(SET)
     from bolt.cards import CardInfo
@@ -233,6 +249,17 @@ class GameBody(BaseModel):
     frames: bool = False
     human_seats: list[int] | None = None  # [0, 1]: two people, no bot seat
     manual_mana_seats: list[int] = []  # human seats that tap their own mana (TapForMana moves)
+    format: str | None = None  # "commander" (docs/api.md, Commander games)
+    commander_a: str | list[str] | None = None  # a name, or two for partners
+    commander_b: str | list[str] | None = None
+    starting_life: int = 40
+    auto_command_zone: list[bool] = [False, False]  # per seat: always move the commander there
+
+
+class ValidateBody(BaseModel):
+    format: str = "commander"
+    commander: str | list[str]
+    deck: list[Card]
 
 
 class ManaBody(BaseModel):
@@ -287,7 +314,14 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
             raise ApiError(422, "unknown card names", unknown_names=unknown)
         return [kit.info.index[n] for n in card_names]
 
+    def packs():
+        if kit.packs is None:
+            raise ApiError(422, f"no drafting for {SET}")
+        return kit.packs
+
     def model(bot: str):
+        if kit.bolt is None:
+            raise ApiError(422, f"no drafting for {SET}")
         if bot not in ("bolt", "human"):
             raise ApiError(422, "bot must be 'bolt' or 'human'")
         return kit.bolt if bot == "bolt" else kit.human
@@ -411,7 +445,7 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
         with lock:
             others = kit.human if body.drafters == "human" else kit.bolt
             mine = kit.bolt if body.drafter == "bolt" else kit.human
-            d = PracticeDraft(kit.packs, others, mine, kit.info.n, seed)
+            d = PracticeDraft(packs(), others, mine, kit.info.n, seed)
             while not d.done:
                 probs = np.asarray(d.coach(), dtype=float)
                 # Bolt takes its best card; the human model samples, the way people's picks vary
@@ -440,6 +474,41 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
                 "colors_matched": bool(wanted & set(deck["colors"])) if wanted else None}  # fmt: skip
 
     # ---- games --------------------------------------------------------------------------------
+
+    supported = be.supported_mask(SET) if SET != "FDN" else None
+
+    def commander_names(c) -> list[str]:
+        names_ = [c] if isinstance(c, str) else list(c or [])
+        if not 1 <= len(names_) <= 2:
+            raise ApiError(422, "a commander is one name, or two for partners")
+        return names_
+
+    def check_commander_deck(commanders: list[str], cards_: list[Card]) -> tuple[list[int], list[int], dict]:
+        """Ids for the commanders and the rest of the deck (a listed commander is taken out once),
+        plus what's wrong: names outside the pool, cards not scripted yet, and deck problems."""
+        listed = []
+        for c in cards_:
+            listed += [c.name] * max(c.qty, 0)
+        for n in commanders:
+            if n in listed:
+                listed.remove(n)
+        unknown = sorted({n for n in listed + commanders if n not in kit.info.index})
+        known = [n for n in listed if n in kit.info.index]
+        cmd_ids = [kit.info.index[n] for n in commanders if n in kit.info.index]
+        missing = sorted({n for n in known + [n for n in commanders if n in kit.info.index]
+                          if supported is not None and not supported[kit.info.index[n]]})  # fmt: skip
+        ids = [kit.info.index[n] for n in known]
+        problems = [f"not a card in the pool: {n}" for n in unknown]
+        if len(cmd_ids) == len(commanders):
+            problems += be.commander_deck_problems(cmd_ids, ids, set=SET)
+        return cmd_ids, ids, {"problems": problems, "missing": missing}
+
+    @router.post("/deck/validate")
+    def deck_validate(body: ValidateBody):
+        if body.format != "commander":
+            raise ApiError(422, "format must be 'commander'")
+        _, _, found = check_commander_deck(commander_names(body.commander), body.deck)
+        return {"ok": not found["problems"] and not found["missing"], **found}
 
     def deck_ids(cards_: list[Card]) -> list[int]:
         unknown = sorted({c.name for c in cards_ if c.name not in kit.info.index})
@@ -615,7 +684,23 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
             raise ApiError(422, f"{SET} bot play isn't trained yet: use human_seats [0, 1]")
         if len(humans) == 1 and body.pilot not in ("network", "smart", "smart_strong", "rules"):
             raise ApiError(422, "pilot must be network, smart, smart_strong or rules")
-        a, b = deck_ids(body.deck_a), deck_ids(body.deck_b)
+        commander = body.format == "commander"
+        if commander:
+            if len(body.auto_command_zone) != 2:
+                raise ApiError(422, "auto_command_zone is two booleans, one per seat")
+            sides = []
+            for seat, (c, deck) in enumerate([(body.commander_a, body.deck_a), (body.commander_b, body.deck_b)]):
+                ids_c, ids, found = check_commander_deck(commander_names(c), deck)
+                if found["missing"]:
+                    raise ApiError(422, "cards the engine doesn't play yet", seat=seat, missing=found["missing"])
+                if found["problems"]:
+                    raise ApiError(422, "invalid_deck", seat=seat, problems=found["problems"])
+                sides.append((ids_c, ids))
+            (ca, a), (cb, b) = sides
+        elif body.format is not None:
+            raise ApiError(422, "format must be 'commander' (or left out for a 40-card game)")
+        else:
+            a, b = deck_ids(body.deck_a), deck_ids(body.deck_b)
         seed = body.seed if body.seed is not None else secrets.randbelow(2**31)
         first = body.first if body.first in (0, 1) else seed % 2
         with lock:
@@ -623,7 +708,12 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
             if len(games) >= max_games:
                 raise ApiError(429, "too many games", limit=max_games)
             gid = "g_" + secrets.token_hex(6)
-            game = engine_game(a, b, seed=seed, first=first)
+            if commander:
+                game = be.Game.commander(a, b, ca, cb, seed, first=first, set=SET,
+                                         starting_life=body.starting_life,
+                                         auto_command_zone=tuple(body.auto_command_zone))  # fmt: skip
+            else:
+                game = engine_game(a, b, seed=seed, first=first)
             game.auto_pass = False  # forced passes go through `advance`, so frames can catch every moment
             game.smart_pay = True  # keep the colors the hand still needs (both seats)
             for s in body.manual_mana_seats:
@@ -799,7 +889,7 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
             if len(drafts) >= MAX_DRAFTS:
                 drafts.pop(min(drafts, key=lambda k: drafts[k]["used"]))
             did = "d_" + secrets.token_hex(6)
-            drafts[did] = {"draft": PracticeDraft(kit.packs, bots, kit.bolt, kit.info.n, seed), "bots": body.bots,
+            drafts[did] = {"draft": PracticeDraft(packs(), bots, kit.bolt, kit.info.n, seed), "bots": body.bots,
                            "seed": seed, "used": time.time()}  # fmt: skip
             return {"draft_id": did, "seed": seed, "state": draft_state(did)}
 
@@ -856,7 +946,7 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
         first = "human" if body.drafters == "human" else "bolt"
         with lock:
             others = kit.bolt if body.drafters == "bolt" else kit.human
-            d = PracticeDraft(kit.packs, others, kit.bolt if first == "bolt" else kit.human, kit.info.n, seed)
+            d = PracticeDraft(packs(), others, kit.bolt if first == "bolt" else kit.human, kit.info.n, seed)
             while not d.done:
                 probs = np.asarray(d.coach(), dtype=float)
                 i = int(np.argmax(probs)) if first == "bolt" else int(rng.choice(len(probs), p=probs / probs.sum()))

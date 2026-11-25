@@ -439,6 +439,35 @@ the same endpoints, on the tarkir engine; 8766 keeps serving FDN. `GET /v1/healt
   `EnterAsCopy` (`Pick` a creature or `No`), `PayWardDiscard` (`Discard` a card or `No`, then it's
   countered).
 
+### The Commander service (`set: "CMD"`, 127.0.0.1:8768)
+
+Status (2026-11-25): **for admin-vs-admin Commander games with real decks.** The card pool is every
+card the engine knows across sets (`GET /v1/cards?set=CMD`: FDN, TDM, BLC and the playgroup decks'
+cards, 3,031 plus tokens); a card plays only once it's scripted. No drafting (422), no bot (422).
+
+`POST /v1/deck/validate`:
+
+```json
+{"format": "commander", "commander": "Xenagos, God of Revels", "deck": [{"name": "Forest", "qty": 30}, ...]}
+```
+
+returns `{"ok": bool, "problems": [...], "missing": [...]}`. `problems` are the deck rules (one or two
+commanders, 100 cards with them, singleton, color identity) and names not in the pool; `missing` are cards
+in the pool the engine doesn't script yet. `ok` means the deck can be played now. A listed commander is
+counted once.
+
+`POST /v1/game` with `"set": "CMD", "format": "commander"`, `commander_a`/`commander_b` (a name or a
+list of two), `deck_a`/`deck_b`, `"human_seats": [0, 1]`, and optionally `starting_life` (default 40) and
+`auto_command_zone` (`[bool, bool]`). It's refused with 422 and the seat if a deck has `missing` cards
+(`{"error": "cards the engine doesn't play yet", "seat": 0, "missing": [...]}`) or `problems`
+(`{"error": "invalid_deck", "seat": 0, "problems": [...]}`). Every game endpoint works as for FDN.
+
+The view adds, per player, `command` (`[{"id", "name", "card_id", "tax", "commander", "owner"}]`) and
+`commander_damage` (`[{"id", "name", "card_id", "owner", "damage"}]`), and `"commander": true` with
+`"owner"` on commander objects in any zone. A commander going to a graveyard or exile asks its owner
+`pending.kind = "CommanderToCommandZone"` (Yes moves it; No leaves it), unless that seat's
+`auto_command_zone` is on.
+
 ### Commander games (Bloomburrow Commander, `set: "BLC"`): planned contract
 
 Status (2026-11-25): **the engine rules are built and tested on the `tarkir` branch; the service does not
