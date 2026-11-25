@@ -347,6 +347,11 @@ pub enum Effect {
     ReturnSelfTapped,
     /// Return the source from your graveyard to your hand.
     ReturnSelfToHand,
+    /// Keyword counters on the creature in `slot` (CR 122.1b): it has these keywords for good.
+    KeywordCounter {
+        slot: u8,
+        keywords: crate::Keywords,
+    },
     /// Look at the top `n` cards of your library; you may pick one that matches `pick` and put it
     /// `chosen_to`; the rest go `rest_to`.
     LookAtTop {

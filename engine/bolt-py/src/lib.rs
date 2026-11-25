@@ -68,6 +68,7 @@ pub fn encode(a: &Action) -> Encoded {
         CastFromGraveyard(c) => ("CastFromGraveyard", id(c), -1, -1),
         CastFromGraveyardAs(c, t) => ("CastFromGraveyardAs", id(c), t as i64, -1),
         TapForMana(c, color) => ("TapForMana", id(c), color as i64, -1),
+        CastHarmonize(c, cr) => ("CastHarmonize", id(c), id(cr), -1),
     }
 }
 
@@ -94,7 +95,7 @@ pub fn objects(a: &Action) -> [Option<ObjId>; 3] {
         | TapForMana(c, _) => [Some(c), None, None],
         Target(bolt_core::Target::Object(c)) => [Some(c), None, None],
         ActivateWith(c, _, v) => [Some(c), None, Some(v)],
-        CastWith(c, x) => [Some(c), Some(x), None],
+        CastWith(c, x) | CastHarmonize(c, x) => [Some(c), Some(x), None],
         AttackPlaneswalker(c, w) => [Some(c), Some(w), None],
         ActivateX { id: c, victim, .. } => [Some(c), None, victim],
         Block { blocker, attacker } => [Some(blocker), Some(attacker), None],

@@ -53,6 +53,8 @@ pub fn token_defs() -> Vec<CardDef> {
         token("Warrior", "Warrior", 1, 1, Keywords::NONE), // Tarkir's mobilize tokens (red)
         token("Spirit", "Spirit", 0, 0, Keywords::NONE),   // endure: made N/N with counters
         token("Bird", "Bird", 1, 1, Keywords::FLYING),
+        token("Zombie Druid", "Zombie Druid", 2, 2, Keywords::NONE),
+        token("Elephant", "Elephant", 5, 5, Keywords::NONE),
     ]
 }
 
@@ -120,6 +122,8 @@ pub struct Tokens {
     pub warrior: usize,
     pub spirit_endure: usize,
     pub bird: usize,
+    pub zombie_druid: usize,
+    pub elephant: usize,
 }
 
 impl Tokens {
@@ -151,6 +155,8 @@ impl Tokens {
             warrior: base + 23,
             spirit_endure: base + 24,
             bird: base + 25,
+            zombie_druid: base + 26,
+            elephant: base + 27,
         }
     }
 }
@@ -346,6 +352,21 @@ fn endure(n: u8, t: &Tokens) -> Effect {
         n,
         spirit: t.spirit_endure,
     }
+}
+
+/// "Renew — {cost}, Exile this card from your graveyard: <effect>. Activate only as a sorcery."
+fn renew(d: &mut CardDef, cost: &str, targets: Vec<Filter>, effects: Vec<Effect>) {
+    let n = activated(d, cost, false, targets, effects);
+    let a = &mut d.activated[n];
+    a.from_graveyard = true;
+    a.exile_self = true;
+    a.sorcery = true;
+}
+
+/// "Harmonize {cost}": cast from the graveyard for it, optionally tapping a creature for {X} less.
+fn harmonize(d: &mut CardDef, cost: &str) {
+    d.flashback = ManaCost::parse(cost);
+    d.harmonize = true;
 }
 
 fn modes(d: &mut CardDef, modes: Vec<Ability>) {
@@ -3343,6 +3364,94 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::Attacks, vec![], vec![Effect::MayPay(cost), endure(1, t)]);
             },
         ),
+        // ---- TDM batch 6b: renew and harmonize ----
+        "Adorned Crocodile" => s(
+            &[
+                "When this creature dies, create a 2/2 black Zombie Druid creature token.",
+                "Renew — {B}, Exile this card from your graveyard: Put a +1/+1 counter on target creature. Activate only as a sorcery.",
+            ],
+            |d, t| {
+                on(d, When::Dies, vec![], vec![Effect::CreateToken { who: Who::You, def: t.zombie_druid, n: 1 }]);
+                renew(d, "{B}", vec![CREATURE], vec![Effect::Counters { slot: 0, n: 1 }]);
+            },
+        ),
+        "Agent of Kotis" => s(
+            &["Renew — {3}{U}, Exile this card from your graveyard: Put two +1/+1 counters on target creature. Activate only as a sorcery."],
+            |d, _| renew(d, "{3}{U}", vec![CREATURE], vec![Effect::Counters { slot: 0, n: 2 }]),
+        ),
+        "Alchemist's Assistant" => s(
+            &["Renew — {1}{B}, Exile this card from your graveyard: Put a lifelink counter on target creature. Activate only as a sorcery."],
+            |d, _| renew(d, "{1}{B}", vec![CREATURE], vec![Effect::KeywordCounter { slot: 0, keywords: Keywords::LIFELINK }]),
+        ),
+        "Champion of Dusan" => s(
+            &["Renew — {1}{G}, Exile this card from your graveyard: Put a +1/+1 counter and a trample counter on target creature. Activate only as a sorcery."],
+            |d, _| {
+                renew(
+                    d,
+                    "{1}{G}",
+                    vec![CREATURE],
+                    vec![Effect::Counters { slot: 0, n: 1 }, Effect::KeywordCounter { slot: 0, keywords: Keywords::TRAMPLE }],
+                )
+            },
+        ),
+        "Constrictor Sage" => s(
+            &[
+                "When this creature enters, tap target creature an opponent controls and put a stun counter on it.",
+                "Renew — {2}{U}, Exile this card from your graveyard: Tap target creature an opponent controls and put a stun counter on it. Activate only as a sorcery.",
+            ],
+            |d, _| {
+                on(d, When::Enters, vec![OPP_CREATURE], vec![Effect::TapAndStun(0)]);
+                renew(d, "{2}{U}", vec![OPP_CREATURE], vec![Effect::TapAndStun(0)]);
+            },
+        ),
+        "Sagu Pummeler" => s(
+            &["Renew — {4}{G}, Exile this card from your graveyard: Put two +1/+1 counters and a reach counter on target creature. Activate only as a sorcery."],
+            |d, _| {
+                renew(
+                    d,
+                    "{4}{G}",
+                    vec![CREATURE],
+                    vec![Effect::Counters { slot: 0, n: 2 }, Effect::KeywordCounter { slot: 0, keywords: Keywords::REACH }],
+                )
+            },
+        ),
+        "Sage of the Fang" => s(
+            &[
+                "When this creature enters, put a +1/+1 counter on target creature.",
+                "Renew — {3}{G}, Exile this card from your graveyard: Put a +1/+1 counter on target creature, then double the number of +1/+1 counters on that creature. Activate only as a sorcery.",
+            ],
+            |d, _| {
+                on(d, When::Enters, vec![CREATURE], vec![Effect::Counters { slot: 0, n: 1 }]);
+                renew(d, "{3}{G}", vec![CREATURE], vec![Effect::Counters { slot: 0, n: 1 }, Effect::DoubleCounters(0)]);
+            },
+        ),
+        "Unending Whisper" => s(&["Draw a card.", "Harmonize {5}{U}"], |d, _| {
+            spell(d, vec![], vec![draw(1)]);
+            harmonize(d, "{5}{U}");
+        }),
+        "Wild Ride" => s(&["Target creature gets +3/+0 and gains haste until end of turn.", "Harmonize {4}{R}"], |d, _| {
+            spell(d, vec![CREATURE], vec![Effect::Pump { slot: 0, power: 3, toughness: 0 }, Effect::Grant { slot: 0, keywords: Keywords::HASTE }]);
+            harmonize(d, "{4}{R}");
+        }),
+        "Roamer's Routine" => s(
+            &["Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.", "Harmonize {4}{G}"],
+            |d, _| {
+                spell(d, vec![], vec![search(SearchFor::BasicLand, SearchTo::Battlefield { tapped: true })]);
+                harmonize(d, "{4}{G}");
+            },
+        ),
+        "Ureni's Rebuff" => s(&["Return target creature to its owner's hand.", "Harmonize {5}{U}"], |d, _| {
+            spell(d, vec![CREATURE], vec![Effect::Bounce(0)]);
+            harmonize(d, "{5}{U}");
+        }),
+        "Channeled Dragonfire" => s(&["Channeled Dragonfire deals 2 damage to any target.", "Harmonize {5}{R}{R}"], |d, _| {
+            spell(d, vec![Filter::ANY], vec![damage(2, Recipient::Target(0))]);
+            harmonize(d, "{5}{R}{R}");
+        }),
+        "Mammoth Bellow" => s(&["Create a 5/5 green Elephant creature token.", "Harmonize {5}{G}{U}{R}"], |d, t| {
+            spell(d, vec![], vec![Effect::CreateToken { who: Who::You, def: t.elephant, n: 1 }]);
+            harmonize(d, "{5}{G}{U}{R}");
+        }),
         _ => None,
     }
 }
@@ -3688,4 +3797,17 @@ pub const TDM_SCRIPTED: &[&str] = &[
     "Sandskitter Outrider",
     "Inspirited Vanguard",
     "Descendant of Storms",
+    "Adorned Crocodile",
+    "Agent of Kotis",
+    "Alchemist's Assistant",
+    "Champion of Dusan",
+    "Constrictor Sage",
+    "Sagu Pummeler",
+    "Sage of the Fang",
+    "Unending Whisper",
+    "Wild Ride",
+    "Roamer's Routine",
+    "Ureni's Rebuff",
+    "Channeled Dragonfire",
+    "Mammoth Bellow",
 ];

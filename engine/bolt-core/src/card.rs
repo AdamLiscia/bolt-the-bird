@@ -165,6 +165,8 @@ pub struct Activated {
     pub tap_untapped: Option<(&'static str, u8)>,
     /// Tap the creature this is attached to as part of the cost (Fishing Pole).
     pub tap_attached: bool,
+    /// "Exile this card from your graveyard" in the cost (renew).
+    pub exile_self: bool,
     pub ability: Ability,
 }
 
@@ -212,6 +214,9 @@ pub struct CardDef {
     pub second_spell_discount: u8,
     /// "{1}: Add {A}, {B}, or {C}. Activate only once each turn." (the Devotees): the colors.
     pub filter_mana: Option<[bool; 5]>,
+    /// Harmonize (Tarkir: Dragonstorm): cast from the graveyard for `flashback` (the harmonize cost),
+    /// optionally tapping an untapped creature you control to pay {X} less, X its power; then exile.
+    pub harmonize: bool,
     /// Doubling Season: tokens you'd create and counters you'd put on your permanents are doubled
     /// (CR 614.1a).
     pub doubles_tokens_and_counters: bool,
@@ -397,6 +402,7 @@ impl CardDef {
             behold: Behold::No,
             second_spell_discount: 0,
             filter_mana: None,
+            harmonize: false,
             subtype_enters_with_counter: None,
         }
     }
@@ -476,6 +482,7 @@ impl CardDef {
             behold: Behold::No,
             second_spell_discount: 0,
             filter_mana: None,
+            harmonize: false,
             subtype_enters_with_counter: None,
         }
     }
@@ -555,6 +562,7 @@ impl CardDef {
             behold: Behold::No,
             second_spell_discount: 0,
             filter_mana: None,
+            harmonize: false,
             subtype_enters_with_counter: None,
         }
     }

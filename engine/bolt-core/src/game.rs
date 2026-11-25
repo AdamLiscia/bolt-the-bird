@@ -312,6 +312,8 @@ pub enum Action {
     /// Tap (or sacrifice) a mana source for mana of color `c` (0-4 WUBRG, 5 colorless), into the pool.
     /// Offered only to players with manual mana on, at priority; it doesn't use the stack (CR 605.3).
     TapForMana(ObjId, u8),
+    /// Cast with harmonize from the graveyard, tapping this creature to pay {X} less (X its power).
+    CastHarmonize(ObjId, ObjId),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -2276,13 +2278,30 @@ impl Game {
                 .collect();
         }
         if from_graveyard {
-            return vec![(
+            let mut v = vec![(
                 Action::CastFlashback(c),
                 CastMode {
                     flashback: true,
                     ..CastMode::default()
                 },
             )];
+            if def.harmonize {
+                for cr in self
+                    .creatures(p)
+                    .filter(|&x| !self.obj(x).tapped)
+                    .collect::<Vec<_>>()
+                {
+                    v.push((
+                        Action::CastHarmonize(c, cr),
+                        CastMode {
+                            flashback: true,
+                            extra: Some(cr),
+                            ..CastMode::default()
+                        },
+                    ));
+                }
+            }
+            return v;
         }
         if !def.modes.is_empty() {
             return (0..def.modes.len())
@@ -2449,6 +2468,10 @@ impl Game {
         } else {
             0
         };
+        // Harmonize: tapping a creature pays {X} less, X its power.
+        if let (true, true, Some(cr)) = (mode.flashback, def.harmonize, mode.extra) {
+            cost.generic = cost.generic.saturating_sub(self.power(cr).clamp(0, 255) as u8);
+        }
         // Highspire Bell-Ringer: "The second spell you cast each turn costs {1} less to cast."
         let second: u8 = if self.spells_cast[p] == 1 {
             self.permanents(p)
@@ -2960,6 +2983,9 @@ impl Game {
         if a.sacrifice_self {
             self.move_to(id, Zone::Graveyard);
         }
+        if a.exile_self && self.obj(id).zone == Zone::Graveyard {
+            self.move_to(id, Zone::Exile); // renew: "Exile this card from your graveyard"
+        }
     }
 
     /// Creature types `p` could sensibly name: those of creatures they control and of creature
@@ -3293,6 +3319,15 @@ impl Game {
                     ..CastMode::default()
                 },
             ),
+            (Pending::Priority(p), Action::CastHarmonize(c, cr)) => self.cast(
+                p,
+                c,
+                CastMode {
+                    flashback: true,
+                    extra: Some(cr),
+                    ..CastMode::default()
+                },
+            ),
             (Pending::Priority(p), Action::CastFlashback(c)) => self.cast(
                 p,
                 c,
@@ -3478,9 +3513,15 @@ impl Game {
         let cost = self.spell_cost(p, card, mode, &item.targets);
         // CR 601.2h: additional costs are paid with the mana. Mana first, so a creature can tap for
         // mana and then be sacrificed.
-        self.pay_mana_for(p, &cost, None, PayFor::Spell(card));
+        // Harmonize: the creature tapped to lower the cost can't also tap for mana to pay it.
+        let harmonized = item
+            .extra
+            .filter(|_| item.flashback && self.def_of(card).harmonize);
+        self.pay_mana_for(p, &cost, harmonized, PayFor::Spell(card));
         if let Some(x) = item.extra {
-            if self.obj(x).zone != Zone::Graveyard {
+            if harmonized.is_some() {
+                self.obj_mut(x).tapped = true; // harmonize taps the creature; it isn't sacrificed
+            } else if self.obj(x).zone != Zone::Graveyard {
                 self.move_to(x, Zone::Graveyard);
             }
         }
@@ -4967,6 +5008,14 @@ impl Game {
                     self.ask(item.controller, Decision::SacrificeAnother { source: src });
                 } else {
                     self.resolving.as_mut().expect("resolving").remaining.clear();
+                }
+            }
+            Effect::KeywordCounter { slot, keywords } => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    if self.obj(id).zone == Zone::Battlefield {
+                        let o = self.obj_mut(id);
+                        o.granted = o.granted.with(keywords);
+                    }
                 }
             }
             Effect::ReturnSelfToHand => {

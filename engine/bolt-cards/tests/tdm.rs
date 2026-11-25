@@ -1082,3 +1082,140 @@ fn descendant_of_storms_endures_only_if_paid() {
         assert_eq!(g.obj(d).counters, counters, "paid: {pay}");
     }
 }
+
+// ---- batch 6b: renew and harmonize ----
+
+#[test]
+fn renew_exiles_the_card_from_the_graveyard_as_a_sorcery() {
+    let mut g = table();
+    let c = g.add_card(0, tid("Champion of Dusan"), Zone::Graveyard);
+    let mine = put(&mut g, 0, "Humbling Elder");
+    begin(&mut g);
+    assert!(g.legal_actions().contains(&Action::Activate(c, 0)));
+    act(&mut g, Action::Activate(c, 0));
+    act(&mut g, Action::Target(obj(mine)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(c).zone, Zone::Exile, "exiled as the cost");
+    assert_eq!(g.obj(mine).counters, 1);
+    assert!(g.keywords(mine).has(Keywords::TRAMPLE));
+    // A keyword counter lasts: still trample next turn.
+    g.start_turn(5, 0);
+    assert!(g.keywords(mine).has(Keywords::TRAMPLE));
+    // Sorcery timing: not during combat.
+    let c2 = g.add_card(0, tid("Agent of Kotis"), Zone::Graveyard);
+    while g.step != bolt_core::Step::BeginCombat {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(
+        !g.legal_actions().contains(&Action::Activate(c2, 0)),
+        "only as a sorcery"
+    );
+}
+
+#[test]
+fn the_renew_creatures() {
+    let mut g = table();
+    let mine = put(&mut g, 0, "Humbling Elder");
+    let theirs = put(&mut g, 1, "Iceridge Serpent");
+    let agent = g.add_card(0, tid("Agent of Kotis"), Zone::Graveyard);
+    let assistant = g.add_card(0, tid("Alchemist's Assistant"), Zone::Graveyard);
+    let pummeler = g.add_card(0, tid("Sagu Pummeler"), Zone::Graveyard);
+    let sage = g.add_card(0, tid("Constrictor Sage"), Zone::Graveyard);
+    begin(&mut g);
+    for (card, target) in [(agent, mine), (assistant, mine), (pummeler, mine), (sage, theirs)] {
+        act(&mut g, Action::Activate(card, 0));
+        act(&mut g, Action::Target(obj(target)));
+        resolve_all(&mut g, &[]);
+        assert_eq!(g.obj(card).zone, Zone::Exile);
+    }
+    assert_eq!(
+        g.obj(mine).counters,
+        4,
+        "two from Agent of Kotis, two from Sagu Pummeler"
+    );
+    assert!(g.keywords(mine).has(Keywords::LIFELINK) && g.keywords(mine).has(Keywords::REACH));
+    assert!(g.obj(theirs).tapped && g.obj(theirs).stun == 1);
+}
+
+#[test]
+fn sage_of_the_fang_adds_then_doubles() {
+    let mut g = table();
+    let mine = put(&mut g, 0, "Humbling Elder");
+    let sage = hand(&mut g, 0, "Sage of the Fang");
+    begin(&mut g);
+    play(&mut g, sage, false, &[], &[Action::Target(obj(mine))]);
+    assert_eq!(g.obj(mine).counters, 1);
+    let old = g.add_card(0, tid("Sage of the Fang"), Zone::Graveyard);
+    act(&mut g, Action::Activate(old, 0));
+    act(&mut g, Action::Target(obj(mine)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(mine).counters, 4, "1 + 1, doubled");
+}
+
+#[test]
+fn adorned_crocodile_leaves_a_zombie_druid() {
+    let mut g = table();
+    let croc = put(&mut g, 0, "Adorned Crocodile");
+    let kill = hand(&mut g, 0, "Dragon's Prey");
+    begin(&mut g);
+    play(&mut g, kill, false, &[obj(croc)], &[]);
+    assert_eq!(tokens(&g, 0, "Zombie Druid").len(), 1);
+}
+
+#[test]
+fn harmonize_casts_from_the_graveyard_tapping_a_creature_for_less_then_exiles() {
+    let mut g = table();
+    let whisper = g.add_card(0, tid("Unending Whisper"), Zone::Graveyard); // harmonize {5}{U}
+    let big = put(&mut g, 0, "Iceridge Serpent"); // 3 power
+    begin(&mut g);
+    assert!(g.legal_actions().contains(&Action::CastFlashback(whisper)));
+    assert!(g.legal_actions().contains(&Action::CastHarmonize(whisper, big)));
+    let hand_before = g.players[0].hand.len();
+    let n = paid(&mut g, |g| {
+        act(g, Action::CastHarmonize(whisper, big));
+        resolve_all(g, &[]);
+    });
+    assert_eq!(n, 3, "{{5}}{{U}} minus 3 for the Serpent's power");
+    assert!(g.obj(big).tapped, "the creature is tapped, not sacrificed");
+    assert_eq!(g.obj(big).zone, Zone::Battlefield);
+    assert_eq!(g.obj(whisper).zone, Zone::Exile);
+    assert_eq!(g.players[0].hand.len(), hand_before + 1, "drew a card");
+}
+
+#[test]
+fn harmonize_without_tapping_pays_the_full_cost() {
+    let mut g = table();
+    let ride = g.add_card(0, tid("Wild Ride"), Zone::Graveyard); // harmonize {4}{R}
+    let mine = put(&mut g, 0, "Humbling Elder");
+    begin(&mut g);
+    let n = paid(&mut g, |g| {
+        act(g, Action::CastFlashback(ride));
+        act(g, Action::Target(obj(mine)));
+        resolve_all(g, &[]);
+    });
+    assert_eq!(n, 5);
+    assert!(g.keywords(mine).has(Keywords::HASTE));
+    assert_eq!(g.obj(ride).zone, Zone::Exile);
+}
+
+#[test]
+fn the_harmonize_spells_from_hand() {
+    let mut g = table();
+    let theirs = put(&mut g, 1, "Iceridge Serpent");
+    let rebuff = hand(&mut g, 0, "Ureni's Rebuff");
+    let fire = hand(&mut g, 0, "Channeled Dragonfire");
+    let bellow = hand(&mut g, 0, "Mammoth Bellow");
+    let routine = hand(&mut g, 0, "Roamer's Routine");
+    begin(&mut g);
+    play(&mut g, rebuff, false, &[obj(theirs)], &[]);
+    assert_eq!(g.obj(theirs).zone, Zone::Hand);
+    let life = g.players[1].life;
+    play(&mut g, fire, false, &[Target::Player(1)], &[]);
+    assert_eq!(g.players[1].life, life - 2);
+    play(&mut g, bellow, false, &[], &[]);
+    assert_eq!(tokens(&g, 0, "Elephant").len(), 1);
+    let basic = g.add_card(0, tid("Forest"), Zone::Library);
+    let lands = g.permanents(0).filter(|&x| g.types_of(x).land).count();
+    play(&mut g, routine, false, &[], &[Action::Pick(basic)]);
+    assert_eq!(g.permanents(0).filter(|&x| g.types_of(x).land).count(), lands + 1);
+}

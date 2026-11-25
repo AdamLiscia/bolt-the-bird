@@ -271,6 +271,7 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         behold: bolt_core::Behold::No,
         second_spell_discount: 0,
         filter_mana: None,
+        harmonize: false,
         subtype_enters_with_counter: None,
     };
     let mut claimed = rest.is_empty();
