@@ -575,6 +575,7 @@ impl Game {
                     }
                     D::SacrificeAnother { source } => e.set_item("card", one(*source))?,
                     D::CommanderToCommandZone { card } => e.set_item("card", one(*card))?,
+                    D::ShockLand { card } => e.set_item("card", one(*card))?,
                     D::SacrificeCreatures { left } => e.set_item("left", *left)?,
                     D::Search { what, .. } => e.set_item("what", format!("{what:?}"))?,
                     _ => {}
