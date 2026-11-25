@@ -406,6 +406,8 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         split_second: false,
         stops_artifact_abilities: false,
         mana_legendary_colors: false,
+        keeps_green_mana: false,
+        mode_costs: Vec::new(),
     };
     def.color_identity = color_identity(o);
     // An Omen's spell half: its lines must be claimed too, written "Omen: <line>" in the script.

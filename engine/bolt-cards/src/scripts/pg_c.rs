@@ -543,6 +543,82 @@ pub fn script(name: &str) -> Option<Script> {
         "Voidslime" => s(&["Counter target spell, activated ability, or triggered ability."], |d, _| {
             spell(d, vec![Filter { abilities: true, ..SPELL }], vec![Effect::CounterSpellOrAbility(0)])
         }),
+        "Awaken the Woods" => s(&["Create X 1/1 green Forest Dryad land creature tokens."], |d, t| {
+            spell(d, vec![], vec![Effect::CreateTokensX { def: t.forest_dryad }])
+        }),
+        "Sylvan Advocate" => s(
+            &["As long as you control six or more lands, this creature and land creatures you control get +2/+2."],
+            |d, _| {
+                for scope in [Scope::This, Scope::YourLandCreatures] {
+                    static_on(d, scope, false, Keywords::NONE);
+                    let st = d.statics.last_mut().expect("just pushed");
+                    st.power = 2;
+                    st.toughness = 2;
+                    st.condition = Some(StaticCondition::ControlLandsAtLeast(6));
+                }
+            },
+        ),
+        "Omnath, Locus of Mana" => s(
+            &["You don't lose unspent green mana as steps and phases end.", "Omnath gets +1/+1 for each unspent green mana you have."],
+            |d, _| d.keeps_green_mana = true,
+        ),
+        "Cyclone Summoner" => s(
+            &["When this creature enters, if you cast it from your hand, return all permanents to their owners' hands except for Giants, Wizards, and lands."],
+            |d, _| on_if(d, Condition::CastFromHand, vec![], vec![Effect::BounceAllExceptLandsAndSubtypes(&["Giant", "Wizard"])]),
+        ),
+        "Roil Elemental" => s(
+            &["Landfall — Whenever a land you control enters, you may gain control of target creature for as long as you control this creature."],
+            |d, _| may(d, When::LandYouControlEnters, vec![CREATURE], vec![Effect::GainControlWhileSource(0)]),
+        ),
+        "Yavimaya Dryad" => s(
+            &["When this creature enters, you may search your library for a Forest card, put it onto the battlefield tapped under target player's control, then shuffle."],
+            |d, _| may(d, When::Enters, vec![Filter::PLAYER], vec![Effect::SearchForestForPlayer(0)]),
+        ),
+        "Otawara, Soaring City" => s(
+            &[
+                "{T}: Add {U}.",
+                "Channel — {3}{U}, Discard this card: Return target artifact, creature, enchantment, or planeswalker to its owner's hand. This ability costs {1} less to activate for each legendary creature you control.",
+            ],
+            |d, _| {
+                d.mana = Some(ManaSource::of(&[Color::Blue]));
+                let f = Filter { players: false, artifacts: true, enchantments: true, ..Filter::ANY };
+                let n = activated(d, "{3}{U}", false, vec![f], vec![Effect::Bounce(0)]);
+                d.activated[n].from_hand_discard = true;
+                d.activated[n].less_per_legendary_creature = true;
+            },
+        ),
+        "Scatter to the Winds" => s(&["Counter target spell.", "Awaken 3—{4}{U}{U}"], |d, _| {
+            spell(d, vec![SPELL], vec![Effect::Counter(0)]);
+            // Awaken is cast as a {3} kicker on {1}{U}{U}: the same total, {4}{U}{U}.
+            d.kicker = ManaCost::parse("{3}");
+            let land = Filter { players: false, creatures: false, planeswalkers: false, lands: true, controller: Controller::You, ..Filter::ANY };
+            d.kicked_spell = Some(Ability::new(vec![SPELL, land], vec![Effect::Counter(0), Effect::Awaken { slot: 1, n: 3 }]));
+        }),
+        "Three Steps Ahead" => s(
+            &[
+                "Spree",
+                "+ {1}{U} — Counter target spell.",
+                "+ {3} — Create a token that's a copy of target artifact or creature you control.",
+                "+ {2} — Draw two cards, then discard a card.",
+            ],
+            |d, _| {
+                // Spree: one mode for each combination of the + modes, each with their total cost.
+                let yours = Filter { players: false, planeswalkers: false, artifacts: true, controller: Controller::You, ..Filter::ANY };
+                let copy = |slot| Effect::CopyToken { slot: Some(slot), haste_and_sacrifice: false, extra_subtype: None };
+                let loot = [draw(2), discard(1)];
+                let cost = |c: &str| ManaCost::parse(c).expect("cost");
+                d.modes = vec![
+                    Ability::new(vec![SPELL], vec![Effect::Counter(0)]),
+                    Ability::new(vec![yours], vec![copy(0)]),
+                    Ability::new(vec![], loot.to_vec()),
+                    Ability::new(vec![SPELL, yours], vec![Effect::Counter(0), copy(1)]),
+                    Ability::new(vec![SPELL], vec![Effect::Counter(0), loot[0], loot[1]]),
+                    Ability::new(vec![yours], vec![copy(0), loot[0], loot[1]]),
+                    Ability::new(vec![SPELL, yours], vec![Effect::Counter(0), copy(1), loot[0], loot[1]]),
+                ];
+                d.mode_costs = ["{1}{U}", "{3}", "{2}", "{4}{U}", "{3}{U}", "{5}", "{6}{U}"].map(cost).to_vec();
+            },
+        ),
         _ => None,
     }
 }
@@ -619,4 +695,13 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Collector Ouphe",
     "Mox Amber",
     "Voidslime",
+    "Awaken the Woods",
+    "Sylvan Advocate",
+    "Omnath, Locus of Mana",
+    "Cyclone Summoner",
+    "Roil Elemental",
+    "Yavimaya Dryad",
+    "Otawara, Soaring City",
+    "Scatter to the Winds",
+    "Three Steps Ahead",
 ];

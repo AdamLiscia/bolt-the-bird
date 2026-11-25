@@ -1280,6 +1280,20 @@ pub enum Effect {
     UntapLands(u8),
     /// You may put a land card from your hand onto the battlefield (Broken Bond).
     MayLandFromHand,
+    /// Return all permanents to their owners' hands except lands and those with these subtypes
+    /// (Cyclone Summoner).
+    BounceAllExceptLandsAndSubtypes(&'static [&'static str]),
+    /// Gain control of the creature in `slot` for as long as you control the source (Roil Elemental).
+    GainControlWhileSource(u8),
+    /// You may search your library for a Forest card and put it onto the battlefield tapped under
+    /// the control of the player in `slot`, then shuffle (Yavimaya Dryad).
+    SearchForestForPlayer(u8),
+    /// Awaken `n` on the land in `slot`: `n` +1/+1 counters, and it becomes a 0/0 Elemental creature
+    /// with haste (CR 702.113). It's still a land.
+    Awaken {
+        slot: u8,
+        n: u8,
+    },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1329,6 +1343,8 @@ pub enum SearchTo {
     BattlefieldTappedStunned,
     /// Exile it; you may cast it without paying its mana cost this turn (Ugin's −11).
     ExileCastFreeThisTurn,
+    /// Onto the battlefield tapped under this player's control (Yavimaya Dryad).
+    BattlefieldTappedUnder(u8),
 }
 
 /// What a static ability affects.
@@ -1360,6 +1376,8 @@ pub enum Scope {
     OtherYourCreatures,
     /// Every land on the battlefield (Yavimaya, Cradle of Growth).
     EachLand,
+    /// Land creatures you control (Sylvan Advocate).
+    YourLandCreatures,
 }
 
 /// What a scaled static ability counts.
@@ -1404,6 +1422,8 @@ pub enum StaticCondition {
     QuestCountersAtLeast(i32),
     /// Its controller has the city's blessing (ascend).
     CitysBlessing,
+    /// Its controller controls at least this many lands.
+    ControlLandsAtLeast(u8),
 }
 
 /// A static ability that changes characteristics (CR 604, 613 layers 6 and 7c).
@@ -1558,6 +1578,8 @@ pub enum Condition {
     ControlArtifactsAtLeast(u32),
     /// The source is in a graveyard or exile (it died or was exiled).
     SourceInGraveyardOrExile,
+    /// It was cast from its owner's hand ("if you cast it from your hand").
+    CastFromHand,
 }
 
 /// A spell's effect or a triggered ability: target slots, then effects in order.

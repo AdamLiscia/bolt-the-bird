@@ -501,3 +501,15 @@ Core: `CardDef::{stops_artifact_abilities (in activation_stopped, so artifact ma
 2/2 flying at base+56. Palinchron's "untap up to seven lands" untaps up to seven of your own tapped lands. Biorhythm
 sets each life total by gaining or losing the difference. Voidslime removes a countered ability from the stack; a
 countered spell copy just ceases to exist.
+
+Aesi batch 2 (9): Awaken the Woods, Sylvan Advocate, Omnath, Locus of Mana, Cyclone Summoner, Roil Elemental, Yavimaya
+Dryad, Otawara, Soaring City, Scatter to the Winds, Three Steps Ahead.
+Core: `Keywords::FORESTWALK` (bit 18), `CardDef::{keeps_green_mana, mode_costs}`, `Activated::less_per_legendary_creature`,
+`Scope::YourLandCreatures`, `StaticCondition::ControlLandsAtLeast`, `Condition::CastFromHand`,
+`SearchTo::BattlefieldTappedUnder`, `Game::control_while` (checked in state-based actions),
+`Effect::{BounceAllExceptLandsAndSubtypes, GainControlWhileSource, SearchForestForPlayer, Awaken}`. Token: Forest Dryad
+(1/1 land creature, a Forest) at base+57.
+Shortcuts: awaken is cast as a {3} kicker (the same total as the awaken cost), like overload; the awakened land is a
+creature for good (`eot_creature` with turn `u32::MAX`, cleared when it leaves). Spree is one mode per combination of
++ modes (seven for Three Steps Ahead), each with its summed additional cost in `mode_costs`. Omnath keeps only
+single-green pool entries; its bonus counts them.

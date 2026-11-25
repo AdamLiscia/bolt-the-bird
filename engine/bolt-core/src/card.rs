@@ -37,6 +37,7 @@ keywords! {
     CANT_BLOCK = 15, "Can't block";
     ISLANDWALK = 16, "Islandwalk";
     SHROUD = 17, "Shroud";
+    FORESTWALK = 18, "Forestwalk";
 }
 
 impl Keywords {
@@ -234,6 +235,8 @@ pub struct Activated {
     pub crew: u8,
     /// "Activate only if it's not your turn." (Ghost Town)
     pub not_your_turn_only: bool,
+    /// "This ability costs {1} less to activate for each legendary creature you control." (Otawara)
+    pub less_per_legendary_creature: bool,
 }
 
 /// The printed card. Shared by every copy; per-copy state lives on the game object.
@@ -601,6 +604,12 @@ pub struct CardDef {
     /// "{T}: Add one mana of any color among legendary creatures and planeswalkers you control." (Mox
     /// Amber; none: no mana)
     pub mana_legendary_colors: bool,
+    /// "You don't lose unspent green mana as steps and phases end." and "+1/+1 for each unspent
+    /// green mana you have." (Omnath, Locus of Mana)
+    pub keeps_green_mana: bool,
+    /// Spree (CR 702.172): the additional cost of each mode in `modes` (a mode there is one
+    /// combination of the chosen + modes).
+    pub mode_costs: Vec<ManaCost>,
 }
 
 /// What entering makes triggers happen again (see [`CardDef::entering_triggers_again`]).
@@ -808,6 +817,8 @@ impl CardDef {
             split_second: false,
             stops_artifact_abilities: false,
             mana_legendary_colors: false,
+            keeps_green_mana: false,
+            mode_costs: Vec::new(),
         }
     }
 
@@ -983,6 +994,8 @@ impl CardDef {
             split_second: false,
             stops_artifact_abilities: false,
             mana_legendary_colors: false,
+            keeps_green_mana: false,
+            mode_costs: Vec::new(),
         }
     }
 
@@ -1158,6 +1171,8 @@ impl CardDef {
             split_second: false,
             stops_artifact_abilities: false,
             mana_legendary_colors: false,
+            keeps_green_mana: false,
+            mode_costs: Vec::new(),
         }
     }
 }

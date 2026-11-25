@@ -1148,6 +1148,9 @@ pub struct Game {
     pub granted_tapped: Vec<(ObjId, u32, ObjId, usize, u32)>,
     /// The turn each player can't cast additional spells (Conduit of Worlds); 0: never.
     pub no_more_spells_turn: [u32; 2],
+    /// "For as long as you control [source]" control changes: (permanent, its zcc, source, source's
+    /// zcc, new controller, controller before) (Roil Elemental).
+    pub control_while: Vec<(ObjId, u32, ObjId, u32, PlayerId, PlayerId)>,
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -1355,6 +1358,7 @@ impl Game {
             lands_milled_pending: [false; 2],
             granted_tapped: Vec::new(),
             no_more_spells_turn: [0; 2],
+            control_while: Vec::new(),
         }
     }
 
@@ -1712,6 +1716,7 @@ impl Game {
                             Scope::YourArtifactCreatures => mine && creature && self.types_of(id).artifact,
                             Scope::OtherYourCreatures => mine && creature && src != id,
                             Scope::EachLand => self.types_of(id).land,
+                            Scope::YourLandCreatures => mine && creature && self.types_of(id).land,
                             Scope::OtherYourFliers => {
                                 mine && creature
                                     && src != id
@@ -1739,6 +1744,15 @@ impl Game {
                             }
                             Some(StaticCondition::QuestCountersAtLeast(n)) => so.quest >= n,
                             Some(StaticCondition::CitysBlessing) => self.city_blessing[so.controller],
+                            Some(StaticCondition::ControlLandsAtLeast(n)) => {
+                                self.battlefield
+                                    .iter()
+                                    .filter(|&&x| {
+                                        self.obj(x).controller == so.controller && self.def_of(x).types.land
+                                    })
+                                    .count()
+                                    >= n as usize
+                            }
                         };
                         applies && condition_ok && (!s.your_turn_only || self.active == so.controller)
                     })
@@ -1939,9 +1953,30 @@ impl Game {
                 .any(|&(q, k, _)| q == o.controller && k == kind)
     }
 
+    /// How many legendary creatures `p` controls (Otawara's discount).
+    fn legendary_creatures(&self, p: PlayerId) -> u8 {
+        self.creatures(p)
+            .filter(|&c| self.types_of(c).legendary)
+            .count()
+            .min(255) as u8
+    }
+
+    /// One green mana in a pool (Omnath).
+    fn is_green_mana(m: &ManaSource) -> bool {
+        m.colors == [false, false, false, false, true] && !m.colorless
+    }
+
     fn opponents_graveyard_bonus(&self, id: ObjId) -> i32 {
         let d = self.def_of(id);
         let mut b = if self.emblem_anthem(id) { 2 } else { 0 };
+        if d.keeps_green_mana {
+            let p = self.obj(id).controller;
+            b += self.players[p]
+                .pool
+                .iter()
+                .filter(|m| Game::is_green_mana(m))
+                .count() as i32;
+        }
         b += self.garruk_emblems(id);
         if d.pt_opponents_graveyards {
             b += self.players[opponent(self.obj(id).controller)].graveyard.len() as i32;
@@ -4345,6 +4380,10 @@ impl Game {
         } else {
             def.cost.with_x(mode.x)
         };
+        // Spree: each chosen + mode's additional cost.
+        if let Some(extra) = mode.mode.and_then(|m| def.mode_costs.get(m as usize)) {
+            cost = add_costs(&cost, extra);
+        }
         // Entwine: the last mode is every mode, for the entwine cost more.
         if let (Some(e), Some(m)) = (def.entwine, mode.mode) {
             if m as usize + 1 == def.modes.len() {
@@ -5108,7 +5147,11 @@ impl Game {
                     || self.players[p].life < a.life
                     || !self.can_pay_for(
                         p,
-                        &if a.less_per_target_color {
+                        &if a.less_per_legendary_creature {
+                            let mut c = a.mana;
+                            c.generic = c.generic.saturating_sub(self.legendary_creatures(p));
+                            c
+                        } else if a.less_per_target_color {
                             // The best target: the most colors among your creatures.
                             let best = self
                                 .creatures(p)
@@ -5349,6 +5392,9 @@ impl Game {
         // Mana first: a creature can tap for mana and then be sacrificed for the same cost
         // (CR 602.2b). The fuzzer found the reverse order failing.
         let mut cost = a.mana.with_x(x);
+        if a.less_per_legendary_creature {
+            cost.generic = cost.generic.saturating_sub(self.legendary_creatures(p));
+        }
         if a.less_per_target_color {
             cost = a.mana;
             cost.generic = cost.generic.saturating_sub(x);
@@ -5663,6 +5709,10 @@ impl Game {
             || self.is_decayed(blocker)
             || self.keywords(blocker).has(Keywords::CANT_BLOCK)
             || self.keywords(attacker).has(Keywords::UNBLOCKABLE)
+            || (self.keywords(attacker).has(Keywords::FORESTWALK)
+                && self
+                    .permanents(self.obj(blocker).controller)
+                    .any(|x| self.types_of(x).land && self.has_subtype(x, "Forest")))
             || (self.keywords(attacker).has(Keywords::ISLANDWALK)
                 && self
                     .permanents(self.obj(blocker).controller)
@@ -8268,6 +8318,16 @@ impl Game {
                         o.stun += n;
                         self.counter_put_on(c);
                     }
+                    SearchTo::BattlefieldTappedUnder(q) => {
+                        self.move_to(c, Zone::Battlefield);
+                        let turn = self.turn;
+                        let o = self.obj_mut(c);
+                        o.tapped = true;
+                        if o.zone == Zone::Battlefield {
+                            o.controller = q as PlayerId;
+                            o.since_turn = turn;
+                        }
+                    }
                     SearchTo::ExileCastFreeThisTurn => {
                         self.move_to(c, Zone::Exile);
                         let turn = self.turn;
@@ -10040,6 +10100,60 @@ impl Game {
                 let p = item.controller;
                 if self.players[p].hand.iter().any(|&x| self.def_of(x).types.land) {
                     self.ask(p, Decision::LandFromHand);
+                }
+            }
+            Effect::BounceAllExceptLandsAndSubtypes(subs) => {
+                let all: Vec<ObjId> = self
+                    .battlefield
+                    .iter()
+                    .copied()
+                    .filter(|&x| !self.types_of(x).land && !subs.iter().any(|s| self.has_subtype(x, s)))
+                    .collect();
+                for x in all {
+                    self.move_to(x, Zone::Hand);
+                }
+            }
+            Effect::GainControlWhileSource(n) => {
+                if let Some(id) = Game::slot_object(item, legal, n) {
+                    let p = item.controller;
+                    let before = self.obj(id).controller;
+                    if self.obj(src).zone == Zone::Battlefield && self.obj(src).controller == p && before != p
+                    {
+                        let entry = (id, self.obj(id).zcc, src, self.obj(src).zcc, p, before);
+                        self.control_while.push(entry);
+                        let turn = self.turn;
+                        let o = self.obj_mut(id);
+                        o.controller = p;
+                        o.since_turn = turn; // CR 302.6
+                    }
+                }
+            }
+            Effect::SearchForestForPlayer(n) => {
+                if let Some(q) = self
+                    .players_for(item, legal, Who::TargetPlayer(n))
+                    .first()
+                    .copied()
+                {
+                    let what = SearchFor::LandTypes {
+                        types: [false, false, false, false, true],
+                        basic: false,
+                    };
+                    self.ask(
+                        item.controller,
+                        Decision::Search {
+                            what,
+                            to: SearchTo::BattlefieldTappedUnder(q as u8),
+                            left: 1,
+                        },
+                    );
+                }
+            }
+            Effect::Awaken { slot, n } => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    if self.obj(id).zone == Zone::Battlefield {
+                        self.obj_mut(id).eot_creature = Some((u32::MAX, 0, 0, "Elemental", Keywords::HASTE));
+                        self.add_counters(id, n as i32);
+                    }
                 }
             }
             Effect::LookTopMayBottom(n) => {
@@ -12286,6 +12400,7 @@ impl Game {
                 .any(|id| id != source && self.has_subtype(id, sub)),
             Some(Condition::ControlCreatureWithCounter) => self.controls_creature_with_counter(controller),
             Some(Condition::CastIt) => self.obj(source).was_cast,
+            Some(Condition::CastFromHand) => self.obj(source).was_cast && self.obj(source).from_hand,
             Some(Condition::CastTwoSpellsThisTurn) => self.spells_cast[controller] >= 2,
             Some(Condition::ChosenMode(m)) => self.obj(source).chosen_mode == Some(*m),
             Some(Condition::CreatureDiedUnderYourControlThisTurn) => self.creature_died_under[controller],
@@ -12402,8 +12517,9 @@ impl Game {
     /// Its until-end-of-turn creature form (Reverberating Summons), if it's this turn.
     fn eot_creature(&self, id: ObjId) -> Option<(u32, i32, i32, &'static str, Keywords)> {
         let o = self.obj(id);
+        // `u32::MAX`: for good (awaken).
         o.eot_creature
-            .filter(|e| e.0 == self.turn && o.zone == Zone::Battlefield)
+            .filter(|e| (e.0 == self.turn || e.0 == u32::MAX) && o.zone == Zone::Battlefield)
     }
 
     /// Put `cards` (in `p`'s library) on the bottom in the order `p` chooses.
@@ -12754,8 +12870,18 @@ impl Game {
     fn enter(&mut self, step: Step) {
         self.step = step;
         // CR 500.4: mana empties from each pool as a step or phase ends.
-        for pl in &mut self.players {
-            pl.pool.clear();
+        let omnath: Vec<bool> = (0..2)
+            .map(|q| {
+                self.permanents(q)
+                    .any(|x| self.def_of(x).keeps_green_mana && !self.lost_abilities(x))
+            })
+            .collect();
+        for (q, pl) in self.players.iter_mut().enumerate() {
+            if omnath[q] {
+                pl.pool.retain(Game::is_green_mana);
+            } else {
+                pl.pool.clear();
+            }
         }
         let a = self.active;
         match step {
@@ -13508,6 +13634,27 @@ impl Game {
 
     /// CR 704: repeat until none apply.
     fn state_based_actions(&mut self) {
+        // Roil Elemental: control lasts only as long as you control the source.
+        if !self.control_while.is_empty() {
+            let mut keep = Vec::new();
+            for e in std::mem::take(&mut self.control_while) {
+                let (id, zcc, src, src_zcc, p, before) = e;
+                let o = self.obj(id);
+                if o.zcc != zcc || o.zone != Zone::Battlefield {
+                    continue; // it left: the effect ends
+                }
+                let s = self.obj(src);
+                if s.zcc == src_zcc && s.zone == Zone::Battlefield && s.controller == p {
+                    keep.push(e);
+                } else {
+                    let turn = self.turn;
+                    let o = self.obj_mut(id);
+                    o.controller = before;
+                    o.since_turn = turn;
+                }
+            }
+            self.control_while = keep;
+        }
         loop {
             self.work();
             // Ascend (CR 702.131b): ten or more permanents and an ascend permanent.
