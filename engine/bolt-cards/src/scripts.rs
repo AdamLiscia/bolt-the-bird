@@ -104,6 +104,13 @@ pub fn token_defs() -> Vec<CardDef> {
         token("Frog Lizard", "Frog Lizard", 3, 3, Keywords::NONE), // Rapid Hybridization
         token("Squirrel", "Squirrel", 1, 1, Keywords::NONE), // Chatterstorm
         token("Spider", "Spider", 1, 2, Keywords::REACH),    // Arasta of the Endless Web
+        {
+            // Thopter Engineer: "a 1/1 colorless Thopter artifact creature token with flying".
+            let mut thopter = token("Thopter", "Thopter", 1, 1, Keywords::FLYING);
+            thopter.types.artifact = true;
+            thopter
+        },
+        token("Storm Crow", "Bird", 1, 2, Keywords::FLYING), // Murmuration's blue Birds
     ]
 }
 
@@ -185,6 +192,8 @@ pub struct Tokens {
     pub frog_lizard: usize,
     pub squirrel: usize,
     pub spider: usize,
+    pub thopter: usize,
+    pub storm_crow: usize,
 }
 
 impl Tokens {
@@ -230,6 +239,8 @@ impl Tokens {
             frog_lizard: base + 37,
             squirrel: base + 38,
             spider: base + 39,
+            thopter: base + 40,
+            storm_crow: base + 41,
         }
     }
 }

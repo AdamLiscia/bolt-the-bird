@@ -938,6 +938,18 @@ pub enum Effect {
     DestroyAllCreaturesIfXAtLeast(u8),
     /// Untap all nonland permanents (yours and the opponent's: Intellectual Offering in 1v1).
     UntapAllNonland,
+    /// The source gets +X/+0 until end of turn, X its power ("double this creature's power").
+    DoublePowerSelf,
+    /// Create tapped tokens (`def`) equal to the trigger's amount (Prosperous Bandit).
+    CreateTokensAmountTapped {
+        def: usize,
+    },
+    /// "You win the game." (CR 104.2a)
+    WinTheGame,
+    /// Create a token (`def`) for each spell you've cast this turn (Murmuration).
+    CreateTokensPerSpellCastThisTurn {
+        def: usize,
+    },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1008,6 +1020,8 @@ pub enum Scope {
     YourUntappedSubtype(&'static str),
     /// Attacking creatures you control (Berserkers' Onslaught).
     YourAttackingCreatures,
+    /// Artifact creatures you control (Thopter Engineer).
+    YourArtifactCreatures,
 }
 
 /// What a scaled static ability counts.
@@ -1172,6 +1186,8 @@ pub enum Condition {
     TotalToughnessAtLeast(i32),
     /// It's your main phase.
     YourMainPhase,
+    /// You have exactly this many cards in your hand (Triskaidekaphile).
+    HandSizeExactly(u8),
 }
 
 /// A spell's effect or a triggered ability: target slots, then effects in order.
@@ -1371,6 +1387,10 @@ pub enum When {
     AnotherCreatureYouControlEntersWithPowerAtLeast(i32),
     /// "Whenever one or more other creatures die, ... This ability triggers only once each turn."
     OtherCreaturesDieOnceEachTurn,
+    /// "Whenever an opponent casts a noncreature spell".
+    OpponentCastsNoncreature,
+    /// "Whenever a creature token you control deals combat damage to a player" (each one).
+    YourCreatureTokenDealsCombatDamageToPlayer,
 }
 
 #[derive(Clone, Debug, PartialEq)]

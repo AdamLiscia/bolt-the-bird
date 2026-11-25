@@ -1307,3 +1307,233 @@ fn binding_the_old_gods_destroys_then_fetches_a_forest() {
     assert_eq!(g.obj(forest).zone, Zone::Battlefield);
     assert!(g.obj(forest).tapped);
 }
+
+// ---- batch 8 (2026-11-25 list) ----
+
+/// A token definition's index by name.
+fn token_def(name: &str) -> usize {
+    let s = set("BLC").unwrap();
+    (s.card_count()..s.defs.len())
+        .find(|&i| s.defs[i].name == name)
+        .unwrap_or_else(|| panic!("no {name} token"))
+}
+
+/// Passes until the next main phase 2 (through combat).
+fn to_main2(g: &mut Game) {
+    while g.step != Step::Main2 {
+        act(g, Action::PassPriority);
+    }
+}
+
+/// Puts player 1 at their first main phase, turn 4.
+fn their_main(g: &mut Game) {
+    g.start_turn(4, 1);
+    while g.step != Step::Main1 {
+        act(g, Action::PassPriority);
+    }
+}
+
+#[test]
+fn thriving_grove_and_game_trail() {
+    let mut g = game(["Bello, Bard of the Brambles", "Ms. Bumbleflower"], &[]);
+    let grove = hand(&mut g, 0, "Thriving Grove");
+    act(&mut g, Action::PlayLand(grove));
+    assert!(
+        !g.legal_actions().contains(&Action::Mode(4)),
+        "a color other than green"
+    );
+    act(&mut g, Action::Mode(1));
+    assert!(g.obj(grove).tapped);
+
+    // Game Trail: no Mountain or Forest to reveal (the hand is Plains), so it enters tapped.
+    let mut g = game(["Bello, Bard of the Brambles", "Ms. Bumbleflower"], &[]);
+    let trail = hand(&mut g, 0, "Game Trail");
+    act(&mut g, Action::PlayLand(trail));
+    assert!(g.obj(trail).tapped);
+    let mut g = game(["Bello, Bard of the Brambles", "Ms. Bumbleflower"], &[]);
+    hand(&mut g, 0, "Forest");
+    let trail = hand(&mut g, 0, "Game Trail");
+    act(&mut g, Action::PlayLand(trail));
+    assert!(!g.obj(trail).tapped, "revealed a Forest");
+    let rg = [false, false, false, true, true];
+    let made = colors_of(&g, trail)
+        .iter()
+        .fold([false; 5], |acc, c| std::array::from_fn(|i| acc[i] || c[i]));
+    assert_eq!(made, rg);
+}
+
+#[test]
+fn talisman_of_resilience_makes_colorless_free_and_black_or_green_for_one_damage() {
+    let mut g = game(["Bello, Bard of the Brambles", "Ms. Bumbleflower"], &[]);
+    let t = put(&mut g, 0, "Talisman of Resilience");
+    put(&mut g, 0, "Sol Ring");
+    let sources: Vec<_> = g.mana_sources(0).into_iter().filter(|&(x, _)| x == t).collect();
+    assert!(sources.iter().any(|(_, m)| m.colorless));
+    assert!(sources.iter().any(|(_, m)| m.colors[2]) && sources.iter().any(|(_, m)| m.colors[4]));
+    let cobra = hand(&mut g, 0, "Lotus Cobra"); // {1}{G}: the green comes from the Talisman
+    let life = g.players[0].life;
+    play(&mut g, cobra, false, &[], &[]);
+    assert_eq!(g.obj(cobra).zone, Zone::Battlefield);
+    assert_eq!(g.players[0].life, life - 1);
+}
+
+#[test]
+fn unnatural_growth_doubles_your_creatures_each_combat() {
+    let mut g = table();
+    put(&mut g, 0, "Unnatural Growth");
+    let valet = put(&mut g, 0, "Devilish Valet"); // 1/3
+    let theirs = put(&mut g, 1, "Sakura-Tribe Elder");
+    attack(&mut g, &[]);
+    assert_eq!((g.power(valet), g.toughness(valet)), (2, 6));
+    assert_eq!(g.power(theirs), 1, "only yours");
+}
+
+#[test]
+fn siege_gang_commander_makes_goblins_and_sacrifices_goblins_for_damage() {
+    let mut g = table();
+    let sg = hand(&mut g, 0, "Siege-Gang Commander");
+    play(&mut g, sg, false, &[], &[]);
+    let goblins = tokens_named(&g, 0, "Goblin");
+    assert_eq!(goblins.len(), 3);
+    let elder = put(&mut g, 0, "Sakura-Tribe Elder");
+    assert!(
+        !g.legal_actions().contains(&Action::ActivateWith(sg, 0, elder)),
+        "only a Goblin"
+    );
+    act(&mut g, Action::ActivateWith(sg, 0, goblins[0]));
+    resolve_all(&mut g, &[Action::Target(Target::Player(1))]);
+    assert_eq!(g.players[1].life, 38);
+    assert_eq!(tokens_named(&g, 0, "Goblin").len(), 2);
+    // It is a Goblin itself, and still deals the damage after it's gone.
+    act(&mut g, Action::ActivateWith(sg, 0, sg));
+    resolve_all(&mut g, &[Action::Target(Target::Player(1))]);
+    assert_eq!(g.obj(sg).zone, Zone::Graveyard);
+    assert_eq!(g.players[1].life, 36);
+}
+
+#[test]
+fn thopter_engineer_makes_a_thopter_and_gives_artifact_creatures_haste() {
+    let mut g = table();
+    let e = hand(&mut g, 0, "Thopter Engineer");
+    play(&mut g, e, false, &[], &[]);
+    let thopter = tokens_named(&g, 0, "Thopter");
+    assert_eq!(thopter.len(), 1);
+    let k = g.keywords(thopter[0]);
+    assert!(k.has(Keywords::FLYING) && k.has(Keywords::HASTE));
+    assert!(g.types_of(thopter[0]).artifact);
+    assert!(!g.keywords(e).has(Keywords::HASTE), "not an artifact");
+    let theirs = g.add_card(1, token_def("Thopter"), Zone::Battlefield);
+    assert!(!g.keywords(theirs).has(Keywords::HASTE), "only yours");
+}
+
+#[test]
+fn devilish_valet_doubles_its_power_whenever_another_creature_enters() {
+    let mut g = table();
+    let valet = put(&mut g, 0, "Devilish Valet");
+    let k = g.keywords(valet);
+    assert!(k.has(Keywords::TRAMPLE) && k.has(Keywords::HASTE));
+    let a = hand(&mut g, 0, "Sakura-Tribe Elder");
+    play(&mut g, a, false, &[], &[]);
+    assert_eq!(g.power(valet), 2);
+    let b = hand(&mut g, 0, "Sakura-Tribe Elder");
+    play(&mut g, b, false, &[], &[]);
+    assert_eq!((g.power(valet), g.toughness(valet)), (4, 3));
+}
+
+#[test]
+fn steelburr_champion_grows_on_opponents_noncreature_spells() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Steelburr Champion");
+    act(&mut g, Action::CastKicked(c));
+    resolve_all(&mut g, &[]);
+    assert_eq!(tokens_named(&g, 0, "Steelburr Champion").len(), 1, "offspring");
+    assert!(g.keywords(c).has(Keywords::VIGILANCE));
+    let ring = hand(&mut g, 1, "Sol Ring");
+    let elder = hand(&mut g, 1, "Sakura-Tribe Elder");
+    their_main(&mut g);
+    act(&mut g, Action::Cast(elder));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(c).counters, 0, "a creature spell");
+    act(&mut g, Action::Cast(ring));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(c).counters, 1);
+}
+
+#[test]
+fn prosperous_bandit_makes_tapped_treasures_for_its_damage() {
+    let mut g = table();
+    let b = put(&mut g, 0, "Prosperous Bandit");
+    assert!(g.keywords(b).has(Keywords::FIRST_STRIKE));
+    let life = g.players[1].life;
+    attack(&mut g, &[b]);
+    to_main2(&mut g);
+    assert_eq!(g.players[1].life, life - 2);
+    let t = tokens_named(&g, 0, "Treasure");
+    assert_eq!(t.len(), 2);
+    assert!(t.iter().all(|&x| g.obj(x).tapped));
+}
+
+#[test]
+fn curiosity_crafter_draws_when_a_creature_token_connects() {
+    let mut g = table();
+    let crafter = put(&mut g, 0, "Curiosity Crafter");
+    let thopter = g.add_card(0, token_def("Thopter"), Zone::Battlefield);
+    attack(&mut g, &[crafter]);
+    let before = g.players[0].hand.len();
+    to_main2(&mut g);
+    assert_eq!(g.players[0].hand.len(), before, "a nontoken creature: no card");
+    attack(&mut g, &[crafter, thopter]);
+    let before = g.players[0].hand.len();
+    to_main2(&mut g);
+    assert_eq!(g.players[0].hand.len(), before + 1, "the token");
+    assert!(g.def_of(crafter).no_max_hand_size);
+}
+
+#[test]
+fn triskaidekaphile_wins_with_exactly_thirteen_cards() {
+    let mut g = table();
+    let t = put(&mut g, 0, "Triskaidekaphile");
+    let before = g.players[0].hand.len();
+    act(&mut g, Action::Activate(t, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].hand.len(), before + 1, "{{3}}{{U}}: draw");
+    for n in [12, 13] {
+        while g.players[0].hand.len() < n {
+            hand(&mut g, 0, "Plains");
+        }
+        g.start_turn(5 + n as u32, 0);
+        while g.result.is_none() && g.step != Step::Main1 {
+            act(&mut g, Action::PassPriority);
+        }
+        if n == 12 {
+            assert!(g.result.is_none(), "twelve: no win");
+        } else {
+            assert_eq!(g.result, Some(bolt_core::Outcome::Winner(0)));
+        }
+    }
+}
+
+#[test]
+fn murmuration_pumps_birds_and_makes_a_storm_crow_per_spell() {
+    let mut g = table();
+    put(&mut g, 0, "Murmuration");
+    for _ in 0..2 {
+        let ring = hand(&mut g, 0, "Sol Ring");
+        play(&mut g, ring, false, &[], &[]);
+    }
+    while g.step != Step::End {
+        let a = match g.pending {
+            Pending::DeclareAttackers(_) => Action::FinishAttacks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    resolve_all(&mut g, &[]);
+    let crows = tokens_named(&g, 0, "Storm Crow");
+    assert_eq!(crows.len(), 2);
+    for c in crows {
+        assert_eq!((g.power(c), g.toughness(c)), (2, 3), "1/2, +1/+1");
+        let k = g.keywords(c);
+        assert!(k.has(Keywords::FLYING) && k.has(Keywords::VIGILANCE));
+    }
+}

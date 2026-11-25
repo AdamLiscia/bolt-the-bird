@@ -1464,6 +1464,7 @@ impl Game {
                                 mine && creature
                                     && self.combat.as_ref().is_some_and(|c| c.attackers.contains(&id))
                             }
+                            Scope::YourArtifactCreatures => mine && creature && self.types_of(id).artifact,
                             Scope::OtherYourFliers => {
                                 mine && creature
                                     && src != id
@@ -4308,6 +4309,20 @@ impl Game {
                             .filter(|&c| c != id && !self.cant_be_sacrificed(c))
                             .map(|c| Action::ActivateWith(id, n, c)),
                     );
+                } else if let Some(sub) = a.sacrifice_subtype {
+                    // "Sacrifice a [subtype]": the source too, if it has the type.
+                    let victims: Vec<ObjId> = self
+                        .permanents(p)
+                        .filter(|&c| self.has_subtype(c, sub) && !self.cant_be_sacrificed(c))
+                        .collect();
+                    v.extend(
+                        victims
+                            .into_iter()
+                            .filter(|&c| {
+                                uses_self || self.can_pay_for(p, &a.mana, Some(c), PayFor::Ability(id))
+                            })
+                            .map(|c| Action::ActivateWith(id, n, c)),
+                    );
                 } else if a.sacrifice_token {
                     // "Sacrifice a token": any token you control, kept out of the mana payment.
                     let tokens: Vec<ObjId> = self
@@ -4408,7 +4423,7 @@ impl Game {
         let exclude = if uses_self {
             Some(id)
         } else {
-            victim.filter(|_| a.sacrifice_token)
+            victim.filter(|_| a.sacrifice_token || a.sacrifice_subtype.is_some())
         };
         // Mana first: a creature can tap for mana and then be sacrificed for the same cost
         // (CR 602.2b). The fuzzer found the reverse order failing.
@@ -5207,6 +5222,9 @@ impl Game {
             self.fire(p, When::YouCastOnOpponentsTurn, None);
         }
         self.fire(opponent(p), When::OpponentCasts, None);
+        if noncreature {
+            self.fire(opponent(p), When::OpponentCastsNoncreature, None);
+        }
         if self.types_of(card).instant || self.types_of(card).sorcery {
             self.fire(opponent(p), When::OpponentCastsInstantOrSorcery, None);
         }
@@ -9467,6 +9485,42 @@ impl Game {
                     }
                 }
             }
+            Effect::DoublePowerSelf => {
+                if self.obj(src).zone == Zone::Battlefield {
+                    let (power, zcc) = (self.power(src), self.obj(src).zcc);
+                    self.until_eot.push(Modifier {
+                        obj: src,
+                        zcc,
+                        power,
+                        toughness: 0,
+                        keywords: Keywords::NONE,
+                        dies: None,
+                    });
+                }
+            }
+            Effect::CreateTokensAmountTapped { def } => {
+                for _ in 0..item.amount {
+                    self.create_token(item.controller, def);
+                    for t in self.last_created.clone() {
+                        self.obj_mut(t).tapped = true;
+                    }
+                }
+            }
+            Effect::WinTheGame => {
+                let opp = opponent(item.controller);
+                let protected = self.permanents(opp).any(|c| self.def_of(c).cant_lose);
+                if !protected && !self.players[opp].lost {
+                    self.players[opp].lost = true;
+                    self.events.push(Event::Lost { player: opp });
+                    self.result = Some(Outcome::Winner(item.controller));
+                    self.pending = Pending::GameOver;
+                }
+            }
+            Effect::CreateTokensPerSpellCastThisTurn { def } => {
+                for _ in 0..self.spells_cast[item.controller] {
+                    self.create_token(item.controller, def);
+                }
+            }
         }
     }
 
@@ -9506,6 +9560,7 @@ impl Game {
             Some(Condition::CastCreatureAndNoncreatureThisTurn) => {
                 self.cast_creature_noncreature[controller] == [true, true]
             }
+            Some(Condition::HandSizeExactly(n)) => self.players[controller].hand.len() == *n as usize,
             Some(Condition::Both(a, b)) => {
                 let one = |c: &Condition| Ability {
                     condition: Some(c.clone()),
@@ -10224,6 +10279,9 @@ impl Game {
         for &(a, _) in &hit_player {
             let controller = self.obj(a).controller;
             self.fire(controller, When::YourCreatureDealsCombatDamageToPlayer, None);
+            if self.is_token(a) {
+                self.fire(controller, When::YourCreatureTokenDealsCombatDamageToPlayer, None);
+            }
         }
         for (a, amount) in hit_player {
             let before = self.triggered.len();
