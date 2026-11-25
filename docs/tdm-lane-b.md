@@ -381,3 +381,13 @@ Core:
 - Infect until end of turn (`Game::infect_until_eot`, `Effect::PumpAllGrantInfect`): damage to
   players is poison (`Player::poison`, ten loses, CR 704.5c), to creatures -1/-1 counters (taken
   off the +1/+1 count). Infect isn't a printed keyword the engine knows.
+
+### PG batch 5: 3 cards
+
+Savage Beating, Anzrag, the Quake-Mole, Fanatic of Rhonas.
+
+Core: `CardDef::entwine` (the last mode is all of them, for the entwine cost more) and
+`cast_only_during_your_combat`; `When::BecomesBlocked`, `Effect::MustBeBlockedThisTurnSelf`
+(`Game::must_be_blocked`, checked in `blocks_are_legal`: an untapped creature able to block it must);
+`CardDef::ferocious_mana_amount`; eternalize (`Effect::EternalizeSelf`, `Object::eternalized`: black,
+no mana cost for devotion).

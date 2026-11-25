@@ -836,3 +836,81 @@ fn triumph_of_the_hordes_poisons() {
     assert_eq!(g.players[1].poison, 7 + 2);
     assert!(g.result.is_none(), "nine poison");
 }
+
+#[test]
+fn savage_beating_only_in_your_combat_and_entwined_does_both() {
+    let mut g = table();
+    let valet = put(&mut g, 0, "Devilish Valet");
+    let sb = hand(&mut g, 0, "Savage Beating");
+    assert!(
+        !g.legal_actions()
+            .iter()
+            .any(|a| matches!(a, Action::CastModal(c, _) if *c == sb)),
+        "main phase"
+    );
+    attack(&mut g, &[valet]);
+    act(&mut g, Action::CastModal(sb, 2)); // entwined: {3}{R}{R} and {1}{R}
+    resolve_all(&mut g, &[]);
+    assert!(g.keywords(valet).has(Keywords::DOUBLE_STRIKE));
+    assert!(!g.obj(valet).tapped);
+    let untapped = g
+        .permanents(0)
+        .filter(|&x| g.types_of(x).land && !g.obj(x).tapped)
+        .count();
+    assert_eq!(
+        untapped,
+        25 - 7,
+        "paid {{5}} + entwine {{2}}; untapping creatures leaves lands tapped"
+    );
+}
+
+#[test]
+fn anzrag_untaps_your_team_when_blocked_and_can_demand_a_block() {
+    let mut g = table();
+    let a = put(&mut g, 0, "Anzrag, the Quake-Mole");
+    let valet = put(&mut g, 0, "Devilish Valet");
+    let blocker = put(&mut g, 1, "Inferno Titan");
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Activate(a, 0));
+    resolve_all(&mut g, &[]);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(a));
+    act(&mut g, Action::Attack(valet));
+    act(&mut g, Action::FinishAttacks);
+    while g.pending != Pending::DeclareBlockers(1) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(
+        !g.legal_actions().contains(&Action::FinishBlocks),
+        "Anzrag must be blocked"
+    );
+    act(&mut g, Action::Block { blocker, attacker: a });
+    act(&mut g, Action::FinishBlocks);
+    resolve_all(&mut g, &[]);
+    assert!(!g.obj(a).tapped && !g.obj(valet).tapped, "untapped");
+}
+
+#[test]
+fn fanatic_of_rhonas_makes_four_with_a_big_creature_and_eternalizes() {
+    let mut g = game(&[]);
+    let f = put(&mut g, 0, "Fanatic of Rhonas");
+    assert_eq!(g.mana_sources(0).iter().filter(|&&(x, _)| x == f).count(), 1);
+    put(&mut g, 0, "Questing Beast"); // power 4
+    assert_eq!(g.mana_sources(0).iter().filter(|&&(x, _)| x == f).count(), 4);
+
+    let mut g = table();
+    let f = g.add_card(0, cid("Fanatic of Rhonas"), Zone::Graveyard);
+    act(&mut g, Action::Activate(f, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(f).zone, Zone::Exile);
+    let z = tokens(&g, 0, "Fanatic of Rhonas");
+    assert_eq!(z.len(), 1);
+    assert_eq!((g.power(z[0]), g.toughness(z[0])), (4, 4));
+    assert!(g.has_subtype(z[0], "Zombie"));
+    assert_eq!(g.colors_of(z[0]), [false, false, true, false, false]);
+}

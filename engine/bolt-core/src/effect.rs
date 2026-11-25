@@ -1155,6 +1155,11 @@ pub enum Effect {
         toughness: i32,
         keywords: Keywords,
     },
+    /// The source must be blocked each combat this turn if able (Anzrag).
+    MustBeBlockedThisTurnSelf,
+    /// Eternalize (CR 702.129): create a token that's a copy of the source card (in exile), except
+    /// it's a 4/4 black Zombie with no mana cost.
+    EternalizeSelf,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1684,6 +1689,8 @@ pub enum When {
     /// "Whenever one or more creatures you control with trample deal combat damage to a player": the
     /// amount is the damage those creatures dealt (Quartzwood Crasher).
     YourTramplersDealCombatDamageToPlayer,
+    /// "Whenever this creature becomes blocked" (CR 509.3c), as blockers are finished.
+    BecomesBlocked,
 }
 
 #[derive(Clone, Debug, PartialEq)]

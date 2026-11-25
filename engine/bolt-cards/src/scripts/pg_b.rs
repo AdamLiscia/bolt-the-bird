@@ -373,6 +373,51 @@ pub fn script(name: &str) -> Option<Script> {
         "Triumph of the Hordes" => s(&["Until end of turn, creatures you control get +1/+1 and gain trample and infect."], |d, _| {
             spell(d, vec![], vec![Effect::PumpAllGrantInfect { power: 1, toughness: 1, keywords: Keywords::TRAMPLE }])
         }),
+        "Savage Beating" => s(
+            &[
+                "Cast this spell only during combat on your turn.",
+                "Choose one —",
+                "• Creatures you control gain double strike until end of turn.",
+                "• Untap all creatures you control. After this phase, there is an additional combat phase.",
+                "Entwine {1}{R}",
+            ],
+            |d, _| {
+                d.cast_only_during_your_combat = true;
+                let double = Effect::GrantAll { who: Who::You, keywords: Keywords::DOUBLE_STRIKE };
+                let again = [Effect::UntapCreaturesYouControl, Effect::AdditionalCombatAfterThisPhase];
+                modes(
+                    d,
+                    vec![
+                        Ability::new(vec![], vec![double]),
+                        Ability::new(vec![], again.to_vec()),
+                        Ability::new(vec![], vec![double, again[0], again[1]]), // entwined
+                    ],
+                );
+                d.entwine = ManaCost::parse("{1}{R}");
+            },
+        ),
+        "Anzrag, the Quake-Mole" => s(
+            &[
+                "Whenever Anzrag becomes blocked, untap each creature you control. After this phase, there is an additional combat phase.",
+                "{3}{R}{R}{G}{G}: Anzrag must be blocked each combat this turn if able.",
+            ],
+            |d, _| {
+                on(d, When::BecomesBlocked, vec![], vec![Effect::UntapCreaturesYouControl, Effect::AdditionalCombatAfterThisPhase]);
+                activated(d, "{3}{R}{R}{G}{G}", false, vec![], vec![Effect::MustBeBlockedThisTurnSelf]);
+            },
+        ),
+        "Fanatic of Rhonas" => s(
+            &[
+                "{T}: Add {G}.",
+                "Ferocious — {T}: Add {G}{G}{G}{G}. Activate only if you control a creature with power 4 or greater.",
+                "Eternalize {2}{G}{G}",
+            ],
+            |d, _| {
+                d.mana = Some(ManaSource::of(&[Color::Green]));
+                d.ferocious_mana_amount = 4;
+                renew(d, "{2}{G}{G}", vec![], vec![Effect::EternalizeSelf]);
+            },
+        ),
         _ => None,
     }
 }
@@ -427,4 +472,7 @@ pub const PG_B_SCRIPTED: &[&str] = &[
     "Silvos, Rogue Elemental",
     "Yavimaya Hollow",
     "Triumph of the Hordes",
+    "Savage Beating",
+    "Anzrag, the Quake-Mole",
+    "Fanatic of Rhonas",
 ];

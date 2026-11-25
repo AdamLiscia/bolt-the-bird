@@ -237,6 +237,8 @@ pub struct Object {
     pub exerted_turn: Option<u32>,
     /// Regeneration shields this turn: (turn, how many) (CR 701.15).
     pub regen_shields: (u32, u8),
+    /// An eternalized token: black, with no mana cost (CR 702.129a).
+    pub eternalized: bool,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -1045,6 +1047,8 @@ pub struct Game {
     pub return_to_hand_at_end: Vec<(ObjId, u32)>,
     /// Creatures with infect until end of turn: (object, its zcc, turn) (Triumph of the Hordes).
     pub infect_until_eot: Vec<(ObjId, u32, u32)>,
+    /// Creatures that must be blocked each combat this turn if able: (object, zcc, turn).
+    pub must_be_blocked: Vec<(ObjId, u32, u32)>,
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -1238,6 +1242,7 @@ impl Game {
             combats_this_turn: 0,
             return_to_hand_at_end: Vec::new(),
             infect_until_eot: Vec::new(),
+            must_be_blocked: Vec::new(),
         }
     }
 
@@ -1336,6 +1341,7 @@ impl Game {
             shock_pending: false,
             exerted_turn: None,
             regen_shields: (0, 0),
+            eternalized: false,
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -1424,6 +1430,9 @@ impl Game {
 
     /// Its colors now (CR 105, layer 5).
     pub fn colors_of(&self, id: ObjId) -> [bool; 5] {
+        if self.obj(id).eternalized {
+            return [false, false, true, false, false]; // a black Zombie
+        }
         let printed = self.def_of(id).colors;
         if self.obj(id).zone != Zone::Battlefield {
             return printed;
@@ -1739,6 +1748,7 @@ impl Game {
     /// permanents `p` controls (a hybrid symbol counts once).
     pub fn devotion(&self, p: PlayerId, colors: [bool; 5]) -> u32 {
         self.permanents(p)
+            .filter(|&x| !self.obj(x).eternalized) // no mana cost
             .map(|x| {
                 let c = self.def_of(x).cost;
                 let mono: u32 = (0..5)
@@ -3643,6 +3653,18 @@ impl Game {
             if !timing || !castable {
                 continue;
             }
+            let in_combat = matches!(
+                self.step,
+                Step::BeginCombat
+                    | Step::DeclareAttackers
+                    | Step::DeclareBlockers
+                    | Step::FirstStrikeDamage
+                    | Step::CombatDamage
+                    | Step::EndCombat
+            );
+            if def.cast_only_during_your_combat && !(p == self.active && in_combat) {
+                continue; // Savage Beating
+            }
             // An X spell's targets can depend on X (Stolen by the Fae), and a kicked spell can have
             // its own targets (Tear Asunder): those are checked per way of casting below.
             let per_mode = def.cost.x > 0 || def.kicked_spell.is_some();
@@ -3900,6 +3922,12 @@ impl Game {
         } else {
             def.cost.with_x(mode.x)
         };
+        // Entwine: the last mode is every mode, for the entwine cost more.
+        if let (Some(e), Some(m)) = (def.entwine, mode.mode) {
+            if m as usize + 1 == def.modes.len() {
+                cost = add_costs(&cost, &e);
+            }
+        }
         if mode.kicked {
             if let Some(k) = def.kicker {
                 cost = add_costs(&cost, &k);
@@ -4985,6 +5013,12 @@ impl Game {
                 n
             };
             let n = n.max(self.def_of(id).mana_amount as usize); // Sol Ring: {C}{C}
+            let fero = self.def_of(id).ferocious_mana_amount as usize;
+            let n = if fero > 0 && self.creatures(p).any(|c| self.power(c) >= 4) {
+                n.max(fero) // Ferocious: "{T}: Add {G}{G}{G}{G}"
+            } else {
+                n
+            };
             out.extend(std::iter::repeat_n((id, m), n));
         }
         out
@@ -5237,10 +5271,24 @@ impl Game {
     }
 
     fn blocks_are_legal(&self, combat: &Combat) -> bool {
-        combat
+        let menace_ok = combat
             .attackers
             .iter()
-            .all(|&a| !self.keywords(a).has(Keywords::MENACE) || combat.blockers_of(a).count() != 1)
+            .all(|&a| !self.keywords(a).has(Keywords::MENACE) || combat.blockers_of(a).count() != 1);
+        // "Must be blocked if able" (Anzrag): some untapped creature that could block it does.
+        let turn = self.turn;
+        let lure_ok = combat.attackers.iter().all(|&a| {
+            let lured = self
+                .must_be_blocked
+                .iter()
+                .any(|&(c, z, t)| c == a && z == self.obj(a).zcc && t == turn);
+            !lured
+                || combat.blockers_of(a).count() > 0
+                || !self
+                    .creatures(opponent(self.obj(a).controller))
+                    .any(|b| !self.obj(b).tapped && self.can_block(b, a))
+        });
+        menace_ok && lure_ok
     }
 
     // ---------------------------------------------------------------- applying actions
@@ -5537,6 +5585,15 @@ impl Game {
                         seen.push(b);
                         self.fire_source(b, When::Blocks);
                     }
+                }
+                // CR 509.3c: "whenever this creature becomes blocked".
+                let blocked: Vec<ObjId> = self
+                    .combat
+                    .as_ref()
+                    .map(|c| c.attackers.iter().copied().filter(|&a| c.is_blocked(a)).collect())
+                    .unwrap_or_default();
+                for a in blocked {
+                    self.fire_source(a, When::BecomesBlocked);
                 }
                 self.passes = 0;
                 self.give_priority(self.active);
@@ -10628,6 +10685,26 @@ impl Game {
                         dies: None,
                     });
                     self.infect_until_eot.push((id, zcc, turn));
+                }
+            }
+            Effect::EternalizeSelf => {
+                let def = self.obj(src).def;
+                self.last_created.clear();
+                for _ in 0..self.token_doubling(item.controller) {
+                    let id = self.add_card(item.controller, def, Zone::Hand);
+                    self.obj_mut(id).copy_token = true;
+                    self.move_to(id, Zone::Battlefield);
+                    self.last_created.push(id);
+                    let ob = self.obj_mut(id);
+                    ob.copy_base_pt = Some((4, 4));
+                    ob.eternalized = true;
+                    ob.extra_subtypes.push("Zombie");
+                }
+            }
+            Effect::MustBeBlockedThisTurnSelf => {
+                if self.obj(src).zone == Zone::Battlefield {
+                    let entry = (src, self.obj(src).zcc, self.turn);
+                    self.must_be_blocked.push(entry);
                 }
             }
             Effect::AdditionalCombatAfterThisPhase => {

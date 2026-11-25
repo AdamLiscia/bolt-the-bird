@@ -540,6 +540,13 @@ pub struct CardDef {
     /// Unleash (CR 702.98): "you may have this creature enter with a +1/+1 counter on it" (asked as
     /// the spell resolves, like the Sieges' modes); it can't block while it has one (its script).
     pub unleash: bool,
+    /// Entwine {cost} (CR 702.42): the last of its modes is all the others, for this much more.
+    pub entwine: Option<ManaCost>,
+    /// "Cast this spell only during combat on your turn."
+    pub cast_only_during_your_combat: bool,
+    /// Ferocious mana: one activation makes this many mana while you control a creature with power 4
+    /// or greater (Fanatic of Rhonas: {G}{G}{G}{G}); otherwise its plain `mana_amount`.
+    pub ferocious_mana_amount: u8,
 }
 
 /// What entering makes triggers happen again (see [`CardDef::entering_triggers_again`]).
@@ -727,6 +734,9 @@ impl CardDef {
             cant_attack_twice_per_turn: false,
             lands_are_forests: false,
             unleash: false,
+            entwine: None,
+            cast_only_during_your_combat: false,
+            ferocious_mana_amount: 0,
         }
     }
 
@@ -882,6 +892,9 @@ impl CardDef {
             cant_attack_twice_per_turn: false,
             lands_are_forests: false,
             unleash: false,
+            entwine: None,
+            cast_only_during_your_combat: false,
+            ferocious_mana_amount: 0,
         }
     }
 
@@ -1037,6 +1050,9 @@ impl CardDef {
             cant_attack_twice_per_turn: false,
             lands_are_forests: false,
             unleash: false,
+            entwine: None,
+            cast_only_during_your_combat: false,
+            ferocious_mana_amount: 0,
         }
     }
 }
