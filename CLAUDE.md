@@ -15,6 +15,13 @@ web service (`/v1`) that Nerd Leagues uses. Status and decisions: `PLAN.md`. Eve
 - Every long run goes through `scripts/guard.sh <seconds> <MB> -- ...` (time and memory caps, kills the
   whole process tree). **One heavy job at a time** (the Mac froze with two, 2026-11-18). Keep every
   checkpoint.
+- **Checkpoints back up to S3** (Adam's bucket `nerdleagues-bolt-checkpoints-011834`, us-east-1, AWS
+  profile `bolt-backup`; approved 2026-11-25). `src/bolt/backup.py`: training scripts call
+  `upload_quietly(path)` after each save (never raises; `BOLT_BACKUP=0` skips), and
+  `python -m bolt.backup sync [--until HH:MM]` uploads anything missing. Results go to
+  `checkpoints/UPLOADED.jsonl`. **The credentials can't delete, by design**: never ask for, add or use
+  delete rights, and never copy the key anywhere. Uploads share his bandwidth, so pause them during his
+  streams (about 14:45 on stream days).
 - Say "smart player", never "search player" (search means searching your library in Magic).
 
 ## The Bolt service (Nerd Leagues talks to it)

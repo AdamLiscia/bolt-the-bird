@@ -96,6 +96,10 @@ pub struct Filter {
     /// Abilities on the stack too ("target spell or ability"): an activated or triggered ability is
     /// targeted as its source object (the topmost of that source's abilities).
     pub abilities: bool,
+    /// With `spells`: only enchantment, instant or sorcery spells (Swan Song).
+    pub spells_enchantment_instant_sorcery: bool,
+    /// Legendary permanents only.
+    pub legendary_only: bool,
     /// Artifact or creature spells only (Scatter Ray), with `spells`.
     pub spell_artifact_or_creature: bool,
 }
@@ -144,6 +148,8 @@ impl Filter {
         nontoken: false,
         entered_this_turn: false,
         abilities: false,
+        spells_enchantment_instant_sorcery: false,
+        legendary_only: false,
         spell_artifact_or_creature: false,
     };
 
@@ -1252,6 +1258,64 @@ pub enum Effect {
     /// Zimone: the first time this ability resolves this turn, manifest dread (CR 701.62);
     /// otherwise you may turn a face-down permanent you control face up.
     ManifestDreadFirstElseTurnFaceUp,
+    /// Look at the top card of the library of the player in `slot`; you may put it on the bottom.
+    LookTopMayBottom(u8),
+    /// Draw `draw` cards, then put `back` cards from your hand on top of your library in any order.
+    DrawThenPutBack {
+        draw: u8,
+        back: u8,
+    },
+    /// Exile all cards from the library of the player in `slot`; then that player shuffles their
+    /// hand into their library.
+    ExileLibraryShuffleHandIn(u8),
+    /// Scroll Rack: exile any number of cards from your hand face down, put that many cards from the
+    /// top of your library into your hand, then put the exiled cards on top in any order.
+    ScrollRack,
+    /// Conduit of Worlds: if you haven't cast a spell this turn, you may cast the card in `slot` from
+    /// your graveyard this turn; if you do, you can't cast additional spells this turn.
+    ConduitCast(u8),
+    /// Until end of turn, the creature in `slot` gains "Whenever this creature becomes tapped, ..."
+    /// (the source's trigger number `trigger`; the tapped creature is the item's `extra`).
+    GrantTappedTrigger {
+        slot: u8,
+        trigger: usize,
+    },
+    /// The creature in the item's `extra` deals damage equal to its power to the target in `slot`.
+    ExtraDealsDamageEqualPower(u8),
+    /// Counter the spell, activated ability or triggered ability in `slot` (Voidslime).
+    CounterSpellOrAbility(u8),
+    /// Each player's life total becomes the number of creatures they control (Biorhythm).
+    LifeBecomesCreatureCount,
+    /// Return all lands to their owners' hands (Sunder).
+    BounceAllLands,
+    /// Untap up to `n` lands (your own tapped lands, the engine's choice; Palinchron).
+    UntapLands(u8),
+    /// You may put a land card from your hand onto the battlefield (Broken Bond).
+    MayLandFromHand,
+    /// Return all permanents to their owners' hands except lands and those with these subtypes
+    /// (Cyclone Summoner).
+    BounceAllExceptLandsAndSubtypes(&'static [&'static str]),
+    /// Gain control of the creature in `slot` for as long as you control the source (Roil Elemental).
+    GainControlWhileSource(u8),
+    /// You may search your library for a Forest card and put it onto the battlefield tapped under
+    /// the control of the player in `slot`, then shuffle (Yavimaya Dryad).
+    SearchForestForPlayer(u8),
+    /// Awaken `n` on the land in `slot`: `n` +1/+1 counters, and it becomes a 0/0 Elemental creature
+    /// with haste (CR 702.113). It's still a land.
+    Awaken {
+        slot: u8,
+        n: u8,
+    },
+    /// The source becomes a copy of the card in `slot` until end of turn (Shifting Woodland).
+    BecomeCopyOfSlotUntilEot(u8),
+    /// The permanent in `slot` becomes a `power`/`toughness` creature with `subtype` for good. It's
+    /// still a land (Nissa, Sage Animist's −7).
+    SlotBecomesCreatureForGood {
+        slot: u8,
+        power: i32,
+        toughness: i32,
+        subtype: &'static str,
+    },
     /// Untap up to `n` lands you control (Frantic Search): tapped ones, those making the most colors
     /// first.
     UntapLandsUpTo(u8),
@@ -1346,6 +1410,8 @@ pub enum SearchTo {
     BattlefieldTappedStunned,
     /// Exile it; you may cast it without paying its mana cost this turn (Ugin's −11).
     ExileCastFreeThisTurn,
+    /// Onto the battlefield tapped under this player's control (Yavimaya Dryad).
+    BattlefieldTappedUnder(u8),
 }
 
 /// What a static ability affects.
@@ -1377,6 +1443,8 @@ pub enum Scope {
     OtherYourCreatures,
     /// Every land on the battlefield (Yavimaya, Cradle of Growth).
     EachLand,
+    /// Land creatures you control (Sylvan Advocate).
+    YourLandCreatures,
 }
 
 /// What a scaled static ability counts.
@@ -1421,6 +1489,8 @@ pub enum StaticCondition {
     QuestCountersAtLeast(i32),
     /// Its controller has the city's blessing (ascend).
     CitysBlessing,
+    /// Its controller controls at least this many lands.
+    ControlLandsAtLeast(u8),
 }
 
 /// A static ability that changes characteristics (CR 604, 613 layers 6 and 7c).
@@ -1577,6 +1647,10 @@ pub enum Condition {
     ControlArtifactsAtLeast(u32),
     /// The source is in a graveyard or exile (it died or was exiled).
     SourceInGraveyardOrExile,
+    /// It was cast from its owner's hand ("if you cast it from your hand").
+    CastFromHand,
+    /// Its controller controls at least this many lands.
+    ControlLandsAtLeast(u8),
 }
 
 /// A spell's effect or a triggered ability: target slots, then effects in order.

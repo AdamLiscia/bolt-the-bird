@@ -1263,3 +1263,550 @@ fn a_manifested_creature_card_turns_face_up_for_its_mana_cost() {
     assert!(g.obj(ring).face_down);
     assert!(!lb_has(&g, Action::Activate(ring, 0)));
 }
+
+#[test]
+fn jace_the_mind_sculptor_fateseals_brainstorms_and_bounces() {
+    let mut g = table();
+    let jace = hand(&mut g, 0, "Jace, the Mind Sculptor");
+    play(&mut g, jace, false, &[], &[]);
+    assert_eq!(g.obj(jace).loyalty, 3);
+    let theirs = *g.players[1].library.last().unwrap();
+    act(&mut g, Action::Loyalty(jace, 0));
+    resolve_all(&mut g, &[Action::Target(Target::Player(1)), Action::No]);
+    assert_eq!(g.players[1].library[0], theirs, "on the bottom");
+    assert_eq!(g.obj(jace).loyalty, 5);
+    to_main1(&mut g, 5, 0);
+    let a = hand(&mut g, 0, "Forest");
+    let b = hand(&mut g, 0, "Island");
+    let n = g.players[0].hand.len();
+    act(&mut g, Action::Loyalty(jace, 1));
+    resolve_all(&mut g, &[Action::Pick(a), Action::Pick(b)]);
+    assert_eq!(g.players[0].hand.len(), n + 1, "three drawn, two back");
+    let lib = &g.players[0].library;
+    assert_eq!(&lib[lib.len() - 2..], &[a, b], "b on top");
+    to_main1(&mut g, 7, 0);
+    let bear = put(&mut g, 1, "Hungry Ghoul");
+    act(&mut g, Action::Loyalty(jace, 2));
+    resolve_all(&mut g, &[Action::Target(obj(bear))]);
+    assert_eq!(g.obj(bear).zone, Zone::Hand);
+    assert_eq!(g.obj(jace).loyalty, 4);
+    g.objects[jace.0 as usize].loyalty = 12;
+    to_main1(&mut g, 9, 0);
+    let their_hand = g.players[1].hand.len();
+    act(&mut g, Action::Loyalty(jace, 3));
+    resolve_all(&mut g, &[Action::Target(Target::Player(1))]);
+    assert_eq!(
+        g.players[1].library.len(),
+        their_hand,
+        "their hand became their library"
+    );
+    assert!(g.players[1].hand.is_empty());
+}
+
+#[test]
+fn scroll_rack_swaps_cards_from_hand_with_the_top_of_the_library() {
+    let mut g = table();
+    let rack = put(&mut g, 0, "Scroll Rack");
+    let x = hand(&mut g, 0, "Forest");
+    let y = hand(&mut g, 0, "Island");
+    let t1 = top(&mut g, "Swamp");
+    let t2 = top(&mut g, "Mountain");
+    act(&mut g, Action::Activate(rack, 0));
+    resolve_all(
+        &mut g,
+        &[Action::Pick(x), Action::Pick(y), Action::No, Action::Pick(x)],
+    );
+    assert_eq!(g.obj(t1).zone, Zone::Hand);
+    assert_eq!(g.obj(t2).zone, Zone::Hand);
+    let lib = &g.players[0].library;
+    assert_eq!(&lib[lib.len() - 2..], &[y, x], "x chosen for the top");
+    assert!(g.obj(rack).tapped);
+}
+
+#[test]
+fn conduit_of_worlds_casts_a_permanent_card_from_the_graveyard_as_the_only_spell() {
+    let mut g = table();
+    let conduit = put(&mut g, 0, "Conduit of Worlds");
+    let land = g.add_card(0, cid("Forest"), Zone::Graveyard);
+    assert!(g.legal_actions().contains(&Action::PlayLand(land)));
+    let ghoul = g.add_card(0, cid("Hungry Ghoul"), Zone::Graveyard);
+    let other = hand(&mut g, 0, "Burglar Rat");
+    act(&mut g, Action::Activate(conduit, 0));
+    resolve_all(&mut g, &[Action::Target(obj(ghoul))]);
+    assert!(g.legal_actions().contains(&Action::Cast(ghoul)));
+    act(&mut g, Action::Cast(ghoul));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(ghoul).zone, Zone::Battlefield);
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(other)),
+        "no additional spells this turn"
+    );
+}
+
+#[test]
+fn legolass_quick_reflexes_has_split_second_and_grants_a_tap_trigger() {
+    let mut g = game(&["Hungry Ghoul", "Forest", "Island"]);
+    let mine = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "Hungry Ghoul")
+        .unwrap();
+    let theirs = put(&mut g, 1, "Burglar Rat");
+    g.objects[mine.0 as usize].tapped = true;
+    let lql = hand(&mut g, 0, "Legolas's Quick Reflexes");
+    act(&mut g, Action::Cast(lql));
+    act(&mut g, Action::Target(obj(mine)));
+    assert_eq!(g.legal_actions(), vec![Action::PassPriority], "split second");
+    resolve_all(&mut g, &[]);
+    assert!(!g.obj(mine).tapped);
+    assert!(g.keywords(mine).has(Keywords::REACH) && g.keywords(mine).has(Keywords::HEXPROOF));
+    while g.step != Step::DeclareAttackers {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(mine));
+    act(&mut g, Action::FinishAttacks);
+    resolve_all(&mut g, &[Action::Target(obj(theirs))]);
+    assert_eq!(g.obj(theirs).zone, Zone::Graveyard, "2 damage to a 1/1");
+}
+
+// ---- Aesi, Tyrant of Gyre Strait (Time) ----
+
+#[test]
+fn swan_song_counters_an_instant_and_its_controller_gets_a_bird() {
+    let mut g = table();
+    let think = hand(&mut g, 0, "Think Twice");
+    let swan = hand(&mut g, 0, "Swan Song");
+    act(&mut g, Action::Cast(think));
+    act(&mut g, Action::Cast(swan));
+    resolve_all(&mut g, &[Action::Target(obj(think))]);
+    assert_eq!(g.obj(think).zone, Zone::Graveyard);
+    let birds = tokens(&g, 0, "Bird");
+    assert_eq!(birds.len(), 1);
+    assert_eq!(g.power(birds[0]), 2);
+    assert!(g.keywords(birds[0]).has(Keywords::FLYING));
+}
+
+#[test]
+fn biorhythm_sets_each_life_total_to_that_players_creature_count() {
+    let mut g = table();
+    put(&mut g, 0, "Aegis Turtle");
+    put(&mut g, 0, "Hungry Ghoul");
+    let bio = hand(&mut g, 0, "Biorhythm");
+    play(&mut g, bio, false, &[], &[]);
+    assert_eq!(g.players[0].life, 2);
+    assert_eq!(g.players[1].life, 0);
+}
+
+#[test]
+fn sunder_returns_all_lands_to_hand() {
+    let mut g = table();
+    let sunder = hand(&mut g, 0, "Sunder");
+    play(&mut g, sunder, false, &[], &[]);
+    assert!(g.battlefield.iter().all(|&x| !g.types_of(x).land));
+    assert!(g.players[1].hand.iter().filter(|&&x| g.types_of(x).land).count() >= 25);
+}
+
+#[test]
+fn ghost_town_returns_to_hand_only_off_turn() {
+    let mut g = game(&["Ghost Town"]);
+    let gt = g.permanents(0).next().unwrap();
+    assert!(colors(&g, gt) == [false; 5] && g.mana_sources(0).iter().any(|&(x, m)| x == gt && m.colorless));
+    assert!(!g.legal_actions().contains(&Action::Activate(gt, 0)), "your turn");
+    to_main1(&mut g, 4, 1);
+    act(&mut g, Action::PassPriority);
+    act(&mut g, Action::Activate(gt, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(gt).zone, Zone::Hand);
+}
+
+#[test]
+fn palinchron_untaps_seven_lands_and_returns_to_hand() {
+    let mut g = table();
+    let pal = hand(&mut g, 0, "Palinchron");
+    play(&mut g, pal, false, &[], &[]);
+    assert!(g.keywords(pal).has(Keywords::FLYING));
+    let tapped = g
+        .permanents(0)
+        .filter(|&x| g.types_of(x).land && g.obj(x).tapped)
+        .count();
+    assert_eq!(tapped, 0, "the seven lands it cost are untapped");
+    act(&mut g, Action::Activate(pal, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(pal).zone, Zone::Hand);
+}
+
+#[test]
+fn broken_bond_destroys_an_artifact_and_puts_a_land_from_hand() {
+    let mut g = table();
+    let signet = put(&mut g, 1, "Arcane Signet");
+    let forest = hand(&mut g, 0, "Forest");
+    let bb = hand(&mut g, 0, "Broken Bond");
+    play(&mut g, bb, false, &[obj(signet)], &[Action::Pick(forest)]);
+    assert_eq!(g.obj(signet).zone, Zone::Graveyard);
+    assert_eq!(g.obj(forest).zone, Zone::Battlefield);
+    assert!(!g.obj(forest).tapped);
+}
+
+#[test]
+fn collector_ouphe_stops_artifact_abilities() {
+    let mut g = table();
+    let top_ = put(&mut g, 0, "Sensei's Divining Top");
+    assert!(g.legal_actions().contains(&Action::Activate(top_, 0)));
+    put(&mut g, 1, "Collector Ouphe");
+    assert!(!g.legal_actions().contains(&Action::Activate(top_, 0)));
+    assert!(!g.legal_actions().contains(&Action::Activate(top_, 1)));
+}
+
+#[test]
+fn mox_amber_makes_the_colors_of_legendary_creatures() {
+    let mut g = game(&["Mox Amber"]);
+    let mox = g.permanents(0).next().unwrap();
+    assert_eq!(colors(&g, mox), [false; 5], "no legendary creature: no mana");
+    put(&mut g, 0, "Tinybones, Bauble Burglar");
+    assert_eq!(colors(&g, mox), [false, false, true, false, false]);
+}
+
+#[test]
+fn voidslime_counters_an_activated_ability() {
+    let mut g = table();
+    let t = put(&mut g, 0, "Sensei's Divining Top");
+    let vs = hand(&mut g, 0, "Voidslime");
+    act(&mut g, Action::Activate(t, 0));
+    assert_eq!(g.items.len(), 1);
+    act(&mut g, Action::Cast(vs));
+    resolve_all(&mut g, &[Action::Target(obj(t))]);
+    assert!(g.items.is_empty());
+    assert_eq!(g.obj(t).zone, Zone::Battlefield);
+    assert_eq!(g.obj(vs).zone, Zone::Graveyard);
+}
+
+#[test]
+fn awaken_the_woods_makes_x_forest_dryad_land_creatures() {
+    let mut g = table();
+    let atw = hand(&mut g, 0, "Awaken the Woods");
+    act(&mut g, Action::CastX(atw, 3));
+    resolve_all(&mut g, &[]);
+    let dryads = tokens(&g, 0, "Forest Dryad");
+    assert_eq!(dryads.len(), 3);
+    let t = g.types_of(dryads[0]);
+    assert!(t.land && t.creature);
+    assert!(g.has_subtype(dryads[0], "Forest"));
+}
+
+#[test]
+fn sylvan_advocate_grows_with_six_lands() {
+    let mut g = game(&[
+        "Sylvan Advocate",
+        "Forest",
+        "Forest",
+        "Forest",
+        "Forest",
+        "Forest",
+    ]);
+    let adv = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "Sylvan Advocate")
+        .unwrap();
+    assert_eq!(g.power(adv), 2);
+    assert!(g.keywords(adv).has(Keywords::VIGILANCE));
+    let f = hand(&mut g, 0, "Forest");
+    act(&mut g, Action::PlayLand(f));
+    assert_eq!((g.power(adv), g.toughness(adv)), (4, 5));
+}
+
+#[test]
+fn omnath_keeps_unspent_green_mana_and_grows_with_it() {
+    let mut g = game(&["Omnath, Locus of Mana", "Forest", "Island"]);
+    let om = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "Omnath, Locus of Mana")
+        .unwrap();
+    let forest = g.permanents(0).find(|&x| g.def_of(x).name == "Forest").unwrap();
+    let island = g.permanents(0).find(|&x| g.def_of(x).name == "Island").unwrap();
+    g.manual_mana[0] = true;
+    act(&mut g, Action::TapForMana(forest, 4));
+    act(&mut g, Action::TapForMana(island, 1));
+    assert_eq!(g.power(om), 2);
+    let step = g.step;
+    while g.step == step {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(
+        g.players[0].pool.len(),
+        1,
+        "the blue mana empties, the green stays"
+    );
+    assert_eq!((g.power(om), g.toughness(om)), (2, 2));
+}
+
+#[test]
+fn cyclone_summoner_cast_from_hand_bounces_all_but_giants_wizards_and_lands() {
+    let mut g = table();
+    let ghoul = put(&mut g, 1, "Hungry Ghoul");
+    let signet = put(&mut g, 0, "Arcane Signet");
+    let cs = hand(&mut g, 0, "Cyclone Summoner");
+    play(&mut g, cs, false, &[], &[]);
+    assert_eq!(g.obj(ghoul).zone, Zone::Hand);
+    assert_eq!(g.obj(signet).zone, Zone::Hand);
+    assert_eq!(g.obj(cs).zone, Zone::Battlefield, "a Giant");
+    assert_eq!(g.permanents(0).filter(|&x| g.types_of(x).land).count(), 25);
+}
+
+#[test]
+fn roil_elemental_steals_on_landfall_while_you_control_it() {
+    let mut g = table();
+    let roil = put(&mut g, 0, "Roil Elemental");
+    let ghoul = put(&mut g, 1, "Hungry Ghoul");
+    let f = hand(&mut g, 0, "Forest");
+    act(&mut g, Action::PlayLand(f));
+    resolve_all(&mut g, &[Action::Target(obj(ghoul)), Action::Yes]);
+    assert_eq!(g.obj(ghoul).controller, 0);
+    let ota = hand(&mut g, 0, "Otawara, Soaring City");
+    act(&mut g, Action::Activate(ota, 0));
+    resolve_all(&mut g, &[Action::Target(obj(roil))]);
+    assert_eq!(g.obj(roil).zone, Zone::Hand);
+    assert_eq!(g.obj(ghoul).controller, 1, "control ends with Roil Elemental");
+}
+
+#[test]
+fn yavimaya_dryad_has_forestwalk_and_gives_a_forest_to_a_player() {
+    let mut g = table();
+    let forest = top(&mut g, "Forest");
+    let yd = hand(&mut g, 0, "Yavimaya Dryad");
+    play(
+        &mut g,
+        yd,
+        false,
+        &[],
+        &[
+            Action::Target(Target::Player(1)),
+            Action::Yes,
+            Action::Pick(forest),
+        ],
+    );
+    assert!(g.keywords(yd).has(Keywords::FORESTWALK));
+    assert_eq!(g.obj(forest).zone, Zone::Battlefield);
+    assert_eq!(g.obj(forest).controller, 1);
+    assert!(g.obj(forest).tapped);
+}
+
+#[test]
+fn otawara_channels_a_bounce_for_less_per_legendary_creature() {
+    let mut g = table();
+    put(&mut g, 0, "Tinybones, Bauble Burglar");
+    let ghoul = put(&mut g, 1, "Hungry Ghoul");
+    let ota = hand(&mut g, 0, "Otawara, Soaring City");
+    act(&mut g, Action::Activate(ota, 0));
+    resolve_all(&mut g, &[Action::Target(obj(ghoul))]);
+    assert_eq!(g.obj(ghoul).zone, Zone::Hand);
+    assert_eq!(g.obj(ota).zone, Zone::Graveyard, "discarded");
+    let tapped = g.permanents(0).filter(|&x| g.obj(x).tapped).count();
+    assert_eq!(tapped, 3, "{{2}}{{U}}: one less for Tinybones");
+}
+
+#[test]
+fn scatter_to_the_winds_awakens_a_land_when_cast_for_its_awaken_cost() {
+    let mut g = table();
+    let think = hand(&mut g, 0, "Think Twice");
+    let land = g.permanents(0).find(|&x| g.def_of(x).name == "Forest").unwrap();
+    let stw = hand(&mut g, 0, "Scatter to the Winds");
+    act(&mut g, Action::Cast(think));
+    act(&mut g, Action::CastKicked(stw));
+    resolve_all(&mut g, &[Action::Target(obj(think)), Action::Target(obj(land))]);
+    assert_eq!(g.obj(think).zone, Zone::Graveyard);
+    assert!(g.types_of(land).creature && g.types_of(land).land);
+    assert_eq!((g.power(land), g.toughness(land)), (3, 3));
+    assert!(g.keywords(land).has(Keywords::HASTE));
+    to_main1(&mut g, 5, 0);
+    assert!(g.types_of(land).creature, "for good");
+}
+
+#[test]
+fn three_steps_ahead_pays_for_each_chosen_mode() {
+    let mut g = table();
+    let think = hand(&mut g, 0, "Think Twice");
+    let turtle = put(&mut g, 0, "Aegis Turtle");
+    let tsa = hand(&mut g, 0, "Three Steps Ahead");
+    act(&mut g, Action::Cast(think));
+    let untapped = g
+        .permanents(0)
+        .filter(|&x| g.types_of(x).land && !g.obj(x).tapped)
+        .count();
+    act(&mut g, Action::CastModal(tsa, 6));
+    act(&mut g, Action::Target(obj(think)));
+    act(&mut g, Action::Target(obj(turtle)));
+    let after = g
+        .permanents(0)
+        .filter(|&x| g.types_of(x).land && !g.obj(x).tapped)
+        .count();
+    assert_eq!(untapped - after, 8, "{{U}} plus {{1}}{{U}}, {{3}} and {{2}}");
+    let n = g.players[0].hand.len();
+    let discard = g.players[0].hand[0];
+    resolve_all(&mut g, &[Action::Discard(discard)]);
+    assert_eq!(g.obj(think).zone, Zone::Graveyard);
+    assert_eq!(
+        g.permanents(0)
+            .filter(|&x| g.def_of(x).name == "Aegis Turtle")
+            .count(),
+        2
+    );
+    assert_eq!(g.players[0].hand.len(), n + 1);
+}
+
+#[test]
+fn plaza_of_heroes_makes_any_color_for_legends_and_protects_one() {
+    let mut g = game(&["Plaza of Heroes", "Forest"]);
+    let plaza = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "Plaza of Heroes")
+        .unwrap();
+    let rat = hand(&mut g, 0, "Burglar Rat");
+    let tiny = hand(&mut g, 0, "Tinybones, Bauble Burglar");
+    assert!(!g.legal_actions().contains(&Action::Cast(rat)));
+    assert!(g.legal_actions().contains(&Action::Cast(tiny)));
+    play(&mut g, tiny, false, &[], &[]);
+    assert_eq!(g.obj(tiny).zone, Zone::Battlefield);
+    let _ = plaza;
+    let mut g = table();
+    let plaza = put(&mut g, 0, "Plaza of Heroes");
+    assert_eq!(colors(&g, plaza), [false; 5]);
+    let tiny = put(&mut g, 0, "Tinybones, Bauble Burglar");
+    assert_eq!(
+        colors(&g, plaza),
+        [false, false, true, false, false],
+        "Tinybones is black"
+    );
+    act(&mut g, Action::Activate(plaza, 0));
+    resolve_all(&mut g, &[Action::Target(obj(tiny))]);
+    assert_eq!(g.obj(plaza).zone, Zone::Exile);
+    assert!(g.keywords(tiny).has(Keywords::HEXPROOF) && g.keywords(tiny).has(Keywords::INDESTRUCTIBLE));
+}
+
+#[test]
+fn bear_umbra_pumps_untaps_lands_on_attack_and_saves_its_creature() {
+    let mut lands = vec!["Hungry Ghoul"];
+    for land in ["Plains", "Island", "Swamp", "Mountain", "Forest"] {
+        lands.extend([land; 5]);
+    }
+    let mut g = game(&lands);
+    let ghoul = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "Hungry Ghoul")
+        .unwrap();
+    let umbra = hand(&mut g, 0, "Bear Umbra");
+    play(&mut g, umbra, false, &[obj(ghoul)], &[]);
+    assert_eq!(g.power(ghoul), 4);
+    assert!(g.permanents(0).any(|x| g.obj(x).tapped));
+    while g.step != Step::DeclareAttackers {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(ghoul));
+    act(&mut g, Action::FinishAttacks);
+    resolve_all(&mut g, &[]);
+    assert!(
+        g.permanents(0)
+            .filter(|&x| g.types_of(x).land)
+            .all(|x| !g.obj(x).tapped),
+        "untap all lands you control"
+    );
+    while g.step != Step::Main2 {
+        act(&mut g, Action::PassPriority);
+    }
+    let dam = hand(&mut g, 0, "Damnation");
+    play(&mut g, dam, false, &[], &[]);
+    assert_eq!(g.obj(ghoul).zone, Zone::Battlefield, "umbra armor");
+    assert_eq!(g.obj(umbra).zone, Zone::Graveyard);
+}
+
+#[test]
+fn shifting_woodland_becomes_a_copy_of_a_graveyard_card_with_delirium() {
+    let mut g = game(&[]);
+    let sw = hand(&mut g, 0, "Shifting Woodland");
+    act(&mut g, Action::PlayLand(sw));
+    resolve_all(&mut g, &[]);
+    assert!(g.obj(sw).tapped, "no Forest");
+    let mut g = game(&["Forest", "Forest", "Forest", "Forest"]);
+    let sw = hand(&mut g, 0, "Shifting Woodland");
+    act(&mut g, Action::PlayLand(sw));
+    resolve_all(&mut g, &[]);
+    assert!(!g.obj(sw).tapped);
+    let ghoul = g.add_card(0, cid("Hungry Ghoul"), Zone::Graveyard);
+    g.add_card(0, cid("Forest"), Zone::Graveyard);
+    g.add_card(0, cid("Arcane Signet"), Zone::Graveyard);
+    assert!(
+        !g.legal_actions().contains(&Action::Activate(sw, 0)),
+        "three card types"
+    );
+    g.add_card(0, cid("Think Twice"), Zone::Graveyard);
+    act(&mut g, Action::Activate(sw, 0));
+    resolve_all(&mut g, &[Action::Target(obj(ghoul))]);
+    assert_eq!(g.def_of(sw).name, "Hungry Ghoul");
+    assert!(g.types_of(sw).creature);
+    while g.turn == 3 {
+        let a = match g.legal_actions()[0] {
+            d @ Action::Discard(_) => d, // cleanup: down to seven
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.def_of(sw).name, "Shifting Woodland");
+}
+
+#[test]
+fn khalni_ambush_fights_or_is_played_as_khalni_territory() {
+    let mut g = table();
+    let k = hand(&mut g, 0, "Khalni Ambush // Khalni Territory");
+    assert!(g.legal_actions().contains(&Action::PlayLand(k)));
+    act(&mut g, Action::PlayLand(k));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.def_of(k).name, "Khalni Territory");
+    assert!(g.types_of(k).land && g.obj(k).tapped);
+    let mut g = table();
+    let ghoul = put(&mut g, 0, "Hungry Ghoul");
+    let rat = put(&mut g, 1, "Burglar Rat");
+    let k = hand(&mut g, 0, "Khalni Ambush // Khalni Territory");
+    play(&mut g, k, false, &[obj(ghoul), obj(rat)], &[]);
+    assert_eq!(g.obj(rat).zone, Zone::Graveyard);
+    assert_eq!(g.obj(ghoul).zone, Zone::Battlefield);
+    assert_eq!(g.obj(k).zone, Zone::Graveyard);
+}
+
+#[test]
+fn nissa_vastwood_seer_finds_a_forest_and_flips_into_a_planeswalker_at_seven_lands() {
+    let mut g = table();
+    let forest = top(&mut g, "Forest");
+    let nissa = hand(&mut g, 0, "Nissa, Vastwood Seer // Nissa, Sage Animist");
+    play(&mut g, nissa, false, &[], &[Action::Yes, Action::Pick(forest)]);
+    assert_eq!(g.obj(forest).zone, Zone::Hand);
+    act(&mut g, Action::PlayLand(forest));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(nissa).zone, Zone::Battlefield);
+    assert_eq!(g.def_of(nissa).name, "Nissa, Sage Animist");
+    assert_eq!(g.obj(nissa).loyalty, 3);
+    let land = top(&mut g, "Island");
+    act(&mut g, Action::Loyalty(nissa, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        g.obj(land).zone,
+        Zone::Battlefield,
+        "a land: onto the battlefield"
+    );
+    to_main1(&mut g, 5, 0);
+    act(&mut g, Action::Loyalty(nissa, 1));
+    resolve_all(&mut g, &[]);
+    let ashaya = tokens(&g, 0, "Ashaya, the Awoken World");
+    assert_eq!(ashaya.len(), 1);
+    assert!(g.types_of(ashaya[0]).legendary);
+    assert_eq!(g.power(ashaya[0]), 4);
+    g.objects[nissa.0 as usize].loyalty = 7;
+    to_main1(&mut g, 7, 0);
+    let six: Vec<ObjId> = g.permanents(0).filter(|&x| g.types_of(x).land).take(6).collect();
+    act(&mut g, Action::Loyalty(nissa, 2));
+    let targets: Vec<Action> = six.iter().map(|&x| Action::Target(obj(x))).collect();
+    resolve_all(&mut g, &targets);
+    for &x in &six {
+        assert!(g.types_of(x).creature && g.types_of(x).land);
+        assert_eq!(g.power(x), 6);
+    }
+    to_main1(&mut g, 9, 0);
+    assert!(g.types_of(six[0]).creature, "for good");
+}

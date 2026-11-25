@@ -37,6 +37,7 @@ keywords! {
     CANT_BLOCK = 15, "Can't block";
     ISLANDWALK = 16, "Islandwalk";
     SHROUD = 17, "Shroud";
+    FORESTWALK = 18, "Forestwalk";
 }
 
 impl Keywords {
@@ -238,6 +239,13 @@ pub struct Activated {
     /// Only while it's a copy that keeps its own abilities (Sakashima the Impostor's "{2}{U}{U}:
     /// Return ..."): the printed card itself doesn't have it.
     pub copy_only: bool,
+    /// "Activate only if it's not your turn." (Ghost Town)
+    pub not_your_turn_only: bool,
+    /// "This ability costs {1} less to activate for each legendary creature you control." (Otawara)
+    pub less_per_legendary_creature: bool,
+    /// "Activate only if there are four or more card types among cards in your graveyard."
+    /// (delirium)
+    pub needs_delirium: bool,
     /// "Activate only if an opponent controls N or more lands." (Tectonic Edge)
     pub opponent_min_lands: u8,
 }
@@ -615,6 +623,30 @@ pub struct CardDef {
     pub copy_keeps_abilities: bool,
     /// "The \"legend rule\" doesn't apply to permanents you control."
     pub no_legend_rule: bool,
+    /// Split second (CR 702.61): while it's on the stack, players can't cast spells or activate
+    /// abilities that aren't mana abilities.
+    pub split_second: bool,
+    /// "Activated abilities of artifacts can't be activated." (Collector Ouphe)
+    pub stops_artifact_abilities: bool,
+    /// "{T}: Add one mana of any color among legendary creatures and planeswalkers you control." (Mox
+    /// Amber; none: no mana)
+    pub mana_legendary_colors: bool,
+    /// "You don't lose unspent green mana as steps and phases end." and "+1/+1 for each unspent
+    /// green mana you have." (Omnath, Locus of Mana)
+    pub keeps_green_mana: bool,
+    /// Spree (CR 702.172): the additional cost of each mode in `modes` (a mode there is one
+    /// combination of the chosen + modes).
+    pub mode_costs: Vec<ManaCost>,
+    /// Plaza of Heroes: "{T}: Add one mana of any color. Spend this mana only to cast a legendary
+    /// spell." and "{T}: Add one mana of any color among legendary permanents you control." (its
+    /// {C} is in `mana`).
+    pub plaza_mana: bool,
+    /// Umbra armor (CR 702.89): if the enchanted creature would be destroyed, instead remove all
+    /// damage from it and destroy this Aura.
+    pub umbra_armor: bool,
+    /// A modal double-faced card (CR 712.12): its `back` is played or cast instead of its front (a
+    /// land back is played as a land, with `Object::transformed` set as it enters).
+    pub modal_back: bool,
     /// "Green spells you cast cost {N} less to cast." (Emerald Medallion)
     pub green_spell_discount: u8,
     /// "Whenever you tap a Forest for mana, add an additional {G}." (Nissa, Who Shakes the World)
@@ -834,6 +866,14 @@ impl CardDef {
             copy_only_yours: false,
             copy_keeps_abilities: false,
             no_legend_rule: false,
+            split_second: false,
+            stops_artifact_abilities: false,
+            mana_legendary_colors: false,
+            keeps_green_mana: false,
+            mode_costs: Vec::new(),
+            plaza_mana: false,
+            umbra_armor: false,
+            modal_back: false,
             green_spell_discount: 0,
             forests_add_g: false,
             buyback_sacrifice: None,
@@ -1016,6 +1056,14 @@ impl CardDef {
             copy_only_yours: false,
             copy_keeps_abilities: false,
             no_legend_rule: false,
+            split_second: false,
+            stops_artifact_abilities: false,
+            mana_legendary_colors: false,
+            keeps_green_mana: false,
+            mode_costs: Vec::new(),
+            plaza_mana: false,
+            umbra_armor: false,
+            modal_back: false,
             green_spell_discount: 0,
             forests_add_g: false,
             buyback_sacrifice: None,
@@ -1198,6 +1246,14 @@ impl CardDef {
             copy_only_yours: false,
             copy_keeps_abilities: false,
             no_legend_rule: false,
+            split_second: false,
+            stops_artifact_abilities: false,
+            mana_legendary_colors: false,
+            keeps_green_mana: false,
+            mode_costs: Vec::new(),
+            plaza_mana: false,
+            umbra_armor: false,
+            modal_back: false,
             green_spell_discount: 0,
             forests_add_g: false,
             buyback_sacrifice: None,

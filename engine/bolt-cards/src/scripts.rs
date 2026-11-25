@@ -152,6 +152,21 @@ pub fn token_defs() -> Vec<CardDef> {
             t.pt_lands = true;
             t
         },
+        token("Bird", "Bird", 2, 2, Keywords::FLYING), // Swan Song's blue 2/2
+        {
+            // Awaken the Woods: "1/1 green Forest Dryad land creature" (a Forest: "{T}: Add {G}").
+            let mut t = token("Forest Dryad", "Dryad", 1, 1, Keywords::NONE);
+            t.types.land = true;
+            t.subtypes = vec!["Forest".to_string(), "Dryad".to_string()];
+            t.mana = Some(ManaSource::of(&[Color::Green]));
+            t
+        },
+        {
+            // Nissa, Sage Animist: "Ashaya, the Awoken World, a legendary 4/4 green Elemental".
+            let mut t = token("Ashaya, the Awoken World", "Elemental", 4, 4, Keywords::NONE);
+            t.types.legendary = true;
+            t
+        },
     ]
 }
 
@@ -249,6 +264,9 @@ pub struct Tokens {
     pub insect_green: usize,
     pub badger: usize,
     pub treefolk: usize,
+    pub bird_2: usize,
+    pub forest_dryad: usize,
+    pub ashaya: usize,
 }
 
 impl Tokens {
@@ -310,6 +328,9 @@ impl Tokens {
             insect_green: base + 53,
             badger: base + 54,
             treefolk: base + 55,
+            bird_2: base + 56,
+            forest_dryad: base + 57,
+            ashaya: base + 58,
         }
     }
 }

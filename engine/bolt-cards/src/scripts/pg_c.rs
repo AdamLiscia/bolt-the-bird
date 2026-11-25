@@ -488,6 +488,253 @@ pub fn script(name: &str) -> Option<Script> {
             &["Landfall — Whenever a land you control enters, manifest dread if this is the first time this ability has resolved this turn. Otherwise, you may turn a permanent you control face up."],
             |d, _| on(d, When::LandYouControlEnters, vec![], vec![Effect::ManifestDreadFirstElseTurnFaceUp]),
         ),
+        "Jace, the Mind Sculptor" => s(
+            &[
+                "+2: Look at the top card of target player's library. You may put that card on the bottom of that player's library.",
+                "0: Draw three cards, then put two cards from your hand on top of your library in any order.",
+                "−1: Return target creature to its owner's hand.",
+                "−12: Exile all cards from target player's library, then that player shuffles their hand into their library.",
+            ],
+            |d, _| {
+                loyalty(d, 2, Ability::new(vec![Filter::PLAYER], vec![Effect::LookTopMayBottom(0)]));
+                loyalty(d, 0, Ability::new(vec![], vec![Effect::DrawThenPutBack { draw: 3, back: 2 }]));
+                loyalty(d, -1, Ability::new(vec![CREATURE], vec![Effect::Bounce(0)]));
+                loyalty(d, -12, Ability::new(vec![Filter::PLAYER], vec![Effect::ExileLibraryShuffleHandIn(0)]));
+            },
+        ),
+        "Scroll Rack" => s(
+            &["{1}, {T}: Exile any number of cards from your hand face down. Put that many cards from the top of your library into your hand. Then look at the exiled cards and put them on top of your library in any order."],
+            |d, _| {
+                activated(d, "{1}", true, vec![], vec![Effect::ScrollRack]);
+            },
+        ),
+        "Conduit of Worlds" => s(
+            &[
+                "You may play lands from your graveyard.",
+                "{T}: Choose target nonland permanent card in your graveyard. If you haven't cast a spell this turn, you may cast that card. If you do, you can't cast additional spells this turn. Activate only as a sorcery.",
+            ],
+            |d, _| {
+                d.lands_from_graveyard = true;
+                // The card stays castable for the rest of the turn while no spell has been cast.
+                let card = Filter { nonland_permanents: true, ..graveyard_cards(false, Controller::You) };
+                let n = activated(d, "", true, vec![card], vec![Effect::ConduitCast(0)]);
+                d.activated[n].sorcery = true;
+            },
+        ),
+        "Legolas's Quick Reflexes" => s(
+            &[
+                "Split second",
+                "Untap target creature. Until end of turn, it gains reach, hexproof, and \"Whenever this creature becomes tapped, it deals damage equal to its power to up to one target creature.\"",
+            ],
+            |d, _| {
+                d.split_second = true;
+                d.triggers.push(Trigger { when: When::Never, ability: up_to(vec![CREATURE], vec![Effect::ExtraDealsDamageEqualPower(0)]) });
+                spell(
+                    d,
+                    vec![CREATURE],
+                    vec![
+                        Effect::UntapTarget(0),
+                        Effect::Grant { slot: 0, keywords: Keywords::REACH.with(Keywords::HEXPROOF) },
+                        Effect::GrantTappedTrigger { slot: 0, trigger: 0 },
+                    ],
+                );
+            },
+        ),
+        // ---- Aesi, Tyrant of Gyre Strait (Time) ----
+        "Swan Song" => s(
+            &["Counter target enchantment, instant, or sorcery spell. Its controller creates a 2/2 blue Bird creature token with flying."],
+            |d, t| {
+                let f = Filter { spells_enchantment_instant_sorcery: true, ..SPELL };
+                spell(d, vec![f], vec![Effect::Counter(0), Effect::CreateToken { who: Who::ControllerOf(0), def: t.bird_2, n: 1 }]);
+            },
+        ),
+        "Biorhythm" => s(&["Each player's life total becomes the number of creatures they control."], |d, _| {
+            spell(d, vec![], vec![Effect::LifeBecomesCreatureCount])
+        }),
+        "Sunder" => s(&["Return all lands to their owners' hands."], |d, _| spell(d, vec![], vec![Effect::BounceAllLands])),
+        "Ghost Town" => s(&["{T}: Add {C}.", "{0}: Return this land to its owner's hand. Activate only if it's not your turn."], |d, _| {
+            d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+            let n = activated(d, "", false, vec![], vec![Effect::BounceSelf]);
+            d.activated[n].not_your_turn_only = true;
+        }),
+        "Palinchron" => s(
+            &["When this creature enters, untap up to seven lands.", "{2}{U}{U}: Return this creature to its owner's hand."],
+            |d, _| {
+                // "Up to seven lands": your own tapped ones (the engine's choice; untapping an opponent's
+                // land never helps you).
+                on(d, When::Enters, vec![], vec![Effect::UntapLands(7)]);
+                activated(d, "{2}{U}{U}", false, vec![], vec![Effect::BounceSelf]);
+            },
+        ),
+        "Broken Bond" => s(
+            &["Destroy target artifact or enchantment. You may put a land card from your hand onto the battlefield."],
+            |d, _| spell(d, vec![ARTIFACT_OR_ENCHANTMENT], vec![Effect::Destroy(0), Effect::MayLandFromHand]),
+        ),
+        "Collector Ouphe" => s(&["Activated abilities of artifacts can't be activated."], |d, _| d.stops_artifact_abilities = true),
+        "Mox Amber" => s(&["{T}: Add one mana of any color among legendary creatures and planeswalkers you control."], |d, _| {
+            d.mana_legendary_colors = true
+        }),
+        "Voidslime" => s(&["Counter target spell, activated ability, or triggered ability."], |d, _| {
+            spell(d, vec![Filter { abilities: true, ..SPELL }], vec![Effect::CounterSpellOrAbility(0)])
+        }),
+        "Awaken the Woods" => s(&["Create X 1/1 green Forest Dryad land creature tokens."], |d, t| {
+            spell(d, vec![], vec![Effect::CreateTokensX { def: t.forest_dryad }])
+        }),
+        "Sylvan Advocate" => s(
+            &["As long as you control six or more lands, this creature and land creatures you control get +2/+2."],
+            |d, _| {
+                for scope in [Scope::This, Scope::YourLandCreatures] {
+                    static_on(d, scope, false, Keywords::NONE);
+                    let st = d.statics.last_mut().expect("just pushed");
+                    st.power = 2;
+                    st.toughness = 2;
+                    st.condition = Some(StaticCondition::ControlLandsAtLeast(6));
+                }
+            },
+        ),
+        "Omnath, Locus of Mana" => s(
+            &["You don't lose unspent green mana as steps and phases end.", "Omnath gets +1/+1 for each unspent green mana you have."],
+            |d, _| d.keeps_green_mana = true,
+        ),
+        "Cyclone Summoner" => s(
+            &["When this creature enters, if you cast it from your hand, return all permanents to their owners' hands except for Giants, Wizards, and lands."],
+            |d, _| on_if(d, Condition::CastFromHand, vec![], vec![Effect::BounceAllExceptLandsAndSubtypes(&["Giant", "Wizard"])]),
+        ),
+        "Roil Elemental" => s(
+            &["Landfall — Whenever a land you control enters, you may gain control of target creature for as long as you control this creature."],
+            |d, _| may(d, When::LandYouControlEnters, vec![CREATURE], vec![Effect::GainControlWhileSource(0)]),
+        ),
+        "Yavimaya Dryad" => s(
+            &["When this creature enters, you may search your library for a Forest card, put it onto the battlefield tapped under target player's control, then shuffle."],
+            |d, _| may(d, When::Enters, vec![Filter::PLAYER], vec![Effect::SearchForestForPlayer(0)]),
+        ),
+        "Otawara, Soaring City" => s(
+            &[
+                "{T}: Add {U}.",
+                "Channel — {3}{U}, Discard this card: Return target artifact, creature, enchantment, or planeswalker to its owner's hand. This ability costs {1} less to activate for each legendary creature you control.",
+            ],
+            |d, _| {
+                d.mana = Some(ManaSource::of(&[Color::Blue]));
+                let f = Filter { players: false, artifacts: true, enchantments: true, ..Filter::ANY };
+                let n = activated(d, "{3}{U}", false, vec![f], vec![Effect::Bounce(0)]);
+                d.activated[n].from_hand_discard = true;
+                d.activated[n].less_per_legendary_creature = true;
+            },
+        ),
+        "Scatter to the Winds" => s(&["Counter target spell.", "Awaken 3—{4}{U}{U}"], |d, _| {
+            spell(d, vec![SPELL], vec![Effect::Counter(0)]);
+            // Awaken is cast as a {3} kicker on {1}{U}{U}: the same total, {4}{U}{U}.
+            d.kicker = ManaCost::parse("{3}");
+            let land = Filter { players: false, creatures: false, planeswalkers: false, lands: true, controller: Controller::You, ..Filter::ANY };
+            d.kicked_spell = Some(Ability::new(vec![SPELL, land], vec![Effect::Counter(0), Effect::Awaken { slot: 1, n: 3 }]));
+        }),
+        "Three Steps Ahead" => s(
+            &[
+                "Spree",
+                "+ {1}{U} — Counter target spell.",
+                "+ {3} — Create a token that's a copy of target artifact or creature you control.",
+                "+ {2} — Draw two cards, then discard a card.",
+            ],
+            |d, _| {
+                // Spree: one mode for each combination of the + modes, each with their total cost.
+                let yours = Filter { players: false, planeswalkers: false, artifacts: true, controller: Controller::You, ..Filter::ANY };
+                let copy = |slot| Effect::CopyToken { slot: Some(slot), haste_and_sacrifice: false, extra_subtype: None };
+                let loot = [draw(2), discard(1)];
+                let cost = |c: &str| ManaCost::parse(c).expect("cost");
+                d.modes = vec![
+                    Ability::new(vec![SPELL], vec![Effect::Counter(0)]),
+                    Ability::new(vec![yours], vec![copy(0)]),
+                    Ability::new(vec![], loot.to_vec()),
+                    Ability::new(vec![SPELL, yours], vec![Effect::Counter(0), copy(1)]),
+                    Ability::new(vec![SPELL], vec![Effect::Counter(0), loot[0], loot[1]]),
+                    Ability::new(vec![yours], vec![copy(0), loot[0], loot[1]]),
+                    Ability::new(vec![SPELL, yours], vec![Effect::Counter(0), copy(1), loot[0], loot[1]]),
+                ];
+                d.mode_costs = ["{1}{U}", "{3}", "{2}", "{4}{U}", "{3}{U}", "{5}", "{6}{U}"].map(cost).to_vec();
+            },
+        ),
+        "Plaza of Heroes" => s(
+            &[
+                "{T}: Add {C}.",
+                "{T}: Add one mana of any color. Spend this mana only to cast a legendary spell.",
+                "{T}: Add one mana of any color among legendary permanents you control.",
+                "{3}, {T}, Exile this land: Target legendary creature gains hexproof and indestructible until end of turn.",
+            ],
+            |d, _| {
+                d.plaza_mana = true;
+                let legend = Filter { legendary_only: true, ..CREATURE };
+                let n = activated(d, "{3}", true, vec![legend], vec![Effect::Grant { slot: 0, keywords: Keywords::HEXPROOF.with(Keywords::INDESTRUCTIBLE) }]);
+                d.activated[n].exile_self = true;
+            },
+        ),
+        "Bear Umbra" => s(
+            &[
+                "Enchant creature",
+                "Enchanted creature gets +2/+2 and has \"Whenever this creature attacks, untap all lands you control.\"",
+                "Umbra armor",
+            ],
+            |d, _| {
+                d.aura = true;
+                d.spell = Some(Ability::new(vec![CREATURE], vec![]));
+                attached(d, false, 2, 2, Keywords::NONE);
+                on(d, When::EquippedAttacks, vec![], vec![Effect::UntapLandsYouControl]);
+                d.umbra_armor = true;
+            },
+        ),
+        "Shifting Woodland" => s(
+            &[
+                "This land enters tapped unless you control a Forest.",
+                "{T}: Add {G}.",
+                "Delirium — {2}{G}{G}: This land becomes a copy of target permanent card in your graveyard until end of turn. Activate only if there are four or more card types among cards in your graveyard.",
+            ],
+            |d, _| {
+                d.enters_tapped_unless = Some(["Forest", "Forest"]);
+                d.mana = Some(ManaSource::of(&[Color::Green]));
+                let card = Filter { permanent_cards: true, ..graveyard_cards(false, Controller::You) };
+                let n = activated(d, "{2}{G}{G}", false, vec![card], vec![Effect::BecomeCopyOfSlotUntilEot(0)]);
+                d.activated[n].needs_delirium = true;
+            },
+        ),
+        "Khalni Ambush // Khalni Territory" => s(
+            &[
+                "Target creature you control fights target creature you don't control.",
+                "Back: This land enters tapped.",
+                "Back: {T}: Add {G}.",
+            ],
+            |d, _| {
+                spell(d, vec![YOUR_CREATURE, OPP_CREATURE], vec![Effect::FightBetween { a: 0, b: 1 }]);
+                d.modal_back = true;
+                let b = d.back.as_mut().expect("Khalni Territory");
+                b.enters_tapped = true;
+                b.mana = Some(ManaSource::of(&[Color::Green]));
+            },
+        ),
+        "Nissa, Vastwood Seer // Nissa, Sage Animist" => s(
+            &[
+                "When Nissa enters, you may search your library for a basic Forest card, reveal it, put it into your hand, then shuffle.",
+                "Whenever a land you control enters, if you control seven or more lands, exile Nissa, then return her to the battlefield transformed under her owner's control.",
+                "Back: +1: Reveal the top card of your library. If it's a land card, put it onto the battlefield. Otherwise, put it into your hand.",
+                "Back: −2: Create Ashaya, the Awoken World, a legendary 4/4 green Elemental creature token.",
+                "Back: −7: Untap up to six target lands. They become 6/6 Elemental creatures. They're still lands.",
+            ],
+            |d, t| {
+                let forest = SearchFor::LandTypes { types: [false, false, false, false, true], basic: true };
+                may(d, When::Enters, vec![], vec![search(forest, SearchTo::Hand)]);
+                let mut flip = Ability::new(vec![], vec![Effect::ExileSelfReturn { transformed: true }]);
+                flip.condition = Some(Condition::ControlLandsAtLeast(7));
+                d.triggers.push(Trigger { when: When::LandYouControlEnters, ability: flip });
+                let b = d.back.as_mut().expect("Nissa, Sage Animist");
+                loyalty(b, 1, Ability::new(vec![], vec![Effect::RevealTopLandToBattlefieldElseHand]));
+                loyalty(b, -2, Ability::new(vec![], vec![Effect::CreateToken { who: Who::You, def: t.ashaya, n: 1 }]));
+                let land = Filter { players: false, creatures: false, planeswalkers: false, lands: true, ..Filter::ANY };
+                let mut effects = Vec::new();
+                for slot in 0..6 {
+                    effects.push(Effect::UntapTarget(slot));
+                    effects.push(Effect::SlotBecomesCreatureForGood { slot, power: 6, toughness: 6, subtype: "Elemental" });
+                }
+                loyalty(b, -7, up_to(vec![land; 6], effects));
+            },
+        ),
         _ => None,
     }
 }
@@ -556,4 +803,31 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Sakashima of a Thousand Faces",
     "Sakashima the Impostor",
     "Zimone, Mystery Unraveler",
+    "Jace, the Mind Sculptor",
+    "Scroll Rack",
+    "Conduit of Worlds",
+    "Legolas's Quick Reflexes",
+    "Swan Song",
+    "Biorhythm",
+    "Sunder",
+    "Ghost Town",
+    "Palinchron",
+    "Broken Bond",
+    "Collector Ouphe",
+    "Mox Amber",
+    "Voidslime",
+    "Awaken the Woods",
+    "Sylvan Advocate",
+    "Omnath, Locus of Mana",
+    "Cyclone Summoner",
+    "Roil Elemental",
+    "Yavimaya Dryad",
+    "Otawara, Soaring City",
+    "Scatter to the Winds",
+    "Three Steps Ahead",
+    "Plaza of Heroes",
+    "Bear Umbra",
+    "Shifting Woodland",
+    "Khalni Ambush // Khalni Territory",
+    "Nissa, Vastwood Seer // Nissa, Sage Animist",
 ];

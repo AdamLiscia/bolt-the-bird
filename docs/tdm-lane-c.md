@@ -476,3 +476,58 @@ creature (crew 1 never needs two). A crewed Vehicle is an artifact creature unti
 Hedge Shredder returns the land cards milled this turn that are still in your graveyard. Nissa's energy cast is
 `CastWith(permanent card, Nissa)`, mapped to an alternative cost of eight {E} (not for spells with a sacrifice or
 discard cost of their own).
+
+PG batch 8 (4): Jace, the Mind Sculptor, Scroll Rack, Conduit of Worlds, Legolas's Quick Reflexes. (Lane B takes
+Phyrexian Metamorph, both Sakashimas and Zimone, which finishes Glarb.)
+Core: `CardDef::split_second` (priority offers only `PassPriority` while one is on the stack; mana moves are added by
+the caller), `Object::conduit_turn`, `Game::{granted_tapped, no_more_spells_turn}` (the latter in `cant_cast_now`),
+`Decision::{HandToTop, ScrollRackExile}`, `Effect::{LookTopMayBottom, DrawThenPutBack, ExileLibraryShuffleHandIn,
+ScrollRack, ConduitCast, GrantTappedTrigger, ExtraDealsDamageEqualPower}`.
+Shortcuts: Jace's and Scroll Rack's "in any order" is the order picked (Jace: each card goes over the last;
+Scroll Rack: `ScryOrder`). Conduit's "you may cast that card" is deferred: the card stays castable from the
+graveyard for the rest of the turn while you haven't cast a spell, and casting it locks out further spells. The
+granted "becomes tapped" trigger is Legolas's own `When::Never` trigger, with the tapped creature as the item's
+`extra`, like the granted combat-damage triggers.
+
+## Playgroup 2026-11-25: Aesi, Tyrant of Gyre Strait (Time), lane C
+
+List: "C" in ~/bolt-handoff/pg_lanes_aesi.json (24 cards). Same module and tests as Glarb.
+
+Aesi batch 1 (9): Swan Song, Biorhythm, Sunder, Ghost Town, Palinchron, Broken Bond, Collector Ouphe, Mox Amber,
+Voidslime.
+Core: `CardDef::{stops_artifact_abilities (in activation_stopped, so artifact mana too), mana_legendary_colors}`,
+`Activated::not_your_turn_only`, `Filter::spells_enchantment_instant_sorcery`, `Decision::LandFromHand`,
+`Effect::{CounterSpellOrAbility, LifeBecomesCreatureCount, BounceAllLands, UntapLands, MayLandFromHand}`. Token: Bird
+2/2 flying at base+56. Palinchron's "untap up to seven lands" untaps up to seven of your own tapped lands. Biorhythm
+sets each life total by gaining or losing the difference. Voidslime removes a countered ability from the stack; a
+countered spell copy just ceases to exist.
+
+Aesi batch 2 (9): Awaken the Woods, Sylvan Advocate, Omnath, Locus of Mana, Cyclone Summoner, Roil Elemental, Yavimaya
+Dryad, Otawara, Soaring City, Scatter to the Winds, Three Steps Ahead.
+Core: `Keywords::FORESTWALK` (bit 18), `CardDef::{keeps_green_mana, mode_costs}`, `Activated::less_per_legendary_creature`,
+`Scope::YourLandCreatures`, `StaticCondition::ControlLandsAtLeast`, `Condition::CastFromHand`,
+`SearchTo::BattlefieldTappedUnder`, `Game::control_while` (checked in state-based actions),
+`Effect::{BounceAllExceptLandsAndSubtypes, GainControlWhileSource, SearchForestForPlayer, Awaken}`. Token: Forest Dryad
+(1/1 land creature, a Forest) at base+57.
+Shortcuts: awaken is cast as a {3} kicker (the same total as the awaken cost), like overload; the awakened land is a
+creature for good (`eot_creature` with turn `u32::MAX`, cleared when it leaves). Spree is one mode per combination of
++ modes (seven for Three Steps Ahead), each with its summed additional cost in `mode_costs`. Omnath keeps only
+single-green pool entries; its bonus counts them.
+
+Aesi batch 3 (5): Plaza of Heroes, Bear Umbra, Shifting Woodland, Khalni Ambush // Khalni Territory, Nissa, Vastwood
+Seer // Nissa, Sage Animist.
+Core: `CardDef::{plaza_mana, umbra_armor, modal_back}`, `Activated::needs_delirium` (`Game::graveyard_card_types`),
+`Filter::legendary_only`, `Condition::ControlLandsAtLeast`, `Effect::{BecomeCopyOfSlotUntilEot (the existing
+copy_until_eot, undone in cleanup), SlotBecomesCreatureForGood}`, `Game::use_umbra_armor` (in `destroy`,
+`destroy_no_regen`, and state-based lethal damage). Token: Ashaya, the Awoken World (legendary 4/4 Elemental) at
+base+58.
+Modal double-faced cards: `modal_back` with a land back offers `PlayLand` from hand and sets `transformed` as it
+enters (the front is still castable). A loyalty ability on the stack whose planeswalker left (−7 at 7 loyalty) and
+turned front face up resolves from the back face's abilities.
+Assets: Khalni Ambush and Nissa, Vastwood Seer refreshed with `fetch_oracle.py --set PG --refresh` (run with
+PYTHONPATH=src:scripts so it writes this worktree's assets; the venv's `bolt` points at ~/bolt-the-bird), then
+`make_cmd_set.py`. Only their `back` keys changed.
+Bear Umbra's attack trigger is `When::EquippedAttacks`, which fires for anything attached (Auras too).
+
+Merged tarkir 00f0db4 (lane B's Glarb clones and Zimone) after Aesi batch 3: end-of-block conflicts, tarkir's side
+first; tests/pg_c.rs is tarkir's file with lane C's tests appended (lane B's `lb_` block comes first).
