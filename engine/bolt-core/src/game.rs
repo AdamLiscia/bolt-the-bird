@@ -1461,7 +1461,8 @@ impl Game {
                                 mine && creature && !o.tapped && self.has_base_subtype(id, sub)
                             }
                             Scope::YourAttackingCreatures => {
-                                mine && creature && self.combat.as_ref().is_some_and(|c| c.attackers.contains(&id))
+                                mine && creature
+                                    && self.combat.as_ref().is_some_and(|c| c.attackers.contains(&id))
                             }
                             Scope::OtherYourFliers => {
                                 mine && creature
@@ -8053,7 +8054,11 @@ impl Game {
                 }
             }
             Effect::PumpAttackersPerAttacker => {
-                let attackers: Vec<ObjId> = self.combat.as_ref().map(|c| c.attackers.clone()).unwrap_or_default();
+                let attackers: Vec<ObjId> = self
+                    .combat
+                    .as_ref()
+                    .map(|c| c.attackers.clone())
+                    .unwrap_or_default();
                 let x = attackers.len() as i32;
                 for id in attackers {
                     if self.obj(id).controller == item.controller && self.obj(id).zone == Zone::Battlefield {

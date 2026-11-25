@@ -283,8 +283,10 @@ fn bello_animates_your_big_artifacts_and_enchantments_on_your_turn() {
         };
         act(&mut g, a);
     }
-    assert_eq!(g.players[1].life, 36);
-    assert_eq!(g.players[0].hand.len(), n + 1);
+    // Berserkers' Onslaught (on the battlefield above) gives the attacking Stash double strike: two
+    // 4-damage hits, and Bello's draw on each.
+    assert_eq!(g.players[1].life, 32);
+    assert_eq!(g.players[0].hand.len(), n + 2);
     // On the opponent's turn, just an artifact.
     g.start_turn(4, 1);
     assert!(!g.types_of(stash).creature);
@@ -1149,4 +1151,159 @@ fn sun_titan_returns_a_cheap_permanent_and_sunscorch_regent_grows() {
     resolve_all(&mut g, &[]);
     assert_eq!(g.obj(r).counters, 1);
     assert_eq!(g.players[0].life, 41);
+}
+
+// ---- batch 7 (finished by lane A, 2026-11-25) ----
+
+/// Attack with `attackers` on a later turn (no summoning sickness); stops after attackers are declared.
+fn attack(g: &mut Game, attackers: &[ObjId]) {
+    g.start_turn(5, 0);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(g, Action::PassPriority);
+    }
+    for &a in attackers {
+        act(g, Action::Attack(a));
+    }
+    act(g, Action::FinishAttacks);
+}
+
+#[test]
+fn thriving_isle_enters_tapped_and_makes_blue_or_the_chosen_color() {
+    let mut g = game(["Bello, Bard of the Brambles", "Ms. Bumbleflower"], &[]);
+    let isle = hand(&mut g, 0, "Thriving Isle");
+    act(&mut g, Action::PlayLand(isle));
+    assert!(
+        matches!(g.pending, Pending::Decide(0)),
+        "choose a color as it enters"
+    );
+    assert!(
+        !g.legal_actions().contains(&Action::Mode(1)),
+        "a color other than blue"
+    );
+    act(&mut g, Action::Mode(4)); // green
+    assert!(g.obj(isle).tapped);
+    let made: Vec<[bool; 5]> = {
+        g.start_turn(5, 0);
+        while g.step != Step::Main1 {
+            act(&mut g, Action::PassPriority);
+        }
+        colors_of(&g, isle)
+    };
+    let any = made
+        .iter()
+        .fold([false; 5], |acc, c| std::array::from_fn(|i| acc[i] || c[i]));
+    assert_eq!(any, [false, true, false, false, true], "blue or green");
+}
+
+#[test]
+fn angel_of_the_ruins_exiles_two_and_plainscycles() {
+    let mut g = table();
+    let ring = put(&mut g, 1, "Sol Ring");
+    let onslaught = put(&mut g, 1, "Berserkers' Onslaught");
+    let angel = hand(&mut g, 0, "Angel of the Ruins");
+    play(
+        &mut g,
+        angel,
+        false,
+        &[],
+        &[Action::Target(obj(ring)), Action::Target(obj(onslaught))],
+    );
+    assert_eq!(g.obj(ring).zone, Zone::Exile);
+    assert_eq!(g.obj(onslaught).zone, Zone::Exile);
+
+    let mut g = table();
+    let angel = hand(&mut g, 0, "Angel of the Ruins");
+    let plains = g.add_card(0, bid("Plains"), Zone::Library);
+    let cycle = g
+        .legal_actions()
+        .into_iter()
+        .find(|a| matches!(a, Action::Activate(id, _) if *id == angel))
+        .expect("plainscycling from hand");
+    act(&mut g, cycle);
+    resolve_all(&mut g, &[Action::Pick(plains)]);
+    assert_eq!(g.obj(angel).zone, Zone::Graveyard);
+    assert_eq!(g.obj(plains).zone, Zone::Hand);
+}
+
+#[test]
+fn decimate_destroys_one_of_each() {
+    let mut g = table();
+    let ring = put(&mut g, 1, "Sol Ring");
+    let elder = put(&mut g, 1, "Sakura-Tribe Elder");
+    let onslaught = put(&mut g, 1, "Berserkers' Onslaught");
+    let land = put(&mut g, 1, "Command Tower");
+    let decimate = hand(&mut g, 0, "Decimate");
+    play(
+        &mut g,
+        decimate,
+        false,
+        &[obj(ring), obj(elder), obj(onslaught), obj(land)],
+        &[],
+    );
+    for x in [ring, elder, onslaught, land] {
+        assert_eq!(g.obj(x).zone, Zone::Graveyard);
+    }
+}
+
+#[test]
+fn berserkers_onslaught_and_gratuitous_violence_hit_harder() {
+    let mut g = table();
+    put(&mut g, 0, "Berserkers' Onslaught");
+    put(&mut g, 0, "Gratuitous Violence");
+    let elder = put(&mut g, 0, "Sakura-Tribe Elder");
+    let p = g.power(elder);
+    let life = g.players[1].life;
+    attack(&mut g, &[elder]);
+    assert!(
+        g.keywords(elder).has(Keywords::DOUBLE_STRIKE),
+        "attacking: double strike"
+    );
+    while g.step != Step::Main2 {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.players[1].life, life - 4 * p, "two hits, each doubled");
+}
+
+#[test]
+fn jazal_goldmane_pumps_attackers_by_their_number() {
+    let mut g = table();
+    let jazal = put(&mut g, 0, "Jazal Goldmane");
+    let elder = put(&mut g, 0, "Sakura-Tribe Elder");
+    let p = g.power(elder);
+    attack(&mut g, &[jazal, elder]);
+    let pump = g
+        .legal_actions()
+        .into_iter()
+        .find(|a| matches!(a, Action::Activate(id, _) if *id == jazal))
+        .expect("Jazal's ability during combat");
+    act(&mut g, pump);
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.power(elder), p + 2, "two attackers: +2/+2");
+}
+
+#[test]
+fn binding_the_old_gods_destroys_then_fetches_a_forest() {
+    let mut g = table();
+    let ring = put(&mut g, 1, "Sol Ring");
+    let saga = hand(&mut g, 0, "Binding the Old Gods");
+    play(&mut g, saga, false, &[], &[Action::Target(obj(ring))]);
+    assert_eq!(g.obj(ring).zone, Zone::Graveyard, "chapter I");
+    let forest = g.add_card(0, bid("Forest"), Zone::Library);
+    g.add_card(0, bid("Plains"), Zone::Library); // on top: the draw step takes this, not the Forest
+    g.start_turn(5, 0);
+    let mut picked = false;
+    for _ in 0..30 {
+        if g.step == Step::Main1 && g.items.is_empty() && !matches!(g.pending, Pending::Decide(_)) && picked {
+            break;
+        }
+        if matches!(g.pending, Pending::Decide(0)) && g.legal_actions().contains(&Action::Pick(forest)) {
+            act(&mut g, Action::Pick(forest));
+            picked = true;
+            continue;
+        }
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(picked, "chapter II searches for a Forest");
+    assert_eq!(g.obj(forest).zone, Zone::Battlefield);
+    assert!(g.obj(forest).tapped);
 }
