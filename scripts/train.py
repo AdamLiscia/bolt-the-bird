@@ -35,7 +35,7 @@ def batches(t: dict, bs: int, device, shuffle: bool, rng=None):
 
 
 @torch.no_grad()
-def predict(model, t: dict, device, bs=4096) -> np.ndarray:
+def predict(model, t: dict, device, bs=512) -> np.ndarray:
     model.eval()
     out = []
     for b in batches(t, bs, device, False):
