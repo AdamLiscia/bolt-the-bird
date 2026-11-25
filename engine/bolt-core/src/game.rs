@@ -200,6 +200,10 @@ pub struct Object {
     pub resolved_this_turn: (u32, u32),
     /// How many times this commander has been cast from the command zone (its own tax, CR 903.8).
     pub command_zone_casts: u8,
+    /// Its offspring cost was paid as it was cast (it makes a 1/1 copy when it enters).
+    pub offspring_paid: bool,
+    /// A token copy with its own base power and toughness (offspring's 1/1 copies).
+    pub copy_base_pt: Option<(i32, i32)>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -494,6 +498,8 @@ pub enum StackKind {
     },
     /// Loyalty ability number `n` of the source.
     Loyalty(usize),
+    /// Offspring's "when this creature enters, create a 1/1 token copy of it" (CR 702.175).
+    Offspring,
 }
 
 /// The ability of a ward trigger, which has no targets or effects of its own.
@@ -508,6 +514,12 @@ static WARD_ABILITY: Ability = Ability {
     divide: 0,
     divide_lands: false,
 };
+
+/// Offspring's triggered ability (CR 702.175a): a 1/1 token copy of the creature.
+fn offspring_ability() -> &'static Ability {
+    static A: std::sync::OnceLock<Ability> = std::sync::OnceLock::new();
+    A.get_or_init(|| Ability::new(Vec::new(), vec![Effect::OffspringCopy]))
+}
 
 /// A chosen target, pinned to the object it was when chosen (CR 400.7).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1178,6 +1190,8 @@ impl Game {
             commander_choice_pending: false,
             resolved_this_turn: (0, 0),
             command_zone_casts: 0,
+            offspring_paid: false,
+            copy_base_pt: None,
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -1413,6 +1427,14 @@ impl Game {
                         applies && condition_ok && (!s.your_turn_only || self.active == so.controller)
                     })
                     .map(move |mut s| {
+                        if let Some(Scale::PerOtherYourCreatureBasePowerOne) = s.scale {
+                            let n = self
+                                .creatures(so.controller)
+                                .filter(|&c| c != src && self.base_pt(c).0 == 1)
+                                .count() as i32;
+                            s.power *= n;
+                            s.toughness *= n;
+                        }
                         if let Some(Scale::PerCreatureYouControl) = s.scale {
                             let n = self.creatures(so.controller).count() as i32;
                             s.power *= n;
@@ -1560,7 +1582,7 @@ impl Game {
         (1..=o.stage as usize)
             .rev()
             .find_map(|s| d.stages[s - 1].base_pt)
-            .unwrap_or((d.power, d.toughness))
+            .unwrap_or(o.copy_base_pt.unwrap_or((d.power, d.toughness)))
     }
 
     pub fn power(&self, id: ObjId) -> i32 {
@@ -1753,6 +1775,29 @@ impl Game {
 
     fn bello_animates(&self, id: ObjId) -> bool {
         self.bello_for(id).is_some()
+    }
+
+    /// The offspring cost `p` may pay casting `c`: printed, or granted to creature spells (Zinnia).
+    fn offspring_cost(&self, p: PlayerId, c: ObjId) -> Option<ManaCost> {
+        let d = self.def_of(c);
+        if d.kicker.is_some() {
+            return None;
+        }
+        d.offspring.or_else(|| {
+            if !d.types.creature {
+                return None;
+            }
+            self.permanents(p)
+                .filter(|&x| !self.lost_abilities(x))
+                .find_map(|x| self.def_of(x).grants_offspring)
+        })
+    }
+
+    /// Untapped tokens `p` controls, other than `except`.
+    fn untapped_tokens(&self, p: PlayerId, except: ObjId) -> Vec<ObjId> {
+        self.permanents(p)
+            .filter(|&x| x != except && self.is_token(x) && !self.obj(x).tapped)
+            .collect()
     }
 
     /// Whether `id` is a commander (either of a seat's partners).
@@ -2735,6 +2780,7 @@ impl Game {
             },
             StackKind::Ward { .. } | StackKind::WardLife { .. } => &WARD_ABILITY,
             StackKind::Loyalty(n) => &def.loyalty_abilities[n].1,
+            StackKind::Offspring => offspring_ability(),
             StackKind::Activated(n) => &def.activated[n].ability,
         }
     }
@@ -2820,7 +2866,10 @@ impl Game {
                     || (ty.enchantment && f.enchantments)
                     || (!ty.land && f.nonland_permanents)
                     || f.any_permanent;
-                let kind_ok = kind_ok && (!f.noncreature || !ty.creature) && (!f.nonbasic || !ty.basic);
+                let kind_ok = kind_ok
+                    && (!f.noncreature || !ty.creature)
+                    && (!f.nonbasic || !ty.basic)
+                    && (!f.tokens_only || self.is_token(id));
                 // Kin-Tree Severance: "permanent with mana value 3 or greater".
                 kind_ok
                     && f.min_mana_value
@@ -3184,7 +3233,10 @@ impl Game {
                         ));
                     }
                 }
-                if def.kicker.is_some() || (def.behold != Behold::No && self.can_behold(p, c)) {
+                if def.kicker.is_some()
+                    || (def.behold != Behold::No && self.can_behold(p, c))
+                    || self.offspring_cost(p, c).is_some()
+                {
                     v.push((
                         Action::CastKicked(c),
                         CastMode {
@@ -3240,6 +3292,8 @@ impl Game {
         };
         if mode.kicked {
             if let Some(k) = def.kicker {
+                cost = add_costs(&cost, &k);
+            } else if let Some(k) = self.offspring_cost(p, c) {
                 cost = add_costs(&cost, &k);
             }
         }
@@ -3804,7 +3858,19 @@ impl Game {
                     }
                     continue;
                 }
-                if a.mana.x > 0 {
+                if a.tap_x_untapped_tokens {
+                    let tokens = self.untapped_tokens(p, id).len().min(30) as u8;
+                    for x in 0..=tokens {
+                        if self.can_pay_for(p, &a.mana, uses_self.then_some(id), PayFor::Ability(id)) {
+                            v.push(Action::ActivateX {
+                                id,
+                                n,
+                                victim: None,
+                                x,
+                            });
+                        }
+                    }
+                } else if a.mana.x > 0 {
                     let max = (self.untapped_sources(p).len() + self.players[p].pool.len()).min(30) as u8;
                     let victims: Vec<Option<ObjId>> = if a.sacrifice_other_creature {
                         self.creatures(p).filter(|&c| c != id).map(Some).collect()
@@ -3945,6 +4011,12 @@ impl Game {
                 }
             } else if self.obj(v).zone == Zone::Battlefield {
                 self.move_to(v, Zone::Graveyard);
+            }
+        }
+        if a.tap_x_untapped_tokens {
+            // The payer picks which tokens to tap: the first X untapped ones.
+            for t in self.untapped_tokens(p, id).into_iter().take(x as usize) {
+                self.become_tapped(t);
             }
         }
         if a.discard_hand {
@@ -4527,6 +4599,9 @@ impl Game {
     /// CR 601.2: move to the stack, choose targets, pay, then the caster gets priority again
     /// (CR 117.3c).
     fn cast(&mut self, p: PlayerId, card: ObjId, mode: CastMode) {
+        // Offspring is paid "as you cast" (CR 702.175a): fixed now, even if Zinnia leaves.
+        let offspring = mode.kicked && self.offspring_cost(p, card).is_some();
+        self.obj_mut(card).offspring_paid = offspring;
         self.obj_mut(card).from_hand = self.obj(card).zone == Zone::Hand;
         let from_command = self.obj(card).zone == Zone::Command;
         self.obj_mut(card).from_command = from_command;
@@ -5096,6 +5171,12 @@ impl Game {
                 self.move_to(source, Zone::Battlefield);
                 self.obj_mut(source).controller = r.item.controller;
                 self.obj_mut(source).was_cast = true;
+                if std::mem::take(&mut self.obj_mut(source).offspring_paid) {
+                    self.triggered.push(StackItem {
+                        kind: StackKind::Offspring,
+                        ..Game::casting(source, r.item.controller)
+                    });
+                }
                 if std::mem::take(&mut self.obj_mut(source).enters_with_finality) {
                     self.obj_mut(source).finality = true;
                     self.counter_put_on(source);
@@ -7047,6 +7128,41 @@ impl Game {
                 for c in self.creatures(p).collect::<Vec<_>>() {
                     let zcc = self.obj(c).zcc;
                     self.until_your_next_turn.push((c, zcc, keywords, p));
+                }
+            }
+            Effect::OffspringCopy => {
+                let def = self.obj(src).def;
+                self.last_created.clear();
+                for _ in 0..self.token_doubling(item.controller) {
+                    let id = self.add_card(item.controller, def, Zone::Hand);
+                    let o = self.obj_mut(id);
+                    o.copy_token = true;
+                    o.copy_base_pt = Some((1, 1));
+                    self.move_to(id, Zone::Battlefield);
+                    self.last_created.push(id);
+                }
+            }
+            Effect::AddManaAnyColorsX => {
+                let m = ManaSource::of(&crate::Color::ALL);
+                self.players[item.controller]
+                    .pool
+                    .extend(std::iter::repeat_n(m, item.x as usize));
+            }
+            Effect::CopyTokenTwiceIfSubtype { slot, sub } => {
+                if let Some(t) = Game::slot_object(item, legal, slot) {
+                    let n = if self.has_subtype(t, sub) { 2 } else { 1 };
+                    let def = self.obj(t).def;
+                    let copy = self.obj(t).copy_token || !self.defs[def].token;
+                    let base = self.obj(t).copy_base_pt;
+                    for _ in 0..n {
+                        for _ in 0..self.token_doubling(item.controller) {
+                            let id = self.add_card(item.controller, def, Zone::Hand);
+                            let o = self.obj_mut(id);
+                            o.copy_token = copy;
+                            o.copy_base_pt = base;
+                            self.move_to(id, Zone::Battlefield);
+                        }
+                    }
                 }
             }
             Effect::DiscardUnlessAttacked => {
