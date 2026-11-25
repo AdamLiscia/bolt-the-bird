@@ -77,6 +77,10 @@ pub struct Filter {
     pub noncreature: bool,
     /// Nonbasic permanents only ("nonbasic land").
     pub nonbasic: bool,
+    /// Cards whose mana value is the ability's X.
+    pub mana_value_is_x: bool,
+    /// Permanents that are one or more colors.
+    pub colored: bool,
 }
 
 impl Filter {
@@ -114,6 +118,8 @@ impl Filter {
         was_dealt_damage: false,
         noncreature: false,
         nonbasic: false,
+        mana_value_is_x: false,
+        colored: false,
     };
 
     pub const CREATURE: Filter = Filter {
@@ -741,6 +747,20 @@ pub enum Effect {
     SpiritDragonsUpkeep,
     /// Creatures you control gain these keywords until your next turn.
     GrantAllUntilYourNextTurn(crate::Keywords),
+    /// "There is an additional combat phase after this phase followed by an additional main phase"
+    /// (cast during a main phase).
+    AdditionalCombatAndMain,
+    /// "When you next attack this turn, ...": the source's trigger number `n`, once.
+    DelayedOnNextAttackThisTurn(usize),
+    /// Untap each creature you control.
+    UntapCreaturesYouControl,
+    /// "Copy the next spell you cast this turn when you cast it": the source's trigger number `n`
+    /// triggers when you next cast a spell this turn, with that spell in `extra`.
+    CopyNextSpellThisTurn(usize),
+    /// Copy the spell in `extra` (still on the stack); its controller may choose new targets.
+    CopySpellNewTargets,
+    /// Add `n` colorless mana.
+    AddColorless(u8),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -763,6 +783,10 @@ pub enum SearchFor {
     Named(&'static [&'static str]),
     /// A card of this color (WUBRG index).
     Colored(u8),
+    /// A card with this subtype ("a Dragon card").
+    Subtype(&'static str),
+    /// A colorless nonland card.
+    ColorlessNonland,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -780,6 +804,8 @@ pub enum SearchTo {
     Graveyard,
     /// Onto the battlefield tapped with a stun counter on it.
     BattlefieldTappedStunned,
+    /// Exile it; you may cast it without paying its mana cost this turn (Ugin's −11).
+    ExileCastFreeThisTurn,
 }
 
 /// What a static ability affects.
@@ -959,6 +985,8 @@ pub enum Condition {
     CastCreatureAndNoncreatureThisTurn,
     /// Creatures you control have total toughness at least this.
     TotalToughnessAtLeast(i32),
+    /// It's your main phase.
+    YourMainPhase,
 }
 
 /// A spell's effect or a triggered ability: target slots, then effects in order.
@@ -979,6 +1007,9 @@ pub struct Ability {
     /// "N damage divided as you choose among" its targets: the total, divided as it goes on the
     /// stack with at least 1 to each target (CR 601.2d). Zero for everything else.
     pub divide: u8,
+    /// The divided total is the number of lands you control as it goes on the stack, instead of
+    /// `divide` (Ureni: "X damage divided ..., where X is the number of lands you control").
+    pub divide_lands: bool,
 }
 
 impl Ability {
@@ -992,6 +1023,7 @@ impl Ability {
             same_graveyard: false,
             modes: Vec::new(),
             divide: 0,
+            divide_lands: false,
         }
     }
 
@@ -1122,6 +1154,10 @@ pub enum When {
     LeavesBattlefield,
     /// "When you cast this spell" (from the stack).
     YouCastThis,
+    /// "When you cast this spell": triggers from the stack as the spell becomes cast (CR 601.2i).
+    CastThisSpell,
+    /// "Whenever you cast a colorless spell".
+    YouCastColorless,
 }
 
 #[derive(Clone, Debug, PartialEq)]

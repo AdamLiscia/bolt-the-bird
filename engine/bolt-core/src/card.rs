@@ -177,6 +177,10 @@ pub struct Activated {
     /// An Aura's ability its enchanted creature has ("Enchanted creature has \"{5}: Untap this
     /// creature.\""): activated by that creature's controller, with the creature in `extra`.
     pub granted_to_attached: bool,
+    /// "Sacrifice a creature you control with mana value X other than this": activated as
+    /// `ActivateX` with that victim and X its mana value plus 1, the mana value its target needs
+    /// (Sidisi; see `Filter::mana_value_is_x`).
+    pub sacrifice_mv_x: bool,
 }
 
 /// The printed card. Shared by every copy; per-copy state lives on the game object.
@@ -359,6 +363,12 @@ pub struct CardDef {
     /// "You may cast this card from your graveyard. If you do, it enters with a finality counter on
     /// it."
     pub cast_from_graveyard_finality: bool,
+    /// Its mana ability also costs "Tap an untapped creature you control" (Dragonbroods' Relic). The
+    /// payer taps an untapped creature that isn't itself a mana source.
+    pub mana_taps_creature: bool,
+    /// "{T}: Add one mana of any color. Spend this mana only to cast a Dragon spell or an Omen
+    /// spell." Its plain mana is in `mana` (Maelstrom of the Spirit Dragon).
+    pub any_color_for_dragon_or_omen: bool,
 }
 
 /// An Omen spell half: its name, cost, whether it's an instant, and what it does.
@@ -476,6 +486,8 @@ impl CardDef {
             doubles_damage_of_new_creatures: false,
             doubles_tokens: false,
             cast_from_graveyard_finality: false,
+            mana_taps_creature: false,
+            any_color_for_dragon_or_omen: false,
         }
     }
 
@@ -572,6 +584,8 @@ impl CardDef {
             doubles_damage_of_new_creatures: false,
             doubles_tokens: false,
             cast_from_graveyard_finality: false,
+            mana_taps_creature: false,
+            any_color_for_dragon_or_omen: false,
         }
     }
 
@@ -668,6 +682,8 @@ impl CardDef {
             doubles_damage_of_new_creatures: false,
             doubles_tokens: false,
             cast_from_graveyard_finality: false,
+            mana_taps_creature: false,
+            any_color_for_dragon_or_omen: false,
         }
     }
 }

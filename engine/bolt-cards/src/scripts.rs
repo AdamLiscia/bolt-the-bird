@@ -71,6 +71,26 @@ pub fn token_defs() -> Vec<CardDef> {
             );
             monk
         },
+        {
+            // Dragonbroods' Relic: "a 4/4 Dragon creature token named Reliquary Dragon that's all
+            // colors. It has flying, lifelink, and 'When this token enters, it deals 3 damage to any
+            // target.'"
+            let mut d = token(
+                "Reliquary Dragon",
+                "Dragon",
+                4,
+                4,
+                Keywords::FLYING.with(Keywords::LIFELINK),
+            );
+            d.colors = [true; 5];
+            on(
+                &mut d,
+                When::Enters,
+                vec![Filter::ANY],
+                vec![damage(3, Recipient::Target(0))],
+            );
+            d
+        },
     ]
 }
 
@@ -143,6 +163,7 @@ pub struct Tokens {
     pub soldier_2: usize,
     pub spirit_1: usize,
     pub monk: usize,
+    pub reliquary_dragon: usize,
 }
 
 impl Tokens {
@@ -179,6 +200,7 @@ impl Tokens {
             soldier_2: base + 28,
             spirit_1: base + 29,
             monk: base + 30,
+            reliquary_dragon: base + 31,
         }
     }
 }

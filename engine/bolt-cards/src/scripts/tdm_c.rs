@@ -483,6 +483,105 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::LeavesBattlefield, vec![], vec![Effect::LinkedOwnerCreatesSpirit { spirit: t.spirit_endure }]);
             },
         ),
+        // ---- lane C round 3, batch 5 ----
+        "Ureni, the Song Unending" => s(
+            &[
+                "Flying, protection from white and from black",
+                "When Ureni enters, it deals X damage divided as you choose among any number of target creatures and/or planeswalkers your opponents control, where X is the number of lands you control.",
+            ],
+            |d, _| {
+                d.keywords = d.keywords.with(Keywords::FLYING);
+                static_on(d, Scope::This, false, Keywords::NONE);
+                d.statics.last_mut().expect("just added").protection = [true, false, true, false, false];
+                let theirs = Filter { controller: Controller::Opponent, ..CREATURE_OR_PLANESWALKER };
+                // "Any number": a slot per possible target; each needs at least 1 of X.
+                let mut a = up_to(vec![theirs; 30], vec![Effect::DividedDamage]);
+                a.divide_lands = true;
+                d.triggers.push(Trigger { when: When::Enters, ability: a });
+            },
+        ),
+        "Sidisi, Regent of the Mire" => s(
+            &["{T}, Sacrifice a creature you control with mana value X other than Sidisi: Return target creature card with mana value X plus 1 from your graveyard to the battlefield. Activate only as a sorcery."],
+            |d, _| {
+                let card = Filter { mana_value_is_x: true, ..graveyard_cards(true, Controller::You) };
+                let n = activated(d, "", true, vec![card], vec![Effect::Reanimate(0)]);
+                let a = &mut d.activated[n];
+                a.sacrifice_mv_x = true;
+                a.sorcery = true;
+            },
+        ),
+        "Dragonbroods' Relic" => s(
+            &[
+                "{T}, Tap an untapped creature you control: Add one mana of any color.",
+                "{3}{W}{U}{B}{R}{G}, Sacrifice this artifact: Create a 4/4 Dragon creature token named Reliquary Dragon that's all colors. It has flying, lifelink, and \"When this token enters, it deals 3 damage to any target.\" Activate only as a sorcery.",
+            ],
+            |d, t| {
+                d.mana = Some(ManaSource::of(&Color::ALL));
+                d.mana_taps_creature = true;
+                let n = activated(d, "{3}{W}{U}{B}{R}{G}", false, vec![], vec![Effect::CreateToken { who: Who::You, def: t.reliquary_dragon, n: 1 }]);
+                let a = &mut d.activated[n];
+                a.sacrifice_self = true;
+                a.sorcery = true;
+            },
+        ),
+        "All-Out Assault" => s(
+            &[
+                "Creatures you control get +1/+1 and have deathtouch.",
+                "When this enchantment enters, if it's your main phase, there is an additional combat phase after this phase followed by an additional main phase. When you next attack this turn, untap each creature you control.",
+            ],
+            |d, _| {
+                static_on(d, Scope::YourCreatures, false, Keywords::DEATHTOUCH);
+                let st = d.statics.last_mut().expect("just added");
+                st.power = 1;
+                st.toughness = 1;
+                conditional(
+                    d,
+                    When::Enters,
+                    Condition::YourMainPhase,
+                    vec![],
+                    vec![Effect::AdditionalCombatAndMain, Effect::DelayedOnNextAttackThisTurn(1)],
+                );
+                on(d, When::Never, vec![], vec![Effect::UntapCreaturesYouControl]);
+            },
+        ),
+        "Maelstrom of the Spirit Dragon" => s(
+            &[
+                "{T}: Add {C}.",
+                "{T}: Add one mana of any color. Spend this mana only to cast a Dragon spell or an Omen spell.",
+                "{4}, {T}, Sacrifice this land: Search your library for a Dragon card, reveal it, put it into your hand, then shuffle.",
+            ],
+            |d, _| {
+                d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                d.any_color_for_dragon_or_omen = true;
+                let n = activated(d, "{4}", true, vec![], vec![search(SearchFor::Subtype("Dragon"), SearchTo::Hand)]);
+                d.activated[n].sacrifice_self = true;
+            },
+        ),
+        "Flamehold Grappler" => s(
+            &["When this creature enters, copy the next spell you cast this turn when you cast it. You may choose new targets for the copy."],
+            |d, _| {
+                on(d, When::Enters, vec![], vec![Effect::CopyNextSpellThisTurn(1)]);
+                on(d, When::Never, vec![], vec![Effect::CopySpellNewTargets]);
+            },
+        ),
+        "Ugin, Eye of the Storms" => s(
+            &[
+                "When you cast this spell, exile up to one target permanent that's one or more colors.",
+                "Whenever you cast a colorless spell, exile up to one target permanent that's one or more colors.",
+                "+2: You gain 3 life and draw a card.",
+                "0: Add {C}{C}{C}.",
+                "−11: Search your library for any number of colorless nonland cards, exile them, then shuffle. Until end of turn, you may cast those cards without paying their mana costs.",
+            ],
+            |d, _| {
+                let colored = Filter { players: false, creatures: false, planeswalkers: false, any_permanent: true, colored: true, ..Filter::ANY };
+                d.triggers.push(Trigger { when: When::CastThisSpell, ability: up_to(vec![colored], vec![Effect::Exile(0)]) });
+                d.triggers.push(Trigger { when: When::YouCastColorless, ability: up_to(vec![colored], vec![Effect::Exile(0)]) });
+                loyalty(d, 2, Ability::new(vec![], vec![Effect::GainLife { who: Who::You, n: 3 }, draw(1)]));
+                loyalty(d, 0, Ability::new(vec![], vec![Effect::AddColorless(3)]));
+                let all = Effect::Search { what: SearchFor::ColorlessNonland, to: SearchTo::ExileCastFreeThisTurn, n: u8::MAX, kicked_n: None };
+                loyalty(d, -11, Ability::new(vec![], vec![all]));
+            },
+        ),
         _ => None,
     }
 }
@@ -538,4 +637,11 @@ pub const TDM_C_SCRIPTED: &[&str] = &[
     "Surrak, Elusive Hunter",
     "Kotis, the Fangkeeper",
     "Severance Priest",
+    "Ureni, the Song Unending",
+    "Sidisi, Regent of the Mire",
+    "Dragonbroods' Relic",
+    "All-Out Assault",
+    "Maelstrom of the Spirit Dragon",
+    "Flamehold Grappler",
+    "Ugin, Eye of the Storms",
 ];
