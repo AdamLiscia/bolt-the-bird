@@ -299,6 +299,8 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         enchanted_doesnt_untap: false,
         mana_only_for_creatures: false,
         doubles_damage_of_new_creatures: false,
+        doubles_tokens: false,
+        cast_from_graveyard_finality: false,
     };
     // An Omen's spell half: its lines must be claimed too, written "Omen: <line>" in the script.
     if let Some(face) = &o.omen {

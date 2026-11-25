@@ -353,6 +353,12 @@ pub struct CardDef {
     /// Neriv: "If a creature you control that entered this turn would deal damage, it deals twice
     /// that much damage instead."
     pub doubles_damage_of_new_creatures: bool,
+    /// "If one or more tokens would be created under your control, twice that many of those tokens
+    /// are created instead." (tokens only, not counters)
+    pub doubles_tokens: bool,
+    /// "You may cast this card from your graveyard. If you do, it enters with a finality counter on
+    /// it."
+    pub cast_from_graveyard_finality: bool,
 }
 
 /// An Omen spell half: its name, cost, whether it's an instant, and what it does.
@@ -468,6 +474,8 @@ impl CardDef {
             enchanted_doesnt_untap: false,
             mana_only_for_creatures: false,
             doubles_damage_of_new_creatures: false,
+            doubles_tokens: false,
+            cast_from_graveyard_finality: false,
         }
     }
 
@@ -562,6 +570,8 @@ impl CardDef {
             enchanted_doesnt_untap: false,
             mana_only_for_creatures: false,
             doubles_damage_of_new_creatures: false,
+            doubles_tokens: false,
+            cast_from_graveyard_finality: false,
         }
     }
 
@@ -656,6 +666,8 @@ impl CardDef {
             enchanted_doesnt_untap: false,
             mana_only_for_creatures: false,
             doubles_damage_of_new_creatures: false,
+            doubles_tokens: false,
+            cast_from_graveyard_finality: false,
         }
     }
 }

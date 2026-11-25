@@ -174,6 +174,10 @@ pub struct Object {
     pub last_counters: (i32, i32, Keywords),
     /// The card an ability of this permanent exiled and refers back to (Severance Priest).
     pub linked_card: Option<ObjId>,
+    /// A finality counter: if it would die, it's exiled instead.
+    pub finality: bool,
+    /// Cast from the graveyard with "it enters with a finality counter on it".
+    pub enters_with_finality: bool,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -678,6 +682,10 @@ pub enum Decision {
     DiscardUpToDraw { left: u8, discarded: u8 },
     /// You may `Pick` a nonland card from `victim`'s hand to exile, linked to `source`; or `No`.
     PickExileLinked { victim: PlayerId, source: ObjId },
+    /// `Pick` a card from your graveyard to put on top of your library, `left` more to go.
+    PutOnTopFromGraveyard { left: u8 },
+    /// `Pick` a Dragon you control of color `color` (WUBRG) for a +1/+1 counter; `placed` so far.
+    DragonForColor { color: u8, placed: Vec<ObjId> },
 }
 
 /// An until-end-of-turn change to one object (CR 611.2, 613).
@@ -814,6 +822,8 @@ pub struct Game {
     /// Granted "whenever this creature deals combat damage to a player" until end of turn:
     /// (creature, its zcc, source, trigger, turn).
     pub granted_combat_damage: Vec<(ObjId, u32, ObjId, usize, u32)>,
+    /// Keywords granted "until your next turn": (creature, its zcc, keywords, whose next turn).
+    pub until_your_next_turn: Vec<(ObjId, u32, Keywords, PlayerId)>,
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -943,6 +953,7 @@ impl Game {
             delayed_on_attack: Vec::new(),
             dies_under_control: Vec::new(),
             granted_combat_damage: Vec::new(),
+            until_your_next_turn: Vec::new(),
         }
     }
 
@@ -1016,6 +1027,8 @@ impl Game {
             counters_put_turn: 0,
             last_counters: (0, 0, Keywords::NONE),
             linked_card: None,
+            finality: false,
+            enters_with_finality: false,
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -1233,6 +1246,9 @@ impl Game {
                             }
                             Some(StaticCondition::HasntDealtDamage) => !so.dealt_damage,
                             Some(StaticCondition::ChosenMode(m)) => so.chosen_mode == Some(m),
+                            Some(StaticCondition::CounterKindsAmongYoursAtLeast(n)) => {
+                                self.counter_kinds(so.controller) >= n as u32
+                            }
                         };
                         applies && condition_ok && (!s.your_turn_only || self.active == so.controller)
                     })
@@ -1297,6 +1313,14 @@ impl Game {
                 .with(self.obj(id).keyword_counters)
         };
         let mut k = self.modifiers(id).fold(printed, |k, m| k.with(m.keywords));
+        if !self.until_your_next_turn.is_empty() {
+            let zcc = self.obj(id).zcc;
+            for e in &self.until_your_next_turn {
+                if e.0 == id && e.1 == zcc {
+                    k = k.with(e.2);
+                }
+            }
+        }
         if self.obj(id).animated.is_some() {
             k = k.with(Keywords::VIGILANCE);
         }
@@ -1450,6 +1474,7 @@ impl Game {
             || o.bait > 0
             || o.loyalty > 0
             || o.keyword_counters != Keywords::NONE
+            || o.finality
     }
 
     /// "Can't be countered": printed, or from an effect as it was cast.
@@ -1727,7 +1752,7 @@ impl Game {
                 shuffle = true;
             } else if from == Zone::Battlefield
                 && self.types_of(id).creature
-                && o.exile_if_dies == Some((o.zcc, self.turn))
+                && (o.exile_if_dies == Some((o.zcc, self.turn)) || o.finality)
             {
                 to = Zone::Exile;
             }
@@ -1780,6 +1805,7 @@ impl Game {
         if from == Zone::Battlefield {
             o.last_counters = (o.counters, o.stun, o.keyword_counters);
             o.stun = 0;
+            o.finality = false;
         }
         o.tapped = false;
         o.damage = 0;
@@ -2456,7 +2482,7 @@ impl Game {
                     || (ty.enchantment && f.enchantments)
                     || (!ty.land && f.nonland_permanents)
                     || f.any_permanent;
-                let kind_ok = kind_ok && (!f.noncreature || !ty.creature);
+                let kind_ok = kind_ok && (!f.noncreature || !ty.creature) && (!f.nonbasic || !ty.basic);
                 // Kin-Tree Severance: "permanent with mana value 3 or greater".
                 kind_ok
                     && f.min_mana_value
@@ -2699,6 +2725,12 @@ impl Game {
             if n > 0
                 && sorcery_timing
                 && available >= n as i32
+                && self.mode_affordable(p, c, CastMode::default())
+            {
+                v.push(Action::CastFromGraveyard(c));
+            }
+            if self.def_of(c).cast_from_graveyard_finality
+                && sorcery_timing
                 && self.mode_affordable(p, c, CastMode::default())
             {
                 v.push(Action::CastFromGraveyard(c));
@@ -3795,7 +3827,11 @@ impl Game {
             }
             (Pending::Priority(p), Action::CastFromGraveyard(c)) => {
                 self.removal_to_cast = self.def_of(c).graveyard_cast_remove_counters;
+                let finality = self.def_of(c).cast_from_graveyard_finality;
                 self.cast(p, c, CastMode::default());
+                if finality {
+                    self.obj_mut(c).enters_with_finality = true;
+                }
             }
             (Pending::RemoveCounters(_), Action::Pick(c)) => {
                 // Stun counters first (losing one helps you), then +1/+1, then revival.
@@ -4125,10 +4161,24 @@ impl Game {
         }
         self.ward_check(&item);
         let instant_or_sorcery = self.types_of(card).instant || self.types_of(card).sorcery;
-        if instant_or_sorcery {
+        let casts_this = self
+            .def_of(card)
+            .triggers
+            .iter()
+            .any(|t| t.when == When::YouCastThis);
+        if instant_or_sorcery || casts_this {
             self.cast_snapshots.push(item.clone());
         }
         self.items.push(item);
+        if casts_this {
+            // Storm counts the spells cast before this one, as it's cast (CR 702.40a).
+            let before = self.triggered.len();
+            self.fire_source(card, When::YouCastThis);
+            let earlier = (self.spells_cast[0] + self.spells_cast[1]).saturating_sub(1) as i32;
+            for t in &mut self.triggered[before..] {
+                t.amount = earlier;
+            }
+        }
         self.events.push(Event::Cast { card });
         if instant_or_sorcery {
             self.fire(p, When::YouCastInstantOrSorcery, None);
@@ -4501,6 +4551,14 @@ impl Game {
         }
         let r = self.resolving.take().expect("resolving");
         let source = r.item.source;
+        if r.item.kind == StackKind::SpellCopy && r.acts && self.def_of(source).types.is_permanent() {
+            // CR 707.10f: a copy of a permanent spell becomes a token as it resolves.
+            let def = self.obj(source).def;
+            let id = self.add_card(r.item.controller, def, Zone::Hand);
+            self.obj_mut(id).copy_token = true;
+            self.move_to(id, Zone::Battlefield);
+            self.obj_mut(id).controller = r.item.controller;
+        }
         if r.item.kind == StackKind::Spell {
             let omen = r.item.mode == Some(OMEN_MODE);
             if omen && self.obj(source).zone == Zone::Stack {
@@ -4512,6 +4570,10 @@ impl Game {
                 self.move_to(source, Zone::Battlefield);
                 self.obj_mut(source).controller = r.item.controller;
                 self.obj_mut(source).was_cast = true;
+                if std::mem::take(&mut self.obj_mut(source).enters_with_finality) {
+                    self.obj_mut(source).finality = true;
+                    self.counter_put_on(source);
+                }
                 if self.def_of(source).revival_on_cast {
                     let n = 8 * self.doubling(r.item.controller);
                     self.obj_mut(source).revival = n;
@@ -4755,6 +4817,17 @@ impl Game {
                 v.push(Action::No);
                 v
             }
+            Decision::PutOnTopFromGraveyard { .. } => self.players[p]
+                .graveyard
+                .iter()
+                .copied()
+                .map(Action::Pick)
+                .collect(),
+            Decision::DragonForColor { color, .. } => self
+                .creatures(p)
+                .filter(|&c| self.has_subtype(c, "Dragon") && self.colors_of(c)[*color as usize])
+                .map(Action::Pick)
+                .collect(),
             Decision::SacrificeNonland => {
                 let mut v: Vec<Action> = self
                     .permanents(p)
@@ -5024,6 +5097,19 @@ impl Game {
             }
             (Decision::PayWardLife { against, .. }, Action::No) => self.counter_from(against),
             (Decision::SacrificeNonland, Action::Pick(c)) => self.move_to(c, Zone::Graveyard),
+            (Decision::PutOnTopFromGraveyard { left }, Action::Pick(c)) => {
+                self.put_on_top(c);
+                if left > 1 && !self.players[p].graveyard.is_empty() {
+                    self.ask(p, Decision::PutOnTopFromGraveyard { left: left - 1 });
+                }
+            }
+            (Decision::DragonForColor { color, mut placed }, Action::Pick(c)) => {
+                self.add_counters(c, 1);
+                if !placed.contains(&c) {
+                    placed.push(c);
+                }
+                self.next_dragon_color(p, color + 1, placed);
+            }
             (Decision::SacrificeNonland, Action::No) => {
                 self.resolving.as_mut().expect("resolving").remaining.clear();
             }
@@ -5315,6 +5401,14 @@ impl Game {
                     }
                     SearchTo::Top | SearchTo::TopOrTappedIfYouControl(_) => {}
                     SearchTo::Graveyard => self.move_to(c, Zone::Graveyard),
+                    SearchTo::BattlefieldTappedStunned => {
+                        self.move_to(c, Zone::Battlefield);
+                        let n = self.doubling(p);
+                        let o = self.obj_mut(c);
+                        o.tapped = true;
+                        o.stun += n;
+                        self.counter_put_on(c);
+                    }
                 }
                 if left > 1 && !self.library_matches(p, what).is_empty() {
                     self.ask(
@@ -6029,6 +6123,59 @@ impl Game {
             Effect::DelayedOnAttackThisTurn(trigger) => {
                 let entry = (src, trigger, item.controller, self.turn);
                 self.delayed_on_attack.push(entry);
+            }
+            Effect::CopySourceSpell { storm } => {
+                let n = if storm { item.amount.max(0) as u32 } else { 1 };
+                let snap = self
+                    .cast_snapshots
+                    .iter()
+                    .rev()
+                    .find(|s| s.source == src)
+                    .cloned();
+                if let Some(snap) = snap {
+                    for _ in 0..n {
+                        let copy = StackItem {
+                            kind: StackKind::SpellCopy,
+                            controller: item.controller,
+                            ..snap.clone()
+                        };
+                        self.items.push(copy);
+                    }
+                }
+            }
+            Effect::DestroyLandControllerFetchesStunned(slot) => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    let p = self.obj(id).controller;
+                    self.destroy(id);
+                    self.ask(
+                        p,
+                        Decision::Search {
+                            what: SearchFor::BasicLand,
+                            to: SearchTo::BattlefieldTappedStunned,
+                            left: 1,
+                        },
+                    );
+                }
+            }
+            Effect::StillnessCheck => {
+                let p = item.controller;
+                if self.players[p].library.is_empty() {
+                    if self.obj(src).zone == Zone::Battlefield {
+                        self.move_to(src, Zone::Exile);
+                    }
+                    let k = self.players[p].graveyard.len().min(5) as u8;
+                    if k > 0 {
+                        self.ask(p, Decision::PutOnTopFromGraveyard { left: k });
+                    }
+                }
+            }
+            Effect::SpiritDragonsUpkeep => self.next_dragon_color(item.controller, 0, Vec::new()),
+            Effect::GrantAllUntilYourNextTurn(keywords) => {
+                let p = item.controller;
+                for c in self.creatures(p).collect::<Vec<_>>() {
+                    let zcc = self.obj(c).zcc;
+                    self.until_your_next_turn.push((c, zcc, keywords, p));
+                }
             }
             Effect::TapAttached => {
                 if let Some((c, zcc)) = self.obj(src).attached_to {
@@ -6943,7 +7090,7 @@ impl Game {
                     // counters or other effects.
                     let def = self.obj(o).def;
                     self.last_created.clear();
-                    for _ in 0..self.doubling(item.controller) {
+                    for _ in 0..self.token_doubling(item.controller) {
                         let id = self.add_card(item.controller, def, Zone::Hand);
                         self.obj_mut(id).copy_token = true;
                         self.move_to(id, Zone::Battlefield);
@@ -7246,12 +7393,79 @@ impl Game {
 
     fn create_token(&mut self, p: PlayerId, def: usize) {
         self.last_created.clear();
-        for _ in 0..self.doubling(p) {
+        for _ in 0..self.token_doubling(p) {
             let id = self.add_card(p, def, Zone::Battlefield);
             self.last_created.push(id);
             self.obj_mut(id).since_turn = self.turn;
             self.zone_triggers(id, Zone::Gone, Zone::Battlefield, p);
         }
+    }
+
+    /// How many times over tokens for `p` are made: Doubling Season and token-only doublers (Elspeth).
+    fn token_doubling(&self, p: PlayerId) -> i32 {
+        let n = self
+            .permanents(p)
+            .filter(|&x| self.def_of(x).doubles_tokens && !self.lost_abilities(x))
+            .count();
+        self.doubling(p) << n.min(10)
+    }
+
+    /// Puts a card on top of its owner's library.
+    fn put_on_top(&mut self, c: ObjId) {
+        let owner = self.obj(c).owner;
+        self.move_to(c, Zone::Library);
+        let lib = &mut self.players[owner].library;
+        if let Some(pos) = lib.iter().position(|&x| x == c) {
+            let card = lib.remove(pos);
+            lib.push(card);
+        }
+    }
+
+    /// Call the Spirit Dragons: ask for the Dragon of the next color that has one; after the last
+    /// color, five different Dragons win the game.
+    fn next_dragon_color(&mut self, p: PlayerId, from: u8, placed: Vec<ObjId>) {
+        for color in from..5 {
+            let any = self
+                .creatures(p)
+                .any(|c| self.has_subtype(c, "Dragon") && self.colors_of(c)[color as usize]);
+            if any {
+                self.ask(p, Decision::DragonForColor { color, placed });
+                return;
+            }
+        }
+        if placed.len() >= 5 {
+            let opp = opponent(p);
+            let protected = self.permanents(opp).any(|c| self.def_of(c).cant_lose);
+            if !protected && !self.players[opp].lost {
+                self.players[opp].lost = true;
+                self.events.push(Event::Lost { player: opp });
+                self.result = Some(Outcome::Winner(p));
+                self.pending = Pending::GameOver;
+            }
+        }
+    }
+
+    /// Different kinds of counters among creatures `p` controls (CR 122.1).
+    fn counter_kinds(&self, p: PlayerId) -> u32 {
+        let (mut plus, mut stun, mut fin, mut other) = (false, false, false, 0u32);
+        let mut kw = Keywords::NONE;
+        let mut others = [false; 6];
+        for c in self.creatures(p) {
+            let o = self.obj(c);
+            plus |= o.counters > 0;
+            stun |= o.stun > 0;
+            fin |= o.finality;
+            kw = kw.with(o.keyword_counters);
+            for (i, n) in [o.incubation, o.soul, o.revival, o.fellowship, o.bait, o.loyalty]
+                .into_iter()
+                .enumerate()
+            {
+                others[i] |= n > 0;
+            }
+        }
+        other += others.iter().filter(|&&b| b).count() as u32;
+        let kws = Keywords::ALL.iter().filter(|(k, _)| kw.has(*k)).count() as u32;
+        plus as u32 + stun as u32 + fin as u32 + other + kws
     }
 
     /// How many times over tokens and counters for `p` are made: 2 per Doubling Season.
@@ -7404,6 +7618,8 @@ impl Game {
         self.life_lost_this_turn = [false; 2];
         self.turn += 1;
         self.active = self.extra_turns.pop().unwrap_or_else(|| opponent(self.active));
+        let active = self.active;
+        self.until_your_next_turn.retain(|e| e.3 != active);
         self.events.push(Event::TurnBegan {
             turn: self.turn,
             active: self.active,
