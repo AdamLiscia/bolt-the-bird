@@ -3,7 +3,7 @@ data/
 *.csv.gz
 *.npz
 *.pt
-checkpoints/
+checkpoints
 runs/
 .venv/
 __pycache__/

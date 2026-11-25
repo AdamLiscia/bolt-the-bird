@@ -6,8 +6,12 @@ from pathlib import Path
 import pytest
 import torch
 
-from bolt.cards import CardInfo
-from bolt.models import to_vocab
+# This checkout's own src/ first, not the venv's installed  (a worktree can share a venv whose
+# editable install points at another checkout).
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
+
+from bolt.cards import CardInfo  # noqa: E402
+from bolt.models import to_vocab  # noqa: E402
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
