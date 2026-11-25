@@ -229,6 +229,55 @@ pub fn script(name: &str) -> Option<Script> {
                 spell(d, vec![], vec![damage(13, Recipient::EachCreature { without_flying: false })]);
             },
         ),
+        // ---- Batch 3: the other two commanders, offspring ----
+        "Zinnia, Valley's Voice" => s(
+            &[
+                "Zinnia gets +X/+0, where X is the number of other creatures you control with base power 1.",
+                "Creature spells you cast gain offspring {2} as you cast them.",
+            ],
+            |d, _| {
+                static_on(d, Scope::This, false, Keywords::NONE);
+                let st = d.statics.last_mut().expect("just added");
+                st.power = 1;
+                st.scale = Some(Scale::PerOtherYourCreatureBasePowerOne);
+                d.grants_offspring = ManaCost::parse("{2}");
+            },
+        ),
+        "Hazel of the Rootbloom" => s(
+            &[
+                "{T}, Pay 2 life, Tap X untapped tokens you control: Add X mana in any combination of colors.",
+                "At the beginning of your end step, create a token that's a copy of target token you control. If that token is a Squirrel, instead create two tokens that are copies of it.",
+            ],
+            |d, _| {
+                // Played as an activated ability that uses the stack (the mana payer can't tap tokens
+                // and pay life while paying a cost), with the mana going to the pool as any color.
+                let n = activated(d, "", true, vec![], vec![Effect::AddManaAnyColorsX]);
+                d.activated[n].life = 2;
+                d.activated[n].tap_x_untapped_tokens = true;
+                let token = Filter {
+                    players: false,
+                    creatures: false,
+                    planeswalkers: false,
+                    any_permanent: true,
+                    tokens_only: true,
+                    controller: Controller::You,
+                    ..Filter::ANY
+                };
+                on(
+                    d,
+                    When::EndStep { your_turn_only: true },
+                    vec![token],
+                    vec![Effect::CopyTokenTwiceIfSubtype { slot: 0, sub: "Squirrel" }],
+                );
+            },
+        ),
+        "Agate Instigator" => s(
+            &["Offspring {1}{R}", "Whenever another creature you control enters, this creature deals 1 damage to each opponent."],
+            |d, _| {
+                d.offspring = ManaCost::parse("{1}{R}");
+                on(d, When::AnotherCreatureYouControlEnters, vec![], vec![damage(1, Recipient::EachOpponent)]);
+            },
+        ),
         _ => None,
     }
 }
@@ -263,4 +312,7 @@ pub const BLC_B_SCRIPTED: &[&str] = &[
     "Blade Splicer",
     "Chart a Course",
     "Blasphemous Act",
+    "Zinnia, Valley's Voice",
+    "Hazel of the Rootbloom",
+    "Agate Instigator",
 ];

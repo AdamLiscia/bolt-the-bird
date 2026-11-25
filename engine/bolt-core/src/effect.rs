@@ -83,6 +83,8 @@ pub struct Filter {
     pub colored: bool,
     /// Creature or land cards only (graveyard targets).
     pub creature_or_land: bool,
+    /// Tokens only.
+    pub tokens_only: bool,
 }
 
 impl Filter {
@@ -123,6 +125,7 @@ impl Filter {
         mana_value_is_x: false,
         colored: false,
         creature_or_land: false,
+        tokens_only: false,
     };
 
     pub const CREATURE: Filter = Filter {
@@ -800,6 +803,15 @@ pub enum Effect {
     DrawIfSecondResolutionThisTurn(u8),
     /// Discard a card unless you attacked this turn (Chart a Course).
     DiscardUnlessAttacked,
+    /// Offspring: create a 1/1 token copy of the source.
+    OffspringCopy,
+    /// Add X mana in any combination of colors (X the ability's X): X any-color mana in the pool.
+    AddManaAnyColorsX,
+    /// Create a token that's a copy of the token in `slot`; two if it has this subtype (Hazel).
+    CopyTokenTwiceIfSubtype {
+        slot: u8,
+        sub: &'static str,
+    },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -879,6 +891,8 @@ pub enum Scale {
     PerFellowshipCounter,
     /// Creatures you control ("power is equal to the number of creatures you control").
     PerCreatureYouControl,
+    /// Other creatures you control with base power 1 (Zinnia).
+    PerOtherYourCreatureBasePowerOne,
 }
 
 /// A condition on a static ability ("as long as ...").

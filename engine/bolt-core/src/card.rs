@@ -189,6 +189,8 @@ pub struct Activated {
     pub your_turn_only: bool,
     /// "Activate only if a card left your graveyard this turn."
     pub if_card_left_graveyard: bool,
+    /// "Tap X untapped tokens you control" in the cost (activated with `Action::ActivateX`).
+    pub tap_x_untapped_tokens: bool,
 }
 
 /// The printed card. Shared by every copy; per-copy state lives on the game object.
@@ -397,6 +399,11 @@ pub struct CardDef {
     pub enters_tapped_unless_basics: u8,
     /// "This land enters tapped unless you control N or fewer other lands."
     pub enters_tapped_unless_at_most_lands: Option<u8>,
+    /// "Offspring {cost}": an optional additional cost (cast with `Action::CastKicked`); if paid,
+    /// when it enters, create a 1/1 token copy of it.
+    pub offspring: Option<ManaCost>,
+    /// Zinnia: "Creature spells you cast gain offspring {cost} as you cast them."
+    pub grants_offspring: Option<ManaCost>,
 }
 
 /// An Omen spell half: its name, cost, whether it's an instant, and what it does.
@@ -524,6 +531,8 @@ impl CardDef {
             animates_big_noncreatures_your_turn: false,
             enters_tapped_unless_basics: 0,
             enters_tapped_unless_at_most_lands: None,
+            offspring: None,
+            grants_offspring: None,
         }
     }
 
@@ -630,6 +639,8 @@ impl CardDef {
             animates_big_noncreatures_your_turn: false,
             enters_tapped_unless_basics: 0,
             enters_tapped_unless_at_most_lands: None,
+            offspring: None,
+            grants_offspring: None,
         }
     }
 
@@ -736,6 +747,8 @@ impl CardDef {
             animates_big_noncreatures_your_turn: false,
             enters_tapped_unless_basics: 0,
             enters_tapped_unless_at_most_lands: None,
+            offspring: None,
+            grants_offspring: None,
         }
     }
 }

@@ -479,3 +479,154 @@ fn blasphemous_act_costs_less_per_creature_and_kills_everything() {
         .chain(g.permanents(1))
         .all(|x| !g.types_of(x).creature));
 }
+
+// ---- Batch 3: Zinnia, Hazel, offspring ----
+
+fn tokens_named(g: &Game, p: usize, name: &str) -> Vec<ObjId> {
+    g.permanents(p)
+        .filter(|&x| g.is_token(x) && g.def_of(x).name == name)
+        .collect()
+}
+
+#[test]
+fn zinnia_grants_offspring_to_your_creature_spells() {
+    let mut g = table();
+    let zinnia = put(&mut g, 0, "Zinnia, Valley's Voice");
+    assert!(g.keywords(zinnia).has(Keywords::FLYING));
+    assert_eq!(g.power(zinnia), 1);
+    let mender = hand(&mut g, 0, "Circuit Mender"); // {3}
+    assert!(
+        g.legal_actions().contains(&Action::CastKicked(mender)),
+        "offspring {{2}}"
+    );
+    let before = g
+        .permanents(0)
+        .filter(|&x| g.types_of(x).land && !g.obj(x).tapped)
+        .count();
+    act(&mut g, Action::CastKicked(mender));
+    resolve_all(&mut g, &[]);
+    let after = g
+        .permanents(0)
+        .filter(|&x| g.types_of(x).land && !g.obj(x).tapped)
+        .count();
+    assert_eq!(before - after, 5);
+    let copy = tokens_named(&g, 0, "Circuit Mender");
+    assert_eq!(copy.len(), 1, "a token copy");
+    assert_eq!((g.power(copy[0]), g.toughness(copy[0])), (1, 1));
+    assert_eq!(g.players[0].life, 44, "both entered: gain 2 twice");
+    assert_eq!(g.power(zinnia), 2, "+1/+0 for the 1/1 copy");
+    assert_eq!(g.power(mender), 2);
+
+    // Without Zinnia: no offspring.
+    let mut g = table();
+    let mender = hand(&mut g, 0, "Circuit Mender");
+    assert!(!g.legal_actions().contains(&Action::CastKicked(mender)));
+}
+
+#[test]
+fn agate_instigator_has_offspring_and_pings_for_each_creature() {
+    let mut g = table();
+    let a = hand(&mut g, 0, "Agate Instigator");
+    act(&mut g, Action::CastKicked(a));
+    resolve_all(&mut g, &[]);
+    assert_eq!(tokens_named(&g, 0, "Agate Instigator").len(), 1);
+    assert_eq!(g.players[1].life, 39, "the copy entering");
+    let a2 = hand(&mut g, 0, "Agate Instigator");
+    play(&mut g, a2, false, &[], &[]);
+    assert_eq!(g.players[1].life, 37, "two Instigators see it enter");
+}
+
+#[test]
+fn hazel_taps_tokens_for_mana_and_copies_tokens_at_end_of_turn() {
+    let mut g = table();
+    let hazel = put(&mut g, 0, "Hazel of the Rootbloom");
+    let score = hand(&mut g, 0, "Big Score");
+    let junk = hand(&mut g, 0, "Sol Ring");
+    act(&mut g, Action::CastWith(score, junk));
+    resolve_all(&mut g, &[]);
+    let treasures = tokens_named(&g, 0, "Treasure");
+    assert_eq!(treasures.len(), 2);
+    assert!(g.legal_actions().contains(&Action::ActivateX {
+        id: hazel,
+        n: 0,
+        victim: None,
+        x: 2
+    }));
+    assert!(!g.legal_actions().contains(&Action::ActivateX {
+        id: hazel,
+        n: 0,
+        victim: None,
+        x: 3
+    }));
+    act(
+        &mut g,
+        Action::ActivateX {
+            id: hazel,
+            n: 0,
+            victim: None,
+            x: 2,
+        },
+    );
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].life, 38, "pay 2 life");
+    assert!(g.obj(hazel).tapped && treasures.iter().all(|&t| g.obj(t).tapped));
+    assert_eq!(g.players[0].pool.len(), 2);
+    assert!(g.players[0].pool.iter().all(|m| m.colors == [true; 5]));
+    // End step: a copy of a token.
+    while !matches!(g.pending, Pending::ChooseTarget(_)) {
+        let a = match g.pending {
+            Pending::DeclareAttackers(_) => Action::FinishAttacks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    act(&mut g, Action::Target(obj(treasures[0])));
+    resolve_all(&mut g, &[]);
+    assert_eq!(tokens_named(&g, 0, "Treasure").len(), 3);
+}
+
+#[test]
+fn hazel_copies_a_squirrel_token_twice() {
+    let mut g = table();
+    put(&mut g, 0, "Zinnia, Valley's Voice");
+    put(&mut g, 0, "Hazel of the Rootbloom");
+    // A Squirrel token: Zinnia's offspring copy of a Squirrel creature card (its own rules text isn't
+    // scripted, but it casts and enters).
+    let squirrel_card = hand(&mut g, 0, "Bloodroot Apothecary");
+    act(&mut g, Action::CastKicked(squirrel_card));
+    let mut guard = 0;
+    while (!g.items.is_empty() || matches!(g.pending, Pending::ChooseTarget(_) | Pending::Decide(_)))
+        && guard < 20
+    {
+        let a = g
+            .legal_actions()
+            .iter()
+            .copied()
+            .find(|a| matches!(a, Action::PassPriority))
+            .unwrap_or(g.legal_actions()[0]);
+        act(&mut g, a);
+        guard += 1;
+    }
+    let squirrel = tokens_named(&g, 0, "Bloodroot Apothecary");
+    assert_eq!(squirrel.len(), 1);
+    assert!(g.has_subtype(squirrel[0], "Squirrel"));
+    let mut asked = 0;
+    while g.turn == 3 {
+        let a = match g.pending {
+            Pending::ChooseTarget(_) => {
+                asked += 1;
+                Action::Target(obj(squirrel[0]))
+            }
+            Pending::DeclareAttackers(_) => Action::FinishAttacks,
+            Pending::Discard(_) => g.legal_actions()[0], // cleanup: down to seven
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(asked, 1);
+    assert_eq!(
+        tokens_named(&g, 0, "Bloodroot Apothecary").len(),
+        3,
+        "two more copies"
+    );
+}
