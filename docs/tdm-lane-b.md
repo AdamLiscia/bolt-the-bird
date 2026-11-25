@@ -366,3 +366,18 @@ Core:
 - Vandalblast's overload is an optional {4} on top of {R} (`Action::CastKicked`), the same total.
 
 Notes: Combat Celebrant's exert is chosen as its attack trigger resolves rather than as it attacks.
+
+### PG batch 4: 4 cards
+
+Chaos Imps, Silvos, Rogue Elemental, Yavimaya Hollow, Triumph of the Hordes.
+
+Core:
+- Unleash (`CardDef::unleash`, `Decision::Unleash`), asked as the spell resolves like the Sieges'
+  modes; "can't block while it has a +1/+1 counter" is a `CountersAtLeast(1)` static in its script.
+- Regeneration (CR 701.15): `Object::regen_shields`, `Effect::RegenerateSelf` / `Regenerate`; used by
+  `destroy` and by the lethal-damage state-based action. `Effect::DestroyNoRegen` for "It can't be
+  regenerated" (Putrefy, Rapid Hybridization and Decree of Pain now use it; their old "the engine
+  has no regeneration" notes are gone).
+- Infect until end of turn (`Game::infect_until_eot`, `Effect::PumpAllGrantInfect`): damage to
+  players is poison (`Player::poison`, ten loses, CR 704.5c), to creatures -1/-1 counters (taken
+  off the +1/+1 count). Infect isn't a printed keyword the engine knows.

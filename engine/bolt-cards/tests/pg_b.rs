@@ -758,3 +758,81 @@ fn ilharg_drops_a_creature_into_the_attack_and_takes_it_back() {
     let lib = &g.players[0].library;
     assert_eq!(lib[lib.len() - 3], i);
 }
+
+#[test]
+fn chaos_imps_unleashed_tramples_but_cant_block() {
+    let mut g = table();
+    let i = hand(&mut g, 0, "Chaos Imps");
+    play(&mut g, i, false, &[], &[Action::Yes]);
+    assert_eq!(g.obj(i).counters, 1);
+    let k = g.keywords(i);
+    assert!(k.has(Keywords::FLYING) && k.has(Keywords::TRAMPLE) && k.has(Keywords::CANT_BLOCK));
+
+    let mut g = table();
+    let i = hand(&mut g, 0, "Chaos Imps");
+    play(&mut g, i, false, &[], &[Action::No]);
+    assert_eq!(g.obj(i).counters, 0);
+    let k = g.keywords(i);
+    assert!(!k.has(Keywords::TRAMPLE) && !k.has(Keywords::CANT_BLOCK));
+}
+
+#[test]
+fn silvos_and_yavimaya_hollow_regenerate() {
+    let mut g = table();
+    let s = put(&mut g, 0, "Silvos, Rogue Elemental");
+    act(&mut g, Action::Activate(s, 0));
+    resolve_all(&mut g, &[]);
+    let gift = hand(&mut g, 0, "Beast Within");
+    play(&mut g, gift, false, &[obj(s)], &[]);
+    assert_eq!(g.obj(s).zone, Zone::Battlefield, "regenerated");
+    assert!(g.obj(s).tapped);
+    // "It can't be regenerated."
+    act(&mut g, Action::Activate(s, 0));
+    resolve_all(&mut g, &[]);
+    let p = hand(&mut g, 0, "Putrefy");
+    play(&mut g, p, false, &[obj(s)], &[]);
+    assert_eq!(g.obj(s).zone, Zone::Graveyard);
+
+    // Lethal damage is regenerated too.
+    let mut g = table();
+    let h = put(&mut g, 0, "Yavimaya Hollow");
+    let elder = put(&mut g, 0, "Sakura-Tribe Elder");
+    act(&mut g, Action::Activate(h, 0));
+    resolve_all(&mut g, &[Action::Target(obj(elder))]);
+    let sg = put(&mut g, 0, "Siege-Gang Commander");
+    act(&mut g, Action::ActivateWith(sg, 0, sg));
+    resolve_all(&mut g, &[Action::Target(obj(elder))]);
+    assert_eq!(g.obj(elder).zone, Zone::Battlefield);
+    assert_eq!(g.obj(elder).damage, 0);
+}
+
+#[test]
+fn triumph_of_the_hordes_poisons() {
+    let mut g = table();
+    let a = put(&mut g, 0, "Quartzwood Crasher"); // 6/6 trample
+    let b = put(&mut g, 0, "Devilish Valet"); // 1/3 trample haste
+    let t = hand(&mut g, 0, "Triumph of the Hordes");
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    play(&mut g, t, false, &[], &[]);
+    assert_eq!(g.power(a), 7);
+    let life = g.players[1].life;
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(a));
+    act(&mut g, Action::Attack(b));
+    act(&mut g, Action::FinishAttacks);
+    while g.result.is_none() && g.step != Step::Main2 {
+        let x = match g.pending {
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, x);
+    }
+    assert_eq!(g.players[1].life, life, "infect: no life loss");
+    assert_eq!(g.players[1].poison, 7 + 2);
+    assert!(g.result.is_none(), "nine poison");
+}

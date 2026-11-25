@@ -1141,6 +1141,20 @@ pub enum Effect {
     PutCreatureFromHandAttackingUntilEnd,
     /// Put the source into its owner's library third from the top (from a graveyard or exile).
     SourceThirdFromTop,
+    /// Regenerate the source (CR 701.15): the next time it would be destroyed this turn, instead tap
+    /// it, remove all damage from it and remove it from combat.
+    RegenerateSelf,
+    /// Regenerate the creature in `slot`.
+    Regenerate(u8),
+    /// Destroy the permanent in `slot`; it can't be regenerated.
+    DestroyNoRegen(u8),
+    /// Creatures you control get +P/+T and gain keywords and infect until end of turn (Triumph of the
+    /// Hordes). Infect (CR 702.90): damage to creatures as -1/-1 counters, to players as poison.
+    PumpAllGrantInfect {
+        power: i32,
+        toughness: i32,
+        keywords: Keywords,
+    },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

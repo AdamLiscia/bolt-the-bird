@@ -355,6 +355,24 @@ pub fn script(name: &str) -> Option<Script> {
                 d.triggers.push(Trigger { when: When::LeavesBattlefield, ability: a });
             },
         ),
+        "Chaos Imps" => s(&["Unleash", "This creature has trample as long as it has a +1/+1 counter on it."], |d, _| {
+            d.unleash = true;
+            // Unleash: "It can't block as long as it has a +1/+1 counter on it."
+            static_on(d, Scope::This, false, Keywords::CANT_BLOCK);
+            d.statics.last_mut().expect("just added").condition = Some(StaticCondition::CountersAtLeast(1));
+            static_on(d, Scope::This, false, Keywords::TRAMPLE);
+            d.statics.last_mut().expect("just added").condition = Some(StaticCondition::CountersAtLeast(1));
+        }),
+        "Silvos, Rogue Elemental" => s(&["{G}: Regenerate Silvos."], |d, _| {
+            activated(d, "{G}", false, vec![], vec![Effect::RegenerateSelf]);
+        }),
+        "Yavimaya Hollow" => s(&["{T}: Add {C}.", "{G}, {T}: Regenerate target creature."], |d, _| {
+            d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+            activated(d, "{G}", true, vec![CREATURE], vec![Effect::Regenerate(0)]);
+        }),
+        "Triumph of the Hordes" => s(&["Until end of turn, creatures you control get +1/+1 and gain trample and infect."], |d, _| {
+            spell(d, vec![], vec![Effect::PumpAllGrantInfect { power: 1, toughness: 1, keywords: Keywords::TRAMPLE }])
+        }),
         _ => None,
     }
 }
@@ -405,4 +423,8 @@ pub const PG_B_SCRIPTED: &[&str] = &[
     "Yavimaya, Cradle of Growth",
     "Quartzwood Crasher",
     "Ilharg, the Raze-Boar",
+    "Chaos Imps",
+    "Silvos, Rogue Elemental",
+    "Yavimaya Hollow",
+    "Triumph of the Hordes",
 ];

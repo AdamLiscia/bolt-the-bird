@@ -235,6 +235,8 @@ pub struct Object {
     pub shock_pending: bool,
     /// The turn it was last exerted (CR 701.39).
     pub exerted_turn: Option<u32>,
+    /// Regeneration shields this turn: (turn, how many) (CR 701.15).
+    pub regen_shields: (u32, u8),
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -251,6 +253,8 @@ pub struct Player {
     /// Mana added by an effect, spent before any permanent is tapped; empties at the end of each
     /// step and phase (CR 106.4, 500.4).
     pub pool: Vec<ManaSource>,
+    /// Poison counters (CR 122.1f): ten or more and the player loses (CR 704.5c).
+    pub poison: i32,
 }
 
 impl Player {
@@ -264,6 +268,7 @@ impl Player {
             mulligans: 0,
             pool: Vec::new(),
             drew_from_empty: false,
+            poison: 0,
             lost: false,
         }
     }
@@ -809,6 +814,8 @@ pub enum Decision {
     ShockLand { card: ObjId },
     /// `Pick` a creature card in hand to put onto the battlefield tapped and attacking, or `No`.
     PutCreatureAttacking,
+    /// Unleash: `Yes` for a +1/+1 counter on it, or `No`.
+    Unleash { card: ObjId },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -1036,6 +1043,8 @@ pub struct Game {
     pub combats_this_turn: u8,
     /// Creatures to return to their owners' hands at the beginning of the next end step (Ilharg).
     pub return_to_hand_at_end: Vec<(ObjId, u32)>,
+    /// Creatures with infect until end of turn: (object, its zcc, turn) (Triumph of the Hordes).
+    pub infect_until_eot: Vec<(ObjId, u32, u32)>,
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -1228,6 +1237,7 @@ impl Game {
             combats_after_this_phase: 0,
             combats_this_turn: 0,
             return_to_hand_at_end: Vec::new(),
+            infect_until_eot: Vec::new(),
         }
     }
 
@@ -1325,6 +1335,7 @@ impl Game {
             not_legendary: false,
             shock_pending: false,
             exerted_turn: None,
+            regen_shields: (0, 0),
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -6370,6 +6381,10 @@ impl Game {
             }
             // "As this enters, choose [A] or [B]" (the Sieges). Asked as the spell resolves, like the
             // color choice below: a Siege put onto the battlefield another way gets no mode.
+            if r.acts && self.def_of(source).unleash && self.obj(source).zone == Zone::Battlefield {
+                self.ask(r.item.controller, Decision::Unleash { card: source });
+                return;
+            }
             if r.acts && self.def_of(source).enter_modes && self.obj(source).zone == Zone::Battlefield {
                 self.ask(r.item.controller, Decision::ChooseEnterMode { card: source });
                 return;
@@ -6809,6 +6824,7 @@ impl Game {
             Decision::EndureOther { .. } => vec![Action::Yes, Action::No],
             Decision::ReturnOwnCreature => self.creatures(p).map(Action::Pick).collect(),
             Decision::TemptOffer => vec![Action::Yes, Action::No],
+            Decision::Unleash { .. } => vec![Action::Yes, Action::No],
             Decision::PutCreatureAttacking => {
                 let mut v: Vec<Action> = self.players[p]
                     .hand
@@ -6966,6 +6982,17 @@ impl Game {
         if let (Decision::ChooseCastX { card, mode, .. }, Action::Amount(x)) = (&d, a) {
             let (card, mode) = (*card, *mode);
             return self.cast(p, card, CastMode { x, ..mode });
+        }
+        if let Decision::Unleash { card } = d {
+            if a == Action::Yes {
+                self.add_counters(card, 1);
+            }
+            if self.end_turn {
+                self.end_the_turn();
+            } else {
+                self.give_priority(self.active);
+            }
+            return;
         }
         if let Decision::ShockLand { card } = d {
             if a == Action::Yes {
@@ -10482,7 +10509,7 @@ impl Game {
                     .collect();
                 let mut n = 0;
                 for c in all {
-                    self.destroy(c);
+                    self.destroy_no_regen(c); // "They can't be regenerated."
                     if self.obj(c).zone != Zone::Battlefield {
                         n += 1;
                     }
@@ -10563,6 +10590,44 @@ impl Game {
                         keywords,
                         dies: None,
                     });
+                }
+            }
+            Effect::RegenerateSelf => {
+                if self.obj(src).zone == Zone::Battlefield {
+                    let turn = self.turn;
+                    let (t, n) = self.obj(src).regen_shields;
+                    self.obj_mut(src).regen_shields = (turn, if t == turn { n + 1 } else { 1 });
+                }
+            }
+            Effect::Regenerate(slot) => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    let turn = self.turn;
+                    let (t, n) = self.obj(id).regen_shields;
+                    self.obj_mut(id).regen_shields = (turn, if t == turn { n + 1 } else { 1 });
+                }
+            }
+            Effect::DestroyNoRegen(slot) => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    self.destroy_no_regen(id);
+                }
+            }
+            Effect::PumpAllGrantInfect {
+                power,
+                toughness,
+                keywords,
+            } => {
+                let turn = self.turn;
+                for id in self.creatures(item.controller).collect::<Vec<_>>() {
+                    let zcc = self.obj(id).zcc;
+                    self.until_eot.push(Modifier {
+                        obj: id,
+                        zcc,
+                        power,
+                        toughness,
+                        keywords,
+                        dies: None,
+                    });
+                    self.infect_until_eot.push((id, zcc, turn));
                 }
             }
             Effect::AdditionalCombatAfterThisPhase => {
@@ -11038,9 +11103,47 @@ impl Game {
 
     /// CR 701.8: destroy moves a permanent to its owner's graveyard, unless it is indestructible.
     fn destroy(&mut self, id: ObjId) {
+        if self.keywords(id).has(Keywords::INDESTRUCTIBLE) {
+            return;
+        }
+        if !self.use_regen_shield(id) {
+            self.move_to(id, Zone::Graveyard);
+        }
+    }
+
+    /// "Destroy ... It can't be regenerated."
+    fn destroy_no_regen(&mut self, id: ObjId) {
         if !self.keywords(id).has(Keywords::INDESTRUCTIBLE) {
             self.move_to(id, Zone::Graveyard);
         }
+    }
+
+    /// Regeneration (CR 701.15): if `id` has a shield this turn, use it: tap it, remove all damage
+    /// from it and remove it from combat. Returns whether it regenerated.
+    fn use_regen_shield(&mut self, id: ObjId) -> bool {
+        let turn = self.turn;
+        let (t, n) = self.obj(id).regen_shields;
+        if t != turn || n == 0 || self.obj(id).zone != Zone::Battlefield {
+            return false;
+        }
+        let o = self.obj_mut(id);
+        o.regen_shields = (turn, n - 1);
+        o.tapped = true;
+        o.damage = 0;
+        o.deathtouched = false;
+        if let Some(c) = self.combat.as_mut() {
+            c.attackers.retain(|&a| a != id);
+            c.blocks.retain(|b| b.0 != id && b.1 != id);
+        }
+        true
+    }
+
+    /// Whether `id` has infect (Triumph of the Hordes grants it until end of turn).
+    fn has_infect(&self, id: ObjId) -> bool {
+        let (zcc, turn) = (self.obj(id).zcc, self.turn);
+        self.infect_until_eot
+            .iter()
+            .any(|&(c, z, t)| c == id && z == zcc && t == turn)
     }
 
     /// CR 603.3: triggered abilities go on the stack the next time a player would get priority,
@@ -11901,7 +12004,14 @@ impl Game {
             self.obj_mut(source).dealt_damage = true;
         }
         let k = self.keywords(source);
+        let infect = self.has_infect(source);
         match target {
+            Target::Player(p) if infect => {
+                self.players[p].poison += amount; // CR 702.90b: poison counters, not life loss
+            }
+            Target::Object(id) if infect && self.types_of(id).creature => {
+                self.obj_mut(id).counters -= amount; // CR 702.90c: -1/-1 counters
+            }
             Target::Player(p) => {
                 self.lose_life(p, amount);
                 let controller = self.obj(source).controller;
@@ -11981,6 +12091,21 @@ impl Game {
                 {
                     dies.push(id); // CR 704.5g, 704.5h
                 }
+            }
+            // Destruction by lethal damage can be regenerated (CR 701.15); zero toughness can't.
+            let regenerate: Vec<ObjId> = dies
+                .iter()
+                .copied()
+                .filter(|&id| {
+                    self.toughness(id) > 0 && {
+                        let (t, n) = self.obj(id).regen_shields;
+                        t == self.turn && n > 0
+                    }
+                })
+                .collect();
+            for id in regenerate {
+                self.use_regen_shield(id);
+                dies.retain(|&d| d != id);
             }
             dies.extend(self.legend_rule_losers());
             // CR 714.4: a Saga with lore counters at least its final chapter, and no chapter ability
@@ -12063,7 +12188,11 @@ impl Game {
                     .iter()
                     .any(|e| e.1 == p && e.2 >= COMMANDER_DAMAGE_LOSS)
                     || (one_commander && self.commander_damage[p] >= COMMANDER_DAMAGE_LOSS);
-                if !pl.lost && !protected && (pl.life <= 0 || pl.drew_from_empty || commander_dead) {
+                let poisoned = pl.poison >= 10; // CR 704.5c
+                if !pl.lost
+                    && !protected
+                    && (pl.life <= 0 || pl.drew_from_empty || commander_dead || poisoned)
+                {
                     self.players[p].lost = true; // CR 704.5a, 704.5b
                     self.events.push(Event::Lost { player: p });
                     lost = true;

@@ -537,6 +537,9 @@ pub struct CardDef {
     pub cant_attack_twice_per_turn: bool,
     /// "Each land is a Forest in addition to its other land types." (lands with plain mana also tap for {G})
     pub lands_are_forests: bool,
+    /// Unleash (CR 702.98): "you may have this creature enter with a +1/+1 counter on it" (asked as
+    /// the spell resolves, like the Sieges' modes); it can't block while it has one (its script).
+    pub unleash: bool,
 }
 
 /// What entering makes triggers happen again (see [`CardDef::entering_triggers_again`]).
@@ -723,6 +726,7 @@ impl CardDef {
             lethal_damage_by_power: false,
             cant_attack_twice_per_turn: false,
             lands_are_forests: false,
+            unleash: false,
         }
     }
 
@@ -877,6 +881,7 @@ impl CardDef {
             lethal_damage_by_power: false,
             cant_attack_twice_per_turn: false,
             lands_are_forests: false,
+            unleash: false,
         }
     }
 
@@ -1031,6 +1036,7 @@ impl CardDef {
             lethal_damage_by_power: false,
             cant_attack_twice_per_turn: false,
             lands_are_forests: false,
+            unleash: false,
         }
     }
 }
