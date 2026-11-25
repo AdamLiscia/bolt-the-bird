@@ -1837,3 +1837,267 @@ fn call_the_spirit_dragons_protects_dragons_and_wins_with_five() {
     assert_eq!((g.obj(k).counters, g.obj(bt).counters), (3, 2));
     assert!(!g.players[1].lost);
 }
+
+// ---- Batch 7: delayed "this turn" triggers, Sagas, free casts, X Omen, ward—discard ----
+
+/// Player 0's precombat main phase on `turn`, resolving triggers on the way with `answers`.
+fn to_main(g: &mut Game, turn: u32, answers: &[Action]) {
+    g.start_turn(turn, 0);
+    let mut answers = answers.iter();
+    while g.step != Step::Main1 || !g.items.is_empty() || !matches!(g.pending, Pending::Priority(0)) {
+        let a = match g.pending {
+            Pending::ChooseTarget(_) | Pending::Decide(_) => *answers.next().expect("an answer"),
+            Pending::DeclareAttackers(_) => Action::FinishAttacks,
+            _ => Action::PassPriority,
+        };
+        act(g, a);
+    }
+}
+
+#[test]
+fn thunder_of_unity_draws_then_drains_for_creatures_entering_that_turn() {
+    let mut g = table();
+    let saga = hand(&mut g, 0, "Thunder of Unity");
+    begin(&mut g);
+    let n = g.players[0].hand.len();
+    play(&mut g, saga, false, &[], &[]);
+    assert_eq!(g.players[0].hand.len(), n - 1 + 2);
+    assert_eq!(g.players[0].life, 18);
+    to_main(&mut g, 5, &[]);
+    let elder = hand(&mut g, 0, "Humbling Elder");
+    play(&mut g, elder, false, &[], &[]);
+    assert_eq!(
+        (g.players[0].life, g.players[1].life),
+        (19, 19),
+        "chapter II, this turn"
+    );
+    put(&mut g, 1, "Humbling Elder"); // theirs: no trigger
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].life, 19);
+    // Next turn it's over.
+    g.start_turn(6, 1);
+    let mine = hand(&mut g, 0, "Humbling Elder");
+    g.move_card(mine, Zone::Battlefield);
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].life, 19, "only that turn");
+}
+
+#[test]
+fn rediscover_the_way_digs_and_then_gives_double_strike_on_noncreature_spells() {
+    let mut g = table();
+    let creature = put(&mut g, 0, "Iceridge Serpent");
+    let saga = hand(&mut g, 0, "Rediscover the Way");
+    begin(&mut g);
+    let lib = g.players[0].library.clone();
+    let (a, b, c) = (lib[lib.len() - 1], lib[lib.len() - 2], lib[lib.len() - 3]);
+    act(&mut g, Action::Cast(saga));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(!g.legal_actions().contains(&Action::No), "one must go to hand");
+    resolve_all(&mut g, &[Action::Pick(a), Action::Pick(b)]);
+    assert_eq!(g.obj(a).zone, Zone::Hand);
+    let lib = &g.players[0].library;
+    assert_eq!(
+        (lib[0], lib[1]),
+        (c, b),
+        "the rest on the bottom, in the order chosen"
+    );
+    // Chapter II: take any card, bottom the rest in any order.
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 || !g.items.is_empty() || !matches!(g.pending, Pending::Priority(0)) {
+        let a = match g.pending {
+            Pending::Decide(_) => g.legal_actions()[0],
+            Pending::DeclareAttackers(_) => Action::FinishAttacks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    to_main(&mut g, 7, &[]);
+    assert!(!g.keywords(creature).has(Keywords::DOUBLE_STRIKE));
+    let spell = hand(&mut g, 0, "Alesha's Legacy");
+    play(
+        &mut g,
+        spell,
+        false,
+        &[obj(creature)],
+        &[Action::Target(obj(creature))],
+    );
+    assert!(g.keywords(creature).has(Keywords::DOUBLE_STRIKE));
+    assert_eq!(g.obj(saga).zone, Zone::Graveyard, "sacrificed after III");
+}
+
+#[test]
+fn awaken_the_honored_dead_destroys_mills_and_trades_a_discard_for_a_card() {
+    let mut g = table();
+    let theirs = put(&mut g, 1, "Iceridge Serpent");
+    let dead = g.add_card(0, tid("Humbling Elder"), Zone::Graveyard);
+    let junk = hand(&mut g, 0, "Cruel Truths");
+    let saga = hand(&mut g, 0, "Awaken the Honored Dead");
+    begin(&mut g);
+    play(&mut g, saga, false, &[], &[Action::Target(obj(theirs))]);
+    assert_eq!(g.obj(theirs).zone, Zone::Graveyard);
+    let lib = g.players[0].library.len();
+    to_main(&mut g, 5, &[]);
+    assert_eq!(g.players[0].library.len(), lib - 1 - 3, "drew one, milled three");
+    to_main(&mut g, 7, &[Action::Discard(junk), Action::Target(obj(dead))]);
+    assert_eq!(g.obj(junk).zone, Zone::Graveyard);
+    assert_eq!(g.obj(dead).zone, Zone::Hand);
+
+    // Declining the discard returns nothing.
+    let mut g = table();
+    let dead = g.add_card(0, tid("Humbling Elder"), Zone::Graveyard);
+    hand(&mut g, 0, "Cruel Truths");
+    let saga = hand(&mut g, 0, "Awaken the Honored Dead");
+    let theirs = put(&mut g, 1, "Iceridge Serpent");
+    begin(&mut g);
+    play(&mut g, saga, false, &[], &[Action::Target(obj(theirs))]);
+    to_main(&mut g, 5, &[]);
+    to_main(&mut g, 7, &[Action::No]);
+    assert_eq!(g.obj(dead).zone, Zone::Graveyard);
+}
+
+#[test]
+fn bloomvine_regent_gains_life_for_dragons_and_its_omen_fetches_forests() {
+    let mut g = table();
+    let regent = hand(&mut g, 0, "Bloomvine Regent");
+    let other = hand(&mut g, 0, "Boulderborn Dragon");
+    begin(&mut g);
+    play(&mut g, regent, false, &[], &[]);
+    assert_eq!(g.players[0].life, 23);
+    play(&mut g, other, false, &[], &[]);
+    assert_eq!(g.players[0].life, 26, "another Dragon");
+    let elder = hand(&mut g, 0, "Humbling Elder");
+    play(&mut g, elder, false, &[], &[]);
+    assert_eq!(g.players[0].life, 26, "not a Dragon");
+
+    let mut g = table();
+    let regent = hand(&mut g, 0, "Bloomvine Regent");
+    begin(&mut g);
+    let f1 = g.add_card(0, tid("Forest"), Zone::Library);
+    let f2 = g.add_card(0, tid("Forest"), Zone::Library);
+    act(&mut g, Action::CastOmen(regent));
+    resolve_all(&mut g, &[Action::Pick(f1), Action::Pick(f2)]);
+    assert_eq!(g.obj(f1).zone, Zone::Battlefield);
+    assert!(g.obj(f1).tapped);
+    assert_eq!(g.obj(f2).zone, Zone::Hand);
+    assert_eq!(g.obj(regent).zone, Zone::Library, "the Omen shuffles in");
+}
+
+#[test]
+fn breaching_dragonstorm_casts_the_first_nonland_free_or_hands_it_over() {
+    let mut g = table();
+    let storm = hand(&mut g, 0, "Breaching Dragonstorm");
+    begin(&mut g);
+    let rhino = g.add_card(0, tid("Skirmish Rhino"), Zone::Library);
+    let l1 = g.add_card(0, tid("Plains"), Zone::Library);
+    let l2 = g.add_card(0, tid("Plains"), Zone::Library);
+    play(&mut g, storm, false, &[], &[]);
+    assert_eq!(g.pending, Pending::FreeCast(0));
+    let before = untapped_lands(&g, 0);
+    act(&mut g, Action::Cast(rhino));
+    resolve_all(&mut g, &[]);
+    assert_eq!(untapped_lands(&g, 0), before, "without paying its mana cost");
+    assert_eq!(g.obj(rhino).zone, Zone::Battlefield);
+    assert_eq!(g.players[1].life, 18);
+    assert_eq!((g.obj(l1).zone, g.obj(l2).zone), (Zone::Exile, Zone::Exile));
+
+    let mut g = table();
+    let storm = hand(&mut g, 0, "Breaching Dragonstorm");
+    begin(&mut g);
+    let rhino = g.add_card(0, tid("Skirmish Rhino"), Zone::Library);
+    play(&mut g, storm, false, &[], &[]);
+    act(&mut g, Action::PassPriority);
+    assert_eq!(g.obj(rhino).zone, Zone::Hand, "not cast: into your hand");
+
+    // A Dragon entering returns it.
+    let dragon = hand(&mut g, 0, "Boulderborn Dragon");
+    play(&mut g, dragon, false, &[], &[]);
+    assert_eq!(g.obj(storm).zone, Zone::Hand);
+}
+
+#[test]
+fn reverberating_summons_becomes_a_hasty_monk_after_two_spells() {
+    let mut g = table();
+    let summons = put(&mut g, 0, "Reverberating Summons");
+    let a = hand(&mut g, 0, "Humbling Elder");
+    let b = hand(&mut g, 0, "Humbling Elder");
+    begin(&mut g);
+    play(&mut g, a, false, &[], &[]);
+    play(&mut g, b, false, &[], &[]);
+    assert!(!g.types_of(summons).creature);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    let t = g.types_of(summons);
+    assert!(
+        t.creature && t.enchantment,
+        "a creature in addition to its other types"
+    );
+    assert_eq!((g.power(summons), g.toughness(summons)), (3, 3));
+    assert!(g.has_subtype(summons, "Monk") && g.keywords(summons).has(Keywords::HASTE));
+    assert!(g.legal_actions().contains(&Action::Attack(summons)));
+    to_next_turn(&mut g);
+    assert!(!g.types_of(summons).creature, "until end of turn");
+
+    // One spell: no.
+    let mut g = table();
+    let summons = put(&mut g, 0, "Reverberating Summons");
+    let a = hand(&mut g, 0, "Humbling Elder");
+    begin(&mut g);
+    play(&mut g, a, false, &[], &[]);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(!g.types_of(summons).creature);
+}
+
+#[test]
+fn reverberating_summons_cashes_in_your_hand_for_two_cards() {
+    let mut g = table();
+    let summons = put(&mut g, 0, "Reverberating Summons");
+    let x = hand(&mut g, 0, "Cruel Truths");
+    let y = hand(&mut g, 0, "Cruel Truths");
+    begin(&mut g);
+    let before: Vec<ObjId> = g.players[0].hand.clone();
+    act(&mut g, Action::Activate(summons, 0));
+    resolve_all(&mut g, &[]);
+    for c in before {
+        assert_eq!(g.obj(c).zone, Zone::Graveyard, "the whole hand");
+    }
+    assert_eq!(g.obj(summons).zone, Zone::Graveyard);
+    assert_eq!(g.players[0].hand.len(), 2);
+    let _ = (x, y);
+}
+
+#[test]
+fn new_way_forward_turns_prevented_damage_back_on_its_source() {
+    let mut g = table();
+    let serpent = put(&mut g, 1, "Iceridge Serpent");
+    let nwf = hand(&mut g, 0, "New Way Forward");
+    g.start_turn(4, 1);
+    while g.pending != Pending::DeclareAttackers(1) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(serpent));
+    act(&mut g, Action::FinishAttacks);
+    while g.pending != Pending::Priority(0) {
+        let a = match g.pending {
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    act(&mut g, Action::Cast(nwf));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    let n = g.players[0].hand.len();
+    act(&mut g, Action::Pick(serpent));
+    while g.step != Step::Main2 {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.players[0].life, 20, "prevented");
+    assert_eq!(g.players[1].life, 17, "that much damage to its controller");
+    assert_eq!(g.players[0].hand.len(), n + 3, "and that many cards");
+}

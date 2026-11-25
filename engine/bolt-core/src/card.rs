@@ -181,6 +181,8 @@ pub struct Activated {
     /// `ActivateX` with that victim and X its mana value plus 1, the mana value its target needs
     /// (Sidisi; see `Filter::mana_value_is_x`).
     pub sacrifice_mv_x: bool,
+    /// "Discard your hand" in the cost.
+    pub discard_hand: bool,
 }
 
 /// The printed card. Shared by every copy; per-copy state lives on the game object.
@@ -369,6 +371,8 @@ pub struct CardDef {
     /// "{T}: Add one mana of any color. Spend this mana only to cast a Dragon spell or an Omen
     /// spell." Its plain mana is in `mana` (Maelstrom of the Spirit Dragon).
     pub any_color_for_dragon_or_omen: bool,
+    /// "Ward—Discard a card."
+    pub ward_discard: bool,
 }
 
 /// An Omen spell half: its name, cost, whether it's an instant, and what it does.
@@ -488,6 +492,7 @@ impl CardDef {
             cast_from_graveyard_finality: false,
             mana_taps_creature: false,
             any_color_for_dragon_or_omen: false,
+            ward_discard: false,
         }
     }
 
@@ -586,6 +591,7 @@ impl CardDef {
             cast_from_graveyard_finality: false,
             mana_taps_creature: false,
             any_color_for_dragon_or_omen: false,
+            ward_discard: false,
         }
     }
 
@@ -684,6 +690,7 @@ impl CardDef {
             cast_from_graveyard_finality: false,
             mana_taps_creature: false,
             any_color_for_dragon_or_omen: false,
+            ward_discard: false,
         }
     }
 }

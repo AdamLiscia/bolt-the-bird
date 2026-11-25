@@ -687,6 +687,101 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::Upkeep { your_turn_only: true }, vec![], vec![Effect::SpiritDragonsUpkeep]);
             },
         ),
+        // ---- Lane B batch 7: delayed "this turn" triggers, Sagas, free casts, X Omen, ward—discard ----
+        "Thunder of Unity" => s(
+            &[
+                "I — You draw two cards and you lose 2 life.",
+                "II, III — Whenever a creature you control enters this turn, each opponent loses 1 life and you gain 1 life.",
+            ],
+            |d, _| {
+                chapter(d, 1, Ability::new(vec![], vec![draw(2), Effect::LoseLife { who: Who::You, n: 2 }]));
+                let delayed = Effect::DelayedThisTurn { when: When::CreatureYouControlEntersThisTurn, trigger: 3 };
+                chapter(d, 2, Ability::new(vec![], vec![delayed]));
+                chapter(d, 3, Ability::new(vec![], vec![delayed]));
+                on(
+                    d,
+                    When::Never,
+                    vec![],
+                    vec![Effect::LoseLife { who: Who::EachOpponent, n: 1 }, Effect::GainLife { who: Who::You, n: 1 }],
+                );
+            },
+        ),
+        "Rediscover the Way" => s(
+            &[
+                "I, II — Look at the top three cards of your library. Put one of them into your hand and the rest on the bottom of your library in any order.",
+                "III — Whenever you cast a noncreature spell this turn, target creature you control gains double strike until end of turn.",
+            ],
+            |d, _| {
+                let look = Effect::LookAtTop { n: 3, pick: Pick::Any, chosen_to: LookTo::Hand, rest_to: LookRest::BottomAnyOrderTakeOne };
+                chapter(d, 1, Ability::new(vec![], vec![look]));
+                chapter(d, 2, Ability::new(vec![], vec![look]));
+                chapter(d, 3, Ability::new(vec![], vec![Effect::DelayedThisTurn { when: When::YouCastNoncreature, trigger: 3 }]));
+                on(d, When::Never, vec![YOUR_CREATURE], vec![Effect::Grant { slot: 0, keywords: Keywords::DOUBLE_STRIKE }]);
+            },
+        ),
+        "Awaken the Honored Dead" => s(
+            &[
+                "I — Destroy target nonland permanent.",
+                "II — Mill three cards.",
+                "III — You may discard a card. When you do, return target creature or land card from your graveyard to your hand.",
+            ],
+            |d, _| {
+                let nonland = Filter { controller: Controller::Any, ..OPP_NONLAND };
+                chapter(d, 1, Ability::new(vec![nonland], vec![Effect::Destroy(0)]));
+                chapter(d, 2, Ability::new(vec![], vec![Effect::Mill { who: Who::You, n: 3 }]));
+                chapter(d, 3, Ability::new(vec![], vec![Effect::MayDiscardThen, Effect::Reflexive(3)]));
+                let card = Filter { creature_or_land: true, ..graveyard_cards(false, Controller::You) };
+                on(d, When::Never, vec![card], vec![Effect::Bounce(0)]);
+            },
+        ),
+        "Bloomvine Regent" => s(
+            &[
+                "Whenever this creature or another Dragon you control enters, you gain 3 life.",
+                "Omen: Search your library for up to two basic Forest cards, reveal them, put one onto the battlefield tapped and the other into your hand, then shuffle.",
+            ],
+            |d, _| {
+                on(d, When::Enters, vec![], vec![Effect::GainLife { who: Who::You, n: 3 }]);
+                on(d, When::AnotherYouControlEntersWithSubtype("Dragon"), vec![], vec![Effect::GainLife { who: Who::You, n: 3 }]);
+                let forest = SearchFor::LandTypes { types: land_types(&["Forest"]), basic: true };
+                omen(
+                    d,
+                    Ability::new(
+                        vec![],
+                        vec![search(forest, SearchTo::Battlefield { tapped: true }), search(forest, SearchTo::Hand)],
+                    ),
+                );
+            },
+        ),
+        "Breaching Dragonstorm" => s(
+            &[
+                "When this enchantment enters, exile cards from the top of your library until you exile a nonland card. You may cast it without paying its mana cost if that spell's mana value is 8 or less. If you don't, put that card into your hand.",
+                DRAGONSTORM_RETURN,
+            ],
+            |d, _| {
+                on(d, When::Enters, vec![], vec![Effect::ExileUntilNonlandCastFree { max_mv: 8 }]);
+                dragonstorm_return(d);
+            },
+        ),
+        "Reverberating Summons" => s(
+            &[
+                "At the beginning of each combat, if you've cast two or more spells this turn, this enchantment becomes a 3/3 Monk creature with haste in addition to its other types until end of turn.",
+                "{1}{R}, Discard your hand, Sacrifice this enchantment: Draw two cards.",
+            ],
+            |d, _| {
+                let become_monk = Effect::BecomeCreatureUntilEot { power: 3, toughness: 3, subtype: "Monk", keywords: Keywords::HASTE };
+                conditional(d, When::BeginCombatEachTurn, Condition::CastTwoSpellsThisTurn, vec![], vec![become_monk]);
+                let n = activated(d, "{1}{R}", false, vec![], vec![draw(2)]);
+                d.activated[n].discard_hand = true;
+                d.activated[n].sacrifice_self = true;
+            },
+        ),
+        "New Way Forward" => s(
+            &["The next time a source of your choice would deal damage to you this turn, prevent that damage. When damage is prevented this way, New Way Forward deals that much damage to that source's controller and you draw that many cards."],
+            |d, _| {
+                spell(d, vec![], vec![Effect::PreventNextFromChosenSource { trigger: 0 }]);
+                on(d, When::Never, vec![], vec![Effect::DamageExtrasControllerAndDrawAmount]);
+            },
+        ),
         _ => None,
     }
 }
@@ -760,4 +855,11 @@ pub const TDM_B_SCRIPTED: &[&str] = &[
     "Hundred-Battle Veteran",
     "Elspeth, Storm Slayer",
     "Call the Spirit Dragons",
+    "Thunder of Unity",
+    "Rediscover the Way",
+    "Awaken the Honored Dead",
+    "Bloomvine Regent",
+    "Breaching Dragonstorm",
+    "Reverberating Summons",
+    "New Way Forward",
 ];
