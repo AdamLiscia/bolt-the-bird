@@ -220,6 +220,8 @@ pub struct CardDef {
     /// The Omen half (Tarkir: Dragonstorm): cast instead as this instant or sorcery; it then shuffles
     /// into its owner's library.
     pub omen: Option<Omen>,
+    /// "You may cast sorcery spells and Dragon spells as though they had flash." (Whirlwing Stormbrood)
+    pub flash_sorceries_and_dragons: bool,
     /// Doubling Season: tokens you'd create and counters you'd put on your permanents are doubled
     /// (CR 614.1a).
     pub doubles_tokens_and_counters: bool,
@@ -416,6 +418,7 @@ impl CardDef {
             filter_mana: None,
             harmonize: false,
             omen: None,
+            flash_sorceries_and_dragons: false,
             subtype_enters_with_counter: None,
         }
     }
@@ -497,6 +500,7 @@ impl CardDef {
             filter_mana: None,
             harmonize: false,
             omen: None,
+            flash_sorceries_and_dragons: false,
             subtype_enters_with_counter: None,
         }
     }
@@ -578,6 +582,7 @@ impl CardDef {
             filter_mana: None,
             harmonize: false,
             omen: None,
+            flash_sorceries_and_dragons: false,
             subtype_enters_with_counter: None,
         }
     }

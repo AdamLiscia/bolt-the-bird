@@ -55,6 +55,7 @@ pub fn token_defs() -> Vec<CardDef> {
         token("Bird", "Bird", 1, 1, Keywords::FLYING),
         token("Zombie Druid", "Zombie Druid", 2, 2, Keywords::NONE),
         token("Elephant", "Elephant", 5, 5, Keywords::NONE),
+        token("Soldier", "Soldier", 2, 2, Keywords::NONE),
     ]
 }
 
@@ -124,6 +125,7 @@ pub struct Tokens {
     pub bird: usize,
     pub zombie_druid: usize,
     pub elephant: usize,
+    pub soldier_2: usize,
 }
 
 impl Tokens {
@@ -157,6 +159,7 @@ impl Tokens {
             bird: base + 25,
             zombie_druid: base + 26,
             elephant: base + 27,
+            soldier_2: base + 28,
         }
     }
 }
@@ -367,6 +370,16 @@ fn renew(d: &mut CardDef, cost: &str, targets: Vec<Filter>, effects: Vec<Effect>
 fn harmonize(d: &mut CardDef, cost: &str) {
     d.flashback = ManaCost::parse(cost);
     d.harmonize = true;
+}
+
+/// An Omen card's spell half (its name, cost and type come from the card data).
+fn omen(d: &mut CardDef, spell: Ability) {
+    d.omen = Some(bolt_core::Omen {
+        name: String::new(),
+        cost: ManaCost::default(),
+        instant: false,
+        spell,
+    });
 }
 
 fn modes(d: &mut CardDef, modes: Vec<Ability>) {
@@ -3465,6 +3478,90 @@ fn script_core(name: &str) -> Option<Script> {
             spell(d, vec![], vec![Effect::CreateToken { who: Who::You, def: t.elephant, n: 1 }]);
             harmonize(d, "{5}{G}{U}{R}");
         }),
+        // ---- TDM batch 7: Omens ----
+        "Dirgur Island Dragon" => s(&["Ward {2}", "Omen: Tap up to one target creature. Draw a card."], |d, _| {
+            d.ward = ManaCost::parse("{2}");
+            omen(d, up_to(vec![CREATURE], vec![Effect::Tap(0), draw(1)]));
+        }),
+        "Disruptive Stormbrood" => s(
+            &[
+                "When this creature enters, destroy up to one target artifact or enchantment.",
+                "Omen: Destroy target creature with power 3 or less.",
+            ],
+            |d, _| {
+                d.triggers.push(Trigger { when: When::Enters, ability: up_to(vec![ARTIFACT_OR_ENCHANTMENT], vec![Effect::Destroy(0)]) });
+                let small = Filter { creature_max_power: Some(3), ..CREATURE };
+                omen(d, Ability::new(vec![small], vec![Effect::Destroy(0)]));
+            },
+        ),
+        "Riling Dawnbreaker" => s(
+            &[
+                "At the beginning of combat on your turn, another target creature you control gets +1/+0 until end of turn.",
+                "Omen: Create a 2/2 white Soldier creature token.",
+            ],
+            |d, t| {
+                let other = Filter { other: true, ..YOUR_CREATURE };
+                on(d, When::BeginCombatYourTurn, vec![other], vec![Effect::Pump { slot: 0, power: 1, toughness: 0 }]);
+                omen(d, Ability::new(vec![], vec![Effect::CreateToken { who: Who::You, def: t.soldier_2, n: 1 }]));
+            },
+        ),
+        "Runescale Stormbrood" => s(
+            &[
+                "Whenever you cast a noncreature spell or a Dragon spell, this creature gets +2/+0 until end of turn.",
+                "Omen: Counter target spell with mana value 2 or less.",
+            ],
+            |d, _| {
+                on(d, When::YouCastNoncreatureOrSubtype("Dragon"), vec![], vec![Effect::PumpSelf { power: 2, toughness: 0 }]);
+                let cheap = Filter { max_mana_value: Some(2), ..SPELL };
+                omen(d, Ability::new(vec![cheap], vec![Effect::Counter(0)]));
+            },
+        ),
+        "Sagu Wildling" => s(
+            &[
+                "When this creature enters, you gain 3 life.",
+                "Omen: Search your library for a basic land card, reveal it, put it into your hand, then shuffle.",
+            ],
+            |d, _| {
+                on(d, When::Enters, vec![], vec![Effect::GainLife { who: Who::You, n: 3 }]);
+                omen(d, Ability::new(vec![], vec![search(SearchFor::BasicLand, SearchTo::Hand)]));
+            },
+        ),
+        "Twinmaw Stormbrood" => s(
+            &["When this creature enters, you gain 5 life.", "Omen: Charring Bite deals 5 damage to target creature without flying."],
+            |d, _| {
+                on(d, When::Enters, vec![], vec![Effect::GainLife { who: Who::You, n: 5 }]);
+                let ground = Filter { creature_without_flying: true, ..CREATURE };
+                omen(d, Ability::new(vec![ground], vec![damage(5, Recipient::Target(0))]));
+            },
+        ),
+        "Whirlwing Stormbrood" => s(
+            &[
+                "You may cast sorcery spells and Dragon spells as though they had flash.",
+                "Omen: Put three +1/+1 counters on target creature you control.",
+            ],
+            |d, _| {
+                d.flash_sorceries_and_dragons = true;
+                omen(d, Ability::new(vec![YOUR_CREATURE], vec![Effect::Counters { slot: 0, n: 3 }]));
+            },
+        ),
+        "Marang River Regent" => s(
+            &[
+                "When this creature enters, return up to two other target nonland permanents to their owners' hands.",
+                "Omen: Draw three cards, then discard a card.",
+            ],
+            |d, _| {
+                let other = Filter { players: false, creatures: false, planeswalkers: false, nonland_permanents: true, other: true, ..Filter::ANY };
+                d.triggers.push(Trigger { when: When::Enters, ability: up_to(vec![other, other], vec![Effect::Bounce(0), Effect::Bounce(1)]) });
+                omen(d, Ability::new(vec![], vec![draw(3), discard(1)]));
+            },
+        ),
+        "Stormshriek Feral" => s(
+            &["{1}{R}: This creature gets +1/+0 until end of turn.", "Omen: Discard a card. If you do, draw two cards."],
+            |d, _| {
+                activated(d, "{1}{R}", false, vec![], vec![Effect::PumpSelf { power: 1, toughness: 0 }]);
+                omen(d, Ability::new(vec![], vec![Effect::DiscardThenDraw(2)]));
+            },
+        ),
         _ => None,
     }
 }
@@ -3823,4 +3920,13 @@ pub const TDM_SCRIPTED: &[&str] = &[
     "Ureni's Rebuff",
     "Channeled Dragonfire",
     "Mammoth Bellow",
+    "Dirgur Island Dragon",
+    "Disruptive Stormbrood",
+    "Riling Dawnbreaker",
+    "Runescale Stormbrood",
+    "Sagu Wildling",
+    "Twinmaw Stormbrood",
+    "Whirlwing Stormbrood",
+    "Marang River Regent",
+    "Stormshriek Feral",
 ];

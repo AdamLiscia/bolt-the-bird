@@ -1219,3 +1219,227 @@ fn the_harmonize_spells_from_hand() {
     play(&mut g, routine, false, &[], &[Action::Pick(basic)]);
     assert_eq!(g.permanents(0).filter(|&x| g.types_of(x).land).count(), lands + 1);
 }
+
+// ---- batch 7: Omens ----
+
+#[test]
+fn an_omen_resolves_as_a_spell_and_shuffles_into_the_library() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Sagu Wildling"); // Omen: Roost Seek, {G} sorcery
+    begin(&mut g);
+    assert!(g.legal_actions().contains(&Action::CastOmen(c)));
+    assert!(g.legal_actions().contains(&Action::Cast(c)), "or as the creature");
+    let forest = g.add_card(0, tid("Forest"), Zone::Library);
+    let lib = g.players[0].library.len();
+    let n = paid(&mut g, |g| {
+        act(g, Action::CastOmen(c));
+        resolve_all(g, &[Action::Pick(forest)]);
+    });
+    assert_eq!(n, 1, "the Omen's cost, {{G}}");
+    assert_eq!(g.obj(forest).zone, Zone::Hand);
+    assert_eq!(
+        g.obj(c).zone,
+        Zone::Library,
+        "shuffled in, not onto the battlefield"
+    );
+    assert_eq!(
+        g.players[0].library.len(),
+        lib,
+        "one card out (the Forest), one in (the Omen)"
+    );
+}
+
+#[test]
+fn an_instant_omen_can_be_cast_at_instant_speed() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Dirgur Island Dragon"); // Omen: Skimming Strike, instant
+    let theirs = put(&mut g, 1, "Iceridge Serpent");
+    begin(&mut g);
+    while g.step != bolt_core::Step::BeginCombat {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(c)),
+        "the Dragon is a creature: sorcery speed"
+    );
+    assert!(g.legal_actions().contains(&Action::CastOmen(c)));
+    let n = g.players[0].hand.len();
+    act(&mut g, Action::CastOmen(c));
+    act(&mut g, Action::Target(obj(theirs)));
+    resolve_all(&mut g, &[]);
+    assert!(g.obj(theirs).tapped);
+    assert_eq!(g.players[0].hand.len(), n, "cast it, drew one");
+}
+
+#[test]
+fn dirgur_island_dragon_has_ward_two() {
+    let g = table();
+    let d = &set("TDM").unwrap().defs[tid("Dirgur Island Dragon")];
+    assert_eq!(d.ward.map(|w| w.generic), Some(2));
+    let _ = g;
+}
+
+#[test]
+fn disruptive_stormbrood_and_petty_revenge() {
+    let mut g = table();
+    let globe = put(&mut g, 1, "Dragonstorm Globe");
+    let small = put(&mut g, 1, "Iceridge Serpent"); // 3 power
+    let big = put(&mut g, 1, "Dusyut Earthcarver"); // 4 power
+    let a = hand(&mut g, 0, "Disruptive Stormbrood");
+    let b = hand(&mut g, 0, "Disruptive Stormbrood");
+    begin(&mut g);
+    play(&mut g, a, false, &[], &[Action::Target(obj(globe))]);
+    assert_eq!(g.obj(globe).zone, Zone::Graveyard);
+    act(&mut g, Action::CastOmen(b));
+    assert!(
+        !g.legal_actions().contains(&Action::Target(obj(big))),
+        "power 3 or less"
+    );
+    act(&mut g, Action::Target(obj(small)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(small).zone, Zone::Graveyard);
+    assert_eq!(g.obj(b).zone, Zone::Library);
+}
+
+#[test]
+fn riling_dawnbreaker_pumps_at_combat_and_its_omen_makes_a_soldier() {
+    let mut g = table();
+    let d = put(&mut g, 0, "Riling Dawnbreaker");
+    let mine = put(&mut g, 0, "Humbling Elder");
+    begin(&mut g);
+    let c2 = hand(&mut g, 0, "Riling Dawnbreaker");
+    act(&mut g, Action::CastOmen(c2));
+    resolve_all(&mut g, &[]);
+    let s = tokens(&g, 0, "Soldier");
+    assert_eq!(s.len(), 1);
+    assert_eq!((g.power(s[0]), g.toughness(s[0])), (2, 2));
+    let p = g.power(mine);
+    while g.step != bolt_core::Step::BeginCombat {
+        act(&mut g, Action::PassPriority);
+    }
+    resolve_all(&mut g, &[Action::Target(obj(mine))]);
+    assert_eq!(g.power(mine), p + 1);
+    let _ = d;
+}
+
+#[test]
+fn runescale_stormbrood_grows_and_its_omen_counters_cheap_spells() {
+    let mut g = table();
+    let r = put(&mut g, 0, "Runescale Stormbrood");
+    let strike = hand(&mut g, 0, "Rebellious Strike"); // noncreature
+    let mine = put(&mut g, 0, "Humbling Elder");
+    begin(&mut g);
+    let p = g.power(r);
+    play(&mut g, strike, false, &[obj(mine)], &[]);
+    assert_eq!(g.power(r), p + 2);
+    // The Omen: counter target spell with mana value 2 or less.
+    let cheap = hand(&mut g, 0, "Humbling Elder"); // mana value 1
+    let pricey = hand(&mut g, 0, "Iceridge Serpent"); // 5
+    let screech = hand(&mut g, 0, "Runescale Stormbrood");
+    act(&mut g, Action::Cast(pricey));
+    act(&mut g, Action::Cast(cheap));
+    act(&mut g, Action::CastOmen(screech));
+    assert!(!g.legal_actions().contains(&Action::Target(obj(pricey))));
+    act(&mut g, Action::Target(obj(cheap)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(cheap).zone, Zone::Graveyard, "countered");
+}
+
+#[test]
+fn twinmaw_stormbrood_gains_five_and_charring_bite_hits_ground_creatures() {
+    let mut g = table();
+    let flier = put(&mut g, 1, "Boulderborn Dragon");
+    let ground = put(&mut g, 1, "Iceridge Serpent");
+    let a = hand(&mut g, 0, "Twinmaw Stormbrood");
+    let b = hand(&mut g, 0, "Twinmaw Stormbrood");
+    begin(&mut g);
+    let life = g.players[0].life;
+    play(&mut g, a, false, &[], &[]);
+    assert_eq!(g.players[0].life, life + 5);
+    act(&mut g, Action::CastOmen(b));
+    assert!(
+        !g.legal_actions().contains(&Action::Target(obj(flier))),
+        "without flying"
+    );
+    act(&mut g, Action::Target(obj(ground)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(ground).zone, Zone::Graveyard);
+}
+
+#[test]
+fn whirlwing_stormbrood_gives_sorceries_and_dragons_flash() {
+    let mut g = table();
+    put(&mut g, 0, "Whirlwing Stormbrood");
+    let sorcery = hand(&mut g, 0, "Defibrillating Current");
+    let dragon = hand(&mut g, 0, "Boulderborn Dragon");
+    let other = hand(&mut g, 0, "Iceridge Serpent");
+    let dynamic = hand(&mut g, 0, "Whirlwing Stormbrood");
+    let mine = put(&mut g, 0, "Humbling Elder");
+    put(&mut g, 1, "Iceridge Serpent");
+    begin(&mut g);
+    while g.step != bolt_core::Step::BeginCombat {
+        act(&mut g, Action::PassPriority);
+    }
+    let legal = g.legal_actions();
+    assert!(
+        legal.contains(&Action::Cast(sorcery)),
+        "a sorcery at instant speed"
+    );
+    assert!(
+        legal.contains(&Action::Cast(dragon)),
+        "a Dragon spell at instant speed"
+    );
+    assert!(!legal.contains(&Action::Cast(other)), "not other creatures");
+    act(&mut g, Action::CastOmen(dynamic));
+    act(&mut g, Action::Target(obj(mine)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(mine).counters, 3, "Dynamic Soar");
+}
+
+#[test]
+fn marang_river_regent_bounces_two_and_coil_and_catch_loots() {
+    let mut g = table();
+    let a = put(&mut g, 1, "Iceridge Serpent");
+    let b = put(&mut g, 1, "Dragonstorm Globe");
+    let regent = hand(&mut g, 0, "Marang River Regent");
+    begin(&mut g);
+    play(
+        &mut g,
+        regent,
+        false,
+        &[],
+        &[Action::Target(obj(a)), Action::Target(obj(b))],
+    );
+    assert!(g.obj(a).zone == Zone::Hand && g.obj(b).zone == Zone::Hand);
+    let c = hand(&mut g, 0, "Marang River Regent");
+    let junk = hand(&mut g, 0, "Plains");
+    let n = g.players[0].hand.len();
+    act(&mut g, Action::CastOmen(c));
+    resolve_all(&mut g, &[Action::Discard(junk)]);
+    assert_eq!(
+        g.players[0].hand.len(),
+        n - 1 + 3 - 1,
+        "cast it, drew three, discarded one"
+    );
+}
+
+#[test]
+fn stormshriek_feral_pumps_and_flush_out_draws_two_only_after_a_discard() {
+    let mut g = table();
+    let f = put(&mut g, 0, "Stormshriek Feral");
+    begin(&mut g);
+    let p = g.power(f);
+    act(&mut g, Action::Activate(f, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.power(f), p + 1);
+    let c = hand(&mut g, 0, "Stormshriek Feral");
+    let junk = hand(&mut g, 0, "Plains");
+    let n = g.players[0].hand.len();
+    act(&mut g, Action::CastOmen(c));
+    assert!(
+        !g.legal_actions().iter().any(|a| matches!(a, Action::No)),
+        "the discard isn't optional"
+    );
+    resolve_all(&mut g, &[Action::Discard(junk)]);
+    assert_eq!(g.players[0].hand.len(), n - 2 + 2);
+}

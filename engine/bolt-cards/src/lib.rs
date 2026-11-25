@@ -285,6 +285,7 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         filter_mana: None,
         harmonize: false,
         omen: None,
+        flash_sorceries_and_dragons: false,
         subtype_enters_with_counter: None,
     };
     // An Omen's spell half: its lines must be claimed too, written "Omen: <line>" in the script.

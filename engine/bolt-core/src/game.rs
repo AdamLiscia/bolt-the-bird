@@ -564,11 +564,7 @@ pub enum Decision {
     /// "You may": `Yes` or `No`.
     May,
     /// Discard `left` more cards. Optional ones also allow `No`, and `then_draw` draws after.
-    Discard {
-        left: u8,
-        optional: bool,
-        then_draw: bool,
-    },
+    Discard { left: u8, optional: bool, then_draw: u8 },
     /// Choose a nonland card from `victim`'s hand for them to discard.
     PickDiscard { victim: PlayerId },
     /// Surveil: `Yes` puts the top of `cards` into the graveyard, `No` keeps it on top.
@@ -1992,7 +1988,9 @@ impl Game {
                         .any(|i| i.kind == StackKind::Spell && i.source == id);
                     return f.spells
                         && is_spell
-                        && f.spell_creature.is_none_or(|c| c == self.types_of(id).creature);
+                        && f.spell_creature.is_none_or(|c| c == self.types_of(id).creature)
+                        && f.max_mana_value
+                            .is_none_or(|m| self.def_of(id).cost.mana_value() <= m);
                 }
                 if let Some(creature_only) = f.graveyard {
                     let d = self.def_of(id);
@@ -2020,6 +2018,7 @@ impl Game {
                 let creature_ok = ty.creature
                     && f.creatures
                     && (!f.creature_needs_flying || self.keywords(id).has(Keywords::FLYING))
+                    && (!f.creature_without_flying || !self.keywords(id).has(Keywords::FLYING))
                     && f.creature_min_power.is_none_or(|m| self.power(id) >= m)
                     && f.creature_max_power.is_none_or(|m| self.power(id) <= m)
                     && (!f.in_combat || in_combat);
@@ -2188,15 +2187,25 @@ impl Game {
                     mode: Some(OMEN_MODE),
                     ..CastMode::default()
                 };
-                if (sorcery_timing || flash_all || o.instant)
+                let flash_sd = self
+                    .permanents(p)
+                    .any(|x| self.def_of(x).flash_sorceries_and_dragons);
+                if (sorcery_timing || flash_all || o.instant || flash_sd)
                     && self.trigger_can_target(&Game::casting(c, p), &o.spell)
                     && self.mode_affordable(p, c, omen_mode)
                 {
                     v.push(Action::CastOmen(c));
                 }
             }
-            let normal_timing =
-                sorcery_timing || flash_all || def.types.instant || def.keywords.has(Keywords::FLASH);
+            // Whirlwing Stormbrood: sorcery spells and Dragon spells as though they had flash.
+            let flash_sd = self
+                .permanents(p)
+                .any(|x| self.def_of(x).flash_sorceries_and_dragons);
+            let normal_timing = sorcery_timing
+                || flash_all
+                || def.types.instant
+                || def.keywords.has(Keywords::FLASH)
+                || (flash_sd && (def.types.sorcery || def.subtypes.iter().any(|s| s == "Dragon")));
             // Molten Exhale: as though it had flash, if a Dragon is beheld (then only that way).
             let behold_flash = !normal_timing && def.behold == Behold::MayForFlash && self.can_behold(p, c);
             let timing = normal_timing || behold_flash;
@@ -4457,8 +4466,10 @@ impl Game {
                             then_draw,
                         },
                     );
-                } else if then_draw {
-                    self.draw(p);
+                } else {
+                    for _ in 0..then_draw {
+                        self.draw(p);
+                    }
                 }
             }
             (Decision::Discard { .. }, Action::No) => {}
@@ -4727,10 +4738,23 @@ impl Game {
                             Decision::Discard {
                                 left: n,
                                 optional: false,
-                                then_draw: false,
+                                then_draw: 0,
                             },
                         );
                     }
+                }
+            }
+            Effect::DiscardThenDraw(n) => {
+                let p = item.controller;
+                if !self.players[p].hand.is_empty() {
+                    self.ask(
+                        p,
+                        Decision::Discard {
+                            left: 1,
+                            optional: false,
+                            then_draw: n,
+                        },
+                    );
                 }
             }
             Effect::MayDiscardToDraw => {
@@ -4741,7 +4765,7 @@ impl Game {
                         Decision::Discard {
                             left: 1,
                             optional: true,
-                            then_draw: true,
+                            then_draw: 1,
                         },
                     );
                 }

@@ -46,6 +46,7 @@ def _label(kind: str, cards: list, nums: tuple, me: int, values: tuple) -> str:
         "CastAlternative": f"Cast {c} (alternative cost)", "CastX": f"Cast {c} with X = {n}",
         "CastFromGraveyard": f"Cast {c} from your graveyard",
         "CastHarmonize": f"Cast {c} with harmonize, tapping {c2}",
+        "CastOmen": f"Cast {c}'s Omen",
         "CastFromGraveyardAs": f"Cast {c} from your graveyard (option {(n or 0) + 1})",
         "Activate": f"Activate {c} (ability {(n or 0) + 1})",
         "ActivateWith": f"Activate {c} (ability {(n or 0) + 1}), using {cards[-1] if len(cards) > 1 else ''}",

@@ -58,6 +58,8 @@ pub struct Filter {
     pub creature_min_power: Option<i32>,
     /// Creatures with at most this power ("with power 2 or less").
     pub creature_max_power: Option<i32>,
+    /// Creatures without flying.
+    pub creature_without_flying: bool,
     /// Permanents with at least this mana value.
     pub min_mana_value: Option<u32>,
     /// Graveyard cards that are neither creatures nor lands.
@@ -97,6 +99,7 @@ impl Filter {
         creature_needs_flying: false,
         creature_min_power: None,
         creature_max_power: None,
+        creature_without_flying: false,
         min_mana_value: None,
         noncreature_nonland: false,
         in_combat: false,
@@ -237,6 +240,8 @@ pub enum Effect {
     },
     /// "You may discard a card. If you do, draw a card."
     MayDiscardToDraw,
+    /// "Discard a card. If you do, draw N cards."
+    DiscardThenDraw(u8),
     /// The ability's controller chooses a nonland card from the hand of the player in `slot`, who
     /// discards it.
     ChooseDiscard {
