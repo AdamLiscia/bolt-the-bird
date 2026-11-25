@@ -448,6 +448,96 @@ pub fn script(name: &str) -> Option<Script> {
             &["Whenever a creature you control without flying dies, return it to the battlefield under its owner's control with a flying counter on it."],
             |d, _| on(d, When::CreatureYouControlWithoutFlyingDies, vec![], vec![Effect::ReturnDiedWithFlyingCounter]),
         ),
+        "Beastmaster Ascension" => s(
+            &[
+                "Whenever a creature you control attacks, you may put a quest counter on this enchantment.",
+                "As long as this enchantment has seven or more quest counters on it, creatures you control get +5/+5.",
+            ],
+            |d, _| {
+                may(d, When::CreatureYouControlAttacks, vec![], vec![Effect::QuestCounterSelf]);
+                static_on(d, Scope::YourCreatures, false, Keywords::NONE);
+                let st = d.statics.last_mut().expect("just added");
+                (st.power, st.toughness) = (5, 5);
+                st.condition = Some(StaticCondition::QuestCountersAtLeast(7));
+            },
+        ),
+        "Bident of Thassa" => s(
+            &[
+                "Whenever a creature you control deals combat damage to a player, you may draw a card.",
+                "{1}{U}, {T}: Creatures your opponents control attack this turn if able.",
+            ],
+            |d, _| {
+                may(d, When::YourCreatureDealsCombatDamageToPlayer, vec![], vec![draw(1)]);
+                activated(d, "{1}{U}", true, vec![], vec![Effect::OpponentsAttackThisTurn]);
+            },
+        ),
+        "Boss's Chauffeur" => s(
+            &[
+                "This creature enters with a number of +1/+1 counters on it equal to one plus the number of other creatures you control.",
+                "Alliance — Whenever another creature you control enters, put a +1/+1 counter on this creature.",
+                "When this creature dies, create a 1/1 green and white Citizen creature token for each +1/+1 counter on it.",
+            ],
+            |d, t| {
+                d.enters_counters_one_plus_others = true;
+                on(d, When::AnotherCreatureYouControlEnters, vec![], vec![Effect::CountersSelf { n: 1 }]);
+                on(d, When::Dies, vec![], vec![Effect::CreateTokensPerLastCounters { def: t.citizen }]);
+            },
+        ),
+        "Honored Dreyleader" => s(
+            &[
+                "When this creature enters, put a +1/+1 counter on it for each other Squirrel and/or Food you control.",
+                "Whenever another Squirrel or Food you control enters, put a +1/+1 counter on this creature.",
+            ],
+            |d, _| {
+                const KIN: &[&str] = &["Squirrel", "Food"];
+                on(d, When::Enters, vec![], vec![Effect::CountersSelfPerOtherWithSubtypes(KIN)]);
+                on(d, When::AnotherYouControlEntersWithAnySubtype(KIN), vec![], vec![Effect::CountersSelf { n: 1 }]);
+            },
+        ),
+        "Idol of Oblivion" => s(
+            &[
+                "{T}: Draw a card. Activate only if you created a token this turn.",
+                "{8}, {T}, Sacrifice this artifact: Create a 10/10 colorless Eldrazi creature token.",
+            ],
+            |d, t| {
+                let n = activated(d, "", true, vec![], vec![draw(1)]);
+                d.activated[n].if_created_token_this_turn = true;
+                let n = activated(d, "{8}", true, vec![], vec![Effect::CreateToken { who: Who::You, def: t.eldrazi, n: 1 }]);
+                d.activated[n].sacrifice_self = true;
+            },
+        ),
+        "Second Harvest" => s(&["For each token you control, create a token that's a copy of that permanent."], |d, _| {
+            spell(d, vec![], vec![Effect::CopyEachTokenYouControl])
+        }),
+        "Skyclave Apparition" => s(
+            &[
+                "When this creature enters, exile up to one target nonland, nontoken permanent you don't control with mana value 4 or less.",
+                "When this creature leaves the battlefield, the exiled card's owner creates an X/X blue Illusion creature token, where X is the mana value of the exiled card.",
+            ],
+            |d, t| {
+                let f = Filter { nontoken: true, max_mana_value: Some(4), ..OPP_NONLAND };
+                d.triggers.push(Trigger { when: When::Enters, ability: up_to(vec![f], vec![Effect::ExileLinked(0)]) });
+                on(d, When::LeavesBattlefield, vec![], vec![Effect::LinkedOwnerCreatesXx { def: t.illusion }]);
+            },
+        ),
+        "Squirrel Nest" => s(&["Enchant land", "Enchanted land has \"{T}: Create a 1/1 green Squirrel creature token.\""], |d, t| {
+            d.aura = true;
+            let land = Filter { players: false, creatures: false, planeswalkers: false, lands: true, ..Filter::ANY };
+            d.spell = Some(Ability::new(vec![land], vec![]));
+            let n = activated(d, "", false, vec![], vec![Effect::CreateToken { who: Who::You, def: t.squirrel, n: 1 }]);
+            d.activated[n].granted_to_attached = true;
+            d.activated[n].tap_attached = true;
+        }),
+        "Chasm Skulker" => s(
+            &[
+                "Whenever you draw a card, put a +1/+1 counter on this creature.",
+                "When this creature dies, create X 1/1 blue Squid creature tokens with islandwalk, where X is the number of +1/+1 counters on this creature.",
+            ],
+            |d, t| {
+                on(d, When::YouDraw, vec![], vec![Effect::CountersSelf { n: 1 }]);
+                on(d, When::Dies, vec![], vec![Effect::CreateTokensPerLastCounters { def: t.squid }]);
+            },
+        ),
         _ => None,
     }
 }
@@ -525,4 +615,13 @@ pub const BLC_C_SCRIPTED: &[&str] = &[
     "Twenty-Toed Toad",
     "Domri, Anarch of Bolas",
     "Luminous Broodmoth",
+    "Beastmaster Ascension",
+    "Bident of Thassa",
+    "Boss's Chauffeur",
+    "Honored Dreyleader",
+    "Idol of Oblivion",
+    "Second Harvest",
+    "Skyclave Apparition",
+    "Squirrel Nest",
+    "Chasm Skulker",
 ];

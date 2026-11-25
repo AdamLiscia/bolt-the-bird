@@ -381,3 +381,14 @@ Core: `When::{YouGiveGift, CreatureYouControlWithoutFlyingDies}`, `Condition::Co
 (one pool mana that pays either color), CreatureSpellsUncounterableThisTurn, ReturnDiedWithFlyingCounter}`,
 `CardDef::{counter_creatures_tap_for_green, max_hand_size}`, `Game::creatures_uncounterable_turn`.
 Not done: Raging Ravine (becoming a creature has no way to set its colors to red and green).
+
+Batch 4 (9): Beastmaster Ascension, Bident of Thassa, Boss's Chauffeur, Honored Dreyleader, Idol of Oblivion,
+Second Harvest, Skyclave Apparition, Squirrel Nest, Chasm Skulker.
+Core: `Keywords::ISLANDWALK` (bit 16; can't be blocked while the defender controls an Island),
+`When::{CreatureYouControlAttacks, AnotherYouControlEntersWithAnySubtype}`, `StaticCondition::QuestCountersAtLeast`,
+`Effect::{QuestCounterSelf, OpponentsAttackThisTurn, CreateTokensPerLastCounters, CountersSelfPerOtherWithSubtypes,
+CopyEachTokenYouControl, ExileLinked, LinkedOwnerCreatesXx}`, `Filter::nontoken` (and `max_mana_value` now also
+limits battlefield targets), `Activated::if_created_token_this_turn`, `CardDef::enters_counters_one_plus_others`,
+`Object::quest`, `Game::{must_attack_turn, token_created_turn}`. A granted Aura ability with `tap_attached` is
+offered only while the enchanted permanent can tap. Tokens (after lane B's Thopter and Storm Crow at 40-41):
+Squid 42, Citizen 43, Eldrazi 44, Illusion 45 (Skyclave's X/X uses `copy_base_pt`).

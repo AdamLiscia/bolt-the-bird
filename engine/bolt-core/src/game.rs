@@ -223,6 +223,8 @@ pub struct Object {
     pub suspend_haste: bool,
     /// It doesn't untap during its controller's next untap step.
     pub skip_untap: bool,
+    /// Quest counters (Beastmaster Ascension).
+    pub quest: i32,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -986,6 +988,10 @@ pub struct Game {
     pub copy_until_eot: Vec<(ObjId, u32, usize)>,
     /// The turn each player made their creature spells uncounterable for the turn (Domri).
     pub creatures_uncounterable_turn: [u32; 2],
+    /// The turn each player's creatures must attack if able (Bident of Thassa).
+    pub must_attack_turn: [u32; 2],
+    /// The turn each player last created a token.
+    pub token_created_turn: [u32; 2],
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -1149,6 +1155,8 @@ impl Game {
             delayed_on_next_attack: Vec::new(),
             copy_until_eot: Vec::new(),
             creatures_uncounterable_turn: [0, 0],
+            must_attack_turn: [0, 0],
+            token_created_turn: [0, 0],
             extra_combats: Vec::new(),
             extra_combat_resume: None,
             extra_main_resume: None,
@@ -1256,6 +1264,7 @@ impl Game {
             time_counters: 0,
             suspend_haste: false,
             skip_untap: false,
+            quest: 0,
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -1496,6 +1505,7 @@ impl Game {
                             Some(StaticCondition::CounterKindsAmongYoursAtLeast(n)) => {
                                 self.counter_kinds(so.controller) >= n as u32
                             }
+                            Some(StaticCondition::QuestCountersAtLeast(n)) => so.quest >= n,
                         };
                         applies && condition_ok && (!s.your_turn_only || self.active == so.controller)
                     })
@@ -1753,7 +1763,10 @@ impl Game {
                 continue;
             }
             for (n, a) in self.def_of(aura).activated.iter().enumerate() {
-                if a.granted_to_attached && self.can_pay_for(p, &a.mana, None, PayFor::Ability(c)) {
+                if a.granted_to_attached
+                    && (!a.tap_attached || self.can_tap(c))
+                    && self.can_pay_for(p, &a.mana, None, PayFor::Ability(c))
+                {
                     v.push(Action::Activate(aura, n));
                 }
             }
@@ -2313,6 +2326,7 @@ impl Game {
             o.stun = 0;
             o.skip_untap = false;
             o.time_counters = 0;
+            o.quest = 0;
             o.finality = false;
             o.eot_creature = None;
         }
@@ -2434,7 +2448,27 @@ impl Game {
         }
         if to == Zone::Battlefield && from != Zone::Battlefield && self.is_token(id) {
             let c = self.obj(id).controller;
+            self.token_created_turn[c] = self.turn;
             self.fire(c, When::TokenYouControlEnters, Some(id));
+        }
+        if to == Zone::Battlefield && from != Zone::Battlefield {
+            let c = self.obj(id).controller;
+            for other in self.permanents(c).filter(|&o| o != id).collect::<Vec<_>>() {
+                if self.lost_abilities(other) {
+                    continue;
+                }
+                let whens: Vec<When> = self.def_of(other).triggers.iter().map(|tr| tr.when).collect();
+                for (n, w) in whens.into_iter().enumerate() {
+                    if let When::AnotherYouControlEntersWithAnySubtype(subs) = w {
+                        if subs.iter().any(|s| self.has_subtype(id, s)) {
+                            self.triggered.push(StackItem {
+                                kind: StackKind::Trigger(n),
+                                ..Game::casting(other, c)
+                            });
+                        }
+                    }
+                }
+            }
         }
         if dies && self.types_of(id).creature {
             self.fire(0, When::AnotherCreatureDies, Some(id));
@@ -2640,10 +2674,15 @@ impl Game {
             } else {
                 0
             };
+            let chauffeur = if def.enters_counters_one_plus_others {
+                1 + self.creatures(controller).filter(|&x| x != id).count() as i32
+            } else {
+                0
+            };
             if def.vanishing > 0 {
                 self.obj_mut(id).time_counters = def.vanishing; // CR 702.63a
             }
-            let bonus = bonus + flat + non;
+            let bonus = bonus + flat + non + chauffeur;
             if bonus > 0 {
                 let n = bonus * self.doubling(controller);
                 self.obj_mut(id).counters += n;
@@ -2912,7 +2951,11 @@ impl Game {
                     v.extend(walkers.iter().map(|&w| Action::AttackPlaneswalker(c, w)));
                 }
                 // CR 508.1d: creatures that attack each combat if able must be declared.
-                if !self.attack_candidates(p).any(|c| self.def_of(c).must_attack) {
+                let forced = self.must_attack_turn[p] == self.turn && self.turn > 0;
+                if !self
+                    .attack_candidates(p)
+                    .any(|c| self.def_of(c).must_attack || forced)
+                {
                     v.push(Action::FinishAttacks);
                 }
                 v
@@ -3130,7 +3173,10 @@ impl Game {
                     && (!f.noncreature || !ty.creature)
                     && (!f.nonbasic || !ty.basic)
                     && (!f.nonlegendary || !ty.legendary)
-                    && (!f.tokens_only || self.is_token(id));
+                    && (!f.tokens_only || self.is_token(id))
+                    && (!f.nontoken || !self.is_token(id))
+                    && f.max_mana_value
+                        .is_none_or(|m| self.def_of(id).cost.mana_value() <= m);
                 // Kin-Tree Severance: "permanent with mana value 3 or greater".
                 kind_ok
                     && f.min_mana_value
@@ -4264,6 +4310,7 @@ impl Game {
                     || !sorcery_ok
                     || (a.your_turn_only && p != self.active)
                     || (a.if_card_left_graveyard && !self.graveyard_left_this_turn[p])
+                    || (a.if_created_token_this_turn && self.token_created_turn[p] != self.turn)
                     || self.players[p].life < a.life
                     || !self.can_pay_for(
                         p,
@@ -4727,6 +4774,10 @@ impl Game {
             || self.is_decayed(blocker)
             || self.keywords(blocker).has(Keywords::CANT_BLOCK)
             || self.keywords(attacker).has(Keywords::UNBLOCKABLE)
+            || (self.keywords(attacker).has(Keywords::ISLANDWALK)
+                && self
+                    .permanents(self.obj(blocker).controller)
+                    .any(|x| self.types_of(x).land && self.has_subtype(x, "Island")))
             || (self
                 .permanents(self.obj(attacker).controller)
                 .any(|x| self.def_of(x).small_creatures_unblockable && !self.lost_abilities(x))
@@ -5049,6 +5100,10 @@ impl Game {
                 let before = self.triggered.len();
                 if self.combat.as_ref().is_some_and(|c| !c.attackers.is_empty()) {
                     self.fire(self.active, When::YouAttack, None);
+                    let n = self.combat.as_ref().map_or(0, |c| c.attackers.len());
+                    for _ in 0..n {
+                        self.fire(self.active, When::CreatureYouControlAttacks, None);
+                    }
                     let (active, turn) = (self.active, self.turn);
                     for (source, n, controller, t) in self.delayed_on_attack.clone() {
                         if controller == active && t == turn {
@@ -8325,6 +8380,67 @@ impl Game {
                     .collect();
                 for c in all {
                     self.untap_by_effect(c);
+                }
+            }
+            Effect::QuestCounterSelf => {
+                if self.obj(src).zone == Zone::Battlefield {
+                    self.obj_mut(src).quest += 1;
+                }
+            }
+            Effect::OpponentsAttackThisTurn => {
+                self.must_attack_turn[opponent(item.controller)] = self.turn;
+            }
+            Effect::CreateTokensPerLastCounters { def } => {
+                let n = if self.obj(src).zone == Zone::Battlefield {
+                    self.obj(src).counters
+                } else {
+                    self.obj(src).last_counters.0
+                };
+                for _ in 0..n.max(0) {
+                    self.create_token(item.controller, def);
+                }
+            }
+            Effect::CountersSelfPerOtherWithSubtypes(subs) => {
+                let n = self
+                    .permanents(item.controller)
+                    .filter(|&x| x != src && subs.iter().any(|s| self.has_subtype(x, s)))
+                    .count() as i32;
+                self.add_counters(src, n);
+            }
+            Effect::CopyEachTokenYouControl => {
+                let toks: Vec<ObjId> = self
+                    .permanents(item.controller)
+                    .filter(|&x| self.is_token(x))
+                    .collect();
+                for o in toks {
+                    // CR 707.2: the copiable values: its card or token definition, and offspring's 1/1.
+                    let def = self.obj(o).def;
+                    let base = self.obj(o).copy_base_pt;
+                    let card_copy = self.obj(o).copy_token;
+                    for _ in 0..self.token_doubling(item.controller) {
+                        let id = self.add_card(item.controller, def, Zone::Hand);
+                        self.obj_mut(id).copy_token = card_copy || !self.defs[def].token;
+                        self.obj_mut(id).copy_base_pt = base;
+                        self.move_to(id, Zone::Battlefield);
+                    }
+                }
+            }
+            Effect::ExileLinked(slot) => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    if self.obj(id).zone == Zone::Battlefield {
+                        self.move_to(id, Zone::Exile);
+                        self.obj_mut(src).linked_card = Some(id);
+                    }
+                }
+            }
+            Effect::LinkedOwnerCreatesXx { def } => {
+                if let Some(c) = self.obj(src).linked_card {
+                    let owner = self.obj(c).owner;
+                    let x = self.def_of(c).cost.mana_value() as i32;
+                    self.create_token(owner, def);
+                    for t in self.last_created.clone() {
+                        self.obj_mut(t).copy_base_pt = Some((x, x));
+                    }
                 }
             }
             Effect::GiftCard => {

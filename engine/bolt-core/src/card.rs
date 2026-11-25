@@ -35,6 +35,7 @@ keywords! {
     FLASH = 13, "Flash";
     UNBLOCKABLE = 14, "Can't be blocked";
     CANT_BLOCK = 15, "Can't block";
+    ISLANDWALK = 16, "Islandwalk";
 }
 
 impl Keywords {
@@ -211,6 +212,8 @@ pub struct Activated {
     pub sacrifice_subtype: Option<&'static str>,
     /// "Sacrifice a creature" in the cost: any creature you control, this one included.
     pub sacrifice_creature: bool,
+    /// "Activate only if you created a token this turn."
+    pub if_created_token_this_turn: bool,
 }
 
 /// The printed card. Shared by every copy; per-copy state lives on the game object.
@@ -468,6 +471,9 @@ pub struct CardDef {
     pub counter_creatures_tap_for_green: bool,
     /// "Your maximum hand size is N." (0: the usual seven)
     pub max_hand_size: u8,
+    /// "This creature enters with a number of +1/+1 counters on it equal to one plus the number of
+    /// other creatures you control." (Boss's Chauffeur)
+    pub enters_counters_one_plus_others: bool,
 }
 
 /// An Omen spell half: its name, cost, whether it's an instant, and what it does.
@@ -617,6 +623,7 @@ impl CardDef {
             other_non_subtype_enters_with_counter: None,
             counter_creatures_tap_for_green: false,
             max_hand_size: 0,
+            enters_counters_one_plus_others: false,
         }
     }
 
@@ -745,6 +752,7 @@ impl CardDef {
             other_non_subtype_enters_with_counter: None,
             counter_creatures_tap_for_green: false,
             max_hand_size: 0,
+            enters_counters_one_plus_others: false,
         }
     }
 
@@ -873,6 +881,7 @@ impl CardDef {
             other_non_subtype_enters_with_counter: None,
             counter_creatures_tap_for_green: false,
             max_hand_size: 0,
+            enters_counters_one_plus_others: false,
         }
     }
 }

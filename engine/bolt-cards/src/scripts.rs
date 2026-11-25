@@ -111,6 +111,10 @@ pub fn token_defs() -> Vec<CardDef> {
             thopter
         },
         token("Storm Crow", "Bird", 1, 2, Keywords::FLYING), // Murmuration's blue Birds
+        token("Squid", "Squid", 1, 1, Keywords::ISLANDWALK), // Chasm Skulker
+        token("Citizen", "Citizen", 1, 1, Keywords::NONE),   // Boss's Chauffeur
+        token("Eldrazi", "Eldrazi", 10, 10, Keywords::NONE), // Idol of Oblivion
+        token("Illusion", "Illusion", 0, 0, Keywords::NONE), // Skyclave Apparition's X/X
     ]
 }
 
@@ -194,6 +198,10 @@ pub struct Tokens {
     pub spider: usize,
     pub thopter: usize,
     pub storm_crow: usize,
+    pub squid: usize,
+    pub citizen: usize,
+    pub eldrazi: usize,
+    pub illusion: usize,
 }
 
 impl Tokens {
@@ -241,6 +249,10 @@ impl Tokens {
             spider: base + 39,
             thopter: base + 40,
             storm_crow: base + 41,
+            squid: base + 42,
+            citizen: base + 43,
+            eldrazi: base + 44,
+            illusion: base + 45,
         }
     }
 }

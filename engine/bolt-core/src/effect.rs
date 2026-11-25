@@ -89,6 +89,8 @@ pub struct Filter {
     pub tokens_only: bool,
     /// Nonlegendary permanents only.
     pub nonlegendary: bool,
+    /// Nontoken permanents only.
+    pub nontoken: bool,
 }
 
 impl Filter {
@@ -132,6 +134,7 @@ impl Filter {
         nonland_cards: false,
         tokens_only: false,
         nonlegendary: false,
+        nontoken: false,
     };
 
     pub const CREATURE: Filter = Filter {
@@ -980,6 +983,25 @@ pub enum Effect {
     /// Return the creature in the trigger's `extra` from its owner's graveyard to the battlefield
     /// under its owner's control with a flying counter on it (Luminous Broodmoth).
     ReturnDiedWithFlyingCounter,
+    /// Put a quest counter on the source.
+    QuestCounterSelf,
+    /// Creatures the opponent controls attack this turn if able (Bident of Thassa).
+    OpponentsAttackThisTurn,
+    /// Create a token (`def`) for each +1/+1 counter the source had as it left the battlefield.
+    CreateTokensPerLastCounters {
+        def: usize,
+    },
+    /// Put a +1/+1 counter on the source for each other permanent you control with one of these
+    /// subtypes.
+    CountersSelfPerOtherWithSubtypes(&'static [&'static str]),
+    /// For each token you control, create a token that's a copy of it.
+    CopyEachTokenYouControl,
+    /// Exile the permanent in `slot`; the source remembers it (its `linked_card`).
+    ExileLinked(u8),
+    /// The source's linked card's owner creates an X/X token (`def`), X that card's mana value.
+    LinkedOwnerCreatesXx {
+        def: usize,
+    },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1086,6 +1108,8 @@ pub enum StaticCondition {
     ChosenMode(u8),
     /// At least this many different kinds of counters among creatures its controller controls.
     CounterKindsAmongYoursAtLeast(u8),
+    /// The source has at least this many quest counters.
+    QuestCountersAtLeast(i32),
 }
 
 /// A static ability that changes characteristics (CR 604, 613 layers 6 and 7c).
@@ -1433,6 +1457,10 @@ pub enum When {
     YouGiveGift,
     /// "Whenever a creature you control without flying dies" (the creature in `extra`).
     CreatureYouControlWithoutFlyingDies,
+    /// "Whenever a creature you control attacks" (once for each attacker).
+    CreatureYouControlAttacks,
+    /// "Whenever another [A] or [B] you control enters" (any permanent with one of the subtypes).
+    AnotherYouControlEntersWithAnySubtype(&'static [&'static str]),
 }
 
 #[derive(Clone, Debug, PartialEq)]
