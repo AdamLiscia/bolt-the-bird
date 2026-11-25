@@ -461,6 +461,10 @@ pub struct CardDef {
     /// "Each other non-[subtype] creature you control enters with an additional +1/+1 counter on
     /// it." (Grumgully: "Human")
     pub other_non_subtype_enters_with_counter: Option<&'static str>,
+    /// "Each creature you control with a counter on it has \"{T}: Add {G}.\"" (Rishkar)
+    pub counter_creatures_tap_for_green: bool,
+    /// "Your maximum hand size is N." (0: the usual seven)
+    pub max_hand_size: u8,
 }
 
 /// An Omen spell half: its name, cost, whether it's an instant, and what it does.
@@ -608,6 +612,8 @@ impl CardDef {
             vanishing: 0,
             big_creature_spell_discount: 0,
             other_non_subtype_enters_with_counter: None,
+            counter_creatures_tap_for_green: false,
+            max_hand_size: 0,
         }
     }
 
@@ -734,6 +740,8 @@ impl CardDef {
             vanishing: 0,
             big_creature_spell_discount: 0,
             other_non_subtype_enters_with_counter: None,
+            counter_creatures_tap_for_green: false,
+            max_hand_size: 0,
         }
     }
 
@@ -860,6 +868,8 @@ impl CardDef {
             vanishing: 0,
             big_creature_spell_discount: 0,
             other_non_subtype_enters_with_counter: None,
+            counter_creatures_tap_for_green: false,
+            max_hand_size: 0,
         }
     }
 }

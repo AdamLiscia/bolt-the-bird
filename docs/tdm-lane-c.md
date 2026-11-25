@@ -371,3 +371,13 @@ untap step"), `Effect::PumpYoursPowerAtLeastAndGrant`, `Reduction::PerTokenYouCo
 `CardDef::{small_creatures_unblockable, big_creature_spell_discount, other_non_subtype_enters_with_counter}`,
 `Activated::sacrifice_creature` ("Sacrifice a creature", this one included). Chittering Witch's "number of
 opponents" is 1 in the 1v1 game.
+
+Batch 3 (9): Long River's Pull, Wear Down, Jolly Gerbils, Oran-Rief, Rishkar, Thickest in the Thicket,
+Twenty-Toed Toad, Domri Anarch of Bolas, Luminous Broodmoth.
+Gift: "Gift a card" is promised by casting the spell kicked for {0} (`kicker = Some(ManaCost::default())`); the
+kicked version starts with `Effect::GiftCard` (the opponent draws, and `When::YouGiveGift` triggers).
+Core: `When::{YouGiveGift, CreatureYouControlWithoutFlyingDies}`, `Condition::ControlGreatestPower`,
+`Effect::{GiftCard, CountersOnGreenEnteredThisTurn, CountersEqualPower, WinIfCountersOrHandAtLeast, AddManaEither
+(one pool mana that pays either color), CreatureSpellsUncounterableThisTurn, ReturnDiedWithFlyingCounter}`,
+`CardDef::{counter_creatures_tap_for_green, max_hand_size}`, `Game::creatures_uncounterable_turn`.
+Not done: Raging Ravine (becoming a creature has no way to set its colors to red and green).

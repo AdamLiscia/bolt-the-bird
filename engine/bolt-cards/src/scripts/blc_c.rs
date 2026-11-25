@@ -366,6 +366,88 @@ pub fn script(name: &str) -> Option<Script> {
                 d.activated[n].sacrifice_creature = true;
             },
         ),
+        "Long River's Pull" => s(
+            &["Gift a card", "Counter target creature spell. If the gift was promised, instead counter target spell."],
+            |d, _| {
+                // The gift is promised by casting it "kicked" for no extra cost.
+                d.kicker = Some(ManaCost::default());
+                let creature_spell = Filter { spell_creature: Some(true), ..SPELL };
+                spell(d, vec![creature_spell], vec![Effect::Counter(0)]);
+                d.kicked_spell = Some(Ability::new(vec![SPELL], vec![Effect::GiftCard, Effect::Counter(0)]));
+            },
+        ),
+        "Wear Down" => s(
+            &[
+                "Gift a card",
+                "Destroy target artifact or enchantment. If the gift was promised, instead destroy two target artifacts and/or enchantments.",
+            ],
+            |d, _| {
+                d.kicker = Some(ManaCost::default());
+                spell(d, vec![ARTIFACT_OR_ENCHANTMENT], vec![Effect::Destroy(0)]);
+                let two = vec![ARTIFACT_OR_ENCHANTMENT; 2];
+                d.kicked_spell = Some(Ability::new(two, vec![Effect::GiftCard, Effect::Destroy(0), Effect::Destroy(1)]));
+            },
+        ),
+        "Jolly Gerbils" => s(&["Whenever you give a gift, draw a card."], |d, _| on(d, When::YouGiveGift, vec![], vec![draw(1)])),
+        "Oran-Rief, the Vastwood" => s(
+            &["This land enters tapped.", "{T}: Add {G}.", "{T}: Put a +1/+1 counter on each green creature that entered this turn."],
+            |d, _| {
+                d.enters_tapped = true;
+                d.mana = Some(ManaSource::of(&[Color::Green]));
+                activated(d, "", true, vec![], vec![Effect::CountersOnGreenEnteredThisTurn]);
+            },
+        ),
+        "Rishkar, Peema Renegade" => s(
+            &[
+                "When Rishkar enters, put a +1/+1 counter on each of up to two target creatures.",
+                "Each creature you control with a counter on it has \"{T}: Add {G}.\"",
+            ],
+            |d, _| {
+                let counters = vec![Effect::Counters { slot: 0, n: 1 }, Effect::Counters { slot: 1, n: 1 }];
+                d.triggers.push(Trigger { when: When::Enters, ability: up_to(vec![CREATURE; 2], counters) });
+                d.counter_creatures_tap_for_green = true;
+            },
+        ),
+        "Thickest in the Thicket" => s(
+            &[
+                "When this enchantment enters, put X +1/+1 counters on target creature, where X is that creature's power.",
+                "At the beginning of your end step, draw two cards if you control the creature with the greatest power or tied for the greatest power.",
+            ],
+            |d, _| {
+                on(d, When::Enters, vec![CREATURE], vec![Effect::CountersEqualPower(0)]);
+                conditional(d, When::EndStep { your_turn_only: true }, Condition::ControlGreatestPower, vec![], vec![draw(2)]);
+            },
+        ),
+        "Twenty-Toed Toad" => s(
+            &[
+                "Your maximum hand size is twenty.",
+                "Whenever you attack with two or more creatures, put a +1/+1 counter on this creature and draw a card.",
+                "Whenever this creature attacks, you win the game if there are twenty or more counters on it or you have twenty or more cards in hand.",
+            ],
+            |d, _| {
+                d.max_hand_size = 20;
+                on(d, When::YouAttackWithAtLeast(2), vec![], vec![Effect::CountersSelf { n: 1 }, draw(1)]);
+                on(d, When::Attacks, vec![], vec![Effect::WinIfCountersOrHandAtLeast(20)]);
+            },
+        ),
+        "Domri, Anarch of Bolas" => s(
+            &[
+                "Creatures you control get +1/+0.",
+                "+1: Add {R} or {G}. Creature spells you cast this turn can't be countered.",
+                "−2: Target creature you control fights target creature you don't control.",
+            ],
+            |d, _| {
+                static_on(d, Scope::YourCreatures, false, Keywords::NONE);
+                d.statics.last_mut().expect("just added").power = 1;
+                let mana = vec![Effect::AddManaEither(Color::Red, Color::Green), Effect::CreatureSpellsUncounterableThisTurn];
+                loyalty(d, 1, Ability::new(vec![], mana));
+                loyalty(d, -2, Ability::new(vec![YOUR_CREATURE, OPP_CREATURE], vec![Effect::FightBetween { a: 0, b: 1 }]));
+            },
+        ),
+        "Luminous Broodmoth" => s(
+            &["Whenever a creature you control without flying dies, return it to the battlefield under its owner's control with a flying counter on it."],
+            |d, _| on(d, When::CreatureYouControlWithoutFlyingDies, vec![], vec![Effect::ReturnDiedWithFlyingCounter]),
+        ),
         _ => None,
     }
 }
@@ -434,4 +516,13 @@ pub const BLC_C_SCRIPTED: &[&str] = &[
     "Goreclaw, Terror of Qal Sisma",
     "Grumgully, the Generous",
     "Chittering Witch",
+    "Long River's Pull",
+    "Wear Down",
+    "Jolly Gerbils",
+    "Oran-Rief, the Vastwood",
+    "Rishkar, Peema Renegade",
+    "Thickest in the Thicket",
+    "Twenty-Toed Toad",
+    "Domri, Anarch of Bolas",
+    "Luminous Broodmoth",
 ];

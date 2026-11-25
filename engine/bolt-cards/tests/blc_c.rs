@@ -922,3 +922,213 @@ fn chittering_witch_makes_a_rat_and_sacrifices_any_creature_for_minus_two() {
     assert_eq!(g.obj(theirs).zone, Zone::Battlefield);
     assert_eq!((g.power(theirs), g.toughness(theirs)), (-1, 1));
 }
+
+#[test]
+fn long_rivers_pull_counters_a_creature_spell_or_with_the_gift_any_spell() {
+    let mut g = table();
+    let dispute = hand(&mut g, 0, "Deadly Dispute");
+    let signet = put(&mut g, 0, "Arcane Signet");
+    act(&mut g, Action::CastWith(dispute, signet));
+    let pull = hand(&mut g, 0, "Long River's Pull");
+    let legal = g.legal_actions();
+    assert!(
+        !legal.contains(&Action::Cast(pull)),
+        "no gift: creature spells only"
+    );
+    assert!(
+        legal.contains(&Action::CastKicked(pull)),
+        "with the gift: any spell"
+    );
+    let mut g = table();
+    let dispute = hand(&mut g, 0, "Deadly Dispute");
+    let signet = put(&mut g, 0, "Arcane Signet");
+    act(&mut g, Action::CastWith(dispute, signet));
+    let theirs = g.players[1].hand.len();
+    let pull = hand(&mut g, 0, "Long River's Pull");
+    play(&mut g, pull, true, &[obj(dispute)], &[]);
+    assert_eq!(g.obj(dispute).zone, Zone::Graveyard, "countered");
+    assert_eq!(g.players[1].hand.len(), theirs + 1, "the gift: a card");
+    assert_eq!(
+        g.permanents(0)
+            .filter(|&x| g.def_of(x).name == "Treasure")
+            .count(),
+        0
+    );
+    let mut g = table();
+    let creature = hand(&mut g, 0, "Morbid Opportunist");
+    act(&mut g, Action::Cast(creature));
+    let pull = hand(&mut g, 0, "Long River's Pull");
+    play(&mut g, pull, false, &[obj(creature)], &[]);
+    assert_eq!(g.obj(creature).zone, Zone::Graveyard);
+}
+
+#[test]
+fn wear_down_destroys_one_or_with_the_gift_two_artifacts_or_enchantments() {
+    let mut g = table();
+    let a = put(&mut g, 1, "Arcane Signet");
+    let b = put(&mut g, 1, "Arcane Signet");
+    let c = hand(&mut g, 0, "Wear Down");
+    play(&mut g, c, false, &[obj(a)], &[]);
+    assert_eq!(
+        (g.obj(a).zone, g.obj(b).zone),
+        (Zone::Graveyard, Zone::Battlefield)
+    );
+    let mut g = table();
+    let a = put(&mut g, 1, "Arcane Signet");
+    let b = put(&mut g, 1, "Arcane Signet");
+    let theirs = g.players[1].hand.len();
+    let c = hand(&mut g, 0, "Wear Down");
+    play(&mut g, c, true, &[obj(a), obj(b)], &[]);
+    assert_eq!((g.obj(a).zone, g.obj(b).zone), (Zone::Graveyard, Zone::Graveyard));
+    assert_eq!(g.players[1].hand.len(), theirs + 1);
+}
+
+#[test]
+fn jolly_gerbils_draws_when_you_give_a_gift() {
+    let mut g = table();
+    put(&mut g, 0, "Jolly Gerbils");
+    let a = put(&mut g, 1, "Arcane Signet");
+    let b = put(&mut g, 1, "Arcane Signet");
+    let n = g.players[0].hand.len();
+    let c = hand(&mut g, 0, "Wear Down");
+    play(&mut g, c, true, &[obj(a), obj(b)], &[]);
+    assert_eq!(g.players[0].hand.len(), n + 1);
+    let c2 = hand(&mut g, 0, "Wear Down");
+    let x = put(&mut g, 1, "Arcane Signet");
+    play(&mut g, c2, false, &[obj(x)], &[]);
+    assert_eq!(g.players[0].hand.len(), n + 1, "no gift, no card");
+}
+
+#[test]
+fn oran_rief_counters_green_creatures_that_entered_this_turn() {
+    let mut g = table();
+    let old = put(&mut g, 0, "Garruk's Packleader"); // on the battlefield since before this turn
+    let new = hand(&mut g, 0, "Garruk's Packleader");
+    play(&mut g, new, false, &[], &[Action::No]);
+    let red = hand(&mut g, 0, "Morbid Opportunist"); // black
+    play(&mut g, red, false, &[], &[]);
+    let land = put(&mut g, 0, "Oran-Rief, the Vastwood");
+    assert!(g
+        .mana_sources(0)
+        .iter()
+        .any(|&(x, m)| x == land && m.colors == [false, false, false, false, true]));
+    act(&mut g, Action::Activate(land, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.power(new), g.power(old), g.power(red)), (5, 4, 1));
+}
+
+#[test]
+fn rishkar_puts_counters_and_creatures_with_counters_tap_for_green() {
+    let mut g = table();
+    let elder = put(&mut g, 0, "Morbid Opportunist");
+    assert!(!g.mana_sources(0).iter().any(|&(x, _)| x == elder));
+    let r = hand(&mut g, 0, "Rishkar, Peema Renegade");
+    play(
+        &mut g,
+        r,
+        false,
+        &[],
+        &[Action::Target(obj(elder)), Action::Target(obj(r))],
+    );
+    assert_eq!((g.power(elder), g.power(r)), (2, 3));
+    let green = [false, false, false, false, true];
+    assert!(g
+        .mana_sources(0)
+        .iter()
+        .any(|&(x, m)| x == elder && m.colors == green));
+    assert!(
+        !g.mana_sources(0).iter().any(|&(x, _)| x == r),
+        "Rishkar itself is summoning sick"
+    );
+}
+
+#[test]
+fn thickest_in_the_thicket_doubles_power_and_draws_with_the_biggest_creature() {
+    let mut g = table();
+    let p = put(&mut g, 0, "Garruk's Packleader");
+    put(&mut g, 1, "End-Raze Forerunners"); // 7/7
+    let c = hand(&mut g, 0, "Thickest in the Thicket");
+    play(&mut g, c, false, &[], &[Action::Target(obj(p))]);
+    assert_eq!(g.power(p), 8);
+    let n = g.players[0].hand.len();
+    while g.step != Step::End {
+        let a = match g.pending {
+            Pending::DeclareAttackers(_) => Action::FinishAttacks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].hand.len(), n + 2);
+}
+
+#[test]
+fn twenty_toed_toad_grows_on_group_attacks_and_wins_with_twenty_cards() {
+    let mut g = table();
+    let toad = put(&mut g, 0, "Twenty-Toed Toad");
+    let other = put(&mut g, 0, "Morbid Opportunist");
+    put(&mut g, 1, "Restoration Angel");
+    let n = g.players[0].hand.len();
+    attack_with(&mut g, 5, &[toad, other]);
+    assert_eq!(g.power(toad), 4);
+    assert_eq!(g.players[0].hand.len(), n + 2, "the draw step and the trigger");
+    assert!(!g.is_over());
+
+    let mut g = table();
+    let toad = put(&mut g, 0, "Twenty-Toed Toad");
+    while g.players[0].hand.len() < 19 {
+        hand(&mut g, 0, "Plains");
+    }
+    g.start_turn(5, 0); // draws the twentieth
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(toad));
+    act(&mut g, Action::FinishAttacks);
+    while !g.is_over() {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(g.players[1].lost);
+}
+
+#[test]
+fn domri_pumps_adds_r_or_g_protects_creature_spells_and_fights() {
+    let mut g = table();
+    let d = hand(&mut g, 0, "Domri, Anarch of Bolas");
+    play(&mut g, d, false, &[], &[]);
+    let mine = put(&mut g, 0, "Garruk's Packleader");
+    assert_eq!(g.power(mine), 5, "+1/+0");
+    act(&mut g, Action::Loyalty(d, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].pool.len(), 1);
+    assert_eq!(g.players[0].pool[0].colors, [false, false, false, true, true]);
+    let c = hand(&mut g, 0, "Morbid Opportunist");
+    act(&mut g, Action::Cast(c));
+    let pull = hand(&mut g, 0, "Long River's Pull");
+    play(&mut g, pull, false, &[obj(c)], &[]);
+    assert_eq!(g.obj(c).zone, Zone::Battlefield, "can't be countered this turn");
+    let theirs = put(&mut g, 1, "Morbid Opportunist");
+    to_main1(&mut g, 5, 0);
+    act(&mut g, Action::Loyalty(d, 1));
+    act(&mut g, Action::Target(obj(mine)));
+    act(&mut g, Action::Target(obj(theirs)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(theirs).zone, Zone::Graveyard);
+    assert_eq!(g.obj(d).loyalty, 4 - 2);
+}
+
+#[test]
+fn luminous_broodmoth_returns_a_creature_without_flying_once() {
+    let mut g = table();
+    put(&mut g, 0, "Luminous Broodmoth");
+    let c = put(&mut g, 0, "Morbid Opportunist");
+    let storm = hand(&mut g, 0, "Starstorm");
+    act(&mut g, Action::CastX(storm, 3));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(c).zone, Zone::Battlefield);
+    assert!(g.keywords(c).has(Keywords::FLYING), "a flying counter");
+    let storm2 = hand(&mut g, 0, "Starstorm");
+    act(&mut g, Action::CastX(storm2, 3));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(c).zone, Zone::Graveyard, "it flies now: no second return");
+}

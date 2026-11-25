@@ -951,6 +951,23 @@ pub enum Effect {
         toughness: i32,
         keywords: crate::Keywords,
     },
+    /// "Gift a card": the opponent draws a card (the gift was promised: the spell was cast kicked),
+    /// and "whenever you give a gift" triggers.
+    GiftCard,
+    /// Put a +1/+1 counter on each green creature that entered the battlefield this turn.
+    CountersOnGreenEnteredThisTurn,
+    /// Put X +1/+1 counters on the creature in `slot`, X its power.
+    CountersEqualPower(u8),
+    /// You win the game if the source has at least `n` counters or you have at least `n` cards in
+    /// hand (Twenty-Toed Toad).
+    WinIfCountersOrHandAtLeast(i32),
+    /// Add one mana that can be either of these colors.
+    AddManaEither(crate::Color, crate::Color),
+    /// Creature spells you cast this turn can't be countered.
+    CreatureSpellsUncounterableThisTurn,
+    /// Return the creature in the trigger's `extra` from its owner's graveyard to the battlefield
+    /// under its owner's control with a flying counter on it (Luminous Broodmoth).
+    ReturnDiedWithFlyingCounter,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1185,6 +1202,8 @@ pub enum Condition {
     TotalToughnessAtLeast(i32),
     /// It's your main phase.
     YourMainPhase,
+    /// You control a creature with the greatest power, or tied for it, among all creatures.
+    ControlGreatestPower,
 }
 
 /// A spell's effect or a triggered ability: target slots, then effects in order.
@@ -1390,6 +1409,10 @@ pub enum When {
     TokenYouControlLeaves,
     /// "Whenever a token you control enters".
     TokenYouControlEnters,
+    /// "Whenever you give a gift".
+    YouGiveGift,
+    /// "Whenever a creature you control without flying dies" (the creature in `extra`).
+    CreatureYouControlWithoutFlyingDies,
 }
 
 #[derive(Clone, Debug, PartialEq)]

@@ -984,6 +984,8 @@ pub struct Game {
     pub extra_lands_this_turn: [u8; 2],
     /// "Becomes a copy ... until end of turn": (object, its zcc, the card it was before).
     pub copy_until_eot: Vec<(ObjId, u32, usize)>,
+    /// The turn each player made their creature spells uncounterable for the turn (Domri).
+    pub creatures_uncounterable_turn: [u32; 2],
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -1146,6 +1148,7 @@ impl Game {
             until_your_next_turn: Vec::new(),
             delayed_on_next_attack: Vec::new(),
             copy_until_eot: Vec::new(),
+            creatures_uncounterable_turn: [0, 0],
             extra_combats: Vec::new(),
             extra_combat_resume: None,
             extra_main_resume: None,
@@ -1895,6 +1898,15 @@ impl Game {
         self.commanders.contains(&Some(id)) || self.partners.contains(&Some(id))
     }
 
+    /// `p`'s maximum hand size: seven, or the largest a permanent of theirs sets (Twenty-Toed Toad).
+    fn max_hand(&self, p: PlayerId) -> usize {
+        self.permanents(p)
+            .map(|c| self.def_of(c).max_hand_size as usize)
+            .max()
+            .unwrap_or(0)
+            .max(MAX_HAND)
+    }
+
     /// Whether `p` controls a creature with a counter on it.
     fn controls_creature_with_counter(&self, p: PlayerId) -> bool {
         self.creatures(p).any(|c| self.has_counter(c))
@@ -2467,6 +2479,23 @@ impl Game {
                 }
             }
             self.fire(last_controller, When::CreatureYouControlDies, Some(id));
+            // "a creature you control without flying": as it last existed (printed and counters).
+            let flew = self
+                .def_of(id)
+                .keywords
+                .with(self.obj(id).last_counters.2)
+                .has(Keywords::FLYING);
+            if !flew {
+                let before = self.triggered.len();
+                self.fire(
+                    last_controller,
+                    When::CreatureYouControlWithoutFlyingDies,
+                    Some(id),
+                );
+                for t in &mut self.triggered[before..] {
+                    t.extra = Some(id);
+                }
+            }
             let (plus, stun, kw) = self.obj(id).last_counters;
             if plus != 0 || stun > 0 || kw != Keywords::NONE {
                 let before = self.triggered.len();
@@ -4643,6 +4672,15 @@ impl Game {
                     colors.extend(self.obj(id).chosen_color.map(|c| crate::Color::ALL[c as usize]));
                     return Some((id, ManaSource::of(&colors)));
                 }
+                if d.mana.is_none()
+                    && self.types_of(id).creature
+                    && self.has_counter(id)
+                    && self
+                        .permanents(p)
+                        .any(|x| self.def_of(x).counter_creatures_tap_for_green && !self.lost_abilities(x))
+                {
+                    return Some((id, ManaSource::of(&[crate::Color::Green]))); // Rishkar
+                }
                 d.mana.map(|m| (id, m))
             })
             .collect()
@@ -5041,7 +5079,7 @@ impl Game {
             }
             (Pending::Discard(p), Action::Discard(c)) => {
                 self.move_to(c, Zone::Graveyard);
-                if self.players[p].hand.len() <= MAX_HAND {
+                if self.players[p].hand.len() <= self.max_hand(p) {
                     self.finish_cleanup();
                 }
             }
@@ -5268,6 +5306,10 @@ impl Game {
         self.spells_cast[p] += 1;
         let is_creature = self.types_of(card).creature;
         self.cast_creature_noncreature[p][usize::from(!is_creature)] = true;
+        if self.creatures_uncounterable_turn[p] == self.turn && self.turn > 0 && self.types_of(card).creature
+        {
+            self.obj_mut(card).cast_uncounterable = true;
+        }
         if self.next_spell_uncounterable[p] == self.turn && self.turn > 0 {
             self.next_spell_uncounterable[p] = 0;
             self.obj_mut(card).cast_uncounterable = true;
@@ -8267,6 +8309,66 @@ impl Game {
                     self.untap_by_effect(c);
                 }
             }
+            Effect::GiftCard => {
+                let opp = opponent(item.controller);
+                self.draw(opp);
+                self.fire(item.controller, When::YouGiveGift, None);
+            }
+            Effect::CountersOnGreenEnteredThisTurn => {
+                let turn = self.turn;
+                let fresh: Vec<ObjId> = self
+                    .battlefield
+                    .iter()
+                    .copied()
+                    .filter(|&c| {
+                        self.types_of(c).creature
+                            && self.colors_of(c)[crate::Color::Green as usize]
+                            && self.obj(c).since_turn == turn
+                    })
+                    .collect();
+                for c in fresh {
+                    self.add_counters(c, 1);
+                }
+            }
+            Effect::CountersEqualPower(slot) => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    let n = self.power(id);
+                    self.add_counters(id, n);
+                }
+            }
+            Effect::WinIfCountersOrHandAtLeast(n) => {
+                let p = item.controller;
+                let o = self.obj(src);
+                let counters = o.counters + o.stun + o.time_counters as i32;
+                if counters >= n || self.players[p].hand.len() as i32 >= n {
+                    let opp = opponent(p);
+                    let protected = self.permanents(opp).any(|c| self.def_of(c).cant_lose);
+                    if !protected && !self.players[opp].lost {
+                        self.players[opp].lost = true;
+                        self.events.push(Event::Lost { player: opp });
+                        self.result = Some(Outcome::Winner(p));
+                        self.pending = Pending::GameOver;
+                    }
+                }
+            }
+            Effect::AddManaEither(a, b) => {
+                self.players[item.controller].pool.push(ManaSource::of(&[a, b]));
+            }
+            Effect::CreatureSpellsUncounterableThisTurn => {
+                self.creatures_uncounterable_turn[item.controller] = self.turn;
+            }
+            Effect::ReturnDiedWithFlyingCounter => {
+                if let Some(c) = item.extra {
+                    if self.obj(c).zone == Zone::Graveyard {
+                        let owner = self.obj(c).owner;
+                        self.move_to(c, Zone::Battlefield);
+                        self.obj_mut(c).controller = owner;
+                        let o = self.obj_mut(c);
+                        o.keyword_counters = o.keyword_counters.with(Keywords::FLYING);
+                        self.counter_put_on(c);
+                    }
+                }
+            }
             Effect::VanishingTick => {
                 if self.obj(src).zone == Zone::Battlefield && self.obj(src).time_counters > 0 {
                     self.obj_mut(src).time_counters -= 1;
@@ -9586,6 +9688,16 @@ impl Game {
             Some(Condition::YourMainPhase) => {
                 self.active == controller && matches!(self.step, Step::Main1 | Step::Main2)
             }
+            Some(Condition::ControlGreatestPower) => {
+                let all: Vec<ObjId> = self
+                    .battlefield
+                    .iter()
+                    .copied()
+                    .filter(|&c| self.types_of(c).creature)
+                    .collect();
+                let max = all.iter().map(|&c| self.power(c)).max();
+                max.is_some_and(|m| self.creatures(controller).any(|c| self.power(c) == m))
+            }
             Some(Condition::CastCreatureAndNoncreatureThisTurn) => {
                 self.cast_creature_noncreature[controller] == [true, true]
             }
@@ -9981,7 +10093,7 @@ impl Game {
                 self.give_priority(a);
             }
             Step::Cleanup => {
-                if self.players[a].hand.len() > MAX_HAND
+                if self.players[a].hand.len() > self.max_hand(a)
                     && !self.permanents(a).any(|c| self.def_of(c).no_max_hand_size)
                 {
                     self.pending = Pending::Discard(a);
