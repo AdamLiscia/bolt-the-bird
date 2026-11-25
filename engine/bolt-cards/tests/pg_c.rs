@@ -1810,3 +1810,28 @@ fn nissa_vastwood_seer_finds_a_forest_and_flips_into_a_planeswalker_at_seven_lan
     to_main1(&mut g, 9, 0);
     assert!(g.types_of(six[0]).creature, "for good");
 }
+
+#[test]
+fn deadeye_navigator_pairs_and_grants_a_flicker() {
+    let mut g = table();
+    let ghoul = put(&mut g, 0, "Hungry Ghoul");
+    let nav = hand(&mut g, 0, "Deadeye Navigator");
+    play(&mut g, nav, false, &[], &[Action::Yes, Action::Pick(ghoul)]);
+    assert_eq!(g.paired_partner(nav), Some(ghoul));
+    assert_eq!(g.paired_partner(ghoul), Some(nav));
+    let n = g.def_of(ghoul).activated.len();
+    let zcc = g.obj(ghoul).zcc;
+    act(&mut g, Action::Activate(ghoul, n));
+    resolve_all(&mut g, &[Action::Yes]);
+    assert_eq!(g.obj(ghoul).zone, Zone::Battlefield);
+    assert!(g.obj(ghoul).zcc > zcc, "a new object");
+    assert_eq!(g.paired_partner(nav), Some(ghoul), "paired again as it entered");
+    let m = g.def_of(nav).activated.len();
+    act(&mut g, Action::Activate(nav, m));
+    resolve_all(&mut g, &[Action::Yes, Action::Pick(ghoul)]);
+    assert_eq!(
+        g.paired_partner(nav),
+        Some(ghoul),
+        "Navigator itself flickers and pairs on entering"
+    );
+}

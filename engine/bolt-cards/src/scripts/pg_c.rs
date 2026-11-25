@@ -735,6 +735,19 @@ pub fn script(name: &str) -> Option<Script> {
                 loyalty(b, -7, up_to(vec![land; 6], effects));
             },
         ),
+        "Deadeye Navigator" => s(
+            &[
+                "Soulbond",
+                "As long as Deadeye Navigator is paired with another creature, each of those creatures has \"{1}{U}: Exile this creature, then return it to the battlefield under your control.\"",
+            ],
+            |d, _| {
+                // Soulbond: pair as it enters, or as another creature enters while it's unpaired.
+                d.soulbond_flicker = true;
+                may(d, When::Enters, vec![], vec![Effect::SoulbondPairOnEnter]);
+                let it = Filter { triggering: true, ..CREATURE };
+                may(d, When::AnotherCreatureYouControlEnters, vec![it], vec![Effect::SoulbondPairWith(0)]);
+            },
+        ),
         _ => None,
     }
 }
@@ -830,4 +843,5 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Shifting Woodland",
     "Khalni Ambush // Khalni Territory",
     "Nissa, Vastwood Seer // Nissa, Sage Animist",
+    "Deadeye Navigator",
 ];

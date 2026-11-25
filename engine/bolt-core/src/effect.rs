@@ -1316,6 +1316,11 @@ pub enum Effect {
         toughness: i32,
         subtype: &'static str,
     },
+    /// Soulbond, as the source enters: you may pair it with another unpaired creature you control.
+    SoulbondPairOnEnter,
+    /// Soulbond, as another creature enters: pair the source with the creature in `slot`, if both
+    /// are unpaired.
+    SoulbondPairWith(u8),
     /// Untap up to `n` lands you control (Frantic Search): tapped ones, those making the most colors
     /// first.
     UntapLandsUpTo(u8),
