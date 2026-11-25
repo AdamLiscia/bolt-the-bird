@@ -7,6 +7,12 @@ use super::*;
 /// Any creature card (a search with no mana value limit).
 const ANY_CREATURE_CARD: SearchFor = SearchFor::CreatureMvAtLeast(0);
 
+/// "Cycling {cost}": "{cost}, Discard this card: Draw a card." from your hand.
+fn cycling(d: &mut CardDef, cost: &str) {
+    let n = activated(d, cost, false, vec![], vec![draw(1)]);
+    d.activated[n].from_hand_discard = true;
+}
+
 pub fn script(name: &str) -> Option<Script> {
     let s = |lines, build| Some(Script { lines, build });
     match name {
@@ -143,6 +149,54 @@ pub fn script(name: &str) -> Option<Script> {
             d.mana_equal_power = true;
         }),
         "Vitalize" => s(&["Untap all creatures you control."], |d, _| spell(d, vec![], vec![Effect::UntapCreaturesYouControl])),
+        // ---- Atla Palani, Nest Tender (RuricMo) ----
+        "Aura Shards" => s(&["Whenever a creature you control enters, you may destroy target artifact or enchantment."], |d, _| {
+            // An enchantment: "a creature you control" is always another permanent.
+            may(d, When::AnotherCreatureYouControlEnters, vec![ARTIFACT_OR_ENCHANTMENT], vec![Effect::Destroy(0)])
+        }),
+        "Impact Tremors" => s(&["Whenever a creature you control enters, this enchantment deals 1 damage to each opponent."], |d, _| {
+            on(d, When::AnotherCreatureYouControlEnters, vec![], vec![damage(1, Recipient::EachOpponent)])
+        }),
+        "Goblin Bombardment" => s(&["Sacrifice a creature: This enchantment deals 1 damage to any target."], |d, _| {
+            let n = activated(d, "", false, vec![Filter::ANY], vec![damage(1, Recipient::Target(0))]);
+            d.activated[n].sacrifice_other_creature = true; // an enchantment: any creature
+        }),
+        "High Market" => s(&["{T}: Add {C}.", "{T}, Sacrifice a creature: You gain 1 life."], |d, _| {
+            d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+            let n = activated(d, "", true, vec![], vec![Effect::GainLife { who: Who::You, n: 1 }]);
+            d.activated[n].sacrifice_other_creature = true; // a land: any creature
+        }),
+        "Jetmir's Garden" => s(&["This land enters tapped.", "Cycling {3}"], |d, _| {
+            d.enters_tapped = true;
+            d.mana = Some(ManaSource::of(&[Color::Red, Color::Green, Color::White]));
+            cycling(d, "{3}");
+        }),
+        "Jungle Shrine" => s(&["This land enters tapped.", "{T}: Add {R}, {G}, or {W}."], |d, _| {
+            d.enters_tapped = true;
+            d.mana = Some(ManaSource::of(&[Color::Red, Color::Green, Color::White]));
+        }),
+        "Fanatical Devotion" => s(&["Sacrifice a creature: Regenerate target creature."], |d, _| {
+            let n = activated(d, "", false, vec![CREATURE], vec![Effect::Regenerate(0)]);
+            d.activated[n].sacrifice_other_creature = true;
+        }),
+        "Samut, Voice of Dissent" => s(&["Other creatures you control have haste.", "{W}, {T}: Untap another target creature."], |d, _| {
+            static_on(d, Scope::OtherYourCreatures, false, Keywords::HASTE);
+            activated(d, "{W}", true, vec![Filter { other: true, ..CREATURE }], vec![Effect::UntapTarget(0)]);
+        }),
+        "Sheltering Landscape" => s(
+            &[
+                "{T}: Add {C}.",
+                "{T}, Sacrifice this land: Search your library for a basic Mountain, Forest, or Plains card, put it onto the battlefield tapped, then shuffle.",
+                "Cycling {R}{G}{W}",
+            ],
+            |d, _| {
+                d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                let what = SearchFor::LandTypes { types: land_types(&["Mountain", "Forest", "Plains"]), basic: true };
+                let n = activated(d, "", true, vec![], vec![search(what, SearchTo::Battlefield { tapped: true })]);
+                d.activated[n].sacrifice_self = true;
+                cycling(d, "{R}{G}{W}");
+            },
+        ),
         _ => None,
     }
 }
@@ -178,4 +232,14 @@ pub const PG_D1_SCRIPTED: &[&str] = &[
     "Nature's Claim",
     "Viridian Joiner",
     "Vitalize",
+    // Atla Palani, Nest Tender (RuricMo)
+    "Aura Shards",
+    "Impact Tremors",
+    "Goblin Bombardment",
+    "High Market",
+    "Jetmir's Garden",
+    "Jungle Shrine",
+    "Fanatical Devotion",
+    "Samut, Voice of Dissent",
+    "Sheltering Landscape",
 ];

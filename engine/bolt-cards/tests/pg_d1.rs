@@ -479,3 +479,145 @@ fn vitalize_untaps_your_creatures_only() {
     assert!(!g.obj(a).tapped && !g.obj(b).tapped);
     assert!(g.obj(theirs).tapped);
 }
+
+// ---- Atla Palani, Nest Tender (RuricMo) ----
+
+#[test]
+fn aura_shards_may_destroy_an_artifact_when_your_creature_enters() {
+    let mut g = table();
+    put(&mut g, 0, "Aura Shards");
+    let altar = put(&mut g, 1, "Ashnod's Altar");
+    let elf = hand(&mut g, 0, "Fyndhorn Elves");
+    play(
+        &mut g,
+        elf,
+        false,
+        &[],
+        &[Action::Target(obj(altar)), Action::Yes],
+    );
+    assert_eq!(g.obj(altar).zone, Zone::Graveyard);
+}
+
+#[test]
+fn impact_tremors_pings_when_your_creature_enters() {
+    let mut g = table();
+    put(&mut g, 0, "Impact Tremors");
+    let elf = hand(&mut g, 0, "Fyndhorn Elves");
+    play(&mut g, elf, false, &[], &[]);
+    assert_eq!(g.players[1].life, 39);
+    put(&mut g, 1, "Fyndhorn Elves");
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].life, 39, "not the opponent's creature");
+}
+
+#[test]
+fn goblin_bombardment_sacrifices_a_creature_for_1_damage() {
+    let mut g = table();
+    let gb = put(&mut g, 0, "Goblin Bombardment");
+    let elf = put(&mut g, 0, "Fyndhorn Elves");
+    act(&mut g, Action::ActivateWith(gb, 0, elf));
+    resolve_all(&mut g, &[Action::Target(Target::Player(1))]);
+    assert_eq!(g.players[1].life, 39);
+    assert_eq!(g.obj(elf).zone, Zone::Graveyard);
+}
+
+#[test]
+fn high_market_taps_for_colorless_and_sacrifices_for_life() {
+    let mut g = table();
+    let hm = put(&mut g, 0, "High Market");
+    assert_eq!(makes(&g, hm), ([false; 5], true));
+    let elf = put(&mut g, 0, "Fyndhorn Elves");
+    act(&mut g, Action::ActivateWith(hm, 0, elf));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].life, 41);
+    assert!(g.obj(hm).tapped);
+}
+
+/// Plays a tapped tri-land; checks it's tapped and its three colors next turn.
+fn tri_land(name: &str) -> (Game, ObjId) {
+    let mut g = game(&[]);
+    let c = hand(&mut g, 0, name);
+    act(&mut g, Action::PlayLand(c));
+    assert!(g.obj(c).tapped);
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(makes(&g, c), ([true, false, false, true, true], false));
+    (g, c)
+}
+
+#[test]
+fn jetmirs_garden_enters_tapped_makes_three_colors_and_cycles() {
+    tri_land("Jetmir's Garden");
+    let mut g = game(&["Plains", "Plains", "Plains"]);
+    let c = hand(&mut g, 0, "Jetmir's Garden");
+    let n = g.players[0].hand.len();
+    act(&mut g, Action::Activate(c, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(c).zone, Zone::Graveyard, "cycled");
+    assert_eq!(g.players[0].hand.len(), n);
+}
+
+#[test]
+fn jungle_shrine_enters_tapped_and_makes_three_colors() {
+    tri_land("Jungle Shrine");
+}
+
+#[test]
+fn fanatical_devotion_sacrifices_to_regenerate() {
+    let mut g = table();
+    let fd = put(&mut g, 0, "Fanatical Devotion");
+    let seer = put(&mut g, 0, "Viscera Seer");
+    let elf = put(&mut g, 0, "Fyndhorn Elves");
+    act(&mut g, Action::ActivateWith(fd, 0, seer));
+    resolve_all(&mut g, &[Action::Target(obj(elf))]);
+    assert_eq!(g.obj(seer).zone, Zone::Graveyard);
+    let decay = hand(&mut g, 0, "Abrupt Decay");
+    play(&mut g, decay, false, &[obj(elf)], &[]);
+    assert_eq!(g.obj(elf).zone, Zone::Battlefield, "regenerated");
+    assert!(g.obj(elf).tapped);
+}
+
+#[test]
+fn samut_gives_others_haste_and_untaps_another_creature() {
+    let mut g = table();
+    let samut = put(&mut g, 0, "Samut, Voice of Dissent");
+    let elf = put(&mut g, 0, "Fyndhorn Elves");
+    let theirs = put(&mut g, 1, "Fyndhorn Elves");
+    assert!(g.keywords(elf).has(Keywords::HASTE));
+    assert!(!g.keywords(theirs).has(Keywords::HASTE));
+    tap(&mut g, elf);
+    act(&mut g, Action::Activate(samut, 0));
+    assert!(
+        !g.legal_actions().contains(&Action::Target(obj(samut))),
+        "another creature"
+    );
+    act(&mut g, Action::Target(obj(elf)));
+    resolve_all(&mut g, &[]);
+    assert!(!g.obj(elf).tapped && g.obj(samut).tapped);
+}
+
+#[test]
+fn sheltering_landscape_fetches_a_basic_tapped_and_cycles() {
+    let mut g = table();
+    let sl = put(&mut g, 0, "Sheltering Landscape");
+    assert_eq!(makes(&g, sl), ([false; 5], true));
+    let island = g.add_card(0, cid("Island"), Zone::Library);
+    let forest = g.add_card(0, cid("Forest"), Zone::Library);
+    act(&mut g, Action::Activate(sl, 0));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(!g.legal_actions().contains(&Action::Pick(island)));
+    act(&mut g, Action::Pick(forest));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(sl).zone, Zone::Graveyard);
+    assert_eq!(g.obj(forest).zone, Zone::Battlefield);
+    assert!(g.obj(forest).tapped);
+    let c = hand(&mut g, 0, "Sheltering Landscape");
+    let n = g.players[0].hand.len();
+    act(&mut g, Action::Activate(c, 1));
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.obj(c).zone, g.players[0].hand.len()), (Zone::Graveyard, n));
+}
