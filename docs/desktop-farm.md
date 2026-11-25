@@ -21,6 +21,9 @@ aws s3 cp s3://nerdleagues-bolt-checkpoints-011834/data/m7/decks.txt data/m7/dec
 aws s3 cp s3://nerdleagues-bolt-checkpoints-011834/data/m7/meta.json data/m7/meta.json --profile bolt-desktop
 aws s3 cp s3://nerdleagues-bolt-checkpoints-011834/checkpoints/play/play_v3_ppo4_i170.pt checkpoints/play/ --profile bolt-desktop
 aws s3 cp s3://nerdleagues-bolt-checkpoints-011834/checkpoints/play/play_v2_ppo3_i850.pt checkpoints/play/ --profile bolt-desktop
+aws s3 cp s3://nerdleagues-bolt-checkpoints-011834/checkpoints/bot_ppo.pt checkpoints/bot_ppo.pt --profile bolt-desktop   # the FDN service kit (tests/test_service.py)
+aws s3 cp s3://nerdleagues-bolt-checkpoints-011834/checkpoints/human_model.pt checkpoints/human_model.pt --profile bolt-desktop   # the FDN service kit (tests/test_service.py)
+aws s3 cp s3://nerdleagues-bolt-checkpoints-011834/checkpoints/judge_b.pt checkpoints/judge_b.pt --profile bolt-desktop   # the FDN service kit (tests/test_service.py)
 ```
 
 ## The pieces
