@@ -84,4 +84,9 @@ Cards from the lane's list, in list order, skipped because the engine can't do t
 - Misty Rainforest: no "pay 1 life" cost; `SearchFor` can't name land types (Forest or Island).
 - Arid Mesa: no "pay 1 life" cost; `SearchFor` can't name land types (Mountain or Plains).
 
-Inspired Ultimatum was the 15th card. Misty Rainforest and Arid Mesa come after it and were assessed only. Emergent Ultimatum and Ruinous Ultimatum were not reached.
+- Emergent Ultimatum: no search for up to three monocolored cards with different names into exile, no opponent's choice to shuffle one back, no cast-the-rest-free, and no self-exile.
+- Ruinous Ultimatum: no "destroy all nonland permanents your opponents control" (only `DestroyAllCreatures` exists).
+
+Round 2 (after the chunk 1 merge, e5c03c9): the cards left on the list after Inspired Ultimatum
+(Misty Rainforest, Arid Mesa, Emergent Ultimatum, Ruinous Ultimatum) all need core, and every
+earlier card on the list was already assessed. No new cards were scripted; the list is used up.
