@@ -1236,6 +1236,13 @@ pub enum Effect {
     /// "You may choose new targets for" the spell or ability in `slot` (Deflecting Swat): each of its
     /// targets in turn, as `Decision::ChooseNewTarget`.
     ChangeTargets(u8),
+    /// The source becomes an artifact creature until end of turn (crew, CR 702.122a).
+    CrewedSelf,
+    /// Put the land cards milled into your graveyard this turn onto the battlefield tapped (Hedge
+    /// Shredder: "put them").
+    MilledLandsToBattlefieldTapped,
+    /// You get `n` {E} (energy counters, CR 122.1).
+    Energy(u8),
     /// Return the source to its owner's hand at the beginning of the next end step (Sakashima the
     /// Impostor's kept ability).
     ReturnSelfToHandAtNextEnd,
@@ -1787,6 +1794,8 @@ pub enum When {
     BecomesBlocked,
     /// "Whenever you cast a green permanent spell".
     YouCastGreenPermanent,
+    /// "Whenever one or more land cards are put into your graveyard from your library".
+    LandCardsMilledToYourGraveyard,
 }
 
 #[derive(Clone, Debug, PartialEq)]

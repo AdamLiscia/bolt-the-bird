@@ -1032,6 +1032,60 @@ fn senseis_divining_top_reorders_the_top_three_and_draws_then_goes_on_top() {
     assert_eq!(g.players[0].library.last(), Some(&t));
 }
 
+#[test]
+fn hedge_shredder_crews_attacks_and_puts_milled_lands_onto_the_battlefield() {
+    let mut g = game(&["Hedge Shredder", "Aegis Turtle"]);
+    let hs = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "Hedge Shredder")
+        .unwrap();
+    let turtle = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "Aegis Turtle")
+        .unwrap();
+    assert!(!g.types_of(hs).creature);
+    assert!(
+        !g.legal_actions().contains(&Action::ActivateWith(hs, 0, turtle)),
+        "Aegis Turtle has power 0"
+    );
+    let bird = put(&mut g, 0, "Strix Lookout");
+    act(&mut g, Action::ActivateWith(hs, 0, bird));
+    resolve_all(&mut g, &[]);
+    assert!(g.obj(bird).tapped);
+    assert!(g.types_of(hs).creature && g.types_of(hs).artifact);
+    assert_eq!(g.power(hs), 5);
+    let forest = top(&mut g, "Forest");
+    top(&mut g, "Aegis Turtle");
+    while g.step != Step::DeclareAttackers {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(hs));
+    act(&mut g, Action::FinishAttacks);
+    resolve_all(&mut g, &[Action::Yes]);
+    assert_eq!(g.obj(forest).zone, Zone::Battlefield);
+    assert!(g.obj(forest).tapped);
+    to_main1(&mut g, 4, 1);
+    assert!(!g.types_of(hs).creature, "until end of turn");
+}
+
+#[test]
+fn nissa_worldsoul_speaker_gets_energy_on_landfall_and_spends_eight_for_a_permanent() {
+    let mut g = game(&["Nissa, Worldsoul Speaker"]);
+    let nissa = g.permanents(0).next().unwrap();
+    let avenger = hand(&mut g, 0, "Avenger of Zendikar");
+    let f = hand(&mut g, 0, "Forest");
+    act(&mut g, Action::PlayLand(f));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].energy, 2);
+    assert!(!g.legal_actions().contains(&Action::CastWith(avenger, nissa)));
+    g.players[0].energy = 8;
+    act(&mut g, Action::CastWith(avenger, nissa));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(avenger).zone, Zone::Battlefield);
+    assert_eq!(g.players[0].energy, 0);
+    assert_eq!(g.obj(nissa).zone, Zone::Battlefield);
+}
+
 // ---- lane B: Phyrexian Metamorph, the Sakashimas, Zimone ----
 
 fn lb_has(g: &Game, a: Action) -> bool {

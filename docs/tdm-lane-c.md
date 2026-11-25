@@ -467,3 +467,12 @@ choice), so the spell can't be countered. Dread Return's three sacrifices are pi
 anyone gets priority. Force of Vigor's pitch is `CastWith(card, green card)`, offered only off your turn. Will of the
 Abzan's "both" is a third mode, legal only while you control a commander; "any number of target opponents" is the
 one opponent. Koma's modal ability is two activated abilities (the mode is chosen on activation, CR 700.2).
+
+PG batch 7 (2): Hedge Shredder, Nissa, Worldsoul Speaker.
+Core: `Activated::crew` (offered as `ActivateWith(vehicle, n, creature)` for each untapped creature with enough power;
+paying taps it), `Effect::{CrewedSelf, MilledLandsToBattlefieldTapped, Energy}`, `When::LandCardsMilledToYourGraveyard`,
+`Game::lands_milled_pending`, `Player::energy` (at the end of `Player`), `CardDef::permanents_for_energy`. Crew taps one
+creature (crew 1 never needs two). A crewed Vehicle is an artifact creature until end of turn (`eot_creature`).
+Hedge Shredder returns the land cards milled this turn that are still in your graveyard. Nissa's energy cast is
+`CastWith(permanent card, Nissa)`, mapped to an alternative cost of eight {E} (not for spells with a sacrifice or
+discard cost of their own).

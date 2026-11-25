@@ -431,6 +431,29 @@ pub fn script(name: &str) -> Option<Script> {
                 activated(d, "", true, vec![], vec![Effect::DrawThenSourceOnTop]);
             },
         ),
+        "Hedge Shredder" => s(
+            &[
+                "Whenever this Vehicle attacks, you may mill two cards.",
+                "Whenever one or more land cards are put into your graveyard from your library, put them onto the battlefield tapped.",
+                "Crew 1",
+            ],
+            |d, _| {
+                may(d, When::Attacks, vec![], vec![Effect::Mill { who: Who::You, n: 2 }]);
+                on(d, When::LandCardsMilledToYourGraveyard, vec![], vec![Effect::MilledLandsToBattlefieldTapped]);
+                let n = activated(d, "", false, vec![], vec![Effect::CrewedSelf]);
+                d.activated[n].crew = 1;
+            },
+        ),
+        "Nissa, Worldsoul Speaker" => s(
+            &[
+                "Landfall — Whenever a land you control enters, you get {E}{E} .",
+                "You may pay eight {E} rather than pay the mana cost for permanent spells you cast.",
+            ],
+            |d, _| {
+                on(d, When::LandYouControlEnters, vec![], vec![Effect::Energy(2)]);
+                d.permanents_for_energy = 8;
+            },
+        ),
         // ---- lane B: Glarb's clones and Zimone (copy exceptions, manifest dread) ----
         "Phyrexian Metamorph" => s(
             &["You may have this creature enter as a copy of any artifact or creature on the battlefield, except it's an artifact in addition to its other types."],
@@ -526,6 +549,8 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Will of the Abzan",
     "Koma, Cosmos Serpent",
     "Sensei's Divining Top",
+    "Hedge Shredder",
+    "Nissa, Worldsoul Speaker",
     // lane B
     "Phyrexian Metamorph",
     "Sakashima of a Thousand Faces",

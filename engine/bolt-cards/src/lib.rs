@@ -413,6 +413,7 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         last_mode_needs_commander: false,
         back: None,
         alt_cost_needs_commander: false,
+        permanents_for_energy: 0,
         phyrexian: [0; 5],
         copy_artifact: false,
         copy_keeps_name: false,
