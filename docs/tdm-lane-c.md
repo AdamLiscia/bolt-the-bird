@@ -130,3 +130,32 @@ Cards: Windcrag Siege, Frostcliff Siege, Hollowmurk Siege, Glacierwood Siege, Ba
 
 Merge note: the keyword-counter hook is one added line in `Effect::KeywordCounter`, which on tarkir now
 writes `keyword_counters`.
+
+## Round 3, batch 3: hands, graveyards, power-scaled effects, Dragon-only rules (11 cards)
+
+Mechanics added (bolt-core, all at the end of their enum or struct):
+- `Effect::ChooseExileFromHand { slot }` with `Decision::PickExile { victim }`: you choose a nonland card
+  from the target player's hand and exile it.
+- `Effect::BounceDrawIfToken(slot)`: return it to hand, and draw if it was a token.
+- `Effect::MillSourcePower(slot)`: mill equal to the source's power (last known if it left).
+- `Effect::MayExileFromGraveyard { n, creature_only }` with `Decision::ExileFromGraveyard`: "you may exile N
+  cards from your graveyard. If you do, ..." The rest of the effects happen only if all N are exiled
+  (nothing is offered when there are fewer than N). With `Effect::Reflexive` it covers "When you do".
+- `Effect::GateAttackingAtLeast(n)`: "if you control N or more attacking creatures", checked on resolution.
+- `When::EquippedAttacks` (fired when the equipped creature is declared as an attacker; Windcrag's Mardu
+  mode applies to it too) and `When::CreatureYouControlDiesFromGraveyard` (cards already in the dying
+  creature's controller's graveyard; not the dying card itself).
+- `Pick::InstantSorceryOrSubtype(&str)`; `Scope::YourUntappedSubtype(&str)`.
+- `CardDef::mana_only_if_you_control` (Mox Jasper), `CardDef::mana_equal_power` (Rainveil Rejuvenator: one
+  activation makes that much mana; unused mana from it is lost, the same as `mana_per_subtype`),
+  `CardDef::free_subtype_spells` (Dracogenesis: Dragon spells from any zone cost nothing; this doesn't
+  combine with alternative costs, flashback/harmonize or X, and never applies to an Omen half).
+
+Cards: Aggressive Negotiations, Sunpearl Kirin, Veteran Ice Climber, Kishla Trawlers, Rainveil Rejuvenator,
+Aegis Sculptor, Stormbeacon Blade, Dragonologist, Furious Forebear, Mox Jasper, Dracogenesis.
+
+Known edges:
+- Furious Forebear: when it dies in the same event as another creature of yours, the engine moves them one at
+  a time, so it can see the other's death if that one is moved after it. It doesn't see its own death.
+- Waiting for the tarkir merge (`Object::keyword_counters`): Yathan Tombguard, Delta Bloodflies and Formation
+  Breaker ("a creature with a counter on it"), and Armament Dragon (`Effect::DividedCounters`).

@@ -328,6 +328,13 @@ pub struct CardDef {
     pub attack_triggers_again_in_mode: Option<u8>,
     /// In this chosen mode: "You may play lands from your graveyard." (Glacierwood Siege)
     pub graveyard_lands_in_mode: Option<u8>,
+    /// Its mana ability works only while you control a permanent with this subtype ("Activate only
+    /// if you control a Dragon", Mox Jasper).
+    pub mana_only_if_you_control: Option<&'static str>,
+    /// "{T}: Add an amount of {G} equal to this creature's power" (one activation, that many mana).
+    pub mana_equal_power: bool,
+    /// "You may cast [subtype] spells without paying their mana costs" (Dracogenesis).
+    pub free_subtype_spells: Option<&'static str>,
 }
 
 /// An Omen spell half: its name, cost, whether it's an instant, and what it does.
@@ -434,6 +441,9 @@ impl CardDef {
             enter_modes: false,
             attack_triggers_again_in_mode: None,
             graveyard_lands_in_mode: None,
+            mana_only_if_you_control: None,
+            mana_equal_power: false,
+            free_subtype_spells: None,
         }
     }
 
@@ -519,6 +529,9 @@ impl CardDef {
             enter_modes: false,
             attack_triggers_again_in_mode: None,
             graveyard_lands_in_mode: None,
+            mana_only_if_you_control: None,
+            mana_equal_power: false,
+            free_subtype_spells: None,
         }
     }
 
@@ -604,6 +617,9 @@ impl CardDef {
             enter_modes: false,
             attack_triggers_again_in_mode: None,
             graveyard_lands_in_mode: None,
+            mana_only_if_you_control: None,
+            mana_equal_power: false,
+            free_subtype_spells: None,
         }
     }
 }

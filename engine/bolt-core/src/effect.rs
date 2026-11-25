@@ -599,6 +599,23 @@ pub enum Effect {
     DestroyOpponentsNonland,
     /// Destroy all creatures and enchantments, then draw a card for each permanent destroyed.
     DestroyCreaturesAndEnchantmentsDraw,
+    /// The ability's controller chooses a nonland card from the hand of the player in `slot`, and
+    /// exiles it (Aggressive Negotiations).
+    ChooseExileFromHand {
+        slot: u8,
+    },
+    /// Return the permanent in `slot` to its owner's hand; if it was a token, draw a card.
+    BounceDrawIfToken(u8),
+    /// The player in `slot` mills cards equal to the source's power (last known if it left).
+    MillSourcePower(u8),
+    /// "You may exile `n` [creature] cards from your graveyard. If you do, ..." — the rest of the
+    /// effects happen only if they are exiled.
+    MayExileFromGraveyard {
+        n: u8,
+        creature_only: bool,
+    },
+    /// Stop here unless you control at least this many attacking creatures.
+    GateAttackingAtLeast(u8),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -648,6 +665,8 @@ pub enum Scope {
     YourCreaturesOfChosenColor,
     /// Creatures you control of the source's chosen creature type.
     YourCreaturesOfChosenType,
+    /// Untapped creatures you control with this subtype ("Untapped Dragons you control").
+    YourUntappedSubtype(&'static str),
 }
 
 /// What a scaled static ability counts.
@@ -723,6 +742,8 @@ pub enum Pick {
     CreatureOrLand,
     /// A land card.
     Land,
+    /// An instant, a sorcery, or a card with this subtype ("an instant, sorcery, or Dragon card").
+    InstantSorceryOrSubtype(&'static str),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -922,6 +943,10 @@ pub enum When {
     /// "Whenever a counter is put on a creature you control. This ability triggers only once each
     /// turn." (Counters it enters with count, CR 122.6.)
     CounterPutOnYourCreatureOnceEachTurn,
+    /// "Whenever equipped creature attacks".
+    EquippedAttacks,
+    /// "Whenever a creature you control dies while this card is in your graveyard".
+    CreatureYouControlDiesFromGraveyard,
 }
 
 #[derive(Clone, Debug, PartialEq)]

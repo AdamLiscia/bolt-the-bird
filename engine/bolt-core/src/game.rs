@@ -631,6 +631,15 @@ pub enum Decision {
     PayOrCountered { cost: ManaCost, against: ObjId },
     /// "As this enters, choose [A] or [B]": `Mode(0)` or `Mode(1)` (the Sieges).
     ChooseEnterMode { card: ObjId },
+    /// Choose a nonland card from `victim`'s hand to exile.
+    PickExile { victim: PlayerId },
+    /// Exile `left` more cards from your graveyard (creature cards only, if `creature_only`);
+    /// before the first, `No` declines and skips the rest of the effects.
+    ExileFromGraveyard {
+        left: u8,
+        creature_only: bool,
+        started: bool,
+    },
 }
 
 /// An until-end-of-turn change to one object (CR 611.2, 613).
@@ -1129,6 +1138,9 @@ impl Game {
                             Scope::OtherYourSubtype(sub) => {
                                 mine && creature && src != id && self.has_base_subtype(id, sub)
                             }
+                            Scope::YourUntappedSubtype(sub) => {
+                                mine && creature && !o.tapped && self.has_base_subtype(id, sub)
+                            }
                             Scope::OtherYourFliers => {
                                 mine && creature
                                     && src != id
@@ -1612,6 +1624,32 @@ impl Game {
         if dies && self.types_of(id).creature {
             self.creature_died_this_turn = true;
             self.creature_died_under[last_controller] = true;
+            // "Whenever a creature you control dies while this card is in your graveyard": cards
+            // already there (not the one that just died).
+            for g in self.players[last_controller].graveyard.clone() {
+                if g == id || self.obj(g).owner != last_controller {
+                    continue;
+                }
+                let whens: Vec<When> = self.def_of(g).triggers.iter().map(|tr| tr.when).collect();
+                for (n, w) in whens.into_iter().enumerate() {
+                    if w == When::CreatureYouControlDiesFromGraveyard {
+                        self.triggered.push(StackItem {
+                            source: g,
+                            controller: last_controller,
+                            kind: StackKind::Trigger(n),
+                            targets: Vec::new(),
+                            kicked: false,
+                            flashback: false,
+                            extra: None,
+                            mode: None,
+                            amount: 0,
+                            alt: false,
+                            x: 0,
+                            division: Vec::new(),
+                        });
+                    }
+                }
+            }
             self.fire(last_controller, When::CreatureYouControlDies, Some(id));
             if !self.is_token(id) {
                 let was = |g: &Game, s: &str| {
@@ -2485,7 +2523,16 @@ impl Game {
         let in_hand = o.zone == Zone::Hand || (o.zone == Zone::Stack && o.from_hand);
         // CR 107.3b, 118.9: cast without paying its mana cost, X is 0. Choosing a bigger X means
         // paying the cost.
-        let free = (o.cast_free || (in_hand && self.permanents(p).any(|x| self.def_of(x).free_from_hand)))
+        // Dracogenesis: "You may cast Dragon spells without paying their mana costs" (not an Omen half).
+        let free_subtype = mode.mode != Some(OMEN_MODE)
+            && self.permanents(p).any(|x| {
+                self.def_of(x)
+                    .free_subtype_spells
+                    .is_some_and(|sub| def.subtypes.iter().any(|s| s == sub))
+            });
+        let free = (o.cast_free
+            || free_subtype
+            || (in_hand && self.permanents(p).any(|x| self.def_of(x).free_from_hand)))
             && mode.x == 0
             && !mode.alt
             && !mode.flashback;
@@ -3161,6 +3208,12 @@ impl Game {
                     .count()
                     .max(1)
             });
+            // "an amount of {G} equal to this creature's power"
+            let n = if self.def_of(id).mana_equal_power {
+                self.power(id).max(0) as usize
+            } else {
+                n
+            };
             out.extend(std::iter::repeat_n((id, m), n));
         }
         out
@@ -3184,6 +3237,11 @@ impl Game {
                     });
                 }
                 let d = self.def_of(id);
+                if d.mana_only_if_you_control
+                    .is_some_and(|sub| !self.permanents(p).any(|x| self.has_subtype(x, sub)))
+                {
+                    return None; // "Activate only if you control a Dragon"
+                }
                 if d.vivid_mana {
                     return Some((id, ManaSource::default()));
                 }
@@ -3508,6 +3566,17 @@ impl Game {
                             division: Vec::new(),
                         });
                     }
+                }
+                // "Whenever equipped creature attacks".
+                let zcc = self.obj(c).zcc;
+                let gear: Vec<ObjId> = self
+                    .battlefield
+                    .iter()
+                    .copied()
+                    .filter(|&e| self.obj(e).attached_to == Some((c, zcc)))
+                    .collect();
+                for e in gear {
+                    self.fire_source(e, When::EquippedAttacks);
                 }
                 self.attack_triggers_again(before);
             }
@@ -4183,6 +4252,9 @@ impl Game {
             Pick::InstantOrSorcery => d.types.instant || d.types.sorcery,
             Pick::CreatureOrLand => d.types.creature || d.types.land,
             Pick::Land => d.types.land,
+            Pick::InstantSorceryOrSubtype(sub) => {
+                d.types.instant || d.types.sorcery || d.subtypes.iter().any(|s| s == sub)
+            }
             Pick::CreatureMvAtMostLands => {
                 let owner = self.obj(c).owner;
                 let lands = self.permanents(owner).filter(|&x| self.types_of(x).land).count() as u32;
@@ -4335,6 +4407,28 @@ impl Game {
             Decision::Discard { optional, .. } => {
                 let mut v: Vec<Action> = hand.iter().map(|&c| Action::Discard(c)).collect();
                 if *optional {
+                    v.push(Action::No);
+                }
+                v
+            }
+            Decision::PickExile { victim } => self.players[*victim]
+                .hand
+                .iter()
+                .filter(|&&c| !self.types_of(c).land)
+                .map(|&c| Action::Pick(c))
+                .collect(),
+            Decision::ExileFromGraveyard {
+                creature_only,
+                started,
+                ..
+            } => {
+                let mut v: Vec<Action> = self.players[p]
+                    .graveyard
+                    .iter()
+                    .filter(|&&c| !*creature_only || self.def_of(c).types.creature)
+                    .map(|&c| Action::Pick(c))
+                    .collect();
+                if !*started {
                     v.push(Action::No);
                 }
                 v
@@ -4597,6 +4691,28 @@ impl Game {
             }
             (Decision::Discard { .. }, Action::No) => {}
             (Decision::PickDiscard { .. }, Action::Pick(c)) => self.move_to(c, Zone::Graveyard),
+            (Decision::PickExile { .. }, Action::Pick(c)) => self.move_to(c, Zone::Exile),
+            (
+                Decision::ExileFromGraveyard {
+                    left, creature_only, ..
+                },
+                Action::Pick(c),
+            ) => {
+                self.move_to(c, Zone::Exile);
+                if left > 1 {
+                    self.ask(
+                        p,
+                        Decision::ExileFromGraveyard {
+                            left: left - 1,
+                            creature_only,
+                            started: true,
+                        },
+                    );
+                }
+            }
+            (Decision::ExileFromGraveyard { .. }, Action::No) => {
+                self.resolving.as_mut().expect("resolving").remaining.clear();
+            }
             (Decision::Endure { n, spirit }, choice) => {
                 let src = self.resolving.as_ref().map(|r| r.item.source);
                 match src {
@@ -5093,6 +5209,74 @@ impl Game {
                     let opp = opponent(item.controller);
                     self.lose_life(opp, n);
                     self.gain_life(item.controller, n);
+                }
+            }
+            Effect::ChooseExileFromHand { slot } => {
+                if let Some(victim) = self
+                    .players_for(item, legal, Who::TargetPlayer(slot))
+                    .into_iter()
+                    .next()
+                {
+                    if self.players[victim].hand.iter().any(|&c| !self.types_of(c).land) {
+                        self.ask(item.controller, Decision::PickExile { victim });
+                    }
+                }
+            }
+            Effect::BounceDrawIfToken(n) => {
+                if let Some(id) = Game::slot_object(item, legal, n) {
+                    if self.obj(id).zone == Zone::Battlefield {
+                        let token = self.is_token(id);
+                        self.move_to(id, Zone::Hand);
+                        if token {
+                            self.draw(item.controller);
+                        }
+                    }
+                }
+            }
+            Effect::MillSourcePower(n) => {
+                let power = if self.obj(src).zone == Zone::Battlefield {
+                    self.power(src)
+                } else {
+                    self.obj(src).last_power
+                };
+                for p in self.players_for(item, legal, Who::TargetPlayer(n)) {
+                    for _ in 0..power.max(0) {
+                        if let Some(&c) = self.players[p].library.last() {
+                            self.move_to(c, Zone::Graveyard);
+                        }
+                    }
+                }
+            }
+            Effect::MayExileFromGraveyard { n, creature_only } => {
+                let p = item.controller;
+                let have = self.players[p]
+                    .graveyard
+                    .iter()
+                    .filter(|&&c| !creature_only || self.def_of(c).types.creature)
+                    .count();
+                if have < n as usize {
+                    self.resolving.as_mut().expect("resolving").remaining.clear();
+                } else {
+                    self.ask(
+                        p,
+                        Decision::ExileFromGraveyard {
+                            left: n,
+                            creature_only,
+                            started: false,
+                        },
+                    );
+                }
+            }
+            Effect::GateAttackingAtLeast(n) => {
+                let p = item.controller;
+                let attacking = self.combat.as_ref().map_or(0, |c| {
+                    c.attackers
+                        .iter()
+                        .filter(|&&a| self.obj(a).controller == p)
+                        .count()
+                });
+                if attacking < n as usize {
+                    self.resolving.as_mut().expect("resolving").remaining.clear();
                 }
             }
             Effect::GrantAttached(keywords) => {

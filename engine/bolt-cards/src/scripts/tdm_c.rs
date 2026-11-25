@@ -330,6 +330,103 @@ pub fn script(name: &str) -> Option<Script> {
                 conditional(d, end, died, vec![], vec![Effect::SacrificeCreatures { who: Who::EachOpponent, n: 1 }]);
             },
         ),
+        // ---- lane C round 3, batch 3: hands, graveyards, power-scaled effects, Dragon-only rules ----
+        "Aggressive Negotiations" => s(
+            &["Target opponent reveals their hand. You choose a nonland card from it and exile that card. Put a +1/+1 counter on up to one target creature you control."],
+            |d, _| {
+                let opp = Filter::PLAYER.controlled_by(Controller::Opponent);
+                let mut a = Ability::new(vec![opp, YOUR_CREATURE], vec![Effect::ChooseExileFromHand { slot: 0 }, Effect::Counters { slot: 1, n: 1 }]);
+                a.min_targets = Some(1); // the creature is "up to one"
+                d.spell = Some(a);
+            },
+        ),
+        "Sunpearl Kirin" => s(
+            &["When this creature enters, return up to one other target nonland permanent you control to its owner's hand. If it was a token, draw a card."],
+            |d, _| {
+                let mine = Filter { other: true, controller: Controller::You, ..OPP_NONLAND };
+                d.triggers.push(Trigger { when: When::Enters, ability: up_to(vec![mine], vec![Effect::BounceDrawIfToken(0)]) });
+            },
+        ),
+        "Veteran Ice Climber" => s(
+            &[
+                "This creature can't be blocked.",
+                "Whenever this creature attacks, up to one target player mills cards equal to this creature's power.",
+            ],
+            |d, _| {
+                static_on(d, Scope::This, false, Keywords::UNBLOCKABLE);
+                d.triggers.push(Trigger { when: When::Attacks, ability: up_to(vec![Filter::PLAYER], vec![Effect::MillSourcePower(0)]) });
+            },
+        ),
+        "Kishla Trawlers" => s(
+            &["When this creature enters, you may exile a creature card from your graveyard. When you do, return target instant or sorcery card from your graveyard to your hand."],
+            |d, _| {
+                on(d, When::Enters, vec![], vec![Effect::MayExileFromGraveyard { n: 1, creature_only: true }, Effect::Reflexive(1)]);
+                let spell_card = Filter { instant_or_sorcery: true, ..graveyard_cards(false, Controller::You) };
+                on(d, When::Never, vec![spell_card], vec![Effect::Bounce(0)]);
+            },
+        ),
+        "Rainveil Rejuvenator" => s(
+            &["When this creature enters, you may mill three cards.", "{T}: Add an amount of {G} equal to this creature's power."],
+            |d, _| {
+                may(d, When::Enters, vec![], vec![Effect::Mill { who: Who::You, n: 3 }]);
+                d.mana = Some(ManaSource::of(&[Color::Green]));
+                d.mana_equal_power = true;
+            },
+        ),
+        "Aegis Sculptor" => s(
+            &["Ward {2}", "At the beginning of your upkeep, you may exile two cards from your graveyard. If you do, put a +1/+1 counter on this creature."],
+            |d, _| {
+                d.ward = ManaCost::parse("{2}");
+                on(
+                    d,
+                    When::Upkeep { your_turn_only: true },
+                    vec![],
+                    vec![Effect::MayExileFromGraveyard { n: 2, creature_only: false }, Effect::CountersSelf { n: 1 }],
+                );
+            },
+        ),
+        "Stormbeacon Blade" => s(
+            &[
+                "Equipped creature gets +3/+0.",
+                "Whenever equipped creature attacks, draw a card if you control three or more attacking creatures.",
+                "Equip {2}",
+            ],
+            |d, _| {
+                attached(d, false, 3, 0, Keywords::NONE);
+                on(d, When::EquippedAttacks, vec![], vec![Effect::GateAttackingAtLeast(3), draw(1)]);
+                equip(d, "{2}");
+            },
+        ),
+        "Dragonologist" => s(
+            &[
+                "When this creature enters, look at the top six cards of your library. You may reveal an instant, sorcery, or Dragon card from among them and put it into your hand. Put the rest on the bottom of your library in a random order.",
+                "Untapped Dragons you control have hexproof.",
+            ],
+            |d, _| {
+                let look = Effect::LookAtTop {
+                    n: 6,
+                    pick: Pick::InstantSorceryOrSubtype("Dragon"),
+                    chosen_to: LookTo::Hand,
+                    rest_to: LookRest::BottomRandom,
+                };
+                on(d, When::Enters, vec![], vec![look]);
+                static_on(d, Scope::YourUntappedSubtype("Dragon"), false, Keywords::HEXPROOF);
+            },
+        ),
+        "Furious Forebear" => s(
+            &["Whenever a creature you control dies while this card is in your graveyard, you may pay {1}{W}. If you do, return this card from your graveyard to your hand."],
+            |d, _| {
+                let cost = ManaCost::parse("{1}{W}").expect("cost");
+                on(d, When::CreatureYouControlDiesFromGraveyard, vec![], vec![Effect::MayPay(cost), Effect::ReturnSelfToHand]);
+            },
+        ),
+        "Mox Jasper" => s(&["{T}: Add one mana of any color. Activate only if you control a Dragon."], |d, _| {
+            d.mana = Some(ManaSource::of(&Color::ALL));
+            d.mana_only_if_you_control = Some("Dragon");
+        }),
+        "Dracogenesis" => s(&["You may cast Dragon spells without paying their mana costs."], |d, _| {
+            d.free_subtype_spells = Some("Dragon");
+        }),
         _ => None,
     }
 }
@@ -366,4 +463,15 @@ pub const TDM_C_SCRIPTED: &[&str] = &[
     "Hollowmurk Siege",
     "Glacierwood Siege",
     "Barrensteppe Siege",
+    "Aggressive Negotiations",
+    "Sunpearl Kirin",
+    "Veteran Ice Climber",
+    "Kishla Trawlers",
+    "Rainveil Rejuvenator",
+    "Aegis Sculptor",
+    "Stormbeacon Blade",
+    "Dragonologist",
+    "Furious Forebear",
+    "Mox Jasper",
+    "Dracogenesis",
 ];

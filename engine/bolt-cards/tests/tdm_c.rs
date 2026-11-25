@@ -922,3 +922,279 @@ fn barrensteppe_siege_mardu_makes_them_sacrifice_if_yours_died() {
         "each opponent sacrificed one"
     );
 }
+
+// ---- round 3, batch 3 ----
+
+#[test]
+fn aggressive_negotiations_exiles_a_nonland_card_and_grows_a_creature() {
+    let mut g = table();
+    let land = hand(&mut g, 1, "Forest");
+    let card = hand(&mut g, 1, "Twin Bolt");
+    let mine = put(&mut g, 0, "Unburied Earthcarver");
+    let c = hand(&mut g, 0, "Aggressive Negotiations");
+    begin(&mut g);
+    act(&mut g, Action::Cast(c));
+    act(&mut g, Action::Target(Target::Player(1)));
+    act(&mut g, Action::Target(obj(mine)));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.legal_actions(), [Action::Pick(card)], "nonland cards only");
+    act(&mut g, Action::Pick(card));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(card).zone, Zone::Exile);
+    assert_eq!(g.obj(land).zone, Zone::Hand);
+    assert_eq!(g.obj(mine).counters, 1);
+
+    // The creature is "up to one".
+    let other = hand(&mut g, 1, "Twin Bolt");
+    let c2 = hand(&mut g, 0, "Aggressive Negotiations");
+    act(&mut g, Action::Cast(c2));
+    act(&mut g, Action::Target(Target::Player(1)));
+    act(&mut g, Action::No);
+    resolve_all(&mut g, &[Action::Pick(other)]);
+    assert_eq!(g.obj(other).zone, Zone::Exile);
+    assert_eq!(g.obj(mine).counters, 1);
+}
+
+#[test]
+fn sunpearl_kirin_bounces_and_draws_only_for_a_token() {
+    let mut g = table();
+    let goblin = g.add_card(0, set_token(&g, "Goblin"), Zone::Battlefield);
+    let creature = put(&mut g, 0, "Unburied Earthcarver");
+    let land = g.permanents(0).find(|&x| g.types_of(x).land).unwrap();
+    let k = hand(&mut g, 0, "Sunpearl Kirin");
+    let ks = g.def_of(k).keywords;
+    assert!(ks.has(Keywords::FLASH) && ks.has(Keywords::FLYING));
+    begin(&mut g);
+    act(&mut g, Action::Cast(k));
+    to_target_choice(&mut g);
+    let legal = g.legal_actions();
+    assert!(!legal.contains(&Action::Target(obj(k))), "other");
+    assert!(!legal.contains(&Action::Target(obj(land))), "nonland");
+    let cards = g.players[0].hand.len();
+    act(&mut g, Action::Target(obj(goblin)));
+    resolve_all(&mut g, &[]);
+    assert!(tokens(&g, 0, "Goblin").is_empty());
+    assert_eq!(g.players[0].hand.len(), cards + 1, "drew for the token");
+
+    let k2 = hand(&mut g, 0, "Sunpearl Kirin");
+    let cards = g.players[0].hand.len();
+    play(&mut g, k2, false, &[], &[Action::Target(obj(creature))]);
+    assert_eq!(g.obj(creature).zone, Zone::Hand);
+    assert_eq!(
+        g.players[0].hand.len(),
+        cards - 1 + 1,
+        "the creature came back, no draw"
+    );
+}
+
+#[test]
+fn veteran_ice_climber_is_unblockable_and_mills_by_its_power() {
+    let mut g = table();
+    let v = put(&mut g, 0, "Veteran Ice Climber");
+    assert!(g.keywords(v).has(Keywords::UNBLOCKABLE) && g.keywords(v).has(Keywords::VIGILANCE));
+    let lib = g.players[1].library.len();
+    attack_with(&mut g, v);
+    act(&mut g, Action::Target(Target::Player(1)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].library.len(), lib - 1, "power 1");
+}
+
+#[test]
+fn kishla_trawlers_trades_a_creature_card_for_a_spell_card() {
+    let mut g = table();
+    let creature = g.add_card(0, tid("Unburied Earthcarver"), Zone::Graveyard);
+    let spell = g.add_card(0, tid("Twin Bolt"), Zone::Graveyard);
+    let c = hand(&mut g, 0, "Kishla Trawlers");
+    begin(&mut g);
+    act(&mut g, Action::Cast(c));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(
+        g.legal_actions(),
+        [Action::Pick(creature), Action::No],
+        "creature cards, or decline"
+    );
+    act(&mut g, Action::Pick(creature));
+    resolve_all(&mut g, &[Action::Target(obj(spell))]);
+    assert_eq!(g.obj(creature).zone, Zone::Exile);
+    assert_eq!(g.obj(spell).zone, Zone::Hand);
+
+    let spell2 = g.add_card(0, tid("Twin Bolt"), Zone::Graveyard);
+    let _creature2 = g.add_card(0, tid("Summit Intimidator"), Zone::Graveyard);
+    let c2 = hand(&mut g, 0, "Kishla Trawlers");
+    play(&mut g, c2, false, &[], &[Action::No]);
+    assert_eq!(g.obj(spell2).zone, Zone::Graveyard, "declined: no return");
+}
+
+#[test]
+fn rainveil_rejuvenator_mills_and_taps_for_green_equal_to_its_power() {
+    let mut g = tdm_lands(&["Forest", "Forest", "Forest", "Forest"]);
+    let r = hand(&mut g, 0, "Rainveil Rejuvenator");
+    begin(&mut g);
+    let lib = g.players[0].library.len();
+    play(&mut g, r, false, &[], &[Action::Yes]);
+    assert_eq!(g.players[0].library.len(), lib - 3);
+    main_phase_turn_5(&mut g);
+    let from_it = g.mana_sources(0).iter().filter(|(x, _)| *x == r).count();
+    assert_eq!(from_it, 2, "power 2");
+    let breaker = hand(&mut g, 0, "Formation Breaker"); // {1}{G}
+    for f in g
+        .permanents(0)
+        .filter(|&x| g.types_of(x).land)
+        .collect::<Vec<_>>()
+    {
+        g.move_card(f, Zone::Graveyard); // only the Rejuvenator left to pay
+    }
+    act(&mut g, Action::Cast(breaker));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(breaker).zone, Zone::Battlefield);
+    assert!(g.obj(r).tapped);
+}
+
+#[test]
+fn aegis_sculptor_grows_by_exiling_two_graveyard_cards() {
+    let mut g = table();
+    let a = put(&mut g, 0, "Aegis Sculptor");
+    assert!(g.def_of(a).ward.is_some());
+    let one = g.add_card(0, tid("Twin Bolt"), Zone::Graveyard);
+    g.start_turn(5, 0);
+    assert_eq!(g.obj(a).counters, 0, "one card isn't enough");
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    let two = g.add_card(0, tid("Summit Intimidator"), Zone::Graveyard);
+    g.start_turn(7, 0);
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Pick(one));
+    act(&mut g, Action::Pick(two));
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.obj(one).zone, g.obj(two).zone), (Zone::Exile, Zone::Exile));
+    assert_eq!(g.obj(a).counters, 1);
+}
+
+#[test]
+fn stormbeacon_blade_pumps_and_draws_with_three_attackers() {
+    let mut g = table();
+    let blade = put(&mut g, 0, "Stormbeacon Blade");
+    let a = put(&mut g, 0, "Unburied Earthcarver");
+    let b = put(&mut g, 0, "Summit Intimidator");
+    let c = put(&mut g, 0, "Arashin Sunshield");
+    begin(&mut g);
+    act(&mut g, Action::Activate(blade, 0));
+    act(&mut g, Action::Target(obj(a)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.power(a), 5);
+
+    let mut alone = g.clone();
+    attack_with(&mut alone, a);
+    let cards = alone.players[0].hand.len();
+    resolve_all(&mut alone, &[]);
+    assert_eq!(alone.players[0].hand.len(), cards, "one attacker: no card");
+
+    g.start_turn(5, 0);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    let cards = g.players[0].hand.len();
+    for x in [a, b, c] {
+        act(&mut g, Action::Attack(x));
+    }
+    act(&mut g, Action::FinishAttacks);
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].hand.len(), cards + 1, "three attackers: draw");
+}
+
+#[test]
+fn dragonologist_finds_a_dragon_and_shields_untapped_dragons() {
+    let mut g = table();
+    let mine = put(&mut g, 0, "Boulderborn Dragon");
+    let theirs = put(&mut g, 1, "Boulderborn Dragon");
+    let tapper = put(&mut g, 0, "Arashin Sunshield"); // {W}, {T}: tap target creature
+    let c = hand(&mut g, 0, "Dragonologist");
+    begin(&mut g);
+    let dragon = g.add_card(0, tid("Boulderborn Dragon"), Zone::Library);
+    let creature = g.add_card(0, tid("Unburied Earthcarver"), Zone::Library);
+    act(&mut g, Action::Cast(c));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Pick(dragon)));
+    assert!(
+        !legal.contains(&Action::Pick(creature)),
+        "instants, sorceries, Dragons"
+    );
+    act(&mut g, Action::Pick(dragon));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(dragon).zone, Zone::Hand);
+    assert!(
+        g.players[0].library[..5].contains(&creature),
+        "the rest on the bottom, in a random order"
+    );
+    assert!(g.keywords(mine).has(Keywords::HEXPROOF));
+    assert!(!g.keywords(theirs).has(Keywords::HEXPROOF), "yours only");
+    assert!(!g.keywords(c).has(Keywords::HEXPROOF), "Dragons only");
+    main_phase_turn_5(&mut g);
+    act(&mut g, Action::Activate(tapper, 0)); // your own ability can target it
+    act(&mut g, Action::Target(obj(mine)));
+    resolve_all(&mut g, &[]);
+    assert!(g.obj(mine).tapped);
+    assert!(!g.keywords(mine).has(Keywords::HEXPROOF), "untapped only");
+}
+
+#[test]
+fn furious_forebear_returns_when_another_creature_of_yours_dies() {
+    let mut g = table();
+    let f = g.add_card(0, tid("Furious Forebear"), Zone::Graveyard);
+    let e = put(&mut g, 0, "Unburied Earthcarver");
+    let fodder = put(&mut g, 0, "Summit Intimidator");
+    let theirs = put(&mut g, 1, "Unburied Earthcarver");
+    let bolt = hand(&mut g, 0, "Channeled Dragonfire");
+    begin(&mut g);
+    play(&mut g, bolt, false, &[obj(theirs)], &[]);
+    assert_eq!(g.obj(theirs).zone, Zone::Graveyard);
+    assert_eq!(g.obj(f).zone, Zone::Graveyard, "not for an opponent's creature");
+    act(&mut g, Action::ActivateWith(e, 0, fodder));
+    resolve_all(&mut g, &[Action::Yes]);
+    assert_eq!(g.obj(f).zone, Zone::Hand, "paid {{1}}{{W}}");
+
+    // It doesn't see its own death.
+    let mut g2 = table();
+    let f2 = put(&mut g2, 0, "Furious Forebear");
+    let e2 = put(&mut g2, 0, "Unburied Earthcarver");
+    begin(&mut g2);
+    act(&mut g2, Action::ActivateWith(e2, 0, f2));
+    resolve_all(&mut g2, &[]);
+    assert_eq!(g2.obj(f2).zone, Zone::Graveyard);
+}
+
+#[test]
+fn mox_jasper_makes_mana_only_with_a_dragon() {
+    let mut g = tdm_lands(&[]);
+    let mox = put(&mut g, 0, "Mox Jasper");
+    begin(&mut g);
+    assert!(g.mana_sources(0).iter().all(|(x, _)| *x != mox), "no Dragon");
+    put(&mut g, 0, "Boulderborn Dragon");
+    let from_mox: Vec<_> = g.mana_sources(0).into_iter().filter(|(x, _)| *x == mox).collect();
+    assert_eq!(from_mox.len(), 1);
+    assert_eq!(from_mox[0].1.colors, [true; 5], "any color");
+}
+
+#[test]
+fn dracogenesis_casts_dragons_for_free() {
+    let mut g = tdm_lands(&[]);
+    put(&mut g, 0, "Dracogenesis");
+    let d = hand(&mut g, 0, "Boulderborn Dragon"); // {5}
+    let other = hand(&mut g, 0, "Unburied Earthcarver");
+    begin(&mut g);
+    let legal = g.legal_actions();
+    assert!(!legal.contains(&Action::Cast(other)), "only Dragon spells");
+    act(&mut g, Action::Cast(d));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(d).zone, Zone::Battlefield);
+}
