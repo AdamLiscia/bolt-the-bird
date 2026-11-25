@@ -1304,3 +1304,127 @@ fn chasm_skulker_grows_on_draws_and_splits_into_islandwalking_squids() {
     assert_eq!(squids.len(), 2);
     assert!(g.keywords(squids[0]).has(Keywords::ISLANDWALK));
 }
+
+#[test]
+fn tempt_with_bunnies_pays_you_again_when_the_opponent_accepts() {
+    let mut g = table();
+    let (mine, theirs) = (g.players[0].hand.len(), g.players[1].hand.len());
+    let c = hand(&mut g, 0, "Tempt with Bunnies");
+    play(&mut g, c, false, &[], &[Action::Yes]);
+    assert_eq!(
+        (g.players[0].hand.len(), g.players[1].hand.len()),
+        (mine + 2, theirs + 1)
+    );
+    assert_eq!(
+        (tokens(&g, 0, "Rabbit").len(), tokens(&g, 1, "Rabbit").len()),
+        (2, 1)
+    );
+
+    let mut g = table();
+    let (mine, theirs) = (g.players[0].hand.len(), g.players[1].hand.len());
+    let c = hand(&mut g, 0, "Tempt with Bunnies");
+    play(&mut g, c, false, &[], &[Action::No]);
+    assert_eq!(
+        (g.players[0].hand.len(), g.players[1].hand.len()),
+        (mine + 1, theirs)
+    );
+    assert_eq!(
+        (tokens(&g, 0, "Rabbit").len(), tokens(&g, 1, "Rabbit").len()),
+        (1, 0)
+    );
+}
+
+#[test]
+fn path_of_discovery_makes_entering_creatures_explore() {
+    let mut g = table();
+    put(&mut g, 0, "Path of Discovery");
+    let n = g.players[0].hand.len();
+    let a = hand(&mut g, 0, "Morbid Opportunist");
+    play(&mut g, a, false, &[], &[]); // reveals a Plains: to hand
+    assert_eq!(g.players[0].hand.len(), n + 1, "the Plains came to hand");
+    assert_eq!(g.power(a), 1);
+    let top = g.add_card(0, bid("Morbid Opportunist"), Zone::Library);
+    let b = hand(&mut g, 0, "Morbid Opportunist");
+    play(&mut g, b, false, &[], &[Action::Yes]); // a nonland: counter, and mill it
+    assert_eq!(g.power(b), 2);
+    assert_eq!(g.obj(top).zone, Zone::Graveyard);
+}
+
+#[test]
+fn tendershoot_dryad_makes_saprolings_that_grow_with_the_citys_blessing() {
+    let mut g = with_lands(&[]);
+    put(&mut g, 0, "Tendershoot Dryad");
+    to_main1(&mut g, 5, 0);
+    let saps = tokens(&g, 0, "Saproling");
+    assert_eq!(saps.len(), 1);
+    assert_eq!(g.power(saps[0]), 1, "two permanents: no blessing");
+    for _ in 0..8 {
+        put(&mut g, 0, "Plains");
+    }
+    to_main1(&mut g, 6, 1); // each upkeep: the opponent's too
+    let saps = tokens(&g, 0, "Saproling");
+    assert_eq!(saps.len(), 2);
+    assert!(g.city_blessing[0]);
+    assert_eq!((g.power(saps[0]), g.toughness(saps[0])), (3, 3));
+}
+
+#[test]
+fn wandertale_mentor_grows_when_you_expend_four() {
+    let mut g = table();
+    let m = put(&mut g, 0, "Wandertale Mentor");
+    let rg = [false, false, false, true, true];
+    assert!(g.mana_sources(0).iter().any(|&(x, s)| x == m && s.colors == rg));
+    let a = hand(&mut g, 0, "Morbid Opportunist"); // 3 mana
+    play(&mut g, a, false, &[], &[]);
+    assert_eq!(g.power(m), 2);
+    let b = hand(&mut g, 0, "Morbid Opportunist"); // the fourth to sixth
+    play(&mut g, b, false, &[], &[]);
+    assert_eq!(g.power(m), 3);
+    let c = hand(&mut g, 0, "Morbid Opportunist");
+    play(&mut g, c, false, &[], &[]);
+    assert_eq!(g.power(m), 3, "only once each turn");
+}
+
+#[test]
+fn trailtracker_scout_returns_a_permanent_card_when_you_expend_eight() {
+    let mut g = table();
+    put(&mut g, 0, "Trailtracker Scout");
+    let card = g.add_card(0, bid("Arcane Signet"), Zone::Graveyard);
+    let coup = hand(&mut g, 0, "Martial Coup");
+    act(&mut g, Action::CastX(coup, 6)); // eight mana
+    resolve_all(&mut g, &[Action::Target(obj(card))]);
+    assert_eq!(g.obj(card).zone, Zone::Hand);
+}
+
+#[test]
+fn sword_of_the_squeak_attaches_to_small_kin_and_counts_ones() {
+    let mut g = table();
+    let sword = put(&mut g, 0, "Sword of the Squeak");
+    put(&mut g, 0, "Morbid Opportunist"); // base power 1
+    let storm = hand(&mut g, 0, "Chatterstorm");
+    play(&mut g, storm, false, &[], &[Action::Yes]);
+    let sq = tokens(&g, 0, "Squirrel")[0];
+    assert_eq!(g.obj(sword).attached_to.map(|a| a.0), Some(sq));
+    assert_eq!(
+        (g.power(sq), g.toughness(sq)),
+        (3, 3),
+        "two creatures with base power or toughness 1"
+    );
+}
+
+#[test]
+fn rapid_augmenter_hastes_base_power_one_and_grows_on_uncast_creatures() {
+    let mut g = table();
+    let r = put(&mut g, 0, "Rapid Augmenter");
+    let a = hand(&mut g, 0, "Morbid Opportunist");
+    play(&mut g, a, false, &[], &[]);
+    assert!(g.keywords(a).has(Keywords::HASTE));
+    assert_eq!(g.power(r), 1, "it was cast");
+    let storm = hand(&mut g, 0, "Chatterstorm");
+    play(&mut g, storm, false, &[], &[]);
+    let sq = tokens(&g, 0, "Squirrel");
+    assert_eq!(sq.len(), 2, "storm: one copy");
+    assert!(g.keywords(sq[0]).has(Keywords::HASTE));
+    assert_eq!(g.power(r), 3);
+    assert!(g.keywords(r).has(Keywords::UNBLOCKABLE));
+}

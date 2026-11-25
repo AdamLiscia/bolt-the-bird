@@ -992,6 +992,10 @@ pub struct Game {
     pub must_attack_turn: [u32; 2],
     /// The turn each player last created a token.
     pub token_created_turn: [u32; 2],
+    /// The city's blessing (ascend), for the rest of the game.
+    pub city_blessing: [bool; 2],
+    /// Mana each player spent on spells this turn: (turn, amount) (expend).
+    pub mana_spent_on_spells: [(u32, u32); 2],
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -1157,6 +1161,8 @@ impl Game {
             creatures_uncounterable_turn: [0, 0],
             must_attack_turn: [0, 0],
             token_created_turn: [0, 0],
+            city_blessing: [false, false],
+            mana_spent_on_spells: [(0, 0); 2],
             extra_combats: Vec::new(),
             extra_combat_resume: None,
             extra_main_resume: None,
@@ -1506,10 +1512,22 @@ impl Game {
                                 self.counter_kinds(so.controller) >= n as u32
                             }
                             Some(StaticCondition::QuestCountersAtLeast(n)) => so.quest >= n,
+                            Some(StaticCondition::CitysBlessing) => self.city_blessing[so.controller],
                         };
                         applies && condition_ok && (!s.your_turn_only || self.active == so.controller)
                     })
                     .map(move |mut s| {
+                        if let Some(Scale::PerYourCreatureBasePowerOrToughnessOne) = s.scale {
+                            let n = self
+                                .creatures(so.controller)
+                                .filter(|&c| {
+                                    let (bp, bt) = self.base_pt(c);
+                                    bp == 1 || bt == 1
+                                })
+                                .count() as i32;
+                            s.power *= n;
+                            s.toughness *= n;
+                        }
                         if let Some(Scale::PerOtherYourCreatureBasePowerOne) = s.scale {
                             let n = self
                                 .creatures(so.controller)
@@ -2461,8 +2479,19 @@ impl Game {
                 for (n, w) in whens.into_iter().enumerate() {
                     if let When::AnotherYouControlEntersWithAnySubtype(subs) = w {
                         if subs.iter().any(|s| self.has_subtype(id, s)) {
+                            let refers = self.def_of(other).triggers[n]
+                                .ability
+                                .targets
+                                .first()
+                                .is_some_and(|f| f.triggering);
+                            let zcc = self.obj(id).zcc;
                             self.triggered.push(StackItem {
                                 kind: StackKind::Trigger(n),
+                                targets: if refers {
+                                    vec![Chosen::Object(id, zcc)]
+                                } else {
+                                    Vec::new()
+                                },
                                 ..Game::casting(other, c)
                             });
                         }
@@ -2756,14 +2785,30 @@ impl Game {
                             When::AnotherCreatureYouControlEntersWithPowerAtLeast(p) => {
                                 any != id && entering_power >= p
                             }
+                            When::AnotherCreatureYouControlEntersWithBasePower(p) => {
+                                any != id && self.base_pt(id).0 == p
+                            }
+                            When::AnotherCreatureYouControlEntersNotCast => {
+                                any != id && (from != Zone::Stack || self.obj(id).card_copy)
+                            }
                             _ => false,
                         };
                         if hit {
+                            let refers = self.def_of(any).triggers[n]
+                                .ability
+                                .targets
+                                .first()
+                                .is_some_and(|f| f.triggering);
+                            let zcc = self.obj(id).zcc;
                             self.triggered.push(StackItem {
                                 source: any,
                                 controller,
                                 kind: StackKind::Trigger(n),
-                                targets: Vec::new(),
+                                targets: if refers {
+                                    vec![Chosen::Object(id, zcc)]
+                                } else {
+                                    Vec::new()
+                                },
                                 kicked: false,
                                 flashback: false,
                                 extra: None,
@@ -5346,6 +5391,17 @@ impl Game {
             .extra
             .filter(|_| item.flashback && (self.def_of(card).harmonize || self.obj(card).harmonize_eot));
         self.pay_mana_for(p, &cost, harmonized, pay_for_spell(card, item.mode));
+        // Expend: "as you spend your Nth total mana to cast spells during a turn".
+        let spent = cost.mana_value();
+        let turn = self.turn;
+        let (t, before) = self.mana_spent_on_spells[p];
+        let before = if t == turn { before } else { 0 };
+        self.mana_spent_on_spells[p] = (turn, before + spent);
+        for k in [4u8, 8] {
+            if before < k as u32 && before + spent >= k as u32 {
+                self.fire(p, When::Expend(k), None);
+            }
+        }
         let delved = std::mem::take(&mut self.obj_mut(card).delve);
         if delved > 0 {
             self.exile_for_delve(p, card, delved);
@@ -8382,6 +8438,27 @@ impl Game {
                     self.untap_by_effect(c);
                 }
             }
+            Effect::OpponentMay => {
+                self.ask(opponent(item.controller), Decision::May);
+            }
+            Effect::Explore(slot) => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    let p = self.obj(id).controller;
+                    if let Some(&top) = self.players[p].library.last() {
+                        if self.def_of(top).types.land {
+                            self.move_to(top, Zone::Hand);
+                            self.resolving.as_mut().expect("resolving").remaining.clear();
+                        } else {
+                            self.add_counters(id, 1);
+                            // "put the card back or put it into your graveyard": Yes mills it.
+                            self.ask(p, Decision::May);
+                        }
+                    } else {
+                        self.add_counters(id, 1);
+                        self.resolving.as_mut().expect("resolving").remaining.clear();
+                    }
+                }
+            }
             Effect::QuestCounterSelf => {
                 if self.obj(src).zone == Zone::Battlefield {
                     self.obj_mut(src).quest += 1;
@@ -10806,6 +10883,17 @@ impl Game {
     fn state_based_actions(&mut self) {
         loop {
             self.work();
+            // Ascend (CR 702.131b): ten or more permanents and an ascend permanent.
+            for p in 0..2 {
+                if !self.city_blessing[p]
+                    && self.permanents(p).count() >= 10
+                    && self
+                        .permanents(p)
+                        .any(|x| self.def_of(x).ascend && !self.lost_abilities(x))
+                {
+                    self.city_blessing[p] = true;
+                }
+            }
             let mut dies = Vec::new();
             for &id in &self.battlefield {
                 if !self.types_of(id).creature {

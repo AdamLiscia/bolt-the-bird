@@ -115,6 +115,7 @@ pub fn token_defs() -> Vec<CardDef> {
         token("Citizen", "Citizen", 1, 1, Keywords::NONE),   // Boss's Chauffeur
         token("Eldrazi", "Eldrazi", 10, 10, Keywords::NONE), // Idol of Oblivion
         token("Illusion", "Illusion", 0, 0, Keywords::NONE), // Skyclave Apparition's X/X
+        token("Saproling", "Saproling", 1, 1, Keywords::NONE), // Tendershoot Dryad
     ]
 }
 
@@ -202,6 +203,7 @@ pub struct Tokens {
     pub citizen: usize,
     pub eldrazi: usize,
     pub illusion: usize,
+    pub saproling: usize,
 }
 
 impl Tokens {
@@ -253,6 +255,7 @@ impl Tokens {
             citizen: base + 43,
             eldrazi: base + 44,
             illusion: base + 45,
+            saproling: base + 46,
         }
     }
 }
