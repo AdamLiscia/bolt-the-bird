@@ -5,7 +5,7 @@
 
 use std::sync::Arc;
 
-use crate::card::{CardDef, ExtraCost, Keywords, Reduction, Types};
+use crate::card::{Behold, CardDef, ExtraCost, Keywords, Reduction, Types};
 use crate::effect::{EmblemKind, LookRest, LookTo, Pick, Scale, Scope, Static, StaticCondition};
 use std::collections::VecDeque;
 
@@ -608,6 +608,9 @@ pub enum Decision {
     },
     /// Ward: `Yes` pays `cost`, `No` lets the spell or ability from `against` be countered.
     PayWard { cost: ManaCost, against: ObjId },
+    /// "Counter target spell unless its controller pays": `Yes` pays `cost`, `No` lets the spell from
+    /// `against` be countered.
+    PayOrCountered { cost: ManaCost, against: ObjId },
 }
 
 /// An until-end-of-turn change to one object (CR 611.2, 613).
@@ -1583,6 +1586,14 @@ impl Game {
                         .count() as i32
                 })
                 .sum();
+            // Dragonstorm Globe: "Each Dragon you control enters with an additional +1/+1 counter on it."
+            let flat = self
+                .permanents(controller)
+                .filter(|&x| x != id)
+                .filter_map(|x| self.def_of(x).subtype_enters_with_counter)
+                .filter(|&sub| self.has_base_subtype(id, sub))
+                .count() as i32;
+            let bonus = bonus + flat;
             if bonus > 0 {
                 let n = bonus * self.doubling(controller);
                 self.obj_mut(id).counters += n;
@@ -2121,8 +2132,11 @@ impl Game {
             }
             // CR 307.1, 302.1, 304.1, 702.8a: only instants and flash ignore sorcery timing.
             let flash_all = self.permanents(p).any(|x| self.def_of(x).grants_flash);
-            let timing =
+            let normal_timing =
                 sorcery_timing || flash_all || def.types.instant || def.keywords.has(Keywords::FLASH);
+            // Molten Exhale: as though it had flash, if a Dragon is beheld (then only that way).
+            let behold_flash = !normal_timing && def.behold == Behold::MayForFlash && self.can_behold(p, c);
+            let timing = normal_timing || behold_flash;
             let castable = def.types.is_permanent() || def.spell.is_some() || !def.modes.is_empty();
             if !timing || !castable {
                 continue;
@@ -2143,6 +2157,9 @@ impl Game {
                 }
             }
             for (action, mode) in self.cast_modes(p, c, from_graveyard) {
+                if behold_flash && !mode.kicked {
+                    continue;
+                }
                 if self.mode_affordable(p, c, mode) {
                     v.push(action);
                 }
@@ -2274,7 +2291,7 @@ impl Game {
                         ));
                     }
                 }
-                if def.kicker.is_some() {
+                if def.kicker.is_some() || (def.behold != Behold::No && self.can_behold(p, c)) {
                     v.push((
                         Action::CastKicked(c),
                         CastMode {
@@ -2286,6 +2303,15 @@ impl Game {
                 v
             }
         }
+    }
+
+    /// Whether `p` can behold a Dragon for `c`: a Dragon they control, or another Dragon card in hand.
+    fn can_behold(&self, p: PlayerId, c: ObjId) -> bool {
+        self.permanents(p).any(|x| self.has_subtype(x, "Dragon"))
+            || self.players[p]
+                .hand
+                .iter()
+                .any(|&x| x != c && self.def_of(x).subtypes.iter().any(|s| s == "Dragon"))
     }
 
     /// The mana a spell costs in `mode` with these targets (CR 601.2f).
@@ -2309,7 +2335,13 @@ impl Game {
             def.cost.with_x(mode.x)
         };
         if mode.kicked {
-            cost = add_costs(&cost, &def.kicker.expect("has kicker"));
+            if let Some(k) = def.kicker {
+                cost = add_costs(&cost, &k);
+            }
+        }
+        // Caustic Exhale: "behold a Dragon or pay {1}": not beheld, pay it.
+        if let (Behold::OrPay(extra), false) = (def.behold, mode.kicked) {
+            cost = add_costs(&cost, &extra);
         }
         // CR 903.8: commander tax.
         let tax = if o.zone == Zone::Command {
@@ -3742,6 +3774,7 @@ impl Game {
             Pick::CreaturePowerAtMost(n) => d.types.creature && d.power <= n,
             Pick::InstantOrSorcery => d.types.instant || d.types.sorcery,
             Pick::CreatureOrLand => d.types.creature || d.types.land,
+            Pick::Land => d.types.land,
             Pick::CreatureMvAtMostLands => {
                 let owner = self.obj(c).owner;
                 let lands = self.permanents(owner).filter(|&x| self.types_of(x).land).count() as u32;
@@ -3840,14 +3873,19 @@ impl Game {
                 v.push(Action::No);
                 v
             }
-            Decision::LookPick { cards, pick, .. } => {
+            Decision::LookPick {
+                cards, pick, rest, ..
+            } => {
                 let mut v: Vec<Action> = cards
                     .iter()
                     .copied()
                     .filter(|&c| self.picks(c, *pick))
                     .map(Action::Pick)
                     .collect();
-                v.push(Action::No);
+                // "Put one of them into your hand": taking one isn't optional when one can be taken.
+                if v.is_empty() || *rest != Some(LookRest::GraveyardTakeOne) {
+                    v.push(Action::No);
+                }
                 v
             }
             Decision::ChooseMode => {
@@ -3861,7 +3899,7 @@ impl Game {
                     .map(|m| Action::Mode(m as u8))
                     .collect()
             }
-            Decision::PayWard { cost, .. } => {
+            Decision::PayWard { cost, .. } | Decision::PayOrCountered { cost, .. } => {
                 let mut v = Vec::new();
                 if self.can_pay(p, cost, None) {
                     v.push(Action::Yes);
@@ -3937,7 +3975,9 @@ impl Game {
             return;
         }
         match (d, a) {
-            (Decision::PayWard { cost, .. }, Action::Yes) => self.pay_mana(p, &cost, None),
+            (Decision::PayWard { cost, .. } | Decision::PayOrCountered { cost, .. }, Action::Yes) => {
+                self.pay_mana(p, &cost, None)
+            }
             (Decision::SacrificeAnother { .. }, Action::Pick(c)) => self.move_to(c, Zone::Graveyard),
             (Decision::MayPay { cost }, Action::Yes) => self.pay_mana(p, &cost, None),
             (Decision::KeepOfType { ty, mut kept }, Action::Pick(c)) => {
@@ -4039,8 +4079,18 @@ impl Game {
                     }
                 }
                 let mut others: Vec<ObjId> = cards.into_iter().filter(|&c| Some(c) != chosen).collect();
+                if rest == Some(LookRest::GraveyardElseCounter) && chosen.is_none() {
+                    // Ainok Wayfarer: "If you don't, put a +1/+1 counter on this creature."
+                    if let Some(src) = self.resolving.as_ref().map(|r| r.item.source) {
+                        if self.obj(src).zone == Zone::Battlefield {
+                            self.add_counters(src, 1);
+                        }
+                    }
+                }
                 match rest {
-                    Some(LookRest::Graveyard) => {
+                    Some(
+                        LookRest::Graveyard | LookRest::GraveyardTakeOne | LookRest::GraveyardElseCounter,
+                    ) => {
                         for c in others {
                             self.move_to(c, Zone::Graveyard);
                         }
@@ -4056,7 +4106,9 @@ impl Game {
                     None => {}
                 }
             }
-            (Decision::PayWard { against, .. }, Action::No) => self.counter_from(against),
+            (Decision::PayWard { against, .. } | Decision::PayOrCountered { against, .. }, Action::No) => {
+                self.counter_from(against)
+            }
             (Decision::May, Action::Yes) => {}
             (Decision::May, Action::No) => {
                 self.resolving.as_mut().expect("resolving").remaining.clear();
@@ -4661,6 +4713,27 @@ impl Game {
                 }
             }
             Effect::MayPay(cost) => self.ask(item.controller, Decision::MayPay { cost }),
+            Effect::CounterUnlessPays(slot, n, m) => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    let target = self
+                        .items
+                        .iter()
+                        .rev()
+                        .find(|i| i.kind == StackKind::Spell && i.source == id);
+                    if let Some(t) = target {
+                        if self.def_of(id).uncounterable {
+                            return;
+                        }
+                        let generic = if item.kicked { m } else { n };
+                        let cost = ManaCost {
+                            generic,
+                            ..ManaCost::default()
+                        };
+                        let payer = t.controller;
+                        self.ask(payer, Decision::PayOrCountered { cost, against: id });
+                    }
+                }
+            }
             Effect::LoseUnlessDiscard { n } => {
                 let opp = opponent(item.controller);
                 if self.players[opp].hand.is_empty() {

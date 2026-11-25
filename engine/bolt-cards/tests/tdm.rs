@@ -198,3 +198,249 @@ fn stormplain_detainment_exiles_until_it_leaves() {
         "it comes back when the enchantment leaves"
     );
 }
+
+// ---- batch 2: behold (CR 701.4x-style: choose a Dragon you control or reveal one from hand) ----
+
+fn untapped_lands(g: &Game, p: usize) -> usize {
+    g.permanents(p)
+        .filter(|&x| g.types_of(x).land && !g.obj(x).tapped)
+        .count()
+}
+
+#[test]
+fn caustic_exhale_costs_one_more_unless_a_dragon_is_beheld() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Caustic Exhale");
+    let theirs = put(&mut g, 1, "Iceridge Serpent");
+    begin(&mut g);
+    assert!(
+        !g.legal_actions().contains(&Action::CastKicked(c)),
+        "no Dragon to behold"
+    );
+    let before = untapped_lands(&g, 0);
+    play(&mut g, c, false, &[obj(theirs)], &[]);
+    assert_eq!(before - untapped_lands(&g, 0), 2, "{{B}} plus {{1}}");
+    assert_eq!(g.obj(theirs).zone, Zone::Graveyard, "3/... gets -3/-3"); // Iceridge Serpent is 3/3
+
+    let c2 = hand(&mut g, 0, "Caustic Exhale");
+    hand(&mut g, 0, "Boulderborn Dragon"); // a Dragon card to reveal
+    let other = put(&mut g, 1, "Humbling Elder");
+    let before = untapped_lands(&g, 0);
+    play(&mut g, c2, true, &[obj(other)], &[]);
+    assert_eq!(before - untapped_lands(&g, 0), 1, "beheld: just {{B}}");
+}
+
+#[test]
+fn dispelling_exhale_counters_unless_paid_more_with_a_dragon() {
+    let mut g = table();
+    let target = hand(&mut g, 0, "Iceridge Serpent");
+    let ex = hand(&mut g, 0, "Dispelling Exhale");
+    begin(&mut g);
+    act(&mut g, Action::Cast(target));
+    act(&mut g, Action::Cast(ex));
+    act(&mut g, Action::Target(obj(target)));
+    act(&mut g, Action::PassPriority);
+    act(&mut g, Action::PassPriority); // Dispelling resolves: the spell's controller decides
+    assert!(matches!(g.pending, Pending::Decide(0)));
+    act(&mut g, Action::No);
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(target).zone, Zone::Graveyard, "not paid: countered");
+
+    // Beheld: the price is {4}.
+    let t2 = hand(&mut g, 0, "Humbling Elder");
+    let ex2 = hand(&mut g, 0, "Dispelling Exhale");
+    put(&mut g, 0, "Boulderborn Dragon");
+    act(&mut g, Action::Cast(t2));
+    act(&mut g, Action::CastKicked(ex2));
+    act(&mut g, Action::Target(obj(t2)));
+    act(&mut g, Action::PassPriority);
+    act(&mut g, Action::PassPriority);
+    let before = untapped_lands(&g, 0);
+    act(&mut g, Action::Yes);
+    assert_eq!(before - untapped_lands(&g, 0), 4);
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(t2).zone, Zone::Battlefield, "paid: it resolves");
+}
+
+#[test]
+fn molten_exhale_has_flash_only_when_a_dragon_is_beheld() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Molten Exhale");
+    let theirs = put(&mut g, 1, "Iceridge Serpent");
+    begin(&mut g);
+    assert!(
+        g.legal_actions().contains(&Action::Cast(c)),
+        "a sorcery, in a main phase"
+    );
+    act(&mut g, Action::PassPriority); // to beginning of combat
+    act(&mut g, Action::PassPriority);
+    assert!(g.step != bolt_core::Step::Main1);
+    let at_speed = |g: &Game| {
+        (
+            g.legal_actions().contains(&Action::Cast(c)),
+            g.legal_actions().contains(&Action::CastKicked(c)),
+        )
+    };
+    while !matches!(g.pending, Pending::Priority(0)) || g.step == bolt_core::Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    {
+        assert_eq!(at_speed(&g), (false, false), "no Dragon: sorcery speed only");
+        hand(&mut g, 0, "Boulderborn Dragon");
+        assert_eq!(at_speed(&g), (false, true), "beheld: as though it had flash");
+        act(&mut g, Action::CastKicked(c));
+        act(&mut g, Action::Target(obj(theirs)));
+        resolve_all(&mut g, &[]);
+        assert_eq!(g.obj(theirs).zone, Zone::Graveyard, "4 damage to a 3/3");
+    }
+}
+
+#[test]
+fn osseous_exhale_hits_an_attacker_and_gains_life_if_beheld() {
+    let mut g = table();
+    let attacker = put(&mut g, 0, "Iceridge Serpent");
+    let c = hand(&mut g, 0, "Osseous Exhale");
+    hand(&mut g, 0, "Boulderborn Dragon");
+    begin(&mut g);
+    assert!(
+        !g.legal_actions()
+            .iter()
+            .any(|a| matches!(a, Action::Cast(x) | Action::CastKicked(x) if *x == c)),
+        "no attacker yet"
+    );
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(attacker));
+    act(&mut g, Action::FinishAttacks);
+    let life = g.players[0].life;
+    play(&mut g, c, true, &[obj(attacker)], &[]);
+    assert_eq!(g.obj(attacker).zone, Zone::Graveyard);
+    assert_eq!(g.players[0].life, life + 2);
+}
+
+#[test]
+fn piercing_exhale_bites_and_surveils_if_beheld() {
+    let mut g = table();
+    let mine = put(&mut g, 0, "Iceridge Serpent"); // 3 power
+    let theirs = put(&mut g, 1, "Humbling Elder");
+    put(&mut g, 0, "Boulderborn Dragon");
+    let c = hand(&mut g, 0, "Piercing Exhale");
+    begin(&mut g);
+    let top = *g.players[0].library.last().unwrap();
+    play(
+        &mut g,
+        c,
+        true,
+        &[obj(mine), obj(theirs)],
+        &[Action::Yes, Action::Yes],
+    );
+    assert_eq!(g.obj(theirs).zone, Zone::Graveyard);
+    assert_eq!(g.obj(top).zone, Zone::Graveyard, "surveil 2");
+}
+
+#[test]
+fn riverwalk_technique_tucks_a_permanent_or_counters_a_noncreature_spell() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Riverwalk Technique");
+    let theirs = put(&mut g, 1, "Iceridge Serpent");
+    begin(&mut g);
+    act(&mut g, Action::CastModal(c, 0));
+    act(&mut g, Action::Target(obj(theirs)));
+    resolve_all(&mut g, &[Action::No]); // its owner puts it on the bottom
+    assert_eq!(g.obj(theirs).zone, Zone::Library);
+    assert_eq!(g.players[1].library[0], theirs, "bottom");
+
+    let strike = hand(&mut g, 0, "Rebellious Strike");
+    let creature = hand(&mut g, 0, "Humbling Elder");
+    let c2 = hand(&mut g, 0, "Riverwalk Technique");
+    let mine = put(&mut g, 0, "Iceridge Serpent");
+    act(&mut g, Action::Cast(creature));
+    act(&mut g, Action::Cast(strike));
+    act(&mut g, Action::Target(obj(mine)));
+    act(&mut g, Action::CastModal(c2, 1));
+    assert!(
+        !g.legal_actions().contains(&Action::Target(obj(creature))),
+        "noncreature spells only"
+    );
+    act(&mut g, Action::Target(obj(strike)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(strike).zone, Zone::Graveyard);
+    assert_eq!(g.obj(creature).zone, Zone::Battlefield);
+}
+
+#[test]
+fn ainok_wayfarer_takes_a_milled_land_or_grows() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Ainok Wayfarer");
+    begin(&mut g);
+    let top: Vec<ObjId> = g.players[0].library.iter().rev().take(3).copied().collect(); // Plains
+    play(&mut g, c, false, &[], &[Action::Pick(top[0])]);
+    assert_eq!(g.obj(top[0]).zone, Zone::Hand);
+    assert!(g.obj(top[1]).zone == Zone::Graveyard && g.obj(top[2]).zone == Zone::Graveyard);
+    assert_eq!(g.obj(c).counters, 0);
+
+    let c2 = hand(&mut g, 0, "Ainok Wayfarer");
+    play(&mut g, c2, false, &[], &[Action::No]);
+    assert_eq!(g.obj(c2).counters, 1, "no land taken: a +1/+1 counter");
+}
+
+#[test]
+fn sibsig_appraiser_must_take_one() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Sibsig Appraiser");
+    begin(&mut g);
+    act(&mut g, Action::Cast(c));
+    for _ in 0..6 {
+        if matches!(g.pending, Pending::Decide(_)) {
+            break;
+        }
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(
+        !g.legal_actions().contains(&Action::No),
+        "\"Put one of them into your hand\""
+    );
+}
+
+#[test]
+fn dragonstorm_globe_grows_dragons_and_makes_any_color() {
+    let mut g = table();
+    put(&mut g, 0, "Dragonstorm Globe");
+    let d = hand(&mut g, 0, "Boulderborn Dragon");
+    begin(&mut g);
+    assert!(g
+        .mana_sources(0)
+        .iter()
+        .any(|(id, m)| g.def_of(*id).name == "Dragonstorm Globe" && m.colors == [true; 5]));
+    play(&mut g, d, false, &[], &[]);
+    assert_eq!(g.obj(d).counters, 1);
+    let theirs = put(&mut g, 1, "Iceridge Serpent");
+    let other = hand(&mut g, 0, "Humbling Elder");
+    play(&mut g, other, false, &[], &[Action::Target(obj(theirs))]);
+    assert_eq!(g.obj(other).counters, 0, "only Dragons");
+}
+
+#[test]
+fn undergrowth_leopard_eats_an_artifact() {
+    let mut g = table();
+    let l = put(&mut g, 0, "Undergrowth Leopard");
+    let globe = put(&mut g, 1, "Dragonstorm Globe");
+    begin(&mut g);
+    act(&mut g, Action::Activate(l, 0));
+    act(&mut g, Action::Target(obj(globe)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(globe).zone, Zone::Graveyard);
+    assert_eq!(g.obj(l).zone, Zone::Graveyard, "sacrificed");
+}
+
+#[test]
+fn narsets_rebuke_exiles_what_it_kills_and_adds_three_mana() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Narset's Rebuke");
+    let theirs = put(&mut g, 1, "Iceridge Serpent");
+    begin(&mut g);
+    play(&mut g, c, false, &[obj(theirs)], &[]);
+    assert_eq!(g.obj(theirs).zone, Zone::Exile);
+    assert_eq!(g.players[0].pool.len(), 3, "{{U}}{{R}}{{W}}");
+}

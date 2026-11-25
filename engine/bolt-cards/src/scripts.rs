@@ -10,8 +10,8 @@ use bolt_core::effect::{
 };
 use bolt_core::effect::{EmblemKind, Scale};
 use bolt_core::{
-    Activated, CardDef, Color, ExtraCost, Keywords, LookRest, LookTo, ManaCost, ManaSource, Pick, Reduction,
-    Stage, Types,
+    Activated, Behold, CardDef, Color, ExtraCost, Keywords, LookRest, LookTo, ManaCost, ManaSource, Pick,
+    Reduction, Stage, Types,
 };
 
 /// Token definitions, appended after the 286 cards. Indices are [`Tokens`] fields.
@@ -180,6 +180,11 @@ fn damage(amount: i32, to: Recipient) -> Effect {
 }
 
 const CREATURE: Filter = Filter::CREATURE;
+const CREATURE_OR_PLANESWALKER: Filter = Filter {
+    players: false,
+    spells: false,
+    ..Filter::ANY
+};
 const OPP_CREATURE: Filter = Filter::CREATURE.controlled_by(Controller::Opponent);
 const YOUR_CREATURE: Filter = Filter::CREATURE.controlled_by(Controller::You);
 const ART_ENCH: Filter = Filter {
@@ -2868,7 +2873,7 @@ pub fn script(name: &str) -> Option<Script> {
         "Sibsig Appraiser" => s(
             &["When this creature enters, look at the top two cards of your library. Put one of them into your hand and the other into your graveyard."],
             |d, _| {
-                let look = Effect::LookAtTop { n: 2, pick: Pick::Any, chosen_to: LookTo::Hand, rest_to: LookRest::Graveyard };
+                let look = Effect::LookAtTop { n: 2, pick: Pick::Any, chosen_to: LookTo::Hand, rest_to: LookRest::GraveyardTakeOne };
                 on(d, When::Enters, vec![], vec![look]);
             },
         ),
@@ -2928,6 +2933,112 @@ pub fn script(name: &str) -> Option<Script> {
         "Stormplain Detainment" => s(
             &["When this enchantment enters, exile target nonland permanent an opponent controls until this enchantment leaves the battlefield."],
             |d, _| on(d, When::Enters, vec![OPP_NONLAND], vec![Effect::ExileUntilSourceLeaves(0)]),
+        ),
+        // ---- TDM batch 2: behold (the Exhale spells) and the next most-picked commons ----
+        "Caustic Exhale" => s(
+            &["As an additional cost to cast this spell, behold a Dragon or pay {1}.", "Target creature gets -3/-3 until end of turn."],
+            |d, _| {
+                d.behold = Behold::OrPay(ManaCost { generic: 1, ..ManaCost::default() });
+                spell(d, vec![CREATURE], vec![Effect::Pump { slot: 0, power: -3, toughness: -3 }]);
+            },
+        ),
+        "Dispelling Exhale" => s(
+            &[
+                "As an additional cost to cast this spell, you may behold a Dragon.",
+                "Counter target spell unless its controller pays {2}. If a Dragon was beheld, counter that spell unless its controller pays {4} instead.",
+            ],
+            |d, _| {
+                d.behold = Behold::May;
+                spell(d, vec![SPELL], vec![Effect::CounterUnlessPays(0, 2, 4)]);
+            },
+        ),
+        "Molten Exhale" => s(
+            &[
+                "You may cast this spell as though it had flash if you behold a Dragon as an additional cost to cast it.",
+                "Molten Exhale deals 4 damage to target creature or planeswalker.",
+            ],
+            |d, _| {
+                d.behold = Behold::MayForFlash;
+                spell(d, vec![CREATURE_OR_PLANESWALKER], vec![damage(4, Recipient::Target(0))]);
+            },
+        ),
+        "Osseous Exhale" => s(
+            &[
+                "As an additional cost to cast this spell, you may behold a Dragon.",
+                "Osseous Exhale deals 5 damage to target attacking or blocking creature. If a Dragon was beheld, you gain 2 life.",
+            ],
+            |d, _| {
+                d.behold = Behold::May;
+                let fighting = Filter { in_combat: true, ..CREATURE };
+                spell(d, vec![fighting], vec![damage(5, Recipient::Target(0))]);
+                d.kicked_spell = Some(Ability::new(
+                    vec![fighting],
+                    vec![damage(5, Recipient::Target(0)), Effect::GainLife { who: Who::You, n: 2 }],
+                ));
+            },
+        ),
+        "Piercing Exhale" => s(
+            &[
+                "As an additional cost to cast this spell, you may behold a Dragon.",
+                "Target creature you control deals damage equal to its power to target creature or planeswalker. If a Dragon was beheld, surveil 2.",
+            ],
+            |d, _| {
+                d.behold = Behold::May;
+                let targets = vec![YOUR_CREATURE, CREATURE_OR_PLANESWALKER];
+                spell(d, targets.clone(), vec![Effect::Bite { from: 0, to: 1 }]);
+                d.kicked_spell = Some(Ability::new(targets, vec![Effect::Bite { from: 0, to: 1 }, Effect::Surveil { n: 2 }]));
+            },
+        ),
+        "Riverwalk Technique" => s(
+            &[
+                "Choose one —",
+                "• The owner of target nonland permanent puts it on their choice of the top or bottom of their library.",
+                "• Counter target noncreature spell.",
+            ],
+            |d, _| {
+                let nonland = Filter { controller: Controller::Any, ..OPP_NONLAND };
+                modes(
+                    d,
+                    vec![
+                        Ability::new(vec![nonland], vec![Effect::Tuck(0)]),
+                        Ability::new(vec![Filter { spell_creature: Some(false), ..SPELL }], vec![Effect::Counter(0)]),
+                    ],
+                )
+            },
+        ),
+        "Ainok Wayfarer" => s(
+            &["When this creature enters, mill three cards. You may put a land card from among them into your hand. If you don't, put a +1/+1 counter on this creature."],
+            |d, _| {
+                let look = Effect::LookAtTop { n: 3, pick: Pick::Land, chosen_to: LookTo::Hand, rest_to: LookRest::GraveyardElseCounter };
+                on(d, When::Enters, vec![], vec![look]);
+            },
+        ),
+        "Dragonstorm Globe" => s(
+            &["Each Dragon you control enters with an additional +1/+1 counter on it.", "{T}: Add one mana of any color."],
+            |d, _| {
+                d.subtype_enters_with_counter = Some("Dragon");
+                d.mana = Some(ManaSource::of(&Color::ALL));
+            },
+        ),
+        "Undergrowth Leopard" => s(&["{1}, Sacrifice this creature: Destroy target artifact or enchantment."], |d, _| {
+            let n = activated(d, "{1}", false, vec![ARTIFACT_OR_ENCHANTMENT], vec![Effect::Destroy(0)]);
+            d.activated[n].sacrifice_self = true;
+        }),
+        "Narset's Rebuke" => s(
+            &["Narset's Rebuke deals 5 damage to target creature. Add {U}{R}{W}. If that creature would die this turn, exile it instead."],
+            |d, _| {
+                spell(
+                    d,
+                    vec![CREATURE],
+                    vec![
+                        Effect::ExileIfDiesThisTurn(0),
+                        damage(5, Recipient::Target(0)),
+                        Effect::AddMana { color: Color::Blue, n: 1 },
+                        Effect::AddMana { color: Color::Red, n: 1 },
+                        Effect::AddMana { color: Color::White, n: 1 },
+                    ],
+                )
+            },
         ),
         _ => None,
     }
@@ -3223,4 +3334,14 @@ pub const TDM_SCRIPTED: &[&str] = &[
     "Watcher of the Wayside",
     "Meticulous Artisan",
     "Stormplain Detainment",
+    "Caustic Exhale",
+    "Dispelling Exhale",
+    "Molten Exhale",
+    "Osseous Exhale",
+    "Piercing Exhale",
+    "Riverwalk Technique",
+    "Ainok Wayfarer",
+    "Dragonstorm Globe",
+    "Undergrowth Leopard",
+    "Narset's Rebuke",
 ];

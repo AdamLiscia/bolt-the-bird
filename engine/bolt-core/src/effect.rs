@@ -342,6 +342,9 @@ pub enum Effect {
     GateControlPowerAtLeast(i32),
     /// "You may pay {cost}. If you do, ..." — the rest happens only if paid.
     MayPay(crate::mana::ManaCost),
+    /// "Counter target spell unless its controller pays {n}" ({m} instead if the spell was kicked or
+    /// a Dragon was beheld): (slot, n, m).
+    CounterUnlessPays(u8, u8, u8),
     /// Each opponent loses `n` life unless they discard a card (their choice).
     LoseUnlessDiscard {
         n: i32,
@@ -639,6 +642,8 @@ pub enum Pick {
     /// A creature card with mana value at most the number of lands you control.
     CreatureMvAtMostLands,
     CreatureOrLand,
+    /// A land card.
+    Land,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -655,6 +660,10 @@ pub enum LookTo {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum LookRest {
     Graveyard,
+    /// Into the graveyard, and one card must be taken if any can ("Put one of them into your hand").
+    GraveyardTakeOne,
+    /// Into the graveyard; if no card was taken, a +1/+1 counter on the source (Ainok Wayfarer).
+    GraveyardElseCounter,
     /// The bottom of the library in a random order.
     BottomRandom,
 }

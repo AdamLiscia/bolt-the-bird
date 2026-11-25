@@ -268,6 +268,8 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         loyalty: o.loyalty.as_deref().and_then(|v| v.parse().ok()),
 
         loyalty_abilities: Vec::new(),
+        behold: bolt_core::Behold::No,
+        subtype_enters_with_counter: None,
     };
     let mut claimed = rest.is_empty();
     if let Some(s) = scripts::script(&o.name) {

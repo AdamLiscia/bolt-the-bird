@@ -290,6 +290,24 @@ pub struct CardDef {
     /// Starting loyalty (CR 306.5b) and loyalty abilities as (cost, ability) (CR 606).
     pub loyalty: Option<i32>,
     pub loyalty_abilities: Vec<(i32, Ability)>,
+    /// Behold a Dragon (Tarkir: Dragonstorm): choose a Dragon you control or reveal a Dragon card from
+    /// your hand, as an optional additional cost. Cast with it, the spell is "kicked" (`kicked_spell`).
+    pub behold: Behold,
+    /// "Each <subtype> you control enters with an additional +1/+1 counter on it" (Dragonstorm Globe).
+    pub subtype_enters_with_counter: Option<&'static str>,
+}
+
+/// How a card uses behold (see [`CardDef::behold`]).
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub enum Behold {
+    #[default]
+    No,
+    /// "As an additional cost ..., you may behold a Dragon."
+    May,
+    /// "You may cast this spell as though it had flash if you behold a Dragon ..." (Molten Exhale).
+    MayForFlash,
+    /// "... behold a Dragon or pay {cost}." (Caustic Exhale)
+    OrPay(ManaCost),
 }
 
 impl CardDef {
@@ -364,6 +382,8 @@ impl CardDef {
             pt_per_graveyard_creature: false,
             loyalty: None,
             loyalty_abilities: Vec::new(),
+            behold: Behold::No,
+            subtype_enters_with_counter: None,
         }
     }
 
@@ -439,6 +459,8 @@ impl CardDef {
             pt_per_graveyard_creature: false,
             loyalty: None,
             loyalty_abilities: Vec::new(),
+            behold: Behold::No,
+            subtype_enters_with_counter: None,
         }
     }
 
@@ -514,6 +536,8 @@ impl CardDef {
             pt_per_graveyard_creature: false,
             loyalty: None,
             loyalty_abilities: Vec::new(),
+            behold: Behold::No,
+            subtype_enters_with_counter: None,
         }
     }
 }

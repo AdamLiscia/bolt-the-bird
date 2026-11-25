@@ -452,7 +452,7 @@ impl Game {
                         e.set_item("b", objs(b))?;
                     }
                     D::MayPay { cost } => e.set_item("cost", cost_text(cost))?,
-                    D::PayWard { cost, against } => {
+                    D::PayWard { cost, against } | D::PayOrCountered { cost, against } => {
                         e.set_item("cost", cost_text(cost))?;
                         e.set_item("card", one(*against))?;
                     }
