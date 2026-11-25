@@ -7545,6 +7545,27 @@ impl Game {
                     }
                 }
             }
+            Effect::ExileControllerMayFetchBasic(slot) => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    let p = self.obj(id).controller;
+                    self.move_to(id, Zone::Exile);
+                    // "may search": the search itself allows finding nothing (CR 701.19b).
+                    self.ask(
+                        p,
+                        Decision::Search {
+                            what: SearchFor::BasicLand,
+                            to: SearchTo::Battlefield { tapped: true },
+                            left: 1,
+                        },
+                    );
+                }
+            }
+            Effect::DoubleCountersEachYours => {
+                for c in self.creatures(item.controller).collect::<Vec<_>>() {
+                    let n = self.obj(c).counters;
+                    self.add_counters(c, n);
+                }
+            }
             Effect::DiscardUnlessAttacked => {
                 let p = item.controller;
                 if !self.attacked_this_turn[p] && !self.players[p].hand.is_empty() {

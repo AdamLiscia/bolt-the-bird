@@ -868,6 +868,11 @@ pub enum Effect {
     },
     /// Put a decayed counter on the creature in `slot` (CR 702.147: it gains decayed).
     DecayedCounter(u8),
+    /// Exile the creature in `slot`; its controller may search for a basic land card and put it
+    /// onto the battlefield tapped (Path to Exile).
+    ExileControllerMayFetchBasic(u8),
+    /// Double the number of +1/+1 counters on each creature you control (Kalonian Hydra).
+    DoubleCountersEachYours,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
