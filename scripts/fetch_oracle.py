@@ -8,8 +8,15 @@ With --names, the card list is a JSON file instead of the draft data: a list of 
 with "shared_order" (and "decks", whose commanders, then any other cards such as basic lands, are
 added after it), as for a Commander precon set. Names are looked up 75 at a time with Scryfall's /cards/collection.
 
+    python scripts/fetch_oracle.py --set PG --refresh "Vorinclex // The Grand Evolution"
+
+With --refresh, only the named cards are fetched again and replaced where they are in the existing
+assets/{SET}_oracle.json; everything else in it is kept as it is.
+
 Fields as in assets/FDN_oracle.json. Two-faced cards keep their front face's characteristics
-(name joined with " // " as 17lands writes it is matched on the front name).
+(name joined with " // " as 17lands writes it is matched on the front name); a transforming or
+modal double-faced card also gets `back`: its back face's name, mana_cost, type_line, oracle_text,
+power, toughness, colors and loyalty.
 """
 
 import argparse
@@ -25,6 +32,7 @@ from bolt.data import ASSETS, DATA
 
 KEEP = ("name", "mana_cost", "cmc", "type_line", "oracle_text", "power", "toughness", "keywords", "colors",
         "rarity", "layout", "loyalty", "produced_mana", "collector_number")  # fmt: skip
+BACK = ("name", "mana_cost", "type_line", "oracle_text", "power", "toughness", "colors", "loyalty")
 HEADERS = {"User-Agent": "BoltTheBird/0.4", "Accept": "application/json"}
 
 
@@ -94,14 +102,40 @@ def flat(c: dict) -> dict:
         # Tarkir's Omens use the adventure layout: the second face is the spell half.
         o = c["card_faces"][1]
         d["omen"] = {k: o.get(k) for k in ("name", "mana_cost", "type_line", "oracle_text")}
+    if c.get("layout") in ("transform", "modal_dfc") and len(c.get("card_faces", [])) > 1:
+        b = c["card_faces"][1]
+        d["back"] = {k: b.get(k) for k in BACK}
+        d["back"]["colors"] = b.get("colors") or []
     return d
+
+
+def refresh(code: str, names: list[str]) -> None:
+    """Fetch `names` again and replace them in place in assets/{code}_oracle.json."""
+    path = ASSETS / f"{code}_oracle.json"
+    rows = json.loads(path.read_text())
+    have = {r["name"] for r in rows}
+    unknown = [n for n in names if n not in have]
+    if unknown:
+        raise SystemExit(f"not in {path.name}: {unknown}")
+    cards = fetch_named(names)
+    for i, r in enumerate(rows):
+        if r["name"] in names:
+            new = flat(cards.get(r["name"]) or cards[r["name"].split(" // ")[0]])
+            new["name"] = r["name"]
+            rows[i] = new
+    path.write_text(json.dumps(rows, indent=0))
+    print(f"{len(names)} cards refreshed in assets/{code}_oracle.json")
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--set", required=True)
     ap.add_argument("--names", help="a JSON file of card names, instead of the draft data's card list")
+    ap.add_argument("--refresh", nargs="+", help="fetch only these cards again, in place in the set's file")
     a = ap.parse_args()
+    if a.refresh:
+        refresh(a.set, a.refresh)
+        return
     if a.names:
         names = names_from_file(a.names)
         cards = fetch_named(names)

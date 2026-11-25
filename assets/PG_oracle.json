@@ -25690,7 +25690,17 @@
 "produced_mana": [
 "G"
 ],
-"collector_number": "204"
+"collector_number": "204",
+"back": {
+"name": "Temple of Cultivation",
+"mana_cost": "",
+"type_line": "Land",
+"oracle_text": "(Transforms from Ojer Kaslem, Deepest Growth.)\n{T}: Add {G}.\n{2}{G}, {T}: Transform this land. Activate only if you control ten or more permanents and only as a sorcery.",
+"power": null,
+"toughness": null,
+"colors": [],
+"loyalty": null
+}
 },
 {
 "name": "Ojer Taq, Deepest Foundation // Temple of Civilization",
@@ -40214,7 +40224,19 @@
 "layout": "transform",
 "loyalty": null,
 "produced_mana": null,
-"collector_number": "213"
+"collector_number": "213",
+"back": {
+"name": "The Grand Evolution",
+"mana_cost": "",
+"type_line": "Enchantment \u2014 Saga",
+"oracle_text": "(As this Saga enters and after your draw step, add a lore counter.)\nI \u2014 Mill ten cards. Put up to two creature cards from among the milled cards onto the battlefield.\nII \u2014 Distribute seven +1/+1 counters among any number of target creatures you control.\nIII \u2014 Until end of turn, creatures you control gain \"{1}: This creature fights target creature you don't control.\" Exile this Saga, then return it to the battlefield (front face up).",
+"power": null,
+"toughness": null,
+"colors": [
+"G"
+],
+"loyalty": null
+}
 },
 {
 "name": "Vorinclex, Monstrous Raider",

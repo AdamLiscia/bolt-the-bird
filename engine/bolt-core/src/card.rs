@@ -227,6 +227,8 @@ pub struct Activated {
     pub remove_kind_counters: i32,
     /// With `sacrifice_subtype`: "Sacrifice another [subtype]" (not the source; Koma).
     pub sacrifice_another: bool,
+    /// "Activate only if you control N or more permanents." (Temple of Cultivation)
+    pub min_permanents: u8,
     /// Crew N (CR 702.122): tap an untapped creature you control with power N or more (activated
     /// with `Action::ActivateWith`, that creature as the victim).
     pub crew: u8,
@@ -580,6 +582,12 @@ pub struct CardDef {
     /// Its last mode (both modes together) can be chosen only while you control a commander
     /// (Will of the Abzan).
     pub last_mode_needs_commander: bool,
+    /// A transforming double-faced card's back face (CR 712): what the permanent is while it's
+    /// transformed (`Object::transformed`). Its own `back` is `None`.
+    pub back: Option<Box<CardDef>>,
+    /// `alt_cost` is offered only while you control a commander (Deflecting Swat: "If you control a
+    /// commander, you may cast this spell without paying its mana cost.").
+    pub alt_cost_needs_commander: bool,
     /// "You may pay N {E} rather than pay the mana cost for permanent spells you cast." (Nissa,
     /// Worldsoul Speaker: 8); cast with `Action::CastWith(card, this permanent)`.
     pub permanents_for_energy: u8,
@@ -784,6 +792,8 @@ impl CardDef {
             flashback_sacrifice: 0,
             pitch_not_your_turn: None,
             last_mode_needs_commander: false,
+            back: None,
+            alt_cost_needs_commander: false,
             permanents_for_energy: 0,
         }
     }
@@ -954,6 +964,8 @@ impl CardDef {
             flashback_sacrifice: 0,
             pitch_not_your_turn: None,
             last_mode_needs_commander: false,
+            back: None,
+            alt_cost_needs_commander: false,
             permanents_for_energy: 0,
         }
     }
@@ -1124,6 +1136,8 @@ impl CardDef {
             flashback_sacrifice: 0,
             pitch_not_your_turn: None,
             last_mode_needs_commander: false,
+            back: None,
+            alt_cost_needs_commander: false,
             permanents_for_energy: 0,
         }
     }
