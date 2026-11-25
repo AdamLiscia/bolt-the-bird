@@ -973,6 +973,27 @@ pub enum Effect {
     PreventAllDamageToYouThisTurn,
     /// Gain 1 life for each creature your opponents control (Riot Control).
     GainLifePerOpponentCreature,
+    /// Untap all lands you control.
+    UntapLandsYouControl,
+    /// Create tokens (`def`) equal to the source's power (last known), untapped (Jacked Rabbit).
+    CreateTokensPower {
+        def: usize,
+    },
+    /// Parley (Selvala): each player reveals their top card; for each nonland card, add {G} and you
+    /// gain 1 life; then each player draws a card.
+    SelvalaParley,
+    /// Each creature without one of these subtypes gets -X/-X until end of turn, X the creatures you
+    /// control with one of them (Swarmyard Massacre).
+    ShrinkAllWithoutSubtypesPerYours(&'static [&'static str]),
+    /// The land in `slot` becomes a creature with this base power and toughness, creature type and
+    /// keywords until end of turn; it's still a land (Llanowar Loamspeaker).
+    SlotBecomesCreatureUntilEot {
+        slot: u8,
+        power: i32,
+        toughness: i32,
+        subtype: &'static str,
+        keywords: crate::Keywords,
+    },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1058,6 +1079,8 @@ pub enum Scale {
     PerCreatureYouControl,
     /// Other creatures you control with base power 1 (Zinnia).
     PerOtherYourCreatureBasePowerOne,
+    /// Colors among permanents you control (Faeburrow Elder).
+    PerColorAmongYourPermanents,
 }
 
 /// A condition on a static ability ("as long as ...").
@@ -1215,6 +1238,8 @@ pub enum Condition {
     HandSizeExactly(u8),
     /// An opponent controls more lands than you (Loyal Warhound).
     OpponentControlsMoreLands,
+    /// The source's X (as it was cast) is at least this (ravenous: "If X is 5 or more").
+    XAtLeast(u8),
 }
 
 /// A spell's effect or a triggered ability: target slots, then effects in order.
@@ -1419,6 +1444,10 @@ pub enum When {
     EachDrawStep,
     /// "When you cycle this card": from the graveyard, as its cycling ability is activated.
     YouCycleThis,
+    /// "Whenever equipped creature dies".
+    EquippedDies,
+    /// "Whenever a creature you control leaves the battlefield" (any zone it goes to).
+    CreatureYouControlLeavesBattlefield,
 }
 
 #[derive(Clone, Debug, PartialEq)]

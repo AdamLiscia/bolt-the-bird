@@ -254,3 +254,22 @@ Core:
 - `Game::combat_damage_prevented_turn` (Spore Frog) and `damage_to_player_prevented_turn` (Riot
   Control), checked at the top of `deal_damage`; `Effect::GainLifePerOpponentCreature`.
 - `Condition::OpponentControlsMoreLands`.
+
+### Batch 10: 11 cards
+
+Scurry of Squirrels, Faeburrow Elder, Beledros Witherbloom, Gilded Goose, Jacked Rabbit, Selvala,
+Explorer Returned, Swarmyard Massacre, Skullclamp, Outpost Siege, Tainted Wood, Llanowar Loamspeaker.
+
+Core:
+- `Scale::PerColorAmongYourPermanents` (Faeburrow's mana is the existing `vivid_mana`).
+- `Activated::once_each_turn` (`Object::activated_turn`); `Effect::UntapLandsYouControl`; Pest token.
+- `Condition::XAtLeast` (ravenous's draw), `Effect::CreateTokensPower`.
+- `Effect::SelvalaParley`, `ShrinkAllWithoutSubtypesPerYours`, `SlotBecomesCreatureUntilEot`.
+- `When::EquippedDies` (Equipment still attached when the creature hits the graveyard) and
+  `When::CreatureYouControlLeavesBattlefield`.
+- `CardDef::colored_mana_only_if_you_control` (Tainted Wood keeps its {C}).
+
+Notes: Scurry's myriad does nothing in a two-player game (no opponent other than the defending
+player). Gilded Goose's Food ability and Selvala's parley are mana abilities played on the stack, as
+Hazel's is. Outpost Siege's Khans card is offered as a pick (the existing `ExileTopChooseOneToPlay`
+with one card): declining is never better than taking it.

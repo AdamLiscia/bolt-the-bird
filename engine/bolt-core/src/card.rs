@@ -205,6 +205,8 @@ pub struct Activated {
     /// "Sacrifice a [subtype]" in the cost (Siege-Gang Commander: "Sacrifice a Goblin"); the source
     /// itself counts if it has the subtype. Activated with `Action::ActivateWith`.
     pub sacrifice_subtype: Option<&'static str>,
+    /// "Activate only once each turn."
+    pub once_each_turn: bool,
 }
 
 /// The printed card. Shared by every copy; per-copy state lives on the game object.
@@ -449,6 +451,9 @@ pub struct CardDef {
     pub enters_tapped_unless_reveal: Option<[&'static str; 2]>,
     /// "Each player may play an additional land on each of their turns." (Rites of Flourishing)
     pub extra_land_drop_each_player: bool,
+    /// Its colored mana works only while you control a permanent with this subtype (Tainted Wood:
+    /// "{T}: Add {B} or {G}. Activate only if you control a Swamp."); its {C} always works.
+    pub colored_mana_only_if_you_control: Option<&'static str>,
 }
 
 /// An Omen spell half: its name, cost, whether it's an instant, and what it does.
@@ -592,6 +597,7 @@ impl CardDef {
             paid_mana: None,
             enters_tapped_unless_reveal: None,
             extra_land_drop_each_player: false,
+            colored_mana_only_if_you_control: None,
         }
     }
 
@@ -714,6 +720,7 @@ impl CardDef {
             paid_mana: None,
             enters_tapped_unless_reveal: None,
             extra_land_drop_each_player: false,
+            colored_mana_only_if_you_control: None,
         }
     }
 
@@ -836,6 +843,7 @@ impl CardDef {
             paid_mana: None,
             enters_tapped_unless_reveal: None,
             extra_land_drop_each_player: false,
+            colored_mana_only_if_you_control: None,
         }
     }
 }

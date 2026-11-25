@@ -838,6 +838,134 @@ pub fn script(name: &str) -> Option<Script> {
             &["You gain 1 life for each creature your opponents control. Prevent all damage that would be dealt to you this turn."],
             |d, _| spell(d, vec![], vec![Effect::GainLifePerOpponentCreature, Effect::PreventAllDamageToYouThisTurn]),
         ),
+        "Scurry of Squirrels" => s(
+            &["Myriad, myriad", "Whenever this creature deals combat damage to a player, put a +1/+1 counter on target creature you control."],
+            |d, _| {
+                // Myriad copies attack each opponent other than the defending player: in a two-player
+                // game there is none, so myriad (twice) does nothing.
+                on(d, When::DealsCombatDamageToPlayer, vec![YOUR_CREATURE], vec![Effect::Counters { slot: 0, n: 1 }]);
+            },
+        ),
+        "Faeburrow Elder" => s(
+            &[
+                "This creature gets +1/+1 for each color among permanents you control.",
+                "{T}: For each color among permanents you control, add one mana of that color.",
+            ],
+            |d, _| {
+                static_on(d, Scope::This, false, Keywords::NONE);
+                let st = d.statics.last_mut().expect("just added");
+                st.power = 1;
+                st.toughness = 1;
+                st.scale = Some(Scale::PerColorAmongYourPermanents);
+                d.vivid_mana = true;
+            },
+        ),
+        "Beledros Witherbloom" => s(
+            &[
+                "At the beginning of each upkeep, create a 1/1 black and green Pest creature token with \"When this token dies, you gain 1 life.\"",
+                "Pay 10 life: Untap all lands you control. Activate only once each turn.",
+            ],
+            |d, t| {
+                on(d, When::Upkeep { your_turn_only: false }, vec![], vec![Effect::CreateToken { who: Who::You, def: t.pest, n: 1 }]);
+                let n = activated(d, "", false, vec![], vec![Effect::UntapLandsYouControl]);
+                d.activated[n].life = 10;
+                d.activated[n].once_each_turn = true;
+            },
+        ),
+        "Gilded Goose" => s(
+            &[
+                "When this creature enters, create a Food token.",
+                "{1}{G}, {T}: Create a Food token.",
+                "{T}, Sacrifice a Food: Add one mana of any color.",
+            ],
+            |d, t| {
+                on(d, When::Enters, vec![], vec![Effect::CreateToken { who: Who::You, def: t.food, n: 1 }]);
+                activated(d, "{1}{G}", true, vec![], vec![Effect::CreateToken { who: Who::You, def: t.food, n: 1 }]);
+                // Played as an activated ability that uses the stack (as Hazel's is): the mana payer
+                // doesn't sacrifice other permanents.
+                let n = activated(d, "", true, vec![], vec![Effect::AddManaAnyColor]);
+                d.activated[n].sacrifice_subtype = Some("Food");
+            },
+        ),
+        "Jacked Rabbit" => s(
+            &["Ravenous", "Whenever this creature attacks, create a number of 1/1 white Rabbit creature tokens equal to this creature's power."],
+            |d, t| {
+                d.enters_with_x_counters = true;
+                conditional(d, When::Enters, Condition::XAtLeast(5), vec![], vec![draw(1)]);
+                on(d, When::Attacks, vec![], vec![Effect::CreateTokensPower { def: t.rabbit }]);
+            },
+        ),
+        "Selvala, Explorer Returned" => s(
+            &["Parley — {T}: Each player reveals the top card of their library. For each nonland card revealed this way, add {G} and you gain 1 life. Then each player draws a card."],
+            |d, _| {
+                // A mana ability played on the stack, like Hazel's.
+                activated(d, "", true, vec![], vec![Effect::SelvalaParley]);
+            },
+        ),
+        "Swarmyard Massacre" => s(
+            &["Create two 1/1 green Squirrel creature tokens. Then each creature that isn't an Insect, Rat, Spider, or Squirrel gets -1/-1 until end of turn for each creature you control that's an Insect, Rat, Spider, or Squirrel."],
+            |d, t| {
+                spell(
+                    d,
+                    vec![],
+                    vec![
+                        Effect::CreateToken { who: Who::You, def: t.squirrel, n: 2 },
+                        Effect::ShrinkAllWithoutSubtypesPerYours(&["Insect", "Rat", "Spider", "Squirrel"]),
+                    ],
+                );
+            },
+        ),
+        "Skullclamp" => s(&["Equipped creature gets +1/-1.", "Whenever equipped creature dies, draw two cards.", "Equip {1}"], |d, _| {
+            attached(d, false, 1, -1, Keywords::NONE);
+            on(d, When::EquippedDies, vec![], vec![draw(2)]);
+            equip(d, "{1}");
+        }),
+        "Outpost Siege" => s(
+            &[
+                "As this enchantment enters, choose Khans or Dragons.",
+                "• Khans — At the beginning of your upkeep, exile the top card of your library. Until end of turn, you may play that card.",
+                "• Dragons — Whenever a creature you control leaves the battlefield, this enchantment deals 1 damage to any target.",
+            ],
+            |d, _| {
+                d.enter_modes = true;
+                conditional(
+                    d,
+                    When::Upkeep { your_turn_only: true },
+                    Condition::ChosenMode(0),
+                    vec![],
+                    vec![Effect::ExileTopChooseOneToPlay { n: 1, this_turn: true }],
+                );
+                conditional(
+                    d,
+                    When::CreatureYouControlLeavesBattlefield,
+                    Condition::ChosenMode(1),
+                    vec![Filter::ANY],
+                    vec![damage(1, Recipient::Target(0))],
+                );
+            },
+        ),
+        "Tainted Wood" => s(&["{T}: Add {C}.", "{T}: Add {B} or {G}. Activate only if you control a Swamp."], |d, _| {
+            d.mana = Some(ManaSource { colorless: true, ..ManaSource::of(&[Color::Black, Color::Green]) });
+            d.colored_mana_only_if_you_control = Some("Swamp");
+        }),
+        "Llanowar Loamspeaker" => s(
+            &[
+                "{T}: Add one mana of any color.",
+                "{T}: Target land you control becomes a 3/3 Elemental creature with haste until end of turn. It's still a land. Activate only as a sorcery.",
+            ],
+            |d, _| {
+                d.mana = Some(ManaSource::of(&Color::ALL));
+                let land = Filter { players: false, creatures: false, planeswalkers: false, lands: true, controller: Controller::You, ..Filter::ANY };
+                let n = activated(
+                    d,
+                    "",
+                    true,
+                    vec![land],
+                    vec![Effect::SlotBecomesCreatureUntilEot { slot: 0, power: 3, toughness: 3, subtype: "Elemental", keywords: Keywords::HASTE }],
+                );
+                d.activated[n].sorcery = true;
+            },
+        ),
         _ => None,
     }
 }
@@ -965,4 +1093,15 @@ pub const BLC_B_SCRIPTED: &[&str] = &[
     "Decree of Pain",
     "Spore Frog",
     "Riot Control",
+    "Scurry of Squirrels",
+    "Faeburrow Elder",
+    "Beledros Witherbloom",
+    "Gilded Goose",
+    "Jacked Rabbit",
+    "Selvala, Explorer Returned",
+    "Swarmyard Massacre",
+    "Skullclamp",
+    "Outpost Siege",
+    "Tainted Wood",
+    "Llanowar Loamspeaker",
 ];

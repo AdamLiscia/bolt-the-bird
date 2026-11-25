@@ -123,6 +123,17 @@ pub fn token_defs() -> Vec<CardDef> {
             );
             wolf
         },
+        {
+            // Beledros Witherbloom: a 1/1 black and green Pest with "When this token dies, you gain 1 life."
+            let mut pest = token("Pest", "Pest", 1, 1, Keywords::NONE);
+            on(
+                &mut pest,
+                When::Dies,
+                vec![],
+                vec![Effect::GainLife { who: Who::You, n: 1 }],
+            );
+            pest
+        },
     ]
 }
 
@@ -207,6 +218,7 @@ pub struct Tokens {
     pub thopter: usize,
     pub storm_crow: usize,
     pub garruk_wolf: usize,
+    pub pest: usize,
 }
 
 impl Tokens {
@@ -255,6 +267,7 @@ impl Tokens {
             thopter: base + 40,
             storm_crow: base + 41,
             garruk_wolf: base + 42,
+            pest: base + 43,
         }
     }
 }

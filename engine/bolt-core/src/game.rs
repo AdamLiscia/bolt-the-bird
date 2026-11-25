@@ -221,6 +221,8 @@ pub struct Object {
     pub time_counters: u8,
     /// Cast from suspend: a creature has haste while it stays on the battlefield (CR 702.62a).
     pub suspend_haste: bool,
+    /// The turn an "Activate only once each turn" ability of it was last activated.
+    pub activated_turn: Option<u32>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -1260,6 +1262,7 @@ impl Game {
             printed_def: None,
             time_counters: 0,
             suspend_haste: false,
+            activated_turn: None,
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -1508,6 +1511,13 @@ impl Game {
                             let n = self
                                 .creatures(so.controller)
                                 .filter(|&c| c != src && self.base_pt(c).0 == 1)
+                                .count() as i32;
+                            s.power *= n;
+                            s.toughness *= n;
+                        }
+                        if let Some(Scale::PerColorAmongYourPermanents) = s.scale {
+                            let n = (0..5)
+                                .filter(|&c| self.permanents(so.controller).any(|x| self.colors_of(x)[c]))
                                 .count() as i32;
                             s.power *= n;
                             s.toughness *= n;
@@ -2435,8 +2445,25 @@ impl Game {
         }
         if from == Zone::Battlefield && to != Zone::Battlefield {
             self.fire_source(id, When::LeavesBattlefield);
+            if self.types_of(id).creature {
+                self.fire(
+                    last_controller,
+                    When::CreatureYouControlLeavesBattlefield,
+                    Some(id),
+                );
+            }
         }
         if dies && self.types_of(id).creature {
+            // "Whenever equipped creature dies": Equipment still attached until state-based actions.
+            let gear: Vec<ObjId> = self
+                .battlefield
+                .iter()
+                .copied()
+                .filter(|&e| self.obj(e).attached_to.is_some_and(|(c, _)| c == id))
+                .collect();
+            for e in gear {
+                self.fire_source(e, When::EquippedDies);
+            }
             self.fire(0, When::AnotherCreatureDies, Some(id));
             self.fire(1, When::AnotherCreatureDies, Some(id));
             self.creature_died_this_turn = true;
@@ -4195,6 +4222,7 @@ impl Game {
                 if (a.tap && !self.can_tap(id))
                     || self.obj(id).incubation < a.remove_incubation
                     || (a.once && self.obj(id).used_once)
+                    || (a.once_each_turn && self.obj(id).activated_turn == Some(self.turn))
                     || (a.tap_attached
                         && !self
                             .obj(id)
@@ -4473,6 +4501,9 @@ impl Game {
         if a.once {
             self.obj_mut(id).used_once = true;
         }
+        if a.once_each_turn {
+            self.obj_mut(id).activated_turn = Some(self.turn);
+        }
         if a.tap_attached {
             if let Some((c, _)) = self.obj(id).attached_to {
                 self.become_tapped(c);
@@ -4622,6 +4653,20 @@ impl Game {
                     let mut colors = vec![fixed];
                     colors.extend(self.obj(id).chosen_color.map(|c| crate::Color::ALL[c as usize]));
                     return Some((id, ManaSource::of(&colors)));
+                }
+                if d.colored_mana_only_if_you_control
+                    .is_some_and(|sub| !self.permanents(p).any(|x| self.has_subtype(x, sub)))
+                {
+                    // Tainted Wood: only its {C} without a Swamp.
+                    return d.mana.map(|m| {
+                        (
+                            id,
+                            ManaSource {
+                                colorless: m.colorless,
+                                ..ManaSource::default()
+                            },
+                        )
+                    });
                 }
                 d.mana.map(|m| (id, m))
             })
@@ -9622,6 +9667,81 @@ impl Game {
                 let n = self.creatures(opponent(item.controller)).count() as i32;
                 self.gain_life(item.controller, n);
             }
+            Effect::UntapLandsYouControl => {
+                for l in self.permanents(item.controller).collect::<Vec<_>>() {
+                    if self.types_of(l).land {
+                        self.obj_mut(l).tapped = false;
+                    }
+                }
+            }
+            Effect::CreateTokensPower { def } => {
+                let power = if self.obj(src).zone == Zone::Battlefield {
+                    self.power(src)
+                } else {
+                    self.obj(src).last_power
+                };
+                let mut made = Vec::new();
+                for _ in 0..power.max(0) {
+                    self.create_token(item.controller, def);
+                    made.extend(self.last_created.iter().copied());
+                }
+                self.last_created = made;
+            }
+            Effect::SelvalaParley => {
+                let nonland = (0..2)
+                    .filter(|&q| {
+                        self.players[q]
+                            .library
+                            .last()
+                            .is_some_and(|&c| !self.types_of(c).land)
+                    })
+                    .count();
+                let p = item.controller;
+                let green = ManaSource::of(&[crate::Color::Green]);
+                self.players[p].pool.extend(std::iter::repeat_n(green, nonland));
+                self.gain_life(p, nonland as i32);
+                let active = self.active;
+                for q in [active, opponent(active)] {
+                    self.draw(q);
+                }
+            }
+            Effect::ShrinkAllWithoutSubtypesPerYours(subs) => {
+                let kind = |g: &Game, c: ObjId| subs.iter().any(|s| g.has_subtype(c, s));
+                let x = self.creatures(item.controller).filter(|&c| kind(self, c)).count() as i32;
+                if x > 0 {
+                    let all: Vec<ObjId> = self
+                        .battlefield
+                        .iter()
+                        .copied()
+                        .filter(|&c| self.types_of(c).creature && !kind(self, c))
+                        .collect();
+                    for c in all {
+                        let zcc = self.obj(c).zcc;
+                        self.until_eot.push(Modifier {
+                            obj: c,
+                            zcc,
+                            power: -x,
+                            toughness: -x,
+                            keywords: Keywords::NONE,
+                            dies: None,
+                        });
+                    }
+                }
+            }
+            Effect::SlotBecomesCreatureUntilEot {
+                slot,
+                power,
+                toughness,
+                subtype,
+                keywords,
+            } => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    if self.obj(id).zone == Zone::Battlefield {
+                        let turn = self.turn;
+                        self.obj_mut(id).eot_creature = Some((turn, power, toughness, subtype, keywords));
+                    }
+                }
+            }
         }
     }
 
@@ -9662,6 +9782,7 @@ impl Game {
                 self.cast_creature_noncreature[controller] == [true, true]
             }
             Some(Condition::HandSizeExactly(n)) => self.players[controller].hand.len() == *n as usize,
+            Some(Condition::XAtLeast(n)) => self.obj(source).x >= *n,
             Some(Condition::OpponentControlsMoreLands) => {
                 let lands = |q: PlayerId| self.permanents(q).filter(|&x| self.types_of(x).land).count();
                 lands(opponent(controller)) > lands(controller)
