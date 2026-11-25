@@ -191,6 +191,8 @@ pub struct Activated {
     pub your_turn_only: bool,
     /// "Activate only if a card left your graveyard this turn."
     pub if_card_left_graveyard: bool,
+    /// "This ability costs {1} less to activate for each color of the creature it targets."
+    pub less_per_target_color: bool,
 }
 
 /// The printed card. Shared by every copy; per-copy state lives on the game object.
@@ -401,6 +403,8 @@ pub struct CardDef {
     /// has indestructible, haste, and \"Whenever this creature deals combat damage to a player, draw
     /// a card.\"" (its trigger number 0 is that draw)
     pub animates_big_noncreatures_your_turn: bool,
+    /// "Equipped creature ... has hexproof from monocolored." (Dragonfire Blade)
+    pub equipped_hexproof_from_monocolored: bool,
 }
 
 /// An Omen spell half: its name, cost, whether it's an instant, and what it does.
@@ -529,6 +533,7 @@ impl CardDef {
             mana_opponent_land_colors: false,
             mana_amount: 0,
             animates_big_noncreatures_your_turn: false,
+            equipped_hexproof_from_monocolored: false,
         }
     }
 
@@ -636,6 +641,7 @@ impl CardDef {
             mana_opponent_land_colors: false,
             mana_amount: 0,
             animates_big_noncreatures_your_turn: false,
+            equipped_hexproof_from_monocolored: false,
         }
     }
 
@@ -743,6 +749,7 @@ impl CardDef {
             mana_opponent_land_colors: false,
             mana_amount: 0,
             animates_big_noncreatures_your_turn: false,
+            equipped_hexproof_from_monocolored: false,
         }
     }
 }

@@ -83,6 +83,8 @@ pub struct Filter {
     pub colored: bool,
     /// Creature or land cards only (graveyard targets).
     pub creature_or_land: bool,
+    /// Nonland cards (graveyard targets).
+    pub nonland_cards: bool,
 }
 
 impl Filter {
@@ -123,6 +125,7 @@ impl Filter {
         mana_value_is_x: false,
         colored: false,
         creature_or_land: false,
+        nonland_cards: false,
     };
 
     pub const CREATURE: Filter = Filter {
@@ -837,6 +840,18 @@ pub enum Effect {
     /// "If this is the second time this ability has resolved this turn, you draw `n` cards." (Ms.
     /// Bumbleflower; counted per source, each turn)
     DrawIfSecondResolutionThisTurn(u8),
+    /// "You may behold a Dragon. If you do, ...": the rest only if beheld.
+    MayBeholdThen,
+    /// The source gains this creature type until end of turn.
+    SubtypeUntilEotSelf(&'static str),
+    /// For each opponent, a tapped token copy of the card the source exiled (until it leaves)
+    /// attacking that opponent; sacrificed at the beginning of the next end step (Mardu Siegebreaker).
+    CopyLinkedExileAttacking,
+    /// Exile the card in `slot` from your graveyard, copy it, and you may cast the copy free (Shiko).
+    ExileCastCopyFree(u8),
+    /// Search for up to three monocolored cards with different names and exile them; an opponent
+    /// chooses one to shuffle back; you may cast the others free (Emergent Ultimatum).
+    SearchMonocoloredOpponentPicks,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

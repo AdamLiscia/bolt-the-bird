@@ -285,3 +285,23 @@ Mechanics added (bolt-core, all at the end of their enum or struct):
 
 Cards: Anafenza, Unyielding Lineage, Voice of Victory, Zurgo, Thunder's Decree, The Sibsig Ceremony, Rite of
 Renewal.
+
+## Round 3, batch 8b (5 cards)
+
+Mechanics added (bolt-core, all at the end of their enum or struct):
+- `Effect::MayBeholdThen` (no Dragon to behold: no question, nothing happens) and `Effect::SubtypeUntilEotSelf`
+  (`Object::eot_subtype`).
+- `Effect::CopyLinkedExileAttacking`: a tapped, attacking token copy of the card the source exiled until it
+  leaves, sacrificed at the next end step.
+- Dragonfire Blade: `CardDef::equipped_hexproof_from_monocolored` (checked in `slot_ok` against the targeting
+  item's source), and `Activated::less_per_target_color`. That equip is offered when the most colorful creature
+  you control makes it affordable; only targets you can then afford are offered; the discount is passed to the
+  payment as the ability's X.
+- Card copies (CR 707.12): `Effect::ExileCastCopyFree` makes an `Object::card_copy` in exile, castable free in
+  the free-cast window. It exists only there, on the stack, or on the battlefield (where it becomes a token); a
+  copy not cast, or put anywhere else, ceases to exist. `Filter::nonland_cards`.
+- `Effect::SearchMonocoloredOpponentPicks` with `Decision::SearchMonoNames` and `Decision::OpponentShufflesOne`
+  (asked of the opponent); the other cards are cast free in the free-cast window.
+
+Cards: Sarkhan, Dragon Ascendant, Mardu Siegebreaker, Dragonfire Blade, Shiko, Paragon of the Way, Emergent
+Ultimatum.

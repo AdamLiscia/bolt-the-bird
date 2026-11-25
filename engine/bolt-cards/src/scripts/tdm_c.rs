@@ -775,6 +775,59 @@ pub fn script(name: &str) -> Option<Script> {
                 );
             },
         ),
+        "Sarkhan, Dragon Ascendant" => s(
+            &[
+                "When Sarkhan enters, you may behold a Dragon. If you do, create a Treasure token.",
+                "Whenever a Dragon you control enters, put a +1/+1 counter on Sarkhan. Until end of turn, Sarkhan becomes a Dragon in addition to his other types and gains flying.",
+            ],
+            |d, t| {
+                on(d, When::Enters, vec![], vec![Effect::MayBeholdThen, Effect::CreateToken { who: Who::You, def: t.treasure, n: 1 }]);
+                on(
+                    d,
+                    When::AnotherYouControlEntersWithSubtype("Dragon"),
+                    vec![],
+                    vec![
+                        Effect::CountersSelf { n: 1 },
+                        Effect::SubtypeUntilEotSelf("Dragon"),
+                        Effect::GrantSelf { keywords: Keywords::FLYING },
+                    ],
+                );
+            },
+        ),
+        "Mardu Siegebreaker" => s(
+            &[
+                "When this creature enters, exile up to one other target creature you control until this creature leaves the battlefield.",
+                "Whenever this creature attacks, for each opponent, create a tapped token that's a copy of the exiled card attacking that opponent. At the beginning of your next end step, sacrifice those tokens.",
+            ],
+            |d, _| {
+                let other = Filter { other: true, ..YOUR_CREATURE };
+                d.triggers.push(Trigger { when: When::Enters, ability: up_to(vec![other], vec![Effect::ExileUntilSourceLeaves(0)]) });
+                on(d, When::Attacks, vec![], vec![Effect::CopyLinkedExileAttacking]);
+            },
+        ),
+        "Dragonfire Blade" => s(
+            &[
+                "Equipped creature gets +2/+2 and has hexproof from monocolored.",
+                "Equip {4}. This ability costs {1} less to activate for each color of the creature it targets.",
+            ],
+            |d, _| {
+                attached(d, false, 2, 2, Keywords::NONE);
+                d.equipped_hexproof_from_monocolored = true;
+                equip(d, "{4}");
+                d.activated.last_mut().expect("equip").less_per_target_color = true;
+            },
+        ),
+        "Shiko, Paragon of the Way" => s(
+            &["When Shiko enters, exile target nonland card with mana value 3 or less from your graveyard. Copy it, then you may cast the copy without paying its mana cost."],
+            |d, _| {
+                let card = Filter { nonland_cards: true, max_mana_value: Some(3), ..graveyard_cards(false, Controller::You) };
+                on(d, When::Enters, vec![card], vec![Effect::ExileCastCopyFree(0)]);
+            },
+        ),
+        "Emergent Ultimatum" => s(
+            &["Search your library for up to three monocolored cards with different names and exile them. An opponent chooses one of those cards. Shuffle that card into your library. You may cast the other cards without paying their mana costs. Exile Emergent Ultimatum."],
+            |d, _| spell(d, vec![], vec![Effect::SearchMonocoloredOpponentPicks, Effect::ExileSourceSpell]),
+        ),
         _ => None,
     }
 }
@@ -855,4 +908,9 @@ pub const TDM_C_SCRIPTED: &[&str] = &[
     "Zurgo, Thunder's Decree",
     "The Sibsig Ceremony",
     "Rite of Renewal",
+    "Sarkhan, Dragon Ascendant",
+    "Mardu Siegebreaker",
+    "Dragonfire Blade",
+    "Shiko, Paragon of the Way",
+    "Emergent Ultimatum",
 ];
