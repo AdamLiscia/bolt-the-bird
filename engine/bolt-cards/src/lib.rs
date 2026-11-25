@@ -405,20 +405,52 @@ pub fn singleton_problems(set: &CardSet, cards: &[usize]) -> Vec<String> {
 /// What makes a 1v1 Commander deck illegal (CR 903.3-903.5), as messages; empty if it's legal.
 /// `deck` is the other 99 cards, as card indices in `set`.
 pub fn commander_deck_problems(set: &CardSet, commander: usize, deck: &[usize]) -> Vec<String> {
+    commander_deck_problems_for(set, &[commander], deck)
+}
+
+/// Whether a card's rules text gives it partner (CR 702.124): "Partner", or "Partner with
+/// `other`" naming the other commander.
+fn partners_with(o: &Oracle, other: &Oracle) -> bool {
+    abilities(o.oracle_text.as_deref().unwrap_or(""))
+        .iter()
+        .any(|l| l == "Partner" || l.strip_prefix("Partner with ").is_some_and(|n| n == other.name))
+}
+
+/// [`commander_deck_problems`] for one or two commanders (two must be partners, CR 702.124);
+/// `deck` is the other cards (100 in all with the commanders), and the color identity is both
+/// commanders' together.
+pub fn commander_deck_problems_for(set: &CardSet, commanders: &[usize], deck: &[usize]) -> Vec<String> {
     let mut out = Vec::new();
-    let c = &set.oracle[commander];
-    if !(c.type_line.contains("Legendary") && c.type_line.contains("Creature")) {
-        out.push(format!("{} isn't a legendary creature", c.name));
+    if !(1..=2).contains(&commanders.len()) {
+        out.push(format!("{} commanders, not one or two", commanders.len()));
+        return out;
     }
-    if deck.len() + 1 != 100 {
-        out.push(format!("{} cards with the commander, not 100", deck.len() + 1));
+    let cs: Vec<&Oracle> = commanders.iter().map(|&c| &set.oracle[c]).collect();
+    for c in &cs {
+        if !(c.type_line.contains("Legendary") && c.type_line.contains("Creature")) {
+            out.push(format!("{} isn't a legendary creature", c.name));
+        }
+    }
+    if let [a, b] = cs[..] {
+        if !(partners_with(a, b) && partners_with(b, a)) {
+            out.push(format!("{} and {} aren't partners", a.name, b.name));
+        }
+    }
+    let total = deck.len() + commanders.len();
+    if total != 100 {
+        out.push(format!("{total} cards with the commander, not 100"));
     }
     let mut all = deck.to_vec();
-    all.push(commander);
+    all.extend(commanders);
     for name in singleton_problems(set, &all) {
         out.push(format!("more than one {name}"));
     }
-    let allowed = color_identity(c);
+    let mut allowed = [false; 5];
+    for c in &cs {
+        for (a, has) in allowed.iter_mut().zip(color_identity(c)) {
+            *a |= has;
+        }
+    }
     let mut outside: Vec<&str> = deck
         .iter()
         .map(|&d| &set.oracle[d])

@@ -196,6 +196,8 @@ pub struct Object {
     pub commander_choice_pending: bool,
     /// How many times this object's abilities resolved this turn: (turn, count).
     pub resolved_this_turn: (u32, u32),
+    /// How many times this commander has been cast from the command zone (its own tax, CR 903.8).
+    pub command_zone_casts: u8,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -718,6 +720,25 @@ pub enum Decision {
     CommanderToCommandZone { card: ObjId },
 }
 
+/// Options for [`Game::new_commander_with`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct CommanderOptions {
+    /// Each player's starting life (CR 903.7: 40).
+    pub starting_life: i32,
+    /// With `Game::commander_choice` on, these seats' commanders go to the command zone without
+    /// asking.
+    pub auto_command_zone: [bool; 2],
+}
+
+impl Default for CommanderOptions {
+    fn default() -> Self {
+        CommanderOptions {
+            starting_life: COMMANDER_LIFE,
+            auto_command_zone: [false; 2],
+        }
+    }
+}
+
 /// An until-end-of-turn change to one object (CR 611.2, 613).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Modifier {
@@ -885,6 +906,13 @@ pub struct Game {
     pub commander_choice: bool,
     /// Who gets priority once a pending commander choice is made.
     commander_choice_then: PlayerId,
+    /// Each seat's second commander, if it has partners (CR 702.124).
+    pub partners: [Option<ObjId>; 2],
+    /// Combat damage dealt to a player by one commander object (CR 903.10a): (commander, player,
+    /// damage). A mirror match's two commanders are two objects, so two entries.
+    pub commander_damage_from: Vec<(ObjId, PlayerId, i32)>,
+    /// With `commander_choice` on, this seat's commanders go to the command zone without asking.
+    pub commander_auto_return: [bool; 2],
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -922,11 +950,41 @@ impl Game {
         seed: u64,
         first: PlayerId,
     ) -> Game {
+        Game::new_commander_with(
+            defs,
+            decks,
+            [&[commanders[0]], &[commanders[1]]],
+            CommanderOptions::default(),
+            seed,
+            first,
+        )
+    }
+
+    /// A 1v1 Commander game with options: one or two commanders per seat (partners, each with its
+    /// own tax), the starting life, and whether each seat's commanders always go to the command zone
+    /// when `commander_choice` is on.
+    pub fn new_commander_with(
+        defs: Arc<Vec<CardDef>>,
+        decks: [&[usize]; 2],
+        commanders: [&[usize]; 2],
+        options: CommanderOptions,
+        seed: u64,
+        first: PlayerId,
+    ) -> Game {
+        assert!(
+            commanders.iter().all(|c| (1..=2).contains(&c.len())),
+            "one or two commanders a seat"
+        );
         let mut g = Game::empty(defs, seed, first);
+        g.commander_auto_return = options.auto_command_zone;
         for (p, deck) in decks.iter().enumerate() {
-            g.players[p].life = COMMANDER_LIFE;
-            let c = g.add_card(p, commanders[p], Zone::Command);
+            g.players[p].life = options.starting_life;
+            let c = g.add_card(p, commanders[p][0], Zone::Command);
             g.commanders[p] = Some(c);
+            if let Some(&second) = commanders[p].get(1) {
+                let c2 = g.add_card(p, second, Zone::Command);
+                g.partners[p] = Some(c2);
+            }
             for &d in deck.iter() {
                 g.add_card(p, d, Zone::Library);
             }
@@ -1028,6 +1086,9 @@ impl Game {
             graveyard_leave_pending: [false; 2],
             commander_choice: false,
             commander_choice_then: 0,
+            partners: [None, None],
+            commander_damage_from: Vec::new(),
+            commander_auto_return: [false; 2],
         }
     }
 
@@ -1106,6 +1167,7 @@ impl Game {
             eot_creature: None,
             commander_choice_pending: false,
             resolved_this_turn: (0, 0),
+            command_zone_casts: 0,
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -1634,14 +1696,26 @@ impl Game {
     /// checked: its owner chooses whether to move it to the command zone. Asks, and returns true,
     /// if there's such a choice to make before `then` gets priority.
     fn ask_commander_choice(&mut self, then: PlayerId) -> bool {
-        let Some(c) = self.commanders.iter().flatten().copied().find(|&c| {
-            self.obj(c).commander_choice_pending && matches!(self.obj(c).zone, Zone::Graveyard | Zone::Exile)
-        }) else {
+        let Some(c) = self
+            .commanders
+            .iter()
+            .chain(&self.partners)
+            .flatten()
+            .copied()
+            .find(|&c| {
+                self.obj(c).commander_choice_pending
+                    && matches!(self.obj(c).zone, Zone::Graveyard | Zone::Exile)
+            })
+        else {
             return false;
         };
         self.obj_mut(c).commander_choice_pending = false;
-        self.commander_choice_then = then;
         let owner = self.obj(c).owner;
+        if self.commander_auto_return[owner] {
+            self.move_to(c, Zone::Command);
+            return self.ask_commander_choice(then);
+        }
+        self.commander_choice_then = then;
         self.ask(owner, Decision::CommanderToCommandZone { card: c });
         true
     }
@@ -1669,6 +1743,11 @@ impl Game {
 
     fn bello_animates(&self, id: ObjId) -> bool {
         self.bello_for(id).is_some()
+    }
+
+    /// Whether `id` is a commander (either of a seat's partners).
+    pub fn is_commander(&self, id: ObjId) -> bool {
+        self.commanders.contains(&Some(id)) || self.partners.contains(&Some(id))
     }
 
     /// Whether `p` controls a creature with a counter on it.
@@ -1940,7 +2019,7 @@ impl Game {
         // CR 903.9: a commander that would go to a graveyard, exile, a hand or a library goes to the
         // command zone instead. (The owner may choose; always choosing it is what players do.)
         let choose_later = self.commander_choice && matches!(to, Zone::Graveyard | Zone::Exile);
-        if self.commanders.contains(&Some(id))
+        if self.is_commander(id)
             && matches!(to, Zone::Graveyard | Zone::Exile | Zone::Hand | Zone::Library)
             && !choose_later
         {
@@ -1990,9 +2069,8 @@ impl Game {
                 self.graveyard_leave_pending[owner] = true;
             }
         }
-        let commander_waits = self.commander_choice
-            && matches!(to, Zone::Graveyard | Zone::Exile)
-            && self.commanders.contains(&Some(id));
+        let commander_waits =
+            self.commander_choice && matches!(to, Zone::Graveyard | Zone::Exile) && self.is_commander(id);
         let o = self.obj_mut(id);
         o.zone = to;
         o.commander_choice_pending = commander_waits;
@@ -3140,7 +3218,7 @@ impl Game {
         }
         // CR 903.8: commander tax.
         let tax = if o.zone == Zone::Command {
-            self.commander_casts[o.owner].saturating_mul(2)
+            o.command_zone_casts.saturating_mul(2)
         } else if o.zone == Zone::Stack && o.from_command {
             o.commander_tax
         } else {
@@ -3949,7 +4027,12 @@ impl Game {
                 }
                 if d.mana_commander_identity {
                     // CR 903.4f: no commander (or a colorless one) means no mana.
-                    let identity = self.commanders[p].map(|c| self.def_of(c).color_identity)?;
+                    let mut identity = self.commanders[p].map(|c| self.def_of(c).color_identity)?;
+                    if let Some(c2) = self.partners[p] {
+                        for (i, has) in identity.iter_mut().zip(self.def_of(c2).color_identity) {
+                            *i |= has;
+                        }
+                    }
                     let colors: Vec<crate::Color> = crate::Color::ALL
                         .into_iter()
                         .filter(|&c| identity[c as usize])
@@ -4404,7 +4487,9 @@ impl Game {
         if from_command {
             // CR 903.8: {2} more for each earlier cast from the command zone.
             let owner = self.obj(card).owner;
-            self.obj_mut(card).commander_tax = self.commander_casts[owner].saturating_mul(2);
+            let casts = self.obj(card).command_zone_casts;
+            self.obj_mut(card).commander_tax = casts.saturating_mul(2);
+            self.obj_mut(card).command_zone_casts = casts.saturating_add(1);
             self.commander_casts[owner] = self.commander_casts[owner].saturating_add(1);
         }
         self.move_to(card, Zone::Stack);
@@ -8583,8 +8668,17 @@ impl Game {
             self.deal_damage(source, target, amount);
             if let Target::Player(d) = target {
                 // CR 903.10a: combat damage from the opponent's commander.
-                if self.commanders.contains(&Some(source)) && self.obj(source).owner != d {
-                    self.commander_damage[d] += (before - self.players[d].life).max(0);
+                if self.is_commander(source) && self.obj(source).owner != d {
+                    let dealt = (before - self.players[d].life).max(0);
+                    self.commander_damage[d] += dealt;
+                    match self
+                        .commander_damage_from
+                        .iter_mut()
+                        .find(|e| e.0 == source && e.1 == d)
+                    {
+                        Some(e) => e.2 += dealt,
+                        None => self.commander_damage_from.push((source, d, dealt)),
+                    }
                 }
             }
             if matches!(target, Target::Player(_)) && combat.attackers.contains(&source) {
@@ -8921,7 +9015,14 @@ impl Game {
                 let pl = &self.players[p];
                 // "You can't lose the game" (Herald of Eternal Dawn).
                 let protected = self.permanents(p).any(|c| self.def_of(c).cant_lose);
-                let commander_dead = self.commander_damage[p] >= COMMANDER_DAMAGE_LOSS; // CR 704.6c
+                // CR 704.6c: 21 combat damage from one commander. `commander_damage` is the total from
+                // the opponent's commanders: the same thing when they have only one.
+                let one_commander = self.partners[opponent(p)].is_none();
+                let commander_dead = self
+                    .commander_damage_from
+                    .iter()
+                    .any(|e| e.1 == p && e.2 >= COMMANDER_DAMAGE_LOSS)
+                    || (one_commander && self.commander_damage[p] >= COMMANDER_DAMAGE_LOSS);
                 if !pl.lost && !protected && (pl.life <= 0 || pl.drew_from_empty || commander_dead) {
                     self.players[p].lost = true; // CR 704.5a, 704.5b
                     self.events.push(Event::Lost { player: p });
