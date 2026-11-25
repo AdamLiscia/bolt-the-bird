@@ -716,7 +716,13 @@ mod tests {
     #[test]
     fn every_playgroup_script_matches_its_card_text() {
         let t = set("CMD").unwrap();
-        for &name in scripts::PG_B_SCRIPTED.iter().chain(scripts::PG_C_SCRIPTED) {
+        for &name in scripts::PG_B_SCRIPTED
+            .iter()
+            .chain(scripts::PG_C_SCRIPTED)
+            .chain(scripts::PG_D1_SCRIPTED)
+            .chain(scripts::PG_D2_SCRIPTED)
+            .chain(scripts::PG_D3_SCRIPTED)
+        {
             let i = t
                 .index_of(name)
                 .unwrap_or_else(|| panic!("{name} is not in the CMD pool"));
