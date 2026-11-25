@@ -21,7 +21,6 @@ sys.path.insert(0, str(ROOT / "src"))
 import bolt_engine as be  # noqa: E402
 
 from bolt.play_encoding import collate, encode  # noqa: E402
-from bolt.play_net import PlayNet  # noqa: E402
 from bolt.service_view import state  # noqa: E402
 
 PER_KIND = 12
@@ -29,8 +28,9 @@ PER_KIND = 12
 
 def main():
     c = torch.load(ROOT / "checkpoints/play/play_v2_ppo3_i850.pt", map_location="cpu", weights_only=False)
-    net = PlayNet(**c["config"])
-    net.load_state_dict(c["model"])
+    from bolt.play_net import load_checkpoint
+
+    net = load_checkpoint(c)
     net.eval()
     lines = (ROOT / "data/m7/decks.txt").read_text().split("\n")
     decks = [list(map(int, x.split())) for x in lines[512:600]]

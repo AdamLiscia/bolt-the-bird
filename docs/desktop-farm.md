@@ -1,6 +1,6 @@
 # The desktop simulation farm: jobs that survive a power cut
 
-Status: **design, 2026-11-25; Adam said go (setup under way on the desktop).** This repo gets `bolt.jobs`,
+Status: **2026-11-25: `bolt.jobs`, `scripts/farm.py` and guard's `GUARD_ACTIVE_TIME=1` are built** (tarkir); the first job definition (Tarkir play) is next. This repo gets `bolt.jobs`,
 `scripts/farm.py` and the guard change next (after the Xenagos and Glarb decks); the desktop's own Claude
 session builds the machine side (WSL, the Windows tasks, the game watcher).
 
@@ -21,6 +21,9 @@ aws s3 cp s3://nerdleagues-bolt-checkpoints-011834/data/m7/decks.txt data/m7/dec
 aws s3 cp s3://nerdleagues-bolt-checkpoints-011834/data/m7/meta.json data/m7/meta.json --profile bolt-desktop
 aws s3 cp s3://nerdleagues-bolt-checkpoints-011834/checkpoints/play/play_v3_ppo4_i170.pt checkpoints/play/ --profile bolt-desktop
 aws s3 cp s3://nerdleagues-bolt-checkpoints-011834/checkpoints/play/play_v2_ppo3_i850.pt checkpoints/play/ --profile bolt-desktop
+aws s3 cp s3://nerdleagues-bolt-checkpoints-011834/checkpoints/bot_ppo.pt checkpoints/bot_ppo.pt --profile bolt-desktop   # the FDN service kit (tests/test_service.py)
+aws s3 cp s3://nerdleagues-bolt-checkpoints-011834/checkpoints/human_model.pt checkpoints/human_model.pt --profile bolt-desktop   # the FDN service kit (tests/test_service.py)
+aws s3 cp s3://nerdleagues-bolt-checkpoints-011834/checkpoints/judge_b.pt checkpoints/judge_b.pt --profile bolt-desktop   # the FDN service kit (tests/test_service.py)
 ```
 
 ## The pieces

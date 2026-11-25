@@ -16,6 +16,27 @@ A handoff file in `handoff/lanes/<lane>.json` on `tarkir`:
 Script the `cards` in order, in your module (`engine/bolt-cards/src/scripts/<module>.rs`), with tests in
 `engine/bolt-cards/tests/<module>.rs`. Both files already exist and are wired in; you only add to them.
 
+## The standing queue: keep going without waiting
+
+`handoff/lanes/queue.json` lists every remaining playgroup deck through round 5, **each owned by one
+lane** (`"lane": "d1"`, ...). Ownership is fixed in the file, so two lanes can never pick the same deck:
+
+1. Finish your first assignment (`handoff/lanes/<lane>.json`).
+2. Then take **your own** decks from `queue.json`, top to bottom. Don't take another lane's deck.
+3. Skip any card `set_support` already shows as `yes`. Another lane may have done it, since decks share
+   cards; each card is listed under only its first deck.
+4. When a deck's cards all play (or are only "needs core" skips), report "<Deck> (<owner>): scripted,
+   <n> needs core" and start your next deck.
+5. When your decks run out, report "lane done". The lead may move decks between lanes in `queue.json`
+   (pull `origin/tarkir` before starting each deck).
+
+**Cards that need engine core** go to the lead in your report, never into `queue.json`. The lead adds them
+to `handoff/lanes/needs_core.json`, which the Mac lanes work through.
+
+**Stop:** at the end of round 5 (all of your decks done), and report. **Pause:** 05:00–10:00 ET (the daily
+jobs), during Adam's streams, and on the desktop while Adam is gaming, when he or the orchestrator says so.
+Finish or commit the current card first.
+
 ## Setting up
 
 ```bash
@@ -94,14 +115,26 @@ the main phase, or put a spare card on top.
 ## Before every commit
 
 From `engine/`, all with your own target dir and `nice -n 15 -j 4` (the desktop has 16 threads; with three
-lanes, keep it to `-j 4` each):
+lanes, keep it to `-j 4` each).
+
+**Each batch** (a desktop lane changes only its own module and test file, so this covers what it can break):
 
 ```bash
-cargo test -q            # whole workspace; your test file's count must equal its #[test] count
-cargo clippy -q --all-targets -- -D warnings
+cargo test -q -p bolt-cards --lib                 # includes every_playgroup_script_matches_its_card_text
+cargo test -q -p bolt-cards --test <module>       # your tests: the count must equal your #[test] count
+cargo clippy -q -p bolt-cards --all-targets -- -D warnings
 cargo fmt --check
+```
+
+**Once per finished deck**, before reporting it: the whole workspace.
+
+```bash
+cargo test -q
+cargo clippy -q --all-targets -- -D warnings
 cd .. && .venv/bin/ruff check -q . && .venv/bin/ruff format -q --check .
 ```
+
+The lead's merge always runs the full suite and lint again, in its own target dir.
 
 All clean, or it doesn't get committed. Then commit about every 8–10 cards:
 
