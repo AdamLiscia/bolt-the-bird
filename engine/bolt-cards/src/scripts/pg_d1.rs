@@ -197,6 +197,36 @@ pub fn script(name: &str) -> Option<Script> {
                 cycling(d, "{R}{G}{W}");
             },
         ),
+        // ---- Karador, Ghost Chieftain (Grande) ----
+        "Wood Elves" => s(
+            &["When this creature enters, search your library for a Forest card, put that card onto the battlefield, then shuffle."],
+            |d, _| {
+                let forest = SearchFor::LandTypes { types: land_types(&["Forest"]), basic: false };
+                on(d, When::Enters, vec![], vec![search(forest, SearchTo::Battlefield { tapped: false })]);
+            },
+        ),
+        "Acidic Slime" => s(&["When this creature enters, destroy target artifact, enchantment, or land."], |d, _| {
+            let f = Filter { lands: true, ..ARTIFACT_OR_ENCHANTMENT };
+            on(d, When::Enters, vec![f], vec![Effect::Destroy(0)]);
+        }),
+        "Eladamri's Call" => s(&["Search your library for a creature card, reveal that card, put it into your hand, then shuffle."], |d, _| {
+            spell(d, vec![], vec![search(ANY_CREATURE_CARD, SearchTo::Hand)])
+        }),
+        "Avacyn's Pilgrim" => s(&["{T}: Add {W}."], |d, _| d.mana = Some(ManaSource::of(&[Color::White]))),
+        "Utter End" => s(&["Exile target nonland permanent."], |d, _| {
+            spell(d, vec![Filter { controller: Controller::Any, ..OPP_NONLAND }], vec![Effect::Exile(0)])
+        }),
+        "Wight of the Reliquary" => s(
+            &[
+                "This creature gets +1/+1 for each creature card in your graveyard.",
+                "{T}, Sacrifice another creature: Search your library for a land card, put it onto the battlefield tapped, then shuffle.",
+            ],
+            |d, _| {
+                d.pt_per_graveyard_creature = true;
+                let n = activated(d, "", true, vec![], vec![search(SearchFor::Land, SearchTo::Battlefield { tapped: true })]);
+                d.activated[n].sacrifice_other_creature = true;
+            },
+        ),
         _ => None,
     }
 }
@@ -242,4 +272,11 @@ pub const PG_D1_SCRIPTED: &[&str] = &[
     "Fanatical Devotion",
     "Samut, Voice of Dissent",
     "Sheltering Landscape",
+    // Karador, Ghost Chieftain (Grande)
+    "Wood Elves",
+    "Acidic Slime",
+    "Eladamri's Call",
+    "Avacyn's Pilgrim",
+    "Utter End",
+    "Wight of the Reliquary",
 ];

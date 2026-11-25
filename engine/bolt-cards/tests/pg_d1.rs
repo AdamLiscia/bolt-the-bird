@@ -621,3 +621,94 @@ fn sheltering_landscape_fetches_a_basic_tapped_and_cycles() {
     resolve_all(&mut g, &[]);
     assert_eq!((g.obj(c).zone, g.players[0].hand.len()), (Zone::Graveyard, n));
 }
+
+// ---- Karador, Ghost Chieftain (Grande) ----
+
+/// Casts or activates until a search decision comes up, checks `bad` can't be picked, and picks `good`.
+fn pick(g: &mut Game, good: ObjId, bad: ObjId) {
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(g, Action::PassPriority);
+    }
+    assert!(!g.legal_actions().contains(&Action::Pick(bad)), "can't find that");
+    act(g, Action::Pick(good));
+    resolve_all(g, &[]);
+}
+
+#[test]
+fn wood_elves_puts_a_forest_onto_the_battlefield_untapped() {
+    let mut g = table();
+    let island = g.add_card(0, cid("Island"), Zone::Library);
+    let forest = g.add_card(0, cid("Forest"), Zone::Library);
+    let w = hand(&mut g, 0, "Wood Elves");
+    act(&mut g, Action::Cast(w));
+    pick(&mut g, forest, island);
+    assert_eq!(g.obj(forest).zone, Zone::Battlefield);
+    assert!(!g.obj(forest).tapped);
+}
+
+#[test]
+fn acidic_slime_destroys_an_artifact_enchantment_or_land() {
+    let mut g = table();
+    let land = put(&mut g, 1, "Forest");
+    let elf = put(&mut g, 1, "Fyndhorn Elves");
+    let c = hand(&mut g, 0, "Acidic Slime");
+    act(&mut g, Action::Cast(c));
+    while !matches!(g.pending, Pending::ChooseTarget(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(
+        !g.legal_actions().contains(&Action::Target(obj(elf))),
+        "not a creature"
+    );
+    act(&mut g, Action::Target(obj(land)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(land).zone, Zone::Graveyard);
+}
+
+#[test]
+fn eladamris_call_tutors_a_creature_to_hand() {
+    let mut g = table();
+    let land = g.add_card(0, cid("Forest"), Zone::Library);
+    let artist = g.add_card(0, cid("Blood Artist"), Zone::Library);
+    let c = hand(&mut g, 0, "Eladamri's Call");
+    act(&mut g, Action::Cast(c));
+    pick(&mut g, artist, land);
+    assert_eq!(g.obj(artist).zone, Zone::Hand);
+}
+
+#[test]
+fn avacyns_pilgrim_taps_for_white() {
+    let g = game(&["Avacyn's Pilgrim"]);
+    let p = named(&g, 0, "Avacyn's Pilgrim");
+    assert_eq!(makes(&g, p), ([true, false, false, false, false], false));
+}
+
+#[test]
+fn utter_end_exiles_a_nonland_permanent() {
+    let mut g = table();
+    let d = put(&mut g, 1, "Dictate of Erebos");
+    let c = hand(&mut g, 0, "Utter End");
+    play(&mut g, c, false, &[obj(d)], &[]);
+    assert_eq!(g.obj(d).zone, Zone::Exile);
+}
+
+#[test]
+fn wight_of_the_reliquary_grows_and_sacrifices_for_a_land() {
+    let mut g = table();
+    let w = put(&mut g, 0, "Wight of the Reliquary");
+    g.add_card(0, cid("Blood Artist"), Zone::Graveyard);
+    g.add_card(0, cid("Night's Whisper"), Zone::Graveyard);
+    assert_eq!(g.power(w), 3, "one creature card");
+    let elf = put(&mut g, 0, "Fyndhorn Elves");
+    assert!(
+        !g.legal_actions().contains(&Action::ActivateWith(w, 0, w)),
+        "another creature"
+    );
+    let spell = g.add_card(0, cid("Night's Whisper"), Zone::Library);
+    let forest = g.add_card(0, cid("Forest"), Zone::Library);
+    act(&mut g, Action::ActivateWith(w, 0, elf));
+    pick(&mut g, forest, spell);
+    assert_eq!(g.obj(forest).zone, Zone::Battlefield);
+    assert!(g.obj(forest).tapped && g.obj(w).tapped);
+    assert_eq!(g.power(w), 4, "the Elves joined the graveyard");
+}
