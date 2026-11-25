@@ -378,6 +378,10 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         power_per_attack_this_turn: false,
         green_permanents_pay_life_for_g: false,
         doubles_chosen_type_triggers: false,
+        any_color_for_legendary: false,
+        flashback_sacrifice: 0,
+        pitch_not_your_turn: None,
+        last_mode_needs_commander: false,
     };
     def.color_identity = color_identity(o);
     // An Omen's spell half: its lines must be claimed too, written "Omen: <line>" in the script.

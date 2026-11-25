@@ -455,3 +455,15 @@ Rise of the Witch-king, Will of the Abzan (multi-player choices); Dread Return (
 Force of Vigor (alternative cost); Delighted Halfling (mana for legendary spells only); Conduit of Worlds; Hedge
 Shredder (crew); Legolas's Quick Reflexes (split second); Nissa, Worldsoul Speaker (energy); Zimone (manifest
 dread).
+
+PG batch 6 (8): Delighted Halfling, Force of Vigor, Dread Return, Scapeshift, Rise of the Witch-king, Will of the
+Abzan, Koma, Cosmos Serpent, Sensei's Divining Top.
+Core: `CardDef::{any_color_for_legendary, flashback_sacrifice, pitch_not_your_turn, last_mode_needs_commander}`,
+`Activated::sacrifice_another`, `Object::activations_stopped_turn` (in `activation_stopped`), `Decision::{FlashbackSacrifice,
+SacrificeLandsThenSearch, SacrificeOneOf, SacrificeThenReturnOther, ReturnOtherPermanent}`, `Effect::{Scapeshift,
+SacrificeGreatestPower, SacrificeThenReturnOther, TapStopActivations, LookTopReorder, DrawThenSourceOnTop}`.
+Shortcuts: the Halfling's mana paying for any legendary spell counts as its restricted ability (always the better
+choice), so the spell can't be countered. Dread Return's three sacrifices are picked right after the cast, before
+anyone gets priority. Force of Vigor's pitch is `CastWith(card, green card)`, offered only off your turn. Will of the
+Abzan's "both" is a third mode, legal only while you control a commander; "any number of target opponents" is the
+one opponent. Koma's modal ability is two activated abilities (the mode is chosen on activation, CR 700.2).

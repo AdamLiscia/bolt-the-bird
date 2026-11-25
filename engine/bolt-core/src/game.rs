@@ -243,6 +243,9 @@ pub struct Object {
     pub eternalized: bool,
     /// Times it has attacked this turn: (turn, count).
     pub attacks_turn: (u32, u8),
+    /// The turn its activated abilities can't be activated (Koma: "Tap target permanent. Its
+    /// activated abilities can't be activated this turn."); 0: never.
+    pub activations_stopped_turn: u32,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -826,6 +829,19 @@ pub enum Decision {
     SacrificeLandOrThis { source: ObjId },
     /// `Pick` a land card from your hand to put onto the battlefield tapped, or `No` to stop.
     LandsFromHand,
+    /// "Flashback—Sacrifice N creatures": `Pick` a creature to sacrifice, `left` more to go; then the
+    /// caster gets priority (Dread Return).
+    FlashbackSacrifice { left: u8 },
+    /// Scapeshift: `Pick` a land to sacrifice (`n` so far), or `No` to search for up to `n` lands.
+    SacrificeLandsThenSearch { n: u8 },
+    /// `Pick` a creature to sacrifice from `cards` (tied for the greatest power).
+    SacrificeOneOf { cards: Vec<ObjId> },
+    /// `Pick` a creature to sacrifice; then you may return another permanent card from your graveyard
+    /// to the battlefield (Rise of the Witch-king).
+    SacrificeThenReturnOther,
+    /// `Pick` a permanent card in your graveyard other than `except` to return to the battlefield, or
+    /// `No`.
+    ReturnOtherPermanent { except: ObjId },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -1376,6 +1392,7 @@ impl Game {
             kind_counters: 0,
             not_legendary: false,
             milled_turn: 0,
+            activations_stopped_turn: 0,
             shock_pending: false,
             exerted_turn: None,
             regen_shields: (0, 0),
@@ -2043,6 +2060,9 @@ impl Game {
     fn activation_stopped(&self, id: ObjId) -> bool {
         if self.obj(id).zone != Zone::Battlefield {
             return false;
+        }
+        if self.turn > 0 && self.obj(id).activations_stopped_turn == self.turn {
+            return true; // Koma
         }
         let t = self.types_of(id);
         (t.artifact || t.creature || t.planeswalker)
@@ -3888,6 +3908,11 @@ impl Game {
                 .collect();
         }
         if from_graveyard {
+            // Dread Return: "Flashback—Sacrifice three creatures" needs that many to sacrifice.
+            let victims = self.creatures(p).filter(|&x| !self.cant_be_sacrificed(x)).count();
+            if (def.flashback_sacrifice as usize) > victims {
+                return Vec::new();
+            }
             let mut v = vec![(
                 Action::CastFlashback(c),
                 CastMode {
@@ -3914,7 +3939,11 @@ impl Game {
             return v;
         }
         if !def.modes.is_empty() {
+            // Will of the Abzan: both modes only while you control a commander.
+            let commander = self.permanents(p).any(|x| self.is_commander(x));
+            let last = def.modes.len() - 1;
             return (0..def.modes.len())
+                .filter(|&m| !(def.last_mode_needs_commander && m == last && !commander))
                 .filter(|&m| self.trigger_can_target(&Game::casting(c, p), &def.modes[m]))
                 .map(|m| {
                     (
@@ -3971,6 +4000,14 @@ impl Game {
                             ..CastMode::default()
                         },
                     ));
+                }
+                // Force of Vigor: exile a card of that color from your hand instead, not on your turn.
+                if let (Some(color), false) = (def.pitch_not_your_turn, p == self.active) {
+                    for &x in &self.players[p].hand {
+                        if x != c && self.def_of(x).colors[color as usize] {
+                            v.push((Action::CastWith(c, x), CastMode::with(x)));
+                        }
+                    }
                 }
                 if let Some((_, needed)) = def.alt_cost {
                     let creatures = self
@@ -4034,7 +4071,8 @@ impl Game {
             && mode.x == 0
             && !mode.alt
             && !mode.flashback;
-        let mut cost = if free {
+        let pitched = def.pitch_not_your_turn.is_some() && mode.extra.is_some() && !mode.flashback;
+        let mut cost = if free || pitched {
             ManaCost::default()
         } else if mode.alt {
             match def.alt_cost {
@@ -4379,6 +4417,13 @@ impl Game {
                 continue;
             }
             let id = sources[i - pool.len()].0;
+            // Delighted Halfling: its mana for a legendary spell is the restricted ability's
+            // (always the better choice), so "that spell can't be countered".
+            if let PayFor::Spell(c) = spell {
+                if self.def_of(id).any_color_for_legendary && self.def_of(c).types.legendary {
+                    self.obj_mut(c).cast_uncounterable = true;
+                }
+            }
             let tomb = self.def_of(id).mana_tap_damage;
             if tomb > 0 && !self.obj(id).tapped {
                 self.deal_damage(id, Target::Player(p), tomb as i32); // Ancient Tomb
@@ -4452,6 +4497,7 @@ impl Game {
                 || d.any_color_for_chosen_type
                 || d.mana_only_for_creatures
                 || d.any_color_for_dragon_or_omen
+                || d.any_color_for_legendary
             {
                 continue;
             }
@@ -4537,6 +4583,15 @@ impl Game {
                 Some(sub) => matches!(spell, PayFor::Spell(c) if self.has_base_subtype(c, sub)),
             })
             .map(|(id, m)| {
+                // Delighted Halfling: any color, only for a legendary spell.
+                if self.def_of(id).any_color_for_legendary {
+                    if matches!(spell, PayFor::Spell(c) if self.def_of(c).types.legendary) {
+                        let mut any = ManaSource::of(&crate::Color::ALL);
+                        any.colorless = true;
+                        return (id, any);
+                    }
+                    return (id, m);
+                }
                 // Maelstrom of the Spirit Dragon: any color, only for a Dragon spell or an Omen spell.
                 if self.def_of(id).any_color_for_dragon_or_omen {
                     let allowed = match spell {
@@ -4904,6 +4959,7 @@ impl Game {
                     let victims: Vec<ObjId> = self
                         .permanents(p)
                         .filter(|&c| self.has_subtype(c, sub) && !self.cant_be_sacrificed(c))
+                        .filter(|&c| !(a.sacrifice_another && c == id))
                         .collect();
                     v.extend(
                         victims
@@ -5936,6 +5992,7 @@ impl Game {
 
     fn finish_cast(&mut self, item: StackItem) {
         let (p, card) = (item.controller, item.source);
+        let flashback_cast = item.flashback;
         let mode = CastMode {
             x: item.x,
             alt: item.alt,
@@ -5983,6 +6040,8 @@ impl Game {
         if let Some(x) = item.extra {
             if harmonized.is_some() {
                 self.become_tapped(x); // harmonize taps the creature; it isn't sacrificed
+            } else if self.def_of(card).pitch_not_your_turn.is_some() && !item.flashback {
+                self.move_to(x, Zone::Exile); // Force of Vigor: the pitched card is exiled
             } else if self.obj(x).zone != Zone::Graveyard {
                 self.move_to(x, Zone::Graveyard);
             }
@@ -6164,6 +6223,12 @@ impl Game {
             }
         }
         self.passes = 0;
+        let sacrifice = self.def_of(card).flashback_sacrifice;
+        if flashback_cast && sacrifice > 0 {
+            // Dread Return's flashback cost, paid as it's cast (CR 601.2h), before priority.
+            self.ask(p, Decision::FlashbackSacrifice { left: sacrifice });
+            return;
+        }
         if self.free_casts.is_empty() {
             self.give_priority(p);
         } else {
@@ -6912,6 +6977,32 @@ impl Game {
                 v.push(Action::No);
                 v
             }
+            Decision::FlashbackSacrifice { .. } | Decision::SacrificeThenReturnOther => self
+                .creatures(p)
+                .filter(|&c| !self.cant_be_sacrificed(c))
+                .map(Action::Pick)
+                .collect(),
+            Decision::SacrificeLandsThenSearch { .. } => {
+                let mut v: Vec<Action> = self
+                    .permanents(p)
+                    .filter(|&x| self.types_of(x).land && !self.cant_be_sacrificed(x))
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
+            Decision::SacrificeOneOf { cards } => cards.iter().copied().map(Action::Pick).collect(),
+            Decision::ReturnOtherPermanent { except } => {
+                let mut v: Vec<Action> = self.players[p]
+                    .graveyard
+                    .iter()
+                    .copied()
+                    .filter(|&c| c != *except && self.def_of(c).types.is_permanent())
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
             Decision::LandsFromHand => {
                 let mut v: Vec<Action> = self.players[p]
                     .hand
@@ -7233,6 +7324,18 @@ impl Game {
                 self.end_the_turn();
             } else {
                 self.give_priority(self.active);
+            }
+            return;
+        }
+        if let (Decision::FlashbackSacrifice { left }, Action::Pick(c)) = (&d, a) {
+            self.move_to(c, Zone::Graveyard);
+            let more = self.creatures(p).any(|x| !self.cant_be_sacrificed(x));
+            if *left > 1 && more {
+                self.ask(p, Decision::FlashbackSacrifice { left: left - 1 });
+            } else if self.free_casts.is_empty() {
+                self.give_priority(p);
+            } else {
+                self.open_free_casts();
             }
             return;
         }
@@ -7857,6 +7960,27 @@ impl Game {
                     }
                 }
             },
+            (Decision::SacrificeLandsThenSearch { n }, choice) => match choice {
+                Action::Pick(land) => {
+                    self.move_to(land, Zone::Graveyard);
+                    let more = self
+                        .permanents(p)
+                        .any(|x| self.types_of(x).land && !self.cant_be_sacrificed(x));
+                    if more {
+                        self.ask(p, Decision::SacrificeLandsThenSearch { n: n + 1 });
+                    } else {
+                        self.scapeshift_search(p, n + 1);
+                    }
+                }
+                _ => self.scapeshift_search(p, n),
+            },
+            (Decision::SacrificeOneOf { .. }, Action::Pick(c)) => self.move_to(c, Zone::Graveyard),
+            (Decision::SacrificeThenReturnOther, Action::Pick(c)) => {
+                self.move_to(c, Zone::Graveyard);
+                self.ask_return_other(p, c);
+            }
+            (Decision::ReturnOtherPermanent { .. }, Action::Pick(c)) => self.move_to(c, Zone::Battlefield),
+            (Decision::ReturnOtherPermanent { .. }, Action::No) => {}
             (Decision::LandsFromHand, choice) => {
                 if let Action::Pick(land) = choice {
                     self.move_to(land, Zone::Battlefield);
@@ -7870,6 +7994,35 @@ impl Game {
         }
         if self.decision.is_none() {
             self.continue_resolving();
+        }
+    }
+
+    /// Scapeshift: search for up to `n` land cards, onto the battlefield tapped, then shuffle.
+    fn scapeshift_search(&mut self, p: PlayerId, n: u8) {
+        let to = SearchTo::Battlefield { tapped: true };
+        if n == 0 {
+            self.finish_search(p, to, None);
+        } else {
+            self.ask(
+                p,
+                Decision::Search {
+                    what: SearchFor::Land,
+                    to,
+                    left: n,
+                },
+            );
+        }
+    }
+
+    /// Rise of the Witch-king: you may return a permanent card from your graveyard other than the
+    /// creature you sacrificed (`except`).
+    fn ask_return_other(&mut self, p: PlayerId, except: ObjId) {
+        let any = self.players[p]
+            .graveyard
+            .iter()
+            .any(|&c| c != except && self.def_of(c).types.is_permanent());
+        if any {
+            self.ask(p, Decision::ReturnOtherPermanent { except });
         }
     }
 
@@ -9227,6 +9380,68 @@ impl Game {
                     }
                 } else {
                     self.create_token(p, def);
+                }
+            }
+            Effect::Scapeshift => {
+                let p = item.controller;
+                if self
+                    .permanents(p)
+                    .any(|x| self.types_of(x).land && !self.cant_be_sacrificed(x))
+                {
+                    self.ask(p, Decision::SacrificeLandsThenSearch { n: 0 });
+                } else {
+                    self.scapeshift_search(p, 0);
+                }
+            }
+            Effect::SacrificeGreatestPower(who) => {
+                for p in self.players_for(item, legal, who) {
+                    let mine: Vec<ObjId> = self
+                        .creatures(p)
+                        .filter(|&c| !self.cant_be_sacrificed(c))
+                        .collect();
+                    let Some(best) = mine.iter().map(|&c| self.power(c)).max() else {
+                        continue;
+                    };
+                    let cards: Vec<ObjId> = mine.into_iter().filter(|&c| self.power(c) == best).collect();
+                    if cards.len() == 1 {
+                        self.move_to(cards[0], Zone::Graveyard);
+                    } else {
+                        self.ask(p, Decision::SacrificeOneOf { cards });
+                        return;
+                    }
+                }
+            }
+            Effect::SacrificeThenReturnOther => {
+                let p = item.controller;
+                if self.creatures(p).any(|c| !self.cant_be_sacrificed(c)) {
+                    self.ask(p, Decision::SacrificeThenReturnOther);
+                }
+            }
+            Effect::TapStopActivations(n) => {
+                if let Some(id) = Game::slot_object(item, legal, n) {
+                    self.become_tapped(id);
+                    self.obj_mut(id).activations_stopped_turn = self.turn;
+                }
+            }
+            Effect::LookTopReorder(n) => {
+                let p = item.controller;
+                let lib = &self.players[p].library;
+                let kept: Vec<ObjId> = lib.iter().rev().take(n as usize).copied().collect();
+                if kept.len() > 1 {
+                    self.ask(
+                        p,
+                        Decision::ScryOrder {
+                            kept,
+                            placed: Vec::new(),
+                        },
+                    );
+                }
+            }
+            Effect::DrawThenSourceOnTop => {
+                let p = item.controller;
+                self.draw(p);
+                if self.obj(src).zone == Zone::Battlefield {
+                    self.move_to(src, Zone::Library);
                 }
             }
             Effect::CreatureFromHandOrGraveyardMvAtMostLands => {

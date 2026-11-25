@@ -225,6 +225,8 @@ pub struct Activated {
     pub once_each_turn: bool,
     /// Remove this many of the source's own kind of counters as a cost (Hoofprints of the Stag).
     pub remove_kind_counters: i32,
+    /// With `sacrifice_subtype`: "Sacrifice another [subtype]" (not the source; Koma).
+    pub sacrifice_another: bool,
 }
 
 /// The printed card. Shared by every copy; per-copy state lives on the game object.
@@ -564,6 +566,17 @@ pub struct CardDef {
     /// triggered ability of another creature you control of the chosen type triggers, it triggers an
     /// additional time."
     pub doubles_chosen_type_triggers: bool,
+    /// "{T}: Add one mana of any color. Spend this mana only to cast a legendary spell, and that
+    /// spell can't be countered." Its plain mana is in `mana` (Delighted Halfling).
+    pub any_color_for_legendary: bool,
+    /// "Flashback—Sacrifice N creatures." (Dread Return; `flashback` is then {0}).
+    pub flashback_sacrifice: u8,
+    /// "If it's not your turn, you may exile a [color] card from your hand rather than pay this
+    /// spell's mana cost." (Force of Vigor: green, WUBRG index 4); cast with `Action::CastWith`.
+    pub pitch_not_your_turn: Option<u8>,
+    /// Its last mode (both modes together) can be chosen only while you control a commander
+    /// (Will of the Abzan).
+    pub last_mode_needs_commander: bool,
 }
 
 /// What entering makes triggers happen again (see [`CardDef::entering_triggers_again`]).
@@ -761,6 +774,10 @@ impl CardDef {
             power_per_attack_this_turn: false,
             green_permanents_pay_life_for_g: false,
             doubles_chosen_type_triggers: false,
+            any_color_for_legendary: false,
+            flashback_sacrifice: 0,
+            pitch_not_your_turn: None,
+            last_mode_needs_commander: false,
         }
     }
 
@@ -926,6 +943,10 @@ impl CardDef {
             power_per_attack_this_turn: false,
             green_permanents_pay_life_for_g: false,
             doubles_chosen_type_triggers: false,
+            any_color_for_legendary: false,
+            flashback_sacrifice: 0,
+            pitch_not_your_turn: None,
+            last_mode_needs_commander: false,
         }
     }
 
@@ -1091,6 +1112,10 @@ impl CardDef {
             power_per_attack_this_turn: false,
             green_permanents_pay_life_for_g: false,
             doubles_chosen_type_triggers: false,
+            any_color_for_legendary: false,
+            flashback_sacrifice: 0,
+            pitch_not_your_turn: None,
+            last_mode_needs_commander: false,
         }
     }
 }

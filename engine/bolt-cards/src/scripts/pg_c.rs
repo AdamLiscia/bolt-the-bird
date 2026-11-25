@@ -342,6 +342,95 @@ pub fn script(name: &str) -> Option<Script> {
                 loyalty(d, -5, Ability::new(vec![], vec![Effect::CreatureFromHandOrGraveyardMvAtMostLands]));
             },
         ),
+        "Delighted Halfling" => s(
+            &[
+                "{T}: Add {C}.",
+                "{T}: Add one mana of any color. Spend this mana only to cast a legendary spell, and that spell can't be countered.",
+            ],
+            |d, _| {
+                d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                d.any_color_for_legendary = true;
+            },
+        ),
+        "Force of Vigor" => s(
+            &[
+                "If it's not your turn, you may exile a green card from your hand rather than pay this spell's mana cost.",
+                "Destroy up to two target artifacts and/or enchantments.",
+            ],
+            |d, _| {
+                d.pitch_not_your_turn = Some(4);
+                let mut a = up_to(vec![ARTIFACT_OR_ENCHANTMENT, ARTIFACT_OR_ENCHANTMENT], vec![Effect::Destroy(0), Effect::Destroy(1)]);
+                a.min_targets = Some(0);
+                d.spell = Some(a);
+            },
+        ),
+        "Dread Return" => s(
+            &["Return target creature card from your graveyard to the battlefield.", "Flashback—Sacrifice three creatures."],
+            |d, _| {
+                spell(d, vec![graveyard_cards(true, Controller::You)], vec![Effect::Reanimate(0)]);
+                d.flashback = Some(ManaCost::default());
+                d.flashback_sacrifice = 3;
+            },
+        ),
+        "Scapeshift" => s(
+            &["Sacrifice any number of lands. Search your library for up to that many land cards, put them onto the battlefield tapped, then shuffle."],
+            |d, _| spell(d, vec![], vec![Effect::Scapeshift]),
+        ),
+        "Rise of the Witch-king" => s(
+            &["Each player sacrifices a creature of their choice. If you sacrificed a creature this way, you may return another permanent card from your graveyard to the battlefield."],
+            |d, _| {
+                spell(d, vec![], vec![Effect::SacrificeCreatures { who: Who::EachOpponent, n: 1 }, Effect::SacrificeThenReturnOther])
+            },
+        ),
+        "Will of the Abzan" => s(
+            &[
+                "Choose one. If you control a commander as you cast this spell, you may choose both instead.",
+                "• Any number of target opponents each sacrifice a creature with the greatest power among creatures that player controls and lose 3 life.",
+                "• Return target creature card from your graveyard to the battlefield.",
+            ],
+            |d, _| {
+                // One opponent in a two-player game.
+                let opp = Filter::PLAYER.controlled_by(Controller::Opponent);
+                let card = graveyard_cards(true, Controller::You);
+                let punish = [Effect::SacrificeGreatestPower(Who::TargetPlayer(0)), Effect::LoseLife { who: Who::TargetPlayer(0), n: 3 }];
+                d.modes = vec![
+                    Ability::new(vec![opp], punish.to_vec()),
+                    Ability::new(vec![card], vec![Effect::Reanimate(0)]),
+                    Ability::new(vec![opp, card], [punish[0], punish[1], Effect::Reanimate(1)].to_vec()),
+                ];
+                d.last_mode_needs_commander = true;
+            },
+        ),
+        "Koma, Cosmos Serpent" => s(
+            &[
+                "This spell can't be countered.",
+                "At the beginning of each upkeep, create a 3/3 blue Serpent creature token named Koma's Coil.",
+                "Sacrifice another Serpent: Choose one —",
+                "• Tap target permanent. Its activated abilities can't be activated this turn.",
+                "• Koma gains indestructible until end of turn.",
+            ],
+            |d, t| {
+                d.uncounterable = true;
+                on(d, When::Upkeep { your_turn_only: false }, vec![], vec![Effect::CreateToken { who: Who::You, def: t.komas_coil, n: 1 }]);
+                // The mode is chosen as it's activated (CR 700.2): one ability per mode.
+                let any = Filter { players: false, creatures: false, planeswalkers: false, any_permanent: true, controller: Controller::Any, ..Filter::ANY };
+                for (targets, effect) in [(vec![any], Effect::TapStopActivations(0)), (vec![], Effect::GrantSelf { keywords: Keywords::INDESTRUCTIBLE })] {
+                    let n = activated(d, "", false, targets, vec![effect]);
+                    d.activated[n].sacrifice_subtype = Some("Serpent");
+                    d.activated[n].sacrifice_another = true;
+                }
+            },
+        ),
+        "Sensei's Divining Top" => s(
+            &[
+                "{1}: Look at the top three cards of your library, then put them back in any order.",
+                "{T}: Draw a card, then put this artifact on top of its owner's library.",
+            ],
+            |d, _| {
+                activated(d, "{1}", false, vec![], vec![Effect::LookTopReorder(3)]);
+                activated(d, "", true, vec![], vec![Effect::DrawThenSourceOnTop]);
+            },
+        ),
         _ => None,
     }
 }
@@ -395,4 +484,12 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Colossal Grave-Reaver",
     "Wrenn and Seven",
     "Nissa of Shadowed Boughs",
+    "Delighted Halfling",
+    "Force of Vigor",
+    "Dread Return",
+    "Scapeshift",
+    "Rise of the Witch-king",
+    "Will of the Abzan",
+    "Koma, Cosmos Serpent",
+    "Sensei's Divining Top",
 ];

@@ -1191,6 +1191,20 @@ pub enum Effect {
     /// You may put a creature card with mana value at most the lands you control from your hand or
     /// graveyard onto the battlefield with two +1/+1 counters (Nissa of Shadowed Boughs).
     CreatureFromHandOrGraveyardMvAtMostLands,
+    /// Scapeshift: sacrifice any number of lands, then search for up to that many land cards, put
+    /// them onto the battlefield tapped, then shuffle.
+    Scapeshift,
+    /// `who` sacrifices a creature with the greatest power among creatures they control.
+    SacrificeGreatestPower(Who),
+    /// You sacrifice a creature; if you did, you may return another permanent card from your
+    /// graveyard to the battlefield (Rise of the Witch-king).
+    SacrificeThenReturnOther,
+    /// Tap the permanent in `slot`; its activated abilities can't be activated this turn (Koma).
+    TapStopActivations(u8),
+    /// Look at the top `n` cards of your library, then put them back in any order.
+    LookTopReorder(u8),
+    /// Draw a card, then put the source on top of its owner's library (Sensei's Divining Top).
+    DrawThenSourceOnTop,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

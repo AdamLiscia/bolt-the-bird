@@ -847,3 +847,187 @@ fn nissa_of_shadowed_boughs_grows_on_landfall_animates_a_land_and_cheats_a_creat
     assert_eq!(g.obj(big).zone, Zone::Battlefield);
     assert_eq!(g.power(big), 6, "two +1/+1 counters");
 }
+
+#[test]
+fn delighted_halfling_makes_colored_mana_only_for_legendary_spells_which_cant_be_countered() {
+    let mut g = game(&["Delighted Halfling", "Forest"]);
+    let rat = hand(&mut g, 0, "Burglar Rat");
+    let tiny = hand(&mut g, 0, "Tinybones, Bauble Burglar");
+    let legal = g.legal_actions();
+    assert!(
+        !legal.contains(&Action::Cast(rat)),
+        "{{B}} only for a legendary spell"
+    );
+    assert!(legal.contains(&Action::Cast(tiny)));
+    act(&mut g, Action::Cast(tiny));
+    assert!(g.obj(tiny).cast_uncounterable);
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(tiny).zone, Zone::Battlefield);
+}
+
+#[test]
+fn force_of_vigor_is_free_off_turn_by_exiling_a_green_card() {
+    let mut g = table();
+    let force = hand(&mut g, 0, "Force of Vigor");
+    let green = hand(&mut g, 0, "Avenger of Zendikar");
+    assert!(
+        !g.legal_actions().contains(&Action::CastWith(force, green)),
+        "not on your own turn"
+    );
+    let signet = put(&mut g, 1, "Arcane Signet");
+    let expl = put(&mut g, 1, "Exploration");
+    to_main1(&mut g, 4, 1);
+    act(&mut g, Action::PassPriority);
+    act(&mut g, Action::CastWith(force, green));
+    resolve_all(&mut g, &[Action::Target(obj(signet)), Action::Target(obj(expl))]);
+    assert_eq!(g.obj(green).zone, Zone::Exile);
+    assert_eq!(g.obj(signet).zone, Zone::Graveyard);
+    assert_eq!(g.obj(expl).zone, Zone::Graveyard);
+    assert!(g.permanents(0).all(|x| !g.obj(x).tapped), "no mana paid");
+}
+
+#[test]
+fn dread_return_flashes_back_by_sacrificing_three_creatures() {
+    let mut g = table();
+    let dr = g.add_card(0, cid("Dread Return"), Zone::Graveyard);
+    let ghoul = g.add_card(0, cid("Vampire Gourmand"), Zone::Graveyard);
+    let a = put(&mut g, 0, "Aegis Turtle");
+    let b = put(&mut g, 0, "Aegis Turtle");
+    assert!(
+        !g.legal_actions().contains(&Action::CastFlashback(dr)),
+        "two creatures"
+    );
+    let c = put(&mut g, 0, "Aegis Turtle");
+    act(&mut g, Action::CastFlashback(dr));
+    resolve_all(
+        &mut g,
+        &[
+            Action::Target(obj(ghoul)),
+            Action::Pick(a),
+            Action::Pick(b),
+            Action::Pick(c),
+        ],
+    );
+    for x in [a, b, c] {
+        assert_eq!(g.obj(x).zone, Zone::Graveyard);
+    }
+    assert_eq!(g.obj(ghoul).zone, Zone::Battlefield);
+    assert_eq!(g.obj(dr).zone, Zone::Exile);
+}
+
+#[test]
+fn scapeshift_trades_lands_for_as_many_from_the_library() {
+    let mut g = game(&["Forest", "Forest", "Forest", "Forest"]);
+    let forests: Vec<ObjId> = g.permanents(0).collect();
+    let isl = top(&mut g, "Island");
+    let sw = top(&mut g, "Swamp");
+    let sc = hand(&mut g, 0, "Scapeshift");
+    play(
+        &mut g,
+        sc,
+        false,
+        &[],
+        &[
+            Action::Pick(forests[0]),
+            Action::Pick(forests[1]),
+            Action::No,
+            Action::Pick(isl),
+            Action::Pick(sw),
+        ],
+    );
+    assert_eq!(g.obj(forests[0]).zone, Zone::Graveyard);
+    assert_eq!(g.obj(forests[2]).zone, Zone::Battlefield);
+    assert_eq!(g.obj(isl).zone, Zone::Battlefield);
+    assert!(g.obj(sw).tapped);
+}
+
+#[test]
+fn rise_of_the_witch_king_trades_a_creature_for_another_permanent_card() {
+    let mut g = table();
+    let mine = put(&mut g, 0, "Aegis Turtle");
+    let theirs = put(&mut g, 1, "Aegis Turtle");
+    put(&mut g, 1, "Hungry Ghoul");
+    let expl = g.add_card(0, cid("Exploration"), Zone::Graveyard);
+    let rise = hand(&mut g, 0, "Rise of the Witch-king");
+    act(&mut g, Action::Cast(rise));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Pick(theirs));
+    act(&mut g, Action::Pick(mine));
+    assert!(
+        !g.legal_actions().contains(&Action::Pick(mine)),
+        "another permanent card"
+    );
+    resolve_all(&mut g, &[Action::Pick(expl)]);
+    assert_eq!(g.obj(theirs).zone, Zone::Graveyard);
+    assert_eq!(g.obj(mine).zone, Zone::Graveyard);
+    assert_eq!(g.obj(expl).zone, Zone::Battlefield);
+}
+
+#[test]
+fn will_of_the_abzan_chooses_both_only_with_a_commander() {
+    let mut g = table();
+    let ghoul = put(&mut g, 1, "Hungry Ghoul");
+    let turtle = put(&mut g, 1, "Aegis Turtle");
+    let back = g.add_card(0, cid("Vampire Gourmand"), Zone::Graveyard);
+    let will = hand(&mut g, 0, "Will of the Abzan");
+    assert!(g.legal_actions().contains(&Action::CastModal(will, 0)));
+    assert!(
+        !g.legal_actions().contains(&Action::CastModal(will, 2)),
+        "no commander"
+    );
+    let bello = g.commanders[0].expect("a commander");
+    act(&mut g, Action::Cast(bello));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(bello).zone, Zone::Battlefield);
+    act(&mut g, Action::CastModal(will, 2));
+    resolve_all(
+        &mut g,
+        &[Action::Target(Target::Player(1)), Action::Target(obj(back))],
+    );
+    assert_eq!(g.obj(ghoul).zone, Zone::Graveyard, "the greatest power");
+    assert_eq!(g.obj(turtle).zone, Zone::Battlefield);
+    assert_eq!(g.players[1].life, 37);
+    assert_eq!(g.obj(back).zone, Zone::Battlefield);
+}
+
+#[test]
+fn koma_makes_coils_each_upkeep_and_sacrifices_them_to_tap() {
+    let mut g = table();
+    let koma = put(&mut g, 0, "Koma, Cosmos Serpent");
+    assert!(g.def_of(koma).uncounterable);
+    assert!(
+        !g.legal_actions().contains(&Action::ActivateWith(koma, 0, koma)),
+        "another Serpent"
+    );
+    to_main1(&mut g, 4, 1);
+    to_main1(&mut g, 5, 0);
+    let coils = tokens(&g, 0, "Koma's Coil");
+    assert_eq!(coils.len(), 2, "each upkeep");
+    let land = g.permanents(1).next().unwrap();
+    act(&mut g, Action::ActivateWith(koma, 0, coils[0]));
+    resolve_all(&mut g, &[Action::Target(obj(land))]);
+    assert!(g.obj(land).tapped);
+    assert_eq!(g.obj(land).activations_stopped_turn, g.turn);
+    act(&mut g, Action::ActivateWith(koma, 1, coils[1]));
+    resolve_all(&mut g, &[]);
+    assert!(g.keywords(koma).has(Keywords::INDESTRUCTIBLE));
+}
+
+#[test]
+fn senseis_divining_top_reorders_the_top_three_and_draws_then_goes_on_top() {
+    let mut g = table();
+    let t = put(&mut g, 0, "Sensei's Divining Top");
+    let c = top(&mut g, "Forest");
+    let b = top(&mut g, "Island");
+    let a = top(&mut g, "Swamp");
+    act(&mut g, Action::Activate(t, 0));
+    resolve_all(&mut g, &[Action::Pick(c), Action::Pick(a)]);
+    let lib = &g.players[0].library;
+    assert_eq!(&lib[lib.len() - 3..], &[b, a, c], "c on top, then a, then b");
+    act(&mut g, Action::Activate(t, 1));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(c).zone, Zone::Hand);
+    assert_eq!(g.players[0].library.last(), Some(&t));
+}
