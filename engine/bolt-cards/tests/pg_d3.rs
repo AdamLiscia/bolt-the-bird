@@ -848,3 +848,164 @@ fn ob_nixilis_hate_twisted_kills_and_punishes_the_draws() {
     assert_eq!(g.players[1].hand.len(), h1 + 2, "its controller draws two");
     assert_eq!(g.players[1].life, 38, "1 damage per card drawn");
 }
+
+// ---- Animar, Soul of Elements (Adam) ----
+
+#[test]
+fn consecrated_sphinx_draws_two_when_the_opponent_draws() {
+    let mut g = table();
+    put(&mut g, 0, "Consecrated Sphinx");
+    let bell = put(&mut g, 0, "Temple Bell");
+    let h0 = g.players[0].hand.len();
+    act(&mut g, Action::Activate(bell, 0));
+    resolve_all(&mut g, &[Action::Yes]);
+    assert_eq!(g.players[0].hand.len(), h0 + 3, "the Bell's card and two more");
+}
+
+#[test]
+fn fierce_guardianship_is_free_with_your_commander_out() {
+    let mut g = game(&["Island"]);
+    let opt = hand(&mut g, 0, "Opt");
+    let fg = hand(&mut g, 0, "Fierce Guardianship");
+    act(&mut g, Action::Cast(opt));
+    assert!(
+        !g.legal_actions().contains(&Action::CastAlternative(fg)),
+        "no commander"
+    );
+    let c = put(&mut g, 0, "Merfolk Looter");
+    g.commanders[0] = Some(c);
+    act(&mut g, Action::CastAlternative(fg));
+    act(&mut g, Action::Target(obj(opt)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(opt).zone, Zone::Graveyard);
+    assert_eq!(g.obj(fg).zone, Zone::Graveyard);
+}
+
+#[test]
+fn steam_vents_pays_2_life_or_enters_tapped() {
+    for pay in [true, false] {
+        let mut g = game(&[]);
+        let c = hand(&mut g, 0, "Steam Vents");
+        act(&mut g, Action::PlayLand(c));
+        act(&mut g, if pay { Action::Yes } else { Action::No });
+        assert_eq!(g.obj(c).tapped, !pay);
+        assert_eq!(g.players[0].life, if pay { 38 } else { 40 });
+        if pay {
+            assert_eq!(colors(&g, c), [false, true, false, true, false]);
+        }
+    }
+}
+
+#[test]
+fn arbor_elf_untaps_a_forest() {
+    let mut g = game(&["Forest", "Plains"]);
+    let elf = put(&mut g, 0, "Arbor Elf");
+    to_main1(&mut g, 5, 0);
+    let forest = g.permanents(0).find(|&x| g.def_of(x).name == "Forest").unwrap();
+    let plains = g.permanents(0).find(|&x| g.def_of(x).name == "Plains").unwrap();
+    let v = hand(&mut g, 0, "Elvish Visionary"); // {1}{G}: taps both lands
+    play(&mut g, v, false, &[], &[]);
+    assert!(g.obj(forest).tapped && g.obj(plains).tapped);
+    act(&mut g, Action::Activate(elf, 0));
+    assert!(
+        !g.legal_actions().contains(&Action::Target(obj(plains))),
+        "a Forest only"
+    );
+    act(&mut g, Action::Target(obj(forest)));
+    resolve_all(&mut g, &[]);
+    assert!(!g.obj(forest).tapped);
+    assert!(g.obj(plains).tapped);
+}
+
+/// With `islands` Islands, casts Consecrated Sphinx (6) and then `name`; counts the untapped lands.
+fn untapped_after(name: &str, islands: usize) -> usize {
+    let mut g = game(&vec!["Island"; islands]);
+    let sphinx = hand(&mut g, 0, "Consecrated Sphinx");
+    play(&mut g, sphinx, false, &[], &[]);
+    let c = hand(&mut g, 0, name);
+    play(&mut g, c, false, &[], &[]);
+    g.permanents(0)
+        .filter(|&x| g.types_of(x).land && !g.obj(x).tapped)
+        .count()
+}
+
+#[test]
+fn peregrine_drake_untaps_five_lands() {
+    // 12 Islands: 6 for the Sphinx, 5 for the Drake, then 5 of the 11 tapped ones untap.
+    assert_eq!(untapped_after("Peregrine Drake", 12), 6);
+}
+
+#[test]
+fn cloud_of_faeries_untaps_two_lands_and_cycles() {
+    // 8 Islands: 6 for the Sphinx, 2 for the Cloud, then 2 untap.
+    assert_eq!(untapped_after("Cloud of Faeries", 8), 2);
+    let mut g = game(&["Island", "Island"]);
+    let c = hand(&mut g, 0, "Cloud of Faeries");
+    let h = g.players[0].hand.len();
+    act(&mut g, Action::Activate(c, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(c).zone, Zone::Graveyard);
+    assert_eq!(g.players[0].hand.len(), h);
+}
+
+/// `name` makes any color, but only for creature spells.
+fn creature_mana_only(name: &str) {
+    let mut g = game(&[]);
+    let src = put(&mut g, 0, name);
+    assert_eq!(colors(&g, src), [true; 5]);
+    let opt = hand(&mut g, 0, "Opt");
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(opt)),
+        "not for a noncreature spell"
+    );
+    let siren = hand(&mut g, 0, "Siren Stormtamer"); // {U}
+    assert!(g.legal_actions().contains(&Action::Cast(siren)));
+}
+
+#[test]
+fn ancient_ziggurat_makes_any_color_for_creature_spells() {
+    creature_mana_only("Ancient Ziggurat");
+}
+
+#[test]
+fn beastcaller_savant_has_haste_and_makes_creature_mana() {
+    creature_mana_only("Beastcaller Savant"); // just put onto the battlefield: haste lets it tap
+}
+
+#[test]
+fn elvish_visionary_draws_on_entering() {
+    let mut g = table();
+    let e = hand(&mut g, 0, "Elvish Visionary");
+    let h = g.players[0].hand.len();
+    play(&mut g, e, false, &[], &[]);
+    assert_eq!(g.players[0].hand.len(), h);
+}
+
+#[test]
+fn pestermite_may_tap_or_untap_a_permanent() {
+    let mut g = table();
+    let ring = put(&mut g, 1, "Sol Ring");
+    let p = hand(&mut g, 0, "Pestermite");
+    play(&mut g, p, false, &[], &[Action::Target(obj(ring)), Action::Yes]);
+    assert!(g.obj(ring).tapped);
+}
+
+#[test]
+fn shared_summons_finds_two_creature_cards() {
+    let mut g = table();
+    let a = g.add_card(0, cid("Ashen Rider"), Zone::Library);
+    let b = g.add_card(0, cid("Merfolk Looter"), Zone::Library);
+    let ss = hand(&mut g, 0, "Shared Summons");
+    play(&mut g, ss, false, &[], &[Action::Pick(a), Action::Pick(b)]);
+    assert_eq!((g.obj(a).zone, g.obj(b).zone), (Zone::Hand, Zone::Hand));
+}
+
+#[test]
+fn soul_of_the_harvest_draws_for_other_nontoken_creatures() {
+    let mut g = table();
+    put(&mut g, 0, "Soul of the Harvest");
+    let l = hand(&mut g, 0, "Merfolk Looter");
+    let h = g.players[0].hand.len();
+    play(&mut g, l, false, &[], &[Action::Yes]);
+    assert_eq!(g.players[0].hand.len(), h);
+}

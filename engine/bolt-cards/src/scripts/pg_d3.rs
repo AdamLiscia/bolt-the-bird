@@ -370,6 +370,82 @@ pub fn script(name: &str) -> Option<Script> {
                 );
             },
         ),
+        // ---- Animar, Soul of Elements (Adam) ----
+        "Consecrated Sphinx" => s(&["Whenever an opponent draws a card, you may draw two cards."], |d, _| {
+            may(d, When::OpponentDraws, vec![], vec![draw(2)])
+        }),
+        "Fierce Guardianship" => s(
+            &[
+                "If you control a commander, you may cast this spell without paying its mana cost.",
+                "Counter target noncreature spell.",
+            ],
+            |d, _| {
+                d.alt_cost = Some((ManaCost::default(), 0));
+                d.alt_cost_needs_commander = true;
+                spell(d, vec![Filter { spell_creature: Some(false), ..SPELL }], vec![Effect::Counter(0)]);
+            },
+        ),
+        "Steam Vents" => s(
+            &["As this land enters, you may pay 2 life. If you don't, it enters tapped."],
+            |d, _| {
+                d.shock_land = true;
+                lands_mana(d, &[Color::Blue, Color::Red]);
+            },
+        ),
+        "Arbor Elf" => s(&["{T}: Untap target Forest."], |d, _| {
+            let forest = Filter {
+                players: false,
+                creatures: false,
+                planeswalkers: false,
+                any_permanent: true,
+                subtype: Some("Forest"),
+                ..Filter::ANY
+            };
+            activated(d, "", true, vec![forest], vec![Effect::UntapTarget(0)]);
+        }),
+        "Peregrine Drake" => s(&["When this creature enters, untap up to five lands."], |d, _| {
+            on(d, When::Enters, vec![], vec![Effect::UntapLands(5)])
+        }),
+        "Cloud of Faeries" => s(&["When this creature enters, untap up to two lands.", "Cycling {2}"], |d, _| {
+            on(d, When::Enters, vec![], vec![Effect::UntapLands(2)]);
+            cycling(d, "{2}");
+        }),
+        "Ancient Ziggurat" => s(
+            &["{T}: Add one mana of any color. Spend this mana only to cast a creature spell."],
+            |d, _| {
+                lands_mana(d, &Color::ALL);
+                d.mana_only_for_creatures = true;
+            },
+        ),
+        "Beastcaller Savant" => s(
+            &["{T}: Add one mana of any color. Spend this mana only to cast a creature spell."],
+            |d, _| {
+                lands_mana(d, &Color::ALL);
+                d.mana_only_for_creatures = true;
+            },
+        ),
+        "Elvish Visionary" => s(&["When this creature enters, draw a card."], |d, _| {
+            on(d, When::Enters, vec![], vec![draw(1)])
+        }),
+        "Pestermite" => s(&["When this creature enters, you may tap or untap target permanent."], |d, _| {
+            let any = Filter { players: false, creatures: false, planeswalkers: false, any_permanent: true, ..Filter::ANY };
+            may(d, When::Enters, vec![any], vec![Effect::TapOrUntap(0)]);
+        }),
+        "Shared Summons" => s(
+            &["Search your library for up to two creature cards with different names, reveal them, put them into your hand, then shuffle."],
+            |d, _| {
+                // A singleton deck: every creature card in it has a different name already.
+                let what = SearchFor::CreatureMvAtLeast(0);
+                spell(d, vec![], vec![Effect::Search { what, to: SearchTo::Hand, n: 2, kicked_n: None }]);
+            },
+        ),
+        "Soul of the Harvest" => s(
+            &["Whenever another nontoken creature you control enters, you may draw a card."],
+            |d, _| {
+                let that = Filter { triggering: true, ..CREATURE };
+                may(d, When::AnotherNontokenCreatureYouControlEnters, vec![that], vec![draw(1)]);
+            },
+        ),
         _ => None,
     }
 }
@@ -432,4 +508,17 @@ pub const PG_D3_SCRIPTED: &[&str] = &[
     "Epicure of Blood",
     "Gixian Puppeteer",
     "Ob Nixilis, the Hate-Twisted",
+    // Animar, Soul of Elements
+    "Consecrated Sphinx",
+    "Fierce Guardianship",
+    "Steam Vents",
+    "Arbor Elf",
+    "Peregrine Drake",
+    "Cloud of Faeries",
+    "Ancient Ziggurat",
+    "Beastcaller Savant",
+    "Elvish Visionary",
+    "Pestermite",
+    "Shared Summons",
+    "Soul of the Harvest",
 ];
