@@ -75,6 +75,8 @@ pub struct Filter {
     pub was_dealt_damage: bool,
     /// Noncreature permanents only ("noncreature artifact").
     pub noncreature: bool,
+    /// Nonbasic permanents only ("nonbasic land").
+    pub nonbasic: bool,
 }
 
 impl Filter {
@@ -111,6 +113,7 @@ impl Filter {
         lands: false,
         was_dealt_damage: false,
         noncreature: false,
+        nonbasic: false,
     };
 
     pub const CREATURE: Filter = Filter {
@@ -690,6 +693,22 @@ pub enum Effect {
     /// Betor: draw a card; then if creatures you control have total toughness 20 or greater, untap
     /// them; then if 40 or greater, each opponent loses half their life, rounded up.
     BetorEndStep,
+    /// Copy the source spell (from its snapshot as it was cast): once, or with `storm`, once for each
+    /// other spell cast before it this turn. A copy of a permanent spell becomes a token.
+    CopySourceSpell {
+        storm: bool,
+    },
+    /// Destroy the land in `slot`; its controller searches for a basic land card and puts it onto
+    /// the battlefield tapped with a stun counter (Magmatic Hellkite).
+    DestroyLandControllerFetchesStunned(u8),
+    /// Stillness in Motion: if your library is empty, exile the source and put five cards from your
+    /// graveyard on top of your library in any order.
+    StillnessCheck,
+    /// Call the Spirit Dragons: for each color, a +1/+1 counter on a Dragon you control of that
+    /// color; five different Dragons and you win the game.
+    SpiritDragonsUpkeep,
+    /// Creatures you control gain these keywords until your next turn.
+    GrantAllUntilYourNextTurn(crate::Keywords),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -727,6 +746,8 @@ pub enum SearchTo {
     TopOrTappedIfYouControl(&'static str),
     /// Into the graveyard.
     Graveyard,
+    /// Onto the battlefield tapped with a stun counter on it.
+    BattlefieldTappedStunned,
 }
 
 /// What a static ability affects.
@@ -780,6 +801,8 @@ pub enum StaticCondition {
     HasntDealtDamage,
     /// The source's mode, chosen as it entered, is this one (the Sieges).
     ChosenMode(u8),
+    /// At least this many different kinds of counters among creatures its controller controls.
+    CounterKindsAmongYoursAtLeast(u8),
 }
 
 /// A static ability that changes characteristics (CR 604, 613 layers 6 and 7c).
@@ -1058,6 +1081,8 @@ pub enum When {
     /// "Whenever this creature or another creature you control dies, if it had counters on it"; the
     /// dead creature is in the stack item's `extra`.
     CreatureYouControlWithCountersDies,
+    /// "When you cast this spell" (from the stack).
+    YouCastThis,
 }
 
 #[derive(Clone, Debug, PartialEq)]

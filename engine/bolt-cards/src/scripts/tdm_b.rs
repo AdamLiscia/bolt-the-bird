@@ -611,6 +611,82 @@ pub fn script(name: &str) -> Option<Script> {
             &["If a creature you control that entered this turn would deal damage, it deals twice that much damage instead."],
             |d, _| d.doubles_damage_of_new_creatures = true,
         ),
+        // ---- Lane B batch 6: copies of permanent spells, storm, finality, rares ----
+        "Sage of the Skies" => s(
+            &["When you cast this spell, if you've cast another spell this turn, copy this spell."],
+            |d, _| {
+                conditional(d, When::YouCastThis, Condition::CastTwoSpellsThisTurn, vec![], vec![Effect::CopySourceSpell { storm: false }]);
+            },
+        ),
+        "Stormscale Scion" => s(&["Other Dragons you control get +1/+1.", "Storm"], |d, _| {
+            lord(d, "Dragon");
+            on(d, When::YouCastThis, vec![], vec![Effect::CopySourceSpell { storm: true }]);
+        }),
+        "Magmatic Hellkite" => s(
+            &["When this creature enters, destroy target nonbasic land an opponent controls. Its controller searches their library for a basic land card, puts it onto the battlefield tapped with a stun counter on it, then shuffles."],
+            |d, _| {
+                let land = Filter {
+                    players: false,
+                    creatures: false,
+                    planeswalkers: false,
+                    lands: true,
+                    nonbasic: true,
+                    controller: Controller::Opponent,
+                    ..Filter::ANY
+                };
+                on(d, When::Enters, vec![land], vec![Effect::DestroyLandControllerFetchesStunned(0)]);
+            },
+        ),
+        "Stillness in Motion" => s(
+            &["At the beginning of your upkeep, mill three cards. Then if your library has no cards in it, exile this enchantment and put five cards from your graveyard on top of your library in any order."],
+            |d, _| on(d, When::Upkeep { your_turn_only: true }, vec![], vec![Effect::Mill { who: Who::You, n: 3 }, Effect::StillnessCheck]),
+        ),
+        "Hundred-Battle Veteran" => s(
+            &[
+                "As long as there are three or more different kinds of counters among creatures you control, this creature gets +2/+4.",
+                "You may cast this card from your graveyard. If you do, it enters with a finality counter on it.",
+            ],
+            |d, _| {
+                static_on(d, Scope::This, false, Keywords::NONE);
+                let st = d.statics.last_mut().expect("just added");
+                st.condition = Some(StaticCondition::CounterKindsAmongYoursAtLeast(3));
+                st.power = 2;
+                st.toughness = 4;
+                d.cast_from_graveyard_finality = true;
+            },
+        ),
+        "Elspeth, Storm Slayer" => s(
+            &[
+                "If one or more tokens would be created under your control, twice that many of those tokens are created instead.",
+                "+1: Create a 1/1 white Soldier creature token.",
+                "0: Put a +1/+1 counter on each creature you control. Those creatures gain flying until your next turn.",
+                "−3: Destroy target creature an opponent controls with mana value 3 or greater.",
+            ],
+            |d, t| {
+                d.doubles_tokens = true;
+                loyalty(d, 1, Ability::new(vec![], vec![Effect::CreateToken { who: Who::You, def: t.soldier, n: 1 }]));
+                loyalty(
+                    d,
+                    0,
+                    Ability::new(
+                        vec![],
+                        vec![Effect::CountersAll { who: Who::You, n: 1 }, Effect::GrantAllUntilYourNextTurn(Keywords::FLYING)],
+                    ),
+                );
+                let big = Filter { min_mana_value: Some(3), ..OPP_CREATURE };
+                loyalty(d, -3, Ability::new(vec![big], vec![Effect::Destroy(0)]));
+            },
+        ),
+        "Call the Spirit Dragons" => s(
+            &[
+                "Dragons you control have indestructible.",
+                "At the beginning of your upkeep, for each color, put a +1/+1 counter on a Dragon you control of that color. If you put +1/+1 counters on five Dragons this way, you win the game.",
+            ],
+            |d, _| {
+                static_on(d, Scope::OtherYourSubtype("Dragon"), false, Keywords::INDESTRUCTIBLE);
+                on(d, When::Upkeep { your_turn_only: true }, vec![], vec![Effect::SpiritDragonsUpkeep]);
+            },
+        ),
         _ => None,
     }
 }
@@ -677,4 +753,11 @@ pub const TDM_B_SCRIPTED: &[&str] = &[
     "Narset, Jeskai Waymaster",
     "Betor, Kin to All",
     "Neriv, Heart of the Storm",
+    "Sage of the Skies",
+    "Stormscale Scion",
+    "Magmatic Hellkite",
+    "Stillness in Motion",
+    "Hundred-Battle Veteran",
+    "Elspeth, Storm Slayer",
+    "Call the Spirit Dragons",
 ];

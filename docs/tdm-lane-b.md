@@ -137,6 +137,29 @@ Mechanics added (appended at the end of their enums and structs):
 
 Edge case, left as is: if Ringing Strike Mastery leaves the battlefield while its granted untap ability is on the stack, the ability still untaps the creature (it was recorded on activation).
 
+## Batch 6 (engine core): copies of permanent spells, storm, finality, and more rares (7)
+
+Mechanics added (appended at the end of their enums and structs):
+- `When::YouCastThis` ("When you cast this spell"), fired as the spell is put on the stack, with a cast snapshot kept for it; the amount is the number of spells cast before it this turn by any player (storm, CR 702.40a), fixed as it's cast.
+- `Effect::CopySourceSpell { storm }`; a resolving copy of a permanent spell (`StackKind::SpellCopy`) becomes a token copy (CR 707.10f), not doubled by token doublers since it isn't created.
+- `Filter::nonbasic`; `SearchTo::BattlefieldTappedStunned`; `Effect::DestroyLandControllerFetchesStunned(slot)` (that land's controller searches).
+- `Effect::StillnessCheck` with `Decision::PutOnTopFromGraveyard` (picked one at a time; the last picked is on top).
+- `Object::finality` (exiled instead of dying; counts as a counter) and `CardDef::cast_from_graveyard_finality` (offered as `CastFromGraveyard`, sorcery timing). `StaticCondition::CounterKindsAmongYoursAtLeast(n)` with `Game::counter_kinds` (+1/+1, stun, finality, each keyword counter, and the other counter kinds the engine tracks).
+- `CardDef::doubles_tokens` (`Game::token_doubling`, used by every token maker, including copy tokens) and `Effect::GrantAllUntilYourNextTurn` with `Game::until_your_next_turn`.
+- `Effect::SpiritDragonsUpkeep` with `Decision::DragonForColor`: a Dragon of each color in WUBRG order (skipped if you have none of it), then a win with five different Dragons (unless the opponent can't lose).
+
+| Card | Test |
+|---|---|
+| Sage of the Skies | `sage_of_the_skies_copies_itself_after_another_spell` |
+| Stormscale Scion | `stormscale_scion_storms_and_pumps_other_dragons` |
+| Magmatic Hellkite | `magmatic_hellkite_wrecks_a_nonbasic_and_gives_them_a_stunned_basic` |
+| Stillness in Motion | `stillness_in_motion_mills_and_refills_an_empty_library` |
+| Hundred-Battle Veteran | `hundred_battle_veteran_returns_with_finality_and_counts_counter_kinds` |
+| Elspeth, Storm Slayer | `elspeth_doubles_tokens_grows_and_lifts_the_team_and_kills_big_creatures` |
+| Call the Spirit Dragons | `call_the_spirit_dragons_protects_dragons_and_wins_with_five` |
+
+Known limit: Host of the Hereafter's last-known counters (+1/+1, stun, keyword) don't include a finality counter.
+
 ## Needs core
 
 Cards from the lane's list, in list order, skipped because the engine can't do them exactly yet. (Sultai Monument, Fleeting Effigy, Encroaching Dragonstorm, Misty Rainforest and Arid Mesa were done by the lead in Tarkir batch 8.)
@@ -144,16 +167,9 @@ Cards from the lane's list, in list order, skipped because the engine can't do t
 - Rite of Renewal: no "shuffle target cards from a graveyard into their library", and no "exile this spell" on resolution.
 - Breaching Dragonstorm: no exile-until-nonland with cast-free-if-MV-8-or-less; no self-bounce.
 - Reverberating Summons: no "becomes a creature if you've cast two or more spells this turn"; no "discard your hand" cost.
-- Hundred-Battle Veteran: no static condition counting kinds of counters; no cast-from-graveyard with a finality counter.
-- Sage of the Skies: no cast trigger that copies the spell itself.
-- Magmatic Hellkite: no "nonbasic land" filter; no opponent search with a stun counter on the land.
-- Stillness in Motion: no library-empty check, self-exile, or put-five-from-graveyard-on-top.
 - New Way Forward: no prevention of the next damage from a chosen source with a reflexive redirect.
 - Teval, Arbiter of Virtue: no delve granted to your spells; no lose-life-equal-to-mana-value cast trigger.
 - Shiko, Paragon of the Way: no exile-then-cast-a-copy-free from the graveyard.
-- Elspeth, Storm Slayer: `doubles_tokens_and_counters` also doubles counters (Elspeth doubles tokens only); no "gain flying until your next turn".
-- Stormscale Scion: no storm.
-- Call the Spirit Dragons: no per-color counter placement on Dragons or win condition; no static granting indestructible to Dragons.
 
 - Emergent Ultimatum: no search for up to three monocolored cards with different names into exile, no opponent's choice to shuffle one back, no cast-the-rest-free, and no self-exile.
 

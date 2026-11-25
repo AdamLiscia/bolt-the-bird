@@ -1574,3 +1574,266 @@ fn neriv_doubles_damage_from_creatures_that_entered_this_turn() {
     assert_eq!(targets, 2);
     assert_eq!(g.players[1].life, 20 - 1 - 4);
 }
+
+// ---- Batch 6: copies of permanent spells, storm, finality, rares ----
+
+fn named(g: &Game, p: usize, name: &str) -> Vec<ObjId> {
+    g.permanents(p).filter(|&x| g.def_of(x).name == name).collect()
+}
+
+#[test]
+fn sage_of_the_skies_copies_itself_after_another_spell() {
+    let mut g = table();
+    let sage = hand(&mut g, 0, "Sage of the Skies");
+    begin(&mut g);
+    play(&mut g, sage, false, &[], &[]);
+    assert_eq!(
+        named(&g, 0, "Sage of the Skies").len(),
+        1,
+        "the first spell this turn"
+    );
+    let k = g.keywords(sage);
+    assert!(k.has(Keywords::FLYING) && k.has(Keywords::LIFELINK));
+
+    let mut g = table();
+    let first = hand(&mut g, 0, "Cruel Truths");
+    let sage = hand(&mut g, 0, "Sage of the Skies");
+    begin(&mut g);
+    play(&mut g, first, false, &[], &[Action::No, Action::No]);
+    play(&mut g, sage, false, &[], &[]);
+    let sages = named(&g, 0, "Sage of the Skies");
+    assert_eq!(sages.len(), 2);
+    assert_eq!(
+        sages.iter().filter(|&&x| g.is_token(x)).count(),
+        1,
+        "the copy is a token"
+    );
+    assert!(g.obj(sage).was_cast);
+}
+
+#[test]
+fn stormscale_scion_storms_and_pumps_other_dragons() {
+    let mut g = table();
+    let a = hand(&mut g, 0, "Humbling Elder");
+    let b = hand(&mut g, 1, "Humbling Elder");
+    let c = hand(&mut g, 1, "Humbling Elder");
+    let scion = hand(&mut g, 0, "Stormscale Scion");
+    begin(&mut g);
+    // Two spells before it, one of them the opponent's (storm counts every player's spells).
+    act(&mut g, Action::Cast(a));
+    act(&mut g, Action::PassPriority);
+    act(&mut g, Action::Cast(b));
+    resolve_all(&mut g, &[Action::Target(obj(b))]);
+    act(&mut g, Action::Cast(scion));
+    // A spell cast after it, in response to the storm trigger, doesn't count.
+    act(&mut g, Action::PassPriority);
+    act(&mut g, Action::Cast(c));
+    resolve_all(&mut g, &[Action::Target(obj(a))]);
+    let scions = named(&g, 0, "Stormscale Scion");
+    assert_eq!(scions.len(), 3, "the card and two copies");
+    assert_eq!(scions.iter().filter(|&&x| g.is_token(x)).count(), 2);
+    for &s in &scions {
+        assert_eq!((g.power(s), g.toughness(s)), (6, 6), "two other Dragons each");
+    }
+}
+
+#[test]
+fn magmatic_hellkite_wrecks_a_nonbasic_and_gives_them_a_stunned_basic() {
+    let mut g = table();
+    let bivouac = put(&mut g, 1, "Frontier Bivouac");
+    let plains = put(&mut g, 1, "Plains");
+    let hk = hand(&mut g, 0, "Magmatic Hellkite");
+    begin(&mut g);
+    act(&mut g, Action::Cast(hk));
+    while !matches!(g.pending, Pending::ChooseTarget(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    let legal = g.legal_actions();
+    assert!(!legal.contains(&Action::Target(obj(plains))), "nonbasic only");
+    act(&mut g, Action::Target(obj(bivouac)));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.pending, Pending::Decide(1), "its controller searches");
+    let basic = *g.players[1].library.last().unwrap();
+    resolve_all(&mut g, &[Action::Pick(basic)]);
+    assert_eq!(g.obj(bivouac).zone, Zone::Graveyard);
+    assert_eq!(g.obj(basic).zone, Zone::Battlefield);
+    assert!(g.obj(basic).tapped);
+    assert_eq!(g.obj(basic).stun, 1);
+}
+
+#[test]
+fn stillness_in_motion_mills_and_refills_an_empty_library() {
+    let mut g = table();
+    put(&mut g, 0, "Stillness in Motion");
+    for c in g.players[0].library.clone().into_iter().take(7) {
+        g.move_card(c, Zone::Graveyard);
+    }
+    assert_eq!(g.players[0].library.len(), 3);
+    g.start_turn(5, 0);
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(g.players[0].library.is_empty(), "milled three");
+    let still = named(&g, 0, "Stillness in Motion");
+    assert!(still.is_empty(), "exiled");
+    let picks: Vec<ObjId> = g.players[0].graveyard.iter().copied().take(5).collect();
+    let answers: Vec<Action> = picks.iter().map(|&c| Action::Pick(c)).collect();
+    resolve_all(&mut g, &answers);
+    assert_eq!(g.players[0].library.len(), 5);
+    assert_eq!(
+        *g.players[0].library.last().unwrap(),
+        picks[4],
+        "the last one picked is on top"
+    );
+
+    // A library that isn't empty: nothing more.
+    let mut g = table();
+    let s = put(&mut g, 0, "Stillness in Motion");
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.players[0].library.len(), 10 - 3 - 1);
+    assert_eq!(g.obj(s).zone, Zone::Battlefield);
+}
+
+#[test]
+fn hundred_battle_veteran_returns_with_finality_and_counts_counter_kinds() {
+    let mut g = table();
+    let vet = g.add_card(0, tid("Hundred-Battle Veteran"), Zone::Graveyard);
+    let envoy = hand(&mut g, 0, "Trade Route Envoy");
+    let assistant = g.add_card(0, tid("Alchemist's Assistant"), Zone::Graveyard);
+    begin(&mut g);
+    assert!(g.legal_actions().contains(&Action::CastFromGraveyard(vet)));
+    act(&mut g, Action::CastFromGraveyard(vet));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(vet).zone, Zone::Battlefield);
+    assert!(g.obj(vet).finality);
+    assert_eq!((g.power(vet), g.toughness(vet)), (4, 2), "one kind: finality");
+    play(&mut g, envoy, false, &[], &[]);
+    assert_eq!(
+        g.obj(envoy).counters,
+        0,
+        "the Veteran's finality counter counts: Envoy draws"
+    );
+    act(&mut g, Action::Activate(assistant, 0));
+    resolve_all(&mut g, &[Action::Target(obj(envoy))]);
+    assert_eq!(
+        (g.power(vet), g.toughness(vet)),
+        (4, 2),
+        "two kinds: finality, lifelink"
+    );
+    let ko = hand(&mut g, 0, "Knockout Maneuver");
+    let theirs = put(&mut g, 1, "Humbling Elder");
+    play(&mut g, ko, false, &[obj(envoy), obj(theirs)], &[]);
+    assert_eq!((g.power(vet), g.toughness(vet)), (6, 6), "three kinds: +1/+1 too");
+    let prey = hand(&mut g, 0, "Dragon's Prey");
+    play(&mut g, prey, false, &[obj(vet)], &[]);
+    assert_eq!(g.obj(vet).zone, Zone::Exile, "finality: exiled instead of dying");
+}
+
+#[test]
+fn elspeth_doubles_tokens_grows_and_lifts_the_team_and_kills_big_creatures() {
+    let mut g = table();
+    let e = hand(&mut g, 0, "Elspeth, Storm Slayer");
+    let small = put(&mut g, 1, "Humbling Elder");
+    let big = put(&mut g, 1, "Iceridge Serpent");
+    begin(&mut g);
+    play(&mut g, e, false, &[], &[]);
+    assert_eq!(g.obj(e).loyalty, 5);
+    act(&mut g, Action::Loyalty(e, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(tokens(&g, 0, "Soldier").len(), 2, "twice that many tokens");
+    assert_eq!(g.obj(e).loyalty, 6);
+    assert!(
+        !g.legal_actions().iter().any(|a| matches!(a, Action::Loyalty(..))),
+        "once each turn"
+    );
+
+    main_turn_5(&mut g);
+    act(&mut g, Action::Loyalty(e, 1));
+    resolve_all(&mut g, &[]);
+    let soldiers = tokens(&g, 0, "Soldier");
+    for &s in &soldiers {
+        assert_eq!(g.obj(s).counters, 1, "one counter each, not doubled");
+        assert!(g.keywords(s).has(Keywords::FLYING));
+    }
+    // Through the opponent's turn, gone at the start of mine.
+    to_next_turn(&mut g);
+    assert!(
+        g.keywords(soldiers[0]).has(Keywords::FLYING),
+        "until your next turn"
+    );
+    to_next_turn(&mut g);
+    assert!(!g.keywords(soldiers[0]).has(Keywords::FLYING));
+
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Loyalty(e, 2));
+    assert!(
+        !g.legal_actions().contains(&Action::Target(obj(small))),
+        "mana value 3 or greater"
+    );
+    act(&mut g, Action::Target(obj(big)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(big).zone, Zone::Graveyard);
+}
+
+#[test]
+fn call_the_spirit_dragons_protects_dragons_and_wins_with_five() {
+    let mut g = table();
+    put(&mut g, 0, "Call the Spirit Dragons");
+    let w = put(&mut g, 0, "Clarion Conqueror");
+    let u = put(&mut g, 0, "Karakyk Guardian");
+    let b = put(&mut g, 0, "Teval, Arbiter of Virtue");
+    let r = put(&mut g, 0, "Magmatic Hellkite");
+    let gr = put(&mut g, 0, "Betor, Kin to All");
+    assert!(g.keywords(u).has(Keywords::INDESTRUCTIBLE));
+    g.start_turn(5, 0);
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    // White: only Clarion Conqueror or Betor.
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Pick(w)) && legal.contains(&Action::Pick(gr)));
+    assert!(!legal.contains(&Action::Pick(u)), "not white");
+    resolve_all(
+        &mut g,
+        &[
+            Action::Pick(w),
+            Action::Pick(u),
+            Action::Pick(b),
+            Action::Pick(r),
+            Action::Pick(gr),
+        ],
+    );
+    for d in [w, u, b, r, gr] {
+        assert_eq!(g.obj(d).counters, 1);
+    }
+    assert!(g.players[1].lost, "five Dragons: you win");
+
+    // Fewer than five different Dragons: counters, no win.
+    let mut g = table();
+    put(&mut g, 0, "Call the Spirit Dragons");
+    let k = put(&mut g, 0, "Karakyk Guardian");
+    let bt = put(&mut g, 0, "Betor, Kin to All");
+    g.start_turn(5, 0);
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    resolve_all(
+        &mut g,
+        &[
+            Action::Pick(bt),
+            Action::Pick(k),
+            Action::Pick(bt),
+            Action::Pick(k),
+            Action::Pick(k),
+        ],
+    );
+    assert_eq!((g.obj(k).counters, g.obj(bt).counters), (3, 2));
+    assert!(!g.players[1].lost);
+}
