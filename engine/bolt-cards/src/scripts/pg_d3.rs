@@ -36,6 +36,22 @@ fn looter(d: &mut CardDef) {
     activated(d, "", true, vec![], vec![draw(1), discard(1)]);
 }
 
+/// A Triome: "This land enters tapped." / "Cycling {3}", tapping for its three basic land types' colors.
+fn triome(d: &mut CardDef, colors: &[Color]) {
+    d.enters_tapped = true;
+    lands_mana(d, colors);
+    cycling(d, "{3}");
+}
+
+/// A Talisman: "{T}: Add {C}." and "{T}: Add {A} or {B}. This artifact deals 1 damage to you."
+fn talisman(d: &mut CardDef, a: Color, b: Color) {
+    d.mana = Some(ManaSource {
+        colorless: true,
+        ..ManaSource::of(&[a, b])
+    });
+    d.pain_colored = true;
+}
+
 const LOOT: &str = "{T}: Draw a card, then discard a card.";
 
 pub fn script(name: &str) -> Option<Script> {
@@ -150,6 +166,117 @@ pub fn script(name: &str) -> Option<Script> {
             &["When this creature enters, search your library for a card, put that card into your graveyard, then shuffle."],
             |d, _| on(d, When::Enters, vec![], vec![search(SearchFor::Any, SearchTo::Graveyard)]),
         ),
+        // ---- Najeela, the Blade-Blossom (Time) ----
+        "Negate" => s(&["Counter target noncreature spell."], |d, _| {
+            spell(d, vec![Filter { spell_creature: Some(false), ..SPELL }], vec![Effect::Counter(0)])
+        }),
+        "Frantic Search" => s(
+            &["Draw two cards, then discard two cards. Untap up to three lands."],
+            |d, _| spell(d, vec![], vec![draw(2), discard(2), Effect::UntapLands(3)]),
+        ),
+        "Flooded Strand" => s(
+            &["{T}, Pay 1 life, Sacrifice this land: Search your library for a Plains or Island card, put it onto the battlefield, then shuffle."],
+            |d, _| fetch_land(d, &["Plains", "Island"]),
+        ),
+        "Hallowed Fountain" => s(
+            &["As this land enters, you may pay 2 life. If you don't, it enters tapped."],
+            |d, _| {
+                d.shock_land = true;
+                lands_mana(d, &[Color::White, Color::Blue]);
+            },
+        ),
+        "Ziatora's Proving Ground" => s(&["This land enters tapped.", "Cycling {3}"], |d, _| {
+            triome(d, &[Color::Black, Color::Red, Color::Green])
+        }),
+        "Ketria Triome" => s(&["This land enters tapped.", "Cycling {3}"], |d, _| {
+            triome(d, &[Color::Blue, Color::Red, Color::Green])
+        }),
+        "Savai Triome" => s(&["This land enters tapped.", "Cycling {3}"], |d, _| {
+            triome(d, &[Color::White, Color::Black, Color::Red])
+        }),
+        "Selesnya Signet" => s(&["{1}, {T}: Add {G}{W}."], |d, _| two_mana(d, "{1}", Color::Green, Color::White)),
+        "Boros Charm" => s(
+            &[
+                "Choose one —",
+                "• Boros Charm deals 4 damage to target player or planeswalker.",
+                "• Permanents you control gain indestructible until end of turn.",
+                "• Target creature gains double strike until end of turn.",
+            ],
+            |d, _| {
+                let player_or_pw = Filter { creatures: false, ..Filter::ANY };
+                modes(
+                    d,
+                    vec![
+                        Ability::new(vec![player_or_pw], vec![damage(4, Recipient::Target(0))]),
+                        Ability::new(vec![], vec![Effect::GrantAllPermanentsYouControl(Keywords::INDESTRUCTIBLE)]),
+                        Ability::new(vec![CREATURE], vec![Effect::Grant { slot: 0, keywords: Keywords::DOUBLE_STRIKE }]),
+                    ],
+                )
+            },
+        ),
+        "Brainstorm" => s(
+            &["Draw three cards, then put two cards from your hand on top of your library in any order."],
+            |d, _| spell(d, vec![], vec![Effect::DrawThenPutBack { draw: 3, back: 2 }]),
+        ),
+        "Edric, Spymaster of Trest" => s(
+            &["Whenever a creature deals combat damage to one of your opponents, its controller may draw a card."],
+            |d, _| {
+                // 1v1: only your creatures deal combat damage to your opponent, so "its controller" is you.
+                may(d, When::YourCreatureDealsCombatDamageToPlayer, vec![], vec![draw(1)]);
+            },
+        ),
+        "Opt" => s(&["Scry 1.", "Draw a card."], |d, _| spell(d, vec![], vec![Effect::Scry { n: 1 }, draw(1)])),
+        "Talisman of Dominance" => s(
+            &["{T}: Add {C}.", "{T}: Add {U} or {B}. This artifact deals 1 damage to you."],
+            |d, _| talisman(d, Color::Blue, Color::Black),
+        ),
+        "Talisman of Curiosity" => s(
+            &["{T}: Add {C}.", "{T}: Add {G} or {U}. This artifact deals 1 damage to you."],
+            |d, _| talisman(d, Color::Green, Color::Blue),
+        ),
+        "Fleshbag Marauder" => s(
+            &["When this creature enters, each player sacrifices a creature of their choice."],
+            |d, _| {
+                on(
+                    d,
+                    When::Enters,
+                    vec![],
+                    vec![
+                        Effect::SacrificeCreatures { who: Who::You, n: 1 },
+                        Effect::SacrificeCreatures { who: Who::EachOpponent, n: 1 },
+                    ],
+                )
+            },
+        ),
+        "Growth Spiral" => s(
+            &["Draw a card. You may put a land card from your hand onto the battlefield."],
+            |d, _| spell(d, vec![], vec![draw(1), Effect::MayLandFromHand]),
+        ),
+        "Preordain" => s(&["Scry 2, then draw a card."], |d, _| spell(d, vec![], vec![Effect::Scry { n: 2 }, draw(1)])),
+        "City of Death" => s(
+            &[
+                "I — Create a Treasure token.",
+                "II, III, IV, V, VI — Create a token that's a copy of target non-Saga token you control.",
+            ],
+            |d, t| {
+                chapter(d, 1, Ability::new(vec![], vec![Effect::CreateToken { who: Who::You, def: t.treasure, n: 1 }]));
+                let token = Filter {
+                    players: false,
+                    creatures: false,
+                    planeswalkers: false,
+                    any_permanent: true,
+                    tokens_only: true,
+                    not_subtype: Some("Saga"),
+                    controller: Controller::You,
+                    ..Filter::ANY
+                };
+                let copy = Effect::CopyToken { slot: Some(0), haste_and_sacrifice: false, extra_subtype: None };
+                for n in 2..=6 {
+                    chapter(d, n, Ability::new(vec![token], vec![copy]));
+                }
+            },
+        ),
+        "Sylvan Caryatid" => s(&["{T}: Add one mana of any color."], |d, _| lands_mana(d, &Color::ALL)),
         _ => None,
     }
 }
@@ -176,4 +303,24 @@ pub const PG_D3_SCRIPTED: &[&str] = &[
     "Thought Courier",
     "Port Town",
     "Vile Entomber",
+    // Najeela, the Blade-Blossom
+    "Negate",
+    "Frantic Search",
+    "Flooded Strand",
+    "Hallowed Fountain",
+    "Ziatora's Proving Ground",
+    "Ketria Triome",
+    "Savai Triome",
+    "Selesnya Signet",
+    "Boros Charm",
+    "Brainstorm",
+    "Edric, Spymaster of Trest",
+    "Opt",
+    "Talisman of Dominance",
+    "Talisman of Curiosity",
+    "Fleshbag Marauder",
+    "Growth Spiral",
+    "Preordain",
+    "City of Death",
+    "Sylvan Caryatid",
 ];

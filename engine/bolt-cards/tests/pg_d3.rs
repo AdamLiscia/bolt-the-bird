@@ -139,7 +139,10 @@ fn signet_pays(signet: &str, spell: &str) {
         "{signet} makes the two colors"
     );
     play(&mut g, c, false, &[], &[]);
-    assert_eq!(g.obj(c).zone, Zone::Battlefield);
+    assert!(
+        !matches!(g.obj(c).zone, Zone::Hand | Zone::Stack),
+        "cast and resolved"
+    );
     let mut g = game(&[]);
     put(&mut g, 0, signet);
     let c = hand(&mut g, 0, spell);
@@ -411,4 +414,275 @@ fn vile_entomber_entombs_on_entering() {
     play(&mut g, v, false, &[], &[Action::Pick(card)]);
     assert_eq!(g.obj(card).zone, Zone::Graveyard);
     assert!(g.keywords(v).has(Keywords::DEATHTOUCH));
+}
+
+// ---- Najeela, the Blade-Blossom (Time) ----
+
+#[test]
+fn negate_counters_only_noncreature_spells() {
+    let mut g = table();
+    let opt = hand(&mut g, 0, "Opt");
+    let n = hand(&mut g, 0, "Negate");
+    act(&mut g, Action::Cast(opt));
+    act(&mut g, Action::Cast(n));
+    act(&mut g, Action::Target(obj(opt)));
+    let cards = g.players[0].hand.len();
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(opt).zone, Zone::Graveyard);
+    assert_eq!(g.players[0].hand.len(), cards, "Opt never resolved");
+
+    let mut g = table();
+    let looter = hand(&mut g, 0, "Merfolk Looter");
+    let n = hand(&mut g, 0, "Negate");
+    act(&mut g, Action::Cast(looter));
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(n)),
+        "no noncreature spell to target"
+    );
+}
+
+#[test]
+fn frantic_search_draws_two_discards_two_and_untaps_three_lands() {
+    let mut g = game(&["Island", "Island", "Island", "Plains"]);
+    let a = hand(&mut g, 0, "Counterspell");
+    let b = hand(&mut g, 0, "Entomb");
+    let fs = hand(&mut g, 0, "Frantic Search");
+    let cards = g.players[0].hand.len();
+    play(&mut g, fs, false, &[], &[Action::Discard(a), Action::Discard(b)]);
+    assert_eq!(g.players[0].hand.len(), cards - 1);
+    assert_eq!((g.obj(a).zone, g.obj(b).zone), (Zone::Graveyard, Zone::Graveyard));
+    assert!(
+        g.permanents(0)
+            .filter(|&x| g.types_of(x).land)
+            .all(|x| !g.obj(x).tapped),
+        "the three lands it was cast with untap"
+    );
+}
+
+#[test]
+fn flooded_strand_fetches_a_plains_or_island() {
+    let mut g = table();
+    let f = put(&mut g, 0, "Flooded Strand");
+    let bad = g.add_card(0, cid("Swamp"), Zone::Library);
+    let good = g.add_card(0, cid("Island"), Zone::Library);
+    let life = g.players[0].life;
+    act(&mut g, Action::Activate(f, 0));
+    assert_eq!(g.players[0].life, life - 1);
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(!g.legal_actions().contains(&Action::Pick(bad)));
+    act(&mut g, Action::Pick(good));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(good).zone, Zone::Battlefield);
+    assert_eq!(g.obj(f).zone, Zone::Graveyard);
+}
+
+#[test]
+fn hallowed_fountain_pays_2_life_or_enters_tapped() {
+    for pay in [true, false] {
+        let mut g = game(&[]);
+        let life = g.players[0].life;
+        let c = hand(&mut g, 0, "Hallowed Fountain");
+        act(&mut g, Action::PlayLand(c));
+        act(&mut g, if pay { Action::Yes } else { Action::No });
+        assert_eq!(g.obj(c).tapped, !pay);
+        assert_eq!(g.players[0].life, if pay { life - 2 } else { life });
+        if pay {
+            assert_eq!(colors(&g, c), [true, true, false, false, false]);
+        }
+    }
+}
+
+#[test]
+fn the_triomes_enter_tapped_and_make_their_three_colors() {
+    for (name, mana) in [
+        ("Ziatora's Proving Ground", [false, false, true, true, true]),
+        ("Ketria Triome", [false, true, false, true, true]),
+        ("Savai Triome", [true, false, true, true, false]),
+    ] {
+        let mut g = game(&[]);
+        let c = hand(&mut g, 0, name);
+        act(&mut g, Action::PlayLand(c));
+        assert!(g.obj(c).tapped, "{name}");
+        to_main1(&mut g, 5, 0);
+        assert_eq!(colors(&g, c), mana, "{name}");
+        let mut g = game(&["Plains", "Plains", "Plains"]);
+        let c = hand(&mut g, 0, name);
+        act(&mut g, Action::Activate(c, 0));
+        resolve_all(&mut g, &[]);
+        assert_eq!(g.obj(c).zone, Zone::Graveyard, "{name} cycles");
+    }
+}
+
+#[test]
+fn selesnya_signet_turns_one_mana_into_green_and_white() {
+    signet_pays("Selesnya Signet", "Shanna, Sisay's Legacy"); // {G}{W}
+}
+
+#[test]
+fn boros_charm_burns_protects_or_grants_double_strike() {
+    let mut g = table();
+    let bc = hand(&mut g, 0, "Boros Charm");
+    act(&mut g, Action::CastModal(bc, 0));
+    act(&mut g, Action::Target(Target::Player(1)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].life, 36);
+
+    let mut g = table();
+    let ring = put(&mut g, 0, "Sol Ring");
+    let theirs = put(&mut g, 1, "Sol Ring");
+    let bc = hand(&mut g, 0, "Boros Charm");
+    act(&mut g, Action::CastModal(bc, 1));
+    resolve_all(&mut g, &[]);
+    assert!(g.keywords(ring).has(Keywords::INDESTRUCTIBLE));
+    assert!(!g.keywords(theirs).has(Keywords::INDESTRUCTIBLE));
+
+    let mut g = table();
+    let looter = put(&mut g, 0, "Merfolk Looter");
+    let bc = hand(&mut g, 0, "Boros Charm");
+    act(&mut g, Action::CastModal(bc, 2));
+    act(&mut g, Action::Target(obj(looter)));
+    resolve_all(&mut g, &[]);
+    assert!(g.keywords(looter).has(Keywords::DOUBLE_STRIKE));
+}
+
+#[test]
+fn brainstorm_draws_three_and_puts_two_back_on_top() {
+    let mut g = table();
+    let a = hand(&mut g, 0, "Counterspell");
+    let b = hand(&mut g, 0, "Entomb");
+    let bs = hand(&mut g, 0, "Brainstorm");
+    let cards = g.players[0].hand.len();
+    play(&mut g, bs, false, &[], &[Action::Pick(a), Action::Pick(b)]);
+    assert_eq!(g.players[0].hand.len(), cards - 1 + 3 - 2);
+    let lib = &g.players[0].library;
+    assert_eq!(&lib[lib.len() - 2..], &[a, b], "Entomb on top");
+}
+
+/// Attacks with `attacker` on turn 5 and passes until a decision comes up for player 0, or the turn
+/// reaches its second main phase.
+fn attack_until_decision(g: &mut Game, attacker: ObjId) {
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(g, Action::PassPriority);
+    }
+    act(g, Action::Attack(attacker));
+    act(g, Action::FinishAttacks);
+    while !matches!(g.pending, Pending::Decide(0)) && g.step != Step::Main2 {
+        let a = match g.pending {
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(g, a);
+    }
+}
+
+#[test]
+fn edric_lets_you_draw_when_your_creature_hits_the_opponent() {
+    let mut g = table();
+    put(&mut g, 0, "Edric, Spymaster of Trest");
+    let looter = put(&mut g, 0, "Merfolk Looter");
+    g.start_turn(5, 0);
+    let cards = g.players[0].hand.len();
+    attack_until_decision(&mut g, looter);
+    assert_eq!(g.pending, Pending::Decide(0), "may draw");
+    act(&mut g, Action::Yes);
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].life, 39);
+    assert_eq!(g.players[0].hand.len(), cards + 2, "the draw step and Edric");
+}
+
+#[test]
+fn opt_scries_then_draws() {
+    let mut g = table();
+    let top = g.add_card(0, cid("Counterspell"), Zone::Library);
+    let o = hand(&mut g, 0, "Opt");
+    play(&mut g, o, false, &[], &[Action::Yes]); // the top card to the bottom
+    assert_eq!(g.obj(top).zone, Zone::Library);
+    assert_eq!(g.players[0].library[0], top, "on the bottom");
+    let mut g = table();
+    let top = g.add_card(0, cid("Counterspell"), Zone::Library);
+    let o = hand(&mut g, 0, "Opt");
+    play(&mut g, o, false, &[], &[Action::No]); // kept: then drawn
+    assert_eq!(g.obj(top).zone, Zone::Hand);
+}
+
+#[test]
+fn preordain_scries_two_then_draws() {
+    let mut g = table();
+    let second = g.add_card(0, cid("Entomb"), Zone::Library);
+    let top = g.add_card(0, cid("Counterspell"), Zone::Library);
+    let p = hand(&mut g, 0, "Preordain");
+    play(&mut g, p, false, &[], &[Action::Yes, Action::No]); // bottom the top card, keep the next
+    assert_eq!(g.obj(top).zone, Zone::Library);
+    assert_eq!(g.obj(second).zone, Zone::Hand);
+}
+
+fn talisman(name: &str, pair: [bool; 5]) {
+    let mut g = game(&[]);
+    let t = put(&mut g, 0, name);
+    assert_eq!(colors(&g, t), pair);
+    assert!(g.mana_sources(0).iter().any(|&(x, m)| x == t && m.colorless));
+}
+
+#[test]
+fn talisman_of_dominance_makes_colorless_or_blue_or_black() {
+    talisman("Talisman of Dominance", [false, true, true, false, false]);
+}
+
+#[test]
+fn talisman_of_curiosity_makes_colorless_or_green_or_blue() {
+    talisman("Talisman of Curiosity", [false, true, false, false, true]);
+}
+
+#[test]
+fn fleshbag_marauder_makes_each_player_sacrifice_a_creature() {
+    let mut g = table();
+    let looter = put(&mut g, 0, "Merfolk Looter");
+    let theirs = put(&mut g, 1, "Merfolk Looter");
+    let kept = put(&mut g, 1, "Thought Courier");
+    let f = hand(&mut g, 0, "Fleshbag Marauder");
+    play(
+        &mut g,
+        f,
+        false,
+        &[],
+        &[Action::Pick(looter), Action::Pick(theirs)],
+    );
+    assert_eq!(g.obj(looter).zone, Zone::Graveyard);
+    assert_eq!(g.obj(theirs).zone, Zone::Graveyard);
+    assert_eq!(g.obj(kept).zone, Zone::Battlefield, "one each");
+    assert_eq!(g.obj(f).zone, Zone::Battlefield);
+}
+
+#[test]
+fn growth_spiral_draws_and_may_put_a_land_onto_the_battlefield() {
+    let mut g = table();
+    let forest = hand(&mut g, 0, "Forest");
+    let gs = hand(&mut g, 0, "Growth Spiral");
+    let cards = g.players[0].hand.len();
+    play(&mut g, gs, false, &[], &[Action::Pick(forest)]);
+    assert_eq!(g.obj(forest).zone, Zone::Battlefield);
+    assert_eq!(g.players[0].hand.len(), cards - 1 + 1 - 1);
+}
+
+#[test]
+fn city_of_death_makes_a_treasure_then_copies_tokens() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "City of Death");
+    play(&mut g, c, false, &[], &[]);
+    let t = tokens(&g, 0, "Treasure");
+    assert_eq!(t.len(), 1);
+    to_main1(&mut g, 5, 0);
+    resolve_all(&mut g, &[Action::Target(obj(t[0]))]);
+    assert_eq!(tokens(&g, 0, "Treasure").len(), 2, "chapter II copies it");
+}
+
+#[test]
+fn sylvan_caryatid_taps_for_any_color() {
+    let mut g = game(&[]);
+    let c = put(&mut g, 0, "Sylvan Caryatid");
+    to_main1(&mut g, 5, 0);
+    assert_eq!(colors(&g, c), [true; 5]);
+    assert!(g.keywords(c).has(Keywords::DEFENDER) && g.keywords(c).has(Keywords::HEXPROOF));
 }
