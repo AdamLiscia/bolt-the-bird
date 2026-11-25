@@ -444,3 +444,14 @@ RevealTopLandsToHandRestGraveyard, LandsFromHandTapped, ReturnPermanentCardsToHa
 `Game::{land_to_graveyard_pending, creatures_milled_pending}`. Grave-Reaver offers the creature cards milled this
 turn, and taking one is optional (the engine's pick can't be forced without re-moving the rest). Tokens: Badger
 54, Treefolk 55 (P/T = lands you control).
+
+PG batch 5 (1): Nissa of Shadowed Boughs. Core: `LookTo::BattlefieldTwoCounters`,
+`Effect::CreatureFromHandOrGraveyardMvAtMostLands`.
+
+Glarb list: 47 of 65 scripted. Not done (each needs more than this session had): Jace, the Mind Sculptor;
+Sensei's Divining Top and Scroll Rack (library ordering); Koma (a modal activated ability); Sakashima of a
+Thousand Faces and Sakashima the Impostor (copies with exceptions); Phyrexian Metamorph ({U/P} mana); Scapeshift,
+Rise of the Witch-king, Will of the Abzan (multi-player choices); Dread Return (flashback by sacrificing creatures);
+Force of Vigor (alternative cost); Delighted Halfling (mana for legendary spells only); Conduit of Worlds; Hedge
+Shredder (crew); Legolas's Quick Reflexes (split second); Nissa, Worldsoul Speaker (energy); Zimone (manifest
+dread).

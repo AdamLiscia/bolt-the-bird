@@ -7287,6 +7287,10 @@ impl Game {
                     match to {
                         LookTo::Hand => self.move_to(c, Zone::Hand),
                         LookTo::Battlefield => self.move_to(c, Zone::Battlefield),
+                        LookTo::BattlefieldTwoCounters => {
+                            self.move_to(c, Zone::Battlefield);
+                            self.add_counters(c, 2);
+                        }
                         LookTo::BattlefieldTapped => {
                             self.move_to(c, Zone::Battlefield);
                             self.obj_mut(c).tapped = true;
@@ -9083,6 +9087,27 @@ impl Game {
                     }
                 } else {
                     self.create_token(p, def);
+                }
+            }
+            Effect::CreatureFromHandOrGraveyardMvAtMostLands => {
+                let p = item.controller;
+                let cards: Vec<ObjId> = self.players[p]
+                    .hand
+                    .iter()
+                    .chain(&self.players[p].graveyard)
+                    .copied()
+                    .filter(|&c| self.picks(c, Pick::CreatureMvAtMostLands))
+                    .collect();
+                if !cards.is_empty() {
+                    self.ask(
+                        p,
+                        Decision::LookPick {
+                            cards,
+                            pick: Pick::CreatureMvAtMostLands,
+                            to: LookTo::BattlefieldTwoCounters,
+                            rest: None,
+                        },
+                    );
                 }
             }
             Effect::SacrificeLandOrSource => {

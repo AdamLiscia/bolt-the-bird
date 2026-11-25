@@ -1173,6 +1173,9 @@ pub enum Effect {
     LandsFromHandTapped,
     /// Return all permanent cards from your graveyard to your hand.
     ReturnPermanentCardsToHand,
+    /// You may put a creature card with mana value at most the lands you control from your hand or
+    /// graveyard onto the battlefield with two +1/+1 counters (Nissa of Shadowed Boughs).
+    CreatureFromHandOrGraveyardMvAtMostLands,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1367,6 +1370,8 @@ pub enum LookTo {
     PlayFromExileThisTurn,
     /// Onto the battlefield tapped.
     BattlefieldTapped,
+    /// Onto the battlefield with two +1/+1 counters.
+    BattlefieldTwoCounters,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
