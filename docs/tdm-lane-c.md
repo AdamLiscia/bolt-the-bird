@@ -61,3 +61,29 @@ Scripts: `engine/bolt-cards/src/scripts/tdm_c.rs`. Tests: `engine/bolt-cards/tes
 - The lanes share `CARGO_TARGET_DIR`, and both worktrees build `bolt-cards` to the same artifact names, so a
   test binary can link the other lane's `bolt-cards` build (every script here was missing until a rebuild).
   Touching `src/scripts/tdm_c.rs` before each run forces the right build.
+
+## Chunk 2: the rest of the list (no cards doable on the current engine)
+
+Assessed after the merge at e5c03c9. Every remaining card needs core:
+
+- Dracogenesis: free casting limited to Dragon spells (`free_from_hand` covers every spell).
+- Mox Jasper: a mana ability restriction "activate only if you control a Dragon".
+- Scalding Tarn, Verdant Catacombs, Marsh Flats: a "pay 1 life" activation cost, and a search for a land card with one of two basic land types (not only basics; `SearchFor` has only BasicLand/Any).
+- Genesis Ultimatum: look at the top five and put any number of permanent cards onto the battlefield with the rest going to hand, then exile the spell itself.
+- Eerie Ultimatum: return any number of permanent cards with different names from your graveyard.
+- Cori Mountain Monastery, Kishla Village, Mistrise Village: "enters tapped unless you control a [type] or a [type]". Mistrise also needs "the next spell you cast this turn can't be countered".
+- Surrak, Elusive Hunter: a trigger for "a creature you control or a creature spell you control becomes the target of a spell or ability an opponent controls".
+- Tersa Lightshatter: "discard up to two cards, then draw that many", and a threshold attack trigger that exiles a random graveyard card you may play this turn.
+- Windcrag Siege, Frostcliff Siege, Hollowmurk Siege: "as this enters, choose [clan] or [clan]" modes, each with its own ability.
+- Flamehold Grappler: "copy the next spell you cast this turn".
+- Mardu Siegebreaker: copy tokens of a linked exiled card, attacking, sacrificed at your next end step.
+- Maelstrom of the Spirit Dragon: mana spendable only on Dragon or Omen spells, and a search for a Dragon card.
+- Kotis, the Fangkeeper: exile the top X (combat damage dealt) of their library and cast spells with mana value X or less free.
+- United Battlefront: put up to two noncreature, nonland permanent cards with mana value 3 or less from the top seven onto the battlefield.
+- Severance Priest: exile a card chosen from a revealed hand, and a leaves-the-battlefield trigger giving its owner an X/X Spirit (X its mana value).
+- Sidisi, Regent of the Mire: a "sacrifice a creature with mana value X" cost and a return target with mana value X plus 1.
+- Ureni, the Song Unending: protection from white and from black as a keyword line, and divided damage X (lands you control) among opponents' creatures and planeswalkers.
+- Dragonback Assault: 3 damage to each creature and each planeswalker (`Recipient::EachCreature` skips planeswalkers).
+- Ugin, Eye of the Storms: a "when you cast this spell" trigger, a "whenever you cast a colorless spell" trigger, a "permanent that's one or more colors" filter, and the -11 search.
+- All-Out Assault: an additional combat phase and main phase, and "when you next attack this turn, untap each creature you control".
+- Craterhoof Behemoth: +X/+X for your creatures, where X is the number of creatures you control.
