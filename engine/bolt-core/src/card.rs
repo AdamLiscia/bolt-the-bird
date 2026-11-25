@@ -200,6 +200,8 @@ pub struct Activated {
     /// Activated from your hand, discarding this card as a cost (cycling: "{cost}, Discard this
     /// card: Draw a card.").
     pub from_hand_discard: bool,
+    /// The stack item's amount is the sacrificed creature's power (Greater Good).
+    pub amount_from_victim_power: bool,
 }
 
 /// The printed card. Shared by every copy; per-copy state lives on the game object.
@@ -439,6 +441,9 @@ pub struct CardDef {
     pub doubles_your_creatures_damage: bool,
     /// "{cost}, {T}: Add [two mana]." (Signets, filter lands): the cost and the two mana it makes.
     pub paid_mana: Option<(ManaCost, [ManaSource; 2])>,
+    /// The snarls: "As this land enters, you may reveal a [A] or [B] card from your hand. If you don't, it
+    /// enters tapped." (revealed whenever there is one).
+    pub enters_tapped_unless_reveal: Option<[&'static str; 2]>,
 }
 
 /// An Omen spell half: its name, cost, whether it's an instant, and what it does.
@@ -580,6 +585,7 @@ impl CardDef {
             thriving_color: None,
             doubles_your_creatures_damage: false,
             paid_mana: None,
+            enters_tapped_unless_reveal: None,
         }
     }
 
@@ -700,6 +706,7 @@ impl CardDef {
             thriving_color: None,
             doubles_your_creatures_damage: false,
             paid_mana: None,
+            enters_tapped_unless_reveal: None,
         }
     }
 
@@ -820,6 +827,7 @@ impl CardDef {
             thriving_color: None,
             doubles_your_creatures_damage: false,
             paid_mana: None,
+            enters_tapped_unless_reveal: None,
         }
     }
 }

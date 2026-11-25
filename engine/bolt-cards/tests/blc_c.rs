@@ -450,3 +450,79 @@ fn a_filter_land_turns_hybrid_mana_into_two_of_its_colors() {
         "one land, one mana"
     );
 }
+
+#[test]
+fn necroblossom_snarl_enters_untapped_only_with_a_swamp_or_forest_in_hand() {
+    let mut g = with_lands(&[]);
+    let snarl = hand(&mut g, 0, "Necroblossom Snarl");
+    act(&mut g, Action::PlayLand(snarl));
+    assert!(g.obj(snarl).tapped, "nothing to reveal");
+    let mut g = with_lands(&[]);
+    hand(&mut g, 0, "Forest");
+    let snarl = hand(&mut g, 0, "Necroblossom Snarl");
+    act(&mut g, Action::PlayLand(snarl));
+    assert!(!g.obj(snarl).tapped, "revealed a Forest");
+}
+
+#[test]
+fn primeval_bounty_rewards_creatures_noncreatures_and_lands() {
+    let mut g = table();
+    put(&mut g, 0, "Primeval Bounty");
+    let elder = hand(&mut g, 0, "Sakura-Tribe Elder");
+    play(&mut g, elder, false, &[], &[]);
+    assert_eq!(tokens(&g, 0, "Beast").len(), 1, "a creature spell: a 3/3 Beast");
+    let storm = hand(&mut g, 0, "Chatterstorm");
+    play(&mut g, storm, false, &[], &[Action::Target(obj(elder))]);
+    assert_eq!(g.obj(elder).counters, 3, "a noncreature spell: three counters");
+    let life = g.players[0].life;
+    let forest = hand(&mut g, 0, "Forest");
+    act(&mut g, Action::PlayLand(forest));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].life, life + 3, "landfall: 3 life");
+}
+
+#[test]
+fn nested_shambler_leaves_tapped_squirrels_equal_to_its_power() {
+    let mut g = table();
+    let shambler = put(&mut g, 0, "Nested Shambler");
+    let p = g.power(shambler);
+    let putrefy = hand(&mut g, 0, "Putrefy"); // destroy target artifact or creature
+    play(&mut g, putrefy, false, &[obj(shambler)], &[]);
+    assert_eq!(g.obj(shambler).zone, Zone::Graveyard);
+    let squirrels = tokens(&g, 0, "Squirrel");
+    assert_eq!(squirrels.len(), p.max(0) as usize);
+    assert!(squirrels.iter().all(|&s| g.obj(s).tapped));
+}
+
+#[test]
+fn greater_good_draws_the_sacrificed_power_then_discards_three() {
+    let mut g = table();
+    put(&mut g, 0, "Greater Good");
+    let boar = put(&mut g, 0, "End-Raze Forerunners"); // power 7
+    for _ in 0..10 {
+        g.add_card(0, bid("Plains"), Zone::Library);
+    }
+    let hand_before = g.players[0].hand.len();
+    let act_sac = g
+        .legal_actions()
+        .into_iter()
+        .find(|a| matches!(a, Action::ActivateWith(_, _, v) if *v == boar))
+        .expect("sacrifice the Boar");
+    act(&mut g, act_sac);
+    assert_eq!(g.obj(boar).zone, Zone::Graveyard);
+    let mut discards = 0;
+    for _ in 0..30 {
+        if g.items.is_empty() && !matches!(g.pending, Pending::Decide(_) | Pending::Discard(_)) {
+            break;
+        }
+        let legal = g.legal_actions();
+        if let Some(d) = legal.iter().find(|a| matches!(a, Action::Discard(_))) {
+            act(&mut g, *d);
+            discards += 1;
+        } else {
+            act(&mut g, Action::PassPriority);
+        }
+    }
+    assert_eq!(discards, 3);
+    assert_eq!(g.players[0].hand.len(), hand_before + 7 - 3);
+}

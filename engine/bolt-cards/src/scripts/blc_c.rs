@@ -190,12 +190,50 @@ pub fn script(name: &str) -> Option<Script> {
             d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
             two_mana(d, "{B/G}", &[Color::Black, Color::Green], &[Color::Black, Color::Green]);
         }),
+        "Necroblossom Snarl" => s(
+            &[
+                "As this land enters, you may reveal a Swamp or Forest card from your hand. If you don't, this land enters tapped.",
+                "{T}: Add {B} or {G}.",
+            ],
+            |d, _| {
+                d.enters_tapped_unless_reveal = Some(["Swamp", "Forest"]);
+                d.mana = Some(ManaSource::of(&[Color::Black, Color::Green]));
+            },
+        ),
+        "Primeval Bounty" => s(
+            &[
+                "Whenever you cast a creature spell, create a 3/3 green Beast creature token.",
+                "Whenever you cast a noncreature spell, put three +1/+1 counters on target creature you control.",
+                "Landfall — Whenever a land you control enters, you gain 3 life.",
+            ],
+            |d, t| {
+                on(d, When::YouCastCreature, vec![], vec![Effect::CreateToken { who: Who::You, def: t.beast_3, n: 1 }]);
+                on(d, When::YouCastNoncreature, vec![YOUR_CREATURE], vec![Effect::Counters { slot: 0, n: 3 }]);
+                on(d, When::LandYouControlEnters, vec![], vec![Effect::GainLife { who: Who::You, n: 3 }]);
+            },
+        ),
+        "Nested Shambler" => s(
+            &["When this creature dies, create X tapped 1/1 green Squirrel creature tokens, where X is this creature's power."],
+            |d, t| on(d, When::Dies, vec![], vec![Effect::CreateTokensPowerTapped { def: t.squirrel }]),
+        ),
+        "Greater Good" => s(
+            &["Sacrifice a creature: Draw cards equal to the sacrificed creature's power, then discard three cards."],
+            |d, _| {
+                let n = activated(d, "", false, vec![], vec![Effect::DrawAmount, Effect::Discard { who: Who::You, n: 3 }]);
+                d.activated[n].sacrifice_other_creature = true;
+                d.activated[n].amount_from_victim_power = true;
+            },
+        ),
         _ => None,
     }
 }
 
 /// Lane C's scripted BLC cards (checked against their text in `lib.rs`).
 pub const BLC_C_SCRIPTED: &[&str] = &[
+    "Necroblossom Snarl",
+    "Primeval Bounty",
+    "Nested Shambler",
+    "Greater Good",
     "Skycloud Expanse",
     "Ferrous Lake",
     "Mossfire Valley",

@@ -2526,6 +2526,12 @@ impl Game {
             if def.enters_tapped
                 || opponent_forces_tapped
                 || (def.enters_tapped_unless.is_some() && !unless_ok)
+                || def.enters_tapped_unless_reveal.is_some_and(|subs| {
+                    !self.players[controller_now]
+                        .hand
+                        .iter()
+                        .any(|&x| subs.iter().any(|&sub| self.has_subtype(x, sub)))
+                })
                 || few_basics
                 || many_lands
             {
@@ -4322,6 +4328,10 @@ impl Game {
             x: 0,
             division: Vec::new(),
         };
+        let mut item = item;
+        if let (true, Some(v)) = (self.def_of(id).activated[n].amount_from_victim_power, victim) {
+            item.amount = self.power(v); // Greater Good: the power as it was sacrificed
+        }
         self.passes = 0;
         if self.def_of(id).activated[n].ability.targets.is_empty() {
             self.pay_activation(p, id, n, victim, 0);
@@ -5189,6 +5199,9 @@ impl Game {
         if self.next_spell_uncounterable[p] == self.turn && self.turn > 0 {
             self.next_spell_uncounterable[p] = 0;
             self.obj_mut(card).cast_uncounterable = true;
+        }
+        if self.types_of(card).creature {
+            self.fire(p, When::YouCastCreature, None);
         }
         let before = self.triggered.len();
         self.fire(p, When::YouCast, None);
@@ -7047,6 +7060,22 @@ impl Game {
                         }
                     }
                 }
+            }
+            Effect::CreateTokensPowerTapped { def } => {
+                let power = if self.obj(src).zone == Zone::Battlefield {
+                    self.power(src)
+                } else {
+                    self.obj(src).last_power
+                };
+                let mut made = Vec::new();
+                for _ in 0..power.max(0) {
+                    self.create_token(item.controller, def);
+                    made.extend(self.last_created.iter().copied());
+                }
+                for &t in &made {
+                    self.obj_mut(t).tapped = true;
+                }
+                self.last_created = made;
             }
             Effect::CreateToken { who, def, n } => {
                 // Every token this effect makes is "just created" (for "They gain ..."), not only the last.

@@ -929,6 +929,10 @@ pub enum Effect {
     /// Attacking creatures you control get +X/+X until end of turn, X the number of attacking
     /// creatures (Jazal Goldmane).
     PumpAttackersPerAttacker,
+    /// Create tokens (`def`) equal to the source's power (last known), tapped (Nested Shambler).
+    CreateTokensPowerTapped {
+        def: usize,
+    },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1356,6 +1360,8 @@ pub enum When {
     AnotherCreatureDies,
     /// "Whenever an opponent casts an instant or sorcery spell".
     OpponentCastsInstantOrSorcery,
+    /// "Whenever you cast a creature spell".
+    YouCastCreature,
 }
 
 #[derive(Clone, Debug, PartialEq)]
