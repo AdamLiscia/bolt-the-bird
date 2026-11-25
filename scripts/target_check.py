@@ -16,7 +16,6 @@ import bolt_engine as be
 import torch
 
 from bolt.play_encoding import collate, encode
-from bolt.play_net import PlayNet
 
 PUMP = re.compile(
     r"[Tt]arget creature( you control)? gets \+\d+/\+\d+|[Tt]arget creature( you control)? gains"
@@ -48,8 +47,9 @@ def main():
     net = None
     if kind == "network":
         c = torch.load(ckpt, map_location="cpu", weights_only=False)
-        net = PlayNet(**c["config"])
-        net.load_state_dict(c["model"])
+        from bolt.play_net import load_checkpoint
+
+        net = load_checkpoint(c)
         net.eval()
     with open("data/m7/decks.txt") as f:
         decks = [list(map(int, x.split())) for x in f.read().split("\n")[512:1024]]
