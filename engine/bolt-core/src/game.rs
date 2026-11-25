@@ -239,6 +239,8 @@ pub struct Object {
     pub regen_shields: (u32, u8),
     /// An eternalized token: black, with no mana cost (CR 702.129a).
     pub eternalized: bool,
+    /// Times it has attacked this turn: (turn, count).
+    pub attacks_turn: (u32, u8),
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -1049,6 +1051,11 @@ pub struct Game {
     pub infect_until_eot: Vec<(ObjId, u32, u32)>,
     /// Creatures that must be blocked each combat this turn if able: (object, zcc, turn).
     pub must_be_blocked: Vec<(ObjId, u32, u32)>,
+    /// Entries of `extra_combats` (by index) that are a combat with no main phase after it and that
+    /// untap the active player's creatures as they begin (Moraug).
+    pub extra_combats_untap_only: Vec<usize>,
+    /// The current additional combat is one of those.
+    pub combat_untap_only: bool,
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -1243,6 +1250,8 @@ impl Game {
             return_to_hand_at_end: Vec::new(),
             infect_until_eot: Vec::new(),
             must_be_blocked: Vec::new(),
+            extra_combats_untap_only: Vec::new(),
+            combat_untap_only: false,
         }
     }
 
@@ -1342,6 +1351,7 @@ impl Game {
             exerted_turn: None,
             regen_shields: (0, 0),
             eternalized: false,
+            attacks_turn: (0, 0),
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -1849,10 +1859,25 @@ impl Game {
             .unwrap_or(o.copy_base_pt.unwrap_or((d.power, d.toughness)))
     }
 
+    /// Moraug: +1/+0 for each time a creature you control has attacked this turn.
+    fn attack_count_bonus(&self, id: ObjId) -> i32 {
+        let o = self.obj(id);
+        if o.zone != Zone::Battlefield || o.attacks_turn.0 != self.turn || o.attacks_turn.1 == 0 {
+            return 0;
+        }
+        let moraugs = self
+            .permanents(o.controller)
+            .filter(|&x| self.def_of(x).power_per_attack_this_turn && !self.lost_abilities(x))
+            .count() as i32;
+        moraugs * o.attacks_turn.1 as i32
+    }
+
     pub fn power(&self, id: ObjId) -> i32 {
-        self.ability_loss(id)
-            .filter(|_| !self.loses_abilities_only(id))
-            .map_or(self.base_pt(id).0, |pt| pt.0)
+        self.attack_count_bonus(id)
+            + self
+                .ability_loss(id)
+                .filter(|_| !self.loses_abilities_only(id))
+                .map_or(self.base_pt(id).0, |pt| pt.0)
             + self.opponents_graveyard_bonus(id)
             + self.obj(id).counters
             + self.modifiers(id).map(|m| m.power).sum::<i32>()
@@ -3849,6 +3874,24 @@ impl Game {
             }
             None => {
                 let mut v = vec![(Action::Cast(c), CastMode::default())];
+                // Defiler of Vigor: a green permanent spell may cost {G} less for 2 life.
+                let defiler = def.alt_cost.is_none()
+                    && def.types.is_permanent()
+                    && def.colors[4]
+                    && def.cost.colored[4] > 0
+                    && self.players[p].life >= 2
+                    && self
+                        .permanents(p)
+                        .any(|x| self.def_of(x).green_permanents_pay_life_for_g && !self.lost_abilities(x));
+                if defiler {
+                    v.push((
+                        Action::CastAlternative(c),
+                        CastMode {
+                            alt: true,
+                            ..CastMode::default()
+                        },
+                    ));
+                }
                 if let Some((_, needed)) = def.alt_cost {
                     let creatures = self
                         .battlefield
@@ -3914,7 +3957,15 @@ impl Game {
         let mut cost = if free {
             ManaCost::default()
         } else if mode.alt {
-            def.alt_cost.expect("has an alternative cost").0
+            match def.alt_cost {
+                Some((c, _)) => c,
+                None => {
+                    // Defiler of Vigor: 2 life paid, {G} less.
+                    let mut c = def.cost.with_x(mode.x);
+                    c.colored[4] = c.colored[4].saturating_sub(1);
+                    c
+                }
+            }
         } else if mode.flashback {
             def.flashback.unwrap_or(def.cost).with_x(mode.x)
         } else if mode.mode == Some(OMEN_MODE) {
@@ -5483,6 +5534,9 @@ impl Game {
                 }
                 self.combat.as_mut().expect("in combat").attackers.push(c);
                 self.attacked_this_turn[self.active] = true;
+                let turn = self.turn;
+                let (t, n) = self.obj(c).attacks_turn;
+                self.obj_mut(c).attacks_turn = (turn, if t == turn { n.saturating_add(1) } else { 1 });
                 if !self.attacked_creatures_this_turn.contains(&c) {
                     self.attacked_creatures_this_turn.push(c);
                 }
@@ -5797,6 +5851,12 @@ impl Game {
             .extra
             .filter(|_| item.flashback && (self.def_of(card).harmonize || self.obj(card).harmonize_eot));
         self.pay_mana_for(p, &cost, harmonized, pay_for_spell(card, item.mode));
+        if item.alt && self.def_of(card).alt_cost.is_none() {
+            self.lose_life(p, 2); // Defiler of Vigor's optional additional cost
+        }
+        if self.types_of(card).is_permanent() && self.def_of(card).colors[4] {
+            self.fire(p, When::YouCastGreenPermanent, None);
+        }
         // Expend: "as you spend your Nth total mana to cast spells during a turn".
         let spent = cost.mana_value();
         let turn = self.turn;
@@ -10701,6 +10761,18 @@ impl Game {
                     ob.extra_subtypes.push("Zombie");
                 }
             }
+            Effect::AdditionalCombatAfterMainUntap => {
+                if matches!(self.step, Step::Main1 | Step::Main2) {
+                    let resume = if self.step == Step::Main1 {
+                        Step::BeginCombat
+                    } else {
+                        Step::End
+                    };
+                    let resume = self.extra_main_resume.unwrap_or(resume);
+                    self.extra_combats_untap_only.push(self.extra_combats.len());
+                    self.extra_combats.push(resume);
+                }
+            }
             Effect::MustBeBlockedThisTurnSelf => {
                 if self.obj(src).zone == Zone::Battlefield {
                     let entry = (src, self.obj(src).zcc, self.turn);
@@ -11332,6 +11404,11 @@ impl Game {
             Step::Main1 | Step::Main2 if !self.extra_combats.is_empty() => {
                 self.extra_combat_resume = self.extra_combats.pop();
                 self.extra_main_resume = None;
+                let at = self.extra_combats.len();
+                if let Some(k) = self.extra_combats_untap_only.iter().position(|&i| i == at) {
+                    self.extra_combats_untap_only.remove(k);
+                    self.combat_untap_only = true;
+                }
                 Step::BeginCombat
             }
             Step::Main1 => Step::BeginCombat,
@@ -11353,6 +11430,11 @@ impl Game {
             }
             Step::FirstStrikeDamage => Step::CombatDamage,
             Step::CombatDamage => Step::EndCombat,
+            Step::EndCombat if self.combat_untap_only && self.combats_after_this_phase == 0 => {
+                // Moraug's combat: no additional main phase; on to what came next.
+                self.combat_untap_only = false;
+                self.extra_combat_resume.take().unwrap_or(Step::Main2)
+            }
             Step::EndCombat if self.combats_after_this_phase > 0 => {
                 self.combats_after_this_phase -= 1;
                 Step::BeginCombat // "After this phase, there is an additional combat phase."
@@ -11385,6 +11467,8 @@ impl Game {
         self.extra_main_resume = None;
         self.combats_after_this_phase = 0;
         self.combats_this_turn = 0;
+        self.extra_combats_untap_only.clear();
+        self.combat_untap_only = false;
         self.copy_next_spell.clear();
         self.delayed_this_turn.clear();
         self.damage_shields.clear();
@@ -11528,6 +11612,12 @@ impl Game {
             }
             Step::BeginCombat => {
                 self.combats_this_turn = self.combats_this_turn.saturating_add(1);
+                if self.combat_untap_only {
+                    // Moraug: "At the beginning of that combat, untap all creatures you control."
+                    for c in self.creatures(a).collect::<Vec<_>>() {
+                        self.untap_by_effect(c);
+                    }
+                }
                 self.fire(a, When::BeginCombatYourTurn, None);
                 self.fire(a, When::BeginCombatEachTurn, None);
                 self.fire(opponent(a), When::BeginCombatEachTurn, None);

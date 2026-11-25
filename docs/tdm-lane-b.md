@@ -391,3 +391,18 @@ Core: `CardDef::entwine` (the last mode is all of them, for the entwine cost mor
 (`Game::must_be_blocked`, checked in `blocks_are_legal`: an untapped creature able to block it must);
 `CardDef::ferocious_mana_amount`; eternalize (`Effect::EternalizeSelf`, `Object::eternalized`: black,
 no mana cost for devotion).
+
+### PG batch 6: 2 cards
+
+Moraug, Fury of Akoum, Defiler of Vigor.
+
+Core:
+- `Object::attacks_turn` (times declared as an attacker this turn) and
+  `CardDef::power_per_attack_this_turn` (+1/+0 each, in `power`).
+- `Effect::AdditionalCombatAfterMainUntap`: an `extra_combats` entry marked in
+  `Game::extra_combats_untap_only`; that combat untaps the active player's creatures as it begins and
+  is followed by what came next, with no additional main phase (`Game::combat_untap_only`). The
+  untap is done as the combat begins rather than as a delayed trigger on the stack.
+- Defiler of Vigor: `CardDef::green_permanents_pay_life_for_g` offers `Action::CastAlternative` for a
+  green permanent spell with a {G} in its cost (cards without their own alternative cost): {G} less
+  and 2 life as it's cast. `When::YouCastGreenPermanent`.

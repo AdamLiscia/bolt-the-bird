@@ -418,6 +418,27 @@ pub fn script(name: &str) -> Option<Script> {
                 renew(d, "{2}{G}{G}", vec![], vec![Effect::EternalizeSelf]);
             },
         ),
+        "Moraug, Fury of Akoum" => s(
+            &[
+                "Each creature you control gets +1/+0 for each time it has attacked this turn.",
+                "Landfall — Whenever a land you control enters, if it's your main phase, there's an additional combat phase after this phase. At the beginning of that combat, untap all creatures you control.",
+            ],
+            |d, _| {
+                d.power_per_attack_this_turn = true;
+                // The untap is done as that combat begins (not put on the stack as a trigger).
+                conditional(d, When::LandYouControlEnters, Condition::YourMainPhase, vec![], vec![Effect::AdditionalCombatAfterMainUntap]);
+            },
+        ),
+        "Defiler of Vigor" => s(
+            &[
+                "As an additional cost to cast green permanent spells, you may pay 2 life. Those spells cost {G} less to cast if you paid life this way. This effect reduces only the amount of green mana you pay.",
+                "Whenever you cast a green permanent spell, put a +1/+1 counter on each creature you control.",
+            ],
+            |d, _| {
+                d.green_permanents_pay_life_for_g = true;
+                on(d, When::YouCastGreenPermanent, vec![], vec![Effect::CountersAll { who: Who::You, n: 1 }]);
+            },
+        ),
         _ => None,
     }
 }
@@ -475,4 +496,6 @@ pub const PG_B_SCRIPTED: &[&str] = &[
     "Savage Beating",
     "Anzrag, the Quake-Mole",
     "Fanatic of Rhonas",
+    "Moraug, Fury of Akoum",
+    "Defiler of Vigor",
 ];

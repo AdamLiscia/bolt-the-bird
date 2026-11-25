@@ -1160,6 +1160,9 @@ pub enum Effect {
     /// Eternalize (CR 702.129): create a token that's a copy of the source card (in exile), except
     /// it's a 4/4 black Zombie with no mana cost.
     EternalizeSelf,
+    /// "There's an additional combat phase after this [main] phase. At the beginning of that combat,
+    /// untap all creatures you control." (Moraug: no additional main phase follows it.)
+    AdditionalCombatAfterMainUntap,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1691,6 +1694,8 @@ pub enum When {
     YourTramplersDealCombatDamageToPlayer,
     /// "Whenever this creature becomes blocked" (CR 509.3c), as blockers are finished.
     BecomesBlocked,
+    /// "Whenever you cast a green permanent spell".
+    YouCastGreenPermanent,
 }
 
 #[derive(Clone, Debug, PartialEq)]

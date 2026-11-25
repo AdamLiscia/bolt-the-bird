@@ -914,3 +914,70 @@ fn fanatic_of_rhonas_makes_four_with_a_big_creature_and_eternalizes() {
     assert!(g.has_subtype(z[0], "Zombie"));
     assert_eq!(g.colors_of(z[0]), [false, false, true, false, false]);
 }
+
+#[test]
+fn moraug_adds_a_combat_on_landfall_and_grows_repeat_attackers() {
+    let mut g = table();
+    put(&mut g, 0, "Moraug, Fury of Akoum");
+    let valet = put(&mut g, 0, "Devilish Valet"); // 1/3
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    let forest = hand(&mut g, 0, "Forest");
+    act(&mut g, Action::PlayLand(forest));
+    resolve_all(&mut g, &[]);
+    let life = g.players[1].life;
+    // The additional combat (right after this main phase).
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(valet));
+    act(&mut g, Action::FinishAttacks);
+    assert_eq!(g.power(valet), 2, "attacked once: +1/+0");
+    // Then the turn's own combat, with no main phase in between (Moraug can still attack).
+    while g.pending != Pending::DeclareAttackers(0) {
+        let a = match g.pending {
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+        assert!(g.step != Step::Main2, "no main phase between the combats");
+    }
+    assert_eq!(g.players[1].life, life - 2);
+    assert_eq!(g.combats_this_turn, 2);
+
+    // Landfall outside your main phase does nothing.
+    let mut g = table();
+    put(&mut g, 0, "Moraug, Fury of Akoum");
+    let w = put(&mut g, 0, "Wooded Foothills");
+    let theirs = put(&mut g, 1, "Siege-Gang Commander");
+    let _ = theirs;
+    g.start_turn(4, 1);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::PassPriority); // player 0 gets priority on the opponent's turn
+    if g.legal_actions().contains(&Action::Activate(w, 0)) {
+        let m = g.add_card(0, cid("Mountain"), Zone::Library);
+        act(&mut g, Action::Activate(w, 0));
+        resolve_all(&mut g, &[Action::Pick(m)]);
+        assert!(g.extra_combats.is_empty());
+    }
+}
+
+#[test]
+fn defiler_of_vigor_trades_life_for_green_and_grows_the_team() {
+    let mut g = game(&["Forest"]);
+    let d = put(&mut g, 0, "Defiler of Vigor");
+    assert!(g.keywords(d).has(Keywords::TRAMPLE));
+    let cobra = hand(&mut g, 0, "Lotus Cobra"); // {1}{G}: one Forest isn't enough without the life
+    assert!(!g.legal_actions().contains(&Action::Cast(cobra)));
+    act(&mut g, Action::CastAlternative(cobra));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(cobra).zone, Zone::Battlefield);
+    assert_eq!(g.players[0].life, 38);
+    assert_eq!(g.obj(d).counters, 1, "cast a green permanent spell");
+    let ring = hand(&mut g, 0, "Sol Ring"); // colorless: no option
+    assert!(!g.legal_actions().contains(&Action::CastAlternative(ring)));
+}

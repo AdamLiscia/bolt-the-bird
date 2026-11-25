@@ -547,6 +547,11 @@ pub struct CardDef {
     /// Ferocious mana: one activation makes this many mana while you control a creature with power 4
     /// or greater (Fanatic of Rhonas: {G}{G}{G}{G}); otherwise its plain `mana_amount`.
     pub ferocious_mana_amount: u8,
+    /// "Each creature you control gets +1/+0 for each time it has attacked this turn." (Moraug)
+    pub power_per_attack_this_turn: bool,
+    /// Defiler of Vigor: "As an additional cost to cast green permanent spells, you may pay 2 life. Those
+    /// spells cost {G} less": cast with `Action::CastAlternative`.
+    pub green_permanents_pay_life_for_g: bool,
 }
 
 /// What entering makes triggers happen again (see [`CardDef::entering_triggers_again`]).
@@ -737,6 +742,8 @@ impl CardDef {
             entwine: None,
             cast_only_during_your_combat: false,
             ferocious_mana_amount: 0,
+            power_per_attack_this_turn: false,
+            green_permanents_pay_life_for_g: false,
         }
     }
 
@@ -895,6 +902,8 @@ impl CardDef {
             entwine: None,
             cast_only_during_your_combat: false,
             ferocious_mana_amount: 0,
+            power_per_attack_this_turn: false,
+            green_permanents_pay_life_for_g: false,
         }
     }
 
@@ -1053,6 +1062,8 @@ impl CardDef {
             entwine: None,
             cast_only_during_your_combat: false,
             ferocious_mana_amount: 0,
+            power_per_attack_this_turn: false,
+            green_permanents_pay_life_for_g: false,
         }
     }
 }
