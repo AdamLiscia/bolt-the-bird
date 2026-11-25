@@ -501,7 +501,8 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
         problems = [f"not a card in the pool: {n}" for n in unknown]
         if len(cmd_ids) == len(commanders):
             problems += be.commander_deck_problems(cmd_ids, ids, set=SET)
-        return cmd_ids, ids, {"problems": problems, "missing": missing}
+        # A name outside the pool is also a card still to script (and fetch): list it in both.
+        return cmd_ids, ids, {"problems": problems, "missing": sorted(set(missing) | set(unknown))}
 
     @router.post("/deck/validate")
     def deck_validate(body: ValidateBody):

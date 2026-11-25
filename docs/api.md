@@ -452,8 +452,8 @@ cards, 3,031 plus tokens); a card plays only once it's scripted. No drafting (42
 ```
 
 returns `{"ok": bool, "problems": [...], "missing": [...]}`. `problems` are the deck rules (one or two
-commanders, 100 cards with them, singleton, color identity) and names not in the pool; `missing` are cards
-in the pool the engine doesn't script yet. `ok` means the deck can be played now. A listed commander is
+commanders, 100 cards with them, singleton, color identity) and names not in the pool; `missing` are the cards
+the engine doesn't play yet, names outside the pool included (those also appear in `problems`). `ok` means the deck can be played now. A listed commander is
 counted once.
 
 `POST /v1/game` with `"set": "CMD", "format": "commander"`, `commander_a`/`commander_b` (a name or a
