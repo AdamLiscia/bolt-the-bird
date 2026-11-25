@@ -376,6 +376,7 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         ferocious_mana_amount: 0,
         power_per_attack_this_turn: false,
         green_permanents_pay_life_for_g: false,
+        doubles_chosen_type_triggers: false,
     };
     def.color_identity = color_identity(o);
     // An Omen's spell half: its lines must be claimed too, written "Omen: <line>" in the script.

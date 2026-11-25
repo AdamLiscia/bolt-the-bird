@@ -413,3 +413,17 @@ Core:
 second main phase goes on to a combat, which untaps the creatures that attacked this turn as it
 begins, then a main phase) and rebound (`Effect::Rebound`, `Game::rebound`: cast from hand, exiled
 as it resolves; offered in the free-cast window at its owner's next upkeep, as suspend is).
+
+### PG batch 8: Roaming Throne
+
+`CardDef::doubles_chosen_type_triggers` (with the existing `choose_creature_type`): the Throne has its
+chosen type (`has_base_subtype`), and `Game::double_for_thrones`, run as waiting triggers are put on
+the stack, adds one more copy of each trigger of another creature its controller controls of that
+type. `Game::triggered_scanned` keeps each waiting trigger from being doubled twice.
+
+### Xenagos: not scripted
+
+- Deflecting Swat: no way to choose new targets for a spell or ability already on the stack.
+- Ojer Kaslem, Deepest Growth // Temple of Cultivation and Vorinclex // The Grand Evolution:
+  transforming double-faced cards; the back faces aren't in the card data, and the engine has no
+  transform.

@@ -558,6 +558,10 @@ pub struct CardDef {
     /// Defiler of Vigor: "As an additional cost to cast green permanent spells, you may pay 2 life. Those
     /// spells cost {G} less": cast with `Action::CastAlternative`.
     pub green_permanents_pay_life_for_g: bool,
+    /// Roaming Throne: "This creature is the chosen type in addition to its other types" and "If a
+    /// triggered ability of another creature you control of the chosen type triggers, it triggers an
+    /// additional time."
+    pub doubles_chosen_type_triggers: bool,
 }
 
 /// What entering makes triggers happen again (see [`CardDef::entering_triggers_again`]).
@@ -753,6 +757,7 @@ impl CardDef {
             ferocious_mana_amount: 0,
             power_per_attack_this_turn: false,
             green_permanents_pay_life_for_g: false,
+            doubles_chosen_type_triggers: false,
         }
     }
 
@@ -916,6 +921,7 @@ impl CardDef {
             ferocious_mana_amount: 0,
             power_per_attack_this_turn: false,
             green_permanents_pay_life_for_g: false,
+            doubles_chosen_type_triggers: false,
         }
     }
 
@@ -1079,6 +1085,7 @@ impl CardDef {
             ferocious_mana_amount: 0,
             power_per_attack_this_turn: false,
             green_permanents_pay_life_for_g: false,
+            doubles_chosen_type_triggers: false,
         }
     }
 }

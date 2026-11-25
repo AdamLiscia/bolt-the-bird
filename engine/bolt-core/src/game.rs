@@ -1065,6 +1065,8 @@ pub struct Game {
     pub untap_attackers_at_combat: bool,
     /// Rebound cards in exile, castable free at their owner's next upkeep: (card, its zcc).
     pub rebound: Vec<(ObjId, u32)>,
+    /// How many waiting triggers (from the front of `triggered`) Roaming Throne has already looked at.
+    pub triggered_scanned: usize,
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -1265,6 +1267,7 @@ impl Game {
             combats_after_main2: 0,
             untap_attackers_at_combat: false,
             rebound: Vec::new(),
+            triggered_scanned: 0,
         }
     }
 
@@ -1509,6 +1512,13 @@ impl Game {
     /// out static abilities, so they don't depend on each other).
     fn has_base_subtype(&self, id: ObjId, s: &str) -> bool {
         let o = self.obj(id);
+        // Roaming Throne: "This creature is the chosen type in addition to its other types."
+        if o.zone == Zone::Battlefield
+            && self.defs[o.def].doubles_chosen_type_triggers
+            && o.chosen_type.as_deref() == Some(s)
+        {
+            return true;
+        }
         if o.zone == Zone::Battlefield && o.eot_subtype.is_some_and(|(t, sub)| t == self.turn && sub == s) {
             return true;
         }
@@ -5722,6 +5732,7 @@ impl Game {
                 }
             }
             self.triggered.clear();
+            self.triggered_scanned = 0;
             self.turn = 0;
             self.active = opponent(self.first);
             self.begin_next_turn();
@@ -6632,6 +6643,7 @@ impl Game {
             self.move_to(s, Zone::Exile);
         }
         self.triggered.clear();
+        self.triggered_scanned = 0;
         self.combat = None;
         self.enter(Step::Cleanup);
     }
@@ -7224,6 +7236,7 @@ impl Game {
             let (mut item, then) = self.mode_pending.take().expect("a modal trigger");
             item.mode = Some(m);
             self.triggered.insert(0, item);
+            self.triggered_scanned += 1; // already looked at by Roaming Throne
             self.give_priority(then);
             return;
         }
@@ -11407,14 +11420,55 @@ impl Game {
             .any(|&(c, z, t)| c == id && z == zcc && t == turn)
     }
 
+    /// Roaming Throne: each waiting trigger of another creature its controller controls of the chosen
+    /// type triggers an additional time. Each waiting trigger is looked at once.
+    fn double_for_thrones(&mut self) {
+        let len = self.triggered.len();
+        let start = self.triggered_scanned.min(len);
+        let thrones: Vec<(ObjId, PlayerId, String)> = self
+            .battlefield
+            .iter()
+            .copied()
+            .filter(|&t| self.def_of(t).doubles_chosen_type_triggers && !self.lost_abilities(t))
+            .filter_map(|t| {
+                self.obj(t)
+                    .chosen_type
+                    .clone()
+                    .map(|ty| (t, self.obj(t).controller, ty))
+            })
+            .collect();
+        if !thrones.is_empty() {
+            for i in start..len {
+                let item = self.triggered[i].clone();
+                if !matches!(item.kind, StackKind::Trigger(_)) {
+                    continue;
+                }
+                let s = item.source;
+                let creature = self.def_of(s).types.creature || self.types_of(s).creature;
+                let n = thrones
+                    .iter()
+                    .filter(|(t, c, ty)| {
+                        *t != s && *c == item.controller && creature && self.has_subtype(s, ty)
+                    })
+                    .count();
+                for _ in 0..n {
+                    self.triggered.push(item.clone());
+                }
+            }
+        }
+        self.triggered_scanned = self.triggered.len();
+    }
+
     /// CR 603.3: triggered abilities go on the stack the next time a player would get priority,
     /// active player's first (APNAP, CR 101.4). Returns false if a target choice is now pending.
     fn put_triggers_on_stack(&mut self, then: PlayerId) -> bool {
         self.flush_graveyard_leaves();
+        self.double_for_thrones();
         let active = self.active;
         self.triggered.sort_by_key(|t| t.controller != active);
         while !self.triggered.is_empty() {
             let item = self.triggered.remove(0);
+            self.triggered_scanned = self.triggered_scanned.saturating_sub(1);
             let ability = self.ability_of(&item).clone();
             if !self.condition_holds(&ability, item.controller, item.source) {
                 continue;

@@ -1033,3 +1033,24 @@ fn world_at_war_adds_a_late_combat_and_rebounds() {
     resolve_all(&mut g, &[]);
     assert_eq!(g.obj(w).zone, Zone::Graveyard, "cast from exile: no rebound");
 }
+
+#[test]
+fn roaming_throne_doubles_triggers_of_the_chosen_type() {
+    let mut g = table();
+    let e = put(&mut g, 0, "Elder Gargaroth");
+    let t = hand(&mut g, 0, "Roaming Throne");
+    act(&mut g, Action::Cast(t));
+    while !matches!(g.pending, Pending::Decide(0)) {
+        act(&mut g, Action::PassPriority);
+    }
+    let options = g.creature_types_known_to(0);
+    let beast = options.iter().position(|o| o == "Beast").expect("Beast is known") as u8;
+    act(&mut g, Action::Mode(beast));
+    resolve_all(&mut g, &[]);
+    assert!(g.has_subtype(t, "Beast"), "the chosen type too");
+    assert!(g.def_of(t).ward.is_some());
+    attack(&mut g, &[e]);
+    // Gargaroth's attack trigger, twice: two Beasts.
+    resolve_all(&mut g, &[Action::Mode(0), Action::Mode(0)]);
+    assert_eq!(tokens(&g, 0, "Beast").len(), 2);
+}

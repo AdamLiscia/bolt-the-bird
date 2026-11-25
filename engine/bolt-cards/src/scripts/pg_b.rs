@@ -446,6 +446,19 @@ pub fn script(name: &str) -> Option<Script> {
             ],
             |d, _| spell(d, vec![], vec![Effect::AdditionalCombatAfterSecondMainUntapAttackers, Effect::Rebound]),
         ),
+        "Roaming Throne" => s(
+            &[
+                "Ward {2}",
+                "As this creature enters, choose a creature type.",
+                "This creature is the chosen type in addition to its other types.",
+                "If a triggered ability of another creature you control of the chosen type triggers, it triggers an additional time.",
+            ],
+            |d, _| {
+                d.ward = ManaCost::parse("{2}");
+                d.choose_creature_type = true;
+                d.doubles_chosen_type_triggers = true;
+            },
+        ),
         _ => None,
     }
 }
@@ -506,4 +519,5 @@ pub const PG_B_SCRIPTED: &[&str] = &[
     "Moraug, Fury of Akoum",
     "Defiler of Vigor",
     "World at War",
+    "Roaming Throne",
 ];
