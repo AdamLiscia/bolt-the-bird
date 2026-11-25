@@ -143,6 +143,8 @@ pub enum Reduction {
     MoreIfTargetsSubtype(&'static str, u8),
     /// ... {1} less for each creature you control with power N or greater (Spectral Denial).
     PerCreatureYouControlPowerAtLeast(i32),
+    /// ... {1} less for each creature on the battlefield (Blasphemous Act).
+    PerCreatureOnBattlefield,
 }
 
 /// An activated ability: "[cost]: [effect]" (CR 602).
@@ -395,6 +397,10 @@ pub struct CardDef {
     /// has indestructible, haste, and \"Whenever this creature deals combat damage to a player, draw
     /// a card.\"" (its trigger number 0 is that draw)
     pub animates_big_noncreatures_your_turn: bool,
+    /// "This land enters tapped unless you control N or more basic lands." (0: no such rule)
+    pub enters_tapped_unless_basics: u8,
+    /// "This land enters tapped unless you control N or fewer other lands."
+    pub enters_tapped_unless_at_most_lands: Option<u8>,
 }
 
 /// An Omen spell half: its name, cost, whether it's an instant, and what it does.
@@ -520,6 +526,8 @@ impl CardDef {
             mana_opponent_land_colors: false,
             mana_amount: 0,
             animates_big_noncreatures_your_turn: false,
+            enters_tapped_unless_basics: 0,
+            enters_tapped_unless_at_most_lands: None,
         }
     }
 
@@ -624,6 +632,8 @@ impl CardDef {
             mana_opponent_land_colors: false,
             mana_amount: 0,
             animates_big_noncreatures_your_turn: false,
+            enters_tapped_unless_basics: 0,
+            enters_tapped_unless_at_most_lands: None,
         }
     }
 
@@ -728,6 +738,8 @@ impl CardDef {
             mana_opponent_land_colors: false,
             mana_amount: 0,
             animates_big_noncreatures_your_turn: false,
+            enters_tapped_unless_basics: 0,
+            enters_tapped_unless_at_most_lands: None,
         }
     }
 }

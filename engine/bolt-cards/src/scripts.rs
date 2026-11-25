@@ -91,6 +91,14 @@ pub fn token_defs() -> Vec<CardDef> {
             );
             d
         },
+        token("Beast", "Beast", 3, 3, Keywords::NONE), // Beast Within's green 3/3
+        token("Human Soldier", "Human Soldier", 1, 1, Keywords::NONE), // Bastion of Remembrance
+        {
+            // Blade Splicer: "a 3/3 colorless Phyrexian Golem artifact creature token".
+            let mut golem = token("Phyrexian Golem", "Phyrexian Golem", 3, 3, Keywords::NONE);
+            golem.types.artifact = true;
+            golem
+        },
     ]
 }
 
@@ -164,6 +172,9 @@ pub struct Tokens {
     pub spirit_1: usize,
     pub monk: usize,
     pub reliquary_dragon: usize,
+    pub beast_3: usize,
+    pub human_soldier: usize,
+    pub golem: usize,
 }
 
 impl Tokens {
@@ -201,6 +212,9 @@ impl Tokens {
             spirit_1: base + 29,
             monk: base + 30,
             reliquary_dragon: base + 31,
+            beast_3: base + 32,
+            human_soldier: base + 33,
+            golem: base + 34,
         }
     }
 }

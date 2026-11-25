@@ -116,6 +116,119 @@ pub fn script(name: &str) -> Option<Script> {
                 spell(d, vec![], vec![search(SearchFor::LandTypes { types, basic: false }, SearchTo::Battlefield { tapped: true })]);
             },
         ),
+        // ---- Batch 2: most-shared removal, card draw, lands ----
+        "Beast Within" => s(
+            &["Destroy target permanent. Its controller creates a 3/3 green Beast creature token."],
+            |d, t| {
+                let any = Filter { players: false, creatures: false, planeswalkers: false, any_permanent: true, ..Filter::ANY };
+                spell(d, vec![any], vec![Effect::Destroy(0), Effect::CreateToken { who: Who::ControllerOf(0), def: t.beast_3, n: 1 }]);
+            },
+        ),
+        "Big Score" => s(
+            &["As an additional cost to cast this spell, discard a card.", "Draw two cards and create two Treasure tokens."],
+            |d, t| {
+                d.extra_cost = Some(ExtraCost::Discard);
+                spell(d, vec![], vec![draw(2), Effect::CreateToken { who: Who::You, def: t.treasure, n: 2 }]);
+            },
+        ),
+        "Bastion of Remembrance" => s(
+            &[
+                "When this enchantment enters, create a 1/1 white Human Soldier creature token.",
+                "Whenever a creature you control dies, each opponent loses 1 life and you gain 1 life.",
+            ],
+            |d, t| {
+                on(d, When::Enters, vec![], vec![Effect::CreateToken { who: Who::You, def: t.human_soldier, n: 1 }]);
+                on(
+                    d,
+                    When::CreatureYouControlDies,
+                    vec![],
+                    vec![Effect::LoseLife { who: Who::EachOpponent, n: 1 }, Effect::GainLife { who: Who::You, n: 1 }],
+                );
+            },
+        ),
+        "Bojuka Bog" => s(
+            &["This land enters tapped.", "When this land enters, exile target player's graveyard.", "{T}: Add {B}."],
+            |d, _| {
+                d.enters_tapped = true;
+                on(d, When::Enters, vec![Filter::PLAYER], vec![Effect::ExileGraveyard { who: Who::TargetPlayer(0) }]);
+                d.mana = Some(ManaSource::of(&[Color::Black]));
+            },
+        ),
+        "Castle Ardenvale" => s(
+            &[
+                "This land enters tapped unless you control a Plains.",
+                "{T}: Add {W}.",
+                "{2}{W}{W}, {T}: Create a 1/1 white Human creature token.",
+            ],
+            |d, t| {
+                d.enters_tapped_unless = Some(["Plains", "Plains"]);
+                d.mana = Some(ManaSource::of(&[Color::White]));
+                activated(d, "{2}{W}{W}", true, vec![], vec![Effect::CreateToken { who: Who::You, def: t.human, n: 1 }]);
+            },
+        ),
+        "Canopy Vista" => s(&["This land enters tapped unless you control two or more basic lands."], |d, _| {
+            d.enters_tapped_unless_basics = 2;
+            dual(d, Color::Green, Color::White);
+        }),
+        "Cinder Glade" => s(&["This land enters tapped unless you control two or more basic lands."], |d, _| {
+            d.enters_tapped_unless_basics = 2;
+            dual(d, Color::Red, Color::Green);
+        }),
+        "Seachrome Coast" => s(
+            &["This land enters tapped unless you control two or fewer other lands.", "{T}: Add {W} or {U}."],
+            |d, _| {
+                d.enters_tapped_unless_at_most_lands = Some(2);
+                dual(d, Color::White, Color::Blue);
+            },
+        ),
+        "Circuit Mender" => s(
+            &["When this creature enters, you gain 2 life.", "When this creature leaves the battlefield, draw a card."],
+            |d, _| {
+                on(d, When::Enters, vec![], vec![Effect::GainLife { who: Who::You, n: 2 }]);
+                on(d, When::LeavesBattlefield, vec![], vec![draw(1)]);
+            },
+        ),
+        "Aether Channeler" => s(
+            &[
+                "When this creature enters, choose one —",
+                "• Create a 1/1 white Bird creature token with flying.",
+                "• Return another target nonland permanent to its owner's hand.",
+                "• Draw a card.",
+            ],
+            |d, t| {
+                let other = Filter { other: true, players: false, creatures: false, planeswalkers: false, nonland_permanents: true, ..Filter::ANY };
+                on_modal(
+                    d,
+                    When::Enters,
+                    None,
+                    vec![
+                        Ability::new(vec![], vec![Effect::CreateToken { who: Who::You, def: t.bird, n: 1 }]),
+                        Ability::new(vec![other], vec![Effect::Bounce(0)]),
+                        Ability::new(vec![], vec![draw(1)]),
+                    ],
+                );
+            },
+        ),
+        "Blade Splicer" => s(
+            &[
+                "When this creature enters, create a 3/3 colorless Phyrexian Golem artifact creature token.",
+                "Golems you control have first strike.",
+            ],
+            |d, t| {
+                on(d, When::Enters, vec![], vec![Effect::CreateToken { who: Who::You, def: t.golem, n: 1 }]);
+                static_on(d, Scope::OtherYourSubtype("Golem"), false, Keywords::FIRST_STRIKE);
+            },
+        ),
+        "Chart a Course" => s(&["Draw two cards. Then discard a card unless you attacked this turn."], |d, _| {
+            spell(d, vec![], vec![draw(2), Effect::DiscardUnlessAttacked])
+        }),
+        "Blasphemous Act" => s(
+            &["This spell costs {1} less to cast for each creature on the battlefield.", "Blasphemous Act deals 13 damage to each creature."],
+            |d, _| {
+                d.reduction = Some(Reduction::PerCreatureOnBattlefield);
+                spell(d, vec![], vec![damage(13, Recipient::EachCreature { without_flying: false })]);
+            },
+        ),
         _ => None,
     }
 }
@@ -137,4 +250,17 @@ pub const BLC_B_SCRIPTED: &[&str] = &[
     "Temple of Enlightenment",
     "Cultivate",
     "Farseek",
+    "Beast Within",
+    "Big Score",
+    "Bastion of Remembrance",
+    "Bojuka Bog",
+    "Castle Ardenvale",
+    "Canopy Vista",
+    "Cinder Glade",
+    "Seachrome Coast",
+    "Circuit Mender",
+    "Aether Channeler",
+    "Blade Splicer",
+    "Chart a Course",
+    "Blasphemous Act",
 ];

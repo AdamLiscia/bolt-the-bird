@@ -289,3 +289,193 @@ fn bello_animates_your_big_artifacts_and_enchantments_on_your_turn() {
     g.start_turn(4, 1);
     assert!(!g.types_of(stash).creature);
 }
+
+// ---- Batch 2 ----
+
+fn named(g: &Game, p: usize, name: &str) -> Vec<ObjId> {
+    g.permanents(p).filter(|&x| g.def_of(x).name == name).collect()
+}
+
+#[test]
+fn beast_within_destroys_and_gives_its_controller_a_beast() {
+    let mut g = table();
+    let theirs = put(&mut g, 1, "Sol Ring");
+    let c = hand(&mut g, 0, "Beast Within");
+    play(&mut g, c, false, &[obj(theirs)], &[]);
+    assert_eq!(g.obj(theirs).zone, Zone::Graveyard);
+    let beast = named(&g, 1, "Beast");
+    assert_eq!(beast.len(), 1, "its controller's");
+    assert_eq!((g.power(beast[0]), g.toughness(beast[0])), (3, 3));
+}
+
+#[test]
+fn big_score_discards_draws_two_and_makes_treasures() {
+    let mut g = table();
+    let junk = hand(&mut g, 0, "Sol Ring");
+    let c = hand(&mut g, 0, "Big Score");
+    let n = g.players[0].hand.len();
+    act(&mut g, Action::CastWith(c, junk));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(junk).zone, Zone::Graveyard);
+    assert_eq!(g.players[0].hand.len(), n - 2 + 2);
+    assert_eq!(named(&g, 0, "Treasure").len(), 2);
+}
+
+#[test]
+fn bastion_of_remembrance_makes_a_soldier_and_drains_on_deaths() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Bastion of Remembrance");
+    play(&mut g, c, false, &[], &[]);
+    let soldier = named(&g, 0, "Human Soldier");
+    assert_eq!(soldier.len(), 1);
+    assert!(g.has_subtype(soldier[0], "Human") && g.has_subtype(soldier[0], "Soldier"));
+    g.move_card(soldier[0], Zone::Graveyard);
+    act(&mut g, Action::PassPriority); // triggers go on the stack
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.players[0].life, g.players[1].life), (41, 39));
+}
+
+#[test]
+fn bojuka_bog_exiles_a_graveyard() {
+    let mut g = table();
+    let dead = g.add_card(1, bid("Sol Ring"), Zone::Graveyard);
+    let bog = hand(&mut g, 0, "Bojuka Bog");
+    act(&mut g, Action::PlayLand(bog));
+    resolve_all(&mut g, &[Action::Target(Target::Player(1))]);
+    assert!(g.obj(bog).tapped);
+    assert_eq!(g.obj(dead).zone, Zone::Exile);
+}
+
+#[test]
+fn castle_ardenvale_checks_for_a_plains_and_makes_humans() {
+    let mut g = game(["Bello, Bard of the Brambles", "Ms. Bumbleflower"], &["Island"]);
+    let castle = hand(&mut g, 0, "Castle Ardenvale");
+    act(&mut g, Action::PlayLand(castle));
+    assert!(g.obj(castle).tapped, "no Plains");
+    let mut g = table();
+    let castle = put(&mut g, 0, "Castle Ardenvale");
+    act(&mut g, Action::Activate(castle, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(named(&g, 0, "Human").len(), 1);
+}
+
+#[test]
+fn battle_lands_and_fast_lands_count_your_lands() {
+    // Canopy Vista: two basics or it enters tapped. It's a Forest Plains.
+    let mut g = game(["Bello, Bard of the Brambles", "Ms. Bumbleflower"], &["Forest"]);
+    let v = hand(&mut g, 0, "Canopy Vista");
+    act(&mut g, Action::PlayLand(v));
+    assert!(g.obj(v).tapped);
+    assert!(g.has_subtype(v, "Forest") && g.has_subtype(v, "Plains"));
+    let mut g = game(
+        ["Bello, Bard of the Brambles", "Ms. Bumbleflower"],
+        &["Forest", "Mountain"],
+    );
+    let c = hand(&mut g, 0, "Cinder Glade");
+    act(&mut g, Action::PlayLand(c));
+    assert!(!g.obj(c).tapped);
+    assert_eq!(
+        g.def_of(c).mana.unwrap().colors,
+        [false, false, false, true, true]
+    );
+    // Seachrome Coast: two or fewer other lands, or it enters tapped.
+    let mut g = game(
+        ["Bello, Bard of the Brambles", "Ms. Bumbleflower"],
+        &["Plains", "Island"],
+    );
+    let s = hand(&mut g, 0, "Seachrome Coast");
+    act(&mut g, Action::PlayLand(s));
+    assert!(!g.obj(s).tapped);
+    let mut g = game(
+        ["Bello, Bard of the Brambles", "Ms. Bumbleflower"],
+        &["Plains", "Island", "Plains"],
+    );
+    let s = hand(&mut g, 0, "Seachrome Coast");
+    act(&mut g, Action::PlayLand(s));
+    assert!(g.obj(s).tapped);
+}
+
+#[test]
+fn circuit_mender_gains_two_and_draws_when_it_leaves() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Circuit Mender");
+    play(&mut g, c, false, &[], &[]);
+    assert_eq!(g.players[0].life, 42);
+    let n = g.players[0].hand.len();
+    g.move_card(c, Zone::Exile);
+    act(&mut g, Action::PassPriority); // triggers go on the stack
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].hand.len(), n + 1);
+}
+
+#[test]
+fn aether_channeler_picks_a_bird_a_bounce_or_a_card() {
+    let mut g = table();
+    let theirs = put(&mut g, 1, "Sol Ring");
+    let c = hand(&mut g, 0, "Aether Channeler");
+    act(&mut g, Action::Cast(c));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    resolve_all(&mut g, &[Action::Mode(1), Action::Target(obj(theirs))]);
+    assert_eq!(g.obj(theirs).zone, Zone::Hand);
+    let c = hand(&mut g, 0, "Aether Channeler");
+    act(&mut g, Action::Cast(c));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    resolve_all(&mut g, &[Action::Mode(0)]);
+    assert_eq!(named(&g, 0, "Bird").len(), 1);
+}
+
+#[test]
+fn blade_splicer_makes_a_golem_with_first_strike() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Blade Splicer");
+    play(&mut g, c, false, &[], &[]);
+    let golem = named(&g, 0, "Phyrexian Golem");
+    assert_eq!(golem.len(), 1);
+    assert!(g.types_of(golem[0]).artifact && g.types_of(golem[0]).creature);
+    assert_eq!(g.power(golem[0]), 3);
+    assert!(g.keywords(golem[0]).has(Keywords::FIRST_STRIKE));
+    assert!(
+        !g.keywords(c).has(Keywords::FIRST_STRIKE),
+        "the Splicer isn't a Golem"
+    );
+}
+
+#[test]
+fn chart_a_course_discards_unless_you_attacked() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Chart a Course");
+    let junk = hand(&mut g, 0, "Sol Ring");
+    let n = g.players[0].hand.len();
+    play(&mut g, c, false, &[], &[Action::Discard(junk)]);
+    assert_eq!(g.players[0].hand.len(), n - 1 + 2 - 1);
+    assert_eq!(g.obj(junk).zone, Zone::Graveyard);
+}
+
+#[test]
+fn blasphemous_act_costs_less_per_creature_and_kills_everything() {
+    let mut g = table();
+    for _ in 0..3 {
+        put(&mut g, 0, "Circuit Mender");
+        put(&mut g, 1, "Circuit Mender");
+    }
+    let c = hand(&mut g, 0, "Blasphemous Act");
+    let before = g
+        .permanents(0)
+        .filter(|&x| g.types_of(x).land && !g.obj(x).tapped)
+        .count();
+    act(&mut g, Action::Cast(c));
+    resolve_all(&mut g, &[]);
+    let after = g
+        .permanents(0)
+        .filter(|&x| g.types_of(x).land && !g.obj(x).tapped)
+        .count();
+    assert_eq!(before - after, 3, "{{8}}{{R}} minus six creatures");
+    assert!(g
+        .permanents(0)
+        .chain(g.permanents(1))
+        .all(|x| !g.types_of(x).creature));
+}
