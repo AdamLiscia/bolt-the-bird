@@ -1026,6 +1026,8 @@ pub struct Game {
     pub tempt_accepted: bool,
     /// Free casts not taken go to the bottom of the library in a random order (cascade).
     pub free_casts_to_bottom: bool,
+    /// Cards left each player's graveyard since triggers were last put on the stack (any turn).
+    pub graveyard_leave_any_pending: [bool; 2],
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -1203,6 +1205,7 @@ impl Game {
             damage_shields: Vec::new(),
             graveyard_left_this_turn: [false; 2],
             graveyard_leave_pending: [false; 2],
+            graveyard_leave_any_pending: [false; 2],
             commander_choice: false,
             commander_choice_then: 0,
             shock_then: 0,
@@ -1475,7 +1478,20 @@ impl Game {
 
     /// Whether `id` has creature type `s` (CR 205.3).
     pub fn has_subtype(&self, id: ObjId, s: &str) -> bool {
-        self.has_base_subtype(id, s) || self.statics_on(id).any(|st| st.subtype == Some(s))
+        self.has_base_subtype(id, s)
+            || self.statics_on(id).any(|st| st.subtype == Some(s))
+            || (matches!(s, "Plains" | "Island" | "Swamp" | "Mountain" | "Forest")
+                && self.every_basic_type(id))
+    }
+
+    /// Dryad of the Ilysian Grove: a land on the battlefield whose controller has it.
+    fn every_basic_type(&self, id: ObjId) -> bool {
+        let o = self.obj(id);
+        o.zone == Zone::Battlefield
+            && self.types_of(id).land
+            && self
+                .permanents(o.controller)
+                .any(|x| self.def_of(x).lands_every_basic_type && !self.lost_abilities(x))
     }
 
     /// Static abilities on the battlefield that apply to `id` right now (CR 604.2, 611.3).
@@ -1906,6 +1922,11 @@ impl Game {
     /// "Whenever one or more cards leave your graveyard during your turn" triggers, once for the cards
     /// that left since triggers were last put on the stack.
     fn flush_graveyard_leaves(&mut self) {
+        for p in 0..2 {
+            if std::mem::take(&mut self.graveyard_leave_any_pending[p]) {
+                self.fire(p, When::CardsLeaveYourGraveyard, None);
+            }
+        }
         for p in 0..2 {
             if !std::mem::take(&mut self.graveyard_leave_pending[p]) {
                 continue;
@@ -2390,6 +2411,7 @@ impl Game {
         let turn = self.turn;
         if from == Zone::Graveyard && to != Zone::Graveyard && !self.is_token(id) {
             self.graveyard_left_this_turn[owner] = true;
+            self.graveyard_leave_any_pending[owner] = true;
             if self.active == owner {
                 self.graveyard_leave_pending[owner] = true;
             }
@@ -5000,6 +5022,12 @@ impl Game {
                         )
                     });
                 }
+                if self.every_basic_type(id) {
+                    // Every basic land type: each one's mana ability (CR 305.6).
+                    let mut m = d.mana.unwrap_or_default();
+                    m.colors = [true; 5];
+                    return Some((id, m));
+                }
                 if d.mana.is_none()
                     && self.types_of(id).creature
                     && self.has_counter(id)
@@ -5028,6 +5056,7 @@ impl Game {
                 && (!k.has(Keywords::DEFENDER) || o.defender_ignored_turn == self.turn)
                 && (o.since_turn < self.turn || k.has(Keywords::HASTE))
                 && !declared.contains(&id)
+                && (!self.def_of(id).fights_only_with_blessing || self.city_blessing[o.controller])
         })
     }
 
@@ -5037,6 +5066,8 @@ impl Game {
             return false; // CR 702.16f
         }
         if self.def_of(blocker).cant_block
+            || (self.def_of(blocker).fights_only_with_blessing
+                && !self.city_blessing[self.obj(blocker).controller])
             || self.is_decayed(blocker)
             || self.keywords(blocker).has(Keywords::CANT_BLOCK)
             || self.keywords(attacker).has(Keywords::UNBLOCKABLE)
@@ -5486,6 +5517,17 @@ impl Game {
 
     /// `id` becomes a copy of card definition `of` (CR 707.2: the copiable values are the printed
     /// card). Its own card is kept, to come back when it leaves the battlefield.
+    /// What a clone entering as a copy may copy: a creature, or with `enter_as_copy_nonland` any
+    /// nonland permanent.
+    fn copy_option(&self, clone: ObjId, x: ObjId) -> bool {
+        let t = self.types_of(x);
+        if self.def_of(clone).enter_as_copy_nonland {
+            !t.land
+        } else {
+            t.creature
+        }
+    }
+
     fn become_copy(&mut self, id: ObjId, of: usize) {
         let o = self.obj_mut(id);
         if o.printed_def.is_none() {
@@ -6264,7 +6306,7 @@ impl Game {
                 && self
                     .battlefield
                     .iter()
-                    .any(|&x| x != source && self.types_of(x).creature)
+                    .any(|&x| x != source && self.copy_option(source, x))
             {
                 self.ask(r.item.controller, Decision::EnterAsCopy { card: source });
                 return;
@@ -6542,7 +6584,7 @@ impl Game {
                     .battlefield
                     .iter()
                     .copied()
-                    .filter(|&x| x != *card && self.types_of(x).creature)
+                    .filter(|&x| x != *card && self.copy_option(*card, x))
                     .map(Action::Pick)
                     .collect();
                 v.push(Action::No);
@@ -6824,6 +6866,9 @@ impl Game {
             if let Action::Pick(of) = a {
                 let def = self.obj(of).def;
                 self.become_copy(card, def);
+                if let Some(l) = self.defs[def].loyalty {
+                    self.obj_mut(card).loyalty = l; // a copied planeswalker enters with its loyalty
+                }
                 // It entered as the copy: the copied creature's "when this enters" triggers apply.
                 let enters: Vec<usize> = self
                     .def_of(card)
@@ -7047,6 +7092,10 @@ impl Game {
                     match to {
                         LookTo::Hand => self.move_to(c, Zone::Hand),
                         LookTo::Battlefield => self.move_to(c, Zone::Battlefield),
+                        LookTo::BattlefieldTapped => {
+                            self.move_to(c, Zone::Battlefield);
+                            self.obj_mut(c).tapped = true;
+                        }
                         LookTo::PlayFromExileThisTurn => {
                             self.obj_mut(c).playable = Some((p, self.turn));
                         }
@@ -8812,6 +8861,49 @@ impl Game {
                     }
                 } else {
                     self.create_token(p, def);
+                }
+            }
+            Effect::TapOrUntap(slot) => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    if self.obj(id).tapped {
+                        self.untap_by_effect(id);
+                    } else {
+                        self.become_tapped(id);
+                    }
+                }
+            }
+            Effect::DrawIfUniqueName(slot) => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    let p = item.controller;
+                    let name = self.def_of(id).name.clone();
+                    let twin = self.creatures(p).any(|c| c != id && self.def_of(c).name == name)
+                        || self.players[p]
+                            .graveyard
+                            .iter()
+                            .any(|&c| self.def_of(c).types.creature && self.def_of(c).name == name);
+                    if !twin {
+                        self.draw(p);
+                    }
+                }
+            }
+            Effect::ReturnLandFromGraveyardTapped => {
+                let p = item.controller;
+                let cards: Vec<ObjId> = self.players[p]
+                    .graveyard
+                    .iter()
+                    .copied()
+                    .filter(|&c| self.def_of(c).types.land)
+                    .collect();
+                if !cards.is_empty() {
+                    self.ask(
+                        p,
+                        Decision::LookPick {
+                            cards,
+                            pick: Pick::Land,
+                            to: LookTo::BattlefieldTapped,
+                            rest: None,
+                        },
+                    );
                 }
             }
             Effect::OpponentMay => {

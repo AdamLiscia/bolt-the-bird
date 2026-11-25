@@ -428,3 +428,10 @@ CountersOnYourSubtype, ReturnLandsFromGraveyardTapped, InsectOrCopyWithSixLands}
 `zone_triggers_once` to repeat an entering's triggers for each doubler. "Look at the top card any time" and "play
 with the top card revealed" are information only. Overload is cast as a {5} kicker on Cyclonic Rift (the same
 total cost); kicked plays the overloaded text.
+
+PG batch 3 (8): Avenger of Zendikar, Scute Swarm, Wayward Swordtooth, Retreat to Coralhelm, Guardian Project,
+Dryad of the Ilysian Grove, Clever Impersonator, Teval the Balanced Scale.
+Core: `CardDef::{fights_only_with_blessing, lands_every_basic_type, enter_as_copy_nonland}`,
+`LookTo::BattlefieldTapped`, `When::CardsLeaveYourGraveyard` (any turn), `Effect::{TapOrUntap, DrawIfUniqueName,
+ReturnLandFromGraveyardTapped}`, `Game::graveyard_leave_any_pending`. A clone that copies a planeswalker takes its
+loyalty. Tokens: Plant 51, green Insect 52.

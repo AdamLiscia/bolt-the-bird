@@ -513,6 +513,12 @@ pub struct CardDef {
     pub untaps_on_others_untap: bool,
     /// Power and toughness each equal to the number of lands you control.
     pub pt_lands: bool,
+    /// "This creature can't attack or block unless you have the city's blessing."
+    pub fights_only_with_blessing: bool,
+    /// "Lands you control are every basic land type in addition to their other types."
+    pub lands_every_basic_type: bool,
+    /// `enter_as_copy` of any nonland permanent, not just a creature (Clever Impersonator).
+    pub enter_as_copy_nonland: bool,
 }
 
 /// What entering makes triggers happen again (see [`CardDef::entering_triggers_again`]).
@@ -688,6 +694,9 @@ impl CardDef {
             entering_triggers_again: None,
             untaps_on_others_untap: false,
             pt_lands: false,
+            fights_only_with_blessing: false,
+            lands_every_basic_type: false,
+            enter_as_copy_nonland: false,
         }
     }
 
@@ -831,6 +840,9 @@ impl CardDef {
             entering_triggers_again: None,
             untaps_on_others_untap: false,
             pt_lands: false,
+            fights_only_with_blessing: false,
+            lands_every_basic_type: false,
+            enter_as_copy_nonland: false,
         }
     }
 
@@ -974,6 +986,9 @@ impl CardDef {
             entering_triggers_again: None,
             untaps_on_others_untap: false,
             pt_lands: false,
+            fights_only_with_blessing: false,
+            lands_every_basic_type: false,
+            enter_as_copy_nonland: false,
         }
     }
 }

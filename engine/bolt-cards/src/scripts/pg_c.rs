@@ -208,6 +208,71 @@ pub fn script(name: &str) -> Option<Script> {
                 d.kicked_spell = Some(Ability::new(vec![CREATURE], vec![copy; 5]));
             },
         ),
+        "Avenger of Zendikar" => s(
+            &[
+                "When this creature enters, create a 0/1 green Plant creature token for each land you control.",
+                "Landfall — Whenever a land you control enters, you may put a +1/+1 counter on each Plant creature you control.",
+            ],
+            |d, t| {
+                on(d, When::Enters, vec![], vec![Effect::CreateTokensPerLand { def: t.plant }]);
+                may(d, When::LandYouControlEnters, vec![], vec![Effect::CountersOnYourSubtype("Plant")]);
+            },
+        ),
+        "Scute Swarm" => s(
+            &["Landfall — Whenever a land you control enters, create a 1/1 green Insect creature token. If you control six or more lands, create a token that's a copy of this creature instead."],
+            |d, t| on(d, When::LandYouControlEnters, vec![], vec![Effect::InsectOrCopyWithSixLands { def: t.insect_green }]),
+        ),
+        "Wayward Swordtooth" => s(
+            &[
+                "Ascend",
+                "You may play an additional land on each of your turns.",
+                "This creature can't attack or block unless you have the city's blessing.",
+            ],
+            |d, _| {
+                d.ascend = true;
+                d.extra_land_drops = 1;
+                d.fights_only_with_blessing = true;
+            },
+        ),
+        "Retreat to Coralhelm" => s(
+            &["Landfall — Whenever a land you control enters, choose one —", "• You may tap or untap target creature.", "• Scry 1."],
+            |d, _| {
+                on_modal(
+                    d,
+                    When::LandYouControlEnters,
+                    None,
+                    vec![up_to(vec![CREATURE], vec![Effect::TapOrUntap(0)]), Ability::new(vec![], vec![Effect::Scry { n: 1 }])],
+                )
+            },
+        ),
+        "Guardian Project" => s(
+            &["Whenever a nontoken creature you control enters, if it doesn't have the same name as another creature you control or a creature card in your graveyard, draw a card."],
+            |d, _| {
+                let it = Filter { triggering: true, ..CREATURE };
+                on(d, When::AnotherNontokenCreatureYouControlEnters, vec![it], vec![Effect::DrawIfUniqueName(0)]);
+            },
+        ),
+        "Dryad of the Ilysian Grove" => s(
+            &["You may play an additional land on each of your turns.", "Lands you control are every basic land type in addition to their other types."],
+            |d, _| {
+                d.extra_land_drops = 1;
+                d.lands_every_basic_type = true;
+            },
+        ),
+        "Clever Impersonator" => s(&["You may have this creature enter as a copy of any nonland permanent on the battlefield."], |d, _| {
+            d.enter_as_copy = true;
+            d.enter_as_copy_nonland = true;
+        }),
+        "Teval, the Balanced Scale" => s(
+            &[
+                "Whenever Teval attacks, mill three cards. Then you may return a land card from your graveyard to the battlefield tapped.",
+                "Whenever one or more cards leave your graveyard, create a 2/2 black Zombie Druid creature token.",
+            ],
+            |d, t| {
+                on(d, When::Attacks, vec![], vec![Effect::Mill { who: Who::You, n: 3 }, Effect::ReturnLandFromGraveyardTapped]);
+                on(d, When::CardsLeaveYourGraveyard, vec![], vec![Effect::CreateToken { who: Who::You, def: t.zombie_druid, n: 1 }]);
+            },
+        ),
         _ => None,
     }
 }
@@ -248,4 +313,12 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Cyclonic Rift",
     "Drag to the Roots",
     "Rite of Replication",
+    "Avenger of Zendikar",
+    "Scute Swarm",
+    "Wayward Swordtooth",
+    "Retreat to Coralhelm",
+    "Guardian Project",
+    "Dryad of the Ilysian Grove",
+    "Clever Impersonator",
+    "Teval, the Balanced Scale",
 ];

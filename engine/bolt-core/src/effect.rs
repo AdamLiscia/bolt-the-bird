@@ -1100,6 +1100,13 @@ pub enum Effect {
     InsectOrCopyWithSixLands {
         def: usize,
     },
+    /// Tap or untap the permanent in `slot` (the controller's choice: it toggles).
+    TapOrUntap(u8),
+    /// Draw a card if the creature in `slot` doesn't have the same name as another creature you
+    /// control or a creature card in your graveyard (Guardian Project).
+    DrawIfUniqueName(u8),
+    /// You may return a land card from your graveyard to the battlefield tapped.
+    ReturnLandFromGraveyardTapped,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1286,6 +1293,8 @@ pub enum LookTo {
     PlayFromExile,
     /// Stays in exile; you may play it this turn.
     PlayFromExileThisTurn,
+    /// Onto the battlefield tapped.
+    BattlefieldTapped,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1607,6 +1616,8 @@ pub enum When {
     Blocks,
     /// "Whenever you scry or surveil".
     YouScryOrSurveil,
+    /// "Whenever one or more cards leave your graveyard" (any turn).
+    CardsLeaveYourGraveyard,
 }
 
 #[derive(Clone, Debug, PartialEq)]
