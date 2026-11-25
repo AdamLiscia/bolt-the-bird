@@ -152,6 +152,8 @@ pub enum Reduction {
     PerTokenYouControl,
     /// ... {1} less for each creature that attacked this turn (Rowdy Research).
     PerCreatureAttackedThisTurn,
+    /// ... {X} less, X the greatest power among creatures you control (The Great Henge).
+    GreatestPowerAmongYourCreatures,
 }
 
 /// An activated ability: "[cost]: [effect]" (CR 602).
@@ -493,6 +495,30 @@ pub struct CardDef {
     pub triples_your_damage: bool,
     /// "Each spell you cast that's red or green costs {N} less to cast." (Goblin Anarchomancer)
     pub red_green_spell_discount: u8,
+    /// The Theros gods: "As long as your devotion to [colors] is less than N, this isn't a creature."
+    pub creature_unless_devotion: Option<([bool; 5], u8)>,
+    /// Its mana ability also gains you this much life each time it's activated (The Great Henge).
+    pub mana_tap_life: i32,
+    /// Its mana can also be this color while you control a permanent with one of these subtypes (Thornspire Verge).
+    pub extra_color_if_you_control: Option<(crate::Color, [&'static str; 2])>,
+    /// "{T}: Add one mana of any type that a land you control could produce." (Reflecting Pool)
+    pub mana_own_land_colors: bool,
+    /// A shock land: "As this land enters, you may pay 2 life. If you don't, it enters tapped." (asked when played; put onto the battlefield another way, it enters tapped)
+    pub shock: bool,
+    /// Power and toughness each equal to half the highest life total among your opponents, rounded up (Malignus).
+    pub pt_half_highest_opponent_life: bool,
+    /// "Damage that would be dealt by this creature can't be prevented."
+    pub damage_cant_be_prevented: bool,
+    /// "Combat damage that would be dealt by creatures you control can't be prevented." (Questing Beast)
+    pub your_combat_damage_cant_be_prevented: bool,
+    /// "Can't be blocked by creatures with power N or less."
+    pub not_blocked_by_power_at_most: Option<i32>,
+    /// Zilortha: lethal damage to creatures you control is determined by their power.
+    pub lethal_damage_by_power: bool,
+    /// "This creature can't attack a player it has already attacked this turn." (two players: it attacks once a turn)
+    pub cant_attack_twice_per_turn: bool,
+    /// "Each land is a Forest in addition to its other land types." (lands with plain mana also tap for {G})
+    pub lands_are_forests: bool,
 }
 
 /// An Omen spell half: its name, cost, whether it's an instant, and what it does.
@@ -649,6 +675,18 @@ impl CardDef {
             mana_tap_damage: 0,
             triples_your_damage: false,
             red_green_spell_discount: 0,
+            creature_unless_devotion: None,
+            mana_tap_life: 0,
+            extra_color_if_you_control: None,
+            mana_own_land_colors: false,
+            shock: false,
+            pt_half_highest_opponent_life: false,
+            damage_cant_be_prevented: false,
+            your_combat_damage_cant_be_prevented: false,
+            not_blocked_by_power_at_most: None,
+            lethal_damage_by_power: false,
+            cant_attack_twice_per_turn: false,
+            lands_are_forests: false,
         }
     }
 
@@ -784,6 +822,18 @@ impl CardDef {
             mana_tap_damage: 0,
             triples_your_damage: false,
             red_green_spell_discount: 0,
+            creature_unless_devotion: None,
+            mana_tap_life: 0,
+            extra_color_if_you_control: None,
+            mana_own_land_colors: false,
+            shock: false,
+            pt_half_highest_opponent_life: false,
+            damage_cant_be_prevented: false,
+            your_combat_damage_cant_be_prevented: false,
+            not_blocked_by_power_at_most: None,
+            lethal_damage_by_power: false,
+            cant_attack_twice_per_turn: false,
+            lands_are_forests: false,
         }
     }
 
@@ -919,6 +969,18 @@ impl CardDef {
             mana_tap_damage: 0,
             triples_your_damage: false,
             red_green_spell_discount: 0,
+            creature_unless_devotion: None,
+            mana_tap_life: 0,
+            extra_color_if_you_control: None,
+            mana_own_land_colors: false,
+            shock: false,
+            pt_half_highest_opponent_life: false,
+            damage_cant_be_prevented: false,
+            your_combat_damage_cant_be_prevented: false,
+            not_blocked_by_power_at_most: None,
+            lethal_damage_by_power: false,
+            cant_attack_twice_per_turn: false,
+            lands_are_forests: false,
         }
     }
 }

@@ -348,6 +348,18 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         mana_tap_damage: 0,
         triples_your_damage: false,
         red_green_spell_discount: 0,
+        creature_unless_devotion: None,
+        mana_tap_life: 0,
+        extra_color_if_you_control: None,
+        mana_own_land_colors: false,
+        shock: false,
+        pt_half_highest_opponent_life: false,
+        damage_cant_be_prevented: false,
+        your_combat_damage_cant_be_prevented: false,
+        not_blocked_by_power_at_most: None,
+        lethal_damage_by_power: false,
+        cant_attack_twice_per_turn: false,
+        lands_are_forests: false,
     };
     def.color_identity = color_identity(o);
     // An Omen's spell half: its lines must be claimed too, written "Omen: <line>" in the script.

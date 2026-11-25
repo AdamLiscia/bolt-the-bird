@@ -1086,6 +1086,47 @@ pub enum Effect {
     Cascade,
     /// Permanents you control gain these keywords until end of turn (Heroic Intervention).
     GrantAllPermanentsYouControl(Keywords),
+    /// The creature in `slot` gets +X/+X and gains keywords until end of turn, X its power (Xenagos).
+    PumpByOwnPowerAndGrant {
+        slot: u8,
+        keywords: Keywords,
+    },
+    /// Reveal the top card of your library: a creature card goes to your hand (and the rest of the
+    /// effects are skipped); otherwise you may go on (Nylea, Keen-Eyed: then mill it).
+    RevealTopCreatureToHandElseMay,
+    /// The source deals the trigger's amount of damage to each creature the damaged opponent controls
+    /// (Balefire Dragon).
+    DamageAmountToEachOpponentCreature,
+    /// The source deals the trigger's amount of damage to the target in `slot` (Questing Beast).
+    DamageAmountTo(u8),
+    /// Shuffle the source from its owner's graveyard into their library (Kogla and Yidaro).
+    ShuffleSourceFromGraveyardIntoLibrary,
+    /// Destroy each artifact your opponents control (Vandalblast, overloaded).
+    DestroyOpponentsArtifacts,
+    /// The creature in `slot` gets +X/+0 and gains keywords until end of turn, X the ability's X
+    /// (Kessig Wolf Run).
+    PumpXAndGrant {
+        slot: u8,
+        keywords: Keywords,
+    },
+    /// "After this phase, there is an additional combat phase" (CR 500.8; no main phase between).
+    AdditionalCombatAfterThisPhase,
+    /// Untap each attacking creature; they gain these keywords until end of turn (Karlach).
+    UntapAttackersAndGrant(Keywords),
+    /// Exert the source (CR 701.39: it won't untap during your next untap step) and untap each
+    /// other creature you control (Combat Celebrant).
+    ExertSelfUntapOthers,
+    /// Gain control of each artifact the opponent controls, for good (Hellkite Tyrant).
+    GainControlOfOpponentsArtifacts,
+    /// Create a token (`def`, a 0/0) with +1/+1 counters equal to the trigger's amount (an X/X).
+    CreateTokenWithCountersAmount {
+        def: usize,
+    },
+    /// You may put a creature card from your hand onto the battlefield tapped and attacking; it
+    /// returns to your hand at the beginning of the next end step (Ilharg).
+    PutCreatureFromHandAttackingUntilEnd,
+    /// Put the source into its owner's library third from the top (from a graveyard or exile).
+    SourceThirdFromTop,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1162,6 +1203,10 @@ pub enum Scope {
     YourAttackingCreatures,
     /// Artifact creatures you control (Thopter Engineer).
     YourArtifactCreatures,
+    /// Other creatures you control (Nylea, God of the Hunt).
+    OtherYourCreatures,
+    /// Every land on the battlefield (Yavimaya, Cradle of Growth).
+    EachLand,
 }
 
 /// What a scaled static ability counts.
@@ -1346,6 +1391,14 @@ pub enum Condition {
     OpponentControlsMoreLands,
     /// The source's X (as it was cast) is at least this (ravenous: "If X is 5 or more").
     XAtLeast(u8),
+    /// It's the first combat phase of the turn.
+    FirstCombatOfTurn,
+    /// The source hasn't been exerted this turn.
+    NotExertedThisTurn,
+    /// You control at least this many artifacts.
+    ControlArtifactsAtLeast(u32),
+    /// The source is in a graveyard or exile (it died or was exiled).
+    SourceInGraveyardOrExile,
 }
 
 /// A spell's effect or a triggered ability: target slots, then effects in order.
@@ -1591,6 +1644,16 @@ pub enum When {
     YouCastEnchantmentFromHand,
     /// "Whenever this creature blocks" (CR 509.1i), as blockers are declared.
     Blocks,
+    /// "Whenever a creature you control deals combat damage to a player": once for each creature, with
+    /// the damage it dealt as the amount (Old Gnawbone).
+    YourCreatureDealsCombatDamageToPlayerAmount,
+    /// "Whenever a source you control deals 5 or more damage to a player" (Dragonborn Champion).
+    YourSourceDealsFiveOrMoreToPlayer,
+    /// "Whenever this creature deals 6 or more damage to an opponent" (Deus of Calamity).
+    DealsSixOrMoreToOpponent,
+    /// "Whenever one or more creatures you control with trample deal combat damage to a player": the
+    /// amount is the damage those creatures dealt (Quartzwood Crasher).
+    YourTramplersDealCombatDamageToPlayer,
 }
 
 #[derive(Clone, Debug, PartialEq)]

@@ -337,3 +337,32 @@ Gargaroth, Fierce Empath.
 Core: `CardDef::mana_tap_damage` (Ancient Tomb, both payment paths), `triples_your_damage`,
 `red_green_spell_discount`; `Effect::GrantAllPermanentsYouControl`; `SearchFor::CreatureMvAtLeast`;
 `When::Blocks` (fired once per blocker as blocks are finished).
+
+### PG batches 2 and 3: 25 cards
+
+Thornspire Verge, Reflecting Pool, Stomping Ground, Kessig Wolf Run, Xenagos, God of Revels, Nylea, God
+of the Hunt, Nylea, Keen-Eyed, Old Gnawbone, Balefire Dragon, Dragonborn Champion, Deus of Calamity,
+Kogla, the Titan Ape, Kogla and Yidaro, Malignus, Questing Beast, The Great Henge, Zilortha, Strength
+Incarnate, Vandalblast; Bloodthirster, Karlach, Fury of Avernus, Combat Celebrant, Hellkite Tyrant,
+Yavimaya, Cradle of Growth, Quartzwood Crasher, Ilharg, the Raze-Boar.
+
+Core:
+- Devotion (`Game::devotion`, CR 700.5) and `CardDef::creature_unless_devotion` (read by `types_of`).
+- `Scope::OtherYourCreatures`, `Scope::EachLand` (with a static subtype: Yavimaya's Forests;
+  `CardDef::lands_are_forests` adds {G} to lands with plain mana).
+- Mana: `extra_color_if_you_control` (Verge), `mana_own_land_colors` (Reflecting Pool),
+  `mana_tap_life` (Great Henge), shock lands (`CardDef::shock`, `Decision::Shock` when played; put
+  onto the battlefield another way, a shock land enters tapped, with no life payment offered).
+- Damage: `damage_cant_be_prevented`, `your_combat_damage_cant_be_prevented` (both skip the
+  turn-scoped prevention and protection in `deal_damage`), `When::YourSourceDealsFiveOrMoreToPlayer`,
+  `When::DealsSixOrMoreToOpponent`, `When::YourCreatureDealsCombatDamageToPlayerAmount`,
+  `When::YourTramplersDealCombatDamageToPlayer`, `lethal_damage_by_power` (SBA and combat assignment).
+- Combat: `Effect::AdditionalCombatAfterThisPhase` (`Game::combats_after_this_phase`: EndCombat goes
+  straight to BeginCombat), `Game::combats_this_turn` and `Condition::FirstCombatOfTurn`,
+  `CardDef::cant_attack_twice_per_turn` (two players), exert (`Object::exerted_turn`, using
+  lane C's `skip_untap`), `not_blocked_by_power_at_most`.
+- `Effect::GainControlOfOpponentsArtifacts` (for good), `Condition::ControlArtifactsAtLeast`,
+  `PutCreatureFromHandAttackingUntilEnd` (`Game::return_to_hand_at_end`), `SourceThirdFromTop`.
+- Vandalblast's overload is an optional {4} on top of {R} (`Action::CastKicked`), the same total.
+
+Notes: Combat Celebrant's exert is chosen as its attack trigger resolves rather than as it attacks.

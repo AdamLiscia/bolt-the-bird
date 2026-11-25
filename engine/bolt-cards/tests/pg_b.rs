@@ -319,3 +319,442 @@ fn fierce_empath_finds_a_big_creature() {
     resolve_all(&mut g, &[Action::Pick(bigger)]);
     assert_eq!(g.obj(bigger).zone, Zone::Hand);
 }
+
+// ---- Xenagos, batch 2 ----
+
+/// Passes to main phase 2 answering targets and decisions in order.
+fn to_main2(g: &mut Game, answers: &[Action]) {
+    let mut answers = answers.iter();
+    while g.step != Step::Main2 {
+        let a = match g.pending {
+            Pending::ChooseTarget(_) | Pending::Decide(_) => *answers.next().expect("an answer"),
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(g, a);
+    }
+}
+
+#[test]
+fn thornspire_verge_reflecting_pool_and_stomping_ground() {
+    let mut g = game(&[]);
+    let v = put(&mut g, 0, "Thornspire Verge");
+    assert_eq!(colors_of(&g, v), [[false, false, false, true, false]]);
+    put(&mut g, 0, "Forest");
+    assert_eq!(colors_of(&g, v), [[false, false, false, true, true]]);
+    let pool = put(&mut g, 0, "Reflecting Pool");
+    assert_eq!(
+        colors_of(&g, pool),
+        [[false, false, false, true, true]],
+        "what your lands make"
+    );
+
+    let mut g = game(&[]);
+    let s = hand(&mut g, 0, "Stomping Ground");
+    act(&mut g, Action::PlayLand(s));
+    act(&mut g, Action::Yes);
+    assert!(!g.obj(s).tapped);
+    assert_eq!(g.players[0].life, 38);
+    assert_eq!(colors_of(&g, s), [[false, false, false, true, true]]);
+    let mut g = game(&[]);
+    let s = hand(&mut g, 0, "Stomping Ground");
+    act(&mut g, Action::PlayLand(s));
+    act(&mut g, Action::No);
+    assert!(g.obj(s).tapped);
+    assert_eq!(g.players[0].life, 40);
+}
+
+#[test]
+fn kessig_wolf_run_pumps_by_x_with_trample() {
+    let mut g = table();
+    let run = put(&mut g, 0, "Kessig Wolf Run");
+    let elder = put(&mut g, 0, "Sakura-Tribe Elder");
+    act(
+        &mut g,
+        Action::ActivateX {
+            id: run,
+            n: 0,
+            victim: None,
+            x: 3,
+        },
+    );
+    resolve_all(&mut g, &[Action::Target(obj(elder))]);
+    assert_eq!((g.power(elder), g.toughness(elder)), (4, 1));
+    assert!(g.keywords(elder).has(Keywords::TRAMPLE));
+}
+
+#[test]
+fn xenagos_is_a_creature_with_devotion_and_doubles_an_attacker() {
+    let mut g = table();
+    let x = put(&mut g, 0, "Xenagos, God of Revels"); // {3}{R}{G}: devotion 2
+    assert!(!g.types_of(x).creature);
+    assert!(g.keywords(x).has(Keywords::INDESTRUCTIBLE));
+    let mut g = table();
+    put(&mut g, 0, "Xenagos, God of Revels");
+    let valet = put(&mut g, 0, "Devilish Valet"); // 1/3
+    g.start_turn(5, 0);
+    let mut targeted = false;
+    while g.pending != Pending::DeclareAttackers(0) {
+        let a = if matches!(g.pending, Pending::ChooseTarget(0)) {
+            targeted = true;
+            Action::Target(obj(valet))
+        } else {
+            Action::PassPriority
+        };
+        act(&mut g, a);
+    }
+    assert!(targeted);
+    assert_eq!((g.power(valet), g.toughness(valet)), (2, 4), "+1/+1, X its power");
+    // Devotion 7: Xenagos (RG), Questing Beast (GG), Zilortha (RG), plus Kogla (GGG).
+    let mut g = table();
+    let x = put(&mut g, 0, "Xenagos, God of Revels");
+    put(&mut g, 0, "Questing Beast");
+    put(&mut g, 0, "Zilortha, Strength Incarnate");
+    assert!(!g.types_of(x).creature, "six");
+    put(&mut g, 0, "Kogla, the Titan Ape");
+    assert!(g.types_of(x).creature, "nine");
+    assert_eq!(g.devotion(0, [false, false, false, true, true]), 9);
+}
+
+#[test]
+fn the_nyleas() {
+    let mut g = table();
+    let n = put(&mut g, 0, "Nylea, God of the Hunt");
+    assert!(!g.types_of(n).creature);
+    let elder = put(&mut g, 0, "Sakura-Tribe Elder");
+    assert!(g.keywords(elder).has(Keywords::TRAMPLE));
+    act(&mut g, Action::Activate(n, 0));
+    resolve_all(&mut g, &[Action::Target(obj(elder))]);
+    assert_eq!(g.power(elder), 3);
+
+    let mut g = game(&["Forest", "Forest", "Forest"]);
+    let k = put(&mut g, 0, "Nylea, Keen-Eyed");
+    let top = g.add_card(0, cid("Sakura-Tribe Elder"), Zone::Library);
+    act(&mut g, Action::Activate(k, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(top).zone, Zone::Hand, "a creature: to hand");
+    let mut g = game(&["Forest", "Forest", "Forest"]);
+    let k = put(&mut g, 0, "Nylea, Keen-Eyed");
+    let top = g.add_card(0, cid("Sol Ring"), Zone::Library);
+    act(&mut g, Action::Activate(k, 0));
+    resolve_all(&mut g, &[Action::Yes]);
+    assert_eq!(g.obj(top).zone, Zone::Graveyard, "not a creature: may mill it");
+    // Creature spells cost {1} less: Lotus Cobra with one Forest.
+    let mut g = game(&["Forest"]);
+    put(&mut g, 0, "Nylea, Keen-Eyed");
+    let cobra = hand(&mut g, 0, "Lotus Cobra");
+    assert!(g.legal_actions().contains(&Action::Cast(cobra)));
+}
+
+#[test]
+fn old_gnawbone_and_balefire_dragon_cash_in_combat_damage() {
+    let mut g = table();
+    put(&mut g, 0, "Old Gnawbone");
+    let valet = put(&mut g, 0, "Devilish Valet");
+    let dragon = put(&mut g, 0, "Balefire Dragon");
+    let theirs = put(&mut g, 1, "Inferno Titan"); // 6/6
+    attack(&mut g, &[valet, dragon]);
+    to_main2(&mut g, &[]);
+    assert_eq!(tokens(&g, 0, "Treasure").len(), 1 + 6);
+    assert_eq!(
+        g.obj(theirs).zone,
+        Zone::Graveyard,
+        "6 damage to each of their creatures"
+    );
+}
+
+#[test]
+fn dragonborn_champion_and_deus_of_calamity_reward_big_hits() {
+    let mut g = table();
+    put(&mut g, 0, "Dragonborn Champion");
+    let deus = put(&mut g, 0, "Deus of Calamity");
+    let land = g.permanents(1).find(|&x| g.types_of(x).land).unwrap();
+    attack(&mut g, &[deus]);
+    let cards = g.players[0].hand.len();
+    to_main2(&mut g, &[Action::Target(obj(land))]);
+    assert_eq!(g.players[0].hand.len(), cards + 1, "6 damage: draw");
+    assert_eq!(g.obj(land).zone, Zone::Graveyard);
+}
+
+#[test]
+fn kogla_fights_destroys_and_bounces_humans() {
+    let mut g = table();
+    let elder = put(&mut g, 1, "Sakura-Tribe Elder");
+    let k = hand(&mut g, 0, "Kogla, the Titan Ape");
+    play(&mut g, k, false, &[], &[Action::Target(obj(elder))]);
+    assert_eq!(g.obj(elder).zone, Zone::Graveyard);
+    let ring = put(&mut g, 1, "Sol Ring");
+    attack(&mut g, &[k]);
+    resolve_all(&mut g, &[Action::Target(obj(ring))]);
+    assert_eq!(g.obj(ring).zone, Zone::Graveyard);
+
+    let mut g = table();
+    let k = put(&mut g, 0, "Kogla, the Titan Ape");
+    let human = put(&mut g, 0, "Thopter Engineer"); // a Human
+    act(&mut g, Action::Activate(k, 0));
+    resolve_all(&mut g, &[Action::Target(obj(human))]);
+    assert_eq!(g.obj(human).zone, Zone::Hand);
+    assert!(g.keywords(k).has(Keywords::INDESTRUCTIBLE));
+}
+
+#[test]
+fn kogla_and_yidaro_gets_haste_or_fights_and_cycles_into_removal() {
+    let mut g = table();
+    let k = hand(&mut g, 0, "Kogla and Yidaro");
+    play(&mut g, k, false, &[], &[Action::Mode(0)]);
+    let kw = g.keywords(k);
+    assert!(kw.has(Keywords::TRAMPLE) && kw.has(Keywords::HASTE));
+
+    let mut g = table();
+    let ring = put(&mut g, 1, "Sol Ring");
+    let k = hand(&mut g, 0, "Kogla and Yidaro");
+    let cards = g.players[0].hand.len();
+    act(&mut g, Action::Activate(k, 0));
+    resolve_all(&mut g, &[Action::Target(obj(ring))]);
+    assert_eq!(g.obj(ring).zone, Zone::Graveyard);
+    assert_eq!(g.obj(k).zone, Zone::Library, "shuffled in");
+    assert_eq!(g.players[0].hand.len(), cards, "discarded it, drew one");
+}
+
+#[test]
+fn malignus_is_half_their_life_and_ignores_fog() {
+    let mut g = table();
+    let m = put(&mut g, 0, "Malignus");
+    assert_eq!((g.power(m), g.toughness(m)), (20, 20));
+    g.players[1].life = 7;
+    assert_eq!(g.power(m), 4, "rounded up");
+    let frog = put(&mut g, 1, "Spore Frog");
+    attack(&mut g, &[m]);
+    // They fog: Malignus's damage can't be prevented.
+    act(&mut g, Action::PassPriority);
+    act(&mut g, Action::Activate(frog, 0));
+    to_main2(&mut g, &[]);
+    assert_eq!(g.obj(frog).zone, Zone::Graveyard);
+    assert_eq!(g.players[1].life, 3, "7 - 4");
+}
+
+#[test]
+fn questing_beast_dodges_small_blockers() {
+    let mut g = table();
+    let q = put(&mut g, 0, "Questing Beast");
+    let k = g.keywords(q);
+    assert!(k.has(Keywords::VIGILANCE) && k.has(Keywords::DEATHTOUCH) && k.has(Keywords::HASTE));
+    let small = put(&mut g, 1, "Sakura-Tribe Elder");
+    let big = put(&mut g, 1, "Inferno Titan");
+    attack(&mut g, &[q]);
+    while g.pending != Pending::DeclareBlockers(1) {
+        act(&mut g, Action::PassPriority);
+    }
+    let legal = g.legal_actions();
+    assert!(!legal.contains(&Action::Block {
+        blocker: small,
+        attacker: q
+    }));
+    assert!(legal.contains(&Action::Block {
+        blocker: big,
+        attacker: q
+    }));
+}
+
+#[test]
+fn the_great_henge_costs_less_taps_for_gg_and_grows_new_creatures() {
+    let mut g = game(&["Forest", "Forest"]);
+    put(&mut g, 0, "Inferno Titan"); // power 6
+    put(&mut g, 0, "Sol Ring");
+    let h = hand(&mut g, 0, "The Great Henge");
+    play(&mut g, h, false, &[], &[]);
+    assert_eq!(g.obj(h).zone, Zone::Battlefield, "{{7}}{{G}}{{G}} less 6");
+    // Its mana: {G}{G} and 2 life, the only source here.
+    let mut g = game(&[]);
+    put(&mut g, 0, "The Great Henge");
+    let life = g.players[0].life;
+    let elder = hand(&mut g, 0, "Sakura-Tribe Elder");
+    let cards = g.players[0].hand.len();
+    play(&mut g, elder, false, &[], &[]);
+    assert_eq!(g.obj(elder).zone, Zone::Battlefield);
+    assert_eq!(g.players[0].life, life + 2);
+    assert_eq!(g.obj(elder).counters, 1);
+    assert_eq!(g.players[0].hand.len(), cards - 1 + 1);
+}
+
+#[test]
+fn zilortha_uses_power_for_lethal_damage() {
+    let mut g = table();
+    put(&mut g, 0, "Zilortha, Strength Incarnate");
+    let valet = put(&mut g, 0, "Devilish Valet"); // 1/3
+    let sg = put(&mut g, 1, "Siege-Gang Commander");
+    their_turn(&mut g);
+    act(&mut g, Action::ActivateWith(sg, 0, sg));
+    resolve_all(&mut g, &[Action::Target(obj(valet))]);
+    assert_eq!(g.obj(valet).zone, Zone::Graveyard, "2 damage >= power 1");
+}
+
+#[test]
+fn vandalblast_one_or_overloaded() {
+    let mut g = table();
+    let mine = put(&mut g, 0, "Mind Stone");
+    let theirs = put(&mut g, 1, "Sol Ring");
+    let v = hand(&mut g, 0, "Vandalblast");
+    act(&mut g, Action::Cast(v));
+    assert!(
+        !g.legal_actions().contains(&Action::Target(obj(mine))),
+        "you don't control"
+    );
+    act(&mut g, Action::Target(obj(theirs)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(theirs).zone, Zone::Graveyard);
+
+    let mut g = table();
+    let a = put(&mut g, 1, "Sol Ring");
+    let b = put(&mut g, 1, "Thran Dynamo");
+    let mine = put(&mut g, 0, "Mind Stone");
+    let v = hand(&mut g, 0, "Vandalblast");
+    play(&mut g, v, true, &[], &[]);
+    assert_eq!(g.obj(a).zone, Zone::Graveyard);
+    assert_eq!(g.obj(b).zone, Zone::Graveyard);
+    assert_eq!(g.obj(mine).zone, Zone::Battlefield, "you don't control");
+}
+
+fn their_turn(g: &mut Game) {
+    g.start_turn(4, 1);
+    while g.step != Step::Main1 {
+        act(g, Action::PassPriority);
+    }
+}
+
+// ---- Xenagos, batch 3 ----
+
+/// Passes until the next declare-attackers step of player 0, answering decisions with `No`.
+fn to_attackers(g: &mut Game) {
+    while g.pending != Pending::DeclareAttackers(0) {
+        let a = match g.pending {
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            Pending::Decide(_) => Action::No,
+            _ => Action::PassPriority,
+        };
+        act(g, a);
+    }
+}
+
+#[test]
+fn bloodthirster_untaps_for_a_second_combat_but_attacks_once() {
+    let mut g = table();
+    let b = put(&mut g, 0, "Bloodthirster");
+    let valet = put(&mut g, 0, "Devilish Valet");
+    attack(&mut g, &[b]);
+    to_attackers(&mut g);
+    assert!(!g.obj(b).tapped, "untapped");
+    assert_eq!(g.players[1].life, 34);
+    let legal = g.legal_actions();
+    assert!(
+        !legal.contains(&Action::Attack(b)),
+        "it already attacked that player"
+    );
+    assert!(legal.contains(&Action::Attack(valet)), "an additional combat");
+}
+
+#[test]
+fn karlach_untaps_attackers_with_first_strike_for_another_combat() {
+    let mut g = table();
+    let k = put(&mut g, 0, "Karlach, Fury of Avernus");
+    let valet = put(&mut g, 0, "Devilish Valet");
+    attack(&mut g, &[k, valet]);
+    resolve_all(&mut g, &[]);
+    assert!(!g.obj(k).tapped && !g.obj(valet).tapped);
+    assert!(g.keywords(valet).has(Keywords::FIRST_STRIKE));
+    to_attackers(&mut g);
+    act(&mut g, Action::Attack(k));
+    act(&mut g, Action::FinishAttacks);
+    assert!(
+        g.items.is_empty(),
+        "the second combat isn't the first: no trigger"
+    );
+}
+
+#[test]
+fn combat_celebrant_exerts_for_an_extra_combat() {
+    let mut g = table();
+    let c = put(&mut g, 0, "Combat Celebrant");
+    let valet = put(&mut g, 0, "Devilish Valet");
+    attack(&mut g, &[c, valet]);
+    resolve_all(&mut g, &[Action::Yes]);
+    assert!(!g.obj(valet).tapped, "the others untap");
+    assert!(g.obj(c).tapped);
+    to_attackers(&mut g);
+    assert!(g.legal_actions().contains(&Action::Attack(valet)));
+    // Exerted: it doesn't untap next turn.
+    g.start_turn(7, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(g.obj(c).tapped);
+}
+
+#[test]
+fn hellkite_tyrant_steals_artifacts() {
+    let mut g = table();
+    let h = put(&mut g, 0, "Hellkite Tyrant");
+    let ring = put(&mut g, 1, "Sol Ring");
+    attack(&mut g, &[h]);
+    to_main2(&mut g, &[]);
+    assert_eq!(g.obj(ring).controller, 0);
+    // Twenty artifacts at upkeep: you win.
+    for _ in 0..19 {
+        put(&mut g, 0, "Sol Ring");
+    }
+    g.start_turn(7, 0);
+    while g.result.is_none() && g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.result, Some(bolt_core::Outcome::Winner(0)));
+}
+
+#[test]
+fn yavimaya_makes_every_land_a_forest() {
+    let mut g = game(&[]);
+    put(&mut g, 0, "Yavimaya, Cradle of Growth");
+    let plains = put(&mut g, 0, "Plains");
+    let theirs = g.permanents(1).find(|&x| g.def_of(x).name == "Island").unwrap();
+    assert!(g.has_subtype(plains, "Forest") && g.has_subtype(theirs, "Forest"));
+    assert_eq!(colors_of(&g, plains), [[true, false, false, false, true]]);
+}
+
+#[test]
+fn quartzwood_crasher_makes_a_dinosaur_the_size_of_the_trample_damage() {
+    let mut g = table();
+    let q = put(&mut g, 0, "Quartzwood Crasher"); // 6/6 trample
+    let valet = put(&mut g, 0, "Devilish Valet"); // trample too
+    attack(&mut g, &[q, valet]);
+    to_main2(&mut g, &[]);
+    let d = tokens(&g, 0, "Dinosaur Beast");
+    assert_eq!(d.len(), 1);
+    assert_eq!(g.power(d[0]), 7);
+    assert!(g.keywords(d[0]).has(Keywords::TRAMPLE));
+}
+
+#[test]
+fn ilharg_drops_a_creature_into_the_attack_and_takes_it_back() {
+    let mut g = table();
+    let i = put(&mut g, 0, "Ilharg, the Raze-Boar");
+    let big = hand(&mut g, 0, "Quartzwood Crasher"); // 6/6, no enters trigger
+    attack(&mut g, &[i]);
+    resolve_all(&mut g, &[Action::Pick(big)]);
+    assert_eq!(g.obj(big).zone, Zone::Battlefield);
+    assert!(g.obj(big).tapped);
+    let life = g.players[1].life;
+    to_main2(&mut g, &[]);
+    assert_eq!(g.players[1].life, life - 6 - 6, "both attacked");
+    while g.step != Step::End {
+        act(&mut g, Action::PassPriority);
+    }
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(big).zone, Zone::Hand, "back at the end step");
+
+    // Dies: third from the top.
+    let mut g = table();
+    let i = put(&mut g, 0, "Ilharg, the Raze-Boar");
+    let gift = hand(&mut g, 0, "Beast Within");
+    play(&mut g, gift, false, &[obj(i)], &[Action::Yes]);
+    let lib = &g.players[0].library;
+    assert_eq!(lib[lib.len() - 3], i);
+}

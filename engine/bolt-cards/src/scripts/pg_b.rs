@@ -131,6 +131,230 @@ pub fn script(name: &str) -> Option<Script> {
             &["When this creature enters, you may search your library for a creature card with mana value 6 or greater, reveal it, put it into your hand, then shuffle."],
             |d, _| may(d, When::Enters, vec![], vec![search(SearchFor::CreatureMvAtLeast(6), SearchTo::Hand)]),
         ),
+        "Thornspire Verge" => s(&["{T}: Add {R}.", "{T}: Add {G}. Activate only if you control a Mountain or a Forest."], |d, _| {
+            d.mana = Some(ManaSource::of(&[Color::Red]));
+            d.extra_color_if_you_control = Some((Color::Green, ["Mountain", "Forest"]));
+        }),
+        "Reflecting Pool" => s(&["{T}: Add one mana of any type that a land you control could produce."], |d, _| {
+            d.mana_own_land_colors = true;
+        }),
+        "Stomping Ground" => s(&["As this land enters, you may pay 2 life. If you don't, it enters tapped."], |d, _| {
+            d.mana = Some(ManaSource::of(&[Color::Red, Color::Green]));
+            d.shock = true;
+        }),
+        "Kessig Wolf Run" => s(&["{T}: Add {C}.", "{X}{R}{G}, {T}: Target creature gets +X/+0 and gains trample until end of turn."], |d, _| {
+            d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+            activated(d, "{X}{R}{G}", true, vec![CREATURE], vec![Effect::PumpXAndGrant { slot: 0, keywords: Keywords::TRAMPLE }]);
+        }),
+        "Xenagos, God of Revels" => s(
+            &[
+                "As long as your devotion to red and green is less than seven, Xenagos isn't a creature.",
+                "At the beginning of combat on your turn, another target creature you control gains haste and gets +X/+X until end of turn, where X is that creature's power.",
+            ],
+            |d, _| {
+                d.creature_unless_devotion = Some(([false, false, false, true, true], 7));
+                let another = Filter { other: true, ..YOUR_CREATURE };
+                on(d, When::BeginCombatYourTurn, vec![another], vec![Effect::PumpByOwnPowerAndGrant { slot: 0, keywords: Keywords::HASTE }]);
+            },
+        ),
+        "Nylea, God of the Hunt" => s(
+            &[
+                "As long as your devotion to green is less than five, Nylea isn't a creature.",
+                "Other creatures you control have trample.",
+                "{3}{G}: Target creature gets +2/+2 until end of turn.",
+            ],
+            |d, _| {
+                d.creature_unless_devotion = Some(([false, false, false, false, true], 5));
+                static_on(d, Scope::OtherYourCreatures, false, Keywords::TRAMPLE);
+                activated(d, "{3}{G}", false, vec![CREATURE], vec![Effect::Pump { slot: 0, power: 2, toughness: 2 }]);
+            },
+        ),
+        "Nylea, Keen-Eyed" => s(
+            &[
+                "As long as your devotion to green is less than five, Nylea isn't a creature.",
+                "Creature spells you cast cost {1} less to cast.",
+                "{2}{G}: Reveal the top card of your library. If it's a creature card, put it into your hand. Otherwise, you may put it into your graveyard.",
+            ],
+            |d, _| {
+                d.creature_unless_devotion = Some(([false, false, false, false, true], 5));
+                d.creature_spell_discount = 1;
+                activated(d, "{2}{G}", false, vec![], vec![Effect::RevealTopCreatureToHandElseMay, Effect::Mill { who: Who::You, n: 1 }]);
+            },
+        ),
+        "Old Gnawbone" => s(&["Whenever a creature you control deals combat damage to a player, create that many Treasure tokens."], |d, t| {
+            on(d, When::YourCreatureDealsCombatDamageToPlayerAmount, vec![], vec![Effect::CreateTokensAmount { def: t.treasure }])
+        }),
+        "Balefire Dragon" => s(
+            &["Whenever this creature deals combat damage to a player, it deals that much damage to each creature that player controls."],
+            |d, _| on(d, When::DealsCombatDamageToPlayer, vec![], vec![Effect::DamageAmountToEachOpponentCreature]),
+        ),
+        "Dragonborn Champion" => s(&["Whenever a source you control deals 5 or more damage to a player, draw a card."], |d, _| {
+            on(d, When::YourSourceDealsFiveOrMoreToPlayer, vec![], vec![draw(1)])
+        }),
+        "Deus of Calamity" => s(
+            &["Whenever this creature deals 6 or more damage to an opponent, destroy target land that player controls."],
+            |d, _| {
+                let land = Filter { players: false, creatures: false, planeswalkers: false, lands: true, controller: Controller::Opponent, ..Filter::ANY };
+                on(d, When::DealsSixOrMoreToOpponent, vec![land], vec![Effect::Destroy(0)]);
+            },
+        ),
+        "Kogla, the Titan Ape" => s(
+            &[
+                "When Kogla enters, it fights up to one target creature you don't control.",
+                "Whenever Kogla attacks, destroy target artifact or enchantment defending player controls.",
+                "{1}{G}: Return target Human you control to its owner's hand. Kogla gains indestructible until end of turn.",
+            ],
+            |d, _| {
+                d.triggers.push(Trigger { when: When::Enters, ability: up_to(vec![OPP_CREATURE], vec![Effect::Fight(0)]) });
+                on(d, When::Attacks, vec![ARTIFACT_OR_ENCHANTMENT.controlled_by(Controller::Opponent)], vec![Effect::Destroy(0)]);
+                let human = Filter { subtype: Some("Human"), ..YOUR_CREATURE };
+                activated(d, "{1}{G}", false, vec![human], vec![Effect::Bounce(0), Effect::GrantSelf { keywords: Keywords::INDESTRUCTIBLE }]);
+            },
+        ),
+        "Kogla and Yidaro" => s(
+            &[
+                "When Kogla and Yidaro enters, choose one —",
+                "• It gains trample and haste until end of turn.",
+                "• It fights target creature you don't control.",
+                "{2}{R}{G}, Discard this card: Destroy up to one target artifact or enchantment. Shuffle this card into your library from your graveyard, then draw a card.",
+            ],
+            |d, _| {
+                on_modal(
+                    d,
+                    When::Enters,
+                    None,
+                    vec![
+                        Ability::new(vec![], vec![Effect::GrantSelf { keywords: Keywords::TRAMPLE.with(Keywords::HASTE) }]),
+                        Ability::new(vec![OPP_CREATURE], vec![Effect::Fight(0)]),
+                    ],
+                );
+                let n = activated(
+                    d,
+                    "{2}{R}{G}",
+                    false,
+                    vec![ARTIFACT_OR_ENCHANTMENT],
+                    vec![Effect::Destroy(0), Effect::ShuffleSourceFromGraveyardIntoLibrary, draw(1)],
+                );
+                d.activated[n].from_hand_discard = true;
+                d.activated[n].ability.min_targets = Some(0);
+            },
+        ),
+        "Malignus" => s(
+            &[
+                "Malignus's power and toughness are each equal to half the highest life total among your opponents, rounded up.",
+                "Damage that would be dealt by this creature can't be prevented.",
+            ],
+            |d, _| {
+                d.pt_half_highest_opponent_life = true;
+                d.damage_cant_be_prevented = true;
+            },
+        ),
+        "Questing Beast" => s(
+            &[
+                "Questing Beast can't be blocked by creatures with power 2 or less.",
+                "Combat damage that would be dealt by creatures you control can't be prevented.",
+                "Whenever Questing Beast deals combat damage to an opponent, it deals that much damage to target planeswalker that player controls.",
+            ],
+            |d, _| {
+                d.not_blocked_by_power_at_most = Some(2);
+                d.your_combat_damage_cant_be_prevented = true;
+                let walker = Filter { players: false, creatures: false, planeswalkers: true, controller: Controller::Opponent, ..Filter::ANY };
+                on(d, When::DealsCombatDamageToPlayer, vec![walker], vec![Effect::DamageAmountTo(0)]);
+            },
+        ),
+        "The Great Henge" => s(
+            &[
+                "This spell costs {X} less to cast, where X is the greatest power among creatures you control.",
+                "{T}: Add {G}{G}. You gain 2 life.",
+                "Whenever a nontoken creature you control enters, put a +1/+1 counter on it and draw a card.",
+            ],
+            |d, _| {
+                d.reduction = Some(Reduction::GreatestPowerAmongYourCreatures);
+                d.mana = Some(ManaSource::of(&[Color::Green]));
+                d.mana_amount = 2;
+                d.mana_tap_life = 2;
+                let that = Filter { triggering: true, ..CREATURE };
+                on(d, When::AnotherNontokenCreatureYouControlEnters, vec![that], vec![Effect::Counters { slot: 0, n: 1 }, draw(1)]);
+            },
+        ),
+        "Zilortha, Strength Incarnate" => s(
+            &["Lethal damage dealt to creatures you control is determined by their power rather than their toughness."],
+            |d, _| d.lethal_damage_by_power = true,
+        ),
+        "Vandalblast" => s(&["Destroy target artifact you don't control.", "Overload {4}{R}"], |d, _| {
+            // Overload as an optional {4} on top of {R} (cast with `Action::CastKicked`): the same
+            // total, and "target" becomes "each".
+            spell(d, vec![ARTIFACT.controlled_by(Controller::Opponent)], vec![Effect::Destroy(0)]);
+            d.kicker = ManaCost::parse("{4}");
+            d.kicked_spell = Some(Ability::new(vec![], vec![Effect::DestroyOpponentsArtifacts]));
+        }),
+        "Bloodthirster" => s(
+            &[
+                "Whenever this creature deals combat damage to a player, untap it. After this phase, there is an additional combat phase.",
+                "This creature can't attack a player it has already attacked this turn.",
+            ],
+            |d, _| {
+                on(d, When::DealsCombatDamageToPlayer, vec![], vec![Effect::UntapSelf, Effect::AdditionalCombatAfterThisPhase]);
+                d.cant_attack_twice_per_turn = true;
+            },
+        ),
+        "Karlach, Fury of Avernus" => s(
+            &[
+                "Whenever you attack, if it's the first combat phase of the turn, untap all attacking creatures. They gain first strike until end of turn. After this phase, there is an additional combat phase.",
+                "Choose a Background",
+            ],
+            |d, _| {
+                // "Choose a Background" is deck construction (a second commander); the engine's
+                // Commander seats take two commanders as partners.
+                conditional(
+                    d,
+                    When::YouAttack,
+                    Condition::FirstCombatOfTurn,
+                    vec![],
+                    vec![Effect::UntapAttackersAndGrant(Keywords::FIRST_STRIKE), Effect::AdditionalCombatAfterThisPhase],
+                );
+            },
+        ),
+        "Combat Celebrant" => s(
+            &["If this creature hasn't been exerted this turn, you may exert it as it attacks. When you do, untap all other creatures you control and after this phase, there is an additional combat phase."],
+            |d, _| {
+                // The exert choice is made as the attack trigger resolves.
+                let mut a = Ability::new(vec![], vec![Effect::ExertSelfUntapOthers, Effect::AdditionalCombatAfterThisPhase]).optional();
+                a.condition = Some(Condition::NotExertedThisTurn);
+                d.triggers.push(Trigger { when: When::Attacks, ability: a });
+            },
+        ),
+        "Hellkite Tyrant" => s(
+            &[
+                "Whenever this creature deals combat damage to a player, gain control of all artifacts that player controls.",
+                "At the beginning of your upkeep, if you control twenty or more artifacts, you win the game.",
+            ],
+            |d, _| {
+                on(d, When::DealsCombatDamageToPlayer, vec![], vec![Effect::GainControlOfOpponentsArtifacts]);
+                conditional(d, When::Upkeep { your_turn_only: true }, Condition::ControlArtifactsAtLeast(20), vec![], vec![Effect::WinTheGame]);
+            },
+        ),
+        "Yavimaya, Cradle of Growth" => s(&["Each land is a Forest in addition to its other land types."], |d, _| {
+            static_on(d, Scope::EachLand, false, Keywords::NONE);
+            d.statics.last_mut().expect("just added").subtype = Some("Forest");
+            d.lands_are_forests = true;
+        }),
+        "Quartzwood Crasher" => s(
+            &["Whenever one or more creatures you control with trample deal combat damage to a player, create an X/X green Dinosaur Beast creature token with trample, where X is the amount of damage those creatures dealt to that player."],
+            |d, t| on(d, When::YourTramplersDealCombatDamageToPlayer, vec![], vec![Effect::CreateTokenWithCountersAmount { def: t.dinosaur_beast }]),
+        ),
+        "Ilharg, the Raze-Boar" => s(
+            &[
+                "Whenever Ilharg attacks, you may put a creature card from your hand onto the battlefield tapped and attacking. Return that creature to your hand at the beginning of the next end step.",
+                "When Ilharg dies or is put into exile from the battlefield, you may put it into its owner's library third from the top.",
+            ],
+            |d, _| {
+                on(d, When::Attacks, vec![], vec![Effect::PutCreatureFromHandAttackingUntilEnd]);
+                let mut a = Ability::new(vec![], vec![Effect::SourceThirdFromTop]).optional();
+                a.condition = Some(Condition::SourceInGraveyardOrExile);
+                d.triggers.push(Trigger { when: When::LeavesBattlefield, ability: a });
+            },
+        ),
         _ => None,
     }
 }
@@ -156,4 +380,29 @@ pub const PG_B_SCRIPTED: &[&str] = &[
     "Goblin Anarchomancer",
     "Elder Gargaroth",
     "Fierce Empath",
+    "Thornspire Verge",
+    "Reflecting Pool",
+    "Stomping Ground",
+    "Kessig Wolf Run",
+    "Xenagos, God of Revels",
+    "Nylea, God of the Hunt",
+    "Nylea, Keen-Eyed",
+    "Old Gnawbone",
+    "Balefire Dragon",
+    "Dragonborn Champion",
+    "Deus of Calamity",
+    "Kogla, the Titan Ape",
+    "Kogla and Yidaro",
+    "Malignus",
+    "Questing Beast",
+    "The Great Henge",
+    "Zilortha, Strength Incarnate",
+    "Vandalblast",
+    "Bloodthirster",
+    "Karlach, Fury of Avernus",
+    "Combat Celebrant",
+    "Hellkite Tyrant",
+    "Yavimaya, Cradle of Growth",
+    "Quartzwood Crasher",
+    "Ilharg, the Raze-Boar",
 ];
