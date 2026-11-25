@@ -446,6 +446,112 @@ pub fn script(name: &str) -> Option<Script> {
                 may(d, When::AnotherNontokenCreatureYouControlEnters, vec![that], vec![draw(1)]);
             },
         ),
+        // ---- Atraxa, Praetors' Voice (Adam) ----
+        "Gavony Township" => s(
+            &["{T}: Add {C}.", "{2}{G}{W}, {T}: Put a +1/+1 counter on each creature you control."],
+            |d, _| {
+                colorless(d);
+                activated(d, "{2}{G}{W}", true, vec![], vec![Effect::CountersAll { who: Who::You, n: 1 }]);
+            },
+        ),
+        // ---- Lonis, Cryptozoologist (Spr3adsh33t) ----
+        "Adrix and Nev, Twincasters" => s(
+            &[
+                "Ward {2}",
+                "If one or more tokens would be created under your control, twice that many of those tokens are created instead.",
+            ],
+            |d, _| {
+                d.ward = ManaCost::parse("{2}");
+                d.doubles_tokens = true;
+            },
+        ),
+        "Displace" => s(
+            &["Exile up to two target creatures you control, then return those cards to the battlefield under their owner's control."],
+            |d, _| d.spell = Some(up_to(vec![YOUR_CREATURE, YOUR_CREATURE], vec![Effect::BlinkSlot(0), Effect::BlinkSlot(1)])),
+        ),
+        "Ghostly Flicker" => s(
+            &["Exile two target artifacts, creatures, and/or lands you control, then return those cards to the battlefield under your control."],
+            |d, _| {
+                let yours = Filter {
+                    players: false,
+                    planeswalkers: false,
+                    artifacts: true,
+                    lands: true,
+                    controller: Controller::You,
+                    ..Filter::ANY
+                };
+                spell(d, vec![yours, yours], vec![Effect::BlinkSlot(0), Effect::BlinkSlot(1)]);
+            },
+        ),
+        "Blur" => s(
+            &[
+                "Exile target creature you control, then return that card to the battlefield under its owner's control.",
+                "Draw a card.",
+            ],
+            |d, _| spell(d, vec![YOUR_CREATURE], vec![Effect::BlinkSlot(0), draw(1)]),
+        ),
+        "Botanical Sanctum" => s(
+            &["This land enters tapped unless you control two or fewer other lands.", "{T}: Add {G} or {U}."],
+            |d, _| {
+                d.enters_tapped_unless_at_most_lands = Some(2);
+                lands_mana(d, &[Color::Green, Color::Blue]);
+            },
+        ),
+        "Vineglimmer Snarl" => s(
+            &[
+                "As this land enters, you may reveal a Forest or Island card from your hand. If you don't, this land enters tapped.",
+                "{T}: Add {G} or {U}.",
+            ],
+            |d, _| {
+                d.enters_tapped_unless_reveal = Some(["Forest", "Island"]);
+                lands_mana(d, &[Color::Green, Color::Blue]);
+            },
+        ),
+        "Simic Cluestone" => s(&["{T}: Add {G} or {U}.", "{G}{U}, {T}, Sacrifice this artifact: Draw a card."], |d, _| {
+            lands_mana(d, &[Color::Green, Color::Blue]);
+            let n = activated(d, "{G}{U}", true, vec![], vec![draw(1)]);
+            d.activated[n].sacrifice_self = true;
+        }),
+        "Shrieking Drake" => s(&["When this creature enters, return a creature you control to its owner's hand."], |d, _| {
+            on(d, When::Enters, vec![], vec![Effect::ReturnCreatureYouControl])
+        }),
+        "Kiora's Follower" => s(&["{T}: Untap another target permanent."], |d, _| {
+            let another = Filter {
+                players: false,
+                creatures: false,
+                planeswalkers: false,
+                any_permanent: true,
+                other: true,
+                ..Filter::ANY
+            };
+            activated(d, "", true, vec![another], vec![Effect::UntapTarget(0)]);
+        }),
+        "Thassa, Deep-Dwelling" => s(
+            &[
+                "As long as your devotion to blue is less than five, Thassa isn't a creature.",
+                "At the beginning of your end step, exile up to one other target creature you control, then return that card to the battlefield under your control.",
+                "{3}{U}: Tap another target creature.",
+            ],
+            |d, _| {
+                d.creature_unless_devotion = Some(([false, true, false, false, false], 5));
+                let other = Filter { other: true, ..YOUR_CREATURE };
+                d.triggers.push(Trigger {
+                    when: When::EndStep { your_turn_only: true },
+                    ability: up_to(vec![other], vec![Effect::BlinkSlot(0)]),
+                });
+                activated(d, "{3}{U}", false, vec![Filter { other: true, ..CREATURE }], vec![Effect::Tap(0)]);
+            },
+        ),
+        "Displacer Kitten" => s(
+            &["Avoidance — Whenever you cast a noncreature spell, exile up to one target nonland permanent you control, then return that card to the battlefield under its owner's control."],
+            |d, _| {
+                let yours = Filter { controller: Controller::Any, ..OPP_NONLAND }.controlled_by(Controller::You);
+                d.triggers.push(Trigger {
+                    when: When::YouCastNoncreature,
+                    ability: up_to(vec![yours], vec![Effect::BlinkSlot(0)]),
+                });
+            },
+        ),
         _ => None,
     }
 }
@@ -521,4 +627,17 @@ pub const PG_D3_SCRIPTED: &[&str] = &[
     "Pestermite",
     "Shared Summons",
     "Soul of the Harvest",
+    // Atraxa, Praetors' Voice (Gavony Township); Lonis, Cryptozoologist (the rest)
+    "Gavony Township",
+    "Adrix and Nev, Twincasters",
+    "Displace",
+    "Ghostly Flicker",
+    "Blur",
+    "Botanical Sanctum",
+    "Vineglimmer Snarl",
+    "Simic Cluestone",
+    "Shrieking Drake",
+    "Kiora's Follower",
+    "Thassa, Deep-Dwelling",
+    "Displacer Kitten",
 ];

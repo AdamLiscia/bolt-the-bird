@@ -1009,3 +1009,181 @@ fn soul_of_the_harvest_draws_for_other_nontoken_creatures() {
     play(&mut g, l, false, &[], &[Action::Yes]);
     assert_eq!(g.players[0].hand.len(), h);
 }
+
+// ---- Atraxa, Praetors' Voice (Adam) ----
+
+#[test]
+fn gavony_township_puts_a_counter_on_each_of_your_creatures() {
+    let mut g = table();
+    let t = put(&mut g, 0, "Gavony Township");
+    let a = put(&mut g, 0, "Merfolk Looter");
+    let b = put(&mut g, 0, "Thought Courier");
+    let theirs = put(&mut g, 1, "Merfolk Looter");
+    act(&mut g, Action::Activate(t, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        (g.obj(a).counters, g.obj(b).counters, g.obj(theirs).counters),
+        (1, 1, 0)
+    );
+}
+
+// ---- Lonis, Cryptozoologist (Spr3adsh33t) ----
+
+#[test]
+fn adrix_and_nev_double_your_tokens() {
+    let mut g = table();
+    let an = put(&mut g, 0, "Adrix and Nev, Twincasters");
+    assert!(g.def_of(an).ward.is_some());
+    let c = hand(&mut g, 0, "City of Death");
+    play(&mut g, c, false, &[], &[]);
+    assert_eq!(tokens(&g, 0, "Treasure").len(), 2);
+}
+
+#[test]
+fn displace_blinks_up_to_two_of_your_creatures() {
+    let mut g = table();
+    let a = put(&mut g, 0, "Elvish Visionary");
+    let b = put(&mut g, 0, "Elvish Visionary");
+    let d = hand(&mut g, 0, "Displace");
+    let h = g.players[0].hand.len();
+    play(&mut g, d, false, &[obj(a), obj(b)], &[]);
+    assert_eq!(g.players[0].hand.len(), h - 1 + 2, "both entered again");
+}
+
+#[test]
+fn ghostly_flicker_blinks_two_of_your_artifacts_creatures_or_lands() {
+    let mut g = table();
+    let v = put(&mut g, 0, "Elvish Visionary");
+    let ring = put(&mut g, 0, "Sol Ring");
+    let theirs = put(&mut g, 1, "Merfolk Looter");
+    let gf = hand(&mut g, 0, "Ghostly Flicker");
+    act(&mut g, Action::Cast(gf));
+    assert!(
+        !g.legal_actions().contains(&Action::Target(obj(theirs))),
+        "yours only"
+    );
+    let h = g.players[0].hand.len();
+    act(&mut g, Action::Target(obj(v)));
+    act(&mut g, Action::Target(obj(ring)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].hand.len(), h + 1, "the Visionary entered again");
+    assert_eq!(g.obj(ring).zone, Zone::Battlefield);
+}
+
+#[test]
+fn blur_blinks_a_creature_and_draws() {
+    let mut g = table();
+    let v = put(&mut g, 0, "Elvish Visionary");
+    let b = hand(&mut g, 0, "Blur");
+    let h = g.players[0].hand.len();
+    play(&mut g, b, false, &[obj(v)], &[]);
+    assert_eq!(g.players[0].hand.len(), h - 1 + 2);
+}
+
+#[test]
+fn botanical_sanctum_enters_tapped_after_three_other_lands() {
+    let mut g = game(&["Plains", "Plains"]);
+    let c = hand(&mut g, 0, "Botanical Sanctum");
+    act(&mut g, Action::PlayLand(c));
+    assert!(!g.obj(c).tapped);
+    assert_eq!(colors(&g, c), [false, true, false, false, true]);
+    let mut g = game(&["Plains", "Plains", "Plains"]);
+    let c = hand(&mut g, 0, "Botanical Sanctum");
+    act(&mut g, Action::PlayLand(c));
+    assert!(g.obj(c).tapped);
+}
+
+#[test]
+fn vineglimmer_snarl_enters_untapped_only_revealing_a_forest_or_island() {
+    let mut g = game(&[]);
+    let c = hand(&mut g, 0, "Vineglimmer Snarl");
+    act(&mut g, Action::PlayLand(c));
+    assert!(g.obj(c).tapped, "a hand of Plains");
+    let mut g = game(&[]);
+    hand(&mut g, 0, "Forest");
+    let c = hand(&mut g, 0, "Vineglimmer Snarl");
+    act(&mut g, Action::PlayLand(c));
+    assert!(!g.obj(c).tapped);
+    assert_eq!(colors(&g, c), [false, true, false, false, true]);
+}
+
+#[test]
+fn simic_cluestone_taps_for_green_or_blue_and_cashes_in_for_a_card() {
+    let mut g = table();
+    let c = put(&mut g, 0, "Simic Cluestone");
+    assert_eq!(colors(&g, c), [false, true, false, false, true]);
+    let h = g.players[0].hand.len();
+    act(&mut g, Action::Activate(c, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(c).zone, Zone::Graveyard);
+    assert_eq!(g.players[0].hand.len(), h + 1);
+}
+
+#[test]
+fn shrieking_drake_returns_a_creature_you_control() {
+    let mut g = table();
+    let v = put(&mut g, 0, "Elvish Visionary");
+    let d = hand(&mut g, 0, "Shrieking Drake");
+    play(&mut g, d, false, &[], &[Action::Pick(v)]);
+    assert_eq!(g.obj(v).zone, Zone::Hand);
+    assert_eq!(g.obj(d).zone, Zone::Battlefield);
+}
+
+#[test]
+fn kioras_follower_untaps_another_permanent() {
+    let mut g = table();
+    let k = put(&mut g, 0, "Kiora's Follower");
+    to_main1(&mut g, 5, 0);
+    let opt = hand(&mut g, 0, "Opt");
+    play(&mut g, opt, false, &[], &[Action::No]);
+    let land = g
+        .permanents(0)
+        .find(|&x| g.types_of(x).land && g.obj(x).tapped)
+        .expect("Opt tapped a land");
+    act(&mut g, Action::Activate(k, 0));
+    assert!(!g.legal_actions().contains(&Action::Target(obj(k))), "another");
+    act(&mut g, Action::Target(obj(land)));
+    resolve_all(&mut g, &[]);
+    assert!(!g.obj(land).tapped);
+}
+
+#[test]
+fn thassa_is_no_creature_without_devotion_taps_creatures_and_blinks_at_end_step() {
+    let mut g = table();
+    let t = put(&mut g, 0, "Thassa, Deep-Dwelling");
+    assert!(!g.types_of(t).creature, "devotion to blue 1");
+    let theirs = put(&mut g, 1, "Merfolk Looter");
+    act(&mut g, Action::Activate(t, 0));
+    act(&mut g, Action::Target(obj(theirs)));
+    resolve_all(&mut g, &[]);
+    assert!(g.obj(theirs).tapped);
+
+    let v = put(&mut g, 0, "Elvish Visionary");
+    let h = g.players[0].hand.len();
+    while !matches!(g.pending, Pending::ChooseTarget(_)) {
+        let a = match g.pending {
+            Pending::DeclareAttackers(_) => Action::FinishAttacks,
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.step, Step::End);
+    resolve_all(&mut g, &[Action::Target(obj(v))]);
+    assert_eq!(g.players[0].hand.len(), h + 1, "the Visionary entered again");
+}
+
+#[test]
+fn displacer_kitten_blinks_a_permanent_when_you_cast_a_noncreature_spell() {
+    let mut g = table();
+    put(&mut g, 0, "Displacer Kitten");
+    let v = put(&mut g, 0, "Elvish Visionary");
+    let opt = hand(&mut g, 0, "Opt");
+    let h = g.players[0].hand.len();
+    play(&mut g, opt, false, &[], &[Action::Target(obj(v)), Action::No]);
+    assert_eq!(
+        g.players[0].hand.len(),
+        h - 1 + 1 + 1,
+        "Opt's card and the Visionary's"
+    );
+}
