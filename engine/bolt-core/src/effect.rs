@@ -1086,6 +1086,20 @@ pub enum Effect {
     Cascade,
     /// Permanents you control gain these keywords until end of turn (Heroic Intervention).
     GrantAllPermanentsYouControl(Keywords),
+    /// Destroy the permanent in `slot`; its controller may search for a basic land card and put it
+    /// onto the battlefield (untapped) (Assassin's Trophy).
+    DestroyControllerMayFetchBasic(u8),
+    /// Return each nonland permanent you don't control to its owner's hand (overloaded Cyclonic
+    /// Rift).
+    BounceOpponentsNonland,
+    /// Put a +1/+1 counter on each creature you control with this subtype.
+    CountersOnYourSubtype(&'static str),
+    /// Return all land cards from your graveyard to the battlefield tapped.
+    ReturnLandsFromGraveyardTapped,
+    /// Scute Swarm: a token (`def`), or with six or more lands a token copy of the source.
+    InsectOrCopyWithSixLands {
+        def: usize,
+    },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1591,6 +1605,8 @@ pub enum When {
     YouCastEnchantmentFromHand,
     /// "Whenever this creature blocks" (CR 509.1i), as blockers are declared.
     Blocks,
+    /// "Whenever you scry or surveil".
+    YouScryOrSurveil,
 }
 
 #[derive(Clone, Debug, PartialEq)]

@@ -36,6 +36,7 @@ keywords! {
     UNBLOCKABLE = 14, "Can't be blocked";
     CANT_BLOCK = 15, "Can't block";
     ISLANDWALK = 16, "Islandwalk";
+    SHROUD = 17, "Shroud";
 }
 
 impl Keywords {
@@ -152,6 +153,8 @@ pub enum Reduction {
     PerTokenYouControl,
     /// ... {1} less for each creature that attacked this turn (Rowdy Research).
     PerCreatureAttackedThisTurn,
+    /// Delirium: ... {n} less with four or more card types among cards in your graveyard.
+    Delirium(u8),
 }
 
 /// An activated ability: "[cost]: [effect]" (CR 602).
@@ -493,6 +496,34 @@ pub struct CardDef {
     pub triples_your_damage: bool,
     /// "Each spell you cast that's red or green costs {N} less to cast." (Goblin Anarchomancer)
     pub red_green_spell_discount: u8,
+    /// "As this land enters, you may pay 2 life. If you don't, it enters tapped." (shock lands)
+    pub shock_land: bool,
+    /// "You may play lands from your graveyard."
+    pub lands_from_graveyard: bool,
+    /// "You may play lands from the top of your library."
+    pub lands_from_top: bool,
+    /// "You may cast spells with mana value N or greater from the top of your library." (Glarb: 4)
+    pub top_spells_min_mana_value: Option<u32>,
+    /// "You may cast [subtype] spells from the top of your library." (Traveling Chocobo: Bird)
+    pub top_spells_subtype: Option<&'static str>,
+    /// "If a [kind] entering causes a triggered ability of a permanent you control to trigger, that
+    /// ability triggers an additional time."
+    pub entering_triggers_again: Option<EntryDoubler>,
+    /// "Untap all permanents you control during each other player's untap step." (Seedborn Muse)
+    pub untaps_on_others_untap: bool,
+    /// Power and toughness each equal to the number of lands you control.
+    pub pt_lands: bool,
+}
+
+/// What entering makes triggers happen again (see [`CardDef::entering_triggers_again`]).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum EntryDoubler {
+    /// Any permanent (Yarok).
+    Permanent,
+    /// A land (Ancient Greenwarden).
+    Land,
+    /// A land or a permanent with this subtype (Traveling Chocobo: Bird).
+    LandOrSubtype(&'static str),
 }
 
 /// An Omen spell half: its name, cost, whether it's an instant, and what it does.
@@ -649,6 +680,14 @@ impl CardDef {
             mana_tap_damage: 0,
             triples_your_damage: false,
             red_green_spell_discount: 0,
+            shock_land: false,
+            lands_from_graveyard: false,
+            lands_from_top: false,
+            top_spells_min_mana_value: None,
+            top_spells_subtype: None,
+            entering_triggers_again: None,
+            untaps_on_others_untap: false,
+            pt_lands: false,
         }
     }
 
@@ -784,6 +823,14 @@ impl CardDef {
             mana_tap_damage: 0,
             triples_your_damage: false,
             red_green_spell_discount: 0,
+            shock_land: false,
+            lands_from_graveyard: false,
+            lands_from_top: false,
+            top_spells_min_mana_value: None,
+            top_spells_subtype: None,
+            entering_triggers_again: None,
+            untaps_on_others_untap: false,
+            pt_lands: false,
         }
     }
 
@@ -919,6 +966,14 @@ impl CardDef {
             mana_tap_damage: 0,
             triples_your_damage: false,
             red_green_spell_discount: 0,
+            shock_land: false,
+            lands_from_graveyard: false,
+            lands_from_top: false,
+            top_spells_min_mana_value: None,
+            top_spells_subtype: None,
+            entering_triggers_again: None,
+            untaps_on_others_untap: false,
+            pt_lands: false,
         }
     }
 }
