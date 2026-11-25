@@ -52,6 +52,17 @@ fn talisman(d: &mut CardDef, a: Color, b: Color) {
     d.pain_colored = true;
 }
 
+/// "Each player draws a card." (two players: you, then the opponent)
+fn each_player_draws() -> Vec<Effect> {
+    vec![
+        draw(1),
+        Effect::Draw {
+            who: Who::EachOpponent,
+            n: 1,
+        },
+    ]
+}
+
 const LOOT: &str = "{T}: Draw a card, then discard a card.";
 
 pub fn script(name: &str) -> Option<Script> {
@@ -277,6 +288,88 @@ pub fn script(name: &str) -> Option<Script> {
             },
         ),
         "Sylvan Caryatid" => s(&["{T}: Add one mana of any color."], |d, _| lands_mana(d, &Color::ALL)),
+        // ---- Sheoldred, the Apocalypse (Spr3adsh33t) ----
+        "Decanter of Endless Water" => s(
+            &["You have no maximum hand size.", "{T}: Add one mana of any color."],
+            |d, _| {
+                d.no_max_hand_size = true;
+                lands_mana(d, &Color::ALL);
+            },
+        ),
+        "Temple Bell" => s(&["{T}: Each player draws a card."], |d, _| {
+            activated(d, "", true, vec![], each_player_draws());
+        }),
+        "Charcoal Diamond" => s(&["This artifact enters tapped.", "{T}: Add {B}."], |d, _| {
+            d.enters_tapped = true;
+            lands_mana(d, &[Color::Black]);
+        }),
+        "Fate Unraveler" => s(
+            &["Whenever an opponent draws a card, this creature deals 1 damage to that player."],
+            |d, _| on(d, When::OpponentDraws, vec![], vec![damage(1, Recipient::EachOpponent)]),
+        ),
+        "Underworld Dreams" => s(
+            &["Whenever an opponent draws a card, this enchantment deals 1 damage to that player."],
+            |d, _| on(d, When::OpponentDraws, vec![], vec![damage(1, Recipient::EachOpponent)]),
+        ),
+        "Font of Mythos" => s(
+            &["At the beginning of each player's draw step, that player draws two additional cards."],
+            |d, _| on(d, When::EachDrawStep, vec![], vec![Effect::ActivePlayerDraws(2)]),
+        ),
+        "Greed" => s(&["{B}, Pay 2 life: Draw a card."], |d, _| {
+            let n = activated(d, "{B}", false, vec![], vec![draw(1)]);
+            d.activated[n].life = 2;
+        }),
+        "Infernal Grasp" => s(&["Destroy target creature. You lose 2 life."], |d, _| {
+            spell(d, vec![CREATURE], vec![Effect::Destroy(0), Effect::LoseLife { who: Who::You, n: 2 }])
+        }),
+        "Liliana's Caress" => s(&["Whenever an opponent discards a card, that player loses 2 life."], |d, _| {
+            // Slot 0 is the discarded card (not a target); "that player" is the one opponent.
+            let that = Filter { triggering: true, ..graveyard_cards(false, Controller::Any) };
+            on(d, When::OpponentDiscards, vec![that], vec![Effect::LoseLife { who: Who::EachOpponent, n: 2 }])
+        }),
+        "Master of the Feast" => s(&["At the beginning of your upkeep, each opponent draws a card."], |d, _| {
+            on(d, When::Upkeep { your_turn_only: true }, vec![], vec![Effect::Draw { who: Who::EachOpponent, n: 1 }])
+        }),
+        "Mikokoro, Center of the Sea" => s(&["{T}: Add {C}.", "{2}, {T}: Each player draws a card."], |d, _| {
+            colorless(d);
+            activated(d, "{2}", true, vec![], each_player_draws());
+        }),
+        "Bloodthirsty Aerialist" => s(&["Whenever you gain life, put a +1/+1 counter on this creature."], |d, _| {
+            on(d, When::YouGainLife, vec![], vec![Effect::CountersSelf { n: 1 }])
+        }),
+        "Epicure of Blood" => s(&["Whenever you gain life, each opponent loses 1 life."], |d, _| {
+            on(d, When::YouGainLife, vec![], vec![Effect::LoseLife { who: Who::EachOpponent, n: 1 }])
+        }),
+        "Gixian Puppeteer" => s(
+            &[
+                "Whenever you draw your second card each turn, each opponent loses 2 life and you gain 2 life.",
+                "When this creature dies, return another target creature card with mana value 3 or less from your graveyard to the battlefield.",
+            ],
+            |d, _| {
+                on(
+                    d,
+                    When::YouDrawSecond,
+                    vec![],
+                    vec![Effect::LoseLife { who: Who::EachOpponent, n: 2 }, Effect::GainLife { who: Who::You, n: 2 }],
+                );
+                let card = Filter { other: true, max_mana_value: Some(3), ..graveyard_cards(true, Controller::You) };
+                on(d, When::Dies, vec![card], vec![Effect::Reanimate(0)]);
+            },
+        ),
+        "Ob Nixilis, the Hate-Twisted" => s(
+            &[
+                "Whenever an opponent draws a card, Ob Nixilis deals 1 damage to that player.",
+                "−2: Destroy target creature. Its controller draws two cards.",
+            ],
+            |d, _| {
+                on(d, When::OpponentDraws, vec![], vec![damage(1, Recipient::EachOpponent)]);
+                loyalty(
+                    d,
+                    -2,
+                    Ability::new(vec![CREATURE], vec![Effect::Destroy(0), Effect::Draw { who: Who::ControllerOf(0), n: 2 }]),
+                );
+            },
+        ),
         _ => None,
     }
 }
@@ -323,4 +416,20 @@ pub const PG_D3_SCRIPTED: &[&str] = &[
     "Preordain",
     "City of Death",
     "Sylvan Caryatid",
+    // Sheoldred, the Apocalypse
+    "Decanter of Endless Water",
+    "Temple Bell",
+    "Charcoal Diamond",
+    "Fate Unraveler",
+    "Underworld Dreams",
+    "Font of Mythos",
+    "Greed",
+    "Infernal Grasp",
+    "Liliana's Caress",
+    "Master of the Feast",
+    "Mikokoro, Center of the Sea",
+    "Bloodthirsty Aerialist",
+    "Epicure of Blood",
+    "Gixian Puppeteer",
+    "Ob Nixilis, the Hate-Twisted",
 ];

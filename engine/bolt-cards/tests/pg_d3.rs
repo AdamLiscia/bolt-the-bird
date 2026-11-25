@@ -686,3 +686,165 @@ fn sylvan_caryatid_taps_for_any_color() {
     assert_eq!(colors(&g, c), [true; 5]);
     assert!(g.keywords(c).has(Keywords::DEFENDER) && g.keywords(c).has(Keywords::HEXPROOF));
 }
+
+// ---- Sheoldred, the Apocalypse (Spr3adsh33t) ----
+
+#[test]
+fn decanter_of_endless_water_taps_for_any_color() {
+    let mut g = game(&[]);
+    let d = put(&mut g, 0, "Decanter of Endless Water");
+    assert_eq!(colors(&g, d), [true; 5]);
+    assert!(g.def_of(d).no_max_hand_size);
+}
+
+#[test]
+fn temple_bell_makes_each_player_draw_and_fate_unraveler_punishes_it() {
+    let mut g = table();
+    let bell = put(&mut g, 0, "Temple Bell");
+    put(&mut g, 0, "Fate Unraveler");
+    let (h0, h1) = (g.players[0].hand.len(), g.players[1].hand.len());
+    act(&mut g, Action::Activate(bell, 0));
+    resolve_all(&mut g, &[]);
+    assert!(g.obj(bell).tapped);
+    assert_eq!(
+        (g.players[0].hand.len(), g.players[1].hand.len()),
+        (h0 + 1, h1 + 1)
+    );
+    assert_eq!(g.players[1].life, 39, "Fate Unraveler: 1 for their draw");
+    assert_eq!(g.players[0].life, 40);
+}
+
+#[test]
+fn underworld_dreams_pings_the_opponent_for_each_draw() {
+    let mut g = table();
+    put(&mut g, 0, "Underworld Dreams");
+    let m = put(&mut g, 0, "Mikokoro, Center of the Sea");
+    assert!(g.mana_sources(0).iter().any(|&(x, s)| x == m && s.colorless));
+    let (h0, h1) = (g.players[0].hand.len(), g.players[1].hand.len());
+    act(&mut g, Action::Activate(m, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        (g.players[0].hand.len(), g.players[1].hand.len()),
+        (h0 + 1, h1 + 1)
+    );
+    assert_eq!(g.players[1].life, 39);
+}
+
+#[test]
+fn charcoal_diamond_enters_tapped_and_taps_for_black() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Charcoal Diamond");
+    play(&mut g, c, false, &[], &[]);
+    assert!(g.obj(c).tapped);
+    to_main1(&mut g, 5, 0);
+    assert_eq!(colors(&g, c), [false, false, true, false, false]);
+}
+
+#[test]
+fn font_of_mythos_gives_each_draw_step_two_more_cards() {
+    let mut g = table();
+    put(&mut g, 0, "Font of Mythos");
+    let h0 = g.players[0].hand.len();
+    to_main1(&mut g, 5, 0);
+    assert_eq!(g.players[0].hand.len(), h0 + 3);
+    let h1 = g.players[1].hand.len();
+    to_main1(&mut g, 6, 1);
+    assert_eq!(g.players[1].hand.len(), h1 + 3, "theirs too");
+}
+
+#[test]
+fn greed_pays_b_and_2_life_for_a_card() {
+    let mut g = table();
+    let gr = put(&mut g, 0, "Greed");
+    let h = g.players[0].hand.len();
+    act(&mut g, Action::Activate(gr, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].life, 38);
+    assert_eq!(g.players[0].hand.len(), h + 1);
+}
+
+#[test]
+fn infernal_grasp_destroys_a_creature_for_2_life() {
+    let mut g = table();
+    let t = put(&mut g, 1, "Merfolk Looter");
+    let ig = hand(&mut g, 0, "Infernal Grasp");
+    play(&mut g, ig, false, &[obj(t)], &[]);
+    assert_eq!(g.obj(t).zone, Zone::Graveyard);
+    assert_eq!(g.players[0].life, 38);
+}
+
+#[test]
+fn lilianas_caress_drains_2_per_opponent_discard() {
+    let mut g = table();
+    put(&mut g, 0, "Liliana's Caress");
+    let s = put(&mut g, 0, "Geier Reach Sanitarium");
+    let mine = hand(&mut g, 0, "Counterspell");
+    let theirs = hand(&mut g, 1, "Entomb");
+    act(&mut g, Action::Activate(s, 0));
+    resolve_all(&mut g, &[Action::Discard(mine), Action::Discard(theirs)]);
+    assert_eq!(g.players[1].life, 38);
+    assert_eq!(g.players[0].life, 40, "your own discard doesn't count");
+}
+
+#[test]
+fn master_of_the_feast_feeds_the_opponent_on_your_upkeep() {
+    let mut g = table();
+    let m = put(&mut g, 0, "Master of the Feast");
+    let h1 = g.players[1].hand.len();
+    to_main1(&mut g, 5, 0);
+    assert_eq!(g.players[1].hand.len(), h1 + 1);
+    assert!(g.keywords(m).has(Keywords::FLYING));
+}
+
+#[test]
+fn bloodthirsty_aerialist_and_epicure_of_blood_feed_on_lifegain() {
+    let mut g = table();
+    let a = put(&mut g, 0, "Bloodthirsty Aerialist");
+    put(&mut g, 0, "Epicure of Blood");
+    let mender = hand(&mut g, 0, "Circuit Mender"); // enters: gain 2 life
+    play(&mut g, mender, false, &[], &[]);
+    assert_eq!(g.players[0].life, 42);
+    assert_eq!(g.obj(a).counters, 1);
+    assert_eq!(g.players[1].life, 39);
+}
+
+#[test]
+fn gixian_puppeteer_drains_on_the_second_draw_and_reanimates_on_death() {
+    let mut g = table();
+    let gp = put(&mut g, 0, "Gixian Puppeteer");
+    let gr = put(&mut g, 0, "Greed");
+    act(&mut g, Action::Activate(gr, 0)); // the second card this turn
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].life, 38);
+    assert_eq!(g.players[0].life, 40, "paid 2, gained 2");
+
+    let small = g.add_card(0, cid("Merfolk Looter"), Zone::Graveyard);
+    g.add_card(0, cid("Thought Courier"), Zone::Graveyard);
+    let ig = hand(&mut g, 0, "Infernal Grasp");
+    act(&mut g, Action::Cast(ig));
+    act(&mut g, Action::Target(obj(gp)));
+    while !matches!(g.pending, Pending::ChooseTarget(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(
+        !g.legal_actions().contains(&Action::Target(obj(gp))),
+        "another creature card"
+    );
+    resolve_all(&mut g, &[Action::Target(obj(small))]);
+    assert_eq!(g.obj(small).zone, Zone::Battlefield);
+}
+
+#[test]
+fn ob_nixilis_hate_twisted_kills_and_punishes_the_draws() {
+    let mut g = table();
+    let t = put(&mut g, 1, "Merfolk Looter");
+    let ob = hand(&mut g, 0, "Ob Nixilis, the Hate-Twisted");
+    play(&mut g, ob, false, &[], &[]);
+    let h1 = g.players[1].hand.len();
+    act(&mut g, Action::Loyalty(ob, 0));
+    act(&mut g, Action::Target(obj(t)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(t).zone, Zone::Graveyard);
+    assert_eq!(g.players[1].hand.len(), h1 + 2, "its controller draws two");
+    assert_eq!(g.players[1].life, 38, "1 damage per card drawn");
+}
