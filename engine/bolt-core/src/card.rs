@@ -235,6 +235,8 @@ pub struct Activated {
     /// Only while it's a copy that keeps its own abilities (Sakashima the Impostor's "{2}{U}{U}:
     /// Return ..."): the printed card itself doesn't have it.
     pub copy_only: bool,
+    /// "Activate only if an opponent controls N or more lands." (Tectonic Edge)
+    pub opponent_min_lands: u8,
 }
 
 /// The printed card. Shared by every copy; per-copy state lives on the game object.
@@ -610,6 +612,8 @@ pub struct CardDef {
     pub copy_keeps_abilities: bool,
     /// "The \"legend rule\" doesn't apply to permanents you control."
     pub no_legend_rule: bool,
+    /// "Green spells you cast cost {N} less to cast." (Emerald Medallion)
+    pub green_spell_discount: u8,
 }
 
 /// What entering makes triggers happen again (see [`CardDef::entering_triggers_again`]).
@@ -820,6 +824,7 @@ impl CardDef {
             copy_only_yours: false,
             copy_keeps_abilities: false,
             no_legend_rule: false,
+            green_spell_discount: 0,
         }
     }
 
@@ -998,6 +1003,7 @@ impl CardDef {
             copy_only_yours: false,
             copy_keeps_abilities: false,
             no_legend_rule: false,
+            green_spell_discount: 0,
         }
     }
 
@@ -1176,6 +1182,7 @@ impl CardDef {
             copy_only_yours: false,
             copy_keeps_abilities: false,
             no_legend_rule: false,
+            green_spell_discount: 0,
         }
     }
 }

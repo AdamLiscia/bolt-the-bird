@@ -420,6 +420,7 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         copy_only_yours: false,
         copy_keeps_abilities: false,
         no_legend_rule: false,
+        green_spell_discount: 0,
     };
     def.color_identity = color_identity(o);
     def.phyrexian = phyrexian;

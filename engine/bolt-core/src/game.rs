@@ -899,6 +899,8 @@ pub enum Decision {
     ManifestDread { cards: Vec<ObjId> },
     /// `Pick` a face-down permanent you control to turn face up, or `No` (Zimone).
     TurnFaceUp,
+    /// `Pick` a land card in your hand to put onto the battlefield tapped, or `No` (once).
+    LandFromHandTapped,
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -3671,9 +3673,11 @@ impl Game {
                         .items
                         .iter()
                         .any(|i| i.kind == StackKind::Spell && i.source == id);
+                    let ty = self.types_of(id);
                     return f.spells
                         && is_spell
-                        && f.spell_creature.is_none_or(|c| c == self.types_of(id).creature)
+                        && f.spell_creature.is_none_or(|c| c == ty.creature)
+                        && (!f.spell_artifact_or_creature || ty.artifact || ty.creature)
                         && f.max_mana_value
                             .is_none_or(|m| self.def_of(id).cost.mana_value() <= m);
                 }
@@ -4561,6 +4565,15 @@ impl Game {
             } else {
                 0
             };
+        // Emerald Medallion: "Green spells you cast cost {1} less to cast."
+        let second = second
+            + if def.colors[4] {
+                self.permanents(p)
+                    .map(|x| self.def_of(x).green_spell_discount)
+                    .sum::<u8>()
+            } else {
+                0
+            };
         // Temur Battlecrier: during your turn, {1} less for each creature you control with power 4+.
         let battle: u8 = if self.active == p {
             let crier = self
@@ -5164,6 +5177,12 @@ impl Game {
                         .is_some_and(|(sub, n)| self.untapped_with(p, sub, id).len() < n as usize)
                     || !sorcery_ok
                     || self.permanents(p).count() < a.min_permanents as usize
+                    || (a.opponent_min_lands > 0
+                        && self
+                            .permanents(opponent(p))
+                            .filter(|&x| self.types_of(x).land)
+                            .count()
+                            < a.opponent_min_lands as usize)
                     || (a.your_turn_only && p != self.active)
                     || (a.if_card_left_graveyard && !self.graveyard_left_this_turn[p])
                     || (a.if_created_token_this_turn && self.token_created_turn[p] != self.turn)
@@ -5898,6 +5917,9 @@ impl Game {
                 self.move_to(c, Zone::Battlefield);
                 self.players[p].lands_played += 1;
                 self.passes = 0;
+                for q in 0..2 {
+                    self.fire(q, When::PlayerPlaysLand, None); // Horn of Greed
+                }
                 // "As this land enters, choose a creature type" (Secluded Courtyard).
                 let options = if self.def_of(c).choose_creature_type {
                     self.creature_types_known_to(p)
@@ -7233,6 +7255,8 @@ impl Game {
                     SearchFor::ColorlessNonland => !d.types.land && !d.colors.iter().any(|&c| c),
                     SearchFor::Land => d.types.land,
                     SearchFor::CreatureMvAtLeast(mv) => d.types.creature && d.cost.mana_value() >= mv,
+                    SearchFor::BasicLandSharingType => d.types.basic && d.types.land,
+                    SearchFor::ManaValue(mv) => d.cost.mana_value() == mv,
                 }
             })
             .collect()
@@ -7391,6 +7415,17 @@ impl Game {
                     .iter()
                     .copied()
                     .filter(|&c| c != *except && self.def_of(c).types.is_permanent())
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
+            Decision::LandFromHandTapped => {
+                let mut v: Vec<Action> = self.players[p]
+                    .hand
+                    .iter()
+                    .copied()
+                    .filter(|&x| self.def_of(x).types.land)
                     .map(Action::Pick)
                     .collect();
                 v.push(Action::No);
@@ -8342,6 +8377,17 @@ impl Game {
                         o.cast_free = true;
                     }
                 }
+                // Myriad Landscape: the rest share a basic land type with the first found.
+                let what = if what == SearchFor::BasicLandSharingType {
+                    const NAMES: [&str; 5] = ["Plains", "Island", "Swamp", "Mountain", "Forest"];
+                    let subs = &self.def_of(c).subtypes;
+                    SearchFor::LandTypes {
+                        types: NAMES.map(|n| subs.iter().any(|s| s == n)),
+                        basic: true,
+                    }
+                } else {
+                    what
+                };
                 if left > 1 && !self.library_matches(p, what).is_empty() {
                     self.ask(
                         p,
@@ -8444,6 +8490,11 @@ impl Game {
                     self.put_among_rest(p, rest, false);
                 }
             }
+            (Decision::LandFromHandTapped, Action::Pick(c)) => {
+                self.move_to(c, Zone::Battlefield);
+                self.obj_mut(c).tapped = true;
+            }
+            (Decision::LandFromHandTapped, _) => {}
             (Decision::ManifestDread { cards }, Action::Pick(c)) => {
                 self.manifest(p, c);
                 for x in cards {
@@ -10060,6 +10111,56 @@ impl Game {
                     }
                 } else if self.permanents(p).any(|x| self.can_turn_face_up(x)) {
                     self.ask(p, Decision::TurnFaceUp);
+                }
+            }
+            Effect::UntapLandsUpTo(n) => {
+                let mut lands: Vec<ObjId> = self
+                    .permanents(item.controller)
+                    .filter(|&l| self.types_of(l).land && self.obj(l).tapped)
+                    .collect();
+                // The lands that make the most colors first.
+                lands.sort_by_key(|&l| {
+                    std::cmp::Reverse(
+                        self.def_of(l)
+                            .mana
+                            .map_or(0, |m| m.colors.iter().filter(|&&b| b).count()),
+                    )
+                });
+                for l in lands.into_iter().take(n as usize) {
+                    self.untap_by_effect(l);
+                }
+            }
+            Effect::MayPutLandFromHandTapped => {
+                let p = item.controller;
+                if self.players[p].hand.iter().any(|&x| self.def_of(x).types.land) {
+                    self.ask(p, Decision::LandFromHandTapped);
+                }
+            }
+            Effect::DrawMoreIfLands { n, more, lands } => {
+                let p = item.controller;
+                let have = self.permanents(p).filter(|&x| self.types_of(x).land).count();
+                for _ in 0..if have >= lands as usize { more } else { n } {
+                    self.draw(p);
+                }
+            }
+            Effect::SearchBasicsPerAttackersTapped => {
+                let p = item.controller;
+                let attacking = self.combat.as_ref().map_or(0, |c| {
+                    c.attackers
+                        .iter()
+                        .filter(|&&a| self.obj(a).controller != p)
+                        .count()
+                });
+                if attacking > 0 {
+                    let left = attacking.min(u8::MAX as usize) as u8;
+                    self.ask(
+                        p,
+                        Decision::Search {
+                            what: SearchFor::BasicLand,
+                            to: SearchTo::Battlefield { tapped: true },
+                            left,
+                        },
+                    );
                 }
             }
             Effect::ChangeTargets(slot) => {

@@ -96,6 +96,8 @@ pub struct Filter {
     /// Abilities on the stack too ("target spell or ability"): an activated or triggered ability is
     /// targeted as its source object (the topmost of that source's abilities).
     pub abilities: bool,
+    /// Artifact or creature spells only (Scatter Ray), with `spells`.
+    pub spell_artifact_or_creature: bool,
 }
 
 impl Filter {
@@ -142,6 +144,7 @@ impl Filter {
         nontoken: false,
         entered_this_turn: false,
         abilities: false,
+        spell_artifact_or_creature: false,
     };
 
     pub const CREATURE: Filter = Filter {
@@ -1249,6 +1252,21 @@ pub enum Effect {
     /// Zimone: the first time this ability resolves this turn, manifest dread (CR 701.62);
     /// otherwise you may turn a face-down permanent you control face up.
     ManifestDreadFirstElseTurnFaceUp,
+    /// Untap up to `n` lands you control (Frantic Search): tapped ones, those making the most colors
+    /// first.
+    UntapLandsUpTo(u8),
+    /// "You may put a land card from your hand onto the battlefield tapped." (Zimone, Quandrix
+    /// Prodigy)
+    MayPutLandFromHandTapped,
+    /// Draw `n`, or `more` if you control `lands` or more lands.
+    DrawMoreIfLands {
+        n: u8,
+        more: u8,
+        lands: u8,
+    },
+    /// Search for up to X basic land cards, X the creatures attacking you, put them onto the
+    /// battlefield tapped (Jaheira's Respite).
+    SearchBasicsPerAttackersTapped,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1279,6 +1297,11 @@ pub enum SearchFor {
     Land,
     /// A creature card with mana value at least this (Fierce Empath).
     CreatureMvAtLeast(u32),
+    /// A basic land card; with more to find, the rest must share a basic land type with the first
+    /// found (Myriad Landscape: "up to two basic land cards that share a land type").
+    BasicLandSharingType,
+    /// A card with exactly this mana value (transmute).
+    ManaValue(u32),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1796,6 +1819,8 @@ pub enum When {
     YouCastGreenPermanent,
     /// "Whenever one or more land cards are put into your graveyard from your library".
     LandCardsMilledToYourGraveyard,
+    /// "Whenever a player plays a land" (Horn of Greed): fires for every player's permanents.
+    PlayerPlaysLand,
 }
 
 #[derive(Clone, Debug, PartialEq)]
