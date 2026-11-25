@@ -982,3 +982,171 @@ fn lotus_cobra_adds_mana_on_landfall() {
     assert_eq!(g.players[0].pool.len(), 1);
     assert_eq!(g.players[0].pool[0].colors, [true; 5]);
 }
+
+// ---- Batch 6 ----
+
+fn play_land(g: &mut Game, name: &str) -> ObjId {
+    let l = hand(g, 0, name);
+    act(g, Action::PlayLand(l));
+    l
+}
+
+#[test]
+fn checklands_temples_and_other_taplands() {
+    for (name, needs, color) in [
+        ("Rootbound Crag", "Forest", 3),
+        ("Sulfur Falls", "Island", 1),
+        ("Sunpetal Grove", "Plains", 0),
+        ("Woodland Cemetery", "Swamp", 2),
+    ] {
+        let mut g = game(["Bello, Bard of the Brambles", "Ms. Bumbleflower"], &[]);
+        let l = play_land(&mut g, name);
+        assert!(g.obj(l).tapped, "{name}");
+        assert!(g.def_of(l).mana.unwrap().colors[color]);
+        let mut g = game(["Bello, Bard of the Brambles", "Ms. Bumbleflower"], &[needs]);
+        let l = play_land(&mut g, name);
+        assert!(!g.obj(l).tapped, "{name} with a {needs}");
+    }
+    let mut g = game(
+        ["Bello, Bard of the Brambles", "Ms. Bumbleflower"],
+        &["Forest", "Forest"],
+    );
+    let l = play_land(&mut g, "Razorverge Thicket");
+    assert!(!g.obj(l).tapped, "two other lands");
+    for name in [
+        "Temple of Abandon",
+        "Temple of Epiphany",
+        "Temple of Malady",
+        "Temple of Mystery",
+        "Temple of Plenty",
+        "Temple of Triumph",
+    ] {
+        let mut g = table();
+        let l = hand(&mut g, 0, name);
+        act(&mut g, Action::PlayLand(l));
+        resolve_all(&mut g, &[Action::No]);
+        assert!(g.obj(l).tapped, "{name}");
+    }
+    let mut g = table();
+    let l = play_land(&mut g, "Seaside Citadel");
+    assert!(g.obj(l).tapped);
+    assert_eq!(g.def_of(l).mana.unwrap().colors, [true, true, false, false, true]);
+    let mut g = table();
+    let l = play_land(&mut g, "Wooded Ridgeline");
+    assert!(g.obj(l).tapped && g.has_subtype(l, "Mountain"));
+    let mut g = table();
+    let l = hand(&mut g, 0, "Sheltered Thicket");
+    let n = g.players[0].hand.len();
+    act(&mut g, Action::Activate(l, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        (g.obj(l).zone, g.players[0].hand.len()),
+        (Zone::Graveyard, n),
+        "cycled"
+    );
+}
+
+#[test]
+fn ramp_rampant_growth_sakura_tribe_elder_thran_dynamo() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Rampant Growth");
+    let top = *g.players[0].library.last().unwrap();
+    play(&mut g, c, false, &[], &[Action::Pick(top)]);
+    assert_eq!(g.obj(top).zone, Zone::Battlefield);
+    assert!(g.obj(top).tapped);
+    let elder = put(&mut g, 0, "Sakura-Tribe Elder");
+    let top = *g.players[0].library.last().unwrap();
+    act(&mut g, Action::Activate(elder, 0));
+    resolve_all(&mut g, &[Action::Pick(top)]);
+    assert_eq!(g.obj(elder).zone, Zone::Graveyard);
+    assert_eq!(g.obj(top).zone, Zone::Battlefield);
+    let dynamo = put(&mut g, 0, "Thran Dynamo");
+    assert_eq!(g.mana_sources(0).iter().filter(|&&(x, _)| x == dynamo).count(), 3);
+}
+
+#[test]
+fn card_draw_secret_rendezvous_spirited_companion_sphinx() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Secret Rendezvous");
+    let (a, b) = (g.players[0].hand.len(), g.players[1].hand.len());
+    play(&mut g, c, false, &[Target::Player(1)], &[]);
+    assert_eq!(
+        (g.players[0].hand.len(), g.players[1].hand.len()),
+        (a - 1 + 3, b + 3)
+    );
+    let c = hand(&mut g, 0, "Spirited Companion");
+    let n = g.players[0].hand.len();
+    play(&mut g, c, false, &[], &[]);
+    assert_eq!(g.players[0].hand.len(), n);
+    let c = hand(&mut g, 0, "Sphinx of Enlightenment");
+    let (a, b) = (g.players[0].hand.len(), g.players[1].hand.len());
+    play(&mut g, c, false, &[], &[Action::Target(Target::Player(1))]);
+    assert_eq!(
+        (g.players[0].hand.len(), g.players[1].hand.len()),
+        (a - 1 + 3, b + 1)
+    );
+}
+
+#[test]
+fn swords_to_plowshares_and_rapid_hybridization() {
+    let mut g = table();
+    let titan = put(&mut g, 1, "Inferno Titan"); // power 6
+    let c = hand(&mut g, 0, "Swords to Plowshares");
+    play(&mut g, c, false, &[obj(titan)], &[]);
+    assert_eq!(g.obj(titan).zone, Zone::Exile);
+    assert_eq!(g.players[1].life, 46);
+    let mender = put(&mut g, 1, "Circuit Mender");
+    let c = hand(&mut g, 0, "Rapid Hybridization");
+    play(&mut g, c, false, &[obj(mender)], &[]);
+    assert_eq!(g.obj(mender).zone, Zone::Graveyard);
+    assert_eq!(named(&g, 1, "Frog Lizard").len(), 1);
+}
+
+#[test]
+fn selfless_spirit_squirrel_sovereign_and_zulaport_cutthroat() {
+    let mut g = table();
+    let spirit = put(&mut g, 0, "Selfless Spirit");
+    let mender = put(&mut g, 0, "Circuit Mender");
+    act(&mut g, Action::Activate(spirit, 0));
+    resolve_all(&mut g, &[]);
+    assert!(g.keywords(mender).has(Keywords::INDESTRUCTIBLE));
+    let sov = put(&mut g, 0, "Squirrel Sovereign");
+    let hazel = put(&mut g, 0, "Hazel of the Rootbloom"); // a Squirrel
+    assert_eq!(g.power(hazel), g.def_of(hazel).power + 1);
+    assert_eq!(g.power(sov), 2, "other Squirrels");
+    let mut g = table();
+    put(&mut g, 0, "Zulaport Cutthroat");
+    let m = put(&mut g, 0, "Circuit Mender");
+    g.move_card(m, Zone::Graveyard);
+    act(&mut g, Action::PassPriority);
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.players[0].life, g.players[1].life), (41, 39));
+}
+
+#[test]
+fn sun_titan_returns_a_cheap_permanent_and_sunscorch_regent_grows() {
+    let mut g = table();
+    let ring = g.add_card(0, bid("Sol Ring"), Zone::Graveyard);
+    let big = g.add_card(0, bid("Thran Dynamo"), Zone::Graveyard); // mana value 4
+    let t = hand(&mut g, 0, "Sun Titan");
+    act(&mut g, Action::Cast(t));
+    while !matches!(g.pending, Pending::ChooseTarget(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(!g.legal_actions().contains(&Action::Target(obj(big))));
+    resolve_all(&mut g, &[Action::Target(obj(ring)), Action::Yes]);
+    assert_eq!(g.obj(ring).zone, Zone::Battlefield);
+    assert!(g.keywords(t).has(Keywords::VIGILANCE));
+
+    let mut g = table();
+    let r = put(&mut g, 0, "Sunscorch Regent");
+    let theirs = hand(&mut g, 1, "Sol Ring");
+    g.start_turn(4, 1);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Cast(theirs));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(r).counters, 1);
+    assert_eq!(g.players[0].life, 41);
+}

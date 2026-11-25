@@ -448,6 +448,131 @@ pub fn script(name: &str) -> Option<Script> {
         "Lotus Cobra" => s(&["Landfall — Whenever a land you control enters, add one mana of any color."], |d, _| {
             on(d, When::LandYouControlEnters, vec![], vec![Effect::AddManaAnyColor])
         }),
+        // ---- Batch 6: lands, ramp and staples ----
+        "Rampant Growth" => s(
+            &["Search your library for a basic land card, put that card onto the battlefield tapped, then shuffle."],
+            |d, _| spell(d, vec![], vec![search(SearchFor::BasicLand, SearchTo::Battlefield { tapped: true })]),
+        ),
+        "Razorverge Thicket" => s(&["This land enters tapped unless you control two or fewer other lands.", "{T}: Add {G} or {W}."], |d, _| {
+            d.enters_tapped_unless_at_most_lands = Some(2);
+            dual(d, Color::Green, Color::White);
+        }),
+        "Rootbound Crag" => s(&["This land enters tapped unless you control a Mountain or a Forest.", "{T}: Add {R} or {G}."], |d, _| {
+            d.enters_tapped_unless = Some(["Mountain", "Forest"]);
+            dual(d, Color::Red, Color::Green);
+        }),
+        "Sulfur Falls" => s(&["This land enters tapped unless you control an Island or a Mountain.", "{T}: Add {U} or {R}."], |d, _| {
+            d.enters_tapped_unless = Some(["Island", "Mountain"]);
+            dual(d, Color::Blue, Color::Red);
+        }),
+        "Sunpetal Grove" => s(&["This land enters tapped unless you control a Forest or a Plains.", "{T}: Add {G} or {W}."], |d, _| {
+            d.enters_tapped_unless = Some(["Forest", "Plains"]);
+            dual(d, Color::Green, Color::White);
+        }),
+        "Woodland Cemetery" => s(&["This land enters tapped unless you control a Swamp or a Forest.", "{T}: Add {B} or {G}."], |d, _| {
+            d.enters_tapped_unless = Some(["Swamp", "Forest"]);
+            dual(d, Color::Black, Color::Green);
+        }),
+        "Temple of Abandon" => s(&["This land enters tapped.", "When this land enters, scry 1.", "{T}: Add {R} or {G}."], |d, _| {
+            d.enters_tapped = true;
+            on(d, When::Enters, vec![], vec![Effect::Scry { n: 1 }]);
+            dual(d, Color::Red, Color::Green);
+        }),
+        "Temple of Epiphany" => s(&["This land enters tapped.", "When this land enters, scry 1.", "{T}: Add {U} or {R}."], |d, _| {
+            d.enters_tapped = true;
+            on(d, When::Enters, vec![], vec![Effect::Scry { n: 1 }]);
+            dual(d, Color::Blue, Color::Red);
+        }),
+        "Temple of Malady" => s(&["This land enters tapped.", "When this land enters, scry 1.", "{T}: Add {B} or {G}."], |d, _| {
+            d.enters_tapped = true;
+            on(d, When::Enters, vec![], vec![Effect::Scry { n: 1 }]);
+            dual(d, Color::Black, Color::Green);
+        }),
+        "Temple of Mystery" => s(&["This land enters tapped.", "When this land enters, scry 1.", "{T}: Add {G} or {U}."], |d, _| {
+            d.enters_tapped = true;
+            on(d, When::Enters, vec![], vec![Effect::Scry { n: 1 }]);
+            dual(d, Color::Green, Color::Blue);
+        }),
+        "Temple of Plenty" => s(&["This land enters tapped.", "When this land enters, scry 1.", "{T}: Add {G} or {W}."], |d, _| {
+            d.enters_tapped = true;
+            on(d, When::Enters, vec![], vec![Effect::Scry { n: 1 }]);
+            dual(d, Color::Green, Color::White);
+        }),
+        "Temple of Triumph" => s(&["This land enters tapped.", "When this land enters, scry 1.", "{T}: Add {R} or {W}."], |d, _| {
+            d.enters_tapped = true;
+            on(d, When::Enters, vec![], vec![Effect::Scry { n: 1 }]);
+            dual(d, Color::Red, Color::White);
+        }),
+        "Seaside Citadel" => s(&["This land enters tapped.", "{T}: Add {G}, {W}, or {U}."], |d, _| {
+            d.enters_tapped = true;
+            d.mana = Some(ManaSource::of(&[Color::Green, Color::White, Color::Blue]));
+        }),
+        "Wooded Ridgeline" => s(&["This land enters tapped."], |d, _| {
+            d.enters_tapped = true;
+            dual(d, Color::Red, Color::Green);
+        }),
+        "Sheltered Thicket" => s(&["This land enters tapped.", "Cycling {2}"], |d, _| {
+            d.enters_tapped = true;
+            dual(d, Color::Red, Color::Green);
+            cycling(d, "{2}");
+        }),
+        "Thran Dynamo" => s(&["{T}: Add {C}{C}{C}."], |d, _| {
+            colorless(d);
+            d.mana_amount = 3;
+        }),
+        "Sakura-Tribe Elder" => s(
+            &["Sacrifice this creature: Search your library for a basic land card, put that card onto the battlefield tapped, then shuffle."],
+            |d, _| {
+                let n = activated(d, "", false, vec![], vec![search(SearchFor::BasicLand, SearchTo::Battlefield { tapped: true })]);
+                d.activated[n].sacrifice_self = true;
+            },
+        ),
+        "Secret Rendezvous" => s(&["You and target opponent each draw three cards."], |d, _| {
+            let opp = Filter::PLAYER.controlled_by(Controller::Opponent);
+            spell(d, vec![opp], vec![draw(3), Effect::Draw { who: Who::TargetPlayer(0), n: 3 }]);
+        }),
+        "Spirited Companion" => s(&["When this creature enters, draw a card."], |d, _| on(d, When::Enters, vec![], vec![draw(1)])),
+        "Sphinx of Enlightenment" => s(&["When this creature enters, target opponent draws a card and you draw three cards."], |d, _| {
+            let opp = Filter::PLAYER.controlled_by(Controller::Opponent);
+            on(d, When::Enters, vec![opp], vec![Effect::Draw { who: Who::TargetPlayer(0), n: 1 }, draw(3)]);
+        }),
+        "Swords to Plowshares" => s(&["Exile target creature. Its controller gains life equal to its power."], |d, _| {
+            spell(d, vec![CREATURE], vec![Effect::ExileControllerGainsPower(0)])
+        }),
+        "Selfless Spirit" => s(&["Sacrifice this creature: Creatures you control gain indestructible until end of turn."], |d, _| {
+            let n = activated(d, "", false, vec![], vec![Effect::GrantAll { who: Who::You, keywords: Keywords::INDESTRUCTIBLE }]);
+            d.activated[n].sacrifice_self = true;
+        }),
+        "Squirrel Sovereign" => s(&["Other Squirrels you control get +1/+1."], |d, _| lord(d, "Squirrel")),
+        "Zulaport Cutthroat" => s(
+            &["Whenever this creature or another creature you control dies, each opponent loses 1 life and you gain 1 life."],
+            |d, _| {
+                on(
+                    d,
+                    When::CreatureYouControlDies,
+                    vec![],
+                    vec![Effect::LoseLife { who: Who::EachOpponent, n: 1 }, Effect::GainLife { who: Who::You, n: 1 }],
+                )
+            },
+        ),
+        "Sun Titan" => s(
+            &["Whenever this creature enters or attacks, you may return target permanent card with mana value 3 or less from your graveyard to the battlefield."],
+            |d, _| {
+                let card = Filter { permanent_cards: true, max_mana_value: Some(3), ..graveyard_cards(false, Controller::You) };
+                may(d, When::Enters, vec![card], vec![Effect::Reanimate(0)]);
+                may(d, When::Attacks, vec![card], vec![Effect::Reanimate(0)]);
+            },
+        ),
+        "Sunscorch Regent" => s(&["Whenever an opponent casts a spell, put a +1/+1 counter on this creature and you gain 1 life."], |d, _| {
+            on(d, When::OpponentCasts, vec![], vec![Effect::CountersSelf { n: 1 }, Effect::GainLife { who: Who::You, n: 1 }])
+        }),
+        "Rapid Hybridization" => s(
+            &["Destroy target creature. It can't be regenerated. That creature's controller creates a 3/3 green Frog Lizard creature token."],
+            |d, t| {
+                // The engine has no regeneration.
+                spell(d, vec![CREATURE], vec![Effect::Destroy(0), Effect::CreateToken { who: Who::ControllerOf(0), def: t.frog_lizard, n: 1 }]);
+            },
+        ),
         _ => None,
     }
 }
@@ -517,4 +642,31 @@ pub const BLC_B_SCRIPTED: &[&str] = &[
     "Hanged Executioner",
     "Inferno Titan",
     "Lotus Cobra",
+    "Rampant Growth",
+    "Razorverge Thicket",
+    "Rootbound Crag",
+    "Sulfur Falls",
+    "Sunpetal Grove",
+    "Woodland Cemetery",
+    "Temple of Abandon",
+    "Temple of Epiphany",
+    "Temple of Malady",
+    "Temple of Mystery",
+    "Temple of Plenty",
+    "Temple of Triumph",
+    "Seaside Citadel",
+    "Wooded Ridgeline",
+    "Sheltered Thicket",
+    "Thran Dynamo",
+    "Sakura-Tribe Elder",
+    "Secret Rendezvous",
+    "Spirited Companion",
+    "Sphinx of Enlightenment",
+    "Swords to Plowshares",
+    "Selfless Spirit",
+    "Squirrel Sovereign",
+    "Zulaport Cutthroat",
+    "Sun Titan",
+    "Sunscorch Regent",
+    "Rapid Hybridization",
 ];

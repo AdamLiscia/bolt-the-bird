@@ -828,6 +828,9 @@ pub enum Effect {
     DrawX,
     /// Add one mana of any color (into the pool).
     AddManaAnyColor,
+    /// Exile the creature in `slot`; its controller gains life equal to its power (Swords to
+    /// Plowshares).
+    ExileControllerGainsPower(u8),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
