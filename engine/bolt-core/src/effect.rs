@@ -918,6 +918,14 @@ pub enum Effect {
     BounceAllCreatures {
         tokens: bool,
     },
+    /// Destroy all creatures with power `n` or greater.
+    DestroyAllCreaturesPowerAtLeast(i32),
+    /// Other creatures you control get +P/+T and gain keywords until end of turn.
+    PumpOthersAndGrant {
+        power: i32,
+        toughness: i32,
+        keywords: crate::Keywords,
+    },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1056,6 +1064,8 @@ pub enum EmblemKind {
     VivienAnthem,
     /// Whenever a player casts a spell, its owner's card's trigger number `trigger` happens (Kaito).
     OnAnySpellCast { trigger: usize },
+    /// Creatures you control get +2/+2 and have flying (Elspeth, Sun's Champion).
+    ElspethAnthem,
 }
 
 /// Which looked-at card may be picked.
@@ -1339,6 +1349,8 @@ pub enum When {
     CastCreatureYouControlEnters,
     /// "Whenever another creature dies" (any player's, tokens included).
     AnotherCreatureDies,
+    /// "Whenever an opponent casts an instant or sorcery spell".
+    OpponentCastsInstantOrSorcery,
 }
 
 #[derive(Clone, Debug, PartialEq)]

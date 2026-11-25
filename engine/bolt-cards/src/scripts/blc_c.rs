@@ -108,12 +108,44 @@ pub fn script(name: &str) -> Option<Script> {
                 )
             },
         ),
+        // ---- lane A, 2026-11-25: cards the engine's pieces cover ----
+        "End-Raze Forerunners" => s(
+            &["When this creature enters, other creatures you control get +2/+2 and gain vigilance and trample until end of turn."],
+            |d, _| {
+                let keywords = Keywords::VIGILANCE.with(Keywords::TRAMPLE);
+                on(d, When::Enters, vec![], vec![Effect::PumpOthersAndGrant { power: 2, toughness: 2, keywords }]);
+            },
+        ),
+        "Elspeth, Sun's Champion" => s(
+            &[
+                "+1: Create three 1/1 white Soldier creature tokens.",
+                "−3: Destroy all creatures with power 4 or greater.",
+                "−7: You get an emblem with \"Creatures you control get +2/+2 and have flying.\"",
+            ],
+            |d, t| {
+                loyalty(d, 1, Ability::new(vec![], vec![Effect::CreateToken { who: Who::You, def: t.soldier, n: 3 }]));
+                loyalty(d, -3, Ability::new(vec![], vec![Effect::DestroyAllCreaturesPowerAtLeast(4)]));
+                loyalty(d, -7, Ability::new(vec![], vec![Effect::Emblem(EmblemKind::ElspethAnthem)]));
+            },
+        ),
+        "Chatterstorm" => s(&["Create a 1/1 green Squirrel creature token.", "Storm"], |d, t| {
+            spell(d, vec![], vec![Effect::CreateToken { who: Who::You, def: t.squirrel, n: 1 }]);
+            on(d, When::YouCastThis, vec![], vec![Effect::CopySourceSpell { storm: true }]);
+        }),
+        "Arasta of the Endless Web" => s(
+            &["Whenever an opponent casts an instant or sorcery spell, create a 1/2 green Spider creature token with reach."],
+            |d, t| on(d, When::OpponentCastsInstantOrSorcery, vec![], vec![Effect::CreateToken { who: Who::You, def: t.spider, n: 1 }]),
+        ),
         _ => None,
     }
 }
 
 /// Lane C's scripted BLC cards (checked against their text in `lib.rs`).
 pub const BLC_C_SCRIPTED: &[&str] = &[
+    "End-Raze Forerunners",
+    "Elspeth, Sun's Champion",
+    "Chatterstorm",
+    "Arasta of the Endless Web",
     "Toski, Bearer of Secrets",
     "Tear Asunder",
     "Ogre Slumlord",

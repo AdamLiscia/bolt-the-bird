@@ -270,3 +270,97 @@ fn perplexing_test_bounces_tokens_or_nontoken_creatures() {
     assert_eq!(g.obj(real).zone, Zone::Hand);
     let _ = (Target::Player(0), to_next_turn as fn(&mut Game));
 }
+
+// ---- lane A, 2026-11-25 ----
+
+#[test]
+fn end_raze_forerunners_pumps_the_others() {
+    let mut g = table();
+    let bear = put(&mut g, 0, "Sakura-Tribe Elder");
+    let p = g.power(bear);
+    let boar = hand(&mut g, 0, "End-Raze Forerunners");
+    play(&mut g, boar, false, &[], &[]);
+    assert_eq!(g.power(bear), p + 2);
+    assert!(g.keywords(bear).has(Keywords::VIGILANCE) && g.keywords(bear).has(Keywords::TRAMPLE));
+    assert_eq!(g.power(boar), 7, "other creatures only");
+}
+
+#[test]
+fn elspeth_suns_champion_makes_soldiers_and_wipes_big_creatures() {
+    let mut g = table();
+    let elspeth = hand(&mut g, 0, "Elspeth, Sun's Champion");
+    play(&mut g, elspeth, false, &[], &[]);
+    assert_eq!(g.obj(elspeth).loyalty, 4);
+    let big = put(&mut g, 1, "End-Raze Forerunners"); // 7/7
+    let small = put(&mut g, 1, "Sakura-Tribe Elder");
+    act(&mut g, Action::Loyalty(elspeth, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(tokens(&g, 0, "Soldier").len(), 3);
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Loyalty(elspeth, 1));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(big).zone, Zone::Graveyard, "power 4 or greater");
+    assert_eq!(g.obj(small).zone, Zone::Battlefield);
+    assert_eq!(tokens(&g, 0, "Soldier").len(), 3, "1/1s survive");
+}
+
+#[test]
+fn elspeths_emblem_gives_plus_two_and_flying() {
+    let mut g = table();
+    let elspeth = hand(&mut g, 0, "Elspeth, Sun's Champion");
+    play(&mut g, elspeth, false, &[], &[]);
+    assert_eq!(g.obj(elspeth).loyalty, 4);
+    let bear = put(&mut g, 0, "Sakura-Tribe Elder");
+    let p = g.power(bear);
+    for turn in [3u32, 5, 7] {
+        if turn > 3 {
+            g.start_turn(turn, 0);
+            while g.step != Step::Main1 {
+                act(&mut g, Action::PassPriority);
+            }
+        }
+        act(&mut g, Action::Loyalty(elspeth, 0)); // +1, from 4 to 7
+        resolve_all(&mut g, &[]);
+    }
+    assert_eq!(g.obj(elspeth).loyalty, 7);
+    g.start_turn(9, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Loyalty(elspeth, 2));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.power(bear), p + 2);
+    assert!(g.keywords(bear).has(Keywords::FLYING));
+}
+
+#[test]
+fn chatterstorm_copies_for_each_earlier_spell() {
+    let mut g = table();
+    let a = hand(&mut g, 0, "Chatterstorm");
+    let b = hand(&mut g, 0, "Chatterstorm");
+    play(&mut g, a, false, &[], &[]);
+    assert_eq!(tokens(&g, 0, "Squirrel").len(), 1, "first spell: no copies");
+    play(&mut g, b, false, &[], &[]);
+    assert_eq!(
+        tokens(&g, 0, "Squirrel").len(),
+        3,
+        "second spell: itself plus one copy"
+    );
+}
+
+#[test]
+fn arasta_makes_a_spider_when_an_opponent_casts_an_instant_or_sorcery() {
+    let mut g = table();
+    put(&mut g, 1, "Arasta of the Endless Web");
+    let storm = hand(&mut g, 0, "Chatterstorm");
+    play(&mut g, storm, false, &[], &[]);
+    let spiders = tokens(&g, 1, "Spider");
+    assert_eq!(spiders.len(), 1);
+    assert!(g.keywords(spiders[0]).has(Keywords::REACH));
+    let elder = hand(&mut g, 0, "Sakura-Tribe Elder");
+    play(&mut g, elder, false, &[], &[]);
+    assert_eq!(tokens(&g, 1, "Spider").len(), 1, "a creature spell doesn't count");
+}

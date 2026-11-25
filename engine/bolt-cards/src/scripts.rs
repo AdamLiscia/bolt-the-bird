@@ -102,6 +102,8 @@ pub fn token_defs() -> Vec<CardDef> {
         token("Elephant", "Elephant", 3, 3, Keywords::NONE), // Generous Gift's green 3/3
         token("Beast", "Beast", 4, 4, Keywords::NONE),       // Rampaging Baloths' green 4/4
         token("Frog Lizard", "Frog Lizard", 3, 3, Keywords::NONE), // Rapid Hybridization
+        token("Squirrel", "Squirrel", 1, 1, Keywords::NONE), // Chatterstorm
+        token("Spider", "Spider", 1, 2, Keywords::REACH),    // Arasta of the Endless Web
     ]
 }
 
@@ -181,6 +183,8 @@ pub struct Tokens {
     pub elephant_3: usize,
     pub beast_4: usize,
     pub frog_lizard: usize,
+    pub squirrel: usize,
+    pub spider: usize,
 }
 
 impl Tokens {
@@ -224,6 +228,8 @@ impl Tokens {
             elephant_3: base + 35,
             beast_4: base + 36,
             frog_lizard: base + 37,
+            squirrel: base + 38,
+            spider: base + 39,
         }
     }
 }

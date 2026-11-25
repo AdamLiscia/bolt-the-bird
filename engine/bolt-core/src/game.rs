@@ -1584,7 +1584,10 @@ impl Game {
                 k = k.with(s.keywords);
             }
         }
-        if self.emblem_anthem(id) {
+        if self.has_emblem(id, EmblemKind::ElspethAnthem) {
+            k = k.with(Keywords::FLYING);
+        }
+        if self.has_emblem(id, EmblemKind::VivienAnthem) {
             k = k
                 .with(Keywords::VIGILANCE)
                 .with(Keywords::TRAMPLE)
@@ -1598,10 +1601,19 @@ impl Game {
         let o = self.obj(id);
         o.zone == Zone::Battlefield
             && self.types_of(id).creature
+            && self.emblems.iter().any(|&(q, k, _)| {
+                q == o.controller && matches!(k, EmblemKind::VivienAnthem | EmblemKind::ElspethAnthem)
+            })
+    }
+
+    fn has_emblem(&self, id: ObjId, kind: EmblemKind) -> bool {
+        let o = self.obj(id);
+        o.zone == Zone::Battlefield
+            && self.types_of(id).creature
             && self
                 .emblems
                 .iter()
-                .any(|&(q, k, _)| q == o.controller && k == EmblemKind::VivienAnthem)
+                .any(|&(q, k, _)| q == o.controller && k == kind)
     }
 
     fn opponents_graveyard_bonus(&self, id: ObjId) -> i32 {
@@ -5030,6 +5042,9 @@ impl Game {
             self.fire(p, When::YouCastOnOpponentsTurn, None);
         }
         self.fire(opponent(p), When::OpponentCasts, None);
+        if self.types_of(card).instant || self.types_of(card).sorcery {
+            self.fire(opponent(p), When::OpponentCastsInstantOrSorcery, None);
+        }
         for (owner, kind, card) in self.emblems.clone() {
             if let EmblemKind::OnAnySpellCast { trigger } = kind {
                 self.triggered.push(StackItem {
@@ -7896,6 +7911,35 @@ impl Game {
                 for c in self.creatures(item.controller).collect::<Vec<_>>() {
                     let n = self.obj(c).counters;
                     self.add_counters(c, n);
+                }
+            }
+            Effect::DestroyAllCreaturesPowerAtLeast(n) => {
+                let all: Vec<ObjId> = self
+                    .battlefield
+                    .iter()
+                    .copied()
+                    .filter(|&c| self.types_of(c).creature && self.power(c) >= n)
+                    .collect();
+                for c in all {
+                    self.destroy(c);
+                }
+            }
+            Effect::PumpOthersAndGrant {
+                power,
+                toughness,
+                keywords,
+            } => {
+                let others: Vec<ObjId> = self.creatures(item.controller).filter(|&c| c != src).collect();
+                for id in others {
+                    let zcc = self.obj(id).zcc;
+                    self.until_eot.push(Modifier {
+                        obj: id,
+                        zcc,
+                        power,
+                        toughness,
+                        keywords,
+                        dies: None,
+                    });
                 }
             }
             Effect::CopyThenSuspendSpell => {
