@@ -334,9 +334,8 @@ pub fn script(name: &str) -> Option<Script> {
             },
         ),
         "Putrefy" => s(&["Destroy target artifact or creature. It can't be regenerated."], |d, _| {
-            // The engine has no regeneration, so nothing can regenerate it.
             let f = Filter { artifacts: true, ..CREATURE };
-            spell(d, vec![f], vec![Effect::Destroy(0)]);
+            spell(d, vec![f], vec![Effect::DestroyNoRegen(0)]);
         }),
         "Path to Exile" => s(
             &["Exile target creature. Its controller may search their library for a basic land card, put that card onto the battlefield tapped, then shuffle."],
@@ -576,8 +575,7 @@ pub fn script(name: &str) -> Option<Script> {
         "Rapid Hybridization" => s(
             &["Destroy target creature. It can't be regenerated. That creature's controller creates a 3/3 green Frog Lizard creature token."],
             |d, t| {
-                // The engine has no regeneration.
-                spell(d, vec![CREATURE], vec![Effect::Destroy(0), Effect::CreateToken { who: Who::ControllerOf(0), def: t.frog_lizard, n: 1 }]);
+                spell(d, vec![CREATURE], vec![Effect::DestroyNoRegen(0), Effect::CreateToken { who: Who::ControllerOf(0), def: t.frog_lizard, n: 1 }]);
             },
         ),
         // ---- Batch 7 ----
@@ -816,7 +814,6 @@ pub fn script(name: &str) -> Option<Script> {
                 "When you cycle this card, all creatures get -2/-2 until end of turn.",
             ],
             |d, _| {
-                // The engine has no regeneration.
                 spell(d, vec![], vec![Effect::DestroyAllCreaturesDrawPerDestroyed]);
                 cycling(d, "{3}{B}{B}");
                 on(
