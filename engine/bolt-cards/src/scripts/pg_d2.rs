@@ -243,6 +243,69 @@ pub fn script(name: &str) -> Option<Script> {
                 activated(d, "{2}", true, vec![], vec![draw(1), discard(1)]);
             },
         ),
+        // ---- Damia, Sage of Stone ----
+        "Rejuvenating Springs" => s(&[BATTLEBOND_LAND, "{T}: Add {G} or {U}."], |d, _| {
+            d.enters_tapped = true; // a two-player game: one opponent
+            d.mana = Some(ManaSource::of(&[Color::Green, Color::Blue]));
+        }),
+        "Morphic Pool" => s(&[BATTLEBOND_LAND, "{T}: Add {U} or {B}."], |d, _| {
+            d.enters_tapped = true; // a two-player game: one opponent
+            d.mana = Some(ManaSource::of(&[Color::Blue, Color::Black]));
+        }),
+        "Simic Signet" => s(&["{1}, {T}: Add {G}{U}."], |d, _| {
+            let gu = [ManaSource::of(&[Color::Green]), ManaSource::of(&[Color::Blue])];
+            d.paid_mana = Some((ManaCost::parse("{1}").expect("a mana cost"), gu));
+        }),
+        "Underground River" => s(&["{T}: Add {C}.", "{T}: Add {U} or {B}. This land deals 1 damage to you."], |d, _| {
+            pain_mana(d, Color::Blue, Color::Black)
+        }),
+        "Sunken Ruins" => s(&["{T}: Add {C}.", "{U/B}, {T}: Add {U}{U}, {U}{B}, or {B}{B}."], |d, _| {
+            filter_land(d, "{U/B}", Color::Blue, Color::Black)
+        }),
+        "Leyline of Anticipation" => s(
+            &[
+                "If this card is in your opening hand, you may begin the game with it on the battlefield.",
+                "You may cast spells as though they had flash.",
+            ],
+            |d, _| {
+                d.leyline = true;
+                d.grants_flash = true;
+            },
+        ),
+        "Okina, Temple to the Grandfathers" => s(
+            &["{T}: Add {G}.", "{G}, {T}: Target legendary creature gets +1/+1 until end of turn."],
+            |d, _| {
+                d.mana = Some(ManaSource::of(&[Color::Green]));
+                let legend = Filter { legendary_only: true, ..CREATURE };
+                activated(d, "{G}", true, vec![legend], vec![Effect::Pump { slot: 0, power: 1, toughness: 1 }]);
+            },
+        ),
+        // ---- Raffine, Scheming Seer ----
+        "Bitterbloom Bearer" => s(
+            &["At the beginning of your upkeep, you lose 1 life and create a 1/1 blue and black Faerie creature token with flying."],
+            |d, t| {
+                let effects =
+                    vec![Effect::LoseLife { who: Who::You, n: 1 }, Effect::CreateToken { who: Who::You, def: t.faerie, n: 1 }];
+                // The engine's 1/1 flying Faerie token (token colors aren't modeled).
+                on(d, When::Upkeep { your_turn_only: true }, vec![], effects);
+            },
+        ),
+        "Queza, Augur of Agonies" => s(
+            &["Whenever you draw a card, target opponent loses 1 life and you gain 1 life."],
+            |d, _| {
+                let opp = Filter::PLAYER.controlled_by(Controller::Opponent);
+                let drain = vec![Effect::LoseLife { who: Who::TargetPlayer(0), n: 1 }, Effect::GainLife { who: Who::You, n: 1 }];
+                on(d, When::YouDraw, vec![opp], drain);
+            },
+        ),
+        "Vault of the Archangel" => s(
+            &["{T}: Add {C}.", "{2}{W}{B}, {T}: Creatures you control gain deathtouch and lifelink until end of turn."],
+            |d, _| {
+                d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                let k = Keywords::DEATHTOUCH.with(Keywords::LIFELINK);
+                activated(d, "{2}{W}{B}", true, vec![], vec![Effect::GrantAll { who: Who::You, keywords: k }]);
+            },
+        ),
         _ => None,
     }
 }
@@ -332,4 +395,16 @@ pub const PG_D2_SCRIPTED: &[&str] = &[
     "Shadowblood Ridge",
     "Soul's Fire",
     "Thrór's Map",
+    // Damia, Sage of Stone
+    "Rejuvenating Springs",
+    "Morphic Pool",
+    "Simic Signet",
+    "Underground River",
+    "Sunken Ruins",
+    "Leyline of Anticipation",
+    "Okina, Temple to the Grandfathers",
+    // Raffine, Scheming Seer
+    "Bitterbloom Bearer",
+    "Queza, Augur of Agonies",
+    "Vault of the Archangel",
 ];

@@ -609,3 +609,129 @@ fn thrors_map_finds_a_basic_and_loots() {
     assert!(in_graveyard(&g, 0, forest));
     assert_eq!(g.players[0].hand.len(), n, "drew one, discarded one");
 }
+
+// ---- Damia, Sage of Stone ----
+
+#[test]
+fn rejuvenating_springs_and_morphic_pool_enter_tapped_one_on_one() {
+    let g_u = [false, true, false, false, true];
+    let u_b = [false, true, true, false, false];
+    for (name, colors) in [("Rejuvenating Springs", g_u), ("Morphic Pool", u_b)] {
+        let mut g = game(&[]);
+        let s = hand(&mut g, 0, name);
+        act(&mut g, Action::PlayLand(s));
+        assert!(g.obj(s).tapped, "{name}");
+        assert_eq!(g.def_of(s).mana.map(|m| m.colors), Some(colors), "{name}");
+    }
+}
+
+#[test]
+fn simic_signet_turns_one_into_green_and_blue() {
+    let mut g = game(&["Simic Signet", "Plains"]);
+    let elves = hand(&mut g, 0, "Llanowar Elves"); // {G}: only the Signet makes green
+    play(&mut g, elves, false, &[], &[]);
+    assert_eq!(g.obj(elves).zone, Zone::Battlefield);
+}
+
+#[test]
+fn underground_river_hurts_for_colored_mana() {
+    let mut g = game(&["Underground River"]);
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Library);
+    let t = hand(&mut g, 0, "Vampiric Tutor");
+    play(&mut g, t, false, &[], &[Action::Pick(ring)]);
+    assert_eq!(g.players[0].life, 37, "1 damage, then 2 life");
+}
+
+#[test]
+fn sunken_ruins_filters_blue_into_black() {
+    // The Island pays {U/B}; the Ruins makes {B}{B}. {C} and {U} alone have no {B}.
+    let mut g = game(&["Sunken Ruins", "Island"]);
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Library);
+    let t = hand(&mut g, 0, "Vampiric Tutor");
+    play(&mut g, t, false, &[], &[Action::Pick(ring)]);
+    assert_eq!(g.players[0].library.last(), Some(&ring));
+}
+
+#[test]
+fn leyline_of_anticipation_starts_in_play_and_gives_flash() {
+    let leylines = vec![cid("Leyline of Anticipation"); 99];
+    let plains = vec![cid("Plains"); 99];
+    let mut g = Game::new_commander(
+        set("CMD").unwrap().defs.clone(),
+        [&leylines, &plains],
+        [cid("Bello, Bard of the Brambles"), cid("Ms. Bumbleflower")],
+        7,
+        0,
+    );
+    g.auto_pass = false;
+    act(&mut g, Action::Keep);
+    act(&mut g, Action::Keep);
+    let n = g
+        .permanents(0)
+        .filter(|&c| g.def_of(c).name == "Leyline of Anticipation")
+        .count();
+    assert_eq!(n, 7, "every one in the opening hand");
+
+    let mut g = table();
+    put(&mut g, 1, "Leyline of Anticipation");
+    let lions = hand(&mut g, 1, "Savannah Lions");
+    act(&mut g, Action::PassPriority);
+    assert!(has(&g, Action::Cast(lions)), "on the opponent's turn");
+}
+
+#[test]
+fn okina_pumps_a_legendary_creature() {
+    let mut g = table();
+    let okina = put(&mut g, 0, "Okina, Temple to the Grandfathers");
+    let legend = put(&mut g, 0, "Ms. Bumbleflower");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    let p = g.power(legend);
+    act(&mut g, Action::Activate(okina, 0));
+    assert!(!has(&g, Action::Target(obj(lions))), "not legendary");
+    act(&mut g, Action::Target(obj(legend)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.power(legend), p + 1);
+}
+
+// ---- Raffine, Scheming Seer ----
+
+#[test]
+fn bitterbloom_bearer_makes_a_faerie_each_upkeep_for_a_life() {
+    let mut g = table();
+    let b = put(&mut g, 0, "Bitterbloom Bearer");
+    assert!(g.keywords(b).has(Keywords::FLASH) && g.keywords(b).has(Keywords::FLYING));
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.players[0].life, 39);
+    let t = tokens(&g, 0, "Faerie");
+    assert_eq!(t.len(), 1);
+    assert!(g.keywords(t[0]).has(Keywords::FLYING));
+}
+
+#[test]
+fn queza_drains_one_whenever_you_draw() {
+    let mut g = table();
+    put(&mut g, 0, "Queza, Augur of Agonies");
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        if let Pending::ChooseTarget(_) = g.pending {
+            act(&mut g, Action::Target(Target::Player(1)));
+        } else {
+            act(&mut g, Action::PassPriority);
+        }
+    }
+    assert_eq!((g.players[0].life, g.players[1].life), (41, 39));
+}
+
+#[test]
+fn vault_of_the_archangel_gives_deathtouch_and_lifelink() {
+    let mut g = table();
+    let vault = put(&mut g, 0, "Vault of the Archangel");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    act(&mut g, Action::Activate(vault, 0));
+    resolve_all(&mut g, &[]);
+    let k = g.keywords(lions);
+    assert!(k.has(Keywords::DEATHTOUCH) && k.has(Keywords::LIFELINK));
+}
