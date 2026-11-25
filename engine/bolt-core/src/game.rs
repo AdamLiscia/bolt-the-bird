@@ -473,10 +473,6 @@ pub enum StackKind {
     },
     /// Loyalty ability number `n` of the source.
     Loyalty(usize),
-    /// Ward—discard a card.
-    WardDiscard {
-        against: ObjId,
-    },
 }
 
 /// The ability of a ward trigger, which has no targets or effects of its own.
@@ -684,9 +680,6 @@ pub enum Decision {
     BottomOrder { cards: Vec<ObjId> },
     /// `Pick` a source for `card`'s damage shield (trigger number `trigger`).
     ChooseDamageSource { card: ObjId, trigger: usize },
-    /// Ward—discard a card: `Discard` one, or `No` lets the spell or ability from `against` be
-    /// countered.
-    PayWardDiscard { against: ObjId },
 }
 
 /// An until-end-of-turn change to one object (CR 611.2, 613).
@@ -832,6 +825,10 @@ pub struct Game {
     /// "The next time a source of your choice would deal damage to you this turn": (protected player,
     /// source, the card, its trigger number, turn).
     pub damage_shields: Vec<(PlayerId, ObjId, ObjId, usize, u32)>,
+    /// Whether a card left each player's graveyard this turn.
+    pub graveyard_left_this_turn: [bool; 2],
+    /// Cards left each player's graveyard during their turn since triggers were last put on the stack.
+    pub graveyard_leave_pending: [bool; 2],
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -965,6 +962,8 @@ impl Game {
             delayed_this_turn: Vec::new(),
             free_casts_to_hand: false,
             damage_shields: Vec::new(),
+            graveyard_left_this_turn: [false; 2],
+            graveyard_leave_pending: [false; 2],
         }
     }
 
@@ -1395,6 +1394,18 @@ impl Game {
         if let Some(pt) = o.animated {
             return pt;
         }
+        // "During your turn, this creature has base power and toughness 5/2." (Snowmelt Stag)
+        if let Some(pt) = self
+            .def_of(id)
+            .statics
+            .iter()
+            .find(|s| s.scope == Scope::This && !s.lose_abilities && s.base_pt.is_some())
+            .filter(|s| !s.your_turn_only || self.active == o.controller)
+            .filter(|_| o.zone == Zone::Battlefield && !self.lost_abilities(id))
+            .and_then(|s| s.base_pt)
+        {
+            return pt;
+        }
         (1..=o.stage as usize)
             .rev()
             .find_map(|s| d.stages[s - 1].base_pt)
@@ -1516,6 +1527,28 @@ impl Game {
                 .battlefield
                 .iter()
                 .any(|&x| self.def_of(x).stops_activated_abilities && !self.lost_abilities(x))
+    }
+
+    /// "Whenever one or more cards leave your graveyard during your turn" triggers, once for the cards
+    /// that left since triggers were last put on the stack.
+    fn flush_graveyard_leaves(&mut self) {
+        for p in 0..2 {
+            if !std::mem::take(&mut self.graveyard_leave_pending[p]) {
+                continue;
+            }
+            self.fire(p, When::CardsLeaveYourGraveyardDuringYourTurn, None);
+            let before = self.triggered.len();
+            self.fire(p, When::CardLeavesYourGraveyardOnceEachTurn, None);
+            let turn = self.turn;
+            let mut fresh = Vec::new();
+            for t in self.triggered.drain(before..).collect::<Vec<_>>() {
+                if self.obj(t.source).once_each_turn != turn {
+                    self.obj_mut(t.source).once_each_turn = turn;
+                    fresh.push(t);
+                }
+            }
+            self.triggered.extend(fresh);
+        }
     }
 
     /// Whether `p` controls a creature with a counter on it.
@@ -1782,6 +1815,12 @@ impl Game {
         list.remove(pos);
         self.zone_list(owner, to).push(id);
         let turn = self.turn;
+        if from == Zone::Graveyard && to != Zone::Graveyard && !self.is_token(id) {
+            self.graveyard_left_this_turn[owner] = true;
+            if self.active == owner {
+                self.graveyard_leave_pending[owner] = true;
+            }
+        }
         let o = self.obj_mut(id);
         o.zone = to;
         o.zcc += 1;
@@ -2404,9 +2443,7 @@ impl Game {
                 Some(m) => &def.triggers[n].ability.modes[m as usize],
                 None => &def.triggers[n].ability,
             },
-            StackKind::Ward { .. } | StackKind::WardLife { .. } | StackKind::WardDiscard { .. } => {
-                &WARD_ABILITY
-            }
+            StackKind::Ward { .. } | StackKind::WardLife { .. } => &WARD_ABILITY,
             StackKind::Loyalty(n) => &def.loyalty_abilities[n].1,
             StackKind::Activated(n) => &def.activated[n].ability,
         }
@@ -2988,7 +3025,22 @@ impl Game {
         } else {
             0
         };
-        cost.generic = cost.generic.saturating_sub(less + discount + second);
+        // Temur Battlecrier: during your turn, {1} less for each creature you control with power 4+.
+        let battle: u8 = if self.active == p {
+            let crier = self
+                .permanents(p)
+                .filter(|&x| self.def_of(x).your_turn_discount_per_big_creature && !self.lost_abilities(x))
+                .count();
+            if crier > 0 {
+                let big = self.creatures(p).filter(|&x| self.power(x) >= 4).count();
+                (crier * big).min(255) as u8
+            } else {
+                0
+            }
+        } else {
+            0
+        };
+        cost.generic = cost.generic.saturating_sub(less + discount + second + battle);
         // Dragon's Prey: "This spell costs {2} more to cast if it targets a Dragon."
         if let Some(Reduction::MoreIfTargetsSubtype(sub, n)) = def.reduction {
             let hits = targets
@@ -3375,6 +3427,8 @@ impl Game {
                     || a.tap_untapped
                         .is_some_and(|(sub, n)| self.untapped_with(p, sub, id).len() < n as usize)
                     || !sorcery_ok
+                    || (a.your_turn_only && p != self.active)
+                    || (a.if_card_left_graveyard && !self.graveyard_left_this_turn[p])
                     || self.players[p].life < a.life
                     || !self.can_pay_for(p, &a.mana, uses_self.then_some(id), PayFor::Ability(id))
                     || !self.trigger_can_target(
@@ -4422,12 +4476,6 @@ impl Game {
                         division: Vec::new(),
                     });
                 }
-                if self.def_of(id).ward_discard {
-                    self.triggered.push(StackItem {
-                        kind: StackKind::WardDiscard { against: item.source },
-                        ..Game::casting(id, controller)
-                    });
-                }
                 if let Some(cost) = self.def_of(id).ward {
                     self.triggered.push(StackItem {
                         source: id,
@@ -4475,30 +4523,6 @@ impl Game {
             return;
         }
         let source = item.source;
-        if let StackKind::WardDiscard { against } = item.kind {
-            self.resolving = Some(Resolving {
-                item,
-                legal: Vec::new(),
-                remaining: VecDeque::new(),
-                acts: true,
-            });
-            if let Some(payer) = self
-                .items
-                .iter()
-                .rev()
-                .find(|i| i.source == against)
-                .map(|i| i.controller)
-            {
-                if self.players[payer].hand.is_empty() {
-                    self.counter_from(against);
-                } else {
-                    self.ask(payer, Decision::PayWardDiscard { against });
-                    return;
-                }
-            }
-            self.continue_resolving();
-            return;
-        }
         if let StackKind::WardLife { life, against } = item.kind {
             self.resolving = Some(Resolving {
                 item,
@@ -4855,7 +4879,7 @@ impl Game {
                 v.push(Action::No);
                 v
             }
-            Decision::MayDiscardOrStop | Decision::PayWardDiscard { .. } => {
+            Decision::MayDiscardOrStop => {
                 let mut v: Vec<Action> = self.players[p]
                     .hand
                     .iter()
@@ -5125,8 +5149,6 @@ impl Game {
             (Decision::MayDiscardOrStop, Action::No) => {
                 self.resolving.as_mut().expect("resolving").remaining.clear();
             }
-            (Decision::PayWardDiscard { .. }, Action::Discard(c)) => self.move_to(c, Zone::Graveyard),
-            (Decision::PayWardDiscard { against }, Action::No) => self.counter_from(against),
             (Decision::BottomOrder { cards }, Action::Pick(c)) => {
                 let rest: Vec<ObjId> = cards.into_iter().filter(|&x| x != c).collect();
                 let lib = &mut self.players[p].library;
@@ -6046,24 +6068,6 @@ impl Game {
                 }
                 for _ in 0..n.max(0) {
                     self.draw(item.controller);
-                }
-            }
-            Effect::ShrinkAllWithoutSubtypeX(sub) => {
-                let x = item.x as i32;
-                let ids: Vec<ObjId> = (0..2)
-                    .flat_map(|q| self.creatures(q).collect::<Vec<_>>())
-                    .filter(|&c| !self.has_subtype(c, sub))
-                    .collect();
-                for id in ids {
-                    let zcc = self.obj(id).zcc;
-                    self.until_eot.push(Modifier {
-                        obj: id,
-                        zcc,
-                        power: -x,
-                        toughness: -x,
-                        keywords: Keywords::NONE,
-                        dies: None,
-                    });
                 }
             }
             Effect::CopySourceSpell { storm } => {
@@ -7451,6 +7455,7 @@ impl Game {
     /// CR 603.3: triggered abilities go on the stack the next time a player would get priority,
     /// active player's first (APNAP, CR 101.4). Returns false if a target choice is now pending.
     fn put_triggers_on_stack(&mut self, then: PlayerId) -> bool {
+        self.flush_graveyard_leaves();
         let active = self.active;
         self.triggered.sort_by_key(|t| t.controller != active);
         while !self.triggered.is_empty() {
@@ -7572,6 +7577,8 @@ impl Game {
         self.granted_combat_damage.clear();
         self.delayed_this_turn.clear();
         self.damage_shields.clear();
+        self.graveyard_left_this_turn = [false; 2];
+        self.graveyard_leave_pending = [false; 2];
         self.graveyard_types_used = [[false; 5]; 2];
         self.cast_snapshots.clear();
         self.attacked_this_turn = [false; 2];
@@ -7944,6 +7951,13 @@ impl Game {
         for &(a, _) in &hit_player {
             let controller = self.obj(a).controller;
             self.fire(controller, When::YourCreatureDealsCombatDamageToPlayer, None);
+            if self.has_counter(a) {
+                self.fire(
+                    controller,
+                    When::YourCreatureWithCounterDealsCombatDamageToPlayer,
+                    None,
+                );
+            }
         }
         for (a, amount) in hit_player {
             let before = self.triggered.len();

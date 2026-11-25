@@ -179,6 +179,10 @@ pub struct Activated {
     pub granted_to_attached: bool,
     /// "Discard your hand" in the cost.
     pub discard_hand: bool,
+    /// "Activate only during your turn."
+    pub your_turn_only: bool,
+    /// "Activate only if a card left your graveyard this turn."
+    pub if_card_left_graveyard: bool,
 }
 
 /// The printed card. Shared by every copy; per-copy state lives on the game object.
@@ -361,8 +365,9 @@ pub struct CardDef {
     /// "You may cast this card from your graveyard. If you do, it enters with a finality counter on
     /// it."
     pub cast_from_graveyard_finality: bool,
-    /// "Ward—Discard a card."
-    pub ward_discard: bool,
+    /// "During your turn, spells you cast cost {1} less to cast for each creature you control with
+    /// power 4 or greater." (Temur Battlecrier)
+    pub your_turn_discount_per_big_creature: bool,
 }
 
 /// An Omen spell half: its name, cost, whether it's an instant, and what it does.
@@ -480,7 +485,7 @@ impl CardDef {
             doubles_damage_of_new_creatures: false,
             doubles_tokens: false,
             cast_from_graveyard_finality: false,
-            ward_discard: false,
+            your_turn_discount_per_big_creature: false,
         }
     }
 
@@ -577,7 +582,7 @@ impl CardDef {
             doubles_damage_of_new_creatures: false,
             doubles_tokens: false,
             cast_from_graveyard_finality: false,
-            ward_discard: false,
+            your_turn_discount_per_big_creature: false,
         }
     }
 
@@ -674,7 +679,7 @@ impl CardDef {
             doubles_damage_of_new_creatures: false,
             doubles_tokens: false,
             cast_from_graveyard_finality: false,
-            ward_discard: false,
+            your_turn_discount_per_big_creature: false,
         }
     }
 }

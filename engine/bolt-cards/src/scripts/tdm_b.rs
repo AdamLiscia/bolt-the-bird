@@ -782,6 +782,81 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::Never, vec![], vec![Effect::DamageExtrasControllerAndDrawAmount]);
             },
         ),
+        // ---- Lane B batch 8: during your turn, cards leaving your graveyard ----
+        "Snowmelt Stag" => s(
+            &["During your turn, this creature has base power and toughness 5/2.", "{5}{U}{U}: This creature can't be blocked this turn."],
+            |d, _| {
+                static_on(d, Scope::This, true, Keywords::NONE);
+                d.statics.last_mut().expect("just added").base_pt = Some((5, 2));
+                activated(d, "{5}{U}{U}", false, vec![], vec![Effect::GrantSelf { keywords: Keywords::UNBLOCKABLE }]);
+            },
+        ),
+        "Bearer of Glory" => s(
+            &["During your turn, this creature has first strike.", "{4}{W}: Creatures you control get +1/+1 until end of turn."],
+            |d, _| {
+                static_on(d, Scope::This, true, Keywords::FIRST_STRIKE);
+                activated(d, "{4}{W}", false, vec![], vec![Effect::PumpAll { who: Who::You, power: 1, toughness: 1 }]);
+            },
+        ),
+        "Kishla Skimmer" => s(
+            &["Whenever a card leaves your graveyard during your turn, draw a card. This ability triggers only once each turn."],
+            |d, _| on(d, When::CardLeavesYourGraveyardOnceEachTurn, vec![], vec![draw(1)]),
+        ),
+        "Essence Anchor" => s(
+            &[
+                "At the beginning of your upkeep, surveil 1.",
+                "{T}: Create a 2/2 black Zombie Druid creature token. Activate only during your turn and only if a card left your graveyard this turn.",
+            ],
+            |d, t| {
+                on(d, When::Upkeep { your_turn_only: true }, vec![], vec![Effect::Surveil { n: 1 }]);
+                let n = activated(d, "", true, vec![], vec![Effect::CreateToken { who: Who::You, def: t.zombie_druid, n: 1 }]);
+                d.activated[n].your_turn_only = true;
+                d.activated[n].if_card_left_graveyard = true;
+            },
+        ),
+        "Kheru Goldkeeper" => s(
+            &[
+                "Whenever one or more cards leave your graveyard during your turn, create a Treasure token.",
+                "Renew — {2}{B}{G}{U}, Exile this card from your graveyard: Put two +1/+1 counters and a flying counter on target creature. Activate only as a sorcery.",
+            ],
+            |d, t| {
+                on(d, When::CardsLeaveYourGraveyardDuringYourTurn, vec![], vec![Effect::CreateToken { who: Who::You, def: t.treasure, n: 1 }]);
+                renew(
+                    d,
+                    "{2}{B}{G}{U}",
+                    vec![CREATURE],
+                    vec![Effect::Counters { slot: 0, n: 2 }, Effect::KeywordCounter { slot: 0, keywords: Keywords::FLYING }],
+                );
+            },
+        ),
+        "Attuned Hunter" => s(
+            &["Whenever one or more cards leave your graveyard during your turn, put a +1/+1 counter on this creature."],
+            |d, _| on(d, When::CardsLeaveYourGraveyardDuringYourTurn, vec![], vec![Effect::CountersSelf { n: 1 }]),
+        ),
+        "Temur Battlecrier" => s(
+            &["During your turn, spells you cast cost {1} less to cast for each creature you control with power 4 or greater."],
+            |d, _| d.your_turn_discount_per_big_creature = true,
+        ),
+        "Armament Dragon" => s(
+            &["When this creature enters, distribute three +1/+1 counters among one, two, or three target creatures you control."],
+            |d, _| {
+                let mut a = Ability::new(vec![YOUR_CREATURE; 3], vec![Effect::DividedCounters]);
+                a.min_targets = Some(1);
+                a.divide = 3;
+                d.triggers.push(Trigger { when: When::Enters, ability: a });
+            },
+        ),
+        "Yathan Tombguard" => s(
+            &["Whenever a creature you control with a counter on it deals combat damage to a player, you draw a card and you lose 1 life."],
+            |d, _| {
+                on(
+                    d,
+                    When::YourCreatureWithCounterDealsCombatDamageToPlayer,
+                    vec![],
+                    vec![draw(1), Effect::LoseLife { who: Who::You, n: 1 }],
+                )
+            },
+        ),
         _ => None,
     }
 }
@@ -862,4 +937,13 @@ pub const TDM_B_SCRIPTED: &[&str] = &[
     "Breaching Dragonstorm",
     "Reverberating Summons",
     "New Way Forward",
+    "Snowmelt Stag",
+    "Bearer of Glory",
+    "Kishla Skimmer",
+    "Essence Anchor",
+    "Kheru Goldkeeper",
+    "Attuned Hunter",
+    "Temur Battlecrier",
+    "Armament Dragon",
+    "Yathan Tombguard",
 ];

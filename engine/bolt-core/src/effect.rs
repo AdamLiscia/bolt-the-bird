@@ -743,8 +743,6 @@ pub enum Effect {
     /// The source deals damage equal to the trigger's amount to the controller of the object in
     /// `extra`, and you draw that many cards (New Way Forward).
     DamageExtrasControllerAndDrawAmount,
-    /// Each creature without this subtype gets -X/-X until end of turn (X the spell's X).
-    ShrinkAllWithoutSubtypeX(&'static str),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1125,6 +1123,14 @@ pub enum When {
     BeginCombatEachTurn,
     /// Only as a delayed trigger: "Whenever a creature you control enters this turn".
     CreatureYouControlEntersThisTurn,
+    /// "Whenever one or more cards leave your graveyard during your turn" (cards leaving between two
+    /// times triggers are put on the stack count as one event).
+    CardsLeaveYourGraveyardDuringYourTurn,
+    /// "Whenever a card leaves your graveyard during your turn, ... This ability triggers only once
+    /// each turn."
+    CardLeavesYourGraveyardOnceEachTurn,
+    /// "Whenever a creature you control with a counter on it deals combat damage to a player".
+    YourCreatureWithCounterDealsCombatDamageToPlayer,
 }
 
 #[derive(Clone, Debug, PartialEq)]

@@ -169,7 +169,7 @@ Mechanics added (appended at the end of their enums and structs):
 - `Effect::ExileUntilNonlandCastFree { max_mv }` through the free-cast window, with `Game::free_casts_to_hand` (not cast: into your hand).
 - `Effect::BecomeCreatureUntilEot` with `Object::eot_creature` (a creature, base P/T, a creature type and keywords this turn only, in addition to its other types); `When::BeginCombatEachTurn`; `Activated::discard_hand`.
 - `Effect::PreventNextFromChosenSource` with `Decision::ChooseDamageSource` and `Game::damage_shields` (checked in `deal_damage` for damage to a player), then a reflexive trigger with the amount and the source; `Effect::DamageExtrasControllerAndDrawAmount`.
-- Built but not used by a card yet: `CardDef::ward_discard` (`StackKind::WardDiscard`, `Decision::PayWardDiscard`) and `Effect::ShrinkAllWithoutSubtypeX`. They're for Scavenger Regent, whose Omen half has {X}: casting an X Omen needs a new `Action` (e.g. `CastOmenX`), and `bolt-py`'s action encoding (and `src/bolt/play_encoding.py`) has to learn it, so I left the card for the lead.
+- Scavenger Regent is left for the lead: casting an X Omen needs a new `Action` (a model contract), so no ward—discard or -X/-X code was kept.
 
 | Card | Test |
 |---|---|
@@ -180,6 +180,30 @@ Mechanics added (appended at the end of their enums and structs):
 | Breaching Dragonstorm | `breaching_dragonstorm_casts_the_first_nonland_free_or_hands_it_over` |
 | Reverberating Summons | `reverberating_summons_becomes_a_hasty_monk_after_two_spells`, `reverberating_summons_cashes_in_your_hand_for_two_cards` |
 | New Way Forward | `new_way_forward_turns_prevented_damage_back_on_its_source` |
+
+## Batch 8 (engine core): during your turn, cards leaving your graveyard (9)
+
+Mechanics added (appended at the end of their enums and structs):
+- A `Scope::This` static with `base_pt` (and no ability loss) sets the creature's base power and toughness; with `your_turn_only`, only during its controller's turn (Snowmelt Stag). "During your turn, this creature has first strike" was already a `your_turn_only` static.
+- Cards leaving a graveyard: `Game::graveyard_left_this_turn` and `Game::graveyard_leave_pending` (set in `move_to` for a card, not a token, leaving its owner's graveyard during its owner's turn). `Game::flush_graveyard_leaves`, run as triggers are put on the stack, fires `When::CardsLeaveYourGraveyardDuringYourTurn` once for everything that left since the last time, and `When::CardLeavesYourGraveyardOnceEachTurn` at most once each turn per source (`Object::once_each_turn`). Limit: two separate instructions in one resolution that each move cards out count as one event.
+- `Activated::your_turn_only` and `Activated::if_card_left_graveyard`.
+- `CardDef::your_turn_discount_per_big_creature` (Temur Battlecrier), in `spell_cost`.
+- `When::YourCreatureWithCounterDealsCombatDamageToPlayer`.
+- Removed batch 7's unused ward—discard and -X/-X code.
+
+| Card | Test |
+|---|---|
+| Snowmelt Stag | `snowmelt_stag_is_5_2_on_your_turn_and_can_slip_past_blockers` |
+| Bearer of Glory | `bearer_of_glory_has_first_strike_on_your_turn_and_pumps_the_team` |
+| Kishla Skimmer | `kishla_skimmer_draws_once_each_turn_when_a_card_leaves_your_graveyard` |
+| Essence Anchor | `essence_anchor_surveils_and_makes_zombies_after_a_card_leaves_your_graveyard` |
+| Kheru Goldkeeper | `kheru_goldkeeper_and_attuned_hunter_reward_cards_leaving_your_graveyard` |
+| Attuned Hunter | `kheru_goldkeeper_and_attuned_hunter_reward_cards_leaving_your_graveyard`, `attuned_hunter_counts_cards_leaving_at_once_as_one_event` |
+| Temur Battlecrier | `temur_battlecrier_discounts_your_spells_per_big_creature_on_your_turn` |
+| Armament Dragon | `armament_dragon_distributes_three_counters` |
+| Yathan Tombguard | `yathan_tombguard_draws_when_a_creature_with_a_counter_connects` |
+
+Not done from the uncommons: Dragonbroods' Relic (a mana ability with "Tap an untapped creature you control" in its cost, and a named all-colors Dragon token with its own enters trigger).
 
 ## Needs core
 
@@ -194,4 +218,5 @@ Cards from the lane's list, in list order, skipped because the engine can't do t
 Round 2 (after the chunk 1 merge, e5c03c9): the cards left on the list after Inspired Ultimatum
 (Misty Rainforest, Arid Mesa, Emergent Ultimatum, Ruinous Ultimatum) all need core, and every
 earlier card on the list was already assessed. No new cards were scripted; the list is used up.
-- Scavenger Regent: an X cost on an Omen half needs a new `Action` and a change to the Python action encoding (ward—discard and the -X/-X effect are built).
+- Scavenger Regent: an X cost on an Omen half needs a new `Action` and a change to the Python action encoding; it also needs ward—discard.
+- Dragonbroods' Relic: a mana ability whose cost includes tapping another creature; a named token (Reliquary Dragon, all colors) with its own enters trigger.

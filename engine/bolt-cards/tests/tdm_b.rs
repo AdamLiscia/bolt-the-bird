@@ -2101,3 +2101,224 @@ fn new_way_forward_turns_prevented_damage_back_on_its_source() {
     assert_eq!(g.players[1].life, 17, "that much damage to its controller");
     assert_eq!(g.players[0].hand.len(), n + 3, "and that many cards");
 }
+
+// ---- Batch 8: during your turn, cards leaving your graveyard ----
+
+#[test]
+fn snowmelt_stag_is_5_2_on_your_turn_and_can_slip_past_blockers() {
+    let mut g = table();
+    let stag = put(&mut g, 0, "Snowmelt Stag");
+    assert!(g.keywords(stag).has(Keywords::VIGILANCE));
+    main_turn_5(&mut g);
+    assert_eq!((g.power(stag), g.toughness(stag)), (5, 2), "your turn");
+    act(&mut g, Action::Activate(stag, 0));
+    resolve_all(&mut g, &[]);
+    assert!(g.keywords(stag).has(Keywords::UNBLOCKABLE));
+    g.start_turn(6, 1);
+    assert_eq!((g.power(stag), g.toughness(stag)), (2, 5), "their turn");
+}
+
+#[test]
+fn bearer_of_glory_has_first_strike_on_your_turn_and_pumps_the_team() {
+    let mut g = table();
+    let bearer = put(&mut g, 0, "Bearer of Glory");
+    let other = put(&mut g, 0, "Humbling Elder");
+    main_turn_5(&mut g);
+    assert!(g.keywords(bearer).has(Keywords::FIRST_STRIKE));
+    act(&mut g, Action::Activate(bearer, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.power(other), g.toughness(other)), (2, 3));
+    assert_eq!(g.power(bearer), 3);
+    g.start_turn(6, 1);
+    assert!(
+        !g.keywords(bearer).has(Keywords::FIRST_STRIKE),
+        "not on their turn"
+    );
+}
+
+/// Return a card from player 0's graveyard to hand with Auroral Procession (one card leaving).
+fn procession(g: &mut Game, card: ObjId) {
+    let c = hand(g, 0, "Auroral Procession");
+    play(g, c, false, &[obj(card)], &[]);
+}
+
+#[test]
+fn kishla_skimmer_draws_once_each_turn_when_a_card_leaves_your_graveyard() {
+    let mut g = table();
+    put(&mut g, 0, "Kishla Skimmer");
+    let a = g.add_card(0, tid("Humbling Elder"), Zone::Graveyard);
+    let b = g.add_card(0, tid("Humbling Elder"), Zone::Graveyard);
+    begin(&mut g);
+    let n = g.players[0].hand.len();
+    procession(&mut g, a);
+    assert_eq!(g.players[0].hand.len(), n + 2, "got a card back and drew one");
+    procession(&mut g, b);
+    assert_eq!(
+        g.players[0].hand.len(),
+        n + 3,
+        "only once each turn: no second draw"
+    );
+
+    // On the opponent's turn: no.
+    let mut g = table();
+    put(&mut g, 0, "Kishla Skimmer");
+    let a = g.add_card(0, tid("Humbling Elder"), Zone::Graveyard);
+    g.start_turn(4, 1);
+    while g.pending != Pending::Priority(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    let c = hand(&mut g, 0, "Auroral Procession");
+    let n = g.players[0].hand.len();
+    act(&mut g, Action::Cast(c));
+    act(&mut g, Action::Target(obj(a)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].hand.len(), n, "cast one, got one back, no draw");
+}
+
+#[test]
+fn essence_anchor_surveils_and_makes_zombies_after_a_card_leaves_your_graveyard() {
+    let mut g = table();
+    let anchor = put(&mut g, 0, "Essence Anchor");
+    let a = g.add_card(0, tid("Humbling Elder"), Zone::Graveyard);
+    g.start_turn(5, 0);
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    let top = *g.players[0].library.last().unwrap();
+    act(&mut g, Action::Yes);
+    assert_eq!(g.obj(top).zone, Zone::Graveyard, "upkeep surveil 1");
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(
+        !g.legal_actions().contains(&Action::Activate(anchor, 0)),
+        "no card has left your graveyard"
+    );
+    procession(&mut g, a);
+    act(&mut g, Action::Activate(anchor, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(tokens(&g, 0, "Zombie Druid").len(), 1);
+    g.start_turn(6, 1);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(
+        !g.legal_actions().contains(&Action::Activate(anchor, 0)),
+        "only during your turn"
+    );
+}
+
+#[test]
+fn kheru_goldkeeper_and_attuned_hunter_reward_cards_leaving_your_graveyard() {
+    let mut g = table();
+    let kheru = put(&mut g, 0, "Kheru Goldkeeper");
+    let hunter = put(&mut g, 0, "Attuned Hunter");
+    let a = g.add_card(0, tid("Humbling Elder"), Zone::Graveyard);
+    let b = g.add_card(0, tid("Humbling Elder"), Zone::Graveyard);
+    assert!(g.keywords(kheru).has(Keywords::FLYING) && g.keywords(hunter).has(Keywords::TRAMPLE));
+    begin(&mut g);
+    procession(&mut g, a);
+    assert_eq!(tokens(&g, 0, "Treasure").len(), 1);
+    assert_eq!(g.obj(hunter).counters, 1);
+    procession(&mut g, b);
+    assert_eq!(tokens(&g, 0, "Treasure").len(), 2, "every time, not once a turn");
+    assert_eq!(g.obj(hunter).counters, 2);
+
+    // Kheru's renew.
+    let mut g = table();
+    let kheru = g.add_card(0, tid("Kheru Goldkeeper"), Zone::Graveyard);
+    let elder = put(&mut g, 0, "Humbling Elder");
+    begin(&mut g);
+    act(&mut g, Action::Activate(kheru, 0));
+    resolve_all(&mut g, &[Action::Target(obj(elder))]);
+    assert_eq!(g.obj(kheru).zone, Zone::Exile);
+    assert_eq!(g.obj(elder).counters, 2);
+    assert!(g.keywords(elder).has(Keywords::FLYING));
+}
+
+#[test]
+fn attuned_hunter_counts_cards_leaving_at_once_as_one_event() {
+    // Casting a harmonize card from your graveyard: it leaves your graveyard.
+    let mut g = table();
+    let hunter = put(&mut g, 0, "Attuned Hunter");
+    let ride = g.add_card(0, tid("Wild Ride"), Zone::Graveyard);
+    begin(&mut g);
+    act(&mut g, Action::CastFlashback(ride));
+    act(&mut g, Action::Target(obj(hunter)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(hunter).counters, 1);
+    assert_eq!(g.obj(ride).zone, Zone::Exile);
+}
+
+#[test]
+fn temur_battlecrier_discounts_your_spells_per_big_creature_on_your_turn() {
+    let mut g = table();
+    put(&mut g, 0, "Temur Battlecrier"); // 4/3: itself counts
+    put(&mut g, 0, "Dusyut Earthcarver"); // 4/4
+    put(&mut g, 0, "Humbling Elder"); // 1/2: doesn't
+    let c = hand(&mut g, 0, "Cruel Truths"); // {3}{B}
+    begin(&mut g);
+    assert_eq!(
+        paid(&mut g, |g| play(g, c, false, &[], &[Action::No, Action::No])),
+        2
+    );
+
+    let mut g = table();
+    put(&mut g, 0, "Temur Battlecrier");
+    let c = hand(&mut g, 0, "Cruel Truths");
+    g.start_turn(4, 1);
+    while g.pending != Pending::Priority(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    let spent = paid(&mut g, |g| {
+        act(g, Action::Cast(c));
+        resolve_all(g, &[Action::No, Action::No]);
+    });
+    assert_eq!(spent, 4, "not on their turn");
+}
+
+#[test]
+fn armament_dragon_distributes_three_counters() {
+    let mut g = table();
+    let a = put(&mut g, 0, "Humbling Elder");
+    let b = put(&mut g, 0, "Iceridge Serpent");
+    let theirs = put(&mut g, 1, "Iceridge Serpent");
+    let dragon = hand(&mut g, 0, "Armament Dragon");
+    begin(&mut g);
+    act(&mut g, Action::Cast(dragon));
+    while !matches!(g.pending, Pending::ChooseTarget(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(
+        !g.legal_actions().contains(&Action::Target(obj(theirs))),
+        "creatures you control"
+    );
+    act(&mut g, Action::Target(obj(a)));
+    act(&mut g, Action::Target(obj(b)));
+    act(&mut g, Action::No);
+    act(&mut g, Action::Amount(2));
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.obj(a).counters, g.obj(b).counters), (2, 1));
+}
+
+#[test]
+fn yathan_tombguard_draws_when_a_creature_with_a_counter_connects() {
+    let mut g = table();
+    let guard = put(&mut g, 0, "Yathan Tombguard");
+    let envoy = hand(&mut g, 0, "Trade Route Envoy");
+    begin(&mut g);
+    play(&mut g, envoy, false, &[], &[]);
+    assert_eq!(g.obj(envoy).counters, 1);
+    to_attacks(&mut g);
+    attack(&mut g, &[envoy, guard], &[]);
+    let (n, life) = (g.players[0].hand.len(), g.players[0].life);
+    while g.step != Step::Main2 {
+        let a = match g.pending {
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.players[0].hand.len(), n + 1, "only the Envoy has a counter");
+    assert_eq!(g.players[0].life, life - 1);
+}
