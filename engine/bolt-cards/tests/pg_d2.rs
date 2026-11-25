@@ -86,6 +86,24 @@ fn in_graveyard(g: &Game, p: usize, x: ObjId) -> bool {
     g.players[p].graveyard.contains(&x)
 }
 
+fn colors_of(g: &Game, id: ObjId) -> Vec<[bool; 5]> {
+    g.mana_sources(0)
+        .into_iter()
+        .filter(|&(x, _)| x == id)
+        .map(|(_, m)| m.colors)
+        .collect()
+}
+
+fn commander_on_field(g: &mut Game, name: &str) -> ObjId {
+    let c = put(g, 0, name);
+    g.commanders[0] = Some(c);
+    c
+}
+
+fn has(g: &Game, a: Action) -> bool {
+    g.legal_actions().contains(&a)
+}
+
 // ---- The Gitrog, Ravenous Ride ----
 
 #[test]
@@ -243,4 +261,201 @@ fn lantern_of_the_lost_exiles_a_card_then_all_graveyards() {
     assert!(g.players[0].graveyard.is_empty() && g.players[1].graveyard.is_empty());
     assert_eq!(g.obj(lantern).zone, Zone::Exile, "exiled as the cost");
     assert_eq!(g.players[0].hand.len(), hand_before + 1);
+}
+
+// ---- Kaalia of the Vast ----
+
+const B_R: [bool; 5] = [false, false, true, true, false];
+const R_W: [bool; 5] = [true, false, false, true, false];
+
+#[test]
+fn shock_lands_pay_two_life_or_enter_tapped() {
+    for (name, colors) in [("Blood Crypt", B_R), ("Sacred Foundry", R_W)] {
+        let mut g = game(&[]);
+        let s = hand(&mut g, 0, name);
+        act(&mut g, Action::PlayLand(s));
+        act(&mut g, Action::Yes);
+        assert!(!g.obj(s).tapped, "{name}");
+        assert_eq!(g.players[0].life, 38, "{name}");
+        assert_eq!(colors_of(&g, s), [colors], "{name}");
+        let mut g = game(&[]);
+        let s = hand(&mut g, 0, name);
+        act(&mut g, Action::PlayLand(s));
+        act(&mut g, Action::No);
+        assert!(g.obj(s).tapped, "{name}");
+        assert_eq!(g.players[0].life, 40, "{name}");
+    }
+}
+
+#[test]
+fn deadly_rollick_and_flawless_maneuver_are_free_with_a_commander() {
+    let mut g = game(&[]);
+    let theirs = put(&mut g, 1, "Savannah Lions");
+    let mine = put(&mut g, 0, "Aegis Turtle");
+    let rollick = hand(&mut g, 0, "Deadly Rollick");
+    let maneuver = hand(&mut g, 0, "Flawless Maneuver");
+    assert!(!has(&g, Action::CastAlternative(rollick)), "no commander");
+    assert!(!has(&g, Action::Cast(rollick)), "no lands");
+    commander_on_field(&mut g, "Bello, Bard of the Brambles");
+    play_alt(&mut g, rollick, &[obj(theirs)]);
+    assert_eq!(g.obj(theirs).zone, Zone::Exile);
+    play_alt(&mut g, maneuver, &[]);
+    assert!(g.keywords(mine).has(Keywords::INDESTRUCTIBLE));
+}
+
+fn play_alt(g: &mut Game, card: ObjId, targets: &[Target]) {
+    act(g, Action::CastAlternative(card));
+    for &t in targets {
+        act(g, Action::Target(t));
+    }
+    resolve_all(g, &[]);
+}
+
+#[test]
+fn filter_lands_turn_one_hybrid_into_two_colored() {
+    let mut g = game(&["Fetid Heath", "Plains"]);
+    let blood = put(&mut g, 1, "Exquisite Blood");
+    let m = hand(&mut g, 0, "Mortify"); // {1}{W}{B}
+    assert!(!has(&g, Action::Cast(m)), "two lands, no black");
+    put(&mut g, 0, "Plains"); // Plains pays {W/B}; the Heath makes {W}{B}; the other Plains {1}
+    play(&mut g, m, false, &[obj(blood)], &[]);
+    assert!(in_graveyard(&g, 1, blood));
+
+    let mut g = game(&["Graven Cairns"]);
+    let t = hand(&mut g, 0, "Vampiric Tutor"); // {B}
+    put(&mut g, 0, "Mountain"); // pays {B/R}: the Cairns makes {B}{B}; {C} + {R} alone has no {B}
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Library);
+    play(&mut g, t, false, &[], &[Action::Pick(ring)]);
+    assert_eq!(g.players[0].library.last(), Some(&ring));
+}
+
+#[test]
+fn dragonskull_summit_checks_for_a_swamp_or_mountain() {
+    let mut g = game(&[]);
+    let s = hand(&mut g, 0, "Dragonskull Summit");
+    act(&mut g, Action::PlayLand(s));
+    assert!(g.obj(s).tapped);
+    let mut g = game(&["Swamp"]);
+    let s = hand(&mut g, 0, "Dragonskull Summit");
+    act(&mut g, Action::PlayLand(s));
+    assert!(!g.obj(s).tapped);
+    assert_eq!(colors_of(&g, s), [B_R]);
+}
+
+#[test]
+fn vampiric_tutor_puts_a_card_on_top_for_two_life() {
+    let mut g = table();
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Library);
+    g.players[0].library.rotate_right(1); // not on top to begin with
+    let t = hand(&mut g, 0, "Vampiric Tutor");
+    play(&mut g, t, false, &[], &[Action::Pick(ring)]);
+    assert_eq!(g.players[0].library.last(), Some(&ring));
+    assert_eq!(g.players[0].life, 38);
+}
+
+#[test]
+fn battlebond_lands_enter_tapped_one_on_one() {
+    for (name, colors) in [("Luxury Suite", B_R), ("Spectator Seating", R_W)] {
+        let mut g = game(&[]);
+        let s = hand(&mut g, 0, name);
+        act(&mut g, Action::PlayLand(s));
+        assert!(g.obj(s).tapped, "{name}");
+        assert_eq!(g.def_of(s).mana.map(|m| m.colors), Some(colors), "{name}");
+    }
+}
+
+#[test]
+fn talismans_and_sulfurous_springs_hurt_for_colored_mana() {
+    for name in [
+        "Talisman of Indulgence",
+        "Talisman of Hierarchy",
+        "Sulfurous Springs",
+    ] {
+        let mut g = game(&[name]);
+        let ring = g.add_card(0, cid("Sol Ring"), Zone::Library);
+        let t = hand(&mut g, 0, "Vampiric Tutor"); // {B}
+        play(&mut g, t, false, &[], &[Action::Pick(ring)]);
+        assert_eq!(g.players[0].life, 37, "{name}: 1 damage, then 2 life");
+        let mut g = game(&[name]);
+        let ring = hand(&mut g, 0, "Sol Ring"); // {1}: the free {C}
+        play(&mut g, ring, false, &[], &[]);
+        assert_eq!(g.players[0].life, 40, "{name}");
+    }
+}
+
+#[test]
+fn mortify_destroys_a_creature_or_an_enchantment() {
+    let mut g = table();
+    let blood = put(&mut g, 1, "Exquisite Blood");
+    let lions = put(&mut g, 1, "Savannah Lions");
+    let m = hand(&mut g, 0, "Mortify");
+    play(&mut g, m, false, &[obj(blood)], &[]);
+    let m = hand(&mut g, 0, "Mortify");
+    play(&mut g, m, false, &[obj(lions)], &[]);
+    assert!(in_graveyard(&g, 1, blood) && in_graveyard(&g, 1, lions));
+}
+
+#[test]
+fn pestilence_demon_pings_every_creature_and_player() {
+    let mut g = table();
+    let demon = put(&mut g, 0, "Pestilence Demon");
+    let lions = put(&mut g, 1, "Savannah Lions");
+    act(&mut g, Action::Activate(demon, 0));
+    resolve_all(&mut g, &[]);
+    assert!(in_graveyard(&g, 1, lions));
+    assert_eq!(g.obj(demon).zone, Zone::Battlefield);
+    assert_eq!((g.players[0].life, g.players[1].life), (39, 39));
+}
+
+#[test]
+fn akroma_angel_of_wrath_has_its_keywords_and_protection() {
+    let mut g = table();
+    let a = put(&mut g, 1, "Akroma, Angel of Wrath");
+    let k = g.keywords(a);
+    for kw in [
+        Keywords::FLYING,
+        Keywords::FIRST_STRIKE,
+        Keywords::VIGILANCE,
+        Keywords::TRAMPLE,
+        Keywords::HASTE,
+    ] {
+        assert!(k.has(kw));
+    }
+    let lions = put(&mut g, 1, "Savannah Lions");
+    let downfall = hand(&mut g, 0, "Hero's Downfall"); // black
+    act(&mut g, Action::Cast(downfall));
+    assert!(!has(&g, Action::Target(obj(a))), "protection from black");
+    assert!(has(&g, Action::Target(obj(lions))));
+}
+
+#[test]
+fn flagstones_of_trokair_fetches_a_plains_when_destroyed() {
+    let mut g = table();
+    let flag = put(&mut g, 0, "Flagstones of Trokair");
+    assert_eq!(colors_of(&g, flag), [[true, false, false, false, false]]);
+    let plains = g.add_card(0, cid("Plains"), Zone::Library);
+    let spine = hand(&mut g, 0, "Spine of Ish Sah");
+    play(
+        &mut g,
+        spine,
+        false,
+        &[],
+        &[Action::Target(obj(flag)), Action::Yes, Action::Pick(plains)],
+    );
+    assert!(in_graveyard(&g, 0, flag));
+    assert_eq!(g.obj(plains).zone, Zone::Battlefield);
+    assert!(g.obj(plains).tapped);
+}
+
+#[test]
+fn shinka_gives_a_legendary_creature_first_strike() {
+    let mut g = table();
+    let shinka = put(&mut g, 0, "Shinka, the Bloodsoaked Keep");
+    let legend = put(&mut g, 0, "Ms. Bumbleflower");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    act(&mut g, Action::Activate(shinka, 0));
+    assert!(!has(&g, Action::Target(obj(lions))), "not legendary");
+    act(&mut g, Action::Target(obj(legend)));
+    resolve_all(&mut g, &[]);
+    assert!(g.keywords(legend).has(Keywords::FIRST_STRIKE));
 }
