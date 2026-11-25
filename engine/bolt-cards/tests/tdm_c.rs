@@ -2269,3 +2269,386 @@ fn songcrafter_mage_gives_a_graveyard_spell_harmonize_for_its_mana_cost() {
     assert_eq!(g.obj(lf).zone, Zone::Exile, "then exiled");
     assert_eq!(g.obj(spell).zone, Zone::Graveyard);
 }
+
+// ---- round 3, batch 8 ----
+
+#[test]
+fn anafenza_endures_when_another_nontoken_creature_dies() {
+    let mut g = table();
+    let a = put(&mut g, 0, "Anafenza, Unyielding Lineage");
+    let ks = g.def_of(a).keywords;
+    assert!(ks.has(Keywords::FLASH) && ks.has(Keywords::FIRST_STRIKE));
+    let e = put(&mut g, 0, "Unburied Earthcarver");
+    let fodder = put(&mut g, 0, "Summit Intimidator");
+    let goblin = g.add_card(0, set_token(&g, "Goblin"), Zone::Battlefield);
+    begin(&mut g);
+    act(&mut g, Action::ActivateWith(e, 0, fodder));
+    resolve_all(&mut g, &[Action::Yes]);
+    assert_eq!(g.obj(a).counters, 2);
+    act(&mut g, Action::ActivateWith(e, 0, goblin));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(a).counters, 2, "not for a token");
+}
+
+#[test]
+fn voice_of_victory_stops_opponents_casting_on_your_turn() {
+    let mut g = table();
+    let v = put(&mut g, 0, "Voice of Victory");
+    let instant = hand(&mut g, 1, "Twin Bolt");
+    begin(&mut g);
+    let mine = hand(&mut g, 0, "Lightfoot Technique");
+    act(&mut g, Action::Cast(mine));
+    act(&mut g, Action::Target(obj(v)));
+    act(&mut g, Action::PassPriority); // to the opponent, with a spell on the stack
+    assert_eq!(g.pending, Pending::Priority(1));
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(instant)),
+        "not during your turn"
+    );
+    resolve_all(&mut g, &[]);
+    g.start_turn(6, 1);
+    while !(g.step == Step::Main1 && g.pending == Pending::Priority(1)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(
+        g.legal_actions().contains(&Action::Cast(instant)),
+        "on their own turn"
+    );
+    attack_with(&mut g, v);
+}
+
+#[test]
+fn zurgo_keeps_warrior_tokens_through_your_end_step() {
+    let mut g = table();
+    let z = put(&mut g, 0, "Zurgo, Thunder's Decree");
+    attack_with(&mut g, z);
+    assert_eq!(tokens(&g, 0, "Warrior").len(), 2, "mobilize 2");
+    while g.step != Step::End {
+        let a = match g.pending {
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(
+        tokens(&g, 0, "Warrior").len(),
+        2,
+        "they can't be sacrificed during your end step"
+    );
+    to_next_turn(&mut g);
+    assert_eq!(tokens(&g, 0, "Warrior").len(), 2, "and stay");
+}
+
+#[test]
+fn the_sibsig_ceremony_discounts_creatures_and_trades_cast_ones_for_zombies() {
+    let mut g = table();
+    put(&mut g, 0, "The Sibsig Ceremony");
+    let c = hand(&mut g, 0, "Summit Intimidator"); // {3}{R}
+    let theirs = put(&mut g, 1, "Unburied Earthcarver");
+    begin(&mut g);
+    let n = paid(&mut g, |g| {
+        act(g, Action::Cast(c));
+        resolve_all(g, &[Action::Target(obj(theirs))]);
+    });
+    assert_eq!(n, 2, "{{2}} less");
+    assert_eq!(g.obj(c).zone, Zone::Graveyard, "destroyed: you cast it");
+    assert_eq!(tokens(&g, 0, "Zombie Druid").len(), 1);
+    let put_in = g.add_card(0, tid("Unburied Earthcarver"), Zone::Hand);
+    g.move_card(put_in, Zone::Battlefield);
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(put_in).zone, Zone::Battlefield, "not cast: it stays");
+    assert_eq!(tokens(&g, 0, "Zombie Druid").len(), 1);
+}
+
+#[test]
+fn rite_of_renewal_returns_two_and_shuffles_four_back() {
+    let mut g = table();
+    let a = g.add_card(0, tid("Unburied Earthcarver"), Zone::Graveyard);
+    let b = g.add_card(0, tid("War Effort"), Zone::Graveyard);
+    let spell = g.add_card(0, tid("Twin Bolt"), Zone::Graveyard);
+    let theirs: Vec<_> = (0..5)
+        .map(|_| g.add_card(1, tid("Twin Bolt"), Zone::Graveyard))
+        .collect();
+    let c = hand(&mut g, 0, "Rite of Renewal");
+    begin(&mut g);
+    act(&mut g, Action::Cast(c));
+    act(&mut g, Action::Target(Target::Player(1)));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(
+        !g.legal_actions().contains(&Action::Pick(spell)),
+        "permanent cards"
+    );
+    act(&mut g, Action::Pick(a));
+    act(&mut g, Action::Pick(b));
+    let lib = g.players[1].library.len();
+    for &t in &theirs[..4] {
+        act(&mut g, Action::Pick(t));
+    }
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.obj(a).zone, g.obj(b).zone), (Zone::Hand, Zone::Hand));
+    assert_eq!(g.players[1].library.len(), lib + 4);
+    assert_eq!(g.obj(theirs[4]).zone, Zone::Graveyard, "up to four");
+    assert_eq!(g.obj(c).zone, Zone::Exile);
+}
+
+#[test]
+fn sarkhan_beholds_for_a_treasure_and_grows_into_a_dragon() {
+    let mut g = table();
+    let dragon = hand(&mut g, 0, "Boulderborn Dragon");
+    let s = hand(&mut g, 0, "Sarkhan, Dragon Ascendant");
+    begin(&mut g);
+    play(&mut g, s, false, &[], &[Action::Yes]); // behold the Dragon in hand
+    assert_eq!(tokens(&g, 0, "Treasure").len(), 1);
+    assert!(!g.has_subtype(s, "Dragon"));
+    play(&mut g, dragon, false, &[], &[]);
+    assert_eq!(g.obj(s).counters, 1);
+    assert!(g.has_subtype(s, "Dragon") && g.keywords(s).has(Keywords::FLYING));
+    to_next_turn(&mut g);
+    assert!(
+        !g.has_subtype(s, "Dragon") && !g.keywords(s).has(Keywords::FLYING),
+        "until end of turn"
+    );
+
+    let mut g2 = table();
+    let s2 = hand(&mut g2, 0, "Sarkhan, Dragon Ascendant");
+    begin(&mut g2);
+    play(&mut g2, s2, false, &[], &[]); // no Dragon: nothing to behold, no question
+    assert!(tokens(&g2, 0, "Treasure").is_empty());
+}
+
+#[test]
+fn mardu_siegebreaker_attacks_with_a_copy_of_the_exiled_creature() {
+    let mut g = table();
+    let mine = put(&mut g, 0, "Unburied Earthcarver");
+    let sb = hand(&mut g, 0, "Mardu Siegebreaker");
+    begin(&mut g);
+    play(&mut g, sb, false, &[], &[Action::Target(obj(mine))]);
+    assert_eq!(g.obj(mine).zone, Zone::Exile);
+    attack_with(&mut g, sb); // haste
+    let copies: Vec<_> = g
+        .permanents(0)
+        .filter(|&x| g.is_token(x) && g.def_of(x).name == "Unburied Earthcarver")
+        .collect();
+    assert_eq!(copies.len(), 1);
+    assert!(g.obj(copies[0]).tapped && g.combat.as_ref().unwrap().attackers.contains(&copies[0]));
+    while g.step != Step::End {
+        let a = match g.pending {
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert!(
+        g.permanents(0).all(|x| !g.is_token(x)),
+        "sacrificed at the end step"
+    );
+    g.move_card(sb, Zone::Graveyard);
+    assert_eq!(g.obj(mine).zone, Zone::Battlefield, "back when it leaves");
+}
+
+#[test]
+fn dragonfire_blade_costs_less_per_color_and_stops_monocolored_targeting() {
+    let mut g = table();
+    let blade = put(&mut g, 0, "Dragonfire Blade");
+    let red = put(&mut g, 0, "Summit Intimidator");
+    let three = put(&mut g, 0, "Jeskai Brushmaster");
+    let colorless = put(&mut g, 0, "Boulderborn Dragon");
+    begin(&mut g);
+    for (target, cost) in [(three, 1), (red, 3)] {
+        let n = paid(&mut g, |g| {
+            act(g, Action::Activate(blade, 0));
+            act(g, Action::Target(obj(target)));
+            resolve_all(g, &[]);
+        });
+        assert_eq!(n, cost, "{{4}} less one per color");
+    }
+    let n = paid(&mut g, |g| {
+        act(g, Action::Activate(blade, 0));
+        act(g, Action::Target(obj(colorless)));
+        resolve_all(g, &[]);
+    });
+    assert_eq!(n, 4, "colorless: full price");
+    assert_eq!((g.power(colorless), g.toughness(colorless)), (5, 5));
+    let mono = hand(&mut g, 1, "Twin Bolt");
+    let multi = hand(&mut g, 1, "Inevitable Defeat");
+    g.start_turn(6, 1);
+    while !(g.step == Step::Main1 && g.pending == Pending::Priority(1)) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Cast(mono));
+    assert!(
+        !g.legal_actions().contains(&Action::Target(obj(colorless))),
+        "hexproof from monocolored"
+    );
+    act(&mut g, Action::Target(Target::Player(0)));
+    act(&mut g, Action::No);
+    resolve_all(&mut g, &[]);
+    act(&mut g, Action::Cast(multi));
+    assert!(
+        g.legal_actions().contains(&Action::Target(obj(colorless))),
+        "a multicolored spell can"
+    );
+}
+
+#[test]
+fn shiko_casts_a_free_copy_of_a_cheap_graveyard_card() {
+    let mut g = table();
+    let bolt = g.add_card(0, tid("Twin Bolt"), Zone::Graveyard);
+    let pricey = g.add_card(0, tid("War Effort"), Zone::Graveyard); // mana value 4
+    let land = g.add_card(0, tid("Forest"), Zone::Graveyard);
+    let shiko = hand(&mut g, 0, "Shiko, Paragon of the Way");
+    begin(&mut g);
+    act(&mut g, Action::Cast(shiko));
+    to_target_choice(&mut g);
+    let legal = g.legal_actions();
+    assert!(!legal.contains(&Action::Target(obj(pricey))) && !legal.contains(&Action::Target(obj(land))));
+    act(&mut g, Action::Target(obj(bolt)));
+    while !matches!(g.pending, Pending::FreeCast(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.obj(bolt).zone, Zone::Exile);
+    let copy = g
+        .legal_actions()
+        .into_iter()
+        .find_map(|a| match a {
+            Action::Cast(c) => Some(c),
+            _ => None,
+        })
+        .expect("the copy can be cast");
+    assert_ne!(copy, bolt, "a copy, not the card");
+    let life = g.players[1].life;
+    act(&mut g, Action::Cast(copy));
+    act(&mut g, Action::Target(Target::Player(1)));
+    act(&mut g, Action::No);
+    act(&mut g, Action::PassPriority); // done casting
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].life, life - 2);
+    assert_eq!(g.obj(bolt).zone, Zone::Exile, "the card stays exiled");
+    assert!(
+        !g.players[0].graveyard.contains(&copy),
+        "the copy ceased to exist"
+    );
+}
+
+#[test]
+fn emergent_ultimatum_exiles_three_names_the_opponent_shuffles_one_back() {
+    let mut g = tdm_lands(&["Forest", "Forest", "Forest", "Swamp", "Swamp", "Island", "Island"]);
+    let c = hand(&mut g, 0, "Emergent Ultimatum");
+    begin(&mut g);
+    let bolt = g.add_card(0, tid("Twin Bolt"), Zone::Library);
+    let bolt2 = g.add_card(0, tid("Twin Bolt"), Zone::Library);
+    let creature = g.add_card(0, tid("Unburied Earthcarver"), Zone::Library);
+    let effort = g.add_card(0, tid("War Effort"), Zone::Library);
+    let colorless = g.add_card(0, tid("Jeskai Monument"), Zone::Library);
+    act(&mut g, Action::Cast(c));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(
+        !g.legal_actions().contains(&Action::Pick(colorless)),
+        "monocolored"
+    );
+    act(&mut g, Action::Pick(bolt));
+    assert!(
+        !g.legal_actions().contains(&Action::Pick(bolt2)),
+        "different names"
+    );
+    act(&mut g, Action::Pick(creature));
+    act(&mut g, Action::Pick(effort));
+    assert!(matches!(g.pending, Pending::Decide(1)), "the opponent chooses");
+    act(&mut g, Action::Pick(effort));
+    assert_eq!(g.obj(effort).zone, Zone::Library);
+    while !matches!(g.pending, Pending::FreeCast(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Cast(creature));
+    act(&mut g, Action::PassPriority);
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(creature).zone, Zone::Battlefield, "cast free");
+    assert_eq!(g.obj(c).zone, Zone::Exile);
+}
+
+#[test]
+fn rot_curse_rakshasa_is_decayed() {
+    let mut g = table();
+    let r = put(&mut g, 1, "Rot-Curse Rakshasa"); // 5/5 trample, decayed
+    let attacker = put(&mut g, 0, "Unburied Earthcarver");
+    let other = put(&mut g, 1, "Summit Intimidator");
+    assert!(g.keywords(r).has(Keywords::TRAMPLE));
+    attack_with(&mut g, attacker);
+    while g.pending != Pending::DeclareBlockers(1) {
+        act(&mut g, Action::PassPriority);
+    }
+    let legal = g.legal_actions();
+    assert!(
+        !legal.contains(&Action::Block { blocker: r, attacker }),
+        "decayed: can't block"
+    );
+    assert!(legal.contains(&Action::Block {
+        blocker: other,
+        attacker
+    }));
+    // When it attacks, it's sacrificed at end of combat.
+    let mut g = table();
+    let r = put(&mut g, 0, "Rot-Curse Rakshasa");
+    let life = g.players[1].life;
+    attack_with(&mut g, r);
+    through_combat_damage_or_main(&mut g);
+    assert_eq!(g.players[1].life, life - 5);
+    assert_eq!(g.obj(r).zone, Zone::Graveyard, "sacrificed at end of combat");
+}
+
+#[test]
+fn rot_curse_rakshasa_renews_decayed_counters_on_exactly_x_creatures() {
+    let mut g = table();
+    let r = g.add_card(0, tid("Rot-Curse Rakshasa"), Zone::Graveyard);
+    let a = put(&mut g, 1, "Unburied Earthcarver");
+    let b = put(&mut g, 1, "Summit Intimidator");
+    let c = put(&mut g, 1, "Arashin Sunshield");
+    begin(&mut g);
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::ActivateX {
+        id: r,
+        n: 0,
+        victim: None,
+        x: 2
+    }));
+    assert!(
+        !legal
+            .iter()
+            .any(|x| matches!(x, Action::ActivateX { id, x: 4.., .. } if *id == r)),
+        "no more than the creatures there are"
+    );
+    act(
+        &mut g,
+        Action::ActivateX {
+            id: r,
+            n: 0,
+            victim: None,
+            x: 2,
+        },
+    );
+    act(&mut g, Action::Target(obj(a)));
+    assert!(!g.legal_actions().contains(&Action::No), "exactly X");
+    act(&mut g, Action::Target(obj(b)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(r).zone, Zone::Exile);
+    assert!(g.obj(a).decayed && g.obj(b).decayed && !g.obj(c).decayed);
+    // A decayed counter: it can't block and is sacrificed after attacking.
+    g.start_turn(6, 1);
+    while g.pending != Pending::DeclareAttackers(1) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(a));
+    act(&mut g, Action::FinishAttacks);
+    while g.step != Step::Main2 {
+        let x = match g.pending {
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, x);
+    }
+    assert_eq!(g.obj(a).zone, Zone::Graveyard);
+}

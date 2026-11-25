@@ -193,6 +193,8 @@ pub struct Activated {
     pub your_turn_only: bool,
     /// "Activate only if a card left your graveyard this turn."
     pub if_card_left_graveyard: bool,
+    /// "This ability costs {1} less to activate for each color of the creature it targets."
+    pub less_per_target_color: bool,
     /// "Tap X untapped tokens you control" in the cost (activated with `Action::ActivateX`).
     pub tap_x_untapped_tokens: bool,
     /// Activated from your hand, discarding this card as a cost (cycling: "{cost}, Discard this
@@ -389,6 +391,12 @@ pub struct CardDef {
     /// "{T}: Add one mana of any color. Spend this mana only to cast a Dragon spell or an Omen
     /// spell." Its plain mana is in `mana` (Maelstrom of the Spirit Dragon).
     pub any_color_for_dragon_or_omen: bool,
+    /// "Your opponents can't cast spells during your turn." (Voice of Victory)
+    pub opponents_cant_cast_your_turn: bool,
+    /// "During your end step, Warrior tokens you control have 'This token can't be sacrificed.'"
+    pub warrior_tokens_unsacrificeable_end_step: bool,
+    /// "Creature spells you cast cost {N} less to cast." (The Sibsig Ceremony)
+    pub creature_spell_discount: u8,
     /// Its color identity (CR 903.4), WUBRG: set from the rules text when the set loads.
     pub color_identity: [bool; 5],
     /// "{T}: Add one mana of any color in your commander's color identity." (no commander: no mana)
@@ -402,6 +410,8 @@ pub struct CardDef {
     /// has indestructible, haste, and \"Whenever this creature deals combat damage to a player, draw
     /// a card.\"" (its trigger number 0 is that draw)
     pub animates_big_noncreatures_your_turn: bool,
+    /// "Equipped creature ... has hexproof from monocolored." (Dragonfire Blade)
+    pub equipped_hexproof_from_monocolored: bool,
     /// "This land enters tapped unless you control N or more basic lands." (0: no such rule)
     pub enters_tapped_unless_basics: u8,
     /// "This land enters tapped unless you control N or fewer other lands."
@@ -411,6 +421,8 @@ pub struct CardDef {
     pub offspring: Option<ManaCost>,
     /// Zinnia: "Creature spells you cast gain offspring {cost} as you cast them."
     pub grants_offspring: Option<ManaCost>,
+    /// Decayed (CR 702.147): it can't block; when it attacks, sacrifice it at end of combat.
+    pub decayed: bool,
 }
 
 /// An Omen spell half: its name, cost, whether it's an instant, and what it does.
@@ -531,15 +543,20 @@ impl CardDef {
             your_turn_discount_per_big_creature: false,
             mana_taps_creature: false,
             any_color_for_dragon_or_omen: false,
+            opponents_cant_cast_your_turn: false,
+            warrior_tokens_unsacrificeable_end_step: false,
+            creature_spell_discount: 0,
             color_identity: [false; 5],
             mana_commander_identity: false,
             mana_opponent_land_colors: false,
             mana_amount: 0,
             animates_big_noncreatures_your_turn: false,
+            equipped_hexproof_from_monocolored: false,
             enters_tapped_unless_basics: 0,
             enters_tapped_unless_at_most_lands: None,
             offspring: None,
             grants_offspring: None,
+            decayed: false,
         }
     }
 
@@ -639,15 +656,20 @@ impl CardDef {
             your_turn_discount_per_big_creature: false,
             mana_taps_creature: false,
             any_color_for_dragon_or_omen: false,
+            opponents_cant_cast_your_turn: false,
+            warrior_tokens_unsacrificeable_end_step: false,
+            creature_spell_discount: 0,
             color_identity: [false; 5],
             mana_commander_identity: false,
             mana_opponent_land_colors: false,
             mana_amount: 0,
             animates_big_noncreatures_your_turn: false,
+            equipped_hexproof_from_monocolored: false,
             enters_tapped_unless_basics: 0,
             enters_tapped_unless_at_most_lands: None,
             offspring: None,
             grants_offspring: None,
+            decayed: false,
         }
     }
 
@@ -747,15 +769,20 @@ impl CardDef {
             your_turn_discount_per_big_creature: false,
             mana_taps_creature: false,
             any_color_for_dragon_or_omen: false,
+            opponents_cant_cast_your_turn: false,
+            warrior_tokens_unsacrificeable_end_step: false,
+            creature_spell_discount: 0,
             color_identity: [false; 5],
             mana_commander_identity: false,
             mana_opponent_land_colors: false,
             mana_amount: 0,
             animates_big_noncreatures_your_turn: false,
+            equipped_hexproof_from_monocolored: false,
             enters_tapped_unless_basics: 0,
             enters_tapped_unless_at_most_lands: None,
             offspring: None,
             grants_offspring: None,
+            decayed: false,
         }
     }
 }

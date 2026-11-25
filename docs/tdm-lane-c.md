@@ -269,3 +269,60 @@ Assessed and left (needs core):
   player's graveyard. Target slots are filled in order with one minimum count, so the four can't be chosen
   after skipping the two, and no filter ties cards to the player in another slot. It also needs "shuffle
   target cards into their library".
+
+## Round 3, batch 8a: the rest of Tarkir (5 cards)
+
+Mechanics added (bolt-core, all at the end of their enum or struct):
+- `CardDef::opponents_cant_cast_your_turn` (no casting from any zone, free casts included; lands can still be
+  played and abilities activated), `CardDef::warrior_tokens_unsacrificeable_end_step` (`cant_be_sacrificed`:
+  checked for end-step sacrifices, "sacrifices a creature" effects and every sacrifice cost),
+  `CardDef::creature_spell_discount`.
+- `When::CastCreatureYouControlEnters`: fired as a cast creature spell resolves onto the battlefield (the
+  "if you cast it" creatures), with the creature in a triggering slot.
+- `Effect::ReturnUpToPermanentCardsToHand(n)` and `Effect::ShuffleUpToFromGraveyard { slot, n }` with their
+  decisions. Rite of Renewal's cards are chosen as it resolves rather than as targets (the coordinator's call):
+  it targets only the player.
+
+Cards: Anafenza, Unyielding Lineage, Voice of Victory, Zurgo, Thunder's Decree, The Sibsig Ceremony, Rite of
+Renewal.
+
+## Round 3, batch 8b (5 cards)
+
+Mechanics added (bolt-core, all at the end of their enum or struct):
+- `Effect::MayBeholdThen` (no Dragon to behold: no question, nothing happens) and `Effect::SubtypeUntilEotSelf`
+  (`Object::eot_subtype`).
+- `Effect::CopyLinkedExileAttacking`: a tapped, attacking token copy of the card the source exiled until it
+  leaves, sacrificed at the next end step.
+- Dragonfire Blade: `CardDef::equipped_hexproof_from_monocolored` (checked in `slot_ok` against the targeting
+  item's source), and `Activated::less_per_target_color`. That equip is offered when the most colorful creature
+  you control makes it affordable; only targets you can then afford are offered; the discount is passed to the
+  payment as the ability's X.
+- Card copies (CR 707.12): `Effect::ExileCastCopyFree` makes an `Object::card_copy` in exile, castable free in
+  the free-cast window. It exists only there, on the stack, or on the battlefield (where it becomes a token); a
+  copy not cast, or put anywhere else, ceases to exist. `Filter::nonland_cards`.
+- `Effect::SearchMonocoloredOpponentPicks` with `Decision::SearchMonoNames` and `Decision::OpponentShufflesOne`
+  (asked of the opponent); the other cards are cast free in the free-cast window.
+
+Cards: Sarkhan, Dragon Ascendant, Mardu Siegebreaker, Dragonfire Blade, Shiko, Paragon of the Way, Emergent
+Ultimatum.
+
+## Round 3, batch 8c (1 card)
+
+- Decayed (CR 702.147): `CardDef::decayed` and `Object::decayed` (a decayed counter, which counts for "a counter
+  on it"). It can't block; when it's declared as an attacker it's marked and sacrificed as combat ends (the
+  "sacrifice at end of combat" is set on declaration rather than by a trigger on the stack).
+- `Ability::targets_exactly_x`: "each of X target creatures": stopping is allowed only at exactly X targets, it
+  finishes at X, and X is offered only up to the number of legal targets. `Effect::DecayedCounter(slot)`.
+
+Card: Rot-Curse Rakshasa.
+
+Tarkir cards still not done (needs core):
+- Naga Fleshcrafter: "enter as a copy of any creature on the battlefield" (clones), and "each other creature
+  you control becomes a copy of that creature until end of turn".
+- Nature's Rhythm: harmonize with {X} needs choosing X when casting from the graveyard; there's no action for
+  that (`CastFlashback`/`CastHarmonize` carry no X), so it needs a new Action.
+- Teval, Arbiter of Virtue: delve for every spell you cast (choosing graveyard cards to exile as part of the
+  cost while casting).
+- Taigam, Master Opportunist: suspend (time counters, upkeep removal, casting free when the last is removed),
+  plus copying the second spell and exiling the original.
+- Scavenger Regent: on hold (needs a new Action, per the coordinator).

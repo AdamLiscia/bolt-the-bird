@@ -308,15 +308,20 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         your_turn_discount_per_big_creature: false,
         mana_taps_creature: false,
         any_color_for_dragon_or_omen: false,
+        opponents_cant_cast_your_turn: false,
+        warrior_tokens_unsacrificeable_end_step: false,
+        creature_spell_discount: 0,
         color_identity: [false; 5],
         mana_commander_identity: false,
         mana_opponent_land_colors: false,
         mana_amount: 0,
         animates_big_noncreatures_your_turn: false,
+        equipped_hexproof_from_monocolored: false,
         enters_tapped_unless_basics: 0,
         enters_tapped_unless_at_most_lands: None,
         offspring: None,
         grants_offspring: None,
+        decayed: false,
     };
     def.color_identity = color_identity(o);
     // An Omen's spell half: its lines must be claimed too, written "Omen: <line>" in the script.

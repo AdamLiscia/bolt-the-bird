@@ -83,6 +83,8 @@ pub struct Filter {
     pub colored: bool,
     /// Creature or land cards only (graveyard targets).
     pub creature_or_land: bool,
+    /// Nonland cards (graveyard targets).
+    pub nonland_cards: bool,
     /// Tokens only.
     pub tokens_only: bool,
 }
@@ -125,6 +127,7 @@ impl Filter {
         mana_value_is_x: false,
         colored: false,
         creature_or_land: false,
+        nonland_cards: false,
         tokens_only: false,
     };
 
@@ -829,9 +832,29 @@ pub enum Effect {
     /// The instant or sorcery card in `slot` gains harmonize until end of turn, its harmonize cost its
     /// mana cost (Songcrafter Mage).
     GrantHarmonize(u8),
+    /// Return up to `n` permanent cards of your choice from your graveyard to your hand.
+    ReturnUpToPermanentCardsToHand(u8),
+    /// The player in `slot` shuffles up to `n` cards (your choice) from their graveyard into their
+    /// library.
+    ShuffleUpToFromGraveyard {
+        slot: u8,
+        n: u8,
+    },
     /// "If this is the second time this ability has resolved this turn, you draw `n` cards." (Ms.
     /// Bumbleflower; counted per source, each turn)
     DrawIfSecondResolutionThisTurn(u8),
+    /// "You may behold a Dragon. If you do, ...": the rest only if beheld.
+    MayBeholdThen,
+    /// The source gains this creature type until end of turn.
+    SubtypeUntilEotSelf(&'static str),
+    /// For each opponent, a tapped token copy of the card the source exiled (until it leaves)
+    /// attacking that opponent; sacrificed at the beginning of the next end step (Mardu Siegebreaker).
+    CopyLinkedExileAttacking,
+    /// Exile the card in `slot` from your graveyard, copy it, and you may cast the copy free (Shiko).
+    ExileCastCopyFree(u8),
+    /// Search for up to three monocolored cards with different names and exile them; an opponent
+    /// chooses one to shuffle back; you may cast the others free (Emergent Ultimatum).
+    SearchMonocoloredOpponentPicks,
     /// Discard a card unless you attacked this turn (Chart a Course).
     DiscardUnlessAttacked,
     /// Offspring: create a 1/1 token copy of the source.
@@ -843,6 +866,8 @@ pub enum Effect {
         slot: u8,
         sub: &'static str,
     },
+    /// Put a decayed counter on the creature in `slot` (CR 702.147: it gains decayed).
+    DecayedCounter(u8),
     /// Exile the creature in `slot`; its controller may search for a basic land card and put it
     /// onto the battlefield tapped (Path to Exile).
     ExileControllerMayFetchBasic(u8),
@@ -1112,6 +1137,8 @@ pub struct Ability {
     /// The divided total is the number of lands you control as it goes on the stack, instead of
     /// `divide` (Ureni: "X damage divided ..., where X is the number of lands you control").
     pub divide_lands: bool,
+    /// "Each of X target ...": exactly the ability's X targets.
+    pub targets_exactly_x: bool,
 }
 
 impl Ability {
@@ -1126,6 +1153,7 @@ impl Ability {
             modes: Vec::new(),
             divide: 0,
             divide_lands: false,
+            targets_exactly_x: false,
         }
     }
 
@@ -1272,6 +1300,9 @@ pub enum When {
     /// "Whenever a card leaves your graveyard during your turn, ... This ability triggers only once
     /// each turn."
     CardLeavesYourGraveyardOnceEachTurn,
+    /// "Whenever a creature you control enters, if you cast it": fired as a cast creature spell
+    /// resolves; slot 0 (triggering) is that creature.
+    CastCreatureYouControlEnters,
 }
 
 #[derive(Clone, Debug, PartialEq)]
