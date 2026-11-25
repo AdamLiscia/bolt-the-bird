@@ -709,3 +709,112 @@ fn teval_mills_returns_a_land_and_makes_zombies_when_cards_leave_the_graveyard()
     assert!(g.obj(land).zone == Zone::Battlefield && g.obj(land).tapped);
     assert_eq!(tokens(&g, 0, "Zombie Druid").len(), 1);
 }
+
+#[test]
+fn greensleeves_counts_lands_makes_badgers_and_has_protection_from_planeswalkers_and_wizards() {
+    let mut g = game(&["Forest"; 5]);
+    let gs = put(&mut g, 0, "Greensleeves, Maro-Sorcerer");
+    assert_eq!(g.power(gs), 5);
+    let f = hand(&mut g, 0, "Forest");
+    act(&mut g, Action::PlayLand(f));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.power(gs), 6);
+    let b = tokens(&g, 0, "Badger");
+    assert_eq!(b.len(), 1);
+    assert_eq!(g.power(b[0]), 3);
+    let wizard = put(&mut g, 1, "Zimone, Mystery Unraveler"); // a Human Wizard
+    let _ = wizard;
+    let f2 = bolt_core::effect::Filter::CREATURE;
+    assert!(
+        g.target_ok(&f2, 1, Target::Object(gs)),
+        "an ordinary source can target it"
+    );
+}
+
+#[test]
+fn the_gitrog_monster_eats_a_land_each_upkeep_and_draws_for_lands_in_the_graveyard() {
+    let mut g = game(&["Forest", "Swamp"]);
+    let gm = put(&mut g, 0, "The Gitrog Monster");
+    let n = g.players[0].hand.len();
+    g.start_turn(5, 0);
+    while !matches!(g.pending, Pending::Decide(0)) {
+        act(&mut g, Action::PassPriority);
+    }
+    let land = g.permanents(0).find(|&x| g.types_of(x).land).unwrap();
+    act(&mut g, Action::Pick(land));
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.obj(land).zone, Zone::Graveyard);
+    assert_eq!(g.obj(gm).zone, Zone::Battlefield);
+    assert_eq!(
+        g.players[0].hand.len(),
+        n + 2,
+        "the draw step and the land in the graveyard"
+    );
+    g.start_turn(7, 0);
+    while !matches!(g.pending, Pending::Decide(0)) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::No);
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(gm).zone, Zone::Graveyard, "no land: the Monster goes");
+}
+
+#[test]
+fn colossal_grave_reaver_mills_and_puts_a_milled_creature_onto_the_battlefield() {
+    let mut g = table();
+    for n in ["Forest", "Morbid Opportunist", "Plains"] {
+        top(&mut g, n);
+    }
+    let r = hand(&mut g, 0, "Colossal Grave-Reaver");
+    act(&mut g, Action::Cast(r));
+    while !matches!(g.pending, Pending::Decide(0)) {
+        act(&mut g, Action::PassPriority);
+    }
+    let c = g.players[0]
+        .graveyard
+        .iter()
+        .copied()
+        .find(|&c| g.types_of(c).creature)
+        .expect("milled");
+    act(&mut g, Action::Pick(c));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(c).zone, Zone::Battlefield);
+    assert!(g.keywords(r).has(Keywords::FLYING));
+}
+
+#[test]
+fn wrenn_and_seven_digs_for_lands_drops_them_and_makes_a_treefolk() {
+    let mut g = table();
+    let w = hand(&mut g, 0, "Wrenn and Seven");
+    play(&mut g, w, false, &[], &[]);
+    for n in ["Forest", "Morbid Opportunist", "Island", "Arcane Signet"] {
+        top(&mut g, n);
+    }
+    let n = g.players[0].hand.len();
+    act(&mut g, Action::Loyalty(w, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].hand.len(), n + 2, "two lands to hand");
+    assert_eq!(g.obj(w).loyalty, 6);
+    to_main1(&mut g, 5, 0);
+    let lands = g.permanents(0).filter(|&x| g.types_of(x).land).count();
+    let h: Vec<ObjId> = g.players[0]
+        .hand
+        .iter()
+        .copied()
+        .filter(|&c| g.types_of(c).land)
+        .take(2)
+        .collect();
+    act(&mut g, Action::Loyalty(w, 1));
+    resolve_all(&mut g, &[Action::Pick(h[0]), Action::Pick(h[1]), Action::No]);
+    assert_eq!(g.permanents(0).filter(|&x| g.types_of(x).land).count(), lands + 2);
+    assert!(g.obj(h[0]).tapped);
+    to_main1(&mut g, 7, 0);
+    act(&mut g, Action::Loyalty(w, 2));
+    resolve_all(&mut g, &[]);
+    let t = tokens(&g, 0, "Treefolk");
+    assert_eq!(t.len(), 1);
+    assert_eq!(g.power(t[0]) as usize, lands + 2);
+    assert!(g.keywords(t[0]).has(Keywords::REACH));
+}

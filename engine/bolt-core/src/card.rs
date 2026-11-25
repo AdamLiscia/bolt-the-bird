@@ -546,6 +546,8 @@ pub struct CardDef {
     pub lands_every_basic_type: bool,
     /// `enter_as_copy` of any nonland permanent, not just a creature (Clever Impersonator).
     pub enter_as_copy_nonland: bool,
+    /// "Protection from planeswalkers and from [subtype]" (Greensleeves: Wizards).
+    pub protection_from_planeswalkers_and: Option<&'static str>,
 }
 
 /// What entering makes triggers happen again (see [`CardDef::entering_triggers_again`]).
@@ -736,6 +738,7 @@ impl CardDef {
             fights_only_with_blessing: false,
             lands_every_basic_type: false,
             enter_as_copy_nonland: false,
+            protection_from_planeswalkers_and: None,
         }
     }
 
@@ -894,6 +897,7 @@ impl CardDef {
             fights_only_with_blessing: false,
             lands_every_basic_type: false,
             enter_as_copy_nonland: false,
+            protection_from_planeswalkers_and: None,
         }
     }
 
@@ -1052,6 +1056,7 @@ impl CardDef {
             fights_only_with_blessing: false,
             lands_every_basic_type: false,
             enter_as_copy_nonland: false,
+            protection_from_planeswalkers_and: None,
         }
     }
 }

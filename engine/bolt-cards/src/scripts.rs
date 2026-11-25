@@ -144,6 +144,14 @@ pub fn token_defs() -> Vec<CardDef> {
         token("Dinosaur Beast", "Dinosaur Beast", 0, 0, Keywords::TRAMPLE), // Quartzwood Crasher's X/X
         token("Plant", "Plant", 0, 1, Keywords::NONE),     // Avenger of Zendikar
         token("Insect", "Insect", 1, 1, Keywords::NONE),   // Scute Swarm's green 1/1
+        token("Badger", "Badger", 3, 3, Keywords::NONE),   // Greensleeves
+        {
+            // Wrenn and Seven: "a green Treefolk creature token with reach and 'This token's power and
+            // toughness are each equal to the number of lands you control.'"
+            let mut t = token("Treefolk", "Treefolk", 0, 0, Keywords::REACH);
+            t.pt_lands = true;
+            t
+        },
     ]
 }
 
@@ -239,6 +247,8 @@ pub struct Tokens {
     pub dinosaur_beast: usize,
     pub plant: usize,
     pub insect_green: usize,
+    pub badger: usize,
+    pub treefolk: usize,
 }
 
 impl Tokens {
@@ -298,6 +308,8 @@ impl Tokens {
             dinosaur_beast: base + 51,
             plant: base + 52,
             insect_green: base + 53,
+            badger: base + 54,
+            treefolk: base + 55,
         }
     }
 }

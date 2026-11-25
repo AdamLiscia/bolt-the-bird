@@ -435,3 +435,12 @@ Core: `CardDef::{fights_only_with_blessing, lands_every_basic_type, enter_as_cop
 `LookTo::BattlefieldTapped`, `When::CardsLeaveYourGraveyard` (any turn), `Effect::{TapOrUntap, DrawIfUniqueName,
 ReturnLandFromGraveyardTapped}`, `Game::graveyard_leave_any_pending`. A clone that copies a planeswalker takes its
 loyalty. Tokens: Plant 51, green Insect 52.
+
+PG batch 4 (4): Greensleeves, The Gitrog Monster, Colossal Grave-Reaver, Wrenn and Seven.
+Core: `CardDef::protection_from_planeswalkers_and` (in `protected_from`), `When::{LandCardsToYourGraveyard,
+CreatureCardsMilledToYourGraveyard}` (batched like the graveyard-leave triggers), `EmblemKind::NoMaxHandSize`,
+`Decision::{SacrificeLandOrThis, LandsFromHand}`, `Effect::{SacrificeLandOrSource, MilledCreatureToBattlefield,
+RevealTopLandsToHandRestGraveyard, LandsFromHandTapped, ReturnPermanentCardsToHand}`, `Object::milled_turn`,
+`Game::{land_to_graveyard_pending, creatures_milled_pending}`. Grave-Reaver offers the creature cards milled this
+turn, and taking one is optional (the engine's pick can't be forced without re-moving the rest). Tokens: Badger
+54, Treefolk 55 (P/T = lands you control).

@@ -273,6 +273,55 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::CardsLeaveYourGraveyard, vec![], vec![Effect::CreateToken { who: Who::You, def: t.zombie_druid, n: 1 }]);
             },
         ),
+        "Greensleeves, Maro-Sorcerer" => s(
+            &[
+                "Protection from planeswalkers and from Wizards",
+                "Greensleeves's power and toughness are each equal to the number of lands you control.",
+                "Landfall — Whenever a land you control enters, create a 3/3 green Badger creature token.",
+            ],
+            |d, t| {
+                d.protection_from_planeswalkers_and = Some("Wizard");
+                d.pt_lands = true;
+                on(d, When::LandYouControlEnters, vec![], vec![Effect::CreateToken { who: Who::You, def: t.badger, n: 1 }]);
+            },
+        ),
+        "The Gitrog Monster" => s(
+            &[
+                "At the beginning of your upkeep, sacrifice The Gitrog Monster unless you sacrifice a land.",
+                "You may play an additional land on each of your turns.",
+                "Whenever one or more land cards are put into your graveyard from anywhere, draw a card.",
+            ],
+            |d, _| {
+                on(d, When::Upkeep { your_turn_only: true }, vec![], vec![Effect::SacrificeLandOrSource]);
+                d.extra_land_drops = 1;
+                on(d, When::LandCardsToYourGraveyard, vec![], vec![draw(1)]);
+            },
+        ),
+        "Colossal Grave-Reaver" => s(
+            &[
+                "Whenever this creature enters or attacks, mill three cards.",
+                "Whenever one or more creature cards are put into your graveyard from your library, put one of them onto the battlefield.",
+            ],
+            |d, _| {
+                on(d, When::Enters, vec![], vec![Effect::Mill { who: Who::You, n: 3 }]);
+                on(d, When::Attacks, vec![], vec![Effect::Mill { who: Who::You, n: 3 }]);
+                on(d, When::CreatureCardsMilledToYourGraveyard, vec![], vec![Effect::MilledCreatureToBattlefield]);
+            },
+        ),
+        "Wrenn and Seven" => s(
+            &[
+                "+1: Reveal the top four cards of your library. Put all land cards revealed this way into your hand and the rest into your graveyard.",
+                "0: Put any number of land cards from your hand onto the battlefield tapped.",
+                "−3: Create a green Treefolk creature token with reach and \"This token's power and toughness are each equal to the number of lands you control.\"",
+                "−8: Return all permanent cards from your graveyard to your hand. You get an emblem with \"You have no maximum hand size.\"",
+            ],
+            |d, t| {
+                loyalty(d, 1, Ability::new(vec![], vec![Effect::RevealTopLandsToHandRestGraveyard(4)]));
+                loyalty(d, 0, Ability::new(vec![], vec![Effect::LandsFromHandTapped]));
+                loyalty(d, -3, Ability::new(vec![], vec![Effect::CreateToken { who: Who::You, def: t.treefolk, n: 1 }]));
+                loyalty(d, -8, Ability::new(vec![], vec![Effect::ReturnPermanentCardsToHand, Effect::Emblem(EmblemKind::NoMaxHandSize)]));
+            },
+        ),
         _ => None,
     }
 }
@@ -321,4 +370,8 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Dryad of the Ilysian Grove",
     "Clever Impersonator",
     "Teval, the Balanced Scale",
+    "Greensleeves, Maro-Sorcerer",
+    "The Gitrog Monster",
+    "Colossal Grave-Reaver",
+    "Wrenn and Seven",
 ];

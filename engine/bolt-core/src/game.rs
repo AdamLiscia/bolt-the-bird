@@ -237,6 +237,8 @@ pub struct Object {
     pub exerted_turn: Option<u32>,
     /// Regeneration shields this turn: (turn, how many) (CR 701.15).
     pub regen_shields: (u32, u8),
+    /// The turn it was last put into a graveyard from a library.
+    pub milled_turn: u32,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -816,6 +818,10 @@ pub enum Decision {
     PutCreatureAttacking,
     /// Unleash: `Yes` for a +1/+1 counter on it, or `No`.
     Unleash { card: ObjId },
+    /// `Pick` a land to sacrifice, or `No` to sacrifice `source` (The Gitrog Monster).
+    SacrificeLandOrThis { source: ObjId },
+    /// `Pick` a land card from your hand to put onto the battlefield tapped, or `No` to stop.
+    LandsFromHand,
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -1047,6 +1053,10 @@ pub struct Game {
     pub infect_until_eot: Vec<(ObjId, u32, u32)>,
     /// Cards left each player's graveyard since triggers were last put on the stack (any turn).
     pub graveyard_leave_any_pending: [bool; 2],
+    /// Land cards went to each player's graveyard / creature cards were milled, since triggers were
+    /// last put on the stack.
+    pub land_to_graveyard_pending: [bool; 2],
+    pub creatures_milled_pending: [bool; 2],
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -1225,6 +1235,8 @@ impl Game {
             graveyard_left_this_turn: [false; 2],
             graveyard_leave_pending: [false; 2],
             graveyard_leave_any_pending: [false; 2],
+            land_to_graveyard_pending: [false; 2],
+            creatures_milled_pending: [false; 2],
             commander_choice: false,
             commander_choice_then: 0,
             shock_then: 0,
@@ -1336,6 +1348,7 @@ impl Game {
             activated_turn: None,
             kind_counters: 0,
             not_legendary: false,
+            milled_turn: 0,
             shock_pending: false,
             exerted_turn: None,
             regen_shields: (0, 0),
@@ -1690,6 +1703,14 @@ impl Game {
         {
             return true;
         }
+        if let Some(sub) = self.def_of(id).protection_from_planeswalkers_and {
+            if self.obj(id).zone == Zone::Battlefield
+                && !self.lost_abilities(id)
+                && (self.types_of(source).planeswalker || self.has_subtype(source, sub))
+            {
+                return true;
+            }
+        }
         let p = self.protection(id);
         self.colors_of(source).iter().zip(p).any(|(c, pr)| *c && pr)
     }
@@ -1982,6 +2003,12 @@ impl Game {
         for p in 0..2 {
             if std::mem::take(&mut self.graveyard_leave_any_pending[p]) {
                 self.fire(p, When::CardsLeaveYourGraveyard, None);
+            }
+            if std::mem::take(&mut self.land_to_graveyard_pending[p]) {
+                self.fire(p, When::LandCardsToYourGraveyard, None);
+            }
+            if std::mem::take(&mut self.creatures_milled_pending[p]) {
+                self.fire(p, When::CreatureCardsMilledToYourGraveyard, None);
             }
         }
         for p in 0..2 {
@@ -2466,6 +2493,14 @@ impl Game {
         list.remove(pos);
         self.zone_list(owner, to).push(id);
         let turn = self.turn;
+        if to == Zone::Graveyard && from != Zone::Graveyard && !self.is_token(id) {
+            if self.def_of(id).types.land {
+                self.land_to_graveyard_pending[owner] = true;
+            }
+            if from == Zone::Library && self.def_of(id).types.creature {
+                self.creatures_milled_pending[owner] = true;
+            }
+        }
         if from == Zone::Graveyard && to != Zone::Graveyard && !self.is_token(id) {
             self.graveyard_left_this_turn[owner] = true;
             self.graveyard_leave_any_pending[owner] = true;
@@ -2494,6 +2529,9 @@ impl Game {
         }
         if to == Zone::Graveyard {
             o.graveyard_turn = turn;
+            if from == Zone::Library {
+                o.milled_turn = turn;
+            }
         }
         if from == Zone::Battlefield {
             o.last_counters = (o.counters, o.stun, o.keyword_counters);
@@ -6726,6 +6764,26 @@ impl Game {
             }
             Decision::CommanderToCommandZone { .. } => vec![Action::Yes, Action::No],
             Decision::ShockLand { .. } => vec![Action::Yes, Action::No],
+            Decision::SacrificeLandOrThis { .. } => {
+                let mut v: Vec<Action> = self
+                    .permanents(p)
+                    .filter(|&x| self.types_of(x).land && !self.cant_be_sacrificed(x))
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
+            Decision::LandsFromHand => {
+                let mut v: Vec<Action> = self.players[p]
+                    .hand
+                    .iter()
+                    .copied()
+                    .filter(|&x| self.def_of(x).types.land)
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
             Decision::MayDiscardOrStop => {
                 let mut v: Vec<Action> = self.players[p]
                     .hand
@@ -7645,6 +7703,23 @@ impl Game {
                     let lib = &mut self.players[owner].library;
                     let c = lib.pop().expect("just moved");
                     lib.insert(0, c);
+                }
+            }
+            (Decision::SacrificeLandOrThis { source }, choice) => match choice {
+                Action::Pick(land) => self.move_to(land, Zone::Graveyard),
+                _ => {
+                    if self.obj(source).zone == Zone::Battlefield && !self.cant_be_sacrificed(source) {
+                        self.move_to(source, Zone::Graveyard);
+                    }
+                }
+            },
+            (Decision::LandsFromHand, choice) => {
+                if let Action::Pick(land) = choice {
+                    self.move_to(land, Zone::Battlefield);
+                    self.obj_mut(land).tapped = true;
+                    if self.players[p].hand.iter().any(|&x| self.def_of(x).types.land) {
+                        self.ask(p, Decision::LandsFromHand);
+                    }
                 }
             }
             (d, a) => unreachable!("legal action {a:?} unhandled for {d:?}"),
@@ -9008,6 +9083,73 @@ impl Game {
                     }
                 } else {
                     self.create_token(p, def);
+                }
+            }
+            Effect::SacrificeLandOrSource => {
+                let p = item.controller;
+                if self
+                    .permanents(p)
+                    .any(|x| self.types_of(x).land && !self.cant_be_sacrificed(x))
+                {
+                    self.ask(p, Decision::SacrificeLandOrThis { source: src });
+                } else if self.obj(src).zone == Zone::Battlefield && !self.cant_be_sacrificed(src) {
+                    self.move_to(src, Zone::Graveyard);
+                }
+            }
+            Effect::MilledCreatureToBattlefield => {
+                let p = item.controller;
+                let turn = self.turn;
+                let cards: Vec<ObjId> = self.players[p]
+                    .graveyard
+                    .iter()
+                    .copied()
+                    .filter(|&c| self.def_of(c).types.creature && self.obj(c).milled_turn == turn)
+                    .collect();
+                if !cards.is_empty() {
+                    self.ask(
+                        p,
+                        Decision::LookPick {
+                            cards,
+                            pick: Pick::Any,
+                            to: LookTo::Battlefield,
+                            rest: None, // they are already in the graveyard; taking one is offered (optional)
+                        },
+                    );
+                }
+            }
+            Effect::RevealTopLandsToHandRestGraveyard(n) => {
+                let p = item.controller;
+                let top: Vec<ObjId> = self.players[p]
+                    .library
+                    .iter()
+                    .rev()
+                    .take(n as usize)
+                    .copied()
+                    .collect();
+                for c in top {
+                    if self.def_of(c).types.land {
+                        self.move_to(c, Zone::Hand);
+                    } else {
+                        self.move_to(c, Zone::Graveyard);
+                    }
+                }
+            }
+            Effect::LandsFromHandTapped => {
+                let p = item.controller;
+                if self.players[p].hand.iter().any(|&x| self.def_of(x).types.land) {
+                    self.ask(p, Decision::LandsFromHand);
+                }
+            }
+            Effect::ReturnPermanentCardsToHand => {
+                let p = item.controller;
+                let cards: Vec<ObjId> = self.players[p]
+                    .graveyard
+                    .iter()
+                    .copied()
+                    .filter(|&c| self.def_of(c).types.is_permanent())
+                    .collect();
+                for c in cards {
+                    self.move_to(c, Zone::Hand);
                 }
             }
             Effect::TapOrUntap(slot) => {
@@ -11535,6 +11677,10 @@ impl Game {
             Step::Cleanup => {
                 if self.players[a].hand.len() > self.max_hand(a)
                     && !self.permanents(a).any(|c| self.def_of(c).no_max_hand_size)
+                    && !self
+                        .emblems
+                        .iter()
+                        .any(|&(q, k, _)| q == a && k == EmblemKind::NoMaxHandSize)
                 {
                     self.pending = Pending::Discard(a);
                 } else {
