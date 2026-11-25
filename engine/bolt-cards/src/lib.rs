@@ -567,7 +567,7 @@ mod tests {
     #[test]
     fn every_bloomburrow_commander_script_matches_its_card_text() {
         let t = set("BLC").unwrap();
-        for &name in scripts::BLC_B_SCRIPTED {
+        for &name in scripts::BLC_B_SCRIPTED.iter().chain(scripts::BLC_C_SCRIPTED) {
             let i = t.index_of(name).unwrap_or_else(|| panic!("{name} is not in BLC"));
             assert!(t.supported[i], "{name}: script lines don't match the card text");
         }

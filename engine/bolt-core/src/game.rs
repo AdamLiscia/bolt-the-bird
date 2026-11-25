@@ -781,6 +781,8 @@ pub enum Decision {
     /// "You may have this creature enter as a copy of any creature on the battlefield": `Pick` one,
     /// or `No`.
     EnterAsCopy { card: ObjId },
+    /// `Pick` a creature you control to return to its owner's hand.
+    ReturnOwnCreature,
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -2391,6 +2393,8 @@ impl Game {
             self.fire_source(id, When::LeavesBattlefield);
         }
         if dies && self.types_of(id).creature {
+            self.fire(0, When::AnotherCreatureDies, Some(id));
+            self.fire(1, When::AnotherCreatureDies, Some(id));
             self.creature_died_this_turn = true;
             self.creature_died_under[last_controller] = true;
             // "Whenever a creature you control dies while this card is in your graveyard": cards
@@ -3238,8 +3242,11 @@ impl Game {
             if !timing || !castable {
                 continue;
             }
+            // An X spell's targets can depend on X (Stolen by the Fae), and a kicked spell can have
+            // its own targets (Tear Asunder): those are checked per way of casting below.
+            let per_mode = def.cost.x > 0 || def.kicked_spell.is_some();
             if let Some(ability) = &def.spell {
-                if !self.trigger_can_target(&Game::casting(c, p), ability) {
+                if !per_mode && !self.trigger_can_target(&Game::casting(c, p), ability) {
                     continue; // CR 601.2c: a spell needs a legal choice for every target.
                 }
                 // CR 601.2a: the card is on the stack by the time targets are chosen. Leaving a
@@ -3256,6 +3263,21 @@ impl Game {
             for (action, mode) in self.cast_modes(p, c, from_graveyard) {
                 if behold_flash && !mode.kicked {
                     continue;
+                }
+                if per_mode && mode.mode.is_none() {
+                    let ability = if mode.kicked {
+                        def.kicked_spell.as_ref().or(def.spell.as_ref())
+                    } else {
+                        def.spell.as_ref()
+                    };
+                    let item = StackItem {
+                        x: mode.x,
+                        kicked: mode.kicked,
+                        ..Game::casting(c, p)
+                    };
+                    if ability.is_some_and(|a| !self.trigger_can_target(&item, a)) {
+                        continue;
+                    }
                 }
                 if self.mode_affordable(p, c, mode) {
                     v.push(action);
@@ -6013,6 +6035,7 @@ impl Game {
                 v
             }
             Decision::EndureOther { .. } => vec![Action::Yes, Action::No],
+            Decision::ReturnOwnCreature => self.creatures(p).map(Action::Pick).collect(),
             Decision::SearchMonoNames { picked } => {
                 let mut v: Vec<Action> = self.players[p]
                     .library
@@ -6486,6 +6509,7 @@ impl Game {
                 }
             }
             (Decision::DiscardReflexive { .. }, Action::No) => {}
+            (Decision::ReturnOwnCreature, Action::Pick(c)) => self.move_to(c, Zone::Hand),
             (Decision::SearchMonoNames { mut picked }, Action::Pick(c)) => {
                 picked.push(c);
                 let more = self.players[p]
@@ -7562,6 +7586,51 @@ impl Game {
                         colorless: true,
                         ..ManaSource::default()
                     });
+                }
+            }
+            Effect::BlinkSlot(slot) => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    if self.obj(id).zone == Zone::Battlefield {
+                        self.move_to(id, Zone::Exile);
+                        self.move_to(id, Zone::Battlefield);
+                        self.obj_mut(id).controller = item.controller;
+                    }
+                }
+            }
+            Effect::DrawPerCreatureYouControl => {
+                let n = self.creatures(item.controller).count();
+                for _ in 0..n {
+                    self.draw(item.controller);
+                }
+            }
+            Effect::GainLifePerCreaturePowerAtLeast { per, power } => {
+                let n = self
+                    .creatures(item.controller)
+                    .filter(|&c| self.power(c) >= power)
+                    .count() as i32;
+                if n > 0 {
+                    self.gain_life(item.controller, per * n);
+                }
+            }
+            Effect::CreateTokensX { def } => {
+                for _ in 0..item.x {
+                    self.create_token(item.controller, def);
+                }
+            }
+            Effect::ReturnCreatureYouControl => {
+                if self.creatures(item.controller).next().is_some() {
+                    self.ask(item.controller, Decision::ReturnOwnCreature);
+                }
+            }
+            Effect::BounceAllCreatures { tokens } => {
+                let all: Vec<ObjId> = self
+                    .battlefield
+                    .iter()
+                    .copied()
+                    .filter(|&c| self.types_of(c).creature && self.is_token(c) == tokens)
+                    .collect();
+                for c in all {
+                    self.move_to(c, Zone::Hand);
                 }
             }
             Effect::DecayedCounter(slot) => {
