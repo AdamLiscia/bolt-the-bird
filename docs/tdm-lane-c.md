@@ -407,3 +407,13 @@ Talent, Gilded Lotus ("three mana of any one color": the payer has no one-color 
 Kwain (both players choose), Maskwood Nexus, Mr. Foxglove, Perch Protection, Plumb the Forbidden, Promise of
 Loyalty, Raging Ravine, Realm-Cloaked Giant (adventure), Rolling Hamsphere (crew), Rose Room Treasurer, Saw in
 Half, Shield Broker, Simic Ascendancy, Storm of Souls, Swarmyard (regeneration), Tamiyo, Woe Strider (escape).
+
+## Playgroup 2026-11-25: Glarb, Calamity's Augur (DonSpider), lane C
+
+List: "C_glarb" in ~/bolt-handoff/pg_lanes_round0.json. Module `scripts/pg_c.rs`, tests `tests/pg_c.rs`.
+
+PG batch 1 (17): Bloodstained Mire, Polluted Delta, Windswept Heath, Drowned Catacomb, Sunken Hollow, Undergrowth
+Stadium (one opponent: always tapped), Undercity Sewers, Underground Mortuary, Hedge Maze, Zagoth Triome, Breeding
+Pool, Overgrown Tomb, Watery Grave, Damnation, Exploration, Azusa, Aesi.
+Core: shock lands, `CardDef::shock_land` with `Decision::ShockLand` (Yes: pay 2 life; No: tapped), asked from
+`give_priority` via `Object::shock_pending`, so a fetched shock land asks too, before anyone can act.

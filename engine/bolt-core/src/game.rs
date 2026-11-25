@@ -225,6 +225,8 @@ pub struct Object {
     pub skip_untap: bool,
     /// Quest counters (Beastmaster Ascension).
     pub quest: i32,
+    /// A shock land that entered and hasn't had its "pay 2 life" choice yet.
+    pub shock_pending: bool,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -787,6 +789,8 @@ pub enum Decision {
     EnterAsCopy { card: ObjId },
     /// `Pick` a creature you control to return to its owner's hand.
     ReturnOwnCreature,
+    /// A shock land entered: `Yes` pays 2 life, `No` leaves it tapped.
+    ShockLand { card: ObjId },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -975,6 +979,8 @@ pub struct Game {
     pub commander_choice: bool,
     /// Who gets priority once a pending commander choice is made.
     commander_choice_then: PlayerId,
+    /// Who gets priority after a shock land's choice.
+    shock_then: PlayerId,
     /// Each seat's second commander, if it has partners (CR 702.124).
     pub partners: [Option<ObjId>; 2],
     /// Combat damage dealt to a player by one commander object (CR 903.10a): (commander, player,
@@ -1175,6 +1181,7 @@ impl Game {
             graveyard_leave_pending: [false; 2],
             commander_choice: false,
             commander_choice_then: 0,
+            shock_then: 0,
             partners: [None, None],
             commander_damage_from: Vec::new(),
             commander_auto_return: [false; 2],
@@ -1271,6 +1278,7 @@ impl Game {
             suspend_haste: false,
             skip_untap: false,
             quest: 0,
+            shock_pending: false,
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -2656,6 +2664,9 @@ impl Game {
                 || many_lands
             {
                 self.obj_mut(id).tapped = true;
+            }
+            if def.shock_land {
+                self.obj_mut(id).shock_pending = true;
             }
             if def.types.creature {
                 self.fire(
@@ -6302,6 +6313,7 @@ impl Game {
                 v
             }
             Decision::CommanderToCommandZone { .. } => vec![Action::Yes, Action::No],
+            Decision::ShockLand { .. } => vec![Action::Yes, Action::No],
             Decision::MayDiscardOrStop => {
                 let mut v: Vec<Action> = self.players[p]
                     .hand
@@ -6567,6 +6579,16 @@ impl Game {
         if let (Decision::ChooseCastX { card, mode, .. }, Action::Amount(x)) = (&d, a) {
             let (card, mode) = (*card, *mode);
             return self.cast(p, card, CastMode { x, ..mode });
+        }
+        if let Decision::ShockLand { card } = d {
+            if a == Action::Yes {
+                self.lose_life(p, 2);
+            } else {
+                self.obj_mut(card).tapped = true;
+            }
+            let then = self.shock_then;
+            self.give_priority(then);
+            return;
         }
         if let Decision::CommanderToCommandZone { card } = d {
             if a == Action::Yes && matches!(self.obj(card).zone, Zone::Graveyard | Zone::Exile) {
@@ -10139,6 +10161,22 @@ impl Game {
         self.state_based_actions();
         if !self.is_over() && self.ask_commander_choice(p) {
             return;
+        }
+        // Shock lands: "As this land enters, you may pay 2 life. If you don't, it enters tapped." The
+        // choice is asked before anyone can act again, so nothing can use the land in between.
+        if !self.is_over() {
+            let shock = self
+                .battlefield
+                .iter()
+                .copied()
+                .find(|&x| self.obj(x).shock_pending);
+            if let Some(c) = shock {
+                self.obj_mut(c).shock_pending = false;
+                self.shock_then = p;
+                let owner = self.obj(c).controller;
+                self.ask(owner, Decision::ShockLand { card: c });
+                return;
+            }
         }
         if self.is_over() || !self.put_triggers_on_stack(p) {
             return;

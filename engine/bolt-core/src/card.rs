@@ -476,6 +476,8 @@ pub struct CardDef {
     pub enters_counters_one_plus_others: bool,
     /// Ascend (CR 702.131): with ten or more permanents, you get the city's blessing for the game.
     pub ascend: bool,
+    /// "As this land enters, you may pay 2 life. If you don't, it enters tapped." (shock lands)
+    pub shock_land: bool,
 }
 
 /// An Omen spell half: its name, cost, whether it's an instant, and what it does.
@@ -627,6 +629,7 @@ impl CardDef {
             max_hand_size: 0,
             enters_counters_one_plus_others: false,
             ascend: false,
+            shock_land: false,
         }
     }
 
@@ -757,6 +760,7 @@ impl CardDef {
             max_hand_size: 0,
             enters_counters_one_plus_others: false,
             ascend: false,
+            shock_land: false,
         }
     }
 
@@ -887,6 +891,7 @@ impl CardDef {
             max_hand_size: 0,
             enters_counters_one_plus_others: false,
             ascend: false,
+            shock_land: false,
         }
     }
 }
