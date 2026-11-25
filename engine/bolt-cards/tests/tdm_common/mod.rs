@@ -5,7 +5,10 @@ use bolt_cards::set;
 use bolt_core::{Action, Game, ObjId, Pending, Zone};
 
 pub fn tid(name: &str) -> usize {
-    set("TDM").unwrap().index_of(name).unwrap_or_else(|| panic!("{name} is not in TDM"))
+    set("TDM")
+        .unwrap()
+        .index_of(name)
+        .unwrap_or_else(|| panic!("{name} is not in TDM"))
 }
 
 /// Player 0's first main phase on turn 3 (after `begin`) with Tarkir cards: 5 of each basic land each,
@@ -50,11 +53,15 @@ pub fn hand(g: &mut Game, p: usize, name: &str) -> ObjId {
 }
 
 pub fn tokens(g: &Game, p: usize, name: &str) -> Vec<ObjId> {
-    g.permanents(p).filter(|&x| g.def_of(x).token && g.def_of(x).name == name).collect()
+    g.permanents(p)
+        .filter(|&x| g.def_of(x).token && g.def_of(x).name == name)
+        .collect()
 }
 
 pub fn untapped_lands(g: &Game, p: usize) -> usize {
-    g.permanents(p).filter(|&x| g.types_of(x).land && !g.obj(x).tapped).count()
+    g.permanents(p)
+        .filter(|&x| g.types_of(x).land && !g.obj(x).tapped)
+        .count()
 }
 
 /// Lands player 0 tapped while `f` ran.
