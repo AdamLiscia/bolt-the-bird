@@ -7579,6 +7579,15 @@ impl Game {
                     self.add_counters(c, n);
                 }
             }
+            Effect::ExileControllerGainsPower(slot) => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    let (controller, power) = (self.obj(id).controller, self.power(id));
+                    self.move_to(id, Zone::Exile);
+                    if power > 0 {
+                        self.gain_life(controller, power);
+                    }
+                }
+            }
             Effect::ExtraLandThisTurn => {
                 let p = item.controller;
                 self.extra_lands_this_turn[p] = self.extra_lands_this_turn[p].saturating_add(1);
