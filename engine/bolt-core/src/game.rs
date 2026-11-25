@@ -170,6 +170,8 @@ pub struct Object {
     /// The turn counters were last put on it (for "the first time counters have been put on that
     /// creature this turn").
     pub counters_put_turn: u32,
+    /// The card an ability of this permanent exiled and refers back to (Severance Priest).
+    pub linked_card: Option<ObjId>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -657,6 +659,21 @@ pub enum Decision {
         creature_only: bool,
         started: bool,
     },
+    /// `Pick` cards from `cards` to put onto the battlefield (`left` more; `u8::MAX`: any number),
+    /// or `No` to stop; the rest go to your hand or to the bottom in a random order.
+    PutFromAmong {
+        cards: Vec<ObjId>,
+        left: u8,
+        noncreature_nonland: bool,
+        max_mv: Option<u32>,
+        rest_to_hand: bool,
+    },
+    /// `Pick` a permanent card in your graveyard whose name isn't in `names` to return, or `No`.
+    ReturnDifferentNames { names: Vec<String> },
+    /// Discard a card (`No` stops); then draw one for each discarded.
+    DiscardUpToDraw { left: u8, discarded: u8 },
+    /// You may `Pick` a nonland card from `victim`'s hand to exile, linked to `source`; or `No`.
+    PickExileLinked { victim: PlayerId, source: ObjId },
 }
 
 /// An until-end-of-turn change to one object (CR 611.2, 613).
@@ -985,6 +1002,7 @@ impl Game {
             chosen_mode: None,
             once_each_turn: 0,
             counters_put_turn: 0,
+            linked_card: None,
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -1455,6 +1473,29 @@ impl Game {
         }
     }
 
+    /// Whether a looked-at card may be put onto the battlefield by `Decision::PutFromAmong`.
+    fn put_among_ok(&self, c: ObjId, noncreature_nonland: bool, max_mv: Option<u32>) -> bool {
+        let d = self.def_of(c);
+        d.types.is_permanent()
+            && (!noncreature_nonland || (!d.types.creature && !d.types.land))
+            && max_mv.is_none_or(|m| d.cost.mana_value() <= m)
+    }
+
+    fn put_among_rest(&mut self, p: PlayerId, mut cards: Vec<ObjId>, to_hand: bool) {
+        if to_hand {
+            for c in cards {
+                self.move_to(c, Zone::Hand);
+            }
+        } else {
+            self.rng.shuffle(&mut cards);
+            let lib = &mut self.players[p].library;
+            lib.retain(|x| !cards.contains(x));
+            for c in cards {
+                lib.insert(0, c);
+            }
+        }
+    }
+
     /// Glacierwood Siege (Sultai): `p` may play lands from their graveyard.
     fn siege_graveyard_lands(&self, p: PlayerId) -> bool {
         self.permanents(p).any(|x| {
@@ -1789,6 +1830,9 @@ impl Game {
                 t.targets = vec![Chosen::Object(id, now)];
             }
         }
+        if from == Zone::Battlefield && to != Zone::Battlefield {
+            self.fire_source(id, When::LeavesBattlefield);
+        }
         if dies && self.types_of(id).creature {
             self.creature_died_this_turn = true;
             self.creature_died_under[last_controller] = true;
@@ -1858,7 +1902,8 @@ impl Game {
         }
         if to == Zone::Battlefield {
             self.obj_mut(id).chosen_mode = None; // a new object chooses again
-                                                 // Replacement effects on entering (CR 614.1c-d).
+            self.obj_mut(id).linked_card = None;
+            // Replacement effects on entering (CR 614.1c-d).
             let def = self.def_of(id).clone();
             let controller_now = self.obj(id).controller;
             let opponent_forces_tapped = def.types.creature
@@ -4167,6 +4212,24 @@ impl Game {
     /// CR 702.21a: whenever a permanent with ward becomes the target of a spell or ability an
     /// opponent controls, its ward triggers.
     fn ward_check(&mut self, item: &StackItem) {
+        // "Whenever a creature you control or a creature spell you control becomes the target of a
+        // spell or ability an opponent controls" (Surrak).
+        for &t in &item.targets {
+            if let Chosen::Object(id, _) = t {
+                let o = self.obj(id);
+                let creature = self.types_of(id).creature;
+                let on_field = o.zone == Zone::Battlefield;
+                let spell = o.zone == Zone::Stack
+                    && self
+                        .items
+                        .iter()
+                        .any(|i| i.kind == StackKind::Spell && i.source == id);
+                if creature && (on_field || spell) && o.controller != item.controller {
+                    let p = o.controller;
+                    self.fire(p, When::YourCreatureTargetedByOpponent, None);
+                }
+            }
+        }
         for &t in &item.targets {
             if let Chosen::Object(id, _) = t {
                 let (zone, controller) = (self.obj(id).zone, self.obj(id).controller);
@@ -4636,6 +4699,47 @@ impl Game {
                 }
                 v
             }
+            Decision::PutFromAmong {
+                cards,
+                noncreature_nonland,
+                max_mv,
+                ..
+            } => {
+                let mut v: Vec<Action> = cards
+                    .iter()
+                    .copied()
+                    .filter(|&c| self.put_among_ok(c, *noncreature_nonland, *max_mv))
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
+            Decision::ReturnDifferentNames { names } => {
+                let mut v: Vec<Action> = self.players[p]
+                    .graveyard
+                    .iter()
+                    .copied()
+                    .filter(|&c| self.def_of(c).types.is_permanent() && !names.contains(&self.def_of(c).name))
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
+            Decision::PickExileLinked { victim, .. } => {
+                let mut v: Vec<Action> = self.players[*victim]
+                    .hand
+                    .iter()
+                    .filter(|&&c| !self.types_of(c).land)
+                    .map(|&c| Action::Pick(c))
+                    .collect();
+                v.push(Action::No);
+                v
+            }
+            Decision::DiscardUpToDraw { .. } => {
+                let mut v: Vec<Action> = hand.iter().map(|&c| Action::Discard(c)).collect();
+                v.push(Action::No);
+                v
+            }
             Decision::PickExile { victim } => self.players[*victim]
                 .hand
                 .iter()
@@ -4923,6 +5027,85 @@ impl Game {
             (Decision::Discard { .. }, Action::No) => {}
             (Decision::PickDiscard { .. }, Action::Pick(c)) => self.move_to(c, Zone::Graveyard),
             (Decision::PickExile { .. }, Action::Pick(c)) => self.move_to(c, Zone::Exile),
+            (
+                Decision::PutFromAmong {
+                    mut cards,
+                    left,
+                    noncreature_nonland,
+                    max_mv,
+                    rest_to_hand,
+                },
+                Action::Pick(c),
+            ) => {
+                cards.retain(|&k| k != c);
+                self.move_to(c, Zone::Battlefield);
+                let left = if left == u8::MAX { left } else { left - 1 };
+                let more = left > 0
+                    && cards
+                        .iter()
+                        .any(|&k| self.put_among_ok(k, noncreature_nonland, max_mv));
+                if more {
+                    self.ask(
+                        p,
+                        Decision::PutFromAmong {
+                            cards,
+                            left,
+                            noncreature_nonland,
+                            max_mv,
+                            rest_to_hand,
+                        },
+                    );
+                } else {
+                    self.put_among_rest(p, cards, rest_to_hand);
+                }
+            }
+            (
+                Decision::PutFromAmong {
+                    cards, rest_to_hand, ..
+                },
+                Action::No,
+            ) => {
+                self.put_among_rest(p, cards, rest_to_hand);
+            }
+            (Decision::ReturnDifferentNames { mut names }, Action::Pick(c)) => {
+                names.push(self.def_of(c).name.clone());
+                self.move_to(c, Zone::Battlefield);
+                let more = self.players[p]
+                    .graveyard
+                    .iter()
+                    .any(|&k| self.def_of(k).types.is_permanent() && !names.contains(&self.def_of(k).name));
+                if more {
+                    self.ask(p, Decision::ReturnDifferentNames { names });
+                }
+            }
+            (Decision::ReturnDifferentNames { .. }, Action::No) => {}
+            (Decision::PickExileLinked { source, .. }, Action::Pick(c)) => {
+                self.move_to(c, Zone::Exile);
+                self.obj_mut(source).linked_card = Some(c);
+            }
+            (Decision::PickExileLinked { .. }, Action::No) => {}
+            (Decision::DiscardUpToDraw { left, discarded }, Action::Discard(c)) => {
+                self.move_to(c, Zone::Graveyard);
+                let discarded = discarded + 1;
+                if left > 1 && !self.players[p].hand.is_empty() {
+                    self.ask(
+                        p,
+                        Decision::DiscardUpToDraw {
+                            left: left - 1,
+                            discarded,
+                        },
+                    );
+                } else {
+                    for _ in 0..discarded {
+                        self.draw(p);
+                    }
+                }
+            }
+            (Decision::DiscardUpToDraw { discarded, .. }, Action::No) => {
+                for _ in 0..discarded {
+                    self.draw(p);
+                }
+            }
             (
                 Decision::ExileFromGraveyard {
                     left, creature_only, ..
@@ -5536,6 +5719,105 @@ impl Game {
                         },
                     );
                 }
+            }
+            Effect::TopCardsOntoBattlefield {
+                n,
+                up_to,
+                noncreature_nonland,
+                max_mv,
+                rest_to_hand,
+            } => {
+                let p = item.controller;
+                let cards: Vec<ObjId> = self.players[p]
+                    .library
+                    .iter()
+                    .rev()
+                    .take(n as usize)
+                    .copied()
+                    .collect();
+                if !cards.is_empty() {
+                    let left = if up_to == 0 { u8::MAX } else { up_to };
+                    self.ask(
+                        p,
+                        Decision::PutFromAmong {
+                            cards,
+                            left,
+                            noncreature_nonland,
+                            max_mv,
+                            rest_to_hand,
+                        },
+                    );
+                }
+            }
+            Effect::ChooseExileFromHandLinked { slot } => {
+                if let Some(victim) = self
+                    .players_for(item, legal, Who::TargetPlayer(slot))
+                    .into_iter()
+                    .next()
+                {
+                    if self.players[victim].hand.iter().any(|&c| !self.types_of(c).land) {
+                        self.ask(item.controller, Decision::PickExileLinked { victim, source: src });
+                    }
+                }
+            }
+            Effect::LinkedOwnerCreatesSpirit { spirit } => {
+                if let Some(c) = self.obj(src).linked_card {
+                    let owner = self.obj(c).owner;
+                    let x = self.def_of(c).cost.mana_value();
+                    self.endure_token(owner, x as u8, spirit);
+                }
+            }
+            Effect::ExileSourceSpell => {
+                if self.obj(src).zone == Zone::Stack {
+                    self.move_to(src, Zone::Exile);
+                }
+            }
+            Effect::ReturnPermanentsDifferentNames => {
+                let p = item.controller;
+                if self.players[p]
+                    .graveyard
+                    .iter()
+                    .any(|&c| self.def_of(c).types.is_permanent())
+                {
+                    self.ask(p, Decision::ReturnDifferentNames { names: Vec::new() });
+                }
+            }
+            Effect::DiscardUpToThenDrawThatMany(n) => {
+                let p = item.controller;
+                if !self.players[p].hand.is_empty() {
+                    self.ask(
+                        p,
+                        Decision::DiscardUpToDraw {
+                            left: n,
+                            discarded: 0,
+                        },
+                    );
+                }
+            }
+            Effect::ExileRandomFromGraveyardPlayable => {
+                let p = item.controller;
+                let n = self.players[p].graveyard.len();
+                if n > 0 {
+                    let c = self.players[p].graveyard[self.rng.below(n)];
+                    self.move_to(c, Zone::Exile);
+                    let turn = self.turn;
+                    self.obj_mut(c).playable = Some((p, turn));
+                }
+            }
+            Effect::ExileTopOfDamagedCastFree => {
+                let p = item.controller;
+                let q = opponent(p);
+                let x = item.amount.max(0);
+                for _ in 0..x {
+                    if let Some(&c) = self.players[q].library.last() {
+                        self.move_to(c, Zone::Exile);
+                        if !self.types_of(c).land && self.def_of(c).cost.mana_value() <= x as u32 {
+                            self.obj_mut(c).cast_free = true;
+                            self.free_casts.push(c);
+                        }
+                    }
+                }
+                self.free_caster = p;
             }
             Effect::GateAttackingAtLeast(n) => {
                 let p = item.controller;
@@ -7247,6 +7529,16 @@ impl Game {
             }
         }
         // CR 510.3a: "deals combat damage to a player" triggers.
+        for &(a, _) in &hit_player {
+            if self.has_counter(a) {
+                let controller = self.obj(a).controller;
+                self.fire(
+                    controller,
+                    When::YourCreatureWithCounterDealsCombatDamageToPlayer,
+                    None,
+                );
+            }
+        }
         let mut hitters: Vec<PlayerId> = hit_player.iter().map(|&(a, _)| self.obj(a).controller).collect();
         hitters.sort_unstable();
         hitters.dedup();

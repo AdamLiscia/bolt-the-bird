@@ -1198,3 +1198,302 @@ fn dracogenesis_casts_dragons_for_free() {
     resolve_all(&mut g, &[]);
     assert_eq!(g.obj(d).zone, Zone::Battlefield);
 }
+
+// ---- round 3, batch 4 ----
+
+#[test]
+fn yathan_tombguard_draws_for_creatures_with_counters_that_connect() {
+    let mut g = table();
+    put(&mut g, 0, "Yathan Tombguard");
+    let a = put(&mut g, 0, "Unburied Earthcarver");
+    let b = put(&mut g, 0, "Summit Intimidator");
+    let c = hand(&mut g, 0, "Lightfoot Technique");
+    begin(&mut g);
+    play(&mut g, c, false, &[obj(a)], &[]);
+    g.start_turn(5, 0);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(a));
+    act(&mut g, Action::Attack(b));
+    act(&mut g, Action::FinishAttacks);
+    let (cards, life) = (g.players[0].hand.len(), g.players[0].life);
+    through_combat_damage(&mut g);
+    assert_eq!(g.players[0].hand.len(), cards + 1, "one creature had a counter");
+    assert_eq!(g.players[0].life, life - 1);
+}
+
+#[test]
+fn armament_dragon_distributes_three_counters() {
+    let mut g = table();
+    let a = put(&mut g, 0, "Unburied Earthcarver");
+    let b = put(&mut g, 0, "Summit Intimidator");
+    let theirs = put(&mut g, 1, "Arashin Sunshield");
+    let d = hand(&mut g, 0, "Armament Dragon");
+    begin(&mut g);
+    act(&mut g, Action::Cast(d));
+    to_target_choice(&mut g);
+    assert!(!g.legal_actions().contains(&Action::Target(obj(theirs))), "yours");
+    act(&mut g, Action::Target(obj(a)));
+    act(&mut g, Action::Target(obj(b)));
+    act(&mut g, Action::No);
+    assert!(matches!(g.pending, Pending::Divide(0)));
+    act(&mut g, Action::Amount(2));
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.obj(a).counters, g.obj(b).counters), (2, 1));
+}
+
+#[test]
+fn genesis_ultimatum_puts_permanents_down_and_the_rest_in_hand() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Genesis Ultimatum");
+    begin(&mut g);
+    let five: Vec<_> = [
+        "Plains",
+        "Twin Bolt",
+        "War Effort",
+        "Forest",
+        "Unburied Earthcarver",
+    ]
+    .iter()
+    .map(|n| g.add_card(0, tid(n), Zone::Library))
+    .collect();
+    let (plains, bolt, effort, forest, creature) = (five[0], five[1], five[2], five[3], five[4]);
+    act(&mut g, Action::Cast(c));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(
+        !g.legal_actions().contains(&Action::Pick(bolt)),
+        "permanent cards"
+    );
+    act(&mut g, Action::Pick(creature));
+    act(&mut g, Action::Pick(forest));
+    act(&mut g, Action::No);
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        (g.obj(creature).zone, g.obj(forest).zone),
+        (Zone::Battlefield, Zone::Battlefield)
+    );
+    for x in [plains, bolt, effort] {
+        assert_eq!(g.obj(x).zone, Zone::Hand);
+    }
+    assert_eq!(g.obj(c).zone, Zone::Exile, "Exile Genesis Ultimatum");
+}
+
+#[test]
+fn united_battlefront_puts_two_cheap_noncreature_permanents_down() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "United Battlefront");
+    begin(&mut g);
+    let names = [
+        "War Effort",
+        "Stormbeacon Blade",
+        "Mox Jasper",
+        "Dragonologist",
+        "Jeskai Monument",
+        "Forest",
+        "Twin Bolt",
+    ];
+    let seven: Vec<_> = names
+        .iter()
+        .map(|n| g.add_card(0, tid(n), Zone::Library))
+        .collect();
+    act(&mut g, Action::Cast(c));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    let mut legal = g.legal_actions();
+    legal.sort_by_key(|a| format!("{a:?}"));
+    let mut want = vec![
+        Action::Pick(seven[1]),
+        Action::Pick(seven[2]),
+        Action::Pick(seven[4]),
+        Action::No,
+    ];
+    want.sort_by_key(|a| format!("{a:?}"));
+    assert_eq!(legal, want, "noncreature, nonland, mana value 3 or less");
+    act(&mut g, Action::Pick(seven[1]));
+    act(&mut g, Action::Pick(seven[2]));
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        (g.obj(seven[1]).zone, g.obj(seven[2]).zone),
+        (Zone::Battlefield, Zone::Battlefield)
+    );
+    let bottom = &g.players[0].library[..5];
+    for x in [seven[0], seven[3], seven[4], seven[5], seven[6]] {
+        assert!(bottom.contains(&x), "the rest on the bottom");
+    }
+}
+
+#[test]
+fn eerie_ultimatum_returns_permanents_with_different_names() {
+    let mut g = table();
+    let a = g.add_card(0, tid("Unburied Earthcarver"), Zone::Graveyard);
+    let a2 = g.add_card(0, tid("Unburied Earthcarver"), Zone::Graveyard);
+    let e = g.add_card(0, tid("War Effort"), Zone::Graveyard);
+    let bolt = g.add_card(0, tid("Twin Bolt"), Zone::Graveyard);
+    let c = hand(&mut g, 0, "Eerie Ultimatum");
+    begin(&mut g);
+    act(&mut g, Action::Cast(c));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(
+        !g.legal_actions().contains(&Action::Pick(bolt)),
+        "permanent cards"
+    );
+    act(&mut g, Action::Pick(a));
+    assert!(!g.legal_actions().contains(&Action::Pick(a2)), "different names");
+    act(&mut g, Action::Pick(e));
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        (g.obj(a).zone, g.obj(e).zone),
+        (Zone::Battlefield, Zone::Battlefield)
+    );
+    assert_eq!(
+        (g.obj(a2).zone, g.obj(bolt).zone),
+        (Zone::Graveyard, Zone::Graveyard)
+    );
+}
+
+#[test]
+fn tersa_lightshatter_rummages_up_to_two_and_digs_at_threshold() {
+    let mut g = table();
+    let t = hand(&mut g, 0, "Tersa Lightshatter");
+    assert!(g.def_of(t).keywords.has(Keywords::HASTE));
+    let x = hand(&mut g, 0, "Twin Bolt");
+    let _y = hand(&mut g, 0, "Lightfoot Technique");
+    begin(&mut g);
+    let cards = g.players[0].hand.len(); // includes Tersa
+    act(&mut g, Action::Cast(t));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Discard(x));
+    act(&mut g, Action::No); // only one
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(x).zone, Zone::Graveyard);
+    assert_eq!(
+        g.players[0].hand.len(),
+        cards - 1 - 1 + 1,
+        "cast Tersa, discarded one, drew one"
+    );
+
+    for _ in 0..6 {
+        g.add_card(0, tid("Twin Bolt"), Zone::Graveyard);
+    }
+    assert_eq!(g.players[0].graveyard.len(), 7);
+    attack_with(&mut g, t);
+    assert_eq!(g.players[0].graveyard.len(), 6, "one exiled at random");
+    let exiled: Vec<_> = g.exile.iter().copied().filter(|&c| g.obj(c).owner == 0).collect();
+    assert_eq!(exiled.len(), 1);
+    assert_eq!(g.obj(exiled[0]).playable, Some((0, 5)), "playable this turn");
+}
+
+#[test]
+fn tersa_without_seven_cards_exiles_nothing() {
+    let mut g = table();
+    let t = put(&mut g, 0, "Tersa Lightshatter");
+    g.add_card(0, tid("Twin Bolt"), Zone::Graveyard);
+    attack_with(&mut g, t);
+    assert_eq!(g.players[0].graveyard.len(), 1);
+}
+
+#[test]
+fn surrak_draws_when_an_opponent_targets_your_creature() {
+    let mut g = table();
+    let s = put(&mut g, 0, "Surrak, Elusive Hunter");
+    assert!(g.def_of(s).uncounterable && g.keywords(s).has(Keywords::TRAMPLE));
+    let mine = put(&mut g, 0, "Unburied Earthcarver");
+    let own = hand(&mut g, 0, "Lightfoot Technique");
+    begin(&mut g);
+    let cards = g.players[0].hand.len();
+    play(&mut g, own, false, &[obj(mine)], &[]);
+    assert_eq!(g.players[0].hand.len(), cards - 1, "your own spell: no draw");
+
+    let bolt = hand(&mut g, 1, "Channeled Dragonfire");
+    g.start_turn(6, 1);
+    while !(g.step == Step::Main1 && g.pending == Pending::Priority(1)) {
+        act(&mut g, Action::PassPriority);
+    }
+    let cards = g.players[0].hand.len();
+    act(&mut g, Action::Cast(bolt));
+    act(&mut g, Action::Target(obj(mine)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        g.players[0].hand.len(),
+        cards + 1,
+        "an opponent's spell targeted it"
+    );
+}
+
+#[test]
+fn kotis_exiles_by_damage_and_casts_cheap_spells_free() {
+    let mut g = table();
+    let k = put(&mut g, 0, "Kotis, the Fangkeeper"); // 2/1
+    assert!(g.keywords(k).has(Keywords::INDESTRUCTIBLE));
+    let cheap = g.add_card(1, tid("Twin Bolt"), Zone::Library); // MV 2
+    let pricey = g.add_card(1, tid("War Effort"), Zone::Library); // MV 4, on top
+    attack_with(&mut g, k);
+    for c in g.permanents(0).collect::<Vec<_>>() {
+        if g.types_of(c).land {
+            g.objects[c.0 as usize].tapped = true; // no mana: the cast must be free
+        }
+    }
+    while !matches!(g.pending, Pending::FreeCast(_)) {
+        let a = match g.pending {
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(
+        (g.obj(cheap).zone, g.obj(pricey).zone),
+        (Zone::Exile, Zone::Exile),
+        "two damage: top two"
+    );
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Cast(cheap)));
+    assert!(!legal.contains(&Action::Cast(pricey)), "mana value 2 or less");
+    let life = g.players[1].life;
+    act(&mut g, Action::Cast(cheap));
+    act(&mut g, Action::Target(Target::Player(1)));
+    act(&mut g, Action::No);
+    act(&mut g, Action::PassPriority); // done casting
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].life, life - 2);
+}
+
+#[test]
+fn severance_priest_exiles_a_card_and_pays_its_owner_back_with_a_spirit() {
+    let mut g = table();
+    let pricey = hand(&mut g, 1, "War Effort"); // mana value 4
+    let land = hand(&mut g, 1, "Forest");
+    let p = hand(&mut g, 0, "Severance Priest");
+    let bolt = hand(&mut g, 0, "Channeled Dragonfire");
+    begin(&mut g);
+    act(&mut g, Action::Cast(p));
+    to_target_choice(&mut g);
+    act(&mut g, Action::Target(Target::Player(1)));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(
+        g.legal_actions(),
+        [Action::Pick(pricey), Action::No],
+        "nonland cards, or none"
+    );
+    act(&mut g, Action::Pick(pricey));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(pricey).zone, Zone::Exile);
+    assert_eq!(g.obj(land).zone, Zone::Hand);
+    assert!(tokens(&g, 1, "Spirit").is_empty());
+    let bolt2 = hand(&mut g, 0, "Channeled Dragonfire");
+    play(&mut g, bolt, false, &[obj(p)], &[]);
+    play(&mut g, bolt2, false, &[obj(p)], &[]); // 4 damage: it dies, so it leaves the battlefield
+    assert_eq!(g.obj(p).zone, Zone::Graveyard);
+    let spirit = tokens(&g, 1, "Spirit");
+    assert_eq!(spirit.len(), 1, "the exiled card's owner gets the Spirit");
+    assert_eq!((g.power(spirit[0]), g.toughness(spirit[0])), (4, 4));
+}

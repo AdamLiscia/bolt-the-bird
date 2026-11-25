@@ -159,3 +159,40 @@ Known edges:
   a time, so it can see the other's death if that one is moved after it. It doesn't see its own death.
 - Waiting for the tarkir merge (`Object::keyword_counters`): Yathan Tombguard, Delta Bloodflies and Formation
   Breaker ("a creature with a counter on it"), and Armament Dragon (`Effect::DividedCounters`).
+
+## Round 3, batch 4 (9 cards), on tarkir 20425f5
+
+Mechanics added (bolt-core, all at the end of their enum or struct):
+- `When::YourCreatureWithCounterDealsCombatDamageToPlayer` (uses `Game::has_counter`, which counts keyword counters).
+- `When::YourCreatureTargetedByOpponent`: fired from `ward_check` (every spell, ability and copy as it gets its
+  targets) for each target that is a creature on the battlefield, or a creature spell, controlled by an opponent
+  of the targeting item's controller.
+- `When::LeavesBattlefield`: fired from `move_to` for any move off the battlefield.
+- `Effect::TopCardsOntoBattlefield { n, up_to, noncreature_nonland, max_mv, rest_to_hand }` with
+  `Decision::PutFromAmong`: put up to N (or any number) permanent cards from the top N onto the battlefield, the
+  rest to hand or to the bottom in a random order. Cards go onto the battlefield one at a time.
+- `Effect::ExileSourceSpell` ("Exile Genesis Ultimatum").
+- `Effect::ReturnPermanentsDifferentNames` with `Decision::ReturnDifferentNames` (one at a time, by name).
+- `Effect::DiscardUpToThenDrawThatMany(n)` with `Decision::DiscardUpToDraw`.
+- `Effect::ExileRandomFromGraveyardPlayable` (`Object::playable` for this turn).
+- `Effect::ExileTopOfDamagedCastFree`: the top X of the opponent's library (X the combat damage, the trigger's
+  amount), with nonland cards of mana value X or less castable free in the existing free-cast window (Etali).
+- `Effect::ChooseExileFromHandLinked { slot }` with `Decision::PickExileLinked`, `Object::linked_card`, and
+  `Effect::LinkedOwnerCreatesSpirit { spirit }` (the endure Spirit, given X counters).
+
+Cards: Yathan Tombguard, Armament Dragon (on `Effect::DividedCounters`), Genesis Ultimatum, United Battlefront,
+Eerie Ultimatum, Tersa Lightshatter, Surrak, Elusive Hunter, Kotis, the Fangkeeper, Severance Priest.
+
+Still needing core (assessed, not done):
+- Dragonbroods' Relic: a mana ability with "tap an untapped creature you control" in its cost, and the
+  Reliquary Dragon token (all colors, flying, lifelink, its own enters trigger).
+- Flamehold Grappler: copying the next spell you cast this turn, with new targets allowed (the existing copy
+  keeps the same targets).
+- Sidisi, Regent of the Mire: a "sacrifice a creature with mana value X" cost tied to a target's mana value.
+- Ureni, the Song Unending: divided damage whose total is X (lands you control) chosen on resolution of the
+  count, among any number of targets; `Ability::divide` is a fixed number.
+- Ugin, Eye of the Storms: "when you cast this spell" and "whenever you cast a colorless spell" triggers, a
+  colored-permanent filter, and the -11.
+- All-Out Assault: an extra combat and main phase, and a delayed untap trigger.
+- Maelstrom of the Spirit Dragon: mana spendable on Dragon spells or Omen spells. Payment only knows the card
+  (`PayFor::Spell(card)`), not whether it is being cast as its Omen half.
