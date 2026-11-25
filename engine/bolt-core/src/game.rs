@@ -192,6 +192,8 @@ pub struct Object {
     /// It's a creature until end of turn of this turn, in addition to its other types: (turn, base
     /// power, base toughness, creature type, keywords) (Reverberating Summons).
     pub eot_creature: Option<(u32, i32, i32, &'static str, Keywords)>,
+    /// A commander just put into a graveyard or exile whose owner hasn't chosen yet (CR 903.9a).
+    pub commander_choice_pending: bool,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -709,6 +711,9 @@ pub enum Decision {
     BottomOrder { cards: Vec<ObjId> },
     /// `Pick` a source for `card`'s damage shield (trigger number `trigger`).
     ChooseDamageSource { card: ObjId, trigger: usize },
+    /// Commander (CR 903.9a): `Yes` moves `card` from its graveyard or exile to the command zone,
+    /// `No` leaves it there.
+    CommanderToCommandZone { card: ObjId },
 }
 
 /// An until-end-of-turn change to one object (CR 611.2, 613).
@@ -872,6 +877,12 @@ pub struct Game {
     pub graveyard_left_this_turn: [bool; 2],
     /// Cards left each player's graveyard during their turn since triggers were last put on the stack.
     pub graveyard_leave_pending: [bool; 2],
+    /// Commander: when on, a commander put into a graveyard or exile stays there until its owner
+    /// chooses, as a state-based action, whether to move it to the command zone (CR 903.9a), so
+    /// "dies" triggers see it die. Off (the default): it goes straight to the command zone.
+    pub commander_choice: bool,
+    /// Who gets priority once a pending commander choice is made.
+    commander_choice_then: PlayerId,
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -1013,6 +1024,8 @@ impl Game {
             damage_shields: Vec::new(),
             graveyard_left_this_turn: [false; 2],
             graveyard_leave_pending: [false; 2],
+            commander_choice: false,
+            commander_choice_then: 0,
         }
     }
 
@@ -1089,6 +1102,7 @@ impl Game {
             finality: false,
             enters_with_finality: false,
             eot_creature: None,
+            commander_choice_pending: false,
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -1601,6 +1615,22 @@ impl Game {
         }
     }
 
+    /// CR 903.9a: a commander put into a graveyard or exile since state-based actions were last
+    /// checked: its owner chooses whether to move it to the command zone. Asks, and returns true,
+    /// if there's such a choice to make before `then` gets priority.
+    fn ask_commander_choice(&mut self, then: PlayerId) -> bool {
+        let Some(c) = self.commanders.iter().flatten().copied().find(|&c| {
+            self.obj(c).commander_choice_pending && matches!(self.obj(c).zone, Zone::Graveyard | Zone::Exile)
+        }) else {
+            return false;
+        };
+        self.obj_mut(c).commander_choice_pending = false;
+        self.commander_choice_then = then;
+        let owner = self.obj(c).owner;
+        self.ask(owner, Decision::CommanderToCommandZone { card: c });
+        true
+    }
+
     /// Whether `p` controls a creature with a counter on it.
     fn controls_creature_with_counter(&self, p: PlayerId) -> bool {
         self.creatures(p).any(|c| self.has_counter(c))
@@ -1869,8 +1899,10 @@ impl Game {
         let mut shuffle = false;
         // CR 903.9: a commander that would go to a graveyard, exile, a hand or a library goes to the
         // command zone instead. (The owner may choose; always choosing it is what players do.)
+        let choose_later = self.commander_choice && matches!(to, Zone::Graveyard | Zone::Exile);
         if self.commanders.contains(&Some(id))
             && matches!(to, Zone::Graveyard | Zone::Exile | Zone::Hand | Zone::Library)
+            && !choose_later
         {
             to = Zone::Command;
         }
@@ -1918,8 +1950,12 @@ impl Game {
                 self.graveyard_leave_pending[owner] = true;
             }
         }
+        let commander_waits = self.commander_choice
+            && matches!(to, Zone::Graveyard | Zone::Exile)
+            && self.commanders.contains(&Some(id));
         let o = self.obj_mut(id);
         o.zone = to;
+        o.commander_choice_pending = commander_waits;
         o.zcc += 1;
         if to != Zone::Stack {
             o.cast_free = false;
@@ -5140,6 +5176,7 @@ impl Game {
                 v.push(Action::No);
                 v
             }
+            Decision::CommanderToCommandZone { .. } => vec![Action::Yes, Action::No],
             Decision::MayDiscardOrStop => {
                 let mut v: Vec<Action> = self.players[p]
                     .hand
@@ -5330,6 +5367,14 @@ impl Game {
 
     fn decide(&mut self, p: PlayerId, a: Action) {
         let d = self.decision.take().expect("a decision");
+        if let Decision::CommanderToCommandZone { card } = d {
+            if a == Action::Yes && matches!(self.obj(card).zone, Zone::Graveyard | Zone::Exile) {
+                self.move_to(card, Zone::Command);
+            }
+            let then = self.commander_choice_then;
+            self.give_priority(then);
+            return;
+        }
         if let (Decision::ChooseCreatureType { card, options }, Action::Mode(i)) = (&d, a) {
             let t = options[i as usize].clone();
             let (card, owner) = (*card, self.obj(*card).controller);
@@ -8042,6 +8087,9 @@ impl Game {
     /// State-based actions run before any player would receive priority (CR 117.5, 704.3).
     fn give_priority(&mut self, p: PlayerId) {
         self.state_based_actions();
+        if !self.is_over() && self.ask_commander_choice(p) {
+            return;
+        }
         if self.is_over() || !self.put_triggers_on_stack(p) {
             return;
         }

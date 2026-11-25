@@ -333,6 +333,96 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
     (def, supported)
 }
 
+/// A card's color identity (CR 903.4), WUBRG: the colors of the mana symbols in its mana cost and
+/// rules text (reminder text isn't rules text), on both halves of an Omen card, plus its colors
+/// (which include a color indicator).
+pub fn color_identity(o: &Oracle) -> [bool; 5] {
+    let mut id = [false; 5];
+    let mut scan = |text: &str| {
+        let mut inside = false;
+        for ch in text.chars() {
+            match ch {
+                '{' => inside = true,
+                '}' => inside = false,
+                _ if inside => {
+                    if let Some(c) = Color::from_symbol(ch) {
+                        id[c as usize] = true;
+                    }
+                }
+                _ => {}
+            }
+        }
+    };
+    scan(o.mana_cost.as_deref().unwrap_or(""));
+    scan(&abilities(o.oracle_text.as_deref().unwrap_or("")).join("\n"));
+    if let Some(face) = &o.omen {
+        scan(face.mana_cost.as_deref().unwrap_or(""));
+        scan(&abilities(face.oracle_text.as_deref().unwrap_or("")).join("\n"));
+    }
+    for s in &o.colors {
+        if let Some(c) = s.chars().next().and_then(Color::from_symbol) {
+            id[c as usize] = true;
+        }
+    }
+    id
+}
+
+/// Whether a deck may hold any number of copies of this card (CR 903.5b): basic lands, and cards
+/// that say so.
+fn any_number_allowed(o: &Oracle) -> bool {
+    o.type_line.starts_with("Basic Land")
+        || o.oracle_text
+            .as_deref()
+            .is_some_and(|t| t.contains("A deck can have any number of cards named"))
+}
+
+/// Names that break the singleton rule (CR 903.5b): more than one copy, other than basic lands and
+/// cards that allow any number. `cards` are card indices in `set`; each name is listed once.
+pub fn singleton_problems(set: &CardSet, cards: &[usize]) -> Vec<String> {
+    let mut seen = std::collections::HashMap::new();
+    for &c in cards {
+        *seen.entry(c).or_insert(0usize) += 1;
+    }
+    let mut out: Vec<String> = seen
+        .into_iter()
+        .filter(|&(c, n)| n > 1 && !any_number_allowed(&set.oracle[c]))
+        .map(|(c, _)| set.oracle[c].name.clone())
+        .collect();
+    out.sort();
+    out
+}
+
+/// What makes a 1v1 Commander deck illegal (CR 903.3-903.5), as messages; empty if it's legal.
+/// `deck` is the other 99 cards, as card indices in `set`.
+pub fn commander_deck_problems(set: &CardSet, commander: usize, deck: &[usize]) -> Vec<String> {
+    let mut out = Vec::new();
+    let c = &set.oracle[commander];
+    if !(c.type_line.contains("Legendary") && c.type_line.contains("Creature")) {
+        out.push(format!("{} isn't a legendary creature", c.name));
+    }
+    if deck.len() + 1 != 100 {
+        out.push(format!("{} cards with the commander, not 100", deck.len() + 1));
+    }
+    let mut all = deck.to_vec();
+    all.push(commander);
+    for name in singleton_problems(set, &all) {
+        out.push(format!("more than one {name}"));
+    }
+    let allowed = color_identity(c);
+    let mut outside: Vec<&str> = deck
+        .iter()
+        .map(|&d| &set.oracle[d])
+        .filter(|o| color_identity(o).iter().zip(allowed).any(|(&has, ok)| has && !ok))
+        .map(|o| o.name.as_str())
+        .collect();
+    outside.sort_unstable();
+    outside.dedup();
+    for name in outside {
+        out.push(format!("{name} is outside the commander's color identity"));
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -442,6 +532,62 @@ mod tests {
                 assert!(f.supported[i], "{name}");
             }
         }
+    }
+
+    #[test]
+    fn color_identity_counts_costs_rules_text_and_omen_halves() {
+        let t = set("TDM").unwrap();
+        let id = |name: &str| color_identity(&t.oracle[t.index_of(name).unwrap()]);
+        // {W}{U}{B}{R}{G} in its rules text, colorless cost.
+        assert_eq!(id("Iridescent Tiger"), [true, true, true, true, true]);
+        assert_eq!(
+            id("Frontier Bivouac"),
+            [false, true, false, true, true],
+            "{{T}}: Add {{G}}, {{U}}, or {{R}}."
+        );
+        assert_eq!(id("Plains"), [false; 5], "basic land types don't count");
+        assert!(id("Dirgur Island Dragon")[1]);
+        assert_eq!(id("Boulderborn Dragon"), [false; 5]);
+    }
+
+    #[test]
+    fn singleton_and_commander_deck_checks() {
+        let t = set("TDM").unwrap();
+        let i = |name: &str| t.index_of(name).unwrap();
+        let deck = [
+            i("Humbling Elder"),
+            i("Humbling Elder"),
+            i("Island"),
+            i("Island"),
+            i("Tempest Hawk"),
+            i("Tempest Hawk"),
+        ];
+        assert_eq!(
+            singleton_problems(t, &deck),
+            ["Humbling Elder"],
+            "basic lands and Tempest Hawk may repeat"
+        );
+        let commander = i("Neriv, Heart of the Storm"); // {1}{R}{W}{B}
+        let mut ok: Vec<usize> = vec![i("Plains"); 98];
+        ok.push(i("Bearer of Glory"));
+        assert!(
+            commander_deck_problems(t, commander, &ok).is_empty(),
+            "{:?}",
+            commander_deck_problems(t, commander, &ok)
+        );
+        let mut bad = ok.clone();
+        bad[0] = i("Humbling Elder"); // blue
+        bad.push(i("Bearer of Glory"));
+        let problems = commander_deck_problems(t, commander, &bad);
+        assert!(problems.iter().any(|p| p.contains("Humbling Elder is outside")));
+        assert!(problems
+            .iter()
+            .any(|p| p.contains("more than one Bearer of Glory")));
+        assert!(problems.iter().any(|p| p.contains("101 cards")));
+        assert!(
+            !commander_deck_problems(t, i("Snowmelt Stag"), &ok).is_empty(),
+            "not legendary"
+        );
     }
 
     #[test]
