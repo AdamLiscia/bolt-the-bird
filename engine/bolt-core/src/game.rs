@@ -934,6 +934,8 @@ pub struct Game {
     pub commander_damage_from: Vec<(ObjId, PlayerId, i32)>,
     /// With `commander_choice` on, this seat's commanders go to the command zone without asking.
     pub commander_auto_return: [bool; 2],
+    /// Additional land plays each player has this turn (Explore).
+    pub extra_lands_this_turn: [u8; 2],
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -1110,6 +1112,7 @@ impl Game {
             partners: [None, None],
             commander_damage_from: Vec::new(),
             commander_auto_return: [false; 2],
+            extra_lands_this_turn: [0; 2],
         }
     }
 
@@ -3016,10 +3019,12 @@ impl Game {
             let def = self.def_of(c);
             if def.types.land {
                 // CR 305.2: one land per turn, at sorcery timing.
-                let drops = 1 + self
-                    .permanents(p)
-                    .map(|x| self.def_of(x).extra_land_drops)
-                    .sum::<u8>();
+                let drops = 1
+                    + self.extra_lands_this_turn[p]
+                    + self
+                        .permanents(p)
+                        .map(|x| self.def_of(x).extra_land_drops)
+                        .sum::<u8>();
                 if sorcery_timing && self.players[p].lands_played < drops {
                     v.push(Action::PlayLand(c));
                 }
@@ -3797,10 +3802,13 @@ impl Game {
     fn activations(&self, p: PlayerId) -> Vec<Action> {
         let mut v = Vec::new();
         let graveyard = self.players[p].graveyard.iter().copied();
-        for id in self.permanents(p).chain(graveyard) {
+        let hand = self.players[p].hand.iter().copied();
+        for id in self.permanents(p).chain(graveyard).chain(hand) {
             let in_graveyard = self.obj(id).zone == Zone::Graveyard;
+            let in_hand = self.obj(id).zone == Zone::Hand;
             for (n, a) in self.def_of(id).activated.iter().enumerate() {
-                if a.from_graveyard != in_graveyard
+                if a.from_hand_discard != in_hand
+                    || (!in_hand && a.from_graveyard != in_graveyard)
                     || (!in_graveyard && self.lost_abilities(id))
                     || self.activation_stopped(id)
                     || a.granted_to_attached
@@ -4052,6 +4060,11 @@ impl Game {
         }
         if a.exile_self && self.obj(id).zone == Zone::Graveyard {
             self.move_to(id, Zone::Exile); // renew: "Exile this card from your graveyard"
+        } else if a.exile_self && self.obj(id).zone == Zone::Battlefield {
+            self.move_to(id, Zone::Exile); // "Exile this creature"
+        }
+        if a.from_hand_discard && self.obj(id).zone == Zone::Hand {
+            self.move_to(id, Zone::Graveyard); // cycling: "Discard this card"
         }
     }
 
@@ -7186,6 +7199,46 @@ impl Game {
                     self.add_counters(c, n);
                 }
             }
+            Effect::ExtraLandThisTurn => {
+                let p = item.controller;
+                self.extra_lands_this_turn[p] = self.extra_lands_this_turn[p].saturating_add(1);
+            }
+            Effect::RevealTopLandToBattlefieldElseHand => {
+                let p = item.controller;
+                if let Some(&c) = self.players[p].library.last() {
+                    let to = if self.def_of(c).types.land {
+                        Zone::Battlefield
+                    } else {
+                        Zone::Hand
+                    };
+                    self.move_to(c, to);
+                }
+            }
+            Effect::DestroyWithSameName(slot) => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    let name = self.def_of(id).name.clone();
+                    let others: Vec<ObjId> = self
+                        .battlefield
+                        .iter()
+                        .copied()
+                        .filter(|&x| x != id && self.def_of(x).name == name)
+                        .collect();
+                    self.destroy(id);
+                    for x in others {
+                        self.destroy(x);
+                    }
+                }
+            }
+            Effect::DrawX => {
+                for _ in 0..item.x {
+                    self.draw(item.controller);
+                }
+            }
+            Effect::AddManaAnyColor => {
+                self.players[item.controller]
+                    .pool
+                    .push(ManaSource::of(&crate::Color::ALL));
+            }
             Effect::DiscardUnlessAttacked => {
                 let p = item.controller;
                 if !self.attacked_this_turn[p] && !self.players[p].hand.is_empty() {
@@ -8690,6 +8743,7 @@ impl Game {
         self.damage_shields.clear();
         self.graveyard_left_this_turn = [false; 2];
         self.graveyard_leave_pending = [false; 2];
+        self.extra_lands_this_turn = [0; 2];
         self.graveyard_types_used = [[false; 5]; 2];
         self.cast_snapshots.clear();
         self.attacked_this_turn = [false; 2];

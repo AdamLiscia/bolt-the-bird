@@ -848,6 +848,17 @@ pub enum Effect {
     ExileControllerMayFetchBasic(u8),
     /// Double the number of +1/+1 counters on each creature you control (Kalonian Hydra).
     DoubleCountersEachYours,
+    /// "You may play an additional land this turn."
+    ExtraLandThisTurn,
+    /// Reveal the top card of your library: a land goes onto the battlefield, anything else to your
+    /// hand (Coiling Oracle).
+    RevealTopLandToBattlefieldElseHand,
+    /// Destroy the permanent in `slot` and all other permanents with its name (Maelstrom Pulse).
+    DestroyWithSameName(u8),
+    /// Draw X cards (X the spell's X).
+    DrawX,
+    /// Add one mana of any color (into the pool).
+    AddManaAnyColor,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
