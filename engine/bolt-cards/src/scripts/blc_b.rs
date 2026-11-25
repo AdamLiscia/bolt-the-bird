@@ -637,6 +637,102 @@ pub fn script(name: &str) -> Option<Script> {
                 activated(d, "{3}{W}{W}", false, vec![], vec![Effect::PumpAttackersPerAttacker]);
             },
         ),
+        // ---- Batch 8 (2026-11-25 list) ----
+        "Thriving Grove" => s(
+            &["This land enters tapped. As it enters, choose a color other than green.", "{T}: Add {G} or one mana of the chosen color."],
+            |d, _| {
+                d.enters_tapped = true;
+                d.choose_color = true;
+                d.thriving_color = Some(Color::Green);
+            },
+        ),
+        "Game Trail" => s(
+            &[
+                "As this land enters, you may reveal a Mountain or Forest card from your hand. If you don't, this land enters tapped.",
+                "{T}: Add {R} or {G}.",
+            ],
+            |d, _| {
+                d.enters_tapped_unless_reveal = Some(["Mountain", "Forest"]);
+                dual(d, Color::Red, Color::Green);
+            },
+        ),
+        "Talisman of Resilience" => s(&["{T}: Add {C}.", "{T}: Add {B} or {G}. This artifact deals 1 damage to you."], |d, _| {
+            d.mana = Some(ManaSource { colorless: true, ..ManaSource::of(&[Color::Black, Color::Green]) });
+            d.pain_colored = true;
+        }),
+        "Unnatural Growth" => s(
+            &["At the beginning of each combat, double the power and toughness of each creature you control until end of turn."],
+            |d, _| on(d, When::BeginCombatEachTurn, vec![], vec![Effect::DoublePowerToughnessAll]),
+        ),
+        "Siege-Gang Commander" => s(
+            &[
+                "When this creature enters, create three 1/1 red Goblin creature tokens.",
+                "{1}{R}, Sacrifice a Goblin: This creature deals 2 damage to any target.",
+            ],
+            |d, t| {
+                on(d, When::Enters, vec![], vec![Effect::CreateToken { who: Who::You, def: t.goblin, n: 3 }]);
+                let n = activated(d, "{1}{R}", false, vec![Filter::ANY], vec![damage(2, Recipient::Target(0))]);
+                d.activated[n].sacrifice_subtype = Some("Goblin");
+            },
+        ),
+        "Thopter Engineer" => s(
+            &[
+                "When this creature enters, create a 1/1 colorless Thopter artifact creature token with flying.",
+                "Artifact creatures you control have haste.",
+            ],
+            |d, t| {
+                on(d, When::Enters, vec![], vec![Effect::CreateToken { who: Who::You, def: t.thopter, n: 1 }]);
+                static_on(d, Scope::YourArtifactCreatures, false, Keywords::HASTE);
+            },
+        ),
+        "Devilish Valet" => s(
+            &["Alliance — Whenever another creature you control enters, double this creature's power until end of turn."],
+            |d, _| on(d, When::AnotherCreatureYouControlEnters, vec![], vec![Effect::DoublePowerSelf]),
+        ),
+        "Steelburr Champion" => s(
+            &["Offspring {1}{W}", "Whenever an opponent casts a noncreature spell, put a +1/+1 counter on this creature."],
+            |d, _| {
+                d.offspring = ManaCost::parse("{1}{W}");
+                on(d, When::OpponentCastsNoncreature, vec![], vec![Effect::CountersSelf { n: 1 }]);
+            },
+        ),
+        "Prosperous Bandit" => s(
+            &["Offspring {1}", "Whenever this creature deals combat damage to a player, create that many tapped Treasure tokens."],
+            |d, t| {
+                d.offspring = ManaCost::parse("{1}");
+                on(d, When::DealsCombatDamageToPlayer, vec![], vec![Effect::CreateTokensAmountTapped { def: t.treasure }]);
+            },
+        ),
+        "Curiosity Crafter" => s(
+            &["You have no maximum hand size.", "Whenever a creature token you control deals combat damage to a player, draw a card."],
+            |d, _| {
+                d.no_max_hand_size = true;
+                on(d, When::YourCreatureTokenDealsCombatDamageToPlayer, vec![], vec![draw(1)]);
+            },
+        ),
+        "Triskaidekaphile" => s(
+            &[
+                "You have no maximum hand size.",
+                "At the beginning of your upkeep, if you have exactly thirteen cards in your hand, you win the game.",
+                "{3}{U}: Draw a card.",
+            ],
+            |d, _| {
+                d.no_max_hand_size = true;
+                conditional(d, When::Upkeep { your_turn_only: true }, Condition::HandSizeExactly(13), vec![], vec![Effect::WinTheGame]);
+                activated(d, "{3}{U}", false, vec![], vec![draw(1)]);
+            },
+        ),
+        "Murmuration" => s(
+            &[
+                "Birds you control get +1/+1 and have vigilance.",
+                "At the beginning of your end step, for each spell you've cast this turn, create a 1/2 blue Bird creature token with flying named Storm Crow.",
+            ],
+            |d, t| {
+                lord(d, "Bird");
+                d.statics.last_mut().expect("just added").keywords = Keywords::VIGILANCE;
+                on(d, When::EndStep { your_turn_only: true }, vec![], vec![Effect::CreateTokensPerSpellCastThisTurn { def: t.storm_crow }]);
+            },
+        ),
         _ => None,
     }
 }
@@ -741,4 +837,16 @@ pub const BLC_B_SCRIPTED: &[&str] = &[
     "Decimate",
     "Gratuitous Violence",
     "Jazal Goldmane",
+    "Thriving Grove",
+    "Game Trail",
+    "Talisman of Resilience",
+    "Unnatural Growth",
+    "Siege-Gang Commander",
+    "Thopter Engineer",
+    "Devilish Valet",
+    "Steelburr Champion",
+    "Prosperous Bandit",
+    "Curiosity Crafter",
+    "Triskaidekaphile",
+    "Murmuration",
 ];
