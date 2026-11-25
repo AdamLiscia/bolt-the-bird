@@ -172,6 +172,8 @@ pub struct Activated {
     pub ability: Ability,
     /// "Sacrifice a token" in the cost.
     pub sacrifice_token: bool,
+    /// "Exile a creature card from your graveyard" in the cost.
+    pub exile_creature_card: bool,
 }
 
 /// The printed card. Shared by every copy; per-copy state lives on the game object.
@@ -325,6 +327,8 @@ pub struct CardDef {
     pub enters_tapped_unless: Option<[&'static str; 2]>,
     /// "Creatures with power less than this creature's power can't block it."
     pub not_blocked_by_lesser_power: bool,
+    /// "Activated abilities of artifacts, creatures, and planeswalkers can't be activated."
+    pub stops_activated_abilities: bool,
     /// "As this enters, choose [A] or [B]": a mode, 0 or 1, chosen as it resolves (the Sieges).
     pub enter_modes: bool,
     /// In this chosen mode: "If a creature attacking causes a triggered ability of a permanent you
@@ -332,8 +336,6 @@ pub struct CardDef {
     pub attack_triggers_again_in_mode: Option<u8>,
     /// In this chosen mode: "You may play lands from your graveyard." (Glacierwood Siege)
     pub graveyard_lands_in_mode: Option<u8>,
-    /// "Activated abilities of artifacts, creatures, and planeswalkers can't be activated."
-    pub stops_activated_abilities: bool,
     /// Its mana ability works only while you control a permanent with this subtype ("Activate only
     /// if you control a Dragon", Mox Jasper).
     pub mana_only_if_you_control: Option<&'static str>,
@@ -446,10 +448,10 @@ impl CardDef {
             subtype_enters_with_counter: None,
             enters_tapped_unless: None,
             not_blocked_by_lesser_power: false,
+            stops_activated_abilities: false,
             enter_modes: false,
             attack_triggers_again_in_mode: None,
             graveyard_lands_in_mode: None,
-            stops_activated_abilities: false,
             mana_only_if_you_control: None,
             mana_equal_power: false,
             free_subtype_spells: None,
@@ -537,10 +539,10 @@ impl CardDef {
             subtype_enters_with_counter: None,
             enters_tapped_unless: None,
             not_blocked_by_lesser_power: false,
+            stops_activated_abilities: false,
             enter_modes: false,
             attack_triggers_again_in_mode: None,
             graveyard_lands_in_mode: None,
-            stops_activated_abilities: false,
             mana_only_if_you_control: None,
             mana_equal_power: false,
             free_subtype_spells: None,
@@ -628,10 +630,10 @@ impl CardDef {
             subtype_enters_with_counter: None,
             enters_tapped_unless: None,
             not_blocked_by_lesser_power: false,
+            stops_activated_abilities: false,
             enter_modes: false,
             attack_triggers_again_in_mode: None,
             graveyard_lands_in_mode: None,
-            stops_activated_abilities: false,
             mana_only_if_you_control: None,
             mana_equal_power: false,
             free_subtype_spells: None,

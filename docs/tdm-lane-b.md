@@ -79,26 +79,46 @@ Mechanics added (appended at the end of their enums and structs):
 
 Tempest Hawk's "A deck can have any number of cards named Tempest Hawk." is claimed with no engine effect: the engine has no deck-size or copy limits.
 
+## Batch 4 (engine core): first counters each turn, a delayed attack trigger, one or both, and more (11)
+
+Mechanics added (appended at the end of their enums and structs):
+- `When::FirstCountersOnYourCreatureThisTurn`, fired from lane C's `counter_put_on` hook (so entering with counters, stun and keyword counters all count) using `Object::counters_put_turn`; slot 0 is that creature.
+- `SearchTo::TopOrTappedIfYouControl(subtype)`: decided as the search resolves.
+- `Effect::ExileTopToPlayAll(n)`: every exiled card is playable until the end of your next turn.
+- "Choose one or both" is three modes: each alone and both together (CR 700.2). `Filter::noncreature` for "noncreature artifact".
+- `Effect::SacrificeCreatedAtEnd` for the tokens just created.
+- `Effect::DiscardIfPlayerTarget(slot)`: a player target that was just dealt the damage discards.
+- Fresh Start: an Aura's lose-all-abilities static with no base P/T, colors or land type now leaves base P/T and creature types alone (`Game::loses_abilities_only`); Witness Protection and Imprisoned in the Moon are unchanged.
+- `Effect::StunSelf(n)`, `When::YouCastSubtype(sub)`; `UntapSelf` and `UntapTarget` now respect stun counters (CR 122.1d: a stun counter comes off instead).
+- `Condition::CastCreatureAndNoncreatureThisTurn` with `Game::cast_creature_noncreature`.
+- `Effect::DelayedOnAttackThisTurn(trigger)` with `Game::delayed_on_attack`: the source's trigger fires each time you attack for the rest of the turn.
+- `Activated::exile_creature_card`: "Exile a creature card from your graveyard" as a cost, chosen with `ActivateWith(source, n, card)`.
+
+| Card | Test |
+|---|---|
+| Stalwart Successor | `stalwart_successor_adds_a_counter_the_first_time_each_turn`, `stalwart_successor_counts_entering_with_counters_and_stun_counters` |
+| Embermouth Sentinel | `embermouth_sentinel_puts_a_basic_on_top_or_onto_the_battlefield_with_a_dragon` |
+| Seize Opportunity | `seize_opportunity_exiles_two_to_play_or_pumps_up_to_two` |
+| Overwhelming Surge | `overwhelming_surge_does_one_or_both` |
+| Salt Road Skirmish | `salt_road_skirmish_kills_and_makes_hasty_warriors_that_leave_at_end_of_turn` |
+| Sonic Shrieker | `sonic_shrieker_burns_heals_and_a_burned_player_discards` |
+| Fresh Start | `fresh_start_shrinks_and_strips_abilities_but_keeps_the_creature` |
+| Ambling Stormshell | `ambling_stormshell_stuns_itself_to_draw_and_turtles_untap_it` |
+| Eshki Dragonclaw | `eshki_dragonclaw_rewards_a_creature_and_a_noncreature_spell` |
+| Dalkovan Encampment | `dalkovan_encampment_makes_warriors_whenever_you_attack_this_turn` |
+| Great Arashin City | `great_arashin_city_exiles_a_creature_card_for_a_spirit` |
+
 ## Needs core
 
 Cards from the lane's list, in list order, skipped because the engine can't do them exactly yet. (Sultai Monument, Fleeting Effigy, Encroaching Dragonstorm, Misty Rainforest and Arid Mesa were done by the lead in Tarkir batch 8.)
 
-- Embermouth Sentinel: the search destination depends on controlling a Dragon (top of library vs battlefield tapped); no condition-dependent `SearchTo` and no negated condition.
-- Seize Opportunity: no effect for "exile the top two, you may play *those cards*" (both, not choose one); `ExileTopChooseOneToPlay` picks one.
 - Ringing Strike Mastery: no "enchanted creature doesn't untap" static, and no way for an Aura to grant an activated ability ("{5}: Untap this creature").
-- Fresh Start: the lose-all-abilities static forces a base P/T (`base_pt: None` becomes 0/0); needs "loses all abilities" without setting base P/T, plus -5/-0.
-- Sonic Shrieker: "if a player is dealt damage this way, they discard": `Who::TargetPlayer` resolves a creature target to its controller, so the discard can't be limited to a player target that was dealt damage.
 - Rite of Renewal: no "shuffle target cards from a graveyard into their library", and no "exile this spell" on resolution.
 - Breaching Dragonstorm: no exile-until-nonland with cast-free-if-MV-8-or-less; no self-bounce.
 - Reverberating Summons: no "becomes a creature if you've cast two or more spells this turn"; no "discard your hand" cost.
-- Overwhelming Surge: no "choose one or both" modal spells; no "noncreature artifact" filter.
-- Salt Road Skirmish: no tokens that gain haste and are sacrificed at the next end step without being tapped and attacking (`Mobilize` makes them attacking).
 - Hundred-Battle Veteran: no static condition counting kinds of counters; no cast-from-graveyard with a finality counter.
 - Desperate Measures: `GrantDiesTrigger` fires whoever controls the creature when it dies; needs "dies under your control".
 - Host of the Hereafter: no "if it had counters, put its counters on" a target (moving counters from a dead creature).
-- Stalwart Successor: no trigger for "the first time counters are put on a creature you control this turn".
-- Ambling Stormshell: no stun counters on the source; no "Whenever you cast a Turtle spell" trigger.
-- Eshki Dragonclaw: no condition "cast both a creature spell and a noncreature spell this turn".
 - Lotuslight Dancers: no search for one card of each of three colors into the graveyard.
 - Sage of the Skies: no cast trigger that copies the spell itself.
 - Magmatic Hellkite: no "nonbasic land" filter; no opponent search with a stun counter on the land.
@@ -106,13 +126,8 @@ Cards from the lane's list, in list order, skipped because the engine can't do t
 - Herd Heirloom: no creature-spell-only any-color mana; no granted "deals combat damage to a player, draw" trigger.
 - Narset, Jeskai Waymaster: no "discard your hand, draw equal to spells cast this turn".
 - New Way Forward: no prevention of the next damage from a chosen source with a reflexive redirect.
-- Dalkovan Encampment: the slow-land part now exists (`enters_tapped_unless`); still no delayed "whenever you attack this turn" trigger.
-- Great Arashin City: the slow-land part now exists; still no "exile a creature card from your graveyard" cost.
-- Glacierwood Siege: no "as this enters, choose Temur or Sultai" modes; no play-lands-from-graveyard.
-- Barrensteppe Siege: no "choose Abzan or Mardu" modes; no each-opponent-sacrifices with a died-under-your-control condition.
 - Jeskai Revelation: no Monk token with prowess; no "target spell or permanent" bounce.
 - Felothar, Dawn of the Abzan: no "you may sacrifice a nonland permanent; when you do" reflexive trigger.
-- Death Begets Life: no destroy-all-creatures-and-enchantments with draw per permanent destroyed.
 - Teval, Arbiter of Virtue: no delve granted to your spells; no lose-life-equal-to-mana-value cast trigger.
 - Shiko, Paragon of the Way: no exile-then-cast-a-copy-free from the graveyard.
 - Betor, Kin to All: no total-toughness conditions; no "loses half their life".
@@ -123,7 +138,6 @@ Cards from the lane's list, in list order, skipped because the engine can't do t
 - Smile at Death: graveyard targets can't filter on power ("power 2 or less").
 
 - Emergent Ultimatum: no search for up to three monocolored cards with different names into exile, no opponent's choice to shuffle one back, no cast-the-rest-free, and no self-exile.
-- Ruinous Ultimatum: no "destroy all nonland permanents your opponents control" (only `DestroyAllCreatures` exists).
 
 Round 2 (after the chunk 1 merge, e5c03c9): the cards left on the list after Inspired Ultimatum
 (Misty Rainforest, Arid Mesa, Emergent Ultimatum, Ruinous Ultimatum) all need core, and every

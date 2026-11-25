@@ -155,18 +155,21 @@ pub struct Object {
     /// Loyalty (CR 306.5), and the turn a loyalty ability was last activated (CR 606.3).
     pub loyalty: i32,
     pub loyalty_turn: u32,
-    /// The turn it may attack as though it didn't have defender (Krotiq Nestguard).
-    pub defender_ignored_turn: u32,
-    /// The mode chosen as it entered (the Sieges); kept after it leaves, for triggers it left behind.
-    pub chosen_mode: Option<u8>,
-    /// The turn its "triggers only once each turn" ability last triggered (Hollowmurk Siege).
-    pub once_each_turn: u32,
     /// "Can't be countered", from an effect as it was cast (Mistrise Village).
     pub cast_uncounterable: bool,
     /// It entered the battlefield as a resolving spell: "if you cast it".
     pub was_cast: bool,
     /// It has dealt damage since it entered the battlefield.
     pub dealt_damage: bool,
+    /// The turn it may attack as though it didn't have defender (Krotiq Nestguard).
+    pub defender_ignored_turn: u32,
+    /// The mode chosen as it entered (the Sieges); kept after it leaves, for triggers it left behind.
+    pub chosen_mode: Option<u8>,
+    /// The turn its "triggers only once each turn" ability last triggered (Hollowmurk Siege).
+    pub once_each_turn: u32,
+    /// The turn counters were last put on it (for "the first time counters have been put on that
+    /// creature this turn").
+    pub counters_put_turn: u32,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -641,10 +644,10 @@ pub enum Decision {
     /// "Counter target spell unless its controller pays": `Yes` pays `cost`, `No` lets the spell from
     /// `against` be countered.
     PayOrCountered { cost: ManaCost, against: ObjId },
-    /// "As this enters, choose [A] or [B]": `Mode(0)` or `Mode(1)` (the Sieges).
-    ChooseEnterMode { card: ObjId },
     /// `Pick` a creature you control to exile.
     ExileCreature,
+    /// "As this enters, choose [A] or [B]": `Mode(0)` or `Mode(1)` (the Sieges).
+    ChooseEnterMode { card: ObjId },
     /// Choose a nonland card from `victim`'s hand to exile.
     PickExile { victim: PlayerId },
     /// Exile `left` more cards from your graveyard (creature cards only, if `creature_only`);
@@ -776,10 +779,14 @@ pub struct Game {
     pub commanders: [Option<ObjId>; 2],
     pub commander_casts: [u8; 2],
     pub commander_damage: [i32; 2],
-    /// Whether a creature died under each player's control this turn.
-    pub creature_died_under: [bool; 2],
     /// The turn each player made their next spell this turn uncounterable (0: never).
     pub next_spell_uncounterable: [u32; 2],
+    /// Whether a creature died under each player's control this turn.
+    pub creature_died_under: [bool; 2],
+    /// Whether each player has cast a creature spell, and a noncreature spell, this turn.
+    pub cast_creature_noncreature: [[bool; 2]; 2],
+    /// Delayed "whenever you attack this turn" triggers: (source, trigger number, controller, turn).
+    pub delayed_on_attack: Vec<(ObjId, usize, PlayerId, u32)>,
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -903,8 +910,10 @@ impl Game {
             commanders: [None, None],
             commander_casts: [0, 0],
             commander_damage: [0, 0],
-            creature_died_under: [false; 2],
             next_spell_uncounterable: [0, 0],
+            creature_died_under: [false; 2],
+            cast_creature_noncreature: [[false; 2]; 2],
+            delayed_on_attack: Vec::new(),
         }
     }
 
@@ -969,12 +978,13 @@ impl Game {
             graveyard_turn: 0,
             loyalty: 0,
             loyalty_turn: 0,
-            defender_ignored_turn: 0,
-            chosen_mode: None,
-            once_each_turn: 0,
             cast_uncounterable: false,
             was_cast: false,
             dealt_damage: false,
+            defender_ignored_turn: 0,
+            chosen_mode: None,
+            once_each_turn: 0,
+            counters_put_turn: 0,
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -1083,6 +1093,13 @@ impl Game {
         self.untapped_sources(p)
     }
 
+    /// An Aura that only takes abilities away (Fresh Start): no base power and toughness, types or
+    /// colors of its own, so the creature keeps those.
+    fn loses_abilities_only(&self, id: ObjId) -> bool {
+        self.attached_static(id)
+            .is_some_and(|s| s.base_pt.is_none() && !s.becomes_land && s.set_colors.is_none())
+    }
+
     fn lost_abilities(&self, id: ObjId) -> bool {
         self.obj(id).zone == Zone::Battlefield && self.ability_loss(id).is_some()
     }
@@ -1095,7 +1112,7 @@ impl Game {
     /// Printed or gained creature types, ignoring types from static abilities (used while working
     /// out static abilities, so they don't depend on each other).
     fn has_base_subtype(&self, id: ObjId, s: &str) -> bool {
-        if self.lost_abilities(id) {
+        if self.lost_abilities(id) && !self.loses_abilities_only(id) {
             return s == "Citizen"; // Witness Protection
         }
         let o = self.obj(id);
@@ -1183,8 +1200,8 @@ impl Game {
                             Some(StaticCondition::ControlCreatureWithCounter) => {
                                 self.controls_creature_with_counter(so.controller)
                             }
-                            Some(StaticCondition::ChosenMode(m)) => so.chosen_mode == Some(m),
                             Some(StaticCondition::HasntDealtDamage) => !so.dealt_damage,
+                            Some(StaticCondition::ChosenMode(m)) => so.chosen_mode == Some(m),
                         };
                         applies && condition_ok && (!s.your_turn_only || self.active == so.controller)
                     })
@@ -1308,7 +1325,9 @@ impl Game {
     }
 
     pub fn power(&self, id: ObjId) -> i32 {
-        self.ability_loss(id).map_or(self.base_pt(id).0, |pt| pt.0)
+        self.ability_loss(id)
+            .filter(|_| !self.loses_abilities_only(id))
+            .map_or(self.base_pt(id).0, |pt| pt.0)
             + self.opponents_graveyard_bonus(id)
             + self.obj(id).counters
             + self.modifiers(id).map(|m| m.power).sum::<i32>()
@@ -1316,7 +1335,9 @@ impl Game {
     }
 
     pub fn toughness(&self, id: ObjId) -> i32 {
-        self.ability_loss(id).map_or(self.base_pt(id).1, |pt| pt.1)
+        self.ability_loss(id)
+            .filter(|_| !self.loses_abilities_only(id))
+            .map_or(self.base_pt(id).1, |pt| pt.1)
             + self.opponents_graveyard_bonus(id)
             + self.obj(id).counters
             + self.modifiers(id).map(|m| m.toughness).sum::<i32>()
@@ -1331,6 +1352,17 @@ impl Game {
         self.obj_mut(id).tapped = true;
         if self.obj(id).zone == Zone::Battlefield {
             self.fire_source(id, When::BecomesTapped);
+        }
+    }
+
+    /// An effect untaps a permanent: a tapped one with a stun counter loses the counter instead
+    /// (CR 122.1d).
+    fn untap_by_effect(&mut self, id: ObjId) {
+        let o = self.obj_mut(id);
+        if o.tapped && o.stun > 0 {
+            o.stun -= 1;
+        } else {
+            o.tapped = false;
         }
     }
 
@@ -1439,6 +1471,16 @@ impl Game {
             return;
         }
         let p = self.obj(id).controller;
+        let turn = self.turn;
+        if self.obj(id).counters_put_turn != turn {
+            self.obj_mut(id).counters_put_turn = turn;
+            let before = self.triggered.len();
+            self.fire(p, When::FirstCountersOnYourCreatureThisTurn, None);
+            let zcc = self.obj(id).zcc;
+            for t in &mut self.triggered[before..] {
+                t.targets = vec![Chosen::Object(id, zcc)];
+            }
+        }
         let before = self.triggered.len();
         self.fire(p, When::CounterPutOnYourCreatureOnceEachTurn, None);
         let turn = self.turn;
@@ -2276,6 +2318,7 @@ impl Game {
                     || (ty.enchantment && f.enchantments)
                     || (!ty.land && f.nonland_permanents)
                     || f.any_permanent;
+                let kind_ok = kind_ok && (!f.noncreature || !ty.creature);
                 // Kin-Tree Severance: "permanent with mana value 3 or greater".
                 kind_ok
                     && f.min_mana_value
@@ -3175,6 +3218,15 @@ impl Game {
                             }
                         }
                     }
+                } else if a.exile_creature_card {
+                    v.extend(
+                        self.players[p]
+                            .graveyard
+                            .iter()
+                            .copied()
+                            .filter(|&c| c != id && self.def_of(c).types.creature)
+                            .map(|c| Action::ActivateWith(id, n, c)),
+                    );
                 } else if a.sacrifice_other_creature {
                     v.extend(
                         self.creatures(p)
@@ -3273,7 +3325,11 @@ impl Game {
         // (CR 602.2b). The fuzzer found the reverse order failing.
         self.pay_mana_for(p, &a.mana.with_x(x), exclude, PayFor::Ability(id));
         if let Some(v) = victim {
-            if self.obj(v).zone == Zone::Battlefield {
+            if a.exile_creature_card {
+                if self.obj(v).zone == Zone::Graveyard {
+                    self.move_to(v, Zone::Exile);
+                }
+            } else if self.obj(v).zone == Zone::Battlefield {
                 self.move_to(v, Zone::Graveyard);
             }
         }
@@ -3731,6 +3787,15 @@ impl Game {
                 let before = self.triggered.len();
                 if self.combat.as_ref().is_some_and(|c| !c.attackers.is_empty()) {
                     self.fire(self.active, When::YouAttack, None);
+                    let (active, turn) = (self.active, self.turn);
+                    for (source, n, controller, t) in self.delayed_on_attack.clone() {
+                        if controller == active && t == turn {
+                            self.triggered.push(StackItem {
+                                kind: StackKind::Trigger(n),
+                                ..Game::casting(source, controller)
+                            });
+                        }
+                    }
                 }
                 let count = self.combat.as_ref().map_or(0, |c| c.attackers.len()) as u8;
                 for n in 1..=count {
@@ -3894,6 +3959,8 @@ impl Game {
             }
         }
         self.spells_cast[p] += 1;
+        let is_creature = self.types_of(card).creature;
+        self.cast_creature_noncreature[p][usize::from(!is_creature)] = true;
         if self.next_spell_uncounterable[p] == self.turn && self.turn > 0 {
             self.next_spell_uncounterable[p] = 0;
             self.obj_mut(card).cast_uncounterable = true;
@@ -3925,23 +3992,26 @@ impl Game {
         for id in self.permanents(p).collect::<Vec<_>>() {
             let whens: Vec<When> = self.def_of(id).triggers.iter().map(|tr| tr.when).collect();
             for (n, w) in whens.into_iter().enumerate() {
-                if let When::YouCastNoncreatureOrSubtype(sub) = w {
-                    if !creature || subs.iter().any(|s| s == sub) {
-                        self.triggered.push(StackItem {
-                            source: id,
-                            controller: p,
-                            kind: StackKind::Trigger(n),
-                            targets: Vec::new(),
-                            kicked: false,
-                            flashback: false,
-                            extra: None,
-                            mode: None,
-                            amount: 0,
-                            alt: false,
-                            x: 0,
-                            division: Vec::new(),
-                        });
-                    }
+                let hit = match w {
+                    When::YouCastNoncreatureOrSubtype(sub) => !creature || subs.iter().any(|s| s == sub),
+                    When::YouCastSubtype(sub) => subs.iter().any(|s| s == sub),
+                    _ => false,
+                };
+                if hit {
+                    self.triggered.push(StackItem {
+                        source: id,
+                        controller: p,
+                        kind: StackKind::Trigger(n),
+                        targets: Vec::new(),
+                        kicked: false,
+                        flashback: false,
+                        extra: None,
+                        mode: None,
+                        amount: 0,
+                        alt: false,
+                        x: 0,
+                        division: Vec::new(),
+                    });
                 }
             }
         }
@@ -4937,7 +5007,7 @@ impl Game {
                         self.move_to(c, Zone::Battlefield);
                         self.obj_mut(c).tapped = tapped;
                     }
-                    SearchTo::Top => {}
+                    SearchTo::Top | SearchTo::TopOrTappedIfYouControl(_) => {}
                 }
                 if left > 1 && !self.library_matches(p, what).is_empty() {
                     self.ask(
@@ -5254,6 +5324,16 @@ impl Game {
                     SearchFor::CreatureMvAtMostX => SearchFor::CreatureMvAtMost(item.x as u32),
                     w => w,
                 };
+                let to = match to {
+                    SearchTo::TopOrTappedIfYouControl(sub) => {
+                        if self.permanents(item.controller).any(|x| self.has_subtype(x, sub)) {
+                            SearchTo::Battlefield { tapped: true }
+                        } else {
+                            SearchTo::Top
+                        }
+                    }
+                    t => t,
+                };
                 self.ask(item.controller, Decision::Search { what, to, left: n });
             }
             Effect::Counter(n) => {
@@ -5495,6 +5575,54 @@ impl Game {
                         self.add_counters(c, n);
                     }
                 }
+            }
+            Effect::ExileTopToPlayAll(n) => {
+                let p = item.controller;
+                // Until the end of your next turn (CR 611.2c).
+                let until = if self.active == p {
+                    self.turn + 2
+                } else {
+                    self.turn + 1
+                };
+                for _ in 0..n {
+                    if let Some(&c) = self.players[p].library.last() {
+                        self.move_to(c, Zone::Exile);
+                        self.obj_mut(c).playable = Some((p, until));
+                    }
+                }
+            }
+            Effect::SacrificeCreatedAtEnd => {
+                for id in self.last_created.clone() {
+                    if self.obj(id).zone == Zone::Battlefield {
+                        self.obj_mut(id).sacrifice_at_end = true;
+                    }
+                }
+            }
+            Effect::DiscardIfPlayerTarget(slot) => {
+                if let Some(&Chosen::Player(p)) = item.targets.get(slot as usize) {
+                    if legal.get(slot as usize).copied().unwrap_or(false) && !self.players[p].hand.is_empty()
+                    {
+                        self.ask(
+                            p,
+                            Decision::Discard {
+                                left: 1,
+                                optional: false,
+                                then_draw: 0,
+                            },
+                        );
+                    }
+                }
+            }
+            Effect::StunSelf(n) => {
+                if self.obj(src).zone == Zone::Battlefield {
+                    let n = n as i32 * self.doubling(self.obj(src).controller);
+                    self.obj_mut(src).stun += n;
+                    self.counter_put_on(src);
+                }
+            }
+            Effect::DelayedOnAttackThisTurn(trigger) => {
+                let entry = (src, trigger, item.controller, self.turn);
+                self.delayed_on_attack.push(entry);
             }
             Effect::DestroyOpponentsNonland => {
                 let opp = opponent(item.controller);
@@ -5950,7 +6078,7 @@ impl Game {
             }
             Effect::UntapTarget(n) => {
                 if let Some(id) = Game::slot_object(item, legal, n) {
-                    self.obj_mut(id).tapped = false;
+                    self.untap_by_effect(id);
                 }
             }
             Effect::ExileIfDiesThisTurn(n) => {
@@ -6361,7 +6489,7 @@ impl Game {
             }
             Effect::UntapSelf => {
                 if self.obj(src).zone == Zone::Battlefield {
-                    self.obj_mut(src).tapped = false;
+                    self.untap_by_effect(src);
                 }
             }
             Effect::Tap(n) => {
@@ -6585,8 +6713,13 @@ impl Game {
                 .creatures(controller)
                 .any(|id| id != source && self.has_subtype(id, sub)),
             Some(Condition::ControlCreatureWithCounter) => self.controls_creature_with_counter(controller),
+            Some(Condition::CastIt) => self.obj(source).was_cast,
+            Some(Condition::CastTwoSpellsThisTurn) => self.spells_cast[controller] >= 2,
             Some(Condition::ChosenMode(m)) => self.obj(source).chosen_mode == Some(*m),
             Some(Condition::CreatureDiedUnderYourControlThisTurn) => self.creature_died_under[controller],
+            Some(Condition::CastCreatureAndNoncreatureThisTurn) => {
+                self.cast_creature_noncreature[controller] == [true, true]
+            }
             Some(Condition::Both(a, b)) => {
                 let one = |c: &Condition| Ability {
                     condition: Some(c.clone()),
@@ -6595,8 +6728,6 @@ impl Game {
                 self.condition_holds(&one(a), controller, source)
                     && self.condition_holds(&one(b), controller, source)
             }
-            Some(Condition::CastIt) => self.obj(source).was_cast,
-            Some(Condition::CastTwoSpellsThisTurn) => self.spells_cast[controller] >= 2,
         }
     }
 
@@ -6755,6 +6886,8 @@ impl Game {
     fn begin_next_turn(&mut self) {
         self.instants_sorceries_cast = [0; 2];
         self.spells_cast = [0; 2];
+        self.cast_creature_noncreature = [[false; 2]; 2];
+        self.delayed_on_attack.clear();
         self.graveyard_types_used = [[false; 5]; 2];
         self.cast_snapshots.clear();
         self.attacked_this_turn = [false; 2];

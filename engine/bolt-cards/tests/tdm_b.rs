@@ -905,3 +905,333 @@ fn clarion_conqueror_stops_activated_abilities_of_artifacts_and_creatures() {
     );
     let _ = target;
 }
+
+// ---- Batch 4: first counters each turn, delayed attack trigger, one or both, more ----
+
+/// Pass (no attacks, no blocks) until the next turn has begun.
+fn to_next_turn(g: &mut Game) {
+    let turn = g.turn;
+    while g.turn == turn {
+        let a = match g.pending {
+            Pending::DeclareAttackers(_) => Action::FinishAttacks,
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(g, a);
+    }
+}
+
+#[test]
+fn stalwart_successor_adds_a_counter_the_first_time_each_turn() {
+    let mut g = table();
+    let s = put(&mut g, 0, "Stalwart Successor");
+    let theirs = put(&mut g, 1, "Iceridge Serpent");
+    let envoy = hand(&mut g, 0, "Trade Route Envoy");
+    let ko = hand(&mut g, 0, "Knockout Maneuver");
+    assert!(g.keywords(s).has(Keywords::MENACE));
+    begin(&mut g);
+    play(&mut g, envoy, false, &[], &[]);
+    assert_eq!(g.obj(envoy).counters, 2, "its own counter, then the Successor's");
+    play(&mut g, ko, false, &[obj(envoy), obj(theirs)], &[]);
+    assert_eq!(g.obj(envoy).counters, 3, "not the first time this turn");
+    assert_eq!(g.obj(theirs).zone, Zone::Graveyard, "7 damage");
+    // An opponent's creature getting counters (a stun counter) doesn't count.
+    let other = put(&mut g, 1, "Iceridge Serpent");
+    let sage = hand(&mut g, 0, "Constrictor Sage");
+    play(&mut g, sage, false, &[], &[Action::Target(obj(other))]);
+    assert_eq!(g.obj(other).stun, 1);
+    assert_eq!(g.obj(other).counters, 0);
+}
+
+#[test]
+fn stalwart_successor_counts_entering_with_counters_and_stun_counters() {
+    // A stun counter on your own creature counts: Ambling Stormshell stuns itself.
+    let mut g = table();
+    put(&mut g, 0, "Stalwart Successor");
+    let shell = put(&mut g, 0, "Ambling Stormshell");
+    to_attacks(&mut g);
+    attack(&mut g, &[shell], &[]);
+    assert_eq!((g.obj(shell).stun, g.obj(shell).counters), (3, 1));
+
+    let mut g = table();
+    put(&mut g, 0, "Stalwart Successor");
+    let m = hand(&mut g, 0, "Effortless Master");
+    let first = hand(&mut g, 0, "Cruel Truths");
+    begin(&mut g);
+    play(&mut g, first, false, &[], &[Action::No, Action::No]);
+    play(&mut g, m, false, &[], &[]);
+    assert_eq!(g.obj(m).counters, 3, "entered with two, then one more (CR 122.6)");
+}
+
+#[test]
+fn embermouth_sentinel_puts_a_basic_on_top_or_onto_the_battlefield_with_a_dragon() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Embermouth Sentinel");
+    begin(&mut g);
+    let forest = g.add_card(0, tid("Forest"), Zone::Library);
+    g.players[0].library.rotate_right(1);
+    play(&mut g, c, false, &[], &[Action::Yes, Action::Pick(forest)]);
+    assert_eq!(*g.players[0].library.last().unwrap(), forest, "on top");
+
+    let mut g = table();
+    put(&mut g, 0, "Boulderborn Dragon");
+    let c = hand(&mut g, 0, "Embermouth Sentinel");
+    begin(&mut g);
+    let forest = g.add_card(0, tid("Forest"), Zone::Library);
+    play(&mut g, c, false, &[], &[Action::Yes, Action::Pick(forest)]);
+    assert_eq!(g.obj(forest).zone, Zone::Battlefield);
+    assert!(g.obj(forest).tapped);
+
+    let mut g = table();
+    let c = hand(&mut g, 0, "Embermouth Sentinel");
+    begin(&mut g);
+    let lib = g.players[0].library.clone();
+    play(&mut g, c, false, &[], &[Action::No]);
+    assert_eq!(g.players[0].library, lib, "you may not search");
+}
+
+#[test]
+fn seize_opportunity_exiles_two_to_play_or_pumps_up_to_two() {
+    let mut g = table();
+    begin(&mut g);
+    let lib = &g.players[0].library;
+    let (a, b) = (lib[lib.len() - 1], lib[lib.len() - 2]);
+    let c = hand(&mut g, 0, "Seize Opportunity");
+    act(&mut g, Action::CastModal(c, 0));
+    resolve_all(&mut g, &[]);
+    for x in [a, b] {
+        assert_eq!(g.obj(x).zone, Zone::Exile);
+        assert_eq!(
+            g.obj(x).playable,
+            Some((0, g.turn + 2)),
+            "until the end of your next turn"
+        );
+    }
+
+    let mut g = table();
+    let x = put(&mut g, 0, "Humbling Elder");
+    let y = put(&mut g, 1, "Iceridge Serpent");
+    begin(&mut g);
+    let c = hand(&mut g, 0, "Seize Opportunity");
+    act(&mut g, Action::CastModal(c, 1));
+    act(&mut g, Action::Target(obj(x)));
+    act(&mut g, Action::Target(obj(y)));
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.power(x), g.toughness(x)), (3, 3));
+    assert_eq!((g.power(y), g.toughness(y)), (5, 4));
+    let c = hand(&mut g, 0, "Seize Opportunity");
+    act(&mut g, Action::CastModal(c, 1));
+    act(&mut g, Action::Target(obj(x)));
+    act(&mut g, Action::No);
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.power(x), 5, "just one");
+}
+
+#[test]
+fn overwhelming_surge_does_one_or_both() {
+    let mut g = table();
+    let elder = put(&mut g, 1, "Humbling Elder");
+    let serpent = put(&mut g, 1, "Iceridge Serpent");
+    let globe = put(&mut g, 1, "Dragonstorm Globe");
+    let dragon = put(&mut g, 1, "Boulderborn Dragon"); // an artifact creature
+    begin(&mut g);
+    let c = hand(&mut g, 0, "Overwhelming Surge");
+    act(&mut g, Action::CastModal(c, 1));
+    assert!(
+        !g.legal_actions().contains(&Action::Target(obj(dragon))),
+        "noncreature artifacts only"
+    );
+    act(&mut g, Action::Target(obj(globe)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(globe).zone, Zone::Graveyard);
+
+    let c = hand(&mut g, 0, "Overwhelming Surge");
+    act(&mut g, Action::CastModal(c, 0));
+    act(&mut g, Action::Target(obj(elder)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(elder).zone, Zone::Graveyard);
+
+    let globe2 = put(&mut g, 1, "Dragonstorm Globe");
+    let c = hand(&mut g, 0, "Overwhelming Surge");
+    act(&mut g, Action::CastModal(c, 2));
+    act(&mut g, Action::Target(obj(serpent)));
+    act(&mut g, Action::Target(obj(globe2)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(serpent).zone, Zone::Graveyard);
+    assert_eq!(g.obj(globe2).zone, Zone::Graveyard);
+}
+
+#[test]
+fn salt_road_skirmish_kills_and_makes_hasty_warriors_that_leave_at_end_of_turn() {
+    let mut g = table();
+    let theirs = put(&mut g, 1, "Iceridge Serpent");
+    let c = hand(&mut g, 0, "Salt Road Skirmish");
+    begin(&mut g);
+    play(&mut g, c, false, &[obj(theirs)], &[]);
+    assert_eq!(g.obj(theirs).zone, Zone::Graveyard);
+    let warriors = tokens(&g, 0, "Warrior");
+    assert_eq!(warriors.len(), 2);
+    for &w in &warriors {
+        assert!(g.keywords(w).has(Keywords::HASTE));
+        assert!(!g.obj(w).tapped, "not tapped or attacking");
+    }
+    to_next_turn(&mut g);
+    assert!(tokens(&g, 0, "Warrior").is_empty(), "sacrificed at the end step");
+}
+
+#[test]
+fn sonic_shrieker_burns_heals_and_a_burned_player_discards() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Sonic Shrieker");
+    let card = hand(&mut g, 1, "Cruel Truths");
+    begin(&mut g);
+    play(
+        &mut g,
+        c,
+        false,
+        &[],
+        &[Action::Target(Target::Player(1)), Action::Discard(card)],
+    );
+    assert_eq!((g.players[0].life, g.players[1].life), (22, 18));
+    assert_eq!(g.obj(card).zone, Zone::Graveyard);
+
+    let mut g = table();
+    let c = hand(&mut g, 0, "Sonic Shrieker");
+    let card = hand(&mut g, 1, "Cruel Truths");
+    let theirs = put(&mut g, 1, "Humbling Elder");
+    begin(&mut g);
+    play(&mut g, c, false, &[], &[Action::Target(obj(theirs))]);
+    assert_eq!(g.obj(theirs).zone, Zone::Graveyard);
+    assert_eq!(g.obj(card).zone, Zone::Hand, "no player was dealt damage");
+    assert_eq!(g.players[0].life, 22);
+}
+
+#[test]
+fn fresh_start_shrinks_and_strips_abilities_but_keeps_the_creature() {
+    let mut g = table();
+    let dragon = put(&mut g, 1, "Boulderborn Dragon"); // 3/3 flying, vigilance
+    let c = hand(&mut g, 0, "Fresh Start");
+    assert!(g.def_of(c).keywords.has(Keywords::FLASH));
+    begin(&mut g);
+    play(&mut g, c, false, &[obj(dragon)], &[]);
+    assert_eq!(
+        (g.power(dragon), g.toughness(dragon)),
+        (-2, 3),
+        "keeps its base 3/3"
+    );
+    assert!(!g.keywords(dragon).has(Keywords::FLYING));
+    assert!(g.has_subtype(dragon, "Dragon"), "types stay");
+    assert!(g.types_of(dragon).creature && g.types_of(dragon).artifact);
+}
+
+#[test]
+fn ambling_stormshell_stuns_itself_to_draw_and_turtles_untap_it() {
+    let mut g = table();
+    let s = put(&mut g, 0, "Ambling Stormshell");
+    assert!(g.def_of(s).ward.is_some());
+    to_attacks(&mut g);
+    let n = g.players[0].hand.len();
+    attack(&mut g, &[s], &[]);
+    assert_eq!(g.obj(s).stun, 3);
+    assert_eq!(g.players[0].hand.len(), n + 3);
+    assert!(g.obj(s).tapped);
+    // A Turtle spell "untaps" it: with stun counters, one comes off instead (CR 122.1d).
+    let turtle = hand(&mut g, 0, "Ambling Stormshell");
+    while g.step != Step::Main2 {
+        let a = match g.pending {
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    play(&mut g, turtle, false, &[], &[]);
+    assert_eq!(g.obj(s).stun, 2);
+    assert!(g.obj(s).tapped);
+}
+
+#[test]
+fn eshki_dragonclaw_rewards_a_creature_and_a_noncreature_spell() {
+    let mut g = table();
+    let e = put(&mut g, 0, "Eshki Dragonclaw");
+    let k = g.keywords(e);
+    assert!(k.has(Keywords::VIGILANCE) && k.has(Keywords::TRAMPLE));
+    assert!(g.def_of(e).ward.is_some());
+    let elder = hand(&mut g, 0, "Humbling Elder");
+    let spell = hand(&mut g, 0, "Cruel Truths");
+    begin(&mut g);
+    play(&mut g, elder, false, &[], &[]);
+    play(&mut g, spell, false, &[], &[Action::No, Action::No]);
+    let n = g.players[0].hand.len();
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.obj(e).counters, 2);
+    assert_eq!(g.players[0].hand.len(), n + 1);
+
+    let mut g = table();
+    let e = put(&mut g, 0, "Eshki Dragonclaw");
+    let elder = hand(&mut g, 0, "Humbling Elder");
+    begin(&mut g);
+    play(&mut g, elder, false, &[], &[]);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.obj(e).counters, 0, "only a creature spell");
+}
+
+#[test]
+fn dalkovan_encampment_makes_warriors_whenever_you_attack_this_turn() {
+    let mut g = table();
+    let camp = put(&mut g, 0, "Dalkovan Encampment");
+    let elder = put(&mut g, 0, "Humbling Elder");
+    main_turn_5(&mut g);
+    act(&mut g, Action::Activate(camp, 0));
+    resolve_all(&mut g, &[]);
+    assert!(tokens(&g, 0, "Warrior").is_empty(), "not until you attack");
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    attack(&mut g, &[elder], &[]);
+    let warriors = tokens(&g, 0, "Warrior");
+    assert_eq!(warriors.len(), 2);
+    for &w in &warriors {
+        assert!(g.obj(w).tapped);
+        assert!(g.combat.as_ref().unwrap().attackers.contains(&w));
+    }
+    to_next_turn(&mut g);
+    assert!(tokens(&g, 0, "Warrior").is_empty(), "sacrificed at the end step");
+    // Only this turn.
+    to_next_turn(&mut g);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    attack(&mut g, &[elder], &[]);
+    assert!(tokens(&g, 0, "Warrior").is_empty());
+}
+
+#[test]
+fn great_arashin_city_exiles_a_creature_card_for_a_spirit() {
+    let mut g = table();
+    let city = put(&mut g, 0, "Great Arashin City");
+    let spell = g.add_card(0, tid("Cruel Truths"), Zone::Graveyard);
+    begin(&mut g);
+    assert!(!g
+        .legal_actions()
+        .iter()
+        .any(|a| matches!(a, Action::ActivateWith(c, _, _) if *c == city)));
+    let card = g.add_card(0, tid("Humbling Elder"), Zone::Graveyard);
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::ActivateWith(city, 0, card)));
+    assert!(
+        !legal.contains(&Action::ActivateWith(city, 0, spell)),
+        "a creature card"
+    );
+    act(&mut g, Action::ActivateWith(city, 0, card));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(card).zone, Zone::Exile);
+    let spirit = tokens(&g, 0, "Spirit");
+    assert_eq!(spirit.len(), 1);
+    assert_eq!((g.power(spirit[0]), g.toughness(spirit[0])), (1, 1));
+    assert!(!g.keywords(spirit[0]).has(Keywords::FLYING));
+    assert!(g.obj(city).tapped);
+}

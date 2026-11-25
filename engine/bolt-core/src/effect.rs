@@ -73,6 +73,8 @@ pub struct Filter {
     pub lands: bool,
     /// Creatures that were dealt damage this turn.
     pub was_dealt_damage: bool,
+    /// Noncreature permanents only ("noncreature artifact").
+    pub noncreature: bool,
 }
 
 impl Filter {
@@ -108,6 +110,7 @@ impl Filter {
         attached_to_first_target: false,
         lands: false,
         was_dealt_damage: false,
+        noncreature: false,
     };
 
     pub const CREATURE: Filter = Filter {
@@ -615,10 +618,6 @@ pub enum Effect {
     /// "Draw a card if you control a creature with a counter on it. If you don't draw a card this
     /// way, put a +1/+1 counter on this creature." (Trade Route Envoy)
     DrawIfCounterElseCounterSelf,
-    /// Destroy all nonland permanents your opponents control.
-    DestroyOpponentsNonland,
-    /// Destroy all creatures and enchantments, then draw a card for each permanent destroyed.
-    DestroyCreaturesAndEnchantmentsDraw,
     /// "The next spell you cast this turn can't be countered." (Mistrise Village)
     NextSpellUncounterable,
     /// Tap the source ("Tap it.").
@@ -631,6 +630,21 @@ pub enum Effect {
         card: u8,
         to: u8,
     },
+    /// Destroy all nonland permanents your opponents control.
+    DestroyOpponentsNonland,
+    /// Destroy all creatures and enchantments, then draw a card for each permanent destroyed.
+    DestroyCreaturesAndEnchantmentsDraw,
+    /// Exile the top `n` cards of your library; until the end of your next turn, you may play them.
+    ExileTopToPlayAll(u8),
+    /// The tokens just created are sacrificed at the beginning of the next end step.
+    SacrificeCreatedAtEnd,
+    /// If the target in `slot` is a player (who was just dealt damage this way), they discard a card.
+    DiscardIfPlayerTarget(u8),
+    /// Put `n` stun counters on the source.
+    StunSelf(u8),
+    /// "Whenever you attack this turn, ...": the source's trigger number `trigger` triggers whenever
+    /// you attack for the rest of this turn (a delayed triggered ability, CR 603.7).
+    DelayedOnAttackThisTurn(usize),
     /// The ability's controller chooses a nonland card from the hand of the player in `slot`, and
     /// exiles it (Aggressive Negotiations).
     ChooseExileFromHand {
@@ -678,6 +692,9 @@ pub enum SearchTo {
     },
     /// Shuffle, then put the card on top.
     Top,
+    /// On top, or onto the battlefield tapped instead if you control a permanent with this subtype
+    /// (Embermouth Sentinel). Decided as the search resolves.
+    TopOrTappedIfYouControl(&'static str),
 }
 
 /// What a static ability affects.
@@ -727,10 +744,10 @@ pub enum StaticCondition {
     LifeAtLeast(i32),
     /// Its controller controls a creature with a counter (of any kind) on it.
     ControlCreatureWithCounter,
-    /// The source's mode, chosen as it entered, is this one (the Sieges).
-    ChosenMode(u8),
     /// The source hasn't dealt damage since it entered the battlefield (Karakyk Guardian).
     HasntDealtDamage,
+    /// The source's mode, chosen as it entered, is this one (the Sieges).
+    ChosenMode(u8),
 }
 
 /// A static ability that changes characteristics (CR 604, 613 layers 6 and 7c).
@@ -841,16 +858,18 @@ pub enum Condition {
     Kicked,
     /// You control a creature with a counter (of any kind) on it.
     ControlCreatureWithCounter,
+    /// "If you cast it": the source entered the battlefield as a resolving spell.
+    CastIt,
+    /// You've cast two or more spells this turn.
+    CastTwoSpellsThisTurn,
     /// The source's mode, chosen as it entered, is this one (the Sieges).
     ChosenMode(u8),
     /// Both conditions hold.
     Both(Box<Condition>, Box<Condition>),
     /// A creature died under your control this turn.
     CreatureDiedUnderYourControlThisTurn,
-    /// "If you cast it": the source entered the battlefield as a resolving spell.
-    CastIt,
-    /// You've cast two or more spells this turn.
-    CastTwoSpellsThisTurn,
+    /// You've cast both a creature spell and a noncreature spell this turn.
+    CastCreatureAndNoncreatureThisTurn,
 }
 
 /// A spell's effect or a triggered ability: target slots, then effects in order.
@@ -993,6 +1012,11 @@ pub enum When {
     /// "Whenever a counter is put on a creature you control. This ability triggers only once each
     /// turn." (Counters it enters with count, CR 122.6.)
     CounterPutOnYourCreatureOnceEachTurn,
+    /// "Whenever one or more counters are put on a creature you control, if it's the first time
+    /// counters have been put on that creature this turn" (slot 0 is that creature).
+    FirstCountersOnYourCreatureThisTurn,
+    /// "Whenever you cast a [subtype] spell".
+    YouCastSubtype(&'static str),
     /// "Whenever equipped creature attacks".
     EquippedAttacks,
     /// "Whenever a creature you control dies while this card is in your graveyard".
