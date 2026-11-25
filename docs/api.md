@@ -252,6 +252,8 @@ to the human's first decision.
 
 - `version` increases with every action; send it back with `act`.
 - `to_act` is the seat that must decide; it is the human's seat unless `over`.
+- When `pending.kind` is `Bottom` (London mulligan), `pending.left` is how many cards are still to go on the
+  bottom.
 - When `pending.kind` is `ChooseTarget` (or `Divide`), `pending.source` (`{"id", "name", "card_id"}`),
   `pending.source_text` and `pending.spell` say which spell or ability the targets are for (it isn't on
   the stack until its targets are chosen). Needs the engine build after 2026-11-23.
@@ -376,6 +378,56 @@ Ends and frees a game.
 - At most 20 live games (configurable); a game idle for 6 hours is dropped (404 afterwards).
 - Games longer than 200 turns, or 20,000 decisions, end as `"timeout"`.
 - Bot moves: `network`, `smart` and `rules` take milliseconds per decision; `smart_strong` takes longer (tens of milliseconds, more on big boards).
+
+
+### Paying mana
+
+Every service game uses the **smart auto-payer** for both seats: floating mana is spent first, colored
+costs take the narrowest sources, and generic costs take the sources whose colors the rest of the hand
+(and your permanents' activated abilities) need least, so an Island stays up for the blue card still in
+hand. Research runs keep the engine's older payer, so stored results replay identically.
+
+**Manual mana** (human seats): `POST /v1/game {..., "manual_mana_seats": [0]}` (default `[]`), or switch
+any time with `POST /v1/game/{id}/mana {"seat": 0, "manual": true|false}` (returns the state; the version
+bumps because the legal moves change; 409 for a seat that isn't human). While a manual seat has
+priority, `legal_actions` also offer:
+
+```json
+{"index": 7, "kind": "TapForMana", "label": "Tap Forest for {G}", "objects": [41], "cards": ["Forest"], "color": "G"}
+```
+
+- One move per source and color it can make: a dual land offers two, Evolving Wilds none (not a mana
+  ability). `color` is one of `W U B R G C`. Treasure reads "Sacrifice Treasure for {R}". Mana creatures
+  are offered when they can tap. Sources whose mana is restricted (only for some spells) stay automatic.
+- The mana floats in the pool until the step ends (CR 500.4). Casting or activating spends floating mana
+  first and auto-pays the rest from untapped sources, so Manual never blocks a cast: cast moves are legal
+  whenever pool plus untapped sources can pay.
+- Tap moves alone aren't a decision: when a manual seat could only pass or tap, the pass is forced as
+  before.
+- `view.players[n].pool` is the total floating mana; `pool_colors` is
+  `{"W", "U", "B", "R", "G", "C", "any"}` counts ("any": mana that can be several colors).
+- Bots never get TapForMana, and auto seats never see it.
+
+### Player counters (names reserved; added as the engine models them)
+
+For stream overlays. A field appears only once the engine models it, so a missing field means "not in this
+game"; show an icon only when present and active.
+
+| Field | Where | Status |
+|---|---|---|
+| `commander_damage` | per player: `{"<source commander card_id>": n}`, damage taken from each commander | Ships with Commander games (the Star Trek precon work); the engine already tracks it, Limited games omit it |
+| `poison`, `energy`, `experience` | per player, integers | Not modeled (no Foundations or Tarkir card uses them) |
+| `monarch`, `initiative` | game level: the seat that has it, or null | Not modeled |
+| `city_blessing` | game level: list of seats | Not modeled |
+| `day_night` | game level: `"day"`, `"night"` or null | Not modeled |
+
+### Spectating a seat (stream mode)
+
+`GET /v1/game/{id}?seat=N&spectate=1` returns seat N's view, the bot's seat included, read-only:
+`legal_actions` is `[]` and `"spectate": true`. `view.players[N].hand` holds that seat's cards
+(`id`, `name`, `card_id`); the other seat's hand stays hidden as usual. It needs `X-Bolt-Key` like every
+call: the caller decides who may see it (Nerd Leagues shows Bolt's hand only when the streamer opts in).
+Without `spectate`, a seat that isn't a human seat is still 422.
 
 ## Versioning
 

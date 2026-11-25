@@ -69,13 +69,13 @@ def load_kit() -> Kit:
 
     images = json.loads((ROOT / "practice" / "fdn_images.json").read_text())
     tokens = json.loads((ASSETS / "FDN_token_images.json").read_text())
-    c = torch.load(ck / "play" / "play_v2_ppo3_i850.pt", map_location="cpu", weights_only=False)
+    c = torch.load(ck / "play" / "play_v3_ppo4_i170.pt", map_location="cpu", weights_only=False)
     net = PlayNet(**c["config"])
     net.load_state_dict(c["model"])
     return Kit(info=info, bolt=load(DraftTransformer, "bot_ppo.pt"), human=load(DraftTransformer, "human_model.pt"),
                judge=load(DeckJudge, "judge_b.pt"), packs=np.load(ASSETS / "FDN_sample_packs.npy"), net=net.eval(),
                models={"drafter": "bot_ppo.pt", "human_drafter": "human_model.pt",
-                       "player": "play_v2_ppo3_i850.pt"}, images=images, tokens=tokens)  # fmt: skip
+                       "player": "play_v3_ppo4_i170.pt"}, images=images, tokens=tokens)  # fmt: skip
 
 
 # ---- request bodies -------------------------------------------------------------------------------
@@ -168,6 +168,12 @@ class GameBody(BaseModel):
     first: int | None = None
     frames: bool = False
     human_seats: list[int] | None = None  # [0, 1]: two people, no bot seat
+    manual_mana_seats: list[int] = []  # human seats that tap their own mana (TapForMana moves)
+
+
+class ManaBody(BaseModel):
+    seat: int
+    manual: bool
 
 
 class ConcedeBody(BaseModel):
@@ -490,11 +496,14 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
                 rec["timeout"] = True
                 return
             who = g.to_act()
-            n = len(g.legal_actions())
+            legal = g.legal_actions()
+            n = len(legal)
             if who in rec["humans"]:
-                if n > 1:
+                # Tapping mana isn't a reason to stop: with nothing else to do, the pass is forced.
+                real = [i for i, a in enumerate(legal) if a[0] != "TapForMana"]
+                if len(real) > 1:
                     return
-                apply(rec, 0, gid)
+                apply(rec, real[0], gid)
             else:
                 apply(rec, 0 if n == 1 else bot_move(rec), gid)
             snapshot(rec, gid, frames, seat)
@@ -548,6 +557,11 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
             gid = "g_" + secrets.token_hex(6)
             game = be.Game(a, b, seed=seed, first=first)
             game.auto_pass = False  # forced passes go through `advance`, so frames can catch every moment
+            game.smart_pay = True  # keep the colors the hand still needs (both seats)
+            for s in body.manual_mana_seats:
+                if s not in humans:
+                    raise ApiError(422, f"manual_mana_seats: seat {s} isn't a human seat")
+                game.set_manual_mana(s, True)
             rec = {"game": game, "human": humans[0], "humans": set(humans),
                    "pilot": body.pilot if len(humans) == 1 else None, "seed": seed, "version": 0, "moves": 0,
                    "events": [], "engine_n": 0, "used": time.time(), "seat_frames": {s: [] for s in humans}}  # fmt: skip
@@ -560,10 +574,31 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
             return out
 
     @router.get("/game/{gid}")
-    def show(gid: str, seat: int | None = None):
+    def show(gid: str, seat: int | None = None, spectate: bool = False):
         with lock:
             rec = get(gid)
-            return view(rec, gid, seat_of(rec, seat))
+            if not spectate:
+                return view(rec, gid, seat_of(rec, seat))
+            # Read-only view of any seat, the bot's included (a streamer showing Bolt's hand). The caller
+            # holds the service key and decides who may see it; nothing here can act for that seat.
+            if seat not in (0, 1):
+                raise ApiError(422, "spectate needs seat 0 or 1")
+            s = view(rec, gid, seat)
+            s["legal_actions"] = []
+            s["spectate"] = True
+            return s
+
+    @router.post("/game/{gid}/mana")
+    def set_mana(gid: str, body: ManaBody):
+        """Switch a human seat between Auto (the engine pays) and Manual (TapForMana moves)."""
+        with lock:
+            rec = get(gid)
+            if body.seat not in rec["humans"]:
+                raise ApiError(409, "not a human seat in this game", state=view(rec, gid))
+            rec["game"].set_manual_mana(body.seat, body.manual)
+            rec["version"] += 1
+            advance(rec, gid, None, body.seat)
+            return view(rec, gid, body.seat)
 
     @router.post("/game/{gid}/act")
     def act(gid: str, body: ActBody):

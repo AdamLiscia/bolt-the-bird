@@ -76,6 +76,34 @@ drafts and games from Arena players who run its tracker, and publishes them with
   its pilots' skill by 2.1 points while making up under 8% of games, so the lane is strong and usually open
   against human-like drafters. It would be contested at a table of bots.
 
+### `play_v2_ppo3_i850.pt`: the learned player (PlayNet)
+
+- **What it does:** plays Foundations Limited games in the engine: scores every legal move and estimates
+  its chance of winning. Every decision (mulligans, casts, attacks, blocks, targets, instant-speed play).
+- **Architecture:** a transformer over one token per visible object (both battlefields with power,
+  toughness, tapped, combat state; your hand; graveyards; the stack) plus a game token; each legal move
+  is a token pointing at the objects it names. 0.9M parameters. It sees what a player sees: the
+  opponent's hand only as a count.
+- **Training:** copied 2.5M decisions of the smart 1 × 2 player, then a DAgger round, then self-play PPO
+  against a league (the rules-based and smart players, past checkpoints, itself), rewarded only for wins,
+  with per-move credit (GAE, λ 0.95) and a KL leash. About 611,000 self-play games on a laptop CPU.
+- **Results (1,000 games each, 500 held-out deck pairs, greedy):** 71.1% vs the rules-based player,
+  65.4% vs smart 1 × 2, 55.0% vs smart 4 × 6.
+- **Limits:** Foundations cards only; never tested against people; plays greedily (no search); 2-player.
+
+### `play_v3_ppo4_i170.pt`: the learned player, seeing its spells (current)
+
+- **Change from v2:** the input now includes the spell or ability whose targets are being chosen (the
+  engine lists it on the stack only after targeting, so v2 couldn't tell Giant Growth from removal and
+  aimed pumps at the opponent's creatures 65% of the time). Continued from v2 with 170 more self-play PPO
+  updates (about 109,000 games, KL leash 0.03 → 0.01). About 790,000 self-play games in all.
+- **Results (1,000 games each, same 500 held-out deck pairs, greedy):** 75.9% vs the rules-based player,
+  68.0% vs smart 1 × 2, 57.9% vs smart 4 × 6.
+- **Known flaw:** pumps and auras still go on the opponent's creature 47% of the time when either side
+  is possible (34 of 73 over 200 games; removal goes on the opponent's creature 95% of the time).
+  The Bolt service has the smart 1 × 2 player choose its targets. `scripts/target_check.py` measures it.
+- **Limits:** as v2.
+
 ## Intended use
 
 - Research and teaching: imitation learning, offline evaluation, reward models, RL fine-tuning

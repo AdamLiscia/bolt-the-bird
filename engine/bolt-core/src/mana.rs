@@ -114,6 +114,36 @@ impl ManaSource {
 pub fn pay(cost: &ManaCost, sources: &[ManaSource]) -> Option<Vec<usize>> {
     let mut order: Vec<usize> = (0..sources.len()).collect();
     order.sort_by_key(|&i| (sources[i].breadth(), i));
+    pay_in_order(cost, sources, &order, &order)
+}
+
+/// Like [`pay`], for a player choosing well (the smart auto-payer):
+/// - the first `floating` sources are mana already in the pool, spent before anything is tapped;
+/// - `keep[i]` is how much the player wants source `i` kept untapped (how much the rest of their hand
+///   needs its colors).
+///
+/// Colored pips still take the narrowest sources first, and the least-needed among equals. Generic
+/// mana then takes the least-needed sources, so an Island stays up for the blue card still in hand.
+pub fn pay_ranked(
+    cost: &ManaCost,
+    sources: &[ManaSource],
+    floating: usize,
+    keep: &[u32],
+) -> Option<Vec<usize>> {
+    let tapped = |i: usize| i >= floating;
+    let mut pips: Vec<usize> = (0..sources.len()).collect();
+    pips.sort_by_key(|&i| (tapped(i), sources[i].breadth(), keep[i], i));
+    let mut generic: Vec<usize> = (0..sources.len()).collect();
+    generic.sort_by_key(|&i| (tapped(i), keep[i], sources[i].breadth(), i));
+    pay_in_order(cost, sources, &pips, &generic)
+}
+
+fn pay_in_order(
+    cost: &ManaCost,
+    sources: &[ManaSource],
+    order: &[usize],
+    generic_order: &[usize],
+) -> Option<Vec<usize>> {
     // Each pip is the set of colors that can pay it: one color, or two for hybrid.
     let mut pips: Vec<[bool; 5]> = Vec::new();
     for c in 0..5 {
@@ -129,11 +159,11 @@ pub fn pay(cost: &ManaCost, sources: &[ManaSource]) -> Option<Vec<usize>> {
     }
     let mut used = vec![false; sources.len()];
     let mut chosen = Vec::new();
-    if !match_pips(&pips, sources, &order, &mut used, &mut chosen) {
+    if !match_pips(&pips, sources, order, &mut used, &mut chosen) {
         return None;
     }
     let mut generic = cost.generic as usize;
-    for &i in &order {
+    for &i in generic_order {
         if generic == 0 {
             break;
         }

@@ -23,6 +23,17 @@
       "corr_with_judge_b": 0.14559059765694976,
       "timeouts": 5
     },
+    "network": {
+      "tables": 512,
+      "games": 65408,
+      "paired_games": 65408,
+      "bot": 0.5429457407149058,
+      "human_model": 0.49649822901165674,
+      "gap": 0.04644751170324901,
+      "gap_se": 0.00630455940621232,
+      "corr_with_judge_b": 0.20916134144380977,
+      "timeouts": 756
+    },
     "r1c2": {
       "tables": 512,
       "games": 65408,
@@ -46,5 +57,5 @@
       "timeouts": 2
     }
   },
-  "note": "same games for ['baseline', 'rollout', 'r1c2', 'r2c4']; tables differ only if a run is unfinished"
+  "note": "same games for ['baseline', 'rollout', 'network', 'r1c2', 'r2c4']; tables differ only if a run is unfinished"
 }

@@ -2,6 +2,7 @@
 
 python scripts/train.py --model mlp
 python scripts/train.py --model transformer --epochs 3
+python scripts/train.py --set TDM --model transformer --epochs 3   # writes checkpoints/TDM_transformer.pt
 """
 
 import argparse
@@ -45,6 +46,7 @@ def predict(model, t: dict, device, bs=4096) -> np.ndarray:
 
 def main():
     ap = argparse.ArgumentParser()
+    ap.add_argument("--set", default="FDN", help="set code; other sets' files are prefixed with it")
     ap.add_argument("--model", choices=list(MODELS), default="mlp")
     ap.add_argument("--epochs", type=int, default=3)
     ap.add_argument("--bs", type=int, default=1024)
@@ -54,13 +56,15 @@ def main():
     ap.add_argument("--init", default="", help="start from this checkpoint (fine-tuning)")
     ap.add_argument("--name", default="", help="results/checkpoint name (default: the model name)")
     a = ap.parse_args()
-    name = a.name or a.model
+    name = a.name or (a.model if a.set == "FDN" else f"{a.set}_{a.model}")
+    if a.set != "FDN" and not name.startswith(a.set + "_"):
+        name = f"{a.set}_{name}"  # never overwrite a Foundations model with another set's
 
     device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
     torch.manual_seed(0)
     rng = np.random.default_rng(0)
-    cards = load_cards()
-    picks = load_picks()
+    cards = load_cards(a.set)
+    picks = load_picks(a.set)
     train = subset(picks, (picks["split"] == "train") & (picks["user_wr"] >= a.min_wr))
     if a.limit:
         train = subset(train, np.arange(len(train["pick"])) < a.limit)
@@ -96,6 +100,9 @@ def main():
         val_acc = float((predict(model, tv, device) == val["pick"]).mean())
         history.append({"epoch": ep + 1, "val_acc": val_acc, "seconds": round(time.time() - t0)})
         print(f"epoch {ep + 1}: val acc {val_acc:.1%}", flush=True)
+        ck_dir = DATA.parent / "checkpoints"
+        ck_dir.mkdir(exist_ok=True)
+        torch.save(model.state_dict(), ck_dir / f"{name}_epoch{ep + 1}.pt")  # a stop loses one epoch at most
 
     r = report(name, predict(model, tte, device), test)
     r.update(history=history, args=vars(a))

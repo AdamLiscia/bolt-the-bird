@@ -273,8 +273,12 @@ def played_reward(t, theme):
     ax.set_ylim(-2, max(10, float((ng + nci).max()) + 1.5))
     ax.set_ylabel("Points of played win rate (95% CI)", color=t["ink2"], fontsize=9)
     ax.legend(frameon=False, fontsize=9, labelcolor=t["ink"], loc="center left", bbox_to_anchor=(0.0, 0.5))
-    title(fig, t, "Trained on real games, the bot's edge holds up",
-          "Bot decks minus human-model decks, both sides played by the same pilot, three fields of opponents")
+    title(
+        fig,
+        t,
+        "Trained on real games, the bot's edge holds up",
+        "Bot decks minus human-model decks, both sides played by the same pilot, three fields of opponents",
+    )
     fig.subplots_adjust(left=0.08, right=0.98, top=0.8, bottom=0.16)
     save(fig, "played-reward", theme)
 
@@ -300,15 +304,28 @@ def tournament(t, theme):
     style(ax, t, "x")
     ax.set_xlabel("Average win rate against the other four bots' decks (smart 4 × 6 player on both sides)",
                   color=t["ink2"], fontsize=9)  # fmt: skip
-    title(fig, t, "Deck tournament: every bot's decks against every other's",
-          "Same 512 held-out tables and opening packs; 20 games per table per pairing; 102,400 games")
+    title(
+        fig,
+        t,
+        "Deck tournament: every bot's decks against every other's",
+        "Same 512 held-out tables and opening packs; 20 games per table per pairing; 102,400 games",
+    )
     fig.subplots_adjust(left=0.24, right=0.97, top=0.8, bottom=0.17)
     save(fig, "tournament", theme)
 
 
 def main():
     for theme, t in THEMES.items():
-        for draw in (scoreboard, by_pick, rare_drafting, calibration, rl_curve, pilot_ladder, played_reward, tournament):
+        for draw in (
+            scoreboard,
+            by_pick,
+            rare_drafting,
+            calibration,
+            rl_curve,
+            pilot_ladder,
+            played_reward,
+            tournament,
+        ):
             draw(t, theme)
     print("wrote", sorted(p.name for p in OUT.glob("*.png")))
 

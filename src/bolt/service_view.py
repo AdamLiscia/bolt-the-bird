@@ -8,6 +8,7 @@ import bolt_engine as be
 
 _NAMES = be.card_names()
 COLORS = ("White", "Blue", "Black", "Red", "Green")  # the engine's Mode index for ChooseColor (WUBRG)
+SACRIFICE_FOR_MANA = {"Treasure"}  # tokens whose mana ability sacrifices them
 
 
 def name(card_index: int) -> str:
@@ -29,6 +30,10 @@ def _label(kind: str, cards: list, nums: tuple, me: int, values: tuple) -> str:
         return simple[kind]
     if kind == "TargetPlayer":
         return "Target yourself" if a == me else "Target opponent"
+    if kind == "TapForMana":
+        sym = "WUBRGC"[b] if 0 <= b <= 5 else "C"
+        verb = "Sacrifice" if c in SACRIFICE_FOR_MANA else "Tap"
+        return f"{verb} {c} for {{{sym}}}"
     if kind == "Mode":
         return f"Choose mode {a + 1}"
     if kind == "Amount":
@@ -130,7 +135,7 @@ def actions(obs: dict, me: int) -> list[dict]:
         objects = [values[s] for s in range(3) if cards[s] >= 0]
         names = [name(cards[s]) for s in range(3) if cards[s] >= 0]
         nums = tuple(values[s] for s in range(3) if cards[s] < 0 and values[s] >= 0)
-        if kind in ("Mode", "Amount", "TargetPlayer"):
+        if kind in ("Mode", "Amount", "TargetPlayer", "TapForMana"):
             nums = ()
         label = _label(kind, names, nums, me, values)
         if dec and kind in ("Mode", "Pick", "Yes", "No"):
@@ -142,6 +147,8 @@ def actions(obs: dict, me: int) -> list[dict]:
         act = {"index": k, "kind": kind, "label": label, "objects": objects, "cards": names}
         if kind == "TargetPlayer":
             act["player"] = a
+        elif kind == "TapForMana":
+            act["color"] = "WUBRGC"[b] if 0 <= b <= 5 else "C"
         elif kind in ("Mode", "Amount"):
             act["number"] = a
         elif kind == "ActivateX":
@@ -152,11 +159,13 @@ def actions(obs: dict, me: int) -> list[dict]:
     return out
 
 
-def _pending(kind: str, who: int, dec: dict | None, choosing: dict | None = None) -> dict:
+def _pending(kind: str, who: int, dec: dict | None, choosing: dict | None = None, bottom_left=None) -> dict:
     """pending, plus what a "Decide" is about: choice (May, Surveil, Tuck, ChooseColor, MayPay, ...),
     source (the asking card) with its rules text, the card or cards involved (looked-at cards only
     reach the decider's view), and any options, cost, life or count."""
     out = {"kind": kind, "player": who}
+    if kind == "Bottom" and bottom_left is not None:  # London mulligan: cards still to put on the bottom
+        out["left"] = bottom_left
     if choosing and kind in ("ChooseTarget", "Divide"):  # what the targets are for
         out["source"] = _ref((choosing["id"], choosing["card"]))
         out["source_text"] = ORACLE.get(out["source"]["name"], "")
@@ -187,7 +196,7 @@ def state(game, seat: int, version: int, game_id: str) -> dict:
     for p, pl in enumerate(obs["players"]):
         players.append({
             "seat": p, "life": pl["life"], "hand_size": pl["hand_size"], "library": pl["library"],
-            "lands_played": pl["lands_played"], "pool": pl["pool"],
+            "lands_played": pl["lands_played"], "pool": pl["pool"], "pool_colors": pl.get("pool_colors"),
             "hand": None if pl["hand"] is None else [_obj(x) for x in pl["hand"]],
             "graveyard": [_obj(x) for x in pl["graveyard"]],
         })  # fmt: skip
@@ -211,7 +220,7 @@ def state(game, seat: int, version: int, game_id: str) -> dict:
     return {
         "game_id": game_id, "version": version, "seat": seat, "turn": obs["turn"], "step": obs["step"],
         "active": obs["active"], "to_act": None if over else game.to_act(),
-        "pending": _pending(kind, who, obs.get("decision"), obs.get("choosing")), "over": over, "result": result,
+        "pending": _pending(kind, who, obs.get("decision"), obs.get("choosing"), obs.get("bottom_left")), "over": over, "result": result,
         "view": {
             "players": players, "battlefield": battlefield,
             "stack": [{"id": i, "name": name(c), "card_id": c, "controller": ctl} for i, c, ctl in obs["stack"]],

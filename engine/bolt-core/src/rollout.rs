@@ -115,6 +115,7 @@ pub fn choose(g: &Game, legal: &[Action], cfg: &Config, seed: u64) -> Action {
         let mut total = 0.0;
         for &w in &worlds {
             let mut h = g.clone();
+            h.manual_mana = [false; 2]; // imagined games pay automatically
             h.determinize(p, w);
             total += match h.apply(a) {
                 Ok(_) => playout(h, p, cfg),

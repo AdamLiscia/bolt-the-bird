@@ -307,6 +307,9 @@ pub enum Action {
     /// Cast a permanent spell from your graveyard as permanent type `t` (0 artifact, 1 creature,
     /// 2 enchantment, 4 planeswalker) with Muldrotha.
     CastFromGraveyardAs(ObjId, u8),
+    /// Tap (or sacrifice) a mana source for mana of color `c` (0-4 WUBRG, 5 colorless), into the pool.
+    /// Offered only to players with manual mana on, at priority; it doesn't use the stack (CR 605.3).
+    TapForMana(ObjId, u8),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -714,6 +717,12 @@ pub struct Game {
     /// Pass priority automatically when passing is the only legal action (on by default). Off is for
     /// tests and step-by-step viewers that want to see every priority stop.
     pub auto_pass: bool,
+    /// Pay with the smart auto-payer: floating mana first, then keep the colors the rest of the hand
+    /// needs (Bolt service games). Off for research runs, so stored results replay identically.
+    pub smart_pay: bool,
+    /// Players who tap their own mana sources (TapForMana moves at priority). Casting still auto-pays
+    /// whatever the pool doesn't cover.
+    pub manual_mana: [bool; 2],
     /// Consecutive priority passes with no action between them (CR 117.4).
     passes: u8,
     rng: Rng,
@@ -838,6 +847,8 @@ impl Game {
             combat: None,
             result: None,
             auto_pass: true,
+            smart_pay: false,
+            manual_mana: [false; 2],
             passes: 0,
             rng: Rng::new(seed),
             events: Vec::new(),
@@ -1797,7 +1808,13 @@ impl Game {
             }
             Pending::Bottom(p, _) => self.players[p].hand.iter().map(|&c| Action::Bottom(c)).collect(),
             Pending::Discard(p) => self.players[p].hand.iter().map(|&c| Action::Discard(c)).collect(),
-            Pending::Priority(p) => self.priority_actions(p),
+            Pending::Priority(p) => {
+                let mut v = self.priority_actions(p);
+                if self.manual_mana[p] {
+                    v.extend(self.mana_moves(p));
+                }
+                v
+            }
             Pending::DeclareAttackers(p) => {
                 let walkers: Vec<ObjId> = self
                     .permanents(opponent(p))
@@ -2452,7 +2469,12 @@ impl Game {
         let sources = self.payment_sources(p, exclude, spell);
         let pool = self.players[p].pool.clone();
         let all: Vec<ManaSource> = pool.iter().copied().chain(sources.iter().map(|s| s.1)).collect();
-        let mut paid = mana::pay(cost, &all).expect("payable");
+        let mut paid = if self.smart_pay {
+            let keep = self.keep_weights(p, &all, spell);
+            mana::pay_ranked(cost, &all, pool.len(), &keep).expect("payable")
+        } else {
+            mana::pay(cost, &all).expect("payable")
+        };
         paid.sort_unstable_by(|a, b| b.cmp(a));
         for i in paid {
             if i < pool.len() {
@@ -2465,6 +2487,96 @@ impl Game {
                 self.move_to(id, Zone::Graveyard);
             }
         }
+    }
+
+    /// How much `p` wants each source kept untapped: the colored mana the rest of their hand and
+    /// their permanents' activated abilities ask for, summed over the colors the source can make.
+    /// Floating mana (already in the pool) scores 0.
+    fn keep_weights(&self, p: PlayerId, sources: &[ManaSource], spell: PayFor) -> Vec<u32> {
+        let mut demand = [0u32; 5];
+        let mut add = |c: &ManaCost| {
+            for (i, d) in demand.iter_mut().enumerate() {
+                *d += c.colored[i] as u32;
+            }
+            for (k, &(a, b)) in mana::PAIRS.iter().enumerate() {
+                demand[a] += c.hybrid[k] as u32;
+                demand[b] += c.hybrid[k] as u32;
+            }
+        };
+        for &c in &self.players[p].hand {
+            if matches!(spell, PayFor::Spell(s) if s == c) {
+                continue;
+            }
+            add(&self.def_of(c).cost);
+        }
+        for id in self.permanents(p).collect::<Vec<_>>() {
+            for a in &self.def_of(id).activated {
+                add(&a.mana);
+            }
+        }
+        let floating = self.players[p].pool.len();
+        sources
+            .iter()
+            .enumerate()
+            .map(|(i, s)| {
+                if i < floating {
+                    return 0;
+                }
+                (0..5).filter(|&c| s.colors[c]).map(|c| demand[c]).sum()
+            })
+            .collect()
+    }
+
+    /// Manual mana: the TapForMana moves `p` has now, one per source and color it can make.
+    /// Sources whose mana is restricted (only for some spells) stay automatic.
+    fn mana_moves(&self, p: PlayerId) -> Vec<Action> {
+        let mut seen: Vec<ObjId> = Vec::new();
+        let mut v = Vec::new();
+        for (id, m) in self.untapped_sources(p) {
+            let d = self.def_of(id);
+            if seen.contains(&id) || d.mana_only_for_subtype.is_some() || d.any_color_for_chosen_type {
+                continue;
+            }
+            seen.push(id);
+            let colors: Vec<u8> = if d.vivid_mana {
+                vec![5] // one move: it makes all its mana at once
+            } else {
+                (0..5u8)
+                    .filter(|&c| m.colors[c as usize])
+                    .chain(m.colorless.then_some(5))
+                    .collect()
+            };
+            v.extend(colors.into_iter().map(|c| Action::TapForMana(id, c)));
+        }
+        v
+    }
+
+    fn tap_for_mana(&mut self, p: PlayerId, id: ObjId, c: u8) {
+        let made: Vec<ManaSource> = self
+            .untapped_sources(p)
+            .into_iter()
+            .filter(|s| s.0 == id)
+            .map(|s| s.1)
+            .collect();
+        let vivid = self.def_of(id).vivid_mana;
+        for m in made {
+            let one = if vivid {
+                m
+            } else if c == 5 {
+                ManaSource {
+                    colorless: true,
+                    ..ManaSource::default()
+                }
+            } else {
+                ManaSource::of(&[crate::Color::ALL[c as usize]])
+            };
+            self.players[p].pool.push(one);
+        }
+        self.obj_mut(id).tapped = true;
+        if self.def_of(id).sac_for_mana {
+            self.move_to(id, Zone::Graveyard);
+        }
+        self.pending = Pending::Priority(p);
     }
 
     fn can_pay(&self, p: PlayerId, cost: &ManaCost, exclude: Option<ObjId>) -> bool {
@@ -2991,6 +3103,7 @@ impl Game {
                 }
             }
             (Pending::Priority(p), Action::PassPriority) => self.pass(p),
+            (Pending::Priority(p), Action::TapForMana(id, c)) => self.tap_for_mana(p, id, c),
             (Pending::Priority(p), Action::PlayLand(c)) => {
                 if self.obj(c).zone == Zone::Graveyard {
                     self.graveyard_types_used[p][3] = true; // Muldrotha's land
@@ -5516,7 +5629,13 @@ impl Game {
             return;
         }
         while let Pending::Priority(p) = self.pending {
-            if self.legal_actions().len() != 1 {
+            // Mana moves alone aren't a reason to stop: nothing to spend them on.
+            let real = self
+                .legal_actions()
+                .iter()
+                .filter(|a| !matches!(a, Action::TapForMana(..)))
+                .count();
+            if real != 1 {
                 break;
             }
             self.pass(p);

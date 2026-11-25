@@ -1,7 +1,7 @@
 <h1 align="center">Bolt the Bird</h1>
 
 <p align="center">
-  <b>An AI that learns to draft Magic: The Gathering from 5.5 million human picks,<br>then teaches itself to draft better than the people it learned from.</b>
+  <b>An AI that learns to draft Magic: The Gathering from 5.5 million human picks,<br>then teaches itself to draft better than the people it learned from, and to play the decks.</b>
 </p>
 
 <p align="center">
@@ -13,11 +13,22 @@
 
 ---
 
+**TL;DR**
+- Learns to draft Magic: The Gathering from **5.5 million** real picks; matches the human's pick **70.5%** of the time.
+- Retrained on games actually played in a **Rust rules engine** that plays every card in the set: its decks win **62%** of games where human-style decks win 50%.
+- A second network taught itself to play by **self-play** (about 790,000 games) and beats the strongest hand-built player **58%** of the time.
+- You can play it: a FastAPI service runs drafts and games against Bolt, in testing on Nerd Leagues.
+
+*Prefer plain English? Read the whole story at three reading levels (Easy, Hobbyist, Technical):*
+**[adamliscia.com/bolt](https://adamliscia.com/bolt/)**
+
+---
+
 In a Magic draft, eight players open packs, take one card, and pass the rest. Forty-two picks later,
 each player builds a deck from what they took. Good drafting means reading the table, committing to
 colors, and knowing when the shiny rare isn't worth it.
 
-Bolt the Bird got there in four steps:
+Bolt the Bird got there in five steps:
 
 1. **Imitate.** A transformer studies 5.5 million real picks from
    [17lands](https://www.17lands.com/public_datasets) and learns to draft like a person. It matches the
@@ -37,6 +48,13 @@ Bolt the Bird got there in four steps:
    model's decks beat 49.6% of the time: **+12.7 points**, even when both sides are played by a
    stronger smart player than the one it trained against. Switching the learning method to PPO
    reached the old method's best result in about 8 times fewer training rounds.
+5. **Learn to play.** A network that reads the board and scores every legal move learns Magic itself:
+   first by copying the smart player, then by playing hundreds of thousands of games against itself and
+   other players, rewarded only for winning. It now beats the strongest smart player **57.9%** of the
+   time head to head, choosing each move in one quick pass instead of playing every candidate move out.
+   With it piloting both sides, the drafting results hold: the PPO bot's edge is the same **+12.6
+   points**, and the judge-trained bot's edge, which the smart player had erased, comes back (+4.7).
+   You can play it: a small web service runs drafts and games against Bolt.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/figures/rl-curve-dark.png">
@@ -54,6 +72,8 @@ Bolt the Bird got there in four steps:
 | **Playing it out** | +1.54 ± 0.66 points of played win rate (rules-based player); −0.21 ± 0.58 (smart player) | The same 1,024 decks in the Rust engine, each against every deck of three separate 64-deck fields |
 | **Tournament** | PPO bots' decks beat the judge-trained bot's 63–64% and the human model's 62–64% head to head; judge-trained vs. human model 50.1% | Five bots' decks from the same 512 tables, every pairing, 102,400 games, smart 4 × 6 player |
 | **Learning from real games** | +12.67 ± 0.56 points of played win rate with the strongest smart player (62.3% vs. 49.6%); +17.36 ± 0.66 with the rules-based player | PPO; the same tables and fields; the bot trained only against a weaker smart player |
+| **Playing Magic** | The learned player beats the smart 4 × 6 player 57.9 ± 1.6% head to head, and the rules-based player 75.9 ± 1.3% (4 × 6 itself: 70.9%) | 1,000 games per matchup on 500 pairs of held-out decks, sides swapped |
+| **Re-graded by the learned player** | PPO bot's edge +12.57 ± 0.58 (unchanged); the judge-trained bot's edge, zero with the smart player, is +4.6 to +4.8 on each field (± about 0.6) | The same tables and all three fields, the learned player on both sides |
 
 Every number comes from a file in [`results/`](results/), and every chart is generated from those files
 by [`scripts/make_figures.py`](scripts/make_figures.py).
@@ -121,6 +141,22 @@ Judge B (never seen by the bot during training), average pilot:
   Bolt the Bird's deck     62.6%
   the next seat's deck     57.2%
 ```
+
+### Play against it
+
+The learned player and the drafters run as a small local web service ([`docs/api.md`](docs/api.md)):
+draft against Bolt (one call per pick, or every bot seat at once), get a bot-drafted deck, and play a
+game against Bolt, or two people against each other with the engine keeping the rules. The service
+returns each seat's view (no hidden information), every legal move with a readable label, the boards
+in between your decisions, and a game log.
+
+```bash
+BOLT_KEY=<a secret> python -m bolt.service        # http://127.0.0.1:8766; every request sends X-Bolt-Key
+python -m practice                                 # draft practice in the browser, http://localhost:8765
+```
+
+[Nerd Leagues](https://nerdleagues.com) runs its admin-only "Practice vs Bolt" games and bot drafts on this
+API: Easy, Medium and Hard are the rules-based and smart players, Expert is the learned player.
 
 ## Reproduce everything
 
@@ -269,8 +305,9 @@ rules-based one 74.5% of the time.
 
 With simple pilots the bot's decks win more, on each of the three fields (+1.45, +1.53, +1.64).
 Give both sides a player that looks ahead and the edge disappears (−0.16, −0.09, −0.37): the drop
-is −1.75 ± 0.38, more than four standard errors, so it isn't noise. Whatever the bot learned to
-value pays off against simple play and gets neutralized by better play. Either way, the judge
+is −1.75 ± 0.38, more than four standard errors, so it isn't noise. With the smart player, whatever the
+bot learned to value pays off against simple play and gets neutralized by better play; with the learned
+player (below, "Re-grading"), it pays off again. Either way, the judge
 overstated it, and its per-deck scores track played results only loosely (correlation 0.12–0.15).
 The likeliest reason is a shared blind spot: both judges learned from human-built decks and rate
 some deck traits more highly than play does, and the bot found them. Two judges on separate data
@@ -377,6 +414,85 @@ what made the difference, and PPO added more. The two PPO bots tie each other; t
 scratch got there with about a third of the training. With the rules-based pilot the order is the
 same. Numbers in [`results/engine_tournament.json`](results/engine_tournament.json).
 
+### Learning to play
+
+Every result above runs through a pilot, so a better pilot makes every grade more trustworthy. The
+smart player is good but slow: before each decision it plays every candidate move out several times.
+The last step trains a network to play instead ([`docs/play/`](docs/play/)).
+
+**The network** reads what a player can see: their hand, both battlefields (power, toughness, tapped,
+attacking, blocking), graveyards, the stack, life totals and the opponent's hand size. Each legal move
+becomes a token that points at the cards it involves; the network scores every move and estimates its
+chance of winning. 0.9 million parameters; it makes every decision the engine asks for, from mulligans
+to blocks to instant-speed tricks.
+
+**Copying wasn't enough.** Trained on 2.5 million of the smart player's decisions, it picked the same
+move 90.6% of the time, yet won only 44.6% against the rules-based player (the smart player wins 60.3%
+there). A second round, where the smart player labelled the positions the network's own games reached,
+changed nothing: the smart player's edge comes from looking ahead, and a copy of its habits doesn't
+have that.
+
+**Self-play did it.** From the copy, the network played a mix of opponents (the rules-based player, the
+smart player, its own past versions and itself), learning only from who won, with PPO and a leash to
+where it started. Two changes mattered: crediting each move with how much it changed the network's own
+estimate of winning (generalized advantage estimation) instead of giving every move of a ~100-move game
+the same final result, and 640 games per update instead of 320. Without them, self-play stalled near
+55% and drifted down once its leash loosened, the over-optimization seen in drafting.
+
+| Network | vs. rules-based | vs. smart 1 × 2 | vs. smart 4 × 6 |
+|---|---|---|---|
+| Copying the smart player | 44.6% | 35.8% | |
+| Self-play, end-of-game credit only (best of 270 updates) | 54.8% | 47.4% | |
+| Self-play, per-move credit, update 260 | 67.6% | 60.7% | 47.1% |
+| Self-play, per-move credit, update 850 | 71.1% | 65.4% | 55.0% |
+| Seeing the spell it targets for, 170 more updates | **75.9%** | **68.0%** | **57.9%** |
+| *Smart 4 × 6, for comparison* | *70.9%* | | |
+
+Each number is 1,000 games (± about 1.5 points) on 500 pairs of decks it never trained on, each side
+played once, the network taking its top move. Against the rules-based player it now does better than
+smart 4 × 6 (75.9% vs. 70.9%); head to head it wins 57.9%, about five standard errors above even, while
+choosing each move in one pass of the network. Training ran on a laptop CPU: about 790,000 self-play
+games across four runs. Numbers: [`results/play_eval_ppo4_best*.json`](results/),
+[`results/play_eval_ppo3e_best*.json`](results/); log: [`docs/play/LOG.md`](docs/play/LOG.md).
+
+**A blind spot a person found.** The first time someone played it through the
+[service](#play-against-it), it cast Giant Growth on *their* creature. Measured: when a pump spell or
+aura could go on either side, the update-850 network chose the opponent's creature 65% of the time
+(47 of 72), while the built-in players never did. The cause was the input, not the training: while a
+spell's targets are chosen, the engine hadn't put the spell on the stack yet, so the network couldn't
+see whether it was targeting with Giant Growth or with removal. It had learned "target their
+creatures," which is right for removal 96% of the time. The engine now shows the spell being cast, the
+network reads it, and 170 more updates of self-play from update 850 gave the stronger player in the
+table above. That fixed the input but not yet the habit: pumps still go to the opponent's side 47% of
+the time (34 of 73), so the service has the smart player choose the learned player's targets until a
+targeted fix lands. [`scripts/target_check.py`](scripts/target_check.py) measures it.
+
+### Re-grading the drafters with the learned player
+
+The drafting results were all played by the engine's built-in players. With the learned player
+piloting both sides of the same games (the update-850 player; the re-grade ran before the targeting
+fix):
+
+| Bot (average win rate against the other four bots' decks) | Smart 4 × 6 | Learned player |
+|---|---|---|
+| PPO from scratch | 58.4% | 55.9% |
+| PPO, continued | 57.3% | 55.5% |
+| Played games | 52.7% | 53.0% |
+| Trained on the judge | 40.7% | **46.5%** |
+| Human-style (imitation) | 40.9% | 39.1% |
+
+The order of the trained bots holds and the gaps narrow a little. Against the three human-model fields,
+the PPO bot's edge over the human model's decks is **+12.57 ± 0.58** points with the learned player
+(fields a/b/c +12.64 / +12.56 / +12.51), the same as with smart 4 × 6 (+12.67). The one change is the
+judge-trained bot: its edge, which the smart player erased (−0.16 / −0.09 / −0.37), is **+4.67 / +4.64 /
++4.82** (each ± about 0.6) with the learned player, and the tournament agrees (it beats the human
+model's decks 56.2% head to head). So "neutralized by better play" was a property of the smart
+player, not of better play in general: what the judge taught the bot pays off once both sides play
+well enough. It is still far behind training on played games. Numbers:
+[`results/engine_tournament.json`](results/engine_tournament.json),
+[`results/engine_pilot_validation.json`](results/engine_pilot_validation.json),
+[`results/engine_pilot_rl_ppo345.json`](results/engine_pilot_rl_ppo345.json).
+
 ### Design decisions
 
 | Decision | Why |
@@ -403,9 +519,12 @@ Apple's GPU, the NaN-poisoned model hung the machine. The fix masks before the a
   stronger. Long runs three times hit a rare memory corruption that safe Rust shouldn't allow, cause
   not found ([`docs/engine/QUESTIONS.md`](docs/engine/QUESTIONS.md)); training now plays its games
   in a worker process that is restarted if it dies, and stored results replay identically.
-- **The pilots are not experts.** Both engine pilots play far below a strong human: neither one
-  plans turns ahead, and both assume the opponent won't respond. Decks that reward skilled play
-  can look worse here than they are.
+- **The pilots are not experts.** The engine's built-in players play far below a strong human, and so,
+  most likely, does the learned player: it beats the strongest built-in player 57.9%, still aims pump
+  spells at the opponent's creatures about half the time (above), and hasn't been measured against
+  people. About 1.2% of its re-grading games hit the move limit (counted as draws, as everywhere here)
+  against almost none for the built-in players. Decks that reward skilled play can look worse here than they are;
+  the judge-trained bot's re-graded edge is an example.
 - **The opponents are simulated.** The other 7 seats are the human model, not real people. The
   White-Red lean pays off because human-like drafters leave it open. A table of eight copies of the
   bot would fight over it.
@@ -421,8 +540,11 @@ Apple's GPU, the NaN-poisoned model hung the machine. The fix masks before the a
 - [x] A rules engine in Rust (PyO3 bindings) that plays the decks out: all 286 cards, played win
       rates alongside the judged ones
 - [x] RL rewarded by played games instead of a judge
-- [ ] A gameplay agent trained by self-play
-- [ ] Draft practice against the bot on [Nerd Leagues](https://nerdleagues.com)
+- [x] A gameplay agent trained by self-play: beats the strongest built-in player head to head
+- [x] Re-grade the drafting bots with it
+- [ ] Draft practice against the bot on [Nerd Leagues](https://nerdleagues.com): games and drafts
+      against Bolt are in an admin-only test there
+- [ ] Teach the learned player where pump spells go (until then the smart player picks its targets)
 
 ## Repository layout
 

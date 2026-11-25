@@ -116,3 +116,21 @@ def test_a_target_choice_names_what_the_targets_are_for():
     p = _pending("ChooseTarget", 1, None, {"id": 40, "card": gg, "controller": 1, "spell": True, "targets_chosen": 0})
     assert p["source"] == {"id": 40, "name": "Giant Growth", "card_id": gg} and p["spell"] is True
     assert "+3/+3" in p["source_text"]
+
+
+def test_a_mulligan_says_how_many_cards_are_left_to_bottom():
+    deck = [be.index_of("Plains")] * 20 + [be.index_of("Savannah Lions")] * 20
+    g = be.Game(deck, deck, seed=4, first=0)
+    g.auto_pass = False
+    who = g.to_act()
+    mull = next(i for i, a in enumerate(g.legal_actions()) if a[0] == "Mulligan")
+    g.step(mull)
+    for _ in range(4):  # the other player keeps; then the mulliganed player keeps and bottoms
+        obs = g.observation(g.to_act())
+        if obs["pending"][0] == "Bottom":
+            break
+        g.step(next(i for i, a in enumerate(g.legal_actions()) if a[0] == "Keep"))
+    from bolt.service_view import state
+
+    s = state(g, who, version=0, game_id="t")
+    assert s["pending"]["kind"] == "Bottom" and s["pending"]["left"] == 1
