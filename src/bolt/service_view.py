@@ -135,6 +135,8 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         "PayWardLife": (f"Pay {dec.get('life', 0)} life for ward ({subject})", f"Don't pay ({subject} is countered)"),
         "PayOrCountered": (f"Pay {dec.get('cost', '')} ({subject} resolves)", f"Don't pay ({subject} is countered)"),
         "SplitPiles": (f"Put {subject} in pile A", f"Put {subject} in pile B"),
+        "ShockLand": (f"Pay 2 life: {subject} enters untapped", f"{subject} enters tapped"),
+        "CommanderToCommandZone": (f"Move {subject} to the command zone", f"Leave {subject} there"),
         "ChoosePile": ("Choose pile A", "Choose pile B"),
     }
     if d in labels:
@@ -168,6 +170,8 @@ def actions(obs: dict, me: int) -> list[dict]:
                     "PayWard",
                     "PayWardLife",
                     "PayWardDiscard",
+                    "ShockLand",
+                    "CommanderToCommandZone",
                     "PayOrCountered",
                     "SplitPiles",
                 ):
