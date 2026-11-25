@@ -28,6 +28,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "scripts"))
 
+from bolt.backup import upload_quietly  # noqa: E402
 from bolt.play_data import concat  # noqa: E402
 from bolt.play_net import PlayNet  # noqa: E402
 from bolt.play_ppo import gae, league, ppo_step  # noqa: E402
@@ -167,6 +168,7 @@ def main():
                 beat["t"] = time.time()
         state["iter"] = it
         torch.save({"config": net.config, "model": net.state_dict()}, ck / f"iter_{it}.pt")
+        upload_quietly(ck / f"iter_{it}.pt")
         if it % a.past_every == 0:
             state["past"].append(f"iter_{it}.pt")
         row = {"iter": it, "games": a.games, "decisions": n, "kl_coef": round(kl_coef, 4),
@@ -182,6 +184,7 @@ def main():
             if state["best"] is None or score > state["best"]["score"]:
                 state["best"] = {"iter": it, "score": score}
                 torch.save({"config": net.config, "model": net.state_dict()}, ck / "best.pt")
+                upload_quietly(ck / "best.pt")
             print(json.dumps({"eval": it, **e, "best_iter": state["best"]["iter"]}), flush=True)
             beat["t"] = time.time()
         save_atomic({"model": net.state_dict(), "opt": opt.state_dict(), "state": state}, ck / "state.pt")
