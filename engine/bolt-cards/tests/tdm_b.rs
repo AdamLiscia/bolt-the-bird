@@ -1235,3 +1235,342 @@ fn great_arashin_city_exiles_a_creature_card_for_a_spirit() {
     assert!(!g.keywords(spirit[0]).has(Keywords::FLYING));
     assert!(g.obj(city).tapped);
 }
+
+// ---- Batch 5: granted abilities, last-known counters, dies under your control, rares ----
+
+#[test]
+fn ringing_strike_mastery_taps_locks_and_grants_an_untap_for_five() {
+    let mut g = table();
+    let theirs = put(&mut g, 1, "Iceridge Serpent");
+    let aura = hand(&mut g, 0, "Ringing Strike Mastery");
+    begin(&mut g);
+    play(&mut g, aura, false, &[obj(theirs)], &[]);
+    assert!(g.obj(theirs).tapped);
+    assert!(
+        !g.legal_actions().contains(&Action::Activate(aura, 0)),
+        "its controller has the ability, not you"
+    );
+    g.start_turn(4, 1);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(
+        g.obj(theirs).tapped,
+        "doesn't untap in its controller's untap step"
+    );
+    assert!(g.legal_actions().contains(&Action::Activate(aura, 0)));
+    act(&mut g, Action::Activate(aura, 0));
+    resolve_all(&mut g, &[]);
+    assert!(!g.obj(theirs).tapped, "{{5}}: untap this creature");
+}
+
+#[test]
+fn desperate_measures_draws_two_when_it_dies_under_your_control() {
+    let mut g = table();
+    let mine = put(&mut g, 0, "Formation Breaker"); // 2/1: +1/-1 kills it
+    let c = hand(&mut g, 0, "Desperate Measures");
+    begin(&mut g);
+    let n = g.players[0].hand.len();
+    play(&mut g, c, false, &[obj(mine)], &[]);
+    assert_eq!(g.obj(mine).zone, Zone::Graveyard);
+    assert_eq!(g.players[0].hand.len(), n - 1 + 2);
+
+    // An opponent's creature dying under their control: no cards.
+    let mut g = table();
+    let theirs = put(&mut g, 1, "Formation Breaker");
+    let c = hand(&mut g, 0, "Desperate Measures");
+    begin(&mut g);
+    let n = g.players[0].hand.len();
+    play(&mut g, c, false, &[obj(theirs)], &[]);
+    assert_eq!(g.obj(theirs).zone, Zone::Graveyard);
+    assert_eq!(g.players[0].hand.len(), n - 1);
+
+    // It survives the pump: still +1/-1.
+    let mut g = table();
+    let mine = put(&mut g, 0, "Iceridge Serpent");
+    let c = hand(&mut g, 0, "Desperate Measures");
+    begin(&mut g);
+    play(&mut g, c, false, &[obj(mine)], &[]);
+    assert_eq!((g.power(mine), g.toughness(mine)), (4, 2));
+}
+
+#[test]
+fn host_of_the_hereafter_moves_a_dead_creatures_counters() {
+    let mut g = table();
+    let host = hand(&mut g, 0, "Host of the Hereafter");
+    let envoy = hand(&mut g, 0, "Trade Route Envoy");
+    let plain = put(&mut g, 0, "Iceridge Serpent");
+    begin(&mut g);
+    play(&mut g, host, false, &[], &[]);
+    assert_eq!(g.obj(host).counters, 2);
+    play(&mut g, envoy, false, &[], &[]);
+    assert_eq!(
+        g.obj(envoy).counters,
+        0,
+        "the Host has counters: Envoy drew instead"
+    );
+    // A creature without counters dies: no trigger.
+    let prey = hand(&mut g, 0, "Dragon's Prey");
+    play(&mut g, prey, false, &[obj(plain)], &[]);
+    assert_eq!(g.obj(plain).zone, Zone::Graveyard);
+    // The Host itself dies with two counters: they go on the Envoy.
+    let prey = hand(&mut g, 0, "Dragon's Prey");
+    play(&mut g, prey, false, &[obj(host)], &[Action::Target(obj(envoy))]);
+    assert_eq!(g.obj(host).zone, Zone::Graveyard);
+    assert_eq!(g.obj(envoy).counters, 2);
+}
+
+#[test]
+fn host_of_the_hereafter_moves_stun_and_keyword_counters_too() {
+    let mut g = table();
+    let host = put(&mut g, 0, "Host of the Hereafter");
+    let shell = put(&mut g, 0, "Ambling Stormshell");
+    let other = put(&mut g, 0, "Iceridge Serpent");
+    to_attacks(&mut g);
+    attack(&mut g, &[shell], &[]);
+    assert_eq!(g.obj(shell).stun, 3);
+    assert_eq!(
+        g.obj(host).counters,
+        0,
+        "put onto the battlefield, not entering with counters"
+    );
+    let prey = hand(&mut g, 0, "Dragon's Prey");
+    while g.step != Step::Main2 {
+        let a = match g.pending {
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    play(&mut g, prey, false, &[obj(shell)], &[Action::Target(obj(other))]);
+    assert_eq!(g.obj(other).stun, 3, "its stun counters moved");
+}
+
+#[test]
+fn herd_heirloom_mana_is_for_creatures_and_it_grants_trample_and_card_draw() {
+    let mut g = tdm_lands(&[]);
+    put(&mut g, 0, "Herd Heirloom");
+    let elder = hand(&mut g, 0, "Humbling Elder");
+    let stride = hand(&mut g, 0, "Wingspan Stride");
+    put(&mut g, 0, "Iceridge Serpent");
+    begin(&mut g);
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Cast(elder)), "a creature spell");
+    assert!(
+        !legal.contains(&Action::Cast(stride)),
+        "not for a noncreature spell"
+    );
+
+    let mut g2 = table();
+    let heirloom2 = put(&mut g2, 0, "Herd Heirloom");
+    let big2 = put(&mut g2, 0, "Dusyut Earthcarver");
+    let small2 = put(&mut g2, 0, "Iceridge Serpent");
+    main_turn_5(&mut g2);
+    act(&mut g2, Action::Activate(heirloom2, 0));
+    assert!(
+        !g2.legal_actions().contains(&Action::Target(obj(small2))),
+        "power 4 or greater"
+    );
+    act(&mut g2, Action::Target(obj(big2)));
+    resolve_all(&mut g2, &[]);
+    assert!(g2.keywords(big2).has(Keywords::TRAMPLE));
+    while g2.pending != Pending::DeclareAttackers(0) {
+        act(&mut g2, Action::PassPriority);
+    }
+    let n = g2.players[0].hand.len();
+    act(&mut g2, Action::Attack(big2));
+    act(&mut g2, Action::FinishAttacks);
+    while g2.step != Step::Main2 {
+        let a = match g2.pending {
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g2, a);
+    }
+    assert_eq!(g2.players[1].life, 16);
+    assert_eq!(g2.players[0].hand.len(), n + 1, "drew a card");
+}
+
+#[test]
+fn jeskai_revelation_bounces_a_spell_burns_makes_monks_draws_and_gains() {
+    let mut g = table();
+    let truths = hand(&mut g, 0, "Cruel Truths");
+    let rev = hand(&mut g, 0, "Jeskai Revelation");
+    begin(&mut g);
+    act(&mut g, Action::Cast(truths));
+    act(&mut g, Action::Cast(rev));
+    act(&mut g, Action::Target(obj(truths)));
+    act(&mut g, Action::Target(Target::Player(1)));
+    let n = g.players[0].hand.len();
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(truths).zone, Zone::Hand, "the spell went back to hand");
+    assert!(g.items.is_empty());
+    assert_eq!(g.players[1].life, 16);
+    assert_eq!(g.players[0].life, 24);
+    assert_eq!(g.players[0].hand.len(), n + 2 + 1);
+    let monks = tokens(&g, 0, "Monk");
+    assert_eq!(monks.len(), 2);
+    let strike = hand(&mut g, 0, "Alesha's Legacy");
+    play(&mut g, strike, false, &[obj(monks[0])], &[]);
+    assert_eq!(g.power(monks[0]), 2, "prowess");
+
+    let mut g = table();
+    let theirs = put(&mut g, 1, "Iceridge Serpent");
+    let rev = hand(&mut g, 0, "Jeskai Revelation");
+    begin(&mut g);
+    play(&mut g, rev, false, &[obj(theirs), Target::Player(1)], &[]);
+    assert_eq!(g.obj(theirs).zone, Zone::Hand, "a permanent works too");
+}
+
+#[test]
+fn felothar_may_sacrifice_a_nonland_permanent_for_counters_on_your_team() {
+    let mut g = table();
+    let f = hand(&mut g, 0, "Felothar, Dawn of the Abzan");
+    let globe = put(&mut g, 0, "Dragonstorm Globe");
+    let elder = put(&mut g, 0, "Humbling Elder");
+    begin(&mut g);
+    act(&mut g, Action::Cast(f));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(
+        !g.legal_actions()
+            .iter()
+            .any(|a| matches!(a, Action::Pick(x) if g.types_of(*x).land)),
+        "nonland only"
+    );
+    resolve_all(&mut g, &[Action::Pick(globe)]);
+    assert_eq!(g.obj(globe).zone, Zone::Graveyard);
+    assert_eq!(g.obj(elder).counters, 1);
+    assert_eq!(g.obj(f).counters, 1);
+    assert!(g.keywords(f).has(Keywords::TRAMPLE));
+
+    let mut g = table();
+    let f = put(&mut g, 0, "Felothar, Dawn of the Abzan");
+    to_attacks(&mut g);
+    attack(&mut g, &[f], &[Action::No]);
+    assert_eq!(g.obj(f).counters, 0, "declined");
+}
+
+#[test]
+fn lotuslight_dancers_bins_a_black_a_green_and_a_blue_card() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Lotuslight Dancers");
+    begin(&mut g);
+    let b = g.add_card(0, tid("Cruel Truths"), Zone::Library);
+    let gr = g.add_card(0, tid("Heritage Reclamation"), Zone::Library);
+    let u = g.add_card(0, tid("Humbling Elder"), Zone::Library);
+    act(&mut g, Action::Cast(c));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(
+        !g.legal_actions().contains(&Action::Pick(gr)),
+        "first a black card"
+    );
+    resolve_all(&mut g, &[Action::Pick(b), Action::Pick(gr), Action::Pick(u)]);
+    for x in [b, gr, u] {
+        assert_eq!(g.obj(x).zone, Zone::Graveyard);
+    }
+    assert!(g.keywords(c).has(Keywords::LIFELINK));
+}
+
+#[test]
+fn narset_may_discard_your_hand_to_draw_per_spell_cast() {
+    let mut g = table();
+    put(&mut g, 0, "Narset, Jeskai Waymaster");
+    let a = hand(&mut g, 0, "Humbling Elder");
+    let b = hand(&mut g, 0, "Humbling Elder");
+    let junk = hand(&mut g, 0, "Cruel Truths");
+    begin(&mut g);
+    play(&mut g, a, false, &[], &[]);
+    play(&mut g, b, false, &[], &[]);
+    while !matches!(g.pending, Pending::Decide(_)) {
+        let x = match g.pending {
+            Pending::DeclareAttackers(_) => Action::FinishAttacks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, x);
+    }
+    let n_before = g.players[0].hand.len();
+    resolve_all(&mut g, &[Action::Yes]);
+    assert_eq!(g.obj(junk).zone, Zone::Graveyard);
+    assert_eq!(
+        g.players[0].hand.len(),
+        2,
+        "two spells cast this turn (had {n_before})"
+    );
+}
+
+#[test]
+fn betor_draws_untaps_and_halves_by_total_toughness() {
+    // 7 toughness alone: nothing.
+    let mut g = table();
+    put(&mut g, 0, "Betor, Kin to All");
+    begin(&mut g);
+    let n = g.players[0].hand.len();
+    to_next_turn(&mut g);
+    assert_eq!(g.players[0].hand.len(), n);
+
+    // 7 + 4 + 9 = 20: draw, then untap.
+    let mut g = table();
+    put(&mut g, 0, "Betor, Kin to All");
+    put(&mut g, 0, "Dusyut Earthcarver");
+    let shell = put(&mut g, 0, "Ambling Stormshell"); // 5/9
+    to_attacks(&mut g);
+    act(&mut g, Action::Attack(shell));
+    act(&mut g, Action::FinishAttacks);
+    resolve_all(&mut g, &[]);
+    let n5 = g.players[0].hand.len();
+    while g.step != Step::End {
+        let a = match g.pending {
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].hand.len(), n5 + 1);
+    assert_eq!(
+        g.obj(shell).stun,
+        2,
+        "untapping a stunned creature removes a stun counter"
+    );
+    assert_eq!(g.players[1].life, 15, "only the 5 combat damage");
+
+    // 40 or more: each opponent loses half their life, rounded up.
+    let mut g = table();
+    put(&mut g, 0, "Betor, Kin to All");
+    for _ in 0..4 {
+        put(&mut g, 0, "Ambling Stormshell");
+    }
+    g.players[1].life = 15;
+    begin(&mut g);
+    to_next_turn(&mut g);
+    assert_eq!(g.players[1].life, 7);
+}
+
+#[test]
+fn neriv_doubles_damage_from_creatures_that_entered_this_turn() {
+    let mut g = table();
+    put(&mut g, 0, "Neriv, Heart of the Storm");
+    put(&mut g, 0, "Shocking Sharpshooter"); // there since before: not doubled
+    let shrieker = hand(&mut g, 0, "Sonic Shrieker");
+    let card = hand(&mut g, 1, "Cruel Truths");
+    begin(&mut g);
+    act(&mut g, Action::Cast(shrieker));
+    let mut targets = 0;
+    while !g.items.is_empty() || matches!(g.pending, Pending::ChooseTarget(_) | Pending::Decide(_)) {
+        let a = match g.pending {
+            Pending::ChooseTarget(_) => {
+                targets += 1;
+                Action::Target(Target::Player(1))
+            }
+            Pending::Decide(_) => Action::Discard(card),
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(targets, 2);
+    assert_eq!(g.players[1].life, 20 - 1 - 4);
+}

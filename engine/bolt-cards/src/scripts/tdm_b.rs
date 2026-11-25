@@ -499,6 +499,118 @@ pub fn script(name: &str) -> Option<Script> {
                 d.activated[n].exile_creature_card = true;
             },
         ),
+        // ---- Lane B batch 5: granted abilities, last-known counters, dies under your control, rares ----
+        "Ringing Strike Mastery" => s(
+            &[
+                "Enchant creature",
+                "When this Aura enters, tap enchanted creature.",
+                "Enchanted creature doesn't untap during its controller's untap step.",
+                "Enchanted creature has \"{5}: Untap this creature.\"",
+            ],
+            |d, _| {
+                d.aura = true;
+                d.spell = Some(Ability::new(vec![CREATURE], vec![]));
+                on(d, When::Enters, vec![], vec![Effect::TapAttached]);
+                d.enchanted_doesnt_untap = true;
+                let n = activated(d, "{5}", false, vec![], vec![Effect::UntapExtra]);
+                d.activated[n].granted_to_attached = true;
+            },
+        ),
+        "Desperate Measures" => s(
+            &["Target creature gets +1/-1 until end of turn. When it dies under your control this turn, draw two cards."],
+            |d, _| {
+                spell(
+                    d,
+                    vec![CREATURE],
+                    vec![Effect::Pump { slot: 0, power: 1, toughness: -1 }, Effect::GrantDiesUnderYourControl { slot: 0, trigger: 0 }],
+                );
+                on(d, When::Never, vec![], vec![draw(2)]);
+            },
+        ),
+        "Host of the Hereafter" => s(
+            &[
+                "This creature enters with two +1/+1 counters on it.",
+                "Whenever this creature or another creature you control dies, if it had counters on it, put its counters on up to one target creature you control.",
+            ],
+            |d, _| {
+                d.enters_counters = Some((2, Condition::Always));
+                d.triggers.push(Trigger {
+                    when: When::CreatureYouControlWithCountersDies,
+                    ability: up_to(vec![YOUR_CREATURE], vec![Effect::PutDeadCountersOn(0)]),
+                });
+            },
+        ),
+        "Herd Heirloom" => s(
+            &[
+                "{T}: Add one mana of any color. Spend this mana only to cast a creature spell.",
+                "{T}: Until end of turn, target creature you control with power 4 or greater gains trample and \"Whenever this creature deals combat damage to a player, draw a card.\"",
+            ],
+            |d, _| {
+                d.mana = Some(ManaSource::of(&Color::ALL));
+                d.mana_only_for_creatures = true;
+                on(d, When::Never, vec![], vec![draw(1)]);
+                let big = Filter { creature_min_power: Some(4), ..YOUR_CREATURE };
+                activated(
+                    d,
+                    "",
+                    true,
+                    vec![big],
+                    vec![Effect::Grant { slot: 0, keywords: Keywords::TRAMPLE }, Effect::GrantCombatDamageTrigger { slot: 0, trigger: 0 }],
+                );
+            },
+        ),
+        "Jeskai Revelation" => s(
+            &["Return target spell or permanent to its owner's hand. Jeskai Revelation deals 4 damage to any target. Create two 1/1 white Monk creature tokens with prowess. Draw two cards. You gain 4 life."],
+            |d, t| {
+                let spell_or_permanent = Filter { players: false, creatures: false, planeswalkers: false, spells: true, any_permanent: true, ..Filter::ANY };
+                spell(
+                    d,
+                    vec![spell_or_permanent, Filter::ANY],
+                    vec![
+                        Effect::BounceSpellOrPermanent(0),
+                        damage(4, Recipient::Target(1)),
+                        Effect::CreateToken { who: Who::You, def: t.monk, n: 2 },
+                        draw(2),
+                        Effect::GainLife { who: Who::You, n: 4 },
+                    ],
+                )
+            },
+        ),
+        "Felothar, Dawn of the Abzan" => s(
+            &["Whenever Felothar enters or attacks, you may sacrifice a nonland permanent. When you do, put a +1/+1 counter on each creature you control."],
+            |d, _| {
+                on(d, When::Enters, vec![], vec![Effect::MaySacrificeNonland, Effect::Reflexive(2)]);
+                on(d, When::Attacks, vec![], vec![Effect::MaySacrificeNonland, Effect::Reflexive(2)]);
+                on(d, When::Never, vec![], vec![Effect::CountersAll { who: Who::You, n: 1 }]);
+            },
+        ),
+        "Lotuslight Dancers" => s(
+            &["When this creature enters, search your library for a black card, a green card, and a blue card. Put those cards into your graveyard, then shuffle."],
+            |d, _| {
+                let find = |c: Color| search(SearchFor::Colored(c as u8), SearchTo::Graveyard);
+                on(d, When::Enters, vec![], vec![find(Color::Black), find(Color::Green), find(Color::Blue)]);
+            },
+        ),
+        "Narset, Jeskai Waymaster" => s(
+            &["At the beginning of your end step, you may discard your hand. If you do, draw cards equal to the number of spells you've cast this turn."],
+            |d, _| may(d, When::EndStep { your_turn_only: true }, vec![], vec![Effect::DiscardHandDrawPerSpells]),
+        ),
+        "Betor, Kin to All" => s(
+            &["At the beginning of your end step, if creatures you control have total toughness 10 or greater, draw a card. Then if creatures you control have total toughness 20 or greater, untap each creature you control. Then if creatures you control have total toughness 40 or greater, each opponent loses half their life, rounded up."],
+            |d, _| {
+                conditional(
+                    d,
+                    When::EndStep { your_turn_only: true },
+                    Condition::TotalToughnessAtLeast(10),
+                    vec![],
+                    vec![Effect::BetorEndStep],
+                )
+            },
+        ),
+        "Neriv, Heart of the Storm" => s(
+            &["If a creature you control that entered this turn would deal damage, it deals twice that much damage instead."],
+            |d, _| d.doubles_damage_of_new_creatures = true,
+        ),
         _ => None,
     }
 }
@@ -555,4 +667,14 @@ pub const TDM_B_SCRIPTED: &[&str] = &[
     "Eshki Dragonclaw",
     "Dalkovan Encampment",
     "Great Arashin City",
+    "Ringing Strike Mastery",
+    "Desperate Measures",
+    "Host of the Hereafter",
+    "Herd Heirloom",
+    "Jeskai Revelation",
+    "Felothar, Dawn of the Abzan",
+    "Lotuslight Dancers",
+    "Narset, Jeskai Waymaster",
+    "Betor, Kin to All",
+    "Neriv, Heart of the Storm",
 ];

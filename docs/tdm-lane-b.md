@@ -108,34 +108,52 @@ Mechanics added (appended at the end of their enums and structs):
 | Dalkovan Encampment | `dalkovan_encampment_makes_warriors_whenever_you_attack_this_turn` |
 | Great Arashin City | `great_arashin_city_exiles_a_creature_card_for_a_spirit` |
 
+## Batch 5 (engine core): granted abilities, last-known counters, dies under your control, rares (10)
+
+Mechanics added (appended at the end of their enums and structs):
+- `Activated::granted_to_attached`: an Aura's "Enchanted creature has \"{cost}: ...\"". The enchanted creature's controller activates it (`Game::granted_activations`), with the creature in the stack item's `extra`; Clarion Conqueror and ability loss on either one stop it. `Effect::UntapExtra`, `Effect::TapAttached`, `CardDef::enchanted_doesnt_untap`.
+- `Effect::GrantDiesUnderYourControl { slot, trigger }` with `Game::dies_under_control`: a delayed trigger only if it dies under the controller of the spell that set it up, this turn.
+- `Object::last_counters` (+1/+1, stun and keyword counters when it left the battlefield); stun counters now reset when a permanent leaves the battlefield. `When::CreatureYouControlWithCountersDies` (the dead creature in `extra`) and `Effect::PutDeadCountersOn(slot)`.
+- `CardDef::mana_only_for_creatures`; `Effect::GrantCombatDamageTrigger { slot, trigger }` with `Game::granted_combat_damage` (until end of turn).
+- `Effect::BounceSpellOrPermanent(slot)`; a 1/1 Monk token with prowess (`Tokens::monk`, appended last).
+- `Effect::MaySacrificeNonland` with `Decision::SacrificeNonland` (any nonland permanent you control, itself included), then a reflexive trigger.
+- `SearchFor::Colored(c)`, `SearchTo::Graveyard`.
+- `Effect::DiscardHandDrawPerSpells` (an optional ability: "you may discard your hand").
+- `Condition::TotalToughnessAtLeast(n)` and `Effect::BetorEndStep` (each later threshold rechecked after the step before).
+- `CardDef::doubles_damage_of_new_creatures` (Neriv), in `damage_doubling` alongside the opponent doubler.
+
+| Card | Test |
+|---|---|
+| Ringing Strike Mastery | `ringing_strike_mastery_taps_locks_and_grants_an_untap_for_five` |
+| Desperate Measures | `desperate_measures_draws_two_when_it_dies_under_your_control` |
+| Host of the Hereafter | `host_of_the_hereafter_moves_a_dead_creatures_counters`, `host_of_the_hereafter_moves_stun_and_keyword_counters_too` |
+| Herd Heirloom | `herd_heirloom_mana_is_for_creatures_and_it_grants_trample_and_card_draw` |
+| Jeskai Revelation | `jeskai_revelation_bounces_a_spell_burns_makes_monks_draws_and_gains` |
+| Felothar, Dawn of the Abzan | `felothar_may_sacrifice_a_nonland_permanent_for_counters_on_your_team` |
+| Lotuslight Dancers | `lotuslight_dancers_bins_a_black_a_green_and_a_blue_card` |
+| Narset, Jeskai Waymaster | `narset_may_discard_your_hand_to_draw_per_spell_cast` |
+| Betor, Kin to All | `betor_draws_untaps_and_halves_by_total_toughness` |
+| Neriv, Heart of the Storm | `neriv_doubles_damage_from_creatures_that_entered_this_turn` |
+
+Edge case, left as is: if Ringing Strike Mastery leaves the battlefield while its granted untap ability is on the stack, the ability still untaps the creature (it was recorded on activation).
+
 ## Needs core
 
 Cards from the lane's list, in list order, skipped because the engine can't do them exactly yet. (Sultai Monument, Fleeting Effigy, Encroaching Dragonstorm, Misty Rainforest and Arid Mesa were done by the lead in Tarkir batch 8.)
 
-- Ringing Strike Mastery: no "enchanted creature doesn't untap" static, and no way for an Aura to grant an activated ability ("{5}: Untap this creature").
 - Rite of Renewal: no "shuffle target cards from a graveyard into their library", and no "exile this spell" on resolution.
 - Breaching Dragonstorm: no exile-until-nonland with cast-free-if-MV-8-or-less; no self-bounce.
 - Reverberating Summons: no "becomes a creature if you've cast two or more spells this turn"; no "discard your hand" cost.
 - Hundred-Battle Veteran: no static condition counting kinds of counters; no cast-from-graveyard with a finality counter.
-- Desperate Measures: `GrantDiesTrigger` fires whoever controls the creature when it dies; needs "dies under your control".
-- Host of the Hereafter: no "if it had counters, put its counters on" a target (moving counters from a dead creature).
-- Lotuslight Dancers: no search for one card of each of three colors into the graveyard.
 - Sage of the Skies: no cast trigger that copies the spell itself.
 - Magmatic Hellkite: no "nonbasic land" filter; no opponent search with a stun counter on the land.
 - Stillness in Motion: no library-empty check, self-exile, or put-five-from-graveyard-on-top.
-- Herd Heirloom: no creature-spell-only any-color mana; no granted "deals combat damage to a player, draw" trigger.
-- Narset, Jeskai Waymaster: no "discard your hand, draw equal to spells cast this turn".
 - New Way Forward: no prevention of the next damage from a chosen source with a reflexive redirect.
-- Jeskai Revelation: no Monk token with prowess; no "target spell or permanent" bounce.
-- Felothar, Dawn of the Abzan: no "you may sacrifice a nonland permanent; when you do" reflexive trigger.
 - Teval, Arbiter of Virtue: no delve granted to your spells; no lose-life-equal-to-mana-value cast trigger.
 - Shiko, Paragon of the Way: no exile-then-cast-a-copy-free from the graveyard.
-- Betor, Kin to All: no total-toughness conditions; no "loses half their life".
 - Elspeth, Storm Slayer: `doubles_tokens_and_counters` also doubles counters (Elspeth doubles tokens only); no "gain flying until your next turn".
 - Stormscale Scion: no storm.
 - Call the Spirit Dragons: no per-color counter placement on Dragons or win condition; no static granting indestructible to Dragons.
-- Neriv, Heart of the Storm: no damage doubling for creatures that entered this turn.
-- Smile at Death: graveyard targets can't filter on power ("power 2 or less").
 
 - Emergent Ultimatum: no search for up to three monocolored cards with different names into exile, no opponent's choice to shuffle one back, no cast-the-rest-free, and no self-exile.
 

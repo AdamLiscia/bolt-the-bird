@@ -57,6 +57,20 @@ pub fn token_defs() -> Vec<CardDef> {
         token("Elephant", "Elephant", 5, 5, Keywords::NONE),
         token("Soldier", "Soldier", 2, 2, Keywords::NONE),
         token("Spirit", "Spirit", 1, 1, Keywords::NONE), // Revival of the Ancestors' white Spirits
+        {
+            // A 1/1 white Monk with prowess (Jeskai Revelation).
+            let mut monk = token("Monk", "Monk", 1, 1, Keywords::NONE);
+            on(
+                &mut monk,
+                When::YouCastNoncreature,
+                vec![],
+                vec![Effect::PumpSelf {
+                    power: 1,
+                    toughness: 1,
+                }],
+            );
+            monk
+        },
     ]
 }
 
@@ -128,6 +142,7 @@ pub struct Tokens {
     pub elephant: usize,
     pub soldier_2: usize,
     pub spirit_1: usize,
+    pub monk: usize,
 }
 
 impl Tokens {
@@ -163,6 +178,7 @@ impl Tokens {
             elephant: base + 27,
             soldier_2: base + 28,
             spirit_1: base + 29,
+            monk: base + 30,
         }
     }
 }

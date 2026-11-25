@@ -170,6 +170,8 @@ pub struct Object {
     /// The turn counters were last put on it (for "the first time counters have been put on that
     /// creature this turn").
     pub counters_put_turn: u32,
+    /// The counters it had when it last left the battlefield: +1/+1, stun and keyword counters.
+    pub last_counters: (i32, i32, Keywords),
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -657,6 +659,8 @@ pub enum Decision {
         creature_only: bool,
         started: bool,
     },
+    /// `Pick` a nonland permanent you control to sacrifice, or `No`.
+    SacrificeNonland,
 }
 
 /// An until-end-of-turn change to one object (CR 611.2, 613).
@@ -787,6 +791,12 @@ pub struct Game {
     pub cast_creature_noncreature: [[bool; 2]; 2],
     /// Delayed "whenever you attack this turn" triggers: (source, trigger number, controller, turn).
     pub delayed_on_attack: Vec<(ObjId, usize, PlayerId, u32)>,
+    /// "When it dies under your control this turn": (creature, its zcc, source, trigger, controller,
+    /// turn).
+    pub dies_under_control: Vec<(ObjId, u32, ObjId, usize, PlayerId, u32)>,
+    /// Granted "whenever this creature deals combat damage to a player" until end of turn:
+    /// (creature, its zcc, source, trigger, turn).
+    pub granted_combat_damage: Vec<(ObjId, u32, ObjId, usize, u32)>,
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -914,6 +924,8 @@ impl Game {
             creature_died_under: [false; 2],
             cast_creature_noncreature: [[false; 2]; 2],
             delayed_on_attack: Vec::new(),
+            dies_under_control: Vec::new(),
+            granted_combat_damage: Vec::new(),
         }
     }
 
@@ -985,6 +997,7 @@ impl Game {
             chosen_mode: None,
             once_each_turn: 0,
             counters_put_turn: 0,
+            last_counters: (0, 0, Keywords::NONE),
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -1366,6 +1379,47 @@ impl Game {
         }
     }
 
+    /// An Aura on it says "Enchanted creature doesn't untap during its controller's untap step."
+    fn enchanted_doesnt_untap(&self, id: ObjId) -> bool {
+        let zcc = self.obj(id).zcc;
+        self.battlefield.iter().any(|&a| {
+            self.obj(a).attached_to == Some((id, zcc))
+                && self.def_of(a).enchanted_doesnt_untap
+                && !self.lost_abilities(a)
+        })
+    }
+
+    /// Total toughness of the creatures `p` controls.
+    fn total_toughness(&self, p: PlayerId) -> i32 {
+        self.creatures(p).map(|c| self.toughness(c)).sum()
+    }
+
+    /// Abilities that Auras grant the creatures `p` controls ("Enchanted creature has ..."), as
+    /// activations of the Aura's ability.
+    fn granted_activations(&self, p: PlayerId) -> Vec<Action> {
+        let mut v = Vec::new();
+        for &aura in &self.battlefield {
+            let Some((c, zcc)) = self.obj(aura).attached_to else {
+                continue;
+            };
+            if self.obj(c).zone != Zone::Battlefield
+                || self.obj(c).zcc != zcc
+                || self.obj(c).controller != p
+                || self.lost_abilities(aura)
+                || self.lost_abilities(c)
+                || self.activation_stopped(c)
+            {
+                continue;
+            }
+            for (n, a) in self.def_of(aura).activated.iter().enumerate() {
+                if a.granted_to_attached && self.can_pay_for(p, &a.mana, None, PayFor::Ability(c)) {
+                    v.push(Action::Activate(aura, n));
+                }
+            }
+        }
+        v
+    }
+
     /// Whether the permanent has a counter of any kind on it (CR 122).
     pub fn has_counter(&self, id: ObjId) -> bool {
         let o = self.obj(id);
@@ -1682,6 +1736,10 @@ impl Game {
         if to == Zone::Graveyard {
             o.graveyard_turn = turn;
         }
+        if from == Zone::Battlefield {
+            o.last_counters = (o.counters, o.stun, o.keyword_counters);
+            o.stun = 0;
+        }
         o.tapped = false;
         o.damage = 0;
         o.deathtouched = false;
@@ -1819,6 +1877,28 @@ impl Game {
                 }
             }
             self.fire(last_controller, When::CreatureYouControlDies, Some(id));
+            let (plus, stun, kw) = self.obj(id).last_counters;
+            if plus != 0 || stun > 0 || kw != Keywords::NONE {
+                let before = self.triggered.len();
+                self.fire(
+                    last_controller,
+                    When::CreatureYouControlWithCountersDies,
+                    Some(id),
+                );
+                for t in &mut self.triggered[before..] {
+                    t.extra = Some(id);
+                }
+            }
+            let was = self.obj(id).zcc - 1;
+            let turn = self.turn;
+            for (c, z, src, n, controller, t) in self.dies_under_control.clone() {
+                if c == id && z == was && controller == last_controller && t == turn {
+                    self.triggered.push(StackItem {
+                        kind: StackKind::Trigger(n),
+                        ..Game::casting(src, controller)
+                    });
+                }
+            }
             if !self.is_token(id) {
                 let was = |g: &Game, s: &str| {
                     g.def_of(id).subtypes.iter().any(|x| x == s) || g.obj(id).last_subtypes.contains(&s)
@@ -2066,6 +2146,19 @@ impl Game {
         let whens: Vec<When> = self.def_of(id).triggers.iter().map(|tr| tr.when).collect();
         for (n, when) in whens.into_iter().enumerate() {
             let own_death = when == When::CreatureYouControlDies && dies && self.types_of(id).creature;
+            let (plus, stun, kw) = self.obj(id).last_counters;
+            let had_counters = plus != 0 || stun > 0 || kw != Keywords::NONE;
+            if when == When::CreatureYouControlWithCountersDies
+                && dies
+                && self.types_of(id).creature
+                && had_counters
+            {
+                self.triggered.push(StackItem {
+                    kind: StackKind::Trigger(n),
+                    extra: Some(id),
+                    ..Game::casting(id, controller)
+                });
+            }
             if (when == When::Dies && dies) || (when == When::Enters && enters) || own_death {
                 self.triggered.push(StackItem {
                     source: id,
@@ -2567,6 +2660,7 @@ impl Game {
             }
         }
         v.extend(self.activations(p));
+        v.extend(self.granted_activations(p));
         v.extend(self.loyalty_actions(p, sorcery_timing));
         v
     }
@@ -2952,7 +3046,11 @@ impl Game {
         let mut v = Vec::new();
         for (id, m) in self.untapped_sources(p) {
             let d = self.def_of(id);
-            if seen.contains(&id) || d.mana_only_for_subtype.is_some() || d.any_color_for_chosen_type {
+            if seen.contains(&id)
+                || d.mana_only_for_subtype.is_some()
+                || d.any_color_for_chosen_type
+                || d.mana_only_for_creatures
+            {
                 continue;
             }
             seen.push(id);
@@ -3011,6 +3109,10 @@ impl Game {
         self.untapped_sources(p)
             .into_iter()
             .filter(|s| Some(s.0) != exclude)
+            .filter(|s| {
+                !self.def_of(s.0).mana_only_for_creatures
+                    || matches!(spell, PayFor::Spell(c) if self.def_of(c).types.creature)
+            })
             .filter(|s| match self.def_of(s.0).mana_only_for_subtype {
                 None => true,
                 // Giada: "Spend this mana only to cast an Angel spell."
@@ -3168,6 +3270,7 @@ impl Game {
                 if a.from_graveyard != in_graveyard
                     || (!in_graveyard && self.lost_abilities(id))
                     || self.activation_stopped(id)
+                    || a.granted_to_attached
                 {
                     continue;
                 }
@@ -3255,6 +3358,12 @@ impl Game {
     /// CR 602.2: pay the costs, then the ability goes on the stack (targets chosen as a decision).
     /// CR 602.2: announce, choose targets, then pay the costs.
     fn activate(&mut self, p: PlayerId, id: ObjId, n: usize, victim: Option<ObjId>) {
+        let granted = self.def_of(id).activated[n].granted_to_attached;
+        let extra = if granted {
+            self.obj(id).attached_to.map(|(c, _)| c)
+        } else {
+            None
+        };
         let item = StackItem {
             source: id,
             controller: p,
@@ -3262,7 +3371,7 @@ impl Game {
             targets: Vec::new(),
             kicked: false,
             flashback: false,
-            extra: None,
+            extra,
             mode: None,
             amount: 0,
             alt: false,
@@ -4512,6 +4621,7 @@ impl Game {
                     SearchFor::CreatureMvAtMost(mv) => d.types.creature && d.cost.mana_value() <= mv,
                     SearchFor::CreatureMvAtMostX => false, // resolved to CreatureMvAtMost first
                     SearchFor::Named(names) => names.contains(&d.name.as_str()),
+                    SearchFor::Colored(c) => d.colors[c as usize],
                 }
             })
             .collect()
@@ -4579,6 +4689,15 @@ impl Game {
                 if self.players[p].life >= *life {
                     v.push(Action::Yes); // CR 119.4
                 }
+                v.push(Action::No);
+                v
+            }
+            Decision::SacrificeNonland => {
+                let mut v: Vec<Action> = self
+                    .permanents(p)
+                    .filter(|&c| !self.types_of(c).land)
+                    .map(Action::Pick)
+                    .collect();
                 v.push(Action::No);
                 v
             }
@@ -4800,6 +4919,10 @@ impl Game {
                 self.lose_life(p, life);
             }
             (Decision::PayWardLife { against, .. }, Action::No) => self.counter_from(against),
+            (Decision::SacrificeNonland, Action::Pick(c)) => self.move_to(c, Zone::Graveyard),
+            (Decision::SacrificeNonland, Action::No) => {
+                self.resolving.as_mut().expect("resolving").remaining.clear();
+            }
             (Decision::SacrificeAnother { .. }, Action::No) => {
                 self.resolving.as_mut().expect("resolving").remaining.clear();
             }
@@ -5008,6 +5131,7 @@ impl Game {
                         self.obj_mut(c).tapped = tapped;
                     }
                     SearchTo::Top | SearchTo::TopOrTappedIfYouControl(_) => {}
+                    SearchTo::Graveyard => self.move_to(c, Zone::Graveyard),
                 }
                 if left > 1 && !self.library_matches(p, what).is_empty() {
                     self.ask(
@@ -5623,6 +5747,101 @@ impl Game {
             Effect::DelayedOnAttackThisTurn(trigger) => {
                 let entry = (src, trigger, item.controller, self.turn);
                 self.delayed_on_attack.push(entry);
+            }
+            Effect::TapAttached => {
+                if let Some((c, zcc)) = self.obj(src).attached_to {
+                    if self.obj(c).zcc == zcc && self.obj(c).zone == Zone::Battlefield {
+                        self.become_tapped(c);
+                    }
+                }
+            }
+            Effect::UntapExtra => {
+                if let Some(c) = item.extra {
+                    if self.obj(c).zone == Zone::Battlefield {
+                        self.untap_by_effect(c);
+                    }
+                }
+            }
+            Effect::GrantDiesUnderYourControl { slot, trigger } => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    let entry = (id, self.obj(id).zcc, src, trigger, item.controller, self.turn);
+                    self.dies_under_control.push(entry);
+                }
+            }
+            Effect::PutDeadCountersOn(slot) => {
+                let (Some(dead), Some(id)) = (item.extra, Game::slot_object(item, legal, slot)) else {
+                    return;
+                };
+                if self.obj(id).zone != Zone::Battlefield {
+                    return;
+                }
+                let (plus, stun, kw) = self.obj(dead).last_counters;
+                if plus > 0 {
+                    self.add_counters(id, plus);
+                }
+                let extra = stun > 0 || kw != Keywords::NONE;
+                if stun > 0 {
+                    let n = stun * self.doubling(self.obj(id).controller);
+                    self.obj_mut(id).stun += n;
+                }
+                if kw != Keywords::NONE {
+                    let o = self.obj_mut(id);
+                    o.keyword_counters = o.keyword_counters.with(kw);
+                }
+                if extra {
+                    self.counter_put_on(id);
+                }
+            }
+            Effect::GrantCombatDamageTrigger { slot, trigger } => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    let entry = (id, self.obj(id).zcc, src, trigger, self.turn);
+                    self.granted_combat_damage.push(entry);
+                }
+            }
+            Effect::BounceSpellOrPermanent(slot) => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    if let Some(pos) = self
+                        .items
+                        .iter()
+                        .position(|i| i.kind == StackKind::Spell && i.source == id)
+                    {
+                        self.items.remove(pos);
+                    }
+                    self.move_to(id, Zone::Hand);
+                }
+            }
+            Effect::MaySacrificeNonland => {
+                let any = self.permanents(item.controller).any(|c| !self.types_of(c).land);
+                if any {
+                    self.ask(item.controller, Decision::SacrificeNonland);
+                } else {
+                    self.resolving.as_mut().expect("resolving").remaining.clear();
+                }
+            }
+            Effect::DiscardHandDrawPerSpells => {
+                let p = item.controller;
+                for c in self.players[p].hand.clone() {
+                    self.move_to(c, Zone::Graveyard);
+                }
+                for _ in 0..self.spells_cast[p] {
+                    self.draw(p);
+                }
+            }
+            Effect::BetorEndStep => {
+                let p = item.controller;
+                self.draw(p);
+                if self.total_toughness(p) >= 20 {
+                    for c in self.creatures(p).collect::<Vec<_>>() {
+                        self.untap_by_effect(c);
+                    }
+                }
+                if self.total_toughness(p) >= 40 {
+                    let opp = opponent(p);
+                    let life = self.players[opp].life;
+                    if life > 0 {
+                        self.lose_life(opp, (life + 1) / 2);
+                    }
+                }
             }
             Effect::DestroyOpponentsNonland => {
                 let opp = opponent(item.controller);
@@ -6717,6 +6936,7 @@ impl Game {
             Some(Condition::CastTwoSpellsThisTurn) => self.spells_cast[controller] >= 2,
             Some(Condition::ChosenMode(m)) => self.obj(source).chosen_mode == Some(*m),
             Some(Condition::CreatureDiedUnderYourControlThisTurn) => self.creature_died_under[controller],
+            Some(Condition::TotalToughnessAtLeast(n)) => self.total_toughness(controller) >= *n,
             Some(Condition::CastCreatureAndNoncreatureThisTurn) => {
                 self.cast_creature_noncreature[controller] == [true, true]
             }
@@ -6888,6 +7108,8 @@ impl Game {
         self.spells_cast = [0; 2];
         self.cast_creature_noncreature = [[false; 2]; 2];
         self.delayed_on_attack.clear();
+        self.dies_under_control.clear();
+        self.granted_combat_damage.clear();
         self.graveyard_types_used = [[false; 5]; 2];
         self.cast_snapshots.clear();
         self.attacked_this_turn = [false; 2];
@@ -6921,7 +7143,7 @@ impl Game {
                 for id in self.permanents(a).collect::<Vec<_>>() {
                     if self.obj(id).stun > 0 && self.obj(id).tapped {
                         self.obj_mut(id).stun -= 1; // CR 122.1d: a stun counter is removed instead
-                    } else if !self.def_of(id).doesnt_untap {
+                    } else if !self.def_of(id).doesnt_untap && !self.enchanted_doesnt_untap(id) {
                         let was_tapped = self.obj(id).tapped;
                         self.obj_mut(id).tapped = false;
                         if was_tapped && self.types_of(id).creature {
@@ -7264,6 +7486,17 @@ impl Game {
                 t.amount = amount;
             }
             let zcc = self.obj(a).zcc;
+            let turn = self.turn;
+            for (c, z, src, n, t) in self.granted_combat_damage.clone() {
+                if c == a && z == zcc && t == turn {
+                    let controller = self.obj(a).controller;
+                    self.triggered.push(StackItem {
+                        kind: StackKind::Trigger(n),
+                        amount,
+                        ..Game::casting(src, controller)
+                    });
+                }
+            }
             let gear: Vec<ObjId> = self
                 .battlefield
                 .iter()
@@ -7320,6 +7553,23 @@ impl Game {
     /// Twinflame Tyrant: 2 per copy its controller has when damage goes to an opponent or a
     /// permanent they control.
     fn damage_doubling(&self, source: ObjId, target: Target) -> i32 {
+        let c = self.obj(source).controller;
+        let o = self.obj(source);
+        let new_creature =
+            o.zone == Zone::Battlefield && o.since_turn == self.turn && self.types_of(source).creature;
+        let neriv = if new_creature {
+            let n = self
+                .permanents(c)
+                .filter(|&x| self.def_of(x).doubles_damage_of_new_creatures && !self.lost_abilities(x))
+                .count();
+            1 << n.min(10)
+        } else {
+            1
+        };
+        neriv * self.opponent_damage_doubling(source, target)
+    }
+
+    fn opponent_damage_doubling(&self, source: ObjId, target: Target) -> i32 {
         let c = self.obj(source).controller;
         let to_opponent = match target {
             Target::Player(p) => p != c,

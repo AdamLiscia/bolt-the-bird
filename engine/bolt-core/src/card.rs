@@ -174,6 +174,9 @@ pub struct Activated {
     pub sacrifice_token: bool,
     /// "Exile a creature card from your graveyard" in the cost.
     pub exile_creature_card: bool,
+    /// An Aura's ability its enchanted creature has ("Enchanted creature has \"{5}: Untap this
+    /// creature.\""): activated by that creature's controller, with the creature in `extra`.
+    pub granted_to_attached: bool,
 }
 
 /// The printed card. Shared by every copy; per-copy state lives on the game object.
@@ -343,6 +346,13 @@ pub struct CardDef {
     pub mana_equal_power: bool,
     /// "You may cast [subtype] spells without paying their mana costs" (Dracogenesis).
     pub free_subtype_spells: Option<&'static str>,
+    /// "Enchanted creature doesn't untap during its controller's untap step."
+    pub enchanted_doesnt_untap: bool,
+    /// "Spend this mana only to cast a creature spell."
+    pub mana_only_for_creatures: bool,
+    /// Neriv: "If a creature you control that entered this turn would deal damage, it deals twice
+    /// that much damage instead."
+    pub doubles_damage_of_new_creatures: bool,
 }
 
 /// An Omen spell half: its name, cost, whether it's an instant, and what it does.
@@ -455,6 +465,9 @@ impl CardDef {
             mana_only_if_you_control: None,
             mana_equal_power: false,
             free_subtype_spells: None,
+            enchanted_doesnt_untap: false,
+            mana_only_for_creatures: false,
+            doubles_damage_of_new_creatures: false,
         }
     }
 
@@ -546,6 +559,9 @@ impl CardDef {
             mana_only_if_you_control: None,
             mana_equal_power: false,
             free_subtype_spells: None,
+            enchanted_doesnt_untap: false,
+            mana_only_for_creatures: false,
+            doubles_damage_of_new_creatures: false,
         }
     }
 
@@ -637,6 +653,9 @@ impl CardDef {
             mana_only_if_you_control: None,
             mana_equal_power: false,
             free_subtype_spells: None,
+            enchanted_doesnt_untap: false,
+            mana_only_for_creatures: false,
+            doubles_damage_of_new_creatures: false,
         }
     }
 }

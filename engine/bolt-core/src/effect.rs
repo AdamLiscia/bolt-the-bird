@@ -662,6 +662,34 @@ pub enum Effect {
     },
     /// Stop here unless you control at least this many attacking creatures.
     GateAttackingAtLeast(u8),
+    /// Tap the creature the source (an Aura) is attached to.
+    TapAttached,
+    /// Untap the creature in the stack item's `extra` (a granted "{cost}: Untap this creature").
+    UntapExtra,
+    /// "When it dies under your control this turn, ...": the source's trigger number `trigger`.
+    GrantDiesUnderYourControl {
+        slot: u8,
+        trigger: usize,
+    },
+    /// Put the counters the creature in the stack item's `extra` had when it died on the creature
+    /// in `slot` (Host of the Hereafter).
+    PutDeadCountersOn(u8),
+    /// Until end of turn, the creature in `slot` gains "Whenever this creature deals combat damage to
+    /// a player, ..." (the source's trigger number `trigger`, controlled by that creature's
+    /// controller).
+    GrantCombatDamageTrigger {
+        slot: u8,
+        trigger: usize,
+    },
+    /// Return the spell or permanent in `slot` to its owner's hand.
+    BounceSpellOrPermanent(u8),
+    /// "You may sacrifice a nonland permanent. When you do, ...": the rest only if one is sacrificed.
+    MaySacrificeNonland,
+    /// Discard your hand, then draw a card for each spell you've cast this turn (Narset).
+    DiscardHandDrawPerSpells,
+    /// Betor: draw a card; then if creatures you control have total toughness 20 or greater, untap
+    /// them; then if 40 or greater, each opponent loses half their life, rounded up.
+    BetorEndStep,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -682,6 +710,8 @@ pub enum SearchFor {
     },
     /// A card with one of these names.
     Named(&'static [&'static str]),
+    /// A card of this color (WUBRG index).
+    Colored(u8),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -695,6 +725,8 @@ pub enum SearchTo {
     /// On top, or onto the battlefield tapped instead if you control a permanent with this subtype
     /// (Embermouth Sentinel). Decided as the search resolves.
     TopOrTappedIfYouControl(&'static str),
+    /// Into the graveyard.
+    Graveyard,
 }
 
 /// What a static ability affects.
@@ -870,6 +902,8 @@ pub enum Condition {
     CreatureDiedUnderYourControlThisTurn,
     /// You've cast both a creature spell and a noncreature spell this turn.
     CastCreatureAndNoncreatureThisTurn,
+    /// Creatures you control have total toughness at least this.
+    TotalToughnessAtLeast(i32),
 }
 
 /// A spell's effect or a triggered ability: target slots, then effects in order.
@@ -1021,6 +1055,9 @@ pub enum When {
     EquippedAttacks,
     /// "Whenever a creature you control dies while this card is in your graveyard".
     CreatureYouControlDiesFromGraveyard,
+    /// "Whenever this creature or another creature you control dies, if it had counters on it"; the
+    /// dead creature is in the stack item's `extra`.
+    CreatureYouControlWithCountersDies,
 }
 
 #[derive(Clone, Debug, PartialEq)]
