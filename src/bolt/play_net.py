@@ -46,3 +46,25 @@ class PlayNet(nn.Module):
         both = torch.cat([act, hg[:, None].expand_as(act)], -1)
         logits = self.policy(both).squeeze(-1).masked_fill(x["act_pad"], float("-inf"))
         return logits, torch.tanh(self.value(hg)).squeeze(-1)
+
+
+def load_checkpoint(path_or_obj) -> "PlayNet":
+    """A PlayNet from a checkpoint (a path, or the loaded {"config", "model"} dict). A checkpoint saved before
+    action kinds were appended to KINDS gets the new kinds' rows, each a copy of "Cast"'s, inserted before the
+    unknown-kind row, which stays last, so it plays exactly as before on every kind it knew."""
+    c = (
+        path_or_obj
+        if isinstance(path_or_obj, dict)
+        else torch.load(path_or_obj, map_location="cpu", weights_only=False)
+    )
+    state = dict(c["model"])
+    old = state["kind.weight"]
+    want = len(KINDS) + 1
+    if old.shape[0] < want:
+        known = old.shape[0] - 1  # the old unknown-kind row was the last
+        cast = old[KINDS.index("Cast")]
+        new = cast.unsqueeze(0).repeat(want - 1 - known, 1)
+        state["kind.weight"] = torch.cat([old[:known], new, old[known:]])
+    net = PlayNet(**c["config"])
+    net.load_state_dict(state)
+    return net

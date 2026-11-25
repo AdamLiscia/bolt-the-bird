@@ -1,6 +1,6 @@
 # The desktop simulation farm: jobs that survive a power cut
 
-Status: **design, 2026-11-25; Adam said go (setup under way on the desktop).** This repo gets `bolt.jobs`,
+Status: **2026-11-25: `bolt.jobs`, `scripts/farm.py` and guard's `GUARD_ACTIVE_TIME=1` are built** (tarkir); the first job definition (Tarkir play) is next. This repo gets `bolt.jobs`,
 `scripts/farm.py` and the guard change next (after the Xenagos and Glarb decks); the desktop's own Claude
 session builds the machine side (WSL, the Windows tasks, the game watcher).
 
