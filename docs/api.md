@@ -421,6 +421,24 @@ game"; show an icon only when present and active.
 | `city_blessing` | game level: list of seats | Not modeled |
 | `day_night` | game level: `"day"`, `"night"` or null | Not modeled |
 
+### The Tarkir service (`set: "TDM"`, 127.0.0.1:8767)
+
+Status (2026-11-25): **running, for admin-vs-admin Tarkir games.** A second process with the same key and
+the same endpoints, on the tarkir engine; 8766 keeps serving FDN. `GET /v1/health` reports
+`"sets": ["TDM"]`, so route by set.
+
+- `GET /v1/cards?set=TDM`: the 286 cards plus 40 tokens, same fields. Card `image` is Scryfall's
+  by-name image link (it redirects to the card image, so it hotlinks like FDN's); tokens have `image: null`.
+- `POST /v1/deck/random {"set": "TDM", ...}`: drafted by the Tarkir drafter (trained on 17lands human
+  picks; `"bolt"` and `"human"` are the same model for now) from real Tarkir opening packs. Decks are built
+  by a simple rule (the two colors with the most playable cards, rares first, basics by pips); no judge,
+  so `judged_win_rate` is `null`.
+- `POST /v1/game {"set": "TDM", "human_seats": [0, 1], ...}`: every game endpoint works as for FDN. A
+  game with a bot seat is 422 `"TDM bot play isn't trained yet: use human_seats [0, 1]"`.
+- New decisions, with readable labels: `ChooseCastX` and `ChooseDelve` (answered with `Amount` moves),
+  `EnterAsCopy` (`Pick` a creature or `No`), `PayWardDiscard` (`Discard` a card or `No`, then it's
+  countered).
+
 ### Commander games (Bloomburrow Commander, `set: "BLC"`): planned contract
 
 Status (2026-11-25): **the engine rules are built and tested on the `tarkir` branch; the service does not
