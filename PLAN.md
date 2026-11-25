@@ -27,6 +27,21 @@ card audit ([docs/engine/CARD_AUDIT.md](docs/engine/CARD_AUDIT.md)) found that L
 diverse: 219 of 281 cards are needed before half of real decks are playable. So the engine aims for
 the whole set, and is useful early through drafts restricted to supported cards.
 
+## Who does what (Adam, 2026-11-25)
+
+- **The desktop (ROONS-DESKTOP, WSL2 `Ubuntu-24.04`) runs all training and simulation** from now on:
+  Tarkir play training first, then the drafter experiments, the Foundations targeting sims, and
+  Commander/Tarkir self-play. Its Claude session runs, monitors and recovers jobs, and writes only the
+  machine-side pieces (the game-pause watcher, the startup task). Design: `docs/desktop-farm.md`.
+- **This repo's code has one owner, the Mac session:** the engine, cards, the farm library and job
+  definitions. It pushes to GitHub; the desktop pulls `tarkir` (or whatever branch is named next) and runs.
+  Engine edits are never handed to the desktop.
+- **The Mac keeps the game services** (8766 FDN, 8767 Tarkir, 8768 Commander) and may still do occasional
+  GPU training (drafter transformers on MPS) when that's faster and Adam isn't streaming.
+- **Job handoff:** when a job is ready, its definition (command, checkpoint and S3 paths, resources) is
+  committed and pushed, and the Nerd Leagues orchestrator relays it to the desktop. Results come back
+  through S3.
+
 ## Decision log
 
 | Date | Decision | Why |
