@@ -151,6 +151,8 @@ pub struct Object {
     /// Loyalty (CR 306.5), and the turn a loyalty ability was last activated (CR 606.3).
     pub loyalty: i32,
     pub loyalty_turn: u32,
+    /// It has one or more keyword counters (their keywords are in `granted`).
+    pub keyword_counter: bool,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -930,6 +932,7 @@ impl Game {
             graveyard_turn: 0,
             loyalty: 0,
             loyalty_turn: 0,
+            keyword_counter: false,
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -1132,6 +1135,9 @@ impl Game {
                             Some(StaticCondition::Untapped) => !so.tapped,
                             Some(StaticCondition::CountersAtLeast(n)) => so.counters >= n,
                             Some(StaticCondition::LifeAtLeast(n)) => self.players[so.controller].life >= n,
+                            Some(StaticCondition::ControlCreatureWithCounter) => {
+                                self.controls_creature_with_counter(so.controller)
+                            }
                         };
                         applies && condition_ok && (!s.your_turn_only || self.active == so.controller)
                     })
@@ -1265,6 +1271,36 @@ impl Game {
             + self.obj(id).counters
             + self.modifiers(id).map(|m| m.toughness).sum::<i32>()
             + self.statics_on(id).map(|s| s.toughness).sum::<i32>()
+    }
+
+    /// Taps a permanent; if it was untapped, its "whenever this becomes tapped" triggers fire.
+    fn become_tapped(&mut self, id: ObjId) {
+        if self.obj(id).tapped {
+            return;
+        }
+        self.obj_mut(id).tapped = true;
+        if self.obj(id).zone == Zone::Battlefield {
+            self.fire_source(id, When::BecomesTapped);
+        }
+    }
+
+    /// Whether the permanent has a counter of any kind on it (CR 122).
+    pub fn has_counter(&self, id: ObjId) -> bool {
+        let o = self.obj(id);
+        o.counters != 0
+            || o.stun > 0
+            || o.incubation > 0
+            || o.soul > 0
+            || o.revival > 0
+            || o.fellowship > 0
+            || o.bait > 0
+            || o.loyalty > 0
+            || o.keyword_counter
+    }
+
+    /// Whether `p` controls a creature with a counter on it.
+    fn controls_creature_with_counter(&self, p: PlayerId) -> bool {
+        self.creatures(p).any(|c| self.has_counter(c))
     }
 
     /// Puts triggers of `p`'s permanents that match `when` into the waiting list.
@@ -1493,6 +1529,7 @@ impl Game {
             last.extend(o.subtype_override.take());
             o.last_subtypes = last;
             o.granted = Keywords::NONE;
+            o.keyword_counter = false;
             o.used_once = false;
             o.last_soul = o.soul;
             o.last_revival = o.revival;
@@ -1589,7 +1626,14 @@ impl Game {
                 && self
                     .permanents(opponent(controller_now))
                     .any(|c| self.def_of(c).opponents_creatures_enter_tapped);
-            if def.enters_tapped || opponent_forces_tapped {
+            let unless_ok = def.enters_tapped_unless.is_some_and(|subs| {
+                self.permanents(controller_now)
+                    .any(|x| x != id && subs.iter().any(|&sub| self.has_subtype(x, sub)))
+            });
+            if def.enters_tapped
+                || opponent_forces_tapped
+                || (def.enters_tapped_unless.is_some() && !unless_ok)
+            {
                 self.obj_mut(id).tapped = true;
             }
             if def.types.creature {
@@ -2598,7 +2642,7 @@ impl Game {
                 continue;
             }
             let id = sources[i - pool.len()].0;
-            self.obj_mut(id).tapped = true;
+            self.become_tapped(id);
             if self.def_of(id).sac_for_mana {
                 self.move_to(id, Zone::Graveyard);
             }
@@ -2688,7 +2732,7 @@ impl Game {
             };
             self.players[p].pool.push(one);
         }
-        self.obj_mut(id).tapped = true;
+        self.become_tapped(id);
         if self.def_of(id).sac_for_mana {
             self.move_to(id, Zone::Graveyard);
         }
@@ -2998,7 +3042,7 @@ impl Game {
             self.lose_life(p, a.life);
         }
         if a.tap {
-            self.obj_mut(id).tapped = true;
+            self.become_tapped(id);
         }
         self.obj_mut(id).incubation -= a.remove_incubation;
         if a.once {
@@ -3006,12 +3050,12 @@ impl Game {
         }
         if a.tap_attached {
             if let Some((c, _)) = self.obj(id).attached_to {
-                self.obj_mut(c).tapped = true;
+                self.become_tapped(c);
             }
         }
         if let Some((sub, n)) = a.tap_untapped {
             for c in self.untapped_with(p, sub, id).into_iter().take(n as usize) {
-                self.obj_mut(c).tapped = true;
+                self.become_tapped(c);
             }
         }
         if a.sacrifice_self {
@@ -3133,6 +3177,9 @@ impl Game {
                 .def_of(attacker)
                 .not_blocked_by
                 .is_some_and(|sub| self.has_subtype(blocker, sub))
+            || (self.def_of(attacker).not_blocked_by_lesser_power
+                && !self.lost_abilities(attacker)
+                && self.power(blocker) < self.power(attacker))
         {
             return false;
         }
@@ -3392,7 +3439,7 @@ impl Game {
             (Pending::DeclareAttackers(_), Action::Attack(c)) => {
                 // CR 508.1f: attacking taps the creature unless it has vigilance.
                 if !self.keywords(c).has(Keywords::VIGILANCE) {
-                    self.obj_mut(c).tapped = true;
+                    self.become_tapped(c);
                 }
                 self.combat.as_mut().expect("in combat").attackers.push(c);
                 self.attacked_this_turn[self.active] = true;
@@ -3563,7 +3610,7 @@ impl Game {
         self.pay_mana_for(p, &cost, harmonized, PayFor::Spell(card));
         if let Some(x) = item.extra {
             if harmonized.is_some() {
-                self.obj_mut(x).tapped = true; // harmonize taps the creature; it isn't sacrificed
+                self.become_tapped(x); // harmonize taps the creature; it isn't sacrificed
             } else if self.obj(x).zone != Zone::Graveyard {
                 self.move_to(x, Zone::Graveyard);
             }
@@ -4440,6 +4487,11 @@ impl Game {
                             self.move_to(c, Zone::Graveyard);
                         }
                     }
+                    Some(LookRest::MayGraveyard) => {
+                        if !others.is_empty() {
+                            self.ask(p, Decision::Surveil { cards: others });
+                        }
+                    }
                     Some(LookRest::BottomRandom) => {
                         self.rng.shuffle(&mut others);
                         let lib = &mut self.players[p].library;
@@ -5089,6 +5141,7 @@ impl Game {
                     if self.obj(id).zone == Zone::Battlefield {
                         let o = self.obj_mut(id);
                         o.granted = o.granted.with(keywords);
+                        o.keyword_counter = true;
                     }
                 }
             }
@@ -5182,7 +5235,7 @@ impl Game {
             }
             Effect::TapAndStun(n) => {
                 if let Some(id) = Game::slot_object(item, legal, n) {
-                    self.obj_mut(id).tapped = true;
+                    self.become_tapped(id);
                     let n = self.doubling(self.obj(id).controller);
                     self.obj_mut(id).stun += n;
                 }
@@ -5784,7 +5837,7 @@ impl Game {
             }
             Effect::Tap(n) => {
                 if let Some(id) = Game::slot_object(item, legal, n) {
-                    self.obj_mut(id).tapped = true;
+                    self.become_tapped(id);
                 }
             }
             Effect::Reflexive(n) => {
@@ -5882,6 +5935,64 @@ impl Game {
                     self.deal_damage(a, Target::Object(b), power);
                 }
             }
+            Effect::PumpPerCreatures { slot, attacking } => {
+                let x = if attacking {
+                    self.combat.as_ref().map_or(0, |c| c.attackers.len()) as i32
+                } else {
+                    self.creatures(item.controller).count() as i32
+                };
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    let zcc = self.obj(id).zcc;
+                    self.until_eot.push(Modifier {
+                        obj: id,
+                        zcc,
+                        power: x,
+                        toughness: x,
+                        keywords: Keywords::NONE,
+                        dies: None,
+                    });
+                }
+            }
+            Effect::DamagePerCreatures(slot) => {
+                let x = self.creatures(item.controller).count() as i32;
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    if x > 0 {
+                        self.deal_damage(src, Target::Object(id), x);
+                    }
+                }
+            }
+            Effect::PumpYoursPerCreatures => {
+                let ids: Vec<ObjId> = self.creatures(item.controller).collect();
+                let x = ids.len() as i32;
+                for id in ids {
+                    let zcc = self.obj(id).zcc;
+                    self.until_eot.push(Modifier {
+                        obj: id,
+                        zcc,
+                        power: x,
+                        toughness: x,
+                        keywords: Keywords::NONE,
+                        dies: None,
+                    });
+                }
+            }
+            Effect::CountersAll { who, n } => {
+                let ids: Vec<ObjId> = self
+                    .players_for(item, legal, who)
+                    .into_iter()
+                    .flat_map(|p| self.creatures(p).collect::<Vec<_>>())
+                    .collect();
+                for id in ids {
+                    self.add_counters(id, n);
+                }
+            }
+            Effect::DrawIfCounterElseCounterSelf => {
+                if self.controls_creature_with_counter(item.controller) {
+                    self.draw(item.controller);
+                } else if self.obj(src).zone == Zone::Battlefield {
+                    self.add_counters(src, 1);
+                }
+            }
             Effect::ExileGraveyard { who } => {
                 for p in self.players_for(item, legal, who) {
                     for c in self.players[p].graveyard.clone() {
@@ -5916,6 +6027,7 @@ impl Game {
             Some(Condition::ControlAnother(sub)) => self
                 .creatures(controller)
                 .any(|id| id != source && self.has_subtype(id, sub)),
+            Some(Condition::ControlCreatureWithCounter) => self.controls_creature_with_counter(controller),
         }
     }
 
