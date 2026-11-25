@@ -99,6 +99,8 @@ pub fn token_defs() -> Vec<CardDef> {
             golem.types.artifact = true;
             golem
         },
+        token("Elephant", "Elephant", 3, 3, Keywords::NONE), // Generous Gift's green 3/3
+        token("Beast", "Beast", 4, 4, Keywords::NONE),       // Rampaging Baloths' green 4/4
     ]
 }
 
@@ -175,6 +177,8 @@ pub struct Tokens {
     pub beast_3: usize,
     pub human_soldier: usize,
     pub golem: usize,
+    pub elephant_3: usize,
+    pub beast_4: usize,
 }
 
 impl Tokens {
@@ -215,6 +219,8 @@ impl Tokens {
             beast_3: base + 32,
             human_soldier: base + 33,
             golem: base + 34,
+            elephant_3: base + 35,
+            beast_4: base + 36,
         }
     }
 }

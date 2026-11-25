@@ -630,3 +630,193 @@ fn hazel_copies_a_squirrel_token_twice() {
         "two more copies"
     );
 }
+
+// ---- Batch 4 ----
+
+#[test]
+fn checklands_fastlands_and_typed_lands() {
+    for (name, needs, colors) in [
+        ("Clifftop Retreat", "Mountain", [true, false, false, true, false]),
+        ("Hinterland Harbor", "Island", [false, true, false, false, true]),
+    ] {
+        let mut g = game(["Bello, Bard of the Brambles", "Ms. Bumbleflower"], &[]);
+        let l = hand(&mut g, 0, name);
+        act(&mut g, Action::PlayLand(l));
+        assert!(g.obj(l).tapped, "{name}");
+        assert_eq!(g.def_of(l).mana.unwrap().colors, colors);
+        let mut g = game(["Bello, Bard of the Brambles", "Ms. Bumbleflower"], &[needs]);
+        let l = hand(&mut g, 0, name);
+        act(&mut g, Action::PlayLand(l));
+        assert!(!g.obj(l).tapped, "{name} with a {needs}");
+    }
+    let mut g = game(
+        ["Bello, Bard of the Brambles", "Ms. Bumbleflower"],
+        &["Forest", "Forest", "Forest"],
+    );
+    let l = hand(&mut g, 0, "Copperline Gorge");
+    act(&mut g, Action::PlayLand(l));
+    assert!(g.obj(l).tapped, "three other lands");
+    let mut g = game(
+        ["Bello, Bard of the Brambles", "Ms. Bumbleflower"],
+        &["Plains", "Island"],
+    );
+    let l = hand(&mut g, 0, "Prairie Stream");
+    act(&mut g, Action::PlayLand(l));
+    assert!(!g.obj(l).tapped && g.has_subtype(l, "Island"));
+    let mut g = table();
+    let l = hand(&mut g, 0, "Haunted Mire");
+    act(&mut g, Action::PlayLand(l));
+    assert!(g.obj(l).tapped && g.has_subtype(l, "Swamp") && g.has_subtype(l, "Forest"));
+    assert_eq!(
+        g.def_of(l).mana.unwrap().colors,
+        [false, false, true, false, true]
+    );
+}
+
+#[test]
+fn cloudblazer_inspiring_overseer_and_harmonize_draw() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Cloudblazer");
+    let n = g.players[0].hand.len();
+    play(&mut g, c, false, &[], &[]);
+    assert_eq!((g.players[0].life, g.players[0].hand.len()), (42, n - 1 + 2));
+    assert!(g.keywords(c).has(Keywords::FLYING));
+    let o = hand(&mut g, 0, "Inspiring Overseer");
+    let n = g.players[0].hand.len();
+    play(&mut g, o, false, &[], &[]);
+    assert_eq!((g.players[0].life, g.players[0].hand.len()), (43, n));
+    let h = hand(&mut g, 0, "Harmonize");
+    let n = g.players[0].hand.len();
+    play(&mut g, h, false, &[], &[]);
+    assert_eq!(g.players[0].hand.len(), n - 1 + 3);
+}
+
+#[test]
+fn generous_gift_putrefy_and_path_to_exile_remove_things() {
+    let mut g = table();
+    let ring = put(&mut g, 1, "Sol Ring");
+    let c = hand(&mut g, 0, "Generous Gift");
+    play(&mut g, c, false, &[obj(ring)], &[]);
+    assert_eq!(g.obj(ring).zone, Zone::Graveyard);
+    let e = named(&g, 1, "Elephant");
+    assert_eq!((e.len(), g.power(e[0])), (1, 3));
+
+    let mut g = table();
+    let mender = put(&mut g, 1, "Circuit Mender");
+    let c = hand(&mut g, 0, "Putrefy");
+    play(&mut g, c, false, &[obj(mender)], &[]);
+    assert_eq!(g.obj(mender).zone, Zone::Graveyard);
+
+    let mut g = table();
+    let mender = put(&mut g, 1, "Circuit Mender");
+    let c = hand(&mut g, 0, "Path to Exile");
+    act(&mut g, Action::Cast(c));
+    act(&mut g, Action::Target(obj(mender)));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.pending, Pending::Decide(1), "its controller searches");
+    let basic = *g.players[1].library.last().unwrap();
+    resolve_all(&mut g, &[Action::Pick(basic)]);
+    assert_eq!(g.obj(mender).zone, Zone::Exile);
+    assert_eq!(g.obj(basic).zone, Zone::Battlefield);
+    assert!(g.obj(basic).tapped);
+}
+
+#[test]
+fn hedron_archive_makes_two_and_cashes_in_for_two_cards() {
+    let mut g = table();
+    let a = put(&mut g, 0, "Hedron Archive");
+    assert_eq!(g.mana_sources(0).iter().filter(|&&(x, _)| x == a).count(), 2);
+    let n = g.players[0].hand.len();
+    act(&mut g, Action::Activate(a, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].hand.len(), n + 2);
+}
+
+#[test]
+fn kalonian_hydra_enters_with_four_and_doubles_on_attack() {
+    let mut g = table();
+    let h = hand(&mut g, 0, "Kalonian Hydra");
+    let mender = put(&mut g, 0, "Circuit Mender");
+    play(&mut g, h, false, &[], &[]);
+    assert_eq!(g.obj(h).counters, 4);
+    assert!(g.keywords(h).has(Keywords::TRAMPLE));
+    g.start_turn(5, 0);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(h));
+    act(&mut g, Action::FinishAttacks);
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(h).counters, 8);
+    assert_eq!(g.obj(mender).counters, 0, "none to double");
+}
+
+#[test]
+fn managorger_hydra_grows_whenever_anyone_casts() {
+    let mut g = table();
+    let h = put(&mut g, 0, "Managorger Hydra");
+    let mine = hand(&mut g, 0, "Sol Ring");
+    play(&mut g, mine, false, &[], &[]);
+    assert_eq!(g.obj(h).counters, 1);
+    // The opponent casts one on their turn.
+    let theirs = hand(&mut g, 1, "Sol Ring");
+    g.start_turn(4, 1);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Cast(theirs));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(h).counters, 2);
+}
+
+#[test]
+fn moldervine_innkeeper_and_baloths() {
+    let mut g = table();
+    put(&mut g, 0, "Moldervine Reclamation");
+    let mender = put(&mut g, 0, "Circuit Mender");
+    let n = g.players[0].hand.len();
+    g.move_card(mender, Zone::Graveyard);
+    act(&mut g, Action::PassPriority);
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].life, 41);
+    assert_eq!(
+        g.players[0].hand.len(),
+        n + 2,
+        "Moldervine's card and the Mender's own"
+    );
+
+    let mut g = table();
+    let inn = hand(&mut g, 0, "Prosperous Innkeeper");
+    play(&mut g, inn, false, &[], &[]);
+    assert_eq!(named(&g, 0, "Treasure").len(), 1);
+    let m = hand(&mut g, 0, "Circuit Mender");
+    play(&mut g, m, false, &[], &[]);
+    assert_eq!(g.players[0].life, 40 + 1 + 2);
+
+    let mut g = table();
+    put(&mut g, 0, "Rampaging Baloths");
+    let l = hand(&mut g, 0, "Forest");
+    act(&mut g, Action::PlayLand(l));
+    resolve_all(&mut g, &[]);
+    let b = named(&g, 0, "Beast");
+    assert_eq!((b.len(), g.power(b[0])), (1, 4));
+}
+
+#[test]
+fn loran_destroys_an_artifact_and_draws_for_both() {
+    let mut g = table();
+    let ring = put(&mut g, 1, "Sol Ring");
+    let loran = hand(&mut g, 0, "Loran of the Third Path");
+    play(&mut g, loran, false, &[], &[Action::Target(obj(ring))]);
+    assert_eq!(g.obj(ring).zone, Zone::Graveyard);
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    let (a, b) = (g.players[0].hand.len(), g.players[1].hand.len());
+    act(&mut g, Action::Activate(loran, 0));
+    resolve_all(&mut g, &[Action::Target(Target::Player(1))]);
+    assert_eq!((g.players[0].hand.len(), g.players[1].hand.len()), (a + 1, b + 1));
+}
