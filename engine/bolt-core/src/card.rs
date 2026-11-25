@@ -227,6 +227,8 @@ pub struct Activated {
     pub remove_kind_counters: i32,
     /// With `sacrifice_subtype`: "Sacrifice another [subtype]" (not the source; Koma).
     pub sacrifice_another: bool,
+    /// "Activate only if you control N or more permanents." (Temple of Cultivation)
+    pub min_permanents: u8,
 }
 
 /// The printed card. Shared by every copy; per-copy state lives on the game object.
@@ -577,6 +579,12 @@ pub struct CardDef {
     /// Its last mode (both modes together) can be chosen only while you control a commander
     /// (Will of the Abzan).
     pub last_mode_needs_commander: bool,
+    /// A transforming double-faced card's back face (CR 712): what the permanent is while it's
+    /// transformed (`Object::transformed`). Its own `back` is `None`.
+    pub back: Option<Box<CardDef>>,
+    /// `alt_cost` is offered only while you control a commander (Deflecting Swat: "If you control a
+    /// commander, you may cast this spell without paying its mana cost.").
+    pub alt_cost_needs_commander: bool,
 }
 
 /// What entering makes triggers happen again (see [`CardDef::entering_triggers_again`]).
@@ -778,6 +786,8 @@ impl CardDef {
             flashback_sacrifice: 0,
             pitch_not_your_turn: None,
             last_mode_needs_commander: false,
+            back: None,
+            alt_cost_needs_commander: false,
         }
     }
 
@@ -947,6 +957,8 @@ impl CardDef {
             flashback_sacrifice: 0,
             pitch_not_your_turn: None,
             last_mode_needs_commander: false,
+            back: None,
+            alt_cost_needs_commander: false,
         }
     }
 
@@ -1116,6 +1128,8 @@ impl CardDef {
             flashback_sacrifice: 0,
             pitch_not_your_turn: None,
             last_mode_needs_commander: false,
+            back: None,
+            alt_cost_needs_commander: false,
         }
     }
 }

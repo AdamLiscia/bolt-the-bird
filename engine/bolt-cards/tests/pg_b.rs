@@ -1054,3 +1054,229 @@ fn roaming_throne_doubles_triggers_of_the_chosen_type() {
     resolve_all(&mut g, &[Action::Mode(0), Action::Mode(0)]);
     assert_eq!(tokens(&g, 0, "Beast").len(), 2);
 }
+
+// ---- Xenagos finish: Deflecting Swat, Ojer Kaslem, Vorinclex ----
+
+/// Makes `name` on player 0's battlefield their commander.
+fn commander_on_field(g: &mut Game, name: &str) -> ObjId {
+    let c = put(g, 0, name);
+    g.commanders[0] = Some(c);
+    c
+}
+
+fn has(g: &Game, a: Action) -> bool {
+    g.legal_actions().contains(&a)
+}
+
+/// Passes priority until a decision or target choice is pending.
+fn pass_until_asked(g: &mut Game) {
+    for _ in 0..50 {
+        if matches!(g.pending, Pending::Decide(_) | Pending::ChooseTarget(_)) {
+            return;
+        }
+        act(g, Action::PassPriority);
+    }
+    panic!("never asked: {:?}", g.pending);
+}
+
+#[test]
+fn deflecting_swat_is_free_with_a_commander_and_redirects_a_spell() {
+    let mut g = game(&["Mountain"]);
+    let swat = hand(&mut g, 0, "Deflecting Swat");
+    let bolt = hand(&mut g, 0, "Burst Lightning");
+    let mine = put(&mut g, 0, "Savannah Lions");
+    let theirs = put(&mut g, 1, "Llanowar Elves");
+    act(&mut g, Action::Cast(bolt));
+    act(&mut g, Action::Target(Target::Object(mine)));
+    // No commander: only the {2}{R} cost, which one Mountain can't pay.
+    assert!(!has(&g, Action::CastAlternative(swat)));
+    assert!(!has(&g, Action::Cast(swat)));
+    commander_on_field(&mut g, "Xenagos, God of Revels");
+    assert!(has(&g, Action::CastAlternative(swat)));
+    act(&mut g, Action::CastAlternative(swat));
+    act(&mut g, Action::Target(Target::Object(bolt)));
+    pass_until_asked(&mut g);
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Target(Target::Object(theirs))));
+    assert!(legal.contains(&Action::Target(Target::Player(1))));
+    assert!(
+        !legal.contains(&Action::Target(Target::Object(mine))),
+        "not its current target"
+    );
+    assert!(legal.contains(&Action::No));
+    act(&mut g, Action::Target(Target::Object(theirs)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(theirs).zone, Zone::Graveyard);
+    assert_eq!(g.obj(mine).zone, Zone::Battlefield);
+    assert_eq!(g.obj(swat).zone, Zone::Graveyard);
+}
+
+#[test]
+fn deflecting_swat_can_keep_the_targets_and_redirect_an_ability() {
+    let mut g = game(&["Mountain", "Mountain", "Mountain"]);
+    let mine = put(&mut g, 0, "Savannah Lions");
+    let pinger = put(&mut g, 0, "Fanatical Firebrand");
+    let theirs = put(&mut g, 1, "Llanowar Elves");
+    // An ability on the stack: Fanatical Firebrand (sacrificed as it's activated) at my own Lions.
+    act(&mut g, Action::Activate(pinger, 0));
+    act(&mut g, Action::Target(Target::Object(mine)));
+    let swat = hand(&mut g, 0, "Deflecting Swat");
+    act(&mut g, Action::Cast(swat)); // {2}{R}, paid
+    act(&mut g, Action::Target(Target::Object(pinger)));
+    pass_until_asked(&mut g);
+    assert!(g
+        .legal_actions()
+        .contains(&Action::Target(Target::Object(theirs))));
+    act(&mut g, Action::Target(Target::Object(theirs)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(theirs).zone, Zone::Graveyard, "the ping went to the Elves");
+    assert_eq!(g.obj(mine).zone, Zone::Battlefield);
+
+    // "Keep the targets": No leaves a spell's target as it was.
+    let mut g = game(&["Mountain"]);
+    commander_on_field(&mut g, "Xenagos, God of Revels");
+    let swat = hand(&mut g, 0, "Deflecting Swat");
+    let bolt = hand(&mut g, 0, "Burst Lightning");
+    let theirs = put(&mut g, 1, "Llanowar Elves");
+    act(&mut g, Action::Cast(bolt));
+    act(&mut g, Action::Target(Target::Object(theirs)));
+    act(&mut g, Action::CastAlternative(swat));
+    act(&mut g, Action::Target(Target::Object(bolt)));
+    pass_until_asked(&mut g);
+    act(&mut g, Action::No);
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(theirs).zone, Zone::Graveyard);
+}
+
+#[test]
+fn ojer_kaslem_returns_as_its_temple_and_transforms_back() {
+    let mut g = table();
+    let ojer = put(&mut g, 0, "Ojer Kaslem, Deepest Growth // Temple of Cultivation");
+    assert!(g.types_of(ojer).creature);
+    assert!(g.keywords(ojer).has(Keywords::TRAMPLE));
+    assert_eq!((g.power(ojer), g.toughness(ojer)), (6, 5));
+    // It dies: back tapped and transformed, a land that taps for {G}.
+    g.objects[ojer.0 as usize].damage = 5;
+    act(&mut g, Action::PassPriority);
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(ojer).zone, Zone::Battlefield);
+    assert!(g.obj(ojer).transformed && g.obj(ojer).tapped);
+    assert_eq!(g.def_of(ojer).name, "Temple of Cultivation");
+    assert!(g.types_of(ojer).land && !g.types_of(ojer).creature);
+    assert!(g.def_of(ojer).mana.is_some());
+    // {2}{G}, {T}: transform, with ten or more permanents, as a sorcery.
+    g.objects[ojer.0 as usize].tapped = false;
+    assert!(g.permanents(0).count() >= 10);
+    assert!(has(&g, Action::Activate(ojer, 0)));
+    act(&mut g, Action::Activate(ojer, 0));
+    resolve_all(&mut g, &[]);
+    assert!(!g.obj(ojer).transformed);
+    assert!(g.types_of(ojer).creature);
+    assert_eq!(
+        g.def_of(ojer).name,
+        "Ojer Kaslem, Deepest Growth // Temple of Cultivation"
+    );
+    // Fewer than ten permanents: no transforming.
+    let mut g = game(&["Forest", "Forest", "Forest"]);
+    let ojer = put(&mut g, 0, "Ojer Kaslem, Deepest Growth // Temple of Cultivation");
+    g.objects[ojer.0 as usize].transformed = true;
+    assert!(!has(&g, Action::Activate(ojer, 0)));
+}
+
+#[test]
+fn ojer_kaslem_puts_a_creature_and_a_land_from_the_revealed_cards() {
+    let mut g = table();
+    let ojer = put(&mut g, 0, "Ojer Kaslem, Deepest Growth // Temple of Cultivation");
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Library);
+    let forest = g.add_card(0, cid("Forest"), Zone::Library);
+    let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Library);
+    g.add_card(0, cid("Plains"), Zone::Library); // drawn on turn 5
+    attack(&mut g, &[ojer]);
+    pass_until_asked(&mut g);
+    // The top six: picks are a creature and a land.
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Pick(lions)) && legal.contains(&Action::Pick(forest)));
+    act(&mut g, Action::Pick(elves));
+    let legal = g.legal_actions();
+    assert!(!legal.contains(&Action::Pick(lions)), "one creature only");
+    assert!(legal.contains(&Action::Pick(forest)));
+    act(&mut g, Action::Pick(forest));
+    assert_eq!(g.obj(elves).zone, Zone::Battlefield);
+    assert_eq!(g.obj(forest).zone, Zone::Battlefield);
+    assert_eq!(g.obj(lions).zone, Zone::Library);
+    let lib = &g.players[0].library;
+    assert!(lib[..4].contains(&lions), "the rest went to the bottom");
+    assert_eq!(g.players[1].life, 34);
+}
+
+#[test]
+fn vorinclex_fetches_forests_and_becomes_the_grand_evolution() {
+    let mut g = table();
+    let f1 = g.add_card(0, cid("Forest"), Zone::Library);
+    let f2 = g.add_card(0, cid("Forest"), Zone::Library);
+    let vor = hand(&mut g, 0, "Vorinclex // The Grand Evolution");
+    play(&mut g, vor, false, &[], &[Action::Pick(f1), Action::Pick(f2)]);
+    assert_eq!(g.obj(vor).zone, Zone::Battlefield);
+    assert!(g.keywords(vor).has(Keywords::REACH) && g.keywords(vor).has(Keywords::TRAMPLE));
+    assert_eq!(g.obj(f1).zone, Zone::Hand);
+    assert_eq!(g.obj(f2).zone, Zone::Hand);
+
+    // {6}{G}{G}: exile it, back as The Grand Evolution; chapter I mills ten and puts two creatures in.
+    let mut g = table();
+    let vor = put(&mut g, 0, "Vorinclex // The Grand Evolution");
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Library);
+    let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Library);
+    for _ in 0..8 {
+        g.add_card(0, cid("Plains"), Zone::Library);
+    }
+    assert!(has(&g, Action::Activate(vor, 0)));
+    act(&mut g, Action::Activate(vor, 0));
+    pass_until_asked(&mut g);
+    assert!(g.obj(vor).transformed);
+    assert_eq!(g.def_of(vor).name, "The Grand Evolution");
+    assert_eq!(g.obj(vor).lore, 1);
+    assert!(g.legal_actions().contains(&Action::Pick(lions)));
+    act(&mut g, Action::Pick(lions));
+    act(&mut g, Action::Pick(elves));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(lions).zone, Zone::Battlefield);
+    assert_eq!(g.obj(elves).zone, Zone::Battlefield);
+    assert_eq!(g.players[0].graveyard.len(), 8);
+
+    // Chapter II: seven +1/+1 counters, divided.
+    g.start_turn(5, 0);
+    pass_until_asked(&mut g);
+    assert_eq!(g.obj(vor).lore, 2);
+    act(&mut g, Action::Target(Target::Object(lions)));
+    act(&mut g, Action::No);
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(lions).counters, 7);
+
+    // Chapter III: the team can fight for {1}; the Saga comes back as Vorinclex (its search
+    // triggers: find nothing).
+    let theirs = put(&mut g, 1, "Llanowar Elves");
+    g.start_turn(7, 0);
+    pass_until_asked(&mut g);
+    while g.obj(vor).zone == Zone::Battlefield && g.obj(vor).transformed {
+        match g.pending {
+            Pending::Decide(_) | Pending::ChooseTarget(_) => {
+                let a = *g.legal_actions().last().unwrap();
+                act(&mut g, a)
+            }
+            _ => act(&mut g, Action::PassPriority),
+        };
+    }
+    resolve_all(&mut g, &[Action::No]);
+    assert!(!g.obj(vor).transformed);
+    assert_eq!(g.obj(vor).zone, Zone::Battlefield);
+    assert!(g.types_of(vor).creature);
+    let n = g.def_of(lions).activated.len();
+    assert!(has(&g, Action::Activate(lions, n)), "the granted fight ability");
+    act(&mut g, Action::Activate(lions, n));
+    act(&mut g, Action::Target(Target::Object(theirs)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(theirs).zone, Zone::Graveyard);
+    // Not next turn.
+    g.start_turn(9, 0);
+    assert!(!has(&g, Action::Activate(lions, n)));
+}

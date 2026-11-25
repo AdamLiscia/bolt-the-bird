@@ -5,7 +5,7 @@
 
 use std::sync::Arc;
 
-use crate::card::{Behold, CardDef, EntryDoubler, ExtraCost, Keywords, Reduction, Types};
+use crate::card::{Activated, Behold, CardDef, EntryDoubler, ExtraCost, Keywords, Reduction, Types};
 use crate::effect::{EmblemKind, LookRest, LookTo, Pick, Scale, Scope, Static, StaticCondition};
 use std::collections::VecDeque;
 
@@ -246,6 +246,9 @@ pub struct Object {
     /// The turn its activated abilities can't be activated (Koma: "Tap target permanent. Its
     /// activated abilities can't be activated this turn."); 0: never.
     pub activations_stopped_turn: u32,
+    /// A transforming double-faced permanent with its back face up (CR 712.8e): its characteristics
+    /// are its definition's `back`. Front face up again once it leaves the battlefield (CR 711.8).
+    pub transformed: bool,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -571,6 +574,22 @@ fn offspring_ability() -> &'static Ability {
     A.get_or_init(|| Ability::new(Vec::new(), vec![Effect::OffspringCopy]))
 }
 
+/// "{1}: This creature fights target creature you don't control." (granted by The Grand Evolution).
+fn granted_fight_ability() -> &'static Activated {
+    static A: std::sync::OnceLock<Activated> = std::sync::OnceLock::new();
+    A.get_or_init(|| Activated {
+        mana: ManaCost {
+            generic: 1,
+            ..ManaCost::default()
+        },
+        ability: Ability::new(
+            vec![Filter::CREATURE.controlled_by(Controller::Opponent)],
+            vec![Effect::Fight(0)],
+        ),
+        ..Activated::default()
+    })
+}
+
 /// A chosen target, pinned to the object it was when chosen (CR 400.7).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Chosen {
@@ -842,6 +861,19 @@ pub enum Decision {
     /// `Pick` a permanent card in your graveyard other than `except` to return to the battlefield, or
     /// `No`.
     ReturnOtherPermanent { except: ObjId },
+    /// `Pick` one of `cards` to put onto the battlefield (`left` more; creature cards only, or with
+    /// `creature_and_land` one creature card and one land card), or `No` to stop; then, with
+    /// `rest_bottom`, the rest go on the bottom of your library in a random order.
+    PutPicksOntoBattlefield {
+        cards: Vec<ObjId>,
+        picked: Vec<ObjId>,
+        left: u8,
+        creature_and_land: bool,
+        rest_bottom: bool,
+    },
+    /// Choose a new target for target number `slot` of the stack entry `items[item]` (CR 115.7):
+    /// `Target` a legal new one, or `No` to keep it.
+    ChooseNewTarget { item: usize, slot: u8 },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -1093,6 +1125,10 @@ pub struct Game {
     pub rebound: Vec<(ObjId, u32)>,
     /// How many waiting triggers (from the front of `triggered`) Roaming Throne has already looked at.
     pub triggered_scanned: usize,
+    /// Creatures that have "{1}: This creature fights target creature you don't control." until end
+    /// of turn: (object, zcc, turn) (The Grand Evolution). Activated as ability number
+    /// `activated.len()` of the creature (see `Game::activated_of`).
+    pub granted_fight: Vec<(ObjId, u32, u32)>,
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -1296,6 +1332,7 @@ impl Game {
             untap_attackers_at_combat: false,
             rebound: Vec::new(),
             triggered_scanned: 0,
+            granted_fight: Vec::new(),
         }
     }
 
@@ -1398,6 +1435,7 @@ impl Game {
             regen_shields: (0, 0),
             eternalized: false,
             attacks_turn: (0, 0),
+            transformed: false,
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -1420,7 +1458,12 @@ impl Game {
     }
 
     pub fn def_of(&self, id: ObjId) -> &CardDef {
-        &self.defs[self.obj(id).def]
+        let o = self.obj(id);
+        let d = &self.defs[o.def];
+        match &d.back {
+            Some(back) if o.transformed => back,
+            _ => d,
+        }
     }
 
     fn modifiers(&self, id: ObjId) -> impl Iterator<Item = &Modifier> + '_ {
@@ -1452,11 +1495,11 @@ impl Game {
     /// have become a creature (Soulstone Sanctuary) or only a land (Imprisoned in the Moon).
     pub fn types_of(&self, id: ObjId) -> Types {
         let o = self.obj(id);
-        let mut t = self.defs[o.def].types;
+        let mut t = self.def_of(id).types;
         if o.not_legendary {
             t.legendary = false;
         }
-        if let Some((colors, n)) = self.defs[o.def].creature_unless_devotion {
+        if let Some((colors, n)) = self.def_of(id).creature_unless_devotion {
             if o.zone == Zone::Battlefield && self.devotion(o.controller, colors) < n as u32 {
                 t.creature = false; // the Theros gods
             }
@@ -1544,7 +1587,7 @@ impl Game {
         let o = self.obj(id);
         // Roaming Throne: "This creature is the chosen type in addition to its other types."
         if o.zone == Zone::Battlefield
-            && self.defs[o.def].doubles_chosen_type_triggers
+            && self.def_of(id).doubles_chosen_type_triggers
             && o.chosen_type.as_deref() == Some(s)
         {
             return true;
@@ -2273,6 +2316,28 @@ impl Game {
         } else {
             a.divide
         }
+    }
+
+    /// Whether `c` may be picked by `Decision::PutPicksOntoBattlefield`: a creature card, or with
+    /// `creature_and_land` a creature card or a land card of a kind not picked yet.
+    fn pick_onto_battlefield_ok(&self, c: ObjId, picked: &[ObjId], creature_and_land: bool) -> bool {
+        let t = self.def_of(c).types;
+        if !creature_and_land {
+            return t.creature;
+        }
+        // One creature card and one land card: a card that's both can fill either slot.
+        let creature_taken = picked
+            .iter()
+            .any(|&x| self.def_of(x).types.creature && !self.def_of(x).types.land);
+        let land_taken = picked
+            .iter()
+            .any(|&x| self.def_of(x).types.land && !self.def_of(x).types.creature);
+        if picked.len() >= 2 {
+            return false;
+        }
+        (t.creature && !creature_taken)
+            || (t.land && !land_taken)
+            || (picked.is_empty() && (t.creature || t.land))
     }
 
     /// Whether a looked-at card may be put onto the battlefield by `Decision::PutFromAmong`.
@@ -3266,6 +3331,13 @@ impl Game {
                 self.triggered
                     .retain(|t| !(t.source == id && matches!(t.kind, StackKind::Trigger(_))));
             }
+            // CR 711.8: a transformed permanent that leaves is front face up again; leave triggers
+            // collected from its back face would point at the front's abilities, so they're dropped.
+            if self.obj(id).transformed {
+                self.obj_mut(id).transformed = false;
+                self.triggered
+                    .retain(|t| !(t.source == id && matches!(t.kind, StackKind::Trigger(_))));
+            }
         }
     }
 
@@ -3379,7 +3451,7 @@ impl Game {
                     && (!ability.targets_exactly_x || c.item.targets.len() == c.item.x as usize);
                 // Dragonfire Blade's equip: only targets whose discount makes it affordable.
                 if let (false, StackKind::Activated(n)) = (c.cast, c.item.kind) {
-                    let a = &self.def_of(c.item.source).activated[n];
+                    let a = &self.activated_of(c.item.source, n);
                     if a.less_per_target_color {
                         let uses_self = a.tap || a.sacrifice_self;
                         options.retain(|&t| match t {
@@ -3430,6 +3502,27 @@ impl Game {
         }
     }
 
+    /// Activated ability number `n` of `id`: its card's, or one past them the fight ability The
+    /// Grand Evolution granted it this turn (`Game::granted_fight`).
+    pub fn activated_of(&self, id: ObjId, n: usize) -> &Activated {
+        let own = &self.def_of(id).activated;
+        if n < own.len() {
+            return &own[n];
+        }
+        granted_fight_ability()
+    }
+
+    /// The granted fight ability, if `id` has it now.
+    fn granted_fight_of(&self, id: ObjId) -> Option<&'static Activated> {
+        let o = self.obj(id);
+        let has = o.zone == Zone::Battlefield
+            && self
+                .granted_fight
+                .iter()
+                .any(|&(x, zcc, turn)| x == id && zcc == o.zcc && turn == self.turn);
+        has.then(granted_fight_ability)
+    }
+
     /// The ability a stack entry carries out.
     pub fn ability_of(&self, item: &StackItem) -> &Ability {
         let def = self.def_of(item.source);
@@ -3451,7 +3544,7 @@ impl Game {
             }
             StackKind::Loyalty(n) => &def.loyalty_abilities[n].1,
             StackKind::Offspring => offspring_ability(),
-            StackKind::Activated(n) => &def.activated[n].ability,
+            StackKind::Activated(n) => &self.activated_of(item.source, n).ability,
         }
     }
 
@@ -3473,6 +3566,9 @@ impl Game {
             }
             Target::Object(id) => {
                 let o = self.obj(id);
+                if f.abilities && self.ability_on_stack(id).is_some() && o.zone != Zone::Stack {
+                    return true; // "target ... ability": an ability of this source on the stack
+                }
                 if !Game::controller_ok(f.controller, controller, o.controller) {
                     return false;
                 }
@@ -3575,8 +3671,80 @@ impl Game {
                     .map(|&id| Target::Object(id)),
             )
             .chain(graveyards.map(|&id| Target::Object(id)))
+            .chain(self.ability_sources().filter(|_| f.abilities).map(Target::Object))
             .filter(|&t| self.target_ok(f, controller, t))
             .collect()
+    }
+
+    /// Sources of abilities on the stack that aren't themselves on the stack, each once.
+    fn ability_sources(&self) -> impl Iterator<Item = ObjId> + '_ {
+        let mut seen: Vec<ObjId> = Vec::new();
+        for i in &self.items {
+            let spell = matches!(i.kind, StackKind::Spell | StackKind::SpellCopy);
+            if !spell && self.obj(i.source).zone != Zone::Stack && !seen.contains(&i.source) {
+                seen.push(i.source);
+            }
+        }
+        seen.into_iter()
+    }
+
+    /// The topmost activated or triggered ability on the stack from `source`, by index in `items`.
+    fn ability_on_stack(&self, source: ObjId) -> Option<usize> {
+        self.items
+            .iter()
+            .rposition(|i| i.source == source && !matches!(i.kind, StackKind::Spell | StackKind::SpellCopy))
+    }
+
+    /// The stack entry a "target spell or ability" chose: the spell if `id` is on the stack, else
+    /// the topmost ability of that source.
+    fn targeted_item(&self, id: ObjId) -> Option<usize> {
+        if self.obj(id).zone == Zone::Stack {
+            self.items
+                .iter()
+                .rposition(|i| i.source == id && matches!(i.kind, StackKind::Spell | StackKind::SpellCopy))
+        } else {
+            self.ability_on_stack(id)
+        }
+    }
+
+    /// Legal new targets for target number `slot` of `items[item]` (CR 115.7): not its current
+    /// target, not one its other targets already have, and never the spell itself (CR 115.5).
+    fn new_target_options(&self, item: usize, slot: usize) -> Vec<Target> {
+        let it = &self.items[item];
+        let a = self.ability_of(it);
+        let Some(&f) = a.targets.get(slot) else {
+            return Vec::new();
+        };
+        if f.triggering || slot >= it.targets.len() {
+            return Vec::new(); // "that creature" isn't a target
+        }
+        let chosen = |t: Target| match t {
+            Target::Player(p) => Chosen::Player(p),
+            Target::Object(x) => Chosen::Object(x, self.obj(x).zcc),
+        };
+        self.candidates(&f, it.controller)
+            .into_iter()
+            .filter(|&t| self.slot_ok(it, &f, t))
+            .filter(|&t| !it.targets.contains(&chosen(t)))
+            .filter(|&t| t != Target::Object(it.source))
+            .collect()
+    }
+
+    /// Asks `p` about the next of `items[item]`'s targets, from `slot` on, that can change.
+    fn ask_new_target(&mut self, p: PlayerId, item: usize, from: usize) {
+        let n = self.items.get(item).map_or(0, |i| i.targets.len());
+        for slot in from..n {
+            if !self.new_target_options(item, slot).is_empty() {
+                self.ask(
+                    p,
+                    Decision::ChooseNewTarget {
+                        item,
+                        slot: slot as u8,
+                    },
+                );
+                return;
+            }
+        }
     }
 
     /// Target legality that depends on the stack entry itself: "other" and "mana value at most the
@@ -4009,7 +4177,9 @@ impl Game {
                         }
                     }
                 }
-                if let Some((_, needed)) = def.alt_cost {
+                let commander_ok =
+                    !def.alt_cost_needs_commander || self.permanents(p).any(|x| self.is_commander(x));
+                if let (Some((_, needed)), true) = (def.alt_cost, commander_ok) {
                     let creatures = self
                         .battlefield
                         .iter()
@@ -4813,7 +4983,13 @@ impl Game {
         for id in self.permanents(p).chain(graveyard).chain(hand) {
             let in_graveyard = self.obj(id).zone == Zone::Graveyard;
             let in_hand = self.obj(id).zone == Zone::Hand;
-            for (n, a) in self.def_of(id).activated.iter().enumerate() {
+            for (n, a) in self
+                .def_of(id)
+                .activated
+                .iter()
+                .chain(self.granted_fight_of(id))
+                .enumerate()
+            {
                 if a.from_hand_discard != in_hand
                     || (!in_hand && a.from_graveyard != in_graveyard)
                     || (!in_graveyard && self.lost_abilities(id))
@@ -4840,6 +5016,7 @@ impl Game {
                     || a.tap_untapped
                         .is_some_and(|(sub, n)| self.untapped_with(p, sub, id).len() < n as usize)
                     || !sorcery_ok
+                    || self.permanents(p).count() < a.min_permanents as usize
                     || (a.your_turn_only && p != self.active)
                     || (a.if_card_left_graveyard && !self.graveyard_left_this_turn[p])
                     || (a.if_created_token_this_turn && self.token_created_turn[p] != self.turn)
@@ -5000,7 +5177,7 @@ impl Game {
     /// CR 602.2: pay the costs, then the ability goes on the stack (targets chosen as a decision).
     /// CR 602.2: announce, choose targets, then pay the costs.
     fn activate(&mut self, p: PlayerId, id: ObjId, n: usize, victim: Option<ObjId>) {
-        let granted = self.def_of(id).activated[n].granted_to_attached;
+        let granted = self.activated_of(id, n).granted_to_attached;
         let extra = if granted {
             self.obj(id).attached_to.map(|(c, _)| c)
         } else {
@@ -5021,11 +5198,11 @@ impl Game {
             division: Vec::new(),
         };
         let mut item = item;
-        if let (true, Some(v)) = (self.def_of(id).activated[n].amount_from_victim_power, victim) {
+        if let (true, Some(v)) = (self.activated_of(id, n).amount_from_victim_power, victim) {
             item.amount = self.power(v); // Greater Good: the power as it was sacrificed
         }
         self.passes = 0;
-        if self.def_of(id).activated[n].ability.targets.is_empty() {
+        if self.activated_of(id, n).ability.targets.is_empty() {
             self.pay_activation(p, id, n, victim, 0);
             self.items.push(item);
             self.give_priority(p);
@@ -5050,7 +5227,7 @@ impl Game {
             ..Game::casting(id, p)
         };
         self.passes = 0;
-        let a = &self.def_of(id).activated[n].ability;
+        let a = &self.activated_of(id, n).ability;
         if a.targets.is_empty() || (a.targets_exactly_x && x == 0) {
             self.pay_activation(p, id, n, victim, x);
             self.items.push(item);
@@ -5069,7 +5246,7 @@ impl Game {
     }
 
     fn pay_activation(&mut self, p: PlayerId, id: ObjId, n: usize, victim: Option<ObjId>, x: u8) {
-        let a = self.def_of(id).activated[n].clone();
+        let a = self.activated_of(id, n).clone();
         let uses_self = a.tap || a.sacrifice_self;
         // A sacrificed token (a Treasure) can't also pay the mana.
         let exclude = if uses_self {
@@ -6329,7 +6506,7 @@ impl Game {
                 self.pay_loyalty(pw, cost);
             }
             if let Some((n, victim)) = c.pay {
-                if self.def_of(c.item.source).activated[n].less_per_target_color {
+                if self.activated_of(c.item.source, n).less_per_target_color {
                     // Pass the discount as X (the equip cost has no {X}).
                     if let Some(&Chosen::Object(t, _)) = c.item.targets.first() {
                         c.item.x = self.colors_of(t).iter().filter(|&&b| b).count() as u8;
@@ -6991,6 +7168,21 @@ impl Game {
                 v.push(Action::No);
                 v
             }
+            Decision::PutPicksOntoBattlefield {
+                cards,
+                picked,
+                creature_and_land,
+                ..
+            } => {
+                let mut v: Vec<Action> = cards
+                    .iter()
+                    .copied()
+                    .filter(|&c| self.pick_onto_battlefield_ok(c, picked, *creature_and_land))
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
             Decision::SacrificeOneOf { cards } => cards.iter().copied().map(Action::Pick).collect(),
             Decision::ReturnOtherPermanent { except } => {
                 let mut v: Vec<Action> = self.players[p]
@@ -6999,6 +7191,15 @@ impl Game {
                     .copied()
                     .filter(|&c| c != *except && self.def_of(c).types.is_permanent())
                     .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
+            Decision::ChooseNewTarget { item, slot } => {
+                let mut v: Vec<Action> = self
+                    .new_target_options(*item, *slot as usize)
+                    .into_iter()
+                    .map(Action::Target)
                     .collect();
                 v.push(Action::No);
                 v
@@ -7989,6 +8190,57 @@ impl Game {
                         self.ask(p, Decision::LandsFromHand);
                     }
                 }
+            }
+            (
+                Decision::PutPicksOntoBattlefield {
+                    mut cards,
+                    mut picked,
+                    left,
+                    creature_and_land,
+                    rest_bottom,
+                },
+                choice,
+            ) => {
+                let mut more = false;
+                if let Action::Pick(c) = choice {
+                    cards.retain(|&x| x != c);
+                    picked.push(c);
+                    self.move_to(c, Zone::Battlefield);
+                    let left = left.saturating_sub(1);
+                    more = left > 0
+                        && cards
+                            .iter()
+                            .any(|&x| self.pick_onto_battlefield_ok(x, &picked, creature_and_land));
+                    if more {
+                        self.ask(
+                            p,
+                            Decision::PutPicksOntoBattlefield {
+                                cards: cards.clone(),
+                                picked,
+                                left,
+                                creature_and_land,
+                                rest_bottom,
+                            },
+                        );
+                    }
+                }
+                if !more && rest_bottom {
+                    let rest: Vec<ObjId> = cards
+                        .into_iter()
+                        .filter(|&x| self.obj(x).zone == Zone::Library)
+                        .collect();
+                    self.put_among_rest(p, rest, false);
+                }
+            }
+            (Decision::ChooseNewTarget { item, slot }, choice) => {
+                if let Action::Target(t) = choice {
+                    let chosen = match t {
+                        Target::Player(q) => Chosen::Player(q),
+                        Target::Object(x) => Chosen::Object(x, self.obj(x).zcc),
+                    };
+                    self.items[item].targets[slot as usize] = chosen;
+                }
+                self.ask_new_target(p, item, slot as usize + 1);
             }
             (d, a) => unreachable!("legal action {a:?} unhandled for {d:?}"),
         }
@@ -9437,11 +9689,110 @@ impl Game {
                     );
                 }
             }
+            Effect::TransformSelf => {
+                let d = &self.defs[self.obj(src).def];
+                if self.obj(src).zone == Zone::Battlefield && d.back.is_some() {
+                    let o = self.obj_mut(src);
+                    o.transformed = !o.transformed;
+                }
+            }
+            Effect::ReturnSelfTappedTransformed => {
+                if self.obj(src).zone == Zone::Graveyard && self.defs[self.obj(src).def].back.is_some() {
+                    self.obj_mut(src).transformed = true;
+                    self.move_to(src, Zone::Battlefield);
+                    if self.obj(src).zone == Zone::Battlefield {
+                        self.obj_mut(src).tapped = true;
+                    } else {
+                        self.obj_mut(src).transformed = false;
+                    }
+                }
+            }
+            Effect::ExileSelfReturn { transformed } => {
+                if self.obj(src).zone == Zone::Battlefield {
+                    self.move_to(src, Zone::Exile);
+                    // CR 712.14: only a double-faced card can return transformed.
+                    if self.obj(src).zone == Zone::Exile
+                        && (!transformed || self.defs[self.obj(src).def].back.is_some())
+                    {
+                        self.obj_mut(src).transformed = transformed;
+                        self.move_to(src, Zone::Battlefield);
+                        if self.obj(src).zone != Zone::Battlefield {
+                            self.obj_mut(src).transformed = false;
+                        }
+                    }
+                }
+            }
+            Effect::RevealAmountPutCreatureAndLand => {
+                let p = item.controller;
+                let cards: Vec<ObjId> = self.players[p]
+                    .library
+                    .iter()
+                    .rev()
+                    .take(item.amount.max(0) as usize)
+                    .copied()
+                    .collect();
+                if !cards.is_empty() {
+                    self.ask(
+                        p,
+                        Decision::PutPicksOntoBattlefield {
+                            cards,
+                            picked: Vec::new(),
+                            left: 2,
+                            creature_and_land: true,
+                            rest_bottom: true,
+                        },
+                    );
+                }
+            }
+            Effect::MillPutCreatures { n, up_to } => {
+                let p = item.controller;
+                let mut milled = Vec::new();
+                for _ in 0..n {
+                    if let Some(&c) = self.players[p].library.last() {
+                        self.move_to(c, Zone::Graveyard);
+                        if self.obj(c).zone == Zone::Graveyard {
+                            milled.push(c);
+                        }
+                    }
+                }
+                let cards: Vec<ObjId> = milled
+                    .into_iter()
+                    .filter(|&c| self.def_of(c).types.creature)
+                    .collect();
+                if !cards.is_empty() && up_to > 0 {
+                    self.ask(
+                        p,
+                        Decision::PutPicksOntoBattlefield {
+                            cards,
+                            picked: Vec::new(),
+                            left: up_to,
+                            creature_and_land: false,
+                            rest_bottom: false,
+                        },
+                    );
+                }
+            }
             Effect::DrawThenSourceOnTop => {
                 let p = item.controller;
                 self.draw(p);
                 if self.obj(src).zone == Zone::Battlefield {
                     self.move_to(src, Zone::Library);
+                }
+            }
+            Effect::GrantFightAbilityEot => {
+                // CR 611.2c: the creatures you control as it resolves.
+                let turn = self.turn;
+                let mine: Vec<ObjId> = self.creatures(item.controller).collect();
+                for c in mine {
+                    let zcc = self.obj(c).zcc;
+                    self.granted_fight.push((c, zcc, turn));
+                }
+            }
+            Effect::ChangeTargets(slot) => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    if let Some(i) = self.targeted_item(id) {
+                        self.ask_new_target(item.controller, i, 0);
+                    }
                 }
             }
             Effect::CreatureFromHandOrGraveyardMvAtMostLands => {

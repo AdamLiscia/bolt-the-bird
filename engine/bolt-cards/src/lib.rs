@@ -110,6 +110,24 @@ pub struct Oracle {
     /// The Omen half of a Tarkir: Dragonstorm Omen card.
     #[serde(default)]
     pub omen: Option<OmenFace>,
+    /// The back face of a transforming double-faced card (CR 712).
+    #[serde(default)]
+    pub back: Option<BackFace>,
+}
+
+/// A double-faced card's back face, as Scryfall describes it (`scripts/fetch_oracle.py`).
+#[derive(Clone, Debug, Deserialize)]
+pub struct BackFace {
+    pub name: String,
+    pub mana_cost: Option<String>,
+    pub type_line: String,
+    pub oracle_text: Option<String>,
+    pub power: Option<String>,
+    pub toughness: Option<String>,
+    #[serde(default)]
+    pub colors: Vec<String>,
+    #[serde(default)]
+    pub loyalty: Option<String>,
 }
 
 /// An Omen card's spell half, as Scryfall describes it.
@@ -382,6 +400,8 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         flashback_sacrifice: 0,
         pitch_not_your_turn: None,
         last_mode_needs_commander: false,
+        back: None,
+        alt_cost_needs_commander: false,
     };
     def.color_identity = color_identity(o);
     // An Omen's spell half: its lines must be claimed too, written "Omen: <line>" in the script.
@@ -390,6 +410,33 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
             abilities(face.oracle_text.as_deref().unwrap_or(""))
                 .into_iter()
                 .map(|l| format!("Omen: {l}")),
+        );
+    }
+    // A transforming card's back face: its own definition, with its lines claimed by the front's
+    // script, written "Back: <line>" (keyword-only lines are its keywords).
+    if let Some(b) = &o.back {
+        let face = Oracle {
+            name: b.name.clone(),
+            mana_cost: None,
+            type_line: b.type_line.clone(),
+            oracle_text: b.oracle_text.clone(),
+            power: b.power.clone(),
+            toughness: b.toughness.clone(),
+            rarity: o.rarity.clone(),
+            colors: b.colors.clone(),
+            loyalty: b.loyalty.clone(),
+            omen: None,
+            back: None,
+        };
+        let (mut back, _) = definition(&face, tokens);
+        back.cost = ManaCost::default();
+        back.color_identity = def.color_identity;
+        def.back = Some(Box::new(back));
+        rest.extend(
+            abilities(b.oracle_text.as_deref().unwrap_or(""))
+                .into_iter()
+                .filter(|l| keyword_line(l).is_none())
+                .map(|l| format!("Back: {l}")),
         );
     }
     let mut claimed = rest.is_empty();
@@ -437,6 +484,14 @@ pub fn color_identity(o: &Oracle) -> [bool; 5] {
     if let Some(face) = &o.omen {
         scan(face.mana_cost.as_deref().unwrap_or(""));
         scan(&abilities(face.oracle_text.as_deref().unwrap_or("")).join("\n"));
+    }
+    if let Some(face) = &o.back {
+        scan(&abilities(face.oracle_text.as_deref().unwrap_or("")).join("\n"));
+        for s in &face.colors {
+            if let Some(c) = s.chars().next().and_then(Color::from_symbol) {
+                id[c as usize] = true;
+            }
+        }
     }
     for s in &o.colors {
         if let Some(c) = s.chars().next().and_then(Color::from_symbol) {

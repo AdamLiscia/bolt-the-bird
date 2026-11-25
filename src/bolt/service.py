@@ -22,7 +22,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from bolt.practice import PracticeDraft
-from bolt.service_view import SET, actions, state
+from bolt.service_view import BACKS, SET, actions, back_image, state
 
 SETS = [SET]  # one set per process: BOLT_SET (default FDN); the Tarkir service runs on 8767 with TDM
 MAX_TURNS, MAX_MOVES = 200, 20_000
@@ -395,6 +395,10 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
         cards_ += [{"card_id": t["card_id"], "name": t["name"], "rarity": "token", "colors": t["colors"],
                     "types": t["types"], "image": t["image"], "token": True, "power": t["power"],
                     "toughness": t["toughness"]} for t in kit.tokens]  # fmt: skip
+        for c in cards_:  # double-faced cards: the back face too (docs/api.md)
+            if not c["token"] and c["name"] in BACKS:
+                c["back_name"] = BACKS[c["name"]]
+                c["back_image"] = back_image(c["name"])
         return {"cards": cards_}
 
     @router.post("/draft/picks")

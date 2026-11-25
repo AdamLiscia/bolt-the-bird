@@ -578,6 +578,24 @@ impl Game {
                     D::ShockLand { card } => e.set_item("card", one(*card))?,
                     D::SacrificeCreatures { left } => e.set_item("left", *left)?,
                     D::Search { what, .. } => e.set_item("what", format!("{what:?}"))?,
+                    D::PutPicksOntoBattlefield { cards, left, .. } => {
+                        e.set_item("cards", objs(cards))?;
+                        e.set_item("left", *left)?;
+                    }
+                    // Deflecting Swat: the spell or ability whose target may change, and that target.
+                    D::ChooseNewTarget { item, slot } => {
+                        if let Some(it) = g.items.get(*item) {
+                            e.set_item("card", one(it.source))?;
+                            e.set_item("slot", *slot)?;
+                            match it.targets.get(*slot as usize) {
+                                Some(bolt_core::Chosen::Object(x, _)) => e.set_item("current", one(*x))?,
+                                Some(bolt_core::Chosen::Player(q)) => {
+                                    e.set_item("current_player", *q as i64)?
+                                }
+                                None => {}
+                            }
+                        }
+                    }
                     _ => {}
                 }
                 d.set_item("decision", e)?;
@@ -664,6 +682,8 @@ impl Game {
             e.set_item("loyalty", o.loyalty)?;
             e.set_item("attached_to", o.attached_to.map(|(a, _)| id(a)))?;
             e.set_item("entered_turn", o.since_turn)?;
+            // A transformed double-faced permanent shows its back face (`card` stays the card).
+            e.set_item("transformed", o.transformed)?;
             field.append(e)?;
         }
         d.set_item("battlefield", field)?;

@@ -516,6 +516,24 @@ Every game object that is a commander also carries `"commander": true` and `"own
 zone the view shows (battlefield, stack, graveyard, exile, command), so the page can badge it without
 matching names.
 
+**Double-faced cards** (2026-11-25; Ojer Kaslem, Vorinclex). A transforming card keeps its one
+`card_id` and its full `"Front // Back"` name on both faces. Additive fields:
+
+- `GET /v1/cards`: a double-faced card's entry also has `back_name` (the back face's name) and
+  `back_image` (Scryfall's by-name image link with `face=back`).
+- Every view object of a double-faced card, in every zone, has `face` (`"front"`, or `"back"` while
+  a permanent is transformed) and `back` (`{"name", "image"}`). Off the battlefield it's always
+  `"front"`; a transformed permanent that leaves turns front face up.
+
+**Changing targets** (Deflecting Swat: "You may choose new targets for target spell or ability").
+`pending.choice` `ChooseNewTarget`, asked once per target of that spell or ability that has another
+legal target, with `card` the spell or ability's source. Answered with the usual moves: `Target` /
+`TargetPlayer` labelled "Change the target of <X> to <Y>", or `No`, "Keep the targets". An ability on
+the stack is targeted through its source: a `Target` move naming the source object means that
+source's topmost ability on the stack. `PutPicksOntoBattlefield` (Ojer Kaslem's revealed cards, The
+Grand Evolution's milled ones): `cards`, `left`; `Pick` moves "Put onto the battlefield: X", `No`
+"Done choosing".
+
 `GET /v1/cards?set=BLC` lists the 300 non-basic cards of the four precons plus their tokens, with the
 same fields as FDN. `GET /v1/precons?set=BLC` lists the four decks (name, commander, 99 cards) as the
 handoff file has them, so Nerd Leagues can offer "play a precon" without building decks itself.
