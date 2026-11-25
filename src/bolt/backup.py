@@ -1,8 +1,8 @@
 """Back up checkpoints to Adam's S3 bucket (put-only: the credentials can't delete, by design).
 
-Off unless BOLT_BACKUP=1 is set, so nothing leaves the machine until Adam has turned it on.
+On by default (Adam approved the bucket 2026-11-25); BOLT_BACKUP=0 turns it off for a run.
 
-    BOLT_BACKUP=1 python -m bolt.backup sync [--until 14:30] [--dry-run]
+    python -m bolt.backup sync [--until 14:30] [--dry-run]
 
 Training scripts call `upload_quietly(path)` after saving a checkpoint; it never raises, so a failed
 upload can't fail a run. Every attempt is logged to checkpoints/UPLOADED.jsonl.
@@ -26,7 +26,7 @@ _lock = threading.Lock()
 
 
 def enabled() -> bool:
-    return os.environ.get("BOLT_BACKUP") == "1"
+    return os.environ.get("BOLT_BACKUP", "1") != "0"
 
 
 def _client():
@@ -84,7 +84,7 @@ def sync(until: str | None, dry_run: bool) -> None:
         print(f"{len(files)} files, {sum(p.stat().st_size for p in files) / 2**30:.2f} GiB (dry run, no network)")
         return
     if not enabled():
-        sys.exit("backup is off: set BOLT_BACKUP=1 once Adam has approved it")
+        sys.exit("backup is off for this run (BOLT_BACKUP=0)")
     client = _client()
     remote = _remote_sizes(client)
     stop = None
