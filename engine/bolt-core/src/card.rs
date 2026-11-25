@@ -206,6 +206,9 @@ pub struct Activated {
     pub from_hand_discard: bool,
     /// The stack item's amount is the sacrificed creature's power (Greater Good).
     pub amount_from_victim_power: bool,
+    /// "Sacrifice a [subtype]" in the cost (Siege-Gang Commander: "Sacrifice a Goblin"); the source
+    /// itself counts if it has the subtype. Activated with `Action::ActivateWith`.
+    pub sacrifice_subtype: Option<&'static str>,
     /// "Sacrifice a creature" in the cost: any creature you control, this one included.
     pub sacrifice_creature: bool,
 }

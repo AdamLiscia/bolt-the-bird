@@ -216,3 +216,21 @@ Round 2 (after the chunk 1 merge, e5c03c9): the cards left on the list after Ins
 (Misty Rainforest, Arid Mesa, Emergent Ultimatum, Ruinous Ultimatum) all need core, and every
 earlier card on the list was already assessed. No new cards were scripted; the list is used up.
 - Scavenger Regent: an X cost on an Omen half needs a new `Action` and a change to the Python action encoding; it also needs ward—discard.
+
+## BLC 2026-11-25
+
+Lane B's half of `~/bolt-handoff/blc_lanes_2026-11-25.json` ("B", 76 names), worked top-down.
+
+### Batch 8: 12 cards
+
+Thriving Grove, Game Trail (the lead's `enters_tapped_unless_reveal`), Talisman of Resilience
+(`pain_colored` on an artifact), Unnatural Growth, Siege-Gang Commander, Thopter Engineer, Devilish
+Valet, Steelburr Champion, Prosperous Bandit, Curiosity Crafter, Triskaidekaphile, Murmuration.
+
+Core:
+- `Activated::sacrifice_subtype` ("Sacrifice a Goblin"; the source counts if it has the type),
+  activated with `Action::ActivateWith` like `sacrifice_token`.
+- `Scope::YourArtifactCreatures`; `Condition::HandSizeExactly`.
+- `When::OpponentCastsNoncreature`, `When::YourCreatureTokenDealsCombatDamageToPlayer`.
+- `Effect::DoublePowerSelf`, `CreateTokensAmountTapped`, `WinTheGame`, `CreateTokensPerSpellCastThisTurn`.
+- Tokens: Thopter (1/1 flying artifact), Storm Crow (1/2 flying Bird).
