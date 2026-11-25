@@ -16,6 +16,27 @@ A handoff file in `handoff/lanes/<lane>.json` on `tarkir`:
 Script the `cards` in order, in your module (`engine/bolt-cards/src/scripts/<module>.rs`), with tests in
 `engine/bolt-cards/tests/<module>.rs`. Both files already exist and are wired in; you only add to them.
 
+## The standing queue: keep going without waiting
+
+`handoff/lanes/queue.json` lists every remaining playgroup deck through round 5, **each owned by one
+lane** (`"lane": "d1"`, ...). Ownership is fixed in the file, so two lanes can never pick the same deck:
+
+1. Finish your first assignment (`handoff/lanes/<lane>.json`).
+2. Then take **your own** decks from `queue.json`, top to bottom. Don't take another lane's deck.
+3. Skip any card `set_support` already shows as `yes`. Another lane may have done it, since decks share
+   cards; each card is listed under only its first deck.
+4. When a deck's cards all play (or are only "needs core" skips), report "<Deck> (<owner>): scripted,
+   <n> needs core" and start your next deck.
+5. When your decks run out, report "lane done". The lead may move decks between lanes in `queue.json`
+   (pull `origin/tarkir` before starting each deck).
+
+**Cards that need engine core** go to the lead in your report, never into `queue.json`. The lead adds them
+to `handoff/lanes/needs_core.json`, which the Mac lanes work through.
+
+**Stop:** at the end of round 5 (all of your decks done), and report. **Pause:** 05:00–10:00 ET (the daily
+jobs), during Adam's streams, and on the desktop while Adam is gaming, when he or the orchestrator says so.
+Finish or commit the current card first.
+
 ## Setting up
 
 ```bash
