@@ -39,11 +39,10 @@ def main():
     if a.ckpt:
         import torch
 
-        from bolt.play_net import PlayNet
-
         c = torch.load(a.ckpt, map_location="cpu", weights_only=False)
-        net = PlayNet(**c["config"])
-        net.load_state_dict(c["model"])
+        from bolt.play_net import load_checkpoint
+
+        net = load_checkpoint(c)
         net.eval()
     out = ROOT / a.out
     out.mkdir(parents=True, exist_ok=True)

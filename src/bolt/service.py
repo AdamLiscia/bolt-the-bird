@@ -135,7 +135,6 @@ def load_kit() -> Kit:
     from bolt.data import ASSETS, ROOT
     from bolt.judge import DeckJudge
     from bolt.models import DraftTransformer
-    from bolt.play_net import PlayNet
 
     info = CardInfo()
     ck = ROOT / "checkpoints"
@@ -150,8 +149,9 @@ def load_kit() -> Kit:
     images = json.loads((ROOT / "practice" / "fdn_images.json").read_text())
     tokens = json.loads((ASSETS / "FDN_token_images.json").read_text())
     c = torch.load(ck / "play" / "play_v3_ppo4_i170.pt", map_location="cpu", weights_only=False)
-    net = PlayNet(**c["config"])
-    net.load_state_dict(c["model"])
+    from bolt.play_net import load_checkpoint
+
+    net = load_checkpoint(c)
     return Kit(info=info, bolt=load(DraftTransformer, "bot_ppo.pt"), human=load(DraftTransformer, "human_model.pt"),
                judge=load(DeckJudge, "judge_b.pt"), packs=np.load(ASSETS / "FDN_sample_packs.npy"), net=net.eval(),
                models={"drafter": "bot_ppo.pt", "human_drafter": "human_model.pt",
