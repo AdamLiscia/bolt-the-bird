@@ -322,6 +322,26 @@ pub fn script(name: &str) -> Option<Script> {
                 loyalty(d, -8, Ability::new(vec![], vec![Effect::ReturnPermanentCardsToHand, Effect::Emblem(EmblemKind::NoMaxHandSize)]));
             },
         ),
+        "Nissa of Shadowed Boughs" => s(
+            &[
+                "Landfall — Whenever a land you control enters, put a loyalty counter on Nissa.",
+                "+1: Untap target land you control. You may have it become a 3/3 Elemental creature with haste and menace until end of turn. It's still a land.",
+                "−5: You may put a creature card with mana value less than or equal to the number of lands you control onto the battlefield from your hand or graveyard with two +1/+1 counters on it.",
+            ],
+            |d, _| {
+                on(d, When::LandYouControlEnters, vec![], vec![Effect::LoyaltySelf(1)]);
+                let land = Filter { players: false, creatures: false, planeswalkers: false, lands: true, controller: Controller::You, ..Filter::ANY };
+                let become_ = Effect::SlotBecomesCreatureUntilEot {
+                    slot: 0,
+                    power: 3,
+                    toughness: 3,
+                    subtype: "Elemental",
+                    keywords: Keywords::HASTE.with(Keywords::MENACE),
+                };
+                loyalty(d, 1, Ability::new(vec![land], vec![Effect::UntapTarget(0), Effect::MayContinue, become_]));
+                loyalty(d, -5, Ability::new(vec![], vec![Effect::CreatureFromHandOrGraveyardMvAtMostLands]));
+            },
+        ),
         _ => None,
     }
 }
@@ -374,4 +394,5 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "The Gitrog Monster",
     "Colossal Grave-Reaver",
     "Wrenn and Seven",
+    "Nissa of Shadowed Boughs",
 ];

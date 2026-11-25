@@ -818,3 +818,32 @@ fn wrenn_and_seven_digs_for_lands_drops_them_and_makes_a_treefolk() {
     assert_eq!(g.power(t[0]) as usize, lands + 2);
     assert!(g.keywords(t[0]).has(Keywords::REACH));
 }
+
+#[test]
+fn nissa_of_shadowed_boughs_grows_on_landfall_animates_a_land_and_cheats_a_creature() {
+    let mut g = table();
+    let n = hand(&mut g, 0, "Nissa of Shadowed Boughs");
+    play(&mut g, n, false, &[], &[]);
+    assert_eq!(g.obj(n).loyalty, 4);
+    let f = hand(&mut g, 0, "Forest");
+    act(&mut g, Action::PlayLand(f));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(n).loyalty, 5, "landfall");
+    let tapped = g
+        .permanents(0)
+        .find(|&x| g.types_of(x).land && g.obj(x).tapped)
+        .expect("paid for Nissa");
+    act(&mut g, Action::Loyalty(n, 0));
+    act(&mut g, Action::Target(obj(tapped)));
+    resolve_all(&mut g, &[Action::Yes]);
+    assert!(!g.obj(tapped).tapped);
+    assert!(g.types_of(tapped).creature && g.types_of(tapped).land);
+    assert_eq!(g.power(tapped), 3);
+    assert_eq!(g.obj(n).loyalty, 6);
+    let big = g.add_card(0, cid("Garruk's Packleader"), Zone::Graveyard);
+    to_main1(&mut g, 5, 0);
+    act(&mut g, Action::Loyalty(n, 1));
+    resolve_all(&mut g, &[Action::Pick(big)]);
+    assert_eq!(g.obj(big).zone, Zone::Battlefield);
+    assert_eq!(g.power(big), 6, "two +1/+1 counters");
+}

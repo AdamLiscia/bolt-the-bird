@@ -1188,6 +1188,9 @@ pub enum Effect {
     /// Rebound (CR 702.88): cast from hand, the spell is exiled as it resolves; at the beginning of
     /// your next upkeep, you may cast it from exile without paying its mana cost.
     Rebound,
+    /// You may put a creature card with mana value at most the lands you control from your hand or
+    /// graveyard onto the battlefield with two +1/+1 counters (Nissa of Shadowed Boughs).
+    CreatureFromHandOrGraveyardMvAtMostLands,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1382,6 +1385,8 @@ pub enum LookTo {
     PlayFromExileThisTurn,
     /// Onto the battlefield tapped.
     BattlefieldTapped,
+    /// Onto the battlefield with two +1/+1 counters.
+    BattlefieldTwoCounters,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
