@@ -323,6 +323,8 @@ pub struct CardDef {
     pub enters_tapped_unless: Option<[&'static str; 2]>,
     /// "Creatures with power less than this creature's power can't block it."
     pub not_blocked_by_lesser_power: bool,
+    /// "Activated abilities of artifacts, creatures, and planeswalkers can't be activated."
+    pub stops_activated_abilities: bool,
 }
 
 /// An Omen spell half: its name, cost, whether it's an instant, and what it does.
@@ -428,6 +430,7 @@ impl CardDef {
             subtype_enters_with_counter: None,
             enters_tapped_unless: None,
             not_blocked_by_lesser_power: false,
+            stops_activated_abilities: false,
         }
     }
 
@@ -512,6 +515,7 @@ impl CardDef {
             subtype_enters_with_counter: None,
             enters_tapped_unless: None,
             not_blocked_by_lesser_power: false,
+            stops_activated_abilities: false,
         }
     }
 
@@ -596,6 +600,7 @@ impl CardDef {
             subtype_enters_with_counter: None,
             enters_tapped_unless: None,
             not_blocked_by_lesser_power: false,
+            stops_activated_abilities: false,
         }
     }
 }

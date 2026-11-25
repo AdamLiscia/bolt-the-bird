@@ -605,6 +605,18 @@ pub enum Effect {
     /// "Draw a card if you control a creature with a counter on it. If you don't draw a card this
     /// way, put a +1/+1 counter on this creature." (Trade Route Envoy)
     DrawIfCounterElseCounterSelf,
+    /// "The next spell you cast this turn can't be countered." (Mistrise Village)
+    NextSpellUncounterable,
+    /// Tap the source ("Tap it.").
+    TapSelf,
+    /// The player in `slot` exiles a creature they control of their choice (Strategic Betrayal).
+    PlayerExilesCreature(u8),
+    /// The source deals damage equal to the power of the card in slot `card` to the target in slot
+    /// `to` (Lie in Wait); nothing if that card's target became illegal.
+    DamageEqualCardPower {
+        card: u8,
+        to: u8,
+    },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -623,6 +635,8 @@ pub enum SearchFor {
         types: [bool; 5],
         basic: bool,
     },
+    /// A card with one of these names.
+    Named(&'static [&'static str]),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -680,6 +694,8 @@ pub enum StaticCondition {
     LifeAtLeast(i32),
     /// Its controller controls a creature with a counter (of any kind) on it.
     ControlCreatureWithCounter,
+    /// The source hasn't dealt damage since it entered the battlefield (Karakyk Guardian).
+    HasntDealtDamage,
 }
 
 /// A static ability that changes characteristics (CR 604, 613 layers 6 and 7c).
@@ -788,6 +804,10 @@ pub enum Condition {
     Kicked,
     /// You control a creature with a counter (of any kind) on it.
     ControlCreatureWithCounter,
+    /// "If you cast it": the source entered the battlefield as a resolving spell.
+    CastIt,
+    /// You've cast two or more spells this turn.
+    CastTwoSpellsThisTurn,
 }
 
 /// A spell's effect or a triggered ability: target slots, then effects in order.
