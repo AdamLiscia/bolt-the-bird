@@ -109,6 +109,7 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
     yes = kind == "Yes"
     labels = {
         "Surveil": (f"Put {subject} into your graveyard", f"Keep {subject} on top"),
+        "Scry": (f"Put {subject} on the bottom", f"Keep {subject} on top"),
         "Tuck": (f"Put {subject} on top of your library", f"Put {subject} on the bottom"),
         "May": (f"{src}: yes", f"{src}: no"),
         "MayPay": (f"Pay {dec.get('cost', '')} ({src})", "Don't pay"),
@@ -142,7 +143,7 @@ def actions(obs: dict, me: int) -> list[dict]:
             label = _decision_label(dec, kind, a, names[0] if names else "") or label
             if kind in ("Yes", "No") and not objects:
                 oid, subject = _subject(dec)  # the card the yes/no is about (surveil, tuck, ward)
-                if oid is not None and dec.get("kind") in ("Surveil", "Tuck", "PayWard", "PayWardLife", "PayOrCountered", "SplitPiles"):
+                if oid is not None and dec.get("kind") in ("Surveil", "Scry", "Tuck", "PayWard", "PayWardLife", "PayOrCountered", "SplitPiles"):
                     objects, names = [oid], [subject]
         act = {"index": k, "kind": kind, "label": label, "objects": objects, "cards": names}
         if kind == "TargetPlayer":

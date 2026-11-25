@@ -464,7 +464,7 @@ impl Game {
                         e.set_item("card", one(*card))?;
                         e.set_item("options", options.clone())?;
                     }
-                    D::Surveil { cards } if mine => e.set_item("cards", objs(cards))?,
+                    D::Surveil { cards } | D::Scry { cards } if mine => e.set_item("cards", objs(cards))?,
                     D::Tuck { card } if mine => e.set_item("card", one(*card))?,
                     D::LookPick { cards, .. } if mine => e.set_item("cards", objs(cards))?,
                     D::GenesisPick { cards, x } => {

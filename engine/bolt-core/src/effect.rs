@@ -246,6 +246,11 @@ pub enum Effect {
     Surveil {
         n: u8,
     },
+    /// Scry: look at the top `n`; put any number on the bottom, the rest back on top (CR 701.22). Kept
+    /// cards stay in their order (a simplification: no reordering).
+    Scry {
+        n: u8,
+    },
     /// Search your library, then shuffle (CR 701.19). With kicker paid, `kicked_n` replaces `n`.
     Search {
         what: SearchFor,
@@ -334,6 +339,8 @@ pub enum Effect {
     MaySacrificeAnother,
     /// Return the source from your graveyard to the battlefield tapped.
     ReturnSelfTapped,
+    /// Return the source from your graveyard to your hand.
+    ReturnSelfToHand,
     /// Look at the top `n` cards of your library; you may pick one that matches `pick` and put it
     /// `chosen_to`; the rest go `rest_to`.
     LookAtTop {

@@ -133,6 +133,14 @@ pub enum Reduction {
     TotalPowerOfYourCreatures,
     /// ... {1} less for each attacking creature you control.
     PerAttackingCreature,
+    /// ... {n} less if you've cast another spell this turn.
+    IfCastAnotherSpell(u8),
+    /// ... {1} less for each attacking creature, anyone's (Static Snare).
+    PerAnyAttackingCreature,
+    /// ... {1} less for each creature you control (affinity for creatures).
+    PerCreatureYouControl,
+    /// ... {n} MORE if it targets a permanent with this subtype (Dragon's Prey).
+    MoreIfTargetsSubtype(&'static str, u8),
 }
 
 /// An activated ability: "[cost]: [effect]" (CR 602).
@@ -200,6 +208,10 @@ pub struct CardDef {
     pub doesnt_untap: bool,
     /// "Instant and sorcery spells you cast cost {N} less to cast."
     pub spell_discount: u8,
+    /// "The second spell you cast each turn costs {n} less to cast." (Highspire Bell-Ringer)
+    pub second_spell_discount: u8,
+    /// "{1}: Add {A}, {B}, or {C}. Activate only once each turn." (the Devotees): the colors.
+    pub filter_mana: Option<[bool; 5]>,
     /// Doubling Season: tokens you'd create and counters you'd put on your permanents are doubled
     /// (CR 614.1a).
     pub doubles_tokens_and_counters: bool,
@@ -383,6 +395,8 @@ impl CardDef {
             loyalty: None,
             loyalty_abilities: Vec::new(),
             behold: Behold::No,
+            second_spell_discount: 0,
+            filter_mana: None,
             subtype_enters_with_counter: None,
         }
     }
@@ -460,6 +474,8 @@ impl CardDef {
             loyalty: None,
             loyalty_abilities: Vec::new(),
             behold: Behold::No,
+            second_spell_discount: 0,
+            filter_mana: None,
             subtype_enters_with_counter: None,
         }
     }
@@ -537,6 +553,8 @@ impl CardDef {
             loyalty: None,
             loyalty_abilities: Vec::new(),
             behold: Behold::No,
+            second_spell_discount: 0,
+            filter_mana: None,
             subtype_enters_with_counter: None,
         }
     }

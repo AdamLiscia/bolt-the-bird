@@ -782,3 +782,136 @@ fn shock_brigade_and_dragonback_lancer_mobilize_one() {
         assert_eq!(tokens(&g, 0, "Warrior").len(), 1, "{name}");
     }
 }
+
+// ---- batch 5: the Devotees' mana, costs less (and more), scry ----
+
+fn paid(g: &mut Game, f: impl FnOnce(&mut Game)) -> usize {
+    let before = untapped_lands(g, 0);
+    f(g);
+    before - untapped_lands(g, 0)
+}
+
+#[test]
+fn a_devotee_fixes_one_colored_pip_once_each_turn() {
+    let mut g = tdm_lands(&[
+        "Plains", "Plains", "Plains", "Plains", "Plains", "Plains", "Plains", "Plains", "Plains", "Plains",
+    ]);
+    let serpent = hand(&mut g, 0, "Iceridge Serpent"); // {4}{U}
+    let elder = hand(&mut g, 0, "Humbling Elder"); // {U}
+    begin(&mut g);
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(serpent)),
+        "no blue source"
+    );
+    put(&mut g, 0, "Sultai Devotee"); // {1}: Add {B}, {G}, or {U}
+    assert!(g.legal_actions().contains(&Action::Cast(serpent)));
+    assert!(g.legal_actions().contains(&Action::Cast(elder)));
+    let n = paid(&mut g, |g| play(g, serpent, false, &[], &[]));
+    assert_eq!(n, 5, "{{4}} plus the {{1}} the Devotee turned blue");
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(elder)),
+        "only once each turn"
+    );
+}
+
+#[test]
+fn abzan_devotee_returns_from_the_graveyard() {
+    let mut g = table();
+    let d = g.add_card(0, tid("Abzan Devotee"), Zone::Graveyard);
+    begin(&mut g);
+    act(&mut g, Action::Activate(d, 0)); // its only activated ability (the mana is built into payment)
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(d).zone, Zone::Hand);
+}
+
+#[test]
+fn mardu_devotee_scries_two() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Mardu Devotee");
+    begin(&mut g);
+    let top: Vec<ObjId> = g.players[0].library.iter().rev().take(2).copied().collect();
+    play(&mut g, c, false, &[], &[Action::Yes, Action::No]);
+    assert_eq!(g.players[0].library[0], top[0], "the first to the bottom");
+    assert_eq!(
+        *g.players[0].library.last().unwrap(),
+        top[1],
+        "the second kept on top"
+    );
+}
+
+#[test]
+fn focus_the_mind_is_cheaper_after_another_spell() {
+    let mut g = table();
+    let f1 = hand(&mut g, 0, "Focus the Mind");
+    let junk = hand(&mut g, 0, "Plains");
+    begin(&mut g);
+    let n = paid(&mut g, |g| play(g, f1, false, &[], &[Action::Discard(junk)]));
+    assert_eq!(n, 5, "first spell: full price");
+    let f2 = hand(&mut g, 0, "Focus the Mind");
+    let junk2 = hand(&mut g, 0, "Plains");
+    let n = paid(&mut g, |g| play(g, f2, false, &[], &[Action::Discard(junk2)]));
+    assert_eq!(n, 3, "{{2}} less after another spell");
+}
+
+#[test]
+fn salt_road_packbeast_has_affinity_for_creatures() {
+    let mut g = table();
+    for _ in 0..3 {
+        put(&mut g, 0, "Humbling Elder");
+    }
+    let c = hand(&mut g, 0, "Salt Road Packbeast"); // {5}{W}
+    begin(&mut g);
+    let n = paid(&mut g, |g| play(g, c, false, &[], &[]));
+    assert_eq!(n, 3, "three creatures: {{2}}{{W}}");
+}
+
+#[test]
+fn highspire_bell_ringer_discounts_the_second_spell() {
+    let mut g = table();
+    put(&mut g, 0, "Highspire Bell-Ringer");
+    let a = hand(&mut g, 0, "Iceridge Serpent");
+    let b = hand(&mut g, 0, "Iceridge Serpent");
+    let c = hand(&mut g, 0, "Iceridge Serpent");
+    begin(&mut g);
+    assert_eq!(paid(&mut g, |g| play(g, a, false, &[], &[])), 5);
+    assert_eq!(
+        paid(&mut g, |g| play(g, b, false, &[], &[])),
+        4,
+        "the second spell"
+    );
+    assert_eq!(paid(&mut g, |g| play(g, c, false, &[], &[])), 5, "not the third");
+}
+
+#[test]
+fn dragons_prey_costs_more_against_a_dragon() {
+    let mut g = table();
+    let dragon = put(&mut g, 1, "Boulderborn Dragon");
+    let other = put(&mut g, 1, "Iceridge Serpent");
+    let a = hand(&mut g, 0, "Dragon's Prey");
+    let b = hand(&mut g, 0, "Dragon's Prey");
+    begin(&mut g);
+    assert_eq!(paid(&mut g, |g| play(g, a, false, &[obj(other)], &[])), 3);
+    assert_eq!(paid(&mut g, |g| play(g, b, false, &[obj(dragon)], &[])), 5);
+    assert_eq!(g.obj(dragon).zone, Zone::Graveyard);
+}
+
+#[test]
+fn static_snare_is_cheaper_for_each_attacker_and_exiles() {
+    let mut g = table();
+    let a = put(&mut g, 0, "Iceridge Serpent");
+    let b = put(&mut g, 0, "Humbling Elder");
+    let theirs = put(&mut g, 1, "Dragonstorm Globe");
+    let snare = hand(&mut g, 0, "Static Snare"); // {4}{W}, flash
+    g.start_turn(5, 0);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(a));
+    act(&mut g, Action::Attack(b));
+    act(&mut g, Action::FinishAttacks);
+    let n = paid(&mut g, |g| {
+        play(g, snare, false, &[], &[Action::Target(obj(theirs))])
+    });
+    assert_eq!(n, 3, "two attackers: {{2}}{{W}}");
+    assert_eq!(g.obj(theirs).zone, Zone::Exile);
+}

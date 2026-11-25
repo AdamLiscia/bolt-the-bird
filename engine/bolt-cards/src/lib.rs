@@ -269,6 +269,8 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
 
         loyalty_abilities: Vec::new(),
         behold: bolt_core::Behold::No,
+        second_spell_discount: 0,
+        filter_mana: None,
         subtype_enters_with_counter: None,
     };
     let mut claimed = rest.is_empty();

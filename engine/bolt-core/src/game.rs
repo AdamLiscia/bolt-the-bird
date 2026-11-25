@@ -140,6 +140,8 @@ pub struct Object {
     /// Bait counters (Fishing Pole) and a stash counter (Tinybones).
     pub bait: i32,
     pub stash: bool,
+    /// The turn this object's once-each-turn mana ability (the Devotees) was last used.
+    pub filter_used_turn: u32,
     /// A token that's a copy of a card (its definition isn't a token's).
     pub copy_token: bool,
     /// Sacrifice it at the beginning of the next end step (Electroduplicate).
@@ -564,6 +566,8 @@ pub enum Decision {
     PickDiscard { victim: PlayerId },
     /// Surveil: `Yes` puts the top of `cards` into the graveyard, `No` keeps it on top.
     Surveil { cards: Vec<ObjId> },
+    /// Scry: `Yes` puts the top of `cards` on the bottom of the library, `No` keeps it on top.
+    Scry { cards: Vec<ObjId> },
     /// `Pick` a matching library card, or `No` to find nothing (CR 701.19b).
     Search { what: SearchFor, to: SearchTo, left: u8 },
     /// `Yes` for the top of the library, `No` for the bottom.
@@ -669,6 +673,8 @@ pub struct Game {
     pub work: u64,
     /// Instants and sorceries each player has cast this turn.
     pub instants_sorceries_cast: [u32; 2],
+    /// Spells each player has cast this turn (all kinds).
+    pub spells_cast: [u32; 2],
     /// Permanent types (artifact, creature, enchantment, land, planeswalker) each player has
     /// played from their graveyard with Muldrotha this turn.
     pub graveyard_types_used: [[bool; 5]; 2],
@@ -821,6 +827,7 @@ impl Game {
             control_until_eot: Vec::new(),
             work: 0,
             instants_sorceries_cast: [0; 2],
+            spells_cast: [0; 2],
             graveyard_types_used: [[false; 5]; 2],
             cast_snapshots: Vec::new(),
             free_casts: Vec::new(),
@@ -912,6 +919,7 @@ impl Game {
             playable: None,
             bait: 0,
             stash: false,
+            filter_used_turn: 0,
             copy_token: false,
             sacrifice_at_end: false,
             graveyard_turn: 0,
@@ -2416,6 +2424,18 @@ impl Game {
             Some(Reduction::PerYouControl(sub)) => {
                 self.permanents(p).filter(|&x| self.has_subtype(x, sub)).count() as u8
             }
+            Some(Reduction::IfCastAnotherSpell(n)) => {
+                if self.spells_cast[p] > 0 {
+                    *n
+                } else {
+                    0
+                }
+            }
+            Some(Reduction::PerCreatureYouControl) => self.creatures(p).count().min(255) as u8,
+            Some(Reduction::PerAnyAttackingCreature) => {
+                self.combat.as_ref().map_or(0, |c| c.attackers.len()).min(255) as u8
+            }
+            Some(Reduction::MoreIfTargetsSubtype(..)) => 0,
             Some(Reduction::IfTargetsTapped(n)) => match targets.first() {
                 Some(&Chosen::Object(x, _)) if self.obj(x).tapped && self.types_of(x).creature => *n,
                 _ => 0,
@@ -2427,7 +2447,24 @@ impl Game {
         } else {
             0
         };
-        cost.generic = cost.generic.saturating_sub(less + discount);
+        // Highspire Bell-Ringer: "The second spell you cast each turn costs {1} less to cast."
+        let second: u8 = if self.spells_cast[p] == 1 {
+            self.permanents(p)
+                .map(|x| self.def_of(x).second_spell_discount)
+                .sum()
+        } else {
+            0
+        };
+        cost.generic = cost.generic.saturating_sub(less + discount + second);
+        // Dragon's Prey: "This spell costs {2} more to cast if it targets a Dragon."
+        if let Some(Reduction::MoreIfTargetsSubtype(sub, n)) = def.reduction {
+            let hits = targets
+                .iter()
+                .any(|t| matches!(t, &Chosen::Object(x, _) if self.has_subtype(x, sub)));
+            if hits {
+                cost.generic = cost.generic.saturating_add(n);
+            }
+        }
         if self.obj(c).stash {
             // "Mana of any type can be spent": colored pips become generic.
             cost.generic += cost.colored.iter().sum::<u8>();
@@ -2481,6 +2518,15 @@ impl Game {
 
     /// Pays `cost`, for casting `spell` if given (restricted mana can then help).
     fn pay_mana_for(&mut self, p: PlayerId, cost: &ManaCost, exclude: Option<ObjId>, spell: PayFor) {
+        let mut fixed = *cost;
+        if !self.can_pay_direct(p, cost, exclude, spell) {
+            // A Devotee turns one mana into one of its colors (once each turn).
+            if let Some((devotee, k)) = self.devotee_fix(p, cost, exclude, spell) {
+                self.obj_mut(devotee).filter_used_turn = self.turn;
+                fixed = k;
+            }
+        }
+        let cost = &fixed;
         let sources = self.payment_sources(p, exclude, spell);
         let pool = self.players[p].pool.clone();
         let all: Vec<ManaSource> = pool.iter().copied().chain(sources.iter().map(|s| s.1)).collect();
@@ -2638,6 +2684,41 @@ impl Game {
     }
 
     fn can_pay_for(&self, p: PlayerId, cost: &ManaCost, exclude: Option<ObjId>, spell: PayFor) -> bool {
+        self.can_pay_direct(p, cost, exclude, spell) || self.devotee_fix(p, cost, exclude, spell).is_some()
+    }
+
+    /// "{1}: Add {A}, {B}, or {C}. Activate only once each turn." (the Devotees): a Devotee not used
+    /// this turn lets one mana of any kind pay a colored pip of its colors. Returns the Devotee and
+    /// the cost with that pip turned into {1}, if that makes it payable.
+    fn devotee_fix(
+        &self,
+        p: PlayerId,
+        cost: &ManaCost,
+        exclude: Option<ObjId>,
+        spell: PayFor,
+    ) -> Option<(ObjId, ManaCost)> {
+        for id in self.permanents(p) {
+            let Some(colors) = self.def_of(id).filter_mana else {
+                continue;
+            };
+            if self.obj(id).filter_used_turn == self.turn || Some(id) == exclude || self.lost_abilities(id) {
+                continue;
+            }
+            for (c, &makes) in colors.iter().enumerate() {
+                if makes && cost.colored[c] > 0 {
+                    let mut k = *cost;
+                    k.colored[c] -= 1;
+                    k.generic += 1;
+                    if self.can_pay_direct(p, &k, exclude, spell) {
+                        return Some((id, k));
+                    }
+                }
+            }
+        }
+        None
+    }
+
+    fn can_pay_direct(&self, p: PlayerId, cost: &ManaCost, exclude: Option<ObjId>, spell: PayFor) -> bool {
         let sources: Vec<ManaSource> = self
             .payment_sources(p, exclude, spell)
             .into_iter()
@@ -3414,6 +3495,7 @@ impl Game {
                 });
             }
         }
+        self.spells_cast[p] += 1;
         self.fire(p, When::YouCast, None);
         self.ward_check(&item);
         let instant_or_sorcery = self.types_of(card).instant || self.types_of(card).sorcery;
@@ -3939,7 +4021,9 @@ impl Game {
     fn decision_actions(&self, p: PlayerId) -> Vec<Action> {
         let hand = &self.players[p].hand;
         match self.decision.as_ref().expect("a decision") {
-            Decision::May | Decision::Surveil { .. } | Decision::Tuck { .. } => vec![Action::Yes, Action::No],
+            Decision::May | Decision::Surveil { .. } | Decision::Scry { .. } | Decision::Tuck { .. } => {
+                vec![Action::Yes, Action::No]
+            }
             Decision::SacrificeCreatures { .. } => self.creatures(p).map(Action::Pick).collect(),
             Decision::ChooseColor { .. } => (0..5).map(Action::Mode).collect(),
             Decision::ChooseCreatureType { options, .. } => {
@@ -4293,6 +4377,19 @@ impl Game {
             }
             (Decision::Discard { .. }, Action::No) => {}
             (Decision::PickDiscard { .. }, Action::Pick(c)) => self.move_to(c, Zone::Graveyard),
+            (Decision::Scry { mut cards }, choice) => {
+                let card = cards.remove(0);
+                if choice == Action::Yes {
+                    let lib = &mut self.players[p].library;
+                    if let Some(pos) = lib.iter().position(|&x| x == card) {
+                        let c = lib.remove(pos);
+                        lib.insert(0, c);
+                    }
+                }
+                if !cards.is_empty() {
+                    self.ask(p, Decision::Scry { cards });
+                }
+            }
             (Decision::Surveil { mut cards }, choice) => {
                 let card = cards.remove(0);
                 if choice == Action::Yes {
@@ -4564,6 +4661,13 @@ impl Game {
                     if any {
                         self.ask(item.controller, Decision::PickDiscard { victim });
                     }
+                }
+            }
+            Effect::Scry { n } => {
+                let lib = &self.players[item.controller].library;
+                let cards: Vec<ObjId> = lib.iter().rev().take(n as usize).copied().collect();
+                if !cards.is_empty() {
+                    self.ask(item.controller, Decision::Scry { cards });
                 }
             }
             Effect::Surveil { n } => {
@@ -4838,6 +4942,11 @@ impl Game {
                     self.ask(item.controller, Decision::SacrificeAnother { source: src });
                 } else {
                     self.resolving.as_mut().expect("resolving").remaining.clear();
+                }
+            }
+            Effect::ReturnSelfToHand => {
+                if self.obj(src).zone == Zone::Graveyard {
+                    self.move_to(src, Zone::Hand);
                 }
             }
             Effect::ReturnSelfTapped => {
@@ -5777,6 +5886,7 @@ impl Game {
 
     fn begin_next_turn(&mut self) {
         self.instants_sorceries_cast = [0; 2];
+        self.spells_cast = [0; 2];
         self.graveyard_types_used = [[false; 5]; 2];
         self.cast_snapshots.clear();
         self.attacked_this_turn = [false; 2];

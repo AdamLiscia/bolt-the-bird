@@ -321,6 +321,15 @@ fn mobilize(d: &mut CardDef, t: &Tokens, n: Option<u8>) {
     );
 }
 
+/// "{1}: Add {A}, {B}, or {C}. Activate only once each turn." (the Devotees), colors in WUBRG order.
+fn devotee(d: &mut CardDef, colors: &[Color]) {
+    let mut m = [false; 5];
+    for &c in colors {
+        m[c as usize] = true;
+    }
+    d.filter_mana = Some(m);
+}
+
 fn modes(d: &mut CardDef, modes: Vec<Ability>) {
     d.modes = modes;
 }
@@ -3190,6 +3199,60 @@ pub fn script(name: &str) -> Option<Script> {
                 st.scale = Some(Scale::PerCreatureYouControl);
             },
         ),
+        // ---- TDM batch 5: the Devotees' mana, costs less (and more), scry ----
+        "Abzan Devotee" => s(
+            &["{1}: Add {W}, {B}, or {G}. Activate only once each turn.", "{2}{B}: Return this card from your graveyard to your hand."],
+            |d, _| {
+                devotee(d, &[Color::White, Color::Black, Color::Green]);
+                let n = activated(d, "{2}{B}", false, vec![], vec![Effect::ReturnSelfToHand]);
+                d.activated[n].from_graveyard = true;
+            },
+        ),
+        "Mardu Devotee" => s(
+            &["When this creature enters, scry 2.", "{1}: Add {R}, {W}, or {B}. Activate only once each turn."],
+            |d, _| {
+                on(d, When::Enters, vec![], vec![Effect::Scry { n: 2 }]);
+                devotee(d, &[Color::White, Color::Black, Color::Red]);
+            },
+        ),
+        "Sultai Devotee" => s(&["{1}: Add {B}, {G}, or {U}. Activate only once each turn."], |d, _| {
+            devotee(d, &[Color::Blue, Color::Black, Color::Green])
+        }),
+        "Temur Devotee" => s(&["{1}: Add {G}, {U}, or {R}. Activate only once each turn."], |d, _| {
+            devotee(d, &[Color::Blue, Color::Red, Color::Green])
+        }),
+        "Focus the Mind" => s(
+            &["This spell costs {2} less to cast if you've cast another spell this turn.", "Draw three cards, then discard a card."],
+            |d, _| {
+                d.reduction = Some(Reduction::IfCastAnotherSpell(2));
+                spell(d, vec![], vec![draw(3), discard(1)]);
+            },
+        ),
+        "Salt Road Packbeast" => s(&["Affinity for creatures", "When this creature enters, draw a card."], |d, _| {
+            d.reduction = Some(Reduction::PerCreatureYouControl);
+            on(d, When::Enters, vec![], vec![draw(1)]);
+        }),
+        "Highspire Bell-Ringer" => s(&["The second spell you cast each turn costs {1} less to cast."], |d, _| {
+            d.second_spell_discount = 1;
+        }),
+        "Dragon's Prey" => s(
+            &["This spell costs {2} more to cast if it targets a Dragon.", "Destroy target creature."],
+            |d, _| {
+                d.reduction = Some(Reduction::MoreIfTargetsSubtype("Dragon", 2));
+                spell(d, vec![CREATURE], vec![Effect::Destroy(0)]);
+            },
+        ),
+        "Static Snare" => s(
+            &[
+                "This spell costs {1} less to cast for each attacking creature.",
+                "When this enchantment enters, exile target artifact or creature an opponent controls until this enchantment leaves the battlefield.",
+            ],
+            |d, _| {
+                d.reduction = Some(Reduction::PerAnyAttackingCreature);
+                let f = Filter { artifacts: true, ..OPP_CREATURE };
+                on(d, When::Enters, vec![f], vec![Effect::ExileUntilSourceLeaves(0)]);
+            },
+        ),
         _ => None,
     }
 }
@@ -3513,4 +3576,13 @@ pub const TDM_SCRIPTED: &[&str] = &[
     "Venerated Stormsinger",
     "Bone-Cairn Butcher",
     "Zurgo's Vanguard",
+    "Abzan Devotee",
+    "Mardu Devotee",
+    "Sultai Devotee",
+    "Temur Devotee",
+    "Focus the Mind",
+    "Salt Road Packbeast",
+    "Highspire Bell-Ringer",
+    "Dragon's Prey",
+    "Static Snare",
 ];
