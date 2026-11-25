@@ -344,3 +344,30 @@ Cards: Toski, Bearer of Secrets, Tear Asunder, Ogre Slumlord, Tireless Provision
 Angel, Poison-Tip Archer, Shamanic Revelation, Stolen by the Fae, Time Wipe, Perplexing Test.
 
 Not attempted (Tarkir, judged too large for the time left): Naga Fleshcrafter (clones) and Taigam (suspend).
+
+## BLC 2026-11-25
+
+Lane C's list in ~/bolt-handoff/blc_lanes_2026-11-25.json ("C"), worked top-down.
+
+Batch 1 (11): Garruk's Packleader, Grim Backwoods, Talisman of Impulse, Thriving Bluff, Spine of Ish Sah,
+Windgrace's Judgment, Psychosis Crawler, Deadly Dispute, Martial Coup, Intellectual Offering, Morbid Opportunist.
+Core: `When::AnotherCreatureYouControlEntersWithPowerAtLeast`, `When::OtherCreaturesDieOnceEachTurn`,
+`Effect::DestroyAllCreaturesIfXAtLeast` (Martial Coup destroys before making its tokens, so they survive),
+`Effect::UntapAllNonland`, `ExtraCost::SacrificeArtifactOrCreature`, `CardDef::pt_hand_size`.
+
+Skipped so far (reason):
+- Academy Manufactor, Arthur, Cache Grab, Combat Celebrant (exert), Evercoat Ursine (hideaway), Fisher's and
+  Fortune Teller's Talent (Class levels), Hazel's Brewmaster, Echoing Assault, Coveted Jewel (control change on
+  unblocked attack): too large for this pass.
+- Casualties of War: "choose one or more" with one target each; the engine fills target slots in order with no
+  way to skip a slot, so choosing e.g. only the land mode isn't possible without a new Action.
+
+Batch 2 (9): Illusory Ambusher, Body of Knowledge, Tetsuko Umezawa, Deep Forest Hermit, Nadier's Nightblade,
+Junk Winder, Goreclaw, Grumgully, Chittering Witch.
+Core: `When::DealtDamage` (amount on the trigger), `When::TokenYouControlLeaves`, `When::TokenYouControlEnters`,
+`Effect::VanishingTick` (with `CardDef::vanishing`, using the object's `time_counters`, now cleared when it leaves
+the battlefield), `Effect::TapFreeze` (with `Object::skip_untap`: "doesn't untap during its controller's next
+untap step"), `Effect::PumpYoursPowerAtLeastAndGrant`, `Reduction::PerTokenYouControl`,
+`CardDef::{small_creatures_unblockable, big_creature_spell_discount, other_non_subtype_enters_with_counter}`,
+`Activated::sacrifice_creature` ("Sacrifice a creature", this one included). Chittering Witch's "number of
+opponents" is 1 in the 1v1 game.

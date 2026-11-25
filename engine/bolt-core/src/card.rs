@@ -116,6 +116,8 @@ pub enum ExtraCost {
     Discard,
     /// Sacrifice a creature, or pay this mana instead.
     SacrificeCreatureOrPay(ManaCost),
+    /// Sacrifice an artifact or creature (Deadly Dispute).
+    SacrificeArtifactOrCreature,
 }
 
 /// "This spell costs {N} less to cast if ..." (CR 601.2f).
@@ -145,6 +147,8 @@ pub enum Reduction {
     PerCreatureYouControlPowerAtLeast(i32),
     /// ... {1} less for each creature on the battlefield (Blasphemous Act).
     PerCreatureOnBattlefield,
+    /// ... {1} less for each token you control (affinity for tokens).
+    PerTokenYouControl,
     /// ... {1} less for each creature that attacked this turn (Rowdy Research).
     PerCreatureAttackedThisTurn,
 }
@@ -207,6 +211,8 @@ pub struct Activated {
     /// "Sacrifice a [subtype]" in the cost (Siege-Gang Commander: "Sacrifice a Goblin"); the source
     /// itself counts if it has the subtype. Activated with `Action::ActivateWith`.
     pub sacrifice_subtype: Option<&'static str>,
+    /// "Sacrifice a creature" in the cost: any creature you control, this one included.
+    pub sacrifice_creature: bool,
     /// "Activate only once each turn."
     pub once_each_turn: bool,
     /// Remove this many of the source's own kind of counters as a cost (Hoofprints of the Stag).
@@ -453,6 +459,17 @@ pub struct CardDef {
     /// The snarls: "As this land enters, you may reveal a [A] or [B] card from your hand. If you don't, it
     /// enters tapped." (revealed whenever there is one).
     pub enters_tapped_unless_reveal: Option<[&'static str; 2]>,
+    /// "Power and toughness are each equal to the number of cards in your hand."
+    pub pt_hand_size: bool,
+    /// "Creatures you control with power or toughness 1 or less can't be blocked." (Tetsuko)
+    pub small_creatures_unblockable: bool,
+    /// Vanishing N (CR 702.63): enters with N time counters (the upkeep removal is a trigger).
+    pub vanishing: u8,
+    /// "Creature spells you cast with power 4 or greater cost {N} less to cast." (Goreclaw)
+    pub big_creature_spell_discount: u8,
+    /// "Each other non-[subtype] creature you control enters with an additional +1/+1 counter on
+    /// it." (Grumgully: "Human")
+    pub other_non_subtype_enters_with_counter: Option<&'static str>,
     /// "Each player may play an additional land on each of their turns." (Rites of Flourishing)
     pub extra_land_drop_each_player: bool,
     /// Its colored mana works only while you control a permanent with this subtype (Tainted Wood:
@@ -600,6 +617,11 @@ impl CardDef {
             doubles_your_creatures_damage: false,
             paid_mana: None,
             enters_tapped_unless_reveal: None,
+            pt_hand_size: false,
+            small_creatures_unblockable: false,
+            vanishing: 0,
+            big_creature_spell_discount: 0,
+            other_non_subtype_enters_with_counter: None,
             extra_land_drop_each_player: false,
             colored_mana_only_if_you_control: None,
         }
@@ -723,6 +745,11 @@ impl CardDef {
             doubles_your_creatures_damage: false,
             paid_mana: None,
             enters_tapped_unless_reveal: None,
+            pt_hand_size: false,
+            small_creatures_unblockable: false,
+            vanishing: 0,
+            big_creature_spell_discount: 0,
+            other_non_subtype_enters_with_counter: None,
             extra_land_drop_each_player: false,
             colored_mana_only_if_you_control: None,
         }
@@ -846,6 +873,11 @@ impl CardDef {
             doubles_your_creatures_damage: false,
             paid_mana: None,
             enters_tapped_unless_reveal: None,
+            pt_hand_size: false,
+            small_creatures_unblockable: false,
+            vanishing: 0,
+            big_creature_spell_discount: 0,
+            other_non_subtype_enters_with_counter: None,
             extra_land_drop_each_player: false,
             colored_mana_only_if_you_control: None,
         }

@@ -936,6 +936,11 @@ pub enum Effect {
     CreateTokensPowerTapped {
         def: usize,
     },
+    /// Destroy all creatures if the spell's X is at least `n` (Martial Coup, before its tokens are
+    /// made, so they survive: "destroy all other creatures").
+    DestroyAllCreaturesIfXAtLeast(u8),
+    /// Untap all nonland permanents (yours and the opponent's: Intellectual Offering in 1v1).
+    UntapAllNonland,
     /// The source gets +X/+0 until end of turn, X its power ("double this creature's power").
     DoublePowerSelf,
     /// Create tapped tokens (`def`) equal to the trigger's amount (Prosperous Bandit).
@@ -947,6 +952,19 @@ pub enum Effect {
     /// Create a token (`def`) for each spell you've cast this turn (Murmuration).
     CreateTokensPerSpellCastThisTurn {
         def: usize,
+    },
+    /// Vanishing's upkeep trigger: remove a time counter from the source; when the last is removed,
+    /// sacrifice it.
+    VanishingTick,
+    /// Tap the permanent in `slot`; it doesn't untap during its controller's next untap step.
+    TapFreeze(u8),
+    /// Each creature you control with power `min` or greater gets +P/+T and gains keywords until
+    /// end of turn (Goreclaw).
+    PumpYoursPowerAtLeastAndGrant {
+        min: i32,
+        power: i32,
+        toughness: i32,
+        keywords: crate::Keywords,
     },
     /// Return a land you control (your choice, not targeted) to its owner's hand (the karoo lands).
     ReturnLandYouControl,
@@ -1454,10 +1472,20 @@ pub enum When {
     OpponentCastsInstantOrSorcery,
     /// "Whenever you cast a creature spell".
     YouCastCreature,
+    /// "Whenever another creature you control with power N or greater enters".
+    AnotherCreatureYouControlEntersWithPowerAtLeast(i32),
+    /// "Whenever one or more other creatures die, ... This ability triggers only once each turn."
+    OtherCreaturesDieOnceEachTurn,
     /// "Whenever an opponent casts a noncreature spell".
     OpponentCastsNoncreature,
     /// "Whenever a creature token you control deals combat damage to a player" (each one).
     YourCreatureTokenDealsCombatDamageToPlayer,
+    /// "Whenever this creature is dealt damage" (the amount is the trigger's amount).
+    DealtDamage,
+    /// "Whenever a token you control leaves the battlefield".
+    TokenYouControlLeaves,
+    /// "Whenever a token you control enters".
+    TokenYouControlEnters,
     /// "At the beginning of each player's draw step" (either player's permanent; the active player is
     /// "that player").
     EachDrawStep,

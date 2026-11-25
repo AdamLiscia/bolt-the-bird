@@ -330,6 +330,11 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         doubles_your_creatures_damage: false,
         paid_mana: None,
         enters_tapped_unless_reveal: None,
+        pt_hand_size: false,
+        small_creatures_unblockable: false,
+        vanishing: 0,
+        big_creature_spell_discount: 0,
+        other_non_subtype_enters_with_counter: None,
         extra_land_drop_each_player: false,
         colored_mana_only_if_you_control: None,
     };

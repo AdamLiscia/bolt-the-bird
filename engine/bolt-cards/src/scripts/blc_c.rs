@@ -224,6 +224,148 @@ pub fn script(name: &str) -> Option<Script> {
                 d.activated[n].amount_from_victim_power = true;
             },
         ),
+        // ---- lane C, 2026-11-25 ----
+        "Garruk's Packleader" => s(
+            &["Whenever another creature you control with power 3 or greater enters, you may draw a card."],
+            |d, _| may(d, When::AnotherCreatureYouControlEntersWithPowerAtLeast(3), vec![], vec![draw(1)]),
+        ),
+        "Grim Backwoods" => s(&["{T}: Add {C}.", "{2}{B}{G}, {T}, Sacrifice a creature: Draw a card."], |d, _| {
+            d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+            // A land isn't a creature, so "another creature" is any creature.
+            let n = activated(d, "{2}{B}{G}", true, vec![], vec![draw(1)]);
+            d.activated[n].sacrifice_other_creature = true;
+        }),
+        "Talisman of Impulse" => s(&["{T}: Add {C}.", "{T}: Add {R} or {G}. This artifact deals 1 damage to you."], |d, _| {
+            pain_land(d, Color::Red, Color::Green)
+        }),
+        "Thriving Bluff" => s(
+            &["This land enters tapped. As it enters, choose a color other than red.", "{T}: Add {R} or one mana of the chosen color."],
+            |d, _| {
+                d.enters_tapped = true;
+                d.choose_color = true;
+                d.thriving_color = Some(Color::Red);
+            },
+        ),
+        "Spine of Ish Sah" => s(
+            &[
+                "When this artifact enters, destroy target permanent.",
+                "When this artifact is put into a graveyard from the battlefield, return it to its owner's hand.",
+            ],
+            |d, _| {
+                let any = Filter { players: false, creatures: false, planeswalkers: false, any_permanent: true, ..Filter::ANY };
+                on(d, When::Enters, vec![any], vec![Effect::Destroy(0)]);
+                on(d, When::Dies, vec![], vec![Effect::ReturnSelfToHand]);
+            },
+        ),
+        "Windgrace's Judgment" => s(
+            &["For any number of opponents, destroy target nonland permanent that player controls."],
+            // One opponent in a 1v1 game: up to one target.
+            |d, _| d.spell = Some(up_to(vec![OPP_NONLAND], vec![Effect::Destroy(0)])),
+        ),
+        "Psychosis Crawler" => s(
+            &[
+                "Psychosis Crawler's power and toughness are each equal to the number of cards in your hand.",
+                "Whenever you draw a card, each opponent loses 1 life.",
+            ],
+            |d, _| {
+                d.pt_hand_size = true;
+                on(d, When::YouDraw, vec![], vec![Effect::LoseLife { who: Who::EachOpponent, n: 1 }]);
+            },
+        ),
+        "Deadly Dispute" => s(
+            &["As an additional cost to cast this spell, sacrifice an artifact or creature.", "Draw two cards and create a Treasure token."],
+            |d, t| {
+                d.extra_cost = Some(ExtraCost::SacrificeArtifactOrCreature);
+                spell(d, vec![], vec![draw(2), Effect::CreateToken { who: Who::You, def: t.treasure, n: 1 }]);
+            },
+        ),
+        "Martial Coup" => s(&["Create X 1/1 white Soldier creature tokens. If X is 5 or more, destroy all other creatures."], |d, t| {
+            spell(d, vec![], vec![Effect::DestroyAllCreaturesIfXAtLeast(5), Effect::CreateTokensX { def: t.soldier }])
+        }),
+        "Intellectual Offering" => s(
+            &[
+                "Choose an opponent. You and that player each draw three cards.",
+                "Choose an opponent. Untap all nonland permanents you control and all nonland permanents that player controls.",
+            ],
+            |d, _| {
+                spell(d, vec![], vec![draw(3), Effect::Draw { who: Who::EachOpponent, n: 3 }, Effect::UntapAllNonland])
+            },
+        ),
+        "Morbid Opportunist" => s(
+            &["Whenever one or more other creatures die, draw a card. This ability triggers only once each turn."],
+            |d, _| on(d, When::OtherCreaturesDieOnceEachTurn, vec![], vec![draw(1)]),
+        ),
+        "Illusory Ambusher" => s(&["Whenever this creature is dealt damage, draw that many cards."], |d, _| {
+            on(d, When::DealtDamage, vec![], vec![Effect::DrawAmount])
+        }),
+        "Body of Knowledge" => s(
+            &[
+                "Body of Knowledge's power and toughness are each equal to the number of cards in your hand.",
+                "You have no maximum hand size.",
+                "Whenever this creature is dealt damage, draw that many cards.",
+            ],
+            |d, _| {
+                d.pt_hand_size = true;
+                d.no_max_hand_size = true;
+                on(d, When::DealtDamage, vec![], vec![Effect::DrawAmount]);
+            },
+        ),
+        "Tetsuko Umezawa, Fugitive" => s(&["Creatures you control with power or toughness 1 or less can't be blocked."], |d, _| {
+            d.small_creatures_unblockable = true
+        }),
+        "Deep Forest Hermit" => s(
+            &["Vanishing 3", "When this creature enters, create four 1/1 green Squirrel creature tokens.", "Squirrels you control get +1/+1."],
+            |d, t| {
+                d.vanishing = 3;
+                on(d, When::Upkeep { your_turn_only: true }, vec![], vec![Effect::VanishingTick]);
+                on(d, When::Enters, vec![], vec![Effect::CreateToken { who: Who::You, def: t.squirrel, n: 4 }]);
+                lord(d, "Squirrel"); // the Hermit is no Squirrel, so "other" changes nothing
+            },
+        ),
+        "Nadier's Nightblade" => s(&["Whenever a token you control leaves the battlefield, each opponent loses 1 life and you gain 1 life."], |d, _| {
+            on(
+                d,
+                When::TokenYouControlLeaves,
+                vec![],
+                vec![Effect::LoseLife { who: Who::EachOpponent, n: 1 }, Effect::GainLife { who: Who::You, n: 1 }],
+            )
+        }),
+        "Junk Winder" => s(
+            &[
+                "Affinity for tokens",
+                "Whenever a token you control enters, tap target nonland permanent an opponent controls. It doesn't untap during its controller's next untap step.",
+            ],
+            |d, _| {
+                d.reduction = Some(Reduction::PerTokenYouControl);
+                on(d, When::TokenYouControlEnters, vec![OPP_NONLAND], vec![Effect::TapFreeze(0)]);
+            },
+        ),
+        "Goreclaw, Terror of Qal Sisma" => s(
+            &[
+                "Creature spells you cast with power 4 or greater cost {2} less to cast.",
+                "Whenever Goreclaw attacks, each creature you control with power 4 or greater gets +1/+1 and gains trample until end of turn.",
+            ],
+            |d, _| {
+                d.big_creature_spell_discount = 2;
+                let pump = Effect::PumpYoursPowerAtLeastAndGrant { min: 4, power: 1, toughness: 1, keywords: Keywords::TRAMPLE };
+                on(d, When::Attacks, vec![], vec![pump]);
+            },
+        ),
+        "Grumgully, the Generous" => s(&["Each other non-Human creature you control enters with an additional +1/+1 counter on it."], |d, _| {
+            d.other_non_subtype_enters_with_counter = Some("Human")
+        }),
+        "Chittering Witch" => s(
+            &[
+                "When this creature enters, create a number of 1/1 black Rat creature tokens equal to the number of opponents you have.",
+                "{1}{B}, Sacrifice a creature: Target creature gets -2/-2 until end of turn.",
+            ],
+            |d, t| {
+                // A 1v1 game: one opponent.
+                on(d, When::Enters, vec![], vec![Effect::CreateToken { who: Who::You, def: t.rat, n: 1 }]);
+                let n = activated(d, "{1}{B}", false, vec![CREATURE], vec![Effect::Pump { slot: 0, power: -2, toughness: -2 }]);
+                d.activated[n].sacrifice_creature = true;
+            },
+        ),
         _ => None,
     }
 }
@@ -272,4 +414,24 @@ pub const BLC_C_SCRIPTED: &[&str] = &[
     "Stolen by the Fae",
     "Time Wipe",
     "Perplexing Test",
+    "Garruk's Packleader",
+    "Grim Backwoods",
+    "Talisman of Impulse",
+    "Thriving Bluff",
+    "Spine of Ish Sah",
+    "Windgrace's Judgment",
+    "Psychosis Crawler",
+    "Deadly Dispute",
+    "Martial Coup",
+    "Intellectual Offering",
+    "Morbid Opportunist",
+    "Illusory Ambusher",
+    "Body of Knowledge",
+    "Tetsuko Umezawa, Fugitive",
+    "Deep Forest Hermit",
+    "Nadier's Nightblade",
+    "Junk Winder",
+    "Goreclaw, Terror of Qal Sisma",
+    "Grumgully, the Generous",
+    "Chittering Witch",
 ];
