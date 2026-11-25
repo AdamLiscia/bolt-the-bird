@@ -504,3 +504,27 @@ played; Horn of Greed draws for the active player, the only one who plays lands)
 `Effect::UntapLandsUpTo` (Frantic Search untaps your tapped lands, most colors first, rather than
 asking), `MayPutLandFromHandTapped` with `Decision::LandFromHandTapped`, `DrawMoreIfLands`,
 `SearchBasicsPerAttackersTapped`.
+
+### Aesi (Time), lane B, batch 2 (2026-11-25)
+
+The other 7: Rhystic Study, Mystic Remora, Arcane Denial, Perennial Behemoth, Walk the Aeons, Nissa,
+Who Shakes the World, Blessing of Frost. Lane B's 25 are done.
+
+- "Unless that player pays": `Effect::UnlessOpponentPays(n)` asks the opponent
+  `Decision::PayToStop`; paying stops the rest of the effects. The "you may" is the trigger's
+  optional, asked first.
+- Cumulative upkeep: `Effect::CumulativeUpkeep(n)` adds an age counter (`kind_counters`) and asks
+  `Decision::PayUpkeep` (pay, or sacrifice it).
+- Arcane Denial: `Effect::NextUpkeepDraws` (read before the counter) fills
+  `Game::next_upkeep_draws`, drawn as the next upkeep begins. "Up to two" is always two.
+- Unearth: `Effect::Unearth`, `Object::unearthed` (exiled at the next end step, and instead of
+  leaving the battlefield), haste through `suspend_haste`.
+- Buyback by sacrifice: `CardDef::buyback_sacrifice` (cast with `CastKicked`, `kicker` set to {0};
+  the tapped permanents of the subtype are sacrificed first); it returns to hand as it resolves.
+  `Effect::ExtraTurnFor(slot)`.
+- Nissa: `CardDef::forests_add_g` (each Forest offers an extra {G} in `untapped_sources`; the manual
+  `TapForMana` path doesn't add it), `Effect::AnimateLandElemental`, `EmblemKind::LandsIndestructible`.
+- Snow: `Types::snow`; `Game::snow_paid` counts mana from snow sources as a spell is paid for;
+  `CardDef::x_is_snow_spent` stores it as the entry's X. `Effect::DistributeCountersX` with
+  `Decision::DistributeCounters` (one counter at a time, not targeted),
+  `Effect::DrawPerCreaturePowerAtLeast`.

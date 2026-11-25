@@ -1267,6 +1267,31 @@ pub enum Effect {
     /// Search for up to X basic land cards, X the creatures attacking you, put them onto the
     /// battlefield tapped (Jaheira's Respite).
     SearchBasicsPerAttackersTapped,
+    /// "... unless that player pays {n}": the opponent (the spell's caster) may pay {n} to stop the
+    /// rest of the effects (Rhystic Study, Mystic Remora).
+    UnlessOpponentPays(u8),
+    /// Cumulative upkeep {n} (CR 702.24): an age counter, then pay {n} for each or sacrifice it.
+    CumulativeUpkeep(u8),
+    /// At the beginning of the next turn's upkeep, the controller of the spell in `slot` draws
+    /// `theirs` and you draw `yours` (Arcane Denial; read before the spell is countered).
+    NextUpkeepDraws {
+        slot: u8,
+        theirs: u8,
+        yours: u8,
+    },
+    /// Unearth (CR 702.84): return the source from your graveyard to the battlefield with haste;
+    /// exile it at the beginning of the next end step or if it would leave the battlefield.
+    Unearth,
+    /// The player in `slot` takes an extra turn after this one.
+    ExtraTurnFor(u8),
+    /// Nissa's +1: three +1/+1 counters on the land in `slot`, untap it, and it becomes a 0/0
+    /// Elemental creature with vigilance and haste that's still a land (permanently).
+    AnimateLandElemental(u8),
+    /// Distribute X +1/+1 counters (the stack entry's X) among creatures you control, one at a time
+    /// (`Decision::DistributeCounters`; not targeted).
+    DistributeCountersX,
+    /// Draw a card for each creature you control with power at least this.
+    DrawPerCreaturePowerAtLeast(i32),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1438,6 +1463,8 @@ pub enum EmblemKind {
     GarrukAnthem,
     /// "You have no maximum hand size."
     NoMaxHandSize,
+    /// "Lands you control have indestructible." (Nissa, Who Shakes the World)
+    LandsIndestructible,
 }
 
 /// Which looked-at card may be picked.

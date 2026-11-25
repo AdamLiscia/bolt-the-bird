@@ -80,6 +80,8 @@ pub struct Types {
     pub planeswalker: bool,
     pub legendary: bool,
     pub basic: bool,
+    /// The snow supertype (CR 205.4g): its mana is {S} when spent.
+    pub snow: bool,
 }
 
 impl Types {
@@ -98,6 +100,7 @@ impl Types {
                 "Planeswalker" => t.planeswalker = true,
                 "Legendary" => t.legendary = true,
                 "Basic" => t.basic = true,
+                "Snow" => t.snow = true,
                 _ => {}
             }
         }
@@ -614,6 +617,13 @@ pub struct CardDef {
     pub no_legend_rule: bool,
     /// "Green spells you cast cost {N} less to cast." (Emerald Medallion)
     pub green_spell_discount: u8,
+    /// "Whenever you tap a Forest for mana, add an additional {G}." (Nissa, Who Shakes the World)
+    pub forests_add_g: bool,
+    /// Buyback by sacrificing N permanents with this subtype (Walk the Aeons: three Islands), cast
+    /// with `Action::CastKicked`; it returns to its owner's hand as it resolves.
+    pub buyback_sacrifice: Option<(&'static str, u8)>,
+    /// X is the amount of {S} spent to cast it (Blessing of Frost): stored as the stack entry's X.
+    pub x_is_snow_spent: bool,
 }
 
 /// What entering makes triggers happen again (see [`CardDef::entering_triggers_again`]).
@@ -825,6 +835,9 @@ impl CardDef {
             copy_keeps_abilities: false,
             no_legend_rule: false,
             green_spell_discount: 0,
+            forests_add_g: false,
+            buyback_sacrifice: None,
+            x_is_snow_spent: false,
         }
     }
 
@@ -1004,6 +1017,9 @@ impl CardDef {
             copy_keeps_abilities: false,
             no_legend_rule: false,
             green_spell_discount: 0,
+            forests_add_g: false,
+            buyback_sacrifice: None,
+            x_is_snow_spent: false,
         }
     }
 
@@ -1183,6 +1199,9 @@ impl CardDef {
             copy_keeps_abilities: false,
             no_legend_rule: false,
             green_spell_discount: 0,
+            forests_add_g: false,
+            buyback_sacrifice: None,
+            x_is_snow_spent: false,
         }
     }
 }

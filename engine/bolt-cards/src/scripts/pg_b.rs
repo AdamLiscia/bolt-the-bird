@@ -652,6 +652,58 @@ pub fn script(name: &str) -> Option<Script> {
                 activated(d, "{4}", true, vec![], vec![Effect::DrawMoreIfLands { n: 1, more: 2, lands: 8 }]);
             },
         ),
+        "Rhystic Study" => s(&["Whenever an opponent casts a spell, you may draw a card unless that player pays {1}."], |d, _| {
+            may(d, When::OpponentCasts, vec![], vec![Effect::UnlessOpponentPays(1), draw(1)])
+        }),
+        "Mystic Remora" => s(
+            &["Cumulative upkeep {1}", "Whenever an opponent casts a noncreature spell, you may draw a card unless that player pays {4}."],
+            |d, _| {
+                on(d, When::Upkeep { your_turn_only: true }, vec![], vec![Effect::CumulativeUpkeep(1)]);
+                may(d, When::OpponentCastsNoncreature, vec![], vec![Effect::UnlessOpponentPays(4), draw(1)]);
+            },
+        ),
+        "Arcane Denial" => s(
+            &[
+                "Counter target spell. Its controller may draw up to two cards at the beginning of the next turn's upkeep.",
+                "You draw a card at the beginning of the next turn's upkeep.",
+            ],
+            |d, _| {
+                // "Up to two": they always draw both (docs/tdm-lane-b.md).
+                spell(d, vec![SPELL], vec![Effect::NextUpkeepDraws { slot: 0, theirs: 2, yours: 1 }, Effect::Counter(0)]);
+            },
+        ),
+        "Perennial Behemoth" => s(&["You may play lands from your graveyard.", "Unearth {G}{G}"], |d, _| {
+            d.lands_from_graveyard = true;
+            let n = activated(d, "{G}{G}", false, vec![], vec![Effect::Unearth]);
+            d.activated[n].from_graveyard = true;
+            d.activated[n].sorcery = true;
+        }),
+        "Walk the Aeons" => s(&["Buyback—Sacrifice three Islands.", "Target player takes an extra turn after this one."], |d, _| {
+            d.kicker = Some(ManaCost::default());
+            d.buyback_sacrifice = Some(("Island", 3));
+            spell(d, vec![Filter::PLAYER], vec![Effect::ExtraTurnFor(0)]);
+        }),
+        "Nissa, Who Shakes the World" => s(
+            &[
+                "Whenever you tap a Forest for mana, add an additional {G}.",
+                "+1: Put three +1/+1 counters on up to one target noncreature land you control. Untap it. It becomes a 0/0 Elemental creature with vigilance and haste that's still a land.",
+                "−8: You get an emblem with \"Lands you control have indestructible.\" Search your library for any number of Forest cards, put them onto the battlefield tapped, then shuffle.",
+            ],
+            |d, _| {
+                d.forests_add_g = true;
+                let land = Filter { players: false, creatures: false, planeswalkers: false, lands: true, noncreature: true, controller: Controller::You, ..Filter::ANY };
+                loyalty(d, 1, up_to(vec![land], vec![Effect::AnimateLandElemental(0)]));
+                let forests = Effect::Search { what: forest(), to: SearchTo::Battlefield { tapped: true }, n: u8::MAX, kicked_n: None };
+                loyalty(d, -8, Ability::new(vec![], vec![Effect::Emblem(EmblemKind::LandsIndestructible), forests]));
+            },
+        ),
+        "Blessing of Frost" => s(
+            &["Distribute X +1/+1 counters among any number of creatures you control, where X is the amount of {S} spent to cast this spell. Then draw a card for each creature you control with power 4 or greater."],
+            |d, _| {
+                d.x_is_snow_spent = true;
+                spell(d, vec![], vec![Effect::DistributeCountersX, Effect::DrawPerCreaturePowerAtLeast(4)]);
+            },
+        ),
         _ => None,
     }
 }
@@ -735,4 +787,11 @@ pub const PG_B_SCRIPTED: &[&str] = &[
     "Tectonic Edge",
     "Tolaria West",
     "Zimone, Quandrix Prodigy",
+    "Rhystic Study",
+    "Mystic Remora",
+    "Arcane Denial",
+    "Perennial Behemoth",
+    "Walk the Aeons",
+    "Nissa, Who Shakes the World",
+    "Blessing of Frost",
 ];

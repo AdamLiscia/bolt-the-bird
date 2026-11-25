@@ -1541,3 +1541,182 @@ fn tolaria_west_transmutes_and_zimone_puts_lands_and_draws() {
     resolve_all(&mut g, &[]);
     assert_eq!(hand_size(&g, 0), before + 2, "eight or more lands: two cards");
 }
+
+/// Passes until player `p`'s first main phase of the current turn.
+fn to_main(g: &mut Game) {
+    for _ in 0..40 {
+        if g.step == Step::Main1 && matches!(g.pending, Pending::Priority(_)) {
+            return;
+        }
+        let a = match g.pending {
+            Pending::Decide(_) | Pending::ChooseTarget(_) => *g.legal_actions().last().unwrap(),
+            _ => Action::PassPriority,
+        };
+        act(g, a);
+    }
+}
+
+#[test]
+fn rhystic_study_draws_unless_the_caster_pays() {
+    let mut g = table();
+    put(&mut g, 0, "Rhystic Study");
+    let bolt = hand(&mut g, 1, "Burst Lightning");
+    let before = hand_size(&g, 0);
+    act(&mut g, Action::PassPriority); // player 1 gets priority
+    act(&mut g, Action::Cast(bolt));
+    act(&mut g, Action::Target(Target::Player(0)));
+    resolve_all(&mut g, &[Action::Yes, Action::No]);
+    assert_eq!(hand_size(&g, 0), before + 1, "they didn't pay");
+    // They pay {1}: no card.
+    let mut g = table();
+    put(&mut g, 0, "Rhystic Study");
+    let bolt = hand(&mut g, 1, "Burst Lightning");
+    let before = hand_size(&g, 0);
+    act(&mut g, Action::PassPriority);
+    act(&mut g, Action::Cast(bolt));
+    act(&mut g, Action::Target(Target::Player(0)));
+    resolve_all(&mut g, &[Action::Yes, Action::Yes]);
+    assert_eq!(hand_size(&g, 0), before);
+}
+
+#[test]
+fn mystic_remora_has_cumulative_upkeep() {
+    let mut g = table();
+    let remora = put(&mut g, 0, "Mystic Remora");
+    g.start_turn(5, 0);
+    pass_until_asked(&mut g);
+    assert!(g.legal_actions().contains(&Action::Yes));
+    act(&mut g, Action::Yes); // {1}
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(remora).zone, Zone::Battlefield);
+    g.start_turn(7, 0);
+    pass_until_asked(&mut g);
+    act(&mut g, Action::No); // won't pay {2}
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(remora).zone, Zone::Graveyard);
+}
+
+#[test]
+fn arcane_denial_counters_and_both_draw_next_upkeep() {
+    let mut g = table();
+    let bolt = hand(&mut g, 1, "Burst Lightning");
+    let denial = hand(&mut g, 0, "Arcane Denial");
+    act(&mut g, Action::PassPriority);
+    act(&mut g, Action::Cast(bolt));
+    act(&mut g, Action::Target(Target::Player(0)));
+    act(&mut g, Action::PassPriority); // back to player 0
+    act(&mut g, Action::Cast(denial));
+    act(&mut g, Action::Target(Target::Object(bolt)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].life, 40);
+    assert_eq!(g.obj(bolt).zone, Zone::Graveyard);
+    let (mine, theirs) = (hand_size(&g, 0), hand_size(&g, 1));
+    g.start_turn(4, 1);
+    to_main(&mut g);
+    assert_eq!(hand_size(&g, 0), mine + 1);
+    assert_eq!(
+        hand_size(&g, 1),
+        theirs + 3,
+        "two from Arcane Denial and the draw step"
+    );
+}
+
+#[test]
+fn perennial_behemoth_unearths_with_haste_and_plays_lands_from_the_graveyard() {
+    let mut g = table();
+    put(&mut g, 0, "Perennial Behemoth");
+    let forest = g.add_card(0, cid("Forest"), Zone::Graveyard);
+    assert!(has(&g, Action::PlayLand(forest)));
+    let mut g = table();
+    let behemoth = g.add_card(0, cid("Perennial Behemoth"), Zone::Graveyard);
+    g.start_turn(5, 0);
+    to_main(&mut g);
+    assert!(has(&g, Action::Activate(behemoth, 0)));
+    act(&mut g, Action::Activate(behemoth, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(behemoth).zone, Zone::Battlefield);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(has(&g, Action::Attack(behemoth)), "haste");
+    act(&mut g, Action::FinishAttacks);
+    for _ in 0..30 {
+        if g.obj(behemoth).zone != Zone::Battlefield {
+            break;
+        }
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.obj(behemoth).zone, Zone::Exile, "exiled at the end step");
+}
+
+#[test]
+fn walk_the_aeons_buys_itself_back_with_three_islands() {
+    let mut g = table();
+    let walk = hand(&mut g, 0, "Walk the Aeons");
+    let islands = |g: &Game| g.permanents(0).filter(|&x| g.def_of(x).name == "Island").count();
+    assert!(has(&g, Action::Cast(walk)) && has(&g, Action::CastKicked(walk)));
+    act(&mut g, Action::CastKicked(walk));
+    act(&mut g, Action::Target(Target::Player(0)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(islands(&g), 2);
+    assert_eq!(g.obj(walk).zone, Zone::Hand, "bought back");
+    assert_eq!(g.extra_turns, vec![0]);
+    let mut g = game(&["Island", "Island", "Forest", "Forest", "Forest", "Forest"]);
+    let walk = hand(&mut g, 0, "Walk the Aeons");
+    assert!(!has(&g, Action::CastKicked(walk)), "only two Islands");
+}
+
+#[test]
+fn nissa_who_shakes_the_world_doubles_forests_and_animates_lands() {
+    let mut g = game(&["Forest", "Forest"]);
+    let courser = hand(&mut g, 0, "Courser of Kruphix");
+    assert!(!has(&g, Action::Cast(courser)));
+    let nissa = put(&mut g, 0, "Nissa, Who Shakes the World");
+    assert!(has(&g, Action::Cast(courser)), "each Forest makes two green");
+    let forest = g.permanents(0).find(|&x| g.def_of(x).name == "Forest").unwrap();
+    act(&mut g, Action::Loyalty(nissa, 0));
+    act(&mut g, Action::Target(Target::Object(forest)));
+    resolve_all(&mut g, &[]);
+    assert!(g.types_of(forest).creature && g.types_of(forest).land);
+    assert_eq!((g.power(forest), g.toughness(forest)), (3, 3));
+    assert!(g.keywords(forest).has(Keywords::HASTE) && g.keywords(forest).has(Keywords::VIGILANCE));
+    assert!(g.has_subtype(forest, "Elemental"));
+    // −8: the emblem and every Forest.
+    let mut g = table();
+    let nissa = put(&mut g, 0, "Nissa, Who Shakes the World");
+    g.objects[nissa.0 as usize].loyalty = 8;
+    let f1 = top(&mut g, 0, "Forest");
+    let f2 = top(&mut g, 0, "Forest");
+    act(&mut g, Action::Loyalty(nissa, 1));
+    resolve_all(&mut g, &[Action::Pick(f2), Action::Pick(f1)]);
+    assert!(g.obj(f1).zone == Zone::Battlefield && g.obj(f1).tapped);
+    assert!(g.keywords(f2).has(Keywords::INDESTRUCTIBLE));
+}
+
+#[test]
+fn blessing_of_frost_counts_snow_mana() {
+    let mut g = game(&[
+        "Snow-Covered Forest",
+        "Snow-Covered Forest",
+        "Snow-Covered Island",
+        "Forest",
+    ]);
+    let lions = put(&mut g, 0, "Savannah Lions");
+    let blessing = hand(&mut g, 0, "Blessing of Frost");
+    let before = hand_size(&g, 0);
+    act(&mut g, Action::Cast(blessing));
+    pass_until_asked(&mut g);
+    let mut picks = 0;
+    while matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::Pick(lions));
+        picks += 1;
+    }
+    resolve_all(&mut g, &[]);
+    assert_eq!(picks, 3, "three snow lands paid");
+    assert_eq!(g.power(lions), 5);
+    assert_eq!(
+        hand_size(&g, 0),
+        before,
+        "cast one, drew one for the power-4 Lions"
+    );
+}
