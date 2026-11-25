@@ -418,6 +418,8 @@ pub struct CardDef {
     pub offspring: Option<ManaCost>,
     /// Zinnia: "Creature spells you cast gain offspring {cost} as you cast them."
     pub grants_offspring: Option<ManaCost>,
+    /// Decayed (CR 702.147): it can't block; when it attacks, sacrifice it at end of combat.
+    pub decayed: bool,
 }
 
 /// An Omen spell half: its name, cost, whether it's an instant, and what it does.
@@ -551,6 +553,7 @@ impl CardDef {
             enters_tapped_unless_at_most_lands: None,
             offspring: None,
             grants_offspring: None,
+            decayed: false,
         }
     }
 
@@ -663,6 +666,7 @@ impl CardDef {
             enters_tapped_unless_at_most_lands: None,
             offspring: None,
             grants_offspring: None,
+            decayed: false,
         }
     }
 
@@ -775,6 +779,7 @@ impl CardDef {
             enters_tapped_unless_at_most_lands: None,
             offspring: None,
             grants_offspring: None,
+            decayed: false,
         }
     }
 }

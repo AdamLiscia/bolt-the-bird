@@ -209,6 +209,10 @@ pub struct Object {
     pub offspring_paid: bool,
     /// A token copy with its own base power and toughness (offspring's 1/1 copies).
     pub copy_base_pt: Option<(i32, i32)>,
+    /// A decayed counter (CR 702.147).
+    pub decayed: bool,
+    /// Sacrifice it at end of combat (decayed, after it attacked).
+    pub sacrifice_end_combat: bool,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -518,6 +522,7 @@ static WARD_ABILITY: Ability = Ability {
     modes: Vec::new(),
     divide: 0,
     divide_lands: false,
+    targets_exactly_x: false,
 };
 
 /// Offspring's triggered ability (CR 702.175a): a 1/1 token copy of the creature.
@@ -1207,6 +1212,8 @@ impl Game {
             card_copy: false,
             offspring_paid: false,
             copy_base_pt: None,
+            decayed: false,
+            sacrifice_end_combat: false,
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -1700,6 +1707,7 @@ impl Game {
             || o.loyalty > 0
             || o.keyword_counters != Keywords::NONE
             || o.finality
+            || o.decayed
     }
 
     /// "Can't be countered": printed, or from an effect as it was cast.
@@ -1925,6 +1933,11 @@ impl Game {
                 lib.insert(0, c);
             }
         }
+    }
+
+    /// Decayed, printed or from a decayed counter (CR 702.147).
+    fn is_decayed(&self, id: ObjId) -> bool {
+        self.obj(id).zone == Zone::Battlefield && (self.def_of(id).decayed || self.obj(id).decayed)
     }
 
     /// Emergent Ultimatum: a monocolored card whose name differs from those already picked.
@@ -2239,6 +2252,8 @@ impl Game {
             o.lore = 0;
             o.defender_ignored_turn = 0;
             o.eot_subtype = None;
+            o.decayed = false;
+            o.sacrifice_end_combat = false;
             o.used_once = false;
             o.last_soul = o.soul;
             o.last_revival = o.revival;
@@ -2798,7 +2813,8 @@ impl Game {
                         options.retain(|&t| matches!(t, Target::Object(x) if self.obj(x).owner == owner));
                     }
                 }
-                let can_stop = c.item.targets.len() >= ability.min_targets.unwrap_or(usize::MAX);
+                let can_stop = c.item.targets.len() >= ability.min_targets.unwrap_or(usize::MAX)
+                    && (!ability.targets_exactly_x || c.item.targets.len() == c.item.x as usize);
                 // Dragonfire Blade's equip: only targets whose discount makes it affordable.
                 if let (false, StackKind::Activated(n)) = (c.cast, c.item.kind) {
                     let a = &self.def_of(c.item.source).activated[n];
@@ -4007,6 +4023,22 @@ impl Game {
                             if a.life_x && self.players[p].life < x as i32 {
                                 continue; // "Pay X life"
                             }
+                            if a.ability.targets_exactly_x {
+                                // "X target creatures": X can't exceed the legal targets.
+                                let f = a.ability.targets[0];
+                                let item = StackItem {
+                                    kind: StackKind::Activated(n),
+                                    ..Game::casting(id, p)
+                                };
+                                let legal = self
+                                    .candidates(&f, p)
+                                    .into_iter()
+                                    .filter(|&t| self.slot_ok(&item, &f, t))
+                                    .count();
+                                if x as usize > legal {
+                                    continue;
+                                }
+                            }
                             if self.can_pay_for(
                                 p,
                                 &a.mana.with_x(x),
@@ -4103,7 +4135,8 @@ impl Game {
             ..Game::casting(id, p)
         };
         self.passes = 0;
-        if self.def_of(id).activated[n].ability.targets.is_empty() {
+        let a = &self.def_of(id).activated[n].ability;
+        if a.targets.is_empty() || (a.targets_exactly_x && x == 0) {
             self.pay_activation(p, id, n, victim, x);
             self.items.push(item);
             self.give_priority(p);
@@ -4337,6 +4370,7 @@ impl Game {
             return false; // CR 702.16f
         }
         if self.def_of(blocker).cant_block
+            || self.is_decayed(blocker)
             || self.keywords(blocker).has(Keywords::CANT_BLOCK)
             || self.keywords(attacker).has(Keywords::UNBLOCKABLE)
             || self
@@ -4613,6 +4647,9 @@ impl Game {
                 }
                 self.combat.as_mut().expect("in combat").attackers.push(c);
                 self.attacked_this_turn[self.active] = true;
+                if self.is_decayed(c) {
+                    self.obj_mut(c).sacrifice_end_combat = true; // decayed (CR 702.147)
+                }
                 let before = self.triggered.len();
                 // CR 508.3a: "whenever this creature attacks".
                 let whens: Vec<When> = self.def_of(c).triggers.iter().map(|tr| tr.when).collect();
@@ -5035,7 +5072,8 @@ impl Game {
         };
         c.item.targets.push(chosen);
         let c = self.choosing.as_ref().expect("choosing targets");
-        let done = c.item.targets.len() == self.ability_of(&c.item).targets.len();
+        let exact = self.ability_of(&c.item).targets_exactly_x && c.item.targets.len() >= c.item.x as usize;
+        let done = c.item.targets.len() == self.ability_of(&c.item).targets.len() || exact;
         if done {
             self.finish_choosing();
         }
@@ -7263,6 +7301,14 @@ impl Game {
                     });
                 }
             }
+            Effect::DecayedCounter(slot) => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    if self.obj(id).zone == Zone::Battlefield {
+                        self.obj_mut(id).decayed = true;
+                        self.counter_put_on(id);
+                    }
+                }
+            }
             Effect::MayBeholdThen => {
                 let p = item.controller;
                 if self.can_behold(p, src) {
@@ -9099,6 +9145,16 @@ impl Game {
                 self.give_priority(a);
             }
             Step::EndCombat => {
+                // Decayed: "sacrifice it at end of combat".
+                let doomed: Vec<ObjId> = self
+                    .battlefield
+                    .iter()
+                    .copied()
+                    .filter(|&c| self.obj(c).sacrifice_end_combat && !self.cant_be_sacrificed(c))
+                    .collect();
+                for c in doomed {
+                    self.move_to(c, Zone::Graveyard);
+                }
                 self.combat = None;
                 self.give_priority(a);
             }

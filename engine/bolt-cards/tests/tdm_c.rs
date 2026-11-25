@@ -2569,3 +2569,86 @@ fn emergent_ultimatum_exiles_three_names_the_opponent_shuffles_one_back() {
     assert_eq!(g.obj(creature).zone, Zone::Battlefield, "cast free");
     assert_eq!(g.obj(c).zone, Zone::Exile);
 }
+
+#[test]
+fn rot_curse_rakshasa_is_decayed() {
+    let mut g = table();
+    let r = put(&mut g, 1, "Rot-Curse Rakshasa"); // 5/5 trample, decayed
+    let attacker = put(&mut g, 0, "Unburied Earthcarver");
+    let other = put(&mut g, 1, "Summit Intimidator");
+    assert!(g.keywords(r).has(Keywords::TRAMPLE));
+    attack_with(&mut g, attacker);
+    while g.pending != Pending::DeclareBlockers(1) {
+        act(&mut g, Action::PassPriority);
+    }
+    let legal = g.legal_actions();
+    assert!(
+        !legal.contains(&Action::Block { blocker: r, attacker }),
+        "decayed: can't block"
+    );
+    assert!(legal.contains(&Action::Block {
+        blocker: other,
+        attacker
+    }));
+    // When it attacks, it's sacrificed at end of combat.
+    let mut g = table();
+    let r = put(&mut g, 0, "Rot-Curse Rakshasa");
+    let life = g.players[1].life;
+    attack_with(&mut g, r);
+    through_combat_damage_or_main(&mut g);
+    assert_eq!(g.players[1].life, life - 5);
+    assert_eq!(g.obj(r).zone, Zone::Graveyard, "sacrificed at end of combat");
+}
+
+#[test]
+fn rot_curse_rakshasa_renews_decayed_counters_on_exactly_x_creatures() {
+    let mut g = table();
+    let r = g.add_card(0, tid("Rot-Curse Rakshasa"), Zone::Graveyard);
+    let a = put(&mut g, 1, "Unburied Earthcarver");
+    let b = put(&mut g, 1, "Summit Intimidator");
+    let c = put(&mut g, 1, "Arashin Sunshield");
+    begin(&mut g);
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::ActivateX {
+        id: r,
+        n: 0,
+        victim: None,
+        x: 2
+    }));
+    assert!(
+        !legal
+            .iter()
+            .any(|x| matches!(x, Action::ActivateX { id, x: 4.., .. } if *id == r)),
+        "no more than the creatures there are"
+    );
+    act(
+        &mut g,
+        Action::ActivateX {
+            id: r,
+            n: 0,
+            victim: None,
+            x: 2,
+        },
+    );
+    act(&mut g, Action::Target(obj(a)));
+    assert!(!g.legal_actions().contains(&Action::No), "exactly X");
+    act(&mut g, Action::Target(obj(b)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(r).zone, Zone::Exile);
+    assert!(g.obj(a).decayed && g.obj(b).decayed && !g.obj(c).decayed);
+    // A decayed counter: it can't block and is sacrificed after attacking.
+    g.start_turn(6, 1);
+    while g.pending != Pending::DeclareAttackers(1) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(a));
+    act(&mut g, Action::FinishAttacks);
+    while g.step != Step::Main2 {
+        let x = match g.pending {
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, x);
+    }
+    assert_eq!(g.obj(a).zone, Zone::Graveyard);
+}

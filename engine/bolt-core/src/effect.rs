@@ -866,6 +866,8 @@ pub enum Effect {
         slot: u8,
         sub: &'static str,
     },
+    /// Put a decayed counter on the creature in `slot` (CR 702.147: it gains decayed).
+    DecayedCounter(u8),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1119,6 +1121,8 @@ pub struct Ability {
     /// The divided total is the number of lands you control as it goes on the stack, instead of
     /// `divide` (Ureni: "X damage divided ..., where X is the number of lands you control").
     pub divide_lands: bool,
+    /// "Each of X target ...": exactly the ability's X targets.
+    pub targets_exactly_x: bool,
 }
 
 impl Ability {
@@ -1133,6 +1137,7 @@ impl Ability {
             modes: Vec::new(),
             divide: 0,
             divide_lands: false,
+            targets_exactly_x: false,
         }
     }
 

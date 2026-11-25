@@ -305,3 +305,24 @@ Mechanics added (bolt-core, all at the end of their enum or struct):
 
 Cards: Sarkhan, Dragon Ascendant, Mardu Siegebreaker, Dragonfire Blade, Shiko, Paragon of the Way, Emergent
 Ultimatum.
+
+## Round 3, batch 8c (1 card)
+
+- Decayed (CR 702.147): `CardDef::decayed` and `Object::decayed` (a decayed counter, which counts for "a counter
+  on it"). It can't block; when it's declared as an attacker it's marked and sacrificed as combat ends (the
+  "sacrifice at end of combat" is set on declaration rather than by a trigger on the stack).
+- `Ability::targets_exactly_x`: "each of X target creatures": stopping is allowed only at exactly X targets, it
+  finishes at X, and X is offered only up to the number of legal targets. `Effect::DecayedCounter(slot)`.
+
+Card: Rot-Curse Rakshasa.
+
+Tarkir cards still not done (needs core):
+- Naga Fleshcrafter: "enter as a copy of any creature on the battlefield" (clones), and "each other creature
+  you control becomes a copy of that creature until end of turn".
+- Nature's Rhythm: harmonize with {X} needs choosing X when casting from the graveyard; there's no action for
+  that (`CastFlashback`/`CastHarmonize` carry no X), so it needs a new Action.
+- Teval, Arbiter of Virtue: delve for every spell you cast (choosing graveyard cards to exile as part of the
+  cost while casting).
+- Taigam, Master Opportunist: suspend (time counters, upkeep removal, casting free when the last is removed),
+  plus copying the second spell and exiling the original.
+- Scavenger Regent: on hold (needs a new Action, per the coordinator).

@@ -828,6 +828,19 @@ pub fn script(name: &str) -> Option<Script> {
             &["Search your library for up to three monocolored cards with different names and exile them. An opponent chooses one of those cards. Shuffle that card into your library. You may cast the other cards without paying their mana costs. Exile Emergent Ultimatum."],
             |d, _| spell(d, vec![], vec![Effect::SearchMonocoloredOpponentPicks, Effect::ExileSourceSpell]),
         ),
+        "Rot-Curse Rakshasa" => s(
+            &[
+                "Decayed",
+                "Renew — {X}{B}{B}, Exile this card from your graveyard: Put a decayed counter on each of X target creatures. Activate only as a sorcery.",
+            ],
+            |d, _| {
+                d.decayed = true;
+                // "Each of X target creatures": a slot per possible target, exactly X of them filled.
+                let effects = (0..20).map(Effect::DecayedCounter).collect();
+                renew(d, "{X}{B}{B}", vec![CREATURE; 20], effects);
+                d.activated.last_mut().expect("renew").ability.targets_exactly_x = true;
+            },
+        ),
         _ => None,
     }
 }
@@ -913,4 +926,5 @@ pub const TDM_C_SCRIPTED: &[&str] = &[
     "Dragonfire Blade",
     "Shiko, Paragon of the Way",
     "Emergent Ultimatum",
+    "Rot-Curse Rakshasa",
 ];
