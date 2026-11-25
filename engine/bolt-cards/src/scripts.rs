@@ -648,6 +648,8 @@ pub fn script(name: &str) -> Option<Script> {
         .or_else(|| tdm_c::script(name))
         .or_else(|| blc_b::script(name))
         .or_else(|| blc_c::script(name))
+        .or_else(|| pg_b::script(name))
+        .or_else(|| pg_c::script(name))
 }
 
 // Parallel lanes for plain Tarkir cards (no engine-core changes): each owns its module and test file.
@@ -661,6 +663,11 @@ pub use blc_b::BLC_B_SCRIPTED;
 // Bloomburrow Commander, lane C (shared order 150-299).
 mod blc_c;
 pub use blc_c::BLC_C_SCRIPTED;
+// The playgroup's Commander decks (Nerd Leagues), lanes B and C; cards in the CMD pool.
+mod pg_b;
+mod pg_c;
+pub use pg_b::PG_B_SCRIPTED;
+pub use pg_c::PG_C_SCRIPTED;
 
 fn script_core(name: &str) -> Option<Script> {
     let s = |lines, build| Some(Script { lines, build });

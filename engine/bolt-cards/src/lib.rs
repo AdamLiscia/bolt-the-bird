@@ -20,6 +20,8 @@ const ORACLE: &str = include_str!("../../../assets/FDN_oracle.json");
 const TDM_ORACLE: &str = include_str!("../../../assets/TDM_oracle.json");
 /// Bloomburrow Commander (BLC): the four precons' cards, from `scripts/fetch_oracle.py --names`.
 const BLC_ORACLE: &str = include_str!("../../../assets/BLC_oracle.json");
+/// The Commander pool: every known card across sets (`scripts/make_cmd_set.py`).
+const CMD_ORACLE: &str = include_str!("../../../assets/CMD_oracle.json");
 
 /// The sets the engine knows, by code.
 pub const SETS: &[&str] = &["FDN", "TDM", "BLC"];
@@ -76,10 +78,12 @@ pub fn set(code: &str) -> Option<&'static CardSet> {
     static FDN: OnceLock<CardSet> = OnceLock::new();
     static TDM: OnceLock<CardSet> = OnceLock::new();
     static BLC: OnceLock<CardSet> = OnceLock::new();
+    static CMD: OnceLock<CardSet> = OnceLock::new();
     match code {
         "FDN" => Some(FDN.get_or_init(|| CardSet::load("FDN", ORACLE))),
         "TDM" => Some(TDM.get_or_init(|| CardSet::load("TDM", TDM_ORACLE))),
         "BLC" => Some(BLC.get_or_init(|| CardSet::load("BLC", BLC_ORACLE))),
+        "CMD" => Some(CMD.get_or_init(|| CardSet::load("CMD", CMD_ORACLE))),
         _ => None,
     }
 }
@@ -582,6 +586,17 @@ mod tests {
         let t = set("BLC").unwrap();
         for &name in scripts::BLC_B_SCRIPTED.iter().chain(scripts::BLC_C_SCRIPTED) {
             let i = t.index_of(name).unwrap_or_else(|| panic!("{name} is not in BLC"));
+            assert!(t.supported[i], "{name}: script lines don't match the card text");
+        }
+    }
+
+    #[test]
+    fn every_playgroup_script_matches_its_card_text() {
+        let t = set("CMD").unwrap();
+        for &name in scripts::PG_B_SCRIPTED.iter().chain(scripts::PG_C_SCRIPTED) {
+            let i = t
+                .index_of(name)
+                .unwrap_or_else(|| panic!("{name} is not in the CMD pool"));
             assert!(t.supported[i], "{name}: script lines don't match the card text");
         }
     }
