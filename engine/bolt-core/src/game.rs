@@ -213,6 +213,14 @@ pub struct Object {
     pub decayed: bool,
     /// Sacrifice it at end of combat (decayed, after it attacked).
     pub sacrifice_end_combat: bool,
+    /// Generic mana its delve pays while it's being cast: that many graveyard cards are exiled.
+    pub delve: u8,
+    /// Its own card while it's a copy of another (CR 707.2): restored when it leaves the battlefield.
+    pub printed_def: Option<usize>,
+    /// Time counters on a suspended card in exile (CR 702.62).
+    pub time_counters: u8,
+    /// Cast from suspend: a creature has haste while it stays on the battlefield (CR 702.62a).
+    pub suspend_haste: bool,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -767,6 +775,12 @@ pub enum Decision {
     /// Choose X for a spell cast with `mode` (an Omen or harmonize cast whose cost has {X}):
     /// `Amount(x)` for each X you can pay, 0 through `max`.
     ChooseCastX { card: ObjId, mode: CastMode, max: u8 },
+    /// Delve: `Amount(n)` exiles n cards from your graveyard to pay {n} of the spell's generic cost
+    /// (0 through `max`, only amounts that leave the rest payable).
+    ChooseDelve { card: ObjId, mode: CastMode, max: u8 },
+    /// "You may have this creature enter as a copy of any creature on the battlefield": `Pick` one,
+    /// or `No`.
+    EnterAsCopy { card: ObjId },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -964,6 +978,8 @@ pub struct Game {
     pub commander_auto_return: [bool; 2],
     /// Additional land plays each player has this turn (Explore).
     pub extra_lands_this_turn: [u8; 2],
+    /// "Becomes a copy ... until end of turn": (object, its zcc, the card it was before).
+    pub copy_until_eot: Vec<(ObjId, u32, usize)>,
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -1125,6 +1141,7 @@ impl Game {
             granted_combat_damage: Vec::new(),
             until_your_next_turn: Vec::new(),
             delayed_on_next_attack: Vec::new(),
+            copy_until_eot: Vec::new(),
             extra_combats: Vec::new(),
             extra_combat_resume: None,
             extra_main_resume: None,
@@ -1227,6 +1244,10 @@ impl Game {
             copy_base_pt: None,
             decayed: false,
             sacrifice_end_combat: false,
+            delve: 0,
+            printed_def: None,
+            time_counters: 0,
+            suspend_haste: false,
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -1498,7 +1519,12 @@ impl Game {
 
     /// Keywords after granting effects (layer 6).
     pub fn keywords(&self, id: ObjId) -> Keywords {
-        self.keywords_inner(id)
+        let k = self.keywords_inner(id);
+        let o = self.obj(id);
+        if o.suspend_haste && o.zone == Zone::Battlefield {
+            return k.with(Keywords::HASTE);
+        }
+        k
     }
 
     /// Colors `id` has protection from.
@@ -2722,6 +2748,18 @@ impl Game {
                 });
             }
         }
+        if from == Zone::Battlefield && to != Zone::Battlefield {
+            self.obj_mut(id).suspend_haste = false;
+        }
+        // A copy leaving the battlefield is its own card again (CR 707.2). Its leave triggers were
+        // collected from the copied card; they'd now point at the wrong abilities, so they're dropped.
+        if from == Zone::Battlefield && to != Zone::Battlefield {
+            if let Some(d) = self.obj_mut(id).printed_def.take() {
+                self.obj_mut(id).def = d;
+                self.triggered
+                    .retain(|t| !(t.source == id && matches!(t.kind, StackKind::Trigger(_))));
+            }
+        }
     }
 
     /// Draws a card. Drawing from an empty library loses at the next check (CR 704.5b).
@@ -2991,6 +3029,7 @@ impl Game {
                 let kind_ok = kind_ok
                     && (!f.noncreature || !ty.creature)
                     && (!f.nonbasic || !ty.basic)
+                    && (!f.nonlegendary || !ty.legendary)
                     && (!f.tokens_only || self.is_token(id));
                 // Kin-Tree Severance: "permanent with mana value 3 or greater".
                 kind_ok
@@ -3556,6 +3595,7 @@ impl Game {
                 cost.generic = cost.generic.saturating_add(n);
             }
         }
+        cost.generic = cost.generic.saturating_sub(self.obj(c).delve);
         if self.obj(c).stash {
             // "Mana of any type can be spent": colored pips become generic.
             cost.generic += cost.colored.iter().sum::<u8>();
@@ -3566,12 +3606,9 @@ impl Game {
 
     /// Whether some legal choice of targets makes the spell affordable in `mode`.
     fn mode_affordable(&self, p: PlayerId, c: ObjId, mode: CastMode) -> bool {
-        if self.can_pay_for(
-            p,
-            &self.spell_cost(p, c, mode, &[]),
-            None,
-            pay_for_spell(c, mode.mode),
-        ) {
+        let mut cost = self.spell_cost(p, c, mode, &[]);
+        cost.generic = cost.generic.saturating_sub(self.delve_available(p, c));
+        if self.can_pay_for(p, &cost, None, pay_for_spell(c, mode.mode)) {
             return true;
         }
         if let Some(Reduction::IfTargetsTapped(_)) = self.def_of(c).reduction {
@@ -4809,7 +4846,66 @@ impl Game {
         self.ask(p, Decision::ChooseCastX { card, mode, max });
     }
 
+    /// `id` becomes a copy of card definition `of` (CR 707.2: the copiable values are the printed
+    /// card). Its own card is kept, to come back when it leaves the battlefield.
+    fn become_copy(&mut self, id: ObjId, of: usize) {
+        let o = self.obj_mut(id);
+        if o.printed_def.is_none() {
+            o.printed_def = Some(o.def);
+        }
+        o.def = of;
+    }
+
+    /// Graveyard cards delve could exile for `card` (Teval: "Spells you cast have delve").
+    fn delve_available(&self, p: PlayerId, card: ObjId) -> u8 {
+        let teval = self
+            .permanents(p)
+            .any(|x| self.def_of(x).spells_have_delve && !self.lost_abilities(x));
+        if !teval {
+            return 0;
+        }
+        self.players[p]
+            .graveyard
+            .iter()
+            .filter(|&&x| x != card)
+            .count()
+            .min(255) as u8
+    }
+
+    /// Cast, first asking how many cards to delve when delve could pay part of the cost.
     fn cast(&mut self, p: PlayerId, card: ObjId, mode: CastMode) {
+        let avail = self.delve_available(p, card);
+        if avail > 0 && self.obj(card).delve == 0 {
+            let generic = self.spell_cost(p, card, mode, &[]).generic;
+            let max = avail.min(generic);
+            if max > 0 {
+                self.ask(p, Decision::ChooseDelve { card, mode, max });
+                return;
+            }
+        }
+        self.cast_now(p, card, mode);
+    }
+
+    /// Exile the `n` graveyard cards delve paid with: cards with no graveyard use of their own
+    /// first (no flashback, harmonize or graveyard ability), oldest first. The engine chooses
+    /// which; only how many is the player's choice.
+    fn exile_for_delve(&mut self, p: PlayerId, card: ObjId, n: u8) {
+        let mut cards: Vec<ObjId> = self.players[p]
+            .graveyard
+            .iter()
+            .copied()
+            .filter(|&x| x != card)
+            .collect();
+        cards.sort_by_key(|&x| {
+            let d = self.def_of(x);
+            d.flashback.is_some() || d.harmonize || d.activated.iter().any(|a| a.from_graveyard)
+        });
+        for x in cards.into_iter().take(n as usize) {
+            self.move_to(x, Zone::Exile);
+        }
+    }
+
+    fn cast_now(&mut self, p: PlayerId, card: ObjId, mode: CastMode) {
         // Offspring is paid "as you cast" (CR 702.175a): fixed now, even if Zinnia leaves.
         let offspring = mode.kicked && self.offspring_cost(p, card).is_some();
         self.obj_mut(card).offspring_paid = offspring;
@@ -4896,6 +4992,10 @@ impl Game {
             .extra
             .filter(|_| item.flashback && (self.def_of(card).harmonize || self.obj(card).harmonize_eot));
         self.pay_mana_for(p, &cost, harmonized, pay_for_spell(card, item.mode));
+        let delved = std::mem::take(&mut self.obj_mut(card).delve);
+        if delved > 0 {
+            self.exile_for_delve(p, card, delved);
+        }
         if let Some(x) = item.extra {
             if harmonized.is_some() {
                 self.become_tapped(x); // harmonize taps the creature; it isn't sacrificed
@@ -4923,9 +5023,17 @@ impl Game {
             self.next_spell_uncounterable[p] = 0;
             self.obj_mut(card).cast_uncounterable = true;
         }
+        let before = self.triggered.len();
         self.fire(p, When::YouCast, None);
+        for t in &mut self.triggered[before..] {
+            t.extra = t.extra.or(Some(card)); // "that spell" (Teval)
+        }
         if self.spells_cast[p] == 2 {
+            let before = self.triggered.len();
             self.fire(p, When::YouCastSecondSpell, None);
+            for t in &mut self.triggered[before..] {
+                t.extra = t.extra.or(Some(card)); // "copy it" (Taigam)
+            }
         }
         self.ward_check(&item);
         let instant_or_sorcery = self.types_of(card).instant || self.types_of(card).sorcery;
@@ -5461,6 +5569,18 @@ impl Game {
             if r.acts {
                 self.events.push(Event::Resolved { card: source });
             }
+            // "You may have this creature enter as a copy of any creature" (Naga Fleshcrafter).
+            if r.acts
+                && self.def_of(source).enter_as_copy
+                && self.obj(source).zone == Zone::Battlefield
+                && self
+                    .battlefield
+                    .iter()
+                    .any(|&x| x != source && self.types_of(x).creature)
+            {
+                self.ask(r.item.controller, Decision::EnterAsCopy { card: source });
+                return;
+            }
             // "As this enters, choose [A] or [B]" (the Sieges). Asked as the spell resolves, like the
             // color choice below: a Siege put onto the battlefield another way gets no mode.
             if r.acts && self.def_of(source).enter_modes && self.obj(source).zone == Zone::Battlefield {
@@ -5723,6 +5843,25 @@ impl Game {
                 v.push(Action::No);
                 v
             }
+            Decision::EnterAsCopy { card } => {
+                let mut v: Vec<Action> = self
+                    .battlefield
+                    .iter()
+                    .copied()
+                    .filter(|&x| x != *card && self.types_of(x).creature)
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
+            Decision::ChooseDelve { card, mode, max } => (0..=*max)
+                .filter(|&n| {
+                    let mut cost = self.spell_cost(p, *card, *mode, &[]);
+                    cost.generic = cost.generic.saturating_sub(n);
+                    self.can_pay_for(p, &cost, None, pay_for_spell(*card, mode.mode))
+                })
+                .map(Action::Amount)
+                .collect(),
             Decision::ChooseCastX { card, mode, max } => (0..=*max)
                 .filter(|&x| self.mode_affordable(p, *card, CastMode { x, ..*mode }))
                 .map(Action::Amount)
@@ -5964,6 +6103,39 @@ impl Game {
 
     fn decide(&mut self, p: PlayerId, a: Action) {
         let d = self.decision.take().expect("a decision");
+        if let Decision::EnterAsCopy { card } = d {
+            if let Action::Pick(of) = a {
+                let def = self.obj(of).def;
+                self.become_copy(card, def);
+                // It entered as the copy: the copied creature's "when this enters" triggers apply.
+                let enters: Vec<usize> = self
+                    .def_of(card)
+                    .triggers
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, t)| t.when == When::Enters)
+                    .map(|(n, _)| n)
+                    .collect();
+                let controller = self.obj(card).controller;
+                for n in enters {
+                    self.triggered.push(StackItem {
+                        kind: StackKind::Trigger(n),
+                        ..Game::casting(card, controller)
+                    });
+                }
+            }
+            if self.end_turn {
+                self.end_the_turn();
+            } else {
+                self.give_priority(self.active);
+            }
+            return;
+        }
+        if let (Decision::ChooseDelve { card, mode, .. }, Action::Amount(n)) = (&d, a) {
+            let (card, mode) = (*card, *mode);
+            self.obj_mut(card).delve = n;
+            return self.cast_now(p, card, mode);
+        }
         if let (Decision::ChooseCastX { card, mode, .. }, Action::Amount(x)) = (&d, a) {
             let (card, mode) = (*card, *mode);
             return self.cast(p, card, CastMode { x, ..mode });
@@ -7655,6 +7827,45 @@ impl Game {
                 for c in self.creatures(item.controller).collect::<Vec<_>>() {
                     let n = self.obj(c).counters;
                     self.add_counters(c, n);
+                }
+            }
+            Effect::CopyThenSuspendSpell => {
+                let spell = item.extra.and_then(|c| {
+                    self.items
+                        .iter()
+                        .rev()
+                        .find(|i| i.kind == StackKind::Spell && i.source == c)
+                        .cloned()
+                });
+                if let Some(spell) = spell {
+                    let c = spell.source;
+                    self.items.push(StackItem {
+                        kind: StackKind::SpellCopy,
+                        controller: item.controller,
+                        ..spell
+                    });
+                    self.items
+                        .retain(|i| !(i.kind == StackKind::Spell && i.source == c));
+                    self.move_to(c, Zone::Exile);
+                    self.obj_mut(c).time_counters = 4;
+                }
+            }
+            Effect::OthersBecomeCopyOfTarget(slot) => {
+                if let Some(t) = Game::slot_object(item, legal, slot) {
+                    let def = self.obj(t).def;
+                    let others: Vec<ObjId> = self.creatures(item.controller).filter(|&x| x != t).collect();
+                    for id in others {
+                        let (zcc, before) = (self.obj(id).zcc, self.obj(id).def);
+                        self.copy_until_eot.push((id, zcc, before));
+                        self.become_copy(id, def);
+                    }
+                }
+            }
+            Effect::LoseLifeCastSpellManaValue => {
+                if let Some(s) = item.extra {
+                    let o = self.obj(s);
+                    let mv = self.def_of(s).cost.with_x(o.x).mana_value() as i32;
+                    self.lose_life(item.controller, mv);
                 }
             }
             Effect::ShrinkAllWithoutSubtypeX(sub) => {
@@ -9430,6 +9641,31 @@ impl Game {
                     },
                     None,
                 );
+                // Suspend (CR 702.62a): remove a time counter; with the last one gone, cast it free.
+                let suspended: Vec<ObjId> = self
+                    .exile
+                    .iter()
+                    .copied()
+                    .filter(|&c| self.obj(c).owner == a && self.obj(c).time_counters > 0)
+                    .collect();
+                let mut ready = Vec::new();
+                for c in suspended {
+                    self.obj_mut(c).time_counters -= 1;
+                    if self.obj(c).time_counters == 0 {
+                        ready.push(c);
+                    }
+                }
+                if !ready.is_empty() {
+                    for c in ready {
+                        let o = self.obj_mut(c);
+                        o.cast_free = true;
+                        o.suspend_haste = true;
+                        self.free_casts.push(c);
+                    }
+                    self.free_caster = a;
+                    self.open_free_casts();
+                    return;
+                }
                 self.give_priority(a);
             }
             Step::Main1 => {
@@ -9450,6 +9686,14 @@ impl Game {
     /// CR 514.2: damage wears off. No player gets priority in cleanup (CR 514.3).
     fn finish_cleanup(&mut self) {
         self.until_eot.clear(); // CR 514.2
+        for (id, zcc, before) in std::mem::take(&mut self.copy_until_eot) {
+            if self.obj(id).zcc == zcc && self.obj(id).zone == Zone::Battlefield {
+                self.obj_mut(id).def = before;
+                if self.obj(id).printed_def == Some(before) {
+                    self.obj_mut(id).printed_def = None;
+                }
+            }
+        }
         for (id, zcc, before) in std::mem::take(&mut self.control_until_eot) {
             if self.obj(id).zcc == zcc && self.obj(id).zone == Zone::Battlefield {
                 let turn = self.turn;

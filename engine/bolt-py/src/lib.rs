@@ -498,6 +498,11 @@ impl Game {
                         e.set_item("card", one(*against))?;
                     }
                     D::PayWardDiscard { against } => e.set_item("card", one(*against))?,
+                    D::EnterAsCopy { card } => e.set_item("card", one(*card))?,
+                    D::ChooseDelve { card, max, .. } => {
+                        e.set_item("card", one(*card))?;
+                        e.set_item("max", *max)?;
+                    }
                     D::ChooseCastX { card, max, .. } => {
                         e.set_item("card", one(*card))?;
                         e.set_item("max", *max)?;

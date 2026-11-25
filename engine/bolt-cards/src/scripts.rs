@@ -3878,6 +3878,28 @@ fn script_core(name: &str) -> Option<Script> {
                 omen(d, Ability::new(vec![], vec![Effect::ShrinkAllWithoutSubtypeX("Dragon")]));
             },
         ),
+        "Taigam, Master Opportunist" => s(
+            &["Flurry — Whenever you cast your second spell each turn, copy it, then exile the spell you cast with four time counters on it. If it doesn't have suspend, it gains suspend."],
+            |d, _| flurry(d, vec![], vec![Effect::CopyThenSuspendSpell]),
+        ),
+        "Naga Fleshcrafter" => s(
+            &[
+                "You may have this creature enter as a copy of any creature on the battlefield.",
+                "Renew — {2}{U}, Exile this card from your graveyard: Put a +1/+1 counter on target nonlegendary creature you control. Each other creature you control becomes a copy of that creature until end of turn. Activate only as a sorcery.",
+            ],
+            |d, _| {
+                d.enter_as_copy = true;
+                let target = Filter { nonlegendary: true, ..YOUR_CREATURE };
+                renew(d, "{2}{U}", vec![target], vec![Effect::Counters { slot: 0, n: 1 }, Effect::OthersBecomeCopyOfTarget(0)]);
+            },
+        ),
+        "Teval, Arbiter of Virtue" => s(
+            &["Spells you cast have delve.", "Whenever you cast a spell, you lose life equal to its mana value."],
+            |d, _| {
+                d.spells_have_delve = true;
+                on(d, When::YouCast, vec![], vec![Effect::LoseLifeCastSpellManaValue]);
+            },
+        ),
         "Nature's Rhythm" => s(
             &[
                 "Search your library for a creature card with mana value X or less, put it onto the battlefield, then shuffle.",
@@ -4175,6 +4197,9 @@ pub const SCRIPTED: &[&str] = &[
 pub const TDM_SCRIPTED: &[&str] = &[
     "Scavenger Regent",
     "Nature's Rhythm",
+    "Teval, Arbiter of Virtue",
+    "Naga Fleshcrafter",
+    "Taigam, Master Opportunist",
     "Sibsig Appraiser",
     "Iceridge Serpent",
     "Boulderborn Dragon",

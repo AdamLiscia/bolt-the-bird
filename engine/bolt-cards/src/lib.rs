@@ -323,6 +323,8 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         grants_offspring: None,
         decayed: false,
         ward_discard: false,
+        spells_have_delve: false,
+        enter_as_copy: false,
     };
     def.color_identity = color_identity(o);
     // An Omen's spell half: its lines must be claimed too, written "Omen: <line>" in the script.

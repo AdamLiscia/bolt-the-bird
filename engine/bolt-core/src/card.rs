@@ -425,6 +425,10 @@ pub struct CardDef {
     pub decayed: bool,
     /// "Ward—Discard a card." (Scavenger Regent)
     pub ward_discard: bool,
+    /// "Spells you cast have delve." (Teval)
+    pub spells_have_delve: bool,
+    /// "You may have this creature enter as a copy of any creature on the battlefield."
+    pub enter_as_copy: bool,
 }
 
 /// An Omen spell half: its name, cost, whether it's an instant, and what it does.
@@ -560,6 +564,8 @@ impl CardDef {
             grants_offspring: None,
             decayed: false,
             ward_discard: false,
+            spells_have_delve: false,
+            enter_as_copy: false,
         }
     }
 
@@ -674,6 +680,8 @@ impl CardDef {
             grants_offspring: None,
             decayed: false,
             ward_discard: false,
+            spells_have_delve: false,
+            enter_as_copy: false,
         }
     }
 
@@ -788,6 +796,8 @@ impl CardDef {
             grants_offspring: None,
             decayed: false,
             ward_discard: false,
+            spells_have_delve: false,
+            enter_as_copy: false,
         }
     }
 }

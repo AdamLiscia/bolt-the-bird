@@ -1841,3 +1841,157 @@ fn natures_rhythm_from_hand_and_by_harmonize_with_x() {
     assert_eq!(g.obj(small).zone, Zone::Battlefield);
     assert_eq!(g.obj(rhythm).zone, Zone::Exile, "harmonize exiles it");
 }
+
+#[test]
+fn teval_gives_spells_delve_and_costs_life_per_spell() {
+    let mut g = table();
+    let teval = put(&mut g, 0, "Teval, Arbiter of Virtue");
+    for _ in 0..3 {
+        g.add_card(0, tid("Plains"), Zone::Graveyard);
+    }
+    let whisper = g.add_card(0, tid("Unending Whisper"), Zone::Graveyard); // harmonize: has a graveyard use
+    let serpent = hand(&mut g, 0, "Iceridge Serpent");
+    let mv = g.def_of(serpent).cost.mana_value() as i32;
+    let generic = g.def_of(serpent).cost.generic;
+    begin(&mut g);
+    let life = g.players[0].life;
+    let n = paid(&mut g, |g| {
+        act(g, Action::Cast(serpent));
+        assert!(matches!(g.pending, Pending::Decide(0)), "asked how many to delve");
+        assert!(g.legal_actions().contains(&Action::Amount(0)));
+        let d = generic.min(3);
+        act(g, Action::Amount(d));
+        resolve_all(g, &[]);
+    });
+    let d = generic.min(3) as usize;
+    assert_eq!(n, mv as usize - d, "delve paid {d} of the generic cost");
+    let exiled = g.players[0].graveyard.len();
+    assert_eq!(exiled, 4 - d, "{d} cards exiled from the graveyard");
+    assert_eq!(
+        g.obj(whisper).zone,
+        Zone::Graveyard,
+        "cards with a graveyard use go last"
+    );
+    assert_eq!(
+        g.players[0].life,
+        life - mv,
+        "lose life equal to the spell's mana value"
+    );
+    assert_eq!(g.obj(serpent).zone, Zone::Battlefield);
+    let _ = teval;
+}
+
+#[test]
+fn naga_fleshcrafter_enters_as_a_copy_and_renew_copies_until_end_of_turn() {
+    let mut g = table();
+    let serpent = put(&mut g, 1, "Iceridge Serpent");
+    let naga = hand(&mut g, 0, "Naga Fleshcrafter");
+    begin(&mut g);
+    act(&mut g, Action::Cast(naga));
+    let mut asked = false;
+    for _ in 0..20 {
+        if matches!(g.pending, Pending::Decide(0)) {
+            assert!(g.legal_actions().contains(&Action::Pick(serpent)));
+            assert!(g.legal_actions().contains(&Action::No), "the copy is optional");
+            act(&mut g, Action::Pick(serpent));
+            asked = true;
+            break;
+        }
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(asked);
+    assert_eq!(g.def_of(naga).name, "Iceridge Serpent", "it entered as a copy");
+    assert_eq!(g.power(naga), g.power(serpent));
+    // The copied creature's "when this enters" trigger applies to it too.
+    assert!(
+        matches!(g.pending, Pending::ChooseTarget(0)),
+        "the Serpent's enter trigger asks for a target"
+    );
+    let t = g.legal_actions()[0];
+    act(&mut g, t);
+    resolve_all(&mut g, &[]);
+    // Leaving the battlefield, it's Naga Fleshcrafter again (CR 707.2).
+    g.move_card(naga, Zone::Graveyard);
+    assert_eq!(g.def_of(naga).name, "Naga Fleshcrafter");
+    let mut g2 = table();
+    let naga2 = g2.add_card(0, tid("Naga Fleshcrafter"), Zone::Graveyard);
+    let elder = put(&mut g2, 0, "Humbling Elder");
+    let other = put(&mut g2, 0, "Iceridge Serpent");
+    begin(&mut g2);
+    let renew = g2
+        .legal_actions()
+        .into_iter()
+        .find(|a| matches!(a, Action::Activate(id, _) if *id == naga2))
+        .expect("renew is offered from the graveyard");
+    act(&mut g2, renew);
+    act(&mut g2, Action::Target(obj(elder)));
+    resolve_all(&mut g2, &[]);
+    assert_eq!(g2.obj(naga2).zone, Zone::Exile);
+    assert_eq!(g2.obj(elder).counters, 1);
+    assert_eq!(
+        g2.def_of(other).name,
+        "Humbling Elder",
+        "the other creature is a copy this turn"
+    );
+    let turn = g2.turn;
+    for _ in 0..200 {
+        if g2.turn != turn {
+            break;
+        }
+        let a = if g2.legal_actions().contains(&Action::PassPriority) {
+            Action::PassPriority
+        } else {
+            g2.legal_actions()[0]
+        };
+        act(&mut g2, a);
+    }
+    assert_ne!(g2.turn, turn, "the turn ended: copies wear off in cleanup");
+    assert_eq!(g2.def_of(other).name, "Iceridge Serpent");
+}
+
+#[test]
+fn taigam_copies_the_second_spell_and_suspends_it() {
+    let mut g = table();
+    let taigam = put(&mut g, 0, "Taigam, Master Opportunist");
+    let first = hand(&mut g, 0, "Mammoth Bellow"); // a 5/5 Elephant token
+    let second = hand(&mut g, 0, "Mammoth Bellow");
+    begin(&mut g);
+    play(&mut g, first, false, &[], &[]);
+    assert_eq!(tokens(&g, 0, "Elephant").len(), 1);
+    act(&mut g, Action::Cast(second));
+    resolve_all(&mut g, &[]);
+    assert_eq!(tokens(&g, 0, "Elephant").len(), 2, "the copy resolved");
+    assert_eq!(
+        g.obj(second).zone,
+        Zone::Exile,
+        "the spell itself is exiled, not resolved"
+    );
+    assert_eq!(g.obj(second).time_counters, 4);
+    // Three upkeeps take it to 1; the fourth removes the last and offers a free cast.
+    for k in 0..4u32 {
+        g.start_turn(10 + 2 * k, 0);
+        let mut guard = 0;
+        while g.step == bolt_core::Step::Upkeep && guard < 20 && !matches!(g.pending, Pending::FreeCast(0)) {
+            act(&mut g, Action::PassPriority);
+            guard += 1;
+        }
+        if k < 3 {
+            assert_eq!(g.obj(second).time_counters, 3 - k as u8);
+        }
+    }
+    assert!(
+        matches!(g.pending, Pending::FreeCast(0)),
+        "last counter: cast it free"
+    );
+    let lands = untapped_lands(&g, 0);
+    let cast = g
+        .legal_actions()
+        .into_iter()
+        .find(|a| *a != Action::PassPriority)
+        .expect("the suspended card is castable");
+    act(&mut g, cast);
+    resolve_all(&mut g, &[]);
+    assert_eq!(untapped_lands(&g, 0), lands, "cast without paying its mana cost");
+    assert_eq!(tokens(&g, 0, "Elephant").len(), 3);
+    let _ = taigam;
+}

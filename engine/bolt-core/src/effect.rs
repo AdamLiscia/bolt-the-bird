@@ -87,6 +87,8 @@ pub struct Filter {
     pub nonland_cards: bool,
     /// Tokens only.
     pub tokens_only: bool,
+    /// Nonlegendary permanents only.
+    pub nonlegendary: bool,
 }
 
 impl Filter {
@@ -129,6 +131,7 @@ impl Filter {
         creature_or_land: false,
         nonland_cards: false,
         tokens_only: false,
+        nonlegendary: false,
     };
 
     pub const CREATURE: Filter = Filter {
@@ -889,6 +892,13 @@ pub enum Effect {
     ExileControllerGainsPower(u8),
     /// Each creature without this subtype gets -X/-X until end of turn, X the spell's X (Exude Toxin).
     ShrinkAllWithoutSubtypeX(&'static str),
+    /// You lose life equal to the mana value of the spell in the trigger's `extra` (Teval).
+    LoseLifeCastSpellManaValue,
+    /// Each other creature you control becomes a copy of the creature in `slot` until end of turn.
+    OthersBecomeCopyOfTarget(u8),
+    /// Copy the spell in the trigger's `extra`, then exile that spell with four time counters: it
+    /// has suspend (Taigam's flurry).
+    CopyThenSuspendSpell,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
