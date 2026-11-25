@@ -234,3 +234,90 @@ Core:
 - `When::OpponentCastsNoncreature`, `When::YourCreatureTokenDealsCombatDamageToPlayer`.
 - `Effect::DoublePowerSelf`, `CreateTokensAmountTapped`, `WinTheGame`, `CreateTokensPerSpellCastThisTurn`.
 - Tokens: Thopter (1/1 flying artifact), Storm Crow (1/2 flying Bird).
+
+### Batch 9: 11 cards
+
+Golgari Rot Farm, Gruul Turf, Loyal Warhound, Warstorm Surge, Rites of Flourishing, Garruk, Cursed
+Huntsman, Plaguecrafter, Chaos Warp, Decree of Pain, Spore Frog, Riot Control.
+
+Core:
+- Karoos: `paid_mana` with an empty cost; `Effect::ReturnLandYouControl` (`Decision::ReturnOwnLand`).
+- `Effect::DamageEqualSlotPower` (a triggering creature hits any target, last-known power),
+  `ActivePlayerDraws` with `When::EachDrawStep` (fired for both players' permanents),
+  `CardDef::extra_land_drop_each_player`.
+- Garruk: Wolf token, `Effect::LoyaltyEachYouControlSubtype`, `EmblemKind::GarrukAnthem`.
+- `Effect::SacrificeCreatureOrPlaneswalkerElseDiscard` (`Decision::SacrificeCreatureOrPlaneswalker`):
+  Plaguecrafter asks you, then your opponent (not simultaneous; nothing is hidden, so the order
+  only matters for who sees whose choice).
+- `Effect::ChaosWarp`, `DestroyAllCreaturesDrawPerDestroyed`; `When::YouCycleThis` fired from the
+  graveyard as a cycling cost is paid.
+- `Game::combat_damage_prevented_turn` (Spore Frog) and `damage_to_player_prevented_turn` (Riot
+  Control), checked at the top of `deal_damage`; `Effect::GainLifePerOpponentCreature`.
+- `Condition::OpponentControlsMoreLands`.
+
+### Batch 10: 11 cards
+
+Scurry of Squirrels, Faeburrow Elder, Beledros Witherbloom, Gilded Goose, Jacked Rabbit, Selvala,
+Explorer Returned, Swarmyard Massacre, Skullclamp, Outpost Siege, Tainted Wood, Llanowar Loamspeaker.
+
+Core:
+- `Scale::PerColorAmongYourPermanents` (Faeburrow's mana is the existing `vivid_mana`).
+- `Activated::once_each_turn` (`Object::activated_turn`); `Effect::UntapLandsYouControl`; Pest token.
+- `Condition::XAtLeast` (ravenous's draw), `Effect::CreateTokensPower`.
+- `Effect::SelvalaParley`, `ShrinkAllWithoutSubtypesPerYours`, `SlotBecomesCreatureUntilEot`.
+- `When::EquippedDies` (Equipment still attached when the creature hits the graveyard) and
+  `When::CreatureYouControlLeavesBattlefield`.
+- `CardDef::colored_mana_only_if_you_control` (Tainted Wood keeps its {C}).
+
+Notes: Scurry's myriad does nothing in a two-player game (no opponent other than the defending
+player). Gilded Goose's Food ability and Selvala's parley are mana abilities played on the stack, as
+Hazel's is. Outpost Siege's Khans card is offered as a pick (the existing `ExileTopChooseOneToPlay`
+with one card): declining is never better than taking it.
+
+### Batch 11: 9 cards
+
+Peerless Recycling, Octomancer, Rowdy Research, Jolrael, Mwonvuli Recluse, Skyfisher Spider,
+Pollywog Prodigy, Mangara, the Diplomat, Hoofprints of the Stag, Chitterspitter.
+
+Core:
+- Gift as a free kicker (`kicker = {0}`, cast with `Action::CastKicked`; `kicked_spell` or
+  `Condition::Kicked`). Octopus token; `Filter::entered_this_turn`.
+- `Reduction::PerCreatureAttackedThisTurn` (`Game::attacked_creatures_this_turn`).
+- `Effect::YourCreaturesBasePtHandSize` (via `eot_creature`), `GainLifePerCreatureCardInGraveyard`,
+  `ExileSourceFromGraveyard`, `Evolve`, `KindCounterSelf`, `MaySacrificeToken` (`Decision::SacrificeToken`).
+- `Object::kind_counters` (hoofprint, acorn), `Activated::remove_kind_counters`, `Scale::PerKindCounter`.
+- `When::OpponentCastsNoncreatureMvBelowPower` (filtered as it triggers), `OpponentAttacksWithAtLeastTwo`
+  (two players: every attacker attacks you or your planeswalkers), `OpponentCastsSecondSpell`.
+- Elemental 4/4 flying token.
+
+Notes: evolve compares only as it resolves (not also as it triggers).
+
+### Batch 12: 4 cards
+
+Teapot Slinger, Helm of the Host, Tempt with Discovery, Wildsear, Scouring Maw.
+
+Core:
+- Expend: `Game::mana_spent_on_spells` (reset each turn), `When::YouExpend(n)` fired for each total
+  passed as a spell's cost is paid.
+- `Object::not_legendary` (read by `types_of`; the legend rule now uses `types_of` for both
+  permanents) and `Effect::CopyAttachedNonlegendaryHaste`.
+- Tempting offer: `SearchFor::Land`, `Effect::TemptOpponentsLand` (`Decision::TemptOffer`, the
+  opponent's land search on Yes) and `SearchLandIfTempted` (`Game::tempt_accepted`).
+- Cascade: `When::YouCastEnchantmentFromHand` and `Effect::Cascade`; the card hit is offered in the
+  free-cast window, and `Game::free_casts_to_bottom` puts it on the bottom if not cast.
+
+### Paused
+
+Paused on 2026-11-25 for the playgroup (Xenagos) list. Left on the BLC list:
+- Not attempted, need core: Path of Ancestry (spent-mana tracking), Alchemist's Talent and
+  Gourmand's Talent (Class levels plus granted abilities / Treasure-mana tracking), Baird (attack
+  tax), Bloodroot Apothecary (toxic, poison), Bootleggers' Stash (granted land ability), Calamity of
+  Cinders (convoke), Chatterfang (forestwalk, token replacement), Communal Brewing (counters on a cast
+  creature), Esika's Chariot (crew), Forgotten Ancient (moving counters), Grothama, Illusionist's
+  Gambit, Insatiable Frugivore, Martial Impetus (goad), Moonstone Eulogist and Ravenous Squirrel
+  ("whenever you sacrifice"), Mosswort Bridge (hideaway), Pyreswipe Hawk (control for as long as),
+  Rain of Riches, Rootcast Apprenticeship (repeated modes), Sunbird's Invocation, Tenuous Truce
+  (enchant opponent), The Odd Acorn Gang (granted Squirrel ability), Wolfwillow Haven.
+- Not claimable: Brightcap Badger // Fungus Frolic and Dusk // Dawn (the oracle data has only the
+  front face).
+- Staged but not applied: Wizard Class and Kodama of the East Tree (`/tmp/laneb_batch13.py`).

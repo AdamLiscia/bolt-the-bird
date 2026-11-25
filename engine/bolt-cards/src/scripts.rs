@@ -116,6 +116,31 @@ pub fn token_defs() -> Vec<CardDef> {
         token("Eldrazi", "Eldrazi", 10, 10, Keywords::NONE), // Idol of Oblivion
         token("Illusion", "Illusion", 0, 0, Keywords::NONE), // Skyclave Apparition's X/X
         token("Saproling", "Saproling", 1, 1, Keywords::NONE), // Tendershoot Dryad
+        {
+            // Garruk, Cursed Huntsman: "2/2 black and green Wolf creature tokens with \"When this
+            // token dies, put a loyalty counter on each Garruk you control.\""
+            let mut wolf = token("Wolf", "Wolf", 2, 2, Keywords::NONE);
+            on(
+                &mut wolf,
+                When::Dies,
+                vec![],
+                vec![Effect::LoyaltyEachYouControlSubtype("Garruk")],
+            );
+            wolf
+        },
+        {
+            // Beledros Witherbloom: a 1/1 black and green Pest with "When this token dies, you gain 1 life."
+            let mut pest = token("Pest", "Pest", 1, 1, Keywords::NONE);
+            on(
+                &mut pest,
+                When::Dies,
+                vec![],
+                vec![Effect::GainLife { who: Who::You, n: 1 }],
+            );
+            pest
+        },
+        token("Octopus", "Octopus", 8, 8, Keywords::NONE), // Octomancer's gift: a blue 8/8
+        token("Elemental", "Elemental", 4, 4, Keywords::FLYING), // Hoofprints of the Stag: white 4/4
     ]
 }
 
@@ -204,6 +229,10 @@ pub struct Tokens {
     pub eldrazi: usize,
     pub illusion: usize,
     pub saproling: usize,
+    pub garruk_wolf: usize,
+    pub pest: usize,
+    pub octopus: usize,
+    pub elemental_4: usize,
 }
 
 impl Tokens {
@@ -256,6 +285,10 @@ impl Tokens {
             eldrazi: base + 44,
             illusion: base + 45,
             saproling: base + 46,
+            garruk_wolf: base + 47,
+            pest: base + 48,
+            octopus: base + 49,
+            elemental_4: base + 50,
         }
     }
 }

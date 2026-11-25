@@ -343,6 +343,8 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         max_hand_size: 0,
         enters_counters_one_plus_others: false,
         ascend: false,
+        extra_land_drop_each_player: false,
+        colored_mana_only_if_you_control: None,
     };
     def.color_identity = color_identity(o);
     // An Omen's spell half: its lines must be claimed too, written "Omen: <line>" in the script.

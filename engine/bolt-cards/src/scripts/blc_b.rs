@@ -29,6 +29,13 @@ fn colorless(d: &mut CardDef) {
     });
 }
 
+/// A karoo: enters tapped, returns a land you control to its owner's hand, and taps for two mana.
+fn karoo(d: &mut CardDef, a: Color, b: Color) {
+    d.enters_tapped = true;
+    on(d, When::Enters, vec![], vec![Effect::ReturnLandYouControl]);
+    d.paid_mana = Some((ManaCost::default(), [ManaSource::of(&[a]), ManaSource::of(&[b])]));
+}
+
 pub fn script(name: &str) -> Option<Script> {
     let s = |lines, build| Some(Script { lines, build });
     match name {
@@ -733,6 +740,377 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::EndStep { your_turn_only: true }, vec![], vec![Effect::CreateTokensPerSpellCastThisTurn { def: t.storm_crow }]);
             },
         ),
+        "Golgari Rot Farm" => s(
+            &["This land enters tapped.", "When this land enters, return a land you control to its owner's hand.", "{T}: Add {B}{G}."],
+            |d, _| karoo(d, Color::Black, Color::Green),
+        ),
+        "Gruul Turf" => s(
+            &["This land enters tapped.", "When this land enters, return a land you control to its owner's hand.", "{T}: Add {R}{G}."],
+            |d, _| karoo(d, Color::Red, Color::Green),
+        ),
+        "Loyal Warhound" => s(
+            &["When this creature enters, if an opponent controls more lands than you, search your library for a basic Plains card, put it onto the battlefield tapped, then shuffle."],
+            |d, _| {
+                let plains = SearchFor::LandTypes { types: land_types(&["Plains"]), basic: true };
+                conditional(
+                    d,
+                    When::Enters,
+                    Condition::OpponentControlsMoreLands,
+                    vec![],
+                    vec![search(plains, SearchTo::Battlefield { tapped: true })],
+                );
+            },
+        ),
+        "Warstorm Surge" => s(&["Whenever a creature you control enters, it deals damage equal to its power to any target."], |d, _| {
+            let that = Filter { triggering: true, ..CREATURE };
+            on(d, When::AnotherCreatureYouControlEnters, vec![that, Filter::ANY], vec![Effect::DamageEqualSlotPower { from: 0, to: 1 }]);
+        }),
+        "Rites of Flourishing" => s(
+            &[
+                "At the beginning of each player's draw step, that player draws an additional card.",
+                "Each player may play an additional land on each of their turns.",
+            ],
+            |d, _| {
+                on(d, When::EachDrawStep, vec![], vec![Effect::ActivePlayerDraws(1)]);
+                d.extra_land_drop_each_player = true;
+            },
+        ),
+        "Garruk, Cursed Huntsman" => s(
+            &[
+                "0: Create two 2/2 black and green Wolf creature tokens with \"When this token dies, put a loyalty counter on each Garruk you control.\"",
+                "\u{2212}3: Destroy target creature. Draw a card.",
+                "\u{2212}6: You get an emblem with \"Creatures you control get +3/+3 and have trample.\"",
+            ],
+            |d, t| {
+                loyalty(d, 0, Ability::new(vec![], vec![Effect::CreateToken { who: Who::You, def: t.garruk_wolf, n: 2 }]));
+                loyalty(d, -3, Ability::new(vec![CREATURE], vec![Effect::Destroy(0), draw(1)]));
+                loyalty(d, -6, Ability::new(vec![], vec![Effect::Emblem(EmblemKind::GarrukAnthem)]));
+            },
+        ),
+        "Plaguecrafter" => s(
+            &["When this creature enters, each player sacrifices a creature or planeswalker of their choice. Each player who can't discards a card."],
+            |d, _| {
+                // Each player in turn order (you, then your opponent).
+                on(
+                    d,
+                    When::Enters,
+                    vec![],
+                    vec![
+                        Effect::SacrificeCreatureOrPlaneswalkerElseDiscard { who: Who::You },
+                        Effect::SacrificeCreatureOrPlaneswalkerElseDiscard { who: Who::EachOpponent },
+                    ],
+                );
+            },
+        ),
+        "Chaos Warp" => s(
+            &["The owner of target permanent shuffles it into their library, then reveals the top card of their library. If it's a permanent card, they put it onto the battlefield."],
+            |d, _| {
+                let any = Filter { players: false, creatures: false, planeswalkers: false, any_permanent: true, ..Filter::ANY };
+                spell(d, vec![any], vec![Effect::ChaosWarp(0)]);
+            },
+        ),
+        "Decree of Pain" => s(
+            &[
+                "Destroy all creatures. They can't be regenerated. Draw a card for each creature destroyed this way.",
+                "Cycling {3}{B}{B}",
+                "When you cycle this card, all creatures get -2/-2 until end of turn.",
+            ],
+            |d, _| {
+                // The engine has no regeneration.
+                spell(d, vec![], vec![Effect::DestroyAllCreaturesDrawPerDestroyed]);
+                cycling(d, "{3}{B}{B}");
+                on(
+                    d,
+                    When::YouCycleThis,
+                    vec![],
+                    vec![
+                        Effect::PumpAll { who: Who::You, power: -2, toughness: -2 },
+                        Effect::PumpAll { who: Who::EachOpponent, power: -2, toughness: -2 },
+                    ],
+                );
+            },
+        ),
+        "Spore Frog" => s(&["Sacrifice this creature: Prevent all combat damage that would be dealt this turn."], |d, _| {
+            let n = activated(d, "", false, vec![], vec![Effect::PreventAllCombatDamageThisTurn]);
+            d.activated[n].sacrifice_self = true;
+        }),
+        "Riot Control" => s(
+            &["You gain 1 life for each creature your opponents control. Prevent all damage that would be dealt to you this turn."],
+            |d, _| spell(d, vec![], vec![Effect::GainLifePerOpponentCreature, Effect::PreventAllDamageToYouThisTurn]),
+        ),
+        "Scurry of Squirrels" => s(
+            &["Myriad, myriad", "Whenever this creature deals combat damage to a player, put a +1/+1 counter on target creature you control."],
+            |d, _| {
+                // Myriad copies attack each opponent other than the defending player: in a two-player
+                // game there is none, so myriad (twice) does nothing.
+                on(d, When::DealsCombatDamageToPlayer, vec![YOUR_CREATURE], vec![Effect::Counters { slot: 0, n: 1 }]);
+            },
+        ),
+        "Faeburrow Elder" => s(
+            &[
+                "This creature gets +1/+1 for each color among permanents you control.",
+                "{T}: For each color among permanents you control, add one mana of that color.",
+            ],
+            |d, _| {
+                static_on(d, Scope::This, false, Keywords::NONE);
+                let st = d.statics.last_mut().expect("just added");
+                st.power = 1;
+                st.toughness = 1;
+                st.scale = Some(Scale::PerColorAmongYourPermanents);
+                d.vivid_mana = true;
+            },
+        ),
+        "Beledros Witherbloom" => s(
+            &[
+                "At the beginning of each upkeep, create a 1/1 black and green Pest creature token with \"When this token dies, you gain 1 life.\"",
+                "Pay 10 life: Untap all lands you control. Activate only once each turn.",
+            ],
+            |d, t| {
+                on(d, When::Upkeep { your_turn_only: false }, vec![], vec![Effect::CreateToken { who: Who::You, def: t.pest, n: 1 }]);
+                let n = activated(d, "", false, vec![], vec![Effect::UntapLandsYouControl]);
+                d.activated[n].life = 10;
+                d.activated[n].once_each_turn = true;
+            },
+        ),
+        "Gilded Goose" => s(
+            &[
+                "When this creature enters, create a Food token.",
+                "{1}{G}, {T}: Create a Food token.",
+                "{T}, Sacrifice a Food: Add one mana of any color.",
+            ],
+            |d, t| {
+                on(d, When::Enters, vec![], vec![Effect::CreateToken { who: Who::You, def: t.food, n: 1 }]);
+                activated(d, "{1}{G}", true, vec![], vec![Effect::CreateToken { who: Who::You, def: t.food, n: 1 }]);
+                // Played as an activated ability that uses the stack (as Hazel's is): the mana payer
+                // doesn't sacrifice other permanents.
+                let n = activated(d, "", true, vec![], vec![Effect::AddManaAnyColor]);
+                d.activated[n].sacrifice_subtype = Some("Food");
+            },
+        ),
+        "Jacked Rabbit" => s(
+            &["Ravenous", "Whenever this creature attacks, create a number of 1/1 white Rabbit creature tokens equal to this creature's power."],
+            |d, t| {
+                d.enters_with_x_counters = true;
+                conditional(d, When::Enters, Condition::XAtLeast(5), vec![], vec![draw(1)]);
+                on(d, When::Attacks, vec![], vec![Effect::CreateTokensPower { def: t.rabbit }]);
+            },
+        ),
+        "Selvala, Explorer Returned" => s(
+            &["Parley — {T}: Each player reveals the top card of their library. For each nonland card revealed this way, add {G} and you gain 1 life. Then each player draws a card."],
+            |d, _| {
+                // A mana ability played on the stack, like Hazel's.
+                activated(d, "", true, vec![], vec![Effect::SelvalaParley]);
+            },
+        ),
+        "Swarmyard Massacre" => s(
+            &["Create two 1/1 green Squirrel creature tokens. Then each creature that isn't an Insect, Rat, Spider, or Squirrel gets -1/-1 until end of turn for each creature you control that's an Insect, Rat, Spider, or Squirrel."],
+            |d, t| {
+                spell(
+                    d,
+                    vec![],
+                    vec![
+                        Effect::CreateToken { who: Who::You, def: t.squirrel, n: 2 },
+                        Effect::ShrinkAllWithoutSubtypesPerYours(&["Insect", "Rat", "Spider", "Squirrel"]),
+                    ],
+                );
+            },
+        ),
+        "Skullclamp" => s(&["Equipped creature gets +1/-1.", "Whenever equipped creature dies, draw two cards.", "Equip {1}"], |d, _| {
+            attached(d, false, 1, -1, Keywords::NONE);
+            on(d, When::EquippedDies, vec![], vec![draw(2)]);
+            equip(d, "{1}");
+        }),
+        "Outpost Siege" => s(
+            &[
+                "As this enchantment enters, choose Khans or Dragons.",
+                "• Khans — At the beginning of your upkeep, exile the top card of your library. Until end of turn, you may play that card.",
+                "• Dragons — Whenever a creature you control leaves the battlefield, this enchantment deals 1 damage to any target.",
+            ],
+            |d, _| {
+                d.enter_modes = true;
+                conditional(
+                    d,
+                    When::Upkeep { your_turn_only: true },
+                    Condition::ChosenMode(0),
+                    vec![],
+                    vec![Effect::ExileTopChooseOneToPlay { n: 1, this_turn: true }],
+                );
+                conditional(
+                    d,
+                    When::CreatureYouControlLeavesBattlefield,
+                    Condition::ChosenMode(1),
+                    vec![Filter::ANY],
+                    vec![damage(1, Recipient::Target(0))],
+                );
+            },
+        ),
+        "Tainted Wood" => s(&["{T}: Add {C}.", "{T}: Add {B} or {G}. Activate only if you control a Swamp."], |d, _| {
+            d.mana = Some(ManaSource { colorless: true, ..ManaSource::of(&[Color::Black, Color::Green]) });
+            d.colored_mana_only_if_you_control = Some("Swamp");
+        }),
+        "Llanowar Loamspeaker" => s(
+            &[
+                "{T}: Add one mana of any color.",
+                "{T}: Target land you control becomes a 3/3 Elemental creature with haste until end of turn. It's still a land. Activate only as a sorcery.",
+            ],
+            |d, _| {
+                d.mana = Some(ManaSource::of(&Color::ALL));
+                let land = Filter { players: false, creatures: false, planeswalkers: false, lands: true, controller: Controller::You, ..Filter::ANY };
+                let n = activated(
+                    d,
+                    "",
+                    true,
+                    vec![land],
+                    vec![Effect::SlotBecomesCreatureUntilEot { slot: 0, power: 3, toughness: 3, subtype: "Elemental", keywords: Keywords::HASTE }],
+                );
+                d.activated[n].sorcery = true;
+            },
+        ),
+        "Peerless Recycling" => s(
+            &[
+                "Gift a card",
+                "Return target permanent card from your graveyard to your hand. If the gift was promised, instead return two target permanent cards from your graveyard to your hand.",
+            ],
+            |d, _| {
+                // Gift: an optional free additional cost, cast with `Action::CastKicked`.
+                d.kicker = ManaCost::parse("{0}");
+                let card = Filter { permanent_cards: true, ..graveyard_cards(false, Controller::You) };
+                spell(d, vec![card], vec![Effect::Bounce(0)]);
+                d.kicked_spell = Some(Ability::new(
+                    vec![card, card],
+                    vec![Effect::Draw { who: Who::EachOpponent, n: 1 }, Effect::Bounce(0), Effect::Bounce(1)],
+                ));
+            },
+        ),
+        "Octomancer" => s(
+            &[
+                "Gift an Octopus",
+                "At the beginning of each end step, create a token that's a copy of target creature token that entered the battlefield this turn.",
+            ],
+            |d, t| {
+                d.kicker = ManaCost::parse("{0}"); // the gift, cast with `Action::CastKicked`
+                conditional(
+                    d,
+                    When::Enters,
+                    Condition::Kicked,
+                    vec![],
+                    vec![Effect::CreateToken { who: Who::EachOpponent, def: t.octopus, n: 1 }],
+                );
+                let new_token = Filter { tokens_only: true, entered_this_turn: true, ..CREATURE };
+                on(
+                    d,
+                    When::EndStep { your_turn_only: false },
+                    vec![new_token],
+                    vec![Effect::CopyToken { slot: Some(0), haste_and_sacrifice: false, extra_subtype: None }],
+                );
+            },
+        ),
+        "Rowdy Research" => s(
+            &["This spell costs {1} less to cast for each creature that attacked this turn.", "Draw three cards."],
+            |d, _| {
+                d.reduction = Some(Reduction::PerCreatureAttackedThisTurn);
+                spell(d, vec![], vec![draw(3)]);
+            },
+        ),
+        "Jolrael, Mwonvuli Recluse" => s(
+            &[
+                "Whenever you draw your second card each turn, create a 2/2 green Cat creature token.",
+                "{4}{G}{G}: Until end of turn, creatures you control have base power and toughness X/X, where X is the number of cards in your hand.",
+            ],
+            |d, t| {
+                on(d, When::YouDrawSecond, vec![], vec![Effect::CreateToken { who: Who::You, def: t.cat_2, n: 1 }]);
+                activated(d, "{4}{G}{G}", false, vec![], vec![Effect::YourCreaturesBasePtHandSize]);
+            },
+        ),
+        "Skyfisher Spider" => s(
+            &[
+                "When this creature enters, you may sacrifice another creature. When you do, destroy target nonland permanent.",
+                "When this creature dies, you may gain 1 life for each creature card in your graveyard. If you do, exile this card from your graveyard.",
+            ],
+            |d, _| {
+                on(d, When::Enters, vec![], vec![Effect::MaySacrificeAnother, Effect::Reflexive(1)]);
+                let nonland = Filter { controller: Controller::Any, ..OPP_NONLAND };
+                on(d, When::Never, vec![nonland], vec![Effect::Destroy(0)]); // trigger 1: "when you do"
+                may(d, When::Dies, vec![], vec![Effect::GainLifePerCreatureCardInGraveyard, Effect::ExileSourceFromGraveyard]);
+            },
+        ),
+        "Pollywog Prodigy" => s(
+            &[
+                "Evolve",
+                "Whenever an opponent casts a noncreature spell with mana value less than this creature's power, draw a card.",
+            ],
+            |d, _| {
+                let that = Filter { triggering: true, ..CREATURE };
+                on(d, When::AnotherCreatureYouControlEnters, vec![that], vec![Effect::Evolve(0)]);
+                on(d, When::OpponentCastsNoncreatureMvBelowPower, vec![], vec![draw(1)]);
+            },
+        ),
+        "Mangara, the Diplomat" => s(
+            &[
+                "Whenever an opponent attacks with creatures, if two or more of those creatures are attacking you and/or planeswalkers you control, draw a card.",
+                "Whenever an opponent casts their second spell each turn, draw a card.",
+            ],
+            |d, _| {
+                on(d, When::OpponentAttacksWithAtLeastTwo, vec![], vec![draw(1)]);
+                on(d, When::OpponentCastsSecondSpell, vec![], vec![draw(1)]);
+            },
+        ),
+        "Hoofprints of the Stag" => s(
+            &[
+                "Whenever you draw a card, you may put a hoofprint counter on this enchantment.",
+                "{2}{W}, Remove four hoofprint counters from this enchantment: Create a 4/4 white Elemental creature token with flying. Activate only during your turn.",
+            ],
+            |d, t| {
+                may(d, When::YouDraw, vec![], vec![Effect::KindCounterSelf(1)]);
+                let n = activated(d, "{2}{W}", false, vec![], vec![Effect::CreateToken { who: Who::You, def: t.elemental_4, n: 1 }]);
+                d.activated[n].remove_kind_counters = 4;
+                d.activated[n].your_turn_only = true;
+            },
+        ),
+        "Chitterspitter" => s(
+            &[
+                "At the beginning of your upkeep, you may sacrifice a token. If you do, put an acorn counter on this artifact.",
+                "Squirrels you control get +1/+1 for each acorn counter on this artifact.",
+                "{G}, {T}: Create a 1/1 green Squirrel creature token.",
+            ],
+            |d, t| {
+                on(d, When::Upkeep { your_turn_only: true }, vec![], vec![Effect::MaySacrificeToken, Effect::KindCounterSelf(1)]);
+                lord(d, "Squirrel");
+                d.statics.last_mut().expect("just added").scale = Some(Scale::PerKindCounter);
+                activated(d, "{G}", true, vec![], vec![Effect::CreateToken { who: Who::You, def: t.squirrel, n: 1 }]);
+            },
+        ),
+        "Teapot Slinger" => s(&["Whenever you expend 4, this creature deals 2 damage to each opponent."], |d, _| {
+            on(d, When::Expend(4), vec![], vec![damage(2, Recipient::EachOpponent)])
+        }),
+        "Helm of the Host" => s(
+            &[
+                "At the beginning of combat on your turn, create a token that's a copy of equipped creature, except the token isn't legendary. That token gains haste.",
+                "Equip {5}",
+            ],
+            |d, _| {
+                on(d, When::BeginCombatYourTurn, vec![], vec![Effect::CopyAttachedNonlegendaryHaste]);
+                equip(d, "{5}");
+            },
+        ),
+        "Tempt with Discovery" => s(
+            &["Tempting offer — Search your library for a land card and put it onto the battlefield. Each opponent may search their library for a land card and put it onto the battlefield. For each opponent who searches a library this way, search your library for a land card and put it onto the battlefield. Then each player who searched a library this way shuffles."],
+            |d, _| {
+                spell(
+                    d,
+                    vec![],
+                    vec![
+                        search(SearchFor::Land, SearchTo::Battlefield { tapped: false }),
+                        Effect::TemptOpponentsLand,
+                        Effect::SearchLandIfTempted,
+                    ],
+                );
+            },
+        ),
+        "Wildsear, Scouring Maw" => s(
+            &["Enchantment spells you cast from your hand have cascade."],
+            |d, _| on(d, When::YouCastEnchantmentFromHand, vec![], vec![Effect::Cascade]),
+        ),
         _ => None,
     }
 }
@@ -849,4 +1227,39 @@ pub const BLC_B_SCRIPTED: &[&str] = &[
     "Curiosity Crafter",
     "Triskaidekaphile",
     "Murmuration",
+    "Golgari Rot Farm",
+    "Gruul Turf",
+    "Loyal Warhound",
+    "Warstorm Surge",
+    "Rites of Flourishing",
+    "Garruk, Cursed Huntsman",
+    "Plaguecrafter",
+    "Chaos Warp",
+    "Decree of Pain",
+    "Spore Frog",
+    "Riot Control",
+    "Scurry of Squirrels",
+    "Faeburrow Elder",
+    "Beledros Witherbloom",
+    "Gilded Goose",
+    "Jacked Rabbit",
+    "Selvala, Explorer Returned",
+    "Swarmyard Massacre",
+    "Skullclamp",
+    "Outpost Siege",
+    "Tainted Wood",
+    "Llanowar Loamspeaker",
+    "Peerless Recycling",
+    "Octomancer",
+    "Rowdy Research",
+    "Jolrael, Mwonvuli Recluse",
+    "Skyfisher Spider",
+    "Pollywog Prodigy",
+    "Mangara, the Diplomat",
+    "Hoofprints of the Stag",
+    "Chitterspitter",
+    "Teapot Slinger",
+    "Helm of the Host",
+    "Tempt with Discovery",
+    "Wildsear, Scouring Maw",
 ];
