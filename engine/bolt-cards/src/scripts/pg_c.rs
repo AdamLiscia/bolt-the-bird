@@ -4,6 +4,7 @@
 #![allow(unused_imports)]
 
 use super::*;
+use bolt_core::EntryDoubler;
 
 fn dual(d: &mut CardDef, a: Color, b: Color) {
     d.mana = Some(ManaSource::of(&[a, b]));
@@ -82,6 +83,131 @@ pub fn script(name: &str) -> Option<Script> {
                 may(d, When::LandYouControlEnters, vec![], vec![draw(1)]);
             },
         ),
+        "Glarb, Calamity's Augur" => s(
+            &[
+                "You may look at the top card of your library any time.",
+                "You may play lands and cast spells with mana value 4 or greater from the top of your library.",
+                "{T}: Surveil 2.",
+            ],
+            |d, _| {
+                // Looking at the top card is information only: no rules effect.
+                d.lands_from_top = true;
+                d.top_spells_min_mana_value = Some(4);
+                activated(d, "", true, vec![], vec![Effect::Surveil { n: 2 }]);
+            },
+        ),
+        "Oracle of Mul Daya" => s(
+            &[
+                "You may play an additional land on each of your turns.",
+                "Play with the top card of your library revealed.",
+                "You may play lands from the top of your library.",
+            ],
+            |d, _| {
+                d.extra_land_drops = 1;
+                d.lands_from_top = true; // revealing it is information only
+            },
+        ),
+        "Traveling Chocobo" => s(
+            &[
+                "You may look at the top card of your library any time.",
+                "You may play lands and cast Bird spells from the top of your library.",
+                "If a land or Bird you control entering the battlefield causes a triggered ability of a permanent you control to trigger, that ability triggers an additional time.",
+            ],
+            |d, _| {
+                d.lands_from_top = true;
+                d.top_spells_subtype = Some("Bird");
+                d.entering_triggers_again = Some(EntryDoubler::LandOrSubtype("Bird"));
+            },
+        ),
+        "Crucible of Worlds" => s(&["You may play lands from your graveyard."], |d, _| d.lands_from_graveyard = true),
+        "Icetill Explorer" => s(
+            &[
+                "You may play an additional land on each of your turns.",
+                "You may play lands from your graveyard.",
+                "Landfall — Whenever a land you control enters, mill a card.",
+            ],
+            |d, _| {
+                d.extra_land_drops = 1;
+                d.lands_from_graveyard = true;
+                on(d, When::LandYouControlEnters, vec![], vec![Effect::Mill { who: Who::You, n: 1 }]);
+            },
+        ),
+        "Ancient Greenwarden" => s(
+            &[
+                "You may play lands from your graveyard.",
+                "If a land entering causes a triggered ability of a permanent you control to trigger, that ability triggers an additional time.",
+            ],
+            |d, _| {
+                d.lands_from_graveyard = true;
+                d.entering_triggers_again = Some(EntryDoubler::Land);
+            },
+        ),
+        "Yarok, the Desecrated" => s(
+            &["If a permanent entering causes a triggered ability of a permanent you control to trigger, that ability triggers an additional time."],
+            |d, _| d.entering_triggers_again = Some(EntryDoubler::Permanent),
+        ),
+        "Seedborn Muse" => s(&["Untap all permanents you control during each other player's untap step."], |d, _| {
+            d.untaps_on_others_untap = true
+        }),
+        "Lumra, Bellow of the Woods" => s(
+            &[
+                "Lumra's power and toughness are each equal to the number of lands you control.",
+                "When Lumra enters, mill four cards. Then return all land cards from your graveyard to the battlefield tapped.",
+            ],
+            |d, _| {
+                d.pt_lands = true;
+                on(d, When::Enters, vec![], vec![Effect::Mill { who: Who::You, n: 4 }, Effect::ReturnLandsFromGraveyardTapped]);
+            },
+        ),
+        "Ob Nixilis, the Fallen" => s(
+            &["Landfall — Whenever a land you control enters, you may have target player lose 3 life. If you do, put three +1/+1 counters on Ob Nixilis."],
+            |d, _| {
+                may(d, When::LandYouControlEnters, vec![Filter::PLAYER], vec![Effect::LoseLife { who: Who::TargetPlayer(0), n: 3 }, Effect::CountersSelf { n: 3 }]);
+            },
+        ),
+        "Doom Whisperer" => s(&["Pay 2 life: Surveil 2."], |d, _| {
+            let n = activated(d, "", false, vec![], vec![Effect::Surveil { n: 2 }]);
+            d.activated[n].life = 2;
+        }),
+        "Matoya, Archon Elder" => s(&["Whenever you scry or surveil, draw a card."], |d, _| on(d, When::YouScryOrSurveil, vec![], vec![draw(1)])),
+        "Lightning Greaves" => s(&["Equipped creature has haste and shroud.", "Equip {0}"], |d, _| {
+            attached(d, false, 0, 0, Keywords::HASTE.with(Keywords::SHROUD));
+            equip(d, "{0}");
+        }),
+        "Assassin's Trophy" => s(
+            &["Destroy target permanent an opponent controls. Its controller may search their library for a basic land card, put it onto the battlefield, then shuffle."],
+            |d, _| {
+                let theirs = Filter { players: false, creatures: false, planeswalkers: false, any_permanent: true, controller: Controller::Opponent, ..Filter::ANY };
+                spell(d, vec![theirs], vec![Effect::DestroyControllerMayFetchBasic(0)]);
+            },
+        ),
+        "Cyclonic Rift" => s(&["Return target nonland permanent you don't control to its owner's hand.", "Overload {6}{U}"], |d, _| {
+            spell(d, vec![OPP_NONLAND], vec![Effect::Bounce(0)]);
+            // Overload {6}{U} is cast as a {5} kicker on {1}{U}: the same total, and "kicked" swaps in
+            // the overloaded text ("each" instead of "target").
+            d.kicker = ManaCost::parse("{5}");
+            d.kicked_spell = Some(Ability::new(vec![], vec![Effect::BounceOpponentsNonland]));
+        }),
+        "Drag to the Roots" => s(
+            &[
+                "Delirium — This spell costs {2} less to cast as long as there are four or more card types among cards in your graveyard.",
+                "Destroy target nonland permanent.",
+            ],
+            |d, _| {
+                d.reduction = Some(Reduction::Delirium(2));
+                let any = Filter { controller: Controller::Any, ..OPP_NONLAND };
+                spell(d, vec![any], vec![Effect::Destroy(0)]);
+            },
+        ),
+        "Rite of Replication" => s(
+            &["Kicker {5}", "Create a token that's a copy of target creature. If this spell was kicked, create five of those tokens instead."],
+            |d, _| {
+                d.kicker = ManaCost::parse("{5}");
+                let copy = Effect::CopyToken { slot: Some(0), haste_and_sacrifice: false, extra_subtype: None };
+                spell(d, vec![CREATURE], vec![copy]);
+                d.kicked_spell = Some(Ability::new(vec![CREATURE], vec![copy; 5]));
+            },
+        ),
         _ => None,
     }
 }
@@ -105,4 +231,21 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Exploration",
     "Azusa, Lost but Seeking",
     "Aesi, Tyrant of Gyre Strait",
+    "Glarb, Calamity's Augur",
+    "Oracle of Mul Daya",
+    "Traveling Chocobo",
+    "Crucible of Worlds",
+    "Icetill Explorer",
+    "Ancient Greenwarden",
+    "Yarok, the Desecrated",
+    "Seedborn Muse",
+    "Lumra, Bellow of the Woods",
+    "Ob Nixilis, the Fallen",
+    "Doom Whisperer",
+    "Matoya, Archon Elder",
+    "Lightning Greaves",
+    "Assassin's Trophy",
+    "Cyclonic Rift",
+    "Drag to the Roots",
+    "Rite of Replication",
 ];

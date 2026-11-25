@@ -5,7 +5,7 @@
 
 use std::sync::Arc;
 
-use crate::card::{Behold, CardDef, ExtraCost, Keywords, Reduction, Types};
+use crate::card::{Behold, CardDef, EntryDoubler, ExtraCost, Keywords, Reduction, Types};
 use crate::effect::{EmblemKind, LookRest, LookTo, Pick, Scale, Scope, Static, StaticCondition};
 use std::collections::VecDeque;
 
@@ -1669,6 +1669,10 @@ impl Game {
         if d.pt_opponents_graveyards {
             b += self.players[opponent(self.obj(id).controller)].graveyard.len() as i32;
         }
+        if d.pt_lands {
+            let p = self.obj(id).controller;
+            b += self.permanents(p).filter(|&x| self.types_of(x).land).count() as i32;
+        }
         if d.pt_hand_size {
             b += self.players[self.obj(id).controller].hand.len() as i32;
         }
@@ -2115,6 +2119,7 @@ impl Game {
             self.def_of(x)
                 .graveyard_lands_in_mode
                 .is_some_and(|m| self.obj(x).chosen_mode == Some(m))
+                || (self.def_of(x).lands_from_graveyard && !self.lost_abilities(x))
         })
     }
 
@@ -2452,6 +2457,40 @@ impl Game {
     }
 
     fn zone_triggers(&mut self, id: ObjId, from: Zone, to: Zone, last_controller: PlayerId) {
+        let before = self.triggered.len();
+        self.zone_triggers_once(id, from, to, last_controller);
+        if to != Zone::Battlefield || from == Zone::Battlefield || self.obj(id).zone != Zone::Battlefield {
+            return;
+        }
+        // Yarok, Ancient Greenwarden, Traveling Chocobo: the entering's triggers trigger again.
+        let land = self.types_of(id).land;
+        let doublers: Vec<PlayerId> = self
+            .battlefield
+            .iter()
+            .copied()
+            .filter(|&x| !self.lost_abilities(x))
+            .filter(|&x| match self.def_of(x).entering_triggers_again {
+                Some(EntryDoubler::Permanent) => true,
+                Some(EntryDoubler::Land) => land,
+                Some(EntryDoubler::LandOrSubtype(sub)) => {
+                    (land || self.has_subtype(id, sub)) && self.obj(id).controller == self.obj(x).controller
+                }
+                None => false,
+            })
+            .map(|x| self.obj(x).controller)
+            .collect();
+        let new: Vec<StackItem> = self.triggered[before..].to_vec();
+        for p in doublers {
+            for t in &new {
+                let src = self.obj(t.source);
+                if t.controller == p && src.controller == p && src.zone == Zone::Battlefield {
+                    self.triggered.push(t.clone());
+                }
+            }
+        }
+    }
+
+    fn zone_triggers_once(&mut self, id: ObjId, from: Zone, to: Zone, last_controller: PlayerId) {
         if to == Zone::Battlefield && from != Zone::Battlefield && self.is_saga(id) {
             self.add_lore(id); // CR 714.3a: a Saga enters with a lore counter
         }
@@ -3201,6 +3240,10 @@ impl Game {
                 if o.zone != Zone::Battlefield {
                     return false;
                 }
+                // CR 702.18a: shroud stops all spells and abilities from targeting it.
+                if !f.triggering && self.keywords(id).has(Keywords::SHROUD) {
+                    return false;
+                }
                 // CR 702.11b: hexproof stops opponents' spells and abilities from targeting it.
                 if o.controller != controller && !f.triggering && self.keywords(id).has(Keywords::HEXPROOF) {
                     return false;
@@ -3380,7 +3423,23 @@ impl Game {
             .iter()
             .copied()
             .filter(move |&c| self.obj(c).owner == p);
+        // The top card of your library (Glarb, Oracle of Mul Daya, Traveling Chocobo).
+        let top = self.players[p].library.last().copied().filter(|&c| {
+            let d = self.def_of(c);
+            self.permanents(p).filter(|&x| !self.lost_abilities(x)).any(|x| {
+                let s = self.def_of(x);
+                if d.types.land {
+                    s.lands_from_top
+                } else {
+                    s.top_spells_min_mana_value
+                        .is_some_and(|m| d.cost.mana_value() >= m)
+                        || s.top_spells_subtype
+                            .is_some_and(|sub| d.subtypes.iter().any(|t| t == sub))
+                }
+            })
+        });
         let candidates: Vec<(ObjId, bool)> = hand
+            .chain(top.map(|c| (c, false)))
             .chain(command.map(|c| (c, false)))
             .chain(flashback.map(|&c| (c, true)))
             .chain(from_exile.map(|c| (c, false)))
@@ -3757,6 +3816,29 @@ impl Game {
                 }
             }
             Some(Reduction::PerCreatureYouControl) => self.creatures(p).count().min(255) as u8,
+            Some(Reduction::Delirium(n)) => {
+                let mut kinds = [false; 7];
+                for &c in &self.players[p].graveyard {
+                    let t = self.def_of(c).types;
+                    let flags = [
+                        t.land,
+                        t.creature,
+                        t.artifact,
+                        t.enchantment,
+                        t.instant,
+                        t.sorcery,
+                        t.planeswalker,
+                    ];
+                    for (k, f) in kinds.iter_mut().zip(flags) {
+                        *k |= f;
+                    }
+                }
+                if kinds.iter().filter(|&&k| k).count() >= 4 {
+                    *n
+                } else {
+                    0
+                }
+            }
             Some(Reduction::PerTokenYouControl) => {
                 self.permanents(p).filter(|&x| self.is_token(x)).count().min(255) as u8
             }
@@ -7436,6 +7518,7 @@ impl Game {
                 }
             }
             Effect::Scry { n } => {
+                self.fire(item.controller, When::YouScryOrSurveil, None);
                 let lib = &self.players[item.controller].library;
                 let cards: Vec<ObjId> = lib.iter().rev().take(n as usize).copied().collect();
                 if !cards.is_empty() {
@@ -7449,6 +7532,7 @@ impl Game {
                 }
             }
             Effect::Surveil { n } => {
+                self.fire(item.controller, When::YouScryOrSurveil, None);
                 let lib = &self.players[item.controller].library;
                 let cards: Vec<ObjId> = lib.iter().rev().take(n as usize).copied().collect();
                 if !cards.is_empty() {
@@ -8458,6 +8542,65 @@ impl Game {
                     .collect();
                 for c in all {
                     self.untap_by_effect(c);
+                }
+            }
+            Effect::DestroyControllerMayFetchBasic(slot) => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    let p = self.obj(id).controller;
+                    self.destroy(id);
+                    self.ask(
+                        p,
+                        Decision::Search {
+                            what: SearchFor::BasicLand,
+                            to: SearchTo::Battlefield { tapped: false },
+                            left: 1,
+                        },
+                    );
+                }
+            }
+            Effect::BounceOpponentsNonland => {
+                let theirs: Vec<ObjId> = self
+                    .battlefield
+                    .iter()
+                    .copied()
+                    .filter(|&x| self.obj(x).controller != item.controller && !self.types_of(x).land)
+                    .collect();
+                for x in theirs {
+                    self.move_to(x, Zone::Hand);
+                }
+            }
+            Effect::CountersOnYourSubtype(sub) => {
+                for c in self.creatures(item.controller).collect::<Vec<_>>() {
+                    if self.has_subtype(c, sub) {
+                        self.add_counters(c, 1);
+                    }
+                }
+            }
+            Effect::ReturnLandsFromGraveyardTapped => {
+                let p = item.controller;
+                let lands: Vec<ObjId> = self.players[p]
+                    .graveyard
+                    .iter()
+                    .copied()
+                    .filter(|&c| self.def_of(c).types.land)
+                    .collect();
+                for c in lands {
+                    self.move_to(c, Zone::Battlefield);
+                    self.obj_mut(c).tapped = true;
+                }
+            }
+            Effect::InsectOrCopyWithSixLands { def } => {
+                let p = item.controller;
+                let lands = self.permanents(p).filter(|&x| self.types_of(x).land).count();
+                if lands >= 6 {
+                    let original = self.obj(src).def;
+                    for _ in 0..self.token_doubling(p) {
+                        let id = self.add_card(p, original, Zone::Hand);
+                        self.obj_mut(id).copy_token = true;
+                        self.move_to(id, Zone::Battlefield);
+                    }
+                } else {
+                    self.create_token(p, def);
                 }
             }
             Effect::OpponentMay => {
@@ -10301,6 +10444,21 @@ impl Game {
         match step {
             Step::PreGame => unreachable!("the game never returns to pre-game"),
             Step::Untap => {
+                // Seedborn Muse: "Untap all permanents you control during each other player's untap step."
+                let o = opponent(a);
+                if self
+                    .permanents(o)
+                    .any(|x| self.def_of(x).untaps_on_others_untap && !self.lost_abilities(x))
+                {
+                    for id in self.permanents(o).collect::<Vec<_>>() {
+                        if std::mem::take(&mut self.obj_mut(id).skip_untap) {
+                        } else if self.obj(id).stun > 0 && self.obj(id).tapped {
+                            self.obj_mut(id).stun -= 1;
+                        } else if !self.def_of(id).doesnt_untap && !self.enchanted_doesnt_untap(id) {
+                            self.obj_mut(id).tapped = false;
+                        }
+                    }
+                }
                 // CR 502.3: untap everything the active player controls. No priority (CR 502.4).
                 for id in self.permanents(a).collect::<Vec<_>>() {
                     if std::mem::take(&mut self.obj_mut(id).skip_untap) {

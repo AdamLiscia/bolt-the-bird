@@ -1007,6 +1007,20 @@ pub enum Effect {
     /// The creature in `slot` explores (CR 701.44): reveal the top card; a land goes to hand, else
     /// a +1/+1 counter on the creature and its controller may put the card into the graveyard.
     Explore(u8),
+    /// Destroy the permanent in `slot`; its controller may search for a basic land card and put it
+    /// onto the battlefield (untapped) (Assassin's Trophy).
+    DestroyControllerMayFetchBasic(u8),
+    /// Return each nonland permanent you don't control to its owner's hand (overloaded Cyclonic
+    /// Rift).
+    BounceOpponentsNonland,
+    /// Put a +1/+1 counter on each creature you control with this subtype.
+    CountersOnYourSubtype(&'static str),
+    /// Return all land cards from your graveyard to the battlefield tapped.
+    ReturnLandsFromGraveyardTapped,
+    /// Scute Swarm: a token (`def`), or with six or more lands a token copy of the source.
+    InsectOrCopyWithSixLands {
+        def: usize,
+    },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1477,6 +1491,8 @@ pub enum When {
     AnotherCreatureYouControlEntersNotCast,
     /// "Whenever you expend N": as you spend your Nth total mana on spells this turn.
     Expend(u8),
+    /// "Whenever you scry or surveil".
+    YouScryOrSurveil,
 }
 
 #[derive(Clone, Debug, PartialEq)]

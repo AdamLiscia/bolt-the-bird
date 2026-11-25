@@ -12,7 +12,9 @@ pub mod mana;
 pub mod rng;
 pub mod rollout;
 
-pub use card::{Activated, Behold, CardDef, ExtraCost, Keywords, Omen, Reduction, Stage, Types};
+pub use card::{
+    Activated, Behold, CardDef, EntryDoubler, ExtraCost, Keywords, Omen, Reduction, Stage, Types,
+};
 pub use effect::{
     Ability, Condition, Controller, Effect, Filter, Recipient, Scope, SearchFor, SearchTo, Static, Trigger,
     When, Who,
