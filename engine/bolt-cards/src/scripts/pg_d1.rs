@@ -270,6 +270,40 @@ pub fn script(name: &str) -> Option<Script> {
             // "Up to four lands": your own tapped ones, as Palinchron's.
             spell(d, vec![SPELL], vec![Effect::Counter(0), Effect::UntapLands(4)])
         }),
+        // ---- Zacama, Primal Calamity (DonSpider) ----
+        "Karametra, God of Harvests" => s(
+            &[
+                "As long as your devotion to green and white is less than seven, Karametra isn't a creature.",
+                "Whenever you cast a creature spell, you may search your library for a Forest or Plains card, put it onto the battlefield tapped, then shuffle.",
+            ],
+            |d, _| {
+                d.creature_unless_devotion = Some(([true, false, false, false, true], 7));
+                let what = SearchFor::LandTypes { types: land_types(&["Forest", "Plains"]), basic: false };
+                may(d, When::YouCastCreature, vec![], vec![search(what, SearchTo::Battlefield { tapped: true })]);
+            },
+        ),
+        "Stony Silence" => s(&["Activated abilities of artifacts can't be activated."], |d, _| d.stops_artifact_abilities = true),
+        "Sunhome, Fortress of the Legion" => s(&["{T}: Add {C}.", "{2}{R}{W}, {T}: Target creature gains double strike until end of turn."], |d, _| {
+            d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+            activated(d, "{2}{R}{W}", true, vec![CREATURE], vec![Effect::Grant { slot: 0, keywords: Keywords::DOUBLE_STRIKE }]);
+        }),
+        "Wilderness Reclamation" => s(&["At the beginning of your end step, untap all lands you control."], |d, _| {
+            on(d, When::EndStep { your_turn_only: true }, vec![], vec![Effect::UntapLandsYouControl])
+        }),
+        "Zacama, Primal Calamity" => s(
+            &[
+                "When Zacama enters, if you cast it, untap all lands you control.",
+                "{2}{R}: Zacama deals 3 damage to target creature.",
+                "{2}{G}: Destroy target artifact or enchantment.",
+                "{2}{W}: You gain 3 life.",
+            ],
+            |d, _| {
+                on_if(d, Condition::CastIt, vec![], vec![Effect::UntapLandsYouControl]);
+                activated(d, "{2}{R}", false, vec![CREATURE], vec![damage(3, Recipient::Target(0))]);
+                activated(d, "{2}{G}", false, vec![ARTIFACT_OR_ENCHANTMENT], vec![Effect::Destroy(0)]);
+                activated(d, "{2}{W}", false, vec![], vec![Effect::GainLife { who: Who::You, n: 3 }]);
+            },
+        ),
         _ => None,
     }
 }
@@ -334,4 +368,10 @@ pub const PG_D1_SCRIPTED: &[&str] = &[
     "Opportunity",
     "Prophetic Bolt",
     "Rewind",
+    // Zacama, Primal Calamity (DonSpider)
+    "Karametra, God of Harvests",
+    "Stony Silence",
+    "Sunhome, Fortress of the Legion",
+    "Wilderness Reclamation",
+    "Zacama, Primal Calamity",
 ];

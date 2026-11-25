@@ -876,3 +876,83 @@ fn rewind_counters_and_untaps_four_lands() {
     let tapped = g.permanents(0).filter(|&x| g.obj(x).tapped).count();
     assert_eq!(tapped, 2, "six tapped for the two spells, four untapped");
 }
+
+// ---- Zacama, Primal Calamity (DonSpider) ----
+
+#[test]
+fn karametra_isnt_a_creature_without_devotion_and_ramps_on_creature_spells() {
+    let mut g = table();
+    let k = put(&mut g, 0, "Karametra, God of Harvests");
+    assert!(!g.types_of(k).creature, "devotion 2");
+    let island = g.add_card(0, cid("Island"), Zone::Library);
+    let forest = g.add_card(0, cid("Forest"), Zone::Library);
+    let elf = hand(&mut g, 0, "Fyndhorn Elves");
+    act(&mut g, Action::Cast(elf));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(g.legal_actions().contains(&Action::No), "a may search");
+    act(&mut g, Action::Yes);
+    pick(&mut g, forest, island);
+    assert_eq!(g.obj(forest).zone, Zone::Battlefield);
+    assert!(g.obj(forest).tapped);
+    assert_eq!(g.obj(elf).zone, Zone::Battlefield);
+}
+
+#[test]
+fn stony_silence_stops_artifact_abilities() {
+    let mut g = table();
+    let altar = put(&mut g, 0, "Ashnod's Altar");
+    let elf = put(&mut g, 0, "Fyndhorn Elves");
+    assert!(g.legal_actions().contains(&Action::ActivateWith(altar, 0, elf)));
+    put(&mut g, 1, "Stony Silence");
+    assert!(!g.legal_actions().contains(&Action::ActivateWith(altar, 0, elf)));
+}
+
+#[test]
+fn sunhome_taps_for_colorless_and_grants_double_strike() {
+    let mut g = table();
+    let s = put(&mut g, 0, "Sunhome, Fortress of the Legion");
+    assert_eq!(makes(&g, s), ([false; 5], true));
+    let elf = put(&mut g, 0, "Fyndhorn Elves");
+    activate(&mut g, s, 0, &[obj(elf)]);
+    assert!(g.keywords(elf).has(Keywords::DOUBLE_STRIKE));
+}
+
+#[test]
+fn wilderness_reclamation_untaps_your_lands_at_your_end_step() {
+    let mut g = table();
+    put(&mut g, 0, "Wilderness Reclamation");
+    let lands: Vec<ObjId> = g.permanents(0).filter(|&x| g.types_of(x).land).collect();
+    for &l in &lands {
+        tap(&mut g, l);
+    }
+    let theirs = g.permanents(1).find(|&x| g.types_of(x).land).unwrap();
+    tap(&mut g, theirs);
+    while g.step != Step::End {
+        act(&mut g, Action::PassPriority);
+    }
+    resolve_all(&mut g, &[]);
+    assert!(lands.iter().all(|&l| !g.obj(l).tapped));
+    assert!(g.obj(theirs).tapped, "only yours");
+}
+
+#[test]
+fn zacama_untaps_lands_when_cast_and_has_three_abilities() {
+    let mut g = table();
+    let theirs = put(&mut g, 1, "Warren Soultrader");
+    let altar = put(&mut g, 1, "Ashnod's Altar");
+    let z = hand(&mut g, 0, "Zacama, Primal Calamity");
+    play(&mut g, z, false, &[], &[]);
+    assert_eq!(
+        g.permanents(0).filter(|&x| g.obj(x).tapped).count(),
+        0,
+        "lands untapped"
+    );
+    activate(&mut g, z, 0, &[obj(theirs)]);
+    assert_eq!(g.obj(theirs).zone, Zone::Graveyard);
+    activate(&mut g, z, 1, &[obj(altar)]);
+    assert_eq!(g.obj(altar).zone, Zone::Graveyard);
+    activate(&mut g, z, 2, &[]);
+    assert_eq!(g.players[0].life, 43);
+}
