@@ -15,7 +15,12 @@ COLORS = ("White", "Blue", "Black", "Red", "Green")  # the engine's Mode index f
 SACRIFICE_FOR_MANA = {"Treasure"}  # tokens whose mana ability sacrifices them
 
 
+FACE_DOWN = -2  # the engine's card number for a face-down permanent the viewer can't see (manifest dread)
+
+
 def name(card_index: int) -> str:
+    if card_index == FACE_DOWN:
+        return "Face-down creature"
     return _NAMES[card_index]
 
 
@@ -165,9 +170,9 @@ def actions(obs: dict, me: int) -> list[dict]:
     out = []
     for k, ((kind, a, b, c), cards) in enumerate(zip(obs["legal_actions"], obs["legal_cards"], strict=True)):
         values = (a, b, c)
-        objects = [values[s] for s in range(3) if cards[s] >= 0]
-        names = [name(cards[s]) for s in range(3) if cards[s] >= 0]
-        nums = tuple(values[s] for s in range(3) if cards[s] < 0 and values[s] >= 0)
+        objects = [values[s] for s in range(3) if cards[s] != -1]
+        names = [name(cards[s]) for s in range(3) if cards[s] != -1]
+        nums = tuple(values[s] for s in range(3) if cards[s] == -1 and values[s] >= 0)
         if kind in ("Mode", "Amount", "TargetPlayer", "TapForMana"):
             nums = ()
         label = _label(kind, names, nums, me, values)
@@ -262,7 +267,10 @@ def state(game, seat: int, version: int, game_id: str) -> dict:
             "loyalty": e["loyalty"], "attached_to": e["attached_to"], "entered_turn": e["entered_turn"],
             "entered_this_turn": e["entered_turn"] == obs["turn"],
             "transformed": bool(e.get("transformed")),
+            "face_down": bool(e.get("face_down")),
         })  # fmt: skip
+        if battlefield[-1]["card_id"] == FACE_DOWN:
+            battlefield[-1]["card_id"] = None
     combat = obs.get("combat")
     result = None
     if over:

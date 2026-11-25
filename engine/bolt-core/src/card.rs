@@ -232,6 +232,9 @@ pub struct Activated {
     /// Crew N (CR 702.122): tap an untapped creature you control with power N or more (activated
     /// with `Action::ActivateWith`, that creature as the victim).
     pub crew: u8,
+    /// Only while it's a copy that keeps its own abilities (Sakashima the Impostor's "{2}{U}{U}:
+    /// Return ..."): the printed card itself doesn't have it.
+    pub copy_only: bool,
 }
 
 /// The printed card. Shared by every copy; per-copy state lives on the game object.
@@ -591,6 +594,22 @@ pub struct CardDef {
     /// "You may pay N {E} rather than pay the mana cost for permanent spells you cast." (Nissa,
     /// Worldsoul Speaker: 8); cast with `Action::CastWith(card, this permanent)`.
     pub permanents_for_energy: u8,
+    /// Phyrexian pips in its mana cost, by color (CR 107.4f): counted in `cost.colored`, and each
+    /// may be paid with 2 life instead, all of them at once with `Action::CastAlternative`.
+    pub phyrexian: [u8; 5],
+    /// Enters as a copy of an artifact or creature, "except it's an artifact in addition to its
+    /// other types" (Phyrexian Metamorph).
+    pub copy_artifact: bool,
+    /// As a copy it keeps its own name and is legendary, and has its `copy_only` activated
+    /// abilities (Sakashima the Impostor).
+    pub copy_keeps_name: bool,
+    /// Enters as a copy of another creature you control only (Sakashima of a Thousand Faces).
+    pub copy_only_yours: bool,
+    /// As a copy it keeps its own other abilities: `no_legend_rule` and `copy_only` activated
+    /// abilities (Sakashima of a Thousand Faces).
+    pub copy_keeps_abilities: bool,
+    /// "The \"legend rule\" doesn't apply to permanents you control."
+    pub no_legend_rule: bool,
 }
 
 /// What entering makes triggers happen again (see [`CardDef::entering_triggers_again`]).
@@ -795,6 +814,12 @@ impl CardDef {
             back: None,
             alt_cost_needs_commander: false,
             permanents_for_energy: 0,
+            phyrexian: [0; 5],
+            copy_artifact: false,
+            copy_keeps_name: false,
+            copy_only_yours: false,
+            copy_keeps_abilities: false,
+            no_legend_rule: false,
         }
     }
 
@@ -967,6 +992,12 @@ impl CardDef {
             back: None,
             alt_cost_needs_commander: false,
             permanents_for_energy: 0,
+            phyrexian: [0; 5],
+            copy_artifact: false,
+            copy_keeps_name: false,
+            copy_only_yours: false,
+            copy_keeps_abilities: false,
+            no_legend_rule: false,
         }
     }
 
@@ -1139,6 +1170,12 @@ impl CardDef {
             back: None,
             alt_cost_needs_commander: false,
             permanents_for_energy: 0,
+            phyrexian: [0; 5],
+            copy_artifact: false,
+            copy_keeps_name: false,
+            copy_only_yours: false,
+            copy_keeps_abilities: false,
+            no_legend_rule: false,
         }
     }
 }

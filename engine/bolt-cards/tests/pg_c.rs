@@ -1085,3 +1085,180 @@ fn nissa_worldsoul_speaker_gets_energy_on_landfall_and_spends_eight_for_a_perman
     assert_eq!(g.players[0].energy, 0);
     assert_eq!(g.obj(nissa).zone, Zone::Battlefield);
 }
+// ---- lane B: Phyrexian Metamorph, the Sakashimas, Zimone ----
+
+fn lb_has(g: &Game, a: Action) -> bool {
+    g.legal_actions().contains(&a)
+}
+
+/// Passes priority until a decision or target choice is pending.
+fn lb_pass_until_asked(g: &mut Game) {
+    for _ in 0..50 {
+        if matches!(g.pending, Pending::Decide(_) | Pending::ChooseTarget(_)) {
+            return;
+        }
+        act(g, Action::PassPriority);
+    }
+    panic!("never asked: {:?}", g.pending);
+}
+
+#[test]
+fn phyrexian_metamorph_copies_an_artifact_or_creature_and_is_an_artifact() {
+    let mut g = table();
+    let ring = put(&mut g, 1, "Sol Ring");
+    let lions = put(&mut g, 1, "Savannah Lions");
+    let meta = hand(&mut g, 0, "Phyrexian Metamorph");
+    // {3}{U/P}: the Phyrexian pip may be paid with 2 life (the alternative cast).
+    assert!(lb_has(&g, Action::Cast(meta)) && lb_has(&g, Action::CastAlternative(meta)));
+    act(&mut g, Action::CastAlternative(meta));
+    lb_pass_until_asked(&mut g);
+    assert_eq!(g.players[0].life, 38);
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Pick(ring)) && legal.contains(&Action::Pick(lions)));
+    act(&mut g, Action::Pick(lions));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.def_of(meta).name, "Savannah Lions");
+    let t = g.types_of(meta);
+    assert!(t.creature && t.artifact);
+    assert_eq!(g.power(meta), 2);
+    // Paid with mana: no life.
+    let mut g = table();
+    put(&mut g, 1, "Sol Ring");
+    let meta = hand(&mut g, 0, "Phyrexian Metamorph");
+    play(&mut g, meta, false, &[], &[Action::No]);
+    assert_eq!(g.players[0].life, 40);
+    assert_eq!(g.obj(meta).zone, Zone::Graveyard, "as itself it's a 0/0");
+}
+
+#[test]
+fn sakashima_of_a_thousand_faces_copies_your_creature_and_ignores_the_legend_rule() {
+    let mut g = table();
+    let ojer = put(&mut g, 0, "Ojer Kaslem, Deepest Growth // Temple of Cultivation");
+    let theirs = put(&mut g, 1, "Llanowar Elves");
+    let saka = hand(&mut g, 0, "Sakashima of a Thousand Faces");
+    act(&mut g, Action::Cast(saka));
+    lb_pass_until_asked(&mut g);
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Pick(ojer)));
+    assert!(
+        !legal.contains(&Action::Pick(theirs)),
+        "only creatures you control"
+    );
+    act(&mut g, Action::Pick(ojer));
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        g.def_of(saka).name,
+        "Ojer Kaslem, Deepest Growth // Temple of Cultivation"
+    );
+    assert_eq!(g.obj(saka).zone, Zone::Battlefield);
+    assert_eq!(
+        g.obj(ojer).zone,
+        Zone::Battlefield,
+        "the legend rule doesn't apply"
+    );
+}
+
+#[test]
+fn sakashima_the_impostor_keeps_its_name_and_can_bounce_itself() {
+    let mut g = table();
+    let ojer = put(&mut g, 0, "Ojer Kaslem, Deepest Growth // Temple of Cultivation");
+    let imp = hand(&mut g, 0, "Sakashima the Impostor");
+    act(&mut g, Action::Cast(imp));
+    lb_pass_until_asked(&mut g);
+    act(&mut g, Action::Pick(ojer));
+    resolve_all(&mut g, &[]);
+    // Named Sakashima the Impostor: no legend rule clash with Ojer Kaslem.
+    assert_eq!(g.name_of(imp), "Sakashima the Impostor");
+    assert!(g.types_of(imp).legendary && g.types_of(imp).creature);
+    assert_eq!(g.power(imp), 6);
+    assert_eq!(g.obj(ojer).zone, Zone::Battlefield);
+    assert_eq!(g.obj(imp).zone, Zone::Battlefield);
+    // "{2}{U}{U}: Return Sakashima the Impostor to its owner's hand at the beginning of the next end step."
+    let n = g.def_of(imp).activated.len();
+    assert!(lb_has(&g, Action::Activate(imp, n)));
+    act(&mut g, Action::Activate(imp, n));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(imp).zone, Zone::Battlefield);
+    for _ in 0..40 {
+        if g.obj(imp).zone == Zone::Hand {
+            break;
+        }
+        let a = match g.pending {
+            Pending::DeclareAttackers(_) => Action::FinishAttacks,
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.obj(imp).zone, Zone::Hand);
+    assert!(g.step == Step::End || g.step == Step::Cleanup || g.turn == 3);
+    // As itself (no copy), it doesn't have that ability.
+    let mut g = table();
+    let imp = put(&mut g, 0, "Sakashima the Impostor");
+    assert!(!lb_has(&g, Action::Activate(imp, 0)));
+}
+
+#[test]
+fn zimone_manifests_dread_then_turns_a_permanent_face_up() {
+    let mut g = table();
+    put(&mut g, 0, "Zimone, Mystery Unraveler");
+    let forest = g.add_card(0, cid("Forest"), Zone::Library);
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Library);
+    let plains = g.add_card(0, cid("Plains"), Zone::Library);
+    let land = hand(&mut g, 0, "Forest");
+    act(&mut g, Action::PlayLand(land));
+    lb_pass_until_asked(&mut g);
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Pick(lions)) && legal.contains(&Action::Pick(plains)));
+    act(&mut g, Action::Pick(lions));
+    resolve_all(&mut g, &[]);
+    assert!(g.obj(lions).face_down);
+    assert_eq!(g.obj(plains).zone, Zone::Graveyard);
+    assert_eq!(g.def_of(lions).name, "");
+    assert_eq!((g.power(lions), g.toughness(lions)), (2, 2));
+    assert!(g.types_of(lions).creature && g.colors_of(lions) == [false; 5]);
+    // The second landfall this turn: turn a permanent face up instead.
+    let lore = hand(&mut g, 0, "Nature's Lore");
+    play(
+        &mut g,
+        lore,
+        false,
+        &[],
+        &[Action::Pick(forest), Action::Pick(lions)],
+    );
+    assert!(!g.obj(lions).face_down);
+    assert_eq!(g.def_of(lions).name, "Savannah Lions");
+    assert_eq!(g.power(lions), 2);
+}
+
+#[test]
+fn a_manifested_creature_card_turns_face_up_for_its_mana_cost() {
+    let mut g = table();
+    put(&mut g, 0, "Zimone, Mystery Unraveler");
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Library);
+    g.add_card(0, cid("Plains"), Zone::Library);
+    let land = hand(&mut g, 0, "Forest");
+    act(&mut g, Action::PlayLand(land));
+    lb_pass_until_asked(&mut g);
+    act(&mut g, Action::Pick(lions));
+    resolve_all(&mut g, &[]);
+    assert!(g.obj(lions).face_down);
+    // Special action: {W}, no stack.
+    assert!(lb_has(&g, Action::Activate(lions, 0)));
+    act(&mut g, Action::Activate(lions, 0));
+    assert!(!g.obj(lions).face_down);
+    assert!(g.items.is_empty());
+    assert_eq!(g.def_of(lions).name, "Savannah Lions");
+    // A manifested noncreature card can't be turned up that way.
+    let mut g = table();
+    put(&mut g, 0, "Zimone, Mystery Unraveler");
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Library);
+    g.add_card(0, cid("Plains"), Zone::Library);
+    let land = hand(&mut g, 0, "Forest");
+    act(&mut g, Action::PlayLand(land));
+    lb_pass_until_asked(&mut g);
+    act(&mut g, Action::Pick(ring));
+    resolve_all(&mut g, &[]);
+    assert!(g.obj(ring).face_down);
+    assert!(!lb_has(&g, Action::Activate(ring, 0)));
+}
