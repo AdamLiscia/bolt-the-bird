@@ -93,6 +93,10 @@ assignment gives you the card.
 
 Never add an `Action` variant anywhere: the play model's action vocabulary depends on it.
 
+**Tokens are shared too:** the token list in `bolt-cards/src/scripts.rs` is numbered, and two lanes appending at
+once collide. Don't add tokens. Use an existing one (`t.<name>` in the `Tokens` struct), or report the card as
+"needs core: a <P/T> <color> <type> token".
+
 ## Tests
 
 One behavior test per card in your test file. It checks what the text does, not just that the card casts.
