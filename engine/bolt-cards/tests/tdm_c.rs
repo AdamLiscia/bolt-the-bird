@@ -449,3 +449,476 @@ fn perennation_returns_a_permanent_card_with_hexproof_and_indestructible() {
     play(&mut g, c2, false, &[obj(ench)], &[]);
     assert_eq!(g.obj(ench).zone, Zone::Battlefield, "any permanent card");
 }
+
+// ---- round 3: core mechanics ----
+
+/// Pass priority until a target choice is pending.
+fn to_target_choice(g: &mut Game) {
+    while !matches!(g.pending, Pending::ChooseTarget(_)) {
+        act(g, Action::PassPriority);
+    }
+}
+
+#[test]
+fn twin_bolt_divides_two_damage_between_two_targets() {
+    let mut g = table();
+    let a = put(&mut g, 1, "Unburied Earthcarver");
+    let b = put(&mut g, 1, "Loxodon Battle Priest");
+    let c = hand(&mut g, 0, "Twin Bolt");
+    begin(&mut g);
+    act(&mut g, Action::Cast(c));
+    act(&mut g, Action::Target(obj(a)));
+    act(&mut g, Action::Target(obj(b)));
+    assert!(matches!(g.pending, Pending::Divide(0)));
+    assert_eq!(g.legal_actions(), [Action::Amount(1)], "at least 1 to each");
+    act(&mut g, Action::Amount(1));
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.obj(a).damage, g.obj(b).damage), (1, 1));
+}
+
+#[test]
+fn twin_bolt_cant_target_the_same_player_twice() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Twin Bolt");
+    begin(&mut g);
+    let life = g.players[1].life;
+    act(&mut g, Action::Cast(c));
+    act(&mut g, Action::Target(Target::Player(1)));
+    let legal = g.legal_actions();
+    assert!(!legal.contains(&Action::Target(Target::Player(1))), "CR 115.3");
+    assert!(legal.contains(&Action::Target(Target::Player(0))));
+    act(&mut g, Action::No); // one target: it gets both
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].life, life - 2);
+}
+
+#[test]
+fn unsparing_boltcaster_finishes_off_a_damaged_creature() {
+    let mut g = table();
+    let hurt = put(&mut g, 1, "Loxodon Battle Priest"); // 3/5
+    let fresh = put(&mut g, 1, "Arashin Sunshield");
+    let bolt = hand(&mut g, 0, "Channeled Dragonfire");
+    let c = hand(&mut g, 0, "Unsparing Boltcaster");
+    begin(&mut g);
+    play(&mut g, bolt, false, &[obj(hurt)], &[]);
+    assert_eq!(g.obj(hurt).damage, 2);
+    act(&mut g, Action::Cast(c));
+    to_target_choice(&mut g);
+    let legal = g.legal_actions();
+    assert!(
+        !legal.contains(&Action::Target(obj(fresh))),
+        "dealt damage this turn only"
+    );
+    act(&mut g, Action::Target(obj(hurt)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(hurt).zone, Zone::Graveyard);
+    assert_eq!(g.obj(fresh).zone, Zone::Battlefield);
+}
+
+#[test]
+fn smile_at_death_returns_two_small_creatures_with_counters() {
+    let mut g = table();
+    put(&mut g, 0, "Smile at Death");
+    let a = g.add_card(0, tid("Unburied Earthcarver"), Zone::Graveyard); // 2 power
+    let b = g.add_card(0, tid("Delta Bloodflies"), Zone::Graveyard); // 1 power
+    let big = g.add_card(0, tid("Summit Intimidator"), Zone::Graveyard); // 4 power
+    let theirs = g.add_card(1, tid("Unburied Earthcarver"), Zone::Graveyard);
+    g.start_turn(5, 0);
+    to_target_choice(&mut g);
+    assert_eq!(g.step, Step::Upkeep);
+    let legal = g.legal_actions();
+    assert!(!legal.contains(&Action::Target(obj(big))), "power 2 or less");
+    assert!(!legal.contains(&Action::Target(obj(theirs))), "your graveyard");
+    act(&mut g, Action::Target(obj(a)));
+    act(&mut g, Action::Target(obj(b)));
+    resolve_all(&mut g, &[]);
+    for x in [a, b] {
+        assert_eq!(g.obj(x).zone, Zone::Battlefield);
+        assert_eq!(g.obj(x).controller, 0);
+        assert_eq!(g.obj(x).counters, 1);
+    }
+    assert_eq!(g.obj(big).zone, Zone::Graveyard);
+}
+
+#[test]
+fn hardened_tactician_sacrifices_a_token_to_draw() {
+    let mut g = tdm_lands(&[]);
+    let t = put(&mut g, 0, "Hardened Tactician");
+    let creature = put(&mut g, 0, "Unburied Earthcarver");
+    let treasure = g.add_card(0, set_token(&g, "Treasure"), Zone::Battlefield);
+    begin(&mut g);
+    assert!(
+        !g.legal_actions().contains(&Action::ActivateWith(t, 0, treasure)),
+        "the Treasure can't both pay {{1}} and be sacrificed"
+    );
+    let plains = put(&mut g, 0, "Plains");
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::ActivateWith(t, 0, treasure)));
+    assert!(!legal.contains(&Action::ActivateWith(t, 0, creature)), "a token");
+    let cards = g.players[0].hand.len();
+    act(&mut g, Action::ActivateWith(t, 0, treasure));
+    resolve_all(&mut g, &[]);
+    assert!(tokens(&g, 0, "Treasure").is_empty());
+    assert!(g.obj(plains).tapped);
+    assert_eq!(g.players[0].hand.len(), cards + 1);
+}
+
+#[test]
+fn fire_rim_form_gives_two_power_and_first_strike_this_turn() {
+    let mut g = table();
+    let mine = put(&mut g, 0, "Unburied Earthcarver");
+    let c = hand(&mut g, 0, "Fire-Rim Form");
+    assert!(g.def_of(c).keywords.has(Keywords::FLASH));
+    begin(&mut g);
+    play(&mut g, c, false, &[obj(mine)], &[]);
+    assert_eq!(g.obj(c).zone, Zone::Battlefield);
+    assert_eq!(g.power(mine), 4);
+    assert!(g.keywords(mine).has(Keywords::FIRST_STRIKE));
+    to_next_turn(&mut g);
+    assert_eq!(g.power(mine), 4, "the +2/+0 stays");
+    assert!(
+        !g.keywords(mine).has(Keywords::FIRST_STRIKE),
+        "first strike until end of turn"
+    );
+}
+
+/// Whether `c` may be declared as an attacker this turn (the declaration is skipped with none).
+fn can_attack(g: &Game, c: bolt_core::ObjId) -> bool {
+    let mut g = g.clone();
+    while !matches!(g.step, Step::Main2 | Step::End) {
+        if g.pending == Pending::DeclareAttackers(0) {
+            return g.legal_actions().contains(&Action::Attack(c));
+        }
+        act(&mut g, Action::PassPriority);
+    }
+    false
+}
+
+#[test]
+fn krotiq_nestguard_attacks_only_after_paying() {
+    let mut g = table();
+    let k = put(&mut g, 0, "Krotiq Nestguard");
+    assert!(g.keywords(k).has(Keywords::DEFENDER));
+    main_phase_turn_5(&mut g);
+    assert!(!can_attack(&g, k), "defender");
+    let lands = paid(&mut g, |g| {
+        act(g, Action::Activate(k, 0));
+        resolve_all(g, &[]);
+    });
+    assert_eq!(lands, 3);
+    assert!(can_attack(&g, k));
+    g.start_turn(7, 0); // a later turn of yours
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(!can_attack(&g, k), "this turn only");
+}
+
+#[test]
+fn ruinous_ultimatum_destroys_their_nonland_permanents() {
+    let mut g = table();
+    let ench = put(&mut g, 1, "War Effort");
+    let theirs = put(&mut g, 1, "Unburied Earthcarver");
+    let mine = put(&mut g, 0, "Unburied Earthcarver");
+    let lands = g.permanents(1).filter(|&x| g.types_of(x).land).count();
+    let c = hand(&mut g, 0, "Ruinous Ultimatum");
+    begin(&mut g);
+    play(&mut g, c, false, &[], &[]);
+    assert_eq!(g.obj(ench).zone, Zone::Graveyard);
+    assert_eq!(g.obj(theirs).zone, Zone::Graveyard);
+    assert_eq!(g.obj(mine).zone, Zone::Battlefield, "yours stay");
+    assert_eq!(
+        g.permanents(1).filter(|&x| g.types_of(x).land).count(),
+        lands,
+        "lands stay"
+    );
+}
+
+#[test]
+fn death_begets_life_draws_one_per_permanent_destroyed() {
+    let mut g = table();
+    let a = put(&mut g, 0, "Unburied Earthcarver");
+    let e = put(&mut g, 0, "War Effort");
+    let b = put(&mut g, 1, "Loxodon Battle Priest");
+    let relic = put(&mut g, 1, "Jeskai Monument"); // an artifact: not destroyed
+    let c = hand(&mut g, 0, "Death Begets Life");
+    begin(&mut g);
+    let cards = g.players[0].hand.len();
+    play(&mut g, c, false, &[], &[]);
+    for x in [a, e, b] {
+        assert_eq!(g.obj(x).zone, Zone::Graveyard);
+    }
+    assert_eq!(g.obj(relic).zone, Zone::Battlefield);
+    assert_eq!(g.players[0].hand.len(), cards - 1 + 3, "cast one, drew three");
+}
+
+#[test]
+fn death_begets_life_doesnt_count_an_indestructible_survivor() {
+    let mut g = table();
+    let a = put(&mut g, 0, "Unburied Earthcarver");
+    let tough = put(&mut g, 0, "Loxodon Battle Priest");
+    let shield = hand(&mut g, 0, "Lightfoot Technique");
+    let c = hand(&mut g, 0, "Death Begets Life");
+    begin(&mut g);
+    play(&mut g, shield, false, &[obj(tough)], &[]);
+    let cards = g.players[0].hand.len();
+    play(&mut g, c, false, &[], &[]);
+    assert_eq!(g.obj(a).zone, Zone::Graveyard);
+    assert_eq!(g.obj(tough).zone, Zone::Battlefield, "indestructible");
+    assert_eq!(g.players[0].hand.len(), cards - 1 + 1);
+}
+
+#[test]
+fn dragonback_assault_sweeps_creatures_and_planeswalkers_then_makes_dragons() {
+    let mut g = table();
+    let small = put(&mut g, 1, "Unburied Earthcarver"); // 2/2
+    let big = put(&mut g, 1, "Loxodon Battle Priest"); // 3/5
+    let mine = put(&mut g, 0, "Krotiq Nestguard"); // 4/4
+    let ugin = hand(&mut g, 1, "Ugin, Eye of the Storms");
+    g.move_card(ugin, Zone::Battlefield);
+    assert_eq!(g.obj(ugin).loyalty, 7);
+    let c = hand(&mut g, 0, "Dragonback Assault");
+    let land = hand(&mut g, 0, "Forest");
+    begin(&mut g);
+    play(&mut g, c, false, &[], &[]);
+    assert_eq!(g.obj(small).zone, Zone::Graveyard);
+    assert_eq!(g.obj(big).damage, 3);
+    assert_eq!(g.obj(mine).damage, 3, "yours too");
+    assert_eq!(g.obj(ugin).loyalty, 4, "each planeswalker");
+    assert_eq!(g.players[1].life, 20, "not players");
+    act(&mut g, Action::PlayLand(land));
+    resolve_all(&mut g, &[]);
+    let d = tokens(&g, 0, "Dragon");
+    assert_eq!(d.len(), 1, "landfall");
+    assert_eq!((g.power(d[0]), g.toughness(d[0])), (4, 4));
+    assert!(g.keywords(d[0]).has(Keywords::FLYING));
+}
+
+#[test]
+fn duty_beyond_death_sacrifices_then_protects_and_grows_the_rest() {
+    let mut g = table();
+    let fodder = put(&mut g, 0, "Summit Intimidator");
+    let a = put(&mut g, 0, "Unburied Earthcarver");
+    let b = put(&mut g, 0, "Loxodon Battle Priest");
+    let theirs = put(&mut g, 1, "Arashin Sunshield");
+    let c = hand(&mut g, 0, "Duty Beyond Death");
+    begin(&mut g);
+    act(&mut g, Action::CastWith(c, fodder));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(fodder).zone, Zone::Graveyard, "sacrificed as the cost");
+    for x in [a, b] {
+        assert_eq!(g.obj(x).counters, 1);
+        assert!(g.keywords(x).has(Keywords::INDESTRUCTIBLE));
+    }
+    assert_eq!(g.obj(theirs).counters, 0, "yours only");
+    assert!(!g.keywords(theirs).has(Keywords::INDESTRUCTIBLE));
+}
+
+// ---- round 3, batch 2: the Sieges ----
+
+/// Cast a Siege from hand on turn 3 and choose mode `m`.
+fn siege_in_mode(g: &mut Game, name: &str, m: u8) -> bolt_core::ObjId {
+    let c = hand(g, 0, name);
+    begin(g);
+    act(g, Action::Cast(c));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(g, Action::PassPriority);
+    }
+    assert_eq!(g.legal_actions(), [Action::Mode(0), Action::Mode(1)], "two modes");
+    act(g, Action::Mode(m));
+    resolve_all(g, &[]);
+    assert_eq!(g.obj(c).zone, Zone::Battlefield);
+    assert_eq!(g.obj(c).chosen_mode, Some(m));
+    c
+}
+
+#[test]
+fn windcrag_siege_mardu_doubles_attack_triggers() {
+    let mut g = table();
+    let p = put(&mut g, 0, "Dalkovan Packbeasts"); // Mobilize 3
+    siege_in_mode(&mut g, "Windcrag Siege", 0);
+    attack_with(&mut g, p);
+    assert_eq!(tokens(&g, 0, "Warrior").len(), 6, "mobilize triggered twice");
+}
+
+#[test]
+fn windcrag_siege_jeskai_makes_a_lifelink_haste_goblin_each_upkeep() {
+    let mut g = table();
+    let p = put(&mut g, 0, "Dalkovan Packbeasts");
+    siege_in_mode(&mut g, "Windcrag Siege", 1);
+    assert!(tokens(&g, 0, "Goblin").is_empty());
+    g.start_turn(5, 0);
+    while g.step == Step::Upkeep || !g.items.is_empty() {
+        act(&mut g, Action::PassPriority);
+    }
+    let goblin = tokens(&g, 0, "Goblin");
+    assert_eq!(goblin.len(), 1);
+    let k = g.keywords(goblin[0]);
+    assert!(k.has(Keywords::LIFELINK) && k.has(Keywords::HASTE));
+    let mut g2 = g.clone();
+    while g2.pending != Pending::DeclareAttackers(0) {
+        act(&mut g2, Action::PassPriority);
+    }
+    act(&mut g2, Action::Attack(p));
+    act(&mut g2, Action::FinishAttacks);
+    resolve_all(&mut g2, &[]);
+    assert_eq!(
+        tokens(&g2, 0, "Warrior").len(),
+        3,
+        "Jeskai doesn't double attack triggers"
+    );
+}
+
+#[test]
+fn frostcliff_siege_jeskai_draws_once_per_combat_damage_step() {
+    let mut g = table();
+    let a = put(&mut g, 0, "Unburied Earthcarver");
+    let b = put(&mut g, 0, "Summit Intimidator");
+    siege_in_mode(&mut g, "Frostcliff Siege", 0);
+    g.start_turn(5, 0);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(a));
+    act(&mut g, Action::Attack(b));
+    act(&mut g, Action::FinishAttacks);
+    let cards = g.players[0].hand.len();
+    through_combat_damage(&mut g);
+    assert_eq!(g.players[0].hand.len(), cards + 1, "one card for two creatures");
+}
+
+#[test]
+fn frostcliff_siege_temur_pumps_your_creatures_with_trample_and_haste() {
+    let mut g = table();
+    let mine = put(&mut g, 0, "Unburied Earthcarver");
+    let theirs = put(&mut g, 1, "Unburied Earthcarver");
+    siege_in_mode(&mut g, "Frostcliff Siege", 1);
+    assert_eq!((g.power(mine), g.toughness(mine)), (3, 2));
+    let k = g.keywords(mine);
+    assert!(k.has(Keywords::TRAMPLE) && k.has(Keywords::HASTE));
+    assert_eq!(g.power(theirs), 2, "yours only");
+    assert!(!g.keywords(theirs).has(Keywords::TRAMPLE));
+}
+
+#[test]
+fn hollowmurk_siege_sultai_draws_on_the_first_counter_each_turn() {
+    let mut g = table();
+    let mine = put(&mut g, 0, "Unburied Earthcarver");
+    let theirs = put(&mut g, 1, "Unburied Earthcarver");
+    siege_in_mode(&mut g, "Hollowmurk Siege", 0);
+    let first = hand(&mut g, 0, "Lightfoot Technique");
+    let second = hand(&mut g, 0, "Lightfoot Technique");
+    let n = g.players[0].hand.len();
+    play(&mut g, first, false, &[obj(theirs)], &[]);
+    assert_eq!(g.players[0].hand.len(), n - 1, "not on an opponent's creature");
+    play(&mut g, second, false, &[obj(mine)], &[]);
+    assert_eq!(g.players[0].hand.len(), n - 2 + 1, "drew one");
+    let third = hand(&mut g, 0, "Lightfoot Technique");
+    play(&mut g, third, false, &[obj(mine)], &[]);
+    assert_eq!(
+        g.players[0].hand.len(),
+        n - 1,
+        "cast one, drew none: only once each turn"
+    );
+    // A later turn: an endure Spirit's counters as it enters count too (CR 122.6).
+    main_phase_turn_5(&mut g);
+    let kin = hand(&mut g, 0, "Fortress Kin-Guard"); // enters, endures 1
+    let n = g.players[0].hand.len();
+    play(&mut g, kin, false, &[], &[Action::No]); // endure: make a Spirit, not a counter
+    assert_eq!(tokens(&g, 0, "Spirit").len(), 1);
+    assert_eq!(g.players[0].hand.len(), n - 1 + 1, "the Spirit's counter drew");
+}
+
+#[test]
+fn hollowmurk_siege_abzan_grows_an_attacker_and_gives_it_menace() {
+    let mut g = table();
+    let a = put(&mut g, 0, "Unburied Earthcarver");
+    siege_in_mode(&mut g, "Hollowmurk Siege", 1);
+    g.start_turn(5, 0);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(a));
+    act(&mut g, Action::FinishAttacks);
+    resolve_all(&mut g, &[Action::Target(obj(a))]);
+    assert_eq!(g.obj(a).counters, 1);
+    assert!(g.keywords(a).has(Keywords::MENACE));
+}
+
+#[test]
+fn glacierwood_siege_temur_mills_four_on_each_instant_or_sorcery() {
+    let mut g = table();
+    siege_in_mode(&mut g, "Glacierwood Siege", 0);
+    let spell = hand(&mut g, 0, "Unending Whisper");
+    let lib = g.players[1].library.len();
+    play(&mut g, spell, false, &[], &[Action::Target(Target::Player(1))]);
+    assert_eq!(g.players[1].library.len(), lib - 4);
+    let creature = hand(&mut g, 0, "Unburied Earthcarver");
+    play(&mut g, creature, false, &[], &[]);
+    assert_eq!(g.players[1].library.len(), lib - 4, "creature spells don't");
+}
+
+#[test]
+fn glacierwood_siege_sultai_plays_lands_from_the_graveyard_with_your_land_drop() {
+    let mut g = tdm_lands(&["Forest", "Forest", "Island"]);
+    let a = g.add_card(0, tid("Forest"), Zone::Graveyard);
+    let b = g.add_card(0, tid("Island"), Zone::Graveyard);
+    let c = hand(&mut g, 0, "Glacierwood Siege");
+    begin(&mut g);
+    assert!(
+        !g.legal_actions().contains(&Action::PlayLand(a)),
+        "not without the Siege"
+    );
+    act(&mut g, Action::Cast(c));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Mode(1));
+    resolve_all(&mut g, &[]);
+    assert!(g.legal_actions().contains(&Action::PlayLand(a)));
+    act(&mut g, Action::PlayLand(a));
+    assert_eq!(g.obj(a).zone, Zone::Battlefield);
+    assert!(!g.legal_actions().contains(&Action::PlayLand(b)), "one land drop");
+}
+
+#[test]
+fn barrensteppe_siege_abzan_puts_a_counter_on_each_creature_at_your_end_step() {
+    let mut g = table();
+    let a = put(&mut g, 0, "Unburied Earthcarver");
+    let b = put(&mut g, 0, "Arashin Sunshield");
+    let theirs = put(&mut g, 1, "Unburied Earthcarver");
+    siege_in_mode(&mut g, "Barrensteppe Siege", 0);
+    to_next_turn(&mut g);
+    assert_eq!((g.obj(a).counters, g.obj(b).counters), (1, 1));
+    assert_eq!(g.obj(theirs).counters, 0);
+    to_next_turn(&mut g); // the opponent's end step: nothing
+    assert_eq!(g.obj(a).counters, 1, "your end step only");
+}
+
+#[test]
+fn barrensteppe_siege_mardu_makes_them_sacrifice_if_yours_died() {
+    let mut g = table();
+    let e = put(&mut g, 0, "Unburied Earthcarver");
+    let fodder = put(&mut g, 0, "Summit Intimidator");
+    let theirs = put(&mut g, 1, "Loxodon Battle Priest");
+    let mut quiet = table();
+    let q_theirs = put(&mut quiet, 1, "Loxodon Battle Priest");
+    siege_in_mode(&mut quiet, "Barrensteppe Siege", 1);
+    to_next_turn(&mut quiet);
+    assert_eq!(
+        quiet.obj(q_theirs).zone,
+        Zone::Battlefield,
+        "no creature of yours died"
+    );
+
+    siege_in_mode(&mut g, "Barrensteppe Siege", 1);
+    act(&mut g, Action::ActivateWith(e, 0, fodder));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(fodder).zone, Zone::Graveyard);
+    to_next_turn(&mut g);
+    assert_eq!(
+        g.obj(theirs).zone,
+        Zone::Graveyard,
+        "each opponent sacrificed one"
+    );
+}

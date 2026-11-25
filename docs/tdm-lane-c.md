@@ -87,3 +87,46 @@ Assessed after the merge at e5c03c9. Every remaining card needs core:
 - Ugin, Eye of the Storms: a "when you cast this spell" trigger, a "whenever you cast a colorless spell" trigger, a "permanent that's one or more colors" filter, and the -11 search.
 - All-Out Assault: an additional combat phase and main phase, and "when you next attack this turn, untap each creature you control".
 - Craterhoof Behemoth: +X/+X for your creatures, where X is the number of creatures you control.
+
+## Round 3, batch 1: core mechanics (10 cards)
+
+Engine-core work allowed from here on. New variants and fields all go at the end of their enum or struct.
+
+Mechanics added (bolt-core):
+- `Filter::was_dealt_damage`: creatures with damage marked this turn (damage is marked until cleanup, so this is exact).
+- `Filter::creature_max_power` now also applies to graveyard cards (their printed power).
+- Divided damage: one player can't fill two slots of a single divided "target" word (CR 115.3). The check applies only to abilities with `divide > 0`. `Effect::DividedDamage` now damages players too ("any target").
+- `Activated::sacrifice_token` ("Sacrifice a token"): `ActivateWith(source, n, token)`. The token being sacrificed is kept out of the mana payment, so a Treasure can't pay {1} and also be the sacrifice.
+- `Effect::GrantAttached(Keywords)`: the enchanted or equipped creature gains keywords until end of turn.
+- `Effect::AttackDespiteDefenderSelf` and `Object::defender_ignored_turn`: it can attack this turn as though it didn't have defender. This resets when it leaves the battlefield.
+- `Effect::CountersAll { who, n }`: +1/+1 counters on each creature a player controls.
+- `Effect::DestroyOpponentsNonland`, `Effect::DestroyCreaturesAndEnchantmentsDraw` (draws one for each permanent that actually left; indestructible survivors don't count).
+- `Recipient::EachCreatureAndPlaneswalker`.
+
+Cards: Twin Bolt, Unsparing Boltcaster, Smile at Death, Hardened Tactician, Fire-Rim Form, Krotiq Nestguard, Ruinous Ultimatum, Death Begets Life, Dragonback Assault, Duty Beyond Death.
+
+## Round 3, batch 2: the Sieges (5 cards)
+
+Mechanics added (bolt-core, all at the end of their enum or struct):
+- "As this enters, choose [A] or [B]": `CardDef::enter_modes`, `Object::chosen_mode`, and
+  `Decision::ChooseEnterMode { card }` (`Mode(0)` is the first clan named). The choice is asked as the spell
+  resolves, the same way `choose_color` works. **A Siege put onto the battlefield without being cast (for
+  example by Perennation) gets no choice, so it has no mode and neither ability.** The mode is cleared
+  when the object enters and kept after it leaves, so a trigger already on the stack still resolves.
+- `Condition::ChosenMode(u8)`, `StaticCondition::ChosenMode(u8)`: an ability that exists only in one mode.
+- `Condition::Both(Box<Condition>, Box<Condition>)`, `Condition::CreatureDiedUnderYourControlThisTurn`
+  (tracked in `Game::creature_died_under`, reset each turn).
+- `When::YourCreaturesDealCombatDamageToPlayer`: "one or more creatures you control deal combat damage to
+  a player", once per combat damage step.
+- `When::CounterPutOnYourCreatureOnceEachTurn` (`Object::once_each_turn`): fired from one hook,
+  `counter_put_on`, for +1/+1 counters, stun counters, keyword counters, and counters a creature enters
+  with (subtype bonus, `enters_counters`, the endure Spirit; CR 122.6).
+- `CardDef::attack_triggers_again_in_mode`: in that mode, the active player's "attacks" and "you attack"
+  triggers (mobilize included) trigger an additional time per such Siege.
+- `CardDef::graveyard_lands_in_mode`: in that mode, lands can be played from your graveyard using your
+  normal land drops (this doesn't use Muldrotha's once-per-type allowance).
+
+Cards: Windcrag Siege, Frostcliff Siege, Hollowmurk Siege, Glacierwood Siege, Barrensteppe Siege.
+
+Merge note: the keyword-counter hook is one added line in `Effect::KeywordCounter`, which on tarkir now
+writes `keyword_counters`.

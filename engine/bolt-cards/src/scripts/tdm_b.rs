@@ -360,6 +360,145 @@ pub fn script(name: &str) -> Option<Script> {
             &["Activated abilities of artifacts, creatures, and planeswalkers can't be activated."],
             |d, _| d.stops_activated_abilities = true,
         ),
+        // ---- Lane B batch 4: first counters each turn, delayed attack trigger, one or both, more ----
+        "Stalwart Successor" => s(
+            &["Whenever one or more counters are put on a creature you control, if it's the first time counters have been put on that creature this turn, put a +1/+1 counter on that creature."],
+            |d, _| {
+                let that = Filter { triggering: true, ..CREATURE };
+                on(d, When::FirstCountersOnYourCreatureThisTurn, vec![that], vec![Effect::Counters { slot: 0, n: 1 }]);
+            },
+        ),
+        "Embermouth Sentinel" => s(
+            &["When this creature enters, you may search your library for a basic land card, reveal it, then shuffle and put that card on top. If you control a Dragon, put that card onto the battlefield tapped instead."],
+            |d, _| {
+                let find = search(SearchFor::BasicLand, SearchTo::TopOrTappedIfYouControl("Dragon"));
+                may(d, When::Enters, vec![], vec![find]);
+            },
+        ),
+        "Seize Opportunity" => s(
+            &[
+                "Choose one —",
+                "• Exile the top two cards of your library. Until the end of your next turn, you may play those cards.",
+                "• Up to two target creatures each get +2/+1 until end of turn.",
+            ],
+            |d, _| {
+                modes(
+                    d,
+                    vec![
+                        Ability::new(vec![], vec![Effect::ExileTopToPlayAll(2)]),
+                        up_to(
+                            vec![CREATURE, CREATURE],
+                            vec![Effect::Pump { slot: 0, power: 2, toughness: 1 }, Effect::Pump { slot: 1, power: 2, toughness: 1 }],
+                        ),
+                    ],
+                )
+            },
+        ),
+        "Overwhelming Surge" => s(
+            &[
+                "Choose one or both —",
+                "• Overwhelming Surge deals 3 damage to target creature.",
+                "• Destroy target noncreature artifact.",
+            ],
+            |d, _| {
+                // "One or both": each mode alone, or both together (CR 700.2).
+                let artifact = Filter { noncreature: true, ..ARTIFACT };
+                modes(
+                    d,
+                    vec![
+                        Ability::new(vec![CREATURE], vec![damage(3, Recipient::Target(0))]),
+                        Ability::new(vec![artifact], vec![Effect::Destroy(0)]),
+                        Ability::new(vec![CREATURE, artifact], vec![damage(3, Recipient::Target(0)), Effect::Destroy(1)]),
+                    ],
+                )
+            },
+        ),
+        "Salt Road Skirmish" => s(
+            &["Destroy target creature. Create two 1/1 red Warrior creature tokens. They gain haste until end of turn. Sacrifice them at the beginning of the next end step."],
+            |d, t| {
+                spell(
+                    d,
+                    vec![CREATURE],
+                    vec![
+                        Effect::Destroy(0),
+                        Effect::CreateToken { who: Who::You, def: t.warrior, n: 2 },
+                        Effect::GrantCreated(Keywords::HASTE),
+                        Effect::SacrificeCreatedAtEnd,
+                    ],
+                )
+            },
+        ),
+        "Sonic Shrieker" => s(
+            &["When this creature enters, it deals 2 damage to any target and you gain 2 life. If a player is dealt damage this way, they discard a card."],
+            |d, _| {
+                on(
+                    d,
+                    When::Enters,
+                    vec![Filter::ANY],
+                    vec![damage(2, Recipient::Target(0)), Effect::GainLife { who: Who::You, n: 2 }, Effect::DiscardIfPlayerTarget(0)],
+                )
+            },
+        ),
+        "Fresh Start" => s(&["Enchant creature", "Enchanted creature gets -5/-0 and loses all abilities."], |d, _| {
+            d.aura = true;
+            d.spell = Some(Ability::new(vec![CREATURE], vec![]));
+            attached(d, false, -5, 0, Keywords::NONE);
+            d.statics.last_mut().expect("just added").lose_abilities = true;
+        }),
+        "Ambling Stormshell" => s(
+            &[
+                "Ward {2}",
+                "Whenever this creature attacks, put three stun counters on it and draw three cards.",
+                "Whenever you cast a Turtle spell, untap this creature.",
+            ],
+            |d, _| {
+                d.ward = ManaCost::parse("{2}");
+                on(d, When::Attacks, vec![], vec![Effect::StunSelf(3), draw(3)]);
+                on(d, When::YouCastSubtype("Turtle"), vec![], vec![Effect::UntapSelf]);
+            },
+        ),
+        "Eshki Dragonclaw" => s(
+            &[
+                "Vigilance, trample, ward {1}",
+                "At the beginning of combat on your turn, if you've cast both a creature spell and a noncreature spell this turn, draw a card and put two +1/+1 counters on Eshki Dragonclaw.",
+            ],
+            |d, _| {
+                d.keywords = d.keywords.with(Keywords::VIGILANCE).with(Keywords::TRAMPLE);
+                d.ward = ManaCost::parse("{1}");
+                conditional(
+                    d,
+                    When::BeginCombatYourTurn,
+                    Condition::CastCreatureAndNoncreatureThisTurn,
+                    vec![],
+                    vec![draw(1), Effect::CountersSelf { n: 2 }],
+                );
+            },
+        ),
+        "Dalkovan Encampment" => s(
+            &[
+                "This land enters tapped unless you control a Swamp or a Mountain.",
+                "{T}: Add {W}.",
+                "{2}{W}, {T}: Whenever you attack this turn, create two 1/1 red Warrior creature tokens that are tapped and attacking. Sacrifice them at the beginning of the next end step.",
+            ],
+            |d, t| {
+                slow_land(d, ["Swamp", "Mountain"], Color::White);
+                // Trigger 0, made by the delayed ability: Mobilize's tokens are exactly these.
+                on(d, When::Never, vec![], vec![Effect::Mobilize { def: t.warrior, n: Some(2) }]);
+                activated(d, "{2}{W}", true, vec![], vec![Effect::DelayedOnAttackThisTurn(0)]);
+            },
+        ),
+        "Great Arashin City" => s(
+            &[
+                "This land enters tapped unless you control a Forest or a Plains.",
+                "{T}: Add {B}.",
+                "{1}{B}, {T}, Exile a creature card from your graveyard: Create a 1/1 white Spirit creature token.",
+            ],
+            |d, t| {
+                slow_land(d, ["Forest", "Plains"], Color::Black);
+                let n = activated(d, "{1}{B}", true, vec![], vec![Effect::CreateToken { who: Who::You, def: t.spirit_1, n: 1 }]);
+                d.activated[n].exile_creature_card = true;
+            },
+        ),
         _ => None,
     }
 }
@@ -405,4 +544,15 @@ pub const TDM_B_SCRIPTED: &[&str] = &[
     "Effortless Master",
     "Karakyk Guardian",
     "Clarion Conqueror",
+    "Stalwart Successor",
+    "Embermouth Sentinel",
+    "Seize Opportunity",
+    "Overwhelming Surge",
+    "Salt Road Skirmish",
+    "Sonic Shrieker",
+    "Fresh Start",
+    "Ambling Stormshell",
+    "Eshki Dragonclaw",
+    "Dalkovan Encampment",
+    "Great Arashin City",
 ];

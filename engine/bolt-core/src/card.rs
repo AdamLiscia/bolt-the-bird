@@ -170,6 +170,10 @@ pub struct Activated {
     /// "Exile this card from your graveyard" in the cost (renew).
     pub exile_self: bool,
     pub ability: Ability,
+    /// "Sacrifice a token" in the cost.
+    pub sacrifice_token: bool,
+    /// "Exile a creature card from your graveyard" in the cost.
+    pub exile_creature_card: bool,
 }
 
 /// The printed card. Shared by every copy; per-copy state lives on the game object.
@@ -325,6 +329,13 @@ pub struct CardDef {
     pub not_blocked_by_lesser_power: bool,
     /// "Activated abilities of artifacts, creatures, and planeswalkers can't be activated."
     pub stops_activated_abilities: bool,
+    /// "As this enters, choose [A] or [B]": a mode, 0 or 1, chosen as it resolves (the Sieges).
+    pub enter_modes: bool,
+    /// In this chosen mode: "If a creature attacking causes a triggered ability of a permanent you
+    /// control to trigger, that ability triggers an additional time." (Windcrag Siege)
+    pub attack_triggers_again_in_mode: Option<u8>,
+    /// In this chosen mode: "You may play lands from your graveyard." (Glacierwood Siege)
+    pub graveyard_lands_in_mode: Option<u8>,
 }
 
 /// An Omen spell half: its name, cost, whether it's an instant, and what it does.
@@ -431,6 +442,9 @@ impl CardDef {
             enters_tapped_unless: None,
             not_blocked_by_lesser_power: false,
             stops_activated_abilities: false,
+            enter_modes: false,
+            attack_triggers_again_in_mode: None,
+            graveyard_lands_in_mode: None,
         }
     }
 
@@ -516,6 +530,9 @@ impl CardDef {
             enters_tapped_unless: None,
             not_blocked_by_lesser_power: false,
             stops_activated_abilities: false,
+            enter_modes: false,
+            attack_triggers_again_in_mode: None,
+            graveyard_lands_in_mode: None,
         }
     }
 
@@ -601,6 +618,9 @@ impl CardDef {
             enters_tapped_unless: None,
             not_blocked_by_lesser_power: false,
             stops_activated_abilities: false,
+            enter_modes: false,
+            attack_triggers_again_in_mode: None,
+            graveyard_lands_in_mode: None,
         }
     }
 }
