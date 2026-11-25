@@ -114,6 +114,9 @@ fn cost_text(c: &bolt_core::ManaCost) -> String {
     for (i, sym) in ["W", "U", "B", "R", "G"].iter().enumerate() {
         out.push_str(&format!("{{{sym}}}").repeat(c.colored[i] as usize));
     }
+    for (i, sym) in ["W", "U", "B", "R", "G"].iter().enumerate() {
+        out.push_str(&format!("{{2/{sym}}}").repeat(c.twobrid[i] as usize));
+    }
     out
 }
 

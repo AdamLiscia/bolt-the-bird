@@ -444,3 +444,215 @@ fn narsets_rebuke_exiles_what_it_kills_and_adds_three_mana() {
     assert_eq!(g.obj(theirs).zone, Zone::Exile);
     assert_eq!(g.players[0].pool.len(), 3, "{{U}}{{R}}{{W}}");
 }
+
+// ---- batch 3: {2/C} hybrid costs (CR 107.4e) ----
+
+/// Player 0's main phase with exactly these lands and a Tarkir library.
+fn tdm_lands(names: &[&str]) -> Game {
+    let mut g = Game::empty(set("TDM").unwrap().defs.clone(), 1, 0);
+    g.auto_pass = false;
+    for p in 0..2 {
+        for _ in 0..10 {
+            g.add_card(p, tid("Plains"), Zone::Library);
+        }
+    }
+    for n in names {
+        put(&mut g, 0, n);
+    }
+    g
+}
+
+#[test]
+fn a_two_or_color_cost_pays_with_the_color_when_it_can() {
+    let mut g = tdm_lands(&["Forest", "Island", "Mountain", "Plains", "Plains"]);
+    let c = hand(&mut g, 0, "Temur Tawnyback"); // {2/G}{2/U}{2/R}
+    let junk = hand(&mut g, 0, "Plains");
+    assert_eq!(g.def_of(c).cost.mana_value(), 6, "each {{2/C}} counts as 2");
+    begin(&mut g);
+    play(&mut g, c, false, &[], &[Action::Discard(junk)]);
+    assert_eq!(g.obj(c).zone, Zone::Battlefield);
+    assert_eq!(
+        untapped_lands(&g, 0),
+        2,
+        "G, U and R paid with one land each; the Plains stay up"
+    );
+}
+
+#[test]
+fn a_two_or_color_cost_pays_two_generic_without_the_color() {
+    let mut g = tdm_lands(&["Plains", "Plains", "Plains", "Plains", "Plains", "Plains"]);
+    let c = hand(&mut g, 0, "Temur Tawnyback");
+    begin(&mut g);
+    assert!(
+        g.legal_actions().contains(&Action::Cast(c)),
+        "six Plains pay {{2}}{{2}}{{2}}"
+    );
+    let mut short = tdm_lands(&["Plains", "Plains", "Plains", "Plains", "Plains"]);
+    let c2 = hand(&mut short, 0, "Temur Tawnyback");
+    begin(&mut short);
+    assert!(!short.legal_actions().contains(&Action::Cast(c2)), "five can't");
+}
+
+#[test]
+fn temur_tawnyback_loots() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Temur Tawnyback");
+    let junk = hand(&mut g, 0, "Plains");
+    begin(&mut g);
+    let n = g.players[0].hand.len();
+    play(&mut g, c, false, &[], &[Action::Discard(junk)]);
+    assert_eq!(g.obj(junk).zone, Zone::Graveyard);
+    assert_eq!(g.players[0].hand.len(), n - 1, "cast it, drew one, discarded one");
+}
+
+#[test]
+fn defibrillating_current_burns_and_heals() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Defibrillating Current");
+    let theirs = put(&mut g, 1, "Iceridge Serpent");
+    begin(&mut g);
+    let life = g.players[0].life;
+    play(&mut g, c, false, &[obj(theirs)], &[]);
+    assert_eq!(g.obj(theirs).zone, Zone::Graveyard);
+    assert_eq!(g.players[0].life, life + 2);
+}
+
+#[test]
+fn dragonclaw_strike_doubles_then_fights_or_not() {
+    let mut g = table();
+    let mine = put(&mut g, 0, "Humbling Elder"); // 1/2
+    let theirs = put(&mut g, 1, "Iceridge Serpent"); // 3/3? (doubles to 2/4 vs 3 power)
+    let c = hand(&mut g, 0, "Dragonclaw Strike");
+    begin(&mut g);
+    let (p, t) = (g.power(mine), g.toughness(mine));
+    play(&mut g, c, false, &[obj(mine), obj(theirs)], &[]);
+    assert_eq!((g.power(mine), g.toughness(mine)), (2 * p, 2 * t));
+    assert!(
+        g.obj(theirs).damage > 0 || g.obj(theirs).zone == Zone::Graveyard,
+        "they fought"
+    );
+
+    // Up to one: the fight can be skipped.
+    let c2 = hand(&mut g, 0, "Dragonclaw Strike");
+    act(&mut g, Action::Cast(c2));
+    act(&mut g, Action::Target(obj(mine)));
+    assert!(
+        g.legal_actions().contains(&Action::No)
+            || g.legal_actions()
+                .iter()
+                .any(|a| matches!(a, Action::PassPriority)),
+        "no second target needed: {:?}",
+        g.legal_actions()
+    );
+}
+
+#[test]
+fn gurmag_nightwatch_keeps_one_on_top_and_bins_the_rest() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Gurmag Nightwatch");
+    begin(&mut g);
+    let top: Vec<ObjId> = g.players[0].library.iter().rev().take(3).copied().collect();
+    play(&mut g, c, false, &[], &[Action::Pick(top[1])]);
+    assert_eq!(*g.players[0].library.last().unwrap(), top[1]);
+    assert!(g.obj(top[0]).zone == Zone::Graveyard && g.obj(top[2]).zone == Zone::Graveyard);
+}
+
+#[test]
+fn kin_tree_severance_exiles_only_mana_value_three_or_more() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Kin-Tree Severance");
+    let small = put(&mut g, 1, "Humbling Elder"); // mana value 1
+    let big = put(&mut g, 1, "Iceridge Serpent"); // mana value 5
+    begin(&mut g);
+    act(&mut g, Action::Cast(c));
+    assert!(!g.legal_actions().contains(&Action::Target(obj(small))));
+    act(&mut g, Action::Target(obj(big)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(big).zone, Zone::Exile);
+}
+
+#[test]
+fn monastery_messenger_puts_a_spell_back_on_top() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Monastery Messenger");
+    let spell_card = g.add_card(0, tid("Rebellious Strike"), Zone::Graveyard);
+    let creature_card = g.add_card(0, tid("Humbling Elder"), Zone::Graveyard);
+    begin(&mut g);
+    act(&mut g, Action::Cast(c));
+    for _ in 0..4 {
+        if matches!(g.pending, Pending::ChooseTarget(_)) {
+            break;
+        }
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(
+        !g.legal_actions().contains(&Action::Target(obj(creature_card))),
+        "noncreature, nonland only"
+    );
+    act(&mut g, Action::Target(obj(spell_card)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(*g.players[0].library.last().unwrap(), spell_card);
+}
+
+#[test]
+fn rakshasas_bargain_takes_two() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Rakshasa's Bargain");
+    begin(&mut g);
+    let top: Vec<ObjId> = g.players[0].library.iter().rev().take(4).copied().collect();
+    act(&mut g, Action::Cast(c));
+    act(&mut g, Action::PassPriority);
+    act(&mut g, Action::PassPriority);
+    assert!(!g.legal_actions().contains(&Action::No), "must take");
+    act(&mut g, Action::Pick(top[0]));
+    assert!(
+        !g.legal_actions().contains(&Action::Pick(top[0])),
+        "a second, different pick"
+    );
+    act(&mut g, Action::Pick(top[2]));
+    resolve_all(&mut g, &[]);
+    assert!(g.obj(top[0]).zone == Zone::Hand && g.obj(top[2]).zone == Zone::Hand);
+    assert!(g.obj(top[1]).zone == Zone::Graveyard && g.obj(top[3]).zone == Zone::Graveyard);
+}
+
+#[test]
+fn reputable_merchant_grows_a_creature_on_entering_and_dying() {
+    let mut g = table();
+    let mine = put(&mut g, 0, "Iceridge Serpent");
+    let c = hand(&mut g, 0, "Reputable Merchant");
+    begin(&mut g);
+    play(&mut g, c, false, &[], &[Action::Target(obj(mine))]);
+    assert_eq!(g.obj(mine).counters, 1);
+    let kill = hand(&mut g, 0, "Caustic Exhale");
+    play(&mut g, kill, false, &[obj(c)], &[Action::Target(obj(mine))]);
+    assert_eq!(g.obj(c).zone, Zone::Graveyard);
+    assert_eq!(g.obj(mine).counters, 2);
+}
+
+#[test]
+fn riverwheel_sweep_locks_down_a_creature_and_offers_a_card() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Riverwheel Sweep");
+    let theirs = put(&mut g, 1, "Iceridge Serpent");
+    begin(&mut g);
+    let top: Vec<ObjId> = g.players[0].library.iter().rev().take(2).copied().collect();
+    play(&mut g, c, false, &[obj(theirs)], &[Action::Pick(top[0])]);
+    assert!(g.obj(theirs).tapped);
+    assert_eq!(g.obj(theirs).stun, 3);
+    assert!(top.iter().all(|&x| g.obj(x).zone == Zone::Exile));
+}
+
+#[test]
+fn jade_cast_sentinel_bottoms_a_graveyard_card() {
+    let mut g = table();
+    let s = put(&mut g, 0, "Jade-Cast Sentinel");
+    let theirs = g.add_card(1, tid("Iceridge Serpent"), Zone::Graveyard);
+    begin(&mut g);
+    act(&mut g, Action::Activate(s, 0));
+    act(&mut g, Action::Target(obj(theirs)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        g.players[1].library[0], theirs,
+        "the bottom of its owner's library"
+    );
+}

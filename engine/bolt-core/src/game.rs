@@ -1973,6 +1973,7 @@ impl Game {
                         && (!f.nonland_permanents || (d.types.is_permanent() && !d.types.land))
                         && (!f.permanent_cards || d.types.is_permanent())
                         && (!f.instant_or_sorcery || d.types.instant || d.types.sorcery)
+                        && (!f.noncreature_nonland || (!d.types.creature && !d.types.land))
                         && (!f.put_there_this_turn || o.graveyard_turn == self.turn)
                         && f.max_mana_value.is_none_or(|m| d.cost.mana_value() <= m);
                 }
@@ -1994,13 +1995,17 @@ impl Game {
                     && f.creature_min_power.is_none_or(|m| self.power(id) >= m)
                     && f.creature_max_power.is_none_or(|m| self.power(id) <= m)
                     && (!f.in_combat || in_combat);
-                creature_ok
+                let kind_ok = creature_ok
                     || (ty.planeswalker && f.planeswalkers)
                     || (ty.artifact && f.artifacts)
                     || (ty.land && f.lands)
                     || (ty.enchantment && f.enchantments)
                     || (!ty.land && f.nonland_permanents)
-                    || f.any_permanent
+                    || f.any_permanent;
+                // Kin-Tree Severance: "permanent with mana value 3 or greater".
+                kind_ok
+                    && f.min_mana_value
+                        .is_none_or(|m| self.def_of(id).cost.mana_value() >= m)
             }
         }
     }
@@ -3996,7 +4001,11 @@ impl Game {
                     .map(Action::Pick)
                     .collect();
                 // "Put one of them into your hand": taking one isn't optional when one can be taken.
-                if v.is_empty() || *rest != Some(LookRest::GraveyardTakeOne) {
+                let must = matches!(
+                    rest,
+                    Some(LookRest::GraveyardTakeOne | LookRest::GraveyardTakeTwo)
+                );
+                if v.is_empty() || !must {
                     v.push(Action::No);
                 }
                 v
@@ -4162,7 +4171,15 @@ impl Game {
             (Decision::SacrificeAnother { .. }, Action::No) => {
                 self.resolving.as_mut().expect("resolving").remaining.clear();
             }
-            (Decision::LookPick { cards, to, rest, .. }, choice) => {
+            (
+                Decision::LookPick {
+                    cards,
+                    pick,
+                    to,
+                    rest,
+                },
+                choice,
+            ) => {
                 let chosen = match choice {
                     Action::Pick(c) => Some(c),
                     _ => None,
@@ -4192,6 +4209,19 @@ impl Game {
                     }
                 }
                 let mut others: Vec<ObjId> = cards.into_iter().filter(|&c| Some(c) != chosen).collect();
+                if rest == Some(LookRest::GraveyardTakeTwo) && chosen.is_some() && !others.is_empty() {
+                    // "Put two of them into your hand": the second pick, from the rest.
+                    self.ask(
+                        p,
+                        Decision::LookPick {
+                            cards: others,
+                            pick,
+                            to,
+                            rest: Some(LookRest::GraveyardTakeOne),
+                        },
+                    );
+                    return;
+                }
                 if rest == Some(LookRest::GraveyardElseCounter) && chosen.is_none() {
                     // Ainok Wayfarer: "If you don't, put a +1/+1 counter on this creature."
                     if let Some(src) = self.resolving.as_ref().map(|r| r.item.source) {
@@ -4202,7 +4232,10 @@ impl Game {
                 }
                 match rest {
                     Some(
-                        LookRest::Graveyard | LookRest::GraveyardTakeOne | LookRest::GraveyardElseCounter,
+                        LookRest::Graveyard
+                        | LookRest::GraveyardTakeOne
+                        | LookRest::GraveyardTakeTwo
+                        | LookRest::GraveyardElseCounter,
                     ) => {
                         for c in others {
                             self.move_to(c, Zone::Graveyard);
@@ -4737,6 +4770,19 @@ impl Game {
             Effect::DoubleCountersSelf => {
                 if self.obj(src).zone == Zone::Battlefield {
                     self.obj_mut(src).counters *= 2;
+                }
+            }
+            Effect::DoublePowerToughness(n) => {
+                if let Some(id) = Game::slot_object(item, legal, n) {
+                    let (power, toughness, zcc) = (self.power(id), self.toughness(id), self.obj(id).zcc);
+                    self.until_eot.push(Modifier {
+                        obj: id,
+                        zcc,
+                        power,
+                        toughness,
+                        keywords: Keywords::NONE,
+                        dies: None,
+                    });
                 }
             }
             Effect::DoublePower(n) => {
@@ -5478,6 +5524,21 @@ impl Game {
                         }
                         if b > 0 {
                             self.deal_damage(them, Target::Object(me), b);
+                        }
+                    }
+                }
+            }
+            Effect::ToLibrary(n, top) => {
+                if let Some(id) = Game::slot_object(item, legal, n) {
+                    let owner = self.obj(id).owner;
+                    self.move_to(id, Zone::Library);
+                    let lib = &mut self.players[owner].library;
+                    if let Some(pos) = lib.iter().position(|&x| x == id) {
+                        let c = lib.remove(pos);
+                        if top {
+                            lib.push(c);
+                        } else {
+                            lib.insert(0, c);
                         }
                     }
                 }
@@ -6376,6 +6437,10 @@ fn add_costs(a: &ManaCost, b: &ManaCost) -> ManaCost {
     c.generic += b.generic;
     for i in 0..5 {
         c.colored[i] += b.colored[i];
+        c.twobrid[i] += b.twobrid[i];
+    }
+    for i in 0..c.hybrid.len() {
+        c.hybrid[i] += b.hybrid[i];
     }
     c
 }

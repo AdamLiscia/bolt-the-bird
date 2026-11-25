@@ -58,6 +58,10 @@ pub struct Filter {
     pub creature_min_power: Option<i32>,
     /// Creatures with at most this power ("with power 2 or less").
     pub creature_max_power: Option<i32>,
+    /// Permanents with at least this mana value.
+    pub min_mana_value: Option<u32>,
+    /// Graveyard cards that are neither creatures nor lands.
+    pub noncreature_nonland: bool,
     /// Creatures only if attacking or blocking.
     pub in_combat: bool,
     /// Only a permanent attached to the object in the first target slot ("Equipment attached to
@@ -93,6 +97,8 @@ impl Filter {
         creature_needs_flying: false,
         creature_min_power: None,
         creature_max_power: None,
+        min_mana_value: None,
+        noncreature_nonland: false,
         in_combat: false,
         attached_to_first_target: false,
         lands: false,
@@ -314,6 +320,8 @@ pub enum Effect {
     DoubleCountersSelf,
     /// The creature in `slot` gets +X/+0 until end of turn, where X is its power (doubling it).
     DoublePower(u8),
+    /// "Double the power and toughness of" the creature in `slot` until end of turn.
+    DoublePowerToughness(u8),
     /// "You may sacrifice another creature. If you do, ..." — the rest of the effects happen only
     /// if a creature is sacrificed.
     MaySacrificeAnother,
@@ -523,6 +531,8 @@ pub enum Effect {
     Fight(u8),
     /// The owner of the creature in `slot` puts it on the top or bottom of their library.
     Tuck(u8),
+    /// Put the card in `slot` on top of (`true`) or at the bottom of its owner's library.
+    ToLibrary(u8, bool),
     /// The creature in slot `from` deals damage equal to its power to the one in slot `to`.
     Bite {
         from: u8,
@@ -662,6 +672,8 @@ pub enum LookRest {
     Graveyard,
     /// Into the graveyard, and one card must be taken if any can ("Put one of them into your hand").
     GraveyardTakeOne,
+    /// Into the graveyard, after taking two (one at a time) ("Put two of them into your hand").
+    GraveyardTakeTwo,
     /// Into the graveyard; if no card was taken, a +1/+1 counter on the source (Ainok Wayfarer).
     GraveyardElseCounter,
     /// The bottom of the library in a random order.

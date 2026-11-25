@@ -3040,6 +3040,93 @@ pub fn script(name: &str) -> Option<Script> {
                 )
             },
         ),
+        // ---- TDM batch 3: {2/C} hybrid costs (the cost parser handles them) and their neighbors ----
+        "Defibrillating Current" => s(
+            &["Defibrillating Current deals 4 damage to target creature or planeswalker and you gain 2 life."],
+            |d, _| {
+                spell(
+                    d,
+                    vec![CREATURE_OR_PLANESWALKER],
+                    vec![damage(4, Recipient::Target(0)), Effect::GainLife { who: Who::You, n: 2 }],
+                )
+            },
+        ),
+        "Dragonclaw Strike" => s(
+            &["Double the power and toughness of target creature you control until end of turn. Then it fights up to one target creature an opponent controls."],
+            |d, _| {
+                let mut a = Ability::new(
+                    vec![YOUR_CREATURE, OPP_CREATURE],
+                    vec![Effect::DoublePowerToughness(0), Effect::FightBetween { a: 0, b: 1 }],
+                );
+                a.min_targets = Some(1); // the second target is "up to one"
+                d.spell = Some(a);
+            },
+        ),
+        "Gurmag Nightwatch" => s(
+            &["When this creature enters, look at the top three cards of your library. You may put one of those cards back on top of your library. Put the rest into your graveyard."],
+            |d, _| {
+                let look = Effect::LookAtTop { n: 3, pick: Pick::Any, chosen_to: LookTo::Top, rest_to: LookRest::Graveyard };
+                on(d, When::Enters, vec![], vec![look]);
+            },
+        ),
+        "Kin-Tree Severance" => s(&["Exile target permanent with mana value 3 or greater."], |d, _| {
+            let big = Filter { players: false, creatures: false, planeswalkers: false, any_permanent: true, min_mana_value: Some(3), ..Filter::ANY };
+            spell(d, vec![big], vec![Effect::Exile(0)])
+        }),
+        "Monastery Messenger" => s(
+            &["When this creature enters, put up to one target noncreature, nonland card from your graveyard on top of your library."],
+            |d, _| {
+                let card = Filter {
+                    players: false,
+                    creatures: false,
+                    planeswalkers: false,
+                    graveyard: Some(false),
+                    noncreature_nonland: true,
+                    controller: Controller::You,
+                    ..Filter::ANY
+                };
+                d.triggers.push(Trigger { when: When::Enters, ability: up_to(vec![card], vec![Effect::ToLibrary(0, true)]) });
+            },
+        ),
+        "Rakshasa's Bargain" => s(
+            &["Look at the top four cards of your library. Put two of them into your hand and the rest into your graveyard."],
+            |d, _| {
+                let look = Effect::LookAtTop { n: 4, pick: Pick::Any, chosen_to: LookTo::Hand, rest_to: LookRest::GraveyardTakeTwo };
+                spell(d, vec![], vec![look]);
+            },
+        ),
+        "Reputable Merchant" => s(
+            &["When this creature enters or dies, put a +1/+1 counter on target creature you control."],
+            |d, _| {
+                on(d, When::Enters, vec![YOUR_CREATURE], vec![Effect::Counters { slot: 0, n: 1 }]);
+                on(d, When::Dies, vec![YOUR_CREATURE], vec![Effect::Counters { slot: 0, n: 1 }]);
+            },
+        ),
+        "Riverwheel Sweep" => s(
+            &[
+                "Tap target creature. Put three stun counters on it.",
+                "Exile the top two cards of your library. Choose one of them. Until the end of your next turn, you may play that card.",
+            ],
+            |d, _| {
+                // TapAndStun taps and adds one stun counter; three of them make three counters.
+                let stun = Effect::TapAndStun(0);
+                spell(
+                    d,
+                    vec![CREATURE],
+                    vec![stun, stun, stun, Effect::ExileTopChooseOneToPlay { n: 2, this_turn: false }],
+                )
+            },
+        ),
+        "Temur Tawnyback" => s(&["When this creature enters, draw a card, then discard a card."], |d, _| {
+            on(d, When::Enters, vec![], vec![draw(1), discard(1)])
+        }),
+        "Jade-Cast Sentinel" => s(
+            &["{2}, {T}: Put target card from a graveyard on the bottom of its owner's library."],
+            |d, _| {
+                let card = Filter { players: false, creatures: false, planeswalkers: false, graveyard: Some(false), ..Filter::ANY };
+                activated(d, "{2}", true, vec![card], vec![Effect::ToLibrary(0, false)]);
+            },
+        ),
         _ => None,
     }
 }
@@ -3344,4 +3431,14 @@ pub const TDM_SCRIPTED: &[&str] = &[
     "Dragonstorm Globe",
     "Undergrowth Leopard",
     "Narset's Rebuke",
+    "Defibrillating Current",
+    "Dragonclaw Strike",
+    "Gurmag Nightwatch",
+    "Kin-Tree Severance",
+    "Monastery Messenger",
+    "Rakshasa's Bargain",
+    "Reputable Merchant",
+    "Riverwheel Sweep",
+    "Temur Tawnyback",
+    "Jade-Cast Sentinel",
 ];

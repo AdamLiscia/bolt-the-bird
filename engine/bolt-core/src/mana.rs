@@ -12,6 +12,8 @@ pub struct ManaCost {
     pub hybrid: [u8; 10],
     /// How many {X} symbols (CR 107.3).
     pub x: u8,
+    /// Monocolored hybrid, e.g. {2/G}: pay one mana of the color or two generic (CR 107.4e).
+    pub twobrid: [u8; 5],
 }
 
 /// The ten two-color pairs, in a fixed order.
@@ -50,6 +52,9 @@ impl ManaCost {
                 cost.generic += n;
             } else if sym == "X" {
                 cost.x += 1;
+            } else if let Some(c) = sym.strip_prefix("2/") {
+                let c = Color::from_symbol(c.chars().next()?)? as usize;
+                cost.twobrid[c] += 1;
             } else if let Some((a, b)) = sym.split_once('/') {
                 let ca = Color::from_symbol(a.chars().next()?)? as usize;
                 let cb = Color::from_symbol(b.chars().next()?)? as usize;
@@ -74,6 +79,31 @@ impl ManaCost {
         self.generic as u32
             + self.colored.iter().map(|&n| n as u32).sum::<u32>()
             + self.hybrid.iter().map(|&n| n as u32).sum::<u32>()
+            + 2 * self.twobrid.iter().map(|&n| n as u32).sum::<u32>()
+    }
+
+    /// The ways to pay the {2/C} symbols: each one as its color or as {2}, most colored first (fewest
+    /// sources tapped). One entry, the cost itself, when it has none.
+    pub fn twobrid_options(&self) -> Vec<ManaCost> {
+        let pips: Vec<usize> = (0..5)
+            .flat_map(|c| std::iter::repeat_n(c, self.twobrid[c] as usize))
+            .collect();
+        let mut out: Vec<(u32, ManaCost)> = Vec::new();
+        for mask in 0u32..(1 << pips.len()) {
+            let mut c = *self;
+            c.twobrid = [0; 5];
+            for (k, &color) in pips.iter().enumerate() {
+                if mask & (1 << k) == 0 {
+                    c.colored[color] += 1;
+                } else {
+                    c.generic += 2;
+                }
+            }
+            out.push((mask.count_ones(), c));
+        }
+        out.sort_by_key(|o| o.0);
+        out.dedup_by_key(|o| o.1);
+        out.into_iter().map(|o| o.1).collect()
     }
 
     /// The cost with X fixed: each {X} becomes `x` generic mana.
@@ -114,7 +144,9 @@ impl ManaSource {
 pub fn pay(cost: &ManaCost, sources: &[ManaSource]) -> Option<Vec<usize>> {
     let mut order: Vec<usize> = (0..sources.len()).collect();
     order.sort_by_key(|&i| (sources[i].breadth(), i));
-    pay_in_order(cost, sources, &order, &order)
+    cost.twobrid_options()
+        .iter()
+        .find_map(|c| pay_in_order(c, sources, &order, &order))
 }
 
 /// Like [`pay`], for a player choosing well (the smart auto-payer):
@@ -135,7 +167,9 @@ pub fn pay_ranked(
     pips.sort_by_key(|&i| (tapped(i), sources[i].breadth(), keep[i], i));
     let mut generic: Vec<usize> = (0..sources.len()).collect();
     generic.sort_by_key(|&i| (tapped(i), keep[i], sources[i].breadth(), i));
-    pay_in_order(cost, sources, &pips, &generic)
+    cost.twobrid_options()
+        .iter()
+        .find_map(|c| pay_in_order(c, sources, &pips, &generic))
 }
 
 fn pay_in_order(
