@@ -915,3 +915,170 @@ fn static_snare_is_cheaper_for_each_attacker_and_exiles() {
     assert_eq!(n, 3, "two attackers: {{2}}{{W}}");
     assert_eq!(g.obj(theirs).zone, Zone::Exile);
 }
+
+// ---- batch 6a: flurry and endure ----
+
+#[test]
+fn flurry_triggers_on_the_second_spell_only() {
+    let mut g = table();
+    put(&mut g, 0, "Cori Mountain Stalwart");
+    let spells: Vec<ObjId> = (0..3).map(|_| hand(&mut g, 0, "Humbling Elder")).collect();
+    let theirs = put(&mut g, 1, "Iceridge Serpent");
+    begin(&mut g);
+    let life = (g.players[0].life, g.players[1].life);
+    play(&mut g, spells[0], false, &[], &[Action::Target(obj(theirs))]);
+    assert_eq!(
+        (g.players[0].life, g.players[1].life),
+        life,
+        "first spell: nothing"
+    );
+    play(&mut g, spells[1], false, &[], &[Action::Target(obj(theirs))]);
+    assert_eq!(
+        (g.players[0].life, g.players[1].life),
+        (life.0 + 2, life.1 - 2),
+        "second spell"
+    );
+    play(&mut g, spells[2], false, &[], &[Action::Target(obj(theirs))]);
+    assert_eq!(
+        (g.players[0].life, g.players[1].life),
+        (life.0 + 2, life.1 - 2),
+        "not the third"
+    );
+}
+
+#[test]
+fn flurry_cards_do_their_things() {
+    let mut g = table();
+    let duelist = put(&mut g, 0, "Devoted Duelist");
+    let jd = put(&mut g, 0, "Jeskai Devotee");
+    let pp = put(&mut g, 0, "Poised Practitioner");
+    put(&mut g, 0, "Wingblade Disciple");
+    let adept = put(&mut g, 0, "Equilibrium Adept");
+    let wayspeaker = put(&mut g, 0, "Wayspeaker Bodyguard");
+    let theirs = put(&mut g, 1, "Iceridge Serpent");
+    assert!(g.keywords(duelist).has(Keywords::HASTE));
+    let a = hand(&mut g, 0, "Rebellious Strike");
+    let b = hand(&mut g, 0, "Rebellious Strike");
+    begin(&mut g);
+    let (life, p) = (g.players[1].life, g.power(jd));
+    play(&mut g, a, false, &[obj(duelist)], &[]);
+    // Second spell: five flurry triggers. Answers in the order they come up: the Bodyguard's target,
+    // then the Practitioner's scry.
+    play(
+        &mut g,
+        b,
+        false,
+        &[obj(duelist)],
+        &[Action::Target(obj(theirs)), Action::No],
+    );
+    assert_eq!(g.players[1].life, life - 1, "Duelist");
+    assert_eq!(g.power(jd), p + 1, "Jeskai Devotee");
+    assert_eq!(g.obj(pp).counters, 1, "Poised Practitioner");
+    assert_eq!(tokens(&g, 0, "Bird").len(), 1, "Wingblade Disciple");
+    assert!(
+        g.keywords(adept).has(Keywords::DOUBLE_STRIKE),
+        "Equilibrium Adept"
+    );
+    assert!(g.obj(theirs).tapped, "Wayspeaker Bodyguard");
+    let _ = wayspeaker;
+}
+
+#[test]
+fn wayspeaker_bodyguard_returns_a_cheap_permanent_card() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Wayspeaker Bodyguard");
+    let cheap = g.add_card(0, tid("Humbling Elder"), Zone::Graveyard); // mana value 1
+    let pricey = g.add_card(0, tid("Iceridge Serpent"), Zone::Graveyard); // 5
+    begin(&mut g);
+    act(&mut g, Action::Cast(c));
+    for _ in 0..4 {
+        if matches!(g.pending, Pending::ChooseTarget(_)) {
+            break;
+        }
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(
+        !g.legal_actions().contains(&Action::Target(obj(pricey))),
+        "mana value 2 or less"
+    );
+    act(&mut g, Action::Target(obj(cheap)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(cheap).zone, Zone::Hand);
+}
+
+#[test]
+fn equilibrium_adept_exiles_the_top_card_to_play() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Equilibrium Adept");
+    begin(&mut g);
+    let top = *g.players[0].library.last().unwrap();
+    play(&mut g, c, false, &[], &[Action::Pick(top)]);
+    assert_eq!(g.obj(top).zone, Zone::Exile);
+    assert!(g.obj(top).playable.is_some());
+}
+
+#[test]
+fn endure_puts_counters_or_makes_a_spirit() {
+    let mut g = table();
+    let a = hand(&mut g, 0, "Sandskitter Outrider"); // endures 2
+    let b = hand(&mut g, 0, "Sandskitter Outrider");
+    begin(&mut g);
+    play(&mut g, a, false, &[], &[Action::Yes]);
+    assert_eq!(g.obj(a).counters, 2);
+    play(&mut g, b, false, &[], &[Action::No]);
+    assert_eq!(g.obj(b).counters, 0);
+    let spirit = tokens(&g, 0, "Spirit");
+    assert_eq!(spirit.len(), 1);
+    assert_eq!(
+        (g.power(spirit[0]), g.toughness(spirit[0])),
+        (2, 2),
+        "a 2/2 Spirit"
+    );
+}
+
+#[test]
+fn the_other_endure_creatures() {
+    for (name, n) in [
+        ("Dusyut Earthcarver", 3),
+        ("Fortress Kin-Guard", 1),
+        ("Kin-Tree Nurturer", 1),
+        ("Inspirited Vanguard", 2),
+    ] {
+        let mut g = table();
+        let c = hand(&mut g, 0, name);
+        begin(&mut g);
+        play(&mut g, c, false, &[], &[Action::Yes]);
+        assert_eq!(g.obj(c).counters, n, "{name}");
+    }
+    let mut g = table();
+    let v = put(&mut g, 0, "Inspirited Vanguard");
+    g.start_turn(5, 0);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(v));
+    act(&mut g, Action::FinishAttacks);
+    resolve_all(&mut g, &[Action::Yes]);
+    assert_eq!(g.obj(v).counters, 2, "endures when it attacks too");
+}
+
+#[test]
+fn descendant_of_storms_endures_only_if_paid() {
+    for (pay, counters) in [(true, 1), (false, 0)] {
+        let mut g = table();
+        let d = put(&mut g, 0, "Descendant of Storms");
+        g.start_turn(5, 0);
+        while g.pending != Pending::DeclareAttackers(0) {
+            act(&mut g, Action::PassPriority);
+        }
+        act(&mut g, Action::Attack(d));
+        act(&mut g, Action::FinishAttacks);
+        let answers: &[Action] = if pay {
+            &[Action::Yes, Action::Yes]
+        } else {
+            &[Action::No]
+        };
+        resolve_all(&mut g, answers);
+        assert_eq!(g.obj(d).counters, counters, "paid: {pay}");
+    }
+}

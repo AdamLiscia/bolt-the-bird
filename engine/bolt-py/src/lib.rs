@@ -492,6 +492,7 @@ impl Game {
                         e.set_item("card", one(*against))?;
                     }
                     D::LoseOrDiscard { n, .. } => e.set_item("life", *n)?,
+                    D::Endure { n, .. } => e.set_item("x", *n)?,
                     D::Discard { left, optional, .. } => {
                         e.set_item("left", *left)?;
                         e.set_item("optional", *optional)?;

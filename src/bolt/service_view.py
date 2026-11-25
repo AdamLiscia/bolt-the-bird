@@ -110,6 +110,7 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
     labels = {
         "Surveil": (f"Put {subject} into your graveyard", f"Keep {subject} on top"),
         "Scry": (f"Put {subject} on the bottom", f"Keep {subject} on top"),
+        "Endure": (f"{src}: put {dec.get('x', 0)} +1/+1 counters on it", f"{src}: create a {dec.get('x', 0)}/{dec.get('x', 0)} Spirit token"),
         "Tuck": (f"Put {subject} on top of your library", f"Put {subject} on the bottom"),
         "May": (f"{src}: yes", f"{src}: no"),
         "MayPay": (f"Pay {dec.get('cost', '')} ({src})", "Don't pay"),

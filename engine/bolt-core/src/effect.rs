@@ -251,6 +251,12 @@ pub enum Effect {
     Scry {
         n: u8,
     },
+    /// "It endures N" (Tarkir: Dragonstorm): its controller puts N +1/+1 counters on the source, or
+    /// creates an N/N white Spirit token (`spirit`, a 0/0 given N counters) (CR 701.62).
+    Endure {
+        n: u8,
+        spirit: usize,
+    },
     /// Search your library, then shuffle (CR 701.19). With kicker paid, `kicked_n` replaces `n`.
     Search {
         what: SearchFor,
@@ -820,6 +826,8 @@ pub enum When {
     YourSourceDealsNoncombatDamageToOpponent,
     /// "Whenever you cast a spell".
     YouCast,
+    /// Flurry (Tarkir: Dragonstorm): "Whenever you cast your second spell each turn".
+    YouCastSecondSpell,
     /// "Whenever a nontoken creature you control without [subtype] dies"; slot 0 is that card.
     YourNontokenCreatureDiesWithout(&'static str),
     /// "At the beginning of combat on your turn", for a card in your graveyard.

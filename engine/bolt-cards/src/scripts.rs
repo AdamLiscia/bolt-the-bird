@@ -51,6 +51,8 @@ pub fn token_defs() -> Vec<CardDef> {
         token("Ninja", "Ninja", 2, 1, Keywords::NONE),
         token("Cat", "Cat", 2, 2, Keywords::NONE),
         token("Warrior", "Warrior", 1, 1, Keywords::NONE), // Tarkir's mobilize tokens (red)
+        token("Spirit", "Spirit", 0, 0, Keywords::NONE),   // endure: made N/N with counters
+        token("Bird", "Bird", 1, 1, Keywords::FLYING),
     ]
 }
 
@@ -116,6 +118,8 @@ pub struct Tokens {
     pub fish: usize,
     pub rat: usize,
     pub warrior: usize,
+    pub spirit_endure: usize,
+    pub bird: usize,
 }
 
 impl Tokens {
@@ -145,6 +149,8 @@ impl Tokens {
             ninja: base + 21,
             cat_2: base + 22,
             warrior: base + 23,
+            spirit_endure: base + 24,
+            bird: base + 25,
         }
     }
 }
@@ -328,6 +334,18 @@ fn devotee(d: &mut CardDef, colors: &[Color]) {
         m[c as usize] = true;
     }
     d.filter_mana = Some(m);
+}
+
+/// "Flurry — Whenever you cast your second spell each turn, ..."
+fn flurry(d: &mut CardDef, targets: Vec<Filter>, effects: Vec<Effect>) {
+    on(d, When::YouCastSecondSpell, targets, effects);
+}
+
+fn endure(n: u8, t: &Tokens) -> Effect {
+    Effect::Endure {
+        n,
+        spirit: t.spirit_endure,
+    }
 }
 
 fn modes(d: &mut CardDef, modes: Vec<Ability>) {
@@ -3253,6 +3271,78 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::Enters, vec![f], vec![Effect::ExileUntilSourceLeaves(0)]);
             },
         ),
+        // ---- TDM batch 6a: flurry and endure ----
+        "Cori Mountain Stalwart" => s(
+            &["Flurry — Whenever you cast your second spell each turn, this creature deals 2 damage to each opponent and you gain 2 life."],
+            |d, _| flurry(d, vec![], vec![damage(2, Recipient::EachOpponent), Effect::GainLife { who: Who::You, n: 2 }]),
+        ),
+        "Devoted Duelist" => s(
+            &["Flurry — Whenever you cast your second spell each turn, this creature deals 1 damage to each opponent."],
+            |d, _| flurry(d, vec![], vec![damage(1, Recipient::EachOpponent)]),
+        ),
+        "Equilibrium Adept" => s(
+            &[
+                "When this creature enters, exile the top card of your library. Until the end of your next turn, you may play that card.",
+                "Flurry — Whenever you cast your second spell each turn, this creature gains double strike until end of turn.",
+            ],
+            |d, _| {
+                on(d, When::Enters, vec![], vec![Effect::ExileTopChooseOneToPlay { n: 1, this_turn: false }]);
+                flurry(d, vec![], vec![Effect::GrantSelf { keywords: Keywords::DOUBLE_STRIKE }]);
+            },
+        ),
+        "Jeskai Devotee" => s(
+            &[
+                "Flurry — Whenever you cast your second spell each turn, this creature gets +1/+1 until end of turn.",
+                "{1}: Add {U}, {R}, or {W}. Activate only once each turn.",
+            ],
+            |d, _| {
+                flurry(d, vec![], vec![Effect::PumpSelf { power: 1, toughness: 1 }]);
+                devotee(d, &[Color::White, Color::Blue, Color::Red]);
+            },
+        ),
+        "Poised Practitioner" => s(
+            &["Flurry — Whenever you cast your second spell each turn, put a +1/+1 counter on this creature. Scry 1."],
+            |d, _| flurry(d, vec![], vec![Effect::CountersSelf { n: 1 }, Effect::Scry { n: 1 }]),
+        ),
+        "Wayspeaker Bodyguard" => s(
+            &[
+                "When this creature enters, return target nonland permanent card with mana value 2 or less from your graveyard to your hand.",
+                "Flurry — Whenever you cast your second spell each turn, tap target creature an opponent controls.",
+            ],
+            |d, _| {
+                let card = Filter {
+                    players: false,
+                    creatures: false,
+                    planeswalkers: false,
+                    graveyard: Some(false),
+                    nonland_permanents: true,
+                    max_mana_value: Some(2),
+                    controller: Controller::You,
+                    ..Filter::ANY
+                };
+                on(d, When::Enters, vec![card], vec![Effect::Bounce(0)]);
+                flurry(d, vec![OPP_CREATURE], vec![Effect::Tap(0)]);
+            },
+        ),
+        "Wingblade Disciple" => s(
+            &["Flurry — Whenever you cast your second spell each turn, create a 1/1 white Bird creature token with flying."],
+            |d, t| flurry(d, vec![], vec![Effect::CreateToken { who: Who::You, def: t.bird, n: 1 }]),
+        ),
+        "Dusyut Earthcarver" => s(&["When this creature enters, it endures 3."], |d, t| on(d, When::Enters, vec![], vec![endure(3, t)])),
+        "Fortress Kin-Guard" => s(&["When this creature enters, it endures 1."], |d, t| on(d, When::Enters, vec![], vec![endure(1, t)])),
+        "Kin-Tree Nurturer" => s(&["When this creature enters, it endures 1."], |d, t| on(d, When::Enters, vec![], vec![endure(1, t)])),
+        "Sandskitter Outrider" => s(&["When this creature enters, it endures 2."], |d, t| on(d, When::Enters, vec![], vec![endure(2, t)])),
+        "Inspirited Vanguard" => s(&["Whenever this creature enters or attacks, it endures 2."], |d, t| {
+            on(d, When::Enters, vec![], vec![endure(2, t)]);
+            on(d, When::Attacks, vec![], vec![endure(2, t)]);
+        }),
+        "Descendant of Storms" => s(
+            &["Whenever this creature attacks, you may pay {1}{W}. If you do, it endures 1."],
+            |d, t| {
+                let cost = ManaCost::parse("{1}{W}").expect("cost");
+                on(d, When::Attacks, vec![], vec![Effect::MayPay(cost), endure(1, t)]);
+            },
+        ),
         _ => None,
     }
 }
@@ -3585,4 +3675,17 @@ pub const TDM_SCRIPTED: &[&str] = &[
     "Highspire Bell-Ringer",
     "Dragon's Prey",
     "Static Snare",
+    "Cori Mountain Stalwart",
+    "Devoted Duelist",
+    "Equilibrium Adept",
+    "Jeskai Devotee",
+    "Poised Practitioner",
+    "Wayspeaker Bodyguard",
+    "Wingblade Disciple",
+    "Dusyut Earthcarver",
+    "Fortress Kin-Guard",
+    "Kin-Tree Nurturer",
+    "Sandskitter Outrider",
+    "Inspirited Vanguard",
+    "Descendant of Storms",
 ];

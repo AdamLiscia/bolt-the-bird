@@ -568,6 +568,8 @@ pub enum Decision {
     Surveil { cards: Vec<ObjId> },
     /// Scry: `Yes` puts the top of `cards` on the bottom of the library, `No` keeps it on top.
     Scry { cards: Vec<ObjId> },
+    /// Endure `n`: `Yes` puts the counters on the source, `No` makes an `n`/`n` Spirit token.
+    Endure { n: u8, spirit: usize },
     /// `Pick` a matching library card, or `No` to find nothing (CR 701.19b).
     Search { what: SearchFor, to: SearchTo, left: u8 },
     /// `Yes` for the top of the library, `No` for the bottom.
@@ -3497,6 +3499,9 @@ impl Game {
         }
         self.spells_cast[p] += 1;
         self.fire(p, When::YouCast, None);
+        if self.spells_cast[p] == 2 {
+            self.fire(p, When::YouCastSecondSpell, None);
+        }
         self.ward_check(&item);
         let instant_or_sorcery = self.types_of(card).instant || self.types_of(card).sorcery;
         if instant_or_sorcery {
@@ -4021,7 +4026,11 @@ impl Game {
     fn decision_actions(&self, p: PlayerId) -> Vec<Action> {
         let hand = &self.players[p].hand;
         match self.decision.as_ref().expect("a decision") {
-            Decision::May | Decision::Surveil { .. } | Decision::Scry { .. } | Decision::Tuck { .. } => {
+            Decision::May
+            | Decision::Surveil { .. }
+            | Decision::Scry { .. }
+            | Decision::Tuck { .. }
+            | Decision::Endure { .. } => {
                 vec![Action::Yes, Action::No]
             }
             Decision::SacrificeCreatures { .. } => self.creatures(p).map(Action::Pick).collect(),
@@ -4377,6 +4386,15 @@ impl Game {
             }
             (Decision::Discard { .. }, Action::No) => {}
             (Decision::PickDiscard { .. }, Action::Pick(c)) => self.move_to(c, Zone::Graveyard),
+            (Decision::Endure { n, spirit }, choice) => {
+                let src = self.resolving.as_ref().map(|r| r.item.source);
+                match src {
+                    Some(s) if choice == Action::Yes && self.obj(s).zone == Zone::Battlefield => {
+                        self.add_counters(s, n as i32);
+                    }
+                    _ => self.endure_token(p, n, spirit),
+                }
+            }
             (Decision::Scry { mut cards }, choice) => {
                 let card = cards.remove(0);
                 if choice == Action::Yes {
@@ -4661,6 +4679,13 @@ impl Game {
                     if any {
                         self.ask(item.controller, Decision::PickDiscard { victim });
                     }
+                }
+            }
+            Effect::Endure { n, spirit } => {
+                if self.obj(src).zone == Zone::Battlefield {
+                    self.ask(item.controller, Decision::Endure { n, spirit });
+                } else {
+                    self.endure_token(item.controller, n, spirit); // CR 701.62b: gone, so a Spirit
                 }
             }
             Effect::Scry { n } => {
@@ -5743,6 +5768,14 @@ impl Game {
 
     /// Creates a token on the battlefield. It is summoning sick like any new permanent.
     /// Doubling Season doubles tokens and counters (CR 614.1a).
+    /// Endure's Spirit: an `n`/`n` token (a 0/0 Spirit with `n` +1/+1 counters).
+    fn endure_token(&mut self, p: PlayerId, n: u8, spirit: usize) {
+        self.create_token(p, spirit);
+        for id in self.last_created.clone() {
+            self.obj_mut(id).counters += n as i32;
+        }
+    }
+
     fn create_token(&mut self, p: PlayerId, def: usize) {
         self.last_created.clear();
         for _ in 0..self.doubling(p) {
