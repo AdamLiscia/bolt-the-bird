@@ -826,6 +826,9 @@ pub enum Effect {
     /// The instant or sorcery card in `slot` gains harmonize until end of turn, its harmonize cost its
     /// mana cost (Songcrafter Mage).
     GrantHarmonize(u8),
+    /// "If this is the second time this ability has resolved this turn, you draw `n` cards." (Ms.
+    /// Bumbleflower; counted per source, each turn)
+    DrawIfSecondResolutionThisTurn(u8),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

@@ -2,6 +2,11 @@
 column order), to assets/{SET}_oracle.json: the engine's card list for that set.
 
     python scripts/fetch_oracle.py --set TDM
+    python scripts/fetch_oracle.py --set BLC --names ~/bolt-handoff/blc.json
+
+With --names, the card list is a JSON file instead of the draft data: a list of names, or an object
+with "shared_order" (and "decks", whose commanders, then any other cards such as basic lands, are
+added after it), as for a Commander precon set. Names are looked up 75 at a time with Scryfall's /cards/collection.
 
 Fields as in assets/FDN_oracle.json. Two-faced cards keep their front face's characteristics
 (name joined with " // " as 17lands writes it is matched on the front name).
@@ -42,6 +47,42 @@ def fetch_set(code: str) -> dict:
     return out
 
 
+def names_from_file(path: str) -> list[str]:
+    data = json.loads(open(path).read())
+    if isinstance(data, list):
+        return data
+    names = list(data["shared_order"])
+    for deck in data.get("decks", []):
+        for n in (deck.get("commander"), deck.get("partner")):
+            if n and n not in names:
+                names.append(n)
+    for deck in data.get("decks", []):  # then anything else the decks hold (their basic lands)
+        for c in deck.get("cards", []):
+            if c["name"] not in names:
+                names.append(c["name"])
+    return names
+
+
+def fetch_named(names: list[str]) -> dict:
+    """Cards by name, 75 per request to /cards/collection (no auth), with Scryfall's requested pause."""
+    out = {}
+    for i in range(0, len(names), 75):
+        ids = [{"name": n.split(" // ")[0]} for n in names[i : i + 75]]
+        req = urllib.request.Request(
+            "https://api.scryfall.com/cards/collection",
+            data=json.dumps({"identifiers": ids}).encode(),
+            headers={**HEADERS, "Content-Type": "application/json"},
+        )
+        page = json.load(urllib.request.urlopen(req))
+        for c in page["data"]:
+            out.setdefault(c["name"], c)
+            out.setdefault(c["name"].split(" // ")[0], c)
+        if page.get("not_found"):
+            raise SystemExit(f"not found on Scryfall: {page['not_found']}")
+        time.sleep(0.15)
+    return out
+
+
 def flat(c: dict) -> dict:
     face = c["card_faces"][0] if "card_faces" in c and "oracle_text" not in c else c
     d = {k: face.get(k, c.get(k)) for k in KEEP}
@@ -56,9 +97,14 @@ def flat(c: dict) -> dict:
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--set", required=True)
+    ap.add_argument("--names", help="a JSON file of card names, instead of the draft data's card list")
     a = ap.parse_args()
-    names = names_in_model_order(a.set)
-    cards = fetch_set(a.set)
+    if a.names:
+        names = names_from_file(a.names)
+        cards = fetch_named(names)
+    else:
+        names = names_in_model_order(a.set)
+        cards = fetch_set(a.set)
     missing = [n for n in names if n not in cards and n.split(" // ")[0] not in cards]
     for n in missing:  # not in the booster search (e.g. a bonus sheet): look it up by name
         q = urllib.parse.urlencode({"exact": n.split(" // ")[0]})
