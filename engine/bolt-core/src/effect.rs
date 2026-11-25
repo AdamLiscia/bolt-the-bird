@@ -843,6 +843,11 @@ pub enum Effect {
         slot: u8,
         sub: &'static str,
     },
+    /// Exile the creature in `slot`; its controller may search for a basic land card and put it
+    /// onto the battlefield tapped (Path to Exile).
+    ExileControllerMayFetchBasic(u8),
+    /// Double the number of +1/+1 counters on each creature you control (Kalonian Hydra).
+    DoubleCountersEachYours,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

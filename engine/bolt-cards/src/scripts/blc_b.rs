@@ -278,6 +278,91 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::AnotherCreatureYouControlEnters, vec![], vec![damage(1, Recipient::EachOpponent)]);
             },
         ),
+        // ---- Batch 4 ----
+        "Clifftop Retreat" => s(&["This land enters tapped unless you control a Mountain or a Plains.", "{T}: Add {R} or {W}."], |d, _| {
+            d.enters_tapped_unless = Some(["Mountain", "Plains"]);
+            dual(d, Color::Red, Color::White);
+        }),
+        "Hinterland Harbor" => s(&["This land enters tapped unless you control a Forest or an Island.", "{T}: Add {G} or {U}."], |d, _| {
+            d.enters_tapped_unless = Some(["Forest", "Island"]);
+            dual(d, Color::Green, Color::Blue);
+        }),
+        "Copperline Gorge" => s(&["This land enters tapped unless you control two or fewer other lands.", "{T}: Add {R} or {G}."], |d, _| {
+            d.enters_tapped_unless_at_most_lands = Some(2);
+            dual(d, Color::Red, Color::Green);
+        }),
+        "Prairie Stream" => s(&["This land enters tapped unless you control two or more basic lands."], |d, _| {
+            d.enters_tapped_unless_basics = 2;
+            dual(d, Color::White, Color::Blue);
+        }),
+        "Haunted Mire" => s(&["This land enters tapped."], |d, _| {
+            d.enters_tapped = true;
+            dual(d, Color::Black, Color::Green);
+        }),
+        "Cloudblazer" => s(&["When this creature enters, you gain 2 life and draw two cards."], |d, _| {
+            on(d, When::Enters, vec![], vec![Effect::GainLife { who: Who::You, n: 2 }, draw(2)])
+        }),
+        "Inspiring Overseer" => s(&["When this creature enters, you gain 1 life and draw a card."], |d, _| {
+            on(d, When::Enters, vec![], vec![Effect::GainLife { who: Who::You, n: 1 }, draw(1)])
+        }),
+        "Harmonize" => s(&["Draw three cards."], |d, _| spell(d, vec![], vec![draw(3)])),
+        "Generous Gift" => s(
+            &["Destroy target permanent. Its controller creates a 3/3 green Elephant creature token."],
+            |d, t| {
+                let any = Filter { players: false, creatures: false, planeswalkers: false, any_permanent: true, ..Filter::ANY };
+                spell(d, vec![any], vec![Effect::Destroy(0), Effect::CreateToken { who: Who::ControllerOf(0), def: t.elephant_3, n: 1 }]);
+            },
+        ),
+        "Putrefy" => s(&["Destroy target artifact or creature. It can't be regenerated."], |d, _| {
+            // The engine has no regeneration, so nothing can regenerate it.
+            let f = Filter { artifacts: true, ..CREATURE };
+            spell(d, vec![f], vec![Effect::Destroy(0)]);
+        }),
+        "Path to Exile" => s(
+            &["Exile target creature. Its controller may search their library for a basic land card, put that card onto the battlefield tapped, then shuffle."],
+            |d, _| spell(d, vec![CREATURE], vec![Effect::ExileControllerMayFetchBasic(0)]),
+        ),
+        "Hedron Archive" => s(&["{T}: Add {C}{C}.", "{2}, {T}, Sacrifice this artifact: Draw two cards."], |d, _| {
+            colorless(d);
+            d.mana_amount = 2;
+            let n = activated(d, "{2}", true, vec![], vec![draw(2)]);
+            d.activated[n].sacrifice_self = true;
+        }),
+        "Kalonian Hydra" => s(
+            &[
+                "This creature enters with four +1/+1 counters on it.",
+                "Whenever this creature attacks, double the number of +1/+1 counters on each creature you control.",
+            ],
+            |d, _| {
+                d.enters_counters = Some((4, Condition::Always));
+                on(d, When::Attacks, vec![], vec![Effect::DoubleCountersEachYours]);
+            },
+        ),
+        "Managorger Hydra" => s(&["Whenever a player casts a spell, put a +1/+1 counter on this creature."], |d, _| {
+            on(d, When::YouCast, vec![], vec![Effect::CountersSelf { n: 1 }]);
+            on(d, When::OpponentCasts, vec![], vec![Effect::CountersSelf { n: 1 }]);
+        }),
+        "Moldervine Reclamation" => s(&["Whenever a creature you control dies, you gain 1 life and draw a card."], |d, _| {
+            on(d, When::CreatureYouControlDies, vec![], vec![Effect::GainLife { who: Who::You, n: 1 }, draw(1)])
+        }),
+        "Prosperous Innkeeper" => s(
+            &["When this creature enters, create a Treasure token.", "Whenever another creature you control enters, you gain 1 life."],
+            |d, t| {
+                on(d, When::Enters, vec![], vec![Effect::CreateToken { who: Who::You, def: t.treasure, n: 1 }]);
+                on(d, When::AnotherCreatureYouControlEnters, vec![], vec![Effect::GainLife { who: Who::You, n: 1 }]);
+            },
+        ),
+        "Rampaging Baloths" => s(&["Landfall — Whenever a land you control enters, create a 4/4 green Beast creature token."], |d, t| {
+            on(d, When::LandYouControlEnters, vec![], vec![Effect::CreateToken { who: Who::You, def: t.beast_4, n: 1 }])
+        }),
+        "Loran of the Third Path" => s(
+            &["When Loran enters, destroy up to one target artifact or enchantment.", "{T}: You and target opponent each draw a card."],
+            |d, _| {
+                d.triggers.push(Trigger { when: When::Enters, ability: up_to(vec![ARTIFACT_OR_ENCHANTMENT], vec![Effect::Destroy(0)]) });
+                let opp = Filter::PLAYER.controlled_by(Controller::Opponent);
+                activated(d, "", true, vec![opp], vec![draw(1), Effect::Draw { who: Who::TargetPlayer(0), n: 1 }]);
+            },
+        ),
         _ => None,
     }
 }
@@ -315,4 +400,22 @@ pub const BLC_B_SCRIPTED: &[&str] = &[
     "Zinnia, Valley's Voice",
     "Hazel of the Rootbloom",
     "Agate Instigator",
+    "Clifftop Retreat",
+    "Hinterland Harbor",
+    "Copperline Gorge",
+    "Prairie Stream",
+    "Haunted Mire",
+    "Cloudblazer",
+    "Inspiring Overseer",
+    "Harmonize",
+    "Generous Gift",
+    "Putrefy",
+    "Path to Exile",
+    "Hedron Archive",
+    "Kalonian Hydra",
+    "Managorger Hydra",
+    "Moldervine Reclamation",
+    "Prosperous Innkeeper",
+    "Rampaging Baloths",
+    "Loran of the Third Path",
 ];
