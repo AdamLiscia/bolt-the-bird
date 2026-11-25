@@ -742,3 +742,183 @@ fn morbid_opportunist_draws_once_each_turn_when_other_creatures_die() {
     assert_eq!(g.obj(theirs).zone, Zone::Graveyard);
     assert_eq!(g.players[0].hand.len(), n + 1, "only once each turn");
 }
+
+/// Passes to player 0's declare-attackers on a fresh turn, attacks with `attackers`, and stops at
+/// the opponent's declare-blockers (the opponent needs a creature).
+fn attack_with(g: &mut Game, turn: u32, attackers: &[ObjId]) {
+    g.start_turn(turn, 0);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(g, Action::PassPriority);
+    }
+    for &a in attackers {
+        act(g, Action::Attack(a));
+    }
+    act(g, Action::FinishAttacks);
+    while !matches!(g.pending, Pending::DeclareBlockers(_)) {
+        act(g, Action::PassPriority);
+    }
+}
+
+fn to_main1(g: &mut Game, turn: u32, active: usize) {
+    g.start_turn(turn, active);
+    while g.step != Step::Main1 {
+        act(g, Action::PassPriority);
+    }
+}
+
+#[test]
+fn illusory_ambusher_draws_as_many_cards_as_the_damage_dealt_to_it() {
+    let mut g = table();
+    let a = hand(&mut g, 0, "Illusory Ambusher");
+    assert!(g.def_of(a).keywords.has(Keywords::FLASH));
+    play(&mut g, a, false, &[], &[]);
+    let n = g.players[0].hand.len();
+    let storm = hand(&mut g, 0, "Starstorm");
+    act(&mut g, Action::CastX(storm, 2));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(a).zone, Zone::Graveyard, "a 4/1 dies, and still draws");
+    assert_eq!(g.players[0].hand.len(), n + 2);
+}
+
+#[test]
+fn body_of_knowledge_is_hand_sized_and_draws_for_damage() {
+    let mut g = table();
+    let b = put(&mut g, 0, "Body of Knowledge");
+    assert!(g.def_of(b).no_max_hand_size);
+    let n = g.players[0].hand.len() as i32;
+    assert_eq!(g.power(b), n);
+    let storm = hand(&mut g, 0, "Starstorm");
+    act(&mut g, Action::CastX(storm, 1));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].hand.len() as i32, n + 1);
+    assert_eq!(g.toughness(b), n + 1);
+}
+
+#[test]
+fn tetsuko_makes_small_creatures_unblockable() {
+    let mut g = table();
+    put(&mut g, 0, "Tetsuko Umezawa, Fugitive");
+    let small = put(&mut g, 0, "Morbid Opportunist"); // power 1
+    let big = put(&mut g, 0, "Garruk's Packleader"); // 4/4
+    put(&mut g, 1, "Restoration Angel");
+    attack_with(&mut g, 5, &[small, big]);
+    let legal = g.legal_actions();
+    let blocks = |a: ObjId| {
+        legal
+            .iter()
+            .any(|x| matches!(x, Action::Block { attacker, .. } if *attacker == a))
+    };
+    assert!(!blocks(small), "power 1: can't be blocked");
+    assert!(blocks(big));
+}
+
+#[test]
+fn deep_forest_hermit_makes_squirrels_pumps_them_and_vanishes() {
+    let mut g = table();
+    let h = hand(&mut g, 0, "Deep Forest Hermit");
+    play(&mut g, h, false, &[], &[]);
+    let squirrels = tokens(&g, 0, "Squirrel");
+    assert_eq!(squirrels.len(), 4);
+    assert_eq!((g.power(squirrels[0]), g.toughness(squirrels[0])), (2, 2));
+    assert_eq!(g.obj(h).time_counters, 3);
+    to_main1(&mut g, 5, 0);
+    assert_eq!(g.obj(h).time_counters, 2);
+    to_main1(&mut g, 7, 0);
+    assert_eq!(g.obj(h).zone, Zone::Battlefield);
+    to_main1(&mut g, 9, 0);
+    assert_eq!(g.obj(h).zone, Zone::Graveyard, "the last counter: sacrificed");
+    assert_eq!(g.power(squirrels[0]), 1);
+}
+
+#[test]
+fn nadiers_nightblade_drains_when_a_token_leaves() {
+    let mut g = table();
+    put(&mut g, 0, "Nadier's Nightblade");
+    let coup = hand(&mut g, 0, "Martial Coup");
+    act(&mut g, Action::CastX(coup, 2));
+    resolve_all(&mut g, &[]);
+    let (mine, theirs) = (g.players[0].life, g.players[1].life);
+    let storm = hand(&mut g, 0, "Starstorm");
+    act(&mut g, Action::CastX(storm, 1)); // both 1/1 Soldiers die
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.players[0].life, g.players[1].life), (mine + 2, theirs - 2));
+}
+
+#[test]
+fn junk_winder_costs_less_per_token_and_freezes_on_token_entry() {
+    let mut g = with_lands(&["Island", "Island", "Plains", "Plains"]);
+    let w = hand(&mut g, 0, "Junk Winder");
+    assert!(!g.legal_actions().contains(&Action::Cast(w)));
+    let rat = token_def(&g, "Rat");
+    for _ in 0..3 {
+        g.add_card(0, rat, Zone::Battlefield);
+    }
+    assert!(
+        g.legal_actions().contains(&Action::Cast(w)),
+        "{{2}}{{U}}{{U}} with three tokens"
+    );
+
+    let mut g = table();
+    put(&mut g, 0, "Junk Winder");
+    let signet = put(&mut g, 1, "Arcane Signet");
+    let coup = hand(&mut g, 0, "Martial Coup");
+    act(&mut g, Action::CastX(coup, 1));
+    resolve_all(&mut g, &[Action::Target(obj(signet))]);
+    assert!(g.obj(signet).tapped);
+    to_main1(&mut g, 4, 1);
+    assert!(g.obj(signet).tapped, "doesn't untap during the next untap step");
+    to_main1(&mut g, 6, 1);
+    assert!(!g.obj(signet).tapped);
+}
+
+#[test]
+fn goreclaw_discounts_big_creatures_and_pumps_them_on_attack() {
+    let mut g = with_lands(&["Forest", "Forest", "Forest"]);
+    put(&mut g, 0, "Goreclaw, Terror of Qal Sisma");
+    let big = hand(&mut g, 0, "Garruk's Packleader"); // {4}{G}, power 4
+    let small = hand(&mut g, 0, "Morbid Opportunist"); // {2}{B}
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Cast(big)) && !legal.contains(&Action::Cast(small)));
+
+    let mut g = table();
+    let gore = put(&mut g, 0, "Goreclaw, Terror of Qal Sisma");
+    let pack = put(&mut g, 0, "Garruk's Packleader");
+    let opp = put(&mut g, 0, "Morbid Opportunist");
+    put(&mut g, 1, "Restoration Angel"); // a possible blocker, so the game stops at blocks
+    attack_with(&mut g, 5, &[gore]);
+    assert_eq!(g.power(gore), 5);
+    assert!(g.keywords(gore).has(Keywords::TRAMPLE) && g.keywords(pack).has(Keywords::TRAMPLE));
+    assert_eq!(g.power(pack), 5);
+    assert_eq!(g.power(opp), 1);
+}
+
+#[test]
+fn grumgully_gives_other_non_humans_an_extra_counter() {
+    let mut g = table();
+    put(&mut g, 0, "Grumgully, the Generous");
+    let human = hand(&mut g, 0, "Morbid Opportunist"); // Human Rogue
+    play(&mut g, human, false, &[], &[]);
+    assert_eq!(g.power(human), 1);
+    let beast = hand(&mut g, 0, "Garruk's Packleader");
+    play(&mut g, beast, false, &[], &[]);
+    assert_eq!(g.power(beast), 5);
+}
+
+#[test]
+fn chittering_witch_makes_a_rat_and_sacrifices_any_creature_for_minus_two() {
+    let mut g = table();
+    let w = hand(&mut g, 0, "Chittering Witch");
+    play(&mut g, w, false, &[], &[]);
+    assert_eq!(tokens(&g, 0, "Rat").len(), 1, "one opponent");
+    let theirs = put(&mut g, 1, "Morbid Opportunist");
+    assert!(
+        g.legal_actions().contains(&Action::ActivateWith(w, 0, w)),
+        "itself too"
+    );
+    act(&mut g, Action::ActivateWith(w, 0, w));
+    act(&mut g, Action::Target(obj(theirs)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(w).zone, Zone::Graveyard);
+    assert_eq!(g.obj(theirs).zone, Zone::Battlefield);
+    assert_eq!((g.power(theirs), g.toughness(theirs)), (-1, 1));
+}

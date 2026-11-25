@@ -950,6 +950,19 @@ pub enum Effect {
     CreateTokensPerSpellCastThisTurn {
         def: usize,
     },
+    /// Vanishing's upkeep trigger: remove a time counter from the source; when the last is removed,
+    /// sacrifice it.
+    VanishingTick,
+    /// Tap the permanent in `slot`; it doesn't untap during its controller's next untap step.
+    TapFreeze(u8),
+    /// Each creature you control with power `min` or greater gets +P/+T and gains keywords until
+    /// end of turn (Goreclaw).
+    PumpYoursPowerAtLeastAndGrant {
+        min: i32,
+        power: i32,
+        toughness: i32,
+        keywords: crate::Keywords,
+    },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1391,6 +1404,12 @@ pub enum When {
     OpponentCastsNoncreature,
     /// "Whenever a creature token you control deals combat damage to a player" (each one).
     YourCreatureTokenDealsCombatDamageToPlayer,
+    /// "Whenever this creature is dealt damage" (the amount is the trigger's amount).
+    DealtDamage,
+    /// "Whenever a token you control leaves the battlefield".
+    TokenYouControlLeaves,
+    /// "Whenever a token you control enters".
+    TokenYouControlEnters,
 }
 
 #[derive(Clone, Debug, PartialEq)]

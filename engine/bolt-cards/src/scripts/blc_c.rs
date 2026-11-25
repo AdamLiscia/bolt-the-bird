@@ -295,6 +295,77 @@ pub fn script(name: &str) -> Option<Script> {
             &["Whenever one or more other creatures die, draw a card. This ability triggers only once each turn."],
             |d, _| on(d, When::OtherCreaturesDieOnceEachTurn, vec![], vec![draw(1)]),
         ),
+        "Illusory Ambusher" => s(&["Whenever this creature is dealt damage, draw that many cards."], |d, _| {
+            on(d, When::DealtDamage, vec![], vec![Effect::DrawAmount])
+        }),
+        "Body of Knowledge" => s(
+            &[
+                "Body of Knowledge's power and toughness are each equal to the number of cards in your hand.",
+                "You have no maximum hand size.",
+                "Whenever this creature is dealt damage, draw that many cards.",
+            ],
+            |d, _| {
+                d.pt_hand_size = true;
+                d.no_max_hand_size = true;
+                on(d, When::DealtDamage, vec![], vec![Effect::DrawAmount]);
+            },
+        ),
+        "Tetsuko Umezawa, Fugitive" => s(&["Creatures you control with power or toughness 1 or less can't be blocked."], |d, _| {
+            d.small_creatures_unblockable = true
+        }),
+        "Deep Forest Hermit" => s(
+            &["Vanishing 3", "When this creature enters, create four 1/1 green Squirrel creature tokens.", "Squirrels you control get +1/+1."],
+            |d, t| {
+                d.vanishing = 3;
+                on(d, When::Upkeep { your_turn_only: true }, vec![], vec![Effect::VanishingTick]);
+                on(d, When::Enters, vec![], vec![Effect::CreateToken { who: Who::You, def: t.squirrel, n: 4 }]);
+                lord(d, "Squirrel"); // the Hermit is no Squirrel, so "other" changes nothing
+            },
+        ),
+        "Nadier's Nightblade" => s(&["Whenever a token you control leaves the battlefield, each opponent loses 1 life and you gain 1 life."], |d, _| {
+            on(
+                d,
+                When::TokenYouControlLeaves,
+                vec![],
+                vec![Effect::LoseLife { who: Who::EachOpponent, n: 1 }, Effect::GainLife { who: Who::You, n: 1 }],
+            )
+        }),
+        "Junk Winder" => s(
+            &[
+                "Affinity for tokens",
+                "Whenever a token you control enters, tap target nonland permanent an opponent controls. It doesn't untap during its controller's next untap step.",
+            ],
+            |d, _| {
+                d.reduction = Some(Reduction::PerTokenYouControl);
+                on(d, When::TokenYouControlEnters, vec![OPP_NONLAND], vec![Effect::TapFreeze(0)]);
+            },
+        ),
+        "Goreclaw, Terror of Qal Sisma" => s(
+            &[
+                "Creature spells you cast with power 4 or greater cost {2} less to cast.",
+                "Whenever Goreclaw attacks, each creature you control with power 4 or greater gets +1/+1 and gains trample until end of turn.",
+            ],
+            |d, _| {
+                d.big_creature_spell_discount = 2;
+                let pump = Effect::PumpYoursPowerAtLeastAndGrant { min: 4, power: 1, toughness: 1, keywords: Keywords::TRAMPLE };
+                on(d, When::Attacks, vec![], vec![pump]);
+            },
+        ),
+        "Grumgully, the Generous" => s(&["Each other non-Human creature you control enters with an additional +1/+1 counter on it."], |d, _| {
+            d.other_non_subtype_enters_with_counter = Some("Human")
+        }),
+        "Chittering Witch" => s(
+            &[
+                "When this creature enters, create a number of 1/1 black Rat creature tokens equal to the number of opponents you have.",
+                "{1}{B}, Sacrifice a creature: Target creature gets -2/-2 until end of turn.",
+            ],
+            |d, t| {
+                // A 1v1 game: one opponent.
+                on(d, When::Enters, vec![], vec![Effect::CreateToken { who: Who::You, def: t.rat, n: 1 }]);
+                let n = activated(d, "{1}{B}", false, vec![CREATURE], vec![Effect::Pump { slot: 0, power: -2, toughness: -2 }]);
+                d.activated[n].sacrifice_creature = true;
+            },
+        ),
         _ => None,
     }
 }
@@ -354,4 +425,13 @@ pub const BLC_C_SCRIPTED: &[&str] = &[
     "Martial Coup",
     "Intellectual Offering",
     "Morbid Opportunist",
+    "Illusory Ambusher",
+    "Body of Knowledge",
+    "Tetsuko Umezawa, Fugitive",
+    "Deep Forest Hermit",
+    "Nadier's Nightblade",
+    "Junk Winder",
+    "Goreclaw, Terror of Qal Sisma",
+    "Grumgully, the Generous",
+    "Chittering Witch",
 ];

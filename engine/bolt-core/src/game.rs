@@ -221,6 +221,8 @@ pub struct Object {
     pub time_counters: u8,
     /// Cast from suspend: a creature has haste while it stays on the battlefield (CR 702.62a).
     pub suspend_haste: bool,
+    /// It doesn't untap during its controller's next untap step.
+    pub skip_untap: bool,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -1250,6 +1252,7 @@ impl Game {
             printed_def: None,
             time_counters: 0,
             suspend_haste: false,
+            skip_untap: false,
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -2296,6 +2299,8 @@ impl Game {
         if from == Zone::Battlefield {
             o.last_counters = (o.counters, o.stun, o.keyword_counters);
             o.stun = 0;
+            o.skip_untap = false;
+            o.time_counters = 0;
             o.finality = false;
             o.eot_creature = None;
         }
@@ -2411,6 +2416,13 @@ impl Game {
         }
         if from == Zone::Battlefield && to != Zone::Battlefield {
             self.fire_source(id, When::LeavesBattlefield);
+            if self.is_token(id) {
+                self.fire(last_controller, When::TokenYouControlLeaves, Some(id));
+            }
+        }
+        if to == Zone::Battlefield && from != Zone::Battlefield && self.is_token(id) {
+            let c = self.obj(id).controller;
+            self.fire(c, When::TokenYouControlEnters, Some(id));
         }
         if dies && self.types_of(id).creature {
             self.fire(0, When::AnotherCreatureDies, Some(id));
@@ -2588,7 +2600,21 @@ impl Game {
                 .filter_map(|x| self.def_of(x).subtype_enters_with_counter)
                 .filter(|&sub| self.has_base_subtype(id, sub))
                 .count() as i32;
-            let bonus = bonus + flat;
+            // Grumgully: "Each other non-Human creature you control enters with an additional +1/+1
+            // counter on it."
+            let non = if self.types_of(id).creature {
+                self.permanents(controller)
+                    .filter(|&x| x != id)
+                    .filter_map(|x| self.def_of(x).other_non_subtype_enters_with_counter)
+                    .filter(|&sub| !self.has_base_subtype(id, sub))
+                    .count() as i32
+            } else {
+                0
+            };
+            if def.vanishing > 0 {
+                self.obj_mut(id).time_counters = def.vanishing; // CR 702.63a
+            }
+            let bonus = bonus + flat + non;
             if bonus > 0 {
                 let n = bonus * self.doubling(controller);
                 self.obj_mut(id).counters += n;
@@ -3600,6 +3626,9 @@ impl Game {
                 }
             }
             Some(Reduction::PerCreatureYouControl) => self.creatures(p).count().min(255) as u8,
+            Some(Reduction::PerTokenYouControl) => {
+                self.permanents(p).filter(|&x| self.is_token(x)).count().min(255) as u8
+            }
             Some(Reduction::PerCreatureYouControlPowerAtLeast(n)) => self
                 .creatures(p)
                 .filter(|&c| self.power(c) >= *n)
@@ -3621,9 +3650,17 @@ impl Game {
         let discount: u8 = if def.types.instant || def.types.sorcery {
             self.permanents(p).map(|x| self.def_of(x).spell_discount).sum()
         } else if def.types.creature && mode.mode != Some(OMEN_MODE) {
+            let big = if def.power >= 4 {
+                self.permanents(p)
+                    .map(|x| self.def_of(x).big_creature_spell_discount)
+                    .sum::<u8>()
+            } else {
+                0
+            };
             self.permanents(p)
                 .map(|x| self.def_of(x).creature_spell_discount)
-                .sum()
+                .sum::<u8>()
+                + big
         } else {
             0
         };
@@ -4323,6 +4360,12 @@ impl Game {
                             })
                             .map(|c| Action::ActivateWith(id, n, c)),
                     );
+                } else if a.sacrifice_creature {
+                    v.extend(
+                        self.creatures(p)
+                            .filter(|&c| !self.cant_be_sacrificed(c))
+                            .map(|c| Action::ActivateWith(id, n, c)),
+                    );
                 } else if a.sacrifice_token {
                     // "Sacrifice a token": any token you control, kept out of the mana payment.
                     let tokens: Vec<ObjId> = self
@@ -4646,6 +4689,10 @@ impl Game {
             || self.is_decayed(blocker)
             || self.keywords(blocker).has(Keywords::CANT_BLOCK)
             || self.keywords(attacker).has(Keywords::UNBLOCKABLE)
+            || (self
+                .permanents(self.obj(attacker).controller)
+                .any(|x| self.def_of(x).small_creatures_unblockable && !self.lost_abilities(x))
+                && (self.power(attacker) <= 1 || self.toughness(attacker) <= 1))
             || self
                 .def_of(attacker)
                 .not_blocked_by
@@ -8238,6 +8285,42 @@ impl Game {
                     self.untap_by_effect(c);
                 }
             }
+            Effect::VanishingTick => {
+                if self.obj(src).zone == Zone::Battlefield && self.obj(src).time_counters > 0 {
+                    self.obj_mut(src).time_counters -= 1;
+                    if self.obj(src).time_counters == 0 && !self.cant_be_sacrificed(src) {
+                        self.move_to(src, Zone::Graveyard); // CR 702.63a: sacrifice it
+                    }
+                }
+            }
+            Effect::TapFreeze(slot) => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    self.become_tapped(id);
+                    self.obj_mut(id).skip_untap = true;
+                }
+            }
+            Effect::PumpYoursPowerAtLeastAndGrant {
+                min,
+                power,
+                toughness,
+                keywords,
+            } => {
+                let big: Vec<ObjId> = self
+                    .creatures(item.controller)
+                    .filter(|&c| self.power(c) >= min)
+                    .collect();
+                for id in big {
+                    let zcc = self.obj(id).zcc;
+                    self.until_eot.push(Modifier {
+                        obj: id,
+                        zcc,
+                        power,
+                        toughness,
+                        keywords,
+                        dies: None,
+                    });
+                }
+            }
             Effect::PumpAttackersPerAttacker => {
                 let attackers: Vec<ObjId> = self
                     .combat
@@ -9877,7 +9960,9 @@ impl Game {
             Step::Untap => {
                 // CR 502.3: untap everything the active player controls. No priority (CR 502.4).
                 for id in self.permanents(a).collect::<Vec<_>>() {
-                    if self.obj(id).stun > 0 && self.obj(id).tapped {
+                    if std::mem::take(&mut self.obj_mut(id).skip_untap) {
+                        // "It doesn't untap during its controller's next untap step."
+                    } else if self.obj(id).stun > 0 && self.obj(id).tapped {
                         self.obj_mut(id).stun -= 1; // CR 122.1d: a stun counter is removed instead
                     } else if !self.def_of(id).doesnt_untap && !self.enchanted_doesnt_untap(id) {
                         let was_tapped = self.obj(id).tapped;
@@ -10467,6 +10552,13 @@ impl Game {
                 let o = self.obj_mut(id);
                 o.damage += amount;
                 o.deathtouched |= k.has(Keywords::DEATHTOUCH);
+                if amount > 0 {
+                    let before = self.triggered.len();
+                    self.fire_source(id, When::DealtDamage);
+                    for t in &mut self.triggered[before..] {
+                        t.amount = amount;
+                    }
+                }
             }
         }
         self.events.push(Event::Damage {

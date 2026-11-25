@@ -361,3 +361,13 @@ Skipped so far (reason):
   unblocked attack): too large for this pass.
 - Casualties of War: "choose one or more" with one target each; the engine fills target slots in order with no
   way to skip a slot, so choosing e.g. only the land mode isn't possible without a new Action.
+
+Batch 2 (9): Illusory Ambusher, Body of Knowledge, Tetsuko Umezawa, Deep Forest Hermit, Nadier's Nightblade,
+Junk Winder, Goreclaw, Grumgully, Chittering Witch.
+Core: `When::DealtDamage` (amount on the trigger), `When::TokenYouControlLeaves`, `When::TokenYouControlEnters`,
+`Effect::VanishingTick` (with `CardDef::vanishing`, using the object's `time_counters`, now cleared when it leaves
+the battlefield), `Effect::TapFreeze` (with `Object::skip_untap`: "doesn't untap during its controller's next
+untap step"), `Effect::PumpYoursPowerAtLeastAndGrant`, `Reduction::PerTokenYouControl`,
+`CardDef::{small_creatures_unblockable, big_creature_spell_discount, other_non_subtype_enters_with_counter}`,
+`Activated::sacrifice_creature` ("Sacrifice a creature", this one included). Chittering Witch's "number of
+opponents" is 1 in the 1v1 game.
