@@ -332,6 +332,8 @@ pub struct CardDef {
     pub attack_triggers_again_in_mode: Option<u8>,
     /// In this chosen mode: "You may play lands from your graveyard." (Glacierwood Siege)
     pub graveyard_lands_in_mode: Option<u8>,
+    /// "Activated abilities of artifacts, creatures, and planeswalkers can't be activated."
+    pub stops_activated_abilities: bool,
 }
 
 /// An Omen spell half: its name, cost, whether it's an instant, and what it does.
@@ -440,6 +442,7 @@ impl CardDef {
             enter_modes: false,
             attack_triggers_again_in_mode: None,
             graveyard_lands_in_mode: None,
+            stops_activated_abilities: false,
         }
     }
 
@@ -527,6 +530,7 @@ impl CardDef {
             enter_modes: false,
             attack_triggers_again_in_mode: None,
             graveyard_lands_in_mode: None,
+            stops_activated_abilities: false,
         }
     }
 
@@ -614,6 +618,7 @@ impl CardDef {
             enter_modes: false,
             attack_triggers_again_in_mode: None,
             graveyard_lands_in_mode: None,
+            stops_activated_abilities: false,
         }
     }
 }

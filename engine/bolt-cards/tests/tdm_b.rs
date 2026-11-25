@@ -3,7 +3,7 @@
 mod common;
 mod tdm_common;
 
-use bolt_core::{Action, Color, Game, Keywords, ObjId, Pending, Step, Target, Zone};
+use bolt_core::{Action, Color, Filter, Game, Keywords, ObjId, Pending, Step, Target, Zone};
 use common::{act, begin, obj, play, resolve_all};
 use tdm_common::*;
 
@@ -618,4 +618,290 @@ fn duty_beyond_death_protects_and_grows_your_creatures() {
     let prey = hand(&mut g, 0, "Dragon's Prey");
     play(&mut g, prey, false, &[obj(a)], &[]);
     assert_eq!(g.obj(a).zone, Zone::Battlefield);
+}
+
+// ---- Batch 3: if you cast it, by name, can't be countered, hexproof until damage ----
+
+/// After attacks are declared: no blocks, then pass until a decision comes up or the turn's combat
+/// is over.
+fn combat_until_decision(g: &mut Game) {
+    while g.step != Step::End && !matches!(g.pending, Pending::Decide(_)) {
+        let a = match g.pending {
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(g, a);
+    }
+}
+
+#[test]
+fn wingspan_stride_pumps_gives_flying_and_returns_to_hand() {
+    let mut g = table();
+    let elder = put(&mut g, 0, "Humbling Elder");
+    let aura = hand(&mut g, 0, "Wingspan Stride");
+    begin(&mut g);
+    play(&mut g, aura, false, &[obj(elder)], &[]);
+    assert_eq!((g.power(elder), g.toughness(elder)), (2, 3));
+    assert!(g.keywords(elder).has(Keywords::FLYING));
+    act(&mut g, Action::Activate(aura, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(aura).zone, Zone::Hand);
+    assert_eq!((g.power(elder), g.toughness(elder)), (1, 2));
+    assert!(!g.keywords(elder).has(Keywords::FLYING));
+}
+
+#[test]
+fn mistrise_village_makes_the_next_spell_uncounterable() {
+    let mut g = tdm_lands(&["Forest"]);
+    let land = hand(&mut g, 0, "Mistrise Village");
+    begin(&mut g);
+    act(&mut g, Action::PlayLand(land));
+    assert!(!g.obj(land).tapped, "a Forest");
+
+    let mut g = table();
+    let village = put(&mut g, 0, "Mistrise Village");
+    let first = hand(&mut g, 0, "Cruel Truths");
+    let second = hand(&mut g, 0, "Cruel Truths");
+    let a = hand(&mut g, 1, "Riverwalk Technique");
+    let b = hand(&mut g, 1, "Riverwalk Technique");
+    begin(&mut g);
+    act(&mut g, Action::Activate(village, 0));
+    resolve_all(&mut g, &[]);
+    for (spell, counter, survives) in [(first, a, true), (second, b, false)] {
+        act(&mut g, Action::Cast(spell));
+        act(&mut g, Action::PassPriority);
+        act(&mut g, Action::CastModal(counter, 1));
+        act(&mut g, Action::Target(obj(spell)));
+        let answers: &[Action] = if survives { &[Action::No, Action::No] } else { &[] };
+        resolve_all(&mut g, answers);
+        assert_eq!(g.obj(counter).zone, Zone::Graveyard);
+        assert_eq!(g.obj(spell).zone, Zone::Graveyard);
+        if survives {
+            assert_eq!(g.players[0].life, 18, "it resolved");
+        } else {
+            assert_eq!(g.players[0].life, 18, "countered: no more life lost");
+        }
+    }
+}
+
+#[test]
+fn tempest_hawk_fetches_another_tempest_hawk() {
+    let mut g = table();
+    let hawk = put(&mut g, 0, "Tempest Hawk");
+    to_attacks(&mut g);
+    let other = g.add_card(0, tid("Tempest Hawk"), Zone::Library);
+    act(&mut g, Action::Attack(hawk));
+    act(&mut g, Action::FinishAttacks);
+    combat_until_decision(&mut g);
+    assert_eq!(g.players[1].life, 18);
+    let legal = g.legal_actions();
+    assert!(
+        legal.contains(&Action::Yes) && legal.contains(&Action::No),
+        "you may"
+    );
+    act(&mut g, Action::Yes);
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Pick(other)));
+    assert!(
+        legal.iter().filter(|a| matches!(a, Action::Pick(_))).count() == 1,
+        "only a Tempest Hawk"
+    );
+    resolve_all(&mut g, &[Action::Pick(other)]);
+    assert_eq!(g.obj(other).zone, Zone::Hand);
+}
+
+#[test]
+fn dragonstorm_forecaster_finds_a_globe_or_a_boulderborn_dragon() {
+    let mut g = table();
+    let f = put(&mut g, 0, "Dragonstorm Forecaster");
+    let globe = g.add_card(0, tid("Dragonstorm Globe"), Zone::Library);
+    let dragon = g.add_card(0, tid("Boulderborn Dragon"), Zone::Library);
+    let serpent = g.add_card(0, tid("Iceridge Serpent"), Zone::Library);
+    main_turn_5(&mut g);
+    act(&mut g, Action::Activate(f, 0));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Pick(globe)) && legal.contains(&Action::Pick(dragon)));
+    assert!(!legal.contains(&Action::Pick(serpent)), "named cards only");
+    resolve_all(&mut g, &[Action::Pick(dragon)]);
+    assert_eq!(g.obj(dragon).zone, Zone::Hand);
+    assert!(g.obj(f).tapped);
+}
+
+fn main_turn_5(g: &mut Game) {
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(g, Action::PassPriority);
+    }
+}
+
+#[test]
+fn iridescent_tiger_adds_five_colors_only_if_cast() {
+    let mut g = table();
+    let tiger = hand(&mut g, 0, "Iridescent Tiger");
+    begin(&mut g);
+    play(&mut g, tiger, false, &[], &[]);
+    let pool = &g.players[0].pool;
+    assert_eq!(pool.len(), 5);
+    for c in 0..5 {
+        assert!(pool.iter().any(|m| m.colors[c]), "color {c}");
+    }
+
+    let mut g = table();
+    let tiger = hand(&mut g, 0, "Iridescent Tiger");
+    begin(&mut g);
+    g.move_card(tiger, Zone::Battlefield);
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(tiger).zone, Zone::Battlefield);
+    assert!(g.players[0].pool.is_empty(), "put onto the battlefield, not cast");
+}
+
+#[test]
+fn yathan_roadwatcher_mills_four_and_reanimates_a_cheap_creature_if_cast() {
+    let mut g = table();
+    let elder = g.add_card(0, tid("Humbling Elder"), Zone::Graveyard);
+    let big = g.add_card(0, tid("Dusyut Earthcarver"), Zone::Graveyard); // mana value 6
+    let yathan = hand(&mut g, 0, "Yathan Roadwatcher");
+    begin(&mut g);
+    let lib = g.players[0].library.len();
+    act(&mut g, Action::Cast(yathan));
+    while !matches!(g.pending, Pending::ChooseTarget(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.players[0].library.len(), lib - 4, "milled four first");
+    assert!(
+        !g.legal_actions().contains(&Action::Target(obj(big))),
+        "mana value 3 or less"
+    );
+    act(&mut g, Action::Target(obj(elder)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(elder).zone, Zone::Battlefield);
+
+    let mut g = table();
+    let yathan = hand(&mut g, 0, "Yathan Roadwatcher");
+    begin(&mut g);
+    let lib = g.players[0].library.len();
+    g.move_card(yathan, Zone::Battlefield);
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].library.len(), lib, "not cast: no mill");
+}
+
+#[test]
+fn unrooted_ancestor_sacrifices_for_indestructible_and_taps() {
+    let mut g = table();
+    let anc = put(&mut g, 0, "Unrooted Ancestor");
+    let fodder = put(&mut g, 0, "Humbling Elder");
+    assert!(g.keywords(anc).has(Keywords::FLASH));
+    begin(&mut g);
+    act(&mut g, Action::ActivateWith(anc, 0, fodder));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(fodder).zone, Zone::Graveyard);
+    assert!(g.keywords(anc).has(Keywords::INDESTRUCTIBLE));
+    assert!(g.obj(anc).tapped);
+}
+
+#[test]
+fn strategic_betrayal_exiles_their_chosen_creature_and_graveyard() {
+    let mut g = table();
+    let keep = put(&mut g, 1, "Iceridge Serpent");
+    let lose = put(&mut g, 1, "Humbling Elder");
+    let dead = g.add_card(1, tid("Cruel Truths"), Zone::Graveyard);
+    let mine = g.add_card(0, tid("Cruel Truths"), Zone::Graveyard);
+    let c = hand(&mut g, 0, "Strategic Betrayal");
+    begin(&mut g);
+    act(&mut g, Action::Cast(c));
+    assert!(
+        !g.legal_actions().contains(&Action::Target(Target::Player(0))),
+        "an opponent"
+    );
+    act(&mut g, Action::Target(Target::Player(1)));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.pending, Pending::Decide(1), "they choose");
+    resolve_all(&mut g, &[Action::Pick(lose)]);
+    assert_eq!(g.obj(lose).zone, Zone::Exile);
+    assert_eq!(g.obj(keep).zone, Zone::Battlefield);
+    assert_eq!(g.obj(dead).zone, Zone::Exile);
+    assert!(g.players[1].graveyard.is_empty());
+    assert_eq!(g.obj(mine).zone, Zone::Graveyard);
+}
+
+#[test]
+fn lie_in_wait_returns_a_creature_card_and_deals_its_power() {
+    let mut g = table();
+    let card = g.add_card(0, tid("Dusyut Earthcarver"), Zone::Graveyard); // 4 power
+    let theirs = put(&mut g, 1, "Dusyut Earthcarver"); // 4/4
+    let c = hand(&mut g, 0, "Lie in Wait");
+    begin(&mut g);
+    play(&mut g, c, false, &[obj(card), obj(theirs)], &[]);
+    assert_eq!(g.obj(card).zone, Zone::Hand);
+    assert_eq!(g.obj(theirs).zone, Zone::Graveyard);
+}
+
+#[test]
+fn effortless_master_enters_with_counters_after_two_spells() {
+    let mut g = table();
+    let m = hand(&mut g, 0, "Effortless Master");
+    begin(&mut g);
+    play(&mut g, m, false, &[], &[]);
+    assert_eq!(g.obj(m).counters, 0, "the first spell this turn");
+    assert!(g.keywords(m).has(Keywords::MENACE) && g.keywords(m).has(Keywords::VIGILANCE));
+
+    let mut g = table();
+    let m = hand(&mut g, 0, "Effortless Master");
+    let first = hand(&mut g, 0, "Cruel Truths");
+    begin(&mut g);
+    play(&mut g, first, false, &[], &[Action::No, Action::No]);
+    play(&mut g, m, false, &[], &[]);
+    assert_eq!(g.obj(m).counters, 2);
+    assert_eq!(g.power(m), 6);
+}
+
+#[test]
+fn karakyk_guardian_has_hexproof_until_it_deals_damage() {
+    let mut g = table();
+    let k = put(&mut g, 0, "Karakyk Guardian");
+    let theirs = Filter::CREATURE;
+    assert!(g.keywords(k).has(Keywords::HEXPROOF));
+    assert!(!g.target_ok(&theirs, 1, obj(k)), "opponents can't target it");
+    assert!(g.target_ok(&theirs, 0, obj(k)), "you can");
+    to_attacks(&mut g);
+    act(&mut g, Action::Attack(k));
+    act(&mut g, Action::FinishAttacks);
+    combat_until_decision(&mut g);
+    assert_eq!(g.players[1].life, 14);
+    assert!(!g.keywords(k).has(Keywords::HEXPROOF), "it has dealt damage");
+    assert!(g.target_ok(&theirs, 1, obj(k)));
+}
+
+#[test]
+fn clarion_conqueror_stops_activated_abilities_of_artifacts_and_creatures() {
+    let mut g = table();
+    let f = put(&mut g, 0, "Dragonstorm Forecaster");
+    let globe = put(&mut g, 0, "Dragonstorm Globe");
+    let village = put(&mut g, 0, "Kishla Village");
+    let assistant = g.add_card(0, tid("Alchemist's Assistant"), Zone::Graveyard);
+    let target = put(&mut g, 0, "Humbling Elder");
+    main_turn_5(&mut g);
+    assert!(g.legal_actions().contains(&Action::Activate(f, 0)));
+    assert!(g.mana_sources(0).iter().any(|&(id, _)| id == globe));
+    put(&mut g, 1, "Clarion Conqueror"); // an opponent's works too
+    let legal = g.legal_actions();
+    assert!(!legal.contains(&Action::Activate(f, 0)), "a creature's ability");
+    assert!(
+        !g.mana_sources(0).iter().any(|&(id, _)| id == globe),
+        "an artifact's mana ability"
+    );
+    assert!(
+        legal.contains(&Action::Activate(village, 0)),
+        "lands aren't affected"
+    );
+    assert!(
+        legal.contains(&Action::Activate(assistant, 0)),
+        "nor cards in graveyards"
+    );
+    let _ = target;
 }

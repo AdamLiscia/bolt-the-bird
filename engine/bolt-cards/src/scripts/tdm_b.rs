@@ -267,6 +267,99 @@ pub fn script(name: &str) -> Option<Script> {
                 );
             },
         ),
+        // ---- Lane B batch 3: if you cast it, by name, can't be countered, hexproof until damage ----
+        "Wingspan Stride" => s(
+            &["Enchant creature", "Enchanted creature gets +1/+1 and has flying.", "{2}{U}: Return this Aura to its owner's hand."],
+            |d, _| {
+                d.aura = true;
+                d.spell = Some(Ability::new(vec![CREATURE], vec![]));
+                attached(d, false, 1, 1, Keywords::FLYING);
+                activated(d, "{2}{U}", false, vec![], vec![Effect::BounceSelf]);
+            },
+        ),
+        "Mistrise Village" => s(
+            &[
+                "This land enters tapped unless you control a Mountain or a Forest.",
+                "{T}: Add {U}.",
+                "{U}, {T}: The next spell you cast this turn can't be countered.",
+            ],
+            |d, _| {
+                slow_land(d, ["Mountain", "Forest"], Color::Blue);
+                activated(d, "{U}", true, vec![], vec![Effect::NextSpellUncounterable]);
+            },
+        ),
+        "Tempest Hawk" => s(
+            &[
+                "Whenever this creature deals combat damage to a player, you may search your library for a card named Tempest Hawk, reveal it, put it into your hand, then shuffle.",
+                "A deck can have any number of cards named Tempest Hawk.",
+            ],
+            |d, _| {
+                let hawk = search(SearchFor::Named(&["Tempest Hawk"]), SearchTo::Hand);
+                may(d, When::DealsCombatDamageToPlayer, vec![], vec![hawk]);
+            },
+        ),
+        "Dragonstorm Forecaster" => s(
+            &["{2}, {T}: Search your library for a card named Dragonstorm Globe or Boulderborn Dragon, reveal it, put it into your hand, then shuffle."],
+            |d, _| {
+                let find = search(SearchFor::Named(&["Dragonstorm Globe", "Boulderborn Dragon"]), SearchTo::Hand);
+                activated(d, "{2}", true, vec![], vec![find]);
+            },
+        ),
+        "Iridescent Tiger" => s(&["When this creature enters, if you cast it, add {W}{U}{B}{R}{G}."], |d, _| {
+            let mana = Color::ALL.iter().map(|&color| Effect::AddMana { color, n: 1 }).collect();
+            conditional(d, When::Enters, Condition::CastIt, vec![], mana);
+        }),
+        "Yathan Roadwatcher" => s(
+            &["When this creature enters, if you cast it, mill four cards. When you do, return target creature card with mana value 3 or less from your graveyard to the battlefield."],
+            |d, _| {
+                conditional(
+                    d,
+                    When::Enters,
+                    Condition::CastIt,
+                    vec![],
+                    vec![Effect::Mill { who: Who::You, n: 4 }, Effect::Reflexive(1)],
+                );
+                let card = Filter { max_mana_value: Some(3), ..graveyard_cards(true, Controller::You) };
+                on(d, When::Never, vec![card], vec![Effect::Reanimate(0)]);
+            },
+        ),
+        "Unrooted Ancestor" => s(
+            &["{1}, Sacrifice another creature: This creature gains indestructible until end of turn. Tap it."],
+            |d, _| {
+                let n = activated(d, "{1}", false, vec![], vec![Effect::GrantSelf { keywords: Keywords::INDESTRUCTIBLE }, Effect::TapSelf]);
+                d.activated[n].sacrifice_other_creature = true;
+            },
+        ),
+        "Strategic Betrayal" => s(&["Target opponent exiles a creature they control and their graveyard."], |d, _| {
+            let opp = Filter::PLAYER.controlled_by(Controller::Opponent);
+            spell(
+                d,
+                vec![opp],
+                vec![Effect::PlayerExilesCreature(0), Effect::ExileGraveyard { who: Who::TargetPlayer(0) }],
+            )
+        }),
+        "Lie in Wait" => s(
+            &["Return target creature card from your graveyard to your hand. Lie in Wait deals damage equal to that card's power to target creature."],
+            |d, _| {
+                spell(
+                    d,
+                    vec![graveyard_cards(true, Controller::You), CREATURE],
+                    vec![Effect::Bounce(0), Effect::DamageEqualCardPower { card: 0, to: 1 }],
+                )
+            },
+        ),
+        "Effortless Master" => s(
+            &["This creature enters with two +1/+1 counters on it if you've cast two or more spells this turn."],
+            |d, _| d.enters_counters = Some((2, Condition::CastTwoSpellsThisTurn)),
+        ),
+        "Karakyk Guardian" => s(&["This creature has hexproof as long as it hasn't dealt damage yet."], |d, _| {
+            static_on(d, Scope::This, false, Keywords::HEXPROOF);
+            d.statics.last_mut().expect("just added").condition = Some(StaticCondition::HasntDealtDamage);
+        }),
+        "Clarion Conqueror" => s(
+            &["Activated abilities of artifacts, creatures, and planeswalkers can't be activated."],
+            |d, _| d.stops_activated_abilities = true,
+        ),
         _ => None,
     }
 }
@@ -300,4 +393,16 @@ pub const TDM_B_SCRIPTED: &[&str] = &[
     "Marshal of the Lost",
     "Craterhoof Behemoth",
     "Duty Beyond Death",
+    "Wingspan Stride",
+    "Mistrise Village",
+    "Tempest Hawk",
+    "Dragonstorm Forecaster",
+    "Iridescent Tiger",
+    "Yathan Roadwatcher",
+    "Unrooted Ancestor",
+    "Strategic Betrayal",
+    "Lie in Wait",
+    "Effortless Master",
+    "Karakyk Guardian",
+    "Clarion Conqueror",
 ];

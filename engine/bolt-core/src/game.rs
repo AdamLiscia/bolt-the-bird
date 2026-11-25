@@ -161,6 +161,12 @@ pub struct Object {
     pub chosen_mode: Option<u8>,
     /// The turn its "triggers only once each turn" ability last triggered (Hollowmurk Siege).
     pub once_each_turn: u32,
+    /// "Can't be countered", from an effect as it was cast (Mistrise Village).
+    pub cast_uncounterable: bool,
+    /// It entered the battlefield as a resolving spell: "if you cast it".
+    pub was_cast: bool,
+    /// It has dealt damage since it entered the battlefield.
+    pub dealt_damage: bool,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -637,6 +643,8 @@ pub enum Decision {
     PayOrCountered { cost: ManaCost, against: ObjId },
     /// "As this enters, choose [A] or [B]": `Mode(0)` or `Mode(1)` (the Sieges).
     ChooseEnterMode { card: ObjId },
+    /// `Pick` a creature you control to exile.
+    ExileCreature,
 }
 
 /// An until-end-of-turn change to one object (CR 611.2, 613).
@@ -761,6 +769,8 @@ pub struct Game {
     pub commander_damage: [i32; 2],
     /// Whether a creature died under each player's control this turn.
     pub creature_died_under: [bool; 2],
+    /// The turn each player made their next spell this turn uncounterable (0: never).
+    pub next_spell_uncounterable: [u32; 2],
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -885,6 +895,7 @@ impl Game {
             commander_casts: [0, 0],
             commander_damage: [0, 0],
             creature_died_under: [false; 2],
+            next_spell_uncounterable: [0, 0],
         }
     }
 
@@ -952,6 +963,9 @@ impl Game {
             defender_ignored_turn: 0,
             chosen_mode: None,
             once_each_turn: 0,
+            cast_uncounterable: false,
+            was_cast: false,
+            dealt_damage: false,
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -1158,6 +1172,7 @@ impl Game {
                                 self.controls_creature_with_counter(so.controller)
                             }
                             Some(StaticCondition::ChosenMode(m)) => so.chosen_mode == Some(m),
+                            Some(StaticCondition::HasntDealtDamage) => !so.dealt_damage,
                         };
                         applies && condition_ok && (!s.your_turn_only || self.active == so.controller)
                     })
@@ -1319,6 +1334,25 @@ impl Game {
             || o.bait > 0
             || o.loyalty > 0
             || o.keyword_counters != Keywords::NONE
+    }
+
+    /// "Can't be countered": printed, or from an effect as it was cast.
+    fn uncounterable(&self, id: ObjId) -> bool {
+        self.def_of(id).uncounterable || self.obj(id).cast_uncounterable
+    }
+
+    /// Clarion Conqueror: activated abilities of this artifact, creature or planeswalker on the
+    /// battlefield can't be activated (mana abilities included).
+    fn activation_stopped(&self, id: ObjId) -> bool {
+        if self.obj(id).zone != Zone::Battlefield {
+            return false;
+        }
+        let t = self.types_of(id);
+        (t.artifact || t.creature || t.planeswalker)
+            && self
+                .battlefield
+                .iter()
+                .any(|&x| self.def_of(x).stops_activated_abilities && !self.lost_abilities(x))
     }
 
     /// Whether `p` controls a creature with a counter on it.
@@ -1624,6 +1658,11 @@ impl Game {
         }
         if to == Zone::Battlefield {
             o.since_turn = turn;
+            o.was_cast = false;
+            o.dealt_damage = false;
+        }
+        if from == Zone::Stack {
+            o.cast_uncounterable = false;
         } else if to != Zone::Stack {
             o.kicked = false;
             o.x = 0;
@@ -1803,6 +1842,7 @@ impl Game {
                     Condition::Kicked => self.obj(id).kicked,
                     Condition::Attacked => self.attacked_this_turn[controller],
                     Condition::Always => true,
+                    Condition::CastTwoSpellsThisTurn => self.spells_cast[controller] >= 2,
                     Condition::OpponentLostLifeThisTurn => false,
                     Condition::SourceWasNot(_) => false,
                     Condition::HadRevival => false,
@@ -2928,7 +2968,11 @@ impl Game {
             let Some(colors) = self.def_of(id).filter_mana else {
                 continue;
             };
-            if self.obj(id).filter_used_turn == self.turn || Some(id) == exclude || self.lost_abilities(id) {
+            if self.obj(id).filter_used_turn == self.turn
+                || Some(id) == exclude
+                || self.lost_abilities(id)
+                || self.activation_stopped(id)
+            {
                 continue;
             }
             for (c, &makes) in colors.iter().enumerate() {
@@ -2964,7 +3008,7 @@ impl Game {
         }
         for id in self.permanents(p) {
             let o = self.obj(id);
-            if o.loyalty_turn == self.turn && self.turn > 0 {
+            if (o.loyalty_turn == self.turn && self.turn > 0) || self.activation_stopped(id) {
                 continue;
             }
             for (n, (cost, ability)) in self.def_of(id).loyalty_abilities.iter().enumerate() {
@@ -3031,7 +3075,10 @@ impl Game {
         for id in self.permanents(p).chain(graveyard) {
             let in_graveyard = self.obj(id).zone == Zone::Graveyard;
             for (n, a) in self.def_of(id).activated.iter().enumerate() {
-                if a.from_graveyard != in_graveyard || (!in_graveyard && self.lost_abilities(id)) {
+                if a.from_graveyard != in_graveyard
+                    || (!in_graveyard && self.lost_abilities(id))
+                    || self.activation_stopped(id)
+                {
                     continue;
                 }
                 let uses_self = a.tap || a.sacrifice_self;
@@ -3265,7 +3312,7 @@ impl Game {
 
     fn single_sources(&self, p: PlayerId) -> Vec<(ObjId, ManaSource)> {
         self.permanents(p)
-            .filter(|&id| self.can_tap(id))
+            .filter(|&id| self.can_tap(id) && !self.activation_stopped(id))
             .filter_map(|id| {
                 if self.lost_abilities(id) {
                     // Imprisoned in the Moon grants "{T}: Add {C}"; other ability loss leaves none.
@@ -3778,6 +3825,10 @@ impl Game {
             }
         }
         self.spells_cast[p] += 1;
+        if self.next_spell_uncounterable[p] == self.turn && self.turn > 0 {
+            self.next_spell_uncounterable[p] = 0;
+            self.obj_mut(card).cast_uncounterable = true;
+        }
         self.fire(p, When::YouCast, None);
         if self.spells_cast[p] == 2 {
             self.fire(p, When::YouCastSecondSpell, None);
@@ -4028,7 +4079,7 @@ impl Game {
     /// Counters the topmost spell or ability on the stack from `source` (CR 701.5).
     fn counter_from(&mut self, source: ObjId) {
         if let Some(pos) = self.items.iter().rposition(|i| i.source == source) {
-            if self.items[pos].kind == StackKind::Spell && self.def_of(source).uncounterable {
+            if self.items[pos].kind == StackKind::Spell && self.uncounterable(source) {
                 return; // "This spell can't be countered."
             }
             let countered = self.items.remove(pos);
@@ -4149,6 +4200,7 @@ impl Game {
             } else if r.acts && self.types_of(source).is_permanent() {
                 self.move_to(source, Zone::Battlefield);
                 self.obj_mut(source).controller = r.item.controller;
+                self.obj_mut(source).was_cast = true;
                 if self.def_of(source).revival_on_cast {
                     let n = 8 * self.doubling(r.item.controller);
                     self.obj_mut(source).revival = n;
@@ -4317,6 +4369,7 @@ impl Game {
                     }
                     SearchFor::CreatureMvAtMost(mv) => d.types.creature && d.cost.mana_value() <= mv,
                     SearchFor::CreatureMvAtMostX => false, // resolved to CreatureMvAtMost first
+                    SearchFor::Named(names) => names.contains(&d.name.as_str()),
                 }
             })
             .collect()
@@ -4334,6 +4387,7 @@ impl Game {
                 vec![Action::Yes, Action::No]
             }
             Decision::SacrificeCreatures { .. } => self.creatures(p).map(Action::Pick).collect(),
+            Decision::ExileCreature => self.creatures(p).map(Action::Pick).collect(),
             Decision::ChooseColor { .. } => (0..5).map(Action::Mode).collect(),
             Decision::ChooseEnterMode { .. } => vec![Action::Mode(0), Action::Mode(1)],
             Decision::ChooseCreatureType { options, .. } => {
@@ -4563,6 +4617,7 @@ impl Game {
                     self.move_to(c, Zone::Graveyard);
                 }
             }
+            (Decision::ExileCreature, Action::Pick(c)) => self.move_to(c, Zone::Exile),
             (Decision::SacrificeCreatures { left }, Action::Pick(c)) => {
                 self.move_to(c, Zone::Graveyard);
                 if left > 1 && self.creatures(p).next().is_some() {
@@ -5092,7 +5147,7 @@ impl Game {
                         .iter()
                         .position(|i| i.kind == StackKind::Spell && i.source == id)
                     {
-                        if self.def_of(id).uncounterable {
+                        if self.uncounterable(id) {
                             return;
                         }
                         let countered = self.items.remove(pos);
@@ -5533,7 +5588,7 @@ impl Game {
                         .rev()
                         .find(|i| i.kind == StackKind::Spell && i.source == id);
                     if let Some(t) = target {
-                        if self.def_of(id).uncounterable {
+                        if self.uncounterable(id) {
                             return;
                         }
                         let generic = if item.kicked { m } else { n };
@@ -6266,6 +6321,44 @@ impl Game {
                     });
                 }
             }
+            Effect::NextSpellUncounterable => {
+                self.next_spell_uncounterable[item.controller] = self.turn;
+            }
+            Effect::TapSelf => {
+                if self.obj(src).zone == Zone::Battlefield {
+                    self.become_tapped(src);
+                }
+            }
+            Effect::PlayerExilesCreature(slot) => {
+                if let Some(p) = self
+                    .players_for(item, legal, Who::TargetPlayer(slot))
+                    .into_iter()
+                    .next()
+                {
+                    let mine: Vec<ObjId> = self.creatures(p).collect();
+                    match mine.len() {
+                        0 => {}
+                        1 => self.move_to(mine[0], Zone::Exile),
+                        _ => self.ask(p, Decision::ExileCreature),
+                    }
+                }
+            }
+            Effect::DamageEqualCardPower { card, to } => {
+                let (Some(c), Some(t)) = (
+                    Game::slot_object(item, legal, card),
+                    Game::slot_object(item, legal, to),
+                ) else {
+                    return;
+                };
+                let power = if self.obj(c).zone == Zone::Battlefield {
+                    self.power(c)
+                } else {
+                    self.def_of(c).power
+                };
+                if power > 0 {
+                    self.deal_damage(src, Target::Object(t), power);
+                }
+            }
             Effect::DrawIfCounterElseCounterSelf => {
                 if self.controls_creature_with_counter(item.controller) {
                     self.draw(item.controller);
@@ -6318,6 +6411,8 @@ impl Game {
                 self.condition_holds(&one(a), controller, source)
                     && self.condition_holds(&one(b), controller, source)
             }
+            Some(Condition::CastIt) => self.obj(source).was_cast,
+            Some(Condition::CastTwoSpellsThisTurn) => self.spells_cast[controller] >= 2,
         }
     }
 
@@ -6942,6 +7037,9 @@ impl Game {
             }
         }
         let amount = amount * self.damage_doubling(source, target);
+        if amount > 0 && self.obj(source).zone == Zone::Battlefield {
+            self.obj_mut(source).dealt_damage = true;
+        }
         let k = self.keywords(source);
         match target {
             Target::Player(p) => {
