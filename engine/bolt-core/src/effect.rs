@@ -77,6 +77,10 @@ pub struct Filter {
     pub noncreature: bool,
     /// Nonbasic permanents only ("nonbasic land").
     pub nonbasic: bool,
+    /// Cards whose mana value is the ability's X.
+    pub mana_value_is_x: bool,
+    /// Permanents that are one or more colors.
+    pub colored: bool,
     /// Creature or land cards only (graveyard targets).
     pub creature_or_land: bool,
 }
@@ -116,6 +120,8 @@ impl Filter {
         was_dealt_damage: false,
         noncreature: false,
         nonbasic: false,
+        mana_value_is_x: false,
+        colored: false,
         creature_or_land: false,
     };
 
@@ -696,6 +702,38 @@ pub enum Effect {
     /// Betor: draw a card; then if creatures you control have total toughness 20 or greater, untap
     /// them; then if 40 or greater, each opponent loses half their life, rounded up.
     BetorEndStep,
+    /// Look at the top `n` cards; put up to `up_to` (0: any number) permanent cards from among them
+    /// onto the battlefield (only noncreature, nonland ones with mana value at most `max_mv`, if set);
+    /// the rest go to your hand, or to the bottom of your library in a random order.
+    TopCardsOntoBattlefield {
+        n: u8,
+        up_to: u8,
+        noncreature_nonland: bool,
+        max_mv: Option<u32>,
+        rest_to_hand: bool,
+    },
+    /// Exile this spell as it resolves (instead of putting it into the graveyard).
+    ExileSourceSpell,
+    /// Return any number of permanent cards with different names from your graveyard to the
+    /// battlefield.
+    ReturnPermanentsDifferentNames,
+    /// Discard up to `n` cards, then draw that many.
+    DiscardUpToThenDrawThatMany(u8),
+    /// Exile a card at random from your graveyard; you may play it this turn.
+    ExileRandomFromGraveyardPlayable,
+    /// Exile the top X cards of the damaged opponent's library (X: the trigger's amount, the combat
+    /// damage dealt); you may cast spells with mana value X or less from among them free.
+    ExileTopOfDamagedCastFree,
+    /// "Target opponent reveals their hand. You may choose a nonland card from it. If you do, exile
+    /// that card": the card is linked to the source (Severance Priest).
+    ChooseExileFromHandLinked {
+        slot: u8,
+    },
+    /// The owner of the card linked to the source creates an X/X Spirit (`spirit`, a 0/0 given X
+    /// counters), X that card's mana value.
+    LinkedOwnerCreatesSpirit {
+        spirit: usize,
+    },
     /// Copy the source spell (from its snapshot as it was cast): once, or with `storm`, once for each
     /// other spell cast before it this turn. A copy of a permanent spell becomes a token.
     CopySourceSpell {
@@ -712,6 +750,20 @@ pub enum Effect {
     SpiritDragonsUpkeep,
     /// Creatures you control gain these keywords until your next turn.
     GrantAllUntilYourNextTurn(crate::Keywords),
+    /// "There is an additional combat phase after this phase followed by an additional main phase"
+    /// (cast during a main phase).
+    AdditionalCombatAndMain,
+    /// "When you next attack this turn, ...": the source's trigger number `n`, once.
+    DelayedOnNextAttackThisTurn(usize),
+    /// Untap each creature you control.
+    UntapCreaturesYouControl,
+    /// "Copy the next spell you cast this turn when you cast it": the source's trigger number `n`
+    /// triggers when you next cast a spell this turn, with that spell in `extra`.
+    CopyNextSpellThisTurn(usize),
+    /// Copy the spell in `extra` (still on the stack); its controller may choose new targets.
+    CopySpellNewTargets,
+    /// Add `n` colorless mana.
+    AddColorless(u8),
     /// For the rest of this turn, the source's trigger number `trigger` triggers on `when` (one of
     /// `When::CreatureYouControlEntersThisTurn` or `When::YouCastNoncreature`): a delayed triggered
     /// ability (CR 603.7).
@@ -765,6 +817,10 @@ pub enum SearchFor {
     Named(&'static [&'static str]),
     /// A card of this color (WUBRG index).
     Colored(u8),
+    /// A card with this subtype ("a Dragon card").
+    Subtype(&'static str),
+    /// A colorless nonland card.
+    ColorlessNonland,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -782,6 +838,8 @@ pub enum SearchTo {
     Graveyard,
     /// Onto the battlefield tapped with a stun counter on it.
     BattlefieldTappedStunned,
+    /// Exile it; you may cast it without paying its mana cost this turn (Ugin's −11).
+    ExileCastFreeThisTurn,
 }
 
 /// What a static ability affects.
@@ -963,6 +1021,8 @@ pub enum Condition {
     CastCreatureAndNoncreatureThisTurn,
     /// Creatures you control have total toughness at least this.
     TotalToughnessAtLeast(i32),
+    /// It's your main phase.
+    YourMainPhase,
 }
 
 /// A spell's effect or a triggered ability: target slots, then effects in order.
@@ -983,6 +1043,9 @@ pub struct Ability {
     /// "N damage divided as you choose among" its targets: the total, divided as it goes on the
     /// stack with at least 1 to each target (CR 601.2d). Zero for everything else.
     pub divide: u8,
+    /// The divided total is the number of lands you control as it goes on the stack, instead of
+    /// `divide` (Ureni: "X damage divided ..., where X is the number of lands you control").
+    pub divide_lands: bool,
 }
 
 impl Ability {
@@ -996,6 +1059,7 @@ impl Ability {
             same_graveyard: false,
             modes: Vec::new(),
             divide: 0,
+            divide_lands: false,
         }
     }
 
@@ -1117,8 +1181,19 @@ pub enum When {
     /// "Whenever this creature or another creature you control dies, if it had counters on it"; the
     /// dead creature is in the stack item's `extra`.
     CreatureYouControlWithCountersDies,
+    /// "Whenever a creature you control with a counter on it deals combat damage to a player".
+    YourCreatureWithCounterDealsCombatDamageToPlayer,
+    /// "Whenever a creature you control or a creature spell you control becomes the target of a
+    /// spell or ability an opponent controls" (once per target).
+    YourCreatureTargetedByOpponent,
+    /// "When this creature leaves the battlefield" (any zone it goes to).
+    LeavesBattlefield,
     /// "When you cast this spell" (from the stack).
     YouCastThis,
+    /// "When you cast this spell": triggers from the stack as the spell becomes cast (CR 601.2i).
+    CastThisSpell,
+    /// "Whenever you cast a colorless spell".
+    YouCastColorless,
     /// "At the beginning of each combat" (every player's).
     BeginCombatEachTurn,
     /// Only as a delayed trigger: "Whenever a creature you control enters this turn".
@@ -1129,8 +1204,6 @@ pub enum When {
     /// "Whenever a card leaves your graveyard during your turn, ... This ability triggers only once
     /// each turn."
     CardLeavesYourGraveyardOnceEachTurn,
-    /// "Whenever a creature you control with a counter on it deals combat damage to a player".
-    YourCreatureWithCounterDealsCombatDamageToPlayer,
 }
 
 #[derive(Clone, Debug, PartialEq)]

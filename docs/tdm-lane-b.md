@@ -181,14 +181,15 @@ Mechanics added (appended at the end of their enums and structs):
 | Reverberating Summons | `reverberating_summons_becomes_a_hasty_monk_after_two_spells`, `reverberating_summons_cashes_in_your_hand_for_two_cards` |
 | New Way Forward | `new_way_forward_turns_prevented_damage_back_on_its_source` |
 
-## Batch 8 (engine core): during your turn, cards leaving your graveyard (9)
+## Batch 8 (engine core): during your turn, cards leaving your graveyard (7)
+
+Armament Dragon, Yathan Tombguard and Dragonbroods' Relic were done by lane C (its versions kept at the merge).
 
 Mechanics added (appended at the end of their enums and structs):
 - A `Scope::This` static with `base_pt` (and no ability loss) sets the creature's base power and toughness; with `your_turn_only`, only during its controller's turn (Snowmelt Stag). "During your turn, this creature has first strike" was already a `your_turn_only` static.
 - Cards leaving a graveyard: `Game::graveyard_left_this_turn` and `Game::graveyard_leave_pending` (set in `move_to` for a card, not a token, leaving its owner's graveyard during its owner's turn). `Game::flush_graveyard_leaves`, run as triggers are put on the stack, fires `When::CardsLeaveYourGraveyardDuringYourTurn` once for everything that left since the last time, and `When::CardLeavesYourGraveyardOnceEachTurn` at most once each turn per source (`Object::once_each_turn`). Limit: two separate instructions in one resolution that each move cards out count as one event.
 - `Activated::your_turn_only` and `Activated::if_card_left_graveyard`.
 - `CardDef::your_turn_discount_per_big_creature` (Temur Battlecrier), in `spell_cost`.
-- `When::YourCreatureWithCounterDealsCombatDamageToPlayer`.
 - Removed batch 7's unused ward—discard and -X/-X code.
 
 | Card | Test |
@@ -200,10 +201,6 @@ Mechanics added (appended at the end of their enums and structs):
 | Kheru Goldkeeper | `kheru_goldkeeper_and_attuned_hunter_reward_cards_leaving_your_graveyard` |
 | Attuned Hunter | `kheru_goldkeeper_and_attuned_hunter_reward_cards_leaving_your_graveyard`, `attuned_hunter_counts_cards_leaving_at_once_as_one_event` |
 | Temur Battlecrier | `temur_battlecrier_discounts_your_spells_per_big_creature_on_your_turn` |
-| Armament Dragon | `armament_dragon_distributes_three_counters` |
-| Yathan Tombguard | `yathan_tombguard_draws_when_a_creature_with_a_counter_connects` |
-
-Not done from the uncommons: Dragonbroods' Relic (a mana ability with "Tap an untapped creature you control" in its cost, and a named all-colors Dragon token with its own enters trigger).
 
 ## Needs core
 
@@ -219,4 +216,3 @@ Round 2 (after the chunk 1 merge, e5c03c9): the cards left on the list after Ins
 (Misty Rainforest, Arid Mesa, Emergent Ultimatum, Ruinous Ultimatum) all need core, and every
 earlier card on the list was already assessed. No new cards were scripted; the list is used up.
 - Scavenger Regent: an X cost on an Omen half needs a new `Action` and a change to the Python action encoding; it also needs ward—discard.
-- Dragonbroods' Relic: a mana ability whose cost includes tapping another creature; a named token (Reliquary Dragon, all colors) with its own enters trigger.

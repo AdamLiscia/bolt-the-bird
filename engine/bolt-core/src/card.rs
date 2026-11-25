@@ -177,6 +177,10 @@ pub struct Activated {
     /// An Aura's ability its enchanted creature has ("Enchanted creature has \"{5}: Untap this
     /// creature.\""): activated by that creature's controller, with the creature in `extra`.
     pub granted_to_attached: bool,
+    /// "Sacrifice a creature you control with mana value X other than this": activated as
+    /// `ActivateX` with that victim and X its mana value plus 1, the mana value its target needs
+    /// (Sidisi; see `Filter::mana_value_is_x`).
+    pub sacrifice_mv_x: bool,
     /// "Discard your hand" in the cost.
     pub discard_hand: bool,
     /// "Activate only during your turn."
@@ -368,6 +372,12 @@ pub struct CardDef {
     /// "During your turn, spells you cast cost {1} less to cast for each creature you control with
     /// power 4 or greater." (Temur Battlecrier)
     pub your_turn_discount_per_big_creature: bool,
+    /// Its mana ability also costs "Tap an untapped creature you control" (Dragonbroods' Relic). The
+    /// payer taps an untapped creature that isn't itself a mana source.
+    pub mana_taps_creature: bool,
+    /// "{T}: Add one mana of any color. Spend this mana only to cast a Dragon spell or an Omen
+    /// spell." Its plain mana is in `mana` (Maelstrom of the Spirit Dragon).
+    pub any_color_for_dragon_or_omen: bool,
 }
 
 /// An Omen spell half: its name, cost, whether it's an instant, and what it does.
@@ -486,6 +496,8 @@ impl CardDef {
             doubles_tokens: false,
             cast_from_graveyard_finality: false,
             your_turn_discount_per_big_creature: false,
+            mana_taps_creature: false,
+            any_color_for_dragon_or_omen: false,
         }
     }
 
@@ -583,6 +595,8 @@ impl CardDef {
             doubles_tokens: false,
             cast_from_graveyard_finality: false,
             your_turn_discount_per_big_creature: false,
+            mana_taps_creature: false,
+            any_color_for_dragon_or_omen: false,
         }
     }
 
@@ -680,6 +694,8 @@ impl CardDef {
             doubles_tokens: false,
             cast_from_graveyard_finality: false,
             your_turn_discount_per_big_creature: false,
+            mana_taps_creature: false,
+            any_color_for_dragon_or_omen: false,
         }
     }
 }

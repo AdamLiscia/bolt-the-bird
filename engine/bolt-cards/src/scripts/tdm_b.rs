@@ -837,26 +837,6 @@ pub fn script(name: &str) -> Option<Script> {
             &["During your turn, spells you cast cost {1} less to cast for each creature you control with power 4 or greater."],
             |d, _| d.your_turn_discount_per_big_creature = true,
         ),
-        "Armament Dragon" => s(
-            &["When this creature enters, distribute three +1/+1 counters among one, two, or three target creatures you control."],
-            |d, _| {
-                let mut a = Ability::new(vec![YOUR_CREATURE; 3], vec![Effect::DividedCounters]);
-                a.min_targets = Some(1);
-                a.divide = 3;
-                d.triggers.push(Trigger { when: When::Enters, ability: a });
-            },
-        ),
-        "Yathan Tombguard" => s(
-            &["Whenever a creature you control with a counter on it deals combat damage to a player, you draw a card and you lose 1 life."],
-            |d, _| {
-                on(
-                    d,
-                    When::YourCreatureWithCounterDealsCombatDamageToPlayer,
-                    vec![],
-                    vec![draw(1), Effect::LoseLife { who: Who::You, n: 1 }],
-                )
-            },
-        ),
         _ => None,
     }
 }
@@ -944,6 +924,4 @@ pub const TDM_B_SCRIPTED: &[&str] = &[
     "Kheru Goldkeeper",
     "Attuned Hunter",
     "Temur Battlecrier",
-    "Armament Dragon",
-    "Yathan Tombguard",
 ];

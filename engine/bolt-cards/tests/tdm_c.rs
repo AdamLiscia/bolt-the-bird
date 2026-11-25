@@ -1198,3 +1198,746 @@ fn dracogenesis_casts_dragons_for_free() {
     resolve_all(&mut g, &[]);
     assert_eq!(g.obj(d).zone, Zone::Battlefield);
 }
+
+// ---- round 3, batch 4 ----
+
+#[test]
+fn yathan_tombguard_draws_for_creatures_with_counters_that_connect() {
+    let mut g = table();
+    put(&mut g, 0, "Yathan Tombguard");
+    let a = put(&mut g, 0, "Unburied Earthcarver");
+    let b = put(&mut g, 0, "Summit Intimidator");
+    let c = hand(&mut g, 0, "Lightfoot Technique");
+    begin(&mut g);
+    play(&mut g, c, false, &[obj(a)], &[]);
+    g.start_turn(5, 0);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(a));
+    act(&mut g, Action::Attack(b));
+    act(&mut g, Action::FinishAttacks);
+    let (cards, life) = (g.players[0].hand.len(), g.players[0].life);
+    through_combat_damage(&mut g);
+    assert_eq!(g.players[0].hand.len(), cards + 1, "one creature had a counter");
+    assert_eq!(g.players[0].life, life - 1);
+}
+
+#[test]
+fn armament_dragon_distributes_three_counters() {
+    let mut g = table();
+    let a = put(&mut g, 0, "Unburied Earthcarver");
+    let b = put(&mut g, 0, "Summit Intimidator");
+    let theirs = put(&mut g, 1, "Arashin Sunshield");
+    let d = hand(&mut g, 0, "Armament Dragon");
+    begin(&mut g);
+    act(&mut g, Action::Cast(d));
+    to_target_choice(&mut g);
+    assert!(!g.legal_actions().contains(&Action::Target(obj(theirs))), "yours");
+    act(&mut g, Action::Target(obj(a)));
+    act(&mut g, Action::Target(obj(b)));
+    act(&mut g, Action::No);
+    assert!(matches!(g.pending, Pending::Divide(0)));
+    act(&mut g, Action::Amount(2));
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.obj(a).counters, g.obj(b).counters), (2, 1));
+}
+
+#[test]
+fn genesis_ultimatum_puts_permanents_down_and_the_rest_in_hand() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Genesis Ultimatum");
+    begin(&mut g);
+    let five: Vec<_> = [
+        "Plains",
+        "Twin Bolt",
+        "War Effort",
+        "Forest",
+        "Unburied Earthcarver",
+    ]
+    .iter()
+    .map(|n| g.add_card(0, tid(n), Zone::Library))
+    .collect();
+    let (plains, bolt, effort, forest, creature) = (five[0], five[1], five[2], five[3], five[4]);
+    act(&mut g, Action::Cast(c));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(
+        !g.legal_actions().contains(&Action::Pick(bolt)),
+        "permanent cards"
+    );
+    act(&mut g, Action::Pick(creature));
+    act(&mut g, Action::Pick(forest));
+    act(&mut g, Action::No);
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        (g.obj(creature).zone, g.obj(forest).zone),
+        (Zone::Battlefield, Zone::Battlefield)
+    );
+    for x in [plains, bolt, effort] {
+        assert_eq!(g.obj(x).zone, Zone::Hand);
+    }
+    assert_eq!(g.obj(c).zone, Zone::Exile, "Exile Genesis Ultimatum");
+}
+
+#[test]
+fn united_battlefront_puts_two_cheap_noncreature_permanents_down() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "United Battlefront");
+    begin(&mut g);
+    let names = [
+        "War Effort",
+        "Stormbeacon Blade",
+        "Mox Jasper",
+        "Dragonologist",
+        "Jeskai Monument",
+        "Forest",
+        "Twin Bolt",
+    ];
+    let seven: Vec<_> = names
+        .iter()
+        .map(|n| g.add_card(0, tid(n), Zone::Library))
+        .collect();
+    act(&mut g, Action::Cast(c));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    let mut legal = g.legal_actions();
+    legal.sort_by_key(|a| format!("{a:?}"));
+    let mut want = vec![
+        Action::Pick(seven[1]),
+        Action::Pick(seven[2]),
+        Action::Pick(seven[4]),
+        Action::No,
+    ];
+    want.sort_by_key(|a| format!("{a:?}"));
+    assert_eq!(legal, want, "noncreature, nonland, mana value 3 or less");
+    act(&mut g, Action::Pick(seven[1]));
+    act(&mut g, Action::Pick(seven[2]));
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        (g.obj(seven[1]).zone, g.obj(seven[2]).zone),
+        (Zone::Battlefield, Zone::Battlefield)
+    );
+    let bottom = &g.players[0].library[..5];
+    for x in [seven[0], seven[3], seven[4], seven[5], seven[6]] {
+        assert!(bottom.contains(&x), "the rest on the bottom");
+    }
+}
+
+#[test]
+fn eerie_ultimatum_returns_permanents_with_different_names() {
+    let mut g = table();
+    let a = g.add_card(0, tid("Unburied Earthcarver"), Zone::Graveyard);
+    let a2 = g.add_card(0, tid("Unburied Earthcarver"), Zone::Graveyard);
+    let e = g.add_card(0, tid("War Effort"), Zone::Graveyard);
+    let bolt = g.add_card(0, tid("Twin Bolt"), Zone::Graveyard);
+    let c = hand(&mut g, 0, "Eerie Ultimatum");
+    begin(&mut g);
+    act(&mut g, Action::Cast(c));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(
+        !g.legal_actions().contains(&Action::Pick(bolt)),
+        "permanent cards"
+    );
+    act(&mut g, Action::Pick(a));
+    assert!(!g.legal_actions().contains(&Action::Pick(a2)), "different names");
+    act(&mut g, Action::Pick(e));
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        (g.obj(a).zone, g.obj(e).zone),
+        (Zone::Battlefield, Zone::Battlefield)
+    );
+    assert_eq!(
+        (g.obj(a2).zone, g.obj(bolt).zone),
+        (Zone::Graveyard, Zone::Graveyard)
+    );
+}
+
+#[test]
+fn tersa_lightshatter_rummages_up_to_two_and_digs_at_threshold() {
+    let mut g = table();
+    let t = hand(&mut g, 0, "Tersa Lightshatter");
+    assert!(g.def_of(t).keywords.has(Keywords::HASTE));
+    let x = hand(&mut g, 0, "Twin Bolt");
+    let _y = hand(&mut g, 0, "Lightfoot Technique");
+    begin(&mut g);
+    let cards = g.players[0].hand.len(); // includes Tersa
+    act(&mut g, Action::Cast(t));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Discard(x));
+    act(&mut g, Action::No); // only one
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(x).zone, Zone::Graveyard);
+    assert_eq!(
+        g.players[0].hand.len(),
+        cards - 1 - 1 + 1,
+        "cast Tersa, discarded one, drew one"
+    );
+
+    for _ in 0..6 {
+        g.add_card(0, tid("Twin Bolt"), Zone::Graveyard);
+    }
+    assert_eq!(g.players[0].graveyard.len(), 7);
+    attack_with(&mut g, t);
+    assert_eq!(g.players[0].graveyard.len(), 6, "one exiled at random");
+    let exiled: Vec<_> = g.exile.iter().copied().filter(|&c| g.obj(c).owner == 0).collect();
+    assert_eq!(exiled.len(), 1);
+    assert_eq!(g.obj(exiled[0]).playable, Some((0, 5)), "playable this turn");
+}
+
+#[test]
+fn tersa_without_seven_cards_exiles_nothing() {
+    let mut g = table();
+    let t = put(&mut g, 0, "Tersa Lightshatter");
+    g.add_card(0, tid("Twin Bolt"), Zone::Graveyard);
+    attack_with(&mut g, t);
+    assert_eq!(g.players[0].graveyard.len(), 1);
+}
+
+#[test]
+fn surrak_draws_when_an_opponent_targets_your_creature() {
+    let mut g = table();
+    let s = put(&mut g, 0, "Surrak, Elusive Hunter");
+    assert!(g.def_of(s).uncounterable && g.keywords(s).has(Keywords::TRAMPLE));
+    let mine = put(&mut g, 0, "Unburied Earthcarver");
+    let own = hand(&mut g, 0, "Lightfoot Technique");
+    begin(&mut g);
+    let cards = g.players[0].hand.len();
+    play(&mut g, own, false, &[obj(mine)], &[]);
+    assert_eq!(g.players[0].hand.len(), cards - 1, "your own spell: no draw");
+
+    let bolt = hand(&mut g, 1, "Channeled Dragonfire");
+    g.start_turn(6, 1);
+    while !(g.step == Step::Main1 && g.pending == Pending::Priority(1)) {
+        act(&mut g, Action::PassPriority);
+    }
+    let cards = g.players[0].hand.len();
+    act(&mut g, Action::Cast(bolt));
+    act(&mut g, Action::Target(obj(mine)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        g.players[0].hand.len(),
+        cards + 1,
+        "an opponent's spell targeted it"
+    );
+}
+
+#[test]
+fn kotis_exiles_by_damage_and_casts_cheap_spells_free() {
+    let mut g = table();
+    let k = put(&mut g, 0, "Kotis, the Fangkeeper"); // 2/1
+    assert!(g.keywords(k).has(Keywords::INDESTRUCTIBLE));
+    let cheap = g.add_card(1, tid("Twin Bolt"), Zone::Library); // MV 2
+    let pricey = g.add_card(1, tid("War Effort"), Zone::Library); // MV 4, on top
+    attack_with(&mut g, k);
+    for c in g.permanents(0).collect::<Vec<_>>() {
+        if g.types_of(c).land {
+            g.objects[c.0 as usize].tapped = true; // no mana: the cast must be free
+        }
+    }
+    while !matches!(g.pending, Pending::FreeCast(_)) {
+        let a = match g.pending {
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(
+        (g.obj(cheap).zone, g.obj(pricey).zone),
+        (Zone::Exile, Zone::Exile),
+        "two damage: top two"
+    );
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Cast(cheap)));
+    assert!(!legal.contains(&Action::Cast(pricey)), "mana value 2 or less");
+    let life = g.players[1].life;
+    act(&mut g, Action::Cast(cheap));
+    act(&mut g, Action::Target(Target::Player(1)));
+    act(&mut g, Action::No);
+    act(&mut g, Action::PassPriority); // done casting
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].life, life - 2);
+}
+
+#[test]
+fn severance_priest_exiles_a_card_and_pays_its_owner_back_with_a_spirit() {
+    let mut g = table();
+    let pricey = hand(&mut g, 1, "War Effort"); // mana value 4
+    let land = hand(&mut g, 1, "Forest");
+    let p = hand(&mut g, 0, "Severance Priest");
+    let bolt = hand(&mut g, 0, "Channeled Dragonfire");
+    begin(&mut g);
+    act(&mut g, Action::Cast(p));
+    to_target_choice(&mut g);
+    act(&mut g, Action::Target(Target::Player(1)));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(
+        g.legal_actions(),
+        [Action::Pick(pricey), Action::No],
+        "nonland cards, or none"
+    );
+    act(&mut g, Action::Pick(pricey));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(pricey).zone, Zone::Exile);
+    assert_eq!(g.obj(land).zone, Zone::Hand);
+    assert!(tokens(&g, 1, "Spirit").is_empty());
+    let bolt2 = hand(&mut g, 0, "Channeled Dragonfire");
+    play(&mut g, bolt, false, &[obj(p)], &[]);
+    play(&mut g, bolt2, false, &[obj(p)], &[]); // 4 damage: it dies, so it leaves the battlefield
+    assert_eq!(g.obj(p).zone, Zone::Graveyard);
+    let spirit = tokens(&g, 1, "Spirit");
+    assert_eq!(spirit.len(), 1, "the exiled card's owner gets the Spirit");
+    assert_eq!((g.power(spirit[0]), g.toughness(spirit[0])), (4, 4));
+}
+
+// ---- round 3, batch 5 ----
+
+#[test]
+fn ureni_divides_damage_equal_to_your_lands_among_their_creatures() {
+    let mut g = tdm_lands(&[
+        "Forest", "Island", "Mountain", "Forest", "Island", "Mountain", "Forest", "Island",
+    ]);
+    let u = hand(&mut g, 0, "Ureni, the Song Unending");
+    let a = put(&mut g, 1, "Loxodon Battle Priest"); // 3/5
+    let b = put(&mut g, 1, "Unburied Earthcarver"); // 2/2
+    let mine = put(&mut g, 0, "Summit Intimidator");
+    begin(&mut g);
+    let k = g.keywords(u);
+    assert!(k.has(Keywords::FLYING));
+    act(&mut g, Action::Cast(u));
+    to_target_choice(&mut g);
+    assert!(
+        !g.legal_actions().contains(&Action::Target(obj(mine))),
+        "your opponents' only"
+    );
+    act(&mut g, Action::Target(obj(a)));
+    act(&mut g, Action::Target(obj(b)));
+    act(&mut g, Action::No);
+    assert!(matches!(g.pending, Pending::Divide(0)));
+    assert_eq!(
+        g.legal_actions().len(),
+        7,
+        "8 lands: 1 to 7 for the first, the rest to the second"
+    );
+    act(&mut g, Action::Amount(5));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(a).zone, Zone::Graveyard, "5 to the 3/5");
+    assert_eq!(g.obj(b).zone, Zone::Graveyard, "3 to the 2/2");
+}
+
+#[test]
+fn ureni_cant_take_more_targets_than_lands_and_has_protection() {
+    let mut g = table();
+    let u = put(&mut g, 0, "Ureni, the Song Unending");
+    let a = put(&mut g, 1, "Unburied Earthcarver");
+    let b = put(&mut g, 1, "Summit Intimidator");
+    // Protection from white: a white spell can't target it.
+    let white = hand(&mut g, 1, "Lightfoot Technique");
+    g.start_turn(6, 1);
+    while !(g.step == Step::Main1 && g.pending == Pending::Priority(1)) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Cast(white));
+    assert!(
+        !g.legal_actions().contains(&Action::Target(obj(u))),
+        "protection from white"
+    );
+    act(&mut g, Action::Target(obj(a)));
+    resolve_all(&mut g, &[]);
+    // One land: one target at most.
+    let mut g2 = tdm_lands(&["Forest"]);
+    let u2 = hand(&mut g2, 0, "Ureni, the Song Unending");
+    let x = put(&mut g2, 1, "Unburied Earthcarver");
+    let _y = put(&mut g2, 1, "Summit Intimidator");
+    begin(&mut g2);
+    g2.move_card(u2, Zone::Battlefield);
+    to_target_choice(&mut g2);
+    act(&mut g2, Action::Target(obj(x)));
+    let legal = g2.legal_actions();
+    assert!(
+        legal.iter().all(|a| !matches!(a, Action::Target(_))),
+        "no second target with X = 1: {legal:?}"
+    );
+    act(&mut g2, Action::No);
+    resolve_all(&mut g2, &[]);
+    assert_eq!(g2.obj(x).damage, 1);
+    let _ = b;
+}
+
+#[test]
+fn sidisi_trades_a_creature_for_one_with_mana_value_one_more() {
+    let mut g = table();
+    let s = put(&mut g, 0, "Sidisi, Regent of the Mire");
+    let two = put(&mut g, 0, "Unburied Earthcarver"); // mana value 2
+    let three = g.add_card(0, tid("Krotiq Nestguard"), Zone::Graveyard); // mana value 3
+    let four = g.add_card(0, tid("Summit Intimidator"), Zone::Graveyard); // mana value 4
+    main_phase_turn_5(&mut g);
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::ActivateX {
+        id: s,
+        n: 0,
+        victim: Some(two),
+        x: 3
+    }));
+    assert!(
+        !legal
+            .iter()
+            .any(|a| matches!(a, Action::ActivateX { victim: Some(v), .. } if *v == s)),
+        "other than Sidisi"
+    );
+    act(
+        &mut g,
+        Action::ActivateX {
+            id: s,
+            n: 0,
+            victim: Some(two),
+            x: 3,
+        },
+    );
+    assert!(
+        !g.legal_actions().contains(&Action::Target(obj(four))),
+        "mana value X plus 1"
+    );
+    act(&mut g, Action::Target(obj(three)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(two).zone, Zone::Graveyard, "sacrificed");
+    assert_eq!(g.obj(three).zone, Zone::Battlefield);
+    assert_eq!(g.obj(four).zone, Zone::Graveyard);
+    assert!(g.obj(s).tapped);
+}
+
+#[test]
+fn sidisi_needs_a_matching_card_in_the_graveyard() {
+    let mut g = table();
+    let s = put(&mut g, 0, "Sidisi, Regent of the Mire");
+    put(&mut g, 0, "Unburied Earthcarver");
+    g.add_card(0, tid("Summit Intimidator"), Zone::Graveyard); // mana value 4, not 3
+    main_phase_turn_5(&mut g);
+    assert!(!g
+        .legal_actions()
+        .iter()
+        .any(|a| matches!(a, Action::ActivateX { id, .. } if *id == s)));
+}
+
+#[test]
+fn dragonbroods_relic_taps_a_creature_for_any_color_and_makes_a_reliquary_dragon() {
+    let mut g = tdm_lands(&[]);
+    let relic = put(&mut g, 0, "Dragonbroods' Relic");
+    begin(&mut g);
+    assert!(
+        g.mana_sources(0).iter().all(|(x, _)| *x != relic),
+        "no creature to tap"
+    );
+    let c = put(&mut g, 0, "Unburied Earthcarver");
+    let from: Vec<_> = g
+        .mana_sources(0)
+        .into_iter()
+        .filter(|(x, _)| *x == relic)
+        .collect();
+    assert_eq!(from.len(), 1);
+    assert_eq!(from[0].1.colors, [true; 5]);
+    let spell = hand(&mut g, 0, "Channeled Dragonfire"); // {R}
+    play(&mut g, spell, false, &[Target::Player(1)], &[]);
+    assert!(
+        g.obj(relic).tapped && g.obj(c).tapped,
+        "the Relic and a creature tapped"
+    );
+    assert_eq!(g.players[1].life, 18);
+
+    let mut g = table();
+    let relic = put(&mut g, 0, "Dragonbroods' Relic");
+    let theirs = put(&mut g, 1, "Unburied Earthcarver");
+    begin(&mut g);
+    let life = g.players[0].life;
+    act(&mut g, Action::Activate(relic, 0)); // the mana ability is not an activated-ability slot
+    resolve_all(&mut g, &[Action::Target(obj(theirs))]);
+    assert_eq!(g.obj(relic).zone, Zone::Graveyard, "sacrificed");
+    let d = tokens(&g, 0, "Reliquary Dragon");
+    assert_eq!(d.len(), 1);
+    assert_eq!((g.power(d[0]), g.toughness(d[0])), (4, 4));
+    let k = g.keywords(d[0]);
+    assert!(k.has(Keywords::FLYING) && k.has(Keywords::LIFELINK));
+    assert_eq!(g.colors_of(d[0]), [true; 5], "all colors");
+    assert_eq!(
+        g.obj(theirs).zone,
+        Zone::Graveyard,
+        "its enters trigger: 3 damage"
+    );
+    assert_eq!(g.players[0].life, life + 3, "lifelink on the trigger's damage");
+}
+
+#[test]
+fn all_out_assault_adds_a_combat_and_untaps_on_the_next_attack() {
+    let mut g = table();
+    let a = put(&mut g, 0, "Unburied Earthcarver");
+    let theirs = put(&mut g, 1, "Unburied Earthcarver");
+    let c = hand(&mut g, 0, "All-Out Assault");
+    main_phase_turn_5(&mut g);
+    play(&mut g, c, false, &[], &[]);
+    assert_eq!((g.power(a), g.toughness(a)), (3, 3));
+    assert!(g.keywords(a).has(Keywords::DEATHTOUCH));
+    assert_eq!(g.power(theirs), 2, "yours only");
+    let life = g.players[1].life;
+    // The additional combat: attack, and the creature untaps.
+    to_declare_attackers(&mut g);
+    act(&mut g, Action::Attack(a));
+    act(&mut g, Action::FinishAttacks);
+    resolve_all(&mut g, &[]);
+    assert!(!g.obj(a).tapped, "untapped when you next attacked");
+    through_combat_damage_or_main(&mut g);
+    assert_eq!(g.step, Step::Main2, "the additional main phase");
+    assert_eq!(g.players[1].life, life - 3);
+    // Then the turn's regular combat: it can attack again, and doesn't untap this time.
+    to_declare_attackers(&mut g);
+    act(&mut g, Action::Attack(a));
+    act(&mut g, Action::FinishAttacks);
+    resolve_all(&mut g, &[]);
+    assert!(g.obj(a).tapped, "only the next attack");
+    through_combat_damage_or_main(&mut g);
+    assert_eq!(g.step, Step::Main2);
+    assert_eq!(g.players[1].life, life - 6);
+    act(&mut g, Action::PassPriority);
+    act(&mut g, Action::PassPriority);
+    assert_eq!(g.step, Step::End, "no more combats");
+}
+
+#[test]
+fn all_out_assault_outside_a_main_phase_adds_no_combat() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "All-Out Assault");
+    begin(&mut g);
+    g.move_card(c, Zone::Battlefield); // enters during your main phase: the trigger checks
+    let mut g2 = g.clone();
+    resolve_pending_triggers(&mut g2);
+    assert_eq!(g2.extra_combats.len(), 1, "your main phase");
+    // On the opponent's turn it does nothing.
+    let mut g3 = table();
+    let aoa = hand(&mut g3, 0, "All-Out Assault");
+    g3.start_turn(6, 1);
+    while !(g3.step == Step::Main1 && g3.pending == Pending::Priority(1)) {
+        act(&mut g3, Action::PassPriority);
+    }
+    g3.move_card(aoa, Zone::Battlefield);
+    resolve_pending_triggers(&mut g3);
+    assert!(g3.extra_combats.is_empty(), "not your main phase");
+}
+
+/// Pass until the triggered abilities waiting to go on the stack have resolved.
+fn resolve_pending_triggers(g: &mut Game) {
+    act(g, Action::PassPriority); // the next priority puts them on the stack
+    resolve_all(g, &[]);
+}
+
+fn to_declare_attackers(g: &mut Game) {
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(g, Action::PassPriority);
+    }
+}
+
+/// Pass through combat (blocking nothing) to the main phase after it.
+fn through_combat_damage_or_main(g: &mut Game) {
+    while g.step != Step::Main2 {
+        let a = match g.pending {
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(g, a);
+    }
+}
+
+#[test]
+fn maelstrom_makes_any_color_only_for_dragons_and_omens() {
+    let mut g = tdm_lands(&["Maelstrom of the Spirit Dragon"]);
+    let land = g.permanents(0).next().unwrap();
+    let omen = hand(&mut g, 0, "Sagu Wildling"); // Omen: Roost Seek, {G}
+    let red = hand(&mut g, 0, "Channeled Dragonfire"); // {R}
+    begin(&mut g);
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::CastOmen(omen)), "an Omen spell");
+    assert!(!legal.contains(&Action::Cast(red)), "not other spells");
+    let forest = g.add_card(0, tid("Forest"), Zone::Library);
+    act(&mut g, Action::CastOmen(omen));
+    resolve_all(&mut g, &[Action::Pick(forest)]);
+    assert!(g.obj(land).tapped);
+
+    // {C} for anything; any color for a Dragon spell.
+    let mut g = tdm_lands(&[
+        "Maelstrom of the Spirit Dragon",
+        "Maelstrom of the Spirit Dragon",
+        "Maelstrom of the Spirit Dragon",
+        "Maelstrom of the Spirit Dragon",
+        "Maelstrom of the Spirit Dragon",
+    ]);
+    let monument = hand(&mut g, 0, "Jeskai Monument"); // {2}
+    let dragon = hand(&mut g, 0, "Sagu Wildling"); // {4}{G} Dragon
+    begin(&mut g);
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Cast(monument)) && legal.contains(&Action::Cast(dragon)));
+    act(&mut g, Action::Cast(dragon));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(dragon).zone, Zone::Battlefield);
+}
+
+#[test]
+fn maelstrom_sacrifices_to_find_a_dragon() {
+    let mut g = table();
+    let m = put(&mut g, 0, "Maelstrom of the Spirit Dragon");
+    begin(&mut g);
+    let d = g.add_card(0, tid("Boulderborn Dragon"), Zone::Library);
+    act(&mut g, Action::Activate(m, 0));
+    resolve_all(&mut g, &[Action::Pick(d)]);
+    assert_eq!(g.obj(d).zone, Zone::Hand);
+    assert_eq!(g.obj(m).zone, Zone::Graveyard);
+}
+
+#[test]
+fn flamehold_grappler_copies_the_next_spell_with_new_targets() {
+    let mut g = table();
+    let fg = hand(&mut g, 0, "Flamehold Grappler");
+    let theirs = put(&mut g, 1, "Unburied Earthcarver"); // 2/2
+    let bolt = hand(&mut g, 0, "Channeled Dragonfire"); // 2 damage to any target
+    let later = hand(&mut g, 0, "Channeled Dragonfire");
+    begin(&mut g);
+    assert!(g.def_of(fg).keywords.has(Keywords::FIRST_STRIKE));
+    play(&mut g, fg, false, &[], &[]);
+    let life = g.players[1].life;
+    act(&mut g, Action::Cast(bolt));
+    act(&mut g, Action::Target(Target::Player(1)));
+    resolve_all(&mut g, &[Action::Target(obj(theirs))]); // the copy's new target
+    assert_eq!(g.obj(theirs).zone, Zone::Graveyard, "the copy hit the creature");
+    assert_eq!(g.players[1].life, life - 2, "the original hit the player");
+    play(&mut g, later, false, &[Target::Player(1)], &[]);
+    assert_eq!(g.players[1].life, life - 4, "only the next spell is copied");
+}
+
+#[test]
+fn flamehold_grappler_copies_a_creature_spell_as_a_token() {
+    let mut g = table();
+    let fg = hand(&mut g, 0, "Flamehold Grappler");
+    let c = hand(&mut g, 0, "Unburied Earthcarver");
+    begin(&mut g);
+    play(&mut g, fg, false, &[], &[]);
+    play(&mut g, c, false, &[], &[]);
+    assert_eq!(g.obj(c).zone, Zone::Battlefield);
+    let copies: Vec<_> = g
+        .permanents(0)
+        .filter(|&x| x != c && g.def_of(x).name == "Unburied Earthcarver")
+        .collect();
+    assert_eq!(copies.len(), 1);
+    assert!(
+        g.is_token(copies[0]),
+        "a copy of a permanent spell becomes a token"
+    );
+}
+
+#[test]
+fn ugin_exiles_a_colored_permanent_when_cast_and_on_colorless_spells() {
+    let mut g = table();
+    let ugin = hand(&mut g, 0, "Ugin, Eye of the Storms");
+    let red = put(&mut g, 1, "War Effort");
+    let artifact = put(&mut g, 1, "Jeskai Monument"); // colorless
+    let creature = put(&mut g, 1, "Unburied Earthcarver");
+    let land = g.permanents(1).find(|&x| g.types_of(x).land).unwrap();
+    let mono = hand(&mut g, 0, "Jeskai Monument");
+    let colored = hand(&mut g, 0, "Lightfoot Technique");
+    begin(&mut g);
+    act(&mut g, Action::Cast(ugin));
+    to_target_choice(&mut g);
+    let legal = g.legal_actions();
+    assert!(
+        !legal.contains(&Action::Target(obj(artifact))),
+        "one or more colors"
+    );
+    assert!(!legal.contains(&Action::Target(obj(land))), "lands are colorless");
+    act(&mut g, Action::Target(obj(red)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(red).zone, Zone::Exile, "the cast trigger");
+    assert_eq!(g.obj(ugin).zone, Zone::Battlefield);
+    assert_eq!(g.obj(ugin).loyalty, 7);
+
+    // The Monument's own enters search finds nothing (No).
+    play(
+        &mut g,
+        mono,
+        false,
+        &[],
+        &[Action::Target(obj(creature)), Action::No],
+    );
+    assert_eq!(
+        g.obj(creature).zone,
+        Zone::Exile,
+        "a colorless spell: exile another"
+    );
+    let mine = put(&mut g, 0, "Unburied Earthcarver");
+    put(&mut g, 0, "Plains"); // the Plains paid for Ugin
+    play(&mut g, colored, false, &[obj(mine)], &[]);
+    assert!(
+        g.items.is_empty() && g.obj(mine).counters == 1,
+        "a colored spell: no trigger"
+    );
+}
+
+#[test]
+fn ugin_loyalty_abilities() {
+    let mut g = table();
+    let u = hand(&mut g, 0, "Ugin, Eye of the Storms");
+    begin(&mut g);
+    g.move_card(u, Zone::Battlefield);
+    let (life, cards) = (g.players[0].life, g.players[0].hand.len());
+    act(&mut g, Action::Loyalty(u, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        (g.players[0].life, g.players[0].hand.len()),
+        (life + 3, cards + 1),
+        "+2"
+    );
+    assert_eq!(g.obj(u).loyalty, 9);
+
+    let mut g2 = table();
+    let u2 = hand(&mut g2, 0, "Ugin, Eye of the Storms");
+    begin(&mut g2);
+    g2.move_card(u2, Zone::Battlefield);
+    act(&mut g2, Action::Loyalty(u2, 1));
+    resolve_all(&mut g2, &[]);
+    assert_eq!(g2.players[0].pool.len(), 3, "0: {{C}}{{C}}{{C}}");
+    assert!(g2.players[0].pool.iter().all(|m| m.colorless));
+
+    let mut g3 = tdm_lands(&[]);
+    let u3 = hand(&mut g3, 0, "Ugin, Eye of the Storms");
+    begin(&mut g3);
+    g3.move_card(u3, Zone::Battlefield);
+    g3.objects[u3.0 as usize].loyalty = 11;
+    let dragon = g3.add_card(0, tid("Boulderborn Dragon"), Zone::Library); // a colorless artifact creature
+    let mox = g3.add_card(0, tid("Mox Jasper"), Zone::Library);
+    let colored = g3.add_card(0, tid("Unburied Earthcarver"), Zone::Library);
+    act(&mut g3, Action::Loyalty(u3, 2));
+    while !matches!(g3.pending, Pending::Decide(_)) {
+        act(&mut g3, Action::PassPriority);
+    }
+    assert!(
+        !g3.legal_actions().contains(&Action::Pick(colored)),
+        "colorless nonland cards"
+    );
+    act(&mut g3, Action::Pick(dragon));
+    act(&mut g3, Action::Pick(mox)); // the last match: the search ends
+    resolve_all(&mut g3, &[]);
+    assert_eq!(
+        (g3.obj(dragon).zone, g3.obj(mox).zone),
+        (Zone::Exile, Zone::Exile)
+    );
+    assert!(
+        g3.legal_actions().contains(&Action::Cast(dragon)),
+        "free this turn, with no lands"
+    );
+    act(&mut g3, Action::Cast(dragon));
+    resolve_all(&mut g3, &[]);
+    assert_eq!(g3.obj(dragon).zone, Zone::Battlefield);
+}
