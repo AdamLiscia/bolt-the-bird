@@ -35,6 +35,7 @@ keywords! {
     FLASH = 13, "Flash";
     UNBLOCKABLE = 14, "Can't be blocked";
     CANT_BLOCK = 15, "Can't block";
+    ISLANDWALK = 16, "Islandwalk";
 }
 
 impl Keywords {
@@ -213,6 +214,8 @@ pub struct Activated {
     pub sacrifice_subtype: Option<&'static str>,
     /// "Sacrifice a creature" in the cost: any creature you control, this one included.
     pub sacrifice_creature: bool,
+    /// "Activate only if you created a token this turn."
+    pub if_created_token_this_turn: bool,
     /// "Activate only once each turn."
     pub once_each_turn: bool,
     /// Remove this many of the source's own kind of counters as a cost (Hoofprints of the Stag).
@@ -470,6 +473,15 @@ pub struct CardDef {
     /// "Each other non-[subtype] creature you control enters with an additional +1/+1 counter on
     /// it." (Grumgully: "Human")
     pub other_non_subtype_enters_with_counter: Option<&'static str>,
+    /// "Each creature you control with a counter on it has \"{T}: Add {G}.\"" (Rishkar)
+    pub counter_creatures_tap_for_green: bool,
+    /// "Your maximum hand size is N." (0: the usual seven)
+    pub max_hand_size: u8,
+    /// "This creature enters with a number of +1/+1 counters on it equal to one plus the number of
+    /// other creatures you control." (Boss's Chauffeur)
+    pub enters_counters_one_plus_others: bool,
+    /// Ascend (CR 702.131): with ten or more permanents, you get the city's blessing for the game.
+    pub ascend: bool,
     /// "Each player may play an additional land on each of their turns." (Rites of Flourishing)
     pub extra_land_drop_each_player: bool,
     /// Its colored mana works only while you control a permanent with this subtype (Tainted Wood:
@@ -622,6 +634,10 @@ impl CardDef {
             vanishing: 0,
             big_creature_spell_discount: 0,
             other_non_subtype_enters_with_counter: None,
+            counter_creatures_tap_for_green: false,
+            max_hand_size: 0,
+            enters_counters_one_plus_others: false,
+            ascend: false,
             extra_land_drop_each_player: false,
             colored_mana_only_if_you_control: None,
         }
@@ -750,6 +766,10 @@ impl CardDef {
             vanishing: 0,
             big_creature_spell_discount: 0,
             other_non_subtype_enters_with_counter: None,
+            counter_creatures_tap_for_green: false,
+            max_hand_size: 0,
+            enters_counters_one_plus_others: false,
+            ascend: false,
             extra_land_drop_each_player: false,
             colored_mana_only_if_you_control: None,
         }
@@ -878,6 +898,10 @@ impl CardDef {
             vanishing: 0,
             big_creature_spell_discount: 0,
             other_non_subtype_enters_with_counter: None,
+            counter_creatures_tap_for_green: false,
+            max_hand_size: 0,
+            enters_counters_one_plus_others: false,
+            ascend: false,
             extra_land_drop_each_player: false,
             colored_mana_only_if_you_control: None,
         }

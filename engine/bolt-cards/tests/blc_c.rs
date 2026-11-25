@@ -922,3 +922,509 @@ fn chittering_witch_makes_a_rat_and_sacrifices_any_creature_for_minus_two() {
     assert_eq!(g.obj(theirs).zone, Zone::Battlefield);
     assert_eq!((g.power(theirs), g.toughness(theirs)), (-1, 1));
 }
+
+#[test]
+fn long_rivers_pull_counters_a_creature_spell_or_with_the_gift_any_spell() {
+    let mut g = table();
+    let dispute = hand(&mut g, 0, "Deadly Dispute");
+    let signet = put(&mut g, 0, "Arcane Signet");
+    act(&mut g, Action::CastWith(dispute, signet));
+    let pull = hand(&mut g, 0, "Long River's Pull");
+    let legal = g.legal_actions();
+    assert!(
+        !legal.contains(&Action::Cast(pull)),
+        "no gift: creature spells only"
+    );
+    assert!(
+        legal.contains(&Action::CastKicked(pull)),
+        "with the gift: any spell"
+    );
+    let mut g = table();
+    let dispute = hand(&mut g, 0, "Deadly Dispute");
+    let signet = put(&mut g, 0, "Arcane Signet");
+    act(&mut g, Action::CastWith(dispute, signet));
+    let theirs = g.players[1].hand.len();
+    let pull = hand(&mut g, 0, "Long River's Pull");
+    play(&mut g, pull, true, &[obj(dispute)], &[]);
+    assert_eq!(g.obj(dispute).zone, Zone::Graveyard, "countered");
+    assert_eq!(g.players[1].hand.len(), theirs + 1, "the gift: a card");
+    assert_eq!(
+        g.permanents(0)
+            .filter(|&x| g.def_of(x).name == "Treasure")
+            .count(),
+        0
+    );
+    let mut g = table();
+    let creature = hand(&mut g, 0, "Morbid Opportunist");
+    act(&mut g, Action::Cast(creature));
+    let pull = hand(&mut g, 0, "Long River's Pull");
+    play(&mut g, pull, false, &[obj(creature)], &[]);
+    assert_eq!(g.obj(creature).zone, Zone::Graveyard);
+}
+
+#[test]
+fn wear_down_destroys_one_or_with_the_gift_two_artifacts_or_enchantments() {
+    let mut g = table();
+    let a = put(&mut g, 1, "Arcane Signet");
+    let b = put(&mut g, 1, "Arcane Signet");
+    let c = hand(&mut g, 0, "Wear Down");
+    play(&mut g, c, false, &[obj(a)], &[]);
+    assert_eq!(
+        (g.obj(a).zone, g.obj(b).zone),
+        (Zone::Graveyard, Zone::Battlefield)
+    );
+    let mut g = table();
+    let a = put(&mut g, 1, "Arcane Signet");
+    let b = put(&mut g, 1, "Arcane Signet");
+    let theirs = g.players[1].hand.len();
+    let c = hand(&mut g, 0, "Wear Down");
+    play(&mut g, c, true, &[obj(a), obj(b)], &[]);
+    assert_eq!((g.obj(a).zone, g.obj(b).zone), (Zone::Graveyard, Zone::Graveyard));
+    assert_eq!(g.players[1].hand.len(), theirs + 1);
+}
+
+#[test]
+fn jolly_gerbils_draws_when_you_give_a_gift() {
+    let mut g = table();
+    put(&mut g, 0, "Jolly Gerbils");
+    let a = put(&mut g, 1, "Arcane Signet");
+    let b = put(&mut g, 1, "Arcane Signet");
+    let n = g.players[0].hand.len();
+    let c = hand(&mut g, 0, "Wear Down");
+    play(&mut g, c, true, &[obj(a), obj(b)], &[]);
+    assert_eq!(g.players[0].hand.len(), n + 1);
+    let c2 = hand(&mut g, 0, "Wear Down");
+    let x = put(&mut g, 1, "Arcane Signet");
+    play(&mut g, c2, false, &[obj(x)], &[]);
+    assert_eq!(g.players[0].hand.len(), n + 1, "no gift, no card");
+}
+
+#[test]
+fn oran_rief_counters_green_creatures_that_entered_this_turn() {
+    let mut g = table();
+    let old = put(&mut g, 0, "Garruk's Packleader"); // on the battlefield since before this turn
+    let new = hand(&mut g, 0, "Garruk's Packleader");
+    play(&mut g, new, false, &[], &[Action::No]);
+    let red = hand(&mut g, 0, "Morbid Opportunist"); // black
+    play(&mut g, red, false, &[], &[]);
+    let land = put(&mut g, 0, "Oran-Rief, the Vastwood");
+    assert!(g
+        .mana_sources(0)
+        .iter()
+        .any(|&(x, m)| x == land && m.colors == [false, false, false, false, true]));
+    act(&mut g, Action::Activate(land, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.power(new), g.power(old), g.power(red)), (5, 4, 1));
+}
+
+#[test]
+fn rishkar_puts_counters_and_creatures_with_counters_tap_for_green() {
+    let mut g = table();
+    let elder = put(&mut g, 0, "Morbid Opportunist");
+    assert!(!g.mana_sources(0).iter().any(|&(x, _)| x == elder));
+    let r = hand(&mut g, 0, "Rishkar, Peema Renegade");
+    play(
+        &mut g,
+        r,
+        false,
+        &[],
+        &[Action::Target(obj(elder)), Action::Target(obj(r))],
+    );
+    assert_eq!((g.power(elder), g.power(r)), (2, 3));
+    let green = [false, false, false, false, true];
+    assert!(g
+        .mana_sources(0)
+        .iter()
+        .any(|&(x, m)| x == elder && m.colors == green));
+    assert!(
+        !g.mana_sources(0).iter().any(|&(x, _)| x == r),
+        "Rishkar itself is summoning sick"
+    );
+}
+
+#[test]
+fn thickest_in_the_thicket_doubles_power_and_draws_with_the_biggest_creature() {
+    let mut g = table();
+    let p = put(&mut g, 0, "Garruk's Packleader");
+    put(&mut g, 1, "End-Raze Forerunners"); // 7/7
+    let c = hand(&mut g, 0, "Thickest in the Thicket");
+    play(&mut g, c, false, &[], &[Action::Target(obj(p))]);
+    assert_eq!(g.power(p), 8);
+    let n = g.players[0].hand.len();
+    while g.step != Step::End {
+        let a = match g.pending {
+            Pending::DeclareAttackers(_) => Action::FinishAttacks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].hand.len(), n + 2);
+}
+
+#[test]
+fn twenty_toed_toad_grows_on_group_attacks_and_wins_with_twenty_cards() {
+    let mut g = table();
+    let toad = put(&mut g, 0, "Twenty-Toed Toad");
+    let other = put(&mut g, 0, "Morbid Opportunist");
+    put(&mut g, 1, "Restoration Angel");
+    let n = g.players[0].hand.len();
+    attack_with(&mut g, 5, &[toad, other]);
+    assert_eq!(g.power(toad), 4);
+    assert_eq!(g.players[0].hand.len(), n + 2, "the draw step and the trigger");
+    assert!(!g.is_over());
+
+    let mut g = table();
+    let toad = put(&mut g, 0, "Twenty-Toed Toad");
+    while g.players[0].hand.len() < 19 {
+        hand(&mut g, 0, "Plains");
+    }
+    g.start_turn(5, 0); // draws the twentieth
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(toad));
+    act(&mut g, Action::FinishAttacks);
+    while !g.is_over() {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(g.players[1].lost);
+}
+
+#[test]
+fn domri_pumps_adds_r_or_g_protects_creature_spells_and_fights() {
+    let mut g = table();
+    let d = hand(&mut g, 0, "Domri, Anarch of Bolas");
+    play(&mut g, d, false, &[], &[]);
+    let mine = put(&mut g, 0, "Garruk's Packleader");
+    assert_eq!(g.power(mine), 5, "+1/+0");
+    act(&mut g, Action::Loyalty(d, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].pool.len(), 1);
+    assert_eq!(g.players[0].pool[0].colors, [false, false, false, true, true]);
+    let c = hand(&mut g, 0, "Morbid Opportunist");
+    act(&mut g, Action::Cast(c));
+    let pull = hand(&mut g, 0, "Long River's Pull");
+    play(&mut g, pull, false, &[obj(c)], &[]);
+    assert_eq!(g.obj(c).zone, Zone::Battlefield, "can't be countered this turn");
+    let theirs = put(&mut g, 1, "Morbid Opportunist");
+    to_main1(&mut g, 5, 0);
+    act(&mut g, Action::Loyalty(d, 1));
+    act(&mut g, Action::Target(obj(mine)));
+    act(&mut g, Action::Target(obj(theirs)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(theirs).zone, Zone::Graveyard);
+    assert_eq!(g.obj(d).loyalty, 4 - 2);
+}
+
+#[test]
+fn luminous_broodmoth_returns_a_creature_without_flying_once() {
+    let mut g = table();
+    put(&mut g, 0, "Luminous Broodmoth");
+    let c = put(&mut g, 0, "Morbid Opportunist");
+    let storm = hand(&mut g, 0, "Starstorm");
+    act(&mut g, Action::CastX(storm, 3));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(c).zone, Zone::Battlefield);
+    assert!(g.keywords(c).has(Keywords::FLYING), "a flying counter");
+    let storm2 = hand(&mut g, 0, "Starstorm");
+    act(&mut g, Action::CastX(storm2, 3));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(c).zone, Zone::Graveyard, "it flies now: no second return");
+}
+
+#[test]
+fn beastmaster_ascension_counts_attackers_and_pumps_at_seven() {
+    let mut g = table();
+    let asc = put(&mut g, 0, "Beastmaster Ascension");
+    let army: Vec<ObjId> = (0..7).map(|_| put(&mut g, 0, "Morbid Opportunist")).collect();
+    put(&mut g, 1, "Restoration Angel");
+    g.start_turn(5, 0);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.power(army[0]), 1);
+    for &a in &army {
+        act(&mut g, Action::Attack(a));
+    }
+    act(&mut g, Action::FinishAttacks);
+    resolve_all(&mut g, &[Action::Yes; 7]);
+    assert_eq!(g.obj(asc).quest, 7);
+    assert_eq!((g.power(army[0]), g.toughness(army[0])), (6, 8));
+}
+
+#[test]
+fn bident_of_thassa_draws_on_combat_damage_and_forces_attacks() {
+    let mut g = table();
+    let bident = put(&mut g, 0, "Bident of Thassa");
+    let mine = put(&mut g, 0, "Morbid Opportunist");
+    let theirs = put(&mut g, 1, "Morbid Opportunist");
+    attack_with(&mut g, 5, &[mine]);
+    let n = g.players[0].hand.len();
+    act(&mut g, Action::FinishBlocks);
+    while !g.legal_actions().contains(&Action::Yes) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Yes);
+    assert_eq!(g.players[0].hand.len(), n + 1);
+
+    g.start_turn(6, 1);
+    while g.pending != Pending::Priority(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Activate(bident, 0));
+    resolve_all(&mut g, &[]);
+    while g.pending != Pending::DeclareAttackers(1) {
+        act(&mut g, Action::PassPriority);
+    }
+    let legal = g.legal_actions();
+    assert!(!legal.contains(&Action::FinishAttacks), "must attack");
+    assert!(legal.contains(&Action::Attack(theirs)));
+}
+
+#[test]
+fn bosss_chauffeur_grows_with_the_team_and_leaves_citizens() {
+    let mut g = table();
+    put(&mut g, 0, "Morbid Opportunist");
+    put(&mut g, 0, "Morbid Opportunist");
+    let c = hand(&mut g, 0, "Boss's Chauffeur");
+    play(&mut g, c, false, &[], &[]);
+    assert_eq!(g.power(c), 3, "one plus two others");
+    let more = hand(&mut g, 0, "Morbid Opportunist");
+    play(&mut g, more, false, &[], &[]);
+    assert_eq!(g.power(c), 4, "alliance");
+    let storm = hand(&mut g, 0, "Starstorm");
+    act(&mut g, Action::CastX(storm, 4));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(c).zone, Zone::Graveyard);
+    assert_eq!(tokens(&g, 0, "Citizen").len(), 4);
+}
+
+#[test]
+fn honored_dreyleader_counts_squirrels_and_food() {
+    let mut g = table();
+    let squirrel = token_def(&g, "Squirrel");
+    let food = token_def(&g, "Food");
+    g.add_card(0, squirrel, Zone::Battlefield);
+    g.add_card(0, food, Zone::Battlefield);
+    let d = hand(&mut g, 0, "Honored Dreyleader");
+    assert!(g.def_of(d).keywords.has(Keywords::TRAMPLE));
+    play(&mut g, d, false, &[], &[]);
+    assert_eq!(g.power(d), 3);
+    let storm = hand(&mut g, 0, "Chatterstorm"); // two Squirrels: storm copies it once
+    play(&mut g, storm, false, &[], &[]);
+    assert_eq!(g.power(d), 5);
+    let other = hand(&mut g, 0, "Morbid Opportunist");
+    play(&mut g, other, false, &[], &[]);
+    assert_eq!(g.power(d), 5, "not a Squirrel or Food");
+}
+
+#[test]
+fn idol_of_oblivion_draws_after_a_token_and_becomes_an_eldrazi() {
+    let mut g = table();
+    let idol = put(&mut g, 0, "Idol of Oblivion");
+    assert!(!g.legal_actions().contains(&Action::Activate(idol, 0)));
+    let storm = hand(&mut g, 0, "Chatterstorm");
+    play(&mut g, storm, false, &[], &[]);
+    let n = g.players[0].hand.len();
+    act(&mut g, Action::Activate(idol, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].hand.len(), n + 1);
+    to_main1(&mut g, 5, 0);
+    act(&mut g, Action::Activate(idol, 1));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(idol).zone, Zone::Graveyard);
+    let e = tokens(&g, 0, "Eldrazi");
+    assert_eq!(e.len(), 1);
+    assert_eq!(g.power(e[0]), 10);
+}
+
+#[test]
+fn second_harvest_copies_each_token() {
+    let mut g = table();
+    let coup = hand(&mut g, 0, "Martial Coup");
+    act(&mut g, Action::CastX(coup, 2));
+    resolve_all(&mut g, &[]);
+    let h = hand(&mut g, 0, "Second Harvest");
+    play(&mut g, h, false, &[], &[]);
+    assert_eq!(tokens(&g, 0, "Soldier").len(), 4);
+}
+
+#[test]
+fn skyclave_apparition_exiles_a_cheap_permanent_and_pays_back_an_illusion() {
+    let mut g = table();
+    let cheap = put(&mut g, 1, "Arcane Signet");
+    let big = put(&mut g, 1, "End-Raze Forerunners");
+    let a = hand(&mut g, 0, "Skyclave Apparition");
+    act(&mut g, Action::Cast(a));
+    while !matches!(g.pending, Pending::ChooseTarget(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    let legal = g.legal_actions();
+    assert!(!legal.contains(&Action::Target(obj(big))), "mana value 4 or less");
+    act(&mut g, Action::Target(obj(cheap)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(cheap).zone, Zone::Exile);
+    let storm = hand(&mut g, 0, "Starstorm");
+    act(&mut g, Action::CastX(storm, 2));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(a).zone, Zone::Graveyard);
+    let ill = tokens(&g, 1, "Illusion");
+    assert_eq!(ill.len(), 1, "the exiled card's owner");
+    assert_eq!((g.power(ill[0]), g.toughness(ill[0])), (2, 2));
+}
+
+#[test]
+fn squirrel_nest_lets_its_land_tap_for_a_squirrel() {
+    let mut g = table();
+    let forest = put(&mut g, 0, "Forest");
+    let nest = hand(&mut g, 0, "Squirrel Nest");
+    play(&mut g, nest, false, &[obj(forest)], &[]);
+    assert_eq!(g.obj(nest).attached_to.map(|a| a.0), Some(forest));
+    act(&mut g, Action::Activate(nest, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(tokens(&g, 0, "Squirrel").len(), 1);
+    assert!(g.obj(forest).tapped);
+    assert!(!g.legal_actions().contains(&Action::Activate(nest, 0)));
+}
+
+#[test]
+fn chasm_skulker_grows_on_draws_and_splits_into_islandwalking_squids() {
+    let mut g = table();
+    let s = put(&mut g, 0, "Chasm Skulker");
+    let signet = put(&mut g, 0, "Arcane Signet");
+    let dispute = hand(&mut g, 0, "Deadly Dispute");
+    act(&mut g, Action::CastWith(dispute, signet));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.power(s), 3);
+    let storm = hand(&mut g, 0, "Starstorm");
+    act(&mut g, Action::CastX(storm, 3));
+    resolve_all(&mut g, &[]);
+    let squids = tokens(&g, 0, "Squid");
+    assert_eq!(squids.len(), 2);
+    assert!(g.keywords(squids[0]).has(Keywords::ISLANDWALK));
+}
+
+#[test]
+fn tempt_with_bunnies_pays_you_again_when_the_opponent_accepts() {
+    let mut g = table();
+    let (mine, theirs) = (g.players[0].hand.len(), g.players[1].hand.len());
+    let c = hand(&mut g, 0, "Tempt with Bunnies");
+    play(&mut g, c, false, &[], &[Action::Yes]);
+    assert_eq!(
+        (g.players[0].hand.len(), g.players[1].hand.len()),
+        (mine + 2, theirs + 1)
+    );
+    assert_eq!(
+        (tokens(&g, 0, "Rabbit").len(), tokens(&g, 1, "Rabbit").len()),
+        (2, 1)
+    );
+
+    let mut g = table();
+    let (mine, theirs) = (g.players[0].hand.len(), g.players[1].hand.len());
+    let c = hand(&mut g, 0, "Tempt with Bunnies");
+    play(&mut g, c, false, &[], &[Action::No]);
+    assert_eq!(
+        (g.players[0].hand.len(), g.players[1].hand.len()),
+        (mine + 1, theirs)
+    );
+    assert_eq!(
+        (tokens(&g, 0, "Rabbit").len(), tokens(&g, 1, "Rabbit").len()),
+        (1, 0)
+    );
+}
+
+#[test]
+fn path_of_discovery_makes_entering_creatures_explore() {
+    let mut g = table();
+    put(&mut g, 0, "Path of Discovery");
+    let n = g.players[0].hand.len();
+    let a = hand(&mut g, 0, "Morbid Opportunist");
+    play(&mut g, a, false, &[], &[]); // reveals a Plains: to hand
+    assert_eq!(g.players[0].hand.len(), n + 1, "the Plains came to hand");
+    assert_eq!(g.power(a), 1);
+    let top = g.add_card(0, bid("Morbid Opportunist"), Zone::Library);
+    let b = hand(&mut g, 0, "Morbid Opportunist");
+    play(&mut g, b, false, &[], &[Action::Yes]); // a nonland: counter, and mill it
+    assert_eq!(g.power(b), 2);
+    assert_eq!(g.obj(top).zone, Zone::Graveyard);
+}
+
+#[test]
+fn tendershoot_dryad_makes_saprolings_that_grow_with_the_citys_blessing() {
+    let mut g = with_lands(&[]);
+    put(&mut g, 0, "Tendershoot Dryad");
+    to_main1(&mut g, 5, 0);
+    let saps = tokens(&g, 0, "Saproling");
+    assert_eq!(saps.len(), 1);
+    assert_eq!(g.power(saps[0]), 1, "two permanents: no blessing");
+    for _ in 0..8 {
+        put(&mut g, 0, "Plains");
+    }
+    to_main1(&mut g, 6, 1); // each upkeep: the opponent's too
+    let saps = tokens(&g, 0, "Saproling");
+    assert_eq!(saps.len(), 2);
+    assert!(g.city_blessing[0]);
+    assert_eq!((g.power(saps[0]), g.toughness(saps[0])), (3, 3));
+}
+
+#[test]
+fn wandertale_mentor_grows_when_you_expend_four() {
+    let mut g = table();
+    let m = put(&mut g, 0, "Wandertale Mentor");
+    let rg = [false, false, false, true, true];
+    assert!(g.mana_sources(0).iter().any(|&(x, s)| x == m && s.colors == rg));
+    let a = hand(&mut g, 0, "Morbid Opportunist"); // 3 mana
+    play(&mut g, a, false, &[], &[]);
+    assert_eq!(g.power(m), 2);
+    let b = hand(&mut g, 0, "Morbid Opportunist"); // the fourth to sixth
+    play(&mut g, b, false, &[], &[]);
+    assert_eq!(g.power(m), 3);
+    let c = hand(&mut g, 0, "Morbid Opportunist");
+    play(&mut g, c, false, &[], &[]);
+    assert_eq!(g.power(m), 3, "only once each turn");
+}
+
+#[test]
+fn trailtracker_scout_returns_a_permanent_card_when_you_expend_eight() {
+    let mut g = table();
+    put(&mut g, 0, "Trailtracker Scout");
+    let card = g.add_card(0, bid("Arcane Signet"), Zone::Graveyard);
+    let coup = hand(&mut g, 0, "Martial Coup");
+    act(&mut g, Action::CastX(coup, 6)); // eight mana
+    resolve_all(&mut g, &[Action::Target(obj(card))]);
+    assert_eq!(g.obj(card).zone, Zone::Hand);
+}
+
+#[test]
+fn sword_of_the_squeak_attaches_to_small_kin_and_counts_ones() {
+    let mut g = table();
+    let sword = put(&mut g, 0, "Sword of the Squeak");
+    put(&mut g, 0, "Morbid Opportunist"); // base power 1
+    let storm = hand(&mut g, 0, "Chatterstorm");
+    play(&mut g, storm, false, &[], &[Action::Yes]);
+    let sq = tokens(&g, 0, "Squirrel")[0];
+    assert_eq!(g.obj(sword).attached_to.map(|a| a.0), Some(sq));
+    assert_eq!(
+        (g.power(sq), g.toughness(sq)),
+        (3, 3),
+        "two creatures with base power or toughness 1"
+    );
+}
+
+#[test]
+fn rapid_augmenter_hastes_base_power_one_and_grows_on_uncast_creatures() {
+    let mut g = table();
+    let r = put(&mut g, 0, "Rapid Augmenter");
+    let a = hand(&mut g, 0, "Morbid Opportunist");
+    play(&mut g, a, false, &[], &[]);
+    assert!(g.keywords(a).has(Keywords::HASTE));
+    assert_eq!(g.power(r), 1, "it was cast");
+    let storm = hand(&mut g, 0, "Chatterstorm");
+    play(&mut g, storm, false, &[], &[]);
+    let sq = tokens(&g, 0, "Squirrel");
+    assert_eq!(sq.len(), 2, "storm: one copy");
+    assert!(g.keywords(sq[0]).has(Keywords::HASTE));
+    assert_eq!(g.power(r), 3);
+    assert!(g.keywords(r).has(Keywords::UNBLOCKABLE));
+}

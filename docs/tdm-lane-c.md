@@ -371,3 +371,39 @@ untap step"), `Effect::PumpYoursPowerAtLeastAndGrant`, `Reduction::PerTokenYouCo
 `CardDef::{small_creatures_unblockable, big_creature_spell_discount, other_non_subtype_enters_with_counter}`,
 `Activated::sacrifice_creature` ("Sacrifice a creature", this one included). Chittering Witch's "number of
 opponents" is 1 in the 1v1 game.
+
+Batch 3 (9): Long River's Pull, Wear Down, Jolly Gerbils, Oran-Rief, Rishkar, Thickest in the Thicket,
+Twenty-Toed Toad, Domri Anarch of Bolas, Luminous Broodmoth.
+Gift: "Gift a card" is promised by casting the spell kicked for {0} (`kicker = Some(ManaCost::default())`); the
+kicked version starts with `Effect::GiftCard` (the opponent draws, and `When::YouGiveGift` triggers).
+Core: `When::{YouGiveGift, CreatureYouControlWithoutFlyingDies}`, `Condition::ControlGreatestPower`,
+`Effect::{GiftCard, CountersOnGreenEnteredThisTurn, CountersEqualPower, WinIfCountersOrHandAtLeast, AddManaEither
+(one pool mana that pays either color), CreatureSpellsUncounterableThisTurn, ReturnDiedWithFlyingCounter}`,
+`CardDef::{counter_creatures_tap_for_green, max_hand_size}`, `Game::creatures_uncounterable_turn`.
+Not done: Raging Ravine (becoming a creature has no way to set its colors to red and green).
+
+Batch 4 (9): Beastmaster Ascension, Bident of Thassa, Boss's Chauffeur, Honored Dreyleader, Idol of Oblivion,
+Second Harvest, Skyclave Apparition, Squirrel Nest, Chasm Skulker.
+Core: `Keywords::ISLANDWALK` (bit 16; can't be blocked while the defender controls an Island),
+`When::{CreatureYouControlAttacks, AnotherYouControlEntersWithAnySubtype}`, `StaticCondition::QuestCountersAtLeast`,
+`Effect::{QuestCounterSelf, OpponentsAttackThisTurn, CreateTokensPerLastCounters, CountersSelfPerOtherWithSubtypes,
+CopyEachTokenYouControl, ExileLinked, LinkedOwnerCreatesXx}`, `Filter::nontoken` (and `max_mana_value` now also
+limits battlefield targets), `Activated::if_created_token_this_turn`, `CardDef::enters_counters_one_plus_others`,
+`Object::quest`, `Game::{must_attack_turn, token_created_turn}`. A granted Aura ability with `tap_attached` is
+offered only while the enchanted permanent can tap. Tokens (after lane B's Thopter and Storm Crow at 40-41):
+Squid 42, Citizen 43, Eldrazi 44, Illusion 45 (Skyclave's X/X uses `copy_base_pt`).
+
+Batch 5 (7): Tempt with Bunnies, Path of Discovery, Tendershoot Dryad, Wandertale Mentor, Trailtracker Scout,
+Sword of the Squeak, Rapid Augmenter.
+Core: `When::{AnotherCreatureYouControlEntersWithBasePower, AnotherCreatureYouControlEntersNotCast, Expend}` (the
+entering creature fills a `triggering` first target, also for `AnotherYouControlEntersWithAnySubtype`),
+`StaticCondition::CitysBlessing`, `Scale::PerYourCreatureBasePowerOrToughnessOne`, `Effect::{OpponentMay, Explore}`
+(Yes to the May mills the revealed nonland), `CardDef::ascend`, `Game::{city_blessing, mana_spent_on_spells}`.
+Expend counts the mana value of each spell's paid cost. Saproling token at 46.
+
+Paused here (BLC) for the playgroup lists. BLC lane C not done: Academy Manufactor, Arthur, Cache Grab, Casualties
+of War, Combat Celebrant, Coveted Jewel, Echoing Assault, Evercoat Ursine, Fisher's Talent, Fortune Teller's
+Talent, Gilded Lotus ("three mana of any one color": the payer has no one-color constraint), Hazel's Brewmaster,
+Kwain (both players choose), Maskwood Nexus, Mr. Foxglove, Perch Protection, Plumb the Forbidden, Promise of
+Loyalty, Raging Ravine, Realm-Cloaked Giant (adventure), Rolling Hamsphere (crew), Rose Room Treasurer, Saw in
+Half, Shield Broker, Simic Ascendancy, Storm of Souls, Swarmyard (regeneration), Tamiyo, Woe Strider (escape).

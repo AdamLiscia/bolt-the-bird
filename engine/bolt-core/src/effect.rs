@@ -89,6 +89,8 @@ pub struct Filter {
     pub tokens_only: bool,
     /// Nonlegendary permanents only.
     pub nonlegendary: bool,
+    /// Nontoken permanents only.
+    pub nontoken: bool,
     /// Permanents that entered the battlefield this turn.
     pub entered_this_turn: bool,
 }
@@ -134,6 +136,7 @@ impl Filter {
         nonland_cards: false,
         tokens_only: false,
         nonlegendary: false,
+        nontoken: false,
         entered_this_turn: false,
     };
 
@@ -966,6 +969,47 @@ pub enum Effect {
         toughness: i32,
         keywords: crate::Keywords,
     },
+    /// "Gift a card": the opponent draws a card (the gift was promised: the spell was cast kicked),
+    /// and "whenever you give a gift" triggers.
+    GiftCard,
+    /// Put a +1/+1 counter on each green creature that entered the battlefield this turn.
+    CountersOnGreenEnteredThisTurn,
+    /// Put X +1/+1 counters on the creature in `slot`, X its power.
+    CountersEqualPower(u8),
+    /// You win the game if the source has at least `n` counters or you have at least `n` cards in
+    /// hand (Twenty-Toed Toad).
+    WinIfCountersOrHandAtLeast(i32),
+    /// Add one mana that can be either of these colors.
+    AddManaEither(crate::Color, crate::Color),
+    /// Creature spells you cast this turn can't be countered.
+    CreatureSpellsUncounterableThisTurn,
+    /// Return the creature in the trigger's `extra` from its owner's graveyard to the battlefield
+    /// under its owner's control with a flying counter on it (Luminous Broodmoth).
+    ReturnDiedWithFlyingCounter,
+    /// Put a quest counter on the source.
+    QuestCounterSelf,
+    /// Creatures the opponent controls attack this turn if able (Bident of Thassa).
+    OpponentsAttackThisTurn,
+    /// Create a token (`def`) for each +1/+1 counter the source had as it left the battlefield.
+    CreateTokensPerLastCounters {
+        def: usize,
+    },
+    /// Put a +1/+1 counter on the source for each other permanent you control with one of these
+    /// subtypes.
+    CountersSelfPerOtherWithSubtypes(&'static [&'static str]),
+    /// For each token you control, create a token that's a copy of it.
+    CopyEachTokenYouControl,
+    /// Exile the permanent in `slot`; the source remembers it (its `linked_card`).
+    ExileLinked(u8),
+    /// The source's linked card's owner creates an X/X token (`def`), X that card's mana value.
+    LinkedOwnerCreatesXx {
+        def: usize,
+    },
+    /// The opponent may accept the offer: if they decline, the rest of the effects don't happen.
+    OpponentMay,
+    /// The creature in `slot` explores (CR 701.44): reveal the top card; a land goes to hand, else
+    /// a +1/+1 counter on the creature and its controller may put the card into the graveyard.
+    Explore(u8),
     /// Return a land you control (your choice, not targeted) to its owner's hand (the karoo lands).
     ReturnLandYouControl,
     /// The creature in slot `from` deals damage equal to its power (last known if it left) to the
@@ -1127,6 +1171,8 @@ pub enum Scale {
     PerCreatureYouControl,
     /// Other creatures you control with base power 1 (Zinnia).
     PerOtherYourCreatureBasePowerOne,
+    /// Creatures you control with base power or toughness 1 (Sword of the Squeak).
+    PerYourCreatureBasePowerOrToughnessOne,
     /// Colors among permanents you control (Faeburrow Elder).
     PerColorAmongYourPermanents,
     /// The source's own kind of counters (Chitterspitter's acorn counters).
@@ -1152,6 +1198,10 @@ pub enum StaticCondition {
     ChosenMode(u8),
     /// At least this many different kinds of counters among creatures its controller controls.
     CounterKindsAmongYoursAtLeast(u8),
+    /// The source has at least this many quest counters.
+    QuestCountersAtLeast(i32),
+    /// Its controller has the city's blessing (ascend).
+    CitysBlessing,
 }
 
 /// A static ability that changes characteristics (CR 604, 613 layers 6 and 7c).
@@ -1286,6 +1336,8 @@ pub enum Condition {
     YourMainPhase,
     /// You have exactly this many cards in your hand (Triskaidekaphile).
     HandSizeExactly(u8),
+    /// You control a creature with the greatest power, or tied for it, among all creatures.
+    ControlGreatestPower,
     /// An opponent controls more lands than you (Loyal Warhound).
     OpponentControlsMoreLands,
     /// The source's X (as it was cast) is at least this (ravenous: "If X is 5 or more").
@@ -1499,6 +1551,21 @@ pub enum When {
     TokenYouControlLeaves,
     /// "Whenever a token you control enters".
     TokenYouControlEnters,
+    /// "Whenever you give a gift".
+    YouGiveGift,
+    /// "Whenever a creature you control without flying dies" (the creature in `extra`).
+    CreatureYouControlWithoutFlyingDies,
+    /// "Whenever a creature you control attacks" (once for each attacker).
+    CreatureYouControlAttacks,
+    /// "Whenever another [A] or [B] you control enters" (any permanent with one of the subtypes).
+    AnotherYouControlEntersWithAnySubtype(&'static [&'static str]),
+    /// "Whenever another creature you control with base power N enters" (that creature is the
+    /// trigger's first target, if its first filter is `triggering`).
+    AnotherCreatureYouControlEntersWithBasePower(i32),
+    /// "Whenever another creature you control enters, if it wasn't cast".
+    AnotherCreatureYouControlEntersNotCast,
+    /// "Whenever you expend N": as you spend your Nth total mana on spells this turn.
+    Expend(u8),
     /// "At the beginning of each player's draw step" (either player's permanent; the active player is
     /// "that player").
     EachDrawStep,
@@ -1516,8 +1583,6 @@ pub enum When {
     OpponentAttacksWithAtLeastTwo,
     /// "Whenever an opponent casts their second spell each turn".
     OpponentCastsSecondSpell,
-    /// "Whenever you expend N" (Bloomburrow): as you spend your Nth total mana on spells this turn.
-    YouExpend(u8),
     /// "Enchantment spells you cast from your hand have cascade": when you cast one, with it in `extra`.
     YouCastEnchantmentFromHand,
 }

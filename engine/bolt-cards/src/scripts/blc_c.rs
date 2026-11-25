@@ -366,6 +366,256 @@ pub fn script(name: &str) -> Option<Script> {
                 d.activated[n].sacrifice_creature = true;
             },
         ),
+        "Long River's Pull" => s(
+            &["Gift a card", "Counter target creature spell. If the gift was promised, instead counter target spell."],
+            |d, _| {
+                // The gift is promised by casting it "kicked" for no extra cost.
+                d.kicker = Some(ManaCost::default());
+                let creature_spell = Filter { spell_creature: Some(true), ..SPELL };
+                spell(d, vec![creature_spell], vec![Effect::Counter(0)]);
+                d.kicked_spell = Some(Ability::new(vec![SPELL], vec![Effect::GiftCard, Effect::Counter(0)]));
+            },
+        ),
+        "Wear Down" => s(
+            &[
+                "Gift a card",
+                "Destroy target artifact or enchantment. If the gift was promised, instead destroy two target artifacts and/or enchantments.",
+            ],
+            |d, _| {
+                d.kicker = Some(ManaCost::default());
+                spell(d, vec![ARTIFACT_OR_ENCHANTMENT], vec![Effect::Destroy(0)]);
+                let two = vec![ARTIFACT_OR_ENCHANTMENT; 2];
+                d.kicked_spell = Some(Ability::new(two, vec![Effect::GiftCard, Effect::Destroy(0), Effect::Destroy(1)]));
+            },
+        ),
+        "Jolly Gerbils" => s(&["Whenever you give a gift, draw a card."], |d, _| on(d, When::YouGiveGift, vec![], vec![draw(1)])),
+        "Oran-Rief, the Vastwood" => s(
+            &["This land enters tapped.", "{T}: Add {G}.", "{T}: Put a +1/+1 counter on each green creature that entered this turn."],
+            |d, _| {
+                d.enters_tapped = true;
+                d.mana = Some(ManaSource::of(&[Color::Green]));
+                activated(d, "", true, vec![], vec![Effect::CountersOnGreenEnteredThisTurn]);
+            },
+        ),
+        "Rishkar, Peema Renegade" => s(
+            &[
+                "When Rishkar enters, put a +1/+1 counter on each of up to two target creatures.",
+                "Each creature you control with a counter on it has \"{T}: Add {G}.\"",
+            ],
+            |d, _| {
+                let counters = vec![Effect::Counters { slot: 0, n: 1 }, Effect::Counters { slot: 1, n: 1 }];
+                d.triggers.push(Trigger { when: When::Enters, ability: up_to(vec![CREATURE; 2], counters) });
+                d.counter_creatures_tap_for_green = true;
+            },
+        ),
+        "Thickest in the Thicket" => s(
+            &[
+                "When this enchantment enters, put X +1/+1 counters on target creature, where X is that creature's power.",
+                "At the beginning of your end step, draw two cards if you control the creature with the greatest power or tied for the greatest power.",
+            ],
+            |d, _| {
+                on(d, When::Enters, vec![CREATURE], vec![Effect::CountersEqualPower(0)]);
+                conditional(d, When::EndStep { your_turn_only: true }, Condition::ControlGreatestPower, vec![], vec![draw(2)]);
+            },
+        ),
+        "Twenty-Toed Toad" => s(
+            &[
+                "Your maximum hand size is twenty.",
+                "Whenever you attack with two or more creatures, put a +1/+1 counter on this creature and draw a card.",
+                "Whenever this creature attacks, you win the game if there are twenty or more counters on it or you have twenty or more cards in hand.",
+            ],
+            |d, _| {
+                d.max_hand_size = 20;
+                on(d, When::YouAttackWithAtLeast(2), vec![], vec![Effect::CountersSelf { n: 1 }, draw(1)]);
+                on(d, When::Attacks, vec![], vec![Effect::WinIfCountersOrHandAtLeast(20)]);
+            },
+        ),
+        "Domri, Anarch of Bolas" => s(
+            &[
+                "Creatures you control get +1/+0.",
+                "+1: Add {R} or {G}. Creature spells you cast this turn can't be countered.",
+                "−2: Target creature you control fights target creature you don't control.",
+            ],
+            |d, _| {
+                static_on(d, Scope::YourCreatures, false, Keywords::NONE);
+                d.statics.last_mut().expect("just added").power = 1;
+                let mana = vec![Effect::AddManaEither(Color::Red, Color::Green), Effect::CreatureSpellsUncounterableThisTurn];
+                loyalty(d, 1, Ability::new(vec![], mana));
+                loyalty(d, -2, Ability::new(vec![YOUR_CREATURE, OPP_CREATURE], vec![Effect::FightBetween { a: 0, b: 1 }]));
+            },
+        ),
+        "Luminous Broodmoth" => s(
+            &["Whenever a creature you control without flying dies, return it to the battlefield under its owner's control with a flying counter on it."],
+            |d, _| on(d, When::CreatureYouControlWithoutFlyingDies, vec![], vec![Effect::ReturnDiedWithFlyingCounter]),
+        ),
+        "Beastmaster Ascension" => s(
+            &[
+                "Whenever a creature you control attacks, you may put a quest counter on this enchantment.",
+                "As long as this enchantment has seven or more quest counters on it, creatures you control get +5/+5.",
+            ],
+            |d, _| {
+                may(d, When::CreatureYouControlAttacks, vec![], vec![Effect::QuestCounterSelf]);
+                static_on(d, Scope::YourCreatures, false, Keywords::NONE);
+                let st = d.statics.last_mut().expect("just added");
+                (st.power, st.toughness) = (5, 5);
+                st.condition = Some(StaticCondition::QuestCountersAtLeast(7));
+            },
+        ),
+        "Bident of Thassa" => s(
+            &[
+                "Whenever a creature you control deals combat damage to a player, you may draw a card.",
+                "{1}{U}, {T}: Creatures your opponents control attack this turn if able.",
+            ],
+            |d, _| {
+                may(d, When::YourCreatureDealsCombatDamageToPlayer, vec![], vec![draw(1)]);
+                activated(d, "{1}{U}", true, vec![], vec![Effect::OpponentsAttackThisTurn]);
+            },
+        ),
+        "Boss's Chauffeur" => s(
+            &[
+                "This creature enters with a number of +1/+1 counters on it equal to one plus the number of other creatures you control.",
+                "Alliance — Whenever another creature you control enters, put a +1/+1 counter on this creature.",
+                "When this creature dies, create a 1/1 green and white Citizen creature token for each +1/+1 counter on it.",
+            ],
+            |d, t| {
+                d.enters_counters_one_plus_others = true;
+                on(d, When::AnotherCreatureYouControlEnters, vec![], vec![Effect::CountersSelf { n: 1 }]);
+                on(d, When::Dies, vec![], vec![Effect::CreateTokensPerLastCounters { def: t.citizen }]);
+            },
+        ),
+        "Honored Dreyleader" => s(
+            &[
+                "When this creature enters, put a +1/+1 counter on it for each other Squirrel and/or Food you control.",
+                "Whenever another Squirrel or Food you control enters, put a +1/+1 counter on this creature.",
+            ],
+            |d, _| {
+                const KIN: &[&str] = &["Squirrel", "Food"];
+                on(d, When::Enters, vec![], vec![Effect::CountersSelfPerOtherWithSubtypes(KIN)]);
+                on(d, When::AnotherYouControlEntersWithAnySubtype(KIN), vec![], vec![Effect::CountersSelf { n: 1 }]);
+            },
+        ),
+        "Idol of Oblivion" => s(
+            &[
+                "{T}: Draw a card. Activate only if you created a token this turn.",
+                "{8}, {T}, Sacrifice this artifact: Create a 10/10 colorless Eldrazi creature token.",
+            ],
+            |d, t| {
+                let n = activated(d, "", true, vec![], vec![draw(1)]);
+                d.activated[n].if_created_token_this_turn = true;
+                let n = activated(d, "{8}", true, vec![], vec![Effect::CreateToken { who: Who::You, def: t.eldrazi, n: 1 }]);
+                d.activated[n].sacrifice_self = true;
+            },
+        ),
+        "Second Harvest" => s(&["For each token you control, create a token that's a copy of that permanent."], |d, _| {
+            spell(d, vec![], vec![Effect::CopyEachTokenYouControl])
+        }),
+        "Skyclave Apparition" => s(
+            &[
+                "When this creature enters, exile up to one target nonland, nontoken permanent you don't control with mana value 4 or less.",
+                "When this creature leaves the battlefield, the exiled card's owner creates an X/X blue Illusion creature token, where X is the mana value of the exiled card.",
+            ],
+            |d, t| {
+                let f = Filter { nontoken: true, max_mana_value: Some(4), ..OPP_NONLAND };
+                d.triggers.push(Trigger { when: When::Enters, ability: up_to(vec![f], vec![Effect::ExileLinked(0)]) });
+                on(d, When::LeavesBattlefield, vec![], vec![Effect::LinkedOwnerCreatesXx { def: t.illusion }]);
+            },
+        ),
+        "Squirrel Nest" => s(&["Enchant land", "Enchanted land has \"{T}: Create a 1/1 green Squirrel creature token.\""], |d, t| {
+            d.aura = true;
+            let land = Filter { players: false, creatures: false, planeswalkers: false, lands: true, ..Filter::ANY };
+            d.spell = Some(Ability::new(vec![land], vec![]));
+            let n = activated(d, "", false, vec![], vec![Effect::CreateToken { who: Who::You, def: t.squirrel, n: 1 }]);
+            d.activated[n].granted_to_attached = true;
+            d.activated[n].tap_attached = true;
+        }),
+        "Chasm Skulker" => s(
+            &[
+                "Whenever you draw a card, put a +1/+1 counter on this creature.",
+                "When this creature dies, create X 1/1 blue Squid creature tokens with islandwalk, where X is the number of +1/+1 counters on this creature.",
+            ],
+            |d, t| {
+                on(d, When::YouDraw, vec![], vec![Effect::CountersSelf { n: 1 }]);
+                on(d, When::Dies, vec![], vec![Effect::CreateTokensPerLastCounters { def: t.squid }]);
+            },
+        ),
+        "Tempt with Bunnies" => s(
+            &["Tempting Offer — Draw a card and create a 1/1 white Rabbit creature token. Then each opponent may draw a card and create a 1/1 white Rabbit creature token. For each opponent who does, you draw a card and you create a 1/1 white Rabbit creature token."],
+            |d, t| {
+                let rabbit = |who| Effect::CreateToken { who, def: t.rabbit, n: 1 };
+                spell(
+                    d,
+                    vec![],
+                    vec![
+                        draw(1),
+                        rabbit(Who::You),
+                        // One opponent in a 1v1 game.
+                        Effect::OpponentMay,
+                        Effect::Draw { who: Who::EachOpponent, n: 1 },
+                        rabbit(Who::EachOpponent),
+                        draw(1),
+                        rabbit(Who::You),
+                    ],
+                );
+            },
+        ),
+        "Path of Discovery" => s(&["Whenever a creature you control enters, it explores."], |d, _| {
+            let it = Filter { triggering: true, ..CREATURE };
+            on(d, When::AnotherCreatureYouControlEnters, vec![it], vec![Effect::Explore(0), Effect::Mill { who: Who::You, n: 1 }]);
+        }),
+        "Tendershoot Dryad" => s(
+            &["Ascend", "At the beginning of each upkeep, create a 1/1 green Saproling creature token.", "Saprolings you control get +2/+2 as long as you have the city's blessing."],
+            |d, t| {
+                d.ascend = true;
+                on(d, When::Upkeep { your_turn_only: false }, vec![], vec![Effect::CreateToken { who: Who::You, def: t.saproling, n: 1 }]);
+                lord(d, "Saproling"); // the Dryad is no Saproling, so "other" changes nothing
+                let st = d.statics.last_mut().expect("just added");
+                (st.power, st.toughness) = (2, 2);
+                st.condition = Some(StaticCondition::CitysBlessing);
+            },
+        ),
+        "Wandertale Mentor" => s(&["Whenever you expend 4, put a +1/+1 counter on this creature.", "{T}: Add {R} or {G}."], |d, _| {
+            on(d, When::Expend(4), vec![], vec![Effect::CountersSelf { n: 1 }]);
+            d.mana = Some(ManaSource::of(&[Color::Red, Color::Green]));
+        }),
+        "Trailtracker Scout" => s(
+            &["{T}: Add one mana of any color.", "Whenever you expend 8, return up to one target permanent card from your graveyard to your hand."],
+            |d, _| {
+                d.mana = Some(ManaSource::of(&Color::ALL));
+                let card = Filter { permanent_cards: true, ..graveyard_cards(false, Controller::You) };
+                d.triggers.push(Trigger { when: When::Expend(8), ability: up_to(vec![card], vec![Effect::Bounce(0)]) });
+            },
+        ),
+        "Sword of the Squeak" => s(
+            &[
+                "Equipped creature gets +1/+1 for each creature you control with base power or toughness 1.",
+                "Whenever a Hamster, Mouse, Rat, or Squirrel you control enters, you may attach this Equipment to that creature.",
+                "Equip {2}",
+            ],
+            |d, _| {
+                attached(d, false, 1, 1, Keywords::NONE);
+                d.statics.last_mut().expect("just added").scale = Some(Scale::PerYourCreatureBasePowerOrToughnessOne);
+                const KIN: &[&str] = &["Hamster", "Mouse", "Rat", "Squirrel"];
+                let it = Filter { triggering: true, ..CREATURE };
+                may(d, When::AnotherYouControlEntersWithAnySubtype(KIN), vec![it], vec![Effect::Attach { slot: 0 }]);
+                equip(d, "{2}");
+            },
+        ),
+        "Rapid Augmenter" => s(
+            &[
+                "Whenever another creature you control with base power 1 enters, it gains haste until end of turn.",
+                "Whenever another creature you control enters, if it wasn't cast, put a +1/+1 counter on this creature and this creature can't be blocked this turn.",
+            ],
+            |d, _| {
+                let it = Filter { triggering: true, ..CREATURE };
+                on(d, When::AnotherCreatureYouControlEntersWithBasePower(1), vec![it], vec![Effect::Grant { slot: 0, keywords: Keywords::HASTE }]);
+                on(
+                    d,
+                    When::AnotherCreatureYouControlEntersNotCast,
+                    vec![],
+                    vec![Effect::CountersSelf { n: 1 }, Effect::GrantSelf { keywords: Keywords::UNBLOCKABLE }],
+                );
+            },
+        ),
         _ => None,
     }
 }
@@ -434,4 +684,29 @@ pub const BLC_C_SCRIPTED: &[&str] = &[
     "Goreclaw, Terror of Qal Sisma",
     "Grumgully, the Generous",
     "Chittering Witch",
+    "Long River's Pull",
+    "Wear Down",
+    "Jolly Gerbils",
+    "Oran-Rief, the Vastwood",
+    "Rishkar, Peema Renegade",
+    "Thickest in the Thicket",
+    "Twenty-Toed Toad",
+    "Domri, Anarch of Bolas",
+    "Luminous Broodmoth",
+    "Beastmaster Ascension",
+    "Bident of Thassa",
+    "Boss's Chauffeur",
+    "Honored Dreyleader",
+    "Idol of Oblivion",
+    "Second Harvest",
+    "Skyclave Apparition",
+    "Squirrel Nest",
+    "Chasm Skulker",
+    "Tempt with Bunnies",
+    "Path of Discovery",
+    "Tendershoot Dryad",
+    "Wandertale Mentor",
+    "Trailtracker Scout",
+    "Sword of the Squeak",
+    "Rapid Augmenter",
 ];

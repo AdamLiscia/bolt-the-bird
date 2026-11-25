@@ -1081,7 +1081,7 @@ pub fn script(name: &str) -> Option<Script> {
             },
         ),
         "Teapot Slinger" => s(&["Whenever you expend 4, this creature deals 2 damage to each opponent."], |d, _| {
-            on(d, When::YouExpend(4), vec![], vec![damage(2, Recipient::EachOpponent)])
+            on(d, When::Expend(4), vec![], vec![damage(2, Recipient::EachOpponent)])
         }),
         "Helm of the Host" => s(
             &[

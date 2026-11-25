@@ -167,6 +167,65 @@ impl Game {
 
 #[pymethods]
 impl Game {
+    /// A 1v1 Commander game (CR 903) on `set`'s cards: each deck is the cards besides its commanders
+    /// (one or two each); 40 life by default; the owner chooses whether a commander that would go to
+    /// a graveyard or exile goes to the command zone (`auto_command_zone` seats always move it).
+    #[staticmethod]
+    #[pyo3(signature = (deck_a, deck_b, commanders_a, commanders_b, seed, first = 0, set = "CMD",
+                        starting_life = 40, auto_command_zone = (false, false)))]
+    #[allow(clippy::too_many_arguments)]
+    fn commander(
+        deck_a: Vec<usize>,
+        deck_b: Vec<usize>,
+        commanders_a: Vec<usize>,
+        commanders_b: Vec<usize>,
+        seed: u64,
+        first: usize,
+        set: &str,
+        starting_life: i32,
+        auto_command_zone: (bool, bool),
+    ) -> PyResult<Self> {
+        let cs = card_set(set)?;
+        let mask = &cs.supported;
+        for &c in deck_a
+            .iter()
+            .chain(&deck_b)
+            .chain(&commanders_a)
+            .chain(&commanders_b)
+        {
+            if c >= mask.len() || !mask[c] {
+                return Err(PyValueError::new_err(format!(
+                    "card {c} is not a supported {set} card"
+                )));
+            }
+        }
+        if first > 1 || !(1..=2).contains(&commanders_a.len()) || !(1..=2).contains(&commanders_b.len()) {
+            return Err(PyValueError::new_err(
+                "first must be 0 or 1; one or two commanders a seat",
+            ));
+        }
+        let options = bolt_core::CommanderOptions {
+            starting_life,
+            auto_command_zone: [auto_command_zone.0, auto_command_zone.1],
+        };
+        let mut core = Core::new_commander_with(
+            cs.defs.clone(),
+            [&deck_a, &deck_b],
+            [&commanders_a, &commanders_b],
+            options,
+            seed,
+            first,
+        );
+        core.commander_choice = true; // CR 903.9a: the owner chooses
+        let mut g = Game {
+            g: core,
+            legal: Vec::new(),
+            log: Vec::new(),
+        };
+        g.refresh();
+        Ok(g)
+    }
+
     /// A new game between two decks of card numbers, shuffled by `seed`; `first` plays first.
     #[new]
     #[pyo3(signature = (deck_a, deck_b, seed, first = 0, set = "FDN"))]
@@ -515,6 +574,7 @@ impl Game {
                         e.set_item("optional", *optional)?;
                     }
                     D::SacrificeAnother { source } => e.set_item("card", one(*source))?,
+                    D::CommanderToCommandZone { card } => e.set_item("card", one(*card))?,
                     D::SacrificeCreatures { left } => e.set_item("left", *left)?,
                     D::Search { what, .. } => e.set_item("what", format!("{what:?}"))?,
                     _ => {}
@@ -555,9 +615,33 @@ impl Game {
                 pc.set_item(name, counts[k])?;
             }
             e.set_item("pool_colors", pc)?;
+            // Commander: this player's command zone, (id, card, tax), and the combat damage they've
+            // taken from each commander object, (commander id, card, its owner, damage).
+            let command: Vec<(i64, i64, u32)> = g
+                .command
+                .iter()
+                .filter(|&&c| g.obj(c).owner == p)
+                .map(|&c| (id(c), g.obj(c).def as i64, 2 * g.obj(c).command_zone_casts as u32))
+                .collect();
+            e.set_item("command", command)?;
+            let taken: Vec<(i64, i64, usize, i32)> = g
+                .commander_damage_from
+                .iter()
+                .filter(|&&(_, q, _)| q == p)
+                .map(|&(c, _, n)| (id(c), g.obj(c).def as i64, g.obj(c).owner, n))
+                .collect();
+            e.set_item("commander_damage", taken)?;
             players.append(e)?;
         }
         d.set_item("players", players)?;
+        let commanders: Vec<(i64, usize)> = g
+            .commanders
+            .iter()
+            .chain(&g.partners)
+            .flatten()
+            .map(|&c| (id(c), g.obj(c).owner))
+            .collect();
+        d.set_item("commanders", commanders)?;
         let field = PyList::empty(py);
         for &c in &g.battlefield {
             let o = g.obj(c);
@@ -772,11 +856,32 @@ fn supported() -> Vec<&'static str> {
     bolt_cards::supported()
 }
 
+/// The problems with a Commander deck in `set` (empty if it's legal): commanders, size, singleton,
+/// color identity. `deck` is the cards besides the commanders.
+#[pyfunction]
+#[pyo3(signature = (commanders, deck, set = "CMD"))]
+fn commander_deck_problems(commanders: Vec<usize>, deck: Vec<usize>, set: &str) -> PyResult<Vec<String>> {
+    Ok(bolt_cards::commander_deck_problems_for(
+        card_set(set)?,
+        &commanders,
+        &deck,
+    ))
+}
+
+/// Whether each card number of `set` (tokens excluded) is fully scripted.
+#[pyfunction]
+#[pyo3(signature = (set = "FDN"))]
+fn supported_mask(set: &str) -> PyResult<Vec<bool>> {
+    Ok(card_set(set)?.supported.clone())
+}
+
 #[pymodule]
 fn bolt_engine(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<Game>()?;
     m.add_function(wrap_pyfunction!(card_names, m)?)?;
     m.add_function(wrap_pyfunction!(token_info, m)?)?;
+    m.add_function(wrap_pyfunction!(commander_deck_problems, m)?)?;
+    m.add_function(wrap_pyfunction!(supported_mask, m)?)?;
     m.add_function(wrap_pyfunction!(play_baseline, m)?)?;
     m.add_function(wrap_pyfunction!(play_games, m)?)?;
     m.add_function(wrap_pyfunction!(index_of, m)?)?;

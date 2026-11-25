@@ -111,6 +111,11 @@ pub fn token_defs() -> Vec<CardDef> {
             thopter
         },
         token("Storm Crow", "Bird", 1, 2, Keywords::FLYING), // Murmuration's blue Birds
+        token("Squid", "Squid", 1, 1, Keywords::ISLANDWALK), // Chasm Skulker
+        token("Citizen", "Citizen", 1, 1, Keywords::NONE),   // Boss's Chauffeur
+        token("Eldrazi", "Eldrazi", 10, 10, Keywords::NONE), // Idol of Oblivion
+        token("Illusion", "Illusion", 0, 0, Keywords::NONE), // Skyclave Apparition's X/X
+        token("Saproling", "Saproling", 1, 1, Keywords::NONE), // Tendershoot Dryad
         {
             // Garruk, Cursed Huntsman: "2/2 black and green Wolf creature tokens with \"When this
             // token dies, put a loyalty counter on each Garruk you control.\""
@@ -219,6 +224,11 @@ pub struct Tokens {
     pub spider: usize,
     pub thopter: usize,
     pub storm_crow: usize,
+    pub squid: usize,
+    pub citizen: usize,
+    pub eldrazi: usize,
+    pub illusion: usize,
+    pub saproling: usize,
     pub garruk_wolf: usize,
     pub pest: usize,
     pub octopus: usize,
@@ -270,10 +280,15 @@ impl Tokens {
             spider: base + 39,
             thopter: base + 40,
             storm_crow: base + 41,
-            garruk_wolf: base + 42,
-            pest: base + 43,
-            octopus: base + 44,
-            elemental_4: base + 45,
+            squid: base + 42,
+            citizen: base + 43,
+            eldrazi: base + 44,
+            illusion: base + 45,
+            saproling: base + 46,
+            garruk_wolf: base + 47,
+            pest: base + 48,
+            octopus: base + 49,
+            elemental_4: base + 50,
         }
     }
 }
@@ -669,6 +684,8 @@ pub fn script(name: &str) -> Option<Script> {
         .or_else(|| tdm_c::script(name))
         .or_else(|| blc_b::script(name))
         .or_else(|| blc_c::script(name))
+        .or_else(|| pg_b::script(name))
+        .or_else(|| pg_c::script(name))
 }
 
 // Parallel lanes for plain Tarkir cards (no engine-core changes): each owns its module and test file.
@@ -682,6 +699,11 @@ pub use blc_b::BLC_B_SCRIPTED;
 // Bloomburrow Commander, lane C (shared order 150-299).
 mod blc_c;
 pub use blc_c::BLC_C_SCRIPTED;
+// The playgroup's Commander decks (Nerd Leagues), lanes B and C; cards in the CMD pool.
+mod pg_b;
+mod pg_c;
+pub use pg_b::PG_B_SCRIPTED;
+pub use pg_c::PG_C_SCRIPTED;
 
 fn script_core(name: &str) -> Option<Script> {
     let s = |lines, build| Some(Script { lines, build });
