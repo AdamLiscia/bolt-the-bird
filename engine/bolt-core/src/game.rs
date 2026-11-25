@@ -151,6 +151,8 @@ pub struct Object {
     /// Loyalty (CR 306.5), and the turn a loyalty ability was last activated (CR 606.3).
     pub loyalty: i32,
     pub loyalty_turn: u32,
+    /// The turn it may attack as though it didn't have defender (Krotiq Nestguard).
+    pub defender_ignored_turn: u32,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -930,6 +932,7 @@ impl Game {
             graveyard_turn: 0,
             loyalty: 0,
             loyalty_turn: 0,
+            defender_ignored_turn: 0,
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -1493,6 +1496,7 @@ impl Game {
             last.extend(o.subtype_override.take());
             o.last_subtypes = last;
             o.granted = Keywords::NONE;
+            o.defender_ignored_turn = 0;
             o.used_once = false;
             o.last_soul = o.soul;
             o.last_revival = o.revival;
@@ -1886,7 +1890,8 @@ impl Game {
                         let taken = c.item.targets.contains(&Chosen::Object(x, self.obj(x).zcc));
                         !is_source && !taken
                     }
-                    Target::Player(_) => true,
+                    // CR 115.3: one player can't fill two slots of a single "divided" target word.
+                    Target::Player(p) => ability.divide == 0 || !c.item.targets.contains(&Chosen::Player(p)),
                 });
                 if ability.same_graveyard {
                     if let Some(&Chosen::Object(first, _)) = c.item.targets.first() {
@@ -2001,7 +2006,8 @@ impl Game {
                         && (!f.instant_or_sorcery || d.types.instant || d.types.sorcery)
                         && (!f.noncreature_nonland || (!d.types.creature && !d.types.land))
                         && (!f.put_there_this_turn || o.graveyard_turn == self.turn)
-                        && f.max_mana_value.is_none_or(|m| d.cost.mana_value() <= m);
+                        && f.max_mana_value.is_none_or(|m| d.cost.mana_value() <= m)
+                        && f.creature_max_power.is_none_or(|m| d.power <= m);
                 }
                 if o.zone != Zone::Battlefield {
                     return false;
@@ -2021,7 +2027,8 @@ impl Game {
                     && (!f.creature_without_flying || !self.keywords(id).has(Keywords::FLYING))
                     && f.creature_min_power.is_none_or(|m| self.power(id) >= m)
                     && f.creature_max_power.is_none_or(|m| self.power(id) <= m)
-                    && (!f.in_combat || in_combat);
+                    && (!f.in_combat || in_combat)
+                    && (!f.was_dealt_damage || o.damage > 0);
                 let kind_ok = creature_ok
                     || (ty.planeswalker && f.planeswalkers)
                     || (ty.artifact && f.artifacts)
@@ -2915,6 +2922,17 @@ impl Game {
                             .filter(|&c| c != id)
                             .map(|c| Action::ActivateWith(id, n, c)),
                     );
+                } else if a.sacrifice_token {
+                    // "Sacrifice a token": any token you control, kept out of the mana payment.
+                    let tokens: Vec<ObjId> = self.permanents(p).filter(|&c| self.is_token(c)).collect();
+                    v.extend(
+                        tokens
+                            .into_iter()
+                            .filter(|&c| {
+                                uses_self || self.can_pay_for(p, &a.mana, Some(c), PayFor::Ability(id))
+                            })
+                            .map(|c| Action::ActivateWith(id, n, c)),
+                    );
                 } else {
                     v.push(Action::Activate(id, n));
                 }
@@ -2986,9 +3004,15 @@ impl Game {
     fn pay_activation(&mut self, p: PlayerId, id: ObjId, n: usize, victim: Option<ObjId>, x: u8) {
         let a = self.def_of(id).activated[n].clone();
         let uses_self = a.tap || a.sacrifice_self;
+        // A sacrificed token (a Treasure) can't also pay the mana.
+        let exclude = if uses_self {
+            Some(id)
+        } else {
+            victim.filter(|_| a.sacrifice_token)
+        };
         // Mana first: a creature can tap for mana and then be sacrificed for the same cost
         // (CR 602.2b). The fuzzer found the reverse order failing.
-        self.pay_mana_for(p, &a.mana.with_x(x), uses_self.then_some(id), PayFor::Ability(id));
+        self.pay_mana_for(p, &a.mana.with_x(x), exclude, PayFor::Ability(id));
         if let Some(v) = victim {
             if self.obj(v).zone == Zone::Battlefield {
                 self.move_to(v, Zone::Graveyard);
@@ -3115,7 +3139,7 @@ impl Game {
             let o = self.obj(id);
             let k = self.keywords(id);
             !o.tapped
-                && !k.has(Keywords::DEFENDER)
+                && (!k.has(Keywords::DEFENDER) || o.defender_ignored_turn == self.turn)
                 && (o.since_turn < self.turn || k.has(Keywords::HASTE))
                 && !declared.contains(&id)
         })
@@ -4609,6 +4633,13 @@ impl Game {
                         Target::Player(item.controller),
                         Target::Player(opponent(item.controller)),
                     ],
+                    Recipient::EachCreatureAndPlaneswalker => self
+                        .battlefield
+                        .iter()
+                        .copied()
+                        .filter(|&id| self.types_of(id).creature || self.types_of(id).planeswalker)
+                        .map(Target::Object)
+                        .collect(),
                     Recipient::EachCreature { without_flying } => self
                         .battlefield
                         .iter()
@@ -4973,6 +5004,58 @@ impl Game {
                     let opp = opponent(item.controller);
                     self.lose_life(opp, n);
                     self.gain_life(item.controller, n);
+                }
+            }
+            Effect::GrantAttached(keywords) => {
+                if let Some((id, zcc)) = self.obj(src).attached_to {
+                    if self.obj(id).zcc == zcc && self.obj(id).zone == Zone::Battlefield {
+                        self.until_eot.push(Modifier {
+                            obj: id,
+                            zcc,
+                            power: 0,
+                            toughness: 0,
+                            keywords,
+                            dies: None,
+                        });
+                    }
+                }
+            }
+            Effect::AttackDespiteDefenderSelf => {
+                if self.obj(src).zone == Zone::Battlefield {
+                    let turn = self.turn;
+                    self.obj_mut(src).defender_ignored_turn = turn;
+                }
+            }
+            Effect::CountersAll { who, n } => {
+                for p in self.players_for(item, legal, who) {
+                    for c in self.creatures(p).collect::<Vec<_>>() {
+                        self.add_counters(c, n);
+                    }
+                }
+            }
+            Effect::DestroyOpponentsNonland => {
+                let opp = opponent(item.controller);
+                let all: Vec<ObjId> = self.permanents(opp).filter(|&c| !self.types_of(c).land).collect();
+                for c in all {
+                    self.destroy(c);
+                }
+            }
+            Effect::DestroyCreaturesAndEnchantmentsDraw => {
+                let all: Vec<ObjId> = self
+                    .battlefield
+                    .iter()
+                    .copied()
+                    .filter(|&c| self.types_of(c).creature || self.types_of(c).enchantment)
+                    .collect();
+                let mut destroyed = 0;
+                for c in all {
+                    self.destroy(c);
+                    if self.obj(c).zone != Zone::Battlefield {
+                        destroyed += 1;
+                    }
+                }
+                for _ in 0..destroyed {
+                    self.draw(item.controller);
                 }
             }
             Effect::DestroyAllCreatures => {
@@ -5449,6 +5532,10 @@ impl Game {
                 for (i, &n) in item.division.iter().enumerate() {
                     if let Some(id) = Game::slot_object(item, legal, i as u8) {
                         self.deal_damage(src, Target::Object(id), n as i32);
+                    } else if let Some(&Chosen::Player(p)) = item.targets.get(i) {
+                        if legal[i] {
+                            self.deal_damage(src, Target::Player(p), n as i32); // "any target" (Twin Bolt)
+                        }
                     }
                 }
             }

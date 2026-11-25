@@ -154,6 +154,90 @@ pub fn script(name: &str) -> Option<Script> {
                 spell(d, vec![card], vec![Effect::ReturnWith { slot: Some(0), counters: 0, subtype: None, keywords: k }]);
             },
         ),
+        // ---- lane C round 3: divided targets, damaged-this-turn, sacrifice a token, Aura enters, defender, mass removal ----
+        "Twin Bolt" => s(&["Twin Bolt deals 2 damage divided as you choose among one or two targets."], |d, _| {
+            let mut a = up_to(vec![Filter::ANY, Filter::ANY], vec![Effect::DividedDamage]);
+            a.min_targets = Some(1);
+            a.divide = 2;
+            d.spell = Some(a);
+        }),
+        "Unsparing Boltcaster" => s(
+            &["When this creature enters, it deals 5 damage to target creature an opponent controls that was dealt damage this turn."],
+            |d, _| {
+                let hurt = Filter { was_dealt_damage: true, ..OPP_CREATURE };
+                on(d, When::Enters, vec![hurt], vec![damage(5, Recipient::Target(0))]);
+            },
+        ),
+        "Smile at Death" => s(
+            &["At the beginning of your upkeep, return up to two target creature cards with power 2 or less from your graveyard to the battlefield. Put a +1/+1 counter on each of those creatures."],
+            |d, _| {
+                let f = Filter { creature_max_power: Some(2), ..graveyard_cards(true, Controller::You) };
+                let ability = up_to(
+                    vec![f, f],
+                    vec![
+                        Effect::Reanimate(0),
+                        Effect::Reanimate(1),
+                        Effect::Counters { slot: 0, n: 1 },
+                        Effect::Counters { slot: 1, n: 1 },
+                    ],
+                );
+                d.triggers.push(Trigger { when: When::Upkeep { your_turn_only: true }, ability });
+            },
+        ),
+        "Hardened Tactician" => s(&["{1}, Sacrifice a token: Draw a card."], |d, _| {
+            let n = activated(d, "{1}", false, vec![], vec![draw(1)]);
+            d.activated[n].sacrifice_token = true;
+        }),
+        "Fire-Rim Form" => s(
+            &[
+                "Enchant creature",
+                "When this Aura enters, enchanted creature gains first strike until end of turn.",
+                "Enchanted creature gets +2/+0.",
+            ],
+            |d, _| {
+                d.aura = true;
+                d.spell = Some(Ability::new(vec![CREATURE], vec![]));
+                on(d, When::Enters, vec![], vec![Effect::GrantAttached(Keywords::FIRST_STRIKE)]);
+                attached(d, false, 2, 0, Keywords::NONE);
+            },
+        ),
+        "Krotiq Nestguard" => s(&["{2}{G}: This creature can attack this turn as though it didn't have defender."], |d, _| {
+            activated(d, "{2}{G}", false, vec![], vec![Effect::AttackDespiteDefenderSelf]);
+        }),
+        "Ruinous Ultimatum" => s(&["Destroy all nonland permanents your opponents control."], |d, _| {
+            spell(d, vec![], vec![Effect::DestroyOpponentsNonland])
+        }),
+        "Death Begets Life" => s(
+            &["Destroy all creatures and enchantments. Draw a card for each permanent destroyed this way."],
+            |d, _| spell(d, vec![], vec![Effect::DestroyCreaturesAndEnchantmentsDraw]),
+        ),
+        "Dragonback Assault" => s(
+            &[
+                "When this enchantment enters, it deals 3 damage to each creature and each planeswalker.",
+                "Landfall — Whenever a land you control enters, create a 4/4 red Dragon creature token with flying.",
+            ],
+            |d, t| {
+                on(d, When::Enters, vec![], vec![damage(3, Recipient::EachCreatureAndPlaneswalker)]);
+                on(d, When::LandYouControlEnters, vec![], vec![Effect::CreateToken { who: Who::You, def: t.dragon, n: 1 }]);
+            },
+        ),
+        "Duty Beyond Death" => s(
+            &[
+                "As an additional cost to cast this spell, sacrifice a creature.",
+                "Creatures you control gain indestructible until end of turn. Put a +1/+1 counter on each creature you control.",
+            ],
+            |d, _| {
+                d.extra_cost = Some(ExtraCost::SacrificeCreature);
+                spell(
+                    d,
+                    vec![],
+                    vec![
+                        Effect::GrantAll { who: Who::You, keywords: Keywords::INDESTRUCTIBLE },
+                        Effect::CountersAll { who: Who::You, n: 1 },
+                    ],
+                );
+            },
+        ),
         _ => None,
     }
 }
@@ -175,4 +259,14 @@ pub const TDM_C_SCRIPTED: &[&str] = &[
     "Fangkeeper's Familiar",
     "Inevitable Defeat",
     "Perennation",
+    "Twin Bolt",
+    "Unsparing Boltcaster",
+    "Smile at Death",
+    "Hardened Tactician",
+    "Fire-Rim Form",
+    "Krotiq Nestguard",
+    "Ruinous Ultimatum",
+    "Death Begets Life",
+    "Dragonback Assault",
+    "Duty Beyond Death",
 ];
