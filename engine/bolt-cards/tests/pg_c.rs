@@ -1828,5 +1828,9 @@ fn deadeye_navigator_pairs_and_grants_a_flicker() {
     let m = g.def_of(nav).activated.len();
     act(&mut g, Action::Activate(nav, m));
     resolve_all(&mut g, &[Action::Yes, Action::Pick(ghoul)]);
-    assert_eq!(g.paired_partner(nav), Some(ghoul), "Navigator itself flickers and pairs on entering");
+    assert_eq!(
+        g.paired_partner(nav),
+        Some(ghoul),
+        "Navigator itself flickers and pairs on entering"
+    );
 }
