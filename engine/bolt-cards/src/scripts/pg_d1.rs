@@ -88,6 +88,61 @@ pub fn script(name: &str) -> Option<Script> {
             d.mana = Some(ManaSource::of(&[Color::Black]));
             d.mana_tap_damage = 1;
         }),
+        // ---- Raggadragga, Goreguts Boss (Adam) ----
+        "Beast Whisperer" => s(&["Whenever you cast a creature spell, draw a card."], |d, _| {
+            on(d, When::YouCastCreature, vec![], vec![draw(1)])
+        }),
+        "Staff of Domination" => s(
+            &[
+                "{1}: Untap this artifact.",
+                "{2}, {T}: You gain 1 life.",
+                "{3}, {T}: Untap target creature.",
+                "{4}, {T}: Tap target creature.",
+                "{5}, {T}: Draw a card.",
+            ],
+            |d, _| {
+                activated(d, "{1}", false, vec![], vec![Effect::UntapSelf]);
+                activated(d, "{2}", true, vec![], vec![Effect::GainLife { who: Who::You, n: 1 }]);
+                activated(d, "{3}", true, vec![CREATURE], vec![Effect::UntapTarget(0)]);
+                activated(d, "{4}", true, vec![CREATURE], vec![Effect::Tap(0)]);
+                activated(d, "{5}", true, vec![], vec![draw(1)]);
+            },
+        ),
+        "Fires of Yavimaya" => s(
+            &["Creatures you control have haste.", "Sacrifice this enchantment: Target creature gets +2/+2 until end of turn."],
+            |d, _| {
+                static_on(d, Scope::YourCreatures, false, Keywords::HASTE);
+                let n = activated(d, "", false, vec![CREATURE], vec![Effect::Pump { slot: 0, power: 2, toughness: 2 }]);
+                d.activated[n].sacrifice_self = true;
+            },
+        ),
+        "Wirewood Lodge" => s(&["{T}: Add {C}.", "{G}, {T}: Untap target Elf."], |d, _| {
+            d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+            // Elves are creatures (an Elf can only be a creature or a kindred card).
+            let elf = Filter { subtype: Some("Elf"), ..CREATURE };
+            activated(d, "{G}", true, vec![elf], vec![Effect::UntapTarget(0)]);
+        }),
+        "Boreal Druid" => s(&["{T}: Add {C}."], |d, _| d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() })),
+        "Cragcrown Pathway // Timbercrown Pathway" => s(&["{T}: Add {R}."], |d, _| {
+            // The card data has no back face (Timbercrown Pathway, {T}: Add {G}): it plays as its front.
+            d.mana = Some(ManaSource::of(&[Color::Red]));
+        }),
+        "Marwyn, the Nurturer" => s(
+            &["Whenever another Elf you control enters, put a +1/+1 counter on Marwyn.", "{T}: Add an amount of {G} equal to Marwyn's power."],
+            |d, _| {
+                on(d, When::AnotherYouControlEntersWithSubtype("Elf"), vec![], vec![Effect::CountersSelf { n: 1 }]);
+                d.mana = Some(ManaSource::of(&[Color::Green]));
+                d.mana_equal_power = true;
+            },
+        ),
+        "Nature's Claim" => s(&["Destroy target artifact or enchantment. Its controller gains 4 life."], |d, _| {
+            spell(d, vec![ARTIFACT_OR_ENCHANTMENT], vec![Effect::Destroy(0), Effect::GainLife { who: Who::ControllerOf(0), n: 4 }])
+        }),
+        "Viridian Joiner" => s(&["{T}: Add an amount of {G} equal to this creature's power."], |d, _| {
+            d.mana = Some(ManaSource::of(&[Color::Green]));
+            d.mana_equal_power = true;
+        }),
+        "Vitalize" => s(&["Untap all creatures you control."], |d, _| spell(d, vec![], vec![Effect::UntapCreaturesYouControl])),
         _ => None,
     }
 }
@@ -112,4 +167,15 @@ pub const PG_D1_SCRIPTED: &[&str] = &[
     "Krosan Grip",
     "Abrupt Decay",
     "Elves of Deep Shadow",
+    // Raggadragga, Goreguts Boss (Adam)
+    "Beast Whisperer",
+    "Staff of Domination",
+    "Fires of Yavimaya",
+    "Wirewood Lodge",
+    "Boreal Druid",
+    "Cragcrown Pathway // Timbercrown Pathway",
+    "Marwyn, the Nurturer",
+    "Nature's Claim",
+    "Viridian Joiner",
+    "Vitalize",
 ];

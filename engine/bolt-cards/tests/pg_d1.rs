@@ -299,3 +299,183 @@ fn elves_of_deep_shadow_taps_for_black_and_pings_you() {
     assert_eq!(g.obj(seer).zone, Zone::Battlefield);
     assert_eq!(g.players[0].life, 39);
 }
+
+// ---- Raggadragga, Goreguts Boss (Adam) ----
+
+fn tap(g: &mut Game, id: ObjId) {
+    g.objects[id.0 as usize].tapped = true;
+}
+
+fn set_counters(g: &mut Game, id: ObjId, n: i32) {
+    g.objects[id.0 as usize].counters = n;
+}
+
+/// The colors (WUBRG) and colorless mana a permanent of player 0's can make.
+fn makes(g: &Game, id: ObjId) -> ([bool; 5], bool) {
+    g.mana_sources(0)
+        .into_iter()
+        .filter(|&(x, _)| x == id)
+        .fold(([false; 5], false), |acc, (_, m)| {
+            (
+                std::array::from_fn(|i| acc.0[i] || m.colors[i]),
+                acc.1 || m.colorless,
+            )
+        })
+}
+
+fn activate(g: &mut Game, id: ObjId, n: usize, targets: &[Target]) {
+    act(g, Action::Activate(id, n));
+    for &t in targets {
+        act(g, Action::Target(t));
+    }
+    resolve_all(g, &[]);
+}
+
+#[test]
+fn beast_whisperer_draws_when_you_cast_a_creature_spell() {
+    let mut g = table();
+    put(&mut g, 0, "Beast Whisperer");
+    let elf = hand(&mut g, 0, "Fyndhorn Elves");
+    let n = g.players[0].hand.len();
+    play(&mut g, elf, false, &[], &[]);
+    assert_eq!(g.players[0].hand.len(), n, "cast one, drew one");
+    let c = hand(&mut g, 0, "Night's Whisper");
+    let n = g.players[0].hand.len();
+    play(&mut g, c, false, &[], &[]);
+    assert_eq!(
+        g.players[0].hand.len(),
+        n + 1,
+        "Night's Whisper's two, nothing for a sorcery"
+    );
+}
+
+#[test]
+fn staff_of_domination_untaps_gains_taps_and_draws() {
+    let mut g = table();
+    let staff = put(&mut g, 0, "Staff of Domination");
+    let mine = put(&mut g, 0, "Fyndhorn Elves");
+    let theirs = put(&mut g, 1, "Fyndhorn Elves");
+    tap(&mut g, mine);
+    activate(&mut g, staff, 2, &[obj(mine)]);
+    assert!(!g.obj(mine).tapped && g.obj(staff).tapped);
+    activate(&mut g, staff, 0, &[]);
+    assert!(!g.obj(staff).tapped, "{{1}}: untap");
+    activate(&mut g, staff, 1, &[]);
+    assert_eq!(g.players[0].life, 41);
+    activate(&mut g, staff, 0, &[]);
+    activate(&mut g, staff, 3, &[obj(theirs)]);
+    assert!(g.obj(theirs).tapped);
+    activate(&mut g, staff, 0, &[]);
+    let n = g.players[0].hand.len();
+    activate(&mut g, staff, 4, &[]);
+    assert_eq!(g.players[0].hand.len(), n + 1);
+}
+
+#[test]
+fn fires_of_yavimaya_gives_haste_and_sacrifices_for_a_pump() {
+    let mut g = table();
+    let fires = put(&mut g, 0, "Fires of Yavimaya");
+    let elf = put(&mut g, 0, "Fyndhorn Elves");
+    let theirs = put(&mut g, 1, "Fyndhorn Elves");
+    assert!(g.keywords(elf).has(Keywords::HASTE));
+    assert!(!g.keywords(theirs).has(Keywords::HASTE), "only yours");
+    activate(&mut g, fires, 0, &[obj(elf)]);
+    assert_eq!(g.obj(fires).zone, Zone::Graveyard);
+    assert_eq!(g.power(elf), 3);
+}
+
+#[test]
+fn wirewood_lodge_taps_for_colorless_and_untaps_an_elf() {
+    let mut g = table();
+    let lodge = put(&mut g, 0, "Wirewood Lodge");
+    assert_eq!(makes(&g, lodge), ([false; 5], true));
+    let elf = put(&mut g, 0, "Fyndhorn Elves");
+    let seer = put(&mut g, 0, "Viscera Seer");
+    tap(&mut g, elf);
+    tap(&mut g, seer);
+    act(&mut g, Action::Activate(lodge, 0));
+    assert!(
+        !g.legal_actions().contains(&Action::Target(obj(seer))),
+        "not an Elf"
+    );
+    act(&mut g, Action::Target(obj(elf)));
+    resolve_all(&mut g, &[]);
+    assert!(!g.obj(elf).tapped);
+}
+
+#[test]
+fn boreal_druid_taps_for_colorless() {
+    let mut g = table();
+    let d = put(&mut g, 0, "Boreal Druid");
+    g.start_turn(5, 0); // no longer summoning sick
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(makes(&g, d), ([false; 5], true));
+}
+
+#[test]
+fn cragcrown_pathway_taps_for_red() {
+    let mut g = table();
+    let p = put(&mut g, 0, "Cragcrown Pathway // Timbercrown Pathway");
+    assert_eq!(makes(&g, p), ([false, false, false, true, false], false));
+}
+
+#[test]
+fn marwyn_grows_with_elves_and_taps_for_her_power_in_green() {
+    let mut g = table();
+    let m = put(&mut g, 0, "Marwyn, the Nurturer");
+    let elf = hand(&mut g, 0, "Fyndhorn Elves");
+    play(&mut g, elf, false, &[], &[]);
+    assert_eq!(g.obj(m).counters, 1, "another Elf entered");
+    let seer = hand(&mut g, 0, "Viscera Seer");
+    play(&mut g, seer, false, &[], &[]);
+    assert_eq!(g.obj(m).counters, 1, "not an Elf");
+    let mut g = game(&["Marwyn, the Nurturer"]);
+    let m = named(&g, 0, "Marwyn, the Nurturer");
+    let w = hand(&mut g, 0, "Eternal Witness"); // {1}{G}{G}
+    assert!(!g.legal_actions().contains(&Action::Cast(w)), "one {{G}}");
+    set_counters(&mut g, m, 2);
+    assert!(g.legal_actions().contains(&Action::Cast(w)), "three {{G}}");
+}
+
+fn named(g: &Game, p: usize, name: &str) -> ObjId {
+    g.permanents(p)
+        .find(|&x| g.def_of(x).name == name)
+        .expect("on the battlefield")
+}
+
+#[test]
+fn natures_claim_destroys_and_its_controller_gains_4() {
+    let mut g = table();
+    let altar = put(&mut g, 1, "Ashnod's Altar");
+    let c = hand(&mut g, 0, "Nature's Claim");
+    play(&mut g, c, false, &[obj(altar)], &[]);
+    assert_eq!(g.obj(altar).zone, Zone::Graveyard);
+    assert_eq!((g.players[0].life, g.players[1].life), (40, 44));
+}
+
+#[test]
+fn viridian_joiner_taps_for_its_power_in_green() {
+    let mut g = game(&["Viridian Joiner"]);
+    let j = named(&g, 0, "Viridian Joiner");
+    let w = hand(&mut g, 0, "Eternal Witness");
+    assert!(!g.legal_actions().contains(&Action::Cast(w)));
+    set_counters(&mut g, j, 2);
+    assert!(g.legal_actions().contains(&Action::Cast(w)));
+}
+
+#[test]
+fn vitalize_untaps_your_creatures_only() {
+    let mut g = table();
+    let a = put(&mut g, 0, "Fyndhorn Elves");
+    let b = put(&mut g, 0, "Viscera Seer");
+    let theirs = put(&mut g, 1, "Fyndhorn Elves");
+    for x in [a, b, theirs] {
+        tap(&mut g, x);
+    }
+    let c = hand(&mut g, 0, "Vitalize");
+    play(&mut g, c, false, &[], &[]);
+    assert!(!g.obj(a).tapped && !g.obj(b).tapped);
+    assert!(g.obj(theirs).tapped);
+}
