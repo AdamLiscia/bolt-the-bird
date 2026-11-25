@@ -157,6 +157,10 @@ pub struct Object {
     pub loyalty_turn: u32,
     /// The turn it may attack as though it didn't have defender (Krotiq Nestguard).
     pub defender_ignored_turn: u32,
+    /// The mode chosen as it entered (the Sieges); kept after it leaves, for triggers it left behind.
+    pub chosen_mode: Option<u8>,
+    /// The turn its "triggers only once each turn" ability last triggered (Hollowmurk Siege).
+    pub once_each_turn: u32,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -631,6 +635,8 @@ pub enum Decision {
     /// "Counter target spell unless its controller pays": `Yes` pays `cost`, `No` lets the spell from
     /// `against` be countered.
     PayOrCountered { cost: ManaCost, against: ObjId },
+    /// "As this enters, choose [A] or [B]": `Mode(0)` or `Mode(1)` (the Sieges).
+    ChooseEnterMode { card: ObjId },
 }
 
 /// An until-end-of-turn change to one object (CR 611.2, 613).
@@ -753,6 +759,8 @@ pub struct Game {
     pub commanders: [Option<ObjId>; 2],
     pub commander_casts: [u8; 2],
     pub commander_damage: [i32; 2],
+    /// Whether a creature died under each player's control this turn.
+    pub creature_died_under: [bool; 2],
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -876,6 +884,7 @@ impl Game {
             commanders: [None, None],
             commander_casts: [0, 0],
             commander_damage: [0, 0],
+            creature_died_under: [false; 2],
         }
     }
 
@@ -941,6 +950,8 @@ impl Game {
             loyalty: 0,
             loyalty_turn: 0,
             defender_ignored_turn: 0,
+            chosen_mode: None,
+            once_each_turn: 0,
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -1146,6 +1157,7 @@ impl Game {
                             Some(StaticCondition::ControlCreatureWithCounter) => {
                                 self.controls_creature_with_counter(so.controller)
                             }
+                            Some(StaticCondition::ChosenMode(m)) => so.chosen_mode == Some(m),
                         };
                         applies && condition_ok && (!s.your_turn_only || self.active == so.controller)
                     })
@@ -1340,6 +1352,58 @@ impl Game {
                 }
             }
         }
+    }
+
+    /// "If a creature attacking causes a triggered ability of a permanent you control to trigger,
+    /// that ability triggers an additional time" (Windcrag Siege, Mardu): the active player's
+    /// triggers added since `before` trigger once more for each such Siege.
+    fn attack_triggers_again(&mut self, before: usize) {
+        let p = self.active;
+        let k = self
+            .permanents(p)
+            .filter(|&x| {
+                self.def_of(x)
+                    .attack_triggers_again_in_mode
+                    .is_some_and(|m| self.obj(x).chosen_mode == Some(m))
+            })
+            .count();
+        let new: Vec<StackItem> = self.triggered[before..]
+            .iter()
+            .filter(|t| t.controller == p && self.obj(t.source).controller == p)
+            .cloned()
+            .collect();
+        for _ in 0..k {
+            self.triggered.extend(new.iter().cloned());
+        }
+    }
+
+    /// Glacierwood Siege (Sultai): `p` may play lands from their graveyard.
+    fn siege_graveyard_lands(&self, p: PlayerId) -> bool {
+        self.permanents(p).any(|x| {
+            self.def_of(x)
+                .graveyard_lands_in_mode
+                .is_some_and(|m| self.obj(x).chosen_mode == Some(m))
+        })
+    }
+
+    /// A counter of any kind was put on `id` (CR 122.6 includes entering with counters):
+    /// "whenever a counter is put on a creature you control" triggers, once each turn per source.
+    fn counter_put_on(&mut self, id: ObjId) {
+        if !self.types_of(id).creature || self.obj(id).zone != Zone::Battlefield {
+            return;
+        }
+        let p = self.obj(id).controller;
+        let before = self.triggered.len();
+        self.fire(p, When::CounterPutOnYourCreatureOnceEachTurn, None);
+        let turn = self.turn;
+        let mut fresh = Vec::new();
+        for t in self.triggered.drain(before..).collect::<Vec<_>>() {
+            if self.obj(t.source).once_each_turn != turn {
+                self.obj_mut(t.source).once_each_turn = turn;
+                fresh.push(t);
+            }
+        }
+        self.triggered.extend(fresh);
     }
 
     /// CR 119.3: losing life, with "whenever an opponent loses life" triggers.
@@ -1634,6 +1698,7 @@ impl Game {
         }
         if dies && self.types_of(id).creature {
             self.creature_died_this_turn = true;
+            self.creature_died_under[last_controller] = true;
             self.fire(last_controller, When::CreatureYouControlDies, Some(id));
             if !self.is_token(id) {
                 let was = |g: &Game, s: &str| {
@@ -1673,7 +1738,8 @@ impl Game {
             }
         }
         if to == Zone::Battlefield {
-            // Replacement effects on entering (CR 614.1c-d).
+            self.obj_mut(id).chosen_mode = None; // a new object chooses again
+                                                 // Replacement effects on entering (CR 614.1c-d).
             let def = self.def_of(id).clone();
             let controller_now = self.obj(id).controller;
             let opponent_forces_tapped = def.types.creature
@@ -1729,6 +1795,7 @@ impl Game {
             if bonus > 0 {
                 let n = bonus * self.doubling(controller);
                 self.obj_mut(id).counters += n;
+                self.counter_put_on(id); // CR 122.6: entering with counters counts
             }
             if let Some((n, cond)) = def.enters_counters {
                 let controller = self.obj(id).controller;
@@ -1744,6 +1811,7 @@ impl Game {
                 if yes {
                     let n = n * self.doubling(controller);
                     self.obj_mut(id).counters += n;
+                    self.counter_put_on(id);
                 }
             }
             if def.types.land {
@@ -2250,11 +2318,11 @@ impl Game {
         });
         // Muldrotha: a land from your graveyard, during your turn.
         let muldrotha = p == self.active && self.permanents(p).any(|x| self.def_of(x).graveyard_permanents);
-        let grave_land = self.players[p]
-            .graveyard
-            .iter()
-            .copied()
-            .filter(move |&c| muldrotha && !self.graveyard_types_used[p][3] && self.def_of(c).types.land);
+        // Glacierwood Siege (Sultai): "You may play lands from your graveyard", with your land drops.
+        let siege_lands = self.siege_graveyard_lands(p);
+        let grave_land = self.players[p].graveyard.iter().copied().filter(move |&c| {
+            (siege_lands || (muldrotha && !self.graveyard_types_used[p][3])) && self.def_of(c).types.land
+        });
         let command = self
             .command
             .iter()
@@ -3387,7 +3455,7 @@ impl Game {
             (Pending::Priority(p), Action::PassPriority) => self.pass(p),
             (Pending::Priority(p), Action::TapForMana(id, c)) => self.tap_for_mana(p, id, c),
             (Pending::Priority(p), Action::PlayLand(c)) => {
-                if self.obj(c).zone == Zone::Graveyard {
+                if self.obj(c).zone == Zone::Graveyard && !self.siege_graveyard_lands(p) {
                     self.graveyard_types_used[p][3] = true; // Muldrotha's land
                 }
                 self.move_to(c, Zone::Battlefield);
@@ -3520,6 +3588,7 @@ impl Game {
                 }
                 self.combat.as_mut().expect("in combat").attackers.push(c);
                 self.attacked_this_turn[self.active] = true;
+                let before = self.triggered.len();
                 // CR 508.3a: "whenever this creature attacks".
                 let whens: Vec<When> = self.def_of(c).triggers.iter().map(|tr| tr.when).collect();
                 for (n, w) in whens.into_iter().enumerate() {
@@ -3540,8 +3609,10 @@ impl Game {
                         });
                     }
                 }
+                self.attack_triggers_again(before);
             }
             (Pending::DeclareAttackers(_), Action::FinishAttacks) => {
+                let before = self.triggered.len();
                 if self.combat.as_ref().is_some_and(|c| !c.attackers.is_empty()) {
                     self.fire(self.active, When::YouAttack, None);
                 }
@@ -3549,6 +3620,7 @@ impl Game {
                 for n in 1..=count {
                     self.fire(self.active, When::YouAttackWithAtLeast(n), None);
                 }
+                self.attack_triggers_again(before);
                 self.passes = 0;
                 self.give_priority(self.active);
             }
@@ -4093,6 +4165,12 @@ impl Game {
             if r.acts {
                 self.events.push(Event::Resolved { card: source });
             }
+            // "As this enters, choose [A] or [B]" (the Sieges). Asked as the spell resolves, like the
+            // color choice below: a Siege put onto the battlefield another way gets no mode.
+            if r.acts && self.def_of(source).enter_modes && self.obj(source).zone == Zone::Battlefield {
+                self.ask(r.item.controller, Decision::ChooseEnterMode { card: source });
+                return;
+            }
             // "As this enters, choose a color" (CR 614.12).
             if r.acts && self.def_of(source).choose_color && self.obj(source).zone == Zone::Battlefield {
                 self.ask(r.item.controller, Decision::ChooseColor { card: source });
@@ -4156,6 +4234,7 @@ impl Game {
         }
         let n = n * self.doubling(self.obj(id).controller);
         self.obj_mut(id).counters += n;
+        self.counter_put_on(id);
         if self.types_of(id).creature && !self.has_subtype(id, "Hydra") {
             let controller = self.obj(id).controller;
             self.fire(controller, When::CountersOnAnotherNonHydraYouControl, Some(id));
@@ -4256,6 +4335,7 @@ impl Game {
             }
             Decision::SacrificeCreatures { .. } => self.creatures(p).map(Action::Pick).collect(),
             Decision::ChooseColor { .. } => (0..5).map(Action::Mode).collect(),
+            Decision::ChooseEnterMode { .. } => vec![Action::Mode(0), Action::Mode(1)],
             Decision::ChooseCreatureType { options, .. } => {
                 (0..options.len() as u8).map(Action::Mode).collect()
             }
@@ -4397,6 +4477,15 @@ impl Game {
             let o = self.obj_mut(card);
             o.chosen_type = Some(t);
             o.fellowship = n;
+            if self.end_turn {
+                self.end_the_turn();
+            } else {
+                self.give_priority(self.active);
+            }
+            return;
+        }
+        if let (Decision::ChooseEnterMode { card }, Action::Mode(m)) = (&d, a) {
+            self.obj_mut(*card).chosen_mode = Some(m);
             if self.end_turn {
                 self.end_the_turn();
             } else {
@@ -5307,6 +5396,7 @@ impl Game {
                     if self.obj(id).zone == Zone::Battlefield {
                         let o = self.obj_mut(id);
                         o.keyword_counters = o.keyword_counters.with(keywords);
+                        self.counter_put_on(id);
                     }
                 }
             }
@@ -5426,6 +5516,7 @@ impl Game {
                     self.become_tapped(id);
                     let n = self.doubling(self.obj(id).controller);
                     self.obj_mut(id).stun += n;
+                    self.counter_put_on(id);
                 }
             }
             Effect::GateControlPowerAtLeast(n) => {
@@ -6217,6 +6308,16 @@ impl Game {
                 .creatures(controller)
                 .any(|id| id != source && self.has_subtype(id, sub)),
             Some(Condition::ControlCreatureWithCounter) => self.controls_creature_with_counter(controller),
+            Some(Condition::ChosenMode(m)) => self.obj(source).chosen_mode == Some(*m),
+            Some(Condition::CreatureDiedUnderYourControlThisTurn) => self.creature_died_under[controller],
+            Some(Condition::Both(a, b)) => {
+                let one = |c: &Condition| Ability {
+                    condition: Some(c.clone()),
+                    ..Ability::default()
+                };
+                self.condition_holds(&one(a), controller, source)
+                    && self.condition_holds(&one(b), controller, source)
+            }
         }
     }
 
@@ -6227,6 +6328,7 @@ impl Game {
         self.create_token(p, spirit);
         for id in self.last_created.clone() {
             self.obj_mut(id).counters += n as i32;
+            self.counter_put_on(id);
         }
     }
 
@@ -6382,6 +6484,7 @@ impl Game {
         self.draws_this_turn = [0; 2];
         self.resolutions_this_turn = 0;
         self.creature_died_this_turn = false;
+        self.creature_died_under = [false; 2];
         self.life_lost_this_turn = [false; 2];
         self.turn += 1;
         self.active = self.extra_turns.pop().unwrap_or_else(|| opponent(self.active));
@@ -6732,6 +6835,12 @@ impl Game {
             }
         }
         // CR 510.3a: "deals combat damage to a player" triggers.
+        let mut hitters: Vec<PlayerId> = hit_player.iter().map(|&(a, _)| self.obj(a).controller).collect();
+        hitters.sort_unstable();
+        hitters.dedup();
+        for p in hitters {
+            self.fire(p, When::YourCreaturesDealCombatDamageToPlayer, None);
+        }
         for &(a, _) in &hit_player {
             let controller = self.obj(a).controller;
             self.fire(controller, When::YourCreatureDealsCombatDamageToPlayer, None);

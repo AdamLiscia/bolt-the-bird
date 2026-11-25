@@ -12,6 +12,16 @@ const ENCHANTMENT: Filter = Filter {
     ..Filter::ANY
 };
 
+/// "As this enchantment enters, choose [A] or [B]." Mode 0 is the first clan named.
+fn siege(d: &mut CardDef) {
+    d.enter_modes = true;
+}
+
+/// A triggered ability that exists only in chosen mode `m`.
+fn in_mode(d: &mut CardDef, m: u8, when: When, targets: Vec<Filter>, effects: Vec<Effect>) {
+    conditional(d, when, Condition::ChosenMode(m), targets, effects);
+}
+
 pub fn script(name: &str) -> Option<Script> {
     let s = |lines, build| Some(Script { lines, build });
     match name {
@@ -221,6 +231,87 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::LandYouControlEnters, vec![], vec![Effect::CreateToken { who: Who::You, def: t.dragon, n: 1 }]);
             },
         ),
+        "Windcrag Siege" => s(
+            &[
+                "As this enchantment enters, choose Mardu or Jeskai.",
+                "• Mardu — If a creature attacking causes a triggered ability of a permanent you control to trigger, that ability triggers an additional time.",
+                "• Jeskai — At the beginning of your upkeep, create a 1/1 red Goblin creature token. It gains lifelink and haste until end of turn.",
+            ],
+            |d, t| {
+                siege(d);
+                d.attack_triggers_again_in_mode = Some(0);
+                in_mode(
+                    d,
+                    1,
+                    When::Upkeep { your_turn_only: true },
+                    vec![],
+                    vec![
+                        Effect::CreateToken { who: Who::You, def: t.goblin, n: 1 },
+                        Effect::GrantCreated(Keywords::LIFELINK.with(Keywords::HASTE)),
+                    ],
+                );
+            },
+        ),
+        "Frostcliff Siege" => s(
+            &[
+                "As this enchantment enters, choose Jeskai or Temur.",
+                "• Jeskai — Whenever one or more creatures you control deal combat damage to a player, draw a card.",
+                "• Temur — Creatures you control get +1/+0 and have trample and haste.",
+            ],
+            |d, _| {
+                siege(d);
+                in_mode(d, 0, When::YourCreaturesDealCombatDamageToPlayer, vec![], vec![draw(1)]);
+                static_on(d, Scope::YourCreatures, false, Keywords::TRAMPLE.with(Keywords::HASTE));
+                let st = d.statics.last_mut().expect("just added");
+                st.power = 1;
+                st.condition = Some(StaticCondition::ChosenMode(1));
+            },
+        ),
+        "Hollowmurk Siege" => s(
+            &[
+                "As this enchantment enters, choose Sultai or Abzan.",
+                "• Sultai — Whenever a counter is put on a creature you control, draw a card. This ability triggers only once each turn.",
+                "• Abzan — Whenever you attack, put a +1/+1 counter on target attacking creature. It gains menace until end of turn.",
+            ],
+            |d, _| {
+                siege(d);
+                in_mode(d, 0, When::CounterPutOnYourCreatureOnceEachTurn, vec![], vec![draw(1)]);
+                let attacking = Filter { in_combat: true, ..CREATURE };
+                in_mode(
+                    d,
+                    1,
+                    When::YouAttack,
+                    vec![attacking],
+                    vec![Effect::Counters { slot: 0, n: 1 }, Effect::Grant { slot: 0, keywords: Keywords::MENACE }],
+                );
+            },
+        ),
+        "Glacierwood Siege" => s(
+            &[
+                "As this enchantment enters, choose Temur or Sultai.",
+                "• Temur — Whenever you cast an instant or sorcery spell, target player mills four cards.",
+                "• Sultai — You may play lands from your graveyard.",
+            ],
+            |d, _| {
+                siege(d);
+                in_mode(d, 0, When::YouCastInstantOrSorcery, vec![Filter::PLAYER], vec![Effect::Mill { who: Who::TargetPlayer(0), n: 4 }]);
+                d.graveyard_lands_in_mode = Some(1);
+            },
+        ),
+        "Barrensteppe Siege" => s(
+            &[
+                "As this enchantment enters, choose Abzan or Mardu.",
+                "• Abzan — At the beginning of your end step, put a +1/+1 counter on each creature you control.",
+                "• Mardu — At the beginning of your end step, if a creature died under your control this turn, each opponent sacrifices a creature of their choice.",
+            ],
+            |d, _| {
+                siege(d);
+                let end = When::EndStep { your_turn_only: true };
+                in_mode(d, 0, end, vec![], vec![Effect::CountersAll { who: Who::You, n: 1 }]);
+                let died = Condition::Both(Box::new(Condition::ChosenMode(1)), Box::new(Condition::CreatureDiedUnderYourControlThisTurn));
+                conditional(d, end, died, vec![], vec![Effect::SacrificeCreatures { who: Who::EachOpponent, n: 1 }]);
+            },
+        ),
         _ => None,
     }
 }
@@ -251,4 +342,9 @@ pub const TDM_C_SCRIPTED: &[&str] = &[
     "Ruinous Ultimatum",
     "Death Begets Life",
     "Dragonback Assault",
+    "Windcrag Siege",
+    "Frostcliff Siege",
+    "Hollowmurk Siege",
+    "Glacierwood Siege",
+    "Barrensteppe Siege",
 ];

@@ -694,6 +694,8 @@ pub enum StaticCondition {
     LifeAtLeast(i32),
     /// Its controller controls a creature with a counter (of any kind) on it.
     ControlCreatureWithCounter,
+    /// The source's mode, chosen as it entered, is this one (the Sieges).
+    ChosenMode(u8),
 }
 
 /// A static ability that changes characteristics (CR 604, 613 layers 6 and 7c).
@@ -802,6 +804,12 @@ pub enum Condition {
     Kicked,
     /// You control a creature with a counter (of any kind) on it.
     ControlCreatureWithCounter,
+    /// The source's mode, chosen as it entered, is this one (the Sieges).
+    ChosenMode(u8),
+    /// Both conditions hold.
+    Both(Box<Condition>, Box<Condition>),
+    /// A creature died under your control this turn.
+    CreatureDiedUnderYourControlThisTurn,
 }
 
 /// A spell's effect or a triggered ability: target slots, then effects in order.
@@ -938,6 +946,12 @@ pub enum When {
     Chapter(u8),
     /// "Whenever this creature becomes tapped" (CR 603.2; entering tapped isn't becoming tapped).
     BecomesTapped,
+    /// "Whenever one or more creatures you control deal combat damage to a player": once per
+    /// combat damage step.
+    YourCreaturesDealCombatDamageToPlayer,
+    /// "Whenever a counter is put on a creature you control. This ability triggers only once each
+    /// turn." (Counters it enters with count, CR 122.6.)
+    CounterPutOnYourCreatureOnceEachTurn,
 }
 
 #[derive(Clone, Debug, PartialEq)]

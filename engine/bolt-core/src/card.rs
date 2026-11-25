@@ -325,6 +325,13 @@ pub struct CardDef {
     pub enters_tapped_unless: Option<[&'static str; 2]>,
     /// "Creatures with power less than this creature's power can't block it."
     pub not_blocked_by_lesser_power: bool,
+    /// "As this enters, choose [A] or [B]": a mode, 0 or 1, chosen as it resolves (the Sieges).
+    pub enter_modes: bool,
+    /// In this chosen mode: "If a creature attacking causes a triggered ability of a permanent you
+    /// control to trigger, that ability triggers an additional time." (Windcrag Siege)
+    pub attack_triggers_again_in_mode: Option<u8>,
+    /// In this chosen mode: "You may play lands from your graveyard." (Glacierwood Siege)
+    pub graveyard_lands_in_mode: Option<u8>,
 }
 
 /// An Omen spell half: its name, cost, whether it's an instant, and what it does.
@@ -430,6 +437,9 @@ impl CardDef {
             subtype_enters_with_counter: None,
             enters_tapped_unless: None,
             not_blocked_by_lesser_power: false,
+            enter_modes: false,
+            attack_triggers_again_in_mode: None,
+            graveyard_lands_in_mode: None,
         }
     }
 
@@ -514,6 +524,9 @@ impl CardDef {
             subtype_enters_with_counter: None,
             enters_tapped_unless: None,
             not_blocked_by_lesser_power: false,
+            enter_modes: false,
+            attack_triggers_again_in_mode: None,
+            graveyard_lands_in_mode: None,
         }
     }
 
@@ -598,6 +611,9 @@ impl CardDef {
             subtype_enters_with_counter: None,
             enters_tapped_unless: None,
             not_blocked_by_lesser_power: false,
+            enter_modes: false,
+            attack_triggers_again_in_mode: None,
+            graveyard_lands_in_mode: None,
         }
     }
 }
