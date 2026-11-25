@@ -269,3 +269,19 @@ Assessed and left (needs core):
   player's graveyard. Target slots are filled in order with one minimum count, so the four can't be chosen
   after skipping the two, and no filter ties cards to the player in another slot. It also needs "shuffle
   target cards into their library".
+
+## Round 3, batch 8a: the rest of Tarkir (5 cards)
+
+Mechanics added (bolt-core, all at the end of their enum or struct):
+- `CardDef::opponents_cant_cast_your_turn` (no casting from any zone, free casts included; lands can still be
+  played and abilities activated), `CardDef::warrior_tokens_unsacrificeable_end_step` (`cant_be_sacrificed`:
+  checked for end-step sacrifices, "sacrifices a creature" effects and every sacrifice cost),
+  `CardDef::creature_spell_discount`.
+- `When::CastCreatureYouControlEnters`: fired as a cast creature spell resolves onto the battlefield (the
+  "if you cast it" creatures), with the creature in a triggering slot.
+- `Effect::ReturnUpToPermanentCardsToHand(n)` and `Effect::ShuffleUpToFromGraveyard { slot, n }` with their
+  decisions. Rite of Renewal's cards are chosen as it resolves rather than as targets (the coordinator's call):
+  it targets only the player.
+
+Cards: Anafenza, Unyielding Lineage, Voice of Victory, Zurgo, Thunder's Decree, The Sibsig Ceremony, Rite of
+Renewal.

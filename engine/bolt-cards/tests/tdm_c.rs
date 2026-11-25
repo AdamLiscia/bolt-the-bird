@@ -2269,3 +2269,126 @@ fn songcrafter_mage_gives_a_graveyard_spell_harmonize_for_its_mana_cost() {
     assert_eq!(g.obj(lf).zone, Zone::Exile, "then exiled");
     assert_eq!(g.obj(spell).zone, Zone::Graveyard);
 }
+
+// ---- round 3, batch 8 ----
+
+#[test]
+fn anafenza_endures_when_another_nontoken_creature_dies() {
+    let mut g = table();
+    let a = put(&mut g, 0, "Anafenza, Unyielding Lineage");
+    let ks = g.def_of(a).keywords;
+    assert!(ks.has(Keywords::FLASH) && ks.has(Keywords::FIRST_STRIKE));
+    let e = put(&mut g, 0, "Unburied Earthcarver");
+    let fodder = put(&mut g, 0, "Summit Intimidator");
+    let goblin = g.add_card(0, set_token(&g, "Goblin"), Zone::Battlefield);
+    begin(&mut g);
+    act(&mut g, Action::ActivateWith(e, 0, fodder));
+    resolve_all(&mut g, &[Action::Yes]);
+    assert_eq!(g.obj(a).counters, 2);
+    act(&mut g, Action::ActivateWith(e, 0, goblin));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(a).counters, 2, "not for a token");
+}
+
+#[test]
+fn voice_of_victory_stops_opponents_casting_on_your_turn() {
+    let mut g = table();
+    let v = put(&mut g, 0, "Voice of Victory");
+    let instant = hand(&mut g, 1, "Twin Bolt");
+    begin(&mut g);
+    let mine = hand(&mut g, 0, "Lightfoot Technique");
+    act(&mut g, Action::Cast(mine));
+    act(&mut g, Action::Target(obj(v)));
+    act(&mut g, Action::PassPriority); // to the opponent, with a spell on the stack
+    assert_eq!(g.pending, Pending::Priority(1));
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(instant)),
+        "not during your turn"
+    );
+    resolve_all(&mut g, &[]);
+    g.start_turn(6, 1);
+    while !(g.step == Step::Main1 && g.pending == Pending::Priority(1)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(
+        g.legal_actions().contains(&Action::Cast(instant)),
+        "on their own turn"
+    );
+    attack_with(&mut g, v);
+}
+
+#[test]
+fn zurgo_keeps_warrior_tokens_through_your_end_step() {
+    let mut g = table();
+    let z = put(&mut g, 0, "Zurgo, Thunder's Decree");
+    attack_with(&mut g, z);
+    assert_eq!(tokens(&g, 0, "Warrior").len(), 2, "mobilize 2");
+    while g.step != Step::End {
+        let a = match g.pending {
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(
+        tokens(&g, 0, "Warrior").len(),
+        2,
+        "they can't be sacrificed during your end step"
+    );
+    to_next_turn(&mut g);
+    assert_eq!(tokens(&g, 0, "Warrior").len(), 2, "and stay");
+}
+
+#[test]
+fn the_sibsig_ceremony_discounts_creatures_and_trades_cast_ones_for_zombies() {
+    let mut g = table();
+    put(&mut g, 0, "The Sibsig Ceremony");
+    let c = hand(&mut g, 0, "Summit Intimidator"); // {3}{R}
+    let theirs = put(&mut g, 1, "Unburied Earthcarver");
+    begin(&mut g);
+    let n = paid(&mut g, |g| {
+        act(g, Action::Cast(c));
+        resolve_all(g, &[Action::Target(obj(theirs))]);
+    });
+    assert_eq!(n, 2, "{{2}} less");
+    assert_eq!(g.obj(c).zone, Zone::Graveyard, "destroyed: you cast it");
+    assert_eq!(tokens(&g, 0, "Zombie Druid").len(), 1);
+    let put_in = g.add_card(0, tid("Unburied Earthcarver"), Zone::Hand);
+    g.move_card(put_in, Zone::Battlefield);
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(put_in).zone, Zone::Battlefield, "not cast: it stays");
+    assert_eq!(tokens(&g, 0, "Zombie Druid").len(), 1);
+}
+
+#[test]
+fn rite_of_renewal_returns_two_and_shuffles_four_back() {
+    let mut g = table();
+    let a = g.add_card(0, tid("Unburied Earthcarver"), Zone::Graveyard);
+    let b = g.add_card(0, tid("War Effort"), Zone::Graveyard);
+    let spell = g.add_card(0, tid("Twin Bolt"), Zone::Graveyard);
+    let theirs: Vec<_> = (0..5)
+        .map(|_| g.add_card(1, tid("Twin Bolt"), Zone::Graveyard))
+        .collect();
+    let c = hand(&mut g, 0, "Rite of Renewal");
+    begin(&mut g);
+    act(&mut g, Action::Cast(c));
+    act(&mut g, Action::Target(Target::Player(1)));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(
+        !g.legal_actions().contains(&Action::Pick(spell)),
+        "permanent cards"
+    );
+    act(&mut g, Action::Pick(a));
+    act(&mut g, Action::Pick(b));
+    let lib = g.players[1].library.len();
+    for &t in &theirs[..4] {
+        act(&mut g, Action::Pick(t));
+    }
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.obj(a).zone, g.obj(b).zone), (Zone::Hand, Zone::Hand));
+    assert_eq!(g.players[1].library.len(), lib + 4);
+    assert_eq!(g.obj(theirs[4]).zone, Zone::Graveyard, "up to four");
+    assert_eq!(g.obj(c).zone, Zone::Exile);
+}

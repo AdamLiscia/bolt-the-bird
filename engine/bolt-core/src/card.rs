@@ -382,6 +382,12 @@ pub struct CardDef {
     /// "{T}: Add one mana of any color. Spend this mana only to cast a Dragon spell or an Omen
     /// spell." Its plain mana is in `mana` (Maelstrom of the Spirit Dragon).
     pub any_color_for_dragon_or_omen: bool,
+    /// "Your opponents can't cast spells during your turn." (Voice of Victory)
+    pub opponents_cant_cast_your_turn: bool,
+    /// "During your end step, Warrior tokens you control have 'This token can't be sacrificed.'"
+    pub warrior_tokens_unsacrificeable_end_step: bool,
+    /// "Creature spells you cast cost {N} less to cast." (The Sibsig Ceremony)
+    pub creature_spell_discount: u8,
 }
 
 /// An Omen spell half: its name, cost, whether it's an instant, and what it does.
@@ -502,6 +508,9 @@ impl CardDef {
             your_turn_discount_per_big_creature: false,
             mana_taps_creature: false,
             any_color_for_dragon_or_omen: false,
+            opponents_cant_cast_your_turn: false,
+            warrior_tokens_unsacrificeable_end_step: false,
+            creature_spell_discount: 0,
         }
     }
 
@@ -601,6 +610,9 @@ impl CardDef {
             your_turn_discount_per_big_creature: false,
             mana_taps_creature: false,
             any_color_for_dragon_or_omen: false,
+            opponents_cant_cast_your_turn: false,
+            warrior_tokens_unsacrificeable_end_step: false,
+            creature_spell_discount: 0,
         }
     }
 
@@ -700,6 +712,9 @@ impl CardDef {
             your_turn_discount_per_big_creature: false,
             mana_taps_creature: false,
             any_color_for_dragon_or_omen: false,
+            opponents_cant_cast_your_turn: false,
+            warrior_tokens_unsacrificeable_end_step: false,
+            creature_spell_discount: 0,
         }
     }
 }

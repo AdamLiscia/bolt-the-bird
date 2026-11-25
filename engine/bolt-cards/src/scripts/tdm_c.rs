@@ -728,6 +728,53 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::Enters, vec![card], vec![Effect::GrantHarmonize(0)]);
             },
         ),
+        // ---- lane C round 3, batch 8: the rest of Tarkir ----
+        "Anafenza, Unyielding Lineage" => s(
+            &["Whenever another nontoken creature you control dies, Anafenza endures 2."],
+            |d, t| on(d, When::AnotherNontokenCreatureYouControlDies, vec![], vec![endure(2, t)]),
+        ),
+        "Voice of Victory" => s(&["Mobilize 2", "Your opponents can't cast spells during your turn."], |d, t| {
+            mobilize(d, t, Some(2));
+            d.opponents_cant_cast_your_turn = true;
+        }),
+        "Zurgo, Thunder's Decree" => s(
+            &["Mobilize 2", "During your end step, Warrior tokens you control have \"This token can't be sacrificed.\""],
+            |d, t| {
+                mobilize(d, t, Some(2));
+                d.warrior_tokens_unsacrificeable_end_step = true;
+            },
+        ),
+        "The Sibsig Ceremony" => s(
+            &[
+                "Creature spells you cast cost {2} less to cast.",
+                "Whenever a creature you control enters, if you cast it, destroy that creature, then create a 2/2 black Zombie Druid creature token.",
+            ],
+            |d, t| {
+                d.creature_spell_discount = 2;
+                let that = Filter { triggering: true, ..CREATURE };
+                on(
+                    d,
+                    When::CastCreatureYouControlEnters,
+                    vec![that],
+                    vec![Effect::Destroy(0), Effect::CreateToken { who: Who::You, def: t.zombie_druid, n: 1 }],
+                );
+            },
+        ),
+        "Rite of Renewal" => s(
+            &["Return up to two target permanent cards from your graveyard to your hand. Target player shuffles up to four target cards from their graveyard into their library. Exile Rite of Renewal."],
+            |d, _| {
+                // The cards are chosen as it resolves (a decision), not as targets.
+                spell(
+                    d,
+                    vec![Filter::PLAYER],
+                    vec![
+                        Effect::ReturnUpToPermanentCardsToHand(2),
+                        Effect::ShuffleUpToFromGraveyard { slot: 0, n: 4 },
+                        Effect::ExileSourceSpell,
+                    ],
+                );
+            },
+        ),
         _ => None,
     }
 }
@@ -803,4 +850,9 @@ pub const TDM_C_SCRIPTED: &[&str] = &[
     "Warden of the Grove",
     "Cori-Steel Cutter",
     "Songcrafter Mage",
+    "Anafenza, Unyielding Lineage",
+    "Voice of Victory",
+    "Zurgo, Thunder's Decree",
+    "The Sibsig Ceremony",
+    "Rite of Renewal",
 ];

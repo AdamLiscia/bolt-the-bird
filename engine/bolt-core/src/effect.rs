@@ -826,6 +826,14 @@ pub enum Effect {
     /// The instant or sorcery card in `slot` gains harmonize until end of turn, its harmonize cost its
     /// mana cost (Songcrafter Mage).
     GrantHarmonize(u8),
+    /// Return up to `n` permanent cards of your choice from your graveyard to your hand.
+    ReturnUpToPermanentCardsToHand(u8),
+    /// The player in `slot` shuffles up to `n` cards (your choice) from their graveyard into their
+    /// library.
+    ShuffleUpToFromGraveyard {
+        slot: u8,
+        n: u8,
+    },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1237,6 +1245,9 @@ pub enum When {
     /// "Whenever a card leaves your graveyard during your turn, ... This ability triggers only once
     /// each turn."
     CardLeavesYourGraveyardOnceEachTurn,
+    /// "Whenever a creature you control enters, if you cast it": fired as a cast creature spell
+    /// resolves; slot 0 (triggering) is that creature.
+    CastCreatureYouControlEnters,
 }
 
 #[derive(Clone, Debug, PartialEq)]
