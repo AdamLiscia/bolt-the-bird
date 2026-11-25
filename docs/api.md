@@ -415,11 +415,51 @@ game"; show an icon only when present and active.
 
 | Field | Where | Status |
 |---|---|---|
-| `commander_damage` | per player: `{"<source commander card_id>": n}`, damage taken from each commander | Ships with Commander games (the Star Trek precon work); the engine already tracks it, Limited games omit it |
+| `commander_damage` | per player: `{"<source commander card_id>": n}`, damage taken from each commander | Ships with Commander games (see *Commander games* below, Bloomburrow first); the engine already tracks it, Limited games omit it |
 | `poison`, `energy`, `experience` | per player, integers | Not modeled (no Foundations or Tarkir card uses them) |
 | `monarch`, `initiative` | game level: the seat that has it, or null | Not modeled |
 | `city_blessing` | game level: list of seats | Not modeled |
 | `day_night` | game level: `"day"`, `"night"` or null | Not modeled |
+
+### Commander games (Bloomburrow Commander, `set: "BLC"`): planned contract
+
+Status (2026-11-25): **the engine rules are built and tested on the `tarkir` branch; the service does not
+serve this yet.** It reaches the live service together with Tarkir, after the trained players are padded
+for the new cards. Everything below is additive: Limited games are unchanged and ignore it.
+
+Request: `POST /v1/game` with `"format": "commander"` and a commander per seat. Decks are the other 99 cards.
+
+```json
+{"set": "BLC", "format": "commander",
+ "commander_a": "Bello, Bard of the Brambles", "deck_a": [{"name": "Sol Ring", "qty": 1}, ...],
+ "commander_b": "...", "deck_b": [...], "human_seat": 0, "pilot": "smart", "seed": 7}
+```
+
+- Validation runs before the game exists. Any problem returns 422 `{"error": "invalid_deck", "seat": 0,
+  "problems": ["..."]}` listing every problem, not just the first. The checks: the commander is a
+  legendary creature; the deck plus the commander is exactly 100 cards; it's singleton (basic lands, and
+  cards that say any number may be in a deck, are exempt); every card is inside the commander's color
+  identity (mana symbols in the cost and rules text, both halves of an Omen card).
+- Both players start at **40 life**. Commanders start in the command zone.
+- Casting a commander from the command zone is an ordinary `Cast` legal action; the cost includes
+  **commander tax**, {2} more for each earlier cast from the command zone.
+- When a commander would go to the graveyard or exile, it goes there; its owner is then asked a
+  yes/no decision, `pending.kind = "CommanderToCommandZone"` (labels "Move to the command zone" /
+  "Leave it"), answered with the usual `act`. Hand or library: it goes to the command zone
+  automatically. "Dies" triggers see a commander die.
+- 21 or more combat damage from one commander makes that player lose.
+
+State additions (per player in `view.players[n]`):
+
+| Field | Meaning |
+|---|---|
+| `command` | `[{"id", "name", "card_id", "tax"}]`: the cards in that player's command zone; `tax` is the generic mana the next cast adds |
+| `commander_damage` | `{"<source commander card_id>": n}`: combat damage taken from each commander (see Player counters) |
+| `life` | starts at 40 |
+
+`GET /v1/cards?set=BLC` lists the 300 non-basic cards of the four precons plus their tokens, with the
+same fields as FDN. `GET /v1/precons?set=BLC` lists the four decks (name, commander, 99 cards) as the
+handoff file has them, so Nerd Leagues can offer "play a precon" without building decks itself.
 
 ### Spectating a seat (stream mode)
 
