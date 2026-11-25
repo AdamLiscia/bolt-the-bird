@@ -19,6 +19,14 @@ fn pain_land(d: &mut CardDef, a: Color, b: Color) {
     d.pain_colored = true;
 }
 
+/// "{cost}, {T}: Add" two mana: the first from `a`'s colors, the second from `b`'s.
+fn two_mana(d: &mut CardDef, cost: &str, a: &[Color], b: &[Color]) {
+    d.paid_mana = Some((
+        ManaCost::parse(cost).expect("a mana cost"),
+        [ManaSource::of(a), ManaSource::of(b)],
+    ));
+}
+
 pub fn script(name: &str) -> Option<Script> {
     let s = |lines, build| Some(Script { lines, build });
     match name {
@@ -153,12 +161,57 @@ pub fn script(name: &str) -> Option<Script> {
         "Llanowar Wastes" => s(&["{T}: Add {C}.", "{T}: Add {B} or {G}. This land deals 1 damage to you."], |d, _| pain_land(d, Color::Black, Color::Green)),
         "Shivan Reef" => s(&["{T}: Add {C}.", "{T}: Add {U} or {R}. This land deals 1 damage to you."], |d, _| pain_land(d, Color::Blue, Color::Red)),
         "Yavimaya Coast" => s(&["{T}: Add {C}.", "{T}: Add {G} or {U}. This land deals 1 damage to you."], |d, _| pain_land(d, Color::Green, Color::Blue)),
+        // Signets and filter lands: "{cost}, {T}: Add" two mana (the payer uses them when it needs to).
+        "Skycloud Expanse" => s(&["{1}, {T}: Add {W}{U}."], |d, _| two_mana(d, "{1}", &[Color::White], &[Color::Blue])),
+        "Ferrous Lake" => s(&["{1}, {T}: Add {U}{R}."], |d, _| two_mana(d, "{1}", &[Color::Blue], &[Color::Red])),
+        "Mossfire Valley" => s(&["{1}, {T}: Add {R}{G}."], |d, _| two_mana(d, "{1}", &[Color::Red], &[Color::Green])),
+        "Overflowing Basin" => s(&["{1}, {T}: Add {G}{U}."], |d, _| two_mana(d, "{1}", &[Color::Green], &[Color::Blue])),
+        "Sungrass Prairie" => s(&["{1}, {T}: Add {G}{W}."], |d, _| two_mana(d, "{1}", &[Color::Green], &[Color::White])),
+        "Sunscorched Divide" => s(&["{1}, {T}: Add {R}{W}."], |d, _| two_mana(d, "{1}", &[Color::Red], &[Color::White])),
+        "Viridescent Bog" => s(&["{1}, {T}: Add {B}{G}."], |d, _| two_mana(d, "{1}", &[Color::Black], &[Color::Green])),
+        "Azorius Signet" => s(&["{1}, {T}: Add {W}{U}."], |d, _| two_mana(d, "{1}", &[Color::White], &[Color::Blue])),
+        "Boros Signet" => s(&["{1}, {T}: Add {R}{W}."], |d, _| two_mana(d, "{1}", &[Color::Red], &[Color::White])),
+        "Golgari Signet" => s(&["{1}, {T}: Add {B}{G}."], |d, _| two_mana(d, "{1}", &[Color::Black], &[Color::Green])),
+        "Gruul Signet" => s(&["{1}, {T}: Add {R}{G}."], |d, _| two_mana(d, "{1}", &[Color::Red], &[Color::Green])),
+        "Izzet Signet" => s(&["{1}, {T}: Add {U}{R}."], |d, _| two_mana(d, "{1}", &[Color::Blue], &[Color::Red])),
+        "Cascade Bluffs" => s(&["{T}: Add {C}.", "{U/R}, {T}: Add {U}{U}, {U}{R}, or {R}{R}."], |d, _| {
+            d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+            two_mana(d, "{U/R}", &[Color::Blue, Color::Red], &[Color::Blue, Color::Red]);
+        }),
+        "Flooded Grove" => s(&["{T}: Add {C}.", "{G/U}, {T}: Add {G}{G}, {G}{U}, or {U}{U}."], |d, _| {
+            d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+            two_mana(d, "{G/U}", &[Color::Green, Color::Blue], &[Color::Green, Color::Blue]);
+        }),
+        "Rugged Prairie" => s(&["{T}: Add {C}.", "{R/W}, {T}: Add {R}{R}, {R}{W}, or {W}{W}."], |d, _| {
+            d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+            two_mana(d, "{R/W}", &[Color::Red, Color::White], &[Color::Red, Color::White]);
+        }),
+        "Twilight Mire" => s(&["{T}: Add {C}.", "{B/G}, {T}: Add {B}{B}, {B}{G}, or {G}{G}."], |d, _| {
+            d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+            two_mana(d, "{B/G}", &[Color::Black, Color::Green], &[Color::Black, Color::Green]);
+        }),
         _ => None,
     }
 }
 
 /// Lane C's scripted BLC cards (checked against their text in `lib.rs`).
 pub const BLC_C_SCRIPTED: &[&str] = &[
+    "Skycloud Expanse",
+    "Ferrous Lake",
+    "Mossfire Valley",
+    "Overflowing Basin",
+    "Sungrass Prairie",
+    "Sunscorched Divide",
+    "Viridescent Bog",
+    "Azorius Signet",
+    "Boros Signet",
+    "Golgari Signet",
+    "Gruul Signet",
+    "Izzet Signet",
+    "Cascade Bluffs",
+    "Flooded Grove",
+    "Rugged Prairie",
+    "Twilight Mire",
     "Adarkar Wastes",
     "Battlefield Forge",
     "Brushland",

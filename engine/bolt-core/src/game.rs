@@ -3694,6 +3694,37 @@ impl Game {
 
     /// Pays `cost`, for casting `spell` if given (restricted mana can then help).
     fn pay_mana_for(&mut self, p: PlayerId, cost: &ManaCost, exclude: Option<ObjId>, spell: PayFor) {
+        if !self.can_pay_direct(p, cost, exclude, spell)
+            && self.devotee_fix(p, cost, exclude, spell).is_none()
+        {
+            if let Some((used, bill, all)) = self.paid_mana_plan(p, cost, exclude, spell) {
+                let plain: Vec<ManaSource> = all.iter().map(|s| s.1).collect();
+                let mut paid = mana::pay(&bill, &plain).expect("planned");
+                paid.sort_unstable_by(|a, b| b.cmp(a));
+                let pool_len = self.players[p].pool.len();
+                // Output mana the bill didn't need floats in the pool (CR 106.4), like any other.
+                let spare: Vec<ManaSource> = (0..all.len())
+                    .filter(|&i| i >= pool_len && all[i].0.is_none() && !paid.contains(&i))
+                    .map(|i| all[i].1)
+                    .collect();
+                for &f in &used {
+                    self.become_tapped(f);
+                }
+                for i in paid {
+                    if i < pool_len {
+                        self.players[p].pool.remove(i);
+                    } else if let (Some(id), _) = all[i] {
+                        self.become_tapped(id);
+                        if self.def_of(id).sac_for_mana {
+                            self.move_to(id, Zone::Graveyard);
+                        }
+                    }
+                    // Otherwise a two-mana output, paid for by tapping its Signet or filter land above.
+                }
+                self.players[p].pool.extend(spare);
+                return;
+            }
+        }
         let mut fixed = *cost;
         if !self.can_pay_direct(p, cost, exclude, spell) {
             // A Devotee turns one mana into one of its colors (once each turn).
@@ -3925,7 +3956,65 @@ impl Game {
     }
 
     fn can_pay_for(&self, p: PlayerId, cost: &ManaCost, exclude: Option<ObjId>, spell: PayFor) -> bool {
-        self.can_pay_direct(p, cost, exclude, spell) || self.devotee_fix(p, cost, exclude, spell).is_some()
+        self.can_pay_direct(p, cost, exclude, spell)
+            || self.devotee_fix(p, cost, exclude, spell).is_some()
+            || self.paid_mana_plan(p, cost, exclude, spell).is_some()
+    }
+
+    /// Signets and filter lands ("{1}, {T}: Add {W}{U}"): the smallest set of them that makes `cost`
+    /// payable, solved jointly with the other sources: each one used takes itself out of the normal
+    /// sources, adds its own cost to the bill, and adds its two mana. Returns the ones to use, the
+    /// total bill, and the sources (the pool first, then lands and others, then the two-mana outputs).
+    #[allow(clippy::type_complexity)]
+    fn paid_mana_plan(
+        &self,
+        p: PlayerId,
+        cost: &ManaCost,
+        exclude: Option<ObjId>,
+        spell: PayFor,
+    ) -> Option<(Vec<ObjId>, ManaCost, Vec<(Option<ObjId>, ManaSource)>)> {
+        let filters: Vec<ObjId> = self
+            .permanents(p)
+            .filter(|&x| {
+                self.def_of(x).paid_mana.is_some()
+                    && !self.obj(x).tapped
+                    && Some(x) != exclude
+                    && !self.lost_abilities(x)
+                    && !self.activation_stopped(x)
+            })
+            .take(5)
+            .collect();
+        if filters.is_empty() {
+            return None;
+        }
+        let normal = self.payment_sources(p, exclude, spell);
+        let mut masks: Vec<u32> = (1..(1u32 << filters.len())).collect();
+        masks.sort_by_key(|m| m.count_ones());
+        for mask in masks {
+            let used: Vec<ObjId> = (0..filters.len())
+                .filter(|&k| mask & (1 << k) != 0)
+                .map(|k| filters[k])
+                .collect();
+            let mut bill = *cost;
+            let mut all: Vec<(Option<ObjId>, ManaSource)> =
+                self.players[p].pool.iter().map(|&m| (None, m)).collect();
+            all.extend(
+                normal
+                    .iter()
+                    .filter(|s| !used.contains(&s.0))
+                    .map(|&(id, m)| (Some(id), m)),
+            );
+            for &f in &used {
+                let (input, outputs) = self.def_of(f).paid_mana.expect("a two-mana source");
+                bill = add_costs(&bill, &input);
+                all.extend(outputs.iter().map(|&m| (None, m)));
+            }
+            let plain: Vec<ManaSource> = all.iter().map(|s| s.1).collect();
+            if mana::pay(&bill, &plain).is_some() {
+                return Some((used, bill, all));
+            }
+        }
+        None
     }
 
     /// "{1}: Add {A}, {B}, or {C}. Activate only once each turn." (the Devotees): a Devotee not used

@@ -411,3 +411,42 @@ fn a_pain_land_deals_one_damage_only_when_its_colored_mana_is_needed() {
         "generic mana: tapped for {{C}}, no damage"
     );
 }
+
+#[test]
+fn a_signet_turns_one_mana_into_two_colors() {
+    // {1}{U} from a Plains and an Azorius Signet: the Plains pays the Signet's {1}; {W}{U} pays the spell.
+    let mut g = with_lands(&["Plains", "Azorius Signet"]);
+    let escort = hand(&mut g, 0, "Plumecreed Escort");
+    assert!(g.legal_actions().contains(&Action::Cast(escort)));
+    play(&mut g, escort, false, &[], &[Action::Target(obj(escort))]);
+    assert_eq!(g.obj(escort).zone, Zone::Battlefield);
+    assert!(g
+        .permanents(0)
+        .filter(|&x| g.def_of(x).name != "Plumecreed Escort")
+        .all(|x| g.obj(x).tapped));
+
+    // A Signet alone makes nothing: its {1} needs another source.
+    let mut g = with_lands(&["Azorius Signet"]);
+    let thopter = hand(&mut g, 0, "Ornithopter of Paradise");
+    assert!(!g.legal_actions().contains(&Action::Cast(thopter)));
+}
+
+#[test]
+fn a_filter_land_turns_hybrid_mana_into_two_of_its_colors() {
+    // {1}{U} from a Mountain and Cascade Bluffs: only the filter ability ({U/R}: add two of U/R) gets blue.
+    let mut g = with_lands(&["Mountain", "Cascade Bluffs"]);
+    let escort = hand(&mut g, 0, "Plumecreed Escort");
+    assert!(
+        g.legal_actions().contains(&Action::Cast(escort)),
+        "Mountain into the Bluffs makes {{U}}"
+    );
+    play(&mut g, escort, false, &[], &[Action::Target(obj(escort))]);
+    assert_eq!(g.obj(escort).zone, Zone::Battlefield);
+    // The Bluffs' own {T}: Add {C} still works on its own.
+    let mut g = with_lands(&["Cascade Bluffs"]);
+    let thopter = hand(&mut g, 0, "Ornithopter of Paradise"); // {2}
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(thopter)),
+        "one land, one mana"
+    );
+}

@@ -437,6 +437,8 @@ pub struct CardDef {
     /// Gratuitous Violence: "If a creature you control would deal damage to a permanent or player,
     /// it deals double that damage instead."
     pub doubles_your_creatures_damage: bool,
+    /// "{cost}, {T}: Add [two mana]." (Signets, filter lands): the cost and the two mana it makes.
+    pub paid_mana: Option<(ManaCost, [ManaSource; 2])>,
 }
 
 /// An Omen spell half: its name, cost, whether it's an instant, and what it does.
@@ -577,6 +579,7 @@ impl CardDef {
             pain_colored: false,
             thriving_color: None,
             doubles_your_creatures_damage: false,
+            paid_mana: None,
         }
     }
 
@@ -696,6 +699,7 @@ impl CardDef {
             pain_colored: false,
             thriving_color: None,
             doubles_your_creatures_damage: false,
+            paid_mana: None,
         }
     }
 
@@ -815,6 +819,7 @@ impl CardDef {
             pain_colored: false,
             thriving_color: None,
             doubles_your_creatures_damage: false,
+            paid_mana: None,
         }
     }
 }
