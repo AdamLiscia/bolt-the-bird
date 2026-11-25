@@ -232,6 +232,8 @@ pub struct Activated {
     /// Crew N (CR 702.122): tap an untapped creature you control with power N or more (activated
     /// with `Action::ActivateWith`, that creature as the victim).
     pub crew: u8,
+    /// "Activate only if it's not your turn." (Ghost Town)
+    pub not_your_turn_only: bool,
 }
 
 /// The printed card. Shared by every copy; per-copy state lives on the game object.
@@ -594,6 +596,11 @@ pub struct CardDef {
     /// Split second (CR 702.61): while it's on the stack, players can't cast spells or activate
     /// abilities that aren't mana abilities.
     pub split_second: bool,
+    /// "Activated abilities of artifacts can't be activated." (Collector Ouphe)
+    pub stops_artifact_abilities: bool,
+    /// "{T}: Add one mana of any color among legendary creatures and planeswalkers you control." (Mox
+    /// Amber; none: no mana)
+    pub mana_legendary_colors: bool,
 }
 
 /// What entering makes triggers happen again (see [`CardDef::entering_triggers_again`]).
@@ -799,6 +806,8 @@ impl CardDef {
             alt_cost_needs_commander: false,
             permanents_for_energy: 0,
             split_second: false,
+            stops_artifact_abilities: false,
+            mana_legendary_colors: false,
         }
     }
 
@@ -972,6 +981,8 @@ impl CardDef {
             alt_cost_needs_commander: false,
             permanents_for_energy: 0,
             split_second: false,
+            stops_artifact_abilities: false,
+            mana_legendary_colors: false,
         }
     }
 
@@ -1145,6 +1156,8 @@ impl CardDef {
             alt_cost_needs_commander: false,
             permanents_for_energy: 0,
             split_second: false,
+            stops_artifact_abilities: false,
+            mana_legendary_colors: false,
         }
     }
 }

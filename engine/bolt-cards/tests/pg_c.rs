@@ -1189,3 +1189,114 @@ fn legolass_quick_reflexes_has_split_second_and_grants_a_tap_trigger() {
     resolve_all(&mut g, &[Action::Target(obj(theirs))]);
     assert_eq!(g.obj(theirs).zone, Zone::Graveyard, "2 damage to a 1/1");
 }
+
+// ---- Aesi, Tyrant of Gyre Strait (Time) ----
+
+#[test]
+fn swan_song_counters_an_instant_and_its_controller_gets_a_bird() {
+    let mut g = table();
+    let think = hand(&mut g, 0, "Think Twice");
+    let swan = hand(&mut g, 0, "Swan Song");
+    act(&mut g, Action::Cast(think));
+    act(&mut g, Action::Cast(swan));
+    resolve_all(&mut g, &[Action::Target(obj(think))]);
+    assert_eq!(g.obj(think).zone, Zone::Graveyard);
+    let birds = tokens(&g, 0, "Bird");
+    assert_eq!(birds.len(), 1);
+    assert_eq!(g.power(birds[0]), 2);
+    assert!(g.keywords(birds[0]).has(Keywords::FLYING));
+}
+
+#[test]
+fn biorhythm_sets_each_life_total_to_that_players_creature_count() {
+    let mut g = table();
+    put(&mut g, 0, "Aegis Turtle");
+    put(&mut g, 0, "Hungry Ghoul");
+    let bio = hand(&mut g, 0, "Biorhythm");
+    play(&mut g, bio, false, &[], &[]);
+    assert_eq!(g.players[0].life, 2);
+    assert_eq!(g.players[1].life, 0);
+}
+
+#[test]
+fn sunder_returns_all_lands_to_hand() {
+    let mut g = table();
+    let sunder = hand(&mut g, 0, "Sunder");
+    play(&mut g, sunder, false, &[], &[]);
+    assert!(g.battlefield.iter().all(|&x| !g.types_of(x).land));
+    assert!(g.players[1].hand.iter().filter(|&&x| g.types_of(x).land).count() >= 25);
+}
+
+#[test]
+fn ghost_town_returns_to_hand_only_off_turn() {
+    let mut g = game(&["Ghost Town"]);
+    let gt = g.permanents(0).next().unwrap();
+    assert!(colors(&g, gt) == [false; 5] && g.mana_sources(0).iter().any(|&(x, m)| x == gt && m.colorless));
+    assert!(!g.legal_actions().contains(&Action::Activate(gt, 0)), "your turn");
+    to_main1(&mut g, 4, 1);
+    act(&mut g, Action::PassPriority);
+    act(&mut g, Action::Activate(gt, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(gt).zone, Zone::Hand);
+}
+
+#[test]
+fn palinchron_untaps_seven_lands_and_returns_to_hand() {
+    let mut g = table();
+    let pal = hand(&mut g, 0, "Palinchron");
+    play(&mut g, pal, false, &[], &[]);
+    assert!(g.keywords(pal).has(Keywords::FLYING));
+    let tapped = g
+        .permanents(0)
+        .filter(|&x| g.types_of(x).land && g.obj(x).tapped)
+        .count();
+    assert_eq!(tapped, 0, "the seven lands it cost are untapped");
+    act(&mut g, Action::Activate(pal, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(pal).zone, Zone::Hand);
+}
+
+#[test]
+fn broken_bond_destroys_an_artifact_and_puts_a_land_from_hand() {
+    let mut g = table();
+    let signet = put(&mut g, 1, "Arcane Signet");
+    let forest = hand(&mut g, 0, "Forest");
+    let bb = hand(&mut g, 0, "Broken Bond");
+    play(&mut g, bb, false, &[obj(signet)], &[Action::Pick(forest)]);
+    assert_eq!(g.obj(signet).zone, Zone::Graveyard);
+    assert_eq!(g.obj(forest).zone, Zone::Battlefield);
+    assert!(!g.obj(forest).tapped);
+}
+
+#[test]
+fn collector_ouphe_stops_artifact_abilities() {
+    let mut g = table();
+    let top_ = put(&mut g, 0, "Sensei's Divining Top");
+    assert!(g.legal_actions().contains(&Action::Activate(top_, 0)));
+    put(&mut g, 1, "Collector Ouphe");
+    assert!(!g.legal_actions().contains(&Action::Activate(top_, 0)));
+    assert!(!g.legal_actions().contains(&Action::Activate(top_, 1)));
+}
+
+#[test]
+fn mox_amber_makes_the_colors_of_legendary_creatures() {
+    let mut g = game(&["Mox Amber"]);
+    let mox = g.permanents(0).next().unwrap();
+    assert_eq!(colors(&g, mox), [false; 5], "no legendary creature: no mana");
+    put(&mut g, 0, "Tinybones, Bauble Burglar");
+    assert_eq!(colors(&g, mox), [false, false, true, false, false]);
+}
+
+#[test]
+fn voidslime_counters_an_activated_ability() {
+    let mut g = table();
+    let t = put(&mut g, 0, "Sensei's Divining Top");
+    let vs = hand(&mut g, 0, "Voidslime");
+    act(&mut g, Action::Activate(t, 0));
+    assert_eq!(g.items.len(), 1);
+    act(&mut g, Action::Cast(vs));
+    resolve_all(&mut g, &[Action::Target(obj(t))]);
+    assert!(g.items.is_empty());
+    assert_eq!(g.obj(t).zone, Zone::Battlefield);
+    assert_eq!(g.obj(vs).zone, Zone::Graveyard);
+}

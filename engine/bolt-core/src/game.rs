@@ -883,6 +883,8 @@ pub enum Decision {
     HandToTop { left: u8 },
     /// Scroll Rack: `Pick` a card in your hand to exile face down (`exiled` so far), or `No` to stop.
     ScrollRackExile { exiled: Vec<ObjId> },
+    /// `Pick` a land card from your hand to put onto the battlefield, or `No`.
+    LandFromHand,
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -2140,6 +2142,14 @@ impl Game {
             return true; // Koma
         }
         let t = self.types_of(id);
+        if t.artifact
+            && self
+                .battlefield
+                .iter()
+                .any(|&x| self.def_of(x).stops_artifact_abilities && !self.lost_abilities(x))
+        {
+            return true; // Collector Ouphe
+        }
         (t.artifact || t.creature || t.planeswalker)
             && self
                 .battlefield
@@ -3628,6 +3638,10 @@ impl Game {
                     return f.spells
                         && is_spell
                         && f.spell_creature.is_none_or(|c| c == self.types_of(id).creature)
+                        && (!f.spells_enchantment_instant_sorcery || {
+                            let t = self.types_of(id);
+                            t.enchantment || t.instant || t.sorcery
+                        })
                         && f.max_mana_value
                             .is_none_or(|m| self.def_of(id).cost.mana_value() <= m);
                 }
@@ -5088,6 +5102,7 @@ impl Game {
                     || !sorcery_ok
                     || self.permanents(p).count() < a.min_permanents as usize
                     || (a.your_turn_only && p != self.active)
+                    || (a.not_your_turn_only && p == self.active)
                     || (a.if_card_left_graveyard && !self.graveyard_left_this_turn[p])
                     || (a.if_created_token_this_turn && self.token_created_turn[p] != self.turn)
                     || self.players[p].life < a.life
@@ -5507,6 +5522,22 @@ impl Game {
                     let colors: Vec<crate::Color> = crate::Color::ALL
                         .into_iter()
                         .filter(|&c| identity[c as usize])
+                        .collect();
+                    return (!colors.is_empty()).then(|| (id, ManaSource::of(&colors)));
+                }
+                if d.mana_legendary_colors {
+                    let mut could = [false; 5];
+                    for l in self.permanents(p).filter(|&l| {
+                        let t = self.types_of(l);
+                        t.legendary && (t.creature || t.planeswalker)
+                    }) {
+                        for (c, has) in could.iter_mut().zip(self.colors_of(l)) {
+                            *c |= has;
+                        }
+                    }
+                    let colors: Vec<crate::Color> = crate::Color::ALL
+                        .into_iter()
+                        .filter(|&c| could[c as usize])
                         .collect();
                     return (!colors.is_empty()).then(|| (id, ManaSource::of(&colors)));
                 }
@@ -7284,6 +7315,16 @@ impl Game {
             }
             Decision::SacrificeOneOf { cards } => cards.iter().copied().map(Action::Pick).collect(),
             Decision::HandToTop { .. } => hand.iter().copied().map(Action::Pick).collect(),
+            Decision::LandFromHand => {
+                let mut v: Vec<Action> = hand
+                    .iter()
+                    .copied()
+                    .filter(|&x| self.def_of(x).types.land)
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
             Decision::ScrollRackExile { .. } => {
                 let mut v: Vec<Action> = hand.iter().copied().map(Action::Pick).collect();
                 v.push(Action::No);
@@ -8303,6 +8344,8 @@ impl Game {
                 }
             }
             (Decision::ScrollRackExile { exiled }, Action::No) => self.scroll_rack_finish(p, exiled),
+            (Decision::LandFromHand, Action::Pick(c)) => self.move_to(c, Zone::Battlefield),
+            (Decision::LandFromHand, Action::No) => {}
             (Decision::LandsFromHand, choice) => {
                 if let Action::Pick(land) = choice {
                     self.move_to(land, Zone::Battlefield);
@@ -9945,6 +9988,59 @@ impl Game {
             Effect::Energy(n) => {
                 let p = item.controller;
                 self.players[p].energy += n as u32;
+            }
+            Effect::CounterSpellOrAbility(n) => {
+                if let Some(id) = Game::slot_object(item, legal, n) {
+                    if let Some(pos) = self.targeted_item(id) {
+                        let it = self.items[pos].clone();
+                        if it.kind == StackKind::Spell {
+                            if !self.uncounterable(id) {
+                                self.items.remove(pos);
+                                self.leave_stack(id, it.flashback);
+                            }
+                        } else {
+                            self.items.remove(pos); // a copy or an ability: it just leaves the stack
+                        }
+                    }
+                }
+            }
+            Effect::LifeBecomesCreatureCount => {
+                for q in [item.controller, opponent(item.controller)] {
+                    let n = self.creatures(q).count() as i32;
+                    let life = self.players[q].life;
+                    if n > life {
+                        self.gain_life(q, n - life);
+                    } else if n < life {
+                        self.lose_life(q, life - n);
+                    }
+                }
+            }
+            Effect::BounceAllLands => {
+                let lands: Vec<ObjId> = self
+                    .battlefield
+                    .iter()
+                    .copied()
+                    .filter(|&x| self.types_of(x).land)
+                    .collect();
+                for l in lands {
+                    self.move_to(l, Zone::Hand);
+                }
+            }
+            Effect::UntapLands(n) => {
+                let lands: Vec<ObjId> = self
+                    .permanents(item.controller)
+                    .filter(|&x| self.types_of(x).land && self.obj(x).tapped)
+                    .take(n as usize)
+                    .collect();
+                for l in lands {
+                    self.untap_by_effect(l);
+                }
+            }
+            Effect::MayLandFromHand => {
+                let p = item.controller;
+                if self.players[p].hand.iter().any(|&x| self.def_of(x).types.land) {
+                    self.ask(p, Decision::LandFromHand);
+                }
             }
             Effect::LookTopMayBottom(n) => {
                 if let Some(q) = self

@@ -506,6 +506,43 @@ pub fn script(name: &str) -> Option<Script> {
                 );
             },
         ),
+        // ---- Aesi, Tyrant of Gyre Strait (Time) ----
+        "Swan Song" => s(
+            &["Counter target enchantment, instant, or sorcery spell. Its controller creates a 2/2 blue Bird creature token with flying."],
+            |d, t| {
+                let f = Filter { spells_enchantment_instant_sorcery: true, ..SPELL };
+                spell(d, vec![f], vec![Effect::Counter(0), Effect::CreateToken { who: Who::ControllerOf(0), def: t.bird_2, n: 1 }]);
+            },
+        ),
+        "Biorhythm" => s(&["Each player's life total becomes the number of creatures they control."], |d, _| {
+            spell(d, vec![], vec![Effect::LifeBecomesCreatureCount])
+        }),
+        "Sunder" => s(&["Return all lands to their owners' hands."], |d, _| spell(d, vec![], vec![Effect::BounceAllLands])),
+        "Ghost Town" => s(&["{T}: Add {C}.", "{0}: Return this land to its owner's hand. Activate only if it's not your turn."], |d, _| {
+            d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+            let n = activated(d, "", false, vec![], vec![Effect::BounceSelf]);
+            d.activated[n].not_your_turn_only = true;
+        }),
+        "Palinchron" => s(
+            &["When this creature enters, untap up to seven lands.", "{2}{U}{U}: Return this creature to its owner's hand."],
+            |d, _| {
+                // "Up to seven lands": your own tapped ones (the engine's choice; untapping an opponent's
+                // land never helps you).
+                on(d, When::Enters, vec![], vec![Effect::UntapLands(7)]);
+                activated(d, "{2}{U}{U}", false, vec![], vec![Effect::BounceSelf]);
+            },
+        ),
+        "Broken Bond" => s(
+            &["Destroy target artifact or enchantment. You may put a land card from your hand onto the battlefield."],
+            |d, _| spell(d, vec![ARTIFACT_OR_ENCHANTMENT], vec![Effect::Destroy(0), Effect::MayLandFromHand]),
+        ),
+        "Collector Ouphe" => s(&["Activated abilities of artifacts can't be activated."], |d, _| d.stops_artifact_abilities = true),
+        "Mox Amber" => s(&["{T}: Add one mana of any color among legendary creatures and planeswalkers you control."], |d, _| {
+            d.mana_legendary_colors = true
+        }),
+        "Voidslime" => s(&["Counter target spell, activated ability, or triggered ability."], |d, _| {
+            spell(d, vec![Filter { abilities: true, ..SPELL }], vec![Effect::CounterSpellOrAbility(0)])
+        }),
         _ => None,
     }
 }
@@ -573,4 +610,13 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Scroll Rack",
     "Conduit of Worlds",
     "Legolas's Quick Reflexes",
+    "Swan Song",
+    "Biorhythm",
+    "Sunder",
+    "Ghost Town",
+    "Palinchron",
+    "Broken Bond",
+    "Collector Ouphe",
+    "Mox Amber",
+    "Voidslime",
 ];

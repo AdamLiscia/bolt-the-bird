@@ -488,3 +488,16 @@ Scroll Rack: `ScryOrder`). Conduit's "you may cast that card" is deferred: the c
 graveyard for the rest of the turn while you haven't cast a spell, and casting it locks out further spells. The
 granted "becomes tapped" trigger is Legolas's own `When::Never` trigger, with the tapped creature as the item's
 `extra`, like the granted combat-damage triggers.
+
+## Playgroup 2026-11-25: Aesi, Tyrant of Gyre Strait (Time), lane C
+
+List: "C" in ~/bolt-handoff/pg_lanes_aesi.json (24 cards). Same module and tests as Glarb.
+
+Aesi batch 1 (9): Swan Song, Biorhythm, Sunder, Ghost Town, Palinchron, Broken Bond, Collector Ouphe, Mox Amber,
+Voidslime.
+Core: `CardDef::{stops_artifact_abilities (in activation_stopped, so artifact mana too), mana_legendary_colors}`,
+`Activated::not_your_turn_only`, `Filter::spells_enchantment_instant_sorcery`, `Decision::LandFromHand`,
+`Effect::{CounterSpellOrAbility, LifeBecomesCreatureCount, BounceAllLands, UntapLands, MayLandFromHand}`. Token: Bird
+2/2 flying at base+56. Palinchron's "untap up to seven lands" untaps up to seven of your own tapped lands. Biorhythm
+sets each life total by gaining or losing the difference. Voidslime removes a countered ability from the stack; a
+countered spell copy just ceases to exist.

@@ -152,6 +152,7 @@ pub fn token_defs() -> Vec<CardDef> {
             t.pt_lands = true;
             t
         },
+        token("Bird", "Bird", 2, 2, Keywords::FLYING), // Swan Song's blue 2/2
     ]
 }
 
@@ -249,6 +250,7 @@ pub struct Tokens {
     pub insect_green: usize,
     pub badger: usize,
     pub treefolk: usize,
+    pub bird_2: usize,
 }
 
 impl Tokens {
@@ -310,6 +312,7 @@ impl Tokens {
             insect_green: base + 53,
             badger: base + 54,
             treefolk: base + 55,
+            bird_2: base + 56,
         }
     }
 }

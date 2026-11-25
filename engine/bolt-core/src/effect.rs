@@ -96,6 +96,8 @@ pub struct Filter {
     /// Abilities on the stack too ("target spell or ability"): an activated or triggered ability is
     /// targeted as its source object (the topmost of that source's abilities).
     pub abilities: bool,
+    /// With `spells`: only enchantment, instant or sorcery spells (Swan Song).
+    pub spells_enchantment_instant_sorcery: bool,
 }
 
 impl Filter {
@@ -142,6 +144,7 @@ impl Filter {
         nontoken: false,
         entered_this_turn: false,
         abilities: false,
+        spells_enchantment_instant_sorcery: false,
     };
 
     pub const CREATURE: Filter = Filter {
@@ -1267,6 +1270,16 @@ pub enum Effect {
     },
     /// The creature in the item's `extra` deals damage equal to its power to the target in `slot`.
     ExtraDealsDamageEqualPower(u8),
+    /// Counter the spell, activated ability or triggered ability in `slot` (Voidslime).
+    CounterSpellOrAbility(u8),
+    /// Each player's life total becomes the number of creatures they control (Biorhythm).
+    LifeBecomesCreatureCount,
+    /// Return all lands to their owners' hands (Sunder).
+    BounceAllLands,
+    /// Untap up to `n` lands (your own tapped lands, the engine's choice; Palinchron).
+    UntapLands(u8),
+    /// You may put a land card from your hand onto the battlefield (Broken Bond).
+    MayLandFromHand,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
