@@ -2864,6 +2864,71 @@ pub fn script(name: &str) -> Option<Script> {
                 loyalty(d, -8, Ability::new(vec![], vec![Effect::Emblem(EmblemKind::VivienAnthem)]));
             },
         ),
+        // ---- Tarkir: Dragonstorm (TDM), batch 1: the most-picked commons on existing rules ----
+        "Sibsig Appraiser" => s(
+            &["When this creature enters, look at the top two cards of your library. Put one of them into your hand and the other into your graveyard."],
+            |d, _| {
+                let look = Effect::LookAtTop { n: 2, pick: Pick::Any, chosen_to: LookTo::Hand, rest_to: LookRest::Graveyard };
+                on(d, When::Enters, vec![], vec![look]);
+            },
+        ),
+        "Iceridge Serpent" => s(
+            &["When this creature enters, return target creature an opponent controls to its owner's hand."],
+            |d, _| on(d, When::Enters, vec![OPP_CREATURE], vec![Effect::Bounce(0)]),
+        ),
+        "Boulderborn Dragon" => s(&["Whenever this creature attacks, surveil 1."], |d, _| {
+            on(d, When::Attacks, vec![], vec![Effect::Surveil { n: 1 }])
+        }),
+        "Humbling Elder" => s(
+            &["When this creature enters, target creature an opponent controls gets -2/-0 until end of turn."],
+            |d, _| on(d, When::Enters, vec![OPP_CREATURE], vec![Effect::Pump { slot: 0, power: -2, toughness: 0 }]),
+        ),
+        "Rebellious Strike" => s(&["Target creature gets +3/+0 until end of turn.", "Draw a card."], |d, _| {
+            spell(d, vec![CREATURE], vec![Effect::Pump { slot: 0, power: 3, toughness: 0 }, draw(1)])
+        }),
+        "Sarkhan's Resolve" => s(
+            &["Choose one —", "• Target creature gets +3/+3 until end of turn.", "• Destroy target creature with flying."],
+            |d, _| {
+                let flier = Filter { creature_needs_flying: true, ..CREATURE };
+                modes(
+                    d,
+                    vec![
+                        Ability::new(vec![CREATURE], vec![Effect::Pump { slot: 0, power: 3, toughness: 3 }]),
+                        Ability::new(vec![flier], vec![Effect::Destroy(0)]),
+                    ],
+                )
+            },
+        ),
+        "Underfoot Underdogs" => s(
+            &[
+                "When this creature enters, create a 1/1 red Goblin creature token.",
+                "{1}, {T}: Target creature you control with power 2 or less can't be blocked this turn.",
+            ],
+            |d, t| {
+                on(d, When::Enters, vec![], vec![Effect::CreateToken { who: Who::You, def: t.goblin, n: 1 }]);
+                let small = Filter { creature_max_power: Some(2), ..YOUR_CREATURE };
+                activated(d, "{1}", true, vec![small], vec![Effect::Grant { slot: 0, keywords: Keywords::UNBLOCKABLE }]);
+            },
+        ),
+        "Watcher of the Wayside" => s(
+            &["When this creature enters, target player mills two cards. You gain 2 life."],
+            |d, _| {
+                on(
+                    d,
+                    When::Enters,
+                    vec![Filter::PLAYER],
+                    vec![Effect::Mill { who: Who::TargetPlayer(0), n: 2 }, Effect::GainLife { who: Who::You, n: 2 }],
+                )
+            },
+        ),
+        "Meticulous Artisan" => s(&["Prowess", "When this creature enters, create a Treasure token."], |d, t| {
+            on(d, When::YouCastNoncreature, vec![], vec![Effect::PumpSelf { power: 1, toughness: 1 }]);
+            on(d, When::Enters, vec![], vec![Effect::CreateToken { who: Who::You, def: t.treasure, n: 1 }]);
+        }),
+        "Stormplain Detainment" => s(
+            &["When this enchantment enters, exile target nonland permanent an opponent controls until this enchantment leaves the battlefield."],
+            |d, _| on(d, When::Enters, vec![OPP_NONLAND], vec![Effect::ExileUntilSourceLeaves(0)]),
+        ),
         _ => None,
     }
 }
@@ -3143,4 +3208,19 @@ pub const SCRIPTED: &[&str] = &[
     "Kellan, Planar Trailblazer",
     "Secluded Courtyard",
     "Muldrotha, the Gravetide",
+];
+
+/// Tarkir: Dragonstorm cards with scripts (each with a test in tests/tdm.rs); `lib.rs` checks every one
+/// is fully supported in the TDM set. Progress: docs/tdm-progress.md.
+pub const TDM_SCRIPTED: &[&str] = &[
+    "Sibsig Appraiser",
+    "Iceridge Serpent",
+    "Boulderborn Dragon",
+    "Humbling Elder",
+    "Rebellious Strike",
+    "Sarkhan's Resolve",
+    "Underfoot Underdogs",
+    "Watcher of the Wayside",
+    "Meticulous Artisan",
+    "Stormplain Detainment",
 ];

@@ -56,6 +56,8 @@ pub struct Filter {
     pub creature_needs_flying: bool,
     /// Creatures only if their power is at least this.
     pub creature_min_power: Option<i32>,
+    /// Creatures with at most this power ("with power 2 or less").
+    pub creature_max_power: Option<i32>,
     /// Creatures only if attacking or blocking.
     pub in_combat: bool,
     /// Only a permanent attached to the object in the first target slot ("Equipment attached to
@@ -90,6 +92,7 @@ impl Filter {
         controller: Controller::Any,
         creature_needs_flying: false,
         creature_min_power: None,
+        creature_max_power: None,
         in_combat: false,
         attached_to_first_target: false,
         lands: false,

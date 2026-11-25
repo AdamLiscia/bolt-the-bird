@@ -1964,6 +1964,7 @@ impl Game {
                     && f.creatures
                     && (!f.creature_needs_flying || self.keywords(id).has(Keywords::FLYING))
                     && f.creature_min_power.is_none_or(|m| self.power(id) >= m)
+                    && f.creature_max_power.is_none_or(|m| self.power(id) <= m)
                     && (!f.in_combat || in_combat);
                 creature_ok
                     || (ty.planeswalker && f.planeswalkers)

@@ -369,6 +369,15 @@ mod tests {
     }
 
     #[test]
+    fn every_tarkir_script_matches_its_card_text() {
+        let t = set("TDM").unwrap();
+        for &name in scripts::TDM_SCRIPTED {
+            let i = t.index_of(name).unwrap_or_else(|| panic!("{name} is not in TDM"));
+            assert!(t.supported[i], "{name}: script lines don't match the card text");
+        }
+    }
+
+    #[test]
     fn a_reprint_plays_the_same_in_both_sets() {
         // Scripts are keyed by name: a card in both sets is supported in both.
         let (f, t) = (set("FDN").unwrap(), set("TDM").unwrap());
