@@ -2878,6 +2878,7 @@ impl Game {
                     || a.tap_untapped
                         .is_some_and(|(sub, n)| self.untapped_with(p, sub, id).len() < n as usize)
                     || !sorcery_ok
+                    || self.players[p].life < a.life
                     || !self.can_pay_for(p, &a.mana, uses_self.then_some(id), PayFor::Ability(id))
                     || !self.trigger_can_target(
                         &StackItem {
@@ -2992,6 +2993,9 @@ impl Game {
             if self.obj(v).zone == Zone::Battlefield {
                 self.move_to(v, Zone::Graveyard);
             }
+        }
+        if a.life > 0 {
+            self.lose_life(p, a.life);
         }
         if a.tap {
             self.obj_mut(id).tapped = true;
@@ -4099,6 +4103,12 @@ impl Game {
                 match what {
                     SearchFor::Any => true,
                     SearchFor::BasicLand => d.types.basic && d.types.land,
+                    SearchFor::LandTypes { types, basic } => {
+                        const NAMES: [&str; 5] = ["Plains", "Island", "Swamp", "Mountain", "Forest"];
+                        d.types.land
+                            && (!basic || d.types.basic)
+                            && (0..5).any(|i| types[i] && d.subtypes.iter().any(|s| s == NAMES[i]))
+                    }
                     SearchFor::InstantOrSorceryWithManaValue(mv) => {
                         (d.types.instant || d.types.sorcery) && d.cost.mana_value() == mv
                     }
@@ -4701,11 +4711,15 @@ impl Game {
                 }
             }
             Effect::CreateToken { who, def, n } => {
+                // Every token this effect makes is "just created" (for "They gain ..."), not only the last.
+                let mut made = Vec::new();
                 for p in self.players_for(item, legal, who) {
                     for _ in 0..n {
                         self.create_token(p, def);
+                        made.extend(self.last_created.iter().copied());
                     }
                 }
+                self.last_created = made;
             }
             Effect::PumpSelf { power, toughness } => {
                 if self.obj(src).zone == Zone::Battlefield {
@@ -5077,6 +5091,36 @@ impl Game {
                         o.granted = o.granted.with(keywords);
                     }
                 }
+            }
+            Effect::BounceSelf => {
+                if self.obj(src).zone == Zone::Battlefield {
+                    self.move_to(src, Zone::Hand);
+                }
+            }
+            Effect::GrantCreated(keywords) => {
+                for id in self.last_created.clone() {
+                    if self.obj(id).zone == Zone::Battlefield {
+                        let zcc = self.obj(id).zcc;
+                        self.until_eot.push(Modifier {
+                            obj: id,
+                            zcc,
+                            power: 0,
+                            toughness: 0,
+                            keywords,
+                            dies: None,
+                        });
+                    }
+                }
+            }
+            Effect::SpiritGreatestToughness { spirit } => {
+                let p = item.controller;
+                let x = self
+                    .creatures(p)
+                    .map(|c| self.toughness(c))
+                    .max()
+                    .unwrap_or(0)
+                    .max(0);
+                self.endure_token(p, x.min(255) as u8, spirit);
             }
             Effect::ReturnSelfToHand => {
                 if self.obj(src).zone == Zone::Graveyard {

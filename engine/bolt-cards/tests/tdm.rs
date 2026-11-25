@@ -1443,3 +1443,140 @@ fn stormshriek_feral_pumps_and_flush_out_draws_two_only_after_a_discard() {
     resolve_all(&mut g, &[Action::Discard(junk)]);
     assert_eq!(g.players[0].hand.len(), n - 2 + 2);
 }
+
+// ---- batch 8: self-bounce, land-type searches, fetch lands ----
+
+#[test]
+fn a_dragonstorm_returns_to_hand_when_a_dragon_enters() {
+    let mut g = table();
+    let ds = hand(&mut g, 0, "Roiling Dragonstorm");
+    let junk = hand(&mut g, 0, "Plains");
+    let dragon = hand(&mut g, 0, "Boulderborn Dragon");
+    begin(&mut g);
+    play(&mut g, ds, false, &[], &[Action::Discard(junk)]);
+    assert_eq!(g.obj(ds).zone, Zone::Battlefield);
+    play(&mut g, dragon, false, &[], &[]);
+    assert_eq!(g.obj(ds).zone, Zone::Hand, "back to its owner's hand");
+}
+
+#[test]
+fn corroding_and_teeming_and_encroaching_dragonstorms() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Corroding Dragonstorm");
+    let t = hand(&mut g, 0, "Teeming Dragonstorm");
+    let e = hand(&mut g, 0, "Encroaching Dragonstorm");
+    begin(&mut g);
+    let life = (g.players[0].life, g.players[1].life);
+    play(&mut g, c, false, &[], &[Action::No, Action::No]);
+    assert_eq!((g.players[0].life, g.players[1].life), (life.0 + 2, life.1 - 2));
+    play(&mut g, t, false, &[], &[]);
+    assert_eq!(tokens(&g, 0, "Soldier").len(), 2);
+    let f1 = g.add_card(0, tid("Forest"), Zone::Library);
+    let f2 = g.add_card(0, tid("Island"), Zone::Library);
+    play(&mut g, e, false, &[], &[Action::Pick(f1), Action::Pick(f2)]);
+    assert!(g.obj(f1).zone == Zone::Battlefield && g.obj(f1).tapped && g.obj(f2).zone == Zone::Battlefield);
+}
+
+#[test]
+fn abzan_monument_makes_a_spirit_as_big_as_your_toughest_creature() {
+    let mut g = table();
+    let m = put(&mut g, 0, "Abzan Monument");
+    put(&mut g, 0, "Dalkovan Packbeasts"); // 0/4
+    begin(&mut g);
+    act(&mut g, Action::Activate(m, 0));
+    resolve_all(&mut g, &[]);
+    let s = tokens(&g, 0, "Spirit");
+    assert_eq!(s.len(), 1);
+    assert_eq!((g.power(s[0]), g.toughness(s[0])), (4, 4));
+}
+
+#[test]
+fn the_other_monuments_make_their_tokens() {
+    for (name, token, n) in [
+        ("Jeskai Monument", "Bird", 2),
+        ("Sultai Monument", "Zombie Druid", 2),
+        ("Temur Monument", "Elephant", 1),
+    ] {
+        let mut g = table();
+        let m = put(&mut g, 0, name);
+        begin(&mut g);
+        act(&mut g, Action::Activate(m, 0));
+        resolve_all(&mut g, &[]);
+        assert_eq!(tokens(&g, 0, token).len(), n, "{name}");
+    }
+}
+
+/// Pass priority until a decision (or a target choice) is pending.
+fn until_decision(g: &mut Game) {
+    for _ in 0..20 {
+        if matches!(g.pending, Pending::Decide(_) | Pending::ChooseTarget(_)) {
+            return;
+        }
+        act(g, Action::PassPriority);
+    }
+    panic!("no decision came up");
+}
+
+#[test]
+fn fleeting_effigy_goes_back_to_hand_at_your_end_step() {
+    let mut g = table();
+    let f = put(&mut g, 0, "Fleeting Effigy");
+    begin(&mut g);
+    let p = g.power(f);
+    act(&mut g, Action::Activate(f, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.power(f), p + 2);
+    while g.obj(f).zone == Zone::Battlefield && g.turn == 3 {
+        let a = if g.pending == Pending::DeclareAttackers(0) {
+            Action::FinishAttacks
+        } else {
+            Action::PassPriority
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.obj(f).zone, Zone::Hand);
+}
+
+#[test]
+fn a_monument_finds_a_basic_of_its_types_and_sacrifices_for_tokens() {
+    let mut g = table();
+    let m = hand(&mut g, 0, "Mardu Monument"); // Mountain, Plains or Swamp
+    begin(&mut g);
+    let island = g.add_card(0, tid("Island"), Zone::Library);
+    let swamp = g.add_card(0, tid("Swamp"), Zone::Library);
+    act(&mut g, Action::Cast(m));
+    until_decision(&mut g);
+    assert!(
+        !g.legal_actions().contains(&Action::Pick(island)),
+        "not an Island"
+    );
+    act(&mut g, Action::Pick(swamp));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(swamp).zone, Zone::Hand);
+    act(&mut g, Action::Activate(m, 0));
+    resolve_all(&mut g, &[]);
+    let w = tokens(&g, 0, "Warrior");
+    assert_eq!(w.len(), 3);
+    assert!(w
+        .iter()
+        .all(|&x| g.keywords(x).has(Keywords::MENACE) && g.keywords(x).has(Keywords::HASTE)));
+    assert_eq!(g.obj(m).zone, Zone::Graveyard);
+}
+
+#[test]
+fn a_fetch_land_pays_life_and_finds_one_of_its_two_types_untapped() {
+    let mut g = table();
+    let f = put(&mut g, 0, "Misty Rainforest"); // Forest or Island
+    begin(&mut g);
+    let plains = g.add_card(0, tid("Plains"), Zone::Library);
+    let forest = g.add_card(0, tid("Forest"), Zone::Library);
+    let life = g.players[0].life;
+    act(&mut g, Action::Activate(f, 0));
+    assert_eq!(g.players[0].life, life - 1, "paid as a cost");
+    assert_eq!(g.obj(f).zone, Zone::Graveyard);
+    until_decision(&mut g);
+    assert!(!g.legal_actions().contains(&Action::Pick(plains)));
+    act(&mut g, Action::Pick(forest));
+    resolve_all(&mut g, &[]);
+    assert!(g.obj(forest).zone == Zone::Battlefield && !g.obj(forest).tapped);
+}

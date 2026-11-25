@@ -382,6 +382,61 @@ fn omen(d: &mut CardDef, spell: Ability) {
     });
 }
 
+/// Basic land types by name, for `SearchFor::LandTypes`.
+fn land_types(names: &[&str]) -> [bool; 5] {
+    let all = ["Plains", "Island", "Swamp", "Mountain", "Forest"];
+    let mut t = [false; 5];
+    for n in names {
+        t[all.iter().position(|a| a == n).expect("a basic land type")] = true;
+    }
+    t
+}
+
+/// "When this artifact enters, search your library for a basic A, B, or C card, reveal it, put it into
+/// your hand, then shuffle." plus "{cost}, {T}, Sacrifice this artifact: <effects>. Activate only as a
+/// sorcery." (the Monuments).
+fn monument(d: &mut CardDef, types: &[&str], cost: &str, effects: Vec<Effect>) {
+    let what = SearchFor::LandTypes {
+        types: land_types(types),
+        basic: true,
+    };
+    on(d, When::Enters, vec![], vec![search(what, SearchTo::Hand)]);
+    let n = activated(d, cost, true, vec![], effects);
+    d.activated[n].sacrifice_self = true;
+    d.activated[n].sorcery = true;
+}
+
+/// "{T}, Pay 1 life, Sacrifice this land: Search your library for an A or B card, put it onto the
+/// battlefield, then shuffle." (the fetch lands)
+fn fetch_land(d: &mut CardDef, types: &[&str]) {
+    let what = SearchFor::LandTypes {
+        types: land_types(types),
+        basic: false,
+    };
+    let n = activated(
+        d,
+        "",
+        true,
+        vec![],
+        vec![search(what, SearchTo::Battlefield { tapped: false })],
+    );
+    d.activated[n].sacrifice_self = true;
+    d.activated[n].life = 1;
+}
+
+/// "When a Dragon you control enters, return this enchantment to its owner's hand." (the Dragonstorms)
+fn dragonstorm_return(d: &mut CardDef) {
+    on(
+        d,
+        When::AnotherYouControlEntersWithSubtype("Dragon"),
+        vec![],
+        vec![Effect::BounceSelf],
+    );
+}
+
+const DRAGONSTORM_RETURN: &str =
+    "When a Dragon you control enters, return this enchantment to its owner's hand.";
+
 fn modes(d: &mut CardDef, modes: Vec<Ability>) {
     d.modes = modes;
 }
@@ -3562,6 +3617,120 @@ fn script_core(name: &str) -> Option<Script> {
                 omen(d, Ability::new(vec![], vec![Effect::DiscardThenDraw(2)]));
             },
         ),
+        // ---- TDM batch 8: self-bounce (the Dragonstorms), land-type searches (Monuments, fetches) ----
+        "Roiling Dragonstorm" => s(
+            &["When this enchantment enters, draw two cards, then discard a card.", DRAGONSTORM_RETURN],
+            |d, _| {
+                on(d, When::Enters, vec![], vec![draw(2), discard(1)]);
+                dragonstorm_return(d);
+            },
+        ),
+        "Corroding Dragonstorm" => s(
+            &["When this enchantment enters, each opponent loses 2 life and you gain 2 life. Surveil 2.", DRAGONSTORM_RETURN],
+            |d, _| {
+                on(
+                    d,
+                    When::Enters,
+                    vec![],
+                    vec![
+                        Effect::LoseLife { who: Who::EachOpponent, n: 2 },
+                        Effect::GainLife { who: Who::You, n: 2 },
+                        Effect::Surveil { n: 2 },
+                    ],
+                );
+                dragonstorm_return(d);
+            },
+        ),
+        "Encroaching Dragonstorm" => s(
+            &[
+                "When this enchantment enters, search your library for up to two basic land cards, put them onto the battlefield tapped, then shuffle.",
+                DRAGONSTORM_RETURN,
+            ],
+            |d, _| {
+                let two = Effect::Search { what: SearchFor::BasicLand, to: SearchTo::Battlefield { tapped: true }, n: 2, kicked_n: None };
+                on(d, When::Enters, vec![], vec![two]);
+                dragonstorm_return(d);
+            },
+        ),
+        "Teeming Dragonstorm" => s(
+            &["When this enchantment enters, create two 2/2 white Soldier creature tokens.", DRAGONSTORM_RETURN],
+            |d, t| {
+                on(d, When::Enters, vec![], vec![Effect::CreateToken { who: Who::You, def: t.soldier_2, n: 2 }]);
+                dragonstorm_return(d);
+            },
+        ),
+        "Fleeting Effigy" => s(
+            &["At the beginning of your end step, return this creature to its owner's hand.", "{2}{R}: This creature gets +2/+0 until end of turn."],
+            |d, _| {
+                on(d, When::EndStep { your_turn_only: true }, vec![], vec![Effect::BounceSelf]);
+                activated(d, "{2}{R}", false, vec![], vec![Effect::PumpSelf { power: 2, toughness: 0 }]);
+            },
+        ),
+        "Abzan Monument" => s(
+            &[
+                "When this artifact enters, search your library for a basic Plains, Swamp, or Forest card, reveal it, put it into your hand, then shuffle.",
+                "{1}{W}{B}{G}, {T}, Sacrifice this artifact: Create an X/X white Spirit creature token, where X is the greatest toughness among creatures you control. Activate only as a sorcery.",
+            ],
+            |d, t| monument(d, &["Plains", "Swamp", "Forest"], "{1}{W}{B}{G}", vec![Effect::SpiritGreatestToughness { spirit: t.spirit_endure }]),
+        ),
+        "Jeskai Monument" => s(
+            &[
+                "When this artifact enters, search your library for a basic Island, Mountain, or Plains card, reveal it, put it into your hand, then shuffle.",
+                "{1}{U}{R}{W}, {T}, Sacrifice this artifact: Create two 1/1 white Bird creature tokens with flying. Activate only as a sorcery.",
+            ],
+            |d, t| monument(d, &["Island", "Mountain", "Plains"], "{1}{U}{R}{W}", vec![Effect::CreateToken { who: Who::You, def: t.bird, n: 2 }]),
+        ),
+        "Mardu Monument" => s(
+            &[
+                "When this artifact enters, search your library for a basic Mountain, Plains, or Swamp card, reveal it, put it into your hand, then shuffle.",
+                "{2}{R}{W}{B}, {T}, Sacrifice this artifact: Create three 1/1 red Warrior creature tokens. They gain menace and haste until end of turn. Activate only as a sorcery.",
+            ],
+            |d, t| {
+                monument(
+                    d,
+                    &["Mountain", "Plains", "Swamp"],
+                    "{2}{R}{W}{B}",
+                    vec![
+                        Effect::CreateToken { who: Who::You, def: t.warrior, n: 3 },
+                        Effect::GrantCreated(Keywords::MENACE.with(Keywords::HASTE)),
+                    ],
+                )
+            },
+        ),
+        "Sultai Monument" => s(
+            &[
+                "When this artifact enters, search your library for a basic Swamp, Forest, or Island card, reveal it, put it into your hand, then shuffle.",
+                "{2}{B}{G}{U}, {T}, Sacrifice this artifact: Create two 2/2 black Zombie Druid creature tokens. Activate only as a sorcery.",
+            ],
+            |d, t| monument(d, &["Swamp", "Forest", "Island"], "{2}{B}{G}{U}", vec![Effect::CreateToken { who: Who::You, def: t.zombie_druid, n: 2 }]),
+        ),
+        "Temur Monument" => s(
+            &[
+                "When this artifact enters, search your library for a basic Forest, Island, or Mountain card, reveal it, put it into your hand, then shuffle.",
+                "{3}{G}{U}{R}, {T}, Sacrifice this artifact: Create a 5/5 green Elephant creature token. Activate only as a sorcery.",
+            ],
+            |d, t| monument(d, &["Forest", "Island", "Mountain"], "{3}{G}{U}{R}", vec![Effect::CreateToken { who: Who::You, def: t.elephant, n: 1 }]),
+        ),
+        "Misty Rainforest" => s(
+            &["{T}, Pay 1 life, Sacrifice this land: Search your library for a Forest or Island card, put it onto the battlefield, then shuffle."],
+            |d, _| fetch_land(d, &["Forest", "Island"]),
+        ),
+        "Arid Mesa" => s(
+            &["{T}, Pay 1 life, Sacrifice this land: Search your library for a Mountain or Plains card, put it onto the battlefield, then shuffle."],
+            |d, _| fetch_land(d, &["Mountain", "Plains"]),
+        ),
+        "Scalding Tarn" => s(
+            &["{T}, Pay 1 life, Sacrifice this land: Search your library for an Island or Mountain card, put it onto the battlefield, then shuffle."],
+            |d, _| fetch_land(d, &["Island", "Mountain"]),
+        ),
+        "Verdant Catacombs" => s(
+            &["{T}, Pay 1 life, Sacrifice this land: Search your library for a Swamp or Forest card, put it onto the battlefield, then shuffle."],
+            |d, _| fetch_land(d, &["Swamp", "Forest"]),
+        ),
+        "Marsh Flats" => s(
+            &["{T}, Pay 1 life, Sacrifice this land: Search your library for a Plains or Swamp card, put it onto the battlefield, then shuffle."],
+            |d, _| fetch_land(d, &["Plains", "Swamp"]),
+        ),
         _ => None,
     }
 }
@@ -3929,4 +4098,19 @@ pub const TDM_SCRIPTED: &[&str] = &[
     "Whirlwing Stormbrood",
     "Marang River Regent",
     "Stormshriek Feral",
+    "Roiling Dragonstorm",
+    "Corroding Dragonstorm",
+    "Encroaching Dragonstorm",
+    "Teeming Dragonstorm",
+    "Fleeting Effigy",
+    "Abzan Monument",
+    "Jeskai Monument",
+    "Mardu Monument",
+    "Sultai Monument",
+    "Temur Monument",
+    "Misty Rainforest",
+    "Arid Mesa",
+    "Scalding Tarn",
+    "Verdant Catacombs",
+    "Marsh Flats",
 ];

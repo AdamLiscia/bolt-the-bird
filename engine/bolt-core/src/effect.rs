@@ -352,6 +352,14 @@ pub enum Effect {
     ReturnSelfTapped,
     /// Return the source from your graveyard to your hand.
     ReturnSelfToHand,
+    /// Return the source from the battlefield to its owner's hand.
+    BounceSelf,
+    /// The tokens just created gain these keywords until end of turn ("They gain menace and haste").
+    GrantCreated(crate::Keywords),
+    /// An X/X Spirit (`spirit`, given X counters), X the greatest toughness among your creatures.
+    SpiritGreatestToughness {
+        spirit: usize,
+    },
     /// Keyword counters on the creature in `slot` (CR 122.1b): it has these keywords for good.
     KeywordCounter {
         slot: u8,
@@ -584,6 +592,12 @@ pub enum SearchFor {
     CreatureMvAtMostX,
     /// A creature card with mana value at most this (X filled in on resolution).
     CreatureMvAtMost(u32),
+    /// A land card with one of these basic land types (Plains, Island, Swamp, Mountain, Forest in
+    /// WUBRG order); `basic`: basic land cards only ("a basic Plains, Swamp, or Forest card").
+    LandTypes {
+        types: [bool; 5],
+        basic: bool,
+    },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

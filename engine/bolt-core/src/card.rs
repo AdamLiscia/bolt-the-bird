@@ -159,6 +159,8 @@ pub struct Activated {
     pub from_graveyard: bool,
     /// Remove this many incubation counters from the source as a cost.
     pub remove_incubation: i32,
+    /// "Pay N life" in the cost (fetch lands).
+    pub life: i32,
     /// "Activate only once."
     pub once: bool,
     /// "Tap N untapped [subtype] you control" (other than the source) as a cost.
