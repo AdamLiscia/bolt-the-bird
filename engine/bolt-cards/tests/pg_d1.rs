@@ -712,3 +712,167 @@ fn wight_of_the_reliquary_grows_and_sacrifices_for_a_land() {
     assert!(g.obj(forest).tapped && g.obj(w).tapped);
     assert_eq!(g.power(w), 4, "the Elves joined the graveyard");
 }
+
+// ---- Ral, Monsoon Mage // Ral, Leyline Prodigy (Time) ----
+
+#[test]
+fn gilded_lotus_makes_three_mana_of_one_color() {
+    let mut g = game(&[]);
+    put(&mut g, 0, "Gilded Lotus");
+    let w = hand(&mut g, 0, "Eternal Witness"); // {1}{G}{G}
+    let decay = hand(&mut g, 0, "Abrupt Decay"); // {B}{G}
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Cast(w)), "three green");
+    assert!(!legal.contains(&Action::Cast(decay)), "one color only");
+}
+
+#[test]
+fn ash_barrens_taps_for_colorless_and_landcycles() {
+    let mut g = table();
+    let a = put(&mut g, 0, "Ash Barrens");
+    assert_eq!(makes(&g, a), ([false; 5], true));
+    let spell = g.add_card(0, cid("Night's Whisper"), Zone::Library);
+    let forest = g.add_card(0, cid("Forest"), Zone::Library);
+    let c = hand(&mut g, 0, "Ash Barrens");
+    act(&mut g, Action::Activate(c, 0));
+    pick(&mut g, forest, spell);
+    assert_eq!((g.obj(c).zone, g.obj(forest).zone), (Zone::Graveyard, Zone::Hand));
+}
+
+/// Player 0 casts Night's Whisper and then `counter` targeting it, answering decisions with `answers`.
+fn counter_whisper(counter: &str, answers: &[Action]) -> (Game, ObjId, ObjId) {
+    let mut g = table();
+    let nw = hand(&mut g, 0, "Night's Whisper");
+    let c = hand(&mut g, 0, counter);
+    act(&mut g, Action::Cast(nw));
+    act(&mut g, Action::Cast(c));
+    act(&mut g, Action::Target(obj(nw)));
+    resolve_all(&mut g, answers);
+    (g, nw, c)
+}
+
+#[test]
+fn dismiss_counters_and_draws() {
+    let (g, nw, _) = counter_whisper("Dismiss", &[]);
+    assert_eq!(g.obj(nw).zone, Zone::Graveyard);
+    assert_eq!(g.players[0].life, 40, "Night's Whisper was countered");
+    let (g2, _, _) = counter_whisper("Neutralize", &[]);
+    assert_eq!(
+        g.players[0].hand.len(),
+        g2.players[0].hand.len() + 1,
+        "Dismiss's card"
+    );
+}
+
+#[test]
+fn exclude_counters_a_creature_spell_and_draws() {
+    let mut g = table();
+    let nw = hand(&mut g, 0, "Night's Whisper");
+    let c = hand(&mut g, 0, "Exclude");
+    act(&mut g, Action::Cast(nw));
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(c)),
+        "no creature spell to target"
+    );
+    resolve_all(&mut g, &[]);
+    let elf = hand(&mut g, 0, "Fyndhorn Elves");
+    act(&mut g, Action::Cast(elf));
+    act(&mut g, Action::Cast(c));
+    act(&mut g, Action::Target(obj(elf)));
+    let n = g.players[0].hand.len();
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(elf).zone, Zone::Graveyard);
+    assert_eq!(g.players[0].hand.len(), n + 1, "Exclude's card");
+}
+
+#[test]
+fn gitaxian_probe_draws_a_card() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Gitaxian Probe");
+    let n = g.players[0].hand.len();
+    play(&mut g, c, false, &[Target::Player(1)], &[]);
+    assert_eq!(g.players[0].hand.len(), n);
+    assert_eq!(g.obj(c).zone, Zone::Graveyard);
+}
+
+#[test]
+fn jwari_disruption_counters_unless_its_controller_pays_1() {
+    let (g, nw, _) = counter_whisper("Jwari Disruption // Jwari Ruins", &[Action::No]);
+    assert_eq!(g.obj(nw).zone, Zone::Graveyard);
+    assert_eq!(g.players[0].life, 40, "not paid: countered");
+    let (g, _, _) = counter_whisper("Jwari Disruption // Jwari Ruins", &[Action::Yes]);
+    assert_eq!(g.players[0].life, 38, "paid: it resolves");
+}
+
+#[test]
+fn lightning_bolt_deals_3() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Lightning Bolt");
+    play(&mut g, c, false, &[Target::Player(1)], &[]);
+    assert_eq!(g.players[1].life, 37);
+}
+
+#[test]
+fn neutralize_counters_and_cycles() {
+    let (g, nw, _) = counter_whisper("Neutralize", &[]);
+    assert_eq!(g.obj(nw).zone, Zone::Graveyard);
+    assert_eq!(g.players[0].life, 40);
+    let mut g = table();
+    let c = hand(&mut g, 0, "Neutralize");
+    let n = g.players[0].hand.len();
+    act(&mut g, Action::Activate(c, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.obj(c).zone, g.players[0].hand.len()), (Zone::Graveyard, n));
+}
+
+#[test]
+fn opportunity_makes_target_player_draw_four() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Opportunity");
+    let n = g.players[1].hand.len();
+    play(&mut g, c, false, &[Target::Player(1)], &[]);
+    assert_eq!(g.players[1].hand.len(), n + 4);
+}
+
+#[test]
+fn prophetic_bolt_deals_4_and_takes_one_of_the_top_four() {
+    let mut g = table();
+    let top: Vec<ObjId> = ["Blood Artist", "Viscera Seer", "Lightning Bolt", "Dismiss"]
+        .iter()
+        .map(|n| g.add_card(0, cid(n), Zone::Library))
+        .collect();
+    let c = hand(&mut g, 0, "Prophetic Bolt");
+    act(&mut g, Action::Cast(c));
+    act(&mut g, Action::Target(Target::Player(1)));
+    let mut first = true;
+    while !g.items.is_empty() || matches!(g.pending, Pending::Decide(_)) {
+        if matches!(g.pending, Pending::Decide(_)) {
+            let a = if first {
+                Action::Pick(top[1])
+            } else {
+                *g.legal_actions()
+                    .iter()
+                    .find(|a| matches!(a, Action::Pick(_)))
+                    .expect("a pick")
+            };
+            first = false;
+            act(&mut g, a);
+        } else {
+            act(&mut g, Action::PassPriority);
+        }
+    }
+    assert_eq!(g.players[1].life, 36);
+    assert_eq!(g.obj(top[1]).zone, Zone::Hand);
+    let lib = &g.players[0].library;
+    for x in [top[0], top[2], top[3]] {
+        assert!(lib[..3].contains(&x), "the rest on the bottom");
+    }
+}
+
+#[test]
+fn rewind_counters_and_untaps_four_lands() {
+    let (g, nw, _) = counter_whisper("Rewind", &[]);
+    assert_eq!(g.obj(nw).zone, Zone::Graveyard);
+    let tapped = g.permanents(0).filter(|&x| g.obj(x).tapped).count();
+    assert_eq!(tapped, 2, "six tapped for the two spells, four untapped");
+}

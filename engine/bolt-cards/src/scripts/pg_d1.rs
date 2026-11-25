@@ -227,6 +227,49 @@ pub fn script(name: &str) -> Option<Script> {
                 d.activated[n].sacrifice_other_creature = true;
             },
         ),
+        // ---- Ral, Monsoon Mage // Ral, Leyline Prodigy (Time) ----
+        "Gilded Lotus" => s(&["{T}: Add three mana of any one color."], |d, _| {
+            d.mana = Some(ManaSource::of(&Color::ALL));
+            d.mana_amount = 3;
+        }),
+        "Ash Barrens" => s(&["{T}: Add {C}.", "Basic landcycling {1}"], |d, _| {
+            d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+            let n = activated(d, "{1}", false, vec![], vec![search(SearchFor::BasicLand, SearchTo::Hand)]);
+            d.activated[n].from_hand_discard = true;
+        }),
+        "Dismiss" => s(&["Counter target spell.", "Draw a card."], |d, _| spell(d, vec![SPELL], vec![Effect::Counter(0), draw(1)])),
+        "Exclude" => s(&["Counter target creature spell.", "Draw a card."], |d, _| {
+            spell(d, vec![Filter { spell_creature: Some(true), ..SPELL }], vec![Effect::Counter(0), draw(1)])
+        }),
+        "Gitaxian Probe" => s(&["Look at target player's hand.", "Draw a card."], |d, _| {
+            // Looking at a hand is information only: no rules effect.
+            spell(d, vec![Filter::PLAYER], vec![draw(1)])
+        }),
+        "Jwari Disruption // Jwari Ruins" => s(&["Counter target spell unless its controller pays {1}."], |d, _| {
+            // The card data has no back face (Jwari Ruins, a land): it plays as its front.
+            spell(d, vec![SPELL], vec![Effect::CounterUnlessPays(0, 1, 1)])
+        }),
+        "Lightning Bolt" => s(&["Lightning Bolt deals 3 damage to any target."], |d, _| {
+            spell(d, vec![Filter::ANY], vec![damage(3, Recipient::Target(0))])
+        }),
+        "Neutralize" => s(&["Counter target spell.", "Cycling {2}"], |d, _| {
+            spell(d, vec![SPELL], vec![Effect::Counter(0)]);
+            cycling(d, "{2}");
+        }),
+        "Opportunity" => s(&["Target player draws four cards."], |d, _| {
+            spell(d, vec![Filter::PLAYER], vec![Effect::Draw { who: Who::TargetPlayer(0), n: 4 }])
+        }),
+        "Prophetic Bolt" => s(
+            &["Prophetic Bolt deals 4 damage to any target. Look at the top four cards of your library. Put one of those cards into your hand and the rest on the bottom of your library in any order."],
+            |d, _| {
+                let look = Effect::LookAtTop { n: 4, pick: Pick::Any, chosen_to: LookTo::Hand, rest_to: LookRest::BottomAnyOrderTakeOne };
+                spell(d, vec![Filter::ANY], vec![damage(4, Recipient::Target(0)), look]);
+            },
+        ),
+        "Rewind" => s(&["Counter target spell. Untap up to four lands."], |d, _| {
+            // "Up to four lands": your own tapped ones, as Palinchron's.
+            spell(d, vec![SPELL], vec![Effect::Counter(0), Effect::UntapLands(4)])
+        }),
         _ => None,
     }
 }
@@ -279,4 +322,16 @@ pub const PG_D1_SCRIPTED: &[&str] = &[
     "Avacyn's Pilgrim",
     "Utter End",
     "Wight of the Reliquary",
+    // Ral, Monsoon Mage // Ral, Leyline Prodigy (Time)
+    "Gilded Lotus",
+    "Ash Barrens",
+    "Dismiss",
+    "Exclude",
+    "Gitaxian Probe",
+    "Jwari Disruption // Jwari Ruins",
+    "Lightning Bolt",
+    "Neutralize",
+    "Opportunity",
+    "Prophetic Bolt",
+    "Rewind",
 ];
