@@ -431,6 +431,12 @@ pub struct CardDef {
     pub enter_as_copy: bool,
     /// A pain land: "{T}: Add [A] or [B]. This land deals 1 damage to you." ({C} is free).
     pub pain_colored: bool,
+    /// The Thriving lands: "As it enters, choose a color other than {this}. {T}: Add {this} or one
+    /// mana of the chosen color."
+    pub thriving_color: Option<crate::Color>,
+    /// Gratuitous Violence: "If a creature you control would deal damage to a permanent or player,
+    /// it deals double that damage instead."
+    pub doubles_your_creatures_damage: bool,
 }
 
 /// An Omen spell half: its name, cost, whether it's an instant, and what it does.
@@ -569,6 +575,8 @@ impl CardDef {
             spells_have_delve: false,
             enter_as_copy: false,
             pain_colored: false,
+            thriving_color: None,
+            doubles_your_creatures_damage: false,
         }
     }
 
@@ -686,6 +694,8 @@ impl CardDef {
             spells_have_delve: false,
             enter_as_copy: false,
             pain_colored: false,
+            thriving_color: None,
+            doubles_your_creatures_damage: false,
         }
     }
 
@@ -803,6 +813,8 @@ impl CardDef {
             spells_have_delve: false,
             enter_as_copy: false,
             pain_colored: false,
+            thriving_color: None,
+            doubles_your_creatures_damage: false,
         }
     }
 }

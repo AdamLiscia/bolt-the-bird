@@ -432,7 +432,7 @@ the same endpoints, on the tarkir engine; 8766 keeps serving FDN. `GET /v1/healt
 - `POST /v1/deck/random {"set": "TDM", ...}`: drafted by the Tarkir drafter (trained on 17lands human
   picks; `"bolt"` and `"human"` are the same model for now) from real Tarkir opening packs. Decks are built
   by a simple rule (the two colors with the most playable cards, rares first, basics by pips); no judge,
-  so `judged_win_rate` is `null`.
+  so `judged_win_rate` is `null`. `deck.lands` is keyed by colour (`{"B": 9, "G": 8}`), as for FDN.
 - `POST /v1/game {"set": "TDM", "human_seats": [0, 1], ...}`: every game endpoint works as for FDN. A
   game with a bot seat is 422 `"TDM bot play isn't trained yet: use human_seats [0, 1]"`.
 - New decisions, with readable labels: `ChooseCastX` and `ChooseDelve` (answered with `Amount` moves),

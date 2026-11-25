@@ -108,7 +108,7 @@ def simple_build(info, pool: list[int]) -> dict:
     for i in spells + lands:
         main[cards[i]["name"]] = main.get(cards[i]["name"], 0) + 1
     return {"main": [{"name": n, "qty": q} for n, q in main.items()],
-            "lands": {BASIC_NAMES[col]: n for col, n in split.items() if n > 0},
+            "lands": {col: n for col, n in split.items() if n > 0},  # keyed by colour, like FDN
             "colors": best, "cards": 40, "judged_win_rate": None}  # fmt: skip
 
 

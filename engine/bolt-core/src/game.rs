@@ -1460,6 +1460,9 @@ impl Game {
                             Scope::YourUntappedSubtype(sub) => {
                                 mine && creature && !o.tapped && self.has_base_subtype(id, sub)
                             }
+                            Scope::YourAttackingCreatures => {
+                                mine && creature && self.combat.as_ref().is_some_and(|c| c.attackers.contains(&id))
+                            }
                             Scope::OtherYourFliers => {
                                 mine && creature
                                     && src != id
@@ -4467,6 +4470,11 @@ impl Game {
                     let c = self.obj(id).chosen_color?;
                     return Some((id, ManaSource::of(&[crate::Color::ALL[c as usize]])));
                 }
+                if let Some(fixed) = d.thriving_color {
+                    let mut colors = vec![fixed];
+                    colors.extend(self.obj(id).chosen_color.map(|c| crate::Color::ALL[c as usize]));
+                    return Some((id, ManaSource::of(&colors)));
+                }
                 d.mana.map(|m| (id, m))
             })
             .collect()
@@ -4647,7 +4655,10 @@ impl Game {
                 } else {
                     Vec::new()
                 };
-                if options.is_empty() {
+                if self.def_of(c).choose_color {
+                    // "As it enters, choose a color" (the Thriving lands).
+                    self.ask(p, Decision::ChooseColor { card: c });
+                } else if options.is_empty() {
                     self.give_priority(p);
                 } else {
                     self.ask(p, Decision::ChooseCreatureType { card: c, options });
@@ -5855,7 +5866,11 @@ impl Game {
                 .map(Action::Pick)
                 .collect(),
             Decision::ExileCreature => self.creatures(p).map(Action::Pick).collect(),
-            Decision::ChooseColor { .. } => (0..5).map(Action::Mode).collect(),
+            Decision::ChooseColor { card } => {
+                // The Thriving lands: "a color other than" their own.
+                let not = self.def_of(*card).thriving_color.map(|c| c as u8);
+                (0..5).filter(|&c| Some(c) != not).map(Action::Mode).collect()
+            }
             Decision::ChooseEnterMode { .. } => vec![Action::Mode(0), Action::Mode(1)],
             Decision::ChooseCreatureType { options, .. } => {
                 (0..options.len() as u8).map(Action::Mode).collect()
@@ -8037,6 +8052,23 @@ impl Game {
                     }
                 }
             }
+            Effect::PumpAttackersPerAttacker => {
+                let attackers: Vec<ObjId> = self.combat.as_ref().map(|c| c.attackers.clone()).unwrap_or_default();
+                let x = attackers.len() as i32;
+                for id in attackers {
+                    if self.obj(id).controller == item.controller && self.obj(id).zone == Zone::Battlefield {
+                        let zcc = self.obj(id).zcc;
+                        self.until_eot.push(Modifier {
+                            obj: id,
+                            zcc,
+                            power: x,
+                            toughness: x,
+                            keywords: Keywords::NONE,
+                            dies: None,
+                        });
+                    }
+                }
+            }
             Effect::ExtraLandThisTurn => {
                 let p = item.controller;
                 self.extra_lands_this_turn[p] = self.extra_lands_this_turn[p].saturating_add(1);
@@ -10115,7 +10147,16 @@ impl Game {
         } else {
             1
         };
-        neriv * self.opponent_damage_doubling(source, target)
+        let violence = if self.types_of(source).creature && o.zone == Zone::Battlefield {
+            let n = self
+                .permanents(c)
+                .filter(|&x| self.def_of(x).doubles_your_creatures_damage && !self.lost_abilities(x))
+                .count();
+            1 << n.min(10)
+        } else {
+            1
+        };
+        neriv * violence * self.opponent_damage_doubling(source, target)
     }
 
     fn opponent_damage_doubling(&self, source: ObjId, target: Target) -> i32 {

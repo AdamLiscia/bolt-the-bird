@@ -27,7 +27,8 @@ def call(port: int, method: str, path: str, body: dict | None = None) -> tuple[i
 
 
 def as_list(deck: dict) -> list[dict]:
-    return deck["main"] + [{"name": n, "qty": q} for n, q in deck["lands"].items()]
+    basics = {"W": "Plains", "U": "Island", "B": "Swamp", "R": "Mountain", "G": "Forest"}
+    return deck["main"] + [{"name": basics[c], "qty": q} for c, q in deck["lands"].items()]
 
 
 def main():

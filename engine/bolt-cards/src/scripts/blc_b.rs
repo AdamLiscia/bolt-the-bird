@@ -573,6 +573,70 @@ pub fn script(name: &str) -> Option<Script> {
                 spell(d, vec![CREATURE], vec![Effect::Destroy(0), Effect::CreateToken { who: Who::ControllerOf(0), def: t.frog_lizard, n: 1 }]);
             },
         ),
+        // ---- Batch 7 ----
+        "Thriving Heath" => s(
+            &["This land enters tapped. As it enters, choose a color other than white.", "{T}: Add {W} or one mana of the chosen color."],
+            |d, _| {
+                d.enters_tapped = true;
+                d.choose_color = true;
+                d.thriving_color = Some(Color::White);
+            },
+        ),
+        "Thriving Isle" => s(
+            &["This land enters tapped. As it enters, choose a color other than blue.", "{T}: Add {U} or one mana of the chosen color."],
+            |d, _| {
+                d.enters_tapped = true;
+                d.choose_color = true;
+                d.thriving_color = Some(Color::Blue);
+            },
+        ),
+        "Angel of the Ruins" => s(
+            &["When this creature enters, exile up to two target artifacts and/or enchantments.", "Plainscycling {2}"],
+            |d, _| {
+                d.triggers.push(Trigger {
+                    when: When::Enters,
+                    ability: up_to(vec![ARTIFACT_OR_ENCHANTMENT; 2], vec![Effect::Exile(0), Effect::Exile(1)]),
+                });
+                let plains = SearchFor::LandTypes { types: land_types(&["Plains"]), basic: false };
+                let n = activated(d, "{2}", false, vec![], vec![search(plains, SearchTo::Hand)]);
+                d.activated[n].from_hand_discard = true;
+            },
+        ),
+        "Berserkers' Onslaught" => s(&["Attacking creatures you control have double strike."], |d, _| {
+            static_on(d, Scope::YourAttackingCreatures, false, Keywords::DOUBLE_STRIKE)
+        }),
+        "Binding the Old Gods" => s(
+            &[
+                "I — Destroy target nonland permanent an opponent controls.",
+                "II — Search your library for a Forest card, put it onto the battlefield tapped, then shuffle.",
+                "III — Creatures you control gain deathtouch until end of turn.",
+            ],
+            |d, _| {
+                chapter(d, 1, Ability::new(vec![OPP_NONLAND], vec![Effect::Destroy(0)]));
+                let forest = SearchFor::LandTypes { types: land_types(&["Forest"]), basic: false };
+                chapter(d, 2, Ability::new(vec![], vec![search(forest, SearchTo::Battlefield { tapped: true })]));
+                chapter(d, 3, Ability::new(vec![], vec![Effect::GrantAll { who: Who::You, keywords: Keywords::DEATHTOUCH }]));
+            },
+        ),
+        "Decimate" => s(&["Destroy target artifact, target creature, target enchantment, and target land."], |d, _| {
+            let enchantment = Filter { players: false, creatures: false, planeswalkers: false, enchantments: true, ..Filter::ANY };
+            let land = Filter { players: false, creatures: false, planeswalkers: false, lands: true, ..Filter::ANY };
+            spell(
+                d,
+                vec![ARTIFACT, CREATURE, enchantment, land],
+                vec![Effect::Destroy(0), Effect::Destroy(1), Effect::Destroy(2), Effect::Destroy(3)],
+            );
+        }),
+        "Gratuitous Violence" => s(
+            &["If a creature you control would deal damage to a permanent or player, it deals double that damage instead."],
+            |d, _| d.doubles_your_creatures_damage = true,
+        ),
+        "Jazal Goldmane" => s(
+            &["{3}{W}{W}: Attacking creatures you control get +X/+X until end of turn, where X is the number of attacking creatures."],
+            |d, _| {
+                activated(d, "{3}{W}{W}", false, vec![], vec![Effect::PumpAttackersPerAttacker]);
+            },
+        ),
         _ => None,
     }
 }
@@ -669,4 +733,12 @@ pub const BLC_B_SCRIPTED: &[&str] = &[
     "Sun Titan",
     "Sunscorch Regent",
     "Rapid Hybridization",
+    "Thriving Heath",
+    "Thriving Isle",
+    "Angel of the Ruins",
+    "Berserkers' Onslaught",
+    "Binding the Old Gods",
+    "Decimate",
+    "Gratuitous Violence",
+    "Jazal Goldmane",
 ];

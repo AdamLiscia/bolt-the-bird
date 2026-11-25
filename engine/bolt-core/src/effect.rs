@@ -926,6 +926,9 @@ pub enum Effect {
         toughness: i32,
         keywords: crate::Keywords,
     },
+    /// Attacking creatures you control get +X/+X until end of turn, X the number of attacking
+    /// creatures (Jazal Goldmane).
+    PumpAttackersPerAttacker,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -994,6 +997,8 @@ pub enum Scope {
     YourCreaturesOfChosenType,
     /// Untapped creatures you control with this subtype ("Untapped Dragons you control").
     YourUntappedSubtype(&'static str),
+    /// Attacking creatures you control (Berserkers' Onslaught).
+    YourAttackingCreatures,
 }
 
 /// What a scaled static ability counts.
