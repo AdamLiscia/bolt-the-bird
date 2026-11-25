@@ -731,6 +731,9 @@ pub fn script(name: &str) -> Option<Script> {
         .or_else(|| blc_c::script(name))
         .or_else(|| pg_b::script(name))
         .or_else(|| pg_c::script(name))
+        .or_else(|| pg_d1::script(name))
+        .or_else(|| pg_d2::script(name))
+        .or_else(|| pg_d3::script(name))
 }
 
 // Parallel lanes for plain Tarkir cards (no engine-core changes): each owns its module and test file.
@@ -749,6 +752,13 @@ mod pg_b;
 mod pg_c;
 pub use pg_b::PG_B_SCRIPTED;
 pub use pg_c::PG_C_SCRIPTED;
+// The desktop's lanes (docs/lane-brief.md): one module each, never edited by another lane.
+mod pg_d1;
+mod pg_d2;
+mod pg_d3;
+pub use pg_d1::PG_D1_SCRIPTED;
+pub use pg_d2::PG_D2_SCRIPTED;
+pub use pg_d3::PG_D3_SCRIPTED;
 
 fn script_core(name: &str) -> Option<Script> {
     let s = |lines, build| Some(Script { lines, build });
