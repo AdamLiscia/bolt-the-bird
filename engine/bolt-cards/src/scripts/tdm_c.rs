@@ -409,6 +409,80 @@ pub fn script(name: &str) -> Option<Script> {
         "Dracogenesis" => s(&["You may cast Dragon spells without paying their mana costs."], |d, _| {
             d.free_subtype_spells = Some("Dragon");
         }),
+        // ---- lane C round 3, batch 4 ----
+        "Yathan Tombguard" => s(
+            &["Whenever a creature you control with a counter on it deals combat damage to a player, you draw a card and you lose 1 life."],
+            |d, _| {
+                on(
+                    d,
+                    When::YourCreatureWithCounterDealsCombatDamageToPlayer,
+                    vec![],
+                    vec![draw(1), Effect::LoseLife { who: Who::You, n: 1 }],
+                )
+            },
+        ),
+        "Armament Dragon" => s(
+            &["When this creature enters, distribute three +1/+1 counters among one, two, or three target creatures you control."],
+            |d, _| {
+                let mut a = up_to(vec![YOUR_CREATURE; 3], vec![Effect::DividedCounters]);
+                a.min_targets = Some(1);
+                a.divide = 3;
+                d.triggers.push(Trigger { when: When::Enters, ability: a });
+            },
+        ),
+        "Genesis Ultimatum" => s(
+            &["Look at the top five cards of your library. Put any number of permanent cards from among them onto the battlefield and the rest into your hand. Exile Genesis Ultimatum."],
+            |d, _| {
+                let look = Effect::TopCardsOntoBattlefield { n: 5, up_to: 0, noncreature_nonland: false, max_mv: None, rest_to_hand: true };
+                spell(d, vec![], vec![look, Effect::ExileSourceSpell]);
+            },
+        ),
+        "United Battlefront" => s(
+            &["Look at the top seven cards of your library. Put up to two noncreature, nonland permanent cards with mana value 3 or less from among them onto the battlefield. Put the rest on the bottom of your library in a random order."],
+            |d, _| {
+                let look = Effect::TopCardsOntoBattlefield { n: 7, up_to: 2, noncreature_nonland: true, max_mv: Some(3), rest_to_hand: false };
+                spell(d, vec![], vec![look]);
+            },
+        ),
+        "Eerie Ultimatum" => s(
+            &["Return any number of permanent cards with different names from your graveyard to the battlefield."],
+            |d, _| spell(d, vec![], vec![Effect::ReturnPermanentsDifferentNames]),
+        ),
+        "Tersa Lightshatter" => s(
+            &[
+                "When Tersa Lightshatter enters, discard up to two cards, then draw that many cards.",
+                "Whenever Tersa Lightshatter attacks, if there are seven or more cards in your graveyard, exile a card at random from your graveyard. You may play that card this turn.",
+            ],
+            |d, _| {
+                on(d, When::Enters, vec![], vec![Effect::DiscardUpToThenDrawThatMany(2)]);
+                conditional(d, When::Attacks, Condition::Threshold, vec![], vec![Effect::ExileRandomFromGraveyardPlayable]);
+            },
+        ),
+        "Surrak, Elusive Hunter" => s(
+            &[
+                "This spell can't be countered.",
+                "Whenever a creature you control or a creature spell you control becomes the target of a spell or ability an opponent controls, draw a card.",
+            ],
+            |d, _| {
+                d.uncounterable = true;
+                on(d, When::YourCreatureTargetedByOpponent, vec![], vec![draw(1)]);
+            },
+        ),
+        "Kotis, the Fangkeeper" => s(
+            &["Whenever Kotis deals combat damage to a player, exile the top X cards of their library, where X is the amount of damage dealt. You may cast any number of spells with mana value X or less from among them without paying their mana costs."],
+            |d, _| on(d, When::DealsCombatDamageToPlayer, vec![], vec![Effect::ExileTopOfDamagedCastFree]),
+        ),
+        "Severance Priest" => s(
+            &[
+                "When this creature enters, target opponent reveals their hand. You may choose a nonland card from it. If you do, exile that card.",
+                "When this creature leaves the battlefield, the exiled card's owner creates an X/X white Spirit creature token, where X is the mana value of the exiled card.",
+            ],
+            |d, t| {
+                let opp = Filter::PLAYER.controlled_by(Controller::Opponent);
+                on(d, When::Enters, vec![opp], vec![Effect::ChooseExileFromHandLinked { slot: 0 }]);
+                on(d, When::LeavesBattlefield, vec![], vec![Effect::LinkedOwnerCreatesSpirit { spirit: t.spirit_endure }]);
+            },
+        ),
         _ => None,
     }
 }
@@ -455,4 +529,13 @@ pub const TDM_C_SCRIPTED: &[&str] = &[
     "Furious Forebear",
     "Mox Jasper",
     "Dracogenesis",
+    "Yathan Tombguard",
+    "Armament Dragon",
+    "Genesis Ultimatum",
+    "United Battlefront",
+    "Eerie Ultimatum",
+    "Tersa Lightshatter",
+    "Surrak, Elusive Hunter",
+    "Kotis, the Fangkeeper",
+    "Severance Priest",
 ];

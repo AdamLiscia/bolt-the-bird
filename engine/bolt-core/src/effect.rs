@@ -690,6 +690,38 @@ pub enum Effect {
     /// Betor: draw a card; then if creatures you control have total toughness 20 or greater, untap
     /// them; then if 40 or greater, each opponent loses half their life, rounded up.
     BetorEndStep,
+    /// Look at the top `n` cards; put up to `up_to` (0: any number) permanent cards from among them
+    /// onto the battlefield (only noncreature, nonland ones with mana value at most `max_mv`, if set);
+    /// the rest go to your hand, or to the bottom of your library in a random order.
+    TopCardsOntoBattlefield {
+        n: u8,
+        up_to: u8,
+        noncreature_nonland: bool,
+        max_mv: Option<u32>,
+        rest_to_hand: bool,
+    },
+    /// Exile this spell as it resolves (instead of putting it into the graveyard).
+    ExileSourceSpell,
+    /// Return any number of permanent cards with different names from your graveyard to the
+    /// battlefield.
+    ReturnPermanentsDifferentNames,
+    /// Discard up to `n` cards, then draw that many.
+    DiscardUpToThenDrawThatMany(u8),
+    /// Exile a card at random from your graveyard; you may play it this turn.
+    ExileRandomFromGraveyardPlayable,
+    /// Exile the top X cards of the damaged opponent's library (X: the trigger's amount, the combat
+    /// damage dealt); you may cast spells with mana value X or less from among them free.
+    ExileTopOfDamagedCastFree,
+    /// "Target opponent reveals their hand. You may choose a nonland card from it. If you do, exile
+    /// that card": the card is linked to the source (Severance Priest).
+    ChooseExileFromHandLinked {
+        slot: u8,
+    },
+    /// The owner of the card linked to the source creates an X/X Spirit (`spirit`, a 0/0 given X
+    /// counters), X that card's mana value.
+    LinkedOwnerCreatesSpirit {
+        spirit: usize,
+    },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1058,6 +1090,13 @@ pub enum When {
     /// "Whenever this creature or another creature you control dies, if it had counters on it"; the
     /// dead creature is in the stack item's `extra`.
     CreatureYouControlWithCountersDies,
+    /// "Whenever a creature you control with a counter on it deals combat damage to a player".
+    YourCreatureWithCounterDealsCombatDamageToPlayer,
+    /// "Whenever a creature you control or a creature spell you control becomes the target of a
+    /// spell or ability an opponent controls" (once per target).
+    YourCreatureTargetedByOpponent,
+    /// "When this creature leaves the battlefield" (any zone it goes to).
+    LeavesBattlefield,
 }
 
 #[derive(Clone, Debug, PartialEq)]
