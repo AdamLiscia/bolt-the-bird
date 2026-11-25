@@ -405,7 +405,11 @@ mod tests {
     #[test]
     fn every_tarkir_script_matches_its_card_text() {
         let t = set("TDM").unwrap();
-        for &name in scripts::TDM_SCRIPTED {
+        let all = scripts::TDM_SCRIPTED
+            .iter()
+            .chain(scripts::TDM_B_SCRIPTED)
+            .chain(scripts::TDM_C_SCRIPTED);
+        for &name in all {
             let i = t.index_of(name).unwrap_or_else(|| panic!("{name} is not in TDM"));
             assert!(t.supported[i], "{name}: script lines don't match the card text");
         }

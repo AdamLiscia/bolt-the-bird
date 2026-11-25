@@ -472,7 +472,20 @@ fn loyalty(d: &mut CardDef, cost: i32, ability: Ability) {
 }
 
 /// The script for a card, if one exists.
+/// The script for a card, by name: the core scripts here, then the Tarkir lanes' modules.
 pub fn script(name: &str) -> Option<Script> {
+    script_core(name)
+        .or_else(|| tdm_b::script(name))
+        .or_else(|| tdm_c::script(name))
+}
+
+// Parallel lanes for plain Tarkir cards (no engine-core changes): each owns its module and test file.
+mod tdm_b;
+mod tdm_c;
+pub use tdm_b::TDM_B_SCRIPTED;
+pub use tdm_c::TDM_C_SCRIPTED;
+
+fn script_core(name: &str) -> Option<Script> {
     let s = |lines, build| Some(Script { lines, build });
     match name {
         "Stab" => s(&["Target creature gets -2/-2 until end of turn."], |d, _| {
