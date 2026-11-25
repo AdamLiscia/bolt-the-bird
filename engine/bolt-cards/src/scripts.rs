@@ -134,6 +134,8 @@ pub fn token_defs() -> Vec<CardDef> {
             );
             pest
         },
+        token("Octopus", "Octopus", 8, 8, Keywords::NONE), // Octomancer's gift: a blue 8/8
+        token("Elemental", "Elemental", 4, 4, Keywords::FLYING), // Hoofprints of the Stag: white 4/4
     ]
 }
 
@@ -219,6 +221,8 @@ pub struct Tokens {
     pub storm_crow: usize,
     pub garruk_wolf: usize,
     pub pest: usize,
+    pub octopus: usize,
+    pub elemental_4: usize,
 }
 
 impl Tokens {
@@ -268,6 +272,8 @@ impl Tokens {
             storm_crow: base + 41,
             garruk_wolf: base + 42,
             pest: base + 43,
+            octopus: base + 44,
+            elemental_4: base + 45,
         }
     }
 }

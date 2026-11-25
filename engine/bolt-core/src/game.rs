@@ -223,6 +223,8 @@ pub struct Object {
     pub suspend_haste: bool,
     /// The turn an "Activate only once each turn" ability of it was last activated.
     pub activated_turn: Option<u32>,
+    /// Counters of the card's own named kind (hoofprint, acorn), which nothing else reads.
+    pub kind_counters: i32,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -789,6 +791,8 @@ pub enum Decision {
     ReturnOwnLand,
     /// `Pick` a creature or planeswalker you control to sacrifice.
     SacrificeCreatureOrPlaneswalker,
+    /// `Pick` a token you control to sacrifice, or `No`.
+    SacrificeToken,
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -992,6 +996,8 @@ pub struct Game {
     pub combat_damage_prevented_turn: Option<u32>,
     /// "Prevent all damage that would be dealt to you this turn", per player (Riot Control).
     pub damage_to_player_prevented_turn: [Option<u32>; 2],
+    /// Creatures that attacked this turn, anyone's (Rowdy Research).
+    pub attacked_creatures_this_turn: Vec<ObjId>,
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -1172,6 +1178,7 @@ impl Game {
             extra_lands_this_turn: [0; 2],
             combat_damage_prevented_turn: None,
             damage_to_player_prevented_turn: [None; 2],
+            attacked_creatures_this_turn: Vec::new(),
         }
     }
 
@@ -1263,6 +1270,7 @@ impl Game {
             time_counters: 0,
             suspend_haste: false,
             activated_turn: None,
+            kind_counters: 0,
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -1512,6 +1520,11 @@ impl Game {
                                 .creatures(so.controller)
                                 .filter(|&c| c != src && self.base_pt(c).0 == 1)
                                 .count() as i32;
+                            s.power *= n;
+                            s.toughness *= n;
+                        }
+                        if let Some(Scale::PerKindCounter) = s.scale {
+                            let n = so.kind_counters;
                             s.power *= n;
                             s.toughness *= n;
                         }
@@ -3111,7 +3124,8 @@ impl Game {
                     && (!f.noncreature || !ty.creature)
                     && (!f.nonbasic || !ty.basic)
                     && (!f.nonlegendary || !ty.legendary)
-                    && (!f.tokens_only || self.is_token(id));
+                    && (!f.tokens_only || self.is_token(id))
+                    && (!f.entered_this_turn || o.since_turn == self.turn);
                 // Kin-Tree Severance: "permanent with mana value 3 or greater".
                 kind_ok
                     && f.min_mana_value
@@ -3641,6 +3655,9 @@ impl Game {
                 .min(255) as u8,
             Some(Reduction::PerCreatureOnBattlefield) => {
                 (self.creatures(0).count() + self.creatures(1).count()).min(255) as u8
+            }
+            Some(Reduction::PerCreatureAttackedThisTurn) => {
+                self.attacked_creatures_this_turn.len().min(255) as u8
             }
             Some(Reduction::PerAnyAttackingCreature) => {
                 self.combat.as_ref().map_or(0, |c| c.attackers.len()).min(255) as u8
@@ -4223,6 +4240,7 @@ impl Game {
                     || self.obj(id).incubation < a.remove_incubation
                     || (a.once && self.obj(id).used_once)
                     || (a.once_each_turn && self.obj(id).activated_turn == Some(self.turn))
+                    || self.obj(id).kind_counters < a.remove_kind_counters
                     || (a.tap_attached
                         && !self
                             .obj(id)
@@ -4504,6 +4522,7 @@ impl Game {
         if a.once_each_turn {
             self.obj_mut(id).activated_turn = Some(self.turn);
         }
+        self.obj_mut(id).kind_counters -= a.remove_kind_counters;
         if a.tap_attached {
             if let Some((c, _)) = self.obj(id).attached_to {
                 self.become_tapped(c);
@@ -4976,6 +4995,9 @@ impl Game {
                 }
                 self.combat.as_mut().expect("in combat").attackers.push(c);
                 self.attacked_this_turn[self.active] = true;
+                if !self.attacked_creatures_this_turn.contains(&c) {
+                    self.attacked_creatures_this_turn.push(c);
+                }
                 if self.is_decayed(c) {
                     self.obj_mut(c).sacrifice_end_combat = true; // decayed (CR 702.147)
                 }
@@ -5041,6 +5063,9 @@ impl Game {
                 let count = self.combat.as_ref().map_or(0, |c| c.attackers.len()) as u8;
                 for n in 1..=count {
                     self.fire(self.active, When::YouAttackWithAtLeast(n), None);
+                }
+                if count >= 2 {
+                    self.fire(opponent(self.active), When::OpponentAttacksWithAtLeastTwo, None);
                 }
                 self.attack_triggers_again(before);
                 self.passes = 0;
@@ -5277,6 +5302,17 @@ impl Game {
         self.fire(opponent(p), When::OpponentCasts, None);
         if noncreature {
             self.fire(opponent(p), When::OpponentCastsNoncreature, None);
+            // Pollywog Prodigy: only for a spell with mana value less than its power.
+            let cost = self.def_of(card).cost;
+            let mv = (cost.mana_value() + cost.x as u32 * item.x as u32) as i32;
+            let before = self.triggered.len();
+            self.fire(opponent(p), When::OpponentCastsNoncreatureMvBelowPower, None);
+            let new = self.triggered.split_off(before);
+            for t in new {
+                if mv < self.power(t.source) {
+                    self.triggered.push(t);
+                }
+            }
         }
         if self.types_of(card).instant || self.types_of(card).sorcery {
             self.fire(opponent(p), When::OpponentCastsInstantOrSorcery, None);
@@ -5305,6 +5341,7 @@ impl Game {
             t.extra = t.extra.or(Some(card)); // "that spell" (Teval)
         }
         if self.spells_cast[p] == 2 {
+            self.fire(opponent(p), When::OpponentCastsSecondSpell, None);
             let before = self.triggered.len();
             self.fire(p, When::YouCastSecondSpell, None);
             for t in &mut self.triggered[before..] {
@@ -6294,6 +6331,15 @@ impl Game {
             }
             Decision::EndureOther { .. } => vec![Action::Yes, Action::No],
             Decision::ReturnOwnCreature => self.creatures(p).map(Action::Pick).collect(),
+            Decision::SacrificeToken => {
+                let mut v: Vec<Action> = self
+                    .permanents(p)
+                    .filter(|&c| self.is_token(c) && !self.cant_be_sacrificed(c))
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
             Decision::ReturnOwnLand => self
                 .permanents(p)
                 .filter(|&c| self.types_of(c).land)
@@ -6780,6 +6826,10 @@ impl Game {
             (Decision::DiscardReflexive { .. }, Action::No) => {}
             (Decision::ReturnOwnCreature, Action::Pick(c)) => self.move_to(c, Zone::Hand),
             (Decision::ReturnOwnLand, Action::Pick(c)) => self.move_to(c, Zone::Hand),
+            (Decision::SacrificeToken, Action::Pick(c)) => self.move_to(c, Zone::Graveyard),
+            (Decision::SacrificeToken, Action::No) => {
+                self.resolving.as_mut().expect("resolving").remaining.clear();
+            }
             (Decision::SacrificeCreatureOrPlaneswalker, Action::Pick(c)) => self.move_to(c, Zone::Graveyard),
             (Decision::SearchMonoNames { mut picked }, Action::Pick(c)) => {
                 picked.push(c);
@@ -9667,6 +9717,56 @@ impl Game {
                 let n = self.creatures(opponent(item.controller)).count() as i32;
                 self.gain_life(item.controller, n);
             }
+            Effect::YourCreaturesBasePtHandSize => {
+                let p = item.controller;
+                let x = self.players[p].hand.len() as i32;
+                let turn = self.turn;
+                for c in self.creatures(p).collect::<Vec<_>>() {
+                    // Keep what an earlier "becomes a creature" gave it (its type and keywords).
+                    let (sub, kw) = self.eot_creature(c).map_or(("", Keywords::NONE), |e| (e.3, e.4));
+                    self.obj_mut(c).eot_creature = Some((turn, x, x, sub, kw));
+                }
+            }
+            Effect::GainLifePerCreatureCardInGraveyard => {
+                let p = item.controller;
+                let n = self.players[p]
+                    .graveyard
+                    .iter()
+                    .filter(|&&c| self.def_of(c).types.creature)
+                    .count() as i32;
+                self.gain_life(p, n);
+            }
+            Effect::ExileSourceFromGraveyard => {
+                if self.obj(src).zone == Zone::Graveyard {
+                    self.move_to(src, Zone::Exile);
+                }
+            }
+            Effect::Evolve(slot) => {
+                if let Some(c) = Game::slot_object(item, legal, slot) {
+                    if self.obj(src).zone == Zone::Battlefield
+                        && (self.power(c) > self.power(src) || self.toughness(c) > self.toughness(src))
+                    {
+                        self.add_counters(src, 1);
+                    }
+                }
+            }
+            Effect::KindCounterSelf(n) => {
+                if self.obj(src).zone == Zone::Battlefield {
+                    let n = n * self.doubling(self.obj(src).controller);
+                    self.obj_mut(src).kind_counters += n;
+                }
+            }
+            Effect::MaySacrificeToken => {
+                let p = item.controller;
+                if self
+                    .permanents(p)
+                    .any(|c| self.is_token(c) && !self.cant_be_sacrificed(c))
+                {
+                    self.ask(p, Decision::SacrificeToken);
+                } else {
+                    self.resolving.as_mut().expect("resolving").remaining.clear();
+                }
+            }
             Effect::UntapLandsYouControl => {
                 for l in self.permanents(item.controller).collect::<Vec<_>>() {
                     if self.types_of(l).land {
@@ -10073,6 +10173,7 @@ impl Game {
         self.graveyard_types_used = [[false; 5]; 2];
         self.cast_snapshots.clear();
         self.attacked_this_turn = [false; 2];
+        self.attacked_creatures_this_turn.clear();
         self.life_gains_this_turn = [0; 2];
         self.life_gained_this_turn = [0; 2];
         self.draws_this_turn = [0; 2];

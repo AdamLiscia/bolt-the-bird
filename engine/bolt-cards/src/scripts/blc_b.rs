@@ -966,6 +966,120 @@ pub fn script(name: &str) -> Option<Script> {
                 d.activated[n].sorcery = true;
             },
         ),
+        "Peerless Recycling" => s(
+            &[
+                "Gift a card",
+                "Return target permanent card from your graveyard to your hand. If the gift was promised, instead return two target permanent cards from your graveyard to your hand.",
+            ],
+            |d, _| {
+                // Gift: an optional free additional cost, cast with `Action::CastKicked`.
+                d.kicker = ManaCost::parse("{0}");
+                let card = Filter { permanent_cards: true, ..graveyard_cards(false, Controller::You) };
+                spell(d, vec![card], vec![Effect::Bounce(0)]);
+                d.kicked_spell = Some(Ability::new(
+                    vec![card, card],
+                    vec![Effect::Draw { who: Who::EachOpponent, n: 1 }, Effect::Bounce(0), Effect::Bounce(1)],
+                ));
+            },
+        ),
+        "Octomancer" => s(
+            &[
+                "Gift an Octopus",
+                "At the beginning of each end step, create a token that's a copy of target creature token that entered the battlefield this turn.",
+            ],
+            |d, t| {
+                d.kicker = ManaCost::parse("{0}"); // the gift, cast with `Action::CastKicked`
+                conditional(
+                    d,
+                    When::Enters,
+                    Condition::Kicked,
+                    vec![],
+                    vec![Effect::CreateToken { who: Who::EachOpponent, def: t.octopus, n: 1 }],
+                );
+                let new_token = Filter { tokens_only: true, entered_this_turn: true, ..CREATURE };
+                on(
+                    d,
+                    When::EndStep { your_turn_only: false },
+                    vec![new_token],
+                    vec![Effect::CopyToken { slot: Some(0), haste_and_sacrifice: false, extra_subtype: None }],
+                );
+            },
+        ),
+        "Rowdy Research" => s(
+            &["This spell costs {1} less to cast for each creature that attacked this turn.", "Draw three cards."],
+            |d, _| {
+                d.reduction = Some(Reduction::PerCreatureAttackedThisTurn);
+                spell(d, vec![], vec![draw(3)]);
+            },
+        ),
+        "Jolrael, Mwonvuli Recluse" => s(
+            &[
+                "Whenever you draw your second card each turn, create a 2/2 green Cat creature token.",
+                "{4}{G}{G}: Until end of turn, creatures you control have base power and toughness X/X, where X is the number of cards in your hand.",
+            ],
+            |d, t| {
+                on(d, When::YouDrawSecond, vec![], vec![Effect::CreateToken { who: Who::You, def: t.cat_2, n: 1 }]);
+                activated(d, "{4}{G}{G}", false, vec![], vec![Effect::YourCreaturesBasePtHandSize]);
+            },
+        ),
+        "Skyfisher Spider" => s(
+            &[
+                "When this creature enters, you may sacrifice another creature. When you do, destroy target nonland permanent.",
+                "When this creature dies, you may gain 1 life for each creature card in your graveyard. If you do, exile this card from your graveyard.",
+            ],
+            |d, _| {
+                on(d, When::Enters, vec![], vec![Effect::MaySacrificeAnother, Effect::Reflexive(1)]);
+                let nonland = Filter { controller: Controller::Any, ..OPP_NONLAND };
+                on(d, When::Never, vec![nonland], vec![Effect::Destroy(0)]); // trigger 1: "when you do"
+                may(d, When::Dies, vec![], vec![Effect::GainLifePerCreatureCardInGraveyard, Effect::ExileSourceFromGraveyard]);
+            },
+        ),
+        "Pollywog Prodigy" => s(
+            &[
+                "Evolve",
+                "Whenever an opponent casts a noncreature spell with mana value less than this creature's power, draw a card.",
+            ],
+            |d, _| {
+                let that = Filter { triggering: true, ..CREATURE };
+                on(d, When::AnotherCreatureYouControlEnters, vec![that], vec![Effect::Evolve(0)]);
+                on(d, When::OpponentCastsNoncreatureMvBelowPower, vec![], vec![draw(1)]);
+            },
+        ),
+        "Mangara, the Diplomat" => s(
+            &[
+                "Whenever an opponent attacks with creatures, if two or more of those creatures are attacking you and/or planeswalkers you control, draw a card.",
+                "Whenever an opponent casts their second spell each turn, draw a card.",
+            ],
+            |d, _| {
+                on(d, When::OpponentAttacksWithAtLeastTwo, vec![], vec![draw(1)]);
+                on(d, When::OpponentCastsSecondSpell, vec![], vec![draw(1)]);
+            },
+        ),
+        "Hoofprints of the Stag" => s(
+            &[
+                "Whenever you draw a card, you may put a hoofprint counter on this enchantment.",
+                "{2}{W}, Remove four hoofprint counters from this enchantment: Create a 4/4 white Elemental creature token with flying. Activate only during your turn.",
+            ],
+            |d, t| {
+                may(d, When::YouDraw, vec![], vec![Effect::KindCounterSelf(1)]);
+                let n = activated(d, "{2}{W}", false, vec![], vec![Effect::CreateToken { who: Who::You, def: t.elemental_4, n: 1 }]);
+                d.activated[n].remove_kind_counters = 4;
+                d.activated[n].your_turn_only = true;
+            },
+        ),
+        "Chitterspitter" => s(
+            &[
+                "At the beginning of your upkeep, you may sacrifice a token. If you do, put an acorn counter on this artifact.",
+                "Squirrels you control get +1/+1 for each acorn counter on this artifact.",
+                "{G}, {T}: Create a 1/1 green Squirrel creature token.",
+            ],
+            |d, t| {
+                on(d, When::Upkeep { your_turn_only: true }, vec![], vec![Effect::MaySacrificeToken, Effect::KindCounterSelf(1)]);
+                lord(d, "Squirrel");
+                d.statics.last_mut().expect("just added").scale = Some(Scale::PerKindCounter);
+                activated(d, "{G}", true, vec![], vec![Effect::CreateToken { who: Who::You, def: t.squirrel, n: 1 }]);
+            },
+        ),
         _ => None,
     }
 }
@@ -1104,4 +1218,13 @@ pub const BLC_B_SCRIPTED: &[&str] = &[
     "Outpost Siege",
     "Tainted Wood",
     "Llanowar Loamspeaker",
+    "Peerless Recycling",
+    "Octomancer",
+    "Rowdy Research",
+    "Jolrael, Mwonvuli Recluse",
+    "Skyfisher Spider",
+    "Pollywog Prodigy",
+    "Mangara, the Diplomat",
+    "Hoofprints of the Stag",
+    "Chitterspitter",
 ];

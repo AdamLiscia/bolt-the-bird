@@ -145,6 +145,8 @@ pub enum Reduction {
     PerCreatureYouControlPowerAtLeast(i32),
     /// ... {1} less for each creature on the battlefield (Blasphemous Act).
     PerCreatureOnBattlefield,
+    /// ... {1} less for each creature that attacked this turn (Rowdy Research).
+    PerCreatureAttackedThisTurn,
 }
 
 /// An activated ability: "[cost]: [effect]" (CR 602).
@@ -207,6 +209,8 @@ pub struct Activated {
     pub sacrifice_subtype: Option<&'static str>,
     /// "Activate only once each turn."
     pub once_each_turn: bool,
+    /// Remove this many of the source's own kind of counters as a cost (Hoofprints of the Stag).
+    pub remove_kind_counters: i32,
 }
 
 /// The printed card. Shared by every copy; per-copy state lives on the game object.

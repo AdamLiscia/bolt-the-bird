@@ -2022,3 +2022,257 @@ fn llanowar_loamspeaker_taps_for_any_color_and_animates_a_land() {
     g.start_turn(5, 0);
     assert!(!g.types_of(forest).creature, "until end of turn");
 }
+
+// ---- batch 11 ----
+
+#[test]
+fn peerless_recycling_returns_one_or_two_with_the_gift() {
+    let mut g = table();
+    let ring = g.add_card(0, bid("Sol Ring"), Zone::Graveyard);
+    let elder = g.add_card(0, bid("Sakura-Tribe Elder"), Zone::Graveyard);
+    let harmonize = g.add_card(0, bid("Harmonize"), Zone::Graveyard); // not a permanent card
+    let r = hand(&mut g, 0, "Peerless Recycling");
+    act(&mut g, Action::Cast(r));
+    assert!(!g.legal_actions().contains(&Action::Target(obj(harmonize))));
+    act(&mut g, Action::Target(obj(ring)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(ring).zone, Zone::Hand);
+    assert_eq!(g.obj(elder).zone, Zone::Graveyard);
+
+    let mut g = table();
+    let ring = g.add_card(0, bid("Sol Ring"), Zone::Graveyard);
+    let elder = g.add_card(0, bid("Sakura-Tribe Elder"), Zone::Graveyard);
+    let r = hand(&mut g, 0, "Peerless Recycling");
+    let theirs = g.players[1].hand.len();
+    play(&mut g, r, true, &[obj(ring), obj(elder)], &[]);
+    assert_eq!(g.obj(ring).zone, Zone::Hand);
+    assert_eq!(g.obj(elder).zone, Zone::Hand);
+    assert_eq!(g.players[1].hand.len(), theirs + 1, "the gift: a card");
+}
+
+#[test]
+fn octomancer_gifts_an_octopus_and_copies_new_tokens_each_end_step() {
+    let mut g = table();
+    let o = hand(&mut g, 0, "Octomancer");
+    act(&mut g, Action::CastKicked(o));
+    resolve_all(&mut g, &[]);
+    let octo = tokens_named(&g, 1, "Octopus");
+    assert_eq!(octo.len(), 1);
+    assert_eq!(g.power(octo[0]), 8);
+    let sg = hand(&mut g, 0, "Siege-Gang Commander");
+    play(&mut g, sg, false, &[], &[]);
+    let old = g.add_card(0, token_def("Thopter"), Zone::Battlefield); // there since before this turn
+    let goblin = tokens_named(&g, 0, "Goblin")[0];
+    while g.step != Step::End {
+        let a = match g.pending {
+            Pending::DeclareAttackers(_) => Action::FinishAttacks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert!(matches!(g.pending, Pending::ChooseTarget(0)));
+    assert!(
+        !g.legal_actions().contains(&Action::Target(obj(old))),
+        "entered this turn"
+    );
+    resolve_all(&mut g, &[Action::Target(obj(goblin))]);
+    assert_eq!(tokens_named(&g, 0, "Goblin").len(), 4);
+
+    let mut g = table();
+    let o = hand(&mut g, 0, "Octomancer");
+    play(&mut g, o, false, &[], &[]);
+    assert!(tokens_named(&g, 1, "Octopus").is_empty(), "no gift");
+}
+
+#[test]
+fn rowdy_research_costs_less_per_creature_that_attacked() {
+    let mut g = game(
+        ["Bello, Bard of the Brambles", "Ms. Bumbleflower"],
+        &["Island", "Island", "Island", "Island", "Island"],
+    );
+    let a = put(&mut g, 0, "Sakura-Tribe Elder");
+    let b = put(&mut g, 0, "Devilish Valet");
+    let r = hand(&mut g, 0, "Rowdy Research");
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(r)),
+        "{{6}}{{U}} with five lands"
+    );
+    attack(&mut g, &[a, b]);
+    to_main2(&mut g);
+    assert!(
+        g.legal_actions().contains(&Action::Cast(r)),
+        "two attacked: {{4}}{{U}}"
+    );
+    let cards = g.players[0].hand.len();
+    play(&mut g, r, false, &[], &[]);
+    assert_eq!(g.players[0].hand.len(), cards - 1 + 3);
+}
+
+#[test]
+fn jolrael_makes_cats_on_the_second_draw_and_sets_power_by_hand_size() {
+    let mut g = table();
+    let j = put(&mut g, 0, "Jolrael, Mwonvuli Recluse");
+    let h = hand(&mut g, 0, "Harmonize"); // draws three: the second makes a Cat
+    play(&mut g, h, false, &[], &[]);
+    let cats = tokens_named(&g, 0, "Cat");
+    assert_eq!(cats.len(), 1);
+    assert_eq!(g.power(cats[0]), 2);
+    let x = g.players[0].hand.len() as i32;
+    act(&mut g, Action::Activate(j, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.power(j), g.toughness(j)), (x, x));
+    assert_eq!(g.power(cats[0]), x);
+    g.start_turn(5, 0);
+    assert_eq!(g.power(j), 1, "until end of turn");
+}
+
+#[test]
+fn skyfisher_spider_trades_a_creature_for_a_permanent_and_cashes_in_its_graveyard() {
+    let mut g = table();
+    let elder = put(&mut g, 0, "Sakura-Tribe Elder");
+    let ring = put(&mut g, 1, "Sol Ring");
+    let s = hand(&mut g, 0, "Skyfisher Spider");
+    play(
+        &mut g,
+        s,
+        false,
+        &[],
+        &[Action::Pick(elder), Action::Target(obj(ring))],
+    );
+    assert_eq!(g.obj(elder).zone, Zone::Graveyard);
+    assert_eq!(g.obj(ring).zone, Zone::Graveyard);
+    assert!(g.keywords(s).has(Keywords::REACH));
+
+    // Dies: gain 1 per creature card in your graveyard (the Elder and itself), then exile it.
+    let gift = hand(&mut g, 0, "Beast Within");
+    let life = g.players[0].life;
+    play(&mut g, gift, false, &[obj(s)], &[Action::Yes]);
+    assert_eq!(g.players[0].life, life + 2);
+    assert_eq!(g.obj(s).zone, Zone::Exile);
+
+    // Declining the sacrifice destroys nothing.
+    let mut g = table();
+    put(&mut g, 0, "Sakura-Tribe Elder");
+    let ring = put(&mut g, 1, "Sol Ring");
+    let s = hand(&mut g, 0, "Skyfisher Spider");
+    play(&mut g, s, false, &[], &[Action::No]);
+    assert_eq!(g.obj(ring).zone, Zone::Battlefield);
+}
+
+#[test]
+fn pollywog_prodigy_evolves_and_draws_off_cheap_noncreature_spells() {
+    let mut g = table();
+    let p = put(&mut g, 0, "Pollywog Prodigy"); // 1/3
+    let elder = hand(&mut g, 0, "Sakura-Tribe Elder"); // 1/1: not greater
+    play(&mut g, elder, false, &[], &[]);
+    assert_eq!(g.obj(p).counters, 0);
+    let valet = hand(&mut g, 0, "Devilish Valet"); // 1/3: not greater
+    play(&mut g, valet, false, &[], &[]);
+    assert_eq!(g.obj(p).counters, 0);
+    let hydra = hand(&mut g, 0, "Kalonian Hydra"); // 4/4
+    play(&mut g, hydra, false, &[], &[]);
+    assert_eq!(g.obj(p).counters, 1, "evolved: 2/4");
+
+    let ring = hand(&mut g, 1, "Sol Ring"); // mana value 1 < 2
+    let dynamo = hand(&mut g, 1, "Thran Dynamo"); // 4: not less
+    their_main(&mut g);
+    let cards = g.players[0].hand.len();
+    act(&mut g, Action::Cast(dynamo));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].hand.len(), cards);
+    act(&mut g, Action::Cast(ring));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].hand.len(), cards + 1);
+}
+
+#[test]
+fn mangara_draws_on_big_attacks_and_second_spells() {
+    let mut g = table();
+    put(&mut g, 0, "Mangara, the Diplomat");
+    let ring = hand(&mut g, 1, "Sol Ring");
+    let ring2 = hand(&mut g, 1, "Sol Ring");
+    let a = put(&mut g, 1, "Sakura-Tribe Elder");
+    let b = put(&mut g, 1, "Devilish Valet");
+    their_main(&mut g);
+    let cards = g.players[0].hand.len();
+    act(&mut g, Action::Cast(ring));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].hand.len(), cards, "first spell");
+    act(&mut g, Action::Cast(ring2));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].hand.len(), cards + 1, "second spell");
+    while g.pending != Pending::DeclareAttackers(1) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(a));
+    act(&mut g, Action::Attack(b));
+    act(&mut g, Action::FinishAttacks);
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].hand.len(), cards + 2, "two attackers");
+}
+
+#[test]
+fn hoofprints_of_the_stag_counts_draws_into_an_elemental() {
+    let mut g = table();
+    let h = put(&mut g, 0, "Hoofprints of the Stag");
+    let harmonize = hand(&mut g, 0, "Harmonize");
+    play(
+        &mut g,
+        harmonize,
+        false,
+        &[],
+        &[Action::Yes, Action::Yes, Action::Yes],
+    );
+    assert_eq!(g.obj(h).kind_counters, 3);
+    assert!(
+        !g.legal_actions().contains(&Action::Activate(h, 0)),
+        "three of four"
+    );
+    let one = hand(&mut g, 0, "Spirited Companion");
+    play(&mut g, one, false, &[], &[Action::Yes]);
+    assert_eq!(g.obj(h).kind_counters, 4);
+    act(&mut g, Action::Activate(h, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(h).kind_counters, 0);
+    let e = tokens_named(&g, 0, "Elemental");
+    assert_eq!(e.len(), 1);
+    assert!(g.keywords(e[0]).has(Keywords::FLYING));
+    assert_eq!(g.power(e[0]), 4);
+}
+
+#[test]
+fn chitterspitter_eats_tokens_for_acorns_that_pump_squirrels() {
+    let mut g = table();
+    let c = put(&mut g, 0, "Chitterspitter");
+    act(&mut g, Action::Activate(c, 0));
+    resolve_all(&mut g, &[]);
+    let squirrels = tokens_named(&g, 0, "Squirrel");
+    assert_eq!(squirrels.len(), 1);
+    let thopter = g.add_card(0, token_def("Thopter"), Zone::Battlefield);
+    g.start_turn(5, 0);
+    let mut asked = false;
+    while g.step != Step::Main1 {
+        let a = if matches!(g.pending, Pending::Decide(0)) {
+            asked = true;
+            Action::Pick(thopter)
+        } else {
+            Action::PassPriority
+        };
+        act(&mut g, a);
+    }
+    assert!(asked, "upkeep: may sacrifice a token");
+    assert!(tokens_named(&g, 0, "Thopter").is_empty());
+    assert_eq!(g.obj(c).kind_counters, 1);
+    assert_eq!((g.power(squirrels[0]), g.toughness(squirrels[0])), (2, 2));
+    // Declining puts no counter on.
+    g.start_turn(7, 0);
+    while g.step != Step::Main1 {
+        let a = if matches!(g.pending, Pending::Decide(0)) {
+            Action::No
+        } else {
+            Action::PassPriority
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.obj(c).kind_counters, 1);
+}

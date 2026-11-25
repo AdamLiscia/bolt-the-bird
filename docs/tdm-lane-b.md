@@ -273,3 +273,21 @@ Notes: Scurry's myriad does nothing in a two-player game (no opponent other than
 player). Gilded Goose's Food ability and Selvala's parley are mana abilities played on the stack, as
 Hazel's is. Outpost Siege's Khans card is offered as a pick (the existing `ExileTopChooseOneToPlay`
 with one card): declining is never better than taking it.
+
+### Batch 11: 9 cards
+
+Peerless Recycling, Octomancer, Rowdy Research, Jolrael, Mwonvuli Recluse, Skyfisher Spider,
+Pollywog Prodigy, Mangara, the Diplomat, Hoofprints of the Stag, Chitterspitter.
+
+Core:
+- Gift as a free kicker (`kicker = {0}`, cast with `Action::CastKicked`; `kicked_spell` or
+  `Condition::Kicked`). Octopus token; `Filter::entered_this_turn`.
+- `Reduction::PerCreatureAttackedThisTurn` (`Game::attacked_creatures_this_turn`).
+- `Effect::YourCreaturesBasePtHandSize` (via `eot_creature`), `GainLifePerCreatureCardInGraveyard`,
+  `ExileSourceFromGraveyard`, `Evolve`, `KindCounterSelf`, `MaySacrificeToken` (`Decision::SacrificeToken`).
+- `Object::kind_counters` (hoofprint, acorn), `Activated::remove_kind_counters`, `Scale::PerKindCounter`.
+- `When::OpponentCastsNoncreatureMvBelowPower` (filtered as it triggers), `OpponentAttacksWithAtLeastTwo`
+  (two players: every attacker attacks you or your planeswalkers), `OpponentCastsSecondSpell`.
+- Elemental 4/4 flying token.
+
+Notes: evolve compares only as it resolves (not also as it triggers).

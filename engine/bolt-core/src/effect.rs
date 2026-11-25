@@ -89,6 +89,8 @@ pub struct Filter {
     pub tokens_only: bool,
     /// Nonlegendary permanents only.
     pub nonlegendary: bool,
+    /// Permanents that entered the battlefield this turn.
+    pub entered_this_turn: bool,
 }
 
 impl Filter {
@@ -132,6 +134,7 @@ impl Filter {
         nonland_cards: false,
         tokens_only: false,
         nonlegendary: false,
+        entered_this_turn: false,
     };
 
     pub const CREATURE: Filter = Filter {
@@ -994,6 +997,20 @@ pub enum Effect {
         subtype: &'static str,
         keywords: crate::Keywords,
     },
+    /// Set the base power and toughness of each creature you control to X/X until end of turn, X the
+    /// cards in your hand on resolution (Jolrael).
+    YourCreaturesBasePtHandSize,
+    /// You gain 1 life for each creature card in your graveyard (Skyfisher Spider).
+    GainLifePerCreatureCardInGraveyard,
+    /// Exile the source from its owner's graveyard.
+    ExileSourceFromGraveyard,
+    /// Evolve (CR 702.100): if the creature in `slot` has greater power or toughness than the source,
+    /// put a +1/+1 counter on the source (checked as it resolves).
+    Evolve(u8),
+    /// Put `n` of the source's own kind of counter on it (hoofprint, acorn: `Object::kind_counters`).
+    KindCounterSelf(i32),
+    /// "You may sacrifice a token. If you do, ...": the rest only if one is sacrificed.
+    MaySacrificeToken,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1081,6 +1098,8 @@ pub enum Scale {
     PerOtherYourCreatureBasePowerOne,
     /// Colors among permanents you control (Faeburrow Elder).
     PerColorAmongYourPermanents,
+    /// The source's own kind of counters (Chitterspitter's acorn counters).
+    PerKindCounter,
 }
 
 /// A condition on a static ability ("as long as ...").
@@ -1448,6 +1467,14 @@ pub enum When {
     EquippedDies,
     /// "Whenever a creature you control leaves the battlefield" (any zone it goes to).
     CreatureYouControlLeavesBattlefield,
+    /// "Whenever an opponent casts a noncreature spell with mana value less than this creature's
+    /// power" (Pollywog Prodigy): checked as it triggers.
+    OpponentCastsNoncreatureMvBelowPower,
+    /// "Whenever an opponent attacks with creatures, if two or more of those creatures are attacking
+    /// you and/or planeswalkers you control" (two players: two or more attackers).
+    OpponentAttacksWithAtLeastTwo,
+    /// "Whenever an opponent casts their second spell each turn".
+    OpponentCastsSecondSpell,
 }
 
 #[derive(Clone, Debug, PartialEq)]
