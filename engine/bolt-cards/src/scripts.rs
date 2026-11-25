@@ -56,6 +56,7 @@ pub fn token_defs() -> Vec<CardDef> {
         token("Zombie Druid", "Zombie Druid", 2, 2, Keywords::NONE),
         token("Elephant", "Elephant", 5, 5, Keywords::NONE),
         token("Soldier", "Soldier", 2, 2, Keywords::NONE),
+        token("Spirit", "Spirit", 1, 1, Keywords::NONE), // Revival of the Ancestors' white Spirits
     ]
 }
 
@@ -126,6 +127,7 @@ pub struct Tokens {
     pub zombie_druid: usize,
     pub elephant: usize,
     pub soldier_2: usize,
+    pub spirit_1: usize,
 }
 
 impl Tokens {
@@ -160,6 +162,7 @@ impl Tokens {
             zombie_druid: base + 26,
             elephant: base + 27,
             soldier_2: base + 28,
+            spirit_1: base + 29,
         }
     }
 }
@@ -436,6 +439,14 @@ fn dragonstorm_return(d: &mut CardDef) {
 
 const DRAGONSTORM_RETURN: &str =
     "When a Dragon you control enters, return this enchantment to its owner's hand.";
+
+/// A Saga chapter ability ("I — ...").
+fn chapter(d: &mut CardDef, n: u8, ability: Ability) {
+    d.triggers.push(Trigger {
+        when: When::Chapter(n),
+        ability,
+    });
+}
 
 fn modes(d: &mut CardDef, modes: Vec<Ability>) {
     d.modes = modes;
@@ -3731,6 +3742,69 @@ fn script_core(name: &str) -> Option<Script> {
             &["{T}, Pay 1 life, Sacrifice this land: Search your library for a Plains or Swamp card, put it onto the battlefield, then shuffle."],
             |d, _| fetch_land(d, &["Plains", "Swamp"]),
         ),
+        // ---- TDM batch 9: Sagas, and the rest of the Omens ----
+        "Roar of Endless Song" => s(
+            &[
+                "I, II — Create a 5/5 green Elephant creature token.",
+                "III — Double the power and toughness of each creature you control until end of turn.",
+            ],
+            |d, t| {
+                for n in [1, 2] {
+                    chapter(d, n, Ability::new(vec![], vec![Effect::CreateToken { who: Who::You, def: t.elephant, n: 1 }]));
+                }
+                chapter(d, 3, Ability::new(vec![], vec![Effect::DoublePowerToughnessAll]));
+            },
+        ),
+        "Revival of the Ancestors" => s(
+            &[
+                "I — Create three 1/1 white Spirit creature tokens.",
+                "II — Distribute three +1/+1 counters among one, two, or three target creatures you control.",
+                "III — Creatures you control gain trample and lifelink until end of turn.",
+            ],
+            |d, t| {
+                chapter(d, 1, Ability::new(vec![], vec![Effect::CreateToken { who: Who::You, def: t.spirit_1, n: 3 }]));
+                let mut two = Ability::new(vec![YOUR_CREATURE; 3], vec![Effect::DividedCounters]);
+                two.min_targets = Some(1);
+                two.divide = 3;
+                chapter(d, 2, two);
+                let team = Effect::GrantAll { who: Who::You, keywords: Keywords::TRAMPLE.with(Keywords::LIFELINK) };
+                chapter(d, 3, Ability::new(vec![], vec![team]));
+            },
+        ),
+        "Feral Deathgorger" => s(
+            &[
+                "When this creature enters, exile up to two target cards from a single graveyard.",
+                "Omen: Put a +1/+1 counter on up to one target creature. Draw a card.",
+            ],
+            |d, _| {
+                let f = graveyard_cards(false, Controller::Any);
+                let mut a = up_to(vec![f, f], vec![Effect::Exile(0), Effect::Exile(1)]);
+                a.same_graveyard = true;
+                d.triggers.push(Trigger { when: When::Enters, ability: a });
+                omen(d, up_to(vec![CREATURE], vec![Effect::Counters { slot: 0, n: 1 }, draw(1)]));
+            },
+        ),
+        "Purging Stormbrood" => s(
+            &[
+                "Ward—Pay 2 life.",
+                "When this creature enters, remove all counters from up to one target creature.",
+                "Omen: Target creature gets +2/+2 and gains lifelink and hexproof until end of turn.",
+            ],
+            |d, _| {
+                d.ward_life = Some(2);
+                d.triggers.push(Trigger { when: When::Enters, ability: up_to(vec![CREATURE], vec![Effect::RemoveAllCounters(0)]) });
+                omen(
+                    d,
+                    Ability::new(
+                        vec![CREATURE],
+                        vec![
+                            Effect::Pump { slot: 0, power: 2, toughness: 2 },
+                            Effect::Grant { slot: 0, keywords: Keywords::LIFELINK.with(Keywords::HEXPROOF) },
+                        ],
+                    ),
+                );
+            },
+        ),
         _ => None,
     }
 }
@@ -4113,4 +4187,8 @@ pub const TDM_SCRIPTED: &[&str] = &[
     "Scalding Tarn",
     "Verdant Catacombs",
     "Marsh Flats",
+    "Roar of Endless Song",
+    "Revival of the Ancestors",
+    "Feral Deathgorger",
+    "Purging Stormbrood",
 ];

@@ -1580,3 +1580,157 @@ fn a_fetch_land_pays_life_and_finds_one_of_its_two_types_untapped() {
     resolve_all(&mut g, &[]);
     assert!(g.obj(forest).zone == Zone::Battlefield && !g.obj(forest).tapped);
 }
+
+// ---- batch 9: Sagas, scry ordering, the last Omens ----
+
+/// Advance to player 0's next precombat main phase (`turn` + 2), resolving chapter triggers on the way.
+fn next_main(g: &mut Game, turn: u32, answers: &[Action]) {
+    g.start_turn(turn, 0);
+    let mut answers = answers.iter();
+    while g.step != bolt_core::Step::Main1
+        || !g.items.is_empty()
+        || !matches!(g.pending, Pending::Priority(0))
+    {
+        let a = match g.pending {
+            Pending::ChooseTarget(_) | Pending::Decide(_) => *answers.next().expect("an answer"),
+            Pending::DeclareAttackers(_) => Action::FinishAttacks,
+            _ => Action::PassPriority,
+        };
+        act(g, a);
+    }
+}
+
+#[test]
+fn a_saga_goes_chapter_by_chapter_then_is_sacrificed() {
+    let mut g = table();
+    let roar = hand(&mut g, 0, "Roar of Endless Song");
+    begin(&mut g);
+    play(&mut g, roar, false, &[], &[]);
+    assert_eq!(g.obj(roar).lore, 1);
+    assert_eq!(tokens(&g, 0, "Elephant").len(), 1, "chapter I");
+    next_main(&mut g, 5, &[]);
+    assert_eq!(g.obj(roar).lore, 2);
+    assert_eq!(tokens(&g, 0, "Elephant").len(), 2, "chapter II");
+    next_main(&mut g, 7, &[]);
+    let e = tokens(&g, 0, "Elephant")[0];
+    assert_eq!((g.power(e), g.toughness(e)), (10, 10), "chapter III doubles");
+    assert_eq!(
+        g.obj(roar).zone,
+        Zone::Graveyard,
+        "sacrificed after its last chapter"
+    );
+}
+
+#[test]
+fn revival_of_the_ancestors_tokens_counters_and_team_keywords() {
+    let mut g = table();
+    let rev = hand(&mut g, 0, "Revival of the Ancestors");
+    begin(&mut g);
+    play(&mut g, rev, false, &[], &[]);
+    let spirits = tokens(&g, 0, "Spirit");
+    assert_eq!(spirits.len(), 3);
+    assert_eq!((g.power(spirits[0]), g.toughness(spirits[0])), (1, 1));
+    // Chapter II: three counters divided among up to three targets; here all three on one Spirit.
+    g.start_turn(5, 0);
+    while !matches!(g.pending, Pending::ChooseTarget(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Target(obj(spirits[0])));
+    let mut guard = 0;
+    while g.obj(spirits[0]).counters == 0 && guard < 30 {
+        let a = g
+            .legal_actions()
+            .iter()
+            .copied()
+            .find(|a| !matches!(a, Action::Target(_)))
+            .expect("a move");
+        act(&mut g, a);
+        guard += 1;
+    }
+    assert_eq!(g.obj(spirits[0]).counters, 3);
+    next_main(&mut g, 7, &[]);
+    assert!(g.keywords(spirits[1]).has(Keywords::TRAMPLE) && g.keywords(spirits[1]).has(Keywords::LIFELINK));
+    assert_eq!(g.obj(rev).zone, Zone::Graveyard);
+}
+
+#[test]
+fn scry_lets_you_order_the_cards_you_keep() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Mardu Devotee"); // scry 2
+    begin(&mut g);
+    let top: Vec<ObjId> = g.players[0].library.iter().rev().take(2).copied().collect();
+    // Keep both, then choose the second one to go on top.
+    play(
+        &mut g,
+        c,
+        false,
+        &[],
+        &[Action::No, Action::No, Action::Pick(top[1])],
+    );
+    let lib = &g.players[0].library;
+    assert_eq!(lib[lib.len() - 1], top[1], "chosen card on top");
+    assert_eq!(lib[lib.len() - 2], top[0]);
+}
+
+#[test]
+fn feral_deathgorger_exiles_from_a_single_graveyard_and_dusk_sight_draws() {
+    let mut g = table();
+    let mine = g.add_card(0, tid("Iceridge Serpent"), Zone::Graveyard);
+    let theirs = g.add_card(1, tid("Humbling Elder"), Zone::Graveyard);
+    let theirs2 = g.add_card(1, tid("Rebellious Strike"), Zone::Graveyard);
+    let d = hand(&mut g, 0, "Feral Deathgorger");
+    begin(&mut g);
+    act(&mut g, Action::Cast(d));
+    while !matches!(g.pending, Pending::ChooseTarget(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Target(obj(theirs)));
+    assert!(
+        !g.legal_actions().contains(&Action::Target(obj(mine))),
+        "a single graveyard"
+    );
+    act(&mut g, Action::Target(obj(theirs2)));
+    resolve_all(&mut g, &[]);
+    assert!(g.obj(theirs).zone == Zone::Exile && g.obj(theirs2).zone == Zone::Exile);
+    let target = put(&mut g, 0, "Humbling Elder");
+    let o = hand(&mut g, 0, "Feral Deathgorger");
+    let n = g.players[0].hand.len();
+    act(&mut g, Action::CastOmen(o));
+    act(&mut g, Action::Target(obj(target)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(target).counters, 1);
+    assert_eq!(g.players[0].hand.len(), n, "cast it, drew one");
+}
+
+#[test]
+fn purging_stormbrood_strips_counters_and_absorb_essence_pumps() {
+    let mut g = table();
+    g.smart_pay = true; // keep a white source for the Omen
+    let theirs = put(&mut g, 1, "Iceridge Serpent");
+    let p = hand(&mut g, 0, "Purging Stormbrood");
+    let o = hand(&mut g, 0, "Purging Stormbrood"); // in hand early, so the payer keeps white for it
+    let renew = g.add_card(1, tid("Champion of Dusan"), Zone::Graveyard);
+    let _ = renew;
+    begin(&mut g);
+    {
+        // Give their creature a +1/+1 counter and a trample counter first.
+        let c = g.add_card(0, tid("Champion of Dusan"), Zone::Graveyard);
+        act(&mut g, Action::Activate(c, 0));
+        act(&mut g, Action::Target(obj(theirs)));
+        resolve_all(&mut g, &[]);
+    }
+    assert!(g.obj(theirs).counters == 1 && g.keywords(theirs).has(Keywords::TRAMPLE));
+    play(&mut g, p, false, &[], &[Action::Target(obj(theirs))]);
+    assert_eq!(g.obj(theirs).counters, 0);
+    assert!(
+        !g.keywords(theirs).has(Keywords::TRAMPLE),
+        "the trample counter is gone too"
+    );
+    let mine = put(&mut g, 0, "Humbling Elder");
+    let (pw, t) = (g.power(mine), g.toughness(mine));
+    act(&mut g, Action::CastOmen(o));
+    act(&mut g, Action::Target(obj(mine)));
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.power(mine), g.toughness(mine)), (pw + 2, t + 2));
+    assert!(g.keywords(mine).has(Keywords::LIFELINK) && g.keywords(mine).has(Keywords::HEXPROOF));
+}

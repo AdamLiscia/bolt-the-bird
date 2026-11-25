@@ -142,6 +142,10 @@ pub struct Object {
     pub stash: bool,
     /// The turn this object's once-each-turn mana ability (the Devotees) was last used.
     pub filter_used_turn: u32,
+    /// Keyword counters on it (CR 122.1b), kept apart from other granted keywords.
+    pub keyword_counters: Keywords,
+    /// Lore counters on a Saga (CR 714).
+    pub lore: u8,
     /// A token that's a copy of a card (its definition isn't a token's).
     pub copy_token: bool,
     /// Sacrifice it at the beginning of the next end step (Electroduplicate).
@@ -570,7 +574,9 @@ pub enum Decision {
     /// Surveil: `Yes` puts the top of `cards` into the graveyard, `No` keeps it on top.
     Surveil { cards: Vec<ObjId> },
     /// Scry: `Yes` puts the top of `cards` on the bottom of the library, `No` keeps it on top.
-    Scry { cards: Vec<ObjId> },
+    Scry { cards: Vec<ObjId>, kept: Vec<ObjId> },
+    /// Scry, then order: `Pick` the card to go on top next, from those kept (CR 701.22a "in any order").
+    ScryOrder { kept: Vec<ObjId>, placed: Vec<ObjId> },
     /// Endure `n`: `Yes` puts the counters on the source, `No` makes an `n`/`n` Spirit token.
     Endure { n: u8, spirit: usize },
     /// `Pick` a matching library card, or `No` to find nothing (CR 701.19b).
@@ -925,6 +931,8 @@ impl Game {
             bait: 0,
             stash: false,
             filter_used_turn: 0,
+            keyword_counters: Keywords::NONE,
+            lore: 0,
             copy_token: false,
             sacrifice_at_end: false,
             graveyard_turn: 0,
@@ -1190,7 +1198,10 @@ impl Game {
         let printed = if self.lost_abilities(id) {
             Keywords::NONE
         } else {
-            self.def_of(id).keywords.with(self.obj(id).granted)
+            self.def_of(id)
+                .keywords
+                .with(self.obj(id).granted)
+                .with(self.obj(id).keyword_counters)
         };
         let mut k = self.modifiers(id).fold(printed, |k, m| k.with(m.keywords));
         if self.obj(id).animated.is_some() {
@@ -1493,6 +1504,8 @@ impl Game {
             last.extend(o.subtype_override.take());
             o.last_subtypes = last;
             o.granted = Keywords::NONE;
+            o.keyword_counters = Keywords::NONE;
+            o.lore = 0;
             o.used_once = false;
             o.last_soul = o.soul;
             o.last_revival = o.revival;
@@ -1529,7 +1542,48 @@ impl Game {
     }
 
     /// CR 603.6a, 603.6c, 603.10a: enters and dies triggers.
+    fn is_saga(&self, id: ObjId) -> bool {
+        self.def_of(id).subtypes.iter().any(|s| s == "Saga")
+    }
+
+    /// The Saga's last chapter number (CR 714.2c).
+    fn final_chapter(&self, id: ObjId) -> u8 {
+        self.def_of(id)
+            .triggers
+            .iter()
+            .filter_map(|t| match t.when {
+                When::Chapter(n) => Some(n),
+                _ => None,
+            })
+            .max()
+            .unwrap_or(0)
+    }
+
+    /// A lore counter on a Saga: its chapter ability for that number triggers (CR 714.2b).
+    fn add_lore(&mut self, id: ObjId) {
+        let n = self.obj(id).lore.saturating_add(1);
+        self.obj_mut(id).lore = n;
+        let p = self.obj(id).controller;
+        let chapters: Vec<usize> = self
+            .def_of(id)
+            .triggers
+            .iter()
+            .enumerate()
+            .filter(|(_, t)| t.when == When::Chapter(n))
+            .map(|(i, _)| i)
+            .collect();
+        for i in chapters {
+            self.triggered.push(StackItem {
+                kind: StackKind::Trigger(i),
+                ..Game::casting(id, p)
+            });
+        }
+    }
+
     fn zone_triggers(&mut self, id: ObjId, from: Zone, to: Zone, last_controller: PlayerId) {
+        if to == Zone::Battlefield && from != Zone::Battlefield && self.is_saga(id) {
+            self.add_lore(id); // CR 714.3a: a Saga enters with a lore counter
+        }
         let dies = from == Zone::Battlefield && to == Zone::Graveyard;
         if from == Zone::Hand && to == Zone::Graveyard {
             // A card going from hand to graveyard was discarded (CR 701.9).
@@ -2624,6 +2678,9 @@ impl Game {
                 continue;
             }
             add(&self.def_of(c).cost);
+            if let Some(o) = &self.def_of(c).omen {
+                add(&o.cost); // an Omen card might be cast as either half
+            }
         }
         for id in self.permanents(p).collect::<Vec<_>>() {
             for a in &self.def_of(id).activated {
@@ -4122,6 +4179,7 @@ impl Game {
     fn decision_actions(&self, p: PlayerId) -> Vec<Action> {
         let hand = &self.players[p].hand;
         match self.decision.as_ref().expect("a decision") {
+            Decision::ScryOrder { kept, .. } => kept.iter().copied().map(Action::Pick).collect(),
             Decision::May
             | Decision::Surveil { .. }
             | Decision::Scry { .. }
@@ -4493,7 +4551,7 @@ impl Game {
                     _ => self.endure_token(p, n, spirit),
                 }
             }
-            (Decision::Scry { mut cards }, choice) => {
+            (Decision::Scry { mut cards, mut kept }, choice) => {
                 let card = cards.remove(0);
                 if choice == Action::Yes {
                     let lib = &mut self.players[p].library;
@@ -4501,9 +4559,32 @@ impl Game {
                         let c = lib.remove(pos);
                         lib.insert(0, c);
                     }
+                } else {
+                    kept.push(card);
                 }
                 if !cards.is_empty() {
-                    self.ask(p, Decision::Scry { cards });
+                    self.ask(p, Decision::Scry { cards, kept });
+                } else if kept.len() > 1 {
+                    self.ask(
+                        p,
+                        Decision::ScryOrder {
+                            kept,
+                            placed: Vec::new(),
+                        },
+                    );
+                }
+            }
+            (Decision::ScryOrder { mut kept, mut placed }, Action::Pick(c)) => {
+                kept.retain(|&x| x != c);
+                placed.push(c);
+                if kept.len() > 1 {
+                    self.ask(p, Decision::ScryOrder { kept, placed });
+                } else {
+                    placed.extend(kept);
+                    // `placed` runs from the top down; the library's top is its end.
+                    let lib = &mut self.players[p].library;
+                    lib.retain(|x| !placed.contains(x));
+                    lib.extend(placed.iter().rev());
                 }
             }
             (Decision::Surveil { mut cards }, choice) => {
@@ -4807,7 +4888,13 @@ impl Game {
                 let lib = &self.players[item.controller].library;
                 let cards: Vec<ObjId> = lib.iter().rev().take(n as usize).copied().collect();
                 if !cards.is_empty() {
-                    self.ask(item.controller, Decision::Scry { cards });
+                    self.ask(
+                        item.controller,
+                        Decision::Scry {
+                            cards,
+                            kept: Vec::new(),
+                        },
+                    );
                 }
             }
             Effect::Surveil { n } => {
@@ -5088,8 +5175,31 @@ impl Game {
                 if let Some(id) = Game::slot_object(item, legal, slot) {
                     if self.obj(id).zone == Zone::Battlefield {
                         let o = self.obj_mut(id);
-                        o.granted = o.granted.with(keywords);
+                        o.keyword_counters = o.keyword_counters.with(keywords);
                     }
+                }
+            }
+            Effect::RemoveAllCounters(slot) => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    if self.obj(id).zone == Zone::Battlefield {
+                        let o = self.obj_mut(id);
+                        o.counters = 0;
+                        o.stun = 0;
+                        o.keyword_counters = Keywords::NONE;
+                    }
+                }
+            }
+            Effect::DoublePowerToughnessAll => {
+                for id in self.creatures(item.controller).collect::<Vec<_>>() {
+                    let (power, toughness, zcc) = (self.power(id), self.toughness(id), self.obj(id).zcc);
+                    self.until_eot.push(Modifier {
+                        obj: id,
+                        zcc,
+                        power,
+                        toughness,
+                        keywords: Keywords::NONE,
+                        dies: None,
+                    });
                 }
             }
             Effect::BounceSelf => {
@@ -5444,6 +5554,13 @@ impl Game {
                 self.players[item.controller]
                     .pool
                     .extend(std::iter::repeat_n(m, n as usize));
+            }
+            Effect::DividedCounters => {
+                for (i, &n) in item.division.iter().enumerate() {
+                    if let Some(id) = Game::slot_object(item, legal, i as u8) {
+                        self.add_counters(id, n as i32);
+                    }
+                }
             }
             Effect::DividedDamage => {
                 for (i, &n) in item.division.iter().enumerate() {
@@ -6258,7 +6375,16 @@ impl Game {
                 );
                 self.give_priority(a);
             }
-            Step::Main1 | Step::Main2 => {
+            Step::Main1 => {
+                // CR 714.3b: as your precombat main phase begins, a lore counter on each Saga you control.
+                for id in self.permanents(a).collect::<Vec<_>>() {
+                    if self.is_saga(id) {
+                        self.add_lore(id);
+                    }
+                }
+                self.give_priority(a);
+            }
+            Step::Main2 => {
                 self.give_priority(a);
             }
         }
@@ -6577,6 +6703,22 @@ impl Game {
                 }
             }
             dies.extend(self.legend_rule_losers());
+            // CR 714.4: a Saga with lore counters at least its final chapter, and no chapter ability
+            // of it waiting or on the stack, is sacrificed.
+            for &id in &self.battlefield {
+                let fin = self.final_chapter(id);
+                if self.is_saga(id) && fin > 0 && self.obj(id).lore >= fin {
+                    let pending_chapter = self
+                        .items
+                        .iter()
+                        .chain(self.triggered.iter())
+                        .any(|i| i.source == id && matches!(i.kind, StackKind::Trigger(_)));
+                    let resolving = self.resolving.as_ref().is_some_and(|r| r.item.source == id);
+                    if !pending_chapter && !resolving {
+                        dies.push(id);
+                    }
+                }
+            }
             // CR 704.5i: a planeswalker with no loyalty goes to the graveyard.
             dies.extend(
                 self.battlefield

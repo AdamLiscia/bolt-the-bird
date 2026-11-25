@@ -352,6 +352,12 @@ pub enum Effect {
     ReturnSelfTapped,
     /// Return the source from your graveyard to your hand.
     ReturnSelfToHand,
+    /// Remove all counters from the creature in `slot` (+1/+1, stun and keyword counters).
+    RemoveAllCounters(u8),
+    /// "Double the power and toughness of each creature you control until end of turn."
+    DoublePowerToughnessAll,
+    /// +1/+1 counters divided among its targets as chosen when it went on the stack (`Ability::divide`).
+    DividedCounters,
     /// Return the source from the battlefield to its owner's hand.
     BounceSelf,
     /// The tokens just created gain these keywords until end of turn ("They gain menace and haste").
@@ -889,6 +895,8 @@ pub enum When {
     YouCastNoncreatureOrSubtype(&'static str),
     /// "Whenever a creature an opponent controls enters".
     CreatureOpponentControlsEnters,
+    /// A Saga's chapter ability, when its Nth lore counter is put on it (CR 714.2).
+    Chapter(u8),
 }
 
 #[derive(Clone, Debug, PartialEq)]

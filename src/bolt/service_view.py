@@ -105,7 +105,7 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         return None
     if kind == "Pick":
         verb = {"SacrificeCreatures": "Sacrifice", "SacrificeAnother": "Sacrifice", "Search": "Take",
-                "LookPick": "Take", "KeepOfType": "Keep", "GenesisPick": "Put onto the battlefield:",
+                "LookPick": "Take", "KeepOfType": "Keep", "ScryOrder": "Put on top:", "GenesisPick": "Put onto the battlefield:",
                 "PickDiscard": "Make them discard"}.get(d)  # fmt: skip
         return f"{verb} {card_name}" if verb else None
     yes = kind == "Yes"
