@@ -115,14 +115,26 @@ the main phase, or put a spare card on top.
 ## Before every commit
 
 From `engine/`, all with your own target dir and `nice -n 15 -j 4` (the desktop has 16 threads; with three
-lanes, keep it to `-j 4` each):
+lanes, keep it to `-j 4` each).
+
+**Each batch** (a desktop lane changes only its own module and test file, so this covers what it can break):
 
 ```bash
-cargo test -q            # whole workspace; your test file's count must equal its #[test] count
-cargo clippy -q --all-targets -- -D warnings
+cargo test -q -p bolt-cards --lib                 # includes every_playgroup_script_matches_its_card_text
+cargo test -q -p bolt-cards --test <module>       # your tests: the count must equal your #[test] count
+cargo clippy -q -p bolt-cards --all-targets -- -D warnings
 cargo fmt --check
+```
+
+**Once per finished deck**, before reporting it: the whole workspace.
+
+```bash
+cargo test -q
+cargo clippy -q --all-targets -- -D warnings
 cd .. && .venv/bin/ruff check -q . && .venv/bin/ruff format -q --check .
 ```
+
+The lead's merge always runs the full suite and lint again, in its own target dir.
 
 All clean, or it doesn't get committed. Then commit about every 8–10 cards:
 
