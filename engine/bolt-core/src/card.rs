@@ -81,6 +81,8 @@ pub struct Types {
     pub planeswalker: bool,
     pub legendary: bool,
     pub basic: bool,
+    /// The snow supertype (CR 205.4g): its mana is {S} when spent.
+    pub snow: bool,
 }
 
 impl Types {
@@ -99,6 +101,7 @@ impl Types {
                 "Planeswalker" => t.planeswalker = true,
                 "Legendary" => t.legendary = true,
                 "Basic" => t.basic = true,
+                "Snow" => t.snow = true,
                 _ => {}
             }
         }
@@ -245,6 +248,8 @@ pub struct Activated {
     /// "Activate only if there are four or more card types among cards in your graveyard."
     /// (delirium)
     pub needs_delirium: bool,
+    /// "Activate only if an opponent controls N or more lands." (Tectonic Edge)
+    pub opponent_min_lands: u8,
     /// "Discard a creature card" in the cost: activated with `Action::ActivateWith`, that card the
     /// victim (Fauna Shaman).
     pub discard_creature_card: bool,
@@ -651,6 +656,15 @@ pub struct CardDef {
     /// creatures has \"{1}{U}: Exile this creature, then return it to the battlefield under your
     /// control.\"" (Deadeye Navigator): the granted ability (see `Game::activated_of`).
     pub soulbond_flicker: bool,
+    /// "Green spells you cast cost {N} less to cast." (Emerald Medallion)
+    pub green_spell_discount: u8,
+    /// "Whenever you tap a Forest for mana, add an additional {G}." (Nissa, Who Shakes the World)
+    pub forests_add_g: bool,
+    /// Buyback by sacrificing N permanents with this subtype (Walk the Aeons: three Islands), cast
+    /// with `Action::CastKicked`; it returns to its owner's hand as it resolves.
+    pub buyback_sacrifice: Option<(&'static str, u8)>,
+    /// X is the amount of {S} spent to cast it (Blessing of Frost): stored as the stack entry's X.
+    pub x_is_snow_spent: bool,
     /// "{T}: Add {G} for each creature you control." (Circle of Dreams Druid)
     pub mana_per_creature: bool,
     /// Its mana ability works only while you control at least this many lands (Temple of the False
@@ -895,6 +909,10 @@ impl CardDef {
             umbra_armor: false,
             modal_back: false,
             soulbond_flicker: false,
+            green_spell_discount: 0,
+            forests_add_g: false,
+            buyback_sacrifice: None,
+            x_is_snow_spent: false,
             mana_per_creature: false,
             mana_only_with_lands: 0,
             shuffle_on_resolve: false,
@@ -1092,6 +1110,10 @@ impl CardDef {
             umbra_armor: false,
             modal_back: false,
             soulbond_flicker: false,
+            green_spell_discount: 0,
+            forests_add_g: false,
+            buyback_sacrifice: None,
+            x_is_snow_spent: false,
             mana_per_creature: false,
             mana_only_with_lands: 0,
             shuffle_on_resolve: false,
@@ -1289,6 +1311,10 @@ impl CardDef {
             umbra_armor: false,
             modal_back: false,
             soulbond_flicker: false,
+            green_spell_discount: 0,
+            forests_add_g: false,
+            buyback_sacrifice: None,
+            x_is_snow_spent: false,
             mana_per_creature: false,
             mana_only_with_lands: 0,
             shuffle_on_resolve: false,

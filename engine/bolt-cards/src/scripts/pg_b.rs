@@ -514,6 +514,196 @@ pub fn script(name: &str) -> Option<Script> {
                 );
             },
         ),
+        // ---- Aesi (Time), lane B ----
+        "Eternal Witness" => s(&["When this creature enters, you may return target card from your graveyard to your hand."], |d, _| {
+            may(d, When::Enters, vec![graveyard_cards(false, Controller::You)], vec![Effect::Bounce(0)])
+        }),
+        "Negate" => s(&["Counter target noncreature spell."], |d, _| {
+            spell(d, vec![Filter { spell_creature: Some(false), ..SPELL }], vec![Effect::Counter(0)])
+        }),
+        "Mana Leak" => s(&["Counter target spell unless its controller pays {3}."], |d, _| {
+            spell(d, vec![SPELL], vec![Effect::CounterUnlessPays(0, 3, 3)])
+        }),
+        "Scatter Ray" => s(&["Counter target artifact or creature spell unless its controller pays {4}."], |d, _| {
+            spell(d, vec![Filter { spell_artifact_or_creature: true, ..SPELL }], vec![Effect::CounterUnlessPays(0, 4, 4)])
+        }),
+        "Frantic Search" => s(&["Draw two cards, then discard two cards. Untap up to three lands."], |d, _| {
+            spell(d, vec![], vec![draw(2), discard(2), Effect::UntapLandsUpTo(3)])
+        }),
+        "Courser of Kruphix" => s(
+            &[
+                "Play with the top card of your library revealed.",
+                "You may play lands from the top of your library.",
+                "Landfall — Whenever a land you control enters, you gain 1 life.",
+            ],
+            |d, _| {
+                d.lands_from_top = true; // revealing it is information only
+                on(d, When::LandYouControlEnters, vec![], vec![Effect::GainLife { who: Who::You, n: 1 }]);
+            },
+        ),
+        "Basalt Monolith" => s(
+            &["This artifact doesn't untap during your untap step.", "{T}: Add {C}{C}{C}.", "{3}: Untap this artifact."],
+            |d, _| {
+                d.doesnt_untap = true;
+                d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                d.mana_amount = 3;
+                activated(d, "{3}", false, vec![], vec![Effect::UntapSelf]);
+            },
+        ),
+        "Myriad Landscape" => s(
+            &[
+                "This land enters tapped.",
+                "{T}: Add {C}.",
+                "{2}, {T}, Sacrifice this land: Search your library for up to two basic land cards that share a land type, put them onto the battlefield tapped, then shuffle.",
+            ],
+            |d, _| {
+                d.enters_tapped = true;
+                d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                let two = Effect::Search { what: SearchFor::BasicLandSharingType, to: SearchTo::Battlefield { tapped: true }, n: 2, kicked_n: None };
+                let n = activated(d, "{2}", true, vec![], vec![two]);
+                d.activated[n].sacrifice_self = true;
+            },
+        ),
+        "Silverback Elder" => s(
+            &[
+                "Whenever you cast a creature spell, choose one —",
+                "• Destroy target artifact or enchantment.",
+                "• Look at the top five cards of your library. You may put a land card from among them onto the battlefield tapped. Put the rest on the bottom of your library in a random order.",
+                "• You gain 4 life.",
+            ],
+            |d, _| {
+                let look = Effect::LookAtTop { n: 5, pick: Pick::Land, chosen_to: LookTo::BattlefieldTapped, rest_to: LookRest::BottomRandom };
+                on_modal(
+                    d,
+                    When::YouCastCreature,
+                    None,
+                    vec![
+                        Ability::new(vec![ARTIFACT_OR_ENCHANTMENT], vec![Effect::Destroy(0)]),
+                        Ability::new(vec![], vec![look]),
+                        Ability::new(vec![], vec![Effect::GainLife { who: Who::You, n: 4 }]),
+                    ],
+                )
+            },
+        ),
+        "Horn of Greed" => s(&["Whenever a player plays a land, that player draws a card."], |d, _| {
+            // Only the active player plays lands.
+            on(d, When::PlayerPlaysLand, vec![], vec![Effect::ActivePlayerDraws(1)])
+        }),
+        "Simic Growth Chamber" => s(
+            &["This land enters tapped.", "When this land enters, return a land you control to its owner's hand.", "{T}: Add {G}{U}."],
+            |d, _| {
+                d.enters_tapped = true;
+                on(d, When::Enters, vec![], vec![Effect::ReturnLandYouControl]);
+                d.paid_mana = Some((ManaCost::default(), [ManaSource::of(&[Color::Green]), ManaSource::of(&[Color::Blue])]));
+            },
+        ),
+        "Emerald Medallion" => s(&["Green spells you cast cost {1} less to cast."], |d, _| d.green_spell_discount = 1),
+        "Jaheira's Respite" => s(
+            &[
+                "Search your library for up to X basic land cards, where X is the number of creatures attacking you, put those cards onto the battlefield tapped, then shuffle.",
+                "Prevent all combat damage that would be dealt this turn.",
+            ],
+            |d, _| spell(d, vec![], vec![Effect::SearchBasicsPerAttackersTapped, Effect::PreventAllCombatDamageThisTurn]),
+        ),
+        "Sprouting Vines" => s(
+            &["Search your library for a basic land card, reveal that card, put it into your hand, then shuffle.", "Storm"],
+            |d, _| {
+                spell(d, vec![], vec![search(SearchFor::BasicLand, SearchTo::Hand)]);
+                on(d, When::YouCastThis, vec![], vec![Effect::CopySourceSpell { storm: true }]);
+            },
+        ),
+        "Sword of the Animist" => s(
+            &[
+                "Equipped creature gets +1/+1.",
+                "Whenever equipped creature attacks, you may search your library for a basic land card, put it onto the battlefield tapped, then shuffle.",
+                "Equip {2}",
+            ],
+            |d, _| {
+                attached(d, false, 1, 1, Keywords::NONE);
+                may(d, When::EquippedAttacks, vec![], vec![search(SearchFor::BasicLand, SearchTo::Battlefield { tapped: true })]);
+                equip(d, "{2}");
+            },
+        ),
+        "Tectonic Edge" => s(
+            &["{T}: Add {C}.", "{1}, {T}, Sacrifice this land: Destroy target nonbasic land. Activate only if an opponent controls four or more lands."],
+            |d, _| {
+                d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                let nonbasic = Filter { players: false, creatures: false, planeswalkers: false, lands: true, nonbasic: true, ..Filter::ANY };
+                let n = activated(d, "{1}", true, vec![nonbasic], vec![Effect::Destroy(0)]);
+                d.activated[n].sacrifice_self = true;
+                d.activated[n].opponent_min_lands = 4;
+            },
+        ),
+        "Tolaria West" => s(&["This land enters tapped.", "{T}: Add {U}.", "Transmute {1}{U}{U}"], |d, _| {
+            d.enters_tapped = true;
+            d.mana = Some(ManaSource::of(&[Color::Blue]));
+            // Transmute (CR 702.53): discard it from your hand, as a sorcery.
+            let n = activated(d, "{1}{U}{U}", false, vec![], vec![search(SearchFor::ManaValue(0), SearchTo::Hand)]);
+            d.activated[n].from_hand_discard = true;
+            d.activated[n].sorcery = true;
+        }),
+        "Zimone, Quandrix Prodigy" => s(
+            &[
+                "{1}, {T}: You may put a land card from your hand onto the battlefield tapped.",
+                "{4}, {T}: Draw a card. If you control eight or more lands, draw two cards instead.",
+            ],
+            |d, _| {
+                activated(d, "{1}", true, vec![], vec![Effect::MayPutLandFromHandTapped]);
+                activated(d, "{4}", true, vec![], vec![Effect::DrawMoreIfLands { n: 1, more: 2, lands: 8 }]);
+            },
+        ),
+        "Rhystic Study" => s(&["Whenever an opponent casts a spell, you may draw a card unless that player pays {1}."], |d, _| {
+            may(d, When::OpponentCasts, vec![], vec![Effect::UnlessOpponentPays(1), draw(1)])
+        }),
+        "Mystic Remora" => s(
+            &["Cumulative upkeep {1}", "Whenever an opponent casts a noncreature spell, you may draw a card unless that player pays {4}."],
+            |d, _| {
+                on(d, When::Upkeep { your_turn_only: true }, vec![], vec![Effect::CumulativeUpkeep(1)]);
+                may(d, When::OpponentCastsNoncreature, vec![], vec![Effect::UnlessOpponentPays(4), draw(1)]);
+            },
+        ),
+        "Arcane Denial" => s(
+            &[
+                "Counter target spell. Its controller may draw up to two cards at the beginning of the next turn's upkeep.",
+                "You draw a card at the beginning of the next turn's upkeep.",
+            ],
+            |d, _| {
+                // "Up to two": they always draw both (docs/tdm-lane-b.md).
+                spell(d, vec![SPELL], vec![Effect::NextUpkeepDraws { slot: 0, theirs: 2, yours: 1 }, Effect::Counter(0)]);
+            },
+        ),
+        "Perennial Behemoth" => s(&["You may play lands from your graveyard.", "Unearth {G}{G}"], |d, _| {
+            d.lands_from_graveyard = true;
+            let n = activated(d, "{G}{G}", false, vec![], vec![Effect::Unearth]);
+            d.activated[n].from_graveyard = true;
+            d.activated[n].sorcery = true;
+        }),
+        "Walk the Aeons" => s(&["Buyback—Sacrifice three Islands.", "Target player takes an extra turn after this one."], |d, _| {
+            d.kicker = Some(ManaCost::default());
+            d.buyback_sacrifice = Some(("Island", 3));
+            spell(d, vec![Filter::PLAYER], vec![Effect::ExtraTurnFor(0)]);
+        }),
+        "Nissa, Who Shakes the World" => s(
+            &[
+                "Whenever you tap a Forest for mana, add an additional {G}.",
+                "+1: Put three +1/+1 counters on up to one target noncreature land you control. Untap it. It becomes a 0/0 Elemental creature with vigilance and haste that's still a land.",
+                "−8: You get an emblem with \"Lands you control have indestructible.\" Search your library for any number of Forest cards, put them onto the battlefield tapped, then shuffle.",
+            ],
+            |d, _| {
+                d.forests_add_g = true;
+                let land = Filter { players: false, creatures: false, planeswalkers: false, lands: true, noncreature: true, controller: Controller::You, ..Filter::ANY };
+                loyalty(d, 1, up_to(vec![land], vec![Effect::AnimateLandElemental(0)]));
+                let forests = Effect::Search { what: forest(), to: SearchTo::Battlefield { tapped: true }, n: u8::MAX, kicked_n: None };
+                loyalty(d, -8, Ability::new(vec![], vec![Effect::Emblem(EmblemKind::LandsIndestructible), forests]));
+            },
+        ),
+        "Blessing of Frost" => s(
+            &["Distribute X +1/+1 counters among any number of creatures you control, where X is the amount of {S} spent to cast this spell. Then draw a card for each creature you control with power 4 or greater."],
+            |d, _| {
+                d.x_is_snow_spent = true;
+                spell(d, vec![], vec![Effect::DistributeCountersX, Effect::DrawPerCreaturePowerAtLeast(4)]);
+            },
+        ),
         _ => None,
     }
 }
@@ -578,4 +768,30 @@ pub const PG_B_SCRIPTED: &[&str] = &[
     "Deflecting Swat",
     "Ojer Kaslem, Deepest Growth // Temple of Cultivation",
     "Vorinclex // The Grand Evolution",
+    // Aesi (Time)
+    "Eternal Witness",
+    "Negate",
+    "Mana Leak",
+    "Scatter Ray",
+    "Frantic Search",
+    "Courser of Kruphix",
+    "Basalt Monolith",
+    "Myriad Landscape",
+    "Silverback Elder",
+    "Horn of Greed",
+    "Simic Growth Chamber",
+    "Emerald Medallion",
+    "Jaheira's Respite",
+    "Sprouting Vines",
+    "Sword of the Animist",
+    "Tectonic Edge",
+    "Tolaria West",
+    "Zimone, Quandrix Prodigy",
+    "Rhystic Study",
+    "Mystic Remora",
+    "Arcane Denial",
+    "Perennial Behemoth",
+    "Walk the Aeons",
+    "Nissa, Who Shakes the World",
+    "Blessing of Frost",
 ];

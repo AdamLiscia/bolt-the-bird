@@ -487,3 +487,44 @@ Unraveler (scripts in pg_c.rs, tests in tests/pg_c.rs, in one lane B block).
   observation and the event log; the service shows "Face-down creature".
 - Not done: the play model's own features (bolt-py encoders other than the observation) aren't
   masked; nothing triggers on "turned face up"; Phyrexian pips can't be split between life and mana.
+
+### Aesi (Time), lane B, batch 1 (2026-11-25)
+
+18 of the 25: Eternal Witness, Negate, Mana Leak, Scatter Ray, Frantic Search, Courser of Kruphix,
+Basalt Monolith, Myriad Landscape, Silverback Elder, Horn of Greed, Simic Growth Chamber, Emerald
+Medallion, Jaheira's Respite, Sprouting Vines, Sword of the Animist, Tectonic Edge, Tolaria West,
+Zimone, Quandrix Prodigy. None of the list is a double-faced card in the pool (all `normal` layout), so
+no back faces were fetched.
+
+Core: `CardDef::green_spell_discount`; `Activated::opponent_min_lands`;
+`Filter::spell_artifact_or_creature`; `SearchFor::BasicLandSharingType` (after the first find, the rest
+must share one of its basic land types) and `SearchFor::ManaValue` (transmute, as a from-hand discard
+activation at sorcery speed); `When::PlayerPlaysLand` (fired for both players' permanents as a land is
+played; Horn of Greed draws for the active player, the only one who plays lands);
+`Effect::UntapLandsUpTo` (Frantic Search untaps your tapped lands, most colors first, rather than
+asking), `MayPutLandFromHandTapped` with `Decision::LandFromHandTapped`, `DrawMoreIfLands`,
+`SearchBasicsPerAttackersTapped`.
+
+### Aesi (Time), lane B, batch 2 (2026-11-25)
+
+The other 7: Rhystic Study, Mystic Remora, Arcane Denial, Perennial Behemoth, Walk the Aeons, Nissa,
+Who Shakes the World, Blessing of Frost. Lane B's 25 are done.
+
+- "Unless that player pays": `Effect::UnlessOpponentPays(n)` asks the opponent
+  `Decision::PayToStop`; paying stops the rest of the effects. The "you may" is the trigger's
+  optional, asked first.
+- Cumulative upkeep: `Effect::CumulativeUpkeep(n)` adds an age counter (`kind_counters`) and asks
+  `Decision::PayUpkeep` (pay, or sacrifice it).
+- Arcane Denial: `Effect::NextUpkeepDraws` (read before the counter) fills
+  `Game::next_upkeep_draws`, drawn as the next upkeep begins. "Up to two" is always two.
+- Unearth: `Effect::Unearth`, `Object::unearthed` (exiled at the next end step, and instead of
+  leaving the battlefield), haste through `suspend_haste`.
+- Buyback by sacrifice: `CardDef::buyback_sacrifice` (cast with `CastKicked`, `kicker` set to {0};
+  the tapped permanents of the subtype are sacrificed first); it returns to hand as it resolves.
+  `Effect::ExtraTurnFor(slot)`.
+- Nissa: `CardDef::forests_add_g` (each Forest offers an extra {G} in `untapped_sources`; the manual
+  `TapForMana` path doesn't add it), `Effect::AnimateLandElemental`, `EmblemKind::LandsIndestructible`.
+- Snow: `Types::snow`; `Game::snow_paid` counts mana from snow sources as a spell is paid for;
+  `CardDef::x_is_snow_spent` stores it as the entry's X. `Effect::DistributeCountersX` with
+  `Decision::DistributeCounters` (one counter at a time, not targeted),
+  `Effect::DrawPerCreaturePowerAtLeast`.

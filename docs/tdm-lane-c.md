@@ -584,3 +584,6 @@ spell" triggers carry the spell as `extra` (so cascade works from them); equipme
 damage as their amount.
 Shortcuts: Maze of Ith targets a creature in combat (attacking or blocking). The Reaver Cleaver's trigger covers
 combat damage to a player (planeswalkers aren't attacked for it here).
+
+Merged origin/tarkir 4b9b8ed (lane B's Aesi; the play network's new action kinds) after Etali batch 4: end-of-block
+conflicts in card.rs, effect.rs, game.rs and lib.rs, tarkir's side first.

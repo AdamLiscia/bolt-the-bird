@@ -1280,3 +1280,443 @@ fn vorinclex_fetches_forests_and_becomes_the_grand_evolution() {
     g.start_turn(9, 0);
     assert!(!has(&g, Action::Activate(lions, n)));
 }
+
+// ---- Aesi (Time), lane B ----
+
+/// Library card on top (drawn next).
+fn top(g: &mut Game, p: usize, name: &str) -> ObjId {
+    g.add_card(p, cid(name), Zone::Library)
+}
+
+fn hand_size(g: &Game, p: usize) -> usize {
+    g.players[p].hand.len()
+}
+
+#[test]
+fn negate_mana_leak_and_scatter_ray_counter_their_kinds_of_spell() {
+    let mut g = table();
+    let ring = hand(&mut g, 0, "Sol Ring");
+    let negate = hand(&mut g, 0, "Negate");
+    act(&mut g, Action::Cast(ring));
+    // Sol Ring on the stack: an artifact, noncreature spell.
+    act(&mut g, Action::Cast(negate));
+    assert!(has(&g, Action::Target(Target::Object(ring))));
+    act(&mut g, Action::Target(Target::Object(ring)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(ring).zone, Zone::Graveyard, "Negate countered Sol Ring");
+    // Scatter Ray: artifact or creature spells, unless {4}.
+    let mut g = table();
+    let ring = hand(&mut g, 0, "Sol Ring");
+    let bolt = hand(&mut g, 0, "Burst Lightning");
+    let ray = hand(&mut g, 0, "Scatter Ray");
+    act(&mut g, Action::Cast(ring));
+    act(&mut g, Action::Cast(bolt));
+    act(&mut g, Action::Target(Target::Player(1)));
+    act(&mut g, Action::Cast(ray));
+    let legal = g.legal_actions();
+    assert!(
+        !legal.contains(&Action::Target(Target::Object(bolt))),
+        "not an artifact or creature"
+    );
+    assert!(legal.contains(&Action::Target(Target::Object(ring))));
+    act(&mut g, Action::Target(Target::Object(ring)));
+    resolve_all(&mut g, &[Action::No]);
+    assert_eq!(g.obj(ring).zone, Zone::Graveyard);
+    // Mana Leak: countered unless {3} is paid; its controller declines.
+    let mut g = table();
+    let bolt = hand(&mut g, 0, "Burst Lightning");
+    let leak = hand(&mut g, 0, "Mana Leak");
+    act(&mut g, Action::Cast(bolt));
+    act(&mut g, Action::Target(Target::Player(1)));
+    act(&mut g, Action::Cast(leak));
+    act(&mut g, Action::Target(Target::Object(bolt)));
+    resolve_all(&mut g, &[Action::No]);
+    assert_eq!(g.players[1].life, 40, "countered");
+}
+
+#[test]
+fn eternal_witness_returns_a_card_and_frantic_search_untaps_three_lands() {
+    let mut g = table();
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Graveyard);
+    let wit = hand(&mut g, 0, "Eternal Witness");
+    play(
+        &mut g,
+        wit,
+        false,
+        &[],
+        &[Action::Target(Target::Object(lions)), Action::Yes],
+    );
+    assert_eq!(g.obj(lions).zone, Zone::Hand);
+
+    let mut g = game(&["Island", "Island", "Island"]);
+    top(&mut g, 0, "Plains");
+    top(&mut g, 0, "Plains");
+    let search = hand(&mut g, 0, "Frantic Search");
+    let a = hand(&mut g, 0, "Savannah Lions");
+    let b = hand(&mut g, 0, "Savannah Lions");
+    play(
+        &mut g,
+        search,
+        false,
+        &[],
+        &[Action::Discard(a), Action::Discard(b)],
+    );
+    assert_eq!(g.obj(a).zone, Zone::Graveyard);
+    let tapped = g
+        .permanents(0)
+        .filter(|&x| g.types_of(x).land && g.obj(x).tapped)
+        .count();
+    assert_eq!(tapped, 0, "all three lands untapped");
+}
+
+#[test]
+fn courser_plays_lands_from_the_top_and_gains_life() {
+    let mut g = table();
+    put(&mut g, 0, "Courser of Kruphix");
+    let forest = top(&mut g, 0, "Forest");
+    assert!(has(&g, Action::PlayLand(forest)));
+    act(&mut g, Action::PlayLand(forest));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].life, 41);
+}
+
+#[test]
+fn basalt_monolith_myriad_landscape_and_tectonic_edge() {
+    let mut g = table();
+    let basalt = put(&mut g, 0, "Basalt Monolith");
+    assert!(g.def_of(basalt).doesnt_untap && g.def_of(basalt).mana_amount == 3);
+    assert_eq!(g.def_of(basalt).activated.len(), 1);
+
+    // Two basics sharing a land type.
+    let mut g = table();
+    let myriad = put(&mut g, 0, "Myriad Landscape");
+    let f1 = top(&mut g, 0, "Forest");
+    let f2 = top(&mut g, 0, "Forest");
+    let island = top(&mut g, 0, "Island");
+    act(&mut g, Action::Activate(myriad, 0));
+    pass_until_asked(&mut g);
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Pick(island)) && legal.contains(&Action::Pick(f1)));
+    act(&mut g, Action::Pick(f1));
+    let legal = g.legal_actions();
+    assert!(
+        legal.contains(&Action::Pick(f2)) && !legal.contains(&Action::Pick(island)),
+        "same type only"
+    );
+    act(&mut g, Action::Pick(f2));
+    resolve_all(&mut g, &[]);
+    assert!(g.obj(f1).zone == Zone::Battlefield && g.obj(f1).tapped && g.obj(f2).tapped);
+    assert_eq!(g.obj(myriad).zone, Zone::Graveyard);
+
+    // Tectonic Edge: a nonbasic land, while an opponent has four or more lands.
+    let mut g = table();
+    let edge = put(&mut g, 0, "Tectonic Edge");
+    let theirs = put(&mut g, 1, "Myriad Landscape");
+    act(&mut g, Action::Activate(edge, 0));
+    let basic = g.permanents(1).find(|&x| g.types_of(x).basic).unwrap();
+    assert!(!has(&g, Action::Target(Target::Object(basic))), "nonbasic only");
+    act(&mut g, Action::Target(Target::Object(theirs)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(theirs).zone, Zone::Graveyard);
+    assert_eq!(g.obj(edge).zone, Zone::Graveyard);
+}
+
+#[test]
+fn silverback_elder_horn_of_greed_and_simic_growth_chamber() {
+    let mut g = table();
+    put(&mut g, 0, "Silverback Elder");
+    let lions = hand(&mut g, 0, "Savannah Lions");
+    play(&mut g, lions, false, &[], &[Action::Mode(2)]);
+    assert_eq!(g.players[0].life, 44);
+
+    let mut g = table();
+    put(&mut g, 0, "Horn of Greed");
+    let f = hand(&mut g, 0, "Forest");
+    let before = hand_size(&g, 0);
+    act(&mut g, Action::PlayLand(f));
+    resolve_all(&mut g, &[]);
+    assert_eq!(hand_size(&g, 0), before, "played one, drew one");
+
+    let mut g = game(&["Forest"]);
+    let forest = g.permanents(0).next().unwrap();
+    let chamber = hand(&mut g, 0, "Simic Growth Chamber");
+    act(&mut g, Action::PlayLand(chamber));
+    resolve_all(&mut g, &[Action::Pick(forest)]);
+    assert_eq!(g.obj(forest).zone, Zone::Hand);
+    assert!(g.obj(chamber).tapped);
+}
+
+#[test]
+fn emerald_medallion_makes_green_spells_cheaper() {
+    let mut g = game(&["Forest", "Forest"]);
+    let courser = hand(&mut g, 0, "Courser of Kruphix"); // {1}{G}{G}
+    assert!(!has(&g, Action::Cast(courser)));
+    put(&mut g, 0, "Emerald Medallion");
+    assert!(has(&g, Action::Cast(courser)));
+}
+
+#[test]
+fn jaheiras_respite_fetches_per_attacker_and_fogs() {
+    let mut g = table();
+    let a = put(&mut g, 1, "Savannah Lions");
+    let b = put(&mut g, 1, "Savannah Lions");
+    let f1 = top(&mut g, 0, "Forest");
+    let f2 = top(&mut g, 0, "Island");
+    let respite = hand(&mut g, 0, "Jaheira's Respite");
+    g.start_turn(4, 1);
+    while g.pending != Pending::DeclareAttackers(1) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(a));
+    act(&mut g, Action::Attack(b));
+    act(&mut g, Action::FinishAttacks);
+    while g.pending != Pending::Priority(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Cast(respite));
+    resolve_all(&mut g, &[Action::Pick(f1), Action::Pick(f2)]);
+    assert!(g.obj(f1).zone == Zone::Battlefield && g.obj(f1).tapped);
+    assert!(g.obj(f2).zone == Zone::Battlefield);
+    for _ in 0..20 {
+        if g.step == Step::End {
+            break;
+        }
+        let a = match g.pending {
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.players[0].life, 40, "combat damage prevented");
+}
+
+#[test]
+fn sprouting_vines_storms_and_sword_of_the_animist_fetches_on_attack() {
+    let mut g = table();
+    let f1 = top(&mut g, 0, "Forest");
+    let f2 = top(&mut g, 0, "Forest");
+    let bolt = hand(&mut g, 0, "Burst Lightning");
+    play(&mut g, bolt, false, &[Target::Player(1)], &[]);
+    let vines = hand(&mut g, 0, "Sprouting Vines");
+    play(&mut g, vines, false, &[], &[Action::Pick(f2), Action::Pick(f1)]);
+    assert_eq!(g.obj(f1).zone, Zone::Hand);
+    assert_eq!(g.obj(f2).zone, Zone::Hand, "the storm copy found one too");
+
+    let mut g = table();
+    let lions = put(&mut g, 0, "Savannah Lions");
+    let sword = put(&mut g, 0, "Sword of the Animist");
+    act(&mut g, Action::Activate(sword, 0));
+    resolve_all(&mut g, &[Action::Target(Target::Object(lions))]);
+    assert_eq!(g.power(lions), 3);
+    let forest = g.add_card(0, cid("Forest"), Zone::Library);
+    g.add_card(0, cid("Plains"), Zone::Library); // drawn on turn 5
+    attack(&mut g, &[lions]);
+    resolve_all(&mut g, &[Action::Yes, Action::Pick(forest)]);
+    assert!(g.obj(forest).zone == Zone::Battlefield && g.obj(forest).tapped);
+}
+
+#[test]
+fn tolaria_west_transmutes_and_zimone_puts_lands_and_draws() {
+    let mut g = table();
+    let petal = g.add_card(0, cid("Lotus Petal"), Zone::Library);
+    top(&mut g, 0, "Plains");
+    let west = hand(&mut g, 0, "Tolaria West");
+    assert!(has(&g, Action::Activate(west, 0)));
+    act(&mut g, Action::Activate(west, 0));
+    resolve_all(&mut g, &[Action::Pick(petal)]);
+    assert_eq!(g.obj(west).zone, Zone::Graveyard);
+    assert_eq!(g.obj(petal).zone, Zone::Hand);
+
+    let mut g = table();
+    let zimone = put(&mut g, 0, "Zimone, Quandrix Prodigy");
+    let f = hand(&mut g, 0, "Forest");
+    act(&mut g, Action::Activate(zimone, 0));
+    resolve_all(&mut g, &[Action::Pick(f)]);
+    assert!(g.obj(f).zone == Zone::Battlefield && g.obj(f).tapped);
+    assert_eq!(g.players[0].lands_played, 0, "not a land drop");
+    let mut g = table();
+    let zimone = put(&mut g, 0, "Zimone, Quandrix Prodigy");
+    let before = hand_size(&g, 0);
+    act(&mut g, Action::Activate(zimone, 1));
+    resolve_all(&mut g, &[]);
+    assert_eq!(hand_size(&g, 0), before + 2, "eight or more lands: two cards");
+}
+
+/// Passes until player `p`'s first main phase of the current turn.
+fn to_main(g: &mut Game) {
+    for _ in 0..40 {
+        if g.step == Step::Main1 && matches!(g.pending, Pending::Priority(_)) {
+            return;
+        }
+        let a = match g.pending {
+            Pending::Decide(_) | Pending::ChooseTarget(_) => *g.legal_actions().last().unwrap(),
+            _ => Action::PassPriority,
+        };
+        act(g, a);
+    }
+}
+
+#[test]
+fn rhystic_study_draws_unless_the_caster_pays() {
+    let mut g = table();
+    put(&mut g, 0, "Rhystic Study");
+    let bolt = hand(&mut g, 1, "Burst Lightning");
+    let before = hand_size(&g, 0);
+    act(&mut g, Action::PassPriority); // player 1 gets priority
+    act(&mut g, Action::Cast(bolt));
+    act(&mut g, Action::Target(Target::Player(0)));
+    resolve_all(&mut g, &[Action::Yes, Action::No]);
+    assert_eq!(hand_size(&g, 0), before + 1, "they didn't pay");
+    // They pay {1}: no card.
+    let mut g = table();
+    put(&mut g, 0, "Rhystic Study");
+    let bolt = hand(&mut g, 1, "Burst Lightning");
+    let before = hand_size(&g, 0);
+    act(&mut g, Action::PassPriority);
+    act(&mut g, Action::Cast(bolt));
+    act(&mut g, Action::Target(Target::Player(0)));
+    resolve_all(&mut g, &[Action::Yes, Action::Yes]);
+    assert_eq!(hand_size(&g, 0), before);
+}
+
+#[test]
+fn mystic_remora_has_cumulative_upkeep() {
+    let mut g = table();
+    let remora = put(&mut g, 0, "Mystic Remora");
+    g.start_turn(5, 0);
+    pass_until_asked(&mut g);
+    assert!(g.legal_actions().contains(&Action::Yes));
+    act(&mut g, Action::Yes); // {1}
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(remora).zone, Zone::Battlefield);
+    g.start_turn(7, 0);
+    pass_until_asked(&mut g);
+    act(&mut g, Action::No); // won't pay {2}
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(remora).zone, Zone::Graveyard);
+}
+
+#[test]
+fn arcane_denial_counters_and_both_draw_next_upkeep() {
+    let mut g = table();
+    let bolt = hand(&mut g, 1, "Burst Lightning");
+    let denial = hand(&mut g, 0, "Arcane Denial");
+    act(&mut g, Action::PassPriority);
+    act(&mut g, Action::Cast(bolt));
+    act(&mut g, Action::Target(Target::Player(0)));
+    act(&mut g, Action::PassPriority); // back to player 0
+    act(&mut g, Action::Cast(denial));
+    act(&mut g, Action::Target(Target::Object(bolt)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].life, 40);
+    assert_eq!(g.obj(bolt).zone, Zone::Graveyard);
+    let (mine, theirs) = (hand_size(&g, 0), hand_size(&g, 1));
+    g.start_turn(4, 1);
+    to_main(&mut g);
+    assert_eq!(hand_size(&g, 0), mine + 1);
+    assert_eq!(
+        hand_size(&g, 1),
+        theirs + 3,
+        "two from Arcane Denial and the draw step"
+    );
+}
+
+#[test]
+fn perennial_behemoth_unearths_with_haste_and_plays_lands_from_the_graveyard() {
+    let mut g = table();
+    put(&mut g, 0, "Perennial Behemoth");
+    let forest = g.add_card(0, cid("Forest"), Zone::Graveyard);
+    assert!(has(&g, Action::PlayLand(forest)));
+    let mut g = table();
+    let behemoth = g.add_card(0, cid("Perennial Behemoth"), Zone::Graveyard);
+    g.start_turn(5, 0);
+    to_main(&mut g);
+    assert!(has(&g, Action::Activate(behemoth, 0)));
+    act(&mut g, Action::Activate(behemoth, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(behemoth).zone, Zone::Battlefield);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(has(&g, Action::Attack(behemoth)), "haste");
+    act(&mut g, Action::FinishAttacks);
+    for _ in 0..30 {
+        if g.obj(behemoth).zone != Zone::Battlefield {
+            break;
+        }
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.obj(behemoth).zone, Zone::Exile, "exiled at the end step");
+}
+
+#[test]
+fn walk_the_aeons_buys_itself_back_with_three_islands() {
+    let mut g = table();
+    let walk = hand(&mut g, 0, "Walk the Aeons");
+    let islands = |g: &Game| g.permanents(0).filter(|&x| g.def_of(x).name == "Island").count();
+    assert!(has(&g, Action::Cast(walk)) && has(&g, Action::CastKicked(walk)));
+    act(&mut g, Action::CastKicked(walk));
+    act(&mut g, Action::Target(Target::Player(0)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(islands(&g), 2);
+    assert_eq!(g.obj(walk).zone, Zone::Hand, "bought back");
+    assert_eq!(g.extra_turns, vec![0]);
+    let mut g = game(&["Island", "Island", "Forest", "Forest", "Forest", "Forest"]);
+    let walk = hand(&mut g, 0, "Walk the Aeons");
+    assert!(!has(&g, Action::CastKicked(walk)), "only two Islands");
+}
+
+#[test]
+fn nissa_who_shakes_the_world_doubles_forests_and_animates_lands() {
+    let mut g = game(&["Forest", "Forest"]);
+    let courser = hand(&mut g, 0, "Courser of Kruphix");
+    assert!(!has(&g, Action::Cast(courser)));
+    let nissa = put(&mut g, 0, "Nissa, Who Shakes the World");
+    assert!(has(&g, Action::Cast(courser)), "each Forest makes two green");
+    let forest = g.permanents(0).find(|&x| g.def_of(x).name == "Forest").unwrap();
+    act(&mut g, Action::Loyalty(nissa, 0));
+    act(&mut g, Action::Target(Target::Object(forest)));
+    resolve_all(&mut g, &[]);
+    assert!(g.types_of(forest).creature && g.types_of(forest).land);
+    assert_eq!((g.power(forest), g.toughness(forest)), (3, 3));
+    assert!(g.keywords(forest).has(Keywords::HASTE) && g.keywords(forest).has(Keywords::VIGILANCE));
+    assert!(g.has_subtype(forest, "Elemental"));
+    // −8: the emblem and every Forest.
+    let mut g = table();
+    let nissa = put(&mut g, 0, "Nissa, Who Shakes the World");
+    g.objects[nissa.0 as usize].loyalty = 8;
+    let f1 = top(&mut g, 0, "Forest");
+    let f2 = top(&mut g, 0, "Forest");
+    act(&mut g, Action::Loyalty(nissa, 1));
+    resolve_all(&mut g, &[Action::Pick(f2), Action::Pick(f1)]);
+    assert!(g.obj(f1).zone == Zone::Battlefield && g.obj(f1).tapped);
+    assert!(g.keywords(f2).has(Keywords::INDESTRUCTIBLE));
+}
+
+#[test]
+fn blessing_of_frost_counts_snow_mana() {
+    let mut g = game(&[
+        "Snow-Covered Forest",
+        "Snow-Covered Forest",
+        "Snow-Covered Island",
+        "Forest",
+    ]);
+    let lions = put(&mut g, 0, "Savannah Lions");
+    let blessing = hand(&mut g, 0, "Blessing of Frost");
+    let before = hand_size(&g, 0);
+    act(&mut g, Action::Cast(blessing));
+    pass_until_asked(&mut g);
+    let mut picks = 0;
+    while matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::Pick(lions));
+        picks += 1;
+    }
+    resolve_all(&mut g, &[]);
+    assert_eq!(picks, 3, "three snow lands paid");
+    assert_eq!(g.power(lions), 5);
+    assert_eq!(
+        hand_size(&g, 0),
+        before,
+        "cast one, drew one for the power-4 Lions"
+    );
+}
