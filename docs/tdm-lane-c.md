@@ -344,3 +344,20 @@ Cards: Toski, Bearer of Secrets, Tear Asunder, Ogre Slumlord, Tireless Provision
 Angel, Poison-Tip Archer, Shamanic Revelation, Stolen by the Fae, Time Wipe, Perplexing Test.
 
 Not attempted (Tarkir, judged too large for the time left): Naga Fleshcrafter (clones) and Taigam (suspend).
+
+## BLC 2026-11-25
+
+Lane C's list in ~/bolt-handoff/blc_lanes_2026-11-25.json ("C"), worked top-down.
+
+Batch 1 (11): Garruk's Packleader, Grim Backwoods, Talisman of Impulse, Thriving Bluff, Spine of Ish Sah,
+Windgrace's Judgment, Psychosis Crawler, Deadly Dispute, Martial Coup, Intellectual Offering, Morbid Opportunist.
+Core: `When::AnotherCreatureYouControlEntersWithPowerAtLeast`, `When::OtherCreaturesDieOnceEachTurn`,
+`Effect::DestroyAllCreaturesIfXAtLeast` (Martial Coup destroys before making its tokens, so they survive),
+`Effect::UntapAllNonland`, `ExtraCost::SacrificeArtifactOrCreature`, `CardDef::pt_hand_size`.
+
+Skipped so far (reason):
+- Academy Manufactor, Arthur, Cache Grab, Combat Celebrant (exert), Evercoat Ursine (hideaway), Fisher's and
+  Fortune Teller's Talent (Class levels), Hazel's Brewmaster, Echoing Assault, Coveted Jewel (control change on
+  unblocked attack): too large for this pass.
+- Casualties of War: "choose one or more" with one target each; the engine fills target slots in order with no
+  way to skip a slot, so choosing e.g. only the land mode isn't possible without a new Action.

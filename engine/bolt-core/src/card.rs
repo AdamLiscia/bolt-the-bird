@@ -116,6 +116,8 @@ pub enum ExtraCost {
     Discard,
     /// Sacrifice a creature, or pay this mana instead.
     SacrificeCreatureOrPay(ManaCost),
+    /// Sacrifice an artifact or creature (Deadly Dispute).
+    SacrificeArtifactOrCreature,
 }
 
 /// "This spell costs {N} less to cast if ..." (CR 601.2f).
@@ -444,6 +446,8 @@ pub struct CardDef {
     /// The snarls: "As this land enters, you may reveal a [A] or [B] card from your hand. If you don't, it
     /// enters tapped." (revealed whenever there is one).
     pub enters_tapped_unless_reveal: Option<[&'static str; 2]>,
+    /// "Power and toughness are each equal to the number of cards in your hand."
+    pub pt_hand_size: bool,
 }
 
 /// An Omen spell half: its name, cost, whether it's an instant, and what it does.
@@ -586,6 +590,7 @@ impl CardDef {
             doubles_your_creatures_damage: false,
             paid_mana: None,
             enters_tapped_unless_reveal: None,
+            pt_hand_size: false,
         }
     }
 
@@ -707,6 +712,7 @@ impl CardDef {
             doubles_your_creatures_damage: false,
             paid_mana: None,
             enters_tapped_unless_reveal: None,
+            pt_hand_size: false,
         }
     }
 
@@ -828,6 +834,7 @@ impl CardDef {
             doubles_your_creatures_damage: false,
             paid_mana: None,
             enters_tapped_unless_reveal: None,
+            pt_hand_size: false,
         }
     }
 }

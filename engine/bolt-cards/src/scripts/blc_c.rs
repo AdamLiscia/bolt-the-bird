@@ -224,6 +224,77 @@ pub fn script(name: &str) -> Option<Script> {
                 d.activated[n].amount_from_victim_power = true;
             },
         ),
+        // ---- lane C, 2026-11-25 ----
+        "Garruk's Packleader" => s(
+            &["Whenever another creature you control with power 3 or greater enters, you may draw a card."],
+            |d, _| may(d, When::AnotherCreatureYouControlEntersWithPowerAtLeast(3), vec![], vec![draw(1)]),
+        ),
+        "Grim Backwoods" => s(&["{T}: Add {C}.", "{2}{B}{G}, {T}, Sacrifice a creature: Draw a card."], |d, _| {
+            d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+            // A land isn't a creature, so "another creature" is any creature.
+            let n = activated(d, "{2}{B}{G}", true, vec![], vec![draw(1)]);
+            d.activated[n].sacrifice_other_creature = true;
+        }),
+        "Talisman of Impulse" => s(&["{T}: Add {C}.", "{T}: Add {R} or {G}. This artifact deals 1 damage to you."], |d, _| {
+            pain_land(d, Color::Red, Color::Green)
+        }),
+        "Thriving Bluff" => s(
+            &["This land enters tapped. As it enters, choose a color other than red.", "{T}: Add {R} or one mana of the chosen color."],
+            |d, _| {
+                d.enters_tapped = true;
+                d.choose_color = true;
+                d.thriving_color = Some(Color::Red);
+            },
+        ),
+        "Spine of Ish Sah" => s(
+            &[
+                "When this artifact enters, destroy target permanent.",
+                "When this artifact is put into a graveyard from the battlefield, return it to its owner's hand.",
+            ],
+            |d, _| {
+                let any = Filter { players: false, creatures: false, planeswalkers: false, any_permanent: true, ..Filter::ANY };
+                on(d, When::Enters, vec![any], vec![Effect::Destroy(0)]);
+                on(d, When::Dies, vec![], vec![Effect::ReturnSelfToHand]);
+            },
+        ),
+        "Windgrace's Judgment" => s(
+            &["For any number of opponents, destroy target nonland permanent that player controls."],
+            // One opponent in a 1v1 game: up to one target.
+            |d, _| d.spell = Some(up_to(vec![OPP_NONLAND], vec![Effect::Destroy(0)])),
+        ),
+        "Psychosis Crawler" => s(
+            &[
+                "Psychosis Crawler's power and toughness are each equal to the number of cards in your hand.",
+                "Whenever you draw a card, each opponent loses 1 life.",
+            ],
+            |d, _| {
+                d.pt_hand_size = true;
+                on(d, When::YouDraw, vec![], vec![Effect::LoseLife { who: Who::EachOpponent, n: 1 }]);
+            },
+        ),
+        "Deadly Dispute" => s(
+            &["As an additional cost to cast this spell, sacrifice an artifact or creature.", "Draw two cards and create a Treasure token."],
+            |d, t| {
+                d.extra_cost = Some(ExtraCost::SacrificeArtifactOrCreature);
+                spell(d, vec![], vec![draw(2), Effect::CreateToken { who: Who::You, def: t.treasure, n: 1 }]);
+            },
+        ),
+        "Martial Coup" => s(&["Create X 1/1 white Soldier creature tokens. If X is 5 or more, destroy all other creatures."], |d, t| {
+            spell(d, vec![], vec![Effect::DestroyAllCreaturesIfXAtLeast(5), Effect::CreateTokensX { def: t.soldier }])
+        }),
+        "Intellectual Offering" => s(
+            &[
+                "Choose an opponent. You and that player each draw three cards.",
+                "Choose an opponent. Untap all nonland permanents you control and all nonland permanents that player controls.",
+            ],
+            |d, _| {
+                spell(d, vec![], vec![draw(3), Effect::Draw { who: Who::EachOpponent, n: 3 }, Effect::UntapAllNonland])
+            },
+        ),
+        "Morbid Opportunist" => s(
+            &["Whenever one or more other creatures die, draw a card. This ability triggers only once each turn."],
+            |d, _| on(d, When::OtherCreaturesDieOnceEachTurn, vec![], vec![draw(1)]),
+        ),
         _ => None,
     }
 }
@@ -272,4 +343,15 @@ pub const BLC_C_SCRIPTED: &[&str] = &[
     "Stolen by the Fae",
     "Time Wipe",
     "Perplexing Test",
+    "Garruk's Packleader",
+    "Grim Backwoods",
+    "Talisman of Impulse",
+    "Thriving Bluff",
+    "Spine of Ish Sah",
+    "Windgrace's Judgment",
+    "Psychosis Crawler",
+    "Deadly Dispute",
+    "Martial Coup",
+    "Intellectual Offering",
+    "Morbid Opportunist",
 ];

@@ -933,6 +933,11 @@ pub enum Effect {
     CreateTokensPowerTapped {
         def: usize,
     },
+    /// Destroy all creatures if the spell's X is at least `n` (Martial Coup, before its tokens are
+    /// made, so they survive: "destroy all other creatures").
+    DestroyAllCreaturesIfXAtLeast(u8),
+    /// Untap all nonland permanents (yours and the opponent's: Intellectual Offering in 1v1).
+    UntapAllNonland,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1362,6 +1367,10 @@ pub enum When {
     OpponentCastsInstantOrSorcery,
     /// "Whenever you cast a creature spell".
     YouCastCreature,
+    /// "Whenever another creature you control with power N or greater enters".
+    AnotherCreatureYouControlEntersWithPowerAtLeast(i32),
+    /// "Whenever one or more other creatures die, ... This ability triggers only once each turn."
+    OtherCreaturesDieOnceEachTurn,
 }
 
 #[derive(Clone, Debug, PartialEq)]

@@ -1626,6 +1626,9 @@ impl Game {
         if d.pt_opponents_graveyards {
             b += self.players[opponent(self.obj(id).controller)].graveyard.len() as i32;
         }
+        if d.pt_hand_size {
+            b += self.players[self.obj(id).controller].hand.len() as i32;
+        }
         if d.pt_per_graveyard_creature {
             let p = self.obj(id).controller;
             b += self.players[p]
@@ -2411,6 +2414,18 @@ impl Game {
         if dies && self.types_of(id).creature {
             self.fire(0, When::AnotherCreatureDies, Some(id));
             self.fire(1, When::AnotherCreatureDies, Some(id));
+            let before = self.triggered.len();
+            self.fire(0, When::OtherCreaturesDieOnceEachTurn, Some(id));
+            self.fire(1, When::OtherCreaturesDieOnceEachTurn, Some(id));
+            let turn = self.turn;
+            let mut fresh = Vec::new();
+            for t in self.triggered.drain(before..).collect::<Vec<_>>() {
+                if self.obj(t.source).once_each_turn != turn {
+                    self.obj_mut(t.source).once_each_turn = turn;
+                    fresh.push(t);
+                }
+            }
+            self.triggered.extend(fresh);
             self.creature_died_this_turn = true;
             self.creature_died_under[last_controller] = true;
             // "Whenever a creature you control dies while this card is in your graveyard": cards
@@ -2643,6 +2658,9 @@ impl Game {
                                 !entering_token && subs.iter().any(|s| s == sub)
                             }
                             When::YourCreatureEntersWithPowerAtLeast(p) => entering_power >= p,
+                            When::AnotherCreatureYouControlEntersWithPowerAtLeast(p) => {
+                                any != id && entering_power >= p
+                            }
                             _ => false,
                         };
                         if hit {
@@ -3428,6 +3446,13 @@ impl Game {
         };
         match &def.extra_cost {
             Some(ExtraCost::SacrificeCreature) => creatures().collect(),
+            Some(ExtraCost::SacrificeArtifactOrCreature) => self
+                .permanents(p)
+                .filter(|&x| {
+                    (self.types_of(x).creature || self.types_of(x).artifact) && !self.cant_be_sacrificed(x)
+                })
+                .map(|x| (Action::CastWith(c, x), CastMode::with(x)))
+                .collect(),
             Some(ExtraCost::Discard) => self.players[p]
                 .hand
                 .iter()
@@ -8169,6 +8194,30 @@ impl Game {
                     if power > 0 {
                         self.gain_life(controller, power);
                     }
+                }
+            }
+            Effect::DestroyAllCreaturesIfXAtLeast(n) => {
+                if item.x >= n {
+                    let all: Vec<ObjId> = self
+                        .battlefield
+                        .iter()
+                        .copied()
+                        .filter(|&c| self.types_of(c).creature)
+                        .collect();
+                    for c in all {
+                        self.destroy(c);
+                    }
+                }
+            }
+            Effect::UntapAllNonland => {
+                let all: Vec<ObjId> = self
+                    .battlefield
+                    .iter()
+                    .copied()
+                    .filter(|&c| !self.types_of(c).land)
+                    .collect();
+                for c in all {
+                    self.untap_by_effect(c);
                 }
             }
             Effect::PumpAttackersPerAttacker => {

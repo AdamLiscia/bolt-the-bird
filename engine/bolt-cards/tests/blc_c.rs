@@ -526,3 +526,219 @@ fn greater_good_draws_the_sacrificed_power_then_discards_three() {
     assert_eq!(discards, 3);
     assert_eq!(g.players[0].hand.len(), hand_before + 7 - 3);
 }
+
+// ---- lane C, 2026-11-25 ----
+
+#[test]
+fn garruks_packleader_draws_for_another_power_3_creature() {
+    let mut g = table();
+    put(&mut g, 0, "Garruk's Packleader");
+    let n = g.players[0].hand.len();
+    let small = hand(&mut g, 0, "Morbid Opportunist"); // 1/3
+    play(&mut g, small, false, &[], &[]);
+    assert_eq!(g.players[0].hand.len(), n, "power 1: no trigger");
+    let big = hand(&mut g, 0, "Garruk's Packleader"); // 4/4: only the first one triggers
+    play(&mut g, big, false, &[], &[Action::Yes]);
+    assert_eq!(g.players[0].hand.len(), n + 1);
+}
+
+#[test]
+fn grim_backwoods_taps_for_colorless_and_sacrifices_a_creature_to_draw() {
+    let mut g = table();
+    let land = put(&mut g, 0, "Grim Backwoods");
+    assert_eq!(g.mana_sources(0).iter().filter(|&&(x, _)| x == land).count(), 1);
+    let victim = put(&mut g, 0, "Morbid Opportunist");
+    let n = g.players[0].hand.len();
+    act(&mut g, Action::ActivateWith(land, 0, victim));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(victim).zone, Zone::Graveyard);
+    assert!(g.obj(land).tapped);
+    assert_eq!(g.players[0].hand.len(), n + 1);
+}
+
+#[test]
+fn talisman_of_impulse_pings_only_for_red_or_green() {
+    // {1}{G} from a Plains and the Talisman: the Talisman makes {G}, 1 damage.
+    let mut g = with_lands(&["Plains", "Talisman of Impulse"]);
+    let life = g.players[0].life;
+    let elder = hand(&mut g, 0, "Sakura-Tribe Elder");
+    play(&mut g, elder, false, &[], &[]);
+    assert_eq!(g.obj(elder).zone, Zone::Battlefield);
+    assert_eq!(g.players[0].life, life - 1);
+    // {2}: the Talisman makes {C}, no damage.
+    let mut g = with_lands(&["Plains", "Talisman of Impulse"]);
+    let life = g.players[0].life;
+    let signet = hand(&mut g, 0, "Arcane Signet");
+    play(&mut g, signet, false, &[], &[]);
+    assert_eq!(g.obj(signet).zone, Zone::Battlefield);
+    assert_eq!(g.players[0].life, life);
+}
+
+#[test]
+fn thriving_bluff_enters_tapped_and_makes_red_or_the_chosen_color() {
+    let mut g = table();
+    let bluff = hand(&mut g, 0, "Thriving Bluff");
+    act(&mut g, Action::PlayLand(bluff));
+    assert!(matches!(g.pending, Pending::Decide(0)));
+    assert!(
+        !g.legal_actions().contains(&Action::Mode(3)),
+        "a color other than red"
+    );
+    act(&mut g, Action::Mode(0)); // white
+    assert!(g.obj(bluff).tapped);
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    let any = g
+        .mana_sources(0)
+        .into_iter()
+        .filter(|&(x, _)| x == bluff)
+        .fold([false; 5], |acc, (_, m)| {
+            std::array::from_fn(|i| acc[i] || m.colors[i])
+        });
+    assert_eq!(any, [true, false, false, true, false], "red or white");
+}
+
+#[test]
+fn spine_of_ish_sah_destroys_a_permanent_and_returns_to_hand_from_the_graveyard() {
+    let mut g = table();
+    let land = g.permanents(1).find(|&x| g.types_of(x).land).unwrap();
+    let spine = hand(&mut g, 0, "Spine of Ish Sah");
+    play(&mut g, spine, false, &[], &[Action::Target(obj(land))]);
+    assert_eq!(g.obj(land).zone, Zone::Graveyard, "any permanent, lands too");
+    let dispute = hand(&mut g, 0, "Deadly Dispute");
+    act(&mut g, Action::CastWith(dispute, spine));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(spine).zone, Zone::Hand, "back to its owner's hand");
+}
+
+#[test]
+fn windgraces_judgment_destroys_a_nonland_permanent_an_opponent_controls() {
+    let mut g = table();
+    let theirs = put(&mut g, 1, "Arcane Signet");
+    let mine = put(&mut g, 0, "Arcane Signet");
+    let c = hand(&mut g, 0, "Windgrace's Judgment");
+    act(&mut g, Action::Cast(c));
+    assert!(!g.legal_actions().contains(&Action::Target(obj(mine))));
+    act(&mut g, Action::Target(obj(theirs)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(theirs).zone, Zone::Graveyard);
+    assert_eq!(g.obj(mine).zone, Zone::Battlefield);
+}
+
+#[test]
+fn psychosis_crawler_is_hand_sized_and_drains_on_each_draw() {
+    let mut g = table();
+    let c = put(&mut g, 0, "Psychosis Crawler");
+    let n = g.players[0].hand.len() as i32;
+    assert_eq!((g.power(c), g.toughness(c)), (n, n));
+    let life = g.players[1].life;
+    let signet = put(&mut g, 0, "Arcane Signet");
+    let dispute = hand(&mut g, 0, "Deadly Dispute");
+    act(&mut g, Action::CastWith(dispute, signet));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].life, life - 2, "two draws");
+    assert_eq!(g.power(c), n + 2, "two cards came");
+}
+
+#[test]
+fn deadly_dispute_sacrifices_an_artifact_or_creature_to_draw_two_and_make_a_treasure() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Deadly Dispute");
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(c)),
+        "the sacrifice is required"
+    );
+    let signet = put(&mut g, 0, "Arcane Signet");
+    let creature = put(&mut g, 0, "Morbid Opportunist");
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::CastWith(c, signet)) && legal.contains(&Action::CastWith(c, creature)));
+    let n = g.players[0].hand.len();
+    act(&mut g, Action::CastWith(c, signet));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(signet).zone, Zone::Graveyard);
+    assert_eq!(g.players[0].hand.len(), n - 1 + 2);
+    assert_eq!(
+        g.permanents(0)
+            .filter(|&x| g.def_of(x).name == "Treasure")
+            .count(),
+        1
+    );
+}
+
+#[test]
+fn martial_coup_makes_x_soldiers_and_at_five_destroys_everything_else() {
+    let mut g = table();
+    let theirs = put(&mut g, 1, "Morbid Opportunist");
+    let c = hand(&mut g, 0, "Martial Coup");
+    act(&mut g, Action::CastX(c, 2));
+    resolve_all(&mut g, &[]);
+    assert_eq!(tokens(&g, 0, "Soldier").len(), 2);
+    assert_eq!(g.obj(theirs).zone, Zone::Battlefield, "X below 5");
+    g.start_turn(5, 0); // untap: the Plains pay {W}{W} again
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    let c2 = hand(&mut g, 0, "Martial Coup");
+    act(&mut g, Action::CastX(c2, 5));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(theirs).zone, Zone::Graveyard);
+    assert_eq!(
+        tokens(&g, 0, "Soldier").len(),
+        5,
+        "the new five survive, the old two don't"
+    );
+}
+
+#[test]
+fn intellectual_offering_draws_three_each_and_untaps_nonland_permanents() {
+    let mut g = table();
+    let me = put(&mut g, 0, "Morbid Opportunist");
+    g.start_turn(5, 0);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(me));
+    act(&mut g, Action::FinishAttacks);
+    while g.step != Step::Main2 {
+        let a = match g.pending {
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert!(g.obj(me).tapped);
+    let (mine, theirs) = (g.players[0].hand.len(), g.players[1].hand.len());
+    let c = hand(&mut g, 0, "Intellectual Offering");
+    play(&mut g, c, false, &[], &[]);
+    assert!(!g.obj(me).tapped, "nonland permanents untap");
+    assert!(
+        g.permanents(0).any(|x| g.types_of(x).land && g.obj(x).tapped),
+        "lands don't"
+    );
+    assert_eq!(
+        (g.players[0].hand.len(), g.players[1].hand.len()),
+        (mine + 3, theirs + 3)
+    );
+}
+
+#[test]
+fn morbid_opportunist_draws_once_each_turn_when_other_creatures_die() {
+    let mut g = table();
+    put(&mut g, 0, "Morbid Opportunist");
+    let coup = hand(&mut g, 0, "Martial Coup");
+    act(&mut g, Action::CastX(coup, 4));
+    resolve_all(&mut g, &[]);
+    let n = g.players[0].hand.len();
+    let storm = hand(&mut g, 0, "Starstorm");
+    act(&mut g, Action::CastX(storm, 1)); // four 1/1 Soldiers die at once
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].hand.len(), n + 1);
+    let theirs = put(&mut g, 1, "Sakura-Tribe Elder");
+    let storm2 = hand(&mut g, 0, "Starstorm");
+    act(&mut g, Action::CastX(storm2, 1));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(theirs).zone, Zone::Graveyard);
+    assert_eq!(g.players[0].hand.len(), n + 1, "only once each turn");
+}
