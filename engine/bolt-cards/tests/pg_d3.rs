@@ -419,47 +419,6 @@ fn vile_entomber_entombs_on_entering() {
 // ---- Najeela, the Blade-Blossom (Time) ----
 
 #[test]
-fn negate_counters_only_noncreature_spells() {
-    let mut g = table();
-    let opt = hand(&mut g, 0, "Opt");
-    let n = hand(&mut g, 0, "Negate");
-    act(&mut g, Action::Cast(opt));
-    act(&mut g, Action::Cast(n));
-    act(&mut g, Action::Target(obj(opt)));
-    let cards = g.players[0].hand.len();
-    resolve_all(&mut g, &[]);
-    assert_eq!(g.obj(opt).zone, Zone::Graveyard);
-    assert_eq!(g.players[0].hand.len(), cards, "Opt never resolved");
-
-    let mut g = table();
-    let looter = hand(&mut g, 0, "Merfolk Looter");
-    let n = hand(&mut g, 0, "Negate");
-    act(&mut g, Action::Cast(looter));
-    assert!(
-        !g.legal_actions().contains(&Action::Cast(n)),
-        "no noncreature spell to target"
-    );
-}
-
-#[test]
-fn frantic_search_draws_two_discards_two_and_untaps_three_lands() {
-    let mut g = game(&["Island", "Island", "Island", "Plains"]);
-    let a = hand(&mut g, 0, "Counterspell");
-    let b = hand(&mut g, 0, "Entomb");
-    let fs = hand(&mut g, 0, "Frantic Search");
-    let cards = g.players[0].hand.len();
-    play(&mut g, fs, false, &[], &[Action::Discard(a), Action::Discard(b)]);
-    assert_eq!(g.players[0].hand.len(), cards - 1);
-    assert_eq!((g.obj(a).zone, g.obj(b).zone), (Zone::Graveyard, Zone::Graveyard));
-    assert!(
-        g.permanents(0)
-            .filter(|&x| g.types_of(x).land)
-            .all(|x| !g.obj(x).tapped),
-        "the three lands it was cast with untap"
-    );
-}
-
-#[test]
 fn flooded_strand_fetches_a_plains_or_island() {
     let mut g = table();
     let f = put(&mut g, 0, "Flooded Strand");

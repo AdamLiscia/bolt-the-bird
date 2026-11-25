@@ -178,13 +178,6 @@ pub fn script(name: &str) -> Option<Script> {
             |d, _| on(d, When::Enters, vec![], vec![search(SearchFor::Any, SearchTo::Graveyard)]),
         ),
         // ---- Najeela, the Blade-Blossom (Time) ----
-        "Negate" => s(&["Counter target noncreature spell."], |d, _| {
-            spell(d, vec![Filter { spell_creature: Some(false), ..SPELL }], vec![Effect::Counter(0)])
-        }),
-        "Frantic Search" => s(
-            &["Draw two cards, then discard two cards. Untap up to three lands."],
-            |d, _| spell(d, vec![], vec![draw(2), discard(2), Effect::UntapLands(3)]),
-        ),
         "Flooded Strand" => s(
             &["{T}, Pay 1 life, Sacrifice this land: Search your library for a Plains or Island card, put it onto the battlefield, then shuffle."],
             |d, _| fetch_land(d, &["Plains", "Island"]),
@@ -579,8 +572,6 @@ pub const PG_D3_SCRIPTED: &[&str] = &[
     "Port Town",
     "Vile Entomber",
     // Najeela, the Blade-Blossom
-    "Negate",
-    "Frantic Search",
     "Flooded Strand",
     "Hallowed Fountain",
     "Ziatora's Proving Ground",
