@@ -936,6 +936,16 @@ pub enum Decision {
     SneakAttack,
     /// `Pick` one of `cards` (exiled) to put onto the battlefield, or `No` to stop; the rest stay.
     ExiledToBattlefield { cards: Vec<ObjId> },
+    /// `Pick` a creature card in your hand to put onto the battlefield, or `No` to stop (Ghalta).
+    CreaturesFromHand,
+    /// `Pick` another creature you control to return to its owner's hand, or `No` (Temur
+    /// Sabertooth).
+    ReturnAnotherForIndestructible { source: ObjId },
+    /// `Pick` a land card in your hand to put onto the battlefield tapped (then draw and repeat), or
+    /// `No` (Cultivator Colossus).
+    LandTappedDrawRepeat,
+    /// `Pick` a basic land card in your hand to put onto the battlefield tapped, or `No`.
+    BasicFromHandTapped,
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -1202,6 +1212,8 @@ pub struct Game {
     /// "For as long as you control [source]" control changes: (permanent, its zcc, source, source's
     /// zcc, new controller, controller before) (Roil Elemental).
     pub control_while: Vec<(ObjId, u32, ObjId, u32, PlayerId, PlayerId)>,
+    /// Creatures whose combat damage dealt is prevented this turn (Maze of Ith), with their zcc.
+    pub combat_damage_by_prevented: Vec<(ObjId, u32)>,
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -1410,6 +1422,7 @@ impl Game {
             granted_tapped: Vec::new(),
             no_more_spells_turn: [0; 2],
             control_while: Vec::new(),
+            combat_damage_by_prevented: Vec::new(),
         }
     }
 
@@ -4820,6 +4833,13 @@ impl Game {
                     .sum::<u8>()
             } else {
                 0
+            }
+            + if def.colors[3] {
+                self.permanents(p)
+                    .map(|x| self.def_of(x).red_spell_discount)
+                    .sum::<u8>()
+            } else {
+                0
             };
         // Temur Battlecrier: during your turn, {1} less for each creature you control with power 4+.
         let battle: u8 = if self.active == p {
@@ -5562,6 +5582,15 @@ impl Game {
                             .filter(|&c| c != id && self.def_of(c).types.creature)
                             .map(|c| Action::ActivateWith(id, n, c)),
                     );
+                } else if a.discard_creature_card {
+                    v.extend(
+                        self.players[p]
+                            .hand
+                            .iter()
+                            .copied()
+                            .filter(|&c| self.def_of(c).types.creature)
+                            .map(|c| Action::ActivateWith(id, n, c)),
+                    );
                 } else if a.crew > 0 {
                     // Crew: tap an untapped creature with enough power (summoning sickness doesn't matter).
                     v.extend(
@@ -5732,6 +5761,10 @@ impl Game {
         if let Some(v) = victim {
             if a.crew > 0 {
                 self.become_tapped(v); // crew taps, it doesn't sacrifice
+            } else if a.discard_creature_card {
+                if self.obj(v).zone == Zone::Hand {
+                    self.move_to(v, Zone::Graveyard); // discarded
+                }
             } else if a.exile_creature_card {
                 if self.obj(v).zone == Zone::Graveyard {
                     self.move_to(v, Zone::Exile);
@@ -6827,7 +6860,23 @@ impl Game {
             self.obj_mut(card).cast_uncounterable = true;
         }
         if self.types_of(card).creature {
+            let before = self.triggered.len();
             self.fire(p, When::YouCastCreature, None);
+            let power = self.def_of(card).power;
+            let new = self.triggered.split_off(before);
+            for mut t in new {
+                t.extra = Some(card); // "that spell" (Sarkhan's Unsealing)
+                let cond = match t.kind {
+                    StackKind::Trigger(n) => self.def_of(t.source).triggers[n].ability.condition.clone(),
+                    _ => None,
+                };
+                if let Some(Condition::CastPowerBetween(lo, hi)) = cond {
+                    if power < lo || power > hi {
+                        continue;
+                    }
+                }
+                self.triggered.push(t);
+            }
         }
         let before = self.triggered.len();
         self.fire(p, When::YouCast, None);
@@ -6869,6 +6918,7 @@ impl Game {
             if w == When::CastThisSpell {
                 self.triggered.push(StackItem {
                     kind: StackKind::Trigger(n),
+                    extra: Some(card), // "this spell" (cascade)
                     ..Game::casting(card, p)
                 });
             }
@@ -7834,6 +7884,39 @@ impl Game {
             }
             Decision::ExiledToBattlefield { cards } => {
                 let mut v: Vec<Action> = cards.iter().copied().map(Action::Pick).collect();
+                v.push(Action::No);
+                v
+            }
+            Decision::CreaturesFromHand => {
+                let mut v: Vec<Action> = hand
+                    .iter()
+                    .copied()
+                    .filter(|&x| self.def_of(x).types.creature)
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
+            Decision::ReturnAnotherForIndestructible { source } => {
+                let mut v: Vec<Action> = self
+                    .creatures(p)
+                    .filter(|&c| c != *source)
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
+            Decision::LandTappedDrawRepeat | Decision::BasicFromHandTapped => {
+                let basic = matches!(self.decision, Some(Decision::BasicFromHandTapped));
+                let mut v: Vec<Action> = hand
+                    .iter()
+                    .copied()
+                    .filter(|&x| {
+                        let t = self.def_of(x).types;
+                        t.land && (!basic || t.basic)
+                    })
+                    .map(Action::Pick)
+                    .collect();
                 v.push(Action::No);
                 v
             }
@@ -8889,6 +8972,46 @@ impl Game {
             (Decision::ScrollRackExile { exiled }, Action::No) => self.scroll_rack_finish(p, exiled),
             (Decision::LandFromHand, Action::Pick(c)) => self.move_to(c, Zone::Battlefield),
             (Decision::LandFromHand, Action::No) => {}
+            (Decision::CreaturesFromHand, Action::Pick(c)) => {
+                self.move_to(c, Zone::Battlefield);
+                if self.players[p]
+                    .hand
+                    .iter()
+                    .any(|&x| self.def_of(x).types.creature)
+                {
+                    self.ask(p, Decision::CreaturesFromHand);
+                }
+            }
+            (Decision::CreaturesFromHand, Action::No) => {}
+            (Decision::ReturnAnotherForIndestructible { source }, Action::Pick(c)) => {
+                self.move_to(c, Zone::Hand);
+                if self.obj(source).zone == Zone::Battlefield {
+                    let zcc = self.obj(source).zcc;
+                    self.until_eot.push(Modifier {
+                        obj: source,
+                        zcc,
+                        power: 0,
+                        toughness: 0,
+                        keywords: Keywords::INDESTRUCTIBLE,
+                        dies: None,
+                    });
+                }
+            }
+            (Decision::ReturnAnotherForIndestructible { .. }, Action::No) => {}
+            (Decision::LandTappedDrawRepeat, Action::Pick(c)) => {
+                self.move_to(c, Zone::Battlefield);
+                self.obj_mut(c).tapped = true;
+                self.draw(p);
+                if self.players[p].hand.iter().any(|&x| self.def_of(x).types.land) {
+                    self.ask(p, Decision::LandTappedDrawRepeat);
+                }
+            }
+            (Decision::LandTappedDrawRepeat, Action::No) => {}
+            (Decision::BasicFromHandTapped, Action::Pick(c)) => {
+                self.move_to(c, Zone::Battlefield);
+                self.obj_mut(c).tapped = true;
+            }
+            (Decision::BasicFromHandTapped, Action::No) => {}
             (Decision::SneakAttack, Action::Pick(c)) => {
                 self.move_to(c, Zone::Battlefield);
                 if self.obj(c).zone == Zone::Battlefield {
@@ -10879,6 +11002,82 @@ impl Game {
                 }
                 if !cards.is_empty() {
                     self.ask(p, Decision::ExiledToBattlefield { cards });
+                }
+            }
+            Effect::CreaturesFromHand => {
+                let p = item.controller;
+                if self.players[p]
+                    .hand
+                    .iter()
+                    .any(|&x| self.def_of(x).types.creature)
+                {
+                    self.ask(p, Decision::CreaturesFromHand);
+                }
+            }
+            Effect::PreventCombatDamageToAndBy(n) => {
+                if let Some(id) = Game::slot_object(item, legal, n) {
+                    let zcc = self.obj(id).zcc;
+                    self.combat_damage_prevented.push((id, zcc));
+                    self.combat_damage_by_prevented.push((id, zcc));
+                }
+            }
+            Effect::MayReturnAnotherThenIndestructible => {
+                let p = item.controller;
+                if self.creatures(p).any(|c| c != src) {
+                    self.ask(p, Decision::ReturnAnotherForIndestructible { source: src });
+                }
+            }
+            Effect::LandFromHandTappedDrawRepeat => {
+                let p = item.controller;
+                if self.players[p].hand.iter().any(|&x| self.def_of(x).types.land) {
+                    self.ask(p, Decision::LandTappedDrawRepeat);
+                }
+            }
+            Effect::BasicLandFromHandTapped => {
+                let p = item.controller;
+                if self.players[p].hand.iter().any(|&x| {
+                    let t = self.def_of(x).types;
+                    t.land && t.basic
+                }) {
+                    self.ask(p, Decision::BasicFromHandTapped);
+                }
+            }
+            Effect::CopiesHasteSacrifice { slot, n } => {
+                for _ in 0..n {
+                    let copy = Effect::CopyToken {
+                        slot: Some(slot),
+                        haste_and_sacrifice: true,
+                        extra_subtype: None,
+                    };
+                    self.run_effect(item, legal, copy);
+                }
+            }
+            Effect::UnsealingDamage(n) => {
+                let Some(spell) = item.extra else { return };
+                let power = self.def_of(spell).power;
+                if (4..=6).contains(&power) {
+                    if let Some(&t) = item.targets.get(n as usize) {
+                        if legal.get(n as usize) == Some(&true) {
+                            let to = match t {
+                                Chosen::Player(q) => Target::Player(q),
+                                Chosen::Object(x, _) => Target::Object(x),
+                            };
+                            self.deal_damage(src, to, 4);
+                        }
+                    }
+                } else if power >= 7 {
+                    let q = opponent(item.controller);
+                    self.deal_damage(src, Target::Player(q), 4);
+                    let theirs: Vec<ObjId> = self
+                        .permanents(q)
+                        .filter(|&x| {
+                            let t = self.types_of(x);
+                            t.creature || t.planeswalker
+                        })
+                        .collect();
+                    for x in theirs {
+                        self.deal_damage(src, Target::Object(x), 4);
+                    }
                 }
             }
             Effect::BecomeCopyOfSlotUntilEot(n) => {
@@ -13161,6 +13360,7 @@ impl Game {
             Some(Condition::ControlCreatureWithCounter) => self.controls_creature_with_counter(controller),
             Some(Condition::CastIt) => self.obj(source).was_cast,
             Some(Condition::CastFromHand) => self.obj(source).was_cast && self.obj(source).from_hand,
+            Some(Condition::CastPowerBetween(..)) => true, // checked as it triggered
             Some(Condition::ControlLandsAtLeast(n)) => {
                 self.permanents(controller)
                     .filter(|&x| self.types_of(x).land)
@@ -13942,6 +14142,7 @@ impl Game {
             }
         }
         self.combat_damage_prevented.clear();
+        self.combat_damage_by_prevented.clear();
         for o in &mut self.objects {
             o.flashback_eot = false;
             o.harmonize_eot = false;
@@ -14191,7 +14392,11 @@ impl Game {
                 .filter(|&e| self.obj(e).attached_to == Some((a, zcc)))
                 .collect();
             for e in gear {
+                let before = self.triggered.len();
                 self.fire_source(e, When::EquippedDealsCombatDamageToPlayer);
+                for t in &mut self.triggered[before..] {
+                    t.amount = amount; // "that many" (The Reaver Cleaver)
+                }
             }
         }
         self.state_based_actions();
@@ -14296,6 +14501,13 @@ impl Game {
         if !unpreventable {
             if self.in_combat_damage && self.combat_damage_prevented_turn == Some(self.turn) {
                 return; // Spore Frog
+            }
+            if self.in_combat_damage
+                && self
+                    .combat_damage_by_prevented
+                    .contains(&(source, self.obj(source).zcc))
+            {
+                return; // Maze of Ith
             }
             if let Target::Player(p) = target {
                 if self.damage_to_player_prevented_turn[p] == Some(self.turn) {

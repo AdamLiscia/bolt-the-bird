@@ -572,3 +572,15 @@ at base+60.
 Shortcuts: Vorinclex's mana trigger doubles the land's mana (a mana ability's trigger resolves at once). Etali's
 {9}{G/P} is two abilities ({9}{G}, or {9} and 2 life). Terror of the Peaks' 3 life is paid as the spell is cast; it
 doesn't stop a player with less life from casting it. Xenagos's {R}/{G} mana is pool entries that can be either.
+
+Etali batch 4 (12): Fauna Shaman, Ghalta, Maze of Ith, Ohran Frostfang, Temur Sabertooth, The Fire Crystal,
+Cultivator Colossus, Terrain Generator, The Reaver Cleaver, Apex Devastator, Orthion, Sarkhan's Unsealing.
+Core: `CardDef::red_spell_discount`, `Activated::discard_creature_card`, `Condition::CastPowerBetween` (checked as a
+"you cast a creature spell" trigger triggers; those triggers now carry the spell as `extra`), `Game::combat_damage_by_prevented`,
+`Decision::{CreaturesFromHand, ReturnAnotherForIndestructible, LandTappedDrawRepeat, BasicFromHandTapped}`,
+`Effect::{CreaturesFromHand, PreventCombatDamageToAndBy, MayReturnAnotherThenIndestructible,
+LandFromHandTappedDrawRepeat, BasicLandFromHandTapped, CopiesHasteSacrifice, UnsealingDamage}`. "When you cast this
+spell" triggers carry the spell as `extra` (so cascade works from them); equipment's combat-damage triggers get the
+damage as their amount.
+Shortcuts: Maze of Ith targets a creature in combat (attacking or blocking). The Reaver Cleaver's trigger covers
+combat damage to a player (planeswalkers aren't attacked for it here).

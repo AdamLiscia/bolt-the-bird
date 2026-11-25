@@ -245,6 +245,9 @@ pub struct Activated {
     /// "Activate only if there are four or more card types among cards in your graveyard."
     /// (delirium)
     pub needs_delirium: bool,
+    /// "Discard a creature card" in the cost: activated with `Action::ActivateWith`, that card the
+    /// victim (Fauna Shaman).
+    pub discard_creature_card: bool,
 }
 
 /// The printed card. Shared by every copy; per-copy state lives on the game object.
@@ -671,6 +674,8 @@ pub struct CardDef {
     /// "Spells your opponents cast that target this creature cost an additional N life to cast."
     /// (Terror of the Peaks: 3)
     pub targeted_life_tax: i32,
+    /// "Red spells you cast cost {N} less to cast." (The Fire Crystal)
+    pub red_spell_discount: u8,
 }
 
 /// What entering makes triggers happen again (see [`CardDef::entering_triggers_again`]).
@@ -899,6 +904,7 @@ impl CardDef {
             historic_become_dinosaurs: false,
             vorinclex: false,
             targeted_life_tax: 0,
+            red_spell_discount: 0,
         }
     }
 
@@ -1095,6 +1101,7 @@ impl CardDef {
             historic_become_dinosaurs: false,
             vorinclex: false,
             targeted_life_tax: 0,
+            red_spell_discount: 0,
         }
     }
 
@@ -1291,6 +1298,7 @@ impl CardDef {
             historic_become_dinosaurs: false,
             vorinclex: false,
             targeted_life_tax: 0,
+            red_spell_discount: 0,
         }
     }
 }

@@ -438,6 +438,7 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         historic_become_dinosaurs: false,
         vorinclex: false,
         targeted_life_tax: 0,
+        red_spell_discount: 0,
     };
     def.color_identity = color_identity(o);
     def.phyrexian = phyrexian;

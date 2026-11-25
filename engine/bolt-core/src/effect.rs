@@ -1358,6 +1358,29 @@ pub enum Effect {
     /// Exile the top `n` cards; put any number of creature and/or land cards from among them onto
     /// the battlefield (Xenagos, the Reveler's −6).
     ExileTopPutCreaturesAndLands(u8),
+    /// Put any number of creature cards from your hand onto the battlefield (Ghalta).
+    CreaturesFromHand,
+    /// Prevent all combat damage that would be dealt to and dealt by the creature in `slot` this
+    /// turn (Maze of Ith).
+    PreventCombatDamageToAndBy(u8),
+    /// You may return another creature you control to its owner's hand; if you do, the source gains
+    /// indestructible until end of turn (Temur Sabertooth).
+    MayReturnAnotherThenIndestructible,
+    /// You may put a land card from your hand onto the battlefield tapped; if you do, draw a card
+    /// and repeat (Cultivator Colossus).
+    LandFromHandTappedDrawRepeat,
+    /// You may put a basic land card from your hand onto the battlefield tapped (Terrain Generator).
+    BasicLandFromHandTapped,
+    /// Create `n` token copies of the creature in `slot`, with haste; sacrifice them at the
+    /// beginning of the next end step (Orthion).
+    CopiesHasteSacrifice {
+        slot: u8,
+        n: u8,
+    },
+    /// Sarkhan's Unsealing: 4 damage to the target in `slot` (a cast creature spell with power 4, 5
+    /// or 6), or with power 7 or more, 4 damage to each opponent and each creature and planeswalker
+    /// they control. The cast spell is the item's `extra`.
+    UnsealingDamage(u8),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1650,6 +1673,9 @@ pub enum Condition {
     CastFromHand,
     /// Its controller controls at least this many lands.
     ControlLandsAtLeast(u8),
+    /// The cast creature spell (the trigger's `extra`) has power from `.0` through `.1` (checked as
+    /// it triggers).
+    CastPowerBetween(i32, i32),
 }
 
 /// A spell's effect or a triggered ability: target slots, then effects in order.

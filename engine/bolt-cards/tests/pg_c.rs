@@ -2254,3 +2254,273 @@ fn xenagos_the_reveler_makes_mana_satyrs_and_digs() {
     assert_eq!(g.obj(beast).zone, Zone::Battlefield);
     assert_eq!(g.obj(land).zone, Zone::Battlefield);
 }
+
+#[test]
+fn fauna_shaman_discards_a_creature_to_tutor_one() {
+    let mut g = game(&["Fauna Shaman", "Forest"]);
+    let fs = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "Fauna Shaman")
+        .unwrap();
+    let fodder = hand(&mut g, 0, "Aegis Turtle");
+    let want = g.add_card(0, cid("Palinchron"), Zone::Library);
+    act(&mut g, Action::ActivateWith(fs, 0, fodder));
+    resolve_all(&mut g, &[Action::Pick(want)]);
+    assert_eq!(g.obj(fodder).zone, Zone::Graveyard);
+    assert_eq!(g.obj(want).zone, Zone::Hand);
+}
+
+#[test]
+fn ghalta_puts_any_number_of_creatures_from_hand() {
+    let mut g = table();
+    let a = hand(&mut g, 0, "Aegis Turtle");
+    let b = hand(&mut g, 0, "Hungry Ghoul");
+    let gh = hand(&mut g, 0, "Ghalta, Stampede Tyrant");
+    play(&mut g, gh, false, &[], &[Action::Pick(a), Action::Pick(b)]);
+    assert_eq!(g.obj(a).zone, Zone::Battlefield);
+    assert_eq!(g.obj(b).zone, Zone::Battlefield);
+}
+
+#[test]
+fn maze_of_ith_untaps_an_attacker_and_stops_its_damage() {
+    let mut lands = vec!["Hungry Ghoul"];
+    lands.extend(["Forest"; 2]);
+    let mut g2 = game(&lands);
+    let ghoul = g2
+        .permanents(0)
+        .find(|&x| g2.def_of(x).name == "Hungry Ghoul")
+        .unwrap();
+    let maze2 = put(&mut g2, 1, "Maze of Ith");
+    while g2.step != Step::DeclareAttackers {
+        act(&mut g2, Action::PassPriority);
+    }
+    act(&mut g2, Action::Attack(ghoul));
+    act(&mut g2, Action::FinishAttacks);
+    while !g2.legal_actions().contains(&Action::Activate(maze2, 0)) {
+        act(&mut g2, Action::PassPriority);
+    }
+    act(&mut g2, Action::Activate(maze2, 0));
+    act(&mut g2, Action::Target(obj(ghoul)));
+    while g2.step != Step::Main2 {
+        let a = match g2.pending {
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g2, a);
+    }
+    assert!(!g2.obj(ghoul).tapped);
+    assert_eq!(g2.players[1].life, 40, "its combat damage is prevented");
+}
+
+#[test]
+fn ohran_frostfang_gives_attackers_deathtouch_and_draws() {
+    let mut g = game(&["Ohran Frostfang", "Aegis Turtle", "Hungry Ghoul"]);
+    let ghoul = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "Hungry Ghoul")
+        .unwrap();
+    let n = g.players[0].hand.len();
+    while g.step != Step::DeclareAttackers {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(ghoul));
+    act(&mut g, Action::FinishAttacks);
+    assert!(g.keywords(ghoul).has(Keywords::DEATHTOUCH));
+    while g.step != Step::Main2 {
+        let a = match g.pending {
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.players[0].hand.len(), n + 1);
+}
+
+#[test]
+fn temur_sabertooth_bounces_another_for_indestructible() {
+    let mut g = table();
+    let st = put(&mut g, 0, "Temur Sabertooth");
+    let ghoul = put(&mut g, 0, "Hungry Ghoul");
+    act(&mut g, Action::Activate(st, 0));
+    resolve_all(&mut g, &[Action::Pick(ghoul)]);
+    assert_eq!(g.obj(ghoul).zone, Zone::Hand);
+    assert!(g.keywords(st).has(Keywords::INDESTRUCTIBLE));
+}
+
+#[test]
+fn the_fire_crystal_discounts_red_hastes_and_copies() {
+    let mut g = game(&[
+        "The Fire Crystal",
+        "Mountain",
+        "Mountain",
+        "Mountain",
+        "Mountain",
+        "Mountain",
+        "Mountain",
+    ]);
+    let fc = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "The Fire Crystal")
+        .unwrap();
+    let sneak = hand(&mut g, 0, "Sneak Attack"); // {3}{R}
+    play(&mut g, sneak, false, &[], &[]);
+    let untapped = g
+        .permanents(0)
+        .filter(|&x| g.types_of(x).land && !g.obj(x).tapped)
+        .count();
+    assert_eq!(untapped, 3, "{{2}}{{R}} paid");
+    let ghoul = put(&mut g, 0, "Hungry Ghoul");
+    assert!(g.keywords(ghoul).has(Keywords::HASTE));
+    let mut g = table();
+    let fc2 = put(&mut g, 0, "The Fire Crystal");
+    let ghoul = put(&mut g, 0, "Hungry Ghoul");
+    act(&mut g, Action::Activate(fc2, 0));
+    resolve_all(&mut g, &[Action::Target(obj(ghoul))]);
+    assert_eq!(
+        g.permanents(0)
+            .filter(|&x| g.def_of(x).name == "Hungry Ghoul")
+            .count(),
+        2
+    );
+    let _ = fc;
+}
+
+#[test]
+fn cultivator_colossus_chains_lands_from_hand_and_draws() {
+    let mut g = table();
+    let a = hand(&mut g, 0, "Forest");
+    let b = hand(&mut g, 0, "Island");
+    let cc = hand(&mut g, 0, "Cultivator Colossus");
+    let n = g.players[0].hand.len();
+    play(
+        &mut g,
+        cc,
+        false,
+        &[],
+        &[Action::Pick(a), Action::Pick(b), Action::No],
+    );
+    assert!(g.obj(a).tapped && g.obj(b).zone == Zone::Battlefield);
+    assert_eq!(
+        g.players[0].hand.len(),
+        n - 1 - 2 + 2,
+        "two lands out, two cards drawn"
+    );
+    assert_eq!(
+        g.power(cc) as usize,
+        g.permanents(0).filter(|&x| g.types_of(x).land).count()
+    );
+}
+
+#[test]
+fn terrain_generator_puts_a_basic_land_from_hand() {
+    let mut g = table();
+    let tg = put(&mut g, 0, "Terrain Generator");
+    let f = hand(&mut g, 0, "Forest");
+    act(&mut g, Action::Activate(tg, 0));
+    resolve_all(&mut g, &[Action::Pick(f)]);
+    assert_eq!(g.obj(f).zone, Zone::Battlefield);
+    assert!(g.obj(f).tapped);
+}
+
+#[test]
+fn the_reaver_cleaver_makes_treasures_for_combat_damage() {
+    let mut g = game(&["Hungry Ghoul", "The Reaver Cleaver", "Forest", "Forest", "Forest"]);
+    let ghoul = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "Hungry Ghoul")
+        .unwrap();
+    let rc = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "The Reaver Cleaver")
+        .unwrap();
+    act(&mut g, Action::Activate(rc, 0));
+    resolve_all(&mut g, &[Action::Target(obj(ghoul))]);
+    assert_eq!(g.power(ghoul), 3);
+    assert!(g.keywords(ghoul).has(Keywords::TRAMPLE));
+    while g.step != Step::DeclareAttackers {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(ghoul));
+    act(&mut g, Action::FinishAttacks);
+    while g.step != Step::Main2 {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(tokens(&g, 0, "Treasure").len(), 3);
+}
+
+#[test]
+fn apex_devastator_cascades_four_times() {
+    let mut g = table();
+    for name in ["Hungry Ghoul", "Aegis Turtle", "Palinchron", "Burglar Rat"] {
+        top(&mut g, name);
+    }
+    let ad = hand(&mut g, 0, "Apex Devastator");
+    act(&mut g, Action::Cast(ad));
+    for _ in 0..200 {
+        if g.items.is_empty() && !matches!(g.pending, Pending::Decide(_) | Pending::ChooseTarget(_)) {
+            break;
+        }
+        let a = g
+            .legal_actions()
+            .into_iter()
+            .find(|a| matches!(a, Action::Cast(_)))
+            .unwrap_or(Action::PassPriority);
+        let a = if matches!(g.pending, Pending::Decide(_) | Pending::ChooseTarget(_)) {
+            g.legal_actions()[0]
+        } else {
+            a
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.obj(ad).zone, Zone::Battlefield);
+    let cast: usize = ["Hungry Ghoul", "Aegis Turtle", "Palinchron", "Burglar Rat"]
+        .iter()
+        .map(|n| g.permanents(0).filter(|&x| g.def_of(x).name == *n).count())
+        .sum();
+    assert_eq!(cast, 4, "four cascades");
+}
+
+#[test]
+fn orthion_copies_another_creature_with_haste() {
+    let mut g = game(&[
+        "Orthion, Hero of Lavabrink",
+        "Hungry Ghoul",
+        "Mountain",
+        "Mountain",
+    ]);
+    let o = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "Orthion, Hero of Lavabrink")
+        .unwrap();
+    let ghoul = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "Hungry Ghoul")
+        .unwrap();
+    act(&mut g, Action::Activate(o, 0));
+    resolve_all(&mut g, &[Action::Target(obj(ghoul))]);
+    let copies: Vec<ObjId> = g
+        .permanents(0)
+        .filter(|&x| g.def_of(x).name == "Hungry Ghoul" && x != ghoul)
+        .collect();
+    assert_eq!(copies.len(), 1);
+    assert!(g.keywords(copies[0]).has(Keywords::HASTE));
+}
+
+#[test]
+fn sarkhans_unsealing_burns_for_big_creature_spells() {
+    let mut g = table();
+    put(&mut g, 0, "Sarkhan's Unsealing");
+    let ghoul = hand(&mut g, 0, "Hungry Ghoul");
+    play(&mut g, ghoul, false, &[], &[]); // power 2: nothing
+    assert_eq!(g.players[1].life, 40);
+    let pal = hand(&mut g, 0, "Palinchron"); // power 4
+    act(&mut g, Action::Cast(pal));
+    resolve_all(&mut g, &[Action::Target(Target::Player(1))]);
+    assert_eq!(g.players[1].life, 36);
+    let theirs = put(&mut g, 1, "Hungry Ghoul");
+    let wurm = hand(&mut g, 0, "Worldspine Wurm"); // power 15
+    act(&mut g, Action::Cast(wurm));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].life, 32);
+    assert_eq!(g.obj(theirs).zone, Zone::Graveyard);
+}

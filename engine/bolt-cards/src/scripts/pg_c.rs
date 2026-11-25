@@ -947,6 +947,104 @@ pub fn script(name: &str) -> Option<Script> {
                 loyalty(d, -6, Ability::new(vec![], vec![Effect::ExileTopPutCreaturesAndLands(7)]));
             },
         ),
+        "Fauna Shaman" => s(
+            &["{G}, {T}, Discard a creature card: Search your library for a creature card, reveal it, put it into your hand, then shuffle."],
+            |d, _| {
+                let n = activated(d, "{G}", true, vec![], vec![search(SearchFor::CreatureMvAtLeast(0), SearchTo::Hand)]);
+                d.activated[n].discard_creature_card = true;
+            },
+        ),
+        "Ghalta, Stampede Tyrant" => s(
+            &["When Ghalta enters, put any number of creature cards from your hand onto the battlefield."],
+            |d, _| on(d, When::Enters, vec![], vec![Effect::CreaturesFromHand]),
+        ),
+        "Maze of Ith" => s(
+            &["{T}: Untap target attacking creature. Prevent all combat damage that would be dealt to and dealt by that creature this turn."],
+            |d, _| {
+                let attacking = Filter { in_combat: true, controller: Controller::Any, ..CREATURE };
+                activated(d, "", true, vec![attacking], vec![Effect::UntapTarget(0), Effect::PreventCombatDamageToAndBy(0)]);
+            },
+        ),
+        "Ohran Frostfang" => s(
+            &["Attacking creatures you control have deathtouch.", "Whenever a creature you control deals combat damage to a player, draw a card."],
+            |d, _| {
+                static_on(d, Scope::YourAttackingCreatures, false, Keywords::DEATHTOUCH);
+                on(d, When::YourCreatureDealsCombatDamageToPlayerAmount, vec![], vec![draw(1)]);
+            },
+        ),
+        "Temur Sabertooth" => s(
+            &["{1}{G}: You may return another creature you control to its owner's hand. If you do, this creature gains indestructible until end of turn."],
+            |d, _| {
+                activated(d, "{1}{G}", false, vec![], vec![Effect::MayReturnAnotherThenIndestructible]);
+            },
+        ),
+        "The Fire Crystal" => s(
+            &[
+                "Red spells you cast cost {1} less to cast.",
+                "Creatures you control have haste.",
+                "{4}{R}{R}, {T}: Create a token that's a copy of target creature you control. Sacrifice it at the beginning of the next end step.",
+            ],
+            |d, _| {
+                d.red_spell_discount = 1;
+                static_on(d, Scope::YourCreatures, false, Keywords::HASTE);
+                let copy = Effect::CopyToken { slot: Some(0), haste_and_sacrifice: true, extra_subtype: None };
+                activated(d, "{4}{R}{R}", true, vec![YOUR_CREATURE], vec![copy]);
+            },
+        ),
+        "Cultivator Colossus" => s(
+            &[
+                "Cultivator Colossus's power and toughness are each equal to the number of lands you control.",
+                "When this creature enters, you may put a land card from your hand onto the battlefield tapped. If you do, draw a card and repeat this process.",
+            ],
+            |d, _| {
+                d.pt_lands = true;
+                on(d, When::Enters, vec![], vec![Effect::LandFromHandTappedDrawRepeat]);
+            },
+        ),
+        "Terrain Generator" => s(&["{T}: Add {C}.", "{2}, {T}: You may put a basic land card from your hand onto the battlefield tapped."], |d, _| {
+            d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+            activated(d, "{2}", true, vec![], vec![Effect::BasicLandFromHandTapped]);
+        }),
+        "The Reaver Cleaver" => s(
+            &[
+                "Equipped creature gets +1/+1 and has trample and \"Whenever this creature deals combat damage to a player or planeswalker, create that many Treasure tokens.\"",
+                "Equip {3}",
+            ],
+            |d, t| {
+                attached(d, false, 1, 1, Keywords::TRAMPLE);
+                // Its combat damage to a player (planeswalkers: not tracked as a trigger here).
+                on(d, When::EquippedDealsCombatDamageToPlayer, vec![], vec![Effect::CreateTokensAmount { def: t.treasure }]);
+                equip(d, "{3}");
+            },
+        ),
+        "Apex Devastator" => s(&["Cascade, cascade, cascade, cascade"], |d, _| {
+            for _ in 0..4 {
+                on(d, When::CastThisSpell, vec![], vec![Effect::Cascade]);
+            }
+        }),
+        "Orthion, Hero of Lavabrink" => s(
+            &[
+                "{1}{R}, {T}: Create a token that's a copy of another target creature you control. It gains haste. Sacrifice it at the beginning of the next end step. Activate only as a sorcery.",
+                "{6}{R}{R}{R}, {T}: Create five tokens that are copies of another target creature you control. They gain haste. Sacrifice them at the beginning of the next end step. Activate only as a sorcery.",
+            ],
+            |d, _| {
+                let other = Filter { other: true, ..YOUR_CREATURE };
+                for (cost, n) in [("{1}{R}", 1), ("{6}{R}{R}{R}", 5)] {
+                    let i = activated(d, cost, true, vec![other], vec![Effect::CopiesHasteSacrifice { slot: 0, n }]);
+                    d.activated[i].sorcery = true;
+                }
+            },
+        ),
+        "Sarkhan's Unsealing" => s(
+            &[
+                "Whenever you cast a creature spell with power 4, 5, or 6, this enchantment deals 4 damage to any target.",
+                "Whenever you cast a creature spell with power 7 or greater, this enchantment deals 4 damage to each opponent and each creature and planeswalker they control.",
+            ],
+            |d, _| {
+                conditional(d, When::YouCastCreature, Condition::CastPowerBetween(4, 6), vec![Filter::ANY], vec![Effect::UnsealingDamage(0)]);
+                conditional(d, When::YouCastCreature, Condition::CastPowerBetween(7, i32::MAX), vec![], vec![Effect::UnsealingDamage(0)]);
+            },
+        ),
         _ => None,
     }
 }
@@ -1066,4 +1164,16 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Sneak Attack",
     "Terror of the Peaks",
     "Xenagos, the Reveler",
+    "Fauna Shaman",
+    "Ghalta, Stampede Tyrant",
+    "Maze of Ith",
+    "Ohran Frostfang",
+    "Temur Sabertooth",
+    "The Fire Crystal",
+    "Cultivator Colossus",
+    "Terrain Generator",
+    "The Reaver Cleaver",
+    "Apex Devastator",
+    "Orthion, Hero of Lavabrink",
+    "Sarkhan's Unsealing",
 ];
