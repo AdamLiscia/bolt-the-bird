@@ -169,14 +169,15 @@ impl Game {
 impl Game {
     /// A new game between two decks of card numbers, shuffled by `seed`; `first` plays first.
     #[new]
-    #[pyo3(signature = (deck_a, deck_b, seed, first = 0))]
-    fn new(deck_a: Vec<usize>, deck_b: Vec<usize>, seed: u64, first: usize) -> PyResult<Self> {
-        let defs = bolt_cards::fdn();
-        let mask = bolt_cards::supported_mask();
+    #[pyo3(signature = (deck_a, deck_b, seed, first = 0, set = "FDN"))]
+    fn new(deck_a: Vec<usize>, deck_b: Vec<usize>, seed: u64, first: usize, set: &str) -> PyResult<Self> {
+        let cs = card_set(set)?;
+        let defs = cs.defs.clone();
+        let mask = &cs.supported;
         for &c in deck_a.iter().chain(&deck_b) {
             if c >= mask.len() || !mask[c] {
                 return Err(PyValueError::new_err(format!(
-                    "card {c} is not a supported FDN card"
+                    "card {c} is not a supported {set} card"
                 )));
             }
         }
@@ -642,7 +643,7 @@ fn play_baseline(
     seed: u64,
     first: usize,
 ) -> PyResult<(&'static str, u32)> {
-    let mut g = Game::new(deck_a, deck_b, seed, first)?;
+    let mut g = Game::new(deck_a, deck_b, seed, first, "FDN")?;
     for _ in 0..100_000 {
         if g.g.is_over() {
             return Ok((g.result().expect("over"), g.g.turn));
@@ -712,10 +713,51 @@ fn play_games(
     Ok(out.into_iter().map(|r| (r.result, r.turns)).collect())
 }
 
-/// Every card name, by card number: FDN in model order, then tokens.
+fn card_set(set: &str) -> PyResult<&'static bolt_cards::CardSet> {
+    bolt_cards::set(&set.to_uppercase()).ok_or_else(|| PyValueError::new_err(format!("unknown set {set:?}")))
+}
+
+/// Every card name, by card number: the set's cards in model order, then tokens.
 #[pyfunction]
-fn card_names() -> Vec<String> {
-    bolt_cards::fdn().iter().map(|d| d.name.clone()).collect()
+#[pyo3(signature = (set = "FDN"))]
+fn card_names(set: &str) -> PyResult<Vec<String>> {
+    Ok(card_set(set)?.defs.iter().map(|d| d.name.clone()).collect())
+}
+
+/// One token: `(card_id, name, power, toughness, colors as "WUBRG" letters, types)`.
+type TokenInfo = (usize, String, i32, i32, String, Vec<String>);
+
+/// The set's tokens.
+#[pyfunction]
+#[pyo3(signature = (set = "FDN"))]
+fn token_info(set: &str) -> PyResult<Vec<TokenInfo>> {
+    let cs = card_set(set)?;
+    Ok(cs
+        .defs
+        .iter()
+        .enumerate()
+        .skip(cs.oracle.len())
+        .map(|(i, d)| {
+            let colors: String = "WUBRG"
+                .chars()
+                .zip(d.colors.iter())
+                .filter(|(_, &on)| on)
+                .map(|(c, _)| c)
+                .collect();
+            let t = &d.types;
+            let types: Vec<String> = [
+                (t.artifact, "Artifact"),
+                (t.enchantment, "Enchantment"),
+                (t.creature, "Creature"),
+                (t.land, "Land"),
+            ]
+            .into_iter()
+            .filter(|(on, _)| *on)
+            .map(|(_, n)| n.to_string())
+            .collect();
+            (i, d.name.clone(), d.power, d.toughness, colors, types)
+        })
+        .collect())
 }
 
 /// The card number of an FDN card, by exact name.
@@ -734,6 +776,7 @@ fn supported() -> Vec<&'static str> {
 fn bolt_engine(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<Game>()?;
     m.add_function(wrap_pyfunction!(card_names, m)?)?;
+    m.add_function(wrap_pyfunction!(token_info, m)?)?;
     m.add_function(wrap_pyfunction!(play_baseline, m)?)?;
     m.add_function(wrap_pyfunction!(play_games, m)?)?;
     m.add_function(wrap_pyfunction!(index_of, m)?)?;

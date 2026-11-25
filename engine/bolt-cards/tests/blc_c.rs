@@ -364,3 +364,50 @@ fn arasta_makes_a_spider_when_an_opponent_casts_an_instant_or_sorcery() {
     play(&mut g, elder, false, &[], &[]);
     assert_eq!(tokens(&g, 1, "Spider").len(), 1, "a creature spell doesn't count");
 }
+
+/// A Commander game where player 0 has exactly these lands.
+fn with_lands(names: &[&str]) -> Game {
+    let plains = vec![bid("Plains"); 99];
+    let mut g = Game::new_commander(
+        set("BLC").unwrap().defs.clone(),
+        [&plains, &plains],
+        [bid("Bello, Bard of the Brambles"), bid("Ms. Bumbleflower")],
+        7,
+        0,
+    );
+    g.auto_pass = false;
+    for n in names {
+        put(&mut g, 0, n);
+    }
+    g.start_turn(3, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    g
+}
+
+#[test]
+fn a_pain_land_deals_one_damage_only_when_its_colored_mana_is_needed() {
+    // {1}{U} with Adarkar Wastes and a Plains: the Wastes has to make {U}.
+    let mut g = with_lands(&["Adarkar Wastes", "Plains"]);
+    let life = g.players[0].life;
+    let escort = hand(&mut g, 0, "Plumecreed Escort");
+    play(&mut g, escort, false, &[], &[Action::Target(obj(escort))]); // its enter trigger
+    assert_eq!(g.obj(escort).zone, Zone::Battlefield);
+    assert_eq!(
+        g.players[0].life,
+        life - 1,
+        "colored mana from a pain land: 1 damage"
+    );
+
+    // {2} with the same lands: the Wastes can make {C}, so no damage.
+    let mut g = with_lands(&["Adarkar Wastes", "Plains"]);
+    let life = g.players[0].life;
+    let thopter = hand(&mut g, 0, "Ornithopter of Paradise");
+    play(&mut g, thopter, false, &[], &[]);
+    assert_eq!(g.obj(thopter).zone, Zone::Battlefield);
+    assert_eq!(
+        g.players[0].life, life,
+        "generic mana: tapped for {{C}}, no damage"
+    );
+}

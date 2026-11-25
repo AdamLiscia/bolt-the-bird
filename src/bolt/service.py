@@ -22,9 +22,9 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from bolt.practice import PracticeDraft
-from bolt.service_view import actions, state
+from bolt.service_view import SET, actions, state
 
-SETS = ["FDN"]
+SETS = [SET]  # one set per process: BOLT_SET (default FDN); the Tarkir service runs on 8767 with TDM
 MAX_TURNS, MAX_MOVES = 200, 20_000
 IDLE_SECONDS = 6 * 3600
 BASIC_NAMES = {"W": "Plains", "U": "Island", "B": "Swamp", "R": "Mountain", "G": "Forest"}
@@ -50,7 +50,71 @@ class Kit:
     tokens: list = field(default_factory=list)  # assets/FDN_token_images.json: the engine's tokens
 
 
+def engine_game(a: list[int], b: list[int], seed: int, first: int = 0):
+    """A game of this process's set (FDN keeps the engine's original call)."""
+    if SET == "FDN":
+        return be.Game(a, b, seed=seed, first=first)
+    return be.Game(a, b, seed=seed, first=first, set=SET)
+
+
+def load_set_kit(code: str) -> Kit:
+    """A set without a trained player or deck judge (Tarkir): one drafter, trained on 17lands human picks,
+    plays both drafting roles; decks are built by a simple rule (`simple_build`)."""
+    import json
+
+    from bolt.cards import CardInfo
+    from bolt.data import ASSETS, ROOT
+    from bolt.models import DraftTransformer
+
+    info = CardInfo(code)
+    drafter = DraftTransformer(info.n)
+    name = f"{code}_transformer.pt"
+    drafter.load_state_dict(torch.load(ROOT / "checkpoints" / name, map_location="cpu"))
+    drafter.eval()
+    images = json.loads((ASSETS / f"{code}_card_images.json").read_text())
+    tokens = [{"card_id": i, "name": n, "power": pw, "toughness": t, "colors": c, "types": ty, "image": None}
+              for i, n, pw, t, c, ty in be.token_info(code)]  # fmt: skip
+    return Kit(info=info, bolt=drafter, human=drafter, judge=None, packs=np.load(ASSETS / f"{code}_sample_packs.npy"),
+               net=None, models={"drafter": name, "human_drafter": name, "player": None}, images=images,
+               tokens=tokens)  # fmt: skip
+
+
+def simple_build(info, pool: list[int]) -> dict:
+    """A 40-card deck from a pool without a deck judge: the two colors with the most playable cards,
+    up to 23 spells (rares first, then by mana value), on-color nonbasic lands, basics split by pips."""
+    from itertools import combinations
+
+    cards = [info.info[c] for c in pool]
+    nonbasic = [i for i, c in enumerate(cards) if c["rarity"] != "basic"]
+
+    def fits(c, pair):
+        return set(c["color"]) <= set(pair)
+
+    def spells_of(pair):
+        return [i for i in nonbasic if fits(cards[i], pair) and "Land" not in " ".join(cards[i]["types"])]
+
+    pairs = ["".join(p) for p in combinations("WUBRG", 2)]
+    best = max(pairs, key=lambda pr: (len(spells_of(pr)), sum(len(cards[i]["color"]) for i in spells_of(pr))))
+    order = {"mythic": 0, "rare": 1, "uncommon": 2, "common": 3}
+    spells = sorted(spells_of(best), key=lambda i: (order.get(cards[i]["rarity"], 4), len(cards[i]["color"]) == 0))
+    spells = spells[:23]
+    lands = [i for i in nonbasic if "Land" in " ".join(cards[i]["types"]) and fits(cards[i], best)][:3]
+    n_basics = 40 - len(spells) - len(lands)
+    pips = {col: sum(cards[i]["color"].count(col) for i in spells) for col in best}
+    total = sum(pips.values()) or 1
+    split = {col: round(n_basics * pips[col] / total) for col in best}
+    split[best[0]] += n_basics - sum(split.values())
+    main: dict[str, int] = {}
+    for i in spells + lands:
+        main[cards[i]["name"]] = main.get(cards[i]["name"], 0) + 1
+    return {"main": [{"name": n, "qty": q} for n, q in main.items()],
+            "lands": {BASIC_NAMES[col]: n for col, n in split.items() if n > 0},
+            "colors": best, "cards": 40, "judged_win_rate": None}  # fmt: skip
+
+
 def load_kit() -> Kit:
+    if SET != "FDN":
+        return load_set_kit(SET)
     from bolt.cards import CardInfo
     from bolt.data import ASSETS, ROOT
     from bolt.judge import DeckJudge
@@ -201,7 +265,7 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
     lock = threading.Lock()  # models and games are used one request at a time
     games: dict[str, dict] = {}
     names = kit.info.names
-    names_all = be.card_names()  # the engine's objects, tokens included
+    names_all = be.card_names() if SET == "FDN" else be.card_names(SET)  # the engine's objects, tokens included
 
     @app.exception_handler(ApiError)
     async def api_error(_request: Request, e: ApiError):
@@ -254,6 +318,8 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
         return out
 
     def build_many(pools: list[list[int]]) -> list[dict]:
+        if kit.judge is None:
+            return [simple_build(kit.info, pool) for pool in pools]
         from bolt.deckbuild import build_decks
 
         counts = np.zeros((len(pools), kit.info.n))
@@ -279,7 +345,7 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
 
     @router.get("/health")
     def health():
-        probe = be.Game([0] * 40, [0] * 40, seed=0).observation(0)  # what the installed engine reports
+        probe = engine_game([0] * 40, [0] * 40, seed=0).observation(0)  # what the installed engine reports
         features = ["frames", "tokens", "card_id", "human_seats", "wait", "concede"]
         if "decision" in probe:
             features.append("decision_details")
@@ -545,6 +611,8 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
         humans = body.human_seats if body.human_seats is not None else [body.human_seat]
         if not humans or not set(humans) <= {0, 1} or len(set(humans)) != len(humans):
             raise ApiError(422, "human_seats must be [0], [1] or [0, 1] (or human_seat 0 or 1)")
+        if len(humans) == 1 and kit.net is None:
+            raise ApiError(422, f"{SET} bot play isn't trained yet: use human_seats [0, 1]")
         if len(humans) == 1 and body.pilot not in ("network", "smart", "smart_strong", "rules"):
             raise ApiError(422, "pilot must be network, smart, smart_strong or rules")
         a, b = deck_ids(body.deck_a), deck_ids(body.deck_b)
@@ -555,7 +623,7 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
             if len(games) >= max_games:
                 raise ApiError(429, "too many games", limit=max_games)
             gid = "g_" + secrets.token_hex(6)
-            game = be.Game(a, b, seed=seed, first=first)
+            game = engine_game(a, b, seed=seed, first=first)
             game.auto_pass = False  # forced passes go through `advance`, so frames can catch every moment
             game.smart_pay = True  # keep the colors the hand still needs (both seats)
             for s in body.manual_mana_seats:

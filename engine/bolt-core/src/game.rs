@@ -3709,6 +3709,32 @@ impl Game {
             mana::pay(cost, &all).expect("payable")
         };
         paid.sort_unstable_by(|a, b| b.cmp(a));
+        // Pain lands: 1 damage for each one whose colored mana the payment needed, i.e.
+        // the same sources couldn't pay with that land making only {C}.
+        let mut pained = Vec::new();
+        for &i in &paid {
+            if i >= pool.len() && self.def_of(sources[i - pool.len()].0).pain_colored {
+                let alt: Vec<ManaSource> = paid
+                    .iter()
+                    .map(|&j| {
+                        if j == i {
+                            ManaSource {
+                                colorless: true,
+                                ..ManaSource::default()
+                            }
+                        } else {
+                            all[j]
+                        }
+                    })
+                    .collect();
+                if mana::pay(cost, &alt).is_none() {
+                    pained.push(sources[i - pool.len()].0);
+                }
+            }
+        }
+        for land in pained {
+            self.deal_damage(land, Target::Player(p), 1);
+        }
         for i in paid {
             if i < pool.len() {
                 self.players[p].pool.remove(i);
@@ -3817,6 +3843,9 @@ impl Game {
                 ManaSource::of(&[crate::Color::ALL[c as usize]])
             };
             self.players[p].pool.push(one);
+        }
+        if self.def_of(id).pain_colored && c != 5 {
+            self.deal_damage(id, Target::Player(p), 1);
         }
         self.become_tapped(id);
         if self.def_of(id).mana_taps_creature {

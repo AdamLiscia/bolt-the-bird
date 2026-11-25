@@ -10,6 +10,15 @@ fn cycling(d: &mut CardDef, cost: &str) {
     d.activated[n].from_hand_discard = true;
 }
 
+/// A pain land: {C}, or one of two colors for 1 damage.
+fn pain_land(d: &mut CardDef, a: Color, b: Color) {
+    d.mana = Some(ManaSource {
+        colorless: true,
+        ..ManaSource::of(&[a, b])
+    });
+    d.pain_colored = true;
+}
+
 pub fn script(name: &str) -> Option<Script> {
     let s = |lines, build| Some(Script { lines, build });
     match name {
@@ -136,12 +145,27 @@ pub fn script(name: &str) -> Option<Script> {
             &["Whenever an opponent casts an instant or sorcery spell, create a 1/2 green Spider creature token with reach."],
             |d, t| on(d, When::OpponentCastsInstantOrSorcery, vec![], vec![Effect::CreateToken { who: Who::You, def: t.spider, n: 1 }]),
         ),
+        // Pain lands.
+        "Adarkar Wastes" => s(&["{T}: Add {C}.", "{T}: Add {W} or {U}. This land deals 1 damage to you."], |d, _| pain_land(d, Color::White, Color::Blue)),
+        "Battlefield Forge" => s(&["{T}: Add {C}.", "{T}: Add {R} or {W}. This land deals 1 damage to you."], |d, _| pain_land(d, Color::Red, Color::White)),
+        "Brushland" => s(&["{T}: Add {C}.", "{T}: Add {G} or {W}. This land deals 1 damage to you."], |d, _| pain_land(d, Color::Green, Color::White)),
+        "Karplusan Forest" => s(&["{T}: Add {C}.", "{T}: Add {R} or {G}. This land deals 1 damage to you."], |d, _| pain_land(d, Color::Red, Color::Green)),
+        "Llanowar Wastes" => s(&["{T}: Add {C}.", "{T}: Add {B} or {G}. This land deals 1 damage to you."], |d, _| pain_land(d, Color::Black, Color::Green)),
+        "Shivan Reef" => s(&["{T}: Add {C}.", "{T}: Add {U} or {R}. This land deals 1 damage to you."], |d, _| pain_land(d, Color::Blue, Color::Red)),
+        "Yavimaya Coast" => s(&["{T}: Add {C}.", "{T}: Add {G} or {U}. This land deals 1 damage to you."], |d, _| pain_land(d, Color::Green, Color::Blue)),
         _ => None,
     }
 }
 
 /// Lane C's scripted BLC cards (checked against their text in `lib.rs`).
 pub const BLC_C_SCRIPTED: &[&str] = &[
+    "Adarkar Wastes",
+    "Battlefield Forge",
+    "Brushland",
+    "Karplusan Forest",
+    "Llanowar Wastes",
+    "Shivan Reef",
+    "Yavimaya Coast",
     "End-Raze Forerunners",
     "Elspeth, Sun's Champion",
     "Chatterstorm",

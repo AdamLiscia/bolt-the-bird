@@ -429,6 +429,8 @@ pub struct CardDef {
     pub spells_have_delve: bool,
     /// "You may have this creature enter as a copy of any creature on the battlefield."
     pub enter_as_copy: bool,
+    /// A pain land: "{T}: Add [A] or [B]. This land deals 1 damage to you." ({C} is free).
+    pub pain_colored: bool,
 }
 
 /// An Omen spell half: its name, cost, whether it's an instant, and what it does.
@@ -566,6 +568,7 @@ impl CardDef {
             ward_discard: false,
             spells_have_delve: false,
             enter_as_copy: false,
+            pain_colored: false,
         }
     }
 
@@ -682,6 +685,7 @@ impl CardDef {
             ward_discard: false,
             spells_have_delve: false,
             enter_as_copy: false,
+            pain_colored: false,
         }
     }
 
@@ -798,6 +802,7 @@ impl CardDef {
             ward_discard: false,
             spells_have_delve: false,
             enter_as_copy: false,
+            pain_colored: false,
         }
     }
 }

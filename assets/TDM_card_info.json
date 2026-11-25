@@ -1,0 +1,2294 @@
+[
+ {
+  "name": "Abzan Devotee",
+  "color": "B",
+  "rarity": "common",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Abzan Monument",
+  "color": "",
+  "rarity": "uncommon",
+  "types": [
+   "Artifact"
+  ]
+ },
+ {
+  "name": "Adorned Crocodile",
+  "color": "B",
+  "rarity": "common",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Aegis Sculptor",
+  "color": "U",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Agent of Kotis",
+  "color": "U",
+  "rarity": "common",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Aggressive Negotiations",
+  "color": "B",
+  "rarity": "common",
+  "types": [
+   "Sorcery"
+  ]
+ },
+ {
+  "name": "Ainok Wayfarer",
+  "color": "G",
+  "rarity": "common",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Alchemist's Assistant",
+  "color": "B",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Alesha's Legacy",
+  "color": "B",
+  "rarity": "common",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "All-Out Assault",
+  "color": "WBR",
+  "rarity": "mythic",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Ambling Stormshell",
+  "color": "U",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Anafenza, Unyielding Lineage",
+  "color": "W",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Arashin Sunshield",
+  "color": "W",
+  "rarity": "common",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Arid Mesa",
+  "color": "",
+  "rarity": "rare",
+  "types": [
+   "Land"
+  ]
+ },
+ {
+  "name": "Armament Dragon",
+  "color": "WBG",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Attuned Hunter",
+  "color": "G",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Auroral Procession",
+  "color": "UG",
+  "rarity": "uncommon",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Avenger of the Fallen",
+  "color": "B",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Awaken the Honored Dead",
+  "color": "UBG",
+  "rarity": "rare",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Barrensteppe Siege",
+  "color": "WB",
+  "rarity": "rare",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Bearer of Glory",
+  "color": "W",
+  "rarity": "common",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Betor, Kin to All",
+  "color": "WBG",
+  "rarity": "mythic",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Bewildering Blizzard",
+  "color": "U",
+  "rarity": "uncommon",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Bloodfell Caves",
+  "color": "",
+  "rarity": "common",
+  "types": [
+   "Land"
+  ]
+ },
+ {
+  "name": "Bloomvine Regent",
+  "color": "G",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Blossoming Sands",
+  "color": "",
+  "rarity": "common",
+  "types": [
+   "Land"
+  ]
+ },
+ {
+  "name": "Bone-Cairn Butcher",
+  "color": "WBR",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Boulderborn Dragon",
+  "color": "",
+  "rarity": "common",
+  "types": [
+   "Artifact",
+   "Creature"
+  ]
+ },
+ {
+  "name": "Breaching Dragonstorm",
+  "color": "R",
+  "rarity": "uncommon",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Call the Spirit Dragons",
+  "color": "WUBRG",
+  "rarity": "mythic",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Caustic Exhale",
+  "color": "B",
+  "rarity": "common",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Champion of Dusan",
+  "color": "G",
+  "rarity": "common",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Channeled Dragonfire",
+  "color": "R",
+  "rarity": "uncommon",
+  "types": [
+   "Sorcery"
+  ]
+ },
+ {
+  "name": "Clarion Conqueror",
+  "color": "W",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Constrictor Sage",
+  "color": "U",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Coordinated Maneuver",
+  "color": "W",
+  "rarity": "common",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Cori Mountain Monastery",
+  "color": "",
+  "rarity": "rare",
+  "types": [
+   "Land"
+  ]
+ },
+ {
+  "name": "Cori Mountain Stalwart",
+  "color": "WR",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Cori-Steel Cutter",
+  "color": "R",
+  "rarity": "rare",
+  "types": [
+   "Artifact"
+  ]
+ },
+ {
+  "name": "Corroding Dragonstorm",
+  "color": "B",
+  "rarity": "uncommon",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Craterhoof Behemoth",
+  "color": "G",
+  "rarity": "mythic",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Cruel Truths",
+  "color": "B",
+  "rarity": "common",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Dalkovan Encampment",
+  "color": "",
+  "rarity": "rare",
+  "types": [
+   "Land"
+  ]
+ },
+ {
+  "name": "Dalkovan Packbeasts",
+  "color": "W",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Death Begets Life",
+  "color": "UBG",
+  "rarity": "mythic",
+  "types": [
+   "Sorcery"
+  ]
+ },
+ {
+  "name": "Defibrillating Current",
+  "color": "WBR",
+  "rarity": "uncommon",
+  "types": [
+   "Sorcery"
+  ]
+ },
+ {
+  "name": "Delta Bloodflies",
+  "color": "B",
+  "rarity": "common",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Descendant of Storms",
+  "color": "W",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Desperate Measures",
+  "color": "B",
+  "rarity": "uncommon",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Devoted Duelist",
+  "color": "R",
+  "rarity": "common",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Dirgur Island Dragon",
+  "color": "U",
+  "rarity": "common",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Dismal Backwater",
+  "color": "",
+  "rarity": "common",
+  "types": [
+   "Land"
+  ]
+ },
+ {
+  "name": "Dispelling Exhale",
+  "color": "U",
+  "rarity": "common",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Disruptive Stormbrood",
+  "color": "G",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Dracogenesis",
+  "color": "R",
+  "rarity": "mythic",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Dragon Sniper",
+  "color": "G",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Dragon's Prey",
+  "color": "B",
+  "rarity": "common",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Dragonback Assault",
+  "color": "URG",
+  "rarity": "mythic",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Dragonback Lancer",
+  "color": "W",
+  "rarity": "common",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Dragonbroods' Relic",
+  "color": "G",
+  "rarity": "uncommon",
+  "types": [
+   "Artifact"
+  ]
+ },
+ {
+  "name": "Dragonclaw Strike",
+  "color": "URG",
+  "rarity": "uncommon",
+  "types": [
+   "Sorcery"
+  ]
+ },
+ {
+  "name": "Dragonfire Blade",
+  "color": "",
+  "rarity": "rare",
+  "types": [
+   "Artifact"
+  ]
+ },
+ {
+  "name": "Dragonologist",
+  "color": "U",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Dragonstorm Forecaster",
+  "color": "U",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Dragonstorm Globe",
+  "color": "",
+  "rarity": "common",
+  "types": [
+   "Artifact"
+  ]
+ },
+ {
+  "name": "Dusyut Earthcarver",
+  "color": "G",
+  "rarity": "common",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Duty Beyond Death",
+  "color": "W",
+  "rarity": "uncommon",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Eerie Ultimatum",
+  "color": "WBG",
+  "rarity": "rare",
+  "types": [
+   "Sorcery"
+  ]
+ },
+ {
+  "name": "Effortless Master",
+  "color": "UR",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Elspeth, Storm Slayer",
+  "color": "W",
+  "rarity": "mythic",
+  "types": [
+   "Planeswalker"
+  ]
+ },
+ {
+  "name": "Embermouth Sentinel",
+  "color": "",
+  "rarity": "common",
+  "types": [
+   "Artifact",
+   "Creature"
+  ]
+ },
+ {
+  "name": "Emergent Ultimatum",
+  "color": "UBG",
+  "rarity": "rare",
+  "types": [
+   "Sorcery"
+  ]
+ },
+ {
+  "name": "Encroaching Dragonstorm",
+  "color": "G",
+  "rarity": "uncommon",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Equilibrium Adept",
+  "color": "R",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Eshki Dragonclaw",
+  "color": "URG",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Essence Anchor",
+  "color": "U",
+  "rarity": "uncommon",
+  "types": [
+   "Artifact"
+  ]
+ },
+ {
+  "name": "Evolving Wilds",
+  "color": "",
+  "rarity": "common",
+  "types": [
+   "Land"
+  ]
+ },
+ {
+  "name": "Fangkeeper's Familiar",
+  "color": "UBG",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Felothar, Dawn of the Abzan",
+  "color": "WBG",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Feral Deathgorger",
+  "color": "B",
+  "rarity": "common",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Fire-Rim Form",
+  "color": "R",
+  "rarity": "common",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Flamehold Grappler",
+  "color": "WUR",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Fleeting Effigy",
+  "color": "R",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Focus the Mind",
+  "color": "U",
+  "rarity": "common",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Forest",
+  "color": "",
+  "rarity": "basic",
+  "types": [
+   "Basic Land"
+  ]
+ },
+ {
+  "name": "Formation Breaker",
+  "color": "G",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Fortress Kin-Guard",
+  "color": "W",
+  "rarity": "common",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Fresh Start",
+  "color": "U",
+  "rarity": "uncommon",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Frontier Bivouac",
+  "color": "",
+  "rarity": "uncommon",
+  "types": [
+   "Land"
+  ]
+ },
+ {
+  "name": "Frontline Rush",
+  "color": "WR",
+  "rarity": "uncommon",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Frostcliff Siege",
+  "color": "UR",
+  "rarity": "rare",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Furious Forebear",
+  "color": "W",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Genesis Ultimatum",
+  "color": "URG",
+  "rarity": "rare",
+  "types": [
+   "Sorcery"
+  ]
+ },
+ {
+  "name": "Glacial Dragonhunt",
+  "color": "UR",
+  "rarity": "uncommon",
+  "types": [
+   "Sorcery"
+  ]
+ },
+ {
+  "name": "Glacierwood Siege",
+  "color": "UG",
+  "rarity": "rare",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Great Arashin City",
+  "color": "",
+  "rarity": "rare",
+  "types": [
+   "Land"
+  ]
+ },
+ {
+  "name": "Gurmag Nightwatch",
+  "color": "UBG",
+  "rarity": "common",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Gurmag Rakshasa",
+  "color": "B",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Hardened Tactician",
+  "color": "WB",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Herd Heirloom",
+  "color": "G",
+  "rarity": "rare",
+  "types": [
+   "Artifact"
+  ]
+ },
+ {
+  "name": "Heritage Reclamation",
+  "color": "G",
+  "rarity": "common",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Highspire Bell-Ringer",
+  "color": "U",
+  "rarity": "common",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Hollowmurk Siege",
+  "color": "BG",
+  "rarity": "rare",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Host of the Hereafter",
+  "color": "BG",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Humbling Elder",
+  "color": "U",
+  "rarity": "common",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Hundred-Battle Veteran",
+  "color": "B",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Iceridge Serpent",
+  "color": "U",
+  "rarity": "common",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Inevitable Defeat",
+  "color": "WBR",
+  "rarity": "rare",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Inspired Ultimatum",
+  "color": "WUR",
+  "rarity": "rare",
+  "types": [
+   "Sorcery"
+  ]
+ },
+ {
+  "name": "Inspirited Vanguard",
+  "color": "G",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Iridescent Tiger",
+  "color": "R",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Island",
+  "color": "",
+  "rarity": "basic",
+  "types": [
+   "Basic Land"
+  ]
+ },
+ {
+  "name": "Jade-Cast Sentinel",
+  "color": "",
+  "rarity": "common",
+  "types": [
+   "Artifact",
+   "Creature"
+  ]
+ },
+ {
+  "name": "Jeskai Brushmaster",
+  "color": "WUR",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Jeskai Devotee",
+  "color": "R",
+  "rarity": "common",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Jeskai Monument",
+  "color": "",
+  "rarity": "uncommon",
+  "types": [
+   "Artifact"
+  ]
+ },
+ {
+  "name": "Jeskai Revelation",
+  "color": "WUR",
+  "rarity": "mythic",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Jeskai Shrinekeeper",
+  "color": "WUR",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Jungle Hollow",
+  "color": "",
+  "rarity": "common",
+  "types": [
+   "Land"
+  ]
+ },
+ {
+  "name": "Karakyk Guardian",
+  "color": "URG",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Kheru Goldkeeper",
+  "color": "UBG",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Kin-Tree Nurturer",
+  "color": "B",
+  "rarity": "common",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Kin-Tree Severance",
+  "color": "WBG",
+  "rarity": "uncommon",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Kishla Skimmer",
+  "color": "UG",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Kishla Trawlers",
+  "color": "U",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Kishla Village",
+  "color": "",
+  "rarity": "rare",
+  "types": [
+   "Land"
+  ]
+ },
+ {
+  "name": "Knockout Maneuver",
+  "color": "G",
+  "rarity": "uncommon",
+  "types": [
+   "Sorcery"
+  ]
+ },
+ {
+  "name": "Kotis, the Fangkeeper",
+  "color": "UBG",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Krotiq Nestguard",
+  "color": "G",
+  "rarity": "common",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Krumar Initiate",
+  "color": "B",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Lasyd Prowler",
+  "color": "G",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Lie in Wait",
+  "color": "UBG",
+  "rarity": "uncommon",
+  "types": [
+   "Sorcery"
+  ]
+ },
+ {
+  "name": "Lightfoot Technique",
+  "color": "W",
+  "rarity": "common",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Lotuslight Dancers",
+  "color": "UBG",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Loxodon Battle Priest",
+  "color": "W",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Maelstrom of the Spirit Dragon",
+  "color": "",
+  "rarity": "rare",
+  "types": [
+   "Land"
+  ]
+ },
+ {
+  "name": "Magmatic Hellkite",
+  "color": "R",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Mammoth Bellow",
+  "color": "URG",
+  "rarity": "uncommon",
+  "types": [
+   "Sorcery"
+  ]
+ },
+ {
+  "name": "Marang River Regent",
+  "color": "U",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Mardu Devotee",
+  "color": "W",
+  "rarity": "common",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Mardu Monument",
+  "color": "",
+  "rarity": "uncommon",
+  "types": [
+   "Artifact"
+  ]
+ },
+ {
+  "name": "Mardu Siegebreaker",
+  "color": "WBR",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Marsh Flats",
+  "color": "",
+  "rarity": "rare",
+  "types": [
+   "Land"
+  ]
+ },
+ {
+  "name": "Marshal of the Lost",
+  "color": "WB",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Meticulous Artisan",
+  "color": "R",
+  "rarity": "common",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Mistrise Village",
+  "color": "",
+  "rarity": "rare",
+  "types": [
+   "Land"
+  ]
+ },
+ {
+  "name": "Misty Rainforest",
+  "color": "",
+  "rarity": "rare",
+  "types": [
+   "Land"
+  ]
+ },
+ {
+  "name": "Molten Exhale",
+  "color": "R",
+  "rarity": "common",
+  "types": [
+   "Sorcery"
+  ]
+ },
+ {
+  "name": "Monastery Messenger",
+  "color": "WUR",
+  "rarity": "common",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Mountain",
+  "color": "",
+  "rarity": "basic",
+  "types": [
+   "Basic Land"
+  ]
+ },
+ {
+  "name": "Mox Jasper",
+  "color": "",
+  "rarity": "mythic",
+  "types": [
+   "Artifact"
+  ]
+ },
+ {
+  "name": "Mystic Monastery",
+  "color": "",
+  "rarity": "uncommon",
+  "types": [
+   "Land"
+  ]
+ },
+ {
+  "name": "Naga Fleshcrafter",
+  "color": "U",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Narset's Rebuke",
+  "color": "R",
+  "rarity": "common",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Narset, Jeskai Waymaster",
+  "color": "WUR",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Nature's Rhythm",
+  "color": "G",
+  "rarity": "rare",
+  "types": [
+   "Sorcery"
+  ]
+ },
+ {
+  "name": "Neriv, Heart of the Storm",
+  "color": "WBR",
+  "rarity": "mythic",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "New Way Forward",
+  "color": "WUR",
+  "rarity": "rare",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Nightblade Brigade",
+  "color": "B",
+  "rarity": "common",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Nomad Outpost",
+  "color": "",
+  "rarity": "uncommon",
+  "types": [
+   "Land"
+  ]
+ },
+ {
+  "name": "Opulent Palace",
+  "color": "",
+  "rarity": "uncommon",
+  "types": [
+   "Land"
+  ]
+ },
+ {
+  "name": "Osseous Exhale",
+  "color": "W",
+  "rarity": "common",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Overwhelming Surge",
+  "color": "R",
+  "rarity": "uncommon",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Perennation",
+  "color": "WBG",
+  "rarity": "mythic",
+  "types": [
+   "Sorcery"
+  ]
+ },
+ {
+  "name": "Piercing Exhale",
+  "color": "G",
+  "rarity": "common",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Plains",
+  "color": "",
+  "rarity": "basic",
+  "types": [
+   "Basic Land"
+  ]
+ },
+ {
+  "name": "Poised Practitioner",
+  "color": "W",
+  "rarity": "common",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Purging Stormbrood",
+  "color": "B",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Qarsi Revenant",
+  "color": "B",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Rainveil Rejuvenator",
+  "color": "G",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Rakshasa's Bargain",
+  "color": "UBG",
+  "rarity": "uncommon",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Rally the Monastery",
+  "color": "W",
+  "rarity": "uncommon",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Rebellious Strike",
+  "color": "W",
+  "rarity": "common",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Rediscover the Way",
+  "color": "WUR",
+  "rarity": "rare",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Reigning Victor",
+  "color": "WBR",
+  "rarity": "common",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Reputable Merchant",
+  "color": "WBG",
+  "rarity": "common",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Rescue Leopard",
+  "color": "R",
+  "rarity": "common",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Reverberating Summons",
+  "color": "R",
+  "rarity": "uncommon",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Revival of the Ancestors",
+  "color": "WBG",
+  "rarity": "rare",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Riling Dawnbreaker",
+  "color": "W",
+  "rarity": "common",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Ringing Strike Mastery",
+  "color": "U",
+  "rarity": "common",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Rite of Renewal",
+  "color": "G",
+  "rarity": "uncommon",
+  "types": [
+   "Sorcery"
+  ]
+ },
+ {
+  "name": "Riverwalk Technique",
+  "color": "U",
+  "rarity": "common",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Riverwheel Sweep",
+  "color": "WUR",
+  "rarity": "uncommon",
+  "types": [
+   "Sorcery"
+  ]
+ },
+ {
+  "name": "Roamer's Routine",
+  "color": "G",
+  "rarity": "common",
+  "types": [
+   "Sorcery"
+  ]
+ },
+ {
+  "name": "Roar of Endless Song",
+  "color": "URG",
+  "rarity": "rare",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Roiling Dragonstorm",
+  "color": "U",
+  "rarity": "uncommon",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Rot-Curse Rakshasa",
+  "color": "B",
+  "rarity": "mythic",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Rugged Highlands",
+  "color": "",
+  "rarity": "common",
+  "types": [
+   "Land"
+  ]
+ },
+ {
+  "name": "Ruinous Ultimatum",
+  "color": "WBR",
+  "rarity": "rare",
+  "types": [
+   "Sorcery"
+  ]
+ },
+ {
+  "name": "Runescale Stormbrood",
+  "color": "R",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Sage of the Fang",
+  "color": "G",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Sage of the Skies",
+  "color": "W",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Sagu Pummeler",
+  "color": "G",
+  "rarity": "common",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Sagu Wildling",
+  "color": "G",
+  "rarity": "common",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Salt Road Packbeast",
+  "color": "W",
+  "rarity": "common",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Salt Road Skirmish",
+  "color": "B",
+  "rarity": "uncommon",
+  "types": [
+   "Sorcery"
+  ]
+ },
+ {
+  "name": "Sandskitter Outrider",
+  "color": "B",
+  "rarity": "common",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Sandsteppe Citadel",
+  "color": "",
+  "rarity": "uncommon",
+  "types": [
+   "Land"
+  ]
+ },
+ {
+  "name": "Sarkhan's Resolve",
+  "color": "G",
+  "rarity": "common",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Sarkhan, Dragon Ascendant",
+  "color": "R",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Scalding Tarn",
+  "color": "",
+  "rarity": "rare",
+  "types": [
+   "Land"
+  ]
+ },
+ {
+  "name": "Scavenger Regent",
+  "color": "B",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Scoured Barrens",
+  "color": "",
+  "rarity": "common",
+  "types": [
+   "Land"
+  ]
+ },
+ {
+  "name": "Seize Opportunity",
+  "color": "R",
+  "rarity": "common",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Severance Priest",
+  "color": "WBG",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Shiko, Paragon of the Way",
+  "color": "WUR",
+  "rarity": "mythic",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Shock Brigade",
+  "color": "R",
+  "rarity": "common",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Shocking Sharpshooter",
+  "color": "R",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Sibsig Appraiser",
+  "color": "U",
+  "rarity": "common",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Sidisi, Regent of the Mire",
+  "color": "B",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Sinkhole Surveyor",
+  "color": "B",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Skirmish Rhino",
+  "color": "WBG",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Smile at Death",
+  "color": "W",
+  "rarity": "mythic",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Snakeskin Veil",
+  "color": "G",
+  "rarity": "common",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Snowmelt Stag",
+  "color": "U",
+  "rarity": "common",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Songcrafter Mage",
+  "color": "URG",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Sonic Shrieker",
+  "color": "WBR",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Spectral Denial",
+  "color": "U",
+  "rarity": "uncommon",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Stadium Headliner",
+  "color": "R",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Stalwart Successor",
+  "color": "BG",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Starry-Eyed Skyrider",
+  "color": "W",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Static Snare",
+  "color": "W",
+  "rarity": "uncommon",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Stillness in Motion",
+  "color": "U",
+  "rarity": "rare",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Stormbeacon Blade",
+  "color": "W",
+  "rarity": "uncommon",
+  "types": [
+   "Artifact"
+  ]
+ },
+ {
+  "name": "Stormplain Detainment",
+  "color": "W",
+  "rarity": "common",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Stormscale Scion",
+  "color": "R",
+  "rarity": "mythic",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Stormshriek Feral",
+  "color": "R",
+  "rarity": "common",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Strategic Betrayal",
+  "color": "B",
+  "rarity": "uncommon",
+  "types": [
+   "Sorcery"
+  ]
+ },
+ {
+  "name": "Sultai Devotee",
+  "color": "G",
+  "rarity": "common",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Sultai Monument",
+  "color": "",
+  "rarity": "uncommon",
+  "types": [
+   "Artifact"
+  ]
+ },
+ {
+  "name": "Summit Intimidator",
+  "color": "R",
+  "rarity": "common",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Sunpearl Kirin",
+  "color": "W",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Sunset Strikemaster",
+  "color": "R",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Surrak, Elusive Hunter",
+  "color": "G",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Swamp",
+  "color": "",
+  "rarity": "basic",
+  "types": [
+   "Basic Land"
+  ]
+ },
+ {
+  "name": "Swiftwater Cliffs",
+  "color": "",
+  "rarity": "common",
+  "types": [
+   "Land"
+  ]
+ },
+ {
+  "name": "Synchronized Charge",
+  "color": "G",
+  "rarity": "uncommon",
+  "types": [
+   "Sorcery"
+  ]
+ },
+ {
+  "name": "Taigam, Master Opportunist",
+  "color": "U",
+  "rarity": "mythic",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Teeming Dragonstorm",
+  "color": "W",
+  "rarity": "uncommon",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Tempest Hawk",
+  "color": "W",
+  "rarity": "common",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Temur Battlecrier",
+  "color": "URG",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Temur Devotee",
+  "color": "U",
+  "rarity": "common",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Temur Monument",
+  "color": "",
+  "rarity": "uncommon",
+  "types": [
+   "Artifact"
+  ]
+ },
+ {
+  "name": "Temur Tawnyback",
+  "color": "URG",
+  "rarity": "common",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Tersa Lightshatter",
+  "color": "R",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Teval, Arbiter of Virtue",
+  "color": "UBG",
+  "rarity": "mythic",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "The Sibsig Ceremony",
+  "color": "B",
+  "rarity": "rare",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Thornwood Falls",
+  "color": "",
+  "rarity": "common",
+  "types": [
+   "Land"
+  ]
+ },
+ {
+  "name": "Thunder of Unity",
+  "color": "WBR",
+  "rarity": "rare",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Trade Route Envoy",
+  "color": "G",
+  "rarity": "common",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Tranquil Cove",
+  "color": "",
+  "rarity": "common",
+  "types": [
+   "Land"
+  ]
+ },
+ {
+  "name": "Traveling Botanist",
+  "color": "G",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Twin Bolt",
+  "color": "R",
+  "rarity": "common",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "Twinmaw Stormbrood",
+  "color": "W",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Ugin, Eye of the Storms",
+  "color": "",
+  "rarity": "mythic",
+  "types": [
+   "Planeswalker"
+  ]
+ },
+ {
+  "name": "Unburied Earthcarver",
+  "color": "B",
+  "rarity": "common",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Underfoot Underdogs",
+  "color": "R",
+  "rarity": "common",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Undergrowth Leopard",
+  "color": "G",
+  "rarity": "common",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Unending Whisper",
+  "color": "U",
+  "rarity": "common",
+  "types": [
+   "Sorcery"
+  ]
+ },
+ {
+  "name": "United Battlefront",
+  "color": "W",
+  "rarity": "rare",
+  "types": [
+   "Sorcery"
+  ]
+ },
+ {
+  "name": "Unrooted Ancestor",
+  "color": "B",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Unsparing Boltcaster",
+  "color": "R",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Ureni's Rebuff",
+  "color": "U",
+  "rarity": "uncommon",
+  "types": [
+   "Sorcery"
+  ]
+ },
+ {
+  "name": "Ureni, the Song Unending",
+  "color": "URG",
+  "rarity": "mythic",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Venerated Stormsinger",
+  "color": "B",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Verdant Catacombs",
+  "color": "",
+  "rarity": "rare",
+  "types": [
+   "Land"
+  ]
+ },
+ {
+  "name": "Veteran Ice Climber",
+  "color": "U",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Voice of Victory",
+  "color": "W",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Wail of War",
+  "color": "B",
+  "rarity": "uncommon",
+  "types": [
+   "Instant"
+  ]
+ },
+ {
+  "name": "War Effort",
+  "color": "R",
+  "rarity": "uncommon",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Warden of the Grove",
+  "color": "G",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Watcher of the Wayside",
+  "color": "",
+  "rarity": "common",
+  "types": [
+   "Artifact",
+   "Creature"
+  ]
+ },
+ {
+  "name": "Wayspeaker Bodyguard",
+  "color": "W",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Whirlwing Stormbrood",
+  "color": "U",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Wild Ride",
+  "color": "R",
+  "rarity": "common",
+  "types": [
+   "Sorcery"
+  ]
+ },
+ {
+  "name": "Wind-Scarred Crag",
+  "color": "",
+  "rarity": "common",
+  "types": [
+   "Land"
+  ]
+ },
+ {
+  "name": "Windcrag Siege",
+  "color": "WR",
+  "rarity": "rare",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Wingblade Disciple",
+  "color": "U",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Wingspan Stride",
+  "color": "U",
+  "rarity": "common",
+  "types": [
+   "Enchantment"
+  ]
+ },
+ {
+  "name": "Winternight Stories",
+  "color": "U",
+  "rarity": "rare",
+  "types": [
+   "Sorcery"
+  ]
+ },
+ {
+  "name": "Worthy Cost",
+  "color": "B",
+  "rarity": "common",
+  "types": [
+   "Sorcery"
+  ]
+ },
+ {
+  "name": "Yathan Roadwatcher",
+  "color": "WBG",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Yathan Tombguard",
+  "color": "B",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Zurgo's Vanguard",
+  "color": "R",
+  "rarity": "uncommon",
+  "types": [
+   "Creature"
+  ]
+ },
+ {
+  "name": "Zurgo, Thunder's Decree",
+  "color": "WBR",
+  "rarity": "rare",
+  "types": [
+   "Creature"
+  ]
+ }
+]

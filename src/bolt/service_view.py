@@ -4,9 +4,13 @@ The engine's observation already hides the opponent's hand and library; this tur
 stable object ids and readable move labels. No game logic here.
 """
 
+import os
+
 import bolt_engine as be
 
-_NAMES = be.card_names()
+# One card set per service process (BOLT_SET, default FDN; the Tarkir service runs with TDM).
+SET = os.environ.get("BOLT_SET", "FDN").upper()
+_NAMES = be.card_names() if SET == "FDN" else be.card_names(SET)
 COLORS = ("White", "Blue", "Black", "Red", "Green")  # the engine's Mode index for ChooseColor (WUBRG)
 SACRIFICE_FOR_MANA = {"Treasure"}  # tokens whose mana ability sacrifices them
 
@@ -61,7 +65,7 @@ def _oracle() -> dict:
     import json
     from pathlib import Path
 
-    path = Path(__file__).resolve().parents[2] / "assets" / "FDN_oracle.json"
+    path = Path(__file__).resolve().parents[2] / "assets" / f"{SET}_oracle.json"
     try:
         return {c["name"]: c.get("oracle_text") or "" for c in json.loads(path.read_text())}
     except (OSError, ValueError):
@@ -97,6 +101,14 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
     d = dec.get("kind")
     src = _source_name(dec)
     _, subject = _subject(dec)
+    card = name(dec["card"][1]) if dec.get("card") else ""
+    if kind == "Amount":
+        if d == "ChooseCastX":
+            return f"Cast {card} with X = {value}" if card else f"X = {value}"
+        if d == "ChooseDelve":
+            word = "card" if value == 1 else "cards"
+            return f"Delve: exile {value} {word} from your graveyard" + (f" ({card})" if card else "")
+        return None
     if kind == "Mode":
         if d == "ChooseColor" and 0 <= value < 5:
             return f"{src}: choose {COLORS[value]}"
@@ -106,7 +118,7 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
     if kind == "Pick":
         verb = {"SacrificeCreatures": "Sacrifice", "SacrificeAnother": "Sacrifice", "Search": "Take",
                 "LookPick": "Take", "KeepOfType": "Keep", "ScryOrder": "Put on top:", "GenesisPick": "Put onto the battlefield:",
-                "PickDiscard": "Make them discard"}.get(d)  # fmt: skip
+                "PickDiscard": "Make them discard", "EnterAsCopy": f"{card or 'It'} enters as a copy of"}.get(d)  # fmt: skip
         return f"{verb} {card_name}" if verb else None
     yes = kind == "Yes"
     labels = {
@@ -130,7 +142,7 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
     if not yes:
         return {"Discard": "Don't discard", "PayWardDiscard": "Don't discard (it's countered)", "LoseOrDiscard": f"Lose {dec.get('life', 0)} life instead",
                 "SacrificeAnother": "Don't sacrifice", "Search": "Find nothing", "LookPick": "Take nothing",
-                "GenesisPick": "Done choosing"}.get(d)  # fmt: skip
+                "GenesisPick": "Done choosing", "EnterAsCopy": "Don't copy anything"}.get(d)  # fmt: skip
     return None
 
 
@@ -145,7 +157,7 @@ def actions(obs: dict, me: int) -> list[dict]:
         if kind in ("Mode", "Amount", "TargetPlayer", "TapForMana"):
             nums = ()
         label = _label(kind, names, nums, me, values)
-        if dec and kind in ("Mode", "Pick", "Yes", "No"):
+        if dec and kind in ("Mode", "Pick", "Yes", "No", "Amount"):
             label = _decision_label(dec, kind, a, names[0] if names else "") or label
             if kind in ("Yes", "No") and not objects:
                 oid, subject = _subject(dec)  # the card the yes/no is about (surveil, tuck, ward)
