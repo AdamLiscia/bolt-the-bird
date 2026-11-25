@@ -1,7 +1,11 @@
 # The desktop simulation farm: jobs that survive a power cut
 
-Status: **design, 2026-11-25. Nothing is built or running.** The desktop's own Claude session builds the
-machine side once Adam has set it up and said go.
+Status: **design, 2026-11-25; Adam said go (setup under way on the desktop).** This repo gets `bolt.jobs`,
+`scripts/farm.py` and the guard change next (after the Xenagos and Glarb decks); the desktop's own Claude
+session builds the machine side (WSL, the Windows tasks, the game watcher).
+
+Adam's choices: **12 of 16 threads**; **jobs pause while he's gaming** (they keep running during music and
+YouTube).
 
 The desktop (i9-9900K, 16 threads, 32 GB, AMD GPU so CPU only, WSL2) lost power five times between
 September and November, for hours to days each time. Adam's requirement: **every job on it survives a power
@@ -100,10 +104,31 @@ Environment=AWS_PROFILE=bolt-desktop
 WantedBy=default.target
 ```
 
-WSL starts only when something asks for it, so a Windows Task Scheduler task "at log on" (or "at startup",
-with WSL set to run without a login) runs `wsl -d Ubuntu --exec /bin/true`. That boots WSL, and systemd
-starts the service. `systemctl --user enable --now bolt-farm` plus `loginctl enable-linger` make it run
-without a terminal open.
+WSL starts only when something asks for it, so a Windows Task Scheduler task **"At startup", "Run whether
+the user is logged on or not"** runs `wsl -d Ubuntu --exec /bin/true`. That boots WSL, and systemd starts
+the service, without anyone signing in after a power cut. (A logon task wouldn't resume anything until
+Adam signed in.) `systemctl --user enable --now bolt-farm` plus `loginctl enable-linger` make it run without
+a terminal open. The BIOS's "Restore on AC Power Loss" turns the PC back on when the power returns.
+
+## Pausing while Adam games
+
+A small watcher on the Windows side (a list of game processes, or a full-screen app) sends `SIGSTOP` to the
+farm's process group through `wsl.exe`, and `SIGCONT` about 2 minutes after the game ends. The farm side has
+to tolerate being frozen at any instant:
+
+- **Mid-upload:** after a long pause S3 may have dropped the connection, so the upload fails or is retried
+  (boto3 retries; `bolt.jobs` retries the whole upload on failure). Nothing is lost: `latest.json` is written
+  only after the HEAD check confirms the new checkpoint, so a failed or half-done upload is never pointed to.
+- **Mid-write locally:** a stop is not a power cut. The process resumes exactly where it was, and the
+  write-then-rename still holds.
+- **The checkpoint timer** uses wall-clock time (`time.time()`), checked between steps, so the first step
+  that finishes after a long pause checkpoints straight away.
+- **guard.sh's time limit:** today it counts wall-clock seconds, so a long pause would count against it.
+  It gets an **active-time mode** (`GUARD_ACTIVE_TIME=1`): each second is counted only when the command's
+  root process isn't stopped (`ps -o stat=` state `T`). The memory cap is unchanged. The farm runs every job
+  in this mode.
+- Simulation batches are unaffected: a paused batch finishes after `SIGCONT`, and a batch cut by a power
+  cut during a pause re-runs whole, as above.
 
 ## Things to decide with Adam before it's built
 
