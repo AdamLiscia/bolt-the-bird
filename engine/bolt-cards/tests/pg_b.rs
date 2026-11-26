@@ -2916,6 +2916,11 @@ fn crested_sunmare_makes_a_horse_after_life_gain_and_shields_other_horses() {
     let horses = tokens(&g, 0, "Horse");
     assert_eq!(horses.len(), 1, "one Horse at your end step");
     assert_eq!((g.power(horses[0]), g.toughness(horses[0])), (5, 5));
+    assert_eq!(
+        g.colors_of(horses[0]),
+        [true, false, false, false, false],
+        "white"
+    );
     assert!(g.keywords(horses[0]).has(Keywords::INDESTRUCTIBLE));
     assert!(!g.keywords(sunmare).has(Keywords::INDESTRUCTIBLE), "other Horses");
 
@@ -2947,6 +2952,7 @@ fn ajani_strength_of_the_pride_gains_makes_a_pridemate_and_exiles_their_board() 
     let cat = tokens(&g, 0, "Ajani's Pridemate");
     assert_eq!(cat.len(), 1);
     assert_eq!((g.power(cat[0]), g.toughness(cat[0])), (2, 2));
+    assert_eq!(g.colors_of(cat[0]), [true, false, false, false, false], "white");
 
     // 0: only with 15 life more than the starting 40.
     for (life, gone) in [(54, false), (55, true)] {

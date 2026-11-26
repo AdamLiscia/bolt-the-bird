@@ -198,8 +198,18 @@ pub fn token_defs() -> Vec<CardDef> {
             t
         },
         token("Frog", "Frog", 1, 1, Keywords::NONE), // Quina's green 1/1
-        token("Horse", "Horse", 5, 5, Keywords::NONE), // Crested Sunmare's white 5/5
-        token("Soldier", "Soldier", 1, 1, Keywords::LIFELINK), // Dawn of Hope's white 1/1 lifelink
+        {
+            // Crested Sunmare: "a 5/5 white Horse creature token".
+            let mut t = token("Horse", "Horse", 5, 5, Keywords::NONE);
+            t.colors = [true, false, false, false, false];
+            t
+        },
+        {
+            // Dawn of Hope: "a 1/1 white Soldier creature token with lifelink".
+            let mut t = token("Soldier", "Soldier", 1, 1, Keywords::LIFELINK);
+            t.colors = [true, false, false, false, false];
+            t
+        },
         {
             // Ajani, Strength of the Pride: "Ajani's Pridemate" with "Whenever you gain life, put a
             // +1/+1 counter on this token."
@@ -210,9 +220,15 @@ pub fn token_defs() -> Vec<CardDef> {
                 vec![],
                 vec![Effect::CountersSelf { n: 1 }],
             );
+            t.colors = [true, false, false, false, false];
             t
         },
-        token("Bird Illusion", "Bird Illusion", 1, 1, Keywords::FLYING), // Murmuring Mystic's blue
+        {
+            // Murmuring Mystic: "a 1/1 blue Bird Illusion creature token with flying".
+            let mut t = token("Bird Illusion", "Bird Illusion", 1, 1, Keywords::FLYING);
+            t.colors = [false, true, false, false, false];
+            t
+        },
         {
             // Third Path Iconoclast: "a 1/1 colorless Soldier artifact creature token".
             let mut t = token("Soldier", "Soldier", 1, 1, Keywords::NONE);
