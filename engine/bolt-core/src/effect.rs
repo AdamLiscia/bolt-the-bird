@@ -1892,6 +1892,15 @@ pub enum Effect {
     },
     /// The player in `slot` draws X cards (X the spell's X) (Stroke of Genius).
     DrawXTarget(u8),
+    /// Phasing (CR 702.26): the permanents in the target slots (`all`: every permanent you control)
+    /// phase out, with anything attached to them, until they phase in before their controller's next
+    /// untap.
+    PhaseOut {
+        all: bool,
+    },
+    /// Until your next turn, your life total can't change (and damage to you is prevented: you have
+    /// protection from everything) (Teferi's Protection).
+    LifeLockedUntilYourNextTurn,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
