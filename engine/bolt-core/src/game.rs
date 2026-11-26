@@ -6654,6 +6654,10 @@ impl Game {
     }
 
     fn single_sources(&self, p: PlayerId) -> Vec<(ObjId, ManaSource)> {
+        // Chromatic Lantern, checked once for all of `p`'s lands.
+        let lantern = self
+            .permanents(p)
+            .any(|x| self.def_of(x).mana_ext.lands_tap_any_color && !self.lost_abilities(x));
         self.permanents(p)
             .filter(|&id| {
                 (self.can_tap(id) || self.def_of(id).mana_ext.sac_mana_no_tap && !self.lost_abilities(id))
@@ -6831,11 +6835,7 @@ impl Game {
                 {
                     return Some((id, ManaSource::of(&[crate::Color::Green]))); // Rishkar
                 }
-                if self.types_of(id).land
-                    && self
-                        .permanents(p)
-                        .any(|x| self.def_of(x).mana_ext.lands_tap_any_color && !self.lost_abilities(x))
-                {
+                if lantern && self.types_of(id).land {
                     let mut m = d.mana.unwrap_or_default();
                     m.colors = [true; 5]; // Chromatic Lantern: "{T}: Add one mana of any color."
                     return Some((id, m));
