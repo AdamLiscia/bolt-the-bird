@@ -2875,6 +2875,9 @@ pub enum Condition {
     YouLostLifeThisTurn,
     /// Its Class is at this level or higher (a Class's level 2 and 3 triggered abilities).
     ClassLevelAtLeast(u8),
+    /// At least this much colorless mana was spent to cast the spell (Desecrate Reality's
+    /// adamant: 3), with `Effect::StopUnlessCondition` before the adamant part.
+    ColorlessSpentAtLeast(u32),
 }
 
 /// A spell's effect or a triggered ability: target slots, then effects in order.

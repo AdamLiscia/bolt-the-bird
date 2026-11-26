@@ -6470,6 +6470,78 @@
    "lane": "d4",
    "theme": "merger_delegated",
    "owner": "mac-b"
+  },
+  {
+   "card": "Mikaeus, the Unhallowed",
+   "deck": "d1 handback",
+   "missing": "d1's piece is in (Keywords::UNDYING, granted or printed, honored as it dies; intimidate exists): d3's 'other non-Human creatures you control get +1/+1 and have undying' static (Scope::OtherYourNonHumanCreatures, keywords UNDYING) and d2's 'whenever a Human deals damage to you, destroy it' trigger",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Comet Storm",
+   "deck": "d1 handback",
+   "missing": "Game::times_kicked(id) is in for multikicker without {X}; Comet Storm has {X} and multikicker, so its kick count needs a second number at cast (a Decision answered with Amount, d1's next piece), then d3's one more target per kick",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Skyscribing",
+   "deck": "d1 handback",
+   "missing": "d1's forecast is in (Activated::forecast): d3's 'each player draws X cards' (and 'each player draws a card' for the forecast)",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Pride of the Clouds",
+   "deck": "d1 handback",
+   "missing": "d1's forecast is in: a 1/1 white and blue Bird token with flying (needs a token number), and d3's +1/+1 for each other creature with flying",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Food Chain",
+   "deck": "d1 handback",
+   "missing": "still d1's: 'Exile a creature you control' as a mana cost, and pool mana restricted to creature spells (the pool has no restrictions yet)",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Waves of Aggression",
+   "deck": "d1 handback",
+   "missing": "still d1's: retrace (cast from the graveyard discarding a land card); plus Mac B's additional combat and main phase and untap the attackers",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "It That Heralds the End",
+   "deck": "d1 handback",
+   "missing": "d1's discount is in (ManaExt::colorless_big_spell_discount = (7, 1)): d3's 'other colorless creatures you control get +1/+1' static",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Conduit of Ruin",
+   "deck": "d1 handback",
+   "missing": "its discount exists (first_creature_spell_discount = 2): a 'when you cast this spell' search for a colorless creature card with mana value 7 or greater, put on top of the library after shuffling",
+   "lane": "d1",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Darksteel Monolith",
+   "deck": "d1 handback",
+   "missing": "still d1's: once each turn, pay {0} rather than the mana cost of a colorless spell you cast from your hand",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
   }
  ]
 }
