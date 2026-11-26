@@ -4152,6 +4152,46 @@
    "lane": "d3",
    "theme": "keywords",
    "owner": "d1"
+  },
+  {
+   "card": "Teferi's Protection",
+   "deck": "Myrkul, Lord of Bones (DonSpider)",
+   "missing": "phasing; protection from everything; your life total can't change",
+   "lane": "mac-b",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Clever Concealment",
+   "deck": "Myrkul, Lord of Bones (DonSpider)",
+   "missing": "phasing",
+   "lane": "mac-b",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Promise of Loyalty",
+   "deck": "Myrkul, Lord of Bones (DonSpider)",
+   "missing": "vow counters (a creature with one can't attack you or your planeswalkers)",
+   "lane": "mac-b",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Sphere of Safety",
+   "deck": "Myrkul, Lord of Bones (DonSpider)",
+   "missing": "an attack tax: creatures can't attack you unless their controller pays {X} for each",
+   "lane": "mac-b",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Mirkwood Bats",
+   "deck": "Myrkul, Lord of Bones (DonSpider)",
+   "missing": "a trigger: whenever you create or sacrifice a token",
+   "lane": "mac-b",
+   "theme": "triggers",
+   "owner": "d2"
   }
  ]
 }
