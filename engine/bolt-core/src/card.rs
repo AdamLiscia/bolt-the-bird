@@ -830,6 +830,9 @@ pub struct SubsystemExt {
     /// "Commander creatures you own have 'Room abilities of dungeons you own trigger an additional
     /// time.'" (Dungeon Delver)
     pub commanders_rooms_trigger_again: bool,
+    /// A split card's left half's own mana cost, which casting it pays; `cost` is both halves'
+    /// together, its mana value off the stack (CR 709.4).
+    pub left_cost: Option<ManaCost>,
 }
 
 /// A card's mana, cost and keyword pieces added by the d1 theme (see [`CardDef::mana_ext`]).

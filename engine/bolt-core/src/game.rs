@@ -1890,6 +1890,11 @@ impl Game {
             return [false, false, true, false, false]; // a black Zombie
         }
         let printed = self.def_of(id).colors;
+        if self.def_of(id).subsystems.split_card && self.obj(id).zone == Zone::Stack {
+            if let Some(half) = self.split_half_colors(id) {
+                return half; // CR 709.3: only the half being cast
+            }
+        }
         if self.obj(id).zone != Zone::Battlefield {
             return printed;
         }
@@ -5559,6 +5564,8 @@ impl Game {
             def.flashback.unwrap_or(def.cost).with_x(mode.x)
         } else if mode.mode == Some(OMEN_MODE) {
             def.omen.as_ref().expect("an Omen").cost.with_x(mode.x)
+        } else if let Some(left) = def.subsystems.left_cost {
+            left.with_x(mode.x) // a split card's left half
         } else {
             def.cost.with_x(mode.x)
         };

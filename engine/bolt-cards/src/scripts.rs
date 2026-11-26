@@ -198,7 +198,60 @@ pub fn token_defs() -> Vec<CardDef> {
             t
         },
         token("Frog", "Frog", 1, 1, Keywords::NONE), // Quina's green 1/1
+        // 70-76: placeholders for lane B's 70-75 and d1's Goat (76); the merger keeps theirs.
+        token("Placeholder 70", "Placeholder", 0, 0, Keywords::NONE),
+        token("Placeholder 71", "Placeholder", 0, 0, Keywords::NONE),
+        token("Placeholder 72", "Placeholder", 0, 0, Keywords::NONE),
+        token("Placeholder 73", "Placeholder", 0, 0, Keywords::NONE),
+        token("Placeholder 74", "Placeholder", 0, 0, Keywords::NONE),
+        token("Placeholder 75", "Placeholder", 0, 0, Keywords::NONE),
+        token("Placeholder 76", "Placeholder", 0, 0, Keywords::NONE),
+        // 77-82: lane d4's (dungeon rooms, Ancient Gold Dragon, Lolth, Urza's Saga).
+        black(token("Skeleton", "Skeleton", 1, 1, Keywords::NONE)), // Muiral's Graveyard
+        black(token("Skeleton", "Skeleton", 4, 1, Keywords::MENACE)), // Catacombs
+        black(token("God Horror", "God Horror", 4, 4, Keywords::DEATHTOUCH)), // Cradle of the Death God
+        {
+            // Ancient Gold Dragon: "1/1 blue Faerie Dragon creature tokens with flying".
+            let mut t = token("Faerie Dragon", "Faerie Dragon", 1, 1, Keywords::FLYING);
+            t.colors = [false, true, false, false, false];
+            t
+        },
+        black(token(
+            "Spider",
+            "Spider",
+            2,
+            1,
+            Keywords::REACH.with(Keywords::MENACE),
+        )), // Lolth
+        {
+            // Urza's Saga: "a 0/0 colorless Construct artifact creature token with 'This token gets
+            // +1/+1 for each artifact you control.'"
+            let mut t = token("Construct", "Construct", 0, 0, Keywords::NONE);
+            t.types.artifact = true;
+            t.statics.push(Static {
+                subtype: None,
+                lose_abilities: false,
+                base_pt: None,
+                protection: [false; 5],
+                scale: Some(Scale::PerArtifactYouControl),
+                scope: Scope::This,
+                your_turn_only: false,
+                condition: None,
+                power: 1,
+                toughness: 1,
+                keywords: Keywords::NONE,
+                set_colors: None,
+                becomes_land: false,
+            });
+            t
+        },
     ]
+}
+
+/// A black token.
+fn black(mut d: CardDef) -> CardDef {
+    d.colors = [false, false, true, false, false];
+    d
 }
 
 /// "{2}, Sacrifice this artifact: Draw a card." (CR 111.10f)
@@ -321,6 +374,12 @@ pub struct Tokens {
     pub eldrazi_spawn: usize,
     pub spawn_3: usize,
     pub elf_druid: usize,
+    pub skeleton: usize,
+    pub skeleton_menace: usize,
+    pub god_horror: usize,
+    pub faerie_dragon: usize,
+    pub spider_menace: usize,
+    pub saga_construct: usize,
 }
 
 impl Tokens {
@@ -396,6 +455,12 @@ impl Tokens {
             eldrazi_spawn: base + 66,
             spawn_3: base + 67,
             elf_druid: base + 68,
+            skeleton: base + 77,
+            skeleton_menace: base + 78,
+            god_horror: base + 79,
+            faerie_dragon: base + 80,
+            spider_menace: base + 81,
+            saga_construct: base + 82,
         }
     }
 }

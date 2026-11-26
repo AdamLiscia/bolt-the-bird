@@ -5,6 +5,7 @@
 #![allow(unused_imports)]
 
 use super::*;
+use bolt_core::SubsystemEffect;
 
 /// A land, with this controller restriction.
 const fn land(controller: Controller) -> Filter {
@@ -66,6 +67,14 @@ pub fn script(name: &str) -> Option<Script> {
             &["Commander creatures you own have \"Room abilities of dungeons you own trigger an additional time.\""],
             |d, _| d.subsystems.commanders_rooms_trigger_again = true,
         ),
+        // ---- Dice ----
+        "Ancient Gold Dragon" => s(
+            &["Whenever this creature deals combat damage to a player, roll a d20. You create a number of 1/1 blue Faerie Dragon creature tokens with flying equal to the result."],
+            |d, t| {
+                let roll = SubsystemEffect::RollDieCreateTokens { sides: 20, def: t.faerie_dragon };
+                on(d, When::DealsCombatDamageToPlayer, vec![], vec![Effect::Subsystem(roll)]);
+            },
+        ),
         _ => None,
     }
 }
@@ -77,4 +86,6 @@ pub const PG_D4_SCRIPTED: &[&str] = &[
     // Dungeons
     "Hama Pashar, Ruin Seeker",
     "Dungeon Delver",
+    // Dice
+    "Ancient Gold Dragon",
 ];

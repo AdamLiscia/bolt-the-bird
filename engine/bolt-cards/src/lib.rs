@@ -554,6 +554,22 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
                     _ => claimed = false,
                 }
             }
+            // Off the stack its mana value is both halves' (CR 709.4): `cost` is their sum, and
+            // casting the left half pays `left_cost`.
+            if def.subsystems.split_card {
+                let right = def.omen.as_ref().expect("the right half").cost;
+                let left = def.cost;
+                def.subsystems.left_cost = Some(left);
+                def.cost.generic = left.generic.saturating_add(right.generic);
+                def.cost.colorless = left.colorless.saturating_add(right.colorless);
+                for i in 0..5 {
+                    def.cost.colored[i] = left.colored[i].saturating_add(right.colored[i]);
+                    def.cost.twobrid[i] = left.twobrid[i].saturating_add(right.twobrid[i]);
+                }
+                for i in 0..10 {
+                    def.cost.hybrid[i] = left.hybrid[i].saturating_add(right.hybrid[i]);
+                }
+            }
         }
     }
     let castable = types.is_permanent() || def.spell.is_some() || !def.modes.is_empty(); // lands: played

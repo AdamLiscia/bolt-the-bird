@@ -137,14 +137,11 @@ fn rooms_still_missing_a_piece_are_listed() {
             "Fungi Cavern",
             "Twisted Caverns",
             "Runestone Caverns",
-            "Muiral's Graveyard",
             "Mad Wizard's Lair",
             "Veils of Fear",
             "Oubliette",
             "Sandfall Cell",
-            "Cradle of the Death God",
             "Arena",
-            "Catacombs",
             "Throne of the Dead Three",
         ]
     );
@@ -344,6 +341,39 @@ fn an_emblem_for_target_opponent_is_theirs() {
     act(&mut g, Action::Target(Target::Player(1)));
     settle(&mut g, &[]);
     assert_eq!(g.emblems, [(1, kind, x)]);
+}
+
+#[test]
+fn a_room_token_is_found_by_name_and_size() {
+    let effects = vec![
+        sub(SubsystemEffect::RoomToken {
+            name: "Skeleton",
+            power: 4,
+            toughness: 1,
+            n: 1,
+        }),
+        sub(SubsystemEffect::RoomToken {
+            name: "Skeleton",
+            power: 1,
+            toughness: 1,
+            n: 2,
+        }),
+        sub(SubsystemEffect::RoomToken {
+            name: "God Horror",
+            power: 4,
+            toughness: 4,
+            n: 1,
+        }),
+    ];
+    let mut g = game_with(vec![], effects, |_| {});
+    let x = g.add_card(0, cid(CARD), Zone::Battlefield);
+    activate(&mut g, x, &[]);
+    let mine: Vec<ObjId> = g.permanents(0).filter(|&t| g.is_token(t)).collect();
+    let sizes: Vec<(i32, i32)> = mine.iter().map(|&t| (g.power(t), g.toughness(t))).collect();
+    assert_eq!(sizes, [(4, 1), (1, 1), (1, 1), (4, 4)]);
+    assert!(g.keywords(mine[0]).has(Keywords::MENACE));
+    assert!(g.keywords(mine[3]).has(Keywords::DEATHTOUCH));
+    assert_eq!(g.colors_of(mine[3]), [false, false, true, false, false], "black");
 }
 
 #[test]

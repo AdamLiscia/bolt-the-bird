@@ -91,8 +91,12 @@ pub fn rooms(d: Dungeon) -> &'static [Room] {
                 room("Lost Level", vec![], vec![scry(2)], &[5, 6]),
                 // "Exile the top two cards of your library. You may play them."
                 missing("Runestone Caverns", &[7]),
-                // "Create two 1/1 black Skeleton creature tokens." (no Skeleton token yet)
-                missing("Muiral's Graveyard", &[7]),
+                room(
+                    "Muiral's Graveyard",
+                    vec![],
+                    vec![token("Skeleton", 1, 1, 2)],
+                    &[7],
+                ),
                 room("Deep Mines", vec![], vec![scry(3)], &[8]),
                 // "Draw three cards and reveal them. You may cast one of them without paying its
                 // mana cost."
@@ -111,8 +115,12 @@ pub fn rooms(d: Dungeon) -> &'static [Room] {
                 missing("Oubliette", &[4]),
                 // "Each player loses 2 life unless they sacrifice an artifact, a creature, or a land."
                 missing("Sandfall Cell", &[4]),
-                // "Create a 4/4 black God Horror creature token with deathtouch." (no token yet)
-                missing("Cradle of the Death God", &[]),
+                room(
+                    "Cradle of the Death God",
+                    vec![],
+                    vec![token("God Horror", 4, 4, 1)],
+                    &[],
+                ),
             ],
             vec![
                 room(
@@ -143,8 +151,7 @@ pub fn rooms(d: Dungeon) -> &'static [Room] {
                 missing("Arena", &[6, 7]),
                 room("Stash", vec![], vec![treasure()], &[7]),
                 room("Archives", vec![], vec![draw(1)], &[8]),
-                // "Create a 4/1 black Skeleton creature token with menace." (no token yet)
-                missing("Catacombs", &[8]),
+                room("Catacombs", vec![], vec![token("Skeleton", 4, 1, 1)], &[8]),
                 // "Reveal the top ten cards of your library. Put a creature card from among them onto
                 // the battlefield with three +1/+1 counters on it. It gains hexproof until your next
                 // turn. Then shuffle."
@@ -171,6 +178,34 @@ impl Game {
             StackKind::Room { dungeon, room } => &rooms(dungeon)[room as usize].ability,
             _ => initiative_ability(),
         }
+    }
+
+    /// A split card on the stack: the colors of the half being cast, from its mana cost (CR 709.3,
+    /// 105.2), or None if its stack entry isn't found.
+    pub(super) fn split_half_colors(&self, id: ObjId) -> Option<[bool; 5]> {
+        let item = self
+            .items
+            .iter()
+            .chain(self.resolving.as_ref().map(|r| &r.item))
+            .chain(self.choosing.as_ref().map(|c| &c.item))
+            .find(|i| i.source == id && matches!(i.kind, StackKind::Spell | StackKind::SpellCopy))?;
+        let def = self.def_of(id);
+        let cost = if item.mode == Some(OMEN_MODE) {
+            def.omen.as_ref()?.cost
+        } else {
+            def.subsystems.left_cost?
+        };
+        let mut c = [false; 5];
+        for (i, x) in c.iter_mut().enumerate() {
+            *x = cost.colored[i] > 0 || cost.twobrid[i] > 0;
+        }
+        for (k, &(a, b)) in crate::mana::PAIRS.iter().enumerate() {
+            if cost.hybrid[k] > 0 {
+                c[a] = true;
+                c[b] = true;
+            }
+        }
+        Some(c)
     }
 
     /// Rolls a die with `sides` sides (CR 706.1): 1 through `sides`.

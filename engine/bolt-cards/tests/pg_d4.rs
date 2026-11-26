@@ -133,6 +133,85 @@ fn bust_destroys_all_lands_for_its_own_cost() {
     );
 }
 
+#[test]
+fn a_split_card_has_both_halves_mana_value_off_the_stack_and_pays_only_its_half() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Fire // Ice");
+    assert_eq!(
+        g.def_of(c).cost.mana_value(),
+        4,
+        "{{1}}{{R}} + {{1}}{{U}} (CR 709.4)"
+    );
+    assert_eq!(
+        g.colors_of(c),
+        [false, true, false, true, false],
+        "both halves' colors in hand"
+    );
+    let untapped = |g: &Game| g.permanents(0).filter(|&x| !g.obj(x).tapped).count();
+    let before = untapped(&g);
+    act(&mut g, Action::CastOmen(c));
+    let theirs = g.permanents(1).next().unwrap();
+    act(&mut g, Action::Target(obj(theirs)));
+    assert_eq!(
+        g.colors_of(c),
+        [false, true, false, false, false],
+        "Ice on the stack is blue"
+    );
+    assert_eq!(before - untapped(&g), 2, "Ice's {{1}}{{U}}");
+    resolve_all(&mut g, &[]);
+    let c2 = hand(&mut g, 0, "Fire // Ice");
+    let before = untapped(&g);
+    act(&mut g, Action::Cast(c2));
+    act(&mut g, Action::Target(Target::Player(1)));
+    act(&mut g, Action::No); // one target
+    assert_eq!(
+        g.colors_of(c2),
+        [false, false, false, true, false],
+        "Fire on the stack is red"
+    );
+    assert_eq!(before - untapped(&g), 2, "Fire's {{1}}{{R}}, not both halves");
+    resolve_all(&mut g, &[]);
+}
+
+#[test]
+fn a_split_cards_right_half_is_cast_only_from_hand() {
+    let mut g = table();
+    let c = g.add_card(0, cid("Fire // Ice"), Zone::Graveyard);
+    assert!(!g.legal_actions().contains(&Action::CastOmen(c)));
+}
+
+// ---- Dice ----
+
+#[test]
+fn ancient_gold_dragon_rolls_a_d20_for_faerie_dragons() {
+    let mut g = table();
+    assert!(set("CMD").unwrap().supported[cid("Ancient Gold Dragon")]);
+    let d = put(&mut g, 0, "Ancient Gold Dragon");
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(d));
+    act(&mut g, Action::FinishAttacks);
+    while g.step != Step::Main2 {
+        let a = match g.pending {
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            Pending::Decide(_) => g.legal_actions()[0],
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    let faeries: Vec<ObjId> = g
+        .permanents(0)
+        .filter(|&x| g.is_token(x) && g.def_of(x).name == "Faerie Dragon")
+        .collect();
+    assert!((1..=20).contains(&faeries.len()), "{}", faeries.len());
+    let f = faeries[0];
+    assert_eq!((g.power(f), g.toughness(f)), (1, 1));
+    assert!(g.keywords(f).has(Keywords::FLYING));
+    assert!(g.has_subtype(f, "Dragon"), "a Faerie Dragon is a Dragon");
+    assert_eq!(g.colors_of(f), [false, true, false, false, false], "blue");
+}
+
 // ---- Dungeons ----
 
 #[test]
