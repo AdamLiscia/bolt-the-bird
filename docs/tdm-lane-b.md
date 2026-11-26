@@ -786,3 +786,5 @@ d3's effects for lane B's decks (moved 2026-11-26):
   value in life; `Activated::sacrifice_nonland_n`), Gadrak (`attacks_only_with_artifacts`,
   `Game::nontoken_creatures_died`), Xorn (`treasures_plus_one`), Silent Arbiter
   (`one_attacker_one_blocker`), Expropriate (Decision::ExpropriateVote / ExpropriatePick).
+- Kozilek's Command: modal X casting (CastModal asks X first; ChooseCastX offers only X with legal targets for the mode), with d3's mana_value_at_most_x / up_to_x (up_to_x now counts only its own word's targets).
+- PPO blockers, round 2: Dragon's Prey's target-dependent {2} (castability needs an affordable target; ChooseTarget offers only affordable ones), and harmonize affordability excludes its creature as payment does (a Devotee's untapped mana ability).

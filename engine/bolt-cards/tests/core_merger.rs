@@ -918,3 +918,31 @@ fn expropriate_counts_time_and_money_votes() {
     assert_eq!(g.obj(theirs).controller, 0);
     assert_eq!(g.obj(e).zone, Zone::Exile);
 }
+
+#[test]
+fn a_target_that_raises_the_cost_needs_the_mana_dragons_prey() {
+    // CR 601.2f: the total cost is fixed after targets; a Dragon target costs {2} more.
+    let mut g = game(&["Swamp", "Swamp", "Swamp"]);
+    let dragon = put(&mut g, 1, "Magmatic Hellkite");
+    let prey = hand(&mut g, 0, "Dragon's Prey");
+    assert!(!g.legal_actions().contains(&Action::Cast(prey)), "only a Dragon to target, and no {{2}} more");
+    let mut g = game(&["Swamp", "Swamp", "Swamp", "Swamp", "Swamp"]);
+    let dragon2 = put(&mut g, 1, "Magmatic Hellkite");
+    let prey = hand(&mut g, 0, "Dragon's Prey");
+    act(&mut g, Action::Cast(prey));
+    assert!(g.legal_actions().contains(&Action::Target(Target::Object(dragon2))));
+    act(&mut g, Action::Target(Target::Object(dragon2)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(dragon2).zone, Zone::Graveyard);
+    let _ = dragon;
+}
+
+#[test]
+fn harmonize_excludes_its_creature_from_paying_even_a_devotee() {
+    // Mardu Devotee's "{1}: Add {R}" doesn't tap, but payment excludes the harmonize creature:
+    // so does castability. Four Plains can't make Wild Ride's {R} without it.
+    let mut g = game(&["Plains", "Plains", "Plains", "Plains"]);
+    let devotee = put(&mut g, 0, "Mardu Devotee");
+    let ride = g.add_card(0, cid("Wild Ride"), Zone::Graveyard);
+    assert!(!g.legal_actions().contains(&Action::CastHarmonize(ride, devotee)));
+}

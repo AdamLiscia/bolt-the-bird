@@ -5469,9 +5469,11 @@ impl Game {
                     }
                 }
                 // A cost reduction that depends on the target: only offer targets you can afford.
+                // (CR 601.2f: the total cost is locked in after targets: Dragon's Prey's {2} more for
+                // a Dragon too.)
                 let reduces = matches!(
                     self.def_of(c.item.source).reduction,
-                    Some(Reduction::IfTargetsTapped(_))
+                    Some(Reduction::IfTargetsTapped(_) | Reduction::MoreIfTargetsSubtype(..))
                 );
                 if c.cast && reduces && c.item.targets.is_empty() {
                     let it = &c.item;
@@ -5491,7 +5493,7 @@ impl Game {
                         self.can_pay_for(
                             it.controller,
                             &self.spell_cost(it.controller, it.source, mode, &[chosen]),
-                            None,
+                            self.harmonize_creature(it.source, mode),
                             pay_for_spell(it.source, mode.mode),
                         )
                     });
@@ -6025,10 +6027,14 @@ impl Game {
         }
         if f.up_to_x {
             // While choosing, `t` isn't among the targets yet; on resolution it is.
+            // Only the "up to X" word's own targets count (Kozilek's Command pairs it with another
+            // mode's target).
+            let filters = &self.ability_of(item).targets;
             let others = item
                 .targets
                 .iter()
-                .filter(|&&c| c != Chosen::Object(x, self.obj(x).zcc))
+                .enumerate()
+                .filter(|&(i, &c)| filters.get(i).is_some_and(|g| g.up_to_x) && c != Chosen::Object(x, self.obj(x).zcc))
                 .count();
             if others >= item.x as usize {
                 return false;
@@ -6482,7 +6488,15 @@ impl Game {
             let last = def.modes.len() - 1;
             return (0..def.modes.len())
                 .filter(|&m| !(def.last_mode_needs_commander && m == last && !commander))
-                .filter(|&m| self.trigger_can_target(&Game::casting(c, p), &def.modes[m]))
+                .filter(|&m| {
+                    // An X spell's mode may need X for its targets (Kozilek's Command): check with
+                    // the largest X the mana could reach.
+                    let mut it = Game::casting(c, p);
+                    if def.cost.x > 0 {
+                        it.x = (self.untapped_sources(p).len() + self.players[p].pool.len()).min(30) as u8;
+                    }
+                    self.trigger_can_target(&it, &def.modes[m])
+                })
                 .map(|m| {
                     (
                         Action::CastModal(c, m as u8),
@@ -7053,19 +7067,15 @@ impl Game {
             }
             return g.mode_affordable_now(p, c, mode);
         }
-        // Harmonize: the creature tapped to reduce the cost can't also make its mana, so check
-        // the mana with it tapped (pay_mana pays after tapping it).
-        if let (true, Some(cr)) = (mode.flashback, mode.extra) {
-            if self.obj(cr).zone == Zone::Battlefield
-                && !self.obj(cr).tapped
-                && self.mana_sources(p).iter().any(|&(x, _)| x == cr)
-            {
-                let mut g = self.clone();
-                g.obj_mut(cr).tapped = true;
-                return g.mode_affordable_now(p, c, mode);
-            }
-        }
         self.mode_affordable_now(p, c, mode)
+    }
+
+    /// Harmonize: the creature tapped to reduce the cost, which payment excludes as a mana source
+    /// (even a Devotee's untapped "{1}: Add" ability), so affordability excludes it too.
+    fn harmonize_creature(&self, c: ObjId, mode: CastMode) -> Option<ObjId> {
+        let d = self.def_of(c);
+        mode.extra
+            .filter(|_| mode.flashback && (d.harmonize || self.obj(c).harmonize_eot))
     }
 
     /// The [`crate::card::AltCostExt`] a cast in `mode` pays that taps creatures, if any.
@@ -7094,10 +7104,12 @@ impl Game {
     fn mode_affordable_now(&self, p: PlayerId, c: ObjId, mode: CastMode) -> bool {
         let mut cost = self.spell_cost(p, c, mode, &[]);
         cost.generic = cost.generic.saturating_sub(self.delve_available(p, c));
-        if self.can_pay_for(p, &cost, None, pay_for_spell(c, mode.mode)) {
+        let exclude = self.harmonize_creature(c, mode);
+        let target_priced = matches!(self.def_of(c).reduction, Some(Reduction::MoreIfTargetsSubtype(..)));
+        if self.can_pay_for(p, &cost, exclude, pay_for_spell(c, mode.mode)) && !target_priced {
             return true;
         }
-        if let Some(Reduction::IfTargetsTapped(_)) = self.def_of(c).reduction {
+        if let Some(Reduction::IfTargetsTapped(_) | Reduction::MoreIfTargetsSubtype(..)) = self.def_of(c).reduction {
             let f = self
                 .def_of(c)
                 .spell
@@ -7114,7 +7126,7 @@ impl Game {
                             self.can_pay_for(
                                 p,
                                 &self.spell_cost(p, c, mode, &chosen),
-                                None,
+                                exclude,
                                 pay_for_spell(c, mode.mode),
                             )
                         }
@@ -9479,6 +9491,15 @@ impl Game {
                     ..CastMode::default()
                 },
             ),
+            (Pending::Priority(p), Action::CastModal(c, m)) if self.def_of(c).cost.x > 0 => {
+                // A modal X spell (Kozilek's Command): X is chosen first, then its targets.
+                let max = (self.untapped_sources(p).len() + self.players[p].pool.len()).min(30) as u8;
+                let mode = CastMode {
+                    mode: Some(m),
+                    ..CastMode::default()
+                };
+                self.ask(p, Decision::ChooseCastX { card: c, mode, max });
+            }
             (Pending::Priority(p), Action::CastModal(c, m)) => self.cast(
                 p,
                 c,
@@ -11362,6 +11383,15 @@ impl Game {
                 .collect(),
             Decision::ChooseCastX { card, mode, max } => (0..=*max)
                 .filter(|&x| self.mode_affordable(p, *card, CastMode { x, ..*mode }))
+                .filter(|&x| {
+                    // A mode whose targets depend on X needs a legal choice at that X.
+                    let Some(m) = mode.mode.filter(|&m| m != OMEN_MODE) else { return true };
+                    let Some(ability) = self.def_of(*card).modes.get(m as usize) else { return true };
+                    let mut it = Game::casting(*card, p);
+                    it.x = x;
+                    it.mode = Some(m);
+                    self.trigger_can_target(&it, ability)
+                })
                 .map(Action::Amount)
                 .collect(),
             Decision::PayWardLife { life, .. } => {
@@ -17672,6 +17702,22 @@ impl Game {
                         money: Vec::new(),
                     },
                 );
+            }
+            Effect::ScryXTargetPlayer(slot) => {
+                if let Some(q) = self.players_for(item, legal, Who::TargetPlayer(slot)).first().copied() {
+                    self.fire(q, When::YouScryOrSurveil, None);
+                    let cards: Vec<ObjId> = self.players[q].library.iter().rev().take(item.x as usize).copied().collect();
+                    if !cards.is_empty() {
+                        self.ask(q, Decision::Scry { cards, kept: Vec::new() });
+                    }
+                }
+            }
+            Effect::TargetPlayerCreatesXTokens { slot, def } => {
+                if let Some(q) = self.players_for(item, legal, Who::TargetPlayer(slot)).first().copied() {
+                    for _ in 0..item.x {
+                        self.create_token(q, def);
+                    }
+                }
             }
             Effect::GiftExtraTurn => {
                 let opp = opponent(item.controller);

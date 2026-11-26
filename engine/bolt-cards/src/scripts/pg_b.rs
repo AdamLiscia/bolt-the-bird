@@ -1732,6 +1732,43 @@ pub fn script(name: &str) -> Option<Script> {
             &["Council's dilemma — Starting with you, each player votes for time or money. For each time vote, take an extra turn after this one. For each money vote, choose a permanent owned by the voter and gain control of it. Exile Expropriate."],
             |d, _| spell(d, vec![], vec![Effect::Expropriate, Effect::ExileSourceSpell]),
         ),
+        "Kozilek's Command" => s(
+            &[
+                "Choose two —",
+                "• Target player creates X 0/1 colorless Eldrazi Spawn creature tokens with \"Sacrifice this token: Add {C}.\"",
+                "• Target player scries X, then draws a card.",
+                "• Exile target creature with mana value X or less.",
+                "• Exile up to X target cards from graveyards.",
+            ],
+            |d, t| {
+                // Each pair of modes is one mode; the "up to X" cards come last (they're optional).
+                let creature = Filter { mana_value_at_most_x: true, ..CREATURE };
+                let card = Filter { up_to_x: true, ..graveyard_cards(false, Controller::Any) };
+                const UP_TO: u8 = 12;
+                let part = |i: usize, slot: u8| -> (Vec<Filter>, Vec<Effect>) {
+                    match i {
+                        0 => (vec![Filter::PLAYER], vec![Effect::TargetPlayerCreatesXTokens { slot, def: t.eldrazi_spawn }]),
+                        1 => (vec![Filter::PLAYER], vec![Effect::ScryXTargetPlayer(slot), Effect::Draw { who: Who::TargetPlayer(slot), n: 1 }]),
+                        2 => (vec![creature], vec![Effect::Exile(slot)]),
+                        _ => (vec![card; UP_TO as usize], (slot..slot + UP_TO).map(Effect::Exile).collect()),
+                    }
+                };
+                let mut pairs = Vec::new();
+                for a in 0..4 {
+                    for b in a + 1..4 {
+                        let (mut targets, mut effects) = part(a, 0);
+                        let (t2, e2) = part(b, targets.len() as u8);
+                        targets.extend(t2);
+                        effects.extend(e2);
+                        let required = if b == 3 { targets.len() - UP_TO as usize } else { targets.len() };
+                        let mut ability = Ability::new(targets, effects);
+                        ability.min_targets = Some(required);
+                        pairs.push(ability);
+                    }
+                }
+                modes(d, pairs);
+            },
+        ),
         _ => None,
     }
 }
@@ -1945,6 +1982,7 @@ pub const PG_B_SCRIPTED: &[&str] = &[
     "Xorn",
     "Silent Arbiter",
     "Expropriate",
+    "Kozilek's Command",
     // Ghyrson Starn (Spr3adsh33t)
     "Basilisk Collar",
     "Gorgon's Head",
