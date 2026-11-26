@@ -782,3 +782,7 @@ d3's effects for lane B's decks (moved 2026-11-26):
 - Merger: −X loyalty (`card::LOYALTY_MINUS_X`, Decision::ChooseLoyaltyX answered with Amount);
   Ugin, the Spirit Dragon (ExileEachColoredPermanentMvAtMostX, PermanentsFromHandUpTo).
 - Shield counters (`Object::shield_counters`, replacing damage and destruction) and Shield Broker (`Game::control_while_shielded`; a commander target is skipped at resolution, since the filter can't exclude it: d3).
+- Merger: Bolas's Citadel (`CardDef::citadel`, `Object::citadel_cast`: free from the top, its mana
+  value in life; `Activated::sacrifice_nonland_n`), Gadrak (`attacks_only_with_artifacts`,
+  `Game::nontoken_creatures_died`), Xorn (`treasures_plus_one`), Silent Arbiter
+  (`one_attacker_one_blocker`), Expropriate (Decision::ExpropriateVote / ExpropriatePick).

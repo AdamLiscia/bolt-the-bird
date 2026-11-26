@@ -1699,6 +1699,39 @@ pub fn script(name: &str) -> Option<Script> {
                 loyalty(d, -10, Ability::new(vec![], ten));
             },
         ),
+        "Bolas's Citadel" => s(
+            &[
+                "You may look at the top card of your library any time.",
+                "You may play lands and cast spells from the top of your library. If you cast a spell this way, pay life equal to its mana value rather than pay its mana cost.",
+                "{T}, Sacrifice ten nonland permanents: Each opponent loses 10 life.",
+            ],
+            |d, _| {
+                // Looking at the top card any time is information only.
+                d.citadel = true;
+                let n = activated(d, "", true, vec![], vec![Effect::LoseLife { who: Who::EachOpponent, n: 10 }]);
+                d.activated[n].sacrifice_nonland_n = 10;
+            },
+        ),
+        "Gadrak, the Crown-Scourge" => s(
+            &[
+                "Gadrak can't attack unless you control four or more artifacts.",
+                "At the beginning of your end step, create a Treasure token for each nontoken creature that died this turn.",
+            ],
+            |d, t| {
+                d.attacks_only_with_artifacts = 4;
+                on(d, When::EndStep { your_turn_only: true }, vec![], vec![Effect::CreateTokenPerNontokenCreatureDiedThisTurn { def: t.treasure }]);
+            },
+        ),
+        "Xorn" => s(&["If you would create one or more Treasure tokens, instead create those tokens plus an additional Treasure token."], |d, t| {
+            d.treasures_plus_one = Some(t.treasure);
+        }),
+        "Silent Arbiter" => s(&["No more than one creature can attack each combat.", "No more than one creature can block each combat."], |d, _| {
+            d.one_attacker_one_blocker = true;
+        }),
+        "Expropriate" => s(
+            &["Council's dilemma — Starting with you, each player votes for time or money. For each time vote, take an extra turn after this one. For each money vote, choose a permanent owned by the voter and gain control of it. Exile Expropriate."],
+            |d, _| spell(d, vec![], vec![Effect::Expropriate, Effect::ExileSourceSpell]),
+        ),
         _ => None,
     }
 }
@@ -1907,6 +1940,11 @@ pub const PG_B_SCRIPTED: &[&str] = &[
     "Epic Experiment",
     "Metallurgic Summonings",
     "Ugin, the Spirit Dragon",
+    "Bolas's Citadel",
+    "Gadrak, the Crown-Scourge",
+    "Xorn",
+    "Silent Arbiter",
+    "Expropriate",
     // Ghyrson Starn (Spr3adsh33t)
     "Basilisk Collar",
     "Gorgon's Head",

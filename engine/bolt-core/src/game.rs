@@ -307,6 +307,8 @@ pub struct Object {
     /// Shield counters (CR 122.1c): "If it would be dealt damage or destroyed, instead remove a
     /// shield counter from it."
     pub shield_counters: u8,
+    /// Cast from the top of the library with Bolas's Citadel: its life is paid instead of mana.
+    pub citadel_cast: bool,
 }
 
 /// One resolved effect's change to a permanent's characteristics (lane d3's type-changing store):
@@ -1257,6 +1259,11 @@ pub enum Decision {
     ChooseLoyaltyX { source: ObjId, n: usize },
     /// `Pick` a permanent card in your hand to put onto the battlefield, `left` more, or `No`.
     PermanentsFromHandUpTo { left: u8 },
+    /// Expropriate's vote: `Yes` for time, `No` for money; `voter` votes, then `next` (if any).
+    /// `money` holds the money voters so far, `time` the time votes.
+    ExpropriateVote { voter: PlayerId, next: Option<PlayerId>, time: u8, money: Vec<PlayerId> },
+    /// Expropriate: `Pick` a permanent `owner` owns to gain control of; then the rest of `money`.
+    ExpropriatePick { owner: PlayerId, money: Vec<PlayerId> },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -1636,6 +1643,8 @@ pub struct Game {
     /// Control while it has a shield counter: (creature, zcc, the controller, the one before)
     /// (Shield Broker).
     pub control_while_shielded: Vec<(ObjId, u32, PlayerId, PlayerId)>,
+    /// Nontoken creatures that died this turn: (turn, how many) (Gadrak).
+    pub nontoken_creatures_died: (u32, u32),
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -1893,6 +1902,7 @@ impl Game {
             free_casts_rest_to_graveyard: Vec::new(),
             cleanup_again: false,
             control_while_shielded: Vec::new(),
+            nontoken_creatures_died: (0, 0),
         }
     }
 
@@ -1944,6 +1954,32 @@ impl Game {
     /// A Class's level (CR 716.2a: it enters at level 1).
     pub fn class_level(&self, id: ObjId) -> u8 {
         self.obj(id).class_level.max(1)
+    }
+
+    /// Bolas's Citadel: whether `c` is the top card of `p`'s library while `p` controls one.
+    fn citadel_top(&self, p: PlayerId, c: ObjId) -> bool {
+        self.obj(c).zone == Zone::Library
+            && self.players[p].library.last() == Some(&c)
+            && self.permanents(p).any(|x| self.def_of(x).citadel && !self.lost_abilities(x))
+    }
+
+    /// Whether a Silent Arbiter is on the battlefield ("no more than one creature can attack /
+    /// block each combat").
+    fn silent_arbiter(&self) -> bool {
+        self.battlefield
+            .iter()
+            .any(|&x| self.def_of(x).one_attacker_one_blocker && !self.lost_abilities(x))
+    }
+
+    /// Expropriate: the caster `p` picks a permanent owned by the next money voter, if any.
+    fn expropriate_next_pick(&mut self, p: PlayerId, mut money: Vec<PlayerId>) {
+        while !money.is_empty() {
+            let owner = money.remove(0);
+            if self.battlefield.iter().any(|&x| self.obj(x).owner == owner) {
+                self.ask(p, Decision::ExpropriatePick { owner, money });
+                return;
+            }
+        }
     }
 
     /// Whether `id` is goaded now (CR 701.38).
@@ -2096,6 +2132,7 @@ impl Game {
             class_level: 0,
             plotted: None,
             shield_counters: 0,
+            citadel_cast: false,
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -4299,6 +4336,7 @@ impl Game {
         o.counters = 0;
         o.class_level = 0; // a new object: a Class enters at level 1
         o.shield_counters = 0;
+        o.citadel_cast = false;
         o.incubation = 0;
         if from == Zone::Battlefield {
             let mut last = std::mem::take(&mut o.extra_subtypes);
@@ -4641,6 +4679,11 @@ impl Game {
             }
             self.creature_died_this_turn = true;
             self.creature_died_under[last_controller] = true;
+            if !self.is_token(id) {
+                let turn = self.turn;
+                let (t, n) = self.nontoken_creatures_died;
+                self.nontoken_creatures_died = (turn, if t == turn { n + 1 } else { 1 });
+            }
             // "Whenever a creature you control dies while this card is in your graveyard": cards
             // already there (not the one that just died).
             for g in self.players[last_controller].graveyard.clone() {
@@ -6070,6 +6113,9 @@ impl Game {
             let d = self.def_of(c);
             self.permanents(p).filter(|&x| !self.lost_abilities(x)).any(|x| {
                 let s = self.def_of(x);
+                if s.citadel && (d.types.land || self.players[p].life >= d.cost.mana_value() as i32) {
+                    return true; // Bolas's Citadel: it can pay the mana value in life
+                }
                 if d.types.land {
                     s.lands_from_top
                 } else {
@@ -6581,8 +6627,10 @@ impl Game {
                     .free_subtype_spells
                     .is_some_and(|sub| def.subtypes.iter().any(|s| s == sub))
             });
+        let citadel = self.citadel_top(p, c) || (o.zone == Zone::Stack && o.citadel_cast);
         let free = (o.cast_free
             || free_subtype
+            || citadel
             || (in_hand && self.permanents(p).any(|x| self.def_of(x).free_from_hand)))
             && mode.x == 0
             && !mode.alt
@@ -7865,6 +7913,15 @@ impl Game {
                     }
                     continue;
                 }
+                if a.sacrifice_nonland_n > 0
+                    && self
+                        .permanents(p)
+                        .filter(|&x| !self.types_of(x).land && !self.cant_be_sacrificed(x))
+                        .count()
+                        < a.sacrifice_nonland_n as usize
+                {
+                    continue;
+                }
                 if let Some(sub) = a.sacrifice_x_of_subtype {
                     let have = self
                         .permanents(p)
@@ -8296,6 +8353,17 @@ impl Game {
             self.obj_mut(id).counters -= 1; // Devoted Druid: a -1/-1 counter
             let controller = self.obj(id).controller;
             self.counters_placed(controller, 1);
+        }
+        if a.sacrifice_nonland_n > 0 {
+            let mut victims: Vec<ObjId> = self
+                .permanents(p)
+                .filter(|&v| !self.types_of(v).land && !self.cant_be_sacrificed(v))
+                .collect();
+            victims.sort_by_key(|&v| (v == id, !self.is_token(v), self.def_of(v).cost.mana_value()));
+            for v in victims.into_iter().take(a.sacrifice_nonland_n as usize) {
+                self.move_to(v, Zone::Graveyard);
+                self.sacrificed(v, p);
+            }
         }
         if let Some(sub) = a.sacrifice_x_of_subtype {
             let mut victims: Vec<ObjId> = self.permanents(p).filter(|&v| self.has_subtype(v, sub)).collect();
@@ -8782,6 +8850,7 @@ impl Game {
             .as_ref()
             .map(|c| c.attackers.clone())
             .unwrap_or_default();
+        let arbiter = self.silent_arbiter();
         self.creatures(p).filter(move |&id| {
             let o = self.obj(id);
             let k = self.keywords(id);
@@ -8791,6 +8860,10 @@ impl Game {
                 && !declared.contains(&id)
                 && !(self.def_of(id).cant_attack_twice_per_turn
                     && self.attacked_creatures_this_turn.contains(&id))
+                && (self.def_of(id).attacks_only_with_artifacts == 0
+                    || self.permanents(p).filter(|&x| self.types_of(x).artifact).count()
+                        >= self.def_of(id).attacks_only_with_artifacts as usize)
+                && !(arbiter && !declared.is_empty())
                 && !self.cant_attack_until.iter().any(|&(x, zcc, until)| x == id && zcc == o.zcc && self.turn < until)
                 && (!self.def_of(id).fights_only_with_blessing || self.city_blessing[o.controller])
                 // Promise of Loyalty: a creature with a vow counter can't attack the player it vowed to.
@@ -8963,9 +9036,12 @@ impl Game {
 
     fn block_actions(&self, p: PlayerId) -> Vec<Action> {
         let combat = self.combat.as_ref().expect("blocks happen in combat");
+        // Silent Arbiter: one blocker each combat (so no menace blocks).
+        let arbiter = self.silent_arbiter();
         let free: Vec<ObjId> = self
             .creatures(p)
             .filter(|&id| !self.obj(id).tapped && !combat.is_blocking(id))
+            .filter(|_| !(arbiter && !combat.blocks.is_empty()))
             .collect();
         let mut v = Vec::new();
         for &a in &combat.attackers {
@@ -8973,7 +9049,7 @@ impl Game {
             // CR 702.111b: menace needs two or more blockers. Only offer the first block if a second
             // blocker is available.
             let menace_first = self.keywords(a).has(Keywords::MENACE) && !combat.is_blocked(a);
-            if menace_first && able.len() < 2 {
+            if menace_first && (able.len() < 2 || arbiter) {
                 continue;
             }
             v.extend(able.into_iter().map(|b| Action::Block {
@@ -9576,6 +9652,7 @@ impl Game {
         let offspring = mode.kicked && self.offspring_cost(p, card).is_some();
         self.obj_mut(card).offspring_paid = offspring;
         self.obj_mut(card).from_hand = self.obj(card).zone == Zone::Hand;
+        let citadel = self.citadel_top(p, card);
         let from_command = self.obj(card).zone == Zone::Command;
         self.obj_mut(card).from_command = from_command;
         if from_command {
@@ -9587,6 +9664,7 @@ impl Game {
             self.commander_casts[owner] = self.commander_casts[owner].saturating_add(1);
         }
         self.move_to(card, Zone::Stack);
+        self.obj_mut(card).citadel_cast = citadel;
         if mode.alt && self.def_of(card).mana_ext.evoke {
             // Evoked: remembered for the object it becomes on the battlefield.
             let zcc = self.obj(card).zcc + 1;
@@ -9779,6 +9857,11 @@ impl Game {
             for t in &mut self.triggered[before..] {
                 t.extra = Some(card);
             }
+        }
+        if std::mem::take(&mut self.obj_mut(card).citadel_cast) {
+            // Bolas's Citadel: life equal to its mana value instead of its mana cost.
+            let mv = self.def_of(card).cost.mana_value() as i32;
+            self.lose_life(p, mv);
         }
         let delved = std::mem::take(&mut self.obj_mut(card).delve);
         if delved > 0 {
@@ -11259,6 +11342,14 @@ impl Game {
                 v
             }
             Decision::MayDrawGainOne { .. } => vec![Action::Yes, Action::No],
+            Decision::ExpropriateVote { .. } => vec![Action::Yes, Action::No],
+            Decision::ExpropriatePick { owner, .. } => self
+                .battlefield
+                .iter()
+                .copied()
+                .filter(|&x| self.obj(x).owner == *owner)
+                .map(Action::Pick)
+                .collect(),
             Decision::ChooseLoyaltyX { source, .. } => {
                 let max = self.obj(*source).loyalty.clamp(0, 60) as u8;
                 (0..=max).map(Action::Amount).collect()
@@ -12888,6 +12979,32 @@ impl Game {
                 }
             }
             (Decision::MoveCounterFrom { .. }, _) => {}
+            (Decision::ExpropriateVote { voter, next, mut time, mut money }, a) => {
+                // The asked player is the voter; the spell's controller is the one who asked first.
+                let caster = if next.is_some() { voter } else { opponent(voter) };
+                if a == Action::Yes {
+                    time += 1;
+                } else {
+                    money.push(voter);
+                }
+                if let Some(q) = next {
+                    self.ask(q, Decision::ExpropriateVote { voter: q, next: None, time, money });
+                } else {
+                    for _ in 0..time {
+                        self.extra_turns.push(caster);
+                    }
+                    self.expropriate_next_pick(caster, money);
+                }
+            }
+            (Decision::ExpropriatePick { money, .. }, Action::Pick(c)) => {
+                if self.obj(c).controller != p {
+                    let turn = self.turn;
+                    let o = self.obj_mut(c);
+                    o.controller = p;
+                    o.since_turn = turn;
+                }
+                self.expropriate_next_pick(p, money);
+            }
             (Decision::MayDrawGainOne { next }, a) => {
                 if a == Action::Yes {
                     self.draw(p);
@@ -17243,6 +17360,26 @@ impl Game {
                     }
                 }
             }
+            Effect::CreateTokenPerNontokenCreatureDiedThisTurn { def } => {
+                let (t, n) = self.nontoken_creatures_died;
+                if t == self.turn {
+                    for _ in 0..n {
+                        self.create_token(item.controller, def);
+                    }
+                }
+            }
+            Effect::Expropriate => {
+                let p = item.controller;
+                self.ask(
+                    p,
+                    Decision::ExpropriateVote {
+                        voter: p,
+                        next: Some(opponent(p)),
+                        time: 0,
+                        money: Vec::new(),
+                    },
+                );
+            }
             Effect::GiftExtraTurn => {
                 let opp = opponent(item.controller);
                 self.extra_turns.push(opp);
@@ -20880,6 +21017,7 @@ impl Game {
                     d.tokens_plus_one
                         .map(|t| (t, 1))
                         .into_iter()
+                        .chain(d.treasures_plus_one.filter(|&t| t == def).map(|t| (t, 1)))
                         .chain(d.tokens_plus_each.map(|t| (t, made.len())))
                         .collect::<Vec<_>>()
                 })

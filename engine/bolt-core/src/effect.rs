@@ -2264,6 +2264,12 @@ pub enum Effect {
     /// Put a shield counter on the creature in `slot`; you control it for as long as it has a
     /// shield counter (Shield Broker). A commander isn't affected (its filter can't exclude it).
     ShieldCounterAndControlWhileShielded(u8),
+    /// Create a `def` token for each nontoken creature that died this turn (Gadrak).
+    CreateTokenPerNontokenCreatureDiedThisTurn { def: usize },
+    /// Council's dilemma, time or money (Expropriate): each player votes, you first, as
+    /// `Decision::ExpropriateVote`; each time vote is an extra turn after this one, and for each
+    /// money vote you choose a permanent the voter owns and gain control of it.
+    Expropriate,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
