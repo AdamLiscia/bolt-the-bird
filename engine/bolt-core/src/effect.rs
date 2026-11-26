@@ -2069,6 +2069,13 @@ pub enum Effect {
         slot: u8,
         subtype: &'static str,
     },
+    /// Counter the spell or ability from the item's `extra` source (Kira's granted trigger).
+    CounterExtra,
+    /// All Suns' Dawn: for each color, return up to one card of that color from your graveyard to
+    /// your hand.
+    OneCardOfEachColorToHand,
+    /// Chain of Smog: the player in `slot` may copy this spell, choosing a new target player.
+    ChainCopy(u8),
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
