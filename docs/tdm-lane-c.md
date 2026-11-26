@@ -699,3 +699,10 @@ Ephemerate, Treasure Vault.
 Shortcuts: Massacre Wurm's "that player" is the one opponent. Mayhem Devil uses `When::PlayerSacrificesAnother`,
 so sacrificing Mayhem Devil itself doesn't trigger it. Charming Prince's "another target creature you own" is one
 you control.
+Malik batch 2 (objects and zones): Nahiri's Resolve, Treasure Map // Treasure Cove. Core: `Effect::{ExileYoursUntilYourNextUpkeep,
+LandmarkTransformTreasures}`, `Decision::ExileUntilYourNextUpkeep` (Pick one at a time, No to stop; labelled),
+`Object::return_at_upkeep` (returned at the start of that player's upkeep step, before upkeep triggers). Landmark
+counters are the source's `kind_counters`; transforming is in place (`transformed`, same object).
+Still Malik, not done: Prosper, Tome-Bound (needs d2's "play a card from exile" trigger), Glimpse of Tomorrow
+(suspend, a later lane C batch), Gisa, Glorious Resurrector (Mac B's die-to-exile replacement first), Inventors'
+Fair (d3: a search for any artifact card).

@@ -2255,6 +2255,15 @@ pub enum Effect {
     /// Put the creature card in graveyard `slot` onto the battlefield under your control; it gains
     /// haste, and it's exiled at the beginning of the next end step (Puppeteer Clique).
     ReanimateHasteExileAtEnd(u8),
+    /// "Exile any number of nontoken artifacts and/or creatures you control. Return those cards to
+    /// the battlefield under their owner's control at the beginning of your next upkeep." (Nahiri's
+    /// Resolve), one at a time as `Decision::ExileUntilYourNextUpkeep`.
+    ExileYoursUntilYourNextUpkeep,
+    /// Put a landmark counter on the source (its `kind_counters`); then with three or more, remove
+    /// three, transform it, and create three `def` tokens (Treasure Map).
+    LandmarkTransformTreasures {
+        def: usize,
+    },
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

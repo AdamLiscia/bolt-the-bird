@@ -1675,6 +1675,32 @@ pub fn script(name: &str) -> Option<Script> {
             let n = activated(d, "{X}{X}", true, vec![], vec![Effect::CreateTokensX { def: t.treasure }]);
             d.activated[n].sacrifice_self = true;
         }),
+        // ---- Malik, batch 2: objects and zones ----
+        "Nahiri's Resolve" => s(
+            &[
+                "Creatures you control get +1/+0 and have haste.",
+                "At the beginning of your end step, exile any number of nontoken artifacts and/or creatures you control. Return those cards to the battlefield under their owner's control at the beginning of your next upkeep.",
+            ],
+            |d, _| {
+                static_on(d, Scope::YourCreatures, false, Keywords::HASTE);
+                d.statics.last_mut().expect("the static").power = 1;
+                on(d, When::EndStep { your_turn_only: true }, vec![], vec![Effect::ExileYoursUntilYourNextUpkeep]);
+            },
+        ),
+        "Treasure Map // Treasure Cove" => s(
+            &[
+                "{1}, {T}: Scry 1. Put a landmark counter on this artifact. Then if there are three or more landmark counters on it, remove those counters, transform this artifact, and create three Treasure tokens.",
+                "Back: {T}: Add {C}.",
+                "Back: {T}, Sacrifice a Treasure: Draw a card.",
+            ],
+            |d, t| {
+                activated(d, "{1}", true, vec![], vec![Effect::Scry { n: 1 }, Effect::LandmarkTransformTreasures { def: t.treasure }]);
+                let b = d.back.as_mut().expect("Treasure Cove");
+                b.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                let n = activated(b, "", true, vec![], vec![draw(1)]);
+                b.activated[n].sacrifice_subtype = Some("Treasure");
+            },
+        ),
         _ => None,
     }
 }
@@ -1877,4 +1903,6 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Charming Prince",
     "Ephemerate",
     "Treasure Vault",
+    "Nahiri's Resolve",
+    "Treasure Map // Treasure Cove",
 ];

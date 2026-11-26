@@ -304,6 +304,8 @@ pub struct Object {
     /// Plotted (CR 702.170): the turn it was plotted and its zone-change count in exile. Castable
     /// from exile on a later turn as a sorcery, free.
     pub plotted: Option<(u32, u32)>,
+    /// Exiled until this player's next upkeep (Nahiri's Resolve), for its zone-change count in exile.
+    pub return_at_upkeep: Option<(PlayerId, u32)>,
 }
 
 /// One resolved effect's change to a permanent's characteristics (lane d3's type-changing store):
@@ -1230,6 +1232,9 @@ pub enum Decision {
         cards: Vec<ObjId>,
         max_mv: u32,
     },
+    /// Nahiri's Resolve: `Pick` a nontoken artifact or creature you control to exile until your next
+    /// upkeep (then asked again), or `No` to stop.
+    ExileUntilYourNextUpkeep,
     /// `Pick` one of `cards` (looked at, still on top of your library) to put into your hand
     /// (`to_hand`) or on the bottom; the rest are exiled, playable this turn (Expressive Iteration).
     IterationPick { cards: Vec<ObjId>, to_hand: bool },
@@ -2084,6 +2089,7 @@ impl Game {
             sacrifice_when_targeted: None,
             class_level: 0,
             plotted: None,
+            return_at_upkeep: None,
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -3704,6 +3710,12 @@ impl Game {
         d.types.is_permanent()
             && (!noncreature_nonland || (!d.types.creature && !d.types.land))
             && max_mv.is_none_or(|m| d.cost.mana_value() <= m)
+    }
+
+    /// Nahiri's Resolve: a nontoken artifact or creature.
+    fn nahiri_exilable(&self, c: ObjId) -> bool {
+        let t = self.types_of(c);
+        (t.artifact || t.creature) && !self.is_token(c)
     }
 
     /// Lonis: a revealed card that may be put onto the battlefield: a nonland permanent card with
@@ -11138,6 +11150,15 @@ impl Game {
                 .filter(|&c| self.is_token(c))
                 .map(Action::Pick)
                 .collect(),
+            Decision::ExileUntilYourNextUpkeep => {
+                let mut v: Vec<Action> = self
+                    .permanents(p)
+                    .filter(|&c| self.nahiri_exilable(c))
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
             Decision::PutFromOpponentsTop { cards, max_mv, .. } => {
                 let mut v: Vec<Action> = cards
                     .iter()
@@ -12552,6 +12573,17 @@ impl Game {
                 }
                 self.put_among_rest(victim, rest, false);
             }
+            (Decision::ExileUntilYourNextUpkeep, Action::Pick(c)) => {
+                self.move_to(c, Zone::Exile);
+                if self.obj(c).zone == Zone::Exile {
+                    let zcc = self.obj(c).zcc;
+                    self.obj_mut(c).return_at_upkeep = Some((p, zcc));
+                }
+                if self.permanents(p).any(|x| self.nahiri_exilable(x)) {
+                    self.ask(p, Decision::ExileUntilYourNextUpkeep);
+                }
+            }
+            (Decision::ExileUntilYourNextUpkeep, Action::No) => {}
             (Decision::PutFromOpponentsTop { victim, cards, .. }, Action::No) => {
                 self.put_among_rest(victim, cards, false)
             }
@@ -20390,6 +20422,25 @@ impl Game {
                     });
                 }
             }
+            Effect::ExileYoursUntilYourNextUpkeep => {
+                let p = item.controller;
+                if self.permanents(p).any(|x| self.nahiri_exilable(x)) {
+                    self.ask(p, Decision::ExileUntilYourNextUpkeep);
+                }
+            }
+            Effect::LandmarkTransformTreasures { def } => {
+                if self.obj(src).zone == Zone::Battlefield {
+                    self.obj_mut(src).kind_counters += 1;
+                    if self.obj(src).kind_counters >= 3 && self.defs[self.obj(src).def].back.is_some() {
+                        let o = self.obj_mut(src);
+                        o.kind_counters -= 3;
+                        o.transformed = true;
+                        for _ in 0..3 {
+                            self.create_token(item.controller, def);
+                        }
+                    }
+                }
+            }
             Effect::ReanimateHasteExileAtEnd(slot) => {
                 if let Some(id) = Game::slot_object(item, legal, slot) {
                     if self.obj(id).zone == Zone::Graveyard && self.def_of(id).types.creature {
@@ -21586,6 +21637,20 @@ impl Game {
                 self.give_priority(a);
             }
             Step::Upkeep => {
+                // Nahiri's Resolve: "Return those cards ... at the beginning of your next upkeep."
+                let back: Vec<ObjId> = self
+                    .exile
+                    .iter()
+                    .copied()
+                    .filter(|&c| {
+                        let o = self.obj(c);
+                        o.return_at_upkeep.is_some_and(|(q, zcc)| q == a && zcc == o.zcc)
+                    })
+                    .collect();
+                for c in back {
+                    self.obj_mut(c).return_at_upkeep = None;
+                    self.move_to(c, Zone::Battlefield);
+                }
                 // Paradox Haze: "At the beginning of enchanted player's first upkeep each turn, that
                 // player gets an additional upkeep step after this step."
                 let (t, n) = self.upkeeps_this_turn;

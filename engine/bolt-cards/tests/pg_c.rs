@@ -3187,3 +3187,66 @@ fn treasure_vault_makes_x_treasures() {
     assert_eq!(tokens(&g, 0, "Treasure").len(), 2);
     assert_eq!(g.obj(tv).zone, Zone::Graveyard);
 }
+
+// ---- Malik, batch 2 ----
+
+fn to_main(g: &mut Game, turn: u32, active: usize) {
+    g.start_turn(turn, active);
+    while g.step != Step::Main1 {
+        let legal = g.legal_actions();
+        let a = if legal.contains(&Action::PassPriority) {
+            Action::PassPriority
+        } else {
+            legal[0]
+        };
+        act(g, a);
+    }
+}
+
+#[test]
+fn nahiris_resolve_pumps_and_exiles_until_your_next_upkeep() {
+    let mut g = table();
+    put(&mut g, 0, "Nahiri's Resolve");
+    let ghoul = put(&mut g, 0, "Hungry Ghoul");
+    assert_eq!(g.power(ghoul), 2);
+    assert!(g.keywords(ghoul).has(Keywords::HASTE));
+    let mut exiled = false;
+    for _ in 0..40 {
+        if g.turn != 3 {
+            break;
+        }
+        let legal = g.legal_actions();
+        let a = if legal.contains(&Action::Pick(ghoul)) && !exiled {
+            exiled = true;
+            Action::Pick(ghoul)
+        } else if legal.contains(&Action::PassPriority) {
+            Action::PassPriority
+        } else {
+            legal[0]
+        };
+        act(&mut g, a);
+    }
+    assert!(exiled);
+    assert_eq!(g.obj(ghoul).zone, Zone::Exile);
+    to_main(&mut g, 5, 0);
+    assert_eq!(g.obj(ghoul).zone, Zone::Battlefield, "back at your next upkeep");
+}
+
+#[test]
+fn treasure_map_transforms_on_its_third_landmark_into_treasure_cove() {
+    let mut g = table();
+    let map = put(&mut g, 0, "Treasure Map // Treasure Cove");
+    for turn in [5, 7, 9] {
+        to_main(&mut g, turn, 0);
+        act(&mut g, Action::Activate(map, 0));
+        first_answers(&mut g);
+    }
+    assert_eq!(g.def_of(map).name, "Treasure Cove");
+    let treasures = tokens(&g, 0, "Treasure");
+    assert_eq!(treasures.len(), 3);
+    to_main(&mut g, 11, 0);
+    let n = g.players[0].hand.len();
+    act(&mut g, Action::ActivateWith(map, 0, treasures[0]));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].hand.len(), n + 1);
+}
