@@ -800,6 +800,26 @@ Authority (protection from creatures: d3), Open the Armory (a search for an Aura
 - Vohar, Vodalian Desecrator: `Effect::DiscardThenIfInstantOrSorcery` with `Decision::DiscardThenIfInstantOrSorcery`
   (labelled), and the sacrifice ability as `GrantFlashback` (Snapcaster's grant: its mana cost, exiled instead).
 
+## Script-only pass: Olivia and Bruna (2026-11-26), batch 1 (unbuilt)
+
+Lavaspur Boots (lane B's `enchanted_ward`), Mother of Runes (d3's `ProtectionChosenColorEot`), Port Razer (the
+existing `AdditionalCombatAfterThisPhase` and `cant_attack_twice_per_turn`), Breath of Fury (new
+`Effect::SacrificeEnchantedMoveAura` with `Decision::MoveAuraTo`, labelled: the Aura moves before state-based
+actions can bin it; with nothing to move to, "If you do" fails).
+Still waiting, by owner:
+- d1: Mystic Gate (filter mana), Bitter Triumph, Cathartic Reunion, Demand Answers, Sazacap's Brew (additional
+  costs), Hoarding Broodlord, Neheb, the Eternal, Ozai, Heliod's back (cost reduction per card drawn).
+- d2: Mesmeric Orb (any permanent untaps), Deep Gnome Terramancer (lands enter for an opponent without being
+  played), Archaeomancer's Map (an opponent's land enters), Lavinia (an opponent casts a spell with no mana
+  spent), Necropolis Regent (a creature-and-amount combat damage trigger), Azra Oddsmaker, Twilight Diviner,
+  Olivia's Attendants (deals-damage amount, and a Blood token).
+- d3: Fabled Passage, All That Glitters, Ethereal Armor, Auramancer's Guise, Sage's Reverie, Celestial Mantle,
+  Daybreak Coronet, Unquestioned Authority, Giver of Runes, Pippin, Open the Armory, Consuming Tide, Single
+  Combat, Gifts Ungiven, Super State, Heliod's front; Exhume, Living Death, Burning Inquiry, Change of Fortune,
+  Dragon Mage, Burning-Rune Demon, Rakdos Charm, Vile Mutilator, Twilight Prophet.
+- d4: Invasion of Theros (battles), Summon: Bahamut (a Saga creature).
+- lane B: Rankle and Torbran ("choose any number" modes, the +2 damage replacement).
+
 ## Held back (lane C), with what each needs
 
 Done since: Light-Paws, Sovereigns, Bruna, Olivia, Dragonhawk, Glimpse of Tomorrow (batches 8-9). Routed

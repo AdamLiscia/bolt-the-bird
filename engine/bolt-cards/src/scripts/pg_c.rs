@@ -2062,6 +2062,47 @@ pub fn script(name: &str) -> Option<Script> {
                 d.activated[n].sorcery = true;
             },
         ),
+        // ---- Script-only pass: Bruna and Olivia ----
+        "Lavaspur Boots" => s(
+            &["Equipped creature gets +1/+0 and has haste and ward {1}.", "Equip {1}"],
+            |d, _| {
+                attached(d, false, 1, 0, Keywords::HASTE);
+                d.enchanted_ward = Some(ManaCost::parse("{1}").expect("cost"));
+                equip(d, "{1}");
+            },
+        ),
+        "Mother of Runes" => s(
+            &["{T}: Target creature you control gains protection from the color of your choice until end of turn."],
+            |d, _| {
+                activated(d, "", true, vec![YOUR_CREATURE], vec![Effect::ProtectionChosenColorEot(Some(0))]);
+            },
+        ),
+        "Port Razer" => s(
+            &[
+                "Whenever this creature deals combat damage to a player, untap each creature you control. After this phase, there is an additional combat phase.",
+                "This creature can't attack a player it has already attacked this turn.",
+            ],
+            |d, _| {
+                on(d, When::DealsCombatDamageToPlayer, vec![], vec![Effect::UntapCreaturesYouControl, Effect::AdditionalCombatAfterThisPhase]);
+                d.cant_attack_twice_per_turn = true;
+            },
+        ),
+        "Breath of Fury" => s(
+            &[
+                "Enchant creature you control",
+                "When enchanted creature deals combat damage to a player, sacrifice it and attach this Aura to a creature you control. If you do, untap all creatures you control and after this phase, there is an additional combat phase.",
+            ],
+            |d, _| {
+                d.aura = true;
+                d.spell = Some(Ability::new(vec![YOUR_CREATURE], vec![]));
+                on(
+                    d,
+                    When::EquippedDealsCombatDamageToPlayer,
+                    vec![],
+                    vec![Effect::SacrificeEnchantedMoveAura, Effect::UntapCreaturesYouControl, Effect::AdditionalCombatAfterThisPhase],
+                );
+            },
+        ),
         _ => None,
     }
 }
@@ -2305,4 +2346,8 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Gisa, Glorious Resurrector",
     "Tergrid, God of Fright // Tergrid's Lantern",
     "Vohar, Vodalian Desecrator",
+    "Lavaspur Boots",
+    "Mother of Runes",
+    "Port Razer",
+    "Breath of Fury",
 ];

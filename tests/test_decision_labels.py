@@ -127,6 +127,8 @@ def test_bruna_and_light_paws_attach_auras():
     assert sv._decision_label(glimpse, "Pick", 0, "Hungry Ghoul") == "Attach the Aura to Hungry Ghoul"
     vohar = {"kind": "DiscardThenIfInstantOrSorcery"}
     assert sv._decision_label(vohar, "Pick", 0, "Opt") == "Discard Opt"
+    breath = {"kind": "MoveAuraTo"}
+    assert sv._decision_label(breath, "Pick", 0, "Hungry Ghoul") == "Attach the Aura to Hungry Ghoul"
 
 
 def test_venturing_names_the_dungeon_or_room():

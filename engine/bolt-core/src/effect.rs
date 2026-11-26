@@ -2475,6 +2475,10 @@ pub enum Effect {
     /// Discard a card (`Decision::DiscardThenIfInstantOrSorcery`); the rest of the effects happen
     /// only if it was an instant or sorcery card (Vohar, Vodalian Desecrator).
     DiscardThenIfInstantOrSorcery,
+    /// Breath of Fury: sacrifice the creature the source Aura enchants and attach the Aura to a
+    /// creature you control (`Decision::MoveAuraTo`); the rest of the effects happen only if it's
+    /// attached ("If you do").
+    SacrificeEnchantedMoveAura,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

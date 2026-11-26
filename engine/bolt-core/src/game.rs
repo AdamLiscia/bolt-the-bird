@@ -1337,6 +1337,8 @@ pub enum Decision {
     /// Vohar: `Pick` a card in your hand to discard; the rest of the effects happen only if it's an
     /// instant or sorcery card.
     DiscardThenIfInstantOrSorcery,
+    /// Breath of Fury: `Pick` a creature you control for the Aura `aura` to be attached to.
+    MoveAuraTo { aura: ObjId },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -12674,6 +12676,11 @@ impl Game {
             }
             d @ Decision::AttachAura { .. } => self.attach_aura_actions(p, d),
             Decision::DiscardThenIfInstantOrSorcery => hand.iter().copied().map(Action::Pick).collect(),
+            Decision::MoveAuraTo { aura } => self
+                .move_aura_options(*aura, p)
+                .into_iter()
+                .map(Action::Pick)
+                .collect(),
             Decision::AuraEntersAttachedTo { aura, .. } => {
                 self.aura_hosts(*aura, p).into_iter().map(Action::Pick).collect()
             }
@@ -14192,6 +14199,10 @@ impl Game {
                 }
             }
             (d @ Decision::AttachAura { .. }, a) => self.attach_aura_decide(p, d, a),
+            (Decision::MoveAuraTo { aura }, Action::Pick(c)) => {
+                let zcc = self.obj(c).zcc;
+                self.obj_mut(aura).attached_to = Some((c, zcc));
+            }
             (Decision::DiscardThenIfInstantOrSorcery, Action::Pick(c)) => {
                 let t = self.def_of(c).types;
                 self.move_to(c, Zone::Graveyard); // discarded
@@ -22185,6 +22196,7 @@ impl Game {
                     self.torment_next(q, 1, life);
                 }
             }
+            Effect::SacrificeEnchantedMoveAura => self.sacrifice_enchanted_move_aura(src, item.controller),
             Effect::DiscardThenIfInstantOrSorcery => {
                 let p = item.controller;
                 if self.players[p].hand.is_empty() {

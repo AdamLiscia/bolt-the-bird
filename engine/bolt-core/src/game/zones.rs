@@ -468,4 +468,33 @@ impl Game {
         let d = &self.defs[self.obj(c).def];
         d.modal_back && d.modes.is_empty() && self.obj(c).zone == Zone::Hand && d.back.is_some()
     }
+
+    /// The creatures `p` controls that the Aura `aura` could be moved onto (Breath of Fury).
+    pub(super) fn move_aura_options(&self, aura: ObjId, p: PlayerId) -> Vec<ObjId> {
+        let on = self.obj(aura).attached_to.map(|(c, _)| c);
+        self.creatures(p)
+            .filter(|&c| Some(c) != on && self.could_enchant(aura, c, p))
+            .collect()
+    }
+
+    /// Breath of Fury: "sacrifice it and attach this Aura to a creature you control. If you do,
+    /// ..." The Aura is moved before state-based actions could put it into the graveyard; with no
+    /// creature to move it to, the rest doesn't happen.
+    pub(super) fn sacrifice_enchanted_move_aura(&mut self, aura: ObjId, p: PlayerId) {
+        let gone = |g: &mut Game| g.resolving.as_mut().expect("resolving").remaining.clear();
+        if self.obj(aura).zone != Zone::Battlefield {
+            return gone(self);
+        }
+        if let Some((c, z)) = self.obj(aura).attached_to {
+            let o = self.obj(c);
+            if o.zone == Zone::Battlefield && o.zcc == z && o.controller == p && !self.cant_be_sacrificed(c) {
+                self.move_to(c, Zone::Graveyard);
+                self.sacrificed(c, p);
+            }
+        }
+        if self.move_aura_options(aura, p).is_empty() {
+            return gone(self);
+        }
+        self.ask(p, Decision::MoveAuraTo { aura });
+    }
 }

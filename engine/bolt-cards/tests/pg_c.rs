@@ -4006,3 +4006,95 @@ fn vohar_loots_drains_on_a_discarded_sorcery_and_grants_a_graveyard_cast() {
         "castable from the graveyard this turn"
     );
 }
+
+// ---- Script-only pass: Bruna and Olivia ----
+
+/// Passes (finishing attacks and blocks with none) until `done` holds.
+fn pass_until(g: &mut Game, done: impl Fn(&Game) -> bool) {
+    for _ in 0..200 {
+        if done(g) {
+            return;
+        }
+        let legal = g.legal_actions();
+        let a = [Action::PassPriority, Action::FinishAttacks, Action::FinishBlocks]
+            .into_iter()
+            .find(|a| legal.contains(a))
+            .unwrap_or(legal[0]);
+        act(g, a);
+    }
+    panic!("never got there");
+}
+
+#[test]
+fn lavaspur_boots_gives_plus_one_and_haste() {
+    let mut g = table();
+    let boots = put(&mut g, 0, "Lavaspur Boots");
+    let ghoul = put(&mut g, 0, "Hungry Ghoul");
+    let before = g.power(ghoul);
+    act(&mut g, Action::Activate(boots, 0));
+    act(&mut g, Action::Target(obj(ghoul)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.power(ghoul), before + 1);
+    assert!(g.keywords(ghoul).has(Keywords::HASTE));
+    pass_until(&mut g, |g| g.pending == Pending::DeclareAttackers(0));
+    assert!(
+        g.legal_actions().contains(&Action::Attack(ghoul)),
+        "haste: it attacks the turn it came in"
+    );
+}
+
+#[test]
+fn mother_of_runes_gives_protection_from_a_chosen_color() {
+    let mut g = table();
+    let m = put(&mut g, 0, "Mother of Runes");
+    let ghoul = put(&mut g, 0, "Hungry Ghoul");
+    g.start_turn(5, 0);
+    pass_until(&mut g, |g| g.step == Step::Main1);
+    act(&mut g, Action::Activate(m, 0));
+    act(&mut g, Action::Target(obj(ghoul)));
+    resolve_all(&mut g, &[Action::Mode(2)]);
+    assert!(g.protection(ghoul)[2], "protection from black");
+    assert!(g.obj(m).tapped);
+}
+
+#[test]
+fn port_razer_untaps_and_adds_a_combat_it_cannot_attack_in() {
+    let mut g = table();
+    let razer = put(&mut g, 0, "Port Razer");
+    let other = put(&mut g, 0, "Hungry Ghoul"); // stays home, so the extra combat asks for attackers
+    to_attackers(&mut g);
+    act(&mut g, Action::Attack(razer));
+    act(&mut g, Action::FinishAttacks);
+    let life = g.players[1].life;
+    pass_until(&mut g, |g| g.players[1].life < life && g.items.is_empty());
+    pass_until(&mut g, |g| g.pending == Pending::DeclareAttackers(0));
+    assert!(!g.obj(razer).tapped, "untapped");
+    assert!(
+        !g.legal_actions().contains(&Action::Attack(razer)),
+        "it already attacked that player"
+    );
+}
+
+#[test]
+fn breath_of_fury_trades_its_creature_for_another_and_an_extra_combat() {
+    let mut g = table();
+    let a = put(&mut g, 0, "Hungry Ghoul");
+    let b = put(&mut g, 0, "Hungry Ghoul");
+    let breath = hand(&mut g, 0, "Breath of Fury");
+    let z = g.obj(a).zcc;
+    assert!(g.put_aura_attached(breath, a, z, 0));
+    to_attackers(&mut g);
+    act(&mut g, Action::Attack(a));
+    act(&mut g, Action::FinishAttacks);
+    pass_until(&mut g, |g| matches!(g.pending, Pending::Decide(0)));
+    assert!(g.legal_actions().contains(&Action::Pick(b)));
+    act(&mut g, Action::Pick(b));
+    assert_eq!(g.obj(a).zone, Zone::Graveyard, "sacrificed");
+    let zb = g.obj(b).zcc;
+    assert_eq!(g.obj(breath).attached_to, Some((b, zb)));
+    pass_until(&mut g, |g| g.pending == Pending::DeclareAttackers(0));
+    assert!(
+        g.legal_actions().contains(&Action::Attack(b)),
+        "an additional combat"
+    );
+}
