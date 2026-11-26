@@ -2081,6 +2081,16 @@ pub enum Effect {
         n: u8,
         def: usize,
     },
+    /// Populate (CR 701.31): create a token that's a copy of a creature token you control (your
+    /// choice when there's more than one).
+    Populate,
+    /// You gain life equal to the toughness of the creature in `slot` (Trostani).
+    GainLifeEqualSlotToughness(u8),
+    /// Imprint (Isochron Scepter): you may exile an instant card with mana value 2 or less from your
+    /// hand, linked to the source.
+    ImprintInstantFromHand,
+    /// You may cast a copy of the source's imprinted card without paying its mana cost.
+    CastImprintedCopy,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
