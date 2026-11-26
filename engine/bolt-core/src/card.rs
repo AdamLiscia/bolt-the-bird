@@ -790,6 +790,15 @@ pub struct CardDef {
     /// `ward_sacrifice` counts nonland permanents only (Valgavoth: "Ward—Sacrifice three nonland
     /// permanents.").
     pub ward_sacrifice_nonland: bool,
+    /// Animate Dead, Dance of the Dead, Necromancy: it reanimates its target creature card as it
+    /// enters (an Aura spell's target, or its enters trigger's) and is attached to it; when it
+    /// leaves the battlefield, that creature's controller sacrifices the creature.
+    pub reanimating_aura: bool,
+    /// The reanimated creature enters tapped (Dance of the Dead).
+    pub reanimates_tapped: bool,
+    /// "If you cast it any time a sorcery couldn't have been cast, ... sacrifices it at the
+    /// beginning of the next cleanup step." (Necromancy: at the next end step here)
+    pub flash_cast_sacrificed: bool,
     /// "Skip your draw step." (Damia, Sage of Stone)
     pub skip_draw_step: bool,
     /// "Untap all creatures you control during each other player's untap step." (Drumbellower)
@@ -1067,6 +1076,9 @@ impl CardDef {
             lands_are_swamps: false,
             creatures_abilities_haste: false,
             ward_sacrifice_nonland: false,
+            reanimating_aura: false,
+            reanimates_tapped: false,
+            flash_cast_sacrificed: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
             teeg_lock: false,
@@ -1304,6 +1316,9 @@ impl CardDef {
             lands_are_swamps: false,
             creatures_abilities_haste: false,
             ward_sacrifice_nonland: false,
+            reanimating_aura: false,
+            reanimates_tapped: false,
+            flash_cast_sacrificed: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
             teeg_lock: false,
@@ -1541,6 +1556,9 @@ impl CardDef {
             lands_are_swamps: false,
             creatures_abilities_haste: false,
             ward_sacrifice_nonland: false,
+            reanimating_aura: false,
+            reanimates_tapped: false,
+            flash_cast_sacrificed: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
             teeg_lock: false,

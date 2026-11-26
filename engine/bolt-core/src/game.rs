@@ -999,8 +999,6 @@ pub enum Decision {
     PickVoidCard,
     /// `Pick` a creature you control of color `color` (WUBRG) to return to its owner's hand.
     ReturnOwnCreatureOfColor { color: u8 },
-    /// `Pick` a land card in your hand to put onto the battlefield (untapped), or `No`.
-    LandFromHand,
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -1297,6 +1295,8 @@ pub struct Game {
     /// Words of War: the next draw this turn deals damage instead: (player, source, target, damage,
     /// turn).
     pub draw_damage_shields: Vec<(PlayerId, ObjId, Target, i32, u32)>,
+    /// Cards cast at a time a sorcery couldn't have been (Necromancy's drawback), with their zcc.
+    pub flash_casts: Vec<(ObjId, u32)>,
     /// Skip each player's next untap step (Savor the Moment's extra turn).
     pub skip_next_untap: [bool; 2],
 }
@@ -1523,6 +1523,7 @@ impl Game {
             draw_replacing: false,
             token_replacing: false,
             draw_damage_shields: Vec::new(),
+            flash_casts: Vec::new(),
             skip_next_untap: [false; 2],
         }
     }
@@ -2285,6 +2286,28 @@ impl Game {
         }
         if roll >= 15 && self.obj(target).zone == Zone::Battlefield {
             self.ask(p, Decision::DelinaAgain { target });
+        }
+    }
+
+    /// Animate Dead: `card` (a creature card in a graveyard) onto the battlefield under `p`'s control,
+    /// with `aura` attached to it.
+    fn reanimate_attach(&mut self, aura: ObjId, card: ObjId, p: PlayerId) {
+        if self.obj(card).zone != Zone::Graveyard || !self.def_of(card).types.creature {
+            self.obj_mut(aura).attached_to = None;
+            return;
+        }
+        let tapped = self.def_of(aura).reanimates_tapped;
+        self.move_to(card, Zone::Battlefield);
+        if self.obj(card).zone == Zone::Battlefield {
+            let turn = self.turn;
+            let o = self.obj_mut(card);
+            o.controller = p;
+            o.since_turn = turn;
+            o.tapped |= tapped;
+            let zcc = o.zcc;
+            self.obj_mut(aura).attached_to = Some((card, zcc));
+        } else {
+            self.obj_mut(aura).attached_to = None;
         }
     }
 
@@ -3132,6 +3155,10 @@ impl Game {
 
     fn move_to(&mut self, id: ObjId, to: Zone) {
         self.work();
+        // Animate Dead and friends: the creature it brought back, sacrificed when it leaves.
+        let reanimated = (self.obj(id).zone == Zone::Battlefield && self.def_of(id).reanimating_aura)
+            .then(|| self.obj(id).attached_to)
+            .flatten();
         let (owner, from) = (self.obj(id).owner, self.obj(id).zone);
         // Replacement effects on going to a graveyard (CR 614.6).
         let mut to = to;
@@ -3196,6 +3223,13 @@ impl Game {
         let pos = list.iter().position(|&x| x == id).expect("object is in its zone");
         list.remove(pos);
         self.zone_list(owner, to).push(id);
+        if let (Some((c, z)), true) = (reanimated, to != Zone::Battlefield) {
+            // "When this Aura leaves the battlefield, that creature's controller sacrifices it."
+            let o = self.obj(c);
+            if o.zcc == z && o.zone == Zone::Battlefield && !self.cant_be_sacrificed(c) {
+                self.move_to(c, Zone::Graveyard);
+            }
+        }
         let turn = self.turn;
         if to == Zone::Graveyard && from != Zone::Graveyard && !self.is_token(id) {
             if self.def_of(id).types.land {
@@ -7407,6 +7441,13 @@ impl Game {
     fn finish_cast(&mut self, item: StackItem) {
         let (p, card) = (item.controller, item.source);
         let flashback_cast = item.flashback;
+        let sorcery_now = p == self.active
+            && matches!(self.step, Step::Main1 | Step::Main2)
+            && self.items.iter().all(|i| i.source == card);
+        if self.def_of(card).flash_cast_sacrificed && !sorcery_now {
+            let zcc = self.obj(card).zcc;
+            self.flash_casts.push((card, zcc));
+        }
         // Terror of the Peaks: "cost an additional 3 life" for each of its controller's such targets.
         let tax: i32 = item
             .targets
@@ -8211,7 +8252,15 @@ impl Game {
                 if self.def_of(source).aura {
                     if let Some(&Chosen::Object(t, z)) = r.item.targets.first() {
                         self.obj_mut(source).attached_to = Some((t, z));
+                        if self.def_of(source).reanimating_aura {
+                            self.reanimate_attach(source, t, r.item.controller);
+                        }
                     }
+                }
+                // Necromancy cast at instant speed: sacrificed at the next end step.
+                if let Some(pos) = self.flash_casts.iter().position(|&(c, _)| c == source) {
+                    self.flash_casts.remove(pos);
+                    self.obj_mut(source).sacrifice_at_end = true;
                 }
             } else if self.obj(source).zone == Zone::Stack {
                 if r.acts && r.item.kicked && self.def_of(source).buyback_sacrifice.is_some() {
@@ -8747,17 +8796,6 @@ impl Game {
                 .filter(|&c| self.colors_of(c)[*color as usize])
                 .map(Action::Pick)
                 .collect(),
-            Decision::LandFromHand => {
-                let mut v: Vec<Action> = self.players[p]
-                    .hand
-                    .iter()
-                    .copied()
-                    .filter(|&x| self.def_of(x).types.land)
-                    .map(Action::Pick)
-                    .collect();
-                v.push(Action::No);
-                v
-            }
             Decision::PickVoidCard => {
                 let mut v: Vec<Action> = self
                     .exile
@@ -10052,8 +10090,6 @@ impl Game {
                 }
             }
             (Decision::ReturnOwnCreatureOfColor { .. }, Action::Pick(c)) => self.move_to(c, Zone::Hand),
-            (Decision::LandFromHand, Action::Pick(c)) => self.move_to(c, Zone::Battlefield),
-            (Decision::LandFromHand, _) => {}
             (Decision::PickVoidCard, Action::Pick(c)) => {
                 let turn = self.turn;
                 let o = self.obj_mut(c);
@@ -10217,7 +10253,10 @@ impl Game {
                         .copied()
                         .filter(|&id| self.types_of(id).creature && self.keywords(id).has(Keywords::FLYING))
                         .map(Target::Object)
-                        .chain([Target::Player(item.controller), Target::Player(opponent(item.controller))])
+                        .chain([
+                            Target::Player(item.controller),
+                            Target::Player(opponent(item.controller)),
+                        ])
                         .collect(),
                     Recipient::EachCreature { without_flying } => self
                         .battlefield
@@ -12334,6 +12373,20 @@ impl Game {
                     self.ask(p, Decision::MayCreatureFromHand);
                 }
             }
+            Effect::ReanimateAttachSource(n) => {
+                if let Some(c) = Game::slot_object(item, legal, n) {
+                    if self.obj(src).zone == Zone::Battlefield {
+                        self.reanimate_attach(src, c, item.controller);
+                    }
+                }
+            }
+            Effect::UntapAttached => {
+                if let Some((c, zcc)) = self.obj(src).attached_to {
+                    if self.obj(c).zcc == zcc && self.obj(c).zone == Zone::Battlefield {
+                        self.untap_by_effect(c);
+                    }
+                }
+            }
             Effect::BecomeCopyOfSlotUntilEot(n) => {
                 if let Some(card) = Game::slot_object(item, legal, n) {
                     if self.obj(src).zone == Zone::Battlefield {
@@ -12868,9 +12921,10 @@ impl Game {
                 }
             }
             Effect::DrawXTarget(slot) => {
-                if let (Some(&Chosen::Player(q)), true) =
-                    (item.targets.get(slot as usize), legal.get(slot as usize).copied().unwrap_or(false))
-                {
+                if let (Some(&Chosen::Player(q)), true) = (
+                    item.targets.get(slot as usize),
+                    legal.get(slot as usize).copied().unwrap_or(false),
+                ) {
                     for _ in 0..item.x {
                         self.draw(q);
                     }
@@ -16631,6 +16685,7 @@ impl Game {
                     // An Aura checks its own "enchant" restriction (CR 303.4d); Equipment needs a
                     // creature (CR 301.5c).
                     let fits = match self.def_of(id).spell.as_ref().and_then(|s| s.targets.first()) {
+                        _ if self.def_of(id).reanimating_aura => ty.creature,
                         Some(f) if self.def_of(id).aura => {
                             (ty.creature && f.creatures)
                                 || (ty.land && f.lands)
@@ -16640,7 +16695,7 @@ impl Game {
                     };
                     let ok = o.zone == Zone::Battlefield && o.zcc == z && fits;
                     if !ok {
-                        if self.def_of(id).aura {
+                        if self.def_of(id).aura || self.def_of(id).reanimating_aura {
                             dies.push(id);
                         } else {
                             self.obj_mut(id).attached_to = None;

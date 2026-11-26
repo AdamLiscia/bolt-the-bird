@@ -2266,13 +2266,36 @@ fn tatyova_land_ramp() {
     assert!(g.obj(a).zone == Zone::Battlefield && g.obj(a).tapped);
 }
 
+/// Resolves the stack, answering each decision with its first move (discarding other cards) until
+/// `land` can be picked, then picks it.
+fn answer_until_land(g: &mut Game, land: ObjId) {
+    for _ in 0..60 {
+        if g.obj(land).zone == Zone::Battlefield {
+            break;
+        }
+        let legal = g.legal_actions();
+        let a = if legal.contains(&Action::Pick(land)) {
+            Action::Pick(land)
+        } else if matches!(g.pending, Pending::Decide(_) | Pending::ChooseTarget(_)) {
+            *legal
+                .iter()
+                .find(|a| !matches!(a, Action::Discard(c) if *c == land))
+                .unwrap()
+        } else {
+            Action::PassPriority
+        };
+        act(g, a);
+    }
+    resolve_all(g, &[]);
+}
+
 #[test]
 fn joint_exploration_and_khalni_heart_expedition() {
     let mut g = table();
     let land = hand(&mut g, 0, "Forest");
     let je = hand(&mut g, 0, "Joint Exploration");
     act(&mut g, Action::CastKicked(je));
-    resolve_all(&mut g, &[Action::No, Action::No, Action::Pick(land)]);
+    answer_until_land(&mut g, land);
     assert!(g.obj(land).zone == Zone::Battlefield && !g.obj(land).tapped);
     let mut g = table();
     let khalni = put(&mut g, 0, "Khalni Heart Expedition");
@@ -2294,7 +2317,10 @@ fn noxious_revival_on_the_trail_and_rude_awakening() {
     let mut g = table();
     let dead = g.add_card(1, cid("Savannah Lions"), Zone::Graveyard);
     let rev = hand(&mut g, 0, "Noxious Revival");
-    assert!(has(&g, Action::CastAlternative(rev)), "2 life for {G/P}");
+    assert!(
+        has(&g, Action::CastAlternative(rev)),
+        "2 life for the Phyrexian pip"
+    );
     play(&mut g, rev, false, &[Target::Object(dead)], &[]);
     assert_eq!(g.players[1].library.last(), Some(&dead));
     let mut g = table();
@@ -2303,17 +2329,8 @@ fn noxious_revival_on_the_trail_and_rude_awakening() {
     let search = hand(&mut g, 0, "Frantic Search");
     let n = hand_size(&g, 0);
     act(&mut g, Action::Cast(search));
-    pass_until_asked(&mut g); // On the Trail's land, after the second draw
-    act(&mut g, Action::Pick(land));
     let _ = n;
-    for _ in 0..4 {
-        if !matches!(g.pending, Pending::Decide(_)) {
-            break;
-        }
-        let a = *g.legal_actions().first().unwrap();
-        act(&mut g, a);
-    }
-    resolve_all(&mut g, &[]);
+    answer_until_land(&mut g, land); // the discards, then On the Trail's land
     assert!(g.obj(land).zone == Zone::Battlefield && g.obj(land).tapped);
     let mut g = table();
     let rude = hand(&mut g, 0, "Rude Awakening");
@@ -2357,5 +2374,5 @@ fn squall_line_stroke_of_genius_wipe_away_and_lab_maniac() {
         act(&mut g, Action::PassPriority);
     }
     assert!(g.is_over());
-    assert_eq!(g.players[1].lost, true);
+    assert!(g.players[1].lost);
 }

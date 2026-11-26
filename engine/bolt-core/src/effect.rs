@@ -1612,6 +1612,11 @@ pub enum Effect {
     /// Choose an exiled card an opponent owns with a void counter on it; you may play it this turn
     /// without paying its mana cost (Dauthi Voidwalker).
     PlayVoidCardFree,
+    /// Put the creature card in `slot` (from a graveyard) onto the battlefield under your control
+    /// and attach the source to it (Necromancy).
+    ReanimateAttachSource(u8),
+    /// Untap the creature the source is attached to.
+    UntapAttached,
     /// Draw cards until you have `n` in hand (Damia: "draw cards equal to the difference").
     DrawUpToHandSize(u8),
     /// Take an extra turn after this one; skip the untap step of that turn (Savor the Moment).
@@ -1623,7 +1628,10 @@ pub enum Effect {
     MayPutLandFromHand,
     /// Until end of turn, lands you control become `power`/`toughness` creatures that are still lands
     /// (Rude Awakening).
-    LandsBecomeCreaturesEot { power: i32, toughness: i32 },
+    LandsBecomeCreaturesEot {
+        power: i32,
+        toughness: i32,
+    },
     /// The player in `slot` draws X cards (X the spell's X) (Stroke of Genius).
     DrawXTarget(u8),
 }

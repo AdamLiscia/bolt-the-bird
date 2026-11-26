@@ -5,7 +5,7 @@
 A job file:
 
     {"name": "tdm_play_1", "threads": 12, "seconds": 172800, "mb": 12000,
-     "cmd": ["python", "scripts/train_ppo_play.py", "--set", "TDM", ...]}
+     "env": {"BOLT_PLAY_SET": "TDM"}, "cmd": ["python", "scripts/train_ppo_play.py", ...]}
 
 Each job runs under scripts/guard.sh in active-time mode (a paused job's time doesn't count) with its own
 `OMP_NUM_THREADS`, and is started only while the total threads of running jobs stays within `--budget`. A job
@@ -40,7 +40,7 @@ def load_jobs() -> list[dict]:
 
 
 def start(j: dict) -> subprocess.Popen:
-    env = {**os.environ, "GUARD_ACTIVE_TIME": "1", "OMP_NUM_THREADS": str(j["threads"]),
+    env = {**os.environ, **j.get("env", {}), "GUARD_ACTIVE_TIME": "1", "OMP_NUM_THREADS": str(j["threads"]),
            "BOLT_JOB": j["name"]}  # fmt: skip
     log = open(ROOT / "logs" / f"farm_{j['name']}.log", "a")  # noqa: SIM115 - kept open for the child
     cmd = [str(ROOT / "scripts" / "guard.sh"), str(j["seconds"]), str(j["mb"]), "--", *j["cmd"]]

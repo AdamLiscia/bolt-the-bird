@@ -242,7 +242,9 @@ fn teeg_lock_gaddock_teeg() {
     let elder = hand(&mut g, 0, "Silverback Elder"); // a creature: fine
     let bolt = hand(&mut g, 0, "Burst Lightning");
     let legal = g.legal_actions();
-    assert!(!legal.iter().any(|a| matches!(a, Action::CastModal(c, _) if *c == command)));
+    assert!(!legal
+        .iter()
+        .any(|a| matches!(a, Action::CastModal(c, _) if *c == command)));
     assert!(!legal.contains(&Action::Cast(stroke)));
     assert!(legal.contains(&Action::Cast(elder)));
     assert!(legal.contains(&Action::Cast(bolt)));
