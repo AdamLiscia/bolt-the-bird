@@ -1605,6 +1605,9 @@ pub struct Game {
     pub exiled_with: Vec<(ObjId, u32, ObjId, u32)>,
     /// After extra turns: who takes the turn the normal order would have given next (CR 500.7).
     pub normal_next: Option<PlayerId>,
+    /// Delayed "when [that creature] is put into your graveyard this turn" triggers (Saffi
+    /// Eriksdotter): (creature, its zcc, source, trigger number, controller, turn).
+    pub delayed_slot_to_graveyard: Vec<(ObjId, u32, ObjId, usize, PlayerId, u32)>,
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -1858,6 +1861,7 @@ impl Game {
             goaded: Vec::new(),
             exiled_with: Vec::new(),
             normal_next: None,
+            delayed_slot_to_graveyard: Vec::new(),
         }
     }
 
@@ -4510,6 +4514,24 @@ impl Game {
                     });
                 }
             }
+            // A delayed "when [that creature] is put into your graveyard this turn" (Saffi), once.
+            let (zcc, owner) = (self.obj(id).zcc, self.obj(id).owner);
+            let hits: Vec<_> = self
+                .delayed_slot_to_graveyard
+                .iter()
+                .copied()
+                .filter(|&(c, z, _, _, who, t)| c == id && z + 1 == zcc && who == owner && t == turn)
+                .collect();
+            self.delayed_slot_to_graveyard
+                .retain(|&(c, z, ..)| !(c == id && z + 1 == zcc));
+            for (_, _, src, n, who, _) in hits {
+                let before = self.triggered.len();
+                self.triggered.push(StackItem {
+                    kind: StackKind::Trigger(n),
+                    ..Game::casting(src, who)
+                });
+                self.fill_triggering(before, id);
+            }
             // "Whenever a creature of the chosen type dies", as it last existed.
             let last = self.obj(id).last_subtypes.clone();
             for q in 0..2 {
@@ -4929,6 +4951,10 @@ impl Game {
                             When::AnotherColorlessCreatureYouControlEnters => {
                                 any != id && !self.colors_of(id).iter().any(|&c| c)
                             }
+                            When::AnotherCreatureWithFlyingYouControlEnters => {
+                                any != id && self.keywords(id).has(Keywords::FLYING)
+                            }
+                            When::SubtypeYouControlEnters(sub) => self.has_subtype(id, sub),
                             _ => false,
                         };
                         if hit {
@@ -15754,6 +15780,12 @@ impl Game {
                     }
                 }
             }
+            Effect::DelayedWhenSlotToYourGraveyardThisTurn { slot, trigger } => {
+                if let Some(c) = Game::slot_object(item, legal, slot) {
+                    let entry = (c, self.obj(c).zcc, src, trigger, item.controller, self.turn);
+                    self.delayed_slot_to_graveyard.push(entry);
+                }
+            }
             Effect::BecomeCopyOfSlotUntilEot(n) => {
                 if let Some(card) = Game::slot_object(item, legal, n) {
                     if self.obj(src).zone == Zone::Battlefield {
@@ -20171,6 +20203,7 @@ impl Game {
             Some(Condition::NoCreaturesOnBattlefield) => {
                 !self.battlefield.iter().any(|&c| self.types_of(c).creature)
             }
+            Some(Condition::YouLostLifeThisTurn) => self.life_lost_this_turn[controller],
         }
     }
 
@@ -21727,6 +21760,25 @@ impl Game {
                         self.fire(p, When::CreatureDealsDamageToYou, None);
                         self.fill_triggering(before, source); // "destroy it"
                     }
+                    // "Whenever a [subtype] deals damage to you" (Mikaeus: a Human).
+                    let before = self.triggered.len();
+                    for any in self.permanents(p).collect::<Vec<_>>() {
+                        if self.lost_abilities(any) {
+                            continue;
+                        }
+                        let whens: Vec<When> = self.def_of(any).triggers.iter().map(|tr| tr.when).collect();
+                        for (n, w) in whens.into_iter().enumerate() {
+                            if let When::SubtypeDealsDamageToYou(sub) = w {
+                                if self.has_subtype(source, sub) {
+                                    self.triggered.push(StackItem {
+                                        kind: StackKind::Trigger(n),
+                                        ..Game::casting(any, p)
+                                    });
+                                }
+                            }
+                        }
+                    }
+                    self.fill_triggering(before, source);
                     if controller != p {
                         self.fire_source(source, When::DealsDamageToOpponent);
                     }

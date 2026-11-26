@@ -1454,3 +1454,158 @@ fn an_emblems_triggered_ability_triggers_through_fire() {
     to_main(&mut g);
     assert_eq!(life(&g, 0), 41, "your draw-step draw triggers the emblem");
 }
+
+#[test]
+fn completing_a_dungeon_emits_you_complete_dungeon() {
+    use bolt_core::{rooms, Dungeon};
+    let mut g = game_with(|defs| {
+        defs[cid("Savannah Lions")]
+            .triggers
+            .push(trigger(When::YouCompleteDungeon, None, gain_one()));
+    });
+    let x = g.add_card(0, cid("Savannah Lions"), Zone::Battlefield);
+    let them = g.add_card(1, cid("Savannah Lions"), Zone::Battlefield);
+    let bottom = rooms(Dungeon::LostMine)
+        .iter()
+        .position(|r| r.next.is_empty())
+        .expect("a bottommost room") as u8;
+    g.venture[0] = Some((Dungeon::LostMine, bottom));
+    g.venture_into(0, x, true); // on the bottommost room: completes it, then Undercity
+    assert_eq!(g.completed_dungeons[0], 1);
+    let mine: Vec<ObjId> = g.triggered.iter().map(|t| t.source).collect();
+    assert!(mine.contains(&x), "yours triggers");
+    assert!(!mine.contains(&them), "the opponent didn't complete one");
+}
+
+#[test]
+fn another_flier_and_a_subtype_you_control_enter() {
+    let it = Filter {
+        triggering: true,
+        ..Filter::CREATURE
+    };
+    let mut cat = trigger(
+        When::SubtypeYouControlEnters("Cat"),
+        None,
+        vec![Effect::Counters { slot: 0, n: 1 }],
+    );
+    cat.ability.targets = vec![it];
+    let mut g = game_with(|defs| {
+        blood_with(vec![
+            cat.clone(),
+            trigger(When::AnotherCreatureWithFlyingYouControlEnters, None, gain(1)),
+            trigger(When::SubtypeYouControlEnters("Elf"), None, gain(1000)),
+        ])(defs);
+        let d = &mut defs[cid("Savannah Lions")];
+        d.keywords = d.keywords.with(bolt_core::Keywords::FLYING);
+        d.triggers.push(trigger(
+            When::AnotherCreatureWithFlyingYouControlEnters,
+            None,
+            gain(10),
+        ));
+    });
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    let first = g.add_card(0, cid("Savannah Lions"), Zone::Hand);
+    play(&mut g, first, false, &[], &[]);
+    assert_eq!(life(&g, 0), 41, "another flier for the Blood; not itself");
+    assert_eq!(g.obj(first).counters, 1, "a Cat entered: it, in slot 0");
+    let second = g.add_card(0, cid("Savannah Lions"), Zone::Hand);
+    play(&mut g, second, false, &[], &[]);
+    assert_eq!(life(&g, 0), 41 + 1 + 10, "the Blood and the first Lions");
+    assert_eq!(g.obj(second).counters, 1);
+}
+
+#[test]
+fn a_subtype_deals_damage_to_you_with_the_source_in_slot_0() {
+    let it = Filter {
+        triggering: true,
+        ..Filter::CREATURE
+    };
+    let mut cat = trigger(
+        When::SubtypeDealsDamageToYou("Cat"),
+        None,
+        vec![Effect::Counters { slot: 0, n: 1 }],
+    );
+    cat.ability.targets = vec![it];
+    let mut g = game_with(|defs| {
+        blood_with(vec![
+            cat.clone(),
+            trigger(When::SubtypeDealsDamageToYou("Elf"), None, gain(1000)),
+        ])(defs);
+    });
+    g.add_card(1, cid("Exquisite Blood"), Zone::Battlefield);
+    let a = g.add_card(0, cid("Savannah Lions"), Zone::Battlefield);
+    attack_through(&mut g, &[a]);
+    assert_eq!(g.obj(a).counters, 1, "a Cat dealt damage to its controller");
+    assert_eq!(life(&g, 1), 40 - 2, "not an Elf");
+}
+
+#[test]
+fn you_lost_life_this_turn_condition() {
+    let mut g = game_with(|defs| {
+        blood_with(vec![trigger(
+            When::YouDraw,
+            Some(Condition::YouLostLifeThisTurn),
+            gain(10),
+        )])(defs);
+        defs[cid("Hero's Downfall")].spell = Some(Ability::new(
+            vec![],
+            vec![Effect::LoseLife { who: Who::You, n: 1 }],
+        ));
+        defs[cid("Abrupt Decay")].spell =
+            Some(Ability::new(vec![], vec![Effect::Draw { who: Who::You, n: 1 }]));
+    });
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    cast_now(&mut g, 0, "Abrupt Decay", &[]);
+    assert_eq!(life(&g, 0), 40, "no life lost yet");
+    cast_now(&mut g, 0, "Hero's Downfall", &[]);
+    cast_now(&mut g, 0, "Abrupt Decay", &[]);
+    assert_eq!(life(&g, 0), 39 + 10);
+}
+
+#[test]
+fn delayed_when_that_creature_is_put_into_your_graveyard_this_turn() {
+    let mut g = game_with(|defs| {
+        let d = &mut defs[cid("Abrupt Decay")];
+        let n = d.triggers.len();
+        d.spell = Some(Ability::new(
+            vec![Filter::CREATURE],
+            vec![Effect::DelayedWhenSlotToYourGraveyardThisTurn { slot: 0, trigger: n }],
+        ));
+        let that = Filter {
+            triggering: true,
+            graveyard: Some(true),
+            creatures: false,
+            players: false,
+            planeswalkers: false,
+            ..Filter::ANY
+        };
+        let mut t = trigger(
+            When::SlotCreatureToYourGraveyardThisTurn,
+            None,
+            vec![Effect::Reanimate(0)],
+        );
+        t.ability.targets = vec![that];
+        d.triggers.push(t);
+    });
+    let mine = g.add_card(0, cid("Savannah Lions"), Zone::Battlefield);
+    let theirs = g.add_card(1, cid("Savannah Lions"), Zone::Battlefield);
+    let other = g.add_card(0, cid("Savannah Lions"), Zone::Battlefield);
+    cast_now(&mut g, 0, "Abrupt Decay", &[bolt_core::Target::Object(mine)]);
+    cast_now(&mut g, 0, "Abrupt Decay", &[bolt_core::Target::Object(theirs)]);
+    assert_eq!(g.delayed_slot_to_graveyard.len(), 2);
+    kill(&mut g, other);
+    assert_eq!(g.obj(other).zone, Zone::Graveyard, "not the one it watches");
+    let downfall = |g: &mut Game, x: ObjId| {
+        for _ in 0..3 {
+            g.add_card(0, cid("Swamp"), Zone::Battlefield);
+        }
+        cast_now(g, 0, "Hero's Downfall", &[obj(x)]);
+    };
+    downfall(&mut g, mine);
+    assert_eq!(g.obj(mine).zone, Zone::Battlefield, "returned");
+    assert_eq!(g.obj(mine).controller, 0);
+    downfall(&mut g, mine);
+    assert_eq!(g.obj(mine).zone, Zone::Graveyard, "once, and only that object");
+    kill(&mut g, theirs);
+    assert_eq!(g.obj(theirs).zone, Zone::Graveyard, "not into your graveyard");
+}

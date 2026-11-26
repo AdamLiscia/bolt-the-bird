@@ -265,8 +265,8 @@ pub fn token_defs() -> Vec<CardDef> {
             });
             t
         },
-        // base+83 is d2's Bat: a placeholder until it merges.
-        token("Lane d2 token 83", "Bat", 1, 1, Keywords::FLYING),
+        // 83: Lunar Convocation's Bat (lane d2). 84 is lane B's Elemental.
+        black(token("Bat", "Bat", 1, 1, Keywords::FLYING)),
         red(token("Elemental", "Elemental", 1, 1, Keywords::NONE)), // Young Pyromancer's red 1/1
         {
             // Fade from History: "a 2/2 green Bear creature token".
@@ -465,6 +465,7 @@ pub struct Tokens {
     pub bear: usize,
     pub orc_army: usize,
     pub eldrazi_scion: usize,
+    pub bat: usize,
 }
 
 impl Tokens {
@@ -560,6 +561,7 @@ impl Tokens {
             bear: base + 85,
             orc_army: base + 86,
             eldrazi_scion: base + 87,
+            bat: base + 83,
         }
     }
 }
