@@ -133,6 +133,8 @@ pub struct Filter {
     pub creature_power_or_toughness_at_most: Option<i32>,
     /// Sorcery spells only (Warping Wail), with `spells`.
     pub spell_sorcery: bool,
+    /// Only objects with an even mana value; zero is even (Desecrate Reality).
+    pub mana_value_even: bool,
 }
 
 impl Filter {
@@ -197,6 +199,7 @@ impl Filter {
         artifact_cards: false,
         creature_power_or_toughness_at_most: None,
         spell_sorcery: false,
+        mana_value_even: false,
     };
 
     pub const CREATURE: Filter = Filter {
@@ -2096,6 +2099,16 @@ pub enum Effect {
     /// Exile each instant and sorcery card from your graveyard; copy each one, and you may cast the
     /// copies free (overloaded Mizzix's Mastery).
     ExileCastCopyFreeEachInstantSorcery,
+    /// You gain `life`; if this is the first time this ability has resolved this turn, `counters`
+    /// +1/+1 counters on the source (Teething Wurmlet: 1 and 1; counted per source, each turn).
+    GainLifeCountersIfFirstResolutionThisTurn {
+        life: i32,
+        counters: i32,
+    },
+    /// Return a permanent card with an odd mana value from your graveyard to the battlefield
+    /// (Desecrate Reality's adamant half), as `Decision::LookPick` with
+    /// `Pick::PermanentOddManaValue`.
+    ReturnOddManaValuePermanentToBattlefield,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -2370,6 +2383,8 @@ pub enum Pick {
     Enchantment,
     /// A non-Human creature card (Kinnan, Bonder Prodigy).
     NonHumanCreature,
+    /// A permanent card with an odd mana value (Desecrate Reality).
+    PermanentOddManaValue,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

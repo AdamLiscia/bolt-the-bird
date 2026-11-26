@@ -2538,3 +2538,73 @@ fn exile_each_instant_and_sorcery_and_cast_the_copies_free() {
     resolve_all(&mut g, &[]);
     assert_eq!(g.players[1].life, life - 6);
 }
+
+// ---- batch 16 ----
+
+#[test]
+fn gain_life_and_a_counter_only_the_first_time_each_turn() {
+    let mut d = CardDef::creature("Test Wurmlet", "{0}", 1, 1, Keywords::NONE);
+    d.activated.push(bolt_core::Activated {
+        mana: ManaCost::parse("{0}").unwrap(),
+        ability: Ability::new(
+            vec![],
+            vec![Effect::GainLifeCountersIfFirstResolutionThisTurn { life: 1, counters: 1 }],
+        ),
+        ..bolt_core::Activated::default()
+    });
+    let (mut g, t) = game_with(vec![d]);
+    let w = g.add_card(0, t, Zone::Battlefield);
+    let life = g.players[0].life;
+    for _ in 0..2 {
+        act(&mut g, Action::Activate(w, 0));
+        resolve_all(&mut g, &[]);
+    }
+    assert_eq!(g.players[0].life, life + 2, "life every time");
+    assert_eq!(g.power(w), 2, "one counter: the first resolution only");
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Activate(w, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.power(w), 3, "a new turn");
+}
+
+#[test]
+fn an_even_mana_value_filter_and_an_odd_mana_value_return() {
+    let even = Filter {
+        players: false,
+        planeswalkers: false,
+        creatures: false,
+        any_permanent: true,
+        mana_value_even: true,
+        ..Filter::ANY
+    };
+    let (mut g, t) = game_with(vec![
+        sorcery(vec![even], vec![Effect::Exile(0)]),
+        sorcery(vec![], vec![Effect::ReturnOddManaValuePermanentToBattlefield]),
+    ]);
+    let mind_stone = g.add_card(1, cid("Mind Stone"), Zone::Battlefield); // 2
+    let ring = g.add_card(1, cid("Sol Ring"), Zone::Battlefield); // 1
+    let c = g.add_card(0, t, Zone::Hand);
+    act(&mut g, Action::Cast(c));
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Target(obj(mind_stone))) && !legal.contains(&Action::Target(obj(ring))));
+    let plains = g.permanents(1).find(|&x| g.def_of(x).name == "Plains").unwrap();
+    assert!(legal.contains(&Action::Target(obj(plains))), "zero is even");
+    act(&mut g, Action::Target(obj(mind_stone)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(mind_stone).zone, Zone::Exile);
+
+    let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Graveyard); // 1
+    let stone = g.add_card(0, cid("Mind Stone"), Zone::Graveyard); // 2
+    let bolt = g.add_card(0, cid("Lightning Bolt"), Zone::Graveyard); // 1, not a permanent
+    let c = g.add_card(0, t + 1, Zone::Hand);
+    act(&mut g, Action::Cast(c));
+    to_decision(&mut g);
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Pick(elves)));
+    assert!(!legal.contains(&Action::Pick(stone)) && !legal.contains(&Action::Pick(bolt)));
+    resolve_all(&mut g, &[Action::Pick(elves)]);
+    assert_eq!(g.obj(elves).zone, Zone::Battlefield);
+}

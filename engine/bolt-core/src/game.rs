@@ -5304,6 +5304,9 @@ impl Game {
         if f.spell_sorcery && !(on_stack && self.types_of(id).sorcery) {
             return false;
         }
+        if f.mana_value_even && self.def_of(id).cost.mana_value() % 2 != 0 {
+            return false;
+        }
         if on_stack {
             let ty = self.types_of(id);
             if f.spell_artifact_creature_or_planeswalker && !(ty.artifact || ty.creature || ty.planeswalker) {
@@ -9816,6 +9819,7 @@ impl Game {
             Pick::NonHumanCreature => {
                 d.types.creature && !d.changeling && !d.subtypes.iter().any(|s| s == "Human")
             }
+            Pick::PermanentOddManaValue => d.types.is_permanent() && d.cost.mana_value() % 2 == 1,
         }
     }
 
@@ -18784,6 +18788,40 @@ impl Game {
                     o.cast_free = true;
                     self.free_casts.push(copy);
                     self.free_caster = p;
+                }
+            }
+            Effect::GainLifeCountersIfFirstResolutionThisTurn { life, counters } => {
+                let turn = self.turn;
+                let o = self.obj_mut(src);
+                o.resolved_this_turn = if o.resolved_this_turn.0 == turn {
+                    (turn, o.resolved_this_turn.1 + 1)
+                } else {
+                    (turn, 1)
+                };
+                let first = o.resolved_this_turn.1 == 1;
+                self.gain_life(item.controller, life);
+                if first {
+                    self.add_counters(src, counters);
+                }
+            }
+            Effect::ReturnOddManaValuePermanentToBattlefield => {
+                let pick = Pick::PermanentOddManaValue;
+                let cards: Vec<ObjId> = self.players[item.controller]
+                    .graveyard
+                    .iter()
+                    .copied()
+                    .filter(|&c| self.picks(c, pick))
+                    .collect();
+                if !cards.is_empty() {
+                    self.ask(
+                        item.controller,
+                        Decision::LookPick {
+                            cards,
+                            pick,
+                            to: LookTo::Battlefield,
+                            rest: None,
+                        },
+                    );
                 }
             }
         }
