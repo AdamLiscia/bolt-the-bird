@@ -1489,6 +1489,50 @@ pub enum Effect {
     ExileSourceFromGraveyardOrStop,
     /// Destroy all creatures; they can't be regenerated (Damnation, Wrath of God).
     DestroyAllCreaturesNoRegen,
+    /// Draw a card for each creature you control of this color, WUBRG index (Regal Force: green).
+    DrawPerColoredCreatureYouControl(u8),
+    /// Regenerate each creature you control (Loxodon Hierarch).
+    RegenerateEachCreatureYouControl,
+    /// Regenerate the creature the source (an Aura) is attached to (Blessing of Leeches).
+    RegenerateAttached,
+    /// `who` loses 1 life for each artifact they control (Emissary of Despair: the damaged player).
+    LoseLifePerArtifactTheyControl(Who),
+    /// Draw cards equal to the greatest power among non-Human creatures you control (Return of the
+    /// Wildspeaker).
+    DrawGreatestPowerNonHuman,
+    /// Non-Human creatures you control get +P/+T until end of turn (Return of the Wildspeaker).
+    PumpNonHumanYouControl {
+        power: i32,
+        toughness: i32,
+    },
+    /// Draw cards equal to the greatest toughness among creatures you control (Last March of the
+    /// Ents).
+    DrawGreatestToughnessYouControl,
+    /// Put up to `n` creature cards from your hand onto the battlefield, as
+    /// `Decision::CreaturesFromHandUpTo` (Tooth and Nail).
+    CreaturesFromHandUpTo(u8),
+    /// "You may shuffle": `Decision::MayShuffle` (Ponder).
+    MayShuffle,
+    /// Return a permanent you control to its owner's hand (only a nonland one with `nonland`), as
+    /// `Decision::ReturnOwnPermanent` (Dream Stalker, Ancestral Statue).
+    ReturnPermanentYouControl {
+        nonland: bool,
+    },
+    /// `who` may search their library for up to X creature cards (X the spell's X), reveal them, put
+    /// them into their hand, then shuffle (Weird Harvest; one effect per player).
+    SearchCreaturesUpToX(Who),
+    /// Untap all creatures that attacked this turn (Relentless Assault).
+    UntapCreaturesAttackedThisTurn,
+    /// Each noncreature artifact you control becomes a P/T artifact creature until end of turn
+    /// (Cyberdrive Awakener: 4/4).
+    NoncreatureArtifactsBecomeCreatures {
+        power: i32,
+        toughness: i32,
+    },
+    /// Search your library for a card, put it into your graveyard, then shuffle; if it's an instant
+    /// or sorcery card, put a +1/+1 counter on the source (Oriq Loremage), as
+    /// `Decision::SearchToGraveyardCounter`.
+    SearchToGraveyardCounterIfInstantOrSorcery,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1596,6 +1640,8 @@ pub enum Scope {
     OtherYourPermanents,
     /// Creatures your opponents control (Elesh Norn, Grand Cenobite).
     OpponentsCreatures,
+    /// Other artifact creatures you control (Cyberdrive Awakener).
+    OtherYourArtifactCreatures,
 }
 
 /// What a scaled static ability counts.

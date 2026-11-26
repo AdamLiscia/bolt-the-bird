@@ -647,6 +647,138 @@ pub fn script(name: &str) -> Option<Script> {
             colorless(d);
             activated(d, "{4}", true, vec![], vec![Effect::Proliferate]);
         }),
+        // ---- Unblocked by lane d3's core theme (effects and statics), batch 2 ----
+        "Wrath of God" => s(&["Destroy all creatures. They can't be regenerated."], |d, _| {
+            spell(d, vec![], vec![Effect::DestroyAllCreaturesNoRegen])
+        }),
+        "Sword of Feast and Famine" => s(
+            &[
+                "Equipped creature gets +2/+2 and has protection from black and from green.",
+                "Whenever equipped creature deals combat damage to a player, that player discards a card and you untap all lands you control.",
+                "Equip {2}",
+            ],
+            |d, _| {
+                attached(d, false, 2, 2, Keywords::NONE);
+                d.statics.last_mut().expect("just added").protection = [false, false, true, false, true];
+                let discard = Effect::Discard { who: Who::EachOpponent, n: 1 };
+                on(d, When::EquippedDealsCombatDamageToPlayer, vec![], vec![discard, Effect::UntapLandsYouControl]);
+                equip(d, "{2}");
+            },
+        ),
+        "Regal Force" => s(&["When this creature enters, draw a card for each green creature you control."], |d, _| {
+            on(d, When::Enters, vec![], vec![Effect::DrawPerColoredCreatureYouControl(4)])
+        }),
+        "Loxodon Hierarch" => s(
+            &["When this creature enters, you gain 4 life.", "{G}{W}, Sacrifice this creature: Regenerate each creature you control."],
+            |d, _| {
+                on(d, When::Enters, vec![], vec![Effect::GainLife { who: Who::You, n: 4 }]);
+                let n = activated(d, "{G}{W}", false, vec![], vec![Effect::RegenerateEachCreatureYouControl]);
+                d.activated[n].sacrifice_self = true;
+            },
+        ),
+        "Blessing of Leeches" => s(
+            &["Enchant creature", "At the beginning of your upkeep, you lose 1 life.", "{0}: Regenerate enchanted creature."],
+            |d, _| {
+                d.aura = true;
+                d.spell = Some(Ability::new(vec![CREATURE], vec![]));
+                on(d, When::Upkeep { your_turn_only: true }, vec![], vec![Effect::LoseLife { who: Who::You, n: 1 }]);
+                activated(d, "{0}", false, vec![], vec![Effect::RegenerateAttached]);
+            },
+        ),
+        "Emissary of Despair" => s(
+            &["Whenever this creature deals combat damage to a player, that player loses 1 life for each artifact they control."],
+            |d, _| {
+                let lose = Effect::LoseLifePerArtifactTheyControl(Who::EachOpponent);
+                on(d, When::DealsCombatDamageToPlayer, vec![], vec![lose]);
+            },
+        ),
+        "Return of the Wildspeaker" => s(
+            &[
+                "Choose one —",
+                "• Draw cards equal to the greatest power among non-Human creatures you control.",
+                "• Non-Human creatures you control get +3/+3 until end of turn.",
+            ],
+            |d, _| {
+                let pump = Effect::PumpNonHumanYouControl { power: 3, toughness: 3 };
+                modes(
+                    d,
+                    vec![
+                        Ability::new(vec![], vec![Effect::DrawGreatestPowerNonHuman]),
+                        Ability::new(vec![], vec![pump]),
+                    ],
+                );
+            },
+        ),
+        "Last March of the Ents" => s(
+            &[
+                "This spell can't be countered.",
+                "Draw cards equal to the greatest toughness among creatures you control, then put any number of creature cards from your hand onto the battlefield.",
+            ],
+            |d, _| {
+                d.uncounterable = true;
+                let put = Effect::CreaturesFromHand;
+                spell(d, vec![], vec![Effect::DrawGreatestToughnessYouControl, put]);
+            },
+        ),
+        "Tooth and Nail" => s(
+            &[
+                "Choose one —",
+                "• Search your library for up to two creature cards, reveal them, put them into your hand, then shuffle.",
+                "• Put up to two creature cards from your hand onto the battlefield.",
+                "Entwine {2}",
+            ],
+            |d, _| {
+                let find = Effect::Search { what: SearchFor::CreatureMvAtLeast(0), to: SearchTo::Hand, n: 2, kicked_n: None };
+                let put = Effect::CreaturesFromHandUpTo(2);
+                modes(
+                    d,
+                    vec![
+                        Ability::new(vec![], vec![find]),
+                        Ability::new(vec![], vec![put]),
+                        Ability::new(vec![], vec![find, put]), // entwined
+                    ],
+                );
+                d.entwine = ManaCost::parse("{2}");
+            },
+        ),
+        "Ponder" => s(
+            &["Look at the top three cards of your library, then put them back in any order. You may shuffle.", "Draw a card."],
+            |d, _| spell(d, vec![], vec![Effect::LookTopReorder(3), Effect::MayShuffle, draw(1)]),
+        ),
+        "Dream Stalker" => s(&["When this creature enters, return a permanent you control to its owner's hand."], |d, _| {
+            on(d, When::Enters, vec![], vec![Effect::ReturnPermanentYouControl { nonland: false }])
+        }),
+        "Ancestral Statue" => s(&["When this creature enters, return a nonland permanent you control to its owner's hand."], |d, _| {
+            on(d, When::Enters, vec![], vec![Effect::ReturnPermanentYouControl { nonland: true }])
+        }),
+        "Weird Harvest" => s(
+            &["Each player may search their library for up to X creature cards, reveal those cards, put them into their hand, then shuffle."],
+            |d, _| {
+                let each = [Effect::SearchCreaturesUpToX(Who::You), Effect::SearchCreaturesUpToX(Who::EachOpponent)];
+                spell(d, vec![], each.to_vec());
+            },
+        ),
+        "Relentless Assault" => s(
+            &["Untap all creatures that attacked this turn. After this main phase, there is an additional combat phase followed by an additional main phase."],
+            |d, _| spell(d, vec![], vec![Effect::UntapCreaturesAttackedThisTurn, Effect::AdditionalCombatAndMain]),
+        ),
+        "Cyberdrive Awakener" => s(
+            &[
+                "Other artifact creatures you control have flying.",
+                "When this creature enters, each noncreature artifact you control becomes a 4/4 artifact creature until end of turn.",
+            ],
+            |d, _| {
+                static_on(d, Scope::OtherYourArtifactCreatures, false, Keywords::FLYING);
+                let animate = Effect::NoncreatureArtifactsBecomeCreatures { power: 4, toughness: 4 };
+                on(d, When::Enters, vec![], vec![animate]);
+            },
+        ),
+        "Oriq Loremage" => s(
+            &["{T}: Search your library for a card, put it into your graveyard, then shuffle. If it's an instant or sorcery card, put a +1/+1 counter on this creature."],
+            |d, _| {
+                activated(d, "", true, vec![], vec![Effect::SearchToGraveyardCounterIfInstantOrSorcery]);
+            },
+        ),
         _ => None,
     }
 }
@@ -752,4 +884,21 @@ pub const PG_D3_SCRIPTED: &[&str] = &[
     "Elesh Norn, Grand Cenobite",
     "Atraxa, Praetors' Voice",
     "Karn's Bastion",
+    // Core theme d3 (effects and statics), batch 2
+    "Wrath of God",
+    "Sword of Feast and Famine",
+    "Regal Force",
+    "Loxodon Hierarch",
+    "Blessing of Leeches",
+    "Emissary of Despair",
+    "Return of the Wildspeaker",
+    "Last March of the Ents",
+    "Tooth and Nail",
+    "Ponder",
+    "Dream Stalker",
+    "Ancestral Statue",
+    "Weird Harvest",
+    "Relentless Assault",
+    "Cyberdrive Awakener",
+    "Oriq Loremage",
 ];

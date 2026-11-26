@@ -299,3 +299,256 @@ fn other_your_permanents_and_opponents_creatures_scopes() {
     assert_eq!((g.power(mine), g.toughness(mine)), (1, 1));
     assert_eq!(g.power(norn), 1);
 }
+
+// ---- Batch 2 ----
+
+/// Casts test card `def` and passes until player `p` has a decision.
+fn cast_until_decision(g: &mut Game, def: usize, x: Option<u8>) {
+    let c = g.add_card(0, def, Zone::Hand);
+    act(g, x.map_or(Action::Cast(c), |x| Action::CastX(c, x)));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(g, Action::PassPriority);
+    }
+}
+
+#[test]
+fn draw_per_colored_creature_counts_only_that_color() {
+    let (mut g, t) = game_with(vec![sorcery(
+        vec![],
+        vec![Effect::DrawPerColoredCreatureYouControl(4)],
+    )]);
+    g.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
+    g.add_card(0, cid("Birds of Paradise"), Zone::Battlefield);
+    g.add_card(0, cid("Merfolk Looter"), Zone::Battlefield);
+    g.add_card(1, cid("Elvish Mystic"), Zone::Battlefield);
+    let h = g.players[0].hand.len();
+    cast_test(&mut g, t, &[], &[]);
+    assert_eq!(g.players[0].hand.len(), h + 2, "two green creatures of yours");
+}
+
+#[test]
+fn regenerate_each_creature_you_control_saves_only_yours() {
+    let (mut g, t) = game_with(vec![
+        sorcery(vec![], vec![Effect::RegenerateEachCreatureYouControl]),
+        sorcery(vec![], vec![Effect::DestroyAllCreatures]),
+        sorcery(vec![], vec![Effect::DestroyAllCreaturesNoRegen]),
+    ]);
+    let mine = g.add_card(0, cid("Merfolk Looter"), Zone::Battlefield);
+    let theirs = g.add_card(1, cid("Merfolk Looter"), Zone::Battlefield);
+    cast_test(&mut g, t, &[], &[]);
+    cast_test(&mut g, t + 1, &[], &[]);
+    assert_eq!(g.obj(mine).zone, Zone::Battlefield);
+    assert!(g.obj(mine).tapped, "regenerated: tapped");
+    assert_eq!(g.obj(theirs).zone, Zone::Graveyard);
+    cast_test(&mut g, t, &[], &[]);
+    cast_test(&mut g, t + 2, &[], &[]);
+    assert_eq!(g.obj(mine).zone, Zone::Graveyard, "can't be regenerated");
+}
+
+#[test]
+fn regenerate_attached_shields_the_enchanted_creature() {
+    let (mut g, t) = game_with(vec![sorcery(vec![], vec![Effect::DestroyAllCreatures])]);
+    let looter = g.add_card(0, cid("Merfolk Looter"), Zone::Battlefield);
+    let b = g.add_card(0, cid("Blessing of Leeches"), Zone::Hand);
+    play(&mut g, b, false, &[obj(looter)], &[]);
+    act(&mut g, Action::Activate(b, 0));
+    resolve_all(&mut g, &[]);
+    cast_test(&mut g, t, &[], &[]);
+    assert_eq!(g.obj(looter).zone, Zone::Battlefield);
+}
+
+#[test]
+fn lose_life_per_artifact_they_control() {
+    let (mut g, t) = game_with(vec![sorcery(
+        vec![],
+        vec![Effect::LoseLifePerArtifactTheyControl(Who::EachOpponent)],
+    )]);
+    g.add_card(1, cid("Sol Ring"), Zone::Battlefield);
+    g.add_card(1, cid("Solemn Simulacrum"), Zone::Battlefield);
+    g.add_card(0, cid("Sol Ring"), Zone::Battlefield);
+    cast_test(&mut g, t, &[], &[]);
+    assert_eq!((g.players[0].life, g.players[1].life), (40, 38));
+}
+
+#[test]
+fn non_human_draw_and_pump() {
+    let (mut g, t) = game_with(vec![
+        sorcery(vec![], vec![Effect::DrawGreatestPowerNonHuman]),
+        sorcery(
+            vec![],
+            vec![Effect::PumpNonHumanYouControl {
+                power: 3,
+                toughness: 3,
+            }],
+        ),
+        sorcery(vec![], vec![Effect::DrawGreatestToughnessYouControl]),
+    ]);
+    let human = g.add_card(0, cid("Eternal Witness"), Zone::Battlefield); // 2/1 Human
+    let h = g.players[0].hand.len();
+    cast_test(&mut g, t, &[], &[]);
+    assert_eq!(g.players[0].hand.len(), h, "only a Human: draw 0");
+    let looter = g.add_card(0, cid("Merfolk Looter"), Zone::Battlefield); // 1/1 Merfolk
+    cast_test(&mut g, t, &[], &[]);
+    assert_eq!(
+        g.players[0].hand.len(),
+        h + 1,
+        "the Merfolk's power, not the Human's 2"
+    );
+    cast_test(&mut g, t + 1, &[], &[]);
+    assert_eq!((g.power(looter), g.toughness(looter)), (4, 4));
+    assert_eq!((g.power(human), g.toughness(human)), (2, 1));
+    let h = g.players[0].hand.len();
+    cast_test(&mut g, t + 2, &[], &[]);
+    assert_eq!(
+        g.players[0].hand.len(),
+        h + 4,
+        "the greatest toughness: the pumped 4/4"
+    );
+}
+
+#[test]
+fn creatures_from_hand_up_to_stops_at_its_number() {
+    let (mut g, t) = game_with(vec![sorcery(vec![], vec![Effect::CreaturesFromHandUpTo(2)])]);
+    let a = g.add_card(0, cid("Merfolk Looter"), Zone::Hand);
+    let b = g.add_card(0, cid("Consecrated Sphinx"), Zone::Hand);
+    let c = g.add_card(0, cid("Llanowar Elves"), Zone::Hand);
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Hand);
+    cast_until_decision(&mut g, t, None);
+    assert!(
+        !g.legal_actions().contains(&Action::Pick(ring)),
+        "creature cards only"
+    );
+    resolve_all(&mut g, &[Action::Pick(a), Action::Pick(b)]);
+    assert_eq!(
+        (g.obj(a).zone, g.obj(b).zone, g.obj(c).zone),
+        (Zone::Battlefield, Zone::Battlefield, Zone::Hand)
+    );
+    cast_test(&mut g, t, &[], &[Action::No]);
+    assert_eq!(g.obj(c).zone, Zone::Hand, "up to: none is fine");
+}
+
+#[test]
+fn may_shuffle_shuffles_only_on_yes() {
+    let (mut g, t) = game_with(vec![sorcery(vec![], vec![Effect::MayShuffle])]);
+    for name in ["Sol Ring", "Counterspell", "Merfolk Looter", "Llanowar Elves"] {
+        g.add_card(0, cid(name), Zone::Library);
+    }
+    let before = g.players[0].library.clone();
+    cast_test(&mut g, t, &[], &[Action::No]);
+    assert_eq!(g.players[0].library, before);
+    cast_test(&mut g, t, &[], &[Action::Yes]);
+    assert_ne!(g.players[0].library, before, "103 cards: a shuffle moves them");
+    let mut a = g.players[0].library.clone();
+    let mut b = before;
+    a.sort();
+    b.sort();
+    assert_eq!(a, b, "the same cards");
+}
+
+#[test]
+fn return_permanent_you_control_with_and_without_lands() {
+    let (mut g, t) = game_with(vec![
+        sorcery(vec![], vec![Effect::ReturnPermanentYouControl { nonland: true }]),
+        sorcery(vec![], vec![Effect::ReturnPermanentYouControl { nonland: false }]),
+    ]);
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Battlefield);
+    let theirs = g.add_card(1, cid("Sol Ring"), Zone::Battlefield);
+    let land = g.permanents(0).find(|&x| g.types_of(x).land).unwrap();
+    cast_until_decision(&mut g, t, None);
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Pick(ring)));
+    assert!(!legal.contains(&Action::Pick(land)), "nonland");
+    assert!(!legal.contains(&Action::Pick(theirs)), "yours");
+    resolve_all(&mut g, &[Action::Pick(ring)]);
+    assert_eq!(g.obj(ring).zone, Zone::Hand);
+    cast_until_decision(&mut g, t + 1, None);
+    assert!(g.legal_actions().contains(&Action::Pick(land)));
+    resolve_all(&mut g, &[Action::Pick(land)]);
+    assert_eq!(g.obj(land).zone, Zone::Hand);
+}
+
+#[test]
+fn search_creatures_up_to_x_for_the_opponent() {
+    let mut d = sorcery(vec![], vec![Effect::SearchCreaturesUpToX(Who::EachOpponent)]);
+    d.cost = ManaCost::parse("{X}").unwrap();
+    let (mut g, t) = game_with(vec![d]);
+    let a = g.add_card(1, cid("Merfolk Looter"), Zone::Library);
+    let b = g.add_card(1, cid("Llanowar Elves"), Zone::Library);
+    let ring = g.add_card(1, cid("Sol Ring"), Zone::Library);
+    cast_until_decision(&mut g, t, Some(2));
+    assert_eq!(g.pending, Pending::Decide(1), "the opponent searches");
+    assert!(!g.legal_actions().contains(&Action::Pick(ring)), "creatures only");
+    resolve_all(&mut g, &[Action::Pick(a), Action::Pick(b)]);
+    assert_eq!((g.obj(a).zone, g.obj(b).zone), (Zone::Hand, Zone::Hand));
+    assert_eq!(g.obj(a).owner, 1);
+}
+
+#[test]
+fn untap_creatures_attacked_this_turn_only_those() {
+    let (mut g, t) = game_with(vec![sorcery(
+        vec![],
+        vec![Effect::UntapCreaturesAttackedThisTurn],
+    )]);
+    let attacked = g.add_card(0, cid("Merfolk Looter"), Zone::Battlefield);
+    let other = g.add_card(0, cid("Merfolk Looter"), Zone::Battlefield);
+    g.objects[attacked.0 as usize].tapped = true;
+    g.objects[other.0 as usize].tapped = true;
+    g.attacked_creatures_this_turn.push(attacked);
+    cast_test(&mut g, t, &[], &[]);
+    assert!(!g.obj(attacked).tapped);
+    assert!(g.obj(other).tapped);
+}
+
+#[test]
+fn noncreature_artifacts_become_creatures_and_artifact_creature_scope() {
+    let (mut g, t) = game_with(vec![
+        sorcery(
+            vec![],
+            vec![Effect::NoncreatureArtifactsBecomeCreatures {
+                power: 4,
+                toughness: 4,
+            }],
+        ),
+        {
+            let mut d = CardDef::creature("Test Awakener", "{0}", 1, 1, Keywords::NONE);
+            d.statics.push(static_of(
+                Scope::OtherYourArtifactCreatures,
+                0,
+                0,
+                Keywords::FLYING,
+            ));
+            d
+        },
+    ]);
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Battlefield);
+    let theirs = g.add_card(1, cid("Sol Ring"), Zone::Battlefield);
+    let golem = g.add_card(0, cid("Solemn Simulacrum"), Zone::Battlefield);
+    cast_test(&mut g, t, &[], &[]);
+    assert!(g.types_of(ring).creature && g.types_of(ring).artifact);
+    assert_eq!((g.power(ring), g.toughness(ring)), (4, 4));
+    assert!(!g.types_of(theirs).creature, "yours only");
+    assert_eq!(g.power(golem), 2, "already a creature");
+
+    let aw = g.add_card(0, t + 1, Zone::Battlefield);
+    let looter = g.add_card(0, cid("Merfolk Looter"), Zone::Battlefield);
+    let their_golem = g.add_card(1, cid("Solemn Simulacrum"), Zone::Battlefield);
+    assert!(g.keywords(golem).has(Keywords::FLYING));
+    assert!(g.keywords(ring).has(Keywords::FLYING), "animated this turn");
+    assert!(!g.keywords(looter).has(Keywords::FLYING), "not an artifact");
+    assert!(!g.keywords(their_golem).has(Keywords::FLYING));
+    assert!(!g.keywords(aw).has(Keywords::FLYING), "other");
+}
+
+#[test]
+fn search_to_graveyard_counter_only_for_instants_and_sorceries() {
+    // From a sorcery (not a permanent: no counter goes anywhere); Oriq Loremage's test has the counter.
+    let (mut g, t) = game_with(vec![sorcery(
+        vec![],
+        vec![Effect::SearchToGraveyardCounterIfInstantOrSorcery],
+    )]);
+    let spell = g.add_card(0, cid("Counterspell"), Zone::Library);
+    cast_until_decision(&mut g, t, None);
+    assert!(g.legal_actions().contains(&Action::No));
+    resolve_all(&mut g, &[Action::Pick(spell)]);
+    assert_eq!(g.obj(spell).zone, Zone::Graveyard);
+}

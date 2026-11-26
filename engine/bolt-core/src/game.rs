@@ -973,6 +973,15 @@ pub enum Decision {
     /// A modal double-faced card that's a land on both faces (the Pathways), just played: `Mode(0)` keeps its
     /// front, `Mode(1)` turns it to its back (CR 712.12).
     ChooseLandFace { card: ObjId },
+    /// `Pick` a creature card in your hand to put onto the battlefield (`left` more), or `No`.
+    CreaturesFromHandUpTo { left: u8 },
+    /// "You may shuffle": `Yes` shuffles your library, `No` doesn't.
+    MayShuffle,
+    /// `Pick` a permanent you control (a nonland one with `nonland`) to return to its owner's hand.
+    ReturnOwnPermanent { nonland: bool },
+    /// `Pick` a card in your library to put into your graveyard (then shuffle), or `No`; an instant
+    /// or sorcery card puts a +1/+1 counter on `source` (Oriq Loremage).
+    SearchToGraveyardCounter { source: ObjId },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -1888,6 +1897,9 @@ impl Game {
                                         .modifiers(id)
                                         .fold(self.def_of(id).keywords, |k, m| k.with(m.keywords))
                                         .has(Keywords::FLYING)
+                            }
+                            Scope::OtherYourArtifactCreatures => {
+                                mine && creature && src != id && self.types_of(id).artifact
                             }
                         };
                         let condition_ok = match s.condition {
@@ -8527,6 +8539,32 @@ impl Game {
                 v.push(Action::No);
                 v
             }
+            Decision::CreaturesFromHandUpTo { .. } => {
+                let mut v: Vec<Action> = hand
+                    .iter()
+                    .copied()
+                    .filter(|&c| self.def_of(c).types.creature)
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
+            Decision::MayShuffle => vec![Action::Yes, Action::No],
+            Decision::ReturnOwnPermanent { nonland } => self
+                .permanents(p)
+                .filter(|&c| !*nonland || !self.types_of(c).land)
+                .map(Action::Pick)
+                .collect(),
+            Decision::SearchToGraveyardCounter { .. } => {
+                let mut v: Vec<Action> = self.players[p]
+                    .library
+                    .iter()
+                    .copied()
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
         }
     }
 
@@ -9505,6 +9543,30 @@ impl Game {
                     self.items[item].targets[slot as usize] = chosen;
                 }
                 self.ask_new_target(p, item, slot as usize + 1);
+            }
+            (Decision::CreaturesFromHandUpTo { left }, Action::Pick(c)) => {
+                self.move_to(c, Zone::Battlefield);
+                let more = self.players[p]
+                    .hand
+                    .iter()
+                    .any(|&x| self.def_of(x).types.creature);
+                if left > 1 && more {
+                    self.ask(p, Decision::CreaturesFromHandUpTo { left: left - 1 });
+                }
+            }
+            (Decision::CreaturesFromHandUpTo { .. }, _) => {}
+            (Decision::MayShuffle, Action::Yes) => self.shuffle_library(p),
+            (Decision::MayShuffle, _) => {}
+            (Decision::ReturnOwnPermanent { .. }, Action::Pick(c)) => self.move_to(c, Zone::Hand),
+            (Decision::SearchToGraveyardCounter { source }, choice) => {
+                if let Action::Pick(c) = choice {
+                    self.move_to(c, Zone::Graveyard);
+                    let t = self.def_of(c).types;
+                    if (t.instant || t.sorcery) && self.obj(source).zone == Zone::Battlefield {
+                        self.add_counters(source, 1);
+                    }
+                }
+                self.shuffle_library(p);
             }
             (d, a) => unreachable!("legal action {a:?} unhandled for {d:?}"),
         }
@@ -14054,6 +14116,136 @@ impl Game {
                 } else {
                     self.resolving.as_mut().expect("resolving").remaining.clear();
                 }
+            }
+            Effect::DrawPerColoredCreatureYouControl(color) => {
+                let p = item.controller;
+                let n = self
+                    .creatures(p)
+                    .filter(|&x| self.colors_of(x)[color as usize])
+                    .count();
+                for _ in 0..n {
+                    self.draw(p);
+                }
+            }
+            Effect::RegenerateEachCreatureYouControl => {
+                let turn = self.turn;
+                for id in self.creatures(item.controller).collect::<Vec<_>>() {
+                    let (t, n) = self.obj(id).regen_shields;
+                    self.obj_mut(id).regen_shields = (turn, if t == turn { n + 1 } else { 1 });
+                }
+            }
+            Effect::RegenerateAttached => {
+                if let Some((id, zcc)) = self.obj(src).attached_to {
+                    if self.obj(id).zcc == zcc && self.obj(id).zone == Zone::Battlefield {
+                        let turn = self.turn;
+                        let (t, n) = self.obj(id).regen_shields;
+                        self.obj_mut(id).regen_shields = (turn, if t == turn { n + 1 } else { 1 });
+                    }
+                }
+            }
+            Effect::LoseLifePerArtifactTheyControl(who) => {
+                for p in self.players_for(item, legal, who) {
+                    let n = self.permanents(p).filter(|&x| self.types_of(x).artifact).count() as i32;
+                    if n > 0 {
+                        self.lose_life(p, n);
+                    }
+                }
+            }
+            Effect::DrawGreatestPowerNonHuman => {
+                let p = item.controller;
+                let n = self
+                    .creatures(p)
+                    .filter(|&x| !self.has_subtype(x, "Human"))
+                    .map(|x| self.power(x))
+                    .max()
+                    .unwrap_or(0);
+                for _ in 0..n.max(0) {
+                    self.draw(p);
+                }
+            }
+            Effect::PumpNonHumanYouControl { power, toughness } => {
+                let ids: Vec<ObjId> = self
+                    .creatures(item.controller)
+                    .filter(|&x| !self.has_subtype(x, "Human"))
+                    .collect();
+                for id in ids {
+                    let zcc = self.obj(id).zcc;
+                    self.until_eot.push(Modifier {
+                        obj: id,
+                        zcc,
+                        power,
+                        toughness,
+                        keywords: Keywords::NONE,
+                        dies: None,
+                    });
+                }
+            }
+            Effect::DrawGreatestToughnessYouControl => {
+                let p = item.controller;
+                let n = self.creatures(p).map(|x| self.toughness(x)).max().unwrap_or(0);
+                for _ in 0..n.max(0) {
+                    self.draw(p);
+                }
+            }
+            Effect::CreaturesFromHandUpTo(n) => {
+                let p = item.controller;
+                if n > 0
+                    && self.players[p]
+                        .hand
+                        .iter()
+                        .any(|&x| self.def_of(x).types.creature)
+                {
+                    self.ask(p, Decision::CreaturesFromHandUpTo { left: n });
+                }
+            }
+            Effect::MayShuffle => self.ask(item.controller, Decision::MayShuffle),
+            Effect::ReturnPermanentYouControl { nonland } => {
+                let p = item.controller;
+                if self.permanents(p).any(|c| !nonland || !self.types_of(c).land) {
+                    self.ask(p, Decision::ReturnOwnPermanent { nonland });
+                }
+            }
+            Effect::SearchCreaturesUpToX(who) => {
+                let x = item.x;
+                if x > 0 {
+                    if let Some(p) = self.players_for(item, legal, who).first().copied() {
+                        let what = SearchFor::CreatureMvAtLeast(0);
+                        self.ask(
+                            p,
+                            Decision::Search {
+                                what,
+                                to: SearchTo::Hand,
+                                left: x,
+                            },
+                        );
+                    }
+                }
+            }
+            Effect::UntapCreaturesAttackedThisTurn => {
+                for c in self.attacked_creatures_this_turn.clone() {
+                    if self.obj(c).zone == Zone::Battlefield && self.types_of(c).creature {
+                        self.untap_by_effect(c);
+                    }
+                }
+            }
+            Effect::NoncreatureArtifactsBecomeCreatures { power, toughness } => {
+                let turn = self.turn;
+                let ids: Vec<ObjId> = self
+                    .permanents(item.controller)
+                    .filter(|&x| {
+                        let t = self.types_of(x);
+                        t.artifact && !t.creature
+                    })
+                    .collect();
+                for id in ids {
+                    self.obj_mut(id).eot_creature = Some((turn, power, toughness, "", Keywords::NONE));
+                }
+            }
+            Effect::SearchToGraveyardCounterIfInstantOrSorcery => {
+                self.ask(
+                    item.controller,
+                    Decision::SearchToGraveyardCounter { source: src },
+                );
             }
         }
     }

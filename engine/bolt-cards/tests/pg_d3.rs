@@ -1409,3 +1409,303 @@ fn karns_bastion_proliferates() {
     resolve_all(&mut g, &[]);
     assert_eq!(g.obj(looter).counters, 2);
 }
+
+// ---- Core theme d3, batch 2 ----
+
+/// Attacks with `attacker` and plays the combat out to the second main phase; the opponent answers
+/// any decision with its first legal action.
+fn attack_to_main2(g: &mut Game, attacker: ObjId) {
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(g, Action::PassPriority);
+    }
+    act(g, Action::Attack(attacker));
+    act(g, Action::FinishAttacks);
+    while g.step != Step::Main2 {
+        let a = match g.pending {
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            Pending::Decide(1) => g.legal_actions()[0],
+            _ => Action::PassPriority,
+        };
+        act(g, a);
+    }
+}
+
+#[test]
+fn wrath_of_god_destroys_all_creatures_through_regeneration() {
+    let mut g = table();
+    let mine = put(&mut g, 0, "Merfolk Looter");
+    let theirs = put(&mut g, 1, "Consecrated Sphinx");
+    let b = hand(&mut g, 0, "Blessing of Leeches");
+    play(&mut g, b, false, &[obj(mine)], &[]);
+    act(&mut g, Action::Activate(b, 0));
+    resolve_all(&mut g, &[]);
+    let w = hand(&mut g, 0, "Wrath of God");
+    play(&mut g, w, false, &[], &[]);
+    assert_eq!(
+        (g.obj(mine).zone, g.obj(theirs).zone),
+        (Zone::Graveyard, Zone::Graveyard)
+    );
+}
+
+#[test]
+fn sword_of_feast_and_famine_protects_and_untaps_your_lands_on_a_hit() {
+    let mut g = table();
+    let sword = put(&mut g, 0, "Sword of Feast and Famine");
+    let looter = put(&mut g, 0, "Merfolk Looter");
+    to_main1(&mut g, 5, 0);
+    act(&mut g, Action::Activate(sword, 0));
+    act(&mut g, Action::Target(obj(looter)));
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.power(looter), g.toughness(looter)), (3, 3));
+    assert_eq!(g.protection(looter), [false, false, true, false, true]);
+    assert!(
+        g.permanents(0).any(|x| g.types_of(x).land && g.obj(x).tapped),
+        "equip tapped lands"
+    );
+    let cards = g.players[1].hand.len();
+    attack_to_main2(&mut g, looter);
+    assert_eq!(g.players[1].life, 37);
+    assert_eq!(g.players[1].hand.len(), cards - 1, "discarded");
+    assert!(
+        !g.permanents(0).any(|x| g.types_of(x).land && g.obj(x).tapped),
+        "lands untapped"
+    );
+}
+
+#[test]
+fn regal_force_draws_for_each_green_creature() {
+    let mut g = table();
+    put(&mut g, 0, "Llanowar Elves");
+    put(&mut g, 0, "Merfolk Looter");
+    let f = hand(&mut g, 0, "Regal Force");
+    let cards = g.players[0].hand.len();
+    play(&mut g, f, false, &[], &[]);
+    assert_eq!(g.players[0].hand.len(), cards - 1 + 2, "the Elves and the Force");
+}
+
+#[test]
+fn loxodon_hierarch_gains_4_and_regenerates_your_creatures() {
+    let mut g = table();
+    let looter = put(&mut g, 0, "Merfolk Looter");
+    let h = hand(&mut g, 0, "Loxodon Hierarch");
+    play(&mut g, h, false, &[], &[]);
+    assert_eq!(g.players[0].life, 44);
+    act(&mut g, Action::Activate(h, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(h).zone, Zone::Graveyard, "sacrificed");
+    let ig = hand(&mut g, 0, "Infernal Grasp");
+    play(&mut g, ig, false, &[obj(looter)], &[]);
+    assert_eq!(g.obj(looter).zone, Zone::Battlefield);
+    assert!(g.obj(looter).tapped);
+}
+
+#[test]
+fn blessing_of_leeches_costs_a_life_each_upkeep_and_regenerates() {
+    let mut g = table();
+    let looter = put(&mut g, 0, "Merfolk Looter");
+    let b = hand(&mut g, 0, "Blessing of Leeches");
+    play(&mut g, b, false, &[obj(looter)], &[]);
+    act(&mut g, Action::Activate(b, 0));
+    resolve_all(&mut g, &[]);
+    let ig = hand(&mut g, 0, "Infernal Grasp");
+    play(&mut g, ig, false, &[obj(looter)], &[]);
+    assert_eq!(g.obj(looter).zone, Zone::Battlefield);
+    assert_eq!(g.players[0].life, 38, "Infernal Grasp's 2");
+    to_main1(&mut g, 5, 0);
+    assert_eq!(g.players[0].life, 37);
+}
+
+#[test]
+fn emissary_of_despair_drains_for_each_of_their_artifacts() {
+    let mut g = table();
+    let e = put(&mut g, 0, "Emissary of Despair");
+    put(&mut g, 1, "Sol Ring");
+    put(&mut g, 1, "Solemn Simulacrum");
+    g.start_turn(5, 0);
+    attack_to_main2(&mut g, e);
+    assert_eq!(g.players[1].life, 40 - 2 - 2);
+}
+
+#[test]
+fn return_of_the_wildspeaker_draws_or_pumps_non_humans() {
+    let mut g = table();
+    let sphinx = put(&mut g, 0, "Consecrated Sphinx");
+    let human = put(&mut g, 0, "Eternal Witness");
+    let r = hand(&mut g, 0, "Return of the Wildspeaker");
+    let cards = g.players[0].hand.len();
+    act(&mut g, Action::CastModal(r, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].hand.len(), cards - 1 + 4);
+    let r = hand(&mut g, 0, "Return of the Wildspeaker");
+    act(&mut g, Action::CastModal(r, 1));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.power(sphinx), 7);
+    assert_eq!(g.power(human), 2, "a Human");
+}
+
+#[test]
+fn last_march_of_the_ents_draws_greatest_toughness_then_puts_creatures() {
+    let mut g = table();
+    put(&mut g, 0, "Consecrated Sphinx"); // toughness 6
+    let lm = hand(&mut g, 0, "Last March of the Ents");
+    assert!(g.def_of(lm).uncounterable);
+    let a = hand(&mut g, 0, "Merfolk Looter");
+    let b = hand(&mut g, 0, "Llanowar Elves");
+    let cards = g.players[0].hand.len();
+    play(&mut g, lm, false, &[], &[Action::Pick(a), Action::Pick(b)]);
+    assert_eq!(
+        (g.obj(a).zone, g.obj(b).zone),
+        (Zone::Battlefield, Zone::Battlefield)
+    );
+    assert_eq!(g.players[0].hand.len(), cards - 1 + 6 - 2);
+}
+
+#[test]
+fn tooth_and_nail_entwined_finds_two_and_puts_two() {
+    let mut g = table();
+    let a = g.add_card(0, cid("Consecrated Sphinx"), Zone::Library);
+    let b = g.add_card(0, cid("Craterhoof Behemoth"), Zone::Library);
+    let t = hand(&mut g, 0, "Tooth and Nail");
+    act(&mut g, Action::CastModal(t, 2)); // entwined: {5}{G}{G} and {2}
+    resolve_all(
+        &mut g,
+        &[Action::Pick(a), Action::Pick(b), Action::Pick(a), Action::Pick(b)],
+    );
+    assert_eq!(
+        (g.obj(a).zone, g.obj(b).zone),
+        (Zone::Battlefield, Zone::Battlefield)
+    );
+}
+
+#[test]
+fn tooth_and_nail_puts_up_to_two_from_hand() {
+    let mut g = table();
+    let a = hand(&mut g, 0, "Consecrated Sphinx");
+    let b = hand(&mut g, 0, "Craterhoof Behemoth");
+    let c = hand(&mut g, 0, "Merfolk Looter");
+    let t = hand(&mut g, 0, "Tooth and Nail");
+    act(&mut g, Action::CastModal(t, 1));
+    resolve_all(&mut g, &[Action::Pick(a), Action::Pick(b)]);
+    assert_eq!(
+        (g.obj(a).zone, g.obj(b).zone, g.obj(c).zone),
+        (Zone::Battlefield, Zone::Battlefield, Zone::Hand)
+    );
+}
+
+#[test]
+fn ponder_reorders_the_top_three_may_shuffle_and_draws() {
+    let mut g = table();
+    let a = g.add_card(0, cid("Sol Ring"), Zone::Library);
+    let b = g.add_card(0, cid("Counterspell"), Zone::Library);
+    let c = g.add_card(0, cid("Merfolk Looter"), Zone::Library);
+    let p = hand(&mut g, 0, "Ponder");
+    play(
+        &mut g,
+        p,
+        false,
+        &[],
+        &[Action::Pick(a), Action::Pick(c), Action::No],
+    );
+    assert_eq!(g.obj(a).zone, Zone::Hand, "the card put on top is drawn");
+    let lib = &g.players[0].library;
+    assert_eq!(&lib[lib.len() - 2..], &[b, c]);
+}
+
+#[test]
+fn dream_stalker_returns_a_permanent_even_a_land() {
+    let mut g = table();
+    let land = g.permanents(0).find(|&x| g.types_of(x).land).unwrap();
+    let d = hand(&mut g, 0, "Dream Stalker");
+    act(&mut g, Action::Cast(d));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(g.legal_actions().contains(&Action::Pick(land)));
+    assert!(g.legal_actions().contains(&Action::Pick(d)), "itself");
+    resolve_all(&mut g, &[Action::Pick(land)]);
+    assert_eq!(g.obj(land).zone, Zone::Hand);
+}
+
+#[test]
+fn ancestral_statue_returns_a_nonland_permanent() {
+    let mut g = table();
+    let ring = put(&mut g, 0, "Sol Ring");
+    let land = g.permanents(0).find(|&x| g.types_of(x).land).unwrap();
+    let s = hand(&mut g, 0, "Ancestral Statue");
+    act(&mut g, Action::Cast(s));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(!g.legal_actions().contains(&Action::Pick(land)));
+    resolve_all(&mut g, &[Action::Pick(ring)]);
+    assert_eq!(g.obj(ring).zone, Zone::Hand);
+    assert_eq!(g.obj(s).zone, Zone::Battlefield);
+}
+
+#[test]
+fn weird_harvest_lets_each_player_search_for_x_creatures() {
+    let mut g = table();
+    let mine = g.add_card(0, cid("Consecrated Sphinx"), Zone::Library);
+    let theirs = g.add_card(1, cid("Merfolk Looter"), Zone::Library);
+    let w = hand(&mut g, 0, "Weird Harvest");
+    act(&mut g, Action::CastX(w, 1));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.pending, Pending::Decide(0));
+    act(&mut g, Action::Pick(mine));
+    assert_eq!(g.pending, Pending::Decide(1), "then the opponent");
+    resolve_all(&mut g, &[Action::Pick(theirs)]);
+    assert_eq!((g.obj(mine).zone, g.obj(theirs).zone), (Zone::Hand, Zone::Hand));
+}
+
+#[test]
+fn relentless_assault_untaps_attackers_and_adds_a_combat() {
+    let mut g = table();
+    let looter = put(&mut g, 0, "Merfolk Looter");
+    let idle = put(&mut g, 0, "Consecrated Sphinx");
+    g.start_turn(5, 0);
+    attack_to_main2(&mut g, looter);
+    assert!(g.obj(looter).tapped);
+    g.objects[idle.0 as usize].tapped = true;
+    let r = hand(&mut g, 0, "Relentless Assault");
+    play(&mut g, r, false, &[], &[]);
+    assert!(!g.obj(looter).tapped, "it attacked");
+    assert!(g.obj(idle).tapped, "it didn't");
+    attack_to_main2(&mut g, looter);
+    assert_eq!(g.players[1].life, 38, "two combats");
+}
+
+#[test]
+fn cyberdrive_awakener_animates_your_artifacts_and_gives_flying() {
+    let mut g = table();
+    let ring = put(&mut g, 0, "Sol Ring");
+    let golem = put(&mut g, 0, "Solemn Simulacrum");
+    let looter = put(&mut g, 0, "Merfolk Looter");
+    let c = hand(&mut g, 0, "Cyberdrive Awakener");
+    play(&mut g, c, false, &[], &[]);
+    assert!(g.types_of(ring).creature);
+    assert_eq!((g.power(ring), g.toughness(ring)), (4, 4));
+    assert!(g.keywords(ring).has(Keywords::FLYING) && g.keywords(golem).has(Keywords::FLYING));
+    assert!(!g.keywords(looter).has(Keywords::FLYING));
+    to_main1(&mut g, 5, 0);
+    assert!(!g.types_of(ring).creature, "until end of turn");
+}
+
+#[test]
+fn oriq_loremage_entombs_and_grows_on_an_instant_or_sorcery() {
+    let mut g = table();
+    let o = put(&mut g, 0, "Oriq Loremage");
+    to_main1(&mut g, 5, 0);
+    let spell = g.add_card(0, cid("Counterspell"), Zone::Library);
+    act(&mut g, Action::Activate(o, 0));
+    resolve_all(&mut g, &[Action::Pick(spell)]);
+    assert_eq!(g.obj(spell).zone, Zone::Graveyard);
+    assert_eq!(g.obj(o).counters, 1);
+    to_main1(&mut g, 7, 0);
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Library);
+    act(&mut g, Action::Activate(o, 0));
+    resolve_all(&mut g, &[Action::Pick(ring)]);
+    assert_eq!(g.obj(ring).zone, Zone::Graveyard);
+    assert_eq!(g.obj(o).counters, 1, "not for an artifact");
+}
