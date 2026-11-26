@@ -1451,6 +1451,27 @@ pub enum Effect {
     /// Primal Surge: exile the top card; if it's a permanent card, you may put it onto the
     /// battlefield, and if you do, repeat.
     PrimalSurge,
+    /// Hideaway `n` (CR 702.75): look at the top `n` cards, exile one face down (linked to the
+    /// source), and put the rest on the bottom in a random order.
+    Hideaway(u8),
+    /// You may play the source's hideaway card without paying its mana cost this turn, if `cond`
+    /// holds: 0, creatures you control have total power 10 or greater (Mosswort Bridge); 1, an
+    /// opponent was dealt 7 or more damage this turn (Spinerock Knoll).
+    PlayHideaway(u8),
+    /// Wand of Wonder: roll a d20 (X: 1 for 1–9, 2 for 10–19, 3 for 20); each opponent exiles
+    /// cards from the top until an instant or sorcery card, then shuffles the rest in; you may cast
+    /// up to X of those instants and sorceries free.
+    WandOfWonder,
+    /// Create the token `def`, then choose a reach, vigilance or trample counter for it (Vivien).
+    CreateTokenWithKeywordCounterChoice {
+        def: usize,
+    },
+    /// When you next cast a creature spell this turn, search for a creature card with lesser mana
+    /// value and put it onto the battlefield (the source's trigger number `trigger`).
+    NextCreatureSpellThisTurn(usize),
+    /// Search for a creature card with lesser mana value than the item's `extra` (a cast spell),
+    /// onto the battlefield.
+    SearchCreatureLesserManaValue,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

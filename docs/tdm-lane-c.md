@@ -596,3 +596,10 @@ CopyIfChosenTypeExileAtEnd, CoinFlipCopiesExileAtEnd, CommanderFromCommandZoneUn
 DrawIfGreatestPower, AddAnyColorsGreatestPower, PrimalSurge}`, `Game::{primal_surge, copies_exile_at_end}`.
 Shortcuts: Selvala's "may draw" always draws. Twinflame's strive is one mode per number of targets (1 to 5), each
 with its added cost in `mode_costs`. Ezuri's Predation waits for token slot 63 (after lane B's 61 and 62).
+
+Etali batch 6 (5): Mosswort Bridge, Spinerock Knoll, Cursed Mirror, Wand of Wonder, Vivien, Monsters' Advocate.
+Core: `CardDef::{copy_until_eot_haste (with enter_as_copy), top_spells_creatures}`, `Object::hideaway`,
+`Game::{damage_to_player_turn, next_creature_spell}`, `Decision::{HideawayPick, KeywordCounterChoice}`,
+`Effect::{Hideaway, PlayHideaway, WandOfWonder, CreateTokenWithKeywordCounterChoice, NextCreatureSpellThisTurn,
+SearchCreatureLesserManaValue}`. A hideaway card is played through `playable` and `cast_free` for the turn (a land
+uses a land drop). Wand of Wonder: one opponent exiles one instant or sorcery, so X only caps it at one.

@@ -693,6 +693,10 @@ pub struct CardDef {
     /// Vigor: "If damage would be dealt to another creature you control, prevent that damage. Put
     /// a +1/+1 counter on that creature for each 1 damage prevented this way."
     pub damage_to_yours_becomes_counters: bool,
+    /// With `enter_as_copy`: the copy lasts until end of turn and has haste (Cursed Mirror).
+    pub copy_until_eot_haste: bool,
+    /// "You may cast creature spells from the top of your library." (Vivien, Monsters' Advocate)
+    pub top_spells_creatures: bool,
 }
 
 /// What entering makes triggers happen again (see [`CardDef::entering_triggers_again`]).
@@ -927,6 +931,8 @@ impl CardDef {
             targeted_life_tax: 0,
             red_spell_discount: 0,
             damage_to_yours_becomes_counters: false,
+            copy_until_eot_haste: false,
+            top_spells_creatures: false,
         }
     }
 
@@ -1129,6 +1135,8 @@ impl CardDef {
             targeted_life_tax: 0,
             red_spell_discount: 0,
             damage_to_yours_becomes_counters: false,
+            copy_until_eot_haste: false,
+            top_spells_creatures: false,
         }
     }
 
@@ -1331,6 +1339,8 @@ impl CardDef {
             targeted_life_tax: 0,
             red_spell_discount: 0,
             damage_to_yours_becomes_counters: false,
+            copy_until_eot_haste: false,
+            top_spells_creatures: false,
         }
     }
 }

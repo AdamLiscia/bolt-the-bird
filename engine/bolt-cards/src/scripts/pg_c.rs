@@ -1132,6 +1132,68 @@ pub fn script(name: &str) -> Option<Script> {
                     .to_vec();
             },
         ),
+        "Mosswort Bridge" => s(
+            &[
+                "Hideaway 4",
+                "This land enters tapped.",
+                "{T}: Add {G}.",
+                "{G}, {T}: You may play the exiled card without paying its mana cost if creatures you control have total power 10 or greater.",
+            ],
+            |d, _| {
+                on(d, When::Enters, vec![], vec![Effect::Hideaway(4)]);
+                d.enters_tapped = true;
+                d.mana = Some(ManaSource::of(&[Color::Green]));
+                activated(d, "{G}", true, vec![], vec![Effect::PlayHideaway(0)]);
+            },
+        ),
+        "Spinerock Knoll" => s(
+            &[
+                "Hideaway 4",
+                "This land enters tapped.",
+                "{T}: Add {R}.",
+                "{R}, {T}: You may play the exiled card without paying its mana cost if an opponent was dealt 7 or more damage this turn.",
+            ],
+            |d, _| {
+                on(d, When::Enters, vec![], vec![Effect::Hideaway(4)]);
+                d.enters_tapped = true;
+                d.mana = Some(ManaSource::of(&[Color::Red]));
+                activated(d, "{R}", true, vec![], vec![Effect::PlayHideaway(1)]);
+            },
+        ),
+        "Cursed Mirror" => s(
+            &["{T}: Add {R}.", "As this artifact enters, you may have it become a copy of any creature on the battlefield until end of turn, except it has haste."],
+            |d, _| {
+                d.mana = Some(ManaSource::of(&[Color::Red]));
+                d.enter_as_copy = true;
+                d.copy_until_eot_haste = true;
+            },
+        ),
+        "Wand of Wonder" => s(
+            &[
+                "{4}, {T}: Roll a d20. Each opponent exiles cards from the top of their library until they exile an instant or sorcery card, then shuffles the rest into their library. You may cast up to X instant and/or sorcery spells from among cards exiled this way without paying their mana costs.",
+                "1—9 | X is one.",
+                "10—19 | X is two.",
+                "20 | X is three.",
+            ],
+            // One opponent exiles one instant or sorcery, so up to one is cast whatever X is.
+            |d, _| {
+                activated(d, "{4}", true, vec![], vec![Effect::WandOfWonder]);
+            },
+        ),
+        "Vivien, Monsters' Advocate" => s(
+            &[
+                "You may look at the top card of your library any time.",
+                "You may cast creature spells from the top of your library.",
+                "+1: Create a 3/3 green Beast creature token. Put your choice of a reach counter, a vigilance counter, or a trample counter on it.",
+                "−2: When you next cast a creature spell this turn, search your library for a creature card with lesser mana value, put it onto the battlefield, then shuffle.",
+            ],
+            |d, t| {
+                d.top_spells_creatures = true; // looking at the top card is information only
+                on(d, When::Never, vec![], vec![Effect::SearchCreatureLesserManaValue]);
+                loyalty(d, 1, Ability::new(vec![], vec![Effect::CreateTokenWithKeywordCounterChoice { def: t.beast_3 }]));
+                loyalty(d, -2, Ability::new(vec![], vec![Effect::NextCreatureSpellThisTurn(0)]));
+            },
+        ),
         _ => None,
     }
 }
@@ -1273,4 +1335,9 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Mirror March",
     "Rionya, Fire Dancer",
     "Twinflame",
+    "Mosswort Bridge",
+    "Spinerock Knoll",
+    "Cursed Mirror",
+    "Wand of Wonder",
+    "Vivien, Monsters' Advocate",
 ];

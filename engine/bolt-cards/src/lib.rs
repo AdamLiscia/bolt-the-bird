@@ -444,6 +444,8 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         targeted_life_tax: 0,
         red_spell_discount: 0,
         damage_to_yours_becomes_counters: false,
+        copy_until_eot_haste: false,
+        top_spells_creatures: false,
     };
     def.color_identity = color_identity(o);
     def.phyrexian = phyrexian;

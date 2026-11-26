@@ -265,6 +265,8 @@ pub struct Object {
     pub exile_at_end: bool,
     /// Return it to the command zone at the beginning of the next end step (Hellkite Courser).
     pub command_at_end: bool,
+    /// Its hideaway card (exiled face down), if any.
+    pub hideaway: Option<ObjId>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -968,6 +970,10 @@ pub enum Decision {
     PrimalSurge { card: ObjId },
     /// Hellkite Courser: `Yes` puts your commander onto the battlefield, `No` doesn't.
     CommanderCourser { card: ObjId },
+    /// Hideaway: `Pick` one of `cards` (the top ones) to exile face down for `source`.
+    HideawayPick { source: ObjId, cards: Vec<ObjId> },
+    /// Choose a counter for `token`: `Mode(0)` reach, `Mode(1)` vigilance, `Mode(2)` trample.
+    KeywordCounterChoice { token: ObjId },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -1240,6 +1246,10 @@ pub struct Game {
     pub snow_paid: u32,
     /// Creatures whose combat damage dealt is prevented this turn (Maze of Ith), with their zcc.
     pub combat_damage_by_prevented: Vec<(ObjId, u32)>,
+    /// Damage dealt to each player this turn: (turn, total) (Spinerock Knoll).
+    pub damage_to_player_turn: [(u32, i32); 2],
+    /// "When you next cast a creature spell this turn": (source, trigger, controller, turn) (Vivien).
+    pub next_creature_spell: Vec<(ObjId, usize, PlayerId, u32)>,
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -1451,6 +1461,8 @@ impl Game {
             next_upkeep_draws: Vec::new(),
             snow_paid: 0,
             combat_damage_by_prevented: Vec::new(),
+            damage_to_player_turn: [(0, 0); 2],
+            next_creature_spell: Vec::new(),
         }
     }
 
@@ -1561,6 +1573,7 @@ impl Game {
             unearthed: false,
             exile_at_end: false,
             command_at_end: false,
+            hideaway: None,
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -4316,6 +4329,7 @@ impl Game {
                         .is_some_and(|m| d.cost.mana_value() >= m)
                         || s.top_spells_subtype
                             .is_some_and(|sub| d.subtypes.iter().any(|t| t == sub))
+                        || (s.top_spells_creatures && d.types.creature)
                 }
             })
         });
@@ -7000,6 +7014,19 @@ impl Game {
             self.fire(p, When::YouCastCreature, None);
             let power = self.def_of(card).power;
             let new = self.triggered.split_off(before);
+            // Vivien's −2: "When you next cast a creature spell this turn" (once).
+            let turn = self.turn;
+            let (now, later): (Vec<_>, Vec<_>) = std::mem::take(&mut self.next_creature_spell)
+                .into_iter()
+                .partition(|&(_, _, q, t)| q == p && t == turn);
+            self.next_creature_spell = later;
+            for (source, n, q, _) in now {
+                self.triggered.push(StackItem {
+                    kind: StackKind::Trigger(n),
+                    extra: Some(card),
+                    ..Game::casting(source, q)
+                });
+            }
             for mut t in new {
                 t.extra = Some(card); // "that spell" (Sarkhan's Unsealing)
                 let cond = match t.kind {
@@ -8074,6 +8101,8 @@ impl Game {
                 v
             }
             Decision::PrimalSurge { .. } | Decision::CommanderCourser { .. } => vec![Action::Yes, Action::No],
+            Decision::HideawayPick { cards, .. } => cards.iter().copied().map(Action::Pick).collect(),
+            Decision::KeywordCounterChoice { .. } => vec![Action::Mode(0), Action::Mode(1), Action::Mode(2)],
             Decision::LandFromHand => {
                 let mut v: Vec<Action> = hand
                     .iter()
@@ -8415,8 +8444,23 @@ impl Game {
         if let Decision::EnterAsCopy { card } = d {
             if let Action::Pick(of) = a {
                 let def = self.obj(of).def;
+                let printed = self.obj(card).def;
+                let eot = self.defs[printed].copy_until_eot_haste;
                 self.become_copy(card, def);
                 self.obj_mut(card).copy_exceptions = true;
+                if eot {
+                    // Cursed Mirror: until end of turn, with haste.
+                    let zcc = self.obj(card).zcc;
+                    self.copy_until_eot.push((card, zcc, printed));
+                    self.until_eot.push(Modifier {
+                        obj: card,
+                        zcc,
+                        power: 0,
+                        toughness: 0,
+                        keywords: Keywords::HASTE,
+                        dies: None,
+                    });
+                }
                 if let Some(l) = self.defs[def].loyalty {
                     self.obj_mut(card).loyalty = l; // a copied planeswalker enters with its loyalty
                 }
@@ -9157,6 +9201,20 @@ impl Game {
             (Decision::ScrollRackExile { exiled }, Action::No) => self.scroll_rack_finish(p, exiled),
             (Decision::LandFromHand, Action::Pick(c)) => self.move_to(c, Zone::Battlefield),
             (Decision::LandFromHand, Action::No) => {}
+            (Decision::HideawayPick { source, cards }, Action::Pick(c)) => {
+                self.move_to(c, Zone::Exile);
+                self.obj_mut(source).hideaway = Some(c);
+                let rest: Vec<ObjId> = cards.into_iter().filter(|&x| x != c).collect();
+                self.put_among_rest(p, rest, false);
+            }
+            (Decision::KeywordCounterChoice { token }, Action::Mode(m)) => {
+                let k = [Keywords::REACH, Keywords::VIGILANCE, Keywords::TRAMPLE][m.min(2) as usize];
+                if self.obj(token).zone == Zone::Battlefield {
+                    let o = self.obj_mut(token);
+                    o.keyword_counters = o.keyword_counters.with(k);
+                    self.counter_put_on(token);
+                }
+            }
             (Decision::HulkSearch { budget }, Action::Pick(c)) => {
                 let mv = self.def_of(c).cost.mana_value();
                 self.move_to(c, Zone::Battlefield);
@@ -11392,6 +11450,97 @@ impl Game {
                 }
             }
             Effect::PrimalSurge => self.primal_surge(item.controller),
+            Effect::Hideaway(n) => {
+                let p = item.controller;
+                let cards: Vec<ObjId> = self.players[p]
+                    .library
+                    .iter()
+                    .rev()
+                    .take(n as usize)
+                    .copied()
+                    .collect();
+                if !cards.is_empty() {
+                    self.ask(p, Decision::HideawayPick { source: src, cards });
+                }
+            }
+            Effect::PlayHideaway(cond) => {
+                let p = item.controller;
+                let ok = match cond {
+                    0 => self.creatures(p).map(|c| self.power(c).max(0)).sum::<i32>() >= 10,
+                    _ => {
+                        let q = opponent(p);
+                        let (t, total) = self.damage_to_player_turn[q];
+                        t == self.turn && total >= 7
+                    }
+                };
+                if let (true, Some(c)) = (ok, self.obj(src).hideaway) {
+                    if self.obj(c).zone == Zone::Exile {
+                        let turn = self.turn;
+                        let o = self.obj_mut(c);
+                        o.playable = Some((p, turn));
+                        o.cast_free = true;
+                    }
+                }
+            }
+            Effect::WandOfWonder => {
+                let p = item.controller;
+                let roll = self.rng.below(20) + 1;
+                let x = if roll == 20 {
+                    3
+                } else if roll >= 10 {
+                    2
+                } else {
+                    1
+                };
+                let q = opponent(p);
+                let mut hits = Vec::new();
+                let mut rest = Vec::new();
+                while let Some(&c) = self.players[q].library.last() {
+                    self.move_to(c, Zone::Exile);
+                    let t = self.def_of(c).types;
+                    if t.instant || t.sorcery {
+                        hits.push(c);
+                        break;
+                    }
+                    rest.push(c);
+                }
+                for c in rest {
+                    self.move_to(c, Zone::Library);
+                }
+                self.shuffle_library(q);
+                for c in hits.into_iter().take(x) {
+                    self.obj_mut(c).cast_free = true;
+                    self.free_casts.push(c);
+                }
+                self.free_caster = p;
+            }
+            Effect::CreateTokenWithKeywordCounterChoice { def } => {
+                let p = item.controller;
+                self.create_token(p, def);
+                if let Some(&t) = self.last_created.first() {
+                    self.ask(p, Decision::KeywordCounterChoice { token: t });
+                }
+            }
+            Effect::NextCreatureSpellThisTurn(trigger) => {
+                let entry = (src, trigger, item.controller, self.turn);
+                self.next_creature_spell.push(entry);
+            }
+            Effect::SearchCreatureLesserManaValue => {
+                if let Some(spell) = item.extra {
+                    let mv = self.def_of(spell).cost.mana_value();
+                    if mv > 0 {
+                        let what = SearchFor::CreatureMvAtMost(mv - 1);
+                        self.ask(
+                            item.controller,
+                            Decision::Search {
+                                what,
+                                to: SearchTo::Battlefield { tapped: false },
+                                left: 1,
+                            },
+                        );
+                    }
+                }
+            }
             Effect::BecomeCopyOfSlotUntilEot(n) => {
                 if let Some(card) = Game::slot_object(item, legal, n) {
                     if self.obj(src).zone == Zone::Battlefield {
@@ -15046,6 +15195,9 @@ impl Game {
                 self.obj_mut(id).counters -= amount; // CR 702.90c: -1/-1 counters
             }
             Target::Player(p) => {
+                let turn = self.turn;
+                let (t, total) = self.damage_to_player_turn[p];
+                self.damage_to_player_turn[p] = (turn, if t == turn { total } else { 0 } + amount);
                 self.lose_life(p, amount);
                 let controller = self.obj(source).controller;
                 if amount >= 5 {
