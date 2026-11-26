@@ -3250,3 +3250,141 @@ fn treasure_map_transforms_on_its_third_landmark_into_treasure_cove() {
     resolve_all(&mut g, &[]);
     assert_eq!(g.players[0].hand.len(), n + 1);
 }
+
+// ---- Bruna, Light of Alabaster, batch 1 ----
+
+#[test]
+fn supreme_verdict_destroys_all_creatures_and_cant_be_countered() {
+    let mut g = table();
+    let a = put(&mut g, 0, "Hungry Ghoul");
+    let b = put(&mut g, 1, "Palinchron");
+    let sv = hand(&mut g, 0, "Supreme Verdict");
+    assert!(g.def_of(sv).uncounterable);
+    play(&mut g, sv, false, &[], &[]);
+    assert_eq!(g.obj(a).zone, Zone::Graveyard);
+    assert_eq!(g.obj(b).zone, Zone::Graveyard);
+}
+
+#[test]
+fn idyllic_tutor_finds_an_enchantment() {
+    let mut g = table();
+    let e = top(&mut g, "Nahiri's Resolve");
+    let it = hand(&mut g, 0, "Idyllic Tutor");
+    play(&mut g, it, false, &[], &[Action::Pick(e)]);
+    assert_eq!(g.obj(e).zone, Zone::Hand);
+}
+
+#[test]
+fn talisman_of_progress_and_deserted_beach_make_white_or_blue() {
+    let mut g = game(&[]);
+    let t = put(&mut g, 0, "Talisman of Progress");
+    assert_eq!(colors(&g, t), [true, true, false, false, false]);
+    assert!(enters_tapped(&["Plains"], "Deserted Beach"));
+    assert!(!enters_tapped(&["Plains", "Island"], "Deserted Beach"));
+}
+
+#[test]
+fn prismatic_vista_pays_a_life_for_a_basic() {
+    let mut g = game(&["Prismatic Vista"]);
+    let pv = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "Prismatic Vista")
+        .unwrap();
+    let forest = top(&mut g, "Forest");
+    let life = g.players[0].life;
+    act(&mut g, Action::Activate(pv, 0));
+    resolve_all(&mut g, &[Action::Pick(forest)]);
+    assert_eq!(g.obj(forest).zone, Zone::Battlefield);
+    assert!(!g.obj(forest).tapped);
+    assert_eq!(g.players[0].life, life - 1);
+}
+
+#[test]
+fn dovins_veto_counters_a_noncreature_spell() {
+    let mut g = table();
+    let think = hand(&mut g, 0, "Think Twice");
+    let dv = hand(&mut g, 0, "Dovin's Veto");
+    act(&mut g, Action::Cast(think));
+    act(&mut g, Action::Cast(dv));
+    resolve_all(&mut g, &[Action::Target(obj(think))]);
+    assert_eq!(g.obj(think).zone, Zone::Graveyard);
+    assert!(g.def_of(dv).uncounterable);
+}
+
+#[test]
+fn eel_umbra_pumps_and_saves_with_umbra_armor() {
+    let mut g = table();
+    let ghoul = put(&mut g, 0, "Hungry Ghoul");
+    let eu = hand(&mut g, 0, "Eel Umbra");
+    play(&mut g, eu, false, &[obj(ghoul)], &[]);
+    assert_eq!(g.power(ghoul), 2);
+    let kill = hand(&mut g, 0, "Hero's Downfall");
+    play(&mut g, kill, false, &[obj(ghoul)], &[]);
+    assert_eq!(g.obj(ghoul).zone, Zone::Battlefield, "umbra armor");
+    assert_eq!(g.obj(eu).zone, Zone::Graveyard);
+}
+
+#[test]
+fn crashing_drawbridge_gives_your_creatures_haste() {
+    let mut g = table();
+    let cd = put(&mut g, 0, "Crashing Drawbridge");
+    to_main(&mut g, 5, 0);
+    let ghoul = put(&mut g, 0, "Hungry Ghoul");
+    act(&mut g, Action::Activate(cd, 0));
+    resolve_all(&mut g, &[]);
+    assert!(g.keywords(ghoul).has(Keywords::HASTE));
+}
+
+#[test]
+fn heliods_pilgrim_may_find_an_aura() {
+    let mut g = table();
+    let aura = top(&mut g, "Eel Umbra");
+    let hp = hand(&mut g, 0, "Heliod's Pilgrim");
+    play(&mut g, hp, false, &[], &[Action::Yes, Action::Pick(aura)]);
+    assert_eq!(g.obj(aura).zone, Zone::Hand);
+}
+
+#[test]
+fn galadriels_dismissal_phases_out_a_creature_or_kicked_all_of_a_players() {
+    let mut g = table();
+    let a = put(&mut g, 1, "Hungry Ghoul");
+    let b = put(&mut g, 1, "Palinchron");
+    let gd = hand(&mut g, 0, "Galadriel's Dismissal");
+    play(&mut g, gd, false, &[obj(a)], &[]);
+    assert!(
+        !g.battlefield.contains(&a) && g.obj(a).zone == Zone::Battlefield,
+        "phased out"
+    );
+    assert!(g.battlefield.contains(&b));
+    let gd2 = hand(&mut g, 0, "Galadriel's Dismissal");
+    play(&mut g, gd2, true, &[Target::Player(1)], &[]);
+    assert!(!g.battlefield.contains(&b), "kicked: all of their creatures");
+    to_main(&mut g, 4, 1);
+    assert!(
+        g.battlefield.contains(&a) && g.battlefield.contains(&b),
+        "back on their untap step"
+    );
+}
+
+#[test]
+fn mirrormade_copies_an_artifact() {
+    let mut g = table();
+    put(&mut g, 1, "Sol Ring");
+    let ghoul = put(&mut g, 1, "Hungry Ghoul");
+    let mm = hand(&mut g, 0, "Mirrormade");
+    act(&mut g, Action::Cast(mm));
+    for _ in 0..10 {
+        if matches!(g.pending, Pending::Decide(_)) {
+            break;
+        }
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(
+        !g.legal_actions().contains(&Action::Pick(ghoul)),
+        "not a creature"
+    );
+    let ring = g.permanents(1).find(|&x| g.def_of(x).name == "Sol Ring").unwrap();
+    act(&mut g, Action::Pick(ring));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.def_of(mm).name, "Sol Ring");
+}

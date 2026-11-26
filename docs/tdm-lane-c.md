@@ -706,3 +706,10 @@ counters are the source's `kind_counters`; transforming is in place (`transforme
 Still Malik, not done: Prosper, Tome-Bound (needs d2's "play a card from exile" trigger), Glimpse of Tomorrow
 (suspend, a later lane C batch), Gisa, Glorious Resurrector (Mac B's die-to-exile replacement first), Inventors'
 Fair (d3: a search for any artifact card).
+
+## Bruna, Light of Alabaster (queue.json, lane C)
+
+Unsupported: 46 of 48. Batch 1 (11): Supreme Verdict, Idyllic Tutor, Talisman of Progress, Deserted Beach, Prismatic
+Vista, Dovin's Veto, Eel Umbra, Crashing Drawbridge, Heliod's Pilgrim, Galadriel's Dismissal, Mirrormade.
+Core: `Effect::{PhaseOutSlot, PhaseOutCreaturesOfPlayer}` (they phase in on their controller's untap step, unlike
+`PhaseOut`, which uses the caster's), `ZonesExt::copy_artifact_or_enchantment` (in `copy_option`; Auras excluded).

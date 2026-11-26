@@ -1701,6 +1701,65 @@ pub fn script(name: &str) -> Option<Script> {
                 b.activated[n].sacrifice_subtype = Some("Treasure");
             },
         ),
+        // ---- Bruna, Light of Alabaster (queue.json, lane C), batch 1 ----
+        "Supreme Verdict" => s(&["This spell can't be countered.", "Destroy all creatures."], |d, _| {
+            d.uncounterable = true;
+            spell(d, vec![], vec![Effect::DestroyAllCreatures]);
+        }),
+        "Idyllic Tutor" => s(&["Search your library for an enchantment card, reveal it, put it into your hand, then shuffle."], |d, _| {
+            spell(d, vec![], vec![search(SearchFor::Enchantment, SearchTo::Hand)])
+        }),
+        "Talisman of Progress" => s(&["{T}: Add {C}.", "{T}: Add {W} or {U}. This artifact deals 1 damage to you."], |d, _| {
+            d.mana = Some(ManaSource { colorless: true, ..ManaSource::of(&[Color::White, Color::Blue]) });
+            d.pain_colored = true;
+        }),
+        "Deserted Beach" => s(
+            &["This land enters tapped unless you control two or more other lands.", "{T}: Add {W} or {U}."],
+            |d, _| {
+                d.mana_ext.enters_tapped_unless_other_lands = 2;
+                dual(d, Color::White, Color::Blue);
+            },
+        ),
+        "Prismatic Vista" => s(
+            &["{T}, Pay 1 life, Sacrifice this land: Search your library for a basic land card, put it onto the battlefield, then shuffle."],
+            |d, _| {
+                let n = activated(d, "", true, vec![], vec![search(SearchFor::BasicLand, SearchTo::Battlefield { tapped: false })]);
+                d.activated[n].sacrifice_self = true;
+                d.activated[n].life = 1;
+            },
+        ),
+        "Dovin's Veto" => s(&["This spell can't be countered.", "Counter target noncreature spell."], |d, _| {
+            d.uncounterable = true;
+            spell(d, vec![Filter { spell_creature: Some(false), ..SPELL }], vec![Effect::Counter(0)]);
+        }),
+        "Eel Umbra" => s(&["Enchant creature", "Enchanted creature gets +1/+1.", "Umbra armor"], |d, _| {
+            d.aura = true;
+            d.spell = Some(Ability::new(vec![CREATURE], vec![]));
+            attached(d, false, 1, 1, Keywords::NONE);
+            d.umbra_armor = true;
+        }),
+        "Crashing Drawbridge" => s(&["{T}: Creatures you control gain haste until end of turn."], |d, _| {
+            activated(d, "", true, vec![], vec![Effect::GrantAll { who: Who::You, keywords: Keywords::HASTE }]);
+        }),
+        "Heliod's Pilgrim" => s(
+            &["When this creature enters, you may search your library for an Aura card, reveal it, put it into your hand, then shuffle."],
+            |d, _| may(d, When::Enters, vec![], vec![search(SearchFor::Subtype("Aura"), SearchTo::Hand)]),
+        ),
+        "Galadriel's Dismissal" => s(
+            &[
+                "Kicker {2}{W}",
+                "Target creature phases out. If this spell was kicked, each creature target player controls phases out instead.",
+            ],
+            |d, _| {
+                d.kicker = ManaCost::parse("{2}{W}");
+                spell(d, vec![CREATURE], vec![Effect::PhaseOutSlot(0)]);
+                d.kicked_spell = Some(Ability::new(vec![Filter::PLAYER], vec![Effect::PhaseOutCreaturesOfPlayer(0)]));
+            },
+        ),
+        "Mirrormade" => s(&["You may have this enchantment enter as a copy of any artifact or enchantment on the battlefield."], |d, _| {
+            d.enter_as_copy = true;
+            d.zones.copy_artifact_or_enchantment = true;
+        }),
         _ => None,
     }
 }
@@ -1905,4 +1964,15 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Treasure Vault",
     "Nahiri's Resolve",
     "Treasure Map // Treasure Cove",
+    "Supreme Verdict",
+    "Idyllic Tutor",
+    "Talisman of Progress",
+    "Deserted Beach",
+    "Prismatic Vista",
+    "Dovin's Veto",
+    "Eel Umbra",
+    "Crashing Drawbridge",
+    "Heliod's Pilgrim",
+    "Galadriel's Dismissal",
+    "Mirrormade",
 ];

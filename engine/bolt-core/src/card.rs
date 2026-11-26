@@ -1928,6 +1928,8 @@ pub struct ZonesExt {
     pub copy_mv_at_most_spent: bool,
     /// With `shock_land`: the life it asks for instead of 2 (Volcanic Fissure: 3).
     pub shock_life: i32,
+    /// With `enter_as_copy`: it may copy an artifact or a non-Aura enchantment only (Mirrormade).
+    pub copy_artifact_or_enchantment: bool,
 }
 
 #[cfg(test)]

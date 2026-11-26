@@ -2264,6 +2264,12 @@ pub enum Effect {
     LandmarkTransformTreasures {
         def: usize,
     },
+    /// The permanent in `slot` phases out until its controller's next untap step (Galadriel's
+    /// Dismissal).
+    PhaseOutSlot(u8),
+    /// Each creature the player in target `slot` controls phases out until that player's next untap
+    /// step (Galadriel's Dismissal, kicked).
+    PhaseOutCreaturesOfPlayer(u8),
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

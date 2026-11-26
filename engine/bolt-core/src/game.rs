@@ -9438,6 +9438,10 @@ impl Game {
     fn copy_option(&self, clone: ObjId, x: ObjId) -> bool {
         let t = self.types_of(x);
         let d = self.def_of(clone);
+        // Mirrormade: an artifact or an enchantment (not an Aura, which would need something to enchant).
+        if d.zones.copy_artifact_or_enchantment {
+            return (t.artifact || t.enchantment) && !self.def_of(x).aura;
+        }
         // Mockingbird: mana value at most the mana spent to cast it.
         if d.zones.copy_mv_at_most_spent && self.def_of(x).cost.mana_value() > self.obj(clone).mana_spent {
             return false;
@@ -20420,6 +20424,27 @@ impl Game {
                         keywords: Keywords::CANT_BLOCK,
                         dies: None,
                     });
+                }
+            }
+            Effect::PhaseOutSlot(slot) => {
+                if let Some(x) = Game::slot_object(item, legal, slot) {
+                    if self.battlefield.contains(&x) {
+                        let p = self.obj(x).controller;
+                        self.phase_out(x, p);
+                    }
+                }
+            }
+            Effect::PhaseOutCreaturesOfPlayer(slot) => {
+                if let Some(p) = self
+                    .players_for(item, legal, Who::TargetPlayer(slot))
+                    .into_iter()
+                    .next()
+                {
+                    for x in self.creatures(p).collect::<Vec<_>>() {
+                        if self.battlefield.contains(&x) {
+                            self.phase_out(x, p);
+                        }
+                    }
                 }
             }
             Effect::ExileYoursUntilYourNextUpkeep => {
