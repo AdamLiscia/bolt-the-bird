@@ -814,6 +814,22 @@ pub struct CardDef {
     /// "If a triggered ability of [a kind of source] you control triggers, that ability triggers an
     /// additional time" (Harmonic Prodigy, Delney).
     pub doubles_triggers_of: Option<TriggerDoubler>,
+    /// The d4 subsystems' pieces (dungeons, Backgrounds, split cards), grouped so adding one
+    /// touches only [`SubsystemExt`].
+    pub subsystems: SubsystemExt,
+}
+
+/// A card's pieces from the d4 subsystems (see [`CardDef::subsystems`]).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct SubsystemExt {
+    /// A split card (CR 709): `omen` holds its right half, cast like an Omen's, and either half goes
+    /// to its owner's graveyard as it resolves.
+    pub split_card: bool,
+    /// "Room abilities of dungeons you own trigger an additional time." (Hama Pashar)
+    pub rooms_trigger_again: bool,
+    /// "Commander creatures you own have 'Room abilities of dungeons you own trigger an additional
+    /// time.'" (Dungeon Delver)
+    pub commanders_rooms_trigger_again: bool,
 }
 
 /// A card's mana, cost and keyword pieces added by the d1 theme (see [`CardDef::mana_ext`]).
@@ -1146,6 +1162,7 @@ impl CardDef {
             mana_ext: ManaExt::default(),
             suppresses_triggers: None,
             doubles_triggers_of: None,
+            subsystems: Default::default(),
             protection_chosen_card_type: false,
         }
     }
@@ -1384,6 +1401,7 @@ impl CardDef {
             mana_ext: ManaExt::default(),
             suppresses_triggers: None,
             doubles_triggers_of: None,
+            subsystems: Default::default(),
             protection_chosen_card_type: false,
         }
     }
@@ -1622,6 +1640,7 @@ impl CardDef {
             mana_ext: ManaExt::default(),
             suppresses_triggers: None,
             doubles_triggers_of: None,
+            subsystems: Default::default(),
             protection_chosen_card_type: false,
         }
     }

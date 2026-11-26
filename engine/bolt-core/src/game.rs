@@ -8763,7 +8763,8 @@ impl Game {
             }
         }
         if r.item.kind == StackKind::Spell {
-            let omen = r.item.mode == Some(OMEN_MODE);
+            // A split card's right half is cast through the Omen path but goes to the graveyard.
+            let omen = r.item.mode == Some(OMEN_MODE) && !self.def_of(source).subsystems.split_card;
             let shuffles = self.def_of(source).shuffle_on_resolve;
             if omen && self.def_of(source).adventure && self.obj(source).zone == Zone::Stack {
                 // An Adventure: exiled, and its owner may cast the card from exile later (CR 715.4).

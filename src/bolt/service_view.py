@@ -47,6 +47,8 @@ def _label(kind: str, cards: list, nums: tuple, me: int, values: tuple) -> str:
         return f"Choose mode {a + 1}"
     if kind == "Amount":
         return f"Choose {a}"
+    if kind == "CastOmen" and " // " in c:  # an Omen's or a split card's second half, by its name
+        return f"Cast {c.split(' // ', 1)[1]}"
     n = nums[0] if nums else None
     return {
         "Bottom": f"Put {c} on the bottom", "PlayLand": f"Play {c}", "Cast": f"Cast {c}",
