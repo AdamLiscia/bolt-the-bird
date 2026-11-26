@@ -615,10 +615,13 @@ fn hazel_copies_a_squirrel_token_twice() {
     let mut asked = 0;
     while g.turn == 3 {
         let a = match g.pending {
-            Pending::ChooseTarget(_) => {
+            // Hazel's choice of a token; the copies' own enters triggers (a target opponent for
+            // Bloodroot Apothecary's Treasures) take the first legal target.
+            Pending::ChooseTarget(_) if g.legal_actions().contains(&Action::Target(obj(squirrel[0]))) => {
                 asked += 1;
                 Action::Target(obj(squirrel[0]))
             }
+            Pending::ChooseTarget(_) | Pending::Decide(_) => g.legal_actions()[0],
             Pending::DeclareAttackers(_) => Action::FinishAttacks,
             Pending::Discard(_) => g.legal_actions()[0], // cleanup: down to seven
             _ => Action::PassPriority,
@@ -2850,4 +2853,175 @@ fn shield_broker_steals_while_the_shield_lasts() {
     assert_eq!(g.obj(ghalta).damage, 0, "the shield took it");
     assert_eq!(g.obj(ghalta).shield_counters, 0);
     assert_eq!(g.obj(ghalta).controller, 1);
+}
+
+// ---- Lane B, 2026-11-26: Communal Brewing, Rootcast Apprenticeship, Insatiable Frugivore,
+// Bloodroot Apothecary ----
+
+#[test]
+fn communal_brewing_brews_for_each_card_drawn_and_grows_creature_spells() {
+    let mut g = table();
+    let brew = hand(&mut g, 0, "Communal Brewing");
+    let theirs = g.players[1].hand.len();
+    play(&mut g, brew, false, &[], &[Action::Target(Target::Player(1))]);
+    assert_eq!(g.players[1].hand.len(), theirs + 1, "the opponent draws");
+    assert_eq!(g.obj(brew).kind_counters, 2, "one, plus one for the card drawn");
+    let sovereign = hand(&mut g, 0, "Squirrel Sovereign");
+    play(&mut g, sovereign, false, &[], &[]);
+    assert_eq!(g.obj(sovereign).zone, Zone::Battlefield);
+    assert_eq!(g.obj(sovereign).counters, 2, "enters with X = 2 more counters");
+
+    // No opponent chosen: one ingredient counter only.
+    let mut g = table();
+    let brew = hand(&mut g, 0, "Communal Brewing");
+    act(&mut g, Action::Cast(brew));
+    while g.pending != Pending::ChooseTarget(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::No);
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(brew).kind_counters, 1);
+}
+
+#[test]
+fn rootcast_apprenticeship_repeats_modes_on_the_same_or_other_targets() {
+    // Mode 0: two +1/+1 counters, three times, all on one creature.
+    let mut g = table();
+    let bear = put(&mut g, 0, "Squirrel Sovereign");
+    let rc = hand(&mut g, 0, "Rootcast Apprenticeship");
+    act(&mut g, Action::CastModal(rc, 0));
+    for _ in 0..3 {
+        act(&mut g, Action::Target(obj(bear)));
+    }
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(bear).counters, 6);
+
+    // Mode 16: target player creates a Squirrel, three times, all you.
+    let mut g = table();
+    let rc = hand(&mut g, 0, "Rootcast Apprenticeship");
+    act(&mut g, Action::CastModal(rc, 16));
+    for _ in 0..3 {
+        act(&mut g, Action::Target(Target::Player(0)));
+    }
+    resolve_all(&mut g, &[]);
+    assert_eq!(tokens_named(&g, 0, "Squirrel").len(), 3);
+
+    // Mode 19: the opponent sacrifices a nontoken artifact three times: their pick of two, then the
+    // last one, then nothing (a Treasure token doesn't count).
+    let mut g = table();
+    let ring = put(&mut g, 1, "Sol Ring");
+    let signet = put(&mut g, 1, "Arcane Signet");
+    let def = token_def("Treasure");
+    let treasure = g.add_card(1, def, Zone::Battlefield);
+    let rc = hand(&mut g, 0, "Rootcast Apprenticeship");
+    act(&mut g, Action::CastModal(rc, 19));
+    for _ in 0..3 {
+        act(&mut g, Action::Target(Target::Player(1)));
+    }
+    resolve_all(&mut g, &[Action::Pick(signet)]);
+    assert_eq!(g.obj(signet).zone, Zone::Graveyard);
+    assert_eq!(g.obj(ring).zone, Zone::Graveyard);
+    assert_eq!(g.obj(treasure).zone, Zone::Battlefield);
+
+    // Mode 14: copy a token you control, you create a Squirrel, and they sacrifice an artifact.
+    let mut g = table();
+    let def = token_def("Food");
+    let food = g.add_card(0, def, Zone::Battlefield);
+    let ring = put(&mut g, 1, "Sol Ring");
+    let rc = hand(&mut g, 0, "Rootcast Apprenticeship");
+    act(&mut g, Action::CastModal(rc, 14));
+    act(&mut g, Action::Target(obj(food)));
+    act(&mut g, Action::Target(Target::Player(0)));
+    act(&mut g, Action::Target(Target::Player(1)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(tokens_named(&g, 0, "Food").len(), 2);
+    assert_eq!(tokens_named(&g, 0, "Squirrel").len(), 1);
+    assert_eq!(g.obj(ring).zone, Zone::Graveyard);
+}
+
+#[test]
+fn insatiable_frugivore_trades_graveyard_cards_for_food_and_eats_it_for_power() {
+    let mut g = table();
+    let gy: Vec<ObjId> = (0..7)
+        .map(|_| g.add_card(0, bid("Plains"), Zone::Graveyard))
+        .collect();
+    let rat = hand(&mut g, 0, "Insatiable Frugivore");
+    let picks: Vec<Action> = gy[..6].iter().map(|&c| Action::Pick(c)).collect();
+    play(&mut g, rat, false, &[], &picks);
+    assert_eq!(
+        tokens_named(&g, 0, "Food").len(),
+        3,
+        "one, then one per three exiled"
+    );
+    assert_eq!(g.players[0].graveyard.len(), 1);
+    assert!(gy[..6].iter().all(|&c| g.obj(c).zone == Zone::Exile));
+
+    // Declining stops after the first Food.
+    let mut g2 = table();
+    for _ in 0..3 {
+        g2.add_card(0, bid("Plains"), Zone::Graveyard);
+    }
+    let rat2 = hand(&mut g2, 0, "Insatiable Frugivore");
+    play(&mut g2, rat2, false, &[], &[Action::No]);
+    assert_eq!(tokens_named(&g2, 0, "Food").len(), 1);
+    assert_eq!(g2.players[0].graveyard.len(), 3);
+
+    // {3}{B}, Sacrifice two Foods: +2/+0 and menace for your creatures.
+    act(
+        &mut g,
+        Action::ActivateX {
+            id: rat,
+            n: 0,
+            victim: None,
+            x: 2,
+        },
+    );
+    resolve_all(&mut g, &[]);
+    assert_eq!(tokens_named(&g, 0, "Food").len(), 1);
+    assert_eq!(g.power(rat), 4);
+    assert_eq!(g.toughness(rat), 4);
+    assert!(g.keywords(rat).has(Keywords::MENACE));
+}
+
+#[test]
+fn bloodroot_apothecary_shares_treasure_poisons_their_token_sacrifices_and_is_toxic() {
+    let mut g = table();
+    let apothecary = hand(&mut g, 0, "Bloodroot Apothecary");
+    play(
+        &mut g,
+        apothecary,
+        false,
+        &[],
+        &[Action::Target(Target::Player(1))],
+    );
+    assert_eq!(tokens_named(&g, 0, "Treasure").len(), 1);
+    assert_eq!(tokens_named(&g, 1, "Treasure").len(), 1);
+
+    // The opponent sacrifices a Food on their turn: two poison counters.
+    let def = token_def("Food");
+    let food = g.add_card(1, def, Zone::Battlefield);
+    g.start_turn(4, 1);
+    while g.pending != Pending::Priority(1) || g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Activate(food, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        g.obj(food).zone,
+        Zone::Gone,
+        "sacrificed: a token ceases to exist"
+    );
+    assert_eq!(g.players[1].poison, 2);
+
+    // Toxic 2: combat damage to a player adds two poison counters too.
+    attack(&mut g, &[apothecary]);
+    while g.step != Step::Main2 {
+        let a = match g.pending {
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.players[1].poison, 4);
+    assert_eq!(g.players[1].life, 40, "43 after their Food, then 3 combat damage");
 }

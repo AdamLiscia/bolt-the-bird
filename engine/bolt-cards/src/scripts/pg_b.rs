@@ -1769,6 +1769,59 @@ pub fn script(name: &str) -> Option<Script> {
                 modes(d, pairs);
             },
         ),
+        "Ugin, the Ineffable" => s(
+            &[
+                "Colorless spells you cast cost {2} less to cast.",
+                "+1: Exile the top card of your library face down and look at it. Create a 2/2 colorless Spirit creature token. When that token leaves the battlefield, put the exiled card into your hand.",
+                "\u{2212}3: Destroy target permanent that's one or more colors.",
+            ],
+            |d, t| {
+                d.colorless_spell_discount = 2;
+                // The delayed "when that token leaves the battlefield" (see `Game::token_linked_exile`).
+                on(d, When::Never, vec![], vec![Effect::LinkedExiledCardToHand]);
+                let trigger = d.triggers.len() - 1;
+                let plus = Effect::ExileTopFaceDownCreateLinkedToken { def: t.spirit_2, trigger };
+                loyalty(d, 1, Ability::new(vec![], vec![plus]));
+                let colored = Filter {
+                    players: false,
+                    creatures: false,
+                    planeswalkers: false,
+                    any_permanent: true,
+                    colored: true,
+                    ..Filter::ANY
+                };
+                loyalty(d, -3, Ability::new(vec![colored], vec![Effect::Destroy(0)]));
+            },
+        ),
+        "Crested Sunmare" => s(
+            &[
+                "Other Horses you control have indestructible.",
+                "At the beginning of each end step, if you gained life this turn, create a 5/5 white Horse creature token.",
+            ],
+            |d, t| {
+                lord(d, "Horse");
+                let horses = d.statics.last_mut().expect("the Horse static");
+                (horses.power, horses.toughness, horses.keywords) = (0, 0, Keywords::INDESTRUCTIBLE);
+                let horse = Effect::CreateToken { who: Who::You, def: t.horse_5, n: 1 };
+                let each = When::EndStep { your_turn_only: false };
+                conditional(d, each, Condition::YouGainedLifeThisTurn, vec![], vec![horse]);
+            },
+        ),
+        "Ajani, Strength of the Pride" => s(
+            &[
+                "+1: You gain life equal to the number of creatures you control plus the number of planeswalkers you control.",
+                "\u{2212}2: Create a 2/2 white Cat Soldier creature token named Ajani's Pridemate with \"Whenever you gain life, put a +1/+1 counter on this token.\"",
+                "0: If you have at least 15 life more than your starting life total, exile Ajani and each artifact and creature your opponents control.",
+            ],
+            |d, t| {
+                let plus = Effect::GainLifePerCreatureAndPlaneswalkerYouControl;
+                loyalty(d, 1, Ability::new(vec![], vec![plus]));
+                let cat = Effect::CreateToken { who: Who::You, def: t.ajanis_pridemate, n: 1 };
+                loyalty(d, -2, Ability::new(vec![], vec![cat]));
+                let zero = Effect::ExileSelfAndOpponentsArtifactsCreaturesIfLifeAbove(15);
+                loyalty(d, 0, Ability::new(vec![], vec![zero]));
+            },
+        ),
         _ => None,
     }
 }
@@ -1983,6 +2036,9 @@ pub const PG_B_SCRIPTED: &[&str] = &[
     "Silent Arbiter",
     "Expropriate",
     "Kozilek's Command",
+    "Ugin, the Ineffable",
+    "Crested Sunmare",
+    "Ajani, Strength of the Pride",
     // Ghyrson Starn (Spr3adsh33t)
     "Basilisk Collar",
     "Gorgon's Head",
