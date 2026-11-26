@@ -122,6 +122,8 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
     if kind == "Amount":
         if d == "ChooseCastX":
             return f"Cast {card} with X = {value}" if card else f"X = {value}"
+        if d == "ChooseLoyaltyX":
+            return f"{src}: \u2212X with X = {value}" if src else f"X = {value}"
         if d == "ChooseDelve":
             word = "card" if value == 1 else "cards"
             return f"Delve: exile {value} {word} from your graveyard" + (f" ({card})" if card else "")
@@ -157,9 +159,9 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         verb = {"SacrificeCreatures": "Sacrifice", "SacrificeAnother": "Sacrifice", "Search": "Take",
                 "LookPick": "Take", "KeepOfType": "Keep", "ScryOrder": "Put on top:", "GenesisPick": "Put onto the battlefield:", "PutPicksOntoBattlefield": "Put onto the battlefield:", "LandFromHandTapped": "Put onto the battlefield tapped:",
                 "DistributeCounters": "Put a +1/+1 counter on", "ManifestDread": "Manifest", "TurnFaceUp": "Turn face up:",
-                "PickVoidCard": "Play free this turn:", "ReturnOwnCreatureOfColor": "Return to its owner's hand:", "LandFromHand": "Put onto the battlefield:",
+                "PickVoidCard": "Play free this turn:", "ReturnOwnCreatureOfColor": "Return to its owner's hand:", "CacheGrabPick": "Put into your hand:", "MoveCounterFrom": "Move a +1/+1 counter onto", "LandFromHand": "Put onto the battlefield:",
                 "PickDiscard": "Make them discard", "EnterAsCopy": f"{card or 'It'} enters as a copy of"}.get(d)  # fmt: skip
-        verb = verb or {"CreaturesFromHandUpTo": "Put onto the battlefield:", "ReturnOwnPermanent": "Return", "SearchToGraveyardCounter": "Put into your graveyard:"}.get(d)  # fmt: skip
+        verb = verb or {"CreaturesFromHandUpTo": "Put onto the battlefield:", "PermanentsFromHandUpTo": "Put onto the battlefield:", "ReturnOwnPermanent": "Return", "SearchToGraveyardCounter": "Put into your graveyard:"}.get(d)  # fmt: skip
         verb = verb or {"KeepNonlandOfType": "Keep", "HandToBottom": "Put on the bottom:", "SacrificeAnyNumber": "Sacrifice", "SacrificeCreatureOrPlaneswalkerEach": "Sacrifice", "ReturnAnotherPermanentCard": "Return to your hand:", "BasicsTappedUpTo": "Put onto the battlefield tapped:", "SignalTheClans": "Reveal", "BraidsSacrifice": "Sacrifice", "BraidsOpponent": "Sacrifice"}.get(d)  # fmt: skip
         verb = verb or {"ConniveDiscard": "Discard (connive):"}.get(d)
         verb = verb or {"VowCreature": "Put a vow counter on (sacrifice the rest):", "DiscardOrLoseLife": "Discard"}.get(d)  # fmt: skip
@@ -168,6 +170,7 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         verb = verb or {"ReturnSharingType": "Return to its owner's hand:", "ExileOwnPermanent": "Exile"}.get(d)
         verb = verb or {"UntapOwnCreature": "Untap"}.get(d)
         verb = verb or {"PutFromOpponentsTop": "Put onto the battlefield under your control:"}.get(d)
+        verb = verb or {"ExileUntilYourNextUpkeep": "Exile until your next upkeep:"}.get(d)
         verb = verb or {"CastFromGraveyardThisTurn": "You may cast this turn (then exile it):"}.get(d)
         verb = verb or {"TakeTwoBottomRest": "Put into your hand:"}.get(d)
         verb = verb or {"SacrificeDiscardOrLoseLife": "Sacrifice (or discard, from your hand):"}.get(d)
@@ -197,6 +200,7 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         "CommanderToCommandZone": (f"Move {subject} to the command zone", f"Leave {subject} there"),
         "ChoosePile": ("Choose pile A", "Choose pile B"),
         "PayToStop": (f"Pay {dec.get('cost', '')}", "Don't pay"),
+        "MayDrawGainOne": ("Draw a card and gain 1 life", "Don't draw"),
         "PayUpkeep": (f"Pay the upkeep {dec.get('cost', '')}", f"Don't pay (sacrifice {subject or src})"),
         "MayShuffle": ("Shuffle your library", "Don't shuffle"),
         "TaintedPact": ("Put it into your hand", "Exile the next card"),
@@ -206,12 +210,14 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         ),
         "MayPayManaAndLife": (f"Pay {dec.get('cost', '')} and {dec.get('life', 0)} life", "Don't pay"),
     }
-    if d in ("CreaturesFromHandUpTo", "SearchToGraveyardCounter") and not yes:
-        return "Done choosing" if d == "CreaturesFromHandUpTo" else "Find nothing"
+    if d in ("CreaturesFromHandUpTo", "PermanentsFromHandUpTo", "SearchToGraveyardCounter") and not yes:
+        return "Find nothing" if d == "SearchToGraveyardCounter" else "Done choosing"
     if d == "PutPicksOntoBattlefield" and not yes:
         return "Done choosing"
     if d == "PutFromOpponentsTop" and not yes:
         return "Put none onto the battlefield"
+    if d == "ExileUntilYourNextUpkeep" and not yes:
+        return "Done exiling"
     d3_no = {"SacrificeAnyNumber": "Done sacrificing", "ReturnAnotherPermanentCard": "Return nothing", "BasicsTappedUpTo": "Find nothing", "SignalTheClans": "Done revealing", "BraidsSacrifice": "Don't sacrifice", "BraidsOpponent": "Don't sacrifice (lose 2 life)"}  # fmt: skip
     d3_no["ReturnSharingType"] = "Return nothing"
     d3_no["ReanimateTotalManaValue"] = "Done choosing"

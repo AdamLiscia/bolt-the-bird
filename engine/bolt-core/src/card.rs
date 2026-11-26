@@ -134,6 +134,10 @@ pub enum ExtraCost {
     /// Sacrifice a creature of this color (WUBRG index) (Natural Order: green); cast with
     /// `Action::CastWith` naming it.
     SacrificeCreatureOfColor(u8),
+    /// "As an additional cost to cast this spell, forage or pay [mana]." (Feed the Cycle): cast
+    /// with `Action::Cast` paying the mana, or `Action::CastWith` naming a Food to sacrifice or a
+    /// card in your graveyard (it and two more, the engine's picks, are exiled).
+    ForageOrPay(ManaCost),
 }
 
 /// "This spell costs {N} less to cast if ..." (CR 601.2f).
@@ -313,7 +317,25 @@ pub struct Activated {
     /// how many you control; the engine picks which (tokens first, then the lowest mana value,
     /// the source last).
     pub sacrifice_x_of_subtype: Option<&'static str>,
+    /// "Forage" in the cost (Camellia): exile three cards from your graveyard or sacrifice a Food.
+    /// The engine picks: a Food if you have one, else three graveyard cards (as for delve).
+    pub forage: bool,
+    /// A Class's level-up ("{1}{R}: Level 2", CR 716.2): activatable only at the level before this
+    /// one (and as a sorcery, `sorcery`); its effect is `Effect::ClassLevelUp`.
+    pub level_up_to: u8,
+    /// Activatable only while its Class is at this level or higher (0: always).
+    pub min_class_level: u8,
+    /// "Activate only if you control N or more artifacts." (Metallurgic Summonings: 6)
+    pub min_artifacts: u8,
+    /// Plot (CR 702.170): activated from your hand at sorcery speed; as the cost the card is exiled,
+    /// plotted. On a later turn its owner may cast it from exile as a sorcery without paying its
+    /// mana cost (`Object::plotted`).
+    pub plot: bool,
 }
+
+/// A loyalty ability's cost of −X (CR 606.4, 107.3): `loyalty_abilities` uses this as the cost,
+/// and X is chosen as it's activated (`Decision::ChooseLoyaltyX`), up to the loyalty.
+pub const LOYALTY_MINUS_X: i32 = i32::MIN;
 
 /// The printed card. Shared by every copy; per-copy state lives on the game object.
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -902,6 +924,20 @@ pub struct CardDef {
     /// The Mac C objects-and-zones pieces (copy exceptions, ...), grouped so adding one touches
     /// only [`ZonesExt`].
     pub zones: ZonesExt,
+    /// "Your opponents can't cast spells with even mana values." and "Your opponents can't block
+    /// with creatures with even mana values." (Void Winnower)
+    pub opponents_even_locked: bool,
+    /// "Enchanted creature ... is goaded." (Martial Impetus): see `Game::is_goaded`.
+    pub goads_enchanted: bool,
+    /// Activated abilities lands you control have (Bootleggers' Stash: "{T}: Create a Treasure
+    /// token.").
+    pub lands_you_control_have: Vec<Activated>,
+    /// Activated abilities creatures of this subtype you control have (The Odd Acorn Gang:
+    /// Squirrels).
+    pub subtype_you_control_has: Option<(&'static str, Vec<Activated>)>,
+    /// Aftermath (CR 702.127): the split card's right half (`omen`) is cast only from the
+    /// graveyard, and exiled as it resolves; the left half isn't cast from the graveyard.
+    pub aftermath: bool,
 }
 
 /// A card's pieces from the d4 subsystems (see [`CardDef::subsystems`]).
@@ -1018,6 +1054,34 @@ pub struct ManaExt {
     /// "This land enters tapped unless you control a legendary creature." (The Shire, Minas
     /// Tirith)
     pub enters_tapped_unless_legendary_creature: bool,
+    /// Improvise (CR 702.126): each untapped artifact you control can tap to pay {1} while you
+    /// cast this spell (Kappa Cannoneer).
+    pub improvise: bool,
+    /// "Nonartifact spells you cast have improvise." (Inspiring Statuary)
+    pub nonartifact_spells_improvise: bool,
+    /// "{T}: Add {W}. Activate only if you control an Island." (Nimbus Maze): each color (WUBRG)
+    /// it adds only while you control a permanent with that subtype, on top of `mana`.
+    pub colors_if_you_control: [Option<&'static str>; 5],
+    /// "{T}: Add {C}{C}. Spend this mana only to cast colorless Eldrazi spells or activate
+    /// abilities of colorless Eldrazi." (Eldrazi Temple): it makes this much {C} for those.
+    pub colorless_eldrazi_amount: u8,
+    /// Multikicker (CR 702.33c): cast with `Action::CastX`, X the times kicked, paying this that
+    /// many times (for a card without {X} in its cost).
+    pub multikicker: Option<ManaCost>,
+    /// "This artifact enters with a charge counter on it for each time it was kicked." (Everflowing
+    /// Chalice): its kind counters.
+    pub charge_per_kick: bool,
+    /// "{T}: Add {C} for each charge counter on this artifact.": its mana, once per kind counter.
+    pub mana_per_kind_counter: bool,
+    /// "If that mana is spent on a creature spell, it gains haste." (Hall of the Bandit Lord). The
+    /// payer spends it automatically (it isn't tapped by hand), so a creature spell it pays for
+    /// gains haste as it enters.
+    pub creature_spell_haste: bool,
+    /// Delve (CR 702.66): each card exiled from your graveyard while casting it pays for {1}.
+    pub delve: bool,
+    /// "{T}: Add {C}{C}. Spend this mana only to cast colorless spells. Activate only if you
+    /// control seven or more lands." (Shrine of the Forsaken Gods): (amount, lands needed).
+    pub colorless_spell_amount_with_lands: Option<(u8, u8)>,
 }
 
 /// "You may pay [mana], [life] and sacrifice or tap [creatures] rather than pay this spell's mana
@@ -1343,6 +1407,11 @@ impl CardDef {
             attack_tax_player_only: false,
             cast_only_during_opponents_declare_blockers: false,
             foods_have_exiled_abilities: false,
+            opponents_even_locked: false,
+            goads_enchanted: false,
+            lands_you_control_have: Vec::new(),
+            subtype_you_control_has: None,
+            aftermath: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -1601,6 +1670,11 @@ impl CardDef {
             attack_tax_player_only: false,
             cast_only_during_opponents_declare_blockers: false,
             foods_have_exiled_abilities: false,
+            opponents_even_locked: false,
+            goads_enchanted: false,
+            lands_you_control_have: Vec::new(),
+            subtype_you_control_has: None,
+            aftermath: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -1859,6 +1933,11 @@ impl CardDef {
             attack_tax_player_only: false,
             cast_only_during_opponents_declare_blockers: false,
             foods_have_exiled_abilities: false,
+            opponents_even_locked: false,
+            goads_enchanted: false,
+            lands_you_control_have: Vec::new(),
+            subtype_you_control_has: None,
+            aftermath: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -1886,6 +1965,13 @@ pub struct ZonesExt {
     pub copy_sacrifice_when_targeted: bool,
     /// It may copy only a creature with mana value at most the mana spent to cast it (Mockingbird).
     pub copy_mv_at_most_spent: bool,
+    /// With `shock_land`: the life it asks for instead of 2 (Volcanic Fissure: 3).
+    pub shock_life: i32,
+    /// With `enter_as_copy`: it may copy an artifact or a non-Aura enchantment only (Mirrormade).
+    pub copy_artifact_or_enchantment: bool,
+    /// "You may have this land enter tapped as a copy of any land on the battlefield." (Vesuva): asked
+    /// as it enters, however it enters (`Object::land_copy_pending`).
+    pub enters_as_land_copy_tapped: bool,
 }
 
 #[cfg(test)]

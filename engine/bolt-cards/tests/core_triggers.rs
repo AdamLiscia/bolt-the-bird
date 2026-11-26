@@ -1609,3 +1609,54 @@ fn delayed_when_that_creature_is_put_into_your_graveyard_this_turn() {
     kill(&mut g, theirs);
     assert_eq!(g.obj(theirs).zone, Zone::Graveyard, "not into your graveyard");
 }
+
+#[test]
+fn instant_or_sorcery_cast_carries_its_mana_value() {
+    let mut g = game_with(|defs| {
+        ring_with(trigger(
+            When::YouCastInstantOrSorceryWithMv,
+            None,
+            vec![Effect::LoseLifeAmount(Who::EachOpponent)],
+        ))(defs);
+        defs[cid("Hero's Downfall")].spell = Some(Ability::new(vec![], gain(1)));
+    });
+    g.add_card(0, cid("Sol Ring"), Zone::Battlefield);
+    cast_now(&mut g, 0, "Hero's Downfall", &[]);
+    assert_eq!(life(&g, 1), 40 - 3, "Hero's Downfall's mana value");
+    cast_now(&mut g, 0, "Sol Ring", &[]);
+    assert_eq!(life(&g, 1), 37, "not an instant or sorcery");
+}
+
+#[test]
+fn exiled_face_down_goes_to_hand_at_your_next_end_step() {
+    let mut g = game_with(|defs| {
+        defs[cid("Savannah Lions")].activated.push(bolt_core::Activated {
+            ability: Ability::new(vec![], vec![Effect::ExileTopFaceDownToHandAtYourNextEndStep]),
+            ..bolt_core::Activated::default()
+        });
+    });
+    let ring = g.add_card(0, cid("Savannah Lions"), Zone::Battlefield);
+    let n = g.def_of(ring).activated.len() - 1;
+    let top = *g.players[0].library.last().unwrap();
+    act(&mut g, Action::Activate(ring, n));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(top).zone, Zone::Exile);
+    assert!(g.obj(top).face_down);
+    finish_turn(&mut g, 3);
+    assert_eq!(g.obj(top).zone, Zone::Hand, "this turn's end step");
+    assert!(!g.obj(top).face_down);
+    // On the opponent's turn: not at their end step, at yours.
+    let top = *g.players[0].library.last().unwrap();
+    // Player 0 gets priority on the opponent's turn.
+    while !g.legal_actions().contains(&Action::Activate(ring, n)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.active, 1);
+    act(&mut g, Action::Activate(ring, n));
+    resolve_all(&mut g, &[]);
+    assert!(g.obj(top).face_down);
+    finish_turn(&mut g, 4);
+    assert_eq!(g.obj(top).zone, Zone::Exile, "not the opponent's end step");
+    finish_turn(&mut g, 5);
+    assert_eq!(g.obj(top).zone, Zone::Hand, "your next end step");
+}

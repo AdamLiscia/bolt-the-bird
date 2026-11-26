@@ -1513,6 +1513,328 @@ pub fn script(name: &str) -> Option<Script> {
                 b.mana = Some(ManaSource::of(&[Color::Blue]));
             },
         ),
+        // ---- Objects and zones batch 7: morph, back faces, persist and plot ----
+        "Aphetto Alchemist" => s(&["{T}: Untap target artifact or creature.", "Morph {U}"], |d, _| {
+            let it = Filter { players: false, planeswalkers: false, artifacts: true, ..Filter::ANY };
+            activated(d, "", true, vec![it], vec![Effect::UntapTarget(0)]);
+            d.morph = ManaCost::parse("{U}");
+        }),
+        "Rattleclaw Mystic" => s(
+            &["{T}: Add {G}, {U}, or {R}.", "Morph {2}", "When this creature is turned face up, add {G}{U}{R}."],
+            |d, _| {
+                d.mana = Some(ManaSource::of(&[Color::Green, Color::Blue, Color::Red]));
+                d.morph = ManaCost::parse("{2}");
+                let add = |color| Effect::AddMana { color, n: 1 };
+                on(d, When::TurnedFaceUp, vec![], vec![add(Color::Green), add(Color::Blue), add(Color::Red)]);
+            },
+        ),
+        "Sundering Eruption // Volcanic Fissure" => s(
+            &[
+                "Destroy target land. Its controller may search their library for a basic land card, put it onto the battlefield tapped, then shuffle. Creatures without flying can't block this turn.",
+                "Back: As this land enters, you may pay 3 life. If you don't, it enters tapped.",
+                "Back: {T}: Add {R}.",
+            ],
+            |d, _| {
+                let land = Filter { players: false, creatures: false, planeswalkers: false, lands: true, ..Filter::ANY };
+                spell(d, vec![land], vec![Effect::DestroyControllerMayFetchBasicTapped(0), Effect::CreaturesWithoutFlyingCantBlockThisTurn]);
+                d.modal_back = true;
+                let b = d.back.as_mut().expect("Volcanic Fissure");
+                b.shock_land = true;
+                b.zones.shock_life = 3;
+                b.mana = Some(ManaSource::of(&[Color::Red]));
+            },
+        ),
+        "Puppeteer Clique" => s(
+            &[
+                "When this creature enters, put target creature card from an opponent's graveyard onto the battlefield under your control. It gains haste. At the beginning of your next end step, exile it.",
+                "Persist",
+            ],
+            |d, _| {
+                on(d, When::Enters, vec![graveyard_cards(true, Controller::Opponent)], vec![Effect::ReanimateHasteExileAtEnd(0)]);
+                on(d, When::Dies, vec![], vec![Effect::Persist]);
+            },
+        ),
+        "Railway Brawler" => s(
+            &["Whenever another creature you control enters, put X +1/+1 counters on it, where X is its power.", "Plot {3}{G}"],
+            |d, _| {
+                let it = Filter { triggering: true, ..CREATURE };
+                on(d, When::AnotherCreatureYouControlEnters, vec![it], vec![Effect::CountersEqualPower(0)]);
+                let n = activated(d, "{3}{G}", false, vec![], vec![]);
+                d.activated[n].plot = true;
+                d.activated[n].sorcery = true;
+            },
+        ),
+        // ---- Malik, Grim Manipulator (queue.json, lane C), batch 1: no new core ----
+        "Diabolic Tutor" => s(&["Search your library for a card, put that card into your hand, then shuffle."], |d, _| {
+            spell(d, vec![], vec![search(SearchFor::Any, SearchTo::Hand)])
+        }),
+        "Sundown Pass" => s(
+            &["This land enters tapped unless you control two or more other lands.", "{T}: Add {R} or {W}."],
+            |d, _| {
+                d.mana_ext.enters_tapped_unless_other_lands = 2;
+                dual(d, Color::Red, Color::White);
+            },
+        ),
+        "Shattered Sanctum" => s(
+            &["This land enters tapped unless you control two or more other lands.", "{T}: Add {W} or {B}."],
+            |d, _| {
+                d.mana_ext.enters_tapped_unless_other_lands = 2;
+                dual(d, Color::White, Color::Black);
+            },
+        ),
+        "Inspiring Vantage" => s(
+            &["This land enters tapped unless you control two or fewer other lands.", "{T}: Add {R} or {W}."],
+            |d, _| {
+                d.enters_tapped_unless_at_most_lands = Some(2);
+                dual(d, Color::Red, Color::White);
+            },
+        ),
+        "Smoldering Marsh" => s(&["This land enters tapped unless you control two or more basic lands."], |d, _| {
+            d.enters_tapped_unless_basics = 2;
+            dual(d, Color::Black, Color::Red);
+        }),
+        "Blightstep Pathway // Searstep Pathway" => s(&["{T}: Add {B}.", "Back: {T}: Add {R}."], |d, _| {
+            d.mana = Some(ManaSource::of(&[Color::Black]));
+            d.modal_back = true;
+            d.back.as_mut().expect("Searstep Pathway").mana = Some(ManaSource::of(&[Color::Red]));
+        }),
+        "Needleverge Pathway // Pillarverge Pathway" => s(&["{T}: Add {R}.", "Back: {T}: Add {W}."], |d, _| {
+            d.mana = Some(ManaSource::of(&[Color::Red]));
+            d.modal_back = true;
+            d.back.as_mut().expect("Pillarverge Pathway").mana = Some(ManaSource::of(&[Color::White]));
+        }),
+        "Merciless Executioner" => s(&["When this creature enters, each player sacrifices a creature of their choice."], |d, _| {
+            on(
+                d,
+                When::Enters,
+                vec![],
+                vec![Effect::SacrificeCreatures { who: Who::You, n: 1 }, Effect::SacrificeCreatures { who: Who::EachOpponent, n: 1 }],
+            )
+        }),
+        "Massacre Wurm" => s(
+            &[
+                "When this creature enters, creatures your opponents control get -2/-2 until end of turn.",
+                "Whenever a creature an opponent controls dies, that player loses 2 life.",
+            ],
+            |d, _| {
+                on(d, When::Enters, vec![], vec![Effect::PumpAll { who: Who::EachOpponent, power: -2, toughness: -2 }]);
+                // "That player": the one opponent.
+                on(d, When::OpponentCreatureDies, vec![], vec![Effect::LoseLife { who: Who::EachOpponent, n: 2 }]);
+            },
+        ),
+        "Butcher of Malakir" => s(
+            &["Whenever this creature or another creature you control dies, each opponent sacrifices a creature of their choice."],
+            |d, _| on(d, When::CreatureYouControlDies, vec![], vec![Effect::SacrificeCreatures { who: Who::EachOpponent, n: 1 }]),
+        ),
+        "Reckless Fireweaver" => s(&["Whenever an artifact you control enters, this creature deals 1 damage to each opponent."], |d, _| {
+            on(d, When::ArtifactYouControlEnters, vec![], vec![damage(1, Recipient::EachOpponent)])
+        }),
+        "Mayhem Devil" => s(&["Whenever a player sacrifices a permanent, this creature deals 1 damage to any target."], |d, _| {
+            on(d, When::PlayerSacrificesAnother, vec![Filter::ANY], vec![damage(1, Recipient::Target(0))])
+        }),
+        "Teleportation Circle" => s(
+            &["At the beginning of your end step, exile up to one target artifact or creature you control, then return that card to the battlefield under its owner's control."],
+            |d, _| {
+                let yours = Filter { players: false, planeswalkers: false, artifacts: true, controller: Controller::You, ..Filter::ANY };
+                on(d, When::EndStep { your_turn_only: true }, vec![yours], vec![Effect::BlinkSlot(0)]);
+                d.triggers.last_mut().expect("the trigger").ability.min_targets = Some(0);
+            },
+        ),
+        "Crackling Doom" => s(
+            &["Crackling Doom deals 2 damage to each opponent. Each opponent sacrifices a creature with the greatest power among creatures that player controls."],
+            |d, _| spell(d, vec![], vec![damage(2, Recipient::EachOpponent), Effect::SacrificeGreatestPower(Who::EachOpponent)]),
+        ),
+        "Charming Prince" => s(
+            &[
+                "When this creature enters, choose one —",
+                "• Scry 2.",
+                "• You gain 3 life.",
+                "• Exile another target creature you own. Return it to the battlefield under your control at the beginning of the next end step.",
+            ],
+            |d, _| {
+                // "You own": your creatures (the ones you control and own in a two-player game).
+                let another = Filter { other: true, ..YOUR_CREATURE };
+                on_modal(
+                    d,
+                    When::Enters,
+                    None,
+                    vec![
+                        Ability::new(vec![], vec![Effect::Scry { n: 2 }]),
+                        Ability::new(vec![], vec![Effect::GainLife { who: Who::You, n: 3 }]),
+                        Ability::new(vec![another], vec![Effect::Flicker(0)]),
+                    ],
+                )
+            },
+        ),
+        "Ephemerate" => s(
+            &["Exile target creature you control, then return it to the battlefield under its owner's control.", "Rebound"],
+            |d, _| spell(d, vec![YOUR_CREATURE], vec![Effect::BlinkSlot(0), Effect::Rebound]),
+        ),
+        "Treasure Vault" => s(&["{T}: Add {C}.", "{X}{X}, {T}, Sacrifice this land: Create X Treasure tokens."], |d, t| {
+            d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+            let n = activated(d, "{X}{X}", true, vec![], vec![Effect::CreateTokensX { def: t.treasure }]);
+            d.activated[n].sacrifice_self = true;
+        }),
+        // ---- Malik, batch 2: objects and zones ----
+        "Nahiri's Resolve" => s(
+            &[
+                "Creatures you control get +1/+0 and have haste.",
+                "At the beginning of your end step, exile any number of nontoken artifacts and/or creatures you control. Return those cards to the battlefield under their owner's control at the beginning of your next upkeep.",
+            ],
+            |d, _| {
+                static_on(d, Scope::YourCreatures, false, Keywords::HASTE);
+                d.statics.last_mut().expect("the static").power = 1;
+                on(d, When::EndStep { your_turn_only: true }, vec![], vec![Effect::ExileYoursUntilYourNextUpkeep]);
+            },
+        ),
+        "Treasure Map // Treasure Cove" => s(
+            &[
+                "{1}, {T}: Scry 1. Put a landmark counter on this artifact. Then if there are three or more landmark counters on it, remove those counters, transform this artifact, and create three Treasure tokens.",
+                "Back: {T}: Add {C}.",
+                "Back: {T}, Sacrifice a Treasure: Draw a card.",
+            ],
+            |d, t| {
+                activated(d, "{1}", true, vec![], vec![Effect::Scry { n: 1 }, Effect::LandmarkTransformTreasures { def: t.treasure }]);
+                let b = d.back.as_mut().expect("Treasure Cove");
+                b.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                let n = activated(b, "", true, vec![], vec![draw(1)]);
+                b.activated[n].sacrifice_subtype = Some("Treasure");
+            },
+        ),
+        // ---- Bruna, Light of Alabaster (queue.json, lane C), batch 1 ----
+        "Supreme Verdict" => s(&["This spell can't be countered.", "Destroy all creatures."], |d, _| {
+            d.uncounterable = true;
+            spell(d, vec![], vec![Effect::DestroyAllCreatures]);
+        }),
+        "Idyllic Tutor" => s(&["Search your library for an enchantment card, reveal it, put it into your hand, then shuffle."], |d, _| {
+            spell(d, vec![], vec![search(SearchFor::Enchantment, SearchTo::Hand)])
+        }),
+        "Talisman of Progress" => s(&["{T}: Add {C}.", "{T}: Add {W} or {U}. This artifact deals 1 damage to you."], |d, _| {
+            d.mana = Some(ManaSource { colorless: true, ..ManaSource::of(&[Color::White, Color::Blue]) });
+            d.pain_colored = true;
+        }),
+        "Deserted Beach" => s(
+            &["This land enters tapped unless you control two or more other lands.", "{T}: Add {W} or {U}."],
+            |d, _| {
+                d.mana_ext.enters_tapped_unless_other_lands = 2;
+                dual(d, Color::White, Color::Blue);
+            },
+        ),
+        "Prismatic Vista" => s(
+            &["{T}, Pay 1 life, Sacrifice this land: Search your library for a basic land card, put it onto the battlefield, then shuffle."],
+            |d, _| {
+                let n = activated(d, "", true, vec![], vec![search(SearchFor::BasicLand, SearchTo::Battlefield { tapped: false })]);
+                d.activated[n].sacrifice_self = true;
+                d.activated[n].life = 1;
+            },
+        ),
+        "Dovin's Veto" => s(&["This spell can't be countered.", "Counter target noncreature spell."], |d, _| {
+            d.uncounterable = true;
+            spell(d, vec![Filter { spell_creature: Some(false), ..SPELL }], vec![Effect::Counter(0)]);
+        }),
+        "Eel Umbra" => s(&["Enchant creature", "Enchanted creature gets +1/+1.", "Umbra armor"], |d, _| {
+            d.aura = true;
+            d.spell = Some(Ability::new(vec![CREATURE], vec![]));
+            attached(d, false, 1, 1, Keywords::NONE);
+            d.umbra_armor = true;
+        }),
+        "Crashing Drawbridge" => s(&["{T}: Creatures you control gain haste until end of turn."], |d, _| {
+            activated(d, "", true, vec![], vec![Effect::GrantAll { who: Who::You, keywords: Keywords::HASTE }]);
+        }),
+        "Heliod's Pilgrim" => s(
+            &["When this creature enters, you may search your library for an Aura card, reveal it, put it into your hand, then shuffle."],
+            |d, _| may(d, When::Enters, vec![], vec![search(SearchFor::Subtype("Aura"), SearchTo::Hand)]),
+        ),
+        "Galadriel's Dismissal" => s(
+            &[
+                "Kicker {2}{W}",
+                "Target creature phases out. If this spell was kicked, each creature target player controls phases out instead.",
+            ],
+            |d, _| {
+                d.kicker = ManaCost::parse("{2}{W}");
+                spell(d, vec![CREATURE], vec![Effect::PhaseOutSlot(0)]);
+                d.kicked_spell = Some(Ability::new(vec![Filter::PLAYER], vec![Effect::PhaseOutCreaturesOfPlayer(0)]));
+            },
+        ),
+        "Mirrormade" => s(&["You may have this enchantment enter as a copy of any artifact or enchantment on the battlefield."], |d, _| {
+            d.enter_as_copy = true;
+            d.zones.copy_artifact_or_enchantment = true;
+        }),
+        // ---- Olivia, Crimson Bride (queue.json, lane C), batch 1: no new core ----
+        "Rakdos Signet" => s(&["{1}, {T}: Add {B}{R}."], |d, _| {
+            let br = [ManaSource::of(&[Color::Black]), ManaSource::of(&[Color::Red])];
+            d.paid_mana = Some((ManaCost::parse("{1}").expect("a mana cost"), br));
+        }),
+        "Wayfarer's Bauble" => s(
+            &["{2}, {T}, Sacrifice this artifact: Search your library for a basic land card, put that card onto the battlefield tapped, then shuffle."],
+            |d, _| {
+                let n = activated(d, "{2}", true, vec![], vec![search(SearchFor::BasicLand, SearchTo::Battlefield { tapped: true })]);
+                d.activated[n].sacrifice_self = true;
+            },
+        ),
+        "Faithless Looting" => s(&["Draw two cards, then discard two cards.", "Flashback {2}{R}"], |d, _| {
+            d.flashback = ManaCost::parse("{2}{R}");
+            spell(d, vec![], vec![draw(2), discard(2)]);
+        }),
+        "Tormenting Voice" => s(&["As an additional cost to cast this spell, discard a card.", "Draw two cards."], |d, _| {
+            d.extra_cost = Some(ExtraCost::Discard);
+            spell(d, vec![], vec![draw(2)]);
+        }),
+        "Electric Revelation" => s(
+            &["As an additional cost to cast this spell, discard a card.", "Draw two cards.", "Flashback {3}{R}"],
+            |d, _| {
+                d.extra_cost = Some(ExtraCost::Discard);
+                d.flashback = ManaCost::parse("{3}{R}");
+                spell(d, vec![], vec![draw(2)]);
+            },
+        ),
+        "Seize the Spoils" => s(
+            &["As an additional cost to cast this spell, discard a card.", "Draw two cards and create a Treasure token."],
+            |d, t| {
+                d.extra_cost = Some(ExtraCost::Discard);
+                spell(d, vec![], vec![draw(2), Effect::CreateToken { who: Who::You, def: t.treasure, n: 1 }]);
+            },
+        ),
+        "Unexpected Windfall" => s(
+            &["As an additional cost to cast this spell, discard a card.", "Draw two cards and create two Treasure tokens."],
+            |d, t| {
+                d.extra_cost = Some(ExtraCost::Discard);
+                spell(d, vec![], vec![draw(2), Effect::CreateToken { who: Who::You, def: t.treasure, n: 2 }]);
+            },
+        ),
+        "Cathartic Pyre" => s(
+            &[
+                "Choose one —",
+                "• Cathartic Pyre deals 3 damage to target creature or planeswalker.",
+                "• Discard up to two cards, then draw that many cards.",
+            ],
+            |d, _| {
+                modes(
+                    d,
+                    vec![
+                        Ability::new(vec![CREATURE_OR_PLANESWALKER], vec![damage(3, Recipient::Target(0))]),
+                        Ability::new(vec![], vec![Effect::DiscardUpToThenDrawThatMany(2)]),
+                    ],
+                )
+            },
+        ),
+        "Foreboding Ruins" => s(
+            &[
+                "As this land enters, you may reveal a Swamp or Mountain card from your hand. If you don't, this land enters tapped.",
+                "{T}: Add {B} or {R}.",
+            ],
+            |d, _| {
+                d.enters_tapped_unless_reveal = Some(["Swamp", "Mountain"]);
+                d.mana = Some(ManaSource::of(&[Color::Black, Color::Red]));
+            },
+        ),
+        // ---- Vaevictis Asmadi, the Dire (queue.json, lane C), batch 1 ----
+        "Tranquility" => s(&["Destroy all enchantments."], |d, _| {
+            spell(d, vec![], vec![Effect::DestroyAllMatching { artifacts: false, enchantments: true, creature_mv: (0, 0) }])
+        }),
+        "Vesuva" => s(&["You may have this land enter tapped as a copy of any land on the battlefield."], |d, _| {
+            d.zones.enters_as_land_copy_tapped = true;
+        }),
         _ => None,
     }
 }
@@ -1693,4 +2015,50 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Phantasmal Image",
     "Mockingbird",
     "Glasspool Mimic // Glasspool Shore",
+    "Aphetto Alchemist",
+    "Rattleclaw Mystic",
+    "Sundering Eruption // Volcanic Fissure",
+    "Puppeteer Clique",
+    "Railway Brawler",
+    "Diabolic Tutor",
+    "Sundown Pass",
+    "Shattered Sanctum",
+    "Inspiring Vantage",
+    "Smoldering Marsh",
+    "Blightstep Pathway // Searstep Pathway",
+    "Needleverge Pathway // Pillarverge Pathway",
+    "Merciless Executioner",
+    "Massacre Wurm",
+    "Butcher of Malakir",
+    "Reckless Fireweaver",
+    "Mayhem Devil",
+    "Teleportation Circle",
+    "Crackling Doom",
+    "Charming Prince",
+    "Ephemerate",
+    "Treasure Vault",
+    "Nahiri's Resolve",
+    "Treasure Map // Treasure Cove",
+    "Supreme Verdict",
+    "Idyllic Tutor",
+    "Talisman of Progress",
+    "Deserted Beach",
+    "Prismatic Vista",
+    "Dovin's Veto",
+    "Eel Umbra",
+    "Crashing Drawbridge",
+    "Heliod's Pilgrim",
+    "Galadriel's Dismissal",
+    "Mirrormade",
+    "Rakdos Signet",
+    "Wayfarer's Bauble",
+    "Faithless Looting",
+    "Tormenting Voice",
+    "Electric Revelation",
+    "Seize the Spoils",
+    "Unexpected Windfall",
+    "Cathartic Pyre",
+    "Foreboding Ruins",
+    "Tranquility",
+    "Vesuva",
 ];

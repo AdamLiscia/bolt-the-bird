@@ -503,6 +503,11 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         cast_only_during_opponents_declare_blockers: false,
         foods_have_exiled_abilities: false,
         zones: Default::default(),
+        opponents_even_locked: false,
+        goads_enchanted: false,
+        lands_you_control_have: Vec::new(),
+        subtype_you_control_has: None,
+        aftermath: false,
     };
     def.color_identity = color_identity(o);
     def.phyrexian = phyrexian;

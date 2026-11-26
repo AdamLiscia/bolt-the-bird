@@ -961,9 +961,10 @@ fn single_target_filter_takes_only_spells_with_one_target() {
     assert_eq!(g.candidates(&f, 0), vec![obj(bolt)]);
     // A sorcery with two targets isn't one.
     resolve_all(&mut g, &[]);
+    // Two slots of one filter need two different creatures (CR 115.3).
+    let c = g.add_card(1, cid("Elvish Mystic"), Zone::Battlefield);
     act(&mut g, Action::Cast(s));
     act(&mut g, Action::Target(obj(b)));
-    let c = g.add_card(1, cid("Elvish Mystic"), Zone::Battlefield);
     act(&mut g, Action::Target(obj(c)));
     assert!(g.candidates(&f, 0).is_empty());
 }
