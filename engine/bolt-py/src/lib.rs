@@ -398,9 +398,13 @@ impl Game {
                 } else {
                     format!("{key}_card")
                 };
-                // A card now face down on the battlefield isn't named in the log (CR 708.5).
-                let hidden =
-                    o.face_down && matches!(o.zone, bolt_core::Zone::Battlefield | bolt_core::Zone::Stack);
+                // A card now face down on the battlefield isn't named in the log (CR 708.5), nor
+                // one face down in exile (CR 406.3).
+                let hidden = o.face_down
+                    && matches!(
+                        o.zone,
+                        bolt_core::Zone::Battlefield | bolt_core::Zone::Stack | bolt_core::Zone::Exile
+                    );
                 d.set_item(card_key, if hidden { -2 } else { o.def as i64 })?;
                 if key == "id" {
                     d.set_item("owner", o.owner as i64)?;
@@ -481,9 +485,11 @@ impl Game {
         // A face-down permanent's card is hidden from the other player (CR 708.5): -2.
         let seen = |c: ObjId| -> i64 {
             let o = g.obj(c);
+            // A card face down in exile is hidden from both players (CR 406.3; Necropotence).
             if o.face_down
-                && matches!(o.zone, bolt_core::Zone::Battlefield | bolt_core::Zone::Stack)
-                && o.controller != player
+                && ((matches!(o.zone, bolt_core::Zone::Battlefield | bolt_core::Zone::Stack)
+                    && o.controller != player)
+                    || o.zone == bolt_core::Zone::Exile)
             {
                 -2
             } else {
