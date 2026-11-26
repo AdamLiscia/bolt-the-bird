@@ -545,6 +545,108 @@ pub fn script(name: &str) -> Option<Script> {
                 });
             },
         ),
+        // ---- Unblocked by lane d3's core theme (effects and statics), batch 1 ----
+        "Altar of Dementia" => s(
+            &["Sacrifice a creature: Target player mills cards equal to the sacrificed creature's power."],
+            |d, _| {
+                let n = activated(d, "", false, vec![Filter::PLAYER], vec![Effect::MillAmount(0)]);
+                d.activated[n].sacrifice_creature = true;
+                d.activated[n].amount_from_victim_power = true;
+            },
+        ),
+        "Creeping Corrosion" => s(&["Destroy all artifacts."], |d, _| spell(d, vec![], vec![Effect::DestroyAllArtifacts])),
+        "Armageddon" => s(&["Destroy all lands."], |d, _| spell(d, vec![], vec![Effect::DestroyAllLands])),
+        "Damnable Pact" => s(&["Target player draws X cards and loses X life."], |d, _| {
+            spell(d, vec![Filter::PLAYER], vec![Effect::TargetDrawsXLosesX(0)])
+        }),
+        "Merciless Eviction" => s(
+            &[
+                "Choose one —",
+                "• Exile all artifacts.",
+                "• Exile all creatures.",
+                "• Exile all enchantments.",
+                "• Exile all planeswalkers.",
+            ],
+            |d, _| modes(d, (0..4).map(|t| Ability::new(vec![], vec![Effect::ExileAllOfType(t)])).collect()),
+        ),
+        "Dramatic Reversal" => s(&["Untap all nonland permanents you control."], |d, _| {
+            spell(d, vec![], vec![Effect::UntapNonlandYouControl])
+        }),
+        "Venser's Journal" => s(
+            &["You have no maximum hand size.", "At the beginning of your upkeep, you gain 1 life for each card in your hand."],
+            |d, _| {
+                d.no_max_hand_size = true;
+                on(d, When::Upkeep { your_turn_only: true }, vec![], vec![Effect::GainLifePerCardInHand]);
+            },
+        ),
+        "Nissa, Voice of Zendikar" => s(
+            &[
+                "+1: Create a 0/1 green Plant creature token.",
+                "−2: Put a +1/+1 counter on each creature you control.",
+                "−7: You gain X life and draw X cards, where X is the number of lands you control.",
+            ],
+            |d, t| {
+                loyalty(d, 1, Ability::new(vec![], vec![Effect::CreateToken { who: Who::You, def: t.plant, n: 1 }]));
+                loyalty(d, -2, Ability::new(vec![], vec![Effect::CountersAll { who: Who::You, n: 1 }]));
+                loyalty(d, -7, Ability::new(vec![], vec![Effect::GainAndDrawPerLandYouControl]));
+            },
+        ),
+        "Academy Rector" => s(
+            &["When this creature dies, you may exile it. If you do, search your library for an enchantment card, put that card onto the battlefield, then shuffle."],
+            |d, _| {
+                let find = search(SearchFor::Enchantment, SearchTo::Battlefield { tapped: false });
+                may(d, When::Dies, vec![], vec![Effect::ExileSourceFromGraveyardOrStop, find]);
+            },
+        ),
+        "Seizan, Perverter of Truth" => s(
+            &["At the beginning of each player's upkeep, that player loses 2 life and draws two cards."],
+            |d, _| {
+                let that = Who::ActivePlayer;
+                on(
+                    d,
+                    When::Upkeep { your_turn_only: false },
+                    vec![],
+                    vec![Effect::LoseLife { who: that, n: 2 }, Effect::Draw { who: that, n: 2 }],
+                );
+            },
+        ),
+        "Mystical Tutor" => s(
+            &["Search your library for an instant or sorcery card, reveal it, then shuffle and put that card on top."],
+            |d, _| spell(d, vec![], vec![search(SearchFor::InstantOrSorcery, SearchTo::Top)]),
+        ),
+        "Enlightened Tutor" => s(
+            &["Search your library for an artifact or enchantment card, reveal it, then shuffle and put that card on top."],
+            |d, _| spell(d, vec![], vec![search(SearchFor::ArtifactOrEnchantment, SearchTo::Top)]),
+        ),
+        "Unmarked Grave" => s(
+            &["Search your library for a nonlegendary card, put that card into your graveyard, then shuffle."],
+            |d, _| spell(d, vec![], vec![search(SearchFor::Nonlegendary, SearchTo::Graveyard)]),
+        ),
+        "Imperial Recruiter" => s(
+            &["When this creature enters, search your library for a creature card with power 2 or less, reveal it, put it into your hand, then shuffle."],
+            |d, _| on(d, When::Enters, vec![], vec![search(SearchFor::CreaturePowerAtMost(2), SearchTo::Hand)]),
+        ),
+        "Avacyn, Angel of Hope" => s(&["Other permanents you control have indestructible."], |d, _| {
+            static_on(d, Scope::OtherYourPermanents, false, Keywords::INDESTRUCTIBLE)
+        }),
+        "Elesh Norn, Grand Cenobite" => s(
+            &["Other creatures you control get +2/+2.", "Creatures your opponents control get -2/-2."],
+            |d, _| {
+                static_on(d, Scope::OtherYourCreatures, false, Keywords::NONE);
+                let s = d.statics.last_mut().expect("just added");
+                (s.power, s.toughness) = (2, 2);
+                static_on(d, Scope::OpponentsCreatures, false, Keywords::NONE);
+                let s = d.statics.last_mut().expect("just added");
+                (s.power, s.toughness) = (-2, -2);
+            },
+        ),
+        "Atraxa, Praetors' Voice" => s(&["At the beginning of your end step, proliferate."], |d, _| {
+            on(d, When::EndStep { your_turn_only: true }, vec![], vec![Effect::Proliferate])
+        }),
+        "Karn's Bastion" => s(&["{T}: Add {C}.", "{4}, {T}: Proliferate."], |d, _| {
+            colorless(d);
+            activated(d, "{4}", true, vec![], vec![Effect::Proliferate]);
+        }),
         _ => None,
     }
 }
@@ -631,4 +733,23 @@ pub const PG_D3_SCRIPTED: &[&str] = &[
     "Kiora's Follower",
     "Thassa, Deep-Dwelling",
     "Displacer Kitten",
+    // Core theme d3 (effects and statics), batch 1
+    "Altar of Dementia",
+    "Creeping Corrosion",
+    "Armageddon",
+    "Damnable Pact",
+    "Merciless Eviction",
+    "Dramatic Reversal",
+    "Venser's Journal",
+    "Nissa, Voice of Zendikar",
+    "Academy Rector",
+    "Seizan, Perverter of Truth",
+    "Mystical Tutor",
+    "Enlightened Tutor",
+    "Unmarked Grave",
+    "Imperial Recruiter",
+    "Avacyn, Angel of Hope",
+    "Elesh Norn, Grand Cenobite",
+    "Atraxa, Praetors' Voice",
+    "Karn's Bastion",
 ];

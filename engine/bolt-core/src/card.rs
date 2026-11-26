@@ -260,6 +260,11 @@ pub struct Activated {
     pub minus_counter_cost: bool,
     /// "Discard a card" in the cost: activated as `ActivateWith` naming the card (Yawgmoth).
     pub discard_cost: bool,
+    /// "Discard a card" in the cost: activated with `Action::ActivateWith`, that card the victim.
+    pub discard_any_card: bool,
+    /// "Sacrifice two other creatures" in the cost: the victim, then the engine sacrifices another
+    /// (the one with the least power) (Zopandrel).
+    pub sacrifice_two_others: bool,
 }
 
 /// The printed card. Shared by every copy; per-copy state lives on the game object.
@@ -713,6 +718,18 @@ pub struct CardDef {
     pub indestructible_at_half_life: bool,
     /// "Creatures your opponents control have base toughness 1." (Maha)
     pub opponents_creatures_base_toughness_one: bool,
+    /// With `enter_as_copy`: the copy lasts until end of turn and has haste (Cursed Mirror).
+    pub copy_until_eot_haste: bool,
+    /// "You may cast creature spells from the top of your library." (Vivien, Monsters' Advocate)
+    pub top_spells_creatures: bool,
+    /// Blitz (CR 702.152), its cost in `alt_cost`: cast for it, the permanent gains haste and "When
+    /// this creature dies, draw a card" (its trigger number `.0`), and is sacrificed at the next
+    /// end step.
+    pub blitz: Option<usize>,
+    /// Soulbond with "each of those creatures has 'At the beginning of combat on your turn, create a
+    /// token that's a copy of this creature, except it has haste and loses soulbond. Exile it at end
+    /// of combat.'" (Mirage Phalanx; the pairing works as for `soulbond_flicker`).
+    pub soulbond_combat_copies: bool,
 }
 
 /// What entering makes triggers happen again (see [`CardDef::entering_triggers_again`]).
@@ -952,6 +969,10 @@ impl CardDef {
             protection_from_subtype: None,
             indestructible_at_half_life: false,
             opponents_creatures_base_toughness_one: false,
+            copy_until_eot_haste: false,
+            top_spells_creatures: false,
+            blitz: None,
+            soulbond_combat_copies: false,
         }
     }
 
@@ -1159,6 +1180,10 @@ impl CardDef {
             protection_from_subtype: None,
             indestructible_at_half_life: false,
             opponents_creatures_base_toughness_one: false,
+            copy_until_eot_haste: false,
+            top_spells_creatures: false,
+            blitz: None,
+            soulbond_combat_copies: false,
         }
     }
 
@@ -1366,6 +1391,10 @@ impl CardDef {
             protection_from_subtype: None,
             indestructible_at_half_life: false,
             opponents_creatures_base_toughness_one: false,
+            copy_until_eot_haste: false,
+            top_spells_creatures: false,
+            blitz: None,
+            soulbond_combat_copies: false,
         }
     }
 }
