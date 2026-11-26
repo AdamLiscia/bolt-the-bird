@@ -5887,6 +5887,9 @@ impl Game {
         if f.attacking && !self.combat.as_ref().is_some_and(|c| c.attackers.contains(&id)) {
             return false;
         }
+        if f.tapped_only && !self.obj(id).tapped {
+            return false;
+        }
         if f.single_target {
             let Some(n) = self.targeted_item(id) else {
                 return false;

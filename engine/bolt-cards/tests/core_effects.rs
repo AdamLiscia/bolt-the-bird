@@ -2992,3 +2992,20 @@ fn a_token_if_the_top_card_is_a_land_then_draw() {
         "not a land: no token, still drew"
     );
 }
+
+// ---- batch 24 ----
+
+#[test]
+fn tapped_only_filter_takes_only_tapped_permanents() {
+    let (mut g, _) = game_with(vec![]);
+    let tapped = g.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
+    let untapped = g.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
+    g.objects[tapped.0 as usize].tapped = true;
+    let f = Filter {
+        tapped_only: true,
+        ..Filter::CREATURE
+    };
+    assert!(g.target_ok(&f, 0, obj(tapped)));
+    assert!(!g.target_ok(&f, 0, obj(untapped)));
+    assert!(g.target_ok(&Filter::CREATURE, 0, obj(untapped)), "off by default");
+}

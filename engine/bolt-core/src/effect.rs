@@ -142,6 +142,8 @@ pub struct Filter {
     /// the filter in as many slots as X can reach, with `min_targets: Some(0)`; a slot is only
     /// legal while fewer than X other targets are chosen, so no more than X are.
     pub up_to_x: bool,
+    /// Tapped permanents only (Far Traveler: "up to one target tapped creature you control").
+    pub tapped_only: bool,
 }
 
 impl Filter {
@@ -209,6 +211,7 @@ impl Filter {
         mana_value_even: false,
         mana_value_at_most_x: false,
         up_to_x: false,
+        tapped_only: false,
     };
 
     pub const CREATURE: Filter = Filter {
