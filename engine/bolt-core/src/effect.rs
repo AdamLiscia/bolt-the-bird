@@ -2195,6 +2195,13 @@ pub enum Effect {
     /// battlefield, not targeted (Barrowin of Clan Undurr: 3), as `Decision::LookPick` with
     /// `Pick::CreatureManaValueAtMost`.
     ReturnCreatureMvAtMostToBattlefield(u32),
+    /// "When [the creature in `slot`] is put into your graveyard this turn, ...": a delayed
+    /// triggered ability (CR 603.7), the source's trigger number `trigger`, with that card in slot 0
+    /// (Saffi Eriksdotter: return it to the battlefield). It triggers once, only for that object.
+    DelayedWhenSlotToYourGraveyardThisTurn {
+        slot: u8,
+        trigger: usize,
+    },
     /// The creature in slot `from` deals X damage to the target in slot `to`, X the number of
     /// permanents with subtype `sub` you control, counted on resolution (Dragon Tempest: "it deals X
     /// damage to any target, where X is the number of Dragons you control"); it deals the damage
@@ -2640,6 +2647,9 @@ pub enum Condition {
     LifeAtLeast(i32),
     /// No creatures are on the battlefield (Pyrohemia).
     NoCreaturesOnBattlefield,
+    /// Its controller lost life this turn (Lunar Convocation: "if you gained and lost life this
+    /// turn", with `Both` and `YouGainedLifeThisTurn`).
+    YouLostLifeThisTurn,
 }
 
 /// A spell's effect or a triggered ability: target slots, then effects in order.
@@ -3071,6 +3081,21 @@ pub enum When {
     /// "Whenever one or more creatures an opponent controls attack you and aren't blocked"
     /// (Coveted Jewel), once blockers are declared.
     OpponentCreaturesAttackYouUnblocked,
+    /// "Whenever you complete a dungeon" (Sefris; CR 309.7).
+    YouCompleteDungeon,
+    /// "Whenever another creature you control with flying enters" (Watcher of the Spheres); slot 0
+    /// (if `triggering`) is that creature.
+    AnotherCreatureWithFlyingYouControlEnters,
+    /// "Whenever a [subtype] deals damage to you" (Mikaeus, the Unhallowed: Human), any source with
+    /// the subtype; slot 0 (if `triggering`) is that source ("destroy it").
+    SubtypeDealsDamageToYou(&'static str),
+    /// "Whenever a [subtype] you control enters" (Dragon Tempest: Dragon), tokens included; slot 0
+    /// (if `triggering`) is that permanent ("it deals ...").
+    SubtypeYouControlEnters(&'static str),
+    /// The delayed "when target creature is put into your graveyard this turn" of
+    /// `Effect::DelayedWhenSlotToYourGraveyardThisTurn` (Saffi Eriksdotter); slot 0 (if
+    /// `triggering`) is that card in the graveyard. Never fired by `fire()`.
+    SlotCreatureToYourGraveyardThisTurn,
 }
 
 #[derive(Clone, Debug, PartialEq)]
