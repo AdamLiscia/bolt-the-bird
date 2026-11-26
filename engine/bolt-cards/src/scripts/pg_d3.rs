@@ -1749,6 +1749,27 @@ pub fn script(name: &str) -> Option<Script> {
             ],
             |d, _| spell(d, vec![], vec![Effect::DrawGreatestPowerYouControl, Effect::MayCastFromHandFree { max_mv: 5 }]),
         ),
+        // ---- Core theme d3, batch 20 ----
+        "Dragon Tempest" => s(
+            &[
+                "Whenever a creature you control with flying enters, it gains haste until end of turn.",
+                "Whenever a Dragon you control enters, it deals X damage to any target, where X is the number of Dragons you control.",
+            ],
+            |d, _| {
+                let it = Filter { triggering: true, ..CREATURE };
+                on(d, When::CreatureWithFlyingYouControlEnters, vec![it], vec![Effect::Grant { slot: 0, keywords: Keywords::HASTE }]);
+                let burn = Effect::SlotDealsDamagePerSubtypeYouControl { from: 0, to: 1, sub: "Dragon" };
+                on(d, When::AnotherYouControlEntersWithAnySubtype(&["Dragon"]), vec![it, Filter::ANY], vec![burn]);
+            },
+        ),
+        "Ledger Shredder" => s(
+            &["Whenever a player casts their second spell each turn, this creature connives."],
+            |d, _| on(d, When::PlayerCastsSecondSpell, vec![], vec![Effect::ConniveSelf]),
+        ),
+        "Ancient Brass Dragon" => s(
+            &["Whenever this creature deals combat damage to a player, roll a d20. When you do, put any number of target creature cards with total mana value X or less from graveyards onto the battlefield under your control, where X is the result."],
+            |d, _| on(d, When::DealsCombatDamageToPlayer, vec![], vec![Effect::RollD20ReanimateTotalManaValue]),
+        ),
         _ => None,
     }
 }
@@ -1987,4 +2008,8 @@ pub const PG_D3_SCRIPTED: &[&str] = &[
     "Teething Wurmlet",
     "Sanctum of Ugin",
     "Rishkar's Expertise",
+    // Core theme d3, batch 20
+    "Dragon Tempest",
+    "Ledger Shredder",
+    "Ancient Brass Dragon",
 ];

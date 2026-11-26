@@ -1952,3 +1952,254 @@ fn swampwalk_is_unblockable_while_the_defender_controls_a_swamp() {
     }
     assert_eq!(g.players[1].life, life - 2);
 }
+
+// ---- batch 9: improvise, multikicker, forage, delve, restricted and conditional mana ----
+
+mod batch9 {
+    use super::*;
+    use bolt_core::{ManaSource, Types};
+
+    pub fn artifact(name: &str) -> CardDef {
+        CardDef {
+            name: name.into(),
+            cost: ManaCost::parse("{1}").expect("cost"),
+            types: Types {
+                artifact: true,
+                ..Types::default()
+            },
+            ..CardDef::default()
+        }
+    }
+
+    pub fn draw_spell(name: &str, cost: &str) -> CardDef {
+        CardDef::spell(
+            name,
+            cost,
+            true,
+            Ability::new(vec![], vec![Effect::Draw { who: Who::You, n: 1 }]),
+        )
+    }
+
+    pub fn colorless_land(name: &str) -> CardDef {
+        let mut d = super::land(name);
+        d.mana = Some(ManaSource {
+            colorless: true,
+            ..ManaSource::default()
+        });
+        d
+    }
+
+    pub fn food() -> CardDef {
+        let mut f = artifact("Food");
+        f.subtypes = vec!["Food".into()];
+        f
+    }
+}
+
+#[test]
+fn improvise_taps_artifacts_for_generic_mana_only() {
+    use batch9::*;
+    let mut imp = draw_spell("Imp", "{2}{B}");
+    imp.mana_ext.improvise = true;
+    let mut g = batch6_board(vec![imp, artifact("Rock")], 1);
+    let rocks = [put(&mut g, 0, 26), put(&mut g, 0, 26)];
+    let c = g.add_card(0, 25, Zone::Hand);
+    act(&mut g, Action::Cast(c));
+    settle(&mut g);
+    assert!(rocks.iter().all(|&r| g.obj(r).tapped), "{{2}} from two artifacts");
+    let mut imp = draw_spell("Imp", "{B}{B}");
+    imp.mana_ext.improvise = true;
+    let mut g = batch6_board(vec![imp, artifact("Rock")], 1);
+    put(&mut g, 0, 26);
+    let c = g.add_card(0, 25, Zone::Hand);
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(c)),
+        "an artifact can't pay {{B}}"
+    );
+    // Inspiring Statuary: nonartifact spells only.
+    let mut statuary = artifact("Statuary");
+    statuary.mana_ext.nonartifact_spells_improvise = true;
+    let mut g = batch6_board(vec![statuary, draw_spell("Plain", "{1}{B}"), artifact("Rock")], 1);
+    put(&mut g, 0, 25);
+    let spell = g.add_card(0, 26, Zone::Hand);
+    act(&mut g, Action::Cast(spell));
+    settle(&mut g);
+    assert_eq!(
+        g.obj(spell).zone,
+        Zone::Graveyard,
+        "{{1}} from the Statuary itself"
+    );
+    let mut statuary = artifact("Statuary");
+    statuary.mana_ext.nonartifact_spells_improvise = true;
+    let mut g = batch6_board(vec![statuary, artifact("Rock")], 0);
+    put(&mut g, 0, 25);
+    let rock = g.add_card(0, 26, Zone::Hand);
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(rock)),
+        "an artifact spell doesn't improvise"
+    );
+}
+
+#[test]
+fn conditional_colors_and_restricted_colorless_mana() {
+    use batch3::*;
+    use batch9::*;
+    let mut maze = colorless_land("Maze");
+    maze.mana_ext.colors_if_you_control = [Some("Swamp"), None, None, None, None];
+    let mut temple = colorless_land("Temple");
+    temple.mana_ext.colorless_eldrazi_amount = 2;
+    let mut eldrazi = CardDef::creature("Drone", "{3}", 3, 3, Keywords::NONE);
+    eldrazi.subtypes = vec!["Eldrazi".into()];
+    let mut g = batch6_board(vec![maze, temple, eldrazi, draw_spell("Three", "{3}")], 0);
+    let m = put(&mut g, 0, 25);
+    let white = |g: &Game| g.mana_sources(0).iter().any(|s| s.0 == m && s.1.colors[0]);
+    assert!(!white(&g));
+    g.add_card(0, SWAMP, Zone::Battlefield);
+    assert!(white(&g), "{{W}} while you control a Swamp");
+    // With the Swamp tapped: the Maze's {C} and the Temple's.
+    let swamp = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "Swamp")
+        .expect("swamp");
+    g.objects[swamp.0 as usize].tapped = true;
+    let t = put(&mut g, 0, 26);
+    let drone = g.add_card(0, 27, Zone::Hand);
+    let three = g.add_card(0, 28, Zone::Hand);
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(three)),
+        "{{C}}{{C}} only for colorless Eldrazi"
+    );
+    act(&mut g, Action::Cast(drone));
+    settle(&mut g);
+    assert_eq!(g.obj(drone).zone, Zone::Battlefield);
+    assert!(g.obj(t).tapped);
+}
+
+#[test]
+fn multikicker_pays_once_per_kick_and_counts_charge_counters() {
+    use batch9::*;
+    use bolt_core::ManaSource;
+    let mut chalice = artifact("Chalice");
+    chalice.cost = ManaCost::default();
+    chalice.mana_ext.multikicker = ManaCost::parse("{1}{B}");
+    chalice.mana_ext.charge_per_kick = true;
+    chalice.mana = Some(ManaSource {
+        colorless: true,
+        ..ManaSource::default()
+    });
+    chalice.mana_ext.mana_per_kind_counter = true;
+    let mut g = batch6_board(vec![chalice], 4);
+    let c = g.add_card(0, 25, Zone::Hand);
+    assert!(g.legal_actions().contains(&Action::CastX(c, 2)));
+    assert!(!g.legal_actions().contains(&Action::CastX(c, 3)));
+    act(&mut g, Action::CastX(c, 2));
+    settle(&mut g);
+    assert_eq!(g.obj(c).kind_counters, 2);
+    assert!(
+        g.permanents(0)
+            .filter(|&x| g.types_of(x).land)
+            .all(|x| g.obj(x).tapped),
+        "{{1}}{{B}} twice"
+    );
+    assert_eq!(g.mana_sources(0).iter().filter(|s| s.0 == c).count(), 2);
+}
+
+#[test]
+fn haste_from_mana_only_for_a_creature_spell_it_paid_for() {
+    use batch3::*;
+    use batch9::*;
+    let mut hall = colorless_land("Hall");
+    hall.mana_ext.creature_spell_haste = true;
+    let mut g = batch6_board(vec![hall], 1);
+    put(&mut g, 0, 25);
+    let bear = g.add_card(0, BLACK_BEAR, Zone::Hand);
+    act(&mut g, Action::Cast(bear));
+    settle(&mut g);
+    assert!(g.keywords(bear).has(Keywords::HASTE));
+    assert!(g.haste_from_mana.is_empty());
+    // Paid for by a Swamp alone: no haste.
+    let mut hall = colorless_land("Hall");
+    hall.mana_ext.creature_spell_haste = true;
+    let mut g = batch6_board(vec![hall], 2);
+    let h = put(&mut g, 0, 25);
+    g.objects[h.0 as usize].tapped = true;
+    let bear = g.add_card(0, BLACK_BEAR, Zone::Hand);
+    act(&mut g, Action::Cast(bear));
+    settle(&mut g);
+    assert!(!g.keywords(bear).has(Keywords::HASTE));
+}
+
+#[test]
+fn forage_sacrifices_a_food_or_exiles_three_graveyard_cards() {
+    use batch3::*;
+    use batch9::*;
+    use bolt_core::card::ExtraCost;
+    let mut camellia = CardDef::creature("Forager", "{1}", 1, 1, Keywords::NONE);
+    camellia.activated.push(Activated {
+        mana: ManaCost::parse("{1}").expect("cost"),
+        forage: true,
+        ability: Ability::new(vec![], vec![Effect::Draw { who: Who::You, n: 1 }]),
+        ..Activated::default()
+    });
+    let mut feed = draw_spell("Feed", "{B}");
+    feed.extra_cost = Some(ExtraCost::ForageOrPay(ManaCost::parse("{B}").expect("cost")));
+    let mut g = batch6_board(vec![camellia, food(), feed], 2);
+    let f = put(&mut g, 0, 25);
+    assert!(
+        !g.legal_actions().contains(&Action::Activate(f, 0)),
+        "nothing to forage"
+    );
+    let gy: Vec<ObjId> = (0..3)
+        .map(|_| g.add_card(0, GREEN_BEAR, Zone::Graveyard))
+        .collect();
+    let meal = put(&mut g, 0, 26);
+    act(&mut g, Action::Activate(f, 0));
+    settle(&mut g);
+    assert_eq!(g.obj(meal).zone, Zone::Graveyard, "a Food first");
+    assert!(gy.iter().all(|&x| g.obj(x).zone == Zone::Graveyard));
+    act(&mut g, Action::Activate(f, 0));
+    settle(&mut g);
+    assert!(
+        gy.iter().all(|&x| g.obj(x).zone == Zone::Exile),
+        "then three graveyard cards"
+    );
+    // The spell: pay {B} more, or sacrifice a Food.
+    let mut g = batch6_board(
+        vec![CardDef::default(), food(), {
+            let mut feed = draw_spell("Feed", "{B}");
+            feed.extra_cost = Some(ExtraCost::ForageOrPay(ManaCost::parse("{B}").expect("cost")));
+            feed
+        }],
+        1,
+    );
+    let food = put(&mut g, 0, 26);
+    let c = g.add_card(0, 27, Zone::Hand);
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(c)),
+        "{{B}}{{B}} from one Swamp"
+    );
+    act(&mut g, Action::CastWith(c, food));
+    settle(&mut g);
+    assert_eq!(g.obj(food).zone, Zone::Graveyard);
+    assert_eq!(g.obj(c).zone, Zone::Graveyard);
+}
+
+#[test]
+fn delve_as_a_keyword_exiles_graveyard_cards_for_generic_mana() {
+    use batch3::*;
+    use batch9::*;
+    let mut cruise = draw_spell("Cruise", "{3}{B}");
+    cruise.mana_ext.delve = true;
+    let mut g = batch6_board(vec![cruise], 1);
+    let gy: Vec<ObjId> = (0..3)
+        .map(|_| g.add_card(0, GREEN_BEAR, Zone::Graveyard))
+        .collect();
+    let c = g.add_card(0, 25, Zone::Hand);
+    act(&mut g, Action::Cast(c));
+    if let Pending::Decide(_) = g.pending {
+        act(&mut g, Action::Amount(3));
+    }
+    settle(&mut g);
+    assert_eq!(g.obj(c).zone, Zone::Graveyard, "{{B}} and three delved cards");
+    assert!(gy.iter().all(|&x| g.obj(x).zone == Zone::Exile));
+}

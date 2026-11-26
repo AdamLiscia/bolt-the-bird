@@ -2715,3 +2715,167 @@ fn return_up_to_one_creature_card_with_small_mana_value_to_the_battlefield() {
     resolve_all(&mut g, &[Action::Pick(elves)]);
     assert_eq!(g.obj(elves).zone, Zone::Battlefield);
 }
+
+// ---- batch 20 ----
+
+#[test]
+fn up_to_x_graveyard_targets_and_mana_value_at_most_x() {
+    let card = Filter {
+        players: false,
+        creatures: false,
+        planeswalkers: false,
+        graveyard: Some(false),
+        up_to_x: true,
+        ..Filter::ANY
+    };
+    let mut s = sorcery(
+        vec![card; 4],
+        vec![
+            Effect::Exile(0),
+            Effect::Exile(1),
+            Effect::Exile(2),
+            Effect::Exile(3),
+        ],
+    );
+    s.cost = ManaCost::parse("{X}").unwrap();
+    s.spell.as_mut().unwrap().min_targets = Some(0);
+    let small = Filter {
+        mana_value_at_most_x: true,
+        ..Filter::CREATURE
+    };
+    let mut e = sorcery(vec![small], vec![Effect::Exile(0)]);
+    e.cost = ManaCost::parse("{X}").unwrap();
+    let (mut g, t) = game_with(vec![s, e]);
+    let a = g.add_card(1, cid("Llanowar Elves"), Zone::Graveyard);
+    let b = g.add_card(1, cid("Serra Angel"), Zone::Graveyard);
+    let c = g.add_card(0, cid("Opt"), Zone::Graveyard);
+    let spell = g.add_card(0, t, Zone::Hand);
+    act(&mut g, Action::CastX(spell, 2));
+    act(&mut g, Action::Target(obj(a)));
+    act(&mut g, Action::Target(obj(b)));
+    assert!(
+        !g.legal_actions().contains(&Action::Target(obj(c))),
+        "no more than X"
+    );
+    resolve_all(&mut g, &[Action::No]);
+    assert_eq!(
+        (g.obj(a).zone, g.obj(b).zone, g.obj(c).zone),
+        (Zone::Exile, Zone::Exile, Zone::Graveyard)
+    );
+
+    let elves = g.add_card(1, cid("Llanowar Elves"), Zone::Battlefield);
+    let angel = g.add_card(1, cid("Serra Angel"), Zone::Battlefield);
+    let spell = g.add_card(0, t + 1, Zone::Hand);
+    act(&mut g, Action::CastX(spell, 1));
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Target(obj(elves))) && !legal.contains(&Action::Target(obj(angel))));
+    act(&mut g, Action::Target(obj(elves)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(elves).zone, Zone::Exile);
+}
+
+#[test]
+fn other_non_human_creatures_you_control_get_the_anthem() {
+    let mut m = CardDef::creature("Test Mikaeus", "{0}", 5, 5, Keywords::NONE);
+    m.statics
+        .push(static_of(Scope::OtherYourNonHumanCreatures, 1, 1, Keywords::NONE));
+    let (mut g, t) = game_with(vec![m]);
+    let src = g.add_card(0, t, Zone::Battlefield);
+    let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
+    let human = g.add_card(0, cid("Thought Courier"), Zone::Battlefield);
+    let theirs = g.add_card(1, cid("Llanowar Elves"), Zone::Battlefield);
+    assert_eq!(g.power(elves), 2);
+    assert_eq!(g.power(human), 1, "a Human");
+    assert_eq!((g.power(src), g.power(theirs)), (5, 1));
+}
+
+#[test]
+fn destroy_all_nonartifact_creatures_spares_artifact_creatures() {
+    let (mut g, t) = game_with(vec![sorcery(
+        vec![],
+        vec![Effect::DestroyAllNonartifactCreatures],
+    )]);
+    let elves = g.add_card(1, cid("Llanowar Elves"), Zone::Battlefield);
+    let skite = g.add_card(1, cid("Spellskite"), Zone::Battlefield);
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Battlefield);
+    cast_test(&mut g, t, &[], &[]);
+    assert_eq!(g.obj(elves).zone, Zone::Graveyard);
+    assert_eq!(
+        (g.obj(skite).zone, g.obj(ring).zone),
+        (Zone::Battlefield, Zone::Battlefield)
+    );
+}
+
+#[test]
+fn counters_on_each_other_creature_of_a_subtype_you_control() {
+    let mut a = CardDef::creature("Test Elf Lord", "{0}", 1, 1, Keywords::NONE);
+    a.subtypes = vec!["Elf".to_string()];
+    a.activated.push(bolt_core::Activated {
+        mana: ManaCost::parse("{0}").unwrap(),
+        ability: Ability::new(vec![], vec![Effect::CountersOnOtherYourSubtype("Elf")]),
+        ..bolt_core::Activated::default()
+    });
+    let (mut g, t) = game_with(vec![a]);
+    let src = g.add_card(0, t, Zone::Battlefield);
+    let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
+    let theirs = g.add_card(1, cid("Llanowar Elves"), Zone::Battlefield);
+    act(&mut g, Action::Activate(src, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.power(src), g.power(elves), g.power(theirs)), (1, 2, 1));
+}
+
+#[test]
+fn an_x_x_token_from_the_amount_and_instants_and_sorceries_back_to_hand() {
+    let (probe, _) = game_with(vec![]);
+    let construct = token_def(&probe, "Construct");
+    let mut m = CardDef::creature("Test Summoner", "{0}", 1, 1, Keywords::NONE);
+    m.triggers.push(Trigger {
+        when: When::YouDiscardOneOrMore,
+        ability: Ability::new(vec![], vec![Effect::CreateTokenXxAmount { def: construct }]),
+    });
+    let two = sorcery(vec![], vec![Effect::Discard { who: Who::You, n: 2 }]);
+    let back = sorcery(vec![], vec![Effect::ReturnInstantsAndSorceriesFromGraveyard]);
+    let (mut g, t) = game_with(vec![m, two, back]);
+    g.add_card(0, t, Zone::Battlefield);
+    let a = g.add_card(0, cid("Sol Ring"), Zone::Hand);
+    let b = g.add_card(0, cid("Sol Ring"), Zone::Hand);
+    cast_test(&mut g, t + 1, &[], &[Action::Discard(a), Action::Discard(b)]);
+    let tok = g.permanents(0).find(|&x| g.def_of(x).token).expect("a Construct");
+    assert_eq!(
+        (g.power(tok), g.toughness(tok), g.obj(tok).counters),
+        (2, 2, 0),
+        "base 2/2, no counters"
+    );
+
+    let opt = g.add_card(0, cid("Opt"), Zone::Graveyard);
+    let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Graveyard);
+    cast_test(&mut g, t + 2, &[], &[]);
+    assert_eq!(
+        (g.obj(opt).zone, g.obj(elves).zone),
+        (Zone::Hand, Zone::Graveyard)
+    );
+}
+
+#[test]
+fn roll_a_d20_and_reanimate_up_to_that_total_mana_value() {
+    let (mut g, t) = game_with(vec![sorcery(
+        vec![],
+        vec![Effect::RollD20ReanimateTotalManaValue],
+    )]);
+    let theirs = g.add_card(1, cid("Llanowar Elves"), Zone::Graveyard);
+    let mine = g.add_card(0, cid("Llanowar Elves"), Zone::Graveyard);
+    let c = g.add_card(0, t, Zone::Hand);
+    act(&mut g, Action::Cast(c));
+    to_decision(&mut g);
+    assert!(g.legal_actions().contains(&Action::Pick(mine)));
+    act(&mut g, Action::Pick(theirs));
+    assert_eq!(
+        (g.obj(theirs).zone, g.obj(theirs).controller),
+        (Zone::Battlefield, 0)
+    );
+    if matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::No);
+    }
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(mine).zone, Zone::Graveyard, "stopped");
+}
