@@ -162,7 +162,7 @@
   {
    "card": "Ygra, Eater of All",
    "deck": "Ygra, Eater of All",
-   "missing": "ward\u2014sacrifice a Food; other creatures are Food artifacts with the Food ability; a Food-to-graveyard trigger",
+   "missing": "ward\u2014sacrifice a Food; other creatures are Food artifacts with the Food ability; a Food-to-graveyard trigger [d3 batch 26: CardDef::other_creatures_are_food_artifacts (with a static so it is a static source) makes other creatures artifacts (types_of, via with_kormus_bell) and Foods (has_subtype). Still open: the granted Food ability for every other creature, any controller (subtype_you_control_has covers only yours; the merger/lane B), and ward—sacrifice a Food]",
    "lane": "d1",
    "theme": "triggers",
    "owner": "d2"

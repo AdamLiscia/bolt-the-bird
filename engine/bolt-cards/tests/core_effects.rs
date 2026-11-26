@@ -3046,3 +3046,34 @@ fn your_artifacts_are_foods_during_your_turn_only() {
     g.start_turn(4, 1);
     assert!(!g.has_subtype(ring, "Food"), "not on their turn");
 }
+
+// ---- batch 26 ----
+
+#[test]
+fn other_creatures_are_food_artifacts_while_it_is_on_the_battlefield() {
+    let mut ygra = CardDef::creature("Test Ygra", "{1}", 6, 6, Keywords::NONE);
+    ygra.other_creatures_are_food_artifacts = true;
+    ygra.statics.push(static_of(Scope::This, 0, 0, Keywords::NONE));
+    let (mut g, t) = game_with(vec![ygra]);
+    let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
+    let angel = g.add_card(1, cid("Serra Angel"), Zone::Battlefield);
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Battlefield);
+    assert!(!g.types_of(elves).artifact && !g.has_subtype(elves, "Food"));
+    let y = g.add_card(0, t, Zone::Battlefield);
+    for c in [elves, angel] {
+        assert!(
+            g.types_of(c).artifact && g.types_of(c).creature,
+            "an artifact in addition"
+        );
+        assert!(g.has_subtype(c, "Food"));
+        assert!(
+            g.has_subtype(c, "Elf") || g.has_subtype(c, "Angel"),
+            "keeps its types"
+        );
+    }
+    assert!(
+        !g.types_of(y).artifact && !g.has_subtype(y, "Food"),
+        "other creatures"
+    );
+    assert!(!g.has_subtype(ring, "Food"), "creatures only");
+}

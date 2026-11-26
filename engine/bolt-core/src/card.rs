@@ -974,6 +974,10 @@ pub struct CardDef {
     /// Gourmand's Talent: "During your turn, artifacts you control are Foods in addition to their
     /// other types" (see `Game::has_subtype`; the Food ability is its `subtype_you_control_has`).
     pub your_artifacts_are_food_your_turn: bool,
+    /// Ygra, Eater of All: "Other creatures are Food artifacts in addition to their other types"
+    /// (`Game::with_kormus_bell` and `Game::has_subtype`). Give the card a static too, so it's among
+    /// the static sources.
+    pub other_creatures_are_food_artifacts: bool,
 }
 
 /// A card's pieces from the d4 subsystems (see [`CardDef::subsystems`]).
@@ -1469,6 +1473,7 @@ impl CardDef {
             colorless_spell_discount: 0,
             toxic: 0,
             your_artifacts_are_food_your_turn: false,
+            other_creatures_are_food_artifacts: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -1739,6 +1744,7 @@ impl CardDef {
             colorless_spell_discount: 0,
             toxic: 0,
             your_artifacts_are_food_your_turn: false,
+            other_creatures_are_food_artifacts: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -2009,6 +2015,7 @@ impl CardDef {
             colorless_spell_discount: 0,
             toxic: 0,
             your_artifacts_are_food_your_turn: false,
+            other_creatures_are_food_artifacts: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
