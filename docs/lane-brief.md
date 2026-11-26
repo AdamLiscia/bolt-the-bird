@@ -136,7 +136,8 @@ Fences:
   | d3 | `target_ok` and `Filter`'s fields, the scaled-statics block in `statics_on` |
   | d2 | **trigger events only**: in `move_to`, `zone_triggers_once`, the sacrifice sites, `gain_life`, `lose_life`, counter placement, combat damage, the cast path and the enter path, d2 may add the lines that emit an event (`self.fire(...)` and the data it needs) and the matching `When::` arms. It doesn't change what those functions do (where a card goes, how much life changes, what's legal). It also owns `fire()` itself, for suppressed and doubled triggers (Hushbringer, Elesh Norn, Harmonic Prodigy). |
   | Mac C | zone behaviour: where objects go and how they move (`move_to`'s destinations, exile-and-return, face-down, copies), but not its trigger emits, which are d2's |
-  | merger | everything else, including type-changing layers (Blood Moon, Urborg) and timing permissions |
+  | d3 (from 2026-11-25 late) | types and abilities: `has_subtype` and type-changing effects (Mirror Entity's all types, Kormus Bell, Song of the Dryads, manlands), `lost_abilities` from effects, and **protection from a chosen quality**, kept in its own store (a `Game` list of grants, or a new `Object` field), **not** as a `Modifier` field, so no `Modifier` literal changes. Blood Moon and Urborg (lane B's, in `has_subtype`) are already there; keep them working. |
+  | merger | everything else, including timing permissions |
 
 - **New `Decision` variants are allowed** (appended), as long as they're answered with existing `Action`
   variants (`Mode`, `Pick`, `Target`, `Yes`/`No`, `Amount`). A decision is a question; the actions are the play

@@ -197,6 +197,7 @@ pub fn token_defs() -> Vec<CardDef> {
             t.mana = Some(ManaSource::of(&[Color::Green]));
             t
         },
+        token("Frog", "Frog", 1, 1, Keywords::NONE), // Quina's green 1/1
     ]
 }
 
@@ -319,6 +320,7 @@ pub struct Tokens {
     pub eldrazi_spawn: usize,
     pub spawn_3: usize,
     pub elf_druid: usize,
+    pub frog: usize,
 }
 
 impl Tokens {
@@ -393,6 +395,7 @@ impl Tokens {
             eldrazi_spawn: base + 66,
             spawn_3: base + 67,
             elf_druid: base + 68,
+            frog: base + 69,
         }
     }
 }

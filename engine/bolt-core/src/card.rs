@@ -765,6 +765,36 @@ pub struct CardDef {
     pub adventure: bool,
     /// "Enchanted permanent's activated abilities can't be activated." (Hold for Questioning)
     pub enchanted_stops_activations: bool,
+    /// "If one or more +1/+1 counters would be put on a creature you control, that many plus one
+    /// ... instead." (Hardened Scales)
+    pub counters_plus_one: bool,
+    /// "If an opponent would lose life during your turn, they lose twice that much life instead."
+    /// (Bloodletter of Aclazotz)
+    pub opponents_lose_double_your_turn: bool,
+    /// "If you would gain life, you gain twice that much life instead." (Alhammarret's Archive)
+    pub life_gain_doubled: bool,
+    /// "If you would draw a card except the first one you draw in each of your draw steps, draw two
+    /// cards instead." (Alhammarret's Archive, Teferi's Ageless Insight)
+    pub extra_draws_doubled: bool,
+    /// "If one or more tokens would be created under your control, those tokens plus an additional
+    /// [token] are created instead": this token definition, once per creation (Peregrin Took, Quina).
+    pub tokens_plus_one: Option<usize>,
+    /// "... those tokens plus that many [tokens] are created instead": one of this token for each
+    /// (Chatterfang).
+    pub tokens_plus_each: Option<usize>,
+    /// "If a card would be put into an opponent's graveyard from anywhere, instead exile it with a
+    /// void counter on it." (Dauthi Voidwalker)
+    pub opponents_cards_exiled_with_void: bool,
+    /// "Nonbasic lands are Mountains." (Blood Moon, CR 613.1d, 305.7)
+    pub nonbasic_lands_are_mountains: bool,
+    /// "Each land is a Swamp in addition to its other land types." (Urborg, Tomb of Yawgmoth)
+    pub lands_are_swamps: bool,
+    /// "You may activate abilities of creatures you control as though those creatures had haste."
+    /// (Thousand-Year Elixir)
+    pub creatures_abilities_haste: bool,
+    /// `ward_sacrifice` counts nonland permanents only (Valgavoth: "Ward—Sacrifice three nonland
+    /// permanents.").
+    pub ward_sacrifice_nonland: bool,
     /// Mana, costs and keywords (the d1 theme), grouped so adding one touches only [`ManaExt`].
     pub mana_ext: ManaExt,
 }
@@ -1069,6 +1099,17 @@ impl CardDef {
             changeling: false,
             adventure: false,
             enchanted_stops_activations: false,
+            counters_plus_one: false,
+            opponents_lose_double_your_turn: false,
+            life_gain_doubled: false,
+            extra_draws_doubled: false,
+            tokens_plus_one: None,
+            tokens_plus_each: None,
+            opponents_cards_exiled_with_void: false,
+            nonbasic_lands_are_mountains: false,
+            lands_are_swamps: false,
+            creatures_abilities_haste: false,
+            ward_sacrifice_nonland: false,
             mana_ext: ManaExt::default(),
         }
     }
@@ -1290,6 +1331,17 @@ impl CardDef {
             changeling: false,
             adventure: false,
             enchanted_stops_activations: false,
+            counters_plus_one: false,
+            opponents_lose_double_your_turn: false,
+            life_gain_doubled: false,
+            extra_draws_doubled: false,
+            tokens_plus_one: None,
+            tokens_plus_each: None,
+            opponents_cards_exiled_with_void: false,
+            nonbasic_lands_are_mountains: false,
+            lands_are_swamps: false,
+            creatures_abilities_haste: false,
+            ward_sacrifice_nonland: false,
             mana_ext: ManaExt::default(),
         }
     }
@@ -1511,6 +1563,17 @@ impl CardDef {
             changeling: false,
             adventure: false,
             enchanted_stops_activations: false,
+            counters_plus_one: false,
+            opponents_lose_double_your_turn: false,
+            life_gain_doubled: false,
+            extra_draws_doubled: false,
+            tokens_plus_one: None,
+            tokens_plus_each: None,
+            opponents_cards_exiled_with_void: false,
+            nonbasic_lands_are_mountains: false,
+            lands_are_swamps: false,
+            creatures_abilities_haste: false,
+            ward_sacrifice_nonland: false,
             mana_ext: ManaExt::default(),
         }
     }
