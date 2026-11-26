@@ -1146,3 +1146,266 @@ fn displacer_kitten_blinks_a_permanent_when_you_cast_a_noncreature_spell() {
         "Opt's card and the Visionary's"
     );
 }
+
+// ---- Unblocked by lane d3's core theme (effects and statics), batch 1 ----
+
+#[test]
+fn altar_of_dementia_mills_the_sacrificed_creatures_power() {
+    let mut g = table();
+    let altar = put(&mut g, 0, "Altar of Dementia");
+    let sphinx = put(&mut g, 0, "Consecrated Sphinx"); // power 4
+    let lib = g.players[1].library.len();
+    act(&mut g, Action::ActivateWith(altar, 0, sphinx));
+    act(&mut g, Action::Target(Target::Player(1)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(sphinx).zone, Zone::Graveyard);
+    assert_eq!(g.players[1].library.len(), lib - 4);
+}
+
+#[test]
+fn creeping_corrosion_destroys_every_artifact() {
+    let mut g = table();
+    let a = put(&mut g, 0, "Sol Ring");
+    let b = put(&mut g, 1, "Temple Bell");
+    let looter = put(&mut g, 1, "Merfolk Looter");
+    let c = hand(&mut g, 0, "Creeping Corrosion");
+    play(&mut g, c, false, &[], &[]);
+    assert_eq!((g.obj(a).zone, g.obj(b).zone), (Zone::Graveyard, Zone::Graveyard));
+    assert_eq!(g.obj(looter).zone, Zone::Battlefield);
+}
+
+#[test]
+fn armageddon_destroys_every_land() {
+    let mut g = table();
+    let ring = put(&mut g, 0, "Sol Ring");
+    let a = hand(&mut g, 0, "Armageddon");
+    play(&mut g, a, false, &[], &[]);
+    assert_eq!(
+        g.permanents(0)
+            .chain(g.permanents(1))
+            .filter(|&x| g.types_of(x).land)
+            .count(),
+        0
+    );
+    assert_eq!(g.obj(ring).zone, Zone::Battlefield);
+}
+
+#[test]
+fn damnable_pact_makes_a_player_draw_and_lose_x() {
+    let mut g = table();
+    let p = hand(&mut g, 0, "Damnable Pact");
+    let h = g.players[1].hand.len();
+    act(&mut g, Action::CastX(p, 4));
+    act(&mut g, Action::Target(Target::Player(1)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].hand.len(), h + 4);
+    assert_eq!(g.players[1].life, 36);
+}
+
+#[test]
+fn merciless_eviction_exiles_all_of_the_chosen_type() {
+    let mut g = table();
+    let ring = put(&mut g, 1, "Sol Ring");
+    let mine = put(&mut g, 0, "Merfolk Looter");
+    let theirs = put(&mut g, 1, "Thought Courier");
+    let m = hand(&mut g, 0, "Merciless Eviction");
+    act(&mut g, Action::CastModal(m, 1)); // creatures
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.obj(mine).zone, g.obj(theirs).zone), (Zone::Exile, Zone::Exile));
+    assert_eq!(g.obj(ring).zone, Zone::Battlefield);
+}
+
+#[test]
+fn dramatic_reversal_untaps_your_nonland_permanents() {
+    let mut g = table();
+    let bell = put(&mut g, 0, "Temple Bell");
+    act(&mut g, Action::Activate(bell, 0));
+    resolve_all(&mut g, &[]);
+    assert!(g.obj(bell).tapped);
+    let dr = hand(&mut g, 0, "Dramatic Reversal");
+    play(&mut g, dr, false, &[], &[]);
+    assert!(!g.obj(bell).tapped);
+    assert!(
+        g.permanents(0).any(|x| g.types_of(x).land && g.obj(x).tapped),
+        "the lands that paid for it stay tapped"
+    );
+}
+
+#[test]
+fn venser_s_journal_gains_life_for_each_card_in_hand() {
+    let mut g = table();
+    let j = put(&mut g, 0, "Venser's Journal");
+    assert!(g.def_of(j).no_max_hand_size);
+    g.start_turn(5, 0);
+    while g.step != Step::Draw {
+        act(&mut g, Action::PassPriority);
+    }
+    // The upkeep trigger resolved before the draw: life went up by the hand size then.
+    assert!(g.players[0].life > 40);
+    let gained = g.players[0].life - 40;
+    assert_eq!(
+        gained as usize,
+        g.players[0].hand.len() - 1,
+        "the hand before this turn's draw"
+    );
+}
+
+#[test]
+fn nissa_voice_of_zendikar_makes_plants_and_counters() {
+    let mut g = table();
+    let n = hand(&mut g, 0, "Nissa, Voice of Zendikar");
+    play(&mut g, n, false, &[], &[]);
+    act(&mut g, Action::Loyalty(n, 0));
+    resolve_all(&mut g, &[]);
+    let plant = tokens(&g, 0, "Plant");
+    assert_eq!(plant.len(), 1);
+    assert_eq!((g.power(plant[0]), g.toughness(plant[0])), (0, 1));
+    to_main1(&mut g, 5, 0);
+    act(&mut g, Action::Loyalty(n, 1));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(plant[0]).counters, 1);
+}
+
+#[test]
+fn academy_rector_exiles_itself_to_find_an_enchantment() {
+    let mut g = table();
+    let r = put(&mut g, 0, "Academy Rector");
+    let study = g.add_card(0, cid("Rhystic Study"), Zone::Library);
+    let ig = hand(&mut g, 0, "Infernal Grasp");
+    play(&mut g, ig, false, &[obj(r)], &[Action::Yes, Action::Pick(study)]);
+    assert_eq!(g.obj(r).zone, Zone::Exile);
+    assert_eq!(g.obj(study).zone, Zone::Battlefield);
+}
+
+#[test]
+fn seizan_makes_each_player_lose_2_and_draw_2_on_their_upkeep() {
+    let mut g = table();
+    put(&mut g, 0, "Seizan, Perverter of Truth");
+    let h1 = g.players[1].hand.len();
+    to_main1(&mut g, 4, 1);
+    assert_eq!(g.players[1].life, 38);
+    assert_eq!(g.players[1].hand.len(), h1 + 3, "two and the draw step");
+    assert_eq!(g.players[0].life, 40);
+    to_main1(&mut g, 5, 0);
+    assert_eq!(g.players[0].life, 38);
+}
+
+fn tutor_to_top(name: &str, good: &str, bad: &str) {
+    let mut g = table();
+    let good = g.add_card(0, cid(good), Zone::Library);
+    let bad = g.add_card(0, cid(bad), Zone::Library);
+    let t = hand(&mut g, 0, name);
+    act(&mut g, Action::Cast(t));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(!g.legal_actions().contains(&Action::Pick(bad)), "{name}");
+    resolve_all(&mut g, &[Action::Pick(good)]);
+    assert_eq!(g.players[0].library.last(), Some(&good), "{name}: on top");
+}
+
+#[test]
+fn mystical_tutor_puts_an_instant_or_sorcery_on_top() {
+    tutor_to_top("Mystical Tutor", "Armageddon", "Sol Ring");
+}
+
+#[test]
+fn enlightened_tutor_puts_an_artifact_or_enchantment_on_top() {
+    tutor_to_top("Enlightened Tutor", "Rhystic Study", "Counterspell");
+}
+
+#[test]
+fn unmarked_grave_entombs_a_nonlegendary_card() {
+    let mut g = table();
+    let good = g.add_card(0, cid("Ashen Rider"), Zone::Library);
+    let bad = g.add_card(0, cid("Razaketh, the Foulblooded"), Zone::Library);
+    let u = hand(&mut g, 0, "Unmarked Grave");
+    act(&mut g, Action::Cast(u));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(!g.legal_actions().contains(&Action::Pick(bad)), "legendary");
+    resolve_all(&mut g, &[Action::Pick(good)]);
+    assert_eq!(g.obj(good).zone, Zone::Graveyard);
+}
+
+#[test]
+fn imperial_recruiter_finds_a_creature_with_power_2_or_less() {
+    let mut g = table();
+    let good = g.add_card(0, cid("Merfolk Looter"), Zone::Library);
+    let bad = g.add_card(0, cid("Consecrated Sphinx"), Zone::Library);
+    let r = hand(&mut g, 0, "Imperial Recruiter");
+    act(&mut g, Action::Cast(r));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(!g.legal_actions().contains(&Action::Pick(bad)), "power 4");
+    resolve_all(&mut g, &[Action::Pick(good)]);
+    assert_eq!(g.obj(good).zone, Zone::Hand);
+}
+
+#[test]
+fn avacyn_makes_your_other_permanents_indestructible() {
+    let mut g = table();
+    let a = put(&mut g, 0, "Avacyn, Angel of Hope");
+    let looter = put(&mut g, 0, "Merfolk Looter");
+    let ring = put(&mut g, 0, "Sol Ring");
+    let ig = hand(&mut g, 0, "Infernal Grasp");
+    play(&mut g, ig, false, &[obj(looter)], &[]);
+    assert_eq!(g.obj(looter).zone, Zone::Battlefield);
+    assert!(g.keywords(ring).has(Keywords::INDESTRUCTIBLE));
+    assert!(g.keywords(a).has(Keywords::INDESTRUCTIBLE), "printed");
+    let theirs = put(&mut g, 1, "Merfolk Looter");
+    assert!(!g.keywords(theirs).has(Keywords::INDESTRUCTIBLE));
+}
+
+#[test]
+fn elesh_norn_pumps_yours_and_shrinks_theirs() {
+    let mut g = table();
+    let n = put(&mut g, 0, "Elesh Norn, Grand Cenobite");
+    let mine = put(&mut g, 0, "Thought Courier");
+    let theirs = put(&mut g, 1, "Consecrated Sphinx");
+    let small = put(&mut g, 1, "Merfolk Looter");
+    assert_eq!((g.power(mine), g.toughness(mine)), (3, 3));
+    assert_eq!((g.power(theirs), g.toughness(theirs)), (2, 4));
+    assert_eq!((g.power(n), g.toughness(n)), (4, 7), "other");
+    assert_eq!(g.toughness(small), -1, "a 1/1 of theirs is -1/-1");
+}
+
+#[test]
+fn atraxa_proliferates_at_your_end_step() {
+    let mut g = table();
+    put(&mut g, 0, "Atraxa, Praetors' Voice");
+    let t = put(&mut g, 0, "Gavony Township");
+    let looter = put(&mut g, 0, "Merfolk Looter");
+    act(&mut g, Action::Activate(t, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(looter).counters, 1);
+    while g.step != Step::Cleanup && g.turn == 3 {
+        let a = match g.pending {
+            Pending::DeclareAttackers(_) => Action::FinishAttacks,
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            Pending::Decide(_) => break,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+        if g.obj(looter).counters == 2 {
+            break;
+        }
+    }
+    assert_eq!(g.obj(looter).counters, 2);
+}
+
+#[test]
+fn karns_bastion_proliferates() {
+    let mut g = table();
+    let b = put(&mut g, 0, "Karn's Bastion");
+    assert!(g.mana_sources(0).iter().any(|&(x, m)| x == b && m.colorless));
+    let t = put(&mut g, 0, "Gavony Township");
+    let looter = put(&mut g, 0, "Merfolk Looter");
+    act(&mut g, Action::Activate(t, 0));
+    resolve_all(&mut g, &[]);
+    act(&mut g, Action::Activate(b, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(looter).counters, 2);
+}

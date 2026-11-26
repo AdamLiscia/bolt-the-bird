@@ -182,6 +182,8 @@ pub enum Who {
     TargetPlayer(u8),
     /// The controller of the permanent in target slot `n`.
     ControllerOf(u8),
+    /// The active player ("that player" in an each-upkeep trigger, Seizan).
+    ActivePlayer,
 }
 
 /// Where damage goes.
@@ -1464,6 +1466,27 @@ pub enum Effect {
     ExileMakeEnchantmentCopy(u8),
     /// "... unless that player pays {X}, where X is this creature's power" (Esper Sentinel).
     UnlessOpponentPaysPower,
+    /// The player in `slot` mills cards equal to the stack item's amount (Altar of Dementia: the
+    /// sacrificed creature's power, with `Activated::amount_from_victim_power`).
+    MillAmount(u8),
+    /// Destroy all artifacts (Creeping Corrosion).
+    DestroyAllArtifacts,
+    /// Destroy all lands (Armageddon).
+    DestroyAllLands,
+    /// The player in `slot` draws X cards and loses X life, X the spell's X (Damnable Pact).
+    TargetDrawsXLosesX(u8),
+    /// Exile all permanents of one type: 0 artifacts, 1 creatures, 2 enchantments, 3 planeswalkers
+    /// (Merciless Eviction).
+    ExileAllOfType(u8),
+    /// Untap all nonland permanents you control (Dramatic Reversal).
+    UntapNonlandYouControl,
+    /// You gain 1 life for each card in your hand (Venser's Journal).
+    GainLifePerCardInHand,
+    /// You gain X life and draw X cards, X the lands you control (Nissa, Voice of Zendikar).
+    GainAndDrawPerLandYouControl,
+    /// "You may exile it. If you do, ...": exile the source from its owner's graveyard; if it isn't
+    /// there, the rest of the effects don't happen (Academy Rector).
+    ExileSourceFromGraveyardOrStop,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1503,6 +1526,16 @@ pub enum SearchFor {
     GreenCreatureMvAtMostX,
     /// A creature card of this color (WUBRG index) with mana value at most this.
     ColoredCreatureMvAtMost(u8, u32),
+    /// An instant or sorcery card (Mystical Tutor).
+    InstantOrSorcery,
+    /// A nonlegendary card (Unmarked Grave).
+    Nonlegendary,
+    /// An artifact or enchantment card (Enlightened Tutor).
+    ArtifactOrEnchantment,
+    /// An enchantment card (Academy Rector).
+    Enchantment,
+    /// A creature card with at most this power (Imperial Recruiter).
+    CreaturePowerAtMost(i32),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1557,6 +1590,10 @@ pub enum Scope {
     EachLand,
     /// Land creatures you control (Sylvan Advocate).
     YourLandCreatures,
+    /// Other permanents you control, of any type (Avacyn, Angel of Hope).
+    OtherYourPermanents,
+    /// Creatures your opponents control (Elesh Norn, Grand Cenobite).
+    OpponentsCreatures,
 }
 
 /// What a scaled static ability counts.
