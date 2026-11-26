@@ -5442,7 +5442,7 @@ impl Game {
             return false;
         }
         if let Some(m) = f.creature_power_or_toughness_at_most {
-            if !on_stack && !(self.power(id) <= m || self.toughness(id) <= m) {
+            if !(on_stack || self.power(id) <= m || self.toughness(id) <= m) {
                 return false;
             }
         }
