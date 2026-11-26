@@ -2917,3 +2917,50 @@ fn return_a_creature_or_planeswalker_card_from_your_graveyard() {
     resolve_all(&mut g, &[Action::Pick(elves)]);
     assert_eq!(g.obj(elves).zone, Zone::Hand);
 }
+
+// ---- batch 22 ----
+
+#[test]
+fn class_level_static_condition_applies_from_that_level() {
+    let mut class = CardDef::creature("Test Class", "{1}", 1, 1, Keywords::NONE);
+    class.statics.push(Static {
+        condition: Some(bolt_core::effect::StaticCondition::ClassLevelAtLeast(2)),
+        ..static_of(Scope::This, 1, 1, Keywords::NONE)
+    });
+    let (mut g, t) = game_with(vec![class]);
+    let c = g.add_card(0, t, Zone::Battlefield);
+    assert_eq!(g.power(c), 1, "level 1");
+    g.objects[c.0 as usize].class_level = 2;
+    assert_eq!((g.power(c), g.toughness(c)), (2, 2), "level 2");
+    g.objects[c.0 as usize].class_level = 3;
+    assert_eq!(g.power(c), 2, "level 3 is at least 2");
+}
+
+#[test]
+fn stop_unless_the_discarded_card_was_a_creature_card() {
+    let mut looter = CardDef::creature("Test Looter", "{1}", 1, 1, Keywords::NONE);
+    looter.activated.push(bolt_core::card::Activated {
+        mana: ManaCost::parse("{0}").unwrap(),
+        discard_any_card: true,
+        victim_in_extra: true,
+        ability: Ability::new(
+            vec![],
+            vec![
+                Effect::StopUnlessExtraIsCreatureCard,
+                Effect::Draw { who: Who::You, n: 1 },
+            ],
+        ),
+        ..bolt_core::card::Activated::default()
+    });
+    let (mut g, t) = game_with(vec![looter]);
+    let l = g.add_card(0, t, Zone::Battlefield);
+    let opt = g.add_card(0, cid("Opt"), Zone::Hand);
+    let h = g.players[0].hand.len();
+    act(&mut g, Action::ActivateWith(l, 0, opt));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].hand.len(), h - 1, "an instant: stopped");
+    let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Hand);
+    act(&mut g, Action::ActivateWith(l, 0, elves));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].hand.len(), h, "a creature card: drew");
+}

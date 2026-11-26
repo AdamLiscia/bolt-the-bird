@@ -2763,6 +2763,7 @@ impl Game {
                                     .count()
                                     >= n as usize
                             }
+                            Some(StaticCondition::ClassLevelAtLeast(n)) => self.class_level(src) >= n,
                         };
                         applies && condition_ok && (!s.your_turn_only || self.active == so.controller)
                     })
@@ -21493,6 +21494,11 @@ impl Game {
                             rest: None,
                         },
                     );
+                }
+            }
+            Effect::StopUnlessExtraIsCreatureCard => {
+                if !item.extra.is_some_and(|c| self.def_of(c).types.creature) {
+                    self.resolving.as_mut().expect("resolving").remaining.clear();
                 }
             }
         }

@@ -2348,6 +2348,10 @@ pub enum Effect {
     /// Return a card of your choice that the `Pick` allows from your graveyard to your hand, not
     /// targeted (Takenuma: a creature or planeswalker card), as `Decision::LookPick`.
     ReturnPickFromGraveyardToHand(Pick),
+    /// Stop here unless the card discarded or sacrificed for the cost (the item's `extra`, with
+    /// `Activated::victim_in_extra`) is a creature card (Moria Scavenger: "If the discarded card
+    /// was a creature card, ...").
+    StopUnlessExtraIsCreatureCard,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -2561,6 +2565,9 @@ pub enum StaticCondition {
     /// Its controller controls at least this many artifacts (Teething Wurmlet: three). Printed card
     /// types are counted, as `ControlLandsAtLeast` does.
     ControlArtifactsAtLeast(u8),
+    /// The source Class is at this level or higher (CR 716: a Class's level 2 and 3 statics), see
+    /// `Game::class_level`.
+    ClassLevelAtLeast(u8),
 }
 
 /// A static ability that changes characteristics (CR 604, 613 layers 6 and 7c).
