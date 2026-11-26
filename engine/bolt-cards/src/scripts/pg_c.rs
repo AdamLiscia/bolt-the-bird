@@ -1045,6 +1045,93 @@ pub fn script(name: &str) -> Option<Script> {
                 conditional(d, When::YouCastCreature, Condition::CastPowerBetween(7, i32::MAX), vec![], vec![Effect::UnsealingDamage(0)]);
             },
         ),
+        "Hellkite Courser" => s(
+            &["When this creature enters, you may put a commander you own from the command zone onto the battlefield. It gains haste. Return it to the command zone at the beginning of the next end step."],
+            |d, _| on(d, When::Enters, vec![], vec![Effect::CommanderFromCommandZoneUntilEnd]),
+        ),
+        "Protean Hulk" => s(
+            &["When this creature dies, search your library for any number of creature cards with total mana value 6 or less, put them onto the battlefield, then shuffle."],
+            |d, _| on(d, When::Dies, vec![], vec![Effect::SearchCreaturesTotalManaValue(6)]),
+        ),
+        "Selvala, Heart of the Wilds" => s(
+            &[
+                "Whenever another creature enters, its controller may draw a card if its power is greater than each other creature's power.",
+                "{G}, {T}: Add X mana in any combination of colors, where X is the greatest power among creatures you control.",
+            ],
+            |d, _| {
+                // "May draw": the card is drawn (an optional draw the controller takes).
+                let it = Filter { triggering: true, controller: Controller::Any, ..CREATURE };
+                for when in [When::AnotherCreatureYouControlEnters, When::CreatureOpponentControlsEnters] {
+                    on(d, when, vec![it], vec![Effect::DrawIfGreatestPower(0)]);
+                }
+                activated(d, "{G}", true, vec![], vec![Effect::AddAnyColorsGreatestPower]);
+            },
+        ),
+        "Vigor" => s(
+            &[
+                "If damage would be dealt to another creature you control, prevent that damage. Put a +1/+1 counter on that creature for each 1 damage prevented this way.",
+                "When Vigor is put into a graveyard from anywhere, shuffle it into its owner's library.",
+            ],
+            |d, _| {
+                d.damage_to_yours_becomes_counters = true;
+                on(d, When::PutIntoGraveyardFromAnywhere, vec![], vec![Effect::ShuffleSourceFromGraveyardIntoLibrary]);
+            },
+        ),
+        "Molten Echoes" => s(
+            &[
+                "As this enchantment enters, choose a creature type.",
+                "Whenever a nontoken creature you control of the chosen type enters, create a token that's a copy of that creature. That token gains haste. Exile it at the beginning of the next end step.",
+            ],
+            |d, _| {
+                d.choose_creature_type = true;
+                let it = Filter { triggering: true, ..CREATURE };
+                on(d, When::AnotherNontokenCreatureYouControlEnters, vec![it], vec![Effect::CopyIfChosenTypeExileAtEnd(0)]);
+            },
+        ),
+        "Primal Surge" => s(
+            &["Exile the top card of your library. If it's a permanent card, you may put it onto the battlefield. If you do, repeat this process."],
+            |d, _| spell(d, vec![], vec![Effect::PrimalSurge]),
+        ),
+        "Flameshadow Conjuring" => s(
+            &["Whenever a nontoken creature you control enters, you may pay {R}. If you do, create a token that's a copy of that creature. That token gains haste. Exile it at the beginning of the next end step."],
+            |d, _| {
+                let it = Filter { triggering: true, ..CREATURE };
+                let pay = Effect::MayPay(ManaCost::parse("{R}").expect("cost"));
+                on(d, When::AnotherNontokenCreatureYouControlEnters, vec![it], vec![pay, Effect::CopiesHasteExileAtEnd { slot: 0, n: 1 }]);
+            },
+        ),
+        "Mirror March" => s(
+            &["Whenever a nontoken creature you control enters, flip a coin until you lose a flip. For each flip you won, create a token that's a copy of that creature. Those tokens gain haste. Exile them at the beginning of the next end step."],
+            |d, _| {
+                let it = Filter { triggering: true, ..CREATURE };
+                on(d, When::AnotherNontokenCreatureYouControlEnters, vec![it], vec![Effect::CoinFlipCopiesExileAtEnd(0)]);
+            },
+        ),
+        "Rionya, Fire Dancer" => s(
+            &["At the beginning of combat on your turn, create X tokens that are copies of another target creature you control, where X is one plus the number of instant and sorcery spells you've cast this turn. They gain haste. Exile them at the beginning of the next end step."],
+            |d, _| {
+                let other = Filter { other: true, ..YOUR_CREATURE };
+                on(d, When::BeginCombatYourTurn, vec![other], vec![Effect::CopiesHasteExileAtEnd { slot: 0, n: 0 }]);
+            },
+        ),
+        "Twinflame" => s(
+            &[
+                "Strive — This spell costs {2}{R} more to cast for each target beyond the first.",
+                "Choose any number of target creatures you control. For each of them, create a token that's a copy of that creature, except it has haste. Exile those tokens at the beginning of the next end step.",
+            ],
+            |d, _| {
+                // Strive: one mode per number of targets (1 to 5), each {2}{R} more per extra target.
+                d.modes = (1..=5u8)
+                    .map(|k| {
+                        let effects = (0..k).map(|slot| Effect::CopiesHasteExileAtEnd { slot, n: 1 }).collect();
+                        Ability::new(vec![YOUR_CREATURE; k as usize], effects)
+                    })
+                    .collect();
+                d.mode_costs = ["{0}", "{2}{R}", "{4}{R}{R}", "{6}{R}{R}{R}", "{8}{R}{R}{R}{R}"]
+                    .map(|c| ManaCost::parse(c).expect("cost"))
+                    .to_vec();
+            },
+        ),
         _ => None,
     }
 }
@@ -1176,4 +1263,14 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Apex Devastator",
     "Orthion, Hero of Lavabrink",
     "Sarkhan's Unsealing",
+    "Hellkite Courser",
+    "Protean Hulk",
+    "Selvala, Heart of the Wilds",
+    "Vigor",
+    "Molten Echoes",
+    "Primal Surge",
+    "Flameshadow Conjuring",
+    "Mirror March",
+    "Rionya, Fire Dancer",
+    "Twinflame",
 ];

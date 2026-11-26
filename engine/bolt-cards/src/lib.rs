@@ -443,6 +443,7 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         vorinclex: false,
         targeted_life_tax: 0,
         red_spell_discount: 0,
+        damage_to_yours_becomes_counters: false,
     };
     def.color_identity = color_identity(o);
     def.phyrexian = phyrexian;

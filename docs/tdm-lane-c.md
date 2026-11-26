@@ -587,3 +587,12 @@ combat damage to a player (planeswalkers aren't attacked for it here).
 
 Merged origin/tarkir 4b9b8ed (lane B's Aesi; the play network's new action kinds) after Etali batch 4: end-of-block
 conflicts in card.rs, effect.rs, game.rs and lib.rs, tarkir's side first.
+
+Etali batch 5 (10): Hellkite Courser, Protean Hulk, Selvala, Vigor, Molten Echoes, Primal Surge, Flameshadow
+Conjuring, Mirror March, Rionya, Twinflame.
+Core: `CardDef::damage_to_yours_becomes_counters` (in `deal_damage`), `Object::{exile_at_end, command_at_end}` (handled
+with the end-step sacrifices), `Decision::{HulkSearch, PrimalSurge, CommanderCourser}`, `Effect::{CopiesHasteExileAtEnd,
+CopyIfChosenTypeExileAtEnd, CoinFlipCopiesExileAtEnd, CommanderFromCommandZoneUntilEnd, SearchCreaturesTotalManaValue,
+DrawIfGreatestPower, AddAnyColorsGreatestPower, PrimalSurge}`, `Game::{primal_surge, copies_exile_at_end}`.
+Shortcuts: Selvala's "may draw" always draws. Twinflame's strive is one mode per number of targets (1 to 5), each
+with its added cost in `mode_costs`. Ezuri's Predation waits for token slot 63 (after lane B's 61 and 62).

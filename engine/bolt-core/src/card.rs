@@ -690,6 +690,9 @@ pub struct CardDef {
     pub targeted_life_tax: i32,
     /// "Red spells you cast cost {N} less to cast." (The Fire Crystal)
     pub red_spell_discount: u8,
+    /// Vigor: "If damage would be dealt to another creature you control, prevent that damage. Put
+    /// a +1/+1 counter on that creature for each 1 damage prevented this way."
+    pub damage_to_yours_becomes_counters: bool,
 }
 
 /// What entering makes triggers happen again (see [`CardDef::entering_triggers_again`]).
@@ -923,6 +926,7 @@ impl CardDef {
             vorinclex: false,
             targeted_life_tax: 0,
             red_spell_discount: 0,
+            damage_to_yours_becomes_counters: false,
         }
     }
 
@@ -1124,6 +1128,7 @@ impl CardDef {
             vorinclex: false,
             targeted_life_tax: 0,
             red_spell_discount: 0,
+            damage_to_yours_becomes_counters: false,
         }
     }
 
@@ -1325,6 +1330,7 @@ impl CardDef {
             vorinclex: false,
             targeted_life_tax: 0,
             red_spell_discount: 0,
+            damage_to_yours_becomes_counters: false,
         }
     }
 }
