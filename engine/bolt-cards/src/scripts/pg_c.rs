@@ -1564,6 +1564,117 @@ pub fn script(name: &str) -> Option<Script> {
                 d.activated[n].sorcery = true;
             },
         ),
+        // ---- Malik, Grim Manipulator (queue.json, lane C), batch 1: no new core ----
+        "Diabolic Tutor" => s(&["Search your library for a card, put that card into your hand, then shuffle."], |d, _| {
+            spell(d, vec![], vec![search(SearchFor::Any, SearchTo::Hand)])
+        }),
+        "Sundown Pass" => s(
+            &["This land enters tapped unless you control two or more other lands.", "{T}: Add {R} or {W}."],
+            |d, _| {
+                d.mana_ext.enters_tapped_unless_other_lands = 2;
+                dual(d, Color::Red, Color::White);
+            },
+        ),
+        "Shattered Sanctum" => s(
+            &["This land enters tapped unless you control two or more other lands.", "{T}: Add {W} or {B}."],
+            |d, _| {
+                d.mana_ext.enters_tapped_unless_other_lands = 2;
+                dual(d, Color::White, Color::Black);
+            },
+        ),
+        "Inspiring Vantage" => s(
+            &["This land enters tapped unless you control two or fewer other lands.", "{T}: Add {R} or {W}."],
+            |d, _| {
+                d.enters_tapped_unless_at_most_lands = Some(2);
+                dual(d, Color::Red, Color::White);
+            },
+        ),
+        "Smoldering Marsh" => s(&["This land enters tapped unless you control two or more basic lands."], |d, _| {
+            d.enters_tapped_unless_basics = 2;
+            dual(d, Color::Black, Color::Red);
+        }),
+        "Blightstep Pathway // Searstep Pathway" => s(&["{T}: Add {B}.", "Back: {T}: Add {R}."], |d, _| {
+            d.mana = Some(ManaSource::of(&[Color::Black]));
+            d.modal_back = true;
+            d.back.as_mut().expect("Searstep Pathway").mana = Some(ManaSource::of(&[Color::Red]));
+        }),
+        "Needleverge Pathway // Pillarverge Pathway" => s(&["{T}: Add {R}.", "Back: {T}: Add {W}."], |d, _| {
+            d.mana = Some(ManaSource::of(&[Color::Red]));
+            d.modal_back = true;
+            d.back.as_mut().expect("Pillarverge Pathway").mana = Some(ManaSource::of(&[Color::White]));
+        }),
+        "Merciless Executioner" => s(&["When this creature enters, each player sacrifices a creature of their choice."], |d, _| {
+            on(
+                d,
+                When::Enters,
+                vec![],
+                vec![Effect::SacrificeCreatures { who: Who::You, n: 1 }, Effect::SacrificeCreatures { who: Who::EachOpponent, n: 1 }],
+            )
+        }),
+        "Massacre Wurm" => s(
+            &[
+                "When this creature enters, creatures your opponents control get -2/-2 until end of turn.",
+                "Whenever a creature an opponent controls dies, that player loses 2 life.",
+            ],
+            |d, _| {
+                on(d, When::Enters, vec![], vec![Effect::PumpAll { who: Who::EachOpponent, power: -2, toughness: -2 }]);
+                // "That player": the one opponent.
+                on(d, When::OpponentCreatureDies, vec![], vec![Effect::LoseLife { who: Who::EachOpponent, n: 2 }]);
+            },
+        ),
+        "Butcher of Malakir" => s(
+            &["Whenever this creature or another creature you control dies, each opponent sacrifices a creature of their choice."],
+            |d, _| on(d, When::CreatureYouControlDies, vec![], vec![Effect::SacrificeCreatures { who: Who::EachOpponent, n: 1 }]),
+        ),
+        "Reckless Fireweaver" => s(&["Whenever an artifact you control enters, this creature deals 1 damage to each opponent."], |d, _| {
+            on(d, When::ArtifactYouControlEnters, vec![], vec![damage(1, Recipient::EachOpponent)])
+        }),
+        "Mayhem Devil" => s(&["Whenever a player sacrifices a permanent, this creature deals 1 damage to any target."], |d, _| {
+            on(d, When::PlayerSacrificesAnother, vec![Filter::ANY], vec![damage(1, Recipient::Target(0))])
+        }),
+        "Teleportation Circle" => s(
+            &["At the beginning of your end step, exile up to one target artifact or creature you control, then return that card to the battlefield under its owner's control."],
+            |d, _| {
+                let yours = Filter { players: false, planeswalkers: false, artifacts: true, controller: Controller::You, ..Filter::ANY };
+                on(d, When::EndStep { your_turn_only: true }, vec![yours], vec![Effect::BlinkSlot(0)]);
+                d.triggers.last_mut().expect("the trigger").ability.min_targets = Some(0);
+            },
+        ),
+        "Crackling Doom" => s(
+            &["Crackling Doom deals 2 damage to each opponent. Each opponent sacrifices a creature with the greatest power among creatures that player controls."],
+            |d, _| spell(d, vec![], vec![damage(2, Recipient::EachOpponent), Effect::SacrificeGreatestPower(Who::EachOpponent)]),
+        ),
+        "Charming Prince" => s(
+            &[
+                "When this creature enters, choose one —",
+                "• Scry 2.",
+                "• You gain 3 life.",
+                "• Exile another target creature you own. Return it to the battlefield under your control at the beginning of the next end step.",
+            ],
+            |d, _| {
+                // "You own": your creatures (the ones you control and own in a two-player game).
+                let another = Filter { other: true, ..YOUR_CREATURE };
+                on_modal(
+                    d,
+                    When::Enters,
+                    None,
+                    vec![
+                        Ability::new(vec![], vec![Effect::Scry { n: 2 }]),
+                        Ability::new(vec![], vec![Effect::GainLife { who: Who::You, n: 3 }]),
+                        Ability::new(vec![another], vec![Effect::Flicker(0)]),
+                    ],
+                )
+            },
+        ),
+        "Ephemerate" => s(
+            &["Exile target creature you control, then return it to the battlefield under its owner's control.", "Rebound"],
+            |d, _| spell(d, vec![YOUR_CREATURE], vec![Effect::BlinkSlot(0), Effect::Rebound]),
+        ),
+        "Treasure Vault" => s(&["{T}: Add {C}.", "{X}{X}, {T}, Sacrifice this land: Create X Treasure tokens."], |d, t| {
+            d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+            let n = activated(d, "{X}{X}", true, vec![], vec![Effect::CreateTokensX { def: t.treasure }]);
+            d.activated[n].sacrifice_self = true;
+        }),
         _ => None,
     }
 }
@@ -1749,4 +1860,21 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Sundering Eruption // Volcanic Fissure",
     "Puppeteer Clique",
     "Railway Brawler",
+    "Diabolic Tutor",
+    "Sundown Pass",
+    "Shattered Sanctum",
+    "Inspiring Vantage",
+    "Smoldering Marsh",
+    "Blightstep Pathway // Searstep Pathway",
+    "Needleverge Pathway // Pillarverge Pathway",
+    "Merciless Executioner",
+    "Massacre Wurm",
+    "Butcher of Malakir",
+    "Reckless Fireweaver",
+    "Mayhem Devil",
+    "Teleportation Circle",
+    "Crackling Doom",
+    "Charming Prince",
+    "Ephemerate",
+    "Treasure Vault",
 ];

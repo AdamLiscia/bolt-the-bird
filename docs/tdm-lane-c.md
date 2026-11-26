@@ -688,3 +688,14 @@ creature is exiled at the next end step (the same as "your next end step" unless
 turn).
 Touched owned code (flag for review): the `ShockLand` life amount (d1's land entry), the plot exile-cast check
 in the castable-from-exile filter (merger's timing), and the hand condition of the activation listing.
+
+## Malik, Grim Manipulator (queue.json, lane C)
+
+Unsupported list from set_support (run from the batch 7 build's binary): 52 of 54.
+Batch 1 (17, no new core): Diabolic Tutor, Sundown Pass, Shattered Sanctum, Inspiring Vantage, Smoldering Marsh,
+Blightstep Pathway // Searstep Pathway, Needleverge Pathway // Pillarverge Pathway, Merciless Executioner, Massacre
+Wurm, Butcher of Malakir, Reckless Fireweaver, Mayhem Devil, Teleportation Circle, Crackling Doom, Charming Prince,
+Ephemerate, Treasure Vault.
+Shortcuts: Massacre Wurm's "that player" is the one opponent. Mayhem Devil uses `When::PlayerSacrificesAnother`,
+so sacrificing Mayhem Devil itself doesn't trigger it. Charming Prince's "another target creature you own" is one
+you control.
