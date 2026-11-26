@@ -4061,7 +4061,7 @@ fn mother_of_runes_gives_protection_from_a_chosen_color() {
 fn port_razer_untaps_and_adds_a_combat_it_cannot_attack_in() {
     let mut g = table();
     let razer = put(&mut g, 0, "Port Razer");
-    let other = put(&mut g, 0, "Hungry Ghoul"); // stays home, so the extra combat asks for attackers
+    let _other = put(&mut g, 0, "Hungry Ghoul"); // stays home, so the extra combat asks for attackers
     to_attackers(&mut g);
     act(&mut g, Action::Attack(razer));
     act(&mut g, Action::FinishAttacks);
