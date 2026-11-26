@@ -307,6 +307,11 @@ pub struct Object {
     /// Shield counters (CR 122.1c): "If it would be dealt damage or destroyed, instead remove a
     /// shield counter from it."
     pub shield_counters: u8,
+    /// Exiled until this player's next upkeep (Nahiri's Resolve), for its zone-change count in exile.
+    pub return_at_upkeep: Option<(PlayerId, u32)>,
+    /// Vesuva just entered: whether to have it enter as a copy of a land is asked before anyone can
+    /// act (like a shock land's life).
+    pub land_copy_pending: bool,
     /// Cast from the top of the library with Bolas's Citadel: its life is paid instead of mana.
     pub citadel_cast: bool,
 }
@@ -1235,6 +1240,9 @@ pub enum Decision {
         cards: Vec<ObjId>,
         max_mv: u32,
     },
+    /// Nahiri's Resolve: `Pick` a nontoken artifact or creature you control to exile until your next
+    /// upkeep (then asked again), or `No` to stop.
+    ExileUntilYourNextUpkeep,
     /// `Pick` one of `cards` (looked at, still on top of your library) to put into your hand
     /// (`to_hand`) or on the bottom; the rest are exiled, playable this turn (Expressive Iteration).
     IterationPick { cards: Vec<ObjId>, to_hand: bool },
@@ -2145,6 +2153,8 @@ impl Game {
             class_level: 0,
             plotted: None,
             shield_counters: 0,
+            return_at_upkeep: None,
+            land_copy_pending: false,
             citadel_cast: false,
         });
         self.zone_list(owner, zone).push(id);
@@ -3771,6 +3781,12 @@ impl Game {
             && max_mv.is_none_or(|m| d.cost.mana_value() <= m)
     }
 
+    /// Nahiri's Resolve: a nontoken artifact or creature.
+    fn nahiri_exilable(&self, c: ObjId) -> bool {
+        let t = self.types_of(c);
+        (t.artifact || t.creature) && !self.is_token(c)
+    }
+
     /// Lonis: a revealed card that may be put onto the battlefield: a nonland permanent card with
     /// mana value at most `max_mv`.
     fn opponents_top_ok(&self, c: ObjId, max_mv: u32) -> bool {
@@ -4911,6 +4927,9 @@ impl Game {
             }
             if def.shock_land {
                 self.obj_mut(id).shock_pending = true;
+            }
+            if def.zones.enters_as_land_copy_tapped {
+                self.obj_mut(id).land_copy_pending = true; // Vesuva
             }
             if def.types.creature {
                 self.fire(
@@ -9783,6 +9802,14 @@ impl Game {
     fn copy_option(&self, clone: ObjId, x: ObjId) -> bool {
         let t = self.types_of(x);
         let d = self.def_of(clone);
+        // Vesuva: a land.
+        if d.zones.enters_as_land_copy_tapped {
+            return t.land;
+        }
+        // Mirrormade: an artifact or an enchantment (not an Aura, which would need something to enchant).
+        if d.zones.copy_artifact_or_enchantment {
+            return (t.artifact || t.enchantment) && !self.def_of(x).aura;
+        }
         // Mockingbird: mana value at most the mana spent to cast it.
         if d.zones.copy_mv_at_most_spent && self.def_of(x).cost.mana_value() > self.obj(clone).mana_spent {
             return false;
@@ -11569,6 +11596,15 @@ impl Game {
                 .filter(|&c| self.is_token(c))
                 .map(Action::Pick)
                 .collect(),
+            Decision::ExileUntilYourNextUpkeep => {
+                let mut v: Vec<Action> = self
+                    .permanents(p)
+                    .filter(|&c| self.nahiri_exilable(c))
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
             Decision::PutFromOpponentsTop { cards, max_mv, .. } => {
                 let mut v: Vec<Action> = cards
                     .iter()
@@ -12199,6 +12235,7 @@ impl Game {
                 let own = self.defs[printed].zones.clone();
                 let zcc = self.obj(card).zcc;
                 let o = self.obj_mut(card);
+                o.tapped |= own.enters_as_land_copy_tapped; // Vesuva enters tapped as the copy
                 o.extra_subtypes.extend(own.copy_adds_subtypes.iter().copied());
                 o.granted = o.granted.with(own.copy_adds_keywords);
                 if own.copy_sacrifice_when_targeted {
@@ -13018,6 +13055,17 @@ impl Game {
                 }
                 self.put_among_rest(victim, rest, false);
             }
+            (Decision::ExileUntilYourNextUpkeep, Action::Pick(c)) => {
+                self.move_to(c, Zone::Exile);
+                if self.obj(c).zone == Zone::Exile {
+                    let zcc = self.obj(c).zcc;
+                    self.obj_mut(c).return_at_upkeep = Some((p, zcc));
+                }
+                if self.permanents(p).any(|x| self.nahiri_exilable(x)) {
+                    self.ask(p, Decision::ExileUntilYourNextUpkeep);
+                }
+            }
+            (Decision::ExileUntilYourNextUpkeep, Action::No) => {}
             (Decision::PutFromOpponentsTop { victim, cards, .. }, Action::No) => {
                 self.put_among_rest(victim, cards, false)
             }
@@ -21006,6 +21054,46 @@ impl Game {
                     });
                 }
             }
+            Effect::PhaseOutSlot(slot) => {
+                if let Some(x) = Game::slot_object(item, legal, slot) {
+                    if self.battlefield.contains(&x) {
+                        let p = self.obj(x).controller;
+                        self.phase_out(x, p);
+                    }
+                }
+            }
+            Effect::PhaseOutCreaturesOfPlayer(slot) => {
+                if let Some(p) = self
+                    .players_for(item, legal, Who::TargetPlayer(slot))
+                    .into_iter()
+                    .next()
+                {
+                    for x in self.creatures(p).collect::<Vec<_>>() {
+                        if self.battlefield.contains(&x) {
+                            self.phase_out(x, p);
+                        }
+                    }
+                }
+            }
+            Effect::ExileYoursUntilYourNextUpkeep => {
+                let p = item.controller;
+                if self.permanents(p).any(|x| self.nahiri_exilable(x)) {
+                    self.ask(p, Decision::ExileUntilYourNextUpkeep);
+                }
+            }
+            Effect::LandmarkTransformTreasures { def } => {
+                if self.obj(src).zone == Zone::Battlefield {
+                    self.obj_mut(src).kind_counters += 1;
+                    if self.obj(src).kind_counters >= 3 && self.defs[self.obj(src).def].back.is_some() {
+                        let o = self.obj_mut(src);
+                        o.kind_counters -= 3;
+                        o.transformed = true;
+                        for _ in 0..3 {
+                            self.create_token(item.controller, def);
+                        }
+                    }
+                }
+            }
             Effect::ReanimateHasteExileAtEnd(slot) => {
                 if let Some(id) = Game::slot_object(item, legal, slot) {
                     if self.obj(id).zone == Zone::Graveyard && self.def_of(id).types.creature {
@@ -21773,6 +21861,20 @@ impl Game {
                 self.ask(owner, Decision::ShockLand { card: c });
                 return;
             }
+            // Vesuva: "You may have this land enter tapped as a copy of any land on the battlefield."
+            let vesuva = self
+                .battlefield
+                .iter()
+                .copied()
+                .find(|&x| self.obj(x).land_copy_pending);
+            if let Some(c) = vesuva {
+                self.obj_mut(c).land_copy_pending = false;
+                if self.battlefield.iter().any(|&x| x != c && self.copy_option(c, x)) {
+                    let owner = self.obj(c).controller;
+                    self.ask(owner, Decision::EnterAsCopy { card: c });
+                    return;
+                }
+            }
         }
         if self.is_over() || !self.put_triggers_on_stack(p) {
             return;
@@ -22294,6 +22396,20 @@ impl Game {
                 self.give_priority(a);
             }
             Step::Upkeep => {
+                // Nahiri's Resolve: "Return those cards ... at the beginning of your next upkeep."
+                let back: Vec<ObjId> = self
+                    .exile
+                    .iter()
+                    .copied()
+                    .filter(|&c| {
+                        let o = self.obj(c);
+                        o.return_at_upkeep.is_some_and(|(q, zcc)| q == a && zcc == o.zcc)
+                    })
+                    .collect();
+                for c in back {
+                    self.obj_mut(c).return_at_upkeep = None;
+                    self.move_to(c, Zone::Battlefield);
+                }
                 // Paradox Haze: "At the beginning of enchanted player's first upkeep each turn, that
                 // player gets an additional upkeep step after this step."
                 let (t, n) = self.upkeeps_this_turn;

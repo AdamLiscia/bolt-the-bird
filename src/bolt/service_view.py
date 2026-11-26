@@ -170,6 +170,7 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         verb = verb or {"ReturnSharingType": "Return to its owner's hand:", "ExileOwnPermanent": "Exile"}.get(d)
         verb = verb or {"UntapOwnCreature": "Untap"}.get(d)
         verb = verb or {"PutFromOpponentsTop": "Put onto the battlefield under your control:"}.get(d)
+        verb = verb or {"ExileUntilYourNextUpkeep": "Exile until your next upkeep:"}.get(d)
         verb = verb or {"CastFromGraveyardThisTurn": "You may cast this turn (then exile it):"}.get(d)
         verb = verb or {"TakeTwoBottomRest": "Put into your hand:"}.get(d)
         verb = verb or {"SacrificeDiscardOrLoseLife": "Sacrifice (or discard, from your hand):"}.get(d)
@@ -215,6 +216,8 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         return "Done choosing"
     if d == "PutFromOpponentsTop" and not yes:
         return "Put none onto the battlefield"
+    if d == "ExileUntilYourNextUpkeep" and not yes:
+        return "Done exiling"
     d3_no = {"SacrificeAnyNumber": "Done sacrificing", "ReturnAnotherPermanentCard": "Return nothing", "BasicsTappedUpTo": "Find nothing", "SignalTheClans": "Done revealing", "BraidsSacrifice": "Don't sacrifice", "BraidsOpponent": "Don't sacrifice (lose 2 life)"}  # fmt: skip
     d3_no["ReturnSharingType"] = "Return nothing"
     d3_no["ReanimateTotalManaValue"] = "Done choosing"

@@ -2202,27 +2202,6 @@ pub enum Effect {
         slot: u8,
         trigger: usize,
     },
-    /// Exile the top card of your library face down (`Object::face_down`; CR 406.3: no player may
-    /// look at it); put it into your hand at the beginning of your next end step (Necropotence),
-    /// see `Game::face_down_to_hand`.
-    ExileTopFaceDownToHandAtYourNextEndStep,
-    /// The creature in slot `from` deals X damage to the target in slot `to`, X the number of
-    /// permanents with subtype `sub` you control, counted on resolution (Dragon Tempest: "it deals X
-    /// damage to any target, where X is the number of Dragons you control"); it deals the damage
-    /// even if it has left the battlefield (last known information).
-    SlotDealsDamagePerSubtypeYouControl {
-        from: u8,
-        to: u8,
-        sub: &'static str,
-    },
-    /// Destroy all nonartifact creatures (Organic Extinction).
-    DestroyAllNonartifactCreatures,
-    /// Put a +1/+1 counter on each other creature you control with this subtype (Camellia, the
-    /// Seedmiser: Squirrels).
-    CountersOnOtherYourSubtype(&'static str),
-    /// Create a token (`def`, printed 0/0) with base power and toughness X/X, X the trigger's
-    /// amount (Metallurgic Summonings: the cast spell's mana value), not counters.
-    CreateTokenXxAmount {
     /// The source deals `n` damage to each untapped creature (Calamity of Cinders).
     DamageEachUntappedCreature(i32),
     /// Destroy all creatures without this subtype (Realm-Cloaked Giant's Cast Off: Giant).
@@ -2265,11 +2244,6 @@ pub enum Effect {
     },
     /// Return all instant and sorcery cards from your graveyard to your hand (Metallurgic
     /// Summonings).
-    ReturnInstantsAndSorceriesFromGraveyard,
-    /// Roll a d20; then put any number of creature cards with total mana value X or less from
-    /// graveyards onto the battlefield under your control, X the result (Ancient Brass Dragon),
-    /// chosen one at a time on resolution (not targeted) as `Decision::ReanimateTotalManaValue`.
-    RollD20ReanimateTotalManaValue,
     ReturnAllInstantsAndSorceriesToHand,
     /// Mill `n`; you may put a permanent card from among them into your hand; then if you control
     /// a Squirrel or returned a Squirrel card, create a `food` token (Cache Grab), as
@@ -2299,6 +2273,51 @@ pub enum Effect {
     /// Put a shield counter on the creature in `slot`; you control it for as long as it has a
     /// shield counter (Shield Broker). A commander isn't affected (its filter can't exclude it).
     ShieldCounterAndControlWhileShielded(u8),
+    /// "Exile any number of nontoken artifacts and/or creatures you control. Return those cards to
+    /// the battlefield under their owner's control at the beginning of your next upkeep." (Nahiri's
+    /// Resolve), one at a time as `Decision::ExileUntilYourNextUpkeep`.
+    ExileYoursUntilYourNextUpkeep,
+    /// Put a landmark counter on the source (its `kind_counters`); then with three or more, remove
+    /// three, transform it, and create three `def` tokens (Treasure Map).
+    LandmarkTransformTreasures {
+        def: usize,
+    },
+    /// The permanent in `slot` phases out until its controller's next untap step (Galadriel's
+    /// Dismissal).
+    PhaseOutSlot(u8),
+    /// Each creature the player in target `slot` controls phases out until that player's next untap
+    /// step (Galadriel's Dismissal, kicked).
+    PhaseOutCreaturesOfPlayer(u8),
+    /// Exile the top card of your library face down (`Object::face_down`; CR 406.3: no player may
+    /// look at it); put it into your hand at the beginning of your next end step (Necropotence),
+    /// see `Game::face_down_to_hand`.
+    ExileTopFaceDownToHandAtYourNextEndStep,
+    /// The creature in slot `from` deals X damage to the target in slot `to`, X the number of
+    /// permanents with subtype `sub` you control, counted on resolution (Dragon Tempest: "it deals X
+    /// damage to any target, where X is the number of Dragons you control"); it deals the damage
+    /// even if it has left the battlefield (last known information).
+    SlotDealsDamagePerSubtypeYouControl {
+        from: u8,
+        to: u8,
+        sub: &'static str,
+    },
+    /// Destroy all nonartifact creatures (Organic Extinction).
+    DestroyAllNonartifactCreatures,
+    /// Put a +1/+1 counter on each other creature you control with this subtype (Camellia, the
+    /// Seedmiser: Squirrels).
+    CountersOnOtherYourSubtype(&'static str),
+    /// Create a token (`def`, printed 0/0) with base power and toughness X/X, X the trigger's
+    /// amount (Metallurgic Summonings: the cast spell's mana value), not counters.
+    CreateTokenXxAmount {
+        def: usize,
+    },
+    /// Return all instant and sorcery cards from your graveyard to your hand (Metallurgic
+    /// Summonings).
+    ReturnInstantsAndSorceriesFromGraveyard,
+    /// Roll a d20; then put any number of creature cards with total mana value X or less from
+    /// graveyards onto the battlefield under your control, X the result (Ancient Brass Dragon),
+    /// chosen one at a time on resolution (not targeted) as `Decision::ReanimateTotalManaValue`.
+    RollD20ReanimateTotalManaValue,
     /// Create a `def` token for each nontoken creature that died this turn (Gadrak).
     CreateTokenPerNontokenCreatureDiedThisTurn { def: usize },
     /// Council's dilemma, time or money (Expropriate): each player votes, you first, as

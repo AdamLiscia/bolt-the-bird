@@ -1993,6 +1993,11 @@ pub struct ZonesExt {
     pub copy_mv_at_most_spent: bool,
     /// With `shock_land`: the life it asks for instead of 2 (Volcanic Fissure: 3).
     pub shock_life: i32,
+    /// With `enter_as_copy`: it may copy an artifact or a non-Aura enchantment only (Mirrormade).
+    pub copy_artifact_or_enchantment: bool,
+    /// "You may have this land enter tapped as a copy of any land on the battlefield." (Vesuva): asked
+    /// as it enters, however it enters (`Object::land_copy_pending`).
+    pub enters_as_land_copy_tapped: bool,
 }
 
 #[cfg(test)]
