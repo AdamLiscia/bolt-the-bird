@@ -2318,6 +2318,21 @@ pub enum Effect {
     /// graveyards onto the battlefield under your control, X the result (Ancient Brass Dragon),
     /// chosen one at a time on resolution (not targeted) as `Decision::ReanimateTotalManaValue`.
     RollD20ReanimateTotalManaValue,
+    /// Create a `def` token for each nontoken creature that died this turn (Gadrak).
+    CreateTokenPerNontokenCreatureDiedThisTurn {
+        def: usize,
+    },
+    /// Council's dilemma, time or money (Expropriate): each player votes, you first, as
+    /// `Decision::ExpropriateVote`; each time vote is an extra turn after this one, and for each
+    /// money vote you choose a permanent the voter owns and gain control of it.
+    Expropriate,
+    /// The player in `slot` scries X, X the spell's X (Kozilek's Command, before its draw).
+    ScryXTargetPlayer(u8),
+    /// The player in `slot` creates X `def` tokens, X the spell's X (Kozilek's Command's Spawn).
+    TargetPlayerCreatesXTokens {
+        slot: u8,
+        def: usize,
+    },
     /// Each player, the active player first, sacrifices a nontoken creature of their choice
     /// (Accursed Marauder), as `Decision::SacrificeNontokenCreatureEach`.
     EachPlayerSacrificesNontokenCreature,
