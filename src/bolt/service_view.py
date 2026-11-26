@@ -143,7 +143,9 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         return None
     if kind == "Pick":
         verb = {"SacrificeCreatures": "Sacrifice", "SacrificeAnother": "Sacrifice", "Search": "Take",
-                "LookPick": "Take", "KeepOfType": "Keep", "ScryOrder": "Put on top:", "GenesisPick": "Put onto the battlefield:", "PutPicksOntoBattlefield": "Put onto the battlefield:",
+                "LookPick": "Take", "KeepOfType": "Keep", "ScryOrder": "Put on top:", "GenesisPick": "Put onto the battlefield:", "PutPicksOntoBattlefield": "Put onto the battlefield:", "LandFromHandTapped": "Put onto the battlefield tapped:",
+                "DistributeCounters": "Put a +1/+1 counter on", "ManifestDread": "Manifest", "TurnFaceUp": "Turn face up:",
+                "PickVoidCard": "Play free this turn:",
                 "PickDiscard": "Make them discard", "EnterAsCopy": f"{card or 'It'} enters as a copy of"}.get(d)  # fmt: skip
         verb = verb or {"CreaturesFromHandUpTo": "Put onto the battlefield:", "ReturnOwnPermanent": "Return", "SearchToGraveyardCounter": "Put into your graveyard:"}.get(d)  # fmt: skip
         verb = verb or {"KeepNonlandOfType": "Keep", "HandToBottom": "Put on the bottom:", "SacrificeAnyNumber": "Sacrifice", "SacrificeCreatureOrPlaneswalkerEach": "Sacrifice", "ReturnAnotherPermanentCard": "Return to your hand:", "BasicsTappedUpTo": "Put onto the battlefield tapped:", "SignalTheClans": "Reveal", "BraidsSacrifice": "Sacrifice", "BraidsOpponent": "Sacrifice"}.get(d)  # fmt: skip
@@ -166,6 +168,8 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         "ShockLand": (f"Pay 2 life: {subject} enters untapped", f"{subject} enters tapped"),
         "CommanderToCommandZone": (f"Move {subject} to the command zone", f"Leave {subject} there"),
         "ChoosePile": ("Choose pile A", "Choose pile B"),
+        "PayToStop": (f"Pay {dec.get('cost', '')}", "Don't pay"),
+        "PayUpkeep": (f"Pay the upkeep {dec.get('cost', '')}", f"Don't pay (sacrifice {subject or src})"),
         "MayShuffle": ("Shuffle your library", "Don't shuffle"),
         "TaintedPact": ("Put it into your hand", "Exile the next card"),
     }

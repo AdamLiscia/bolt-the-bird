@@ -1608,6 +1608,32 @@ pub enum Effect {
     MillReturnCreatureToHand(u8),
     /// You may put a creature card from your hand onto the battlefield (Monster Manual).
     MayPutCreatureFromHand,
+    /// Counter the spell in `slot`; if it's countered this way, exile it instead of putting it into
+    /// its owner's graveyard (Force of Negation).
+    CounterExile(u8),
+    /// Double the number of each kind of counter on the permanent in `slot` (Deepglow Skate).
+    DoubleEachCounter(u8),
+    /// Until end of turn, the source becomes a creature of this type with this base power and
+    /// toughness and these keywords (Bogardan Dragonheart: a 4/4 Dragon, flying and haste).
+    BecomeSubtypeUntilEot {
+        subtype: &'static str,
+        power: i32,
+        toughness: i32,
+        keywords: crate::Keywords,
+    },
+    /// Return the creature card in `slot` from your graveyard to the battlefield; it gains haste,
+    /// is exiled at the beginning of the next end step, and is exiled if it would leave the
+    /// battlefield (Whip of Erebos: as unearth, `Object::unearthed`).
+    ReanimateUnearthed(u8),
+    /// The next time you would draw a card this turn, the source deals `n` damage to the target in
+    /// `slot` instead (Words of War; the target is chosen as the ability is activated).
+    NextDrawDealsDamage {
+        slot: u8,
+        n: i32,
+    },
+    /// Choose an exiled card an opponent owns with a void counter on it; you may play it this turn
+    /// without paying its mana cost (Dauthi Voidwalker).
+    PlayVoidCardFree,
     /// Draw a card for each creature you control of this color, WUBRG index (Regal Force: green).
     DrawPerColoredCreatureYouControl(u8),
     /// Regenerate each creature you control (Loxodon Hierarch).
