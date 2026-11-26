@@ -1002,6 +1002,38 @@ pub enum Decision {
     /// `Pick` a card in your library to put into your graveyard (then shuffle), or `No`; an instant
     /// or sorcery card puts a +1/+1 counter on `source` (Oriq Loremage).
     SearchToGraveyardCounter { source: ObjId },
+    /// `Target` the new target for target `slot` of the single-target spell `items[item]`; it must
+    /// change (Imp's Mischief).
+    ChangeTheTarget { item: usize, slot: u8 },
+    /// `Mode(i)`: change target `i` of `items[item]` to `source` (Spellskite).
+    TargetToSource { item: usize, source: ObjId },
+    /// `Pick` the nonland permanent of type `ty` to keep (0 artifact, 1 creature, 2 enchantment,
+    /// 3 planeswalker); `kept`: both players' so far; `last`: the second player is choosing
+    /// (Cataclysmic Gearhulk).
+    KeepNonlandOfType { ty: u8, kept: Vec<ObjId>, last: bool },
+    /// `Pick` the next card from your hand to put on the bottom of your library; then draw `n`
+    /// (Teferi's Puzzle Box).
+    HandToBottom { n: u8 },
+    /// `Pick` another permanent you control to sacrifice, or `No` to stop and draw `n` (God-Eternal
+    /// Bontu).
+    SacrificeAnyNumber { source: ObjId, n: u8 },
+    /// `Pick` a creature or planeswalker you control to sacrifice; `yours`: the caster's choice, if
+    /// the opponent is choosing (Deadly Brew).
+    SacrificeCreatureOrPlaneswalkerEach { caster: PlayerId, yours: Option<ObjId> },
+    /// `Pick` a permanent card in your graveyard other than `except` to return to your hand, or `No`
+    /// (Deadly Brew).
+    ReturnAnotherPermanentCard { except: ObjId },
+    /// `Pick` a basic land card to put onto the battlefield tapped (`left` more), or `No`; then
+    /// `next` searches (Wave of Vitriol).
+    BasicsTappedUpTo { left: u8, next: Option<(PlayerId, u8)> },
+    /// `Pick` a creature card in your library to reveal (`picked` so far, up to three), or `No`
+    /// (Signal the Clans).
+    SignalTheClans { picked: Vec<ObjId> },
+    /// `Pick` a permanent you control to sacrifice, or `No` (Braids, Arisen Nightmare).
+    BraidsSacrifice,
+    /// `Pick` a permanent you control sharing a card type with `types` to sacrifice, or `No`: you
+    /// lose 2 life and `controller` draws a card (Braids, Arisen Nightmare).
+    BraidsOpponent { controller: PlayerId, types: Types },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -4365,6 +4397,22 @@ impl Game {
                         && self.types_of(x).creature
                 }
             });
+        }
+        if f.single_target {
+            let Some(n) = self.targeted_item(id) else {
+                return false;
+            };
+            let it = &self.items[n];
+            let real = self
+                .ability_of(it)
+                .targets
+                .iter()
+                .take(it.targets.len())
+                .filter(|t| !t.triggering)
+                .count();
+            if real != 1 {
+                return false;
+            }
         }
         true
     }
@@ -8391,6 +8439,9 @@ impl Game {
                     SearchFor::CreaturePowerAtMost(n) => d.types.creature && d.power <= n,
                     SearchFor::CreatureMvExactly(mv) => d.types.creature && d.cost.mana_value() == mv,
                     SearchFor::ArtifactManaValue(mv) => d.types.artifact && d.cost.mana_value() == mv,
+                    SearchFor::ArtifactWithManaAbilityOrBasicLand => {
+                        (d.types.basic && d.types.land) || (d.types.artifact && Game::has_mana_ability(d))
+                    }
                 }
             })
             .collect()
@@ -8992,6 +9043,84 @@ impl Game {
                     .library
                     .iter()
                     .copied()
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
+            Decision::ChangeTheTarget { item, slot } => self
+                .new_target_options(*item, *slot as usize)
+                .into_iter()
+                .map(Action::Target)
+                .collect(),
+            Decision::TargetToSource { item, source } => self
+                .slots_to_source(*item, *source)
+                .into_iter()
+                .map(Action::Mode)
+                .collect(),
+            Decision::KeepNonlandOfType { ty, .. } => self
+                .nonland_of_type(p, *ty)
+                .into_iter()
+                .map(Action::Pick)
+                .collect(),
+            Decision::HandToBottom { .. } => hand.iter().copied().map(Action::Pick).collect(),
+            Decision::SacrificeAnyNumber { source, .. } => {
+                let mut v: Vec<Action> = self
+                    .permanents(p)
+                    .filter(|&x| x != *source && !self.cant_be_sacrificed(x))
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
+            Decision::SacrificeCreatureOrPlaneswalkerEach { .. } => self
+                .creatures_or_planeswalkers_to_sacrifice(p)
+                .into_iter()
+                .map(Action::Pick)
+                .collect(),
+            Decision::ReturnAnotherPermanentCard { except } => {
+                let mut v: Vec<Action> = self.players[p]
+                    .graveyard
+                    .iter()
+                    .copied()
+                    .filter(|&c| c != *except && self.def_of(c).types.is_permanent())
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
+            Decision::BasicsTappedUpTo { .. } => {
+                let mut v: Vec<Action> = self
+                    .library_matches(p, SearchFor::BasicLand)
+                    .into_iter()
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
+            Decision::SignalTheClans { picked } => {
+                let mut v: Vec<Action> = self
+                    .library_matches(p, SearchFor::CreatureMvAtLeast(0))
+                    .into_iter()
+                    .filter(|c| !picked.contains(c))
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
+            Decision::BraidsSacrifice => {
+                let mut v: Vec<Action> = self
+                    .braids_options(p, None)
+                    .into_iter()
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
+            Decision::BraidsOpponent { types, .. } => {
+                let mut v: Vec<Action> = self
+                    .braids_options(p, Some(*types))
+                    .into_iter()
                     .map(Action::Pick)
                     .collect();
                 v.push(Action::No);
@@ -10036,6 +10165,90 @@ impl Game {
                 }
                 self.shuffle_library(p);
             }
+            (Decision::ChangeTheTarget { item, slot }, Action::Target(t)) => {
+                let chosen = match t {
+                    Target::Player(q) => Chosen::Player(q),
+                    Target::Object(x) => Chosen::Object(x, self.obj(x).zcc),
+                };
+                self.items[item].targets[slot as usize] = chosen;
+            }
+            (Decision::TargetToSource { item, source }, Action::Mode(slot)) => {
+                let zcc = self.obj(source).zcc;
+                self.items[item].targets[slot as usize] = Chosen::Object(source, zcc);
+            }
+            (Decision::KeepNonlandOfType { ty, mut kept, last }, Action::Pick(c)) => {
+                if !kept.contains(&c) {
+                    kept.push(c);
+                }
+                self.next_keep_nonland(p, ty + 1, kept, last);
+            }
+            (Decision::HandToBottom { n }, Action::Pick(c)) => {
+                self.put_on_bottom(c);
+                self.next_hand_to_bottom(p, n);
+            }
+            (Decision::SacrificeAnyNumber { source, n }, Action::Pick(c)) => {
+                self.move_to(c, Zone::Graveyard);
+                let more = self
+                    .permanents(p)
+                    .any(|x| x != source && !self.cant_be_sacrificed(x));
+                if more {
+                    self.ask(p, Decision::SacrificeAnyNumber { source, n: n + 1 });
+                } else {
+                    for _ in 0..=n {
+                        self.draw(p);
+                    }
+                }
+            }
+            (Decision::SacrificeAnyNumber { n, .. }, _) => {
+                for _ in 0..n {
+                    self.draw(p);
+                }
+            }
+            (Decision::SacrificeCreatureOrPlaneswalkerEach { caster, yours }, Action::Pick(c)) => {
+                self.brew_chosen(caster, p, yours, Some(c));
+            }
+            (Decision::ReturnAnotherPermanentCard { .. }, Action::Pick(c)) => self.move_to(c, Zone::Hand),
+            (Decision::ReturnAnotherPermanentCard { .. }, _) => {}
+            (Decision::BasicsTappedUpTo { left, next }, Action::Pick(c)) => {
+                self.move_to(c, Zone::Battlefield);
+                self.obj_mut(c).tapped = true;
+                if left > 1 && !self.library_matches(p, SearchFor::BasicLand).is_empty() {
+                    self.ask(p, Decision::BasicsTappedUpTo { left: left - 1, next });
+                } else {
+                    self.basics_search_done(p, next);
+                }
+            }
+            (Decision::BasicsTappedUpTo { next, .. }, _) => self.basics_search_done(p, next),
+            (Decision::SignalTheClans { mut picked }, Action::Pick(c)) => {
+                picked.push(c);
+                let more = self
+                    .library_matches(p, SearchFor::CreatureMvAtLeast(0))
+                    .iter()
+                    .any(|x| !picked.contains(x));
+                if picked.len() < 3 && more {
+                    self.ask(p, Decision::SignalTheClans { picked });
+                } else {
+                    self.signal_the_clans_done(p, picked);
+                }
+            }
+            (Decision::SignalTheClans { picked }, _) => self.signal_the_clans_done(p, picked),
+            (Decision::BraidsSacrifice, Action::Pick(c)) => {
+                let types = self.types_of(c);
+                self.move_to(c, Zone::Graveyard);
+                let q = opponent(p);
+                if self.braids_options(q, Some(types)).is_empty() {
+                    self.lose_life(q, 2);
+                    self.draw(p);
+                } else {
+                    self.ask(q, Decision::BraidsOpponent { controller: p, types });
+                }
+            }
+            (Decision::BraidsSacrifice, _) => {}
+            (Decision::BraidsOpponent { .. }, Action::Pick(c)) => self.move_to(c, Zone::Graveyard),
+            (Decision::BraidsOpponent { controller, .. }, _) => {
+                self.lose_life(p, 2);
+                self.draw(controller);
+            }
             (d, a) => unreachable!("legal action {a:?} unhandled for {d:?}"),
         }
         if self.decision.is_none() {
@@ -10108,6 +10321,200 @@ impl Game {
             let card = lib.remove(pos);
             lib.push(card);
         }
+    }
+
+    /// Whether a card has a mana ability: a mana source (of any kind the definition has), a filter
+    /// or paid mana ability, sacrifice for mana, or an activated ability that adds mana (Moonsilver
+    /// Key).
+    fn has_mana_ability(d: &CardDef) -> bool {
+        d.mana.is_some()
+            || d.paid_mana.is_some()
+            || d.filter_mana.is_some()
+            || d.sac_for_mana
+            || d.vivid_mana
+            || d.mana_of_chosen_color
+            || d.mana_per_subtype.is_some()
+            || d.mana_commander_identity
+            || d.mana_opponent_land_colors
+            || d.mana_own_land_colors
+            || d.mana_legendary_colors
+            || d.plaza_mana
+            || d.mana_per_creature
+            || d.mana_per_enchantment
+            || d.activated.iter().any(|a| {
+                a.ability.effects.iter().any(|e| {
+                    matches!(
+                        e,
+                        Effect::AddMana { .. }
+                            | Effect::AddManaAnyColor
+                            | Effect::AddColorless { .. }
+                            | Effect::AddManaEither { .. }
+                            | Effect::AddManaAnyColorsX
+                            | Effect::AddAnyColorsGreatestPower
+                            | Effect::AddRedOrGreenPerCreature
+                    )
+                })
+            })
+    }
+
+    /// The target slots of `items[item]` that could change to `source` (Spellskite).
+    fn slots_to_source(&self, item: usize, source: ObjId) -> Vec<u8> {
+        if self.obj(source).zone != Zone::Battlefield || item >= self.items.len() {
+            return Vec::new();
+        }
+        (0..self.items[item].targets.len())
+            .filter(|&k| self.new_target_options(item, k).contains(&Target::Object(source)))
+            .map(|k| k as u8)
+            .collect()
+    }
+
+    /// `p`'s nonland permanents of type `ty` (0 artifact, 1 creature, 2 enchantment, 3 planeswalker).
+    fn nonland_of_type(&self, p: PlayerId, ty: u8) -> Vec<ObjId> {
+        self.permanents(p)
+            .filter(|&x| {
+                let t = self.types_of(x);
+                !t.land
+                    && match ty {
+                        0 => t.artifact,
+                        1 => t.creature,
+                        2 => t.enchantment,
+                        _ => t.planeswalker,
+                    }
+            })
+            .collect()
+    }
+
+    /// Cataclysmic Gearhulk: `p` chooses one of each type from `ty` on (a lone choice is made for
+    /// them); after the second player, each player sacrifices the other nonland permanents.
+    fn next_keep_nonland(&mut self, p: PlayerId, mut ty: u8, mut kept: Vec<ObjId>, last: bool) {
+        while ty < 4 {
+            let options = self.nonland_of_type(p, ty);
+            if options.len() > 1 {
+                self.ask(p, Decision::KeepNonlandOfType { ty, kept, last });
+                return;
+            }
+            if options.len() == 1 && !kept.contains(&options[0]) {
+                kept.push(options[0]);
+            }
+            ty += 1;
+        }
+        if !last {
+            self.next_keep_nonland(opponent(p), 0, kept, true);
+            return;
+        }
+        let doomed: Vec<ObjId> = self
+            .battlefield
+            .iter()
+            .copied()
+            .filter(|&x| !self.types_of(x).land && !kept.contains(&x) && !self.cant_be_sacrificed(x))
+            .collect();
+        for x in doomed {
+            self.move_to(x, Zone::Graveyard);
+        }
+    }
+
+    /// Puts a card on the bottom of its owner's library.
+    fn put_on_bottom(&mut self, c: ObjId) {
+        let owner = self.obj(c).owner;
+        self.move_to(c, Zone::Library);
+        let lib = &mut self.players[owner].library;
+        if let Some(pos) = lib.iter().position(|&x| x == c) {
+            let card = lib.remove(pos);
+            lib.insert(0, card);
+        }
+    }
+
+    /// Teferi's Puzzle Box: `p`'s hand goes to the bottom one card at a time (the last one without
+    /// asking), then `p` draws `n`.
+    fn next_hand_to_bottom(&mut self, p: PlayerId, n: u8) {
+        match self.players[p].hand.len() {
+            0 => {
+                for _ in 0..n {
+                    self.draw(p);
+                }
+            }
+            1 => {
+                let c = self.players[p].hand[0];
+                self.put_on_bottom(c);
+                self.next_hand_to_bottom(p, n);
+            }
+            _ => self.ask(p, Decision::HandToBottom { n }),
+        }
+    }
+
+    fn creatures_or_planeswalkers_to_sacrifice(&self, p: PlayerId) -> Vec<ObjId> {
+        self.permanents(p)
+            .filter(|&c| {
+                (self.types_of(c).creature || self.types_of(c).planeswalker) && !self.cant_be_sacrificed(c)
+            })
+            .collect()
+    }
+
+    /// Deadly Brew: `q` chooses a creature or planeswalker (a lone one is chosen for them).
+    fn brew_choose(&mut self, caster: PlayerId, q: PlayerId, yours: Option<ObjId>) {
+        let options = self.creatures_or_planeswalkers_to_sacrifice(q);
+        match options.len() {
+            0 => self.brew_chosen(caster, q, yours, None),
+            1 => self.brew_chosen(caster, q, yours, Some(options[0])),
+            _ => self.ask(q, Decision::SacrificeCreatureOrPlaneswalkerEach { caster, yours }),
+        }
+    }
+
+    /// Deadly Brew: after the caster, the opponent chooses; then both sacrifice, and if the caster
+    /// sacrificed one, they may return another permanent card.
+    fn brew_chosen(&mut self, caster: PlayerId, q: PlayerId, yours: Option<ObjId>, pick: Option<ObjId>) {
+        if q == caster {
+            self.brew_choose(caster, opponent(caster), pick);
+            return;
+        }
+        for x in [yours, pick].into_iter().flatten() {
+            self.move_to(x, Zone::Graveyard);
+        }
+        if let Some(y) = yours {
+            let any = self.players[caster]
+                .graveyard
+                .iter()
+                .any(|&c| c != y && self.def_of(c).types.is_permanent());
+            if any {
+                self.ask(caster, Decision::ReturnAnotherPermanentCard { except: y });
+            }
+        }
+    }
+
+    /// Wave of Vitriol: `p` shuffles, then the next player searches.
+    fn basics_search_done(&mut self, p: PlayerId, next: Option<(PlayerId, u8)>) {
+        self.shuffle_library(p);
+        if let Some((q, n)) = next {
+            self.ask(q, Decision::BasicsTappedUpTo { left: n, next: None });
+        }
+    }
+
+    /// Signal the Clans: three revealed cards with different names: one at random to the hand.
+    fn signal_the_clans_done(&mut self, p: PlayerId, picked: Vec<ObjId>) {
+        let names: Vec<&str> = picked.iter().map(|&c| self.def_of(c).name.as_str()).collect();
+        let distinct =
+            names.len() == 3 && names[0] != names[1] && names[0] != names[2] && names[1] != names[2];
+        if distinct {
+            let k = self.rng.below(3);
+            self.move_to(picked[k], Zone::Hand);
+        }
+        self.shuffle_library(p);
+    }
+
+    /// Braids: `p`'s permanents that could be sacrificed: any artifact, creature, enchantment, land
+    /// or planeswalker, or with `types` only one sharing a card type with them.
+    fn braids_options(&self, p: PlayerId, types: Option<Types>) -> Vec<ObjId> {
+        let kinds = |t: Types| [t.artifact, t.creature, t.enchantment, t.land, t.planeswalker];
+        self.permanents(p)
+            .filter(|&x| !self.cant_be_sacrificed(x))
+            .filter(|&x| {
+                let mine = kinds(self.types_of(x));
+                match types {
+                    None => mine.iter().any(|&b| b),
+                    Some(t) => mine.iter().zip(kinds(t)).any(|(&a, b)| a && b),
+                }
+            })
+            .collect()
     }
 
     fn players_for(&self, item: &StackItem, legal: &[bool], who: Who) -> Vec<PlayerId> {
@@ -15156,6 +15563,141 @@ impl Game {
                     }
                 }
             }
+            Effect::SacrificeSource => {
+                if self.obj(src).zone == Zone::Battlefield && !self.cant_be_sacrificed(src) {
+                    self.move_to(src, Zone::Graveyard);
+                }
+            }
+            Effect::StopUnlessCondition => {
+                if !self.condition_holds(self.ability_of(item), item.controller, src) {
+                    self.resolving.as_mut().expect("resolving").remaining.clear();
+                }
+            }
+            Effect::DestroyControllerMayFetchLandWithBasicType(slot) => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    let p = self.obj(id).controller;
+                    self.destroy(id);
+                    self.ask(
+                        p,
+                        Decision::Search {
+                            what: SearchFor::LandTypes {
+                                types: [true; 5],
+                                basic: false,
+                            },
+                            to: SearchTo::Battlefield { tapped: false },
+                            left: 1,
+                        },
+                    );
+                }
+            }
+            Effect::DestroyDamageController { slot, n } => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    let p = self.obj(id).controller;
+                    self.destroy(id);
+                    self.deal_damage(src, Target::Player(p), n);
+                }
+            }
+            Effect::ChangeTheTarget(slot) => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    if let Some(i) = self.targeted_item(id) {
+                        let it = &self.items[i];
+                        let a = self.ability_of(it);
+                        let real =
+                            (0..it.targets.len()).find(|&k| a.targets.get(k).is_some_and(|f| !f.triggering));
+                        if let Some(k) = real {
+                            if !self.new_target_options(i, k).is_empty() {
+                                self.ask(
+                                    item.controller,
+                                    Decision::ChangeTheTarget {
+                                        item: i,
+                                        slot: k as u8,
+                                    },
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+            Effect::LoseLifeSlotSpellManaValue(slot) => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    let mv = self.def_of(id).cost.with_x(self.obj(id).x).mana_value() as i32;
+                    self.lose_life(item.controller, mv);
+                }
+            }
+            Effect::ChangeATargetToSource(slot) => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    if let Some(i) = self.targeted_item(id) {
+                        let slots = self.slots_to_source(i, src);
+                        match slots.len() {
+                            0 => {}
+                            1 => {
+                                let zcc = self.obj(src).zcc;
+                                self.items[i].targets[slots[0] as usize] = Chosen::Object(src, zcc);
+                            }
+                            _ => self.ask(item.controller, Decision::TargetToSource { item: i, source: src }),
+                        }
+                    }
+                }
+            }
+            Effect::EachKeepsOneNonlandOfEachType => {
+                let first = self.active;
+                self.next_keep_nonland(first, 0, Vec::new(), false);
+            }
+            Effect::HandToBottomDrawThatMany(who) => {
+                for p in self.players_for(item, legal, who) {
+                    let n = self.players[p].hand.len() as u8;
+                    self.next_hand_to_bottom(p, n);
+                }
+            }
+            Effect::SacrificeOthersDrawThatMany => {
+                let p = item.controller;
+                if self
+                    .permanents(p)
+                    .any(|x| x != src && !self.cant_be_sacrificed(x))
+                {
+                    self.ask(p, Decision::SacrificeAnyNumber { source: src, n: 0 });
+                }
+            }
+            Effect::EachSacrificeCreatureOrPlaneswalkerMayReturnOther => {
+                let p = item.controller;
+                self.brew_choose(p, p, None);
+            }
+            Effect::WaveOfVitriol => {
+                let mut lands = [0u8; 2];
+                let doomed: Vec<ObjId> = self
+                    .battlefield
+                    .iter()
+                    .copied()
+                    .filter(|&x| {
+                        let t = self.types_of(x);
+                        (t.artifact || t.enchantment || (t.land && !t.basic)) && !self.cant_be_sacrificed(x)
+                    })
+                    .collect();
+                for x in doomed {
+                    let (q, land) = (self.obj(x).controller, self.types_of(x).land);
+                    self.move_to(x, Zone::Graveyard);
+                    if land {
+                        lands[q] = lands[q].saturating_add(1);
+                    }
+                }
+                let p = item.controller;
+                let q = opponent(p);
+                let next = (lands[q] > 0).then_some((q, lands[q]));
+                if lands[p] > 0 {
+                    self.ask(p, Decision::BasicsTappedUpTo { left: lands[p], next });
+                } else if let Some((q, n)) = next {
+                    self.ask(q, Decision::BasicsTappedUpTo { left: n, next: None });
+                }
+            }
+            Effect::SignalTheClans => {
+                self.ask(item.controller, Decision::SignalTheClans { picked: Vec::new() });
+            }
+            Effect::BraidsEndStep => {
+                let p = item.controller;
+                if !self.braids_options(p, None).is_empty() {
+                    self.ask(p, Decision::BraidsSacrifice);
+                }
+            }
         }
     }
 
@@ -15229,6 +15771,9 @@ impl Game {
             Some(Condition::OpponentControlsMoreLands) => {
                 let lands = |q: PlayerId| self.permanents(q).filter(|&x| self.types_of(x).land).count();
                 lands(opponent(controller)) > lands(controller)
+            }
+            Some(Condition::OpponentControlsCreaturesAtLeast(n)) => {
+                self.creatures(opponent(controller)).count() >= *n as usize
             }
             Some(Condition::Both(a, b)) => {
                 let one = |c: &Condition| Ability {

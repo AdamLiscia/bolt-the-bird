@@ -49,5 +49,24 @@ def test_lane_d3_decisions_read_as_their_moves():
     assert label({"kind": "MayShuffle"}, "No", 0) == "Don't shuffle"
 
 
+def test_lane_d3_batch_5_decisions_read_as_their_moves():
+    pick = lambda d, n: sv._decision_label(d, "Pick", 0, n)  # noqa: E731
+    assert pick({"kind": "KeepNonlandOfType", "ty": 0}, "Sol Ring") == "Keep Sol Ring"
+    assert pick({"kind": "HandToBottom", "n": 3}, "Opt") == "Put on the bottom: Opt"
+    assert pick({"kind": "SacrificeAnyNumber", "n": 0}, "Sol Ring") == "Sacrifice Sol Ring"
+    assert label({"kind": "SacrificeAnyNumber", "n": 1}, "No", 0) == "Done sacrificing"
+    assert pick({"kind": "SacrificeCreatureOrPlaneswalkerEach"}, "Grizzly Bears") == "Sacrifice Grizzly Bears"
+    assert pick({"kind": "ReturnAnotherPermanentCard"}, "Sol Ring") == "Return to your hand: Sol Ring"
+    assert label({"kind": "ReturnAnotherPermanentCard"}, "No", 0) == "Return nothing"
+    assert pick({"kind": "BasicsTappedUpTo", "left": 2}, "Forest") == "Put onto the battlefield tapped: Forest"
+    assert label({"kind": "BasicsTappedUpTo", "left": 2}, "No", 0) == "Find nothing"
+    assert pick({"kind": "SignalTheClans"}, "Merfolk Looter") == "Reveal Merfolk Looter"
+    assert label({"kind": "SignalTheClans"}, "No", 0) == "Done revealing"
+    assert pick({"kind": "BraidsSacrifice"}, "Sol Ring") == "Sacrifice Sol Ring"
+    assert label({"kind": "BraidsSacrifice"}, "No", 0) == "Don't sacrifice"
+    assert label({"kind": "BraidsOpponent"}, "No", 0) == "Don't sacrifice (lose 2 life)"
+    assert label({"kind": "TargetToSource"}, "Mode", 0) == "Change target 1 to this creature"
+
+
 def test_an_unknown_decision_keeps_the_generic_label():
     assert label({"kind": "SomethingNew"}, "Mode", 0) is None

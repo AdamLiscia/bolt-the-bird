@@ -2127,3 +2127,365 @@ fn volt_charge_deals_3_and_proliferates() {
     assert_eq!(g.players[1].life, 37);
     assert_eq!(g.obj(looter).counters, 2);
 }
+
+// ---- Core theme d3, batch 5 ----
+
+/// Passes priority (declaring no attackers) until a decision comes up, at most `limit` steps.
+fn pass_until_decision(g: &mut Game, limit: usize) {
+    for _ in 0..limit {
+        if matches!(g.pending, Pending::Decide(_)) {
+            return;
+        }
+        let legal = g.legal_actions();
+        let a = if legal.contains(&Action::PassPriority) {
+            Action::PassPriority
+        } else if legal.contains(&Action::FinishAttacks) {
+            Action::FinishAttacks
+        } else {
+            legal[0]
+        };
+        act(g, a);
+    }
+    panic!("no decision came up");
+}
+
+#[test]
+fn cataclysmic_gearhulk_each_player_keeps_one_nonland_of_each_type() {
+    let mut g = table();
+    let ring = put(&mut g, 0, "Sol Ring");
+    let stone = put(&mut g, 0, "Mind Stone");
+    let elves = put(&mut g, 0, "Llanowar Elves");
+    let their_ring = put(&mut g, 1, "Sol Ring");
+    let study = put(&mut g, 1, "Underworld Dreams");
+    let looter = put(&mut g, 1, "Merfolk Looter");
+    let mystic = put(&mut g, 1, "Elvish Mystic");
+    let gh = hand(&mut g, 0, "Cataclysmic Gearhulk");
+    // You: the artifact (Sol Ring) and the creature (itself); the opponent: the creature (Looter);
+    // their lone artifact and enchantment are chosen for them.
+    play(
+        &mut g,
+        gh,
+        false,
+        &[],
+        &[Action::Pick(ring), Action::Pick(gh), Action::Pick(looter)],
+    );
+    let zone = |x: ObjId| g.obj(x).zone;
+    assert_eq!(
+        (zone(ring), zone(gh), zone(stone), zone(elves)),
+        (
+            Zone::Battlefield,
+            Zone::Battlefield,
+            Zone::Graveyard,
+            Zone::Graveyard
+        )
+    );
+    assert_eq!(
+        (zone(their_ring), zone(study), zone(looter), zone(mystic)),
+        (
+            Zone::Battlefield,
+            Zone::Battlefield,
+            Zone::Battlefield,
+            Zone::Graveyard
+        )
+    );
+    assert_eq!(
+        g.permanents(0).filter(|&x| g.types_of(x).land).count(),
+        25,
+        "lands stay"
+    );
+}
+
+#[test]
+fn teferis_puzzle_box_puts_the_hand_on_the_bottom_and_draws_that_many() {
+    let mut g = table();
+    put(&mut g, 0, "Teferi's Puzzle Box");
+    g.start_turn(5, 0);
+    let mut old: Vec<ObjId> = Vec::new();
+    while g.step != Step::Main1 {
+        if matches!(g.pending, Pending::Decide(_)) {
+            if old.is_empty() {
+                old = g.players[0].hand.clone(); // after the draw step's draw
+            }
+            let a = g.legal_actions()[0];
+            act(&mut g, a);
+        } else {
+            act(&mut g, Action::PassPriority);
+        }
+    }
+    let n = old.len();
+    assert!(n >= 2);
+    assert_eq!(g.players[0].hand.len(), n, "drew that many");
+    assert!(old.iter().all(|c| !g.players[0].hand.contains(c)));
+    assert!(
+        old.iter().all(|c| g.players[0].library[..n].contains(c)),
+        "on the bottom"
+    );
+}
+
+#[test]
+fn deadly_brew_each_sacrifices_then_you_may_return_another_permanent_card() {
+    let mut g = table();
+    let elves = put(&mut g, 0, "Llanowar Elves");
+    let looter = put(&mut g, 1, "Merfolk Looter");
+    let mystic = put(&mut g, 1, "Elvish Mystic");
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Graveyard);
+    let brew = hand(&mut g, 0, "Deadly Brew");
+    act(&mut g, Action::Cast(brew));
+    pass_until_decision(&mut g, 10);
+    assert_eq!(
+        g.pending,
+        Pending::Decide(1),
+        "your lone creature is chosen; the opponent picks"
+    );
+    act(&mut g, Action::Pick(mystic));
+    assert!(!g.legal_actions().contains(&Action::Pick(elves)), "another card");
+    resolve_all(&mut g, &[Action::Pick(ring)]);
+    assert_eq!(
+        (g.obj(elves).zone, g.obj(mystic).zone, g.obj(looter).zone),
+        (Zone::Graveyard, Zone::Graveyard, Zone::Battlefield)
+    );
+    assert_eq!(g.obj(ring).zone, Zone::Hand);
+}
+
+#[test]
+fn wave_of_vitriol_sacrifices_and_fetches_tapped_basics_per_land() {
+    let mut g = table();
+    let ring = put(&mut g, 0, "Sol Ring");
+    let study = put(&mut g, 0, "Rhystic Study");
+    let tomb = put(&mut g, 0, "Overgrown Tomb");
+    let grave = put(&mut g, 1, "Watery Grave");
+    let stone = put(&mut g, 1, "Mind Stone");
+    let elves = put(&mut g, 0, "Llanowar Elves");
+    let mine = g.players[0].library[0];
+    let theirs = g.players[1].library[0];
+    let w = hand(&mut g, 0, "Wave of Vitriol");
+    play(&mut g, w, false, &[], &[Action::Pick(mine), Action::Pick(theirs)]);
+    for x in [ring, study, tomb, grave, stone] {
+        assert_eq!(g.obj(x).zone, Zone::Graveyard);
+    }
+    assert_eq!(g.obj(elves).zone, Zone::Battlefield);
+    for x in [mine, theirs] {
+        assert_eq!(g.obj(x).zone, Zone::Battlefield);
+        assert!(g.obj(x).tapped);
+    }
+}
+
+#[test]
+fn signal_the_clans_puts_one_of_three_different_creatures_into_your_hand() {
+    let mut g = table();
+    let a = g.add_card(0, cid("Consecrated Sphinx"), Zone::Library);
+    let b = g.add_card(0, cid("Craterhoof Behemoth"), Zone::Library);
+    let c = g.add_card(0, cid("Merfolk Looter"), Zone::Library);
+    let s = hand(&mut g, 0, "Signal the Clans");
+    play(
+        &mut g,
+        s,
+        false,
+        &[],
+        &[Action::Pick(a), Action::Pick(b), Action::Pick(c)],
+    );
+    let in_hand = [a, b, c].iter().filter(|&&x| g.obj(x).zone == Zone::Hand).count();
+    let in_library = [a, b, c]
+        .iter()
+        .filter(|&&x| g.obj(x).zone == Zone::Library)
+        .count();
+    assert_eq!((in_hand, in_library), (1, 2));
+}
+
+#[test]
+fn moonsilver_key_finds_a_mana_artifact_or_a_basic_land() {
+    let mut g = table();
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Library);
+    let study = g.add_card(0, cid("Rhystic Study"), Zone::Library);
+    let ingot = g.add_card(0, cid("Ornithopter"), Zone::Library);
+    let key = put(&mut g, 0, "Moonsilver Key");
+    act(&mut g, Action::Activate(key, 0));
+    pass_until_decision(&mut g, 10);
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Pick(ring)));
+    assert!(
+        legal.contains(&Action::Pick(g.players[0].library[0])),
+        "a basic land"
+    );
+    assert!(!legal.contains(&Action::Pick(study)));
+    assert!(
+        !legal.contains(&Action::Pick(ingot)),
+        "an artifact without a mana ability"
+    );
+    resolve_all(&mut g, &[Action::Pick(ring)]);
+    assert_eq!((g.obj(ring).zone, g.obj(key).zone), (Zone::Hand, Zone::Graveyard));
+}
+
+#[test]
+fn god_eternal_bontu_sacrifices_any_number_and_draws_that_many() {
+    let mut g = table();
+    let ring = put(&mut g, 0, "Sol Ring");
+    let stone = put(&mut g, 0, "Mind Stone");
+    let b = hand(&mut g, 0, "God-Eternal Bontu");
+    let before = g.players[0].hand.len() - 1;
+    play(
+        &mut g,
+        b,
+        false,
+        &[],
+        &[Action::Pick(ring), Action::Pick(stone), Action::No],
+    );
+    assert_eq!(
+        (g.obj(ring).zone, g.obj(stone).zone),
+        (Zone::Graveyard, Zone::Graveyard)
+    );
+    assert_eq!(g.players[0].hand.len(), before + 2);
+    let s = hand(&mut g, 0, "Swords to Plowshares");
+    play(&mut g, s, false, &[obj(b)], &[Action::Yes]);
+    let lib = &g.players[0].library;
+    assert_eq!(lib[lib.len() - 3], b, "third from the top");
+}
+
+#[test]
+fn imps_mischief_changes_the_target_and_costs_its_mana_value_in_life() {
+    let mut g = table();
+    let looter = put(&mut g, 1, "Merfolk Looter");
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    let imp = hand(&mut g, 0, "Imp's Mischief");
+    act(&mut g, Action::Cast(bolt));
+    act(&mut g, Action::Target(Target::Player(1)));
+    act(&mut g, Action::Cast(imp));
+    act(&mut g, Action::Target(obj(bolt)));
+    pass_until_decision(&mut g, 10);
+    assert!(!g.legal_actions().contains(&Action::No), "the target must change");
+    assert!(
+        !g.legal_actions().contains(&Action::Target(Target::Player(1))),
+        "a new target"
+    );
+    resolve_all(&mut g, &[Action::Target(obj(looter))]);
+    assert_eq!(g.obj(looter).zone, Zone::Graveyard);
+    assert_eq!((g.players[0].life, g.players[1].life), (39, 40));
+}
+
+#[test]
+fn boseiju_destroys_a_nonbasic_land_and_its_controller_may_fetch_a_typed_land() {
+    let mut g = table();
+    let grave = put(&mut g, 1, "Watery Grave");
+    let tomb = g.add_card(1, cid("Overgrown Tomb"), Zone::Library);
+    let b = hand(&mut g, 0, "Boseiju, Who Endures");
+    act(&mut g, Action::Activate(b, 0));
+    act(&mut g, Action::Target(obj(grave)));
+    resolve_all(&mut g, &[Action::Pick(tomb), Action::Yes]); // Yes: pay 2 life, untapped
+    assert_eq!(
+        (g.obj(grave).zone, g.obj(b).zone),
+        (Zone::Graveyard, Zone::Graveyard)
+    );
+    assert_eq!(g.obj(tomb).zone, Zone::Battlefield);
+    assert!(!g.obj(tomb).tapped);
+}
+
+#[test]
+fn cindervines_destroys_and_damages_that_permanents_controller() {
+    let mut g = table();
+    let ring = put(&mut g, 1, "Sol Ring");
+    let c = put(&mut g, 0, "Cindervines");
+    act(&mut g, Action::Activate(c, 0));
+    act(&mut g, Action::Target(obj(ring)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        (g.obj(ring).zone, g.obj(c).zone),
+        (Zone::Graveyard, Zone::Graveyard)
+    );
+    assert_eq!(g.players[1].life, 38);
+}
+
+#[test]
+fn braids_sacrifice_then_the_opponent_shares_a_type_or_pays() {
+    let mut g = table();
+    put(&mut g, 0, "Braids, Arisen Nightmare");
+    let ring = put(&mut g, 0, "Sol Ring");
+    let stone = put(&mut g, 1, "Mind Stone");
+    pass_until_decision(&mut g, 40);
+    assert!(g.legal_actions().contains(&Action::No), "you may");
+    act(&mut g, Action::Pick(ring));
+    assert_eq!(g.pending, Pending::Decide(1));
+    let hand_before = g.players[0].hand.len();
+    act(&mut g, Action::No);
+    assert_eq!(g.players[1].life, 38);
+    assert_eq!(g.players[0].hand.len(), hand_before + 1);
+    assert_eq!(
+        (g.obj(ring).zone, g.obj(stone).zone),
+        (Zone::Graveyard, Zone::Battlefield)
+    );
+}
+
+#[test]
+fn spellskite_redirects_a_target_to_itself() {
+    let mut g = table();
+    let skite = put(&mut g, 0, "Spellskite");
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    act(&mut g, Action::Cast(bolt));
+    act(&mut g, Action::Target(Target::Player(1)));
+    act(&mut g, Action::Activate(skite, 0));
+    act(&mut g, Action::Target(obj(bolt)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].life, 40);
+    assert_eq!(g.obj(skite).damage, 3);
+}
+
+#[test]
+fn defense_of_the_heart_fetches_two_creatures_when_they_have_three() {
+    let mut g = table();
+    let d = put(&mut g, 0, "Defense of the Heart");
+    for name in ["Merfolk Looter", "Llanowar Elves", "Elvish Mystic"] {
+        put(&mut g, 1, name);
+    }
+    let a = g.add_card(0, cid("Consecrated Sphinx"), Zone::Library);
+    let b = g.add_card(0, cid("Craterhoof Behemoth"), Zone::Library);
+    g.start_turn(5, 0);
+    pass_until_decision(&mut g, 10);
+    act(&mut g, Action::Pick(a));
+    act(&mut g, Action::Pick(b));
+    assert_eq!(g.obj(d).zone, Zone::Graveyard);
+    assert_eq!(
+        (g.obj(a).zone, g.obj(b).zone),
+        (Zone::Battlefield, Zone::Battlefield)
+    );
+}
+
+#[test]
+fn gift_of_estates_searches_only_if_they_have_more_lands() {
+    let mut g = table();
+    let gift = hand(&mut g, 0, "Gift of Estates");
+    let before = g.players[0].hand.len() - 1;
+    play(&mut g, gift, false, &[], &[]);
+    assert_eq!(g.players[0].hand.len(), before, "equal lands: nothing");
+
+    let mut g = game(&["Plains", "Plains"]);
+    let gift = hand(&mut g, 0, "Gift of Estates");
+    let before = g.players[0].hand.len() - 1;
+    let lib: Vec<ObjId> = g.players[0].library[..3].to_vec();
+    play(
+        &mut g,
+        gift,
+        false,
+        &[],
+        &[Action::Pick(lib[0]), Action::Pick(lib[1]), Action::Pick(lib[2])],
+    );
+    assert_eq!(g.players[0].hand.len(), before + 3);
+}
+
+#[test]
+fn masked_vandal_is_every_creature_type_and_exiles_for_a_creature_card() {
+    let mut g = table();
+    let study = put(&mut g, 1, "Underworld Dreams");
+    let looter = g.add_card(0, cid("Merfolk Looter"), Zone::Graveyard);
+    let v = hand(&mut g, 0, "Masked Vandal");
+    play(
+        &mut g,
+        v,
+        false,
+        &[],
+        &[Action::Target(obj(study)), Action::Pick(looter)],
+    );
+    assert_eq!(
+        (g.obj(study).zone, g.obj(looter).zone),
+        (Zone::Exile, Zone::Exile)
+    );
+    assert!(g.has_subtype(v, "Elf") && g.has_subtype(v, "Wizard"));
+}

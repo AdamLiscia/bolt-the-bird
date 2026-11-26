@@ -133,12 +133,15 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
             faces = (src or "").split(" // ")
             face = faces[value] if len(faces) == 2 else ("its front", "its back")[value]
             return f"Play it as {face}"
+        if d == "TargetToSource":
+            return f"Change target {value + 1} to {src or 'this creature'}"
         return None
     if kind == "Pick":
         verb = {"SacrificeCreatures": "Sacrifice", "SacrificeAnother": "Sacrifice", "Search": "Take",
                 "LookPick": "Take", "KeepOfType": "Keep", "ScryOrder": "Put on top:", "GenesisPick": "Put onto the battlefield:", "PutPicksOntoBattlefield": "Put onto the battlefield:",
                 "PickDiscard": "Make them discard", "EnterAsCopy": f"{card or 'It'} enters as a copy of"}.get(d)  # fmt: skip
         verb = verb or {"CreaturesFromHandUpTo": "Put onto the battlefield:", "ReturnOwnPermanent": "Return", "SearchToGraveyardCounter": "Put into your graveyard:"}.get(d)  # fmt: skip
+        verb = verb or {"KeepNonlandOfType": "Keep", "HandToBottom": "Put on the bottom:", "SacrificeAnyNumber": "Sacrifice", "SacrificeCreatureOrPlaneswalkerEach": "Sacrifice", "ReturnAnotherPermanentCard": "Return to your hand:", "BasicsTappedUpTo": "Put onto the battlefield tapped:", "SignalTheClans": "Reveal", "BraidsSacrifice": "Sacrifice", "BraidsOpponent": "Sacrifice"}.get(d)  # fmt: skip
         return f"{verb} {card_name}" if verb else None
     yes = kind == "Yes"
     labels = {
@@ -164,6 +167,9 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         return "Done choosing" if d == "CreaturesFromHandUpTo" else "Find nothing"
     if d == "PutPicksOntoBattlefield" and not yes:
         return "Done choosing"
+    d3_no = {"SacrificeAnyNumber": "Done sacrificing", "ReturnAnotherPermanentCard": "Return nothing", "BasicsTappedUpTo": "Find nothing", "SignalTheClans": "Done revealing", "BraidsSacrifice": "Don't sacrifice", "BraidsOpponent": "Don't sacrifice (lose 2 life)"}  # fmt: skip
+    if not yes and d in d3_no:
+        return d3_no[d]
     if d in labels:
         return labels[d][0 if yes else 1]
     if not yes:
@@ -184,7 +190,7 @@ def actions(obs: dict, me: int) -> list[dict]:
         if kind in ("Mode", "Amount", "TargetPlayer", "TapForMana"):
             nums = ()
         label = _label(kind, names, nums, me, values)
-        if dec.get("kind") == "ChooseNewTarget" and kind in ("Target", "TargetPlayer", "No"):
+        if dec.get("kind") in ("ChooseNewTarget", "ChangeTheTarget") and kind in ("Target", "TargetPlayer", "No"):
             what = name(dec["card"][1]) if dec.get("card") else "it"
             if kind == "No":
                 label = "Keep the targets"

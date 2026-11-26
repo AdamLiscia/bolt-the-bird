@@ -116,6 +116,8 @@ pub struct Filter {
     pub spell_artifact_creature_or_planeswalker: bool,
     /// Spells or abilities that target you or a creature you control (Siren Stormtamer).
     pub targets_you_or_your_creature: bool,
+    /// Spells with a single target only (Imp's Mischief).
+    pub single_target: bool,
 }
 
 impl Filter {
@@ -172,6 +174,7 @@ impl Filter {
         spell_min_mana_value: None,
         spell_artifact_creature_or_planeswalker: false,
         targets_you_or_your_creature: false,
+        single_target: false,
     };
 
     pub const CREATURE: Filter = Filter {
@@ -1678,6 +1681,52 @@ pub enum Effect {
     /// Tap or untap the creature the source (an Equipment) is attached to; it toggles (Sword of the
     /// Paruns).
     TapOrUntapAttached,
+    /// Sacrifice the source, if it's still on the battlefield (Defense of the Heart).
+    SacrificeSource,
+    /// Stop here unless the ability's `condition` holds as it resolves: an intervening "if" on a
+    /// spell (Gift of Estates), where conditions are otherwise checked only for triggers.
+    StopUnlessCondition,
+    /// Destroy the permanent in `slot`; its controller may search for a land card with a basic land
+    /// type and put it onto the battlefield untapped (Boseiju, Who Endures).
+    DestroyControllerMayFetchLandWithBasicType(u8),
+    /// Destroy the permanent in `slot`; the source deals `n` damage to its controller (Cindervines).
+    DestroyDamageController {
+        slot: u8,
+        n: i32,
+    },
+    /// Change the target of the single-target spell in `slot` to another legal one, if there is one
+    /// (Imp's Mischief), as `Decision::ChangeTheTarget`.
+    ChangeTheTarget(u8),
+    /// You lose life equal to the mana value (X included) of the spell in `slot` (Imp's Mischief).
+    LoseLifeSlotSpellManaValue(u8),
+    /// Change a target of the spell or ability in `slot` to the source, if the source is a legal
+    /// target for it (Spellskite); with a choice of targets, as `Decision::TargetToSource`.
+    ChangeATargetToSource(u8),
+    /// Each player chooses an artifact, a creature, an enchantment and a planeswalker from among
+    /// the nonland permanents they control, then sacrifices the rest (Cataclysmic Gearhulk), as
+    /// `Decision::KeepNonlandOfType`.
+    EachKeepsOneNonlandOfEachType,
+    /// `who` puts the cards in their hand on the bottom of their library in any order, then draws
+    /// that many (Teferi's Puzzle Box), as `Decision::HandToBottom`.
+    HandToBottomDrawThatMany(Who),
+    /// Sacrifice any number of other permanents, then draw that many cards (God-Eternal Bontu), as
+    /// `Decision::SacrificeAnyNumber`.
+    SacrificeOthersDrawThatMany,
+    /// Each player sacrifices a creature or planeswalker of their choice; if you sacrificed one, you
+    /// may return another permanent card from your graveyard to your hand (Deadly Brew).
+    EachSacrificeCreatureOrPlaneswalkerMayReturnOther,
+    /// Each player sacrifices all artifacts, enchantments and nonbasic lands they control; for each
+    /// land sacrificed, its controller may search for a basic land card and put it onto the
+    /// battlefield tapped (Wave of Vitriol), as `Decision::BasicsTappedUpTo`.
+    WaveOfVitriol,
+    /// Search for up to three creature cards and reveal them; if they're three with different names,
+    /// one at random goes to your hand; then shuffle (Signal the Clans), as
+    /// `Decision::SignalTheClans`.
+    SignalTheClans,
+    /// You may sacrifice an artifact, creature, enchantment, land or planeswalker; if you do, the
+    /// opponent may sacrifice a permanent that shares a card type with it, and if they don't, they
+    /// lose 2 life and you draw a card (Braids, Arisen Nightmare).
+    BraidsEndStep,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1731,6 +1780,8 @@ pub enum SearchFor {
     CreatureMvExactly(u32),
     /// An artifact card with exactly this mana value (Trophy Mage: 3).
     ArtifactManaValue(u32),
+    /// An artifact card with a mana ability, or a basic land card (Moonsilver Key).
+    ArtifactWithManaAbilityOrBasicLand,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -2028,6 +2079,8 @@ pub enum Condition {
     /// The cast creature spell (the trigger's `extra`) has power from `.0` through `.1` (checked as
     /// it triggers).
     CastPowerBetween(i32, i32),
+    /// An opponent controls at least this many creatures (Defense of the Heart).
+    OpponentControlsCreaturesAtLeast(u8),
 }
 
 /// A spell's effect or a triggered ability: target slots, then effects in order.

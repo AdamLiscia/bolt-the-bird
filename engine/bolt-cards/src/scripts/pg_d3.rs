@@ -1003,6 +1003,116 @@ pub fn script(name: &str) -> Option<Script> {
         "Volt Charge" => s(&["Volt Charge deals 3 damage to any target. Proliferate."], |d, _| {
             spell(d, vec![Filter::ANY], vec![damage(3, Recipient::Target(0)), Effect::Proliferate])
         }),
+        // ---- Unblocked by lane d3's core theme, batch 5 ----
+        "Cataclysmic Gearhulk" => s(
+            &["When this creature enters, each player chooses an artifact, a creature, an enchantment, and a planeswalker from among the nonland permanents they control, then sacrifices the rest."],
+            |d, _| on(d, When::Enters, vec![], vec![Effect::EachKeepsOneNonlandOfEachType]),
+        ),
+        "Teferi's Puzzle Box" => s(
+            &["At the beginning of each player's draw step, that player puts the cards in their hand on the bottom of their library in any order, then draws that many cards."],
+            |d, _| on(d, When::EachDrawStep, vec![], vec![Effect::HandToBottomDrawThatMany(Who::ActivePlayer)]),
+        ),
+        "Deadly Brew" => s(
+            &["Each player sacrifices a creature or planeswalker of their choice. If you sacrificed a permanent this way, you may return another permanent card from your graveyard to your hand."],
+            |d, _| spell(d, vec![], vec![Effect::EachSacrificeCreatureOrPlaneswalkerMayReturnOther]),
+        ),
+        "Wave of Vitriol" => s(
+            &["Each player sacrifices all artifacts, enchantments, and nonbasic lands they control. For each land sacrificed this way, its controller may search their library for a basic land card and put it onto the battlefield tapped. Then each player who searched their library this way shuffles."],
+            |d, _| spell(d, vec![], vec![Effect::WaveOfVitriol]),
+        ),
+        "Signal the Clans" => s(
+            &["Search your library for three creature cards and reveal them. If you reveal three cards with different names, choose one of them at random and put that card into your hand. Shuffle the rest into your library."],
+            |d, _| spell(d, vec![], vec![Effect::SignalTheClans]),
+        ),
+        "Moonsilver Key" => s(
+            &["{1}, {T}, Sacrifice this artifact: Search your library for an artifact card with a mana ability or a basic land card, reveal it, put it into your hand, then shuffle."],
+            |d, _| {
+                let n = activated(d, "{1}", true, vec![], vec![search(SearchFor::ArtifactWithManaAbilityOrBasicLand, SearchTo::Hand)]);
+                d.activated[n].sacrifice_self = true;
+            },
+        ),
+        "God-Eternal Bontu" => s(
+            &[
+                "When God-Eternal Bontu enters, sacrifice any number of other permanents, then draw that many cards.",
+                "When God-Eternal Bontu dies or is put into exile from the battlefield, you may put her into her owner's library third from the top.",
+            ],
+            |d, _| {
+                on(d, When::Enters, vec![], vec![Effect::SacrificeOthersDrawThatMany]);
+                let mut a = Ability::new(vec![], vec![Effect::SourceThirdFromTop]).optional();
+                a.condition = Some(Condition::SourceInGraveyardOrExile);
+                d.triggers.push(Trigger { when: When::LeavesBattlefield, ability: a });
+            },
+        ),
+        "Imp's Mischief" => s(
+            &["Change the target of target spell with a single target. You lose life equal to that spell's mana value."],
+            |d, _| {
+                let one = Filter { single_target: true, ..SPELL };
+                spell(d, vec![one], vec![Effect::ChangeTheTarget(0), Effect::LoseLifeSlotSpellManaValue(0)]);
+            },
+        ),
+        "Boseiju, Who Endures" => s(
+            &[
+                "{T}: Add {G}.",
+                "Channel — {1}{G}, Discard this card: Destroy target artifact, enchantment, or nonbasic land an opponent controls. That player may search their library for a land card with a basic land type, put it onto the battlefield, then shuffle. This ability costs {1} less to activate for each legendary creature you control.",
+            ],
+            |d, _| {
+                d.mana = Some(ManaSource::of(&[Color::Green]));
+                let f = Filter { lands: true, nonbasic: true, controller: Controller::Opponent, ..ARTIFACT_OR_ENCHANTMENT };
+                let n = activated(d, "{1}{G}", false, vec![f], vec![Effect::DestroyControllerMayFetchLandWithBasicType(0)]);
+                d.activated[n].from_hand_discard = true;
+                d.activated[n].less_per_legendary_creature = true;
+            },
+        ),
+        "Cindervines" => s(
+            &[
+                "Whenever an opponent casts a noncreature spell, this enchantment deals 1 damage to that player.",
+                "{1}, Sacrifice this enchantment: Destroy target artifact or enchantment. This enchantment deals 2 damage to that permanent's controller.",
+            ],
+            |d, _| {
+                on(d, When::OpponentCastsNoncreature, vec![], vec![damage(1, Recipient::EachOpponent)]);
+                let n = activated(d, "{1}", false, vec![ARTIFACT_OR_ENCHANTMENT], vec![Effect::DestroyDamageController { slot: 0, n: 2 }]);
+                d.activated[n].sacrifice_self = true;
+            },
+        ),
+        "Braids, Arisen Nightmare" => s(
+            &["At the beginning of your end step, you may sacrifice an artifact, creature, enchantment, land, or planeswalker. If you do, each opponent may sacrifice a permanent of their choice that shares a card type with it. For each opponent who doesn't, that player loses 2 life and you draw a card."],
+            |d, _| on(d, When::EndStep { your_turn_only: true }, vec![], vec![Effect::BraidsEndStep]),
+        ),
+        "Spellskite" => s(&["{U/P}: Change a target of target spell or ability to this creature."], |d, _| {
+            let target = Filter { abilities: true, ..SPELL };
+            let n = activated(d, "{U}", false, vec![target], vec![Effect::ChangeATargetToSource(0)]);
+            d.activated[n].phyrexian = [0, 1, 0, 0, 0];
+        }),
+        "Defense of the Heart" => s(
+            &["At the beginning of your upkeep, if an opponent controls three or more creatures, sacrifice this enchantment, search your library for up to two creature cards, put those cards onto the battlefield, then shuffle."],
+            |d, _| {
+                let fetch = Effect::Search { what: SearchFor::CreatureMvAtLeast(0), to: SearchTo::Battlefield { tapped: false }, n: 2, kicked_n: None };
+                let mut a = Ability::new(vec![], vec![Effect::SacrificeSource, fetch]);
+                a.condition = Some(Condition::OpponentControlsCreaturesAtLeast(3));
+                d.triggers.push(Trigger { when: When::Upkeep { your_turn_only: true }, ability: a });
+            },
+        ),
+        "Gift of Estates" => s(
+            &["If an opponent controls more lands than you, search your library for up to three Plains cards, reveal them, put them into your hand, then shuffle."],
+            |d, _| {
+                let plains = SearchFor::LandTypes { types: [true, false, false, false, false], basic: false };
+                let fetch = Effect::Search { what: plains, to: SearchTo::Hand, n: 3, kicked_n: None };
+                let mut a = Ability::new(vec![], vec![Effect::StopUnlessCondition, fetch]);
+                a.condition = Some(Condition::OpponentControlsMoreLands);
+                d.spell = Some(a);
+            },
+        ),
+        "Masked Vandal" => s(
+            &[
+                "Changeling",
+                "When this creature enters, you may exile a creature card from your graveyard. If you do, exile target artifact or enchantment an opponent controls.",
+            ],
+            |d, _| {
+                d.changeling = true;
+                let theirs = Filter { controller: Controller::Opponent, ..ARTIFACT_OR_ENCHANTMENT };
+                on(d, When::Enters, vec![theirs], vec![Effect::MayExileFromGraveyard { n: 1, creature_only: true }, Effect::Exile(0)]);
+            },
+        ),
         _ => None,
     }
 }
@@ -1153,4 +1263,20 @@ pub const PG_D3_SCRIPTED: &[&str] = &[
     "Sword of the Paruns",
     "Inexorable Tide",
     "Volt Charge",
+    // Core theme d3, batch 5
+    "Cataclysmic Gearhulk",
+    "Teferi's Puzzle Box",
+    "Deadly Brew",
+    "Wave of Vitriol",
+    "Signal the Clans",
+    "Moonsilver Key",
+    "God-Eternal Bontu",
+    "Imp's Mischief",
+    "Boseiju, Who Endures",
+    "Cindervines",
+    "Braids, Arisen Nightmare",
+    "Spellskite",
+    "Defense of the Heart",
+    "Gift of Estates",
+    "Masked Vandal",
 ];
