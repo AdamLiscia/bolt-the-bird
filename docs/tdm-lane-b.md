@@ -816,3 +816,10 @@ Bloodroot Apothecary (blc_b). Tests: tests/pg_b.rs (`ugin_the_ineffable_*`), tes
   with Chatterfang's `sacrifice_x_of_subtype("Food")`.
 - Bloodroot Apothecary: `When::OpponentSacrificesNoncreatureToken` (in `Game::sacrificed`),
   `Effect::PoisonCounters`; "that player" is the opponent (1v1).
+
+After tarkir 782b6e5: `Effect::LoseLifeCastSpellManaValue` (Teval) reads d4's `stack_mana_cost`.
+Oloro, newly unblocked: Crested Sunmare (d2's `Condition::YouGainedLifeThisTurn`, no new core) and
+Ajani, Strength of the Pride (`Effect::GainLifePerCreatureAndPlaneswalkerYouControl`,
+`Effect::ExileSelfAndOpponentsArtifactsCreaturesIfLifeAbove(15)`, against `Game::starting_life`).
+Their tokens 70 (Horse 5/5) and 72 (Ajani's Pridemate) are colorless in `token_defs`, though the
+cards say white: the merger's to fix in the token block.

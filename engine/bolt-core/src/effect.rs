@@ -2392,6 +2392,12 @@ pub enum Effect {
         who: Who,
         n: i32,
     },
+    /// You gain life equal to the number of creatures you control plus the number of planeswalkers
+    /// you control (Ajani, Strength of the Pride's +1).
+    GainLifePerCreatureAndPlaneswalkerYouControl,
+    /// If you have at least `n` life more than your starting life total, exile the source and each
+    /// artifact and creature your opponents control (Ajani, Strength of the Pride's 0: 15).
+    ExileSelfAndOpponentsArtifactsCreaturesIfLifeAbove(i32),
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

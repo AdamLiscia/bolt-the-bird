@@ -1793,6 +1793,35 @@ pub fn script(name: &str) -> Option<Script> {
                 loyalty(d, -3, Ability::new(vec![colored], vec![Effect::Destroy(0)]));
             },
         ),
+        "Crested Sunmare" => s(
+            &[
+                "Other Horses you control have indestructible.",
+                "At the beginning of each end step, if you gained life this turn, create a 5/5 white Horse creature token.",
+            ],
+            |d, t| {
+                lord(d, "Horse");
+                let horses = d.statics.last_mut().expect("the Horse static");
+                (horses.power, horses.toughness, horses.keywords) = (0, 0, Keywords::INDESTRUCTIBLE);
+                let horse = Effect::CreateToken { who: Who::You, def: t.horse_5, n: 1 };
+                let each = When::EndStep { your_turn_only: false };
+                conditional(d, each, Condition::YouGainedLifeThisTurn, vec![], vec![horse]);
+            },
+        ),
+        "Ajani, Strength of the Pride" => s(
+            &[
+                "+1: You gain life equal to the number of creatures you control plus the number of planeswalkers you control.",
+                "\u{2212}2: Create a 2/2 white Cat Soldier creature token named Ajani's Pridemate with \"Whenever you gain life, put a +1/+1 counter on this token.\"",
+                "0: If you have at least 15 life more than your starting life total, exile Ajani and each artifact and creature your opponents control.",
+            ],
+            |d, t| {
+                let plus = Effect::GainLifePerCreatureAndPlaneswalkerYouControl;
+                loyalty(d, 1, Ability::new(vec![], vec![plus]));
+                let cat = Effect::CreateToken { who: Who::You, def: t.ajanis_pridemate, n: 1 };
+                loyalty(d, -2, Ability::new(vec![], vec![cat]));
+                let zero = Effect::ExileSelfAndOpponentsArtifactsCreaturesIfLifeAbove(15);
+                loyalty(d, 0, Ability::new(vec![], vec![zero]));
+            },
+        ),
         _ => None,
     }
 }
@@ -2008,6 +2037,8 @@ pub const PG_B_SCRIPTED: &[&str] = &[
     "Expropriate",
     "Kozilek's Command",
     "Ugin, the Ineffable",
+    "Crested Sunmare",
+    "Ajani, Strength of the Pride",
     // Ghyrson Starn (Spr3adsh33t)
     "Basilisk Collar",
     "Gorgon's Head",

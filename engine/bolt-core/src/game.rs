@@ -18110,6 +18110,29 @@ impl Game {
                     });
                 }
             }
+            Effect::GainLifePerCreatureAndPlaneswalkerYouControl => {
+                let p = item.controller;
+                let n = self
+                    .permanents(p)
+                    .filter(|&x| self.types_of(x).creature || self.types_of(x).planeswalker)
+                    .count() as i32;
+                self.gain_life(p, n);
+            }
+            Effect::ExileSelfAndOpponentsArtifactsCreaturesIfLifeAbove(n) => {
+                let p = item.controller;
+                if self.players[p].life >= self.starting_life + n {
+                    if self.obj(src).zone == Zone::Battlefield {
+                        self.move_to(src, Zone::Exile);
+                    }
+                    let theirs: Vec<ObjId> = self
+                        .permanents(opponent(p))
+                        .filter(|&x| self.types_of(x).artifact || self.types_of(x).creature)
+                        .collect();
+                    for x in theirs {
+                        self.move_to(x, Zone::Exile);
+                    }
+                }
+            }
             Effect::PoisonCounters { who, n } => {
                 for q in self.players_for(item, legal, who) {
                     self.players[q].poison += n;
