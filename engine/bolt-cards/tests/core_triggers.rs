@@ -1175,3 +1175,50 @@ fn to_main_of(g: &mut Game, p: usize) {
         act(g, Action::PassPriority);
     }
 }
+
+// ---- Batch 8: counter placement (who puts the counters) ----
+
+#[test]
+fn you_put_counters_counts_each_placement_for_the_resolving_controller() {
+    let mut g = game_with(|defs| {
+        blood_with(vec![trigger(
+            When::YouPutCounters,
+            None,
+            vec![Effect::GainLifeAmount],
+        )])(defs);
+        let counters = vec![
+            Effect::Counters { slot: 0, n: 2 },
+            Effect::MinusCounter(0),
+            Effect::Energy(3),
+        ];
+        defs[cid("Hero's Downfall")].spell = Some(Ability::new(vec![Filter::CREATURE], counters));
+    });
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    g.add_card(1, cid("Exquisite Blood"), Zone::Battlefield);
+    let theirs = g.add_card(1, cid("Savannah Lions"), Zone::Battlefield);
+    cast_now(&mut g, 0, "Hero's Downfall", &[obj(theirs)]);
+    assert_eq!(g.obj(theirs).counters, 1);
+    assert_eq!(
+        life(&g, 0),
+        46,
+        "two +1/+1, one -1/-1 and three energy, all put by player 0"
+    );
+    assert_eq!(life(&g, 1), 40, "the creature's controller didn't put them");
+}
+
+#[test]
+fn you_put_counters_outside_a_resolution_is_the_permanents_controller() {
+    let mut g = game_with(blood_with(vec![trigger(
+        When::YouPutCounters,
+        None,
+        vec![Effect::GainLifeAmount],
+    )]));
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    // A loyalty ability's + cost is paid as it's activated, while nothing resolves.
+    let pw = g.add_card(0, cid("Elspeth, Sun's Champion"), Zone::Battlefield);
+    let before = g.obj(pw).loyalty;
+    act(&mut g, Action::Loyalty(pw, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(pw).loyalty, before + 1);
+    assert_eq!(life(&g, 0), 41, "one loyalty counter, as the cost");
+}

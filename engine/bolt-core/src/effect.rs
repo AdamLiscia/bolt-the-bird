@@ -2640,6 +2640,10 @@ pub enum When {
     OpponentCreatureBlocks,
     /// "Whenever an opponent searches their library" (Wan Shi Tong).
     OpponentSearchesLibrary,
+    /// "Whenever you put one or more counters on a permanent or player": once for each permanent or
+    /// player, the number put in the trigger's amount (All Will Be One). "You" is the controller of
+    /// the resolving spell or ability, else the permanent's controller.
+    YouPutCounters,
 }
 
 #[derive(Clone, Debug, PartialEq)]

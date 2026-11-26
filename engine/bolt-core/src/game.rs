@@ -3667,6 +3667,7 @@ impl Game {
         let n = self.obj(id).lore.saturating_add(1);
         self.obj_mut(id).lore = n;
         let p = self.obj(id).controller;
+        self.counters_placed(p, 1);
         let chapters: Vec<usize> = self
             .def_of(id)
             .triggers
@@ -4127,6 +4128,8 @@ impl Game {
             if let Some(l) = def.loyalty {
                 let l = l * self.doubling(self.obj(id).controller);
                 self.obj_mut(id).loyalty = l; // CR 306.5b
+                let controller = self.obj(id).controller;
+                self.counters_placed(controller, l);
             }
             if def.enters_with_x_counters {
                 let x = self.obj(id).x as i32;
@@ -4190,11 +4193,14 @@ impl Game {
             };
             if def.vanishing > 0 {
                 self.obj_mut(id).time_counters = def.vanishing; // CR 702.63a
+                let controller = self.obj(id).controller;
+                self.counters_placed(controller, def.vanishing as i32);
             }
             let bonus = bonus + flat + non + chauffeur;
             if bonus > 0 {
                 let n = bonus * self.doubling(controller);
                 self.obj_mut(id).counters += n;
+                self.counters_placed(controller, n);
                 self.counter_put_on(id); // CR 122.6: entering with counters counts
                 self.fire_source(id, When::PlusCountersPutOnThis);
             }
@@ -4213,6 +4219,7 @@ impl Game {
                 if yes {
                     let n = n * self.doubling(controller);
                     self.obj_mut(id).counters += n;
+                    self.counters_placed(controller, n);
                     self.counter_put_on(id);
                     self.fire_source(id, When::PlusCountersPutOnThis);
                 }
@@ -6517,6 +6524,8 @@ impl Game {
         let o = self.obj_mut(id);
         o.loyalty += cost;
         o.loyalty_turn = turn;
+        let controller = self.obj(id).controller;
+        self.counters_placed(controller, cost);
     }
 
     fn activate_loyalty(&mut self, p: PlayerId, id: ObjId, n: usize) {
@@ -7037,6 +7046,8 @@ impl Game {
         }
         if a.minus_counter_cost && self.obj(id).zone == Zone::Battlefield {
             self.obj_mut(id).counters -= 1; // Devoted Druid: a -1/-1 counter
+            let controller = self.obj(id).controller;
+            self.counters_placed(controller, 1);
         }
         if a.tap_x_untapped_tokens {
             // The payer picks which tokens to tap: the first X untapped ones.
@@ -9203,6 +9214,22 @@ impl Game {
     }
 
     /// Puts +1/+1 counters on a permanent, with "whenever you put counters on this" triggers.
+    /// "Whenever you put one or more counters on a permanent or player" (All Will Be One): `n`
+    /// counters were just put on one permanent or player. The controller of the resolving spell or
+    /// ability puts them; outside a resolution, `fallback` (the permanent's controller, or for
+    /// combat damage the source's).
+    fn counters_placed(&mut self, fallback: PlayerId, n: i32) {
+        if n <= 0 {
+            return;
+        }
+        let p = self.resolving.as_ref().map_or(fallback, |r| r.item.controller);
+        let before = self.triggered.len();
+        self.fire(p, When::YouPutCounters, None);
+        for t in &mut self.triggered[before..] {
+            t.amount = n; // "that much damage"
+        }
+    }
+
     fn add_counters(&mut self, id: ObjId, n: i32) {
         if n <= 0 || self.obj(id).zone != Zone::Battlefield {
             return;
@@ -9217,6 +9244,8 @@ impl Game {
             0
         };
         self.obj_mut(id).counters += n;
+        let controller = self.obj(id).controller;
+        self.counters_placed(controller, n);
         self.counter_put_on(id);
         if self.types_of(id).creature && !self.has_subtype(id, "Hydra") {
             let controller = self.obj(id).controller;
@@ -10742,6 +10771,7 @@ impl Game {
                         let o = self.obj_mut(c);
                         o.tapped = true;
                         o.stun += n;
+                        self.counters_placed(p, n);
                         self.counter_put_on(c);
                     }
                     SearchTo::BattlefieldTappedUnder(q) => {
@@ -10870,6 +10900,8 @@ impl Game {
                 if self.obj(token).zone == Zone::Battlefield {
                     let o = self.obj_mut(token);
                     o.keyword_counters = o.keyword_counters.with(k);
+                    let controller = self.obj(token).controller;
+                    self.counters_placed(controller, 1);
                     self.counter_put_on(token);
                 }
             }
@@ -12261,6 +12293,8 @@ impl Game {
                 if self.obj(src).zone == Zone::Battlefield {
                     let n = n as i32 * self.doubling(self.obj(src).controller);
                     self.obj_mut(src).stun += n;
+                    let controller = self.obj(src).controller;
+                    self.counters_placed(controller, n);
                     self.counter_put_on(src);
                 }
             }
@@ -13089,6 +13123,7 @@ impl Game {
             Effect::Energy(n) => {
                 let p = item.controller;
                 self.players[p].energy += n as u32;
+                self.counters_placed(p, n as i32);
             }
             Effect::CounterSpellOrAbility(n) => {
                 if let Some(id) = Game::slot_object(item, legal, n) {
@@ -13347,6 +13382,7 @@ impl Game {
             Effect::PoisonAmountToOpponent => {
                 let q = opponent(item.controller);
                 self.players[q].poison += item.amount.max(0);
+                self.counters_placed(item.controller, item.amount);
             }
             Effect::SneakAttack => {
                 let p = item.controller;
@@ -13647,6 +13683,7 @@ impl Game {
                 if self.obj(src).zone == Zone::Battlefield {
                     let o = self.obj_mut(src);
                     o.keyword_counters = o.keyword_counters.with(k);
+                    self.counters_placed(item.controller, 1);
                     self.counter_put_on(src);
                 }
             }
@@ -13945,6 +13982,7 @@ impl Game {
             Effect::CumulativeUpkeep(n) => {
                 if self.obj(src).zone == Zone::Battlefield {
                     self.obj_mut(src).kind_counters += 1; // an age counter
+                    self.counters_placed(item.controller, 1);
                     let age = self.obj(src).kind_counters.clamp(0, 255) as u8;
                     let cost = ManaCost {
                         generic: n.saturating_mul(age),
@@ -14008,6 +14046,7 @@ impl Game {
                 if let Some(id) = Game::slot_object(item, legal, slot) {
                     if self.obj(id).zone == Zone::Battlefield {
                         self.obj_mut(id).counters -= 1;
+                        self.counters_placed(item.controller, 1);
                     }
                 }
             }
@@ -14020,9 +14059,11 @@ impl Game {
                         self.add_counters(x, 1);
                     } else if !mine && o.counters < 0 {
                         self.obj_mut(x).counters -= 1;
+                        self.counters_placed(p, 1);
                     }
                     if mine && self.types_of(x).planeswalker {
                         self.obj_mut(x).loyalty += 1;
+                        self.counters_placed(p, 1);
                     }
                 }
             }
@@ -14208,10 +14249,13 @@ impl Game {
                             self.obj_mut(id).loyalty = 2 * l;
                         }
                         let o = self.obj_mut(id);
+                        let added =
+                            o.stun.max(0) + o.kind_counters.max(0) + o.quest.max(0) + o.time_counters as i32;
                         o.stun *= 2;
                         o.kind_counters *= 2;
                         o.quest *= 2;
                         o.time_counters = o.time_counters.saturating_mul(2);
+                        self.counters_placed(item.controller, added);
                     }
                 }
             }
@@ -14422,6 +14466,7 @@ impl Game {
             Effect::QuestCounterSelf => {
                 if self.obj(src).zone == Zone::Battlefield {
                     self.obj_mut(src).quest += 1;
+                    self.counters_placed(item.controller, 1);
                 }
             }
             Effect::OpponentsAttackThisTurn => {
@@ -14536,6 +14581,7 @@ impl Game {
                         self.obj_mut(c).controller = owner;
                         let o = self.obj_mut(c);
                         o.keyword_counters = o.keyword_counters.with(Keywords::FLYING);
+                        self.counters_placed(item.controller, 1);
                         self.counter_put_on(c);
                     }
                 }
@@ -14699,10 +14745,14 @@ impl Game {
                 if stun > 0 {
                     let n = stun * self.doubling(self.obj(id).controller);
                     self.obj_mut(id).stun += n;
+                    let controller = self.obj(id).controller;
+                    self.counters_placed(controller, n);
                 }
                 if kw != Keywords::NONE {
                     let o = self.obj_mut(id);
                     o.keyword_counters = o.keyword_counters.with(kw);
+                    let controller = self.obj(id).controller;
+                    self.counters_placed(controller, 1);
                 }
                 if extra {
                     self.counter_put_on(id);
@@ -14909,6 +14959,7 @@ impl Game {
                     if self.obj(id).zone == Zone::Battlefield {
                         let o = self.obj_mut(id);
                         o.keyword_counters = o.keyword_counters.with(keywords);
+                        self.counters_placed(item.controller, 1);
                         self.counter_put_on(id);
                     }
                 }
@@ -15029,6 +15080,8 @@ impl Game {
                     self.become_tapped(id);
                     let n = self.doubling(self.obj(id).controller);
                     self.obj_mut(id).stun += n;
+                    let controller = self.obj(id).controller;
+                    self.counters_placed(controller, n);
                     self.counter_put_on(id);
                 }
             }
@@ -15625,6 +15678,7 @@ impl Game {
                         n
                     };
                     self.obj_mut(src).loyalty += n;
+                    self.counters_placed(item.controller, n);
                 }
             }
             Effect::CreateTokensPerLife { def } => {
@@ -15906,6 +15960,8 @@ impl Game {
                 for w in self.permanents(p).collect::<Vec<_>>() {
                     if self.types_of(w).planeswalker && self.has_subtype(w, sub) {
                         self.obj_mut(w).loyalty += self.doubling(p);
+                        let n = self.doubling(p);
+                        self.counters_placed(p, n);
                     }
                 }
             }
@@ -16309,6 +16365,7 @@ impl Game {
                 if self.obj(src).zone == Zone::Battlefield {
                     let n = n * self.doubling(self.obj(src).controller);
                     self.obj_mut(src).kind_counters += n;
+                    self.counters_placed(item.controller, n);
                 }
             }
             Effect::MaySacrificeToken => {
@@ -16438,6 +16495,8 @@ impl Game {
                             self.add_counters(src, 1);
                         } else {
                             self.obj_mut(src).counters -= 1;
+                            let owner = self.obj(src).owner;
+                            self.counters_placed(owner, 1);
                         }
                     }
                 }
@@ -17352,6 +17411,7 @@ impl Game {
         self.create_token(p, spirit);
         for id in self.last_created.clone() {
             self.obj_mut(id).counters += n as i32;
+            self.counters_placed(p, n as i32);
             self.counter_put_on(id);
         }
     }
@@ -18111,6 +18171,8 @@ impl Game {
                         let o = self.obj_mut(c);
                         o.controller = o.owner;
                         o.revival = n;
+                        let owner = self.obj(c).owner;
+                        self.counters_placed(owner, n);
                     }
                 }
                 // CR 513.1: "at the beginning of the end step" triggers.
@@ -18720,9 +18782,13 @@ impl Game {
         match target {
             Target::Player(p) if infect => {
                 self.players[p].poison += amount; // CR 702.90b: poison counters, not life loss
+                let by = self.obj(source).controller;
+                self.counters_placed(by, amount);
             }
             Target::Object(id) if infect && self.types_of(id).creature => {
                 self.obj_mut(id).counters -= amount; // CR 702.90c: -1/-1 counters
+                let by = self.obj(source).controller;
+                self.counters_placed(by, amount);
             }
             Target::Player(p) => {
                 let turn = self.turn;
