@@ -1165,6 +1165,43 @@ pub fn script(name: &str) -> Option<Script> {
             &["When Demonlord Belzenlok enters, exile cards from the top of your library until you exile a nonland card, then put that card into your hand. If the card's mana value is 4 or greater, repeat this process. Demonlord Belzenlok deals 1 damage to you for each card put into your hand this way."],
             |d, _| on(d, When::Enters, vec![], vec![Effect::BelzenlokDig]),
         ),
+        // ---- Unblocked by lane d3's core theme, batch 8 (protection from a chosen quality) ----
+        "Benevolent Bodyguard" => s(
+            &["Sacrifice this creature: Target creature you control gains protection from the color of your choice until end of turn."],
+            |d, _| {
+                let n = activated(d, "", false, vec![YOUR_CREATURE], vec![Effect::ProtectionChosenColorEot(Some(0))]);
+                d.activated[n].sacrifice_self = true;
+            },
+        ),
+        "Cartel Aristocrat" => s(
+            &["Sacrifice another creature: This creature gains protection from the color of your choice until end of turn."],
+            |d, _| {
+                let n = activated(d, "", false, vec![], vec![Effect::ProtectionChosenColorEot(None)]);
+                d.activated[n].sacrifice_other_creature = true;
+            },
+        ),
+        "Akroma's Will" => s(
+            &[
+                "Choose one. If you control a commander as you cast this spell, you may choose both instead.",
+                "• Creatures you control gain flying, vigilance, and double strike until end of turn.",
+                "• Creatures you control gain lifelink, indestructible, and protection from each color until end of turn.",
+            ],
+            |d, _| {
+                let air = Effect::GrantAll { who: Who::You, keywords: Keywords::FLYING.with(Keywords::VIGILANCE).with(Keywords::DOUBLE_STRIKE) };
+                let guard = Effect::GrantAll { who: Who::You, keywords: Keywords::LIFELINK.with(Keywords::INDESTRUCTIBLE) };
+                let pro = Effect::YourCreaturesProtectionEachColorEot;
+                d.modes = vec![
+                    Ability::new(vec![], vec![air]),
+                    Ability::new(vec![], vec![guard, pro]),
+                    Ability::new(vec![], vec![air, guard, pro]),
+                ];
+                d.last_mode_needs_commander = true;
+            },
+        ),
+        "Serra's Emissary" => s(
+            &["As this creature enters, choose a card type.", "You and creatures you control have protection from the chosen card type."],
+            |d, _| d.protection_chosen_card_type = true,
+        ),
         _ => None,
     }
 }
@@ -1338,4 +1375,9 @@ pub const PG_D3_SCRIPTED: &[&str] = &[
     "Winds of Abandon",
     "Tainted Pact",
     "Demonlord Belzenlok",
+    // Core theme d3, batch 8
+    "Benevolent Bodyguard",
+    "Cartel Aristocrat",
+    "Akroma's Will",
+    "Serra's Emissary",
 ];

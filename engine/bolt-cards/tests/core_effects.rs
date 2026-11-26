@@ -1291,3 +1291,40 @@ fn exile_their_creatures_fetch_basics_tainted_pact_and_belzenlok_dig() {
     assert_eq!((g.obj(land).zone, g.obj(ring).zone), (Zone::Exile, Zone::Hand));
     assert_eq!(g.players[0].life, 39, "mana value 1: once");
 }
+
+// ---- batch 8 ----
+
+#[test]
+fn protection_grants_last_the_turn_and_chosen_card_type_prevents_damage() {
+    use bolt_core::effect::Recipient;
+    let mut emissary = sorcery(vec![], vec![]);
+    emissary.spell = None;
+    emissary.types = Types {
+        enchantment: true,
+        ..Types::default()
+    };
+    emissary.protection_chosen_card_type = true;
+    let hit = sorcery(
+        vec![],
+        vec![Effect::Damage {
+            amount: 3,
+            kicked: None,
+            to: Recipient::You,
+        }],
+    );
+    let (mut g, t) = game_with(vec![emissary, hit]);
+    let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
+    let zcc = g.obj(elves).zcc;
+    g.protection_grants
+        .push((elves, zcc, [true, false, false, false, false], g.turn));
+    assert!(g.protection(elves)[0]);
+    let e = g.add_card(0, t, Zone::Battlefield);
+    g.objects[e.0 as usize].chosen_card_type = Some(6); // sorcery
+    cast_test(&mut g, t + 1, &[], &[]);
+    assert_eq!(g.players[0].life, 40, "a sorcery's damage to you is prevented");
+    g.objects[e.0 as usize].chosen_card_type = Some(0);
+    cast_test(&mut g, t + 1, &[], &[]);
+    assert_eq!(g.players[0].life, 37);
+    g.start_turn(5, 1);
+    assert!(!g.protection(elves)[0], "until end of turn");
+}

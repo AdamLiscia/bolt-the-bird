@@ -276,6 +276,9 @@ pub struct Object {
     /// It was an enchantment and no other card type when it last left the battlefield.
     pub last_enchantment_only: bool,
     /// Cast for its warp cost: exiled at the next end step, then castable from exile.
+    /// The card type chosen as it entered (0 artifact, 1 creature, 2 enchantment, 3 instant,
+    /// 4 land, 5 planeswalker, 6 sorcery): Serra's Emissary.
+    pub chosen_card_type: Option<u8>,
     pub warped: bool,
 }
 
@@ -1037,6 +1040,11 @@ pub enum Decision {
     /// `Yes` puts the last of `exiled` (the cards Tainted Pact exiled) into your hand; `No` exiles
     /// the next one.
     TaintedPact { exiled: Vec<ObjId> },
+    /// `Mode(c)`: `target` gains protection from color `c` (WUBRG) until end of turn.
+    ProtectionColor { target: ObjId },
+    /// `Mode(t)`: the card type `card` protects you and your creatures from (0 artifact, 1 creature,
+    /// 2 enchantment, 3 instant, 4 land, 5 planeswalker, 6 sorcery), as it enters.
+    ChooseCardType { card: ObjId },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -1324,6 +1332,9 @@ pub struct Game {
     /// The turn each player's tokens are doubled (Kaya's −2).
     pub tokens_doubled_turn: [u32; 2],
     /// Investigations each player did this turn: (turn, count).
+    /// Protection from colors granted until end of turn: (object, its zone change count, the
+    /// colors, WUBRG, the turn) (Benevolent Bodyguard, Akroma's Will).
+    pub protection_grants: Vec<(ObjId, u32, [bool; 5], u32)>,
     pub investigated_turn: [(u32, u32); 2],
 }
 
@@ -1545,6 +1556,7 @@ impl Game {
             combat_damage_prevented_except: None,
             tokens_doubled_turn: [0; 2],
             investigated_turn: [(0, 0); 2],
+            protection_grants: Vec::new(),
         }
     }
 
@@ -1661,6 +1673,7 @@ impl Game {
             lost_soulbond: false,
             last_enchantment_only: false,
             warped: false,
+            chosen_card_type: None,
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -2148,6 +2161,16 @@ impl Game {
     /// Colors `id` has protection from.
     pub fn protection(&self, id: ObjId) -> [bool; 5] {
         let mut p = [false; 5];
+        let zcc = self.obj(id).zcc;
+        for g in self
+            .protection_grants
+            .iter()
+            .filter(|g| g.0 == id && g.1 == zcc && g.3 == self.turn)
+        {
+            for (i, x) in g.2.iter().enumerate() {
+                p[i] |= *x;
+            }
+        }
         for s in self.statics_on(id) {
             for (i, x) in s.protection.iter().enumerate() {
                 p[i] |= *x;
@@ -2179,6 +2202,12 @@ impl Game {
             {
                 return true; // Yawgmoth: protection from Humans
             }
+        }
+        if self.obj(id).zone == Zone::Battlefield
+            && self.types_of(id).creature
+            && self.protects_from_chosen_type(self.obj(id).controller, source)
+        {
+            return true; // Serra's Emissary: "creatures you control"
         }
         let p = self.protection(id);
         self.colors_of(source).iter().zip(p).any(|(c, pr)| *c && pr)
@@ -4061,7 +4090,9 @@ impl Game {
                     }
                     // CR 115.3: one player can't fill two slots of a single "divided" target word.
                     Target::Player(p) => {
-                        self.divide_total(&c.item) == 0 || !c.item.targets.contains(&Chosen::Player(p))
+                        let pro = self.protects_from_chosen_type(p, c.item.source); // Serra's Emissary
+                        !pro && (self.divide_total(&c.item) == 0
+                            || !c.item.targets.contains(&Chosen::Player(p)))
                     }
                 });
                 // Each target of a divided amount gets at least 1, so no more targets than the total.
@@ -4533,6 +4564,11 @@ impl Game {
     /// Target legality that depends on the stack entry itself: "other" and "mana value at most the
     /// source's power".
     fn slot_ok(&self, item: &StackItem, f: &Filter, t: Target) -> bool {
+        if let Target::Player(q) = t {
+            if self.protects_from_chosen_type(q, item.source) {
+                return false; // Serra's Emissary: "You ... have protection"
+            }
+        }
         let Target::Object(x) = t else { return true };
         if self.protected_from(x, item.source) {
             return false; // CR 702.16c
@@ -8245,6 +8281,14 @@ impl Game {
                 self.ask(r.item.controller, Decision::ChooseEnterMode { card: source });
                 return;
             }
+            // "As this enters, choose a card type" (CR 614.12; Serra's Emissary).
+            if r.acts
+                && self.def_of(source).protection_chosen_card_type
+                && self.obj(source).zone == Zone::Battlefield
+            {
+                self.ask(r.item.controller, Decision::ChooseCardType { card: source });
+                return;
+            }
             // "As this enters, choose a color" (CR 614.12).
             if r.acts && self.def_of(source).choose_color && self.obj(source).zone == Zone::Battlefield {
                 self.ask(r.item.controller, Decision::ChooseColor { card: source });
@@ -9121,6 +9165,8 @@ impl Game {
                 v
             }
             Decision::TaintedPact { .. } => vec![Action::Yes, Action::No],
+            Decision::ProtectionColor { .. } => (0..5).map(Action::Mode).collect(),
+            Decision::ChooseCardType { .. } => (0..7).map(Action::Mode).collect(),
             Decision::BraidsOpponent { types, .. } => {
                 let mut v: Vec<Action> = self
                     .braids_options(p, Some(*types))
@@ -9263,6 +9309,15 @@ impl Game {
         }
         if let (Decision::ChooseEnterMode { card }, Action::Mode(m)) = (&d, a) {
             self.obj_mut(*card).chosen_mode = Some(m);
+            if self.end_turn {
+                self.end_the_turn();
+            } else {
+                self.give_priority(self.active);
+            }
+            return;
+        }
+        if let (Decision::ChooseCardType { card }, Action::Mode(t)) = (&d, a) {
+            self.obj_mut(*card).chosen_card_type = Some(t);
             if self.end_turn {
                 self.end_the_turn();
             } else {
@@ -10248,6 +10303,13 @@ impl Game {
                 }
             }
             (Decision::BraidsSacrifice, _) => {}
+            (Decision::ProtectionColor { target }, Action::Mode(c)) => {
+                let mut colors = [false; 5];
+                colors[c as usize % 5] = true;
+                let (zcc, turn) = (self.obj(target).zcc, self.turn);
+                self.protection_grants.retain(|g| g.3 == turn);
+                self.protection_grants.push((target, zcc, colors, turn));
+            }
             (Decision::TaintedPact { exiled }, Action::Yes) => {
                 if let Some(&c) = exiled.last() {
                     self.move_to(c, Zone::Hand);
@@ -10509,6 +10571,30 @@ impl Game {
             self.move_to(picked[k], Zone::Hand);
         }
         self.shuffle_library(p);
+    }
+
+    /// Whether a permanent `p` controls gives `p` and their creatures protection from `source`'s
+    /// card type (Serra's Emissary).
+    fn protects_from_chosen_type(&self, p: PlayerId, source: ObjId) -> bool {
+        let t = self.types_of(source);
+        let kinds = [
+            t.artifact,
+            t.creature,
+            t.enchantment,
+            t.instant,
+            t.land,
+            t.planeswalker,
+            t.sorcery,
+        ];
+        self.battlefield.iter().any(|&e| {
+            self.def_of(e).protection_chosen_card_type
+                && self.obj(e).controller == p
+                && !self.lost_abilities(e)
+                && self
+                    .obj(e)
+                    .chosen_card_type
+                    .is_some_and(|k| kinds.get(k as usize) == Some(&true))
+        })
     }
 
     /// Tainted Pact: exile the next card; stop on a repeated name or an empty library, else ask.
@@ -15744,6 +15830,23 @@ impl Game {
                     self.ask(q, Decision::BasicsTappedUpTo { left: n, next: None });
                 }
             }
+            Effect::ProtectionChosenColorEot(slot) => {
+                let target = match slot {
+                    Some(n) => Game::slot_object(item, legal, n),
+                    None => Some(src),
+                };
+                if let Some(t) = target.filter(|&t| self.obj(t).zone == Zone::Battlefield) {
+                    self.ask(item.controller, Decision::ProtectionColor { target: t });
+                }
+            }
+            Effect::YourCreaturesProtectionEachColorEot => {
+                let turn = self.turn;
+                self.protection_grants.retain(|g| g.3 == turn);
+                for c in self.creatures(item.controller).collect::<Vec<_>>() {
+                    let zcc = self.obj(c).zcc;
+                    self.protection_grants.push((c, zcc, [true; 5], turn));
+                }
+            }
             Effect::TaintedPact => {
                 let p = item.controller;
                 self.tainted_pact_next(p, Vec::new());
@@ -17035,6 +17138,11 @@ impl Game {
                 if self.damage_to_player_prevented_turn[p] == Some(self.turn) {
                     return; // Riot Control
                 }
+            }
+        }
+        if let (false, Target::Player(q)) = (unpreventable, target) {
+            if self.protects_from_chosen_type(q, source) {
+                return; // Serra's Emissary: damage to you from that card type is prevented
             }
         }
         if let (false, Target::Object(id)) = (unpreventable, target) {

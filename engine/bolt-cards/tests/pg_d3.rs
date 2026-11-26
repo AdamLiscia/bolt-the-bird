@@ -2613,3 +2613,58 @@ fn demonlord_belzenlok_repeats_on_mana_value_four_or_more() {
     assert_eq!((g.obj(sphinx).zone, g.obj(ring).zone), (Zone::Hand, Zone::Hand));
     assert_eq!(g.players[0].life, 38, "two cards into your hand");
 }
+
+// ---- Core theme d3, batch 8 ----
+
+#[test]
+fn benevolent_bodyguard_protects_from_the_chosen_color() {
+    let mut g = table();
+    let b = put(&mut g, 0, "Benevolent Bodyguard");
+    let elves = put(&mut g, 0, "Llanowar Elves");
+    act(&mut g, Action::Activate(b, 0));
+    act(&mut g, Action::Target(obj(elves)));
+    resolve_all(&mut g, &[Action::Mode(3)]); // red
+    assert_eq!(g.protection(elves), [false, false, false, true, false]);
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    act(&mut g, Action::Cast(bolt));
+    assert!(!g.legal_actions().contains(&Action::Target(obj(elves))));
+}
+
+#[test]
+fn cartel_aristocrat_protects_itself() {
+    let mut g = table();
+    let a = put(&mut g, 0, "Cartel Aristocrat");
+    let looter = put(&mut g, 0, "Merfolk Looter");
+    act(&mut g, Action::ActivateWith(a, 0, looter));
+    resolve_all(&mut g, &[Action::Mode(2)]); // black
+    assert_eq!(g.obj(looter).zone, Zone::Graveyard);
+    assert!(g.protection(a)[2]);
+}
+
+#[test]
+fn akromas_will_protection_from_each_color() {
+    let mut g = table();
+    let elves = put(&mut g, 0, "Llanowar Elves");
+    let w = hand(&mut g, 0, "Akroma's Will");
+    act(&mut g, Action::CastModal(w, 1));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.protection(elves), [true; 5]);
+    assert!(g.keywords(elves).has(Keywords::INDESTRUCTIBLE) && g.keywords(elves).has(Keywords::LIFELINK));
+    assert!(!g.keywords(elves).has(Keywords::FLYING), "one mode");
+}
+
+#[test]
+fn serras_emissary_protects_you_and_your_creatures_from_the_chosen_type() {
+    let mut g = table();
+    let elves = put(&mut g, 0, "Llanowar Elves");
+    let e = hand(&mut g, 0, "Serra's Emissary");
+    play(&mut g, e, false, &[], &[Action::Mode(3)]); // instant
+    assert_eq!(g.obj(e).chosen_card_type, Some(3));
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    act(&mut g, Action::Cast(bolt));
+    let legal = g.legal_actions();
+    for t in [Target::Player(0), obj(e), obj(elves)] {
+        assert!(!legal.contains(&Action::Target(t)), "{t:?}");
+    }
+    assert!(legal.contains(&Action::Target(Target::Player(1))));
+}

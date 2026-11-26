@@ -462,6 +462,7 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         changeling: false,
         adventure: false,
         enchanted_stops_activations: false,
+        protection_chosen_card_type: false,
     };
     def.color_identity = color_identity(o);
     def.phyrexian = phyrexian;

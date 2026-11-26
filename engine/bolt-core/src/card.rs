@@ -759,6 +759,9 @@ pub struct CardDef {
     /// and its owner may cast the card itself from exile later.
     pub adventure: bool,
     /// "Enchanted permanent's activated abilities can't be activated." (Hold for Questioning)
+    /// "As this enters, choose a card type." and "You and creatures you control have protection
+    /// from the chosen card type." (Serra's Emissary).
+    pub protection_chosen_card_type: bool,
     pub enchanted_stops_activations: bool,
 }
 
@@ -1012,6 +1015,7 @@ impl CardDef {
             changeling: false,
             adventure: false,
             enchanted_stops_activations: false,
+            protection_chosen_card_type: false,
         }
     }
 
@@ -1232,6 +1236,7 @@ impl CardDef {
             changeling: false,
             adventure: false,
             enchanted_stops_activations: false,
+            protection_chosen_card_type: false,
         }
     }
 
@@ -1452,6 +1457,7 @@ impl CardDef {
             changeling: false,
             adventure: false,
             enchanted_stops_activations: false,
+            protection_chosen_card_type: false,
         }
     }
 }

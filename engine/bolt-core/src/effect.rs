@@ -1743,6 +1743,12 @@ pub enum Effect {
     /// value is 4 or greater; the source deals 1 damage to you per card put into your hand
     /// (Demonlord Belzenlok).
     BelzenlokDig,
+    /// The creature in `slot` (the source, with `None`) gains protection from the color of your
+    /// choice until end of turn, as `Decision::ProtectionColor` (Benevolent Bodyguard, Cartel
+    /// Aristocrat).
+    ProtectionChosenColorEot(Option<u8>),
+    /// Creatures you control gain protection from each color until end of turn (Akroma's Will).
+    YourCreaturesProtectionEachColorEot,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

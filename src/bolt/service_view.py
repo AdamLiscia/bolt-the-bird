@@ -133,6 +133,11 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
             faces = (src or "").split(" // ")
             face = faces[value] if len(faces) == 2 else ("its front", "its back")[value]
             return f"Play it as {face}"
+        if d == "ProtectionColor" and 0 <= value < 5:
+            return f"Protection from {COLORS[value].lower()}"
+        if d == "ChooseCardType" and 0 <= value < 7:
+            kinds = ("artifacts", "creatures", "enchantments", "instants", "lands", "planeswalkers", "sorceries")
+            return f"{src or 'It'}: protection from {kinds[value]}"
         if d == "TargetToSource":
             return f"Change target {value + 1} to {src or 'this creature'}"
         return None
