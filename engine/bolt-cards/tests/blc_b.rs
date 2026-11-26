@@ -2421,3 +2421,125 @@ fn esikas_chariot_makes_cats_crews_and_copies_a_token() {
     let n = g.permanents(0).filter(|&x| g.def_of(x).name == "Cat").count();
     assert_eq!(n, 3);
 }
+
+#[test]
+fn chatterfang_adds_squirrels_and_sacrifices_x_of_them() {
+    let mut g = table();
+    let chatter = put(&mut g, 0, "Chatterfang, Squirrel General");
+    let chariot = hand(&mut g, 0, "Esika's Chariot");
+    play(&mut g, chariot, false, &[], &[]);
+    let count = |g: &Game, name: &str| g.permanents(0).filter(|&x| g.def_of(x).name == name).count();
+    assert_eq!(count(&g, "Cat"), 2);
+    assert_eq!(count(&g, "Squirrel"), 2, "that many Squirrels");
+    let ghalta = put(&mut g, 1, "Ghalta, Primal Hunger");
+    let (p, t) = (g.power(ghalta), g.toughness(ghalta));
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::ActivateX { id: chatter, n: 0, victim: None, x: 3 }), "two tokens and Chatterfang");
+    assert!(!legal.contains(&Action::ActivateX { id: chatter, n: 0, victim: None, x: 4 }));
+    act(&mut g, Action::ActivateX { id: chatter, n: 0, victim: None, x: 2 });
+    act(&mut g, Action::Target(Target::Object(ghalta)));
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.power(ghalta), g.toughness(ghalta)), (p + 2, t - 2));
+    assert_eq!(count(&g, "Squirrel"), 0, "the tokens went first");
+    assert_eq!(g.obj(chatter).zone, Zone::Battlefield);
+}
+
+#[test]
+fn baird_taxes_each_attacker_one() {
+    let mut g = table();
+    put(&mut g, 1, "Baird, Steward of Argive");
+    assert_eq!(g.attack_tax(1, false), 1);
+}
+
+#[test]
+fn coveted_jewel_changes_hands_when_its_controller_is_hit_unblocked() {
+    let mut g = table();
+    let jewel = put(&mut g, 1, "Coveted Jewel");
+    g.objects[jewel.0 as usize].tapped = true;
+    let ghalta = put(&mut g, 0, "Ghalta, Primal Hunger");
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(ghalta));
+    act(&mut g, Action::FinishAttacks);
+    let n = g.players[0].hand.len();
+    while g.obj(jewel).controller != 0 {
+        let a = match g.pending {
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.players[0].hand.len(), n + 3);
+    assert!(!g.obj(jewel).tapped, "untapped");
+}
+
+#[test]
+fn perch_protection_with_the_gift_phases_out_and_locks_life_past_the_extra_turn() {
+    let mut g = table();
+    let perch = hand(&mut g, 0, "Perch Protection");
+    let n = g.permanents(0).count();
+    act(&mut g, Action::CastKicked(perch));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.extra_turns, vec![1], "the opponent's extra turn");
+    assert_eq!(g.phased_out.len(), n + 4, "everything, the four Birds too");
+    assert_eq!(g.permanents(0).count(), 0);
+    // Turn 3 now, then the opponent's extra turn 4 and their turn 5: player 0's next is turn 6.
+    assert_eq!(g.life_locked_until[0], Some(g.turn + 3));
+    assert_eq!(g.obj(perch).zone, Zone::Exile);
+
+    // Without the gift: just the Birds.
+    let mut g = table();
+    let perch = hand(&mut g, 0, "Perch Protection");
+    play(&mut g, perch, false, &[], &[]);
+    let birds = g.permanents(0).filter(|&x| g.def_of(x).name == "Bird").count();
+    assert_eq!(birds, 4);
+    assert!(g.extra_turns.is_empty() && g.phased_out.is_empty());
+}
+
+#[test]
+fn illusionists_gambit_removes_attackers_and_they_cant_attack_again() {
+    let mut g = table();
+    let ghalta = put(&mut g, 0, "Ghalta, Primal Hunger");
+    let gambit = hand(&mut g, 1, "Illusionist's Gambit");
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(!g.legal_actions().contains(&Action::Cast(gambit)));
+    act(&mut g, Action::Attack(ghalta));
+    act(&mut g, Action::FinishAttacks);
+    while g.pending != Pending::Priority(1) || g.step != Step::DeclareBlockers {
+        let a = match g.pending {
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    act(&mut g, Action::Cast(gambit));
+    resolve_all(&mut g, &[]);
+    assert!(!g.obj(ghalta).tapped, "untapped");
+    assert!(g.combat.as_ref().is_none_or(|c| c.attackers.is_empty()), "removed from combat");
+    let life = g.players[1].life;
+    while g.step != Step::Main2 {
+        assert_ne!(g.pending, Pending::DeclareAttackers(0), "Ghalta can't attack the second combat");
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.players[1].life, life);
+}
+
+#[test]
+fn hazels_brewmaster_gives_foods_the_exiled_creatures_abilities() {
+    let mut g = table();
+    let elder = g.add_card(1, bid("Sakura-Tribe Elder"), Zone::Graveyard);
+    let brew = hand(&mut g, 0, "Hazel's Brewmaster");
+    play(&mut g, brew, false, &[], &[Action::Target(Target::Object(elder))]);
+    assert_eq!(g.obj(elder).zone, Zone::Exile);
+    let food = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "Food")
+        .expect("a Food");
+    let own = g.def_of(food).activated.len();
+    assert!(g.legal_actions().contains(&Action::Activate(food, own)), "the Elder's ability");
+    act(&mut g, Action::Activate(food, own));
+    assert_eq!(g.obj(food).zone, Zone::Graveyard, "sacrificed the Food");
+}

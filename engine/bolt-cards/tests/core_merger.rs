@@ -528,3 +528,93 @@ fn activate_only_if_you_attacked_with_two_or_more_minas_tirith_style() {
         "two attacked"
     );
 }
+
+/// A game on the CMD pool plus test sorceries (indices from the pool's length up), as `game`.
+fn game_plus(extra: Vec<bolt_core::CardDef>) -> (Game, usize) {
+    let mut defs = (*set("CMD").unwrap().defs).clone();
+    let base = defs.len();
+    defs.extend(extra);
+    let plains = vec![cid("Plains"); 99];
+    let mut g = Game::new_commander(
+        std::sync::Arc::new(defs),
+        [&plains, &plains],
+        [cid("Bello, Bard of the Brambles"), cid("Ms. Bumbleflower")],
+        7,
+        0,
+    );
+    g.auto_pass = false;
+    for land in ["Plains", "Island", "Swamp", "Mountain", "Forest"] {
+        for _ in 0..5 {
+            put(&mut g, 0, land);
+            put(&mut g, 1, land);
+        }
+    }
+    g.start_turn(3, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    (g, base)
+}
+
+fn sorcery(effect: bolt_core::Effect, targets: Vec<bolt_core::Filter>) -> bolt_core::CardDef {
+    bolt_core::CardDef::spell("Room", "{1}", false, bolt_core::Ability::new(targets, vec![effect]))
+}
+
+#[test]
+fn twisted_caverns_cant_attack_until_your_next_turn() {
+    use bolt_core::{Effect, Filter};
+    let (mut g, base) = game_plus(vec![sorcery(Effect::CantAttackUntilYourNextTurn(0), vec![Filter::CREATURE])]);
+    let lions = put(&mut g, 0, "Savannah Lions");
+    let s = g.add_card(0, base, Zone::Hand);
+    play(&mut g, s, false, &[Target::Object(lions)], &[]);
+    while g.step != Step::Main2 {
+        assert_ne!(g.pending, Pending::DeclareAttackers(0), "it can't attack this turn");
+        let a = match g.pending {
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.cant_attack_until.last().map(|e| e.2), Some(g.turn + 2), "player 0's next turn");
+}
+
+#[test]
+fn arena_goads_a_creature_into_attacking() {
+    use bolt_core::{Effect, Filter};
+    let (mut g, base) = game_plus(vec![sorcery(Effect::Goad(0), vec![Filter::CREATURE])]);
+    let lions = put(&mut g, 1, "Savannah Lions");
+    let s = g.add_card(0, base, Zone::Hand);
+    play(&mut g, s, false, &[Target::Object(lions)], &[]);
+    assert!(g.is_goaded(lions));
+    g.start_turn(4, 1);
+    while g.pending != Pending::DeclareAttackers(1) {
+        let a = match g.pending {
+            Pending::Decide(_) | Pending::ChooseTarget(_) => *g.legal_actions().last().unwrap(),
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Attack(lions)));
+    assert!(!legal.contains(&Action::FinishAttacks), "goaded: it must attack");
+}
+
+#[test]
+fn mad_wizards_lair_draws_three_and_may_cast_one_free() {
+    let (mut g, base) = game_plus(vec![sorcery(bolt_core::Effect::DrawThreeMayCastOneFree, vec![])]);
+    let lions = [
+        g.add_card(0, cid("Savannah Lions"), Zone::Library),
+        g.add_card(0, cid("Savannah Lions"), Zone::Library),
+    ];
+    let plains = g.add_card(0, cid("Plains"), Zone::Library);
+    let s = g.add_card(0, base, Zone::Hand);
+    act(&mut g, Action::Cast(s));
+    while !matches!(g.pending, Pending::FreeCast(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Cast(lions[0])) && legal.contains(&Action::Cast(lions[1])));
+    assert_eq!(g.obj(plains).zone, Zone::Hand, "drawn, not castable");
+    act(&mut g, Action::Cast(lions[0]));
+    assert!(!g.legal_actions().contains(&Action::Cast(lions[1])), "one spell only");
+}

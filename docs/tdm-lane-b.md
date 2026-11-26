@@ -730,3 +730,23 @@ Horizon Stone; Omnath's green stays green) and `cast_only_during_your_end_step` 
 d1's pay_x_life). Mana Confluence dropped: d1 has it.
 `Activated::min_attackers_this_turn` (Minas Tirith's draw: 2; only the active player has attacked),
 tested on a test definition since d1 scripts the card.
+BLC: Chatterfang, with `Activated::sacrifice_x_of_subtype` ("Sacrifice X Squirrels", an
+ActivateX) and `Effect::PumpXMinusX`; its replacement is the existing tokens_plus_each.
+Attack tax by target: `CardDef::attack_tax_player_only` (Ghostly Prison, Propaganda),
+`attack_tax(defender, at_planeswalker)`, and `Game::attacking_planeswalker` set while
+AttackPlaneswalker declares through Attack. Attack and AttackPlaneswalker are each offered only
+when their own tax is payable. Baird (BLC) taxes both.
+Merger BLC: Perch Protection (`Effect::GiftExtraTurn`; LifeLockedUntilYourNextTurn now counts
+queued extra turns via `Game::next_turn_of`), Coveted Jewel (`When::OpponentCreaturesAttackYouUnblocked`,
+`Effect::AttackingPlayerDrawsAndTakesSource`). Tokens 89 Blood and 90 red Hamster (85-88 placeholders);
+Young Pyromancer's Elemental is now red.
+Illusionist's Gambit: `CardDef::cast_only_during_opponents_declare_blockers`,
+`Effect::RemoveAttackersFromCombatUntapNoAttack` and `Game::cant_attack_this_turn`, then the
+existing additional combat.
+Hazel's Brewmaster: `CardDef::foods_have_exiled_abilities`, `Effect::ExileCardWithSource`,
+`Game::exiled_with`, and `Game::borrowed_activated` (a Food's borrowed abilities, after kept ones,
+in `activated_of` and the activation list). Mana abilities aren't borrowed.
+d4's rooms: Twisted Caverns (`Effect::CantAttackUntilYourNextTurn`, `Game::cant_attack_until`,
+which Illusionist's Gambit now uses too), Arena (`Effect::Goad`, `Game::goaded`, `is_goaded` in
+the must-attack check), Mad Wizard's Lair (`Effect::DrawThreeMayCastOneFree`, Rishkar's free-cast
+window). Urza's Saga and Invert Polarity wait for d4's lacks_chapter_activated and flip_coin.

@@ -2081,6 +2081,28 @@ pub enum Effect {
         n: u8,
         def: usize,
     },
+    /// The creature in `slot` gets +X/-X until end of turn, X the ability's X (Chatterfang).
+    PumpXMinusX(u8),
+    /// "Gift an extra turn": the opponent takes an extra turn after this one (the gift was
+    /// promised: cast kicked), and "whenever you give a gift" triggers (Perch Protection).
+    GiftExtraTurn,
+    /// The attacking (active) player draws `n` cards and gains control of the source; untap it
+    /// (Coveted Jewel).
+    AttackingPlayerDrawsAndTakesSource(u8),
+    /// Remove all attacking creatures from combat and untap them; they can't attack the caster
+    /// (the only opponent here) or their planeswalkers for the rest of the turn, so they don't
+    /// attack in the additional combat (Illusionist's Gambit, with `AdditionalCombatAfterThisPhase`).
+    RemoveAttackersFromCombatUntapNoAttack,
+    /// Exile the graveyard card in `slot`, remembered as exiled with the source (Hazel's
+    /// Brewmaster); see `Game::exiled_with`.
+    ExileCardWithSource(u8),
+    /// The creature in `slot` can't attack until your next turn (Twisted Caverns).
+    CantAttackUntilYourNextTurn(u8),
+    /// Goad the creature in `slot` until your next turn (CR 701.38; Arena).
+    Goad(u8),
+    /// Draw three cards and reveal them; you may cast one of them without paying its mana cost
+    /// (Mad Wizard's Lair).
+    DrawThreeMayCastOneFree,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -2921,6 +2943,9 @@ pub enum When {
     /// "Whenever another source you control deals exactly 1 damage to a permanent or player"
     /// (Ghyrson Starn); slot 0 (if `triggering`) is that permanent or player.
     AnotherSourceYouControlDealsExactlyOne,
+    /// "Whenever one or more creatures an opponent controls attack you and aren't blocked"
+    /// (Coveted Jewel), once blockers are declared.
+    OpponentCreaturesAttackYouUnblocked,
 }
 
 #[derive(Clone, Debug, PartialEq)]
