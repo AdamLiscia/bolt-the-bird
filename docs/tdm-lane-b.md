@@ -706,3 +706,9 @@ artifact, Construct 0/0 artifact): Dawn of Hope, Murmuring Mystic, Third Path Ic
 
 Ghyrson, with d2's new triggers: Archmage Emeritus, Storm-Kiln Artist, Lobber Crew, Chandra's
 Spitfire, Curiosity, Ophidian Eye.
+
+After tarkir 973b06c: Misdirection (d1's pitch_with_life with no life, d3's single-target filter,
+my ChangeTargets; keeping the target is also offered) and Mana Confluence (its mana on the stack,
+as d1's Sunbaked Canyon). Five of my Ghyrson scripts were dropped because d2 had scripted the same
+cards (Archmage Emeritus, Lobber Crew, Chandra's Spitfire, Curiosity, Ophidian Eye); Storm-Kiln
+Artist stays.

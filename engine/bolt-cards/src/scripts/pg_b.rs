@@ -1535,9 +1535,6 @@ pub fn script(name: &str) -> Option<Script> {
             &["Whenever you cast a noncreature spell, create a 1/1 colorless Soldier artifact creature token."],
             |d, t| on(d, When::YouCastNoncreature, vec![], vec![Effect::CreateToken { who: Who::You, def: t.soldier_artifact, n: 1 }]),
         ),
-        "Archmage Emeritus" => s(&["Magecraft — Whenever you cast or copy an instant or sorcery spell, draw a card."], |d, _| {
-            on(d, When::YouCastOrCopyInstantOrSorcery, vec![], vec![draw(1)]);
-        }),
         "Storm-Kiln Artist" => s(
             &[
                 "This creature gets +1/+0 for each artifact you control.",
@@ -1562,25 +1559,18 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::YouCastOrCopyInstantOrSorcery, vec![], vec![Effect::CreateToken { who: Who::You, def: t.treasure, n: 1 }]);
             },
         ),
-        "Lobber Crew" => s(
-            &["{T}: This creature deals 1 damage to each opponent.", "Whenever you cast a multicolored spell, untap this creature."],
+        "Misdirection" => s(
+            &["You may exile a blue card from your hand rather than pay this spell's mana cost.", "Change the target of target spell with a single target."],
             |d, _| {
-                activated(d, "", true, vec![], vec![damage(1, Recipient::EachOpponent)]);
-                on(d, When::YouCastMulticolored, vec![], vec![Effect::UntapSelf]);
+                d.mana_ext.pitch_with_life = Some((1, 0)); // blue, no life
+                // "Change the target": offered as ChooseNewTarget, where keeping it is also allowed.
+                spell(d, vec![Filter { single_target: true, ..SPELL }], vec![Effect::ChangeTargets(0)]);
             },
         ),
-        "Chandra's Spitfire" => s(&["Whenever an opponent is dealt noncombat damage, this creature gets +3/+0 until end of turn."], |d, _| {
-            on(d, When::OpponentDealtNoncombatDamage, vec![], vec![Effect::PumpSelf { power: 3, toughness: 0 }]);
-        }),
-        "Curiosity" => s(&["Enchant creature", "Whenever enchanted creature deals damage to an opponent, you may draw a card."], |d, _| {
-            d.aura = true;
-            d.spell = Some(Ability::new(vec![CREATURE], vec![]));
-            may(d, When::EnchantedDealsDamageToOpponent, vec![], vec![draw(1)]);
-        }),
-        "Ophidian Eye" => s(&["Enchant creature", "Whenever enchanted creature deals damage to an opponent, you may draw a card."], |d, _| {
-            d.aura = true;
-            d.spell = Some(Ability::new(vec![CREATURE], vec![]));
-            may(d, When::EnchantedDealsDamageToOpponent, vec![], vec![draw(1)]);
+        "Mana Confluence" => s(&["{T}, Pay 1 life: Add one mana of any color."], |d, _| {
+            // On the stack, like Sunbaked Canyon's (d1).
+            let n = activated(d, "", true, vec![], vec![Effect::AddManaAnyColor]);
+            d.activated[n].life = 1;
         }),
         _ => None,
     }
@@ -1773,12 +1763,9 @@ pub const PG_B_SCRIPTED: &[&str] = &[
     "Dawn of Hope",
     "Murmuring Mystic",
     "Third Path Iconoclast",
-    "Archmage Emeritus",
     "Storm-Kiln Artist",
-    "Lobber Crew",
-    "Chandra's Spitfire",
-    "Curiosity",
-    "Ophidian Eye",
+    "Misdirection",
+    "Mana Confluence",
     // Ghyrson Starn (Spr3adsh33t)
     "Basilisk Collar",
     "Gorgon's Head",

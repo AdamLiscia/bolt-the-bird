@@ -2655,31 +2655,36 @@ fn dawn_of_hope_mystic_and_iconoclast_make_tokens() {
 }
 
 #[test]
-fn ghyrson_magecraft_multicolor_and_aura_draws() {
+fn storm_kiln_artist_makes_treasure_and_grows_with_artifacts() {
     let mut g = table();
-    put(&mut g, 0, "Archmage Emeritus");
     let kiln = put(&mut g, 0, "Storm-Kiln Artist");
-    let n = hand_size(&g, 0);
     let consider = hand(&mut g, 0, "Consider");
     play(&mut g, consider, false, &[], &[Action::No]);
-    assert_eq!(hand_size(&g, 0), n + 1, "Consider's draw and Emeritus's");
     assert_eq!(tokens(&g, 0, "Treasure").len(), 1);
     assert_eq!(g.power(kiln), 3, "2 plus one artifact (the Treasure)");
-    let spit = put(&mut g, 0, "Chandra's Spitfire");
+}
+
+#[test]
+fn misdirection_pitches_and_redirects_and_mana_confluence() {
+    let mut g = table();
+    let mine = put(&mut g, 0, "Savannah Lions");
+    let theirs = put(&mut g, 1, "Llanowar Elves");
     let bolt = hand(&mut g, 0, "Burst Lightning");
-    play(&mut g, bolt, false, &[Target::Player(1)], &[]);
-    assert_eq!(g.power(spit), 4);
-    let crew = put(&mut g, 0, "Lobber Crew");
-    act(&mut g, Action::Activate(crew, 0));
+    let mis = hand(&mut g, 0, "Misdirection");
+    let blue = hand(&mut g, 0, "Mana Leak");
+    act(&mut g, Action::Cast(bolt));
+    act(&mut g, Action::Target(Target::Object(mine)));
+    assert!(has(&g, Action::CastWith(mis, blue)));
+    act(&mut g, Action::CastWith(mis, blue));
+    act(&mut g, Action::Target(Target::Object(bolt)));
+    pass_until_asked(&mut g);
+    act(&mut g, Action::Target(Target::Object(theirs)));
     resolve_all(&mut g, &[]);
-    assert!(g.obj(crew).tapped);
-    let lyze = hand(&mut g, 0, "Electrolyze"); // multicolored
-    act(&mut g, Action::Cast(lyze));
-    act(&mut g, Action::Target(Target::Player(1)));
-    act(&mut g, Action::No);
-    while matches!(g.pending, Pending::Divide(_)) {
-        act(&mut g, Action::Amount(2));
-    }
+    assert_eq!(g.obj(theirs).zone, Zone::Graveyard);
+    assert_eq!(g.obj(mine).zone, Zone::Battlefield);
+    let conf = put(&mut g, 0, "Mana Confluence");
+    act(&mut g, Action::Activate(conf, 0));
     resolve_all(&mut g, &[]);
-    assert!(!g.obj(crew).tapped);
+    assert_eq!(g.players[0].life, 39);
+    assert_eq!(g.players[0].pool.len(), 1);
 }
