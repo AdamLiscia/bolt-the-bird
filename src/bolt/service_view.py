@@ -136,7 +136,9 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         return None
     if kind == "Pick":
         verb = {"SacrificeCreatures": "Sacrifice", "SacrificeAnother": "Sacrifice", "Search": "Take",
-                "LookPick": "Take", "KeepOfType": "Keep", "ScryOrder": "Put on top:", "GenesisPick": "Put onto the battlefield:", "PutPicksOntoBattlefield": "Put onto the battlefield:",
+                "LookPick": "Take", "KeepOfType": "Keep", "ScryOrder": "Put on top:", "GenesisPick": "Put onto the battlefield:", "PutPicksOntoBattlefield": "Put onto the battlefield:", "LandFromHandTapped": "Put onto the battlefield tapped:",
+                "DistributeCounters": "Put a +1/+1 counter on", "ManifestDread": "Manifest", "TurnFaceUp": "Turn face up:",
+                "PickVoidCard": "Play free this turn:",
                 "PickDiscard": "Make them discard", "EnterAsCopy": f"{card or 'It'} enters as a copy of"}.get(d)  # fmt: skip
         return f"{verb} {card_name}" if verb else None
     yes = kind == "Yes"
@@ -157,6 +159,8 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         "ShockLand": (f"Pay 2 life: {subject} enters untapped", f"{subject} enters tapped"),
         "CommanderToCommandZone": (f"Move {subject} to the command zone", f"Leave {subject} there"),
         "ChoosePile": ("Choose pile A", "Choose pile B"),
+        "PayToStop": (f"Pay {dec.get('cost', '')}", "Don't pay"),
+        "PayUpkeep": (f"Pay the upkeep {dec.get('cost', '')}", f"Don't pay (sacrifice {subject or src})"),
     }
     if d == "PutPicksOntoBattlefield" and not yes:
         return "Done choosing"
