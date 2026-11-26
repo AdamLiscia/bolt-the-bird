@@ -2164,7 +2164,8 @@ pub fn script(name: &str) -> Option<Script> {
             },
         ),
         // Not listed yet: "{1}, {T}: Add one mana of any color." waits on d1 (a mana ability with a
-        // mana cost). The copy ability is done.
+        // mana cost), and the activation listing checks targets with X = 0 before trying each X, so
+        // a `mana_value_is_x` target never lets it be activated (merger).
         "The Mycosynth Gardens" => s(
             &[
                 "{T}: Add {C}.",

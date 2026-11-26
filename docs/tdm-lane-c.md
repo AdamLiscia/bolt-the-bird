@@ -854,11 +854,13 @@ Built first: the batch 1 WIP plus the tarkir 0834aa0 merge, verified at d72d923 
   `copy_exceptions = keep_own`. "Except it has this ability" is the copy ability twice: once printed, once
   `copy_only` (kept by `copy_keeps_abilities`, as Sakashima's).
 - The Mycosynth Gardens: scripted with the same effect (`keep_own: false`), **not listed**: "{1}, {T}: Add one mana
-  of any color." needs d1 (a mana ability with a mana cost). Its copy part is tested in core_objects.
+  of any color." needs d1 (a mana ability with a mana cost). It also needs the merger: the activation listing's
+  `trigger_can_target` pre-check uses X = 0, so a `mana_value_is_x` target rejects every X and the ability is never
+  offered (its test was dropped at the build; `keep_own: false` is otherwise the tested Stage path).
 - Wandering Archaic // Explore the Vastlands: not scripted. The copy part needs no new Mac C core:
   `may(d, When::OpponentCastsInstantOrSorcery, vec![], vec![Effect::UnlessOpponentPays(2), Effect::CopySpellNewTargets])`,
   as Rhystic Study does. But it needs d2 to set the cast spell as `extra` on `OpponentCastsInstantOrSorcery`
   triggers (that `fire` passes None, and `CopySpellNewTargets` reads `extra`). The back face needs a sorcery
   modal back cast (`back_face_castable` covers permanent backs only; Mac C) and an "Each player looks at the top
   five..." effect (d3).
-Tests: pg_c 212 (4 new), core_objects 40 (2 new).
+Tests: pg_c 212 (4 new), core_objects 39 (1 new: a copied Rogue's Passage ability chooses a new target).
