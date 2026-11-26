@@ -1922,6 +1922,20 @@ impl Game {
                             Scope::OtherYourArtifactCreatures => {
                                 mine && creature && src != id && self.types_of(id).artifact
                             }
+                            Scope::OtherYourEnchantments => {
+                                mine && src != id && self.types_of(id).enchantment
+                            }
+                            Scope::CreaturesWithFlying | Scope::CreaturesWithoutFlying => {
+                                // Printed or until end of turn, as `OtherYourFliers` (no static
+                                // depends on another).
+                                let flying = self
+                                    .modifiers(id)
+                                    .fold(self.def_of(id).keywords, |k, m| k.with(m.keywords))
+                                    .has(Keywords::FLYING);
+                                creature && flying == (s.scope == Scope::CreaturesWithFlying)
+                            }
+                            Scope::YourTappedCreatures => mine && creature && o.tapped,
+                            Scope::YourUntappedCreatures => mine && creature && !o.tapped,
                         };
                         let condition_ok = match s.condition {
                             None => true,
@@ -1950,6 +1964,12 @@ impl Game {
                                     .count()
                                     >= n as usize
                             }
+                            Some(StaticCondition::AttachedTapped(tapped)) => so
+                                .attached_to
+                                .is_some_and(|(x, z)| self.obj(x).zcc == z && self.obj(x).tapped == tapped),
+                            Some(StaticCondition::AttachedIsColor(c)) => so
+                                .attached_to
+                                .is_some_and(|(x, z)| self.obj(x).zcc == z && self.colors_of(x)[c as usize]),
                         };
                         applies && condition_ok && (!s.your_turn_only || self.active == so.controller)
                     })
@@ -8174,6 +8194,7 @@ impl Game {
                     SearchFor::ArtifactOrEnchantment => d.types.artifact || d.types.enchantment,
                     SearchFor::Enchantment => d.types.enchantment,
                     SearchFor::CreaturePowerAtMost(n) => d.types.creature && d.power <= n,
+                    SearchFor::ArtifactManaValue(mv) => d.types.artifact && d.cost.mana_value() == mv,
                 }
             })
             .collect()
@@ -14663,6 +14684,83 @@ impl Game {
                         keywords,
                         dies: None,
                     });
+                }
+            }
+            Effect::AllCreaturesMinusPerSwampYouControl | Effect::MinusPerSwampYouControl(_) => {
+                let n = self
+                    .permanents(item.controller)
+                    .filter(|&x| self.has_subtype(x, "Swamp"))
+                    .count() as i32;
+                let ids: Vec<ObjId> = match e {
+                    Effect::MinusPerSwampYouControl(slot) => {
+                        Game::slot_object(item, legal, slot).into_iter().collect()
+                    }
+                    _ => self
+                        .battlefield
+                        .iter()
+                        .copied()
+                        .filter(|&x| self.types_of(x).creature)
+                        .collect(),
+                };
+                for id in ids {
+                    let zcc = self.obj(id).zcc;
+                    self.until_eot.push(Modifier {
+                        obj: id,
+                        zcc,
+                        power: -n,
+                        toughness: -n,
+                        keywords: Keywords::NONE,
+                        dies: None,
+                    });
+                }
+            }
+            Effect::DestroyAllArtifactsNoRegenGainManaValue => {
+                let all: Vec<ObjId> = self
+                    .battlefield
+                    .iter()
+                    .copied()
+                    .filter(|&x| self.types_of(x).artifact)
+                    .collect();
+                let mut gains = [0i32; 2];
+                for x in all {
+                    let (p, mv) = (self.obj(x).controller, self.def_of(x).cost.mana_value() as i32);
+                    self.destroy_no_regen(x);
+                    if self.obj(x).zone != Zone::Battlefield {
+                        gains[p] += mv;
+                    }
+                }
+                for (p, n) in gains.into_iter().enumerate() {
+                    if n > 0 {
+                        self.gain_life(p, n);
+                    }
+                }
+            }
+            Effect::GrantSubtypeYouControlEot { sub, keywords } => {
+                let ids: Vec<ObjId> = self
+                    .creatures(item.controller)
+                    .filter(|&x| self.has_subtype(x, sub))
+                    .collect();
+                for id in ids {
+                    let zcc = self.obj(id).zcc;
+                    self.until_eot.push(Modifier {
+                        obj: id,
+                        zcc,
+                        power: 0,
+                        toughness: 0,
+                        keywords,
+                        dies: None,
+                    });
+                }
+            }
+            Effect::TapOrUntapAttached => {
+                if let Some((id, zcc)) = self.obj(src).attached_to {
+                    if self.obj(id).zcc == zcc && self.obj(id).zone == Zone::Battlefield {
+                        if self.obj(id).tapped {
+                            self.untap_by_effect(id);
+                        } else {
+                            self.become_tapped(id);
+                        }
+                    }
                 }
             }
         }

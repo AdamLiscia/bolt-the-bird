@@ -1940,3 +1940,190 @@ fn pathbreaker_ibex_pumps_by_the_greatest_power() {
     assert_eq!(g.power(sphinx), 8);
     assert!(g.keywords(sphinx).has(Keywords::TRAMPLE));
 }
+
+// ---- Core theme d3, batch 4 ----
+
+#[test]
+fn mutilate_shrinks_all_creatures_per_swamp() {
+    let mut g = table();
+    let looter = put(&mut g, 1, "Merfolk Looter");
+    let sphinx = put(&mut g, 0, "Consecrated Sphinx");
+    let m = hand(&mut g, 0, "Mutilate");
+    play(&mut g, m, false, &[], &[]);
+    assert_eq!(g.obj(looter).zone, Zone::Graveyard);
+    assert_eq!((g.power(sphinx), g.toughness(sphinx)), (-1, 1), "five Swamps");
+}
+
+#[test]
+fn defile_shrinks_one_creature_per_swamp() {
+    let mut g = table();
+    let sphinx = put(&mut g, 1, "Consecrated Sphinx");
+    let d = hand(&mut g, 0, "Defile");
+    play(&mut g, d, false, &[obj(sphinx)], &[]);
+    assert_eq!((g.power(sphinx), g.toughness(sphinx)), (-1, 1));
+}
+
+#[test]
+fn seeds_of_innocence_destroys_artifacts_and_refunds_their_mana_value() {
+    let mut g = table();
+    let ring = put(&mut g, 1, "Sol Ring");
+    let plating = put(&mut g, 0, "Cranial Plating");
+    let s = hand(&mut g, 0, "Seeds of Innocence");
+    play(&mut g, s, false, &[], &[]);
+    assert_eq!(
+        (g.obj(ring).zone, g.obj(plating).zone),
+        (Zone::Graveyard, Zone::Graveyard)
+    );
+    assert_eq!((g.players[0].life, g.players[1].life), (42, 41));
+}
+
+#[test]
+fn trophy_mage_finds_an_artifact_with_mana_value_3() {
+    let mut g = table();
+    let good = g.add_card(0, cid("Sword of Feast and Famine"), Zone::Library);
+    let bad = g.add_card(0, cid("Sol Ring"), Zone::Library);
+    let t = hand(&mut g, 0, "Trophy Mage");
+    act(&mut g, Action::Cast(t));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Yes);
+    assert!(!g.legal_actions().contains(&Action::Pick(bad)));
+    resolve_all(&mut g, &[Action::Pick(good)]);
+    assert_eq!(g.obj(good).zone, Zone::Hand);
+}
+
+#[test]
+fn jirina_exiles_a_graveyard_and_protects_humans() {
+    let mut g = table();
+    let dead = g.add_card(1, cid("Merfolk Looter"), Zone::Graveyard);
+    let human = put(&mut g, 0, "Eternal Witness");
+    let j = hand(&mut g, 0, "Jirina, Dauntless General");
+    act(&mut g, Action::Cast(j));
+    resolve_all(&mut g, &[Action::Target(Target::Player(1))]);
+    assert_eq!(g.obj(dead).zone, Zone::Exile);
+    act(&mut g, Action::Activate(j, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(j).zone, Zone::Graveyard);
+    assert!(g.keywords(human).has(Keywords::HEXPROOF) && g.keywords(human).has(Keywords::INDESTRUCTIBLE));
+}
+
+#[test]
+fn privileged_position_gives_your_other_permanents_hexproof() {
+    let mut g = table();
+    let p = put(&mut g, 0, "Privileged Position");
+    let ring = put(&mut g, 0, "Sol Ring");
+    let theirs = put(&mut g, 1, "Sol Ring");
+    assert!(g.keywords(ring).has(Keywords::HEXPROOF));
+    assert!(!g.keywords(p).has(Keywords::HEXPROOF), "other");
+    assert!(!g.keywords(theirs).has(Keywords::HEXPROOF));
+}
+
+#[test]
+fn sterling_grove_shrouds_enchantments_and_tutors_one_to_the_top() {
+    let mut g = table();
+    let grove = put(&mut g, 0, "Sterling Grove");
+    let study = put(&mut g, 0, "Rhystic Study");
+    assert!(g.keywords(study).has(Keywords::SHROUD));
+    assert!(!g.keywords(grove).has(Keywords::SHROUD), "other");
+    let ench = g.add_card(0, cid("Knowledge Is Power"), Zone::Library);
+    act(&mut g, Action::Activate(grove, 0));
+    resolve_all(&mut g, &[Action::Pick(ench)]);
+    assert_eq!(g.obj(grove).zone, Zone::Graveyard);
+    assert_eq!(g.players[0].library.last(), Some(&ench));
+}
+
+#[test]
+fn farewell_exiles_the_chosen_sets() {
+    let mut g = table();
+    let ring = put(&mut g, 1, "Sol Ring");
+    let looter = put(&mut g, 1, "Merfolk Looter");
+    let study = put(&mut g, 1, "Knowledge Is Power");
+    let dead = g.add_card(1, cid("Llanowar Elves"), Zone::Graveyard);
+    let f = hand(&mut g, 0, "Farewell");
+    // Mode 0b1010: creatures and graveyards.
+    act(&mut g, Action::CastModal(f, 0b1010 - 1));
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.obj(looter).zone, g.obj(dead).zone), (Zone::Exile, Zone::Exile));
+    assert_eq!(
+        (g.obj(ring).zone, g.obj(study).zone),
+        (Zone::Battlefield, Zone::Battlefield)
+    );
+    assert_eq!(
+        g.obj(f).zone,
+        Zone::Graveyard,
+        "on the stack as graveyards are exiled"
+    );
+}
+
+#[test]
+fn gravitational_shift_pumps_fliers_and_shrinks_walkers() {
+    let mut g = table();
+    put(&mut g, 0, "Gravitational Shift");
+    let birds = put(&mut g, 1, "Birds of Paradise");
+    let looter = put(&mut g, 0, "Merfolk Looter");
+    assert_eq!(g.power(birds), 2);
+    assert_eq!(g.power(looter), -1);
+}
+
+#[test]
+fn shield_of_the_oversoul_by_the_creatures_color() {
+    let mut g = table();
+    let elves = put(&mut g, 0, "Llanowar Elves");
+    let s = hand(&mut g, 0, "Shield of the Oversoul");
+    play(&mut g, s, false, &[obj(elves)], &[]);
+    assert_eq!((g.power(elves), g.toughness(elves)), (2, 2));
+    assert!(g.keywords(elves).has(Keywords::INDESTRUCTIBLE));
+    assert!(!g.keywords(elves).has(Keywords::FLYING), "not white");
+}
+
+#[test]
+fn sword_of_the_paruns_follows_the_equipped_creatures_tapped_state() {
+    let mut g = table();
+    let sword = put(&mut g, 0, "Sword of the Paruns");
+    let looter = put(&mut g, 0, "Merfolk Looter");
+    let other = put(&mut g, 0, "Llanowar Elves");
+    act(&mut g, Action::Activate(sword, 1)); // equip {3}
+    act(&mut g, Action::Target(obj(looter)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        (g.toughness(looter), g.toughness(other)),
+        (3, 3),
+        "untapped: +0/+2"
+    );
+    act(&mut g, Action::Activate(sword, 0)); // {3}: tap it
+    resolve_all(&mut g, &[]);
+    assert!(g.obj(looter).tapped);
+    assert_eq!(
+        (g.power(looter), g.toughness(looter)),
+        (3, 1),
+        "tapped: +2/+0 to tapped ones"
+    );
+    assert_eq!((g.power(other), g.toughness(other)), (1, 1));
+}
+
+#[test]
+fn inexorable_tide_proliferates_on_each_spell() {
+    let mut g = table();
+    put(&mut g, 0, "Inexorable Tide");
+    let t = put(&mut g, 0, "Gavony Township");
+    let looter = put(&mut g, 0, "Merfolk Looter");
+    act(&mut g, Action::Activate(t, 0));
+    resolve_all(&mut g, &[]);
+    let ring = hand(&mut g, 0, "Sol Ring");
+    play(&mut g, ring, false, &[], &[]);
+    assert_eq!(g.obj(looter).counters, 2);
+}
+
+#[test]
+fn volt_charge_deals_3_and_proliferates() {
+    let mut g = table();
+    let t = put(&mut g, 0, "Gavony Township");
+    let looter = put(&mut g, 0, "Merfolk Looter");
+    act(&mut g, Action::Activate(t, 0));
+    resolve_all(&mut g, &[]);
+    let v = hand(&mut g, 0, "Volt Charge");
+    play(&mut g, v, false, &[Target::Player(1)], &[]);
+    assert_eq!(g.players[1].life, 37);
+    assert_eq!(g.obj(looter).counters, 2);
+}

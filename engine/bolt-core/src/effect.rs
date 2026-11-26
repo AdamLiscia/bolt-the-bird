@@ -1607,6 +1607,22 @@ pub enum Effect {
     /// Creatures you control gain these keywords and get +X/+X until end of turn, X the greatest
     /// power among creatures you control as it resolves (Pathbreaker Ibex).
     PumpAllGreatestPowerGrant(Keywords),
+    /// All creatures get -1/-1 until end of turn for each Swamp you control (Mutilate).
+    AllCreaturesMinusPerSwampYouControl,
+    /// The creature in `slot` gets -1/-1 until end of turn for each Swamp you control (Defile).
+    MinusPerSwampYouControl(u8),
+    /// Destroy all artifacts; they can't be regenerated; the controller of each gains life equal to
+    /// its mana value (Seeds of Innocence).
+    DestroyAllArtifactsNoRegenGainManaValue,
+    /// Creatures you control with this subtype gain these keywords until end of turn (Jirina:
+    /// Humans, hexproof and indestructible).
+    GrantSubtypeYouControlEot {
+        sub: &'static str,
+        keywords: Keywords,
+    },
+    /// Tap or untap the creature the source (an Equipment) is attached to; it toggles (Sword of the
+    /// Paruns).
+    TapOrUntapAttached,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1656,6 +1672,8 @@ pub enum SearchFor {
     Enchantment,
     /// A creature card with at most this power (Imperial Recruiter).
     CreaturePowerAtMost(i32),
+    /// An artifact card with exactly this mana value (Trophy Mage: 3).
+    ArtifactManaValue(u32),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1716,6 +1734,16 @@ pub enum Scope {
     OpponentsCreatures,
     /// Other artifact creatures you control (Cyberdrive Awakener).
     OtherYourArtifactCreatures,
+    /// Other enchantments you control (Sterling Grove).
+    OtherYourEnchantments,
+    /// Creatures with flying, printed or until end of turn; anyone's (Gravitational Shift).
+    CreaturesWithFlying,
+    /// Creatures without flying (printed or until end of turn); anyone's (Gravitational Shift).
+    CreaturesWithoutFlying,
+    /// Tapped creatures you control (Sword of the Paruns).
+    YourTappedCreatures,
+    /// Untapped creatures you control (Sword of the Paruns).
+    YourUntappedCreatures,
 }
 
 /// What a scaled static ability counts.
@@ -1773,6 +1801,11 @@ pub enum StaticCondition {
     CitysBlessing,
     /// Its controller controls at least this many lands.
     ControlLandsAtLeast(u8),
+    /// The creature the source is attached to is tapped (`true`) or untapped (`false`) (Sword of
+    /// the Paruns).
+    AttachedTapped(bool),
+    /// The creature the source is attached to is this color, WUBRG index (Shield of the Oversoul).
+    AttachedIsColor(u8),
 }
 
 /// A static ability that changes characteristics (CR 604, 613 layers 6 and 7c).

@@ -900,6 +900,109 @@ pub fn script(name: &str) -> Option<Script> {
             &["Whenever this creature attacks, creatures you control gain trample and get +X/+X until end of turn, where X is the greatest power among creatures you control."],
             |d, _| on(d, When::Attacks, vec![], vec![Effect::PumpAllGreatestPowerGrant(Keywords::TRAMPLE)]),
         ),
+        // ---- Unblocked by lane d3's core theme, batch 4 ----
+        "Mutilate" => s(&["All creatures get -1/-1 until end of turn for each Swamp you control."], |d, _| {
+            spell(d, vec![], vec![Effect::AllCreaturesMinusPerSwampYouControl])
+        }),
+        "Defile" => s(&["Target creature gets -1/-1 until end of turn for each Swamp you control."], |d, _| {
+            spell(d, vec![CREATURE], vec![Effect::MinusPerSwampYouControl(0)])
+        }),
+        "Seeds of Innocence" => s(
+            &["Destroy all artifacts. They can't be regenerated. The controller of each of those artifacts gains life equal to its mana value."],
+            |d, _| spell(d, vec![], vec![Effect::DestroyAllArtifactsNoRegenGainManaValue]),
+        ),
+        "Trophy Mage" => s(
+            &["When this creature enters, you may search your library for an artifact card with mana value 3, reveal it, put it into your hand, then shuffle."],
+            |d, _| may(d, When::Enters, vec![], vec![search(SearchFor::ArtifactManaValue(3), SearchTo::Hand)]),
+        ),
+        "Jirina, Dauntless General" => s(
+            &["When Jirina enters, exile target player's graveyard.", "Sacrifice Jirina: Humans you control gain hexproof and indestructible until end of turn."],
+            |d, _| {
+                on(d, When::Enters, vec![Filter::PLAYER], vec![Effect::ExileGraveyard { who: Who::TargetPlayer(0) }]);
+                let grant = Effect::GrantSubtypeYouControlEot { sub: "Human", keywords: Keywords::HEXPROOF.with(Keywords::INDESTRUCTIBLE) };
+                let n = activated(d, "", false, vec![], vec![grant]);
+                d.activated[n].sacrifice_self = true;
+            },
+        ),
+        "Privileged Position" => s(&["Other permanents you control have hexproof."], |d, _| {
+            static_on(d, Scope::OtherYourPermanents, false, Keywords::HEXPROOF)
+        }),
+        "Sterling Grove" => s(
+            &[
+                "Other enchantments you control have shroud.",
+                "{1}, Sacrifice this enchantment: Search your library for an enchantment card, reveal it, then shuffle and put that card on top.",
+            ],
+            |d, _| {
+                static_on(d, Scope::OtherYourEnchantments, false, Keywords::SHROUD);
+                let n = activated(d, "{1}", false, vec![], vec![search(SearchFor::Enchantment, SearchTo::Top)]);
+                d.activated[n].sacrifice_self = true;
+            },
+        ),
+        "Farewell" => s(
+            &[
+                "Choose one or more —",
+                "• Exile all artifacts.",
+                "• Exile all creatures.",
+                "• Exile all enchantments.",
+                "• Exile all graveyards.",
+            ],
+            |d, _| {
+                // Every nonempty set of the four modes, as one mode each (bit i: mode i).
+                let one = |i: u32| match i {
+                    0 => vec![Effect::ExileAllOfType(0)],
+                    1 => vec![Effect::ExileAllOfType(1)],
+                    2 => vec![Effect::ExileAllOfType(2)],
+                    _ => vec![Effect::ExileGraveyard { who: Who::You }, Effect::ExileGraveyard { who: Who::EachOpponent }],
+                };
+                let sets = (1u32..16).map(|m| Ability::new(vec![], (0..4).filter(|i| m & (1 << i) != 0).flat_map(one).collect()));
+                modes(d, sets.collect());
+            },
+        ),
+        "Gravitational Shift" => s(&["Creatures with flying get +2/+0.", "Creatures without flying get -2/-0."], |d, _| {
+            static_on(d, Scope::CreaturesWithFlying, false, Keywords::NONE);
+            d.statics.last_mut().expect("just added").power = 2;
+            static_on(d, Scope::CreaturesWithoutFlying, false, Keywords::NONE);
+            d.statics.last_mut().expect("just added").power = -2;
+        }),
+        "Shield of the Oversoul" => s(
+            &[
+                "Enchant creature",
+                "As long as enchanted creature is green, it gets +1/+1 and has indestructible.",
+                "As long as enchanted creature is white, it gets +1/+1 and has flying.",
+            ],
+            |d, _| {
+                d.aura = true;
+                d.spell = Some(Ability::new(vec![CREATURE], vec![]));
+                attached(d, false, 1, 1, Keywords::INDESTRUCTIBLE);
+                d.statics.last_mut().expect("just added").condition = Some(StaticCondition::AttachedIsColor(4));
+                attached(d, false, 1, 1, Keywords::FLYING);
+                d.statics.last_mut().expect("just added").condition = Some(StaticCondition::AttachedIsColor(0));
+            },
+        ),
+        "Sword of the Paruns" => s(
+            &[
+                "As long as equipped creature is tapped, tapped creatures you control get +2/+0.",
+                "As long as equipped creature is untapped, untapped creatures you control get +0/+2.",
+                "{3}: You may tap or untap equipped creature.",
+                "Equip {3}",
+            ],
+            |d, _| {
+                static_on(d, Scope::YourTappedCreatures, false, Keywords::NONE);
+                let s = d.statics.last_mut().expect("just added");
+                (s.power, s.condition) = (2, Some(StaticCondition::AttachedTapped(true)));
+                static_on(d, Scope::YourUntappedCreatures, false, Keywords::NONE);
+                let s = d.statics.last_mut().expect("just added");
+                (s.toughness, s.condition) = (2, Some(StaticCondition::AttachedTapped(false)));
+                activated(d, "{3}", false, vec![], vec![Effect::TapOrUntapAttached]);
+                equip(d, "{3}");
+            },
+        ),
+        "Inexorable Tide" => s(&["Whenever you cast a spell, proliferate."], |d, _| {
+            on(d, When::YouCast, vec![], vec![Effect::Proliferate])
+        }),
+        "Volt Charge" => s(&["Volt Charge deals 3 damage to any target. Proliferate."], |d, _| {
+            spell(d, vec![Filter::ANY], vec![damage(3, Recipient::Target(0)), Effect::Proliferate])
+        }),
         _ => None,
     }
 }
@@ -1036,4 +1139,18 @@ pub const PG_D3_SCRIPTED: &[&str] = &[
     "Knowledge Is Power",
     "Multani, Maro-Sorcerer",
     "Pathbreaker Ibex",
+    // Core theme d3, batch 4
+    "Mutilate",
+    "Defile",
+    "Seeds of Innocence",
+    "Trophy Mage",
+    "Jirina, Dauntless General",
+    "Privileged Position",
+    "Sterling Grove",
+    "Farewell",
+    "Gravitational Shift",
+    "Shield of the Oversoul",
+    "Sword of the Paruns",
+    "Inexorable Tide",
+    "Volt Charge",
 ];

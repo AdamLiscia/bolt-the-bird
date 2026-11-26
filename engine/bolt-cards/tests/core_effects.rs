@@ -745,3 +745,158 @@ fn new_scales_count_their_things() {
     let n = g.players[0].hand.len() + g.players[1].hand.len();
     assert_eq!(g.power(h), n as i32);
 }
+
+// ---- Batch 4 ----
+
+#[test]
+fn minus_per_swamp_you_control_all_or_one() {
+    let (mut g, t) = game_with(vec![
+        sorcery(vec![], vec![Effect::AllCreaturesMinusPerSwampYouControl]),
+        sorcery(vec![Filter::CREATURE], vec![Effect::MinusPerSwampYouControl(0)]),
+    ]);
+    let sphinx = g.add_card(0, cid("Consecrated Sphinx"), Zone::Battlefield); // 4/6
+    let theirs = g.add_card(1, cid("Consecrated Sphinx"), Zone::Battlefield);
+    cast_test(&mut g, t + 1, &[obj(theirs)], &[]);
+    assert_eq!((g.power(theirs), g.toughness(theirs)), (-1, 1), "five Swamps");
+    assert_eq!(g.power(sphinx), 4);
+    let looter = g.add_card(1, cid("Merfolk Looter"), Zone::Battlefield);
+    cast_test(&mut g, t, &[], &[]);
+    assert_eq!(g.obj(looter).zone, Zone::Graveyard);
+    assert_eq!(g.obj(theirs).zone, Zone::Graveyard, "-10/-10 in all");
+    assert_eq!(g.toughness(sphinx), 1);
+}
+
+#[test]
+fn destroy_all_artifacts_no_regen_gain_mana_value() {
+    let (mut g, t) = game_with(vec![sorcery(
+        vec![],
+        vec![Effect::DestroyAllArtifactsNoRegenGainManaValue],
+    )]);
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Battlefield); // mv 1
+    let golem = g.add_card(1, cid("Solemn Simulacrum"), Zone::Battlefield); // mv 4
+    g.objects[golem.0 as usize].regen_shields = (g.turn, 1);
+    cast_test(&mut g, t, &[], &[Action::No]); // Solemn's may-draw on death
+    assert_eq!(
+        (g.obj(ring).zone, g.obj(golem).zone),
+        (Zone::Graveyard, Zone::Graveyard)
+    );
+    assert_eq!((g.players[0].life, g.players[1].life), (41, 44));
+}
+
+#[test]
+fn grant_subtype_you_control_until_end_of_turn() {
+    let (mut g, t) = game_with(vec![sorcery(
+        vec![],
+        vec![Effect::GrantSubtypeYouControlEot {
+            sub: "Human",
+            keywords: Keywords::HEXPROOF,
+        }],
+    )]);
+    let human = g.add_card(0, cid("Eternal Witness"), Zone::Battlefield);
+    let merfolk = g.add_card(0, cid("Merfolk Looter"), Zone::Battlefield);
+    let theirs = g.add_card(1, cid("Thought Courier"), Zone::Battlefield);
+    cast_test(&mut g, t, &[], &[]);
+    assert!(g.keywords(human).has(Keywords::HEXPROOF));
+    assert!(!g.keywords(merfolk).has(Keywords::HEXPROOF));
+    assert!(!g.keywords(theirs).has(Keywords::HEXPROOF), "yours only");
+}
+
+#[test]
+fn artifact_mana_value_search() {
+    let search = Effect::Search {
+        what: SearchFor::ArtifactManaValue(1),
+        to: SearchTo::Hand,
+        n: 1,
+        kicked_n: None,
+    };
+    let (mut g, t) = game_with(vec![sorcery(vec![], vec![search])]);
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Library);
+    let golem = g.add_card(0, cid("Solemn Simulacrum"), Zone::Library);
+    let bolt = g.add_card(0, cid("Lightning Bolt"), Zone::Library); // mana value 1, not an artifact
+    let c = g.add_card(0, t, Zone::Hand);
+    act(&mut g, Action::Cast(c));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Pick(ring)));
+    assert!(!legal.contains(&Action::Pick(golem)) && !legal.contains(&Action::Pick(bolt)));
+    resolve_all(&mut g, &[Action::Pick(ring)]);
+}
+
+#[test]
+fn enchantment_flying_and_tapped_scopes() {
+    let mk = |name: &str, scope: Scope, p: i32, t: i32, k: Keywords| {
+        let mut d = CardDef::creature(name, "{0}", 1, 1, Keywords::NONE);
+        d.statics.push(static_of(scope, p, t, k));
+        d
+    };
+    let (mut g, t) = game_with(vec![
+        mk("Test Grove", Scope::OtherYourEnchantments, 0, 0, Keywords::SHROUD),
+        mk("Test Fliers", Scope::CreaturesWithFlying, 2, 0, Keywords::NONE),
+        mk(
+            "Test Walkers",
+            Scope::CreaturesWithoutFlying,
+            -2,
+            0,
+            Keywords::NONE,
+        ),
+        mk("Test Tapped", Scope::YourTappedCreatures, 0, 3, Keywords::NONE),
+        mk(
+            "Test Untapped",
+            Scope::YourUntappedCreatures,
+            0,
+            1,
+            Keywords::NONE,
+        ),
+    ]);
+    let study = g.add_card(0, cid("Rhystic Study"), Zone::Battlefield);
+    let theirs = g.add_card(1, cid("Rhystic Study"), Zone::Battlefield);
+    g.add_card(0, t, Zone::Battlefield);
+    assert!(g.keywords(study).has(Keywords::SHROUD));
+    assert!(!g.keywords(theirs).has(Keywords::SHROUD));
+
+    let birds = g.add_card(1, cid("Birds of Paradise"), Zone::Battlefield); // 0/1 flier
+    let looter = g.add_card(1, cid("Merfolk Looter"), Zone::Battlefield); // 1/1
+    g.add_card(0, t + 1, Zone::Battlefield);
+    g.add_card(0, t + 2, Zone::Battlefield);
+    assert_eq!(g.power(birds), 2, "anyone's flier");
+    assert_eq!(g.power(looter), -1);
+
+    let mine = g.add_card(0, cid("Merfolk Looter"), Zone::Battlefield);
+    g.add_card(0, t + 3, Zone::Battlefield);
+    g.add_card(0, t + 4, Zone::Battlefield);
+    assert_eq!(g.toughness(mine), 2, "untapped");
+    g.objects[mine.0 as usize].tapped = true;
+    assert_eq!(g.toughness(mine), 4, "tapped");
+    assert_eq!(g.toughness(looter), 1, "theirs");
+}
+
+#[test]
+fn attached_tapped_and_color_conditions() {
+    use bolt_core::effect::StaticCondition;
+    let mut aura = CardDef {
+        name: "Test Aura".into(),
+        types: Types {
+            enchantment: true,
+            ..Types::default()
+        },
+        ..CardDef::default()
+    };
+    let mut green = static_of(Scope::Attached, 1, 0, Keywords::NONE);
+    green.condition = Some(StaticCondition::AttachedIsColor(4));
+    let mut tapped = static_of(Scope::Attached, 0, 5, Keywords::NONE);
+    tapped.condition = Some(StaticCondition::AttachedTapped(true));
+    aura.statics.extend([green, tapped]);
+    let (mut g, t) = game_with(vec![aura]);
+    let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
+    let looter = g.add_card(0, cid("Merfolk Looter"), Zone::Battlefield);
+    let a = g.add_card(0, t, Zone::Battlefield);
+    let b = g.add_card(0, t, Zone::Battlefield);
+    g.objects[a.0 as usize].attached_to = Some((elves, g.obj(elves).zcc));
+    g.objects[b.0 as usize].attached_to = Some((looter, g.obj(looter).zcc));
+    assert_eq!((g.power(elves), g.power(looter)), (2, 1), "green only");
+    assert_eq!(g.toughness(elves), 1);
+    g.objects[elves.0 as usize].tapped = true;
+    assert_eq!(g.toughness(elves), 6, "tapped");
+}
