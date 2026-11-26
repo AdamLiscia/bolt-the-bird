@@ -2481,6 +2481,16 @@ pub enum Effect {
         slot: u8,
         n: i32,
     },
+    /// The source deals X damage to the target in `to`, X the permanents with subtype `sub` you
+    /// control (Smaug the Magnificent: Treasures), counted on resolution.
+    SourceDamagePerSubtypeYouControl {
+        to: u8,
+        sub: &'static str,
+    },
+    /// Create a `def` token for each creature that died this turn, tokens included (Mahadi).
+    CreateTokenPerCreatureDiedThisTurn {
+        def: usize,
+    },
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -2552,6 +2562,8 @@ pub enum SearchFor {
     ArtifactManaCostZeroOrOne,
     /// A colorless creature card (Sanctum of Ugin).
     ColorlessCreature,
+    /// An artifact card (Inventors' Fair, Goblin Engineer, Reckless Handling).
+    Artifact,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

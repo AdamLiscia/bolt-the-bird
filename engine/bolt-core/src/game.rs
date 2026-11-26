@@ -1769,6 +1769,8 @@ pub struct Game {
     /// "Prevent the next N damage that would be dealt to [it] this turn": (permanent, its zcc, how
     /// much is left, turn) (Eiganjo Castle).
     pub damage_shields_on: Vec<(ObjId, u32, i32, u32)>,
+    /// Creatures that died this turn, tokens included: (turn, how many) (Mahadi).
+    pub creatures_died: (u32, u32),
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -2045,6 +2047,7 @@ impl Game {
             combat_damaged_player: Vec::new(),
             cant_block_while_controlled: Vec::new(),
             damage_shields_on: Vec::new(),
+            creatures_died: (0, 0),
         }
     }
 
@@ -4915,6 +4918,8 @@ impl Game {
             }
             self.creature_died_this_turn = true;
             self.creature_died_under[last_controller] = true;
+            let (t, n) = self.creatures_died;
+            self.creatures_died = (self.turn, if t == self.turn { n + 1 } else { 1 });
             if !self.is_token(id) {
                 let turn = self.turn;
                 let (t, n) = self.nontoken_creatures_died;
@@ -11759,6 +11764,7 @@ impl Game {
                     SearchFor::CreaturePowerAtMost(n) => d.types.creature && d.power <= n,
                     SearchFor::CreatureMvExactly(mv) => d.types.creature && d.cost.mana_value() == mv,
                     SearchFor::ArtifactManaValue(mv) => d.types.artifact && d.cost.mana_value() == mv,
+                    SearchFor::Artifact => d.types.artifact,
                     SearchFor::ArtifactWithManaAbilityOrBasicLand => {
                         (d.types.basic && d.types.land) || (d.types.artifact && Game::has_mana_ability(d))
                     }
@@ -22070,6 +22076,28 @@ impl Game {
                             rest: None,
                         },
                     );
+                }
+            }
+            Effect::SourceDamagePerSubtypeYouControl { to, sub } => {
+                let target = match item.targets.get(to as usize) {
+                    Some(&Chosen::Object(b, _)) if legal[to as usize] => Target::Object(b),
+                    Some(&Chosen::Player(q)) if legal[to as usize] => Target::Player(q),
+                    _ => return,
+                };
+                let x = self
+                    .permanents(item.controller)
+                    .filter(|&c| self.has_subtype(c, sub))
+                    .count() as i32;
+                if x > 0 {
+                    self.deal_damage(src, target, x);
+                }
+            }
+            Effect::CreateTokenPerCreatureDiedThisTurn { def } => {
+                let (t, n) = self.creatures_died;
+                if t == self.turn {
+                    for _ in 0..n {
+                        self.create_token(item.controller, def);
+                    }
                 }
             }
             Effect::SlotDealsDamagePerSubtypeYouControl { from, to, sub } => {

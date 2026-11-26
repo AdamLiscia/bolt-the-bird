@@ -3235,3 +3235,84 @@ fn damage_gisela_prevents_entirely_isnt_dealt_so_lifelink_gains_nothing() {
     assert_eq!(g.players[0].life, 40, "no damage dealt, so no lifelink");
     assert!(!g.obj(hawk).dealt_damage);
 }
+
+fn cmd_tokens() -> bolt_cards::scripts::Tokens {
+    bolt_cards::scripts::Tokens::starting_at(set("CMD").unwrap().card_count())
+}
+
+#[test]
+fn inventors_fair_gains_with_three_artifacts_and_tutors_one() {
+    let mut g = table();
+    let fair = put(&mut g, 0, "Inventors' Fair");
+    put(&mut g, 0, "Mind Stone");
+    put(&mut g, 0, "Arcane Signet");
+    assert!(
+        !g.legal_actions().contains(&Action::Activate(fair, 0)),
+        "only two artifacts"
+    );
+    put(&mut g, 0, "Thought Vessel");
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Library);
+    act(&mut g, Action::Activate(fair, 0));
+    resolve_all(&mut g, &[Action::Pick(ring)]);
+    assert_eq!(g.obj(ring).zone, Zone::Hand);
+    assert_eq!(g.obj(fair).zone, Zone::Graveyard);
+
+    let mut g = table();
+    put(&mut g, 0, "Inventors' Fair");
+    for a in ["Mind Stone", "Arcane Signet", "Thought Vessel"] {
+        put(&mut g, 0, a);
+    }
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.players[0].life, 41);
+}
+
+#[test]
+fn smaug_the_magnificent_burns_for_each_treasure_and_makes_one_each_upkeep() {
+    let mut g = table();
+    let smaug = put(&mut g, 0, "Smaug the Magnificent");
+    for _ in 0..2 {
+        g.add_card(0, cmd_tokens().treasure, Zone::Battlefield);
+    }
+    g.start_turn(5, 0);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(tokens(&g, 0, "Treasure").len(), 3, "one more at upkeep");
+    act(&mut g, Action::Attack(smaug));
+    act(&mut g, Action::FinishAttacks);
+    while g.step != Step::Main2 {
+        let a = match g.pending {
+            Pending::ChooseTarget(_) => Action::Target(Target::Player(1)),
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.players[1].life, 40 - 3 - 4);
+}
+
+#[test]
+fn mahadi_makes_a_treasure_for_each_creature_that_died_tokens_included() {
+    let mut g = table();
+    put(&mut g, 0, "Mahadi, Emporium Master");
+    let lions = put(&mut g, 1, "Savannah Lions");
+    let port = put(&mut g, 0, "Fountainport");
+    act(&mut g, Action::Activate(port, 1)); // a Fish token
+    resolve_all(&mut g, &[]);
+    let fish = tokens(&g, 0, "Fish")[0];
+    for target in [lions, fish] {
+        let bolt = hand(&mut g, 0, "Lightning Bolt");
+        play(&mut g, bolt, false, &[Target::Object(target)], &[]);
+    }
+    while g.step != Step::Cleanup {
+        let a = match g.pending {
+            Pending::DeclareAttackers(_) => Action::FinishAttacks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(tokens(&g, 0, "Treasure").len(), 2);
+}

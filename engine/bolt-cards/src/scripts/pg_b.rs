@@ -1940,6 +1940,41 @@ pub fn script(name: &str) -> Option<Script> {
                 conditional(d, each, Condition::YouCreatedTokenThisTurn, vec![], vec![draw(1)]);
             },
         ),
+        "Inventors' Fair" => s(
+            &[
+                "At the beginning of your upkeep, if you control three or more artifacts, you gain 1 life.",
+                "{T}: Add {C}.",
+                "{4}, {T}, Sacrifice Inventors' Fair: Search your library for an artifact card, reveal it, put it into your hand, then shuffle. Activate only if you control three or more artifacts.",
+            ],
+            |d, _| {
+                let gain = Effect::GainLife { who: Who::You, n: 1 };
+                let upkeep = When::Upkeep { your_turn_only: true };
+                conditional(d, upkeep, Condition::ControlArtifactsAtLeast(3), vec![], vec![gain]);
+                d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                let n = activated(d, "{4}", true, vec![], vec![search(SearchFor::Artifact, SearchTo::Hand)]);
+                d.activated[n].sacrifice_self = true;
+                d.activated[n].min_artifacts = 3;
+            },
+        ),
+        "Smaug the Magnificent" => s(
+            &[
+                "Whenever Smaug attacks, he deals damage equal to the number of Treasures you control to any target.",
+                "At the beginning of your upkeep, create a Treasure token.",
+            ],
+            |d, t| {
+                let burn = Effect::SourceDamagePerSubtypeYouControl { to: 0, sub: "Treasure" };
+                on(d, When::Attacks, vec![Filter::ANY], vec![burn]);
+                let treasure = Effect::CreateToken { who: Who::You, def: t.treasure, n: 1 };
+                on(d, When::Upkeep { your_turn_only: true }, vec![], vec![treasure]);
+            },
+        ),
+        "Mahadi, Emporium Master" => s(
+            &["At the beginning of your end step, create a Treasure token for each creature that died this turn."],
+            |d, t| {
+                let treasures = Effect::CreateTokenPerCreatureDiedThisTurn { def: t.treasure };
+                on(d, When::EndStep { your_turn_only: true }, vec![], vec![treasures]);
+            },
+        ),
         _ => None,
     }
 }
@@ -2167,6 +2202,9 @@ pub const PG_B_SCRIPTED: &[&str] = &[
     "Sower of Discord",
     "Eiganjo Castle",
     "Bennie Bracks, Zoologist",
+    "Inventors' Fair",
+    "Smaug the Magnificent",
+    "Mahadi, Emporium Master",
     // Ghyrson Starn (Spr3adsh33t)
     "Basilisk Collar",
     "Gorgon's Head",

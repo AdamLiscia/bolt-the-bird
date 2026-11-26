@@ -859,3 +859,6 @@ Bracks (pg_b). Pieces (lane B's replacement theme, plus one condition):
   `When::Never` trigger put on the stack from `deal_damage` with the other player in a triggering
   slot and the damage as the amount.
 - `Condition::YouCreatedTokenThisTurn` (Bennie Bracks), from `Game::token_created_turn`.
+- Malik, more: Inventors' Fair (`SearchFor::Artifact`), Smaug the Magnificent
+  (`Effect::SourceDamagePerSubtypeYouControl`), Mahadi (`Effect::CreateTokenPerCreatureDiedThisTurn`
+  with `Game::creatures_died`, tokens included). Small d3-style pieces nobody else was on.
