@@ -1202,6 +1202,32 @@ pub fn script(name: &str) -> Option<Script> {
             &["As this creature enters, choose a card type.", "You and creatures you control have protection from the chosen card type."],
             |d, _| d.protection_chosen_card_type = true,
         ),
+        // ---- Unblocked by lane d3's core theme, batch 9 ----
+        "Return to Dust" => s(
+            &["Exile target artifact or enchantment. If you cast this spell during your main phase, you may exile up to one other target artifact or enchantment."],
+            |d, _| {
+                let second = Filter { only_in_your_main_phase: true, ..ARTIFACT_OR_ENCHANTMENT };
+                let mut a = Ability::new(vec![ARTIFACT_OR_ENCHANTMENT, second], vec![Effect::Exile(0), Effect::Exile(1)]);
+                a.min_targets = Some(1);
+                d.spell = Some(a);
+            },
+        ),
+        "Reconnaissance" => s(&["{0}: Remove target attacking creature you control from combat and untap it."], |d, _| {
+            let mine = Filter { attacking: true, ..YOUR_CREATURE };
+            activated(d, "{0}", false, vec![mine], vec![Effect::RemoveFromCombatAndUntap(0)]);
+        }),
+        "Raffine, Scheming Seer" => s(
+            &[
+                "Flying, ward {1}",
+                "Whenever you attack, target attacking creature connives X, where X is the number of attacking creatures.",
+            ],
+            |d, _| {
+                d.keywords = d.keywords.with(Keywords::FLYING);
+                d.ward = ManaCost::parse("{1}");
+                let attacker = Filter { attacking: true, ..YOUR_CREATURE };
+                on(d, When::YouAttack, vec![attacker], vec![Effect::ConniveAttackers(0)]);
+            },
+        ),
         _ => None,
     }
 }
@@ -1380,4 +1406,8 @@ pub const PG_D3_SCRIPTED: &[&str] = &[
     "Cartel Aristocrat",
     "Akroma's Will",
     "Serra's Emissary",
+    // Core theme d3, batch 9
+    "Return to Dust",
+    "Reconnaissance",
+    "Raffine, Scheming Seer",
 ];

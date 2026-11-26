@@ -118,6 +118,11 @@ pub struct Filter {
     pub targets_you_or_your_creature: bool,
     /// Spells with a single target only (Imp's Mischief).
     pub single_target: bool,
+    /// Only while it's your main phase (Return to Dust's second target: "If you cast this spell
+    /// during your main phase").
+    pub only_in_your_main_phase: bool,
+    /// Attacking creatures only (Reconnaissance).
+    pub attacking: bool,
 }
 
 impl Filter {
@@ -175,6 +180,8 @@ impl Filter {
         spell_artifact_creature_or_planeswalker: false,
         targets_you_or_your_creature: false,
         single_target: false,
+        only_in_your_main_phase: false,
+        attacking: false,
     };
 
     pub const CREATURE: Filter = Filter {
@@ -1775,6 +1782,12 @@ pub enum Effect {
     ProtectionChosenColorEot(Option<u8>),
     /// Creatures you control gain protection from each color until end of turn (Akroma's Will).
     YourCreaturesProtectionEachColorEot,
+    /// Remove the creature in `slot` from combat and untap it (Reconnaissance).
+    RemoveFromCombatAndUntap(u8),
+    /// The creature in `slot` connives X, X the number of attacking creatures: draw X, discard X,
+    /// then a +1/+1 counter on it per nonland card discarded (Raffine), as
+    /// `Decision::ConniveDiscard`.
+    ConniveAttackers(u8),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

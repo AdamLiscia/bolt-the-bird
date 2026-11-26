@@ -1328,3 +1328,27 @@ fn protection_grants_last_the_turn_and_chosen_card_type_prevents_damage() {
     g.start_turn(5, 1);
     assert!(!g.protection(elves)[0], "until end of turn");
 }
+
+// ---- batch 9 ----
+
+#[test]
+fn main_phase_and_attacking_filters() {
+    let (mut g, _) = game_with(vec![]);
+    let ring = g.add_card(1, cid("Sol Ring"), Zone::Battlefield);
+    let looter = g.add_card(0, cid("Merfolk Looter"), Zone::Battlefield);
+    let main = Filter {
+        players: false,
+        creatures: false,
+        planeswalkers: false,
+        artifacts: true,
+        only_in_your_main_phase: true,
+        ..Filter::ANY
+    };
+    assert!(g.target_ok(&main, 0, obj(ring)), "your main phase");
+    assert!(!g.target_ok(&main, 1, obj(ring)), "not the opponent's");
+    let attacking = Filter {
+        attacking: true,
+        ..Filter::CREATURE
+    };
+    assert!(!g.target_ok(&attacking, 0, obj(looter)), "not attacking");
+}

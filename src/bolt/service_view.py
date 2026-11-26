@@ -149,6 +149,7 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
                 "PickDiscard": "Make them discard", "EnterAsCopy": f"{card or 'It'} enters as a copy of"}.get(d)  # fmt: skip
         verb = verb or {"CreaturesFromHandUpTo": "Put onto the battlefield:", "ReturnOwnPermanent": "Return", "SearchToGraveyardCounter": "Put into your graveyard:"}.get(d)  # fmt: skip
         verb = verb or {"KeepNonlandOfType": "Keep", "HandToBottom": "Put on the bottom:", "SacrificeAnyNumber": "Sacrifice", "SacrificeCreatureOrPlaneswalkerEach": "Sacrifice", "ReturnAnotherPermanentCard": "Return to your hand:", "BasicsTappedUpTo": "Put onto the battlefield tapped:", "SignalTheClans": "Reveal", "BraidsSacrifice": "Sacrifice", "BraidsOpponent": "Sacrifice"}.get(d)  # fmt: skip
+        verb = verb or {"ConniveDiscard": "Discard (connive):"}.get(d)
         return f"{verb} {card_name}" if verb else None
     yes = kind == "Yes"
     labels = {

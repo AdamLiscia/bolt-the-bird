@@ -2668,3 +2668,92 @@ fn serras_emissary_protects_you_and_your_creatures_from_the_chosen_type() {
     }
     assert!(legal.contains(&Action::Target(Target::Player(1))));
 }
+
+// ---- Core theme d3, batch 9 ----
+
+#[test]
+fn return_to_dust_exiles_two_in_your_main_phase() {
+    let mut g = table();
+    let a = put(&mut g, 1, "Sol Ring");
+    let b = put(&mut g, 1, "Mind Stone");
+    let r = hand(&mut g, 0, "Return to Dust");
+    play(&mut g, r, false, &[obj(a), obj(b)], &[]);
+    assert_eq!((g.obj(a).zone, g.obj(b).zone), (Zone::Exile, Zone::Exile));
+}
+
+#[test]
+fn return_to_dust_takes_one_target_outside_your_main_phase() {
+    let mut g = table();
+    let a = put(&mut g, 1, "Sol Ring");
+    let b = put(&mut g, 1, "Mind Stone");
+    let r = hand(&mut g, 0, "Return to Dust");
+    g.start_turn(4, 1);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::PassPriority); // the opponent passes in their main phase: you get priority
+    assert_eq!(g.pending, Pending::Priority(0));
+    act(&mut g, Action::Cast(r));
+    act(&mut g, Action::Target(obj(a)));
+    assert_eq!(g.legal_actions(), vec![Action::No], "no second target");
+    resolve_all(&mut g, &[Action::No]);
+    assert_eq!((g.obj(a).zone, g.obj(b).zone), (Zone::Exile, Zone::Battlefield));
+}
+
+#[test]
+fn reconnaissance_removes_an_attacker_from_combat_and_untaps_it() {
+    let mut g = table();
+    let r = put(&mut g, 0, "Reconnaissance");
+    let looter = put(&mut g, 0, "Merfolk Looter");
+    g.objects[looter.0 as usize].since_turn = 0;
+    while !g.legal_actions().contains(&Action::Attack(looter)) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(looter));
+    act(&mut g, Action::FinishAttacks);
+    assert!(g.obj(looter).tapped);
+    act(&mut g, Action::Activate(r, 0));
+    act(&mut g, Action::Target(obj(looter)));
+    resolve_all(&mut g, &[]);
+    assert!(!g.obj(looter).tapped);
+    assert!(!g.combat.as_ref().unwrap().attackers.contains(&looter));
+    while g.step != Step::Main2 {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.players[1].life, 40, "no combat damage");
+}
+
+#[test]
+fn raffine_connives_x_for_the_attackers() {
+    let mut g = table();
+    let raffine = put(&mut g, 0, "Raffine, Scheming Seer");
+    let looter = put(&mut g, 0, "Merfolk Looter");
+    for x in [raffine, looter] {
+        g.objects[x.0 as usize].since_turn = 0;
+    }
+    while !g.legal_actions().contains(&Action::Attack(looter)) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(raffine));
+    act(&mut g, Action::Attack(looter));
+    act(&mut g, Action::FinishAttacks);
+    let ring = hand(&mut g, 0, "Sol Ring");
+    let before = g.players[0].hand.len();
+    // Target the Looter; draw 2 (Plains), then discard Sol Ring (nonland) and a Plains.
+    let plains = *g.players[0]
+        .hand
+        .iter()
+        .find(|&&c| g.def_of(c).types.land)
+        .unwrap();
+    resolve_all(
+        &mut g,
+        &[
+            Action::Target(obj(looter)),
+            Action::Pick(ring),
+            Action::Pick(plains),
+        ],
+    );
+    assert_eq!(g.players[0].hand.len(), before);
+    assert_eq!(g.obj(looter).counters, 1, "one nonland card discarded");
+    assert!(g.keywords(raffine).has(Keywords::FLYING));
+}

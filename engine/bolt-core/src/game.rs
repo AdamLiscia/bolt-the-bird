@@ -1049,6 +1049,9 @@ pub enum Decision {
     /// `Mode(t)`: the card type `card` protects you and your creatures from (0 artifact, 1 creature,
     /// 2 enchantment, 3 instant, 4 land, 5 planeswalker, 6 sorcery), as it enters.
     ChooseCardType { card: ObjId },
+    /// Connive: `Pick` a card in your hand to discard (`left` more); `nonland` discarded so far put
+    /// +1/+1 counters on `creature` at the end.
+    ConniveDiscard { creature: ObjId, left: u8, nonland: u8 },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -4539,6 +4542,14 @@ impl Game {
                         && self.types_of(x).creature
                 }
             });
+        }
+        if f.only_in_your_main_phase
+            && !(self.active == controller && matches!(self.step, Step::Main1 | Step::Main2))
+        {
+            return false;
+        }
+        if f.attacking && !self.combat.as_ref().is_some_and(|c| c.attackers.contains(&id)) {
+            return false;
         }
         if f.single_target {
             let Some(n) = self.targeted_item(id) else {
@@ -9318,6 +9329,7 @@ impl Game {
             Decision::TaintedPact { .. } => vec![Action::Yes, Action::No],
             Decision::ProtectionColor { .. } => (0..5).map(Action::Mode).collect(),
             Decision::ChooseCardType { .. } => (0..7).map(Action::Mode).collect(),
+            Decision::ConniveDiscard { .. } => hand.iter().copied().map(Action::Pick).collect(),
             Decision::BraidsOpponent { types, .. } => {
                 let mut v: Vec<Action> = self
                     .braids_options(p, Some(*types))
@@ -10461,6 +10473,18 @@ impl Game {
                 }
             }
             (Decision::BraidsSacrifice, _) => {}
+            (
+                Decision::ConniveDiscard {
+                    creature,
+                    left,
+                    nonland,
+                },
+                Action::Pick(c),
+            ) => {
+                let nonland = nonland + u8::from(!self.def_of(c).types.land);
+                self.move_to(c, Zone::Graveyard);
+                self.connive_next(p, creature, left - 1, nonland);
+            }
             (Decision::ProtectionColor { target }, Action::Mode(c)) => {
                 let mut colors = [false; 5];
                 colors[c as usize % 5] = true;
@@ -10753,6 +10777,22 @@ impl Game {
                     .chosen_card_type
                     .is_some_and(|k| kinds.get(k as usize) == Some(&true))
         })
+    }
+
+    /// Connive: discard the next card (asking while the hand has any), then the counters.
+    fn connive_next(&mut self, p: PlayerId, creature: ObjId, left: u8, nonland: u8) {
+        if left > 0 && !self.players[p].hand.is_empty() {
+            self.ask(
+                p,
+                Decision::ConniveDiscard {
+                    creature,
+                    left,
+                    nonland,
+                },
+            );
+        } else if nonland > 0 && self.obj(creature).zone == Zone::Battlefield {
+            self.add_counters(creature, nonland as i32);
+        }
     }
 
     /// Tainted Pact: exile the next card; stop on a repeated name or an empty library, else ask.
@@ -16066,6 +16106,26 @@ impl Game {
                 }
                 if n > 0 {
                     self.ask(q, Decision::BasicsTappedUpTo { left: n, next: None });
+                }
+            }
+            Effect::RemoveFromCombatAndUntap(slot) => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    if let Some(c) = self.combat.as_mut() {
+                        c.attackers.retain(|&a| a != id);
+                        c.blocks.retain(|&(b, a)| a != id && b != id);
+                        c.at_planeswalker.retain(|&(a, _)| a != id);
+                    }
+                    self.untap_by_effect(id);
+                }
+            }
+            Effect::ConniveAttackers(slot) => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    let x = self.combat.as_ref().map_or(0, |c| c.attackers.len()) as u8;
+                    let p = item.controller;
+                    for _ in 0..x {
+                        self.draw(p);
+                    }
+                    self.connive_next(p, id, x, 0);
                 }
             }
             Effect::ProtectionChosenColorEot(slot) => {
