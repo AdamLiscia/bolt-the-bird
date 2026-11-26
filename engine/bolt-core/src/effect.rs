@@ -1566,6 +1566,24 @@ pub enum Effect {
     ExileGraveyardsTokenPerCard {
         def: usize,
     },
+    /// Investigate `n` times (CR 701.36): create `n` Clue tokens (`def`).
+    Investigate {
+        def: usize,
+        n: u8,
+    },
+    /// The creature in `slot` gets +1/+1 until end of turn for each permanent you control with this
+    /// subtype (Confront the Unknown: Clue).
+    PumpPerYourSubtype {
+        slot: u8,
+        sub: &'static str,
+    },
+    /// Mill `n`, then put a creature, enchantment or land card from among them onto the battlefield
+    /// (Fetch Quest).
+    MillPutCreatureEnchantmentOrLand(u8),
+    /// Mill `n`, then return a creature card milled this way to your hand (Zoological Study).
+    MillReturnCreatureToHand(u8),
+    /// You may put a creature card from your hand onto the battlefield (Monster Manual).
+    MayPutCreatureFromHand,
     /// Counter the spell in `slot`; if it's countered this way, exile it instead of putting it into
     /// its owner's graveyard (Force of Negation).
     CounterExile(u8),
@@ -1585,7 +1603,10 @@ pub enum Effect {
     ReanimateUnearthed(u8),
     /// The next time you would draw a card this turn, the source deals `n` damage to the target in
     /// `slot` instead (Words of War; the target is chosen as the ability is activated).
-    NextDrawDealsDamage { slot: u8, n: i32 },
+    NextDrawDealsDamage {
+        slot: u8,
+        n: i32,
+    },
     /// Choose an exiled card an opponent owns with a void counter on it; you may play it this turn
     /// without paying its mana cost (Dauthi Voidwalker).
     PlayVoidCardFree,
@@ -2186,6 +2207,8 @@ pub enum When {
     EnchantmentYouControlEnters,
     /// "At the beginning of your first main phase" (precombat main, CR 505.1a).
     FirstMainPhaseYourTurn,
+    /// "Whenever you investigate for the first time each turn" (Erdwal Illuminator).
+    YouInvestigateFirstTimeEachTurn,
 }
 
 #[derive(Clone, Debug, PartialEq)]

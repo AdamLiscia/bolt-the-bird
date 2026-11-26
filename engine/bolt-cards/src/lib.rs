@@ -460,6 +460,8 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         warp: None,
         morph: None,
         changeling: false,
+        adventure: false,
+        enchanted_stops_activations: false,
         counters_plus_one: false,
         opponents_lose_double_your_turn: false,
         life_gain_doubled: false,

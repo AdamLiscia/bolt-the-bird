@@ -65,7 +65,6 @@ fn tokens(g: &Game, p: usize, name: &str) -> Vec<ObjId> {
         .collect()
 }
 
-
 fn colors(g: &Game, id: ObjId) -> Vec<[bool; 5]> {
     g.mana_sources(g.obj(id).controller)
         .into_iter()
@@ -82,9 +81,17 @@ fn blood_moon_makes_nonbasic_lands_mountains() {
     let temple = put(&mut g, 0, "Temple Garden");
     assert!(g.has_subtype(temple, "Forest"));
     put(&mut g, 1, "Blood Moon");
-    assert_eq!(colors(&g, caves), [[false, false, false, true, false]], "only {R}");
+    assert_eq!(
+        colors(&g, caves),
+        [[false, false, false, true, false]],
+        "only red"
+    );
     assert!(g.has_subtype(temple, "Mountain") && !g.has_subtype(temple, "Forest"));
-    assert_eq!(colors(&g, forest), [[false, false, false, false, true]], "basics keep theirs");
+    assert_eq!(
+        colors(&g, forest),
+        [[false, false, false, false, true]],
+        "basics keep theirs"
+    );
 }
 
 #[test]
@@ -97,7 +104,10 @@ fn urborg_makes_every_land_a_swamp() {
     assert!(g.has_subtype(theirs, "Swamp"));
     assert_eq!(colors(&g, forest), [[false, false, true, false, true]]);
     // Blood Moon turns Urborg itself into a Mountain without its ability.
-    let urborg = g.permanents(0).find(|&x| g.def_of(x).name == "Urborg, Tomb of Yawgmoth").unwrap();
+    let urborg = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "Urborg, Tomb of Yawgmoth")
+        .unwrap();
     put(&mut g, 1, "Blood Moon");
     assert!(!g.has_subtype(forest, "Swamp"));
     assert_eq!(colors(&g, urborg), [[false, false, false, true, false]]);
@@ -160,5 +170,7 @@ fn ward_sacrifice_nonland_permanents() {
     }
     let legal = g.legal_actions();
     assert!(legal.contains(&Action::Pick(third)));
-    assert!(!legal.iter().any(|a| matches!(a, Action::Pick(x) if g.types_of(*x).land)));
+    assert!(!legal
+        .iter()
+        .any(|a| matches!(a, Action::Pick(x) if g.types_of(*x).land)));
 }

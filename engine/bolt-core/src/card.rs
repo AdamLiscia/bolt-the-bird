@@ -270,6 +270,9 @@ pub struct Activated {
     /// "Sacrifice two other artifacts and/or creatures" in the cost (Mondrak): the first named by
     /// `ActivateWith`, the second the engine's choice (a token, else the lowest mana value).
     pub sacrifice_two_artifacts_or_creatures: bool,
+    /// With `sacrifice_subtype`: sacrifice this many of them ("Sacrifice four Foods"): the victim, then
+    /// the engine picks the rest; 0 or 1: one.
+    pub sacrifice_subtype_count: u8,
 }
 
 /// The printed card. Shared by every copy; per-copy state lives on the game object.
@@ -752,6 +755,11 @@ pub struct CardDef {
     pub morph: Option<ManaCost>,
     /// Changeling: every creature type (CR 702.73).
     pub changeling: bool,
+    /// An adventurer card (CR 715): its Adventure is cast as the `omen` half; on resolving it's exiled,
+    /// and its owner may cast the card itself from exile later.
+    pub adventure: bool,
+    /// "Enchanted permanent's activated abilities can't be activated." (Hold for Questioning)
+    pub enchanted_stops_activations: bool,
     /// "If one or more +1/+1 counters would be put on a creature you control, that many plus one
     /// ... instead." (Hardened Scales)
     pub counters_plus_one: bool,
@@ -1032,6 +1040,8 @@ impl CardDef {
             warp: None,
             morph: None,
             changeling: false,
+            adventure: false,
+            enchanted_stops_activations: false,
             counters_plus_one: false,
             opponents_lose_double_your_turn: false,
             life_gain_doubled: false,
@@ -1261,6 +1271,8 @@ impl CardDef {
             warp: None,
             morph: None,
             changeling: false,
+            adventure: false,
+            enchanted_stops_activations: false,
             counters_plus_one: false,
             opponents_lose_double_your_turn: false,
             life_gain_doubled: false,
@@ -1490,6 +1502,8 @@ impl CardDef {
             warp: None,
             morph: None,
             changeling: false,
+            adventure: false,
+            enchanted_stops_activations: false,
             counters_plus_one: false,
             opponents_lose_double_your_turn: false,
             life_gain_doubled: false,

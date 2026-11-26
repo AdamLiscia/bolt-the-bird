@@ -991,6 +991,10 @@ pub enum Decision {
     KeywordCounterChoice { token: ObjId },
     /// Delina rolled 15 or more: `Yes` rolls again for `target`, `No` stops.
     DelinaAgain { target: ObjId },
+    /// `Pick` one of `cards` to put onto the battlefield (`to_hand`: into your hand instead).
+    PickOneOf { cards: Vec<ObjId>, to_hand: bool },
+    /// `Pick` a creature card in your hand to put onto the battlefield, or `No`.
+    MayCreatureFromHand,
     /// `Pick` an exiled card an opponent owns with a void counter, to play this turn free, or `No`.
     PickVoidCard,
 }
@@ -1279,6 +1283,8 @@ pub struct Game {
     pub combat_damage_prevented_except: Option<(u32, &'static str)>,
     /// The turn each player's tokens are doubled (Kaya's −2).
     pub tokens_doubled_turn: [u32; 2],
+    /// Investigations each player did this turn: (turn, count).
+    pub investigated_turn: [(u32, u32); 2],
     /// The draw-step draw is happening (Alhammarret's Archive doesn't replace it).
     pub in_draw_step_draw: bool,
     /// A replacement is drawing or making tokens now, so it doesn't apply to its own result.
@@ -1506,6 +1512,7 @@ impl Game {
             player_hexproof_turn: [0; 2],
             combat_damage_prevented_except: None,
             tokens_doubled_turn: [0; 2],
+            investigated_turn: [(0, 0); 2],
             in_draw_step_draw: false,
             draw_replacing: false,
             token_replacing: false,
@@ -2591,6 +2598,14 @@ impl Game {
         if self.obj(id).zone != Zone::Battlefield {
             return false;
         }
+        let zcc = self.obj(id).zcc;
+        if self.battlefield.iter().any(|&a| {
+            self.obj(a).attached_to == Some((id, zcc))
+                && self.def_of(a).enchanted_stops_activations
+                && !self.lost_abilities(a)
+        }) {
+            return true; // Hold for Questioning
+        }
         if self.turn > 0 && self.obj(id).activations_stopped_turn == self.turn {
             return true; // Koma
         }
@@ -3104,9 +3119,9 @@ impl Game {
         // controls a Voidwalker is exiled with a void counter instead (tokens aren't cards).
         let void = to == Zone::Graveyard
             && !self.is_token(id)
-            && self.permanents(opponent(owner)).any(|x| {
-                self.def_of(x).opponents_cards_exiled_with_void && !self.lost_abilities(x)
-            });
+            && self
+                .permanents(opponent(owner))
+                .any(|x| self.def_of(x).opponents_cards_exiled_with_void && !self.lost_abilities(x));
         if void {
             to = Zone::Exile;
         }
@@ -6049,11 +6064,14 @@ impl Game {
                     );
                 } else if let Some(sub) = a.sacrifice_subtype {
                     // "Sacrifice a [subtype]": the source too, if it has the type.
-                    let victims: Vec<ObjId> = self
+                    let mut victims: Vec<ObjId> = self
                         .permanents(p)
                         .filter(|&c| self.has_subtype(c, sub) && !self.cant_be_sacrificed(c))
                         .filter(|&c| !(a.sacrifice_another && c == id))
                         .collect();
+                    if victims.len() < a.sacrifice_subtype_count.max(1) as usize {
+                        victims.clear(); // "Sacrifice four Foods": not enough
+                    }
                     v.extend(
                         victims
                             .into_iter()
@@ -6238,7 +6256,21 @@ impl Game {
             self.lose_life(p, life);
         }
         if let Some(v) = victim {
-            if a.crew > 0 {
+            if a.sacrifice_subtype.is_some() && a.sacrifice_subtype_count > 1 {
+                // "Sacrifice four Foods": the victim, then the rest (the engine picks).
+                let sub = a.sacrifice_subtype.expect("a subtype");
+                if self.obj(v).zone == Zone::Battlefield {
+                    self.move_to(v, Zone::Graveyard);
+                }
+                let more: Vec<ObjId> = self
+                    .permanents(p)
+                    .filter(|&c| c != id && self.has_subtype(c, sub) && !self.cant_be_sacrificed(c))
+                    .take(a.sacrifice_subtype_count as usize - 1)
+                    .collect();
+                for c in more {
+                    self.move_to(c, Zone::Graveyard);
+                }
+            } else if a.crew > 0 {
                 self.become_tapped(v); // crew taps, it doesn't sacrifice
             } else if a.sacrifice_two_others {
                 if self.obj(v).zone == Zone::Battlefield {
@@ -7945,7 +7977,7 @@ impl Game {
                 let nonland = self.def_of(source).ward_sacrifice_nonland;
                 let have = self
                     .permanents(payer)
-                    .filter(|&x| !self.cant_be_sacrificed(x) && !(nonland && self.types_of(x).land))
+                    .filter(|&x| !(self.cant_be_sacrificed(x) || (nonland && self.types_of(x).land)))
                     .count();
                 if have < n as usize {
                     self.counter_from(against);
@@ -8070,7 +8102,12 @@ impl Game {
         if r.item.kind == StackKind::Spell {
             let omen = r.item.mode == Some(OMEN_MODE);
             let shuffles = self.def_of(source).shuffle_on_resolve;
-            if (omen || shuffles) && self.obj(source).zone == Zone::Stack {
+            if omen && self.def_of(source).adventure && self.obj(source).zone == Zone::Stack {
+                // An Adventure: exiled, and its owner may cast the card from exile later (CR 715.4).
+                let owner = self.obj(source).owner;
+                self.move_to(source, Zone::Exile);
+                self.obj_mut(source).playable = Some((owner, u32::MAX));
+            } else if (omen || shuffles) && self.obj(source).zone == Zone::Stack {
                 // An Omen: "Then shuffle this card into its owner's library."
                 let owner = self.obj(source).owner;
                 self.move_to(source, Zone::Library);
@@ -8542,7 +8579,7 @@ impl Game {
                     .is_some_and(|r| self.def_of(r.item.source).ward_sacrifice_nonland);
                 let mut v: Vec<Action> = self
                     .permanents(p)
-                    .filter(|&x| !self.cant_be_sacrificed(x) && !(nonland && self.types_of(x).land))
+                    .filter(|&x| !(self.cant_be_sacrificed(x) || (nonland && self.types_of(x).land)))
                     .map(Action::Pick)
                     .collect();
                 if !picked {
@@ -8613,6 +8650,17 @@ impl Game {
             Decision::HideawayPick { cards, .. } => cards.iter().copied().map(Action::Pick).collect(),
             Decision::KeywordCounterChoice { .. } => vec![Action::Mode(0), Action::Mode(1), Action::Mode(2)],
             Decision::DelinaAgain { .. } => vec![Action::Yes, Action::No],
+            Decision::PickOneOf { cards, .. } => cards.iter().copied().map(Action::Pick).collect(),
+            Decision::MayCreatureFromHand => {
+                let mut v: Vec<Action> = hand
+                    .iter()
+                    .copied()
+                    .filter(|&x| self.def_of(x).types.creature)
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
             Decision::LandFromHand => {
                 let mut v: Vec<Action> = hand
                     .iter()
@@ -9727,6 +9775,11 @@ impl Game {
             (Decision::ScrollRackExile { exiled }, Action::No) => self.scroll_rack_finish(p, exiled),
             (Decision::LandFromHand, Action::Pick(c)) => self.move_to(c, Zone::Battlefield),
             (Decision::LandFromHand, Action::No) => {}
+            (Decision::PickOneOf { to_hand, .. }, Action::Pick(c)) => {
+                self.move_to(c, if to_hand { Zone::Hand } else { Zone::Battlefield });
+            }
+            (Decision::MayCreatureFromHand, Action::Pick(c)) => self.move_to(c, Zone::Battlefield),
+            (Decision::MayCreatureFromHand, Action::No) => {}
             (Decision::HideawayPick { source, cards }, Action::Pick(c)) => {
                 self.move_to(c, Zone::Exile);
                 self.obj_mut(source).hideaway = Some(c);
@@ -12145,6 +12198,69 @@ impl Game {
                     }
                 }
             }
+            Effect::Investigate { def, n } => {
+                let p = item.controller;
+                for _ in 0..n {
+                    let turn = self.turn;
+                    let (t, k) = self.investigated_turn[p];
+                    let k = if t == turn { k } else { 0 };
+                    self.investigated_turn[p] = (turn, k + 1);
+                    self.create_token(p, def);
+                    if k == 0 {
+                        self.fire(p, When::YouInvestigateFirstTimeEachTurn, None);
+                    }
+                }
+            }
+            Effect::PumpPerYourSubtype { slot, sub } => {
+                if let Some(c) = Game::slot_object(item, legal, slot) {
+                    let n = self
+                        .permanents(item.controller)
+                        .filter(|&x| self.has_subtype(x, sub))
+                        .count() as i32;
+                    let zcc = self.obj(c).zcc;
+                    self.until_eot.push(Modifier {
+                        obj: c,
+                        zcc,
+                        power: n,
+                        toughness: n,
+                        keywords: Keywords::NONE,
+                        dies: None,
+                    });
+                }
+            }
+            Effect::MillPutCreatureEnchantmentOrLand(n) | Effect::MillReturnCreatureToHand(n) => {
+                let p = item.controller;
+                let to_hand = matches!(e, Effect::MillReturnCreatureToHand(_));
+                let mut milled = Vec::new();
+                for _ in 0..n {
+                    if let Some(&c) = self.players[p].library.last() {
+                        self.move_to(c, Zone::Graveyard);
+                        if self.obj(c).zone == Zone::Graveyard {
+                            milled.push(c);
+                        }
+                    }
+                }
+                let cards: Vec<ObjId> = milled
+                    .into_iter()
+                    .filter(|&c| {
+                        let t = self.def_of(c).types;
+                        t.creature || (!to_hand && (t.enchantment || t.land))
+                    })
+                    .collect();
+                if !cards.is_empty() {
+                    self.ask(p, Decision::PickOneOf { cards, to_hand });
+                }
+            }
+            Effect::MayPutCreatureFromHand => {
+                let p = item.controller;
+                if self.players[p]
+                    .hand
+                    .iter()
+                    .any(|&x| self.def_of(x).types.creature)
+                {
+                    self.ask(p, Decision::MayCreatureFromHand);
+                }
+            }
             Effect::BecomeCopyOfSlotUntilEot(n) => {
                 if let Some(card) = Game::slot_object(item, legal, n) {
                     if self.obj(src).zone == Zone::Battlefield {
@@ -12639,7 +12755,11 @@ impl Game {
             }
             Effect::PlayVoidCardFree => {
                 let p = item.controller;
-                if self.exile.iter().any(|&c| self.obj(c).void_counter && self.obj(c).owner != p) {
+                if self
+                    .exile
+                    .iter()
+                    .any(|&c| self.obj(c).void_counter && self.obj(c).owner != p)
+                {
                     self.ask(p, Decision::PickVoidCard);
                 }
             }

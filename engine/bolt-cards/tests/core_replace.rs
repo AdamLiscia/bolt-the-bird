@@ -226,7 +226,10 @@ fn reanimate_unearthed_whip_of_erebos() {
     let mut g = table();
     put(&mut g, 0, "Whip of Erebos");
     let elder = g.add_card(0, cid("Silverback Elder"), Zone::Graveyard);
-    let whip = g.permanents(0).find(|&x| g.def_of(x).name == "Whip of Erebos").unwrap();
+    let whip = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "Whip of Erebos")
+        .unwrap();
     act(&mut g, Action::Activate(whip, 0));
     act(&mut g, Action::Target(Target::Object(elder)));
     resolve_all(&mut g, &[]);

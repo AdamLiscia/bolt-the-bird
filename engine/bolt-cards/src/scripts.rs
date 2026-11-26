@@ -178,14 +178,26 @@ pub fn token_defs() -> Vec<CardDef> {
             t.changeling = true;
             t
         },
-        // base+65 to +68 are other lanes' (lane C's Clue, d1's Eldrazi Spawn, red Spawn 3/3, Elf
-        // Druid): placeholders until they merge.
-        token("Lane C token 65", "Clue", 0, 0, Keywords::NONE),
+        clue(),
+        // base+66 to +68 are d1's (Eldrazi Spawn, red Spawn 3/3, Elf Druid): placeholders until they
+        // merge.
         token("Lane d1 token 66", "Eldrazi Spawn", 0, 1, Keywords::NONE),
         token("Lane d1 token 67", "Eldrazi Spawn", 3, 3, Keywords::NONE),
         token("Lane d1 token 68", "Elf Druid", 1, 1, Keywords::NONE),
         token("Frog", "Frog", 1, 1, Keywords::NONE), // Quina's green 1/1
     ]
+}
+
+/// "{2}, Sacrifice this artifact: Draw a card." (CR 111.10f)
+fn clue() -> CardDef {
+    let mut d = artifact_token("Clue");
+    d.activated.push(Activated {
+        mana: ManaCost::parse("{2}").expect("cost"),
+        sacrifice_self: true,
+        ability: Ability::new(vec![], vec![Effect::Draw { who: Who::You, n: 1 }]),
+        ..Activated::default()
+    });
+    d
 }
 
 fn artifact_token(name: &str) -> CardDef {
@@ -291,6 +303,7 @@ pub struct Tokens {
     pub spirit_3_1: usize,
     pub phyrexian_beast: usize,
     pub shapeshifter: usize,
+    pub clue: usize,
     pub frog: usize,
 }
 
@@ -362,6 +375,7 @@ impl Tokens {
             spirit_3_1: base + 62,
             phyrexian_beast: base + 63,
             shapeshifter: base + 64,
+            clue: base + 65,
             frog: base + 69,
         }
     }
