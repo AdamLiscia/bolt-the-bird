@@ -1099,6 +1099,34 @@ pub fn script(name: &str) -> Option<Script> {
                 d.activated[n].sacrifice_other_creature = true;
             },
         ),
+        "Whip of Erebos" => s(
+            &[
+                "Creatures you control have lifelink.",
+                "{2}{B}{B}, {T}: Return target creature card from your graveyard to the battlefield. It gains haste. Exile it at the beginning of the next end step. If it would leave the battlefield, exile it instead of putting it anywhere else. Activate only as a sorcery.",
+            ],
+            |d, _| {
+                static_on(d, Scope::YourCreatures, false, Keywords::LIFELINK);
+                let n = activated(d, "{2}{B}{B}", true, vec![graveyard_cards(true, Controller::You)], vec![Effect::ReanimateUnearthed(0)]);
+                d.activated[n].sorcery = true;
+            },
+        ),
+        "Words of War" => s(
+            &["{1}: The next time you would draw a card this turn, this enchantment deals 2 damage to any target instead."],
+            |d, _| {
+                // The target is chosen as it's activated (docs/tdm-lane-b.md).
+                activated(d, "{1}", false, vec![Filter::ANY], vec![Effect::NextDrawDealsDamage { slot: 0, n: 2 }]);
+            },
+        ),
+        // ---- The merger's three: type-changing statics, haste for abilities ----
+        "Blood Moon" => s(&["Nonbasic lands are Mountains."], |d, _| d.nonbasic_lands_are_mountains = true),
+        "Urborg, Tomb of Yawgmoth" => s(&["Each land is a Swamp in addition to its other land types."], |d, _| d.lands_are_swamps = true),
+        "Thousand-Year Elixir" => s(
+            &["You may activate abilities of creatures you control as though those creatures had haste.", "{1}, {T}: Untap target creature."],
+            |d, _| {
+                d.creatures_abilities_haste = true;
+                activated(d, "{1}", true, vec![CREATURE], vec![Effect::UntapTarget(0)]);
+            },
+        ),
         _ => None,
     }
 }
@@ -1239,4 +1267,9 @@ pub const PG_B_SCRIPTED: &[&str] = &[
     "Force of Negation",
     "Deepglow Skate",
     "Bogardan Dragonheart",
+    "Whip of Erebos",
+    "Words of War",
+    "Blood Moon",
+    "Urborg, Tomb of Yawgmoth",
+    "Thousand-Year Elixir",
 ];

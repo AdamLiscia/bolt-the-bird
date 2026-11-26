@@ -277,6 +277,8 @@ pub struct Object {
     pub last_enchantment_only: bool,
     /// Cast for its warp cost: exiled at the next end step, then castable from exile.
     pub warped: bool,
+    /// A void counter (Dauthi Voidwalker's exile).
+    pub void_counter: bool,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -989,6 +991,8 @@ pub enum Decision {
     KeywordCounterChoice { token: ObjId },
     /// Delina rolled 15 or more: `Yes` rolls again for `target`, `No` stops.
     DelinaAgain { target: ObjId },
+    /// `Pick` an exiled card an opponent owns with a void counter, to play this turn free, or `No`.
+    PickVoidCard,
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -1280,6 +1284,9 @@ pub struct Game {
     /// A replacement is drawing or making tokens now, so it doesn't apply to its own result.
     pub draw_replacing: bool,
     pub token_replacing: bool,
+    /// Words of War: the next draw this turn deals damage instead: (player, source, target, damage,
+    /// turn).
+    pub draw_damage_shields: Vec<(PlayerId, ObjId, Target, i32, u32)>,
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -1502,6 +1509,7 @@ impl Game {
             in_draw_step_draw: false,
             draw_replacing: false,
             token_replacing: false,
+            draw_damage_shields: Vec::new(),
         }
     }
 
@@ -1618,6 +1626,7 @@ impl Game {
             lost_soulbond: false,
             last_enchantment_only: false,
             warped: false,
+            void_counter: false,
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -1806,7 +1815,33 @@ impl Game {
     }
 
     fn lost_abilities(&self, id: ObjId) -> bool {
-        self.obj(id).zone == Zone::Battlefield && self.ability_loss(id).is_some()
+        self.obj(id).zone == Zone::Battlefield && (self.ability_loss(id).is_some() || self.blood_mooned(id))
+    }
+
+    /// Blood Moon: a nonbasic land on the battlefield while a Blood Moon is (CR 613.1d): it's a
+    /// Mountain and has only "{T}: Add {R}" (CR 305.7).
+    fn blood_mooned(&self, id: ObjId) -> bool {
+        let o = self.obj(id);
+        if o.zone != Zone::Battlefield {
+            return false;
+        }
+        let t = self.def_of(id).types;
+        t.land
+            && !t.basic
+            && self.battlefield.iter().any(|&x| {
+                // Blood Moon is an enchantment, so it never applies to itself (no recursion here).
+                x != id && self.def_of(x).nonbasic_lands_are_mountains && self.ability_loss(x).is_none()
+            })
+    }
+
+    /// Urborg: a land on the battlefield is a Swamp too, while an Urborg with its ability is.
+    fn urborged(&self, id: ObjId) -> bool {
+        let o = self.obj(id);
+        o.zone == Zone::Battlefield
+            && self.types_of(id).land
+            && self.battlefield.iter().any(|&x| {
+                self.def_of(x).lands_are_swamps && self.ability_loss(x).is_none() && !self.blood_mooned(x)
+            })
     }
 
     /// Whether `id` is a token: a token card, or a copy token (CR 111.1).
@@ -1865,6 +1900,14 @@ impl Game {
         ];
         if self.def_of(id).changeling && !NOT_CREATURE_TYPES.contains(&s) {
             return true; // changeling: every creature type
+        }
+        if LAND_TYPES.contains(&s) && self.obj(id).zone == Zone::Battlefield && self.types_of(id).land {
+            if s == "Swamp" && self.urborged(id) {
+                return true;
+            }
+            if self.blood_mooned(id) {
+                return s == "Mountain"; // its other land types are gone
+            }
         }
         self.has_base_subtype(id, s)
             || self.statics_on(id).any(|st| st.subtype == Some(s))
@@ -3057,6 +3100,16 @@ impl Game {
         let (owner, from) = (self.obj(id).owner, self.obj(id).zone);
         // Replacement effects on going to a graveyard (CR 614.6).
         let mut to = to;
+        // Dauthi Voidwalker: a card headed for its owner's graveyard while an opponent of that owner
+        // controls a Voidwalker is exiled with a void counter instead (tokens aren't cards).
+        let void = to == Zone::Graveyard
+            && !self.is_token(id)
+            && self.permanents(opponent(owner)).any(|x| {
+                self.def_of(x).opponents_cards_exiled_with_void && !self.lost_abilities(x)
+            });
+        if void {
+            to = Zone::Exile;
+        }
         // Unearth (CR 702.84a): if it would leave the battlefield, it's exiled instead.
         if from == Zone::Battlefield && to != Zone::Battlefield && self.obj(id).unearthed {
             to = Zone::Exile;
@@ -3134,6 +3187,7 @@ impl Game {
             self.commander_choice && matches!(to, Zone::Graveyard | Zone::Exile) && self.is_commander(id);
         let o = self.obj_mut(id);
         o.zone = to;
+        o.void_counter = void && to == Zone::Exile;
         if from == Zone::Stack && to != Zone::Battlefield {
             o.face_down = false; // a face-down spell is revealed as it leaves the stack
         }
@@ -3874,6 +3928,23 @@ impl Game {
 
     /// Draws a card. Drawing from an empty library loses at the next check (CR 704.5b).
     fn draw(&mut self, p: PlayerId) {
+        // Words of War: "The next time you would draw a card this turn, ... deals 2 damage instead."
+        let turn = self.turn;
+        if let Some(i) = self
+            .draw_damage_shields
+            .iter()
+            .position(|e| e.0 == p && e.4 == turn)
+        {
+            let (_, source, target, n, _) = self.draw_damage_shields.remove(i);
+            let ok = match target {
+                Target::Player(q) => !self.players[q].lost,
+                Target::Object(x) => self.obj(x).zone == Zone::Battlefield,
+            };
+            if ok {
+                self.deal_damage(source, target, n);
+            }
+            return;
+        }
         // Alhammarret's Archive, Teferi's Ageless Insight: two instead, except the draw step's first.
         if !self.in_draw_step_draw
             && !self.draw_replacing
@@ -5233,7 +5304,10 @@ impl Game {
         !o.tapped
             && (!self.types_of(id).creature
                 || o.since_turn < self.turn
-                || self.keywords(id).has(Keywords::HASTE))
+                || self.keywords(id).has(Keywords::HASTE)
+                || self
+                    .permanents(o.controller)
+                    .any(|x| self.def_of(x).creatures_abilities_haste && !self.lost_abilities(x)))
     }
 
     /// Taps (and sacrifices, for Treasure-like sources) what pays `cost`. Never uses `exclude`.
@@ -6381,6 +6455,12 @@ impl Game {
         self.permanents(p)
             .filter(|&id| self.can_tap(id) && !self.activation_stopped(id) && !self.abolished(p, id))
             .filter_map(|id| {
+                if self.blood_mooned(id) {
+                    // Blood Moon: a Mountain's "{T}: Add {R}" (plus Urborg's Swamp, if one applies).
+                    let mut m = ManaSource::of(&[crate::Color::Red]);
+                    m.colors[crate::Color::Black as usize] |= self.urborged(id);
+                    return Some((id, m));
+                }
                 if self.lost_abilities(id) {
                     // Imprisoned in the Moon grants "{T}: Add {C}"; other ability loss leaves none.
                     let land = self.attached_static(id).is_some_and(|s| s.becomes_land);
@@ -6550,9 +6630,18 @@ impl Game {
                         .battlefield
                         .iter()
                         .any(|&x| self.def_of(x).lands_are_forests && !self.lost_abilities(x));
-                d.mana.map(|mut m| {
+                let swamp = self.urborged(id); // Urborg: "{T}: Add {B}"
+                let mana = if swamp && d.mana.is_none() {
+                    Some(ManaSource::default())
+                } else {
+                    d.mana
+                };
+                mana.map(|mut m| {
                     if forests {
                         m.colors[crate::Color::Green as usize] = true; // Yavimaya: "{T}: Add {G}"
+                    }
+                    if swamp {
+                        m.colors[crate::Color::Black as usize] = true;
                     }
                     (id, m)
                 })
@@ -7853,9 +7942,10 @@ impl Game {
                 .find(|i| i.source == against)
                 .map(|i| i.controller)
             {
+                let nonland = self.def_of(source).ward_sacrifice_nonland;
                 let have = self
                     .permanents(payer)
-                    .filter(|&x| !self.cant_be_sacrificed(x))
+                    .filter(|&x| !self.cant_be_sacrificed(x) && !(nonland && self.types_of(x).land))
                     .count();
                 if have < n as usize {
                     self.counter_from(against);
@@ -8445,9 +8535,14 @@ impl Game {
                 .map(Action::Pick)
                 .collect(),
             Decision::PayWardSacrifice { picked, .. } => {
+                // Valgavoth: nonland permanents only.
+                let nonland = self
+                    .resolving
+                    .as_ref()
+                    .is_some_and(|r| self.def_of(r.item.source).ward_sacrifice_nonland);
                 let mut v: Vec<Action> = self
                     .permanents(p)
-                    .filter(|&x| !self.cant_be_sacrificed(x))
+                    .filter(|&x| !self.cant_be_sacrificed(x) && !(nonland && self.types_of(x).land))
                     .map(Action::Pick)
                     .collect();
                 if !picked {
@@ -8553,6 +8648,17 @@ impl Game {
                 v
             }
             Decision::DistributeCounters { .. } => self.creatures(p).map(Action::Pick).collect(),
+            Decision::PickVoidCard => {
+                let mut v: Vec<Action> = self
+                    .exile
+                    .iter()
+                    .copied()
+                    .filter(|&c| self.obj(c).void_counter && self.obj(c).owner != p)
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
             Decision::LandFromHandTapped => {
                 let mut v: Vec<Action> = self.players[p]
                     .hand
@@ -9830,6 +9936,13 @@ impl Game {
                     self.ask(p, Decision::DistributeCounters { left: left - 1 });
                 }
             }
+            (Decision::PickVoidCard, Action::Pick(c)) => {
+                let turn = self.turn;
+                let o = self.obj_mut(c);
+                o.playable = Some((p, turn));
+                o.cast_free = true;
+            }
+            (Decision::PickVoidCard, _) => {}
             (Decision::LandFromHandTapped, Action::Pick(c)) => {
                 self.move_to(c, Zone::Battlefield);
                 self.obj_mut(c).tapped = true;
@@ -12498,6 +12611,36 @@ impl Game {
                 if self.obj(src).zone == Zone::Battlefield {
                     let turn = self.turn;
                     self.obj_mut(src).eot_creature = Some((turn, power, toughness, subtype, keywords));
+                }
+            }
+            Effect::ReanimateUnearthed(slot) => {
+                if let Some(c) = Game::slot_object(item, legal, slot) {
+                    if self.obj(c).zone == Zone::Graveyard {
+                        self.move_to(c, Zone::Battlefield);
+                        if self.obj(c).zone == Zone::Battlefield {
+                            let o = self.obj_mut(c);
+                            o.controller = item.controller;
+                            o.unearthed = true;
+                            o.suspend_haste = true;
+                        }
+                    }
+                }
+            }
+            Effect::NextDrawDealsDamage { slot, n } => {
+                let target = match item.targets.get(slot as usize) {
+                    Some(&Chosen::Player(q)) => Some(Target::Player(q)),
+                    Some(&Chosen::Object(x, _)) => Some(Target::Object(x)),
+                    None => None,
+                };
+                if let (Some(t), true) = (target, legal.get(slot as usize).copied().unwrap_or(false)) {
+                    let turn = self.turn;
+                    self.draw_damage_shields.push((item.controller, src, t, n, turn));
+                }
+            }
+            Effect::PlayVoidCardFree => {
+                let p = item.controller;
+                if self.exile.iter().any(|&c| self.obj(c).void_counter && self.obj(c).owner != p) {
+                    self.ask(p, Decision::PickVoidCard);
                 }
             }
             Effect::ChangeTargets(slot) => {

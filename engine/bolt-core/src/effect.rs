@@ -1579,6 +1579,16 @@ pub enum Effect {
         toughness: i32,
         keywords: crate::Keywords,
     },
+    /// Return the creature card in `slot` from your graveyard to the battlefield; it gains haste,
+    /// is exiled at the beginning of the next end step, and is exiled if it would leave the
+    /// battlefield (Whip of Erebos: as unearth, `Object::unearthed`).
+    ReanimateUnearthed(u8),
+    /// The next time you would draw a card this turn, the source deals `n` damage to the target in
+    /// `slot` instead (Words of War; the target is chosen as the ability is activated).
+    NextDrawDealsDamage { slot: u8, n: i32 },
+    /// Choose an exiled card an opponent owns with a void counter on it; you may play it this turn
+    /// without paying its mana cost (Dauthi Voidwalker).
+    PlayVoidCardFree,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

@@ -466,6 +466,11 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         extra_draws_doubled: false,
         tokens_plus_one: None,
         tokens_plus_each: None,
+        opponents_cards_exiled_with_void: false,
+        nonbasic_lands_are_mountains: false,
+        lands_are_swamps: false,
+        creatures_abilities_haste: false,
+        ward_sacrifice_nonland: false,
     };
     def.color_identity = color_identity(o);
     def.phyrexian = phyrexian;

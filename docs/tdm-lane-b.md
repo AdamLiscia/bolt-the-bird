@@ -613,3 +613,37 @@ tests/core_replace.rs.
 Not done here: Nyxbloom Ancient (mana production), Damn (overload cost) are d1's; Peregrin Took and
 Chatterfang have their replacement in place (`tokens_plus_one`, `tokens_plus_each`) but need "Sacrifice
 three Foods" / "Sacrifice X Squirrels" costs (d1); Academy Manufactor waits for lane C's Clue.
+
+### Core theme: replacement effects, batch 2 (2026-11-25)
+
+Whip of Erebos and Words of War scripted; Dauthi Voidwalker's pieces in.
+
+- `Effect::ReanimateUnearthed` (Whip: haste, exiled at end step or if it would leave, as unearth).
+- `Effect::NextDrawDealsDamage`, `Game::draw_damage_shields` (in `draw`, before the Archive
+  replacement). Words of War's target is chosen as the ability is activated, not as the draw is
+  replaced.
+- `CardDef::opponents_cards_exiled_with_void`, `Object::void_counter` (in `move_to`: a nontoken card
+  headed for its owner's graveyard while that owner's opponent controls one is exiled with a void
+  counter), `Effect::PlayVoidCardFree`, `Decision::PickVoidCard` (`Pick` or `No`). Dauthi Voidwalker
+  itself waits for shadow (block legality, d1).
+- Labels in service_view.py for `LandFromHandTapped`, `DistributeCounters`, `ManifestDread`,
+  `TurnFaceUp`, `PickVoidCard`, `PayToStop`, `PayUpkeep`; bolt-py reports `cost` (and `card`) for
+  the last two.
+
+Not done: Valgavoth (ward—sacrifice three is a new ward kind; playing its exiled cards for life is
+a cost, d1), From the Catacombs (the initiative, mac-c; escape, d1).
+
+### The merger's three (2026-11-25)
+
+Blood Moon, Urborg, Tomb of Yawgmoth, Thousand-Year Elixir scripted; Valgavoth's ward piece. Tests:
+tests/core_merger.rs.
+
+- `CardDef::nonbasic_lands_are_mountains`: `Game::blood_mooned` (a nonbasic land on the battlefield
+  while one is out) counts as `lost_abilities`, is a Mountain and no other land type in
+  `has_subtype`, and makes only {R} in `single_sources`. Lands still enter tapped by their own
+  text under Blood Moon (CR 614.12 would have them enter untapped).
+- `CardDef::lands_are_swamps`: `Game::urborged` (every land, while an Urborg with its ability is out):
+  a Swamp in `has_subtype`, and {B} added to its mana. A Blood Mooned Urborg has no effect.
+- `CardDef::creatures_abilities_haste`: in `can_tap`, so tap abilities and mana of your creatures.
+- `CardDef::ward_sacrifice_nonland` with lane C's `ward_sacrifice`: lands neither count toward paying
+  nor are offered (Valgavoth itself still needs its other abilities).

@@ -220,3 +220,72 @@ fn become_subtype_until_eot_bogardan_dragonheart() {
     g.start_turn(5, 0);
     assert_eq!(g.power(heart), 2);
 }
+
+#[test]
+fn reanimate_unearthed_whip_of_erebos() {
+    let mut g = table();
+    put(&mut g, 0, "Whip of Erebos");
+    let elder = g.add_card(0, cid("Silverback Elder"), Zone::Graveyard);
+    let whip = g.permanents(0).find(|&x| g.def_of(x).name == "Whip of Erebos").unwrap();
+    act(&mut g, Action::Activate(whip, 0));
+    act(&mut g, Action::Target(Target::Object(elder)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(elder).zone, Zone::Battlefield);
+    assert!(g.keywords(elder).has(Keywords::HASTE) && g.keywords(elder).has(Keywords::LIFELINK));
+    g.objects[elder.0 as usize].damage = 7;
+    act(&mut g, Action::PassPriority);
+    assert_eq!(g.obj(elder).zone, Zone::Exile, "exiled instead of dying");
+}
+
+#[test]
+fn next_draw_deals_damage_words_of_war() {
+    let mut g = table();
+    let words = put(&mut g, 0, "Words of War");
+    act(&mut g, Action::Activate(words, 0));
+    act(&mut g, Action::Target(Target::Player(1)));
+    resolve_all(&mut g, &[]);
+    let n = g.players[0].hand.len();
+    let search = hand(&mut g, 0, "Frantic Search"); // draw two: the first is replaced
+    act(&mut g, Action::Cast(search));
+    pass_until_asked(&mut g);
+    assert_eq!(g.players[1].life, 38);
+    assert_eq!(g.players[0].hand.len(), n + 1, "one card drawn, one replaced");
+}
+
+#[test]
+fn opponents_cards_exiled_with_void_and_played_free() {
+    // A test definition: Savannah Lions with Dauthi Voidwalker's replacement.
+    let mut defs = (*set("CMD").unwrap().defs).clone();
+    let lions = cid("Savannah Lions");
+    defs[lions].opponents_cards_exiled_with_void = true;
+    defs[lions].activated.clear();
+    let plains = vec![cid("Plains"); 99];
+    let mut g = Game::new_commander(
+        std::sync::Arc::new(defs),
+        [&plains, &plains],
+        [cid("Bello, Bard of the Brambles"), cid("Ms. Bumbleflower")],
+        7,
+        0,
+    );
+    g.auto_pass = false;
+    for land in ["Plains", "Island", "Swamp", "Mountain", "Forest"] {
+        for _ in 0..5 {
+            put(&mut g, 0, land);
+            put(&mut g, 1, land);
+        }
+    }
+    g.start_turn(3, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    put(&mut g, 0, "Savannah Lions");
+    let theirs = put(&mut g, 1, "Silverback Elder");
+    let bolt = hand(&mut g, 0, "Burst Lightning");
+    g.objects[theirs.0 as usize].damage = 5;
+    act(&mut g, Action::Cast(bolt));
+    act(&mut g, Action::Target(Target::Object(theirs)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(theirs).zone, Zone::Exile);
+    assert!(g.obj(theirs).void_counter);
+    assert_eq!(g.obj(bolt).zone, Zone::Graveyard, "my own card isn't affected");
+}
