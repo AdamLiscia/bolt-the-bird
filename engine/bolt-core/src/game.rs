@@ -5408,7 +5408,7 @@ impl Game {
         if f.spell_sorcery && !(on_stack && self.types_of(id).sorcery) {
             return false;
         }
-        if f.mana_value_even && self.def_of(id).cost.mana_value() % 2 != 0 {
+        if f.mana_value_even && !self.def_of(id).cost.mana_value().is_multiple_of(2) {
             return false;
         }
         if on_stack {
@@ -10255,7 +10255,7 @@ impl Game {
             Pick::NonHumanCreature => {
                 d.types.creature && !d.changeling && !d.subtypes.iter().any(|s| s == "Human")
             }
-            Pick::PermanentOddManaValue => d.types.is_permanent() && d.cost.mana_value() % 2 == 1,
+            Pick::PermanentOddManaValue => d.types.is_permanent() && !d.cost.mana_value().is_multiple_of(2),
         }
     }
 
