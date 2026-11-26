@@ -515,6 +515,10 @@ pub struct Tokens {
     pub angel_4: usize,
     pub pincher: usize,
     pub servo: usize,
+    /// 94-96: placeholders for d2's Walker and Utvara Dragon and d4's Smaug (each lane renames its own).
+    pub placeholder_94: usize,
+    pub placeholder_95: usize,
+    pub placeholder_96: usize,
     pub wicked_role: usize,
 }
 
@@ -615,6 +619,9 @@ impl Tokens {
             angel_4: base + 91,
             pincher: base + 92,
             servo: base + 93,
+            placeholder_94: base + 94,
+            placeholder_95: base + 95,
+            placeholder_96: base + 96,
             wicked_role: base + 97,
         }
     }
