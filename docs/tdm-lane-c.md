@@ -635,3 +635,11 @@ with `reanimating_aura` brings its graveyard target back under your control and 
 check accepts a creature for it); when it leaves the battlefield, `move_to` sacrifices that creature (computed
 before lane B's guarded replacement block, applied after the zone change). Necromancy cast when a sorcery couldn't
 be is sacrificed at the next end step (the cleanup step here).
+
+Objects and zones batch 3: phasing (Teferi's Protection, Clever Concealment). Fast-forwarded to tarkir 476ec4c.
+Core: `Effect::{PhaseOut, LifeLockedUntilYourNextTurn}`, `Game::{phased_out, life_locked_until, phase_out, life_locked}`.
+A phased-out permanent leaves the `battlefield` list but keeps Zone::Battlefield and its zcc (no zone change, no
+triggers); what's attached phases out with it; it phases in at the start of its controller's untap step (before
+Savor the Moment's skip). Teferi's Protection: life can't change until your next turn (lose_life and gain_life),
+which also covers damage; d3's protection_grants hold only colors for an object this turn, so "protection from
+everything" against targeting waits for a player-level grant there.

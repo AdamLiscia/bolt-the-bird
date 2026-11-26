@@ -1453,10 +1453,10 @@ pub struct Game {
     pub combat_damage_prevented_except: Option<(u32, &'static str)>,
     /// The turn each player's tokens are doubled (Kaya's −2).
     pub tokens_doubled_turn: [u32; 2],
-    /// Investigations each player did this turn: (turn, count).
     /// Protection from colors granted until end of turn: (object, its zone change count, the
     /// colors, WUBRG, the turn) (Benevolent Bodyguard, Akroma's Will).
     pub protection_grants: Vec<(ObjId, u32, [bool; 5], u32)>,
+    /// Investigations each player did this turn: (turn, count).
     pub investigated_turn: [(u32, u32); 2],
     /// The draw-step draw is happening (Alhammarret's Archive doesn't replace it).
     pub in_draw_step_draw: bool,
@@ -1495,6 +1495,11 @@ pub struct Game {
     pub next_turn_pt: Vec<(ObjId, u32, i32, i32, u32)>,
     /// Spells cast with escape: (card, the zone-change count it will have on the battlefield).
     pub escaped: Vec<(ObjId, u32)>,
+    /// Phased-out permanents (out of `battlefield`, still zone Battlefield), each with the player
+    /// before whose untap step it phases in.
+    pub phased_out: Vec<(ObjId, PlayerId)>,
+    /// Teferi's Protection: the turn number of each player's next turn, while their life is locked.
+    pub life_locked_until: [Option<u32>; 2],
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -1722,6 +1727,8 @@ impl Game {
             flash_casts: Vec::new(),
             evoked: Vec::new(),
             life_lost_turn: [(0, 0); 2],
+            phased_out: Vec::new(),
+            life_locked_until: [None; 2],
             protection_grants: Vec::new(),
             multicolored_cast_turn: [0; 2],
             skip_next_untap: [false; 2],
@@ -2718,6 +2725,33 @@ impl Game {
         }
     }
 
+    /// Teferi's Protection: whether `p`'s life total can't change now.
+    fn life_locked(&self, p: PlayerId) -> bool {
+        self.life_locked_until[p].is_some_and(|t| self.turn < t)
+    }
+
+    /// Phase out `x` (and what's attached to it) until `p`'s next untap step: out of the battlefield
+    /// list without a zone change, so nothing leaves or enters (CR 702.26).
+    fn phase_out(&mut self, x: ObjId, p: PlayerId) {
+        let zcc = self.obj(x).zcc;
+        let attached: Vec<ObjId> = self
+            .battlefield
+            .iter()
+            .copied()
+            .filter(|&a| self.obj(a).attached_to == Some((x, zcc)))
+            .collect();
+        for y in std::iter::once(x).chain(attached) {
+            if let Some(pos) = self.battlefield.iter().position(|&b| b == y) {
+                self.battlefield.remove(pos);
+                self.phased_out.push((y, p));
+                if let Some(c) = self.combat.as_mut() {
+                    c.attackers.retain(|&a| a != y);
+                    c.blocks.retain(|b| b.0 != y && b.1 != y);
+                }
+            }
+        }
+    }
+
     /// Primal Surge: exile the top card; a permanent card may go onto the battlefield (and repeat).
     fn primal_surge(&mut self, p: PlayerId) {
         if let Some(&c) = self.players[p].library.last() {
@@ -3469,6 +3503,9 @@ impl Game {
 
     /// CR 119.3: losing life, with "whenever an opponent loses life" triggers.
     fn lose_life(&mut self, p: PlayerId, n: i32) {
+        if self.life_locked(p) {
+            return; // Teferi's Protection: "your life total can't change"
+        }
         // Bloodletter of Aclazotz: an opponent loses twice as much during your turn.
         let n = if p != self.active
             && self
@@ -3627,6 +3664,9 @@ impl Game {
 
     /// CR 119.3: gaining life, with "first time each turn" triggers.
     fn gain_life(&mut self, p: PlayerId, n: i32) {
+        if self.life_locked(p) {
+            return;
+        }
         // Alhammarret's Archive: twice that much, for each.
         let k = self
             .permanents(p)
@@ -14472,6 +14512,31 @@ impl Game {
                     }
                 }
             }
+            Effect::PhaseOut { all } => {
+                let p = item.controller;
+                let xs: Vec<ObjId> = if all {
+                    self.permanents(p).collect()
+                } else {
+                    (0..item.targets.len() as u8)
+                        .filter_map(|n| Game::slot_object(item, legal, n))
+                        .collect()
+                };
+                for x in xs {
+                    if self.battlefield.contains(&x) {
+                        self.phase_out(x, p);
+                    }
+                }
+            }
+            Effect::LifeLockedUntilYourNextTurn => {
+                let p = item.controller;
+                // "Until your next turn": your next turn is the next one with you active.
+                let next = if self.active == p {
+                    self.turn + 2
+                } else {
+                    self.turn + 1
+                };
+                self.life_locked_until[p] = Some(next);
+            }
             Effect::BecomeCopyOfSlotUntilEot(n) => {
                 if let Some(card) = Game::slot_object(item, legal, n) {
                     if self.obj(src).zone == Zone::Battlefield {
@@ -18821,6 +18886,16 @@ impl Game {
         match step {
             Step::PreGame => unreachable!("the game never returns to pre-game"),
             Step::Untap => {
+                // Phasing (CR 502.1): the active player's phased-out permanents phase in first.
+                let (back, still): (Vec<_>, Vec<_>) = std::mem::take(&mut self.phased_out)
+                    .into_iter()
+                    .partition(|&(_, q)| q == a);
+                self.phased_out = still;
+                for (x, _) in back {
+                    if self.obj(x).zone == Zone::Battlefield && !self.battlefield.contains(&x) {
+                        self.battlefield.push(x);
+                    }
+                }
                 // Savor the Moment: this turn's untap step is skipped (its permanents stay tapped).
                 if std::mem::take(&mut self.skip_next_untap[a]) {
                     for id in self.permanents(a).collect::<Vec<_>>() {
