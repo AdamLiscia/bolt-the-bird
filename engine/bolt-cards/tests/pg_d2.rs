@@ -735,3 +735,145 @@ fn vault_of_the_archangel_gives_deathtouch_and_lifelink() {
     let k = g.keywords(lions);
     assert!(k.has(Keywords::DEATHTOUCH) && k.has(Keywords::LIFELINK));
 }
+
+// ---- Core: triggers, batch 1 ----
+
+/// Passes to `turn`'s first main phase, answering any yes/no along the way with `yes`.
+fn to_main_answering(g: &mut Game, turn: u32, active: usize, yes: bool) {
+    g.start_turn(turn, active);
+    while g.step != Step::Main1 {
+        if let Pending::Decide(_) = g.pending {
+            act(g, if yes { Action::Yes } else { Action::No });
+        } else {
+            act(g, Action::PassPriority);
+        }
+    }
+}
+
+#[test]
+fn lifeblood_hydra_dies_into_life_and_cards_equal_to_its_power() {
+    let mut g = table();
+    let h = hand(&mut g, 0, "Lifeblood Hydra");
+    act(&mut g, Action::CastX(h, 3));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.power(h), 3);
+    assert!(g.keywords(h).has(Keywords::TRAMPLE));
+    let kill = hand(&mut g, 0, "Hero's Downfall");
+    let n = g.players[0].hand.len();
+    play(&mut g, kill, false, &[obj(h)], &[]);
+    assert_eq!(g.players[0].life, 43);
+    assert_eq!(g.players[0].hand.len(), n - 1 + 3);
+}
+
+#[test]
+fn mana_vault_makes_three_stays_tapped_and_hurts_on_your_draw_step() {
+    let mut g = game(&[]);
+    let vault = put(&mut g, 0, "Mana Vault");
+    assert_eq!(g.mana_sources(0).iter().filter(|&&(x, _)| x == vault).count(), 3);
+    g.manual_mana[0] = true;
+    act(&mut g, Action::TapForMana(vault, 5)); // {C}{C}{C}
+    g.manual_mana[0] = false;
+    for _ in 0..4 {
+        put(&mut g, 0, "Plains");
+    }
+    to_main_answering(&mut g, 5, 0, false);
+    assert!(g.obj(vault).tapped, "declined the {{4}}");
+    assert_eq!(g.players[0].life, 39, "1 damage in your draw step");
+    to_main_answering(&mut g, 6, 1, false);
+    assert_eq!(g.players[0].life, 39, "not on the opponent's draw step");
+    to_main_answering(&mut g, 7, 0, true);
+    assert!(!g.obj(vault).tapped, "paid {{4}} to untap");
+    assert_eq!(g.players[0].life, 39, "untapped by the draw step");
+}
+
+#[test]
+fn howling_mine_gives_each_player_an_extra_draw_while_untapped() {
+    let mut g = table();
+    put(&mut g, 0, "Howling Mine");
+    let (a, b) = (g.players[0].hand.len(), g.players[1].hand.len());
+    to_main_answering(&mut g, 4, 1, false);
+    assert_eq!(g.players[1].hand.len(), b + 2);
+    to_main_answering(&mut g, 5, 0, false);
+    assert_eq!(g.players[0].hand.len(), a + 2);
+}
+
+#[test]
+fn loyal_drake_draws_at_combat_only_with_your_commander_out() {
+    let mut g = table();
+    put(&mut g, 0, "Loyal Drake");
+    let combat = |g: &mut Game| {
+        while g.step != Step::BeginCombat {
+            act(g, Action::PassPriority);
+        }
+        resolve_all(g, &[]);
+    };
+    let n = g.players[0].hand.len();
+    combat(&mut g);
+    assert_eq!(g.players[0].hand.len(), n, "no commander");
+    commander_on_field(&mut g, "Bello, Bard of the Brambles");
+    to_main_answering(&mut g, 5, 0, false);
+    let n = g.players[0].hand.len();
+    combat(&mut g);
+    assert_eq!(g.players[0].hand.len(), n + 1, "lieutenant");
+}
+
+#[test]
+fn aetherflux_reservoir_gains_per_spell_and_fires_for_fifty_life() {
+    let mut g = table();
+    let r = put(&mut g, 0, "Aetherflux Reservoir");
+    for _ in 0..2 {
+        let ring = hand(&mut g, 0, "Sol Ring");
+        play(&mut g, ring, false, &[], &[]);
+    }
+    assert_eq!(g.players[0].life, 43, "1, then 2");
+    assert!(!has(&g, Action::Activate(r, 0)), "43 life can't pay 50");
+    g.players[0].life = 60;
+    act(&mut g, Action::Activate(r, 0));
+    act(&mut g, Action::Target(Target::Player(1)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].life, 10);
+    assert!(g.players[1].life <= 0);
+}
+
+#[test]
+fn hydroid_krasis_gains_and_draws_half_x_as_its_cast() {
+    let mut g = table();
+    let h = hand(&mut g, 0, "Hydroid Krasis");
+    let n = g.players[0].hand.len();
+    act(&mut g, Action::CastX(h, 5));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].life, 42);
+    assert_eq!(g.players[0].hand.len(), n - 1 + 2);
+    assert_eq!(g.obj(h).counters, 5);
+    let k = g.keywords(h);
+    assert!(k.has(Keywords::FLYING) && k.has(Keywords::TRAMPLE));
+}
+
+#[test]
+fn malakir_rebirth_returns_the_creature_tapped_when_it_dies() {
+    let mut g = table();
+    let lions = put(&mut g, 0, "Savannah Lions");
+    let r = hand(&mut g, 0, "Malakir Rebirth // Malakir Mire");
+    play(&mut g, r, false, &[obj(lions)], &[]);
+    assert_eq!(g.players[0].life, 38);
+    let kill = hand(&mut g, 0, "Hero's Downfall");
+    play(&mut g, kill, false, &[obj(lions)], &[]);
+    let back = g
+        .creatures(0)
+        .find(|&c| g.def_of(c).name == "Savannah Lions")
+        .expect("returned");
+    assert!(g.obj(back).tapped);
+}
+
+#[test]
+fn breenas_trigger_never_happens_one_on_one() {
+    let mut g = table();
+    let b = put(&mut g, 0, "Breena, the Demagogue");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    assert!(g.keywords(b).has(Keywords::FLYING));
+    attack(&mut g, &[lions]);
+    let n = g.players[0].hand.len();
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].hand.len(), n);
+    assert!(g.creatures(0).all(|c| g.obj(c).counters == 0));
+}

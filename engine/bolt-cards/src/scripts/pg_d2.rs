@@ -7,6 +7,82 @@ use super::*;
 pub fn script(name: &str) -> Option<Script> {
     let s = |lines, build| Some(Script { lines, build });
     match name {
+        // ---- Core: triggers, batch 1 (trigger conditions and amounts) ----
+        "Lifeblood Hydra" => s(
+            &[
+                "This creature enters with X +1/+1 counters on it.",
+                "When this creature dies, you gain life and draw cards equal to its power.",
+            ],
+            |d, _| {
+                d.enters_with_x_counters = true;
+                on(d, When::Dies, vec![], vec![Effect::GainLifeAndDrawSourcePower]);
+            },
+        ),
+        "Mana Vault" => s(
+            &[
+                "This artifact doesn't untap during your untap step.",
+                "At the beginning of your upkeep, you may pay {4}. If you do, untap this artifact.",
+                "At the beginning of your draw step, if this artifact is tapped, it deals 1 damage to you.",
+                "{T}: Add {C}{C}{C}.",
+            ],
+            |d, _| {
+                d.doesnt_untap = true;
+                let four = ManaCost::parse("{4}").expect("a mana cost");
+                on(d, When::Upkeep { your_turn_only: true }, vec![], vec![Effect::MayPay(four), Effect::UntapSelf]);
+                let yours_and_tapped = Condition::Both(Box::new(Condition::YourTurn), Box::new(Condition::SourceTapped));
+                conditional(d, When::EachDrawStep, yours_and_tapped, vec![], vec![damage(1, Recipient::You)]);
+                d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                d.mana_amount = 3;
+            },
+        ),
+        "Howling Mine" => s(
+            &["At the beginning of each player's draw step, if this artifact is untapped, that player draws an additional card."],
+            |d, _| conditional(d, When::EachDrawStep, Condition::SourceUntapped, vec![], vec![Effect::ActivePlayerDraws(1)]),
+        ),
+        "Loyal Drake" => s(
+            &["Lieutenant — At the beginning of combat on your turn, if you control your commander, draw a card."],
+            |d, _| conditional(d, When::BeginCombatYourTurn, Condition::ControlCommander, vec![], vec![draw(1)]),
+        ),
+        "Aetherflux Reservoir" => s(
+            &[
+                "Whenever you cast a spell, you gain 1 life for each spell you've cast this turn.",
+                "Pay 50 life: This artifact deals 50 damage to any target.",
+            ],
+            |d, _| {
+                on(d, When::YouCast, vec![], vec![Effect::GainLifePerSpellCastThisTurn]);
+                let n = activated(d, "", false, vec![Filter::ANY], vec![damage(50, Recipient::Target(0))]);
+                d.activated[n].life = 50;
+            },
+        ),
+        "Hydroid Krasis" => s(
+            &[
+                "When you cast this spell, you gain half X life and draw half X cards. Round down each time.",
+                "This creature enters with X +1/+1 counters on it.",
+            ],
+            |d, _| {
+                on(d, When::CastThisSpell, vec![], vec![Effect::GainAndDrawHalfX]);
+                d.enters_with_x_counters = true;
+            },
+        ),
+        "Malakir Rebirth // Malakir Mire" => s(
+            &["Choose target creature. You lose 2 life. Until end of turn, that creature gains \"When this creature dies, return it to the battlefield tapped under its owner's control.\""],
+            |d, _| {
+                // The granted trigger is Fake Your Own Death's (GrantDiesTrigger); the oracle data
+                // has no back face, so only the spell is played.
+                spell(
+                    d,
+                    vec![CREATURE],
+                    vec![Effect::LoseLife { who: Who::You, n: 2 }, Effect::GrantDiesTrigger { slot: 0, trigger: 0 }],
+                );
+                on(d, When::Never, vec![graveyard_cards(true, Controller::Any)], vec![Effect::ReturnTapped(0)]);
+            },
+        ),
+        "Breena, the Demagogue" => s(
+            &["Whenever a player attacks one of your opponents, if that opponent has more life than another of your opponents, that attacking player draws a card and you put two +1/+1 counters on a creature you control."],
+            |_, _| {
+                // 1v1: there's never "another of your opponents", so the trigger never does anything.
+            },
+        ),
         // ---- The Gitrog, Ravenous Ride ----
         "Demonic Tutor" => s(&["Search your library for a card, put that card into your hand, then shuffle."], |d, _| {
             spell(d, vec![], vec![search(SearchFor::Any, SearchTo::Hand)])
@@ -352,6 +428,15 @@ fn pain_mana(d: &mut CardDef, a: Color, b: Color) {
 
 /// This lane's scripted playgroup cards (checked against their text in `lib.rs`).
 pub const PG_D2_SCRIPTED: &[&str] = &[
+    // Core: triggers, batch 1
+    "Lifeblood Hydra",
+    "Mana Vault",
+    "Howling Mine",
+    "Loyal Drake",
+    "Aetherflux Reservoir",
+    "Hydroid Krasis",
+    "Malakir Rebirth // Malakir Mire",
+    "Breena, the Demagogue",
     // The Gitrog, Ravenous Ride
     "Demonic Tutor",
     "Exquisite Blood",

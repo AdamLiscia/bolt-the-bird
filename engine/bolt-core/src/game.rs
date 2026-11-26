@@ -13931,6 +13931,34 @@ impl Game {
                     }
                 }
             }
+            Effect::GainLifeAndDrawSourcePower => {
+                let power = if self.obj(src).zone == Zone::Battlefield {
+                    self.power(src)
+                } else {
+                    self.obj(src).last_power
+                };
+                if power > 0 {
+                    self.gain_life(item.controller, power);
+                    for _ in 0..power {
+                        self.draw(item.controller);
+                    }
+                }
+            }
+            Effect::GainLifePerSpellCastThisTurn => {
+                let n = self.spells_cast[item.controller] as i32;
+                if n > 0 {
+                    self.gain_life(item.controller, n);
+                }
+            }
+            Effect::GainAndDrawHalfX => {
+                let half = (self.obj(src).x / 2) as i32;
+                if half > 0 {
+                    self.gain_life(item.controller, half);
+                    for _ in 0..half {
+                        self.draw(item.controller);
+                    }
+                }
+            }
         }
     }
 
@@ -14013,6 +14041,12 @@ impl Game {
                 self.condition_holds(&one(a), controller, source)
                     && self.condition_holds(&one(b), controller, source)
             }
+            Some(Condition::SourceTapped) => self.obj(source).tapped,
+            Some(Condition::SourceUntapped) => !self.obj(source).tapped,
+            Some(Condition::YourTurn) => self.active == controller,
+            Some(Condition::ControlCommander) => self
+                .permanents(controller)
+                .any(|x| self.is_commander(x) && self.obj(x).owner == controller),
         }
     }
 

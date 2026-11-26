@@ -1464,6 +1464,14 @@ pub enum Effect {
     ExileMakeEnchantmentCopy(u8),
     /// "... unless that player pays {X}, where X is this creature's power" (Esper Sentinel).
     UnlessOpponentPaysPower,
+    /// You gain life and draw cards equal to the source's power, its last known power if it left
+    /// the battlefield (Lifeblood Hydra: "When this creature dies, ...").
+    GainLifeAndDrawSourcePower,
+    /// You gain 1 life for each spell you've cast this turn (Aetherflux Reservoir).
+    GainLifePerSpellCastThisTurn,
+    /// You gain half X life and draw half X cards, each rounded down, X the source spell's X (Hydroid
+    /// Krasis: "When you cast this spell, ...").
+    GainAndDrawHalfX,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1768,6 +1776,14 @@ pub enum Condition {
     /// The cast creature spell (the trigger's `extra`) has power from `.0` through `.1` (checked as
     /// it triggers).
     CastPowerBetween(i32, i32),
+    /// The source is tapped ("if this artifact is tapped", Mana Vault).
+    SourceTapped,
+    /// The source is untapped ("if this artifact is untapped", Howling Mine).
+    SourceUntapped,
+    /// It's its controller's turn (a "your draw step" trigger built on `When::EachDrawStep`).
+    YourTurn,
+    /// Its controller controls their commander (lieutenant: "if you control your commander").
+    ControlCommander,
 }
 
 /// A spell's effect or a triggered ability: target slots, then effects in order.
