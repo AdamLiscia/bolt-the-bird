@@ -248,6 +248,10 @@ pub struct Activated {
     pub needs_delirium: bool,
     /// "Activate only if an opponent controls N or more lands." (Tectonic Edge)
     pub opponent_min_lands: u8,
+    /// "Put a -1/-1 counter on this creature" in the cost (Devoted Druid).
+    pub minus_counter_cost: bool,
+    /// "Discard a card" in the cost: activated as `ActivateWith` naming the card (Yawgmoth).
+    pub discard_cost: bool,
 }
 
 /// The printed card. Shared by every copy; per-copy state lives on the game object.
@@ -660,6 +664,19 @@ pub struct CardDef {
     pub buyback_sacrifice: Option<(&'static str, u8)>,
     /// X is the amount of {S} spent to cast it (Blessing of Frost): stored as the stack entry's X.
     pub x_is_snow_spent: bool,
+    /// Its mana ability makes one mana for each enchantment you control (Serra's Sanctum, Sanctum
+    /// Weaver), instead of one.
+    pub mana_per_enchantment: bool,
+    /// "During your turn, your opponents can't ... activate abilities of artifacts, creatures, or
+    /// enchantments." (Grand Abolisher; the casting half is `opponents_cant_cast_your_turn`)
+    pub opponents_cant_activate_your_turn: bool,
+    /// "Protection from <subtype>s" (Yawgmoth: Humans).
+    pub protection_from_subtype: Option<&'static str>,
+    /// "As long as your life total is less than or equal to half your starting life total, this
+    /// has indestructible." (Myrkul)
+    pub indestructible_at_half_life: bool,
+    /// "Creatures your opponents control have base toughness 1." (Maha)
+    pub opponents_creatures_base_toughness_one: bool,
 }
 
 /// What entering makes triggers happen again (see [`CardDef::entering_triggers_again`]).
@@ -883,6 +900,11 @@ impl CardDef {
             forests_add_g: false,
             buyback_sacrifice: None,
             x_is_snow_spent: false,
+            mana_per_enchantment: false,
+            opponents_cant_activate_your_turn: false,
+            protection_from_subtype: None,
+            indestructible_at_half_life: false,
+            opponents_creatures_base_toughness_one: false,
         }
     }
 
@@ -1074,6 +1096,11 @@ impl CardDef {
             forests_add_g: false,
             buyback_sacrifice: None,
             x_is_snow_spent: false,
+            mana_per_enchantment: false,
+            opponents_cant_activate_your_turn: false,
+            protection_from_subtype: None,
+            indestructible_at_half_life: false,
+            opponents_creatures_base_toughness_one: false,
         }
     }
 
@@ -1265,6 +1292,11 @@ impl CardDef {
             forests_add_g: false,
             buyback_sacrifice: None,
             x_is_snow_spent: false,
+            mana_per_enchantment: false,
+            opponents_cant_activate_your_turn: false,
+            protection_from_subtype: None,
+            indestructible_at_half_life: false,
+            opponents_creatures_base_toughness_one: false,
         }
     }
 }

@@ -261,6 +261,8 @@ pub struct Object {
     pub paired_with: Option<(ObjId, u32)>,
     /// Returned with unearth: exiled at the next end step or instead of leaving the battlefield.
     pub unearthed: bool,
+    /// A token copy that's an enchantment and no other card type (Myrkul).
+    pub copy_enchantment_only: bool,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -1203,6 +1205,10 @@ pub struct Game {
     pub next_upkeep_draws: Vec<(PlayerId, u8)>,
     /// Snow mana ({S}) spent so far on the spell being paid for (Blessing of Frost).
     pub snow_paid: u32,
+    /// Each player's starting life total (Myrkul's "half your starting life total").
+    pub starting_life: i32,
+    /// Noncreature spells each player has cast this turn: (turn, count) (Esper Sentinel).
+    pub noncreature_casts: [(u32, u8); 2],
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -1269,6 +1275,7 @@ impl Game {
         g.commander_auto_return = options.auto_command_zone;
         for (p, deck) in decks.iter().enumerate() {
             g.players[p].life = options.starting_life;
+            g.starting_life = options.starting_life;
             let c = g.add_card(p, commanders[p][0], Zone::Command);
             g.commanders[p] = Some(c);
             if let Some(&second) = commanders[p].get(1) {
@@ -1413,6 +1420,8 @@ impl Game {
             control_while: Vec::new(),
             next_upkeep_draws: Vec::new(),
             snow_paid: 0,
+            starting_life: STARTING_LIFE,
+            noncreature_casts: [(0, 0); 2],
         }
     }
 
@@ -1521,6 +1530,7 @@ impl Game {
             conduit_turn: 0,
             paired_with: None,
             unearthed: false,
+            copy_enchantment_only: false,
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -1584,6 +1594,15 @@ impl Game {
     pub fn types_of(&self, id: ObjId) -> Types {
         let o = self.obj(id);
         let mut t = self.def_of(id).types;
+        if o.copy_enchantment_only {
+            // Myrkul's tokens: an enchantment, and no other card types.
+            t = Types {
+                enchantment: true,
+                legendary: t.legendary,
+                snow: t.snow,
+                ..Types::default()
+            };
+        }
         if let Some(p) = self.copy_printed(id) {
             t.artifact |= p.copy_artifact; // "except it's an artifact in addition"
             t.legendary |= p.copy_keeps_name; // "it's legendary in addition"
@@ -1947,6 +1966,14 @@ impl Game {
                 return true;
             }
         }
+        if let Some(sub) = self.def_of(id).protection_from_subtype {
+            if self.obj(id).zone == Zone::Battlefield
+                && !self.lost_abilities(id)
+                && self.has_subtype(source, sub)
+            {
+                return true; // Yawgmoth: protection from Humans
+            }
+        }
         let p = self.protection(id);
         self.colors_of(source).iter().zip(p).any(|(c, pr)| *c && pr)
     }
@@ -1987,6 +2014,13 @@ impl Game {
             k = k.with(Keywords::FLYING);
         }
         let o = self.obj(id);
+        if o.zone == Zone::Battlefield
+            && self.def_of(id).indestructible_at_half_life
+            && !self.lost_abilities(id)
+            && self.players[o.controller].life * 2 <= self.starting_life
+        {
+            k = k.with(Keywords::INDESTRUCTIBLE); // Myrkul
+        }
         if o.zone == Zone::Battlefield
             && self.types_of(id).land
             && self
@@ -2156,6 +2190,20 @@ impl Game {
 
     /// Base power and toughness: printed, or set by becoming a creature or a stage.
     fn base_pt(&self, id: ObjId) -> (i32, i32) {
+        let (p, t) = self.base_pt_set(id);
+        // Maha: "Creatures your opponents control have base toughness 1."
+        let o = self.obj(id);
+        if o.zone == Zone::Battlefield
+            && self
+                .permanents(opponent(o.controller))
+                .any(|x| self.def_of(x).opponents_creatures_base_toughness_one && !self.lost_abilities(x))
+        {
+            return (p, 1);
+        }
+        (p, t)
+    }
+
+    fn base_pt_set(&self, id: ObjId) -> (i32, i32) {
         let o = self.obj(id);
         let d = self.def_of(id);
         if let Some((_, p, t, _, _)) = self.eot_creature(id) {
@@ -3083,6 +3131,10 @@ impl Game {
             self.token_created_turn[c] = self.turn;
             self.fire(c, When::TokenYouControlEnters, Some(id));
         }
+        if to == Zone::Battlefield && from != Zone::Battlefield && self.types_of(id).enchantment {
+            let c = self.obj(id).controller;
+            self.fire(c, When::EnchantmentYouControlEnters, None); // constellation
+        }
         if to == Zone::Battlefield && from != Zone::Battlefield {
             let c = self.obj(id).controller;
             for other in self.permanents(c).filter(|&o| o != id).collect::<Vec<_>>() {
@@ -3234,11 +3286,24 @@ impl Game {
                         }
                     }
                 }
+                let before = self.triggered.len();
                 self.fire(
                     last_controller,
                     When::AnotherNontokenCreatureYouControlDies,
                     Some(id),
                 );
+                // "that creature" / "it": the card that died, for abilities that refer to it (Myrkul).
+                let zcc = self.obj(id).zcc;
+                for i in before..self.triggered.len() {
+                    let refers = self
+                        .ability_of(&self.triggered[i])
+                        .targets
+                        .first()
+                        .is_some_and(|f| f.triggering);
+                    if refers {
+                        self.triggered[i].targets = vec![Chosen::Object(id, zcc)];
+                    }
+                }
                 self.fire(0, When::AnotherNontokenCreatureDies, Some(id));
                 self.fire(1, When::AnotherNontokenCreatureDies, Some(id));
             }
@@ -5407,6 +5472,9 @@ impl Game {
                 if a.copy_only && n < self.def_of(id).activated.len() {
                     continue; // only a copy that keeps it has it
                 }
+                if self.abolished(p, id) {
+                    continue;
+                }
                 if a.from_hand_discard != in_hand
                     || (!in_hand && a.from_graveyard != in_graveyard)
                     || (!in_graveyard && self.lost_abilities(id))
@@ -5559,6 +5627,15 @@ impl Game {
                     v.extend(
                         self.creatures(p)
                             .filter(|&c| c != id && !self.obj(c).tapped && self.power(c) >= a.crew as i32)
+                            .map(|c| Action::ActivateWith(id, n, c)),
+                    );
+                } else if a.discard_cost {
+                    v.extend(
+                        self.players[p]
+                            .hand
+                            .iter()
+                            .copied()
+                            .filter(|&c| c != id)
                             .map(|c| Action::ActivateWith(id, n, c)),
                     );
                 } else if a.sacrifice_other_creature {
@@ -5728,9 +5805,16 @@ impl Game {
                 if self.obj(v).zone == Zone::Graveyard {
                     self.move_to(v, Zone::Exile);
                 }
+            } else if a.discard_cost {
+                if self.obj(v).zone == Zone::Hand {
+                    self.move_to(v, Zone::Graveyard); // discarded
+                }
             } else if self.obj(v).zone == Zone::Battlefield {
                 self.move_to(v, Zone::Graveyard);
             }
+        }
+        if a.minus_counter_cost && self.obj(id).zone == Zone::Battlefield {
+            self.obj_mut(id).counters -= 1; // Devoted Druid: a -1/-1 counter
         }
         if a.tap_x_untapped_tokens {
             // The payer picks which tokens to tap: the first X untapped ones.
@@ -5838,6 +5922,14 @@ impl Game {
                 n
             };
             let n = n.max(self.def_of(id).mana_amount as usize); // Sol Ring: {C}{C}
+                                                                 // Serra's Sanctum, Sanctum Weaver: one mana for each enchantment you control.
+            let n = if self.def_of(id).mana_per_enchantment {
+                self.permanents(p)
+                    .filter(|&x| self.types_of(x).enchantment)
+                    .count()
+            } else {
+                n
+            };
             let fero = self.def_of(id).ferocious_mana_amount as usize;
             let n = if fero > 0 && self.creatures(p).any(|c| self.power(c) >= 4) {
                 n.max(fero) // Ferocious: "{T}: Add {G}{G}{G}{G}"
@@ -5860,9 +5952,22 @@ impl Game {
         out
     }
 
+    /// Grand Abolisher: during its controller's turn, `p` (an opponent) can't activate abilities of
+    /// artifacts, creatures, or enchantments.
+    fn abolished(&self, p: PlayerId, id: ObjId) -> bool {
+        if p == self.active {
+            return false;
+        }
+        let t = self.types_of(id);
+        (t.artifact || t.creature || t.enchantment)
+            && self
+                .permanents(self.active)
+                .any(|x| self.def_of(x).opponents_cant_activate_your_turn && !self.lost_abilities(x))
+    }
+
     fn single_sources(&self, p: PlayerId) -> Vec<(ObjId, ManaSource)> {
         self.permanents(p)
-            .filter(|&id| self.can_tap(id) && !self.activation_stopped(id))
+            .filter(|&id| self.can_tap(id) && !self.activation_stopped(id) && !self.abolished(p, id))
             .filter_map(|id| {
                 if self.lost_abilities(id) {
                     // Imprisoned in the Moon grants "{T}: Add {C}"; other ability loss leaves none.
@@ -6811,6 +6916,10 @@ impl Game {
         }
         self.spells_cast[p] += 1;
         let is_creature = self.types_of(card).creature;
+        if !is_creature {
+            let (t, n) = self.noncreature_casts[p];
+            self.noncreature_casts[p] = (self.turn, if t == self.turn { n.saturating_add(1) } else { 1 });
+        }
         self.cast_creature_noncreature[p][usize::from(!is_creature)] = true;
         if self.creatures_uncounterable_turn[p] == self.turn && self.turn > 0 && self.types_of(card).creature
         {
@@ -7549,6 +7658,7 @@ impl Game {
             Pick::InstantOrSorcery => d.types.instant || d.types.sorcery,
             Pick::CreatureOrLand => d.types.creature || d.types.land,
             Pick::Land => d.types.land,
+            Pick::Enchantment => d.types.enchantment,
             Pick::InstantSorceryOrSubtype(sub) => {
                 d.types.instant || d.types.sorcery || d.subtypes.iter().any(|s| s == sub)
             }
@@ -9049,6 +9159,7 @@ impl Game {
                         None => vec![],
                     },
                     Recipient::EachOpponent => vec![Target::Player(opponent(item.controller))],
+                    Recipient::You => vec![Target::Player(item.controller)],
                     Recipient::EachPlayer => vec![
                         Target::Player(item.controller),
                         Target::Player(opponent(item.controller)),
@@ -10905,6 +11016,64 @@ impl Game {
                 let k = self.creatures(p).filter(|&c| self.power(c) >= n).count();
                 for _ in 0..k {
                     self.draw(p);
+                }
+            }
+            Effect::MinusCounter(slot) => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    if self.obj(id).zone == Zone::Battlefield {
+                        self.obj_mut(id).counters -= 1;
+                    }
+                }
+            }
+            Effect::Proliferate => {
+                let p = item.controller;
+                for x in self.battlefield.clone() {
+                    let o = self.obj(x);
+                    let mine = o.controller == p;
+                    if mine && o.counters > 0 {
+                        self.add_counters(x, 1);
+                    } else if !mine && o.counters < 0 {
+                        self.obj_mut(x).counters -= 1;
+                    }
+                    if mine && self.types_of(x).planeswalker {
+                        self.obj_mut(x).loyalty += 1;
+                    }
+                }
+            }
+            Effect::ExileMakeEnchantmentCopy(slot) => {
+                if let Some(card) = Game::slot_object(item, legal, slot) {
+                    if self.obj(card).zone == Zone::Graveyard {
+                        self.move_to(card, Zone::Exile);
+                        if self.obj(card).zone == Zone::Exile {
+                            let def = self.obj(card).def;
+                            for _ in 0..self.token_doubling(item.controller) {
+                                let id = self.add_card(item.controller, def, Zone::Hand);
+                                let o = self.obj_mut(id);
+                                o.copy_token = true;
+                                o.copy_enchantment_only = true;
+                                self.move_to(id, Zone::Battlefield);
+                            }
+                        }
+                    }
+                }
+            }
+            Effect::UnlessOpponentPaysPower => {
+                let payer = opponent(item.controller);
+                // Esper Sentinel: only their first noncreature spell this turn.
+                let (t, n) = self.noncreature_casts[payer];
+                if t != self.turn || n != 1 {
+                    self.resolving.as_mut().expect("resolving").remaining.clear();
+                } else {
+                    let power = if self.obj(src).zone == Zone::Battlefield {
+                        self.power(src)
+                    } else {
+                        self.obj(src).last_power
+                    };
+                    let cost = ManaCost {
+                        generic: power.clamp(0, 255) as u8,
+                        ..ManaCost::default()
+                    };
+                    self.ask(payer, Decision::PayToStop { cost });
                 }
             }
             Effect::ChangeTargets(slot) => {

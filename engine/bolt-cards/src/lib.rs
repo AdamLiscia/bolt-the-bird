@@ -433,6 +433,11 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         forests_add_g: false,
         buyback_sacrifice: None,
         x_is_snow_spent: false,
+        mana_per_enchantment: false,
+        opponents_cant_activate_your_turn: false,
+        protection_from_subtype: None,
+        indestructible_at_half_life: false,
+        opponents_creatures_base_toughness_one: false,
     };
     def.color_identity = color_identity(o);
     def.phyrexian = phyrexian;

@@ -528,3 +528,26 @@ Who Shakes the World, Blessing of Frost. Lane B's 25 are done.
   `CardDef::x_is_snow_spent` stores it as the entry's X. `Effect::DistributeCountersX` with
   `Decision::DistributeCounters` (one counter at a time, not targeted),
   `Effect::DrawPerCreaturePowerAtLeast`.
+
+### Myrkul, Lord of Bones (DonSpider), batch 1 (2026-11-25)
+
+25 of the deck's 45: Temple Garden, Godless Shrine, Vault of Champions, Bountiful Promenade, Caves of
+Koilos, Wooded Bastion, City of Brass, Despark, Anguished Unmaking, Anointed Procession, Vanquish the
+Horde, Smothering Tithe, Setessan Champion, Eidolon of Blossoms, Grim Guardian, Archon of Sun's
+Grace, Ghostly Dancers, Sanctum Weaver, Serra's Sanctum, Grand Abolisher, Devoted Druid, Yawgmoth,
+Thran Physician, Myrkul, Lord of Bones, Maha, Its Feathers Night, Esper Sentinel.
+
+Core: `Recipient::You`; `When::EnchantmentYouControlEnters` (constellation, the entering enchantment
+included); `Pick::Enchantment`; `CardDef::mana_per_enchantment` (Sanctum Weaver's X may split
+across colors rather than one color), `opponents_cant_activate_your_turn` (Grand Abolisher: no
+abilities, mana ones included, of opponents' artifacts, creatures and enchantments during your
+turn), `protection_from_subtype`, `indestructible_at_half_life` (`Game::starting_life`),
+`opponents_creatures_base_toughness_one` (applied after other base P/T); `Activated::minus_counter_cost`,
+`discard_cost` (`ActivateWith` the discarded card). -1/-1 counters are negative `Object::counters`
+(`Effect::MinusCounter`), so they cancel +1/+1 counters. `Effect::Proliferate` chooses for you: your
+permanents with +1/+1 counters, your planeswalkers, opponents' permanents with -1/-1 counters.
+Myrkul: `Effect::ExileMakeEnchantmentCopy`, `Object::copy_enchantment_only`; dying nontoken creatures
+fill a `triggering` target for "another nontoken creature you control dies" abilities. Esper
+Sentinel: `Effect::UnlessOpponentPaysPower`, checked against `Game::noncreature_casts` as it
+resolves. Ghostly Dancers: the engine has no Rooms, so only the return half. Tokens: Pegasus
+(base+61) and Spirit 3/1 (base+62); base+59 and +60 are placeholders for lane C's Wurm and Satyr.

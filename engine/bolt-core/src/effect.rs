@@ -196,6 +196,8 @@ pub enum Recipient {
     },
     /// Each creature and each planeswalker.
     EachCreatureAndPlaneswalker,
+    /// The ability's controller ("deals 1 damage to you": City of Brass).
+    You,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1361,6 +1363,17 @@ pub enum Effect {
     DistributeCountersX,
     /// Draw a card for each creature you control with power at least this.
     DrawPerCreaturePowerAtLeast(i32),
+    /// A -1/-1 counter on the creature in `slot` (kept as negative `Object::counters`, so +1/+1 and
+    /// -1/-1 counters cancel out, CR 704.5q).
+    MinusCounter(u8),
+    /// Proliferate (CR 701.27), choosing for you: your permanents with +1/+1 counters and your
+    /// planeswalkers, and opponents' permanents with -1/-1 counters.
+    Proliferate,
+    /// Myrkul: you may exile the card in `slot` (the creature that died); if you do, create a token
+    /// that's a copy of it, except it's an enchantment and loses its other card types.
+    ExileMakeEnchantmentCopy(u8),
+    /// "... unless that player pays {X}, where X is this creature's power" (Esper Sentinel).
+    UnlessOpponentPaysPower,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1555,6 +1568,8 @@ pub enum Pick {
     Land,
     /// An instant, a sorcery, or a card with this subtype ("an instant, sorcery, or Dragon card").
     InstantSorceryOrSubtype(&'static str),
+    /// An enchantment card.
+    Enchantment,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1927,6 +1942,8 @@ pub enum When {
     LandCardsMilledToYourGraveyard,
     /// "Whenever a player plays a land" (Horn of Greed): fires for every player's permanents.
     PlayerPlaysLand,
+    /// "Whenever an enchantment you control enters" (constellation), this one included.
+    EnchantmentYouControlEnters,
 }
 
 #[derive(Clone, Debug, PartialEq)]

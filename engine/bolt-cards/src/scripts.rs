@@ -167,6 +167,11 @@ pub fn token_defs() -> Vec<CardDef> {
             t.types.legendary = true;
             t
         },
+        // base+59 and +60 are lane C's (Wurm, Satyr, on tarkir-c): placeholders until that merges.
+        token("Lane C token 59", "Wurm", 5, 5, Keywords::TRAMPLE),
+        token("Lane C token 60", "Satyr", 1, 1, Keywords::NONE),
+        token("Pegasus", "Pegasus", 2, 2, Keywords::FLYING), // Archon of Sun's Grace's white 2/2
+        token("Spirit", "Spirit", 3, 1, Keywords::FLYING),   // Ghostly Dancers' white 3/1
     ]
 }
 
@@ -267,6 +272,8 @@ pub struct Tokens {
     pub bird_2: usize,
     pub forest_dryad: usize,
     pub ashaya: usize,
+    pub pegasus: usize,
+    pub spirit_3_1: usize,
 }
 
 impl Tokens {
@@ -331,6 +338,8 @@ impl Tokens {
             bird_2: base + 56,
             forest_dryad: base + 57,
             ashaya: base + 58,
+            pegasus: base + 61,
+            spirit_3_1: base + 62,
         }
     }
 }

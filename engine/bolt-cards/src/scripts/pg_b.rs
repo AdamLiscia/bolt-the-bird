@@ -704,6 +704,143 @@ pub fn script(name: &str) -> Option<Script> {
                 spell(d, vec![], vec![Effect::DistributeCountersX, Effect::DrawPerCreaturePowerAtLeast(4)]);
             },
         ),
+        // ---- Myrkul, Lord of Bones (DonSpider), lane B ----
+        "Temple Garden" => s(&["As this land enters, you may pay 2 life. If you don't, it enters tapped."], |d, _| {
+            d.mana = Some(ManaSource::of(&[Color::Green, Color::White]));
+            d.shock_land = true;
+        }),
+        "Godless Shrine" => s(&["As this land enters, you may pay 2 life. If you don't, it enters tapped."], |d, _| {
+            d.mana = Some(ManaSource::of(&[Color::White, Color::Black]));
+            d.shock_land = true;
+        }),
+        "Vault of Champions" => s(&["This land enters tapped unless you have two or more opponents.", "{T}: Add {W} or {B}."], |d, _| {
+            d.enters_tapped = true; // a two-player game: one opponent
+            d.mana = Some(ManaSource::of(&[Color::White, Color::Black]));
+        }),
+        "Bountiful Promenade" => s(&["This land enters tapped unless you have two or more opponents.", "{T}: Add {G} or {W}."], |d, _| {
+            d.enters_tapped = true;
+            d.mana = Some(ManaSource::of(&[Color::Green, Color::White]));
+        }),
+        "Caves of Koilos" => s(&["{T}: Add {C}.", "{T}: Add {W} or {B}. This land deals 1 damage to you."], |d, _| {
+            d.mana = Some(ManaSource { colorless: true, ..ManaSource::of(&[Color::White, Color::Black]) });
+            d.pain_colored = true;
+        }),
+        "Wooded Bastion" => s(&["{T}: Add {C}.", "{G/W}, {T}: Add {G}{G}, {G}{W}, or {W}{W}."], |d, _| {
+            d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+            let gw = ManaSource::of(&[Color::Green, Color::White]);
+            d.paid_mana = Some((ManaCost::parse("{G/W}").expect("cost"), [gw, gw]));
+        }),
+        "City of Brass" => s(&["Whenever this land becomes tapped, it deals 1 damage to you.", "{T}: Add one mana of any color."], |d, _| {
+            d.mana = Some(ManaSource::of(&Color::ALL));
+            on(d, When::BecomesTapped, vec![], vec![damage(1, Recipient::You)]);
+        }),
+        "Despark" => s(&["Exile target permanent with mana value 4 or greater."], |d, _| {
+            let big = Filter { players: false, creatures: false, planeswalkers: false, any_permanent: true, min_mana_value: Some(4), ..Filter::ANY };
+            spell(d, vec![big], vec![Effect::Exile(0)]);
+        }),
+        "Anguished Unmaking" => s(&["Exile target nonland permanent. You lose 3 life."], |d, _| {
+            let nonland = Filter { players: false, creatures: false, planeswalkers: false, nonland_permanents: true, ..Filter::ANY };
+            spell(d, vec![nonland], vec![Effect::Exile(0), Effect::LoseLife { who: Who::You, n: 3 }]);
+        }),
+        "Anointed Procession" => s(
+            &["If an effect would create one or more tokens under your control, it creates twice that many of those tokens instead."],
+            |d, _| d.doubles_tokens = true,
+        ),
+        "Vanquish the Horde" => s(&["This spell costs {1} less to cast for each creature on the battlefield.", "Destroy all creatures."], |d, _| {
+            d.reduction = Some(Reduction::PerCreatureOnBattlefield);
+            spell(d, vec![], vec![Effect::DestroyAllCreatures]);
+        }),
+        "Smothering Tithe" => s(&["Whenever an opponent draws a card, that player may pay {2}. If the player doesn't, you create a Treasure token."], |d, t| {
+            on(d, When::OpponentDraws, vec![], vec![Effect::UnlessOpponentPays(2), Effect::CreateToken { who: Who::You, def: t.treasure, n: 1 }]);
+        }),
+        "Setessan Champion" => s(
+            &["Constellation — Whenever an enchantment you control enters, put a +1/+1 counter on this creature and draw a card."],
+            |d, _| on(d, When::EnchantmentYouControlEnters, vec![], vec![Effect::CountersSelf { n: 1 }, draw(1)]),
+        ),
+        "Eidolon of Blossoms" => s(
+            &["Constellation — Whenever this creature or another enchantment you control enters, draw a card."],
+            |d, _| on(d, When::EnchantmentYouControlEnters, vec![], vec![draw(1)]),
+        ),
+        "Grim Guardian" => s(
+            &["Constellation — Whenever this creature or another enchantment you control enters, each opponent loses 1 life."],
+            |d, _| on(d, When::EnchantmentYouControlEnters, vec![], vec![Effect::LoseLife { who: Who::EachOpponent, n: 1 }]),
+        ),
+        "Archon of Sun's Grace" => s(
+            &[
+                "Pegasus creatures you control have lifelink.",
+                "Constellation — Whenever an enchantment you control enters, create a 2/2 white Pegasus creature token with flying.",
+            ],
+            |d, t| {
+                static_on(d, Scope::OtherYourSubtype("Pegasus"), false, Keywords::LIFELINK);
+                on(d, When::EnchantmentYouControlEnters, vec![], vec![Effect::CreateToken { who: Who::You, def: t.pegasus, n: 1 }]);
+            },
+        ),
+        "Ghostly Dancers" => s(
+            &[
+                "When this creature enters, return an enchantment card from your graveyard to your hand or unlock a locked door of a Room you control.",
+                "Eerie — Whenever an enchantment you control enters and whenever you fully unlock a Room, create a 3/1 white Spirit creature token with flying.",
+            ],
+            |d, t| {
+                // The engine has no Rooms: the return is the only choice, and no Room unlocks.
+                on(d, When::Enters, vec![], vec![Effect::ReturnFromGraveyard { pick: Pick::Enchantment }]);
+                on(d, When::EnchantmentYouControlEnters, vec![], vec![Effect::CreateToken { who: Who::You, def: t.spirit_3_1, n: 1 }]);
+            },
+        ),
+        "Sanctum Weaver" => s(&["{T}: Add X mana of any one color, where X is the number of enchantments you control."], |d, _| {
+            d.mana = Some(ManaSource::of(&Color::ALL));
+            d.mana_per_enchantment = true;
+        }),
+        "Serra's Sanctum" => s(&["{T}: Add {W} for each enchantment you control."], |d, _| {
+            d.mana = Some(ManaSource::of(&[Color::White]));
+            d.mana_per_enchantment = true;
+        }),
+        "Grand Abolisher" => s(
+            &["During your turn, your opponents can't cast spells or activate abilities of artifacts, creatures, or enchantments."],
+            |d, _| {
+                d.opponents_cant_cast_your_turn = true;
+                d.opponents_cant_activate_your_turn = true;
+            },
+        ),
+        "Devoted Druid" => s(&["{T}: Add {G}.", "Put a -1/-1 counter on this creature: Untap this creature."], |d, _| {
+            d.mana = Some(ManaSource::of(&[Color::Green]));
+            let n = activated(d, "", false, vec![], vec![Effect::UntapSelf]);
+            d.activated[n].minus_counter_cost = true;
+        }),
+        "Yawgmoth, Thran Physician" => s(
+            &[
+                "Protection from Humans",
+                "Pay 1 life, Sacrifice another creature: Put a -1/-1 counter on up to one target creature and draw a card.",
+                "{B}{B}, Discard a card: Proliferate.",
+            ],
+            |d, _| {
+                d.protection_from_subtype = Some("Human");
+                let n = activated(d, "", false, vec![], vec![Effect::MinusCounter(0), draw(1)]);
+                d.activated[n].life = 1;
+                d.activated[n].sacrifice_other_creature = true;
+                d.activated[n].ability = up_to(vec![CREATURE], vec![Effect::MinusCounter(0), draw(1)]);
+                let m = activated(d, "{B}{B}", false, vec![], vec![Effect::Proliferate]);
+                d.activated[m].discard_cost = true;
+            },
+        ),
+        "Myrkul, Lord of Bones" => s(
+            &[
+                "As long as your life total is less than or equal to half your starting life total, Myrkul has indestructible.",
+                "Whenever another nontoken creature you control dies, you may exile it. If you do, create a token that's a copy of that card, except it's an enchantment and loses all other card types.",
+            ],
+            |d, _| {
+                d.indestructible_at_half_life = true;
+                let it = Filter { triggering: true, ..graveyard_cards(true, Controller::You) };
+                may(d, When::AnotherNontokenCreatureYouControlDies, vec![it], vec![Effect::ExileMakeEnchantmentCopy(0)]);
+            },
+        ),
+        "Maha, Its Feathers Night" => s(&["Ward—Discard a card.", "Creatures your opponents control have base toughness 1."], |d, _| {
+            d.ward_discard = true;
+            d.opponents_creatures_base_toughness_one = true;
+        }),
+        "Esper Sentinel" => s(
+            &["Whenever an opponent casts their first noncreature spell each turn, draw a card unless that player pays {X}, where X is this creature's power."],
+            |d, _| on(d, When::OpponentCastsNoncreature, vec![], vec![Effect::UnlessOpponentPaysPower, draw(1)]),
+        ),
         _ => None,
     }
 }
@@ -794,4 +931,30 @@ pub const PG_B_SCRIPTED: &[&str] = &[
     "Walk the Aeons",
     "Nissa, Who Shakes the World",
     "Blessing of Frost",
+    // Myrkul (DonSpider)
+    "Temple Garden",
+    "Godless Shrine",
+    "Vault of Champions",
+    "Bountiful Promenade",
+    "Caves of Koilos",
+    "Wooded Bastion",
+    "City of Brass",
+    "Despark",
+    "Anguished Unmaking",
+    "Anointed Procession",
+    "Vanquish the Horde",
+    "Smothering Tithe",
+    "Setessan Champion",
+    "Eidolon of Blossoms",
+    "Grim Guardian",
+    "Archon of Sun's Grace",
+    "Ghostly Dancers",
+    "Sanctum Weaver",
+    "Serra's Sanctum",
+    "Grand Abolisher",
+    "Devoted Druid",
+    "Yawgmoth, Thran Physician",
+    "Myrkul, Lord of Bones",
+    "Maha, Its Feathers Night",
+    "Esper Sentinel",
 ];
