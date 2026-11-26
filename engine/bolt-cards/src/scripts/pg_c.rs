@@ -1513,6 +1513,57 @@ pub fn script(name: &str) -> Option<Script> {
                 b.mana = Some(ManaSource::of(&[Color::Blue]));
             },
         ),
+        // ---- Objects and zones batch 7: morph, back faces, persist and plot ----
+        "Aphetto Alchemist" => s(&["{T}: Untap target artifact or creature.", "Morph {U}"], |d, _| {
+            let it = Filter { players: false, planeswalkers: false, artifacts: true, ..Filter::ANY };
+            activated(d, "", true, vec![it], vec![Effect::UntapTarget(0)]);
+            d.morph = ManaCost::parse("{U}");
+        }),
+        "Rattleclaw Mystic" => s(
+            &["{T}: Add {G}, {U}, or {R}.", "Morph {2}", "When this creature is turned face up, add {G}{U}{R}."],
+            |d, _| {
+                d.mana = Some(ManaSource::of(&[Color::Green, Color::Blue, Color::Red]));
+                d.morph = ManaCost::parse("{2}");
+                let add = |color| Effect::AddMana { color, n: 1 };
+                on(d, When::TurnedFaceUp, vec![], vec![add(Color::Green), add(Color::Blue), add(Color::Red)]);
+            },
+        ),
+        "Sundering Eruption // Volcanic Fissure" => s(
+            &[
+                "Destroy target land. Its controller may search their library for a basic land card, put it onto the battlefield tapped, then shuffle. Creatures without flying can't block this turn.",
+                "Back: As this land enters, you may pay 3 life. If you don't, it enters tapped.",
+                "Back: {T}: Add {R}.",
+            ],
+            |d, _| {
+                let land = Filter { players: false, creatures: false, planeswalkers: false, lands: true, ..Filter::ANY };
+                spell(d, vec![land], vec![Effect::DestroyControllerMayFetchBasicTapped(0), Effect::CreaturesWithoutFlyingCantBlockThisTurn]);
+                d.modal_back = true;
+                let b = d.back.as_mut().expect("Volcanic Fissure");
+                b.shock_land = true;
+                b.zones.shock_life = 3;
+                b.mana = Some(ManaSource::of(&[Color::Red]));
+            },
+        ),
+        "Puppeteer Clique" => s(
+            &[
+                "When this creature enters, put target creature card from an opponent's graveyard onto the battlefield under your control. It gains haste. At the beginning of your next end step, exile it.",
+                "Persist",
+            ],
+            |d, _| {
+                on(d, When::Enters, vec![graveyard_cards(true, Controller::Opponent)], vec![Effect::ReanimateHasteExileAtEnd(0)]);
+                on(d, When::Dies, vec![], vec![Effect::Persist]);
+            },
+        ),
+        "Railway Brawler" => s(
+            &["Whenever another creature you control enters, put X +1/+1 counters on it, where X is its power.", "Plot {3}{G}"],
+            |d, _| {
+                let it = Filter { triggering: true, ..CREATURE };
+                on(d, When::AnotherCreatureYouControlEnters, vec![it], vec![Effect::CountersEqualPower(0)]);
+                let n = activated(d, "{3}{G}", false, vec![], vec![]);
+                d.activated[n].plot = true;
+                d.activated[n].sorcery = true;
+            },
+        ),
         _ => None,
     }
 }
@@ -1693,4 +1744,9 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Phantasmal Image",
     "Mockingbird",
     "Glasspool Mimic // Glasspool Shore",
+    "Aphetto Alchemist",
+    "Rattleclaw Mystic",
+    "Sundering Eruption // Volcanic Fissure",
+    "Puppeteer Clique",
+    "Railway Brawler",
 ];

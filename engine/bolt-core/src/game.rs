@@ -299,6 +299,9 @@ pub struct Object {
     /// Phantasmal Image as a copy: "When this creature becomes the target of a spell or ability,
     /// sacrifice it.", for the object with this zone-change count.
     pub sacrifice_when_targeted: Option<u32>,
+    /// Plotted (CR 702.170): the turn it was plotted and its zone-change count in exile. Castable
+    /// from exile on a later turn as a sorcery, free.
+    pub plotted: Option<(u32, u32)>,
 }
 
 /// One resolved effect's change to a permanent's characteristics (lane d3's type-changing store):
@@ -2025,6 +2028,7 @@ impl Game {
             kira_targeted_turn: 0,
             mana_spent: 0,
             sacrifice_when_targeted: None,
+            plotted: None,
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -5717,6 +5721,28 @@ impl Game {
         }
     }
 
+    /// `id` was just turned face up: its "when this creature is turned face up" triggers (CR 708.8).
+    fn turned_face_up(&mut self, id: ObjId) {
+        if self.obj(id).zone != Zone::Battlefield || self.lost_abilities(id) {
+            return;
+        }
+        let ns: Vec<usize> = self
+            .def_of(id)
+            .triggers
+            .iter()
+            .enumerate()
+            .filter(|(_, t)| t.when == When::TurnedFaceUp)
+            .map(|(n, _)| n)
+            .collect();
+        let controller = self.obj(id).controller;
+        for n in ns {
+            self.triggered.push(StackItem {
+                kind: StackKind::Trigger(n),
+                ..Game::casting(id, controller)
+            });
+        }
+    }
+
     /// Whether an effect can turn `x` face up: a face-down permanent card (CR 701.40c: an instant or
     /// sorcery stays face down).
     fn can_turn_face_up(&self, x: ObjId) -> bool {
@@ -5852,7 +5878,11 @@ impl Game {
                 && o.owner != p
                 && self.active == p
                 && self.permanents(p).any(|x| self.def_of(x).stash_player);
-            stashed || o.playable.is_some_and(|(q, until)| q == p && turn <= until)
+            // Plot: on a later turn, as a sorcery (CR 702.170d).
+            let plotted = o
+                .plotted
+                .is_some_and(|(t, zcc)| zcc == o.zcc && t < turn && o.owner == p && sorcery_timing);
+            stashed || plotted || o.playable.is_some_and(|(q, until)| q == p && turn <= until)
         });
         // Cards an effect lets you cast from your graveyard this turn (Zul Ashur).
         let conduit_ok = self.spells_cast[p] == 0;
@@ -7511,7 +7541,7 @@ impl Game {
                 if self.lacks_chapter_activated(id, n) {
                     continue; // Urza's Saga: not until its chapter grants it
                 }
-                if a.from_hand_discard != in_hand
+                if (a.from_hand_discard || a.plot) != in_hand
                     || (!in_hand && a.from_graveyard != in_graveyard)
                     || (!in_graveyard && self.lost_abilities(id))
                     || self.activation_stopped(id)
@@ -7846,6 +7876,7 @@ impl Game {
             let cost = d.morph.unwrap_or(d.cost);
             self.pay_mana_for(p, &cost, None, PayFor::Ability(id));
             self.obj_mut(id).face_down = false;
+            self.turned_face_up(id);
             self.passes = 0;
             self.give_priority(p);
             return;
@@ -8122,6 +8153,15 @@ impl Game {
         if a.from_hand_discard && self.obj(id).zone == Zone::Hand {
             self.move_to(id, Zone::Graveyard); // cycling: "Discard this card"
             self.fire_source(id, When::YouCycleThis);
+        }
+        if a.plot && self.obj(id).zone == Zone::Hand {
+            self.move_to(id, Zone::Exile); // plot: exiled from your hand
+            if self.obj(id).zone == Zone::Exile {
+                let turn = self.turn;
+                let o = self.obj_mut(id);
+                o.plotted = Some((turn, o.zcc));
+                o.cast_free = true; // kept while it stays in exile and as it's cast
+            }
         }
     }
 
@@ -11572,7 +11612,8 @@ impl Game {
         }
         if let Decision::ShockLand { card } = d {
             if a == Action::Yes {
-                self.lose_life(p, 2);
+                let life = self.def_of(card).zones.shock_life;
+                self.lose_life(p, if life > 0 { life } else { 2 });
             } else {
                 self.obj_mut(card).tapped = true;
             }
@@ -12565,7 +12606,10 @@ impl Game {
                     }
                 }
             }
-            (Decision::TurnFaceUp, Action::Pick(c)) => self.obj_mut(c).face_down = false,
+            (Decision::TurnFaceUp, Action::Pick(c)) => {
+                self.obj_mut(c).face_down = false;
+                self.turned_face_up(c);
+            }
             (Decision::TurnFaceUp, _) => {}
             (Decision::ChooseNewTarget { item, slot }, choice) => {
                 if let Action::Target(t) = choice {
@@ -19766,6 +19810,53 @@ impl Game {
                             },
                         );
                         self.last_created.push(id);
+                    }
+                }
+            }
+            Effect::DestroyControllerMayFetchBasicTapped(slot) => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    let p = self.obj(id).controller;
+                    self.destroy(id);
+                    self.ask(
+                        p,
+                        Decision::Search {
+                            what: SearchFor::BasicLand,
+                            to: SearchTo::Battlefield { tapped: true },
+                            left: 1,
+                        },
+                    );
+                }
+            }
+            Effect::CreaturesWithoutFlyingCantBlockThisTurn => {
+                let ids: Vec<ObjId> = self
+                    .battlefield
+                    .iter()
+                    .copied()
+                    .filter(|&c| self.types_of(c).creature && !self.keywords(c).has(Keywords::FLYING))
+                    .collect();
+                for id in ids {
+                    let zcc = self.obj(id).zcc;
+                    self.until_eot.push(Modifier {
+                        obj: id,
+                        zcc,
+                        power: 0,
+                        toughness: 0,
+                        keywords: Keywords::CANT_BLOCK,
+                        dies: None,
+                    });
+                }
+            }
+            Effect::ReanimateHasteExileAtEnd(slot) => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    if self.obj(id).zone == Zone::Graveyard && self.def_of(id).types.creature {
+                        self.obj_mut(id).controller = item.controller; // under your control as it enters
+                        self.move_to(id, Zone::Battlefield);
+                        if self.obj(id).zone == Zone::Battlefield {
+                            let o = self.obj_mut(id);
+                            o.controller = item.controller;
+                            o.granted = o.granted.with(Keywords::HASTE);
+                            o.exile_at_end = true;
+                        }
                     }
                 }
             }

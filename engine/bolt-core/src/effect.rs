@@ -2127,6 +2127,15 @@ pub enum Effect {
     /// "If it's not a token, create a token that's a copy of it, except it's an artifact in
     /// addition to its other types." (Vaultborn Tyrant's dies trigger)
     TokenCopyOfSourceArtifactIfNontoken,
+    /// Destroy the permanent in `slot`; its controller may search for a basic land card and put it
+    /// onto the battlefield tapped (Sundering Eruption).
+    DestroyControllerMayFetchBasicTapped(u8),
+    /// "Creatures without flying can't block this turn." (Sundering Eruption): the creatures on
+    /// the battlefield without flying as it resolves.
+    CreaturesWithoutFlyingCantBlockThisTurn,
+    /// Put the creature card in graveyard `slot` onto the battlefield under your control; it gains
+    /// haste, and it's exiled at the beginning of the next end step (Puppeteer Clique).
+    ReanimateHasteExileAtEnd(u8),
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -2970,6 +2979,8 @@ pub enum When {
     /// "Whenever one or more creatures an opponent controls attack you and aren't blocked"
     /// (Coveted Jewel), once blockers are declared.
     OpponentCreaturesAttackYouUnblocked,
+    /// "When this creature is turned face up" (morph, manifest; Rattleclaw Mystic).
+    TurnedFaceUp,
 }
 
 #[derive(Clone, Debug, PartialEq)]
