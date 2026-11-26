@@ -1766,6 +1766,9 @@ pub struct Game {
     /// "Can't block for as long as you control [the source]": (creature, its zcc, source, its zcc,
     /// you) (There and Back Again).
     pub cant_block_while_controlled: Vec<(ObjId, u32, ObjId, u32, PlayerId)>,
+    /// "Prevent the next N damage that would be dealt to [it] this turn": (permanent, its zcc, how
+    /// much is left, turn) (Eiganjo Castle).
+    pub damage_shields_on: Vec<(ObjId, u32, i32, u32)>,
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -2041,6 +2044,7 @@ impl Game {
             foretold: Vec::new(),
             combat_damaged_player: Vec::new(),
             cant_block_while_controlled: Vec::new(),
+            damage_shields_on: Vec::new(),
         }
     }
 
@@ -11681,6 +11685,35 @@ impl Game {
         def
     }
 
+    /// Damage prevention that reduces an amount (CR 615.7): Gisela's half, rounded up, for damage to
+    /// her controller or their permanents (each Gisela halves again), then a "prevent the next N
+    /// damage" shield on a permanent (Eiganjo Castle), used up as it prevents.
+    fn prevent_damage_replacements(&mut self, target: Target, mut amount: i32) -> i32 {
+        let owner = match target {
+            Target::Player(p) => p,
+            Target::Object(id) => self.obj(id).controller,
+        };
+        let giselas = self
+            .permanents(owner)
+            .filter(|&x| self.def_of(x).prevents_half_damage_to_you_and_yours && !self.lost_abilities(x))
+            .count();
+        for _ in 0..giselas.min(31) {
+            amount /= 2; // half prevented, rounded up: the rest rounds down
+        }
+        if let Target::Object(id) = target {
+            let (zcc, turn) = (self.obj(id).zcc, self.turn);
+            for e in self.damage_shields_on.iter_mut() {
+                if amount > 0 && e.0 == id && e.1 == zcc && e.3 == turn && e.2 > 0 {
+                    let prevented = e.2.min(amount);
+                    e.2 -= prevented;
+                    amount -= prevented;
+                }
+            }
+            self.damage_shields_on.retain(|e| e.2 > 0 && e.3 == turn);
+        }
+        amount
+    }
+
     fn ask(&mut self, p: PlayerId, d: Decision) {
         self.decision = Some(d);
         self.pending = Pending::Decide(p);
@@ -18470,6 +18503,12 @@ impl Game {
                     }
                 }
             }
+            Effect::PreventNextDamageToTargetThisTurn { slot, n } => {
+                if let Some(c) = Game::slot_object(item, legal, slot) {
+                    let entry = (c, self.obj(c).zcc, n, self.turn);
+                    self.damage_shields_on.push(entry);
+                }
+            }
             Effect::TargetCantBlockWhileYouControlSource(slot) => {
                 if let Some(c) = Game::slot_object(item, legal, slot) {
                     if self.obj(src).zone == Zone::Battlefield {
@@ -22226,6 +22265,7 @@ impl Game {
                 self.creatures(controller).any(|c| self.power(c) >= *n)
             }
             Some(Condition::Kicked) => self.obj(source).kicked,
+            Some(Condition::YouCreatedTokenThisTurn) => self.token_created_turn[controller] == self.turn,
             Some(Condition::ColorlessSpentAtLeast(n)) => {
                 self.colorless_spent.iter().any(|&(c, k)| c == source && k >= *n)
             }
@@ -23941,6 +23981,25 @@ impl Game {
             }
         }
         let amount = amount * self.damage_doubling(source, target);
+        // Gisela: any source's damage to her controller's opponent or their permanents is doubled.
+        let owner = match target {
+            Target::Player(p) => p,
+            Target::Object(id) => self.obj(id).controller,
+        };
+        let doublers = self
+            .permanents(opponent(owner))
+            .filter(|&x| self.def_of(x).prevents_half_damage_to_you_and_yours && !self.lost_abilities(x))
+            .count();
+        let amount = amount << doublers.min(10);
+        let before_prevention = amount;
+        let amount = if unpreventable {
+            amount
+        } else {
+            self.prevent_damage_replacements(target, amount)
+        };
+        if amount <= 0 && before_prevention > 0 {
+            return; // all of it prevented (Gisela, Eiganjo Castle)
+        }
         if let Target::Player(p) = target {
             let turn = self.turn;
             if let Some(pos) = self
@@ -23983,6 +24042,25 @@ impl Game {
                 if refers {
                     self.triggered[i].targets = vec![chosen];
                 }
+            }
+        }
+        // Sower of Discord: damage to one chosen player makes the other lose that much life.
+        if let (Target::Player(p), true) = (target, amount > 0) {
+            let sowers: Vec<(ObjId, usize)> = self
+                .battlefield
+                .iter()
+                .copied()
+                .filter(|&x| !self.lost_abilities(x))
+                .filter_map(|x| self.def_of(x).damage_to_a_player_other_loses.map(|n| (x, n)))
+                .collect();
+            for (x, n) in sowers {
+                let controller = self.obj(x).controller;
+                self.triggered.push(StackItem {
+                    kind: StackKind::Trigger(n),
+                    targets: vec![Chosen::Player(opponent(p))],
+                    amount,
+                    ..Game::casting(x, controller)
+                });
             }
         }
         // Toxic N (CR 702.164c): combat damage to a player also gives that player N poison counters.

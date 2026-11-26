@@ -3142,3 +3142,85 @@ fn archfiend_of_despair_stops_their_life_gain_and_doubles_their_loss() {
     }
     assert_eq!(g.players[1].life, 34);
 }
+
+// ---- Kaalia and Malik, script-only pass (2026-11-26) ----
+
+#[test]
+fn brightclimb_pathway_taps_for_white() {
+    let mut g = game(&[]);
+    let p = put(&mut g, 0, "Brightclimb Pathway // Grimclimb Pathway");
+    assert_eq!(colors_of(&g, p), [[true, false, false, false, false]]);
+}
+
+#[test]
+fn gisela_doubles_damage_to_them_and_halves_damage_to_you_rounded_up() {
+    let mut g = table();
+    put(&mut g, 0, "Gisela, Blade of Goldnight");
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    play(&mut g, bolt, false, &[Target::Player(1)], &[]);
+    assert_eq!(g.players[1].life, 34, "3 doubled");
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    play(&mut g, bolt, false, &[Target::Player(0)], &[]);
+    assert_eq!(g.players[0].life, 39, "2 of 3 prevented");
+    let lions = put(&mut g, 1, "Savannah Lions");
+    let shock = hand(&mut g, 0, "Lightning Bolt");
+    play(&mut g, shock, false, &[Target::Object(lions)], &[]);
+    assert_eq!(g.obj(lions).zone, Zone::Graveyard);
+}
+
+#[test]
+fn sower_of_discord_makes_the_other_player_lose_what_one_was_dealt() {
+    let mut g = table();
+    put(&mut g, 0, "Sower of Discord");
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    play(&mut g, bolt, false, &[Target::Player(1)], &[]);
+    assert_eq!((g.players[0].life, g.players[1].life), (37, 37));
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    play(&mut g, bolt, false, &[Target::Player(0)], &[]);
+    assert_eq!((g.players[0].life, g.players[1].life), (34, 34));
+}
+
+#[test]
+fn eiganjo_castle_shields_a_legendary_creature_from_two_damage() {
+    let mut g = table();
+    let castle = put(&mut g, 0, "Eiganjo Castle");
+    let kaalia = put(&mut g, 0, "Kaalia of the Vast"); // a legendary 2/2
+    let lions = put(&mut g, 0, "Savannah Lions");
+    act(&mut g, Action::Activate(castle, 0));
+    let legal = g.legal_actions();
+    assert!(
+        !legal.contains(&Action::Target(Target::Object(lions))),
+        "legendary only"
+    );
+    act(&mut g, Action::Target(Target::Object(kaalia)));
+    resolve_all(&mut g, &[]);
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    play(&mut g, bolt, false, &[Target::Object(kaalia)], &[]);
+    assert_eq!(g.obj(kaalia).zone, Zone::Battlefield);
+    assert_eq!(g.obj(kaalia).damage, 1, "2 of 3 prevented");
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    play(&mut g, bolt, false, &[Target::Object(kaalia)], &[]);
+    assert_eq!(g.obj(kaalia).zone, Zone::Graveyard, "the shield is used up");
+}
+
+#[test]
+fn bennie_bracks_draws_at_an_end_step_after_you_made_a_token() {
+    for make in [false, true] {
+        let mut g = table();
+        put(&mut g, 0, "Bennie Bracks, Zoologist");
+        if make {
+            let port = put(&mut g, 0, "Fountainport");
+            act(&mut g, Action::Activate(port, 1)); // a Fish
+            resolve_all(&mut g, &[]);
+        }
+        let before = g.players[0].hand.len();
+        while g.step != Step::Cleanup {
+            let a = match g.pending {
+                Pending::DeclareAttackers(_) => Action::FinishAttacks,
+                _ => Action::PassPriority,
+            };
+            act(&mut g, a);
+        }
+        assert_eq!(g.players[0].hand.len(), before + usize::from(make));
+    }
+}

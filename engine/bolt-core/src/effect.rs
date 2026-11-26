@@ -2475,6 +2475,12 @@ pub enum Effect {
     /// Discard a card (`Decision::DiscardThenIfInstantOrSorcery`); the rest of the effects happen
     /// only if it was an instant or sorcery card (Vohar, Vodalian Desecrator).
     DiscardThenIfInstantOrSorcery,
+    /// Prevent the next `n` damage that would be dealt to the permanent in `slot` this turn (Eiganjo
+    /// Castle: 2), see `Game::damage_shields_on`.
+    PreventNextDamageToTargetThisTurn {
+        slot: u8,
+        n: i32,
+    },
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -2911,6 +2917,8 @@ pub enum Condition {
     /// At least this much colorless mana was spent to cast the spell (Desecrate Reality's
     /// adamant: 3), with `Effect::StopUnlessCondition` before the adamant part.
     ColorlessSpentAtLeast(u32),
+    /// Its controller created a token this turn (Bennie Bracks), from `Game::token_created_turn`.
+    YouCreatedTokenThisTurn,
 }
 
 /// A spell's effect or a triggered ability: target slots, then effects in order.
