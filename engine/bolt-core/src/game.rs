@@ -970,6 +970,9 @@ pub enum Decision {
     PrimalSurge { card: ObjId },
     /// Hellkite Courser: `Yes` puts your commander onto the battlefield, `No` doesn't.
     CommanderCourser { card: ObjId },
+    /// A modal double-faced card that's a land on both faces (the Pathways), just played: `Mode(0)` keeps its
+    /// front, `Mode(1)` turns it to its back (CR 712.12).
+    ChooseLandFace { card: ObjId },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -6503,7 +6506,12 @@ impl Game {
                 } else {
                     Vec::new()
                 };
-                if self.def_of(c).choose_color {
+                let land_back = self.def_of(c).modal_back
+                    && self.def_of(c).types.land
+                    && self.def_of(c).back.as_ref().is_some_and(|b| b.types.land);
+                if land_back {
+                    self.ask(p, Decision::ChooseLandFace { card: c });
+                } else if self.def_of(c).choose_color {
                     // "As it enters, choose a color" (the Thriving lands).
                     self.ask(p, Decision::ChooseColor { card: c });
                 } else if options.is_empty() {
@@ -7974,6 +7982,7 @@ impl Game {
                 (0..5).filter(|&c| Some(c) != not).map(Action::Mode).collect()
             }
             Decision::ChooseEnterMode { .. } => vec![Action::Mode(0), Action::Mode(1)],
+            Decision::ChooseLandFace { .. } => vec![Action::Mode(0), Action::Mode(1)],
             Decision::ChooseCreatureType { options, .. } => {
                 (0..options.len() as u8).map(Action::Mode).collect()
             }
@@ -8620,6 +8629,11 @@ impl Game {
             } else {
                 self.give_priority(self.active);
             }
+            return;
+        }
+        if let (Decision::ChooseLandFace { card }, Action::Mode(m)) = (&d, a) {
+            self.obj_mut(*card).transformed = m == 1;
+            self.give_priority(p);
             return;
         }
         if let (Decision::ChooseEnterMode { card }, Action::Mode(m)) = (&d, a) {
@@ -12340,6 +12354,17 @@ impl Game {
                     .collect();
                 for c in all {
                     self.destroy(c);
+                }
+            }
+            Effect::DestroyAllCreaturesNoRegen => {
+                let all: Vec<ObjId> = self
+                    .battlefield
+                    .iter()
+                    .copied()
+                    .filter(|&c| self.types_of(c).creature)
+                    .collect();
+                for c in all {
+                    self.destroy_no_regen(c);
                 }
             }
             Effect::DamageEqualSourcePower(n) => {

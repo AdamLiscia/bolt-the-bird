@@ -956,3 +956,27 @@ fn zacama_untaps_lands_when_cast_and_has_three_abilities() {
     activate(&mut g, z, 2, &[]);
     assert_eq!(g.players[0].life, 43);
 }
+
+#[test]
+fn a_pathway_is_played_as_either_face() {
+    for (face, colors) in [
+        (0u8, [false, false, true, false, false]),
+        (1, [false, false, false, false, true]),
+    ] {
+        let mut g = table();
+        let p = hand(&mut g, 0, "Darkbore Pathway // Slitherbore Pathway");
+        act(&mut g, Action::PlayLand(p));
+        assert_eq!(
+            g.legal_actions(),
+            vec![Action::Mode(0), Action::Mode(1)],
+            "front or back"
+        );
+        act(&mut g, Action::Mode(face));
+        assert_eq!(g.obj(p).zone, Zone::Battlefield);
+        assert_eq!(
+            makes(&g, p),
+            (colors, false),
+            "face {face}: black front, green back"
+        );
+    }
+}
