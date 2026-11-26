@@ -831,6 +831,33 @@ pub struct CardDef {
     /// An Aura with "Enchant player" whose enchanted player gets an additional upkeep step after
     /// their first upkeep each turn (Paradox Haze).
     pub extra_upkeep_for_enchanted: bool,
+    /// The d4 subsystems' pieces (dungeons, Backgrounds, split cards), grouped so adding one
+    /// touches only [`SubsystemExt`].
+    pub subsystems: SubsystemExt,
+    /// "All Swamps are 1/1 black creatures that are still lands." (Kormus Bell; give it an empty
+    /// static too, so it's among the static sources)
+    pub swamps_are_creatures: bool,
+    /// "Creatures can't attack you unless their controller pays {N} for each creature they
+    /// control that's attacking you." (Ghostly Prison, Propaganda: 2), see `Game::attack_tax`.
+    pub attack_tax: u8,
+    /// The attack tax is {X} per creature, X the enchantments you control (Sphere of Safety).
+    pub attack_tax_per_enchantment: bool,
+}
+
+/// A card's pieces from the d4 subsystems (see [`CardDef::subsystems`]).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct SubsystemExt {
+    /// A split card (CR 709): `omen` holds its right half, cast like an Omen's, and either half goes
+    /// to its owner's graveyard as it resolves.
+    pub split_card: bool,
+    /// "Room abilities of dungeons you own trigger an additional time." (Hama Pashar)
+    pub rooms_trigger_again: bool,
+    /// "Commander creatures you own have 'Room abilities of dungeons you own trigger an additional
+    /// time.'" (Dungeon Delver)
+    pub commanders_rooms_trigger_again: bool,
+    /// A split card's left half's own mana cost, which casting it pays; `cost` is both halves'
+    /// together, its mana value off the stack (CR 709.4).
+    pub left_cost: Option<ManaCost>,
 }
 
 /// A card's mana, cost and keyword pieces added by the d1 theme (see [`CardDef::mana_ext`]).
@@ -873,6 +900,18 @@ pub struct ManaExt {
     /// cost." (Force of Will: blue, 1): (WUBRG index, life). Cast with `Action::CastWith` naming
     /// the card.
     pub pitch_with_life: Option<(u8, i32)>,
+    /// "[Color] spells (and [color] spells) you cast cost {N} less to cast": spells of any of these
+    /// colors (WUBRG), once each (Jet Medallion: black; Stormscape Familiar: white and black).
+    pub colored_spell_discount: Option<([bool; 5], u8)>,
+    /// "Whenever a player taps a land for mana, that player adds one mana of any type that land
+    /// produced." (Dictate of Karametra)
+    pub all_lands_add_same: bool,
+    /// "Whenever you tap a creature for mana, add an additional [color]." (Leyline of Abundance)
+    pub your_creatures_add: Option<crate::Color>,
+    /// Escape (CR 702.138): (cost, other graveyard cards to exile, +1/+1 counters it escapes with).
+    /// Cast from your graveyard with `Action::CastAlternative`; the engine picks the exiled cards,
+    /// as for delve.
+    pub escape: Option<(ManaCost, u8, i32)>,
 }
 
 /// Which events don't cause abilities to trigger (see [`CardDef::suppresses_triggers`]).
@@ -1163,6 +1202,10 @@ impl CardDef {
             mana_ext: ManaExt::default(),
             suppresses_triggers: None,
             doubles_triggers_of: None,
+            subsystems: Default::default(),
+            swamps_are_creatures: false,
+            attack_tax: 0,
+            attack_tax_per_enchantment: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -1408,6 +1451,10 @@ impl CardDef {
             mana_ext: ManaExt::default(),
             suppresses_triggers: None,
             doubles_triggers_of: None,
+            subsystems: Default::default(),
+            swamps_are_creatures: false,
+            attack_tax: 0,
+            attack_tax_per_enchantment: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -1653,6 +1700,10 @@ impl CardDef {
             mana_ext: ManaExt::default(),
             suppresses_triggers: None,
             doubles_triggers_of: None,
+            subsystems: Default::default(),
+            swamps_are_creatures: false,
+            attack_tax: 0,
+            attack_tax_per_enchantment: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,

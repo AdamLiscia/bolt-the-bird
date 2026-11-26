@@ -1686,8 +1686,6 @@ pub enum Effect {
     /// Put the creature card in `slot` (from a graveyard) onto the battlefield under your control
     /// and attach the source to it (Necromancy).
     ReanimateAttachSource(u8),
-    /// Untap the creature the source is attached to.
-    UntapAttached,
     /// All creatures get -X/-X until end of turn, X the spell's X (Toxic Deluge).
     AllCreaturesGetMinusX,
     /// Draw a card for each creature you control of this color (Freyalise: green).
@@ -1695,6 +1693,8 @@ pub enum Effect {
     /// Evoke's "When this permanent enters, if its evoke cost was paid, its controller sacrifices
     /// it." (CR 702.74a)
     SacrificeIfEvoked,
+    /// Untap the creature the source is attached to.
+    UntapAttached,
     /// You gain life and draw cards equal to the source's power, its last known power if it left
     /// the battlefield (Lifeblood Hydra: "When this creature dies, ...").
     GainLifeAndDrawSourcePower,
@@ -1892,6 +1892,88 @@ pub enum Effect {
     },
     /// The player in `slot` draws X cards (X the spell's X) (Stroke of Genius).
     DrawXTarget(u8),
+    /// The d4 subsystems' effects (dungeons, the initiative, dice, emblems for a player).
+    Subsystem(SubsystemEffect),
+    /// A manland: the source becomes a creature until end of turn, as `BecomeCreatureUntilEot`
+    /// (base power and toughness, keywords, the first of `subtypes`), and also has the other
+    /// `subtypes`, these `colors` (`None`: its own), is an artifact too if `artifact`, and has
+    /// every creature type if `all_creature_types`. It's still a land. Kept in
+    /// `Object::type_changes` (marked `own`, for `Condition::AnimatedByOwnAbility`).
+    BecomeCreatureUntilEotWith {
+        power: i32,
+        toughness: i32,
+        subtypes: &'static [&'static str],
+        keywords: crate::Keywords,
+        colors: Option<[bool; 5]>,
+        artifact: bool,
+        all_creature_types: bool,
+    },
+    /// "Until end of turn, creatures you control have base power and toughness X/X and gain all
+    /// creature types." (Mirror Entity; X from the activation)
+    YourCreaturesBaseXAllTypesEot,
+    /// The permanent in `slot` loses all abilities, for as long as it stays on the battlefield
+    /// (Abigale). Keyword counters put on it afterwards still count.
+    LoseAllAbilities(u8),
+    /// The source connives (CR 701.50): draw a card, then discard a card; if it was a nonland
+    /// card, a +1/+1 counter on the source (Ledger Shredder), as `Decision::ConniveDiscard`.
+    ConniveSelf,
+    /// Return all creature cards from your graveyard to the battlefield; each is a base P/T
+    /// `subtype` with `keywords` in addition to its other types, for as long as it stays (Storm of
+    /// Souls: a 1/1 Spirit with flying).
+    ReturnAllCreatureCardsAs {
+        power: i32,
+        toughness: i32,
+        subtype: &'static str,
+        keywords: crate::Keywords,
+    },
+    /// Each player, you first, puts a vow counter on a creature they control and sacrifices the
+    /// rest (Promise of Loyalty), as `Decision::VowCreature`. The vows are kept in `Game::vows`
+    /// (see `Game::vowed_against`).
+    EachVowsOneSacrificesRest,
+    /// The source deals the trigger's amount of damage to the player or object in `slot` (All
+    /// Will Be One: "target opponent, creature an opponent controls, or planeswalker an opponent
+    /// controls"). `DamageAmountTo` takes objects only.
+    DamageAmountToAny(u8),
+    /// `n` times: each opponent may discard a card; if they don't, they lose `life` life (Professor
+    /// Onyx's −8: 7 times, 3 life), as `Decision::DiscardOrLoseLife`.
+    OpponentDiscardsOrLosesLife {
+        n: u8,
+        life: i32,
+    },
+    /// The creature in `slot` gets +P/+T until your next turn (Fungi Cavern: −4/−0), kept in
+    /// `Game::next_turn_pt`.
+    PumpUntilYourNextTurn {
+        slot: u8,
+        power: i32,
+        toughness: i32,
+    },
+    /// Each player, the active player first, loses `life` life unless they discard a card, or with
+    /// `sacrifice`, unless they sacrifice an artifact, a creature or a land (Veils of Fear; Sandfall
+    /// Cell), as `Decision::LoseUnless`.
+    EachPlayerLosesUnless {
+        life: i32,
+        sacrifice: bool,
+    },
+    /// Sacrifice an artifact, a creature and a land (Oubliette, after its discard), as
+    /// `Decision::SacrificeOfType`; one permanent counts once.
+    SacrificeArtifactCreatureAndLand,
+    /// Reveal the top `n` cards of your library; put a creature card from among them onto the
+    /// battlefield with `counters` +1/+1 counters; it gains `keywords` until your next turn; then
+    /// shuffle (Throne of the Dead Three: 10, 3, hexproof), as `Decision::RevealedCreatureOnto`.
+    RevealTopCreatureOntoBattlefield {
+        n: u8,
+        counters: u8,
+        keywords: crate::Keywords,
+    },
+    /// Phasing (CR 702.26): the permanents in the target slots (`all`: every permanent you control)
+    /// phase out, with anything attached to them, until they phase in before their controller's next
+    /// untap.
+    PhaseOut {
+        all: bool,
+    },
+    /// Until your next turn, your life total can't change (and damage to you is prevented: you have
+    /// protection from everything) (Teferi's Protection).
+    LifeLockedUntilYourNextTurn,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -1958,6 +2040,9 @@ pub enum SearchFor {
     ArtifactManaValue(u32),
     /// An artifact card with a mana ability, or a basic land card (Moonsilver Key).
     ArtifactWithManaAbilityOrBasicLand,
+    /// An artifact card with mana cost {0} or {1} (Urza's Saga). The engine's costs don't tell
+    /// {0} from no mana cost, so an artifact with none counts too.
+    ArtifactManaCostZeroOrOne,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -2090,6 +2175,8 @@ pub enum StaticCondition {
     AttachedTapped(bool),
     /// The creature the source is attached to is this color, WUBRG index (Shield of the Oversoul).
     AttachedIsColor(u8),
+    /// The source's controller has completed a dungeon (Nadaar).
+    CompletedDungeon,
 }
 
 /// A static ability that changes characteristics (CR 604, 613 layers 6 and 7c).
@@ -2134,6 +2221,9 @@ pub enum EmblemKind {
     NoMaxHandSize,
     /// "Lands you control have indestructible." (Nissa, Who Shakes the World)
     LandsIndestructible,
+    /// An emblem with a triggered ability: trigger number `trigger` of the card that made it
+    /// (written with `When::Never`) happens whenever `when` fires for the emblem's owner.
+    Triggered { when: When, trigger: usize },
 }
 
 /// Which looked-at card may be picked.
@@ -2275,6 +2365,14 @@ pub enum Condition {
     OpponentLostLifeAtLeast(i32),
     /// The source has at least this many quest counters (Bloodchief Ascension: three).
     SourceQuestCountersAtLeast(i32),
+    /// You've completed a dungeon (CR 309.7).
+    CompletedDungeon,
+    /// You have the initiative (CR 725).
+    HaveInitiative,
+    /// The source is a creature this turn from its own "this becomes a creature" ability
+    /// (`Effect::BecomeCreatureUntilEotWith`): the ability it gains then (Raging Ravine's attack
+    /// trigger).
+    AnimatedByOwnAbility,
 }
 
 /// A spell's effect or a triggered ability: target slots, then effects in order.
@@ -2676,4 +2774,43 @@ pub enum When {
 pub struct Trigger {
     pub when: When,
     pub ability: Ability,
+}
+
+/// A dungeon card (CR 309), in the order `game::d4::rooms` lists them.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Dungeon {
+    /// Lost Mine of Phandelver.
+    LostMine,
+    /// Dungeon of the Mad Mage.
+    MadMage,
+    /// Tomb of Annihilation.
+    Tomb,
+    /// Undercity: only by venturing into Undercity (the initiative, CR 725.2).
+    Undercity,
+}
+
+/// The d4 subsystems' effects ([`Effect::Subsystem`]).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SubsystemEffect {
+    /// "Venture into the dungeon" (CR 701.49a).
+    Venture,
+    /// "Venture into Undercity" (CR 701.49b, the initiative).
+    VentureUndercity,
+    /// "You take the initiative" (CR 725.1).
+    TakeInitiative,
+    /// A room ability's tokens: `n` of the token definition with this name (and P/T, for a
+    /// creature token).
+    RoomToken {
+        name: &'static str,
+        power: i32,
+        toughness: i32,
+        n: u8,
+    },
+    /// "Roll a d`sides`. You create a number of [tokens] equal to the result." (CR 706)
+    RollDieCreateTokens { sides: u32, def: usize },
+    /// "Target [player] gets an emblem with ..." (the player in target slot `slot`).
+    EmblemForTarget { slot: u8, kind: EmblemKind },
+    /// The end of a bottommost room's ability: the dungeon is completed once the last copy of it
+    /// leaves the stack (CR 704.5t).
+    CompleteDungeon,
 }

@@ -16,7 +16,8 @@ assets/{SET}_oracle.json; everything else in it is kept as it is.
 Fields as in assets/FDN_oracle.json. Two-faced cards keep their front face's characteristics
 (name joined with " // " as 17lands writes it is matched on the front name); a transforming or
 modal double-faced card also gets `back`: its back face's name, mana_cost, type_line, oracle_text,
-power, toughness, colors and loyalty.
+power, toughness, colors and loyalty. A split card also gets `split`: its right half's name, mana_cost,
+type_line and oracle_text.
 """
 
 import argparse
@@ -106,6 +107,10 @@ def flat(c: dict) -> dict:
         b = c["card_faces"][1]
         d["back"] = {k: b.get(k) for k in BACK}
         d["back"]["colors"] = b.get("colors") or []
+    if c.get("layout") == "split" and len(c.get("card_faces", [])) > 1:
+        # A split card (CR 709): the front fields are its left half, `split` its right half.
+        s = c["card_faces"][1]
+        d["split"] = {k: s.get(k) for k in ("name", "mana_cost", "type_line", "oracle_text")}
     return d
 
 

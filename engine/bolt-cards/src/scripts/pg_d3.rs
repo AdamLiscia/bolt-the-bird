@@ -18,6 +18,46 @@ fn lands_mana(d: &mut CardDef, colors: &[Color]) {
     d.mana = Some(ManaSource::of(colors));
 }
 
+/// A static that changes nothing by itself (a base for `..`, or to make its card a static source).
+fn neutral_static() -> Static {
+    Static {
+        subtype: None,
+        lose_abilities: false,
+        base_pt: None,
+        protection: [false; 5],
+        scale: None,
+        scope: Scope::This,
+        your_turn_only: false,
+        condition: None,
+        power: 0,
+        toughness: 0,
+        keywords: Keywords::NONE,
+        set_colors: None,
+        becomes_land: false,
+    }
+}
+
+/// A manland's "{cost}: This land becomes a P/T [colors] [types] [artifact] creature [with
+/// keywords] until end of turn. It's still a land."
+fn manland(
+    power: i32,
+    toughness: i32,
+    subtypes: &'static [&'static str],
+    keywords: Keywords,
+    colors: Option<[bool; 5]>,
+    artifact: bool,
+) -> Effect {
+    Effect::BecomeCreatureUntilEotWith {
+        power,
+        toughness,
+        subtypes,
+        keywords,
+        colors,
+        artifact,
+        all_creature_types: false,
+    }
+}
+
 /// "{T}: Add {C}."
 fn colorless(d: &mut CardDef) {
     d.mana = Some(ManaSource {
@@ -1228,6 +1268,124 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::YouAttack, vec![attacker], vec![Effect::ConniveAttackers(0)]);
             },
         ),
+        // ---- Unblocked by lane d3's core theme, batch 10 (types and abilities) ----
+        "Mirror Entity" => s(
+            &[
+                "Changeling",
+                "{X}: Until end of turn, creatures you control have base power and toughness X/X and gain all creature types.",
+            ],
+            |d, _| {
+                d.changeling = true;
+                activated(d, "{X}", false, vec![], vec![Effect::YourCreaturesBaseXAllTypesEot]);
+            },
+        ),
+        "Kormus Bell" => s(&["All Swamps are 1/1 black creatures that are still lands."], |d, _| {
+            d.swamps_are_creatures = true;
+            d.statics.push(neutral_static()); // so it's among the static sources
+        }),
+        "Song of the Dryads" => s(&["Enchant permanent", "Enchanted permanent is a colorless Forest land."], |d, _| {
+            d.aura = true;
+            // `lands` too: what it enchants is always a land, which the Aura check (CR 303.4d) sees.
+            d.spell = Some(Ability::new(vec![Filter { lands: true, ..PERMANENT }], vec![]));
+            d.statics.push(Static {
+                scope: Scope::Attached,
+                subtype: Some("Forest"),
+                lose_abilities: true,
+                set_colors: Some([false; 5]),
+                becomes_land: true,
+                ..neutral_static()
+            });
+        }),
+        "Faerie Conclave" => s(
+            &[
+                "This land enters tapped.",
+                "{T}: Add {U}.",
+                "{1}{U}: This land becomes a 2/1 blue Faerie creature with flying until end of turn. It's still a land.",
+            ],
+            |d, _| {
+                d.enters_tapped = true;
+                lands_mana(d, &[Color::Blue]);
+                let blue = Some([false, true, false, false, false]);
+                activated(d, "{1}{U}", false, vec![], vec![manland(2, 1, &["Faerie"], Keywords::FLYING, blue, false)]);
+            },
+        ),
+        "Raging Ravine" => s(
+            &[
+                "This land enters tapped.",
+                "{T}: Add {R} or {G}.",
+                "{2}{R}{G}: Until end of turn, this land becomes a 3/3 red and green Elemental creature with \"Whenever this creature attacks, put a +1/+1 counter on it.\" It's still a land.",
+            ],
+            |d, _| {
+                d.enters_tapped = true;
+                lands_mana(d, &[Color::Red, Color::Green]);
+                let red_green = Some([false, false, false, true, true]);
+                let animate = manland(3, 3, &["Elemental"], Keywords::NONE, red_green, false);
+                activated(d, "{2}{R}{G}", false, vec![], vec![animate]);
+                // The gained trigger: only while it's a creature from this ability.
+                conditional(d, When::Attacks, Condition::AnimatedByOwnAbility, vec![], vec![Effect::CountersSelf { n: 1 }]);
+            },
+        ),
+        "Blinkmoth Nexus" => s(
+            &[
+                "{T}: Add {C}.",
+                "{1}: This land becomes a 1/1 Blinkmoth artifact creature with flying until end of turn. It's still a land.",
+                "{1}, {T}: Target Blinkmoth creature gets +1/+1 until end of turn.",
+            ],
+            |d, _| {
+                colorless(d);
+                activated(d, "{1}", false, vec![], vec![manland(1, 1, &["Blinkmoth"], Keywords::FLYING, None, true)]);
+                let blinkmoth = Filter { subtype: Some("Blinkmoth"), ..CREATURE };
+                activated(d, "{1}", true, vec![blinkmoth], vec![Effect::Pump { slot: 0, power: 1, toughness: 1 }]);
+            },
+        ),
+        "Mishra's Factory" => s(
+            &[
+                "{T}: Add {C}.",
+                "{1}: This land becomes a 2/2 Assembly-Worker artifact creature until end of turn. It's still a land.",
+                "{T}: Target Assembly-Worker creature gets +1/+1 until end of turn.",
+            ],
+            |d, _| {
+                colorless(d);
+                activated(d, "{1}", false, vec![], vec![manland(2, 2, &["Assembly-Worker"], Keywords::NONE, None, true)]);
+                let worker = Filter { subtype: Some("Assembly-Worker"), ..CREATURE };
+                activated(d, "", true, vec![worker], vec![Effect::Pump { slot: 0, power: 1, toughness: 1 }]);
+            },
+        ),
+        "Mutavault" => s(
+            &["{T}: Add {C}.", "{1}: This land becomes a 2/2 creature with all creature types until end of turn. It's still a land."],
+            |d, _| {
+                colorless(d);
+                let animate = Effect::BecomeCreatureUntilEotWith {
+                    power: 2,
+                    toughness: 2,
+                    subtypes: &[],
+                    keywords: Keywords::NONE,
+                    colors: None,
+                    artifact: false,
+                    all_creature_types: true,
+                };
+                activated(d, "{1}", false, vec![], vec![animate]);
+            },
+        ),
+        "Abigale, Eloquent First-Year" => s(
+            &["When Abigale enters, up to one other target creature loses all abilities. Put a flying counter, a first strike counter, and a lifelink counter on that creature."],
+            |d, _| {
+                let other = Filter { other: true, ..CREATURE };
+                let counters = Keywords::FLYING.with(Keywords::FIRST_STRIKE).with(Keywords::LIFELINK);
+                d.triggers.push(Trigger {
+                    when: When::Enters,
+                    ability: up_to(vec![other], vec![Effect::LoseAllAbilities(0), Effect::KeywordCounter { slot: 0, keywords: counters }]),
+                });
+            },
+        ),
+        // ---- Unblocked by lane d3's core theme, batch 11 ----
+        "Storm of Souls" => s(
+            &["Return all creature cards from your graveyard to the battlefield. Each of them is a 1/1 Spirit with flying in addition to its other types. Exile Storm of Souls."],
+            |d, _| {
+                let spirits = Effect::ReturnAllCreatureCardsAs { power: 1, toughness: 1, subtype: "Spirit", keywords: Keywords::FLYING };
+                spell(d, vec![], vec![spirits, Effect::ExileSourceSpell]);
+            },
+        ),
         _ => None,
     }
 }
@@ -1410,4 +1568,16 @@ pub const PG_D3_SCRIPTED: &[&str] = &[
     "Return to Dust",
     "Reconnaissance",
     "Raffine, Scheming Seer",
+    // Core theme d3, batch 10
+    "Mirror Entity",
+    "Kormus Bell",
+    "Song of the Dryads",
+    "Faerie Conclave",
+    "Raging Ravine",
+    "Blinkmoth Nexus",
+    "Mishra's Factory",
+    "Mutavault",
+    "Abigale, Eloquent First-Year",
+    // Core theme d3, batch 11
+    "Storm of Souls",
 ];

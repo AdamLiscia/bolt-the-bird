@@ -12,6 +12,7 @@ pub mod mana;
 pub mod rng;
 pub mod rollout;
 
+pub use card::SubsystemExt;
 pub use card::{
     Activated, Behold, CardDef, EntryDoubler, ExtraCost, Keywords, Omen, Reduction, Stage, Types,
 };
@@ -20,8 +21,10 @@ pub use effect::{
     Ability, Condition, Controller, Effect, Filter, Recipient, Scope, SearchFor, SearchTo, Static, Trigger,
     When, Who,
 };
+pub use effect::{Dungeon, SubsystemEffect};
 pub use effect::{EmblemKind, LookRest, LookTo, Pick, StaticCondition};
 pub use game::CommanderOptions;
+pub use game::{rooms, Room, VENTURE_CHOICES};
 pub use game::{
     Action, Chosen, Decision, Event, Game, Modifier, ObjId, Outcome, Pending, PlayerId, Resolving,
     RulesError, StackItem, StackKind, Step, Target, Zone, COMMANDER_DAMAGE_LOSS, COMMANDER_LIFE,
