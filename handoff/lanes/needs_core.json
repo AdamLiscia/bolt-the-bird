@@ -1,4 +1,4157 @@
 {
- "note": "Cards a lane skipped because they need a new engine piece. Maintained by the lead; worked by the Mac lanes.",
- "cards": []
+ "note": "Desktop lanes' needs-core lists (lane-d1 3a567e8, lane-d2 5a6f67a, lane-d3 dfcfef3), 2026-11-25, clustered by a keyword pass: a guide, not a contract. A lane that finds an entry outside its theme reports it back.",
+ "themes": {
+  "mana": "mana abilities and costs: per-permanent mana, devotion, sacrifice/pay-life mana, {C}, {Q}, kicker variants, prototype, cost reduction",
+  "triggers": "new trigger events and trigger amounts",
+  "effects": "new one-shot effects and statics: mass destroy/sacrifice, filtered searches (color, power, mana value), put-onto-battlefield, scaled statics",
+  "replace_filter": "replacement effects (tokens, counters, life loss, damage)",
+  "keywords": "keywords: annihilator, fear, intimidate, undying, persist, extort, evoke, echo, exalted, convoke, morph, phasing, cascade, ...",
+  "objects_zones": "tokens and objects (Clue, Food, copies), dungeons/initiative, back faces, emblems"
+ },
+ "owners": {
+  "mana": "d1",
+  "triggers": "d2",
+  "effects": "d3",
+  "replace_filter": "mac-b",
+  "keywords": "d1",
+  "objects_zones": "mac-c"
+ },
+ "cards": [
+  {
+   "card": "Necropotence",
+   "deck": "Ygra, Eater of All",
+   "missing": "skip your draw step; a 'whenever you discard a card' trigger that exiles it; pay 1 life: exile top face down, to hand at your next end step",
+   "lane": "d1",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Green Sun's Zenith",
+   "deck": "Ygra, Eater of All",
+   "missing": "a color filter in searches (green creature card with mana value X or less)",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Syr Konrad, the Grim",
+   "deck": "Ygra, Eater of All",
+   "missing": "a trigger on another creature dying, a creature card put into a graveyard from anywhere else, or a creature card leaving your graveyard",
+   "lane": "d1",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Tooth and Nail",
+   "deck": "Ygra, Eater of All",
+   "missing": "an effect: put up to two creature cards from your hand onto the battlefield",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Bane of Progress",
+   "deck": "Ygra, Eater of All",
+   "missing": "an effect: destroy all artifacts and enchantments, then +1/+1 counters for each permanent destroyed",
+   "lane": "d1",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Academy Manufactor",
+   "deck": "Ygra, Eater of All",
+   "missing": "a Clue/Food/Treasure token replacement (create one of each); a Clue artifact token",
+   "lane": "d1",
+   "theme": "replace_filter",
+   "owner": "mac-b"
+  },
+  {
+   "card": "Braids, Arisen Nightmare",
+   "deck": "Ygra, Eater of All",
+   "missing": "an end-step 'sacrifice a permanent of a type, opponent sacrifices one sharing a type or loses 2 and you draw' effect",
+   "lane": "d1",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Marionette Apprentice",
+   "deck": "Ygra, Eater of All",
+   "missing": "fabricate N; a 1/1 colorless Servo artifact creature token; a trigger on another creature or artifact you control going to the graveyard from the battlefield",
+   "lane": "d1",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Pitiless Plunderer",
+   "deck": "Ygra, Eater of All",
+   "missing": "a trigger 'whenever another creature you control dies' that includes tokens (CreatureYouControlDies fires on its own death too)",
+   "lane": "d1",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Chatterfang, Squirrel General",
+   "deck": "Ygra, Eater of All",
+   "missing": "a token-creation replacement (plus that many 1/1 Squirrels); 'Sacrifice X Squirrels' as a cost",
+   "lane": "d1",
+   "theme": "replace_filter",
+   "owner": "mac-b"
+  },
+  {
+   "card": "Hardened Scales",
+   "deck": "Ygra, Eater of All",
+   "missing": "a +1/+1 counter replacement (that many plus one)",
+   "lane": "d1",
+   "theme": "replace_filter",
+   "owner": "mac-b"
+  },
+  {
+   "card": "Marionette Master",
+   "deck": "Ygra, Eater of All",
+   "missing": "fabricate N; a 1/1 colorless Servo artifact creature token; an artifact-you-control-to-graveyard trigger; lose life equal to this creature's power",
+   "lane": "d1",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Viridian Revel",
+   "deck": "Ygra, Eater of All",
+   "missing": "a trigger on an artifact going to an opponent's graveyard from the battlefield",
+   "lane": "d1",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Woe Strider",
+   "deck": "Ygra, Eater of All",
+   "missing": "a 0/1 white Goat creature token; escape",
+   "lane": "d1",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Cranial Plating",
+   "deck": "Ygra, Eater of All",
+   "missing": "a static +1/+0 for each artifact you control (scale by artifacts)",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Disciple of the Vault",
+   "deck": "Ygra, Eater of All",
+   "missing": "a trigger on an artifact going to a graveyard from the battlefield",
+   "lane": "d1",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Peregrin Took",
+   "deck": "Ygra, Eater of All",
+   "missing": "a token-creation replacement (plus a Food); 'Sacrifice three Foods' as a cost",
+   "lane": "d1",
+   "theme": "replace_filter",
+   "owner": "mac-b"
+  },
+  {
+   "card": "Ygra, Eater of All",
+   "deck": "Ygra, Eater of All",
+   "missing": "ward\u2014sacrifice a Food; other creatures are Food artifacts with the Food ability; a Food-to-graveyard trigger",
+   "lane": "d1",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Camellia, the Seedmiser",
+   "deck": "Ygra, Eater of All",
+   "missing": "a 'whenever you sacrifice one or more Foods' trigger; forage as a cost",
+   "lane": "d1",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Creeping Corrosion",
+   "deck": "Ygra, Eater of All",
+   "missing": "an effect: destroy all artifacts (every player's)",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Fade from History",
+   "deck": "Ygra, Eater of All",
+   "missing": "an effect: each player with an artifact or enchantment creates a 2/2 green Bear creature token, then destroy all artifacts and enchantments",
+   "lane": "d1",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Feed the Cycle",
+   "deck": "Ygra, Eater of All",
+   "missing": "an additional cost: forage or pay {B}",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Pippin, Warden of Isengard",
+   "deck": "Ygra, Eater of All",
+   "missing": "'Sacrifice four Foods' as a cost",
+   "lane": "d1",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Rapacious Guest",
+   "deck": "Ygra, Eater of All",
+   "missing": "a 'whenever you sacrifice a Food' trigger; leaves-the-battlefield 'target opponent loses life equal to its power'",
+   "lane": "d1",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Savra, Queen of the Golgari",
+   "deck": "Ygra, Eater of All",
+   "missing": "triggers on sacrificing a black or a green creature",
+   "lane": "d1",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Savvy Hunter",
+   "deck": "Ygra, Eater of All",
+   "missing": "'Sacrifice two Foods' as a cost",
+   "lane": "d1",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Seeds of Innocence",
+   "deck": "Ygra, Eater of All",
+   "missing": "an effect: destroy all artifacts, no regeneration, each controller gains life equal to its mana value",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Summoning Station",
+   "deck": "Ygra, Eater of All",
+   "missing": "a 2/2 colorless Pincher creature token; a trigger on an artifact going to a graveyard from the battlefield",
+   "lane": "d1",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "The Shire",
+   "deck": "Ygra, Eater of All",
+   "missing": "enters tapped unless you control a legendary creature; 'tap an untapped creature you control' as a cost",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Wave of Vitriol",
+   "deck": "Ygra, Eater of All",
+   "missing": "an effect: each player sacrifices artifacts, enchantments and nonbasic lands, then may fetch a basic per land",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Nykthos, Shrine to Nyx",
+   "deck": "Raggadragga, Goreguts Boss",
+   "missing": "devotion mana (mana equal to your devotion to a chosen color)",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Sylvan Library",
+   "deck": "Raggadragga, Goreguts Boss",
+   "missing": "draw-step draw two extra, then pay 4 life or put back each of two cards drawn this turn",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Cavern of Souls",
+   "deck": "Raggadragga, Goreguts Boss",
+   "missing": "chosen-type mana that makes the spell uncounterable",
+   "lane": "d1",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Survival of the Fittest",
+   "deck": "Raggadragga, Goreguts Boss",
+   "missing": "'Discard a creature card' as a cost",
+   "lane": "d1",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Finale of Devastation",
+   "deck": "Raggadragga, Goreguts Boss",
+   "missing": "search library and/or graveyard; if X is 10 or more, pump and haste",
+   "lane": "d1",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Natural Order",
+   "deck": "Raggadragga, Goreguts Boss",
+   "missing": "an additional cost: sacrifice a green creature; a green creature card search",
+   "lane": "d1",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Nyxbloom Ancient",
+   "deck": "Raggadragga, Goreguts Boss",
+   "missing": "a mana-tripling replacement",
+   "lane": "d1",
+   "theme": "replace_filter",
+   "owner": "mac-b"
+  },
+  {
+   "card": "Rhythm of the Wild",
+   "deck": "Raggadragga, Goreguts Boss",
+   "missing": "creature spells you control can't be countered; riot for nontoken creatures",
+   "lane": "d1",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Chord of Calling",
+   "deck": "Raggadragga, Goreguts Boss",
+   "missing": "convoke",
+   "lane": "d1",
+   "theme": "keywords",
+   "owner": "d1"
+  },
+  {
+   "card": "Imperial Recruiter",
+   "deck": "Raggadragga, Goreguts Boss",
+   "missing": "a search for a creature card with power 2 or less",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Regal Force",
+   "deck": "Raggadragga, Goreguts Boss",
+   "missing": "draw a card for each green creature you control",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Thousand-Year Elixir",
+   "deck": "Raggadragga, Goreguts Boss",
+   "missing": "activate creatures' abilities as though they had haste",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Walking Ballista",
+   "deck": "Raggadragga, Goreguts Boss",
+   "missing": "'Remove a +1/+1 counter from this creature' as a cost",
+   "lane": "d1",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Inkmoth Nexus",
+   "deck": "Raggadragga, Goreguts Boss",
+   "missing": "infect on an animated land (Phyrexian Blinkmoth artifact creature with flying and infect)",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Jeska's Will",
+   "deck": "Raggadragga, Goreguts Boss",
+   "missing": "add {R} for each card in target opponent's hand; exile top three, playable this turn",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Kami of Whispered Hopes",
+   "deck": "Raggadragga, Goreguts Boss",
+   "missing": "a +1/+1 counter replacement; X mana of any one color, X its power",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Rise of the Eldrazi",
+   "deck": "Raggadragga, Goreguts Boss",
+   "missing": "the {C} mana symbol in costs (ManaCost::parse)",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Umbral Mantle",
+   "deck": "Raggadragga, Goreguts Boss",
+   "missing": "the {Q} untap symbol in a granted cost",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Allosaurus Shepherd",
+   "deck": "Raggadragga, Goreguts Boss",
+   "missing": "green spells you control can't be countered; Elves become 5/5 Dinosaurs",
+   "lane": "d1",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Benefactor's Draught",
+   "deck": "Raggadragga, Goreguts Boss",
+   "missing": "untap all creatures; a 'whenever a creature an opponent controls blocks, draw' delayed trigger",
+   "lane": "d1",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Blood Moon",
+   "deck": "Raggadragga, Goreguts Boss",
+   "missing": "nonbasic lands are Mountains",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Boom // Bust",
+   "deck": "Raggadragga, Goreguts Boss",
+   "missing": "split cards",
+   "lane": "d1",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Bramble Familiar // Fetch Quest",
+   "deck": "Raggadragga, Goreguts Boss",
+   "missing": "adventure cards",
+   "lane": "d1",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Comet Storm",
+   "deck": "Raggadragga, Goreguts Boss",
+   "missing": "multikicker",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Cradle Clearcutter",
+   "deck": "Raggadragga, Goreguts Boss",
+   "missing": "prototype",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Enduring Courage",
+   "deck": "Raggadragga, Goreguts Boss",
+   "missing": "pump and haste the entering creature; return as a non-creature enchantment when it dies",
+   "lane": "d1",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Grove of the Burnwillows",
+   "deck": "Raggadragga, Goreguts Boss",
+   "missing": "colored mana that gives each opponent 1 life",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Heronblade Elite",
+   "deck": "Raggadragga, Goreguts Boss",
+   "missing": "X mana of any one color, X its power (mana_equal_power is green only)",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Invasion of Ikoria // Zilortha, Apex of Ikoria",
+   "deck": "Raggadragga, Goreguts Boss",
+   "missing": "battles (Siege)",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Last March of the Ents",
+   "deck": "Raggadragga, Goreguts Boss",
+   "missing": "draw equal to greatest toughness; put any number of creature cards from hand onto the battlefield",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Leyline of Abundance",
+   "deck": "Raggadragga, Goreguts Boss",
+   "missing": "an extra {G} whenever you tap a creature for mana",
+   "lane": "d1",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Panglacial Wurm",
+   "deck": "Raggadragga, Goreguts Boss",
+   "missing": "cast from your library while searching",
+   "lane": "d1",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Priest of Titania",
+   "deck": "Raggadragga, Goreguts Boss",
+   "missing": "{G} for each Elf on the battlefield (both players')",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Raggadragga, Goreguts Boss",
+   "deck": "Raggadragga, Goreguts Boss",
+   "missing": "statics and triggers for creatures with a mana ability; a 'seven or more mana spent' cast trigger",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Return of the Wildspeaker",
+   "deck": "Raggadragga, Goreguts Boss",
+   "missing": "non-Human filters (greatest power, pump)",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Signal the Clans",
+   "deck": "Raggadragga, Goreguts Boss",
+   "missing": "search three creature cards with different names, one at random to hand",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Song of Totentanz",
+   "deck": "Raggadragga, Goreguts Boss",
+   "missing": "a 1/1 black Rat creature token with 'This token can't block.'",
+   "lane": "d1",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Sword of the Paruns",
+   "deck": "Raggadragga, Goreguts Boss",
+   "missing": "statics conditioned on the equipped creature being tapped/untapped",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Topiary Lecturer",
+   "deck": "Raggadragga, Goreguts Boss",
+   "missing": "increment",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Turntimber Symbiosis // Turntimber, Serpentine Wood",
+   "deck": "Raggadragga, Goreguts Boss",
+   "missing": "look at top seven, creature onto the battlefield with three extra counters if mana value 3 or less",
+   "lane": "d1",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Farewell",
+   "deck": "Atla Palani, Nest Tender",
+   "missing": "'choose one or more' exile-all modes",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Kozilek, Butcher of Truth",
+   "deck": "Atla Palani, Nest Tender",
+   "missing": "annihilator; shuffle your graveyard into your library when put into a graveyard from anywhere",
+   "lane": "d1",
+   "theme": "keywords",
+   "owner": "d1"
+  },
+  {
+   "card": "Nesting Dragon",
+   "deck": "Atla Palani, Nest Tender",
+   "missing": "a 0/2 red Dragon Egg creature token with defender that dies into a 2/2 red Dragon creature token with flying and firebreathing",
+   "lane": "d1",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Overgrown Farmland",
+   "deck": "Atla Palani, Nest Tender",
+   "missing": "enters tapped unless you control two or more other lands",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Atla Palani, Nest Tender",
+   "deck": "Atla Palani, Nest Tender",
+   "missing": "a 0/1 green Egg creature token with defender; an 'Egg you control dies' reveal-until-creature trigger",
+   "lane": "d1",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Elesh Norn, Mother of Machines",
+   "deck": "Atla Palani, Nest Tender",
+   "missing": "permanents entering don't trigger opponents' abilities",
+   "lane": "d1",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Harmonic Prodigy",
+   "deck": "Atla Palani, Nest Tender",
+   "missing": "trigger doubling for Shamans and other Wizards",
+   "lane": "d1",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Mirror Entity",
+   "deck": "Atla Palani, Nest Tender",
+   "missing": "{X}: creatures you control become base X/X with all creature types",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Rith's Grove",
+   "deck": "Atla Palani, Nest Tender",
+   "missing": "a karoo that must return a non-Lair land or is sacrificed",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Bogardan Dragonheart",
+   "deck": "Atla Palani, Nest Tender",
+   "missing": "becomes a Dragon (types replaced) with base 4/4, flying, haste",
+   "lane": "d1",
+   "theme": "replace_filter",
+   "owner": "mac-b"
+  },
+  {
+   "card": "Cabaretti Courtyard",
+   "deck": "Atla Palani, Nest Tender",
+   "missing": "sacrifice on enter with a reflexive fetch and life gain",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Delney, Streetwise Lookout",
+   "deck": "Atla Palani, Nest Tender",
+   "missing": "blocking restriction by power; trigger doubling for power 2 or less",
+   "lane": "d1",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Dinosaur Egg",
+   "deck": "Atla Palani, Nest Tender",
+   "missing": "discover X",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Drumbellower",
+   "deck": "Atla Palani, Nest Tender",
+   "missing": "untap all creatures you control during each other player's untap step",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Instill Energy",
+   "deck": "Atla Palani, Nest Tender",
+   "missing": "an Aura granting haste-attacking and a once-per-turn untap",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Irregular Cohort",
+   "deck": "Atla Palani, Nest Tender",
+   "missing": "changeling; a 2/2 colorless Shapeshifter creature token with changeling",
+   "lane": "d1",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Masked Vandal",
+   "deck": "Atla Palani, Nest Tender",
+   "missing": "changeling",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Maskwood Nexus",
+   "deck": "Atla Palani, Nest Tender",
+   "missing": "creatures are every creature type; a 2/2 blue Shapeshifter creature token with changeling",
+   "lane": "d1",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Moonsilver Key",
+   "deck": "Atla Palani, Nest Tender",
+   "missing": "a search for an artifact card with a mana ability or a basic land",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Ojer Taq, Deepest Foundation // Temple of Civilization",
+   "deck": "Atla Palani, Nest Tender",
+   "missing": "creature-token tripling; return transformed when it dies",
+   "lane": "d1",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Palani's Hatcher",
+   "deck": "Atla Palani, Nest Tender",
+   "missing": "a 0/1 green Dinosaur Egg creature token; a 3/3 green Dinosaur creature token; sacrifice an Egg",
+   "lane": "d1",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Spawning Pit",
+   "deck": "Atla Palani, Nest Tender",
+   "missing": "charge counters; a 2/2 colorless Spawn artifact creature token",
+   "lane": "d1",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Trostani, Selesnya's Voice",
+   "deck": "Atla Palani, Nest Tender",
+   "missing": "gain life equal to the entering creature's toughness; populate",
+   "lane": "d1",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Wrath of God",
+   "deck": "Karador, Ghost Chieftain",
+   "missing": "destroy all creatures without regeneration (DestroyAllCreatures honors regeneration shields)",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Hornet Queen",
+   "deck": "Karador, Ghost Chieftain",
+   "missing": "a 1/1 green Insect creature token with flying and deathtouch",
+   "lane": "d1",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Necromancy",
+   "deck": "Karador, Ghost Chieftain",
+   "missing": "Necromancy's enchantment-becomes-Aura reanimation",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Return to Dust",
+   "deck": "Karador, Ghost Chieftain",
+   "missing": "a second target only if cast during your main phase",
+   "lane": "d1",
+   "theme": "keywords",
+   "owner": "d1"
+  },
+  {
+   "card": "Ripples of Undeath",
+   "deck": "Karador, Ghost Chieftain",
+   "missing": "a first-main-phase trigger; mill then pay to keep one",
+   "lane": "d1",
+   "theme": "keywords",
+   "owner": "d1"
+  },
+  {
+   "card": "Sigarda, Host of Herons",
+   "deck": "Karador, Ghost Chieftain",
+   "missing": "opponents can't make you sacrifice",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Cataclysmic Gearhulk",
+   "deck": "Karador, Ghost Chieftain",
+   "missing": "each player keeps one of each nonland type and sacrifices the rest",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Elas il-Kor, Sadistic Pilgrim",
+   "deck": "Karador, Ghost Chieftain",
+   "missing": "a trigger 'whenever another creature you control dies' that includes tokens",
+   "lane": "d1",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Gaddock Teeg",
+   "deck": "Karador, Ghost Chieftain",
+   "missing": "casting restrictions on noncreature spells",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Graveborn Muse",
+   "deck": "Karador, Ghost Chieftain",
+   "missing": "draw and lose life per Zombie you control",
+   "lane": "d1",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Karador, Ghost Chieftain",
+   "deck": "Karador, Ghost Chieftain",
+   "missing": "cost reduction per creature card in graveyard; cast a creature from your graveyard once each turn",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Loxodon Hierarch",
+   "deck": "Karador, Ghost Chieftain",
+   "missing": "regenerate each creature you control",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Murmuring Bosk",
+   "deck": "Karador, Ghost Chieftain",
+   "missing": "a Treefolk-reveal snarl with a pain {W}/{B} and a free {G}",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Saffi Eriksdotter",
+   "deck": "Karador, Ghost Chieftain",
+   "missing": "a delayed 'when target creature is put into your graveyard this turn, return it' trigger",
+   "lane": "d1",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "The Necrobloom",
+   "deck": "Karador, Ghost Chieftain",
+   "missing": "landfall token choice by seven-plus differently named lands (2/2 black Zombie instead of the 0/1 Plant); dredge 2 for land cards",
+   "lane": "d1",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Inexorable Tide",
+   "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+   "missing": "proliferate",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Strix Serenade",
+   "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+   "missing": "a spell filter for artifact, creature or planeswalker spells",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Jin-Gitaxias, Core Augur",
+   "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+   "missing": "opponents' maximum hand size reduced",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Dramatic Reversal",
+   "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+   "missing": "untap all nonland permanents you control (only yours)",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Isochron Scepter",
+   "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+   "missing": "imprint and copy-cast",
+   "lane": "d1",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Narset, Parter of Veils",
+   "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+   "missing": "opponents can't draw more than one card each turn",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Aphetto Alchemist",
+   "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+   "missing": "morph",
+   "lane": "d1",
+   "theme": "keywords",
+   "owner": "d1"
+  },
+  {
+   "card": "Barbarian Ring",
+   "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+   "missing": "a threshold activation condition",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Behold the Multiverse",
+   "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+   "missing": "foretell",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Braid of Fire",
+   "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+   "missing": "cumulative upkeep",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Cephalid Coliseum",
+   "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+   "missing": "a threshold activation condition",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Dig Through Time",
+   "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+   "missing": "delve",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Disdainful Stroke",
+   "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+   "missing": "a minimum mana value spell filter",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Emry, Lurker of the Loch",
+   "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+   "missing": "affinity for artifacts; cast an artifact card from graveyard this turn",
+   "lane": "d1",
+   "theme": "keywords",
+   "owner": "d1"
+  },
+  {
+   "card": "Faerie Conclave",
+   "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+   "missing": "an animated land that becomes blue",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Fire // Ice",
+   "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+   "missing": "split cards",
+   "lane": "d1",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Glimpse the Impossible",
+   "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+   "missing": "a 0/1 colorless Eldrazi Spawn creature token with 'Sacrifice this token: Add {C}'; exiled-cards-to-graveyard end-step trigger",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "High Tide",
+   "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+   "missing": "extra {U} when a player taps an Island this turn",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Illusionist's Gambit",
+   "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+   "missing": "remove attackers from combat, extra combat with attack restrictions",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Into the Story",
+   "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+   "missing": "cost reduction if an opponent has seven or more cards in their graveyard",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Invert Polarity",
+   "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+   "missing": "coin flips; gain control of a spell",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Jin-Gitaxias // The Great Synthesis",
+   "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+   "missing": "a cast trigger for noncreature spells with mana value 3 or more; hand-size activation condition",
+   "lane": "d1",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Jin-Gitaxias, Progress Tyrant",
+   "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+   "missing": "copy artifact/instant/sorcery spells; counter opponents' (once each turn)",
+   "lane": "d1",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Magnus the Red",
+   "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+   "missing": "cost reduction per creature token; a 3/3 red Spawn creature token",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Mana Crypt",
+   "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+   "missing": "coin flips",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Mind Over Matter",
+   "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+   "missing": "'Discard a card' as a cost",
+   "lane": "d1",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Mirran Spy",
+   "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+   "missing": "a 'whenever you cast an artifact spell' trigger",
+   "lane": "d1",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Mystic Sanctuary",
+   "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+   "missing": "enters tapped unless three or more other Islands; an 'enters untapped' trigger",
+   "lane": "d1",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Nesting Grounds",
+   "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+   "missing": "move a counter between permanents",
+   "lane": "d1",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Noise Marine",
+   "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+   "missing": "damage equal to spells cast this turn (its cascade exists)",
+   "lane": "d1",
+   "theme": "keywords",
+   "owner": "d1"
+  },
+  {
+   "card": "Pink Horror",
+   "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+   "missing": "a 2/2 blue and red Demon Horror creature token named Blue Horror with an instant-or-sorcery ping",
+   "lane": "d1",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Pyroblast",
+   "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+   "missing": "a blue filter for spells and permanents",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+   "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+   "missing": "coin flips",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Rings of Brighthearth",
+   "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+   "missing": "copy activated abilities",
+   "lane": "d1",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Savor the Moment",
+   "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+   "missing": "skip the untap step of the extra turn",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "See Double",
+   "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+   "missing": "copy a spell; an opponent-graveyard mode condition",
+   "lane": "d1",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Skittering Precursor",
+   "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+   "missing": "a 'whenever you sacrifice a nontoken permanent' trigger; a 0/1 colorless Eldrazi Spawn creature token with 'Sacrifice this token: Add {C}'",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Sundering Eruption // Volcanic Fissure",
+   "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+   "missing": "controller's basic fetch tapped; creatures without flying can't block",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Unfathomable Truths",
+   "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+   "missing": "a 0/1 colorless Eldrazi Spawn creature token with 'Sacrifice this token: Add {C}'",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Volt Charge",
+   "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+   "missing": "proliferate",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Whirlwind Denial",
+   "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+   "missing": "counter each opponent spell and ability unless paid {4}",
+   "lane": "d1",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Words of War",
+   "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+   "missing": "a draw replacement",
+   "lane": "d1",
+   "theme": "replace_filter",
+   "owner": "mac-b"
+  },
+  {
+   "card": "Deflecting Palm",
+   "deck": "Zacama, Primal Calamity",
+   "missing": "prevent from a chosen source and deal that much to its controller",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Dictate of Karametra",
+   "deck": "Zacama, Primal Calamity",
+   "missing": "extra mana whenever a player taps a land for mana",
+   "lane": "d1",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Enchantress's Presence",
+   "deck": "Zacama, Primal Calamity",
+   "missing": "a 'whenever you cast an enchantment spell' trigger (any zone)",
+   "lane": "d1",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Hallowed Haunting",
+   "deck": "Zacama, Primal Calamity",
+   "missing": "a 'whenever you cast an enchantment spell' trigger; a white Spirit Cleric creature token with P/T equal to Spirits you control; seven-enchantments static",
+   "lane": "d1",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Hanweir Battlements",
+   "deck": "Zacama, Primal Calamity",
+   "missing": "meld",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Mesa Enchantress",
+   "deck": "Zacama, Primal Calamity",
+   "missing": "a 'whenever you cast an enchantment spell' trigger (any zone)",
+   "lane": "d1",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Rishkar's Expertise",
+   "deck": "Zacama, Primal Calamity",
+   "missing": "draw equal to greatest power; cast a spell with mana value 5 or less free",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Song of the Dryads",
+   "deck": "Zacama, Primal Calamity",
+   "missing": "enchanted permanent is a colorless Forest land",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Sterling Grove",
+   "deck": "Zacama, Primal Calamity",
+   "missing": "other enchantments have shroud; an enchantment card search to top",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Sunbird's Invocation",
+   "deck": "Zacama, Primal Calamity",
+   "missing": "reveal X on cast from hand, cast one free",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Sythis, Harvest's Hand",
+   "deck": "Zacama, Primal Calamity",
+   "missing": "a 'whenever you cast an enchantment spell' trigger (any zone)",
+   "lane": "d1",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Verduran Enchantress",
+   "deck": "Zacama, Primal Calamity",
+   "missing": "a 'whenever you cast an enchantment spell' trigger (any zone)",
+   "lane": "d1",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Ancestral Mask",
+   "deck": "Zacama, Primal Calamity",
+   "missing": "+2/+2 for each other enchantment on the battlefield",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Argothian Enchantress",
+   "deck": "Zacama, Primal Calamity",
+   "missing": "a 'whenever you cast an enchantment spell' trigger (any zone)",
+   "lane": "d1",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Buried in the Garden",
+   "deck": "Zacama, Primal Calamity",
+   "missing": "a mana Aura on a land (extra mana of any color)",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Cindervines",
+   "deck": "Zacama, Primal Calamity",
+   "missing": "damage to the controller of the destroyed permanent",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Composer of Spring",
+   "deck": "Zacama, Primal Calamity",
+   "missing": "constellation; put a land or creature from hand onto the battlefield tapped",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Fertile Ground",
+   "deck": "Zacama, Primal Calamity",
+   "missing": "a mana Aura on a land (extra mana of any color)",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Jukai Naturalist",
+   "deck": "Zacama, Primal Calamity",
+   "missing": "enchantment spells cost {1} less",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Klothys, God of Destiny",
+   "deck": "Zacama, Primal Calamity",
+   "missing": "a first-main-phase trigger",
+   "lane": "d1",
+   "theme": "keywords",
+   "owner": "d1"
+  },
+  {
+   "card": "Privileged Position",
+   "deck": "Zacama, Primal Calamity",
+   "missing": "other permanents you control have hexproof",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Pyrohemia",
+   "deck": "Zacama, Primal Calamity",
+   "missing": "an end-step condition: no creatures on the battlefield",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Satyr Enchanter",
+   "deck": "Zacama, Primal Calamity",
+   "missing": "a 'whenever you cast an enchantment spell' trigger (any zone)",
+   "lane": "d1",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Shadow in the Warp",
+   "deck": "Zacama, Primal Calamity",
+   "missing": "first creature spell each turn discount; opponent's first noncreature spell trigger",
+   "lane": "d1",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Shield of the Oversoul",
+   "deck": "Zacama, Primal Calamity",
+   "missing": "Aura statics conditioned on the enchanted creature's color",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Sigil of the Empty Throne",
+   "deck": "Zacama, Primal Calamity",
+   "missing": "a 'whenever you cast an enchantment spell' trigger; a 4/4 white Angel creature token with flying",
+   "lane": "d1",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Trace of Abundance",
+   "deck": "Zacama, Primal Calamity",
+   "missing": "a mana Aura on a land (extra mana of any color); enchanted land has shroud",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Zendikar Resurgent",
+   "deck": "Zacama, Primal Calamity",
+   "missing": "extra mana whenever you tap a land for mana",
+   "lane": "d1",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Zirda, the Dawnwaker",
+   "deck": "Zacama, Primal Calamity",
+   "missing": "activated-ability cost reduction; companion",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Urborg, Tomb of Yawgmoth",
+   "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+   "missing": "needs core: a static making each land a Swamp in addition to its types (only the Forest version exists)",
+   "lane": "d2",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Temple of the False God",
+   "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+   "missing": "needs core: a mana ability that works only if you control five or more lands",
+   "lane": "d2",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Cabal Coffers",
+   "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+   "missing": "needs core: a paid mana ability adding {B} for each Swamp you control",
+   "lane": "d2",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Boseiju, Who Endures",
+   "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+   "missing": "needs core: the opponent's search for a land card with a basic land type (DestroyControllerMayFetchBasic fetches basics only)",
+   "lane": "d2",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Ulamog, the Infinite Gyre",
+   "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+   "missing": "needs core: annihilator N, and a 'put into a graveyard from anywhere' trigger that shuffles the graveyard into the library",
+   "lane": "d2",
+   "theme": "keywords",
+   "owner": "d1"
+  },
+  {
+   "card": "Circle of Dreams Druid",
+   "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+   "missing": "needs core: mana for each creature you control (mana_per_subtype counts one subtype)",
+   "lane": "d2",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Phyrexian Tower",
+   "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+   "missing": "needs core: a mana ability with 'Sacrifice a creature' in its cost (an AddMana activated ability uses the stack)",
+   "lane": "d2",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Shizo, Death's Storehouse",
+   "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+   "missing": "needs core: the fear keyword",
+   "lane": "d2",
+   "theme": "keywords",
+   "owner": "d1"
+  },
+  {
+   "card": "Tergrid, God of Fright // Tergrid's Lantern",
+   "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+   "missing": "needs core: a trigger when an opponent sacrifices a nontoken permanent (and the back face is missing from the oracle data)",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Venser's Journal",
+   "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+   "missing": "needs core: gain 1 life for each card in your hand",
+   "lane": "d2",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Command Beacon",
+   "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+   "missing": "needs core: put your commander from the command zone into your hand",
+   "lane": "d2",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Gray Merchant of Asphodel",
+   "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+   "missing": "needs core: drain X where X is your devotion to black",
+   "lane": "d2",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Monster Manual // Zoological Study",
+   "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+   "missing": "needs core: the adventure mechanic, and putting a creature card from hand onto the battlefield",
+   "lane": "d2",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Tribute to the World Tree",
+   "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+   "missing": "needs core: a creature-you-control-enters trigger that checks that creature's power (draw, or two counters on it)",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Herd Baloth",
+   "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+   "missing": "needs core: a counters-put-on-this trigger that fires every time (CountersPutOnThis is once each turn)",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Lurking Predators",
+   "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+   "missing": "needs core: reveal the top card: a creature onto the battlefield, else you may put it on the bottom",
+   "lane": "d2",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Ulamog, the Defiler",
+   "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+   "missing": "needs core: ward\u2014sacrifice two permanents, counters from the greatest mana value in exile, annihilator X, and exiling half a library",
+   "lane": "d2",
+   "theme": "keywords",
+   "owner": "d1"
+  },
+  {
+   "card": "Worldspine Wurm",
+   "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+   "missing": "needs core: a 5/5 green Wurm creature token with trample, and a 'put into a graveyard from anywhere' shuffle trigger",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Defense of the Heart",
+   "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+   "missing": "needs core: a condition 'an opponent controls three or more creatures'",
+   "lane": "d2",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Displaced Dinosaurs",
+   "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+   "missing": "needs core: historic permanents you control enter as 7/7 Dinosaurs",
+   "lane": "d2",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Revel in Riches",
+   "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+   "missing": "needs core: a 'creature an opponent controls dies' trigger, and a 'ten or more Treasures' condition",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "The Meathook Massacre",
+   "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+   "missing": "needs core: a 'creature an opponent controls dies' trigger",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Canopy Gargantuan",
+   "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+   "missing": "needs core: counters on each other creature equal to its toughness",
+   "lane": "d2",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Vaultborn Tyrant",
+   "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+   "missing": "needs core: a token copy 'except it's an artifact in addition to its other types'",
+   "lane": "d2",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Well Rested",
+   "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+   "missing": "needs core: counters on the enchanted creature from its granted trigger, and a becomes-untapped trigger outside the untap step",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Final Act",
+   "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+   "missing": "needs core: choose one or more modes, destroy all planeswalkers, and 'each opponent loses all counters'",
+   "lane": "d2",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Jarad, Golgari Lich Lord",
+   "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+   "missing": "needs core: opponents lose life equal to the sacrificed creature's power, and a 'Sacrifice a Swamp and a Forest' graveyard ability",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Lifeblood Hydra",
+   "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+   "missing": "needs core: gain life and draw cards equal to its power when it dies (dies triggers carry no amount)",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Mikaeus, the Unhallowed",
+   "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+   "missing": "needs core: undying, intimidate, and a 'Human deals damage to you' trigger",
+   "lane": "d2",
+   "theme": "keywords",
+   "owner": "d1"
+  },
+  {
+   "card": "Multani, Maro-Sorcerer",
+   "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+   "missing": "needs core: power and toughness equal to the cards in all players' hands",
+   "lane": "d2",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Railway Brawler",
+   "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+   "missing": "needs core: plot",
+   "lane": "d2",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "The Gitrog, Ravenous Ride",
+   "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+   "missing": "needs core: saddle and its 'creature that saddled it' trigger",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Wurmcoil Engine",
+   "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+   "missing": "needs core: a 3/3 colorless Phyrexian Wurm artifact creature token with deathtouch, and one with lifelink",
+   "lane": "d2",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Bone Sabres",
+   "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+   "missing": "needs core: +1/+1 counters on the equipped creature",
+   "lane": "d2",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Bontu's Monument",
+   "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+   "missing": "needs core: a cost reduction for black creature spells",
+   "lane": "d2",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Genji Glove",
+   "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+   "missing": "needs core: untap the equipped creature",
+   "lane": "d2",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Lord of Extinction",
+   "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+   "missing": "needs core: power and toughness equal to the cards in all graveyards",
+   "lane": "d2",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "The Immortal Sun",
+   "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+   "missing": "needs core: stop loyalty abilities, an extra draw, and a discount on all spells you cast",
+   "lane": "d2",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Witch's Cottage",
+   "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+   "missing": "needs core: enters tapped unless you control three or more other Swamps, and an 'enters untapped' trigger",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Chromatic Lantern",
+   "deck": "Kaalia of the Vast",
+   "missing": "needs core: lands you control gain '{T}: Add one mana of any color'",
+   "lane": "d2",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Reanimate",
+   "deck": "Kaalia of the Vast",
+   "missing": "needs core: lose life equal to the reanimated card's mana value",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Akroma's Will",
+   "deck": "Kaalia of the Vast",
+   "missing": "needs core: grant protection from each color until end of turn",
+   "lane": "d2",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Animate Dead",
+   "deck": "Kaalia of the Vast",
+   "missing": "needs core: an Aura that enchants a creature card in a graveyard and reanimates it",
+   "lane": "d2",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Enlightened Tutor",
+   "deck": "Kaalia of the Vast",
+   "missing": "needs core: search for an artifact or enchantment card",
+   "lane": "d2",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Gisela, Blade of Goldnight",
+   "deck": "Kaalia of the Vast",
+   "missing": "needs core: prevent half the damage dealt to you and your permanents, rounded up",
+   "lane": "d2",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Ancient Copper Dragon",
+   "deck": "Kaalia of the Vast",
+   "missing": "needs core: a d20 roll",
+   "lane": "d2",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Aurelia, the Warleader",
+   "deck": "Kaalia of the Vast",
+   "missing": "needs core: 'attacks for the first time each turn' (the first-combat condition differs)",
+   "lane": "d2",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Ancient Brass Dragon",
+   "deck": "Kaalia of the Vast",
+   "missing": "needs core: a d20 roll and reanimating cards with total mana value up to the result",
+   "lane": "d2",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Ancient Gold Dragon",
+   "deck": "Kaalia of the Vast",
+   "missing": "needs core: a d20 roll, and a 1/1 blue Faerie Dragon creature token with flying",
+   "lane": "d2",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Bloodletter of Aclazotz",
+   "deck": "Kaalia of the Vast",
+   "missing": "needs core: double an opponent's life loss during your turn",
+   "lane": "d2",
+   "theme": "replace_filter",
+   "owner": "mac-b"
+  },
+  {
+   "card": "Dragon Tempest",
+   "deck": "Kaalia of the Vast",
+   "missing": "needs core: a 'creature with flying enters' trigger, and Dragon-count damage from the entering Dragon",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Archfiend of Despair",
+   "deck": "Kaalia of the Vast",
+   "missing": "needs core: 'your opponents can't gain life', and end-step loss equal to the life lost this turn",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Armageddon",
+   "deck": "Kaalia of the Vast",
+   "missing": "needs core: destroy all lands",
+   "lane": "d2",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Demonlord Belzenlok",
+   "deck": "Kaalia of the Vast",
+   "missing": "needs core: exile until nonland, repeating while mana value is 4 or more",
+   "lane": "d2",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Eiganjo Castle",
+   "deck": "Kaalia of the Vast",
+   "missing": "needs core: prevent the next 2 damage to target creature",
+   "lane": "d2",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Hall of the Bandit Lord",
+   "deck": "Kaalia of the Vast",
+   "missing": "needs core: a pay-3-life mana ability whose mana gives haste",
+   "lane": "d2",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Imp's Mischief",
+   "deck": "Kaalia of the Vast",
+   "missing": "needs core: lose life equal to the target spell's mana value",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Rakdos, Patron of Chaos",
+   "deck": "Kaalia of the Vast",
+   "missing": "needs core: the opponent may sacrifice two nonland, nontoken permanents or you draw two",
+   "lane": "d2",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Sower of Discord",
+   "deck": "Kaalia of the Vast",
+   "missing": "needs core: choose two players; damage to one makes the other lose life",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Vilis, Broker of Blood",
+   "deck": "Kaalia of the Vast",
+   "missing": "needs core: a 'whenever you lose life' trigger with the amount",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Winds of Abandon",
+   "deck": "Kaalia of the Vast",
+   "missing": "needs core: overload (exile each creature you don't control) and a mandatory tapped basic search",
+   "lane": "d2",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Call of the Ring",
+   "deck": "Kaalia of the Vast",
+   "missing": "needs core: the Ring tempts you",
+   "lane": "d2",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Demon of Death's Gate",
+   "deck": "Kaalia of the Vast",
+   "missing": "needs core: an alternative cost of 6 life and three black creatures",
+   "lane": "d2",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Kaalia of the Vast",
+   "deck": "Kaalia of the Vast",
+   "missing": "needs core: put an Angel, Demon or Dragon from hand onto the battlefield tapped and attacking",
+   "lane": "d2",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Master of Cruelties",
+   "deck": "Kaalia of the Vast",
+   "missing": "needs core: attacks alone, and the unblocked 'life total becomes 1'",
+   "lane": "d2",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Overpowering Attack",
+   "deck": "Kaalia of the Vast",
+   "missing": "needs core: freerunning, and untap creatures that attacked this turn",
+   "lane": "d2",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Reconnaissance",
+   "deck": "Kaalia of the Vast",
+   "missing": "needs core: remove an attacking creature from combat",
+   "lane": "d2",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Relentless Assault",
+   "deck": "Kaalia of the Vast",
+   "missing": "needs core: untap all creatures that attacked this turn",
+   "lane": "d2",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Sephara, Sky's Blade",
+   "deck": "Kaalia of the Vast",
+   "missing": "needs core: an alternative cost that taps four untapped creatures with flying",
+   "lane": "d2",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Serra's Emissary",
+   "deck": "Kaalia of the Vast",
+   "missing": "needs core: protection from a chosen card type for you and your creatures",
+   "lane": "d2",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Sunbaked Canyon",
+   "deck": "Kaalia of the Vast",
+   "missing": "needs core: pay 1 life as part of a mana ability",
+   "lane": "d2",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Tendo Ice Bridge",
+   "deck": "Kaalia of the Vast",
+   "missing": "needs core: charge counters spent for any-color mana",
+   "lane": "d2",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Valgavoth, Terror Eater",
+   "deck": "Kaalia of the Vast",
+   "missing": "needs core: ward\u2014sacrifice three, exile-instead-of-graveyard, and playing those cards for life",
+   "lane": "d2",
+   "theme": "replace_filter",
+   "owner": "mac-b"
+  },
+  {
+   "card": "Waves of Aggression",
+   "deck": "Kaalia of the Vast",
+   "missing": "needs core: untap all creatures that attacked this turn, and retrace",
+   "lane": "d2",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Toxic Deluge",
+   "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+   "missing": "needs core: 'pay X life' as a spell's additional cost",
+   "lane": "d2",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Crypt Ghast",
+   "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+   "missing": "needs core: extort, and an extra {B} when you tap a Swamp for mana",
+   "lane": "d2",
+   "theme": "keywords",
+   "owner": "d1"
+  },
+  {
+   "card": "Sanguine Bond",
+   "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+   "missing": "needs core: a 'whenever you gain life' trigger that carries the amount ('target opponent loses that much')",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Bitterblossom",
+   "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+   "missing": "needs core: a 1/1 black Faerie Rogue creature token with flying",
+   "lane": "d2",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Bloodchief Ascension",
+   "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+   "missing": "needs core: a 'card put into an opponent's graveyard from anywhere' trigger, and quest counters gated on life lost",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Erebos, God of the Dead",
+   "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+   "missing": "needs core: 'your opponents can't gain life'",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Vito, Thorn of the Dusk Rose",
+   "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+   "missing": "needs core: a 'whenever you gain life' trigger that carries the amount ('target opponent loses that much')",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Blade of the Bloodchief",
+   "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+   "missing": "needs core: +1/+1 counters on the equipped creature",
+   "lane": "d2",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Enduring Tenacity",
+   "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+   "missing": "needs core: a gain-life trigger with the amount, and returning as a noncreature enchantment",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Mutilate",
+   "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+   "missing": "needs core: -1/-1 for each Swamp you control, to all creatures",
+   "lane": "d2",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Rankle, Master of Pranks",
+   "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+   "missing": "needs core: choose any number of modes",
+   "lane": "d2",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Accursed Marauder",
+   "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+   "missing": "needs core: each player sacrifices a nontoken creature",
+   "lane": "d2",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Dance of the Dead",
+   "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+   "missing": "needs core: an Aura that enchants a creature card in a graveyard and reanimates it",
+   "lane": "d2",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Defile",
+   "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+   "missing": "needs core: -1/-1 for each Swamp you control",
+   "lane": "d2",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Disciple of Bolas",
+   "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+   "missing": "needs core: gain life and draw equal to the sacrificed creature's power",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Go for the Throat",
+   "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+   "missing": "needs core: a nonartifact creature target filter",
+   "lane": "d2",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Puppeteer Clique",
+   "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+   "missing": "needs core: persist, and reanimating from an opponent's graveyard until your next end step",
+   "lane": "d2",
+   "theme": "keywords",
+   "owner": "d1"
+  },
+  {
+   "card": "Vampire Hexmage",
+   "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+   "missing": "needs core: remove all counters including loyalty counters",
+   "lane": "d2",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Whip of Erebos",
+   "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+   "missing": "needs core: reanimate with haste, exile at end step, and an exile-instead replacement",
+   "lane": "d2",
+   "theme": "replace_filter",
+   "owner": "mac-b"
+  },
+  {
+   "card": "Bontu the Glorified",
+   "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+   "missing": "needs core: can't attack or block unless a creature died under your control this turn",
+   "lane": "d2",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Cabal Pit",
+   "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+   "missing": "needs core: a threshold activation condition",
+   "lane": "d2",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Crypt of Agadeem",
+   "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+   "missing": "needs core: mana for each black creature card in your graveyard",
+   "lane": "d2",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Doom Blade",
+   "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+   "missing": "needs core: a nonblack creature target filter",
+   "lane": "d2",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Emperor of Bones",
+   "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+   "missing": "needs core: adapt, and putting a creature exiled with it onto the battlefield",
+   "lane": "d2",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "God-Eternal Bontu",
+   "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+   "missing": "needs core: sacrifice any number of permanents, then draw that many",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Grim Hireling",
+   "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+   "missing": "needs core: 'Sacrifice X Treasures' in a cost",
+   "lane": "d2",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Henrika Domnathi // Henrika, Infernal Seer",
+   "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+   "missing": "needs core: 'choose one that hasn't been chosen' modes and its transform",
+   "lane": "d2",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Liliana, Heretical Healer // Liliana, Defiant Necromancer",
+   "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+   "missing": "needs core: its back face's \u2212X reanimation and emblem",
+   "lane": "d2",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Mana Vault",
+   "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+   "missing": "needs core: a 'your draw step, if this is tapped' trigger",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Massacre Girl",
+   "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+   "missing": "needs core: a 'whenever a creature dies this turn' delayed trigger",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Plague Drone",
+   "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+   "missing": "needs core: an opponent's life gain becomes life loss",
+   "lane": "d2",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Rise of the Dread Marn",
+   "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+   "missing": "needs core: foretell, and counting nontoken creatures that died this turn",
+   "lane": "d2",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Tainted Pact",
+   "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+   "missing": "needs core: exile until a duplicate name",
+   "lane": "d2",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Undead Augur",
+   "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+   "missing": "needs core: a 'Zombie you control dies' trigger (tokens included)",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Underdark Rift",
+   "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+   "missing": "needs core: a d10 roll",
+   "lane": "d2",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Warlock Class",
+   "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+   "missing": "needs core: Class levels",
+   "lane": "d2",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Sphere Grid",
+   "deck": "Korvold, Fae-Cursed King",
+   "missing": "needs core: a combat-damage trigger that knows which creature dealt the damage",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "The Earth Crystal",
+   "deck": "Korvold, Fae-Cursed King",
+   "missing": "needs core: counter doubling for your creatures, a green spell discount, and distributing counters",
+   "lane": "d2",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Wound Reflection",
+   "deck": "Korvold, Fae-Cursed King",
+   "missing": "needs core: each opponent loses life equal to the life they lost this turn",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Darigaaz's Caldera",
+   "deck": "Korvold, Fae-Cursed King",
+   "missing": "needs core: the Lair bounce-or-sacrifice enters trigger",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Food Chain",
+   "deck": "Korvold, Fae-Cursed King",
+   "missing": "needs core: exile a creature for X mana of one color, creature spells only",
+   "lane": "d2",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Korvold, Fae-Cursed King",
+   "deck": "Korvold, Fae-Cursed King",
+   "missing": "needs core: a 'whenever you sacrifice a permanent' trigger",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Mazirek, Kraul Death Priest",
+   "deck": "Korvold, Fae-Cursed King",
+   "missing": "needs core: a 'whenever a player sacrifices another permanent' trigger",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Miren, the Moaning Well",
+   "deck": "Korvold, Fae-Cursed King",
+   "missing": "needs core: gain life equal to the sacrificed creature's toughness",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Al Bhed Salvagers",
+   "deck": "Korvold, Fae-Cursed King",
+   "missing": "needs core: a 'creature or artifact you control dies' trigger",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "All Will Be One",
+   "deck": "Korvold, Fae-Cursed King",
+   "missing": "needs core: damage whenever you put counters on a permanent or player",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Basking Broodscale",
+   "deck": "Korvold, Fae-Cursed King",
+   "missing": "needs core: adapt, a per-event counters trigger, and a 0/1 colorless Eldrazi Spawn creature token",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Ivy Lane Denizen",
+   "deck": "Korvold, Fae-Cursed King",
+   "missing": "needs core: an 'another green creature you control enters' trigger",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Kormus Bell",
+   "deck": "Korvold, Fae-Cursed King",
+   "missing": "needs core: all Swamps are 1/1 creatures",
+   "lane": "d2",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Quina, Qu Gourmet",
+   "deck": "Korvold, Fae-Cursed King",
+   "missing": "needs core: extra token replacement, and a 1/1 green Frog creature token",
+   "lane": "d2",
+   "theme": "replace_filter",
+   "owner": "mac-b"
+  },
+  {
+   "card": "Scurry Oak",
+   "deck": "Korvold, Fae-Cursed King",
+   "missing": "needs core: a counters-put-on-this trigger that fires every time (CountersPutOnThis is once each turn)",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Squee, the Immortal",
+   "deck": "Korvold, Fae-Cursed King",
+   "missing": "needs core: cast from the graveyard or exile",
+   "lane": "d2",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Burgeoning",
+   "deck": "Damia, Sage of Stone",
+   "missing": "needs core: an 'opponent plays a land' trigger",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "No Mercy",
+   "deck": "Damia, Sage of Stone",
+   "missing": "needs core: a 'creature deals damage to you' trigger",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "All Suns' Dawn",
+   "deck": "Damia, Sage of Stone",
+   "missing": "needs core: one target card of each color from your graveyard",
+   "lane": "d2",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Chain of Smog",
+   "deck": "Damia, Sage of Stone",
+   "missing": "needs core: the target's option to copy the spell",
+   "lane": "d2",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Damia, Sage of Stone",
+   "deck": "Damia, Sage of Stone",
+   "missing": "needs core: skip your draw step, and draw up to seven",
+   "lane": "d2",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Force of Negation",
+   "deck": "Damia, Sage of Stone",
+   "missing": "needs core: counter a spell and exile it instead",
+   "lane": "d2",
+   "theme": "replace_filter",
+   "owner": "mac-b"
+  },
+  {
+   "card": "Kira, Great Glass-Spinner",
+   "deck": "Damia, Sage of Stone",
+   "missing": "needs core: counter the first spell or ability targeting each creature each turn",
+   "lane": "d2",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Professor Onyx",
+   "deck": "Damia, Sage of Stone",
+   "missing": "needs core: magecraft ('cast or copy'; the engine's trigger is cast only)",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Sultai Charm",
+   "deck": "Damia, Sage of Stone",
+   "missing": "needs core: a monocolored creature target filter",
+   "lane": "d2",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Witherbloom Apprentice",
+   "deck": "Damia, Sage of Stone",
+   "missing": "needs core: magecraft ('cast or copy'; the engine's trigger is cast only)",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Abigale, Eloquent First-Year",
+   "deck": "Raffine, Scheming Seer",
+   "missing": "needs core: target creature loses all abilities",
+   "lane": "d2",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Drana, Liberator of Malakir",
+   "deck": "Raffine, Scheming Seer",
+   "missing": "needs core: +1/+1 counters on each attacking creature you control",
+   "lane": "d2",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Inkshield",
+   "deck": "Raffine, Scheming Seer",
+   "missing": "needs core: prevent combat damage and create a 2/1 white and black Inkling creature token with flying per point",
+   "lane": "d2",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Teferi's Ageless Insight",
+   "deck": "Raffine, Scheming Seer",
+   "missing": "needs core: draw replacement: two cards instead of one",
+   "lane": "d2",
+   "theme": "replace_filter",
+   "owner": "mac-b"
+  },
+  {
+   "card": "Archfiend of Ifnir",
+   "deck": "Raffine, Scheming Seer",
+   "missing": "needs core: a 'whenever you cycle or discard another card' trigger",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Breena, the Demagogue",
+   "deck": "Raffine, Scheming Seer",
+   "missing": "needs core: a multiplayer attack trigger comparing opponents' life",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Cryptcaller Chariot",
+   "deck": "Raffine, Scheming Seer",
+   "missing": "needs core: a 'whenever you discard one or more cards' trigger with the amount",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Darkstar Augur",
+   "deck": "Raffine, Scheming Seer",
+   "missing": "needs core: reveal the top card into hand and lose life equal to its mana value",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Deep-Cavern Bat",
+   "deck": "Raffine, Scheming Seer",
+   "missing": "needs core: exile a card from the opponent's hand until this leaves the battlefield",
+   "lane": "d2",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Doorkeeper Thrull",
+   "deck": "Raffine, Scheming Seer",
+   "missing": "needs core: entering artifacts and creatures don't trigger abilities",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Drake Haven",
+   "deck": "Raffine, Scheming Seer",
+   "missing": "needs core: a 'whenever you cycle or discard a card' trigger",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Emissary of Despair",
+   "deck": "Raffine, Scheming Seer",
+   "missing": "needs core: lose 1 life for each artifact the damaged player controls",
+   "lane": "d2",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Errant and Giada",
+   "deck": "Raffine, Scheming Seer",
+   "missing": "needs core: cast spells with flash or flying from the top of your library",
+   "lane": "d2",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Feast of Sanity",
+   "deck": "Raffine, Scheming Seer",
+   "missing": "needs core: a 'whenever you discard a card' trigger",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Flitterwing Nuisance",
+   "deck": "Raffine, Scheming Seer",
+   "missing": "needs core: -1/-1 counters on entering, and removing a counter as a cost",
+   "lane": "d2",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Francisco, Fowl Marauder",
+   "deck": "Raffine, Scheming Seer",
+   "missing": "needs core: a 'Pirates you control deal damage' trigger that explores this",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Glen Elendra Guardian",
+   "deck": "Raffine, Scheming Seer",
+   "missing": "needs core: -1/-1 counters on entering, and removing a counter as a cost",
+   "lane": "d2",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Gravitational Shift",
+   "deck": "Raffine, Scheming Seer",
+   "missing": "needs core: a global static for creatures with and without flying",
+   "lane": "d2",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Hushbringer",
+   "deck": "Raffine, Scheming Seer",
+   "missing": "needs core: entering or dying creatures don't trigger abilities",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Knowledge Is Power",
+   "deck": "Raffine, Scheming Seer",
+   "missing": "needs core: +X/+X for the cards drawn this turn",
+   "lane": "d2",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Malcolm, Alluring Scoundrel",
+   "deck": "Raffine, Scheming Seer",
+   "missing": "needs core: chorus counters and casting the discarded card free",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Mausoleum Wanderer",
+   "deck": "Raffine, Scheming Seer",
+   "missing": "needs core: 'counter unless they pay X' where X is its power",
+   "lane": "d2",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Mockingbird",
+   "deck": "Raffine, Scheming Seer",
+   "missing": "needs core: enter as a copy with mana value up to the mana spent",
+   "lane": "d2",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Momo, Friendly Flier",
+   "deck": "Raffine, Scheming Seer",
+   "missing": "needs core: a discount on the first non-Lemur flying creature spell each turn",
+   "lane": "d2",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Monument to Endurance",
+   "deck": "Raffine, Scheming Seer",
+   "missing": "needs core: a 'whenever you discard a card' trigger with modes not chosen this turn",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Moonstone, Harsh Mistress",
+   "deck": "Raffine, Scheming Seer",
+   "missing": "needs core: a 'whenever you discard a card' trigger",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Pride of the Clouds",
+   "deck": "Raffine, Scheming Seer",
+   "missing": "needs core: +1/+1 per other creature with flying, and forecast",
+   "lane": "d2",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Raffine, Scheming Seer",
+   "deck": "Raffine, Scheming Seer",
+   "missing": "needs core: connive X",
+   "lane": "d2",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Shadowstorm Vizier",
+   "deck": "Raffine, Scheming Seer",
+   "missing": "needs core: a 'whenever you cycle or discard a card' trigger",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Skycat Sovereign",
+   "deck": "Raffine, Scheming Seer",
+   "missing": "needs core: +1/+1 per other creature you control with flying, and a 1/1 white Cat Bird creature token with flying",
+   "lane": "d2",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Stormscape Familiar",
+   "deck": "Raffine, Scheming Seer",
+   "missing": "needs core: a discount for white and black spells",
+   "lane": "d2",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Wan Shi Tong, Librarian",
+   "deck": "Raffine, Scheming Seer",
+   "missing": "needs core: draw half X, and an 'opponent searches their library' trigger",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Watcher of the Spheres",
+   "deck": "Raffine, Scheming Seer",
+   "missing": "needs core: a discount for creature spells with flying",
+   "lane": "d2",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Avacyn, Angel of Hope",
+   "deck": "Sefris of the Hidden Ways",
+   "missing": "needs core: a static giving indestructible to other permanents you control (a Scope for all your other permanents)",
+   "lane": "d3",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Elesh Norn, Grand Cenobite",
+   "deck": "Sefris of the Hidden Ways",
+   "missing": "needs core: a static -2/-2 for creatures your opponents control (a Scope for opponents' creatures)",
+   "lane": "d3",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Nimbus Maze",
+   "deck": "Sefris of the Hidden Ways",
+   "missing": "needs core: two different conditional colors on one land ({W} only with an Island, {U} only with a Plains)",
+   "lane": "d3",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Teferi, Master of Time",
+   "deck": "Sefris of the Hidden Ways",
+   "missing": "needs core: loyalty abilities at instant speed on any player's turn, phasing out, and two extra turns",
+   "lane": "d3",
+   "theme": "keywords",
+   "owner": "d1"
+  },
+  {
+   "card": "Toxrill, the Corrosive",
+   "deck": "Sefris of the Hidden Ways",
+   "missing": "needs core: slime counters with a -1/-1 per counter static, and a 1/1 black Slug creature token",
+   "lane": "d3",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Altar of Dementia",
+   "deck": "Sefris of the Hidden Ways",
+   "missing": "needs core: mill equal to the sacrificed creature's power (mill by the activation's amount)",
+   "lane": "d3",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Brightclimb Pathway // Grimclimb Pathway",
+   "deck": "Sefris of the Hidden Ways",
+   "missing": "needs core: a land-front modal double-faced card (choose the face as you play it); the back face isn't in the oracle data",
+   "lane": "d3",
+   "theme": "replace_filter",
+   "owner": "mac-b"
+  },
+  {
+   "card": "Glen Elendra Archmage",
+   "deck": "Sefris of the Hidden Ways",
+   "missing": "needs core: persist",
+   "lane": "d3",
+   "theme": "keywords",
+   "owner": "d1"
+  },
+  {
+   "card": "Karmic Guide",
+   "deck": "Sefris of the Hidden Ways",
+   "missing": "needs core: echo",
+   "lane": "d3",
+   "theme": "keywords",
+   "owner": "d1"
+  },
+  {
+   "card": "Ledger Shredder",
+   "deck": "Sefris of the Hidden Ways",
+   "missing": "needs core: connive, and a trigger on any player's second spell each turn",
+   "lane": "d3",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Reveillark",
+   "deck": "Sefris of the Hidden Ways",
+   "missing": "needs core: evoke",
+   "lane": "d3",
+   "theme": "keywords",
+   "owner": "d1"
+  },
+  {
+   "card": "Takenuma, Abandoned Mire",
+   "deck": "Sefris of the Hidden Ways",
+   "missing": "needs core: return a creature or planeswalker card from your graveyard (a Pick for creature-or-planeswalker)",
+   "lane": "d3",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Unmarked Grave",
+   "deck": "Sefris of the Hidden Ways",
+   "missing": "needs core: search for a nonlegendary card (a SearchFor for nonlegendary)",
+   "lane": "d3",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Yahenni, Undying Partisan",
+   "deck": "Sefris of the Hidden Ways",
+   "missing": "needs core: a trigger when a creature an opponent controls dies",
+   "lane": "d3",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Barrowin of Clan Undurr",
+   "deck": "Sefris of the Hidden Ways",
+   "missing": "needs core: venture into the dungeon and a completed-dungeon condition",
+   "lane": "d3",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Benevolent Bodyguard",
+   "deck": "Sefris of the Hidden Ways",
+   "missing": "needs core: protection from a color of your choice until end of turn",
+   "lane": "d3",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Cartel Aristocrat",
+   "deck": "Sefris of the Hidden Ways",
+   "missing": "needs core: protection from a color of your choice until end of turn",
+   "lane": "d3",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Clearwater Pathway // Murkwater Pathway",
+   "deck": "Sefris of the Hidden Ways",
+   "missing": "needs core: a land-front modal double-faced card (choose the face as you play it); the back face isn't in the oracle data",
+   "lane": "d3",
+   "theme": "replace_filter",
+   "owner": "mac-b"
+  },
+  {
+   "card": "Currency Converter",
+   "deck": "Sefris of the Hidden Ways",
+   "missing": "needs core: exiling a discarded card linked to the source, and a 2/2 black Rogue creature token",
+   "lane": "d3",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Dauthi Voidwalker",
+   "deck": "Sefris of the Hidden Ways",
+   "missing": "needs core: shadow, a replacement exiling cards headed to an opponent's graveyard with void counters, and playing one free",
+   "lane": "d3",
+   "theme": "replace_filter",
+   "owner": "mac-b"
+  },
+  {
+   "card": "Dungeon Delver",
+   "deck": "Sefris of the Hidden Ways",
+   "missing": "needs core: dungeons and Background (room abilities trigger an additional time)",
+   "lane": "d3",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Dungeon Descent",
+   "deck": "Sefris of the Hidden Ways",
+   "missing": "needs core: venture into the dungeon, and tapping an untapped legendary creature as a cost",
+   "lane": "d3",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "From the Catacombs",
+   "deck": "Sefris of the Hidden Ways",
+   "missing": "needs core: take the initiative, a corpse counter with an exile-if-it-would-leave replacement, and escape",
+   "lane": "d3",
+   "theme": "replace_filter",
+   "owner": "mac-b"
+  },
+  {
+   "card": "Ghostly Pilferer",
+   "deck": "Sefris of the Hidden Ways",
+   "missing": "needs core: a 'whenever this becomes untapped' trigger, and 'an opponent casts a spell from anywhere other than their hand'",
+   "lane": "d3",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Glasspool Mimic // Glasspool Shore",
+   "deck": "Sefris of the Hidden Ways",
+   "missing": "needs core: enter as a copy with extra creature types (Shapeshifter Rogue); the land back face isn't in the oracle data",
+   "lane": "d3",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Hama Pashar, Ruin Seeker",
+   "deck": "Sefris of the Hidden Ways",
+   "missing": "needs core: dungeons (room abilities trigger an additional time)",
+   "lane": "d3",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Hengegate Pathway // Mistgate Pathway",
+   "deck": "Sefris of the Hidden Ways",
+   "missing": "needs core: a land-front modal double-faced card (choose the face as you play it); the back face isn't in the oracle data",
+   "lane": "d3",
+   "theme": "replace_filter",
+   "owner": "mac-b"
+  },
+  {
+   "card": "Imoen, Mystic Trickster",
+   "deck": "Sefris of the Hidden Ways",
+   "missing": "needs core: the initiative and completed-dungeon conditions, and Choose a Background",
+   "lane": "d3",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Jirina, Dauntless General",
+   "deck": "Sefris of the Hidden Ways",
+   "missing": "needs core: grant keywords until end of turn to creatures you control of one subtype (Humans)",
+   "lane": "d3",
+   "theme": "keywords",
+   "owner": "d1"
+  },
+  {
+   "card": "Looter il-Kor",
+   "deck": "Sefris of the Hidden Ways",
+   "missing": "needs core: shadow, and a 'deals damage to an opponent' trigger",
+   "lane": "d3",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Midnight Pathlighter",
+   "deck": "Sefris of the Hidden Ways",
+   "missing": "needs core: venture into the dungeon, and 'can't be blocked except by legendary creatures' for your creatures",
+   "lane": "d3",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Nadaar, Selfless Paladin",
+   "deck": "Sefris of the Hidden Ways",
+   "missing": "needs core: venture into the dungeon and a completed-dungeon static condition",
+   "lane": "d3",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Oriq Loremage",
+   "deck": "Sefris of the Hidden Ways",
+   "missing": "needs core: a +1/+1 counter if the card searched into the graveyard is an instant or sorcery",
+   "lane": "d3",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Radiant Solar",
+   "deck": "Sefris of the Hidden Ways",
+   "missing": "needs core: venture into the dungeon",
+   "lane": "d3",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Rona, Herald of Invasion // Rona, Tolarian Obliterator",
+   "deck": "Sefris of the Hidden Ways",
+   "missing": "needs core: a 'whenever you cast a legendary spell' trigger, and the back face's abilities",
+   "lane": "d3",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Safana, Calimport Cutthroat",
+   "deck": "Sefris of the Hidden Ways",
+   "missing": "needs core: the initiative and completed-dungeon conditions, and Choose a Background",
+   "lane": "d3",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Seasoned Dungeoneer",
+   "deck": "Sefris of the Hidden Ways",
+   "missing": "needs core: take the initiative, protection from creatures, and explore on a 'whenever you attack' target",
+   "lane": "d3",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Sefris of the Hidden Ways",
+   "deck": "Sefris of the Hidden Ways",
+   "missing": "needs core: venture into the dungeon when creature cards go to your graveyard, and a 'whenever you complete a dungeon' trigger",
+   "lane": "d3",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Selhoff Entomber",
+   "deck": "Sefris of the Hidden Ways",
+   "missing": "needs core: 'discard a creature card' as an activation cost",
+   "lane": "d3",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Siren Stormtamer",
+   "deck": "Sefris of the Hidden Ways",
+   "missing": "needs core: counter a spell or ability that targets you or a creature you control (a target filter)",
+   "lane": "d3",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Tortured Existence",
+   "deck": "Sefris of the Hidden Ways",
+   "missing": "needs core: 'discard a creature card' as an activation cost",
+   "lane": "d3",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Vohar, Vodalian Desecrator",
+   "deck": "Sefris of the Hidden Ways",
+   "missing": "needs core: a drain if the discarded card was an instant or sorcery, and cast-from-graveyard with an exile replacement",
+   "lane": "d3",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "White Plume Adventurer",
+   "deck": "Sefris of the Hidden Ways",
+   "missing": "needs core: take the initiative, and untapping on each opponent's upkeep with a completed-dungeon condition",
+   "lane": "d3",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Yuan-Ti Malison",
+   "deck": "Sefris of the Hidden Ways",
+   "missing": "needs core: venture into the dungeon, and 'can't be blocked as long as it's attacking alone'",
+   "lane": "d3",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Mana Drain",
+   "deck": "Najeela, the Blade-Blossom",
+   "missing": "needs core: add {C} equal to the countered spell's mana value at your next main phase (a delayed mana effect)",
+   "lane": "d3",
+   "theme": "keywords",
+   "owner": "d1"
+  },
+  {
+   "card": "Force of Will",
+   "deck": "Najeela, the Blade-Blossom",
+   "missing": "needs core: an alternative cost of 1 life plus exiling a blue card from your hand, on any turn",
+   "lane": "d3",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Orcish Bowmasters",
+   "deck": "Najeela, the Blade-Blossom",
+   "missing": "needs core: a trigger on opponent draws except the first in their draw step, and amass Orcs (a 0/0 black Orc Army creature token)",
+   "lane": "d3",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Academy Rector",
+   "deck": "Najeela, the Blade-Blossom",
+   "missing": "needs core: may exile it to search for an enchantment card onto the battlefield (a SearchFor for enchantments)",
+   "lane": "d3",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Champion of Lambholt",
+   "deck": "Najeela, the Blade-Blossom",
+   "missing": "needs core: creatures with power less than this one's can't block creatures you control (for all your creatures)",
+   "lane": "d3",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Haunted Ridge",
+   "deck": "Najeela, the Blade-Blossom",
+   "missing": "needs core: enters tapped unless you control two or more other lands",
+   "lane": "d3",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Pact of Negation",
+   "deck": "Najeela, the Blade-Blossom",
+   "missing": "needs core: pay {3}{U}{U} at your next upkeep or lose the game",
+   "lane": "d3",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Ponder",
+   "deck": "Najeela, the Blade-Blossom",
+   "missing": "needs core: 'you may shuffle' after reordering the top three",
+   "lane": "d3",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Veil of Summer",
+   "deck": "Najeela, the Blade-Blossom",
+   "missing": "needs core: draw if an opponent cast a blue or black spell this turn, your spells can't be countered, hexproof from blue and black",
+   "lane": "d3",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Alesha, Who Smiles at Death",
+   "deck": "Najeela, the Blade-Blossom",
+   "missing": "needs core: return a creature card tapped and attacking, after a may-pay hybrid cost",
+   "lane": "d3",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Deadly Brew",
+   "deck": "Najeela, the Blade-Blossom",
+   "missing": "needs core: each player sacrifices a creature or planeswalker, then you may return another permanent card if you sacrificed",
+   "lane": "d3",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Derevi, Empyrial Tactician",
+   "deck": "Najeela, the Blade-Blossom",
+   "missing": "needs core: an activated ability from the command zone",
+   "lane": "d3",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Druids' Repository",
+   "deck": "Najeela, the Blade-Blossom",
+   "missing": "needs core: charge counters, and removing one for mana",
+   "lane": "d3",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Flusterstorm",
+   "deck": "Najeela, the Blade-Blossom",
+   "missing": "needs core: a target filter for instant or sorcery spells only (with counter-unless-pays and storm)",
+   "lane": "d3",
+   "theme": "keywords",
+   "owner": "d1"
+  },
+  {
+   "card": "Gift of Estates",
+   "deck": "Najeela, the Blade-Blossom",
+   "missing": "needs core: an intervening condition on a spell (conditions are checked only for triggers)",
+   "lane": "d3",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Ignoble Hierarch",
+   "deck": "Najeela, the Blade-Blossom",
+   "missing": "needs core: exalted",
+   "lane": "d3",
+   "theme": "keywords",
+   "owner": "d1"
+  },
+  {
+   "card": "Make Disappear",
+   "deck": "Najeela, the Blade-Blossom",
+   "missing": "needs core: casualty",
+   "lane": "d3",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Metallic Mimic",
+   "deck": "Najeela, the Blade-Blossom",
+   "missing": "needs core: other creatures of the chosen type enter with an extra counter (without Roaming Throne's trigger doubling)",
+   "lane": "d3",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Minas Tirith",
+   "deck": "Najeela, the Blade-Blossom",
+   "missing": "needs core: enters tapped unless you control a legendary creature, and an 'attacked with two or more creatures this turn' condition",
+   "lane": "d3",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Najeela, the Blade-Blossom",
+   "deck": "Najeela, the Blade-Blossom",
+   "missing": "needs core: a trigger whenever any Warrior attacks, its controller making a 1/1 white Warrior tapped and attacking, and the untap-attackers extra combat",
+   "lane": "d3",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Nature's Will",
+   "deck": "Najeela, the Blade-Blossom",
+   "missing": "needs core: tap all lands the damaged player controls and untap all lands you control",
+   "lane": "d3",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Red Elemental Blast",
+   "deck": "Najeela, the Blade-Blossom",
+   "missing": "needs core: color filters: target blue spell, target blue permanent",
+   "lane": "d3",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Ruby Medallion",
+   "deck": "Najeela, the Blade-Blossom",
+   "missing": "needs core: a red-only spell discount",
+   "lane": "d3",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Shanna, Sisay's Legacy",
+   "deck": "Najeela, the Blade-Blossom",
+   "missing": "needs core: can't be the target of abilities your opponents control",
+   "lane": "d3",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Slip Out the Back",
+   "deck": "Najeela, the Blade-Blossom",
+   "missing": "needs core: phasing out",
+   "lane": "d3",
+   "theme": "keywords",
+   "owner": "d1"
+  },
+  {
+   "card": "Species Specialist",
+   "deck": "Najeela, the Blade-Blossom",
+   "missing": "needs core: a trigger whenever a creature of the chosen type dies",
+   "lane": "d3",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Surrak Dragonclaw",
+   "deck": "Najeela, the Blade-Blossom",
+   "missing": "needs core: a static 'creature spells you control can't be countered'",
+   "lane": "d3",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Aetherflux Reservoir",
+   "deck": "Sheoldred, the Apocalypse",
+   "missing": "needs core: gain life equal to the spells cast this turn, and pay 50 life as a cost",
+   "lane": "d3",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Alhammarret's Archive",
+   "deck": "Sheoldred, the Apocalypse",
+   "missing": "needs core: replacements doubling life gain and extra draws",
+   "lane": "d3",
+   "theme": "replace_filter",
+   "owner": "mac-b"
+  },
+  {
+   "card": "Howling Mine",
+   "deck": "Sheoldred, the Apocalypse",
+   "missing": "needs core: an intervening 'if this is untapped' condition on a draw-step trigger",
+   "lane": "d3",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Jet Medallion",
+   "deck": "Sheoldred, the Apocalypse",
+   "missing": "needs core: a black-only spell discount",
+   "lane": "d3",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Dark Deal",
+   "deck": "Sheoldred, the Apocalypse",
+   "missing": "needs core: each player discards their hand and draws that many minus one",
+   "lane": "d3",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Elder Brain",
+   "deck": "Sheoldred, the Apocalypse",
+   "missing": "needs core: exile the attacked player's hand, they draw that many, and you may play the exiled cards",
+   "lane": "d3",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Feed the Swarm",
+   "deck": "Sheoldred, the Apocalypse",
+   "missing": "needs core: lose life equal to the destroyed permanent's mana value",
+   "lane": "d3",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "K'rrik, Son of Yawgmoth",
+   "deck": "Sheoldred, the Apocalypse",
+   "missing": "needs core: pay 2 life for each {B} in a cost, and a black-spell cast trigger",
+   "lane": "d3",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Malakir Rebirth // Malakir Mire",
+   "deck": "Sheoldred, the Apocalypse",
+   "missing": "needs core: grant 'when this creature dies, return it' until end of turn; the land back face isn't in the oracle data",
+   "lane": "d3",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Peer into the Abyss",
+   "deck": "Sheoldred, the Apocalypse",
+   "missing": "needs core: draw half the library and lose half the life, rounded up",
+   "lane": "d3",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Teferi's Puzzle Box",
+   "deck": "Sheoldred, the Apocalypse",
+   "missing": "needs core: put the hand on the bottom and draw that many each draw step",
+   "lane": "d3",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Well of Lost Dreams",
+   "deck": "Sheoldred, the Apocalypse",
+   "missing": "needs core: pay {X} up to the life gained to draw X cards",
+   "lane": "d3",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Witch of the Moors",
+   "deck": "Sheoldred, the Apocalypse",
+   "missing": "needs core: a 'you gained life this turn' condition",
+   "lane": "d3",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Zenith Chronicler",
+   "deck": "Sheoldred, the Apocalypse",
+   "missing": "needs core: a trigger on each player's first multicolored spell each turn",
+   "lane": "d3",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Baleful Mastery",
+   "deck": "Sheoldred, the Apocalypse",
+   "missing": "needs core: an alternative cost {1}{B} that makes an opponent draw",
+   "lane": "d3",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Blessing of Leeches",
+   "deck": "Sheoldred, the Apocalypse",
+   "missing": "needs core: {0}: regenerate the enchanted creature (an Aura's regeneration)",
+   "lane": "d3",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Blood Money",
+   "deck": "Sheoldred, the Apocalypse",
+   "missing": "needs core: destroy all creatures and a tapped Treasure for each nontoken creature destroyed",
+   "lane": "d3",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Cabal Stronghold",
+   "deck": "Sheoldred, the Apocalypse",
+   "missing": "needs core: {B} for each basic Swamp you control",
+   "lane": "d3",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Castle Locthwain",
+   "deck": "Sheoldred, the Apocalypse",
+   "missing": "needs core: lose life equal to the number of cards in your hand",
+   "lane": "d3",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Damnable Pact",
+   "deck": "Sheoldred, the Apocalypse",
+   "missing": "needs core: target player draws X cards and loses X life",
+   "lane": "d3",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Defiant Bloodlord",
+   "deck": "Sheoldred, the Apocalypse",
+   "missing": "needs core: target opponent loses life equal to the life you gained (the trigger's amount)",
+   "lane": "d3",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Eldritch Pact",
+   "deck": "Sheoldred, the Apocalypse",
+   "missing": "needs core: target player draws and loses life equal to the cards in their graveyard",
+   "lane": "d3",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Necrologia",
+   "deck": "Sheoldred, the Apocalypse",
+   "missing": "needs core: cast only during your end step, and pay X life as an additional cost",
+   "lane": "d3",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Ob Nixilis Reignited",
+   "deck": "Sheoldred, the Apocalypse",
+   "missing": "needs core: an emblem for the opponent ('whenever a player draws a card, you lose 2 life')",
+   "lane": "d3",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Otherworld Atlas",
+   "deck": "Sheoldred, the Apocalypse",
+   "missing": "needs core: charge counters, and each player draws one per counter",
+   "lane": "d3",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Seizan, Perverter of Truth",
+   "deck": "Sheoldred, the Apocalypse",
+   "missing": "needs core: the active player loses 2 life at each upkeep (a Who for the active player)",
+   "lane": "d3",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Mystical Tutor",
+   "deck": "Animar, Soul of Elements",
+   "missing": "needs core: search for any instant or sorcery card (a SearchFor for instants and sorceries)",
+   "lane": "d3",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Sylvan Safekeeper",
+   "deck": "Animar, Soul of Elements",
+   "missing": "needs core: sacrifice a land as an activation cost",
+   "lane": "d3",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Hullbreaker Horror",
+   "deck": "Animar, Soul of Elements",
+   "missing": "needs core: a choose-up-to-one trigger on each spell you cast, bouncing a spell you don't control",
+   "lane": "d3",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Hydroid Krasis",
+   "deck": "Animar, Soul of Elements",
+   "missing": "needs core: a cast trigger for half X life and half X cards",
+   "lane": "d3",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Pathbreaker Ibex",
+   "deck": "Animar, Soul of Elements",
+   "missing": "needs core: +X/+X with X the greatest power among your creatures",
+   "lane": "d3",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "The Ozolith",
+   "deck": "Animar, Soul of Elements",
+   "missing": "needs core: keep the counters of creatures leaving and move them",
+   "lane": "d3",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Vizier of the Menagerie",
+   "deck": "Animar, Soul of Elements",
+   "missing": "needs core: cast creature spells from the top of your library, and spend mana as any type for them",
+   "lane": "d3",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Ancestral Statue",
+   "deck": "Animar, Soul of Elements",
+   "missing": "needs core: return a nonland permanent you control (not only a creature)",
+   "lane": "d3",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Animar, Soul of Elements",
+   "deck": "Animar, Soul of Elements",
+   "missing": "needs core: creature spells cost {1} less per +1/+1 counter on it",
+   "lane": "d3",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Gilded Drake",
+   "deck": "Animar, Soul of Elements",
+   "missing": "needs core: exchange control with a target creature",
+   "lane": "d3",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Glimpse of Nature",
+   "deck": "Animar, Soul of Elements",
+   "missing": "needs core: a delayed 'whenever you cast a creature spell this turn' trigger",
+   "lane": "d3",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Kinnan, Bonder Prodigy",
+   "deck": "Animar, Soul of Elements",
+   "missing": "needs core: extra mana from nonland mana sources, and look at five for a non-Human creature",
+   "lane": "d3",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Loyal Drake",
+   "deck": "Animar, Soul of Elements",
+   "missing": "needs core: lieutenant (an 'if you control your commander' trigger condition)",
+   "lane": "d3",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Mulldrifter",
+   "deck": "Animar, Soul of Elements",
+   "missing": "needs core: evoke",
+   "lane": "d3",
+   "theme": "keywords",
+   "owner": "d1"
+  },
+  {
+   "card": "Neoform",
+   "deck": "Animar, Soul of Elements",
+   "missing": "needs core: search for a creature with mana value one more than the sacrificed creature's, with an extra counter",
+   "lane": "d3",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Once Upon a Time",
+   "deck": "Animar, Soul of Elements",
+   "missing": "needs core: free if it's the first spell you cast this game",
+   "lane": "d3",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Phantasmal Image",
+   "deck": "Animar, Soul of Elements",
+   "missing": "needs core: copy as an Illusion with 'sacrifice it when it becomes the target'",
+   "lane": "d3",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Rattleclaw Mystic",
+   "deck": "Animar, Soul of Elements",
+   "missing": "needs core: morph and a turned-face-up trigger",
+   "lane": "d3",
+   "theme": "keywords",
+   "owner": "d1"
+  },
+  {
+   "card": "Somberwald Sage",
+   "deck": "Animar, Soul of Elements",
+   "missing": "needs core: three mana of one chosen color (the payer would split the colors)",
+   "lane": "d3",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Spellskite",
+   "deck": "Animar, Soul of Elements",
+   "missing": "needs core: change a target of a spell or ability to this creature",
+   "lane": "d3",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Weird Harvest",
+   "deck": "Animar, Soul of Elements",
+   "missing": "needs core: each player may search for up to X creature cards",
+   "lane": "d3",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Wild Cantor",
+   "deck": "Animar, Soul of Elements",
+   "missing": "needs core: a sacrifice-only mana ability with no {T} (usable the turn it enters)",
+   "lane": "d3",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Merciless Eviction",
+   "deck": "Atraxa, Praetors' Voice",
+   "missing": "needs core: exile all permanents of one type",
+   "lane": "d3",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Damn",
+   "deck": "Atraxa, Praetors' Voice",
+   "missing": "needs core: overload (destroy all creatures instead)",
+   "lane": "d3",
+   "theme": "replace_filter",
+   "owner": "mac-b"
+  },
+  {
+   "card": "Atraxa, Praetors' Voice",
+   "deck": "Atraxa, Praetors' Voice",
+   "missing": "needs core: proliferate",
+   "lane": "d3",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Karn's Bastion",
+   "deck": "Atraxa, Praetors' Voice",
+   "missing": "needs core: proliferate",
+   "lane": "d3",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Sword of Feast and Famine",
+   "deck": "Atraxa, Praetors' Voice",
+   "missing": "needs core: protection from black and green for the equipped creature, and untap all your lands on combat damage",
+   "lane": "d3",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Vraska, Betrayal's Sting",
+   "deck": "Atraxa, Praetors' Voice",
+   "missing": "needs core: proliferate, compleated, a creature becoming a Treasure, and poison counters",
+   "lane": "d3",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Tekuthal, Inquiry Dominus",
+   "deck": "Atraxa, Praetors' Voice",
+   "missing": "needs core: proliferate twice, and removing counters from among your permanents as a cost",
+   "lane": "d3",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Ashiok, Nightmare Muse",
+   "deck": "Atraxa, Praetors' Voice",
+   "missing": "needs core: a 2/3 blue and black Nightmare creature token with an attack/block trigger, and casting from exile",
+   "lane": "d3",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "City of Shadows",
+   "deck": "Atraxa, Praetors' Voice",
+   "missing": "needs core: storage counters and mana per counter",
+   "lane": "d3",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Deepglow Skate",
+   "deck": "Atraxa, Praetors' Voice",
+   "missing": "needs core: double each kind of counter on any number of target permanents",
+   "lane": "d3",
+   "theme": "replace_filter",
+   "owner": "mac-b"
+  },
+  {
+   "card": "Elspeth Tirel",
+   "deck": "Atraxa, Praetors' Voice",
+   "missing": "needs core: gain 1 life per creature you control, and destroy all other permanents except lands and tokens",
+   "lane": "d3",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Freyalise, Llanowar's Fury",
+   "deck": "Atraxa, Praetors' Voice",
+   "missing": "needs core: a 1/1 green Elf Druid creature token with '{T}: Add {G}', and draw per green creature",
+   "lane": "d3",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Ichormoon Gauntlet",
+   "deck": "Atraxa, Praetors' Voice",
+   "missing": "needs core: loyalty abilities granted to planeswalkers, and an extra counter of a chosen kind",
+   "lane": "d3",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Lolth, Spider Queen",
+   "deck": "Atraxa, Praetors' Voice",
+   "missing": "needs core: a 2/1 black Spider creature token with reach and menace, a loyalty-on-death trigger, and an emblem",
+   "lane": "d3",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Nissa, Ascended Animist",
+   "deck": "Atraxa, Praetors' Voice",
+   "missing": "needs core: an X/X green Phyrexian Horror creature token (X its loyalty), compleated, and +1/+1 per Forest",
+   "lane": "d3",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Nissa, Voice of Zendikar",
+   "deck": "Atraxa, Praetors' Voice",
+   "missing": "needs core: gain X life and draw X cards, X the lands you control (its -7)",
+   "lane": "d3",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Professor Dellian Fel",
+   "deck": "Atraxa, Praetors' Voice",
+   "missing": "needs core: an emblem 'whenever you gain life, target opponent loses that much life'",
+   "lane": "d3",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Wash Away",
+   "deck": "Atraxa, Praetors' Voice",
+   "missing": "needs core: cleave, and 'a spell that wasn't cast from its owner's hand'",
+   "lane": "d3",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Barkchannel Pathway // Tidechannel Pathway",
+   "deck": "Lonis, Cryptozoologist",
+   "missing": "needs core: a land-front modal double-faced card (choose the face as you play it); the back face isn't in the oracle data",
+   "lane": "d3",
+   "theme": "replace_filter",
+   "owner": "mac-b"
+  },
+  {
+   "card": "Tireless Tracker",
+   "deck": "Lonis, Cryptozoologist",
+   "missing": "needs core: a Clue artifact token (investigate), and a 'whenever you sacrifice a Clue' trigger",
+   "lane": "d3",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Ulvenwald Mysteries",
+   "deck": "Lonis, Cryptozoologist",
+   "missing": "needs core: a Clue artifact token (investigate), and a 'whenever you sacrifice a Clue' trigger",
+   "lane": "d3",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Urza, Lord High Artificer",
+   "deck": "Lonis, Cryptozoologist",
+   "missing": "needs core: a 0/0 colorless Construct artifact creature token (+1/+1 per artifact), tapping an artifact for mana, and a free play from the top",
+   "lane": "d3",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Altar of the Brood",
+   "deck": "Lonis, Cryptozoologist",
+   "missing": "needs core: a trigger whenever another permanent you control enters",
+   "lane": "d3",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Argent Sphinx",
+   "deck": "Lonis, Cryptozoologist",
+   "missing": "needs core: metalcraft (an 'if you control three or more artifacts' activation condition)",
+   "lane": "d3",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Briarbridge Patrol",
+   "deck": "Lonis, Cryptozoologist",
+   "missing": "needs core: a Clue artifact token (investigate), and a 'sacrificed three or more Clues this turn' condition",
+   "lane": "d3",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Confirm Suspicions",
+   "deck": "Lonis, Cryptozoologist",
+   "missing": "needs core: a Clue artifact token (investigate)",
+   "lane": "d3",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Confront the Unknown",
+   "deck": "Lonis, Cryptozoologist",
+   "missing": "needs core: a Clue artifact token (investigate), and +1/+1 per Clue you control",
+   "lane": "d3",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Cyberdrive Awakener",
+   "deck": "Lonis, Cryptozoologist",
+   "missing": "needs core: other artifact creatures you control have flying, and noncreature artifacts becoming 4/4 creatures",
+   "lane": "d3",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Daring Sleuth // Bearer of Overwhelming Truths",
+   "deck": "Lonis, Cryptozoologist",
+   "missing": "needs core: a 'whenever you sacrifice a Clue' trigger, and a Clue artifact token (investigate) for its back face",
+   "lane": "d3",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Dream Stalker",
+   "deck": "Lonis, Cryptozoologist",
+   "missing": "needs core: return a permanent you control (not only a creature)",
+   "lane": "d3",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Drift of Phantasms",
+   "deck": "Lonis, Cryptozoologist",
+   "missing": "needs core: transmute",
+   "lane": "d3",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Erdwal Illuminator",
+   "deck": "Lonis, Cryptozoologist",
+   "missing": "needs core: a Clue artifact token (investigate), and investigating an additional time",
+   "lane": "d3",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Ethereal Investigator",
+   "deck": "Lonis, Cryptozoologist",
+   "missing": "needs core: a Clue artifact token (investigate)",
+   "lane": "d3",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Fleeting Memories",
+   "deck": "Lonis, Cryptozoologist",
+   "missing": "needs core: a Clue artifact token (investigate), and a 'whenever you sacrifice a Clue' trigger",
+   "lane": "d3",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Floodhound",
+   "deck": "Lonis, Cryptozoologist",
+   "missing": "needs core: a Clue artifact token (investigate)",
+   "lane": "d3",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Golden Argosy",
+   "deck": "Lonis, Cryptozoologist",
+   "missing": "needs core: exile the creatures that crewed it and return them at the next end step",
+   "lane": "d3",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Graf Mole",
+   "deck": "Lonis, Cryptozoologist",
+   "missing": "needs core: a 'whenever you sacrifice a Clue' trigger",
+   "lane": "d3",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Hold for Questioning",
+   "deck": "Lonis, Cryptozoologist",
+   "missing": "needs core: a Clue artifact token (investigate), and an Aura stopping untapping and activated abilities",
+   "lane": "d3",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Inspiring Statuary",
+   "deck": "Lonis, Cryptozoologist",
+   "missing": "needs core: improvise for nonartifact spells",
+   "lane": "d3",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Kappa Cannoneer",
+   "deck": "Lonis, Cryptozoologist",
+   "missing": "needs core: improvise",
+   "lane": "d3",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Lonis, Cryptozoologist",
+   "deck": "Lonis, Cryptozoologist",
+   "missing": "needs core: a Clue artifact token (investigate), and sacrificing X Clues to put a card from the opponent's library onto the battlefield",
+   "lane": "d3",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Mechanized Production",
+   "deck": "Lonis, Cryptozoologist",
+   "missing": "needs core: an Aura copying the enchanted artifact each upkeep, and an eight-with-the-same-name win check",
+   "lane": "d3",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Ongoing Investigation",
+   "deck": "Lonis, Cryptozoologist",
+   "missing": "needs core: a Clue artifact token (investigate)",
+   "lane": "d3",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Rise and Shine",
+   "deck": "Lonis, Cryptozoologist",
+   "missing": "needs core: a noncreature artifact becoming a 0/0 creature with four counters, and overload",
+   "lane": "d3",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Tamiyo's Journal",
+   "deck": "Lonis, Cryptozoologist",
+   "missing": "needs core: a Clue artifact token (investigate), and sacrificing three Clues as a cost",
+   "lane": "d3",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Teething Wurmlet",
+   "deck": "Lonis, Cryptozoologist",
+   "missing": "needs core: a 'three or more artifacts' static condition, and a trigger whenever an artifact you control enters",
+   "lane": "d3",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Trophy Mage",
+   "deck": "Lonis, Cryptozoologist",
+   "missing": "needs core: search for an artifact card with mana value 3",
+   "lane": "d3",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Trusted Advisor",
+   "deck": "Lonis, Cryptozoologist",
+   "missing": "needs core: maximum hand size increased by two, and returning a blue creature you control",
+   "lane": "d3",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Universal Surveillance",
+   "deck": "Lonis, Cryptozoologist",
+   "missing": "needs core: improvise",
+   "lane": "d3",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Wavesifter",
+   "deck": "Lonis, Cryptozoologist",
+   "missing": "needs core: a Clue artifact token (investigate), and evoke",
+   "lane": "d3",
+   "theme": "keywords",
+   "owner": "d1"
+  }
+ ]
 }
