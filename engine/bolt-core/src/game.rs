@@ -301,6 +301,9 @@ pub struct Object {
     pub sacrifice_when_targeted: Option<u32>,
     /// A Class's level (CR 716): 0 and 1 are both level 1; see `Game::class_level`.
     pub class_level: u8,
+    /// Shield counters (CR 122.1c): "If it would be dealt damage or destroyed, instead remove a
+    /// shield counter from it."
+    pub shield_counters: u8,
 }
 
 /// One resolved effect's change to a permanent's characteristics (lane d3's type-changing store):
@@ -1247,6 +1250,10 @@ pub enum Decision {
     /// Forgotten Ancient: `Pick` another creature to move one +1/+1 counter onto from `source`,
     /// or `No` to stop.
     MoveCounterFrom { source: ObjId },
+    /// A −X loyalty ability (`card::LOYALTY_MINUS_X`): `Amount` X, 0 to the loyalty.
+    ChooseLoyaltyX { source: ObjId, n: usize },
+    /// `Pick` a permanent card in your hand to put onto the battlefield, `left` more, or `No`.
+    PermanentsFromHandUpTo { left: u8 },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -1623,6 +1630,9 @@ pub struct Game {
     free_casts_rest_to_graveyard: Vec<ObjId>,
     /// CR 514.3a: something triggered during cleanup, so another cleanup step follows.
     pub cleanup_again: bool,
+    /// Control while it has a shield counter: (creature, zcc, the controller, the one before)
+    /// (Shield Broker).
+    pub control_while_shielded: Vec<(ObjId, u32, PlayerId, PlayerId)>,
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -1879,6 +1889,7 @@ impl Game {
             delayed_slot_to_graveyard: Vec::new(),
             free_casts_rest_to_graveyard: Vec::new(),
             cleanup_again: false,
+            control_while_shielded: Vec::new(),
         }
     }
 
@@ -2080,6 +2091,7 @@ impl Game {
             mana_spent: 0,
             sacrifice_when_targeted: None,
             class_level: 0,
+            shield_counters: 0,
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -4282,6 +4294,7 @@ impl Game {
         o.deathtouched = false;
         o.counters = 0;
         o.class_level = 0; // a new object: a Class enters at level 1
+        o.shield_counters = 0;
         o.incubation = 0;
         if from == Zone::Battlefield {
             let mut last = std::mem::take(&mut o.extra_subtypes);
@@ -5335,11 +5348,16 @@ impl Game {
                 let filter = self.ability_of(&c.item).targets[c.item.targets.len()];
                 let ability = self.ability_of(&c.item);
                 let mut options = self.candidates(&filter, c.item.controller);
-                // CR 115.3: one object can't be chosen twice; "other" excludes the source.
+                // CR 115.3: one object can't be chosen twice for one "target" word, but may be for
+                // different words ("Target creature you control deals damage ... to target
+                // creature"). Slots with the same filter are taken as one word ("two target
+                // creatures"); "other" excludes the source.
+                let same_word = Game::same_word_slots(&ability.targets, c.item.targets.len());
                 options.retain(|&t| match t {
                     Target::Object(x) => {
                         let is_source = !self.slot_ok(&c.item, &filter, Target::Object(x));
-                        let taken = c.item.targets.contains(&Chosen::Object(x, self.obj(x).zcc));
+                        let chosen = Chosen::Object(x, self.obj(x).zcc);
+                        let taken = same_word.iter().any(|&i| c.item.targets.get(i) == Some(&chosen));
                         !is_source && !taken
                     }
                     // CR 115.3: one player can't fill two slots of a single "divided" target word.
@@ -5930,11 +5948,25 @@ impl Game {
 
     fn trigger_can_target(&self, item: &StackItem, ability: &Ability) -> bool {
         let required = ability.min_targets.unwrap_or(ability.targets.len());
-        ability.targets[..required].iter().all(|f| {
-            self.candidates(f, item.controller)
+        // A "target" word with N slots (the same filter repeated) needs N different objects (CR
+        // 115.3), so casting never leaves a target with no legal choice.
+        ability.targets[..required].iter().enumerate().all(|(i, f)| {
+            let word = Game::same_word_slots(&ability.targets[..required], i).len() + 1;
+            let legal = self
+                .candidates(f, item.controller)
                 .into_iter()
-                .any(|t| self.slot_ok(item, f, t))
+                .filter(|&t| self.slot_ok(item, f, t))
+                .count();
+            legal >= word
+                || (legal > 0 && self.candidates(f, item.controller).iter().any(|t| matches!(t, Target::Player(_))))
         })
+    }
+
+    /// The earlier target slots of the same "target" word as slot `slot`: the run of identical
+    /// filters it ends (CR 115.3: one object can't fill two of them).
+    fn same_word_slots(targets: &[Filter], slot: usize) -> Vec<usize> {
+        let Some(f) = targets.get(slot) else { return Vec::new() };
+        (0..slot).rev().take_while(|&i| targets[i] == *f).collect()
     }
 
     fn priority_actions(&self, p: PlayerId) -> Vec<Action> {
@@ -6854,6 +6886,18 @@ impl Game {
             }
             return g.mode_affordable_now(p, c, mode);
         }
+        // Harmonize: the creature tapped to reduce the cost can't also make its mana, so check
+        // the mana with it tapped (pay_mana pays after tapping it).
+        if let (true, Some(cr)) = (mode.flashback, mode.extra) {
+            if self.obj(cr).zone == Zone::Battlefield
+                && !self.obj(cr).tapped
+                && self.mana_sources(p).iter().any(|&(x, _)| x == cr)
+            {
+                let mut g = self.clone();
+                g.obj_mut(cr).tapped = true;
+                return g.mode_affordable_now(p, c, mode);
+            }
+        }
         self.mode_affordable_now(p, c, mode)
     }
 
@@ -7495,7 +7539,8 @@ impl Game {
                     kind: StackKind::Loyalty(n),
                     ..Game::casting(id, p)
                 };
-                if o.loyalty + cost >= 0 && self.trigger_can_target(&item, ability) {
+                let affordable = *cost == crate::card::LOYALTY_MINUS_X || o.loyalty + cost >= 0;
+                if affordable && self.trigger_can_target(&item, ability) {
                     v.push(Action::Loyalty(id, n));
                 }
             }
@@ -7519,9 +7564,20 @@ impl Game {
     }
 
     fn activate_loyalty(&mut self, p: PlayerId, id: ObjId, n: usize) {
+        if self.def_of(id).loyalty_abilities[n].0 == crate::card::LOYALTY_MINUS_X {
+            self.ask(p, Decision::ChooseLoyaltyX { source: id, n });
+            return;
+        }
+        self.activate_loyalty_x(p, id, n, 0);
+    }
+
+    /// Activates loyalty ability `n` of `id`, with X (a −X cost removes that much).
+    fn activate_loyalty_x(&mut self, p: PlayerId, id: ObjId, n: usize, x: u8) {
         let (cost, ability) = self.def_of(id).loyalty_abilities[n].clone();
+        let cost = if cost == crate::card::LOYALTY_MINUS_X { -(x as i32) } else { cost };
         let item = StackItem {
             kind: StackKind::Loyalty(n),
+            x,
             ..Game::casting(id, p)
         };
         self.passes = 0;
@@ -11148,6 +11204,20 @@ impl Game {
                 v
             }
             Decision::MayDrawGainOne { .. } => vec![Action::Yes, Action::No],
+            Decision::ChooseLoyaltyX { source, .. } => {
+                let max = self.obj(*source).loyalty.clamp(0, 60) as u8;
+                (0..=max).map(Action::Amount).collect()
+            }
+            Decision::PermanentsFromHandUpTo { .. } => {
+                let mut v: Vec<Action> = hand
+                    .iter()
+                    .copied()
+                    .filter(|&c| self.def_of(c).types.is_permanent())
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
             Decision::MoveCounterFrom { source } => {
                 let s = *source;
                 let mut v: Vec<Action> = self
@@ -11746,6 +11816,10 @@ impl Game {
             let (card, mode) = (*card, *mode);
             self.obj_mut(card).delve = n;
             return self.cast_now(p, card, mode);
+        }
+        if let (Decision::ChooseLoyaltyX { source, n }, Action::Amount(x)) = (&d, a) {
+            let (source, n) = (*source, *n);
+            return self.activate_loyalty_x(p, source, n, x);
         }
         if let (Decision::ChooseCastX { card, mode, .. }, Action::Amount(x)) = (&d, a) {
             let (card, mode) = (*card, *mode);
@@ -12834,6 +12908,14 @@ impl Game {
                 }
             }
             (Decision::CreaturesFromHandUpTo { .. }, _) => {}
+            (Decision::PermanentsFromHandUpTo { left }, Action::Pick(c)) => {
+                self.move_to(c, Zone::Battlefield);
+                let more = self.players[p].hand.iter().any(|&x| self.def_of(x).types.is_permanent());
+                if left > 1 && more {
+                    self.ask(p, Decision::PermanentsFromHandUpTo { left: left - 1 });
+                }
+            }
+            (Decision::PermanentsFromHandUpTo { .. }, _) => {}
             (Decision::MayShuffle, Action::Yes) => self.shuffle_library(p),
             (Decision::MayShuffle, _) => {}
             (Decision::ReturnOwnPermanent { .. }, Action::Pick(c)) => self.move_to(c, Zone::Hand),
@@ -17059,6 +17141,39 @@ impl Game {
                     self.ask(item.controller, Decision::MoveCounterFrom { source: src });
                 }
             }
+            Effect::ExileEachColoredPermanentMvAtMostX => {
+                let x = item.x as u32;
+                let all: Vec<ObjId> = self
+                    .battlefield
+                    .iter()
+                    .copied()
+                    .filter(|&c| self.colors_of(c).iter().any(|&b| b) && self.def_of(c).cost.mana_value() <= x)
+                    .collect();
+                for c in all {
+                    self.move_to(c, Zone::Exile);
+                }
+            }
+            Effect::PermanentsFromHandUpTo(n) => {
+                let p = item.controller;
+                if n > 0 && self.players[p].hand.iter().any(|&x| self.def_of(x).types.is_permanent()) {
+                    self.ask(p, Decision::PermanentsFromHandUpTo { left: n });
+                }
+            }
+            Effect::ShieldCounterAndControlWhileShielded(slot) => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    if !self.is_commander(id) {
+                        let (p, before) = (item.controller, self.obj(id).controller);
+                        self.obj_mut(id).shield_counters += 1;
+                        if before != p {
+                            let (zcc, turn) = (self.obj(id).zcc, self.turn);
+                            self.control_while_shielded.push((id, zcc, p, before));
+                            let o = self.obj_mut(id);
+                            o.controller = p;
+                            o.since_turn = turn;
+                        }
+                    }
+                }
+            }
             Effect::GiftExtraTurn => {
                 let opp = opponent(item.controller);
                 self.extra_turns.push(opp);
@@ -20773,13 +20888,30 @@ impl Game {
         if self.keywords(id).has(Keywords::INDESTRUCTIBLE) {
             return;
         }
+        if self.use_shield_counter(id) {
+            return;
+        }
         if !self.use_regen_shield(id) && !self.use_umbra_armor(id) {
             self.move_to(id, Zone::Graveyard);
         }
     }
 
+    /// A shield counter replaces being dealt damage or destroyed (CR 122.1c): removes one if it has
+    /// one.
+    fn use_shield_counter(&mut self, id: ObjId) -> bool {
+        let o = self.obj_mut(id);
+        if o.zone == Zone::Battlefield && o.shield_counters > 0 {
+            o.shield_counters -= 1;
+            return true;
+        }
+        false
+    }
+
     /// "Destroy ... It can't be regenerated."
     fn destroy_no_regen(&mut self, id: ObjId) {
+        if !self.keywords(id).has(Keywords::INDESTRUCTIBLE) && self.use_shield_counter(id) {
+            return;
+        }
         if !self.keywords(id).has(Keywords::INDESTRUCTIBLE) && !self.use_umbra_armor(id) {
             self.move_to(id, Zone::Graveyard);
         }
@@ -22041,6 +22173,12 @@ impl Game {
     }
 
     fn deal_damage(&mut self, source: ObjId, target: Target, amount: i32) {
+        // A shield counter: even unpreventable damage is replaced (CR 122.1c).
+        if let (true, Target::Object(id)) = (amount > 0, target) {
+            if self.use_shield_counter(id) {
+                return;
+            }
+        }
         // Malignus; Questing Beast ("combat damage ... by creatures you control can't be prevented").
         let unpreventable = self.def_of(source).damage_cant_be_prevented
             || (self.in_combat_damage
@@ -22263,6 +22401,26 @@ impl Game {
 
     /// CR 704: repeat until none apply.
     fn state_based_actions(&mut self) {
+        // Shield Broker: control while it has a shield counter.
+        if !self.control_while_shielded.is_empty() {
+            let mut keep = Vec::new();
+            for e in std::mem::take(&mut self.control_while_shielded) {
+                let (id, zcc, _, before) = e;
+                let o = self.obj(id);
+                if o.zcc != zcc || o.zone != Zone::Battlefield {
+                    continue;
+                }
+                if o.shield_counters > 0 {
+                    keep.push(e);
+                } else {
+                    let turn = self.turn;
+                    let o = self.obj_mut(id);
+                    o.controller = before;
+                    o.since_turn = turn;
+                }
+            }
+            self.control_while_shielded = keep;
+        }
         // Roil Elemental: control lasts only as long as you control the source.
         if !self.control_while.is_empty() {
             let mut keep = Vec::new();

@@ -1384,6 +1384,10 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::Upkeep { your_turn_only: true }, vec![], vec![Effect::MayMoveCountersFromSource]);
             },
         ),
+        "Shield Broker" => s(
+            &["When this creature enters, put a shield counter on target noncommander creature you don't control. You gain control of that creature for as long as it has a shield counter on it."],
+            |d, _| on(d, When::Enters, vec![OPP_CREATURE], vec![Effect::ShieldCounterAndControlWhileShielded(0)]),
+        ),
         _ => None,
     }
 }
@@ -1557,4 +1561,5 @@ pub const BLC_B_SCRIPTED: &[&str] = &[
     "Wizard Class",
     "Cache Grab",
     "Forgotten Ancient",
+    "Shield Broker",
 ];

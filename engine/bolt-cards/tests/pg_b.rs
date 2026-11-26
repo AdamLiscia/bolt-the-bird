@@ -2777,3 +2777,22 @@ fn metallurgic_summonings_makes_constructs_the_spells_size() {
     assert_eq!((g.power(c[0]), g.toughness(c[0])), (3, 3));
     assert!(!has(&g, Action::Activate(ms, 0)), "one artifact: not six");
 }
+
+#[test]
+fn ugin_minus_x_exiles_colored_permanents_up_to_x() {
+    let mut g = table();
+    let ugin = put(&mut g, 0, "Ugin, the Spirit Dragon");
+    g.objects[ugin.0 as usize].loyalty = 7;
+    let lions = put(&mut g, 1, "Savannah Lions"); // mana value 1, white
+    let titan = put(&mut g, 1, "Inferno Titan"); // mana value 6
+    let ring = put(&mut g, 1, "Sol Ring"); // colorless
+    act(&mut g, Action::Loyalty(ugin, 1));
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Amount(7)) && !legal.contains(&Action::Amount(8)), "up to the loyalty");
+    act(&mut g, Action::Amount(3));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(ugin).loyalty, 4);
+    assert_eq!(g.obj(lions).zone, Zone::Exile);
+    assert_eq!(g.obj(titan).zone, Zone::Battlefield, "mana value 6");
+    assert_eq!(g.obj(ring).zone, Zone::Battlefield, "colorless");
+}

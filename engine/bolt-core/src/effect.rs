@@ -2246,6 +2246,15 @@ pub enum Effect {
     /// "You may move any number of +1/+1 counters from this creature onto other creatures." as
     /// `Decision::MoveCounterFrom`, one at a time (Forgotten Ancient).
     MayMoveCountersFromSource,
+    /// Exile each permanent with mana value X or less that's one or more colors, X the ability's
+    /// X (Ugin, the Spirit Dragon's −X).
+    ExileEachColoredPermanentMvAtMostX,
+    /// Put up to `n` permanent cards from your hand onto the battlefield, as
+    /// `Decision::PermanentsFromHandUpTo` (Ugin, the Spirit Dragon's −10).
+    PermanentsFromHandUpTo(u8),
+    /// Put a shield counter on the creature in `slot`; you control it for as long as it has a
+    /// shield counter (Shield Broker). A commander isn't affected (its filter can't exclude it).
+    ShieldCounterAndControlWhileShielded(u8),
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

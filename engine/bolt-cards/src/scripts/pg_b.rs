@@ -1686,6 +1686,19 @@ pub fn script(name: &str) -> Option<Script> {
                 d.activated[n].min_artifacts = 6;
             },
         ),
+        "Ugin, the Spirit Dragon" => s(
+            &[
+                "+2: Ugin deals 3 damage to any target.",
+                "\u{2212}X: Exile each permanent with mana value X or less that's one or more colors.",
+                "\u{2212}10: You gain 7 life, draw seven cards, then put up to seven permanent cards from your hand onto the battlefield.",
+            ],
+            |d, _| {
+                loyalty(d, 2, Ability::new(vec![Filter::ANY], vec![damage(3, Recipient::Target(0))]));
+                loyalty(d, bolt_core::card::LOYALTY_MINUS_X, Ability::new(vec![], vec![Effect::ExileEachColoredPermanentMvAtMostX]));
+                let ten = vec![Effect::GainLife { who: Who::You, n: 7 }, draw(7), Effect::PermanentsFromHandUpTo(7)];
+                loyalty(d, -10, Ability::new(vec![], ten));
+            },
+        ),
         _ => None,
     }
 }
@@ -1893,6 +1906,7 @@ pub const PG_B_SCRIPTED: &[&str] = &[
     "Void Winnower",
     "Epic Experiment",
     "Metallurgic Summonings",
+    "Ugin, the Spirit Dragon",
     // Ghyrson Starn (Spr3adsh33t)
     "Basilisk Collar",
     "Gorgon's Head",
