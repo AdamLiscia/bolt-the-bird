@@ -2721,3 +2721,250 @@ fn twinflame_strive_pays_more_per_extra_target() {
     assert_eq!(before - after, 5, "{{1}}{{R}} plus {{2}}{{R}}");
     assert_eq!(g.permanents(0).filter(|&x| g.is_token(x)).count(), 2);
 }
+
+#[test]
+fn mosswort_bridge_hides_a_card_and_plays_it_with_ten_power() {
+    let mut g = table();
+    let hidden = top(&mut g, "Palinchron");
+    for _ in 0..3 {
+        top(&mut g, "Forest");
+    }
+    let mb = hand(&mut g, 0, "Mosswort Bridge");
+    act(&mut g, Action::PlayLand(mb));
+    resolve_all(&mut g, &[Action::Pick(hidden)]);
+    assert!(g.obj(mb).tapped);
+    assert_eq!(g.obj(hidden).zone, Zone::Exile);
+    put(&mut g, 0, "Worldspine Wurm");
+    to_main1(&mut g, 5, 0);
+    act(&mut g, Action::Activate(mb, 0));
+    resolve_all(&mut g, &[]);
+    assert!(g.legal_actions().contains(&Action::Cast(hidden)));
+    play(&mut g, hidden, false, &[], &[]);
+    assert_eq!(g.obj(hidden).zone, Zone::Battlefield);
+}
+
+#[test]
+fn spinerock_knoll_plays_its_card_after_seven_damage() {
+    let mut g = table();
+    let hidden = top(&mut g, "Think Twice");
+    let sk = hand(&mut g, 0, "Spinerock Knoll");
+    act(&mut g, Action::PlayLand(sk));
+    resolve_all(&mut g, &[Action::Pick(hidden)]);
+    to_main1(&mut g, 5, 0);
+    put(&mut g, 0, "Sarkhan's Unsealing");
+    let pal = hand(&mut g, 0, "Palinchron"); // power 4: 4 damage
+    act(&mut g, Action::Cast(pal));
+    resolve_all(&mut g, &[Action::Target(Target::Player(1))]);
+    let pal2 = hand(&mut g, 0, "Palinchron");
+    act(&mut g, Action::Cast(pal2));
+    resolve_all(&mut g, &[Action::Target(Target::Player(1))]);
+    assert_eq!(g.players[1].life, 32, "8 damage this turn");
+    act(&mut g, Action::Activate(sk, 0));
+    resolve_all(&mut g, &[]);
+    assert!(g.legal_actions().contains(&Action::Cast(hidden)));
+}
+
+#[test]
+fn cursed_mirror_copies_a_creature_until_end_of_turn_with_haste() {
+    let mut g = table();
+    let ghoul = put(&mut g, 1, "Hungry Ghoul");
+    let cm = hand(&mut g, 0, "Cursed Mirror");
+    play(&mut g, cm, false, &[], &[Action::Pick(ghoul)]);
+    assert_eq!(g.def_of(cm).name, "Hungry Ghoul");
+    assert!(g.keywords(cm).has(Keywords::HASTE));
+    while g.turn == 3 {
+        let a = match g.legal_actions()[0] {
+            d @ Action::Discard(_) => d,
+            _ if matches!(g.pending, Pending::DeclareAttackers(_)) => Action::FinishAttacks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.def_of(cm).name, "Cursed Mirror");
+}
+
+#[test]
+fn wand_of_wonder_casts_an_opponents_instant_free() {
+    let mut g = table();
+    let wand = put(&mut g, 0, "Wand of Wonder");
+    let theirs = g.add_card(1, cid("Think Twice"), Zone::Library);
+    act(&mut g, Action::Activate(wand, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(theirs).zone, Zone::Exile);
+    assert!(g.legal_actions().contains(&Action::Cast(theirs)));
+}
+
+#[test]
+fn vivien_casts_creatures_from_the_top_and_tutors_a_smaller_one() {
+    let mut g = table();
+    let v = hand(&mut g, 0, "Vivien, Monsters' Advocate");
+    play(&mut g, v, false, &[], &[]);
+    let pal = top(&mut g, "Palinchron");
+    assert!(
+        g.legal_actions().contains(&Action::Cast(pal)),
+        "creature spells from the top"
+    );
+    act(&mut g, Action::Loyalty(v, 0));
+    resolve_all(&mut g, &[Action::Mode(2)]);
+    let beast = tokens(&g, 0, "Beast");
+    assert_eq!(beast.len(), 1);
+    assert!(g.keywords(beast[0]).has(Keywords::TRAMPLE));
+    to_main1(&mut g, 5, 0);
+    let small = g.add_card(0, cid("Hungry Ghoul"), Zone::Library);
+    act(&mut g, Action::Loyalty(v, 1));
+    resolve_all(&mut g, &[]);
+    let pal2 = hand(&mut g, 0, "Palinchron");
+    act(&mut g, Action::Cast(pal2));
+    resolve_all(&mut g, &[Action::Pick(small)]);
+    assert_eq!(g.obj(small).zone, Zone::Battlefield);
+}
+
+#[test]
+fn delina_makes_attacking_copies_exiled_at_end_of_combat() {
+    let mut g = game(&["Delina, Wild Mage", "Hungry Ghoul"]);
+    let delina = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "Delina, Wild Mage")
+        .unwrap();
+    let ghoul = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "Hungry Ghoul")
+        .unwrap();
+    while g.step != Step::DeclareAttackers {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(delina));
+    act(&mut g, Action::FinishAttacks);
+    act(&mut g, Action::Target(obj(ghoul)));
+    let mut made = 0;
+    while g.step == Step::DeclareAttackers && (!g.items.is_empty() || matches!(g.pending, Pending::Decide(_)))
+    {
+        let a = if matches!(g.pending, Pending::Decide(_)) {
+            Action::No
+        } else {
+            Action::PassPriority
+        };
+        act(&mut g, a);
+    }
+    made += g.permanents(0).filter(|&x| g.is_token(x)).count();
+    assert!(made >= 1);
+    let t = g.permanents(0).find(|&x| g.is_token(x)).unwrap();
+    assert!(g.obj(t).tapped && !g.types_of(t).legendary);
+    while g.step != Step::Main2 {
+        let a = match g.pending {
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            Pending::Decide(_) => Action::No,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert!(g.permanents(0).all(|x| !g.is_token(x)), "exiled at end of combat");
+}
+
+#[test]
+fn jaxis_copies_another_creature_and_has_blitz() {
+    let mut g = game(&["Jaxis, the Troublemaker", "Hungry Ghoul", "Mountain"]);
+    let jaxis = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "Jaxis, the Troublemaker")
+        .unwrap();
+    let ghoul = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "Hungry Ghoul")
+        .unwrap();
+    let card = hand(&mut g, 0, "Forest");
+    act(&mut g, Action::ActivateWith(jaxis, 0, card));
+    resolve_all(&mut g, &[Action::Target(obj(ghoul))]);
+    assert_eq!(g.obj(card).zone, Zone::Graveyard, "discarded");
+    let copy = g.permanents(0).find(|&x| g.is_token(x)).expect("a copy");
+    assert!(g.keywords(copy).has(Keywords::HASTE));
+    let mut g = table();
+    let j = hand(&mut g, 0, "Jaxis, the Troublemaker");
+    act(&mut g, Action::CastAlternative(j));
+    resolve_all(&mut g, &[]);
+    assert!(g.keywords(j).has(Keywords::HASTE));
+    assert!(g.obj(j).sacrifice_at_end);
+}
+
+#[test]
+fn zopandrel_doubles_at_combat_and_eats_two_for_indestructible() {
+    let mut g = game(&[
+        "Zopandrel, Hunger Dominus",
+        "Hungry Ghoul",
+        "Aegis Turtle",
+        "Forest",
+        "Forest",
+    ]);
+    let z = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "Zopandrel, Hunger Dominus")
+        .unwrap();
+    let ghoul = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "Hungry Ghoul")
+        .unwrap();
+    act(&mut g, Action::ActivateWith(z, 0, ghoul));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(ghoul).zone, Zone::Graveyard);
+    assert_eq!(
+        g.permanents(0).filter(|&x| g.types_of(x).creature).count(),
+        1,
+        "the turtle too"
+    );
+    assert!(g.keywords(z).has(Keywords::INDESTRUCTIBLE));
+    while g.step != Step::BeginCombat {
+        act(&mut g, Action::PassPriority);
+    }
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.power(z), 8);
+}
+
+#[test]
+fn mirage_phalanx_pairs_and_copies_both_at_combat() {
+    let mut g = game(&[
+        "Hungry Ghoul",
+        "Mountain",
+        "Mountain",
+        "Mountain",
+        "Mountain",
+        "Mountain",
+        "Mountain",
+    ]);
+    let ghoul = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "Hungry Ghoul")
+        .unwrap();
+    let mp = hand(&mut g, 0, "Mirage Phalanx");
+    play(&mut g, mp, false, &[], &[Action::Yes, Action::Pick(ghoul)]);
+    assert_eq!(g.paired_partner(mp), Some(ghoul));
+    while g.step != Step::BeginCombat {
+        act(&mut g, Action::PassPriority);
+    }
+    while !g.items.is_empty() || matches!(g.pending, Pending::Decide(_)) {
+        let a = if matches!(g.pending, Pending::Decide(_)) {
+            Action::No
+        } else {
+            Action::PassPriority
+        };
+        act(&mut g, a); // the "may pair" triggers of the copies entering: already paired
+    }
+    let toks: Vec<ObjId> = g.permanents(0).filter(|&x| g.is_token(x)).collect();
+    assert_eq!(toks.len(), 2);
+    assert!(toks.iter().all(|&t| g.keywords(t).has(Keywords::HASTE)));
+}
+
+#[test]
+fn ezuris_predation_makes_a_beast_to_fight_each_opponent_creature() {
+    let mut g = table();
+    let a = put(&mut g, 1, "Hungry Ghoul");
+    let b = put(&mut g, 1, "Palinchron");
+    let ep = hand(&mut g, 0, "Ezuri's Predation");
+    play(&mut g, ep, false, &[], &[]);
+    assert_eq!(g.obj(a).zone, Zone::Graveyard, "a 2/2 against a 4/4");
+    assert_eq!(g.obj(b).zone, Zone::Battlefield, "Palinchron is 4/5");
+    assert_eq!(
+        tokens(&g, 0, "Phyrexian Beast").len(),
+        1,
+        "the one that fought Palinchron died"
+    );
+}

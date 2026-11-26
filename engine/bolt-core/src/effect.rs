@@ -1466,6 +1466,48 @@ pub enum Effect {
     ExileMakeEnchantmentCopy(u8),
     /// "... unless that player pays {X}, where X is this creature's power" (Esper Sentinel).
     UnlessOpponentPaysPower,
+    /// Destroy all creatures; they can't be regenerated (Damnation, Wrath of God).
+    DestroyAllCreaturesNoRegen,
+    /// Hideaway `n` (CR 702.75): look at the top `n` cards, exile one face down (linked to the
+    /// source), and put the rest on the bottom in a random order.
+    Hideaway(u8),
+    /// You may play the source's hideaway card without paying its mana cost this turn, if `cond`
+    /// holds: 0, creatures you control have total power 10 or greater (Mosswort Bridge); 1, an
+    /// opponent was dealt 7 or more damage this turn (Spinerock Knoll).
+    PlayHideaway(u8),
+    /// Wand of Wonder: roll a d20 (X: 1 for 1–9, 2 for 10–19, 3 for 20); each opponent exiles
+    /// cards from the top until an instant or sorcery card, then shuffles the rest in; you may cast
+    /// up to X of those instants and sorceries free.
+    WandOfWonder,
+    /// Create the token `def`, then choose a reach, vigilance or trample counter for it (Vivien).
+    CreateTokenWithKeywordCounterChoice {
+        def: usize,
+    },
+    /// When you next cast a creature spell this turn, search for a creature card with lesser mana
+    /// value and put it onto the battlefield (the source's trigger number `trigger`).
+    NextCreatureSpellThisTurn(usize),
+    /// Search for a creature card with lesser mana value than the item's `extra` (a cast spell),
+    /// onto the battlefield.
+    SearchCreatureLesserManaValue,
+    /// Delina: roll a d20 and create a tapped and attacking, nonlegendary copy of the creature in
+    /// `slot`, exiled at end of combat; on 15 or more, you may roll again.
+    DelinaRoll(u8),
+    /// Create a hasty token copy of the creature in `slot` with "When this token dies, draw a card"
+    /// (the source's trigger number `trigger`); sacrifice it at the next end step (Jaxis).
+    CopyHasteDiesDrawSacrifice {
+        slot: u8,
+        trigger: usize,
+    },
+    /// Put a keyword counter on the source (Zopandrel: indestructible).
+    KeywordCounterSelf(Keywords),
+    /// Mirage Phalanx: while paired, a hasty token copy of it and of its partner, without soulbond,
+    /// exiled at end of combat.
+    PhalanxCopies,
+    /// For each creature your opponents control, create a token (`def`) that fights a different one
+    /// of those creatures (Ezuri's Predation).
+    TokenFightsEachOpponentCreature {
+        def: usize,
+    },
     /// The player in `slot` mills cards equal to the stack item's amount (Altar of Dementia: the
     /// sacrificed creature's power, with `Activated::amount_from_victim_power`).
     MillAmount(u8),
@@ -1487,8 +1529,6 @@ pub enum Effect {
     /// "You may exile it. If you do, ...": exile the source from its owner's graveyard; if it isn't
     /// there, the rest of the effects don't happen (Academy Rector).
     ExileSourceFromGraveyardOrStop,
-    /// Destroy all creatures; they can't be regenerated (Damnation, Wrath of God).
-    DestroyAllCreaturesNoRegen,
     /// Draw a card for each creature you control of this color, WUBRG index (Regal Force: green).
     DrawPerColoredCreatureYouControl(u8),
     /// Regenerate each creature you control (Loxodon Hierarch).
