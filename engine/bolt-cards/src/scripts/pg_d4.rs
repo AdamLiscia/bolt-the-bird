@@ -96,6 +96,18 @@ pub fn script(name: &str) -> Option<Script> {
                 d.activated[n].from_hand_discard = true;
             },
         ),
+        "Barrowin of Clan Undurr" => s(
+            &[
+                "When Barrowin enters, venture into the dungeon.",
+                "Whenever Barrowin attacks, return up to one creature card with mana value 3 or less from your graveyard to the battlefield if you've completed a dungeon.",
+            ],
+            |d, _| {
+                on(d, When::Enters, vec![], vec![sub(SubsystemEffect::Venture)]);
+                // d3's untargeted return (a LookPick of the creature cards with mana value 3 or less).
+                let back = Effect::ReturnCreatureMvAtMostToBattlefield(3);
+                conditional(d, When::Attacks, Condition::CompletedDungeon, vec![], vec![back]);
+            },
+        ),
         "Nadaar, Selfless Paladin" => s(
             &[
                 "Whenever Nadaar enters or attacks, venture into the dungeon.",
@@ -310,6 +322,7 @@ pub const PG_D4_SCRIPTED: &[&str] = &[
     // Dungeons
     "Hama Pashar, Ruin Seeker",
     "Dungeon Delver",
+    "Barrowin of Clan Undurr",
     "Radiant Solar",
     "Nadaar, Selfless Paladin",
     "Yuan-Ti Malison",

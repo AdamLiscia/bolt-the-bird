@@ -6510,6 +6510,46 @@
    "lane": "d4",
    "theme": "effects",
    "owner": "d3"
+  },
+  {
+   "card": "There and Back Again",
+   "deck": "d4 handback",
+   "missing": "chapter I: 'up to one target creature can't block for as long as you control this Saga' (a can't-block that lasts while the source stays under your control). Smaug is token 95 (in lane-d4); The Ring tempts you, the Mountain search and chapter III are ready",
+   "lane": "d4",
+   "theme": "merger_delegated",
+   "owner": "mac-b"
+  },
+  {
+   "card": "Alchemist's Talent",
+   "deck": "d4 handback",
+   "missing": "level 2: Treasures you control have '{T}, Sacrifice this artifact: Add two mana of any one color' (d1); level 3: 'if mana from a Treasure was spent to cast it' tracking (d1). Levels are ready (lane B's)",
+   "lane": "d4",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Fisher's Talent",
+   "deck": "d4 handback",
+   "missing": "level 1: look at the top card, reveal it if it's a land for a 1/1 blue Fish token (d3); levels 2 and 3: token replacements Fish -> 3/3 blue Shark -> 8/8 blue Octopus (Mac B), and those tokens",
+   "lane": "d4",
+   "theme": "replace_filter",
+   "owner": "mac-b"
+  },
+  {
+   "card": "Fortune Teller's Talent",
+   "deck": "d4 handback",
+   "missing": "level 2: 'as long as you've cast a spell this turn, you may play cards from the top of your library' (Mac C zones); level 3: spells cast from anywhere other than your hand cost {2} less (d1)",
+   "lane": "d4",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Gourmand's Talent",
+   "deck": "d4 handback",
+   "missing": "level 1: during your turn, artifacts you control are Foods and have '{2}, {T}, Sacrifice this artifact: You gain 3 life' (d3 types and a granted ability); levels 2 and 3 are on existing pieces (first life gain each turn: Raccoon 3/3, counters on each creature)",
+   "lane": "d4",
+   "theme": "effects",
+   "owner": "d3"
   }
  ]
 }
