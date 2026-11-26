@@ -1900,6 +1900,8 @@ impl Game {
                             Scope::OtherYourCreatures => mine && creature && src != id,
                             Scope::EachLand => self.types_of(id).land,
                             Scope::YourLandCreatures => mine && creature && self.types_of(id).land,
+                            Scope::OtherYourPermanents => mine && src != id,
+                            Scope::OpponentsCreatures => !mine && creature,
                             Scope::OtherYourFliers => {
                                 mine && creature
                                     && src != id
@@ -8065,6 +8067,11 @@ impl Game {
                     SearchFor::ColoredCreatureMvAtMost(c, mv) => {
                         d.types.creature && d.colors[c as usize] && d.cost.mana_value() <= mv
                     }
+                    SearchFor::InstantOrSorcery => d.types.instant || d.types.sorcery,
+                    SearchFor::Nonlegendary => !d.types.legendary,
+                    SearchFor::ArtifactOrEnchantment => d.types.artifact || d.types.enchantment,
+                    SearchFor::Enchantment => d.types.enchantment,
+                    SearchFor::CreaturePowerAtMost(n) => d.types.creature && d.power <= n,
                 }
             })
             .collect()
@@ -9728,6 +9735,7 @@ impl Game {
             Who::You => vec![item.controller],
             Who::EachOpponent => vec![opponent(item.controller)],
             Who::TargetPlayer(n) | Who::ControllerOf(n) => slot_player(n).into_iter().collect(),
+            Who::ActivePlayer => vec![self.active],
         }
     }
 
@@ -14257,6 +14265,97 @@ impl Game {
                         let turn = self.turn;
                         self.obj_mut(id).eot_creature = Some((turn, power, toughness, subtype, keywords));
                     }
+                }
+            }
+            Effect::MillAmount(slot) => {
+                let n = item.amount.max(0);
+                for p in self.players_for(item, legal, Who::TargetPlayer(slot)) {
+                    for _ in 0..n {
+                        if let Some(&c) = self.players[p].library.last() {
+                            self.move_to(c, Zone::Graveyard);
+                        }
+                    }
+                }
+            }
+            Effect::DestroyAllArtifacts => {
+                let all: Vec<ObjId> = self
+                    .battlefield
+                    .iter()
+                    .copied()
+                    .filter(|&x| self.types_of(x).artifact)
+                    .collect();
+                for x in all {
+                    self.destroy(x);
+                }
+            }
+            Effect::DestroyAllLands => {
+                let all: Vec<ObjId> = self
+                    .battlefield
+                    .iter()
+                    .copied()
+                    .filter(|&x| self.types_of(x).land)
+                    .collect();
+                for x in all {
+                    self.destroy(x);
+                }
+            }
+            Effect::TargetDrawsXLosesX(slot) => {
+                for p in self.players_for(item, legal, Who::TargetPlayer(slot)) {
+                    for _ in 0..item.x {
+                        self.draw(p);
+                    }
+                    self.lose_life(p, item.x as i32);
+                }
+            }
+            Effect::ExileAllOfType(ty) => {
+                let all: Vec<ObjId> = self
+                    .battlefield
+                    .iter()
+                    .copied()
+                    .filter(|&x| {
+                        let t = self.types_of(x);
+                        match ty {
+                            0 => t.artifact,
+                            1 => t.creature,
+                            2 => t.enchantment,
+                            _ => t.planeswalker,
+                        }
+                    })
+                    .collect();
+                for x in all {
+                    self.move_to(x, Zone::Exile);
+                }
+            }
+            Effect::UntapNonlandYouControl => {
+                let mine: Vec<ObjId> = self
+                    .permanents(item.controller)
+                    .filter(|&x| !self.types_of(x).land)
+                    .collect();
+                for x in mine {
+                    self.untap_by_effect(x);
+                }
+            }
+            Effect::GainLifePerCardInHand => {
+                let n = self.players[item.controller].hand.len() as i32;
+                if n > 0 {
+                    self.gain_life(item.controller, n);
+                }
+            }
+            Effect::GainAndDrawPerLandYouControl => {
+                let p = item.controller;
+                let n = self.permanents(p).filter(|&x| self.types_of(x).land).count();
+                if n > 0 {
+                    self.gain_life(p, n as i32);
+                }
+                for _ in 0..n {
+                    self.draw(p);
+                }
+            }
+            Effect::ExileSourceFromGraveyardOrStop => {
+                if self.obj(src).zone == Zone::Graveyard {
+                    self.move_to(src, Zone::Exile);
+                } else {
+                    self.resolving.as_mut().expect("resolving").remaining.clear();
                 }
             }
         }
