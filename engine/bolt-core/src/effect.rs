@@ -129,6 +129,12 @@ pub struct Filter {
     pub creature_needs_defender: bool,
     /// Artifact cards only (graveyard targets: Buried Ruin).
     pub artifact_cards: bool,
+    /// Creatures with power or toughness at most this (Warping Wail: 1).
+    pub creature_power_or_toughness_at_most: Option<i32>,
+    /// Sorcery spells only (Warping Wail), with `spells`.
+    pub spell_sorcery: bool,
+    /// Only objects with an even mana value; zero is even (Desecrate Reality).
+    pub mana_value_even: bool,
 }
 
 impl Filter {
@@ -191,6 +197,9 @@ impl Filter {
         spell_instant_or_sorcery: false,
         creature_needs_defender: false,
         artifact_cards: false,
+        creature_power_or_toughness_at_most: None,
+        spell_sorcery: false,
+        mana_value_even: false,
     };
 
     pub const CREATURE: Filter = Filter {
@@ -2127,6 +2136,56 @@ pub enum Effect {
     /// "If it's not a token, create a token that's a copy of it, except it's an artifact in
     /// addition to its other types." (Vaultborn Tyrant's dies trigger)
     TokenCopyOfSourceArtifactIfNontoken,
+    /// Each player who controls an artifact or enchantment creates a token of definition `def`
+    /// (Fade from History: a 2/2 green Bear), active player first.
+    EachPlayerWithArtifactOrEnchantmentCreatesToken {
+        def: usize,
+    },
+    /// Amass [subtype] `n` (CR 701.44): if you don't control an Army creature, create a 0/0 black
+    /// [subtype] Army token (`def`); put `n` +1/+1 counters on an Army you control (the first one,
+    /// when there are several); it becomes a [subtype] in addition to its other types.
+    Amass {
+        subtype: &'static str,
+        n: u8,
+        def: usize,
+    },
+    /// Return an instant or sorcery card at random from your graveyard to your hand (Exalted Flamer
+    /// of Tzeentch).
+    ReturnRandomInstantOrSorceryFromGraveyard,
+    /// Look at the top `n` (3) cards of your library; put one into your hand, one on the bottom, and
+    /// exile the rest; you may play the exiled card this turn (Expressive Iteration), as
+    /// `Decision::IterationPick`.
+    LookHandBottomExilePlay(u8),
+    /// Choose an instant or sorcery card in your graveyard; you may cast it this turn, and it's exiled
+    /// instead of going to the graveyard (Mission Briefing), as `Decision::CastFromGraveyardThisTurn`.
+    ChooseGraveyardSpellToCastThisTurn,
+    /// Exile each instant and sorcery card from your graveyard; copy each one, and you may cast the
+    /// copies free (overloaded Mizzix's Mastery).
+    ExileCastCopyFreeEachInstantSorcery,
+    /// You gain `life`; if this is the first time this ability has resolved this turn, `counters`
+    /// +1/+1 counters on the source (Teething Wurmlet: 1 and 1; counted per source, each turn).
+    GainLifeCountersIfFirstResolutionThisTurn {
+        life: i32,
+        counters: i32,
+    },
+    /// Return a permanent card with an odd mana value from your graveyard to the battlefield
+    /// (Desecrate Reality's adamant half), as `Decision::LookPick` with
+    /// `Pick::PermanentOddManaValue`.
+    ReturnOddManaValuePermanentToBattlefield,
+    /// Tap all creatures (Ensnare).
+    TapAllCreatures,
+    /// Look at the top `n` cards of your library; put two of them into your hand and the rest on the
+    /// bottom in any order (Dig Through Time: 7), as `Decision::TakeTwoBottomRest`.
+    LookTakeTwoBottomAnyOrder(u8),
+    /// X times: the opponent loses `life` life unless they sacrifice a nonland permanent or discard a
+    /// card, their choice each time (Torment of Hailfire: 3), as `Decision::SacrificeDiscardOrLoseLife`.
+    OpponentLosesUnlessSacrificesOrDiscardsX {
+        life: i32,
+    },
+    /// Return up to one creature card with mana value `max_mv` or less from your graveyard to the
+    /// battlefield, not targeted (Barrowin of Clan Undurr: 3), as `Decision::LookPick` with
+    /// `Pick::CreatureManaValueAtMost`.
+    ReturnCreatureMvAtMostToBattlefield(u32),
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -2401,6 +2460,10 @@ pub enum Pick {
     Enchantment,
     /// A non-Human creature card (Kinnan, Bonder Prodigy).
     NonHumanCreature,
+    /// A permanent card with an odd mana value (Desecrate Reality).
+    PermanentOddManaValue,
+    /// A creature card with mana value at most this (Barrowin of Clan Undurr: 3).
+    CreatureManaValueAtMost(u32),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

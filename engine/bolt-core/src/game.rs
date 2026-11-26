@@ -1225,6 +1225,18 @@ pub enum Decision {
         cards: Vec<ObjId>,
         max_mv: u32,
     },
+    /// `Pick` one of `cards` (looked at, still on top of your library) to put into your hand
+    /// (`to_hand`) or on the bottom; the rest are exiled, playable this turn (Expressive Iteration).
+    IterationPick { cards: Vec<ObjId>, to_hand: bool },
+    /// `Pick` an instant or sorcery card in your graveyard: you may cast it this turn, exiled instead
+    /// of going to your graveyard (Mission Briefing).
+    CastFromGraveyardThisTurn { cards: Vec<ObjId> },
+    /// `Pick` one of `cards` (looked at, on top of your library) to put into your hand; `left` picks
+    /// including this one; then the rest go on the bottom in the order you choose (Dig Through Time).
+    TakeTwoBottomRest { cards: Vec<ObjId>, left: u8 },
+    /// `Pick` a nonland permanent you control to sacrifice or a card in your hand to discard, or `No`
+    /// to lose `life` life; `left` more rounds after this one (Torment of Hailfire).
+    SacrificeDiscardOrLoseLife { left: u32, life: i32 },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -5568,6 +5580,17 @@ impl Game {
             return false;
         }
         if f.artifact_cards && !self.types_of(id).artifact {
+            return false;
+        }
+        if let Some(m) = f.creature_power_or_toughness_at_most {
+            if !(on_stack || self.power(id) <= m || self.toughness(id) <= m) {
+                return false;
+            }
+        }
+        if f.spell_sorcery && !(on_stack && self.types_of(id).sorcery) {
+            return false;
+        }
+        if f.mana_value_even && !self.def_of(id).cost.mana_value().is_multiple_of(2) {
             return false;
         }
         if on_stack {
@@ -10584,6 +10607,8 @@ impl Game {
             Pick::NonHumanCreature => {
                 d.types.creature && !d.changeling && !d.subtypes.iter().any(|s| s == "Human")
             }
+            Pick::PermanentOddManaValue => d.types.is_permanent() && !d.cost.mana_value().is_multiple_of(2),
+            Pick::CreatureManaValueAtMost(n) => d.types.creature && d.cost.mana_value() <= n,
         }
     }
 
@@ -11461,6 +11486,14 @@ impl Game {
                 v
             }
             Decision::ExileOwnPermanent { .. } => self.permanents(p).map(Action::Pick).collect(),
+            Decision::IterationPick { cards, .. }
+            | Decision::CastFromGraveyardThisTurn { cards }
+            | Decision::TakeTwoBottomRest { cards, .. } => cards.iter().copied().map(Action::Pick).collect(),
+            Decision::SacrificeDiscardOrLoseLife { .. } => {
+                let mut v: Vec<Action> = self.torment_options(p).into_iter().map(Action::Pick).collect();
+                v.push(Action::No);
+                v
+            }
             Decision::BraidsOpponent { types, .. } => {
                 let mut v: Vec<Action> = self
                     .braids_options(p, Some(*types))
@@ -12799,6 +12832,37 @@ impl Game {
                 self.move_to(c, Zone::Exile);
                 self.exile_own_permanents(p, left);
             }
+            (Decision::IterationPick { cards, to_hand }, Action::Pick(c)) => {
+                let rest: Vec<ObjId> = cards.into_iter().filter(|&x| x != c).collect();
+                if to_hand {
+                    self.move_to(c, Zone::Hand);
+                    self.iteration_next(p, rest);
+                } else {
+                    self.put_on_bottom(c);
+                    self.iteration_exile(p, rest);
+                }
+            }
+            (Decision::CastFromGraveyardThisTurn { .. }, Action::Pick(c)) => {
+                // "You may cast it this turn. If that spell would be put into your graveyard, exile it
+                // instead": what a flashback grant for this turn does (Snapcaster Mage's).
+                self.obj_mut(c).flashback_eot = true;
+            }
+            (Decision::TakeTwoBottomRest { cards, left }, Action::Pick(c)) => {
+                self.move_to(c, Zone::Hand);
+                let rest: Vec<ObjId> = cards.into_iter().filter(|&x| x != c).collect();
+                self.take_two_next(p, rest, left.saturating_sub(1));
+            }
+            (Decision::SacrificeDiscardOrLoseLife { left, life }, a) => {
+                match a {
+                    Action::Pick(c) if self.obj(c).zone == Zone::Battlefield => {
+                        self.move_to(c, Zone::Graveyard);
+                        self.sacrificed(c, p);
+                    }
+                    Action::Pick(c) => self.move_to(c, Zone::Graveyard), // discarded, as Onyx's −8
+                    _ => self.lose_life(p, life),
+                }
+                self.torment_next(p, left, life);
+            }
             (d, a) => unreachable!("legal action {a:?} unhandled for {d:?}"),
         }
         if self.decision.is_none() {
@@ -13263,6 +13327,64 @@ impl Game {
             0 => {}
             1 => self.move_to(left[0], Zone::Hand),
             _ => self.ask(p, Decision::TakeMilledCard { cards: left }),
+        }
+    }
+
+    /// Expressive Iteration, after the card for the hand: one of `rest` to the bottom (asked when
+    /// there's a choice), the others exiled.
+    fn iteration_next(&mut self, p: PlayerId, rest: Vec<ObjId>) {
+        match rest.len() {
+            0 => {}
+            1 => self.put_on_bottom(rest[0]),
+            _ => self.ask(
+                p,
+                Decision::IterationPick {
+                    cards: rest,
+                    to_hand: false,
+                },
+            ),
+        }
+    }
+
+    /// Torment of Hailfire: what `p` can give up instead of losing life.
+    fn torment_options(&self, p: PlayerId) -> Vec<ObjId> {
+        let mut v: Vec<ObjId> = self
+            .permanents(p)
+            .filter(|&x| !self.types_of(x).land && !self.cant_be_sacrificed(x))
+            .collect();
+        v.extend(self.players[p].hand.iter().copied());
+        v
+    }
+
+    /// Torment of Hailfire: `left` more rounds for `p` (asked only with something to give up).
+    fn torment_next(&mut self, p: PlayerId, mut left: u32, life: i32) {
+        while left > 0 {
+            left -= 1;
+            if !self.torment_options(p).is_empty() {
+                self.ask(p, Decision::SacrificeDiscardOrLoseLife { left, life });
+                return;
+            }
+            self.lose_life(p, life);
+        }
+    }
+
+    /// Dig Through Time: take `left` more of `cards` into the hand (asked), then the rest on the
+    /// bottom in the order `p` chooses.
+    fn take_two_next(&mut self, p: PlayerId, cards: Vec<ObjId>, left: u8) {
+        if left > 0 && !cards.is_empty() {
+            self.ask(p, Decision::TakeTwoBottomRest { cards, left });
+        } else if !cards.is_empty() {
+            self.bottom_in_order(p, cards);
+        }
+    }
+
+    /// Expressive Iteration: exile `cards`; `p` may play them this turn.
+    fn iteration_exile(&mut self, p: PlayerId, cards: Vec<ObjId>) {
+        for c in cards {
+            self.move_to(c, Zone::Exile);
+            if self.obj(c).zone == Zone::Exile {
+                self.obj_mut(c).playable = Some((p, self.turn));
+            }
         }
     }
 
@@ -19767,6 +19889,176 @@ impl Game {
                         );
                         self.last_created.push(id);
                     }
+                }
+            }
+            Effect::EachPlayerWithArtifactOrEnchantmentCreatesToken { def } => {
+                for p in [self.active, opponent(self.active)] {
+                    let has = self.permanents(p).any(|x| {
+                        let t = self.types_of(x);
+                        t.artifact || t.enchantment
+                    });
+                    if has {
+                        self.create_token(p, def);
+                    }
+                }
+            }
+            Effect::Amass { subtype, n, def } => {
+                let p = item.controller;
+                let army = |g: &Game| g.creatures(p).find(|&c| g.has_subtype(c, "Army"));
+                if army(self).is_none() {
+                    self.create_token(p, def);
+                }
+                if let Some(a) = army(self) {
+                    self.add_counters(a, n as i32);
+                    if !self.has_subtype(a, subtype) {
+                        self.obj_mut(a).extra_subtypes.push(subtype);
+                    }
+                }
+            }
+            Effect::ReturnRandomInstantOrSorceryFromGraveyard => {
+                let p = item.controller;
+                let cards: Vec<ObjId> = self.players[p]
+                    .graveyard
+                    .iter()
+                    .copied()
+                    .filter(|&c| {
+                        let t = self.def_of(c).types;
+                        t.instant || t.sorcery
+                    })
+                    .collect();
+                if !cards.is_empty() {
+                    let c = cards[self.rng.below(cards.len())];
+                    self.move_to(c, Zone::Hand);
+                }
+            }
+            Effect::LookHandBottomExilePlay(n) => {
+                let p = item.controller;
+                let cards: Vec<ObjId> = self.players[p]
+                    .library
+                    .iter()
+                    .rev()
+                    .take(n as usize)
+                    .copied()
+                    .collect();
+                if !cards.is_empty() {
+                    self.ask(p, Decision::IterationPick { cards, to_hand: true });
+                }
+            }
+            Effect::ChooseGraveyardSpellToCastThisTurn => {
+                let p = item.controller;
+                let cards: Vec<ObjId> = self.players[p]
+                    .graveyard
+                    .iter()
+                    .copied()
+                    .filter(|&c| {
+                        let t = self.def_of(c).types;
+                        t.instant || t.sorcery
+                    })
+                    .collect();
+                if !cards.is_empty() {
+                    self.ask(p, Decision::CastFromGraveyardThisTurn { cards });
+                }
+            }
+            Effect::ExileCastCopyFreeEachInstantSorcery => {
+                let p = item.controller;
+                let cards: Vec<ObjId> = self.players[p]
+                    .graveyard
+                    .iter()
+                    .copied()
+                    .filter(|&c| {
+                        let t = self.def_of(c).types;
+                        t.instant || t.sorcery
+                    })
+                    .collect();
+                for card in cards {
+                    self.move_to(card, Zone::Exile);
+                    let def = self.obj(card).def;
+                    let copy = self.add_card(p, def, Zone::Exile);
+                    let o = self.obj_mut(copy);
+                    o.card_copy = true;
+                    o.cast_free = true;
+                    self.free_casts.push(copy);
+                    self.free_caster = p;
+                }
+            }
+            Effect::GainLifeCountersIfFirstResolutionThisTurn { life, counters } => {
+                let turn = self.turn;
+                let o = self.obj_mut(src);
+                o.resolved_this_turn = if o.resolved_this_turn.0 == turn {
+                    (turn, o.resolved_this_turn.1 + 1)
+                } else {
+                    (turn, 1)
+                };
+                let first = o.resolved_this_turn.1 == 1;
+                self.gain_life(item.controller, life);
+                if first {
+                    self.add_counters(src, counters);
+                }
+            }
+            Effect::ReturnOddManaValuePermanentToBattlefield => {
+                let pick = Pick::PermanentOddManaValue;
+                let cards: Vec<ObjId> = self.players[item.controller]
+                    .graveyard
+                    .iter()
+                    .copied()
+                    .filter(|&c| self.picks(c, pick))
+                    .collect();
+                if !cards.is_empty() {
+                    self.ask(
+                        item.controller,
+                        Decision::LookPick {
+                            cards,
+                            pick,
+                            to: LookTo::Battlefield,
+                            rest: None,
+                        },
+                    );
+                }
+            }
+            Effect::TapAllCreatures => {
+                let all: Vec<ObjId> = self
+                    .battlefield
+                    .iter()
+                    .copied()
+                    .filter(|&x| self.types_of(x).creature)
+                    .collect();
+                for c in all {
+                    self.become_tapped(c);
+                }
+            }
+            Effect::LookTakeTwoBottomAnyOrder(n) => {
+                let p = item.controller;
+                let cards: Vec<ObjId> = self.players[p]
+                    .library
+                    .iter()
+                    .rev()
+                    .take(n as usize)
+                    .copied()
+                    .collect();
+                self.take_two_next(p, cards, 2);
+            }
+            Effect::OpponentLosesUnlessSacrificesOrDiscardsX { life } => {
+                let q = opponent(item.controller);
+                self.torment_next(q, item.x as u32, life);
+            }
+            Effect::ReturnCreatureMvAtMostToBattlefield(n) => {
+                let pick = Pick::CreatureManaValueAtMost(n);
+                let cards: Vec<ObjId> = self.players[item.controller]
+                    .graveyard
+                    .iter()
+                    .copied()
+                    .filter(|&c| self.picks(c, pick))
+                    .collect();
+                if !cards.is_empty() {
+                    self.ask(
+                        item.controller,
+                        Decision::LookPick {
+                            cards,
+                            pick,
+                            to: LookTo::Battlefield,
+                            rest: None,
+                        },
+                    );
                 }
             }
         }
