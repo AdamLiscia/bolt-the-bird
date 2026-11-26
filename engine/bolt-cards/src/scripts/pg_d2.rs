@@ -941,6 +941,34 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::SlotCreatureToYourGraveyardThisTurn, vec![that], vec![Effect::Reanimate(0)]);
             },
         ),
+        // ---- Core: triggers, batch 13 ----
+        "Sheoldred, Whispering One" => s(
+            &[
+                "At the beginning of your upkeep, return target creature card from your graveyard to the battlefield.",
+                "At the beginning of each opponent's upkeep, that player sacrifices a creature of their choice.",
+            ],
+            |d, _| {
+                let card = graveyard_cards(true, Controller::You);
+                on(d, When::Upkeep { your_turn_only: true }, vec![card], vec![Effect::Reanimate(0)]);
+                // An opponent's upkeep is one that isn't yours; "that player" is the active player.
+                let sac = vec![Effect::SacrificeCreatures { who: Who::ActivePlayer, n: 1 }];
+                conditional(d, When::Upkeep { your_turn_only: false }, Condition::NotYourTurn, vec![], sac);
+            },
+        ),
+        "Necropotence" => s(
+            &[
+                "Skip your draw step.",
+                "Whenever you discard a card, exile that card from your graveyard.",
+                "Pay 1 life: Exile the top card of your library face down. Put that card into your hand at the beginning of your next end step.",
+            ],
+            |d, _| {
+                d.skip_draw_step = true;
+                let that = Filter { triggering: true, ..graveyard_cards(false, Controller::You) };
+                on(d, When::YouDiscard, vec![that], vec![Effect::Exile(0)]);
+                let n = activated(d, "", false, vec![], vec![Effect::ExileTopFaceDownToHandAtYourNextEndStep]);
+                d.activated[n].life = 1;
+            },
+        ),
         _ => None,
     }
 }
@@ -1083,6 +1111,9 @@ pub const PG_D2_SCRIPTED: &[&str] = &[
     "Sefris of the Hidden Ways",
     "Lunar Convocation",
     "Saffi Eriksdotter",
+    // Core: triggers, batch 13
+    "Sheoldred, Whispering One",
+    "Necropotence",
     // The Gitrog, Ravenous Ride
     "Demonic Tutor",
     "Exquisite Blood",

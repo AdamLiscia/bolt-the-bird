@@ -170,7 +170,7 @@
   {
    "card": "Camellia, the Seedmiser",
    "deck": "Ygra, Eater of All",
-   "missing": "a 'whenever you sacrifice one or more Foods' trigger; forage as a cost",
+   "missing": "a 'whenever you sacrifice one or more Foods' trigger; forage as a cost [d3 batch 20: Effect::CountersOnOtherYourSubtype(Squirrel) is in; waits on d1's forage]",
    "lane": "d1",
    "theme": "mana",
    "owner": "d1"
@@ -450,7 +450,7 @@
   {
    "card": "Comet Storm",
    "deck": "Raggadragga, Goreguts Boss",
-   "missing": "multikicker",
+   "missing": "multikicker [d3: blocked on d1's multikicker; a target slot per kick needs the kick count d1 stores, then d3 adds the Filter]",
    "lane": "d1",
    "theme": "mana",
    "owner": "d1"
@@ -1682,7 +1682,7 @@
   {
    "card": "Mikaeus, the Unhallowed",
    "deck": "The Gitrog, Ravenous Ride (RuricMo)",
-   "missing": "needs core: undying, intimidate, and a 'Human deals damage to you' trigger",
+   "missing": "needs core: undying, intimidate, and a 'Human deals damage to you' trigger [d3 batch 20: the +1/+1 is Scope::OtherYourNonHumanCreatures; granting undying needs d1: a Keywords::UNDYING that statics can grant and the dies path honours, then the static gets keywords: UNDYING]",
    "lane": "d2",
    "theme": "keywords",
    "owner": "d1"
@@ -1834,7 +1834,7 @@
   {
    "card": "Ancient Brass Dragon",
    "deck": "Kaalia of the Vast",
-   "missing": "needs core: a d20 roll and reanimating cards with total mana value up to the result",
+   "missing": "needs core: a d20 roll and reanimating cards with total mana value up to the result [done by d3 batch 20: scripted, Effect::RollD20ReanimateTotalManaValue, chosen on resolution, not targeted]",
    "lane": "d2",
    "theme": "effects",
    "owner": "d3"
@@ -1858,7 +1858,7 @@
   {
    "card": "Dragon Tempest",
    "deck": "Kaalia of the Vast",
-   "missing": "needs core: a 'creature with flying enters' trigger, and Dragon-count damage from the entering Dragon",
+   "missing": "needs core: a 'creature with flying enters' trigger, and Dragon-count damage from the entering Dragon [done by d3 batch 20: scripted, Effect::SlotDealsDamagePerSubtypeYouControl]",
    "lane": "d2",
    "theme": "effects",
    "owner": "d3"
@@ -2882,7 +2882,7 @@
   {
    "card": "Ledger Shredder",
    "deck": "Sefris of the Hidden Ways",
-   "missing": "needs core: connive, and a trigger on any player's second spell each turn",
+   "missing": "needs core: connive, and a trigger on any player's second spell each turn [done by d3 batch 20: scripted (connive and the second-spell trigger were in)]",
    "lane": "d3",
    "theme": "effects",
    "owner": "d3"
@@ -4610,7 +4610,7 @@
   {
    "card": "Kozilek's Command",
    "deck": "Zhulodok, Void Gorger (Adam)",
-   "missing": "effects and statics [moved from d3 to lane B, 2026-11-26]",
+   "missing": "effects and statics [moved from d3 to lane B, 2026-11-26] [d3 batch 20: Filter::mana_value_at_most_x and Filter::up_to_x (repeat the slot, min_targets Some(0)) are in; the choose-two modal with X is lane B's]",
    "lane": "mac-b",
    "theme": "effects",
    "owner": "mac-b"
@@ -5010,7 +5010,7 @@
   {
    "card": "Metallurgic Summonings",
    "deck": "Ghyrson Starn, Kelermorph (Spr3adsh33)",
-   "missing": "effects [moved from d3 to lane B, 2026-11-26]",
+   "missing": "effects [moved from d3 to lane B, 2026-11-26] [d3 batch 20: Effect::CreateTokenXxAmount (base X/X, token construct_x) and Effect::ReturnInstantsAndSorceriesFromGraveyard are in; waits on d2's YouCastInstantOrSorceryWithMv and d1's exile-self cost and six-artifacts condition]",
    "lane": "mac-b",
    "theme": "effects",
    "owner": "mac-b"
@@ -5486,6 +5486,934 @@
    "lane": "mac-b",
    "theme": "merger_delegated",
    "owner": "mac-b"
+  },
+  {
+   "card": "Field of the Dead",
+   "deck": "Malik, Grim Manipulator (Spr3adsh33)",
+   "missing": "lane C's Malik routing (2026-11-26); multi-owner cards: see its report",
+   "lane": "mac-c",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Panharmonicon",
+   "deck": "Malik, Grim Manipulator (Spr3adsh33)",
+   "missing": "lane C's Malik routing (2026-11-26); multi-owner cards: see its report",
+   "lane": "mac-c",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Bennie Bracks, Zoologist",
+   "deck": "Malik, Grim Manipulator (Spr3adsh33)",
+   "missing": "lane C's Malik routing (2026-11-26); multi-owner cards: see its report",
+   "lane": "mac-c",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Ingenious Artillerist",
+   "deck": "Malik, Grim Manipulator (Spr3adsh33)",
+   "missing": "lane C's Malik routing (2026-11-26); multi-owner cards: see its report",
+   "lane": "mac-c",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Thalisse, Reverent Medium",
+   "deck": "Malik, Grim Manipulator (Spr3adsh33)",
+   "missing": "lane C's Malik routing (2026-11-26); multi-owner cards: see its report",
+   "lane": "mac-c",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Gisa's Favorite Shovel",
+   "deck": "Malik, Grim Manipulator (Spr3adsh33)",
+   "missing": "lane C's Malik routing (2026-11-26); multi-owner cards: see its report",
+   "lane": "mac-c",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Demon's Disciple",
+   "deck": "Malik, Grim Manipulator (Spr3adsh33)",
+   "missing": "lane C's Malik routing (2026-11-26); multi-owner cards: see its report",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Sheoldred's Edict",
+   "deck": "Malik, Grim Manipulator (Spr3adsh33)",
+   "missing": "lane C's Malik routing (2026-11-26); multi-owner cards: see its report",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Soul Shatter",
+   "deck": "Malik, Grim Manipulator (Spr3adsh33)",
+   "missing": "lane C's Malik routing (2026-11-26); multi-owner cards: see its report",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Vona's Hunger",
+   "deck": "Malik, Grim Manipulator (Spr3adsh33)",
+   "missing": "lane C's Malik routing (2026-11-26); multi-owner cards: see its report",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Make an Example",
+   "deck": "Malik, Grim Manipulator (Spr3adsh33)",
+   "missing": "lane C's Malik routing (2026-11-26); multi-owner cards: see its report",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Mythos of Snapdax",
+   "deck": "Malik, Grim Manipulator (Spr3adsh33)",
+   "missing": "lane C's Malik routing (2026-11-26); multi-owner cards: see its report",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Reckless Handling",
+   "deck": "Malik, Grim Manipulator (Spr3adsh33)",
+   "missing": "lane C's Malik routing (2026-11-26); multi-owner cards: see its report",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Smaug, the Magnificent Trickster",
+   "deck": "Malik, Grim Manipulator (Spr3adsh33)",
+   "missing": "lane C's Malik routing (2026-11-26); multi-owner cards: see its report",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Mahadi, Emporium Master",
+   "deck": "Malik, Grim Manipulator (Spr3adsh33)",
+   "missing": "lane C's Malik routing (2026-11-26); multi-owner cards: see its report",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Gadrak, the Crown-Scourge",
+   "deck": "Malik, Grim Manipulator (Spr3adsh33)",
+   "missing": "lane C's Malik routing (2026-11-26); multi-owner cards: see its report",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Goblin Engineer",
+   "deck": "Malik, Grim Manipulator (Spr3adsh33)",
+   "missing": "lane C's Malik routing (2026-11-26); multi-owner cards: see its report",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Evin, Waterdeep Opportunist",
+   "deck": "Malik, Grim Manipulator (Spr3adsh33)",
+   "missing": "lane C's Malik routing (2026-11-26); multi-owner cards: see its report",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Malik, Grim Manipulator",
+   "deck": "Malik, Grim Manipulator (Spr3adsh33)",
+   "missing": "lane C's Malik routing (2026-11-26); multi-owner cards: see its report",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Goldspan Dragon",
+   "deck": "Malik, Grim Manipulator (Spr3adsh33)",
+   "missing": "lane C's Malik routing (2026-11-26); multi-owner cards: see its report",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Kaya's Guile",
+   "deck": "Malik, Grim Manipulator (Spr3adsh33)",
+   "missing": "lane C's Malik routing (2026-11-26); multi-owner cards: see its report",
+   "lane": "mac-c",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Xorn",
+   "deck": "Malik, Grim Manipulator (Spr3adsh33)",
+   "missing": "lane C's Malik routing (2026-11-26); multi-owner cards: see its report",
+   "lane": "mac-c",
+   "theme": "merger_delegated",
+   "owner": "mac-b"
+  },
+  {
+   "card": "Bolas's Citadel",
+   "deck": "Malik, Grim Manipulator (Spr3adsh33)",
+   "missing": "lane C's Malik routing (2026-11-26); multi-owner cards: see its report",
+   "lane": "mac-c",
+   "theme": "merger_delegated",
+   "owner": "mac-b"
+  },
+  {
+   "card": "Sheoldred // The True Scriptures",
+   "deck": "Malik, Grim Manipulator (Spr3adsh33)",
+   "missing": "lane C's Malik routing (2026-11-26); multi-owner cards: see its report",
+   "lane": "mac-c",
+   "theme": "subsystems",
+   "owner": "d4"
+  },
+  {
+   "card": "Agent of the Iron Throne",
+   "deck": "Malik, Grim Manipulator (Spr3adsh33)",
+   "missing": "lane C's Malik routing (2026-11-26); multi-owner cards: see its report",
+   "lane": "mac-c",
+   "theme": "subsystems",
+   "owner": "d4"
+  },
+  {
+   "card": "There and Back Again",
+   "deck": "Malik, Grim Manipulator (Spr3adsh33)",
+   "missing": "lane C's Malik routing (2026-11-26); multi-owner cards: see its report",
+   "lane": "mac-c",
+   "theme": "subsystems",
+   "owner": "d4"
+  },
+  {
+   "card": "Nahiri's Resolve",
+   "deck": "Malik, Grim Manipulator (Spr3adsh33)",
+   "missing": "lane C's Malik routing (2026-11-26); multi-owner cards: see its report",
+   "lane": "mac-c",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Prosper, Tome-Bound",
+   "deck": "Malik, Grim Manipulator (Spr3adsh33)",
+   "missing": "lane C's Malik routing (2026-11-26); multi-owner cards: see its report",
+   "lane": "mac-c",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Treasure Map // Treasure Cove",
+   "deck": "Malik, Grim Manipulator (Spr3adsh33)",
+   "missing": "lane C's Malik routing (2026-11-26); multi-owner cards: see its report",
+   "lane": "mac-c",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Glimpse of Tomorrow",
+   "deck": "Malik, Grim Manipulator (Spr3adsh33)",
+   "missing": "lane C's Malik routing (2026-11-26); multi-owner cards: see its report",
+   "lane": "mac-c",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Gisa, Glorious Resurrector",
+   "deck": "Malik, Grim Manipulator (Spr3adsh33)",
+   "missing": "lane C's Malik routing (2026-11-26); multi-owner cards: see its report",
+   "lane": "mac-c",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "All That Glitters",
+   "deck": "Bruna, Light of Alabaster (DonSpider)",
+   "missing": "lane C's Bruna routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Ethereal Armor",
+   "deck": "Bruna, Light of Alabaster (DonSpider)",
+   "missing": "lane C's Bruna routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Sage's Reverie",
+   "deck": "Bruna, Light of Alabaster (DonSpider)",
+   "missing": "lane C's Bruna routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Auramancer's Guise",
+   "deck": "Bruna, Light of Alabaster (DonSpider)",
+   "missing": "lane C's Bruna routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Face of Divinity",
+   "deck": "Bruna, Light of Alabaster (DonSpider)",
+   "missing": "lane C's Bruna routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Steel of the Godhead",
+   "deck": "Bruna, Light of Alabaster (DonSpider)",
+   "missing": "lane C's Bruna routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Daybreak Coronet",
+   "deck": "Bruna, Light of Alabaster (DonSpider)",
+   "missing": "lane C's Bruna routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Super State",
+   "deck": "Bruna, Light of Alabaster (DonSpider)",
+   "missing": "lane C's Bruna routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Mother of Runes",
+   "deck": "Bruna, Light of Alabaster (DonSpider)",
+   "missing": "lane C's Bruna routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Giver of Runes",
+   "deck": "Bruna, Light of Alabaster (DonSpider)",
+   "missing": "lane C's Bruna routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Unquestioned Authority",
+   "deck": "Bruna, Light of Alabaster (DonSpider)",
+   "missing": "lane C's Bruna routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Open the Armory",
+   "deck": "Bruna, Light of Alabaster (DonSpider)",
+   "missing": "lane C's Bruna routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Gifts Ungiven",
+   "deck": "Bruna, Light of Alabaster (DonSpider)",
+   "missing": "lane C's Bruna routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Consuming Tide",
+   "deck": "Bruna, Light of Alabaster (DonSpider)",
+   "missing": "lane C's Bruna routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Single Combat",
+   "deck": "Bruna, Light of Alabaster (DonSpider)",
+   "missing": "lane C's Bruna routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Fabled Passage",
+   "deck": "Bruna, Light of Alabaster (DonSpider)",
+   "missing": "lane C's Bruna routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Shielded by Faith",
+   "deck": "Bruna, Light of Alabaster (DonSpider)",
+   "missing": "lane C's Bruna routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Mesmeric Orb",
+   "deck": "Bruna, Light of Alabaster (DonSpider)",
+   "missing": "lane C's Bruna routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Celestial Mantle",
+   "deck": "Bruna, Light of Alabaster (DonSpider)",
+   "missing": "lane C's Bruna routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Deep Gnome Terramancer",
+   "deck": "Bruna, Light of Alabaster (DonSpider)",
+   "missing": "lane C's Bruna routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Archaeomancer's Map",
+   "deck": "Bruna, Light of Alabaster (DonSpider)",
+   "missing": "lane C's Bruna routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Lavinia, Azorius Renegade",
+   "deck": "Bruna, Light of Alabaster (DonSpider)",
+   "missing": "lane C's Bruna routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Mystic Gate",
+   "deck": "Bruna, Light of Alabaster (DonSpider)",
+   "missing": "lane C's Bruna routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Floodfarm Verge",
+   "deck": "Bruna, Light of Alabaster (DonSpider)",
+   "missing": "lane C's Bruna routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Eldrazi Conscription",
+   "deck": "Bruna, Light of Alabaster (DonSpider)",
+   "missing": "lane C's Bruna routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Lavaspur Boots",
+   "deck": "Bruna, Light of Alabaster (DonSpider)",
+   "missing": "lane C's Bruna routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Silent Arbiter",
+   "deck": "Bruna, Light of Alabaster (DonSpider)",
+   "missing": "lane C's Bruna routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "merger_delegated",
+   "owner": "mac-b"
+  },
+  {
+   "card": "Expropriate",
+   "deck": "Bruna, Light of Alabaster (DonSpider)",
+   "missing": "lane C's Bruna routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "merger_delegated",
+   "owner": "mac-b"
+  },
+  {
+   "card": "Heliod, the Radiant Dawn // Heliod, the Warped Eclipse",
+   "deck": "Bruna, Light of Alabaster (DonSpider)",
+   "missing": "lane C's Bruna routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "subsystems",
+   "owner": "d4"
+  },
+  {
+   "card": "Invasion of Theros // Ephara, Ever-Sheltering",
+   "deck": "Bruna, Light of Alabaster (DonSpider)",
+   "missing": "lane C's Bruna routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "subsystems",
+   "owner": "d4"
+  },
+  {
+   "card": "Bruna, Light of Alabaster",
+   "deck": "Bruna, Light of Alabaster (DonSpider)",
+   "missing": "lane C's Bruna routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Light-Paws, Emperor's Voice",
+   "deck": "Bruna, Light of Alabaster (DonSpider)",
+   "missing": "lane C's Bruna routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Sovereigns of Lost Alara",
+   "deck": "Bruna, Light of Alabaster (DonSpider)",
+   "missing": "lane C's Bruna routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Bitter Triumph",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Cathartic Reunion",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Demand Answers",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Blazemire Verge",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Hoarding Broodlord",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Neheb, the Eternal",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Ozai, the Phoenix King",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Sazacap's Brew",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Necropolis Regent",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Olivia's Attendants",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Dragon Mage",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Port Razer",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Raphael, the Muse",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Tag Team Tough",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Breath of Fury",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Torbran, Thane of Red Fell",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Azra Oddsmaker",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Twilight Prophet",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Twilight Diviner",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Exhume",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Living Death",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Burning Inquiry",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Change of Fortune",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Burning-Rune Demon",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Rakdos Charm",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Vile Mutilator",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Summon: Bahamut",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "subsystems",
+   "owner": "d4"
+  },
+  {
+   "card": "Olivia, Crimson Bride",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Dragonhawk, Fate's Tempest",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Charming Scoundrel",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Witch's Mark",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Moria Scavenger",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Crux of Fate",
+   "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Apocalypse",
+   "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Kindred Summons",
+   "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Shadowspear",
+   "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Vanquisher's Banner",
+   "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Three Tree City",
+   "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Karrthus, Tyrant of Jund",
+   "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Gluttonous Hellkite",
+   "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Vaevictis Asmadi, the Dire",
+   "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Atarka, World Render",
+   "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Lathliss, Dragon Queen",
+   "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Scourge of Valkas",
+   "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Broodcaller Scourge",
+   "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Scourge of the Throne",
+   "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Descendants' Path",
+   "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Nogi, Draco-Zealot",
+   "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Utvara Hellkite",
+   "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
+   "missing": "lane C's routing (2026-11-26) [token 96: 6/6 red Dragon, flying]",
+   "lane": "mac-c",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Haven of the Spirit Dragon",
+   "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Klauth, Unrivaled Ancient",
+   "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Dragon Broodmother",
+   "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "mana",
+   "owner": "d1"
   },
   {
    "card": "Mikaeus, the Unhallowed",

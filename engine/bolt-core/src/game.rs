@@ -1246,6 +1246,10 @@ pub enum Decision {
     /// `Pick` a nonland permanent you control to sacrifice or a card in your hand to discard, or `No`
     /// to lose `life` life; `left` more rounds after this one (Torment of Hailfire).
     SacrificeDiscardOrLoseLife { left: u32, life: i32 },
+    /// `Pick` a creature card in a graveyard with mana value at most `left` to put onto the
+    /// battlefield under your control, or `No` to stop; `left` is what's left of the total (Ancient
+    /// Brass Dragon: the d20's result).
+    ReanimateTotalManaValue { left: u32 },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -1620,6 +1624,10 @@ pub struct Game {
     /// Creature spells paid for with Hall of the Bandit Lord's mana, as (object, the zone-change
     /// count it will have on the battlefield): each gains haste as it enters.
     pub haste_from_mana: Vec<(ObjId, u32)>,
+    /// Necropotence's face-down exiled cards, to their player's hand at the beginning of that
+    /// player's next end step: (card, its zcc in exile, player, turn exiled, exiled during that
+    /// player's own end step or cleanup, so not this turn's).
+    pub face_down_to_hand: Vec<(ObjId, u32, PlayerId, u32, bool)>,
     /// Colorless mana ({C}: from a source that makes only colorless) spent so far on the spell or
     /// ability being paid for (adamant counts it for spells).
     pub colorless_paid: u32,
@@ -1886,6 +1894,7 @@ impl Game {
             normal_next: None,
             delayed_slot_to_graveyard: Vec::new(),
             haste_from_mana: Vec::new(),
+            face_down_to_hand: Vec::new(),
             colorless_paid: 0,
             colorless_spent: Vec::new(),
             noncombat_damage_to_player_turn: [(0, 0); 2],
@@ -2589,6 +2598,9 @@ impl Game {
                             }
                             Scope::YourTappedCreatures => mine && creature && o.tapped,
                             Scope::YourUntappedCreatures => mine && creature && !o.tapped,
+                            Scope::OtherYourNonHumanCreatures => {
+                                mine && creature && src != id && !self.has_base_subtype(id, "Human")
+                            }
                         };
                         let condition_ok = match s.condition {
                             None => true,
@@ -5896,6 +5908,20 @@ impl Game {
                 s.last_power
             };
             if self.def_of(x).cost.mana_value() as i32 > power {
+                return false;
+            }
+        }
+        if f.mana_value_at_most_x && self.def_of(x).cost.mana_value() > item.x as u32 {
+            return false;
+        }
+        if f.up_to_x {
+            // While choosing, `t` isn't among the targets yet; on resolution it is.
+            let others = item
+                .targets
+                .iter()
+                .filter(|&&c| c != Chosen::Object(x, self.obj(x).zcc))
+                .count();
+            if others >= item.x as usize {
                 return false;
             }
         }
@@ -10166,6 +10192,12 @@ impl Game {
                 t.extra = Some(card);
             }
             self.copied_or_cast_instant_sorcery(p, card);
+            let before = self.triggered.len();
+            self.fire(p, When::YouCastInstantOrSorceryWithMv, None);
+            for t in &mut self.triggered[before..] {
+                t.amount = spell_mv as i32;
+                t.extra = Some(card);
+            }
         }
         // "Whenever you cast a noncreature or [subtype] spell".
         let (creature, subs) = (self.types_of(card).creature, self.def_of(card).subtypes.clone());
@@ -11887,6 +11919,15 @@ impl Game {
                 v.push(Action::No);
                 v
             }
+            Decision::ReanimateTotalManaValue { left } => {
+                let mut v: Vec<Action> = self
+                    .reanimate_total_options(*left)
+                    .into_iter()
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
             Decision::BraidsOpponent { types, .. } => {
                 let mut v: Vec<Action> = self
                     .braids_options(p, Some(*types))
@@ -13256,6 +13297,16 @@ impl Game {
                 }
                 self.torment_next(p, left, life);
             }
+            (Decision::ReanimateTotalManaValue { left }, a) => {
+                if let Action::Pick(c) = a {
+                    let mv = self.def_of(c).cost.mana_value();
+                    self.move_to(c, Zone::Battlefield);
+                    if self.obj(c).zone == Zone::Battlefield {
+                        self.obj_mut(c).controller = p;
+                    }
+                    self.reanimate_total_next(p, left.saturating_sub(mv));
+                }
+            }
             (d, a) => unreachable!("legal action {a:?} unhandled for {d:?}"),
         }
         if self.decision.is_none() {
@@ -13747,6 +13798,21 @@ impl Game {
             .collect();
         v.extend(self.players[p].hand.iter().copied());
         v
+    }
+
+    /// Creature cards in any graveyard with mana value at most `left` (Ancient Brass Dragon).
+    fn reanimate_total_options(&self, left: u32) -> Vec<ObjId> {
+        (0..2)
+            .flat_map(|q| self.players[q].graveyard.iter().copied())
+            .filter(|&c| self.def_of(c).types.creature && self.def_of(c).cost.mana_value() <= left)
+            .collect()
+    }
+
+    /// Ancient Brass Dragon: ask `p` for another creature card while one fits in `left`.
+    fn reanimate_total_next(&mut self, p: PlayerId, left: u32) {
+        if !self.reanimate_total_options(left).is_empty() {
+            self.ask(p, Decision::ReanimateTotalManaValue { left });
+        }
     }
 
     /// Torment of Hailfire: `left` more rounds for `p` (asked only with something to give up).
@@ -16151,6 +16217,18 @@ impl Game {
                 if let Some(c) = Game::slot_object(item, legal, slot) {
                     let entry = (c, self.obj(c).zcc, src, trigger, item.controller, self.turn);
                     self.delayed_slot_to_graveyard.push(entry);
+                }
+            }
+            Effect::ExileTopFaceDownToHandAtYourNextEndStep => {
+                let p = item.controller;
+                if let Some(&c) = self.players[p].library.last() {
+                    self.move_to(c, Zone::Exile);
+                    if self.obj(c).zone == Zone::Exile {
+                        self.obj_mut(c).face_down = true;
+                        let late = self.active == p && matches!(self.step, Step::End | Step::Cleanup);
+                        let zcc = self.obj(c).zcc;
+                        self.face_down_to_hand.push((c, zcc, p, self.turn, late));
+                    }
                 }
             }
             Effect::BecomeCopyOfSlotUntilEot(n) => {
@@ -20460,6 +20538,67 @@ impl Game {
                     );
                 }
             }
+            Effect::SlotDealsDamagePerSubtypeYouControl { from, to, sub } => {
+                let Some(Chosen::Object(a, _)) = item.targets.get(from as usize).copied() else {
+                    return;
+                };
+                let target = match item.targets.get(to as usize) {
+                    Some(&Chosen::Object(b, _)) if legal[to as usize] => Target::Object(b),
+                    Some(&Chosen::Player(q)) if legal[to as usize] => Target::Player(q),
+                    _ => return,
+                };
+                let x = self
+                    .permanents(item.controller)
+                    .filter(|&c| self.has_subtype(c, sub))
+                    .count() as i32;
+                if x > 0 {
+                    self.deal_damage(a, target, x);
+                }
+            }
+            Effect::DestroyAllNonartifactCreatures => {
+                let all: Vec<ObjId> = self
+                    .battlefield
+                    .iter()
+                    .copied()
+                    .filter(|&c| self.types_of(c).creature && !self.types_of(c).artifact)
+                    .collect();
+                for c in all {
+                    self.destroy(c);
+                }
+            }
+            Effect::CountersOnOtherYourSubtype(sub) => {
+                for c in self.creatures(item.controller).collect::<Vec<_>>() {
+                    if c != src && self.has_subtype(c, sub) {
+                        self.add_counters(c, 1);
+                    }
+                }
+            }
+            Effect::CreateTokenXxAmount { def } => {
+                let x = item.amount.max(0);
+                self.create_token(item.controller, def);
+                for t in self.last_created.clone() {
+                    self.obj_mut(t).copy_base_pt = Some((x, x));
+                }
+            }
+            Effect::ReturnInstantsAndSorceriesFromGraveyard => {
+                let p = item.controller;
+                let cards: Vec<ObjId> = self.players[p]
+                    .graveyard
+                    .iter()
+                    .copied()
+                    .filter(|&c| {
+                        let t = self.def_of(c).types;
+                        t.instant || t.sorcery
+                    })
+                    .collect();
+                for c in cards {
+                    self.move_to(c, Zone::Hand);
+                }
+            }
+            Effect::RollD20ReanimateTotalManaValue => {
+                let x = self.roll_die(20);
+                self.reanimate_total_next(item.controller, x);
+            }
         }
     }
 
@@ -21437,6 +21576,19 @@ impl Game {
                     if self.obj(c).zcc == zcc && self.obj(c).zone == Zone::Exile {
                         self.move_to(c, Zone::Graveyard);
                         self.create_token(p, def);
+                    }
+                }
+                // Necropotence: "put that card into your hand at the beginning of your next end
+                // step" (face up again as it leaves exile).
+                let turn = self.turn;
+                let (due, wait): (Vec<_>, Vec<_>) = std::mem::take(&mut self.face_down_to_hand)
+                    .into_iter()
+                    .partition(|&(_, _, q, t, late)| q == a && (t < turn || (t == turn && !late)));
+                self.face_down_to_hand = wait;
+                for (c, zcc, _, _, _) in due {
+                    if self.obj(c).zcc == zcc && self.obj(c).zone == Zone::Exile {
+                        self.obj_mut(c).face_down = false;
+                        self.move_to(c, Zone::Hand);
                     }
                 }
                 // Delayed "at the beginning of the next end step" returns (CR 603.7).
