@@ -1,11 +1,31 @@
 {
   "name": "tdm_play_1",
-  "threads": 12,
+  "threads": 6,
   "seconds": 604800,
-  "mb": 12000,
-  "env": {"BOLT_PLAY_SET": "TDM", "BOLT_DECKS": "data/tdm/sealed_decks.txt"},
-  "cmd": [".venv/bin/python", "scripts/train_ppo_play.py", "--name", "tdm_play_1",
-          "--init", "checkpoints/play/tdm_init_from_v3.pt", "--self-play",
-          "--iters", "500", "--games", "640", "--workers", "12", "--threads", "12",
-          "--eval-every", "10", "--eval-pairs", "200"]
+  "mb": 8000,
+  "env": {
+    "BOLT_PLAY_SET": "TDM",
+    "BOLT_DECKS": "data/tdm/sealed_decks.txt"
+  },
+  "cmd": [
+    ".venv/bin/python",
+    "scripts/train_ppo_play.py",
+    "--name",
+    "tdm_play_1",
+    "--init",
+    "checkpoints/play/tdm_init_from_v3.pt",
+    "--self-play",
+    "--iters",
+    "500",
+    "--games",
+    "384",
+    "--workers",
+    "6",
+    "--threads",
+    "6",
+    "--eval-every",
+    "10",
+    "--eval-pairs",
+    "200"
+  ]
 }

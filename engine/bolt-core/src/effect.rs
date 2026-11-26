@@ -135,6 +135,13 @@ pub struct Filter {
     pub spell_sorcery: bool,
     /// Only objects with an even mana value; zero is even (Desecrate Reality).
     pub mana_value_even: bool,
+    /// Cards or permanents with mana value at most the ability's X (Kozilek's Command: "target
+    /// creature with mana value X or less").
+    pub mana_value_at_most_x: bool,
+    /// One of "up to X targets" (Kozilek's Command: "up to X target cards from graveyards"): repeat
+    /// the filter in as many slots as X can reach, with `min_targets: Some(0)`; a slot is only
+    /// legal while fewer than X other targets are chosen, so no more than X are.
+    pub up_to_x: bool,
 }
 
 impl Filter {
@@ -200,6 +207,8 @@ impl Filter {
         creature_power_or_toughness_at_most: None,
         spell_sorcery: false,
         mana_value_even: false,
+        mana_value_at_most_x: false,
+        up_to_x: false,
     };
 
     pub const CREATURE: Filter = Filter {
@@ -2270,6 +2279,36 @@ pub enum Effect {
     /// Each creature the player in target `slot` controls phases out until that player's next untap
     /// step (Galadriel's Dismissal, kicked).
     PhaseOutCreaturesOfPlayer(u8),
+    /// Exile the top card of your library face down (`Object::face_down`; CR 406.3: no player may
+    /// look at it); put it into your hand at the beginning of your next end step (Necropotence),
+    /// see `Game::face_down_to_hand`.
+    ExileTopFaceDownToHandAtYourNextEndStep,
+    /// The creature in slot `from` deals X damage to the target in slot `to`, X the number of
+    /// permanents with subtype `sub` you control, counted on resolution (Dragon Tempest: "it deals X
+    /// damage to any target, where X is the number of Dragons you control"); it deals the damage
+    /// even if it has left the battlefield (last known information).
+    SlotDealsDamagePerSubtypeYouControl {
+        from: u8,
+        to: u8,
+        sub: &'static str,
+    },
+    /// Destroy all nonartifact creatures (Organic Extinction).
+    DestroyAllNonartifactCreatures,
+    /// Put a +1/+1 counter on each other creature you control with this subtype (Camellia, the
+    /// Seedmiser: Squirrels).
+    CountersOnOtherYourSubtype(&'static str),
+    /// Create a token (`def`, printed 0/0) with base power and toughness X/X, X the trigger's
+    /// amount (Metallurgic Summonings: the cast spell's mana value), not counters.
+    CreateTokenXxAmount {
+        def: usize,
+    },
+    /// Return all instant and sorcery cards from your graveyard to your hand (Metallurgic
+    /// Summonings).
+    ReturnInstantsAndSorceriesFromGraveyard,
+    /// Roll a d20; then put any number of creature cards with total mana value X or less from
+    /// graveyards onto the battlefield under your control, X the result (Ancient Brass Dragon),
+    /// chosen one at a time on resolution (not targeted) as `Decision::ReanimateTotalManaValue`.
+    RollD20ReanimateTotalManaValue,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -2411,6 +2450,9 @@ pub enum Scope {
     YourTappedCreatures,
     /// Untapped creatures you control (Sword of the Paruns).
     YourUntappedCreatures,
+    /// Other non-Human creatures you control, by printed creature types (Mikaeus, the
+    /// Unhallowed); a changeling is a Human, so it's left out.
+    OtherYourNonHumanCreatures,
 }
 
 /// What a scaled static ability counts.
@@ -3137,6 +3179,9 @@ pub enum When {
     /// `Effect::DelayedWhenSlotToYourGraveyardThisTurn` (Saffi Eriksdotter); slot 0 (if
     /// `triggering`) is that card in the graveyard. Never fired by `fire()`.
     SlotCreatureToYourGraveyardThisTurn,
+    /// "Whenever you cast an instant or sorcery spell", with that spell's mana value (X included) as
+    /// the trigger's amount and the spell in `extra` (Metallurgic Summonings).
+    YouCastInstantOrSorceryWithMv,
     /// "Whenever enchanted creature attacks" (Martial Impetus).
     EnchantedAttacks,
     /// "Whenever one or more [subtype]s you control deal combat damage to a player" (The Odd Acorn

@@ -2097,3 +2097,77 @@ fn sefris_ventures_on_a_creature_card_and_reanimates_on_completing_a_dungeon() {
     assert_eq!(g.obj(lions).zone, Zone::Battlefield, "returned");
     assert!(g.venture[0].is_some(), "and into a new dungeon");
 }
+
+#[test]
+fn necropotence_skips_the_draw_exiles_discards_and_pays_life_for_cards() {
+    let mut g = table();
+    let necro = put(&mut g, 0, "Necropotence");
+    let hand_before = g.players[0].hand.len();
+    main5(&mut g);
+    assert_eq!(g.players[0].hand.len(), hand_before, "no draw step");
+    let top = *g.players[0].library.last().unwrap();
+    act(&mut g, Action::Activate(necro, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].life, 39);
+    assert_eq!(g.obj(top).zone, Zone::Exile);
+    assert!(g.obj(top).face_down, "face down");
+    while g.players[0].hand.len() < 9 {
+        hand(&mut g, 0, "Plains");
+    }
+    end_turn(&mut g, 5);
+    assert_eq!(g.obj(top).zone, Zone::Hand, "at your end step");
+    assert!(!g.obj(top).face_down);
+    // The cleanup discards' triggers go on the stack at the next priority (the engine doesn't give
+    // priority in cleanup, CR 514.3a): the opponent's upkeep.
+    while g.step != Step::Main1 {
+        let legal = g.legal_actions();
+        let a = if legal.contains(&Action::PassPriority) {
+            Action::PassPriority
+        } else {
+            legal[0]
+        };
+        act(&mut g, a);
+    }
+    assert!(
+        !g.players[0]
+            .graveyard
+            .iter()
+            .any(|&c| g.def_of(c).name == "Plains"),
+        "the cleanup discards were exiled"
+    );
+    assert!(g.exile.iter().any(|&c| g.def_of(c).name == "Plains"));
+}
+
+#[test]
+fn sheoldred_whispering_one_reanimates_at_your_upkeep_and_edicts_at_theirs() {
+    let mut g = table();
+    put(&mut g, 0, "Sheoldred, Whispering One");
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Graveyard);
+    let theirs = put(&mut g, 1, "Savannah Lions");
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        let a = match g.pending {
+            Pending::ChooseTarget(_) => Action::Target(obj(lions)),
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.obj(lions).zone, Zone::Battlefield, "returned at your upkeep");
+    assert_eq!(
+        g.obj(theirs).zone,
+        Zone::Battlefield,
+        "not your opponent's upkeep"
+    );
+    g.start_turn(6, 1);
+    while g.step != Step::Main1 {
+        let legal = g.legal_actions();
+        let a = if legal.contains(&Action::PassPriority) {
+            Action::PassPriority
+        } else {
+            legal[0]
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.obj(theirs).zone, Zone::Graveyard, "they sacrificed it");
+    assert_eq!(g.obj(lions).zone, Zone::Battlefield);
+}
