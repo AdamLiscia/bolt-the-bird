@@ -1,5 +1,7 @@
 //! The merger's pieces done by lane B: type-changing land statics (Blood Moon, Urborg), haste for
-//! creatures' abilities (Thousand-Year Elixir), and ward—sacrifice nonland permanents (Valgavoth).
+//! creatures' abilities (Thousand-Year Elixir), and ward—sacrifice nonland permanents (Valgavoth);
+//! then the delegated pieces: once-each-turn modes, the exiled-until-end-step hook, threshold
+//! activations, and the rest below.
 #![allow(dead_code, unused_imports)]
 
 mod common;
@@ -331,4 +333,198 @@ fn an_aura_on_a_creature_that_leaves_goes_to_the_graveyard() {
     play(&mut g, bolt, false, &[Target::Object(lions)], &[]);
     assert_eq!(g.obj(lions).zone, Zone::Graveyard);
     assert_eq!(g.obj(blessing).zone, Zone::Graveyard);
+}
+
+#[test]
+fn threshold_activation_and_once_each_turn_modes() {
+    let mut g = table();
+    put(&mut g, 0, "Monument to Endurance");
+    let col = put(&mut g, 0, "Cephalid Coliseum");
+    for _ in 0..6 {
+        g.add_card(0, cid("Plains"), Zone::Graveyard);
+    }
+    assert!(
+        !g.legal_actions().contains(&Action::Activate(col, 0)),
+        "six cards: no threshold"
+    );
+    g.add_card(0, cid("Plains"), Zone::Graveyard);
+    assert!(g.legal_actions().contains(&Action::Activate(col, 0)));
+    for _ in 0..3 {
+        hand(&mut g, 0, "Plains");
+    }
+    act(&mut g, Action::Activate(col, 0));
+    act(&mut g, Action::Target(Target::Player(0)));
+    let mut offered = Vec::new();
+    while !g.items.is_empty() || matches!(g.pending, Pending::ChooseTarget(_) | Pending::Decide(_)) {
+        let acts = g.legal_actions();
+        let a = if let Some(&d) = acts.iter().find(|a| matches!(a, Action::Discard(_))) {
+            d
+        } else if acts.iter().any(|a| matches!(a, Action::Mode(_))) {
+            let modes: Vec<u8> = acts
+                .iter()
+                .filter_map(|a| match a {
+                    Action::Mode(m) => Some(*m),
+                    _ => None,
+                })
+                .collect();
+            offered.push(modes.clone());
+            Action::Mode(modes[0])
+        } else {
+            Action::PassPriority
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(
+        offered,
+        vec![vec![0, 1, 2], vec![1, 2], vec![2]],
+        "each mode once this turn"
+    );
+    assert_eq!(g.players[1].life, 37);
+    assert_eq!(tokens(&g, 0, "Treasure").len(), 1);
+    assert_eq!(g.obj(col).zone, Zone::Graveyard, "sacrificed");
+}
+
+#[test]
+fn threshold_lands_barbarian_ring_and_cabal_pit() {
+    let mut g = table();
+    let ring = put(&mut g, 0, "Barbarian Ring");
+    let pit = put(&mut g, 0, "Cabal Pit");
+    for _ in 0..7 {
+        g.add_card(0, cid("Plains"), Zone::Graveyard);
+    }
+    act(&mut g, Action::Activate(ring, 0));
+    act(&mut g, Action::Target(Target::Player(1)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].life, 38);
+    let bear = put(&mut g, 1, "Savannah Lions"); // 2/1
+    act(&mut g, Action::Activate(pit, 0));
+    act(&mut g, Action::Target(Target::Object(bear)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(bear).zone, Zone::Graveyard);
+}
+
+#[test]
+fn glimpse_the_impossible_bins_what_is_left_at_the_end_step() {
+    let mut g = table();
+    let top: Vec<ObjId> = (0..3)
+        .map(|_| g.add_card(0, cid("Plains"), Zone::Library))
+        .collect();
+    let glimpse = hand(&mut g, 0, "Glimpse the Impossible");
+    play(&mut g, glimpse, false, &[], &[]);
+    for &c in &top {
+        assert_eq!(g.obj(c).zone, Zone::Exile);
+    }
+    act(&mut g, Action::PlayLand(top[0]));
+    assert_eq!(g.obj(top[0]).zone, Zone::Battlefield, "played from exile");
+    while g.step != Step::End {
+        let a = match g.pending {
+            Pending::DeclareAttackers(_) => Action::FinishAttacks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.obj(top[1]).zone, Zone::Graveyard);
+    assert_eq!(g.obj(top[2]).zone, Zone::Graveyard);
+    assert_eq!(tokens(&g, 0, "Eldrazi Spawn").len(), 2);
+}
+
+#[test]
+fn unspent_mana_becomes_colorless_kruphix_horizon_stone() {
+    use bolt_core::mana::ManaSource;
+    let mut g = table();
+    let k = put(&mut g, 0, "Kruphix, God of Horizons");
+    assert!(!g.types_of(k).creature, "no devotion");
+    put(&mut g, 0, "Horizon Stone");
+    g.players[0].pool.push(ManaSource::of(&[bolt_core::Color::Green]));
+    g.players[1].pool.push(ManaSource::of(&[bolt_core::Color::Red]));
+    let step = g.step;
+    while g.step == step {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.players[0].pool.len(), 1, "kept");
+    assert!(g.players[0].pool[0].colorless && g.players[0].pool[0].colors == [false; 5]);
+    assert!(g.players[1].pool.is_empty(), "no Kruphix: it empties");
+}
+
+#[test]
+fn cast_only_during_your_end_step_necrologia() {
+    let mut g = table();
+    let n = hand(&mut g, 0, "Necrologia");
+    assert!(!g.legal_actions().contains(&Action::CastX(n, 3)), "main phase");
+    while g.step != Step::End {
+        let a = match g.pending {
+            Pending::DeclareAttackers(_) => Action::FinishAttacks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert!(g.legal_actions().contains(&Action::CastX(n, 3)));
+    let before = g.players[0].hand.len();
+    act(&mut g, Action::CastX(n, 3));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].life, 37);
+    assert_eq!(g.players[0].hand.len(), before - 1 + 3);
+}
+
+#[test]
+fn activate_only_if_you_attacked_with_two_or_more_minas_tirith_style() {
+    // Minas Tirith's draw ability on a test definition (Plains: "{1}{W}, {T}: Draw a card.").
+    let plains = cid("Plains");
+    let mut defs = (*set("CMD").unwrap().defs).clone();
+    let draw = bolt_core::effect::Ability::new(
+        vec![],
+        vec![bolt_core::effect::Effect::Draw {
+            who: bolt_core::effect::Who::You,
+            n: 1,
+        }],
+    );
+    defs[plains].activated.push(bolt_core::card::Activated {
+        mana: bolt_core::ManaCost::parse("{1}{W}").unwrap(),
+        tap: true,
+        ability: draw,
+        min_attackers_this_turn: 2,
+        ..Default::default()
+    });
+    let lib = vec![plains; 99];
+    let mut g = Game::new_commander(
+        std::sync::Arc::new(defs),
+        [&lib, &lib],
+        [cid("Bello, Bard of the Brambles"), cid("Ms. Bumbleflower")],
+        7,
+        0,
+    );
+    g.auto_pass = false;
+    for _ in 0..4 {
+        put(&mut g, 0, "Mountain");
+    }
+    let tirith = put(&mut g, 0, "Plains");
+    put(&mut g, 0, "Plains"); // its {W}
+    let a = put(&mut g, 0, "Savannah Lions");
+    let b = put(&mut g, 0, "Savannah Lions");
+    g.start_turn(3, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    let idx = 0;
+    assert!(
+        !g.legal_actions().contains(&Action::Activate(tirith, idx)),
+        "no attack yet"
+    );
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(a));
+    act(&mut g, Action::Attack(b));
+    act(&mut g, Action::FinishAttacks);
+    while g.step != Step::Main2 {
+        let x = match g.pending {
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, x);
+    }
+    assert!(
+        g.legal_actions().contains(&Action::Activate(tirith, idx)),
+        "two attacked"
+    );
 }

@@ -2174,3 +2174,64 @@ fn urza_lands_make_seven_together() {
     let big = hand(&mut g, 0, "Kozilek, Butcher of Truth"); // {10}
     assert!(!g.legal_actions().contains(&Action::Cast(big)), "seven, not ten");
 }
+
+// ---- d1 core, batch 8 ----
+
+#[test]
+fn krrik_pays_2_life_for_a_black_pip_mana_cant_pay_and_grows_on_black_spells() {
+    let mut g = game(&["Swamp"]);
+    let k = put(&mut g, 0, "K'rrik, Son of Yawgmoth");
+    let nw = hand(&mut g, 0, "Night's Whisper");
+    play(&mut g, nw, false, &[], &[]);
+    assert_eq!(
+        g.obj(nw).zone,
+        Zone::Graveyard,
+        "{{1}} from the Swamp, {{B}} for 2 life"
+    );
+    assert_eq!(g.players[0].life, 40 - 2 - 2);
+    assert_eq!(g.obj(k).counters, 1, "a black spell");
+    let mut g = table();
+    put(&mut g, 0, "K'rrik, Son of Yawgmoth");
+    let nw = hand(&mut g, 0, "Night's Whisper");
+    play(&mut g, nw, false, &[], &[]);
+    assert_eq!(g.players[0].life, 38, "mana first");
+}
+
+#[test]
+fn meloku_returns_a_land_for_a_flying_illusion() {
+    let mut g = table();
+    let m = put(&mut g, 0, "Meloku the Clouded Mirror");
+    let isl = islands(&g)[0];
+    act(&mut g, Action::ActivateWith(m, 0, isl));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(isl).zone, Zone::Hand);
+    let t = tokens(&g, 0, "Illusion");
+    assert_eq!(t.len(), 1);
+    assert!(g.keywords(t[0]).has(Keywords::FLYING));
+    assert!(g.colors_of(t[0])[1], "blue");
+    assert_eq!((g.power(t[0]), g.toughness(t[0])), (1, 1));
+}
+
+#[test]
+fn the_shire_enters_tapped_without_a_legend_and_taps_a_creature_for_food() {
+    let mut g = game(&[]);
+    let s = hand(&mut g, 0, "The Shire");
+    act(&mut g, Action::PlayLand(s));
+    resolve_all(&mut g, &[]);
+    assert!(g.obj(s).tapped, "no legendary creature");
+    let mut g = table();
+    put(&mut g, 0, "Zirda, the Dawnwaker");
+    let s = hand(&mut g, 0, "The Shire");
+    act(&mut g, Action::PlayLand(s));
+    resolve_all(&mut g, &[]);
+    assert!(!g.obj(s).tapped, "a legendary creature");
+    g.objects[s.0 as usize].since_turn = 0;
+    let z = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "Zirda, the Dawnwaker")
+        .expect("Zirda");
+    act(&mut g, Action::Activate(s, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(tokens(&g, 0, "Food").len(), 1);
+    assert!(g.obj(s).tapped && g.obj(z).tapped, "the Shire and a creature");
+}

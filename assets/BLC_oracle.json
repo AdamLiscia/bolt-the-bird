@@ -1700,7 +1700,13 @@
 "layout": "split",
 "loyalty": null,
 "produced_mana": null,
-"collector_number": "61"
+"collector_number": "61",
+"split": {
+"name": "Dawn",
+"mana_cost": "{3}{W}{W}",
+"type_line": "Sorcery",
+"oracle_text": "Aftermath (Cast this spell only from your graveyard. Then exile it.)\nReturn all creature cards with power 2 or less from your graveyard to your hand."
+}
 },
 {
 "name": "Echoing Assault",

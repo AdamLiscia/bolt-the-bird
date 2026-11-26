@@ -1808,3 +1808,147 @@ fn urza_lands_make_more_together() {
     assert!(legal.contains(&Action::Cast(seven)), "2 + 2 + 3");
     assert!(!legal.contains(&Action::Cast(eight)));
 }
+
+// ---- batch 8: black pips paid with life ----
+
+#[test]
+fn black_pips_paid_with_2_life_when_mana_cant() {
+    use batch3::*;
+    let mut k = CardDef::creature("Krrik", "{B}", 2, 2, Keywords::NONE);
+    k.mana_ext.black_pips_for_life = true;
+    let mut g = batch6_board(vec![k], 1);
+    let c = g.add_card(0, BLACK_BEAR, Zone::Hand);
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(c)),
+        "{{1}}{{B}} from one Swamp"
+    );
+    g.players[0].life = 1;
+    put(&mut g, 0, 25);
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(c)),
+        "1 life can't pay 2"
+    );
+    g.players[0].life = 10;
+    act(&mut g, Action::Cast(c));
+    settle(&mut g);
+    assert_eq!(g.obj(c).zone, Zone::Battlefield);
+    assert_eq!(g.players[0].life, 8);
+    assert_eq!(tapped_swamps(&g), 1);
+}
+
+#[test]
+fn flying_creature_spell_discounts() {
+    use batch3::*;
+    let mut watcher = CardDef::creature("Watcher", "{W}", 2, 2, Keywords::FLYING);
+    watcher.mana_ext.flying_creature_spell_discount = 1;
+    let mut momo = CardDef::creature("Momo", "{W}", 1, 1, Keywords::FLYING);
+    momo.mana_ext.first_flier_discount_your_turn = 1;
+    let bird = CardDef::creature("Bird", "{2}", 1, 1, Keywords::FLYING);
+    let mut lemur = CardDef::creature("Lemur", "{2}", 1, 1, Keywords::FLYING);
+    lemur.subtypes = vec!["Lemur".into()];
+    let mut g = batch6_board(vec![watcher, momo, bird, lemur], 6);
+    put(&mut g, 0, 25);
+    cast(&mut g, BLACK_BEAR);
+    assert_eq!(tapped_swamps(&g), 2, "no flying");
+    cast(&mut g, 27);
+    assert_eq!(tapped_swamps(&g), 3, "{{2}} less {{1}}");
+    let mut momo = CardDef::creature("Momo", "{W}", 1, 1, Keywords::FLYING);
+    momo.mana_ext.first_flier_discount_your_turn = 1;
+    let mut lemur = CardDef::creature("Lemur", "{2}", 1, 1, Keywords::FLYING);
+    lemur.subtypes = vec!["Lemur".into()];
+    let bird = CardDef::creature("Bird", "{2}", 1, 1, Keywords::FLYING);
+    let mut g = batch6_board(vec![momo, lemur, bird], 6);
+    put(&mut g, 0, 25);
+    cast(&mut g, 26);
+    assert_eq!(tapped_swamps(&g), 2, "a Lemur: no discount");
+    cast(&mut g, 27);
+    assert_eq!(tapped_swamps(&g), 3, "the first non-Lemur flier");
+    cast(&mut g, 27);
+    assert_eq!(tapped_swamps(&g), 5, "only the first");
+}
+
+#[test]
+fn enters_tapped_unless_you_control_a_legendary_creature() {
+    let mut shire = land("Shire");
+    shire.mana_ext.enters_tapped_unless_legendary_creature = true;
+    let mut legend = CardDef::creature("Legend", "{G}", 1, 1, Keywords::NONE);
+    legend.types.legendary = true;
+    let mut g = batch6_board(vec![shire, legend], 0);
+    let a = g.add_card(0, 25, Zone::Hand);
+    act(&mut g, Action::PlayLand(a));
+    assert!(g.obj(a).tapped);
+    let mut g = batch6_board(
+        vec![
+            {
+                let mut s = land("Shire");
+                s.mana_ext.enters_tapped_unless_legendary_creature = true;
+                s
+            },
+            {
+                let mut l = CardDef::creature("Legend", "{G}", 1, 1, Keywords::NONE);
+                l.types.legendary = true;
+                l
+            },
+        ],
+        0,
+    );
+    put(&mut g, 0, 26);
+    let a = g.add_card(0, 25, Zone::Hand);
+    act(&mut g, Action::PlayLand(a));
+    assert!(!g.obj(a).tapped);
+}
+
+#[test]
+fn tap_an_untapped_creature_as_a_cost_not_its_mana() {
+    use batch3::*;
+    use bolt_core::ManaSource;
+    let mut shire = CardDef::creature("Shrine", "{1}", 0, 4, Keywords::NONE);
+    shire.activated.push(Activated {
+        mana: ManaCost::parse("{B}").expect("cost"),
+        tap_untapped_creature: true,
+        ability: Ability::new(vec![], vec![Effect::Draw { who: Who::You, n: 1 }]),
+        ..Activated::default()
+    });
+    let mut dork = CardDef::creature("Dork", "{B}", 1, 1, Keywords::NONE);
+    dork.mana = Some(ManaSource::of(&[Color::Black]));
+    let mut g = batch6_board(vec![shire, dork], 0);
+    let s = put(&mut g, 0, 25);
+    let d = put(&mut g, 0, 26);
+    assert!(
+        !g.legal_actions().contains(&Action::Activate(s, 0)),
+        "the Dork can't tap for {{B}} and for the cost"
+    );
+    let bear = put(&mut g, 0, GREEN_BEAR);
+    act(&mut g, Action::Activate(s, 0));
+    settle(&mut g);
+    assert!(g.obj(bear).tapped && g.obj(d).tapped);
+    assert!(!g.obj(s).tapped, "no {{T}}");
+}
+
+#[test]
+fn swampwalk_is_unblockable_while_the_defender_controls_a_swamp() {
+    use batch3::*;
+    let walker = || CardDef::creature("Walker", "{B}", 2, 2, Keywords::SWAMPWALK);
+    let mut g = batch6_board(vec![walker()], 0);
+    let a = put(&mut g, 0, 25);
+    let bear = put(&mut g, 1, GREEN_BEAR);
+    assert_eq!(blockers_for(&mut g, a), vec![bear], "no Swamp");
+    let mut g = batch6_board(vec![walker()], 0);
+    let a = put(&mut g, 0, 25);
+    put(&mut g, 1, GREEN_BEAR);
+    g.add_card(1, SWAMP, Zone::Battlefield);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(a));
+    act(&mut g, Action::FinishAttacks);
+    let life = g.players[1].life;
+    while g.step != Step::Main2 {
+        assert!(
+            !matches!(g.pending, Pending::DeclareBlockers(_)),
+            "the defender has a Swamp: no blocks"
+        );
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.players[1].life, life - 2);
+}

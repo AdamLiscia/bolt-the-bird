@@ -1697,7 +1697,7 @@ pub enum Effect {
     ReanimateAttachSource(u8),
     /// All creatures get -X/-X until end of turn, X the spell's X (Toxic Deluge).
     AllCreaturesGetMinusX,
-    /// Draw a card for each creature you control of this color (Freyalise: green).
+    /// Draw a card for each creature you control of this color (Freyalise, Regal Force: green).
     DrawPerCreatureYouControlOfColor(crate::Color),
     /// Evoke's "When this permanent enters, if its evoke cost was paid, its controller sacrifices
     /// it." (CR 702.74a)
@@ -1739,8 +1739,6 @@ pub enum Effect {
     LoseLifeAmount(Who),
     /// `who` loses life equal to the life they've lost this turn (Wound Reflection).
     LoseLifeLostThisTurn(Who),
-    /// Draw a card for each creature you control of this color, WUBRG index (Regal Force: green).
-    DrawPerColoredCreatureYouControl(u8),
     /// Regenerate each creature you control (Loxodon Hierarch).
     RegenerateEachCreatureYouControl,
     /// Regenerate the creature the source (an Aura) is attached to (Blessing of Leeches).
@@ -2076,6 +2074,23 @@ pub enum Effect {
     OneCardOfEachColorToHand,
     /// Chain of Smog: the player in `slot` may copy this spell, choosing a new target player.
     ChainCopy(u8),
+    /// Exile the top `n` cards of your library; you may play them this turn. At the beginning of
+    /// the next end step, those still exiled go to your graveyard and you create a `def` token for
+    /// each (Glimpse the Impossible); see `Game::exiled_until_end`.
+    ExileTopToPlayThenGraveyardTokens {
+        n: u8,
+        def: usize,
+    },
+    /// Populate (CR 701.31): create a token that's a copy of a creature token you control (your
+    /// choice when there's more than one).
+    Populate,
+    /// You gain life equal to the toughness of the creature in `slot` (Trostani).
+    GainLifeEqualSlotToughness(u8),
+    /// Imprint (Isochron Scepter): you may exile an instant card with mana value 2 or less from your
+    /// hand, linked to the source.
+    ImprintInstantFromHand,
+    /// You may cast a copy of the source's imprinted card without paying its mana cost.
+    CastImprintedCopy,
     /// "When [the creature in `slot`] is put into your graveyard this turn, ...": a delayed
     /// triggered ability (CR 603.7), the source's trigger number `trigger`, with that card in slot 0
     /// (Saffi Eriksdotter: return it to the battlefield). It triggers once, only for that object.
@@ -2986,4 +3001,20 @@ pub enum SubsystemEffect {
     /// The end of a bottommost room's ability: the dungeon is completed once the last copy of it
     /// leaves the stack (CR 704.5t).
     CompleteDungeon,
+    /// "This Saga gains ..." (Urza's Saga): the source has its chapter-`n` grants from now on, while
+    /// it stays on the battlefield (`SubsystemExt::chapter_activated`, `chapter_mana`).
+    GainChapterAbilities(u8),
+    /// "Draw another card if you've completed a dungeon." (Imoen): `n` cards then.
+    DrawIfCompletedDungeon(u8),
+    /// "Create `n` [tokens]. Create `completed` of those tokens instead if you've completed a
+    /// dungeon." (Safana: Treasures, 1 or 3)
+    TokensByDungeon { def: usize, n: u8, completed: u8 },
+    /// "Untap a creature you control. If you've completed a dungeon, untap all creatures you
+    /// control instead." (White Plume Adventurer), as `Decision::UntapOwnCreature`.
+    UntapOneOrAllByDungeon,
+    /// "If that player lost less than `n` life this turn, they lose life equal to the difference."
+    /// (Lolth's emblem, on the damaged opponent: the one opponent in 1v1)
+    OpponentLosesDifferenceFrom(i32),
+    /// "Flip a coin. If you lose the flip, this [source] deals `n` damage to you." (Mana Crypt)
+    FlipCoinLoseDamageYou(i32),
 }

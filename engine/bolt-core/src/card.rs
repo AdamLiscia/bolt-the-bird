@@ -41,6 +41,7 @@ keywords! {
     FEAR = 19, "Fear";
     INTIMIDATE = 20, "Intimidate";
     SHADOW = 21, "Shadow";
+    SWAMPWALK = 22, "Swampwalk";
 }
 
 impl Keywords {
@@ -301,6 +302,13 @@ pub struct Activated {
     /// "Sacrifice a land" in the cost (Sylvan Safekeeper): activated with `Action::ActivateWith`,
     /// that land the victim.
     pub sacrifice_land: bool,
+    /// Threshold: "Activate only if there are seven or more cards in your graveyard." (Barbarian Ring)
+    pub needs_threshold: bool,
+    /// "Activate only if you attacked with N or more creatures this turn." (Minas Tirith: 2)
+    pub min_attackers_this_turn: u8,
+    /// "Tap an untapped creature you control" in the cost (The Shire); the engine picks which (one
+    /// that isn't a mana source, then the least power).
+    pub tap_untapped_creature: bool,
 }
 
 /// The printed card. Shared by every copy; per-copy state lives on the game object.
@@ -871,6 +879,13 @@ pub struct CardDef {
     /// Kira: "Creatures you control have 'Whenever this creature becomes the target of a spell or
     /// ability for the first time each turn, counter that spell or ability.'" (its trigger number)
     pub kira_trigger: Option<usize>,
+    /// A modal trigger's modes can each be chosen once each turn ("choose one that hasn't been
+    /// chosen this turn", Monument to Endurance); see `Game::modes_chosen`.
+    pub modes_once_each_turn: bool,
+    /// "If you would lose unspent mana, that mana becomes colorless instead." (Kruphix, Horizon Stone)
+    pub unspent_mana_becomes_colorless: bool,
+    /// "Cast this spell only during your end step." (Necrologia)
+    pub cast_only_during_your_end_step: bool,
 }
 
 /// A card's pieces from the d4 subsystems (see [`CardDef::subsystems`]).
@@ -887,6 +902,13 @@ pub struct SubsystemExt {
     /// A split card's left half's own mana cost, which casting it pays; `cost` is both halves'
     /// together, its mana value off the stack (CR 709.4).
     pub left_cost: Option<ManaCost>,
+    /// A Saga's chapter grants (Urza's Saga: "II — This Saga gains \"{2}, {T}: ...\""): (chapter,
+    /// index into `activated`) for each activated ability it has only once that chapter's
+    /// `SubsystemEffect::GainChapterAbilities` has resolved (see `Game::lacks_chapter_activated`).
+    pub chapter_activated: Vec<(u8, usize)>,
+    /// The chapter whose resolving grants its `mana` ability (Urza's Saga: "I — This Saga gains
+    /// \"{T}: Add {C}.\""; see `Game::lacks_chapter_mana`).
+    pub chapter_mana: Option<u8>,
 }
 
 /// A card's mana, cost and keyword pieces added by the d1 theme (see [`CardDef::mana_ext`]).
@@ -969,6 +991,17 @@ pub struct ManaExt {
     /// lands): it makes this much mana while you control all three of Urza's Mine, Power-Plant
     /// and Tower.
     pub tron_amount: u8,
+    /// "For each {B} in a cost, you may pay 2 life rather than pay that mana." (K'rrik): the engine
+    /// pays mana first and only the {B} it can't pay with life.
+    pub black_pips_for_life: bool,
+    /// "Creature spells with flying you cast cost {N} less to cast." (Watcher of the Spheres)
+    pub flying_creature_spell_discount: u8,
+    /// "The first non-Lemur creature spell with flying you cast during each of your turns costs
+    /// {N} less to cast." (Momo, Friendly Flier)
+    pub first_flier_discount_your_turn: u8,
+    /// "This land enters tapped unless you control a legendary creature." (The Shire, Minas
+    /// Tirith)
+    pub enters_tapped_unless_legendary_creature: bool,
 }
 
 /// "You may pay [mana], [life] and sacrifice or tap [creatures] rather than pay this spell's mana
@@ -1288,6 +1321,9 @@ impl CardDef {
             attack_tax_per_enchantment: false,
             clue_food_treasure: None,
             kira_trigger: None,
+            modes_once_each_turn: false,
+            unspent_mana_becomes_colorless: false,
+            cast_only_during_your_end_step: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -1539,6 +1575,9 @@ impl CardDef {
             attack_tax_per_enchantment: false,
             clue_food_treasure: None,
             kira_trigger: None,
+            modes_once_each_turn: false,
+            unspent_mana_becomes_colorless: false,
+            cast_only_during_your_end_step: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -1790,6 +1829,9 @@ impl CardDef {
             attack_tax_per_enchantment: false,
             clue_food_treasure: None,
             kira_trigger: None,
+            modes_once_each_turn: false,
+            unspent_mana_becomes_colorless: false,
+            cast_only_during_your_end_step: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,

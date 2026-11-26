@@ -1436,6 +1436,27 @@ pub fn script(name: &str) -> Option<Script> {
                 d.kira_trigger = Some(0);
             },
         ),
+        "Trostani, Selesnya's Voice" => s(
+            &[
+                "Whenever another creature you control enters, you gain life equal to that creature's toughness.",
+                "{1}{G}{W}, {T}: Populate.",
+            ],
+            |d, _| {
+                let it = Filter { triggering: true, ..CREATURE };
+                on(d, When::AnotherCreatureYouControlEnters, vec![it], vec![Effect::GainLifeEqualSlotToughness(0)]);
+                activated(d, "{1}{G}{W}", true, vec![], vec![Effect::Populate]);
+            },
+        ),
+        "Isochron Scepter" => s(
+            &[
+                "Imprint — When this artifact enters, you may exile an instant card with mana value 2 or less from your hand.",
+                "{2}, {T}: You may copy the exiled card. If you do, you may cast the copy without paying its mana cost.",
+            ],
+            |d, _| {
+                on(d, When::Enters, vec![], vec![Effect::ImprintInstantFromHand]);
+                activated(d, "{2}", true, vec![], vec![Effect::CastImprintedCopy]);
+            },
+        ),
         _ => None,
     }
 }
@@ -1609,4 +1630,6 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "All Suns' Dawn",
     "Chain of Smog",
     "Kira, Great Glass-Spinner",
+    "Trostani, Selesnya's Voice",
+    "Isochron Scepter",
 ];
