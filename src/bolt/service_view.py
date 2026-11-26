@@ -142,6 +142,10 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
             return f"{src or 'It'}: protection from {kinds[value]}"
         if d == "TargetToSource":
             return f"Change target {value + 1} to {src or 'this creature'}"
+        if d == "ChooseDungeon" and 0 <= value < len(dec.get("options", [])):
+            return f"Venture into {dec['options'][value]}"
+        if d == "ChooseRoom" and 0 <= value < len(dec.get("options", [])):
+            return f"Venture into the room {dec['options'][value]}"
         return None
     if kind == "Pick" and d == "SacrificeAnotherGainDraw":
         return f"Sacrifice {card_name} (gain life and draw equal to its power)"

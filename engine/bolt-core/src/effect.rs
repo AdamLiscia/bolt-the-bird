@@ -1873,6 +1873,8 @@ pub enum Effect {
     /// then a +1/+1 counter on it per nonland card discarded (Raffine), as
     /// `Decision::ConniveDiscard`.
     ConniveAttackers(u8),
+    /// The d4 subsystems' effects (dungeons, the initiative, dice, emblems for a player).
+    Subsystem(SubsystemEffect),
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -2071,6 +2073,8 @@ pub enum StaticCondition {
     AttachedTapped(bool),
     /// The creature the source is attached to is this color, WUBRG index (Shield of the Oversoul).
     AttachedIsColor(u8),
+    /// The source's controller has completed a dungeon (Nadaar).
+    CompletedDungeon,
 }
 
 /// A static ability that changes characteristics (CR 604, 613 layers 6 and 7c).
@@ -2115,6 +2119,9 @@ pub enum EmblemKind {
     NoMaxHandSize,
     /// "Lands you control have indestructible." (Nissa, Who Shakes the World)
     LandsIndestructible,
+    /// An emblem with a triggered ability: trigger number `trigger` of the card that made it
+    /// (written with `When::Never`) happens whenever `when` fires for the emblem's owner.
+    Triggered { when: When, trigger: usize },
 }
 
 /// Which looked-at card may be picked.
@@ -2252,6 +2259,10 @@ pub enum Condition {
     ControlSubtypeAtLeast(&'static str, u32),
     /// An opponent controls at least this many creatures (Defense of the Heart).
     OpponentControlsCreaturesAtLeast(u8),
+    /// You've completed a dungeon (CR 309.7).
+    CompletedDungeon,
+    /// You have the initiative (CR 725).
+    HaveInitiative,
 }
 
 /// A spell's effect or a triggered ability: target slots, then effects in order.
@@ -2577,4 +2588,43 @@ pub enum When {
 pub struct Trigger {
     pub when: When,
     pub ability: Ability,
+}
+
+/// A dungeon card (CR 309), in the order `game::d4::rooms` lists them.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Dungeon {
+    /// Lost Mine of Phandelver.
+    LostMine,
+    /// Dungeon of the Mad Mage.
+    MadMage,
+    /// Tomb of Annihilation.
+    Tomb,
+    /// Undercity: only by venturing into Undercity (the initiative, CR 725.2).
+    Undercity,
+}
+
+/// The d4 subsystems' effects ([`Effect::Subsystem`]).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SubsystemEffect {
+    /// "Venture into the dungeon" (CR 701.49a).
+    Venture,
+    /// "Venture into Undercity" (CR 701.49b, the initiative).
+    VentureUndercity,
+    /// "You take the initiative" (CR 725.1).
+    TakeInitiative,
+    /// A room ability's tokens: `n` of the token definition with this name (and P/T, for a
+    /// creature token).
+    RoomToken {
+        name: &'static str,
+        power: i32,
+        toughness: i32,
+        n: u8,
+    },
+    /// "Roll a d`sides`. You create a number of [tokens] equal to the result." (CR 706)
+    RollDieCreateTokens { sides: u32, def: usize },
+    /// "Target [player] gets an emblem with ..." (the player in target slot `slot`).
+    EmblemForTarget { slot: u8, kind: EmblemKind },
+    /// The end of a bottommost room's ability: the dungeon is completed once the last copy of it
+    /// leaves the stack (CR 704.5t).
+    CompleteDungeon,
 }

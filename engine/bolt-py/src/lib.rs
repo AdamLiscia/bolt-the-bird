@@ -614,6 +614,24 @@ impl Game {
                             }
                         }
                     }
+                    // Venture: the dungeons or rooms each Mode(i) moves into.
+                    D::ChooseDungeon { .. } => {
+                        let names = [
+                            "Lost Mine of Phandelver",
+                            "Dungeon of the Mad Mage",
+                            "Tomb of Annihilation",
+                        ];
+                        e.set_item("options", names.to_vec())?;
+                    }
+                    D::ChooseRoom { dungeon, from, .. } => {
+                        let rooms = bolt_core::rooms(*dungeon);
+                        let next: Vec<&str> = rooms[*from as usize]
+                            .next
+                            .iter()
+                            .map(|&r| rooms[r as usize].name)
+                            .collect();
+                        e.set_item("options", next)?;
+                    }
                     _ => {}
                 }
                 d.set_item("decision", e)?;

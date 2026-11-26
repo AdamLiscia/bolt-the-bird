@@ -133,6 +133,28 @@ fn bust_destroys_all_lands_for_its_own_cost() {
     );
 }
 
+// ---- Dungeons ----
+
+#[test]
+fn hama_pashar_doubles_your_room_abilities() {
+    let mut g = table();
+    assert!(set("CMD").unwrap().supported[cid("Hama Pashar, Ruin Seeker")]);
+    assert_eq!(g.room_trigger_count(0), 1);
+    put(&mut g, 0, "Hama Pashar, Ruin Seeker");
+    assert_eq!((g.room_trigger_count(0), g.room_trigger_count(1)), (2, 1));
+}
+
+#[test]
+fn dungeon_delver_doubles_them_through_your_commander_creature() {
+    let mut g = table();
+    assert!(set("CMD").unwrap().supported[cid("Dungeon Delver")]);
+    put(&mut g, 0, "Dungeon Delver");
+    assert_eq!(g.room_trigger_count(0), 1);
+    // A commander creature you own on the battlefield.
+    g.commanders[0] = Some(put(&mut g, 0, "Bello, Bard of the Brambles"));
+    assert_eq!(g.room_trigger_count(0), 2);
+}
+
 // ---- Choose a Background ----
 
 #[test]

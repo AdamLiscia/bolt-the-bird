@@ -57,6 +57,15 @@ pub fn script(name: &str) -> Option<Script> {
                 omen(d, Ability::new(vec![PERMANENT], vec![Effect::Tap(0), draw(1)]));
             },
         ),
+        // ---- Dungeons (game/d4.rs) ----
+        "Hama Pashar, Ruin Seeker" => s(
+            &["Room abilities of dungeons you own trigger an additional time."],
+            |d, _| d.subsystems.rooms_trigger_again = true,
+        ),
+        "Dungeon Delver" => s(
+            &["Commander creatures you own have \"Room abilities of dungeons you own trigger an additional time.\""],
+            |d, _| d.subsystems.commanders_rooms_trigger_again = true,
+        ),
         _ => None,
     }
 }
@@ -65,4 +74,7 @@ pub const PG_D4_SCRIPTED: &[&str] = &[
     // Split cards
     "Boom // Bust",
     "Fire // Ice",
+    // Dungeons
+    "Hama Pashar, Ruin Seeker",
+    "Dungeon Delver",
 ];
