@@ -1503,6 +1503,12 @@ pub struct Game {
     /// The open free-cast window allows one spell: it closes once one of [`Game::free_casts`] is
     /// cast (Rishkar's Expertise: "a spell ... from your hand").
     pub free_casts_one: bool,
+    /// Permanents that entered since triggers were last put on the stack, with their zcc: "enters
+    /// tapped" triggers check them then (Amulet of Vigor).
+    pub entered_pending: Vec<(ObjId, u32)>,
+    /// Creature cards went to each player's graveyard (from anywhere) since triggers were last put
+    /// on the stack (Sefris).
+    pub creature_cards_to_graveyard_pending: [bool; 2],
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -1744,6 +1750,8 @@ impl Game {
             next_turn_pt: Vec::new(),
             escaped: Vec::new(),
             free_casts_one: false,
+            entered_pending: Vec::new(),
+            creature_cards_to_graveyard_pending: [false; 2],
         }
     }
 
@@ -3129,6 +3137,16 @@ impl Game {
     /// "Whenever one or more cards leave your graveyard during your turn" triggers, once for the cards
     /// that left since triggers were last put on the stack.
     fn flush_graveyard_leaves(&mut self) {
+        // "Whenever a permanent you control enters tapped" (Amulet of Vigor).
+        for (id, zcc) in std::mem::take(&mut self.entered_pending) {
+            let o = self.obj(id);
+            if o.zone == Zone::Battlefield && o.zcc == zcc && o.tapped {
+                let c = o.controller;
+                let before = self.triggered.len();
+                self.fire(c, When::PermanentYouControlEntersTapped, None);
+                self.fill_triggering(before, id);
+            }
+        }
         for p in 0..2 {
             if std::mem::take(&mut self.graveyard_leave_any_pending[p]) {
                 self.fire(p, When::CardsLeaveYourGraveyard, None);
@@ -3138,6 +3156,20 @@ impl Game {
             }
             if std::mem::take(&mut self.creatures_milled_pending[p]) {
                 self.fire(p, When::CreatureCardsMilledToYourGraveyard, None);
+            }
+            if std::mem::take(&mut self.creature_cards_to_graveyard_pending[p]) {
+                // Sefris: "This ability triggers only once each turn."
+                let before = self.triggered.len();
+                self.fire(p, When::CreatureCardsToYourGraveyardOnceEachTurn, None);
+                let turn = self.turn;
+                let mut fresh = Vec::new();
+                for t in self.triggered.drain(before..).collect::<Vec<_>>() {
+                    if self.obj(t.source).once_each_turn != turn {
+                        self.obj_mut(t.source).once_each_turn = turn;
+                        fresh.push(t);
+                    }
+                }
+                self.triggered.extend(fresh);
             }
             if std::mem::take(&mut self.lands_milled_pending[p]) {
                 self.fire(p, When::LandCardsMilledToYourGraveyard, None);
@@ -3623,6 +3655,11 @@ impl Game {
         }
         if self.is_token(id) {
             self.fire(p, When::YouSacrificeToken, None);
+        } else {
+            let before = self.triggered.len();
+            self.fire(p, When::YouSacrificeNontoken, None);
+            self.fire(opponent(p), When::OpponentSacrificesNontoken, None);
+            self.fill_triggering(before, id);
         }
         let subs: Vec<String> = self.def_of(id).subtypes.clone();
         if self.types_of(id).creature {
@@ -3684,6 +3721,16 @@ impl Game {
         self.life_gained_this_turn[p] += n;
         let before = self.triggered.len();
         self.fire(p, When::YouGainLife, None);
+        // Vizkopa Guildmage: "Whenever you gain life this turn, ..." (delayed, CR 603.7).
+        let turn = self.turn;
+        for (w, src, k, who, t) in self.delayed_this_turn.clone() {
+            if w == When::YouGainLife && who == p && t == turn {
+                self.triggered.push(StackItem {
+                    kind: StackKind::Trigger(k),
+                    ..Game::casting(src, who)
+                });
+            }
+        }
         for t in &mut self.triggered[before..] {
             t.amount = n; // "that much life" (Sanguine Bond)
         }
@@ -3873,6 +3920,9 @@ impl Game {
             }
             if from == Zone::Library && self.def_of(id).types.land {
                 self.lands_milled_pending[owner] = true;
+            }
+            if self.def_of(id).types.creature {
+                self.creature_cards_to_graveyard_pending[owner] = true;
             }
         }
         if to == Zone::Graveyard && from != Zone::Graveyard && !self.is_token(id) {
@@ -4412,6 +4462,16 @@ impl Game {
         if to == Zone::Battlefield && from != Zone::Battlefield {
             let c = self.obj(id).controller;
             self.fire(c, When::AnotherPermanentYouControlEnters, Some(id));
+            let before = self.triggered.len();
+            if self.types_of(id).artifact {
+                self.fire(c, When::ArtifactYouControlEnters, None);
+            } else {
+                self.fire(c, When::NonartifactPermanentYouControlEnters, None);
+            }
+            self.fill_triggering(before, id);
+            // Amulet of Vigor: whether it entered tapped is checked with the triggers.
+            let zcc = self.obj(id).zcc;
+            self.entered_pending.push((id, zcc));
         }
         if to == Zone::Battlefield {
             self.obj_mut(id).chosen_mode = None; // a new object chooses again
@@ -4630,6 +4690,9 @@ impl Game {
                             When::CreatureWithFlyingYouControlEnters => {
                                 self.keywords(id).has(Keywords::FLYING)
                             }
+                            When::AnotherColorlessCreatureYouControlEnters => {
+                                any != id && !self.colors_of(id).iter().any(|&c| c)
+                            }
                             _ => false,
                         };
                         if hit {
@@ -4845,6 +4908,9 @@ impl Game {
                 self.draws_this_turn[p] += 1;
                 self.fire(p, When::YouDraw, None);
                 self.fire(opponent(p), When::OpponentDraws, None);
+                if !self.in_draw_step_draw {
+                    self.fire(opponent(p), When::OpponentDrawsExceptFirstInDrawStep, None);
+                }
                 if self.draws_this_turn[p] == 2 {
                     self.fire(p, When::YouDrawSecond, None);
                 }
@@ -8450,6 +8516,9 @@ impl Game {
                         });
                     }
                 }
+                if self.obj(c).attacks_turn == (turn, 1) {
+                    self.fire_source(c, When::AttacksFirstTimeEachTurn);
+                }
                 // "Whenever equipped creature attacks".
                 let zcc = self.obj(c).zcc;
                 let gear: Vec<ObjId> = self
@@ -9046,6 +9115,7 @@ impl Game {
                 let hit = match w {
                     When::YouCastNoncreatureMvAtLeast(k) => noncreature && spell_mv >= k,
                     When::YouCastColor(k) => colors.get(k).copied().unwrap_or(false),
+                    When::YouCastColorlessMvAtLeast(k) => !colors.iter().any(|&c| c) && spell_mv >= k,
                     _ => false,
                 };
                 if hit {
@@ -18524,6 +18594,11 @@ impl Game {
             }
             Some(Condition::OpponentLostLifeAtLeast(n)) => self.life_lost_now(opponent(controller)) >= *n,
             Some(Condition::SourceQuestCountersAtLeast(n)) => self.obj(source).quest >= *n,
+            Some(Condition::YouGainedLifeThisTurn) => self.life_gained_this_turn[controller] > 0,
+            Some(Condition::LifeAtLeast(n)) => self.players[controller].life >= *n,
+            Some(Condition::NoCreaturesOnBattlefield) => {
+                !self.battlefield.iter().any(|&c| self.types_of(c).creature)
+            }
         }
     }
 
@@ -19958,6 +20033,27 @@ impl Game {
         }
         if amount > 0 && self.obj(source).zone == Zone::Battlefield {
             self.obj_mut(source).dealt_damage = true;
+        }
+        if amount == 1 {
+            // Ghyrson Starn: "Whenever another source you control deals exactly 1 damage to a
+            // permanent or player" (slot 0, if `triggering`, is that permanent or player).
+            let before = self.triggered.len();
+            let by = self.obj(source).controller;
+            self.fire(by, When::AnotherSourceYouControlDealsExactlyOne, Some(source));
+            let chosen = match target {
+                Target::Player(p) => Chosen::Player(p),
+                Target::Object(id) => Chosen::Object(id, self.obj(id).zcc),
+            };
+            for i in before..self.triggered.len() {
+                let refers = self
+                    .ability_of(&self.triggered[i])
+                    .targets
+                    .first()
+                    .is_some_and(|f| f.triggering);
+                if refers {
+                    self.triggered[i].targets = vec![chosen];
+                }
+            }
         }
         let k = self.keywords(source);
         let infect = self.has_infect(source);
