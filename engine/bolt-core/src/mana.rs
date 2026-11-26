@@ -14,6 +14,8 @@ pub struct ManaCost {
     pub x: u8,
     /// Monocolored hybrid, e.g. {2/G}: pay one mana of the color or two generic (CR 107.4e).
     pub twobrid: [u8; 5],
+    /// {C}: one colorless mana, which only colorless mana pays (CR 107.4c).
+    pub colorless: u8,
 }
 
 /// The ten two-color pairs, in a fixed order.
@@ -52,6 +54,8 @@ impl ManaCost {
                 cost.generic += n;
             } else if sym == "X" {
                 cost.x += 1;
+            } else if sym == "C" {
+                cost.colorless += 1;
             } else if let Some(c) = sym.strip_prefix("2/") {
                 let c = Color::from_symbol(c.chars().next()?)? as usize;
                 cost.twobrid[c] += 1;
@@ -80,6 +84,7 @@ impl ManaCost {
             + self.colored.iter().map(|&n| n as u32).sum::<u32>()
             + self.hybrid.iter().map(|&n| n as u32).sum::<u32>()
             + 2 * self.twobrid.iter().map(|&n| n as u32).sum::<u32>()
+            + self.colorless as u32
     }
 
     /// The ways to pay the {2/C} symbols: each one as its color or as {2}, most colored first (fewest
@@ -178,15 +183,19 @@ fn pay_in_order(
     order: &[usize],
     generic_order: &[usize],
 ) -> Option<Vec<usize>> {
-    // Each pip is the set of colors that can pay it: one color, or two for hybrid.
-    let mut pips: Vec<[bool; 5]> = Vec::new();
+    // Each pip is the set of colors that can pay it: one color, or two for hybrid; index 5 is
+    // colorless ({C}).
+    let mut pips: Vec<[bool; 6]> = Vec::new();
     for c in 0..5 {
-        let mut mask = [false; 5];
+        let mut mask = [false; 6];
         mask[c] = true;
         pips.extend(std::iter::repeat_n(mask, cost.colored[c] as usize));
     }
+    let mut colorless = [false; 6];
+    colorless[5] = true;
+    pips.extend(std::iter::repeat_n(colorless, cost.colorless as usize));
     for (i, &(a, b)) in PAIRS.iter().enumerate() {
-        let mut mask = [false; 5];
+        let mut mask = [false; 6];
         mask[a] = true;
         mask[b] = true;
         pips.extend(std::iter::repeat_n(mask, cost.hybrid[i] as usize));
@@ -211,7 +220,7 @@ fn pay_in_order(
 }
 
 fn match_pips(
-    pips: &[[bool; 5]],
+    pips: &[[bool; 6]],
     sources: &[ManaSource],
     order: &[usize],
     used: &mut [bool],
@@ -221,7 +230,7 @@ fn match_pips(
         return true;
     };
     for &i in order {
-        if !used[i] && (0..5).any(|c| mask[c] && sources[i].colors[c]) {
+        if !used[i] && ((0..5).any(|c| mask[c] && sources[i].colors[c]) || mask[5] && sources[i].colorless) {
             used[i] = true;
             chosen.push(i);
             if match_pips(rest, sources, order, used, chosen) {
@@ -253,6 +262,25 @@ mod tests {
         let h = ManaCost::parse("{B/G}{B/G}").unwrap();
         assert_eq!((h.mana_value(), h.hybrid[pair_index(2, 4)]), (2, 2));
         assert_eq!(ManaCost::parse("{W/W}"), None);
+        let c = ManaCost::parse("{9}{C}{C}{C}").unwrap();
+        assert_eq!((c.generic, c.colorless, c.mana_value()), (9, 3, 12));
+    }
+
+    #[test]
+    fn colorless_pips_take_only_colorless_mana() {
+        let wastes = ManaSource {
+            colorless: true,
+            ..ManaSource::default()
+        };
+        let forest = ManaSource::of(&[Green]);
+        let cost = ManaCost::parse("{1}{C}").unwrap();
+        assert!(
+            pay(&cost, &[forest, forest]).is_none(),
+            "{{C}} needs colorless mana"
+        );
+        let mut got = pay(&cost, &[forest, wastes]).unwrap();
+        got.sort();
+        assert_eq!(got, vec![0, 1]);
     }
 
     #[test]
