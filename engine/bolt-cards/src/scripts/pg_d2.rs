@@ -449,6 +449,21 @@ pub fn script(name: &str) -> Option<Script> {
                 d.activated[n].crew = 2;
             },
         ),
+        // ---- Core: triggers, batch 7 ----
+        "Ghostly Pilferer" => s(
+            &[
+                "Whenever this creature becomes untapped, you may pay {2}. If you do, draw a card.",
+                "Whenever an opponent casts a spell from anywhere other than their hand, draw a card.",
+                "Discard a card: This creature can't be blocked this turn.",
+            ],
+            |d, _| {
+                let two = ManaCost::parse("{2}").expect("a mana cost");
+                on(d, When::BecomesUntapped, vec![], vec![Effect::MayPay(two), draw(1)]);
+                on(d, When::OpponentCastsNotFromHand, vec![], vec![draw(1)]);
+                let n = activated(d, "", false, vec![], vec![Effect::GrantSelf { keywords: Keywords::UNBLOCKABLE }]);
+                d.activated[n].discard_cost = true;
+            },
+        ),
         // ---- The Gitrog, Ravenous Ride ----
         "Demonic Tutor" => s(&["Search your library for a card, put that card into your hand, then shuffle."], |d, _| {
             spell(d, vec![], vec![search(SearchFor::Any, SearchTo::Hand)])
@@ -865,6 +880,8 @@ pub const PG_D2_SCRIPTED: &[&str] = &[
     "Species Specialist",
     "Bloodchief Ascension",
     "Cryptcaller Chariot",
+    // Core: triggers, batch 7
+    "Ghostly Pilferer",
     // The Gitrog, Ravenous Ride
     "Demonic Tutor",
     "Exquisite Blood",

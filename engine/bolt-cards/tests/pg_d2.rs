@@ -1647,3 +1647,74 @@ fn cryptcaller_chariot_makes_tapped_zombies_for_discards() {
     assert!(g.obj(z[0]).tapped);
     assert_eq!((g.power(z[0]), g.toughness(z[0])), (2, 2));
 }
+
+// ---- Core: triggers, batch 7 ----
+
+/// Settles the stack, answering each target with the first legal one and each question with yes.
+fn settle_first(g: &mut Game) {
+    while !g.items.is_empty() || matches!(g.pending, Pending::ChooseTarget(_) | Pending::Decide(_)) {
+        let legal = g.legal_actions();
+        let a = match g.pending {
+            Pending::ChooseTarget(_) => legal[0],
+            Pending::Decide(_) if legal.contains(&Action::Yes) => Action::Yes,
+            Pending::Decide(_) => legal[0],
+            _ => Action::PassPriority,
+        };
+        act(g, a);
+    }
+}
+
+#[test]
+fn ghostly_pilferer_pays_to_draw_on_untap_and_draws_on_a_spell_not_from_hand() {
+    let mut g = table();
+    let gp = put(&mut g, 0, "Ghostly Pilferer");
+    g.objects[gp.0 as usize].tapped = true;
+    let lib = g.players[0].library.len();
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        let a = if matches!(g.pending, Pending::Decide(_)) {
+            Action::Yes
+        } else {
+            Action::PassPriority
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(
+        g.players[0].library.len(),
+        lib - 2,
+        "the draw step and the paid trigger"
+    );
+    // The opponent casts their commander from the command zone.
+    g.start_turn(6, 1);
+    while !(g.step == Step::Main1 && g.active == 1) {
+        act(&mut g, Action::PassPriority);
+    }
+    let lib = g.players[0].library.len();
+    let hand_spell = hand(&mut g, 1, "Sol Ring");
+    act(&mut g, Action::Cast(hand_spell));
+    settle_first(&mut g);
+    assert_eq!(g.players[0].library.len(), lib, "a spell from hand doesn't draw");
+    // (Cast before Ms. Bumbleflower is out: her cast trigger makes the opponent draw.)
+    let c = g.commanders[1].expect("a commander");
+    act(&mut g, Action::Cast(c));
+    settle_first(&mut g);
+    assert_eq!(g.players[0].library.len(), lib - 1, "cast from the command zone");
+}
+
+#[test]
+fn ghostly_pilferer_discards_to_become_unblockable() {
+    let mut g = table();
+    let gp = put(&mut g, 0, "Ghostly Pilferer");
+    let c = hand(&mut g, 0, "Sol Ring");
+    act(&mut g, Action::ActivateWith(gp, 0, c)); // the discarded card
+    while !g.items.is_empty() || matches!(g.pending, Pending::Decide(_)) {
+        let a = if g.legal_actions().contains(&Action::Discard(c)) {
+            Action::Discard(c)
+        } else {
+            Action::PassPriority
+        };
+        act(&mut g, a);
+    }
+    assert!(in_graveyard(&g, 0, c));
+    assert!(g.keywords(gp).has(Keywords::UNBLOCKABLE));
+}

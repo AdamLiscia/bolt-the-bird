@@ -3759,7 +3759,7 @@ impl Game {
                     let Some(chosen) = self.obj(any).chosen_type.clone() else {
                         continue;
                     };
-                    let had = self.def_of(id).subtypes.iter().any(|s| *s == chosen)
+                    let had = self.def_of(id).subtypes.contains(&chosen)
                         || last.iter().any(|s| *s == chosen)
                         || self.def_of(id).changeling;
                     if !had {
