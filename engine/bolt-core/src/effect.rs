@@ -1691,6 +1691,43 @@ pub enum Effect {
     /// Evoke's "When this permanent enters, if its evoke cost was paid, its controller sacrifices
     /// it." (CR 702.74a)
     SacrificeIfEvoked,
+    /// Untap the creature the source is attached to.
+    UntapAttached,
+    /// You gain life and draw cards equal to the source's power, its last known power if it left
+    /// the battlefield (Lifeblood Hydra: "When this creature dies, ...").
+    GainLifeAndDrawSourcePower,
+    /// You gain 1 life for each spell you've cast this turn (Aetherflux Reservoir).
+    GainLifePerSpellCastThisTurn,
+    /// You gain half X life and draw half X cards, each rounded down, X the source spell's X (Hydroid
+    /// Krasis: "When you cast this spell, ...").
+    GainAndDrawHalfX,
+    /// You lose life equal to the mana value of the card or permanent in `slot` (Reanimate, Feed the
+    /// Swarm). Put it before the effect that moves that object, which keeps the slot legal.
+    LoseLifeSlotManaValue(u8),
+    /// Put the top card of your library into your hand (revealed); you lose life equal to its mana
+    /// value (Darkstar Augur, Dark Confidant).
+    RevealTopToHandLoseManaValue,
+    /// You lose life equal to the number of cards in your hand (Castle Locthwain).
+    LoseLifePerCardInHand,
+    /// `who` draws X cards and loses X life, X the cards in their graveyard as this resolves
+    /// (Eldritch Pact).
+    DrawAndLosePerGraveyardCard(Who),
+    /// Each player discards their hand, then draws that many cards minus one (Dark Deal).
+    DiscardHandsDrawThatManyMinusOne,
+    /// You draw X cards and lose X life, X the permanents you control with this subtype (Graveborn
+    /// Muse: Zombies).
+    DrawAndLosePerSubtypeYouControl(&'static str),
+    /// "Sacrifice another creature. You gain X life and draw X cards, where X is that creature's
+    /// power." (Disciple of Bolas; nothing if you control no other creature)
+    SacrificeAnotherGainAndDrawPower,
+    /// "Sacrifice it unless you return a non-[subtype] land you control to its owner's hand." (the
+    /// Lairs: Darigaaz's Caldera)
+    ReturnNonSubtypeLandOrSacrificeSelf(&'static str),
+    /// `who` loses life equal to the trigger's amount ("target opponent loses that much life":
+    /// Sanguine Bond, with `When::YouGainLife`).
+    LoseLifeAmount(Who),
+    /// `who` loses life equal to the life they've lost this turn (Wound Reflection).
+    LoseLifeLostThisTurn(Who),
     /// Draw a card for each creature you control of this color, WUBRG index (Regal Force: green).
     DrawPerColoredCreatureYouControl(u8),
     /// Regenerate each creature you control (Loxodon Hierarch).
@@ -1810,8 +1847,6 @@ pub enum Effect {
     /// opponent may sacrifice a permanent that shares a card type with it, and if they don't, they
     /// lose 2 life and you draw a card (Braids, Arisen Nightmare).
     BraidsEndStep,
-    /// Untap the creature the source (an Equipment) is attached to (Genji Glove).
-    UntapAttached,
     /// Each noncreature artifact you control becomes a 0/0 artifact creature for good, with `n`
     /// +1/+1 counters (Rise and Shine, overloaded).
     NoncreatureArtifactsBecomeZeroZeroWithCounters(u8),
@@ -2221,6 +2256,20 @@ pub enum Condition {
     /// The cast creature spell (the trigger's `extra`) has power from `.0` through `.1` (checked as
     /// it triggers).
     CastPowerBetween(i32, i32),
+    /// The source is tapped ("if this artifact is tapped", Mana Vault).
+    SourceTapped,
+    /// The source is untapped ("if this artifact is untapped", Howling Mine).
+    SourceUntapped,
+    /// It's its controller's turn (a "your draw step" trigger built on `When::EachDrawStep`).
+    YourTurn,
+    /// Its controller controls their commander (lieutenant: "if you control your commander").
+    ControlCommander,
+    /// It isn't its controller's turn. With `When::PlayerPlaysLand`: "whenever an opponent plays a
+    /// land" (a land is played only on its player's own turn).
+    NotYourTurn,
+    /// Its controller controls at least `.1` permanents with subtype `.0` (Revel in Riches: ten or
+    /// more Treasures).
+    ControlSubtypeAtLeast(&'static str, u32),
     /// An opponent controls at least this many creatures (Defense of the Heart).
     OpponentControlsCreaturesAtLeast(u8),
     /// The source is a creature this turn from its own "this becomes a creature" ability
@@ -2506,6 +2555,46 @@ pub enum When {
     FirstMainPhaseYourTurn,
     /// "Whenever you investigate for the first time each turn" (Erdwal Illuminator).
     YouInvestigateFirstTimeEachTurn,
+    /// "Whenever a creature an opponent controls dies" (tokens included).
+    OpponentCreatureDies,
+    /// "Whenever another creature you control dies" (tokens included; `AnotherNontokenCreatureYouControlDies`
+    /// is nontoken only).
+    AnotherCreatureYouControlDies,
+    /// "Whenever this creature or another [subtype] you control dies" (tokens included; Undead
+    /// Augur: Zombie). The creature it was is checked as it last existed.
+    ThisOrAnotherYouControlDiesWithSubtype(&'static str),
+    /// "Whenever an artifact is put into a graveyard from the battlefield" (anyone's, tokens included).
+    ArtifactToGraveyardFromBattlefield,
+    /// "Whenever an artifact is put into an opponent's graveyard from the battlefield".
+    ArtifactToOpponentsGraveyardFromBattlefield,
+    /// "Whenever you discard a card" (cycling included: it discards the card). Slot 0, if its first
+    /// filter is `triggering`, is the discarded card in your graveyard.
+    YouDiscard,
+    /// "Whenever you cast an enchantment spell" (from any zone); the spell is in `extra`.
+    YouCastEnchantment,
+    /// "Whenever you cast an artifact spell" (from any zone); the spell is in `extra`.
+    YouCastArtifact,
+    /// "Whenever one or more +1/+1 counters are put on this creature": every time (entering with
+    /// them included, CR 122.6). `CountersPutOnThis` is the once-each-turn version.
+    PlusCountersPutOnThis,
+    /// "Whenever you lose life" (every time; the amount travels with the trigger).
+    YouLoseLife,
+    /// "Whenever you sacrifice a permanent" (each one).
+    YouSacrifice,
+    /// "Whenever a player sacrifices another permanent" (any player's, each one).
+    PlayerSacrificesAnother,
+    /// "Whenever you sacrifice a token".
+    YouSacrificeToken,
+    /// "Whenever you sacrifice a [subtype]" (each one; Rapacious Guest: Food).
+    YouSacrificeSubtype(&'static str),
+    /// "Whenever this creature or another creature or artifact you control dies" (tokens included;
+    /// Al Bhed Salvagers).
+    ThisOrAnotherCreatureOrArtifactYouControlDies,
+    /// "Whenever another permanent you control enters" (Altar of the Brood).
+    AnotherPermanentYouControlEnters,
+    /// "Whenever another creature you control of this color enters" (a `Color` index: Ivy Lane
+    /// Denizen, green).
+    AnotherCreatureYouControlEntersWithColor(usize),
 }
 
 #[derive(Clone, Debug, PartialEq)]

@@ -8,7 +8,8 @@
   "keywords": "keywords: annihilator, fear, intimidate, undying, persist, extort, evoke, echo, exalted, convoke, morph, phasing, cascade, ...",
   "objects_zones": "tokens and objects (Clue, Food, copies), dungeons/initiative, back faces, emblems",
   "existing_code": "needs an existing function changed (target_ok filters, land entry, statics_on, blocking/targeting, type layers, timing): the merger's",
-  "merger_delegated": "merger-owned code done by lane B: turn structure (skip draw, untap step), cast legality, max hand size"
+  "merger_delegated": "merger-owned code done by lane B: turn structure (skip draw, untap step), cast legality, max hand size",
+  "subsystems": "new add-only subsystems: dungeons, venture and the initiative; emblems; dice and coin flips; the Ring tempts you; sagas and chapter abilities"
  },
  "owners": {
   "mana": "d1",
@@ -18,7 +19,8 @@
   "keywords": "d1",
   "objects_zones": "mac-c",
   "existing_code": "merger",
-  "merger_delegated": "mac-b"
+  "merger_delegated": "mac-b",
+  "subsystems": "d4"
  },
  "cards": [
   {
@@ -1186,7 +1188,7 @@
    "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
    "missing": "controller's basic fetch tapped; creatures without flying can't block",
    "lane": "d1",
-   "theme": "effects",
+   "theme": "objects_zones",
    "owner": "mac-c"
   },
   {
@@ -1842,8 +1844,8 @@
    "deck": "Kaalia of the Vast",
    "missing": "needs core: a d20 roll, and a 1/1 blue Faerie Dragon creature token with flying",
    "lane": "d2",
-   "theme": "objects_zones",
-   "owner": "mac-c"
+   "theme": "subsystems",
+   "owner": "d4"
   },
   {
    "card": "Bloodletter of Aclazotz",
@@ -1946,8 +1948,8 @@
    "deck": "Kaalia of the Vast",
    "missing": "needs core: the Ring tempts you",
    "lane": "d2",
-   "theme": "objects_zones",
-   "owner": "mac-c"
+   "theme": "subsystems",
+   "owner": "d4"
   },
   {
    "card": "Demon of Death's Gate",
@@ -2922,8 +2924,8 @@
    "deck": "Sefris of the Hidden Ways",
    "missing": "needs core: venture into the dungeon and a completed-dungeon condition",
    "lane": "d3",
-   "theme": "objects_zones",
-   "owner": "mac-c"
+   "theme": "subsystems",
+   "owner": "d4"
   },
   {
    "card": "Benevolent Bodyguard",
@@ -2970,16 +2972,16 @@
    "deck": "Sefris of the Hidden Ways",
    "missing": "needs core: dungeons and Background (room abilities trigger an additional time)",
    "lane": "d3",
-   "theme": "objects_zones",
-   "owner": "mac-c"
+   "theme": "subsystems",
+   "owner": "d4"
   },
   {
    "card": "Dungeon Descent",
    "deck": "Sefris of the Hidden Ways",
    "missing": "needs core: venture into the dungeon, and tapping an untapped legendary creature as a cost",
    "lane": "d3",
-   "theme": "objects_zones",
-   "owner": "mac-c"
+   "theme": "subsystems",
+   "owner": "d4"
   },
   {
    "card": "From the Catacombs",
@@ -3010,8 +3012,8 @@
    "deck": "Sefris of the Hidden Ways",
    "missing": "needs core: dungeons (room abilities trigger an additional time)",
    "lane": "d3",
-   "theme": "objects_zones",
-   "owner": "mac-c"
+   "theme": "subsystems",
+   "owner": "d4"
   },
   {
    "card": "Hengegate Pathway // Mistgate Pathway",
@@ -3026,8 +3028,8 @@
    "deck": "Sefris of the Hidden Ways",
    "missing": "needs core: the initiative and completed-dungeon conditions, and Choose a Background",
    "lane": "d3",
-   "theme": "objects_zones",
-   "owner": "mac-c"
+   "theme": "subsystems",
+   "owner": "d4"
   },
   {
    "card": "Jirina, Dauntless General",
@@ -3050,16 +3052,16 @@
    "deck": "Sefris of the Hidden Ways",
    "missing": "needs core: venture into the dungeon, and 'can't be blocked except by legendary creatures' for your creatures",
    "lane": "d3",
-   "theme": "objects_zones",
-   "owner": "mac-c"
+   "theme": "subsystems",
+   "owner": "d4"
   },
   {
    "card": "Nadaar, Selfless Paladin",
    "deck": "Sefris of the Hidden Ways",
    "missing": "needs core: venture into the dungeon and a completed-dungeon static condition",
    "lane": "d3",
-   "theme": "objects_zones",
-   "owner": "mac-c"
+   "theme": "subsystems",
+   "owner": "d4"
   },
   {
    "card": "Oriq Loremage",
@@ -3074,8 +3076,8 @@
    "deck": "Sefris of the Hidden Ways",
    "missing": "needs core: venture into the dungeon",
    "lane": "d3",
-   "theme": "objects_zones",
-   "owner": "mac-c"
+   "theme": "subsystems",
+   "owner": "d4"
   },
   {
    "card": "Rona, Herald of Invasion // Rona, Tolarian Obliterator",
@@ -3090,8 +3092,8 @@
    "deck": "Sefris of the Hidden Ways",
    "missing": "needs core: the initiative and completed-dungeon conditions, and Choose a Background",
    "lane": "d3",
-   "theme": "objects_zones",
-   "owner": "mac-c"
+   "theme": "subsystems",
+   "owner": "d4"
   },
   {
    "card": "Seasoned Dungeoneer",
@@ -3106,8 +3108,8 @@
    "deck": "Sefris of the Hidden Ways",
    "missing": "needs core: venture into the dungeon when creature cards go to your graveyard, and a 'whenever you complete a dungeon' trigger",
    "lane": "d3",
-   "theme": "objects_zones",
-   "owner": "mac-c"
+   "theme": "subsystems",
+   "owner": "d4"
   },
   {
    "card": "Selhoff Entomber",
@@ -3146,16 +3148,16 @@
    "deck": "Sefris of the Hidden Ways",
    "missing": "needs core: take the initiative, and untapping on each opponent's upkeep with a completed-dungeon condition",
    "lane": "d3",
-   "theme": "objects_zones",
-   "owner": "mac-c"
+   "theme": "subsystems",
+   "owner": "d4"
   },
   {
    "card": "Yuan-Ti Malison",
    "deck": "Sefris of the Hidden Ways",
    "missing": "needs core: venture into the dungeon, and 'can't be blocked as long as it's attacking alone'",
    "lane": "d3",
-   "theme": "objects_zones",
-   "owner": "mac-c"
+   "theme": "subsystems",
+   "owner": "d4"
   },
   {
    "card": "Mana Drain",
@@ -3562,8 +3564,8 @@
    "deck": "Sheoldred, the Apocalypse",
    "missing": "needs core: an emblem for the opponent ('whenever a player draws a card, you lose 2 life')",
    "lane": "d3",
-   "theme": "objects_zones",
-   "owner": "mac-c"
+   "theme": "subsystems",
+   "owner": "d4"
   },
   {
    "card": "Otherworld Atlas",
@@ -3866,8 +3868,8 @@
    "deck": "Atraxa, Praetors' Voice",
    "missing": "needs core: a 2/1 black Spider creature token with reach and menace, a loyalty-on-death trigger, and an emblem",
    "lane": "d3",
-   "theme": "objects_zones",
-   "owner": "mac-c"
+   "theme": "subsystems",
+   "owner": "d4"
   },
   {
    "card": "Nissa, Ascended Animist",
@@ -3890,8 +3892,8 @@
    "deck": "Atraxa, Praetors' Voice",
    "missing": "needs core: an emblem 'whenever you gain life, target opponent loses that much life'",
    "lane": "d3",
-   "theme": "objects_zones",
-   "owner": "mac-c"
+   "theme": "subsystems",
+   "owner": "d4"
   },
   {
    "card": "Wash Away",
@@ -4276,6 +4278,782 @@
    "lane": "mac-b",
    "theme": "triggers",
    "owner": "d2"
+  },
+  {
+   "card": "Eldrazi Temple",
+   "deck": "Zhulodok, Void Gorger (Adam)",
+   "missing": "mana production (colorless-only, Tron, doubling)",
+   "lane": "mac-b",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Shrine of the Forsaken Gods",
+   "deck": "Zhulodok, Void Gorger (Adam)",
+   "missing": "mana production (colorless-only, Tron, doubling)",
+   "lane": "mac-b",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Urza's Mine",
+   "deck": "Zhulodok, Void Gorger (Adam)",
+   "missing": "mana production (colorless-only, Tron, doubling)",
+   "lane": "mac-b",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Urza's Power Plant",
+   "deck": "Zhulodok, Void Gorger (Adam)",
+   "missing": "mana production (colorless-only, Tron, doubling)",
+   "lane": "mac-b",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Urza's Tower",
+   "deck": "Zhulodok, Void Gorger (Adam)",
+   "missing": "mana production (colorless-only, Tron, doubling)",
+   "lane": "mac-b",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Urza's Workshop",
+   "deck": "Zhulodok, Void Gorger (Adam)",
+   "missing": "mana production (colorless-only, Tron, doubling)",
+   "lane": "mac-b",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Crystal Vein",
+   "deck": "Zhulodok, Void Gorger (Adam)",
+   "missing": "mana production (colorless-only, Tron, doubling)",
+   "lane": "mac-b",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Ugin's Labyrinth",
+   "deck": "Zhulodok, Void Gorger (Adam)",
+   "missing": "mana production (colorless-only, Tron, doubling)",
+   "lane": "mac-b",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Planar Nexus",
+   "deck": "Zhulodok, Void Gorger (Adam)",
+   "missing": "mana production (colorless-only, Tron, doubling)",
+   "lane": "mac-b",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Scorched Ruins",
+   "deck": "Zhulodok, Void Gorger (Adam)",
+   "missing": "mana production (colorless-only, Tron, doubling)",
+   "lane": "mac-b",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Forsaken Monument",
+   "deck": "Zhulodok, Void Gorger (Adam)",
+   "missing": "mana production (colorless-only, Tron, doubling)",
+   "lane": "mac-b",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Horizon Stone",
+   "deck": "Zhulodok, Void Gorger (Adam)",
+   "missing": "mana production (colorless-only, Tron, doubling)",
+   "lane": "mac-b",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Eye of Ugin",
+   "deck": "Zhulodok, Void Gorger (Adam)",
+   "missing": "cost reduction or alternative cost",
+   "lane": "mac-b",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Urza's Incubator",
+   "deck": "Zhulodok, Void Gorger (Adam)",
+   "missing": "cost reduction or alternative cost",
+   "lane": "mac-b",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "It That Heralds the End",
+   "deck": "Zhulodok, Void Gorger (Adam)",
+   "missing": "cost reduction or alternative cost",
+   "lane": "mac-b",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Conduit of Ruin",
+   "deck": "Zhulodok, Void Gorger (Adam)",
+   "missing": "cost reduction or alternative cost",
+   "lane": "mac-b",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Darksteel Monolith",
+   "deck": "Zhulodok, Void Gorger (Adam)",
+   "missing": "cost reduction or alternative cost",
+   "lane": "mac-b",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Not of This World",
+   "deck": "Zhulodok, Void Gorger (Adam)",
+   "missing": "cost reduction or alternative cost",
+   "lane": "mac-b",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "War Room",
+   "deck": "Zhulodok, Void Gorger (Adam)",
+   "missing": "cost reduction or alternative cost",
+   "lane": "mac-b",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Emrakul, the Promised End",
+   "deck": "Zhulodok, Void Gorger (Adam)",
+   "missing": "cost reduction or alternative cost",
+   "lane": "mac-b",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Emrakul, the World Anew",
+   "deck": "Zhulodok, Void Gorger (Adam)",
+   "missing": "cost reduction or alternative cost",
+   "lane": "mac-b",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Everflowing Chalice",
+   "deck": "Zhulodok, Void Gorger (Adam)",
+   "missing": "multikicker, living weapon, activation condition, block legality, cast-as-flash",
+   "lane": "mac-b",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Kaldra Compleat",
+   "deck": "Zhulodok, Void Gorger (Adam)",
+   "missing": "multikicker, living weapon, activation condition, block legality, cast-as-flash",
+   "lane": "mac-b",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Bonders' Enclave",
+   "deck": "Zhulodok, Void Gorger (Adam)",
+   "missing": "multikicker, living weapon, activation condition, block legality, cast-as-flash",
+   "lane": "mac-b",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Pathrazer of Ulamog",
+   "deck": "Zhulodok, Void Gorger (Adam)",
+   "missing": "multikicker, living weapon, activation condition, block legality, cast-as-flash",
+   "lane": "mac-b",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Liberator, Urza's Battlethopter",
+   "deck": "Zhulodok, Void Gorger (Adam)",
+   "missing": "multikicker, living weapon, activation condition, block legality, cast-as-flash",
+   "lane": "mac-b",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Skittering Cicada",
+   "deck": "Zhulodok, Void Gorger (Adam)",
+   "missing": "multikicker, living weapon, activation condition, block legality, cast-as-flash",
+   "lane": "mac-b",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "It That Betrays",
+   "deck": "Zhulodok, Void Gorger (Adam)",
+   "missing": "trigger (Zhulodok: cast trigger; its cascade is d3's)",
+   "lane": "mac-b",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Glaring Fleshraker",
+   "deck": "Zhulodok, Void Gorger (Adam)",
+   "missing": "trigger (Zhulodok: cast trigger; its cascade is d3's)",
+   "lane": "mac-b",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Sanctum of Ugin",
+   "deck": "Zhulodok, Void Gorger (Adam)",
+   "missing": "trigger (Zhulodok: cast trigger; its cascade is d3's)",
+   "lane": "mac-b",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Echoes of Eternity",
+   "deck": "Zhulodok, Void Gorger (Adam)",
+   "missing": "trigger (Zhulodok: cast trigger; its cascade is d3's)",
+   "lane": "mac-b",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Palant\u00edr of Orthanc",
+   "deck": "Zhulodok, Void Gorger (Adam)",
+   "missing": "trigger (Zhulodok: cast trigger; its cascade is d3's)",
+   "lane": "mac-b",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Chimil, the Inner Sun",
+   "deck": "Zhulodok, Void Gorger (Adam)",
+   "missing": "trigger (Zhulodok: cast trigger; its cascade is d3's)",
+   "lane": "mac-b",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Cityscape Leveler",
+   "deck": "Zhulodok, Void Gorger (Adam)",
+   "missing": "trigger (Zhulodok: cast trigger; its cascade is d3's)",
+   "lane": "mac-b",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Zhulodok, Void Gorger",
+   "deck": "Zhulodok, Void Gorger (Adam)",
+   "missing": "trigger (Zhulodok: cast trigger; its cascade is d3's)",
+   "lane": "mac-b",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "All Is Dust",
+   "deck": "Zhulodok, Void Gorger (Adam)",
+   "missing": "effects and statics",
+   "lane": "mac-b",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Bane of Bala Ged",
+   "deck": "Zhulodok, Void Gorger (Adam)",
+   "missing": "effects and statics",
+   "lane": "mac-b",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Desecrate Reality",
+   "deck": "Zhulodok, Void Gorger (Adam)",
+   "missing": "effects and statics",
+   "lane": "mac-b",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Titan's Presence",
+   "deck": "Zhulodok, Void Gorger (Adam)",
+   "missing": "effects and statics",
+   "lane": "mac-b",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Ulamog, the Ceaseless Hunger",
+   "deck": "Zhulodok, Void Gorger (Adam)",
+   "missing": "effects and statics",
+   "lane": "mac-b",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Warping Wail",
+   "deck": "Zhulodok, Void Gorger (Adam)",
+   "missing": "effects and statics",
+   "lane": "mac-b",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Kozilek's Command",
+   "deck": "Zhulodok, Void Gorger (Adam)",
+   "missing": "effects and statics",
+   "lane": "mac-b",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Buried Ruin",
+   "deck": "Zhulodok, Void Gorger (Adam)",
+   "missing": "effects and statics",
+   "lane": "mac-b",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Portal to Phyrexia",
+   "deck": "Zhulodok, Void Gorger (Adam)",
+   "missing": "effects and statics",
+   "lane": "mac-b",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Zhalfirin Void",
+   "deck": "Zhulodok, Void Gorger (Adam)",
+   "missing": "effects and statics",
+   "lane": "mac-b",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Tomb of the Spirit Dragon",
+   "deck": "Zhulodok, Void Gorger (Adam)",
+   "missing": "effects and statics",
+   "lane": "mac-b",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Void Winnower",
+   "deck": "Zhulodok, Void Gorger (Adam)",
+   "missing": "effects and statics",
+   "lane": "mac-b",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Commander's Plate",
+   "deck": "Zhulodok, Void Gorger (Adam)",
+   "missing": "effects and statics",
+   "lane": "mac-b",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Ugin, the Spirit Dragon",
+   "deck": "Zhulodok, Void Gorger (Adam)",
+   "missing": "effects and statics",
+   "lane": "mac-b",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Ugin, the Ineffable",
+   "deck": "Zhulodok, Void Gorger (Adam)",
+   "missing": "effects and statics",
+   "lane": "mac-b",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Thespian's Stage",
+   "deck": "Zhulodok, Void Gorger (Adam)",
+   "missing": "copies, top-of-library casting, sagas, control",
+   "lane": "mac-b",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "The Mycosynth Gardens",
+   "deck": "Zhulodok, Void Gorger (Adam)",
+   "missing": "copies, top-of-library casting, sagas, control",
+   "lane": "mac-b",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Lithoform Engine",
+   "deck": "Zhulodok, Void Gorger (Adam)",
+   "missing": "copies, top-of-library casting, sagas, control",
+   "lane": "mac-b",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Mystic Forge",
+   "deck": "Zhulodok, Void Gorger (Adam)",
+   "missing": "copies, top-of-library casting, sagas, control",
+   "lane": "mac-b",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "The One Ring",
+   "deck": "Zhulodok, Void Gorger (Adam)",
+   "missing": "copies, top-of-library casting, sagas, control",
+   "lane": "mac-b",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Urza's Saga",
+   "deck": "Zhulodok, Void Gorger (Adam)",
+   "missing": "copies, top-of-library casting, sagas, control",
+   "lane": "mac-b",
+   "theme": "subsystems",
+   "owner": "d4"
+  },
+  {
+   "card": "Flayer of Loyalties",
+   "deck": "Zhulodok, Void Gorger (Adam)",
+   "missing": "copies, top-of-library casting, sagas, control",
+   "lane": "mac-b",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Kozilek, the Great Distortion",
+   "deck": "Zhulodok, Void Gorger (Adam)",
+   "missing": "copies, top-of-library casting, sagas, control",
+   "lane": "mac-b",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Wandering Archaic // Explore the Vastlands",
+   "deck": "Zhulodok, Void Gorger (Adam)",
+   "missing": "copies, top-of-library casting, sagas, control",
+   "lane": "mac-b",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Ghostly Prison",
+   "deck": "Oloro, Ageless Ascetic (Adam)",
+   "missing": "attack tax; drains",
+   "lane": "mac-b",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Propaganda",
+   "deck": "Oloro, Ageless Ascetic (Adam)",
+   "missing": "attack tax; drains",
+   "lane": "mac-b",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Debt to the Deathless",
+   "deck": "Oloro, Ageless Ascetic (Adam)",
+   "missing": "attack tax; drains",
+   "lane": "mac-b",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Wall of Reverence",
+   "deck": "Oloro, Ageless Ascetic (Adam)",
+   "missing": "attack tax; drains",
+   "lane": "mac-b",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Felidar Sovereign",
+   "deck": "Oloro, Ageless Ascetic (Adam)",
+   "missing": "upkeep/end-step conditional triggers",
+   "lane": "mac-b",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Test of Endurance",
+   "deck": "Oloro, Ageless Ascetic (Adam)",
+   "missing": "upkeep/end-step conditional triggers",
+   "lane": "mac-b",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Oloro, Ageless Ascetic",
+   "deck": "Oloro, Ageless Ascetic (Adam)",
+   "missing": "upkeep/end-step conditional triggers",
+   "lane": "mac-b",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Lunar Convocation",
+   "deck": "Oloro, Ageless Ascetic (Adam)",
+   "missing": "upkeep/end-step conditional triggers",
+   "lane": "mac-b",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Vizkopa Guildmage",
+   "deck": "Oloro, Ageless Ascetic (Adam)",
+   "missing": "upkeep/end-step conditional triggers",
+   "lane": "mac-b",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Angel of Destiny",
+   "deck": "Oloro, Ageless Ascetic (Adam)",
+   "missing": "upkeep/end-step conditional triggers",
+   "lane": "mac-b",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Mana Confluence",
+   "deck": "Oloro, Ageless Ascetic (Adam)",
+   "missing": "pay-life mana; counter-removal cost; cost reduction",
+   "lane": "mac-b",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Karlov of the Ghost Council",
+   "deck": "Oloro, Ageless Ascetic (Adam)",
+   "missing": "pay-life mana; counter-removal cost; cost reduction",
+   "lane": "mac-b",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Will, Scion of Peace",
+   "deck": "Oloro, Ageless Ascetic (Adam)",
+   "missing": "pay-life mana; counter-removal cost; cost reduction",
+   "lane": "mac-b",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Paradox Haze",
+   "deck": "Oloro, Ageless Ascetic (Adam)",
+   "missing": "an extra upkeep step (merger code, delegated)",
+   "lane": "mac-b",
+   "theme": "merger_delegated",
+   "owner": "mac-b"
+  },
+  {
+   "card": "Archmage Emeritus",
+   "deck": "Ghyrson Starn, Kelermorph (Spr3adsh33)",
+   "missing": "magecraft/damage triggers",
+   "lane": "mac-b",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Storm-Kiln Artist",
+   "deck": "Ghyrson Starn, Kelermorph (Spr3adsh33)",
+   "missing": "magecraft/damage triggers",
+   "lane": "mac-b",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Chandra's Spitfire",
+   "deck": "Ghyrson Starn, Kelermorph (Spr3adsh33)",
+   "missing": "magecraft/damage triggers",
+   "lane": "mac-b",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Chandra's Incinerator",
+   "deck": "Ghyrson Starn, Kelermorph (Spr3adsh33)",
+   "missing": "magecraft/damage triggers",
+   "lane": "mac-b",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Ghyrson Starn, Kelermorph",
+   "deck": "Ghyrson Starn, Kelermorph (Spr3adsh33)",
+   "missing": "magecraft/damage triggers",
+   "lane": "mac-b",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Curiosity",
+   "deck": "Ghyrson Starn, Kelermorph (Spr3adsh33)",
+   "missing": "magecraft/damage triggers",
+   "lane": "mac-b",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Ophidian Eye",
+   "deck": "Ghyrson Starn, Kelermorph (Spr3adsh33)",
+   "missing": "magecraft/damage triggers",
+   "lane": "mac-b",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Lobber Crew",
+   "deck": "Ghyrson Starn, Kelermorph (Spr3adsh33)",
+   "missing": "magecraft/damage triggers",
+   "lane": "mac-b",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Ral, Storm Conduit",
+   "deck": "Ghyrson Starn, Kelermorph (Spr3adsh33)",
+   "missing": "magecraft/damage triggers",
+   "lane": "mac-b",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Case of the Ransacked Lab",
+   "deck": "Ghyrson Starn, Kelermorph (Spr3adsh33)",
+   "missing": "magecraft/damage triggers",
+   "lane": "mac-b",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "End the Festivities",
+   "deck": "Ghyrson Starn, Kelermorph (Spr3adsh33)",
+   "missing": "effects",
+   "lane": "mac-b",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Tectonic Hazard",
+   "deck": "Ghyrson Starn, Kelermorph (Spr3adsh33)",
+   "missing": "effects",
+   "lane": "mac-b",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Smash to Dust",
+   "deck": "Ghyrson Starn, Kelermorph (Spr3adsh33)",
+   "missing": "effects",
+   "lane": "mac-b",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Exalted Flamer",
+   "deck": "Ghyrson Starn, Kelermorph (Spr3adsh33)",
+   "missing": "effects",
+   "lane": "mac-b",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Expressive Iteration",
+   "deck": "Ghyrson Starn, Kelermorph (Spr3adsh33)",
+   "missing": "effects",
+   "lane": "mac-b",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Epic Experiment",
+   "deck": "Ghyrson Starn, Kelermorph (Spr3adsh33)",
+   "missing": "effects",
+   "lane": "mac-b",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Mission Briefing",
+   "deck": "Ghyrson Starn, Kelermorph (Spr3adsh33)",
+   "missing": "effects",
+   "lane": "mac-b",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Mizzix's Mastery",
+   "deck": "Ghyrson Starn, Kelermorph (Spr3adsh33)",
+   "missing": "effects",
+   "lane": "mac-b",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Metallurgic Summonings",
+   "deck": "Ghyrson Starn, Kelermorph (Spr3adsh33)",
+   "missing": "effects",
+   "lane": "mac-b",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Pyromatics",
+   "deck": "Ghyrson Starn, Kelermorph (Spr3adsh33)",
+   "missing": "replicate; class levels",
+   "lane": "mac-b",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Sorcerer Class",
+   "deck": "Ghyrson Starn, Kelermorph (Spr3adsh33)",
+   "missing": "replicate; class levels",
+   "lane": "mac-b",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Silundi Vision // Silundi Isle",
+   "deck": "Ghyrson Starn, Kelermorph (Spr3adsh33)",
+   "missing": "MDFC/battle; soulbond",
+   "lane": "mac-b",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Invasion of Arcavios // Invocation of the Founders",
+   "deck": "Ghyrson Starn, Kelermorph (Spr3adsh33)",
+   "missing": "MDFC/battle; soulbond",
+   "lane": "mac-b",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Tandem Lookout",
+   "deck": "Ghyrson Starn, Kelermorph (Spr3adsh33)",
+   "missing": "MDFC/battle; soulbond",
+   "lane": "mac-b",
+   "theme": "objects_zones",
+   "owner": "mac-c"
   }
  ]
 }

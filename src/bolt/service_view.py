@@ -141,6 +141,12 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         if d == "TargetToSource":
             return f"Change target {value + 1} to {src or 'this creature'}"
         return None
+    if kind == "Pick" and d == "SacrificeAnotherGainDraw":
+        return f"Sacrifice {card_name} (gain life and draw equal to its power)"
+    if kind == "Pick" and d == "ReturnLandOrSacrifice":
+        return f"Return {card_name} to your hand"
+    if kind == "No" and d == "ReturnLandOrSacrifice":
+        return f"Sacrifice {src} instead" if src else "Sacrifice it instead"
     if kind == "Pick":
         verb = {"SacrificeCreatures": "Sacrifice", "SacrificeAnother": "Sacrifice", "Search": "Take",
                 "LookPick": "Take", "KeepOfType": "Keep", "ScryOrder": "Put on top:", "GenesisPick": "Put onto the battlefield:", "PutPicksOntoBattlefield": "Put onto the battlefield:", "LandFromHandTapped": "Put onto the battlefield tapped:",
