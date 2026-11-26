@@ -2874,6 +2874,7 @@ impl Game {
                                     .count()
                                     >= n as usize
                             }
+                            Some(StaticCondition::ClassLevelAtLeast(n)) => self.class_level(src) >= n,
                         };
                         applies && condition_ok && (!s.your_turn_only || self.active == so.controller)
                     })
@@ -6020,6 +6021,9 @@ impl Game {
             return false;
         }
         if f.attacking && !self.combat.as_ref().is_some_and(|c| c.attackers.contains(&id)) {
+            return false;
+        }
+        if f.tapped_only && !self.obj(id).tapped {
             return false;
         }
         if f.single_target {
@@ -22301,6 +22305,20 @@ impl Game {
                 if item.extra.is_some_and(|c| self.def_of(c).types.creature) {
                     self.run_effect(item, legal, Effect::Amass { subtype, n, def });
                 }
+            }
+            Effect::StopUnlessExtraIsCreatureCard => {
+                if !item.extra.is_some_and(|c| self.def_of(c).types.creature) {
+                    self.resolving.as_mut().expect("resolving").remaining.clear();
+                }
+            }
+            Effect::CreateTokenIfTopIsLandThenDraw { def } => {
+                let p = item.controller;
+                if let Some(&top) = self.players[p].library.last() {
+                    if self.def_of(top).types.land {
+                        self.create_token(p, def);
+                    }
+                }
+                self.draw(p);
             }
         }
     }

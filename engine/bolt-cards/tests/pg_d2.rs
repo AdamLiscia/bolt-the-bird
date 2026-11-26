@@ -2117,8 +2117,7 @@ fn necropotence_skips_the_draw_exiles_discards_and_pays_life_for_cards() {
     end_turn(&mut g, 5);
     assert_eq!(g.obj(top).zone, Zone::Hand, "at your end step");
     assert!(!g.obj(top).face_down);
-    // The cleanup discards' triggers go on the stack at the next priority (the engine doesn't give
-    // priority in cleanup, CR 514.3a): the opponent's upkeep.
+    // The cleanup discards' exile triggers resolve (CR 514.3a) by the opponent's first main phase.
     while g.step != Step::Main1 {
         let legal = g.legal_actions();
         let a = if legal.contains(&Action::PassPriority) {
@@ -2240,4 +2239,33 @@ fn summoning_station_makes_pinchers_and_untaps_when_an_artifact_dies() {
     act(&mut g, Action::Activate(clue, 0));
     resolve_all(&mut g, &[Action::Yes]); // "you may untap"
     assert!(!g.obj(station).tapped, "untapped");
+}
+
+#[test]
+fn ulvenwald_mysteries_investigates_on_a_death_and_makes_soldiers_from_clues() {
+    let mut g = table();
+    put(&mut g, 0, "Ulvenwald Mysteries");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    kill(&mut g, lions);
+    let clues = tokens(&g, 0, "Clue");
+    assert_eq!(clues.len(), 1, "investigated");
+    act(&mut g, Action::Activate(clues[0], 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(tokens(&g, 0, "Human Soldier").len(), 1);
+}
+
+#[test]
+fn fleeting_memories_investigates_and_mills_on_a_clue_sacrifice() {
+    let mut g = table();
+    cast_settle(&mut g, "Fleeting Memories");
+    let clues = tokens(&g, 0, "Clue");
+    assert_eq!(clues.len(), 1, "investigated as it entered");
+    let library = g.players[1].library.len();
+    act(&mut g, Action::Activate(clues[0], 0));
+    settle(&mut g, Target::Player(1));
+    assert_eq!(
+        g.players[1].library.len(),
+        library - 3,
+        "target player mills three"
+    );
 }

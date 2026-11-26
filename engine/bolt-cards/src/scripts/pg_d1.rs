@@ -1313,20 +1313,6 @@ pub fn script(name: &str) -> Option<Script> {
             &["Once each turn, you may pay {0} rather than pay the mana cost for a colorless spell you cast from your hand."],
             |d, _| d.mana_ext.colorless_free_once_each_turn = true,
         ),
-        "Camellia, the Seedmiser" => s(
-            &[
-                "Other Squirrels you control have menace.",
-                "Whenever you sacrifice one or more Foods, create a 1/1 green Squirrel creature token.",
-                "{2}, Forage: Put a +1/+1 counter on each other Squirrel you control.",
-            ],
-            |d, t| {
-                static_on(d, Scope::OtherYourSubtype("Squirrel"), false, Keywords::MENACE);
-                let squirrel = Effect::CreateToken { who: Who::You, def: t.squirrel, n: 1 };
-                on(d, When::YouSacrificeSubtype("Food"), vec![], vec![squirrel]);
-                let n = activated(d, "{2}", false, vec![], vec![Effect::CountersOnOtherYourSubtype("Squirrel")]);
-                d.activated[n].forage = true;
-            },
-        ),
         _ => None,
     }
 }
@@ -1499,5 +1485,4 @@ pub const PG_D1_SCRIPTED: &[&str] = &[
     "Food Chain",
     "Waves of Aggression",
     "Darksteel Monolith",
-    "Camellia, the Seedmiser",
 ];
