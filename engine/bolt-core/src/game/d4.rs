@@ -300,6 +300,7 @@ impl Game {
         if self.venture[p] == Some((d, r)) && rooms(d)[r as usize].next.is_empty() {
             self.venture[p] = None;
             self.completed_dungeons[p] = self.completed_dungeons[p].saturating_add(1);
+            self.fire(p, When::YouCompleteDungeon, None); // lane d2's emit (Sefris)
         }
     }
 

@@ -265,6 +265,8 @@ pub fn token_defs() -> Vec<CardDef> {
             });
             t
         },
+        black(token("Bat", "Bat", 1, 1, Keywords::FLYING)), // 83: Lunar Convocation (lane d2)
+                                                            // 84: lane B's Elemental.
     ]
 }
 
@@ -407,6 +409,7 @@ pub struct Tokens {
     pub spider_menace: usize,
     pub saga_construct: usize,
     pub goat: usize,
+    pub bat: usize,
 }
 
 impl Tokens {
@@ -495,6 +498,7 @@ impl Tokens {
             spider_menace: base + 81,
             saga_construct: base + 82,
             goat: base + 76,
+            bat: base + 83,
         }
     }
 }
