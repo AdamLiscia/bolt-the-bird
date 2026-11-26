@@ -1566,6 +1566,24 @@ pub enum Effect {
     ExileGraveyardsTokenPerCard {
         def: usize,
     },
+    /// Investigate `n` times (CR 701.36): create `n` Clue tokens (`def`).
+    Investigate {
+        def: usize,
+        n: u8,
+    },
+    /// The creature in `slot` gets +1/+1 until end of turn for each permanent you control with this
+    /// subtype (Confront the Unknown: Clue).
+    PumpPerYourSubtype {
+        slot: u8,
+        sub: &'static str,
+    },
+    /// Mill `n`, then put a creature, enchantment or land card from among them onto the battlefield
+    /// (Fetch Quest).
+    MillPutCreatureEnchantmentOrLand(u8),
+    /// Mill `n`, then return a creature card milled this way to your hand (Zoological Study).
+    MillReturnCreatureToHand(u8),
+    /// You may put a creature card from your hand onto the battlefield (Monster Manual).
+    MayPutCreatureFromHand,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -2163,6 +2181,8 @@ pub enum When {
     EnchantmentYouControlEnters,
     /// "At the beginning of your first main phase" (precombat main, CR 505.1a).
     FirstMainPhaseYourTurn,
+    /// "Whenever you investigate for the first time each turn" (Erdwal Illuminator).
+    YouInvestigateFirstTimeEachTurn,
 }
 
 #[derive(Clone, Debug, PartialEq)]

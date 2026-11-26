@@ -178,7 +178,20 @@ pub fn token_defs() -> Vec<CardDef> {
             t.changeling = true;
             t
         },
+        clue(),
     ]
+}
+
+/// "{2}, Sacrifice this artifact: Draw a card." (CR 111.10f)
+fn clue() -> CardDef {
+    let mut d = artifact_token("Clue");
+    d.activated.push(Activated {
+        mana: ManaCost::parse("{2}").expect("cost"),
+        sacrifice_self: true,
+        ability: Ability::new(vec![], vec![Effect::Draw { who: Who::You, n: 1 }]),
+        ..Activated::default()
+    });
+    d
 }
 
 fn artifact_token(name: &str) -> CardDef {
@@ -284,6 +297,7 @@ pub struct Tokens {
     pub spirit_3_1: usize,
     pub phyrexian_beast: usize,
     pub shapeshifter: usize,
+    pub clue: usize,
 }
 
 impl Tokens {
@@ -354,6 +368,7 @@ impl Tokens {
             spirit_3_1: base + 62,
             phyrexian_beast: base + 63,
             shapeshifter: base + 64,
+            clue: base + 65,
         }
     }
 }
