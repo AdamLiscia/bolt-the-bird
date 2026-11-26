@@ -2835,7 +2835,13 @@ fn shield_broker_steals_while_the_shield_lasts() {
     let mut g = table();
     let ghalta = put(&mut g, 1, "Ghalta, Primal Hunger");
     let broker = hand(&mut g, 0, "Shield Broker");
-    play(&mut g, broker, false, &[], &[Action::Target(Target::Object(ghalta))]);
+    play(
+        &mut g,
+        broker,
+        false,
+        &[],
+        &[Action::Target(Target::Object(ghalta))],
+    );
     assert_eq!(g.obj(ghalta).controller, 0);
     assert_eq!(g.obj(ghalta).shield_counters, 1);
     // Damage removes the shield instead, and control goes back.

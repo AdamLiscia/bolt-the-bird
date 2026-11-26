@@ -846,7 +846,10 @@ fn harmonize_x_counts_the_tapped_creature_as_spent() {
     act(&mut g, Action::CastHarmonize(rhythm, elves));
     let legal = g.legal_actions();
     assert!(legal.contains(&Action::Amount(1)), "{legal:?}");
-    assert!(!legal.contains(&Action::Amount(2)), "the Elves are tapped for harmonize");
+    assert!(
+        !legal.contains(&Action::Amount(2)),
+        "the Elves are tapped for harmonize"
+    );
     act(&mut g, Action::Amount(1));
     assert!(g.obj(elves).tapped);
 }

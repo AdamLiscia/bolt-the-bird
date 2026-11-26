@@ -2788,7 +2788,10 @@ fn ugin_minus_x_exiles_colored_permanents_up_to_x() {
     let ring = put(&mut g, 1, "Sol Ring"); // colorless
     act(&mut g, Action::Loyalty(ugin, 1));
     let legal = g.legal_actions();
-    assert!(legal.contains(&Action::Amount(7)) && !legal.contains(&Action::Amount(8)), "up to the loyalty");
+    assert!(
+        legal.contains(&Action::Amount(7)) && !legal.contains(&Action::Amount(8)),
+        "up to the loyalty"
+    );
     act(&mut g, Action::Amount(3));
     resolve_all(&mut g, &[]);
     assert_eq!(g.obj(ugin).loyalty, 4);

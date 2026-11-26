@@ -5977,21 +5977,32 @@ impl Game {
         // A "target" word with N slots (the same filter repeated) needs N different objects (CR
         // 115.3), so casting never leaves a target with no legal choice.
         ability.targets[..required].iter().enumerate().all(|(i, f)| {
-            let word = Game::same_word_slots(&ability.targets[..required], i).len() + 1;
+            // "Each of X target creatures": X is checked against the legal count as it's chosen.
+            let word = if ability.targets_exactly_x {
+                1
+            } else {
+                Game::same_word_slots(&ability.targets[..required], i).len() + 1
+            };
             let legal = self
                 .candidates(f, item.controller)
                 .into_iter()
                 .filter(|&t| self.slot_ok(item, f, t))
                 .count();
             legal >= word
-                || (legal > 0 && self.candidates(f, item.controller).iter().any(|t| matches!(t, Target::Player(_))))
+                || (legal > 0
+                    && self
+                        .candidates(f, item.controller)
+                        .iter()
+                        .any(|t| matches!(t, Target::Player(_))))
         })
     }
 
     /// The earlier target slots of the same "target" word as slot `slot`: the run of identical
     /// filters it ends (CR 115.3: one object can't fill two of them).
     fn same_word_slots(targets: &[Filter], slot: usize) -> Vec<usize> {
-        let Some(f) = targets.get(slot) else { return Vec::new() };
+        let Some(f) = targets.get(slot) else {
+            return Vec::new();
+        };
         (0..slot).rev().take_while(|&i| targets[i] == *f).collect()
     }
 
@@ -7604,7 +7615,11 @@ impl Game {
     /// Activates loyalty ability `n` of `id`, with X (a −X cost removes that much).
     fn activate_loyalty_x(&mut self, p: PlayerId, id: ObjId, n: usize, x: u8) {
         let (cost, ability) = self.def_of(id).loyalty_abilities[n].clone();
-        let cost = if cost == crate::card::LOYALTY_MINUS_X { -(x as i32) } else { cost };
+        let cost = if cost == crate::card::LOYALTY_MINUS_X {
+            -(x as i32)
+        } else {
+            cost
+        };
         let item = StackItem {
             kind: StackKind::Loyalty(n),
             x,
@@ -12954,7 +12969,10 @@ impl Game {
             (Decision::CreaturesFromHandUpTo { .. }, _) => {}
             (Decision::PermanentsFromHandUpTo { left }, Action::Pick(c)) => {
                 self.move_to(c, Zone::Battlefield);
-                let more = self.players[p].hand.iter().any(|&x| self.def_of(x).types.is_permanent());
+                let more = self.players[p]
+                    .hand
+                    .iter()
+                    .any(|&x| self.def_of(x).types.is_permanent());
                 if left > 1 && more {
                     self.ask(p, Decision::PermanentsFromHandUpTo { left: left - 1 });
                 }
@@ -17191,7 +17209,9 @@ impl Game {
                     .battlefield
                     .iter()
                     .copied()
-                    .filter(|&c| self.colors_of(c).iter().any(|&b| b) && self.def_of(c).cost.mana_value() <= x)
+                    .filter(|&c| {
+                        self.colors_of(c).iter().any(|&b| b) && self.def_of(c).cost.mana_value() <= x
+                    })
                     .collect();
                 for c in all {
                     self.move_to(c, Zone::Exile);
@@ -17199,7 +17219,12 @@ impl Game {
             }
             Effect::PermanentsFromHandUpTo(n) => {
                 let p = item.controller;
-                if n > 0 && self.players[p].hand.iter().any(|&x| self.def_of(x).types.is_permanent()) {
+                if n > 0
+                    && self.players[p]
+                        .hand
+                        .iter()
+                        .any(|&x| self.def_of(x).types.is_permanent())
+                {
                     self.ask(p, Decision::PermanentsFromHandUpTo { left: n });
                 }
             }
