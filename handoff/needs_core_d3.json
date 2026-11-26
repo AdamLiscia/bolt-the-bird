@@ -1,0 +1,847 @@
+[
+ {
+  "card": "Avacyn, Angel of Hope",
+  "deck": "Sefris of the Hidden Ways",
+  "missing": "needs core: a static giving indestructible to other permanents you control (a Scope for all your other permanents)"
+ },
+ {
+  "card": "Elesh Norn, Grand Cenobite",
+  "deck": "Sefris of the Hidden Ways",
+  "missing": "needs core: a static -2/-2 for creatures your opponents control (a Scope for opponents' creatures)"
+ },
+ {
+  "card": "Nimbus Maze",
+  "deck": "Sefris of the Hidden Ways",
+  "missing": "needs core: two different conditional colors on one land ({W} only with an Island, {U} only with a Plains)"
+ },
+ {
+  "card": "Teferi, Master of Time",
+  "deck": "Sefris of the Hidden Ways",
+  "missing": "needs core: loyalty abilities at instant speed on any player's turn, phasing out, and two extra turns"
+ },
+ {
+  "card": "Toxrill, the Corrosive",
+  "deck": "Sefris of the Hidden Ways",
+  "missing": "needs core: slime counters with a -1/-1 per counter static, and a 1/1 black Slug creature token"
+ },
+ {
+  "card": "Altar of Dementia",
+  "deck": "Sefris of the Hidden Ways",
+  "missing": "needs core: mill equal to the sacrificed creature's power (mill by the activation's amount)"
+ },
+ {
+  "card": "Brightclimb Pathway // Grimclimb Pathway",
+  "deck": "Sefris of the Hidden Ways",
+  "missing": "needs core: a land-front modal double-faced card (choose the face as you play it); the back face isn't in the oracle data"
+ },
+ {
+  "card": "Glen Elendra Archmage",
+  "deck": "Sefris of the Hidden Ways",
+  "missing": "needs core: persist"
+ },
+ {
+  "card": "Karmic Guide",
+  "deck": "Sefris of the Hidden Ways",
+  "missing": "needs core: echo"
+ },
+ {
+  "card": "Ledger Shredder",
+  "deck": "Sefris of the Hidden Ways",
+  "missing": "needs core: connive, and a trigger on any player's second spell each turn"
+ },
+ {
+  "card": "Reveillark",
+  "deck": "Sefris of the Hidden Ways",
+  "missing": "needs core: evoke"
+ },
+ {
+  "card": "Takenuma, Abandoned Mire",
+  "deck": "Sefris of the Hidden Ways",
+  "missing": "needs core: return a creature or planeswalker card from your graveyard (a Pick for creature-or-planeswalker)"
+ },
+ {
+  "card": "Unmarked Grave",
+  "deck": "Sefris of the Hidden Ways",
+  "missing": "needs core: search for a nonlegendary card (a SearchFor for nonlegendary)"
+ },
+ {
+  "card": "Yahenni, Undying Partisan",
+  "deck": "Sefris of the Hidden Ways",
+  "missing": "needs core: a trigger when a creature an opponent controls dies"
+ },
+ {
+  "card": "Barrowin of Clan Undurr",
+  "deck": "Sefris of the Hidden Ways",
+  "missing": "needs core: venture into the dungeon and a completed-dungeon condition"
+ },
+ {
+  "card": "Benevolent Bodyguard",
+  "deck": "Sefris of the Hidden Ways",
+  "missing": "needs core: protection from a color of your choice until end of turn"
+ },
+ {
+  "card": "Cartel Aristocrat",
+  "deck": "Sefris of the Hidden Ways",
+  "missing": "needs core: protection from a color of your choice until end of turn"
+ },
+ {
+  "card": "Clearwater Pathway // Murkwater Pathway",
+  "deck": "Sefris of the Hidden Ways",
+  "missing": "needs core: a land-front modal double-faced card (choose the face as you play it); the back face isn't in the oracle data"
+ },
+ {
+  "card": "Currency Converter",
+  "deck": "Sefris of the Hidden Ways",
+  "missing": "needs core: exiling a discarded card linked to the source, and a 2/2 black Rogue creature token"
+ },
+ {
+  "card": "Dauthi Voidwalker",
+  "deck": "Sefris of the Hidden Ways",
+  "missing": "needs core: shadow, a replacement exiling cards headed to an opponent's graveyard with void counters, and playing one free"
+ },
+ {
+  "card": "Dungeon Delver",
+  "deck": "Sefris of the Hidden Ways",
+  "missing": "needs core: dungeons and Background (room abilities trigger an additional time)"
+ },
+ {
+  "card": "Dungeon Descent",
+  "deck": "Sefris of the Hidden Ways",
+  "missing": "needs core: venture into the dungeon, and tapping an untapped legendary creature as a cost"
+ },
+ {
+  "card": "From the Catacombs",
+  "deck": "Sefris of the Hidden Ways",
+  "missing": "needs core: take the initiative, a corpse counter with an exile-if-it-would-leave replacement, and escape"
+ },
+ {
+  "card": "Ghostly Pilferer",
+  "deck": "Sefris of the Hidden Ways",
+  "missing": "needs core: a 'whenever this becomes untapped' trigger, and 'an opponent casts a spell from anywhere other than their hand'"
+ },
+ {
+  "card": "Glasspool Mimic // Glasspool Shore",
+  "deck": "Sefris of the Hidden Ways",
+  "missing": "needs core: enter as a copy with extra creature types (Shapeshifter Rogue); the land back face isn't in the oracle data"
+ },
+ {
+  "card": "Hama Pashar, Ruin Seeker",
+  "deck": "Sefris of the Hidden Ways",
+  "missing": "needs core: dungeons (room abilities trigger an additional time)"
+ },
+ {
+  "card": "Hengegate Pathway // Mistgate Pathway",
+  "deck": "Sefris of the Hidden Ways",
+  "missing": "needs core: a land-front modal double-faced card (choose the face as you play it); the back face isn't in the oracle data"
+ },
+ {
+  "card": "Imoen, Mystic Trickster",
+  "deck": "Sefris of the Hidden Ways",
+  "missing": "needs core: the initiative and completed-dungeon conditions, and Choose a Background"
+ },
+ {
+  "card": "Jirina, Dauntless General",
+  "deck": "Sefris of the Hidden Ways",
+  "missing": "needs core: grant keywords until end of turn to creatures you control of one subtype (Humans)"
+ },
+ {
+  "card": "Looter il-Kor",
+  "deck": "Sefris of the Hidden Ways",
+  "missing": "needs core: shadow, and a 'deals damage to an opponent' trigger"
+ },
+ {
+  "card": "Midnight Pathlighter",
+  "deck": "Sefris of the Hidden Ways",
+  "missing": "needs core: venture into the dungeon, and 'can't be blocked except by legendary creatures' for your creatures"
+ },
+ {
+  "card": "Nadaar, Selfless Paladin",
+  "deck": "Sefris of the Hidden Ways",
+  "missing": "needs core: venture into the dungeon and a completed-dungeon static condition"
+ },
+ {
+  "card": "Oriq Loremage",
+  "deck": "Sefris of the Hidden Ways",
+  "missing": "needs core: a +1/+1 counter if the card searched into the graveyard is an instant or sorcery"
+ },
+ {
+  "card": "Radiant Solar",
+  "deck": "Sefris of the Hidden Ways",
+  "missing": "needs core: venture into the dungeon"
+ },
+ {
+  "card": "Rona, Herald of Invasion // Rona, Tolarian Obliterator",
+  "deck": "Sefris of the Hidden Ways",
+  "missing": "needs core: a 'whenever you cast a legendary spell' trigger, and the back face's abilities"
+ },
+ {
+  "card": "Safana, Calimport Cutthroat",
+  "deck": "Sefris of the Hidden Ways",
+  "missing": "needs core: the initiative and completed-dungeon conditions, and Choose a Background"
+ },
+ {
+  "card": "Seasoned Dungeoneer",
+  "deck": "Sefris of the Hidden Ways",
+  "missing": "needs core: take the initiative, protection from creatures, and explore on a 'whenever you attack' target"
+ },
+ {
+  "card": "Sefris of the Hidden Ways",
+  "deck": "Sefris of the Hidden Ways",
+  "missing": "needs core: venture into the dungeon when creature cards go to your graveyard, and a 'whenever you complete a dungeon' trigger"
+ },
+ {
+  "card": "Selhoff Entomber",
+  "deck": "Sefris of the Hidden Ways",
+  "missing": "needs core: 'discard a creature card' as an activation cost"
+ },
+ {
+  "card": "Siren Stormtamer",
+  "deck": "Sefris of the Hidden Ways",
+  "missing": "needs core: counter a spell or ability that targets you or a creature you control (a target filter)"
+ },
+ {
+  "card": "Tortured Existence",
+  "deck": "Sefris of the Hidden Ways",
+  "missing": "needs core: 'discard a creature card' as an activation cost"
+ },
+ {
+  "card": "Vohar, Vodalian Desecrator",
+  "deck": "Sefris of the Hidden Ways",
+  "missing": "needs core: a drain if the discarded card was an instant or sorcery, and cast-from-graveyard with an exile replacement"
+ },
+ {
+  "card": "White Plume Adventurer",
+  "deck": "Sefris of the Hidden Ways",
+  "missing": "needs core: take the initiative, and untapping on each opponent's upkeep with a completed-dungeon condition"
+ },
+ {
+  "card": "Yuan-Ti Malison",
+  "deck": "Sefris of the Hidden Ways",
+  "missing": "needs core: venture into the dungeon, and 'can't be blocked as long as it's attacking alone'"
+ },
+ {
+  "card": "Mana Drain",
+  "deck": "Najeela, the Blade-Blossom",
+  "missing": "needs core: add {C} equal to the countered spell's mana value at your next main phase (a delayed mana effect)"
+ },
+ {
+  "card": "Force of Will",
+  "deck": "Najeela, the Blade-Blossom",
+  "missing": "needs core: an alternative cost of 1 life plus exiling a blue card from your hand, on any turn"
+ },
+ {
+  "card": "Orcish Bowmasters",
+  "deck": "Najeela, the Blade-Blossom",
+  "missing": "needs core: a trigger on opponent draws except the first in their draw step, and amass Orcs (a 0/0 black Orc Army creature token)"
+ },
+ {
+  "card": "Academy Rector",
+  "deck": "Najeela, the Blade-Blossom",
+  "missing": "needs core: may exile it to search for an enchantment card onto the battlefield (a SearchFor for enchantments)"
+ },
+ {
+  "card": "Champion of Lambholt",
+  "deck": "Najeela, the Blade-Blossom",
+  "missing": "needs core: creatures with power less than this one's can't block creatures you control (for all your creatures)"
+ },
+ {
+  "card": "Haunted Ridge",
+  "deck": "Najeela, the Blade-Blossom",
+  "missing": "needs core: enters tapped unless you control two or more other lands"
+ },
+ {
+  "card": "Pact of Negation",
+  "deck": "Najeela, the Blade-Blossom",
+  "missing": "needs core: pay {3}{U}{U} at your next upkeep or lose the game"
+ },
+ {
+  "card": "Ponder",
+  "deck": "Najeela, the Blade-Blossom",
+  "missing": "needs core: 'you may shuffle' after reordering the top three"
+ },
+ {
+  "card": "Veil of Summer",
+  "deck": "Najeela, the Blade-Blossom",
+  "missing": "needs core: draw if an opponent cast a blue or black spell this turn, your spells can't be countered, hexproof from blue and black"
+ },
+ {
+  "card": "Alesha, Who Smiles at Death",
+  "deck": "Najeela, the Blade-Blossom",
+  "missing": "needs core: return a creature card tapped and attacking, after a may-pay hybrid cost"
+ },
+ {
+  "card": "Deadly Brew",
+  "deck": "Najeela, the Blade-Blossom",
+  "missing": "needs core: each player sacrifices a creature or planeswalker, then you may return another permanent card if you sacrificed"
+ },
+ {
+  "card": "Derevi, Empyrial Tactician",
+  "deck": "Najeela, the Blade-Blossom",
+  "missing": "needs core: an activated ability from the command zone"
+ },
+ {
+  "card": "Druids' Repository",
+  "deck": "Najeela, the Blade-Blossom",
+  "missing": "needs core: charge counters, and removing one for mana"
+ },
+ {
+  "card": "Flusterstorm",
+  "deck": "Najeela, the Blade-Blossom",
+  "missing": "needs core: a target filter for instant or sorcery spells only (with counter-unless-pays and storm)"
+ },
+ {
+  "card": "Gift of Estates",
+  "deck": "Najeela, the Blade-Blossom",
+  "missing": "needs core: an intervening condition on a spell (conditions are checked only for triggers)"
+ },
+ {
+  "card": "Ignoble Hierarch",
+  "deck": "Najeela, the Blade-Blossom",
+  "missing": "needs core: exalted"
+ },
+ {
+  "card": "Make Disappear",
+  "deck": "Najeela, the Blade-Blossom",
+  "missing": "needs core: casualty"
+ },
+ {
+  "card": "Metallic Mimic",
+  "deck": "Najeela, the Blade-Blossom",
+  "missing": "needs core: other creatures of the chosen type enter with an extra counter (without Roaming Throne's trigger doubling)"
+ },
+ {
+  "card": "Minas Tirith",
+  "deck": "Najeela, the Blade-Blossom",
+  "missing": "needs core: enters tapped unless you control a legendary creature, and an 'attacked with two or more creatures this turn' condition"
+ },
+ {
+  "card": "Najeela, the Blade-Blossom",
+  "deck": "Najeela, the Blade-Blossom",
+  "missing": "needs core: a trigger whenever any Warrior attacks, its controller making a 1/1 white Warrior tapped and attacking, and the untap-attackers extra combat"
+ },
+ {
+  "card": "Nature's Will",
+  "deck": "Najeela, the Blade-Blossom",
+  "missing": "needs core: tap all lands the damaged player controls and untap all lands you control"
+ },
+ {
+  "card": "Red Elemental Blast",
+  "deck": "Najeela, the Blade-Blossom",
+  "missing": "needs core: color filters: target blue spell, target blue permanent"
+ },
+ {
+  "card": "Ruby Medallion",
+  "deck": "Najeela, the Blade-Blossom",
+  "missing": "needs core: a red-only spell discount"
+ },
+ {
+  "card": "Shanna, Sisay's Legacy",
+  "deck": "Najeela, the Blade-Blossom",
+  "missing": "needs core: can't be the target of abilities your opponents control"
+ },
+ {
+  "card": "Slip Out the Back",
+  "deck": "Najeela, the Blade-Blossom",
+  "missing": "needs core: phasing out"
+ },
+ {
+  "card": "Species Specialist",
+  "deck": "Najeela, the Blade-Blossom",
+  "missing": "needs core: a trigger whenever a creature of the chosen type dies"
+ },
+ {
+  "card": "Surrak Dragonclaw",
+  "deck": "Najeela, the Blade-Blossom",
+  "missing": "needs core: a static 'creature spells you control can't be countered'"
+ },
+ {
+  "card": "Aetherflux Reservoir",
+  "deck": "Sheoldred, the Apocalypse",
+  "missing": "needs core: gain life equal to the spells cast this turn, and pay 50 life as a cost"
+ },
+ {
+  "card": "Alhammarret's Archive",
+  "deck": "Sheoldred, the Apocalypse",
+  "missing": "needs core: replacements doubling life gain and extra draws"
+ },
+ {
+  "card": "Howling Mine",
+  "deck": "Sheoldred, the Apocalypse",
+  "missing": "needs core: an intervening 'if this is untapped' condition on a draw-step trigger"
+ },
+ {
+  "card": "Jet Medallion",
+  "deck": "Sheoldred, the Apocalypse",
+  "missing": "needs core: a black-only spell discount"
+ },
+ {
+  "card": "Dark Deal",
+  "deck": "Sheoldred, the Apocalypse",
+  "missing": "needs core: each player discards their hand and draws that many minus one"
+ },
+ {
+  "card": "Elder Brain",
+  "deck": "Sheoldred, the Apocalypse",
+  "missing": "needs core: exile the attacked player's hand, they draw that many, and you may play the exiled cards"
+ },
+ {
+  "card": "Feed the Swarm",
+  "deck": "Sheoldred, the Apocalypse",
+  "missing": "needs core: lose life equal to the destroyed permanent's mana value"
+ },
+ {
+  "card": "K'rrik, Son of Yawgmoth",
+  "deck": "Sheoldred, the Apocalypse",
+  "missing": "needs core: pay 2 life for each {B} in a cost, and a black-spell cast trigger"
+ },
+ {
+  "card": "Malakir Rebirth // Malakir Mire",
+  "deck": "Sheoldred, the Apocalypse",
+  "missing": "needs core: grant 'when this creature dies, return it' until end of turn; the land back face isn't in the oracle data"
+ },
+ {
+  "card": "Peer into the Abyss",
+  "deck": "Sheoldred, the Apocalypse",
+  "missing": "needs core: draw half the library and lose half the life, rounded up"
+ },
+ {
+  "card": "Teferi's Puzzle Box",
+  "deck": "Sheoldred, the Apocalypse",
+  "missing": "needs core: put the hand on the bottom and draw that many each draw step"
+ },
+ {
+  "card": "Well of Lost Dreams",
+  "deck": "Sheoldred, the Apocalypse",
+  "missing": "needs core: pay {X} up to the life gained to draw X cards"
+ },
+ {
+  "card": "Witch of the Moors",
+  "deck": "Sheoldred, the Apocalypse",
+  "missing": "needs core: a 'you gained life this turn' condition"
+ },
+ {
+  "card": "Zenith Chronicler",
+  "deck": "Sheoldred, the Apocalypse",
+  "missing": "needs core: a trigger on each player's first multicolored spell each turn"
+ },
+ {
+  "card": "Baleful Mastery",
+  "deck": "Sheoldred, the Apocalypse",
+  "missing": "needs core: an alternative cost {1}{B} that makes an opponent draw"
+ },
+ {
+  "card": "Blessing of Leeches",
+  "deck": "Sheoldred, the Apocalypse",
+  "missing": "needs core: {0}: regenerate the enchanted creature (an Aura's regeneration)"
+ },
+ {
+  "card": "Blood Money",
+  "deck": "Sheoldred, the Apocalypse",
+  "missing": "needs core: destroy all creatures and a tapped Treasure for each nontoken creature destroyed"
+ },
+ {
+  "card": "Cabal Stronghold",
+  "deck": "Sheoldred, the Apocalypse",
+  "missing": "needs core: {B} for each basic Swamp you control"
+ },
+ {
+  "card": "Castle Locthwain",
+  "deck": "Sheoldred, the Apocalypse",
+  "missing": "needs core: lose life equal to the number of cards in your hand"
+ },
+ {
+  "card": "Damnable Pact",
+  "deck": "Sheoldred, the Apocalypse",
+  "missing": "needs core: target player draws X cards and loses X life"
+ },
+ {
+  "card": "Defiant Bloodlord",
+  "deck": "Sheoldred, the Apocalypse",
+  "missing": "needs core: target opponent loses life equal to the life you gained (the trigger's amount)"
+ },
+ {
+  "card": "Eldritch Pact",
+  "deck": "Sheoldred, the Apocalypse",
+  "missing": "needs core: target player draws and loses life equal to the cards in their graveyard"
+ },
+ {
+  "card": "Necrologia",
+  "deck": "Sheoldred, the Apocalypse",
+  "missing": "needs core: cast only during your end step, and pay X life as an additional cost"
+ },
+ {
+  "card": "Ob Nixilis Reignited",
+  "deck": "Sheoldred, the Apocalypse",
+  "missing": "needs core: an emblem for the opponent ('whenever a player draws a card, you lose 2 life')"
+ },
+ {
+  "card": "Otherworld Atlas",
+  "deck": "Sheoldred, the Apocalypse",
+  "missing": "needs core: charge counters, and each player draws one per counter"
+ },
+ {
+  "card": "Seizan, Perverter of Truth",
+  "deck": "Sheoldred, the Apocalypse",
+  "missing": "needs core: the active player loses 2 life at each upkeep (a Who for the active player)"
+ },
+ {
+  "card": "Mystical Tutor",
+  "deck": "Animar, Soul of Elements",
+  "missing": "needs core: search for any instant or sorcery card (a SearchFor for instants and sorceries)"
+ },
+ {
+  "card": "Sylvan Safekeeper",
+  "deck": "Animar, Soul of Elements",
+  "missing": "needs core: sacrifice a land as an activation cost"
+ },
+ {
+  "card": "Hullbreaker Horror",
+  "deck": "Animar, Soul of Elements",
+  "missing": "needs core: a choose-up-to-one trigger on each spell you cast, bouncing a spell you don't control"
+ },
+ {
+  "card": "Hydroid Krasis",
+  "deck": "Animar, Soul of Elements",
+  "missing": "needs core: a cast trigger for half X life and half X cards"
+ },
+ {
+  "card": "Pathbreaker Ibex",
+  "deck": "Animar, Soul of Elements",
+  "missing": "needs core: +X/+X with X the greatest power among your creatures"
+ },
+ {
+  "card": "The Ozolith",
+  "deck": "Animar, Soul of Elements",
+  "missing": "needs core: keep the counters of creatures leaving and move them"
+ },
+ {
+  "card": "Vizier of the Menagerie",
+  "deck": "Animar, Soul of Elements",
+  "missing": "needs core: cast creature spells from the top of your library, and spend mana as any type for them"
+ },
+ {
+  "card": "Ancestral Statue",
+  "deck": "Animar, Soul of Elements",
+  "missing": "needs core: return a nonland permanent you control (not only a creature)"
+ },
+ {
+  "card": "Animar, Soul of Elements",
+  "deck": "Animar, Soul of Elements",
+  "missing": "needs core: creature spells cost {1} less per +1/+1 counter on it"
+ },
+ {
+  "card": "Gilded Drake",
+  "deck": "Animar, Soul of Elements",
+  "missing": "needs core: exchange control with a target creature"
+ },
+ {
+  "card": "Glimpse of Nature",
+  "deck": "Animar, Soul of Elements",
+  "missing": "needs core: a delayed 'whenever you cast a creature spell this turn' trigger"
+ },
+ {
+  "card": "Kinnan, Bonder Prodigy",
+  "deck": "Animar, Soul of Elements",
+  "missing": "needs core: extra mana from nonland mana sources, and look at five for a non-Human creature"
+ },
+ {
+  "card": "Loyal Drake",
+  "deck": "Animar, Soul of Elements",
+  "missing": "needs core: lieutenant (an 'if you control your commander' trigger condition)"
+ },
+ {
+  "card": "Mulldrifter",
+  "deck": "Animar, Soul of Elements",
+  "missing": "needs core: evoke"
+ },
+ {
+  "card": "Neoform",
+  "deck": "Animar, Soul of Elements",
+  "missing": "needs core: search for a creature with mana value one more than the sacrificed creature's, with an extra counter"
+ },
+ {
+  "card": "Once Upon a Time",
+  "deck": "Animar, Soul of Elements",
+  "missing": "needs core: free if it's the first spell you cast this game"
+ },
+ {
+  "card": "Phantasmal Image",
+  "deck": "Animar, Soul of Elements",
+  "missing": "needs core: copy as an Illusion with 'sacrifice it when it becomes the target'"
+ },
+ {
+  "card": "Rattleclaw Mystic",
+  "deck": "Animar, Soul of Elements",
+  "missing": "needs core: morph and a turned-face-up trigger"
+ },
+ {
+  "card": "Somberwald Sage",
+  "deck": "Animar, Soul of Elements",
+  "missing": "needs core: three mana of one chosen color (the payer would split the colors)"
+ },
+ {
+  "card": "Spellskite",
+  "deck": "Animar, Soul of Elements",
+  "missing": "needs core: change a target of a spell or ability to this creature"
+ },
+ {
+  "card": "Weird Harvest",
+  "deck": "Animar, Soul of Elements",
+  "missing": "needs core: each player may search for up to X creature cards"
+ },
+ {
+  "card": "Wild Cantor",
+  "deck": "Animar, Soul of Elements",
+  "missing": "needs core: a sacrifice-only mana ability with no {T} (usable the turn it enters)"
+ },
+ {
+  "card": "Merciless Eviction",
+  "deck": "Atraxa, Praetors' Voice",
+  "missing": "needs core: exile all permanents of one type"
+ },
+ {
+  "card": "Damn",
+  "deck": "Atraxa, Praetors' Voice",
+  "missing": "needs core: overload (destroy all creatures instead)"
+ },
+ {
+  "card": "Atraxa, Praetors' Voice",
+  "deck": "Atraxa, Praetors' Voice",
+  "missing": "needs core: proliferate"
+ },
+ {
+  "card": "Karn's Bastion",
+  "deck": "Atraxa, Praetors' Voice",
+  "missing": "needs core: proliferate"
+ },
+ {
+  "card": "Sword of Feast and Famine",
+  "deck": "Atraxa, Praetors' Voice",
+  "missing": "needs core: protection from black and green for the equipped creature, and untap all your lands on combat damage"
+ },
+ {
+  "card": "Vraska, Betrayal's Sting",
+  "deck": "Atraxa, Praetors' Voice",
+  "missing": "needs core: proliferate, compleated, a creature becoming a Treasure, and poison counters"
+ },
+ {
+  "card": "Tekuthal, Inquiry Dominus",
+  "deck": "Atraxa, Praetors' Voice",
+  "missing": "needs core: proliferate twice, and removing counters from among your permanents as a cost"
+ },
+ {
+  "card": "Ashiok, Nightmare Muse",
+  "deck": "Atraxa, Praetors' Voice",
+  "missing": "needs core: a 2/3 blue and black Nightmare creature token with an attack/block trigger, and casting from exile"
+ },
+ {
+  "card": "City of Shadows",
+  "deck": "Atraxa, Praetors' Voice",
+  "missing": "needs core: storage counters and mana per counter"
+ },
+ {
+  "card": "Deepglow Skate",
+  "deck": "Atraxa, Praetors' Voice",
+  "missing": "needs core: double each kind of counter on any number of target permanents"
+ },
+ {
+  "card": "Elspeth Tirel",
+  "deck": "Atraxa, Praetors' Voice",
+  "missing": "needs core: gain 1 life per creature you control, and destroy all other permanents except lands and tokens"
+ },
+ {
+  "card": "Freyalise, Llanowar's Fury",
+  "deck": "Atraxa, Praetors' Voice",
+  "missing": "needs core: a 1/1 green Elf Druid creature token with '{T}: Add {G}', and draw per green creature"
+ },
+ {
+  "card": "Ichormoon Gauntlet",
+  "deck": "Atraxa, Praetors' Voice",
+  "missing": "needs core: loyalty abilities granted to planeswalkers, and an extra counter of a chosen kind"
+ },
+ {
+  "card": "Lolth, Spider Queen",
+  "deck": "Atraxa, Praetors' Voice",
+  "missing": "needs core: a 2/1 black Spider creature token with reach and menace, a loyalty-on-death trigger, and an emblem"
+ },
+ {
+  "card": "Nissa, Ascended Animist",
+  "deck": "Atraxa, Praetors' Voice",
+  "missing": "needs core: an X/X green Phyrexian Horror creature token (X its loyalty), compleated, and +1/+1 per Forest"
+ },
+ {
+  "card": "Nissa, Voice of Zendikar",
+  "deck": "Atraxa, Praetors' Voice",
+  "missing": "needs core: gain X life and draw X cards, X the lands you control (its -7)"
+ },
+ {
+  "card": "Professor Dellian Fel",
+  "deck": "Atraxa, Praetors' Voice",
+  "missing": "needs core: an emblem 'whenever you gain life, target opponent loses that much life'"
+ },
+ {
+  "card": "Wash Away",
+  "deck": "Atraxa, Praetors' Voice",
+  "missing": "needs core: cleave, and 'a spell that wasn't cast from its owner's hand'"
+ },
+ {
+  "card": "Barkchannel Pathway // Tidechannel Pathway",
+  "deck": "Lonis, Cryptozoologist",
+  "missing": "needs core: a land-front modal double-faced card (choose the face as you play it); the back face isn't in the oracle data"
+ },
+ {
+  "card": "Tireless Tracker",
+  "deck": "Lonis, Cryptozoologist",
+  "missing": "needs core: a Clue artifact token (investigate), and a 'whenever you sacrifice a Clue' trigger"
+ },
+ {
+  "card": "Ulvenwald Mysteries",
+  "deck": "Lonis, Cryptozoologist",
+  "missing": "needs core: a Clue artifact token (investigate), and a 'whenever you sacrifice a Clue' trigger"
+ },
+ {
+  "card": "Urza, Lord High Artificer",
+  "deck": "Lonis, Cryptozoologist",
+  "missing": "needs core: a 0/0 colorless Construct artifact creature token (+1/+1 per artifact), tapping an artifact for mana, and a free play from the top"
+ },
+ {
+  "card": "Altar of the Brood",
+  "deck": "Lonis, Cryptozoologist",
+  "missing": "needs core: a trigger whenever another permanent you control enters"
+ },
+ {
+  "card": "Argent Sphinx",
+  "deck": "Lonis, Cryptozoologist",
+  "missing": "needs core: metalcraft (an 'if you control three or more artifacts' activation condition)"
+ },
+ {
+  "card": "Briarbridge Patrol",
+  "deck": "Lonis, Cryptozoologist",
+  "missing": "needs core: a Clue artifact token (investigate), and a 'sacrificed three or more Clues this turn' condition"
+ },
+ {
+  "card": "Confirm Suspicions",
+  "deck": "Lonis, Cryptozoologist",
+  "missing": "needs core: a Clue artifact token (investigate)"
+ },
+ {
+  "card": "Confront the Unknown",
+  "deck": "Lonis, Cryptozoologist",
+  "missing": "needs core: a Clue artifact token (investigate), and +1/+1 per Clue you control"
+ },
+ {
+  "card": "Cyberdrive Awakener",
+  "deck": "Lonis, Cryptozoologist",
+  "missing": "needs core: other artifact creatures you control have flying, and noncreature artifacts becoming 4/4 creatures"
+ },
+ {
+  "card": "Daring Sleuth // Bearer of Overwhelming Truths",
+  "deck": "Lonis, Cryptozoologist",
+  "missing": "needs core: a 'whenever you sacrifice a Clue' trigger, and a Clue artifact token (investigate) for its back face"
+ },
+ {
+  "card": "Dream Stalker",
+  "deck": "Lonis, Cryptozoologist",
+  "missing": "needs core: return a permanent you control (not only a creature)"
+ },
+ {
+  "card": "Drift of Phantasms",
+  "deck": "Lonis, Cryptozoologist",
+  "missing": "needs core: transmute"
+ },
+ {
+  "card": "Erdwal Illuminator",
+  "deck": "Lonis, Cryptozoologist",
+  "missing": "needs core: a Clue artifact token (investigate), and investigating an additional time"
+ },
+ {
+  "card": "Ethereal Investigator",
+  "deck": "Lonis, Cryptozoologist",
+  "missing": "needs core: a Clue artifact token (investigate)"
+ },
+ {
+  "card": "Fleeting Memories",
+  "deck": "Lonis, Cryptozoologist",
+  "missing": "needs core: a Clue artifact token (investigate), and a 'whenever you sacrifice a Clue' trigger"
+ },
+ {
+  "card": "Floodhound",
+  "deck": "Lonis, Cryptozoologist",
+  "missing": "needs core: a Clue artifact token (investigate)"
+ },
+ {
+  "card": "Golden Argosy",
+  "deck": "Lonis, Cryptozoologist",
+  "missing": "needs core: exile the creatures that crewed it and return them at the next end step"
+ },
+ {
+  "card": "Graf Mole",
+  "deck": "Lonis, Cryptozoologist",
+  "missing": "needs core: a 'whenever you sacrifice a Clue' trigger"
+ },
+ {
+  "card": "Hold for Questioning",
+  "deck": "Lonis, Cryptozoologist",
+  "missing": "needs core: a Clue artifact token (investigate), and an Aura stopping untapping and activated abilities"
+ },
+ {
+  "card": "Inspiring Statuary",
+  "deck": "Lonis, Cryptozoologist",
+  "missing": "needs core: improvise for nonartifact spells"
+ },
+ {
+  "card": "Kappa Cannoneer",
+  "deck": "Lonis, Cryptozoologist",
+  "missing": "needs core: improvise"
+ },
+ {
+  "card": "Lonis, Cryptozoologist",
+  "deck": "Lonis, Cryptozoologist",
+  "missing": "needs core: a Clue artifact token (investigate), and sacrificing X Clues to put a card from the opponent's library onto the battlefield"
+ },
+ {
+  "card": "Mechanized Production",
+  "deck": "Lonis, Cryptozoologist",
+  "missing": "needs core: an Aura copying the enchanted artifact each upkeep, and an eight-with-the-same-name win check"
+ },
+ {
+  "card": "Ongoing Investigation",
+  "deck": "Lonis, Cryptozoologist",
+  "missing": "needs core: a Clue artifact token (investigate)"
+ },
+ {
+  "card": "Rise and Shine",
+  "deck": "Lonis, Cryptozoologist",
+  "missing": "needs core: a noncreature artifact becoming a 0/0 creature with four counters, and overload"
+ },
+ {
+  "card": "Tamiyo's Journal",
+  "deck": "Lonis, Cryptozoologist",
+  "missing": "needs core: a Clue artifact token (investigate), and sacrificing three Clues as a cost"
+ },
+ {
+  "card": "Teething Wurmlet",
+  "deck": "Lonis, Cryptozoologist",
+  "missing": "needs core: a 'three or more artifacts' static condition, and a trigger whenever an artifact you control enters"
+ },
+ {
+  "card": "Trophy Mage",
+  "deck": "Lonis, Cryptozoologist",
+  "missing": "needs core: search for an artifact card with mana value 3"
+ },
+ {
+  "card": "Trusted Advisor",
+  "deck": "Lonis, Cryptozoologist",
+  "missing": "needs core: maximum hand size increased by two, and returning a blue creature you control"
+ },
+ {
+  "card": "Universal Surveillance",
+  "deck": "Lonis, Cryptozoologist",
+  "missing": "needs core: improvise"
+ },
+ {
+  "card": "Wavesifter",
+  "deck": "Lonis, Cryptozoologist",
+  "missing": "needs core: a Clue artifact token (investigate), and evoke"
+ }
+]

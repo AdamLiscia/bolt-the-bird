@@ -1,0 +1,847 @@
+[
+ {
+  "card": "Urborg, Tomb of Yawgmoth",
+  "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+  "missing": "needs core: a static making each land a Swamp in addition to its types (only the Forest version exists)"
+ },
+ {
+  "card": "Temple of the False God",
+  "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+  "missing": "needs core: a mana ability that works only if you control five or more lands"
+ },
+ {
+  "card": "Cabal Coffers",
+  "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+  "missing": "needs core: a paid mana ability adding {B} for each Swamp you control"
+ },
+ {
+  "card": "Boseiju, Who Endures",
+  "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+  "missing": "needs core: the opponent's search for a land card with a basic land type (DestroyControllerMayFetchBasic fetches basics only)"
+ },
+ {
+  "card": "Ulamog, the Infinite Gyre",
+  "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+  "missing": "needs core: annihilator N, and a 'put into a graveyard from anywhere' trigger that shuffles the graveyard into the library"
+ },
+ {
+  "card": "Circle of Dreams Druid",
+  "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+  "missing": "needs core: mana for each creature you control (mana_per_subtype counts one subtype)"
+ },
+ {
+  "card": "Phyrexian Tower",
+  "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+  "missing": "needs core: a mana ability with 'Sacrifice a creature' in its cost (an AddMana activated ability uses the stack)"
+ },
+ {
+  "card": "Shizo, Death's Storehouse",
+  "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+  "missing": "needs core: the fear keyword"
+ },
+ {
+  "card": "Tergrid, God of Fright // Tergrid's Lantern",
+  "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+  "missing": "needs core: a trigger when an opponent sacrifices a nontoken permanent (and the back face is missing from the oracle data)"
+ },
+ {
+  "card": "Venser's Journal",
+  "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+  "missing": "needs core: gain 1 life for each card in your hand"
+ },
+ {
+  "card": "Command Beacon",
+  "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+  "missing": "needs core: put your commander from the command zone into your hand"
+ },
+ {
+  "card": "Gray Merchant of Asphodel",
+  "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+  "missing": "needs core: drain X where X is your devotion to black"
+ },
+ {
+  "card": "Monster Manual // Zoological Study",
+  "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+  "missing": "needs core: the adventure mechanic, and putting a creature card from hand onto the battlefield"
+ },
+ {
+  "card": "Tribute to the World Tree",
+  "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+  "missing": "needs core: a creature-you-control-enters trigger that checks that creature's power (draw, or two counters on it)"
+ },
+ {
+  "card": "Herd Baloth",
+  "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+  "missing": "needs core: a counters-put-on-this trigger that fires every time (CountersPutOnThis is once each turn)"
+ },
+ {
+  "card": "Lurking Predators",
+  "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+  "missing": "needs core: reveal the top card: a creature onto the battlefield, else you may put it on the bottom"
+ },
+ {
+  "card": "Ulamog, the Defiler",
+  "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+  "missing": "needs core: ward—sacrifice two permanents, counters from the greatest mana value in exile, annihilator X, and exiling half a library"
+ },
+ {
+  "card": "Worldspine Wurm",
+  "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+  "missing": "needs core: a 5/5 green Wurm creature token with trample, and a 'put into a graveyard from anywhere' shuffle trigger"
+ },
+ {
+  "card": "Defense of the Heart",
+  "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+  "missing": "needs core: a condition 'an opponent controls three or more creatures'"
+ },
+ {
+  "card": "Displaced Dinosaurs",
+  "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+  "missing": "needs core: historic permanents you control enter as 7/7 Dinosaurs"
+ },
+ {
+  "card": "Revel in Riches",
+  "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+  "missing": "needs core: a 'creature an opponent controls dies' trigger, and a 'ten or more Treasures' condition"
+ },
+ {
+  "card": "The Meathook Massacre",
+  "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+  "missing": "needs core: a 'creature an opponent controls dies' trigger"
+ },
+ {
+  "card": "Canopy Gargantuan",
+  "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+  "missing": "needs core: counters on each other creature equal to its toughness"
+ },
+ {
+  "card": "Vaultborn Tyrant",
+  "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+  "missing": "needs core: a token copy 'except it's an artifact in addition to its other types'"
+ },
+ {
+  "card": "Well Rested",
+  "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+  "missing": "needs core: counters on the enchanted creature from its granted trigger, and a becomes-untapped trigger outside the untap step"
+ },
+ {
+  "card": "Final Act",
+  "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+  "missing": "needs core: choose one or more modes, destroy all planeswalkers, and 'each opponent loses all counters'"
+ },
+ {
+  "card": "Jarad, Golgari Lich Lord",
+  "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+  "missing": "needs core: opponents lose life equal to the sacrificed creature's power, and a 'Sacrifice a Swamp and a Forest' graveyard ability"
+ },
+ {
+  "card": "Lifeblood Hydra",
+  "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+  "missing": "needs core: gain life and draw cards equal to its power when it dies (dies triggers carry no amount)"
+ },
+ {
+  "card": "Mikaeus, the Unhallowed",
+  "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+  "missing": "needs core: undying, intimidate, and a 'Human deals damage to you' trigger"
+ },
+ {
+  "card": "Multani, Maro-Sorcerer",
+  "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+  "missing": "needs core: power and toughness equal to the cards in all players' hands"
+ },
+ {
+  "card": "Railway Brawler",
+  "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+  "missing": "needs core: plot"
+ },
+ {
+  "card": "The Gitrog, Ravenous Ride",
+  "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+  "missing": "needs core: saddle and its 'creature that saddled it' trigger"
+ },
+ {
+  "card": "Wurmcoil Engine",
+  "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+  "missing": "needs core: a 3/3 colorless Phyrexian Wurm artifact creature token with deathtouch, and one with lifelink"
+ },
+ {
+  "card": "Bone Sabres",
+  "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+  "missing": "needs core: +1/+1 counters on the equipped creature"
+ },
+ {
+  "card": "Bontu's Monument",
+  "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+  "missing": "needs core: a cost reduction for black creature spells"
+ },
+ {
+  "card": "Genji Glove",
+  "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+  "missing": "needs core: untap the equipped creature"
+ },
+ {
+  "card": "Lord of Extinction",
+  "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+  "missing": "needs core: power and toughness equal to the cards in all graveyards"
+ },
+ {
+  "card": "The Immortal Sun",
+  "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+  "missing": "needs core: stop loyalty abilities, an extra draw, and a discount on all spells you cast"
+ },
+ {
+  "card": "Witch's Cottage",
+  "deck": "The Gitrog, Ravenous Ride (RuricMo)",
+  "missing": "needs core: enters tapped unless you control three or more other Swamps, and an 'enters untapped' trigger"
+ },
+ {
+  "card": "Chromatic Lantern",
+  "deck": "Kaalia of the Vast",
+  "missing": "needs core: lands you control gain '{T}: Add one mana of any color'"
+ },
+ {
+  "card": "Reanimate",
+  "deck": "Kaalia of the Vast",
+  "missing": "needs core: lose life equal to the reanimated card's mana value"
+ },
+ {
+  "card": "Akroma's Will",
+  "deck": "Kaalia of the Vast",
+  "missing": "needs core: grant protection from each color until end of turn"
+ },
+ {
+  "card": "Animate Dead",
+  "deck": "Kaalia of the Vast",
+  "missing": "needs core: an Aura that enchants a creature card in a graveyard and reanimates it"
+ },
+ {
+  "card": "Enlightened Tutor",
+  "deck": "Kaalia of the Vast",
+  "missing": "needs core: search for an artifact or enchantment card"
+ },
+ {
+  "card": "Gisela, Blade of Goldnight",
+  "deck": "Kaalia of the Vast",
+  "missing": "needs core: prevent half the damage dealt to you and your permanents, rounded up"
+ },
+ {
+  "card": "Ancient Copper Dragon",
+  "deck": "Kaalia of the Vast",
+  "missing": "needs core: a d20 roll"
+ },
+ {
+  "card": "Aurelia, the Warleader",
+  "deck": "Kaalia of the Vast",
+  "missing": "needs core: 'attacks for the first time each turn' (the first-combat condition differs)"
+ },
+ {
+  "card": "Ancient Brass Dragon",
+  "deck": "Kaalia of the Vast",
+  "missing": "needs core: a d20 roll and reanimating cards with total mana value up to the result"
+ },
+ {
+  "card": "Ancient Gold Dragon",
+  "deck": "Kaalia of the Vast",
+  "missing": "needs core: a d20 roll, and a 1/1 blue Faerie Dragon creature token with flying"
+ },
+ {
+  "card": "Bloodletter of Aclazotz",
+  "deck": "Kaalia of the Vast",
+  "missing": "needs core: double an opponent's life loss during your turn"
+ },
+ {
+  "card": "Dragon Tempest",
+  "deck": "Kaalia of the Vast",
+  "missing": "needs core: a 'creature with flying enters' trigger, and Dragon-count damage from the entering Dragon"
+ },
+ {
+  "card": "Archfiend of Despair",
+  "deck": "Kaalia of the Vast",
+  "missing": "needs core: 'your opponents can't gain life', and end-step loss equal to the life lost this turn"
+ },
+ {
+  "card": "Armageddon",
+  "deck": "Kaalia of the Vast",
+  "missing": "needs core: destroy all lands"
+ },
+ {
+  "card": "Demonlord Belzenlok",
+  "deck": "Kaalia of the Vast",
+  "missing": "needs core: exile until nonland, repeating while mana value is 4 or more"
+ },
+ {
+  "card": "Eiganjo Castle",
+  "deck": "Kaalia of the Vast",
+  "missing": "needs core: prevent the next 2 damage to target creature"
+ },
+ {
+  "card": "Hall of the Bandit Lord",
+  "deck": "Kaalia of the Vast",
+  "missing": "needs core: a pay-3-life mana ability whose mana gives haste"
+ },
+ {
+  "card": "Imp's Mischief",
+  "deck": "Kaalia of the Vast",
+  "missing": "needs core: lose life equal to the target spell's mana value"
+ },
+ {
+  "card": "Rakdos, Patron of Chaos",
+  "deck": "Kaalia of the Vast",
+  "missing": "needs core: the opponent may sacrifice two nonland, nontoken permanents or you draw two"
+ },
+ {
+  "card": "Sower of Discord",
+  "deck": "Kaalia of the Vast",
+  "missing": "needs core: choose two players; damage to one makes the other lose life"
+ },
+ {
+  "card": "Vilis, Broker of Blood",
+  "deck": "Kaalia of the Vast",
+  "missing": "needs core: a 'whenever you lose life' trigger with the amount"
+ },
+ {
+  "card": "Winds of Abandon",
+  "deck": "Kaalia of the Vast",
+  "missing": "needs core: overload (exile each creature you don't control) and a mandatory tapped basic search"
+ },
+ {
+  "card": "Call of the Ring",
+  "deck": "Kaalia of the Vast",
+  "missing": "needs core: the Ring tempts you"
+ },
+ {
+  "card": "Demon of Death's Gate",
+  "deck": "Kaalia of the Vast",
+  "missing": "needs core: an alternative cost of 6 life and three black creatures"
+ },
+ {
+  "card": "Kaalia of the Vast",
+  "deck": "Kaalia of the Vast",
+  "missing": "needs core: put an Angel, Demon or Dragon from hand onto the battlefield tapped and attacking"
+ },
+ {
+  "card": "Master of Cruelties",
+  "deck": "Kaalia of the Vast",
+  "missing": "needs core: attacks alone, and the unblocked 'life total becomes 1'"
+ },
+ {
+  "card": "Overpowering Attack",
+  "deck": "Kaalia of the Vast",
+  "missing": "needs core: freerunning, and untap creatures that attacked this turn"
+ },
+ {
+  "card": "Reconnaissance",
+  "deck": "Kaalia of the Vast",
+  "missing": "needs core: remove an attacking creature from combat"
+ },
+ {
+  "card": "Relentless Assault",
+  "deck": "Kaalia of the Vast",
+  "missing": "needs core: untap all creatures that attacked this turn"
+ },
+ {
+  "card": "Sephara, Sky's Blade",
+  "deck": "Kaalia of the Vast",
+  "missing": "needs core: an alternative cost that taps four untapped creatures with flying"
+ },
+ {
+  "card": "Serra's Emissary",
+  "deck": "Kaalia of the Vast",
+  "missing": "needs core: protection from a chosen card type for you and your creatures"
+ },
+ {
+  "card": "Sunbaked Canyon",
+  "deck": "Kaalia of the Vast",
+  "missing": "needs core: pay 1 life as part of a mana ability"
+ },
+ {
+  "card": "Tendo Ice Bridge",
+  "deck": "Kaalia of the Vast",
+  "missing": "needs core: charge counters spent for any-color mana"
+ },
+ {
+  "card": "Valgavoth, Terror Eater",
+  "deck": "Kaalia of the Vast",
+  "missing": "needs core: ward—sacrifice three, exile-instead-of-graveyard, and playing those cards for life"
+ },
+ {
+  "card": "Waves of Aggression",
+  "deck": "Kaalia of the Vast",
+  "missing": "needs core: untap all creatures that attacked this turn, and retrace"
+ },
+ {
+  "card": "Toxic Deluge",
+  "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+  "missing": "needs core: 'pay X life' as a spell's additional cost"
+ },
+ {
+  "card": "Crypt Ghast",
+  "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+  "missing": "needs core: extort, and an extra {B} when you tap a Swamp for mana"
+ },
+ {
+  "card": "Sanguine Bond",
+  "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+  "missing": "needs core: a 'whenever you gain life' trigger that carries the amount ('target opponent loses that much')"
+ },
+ {
+  "card": "Bitterblossom",
+  "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+  "missing": "needs core: a 1/1 black Faerie Rogue creature token with flying"
+ },
+ {
+  "card": "Bloodchief Ascension",
+  "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+  "missing": "needs core: a 'card put into an opponent's graveyard from anywhere' trigger, and quest counters gated on life lost"
+ },
+ {
+  "card": "Erebos, God of the Dead",
+  "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+  "missing": "needs core: 'your opponents can't gain life'"
+ },
+ {
+  "card": "Vito, Thorn of the Dusk Rose",
+  "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+  "missing": "needs core: a 'whenever you gain life' trigger that carries the amount ('target opponent loses that much')"
+ },
+ {
+  "card": "Blade of the Bloodchief",
+  "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+  "missing": "needs core: +1/+1 counters on the equipped creature"
+ },
+ {
+  "card": "Enduring Tenacity",
+  "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+  "missing": "needs core: a gain-life trigger with the amount, and returning as a noncreature enchantment"
+ },
+ {
+  "card": "Mutilate",
+  "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+  "missing": "needs core: -1/-1 for each Swamp you control, to all creatures"
+ },
+ {
+  "card": "Rankle, Master of Pranks",
+  "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+  "missing": "needs core: choose any number of modes"
+ },
+ {
+  "card": "Accursed Marauder",
+  "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+  "missing": "needs core: each player sacrifices a nontoken creature"
+ },
+ {
+  "card": "Dance of the Dead",
+  "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+  "missing": "needs core: an Aura that enchants a creature card in a graveyard and reanimates it"
+ },
+ {
+  "card": "Defile",
+  "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+  "missing": "needs core: -1/-1 for each Swamp you control"
+ },
+ {
+  "card": "Disciple of Bolas",
+  "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+  "missing": "needs core: gain life and draw equal to the sacrificed creature's power"
+ },
+ {
+  "card": "Go for the Throat",
+  "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+  "missing": "needs core: a nonartifact creature target filter"
+ },
+ {
+  "card": "Puppeteer Clique",
+  "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+  "missing": "needs core: persist, and reanimating from an opponent's graveyard until your next end step"
+ },
+ {
+  "card": "Vampire Hexmage",
+  "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+  "missing": "needs core: remove all counters including loyalty counters"
+ },
+ {
+  "card": "Whip of Erebos",
+  "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+  "missing": "needs core: reanimate with haste, exile at end step, and an exile-instead replacement"
+ },
+ {
+  "card": "Bontu the Glorified",
+  "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+  "missing": "needs core: can't attack or block unless a creature died under your control this turn"
+ },
+ {
+  "card": "Cabal Pit",
+  "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+  "missing": "needs core: a threshold activation condition"
+ },
+ {
+  "card": "Crypt of Agadeem",
+  "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+  "missing": "needs core: mana for each black creature card in your graveyard"
+ },
+ {
+  "card": "Doom Blade",
+  "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+  "missing": "needs core: a nonblack creature target filter"
+ },
+ {
+  "card": "Emperor of Bones",
+  "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+  "missing": "needs core: adapt, and putting a creature exiled with it onto the battlefield"
+ },
+ {
+  "card": "God-Eternal Bontu",
+  "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+  "missing": "needs core: sacrifice any number of permanents, then draw that many"
+ },
+ {
+  "card": "Grim Hireling",
+  "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+  "missing": "needs core: 'Sacrifice X Treasures' in a cost"
+ },
+ {
+  "card": "Henrika Domnathi // Henrika, Infernal Seer",
+  "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+  "missing": "needs core: 'choose one that hasn't been chosen' modes and its transform"
+ },
+ {
+  "card": "Liliana, Heretical Healer // Liliana, Defiant Necromancer",
+  "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+  "missing": "needs core: its back face's −X reanimation and emblem"
+ },
+ {
+  "card": "Mana Vault",
+  "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+  "missing": "needs core: a 'your draw step, if this is tapped' trigger"
+ },
+ {
+  "card": "Massacre Girl",
+  "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+  "missing": "needs core: a 'whenever a creature dies this turn' delayed trigger"
+ },
+ {
+  "card": "Plague Drone",
+  "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+  "missing": "needs core: an opponent's life gain becomes life loss"
+ },
+ {
+  "card": "Rise of the Dread Marn",
+  "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+  "missing": "needs core: foretell, and counting nontoken creatures that died this turn"
+ },
+ {
+  "card": "Tainted Pact",
+  "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+  "missing": "needs core: exile until a duplicate name"
+ },
+ {
+  "card": "Undead Augur",
+  "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+  "missing": "needs core: a 'Zombie you control dies' trigger (tokens included)"
+ },
+ {
+  "card": "Underdark Rift",
+  "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+  "missing": "needs core: a d10 roll"
+ },
+ {
+  "card": "Warlock Class",
+  "deck": "Henrika Domnathi // Henrika, Infernal Seer",
+  "missing": "needs core: Class levels"
+ },
+ {
+  "card": "Sphere Grid",
+  "deck": "Korvold, Fae-Cursed King",
+  "missing": "needs core: a combat-damage trigger that knows which creature dealt the damage"
+ },
+ {
+  "card": "The Earth Crystal",
+  "deck": "Korvold, Fae-Cursed King",
+  "missing": "needs core: counter doubling for your creatures, a green spell discount, and distributing counters"
+ },
+ {
+  "card": "Wound Reflection",
+  "deck": "Korvold, Fae-Cursed King",
+  "missing": "needs core: each opponent loses life equal to the life they lost this turn"
+ },
+ {
+  "card": "Darigaaz's Caldera",
+  "deck": "Korvold, Fae-Cursed King",
+  "missing": "needs core: the Lair bounce-or-sacrifice enters trigger"
+ },
+ {
+  "card": "Food Chain",
+  "deck": "Korvold, Fae-Cursed King",
+  "missing": "needs core: exile a creature for X mana of one color, creature spells only"
+ },
+ {
+  "card": "Korvold, Fae-Cursed King",
+  "deck": "Korvold, Fae-Cursed King",
+  "missing": "needs core: a 'whenever you sacrifice a permanent' trigger"
+ },
+ {
+  "card": "Mazirek, Kraul Death Priest",
+  "deck": "Korvold, Fae-Cursed King",
+  "missing": "needs core: a 'whenever a player sacrifices another permanent' trigger"
+ },
+ {
+  "card": "Miren, the Moaning Well",
+  "deck": "Korvold, Fae-Cursed King",
+  "missing": "needs core: gain life equal to the sacrificed creature's toughness"
+ },
+ {
+  "card": "Al Bhed Salvagers",
+  "deck": "Korvold, Fae-Cursed King",
+  "missing": "needs core: a 'creature or artifact you control dies' trigger"
+ },
+ {
+  "card": "All Will Be One",
+  "deck": "Korvold, Fae-Cursed King",
+  "missing": "needs core: damage whenever you put counters on a permanent or player"
+ },
+ {
+  "card": "Basking Broodscale",
+  "deck": "Korvold, Fae-Cursed King",
+  "missing": "needs core: adapt, a per-event counters trigger, and a 0/1 colorless Eldrazi Spawn creature token"
+ },
+ {
+  "card": "Ivy Lane Denizen",
+  "deck": "Korvold, Fae-Cursed King",
+  "missing": "needs core: an 'another green creature you control enters' trigger"
+ },
+ {
+  "card": "Kormus Bell",
+  "deck": "Korvold, Fae-Cursed King",
+  "missing": "needs core: all Swamps are 1/1 creatures"
+ },
+ {
+  "card": "Quina, Qu Gourmet",
+  "deck": "Korvold, Fae-Cursed King",
+  "missing": "needs core: extra token replacement, and a 1/1 green Frog creature token"
+ },
+ {
+  "card": "Scurry Oak",
+  "deck": "Korvold, Fae-Cursed King",
+  "missing": "needs core: a counters-put-on-this trigger that fires every time (CountersPutOnThis is once each turn)"
+ },
+ {
+  "card": "Squee, the Immortal",
+  "deck": "Korvold, Fae-Cursed King",
+  "missing": "needs core: cast from the graveyard or exile"
+ },
+ {
+  "card": "Burgeoning",
+  "deck": "Damia, Sage of Stone",
+  "missing": "needs core: an 'opponent plays a land' trigger"
+ },
+ {
+  "card": "No Mercy",
+  "deck": "Damia, Sage of Stone",
+  "missing": "needs core: a 'creature deals damage to you' trigger"
+ },
+ {
+  "card": "All Suns' Dawn",
+  "deck": "Damia, Sage of Stone",
+  "missing": "needs core: one target card of each color from your graveyard"
+ },
+ {
+  "card": "Chain of Smog",
+  "deck": "Damia, Sage of Stone",
+  "missing": "needs core: the target's option to copy the spell"
+ },
+ {
+  "card": "Damia, Sage of Stone",
+  "deck": "Damia, Sage of Stone",
+  "missing": "needs core: skip your draw step, and draw up to seven"
+ },
+ {
+  "card": "Force of Negation",
+  "deck": "Damia, Sage of Stone",
+  "missing": "needs core: counter a spell and exile it instead"
+ },
+ {
+  "card": "Kira, Great Glass-Spinner",
+  "deck": "Damia, Sage of Stone",
+  "missing": "needs core: counter the first spell or ability targeting each creature each turn"
+ },
+ {
+  "card": "Professor Onyx",
+  "deck": "Damia, Sage of Stone",
+  "missing": "needs core: magecraft ('cast or copy'; the engine's trigger is cast only)"
+ },
+ {
+  "card": "Sultai Charm",
+  "deck": "Damia, Sage of Stone",
+  "missing": "needs core: a monocolored creature target filter"
+ },
+ {
+  "card": "Witherbloom Apprentice",
+  "deck": "Damia, Sage of Stone",
+  "missing": "needs core: magecraft ('cast or copy'; the engine's trigger is cast only)"
+ },
+ {
+  "card": "Abigale, Eloquent First-Year",
+  "deck": "Raffine, Scheming Seer",
+  "missing": "needs core: target creature loses all abilities"
+ },
+ {
+  "card": "Drana, Liberator of Malakir",
+  "deck": "Raffine, Scheming Seer",
+  "missing": "needs core: +1/+1 counters on each attacking creature you control"
+ },
+ {
+  "card": "Inkshield",
+  "deck": "Raffine, Scheming Seer",
+  "missing": "needs core: prevent combat damage and create a 2/1 white and black Inkling creature token with flying per point"
+ },
+ {
+  "card": "Teferi's Ageless Insight",
+  "deck": "Raffine, Scheming Seer",
+  "missing": "needs core: draw replacement: two cards instead of one"
+ },
+ {
+  "card": "Archfiend of Ifnir",
+  "deck": "Raffine, Scheming Seer",
+  "missing": "needs core: a 'whenever you cycle or discard another card' trigger"
+ },
+ {
+  "card": "Breena, the Demagogue",
+  "deck": "Raffine, Scheming Seer",
+  "missing": "needs core: a multiplayer attack trigger comparing opponents' life"
+ },
+ {
+  "card": "Cryptcaller Chariot",
+  "deck": "Raffine, Scheming Seer",
+  "missing": "needs core: a 'whenever you discard one or more cards' trigger with the amount"
+ },
+ {
+  "card": "Darkstar Augur",
+  "deck": "Raffine, Scheming Seer",
+  "missing": "needs core: reveal the top card into hand and lose life equal to its mana value"
+ },
+ {
+  "card": "Deep-Cavern Bat",
+  "deck": "Raffine, Scheming Seer",
+  "missing": "needs core: exile a card from the opponent's hand until this leaves the battlefield"
+ },
+ {
+  "card": "Doorkeeper Thrull",
+  "deck": "Raffine, Scheming Seer",
+  "missing": "needs core: entering artifacts and creatures don't trigger abilities"
+ },
+ {
+  "card": "Drake Haven",
+  "deck": "Raffine, Scheming Seer",
+  "missing": "needs core: a 'whenever you cycle or discard a card' trigger"
+ },
+ {
+  "card": "Emissary of Despair",
+  "deck": "Raffine, Scheming Seer",
+  "missing": "needs core: lose 1 life for each artifact the damaged player controls"
+ },
+ {
+  "card": "Errant and Giada",
+  "deck": "Raffine, Scheming Seer",
+  "missing": "needs core: cast spells with flash or flying from the top of your library"
+ },
+ {
+  "card": "Feast of Sanity",
+  "deck": "Raffine, Scheming Seer",
+  "missing": "needs core: a 'whenever you discard a card' trigger"
+ },
+ {
+  "card": "Flitterwing Nuisance",
+  "deck": "Raffine, Scheming Seer",
+  "missing": "needs core: -1/-1 counters on entering, and removing a counter as a cost"
+ },
+ {
+  "card": "Francisco, Fowl Marauder",
+  "deck": "Raffine, Scheming Seer",
+  "missing": "needs core: a 'Pirates you control deal damage' trigger that explores this"
+ },
+ {
+  "card": "Glen Elendra Guardian",
+  "deck": "Raffine, Scheming Seer",
+  "missing": "needs core: -1/-1 counters on entering, and removing a counter as a cost"
+ },
+ {
+  "card": "Gravitational Shift",
+  "deck": "Raffine, Scheming Seer",
+  "missing": "needs core: a global static for creatures with and without flying"
+ },
+ {
+  "card": "Hushbringer",
+  "deck": "Raffine, Scheming Seer",
+  "missing": "needs core: entering or dying creatures don't trigger abilities"
+ },
+ {
+  "card": "Knowledge Is Power",
+  "deck": "Raffine, Scheming Seer",
+  "missing": "needs core: +X/+X for the cards drawn this turn"
+ },
+ {
+  "card": "Malcolm, Alluring Scoundrel",
+  "deck": "Raffine, Scheming Seer",
+  "missing": "needs core: chorus counters and casting the discarded card free"
+ },
+ {
+  "card": "Mausoleum Wanderer",
+  "deck": "Raffine, Scheming Seer",
+  "missing": "needs core: 'counter unless they pay X' where X is its power"
+ },
+ {
+  "card": "Mockingbird",
+  "deck": "Raffine, Scheming Seer",
+  "missing": "needs core: enter as a copy with mana value up to the mana spent"
+ },
+ {
+  "card": "Momo, Friendly Flier",
+  "deck": "Raffine, Scheming Seer",
+  "missing": "needs core: a discount on the first non-Lemur flying creature spell each turn"
+ },
+ {
+  "card": "Monument to Endurance",
+  "deck": "Raffine, Scheming Seer",
+  "missing": "needs core: a 'whenever you discard a card' trigger with modes not chosen this turn"
+ },
+ {
+  "card": "Moonstone, Harsh Mistress",
+  "deck": "Raffine, Scheming Seer",
+  "missing": "needs core: a 'whenever you discard a card' trigger"
+ },
+ {
+  "card": "Pride of the Clouds",
+  "deck": "Raffine, Scheming Seer",
+  "missing": "needs core: +1/+1 per other creature with flying, and forecast"
+ },
+ {
+  "card": "Raffine, Scheming Seer",
+  "deck": "Raffine, Scheming Seer",
+  "missing": "needs core: connive X"
+ },
+ {
+  "card": "Shadowstorm Vizier",
+  "deck": "Raffine, Scheming Seer",
+  "missing": "needs core: a 'whenever you cycle or discard a card' trigger"
+ },
+ {
+  "card": "Skycat Sovereign",
+  "deck": "Raffine, Scheming Seer",
+  "missing": "needs core: +1/+1 per other creature you control with flying, and a 1/1 white Cat Bird creature token with flying"
+ },
+ {
+  "card": "Stormscape Familiar",
+  "deck": "Raffine, Scheming Seer",
+  "missing": "needs core: a discount for white and black spells"
+ },
+ {
+  "card": "Wan Shi Tong, Librarian",
+  "deck": "Raffine, Scheming Seer",
+  "missing": "needs core: draw half X, and an 'opponent searches their library' trigger"
+ },
+ {
+  "card": "Watcher of the Spheres",
+  "deck": "Raffine, Scheming Seer",
+  "missing": "needs core: a discount for creature spells with flying"
+ }
+]

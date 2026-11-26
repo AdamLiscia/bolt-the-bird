@@ -196,6 +196,8 @@ pub enum Recipient {
     },
     /// Each creature and each planeswalker.
     EachCreatureAndPlaneswalker,
+    /// The ability's controller ("deals 1 damage to you": City of Brass).
+    You,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1451,6 +1453,17 @@ pub enum Effect {
     /// Primal Surge: exile the top card; if it's a permanent card, you may put it onto the
     /// battlefield, and if you do, repeat.
     PrimalSurge,
+    /// A -1/-1 counter on the creature in `slot` (kept as negative `Object::counters`, so +1/+1 and
+    /// -1/-1 counters cancel out, CR 704.5q).
+    MinusCounter(u8),
+    /// Proliferate (CR 701.27), choosing for you: your permanents with +1/+1 counters and your
+    /// planeswalkers, and opponents' permanents with -1/-1 counters.
+    Proliferate,
+    /// Myrkul: you may exile the card in `slot` (the creature that died); if you do, create a token
+    /// that's a copy of it, except it's an enchantment and loses its other card types.
+    ExileMakeEnchantmentCopy(u8),
+    /// "... unless that player pays {X}, where X is this creature's power" (Esper Sentinel).
+    UnlessOpponentPaysPower,
     /// Hideaway `n` (CR 702.75): look at the top `n` cards, exile one face down (linked to the
     /// source), and put the rest on the bottom in a random order.
     Hideaway(u8),
@@ -1486,6 +1499,11 @@ pub enum Effect {
     /// Mirage Phalanx: while paired, a hasty token copy of it and of its partner, without soulbond,
     /// exiled at end of combat.
     PhalanxCopies,
+    /// For each creature your opponents control, create a token (`def`) that fights a different one
+    /// of those creatures (Ezuri's Predation).
+    TokenFightsEachOpponentCreature {
+        def: usize,
+    },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1684,6 +1702,8 @@ pub enum Pick {
     Land,
     /// An instant, a sorcery, or a card with this subtype ("an instant, sorcery, or Dragon card").
     InstantSorceryOrSubtype(&'static str),
+    /// An enchantment card.
+    Enchantment,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -2061,6 +2081,8 @@ pub enum When {
     PlayerPlaysLand,
     /// "When this is put into a graveyard from anywhere" (the source itself; Worldspine Wurm).
     PutIntoGraveyardFromAnywhere,
+    /// "Whenever an enchantment you control enters" (constellation), this one included.
+    EnchantmentYouControlEnters,
 }
 
 #[derive(Clone, Debug, PartialEq)]

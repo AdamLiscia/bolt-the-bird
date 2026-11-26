@@ -611,3 +611,7 @@ KeywordCounterSelf, PhalanxCopies}`, `Game::{token_copy_of, delina_roll}`.
 Shortcuts: Zopandrel's second sacrifice is the engine's pick (your other creature with the least power); its
 {G/P}{G/P} is three abilities ({G}{G}; {G} and 2 life; 4 life). Mirage Phalanx's copy of each paired creature comes
 from Phalanx's own trigger (one trigger for both).
+
+Merged tarkir 62051fe (lane B's Myrkul batch 1, desktop d3, core themes): end-of-block conflicts, tarkir's side first.
+With it: Ezuri's Predation (`Effect::TokenFightsEachOpponentCreature`; token Phyrexian Beast 4/4 at base+63, after lane
+B's 61 and 62). Etali (queue list) complete.

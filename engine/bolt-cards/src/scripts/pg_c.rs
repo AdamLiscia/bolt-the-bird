@@ -1245,6 +1245,10 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::BeginCombatYourTurn, vec![], vec![Effect::PhalanxCopies]);
             },
         ),
+        "Ezuri's Predation" => s(
+            &["For each creature your opponents control, create a 4/4 green Phyrexian Beast creature token. Each of those tokens fights a different one of those creatures."],
+            |d, t| spell(d, vec![], vec![Effect::TokenFightsEachOpponentCreature { def: t.phyrexian_beast }]),
+        ),
         _ => None,
     }
 }
@@ -1395,4 +1399,5 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Jaxis, the Troublemaker",
     "Zopandrel, Hunger Dominus",
     "Mirage Phalanx",
+    "Ezuri's Predation",
 ];

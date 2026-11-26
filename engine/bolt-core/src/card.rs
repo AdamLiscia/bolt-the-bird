@@ -253,6 +253,10 @@ pub struct Activated {
     /// "Discard a creature card" in the cost: activated with `Action::ActivateWith`, that card the
     /// victim (Fauna Shaman).
     pub discard_creature_card: bool,
+    /// "Put a -1/-1 counter on this creature" in the cost (Devoted Druid).
+    pub minus_counter_cost: bool,
+    /// "Discard a card" in the cost: activated as `ActivateWith` naming the card (Yawgmoth).
+    pub discard_cost: bool,
     /// "Discard a card" in the cost: activated with `Action::ActivateWith`, that card the victim.
     pub discard_any_card: bool,
     /// "Sacrifice two other creatures" in the cost: the victim, then the engine sacrifices another
@@ -698,6 +702,19 @@ pub struct CardDef {
     /// Vigor: "If damage would be dealt to another creature you control, prevent that damage. Put
     /// a +1/+1 counter on that creature for each 1 damage prevented this way."
     pub damage_to_yours_becomes_counters: bool,
+    /// Its mana ability makes one mana for each enchantment you control (Serra's Sanctum, Sanctum
+    /// Weaver), instead of one.
+    pub mana_per_enchantment: bool,
+    /// "During your turn, your opponents can't ... activate abilities of artifacts, creatures, or
+    /// enchantments." (Grand Abolisher; the casting half is `opponents_cant_cast_your_turn`)
+    pub opponents_cant_activate_your_turn: bool,
+    /// "Protection from <subtype>s" (Yawgmoth: Humans).
+    pub protection_from_subtype: Option<&'static str>,
+    /// "As long as your life total is less than or equal to half your starting life total, this
+    /// has indestructible." (Myrkul)
+    pub indestructible_at_half_life: bool,
+    /// "Creatures your opponents control have base toughness 1." (Maha)
+    pub opponents_creatures_base_toughness_one: bool,
     /// With `enter_as_copy`: the copy lasts until end of turn and has haste (Cursed Mirror).
     pub copy_until_eot_haste: bool,
     /// "You may cast creature spells from the top of your library." (Vivien, Monsters' Advocate)
@@ -944,6 +961,11 @@ impl CardDef {
             targeted_life_tax: 0,
             red_spell_discount: 0,
             damage_to_yours_becomes_counters: false,
+            mana_per_enchantment: false,
+            opponents_cant_activate_your_turn: false,
+            protection_from_subtype: None,
+            indestructible_at_half_life: false,
+            opponents_creatures_base_toughness_one: false,
             copy_until_eot_haste: false,
             top_spells_creatures: false,
             blitz: None,
@@ -1150,6 +1172,11 @@ impl CardDef {
             targeted_life_tax: 0,
             red_spell_discount: 0,
             damage_to_yours_becomes_counters: false,
+            mana_per_enchantment: false,
+            opponents_cant_activate_your_turn: false,
+            protection_from_subtype: None,
+            indestructible_at_half_life: false,
+            opponents_creatures_base_toughness_one: false,
             copy_until_eot_haste: false,
             top_spells_creatures: false,
             blitz: None,
@@ -1356,6 +1383,11 @@ impl CardDef {
             targeted_life_tax: 0,
             red_spell_discount: 0,
             damage_to_yours_becomes_counters: false,
+            mana_per_enchantment: false,
+            opponents_cant_activate_your_turn: false,
+            protection_from_subtype: None,
+            indestructible_at_half_life: false,
+            opponents_creatures_base_toughness_one: false,
             copy_until_eot_haste: false,
             top_spells_creatures: false,
             blitz: None,

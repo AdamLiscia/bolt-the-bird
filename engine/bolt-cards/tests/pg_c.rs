@@ -2940,3 +2940,19 @@ fn mirage_phalanx_pairs_and_copies_both_at_combat() {
     assert_eq!(toks.len(), 2);
     assert!(toks.iter().all(|&t| g.keywords(t).has(Keywords::HASTE)));
 }
+
+#[test]
+fn ezuris_predation_makes_a_beast_to_fight_each_opponent_creature() {
+    let mut g = table();
+    let a = put(&mut g, 1, "Hungry Ghoul");
+    let b = put(&mut g, 1, "Palinchron");
+    let ep = hand(&mut g, 0, "Ezuri's Predation");
+    play(&mut g, ep, false, &[], &[]);
+    assert_eq!(g.obj(a).zone, Zone::Graveyard, "a 2/2 against a 4/4");
+    assert_eq!(g.obj(b).zone, Zone::Battlefield, "Palinchron is 4/5");
+    assert_eq!(
+        tokens(&g, 0, "Phyrexian Beast").len(),
+        1,
+        "the one that fought Palinchron died"
+    );
+}
