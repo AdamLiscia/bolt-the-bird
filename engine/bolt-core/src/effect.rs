@@ -123,6 +123,12 @@ pub struct Filter {
     pub only_in_your_main_phase: bool,
     /// Attacking creatures only (Reconnaissance).
     pub attacking: bool,
+    /// Instant and sorcery spells only (Flusterstorm), with `spells`.
+    pub spell_instant_or_sorcery: bool,
+    /// Creatures with defender only (Smash to Dust).
+    pub creature_needs_defender: bool,
+    /// Artifact cards only (graveyard targets: Buried Ruin).
+    pub artifact_cards: bool,
 }
 
 impl Filter {
@@ -182,6 +188,9 @@ impl Filter {
         single_target: false,
         only_in_your_main_phase: false,
         attacking: false,
+        spell_instant_or_sorcery: false,
+        creature_needs_defender: false,
+        artifact_cards: false,
     };
 
     pub const CREATURE: Filter = Filter {
@@ -1979,6 +1988,87 @@ pub enum Effect {
     MayCastFromHandFree {
         max_mv: u32,
     },
+    /// Each creature other than the source, anyone's, gets +P/+T until end of turn (Massacre Girl:
+    /// −1/−1).
+    PumpEachOtherCreature {
+        power: i32,
+        toughness: i32,
+    },
+    /// A −1/−1 counter on each creature `who` controls (Archfiend of Ifnir: each opponent).
+    MinusCounterEach(Who),
+    /// Each creature gets −X/−X until end of turn, X the source permanent's X as cast (The Meathook
+    /// Massacre's enters trigger; `AllCreaturesGetMinusX` reads a spell's X).
+    AllCreaturesGetMinusSourceX,
+    /// Put X +1/+1 counters on the source, then draw half X cards rounded down, X the source's X as
+    /// cast (Wan Shi Tong).
+    CountersSelfXDrawHalfX,
+    /// Sacrifice another permanent (not optional; nothing without one), as
+    /// `Decision::SacrificeAnother` when there's a choice (Korvold).
+    SacrificeAnotherPermanent,
+    /// "You may pay N life. If you do, ...": the rest happens only if paid, offered only when your
+    /// life total is at least N (CR 119.4), as `Decision::MayPayLife` (Savra).
+    MayPayLife(i32),
+    /// Untap all creatures, every player's (Benefactor's Draught).
+    UntapAllCreatures,
+    /// Put `counters` +1/+1 counters on the creature the source (an Aura) enchants; then that
+    /// creature's controller gains `life` life and draws `cards` cards (Well Rested's granted ability).
+    CountersAttachedGainDraw {
+        counters: i32,
+        life: i32,
+        cards: u8,
+    },
+    /// `who` loses life equal to the source's power, last known if it left the battlefield
+    /// (Rapacious Guest).
+    LoseLifeSourcePower(Who),
+    /// You gain life equal to the toughness of the creature in `slot` (Trostani).
+    GainLifeSlotToughness(u8),
+    /// Draw cards equal to the greatest power among creatures you control (Rishkar's Expertise).
+    DrawGreatestPowerYouControl,
+    /// Exile the graveyard card in `slot`. If it was a land card, add {R} or {G}; otherwise you gain
+    /// `life` life and the source deals `damage` damage to each opponent (Klothys).
+    ExileGraveyardCardManaIfLandElseDrain {
+        slot: u8,
+        life: i32,
+        damage: i32,
+    },
+    /// Mill `n`; then you may pay {`mana`} and `life` life, and if you do, put a card from among the
+    /// milled cards (those still in your graveyard) into your hand (Ripples of Undeath), as
+    /// `Decision::MayPayManaAndLife` then `Decision::TakeMilledCard`.
+    MillThenMayPayTakeOne {
+        n: u8,
+        mana: u8,
+        life: i32,
+    },
+    /// You may return another permanent you control that shares a permanent type with the one in
+    /// `slot` to its owner's hand (Cloudstone Curio), as `Decision::ReturnSharingType`.
+    MayReturnAnotherSharingType(u8),
+    /// The source deals `amount` damage to each creature each opponent controls, with `player` to
+    /// each opponent too, and with `planeswalkers` to each planeswalker they control (Tectonic Hazard,
+    /// End the Festivities, Smash to Dust).
+    DamageEachOpponentAndTheirs {
+        amount: i32,
+        player: bool,
+        planeswalkers: bool,
+    },
+    /// Each opponent loses `n` times X life; you gain life equal to the life lost (Debt to the
+    /// Deathless: 2).
+    DrainXTimes(u8),
+    /// You gain life equal to the power of the creature in `slot` (Wall of Reverence).
+    GainLifeSlotPower(u8),
+    /// You gain 1 life for each colorless creature you control (Tomb of the Spirit Dragon).
+    GainLifePerColorlessCreatureYouControl,
+    /// Each player sacrifices all permanents they control that are one or more colors (All Is
+    /// Dust).
+    SacrificeAllColoredPermanents,
+    /// The opponent (1v1: the defending player) exiles `n` permanents they control of their
+    /// choice, as `Decision::ExileOwnPermanent` (Bane of Bala Ged: 2).
+    OpponentExilesPermanents(u8),
+    /// Put the creature card in graveyard `slot` onto the battlefield under your control with an
+    /// extra creature type (Portal to Phyrexia: Phyrexian).
+    ReanimateWithSubtype {
+        slot: u8,
+        subtype: &'static str,
+    },
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -2048,6 +2138,8 @@ pub enum SearchFor {
     /// An artifact card with mana cost {0} or {1} (Urza's Saga). The engine's costs don't tell
     /// {0} from no mana cost, so an artifact with none counts too.
     ArtifactManaCostZeroOrOne,
+    /// A colorless creature card (Sanctum of Ugin).
+    ColorlessCreature,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -2182,6 +2274,9 @@ pub enum StaticCondition {
     AttachedIsColor(u8),
     /// The source's controller has completed a dungeon (Nadaar).
     CompletedDungeon,
+    /// Its controller controls at least this many artifacts (Teething Wurmlet: three). Printed card
+    /// types are counted, as `ControlLandsAtLeast` does.
+    ControlArtifactsAtLeast(u8),
 }
 
 /// A static ability that changes characteristics (CR 604, 613 layers 6 and 7c).
@@ -2246,6 +2341,8 @@ pub enum Pick {
     InstantSorceryOrSubtype(&'static str),
     /// An enchantment card.
     Enchantment,
+    /// A non-Human creature card (Kinnan, Bonder Prodigy).
+    NonHumanCreature,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
