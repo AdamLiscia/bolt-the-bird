@@ -33,5 +33,21 @@ def test_a_creature_type_choice_names_the_type():
     assert label(dec, "Mode", 1) == "Secluded Courtyard: choose Goblin"
 
 
+def test_lane_d3_decisions_read_as_their_moves():
+    # Tooth and Nail, Dream Stalker, Oriq Loremage: Pick a card; Ponder: Yes or No.
+    assert sv._decision_label({"kind": "CreaturesFromHandUpTo", "left": 2}, "Pick", 0, "Ashen Rider") == (
+        "Put onto the battlefield: Ashen Rider"
+    )
+    assert label({"kind": "CreaturesFromHandUpTo", "left": 1}, "No", 0) == "Done choosing"
+    assert sv._decision_label({"kind": "ReturnOwnPermanent", "nonland": True}, "Pick", 0, "Sol Ring") == (
+        "Return Sol Ring"
+    )
+    dec = {"kind": "SearchToGraveyardCounter", "source": [7, 1]}
+    assert sv._decision_label(dec, "Pick", 0, "Counterspell") == "Put into your graveyard: Counterspell"
+    assert label(dec, "No", 0) == "Find nothing"
+    assert label({"kind": "MayShuffle"}, "Yes", 0) == "Shuffle your library"
+    assert label({"kind": "MayShuffle"}, "No", 0) == "Don't shuffle"
+
+
 def test_an_unknown_decision_keeps_the_generic_label():
     assert label({"kind": "SomethingNew"}, "Mode", 0) is None
