@@ -1486,6 +1486,24 @@ pub enum Effect {
     },
     /// Add mana of this color equal to the source's power (Heronblade Elite: X mana of one color).
     AddManaSourcePower(crate::Color),
+    /// Echo {cost} (CR 702.30), from an upkeep trigger: if the source came under your control since
+    /// your last upkeep, sacrifice it unless you pay the cost (`Decision::PayUpkeep`). Two players:
+    /// your last upkeep was two turns ago (extra turns aren't tracked).
+    Echo(crate::mana::ManaCost),
+    /// The opponent draws `n` cards if this spell was cast for its alternative cost (Baleful Mastery).
+    OpponentDrawsIfAltCost(u8),
+    /// Tap all lands the opponent controls (Nature's Will: "that player", one opponent).
+    TapOpponentsLands,
+    /// Add one mana of this color for each card in the hand of the player in `slot` (Jeska's Will).
+    AddManaPerHandSize {
+        color: crate::Color,
+        slot: u8,
+    },
+    /// Exile the top `n` cards of your library; you may play them this turn (Jeska's Will).
+    ExileTopToPlayThisTurn(u8),
+    /// The source deals damage equal to the spells you've cast this turn to the target in `slot`
+    /// (Noise Marine).
+    DamagePerSpellsCastThisTurn(u8),
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

@@ -14030,6 +14030,64 @@ impl Game {
                     .pool
                     .extend(std::iter::repeat_n(ManaSource::of(&[color]), n.max(0) as usize));
             }
+            Effect::Echo(cost) => {
+                let o = self.obj(src);
+                let due = o.zone == Zone::Battlefield
+                    && o.controller == item.controller
+                    && o.since_turn < self.turn
+                    && o.since_turn + 2 >= self.turn;
+                if due {
+                    self.ask(item.controller, Decision::PayUpkeep { cost, source: src });
+                }
+            }
+            Effect::OpponentDrawsIfAltCost(n) => {
+                if item.alt {
+                    let opp = opponent(item.controller);
+                    for _ in 0..n {
+                        self.draw(opp);
+                    }
+                }
+            }
+            Effect::TapOpponentsLands => {
+                let opp = opponent(item.controller);
+                let lands: Vec<ObjId> = self.permanents(opp).filter(|&x| self.types_of(x).land).collect();
+                for l in lands {
+                    self.become_tapped(l);
+                }
+            }
+            Effect::AddManaPerHandSize { color, slot } => {
+                let who = match item.targets.get(slot as usize) {
+                    Some(&Chosen::Player(q)) if legal.get(slot as usize).copied().unwrap_or(false) => Some(q),
+                    _ => None,
+                };
+                if let Some(q) = who {
+                    let n = self.players[q].hand.len();
+                    self.players[item.controller]
+                        .pool
+                        .extend(std::iter::repeat_n(ManaSource::of(&[color]), n));
+                }
+            }
+            Effect::ExileTopToPlayThisTurn(n) => {
+                let p = item.controller;
+                let turn = self.turn;
+                for _ in 0..n {
+                    if let Some(&c) = self.players[p].library.last() {
+                        self.move_to(c, Zone::Exile);
+                        self.obj_mut(c).playable = Some((p, turn));
+                    }
+                }
+            }
+            Effect::DamagePerSpellsCastThisTurn(slot) => {
+                let n = self.spells_cast[item.controller] as i32;
+                if n > 0 {
+                    let hit = Effect::Damage {
+                        amount: n,
+                        kicked: None,
+                        to: Recipient::Target(slot),
+                    };
+                    self.run_effect(item, legal, hit);
+                }
+            }
         }
     }
 

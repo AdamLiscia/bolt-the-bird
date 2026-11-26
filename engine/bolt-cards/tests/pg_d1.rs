@@ -1173,3 +1173,128 @@ fn kozilek_draws_four_on_cast_annihilates_and_shuffles_the_graveyard_back() {
     assert_eq!(g.permanents(1).count(), before - 4, "annihilator 4");
     assert_eq!(g.players[1].life, 28);
 }
+
+/// Passes until the stack is empty, targeting player 1 when asked and saying yes to decisions.
+fn resolve_yes_at_opponent(g: &mut Game) {
+    while !g.items.is_empty() || matches!(g.pending, Pending::ChooseTarget(_) | Pending::Decide(_)) {
+        let legal = g.legal_actions();
+        let a = match g.pending {
+            Pending::ChooseTarget(_) if legal.contains(&Action::Target(Target::Player(1))) => {
+                Action::Target(Target::Player(1))
+            }
+            Pending::Decide(_) if legal.contains(&Action::Yes) => Action::Yes,
+            Pending::ChooseTarget(_) | Pending::Decide(_) => legal[0],
+            // A free cast (cascade) is offered as a cast at priority.
+            _ => legal
+                .iter()
+                .copied()
+                .find(|a| matches!(a, Action::Cast(_)))
+                .unwrap_or(Action::PassPriority),
+        };
+        act(g, a);
+    }
+}
+
+#[test]
+fn noise_marine_cascades_and_deals_damage_per_spell_cast() {
+    let mut g = table();
+    let nw = g.add_card(0, cid("Night's Whisper"), Zone::Library); // mana value 2: cascaded into
+    let m = hand(&mut g, 0, "Noise Marine");
+    act(&mut g, Action::Cast(m));
+    resolve_yes_at_opponent(&mut g);
+    assert_eq!(g.obj(nw).zone, Zone::Graveyard, "cast free and resolved");
+    assert_eq!(g.players[0].life, 38, "Night's Whisper's 2 life");
+    assert_eq!(g.players[1].life, 38, "two spells cast this turn");
+    assert_eq!(g.obj(m).zone, Zone::Battlefield);
+}
+
+#[test]
+fn baleful_mastery_exiles_and_the_cheap_cost_gifts_a_card() {
+    let mut g = table();
+    let a = put(&mut g, 1, "Blood Artist");
+    let c = hand(&mut g, 0, "Baleful Mastery");
+    let n = g.players[1].hand.len();
+    act(&mut g, Action::CastAlternative(c));
+    act(&mut g, Action::Target(obj(a)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(a).zone, Zone::Exile);
+    assert_eq!(
+        g.players[1].hand.len(),
+        n + 1,
+        "{{1}}{{B}} paid: the opponent draws"
+    );
+    assert_eq!(g.permanents(0).filter(|&x| g.obj(x).tapped).count(), 2);
+    let b = put(&mut g, 1, "Blood Artist");
+    let c = hand(&mut g, 0, "Baleful Mastery");
+    let n = g.players[1].hand.len();
+    play(&mut g, c, false, &[obj(b)], &[]);
+    assert_eq!(g.obj(b).zone, Zone::Exile);
+    assert_eq!(g.players[1].hand.len(), n, "the mana cost: no card");
+}
+
+#[test]
+fn natures_will_taps_their_lands_and_untaps_yours_on_combat_damage() {
+    let mut g = game(&["Fyndhorn Elves", "Forest", "Forest"]);
+    put(&mut g, 0, "Nature's Will");
+    let elf = named(&g, 0, "Fyndhorn Elves");
+    let mine: Vec<ObjId> = g
+        .permanents(0)
+        .filter(|&x| g.def_of(x).name == "Forest")
+        .collect();
+    for &f in &mine {
+        tap(&mut g, f);
+    }
+    attack_with(&mut g, &[elf]);
+    assert_eq!(g.players[1].life, 39);
+    assert!(
+        g.permanents(1)
+            .filter(|&x| g.types_of(x).land)
+            .all(|x| g.obj(x).tapped),
+        "theirs tapped"
+    );
+    assert!(mine.iter().all(|&f| !g.obj(f).tapped), "yours untapped");
+}
+
+#[test]
+fn jeskas_will_adds_red_per_card_in_their_hand_or_exiles_three_to_play() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Jeska's Will");
+    assert!(
+        !g.legal_actions().contains(&Action::CastModal(c, 2)),
+        "both only with a commander out"
+    );
+    let n = g.players[1].hand.len();
+    act(&mut g, Action::CastModal(c, 0));
+    act(&mut g, Action::Target(Target::Player(1)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(pooled(&g, 3), n);
+    let mut g = table();
+    let top: Vec<ObjId> = (0..3)
+        .map(|_| g.add_card(0, cid("Forest"), Zone::Library))
+        .collect();
+    let c = hand(&mut g, 0, "Jeska's Will");
+    act(&mut g, Action::CastModal(c, 1));
+    resolve_all(&mut g, &[]);
+    assert!(top.iter().all(|&x| g.obj(x).zone == Zone::Exile));
+    assert!(
+        g.legal_actions().contains(&Action::PlayLand(top[0])),
+        "playable this turn"
+    );
+}
+
+#[test]
+fn karmic_guide_reanimates_and_has_echo() {
+    let mut g = table();
+    let artist = g.add_card(0, cid("Viscera Seer"), Zone::Graveyard);
+    let k = hand(&mut g, 0, "Karmic Guide");
+    play(&mut g, k, false, &[], &[Action::Target(obj(artist))]);
+    assert_eq!(g.obj(artist).zone, Zone::Battlefield);
+    assert!(g.keywords(k).has(Keywords::FLYING));
+    g.start_turn(5, 0);
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::No); // don't pay echo
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(k).zone, Zone::Graveyard, "sacrificed");
+}

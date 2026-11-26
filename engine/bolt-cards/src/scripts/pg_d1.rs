@@ -399,6 +399,67 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::PutIntoGraveyardFromAnywhere, vec![], vec![Effect::OwnerShufflesGraveyardIntoLibrary]);
             },
         ),
+        "Noise Marine" => s(
+            &[
+                "Cascade",
+                "Sonic Blaster — When this creature enters, it deals damage equal to the number of spells you've cast this turn to any target.",
+            ],
+            |d, _| {
+                on(d, When::CastThisSpell, vec![], vec![Effect::Cascade]);
+                on(d, When::Enters, vec![Filter::ANY], vec![Effect::DamagePerSpellsCastThisTurn(0)]);
+            },
+        ),
+        "Baleful Mastery" => s(
+            &[
+                "You may pay {1}{B} rather than pay this spell's mana cost.",
+                "If the {1}{B} cost was paid, an opponent draws a card.",
+                "Exile target creature or planeswalker.",
+            ],
+            |d, _| {
+                d.alt_cost = Some((ManaCost::parse("{1}{B}").expect("cost"), 0)); // 0 creatures: always
+                spell(d, vec![CREATURE_OR_PLANESWALKER], vec![Effect::OpponentDrawsIfAltCost(1), Effect::Exile(0)]);
+            },
+        ),
+        "Nature's Will" => s(
+            &["Whenever one or more creatures you control deal combat damage to a player, tap all lands that player controls and untap all lands you control."],
+            |d, _| {
+                // One opponent: "that player" is the opponent.
+                on(d, When::YourCreaturesDealCombatDamageToPlayer, vec![], vec![Effect::TapOpponentsLands, Effect::UntapLandsYouControl]);
+            },
+        ),
+        "Jeska's Will" => s(
+            &[
+                "Choose one. If you control a commander as you cast this spell, you may choose both instead.",
+                "• Add {R} for each card in target opponent's hand.",
+                "• Exile the top three cards of your library. You may play them this turn.",
+            ],
+            |d, _| {
+                let opp = Filter::PLAYER.controlled_by(Controller::Opponent);
+                let mana = Effect::AddManaPerHandSize { color: Color::Red, slot: 0 };
+                let exile = Effect::ExileTopToPlayThisTurn(3);
+                d.modes = vec![
+                    Ability::new(vec![opp], vec![mana]),
+                    Ability::new(vec![], vec![exile]),
+                    Ability::new(vec![opp], vec![mana, exile]),
+                ];
+                d.last_mode_needs_commander = true;
+            },
+        ),
+        "Karmic Guide" => s(
+            &[
+                "Flying, protection from black",
+                "Echo {3}{W}{W}",
+                "When this creature enters, return target creature card from your graveyard to the battlefield.",
+            ],
+            |d, _| {
+                d.keywords = d.keywords.with(Keywords::FLYING);
+                static_on(d, Scope::This, false, Keywords::NONE);
+                d.statics.last_mut().expect("just added").protection = [false, false, true, false, false];
+                let echo = ManaCost::parse("{3}{W}{W}").expect("cost");
+                on(d, When::Upkeep { your_turn_only: true }, vec![], vec![Effect::Echo(echo)]);
+                on(d, When::Enters, vec![graveyard_cards(true, Controller::You)], vec![Effect::Reanimate(0)]);
+            },
+        ),
         _ => None,
     }
 }
@@ -483,4 +544,9 @@ pub const PG_D1_SCRIPTED: &[&str] = &[
     "Sunbaked Canyon",
     "Wild Cantor",
     "Kozilek, Butcher of Truth",
+    "Noise Marine",
+    "Baleful Mastery",
+    "Nature's Will",
+    "Jeska's Will",
+    "Karmic Guide",
 ];

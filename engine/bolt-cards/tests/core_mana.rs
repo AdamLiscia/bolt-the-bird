@@ -27,6 +27,12 @@ const STORY: usize = 14; // instant {5}{U}{U}: costs {3} less with 7+ cards in a
 const NONBASIC_SWAMP: usize = 15; // a nonbasic land with the Swamp type
 const ELF: usize = 16; // 1/1 Elf {G}
 const ISLAND: usize = 17;
+const ECHOER: usize = 18; // 2/2 {B}, echo {1}
+const MASTERY: usize = 19; // instant {3}{B}, or {1}{B} and the opponent draws a card
+const LANDLOCK: usize = 20; // sorcery {B}: tap all lands the opponent controls
+const HANDMANA: usize = 21; // sorcery {B}: {R} per card in target player's hand
+const IMPULSE: usize = 22; // sorcery {B}: exile the top two, playable this turn
+const SONIC: usize = 23; // 1/1 {B}, enters: damage equal to spells cast this turn to any target
 
 fn creature(name: &str, cost: &str, p: i32, t: i32, when: When, effect: Effect) -> CardDef {
     let mut d = CardDef::creature(name, cost, p, t, Keywords::NONE);
@@ -103,6 +109,30 @@ fn defs() -> Arc<Vec<CardDef>> {
     nonbasic_swamp.subtypes = vec!["Swamp".into()];
     let mut elf = CardDef::creature("Elf", "{G}", 1, 1, Keywords::NONE);
     elf.subtypes = vec!["Elf".into()];
+    let echo = ManaCost::parse("{1}").expect("cost");
+    let echoer = creature(
+        "Echoer",
+        "{B}",
+        2,
+        2,
+        When::Upkeep { your_turn_only: true },
+        Effect::Echo(echo),
+    );
+    let sorcery = |name: &str, targets: Vec<Filter>, e: Effect| {
+        CardDef::spell(name, "{B}", false, Ability::new(targets, vec![e]))
+    };
+    let mut mastery = CardDef::spell(
+        "Mastery",
+        "{3}{B}",
+        true,
+        Ability::new(vec![], vec![Effect::OpponentDrawsIfAltCost(1)]),
+    );
+    mastery.alt_cost = Some((ManaCost::parse("{1}{B}").expect("cost"), 0));
+    let mut sonic = CardDef::creature("Sonic", "{B}", 1, 1, Keywords::NONE);
+    sonic.triggers.push(Trigger {
+        when: When::Enters,
+        ability: Ability::new(vec![Filter::ANY], vec![Effect::DamagePerSpellsCastThisTurn(0)]),
+    });
     Arc::new(vec![
         CardDef::basic_land("Swamp", Color::Black),
         CardDef::basic_land("Forest", Color::Green),
@@ -129,6 +159,19 @@ fn defs() -> Arc<Vec<CardDef>> {
         nonbasic_swamp,
         elf,
         CardDef::basic_land("Island", Color::Blue),
+        echoer,
+        mastery,
+        sorcery("Landlock", vec![], Effect::TapOpponentsLands),
+        sorcery(
+            "Handmana",
+            vec![Filter::PLAYER],
+            Effect::AddManaPerHandSize {
+                color: Color::Red,
+                slot: 0,
+            },
+        ),
+        sorcery("Impulse", vec![], Effect::ExileTopToPlayThisTurn(2)),
+        sonic,
     ])
 }
 
@@ -347,4 +390,138 @@ fn reduction_if_opponent_graveyard_at_least() {
         !g2.legal_actions().contains(&Action::Cast(s2)),
         "your own graveyard doesn't count"
     );
+}
+
+/// Plays on to player 0's next turn (turn 5), stopping at the first decision or the main phase.
+fn next_turn(g: &mut Game) {
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 && !matches!(g.pending, Pending::Decide(_)) {
+        act(g, Action::PassPriority);
+    }
+}
+
+#[test]
+fn echo_is_paid_or_sacrificed_once() {
+    // Paid: it stays, and echo isn't asked again.
+    let mut g = board(&[SWAMP, SWAMP]);
+    let e = g.add_card(0, ECHOER, Zone::Hand);
+    act(&mut g, Action::Cast(e));
+    settle(&mut g);
+    next_turn(&mut g);
+    assert!(matches!(g.pending, Pending::Decide(_)), "echo is due");
+    assert!(g.legal_actions().contains(&Action::Yes));
+    act(&mut g, Action::Yes);
+    settle(&mut g);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.obj(e).zone, Zone::Battlefield, "paid");
+    g.start_turn(7, 0);
+    while g.step != Step::Main1 {
+        assert!(
+            !matches!(g.pending, Pending::Decide(_)),
+            "no echo after the first upkeep"
+        );
+        act(&mut g, Action::PassPriority);
+    }
+    // Not paid: sacrificed.
+    let mut g = board(&[SWAMP, SWAMP]);
+    let e = g.add_card(0, ECHOER, Zone::Hand);
+    act(&mut g, Action::Cast(e));
+    settle(&mut g);
+    next_turn(&mut g);
+    act(&mut g, Action::No);
+    settle(&mut g);
+    assert_eq!(g.obj(e).zone, Zone::Graveyard, "not paid: sacrificed");
+}
+
+#[test]
+fn opponent_draws_only_if_the_alternative_cost_was_paid() {
+    let mut g = board(&[SWAMP, SWAMP, SWAMP, SWAMP]);
+    let m = g.add_card(0, MASTERY, Zone::Hand);
+    let n = g.players[1].hand.len();
+    act(&mut g, Action::CastAlternative(m));
+    settle(&mut g);
+    assert_eq!(g.players[1].hand.len(), n + 1, "{{1}}{{B}} paid");
+    assert_eq!(g.permanents(0).filter(|&x| g.obj(x).tapped).count(), 2);
+    let mut g2 = board(&[SWAMP, SWAMP, SWAMP, SWAMP]);
+    let m2 = g2.add_card(0, MASTERY, Zone::Hand);
+    let n = g2.players[1].hand.len();
+    act(&mut g2, Action::Cast(m2));
+    settle(&mut g2);
+    assert_eq!(g2.players[1].hand.len(), n, "the mana cost: no card");
+}
+
+#[test]
+fn tap_opponents_lands_taps_only_theirs() {
+    let mut g = board(&[SWAMP]);
+    let theirs: Vec<ObjId> = (0..3).map(|_| put(&mut g, 1, FOREST)).collect();
+    let bear = put(&mut g, 1, BEAR);
+    let mine = put(&mut g, 0, FOREST);
+    let c = g.add_card(0, LANDLOCK, Zone::Hand);
+    act(&mut g, Action::Cast(c));
+    settle(&mut g);
+    assert!(theirs.iter().all(|&l| g.obj(l).tapped));
+    assert!(
+        !g.obj(bear).tapped && !g.obj(mine).tapped,
+        "lands, the opponent's"
+    );
+}
+
+#[test]
+fn add_mana_per_hand_size_counts_the_target_players_hand() {
+    let mut g = board(&[SWAMP]);
+    for _ in 0..3 {
+        g.add_card(1, BEAR, Zone::Hand);
+    }
+    let c = g.add_card(0, HANDMANA, Zone::Hand);
+    let n = g.players[1].hand.len();
+    act(&mut g, Action::Cast(c));
+    act(&mut g, Action::Target(Target::Player(1)));
+    settle(&mut g);
+    assert_eq!(pool_of(&g, 3), n);
+}
+
+#[test]
+fn exile_top_to_play_this_turn_lasts_only_this_turn() {
+    let mut g = board(&[SWAMP, FOREST, FOREST]);
+    let top = g.add_card(0, ELF, Zone::Library);
+    let second = g.add_card(0, FOREST, Zone::Library);
+    let c = g.add_card(0, IMPULSE, Zone::Hand);
+    act(&mut g, Action::Cast(c));
+    settle(&mut g);
+    assert_eq!((g.obj(top).zone, g.obj(second).zone), (Zone::Exile, Zone::Exile));
+    assert!(
+        g.legal_actions().contains(&Action::Cast(second))
+            || g.legal_actions().contains(&Action::PlayLand(second))
+    );
+    assert!(
+        g.legal_actions().contains(&Action::Cast(top)) || g.legal_actions().contains(&Action::PlayLand(top))
+    );
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    let legal = g.legal_actions();
+    assert!(
+        !legal.contains(&Action::PlayLand(second)) && !legal.contains(&Action::PlayLand(top)),
+        "next turn: gone"
+    );
+}
+
+#[test]
+fn damage_per_spells_cast_this_turn() {
+    let mut g = board(&[SWAMP, SWAMP, SWAMP]);
+    let c = g.add_card(0, LANDLOCK, Zone::Hand);
+    act(&mut g, Action::Cast(c));
+    settle(&mut g);
+    let s = g.add_card(0, SONIC, Zone::Hand);
+    let life = g.players[1].life;
+    act(&mut g, Action::Cast(s));
+    while !matches!(g.pending, Pending::ChooseTarget(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Target(Target::Player(1)));
+    settle(&mut g);
+    assert_eq!(g.players[1].life, life - 2, "Landlock and Sonic itself");
 }
