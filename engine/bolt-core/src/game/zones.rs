@@ -526,4 +526,67 @@ impl Game {
             combat.attackers.push(c);
         }
     }
+
+    /// Lithoform Engine's {2}: copy the topmost ability of the targeted source if you control it
+    /// (`Filter::abilities` checks no controller). The copy goes on the stack after this ability
+    /// finishes resolving, choosing new targets (`pending_copies`).
+    pub(super) fn copy_target_ability(&mut self, item: &StackItem, legal: &[bool], slot: u8) {
+        let Some(src) = Game::slot_object(item, legal, slot) else {
+            return;
+        };
+        let Some(n) = self.ability_on_stack(src) else {
+            return;
+        };
+        if self.items[n].controller == item.controller {
+            let copy = self.items[n].clone();
+            self.pending_copies.push(copy);
+        }
+    }
+
+    /// Lithoform Engine's {3} and {4}: copy the targeted spell you control (an instant or sorcery
+    /// by its filter, or with `permanent` a permanent spell, whose copy resolves into a token).
+    pub(super) fn copy_target_spell(&mut self, item: &StackItem, legal: &[bool], slot: u8, permanent: bool) {
+        let Some(card) = Game::slot_object(item, legal, slot) else {
+            return;
+        };
+        if permanent && !self.types_of(card).is_permanent() {
+            return;
+        }
+        let spell = self
+            .items
+            .iter()
+            .rev()
+            .find(|i| i.kind == StackKind::Spell && i.source == card)
+            .cloned();
+        let Some(spell) = spell.filter(|s| s.controller == item.controller) else {
+            return;
+        };
+        self.pending_copies.push(StackItem {
+            kind: StackKind::SpellCopy,
+            ..spell
+        });
+        self.copied_or_cast_instant_sorcery(item.controller, card);
+    }
+
+    /// The source becomes a copy of the permanent in `slot` for good (CR 707.2). With `keep_own`
+    /// it keeps its own card's `copy_only` abilities (Thespian's Stage), as a clone with copy
+    /// exceptions does.
+    pub(super) fn source_becomes_copy_of_slot(
+        &mut self,
+        item: &StackItem,
+        legal: &[bool],
+        slot: u8,
+        keep_own: bool,
+    ) {
+        let src = item.source;
+        let Some(t) = Game::slot_object(item, legal, slot) else {
+            return;
+        };
+        if self.obj(src).zone != Zone::Battlefield || t == src {
+            return;
+        }
+        let of = self.obj(t).def;
+        self.become_copy(src, of);
+        self.obj_mut(src).copy_exceptions = keep_own;
+    }
 }

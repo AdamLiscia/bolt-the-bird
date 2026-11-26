@@ -11507,7 +11507,11 @@ impl Game {
         while !self.pending_copies.is_empty() {
             let copy = self.pending_copies.remove(0);
             let d = self.def_of(copy.source);
-            let targeted = d.spell.is_some() || copy.mode.is_some();
+            // An ability's copy (Lithoform Engine) chooses new targets too, unless a slot is the
+            // object that caused the trigger (not a target).
+            let is_ability = !matches!(copy.kind, StackKind::Spell | StackKind::SpellCopy)
+                && !self.ability_of(&copy).targets.iter().any(|f| f.triggering);
+            let targeted = d.spell.is_some() || copy.mode.is_some() || is_ability;
             if targeted && !self.ability_of(&copy).targets.is_empty() {
                 let mut fresh = copy.clone();
                 fresh.targets.clear();
@@ -22312,6 +22316,13 @@ impl Game {
                         self.move_to(c, Zone::Exile);
                     }
                 }
+            }
+            Effect::CopyTargetAbilityYouControl(slot) => self.copy_target_ability(item, legal, slot),
+            Effect::CopyTargetSpellYouControl { slot, permanent } => {
+                self.copy_target_spell(item, legal, slot, permanent)
+            }
+            Effect::SourceBecomesCopyOfSlot { slot, keep_own } => {
+                self.source_becomes_copy_of_slot(item, legal, slot, keep_own)
             }
             Effect::DiscardThenIfInstantOrSorcery => {
                 let p = item.controller;

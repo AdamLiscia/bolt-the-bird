@@ -2502,6 +2502,23 @@ pub enum Effect {
     CommanderFromCommandZoneToHand,
     /// Exile the top `n` cards of your library (Mystic Forge: 1).
     ExileTopCards(u8),
+    /// Lithoform Engine: copy the activated or triggered ability in `slot` (targeted as its source,
+    /// `Filter::abilities`) if you control it; its controller may choose new targets for the copy.
+    CopyTargetAbilityYouControl(u8),
+    /// Lithoform Engine: copy the spell in `slot` if you control it; you may choose new targets for
+    /// the copy. With `permanent`, only a permanent spell is copied, and the copy becomes a token
+    /// (CR 707.10f).
+    CopyTargetSpellYouControl {
+        slot: u8,
+        permanent: bool,
+    },
+    /// The source becomes a copy of the permanent in `slot` for good (The Mycosynth Gardens). With
+    /// `keep_own`, the copy keeps the source card's `copy_only` activated abilities (Thespian's
+    /// Stage: "except it has this ability"; the card needs `copy_keeps_abilities`).
+    SourceBecomesCopyOfSlot {
+        slot: u8,
+        keep_own: bool,
+    },
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

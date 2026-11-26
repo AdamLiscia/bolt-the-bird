@@ -893,3 +893,46 @@ fn an_aura_put_onto_the_battlefield_enters_attached_only_to_what_it_could_enchan
     assert!(g.put_aura_attached(dead, ghoul, zcc, 0), "from a graveyard too");
     assert_eq!(g.obj(dead).attached_to, Some((ghoul, zcc)));
 }
+
+// ---- Copies (Lithoform Engine, Thespian's Stage, The Mycosynth Gardens) ----
+
+#[test]
+fn a_permanent_becomes_a_copy_for_good_without_its_own_abilities() {
+    // The Mycosynth Gardens (not listed yet: its {1} filter mana waits on d1).
+    let mut g = table();
+    let gardens = put(&mut g, 0, "The Mycosynth Gardens");
+    let stone = put(&mut g, 0, "Mind Stone");
+    act(
+        &mut g,
+        Action::ActivateX {
+            id: gardens,
+            n: 0,
+            victim: None,
+            x: 2,
+        },
+    );
+    act(&mut g, Action::Target(obj(stone)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.name_of(gardens), "Mind Stone");
+    assert!(g.types_of(gardens).artifact && !g.types_of(gardens).land);
+    assert_eq!(g.def_of(gardens).activated.len(), 1, "Mind Stone's ability only");
+    to_main1(&mut g, 5, 0);
+    assert_eq!(g.name_of(gardens), "Mind Stone", "not just until end of turn");
+}
+
+#[test]
+fn a_copied_ability_that_targets_chooses_new_targets() {
+    // Lithoform Engine copying a targeted activated ability: Rogue's Passage's.
+    let mut g = table();
+    let engine = put(&mut g, 0, "Lithoform Engine");
+    let passage = put(&mut g, 0, "Rogue's Passage");
+    let a = put(&mut g, 0, "Hungry Ghoul");
+    let b = put(&mut g, 0, "Hungry Ghoul");
+    act(&mut g, Action::Activate(passage, 0));
+    act(&mut g, Action::Target(obj(a)));
+    act(&mut g, Action::Activate(engine, 0));
+    act(&mut g, Action::Target(obj(passage)));
+    resolve_all(&mut g, &[Action::Target(obj(b))]);
+    assert!(g.keywords(a).has(Keywords::UNBLOCKABLE));
+    assert!(g.keywords(b).has(Keywords::UNBLOCKABLE), "the copy's new target");
+}

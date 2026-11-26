@@ -837,3 +837,28 @@ Done since: Light-Paws, Sovereigns, Bruna, Olivia, Dragonhawk, Glimpse of Tomorr
 (2026-11-26): Sheltered by Ghosts (Aura-granted ward: lane B, merger work), Smaug the Magnificent (d3), Rankle and
 Torbran and Raphael (lane B), Pippin, Guard of the Citadel (d3: a per-object chosen-card-type protection grant, and a
 card-type choice askable mid-resolution). Waiting on others: Gisa (Mac B), Prosper (d2), Inventors' Fair (d3).
+
+## Lane B's decks, Mac C pieces, batch 2: copies (unbuilt)
+
+Built first: the batch 1 WIP plus the tarkir 0834aa0 merge, verified at d72d923 (pg_c 208, workspace 2118 passed).
+- Lithoform Engine (listed): `Effect::CopyTargetAbilityYouControl(slot)` (targets with `Filter { abilities, spells:
+  false }`; the topmost ability of that source is copied if you control it) and `Effect::CopyTargetSpellYouControl
+  { slot, permanent }` (instant or sorcery by `spell_instant_or_sorcery`; a permanent spell's copy resolves into a
+  token by the existing CR 707.10f code). Both go through `pending_copies`; its loop now also lets an ability's
+  copy choose new targets (unless a slot is `triggering`). Every existing pending copy is a spell copy, so their
+  behaviour is unchanged.
+  Shortcuts, both waiting on d3's `Filter`: "an ability you control" and "a permanent spell" are checked as the
+  ability resolves, not as it targets, so an opponent's ability or an instant can be targeted and nothing happens.
+  Needs d3: a `Filter` for "permanent spell" and a controller check for `abilities`.
+- Thespian's Stage (listed): `Effect::SourceBecomesCopyOfSlot { slot, keep_own }`: `become_copy` for good, with
+  `copy_exceptions = keep_own`. "Except it has this ability" is the copy ability twice: once printed, once
+  `copy_only` (kept by `copy_keeps_abilities`, as Sakashima's).
+- The Mycosynth Gardens: scripted with the same effect (`keep_own: false`), **not listed**: "{1}, {T}: Add one mana
+  of any color." needs d1 (a mana ability with a mana cost). Its copy part is tested in core_objects.
+- Wandering Archaic // Explore the Vastlands: not scripted. The copy part needs no new Mac C core:
+  `may(d, When::OpponentCastsInstantOrSorcery, vec![], vec![Effect::UnlessOpponentPays(2), Effect::CopySpellNewTargets])`,
+  as Rhystic Study does. But it needs d2 to set the cast spell as `extra` on `OpponentCastsInstantOrSorcery`
+  triggers (that `fire` passes None, and `CopySpellNewTargets` reads `extra`). The back face needs a sorcery
+  modal back cast (`back_face_castable` covers permanent backs only; Mac C) and an "Each player looks at the top
+  five..." effect (d3).
+Tests: pg_c 212 (4 new), core_objects 40 (2 new).

@@ -2131,6 +2131,52 @@ pub fn script(name: &str) -> Option<Script> {
                 d.activated[n].life = 1;
             },
         ),
+        "Lithoform Engine" => s(
+            &[
+                "{2}, {T}: Copy target activated or triggered ability you control. You may choose new targets for the copy.",
+                "{3}, {T}: Copy target instant or sorcery spell you control. You may choose new targets for the copy.",
+                "{4}, {T}: Copy target permanent spell you control.",
+            ],
+            |d, _| {
+                // "you control" for an ability is checked as it resolves (`Filter::abilities` has
+                // no controller check), and "permanent spell" too (no filter for it yet).
+                let ability = Filter { spells: false, abilities: true, controller: Controller::You, ..SPELL };
+                activated(d, "{2}", true, vec![ability], vec![Effect::CopyTargetAbilityYouControl(0)]);
+                let instant = Filter { spell_instant_or_sorcery: true, controller: Controller::You, ..SPELL };
+                let copy = |permanent| Effect::CopyTargetSpellYouControl { slot: 0, permanent };
+                activated(d, "{3}", true, vec![instant], vec![copy(false)]);
+                let permanent = Filter { controller: Controller::You, ..SPELL };
+                activated(d, "{4}", true, vec![permanent], vec![copy(true)]);
+            },
+        ),
+        "Thespian's Stage" => s(
+            &["{T}: Add {C}.", "{2}, {T}: This land becomes a copy of target land, except it has this ability."],
+            |d, _| {
+                d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                let land = Filter { players: false, creatures: false, planeswalkers: false, lands: true, ..Filter::ANY };
+                let become_copy = Effect::SourceBecomesCopyOfSlot { slot: 0, keep_own: true };
+                activated(d, "{2}", true, vec![land], vec![become_copy]);
+                // The same ability again, which only a copy has (it keeps it): "except it has this
+                // ability".
+                let n = activated(d, "{2}", true, vec![land], vec![become_copy]);
+                d.activated[n].copy_only = true;
+                d.copy_keeps_abilities = true;
+            },
+        ),
+        // Not listed yet: "{1}, {T}: Add one mana of any color." waits on d1 (a mana ability with a
+        // mana cost). The copy ability is done.
+        "The Mycosynth Gardens" => s(
+            &[
+                "{T}: Add {C}.",
+                "{X}, {T}: This land becomes a copy of target nontoken artifact you control with mana value X.",
+            ],
+            |d, _| {
+                d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                let artifact = Filter { nontoken: true, mana_value_is_x: true, controller: Controller::You, ..ARTIFACT };
+                let become_copy = Effect::SourceBecomesCopyOfSlot { slot: 0, keep_own: false };
+                activated(d, "{X}", true, vec![artifact], vec![become_copy]);
+            },
+        ),
         _ => None,
     }
 }
@@ -2381,4 +2427,6 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Kaalia of the Vast",
     "Command Beacon",
     "Mystic Forge",
+    "Lithoform Engine",
+    "Thespian's Stage",
 ];

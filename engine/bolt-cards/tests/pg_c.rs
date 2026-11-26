@@ -4160,3 +4160,81 @@ fn mystic_forge_casts_artifacts_from_the_top_and_exiles_the_top_for_life() {
     assert_eq!(g.obj(ghoul).zone, Zone::Exile);
     assert_eq!(g.players[0].life, life - 1);
 }
+
+#[test]
+fn lithoform_engine_copies_an_ability_you_control() {
+    let mut g = table();
+    let engine = put(&mut g, 0, "Lithoform Engine");
+    let forge = put(&mut g, 0, "Mystic Forge");
+    let a = top(&mut g, "Hungry Ghoul");
+    let b = top(&mut g, "Hungry Ghoul");
+    let life = g.players[0].life;
+    act(&mut g, Action::Activate(forge, 0));
+    act(&mut g, Action::Activate(engine, 0));
+    act(&mut g, Action::Target(obj(forge)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(a).zone, Zone::Exile, "the copy");
+    assert_eq!(g.obj(b).zone, Zone::Exile, "the original");
+    assert_eq!(g.players[0].life, life - 1, "the copy's cost isn't paid again");
+}
+
+#[test]
+fn lithoform_engine_copies_an_instant_with_new_targets() {
+    let mut g = table();
+    let engine = put(&mut g, 0, "Lithoform Engine");
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    let ghoul = put(&mut g, 1, "Hungry Ghoul");
+    let life = g.players[1].life;
+    act(&mut g, Action::Cast(bolt));
+    act(&mut g, Action::Target(Target::Player(1)));
+    act(&mut g, Action::Activate(engine, 1));
+    act(&mut g, Action::Target(obj(bolt)));
+    resolve_all(&mut g, &[Action::Target(obj(ghoul))]);
+    assert_eq!(g.obj(ghoul).zone, Zone::Graveyard, "the copy's new target");
+    assert_eq!(g.players[1].life, life - 3, "the original");
+}
+
+#[test]
+fn lithoform_engine_copies_a_permanent_spell_as_a_token() {
+    let mut g = table();
+    let engine = put(&mut g, 0, "Lithoform Engine");
+    let ghoul = hand(&mut g, 0, "Hungry Ghoul");
+    act(&mut g, Action::Cast(ghoul));
+    act(&mut g, Action::Activate(engine, 2));
+    act(&mut g, Action::Target(obj(ghoul)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(ghoul).zone, Zone::Battlefield);
+    let copies: Vec<ObjId> = g
+        .creatures(0)
+        .filter(|&c| c != ghoul && g.def_of(c).name == "Hungry Ghoul")
+        .collect();
+    assert_eq!(copies.len(), 1, "the copy");
+    assert!(g.is_token(copies[0]), "it became a token");
+}
+
+#[test]
+fn thespians_stage_becomes_a_copy_of_a_land_and_keeps_its_ability() {
+    let mut g = table();
+    let stage = put(&mut g, 0, "Thespian's Stage");
+    let beacon = put(&mut g, 1, "Command Beacon");
+    assert_eq!(g.def_of(stage).activated.len(), 2);
+    assert!(
+        !g.legal_actions().contains(&Action::Activate(stage, 1)),
+        "the copy-only duplicate isn't the card's own"
+    );
+    act(&mut g, Action::Activate(stage, 0));
+    act(&mut g, Action::Target(obj(beacon)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.name_of(stage), "Command Beacon");
+    g.start_turn(5, 0);
+    pass_until(&mut g, |g| g.step == Step::Main1);
+    let legal = g.legal_actions();
+    assert!(
+        legal.contains(&Action::Activate(stage, 0)),
+        "Command Beacon's ability"
+    );
+    assert!(
+        legal.contains(&Action::Activate(stage, 1)),
+        "and its own copy ability"
+    );
+}
