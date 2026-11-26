@@ -311,6 +311,49 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::YouCastInstantOrSorcery, vec![], vec![damage(2, Recipient::EachOpponent)]);
             },
         ),
+        // ---- Lane B's effects entries, moved to d4 (2026-11-26) ----
+        "Echoing Assault" => s(
+            &[
+                "Creature tokens you control have menace.",
+                "Whenever you attack a player, choose target nontoken creature that's attacking that player. Create a token that's a copy of that creature, except it's 1/1. The token enters tapped and attacking that player. Sacrifice it at the beginning of the next end step.",
+            ],
+            |d, _| {
+                // Menace only matters while a token attacks, so attacking tokens have it.
+                static_on(d, Scope::YourAttackingTokens, false, Keywords::MENACE);
+                let attacker = Filter {
+                    attacking: true,
+                    nontoken: true,
+                    ..YOUR_CREATURE
+                };
+                let copy = sub(SubsystemEffect::AttackingOneOneCopy(0));
+                on(d, When::YouAttack, vec![attacker], vec![copy]);
+            },
+        ),
+        "Commander's Plate" => s(
+            &[
+                "Equipped creature gets +3/+3 and has protection from each color that's not in your commander's color identity.",
+                "Equip commander {3}",
+                "Equip {5}",
+            ],
+            |d, _| {
+                attached(d, false, 3, 3, Keywords::NONE);
+                let plus = *d.statics.last().unwrap();
+                for c in 0..5u8 {
+                    let mut protection = [false; 5];
+                    protection[c as usize] = true;
+                    d.statics.push(Static {
+                        power: 0,
+                        toughness: 0,
+                        protection,
+                        condition: Some(StaticCondition::OutsideCommanderIdentity(c)),
+                        ..plus
+                    });
+                }
+                let n = activated(d, "{3}", false, vec![], vec![sub(SubsystemEffect::AttachToYourCommander)]);
+                d.activated[n].sorcery = true;
+                equip(d, "{5}");
+            },
+        ),
         _ => None,
     }
 }
@@ -343,4 +386,7 @@ pub const PG_D4_SCRIPTED: &[&str] = &[
     "Mana Crypt",
     // The Ring
     "Fiery Inscription",
+    // Lane B's effects entries
+    "Echoing Assault",
+    "Commander's Plate",
 ];

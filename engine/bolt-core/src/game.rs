@@ -2784,6 +2784,9 @@ impl Game {
                                     .count()
                                     >= n as usize
                             }
+                            Some(StaticCondition::OutsideCommanderIdentity(c)) => {
+                                self.outside_commander_identity(so.controller, c)
+                            }
                         };
                         applies && condition_ok && (!s.your_turn_only || self.active == so.controller)
                     })
@@ -9274,6 +9277,10 @@ impl Game {
     /// The d1 theme's other block restrictions (see [`crate::card::ManaExt`]): shadow, attacking
     /// alone (Yuan-Ti Malison), only legendary blockers (Midnight Pathlighter).
     fn mana_ext_block_ok(&self, blocker: ObjId, attacker: ObjId) -> bool {
+        // The Ring's first ability (d4): the Ring-bearer can't be blocked by greater power.
+        if self.ring_evasion_forbids_block(blocker, attacker) {
+            return false;
+        }
         // Shadow (CR 702.28b): blocks and is blocked only by creatures with shadow.
         if self.keywords(attacker).has(Keywords::SHADOW) != self.keywords(blocker).has(Keywords::SHADOW) {
             return false;

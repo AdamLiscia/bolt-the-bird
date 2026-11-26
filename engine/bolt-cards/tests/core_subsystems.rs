@@ -687,7 +687,8 @@ fn the_rings_second_ability_loots_when_the_bearer_attacks() {
 fn the_rings_third_ability_sacrifices_a_blocker_at_end_of_combat() {
     let mut g = ring_game();
     let x = g.add_card(0, cid(CARD), Zone::Battlefield);
-    let dragon = g.add_card(1, cid("Ancient Gold Dragon"), Zone::Battlefield);
+    // Power 2, not greater than the Ring-bearer's, so the block is legal.
+    let dragon = g.add_card(1, cid(CARD), Zone::Battlefield);
     activate(&mut g, x, &[]);
     g.ring_level[0] = 3;
     advance(&mut g, |g| g.pending == Pending::DeclareAttackers(0));
@@ -705,6 +706,31 @@ fn the_rings_third_ability_sacrifices_a_blocker_at_end_of_combat() {
     assert_eq!(ring_rows(&g, 1), 1, "once for the one blocker");
     advance(&mut g, |g| g.step == Step::Main2);
     assert_eq!(g.obj(dragon).zone, Zone::Graveyard, "sacrificed at end of combat");
+}
+
+#[test]
+fn the_ring_bearer_cant_be_blocked_by_greater_power() {
+    let mut g = ring_game();
+    let x = g.add_card(0, cid(CARD), Zone::Battlefield);
+    let dragon = g.add_card(1, cid("Ancient Gold Dragon"), Zone::Battlefield);
+    let lions = g.add_card(1, cid(CARD), Zone::Battlefield);
+    activate(&mut g, x, &[]);
+    advance(&mut g, |g| g.pending == Pending::DeclareAttackers(0));
+    act(&mut g, Action::Attack(x));
+    act(&mut g, Action::FinishAttacks);
+    advance(&mut g, |g| matches!(g.pending, Pending::DeclareBlockers(_)));
+    let legal = g.legal_actions();
+    assert!(
+        !legal.contains(&Action::Block {
+            blocker: dragon,
+            attacker: x,
+        }),
+        "power 7 is greater than the Ring-bearer's 2"
+    );
+    assert!(legal.contains(&Action::Block {
+        blocker: lions,
+        attacker: x,
+    }));
 }
 
 #[test]
@@ -760,4 +786,23 @@ fn a_split_spell_on_the_stack_has_only_its_cast_halfs_mana_value() {
     assert_eq!(g.stack_mana_cost(bust).mana_value(), 6);
     settle(&mut g, &[]);
     assert_eq!(g.players[0].life, life + 1, "Bust has mana value 6");
+}
+
+// ---- Commander's color identity (Commander's Plate) ----
+
+#[test]
+fn colors_outside_the_commanders_identity_count_a_partner_and_no_commander() {
+    let mut g = ring_game();
+    let outside = |g: &Game| {
+        (0..5)
+            .map(|c| g.outside_commander_identity(0, c))
+            .collect::<Vec<_>>()
+    };
+    g.commanders[0] = None;
+    g.partners[0] = None;
+    assert_eq!(outside(&g), [true; 5], "no commander: every color");
+    g.commanders[0] = Some(g.add_card(0, cid("Bello, Bard of the Brambles"), Zone::Command));
+    assert_eq!(outside(&g), [true, true, true, false, false], "red and green");
+    g.partners[0] = Some(g.add_card(0, cid(CARD), Zone::Command));
+    assert_eq!(outside(&g), [false, true, true, false, false], "and white");
 }
