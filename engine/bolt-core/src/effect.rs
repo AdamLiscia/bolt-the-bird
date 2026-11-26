@@ -2193,6 +2193,10 @@ pub enum Effect {
         slot: u8,
         trigger: usize,
     },
+    /// Exile the top card of your library face down (`Object::face_down`; CR 406.3: no player may
+    /// look at it); put it into your hand at the beginning of your next end step (Necropotence),
+    /// see `Game::face_down_to_hand`.
+    ExileTopFaceDownToHandAtYourNextEndStep,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -3058,6 +3062,9 @@ pub enum When {
     /// `Effect::DelayedWhenSlotToYourGraveyardThisTurn` (Saffi Eriksdotter); slot 0 (if
     /// `triggering`) is that card in the graveyard. Never fired by `fire()`.
     SlotCreatureToYourGraveyardThisTurn,
+    /// "Whenever you cast an instant or sorcery spell", with that spell's mana value (X included) as
+    /// the trigger's amount and the spell in `extra` (Metallurgic Summonings).
+    YouCastInstantOrSorceryWithMv,
 }
 
 #[derive(Clone, Debug, PartialEq)]

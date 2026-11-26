@@ -1611,6 +1611,13 @@ pub struct Game {
     /// Creature spells paid for with Hall of the Bandit Lord's mana, as (object, the zone-change
     /// count it will have on the battlefield): each gains haste as it enters.
     pub haste_from_mana: Vec<(ObjId, u32)>,
+    /// Delayed "when [that creature] is put into your graveyard this turn" triggers (Saffi
+    /// Eriksdotter): (creature, its zcc, source, trigger number, controller, turn).
+    pub delayed_slot_to_graveyard: Vec<(ObjId, u32, ObjId, usize, PlayerId, u32)>,
+    /// Necropotence's face-down exiled cards, to their player's hand at the beginning of that
+    /// player's next end step: (card, its zcc in exile, player, turn exiled, exiled during that
+    /// player's own end step or cleanup, so not this turn's).
+    pub face_down_to_hand: Vec<(ObjId, u32, PlayerId, u32, bool)>,
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -1866,6 +1873,8 @@ impl Game {
             normal_next: None,
             delayed_slot_to_graveyard: Vec::new(),
             haste_from_mana: Vec::new(),
+            delayed_slot_to_graveyard: Vec::new(),
+            face_down_to_hand: Vec::new(),
         }
     }
 
@@ -10014,6 +10023,12 @@ impl Game {
                 t.extra = Some(card);
             }
             self.copied_or_cast_instant_sorcery(p, card);
+            let before = self.triggered.len();
+            self.fire(p, When::YouCastInstantOrSorceryWithMv, None);
+            for t in &mut self.triggered[before..] {
+                t.amount = spell_mv as i32;
+                t.extra = Some(card);
+            }
         }
         // "Whenever you cast a noncreature or [subtype] spell".
         let (creature, subs) = (self.types_of(card).creature, self.def_of(card).subtypes.clone());
@@ -16001,6 +16016,18 @@ impl Game {
                     self.delayed_slot_to_graveyard.push(entry);
                 }
             }
+            Effect::ExileTopFaceDownToHandAtYourNextEndStep => {
+                let p = item.controller;
+                if let Some(&c) = self.players[p].library.last() {
+                    self.move_to(c, Zone::Exile);
+                    if self.obj(c).zone == Zone::Exile {
+                        self.obj_mut(c).face_down = true;
+                        let late = self.active == p && matches!(self.step, Step::End | Step::Cleanup);
+                        let zcc = self.obj(c).zcc;
+                        self.face_down_to_hand.push((c, zcc, p, self.turn, late));
+                    }
+                }
+            }
             Effect::BecomeCopyOfSlotUntilEot(n) => {
                 if let Some(card) = Game::slot_object(item, legal, n) {
                     if self.obj(src).zone == Zone::Battlefield {
@@ -21281,6 +21308,19 @@ impl Game {
                     if self.obj(c).zcc == zcc && self.obj(c).zone == Zone::Exile {
                         self.move_to(c, Zone::Graveyard);
                         self.create_token(p, def);
+                    }
+                }
+                // Necropotence: "put that card into your hand at the beginning of your next end
+                // step" (face up again as it leaves exile).
+                let turn = self.turn;
+                let (due, wait): (Vec<_>, Vec<_>) = std::mem::take(&mut self.face_down_to_hand)
+                    .into_iter()
+                    .partition(|&(_, _, q, t, late)| q == a && (t < turn || (t == turn && !late)));
+                self.face_down_to_hand = wait;
+                for (c, zcc, _, _, _) in due {
+                    if self.obj(c).zcc == zcc && self.obj(c).zone == Zone::Exile {
+                        self.obj_mut(c).face_down = false;
+                        self.move_to(c, Zone::Hand);
                     }
                 }
                 // Delayed "at the beginning of the next end step" returns (CR 603.7).
