@@ -1298,6 +1298,12 @@ pub enum Decision {
     /// "Pay {cost}. If you don't, you lose the game." (Pact of Negation): `Yes` pays (offered only if
     /// you can), `No` loses the game.
     PayOrLoseGame { cost: ManaCost },
+    /// Multikicker on a card that also has {X} (Comet Storm): `Amount` the number of times it's
+    /// kicked, after X (`mode.x`) was chosen; then it's cast.
+    ChooseKickCount { card: ObjId, mode: CastMode, max: u8 },
+    /// Fabricate `n` (CR 702.123): `Yes` puts `n` +1/+1 counters on the source, `No` creates `n`
+    /// 1/1 Servo tokens (definition `servo`).
+    Fabricate { n: u8, servo: usize },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -1711,6 +1717,17 @@ pub struct Game {
     /// Foretold cards: (card, its zcc in exile). Castable from the next turn on (see
     /// `ready_foretold`).
     pub foretold: Vec<(ObjId, u32)>,
+    /// Kick counts for multikicker cards that also have {X} (Comet Storm), from
+    /// `Decision::ChooseKickCount`: (card, its zone-change count in hand as it was cast, kicks).
+    pub kick_counts: Vec<(ObjId, u32, u8)>,
+    /// Spells paid for (at least in part) with mana from a Treasure, as they were cast (Alchemist's
+    /// Talent: `Effect::StopUnlessTreasureManaSpentOnExtra`).
+    pub treasure_spent: Vec<ObjId>,
+    /// Food Chain's mana, which only creature spells may spend: (amount of any-color mana, the turn
+    /// and step it was made in; it empties with the pool at the step's end).
+    pub creature_spell_mana: [(u32, u32, Step); 2],
+    /// Darksteel Monolith's "once each turn": (the Monolith, the turn it was last used).
+    pub monolith_used: Vec<(ObjId, u32)>,
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -1981,6 +1998,10 @@ impl Game {
             colorless_spent: Vec::new(),
             noncombat_damage_to_player_turn: [(0, 0); 2],
             foretold: Vec::new(),
+            kick_counts: Vec::new(),
+            treasure_spent: Vec::new(),
+            creature_spell_mana: [(0, 0, Step::PreGame); 2],
+            monolith_used: Vec::new(),
         }
     }
 
@@ -6225,6 +6246,7 @@ impl Game {
             let d = self.def_of(c);
             d.flashback.is_some()
                 || d.mana_ext.escape.is_some()
+                || d.mana_ext.retrace
                 || ((self.obj(c).flashback_eot || self.obj(c).harmonize_eot)
                     && (d.types.instant || d.types.sorcery))
         });
@@ -6564,6 +6586,15 @@ impl Game {
                 },
             )];
         }
+        if let (true, true, None) = (from_graveyard, def.mana_ext.retrace, def.flashback) {
+            // Retrace: its mana cost, plus discarding a land card (named by the action).
+            return self.players[p]
+                .hand
+                .iter()
+                .filter(|&&x| self.def_of(x).types.land)
+                .map(|&x| (Action::CastWith(c, x), CastMode::with(x)))
+                .collect();
+        }
         if from_graveyard {
             // Dread Return: "Flashback—Sacrifice three creatures" needs that many to sacrifice.
             let victims = self.creatures(p).filter(|&x| !self.cant_be_sacrificed(x)).count();
@@ -6684,6 +6715,16 @@ impl Game {
                 // Warp, morph: cast from hand for the alternative cost.
                 let in_hand_now = self.obj(c).zone == Zone::Hand;
                 if in_hand_now && def.alt_cost.is_none() && (def.warp.is_some() || def.morph.is_some()) {
+                    v.push((
+                        Action::CastAlternative(c),
+                        CastMode {
+                            alt: true,
+                            ..CastMode::default()
+                        },
+                    ));
+                }
+                // Darksteel Monolith: {0} rather than the mana cost of a colorless spell from hand.
+                if self.monolith_alt(p, c) {
                     v.push((
                         Action::CastAlternative(c),
                         CastMode {
@@ -6862,6 +6903,7 @@ impl Game {
                     ..ManaCost::default()
                 },
                 None if def.warp.is_some() => def.warp.expect("warp"),
+                None if self.monolith_alt(p, c) => ManaCost::default(), // Darksteel Monolith
                 None => {
                     // Defiler of Vigor: 2 life paid, {G} less.
                     let mut c = def.cost.with_x(mode.x);
@@ -6900,6 +6942,12 @@ impl Game {
         // Multikicker: its cost once for each time it's kicked (X, for a card with no {X}).
         if let (Some(k), 0) = (def.mana_ext.multikicker, def.cost.x) {
             for _ in 0..mode.x {
+                cost = add_costs(&cost, &k);
+            }
+        }
+        // Multikicker with {X} too (Comet Storm): the kick count chosen after X.
+        if let (Some(k), true) = (def.mana_ext.multikicker, def.cost.x > 0) {
+            for _ in 0..self.x_multikicks(c) {
                 cost = add_costs(&cost, &k);
             }
         }
@@ -7181,6 +7229,15 @@ impl Game {
             {
                 n += self.creatures(p).filter(|&k| self.is_token(k)).count();
             }
+            // Fortune Teller's Talent: "Spells you cast from anywhere other than your hand cost {2}
+            // less to cast."
+            if let Some((level, less)) = e.not_from_hand_discount {
+                let o = self.obj(c);
+                let from_hand = o.zone == Zone::Hand || (o.zone == Zone::Stack && o.from_hand);
+                if !from_hand && self.class_level(x) >= level {
+                    n += less as usize;
+                }
+            }
         }
         n.min(255) as u8
     }
@@ -7295,6 +7352,12 @@ impl Game {
 
     /// Pays `cost`, for casting `spell` if given (restricted mana can then help).
     fn pay_mana_for(&mut self, p: PlayerId, cost: &ManaCost, exclude: Option<ObjId>, spell: PayFor) {
+        // Food Chain: its mana pays for a creature spell first.
+        let (after_chain, used) = self.after_creature_mana(p, cost, spell);
+        if used > 0 {
+            self.creature_spell_mana[p].0 -= used;
+        }
+        let cost = &after_chain;
         // K'rrik: {B} that mana can't pay are paid with 2 life each.
         let mut with_life = *cost;
         if !self.can_pay_mana(p, cost, exclude, spell) {
@@ -7331,6 +7394,7 @@ impl Game {
                             self.snow_paid += 1;
                         }
                         self.note_haste_mana(id, spell);
+                        self.note_treasure_mana(id, spell);
                         let life_cost = self.def_of(id).mana_ext.mana_life_cost;
                         if life_cost > 0 && !self.obj(id).tapped {
                             self.lose_life(p, life_cost); // Mana Confluence
@@ -7338,7 +7402,8 @@ impl Game {
                         if !self.def_of(id).mana_ext.sac_mana_no_tap {
                             self.become_tapped(id);
                         }
-                        if self.def_of(id).sac_for_mana {
+                        // (A Treasure making two mana is sacrificed once.)
+                        if self.def_of(id).sac_for_mana && self.obj(id).zone == Zone::Battlefield {
                             let by = self.obj(id).controller;
                             self.move_to(id, Zone::Graveyard);
                             self.sacrificed(id, by);
@@ -7431,6 +7496,7 @@ impl Game {
                 }
             }
             self.note_haste_mana(id, spell);
+            self.note_treasure_mana(id, spell);
             let tomb = self.def_of(id).mana_tap_damage;
             if tomb > 0 && !self.obj(id).tapped {
                 self.deal_damage(id, Target::Player(p), tomb as i32); // Ancient Tomb
@@ -7452,7 +7518,8 @@ impl Game {
                     self.become_tapped(c);
                 }
             }
-            if self.def_of(id).sac_for_mana {
+            // (A Treasure making two mana is sacrificed once.)
+            if self.def_of(id).sac_for_mana && self.obj(id).zone == Zone::Battlefield {
                 let by = self.obj(id).controller;
                 self.move_to(id, Zone::Graveyard);
                 self.sacrificed(id, by);
@@ -7808,6 +7875,9 @@ impl Game {
     }
 
     fn can_pay_for(&self, p: PlayerId, cost: &ManaCost, exclude: Option<ObjId>, spell: PayFor) -> bool {
+        // Food Chain: its mana pays for a creature spell first.
+        let (after_chain, _) = self.after_creature_mana(p, cost, spell);
+        let cost = &after_chain;
         self.can_pay_mana(p, cost, exclude, spell)
             || self.black_pips_as_life(p, cost, exclude, spell).is_some()
     }
@@ -8436,6 +8506,9 @@ impl Game {
                             })
                             .map(|c| Action::ActivateWith(id, n, c)),
                     );
+                } else if a.exile_creature_you_control {
+                    // Food Chain: "Exile a creature you control".
+                    v.extend(self.creatures(p).map(|c| Action::ActivateWith(id, n, c)));
                 } else if a.sacrifice_creature {
                     v.extend(
                         self.creatures(p)
@@ -8668,6 +8741,10 @@ impl Game {
                 if self.obj(v).zone == Zone::Graveyard {
                     self.move_to(v, Zone::Exile);
                 }
+            } else if a.exile_creature_you_control {
+                if self.obj(v).zone == Zone::Battlefield {
+                    self.move_to(v, Zone::Exile); // Food Chain
+                }
             } else if a.discard_cost {
                 if self.obj(v).zone == Zone::Hand {
                     self.move_to(v, Zone::Graveyard); // discarded
@@ -8877,6 +8954,7 @@ impl Game {
             && ["Mine", "Power-Plant", "Tower"]
                 .iter()
                 .all(|sub| self.permanents(p).any(|x| self.has_subtype(x, sub)));
+        let treasures_two = self.treasures_make_two(p);
         for (id, m) in base {
             let life_cost = self.def_of(id).mana_ext.mana_life_cost;
             if life_cost > 0 && self.players[p].life < life_cost {
@@ -8955,6 +9033,12 @@ impl Game {
             let fero = self.def_of(id).ferocious_mana_amount as usize;
             let n = if fero > 0 && self.creatures(p).any(|c| self.power(c) >= 4) {
                 n.max(fero) // Ferocious: "{T}: Add {G}{G}{G}{G}"
+            } else {
+                n
+            };
+            // Alchemist's Talent: "Treasures you control have '... Add two mana of any one color.'"
+            let n = if treasures_two && self.has_subtype(id, "Treasure") {
+                n.max(2)
             } else {
                 n
             };
@@ -9411,9 +9495,135 @@ impl Game {
         let d = self.def_of(id);
         if d.mana_ext.multikicker.is_some() && d.cost.x == 0 {
             self.obj(id).x
+        } else if d.mana_ext.multikicker.is_some() {
+            // {X} and multikicker (Comet Storm): the count chosen as it was cast, for the spell or
+            // the permanent it became.
+            let zcc = self.obj(id).zcc;
+            self.kick_counts
+                .iter()
+                .find(|&&(c, z, _)| c == id && (zcc == z + 1 || zcc == z + 2))
+                .map_or(0, |e| e.2)
         } else {
             self.obj(id).kicked as u8
         }
+    }
+
+    /// The kicks chosen for `c` (a multikicker card with {X}) while it's being cast: in hand after
+    /// `Decision::ChooseKickCount`, or on the stack.
+    fn x_multikicks(&self, c: ObjId) -> u8 {
+        let zcc = self.obj(c).zcc;
+        self.kick_counts
+            .iter()
+            .find(|&&(x, z, _)| x == c && (zcc == z || zcc == z + 1))
+            .map_or(0, |e| e.2)
+    }
+
+    /// Whether casting `c` with `Action::CastX` asks for a kick count next (multikicker and {X}).
+    fn asks_kick_count(&self, c: ObjId) -> bool {
+        let d = self.def_of(c);
+        d.mana_ext.multikicker.is_some() && d.cost.x > 0 && self.obj(c).zone != Zone::Graveyard
+    }
+
+    /// The most kicks `p` could pay for `c` cast in `mode` (X chosen), up to 30.
+    fn max_kicks(&self, p: PlayerId, c: ObjId, mode: CastMode) -> u8 {
+        let Some(k) = self.def_of(c).mana_ext.multikicker else {
+            return 0;
+        };
+        let mut cost = self.spell_cost(p, c, mode, &[]);
+        let mut n = 0;
+        while n < 30 {
+            cost = add_costs(&cost, &k);
+            if !self.can_pay_for(p, &cost, None, pay_for_spell(c, mode.mode)) {
+                break;
+            }
+            n += 1;
+        }
+        n
+    }
+
+    /// Darksteel Monolith: an unused Monolith `p` controls.
+    fn monolith_for(&self, p: PlayerId) -> Option<ObjId> {
+        let turn = self.turn;
+        self.permanents(p).find(|&x| {
+            self.def_of(x).mana_ext.colorless_free_once_each_turn
+                && !self.lost_abilities(x)
+                && !self.monolith_used.contains(&(x, turn))
+        })
+    }
+
+    /// Whether `c`, a colorless spell `p` casts from hand with no alternative cost of its own, may be
+    /// cast for {0} with Darksteel Monolith.
+    fn monolith_alt(&self, p: PlayerId, c: ObjId) -> bool {
+        let d = self.def_of(c);
+        let o = self.obj(c);
+        let from_hand = o.zone == Zone::Hand || (o.zone == Zone::Stack && o.from_hand);
+        from_hand
+            && d.colors == [false; 5]
+            && !d.types.land
+            && d.alt_cost.is_none()
+            && d.mana_ext.alt_cost_ext.is_none()
+            && d.mana_ext.escape.is_none()
+            && d.phyrexian.iter().all(|&n| n == 0)
+            && d.morph.is_none()
+            && d.warp.is_none()
+            && self.monolith_for(p).is_some()
+    }
+
+    /// Food Chain's mana `p` has now (it empties with the pool at the end of each step).
+    fn creature_mana_now(&self, p: PlayerId) -> u32 {
+        let (n, turn, step) = self.creature_spell_mana[p];
+        if turn == self.turn && step == self.step {
+            n
+        } else {
+            0
+        }
+    }
+
+    /// `cost` less what Food Chain's any-color mana pays of it, for a creature spell, and how much
+    /// of that mana it uses: colored pips first, then hybrid and two-brid pips, then generic.
+    fn after_creature_mana(&self, p: PlayerId, cost: &ManaCost, spell: PayFor) -> (ManaCost, u32) {
+        let creature = matches!(spell, PayFor::Spell(c) if self.def_of(c).types.creature);
+        let mut left = if creature { self.creature_mana_now(p) } else { 0 };
+        let mut cost = *cost;
+        let have = left;
+        let mut take = |pips: &mut u8| {
+            let n = (*pips as u32).min(left);
+            *pips -= n as u8;
+            left -= n;
+        };
+        for pips in cost.colored.iter_mut() {
+            take(pips);
+        }
+        for pips in cost.hybrid.iter_mut() {
+            take(pips);
+        }
+        for pips in cost.twobrid.iter_mut() {
+            take(pips);
+        }
+        take(&mut cost.generic);
+        (cost, have - left)
+    }
+
+    /// Whether `spell` was paid for with mana from a Treasure (Alchemist's Talent).
+    pub fn treasure_mana_spent(&self, spell: ObjId) -> bool {
+        self.treasure_spent.contains(&spell)
+    }
+
+    /// Alchemist's Talent: notes a spell that mana from `source`, a Treasure, pays for.
+    fn note_treasure_mana(&mut self, source: ObjId, spell: PayFor) {
+        if let PayFor::Spell(c) | PayFor::OmenSpell(c) = spell {
+            if self.has_subtype(source, "Treasure") && !self.treasure_spent.contains(&c) {
+                self.treasure_spent.push(c);
+            }
+        }
+    }
+
+    /// Alchemist's Talent: whether `p`'s Treasures make two mana each.
+    fn treasures_make_two(&self, p: PlayerId) -> bool {
+        self.permanents(p).any(|x| {
+            let n = self.def_of(x).mana_ext.treasures_add_two_at_level;
+            n > 0 && !self.lost_abilities(x) && self.class_level(x) >= n
+        })
     }
 
     /// The d1 theme's other block restrictions (see [`crate::card::ManaExt`]): shadow, attacking
@@ -9693,6 +9903,16 @@ impl Game {
                     .at_planeswalker
                     .push((c, pw));
                 return Ok(self.take_events());
+            }
+            (Pending::Priority(p), Action::CastX(c, x)) if self.asks_kick_count(c) => {
+                // Comet Storm: {X} and multikicker; the kick count comes next.
+                let mode = CastMode {
+                    x,
+                    ..CastMode::default()
+                };
+                self.kick_counts.retain(|e| e.0 != c);
+                let max = self.max_kicks(p, c, mode);
+                self.ask(p, Decision::ChooseKickCount { card: c, mode, max });
             }
             (Pending::Priority(p), Action::CastX(c, x)) => self.cast(
                 p,
@@ -10252,6 +10472,11 @@ impl Game {
             .filter(|_| item.flashback && (self.def_of(card).harmonize || self.obj(card).harmonize_eot));
         self.snow_paid = 0;
         self.colorless_paid = 0;
+        self.treasure_spent.retain(|&x| x != card); // Alchemist's Talent: this cast's mana only
+                                                    // Darksteel Monolith: its {0} is used up for the turn as the cost is paid.
+        let monolith = (mode.alt && self.monolith_alt(p, card))
+            .then(|| self.monolith_for(p))
+            .flatten();
         // Sephara: tap the creatures for the alternative cost first, so none of them also taps
         // for its mana.
         if let Some(alt) = self.alt_ext_tapping(card, mode) {
@@ -10327,6 +10552,11 @@ impl Game {
                                                // Adamant's colorless count (CR 207.2c), for this cast of the card.
         self.colorless_spent.retain(|e| e.0 != card);
         self.colorless_spent.push((card, self.colorless_paid));
+        if let Some(m) = monolith {
+            let turn = self.turn;
+            self.monolith_used.retain(|e| e.0 != m);
+            self.monolith_used.push((m, turn));
+        }
         let turn = self.turn;
         let (t, before) = self.mana_spent_on_spells[p];
         let before = if t == turn { before } else { 0 };
@@ -11868,6 +12098,8 @@ impl Game {
                 v
             }
             Decision::MayDrawGainOne { .. } => vec![Action::Yes, Action::No],
+            Decision::ChooseKickCount { max, .. } => (0..=*max).map(Action::Amount).collect(),
+            Decision::Fabricate { .. } => vec![Action::Yes, Action::No],
             Decision::ExpropriateVote { .. } => vec![Action::Yes, Action::No],
             Decision::ExpropriatePick { owner, .. } => self
                 .battlefield
@@ -12512,6 +12744,14 @@ impl Game {
             let (card, mode) = (*card, *mode);
             return self.cast(p, card, CastMode { x, ..mode });
         }
+        if let (Decision::ChooseKickCount { card, mode, .. }, Action::Amount(k)) = (&d, a) {
+            // Comet Storm: kicked `k` times, remembered for this cast of the card.
+            let (card, mode) = (*card, *mode);
+            let zcc = self.obj(card).zcc;
+            self.kick_counts.retain(|e| e.0 != card);
+            self.kick_counts.push((card, zcc, k));
+            return self.cast(p, card, mode);
+        }
         if let Decision::Unleash { card } = d {
             if a == Action::Yes {
                 self.add_counters(card, 1);
@@ -13078,6 +13318,15 @@ impl Game {
             }
             (Decision::ExileFromGraveyard { .. }, Action::No) => {
                 self.resolving.as_mut().expect("resolving").remaining.clear();
+            }
+            (Decision::Fabricate { n, servo }, choice) => {
+                let src = self.resolving.as_ref().map(|r| r.item.source);
+                match src {
+                    Some(s) if choice == Action::Yes && self.obj(s).zone == Zone::Battlefield => {
+                        self.add_counters(s, n as i32);
+                    }
+                    _ => self.fabricate_servos(p, n, servo),
+                }
             }
             (Decision::Endure { n, spirit }, choice) => {
                 let src = self.resolving.as_ref().map(|r| r.item.source);
@@ -14799,6 +15048,24 @@ impl Game {
                     if any {
                         self.ask(item.controller, Decision::PickDiscard { victim });
                     }
+                }
+            }
+            Effect::Fabricate { n, servo } => {
+                if self.obj(src).zone == Zone::Battlefield {
+                    self.ask(item.controller, Decision::Fabricate { n, servo });
+                } else {
+                    self.fabricate_servos(item.controller, n, servo); // CR 702.123b
+                }
+            }
+            Effect::AddCreatureSpellManaExtraMvPlusOne => {
+                let p = item.controller;
+                let n = 1 + item.extra.map_or(0, |x| self.def_of(x).cost.mana_value());
+                let now = self.creature_mana_now(p);
+                self.creature_spell_mana[p] = (now + n, self.turn, self.step);
+            }
+            Effect::StopUnlessTreasureManaSpentOnExtra => {
+                if !item.extra.is_some_and(|x| self.treasure_mana_spent(x)) {
+                    self.resolving.as_mut().expect("resolving").remaining.clear();
                 }
             }
             Effect::Endure { n, spirit } => {
@@ -21846,6 +22113,16 @@ impl Game {
     /// Creates a token on the battlefield. It is summoning sick like any new permanent.
     /// Doubling Season doubles tokens and counters (CR 614.1a).
     /// Endure's Spirit: an `n`/`n` token (a 0/0 Spirit with `n` +1/+1 counters).
+    /// Fabricate's other choice: `n` 1/1 Servo tokens (definition `servo`).
+    fn fabricate_servos(&mut self, p: PlayerId, n: u8, servo: usize) {
+        let mut made = Vec::new();
+        for _ in 0..n {
+            self.create_token(p, servo);
+            made.extend(self.last_created.iter().copied());
+        }
+        self.last_created = made;
+    }
+
     fn endure_token(&mut self, p: PlayerId, n: u8, spirit: usize) {
         self.create_token(p, spirit);
         for id in self.last_created.clone() {

@@ -315,6 +315,16 @@ pub fn token_defs() -> Vec<CardDef> {
         token("Placeholder 95", "", 0, 0, Keywords::NONE),
         token("Placeholder 96", "", 0, 0, Keywords::NONE),
         wicked_role(), // 97, lane C
+        // 98-99: placeholders until their lanes' tokens land (99: lane B's Shark). Each lane
+        // replaces its own line.
+        token("Placeholder 98", "", 0, 0, Keywords::NONE),
+        token("Placeholder 99", "", 0, 0, Keywords::NONE),
+        {
+            // 100, lane d1: Pride of the Clouds' "1/1 white and blue Bird creature token with flying".
+            let mut t = token("Bird", "Bird", 1, 1, Keywords::FLYING);
+            t.colors = [true, true, false, false, false];
+            t
+        },
     ]
 }
 
@@ -520,6 +530,11 @@ pub struct Tokens {
     pub placeholder_95: usize,
     pub placeholder_96: usize,
     pub wicked_role: usize,
+    /// 98-99: placeholders (99: lane B's Shark; each lane renames its own).
+    pub placeholder_98: usize,
+    pub placeholder_99: usize,
+    /// 100: Pride of the Clouds' 1/1 white and blue Bird with flying.
+    pub bird_flying_wu: usize,
 }
 
 impl Tokens {
@@ -623,6 +638,9 @@ impl Tokens {
             placeholder_95: base + 95,
             placeholder_96: base + 96,
             wicked_role: base + 97,
+            placeholder_98: base + 98,
+            placeholder_99: base + 99,
+            bird_flying_wu: base + 100,
         }
     }
 }

@@ -152,3 +152,16 @@ def test_a_pact_says_not_paying_loses_the_game():
     assert label(dec, "No", 0) == "Don't pay (you lose the game)"
     sourced = {**dec, "source": [5, 1]}
     assert label(sourced, "Yes", 0) == "Pay {3}{U}{U} (Thriving Heath)"
+
+
+def test_a_kick_count_names_the_spell_and_the_kicks():
+    dec = {"kind": "ChooseKickCount", "card": [7, 1], "max": 3}
+    assert label(dec, "Amount", 2) == "Kick Thriving Heath 2 times"
+    assert label(dec, "Amount", 1) == "Kick Thriving Heath once"
+    assert label({"kind": "ChooseKickCount"}, "Amount", 0) == "Kick 0 times"
+
+
+def test_fabricate_offers_counters_or_servos():
+    dec = {"kind": "Fabricate", "x": 3, "source": [5, 2]}
+    assert label(dec, "Yes", 0) == "Secluded Courtyard: put 3 +1/+1 counters on it"
+    assert label(dec, "No", 0) == "Secluded Courtyard: create 3 1/1 Servo tokens"

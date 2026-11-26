@@ -2365,6 +2365,21 @@ pub enum Effect {
     /// "Pay {cost}. If you don't, you lose the game." (a Pact's delayed trigger), as
     /// `Decision::PayOrLoseGame`.
     PayOrLoseGame(crate::mana::ManaCost),
+    /// Fabricate `n` (CR 702.123): `n` +1/+1 counters on the source, or `n` 1/1 Servo tokens (token
+    /// definition `servo`), as `Decision::Fabricate`. Only Servos if the source has left the
+    /// battlefield.
+    Fabricate {
+        n: u8,
+        servo: usize,
+    },
+    /// Food Chain: "Add X mana of any one color, where X is 1 plus the exiled creature's mana value.
+    /// Spend this mana only to cast creature spells." The card in `extra` (the activation's victim)
+    /// is the exiled creature; the mana is held for creature spells (`Game::creature_spell_mana`).
+    AddCreatureSpellManaExtraMvPlusOne,
+    /// "if mana from a Treasure was spent to cast it" (Alchemist's Talent, level 3): stop unless
+    /// the spell in `extra` (a cast trigger's spell) was paid for with Treasure mana
+    /// (`Game::treasure_mana_spent`).
+    StopUnlessTreasureManaSpentOnExtra,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

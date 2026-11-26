@@ -127,6 +127,9 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         if d == "ChooseDelve":
             word = "card" if value == 1 else "cards"
             return f"Delve: exile {value} {word} from your graveyard" + (f" ({card})" if card else "")
+        if d == "ChooseKickCount":
+            times = "once" if value == 1 else f"{value} times"
+            return f"Kick {card} {times}" if card else f"Kick {times}"
         return None
     if kind == "Mode":
         if d == "ChooseColor" and 0 <= value < 5:
@@ -215,6 +218,10 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
             "Don't pay",
         ),
         "MayPayManaAndLife": (f"Pay {dec.get('cost', '')} and {dec.get('life', 0)} life", "Don't pay"),
+        "Fabricate": (
+            f"{src or 'Fabricate'}: put {dec.get('x', 0)} +1/+1 counters on it",
+            f"{src or 'Fabricate'}: create {dec.get('x', 0)} 1/1 Servo tokens",
+        ),
     }
     if d in ("CreaturesFromHandUpTo", "PermanentsFromHandUpTo", "SearchToGraveyardCounter") and not yes:
         return "Find nothing" if d == "SearchToGraveyardCounter" else "Done choosing"

@@ -6542,6 +6542,30 @@
    "lane": "d1",
    "theme": "mana",
    "owner": "d1"
+  },
+  {
+   "card": "Comet Storm",
+   "deck": "d1 handback",
+   "missing": "d1's kick count is in: Action::CastX(c, X) asks Decision::ChooseKickCount (Amount), and Game::times_kicked(id) returns it for this {X} multikicker card; d3's 'choose any target, then another target for each time this spell was kicked' (one more target slot per kick), dealing X damage to each",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Alchemist's Talent",
+   "deck": "d1 handback",
+   "missing": "d1's pieces are in: ManaExt::treasures_add_two_at_level = 2 (your Treasures make two mana while the Class is level 2+), Game::treasure_mana_spent(spell) and Effect::StopUnlessTreasureManaSpentOnExtra (the cast trigger's spell in extra) for level 3; d4 scripts the Class (two tapped Treasures on enter, the level-ups, the level-3 'whenever you cast a spell' trigger dealing the spell's mana value to each opponent)",
+   "lane": "d1",
+   "theme": "subsystems",
+   "owner": "d4"
+  },
+  {
+   "card": "Fortune Teller's Talent",
+   "deck": "d1 handback",
+   "missing": "d1's cost reduction is in: ManaExt::not_from_hand_discount = Some((3, 2)) (level 3: spells cast from anywhere but your hand cost {2} less); still Mac C's play-from-the-top (level 2) and look at the top card any time, then d4 scripts the Class",
+   "lane": "d1",
+   "theme": "subsystems",
+   "owner": "d4"
   }
  ]
 }
