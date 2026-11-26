@@ -5998,6 +5998,422 @@
    "lane": "mac-c",
    "theme": "objects_zones",
    "owner": "mac-c"
+  },
+  {
+   "card": "Bitter Triumph",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Cathartic Reunion",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Demand Answers",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Blazemire Verge",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Hoarding Broodlord",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Neheb, the Eternal",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Ozai, the Phoenix King",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Sazacap's Brew",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Necropolis Regent",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Olivia's Attendants",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Dragon Mage",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Port Razer",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Raphael, the Muse",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Tag Team Tough",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Breath of Fury",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Torbran, Thane of Red Fell",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Azra Oddsmaker",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Twilight Prophet",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Twilight Diviner",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Exhume",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Living Death",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Burning Inquiry",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Change of Fortune",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Burning-Rune Demon",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Rakdos Charm",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Vile Mutilator",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Summon: Bahamut",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "subsystems",
+   "owner": "d4"
+  },
+  {
+   "card": "Olivia, Crimson Bride",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Dragonhawk, Fate's Tempest",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Charming Scoundrel",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Witch's Mark",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Moria Scavenger",
+   "deck": "Olivia, Crimson Bride (DonSpider)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Crux of Fate",
+   "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Apocalypse",
+   "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Kindred Summons",
+   "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Shadowspear",
+   "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Vanquisher's Banner",
+   "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Three Tree City",
+   "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Karrthus, Tyrant of Jund",
+   "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Gluttonous Hellkite",
+   "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Vaevictis Asmadi, the Dire",
+   "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Atarka, World Render",
+   "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Lathliss, Dragon Queen",
+   "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Scourge of Valkas",
+   "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Broodcaller Scourge",
+   "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Scourge of the Throne",
+   "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Descendants' Path",
+   "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Nogi, Draco-Zealot",
+   "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Utvara Hellkite",
+   "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
+   "missing": "lane C's routing (2026-11-26) [token 96: 6/6 red Dragon, flying]",
+   "lane": "mac-c",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Haven of the Spirit Dragon",
+   "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Klauth, Unrivaled Ancient",
+   "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Dragon Broodmother",
+   "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
+   "missing": "lane C's routing (2026-11-26)",
+   "lane": "mac-c",
+   "theme": "mana",
+   "owner": "d1"
   }
  ]
 }
