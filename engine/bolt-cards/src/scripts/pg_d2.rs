@@ -464,6 +464,37 @@ pub fn script(name: &str) -> Option<Script> {
                 d.activated[n].discard_cost = true;
             },
         ),
+        // ---- Core: triggers, batch 9 ----
+        "Archmage Emeritus" => s(&["Magecraft — Whenever you cast or copy an instant or sorcery spell, draw a card."], |d, _| {
+            on(d, When::YouCastOrCopyInstantOrSorcery, vec![], vec![draw(1)])
+        }),
+        "Lobber Crew" => s(
+            &["{T}: This creature deals 1 damage to each opponent.", "Whenever you cast a multicolored spell, untap this creature."],
+            |d, _| {
+                activated(d, "", true, vec![], vec![damage(1, Recipient::EachOpponent)]);
+                on(d, When::YouCastMulticolored, vec![], vec![Effect::UntapSelf]);
+            },
+        ),
+        "Chandra's Spitfire" => s(
+            &["Whenever an opponent is dealt noncombat damage, this creature gets +3/+0 until end of turn."],
+            |d, _| on(d, When::OpponentDealtNoncombatDamage, vec![], vec![Effect::PumpSelf { power: 3, toughness: 0 }]),
+        ),
+        "Curiosity" => s(
+            &["Enchant creature", "Whenever enchanted creature deals damage to an opponent, you may draw a card."],
+            |d, _| {
+                d.aura = true;
+                d.spell = Some(Ability::new(vec![CREATURE], vec![]));
+                may(d, When::EnchantedDealsDamageToOpponent, vec![], vec![draw(1)]);
+            },
+        ),
+        "Ophidian Eye" => s(
+            &["Enchant creature", "Whenever enchanted creature deals damage to an opponent, you may draw a card."],
+            |d, _| {
+                d.aura = true;
+                d.spell = Some(Ability::new(vec![CREATURE], vec![]));
+                may(d, When::EnchantedDealsDamageToOpponent, vec![], vec![draw(1)]);
+            },
+        ),
         // ---- The Gitrog, Ravenous Ride ----
         "Demonic Tutor" => s(&["Search your library for a card, put that card into your hand, then shuffle."], |d, _| {
             spell(d, vec![], vec![search(SearchFor::Any, SearchTo::Hand)])
@@ -882,6 +913,12 @@ pub const PG_D2_SCRIPTED: &[&str] = &[
     "Cryptcaller Chariot",
     // Core: triggers, batch 7
     "Ghostly Pilferer",
+    // Core: triggers, batch 9
+    "Archmage Emeritus",
+    "Lobber Crew",
+    "Chandra's Spitfire",
+    "Curiosity",
+    "Ophidian Eye",
     // The Gitrog, Ravenous Ride
     "Demonic Tutor",
     "Exquisite Blood",

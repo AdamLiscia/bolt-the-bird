@@ -1222,3 +1222,30 @@ fn you_put_counters_outside_a_resolution_is_the_permanents_controller() {
     assert_eq!(g.obj(pw).loyalty, before + 1);
     assert_eq!(life(&g, 0), 41, "one loyalty counter, as the cost");
 }
+
+// ---- Batch 9: multicolored casts, noncombat damage to an opponent, enchanted creature's damage ----
+
+#[test]
+fn every_multicolored_spell_and_noncombat_damage_to_an_opponent() {
+    let mut g = game_with(|defs| {
+        blood_with(vec![
+            trigger(When::YouCastMulticolored, None, gain(1)),
+            trigger(When::OpponentDealtNoncombatDamage, None, gain(10)),
+        ])(defs);
+        let burn = vec![Effect::Damage {
+            amount: 1,
+            kicked: None,
+            to: bolt_core::effect::Recipient::EachOpponent,
+        }];
+        defs[cid("Hero's Downfall")].spell = Some(Ability::new(vec![], burn));
+    });
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    for _ in 0..2 {
+        let ring = g.add_card(1, cid("Sol Ring"), Zone::Battlefield);
+        cast_now(&mut g, 0, "Abrupt Decay", &[obj(ring)]);
+    }
+    assert_eq!(life(&g, 0), 42, "each multicolored spell");
+    cast_now(&mut g, 0, "Hero's Downfall", &[]);
+    // Exquisite Blood itself gains the 1 the opponent lost.
+    assert_eq!(life(&g, 0), 42 + 10 + 1);
+}

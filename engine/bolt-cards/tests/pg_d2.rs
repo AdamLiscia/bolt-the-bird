@@ -1718,3 +1718,77 @@ fn ghostly_pilferer_discards_to_become_unblockable() {
     assert!(in_graveyard(&g, 0, c));
     assert!(g.keywords(gp).has(Keywords::UNBLOCKABLE));
 }
+
+// ---- Core: triggers, batch 9 ----
+
+/// Player 0's main phase on turn 5, so creatures put in on turn 3 can tap.
+fn main5(g: &mut Game) {
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(g, Action::PassPriority);
+    }
+}
+
+#[test]
+fn archmage_emeritus_draws_on_an_instant() {
+    let mut g = table();
+    put(&mut g, 0, "Archmage Emeritus");
+    let n = g.players[0].library.len();
+    let lions = put(&mut g, 1, "Savannah Lions");
+    kill(&mut g, lions);
+    assert_eq!(g.players[0].library.len(), n - 1);
+    cast_settle(&mut g, "Sol Ring");
+    assert_eq!(g.players[0].library.len(), n - 1, "not an instant or sorcery");
+}
+
+#[test]
+fn lobber_crew_pings_and_untaps_on_a_multicolored_spell() {
+    let mut g = table();
+    let lc = put(&mut g, 0, "Lobber Crew");
+    let spitfire = put(&mut g, 0, "Chandra's Spitfire");
+    main5(&mut g);
+    act(&mut g, Action::Activate(lc, 0));
+    settle(&mut g, Target::Player(1));
+    assert_eq!(g.players[1].life, 39);
+    assert!(g.obj(lc).tapped);
+    assert_eq!(
+        g.power(spitfire),
+        4,
+        "Chandra's Spitfire: the opponent was dealt noncombat damage"
+    );
+    let ring = put(&mut g, 1, "Sol Ring");
+    let decay = hand(&mut g, 0, "Abrupt Decay");
+    play(&mut g, decay, false, &[obj(ring)], &[]);
+    assert!(!g.obj(lc).tapped, "a multicolored spell untaps it");
+}
+
+#[test]
+fn chandras_spitfire_ignores_combat_damage() {
+    let mut g = table();
+    let spitfire = put(&mut g, 0, "Chandra's Spitfire");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    attack(&mut g, &[lions]);
+    through_combat(&mut g);
+    assert_eq!(g.players[1].life, 38);
+    assert_eq!(g.power(spitfire), 1);
+}
+
+#[test]
+fn curiosity_and_ophidian_eye_draw_when_the_creature_damages_an_opponent() {
+    for aura in ["Curiosity", "Ophidian Eye"] {
+        let mut g = table();
+        let lions = put(&mut g, 0, "Savannah Lions");
+        let a = hand(&mut g, 0, aura);
+        play(&mut g, a, false, &[obj(lions)], &[]);
+        assert_eq!(g.obj(a).zone, Zone::Battlefield, "{aura}");
+        let n = g.players[0].library.len();
+        attack(&mut g, &[lions]);
+        through_combat(&mut g);
+        assert_eq!(g.players[1].life, 38, "{aura}");
+        assert_eq!(
+            g.players[0].library.len(),
+            n - 2,
+            "{aura}: the draw step and the trigger"
+        );
+    }
+}

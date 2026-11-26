@@ -8417,6 +8417,9 @@ impl Game {
         let spell_cost = self.def_of(card).cost;
         let spell_mv = spell_cost.mana_value() + spell_cost.x as u32 * item.x as u32;
         let colors = self.colors_of(card);
+        if colors.iter().filter(|&&c| c).count() >= 2 {
+            self.fire(p, When::YouCastMulticolored, None);
+        }
         if colors.iter().filter(|&&c| c).count() >= 2 && self.multicolored_cast_turn[p] != self.turn {
             self.multicolored_cast_turn[p] = self.turn;
             self.fire(p, When::YouCastFirstMulticolored, None);
@@ -18818,6 +18821,22 @@ impl Game {
                     }
                     if controller != p {
                         self.fire_source(source, When::DealsDamageToOpponent);
+                    }
+                    if !self.in_combat_damage {
+                        self.fire(opponent(p), When::OpponentDealtNoncombatDamage, None);
+                    }
+                    // "Whenever enchanted creature deals damage to an opponent" (the Aura's).
+                    let zcc = self.obj(source).zcc;
+                    let auras: Vec<ObjId> = self
+                        .battlefield
+                        .iter()
+                        .copied()
+                        .filter(|&a| {
+                            self.obj(a).attached_to == Some((source, zcc)) && self.obj(a).controller != p
+                        })
+                        .collect();
+                    for a in auras {
+                        self.fire_source(a, When::EnchantedDealsDamageToOpponent);
                     }
                     if !self.in_combat_damage {
                         // Combat damage batches these in `combat_damage`.

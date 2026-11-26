@@ -2644,6 +2644,13 @@ pub enum When {
     /// player, the number put in the trigger's amount (All Will Be One). "You" is the controller of
     /// the resolving spell or ability, else the permanent's controller.
     YouPutCounters,
+    /// "Whenever you cast a multicolored spell" (Lobber Crew), every one.
+    YouCastMulticolored,
+    /// "Whenever an opponent is dealt noncombat damage" (Chandra's Spitfire), from any source.
+    OpponentDealtNoncombatDamage,
+    /// An Aura's "Whenever enchanted creature deals damage to an opponent" (Curiosity, Ophidian
+    /// Eye), combat or not.
+    EnchantedDealsDamageToOpponent,
 }
 
 #[derive(Clone, Debug, PartialEq)]
