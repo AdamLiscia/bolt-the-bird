@@ -1386,6 +1386,130 @@ pub fn script(name: &str) -> Option<Script> {
                 spell(d, vec![], vec![spirits, Effect::ExileSourceSpell]);
             },
         ),
+        // ---- Unblocked by lane d3's core theme, batch 13 ----
+        "Massacre Girl" => s(
+            &["When Massacre Girl enters, each other creature gets -1/-1 until end of turn. Whenever a creature dies this turn, each creature other than Massacre Girl gets -1/-1 until end of turn."],
+            |d, _| {
+                let shrink = Effect::PumpEachOtherCreature { power: -1, toughness: -1 };
+                on(d, When::Enters, vec![], vec![shrink, Effect::DelayedThisTurn { when: When::CreatureDiesThisTurn, trigger: 1 }]);
+                on(d, When::Never, vec![], vec![shrink]);
+            },
+        ),
+        "Archfiend of Ifnir" => s(
+            &["Whenever you cycle or discard another card, put a -1/-1 counter on each creature your opponents control.", "Cycling {2}"],
+            |d, _| {
+                // Cycling discards the card, so YouDiscard covers both; Archfiend itself is in your hand then.
+                on(d, When::YouDiscard, vec![], vec![Effect::MinusCounterEach(Who::EachOpponent)]);
+                let n = activated(d, "{2}", false, vec![], vec![draw(1)]);
+                d.activated[n].from_hand_discard = true;
+            },
+        ),
+        "The Meathook Massacre" => s(
+            &[
+                "When The Meathook Massacre enters, each creature gets -X/-X until end of turn.",
+                "Whenever a creature you control dies, each opponent loses 1 life.",
+                "Whenever a creature an opponent controls dies, you gain 1 life.",
+            ],
+            |d, _| {
+                on(d, When::Enters, vec![], vec![Effect::AllCreaturesGetMinusSourceX]);
+                on(d, When::CreatureYouControlDies, vec![], vec![Effect::LoseLife { who: Who::EachOpponent, n: 1 }]);
+                on(d, When::OpponentCreatureDies, vec![], vec![Effect::GainLife { who: Who::You, n: 1 }]);
+            },
+        ),
+        "Wan Shi Tong, Librarian" => s(
+            &[
+                "When Wan Shi Tong enters, put X +1/+1 counters on him. Then draw half X cards, rounded down.",
+                "Whenever an opponent searches their library, put a +1/+1 counter on Wan Shi Tong and draw a card.",
+            ],
+            |d, _| {
+                on(d, When::Enters, vec![], vec![Effect::CountersSelfXDrawHalfX]);
+                on(d, When::OpponentSearchesLibrary, vec![], vec![Effect::CountersSelf { n: 1 }, draw(1)]);
+            },
+        ),
+        "Korvold, Fae-Cursed King" => s(
+            &[
+                "Whenever Korvold enters or attacks, sacrifice another permanent.",
+                "Whenever you sacrifice a permanent, put a +1/+1 counter on Korvold and draw a card.",
+            ],
+            |d, _| {
+                on(d, When::Enters, vec![], vec![Effect::SacrificeAnotherPermanent]);
+                on(d, When::Attacks, vec![], vec![Effect::SacrificeAnotherPermanent]);
+                on(d, When::YouSacrifice, vec![], vec![Effect::CountersSelf { n: 1 }, draw(1)]);
+            },
+        ),
+        "Savra, Queen of the Golgari" => s(
+            &[
+                "Whenever you sacrifice a black creature, you may pay 2 life. If you do, each other player sacrifices a creature of their choice.",
+                "Whenever you sacrifice a green creature, you may gain 2 life.",
+            ],
+            |d, _| {
+                // 1v1: "each other player" is the opponent.
+                let edict = Effect::SacrificeCreatures { who: Who::EachOpponent, n: 1 };
+                on(d, When::YouSacrificeCreatureOfColor(Color::Black as usize), vec![], vec![Effect::MayPayLife(2), edict]);
+                may(d, When::YouSacrificeCreatureOfColor(Color::Green as usize), vec![], vec![Effect::GainLife { who: Who::You, n: 2 }]);
+            },
+        ),
+        "Benefactor's Draught" => s(
+            &["Untap all creatures. Until end of turn, whenever a creature an opponent controls blocks, draw a card.", "Draw a card."],
+            |d, _| {
+                let delayed = Effect::DelayedThisTurn { when: When::OpponentCreatureBlocks, trigger: 0 };
+                spell(d, vec![], vec![Effect::UntapAllCreatures, delayed, draw(1)]);
+                on(d, When::Never, vec![], vec![draw(1)]);
+            },
+        ),
+        "Well Rested" => s(
+            &[
+                "Enchant creature",
+                "Enchanted creature has \"Whenever this creature becomes untapped, put two +1/+1 counters on it, then you gain 2 life and draw a card. This ability triggers only once each turn.\"",
+            ],
+            |d, _| {
+                d.aura = true;
+                d.spell = Some(Ability::new(vec![CREATURE], vec![]));
+                let rested = Effect::CountersAttachedGainDraw { counters: 2, life: 2, cards: 1 };
+                on(d, When::EnchantedBecomesUntappedOnceEachTurn, vec![], vec![rested]);
+            },
+        ),
+        "Sphere Grid" => s(
+            &[
+                "Whenever a creature you control deals combat damage to a player, put a +1/+1 counter on that creature.",
+                "Unlock Ability — Creatures you control with +1/+1 counters on them have reach and trample.",
+            ],
+            |d, _| {
+                let it = Filter { triggering: true, ..YOUR_CREATURE };
+                on(d, When::YourCreatureDealsCombatDamageToPlayerIt, vec![it], vec![Effect::Counters { slot: 0, n: 1 }]);
+                static_on(d, Scope::YourCreaturesWithCounters, false, Keywords::REACH.with(Keywords::TRAMPLE));
+            },
+        ),
+        "Rapacious Guest" => s(
+            &[
+                "Whenever one or more creatures you control deal combat damage to a player, create a Food token.",
+                "Whenever you sacrifice a Food, put a +1/+1 counter on this creature.",
+                "When this creature leaves the battlefield, target opponent loses life equal to its power.",
+            ],
+            |d, t| {
+                on(d, When::YourCreaturesDealCombatDamageToPlayer, vec![], vec![Effect::CreateToken { who: Who::You, def: t.food, n: 1 }]);
+                on(d, When::YouSacrificeSubtype("Food"), vec![], vec![Effect::CountersSelf { n: 1 }]);
+                let opp = Filter::PLAYER.controlled_by(Controller::Opponent);
+                on(d, When::LeavesBattlefield, vec![opp], vec![Effect::LoseLifeSourcePower(Who::TargetPlayer(0))]);
+            },
+        ),
+        "Klothys, God of Destiny" => s(
+            &[
+                "As long as your devotion to red and green is less than seven, Klothys isn't a creature.",
+                "At the beginning of your first main phase, exile target card from a graveyard. If it was a land card, add {R} or {G}. Otherwise, you gain 2 life and Klothys deals 2 damage to each opponent.",
+            ],
+            |d, _| {
+                d.creature_unless_devotion = Some(([false, false, false, true, true], 7));
+                let exile = Effect::ExileGraveyardCardManaIfLandElseDrain { slot: 0, life: 2, damage: 2 };
+                on(d, When::FirstMainPhaseYourTurn, vec![graveyard_cards(false, Controller::Any)], vec![exile]);
+            },
+        ),
+        "Ripples of Undeath" => s(
+            &["At the beginning of your first main phase, mill three cards. Then you may pay {1} and 3 life. If you do, put a card from among those cards into your hand."],
+            |d, _| {
+                on(d, When::FirstMainPhaseYourTurn, vec![], vec![Effect::MillThenMayPayTakeOne { n: 3, mana: 1, life: 3 }]);
+            },
+        ),
         _ => None,
     }
 }
@@ -1580,4 +1704,17 @@ pub const PG_D3_SCRIPTED: &[&str] = &[
     "Abigale, Eloquent First-Year",
     // Core theme d3, batch 11
     "Storm of Souls",
+    // Core theme d3, batch 13
+    "Massacre Girl",
+    "Archfiend of Ifnir",
+    "The Meathook Massacre",
+    "Wan Shi Tong, Librarian",
+    "Korvold, Fae-Cursed King",
+    "Savra, Queen of the Golgari",
+    "Benefactor's Draught",
+    "Well Rested",
+    "Sphere Grid",
+    "Rapacious Guest",
+    "Klothys, God of Destiny",
+    "Ripples of Undeath",
 ];

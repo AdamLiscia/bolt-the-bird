@@ -1748,3 +1748,265 @@ fn search_for_an_artifact_with_mana_cost_zero_or_one() {
     assert!(legal.contains(&Action::Pick(ring)), "{legal:?}");
     assert!(!legal.contains(&Action::Pick(stone)));
 }
+
+// ---- batch 13 ----
+
+/// A creature costing `cost` with an enters trigger doing `effects`.
+fn enters_creature(name: &str, cost: &str, effects: Vec<Effect>) -> CardDef {
+    let mut d = CardDef::creature(name, cost, 2, 2, Keywords::NONE);
+    d.triggers.push(Trigger {
+        when: When::Enters,
+        ability: Ability::new(vec![], effects),
+    });
+    d
+}
+
+#[test]
+fn pump_each_other_creature_spares_the_source() {
+    let shrink = Effect::PumpEachOtherCreature {
+        power: -1,
+        toughness: -1,
+    };
+    let (mut g, t) = game_with(vec![enters_creature("Test Girl", "{0}", vec![shrink])]);
+    let mine = g.add_card(0, cid("Serra Angel"), Zone::Battlefield);
+    let theirs = g.add_card(1, cid("Llanowar Elves"), Zone::Battlefield);
+    let c = g.add_card(0, t, Zone::Hand);
+    play(&mut g, c, false, &[], &[]);
+    assert_eq!(g.power(mine), 3);
+    assert_eq!(g.obj(theirs).zone, Zone::Graveyard);
+    assert_eq!(g.power(c), 2, "not the source");
+}
+
+#[test]
+fn minus_counter_on_each_creature_a_player_controls() {
+    let (mut g, t) = game_with(vec![sorcery(
+        vec![],
+        vec![Effect::MinusCounterEach(Who::EachOpponent)],
+    )]);
+    let mine = g.add_card(0, cid("Serra Angel"), Zone::Battlefield);
+    let theirs = g.add_card(1, cid("Serra Angel"), Zone::Battlefield);
+    cast_test(&mut g, t, &[], &[]);
+    assert_eq!((g.obj(mine).counters, g.obj(theirs).counters), (0, -1));
+    assert_eq!(g.toughness(theirs), 3);
+}
+
+#[test]
+fn all_creatures_get_minus_the_source_permanents_x() {
+    let mut d = CardDef {
+        name: "Test Massacre".into(),
+        cost: ManaCost::parse("{X}").unwrap(),
+        types: Types {
+            enchantment: true,
+            ..Types::default()
+        },
+        ..CardDef::default()
+    };
+    d.triggers.push(Trigger {
+        when: When::Enters,
+        ability: Ability::new(vec![], vec![Effect::AllCreaturesGetMinusSourceX]),
+    });
+    let (mut g, t) = game_with(vec![d]);
+    let mine = g.add_card(0, cid("Serra Angel"), Zone::Battlefield);
+    let theirs = g.add_card(1, cid("Consecrated Sphinx"), Zone::Battlefield);
+    let c = g.add_card(0, t, Zone::Hand);
+    act(&mut g, Action::CastX(c, 3));
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.power(mine), g.toughness(theirs)), (1, 3));
+}
+
+#[test]
+fn counters_self_x_then_draw_half_x() {
+    let (mut g, t) = game_with(vec![enters_creature(
+        "Test Librarian",
+        "{X}",
+        vec![Effect::CountersSelfXDrawHalfX],
+    )]);
+    let c = g.add_card(0, t, Zone::Hand);
+    let h = g.players[0].hand.len();
+    act(&mut g, Action::CastX(c, 3));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(c).counters, 3);
+    assert_eq!(g.players[0].hand.len(), h - 1 + 1, "half of 3, rounded down");
+}
+
+#[test]
+fn sacrifice_another_permanent_is_forced_and_skips_the_source() {
+    let (mut g, t) = game_with(vec![enters_creature(
+        "Test King",
+        "{0}",
+        vec![Effect::SacrificeAnotherPermanent],
+    )]);
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Battlefield);
+    let c = g.add_card(0, t, Zone::Hand);
+    act(&mut g, Action::Cast(c));
+    while !matches!(g.pending, Pending::Decide(0)) {
+        act(&mut g, Action::PassPriority);
+    }
+    let legal = g.legal_actions();
+    assert!(!legal.contains(&Action::No) && !legal.contains(&Action::Pick(c)));
+    resolve_all(&mut g, &[Action::Pick(ring)]);
+    assert_eq!(g.obj(ring).zone, Zone::Graveyard);
+    assert_eq!(g.obj(c).zone, Zone::Battlefield);
+}
+
+#[test]
+fn may_pay_life_gates_the_rest() {
+    let pay = sorcery(
+        vec![],
+        vec![Effect::MayPayLife(3), Effect::Draw { who: Who::You, n: 1 }],
+    );
+    let (mut g, t) = game_with(vec![pay]);
+    let h = g.players[0].hand.len();
+    cast_test(&mut g, t, &[], &[Action::Yes]);
+    assert_eq!((g.players[0].life, g.players[0].hand.len()), (37, h + 1));
+    cast_test(&mut g, t, &[], &[Action::No]);
+    assert_eq!((g.players[0].life, g.players[0].hand.len()), (37, h + 1));
+    g.players[0].life = 2;
+    cast_test(&mut g, t, &[], &[]); // can't pay 3 life with 2
+    assert_eq!((g.players[0].life, g.players[0].hand.len()), (2, h + 1));
+}
+
+#[test]
+fn untap_all_creatures_untaps_everyones_but_not_lands() {
+    let (mut g, t) = game_with(vec![sorcery(vec![], vec![Effect::UntapAllCreatures])]);
+    let mine = g.add_card(0, cid("Serra Angel"), Zone::Battlefield);
+    let theirs = g.add_card(1, cid("Serra Angel"), Zone::Battlefield);
+    let land = g.permanents(1).find(|&x| g.types_of(x).land).unwrap();
+    for x in [mine, theirs, land] {
+        g.objects[x.0 as usize].tapped = true;
+    }
+    cast_test(&mut g, t, &[], &[]);
+    assert!(!g.obj(mine).tapped && !g.obj(theirs).tapped);
+    assert!(g.obj(land).tapped);
+}
+
+#[test]
+fn counters_on_the_attached_creature_then_its_controller_gains_and_draws() {
+    let mut aura = CardDef {
+        name: "Test Rested".into(),
+        cost: ManaCost::parse("{0}").unwrap(),
+        types: Types {
+            enchantment: true,
+            ..Types::default()
+        },
+        aura: true,
+        spell: Some(Ability::new(vec![Filter::CREATURE], vec![])),
+        ..CardDef::default()
+    };
+    aura.triggers.push(Trigger {
+        when: When::Upkeep { your_turn_only: true },
+        ability: Ability::new(
+            vec![],
+            vec![Effect::CountersAttachedGainDraw {
+                counters: 2,
+                life: 2,
+                cards: 1,
+            }],
+        ),
+    });
+    let (mut g, t) = game_with(vec![aura]);
+    let theirs = g.add_card(1, cid("Serra Angel"), Zone::Battlefield);
+    cast_test(&mut g, t, &[obj(theirs)], &[]);
+    let h = g.players[1].hand.len();
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.obj(theirs).counters, 2);
+    assert_eq!(
+        (g.players[1].life, g.players[1].hand.len()),
+        (42, h + 1),
+        "its controller"
+    );
+}
+
+#[test]
+fn lose_life_equal_to_the_sources_last_known_power() {
+    let mut d = CardDef::creature("Test Guest", "{0}", 3, 3, Keywords::NONE);
+    d.triggers.push(Trigger {
+        when: When::LeavesBattlefield,
+        ability: Ability::new(
+            vec![Filter::PLAYER],
+            vec![Effect::LoseLifeSourcePower(Who::TargetPlayer(0))],
+        ),
+    });
+    let kill = sorcery(vec![Filter::CREATURE], vec![Effect::Destroy(0)]);
+    let (mut g, t) = game_with(vec![d, kill]);
+    let c = g.add_card(0, t, Zone::Battlefield);
+    g.objects[c.0 as usize].counters = 1;
+    let k = g.add_card(0, t + 1, Zone::Hand);
+    play(&mut g, k, false, &[obj(c)], &[Action::Target(Target::Player(1))]);
+    assert_eq!(g.obj(c).zone, Zone::Graveyard);
+    assert_eq!(g.players[1].life, 36, "power 4 as it last existed");
+}
+
+#[test]
+fn gain_life_equal_to_a_creatures_toughness() {
+    let (mut g, t) = game_with(vec![sorcery(
+        vec![Filter::CREATURE],
+        vec![Effect::GainLifeSlotToughness(0)],
+    )]);
+    let sphinx = g.add_card(1, cid("Consecrated Sphinx"), Zone::Battlefield);
+    cast_test(&mut g, t, &[obj(sphinx)], &[]);
+    assert_eq!(g.players[0].life, 46);
+}
+
+#[test]
+fn draw_equal_to_the_greatest_power_you_control() {
+    let (mut g, t) = game_with(vec![sorcery(vec![], vec![Effect::DrawGreatestPowerYouControl])]);
+    g.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
+    g.add_card(0, cid("Serra Angel"), Zone::Battlefield);
+    let theirs = g.add_card(1, cid("Serra Angel"), Zone::Battlefield);
+    g.objects[theirs.0 as usize].counters = 3; // 7 power: theirs doesn't count
+    let h = g.players[0].hand.len();
+    cast_test(&mut g, t, &[], &[]);
+    assert_eq!(g.players[0].hand.len(), h + 4);
+}
+
+#[test]
+fn exile_a_graveyard_card_for_mana_if_a_land_else_gain_and_drain() {
+    let exile = Effect::ExileGraveyardCardManaIfLandElseDrain {
+        slot: 0,
+        life: 2,
+        damage: 2,
+    };
+    let any_card = Filter {
+        players: false,
+        creatures: false,
+        planeswalkers: false,
+        graveyard: Some(false),
+        ..Filter::ANY
+    };
+    let (mut g, t) = game_with(vec![sorcery(vec![any_card], vec![exile])]);
+    let spell = g.add_card(1, cid("Counterspell"), Zone::Graveyard);
+    let land = g.add_card(0, cid("Forest"), Zone::Graveyard);
+    cast_test(&mut g, t, &[obj(spell)], &[]);
+    assert_eq!(g.obj(spell).zone, Zone::Exile);
+    assert_eq!((g.players[0].life, g.players[1].life), (42, 38));
+    let pool = g.players[0].pool.len();
+    cast_test(&mut g, t, &[obj(land)], &[]);
+    assert_eq!(g.obj(land).zone, Zone::Exile);
+    assert_eq!(g.players[0].pool.len(), pool + 1);
+    assert_eq!(g.players[1].life, 38);
+}
+
+#[test]
+fn mill_then_may_pay_mana_and_life_to_take_one() {
+    let ripples = Effect::MillThenMayPayTakeOne {
+        n: 3,
+        mana: 1,
+        life: 3,
+    };
+    let (mut g, t) = game_with(vec![sorcery(vec![], vec![ripples])]);
+    let a = g.add_card(0, cid("Counterspell"), Zone::Library);
+    let b = g.add_card(0, cid("Entomb"), Zone::Library);
+    cast_test(&mut g, t, &[], &[Action::Yes, Action::Pick(a)]);
+    assert_eq!((g.obj(a).zone, g.obj(b).zone), (Zone::Hand, Zone::Graveyard));
+    assert_eq!(g.players[0].life, 37);
+    g.players[0].life = 2;
+    let c = g.add_card(0, cid("Opt"), Zone::Library);
+    let lib = g.players[0].library.len();
+    cast_test(&mut g, t, &[], &[Action::No]); // with 2 life, No is the only answer
+    assert_eq!(g.obj(c).zone, Zone::Graveyard);
+    assert_eq!(g.players[0].library.len(), lib - 3);
+}

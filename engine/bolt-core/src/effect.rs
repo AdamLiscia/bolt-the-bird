@@ -1974,6 +1974,57 @@ pub enum Effect {
     /// Until your next turn, your life total can't change (and damage to you is prevented: you have
     /// protection from everything) (Teferi's Protection).
     LifeLockedUntilYourNextTurn,
+    /// Each creature other than the source, anyone's, gets +P/+T until end of turn (Massacre Girl:
+    /// −1/−1).
+    PumpEachOtherCreature {
+        power: i32,
+        toughness: i32,
+    },
+    /// A −1/−1 counter on each creature `who` controls (Archfiend of Ifnir: each opponent).
+    MinusCounterEach(Who),
+    /// Each creature gets −X/−X until end of turn, X the source permanent's X as cast (The Meathook
+    /// Massacre's enters trigger; `AllCreaturesGetMinusX` reads a spell's X).
+    AllCreaturesGetMinusSourceX,
+    /// Put X +1/+1 counters on the source, then draw half X cards rounded down, X the source's X as
+    /// cast (Wan Shi Tong).
+    CountersSelfXDrawHalfX,
+    /// Sacrifice another permanent (not optional; nothing without one), as
+    /// `Decision::SacrificeAnother` when there's a choice (Korvold).
+    SacrificeAnotherPermanent,
+    /// "You may pay N life. If you do, ...": the rest happens only if paid, offered only when your
+    /// life total is at least N (CR 119.4), as `Decision::MayPayLife` (Savra).
+    MayPayLife(i32),
+    /// Untap all creatures, every player's (Benefactor's Draught).
+    UntapAllCreatures,
+    /// Put `counters` +1/+1 counters on the creature the source (an Aura) enchants; then that
+    /// creature's controller gains `life` life and draws `cards` cards (Well Rested's granted ability).
+    CountersAttachedGainDraw {
+        counters: i32,
+        life: i32,
+        cards: u8,
+    },
+    /// `who` loses life equal to the source's power, last known if it left the battlefield
+    /// (Rapacious Guest).
+    LoseLifeSourcePower(Who),
+    /// You gain life equal to the toughness of the creature in `slot` (Trostani).
+    GainLifeSlotToughness(u8),
+    /// Draw cards equal to the greatest power among creatures you control (Rishkar's Expertise).
+    DrawGreatestPowerYouControl,
+    /// Exile the graveyard card in `slot`. If it was a land card, add {R} or {G}; otherwise you gain
+    /// `life` life and the source deals `damage` damage to each opponent (Klothys).
+    ExileGraveyardCardManaIfLandElseDrain {
+        slot: u8,
+        life: i32,
+        damage: i32,
+    },
+    /// Mill `n`; then you may pay {`mana`} and `life` life, and if you do, put a card from among the
+    /// milled cards (those still in your graveyard) into your hand (Ripples of Undeath), as
+    /// `Decision::MayPayManaAndLife` then `Decision::TakeMilledCard`.
+    MillThenMayPayTakeOne {
+        n: u8,
+        mana: u8,
+        life: i32,
+    },
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
