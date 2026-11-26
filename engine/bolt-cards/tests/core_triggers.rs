@@ -1660,3 +1660,118 @@ fn exiled_face_down_goes_to_hand_at_your_next_end_step() {
     finish_turn(&mut g, 5);
     assert_eq!(g.obj(top).zone, Zone::Hand, "your next end step");
 }
+
+/// The shared token list lines up with its `Tokens` fields: every field a distinct slot inside the
+/// list, the list exactly as long as its slots, and the late slots (83-93) the tokens their names
+/// say (an old duplicate segment once shifted every token after 83).
+#[test]
+fn token_slots_line_up_with_their_fields() {
+    let defs = bolt_cards::scripts::token_defs();
+    let t = bolt_cards::scripts::Tokens::starting_at(0);
+    let debug = format!("{t:?}");
+    let body = debug.trim_start_matches("Tokens {").trim_end_matches('}');
+    let mut slots: Vec<(String, usize)> = body
+        .split(',')
+        .filter(|f| !f.trim().is_empty())
+        .map(|f| {
+            let (name, n) = f.split_once(':').expect("field: slot");
+            (name.trim().to_string(), n.trim().parse().expect("slot"))
+        })
+        .collect();
+    slots.sort_by_key(|s| s.1);
+    for w in slots.windows(2) {
+        assert_ne!(w[0].1, w[1].1, "{} and {} share a slot", w[0].0, w[1].0);
+    }
+    assert_eq!(slots.len(), defs.len(), "one field per token");
+    assert_eq!(slots.last().unwrap().1 + 1, defs.len(), "no gap or extra token");
+    for (slot, name) in [
+        (t.bat, "Bat"),
+        (t.elemental_1, "Elemental"),
+        (t.bear, "Bear"),
+        (t.orc_army, "Orc Army"),
+        (t.eldrazi_scion, "Eldrazi Scion"),
+        (t.illusion_flying, "Illusion"),
+        (t.blood, "Blood"),
+        (t.hamster, "Hamster"),
+        (t.angel_4, "Angel"),
+        (t.pincher, "Pincher"),
+        (t.servo, "Servo"),
+    ] {
+        assert_eq!(defs[slot].name, name, "slot {slot}");
+    }
+    assert_eq!((t.bat, t.hamster, t.servo), (83, 90, 93));
+    assert!(defs[t.angel_4].keywords.has(bolt_core::Keywords::FLYING));
+    assert_eq!(defs[t.angel_4].colors, [true, false, false, false, false]);
+    assert!(defs[t.servo].types.artifact && defs[t.servo].types.creature);
+    assert_eq!((defs[t.pincher].power, defs[t.pincher].toughness), (2, 2));
+}
+
+#[test]
+fn artifact_you_control_and_another_creature_or_artifact_to_the_graveyard() {
+    let mut g = game_with(|defs| {
+        blood_with(vec![
+            trigger(When::ArtifactYouControlToGraveyardFromBattlefield, None, gain(1)),
+            trigger(
+                When::AnotherCreatureOrArtifactYouControlToGraveyardFromBattlefield,
+                None,
+                gain(10),
+            ),
+        ])(defs);
+        let permanent = Filter {
+            players: false,
+            planeswalkers: false,
+            any_permanent: true,
+            ..Filter::ANY
+        };
+        defs[cid("Abrupt Decay")].spell = Some(Ability::new(vec![permanent], vec![Effect::Destroy(0)]));
+    });
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Battlefield);
+    let theirs = g.add_card(1, cid("Sol Ring"), Zone::Battlefield);
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Battlefield);
+    cast_now(&mut g, 0, "Abrupt Decay", &[obj(ring)]);
+    assert_eq!(life(&g, 0), 40 + 1 + 10, "your artifact");
+    kill(&mut g, lions);
+    assert_eq!(life(&g, 0), 51 + 10, "another creature, not an artifact");
+    cast_now(&mut g, 0, "Abrupt Decay", &[obj(theirs)]);
+    assert_eq!(life(&g, 0), 61, "not yours");
+}
+
+#[test]
+fn a_delayed_trigger_at_your_next_upkeep_pays_or_loses_the_game() {
+    let mut g = game_with(|defs| {
+        let d = &mut defs[cid("Hero's Downfall")];
+        let n = d.triggers.len();
+        d.spell = Some(Ability::new(
+            vec![],
+            vec![Effect::DelayedAtYourNextUpkeep { trigger: n }],
+        ));
+        let one = bolt_core::ManaCost::parse("{1}").expect("cost");
+        d.triggers
+            .push(trigger(When::Never, None, vec![Effect::PayOrLoseGame(one)]));
+    });
+    cast_now(&mut g, 0, "Hero's Downfall", &[]);
+    assert_eq!(g.delayed_next_upkeep.len(), 1);
+    g.start_turn(4, 1);
+    to_main(&mut g); // the opponent's upkeep: nothing to pay
+    let to_decision = |g: &mut Game| {
+        g.start_turn(5, 0);
+        while !matches!(g.pending, bolt_core::Pending::Decide(_)) {
+            act(g, Action::PassPriority);
+        }
+        assert_eq!(g.step, Step::Upkeep);
+    };
+    let mut paid = g.clone();
+    to_decision(&mut paid);
+    assert_eq!(paid.legal_actions(), [Action::Yes, Action::No]);
+    act(&mut paid, Action::Yes);
+    to_main(&mut paid);
+    assert!(!paid.players[0].lost);
+    assert!(paid.delayed_next_upkeep.is_empty(), "once");
+    to_decision(&mut g);
+    act(&mut g, Action::No);
+    assert!(
+        g.players[0].lost || g.result.is_some(),
+        "didn't pay: loses the game"
+    );
+}

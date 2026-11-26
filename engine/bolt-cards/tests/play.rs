@@ -38,6 +38,7 @@ fn smart() -> Pilot {
 }
 
 #[test]
+#[ignore = "slow (plays full games, 40+ min in debug): the merger runs it with --include-ignored"]
 fn every_game_ends_with_a_result_and_a_turn_count() {
     for p in [Pilot::Baseline, smart()] {
         for j in jobs(4) {
@@ -53,6 +54,7 @@ fn every_game_ends_with_a_result_and_a_turn_count() {
 }
 
 #[test]
+#[ignore = "slow (plays full games, 40+ min in debug): the merger runs it with --include-ignored"]
 fn many_games_on_threads_match_one_at_a_time_in_order() {
     // Deterministic: no wall-clock cut (it lands on different turns under load); MAX_TURNS still ends games.
     bolt_cards::play::WALL_CLOCK_LIMIT.store(false, std::sync::atomic::Ordering::Relaxed);
@@ -65,6 +67,7 @@ fn many_games_on_threads_match_one_at_a_time_in_order() {
 }
 
 #[test]
+#[ignore = "slow (plays full games, 40+ min in debug): the merger runs it with --include-ignored"]
 fn the_same_job_plays_the_same_game() {
     let j = &jobs(1)[0];
     assert_eq!(play_game(j, &smart()), play_game(j, &smart()));

@@ -2348,6 +2348,15 @@ pub enum Effect {
     /// Return a card of your choice that the `Pick` allows from your graveyard to your hand, not
     /// targeted (Takenuma: a creature or planeswalker card), as `Decision::LookPick`.
     ReturnPickFromGraveyardToHand(Pick),
+    /// "At the beginning of your next upkeep, ...": a delayed triggered ability (CR 603.7), the
+    /// source's trigger number `trigger`, at its controller's next upkeep (Pact of Negation); see
+    /// `Game::delayed_next_upkeep`.
+    DelayedAtYourNextUpkeep {
+        trigger: usize,
+    },
+    /// "Pay {cost}. If you don't, you lose the game." (a Pact's delayed trigger), as
+    /// `Decision::PayOrLoseGame`.
+    PayOrLoseGame(crate::mana::ManaCost),
     /// Stop here unless the card discarded or sacrificed for the cost (the item's `extra`, with
     /// `Activated::victim_in_extra`) is a creature card (Moria Scavenger: "If the discarded card
     /// was a creature card, ...").
@@ -3241,6 +3250,12 @@ pub enum When {
     ClassBecomesLevel(u8),
     /// "When this creature is turned face up" (morph, manifest; Rattleclaw Mystic).
     TurnedFaceUp,
+    /// "Whenever an artifact you control is put into a graveyard from the battlefield" (Marionette
+    /// Master), its last controller's, this one included.
+    ArtifactYouControlToGraveyardFromBattlefield,
+    /// "Whenever another creature or artifact you control is put into a graveyard from the
+    /// battlefield" (Marionette Apprentice).
+    AnotherCreatureOrArtifactYouControlToGraveyardFromBattlefield,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -3260,6 +3275,10 @@ pub enum Dungeon {
     Tomb,
     /// Undercity: only by venturing into Undercity (the initiative, CR 725.2).
     Undercity,
+    /// Not a dungeon: the Ring emblem's triggered abilities (CR 701.54c), carried as
+    /// `StackKind::Room` rows of `rooms(TheRing)` so they need no stack kind of their own. Nothing
+    /// ventures into it.
+    TheRing,
 }
 
 /// The d4 subsystems' effects ([`Effect::Subsystem`]).
@@ -3302,4 +3321,10 @@ pub enum SubsystemEffect {
     OpponentLosesDifferenceFrom(i32),
     /// "Flip a coin. If you lose the flip, this [source] deals `n` damage to you." (Mana Crypt)
     FlipCoinLoseDamageYou(i32),
+    /// "The Ring tempts you" (CR 701.54a): choose your Ring-bearer, and your Ring emblem gains its
+    /// next ability.
+    RingTempts,
+    /// The Ring's third ability: the blocker in the item's `extra` is sacrificed by its controller
+    /// at end of combat, if it's still blocking.
+    RingSacrificeBlocker,
 }
