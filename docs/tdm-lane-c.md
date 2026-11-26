@@ -536,3 +536,54 @@ Aesi batch 4 (1): Deadeye Navigator (verified after the WIP commit c672eb1; it p
 (`Game::paired_partner` checks the pairing still holds), `Decision::SoulbondPair`, `Effect::{SoulbondPairOnEnter,
 SoulbondPairWith}`; the granted "{1}{U}: Exile this creature, then return it" comes after kept abilities and any
 granted fight ability in `activated_of` and the activation list. Aesi lane C: 24 of 24.
+
+## Playgroup 2026-11-25: Etali, Primal Conqueror (RuricMo), lane C (round 2)
+
+List: the Etali deck's cards in ~/bolt-handoff/playgroup_all.json card_order that set_support for CMD shows as "no"
+(57). Etali's back face refreshed first (`fetch_oracle.py --set PG --refresh`, then `make_cmd_set.py`).
+
+Etali batch 1 (9): Green Sun's Zenith, Bane of Progress, Silverback Elder, Temple of the False God, Circle of Dreams
+Druid, Tribute to the World Tree, Parallel Lives, Spire Garden, Worldspine Wurm.
+Core: `CardDef::{mana_per_creature, mana_only_with_lands, shuffle_on_resolve}`, `SearchFor::{GreenCreatureMvAtMostX,
+ColoredCreatureMvAtMost}`, `When::PutIntoGraveyardFromAnywhere` (fired from `move_to` for the card itself),
+`Effect::{DestroyArtifactsEnchantmentsCountersSelf, DrawIfPowerThreeElseTwoCounters}`. Token: Wurm 5/5 trample at
+base+59.
+
+Merged tarkir 8e8df2a (desktop lanes setup) after Etali batch 1: no conflicts.
+
+Etali batch 2 (7): Ulamog, the Infinite Gyre, Lurking Predators, Ulamog, the Defiler, Homeward Path, Purphoros,
+Conjurer's Closet, Cavern-Hoard Dragon.
+Core: `CardDef::{ward_sacrifice, enters_counters_greatest_exiled_mv}`, `Reduction::GreatestArtifactsAnOpponentControls`,
+`StackKind::WardSacrifice` (with `Decision::PayWardSacrifice`), `Decision::SacrificePermanents`,
+`Effect::{SacrificePermanents (annihilator N), AnnihilatorPerCounters, OwnerShufflesGraveyardIntoLibrary,
+RevealTopCreatureToBattlefieldElseMayBottom, CreaturesToOwners, ExileTopHalfOfLibrary, TreasuresPerOpponentArtifact}`,
+`Game::sacrifice_permanents`. Annihilator is the attack trigger "defending player sacrifices N" (one opponent).
+
+Merged origin/tarkir a48163c (queue files, bolt.jobs) as 17f7972. From here on Etali's list is its "C" entry in
+handoff/lanes/queue.json (cards listed under an earlier deck belong to that deck's lane).
+
+Etali batch 3 (7): Displaced Dinosaurs, Vorinclex, Voice of Hunger, Blightsteel Colossus, Etali, Primal Conqueror //
+Etali, Primal Sickness, Sneak Attack, Terror of the Peaks, Xenagos, the Reveler.
+Core: `CardDef::{infect (in has_infect), historic_become_dinosaurs (applied as a permanent enters), vorinclex,
+targeted_life_tax}`, `Game::land_tapped_for_mana` (Vorinclex's freeze, in both mana payment paths but not the
+two-mana Signet plan), `Decision::{SneakAttack, ExiledToBattlefield}`, `Effect::{EachExileUntilNonlandCastFree,
+PoisonAmountToOpponent, SneakAttack, AddRedOrGreenPerCreature, ExileTopPutCreaturesAndLands}`. Token: Satyr 2/2 haste
+at base+60.
+Shortcuts: Vorinclex's mana trigger doubles the land's mana (a mana ability's trigger resolves at once). Etali's
+{9}{G/P} is two abilities ({9}{G}, or {9} and 2 life). Terror of the Peaks' 3 life is paid as the spell is cast; it
+doesn't stop a player with less life from casting it. Xenagos's {R}/{G} mana is pool entries that can be either.
+
+Etali batch 4 (12): Fauna Shaman, Ghalta, Maze of Ith, Ohran Frostfang, Temur Sabertooth, The Fire Crystal,
+Cultivator Colossus, Terrain Generator, The Reaver Cleaver, Apex Devastator, Orthion, Sarkhan's Unsealing.
+Core: `CardDef::red_spell_discount`, `Activated::discard_creature_card`, `Condition::CastPowerBetween` (checked as a
+"you cast a creature spell" trigger triggers; those triggers now carry the spell as `extra`), `Game::combat_damage_by_prevented`,
+`Decision::{CreaturesFromHand, ReturnAnotherForIndestructible, LandTappedDrawRepeat, BasicFromHandTapped}`,
+`Effect::{CreaturesFromHand, PreventCombatDamageToAndBy, MayReturnAnotherThenIndestructible,
+LandFromHandTappedDrawRepeat, BasicLandFromHandTapped, CopiesHasteSacrifice, UnsealingDamage}`. "When you cast this
+spell" triggers carry the spell as `extra` (so cascade works from them); equipment's combat-damage triggers get the
+damage as their amount.
+Shortcuts: Maze of Ith targets a creature in combat (attacking or blocking). The Reaver Cleaver's trigger covers
+combat damage to a player (planeswalkers aren't attacked for it here).
+
+Merged origin/tarkir 4b9b8ed (lane B's Aesi; the play network's new action kinds) after Etali batch 4: end-of-block
+conflicts in card.rs, effect.rs, game.rs and lib.rs, tarkir's side first.

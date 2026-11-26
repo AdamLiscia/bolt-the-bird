@@ -1363,6 +1363,69 @@ pub enum Effect {
     DistributeCountersX,
     /// Draw a card for each creature you control with power at least this.
     DrawPerCreaturePowerAtLeast(i32),
+    /// Destroy all artifacts and enchantments; a +1/+1 counter on the source for each one destroyed
+    /// (Bane of Progress).
+    DestroyArtifactsEnchantmentsCountersSelf,
+    /// The creature in `slot`: draw a card if its power is 3 or greater, else two +1/+1 counters on it
+    /// (Tribute to the World Tree).
+    DrawIfPowerThreeElseTwoCounters(u8),
+    /// `who` sacrifices `n` permanents of their choice (annihilator, CR 702.86).
+    SacrificePermanents {
+        who: Who,
+        n: u8,
+    },
+    /// Annihilator X, X the +1/+1 counters on the source (Ulamog, the Defiler).
+    AnnihilatorPerCounters,
+    /// The source's owner shuffles their graveyard into their library (Ulamog, the Infinite Gyre).
+    OwnerShufflesGraveyardIntoLibrary,
+    /// Reveal the top card of your library: a creature card goes onto the battlefield; otherwise
+    /// you may put it on the bottom (Lurking Predators).
+    RevealTopCreatureToBattlefieldElseMayBottom,
+    /// Each player gains control of all creatures they own (Homeward Path).
+    CreaturesToOwners,
+    /// The player in `slot` exiles the top half of their library, rounded up (Ulamog, the Defiler).
+    ExileTopHalfOfLibrary(u8),
+    /// You create a Treasure for each artifact the opponent controls (Cavern-Hoard Dragon's combat
+    /// damage trigger; one opponent).
+    TreasuresPerOpponentArtifact {
+        def: usize,
+    },
+    /// Each player exiles cards from the top of their library until they exile a nonland card; you
+    /// may cast any number of those nonland cards without paying their mana costs (Etali).
+    EachExileUntilNonlandCastFree,
+    /// The damaged player (the opponent) gets poison counters equal to the trigger's amount.
+    PoisonAmountToOpponent,
+    /// You may put a creature card from your hand onto the battlefield; it gains haste, and you
+    /// sacrifice it at the beginning of the next end step (Sneak Attack).
+    SneakAttack,
+    /// Add X mana in any combination of {R} and/or {G}, X the creatures you control (Xenagos).
+    AddRedOrGreenPerCreature,
+    /// Exile the top `n` cards; put any number of creature and/or land cards from among them onto
+    /// the battlefield (Xenagos, the Reveler's −6).
+    ExileTopPutCreaturesAndLands(u8),
+    /// Put any number of creature cards from your hand onto the battlefield (Ghalta).
+    CreaturesFromHand,
+    /// Prevent all combat damage that would be dealt to and dealt by the creature in `slot` this
+    /// turn (Maze of Ith).
+    PreventCombatDamageToAndBy(u8),
+    /// You may return another creature you control to its owner's hand; if you do, the source gains
+    /// indestructible until end of turn (Temur Sabertooth).
+    MayReturnAnotherThenIndestructible,
+    /// You may put a land card from your hand onto the battlefield tapped; if you do, draw a card
+    /// and repeat (Cultivator Colossus).
+    LandFromHandTappedDrawRepeat,
+    /// You may put a basic land card from your hand onto the battlefield tapped (Terrain Generator).
+    BasicLandFromHandTapped,
+    /// Create `n` token copies of the creature in `slot`, with haste; sacrifice them at the
+    /// beginning of the next end step (Orthion).
+    CopiesHasteSacrifice {
+        slot: u8,
+        n: u8,
+    },
+    /// Sarkhan's Unsealing: 4 damage to the target in `slot` (a cast creature spell with power 4, 5
+    /// or 6), or with power 7 or more, 4 damage to each opponent and each creature and planeswalker
+    /// they control. The cast spell is the item's `extra`.
+    UnsealingDamage(u8),
     /// A -1/-1 counter on the creature in `slot` (kept as negative `Object::counters`, so +1/+1 and
     /// -1/-1 counters cancel out, CR 704.5q).
     MinusCounter(u8),
@@ -1409,6 +1472,10 @@ pub enum SearchFor {
     BasicLandSharingType,
     /// A card with exactly this mana value (transmute).
     ManaValue(u32),
+    /// A green creature card with mana value at most X (resolved to `ColoredCreatureMvAtMost`).
+    GreenCreatureMvAtMostX,
+    /// A creature card of this color (WUBRG index) with mana value at most this.
+    ColoredCreatureMvAtMost(u8, u32),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1671,6 +1738,9 @@ pub enum Condition {
     CastFromHand,
     /// Its controller controls at least this many lands.
     ControlLandsAtLeast(u8),
+    /// The cast creature spell (the trigger's `extra`) has power from `.0` through `.1` (checked as
+    /// it triggers).
+    CastPowerBetween(i32, i32),
 }
 
 /// A spell's effect or a triggered ability: target slots, then effects in order.
@@ -1942,6 +2012,8 @@ pub enum When {
     LandCardsMilledToYourGraveyard,
     /// "Whenever a player plays a land" (Horn of Greed): fires for every player's permanents.
     PlayerPlaysLand,
+    /// "When this is put into a graveyard from anywhere" (the source itself; Worldspine Wurm).
+    PutIntoGraveyardFromAnywhere,
     /// "Whenever an enchantment you control enters" (constellation), this one included.
     EnchantmentYouControlEnters,
 }

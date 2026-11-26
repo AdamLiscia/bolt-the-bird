@@ -161,6 +161,8 @@ pub enum Reduction {
     Delirium(u8),
     /// ... {X} less, X the greatest power among creatures you control (The Great Henge).
     GreatestPowerAmongYourCreatures,
+    /// ... {X} less, X the greatest number of artifacts an opponent controls (Cavern-Hoard Dragon).
+    GreatestArtifactsAnOpponentControls,
 }
 
 /// An activated ability: "[cost]: [effect]" (CR 602).
@@ -248,6 +250,9 @@ pub struct Activated {
     pub needs_delirium: bool,
     /// "Activate only if an opponent controls N or more lands." (Tectonic Edge)
     pub opponent_min_lands: u8,
+    /// "Discard a creature card" in the cost: activated with `Action::ActivateWith`, that card the
+    /// victim (Fauna Shaman).
+    pub discard_creature_card: bool,
     /// "Put a -1/-1 counter on this creature" in the cost (Devoted Druid).
     pub minus_counter_cost: bool,
     /// "Discard a card" in the cost: activated as `ActivateWith` naming the card (Yawgmoth).
@@ -664,6 +669,31 @@ pub struct CardDef {
     pub buyback_sacrifice: Option<(&'static str, u8)>,
     /// X is the amount of {S} spent to cast it (Blessing of Frost): stored as the stack entry's X.
     pub x_is_snow_spent: bool,
+    /// "{T}: Add {G} for each creature you control." (Circle of Dreams Druid)
+    pub mana_per_creature: bool,
+    /// Its mana ability works only while you control at least this many lands (Temple of the False
+    /// God: 5); 0: always.
+    pub mana_only_with_lands: u8,
+    /// "Shuffle this card into its owner's library" as it resolves (Green Sun's Zenith).
+    pub shuffle_on_resolve: bool,
+    /// "Ward—Sacrifice N permanents." (Ulamog, the Defiler: 2); 0: none.
+    pub ward_sacrifice: u8,
+    /// "Enters with a number of +1/+1 counters on it equal to the greatest mana value among cards
+    /// in exile." (Ulamog, the Defiler)
+    pub enters_counters_greatest_exiled_mv: bool,
+    /// Infect (CR 702.90), printed (Blightsteel Colossus).
+    pub infect: bool,
+    /// "As a historic permanent you control enters, it becomes a 7/7 Dinosaur creature in addition
+    /// to its other types." (Displaced Dinosaurs)
+    pub historic_become_dinosaurs: bool,
+    /// Vorinclex, Voice of Hunger: your lands make twice the mana, and an opponent's land tapped for
+    /// mana doesn't untap during its controller's next untap step.
+    pub vorinclex: bool,
+    /// "Spells your opponents cast that target this creature cost an additional N life to cast."
+    /// (Terror of the Peaks: 3)
+    pub targeted_life_tax: i32,
+    /// "Red spells you cast cost {N} less to cast." (The Fire Crystal)
+    pub red_spell_discount: u8,
     /// Its mana ability makes one mana for each enchantment you control (Serra's Sanctum, Sanctum
     /// Weaver), instead of one.
     pub mana_per_enchantment: bool,
@@ -900,6 +930,16 @@ impl CardDef {
             forests_add_g: false,
             buyback_sacrifice: None,
             x_is_snow_spent: false,
+            mana_per_creature: false,
+            mana_only_with_lands: 0,
+            shuffle_on_resolve: false,
+            ward_sacrifice: 0,
+            enters_counters_greatest_exiled_mv: false,
+            infect: false,
+            historic_become_dinosaurs: false,
+            vorinclex: false,
+            targeted_life_tax: 0,
+            red_spell_discount: 0,
             mana_per_enchantment: false,
             opponents_cant_activate_your_turn: false,
             protection_from_subtype: None,
@@ -1096,6 +1136,16 @@ impl CardDef {
             forests_add_g: false,
             buyback_sacrifice: None,
             x_is_snow_spent: false,
+            mana_per_creature: false,
+            mana_only_with_lands: 0,
+            shuffle_on_resolve: false,
+            ward_sacrifice: 0,
+            enters_counters_greatest_exiled_mv: false,
+            infect: false,
+            historic_become_dinosaurs: false,
+            vorinclex: false,
+            targeted_life_tax: 0,
+            red_spell_discount: 0,
             mana_per_enchantment: false,
             opponents_cant_activate_your_turn: false,
             protection_from_subtype: None,
@@ -1292,6 +1342,16 @@ impl CardDef {
             forests_add_g: false,
             buyback_sacrifice: None,
             x_is_snow_spent: false,
+            mana_per_creature: false,
+            mana_only_with_lands: 0,
+            shuffle_on_resolve: false,
+            ward_sacrifice: 0,
+            enters_counters_greatest_exiled_mv: false,
+            infect: false,
+            historic_become_dinosaurs: false,
+            vorinclex: false,
+            targeted_life_tax: 0,
+            red_spell_discount: 0,
             mana_per_enchantment: false,
             opponents_cant_activate_your_turn: false,
             protection_from_subtype: None,

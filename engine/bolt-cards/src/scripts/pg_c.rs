@@ -748,6 +748,303 @@ pub fn script(name: &str) -> Option<Script> {
                 may(d, When::AnotherCreatureYouControlEnters, vec![it], vec![Effect::SoulbondPairWith(0)]);
             },
         ),
+        // ---- Etali, Primal Conqueror (RuricMo) ----
+        "Green Sun's Zenith" => s(
+            &["Search your library for a green creature card with mana value X or less, put it onto the battlefield, then shuffle. Shuffle Green Sun's Zenith into its owner's library."],
+            |d, _| {
+                spell(d, vec![], vec![search(SearchFor::GreenCreatureMvAtMostX, SearchTo::Battlefield { tapped: false })]);
+                d.shuffle_on_resolve = true;
+            },
+        ),
+        "Bane of Progress" => s(
+            &["When this creature enters, destroy all artifacts and enchantments. Put a +1/+1 counter on this creature for each permanent destroyed this way."],
+            |d, _| on(d, When::Enters, vec![], vec![Effect::DestroyArtifactsEnchantmentsCountersSelf]),
+        ),
+        "Silverback Elder" => s(
+            &[
+                "Whenever you cast a creature spell, choose one —",
+                "• Destroy target artifact or enchantment.",
+                "• Look at the top five cards of your library. You may put a land card from among them onto the battlefield tapped. Put the rest on the bottom of your library in a random order.",
+                "• You gain 4 life.",
+            ],
+            |d, _| {
+                let look = Effect::LookAtTop { n: 5, pick: Pick::Land, chosen_to: LookTo::BattlefieldTapped, rest_to: LookRest::BottomRandom };
+                on_modal(
+                    d,
+                    When::YouCastCreature,
+                    None,
+                    vec![
+                        Ability::new(vec![ARTIFACT_OR_ENCHANTMENT], vec![Effect::Destroy(0)]),
+                        Ability::new(vec![], vec![look]),
+                        Ability::new(vec![], vec![Effect::GainLife { who: Who::You, n: 4 }]),
+                    ],
+                );
+            },
+        ),
+        "Temple of the False God" => s(&["{T}: Add {C}{C}. Activate only if you control five or more lands."], |d, _| {
+            d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+            d.mana_amount = 2;
+            d.mana_only_with_lands = 5;
+        }),
+        "Circle of Dreams Druid" => s(&["{T}: Add {G} for each creature you control."], |d, _| {
+            d.mana = Some(ManaSource::of(&[Color::Green]));
+            d.mana_per_creature = true;
+        }),
+        "Tribute to the World Tree" => s(
+            &["Whenever a creature you control enters, draw a card if its power is 3 or greater. Otherwise, put two +1/+1 counters on it."],
+            |d, _| {
+                let it = Filter { triggering: true, ..CREATURE };
+                on(d, When::AnotherCreatureYouControlEnters, vec![it], vec![Effect::DrawIfPowerThreeElseTwoCounters(0)]);
+            },
+        ),
+        "Parallel Lives" => s(
+            &["If an effect would create one or more tokens under your control, it creates twice that many of those tokens instead."],
+            |d, _| d.doubles_tokens = true,
+        ),
+        "Spire Garden" => s(&["This land enters tapped unless you have two or more opponents.", "{T}: Add {R} or {G}."], |d, _| {
+            d.enters_tapped = true; // a two-player game: one opponent
+            dual(d, Color::Red, Color::Green);
+        }),
+        "Worldspine Wurm" => s(
+            &[
+                "When this creature dies, create three 5/5 green Wurm creature tokens with trample.",
+                "When Worldspine Wurm is put into a graveyard from anywhere, shuffle it into its owner's library.",
+            ],
+            |d, t| {
+                on(d, When::Dies, vec![], vec![Effect::CreateToken { who: Who::You, def: t.wurm_5, n: 3 }]);
+                on(d, When::PutIntoGraveyardFromAnywhere, vec![], vec![Effect::ShuffleSourceFromGraveyardIntoLibrary]);
+            },
+        ),
+        "Ulamog, the Infinite Gyre" => s(
+            &[
+                "When you cast this spell, destroy target permanent.",
+                "Annihilator 4",
+                "When Ulamog is put into a graveyard from anywhere, its owner shuffles their graveyard into their library.",
+            ],
+            |d, _| {
+                let any = Filter { players: false, creatures: false, planeswalkers: false, any_permanent: true, ..Filter::ANY };
+                on(d, When::CastThisSpell, vec![any], vec![Effect::Destroy(0)]);
+                on(d, When::Attacks, vec![], vec![Effect::SacrificePermanents { who: Who::EachOpponent, n: 4 }]);
+                on(d, When::PutIntoGraveyardFromAnywhere, vec![], vec![Effect::OwnerShufflesGraveyardIntoLibrary]);
+            },
+        ),
+        "Lurking Predators" => s(
+            &["Whenever an opponent casts a spell, reveal the top card of your library. If it's a creature card, put it onto the battlefield. Otherwise, you may put that card on the bottom of your library."],
+            |d, _| on(d, When::OpponentCasts, vec![], vec![Effect::RevealTopCreatureToBattlefieldElseMayBottom]),
+        ),
+        "Ulamog, the Defiler" => s(
+            &[
+                "When you cast this spell, target opponent exiles the top half of their library, rounded up.",
+                "Ward—Sacrifice two permanents.",
+                "Ulamog enters with a number of +1/+1 counters on it equal to the greatest mana value among cards in exile.",
+                "Ulamog has annihilator X, where X is the number of +1/+1 counters on it.",
+            ],
+            |d, _| {
+                let opp = Filter::PLAYER.controlled_by(Controller::Opponent);
+                on(d, When::CastThisSpell, vec![opp], vec![Effect::ExileTopHalfOfLibrary(0)]);
+                d.ward_sacrifice = 2;
+                d.enters_counters_greatest_exiled_mv = true;
+                on(d, When::Attacks, vec![], vec![Effect::AnnihilatorPerCounters]);
+            },
+        ),
+        "Homeward Path" => s(&["{T}: Add {C}.", "{T}: Each player gains control of all creatures they own."], |d, _| {
+            d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+            activated(d, "", true, vec![], vec![Effect::CreaturesToOwners]);
+        }),
+        "Purphoros, God of the Forge" => s(
+            &[
+                "As long as your devotion to red is less than five, Purphoros isn't a creature.",
+                "Whenever another creature you control enters, Purphoros deals 2 damage to each opponent.",
+                "{2}{R}: Creatures you control get +1/+0 until end of turn.",
+            ],
+            |d, _| {
+                d.creature_unless_devotion = Some(([false, false, false, true, false], 5));
+                on(d, When::AnotherCreatureYouControlEnters, vec![], vec![damage(2, Recipient::EachOpponent)]);
+                activated(d, "{2}{R}", false, vec![], vec![Effect::PumpAll { who: Who::You, power: 1, toughness: 0 }]);
+            },
+        ),
+        "Conjurer's Closet" => s(
+            &["At the beginning of your end step, you may exile target creature you control, then return that card to the battlefield under your control."],
+            |d, _| may(d, When::EndStep { your_turn_only: true }, vec![YOUR_CREATURE], vec![Effect::BlinkSlot(0)]),
+        ),
+        "Cavern-Hoard Dragon" => s(
+            &[
+                "This spell costs {X} less to cast, where X is the greatest number of artifacts an opponent controls.",
+                "Whenever this creature deals combat damage to a player, you create a Treasure token for each artifact that player controls.",
+            ],
+            |d, t| {
+                d.reduction = Some(Reduction::GreatestArtifactsAnOpponentControls);
+                on(d, When::DealsCombatDamageToPlayer, vec![], vec![Effect::TreasuresPerOpponentArtifact { def: t.treasure }]);
+            },
+        ),
+        "Displaced Dinosaurs" => s(
+            &["As a historic permanent you control enters, it becomes a 7/7 Dinosaur creature in addition to its other types."],
+            |d, _| d.historic_become_dinosaurs = true,
+        ),
+        "Vorinclex, Voice of Hunger" => s(
+            &[
+                "Whenever you tap a land for mana, add one mana of any type that land produced.",
+                "Whenever an opponent taps a land for mana, that land doesn't untap during its controller's next untap step.",
+            ],
+            // Mana abilities' triggers resolve at once (CR 605.4a): the land's mana is simply doubled.
+            |d, _| d.vorinclex = true,
+        ),
+        "Blightsteel Colossus" => s(
+            &[
+                "Trample, infect, indestructible",
+                "If Blightsteel Colossus would be put into a graveyard from anywhere, reveal Blightsteel Colossus and shuffle it into its owner's library instead.",
+            ],
+            |d, _| {
+                d.keywords = d.keywords.with(Keywords::TRAMPLE).with(Keywords::INDESTRUCTIBLE);
+                d.infect = true;
+                d.shuffle_instead_of_graveyard = true;
+            },
+        ),
+        "Etali, Primal Conqueror // Etali, Primal Sickness" => s(
+            &[
+                "When Etali enters, each player exiles cards from the top of their library until they exile a nonland card. You may cast any number of spells from among the nonland cards exiled this way without paying their mana costs.",
+                "{9}{G/P}: Transform Etali. Activate only as a sorcery.",
+                "Back: Whenever Etali deals combat damage to a player, they get that many poison counters.",
+            ],
+            |d, _| {
+                on(d, When::Enters, vec![], vec![Effect::EachExileUntilNonlandCastFree]);
+                // {G/P}: {G}, or 2 life instead (one ability for each way to pay).
+                for (cost, life) in [("{9}{G}", 0), ("{9}", 2)] {
+                    let n = activated(d, cost, false, vec![], vec![Effect::TransformSelf]);
+                    d.activated[n].sorcery = true;
+                    d.activated[n].life = life;
+                }
+                let b = d.back.as_mut().expect("Etali, Primal Sickness");
+                on(b, When::DealsCombatDamageToPlayer, vec![], vec![Effect::PoisonAmountToOpponent]);
+            },
+        ),
+        "Sneak Attack" => s(
+            &["{R}: You may put a creature card from your hand onto the battlefield. That creature gains haste. Sacrifice the creature at the beginning of the next end step."],
+            |d, _| {
+                activated(d, "{R}", false, vec![], vec![Effect::SneakAttack]);
+            },
+        ),
+        "Terror of the Peaks" => s(
+            &[
+                "Spells your opponents cast that target this creature cost an additional 3 life to cast.",
+                "Whenever another creature you control enters, this creature deals damage equal to that creature's power to any target.",
+            ],
+            |d, _| {
+                d.targeted_life_tax = 3;
+                let it = Filter { triggering: true, ..CREATURE };
+                on(d, When::AnotherCreatureYouControlEnters, vec![it, Filter::ANY], vec![Effect::DamageEqualSlotPower { from: 0, to: 1 }]);
+            },
+        ),
+        "Xenagos, the Reveler" => s(
+            &[
+                "+1: Add X mana in any combination of {R} and/or {G}, where X is the number of creatures you control.",
+                "0: Create a 2/2 red and green Satyr creature token with haste.",
+                "−6: Exile the top seven cards of your library. You may put any number of creature and/or land cards from among them onto the battlefield.",
+            ],
+            |d, t| {
+                loyalty(d, 1, Ability::new(vec![], vec![Effect::AddRedOrGreenPerCreature]));
+                loyalty(d, 0, Ability::new(vec![], vec![Effect::CreateToken { who: Who::You, def: t.satyr, n: 1 }]));
+                loyalty(d, -6, Ability::new(vec![], vec![Effect::ExileTopPutCreaturesAndLands(7)]));
+            },
+        ),
+        "Fauna Shaman" => s(
+            &["{G}, {T}, Discard a creature card: Search your library for a creature card, reveal it, put it into your hand, then shuffle."],
+            |d, _| {
+                let n = activated(d, "{G}", true, vec![], vec![search(SearchFor::CreatureMvAtLeast(0), SearchTo::Hand)]);
+                d.activated[n].discard_creature_card = true;
+            },
+        ),
+        "Ghalta, Stampede Tyrant" => s(
+            &["When Ghalta enters, put any number of creature cards from your hand onto the battlefield."],
+            |d, _| on(d, When::Enters, vec![], vec![Effect::CreaturesFromHand]),
+        ),
+        "Maze of Ith" => s(
+            &["{T}: Untap target attacking creature. Prevent all combat damage that would be dealt to and dealt by that creature this turn."],
+            |d, _| {
+                let attacking = Filter { in_combat: true, controller: Controller::Any, ..CREATURE };
+                activated(d, "", true, vec![attacking], vec![Effect::UntapTarget(0), Effect::PreventCombatDamageToAndBy(0)]);
+            },
+        ),
+        "Ohran Frostfang" => s(
+            &["Attacking creatures you control have deathtouch.", "Whenever a creature you control deals combat damage to a player, draw a card."],
+            |d, _| {
+                static_on(d, Scope::YourAttackingCreatures, false, Keywords::DEATHTOUCH);
+                on(d, When::YourCreatureDealsCombatDamageToPlayerAmount, vec![], vec![draw(1)]);
+            },
+        ),
+        "Temur Sabertooth" => s(
+            &["{1}{G}: You may return another creature you control to its owner's hand. If you do, this creature gains indestructible until end of turn."],
+            |d, _| {
+                activated(d, "{1}{G}", false, vec![], vec![Effect::MayReturnAnotherThenIndestructible]);
+            },
+        ),
+        "The Fire Crystal" => s(
+            &[
+                "Red spells you cast cost {1} less to cast.",
+                "Creatures you control have haste.",
+                "{4}{R}{R}, {T}: Create a token that's a copy of target creature you control. Sacrifice it at the beginning of the next end step.",
+            ],
+            |d, _| {
+                d.red_spell_discount = 1;
+                static_on(d, Scope::YourCreatures, false, Keywords::HASTE);
+                let copy = Effect::CopyToken { slot: Some(0), haste_and_sacrifice: true, extra_subtype: None };
+                activated(d, "{4}{R}{R}", true, vec![YOUR_CREATURE], vec![copy]);
+            },
+        ),
+        "Cultivator Colossus" => s(
+            &[
+                "Cultivator Colossus's power and toughness are each equal to the number of lands you control.",
+                "When this creature enters, you may put a land card from your hand onto the battlefield tapped. If you do, draw a card and repeat this process.",
+            ],
+            |d, _| {
+                d.pt_lands = true;
+                on(d, When::Enters, vec![], vec![Effect::LandFromHandTappedDrawRepeat]);
+            },
+        ),
+        "Terrain Generator" => s(&["{T}: Add {C}.", "{2}, {T}: You may put a basic land card from your hand onto the battlefield tapped."], |d, _| {
+            d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+            activated(d, "{2}", true, vec![], vec![Effect::BasicLandFromHandTapped]);
+        }),
+        "The Reaver Cleaver" => s(
+            &[
+                "Equipped creature gets +1/+1 and has trample and \"Whenever this creature deals combat damage to a player or planeswalker, create that many Treasure tokens.\"",
+                "Equip {3}",
+            ],
+            |d, t| {
+                attached(d, false, 1, 1, Keywords::TRAMPLE);
+                // Its combat damage to a player (planeswalkers: not tracked as a trigger here).
+                on(d, When::EquippedDealsCombatDamageToPlayer, vec![], vec![Effect::CreateTokensAmount { def: t.treasure }]);
+                equip(d, "{3}");
+            },
+        ),
+        "Apex Devastator" => s(&["Cascade, cascade, cascade, cascade"], |d, _| {
+            for _ in 0..4 {
+                on(d, When::CastThisSpell, vec![], vec![Effect::Cascade]);
+            }
+        }),
+        "Orthion, Hero of Lavabrink" => s(
+            &[
+                "{1}{R}, {T}: Create a token that's a copy of another target creature you control. It gains haste. Sacrifice it at the beginning of the next end step. Activate only as a sorcery.",
+                "{6}{R}{R}{R}, {T}: Create five tokens that are copies of another target creature you control. They gain haste. Sacrifice them at the beginning of the next end step. Activate only as a sorcery.",
+            ],
+            |d, _| {
+                let other = Filter { other: true, ..YOUR_CREATURE };
+                for (cost, n) in [("{1}{R}", 1), ("{6}{R}{R}{R}", 5)] {
+                    let i = activated(d, cost, true, vec![other], vec![Effect::CopiesHasteSacrifice { slot: 0, n }]);
+                    d.activated[i].sorcery = true;
+                }
+            },
+        ),
+        "Sarkhan's Unsealing" => s(
+            &[
+                "Whenever you cast a creature spell with power 4, 5, or 6, this enchantment deals 4 damage to any target.",
+                "Whenever you cast a creature spell with power 7 or greater, this enchantment deals 4 damage to each opponent and each creature and planeswalker they control.",
+            ],
+            |d, _| {
+                conditional(d, When::YouCastCreature, Condition::CastPowerBetween(4, 6), vec![Filter::ANY], vec![Effect::UnsealingDamage(0)]);
+                conditional(d, When::YouCastCreature, Condition::CastPowerBetween(7, i32::MAX), vec![], vec![Effect::UnsealingDamage(0)]);
+            },
+        ),
         _ => None,
     }
 }
@@ -844,4 +1141,39 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Khalni Ambush // Khalni Territory",
     "Nissa, Vastwood Seer // Nissa, Sage Animist",
     "Deadeye Navigator",
+    "Green Sun's Zenith",
+    "Bane of Progress",
+    "Silverback Elder",
+    "Temple of the False God",
+    "Circle of Dreams Druid",
+    "Tribute to the World Tree",
+    "Parallel Lives",
+    "Spire Garden",
+    "Worldspine Wurm",
+    "Ulamog, the Infinite Gyre",
+    "Lurking Predators",
+    "Ulamog, the Defiler",
+    "Homeward Path",
+    "Purphoros, God of the Forge",
+    "Conjurer's Closet",
+    "Cavern-Hoard Dragon",
+    "Displaced Dinosaurs",
+    "Vorinclex, Voice of Hunger",
+    "Blightsteel Colossus",
+    "Etali, Primal Conqueror // Etali, Primal Sickness",
+    "Sneak Attack",
+    "Terror of the Peaks",
+    "Xenagos, the Reveler",
+    "Fauna Shaman",
+    "Ghalta, Stampede Tyrant",
+    "Maze of Ith",
+    "Ohran Frostfang",
+    "Temur Sabertooth",
+    "The Fire Crystal",
+    "Cultivator Colossus",
+    "Terrain Generator",
+    "The Reaver Cleaver",
+    "Apex Devastator",
+    "Orthion, Hero of Lavabrink",
+    "Sarkhan's Unsealing",
 ];
