@@ -2239,3 +2239,123 @@ fn black_market_connections_chooses_one_or_more_each_first_main_phase() {
     assert!(g.has_subtype(shifter[0], "Elf") && g.has_subtype(shifter[0], "Dragon"));
     assert_eq!(hand_size(&g, 0), before + 2, "the draw step and Buy Information");
 }
+
+// ---- Tatyova, Benthic Druid (Grande), lane B ----
+
+#[test]
+fn tatyova_land_ramp() {
+    let mut g = table();
+    let f1 = top(&mut g, 0, "Forest");
+    let f2 = top(&mut g, 0, "Island");
+    let path = hand(&mut g, 0, "Migration Path");
+    play(&mut g, path, false, &[], &[Action::Pick(f1), Action::Pick(f2)]);
+    assert!(g.obj(f1).tapped && g.obj(f2).zone == Zone::Battlefield);
+    // Cycling from hand.
+    let path2 = hand(&mut g, 0, "Migration Path");
+    assert!(has(&g, Action::Activate(path2, 0)));
+    // Sakura-Tribe Scout: an untapped land from hand.
+    let scout = put(&mut g, 0, "Sakura-Tribe Scout");
+    let land = hand(&mut g, 0, "Forest");
+    act(&mut g, Action::Activate(scout, 0));
+    resolve_all(&mut g, &[Action::Pick(land)]);
+    assert!(g.obj(land).zone == Zone::Battlefield && !g.obj(land).tapped);
+    // Splendid Reclamation.
+    let a = g.add_card(0, cid("Forest"), Zone::Graveyard);
+    let rec = hand(&mut g, 0, "Splendid Reclamation");
+    play(&mut g, rec, false, &[], &[]);
+    assert!(g.obj(a).zone == Zone::Battlefield && g.obj(a).tapped);
+}
+
+#[test]
+fn joint_exploration_and_khalni_heart_expedition() {
+    let mut g = table();
+    let land = hand(&mut g, 0, "Forest");
+    let je = hand(&mut g, 0, "Joint Exploration");
+    act(&mut g, Action::CastKicked(je));
+    resolve_all(&mut g, &[Action::No, Action::No, Action::Pick(land)]);
+    assert!(g.obj(land).zone == Zone::Battlefield && !g.obj(land).tapped);
+    let mut g = table();
+    let khalni = put(&mut g, 0, "Khalni Heart Expedition");
+    g.objects[khalni.0 as usize].kind_counters = 2;
+    let f = hand(&mut g, 0, "Forest");
+    act(&mut g, Action::PlayLand(f));
+    resolve_all(&mut g, &[Action::Yes]);
+    assert_eq!(g.obj(khalni).kind_counters, 3);
+    let b1 = top(&mut g, 0, "Forest");
+    let b2 = top(&mut g, 0, "Forest");
+    act(&mut g, Action::Activate(khalni, 0));
+    resolve_all(&mut g, &[Action::Pick(b2), Action::Pick(b1)]);
+    assert_eq!(g.obj(khalni).zone, Zone::Graveyard);
+    assert!(g.obj(b1).tapped);
+}
+
+#[test]
+fn noxious_revival_on_the_trail_and_rude_awakening() {
+    let mut g = table();
+    let dead = g.add_card(1, cid("Savannah Lions"), Zone::Graveyard);
+    let rev = hand(&mut g, 0, "Noxious Revival");
+    assert!(has(&g, Action::CastAlternative(rev)), "2 life for {G/P}");
+    play(&mut g, rev, false, &[Target::Object(dead)], &[]);
+    assert_eq!(g.players[1].library.last(), Some(&dead));
+    let mut g = table();
+    put(&mut g, 0, "On the Trail");
+    let land = hand(&mut g, 0, "Forest");
+    let search = hand(&mut g, 0, "Frantic Search");
+    let n = hand_size(&g, 0);
+    act(&mut g, Action::Cast(search));
+    pass_until_asked(&mut g); // On the Trail's land, after the second draw
+    act(&mut g, Action::Pick(land));
+    let _ = n;
+    for _ in 0..4 {
+        if !matches!(g.pending, Pending::Decide(_)) {
+            break;
+        }
+        let a = *g.legal_actions().first().unwrap();
+        act(&mut g, a);
+    }
+    resolve_all(&mut g, &[]);
+    assert!(g.obj(land).zone == Zone::Battlefield && g.obj(land).tapped);
+    let mut g = table();
+    let rude = hand(&mut g, 0, "Rude Awakening");
+    act(&mut g, Action::CastModal(rude, 2)); // entwined
+    resolve_all(&mut g, &[]);
+    let l = g.permanents(0).find(|&x| g.types_of(x).land).unwrap();
+    assert!(g.types_of(l).creature && !g.obj(l).tapped);
+    assert_eq!(g.power(l), 2);
+}
+
+#[test]
+fn squall_line_stroke_of_genius_wipe_away_and_lab_maniac() {
+    let mut g = table();
+    let flier = put(&mut g, 1, "Birds of Paradise");
+    let ground = put(&mut g, 1, "Savannah Lions");
+    let squall = hand(&mut g, 0, "Squall Line");
+    act(&mut g, Action::CastX(squall, 1));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(flier).zone, Zone::Graveyard);
+    assert_eq!(g.obj(ground).zone, Zone::Battlefield);
+    assert_eq!((g.players[0].life, g.players[1].life), (39, 39));
+    let stroke = hand(&mut g, 0, "Stroke of Genius");
+    let n = hand_size(&g, 1);
+    act(&mut g, Action::CastX(stroke, 2));
+    act(&mut g, Action::Target(Target::Player(1)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(hand_size(&g, 1), n + 2);
+    let wipe = hand(&mut g, 0, "Wipe Away");
+    play(&mut g, wipe, false, &[Target::Object(ground)], &[]);
+    assert_eq!(g.obj(ground).zone, Zone::Hand);
+    // Laboratory Maniac with an empty library.
+    let mut g = table();
+    put(&mut g, 0, "Laboratory Maniac");
+    g.players[0].library.clear();
+    let search = hand(&mut g, 0, "Frantic Search");
+    act(&mut g, Action::Cast(search));
+    for _ in 0..5 {
+        if g.is_over() {
+            break;
+        }
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(g.is_over());
+    assert_eq!(g.players[1].lost, true);
+}

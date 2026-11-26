@@ -138,7 +138,7 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         verb = {"SacrificeCreatures": "Sacrifice", "SacrificeAnother": "Sacrifice", "Search": "Take",
                 "LookPick": "Take", "KeepOfType": "Keep", "ScryOrder": "Put on top:", "GenesisPick": "Put onto the battlefield:", "PutPicksOntoBattlefield": "Put onto the battlefield:", "LandFromHandTapped": "Put onto the battlefield tapped:",
                 "DistributeCounters": "Put a +1/+1 counter on", "ManifestDread": "Manifest", "TurnFaceUp": "Turn face up:",
-                "PickVoidCard": "Play free this turn:",
+                "PickVoidCard": "Play free this turn:", "ReturnOwnCreatureOfColor": "Return to its owner's hand:", "LandFromHand": "Put onto the battlefield:",
                 "PickDiscard": "Make them discard", "EnterAsCopy": f"{card or 'It'} enters as a copy of"}.get(d)  # fmt: skip
         return f"{verb} {card_name}" if verb else None
     yes = kind == "Yes"

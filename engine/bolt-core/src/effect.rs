@@ -200,6 +200,8 @@ pub enum Recipient {
     EachCreatureAndPlaneswalker,
     /// The ability's controller ("deals 1 damage to you": City of Brass).
     You,
+    /// Each creature with flying and each player (Squall Line).
+    FliersAndEachPlayer,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1610,6 +1612,20 @@ pub enum Effect {
     /// Choose an exiled card an opponent owns with a void counter on it; you may play it this turn
     /// without paying its mana cost (Dauthi Voidwalker).
     PlayVoidCardFree,
+    /// Draw cards until you have `n` in hand (Damia: "draw cards equal to the difference").
+    DrawUpToHandSize(u8),
+    /// Take an extra turn after this one; skip the untap step of that turn (Savor the Moment).
+    ExtraTurnSkipUntap,
+    /// Return a creature of this color (WUBRG index) you control to its owner's hand (Trusted
+    /// Advisor).
+    ReturnCreatureOfColorYouControl(u8),
+    /// "You may put a land card from your hand onto the battlefield." (untapped: Sakura-Tribe Scout)
+    MayPutLandFromHand,
+    /// Until end of turn, lands you control become `power`/`toughness` creatures that are still lands
+    /// (Rude Awakening).
+    LandsBecomeCreaturesEot { power: i32, toughness: i32 },
+    /// The player in `slot` draws X cards (X the spell's X) (Stroke of Genius).
+    DrawXTarget(u8),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

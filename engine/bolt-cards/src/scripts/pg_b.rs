@@ -1127,6 +1127,129 @@ pub fn script(name: &str) -> Option<Script> {
                 activated(d, "{1}", true, vec![CREATURE], vec![Effect::UntapTarget(0)]);
             },
         ),
+        // ---- Merger-delegated: draw step, untap step, cast legality, hand size ----
+        "Damia, Sage of Stone" => s(
+            &[
+                "Skip your draw step.",
+                "At the beginning of your upkeep, if you have fewer than seven cards in hand, draw cards equal to the difference.",
+            ],
+            |d, _| {
+                d.skip_draw_step = true;
+                on(d, When::Upkeep { your_turn_only: true }, vec![], vec![Effect::DrawUpToHandSize(7)]);
+            },
+        ),
+        "Drumbellower" => s(&["Untap all creatures you control during each other player's untap step."], |d, _| {
+            d.creatures_untap_on_others_untap = true;
+        }),
+        "Savor the Moment" => s(&["Take an extra turn after this one. Skip the untap step of that turn."], |d, _| {
+            spell(d, vec![], vec![Effect::ExtraTurnSkipUntap]);
+        }),
+        "Gaddock Teeg" => s(
+            &[
+                "Noncreature spells with mana value 4 or greater can't be cast.",
+                "Noncreature spells with {X} in their mana costs can't be cast.",
+            ],
+            |d, _| d.teeg_lock = true,
+        ),
+        "Trusted Advisor" => s(
+            &[
+                "Your maximum hand size is increased by two.",
+                "At the beginning of your upkeep, return a blue creature you control to its owner's hand.",
+            ],
+            |d, _| {
+                d.max_hand_plus = 2;
+                on(d, When::Upkeep { your_turn_only: true }, vec![], vec![Effect::ReturnCreatureOfColorYouControl(1)]);
+            },
+        ),
+        "Jin-Gitaxias, Core Augur" => s(
+            &["At the beginning of your end step, draw seven cards.", "Each opponent's maximum hand size is reduced by seven."],
+            |d, _| {
+                on(d, When::EndStep { your_turn_only: true }, vec![], vec![draw(7)]);
+                d.opponents_max_hand_minus = 7;
+            },
+        ),
+        // ---- Tatyova, Benthic Druid (Grande), lane B ----
+        "Migration Path" => s(
+            &["Search your library for up to two basic land cards, put them onto the battlefield tapped, then shuffle.", "Cycling {2}"],
+            |d, _| {
+                let two = Effect::Search { what: SearchFor::BasicLand, to: SearchTo::Battlefield { tapped: true }, n: 2, kicked_n: None };
+                spell(d, vec![], vec![two]);
+                let n = activated(d, "{2}", false, vec![], vec![draw(1)]);
+                d.activated[n].from_hand_discard = true;
+            },
+        ),
+        "Joint Exploration" => s(
+            &["Kicker {G}", "Scry 2, then draw a card. If this spell was kicked, you may put a land card from your hand onto the battlefield."],
+            |d, _| {
+                d.kicker = ManaCost::parse("{G}");
+                spell(d, vec![], vec![Effect::Scry { n: 2 }, draw(1)]);
+                d.kicked_spell = Some(Ability::new(vec![], vec![Effect::Scry { n: 2 }, draw(1), Effect::MayPutLandFromHand]));
+            },
+        ),
+        "Khalni Heart Expedition" => s(
+            &[
+                "Landfall — Whenever a land you control enters, you may put a quest counter on this enchantment.",
+                "Remove three quest counters from this enchantment and sacrifice it: Search your library for up to two basic land cards, put them onto the battlefield tapped, then shuffle.",
+            ],
+            |d, _| {
+                // Quest counters are this card's own kind of counter (`Object::kind_counters`).
+                may(d, When::LandYouControlEnters, vec![], vec![Effect::KindCounterSelf(1)]);
+                let two = Effect::Search { what: SearchFor::BasicLand, to: SearchTo::Battlefield { tapped: true }, n: 2, kicked_n: None };
+                let n = activated(d, "", false, vec![], vec![two]);
+                d.activated[n].remove_kind_counters = 3;
+                d.activated[n].sacrifice_self = true;
+            },
+        ),
+        "Noxious Revival" => s(&["Put target card from a graveyard on top of its owner's library."], |d, _| {
+            spell(d, vec![graveyard_cards(false, Controller::Any)], vec![Effect::ToLibrary(0, true)]);
+        }),
+        "On the Trail" => s(
+            &["Whenever you draw your second card each turn, you may put a land card from your hand onto the battlefield tapped."],
+            |d, _| on(d, When::YouDrawSecond, vec![], vec![Effect::MayPutLandFromHandTapped]),
+        ),
+        "Rude Awakening" => s(
+            &[
+                "Choose one —",
+                "• Untap all lands you control.",
+                "• Until end of turn, lands you control become 2/2 creatures that are still lands.",
+                "Entwine {2}{G}",
+            ],
+            |d, _| {
+                let animate = Effect::LandsBecomeCreaturesEot { power: 2, toughness: 2 };
+                modes(
+                    d,
+                    vec![
+                        Ability::new(vec![], vec![Effect::UntapLandsYouControl]),
+                        Ability::new(vec![], vec![animate]),
+                        Ability::new(vec![], vec![Effect::UntapLandsYouControl, animate]), // entwined
+                    ],
+                );
+                d.entwine = ManaCost::parse("{2}{G}");
+            },
+        ),
+        "Sakura-Tribe Scout" => s(&["{T}: You may put a land card from your hand onto the battlefield."], |d, _| {
+            activated(d, "", true, vec![], vec![Effect::MayPutLandFromHand]);
+        }),
+        "Skyshroud Ranger" => s(&["{T}: You may put a land card from your hand onto the battlefield. Activate only as a sorcery."], |d, _| {
+            let n = activated(d, "", true, vec![], vec![Effect::MayPutLandFromHand]);
+            d.activated[n].sorcery = true;
+        }),
+        "Splendid Reclamation" => s(&["Return all land cards from your graveyard to the battlefield tapped."], |d, _| {
+            spell(d, vec![], vec![Effect::ReturnLandsFromGraveyardTapped]);
+        }),
+        "Squall Line" => s(&["Squall Line deals X damage to each creature with flying and each player."], |d, _| {
+            spell(d, vec![], vec![Effect::DamageX { to: Recipient::FliersAndEachPlayer }]);
+        }),
+        "Stroke of Genius" => s(&["Target player draws X cards."], |d, _| spell(d, vec![Filter::PLAYER], vec![Effect::DrawXTarget(0)])),
+        "Wipe Away" => s(&["Split second", "Return target permanent to its owner's hand."], |d, _| {
+            d.split_second = true;
+            let any = Filter { players: false, creatures: false, planeswalkers: false, any_permanent: true, ..Filter::ANY };
+            spell(d, vec![any], vec![Effect::Bounce(0)]);
+        }),
+        "Laboratory Maniac" => s(
+            &["If you would draw a card while your library has no cards in it, you win the game instead."],
+            |d, _| d.win_on_empty_draw = true,
+        ),
         _ => None,
     }
 }
@@ -1272,4 +1395,24 @@ pub const PG_B_SCRIPTED: &[&str] = &[
     "Blood Moon",
     "Urborg, Tomb of Yawgmoth",
     "Thousand-Year Elixir",
+    "Damia, Sage of Stone",
+    "Drumbellower",
+    "Savor the Moment",
+    "Gaddock Teeg",
+    "Trusted Advisor",
+    "Jin-Gitaxias, Core Augur",
+    // Tatyova (Grande)
+    "Migration Path",
+    "Joint Exploration",
+    "Khalni Heart Expedition",
+    "Noxious Revival",
+    "On the Trail",
+    "Rude Awakening",
+    "Sakura-Tribe Scout",
+    "Skyshroud Ranger",
+    "Splendid Reclamation",
+    "Squall Line",
+    "Stroke of Genius",
+    "Wipe Away",
+    "Laboratory Maniac",
 ];

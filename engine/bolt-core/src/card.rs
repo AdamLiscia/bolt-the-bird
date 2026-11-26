@@ -790,6 +790,20 @@ pub struct CardDef {
     /// `ward_sacrifice` counts nonland permanents only (Valgavoth: "Ward—Sacrifice three nonland
     /// permanents.").
     pub ward_sacrifice_nonland: bool,
+    /// "Skip your draw step." (Damia, Sage of Stone)
+    pub skip_draw_step: bool,
+    /// "Untap all creatures you control during each other player's untap step." (Drumbellower)
+    pub creatures_untap_on_others_untap: bool,
+    /// "Noncreature spells with mana value 4 or greater can't be cast. Noncreature spells with {X} in
+    /// their mana costs can't be cast." (Gaddock Teeg)
+    pub teeg_lock: bool,
+    /// "Your maximum hand size is increased by N." (Trusted Advisor)
+    pub max_hand_plus: u8,
+    /// "Each opponent's maximum hand size is reduced by N." (Jin-Gitaxias, Core Augur)
+    pub opponents_max_hand_minus: u8,
+    /// "If you would draw a card while your library has no cards in it, you win the game instead."
+    /// (Laboratory Maniac)
+    pub win_on_empty_draw: bool,
 }
 
 /// What entering makes triggers happen again (see [`CardDef::entering_triggers_again`]).
@@ -1053,6 +1067,12 @@ impl CardDef {
             lands_are_swamps: false,
             creatures_abilities_haste: false,
             ward_sacrifice_nonland: false,
+            skip_draw_step: false,
+            creatures_untap_on_others_untap: false,
+            teeg_lock: false,
+            max_hand_plus: 0,
+            opponents_max_hand_minus: 0,
+            win_on_empty_draw: false,
         }
     }
 
@@ -1284,6 +1304,12 @@ impl CardDef {
             lands_are_swamps: false,
             creatures_abilities_haste: false,
             ward_sacrifice_nonland: false,
+            skip_draw_step: false,
+            creatures_untap_on_others_untap: false,
+            teeg_lock: false,
+            max_hand_plus: 0,
+            opponents_max_hand_minus: 0,
+            win_on_empty_draw: false,
         }
     }
 
@@ -1515,6 +1541,12 @@ impl CardDef {
             lands_are_swamps: false,
             creatures_abilities_haste: false,
             ward_sacrifice_nonland: false,
+            skip_draw_step: false,
+            creatures_untap_on_others_untap: false,
+            teeg_lock: false,
+            max_hand_plus: 0,
+            opponents_max_hand_minus: 0,
+            win_on_empty_draw: false,
         }
     }
 }

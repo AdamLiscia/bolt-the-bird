@@ -647,3 +647,30 @@ tests/core_merger.rs.
 - `CardDef::creatures_abilities_haste`: in `can_tap`, so tap abilities and mana of your creatures.
 - `CardDef::ward_sacrifice_nonland` with lane C's `ward_sacrifice`: lands neither count toward paying
   nor are offered (Valgavoth itself still needs its other abilities).
+
+### Merger-delegated six (2026-11-25)
+
+Damia, Sage of Stone, Drumbellower, Savor the Moment, Gaddock Teeg, Trusted Advisor, Jin-Gitaxias,
+Core Augur. Tests: tests/core_merger.rs.
+
+- `CardDef::skip_draw_step` (the Upkeep step goes straight to Main1), `Effect::DrawUpToHandSize`.
+- `CardDef::creatures_untap_on_others_untap` (next to Seedborn Muse in the untap step).
+- `Effect::ExtraTurnSkipUntap`, `Game::skip_next_untap` (the skipped step leaves the player's permanents
+  tapped).
+- `CardDef::teeg_lock` (at the top of `cast_modes`: noncreature with mana value 4+ or {X}).
+- `CardDef::max_hand_plus`, `opponents_max_hand_minus` (in `max_hand`).
+- `Effect::ReturnCreatureOfColorYouControl`, `Decision::ReturnOwnCreatureOfColor`.
+
+### Tatyova, Benthic Druid (Grande), batch 1 (2026-11-25)
+
+13 of 23: Migration Path, Joint Exploration, Khalni Heart Expedition, Noxious Revival, On the Trail,
+Rude Awakening, Sakura-Tribe Scout, Skyshroud Ranger, Splendid Reclamation, Squall Line, Stroke of
+Genius, Wipe Away, Laboratory Maniac.
+
+Core: `Effect::MayPutLandFromHand` with `Decision::LandFromHand` (untapped), `LandsBecomeCreaturesEot`
+(through `eot_creature`), `DrawXTarget`; `Recipient::FliersAndEachPlayer`; `CardDef::win_on_empty_draw`
+(in `draw`, where an empty library would otherwise mark the loss). Khalni Heart Expedition's quest
+counters are its own kind of counter.
+
+Needs core (routed by the lead): Ensnare, Gush, Thwart, Harrow, Meloku, Misdirection, Trade Routes,
+Kruphix (d1); Amulet of Vigor, Cloudstone Curio (d2); Misdirection's single-target filter (d3).

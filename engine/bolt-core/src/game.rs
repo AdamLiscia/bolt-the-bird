@@ -997,6 +997,10 @@ pub enum Decision {
     MayCreatureFromHand,
     /// `Pick` an exiled card an opponent owns with a void counter, to play this turn free, or `No`.
     PickVoidCard,
+    /// `Pick` a creature you control of color `color` (WUBRG) to return to its owner's hand.
+    ReturnOwnCreatureOfColor { color: u8 },
+    /// `Pick` a land card in your hand to put onto the battlefield (untapped), or `No`.
+    LandFromHand,
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -1293,6 +1297,8 @@ pub struct Game {
     /// Words of War: the next draw this turn deals damage instead: (player, source, target, damage,
     /// turn).
     pub draw_damage_shields: Vec<(PlayerId, ObjId, Target, i32, u32)>,
+    /// Skip each player's next untap step (Savor the Moment's extra turn).
+    pub skip_next_untap: [bool; 2],
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -1517,6 +1523,7 @@ impl Game {
             draw_replacing: false,
             token_replacing: false,
             draw_damage_shields: Vec::new(),
+            skip_next_untap: [false; 2],
         }
     }
 
@@ -2744,11 +2751,24 @@ impl Game {
 
     /// `p`'s maximum hand size: seven, or the largest a permanent of theirs sets (Twenty-Toed Toad).
     fn max_hand(&self, p: PlayerId) -> usize {
-        self.permanents(p)
+        let base = self
+            .permanents(p)
             .map(|c| self.def_of(c).max_hand_size as usize)
             .max()
             .unwrap_or(0)
-            .max(MAX_HAND)
+            .max(MAX_HAND);
+        // Trusted Advisor: +N; Jin-Gitaxias, Core Augur: an opponent's -N.
+        let plus: usize = self
+            .permanents(p)
+            .filter(|&c| !self.lost_abilities(c))
+            .map(|c| self.def_of(c).max_hand_plus as usize)
+            .sum();
+        let minus: usize = self
+            .permanents(opponent(p))
+            .filter(|&c| !self.lost_abilities(c))
+            .map(|c| self.def_of(c).opponents_max_hand_minus as usize)
+            .sum();
+        (base + plus).saturating_sub(minus)
     }
 
     /// Whether `p` controls a creature with a counter on it.
@@ -3984,7 +4004,23 @@ impl Game {
                     self.fire(p, When::YouDrawSecond, None);
                 }
             }
-            None => self.players[p].drew_from_empty = true,
+            None => {
+                // Laboratory Maniac: "you win the game instead".
+                if self
+                    .permanents(p)
+                    .any(|x| self.def_of(x).win_on_empty_draw && !self.lost_abilities(x))
+                {
+                    let opp = opponent(p);
+                    if !self.permanents(opp).any(|c| self.def_of(c).cant_lose) && !self.players[opp].lost {
+                        self.players[opp].lost = true;
+                        self.events.push(Event::Lost { player: opp });
+                        self.result = Some(Outcome::Winner(p));
+                        self.pending = Pending::GameOver;
+                    }
+                } else {
+                    self.players[p].drew_from_empty = true;
+                }
+            }
         }
     }
 
@@ -4794,6 +4830,16 @@ impl Game {
     /// eligible creature or card.
     fn cast_modes(&self, p: PlayerId, c: ObjId, from_graveyard: bool) -> Vec<(Action, CastMode)> {
         let def = self.def_of(c);
+        // Gaddock Teeg: noncreature spells with mana value 4 or more, or {X}, can't be cast.
+        if !def.types.creature
+            && (def.cost.mana_value() >= 4 || def.cost.x > 0)
+            && self
+                .battlefield
+                .iter()
+                .any(|&x| self.def_of(x).teeg_lock && !self.lost_abilities(x))
+        {
+            return Vec::new();
+        }
         if def.cost.x > 0 && !from_graveyard {
             // One mode per affordable X (capped by the mana available).
             let max = (self.untapped_sources(p).len() + self.players[p].pool.len()).min(30) as u8;
@@ -8696,6 +8742,22 @@ impl Game {
                 v
             }
             Decision::DistributeCounters { .. } => self.creatures(p).map(Action::Pick).collect(),
+            Decision::ReturnOwnCreatureOfColor { color } => self
+                .creatures(p)
+                .filter(|&c| self.colors_of(c)[*color as usize])
+                .map(Action::Pick)
+                .collect(),
+            Decision::LandFromHand => {
+                let mut v: Vec<Action> = self.players[p]
+                    .hand
+                    .iter()
+                    .copied()
+                    .filter(|&x| self.def_of(x).types.land)
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
             Decision::PickVoidCard => {
                 let mut v: Vec<Action> = self
                     .exile
@@ -9989,6 +10051,9 @@ impl Game {
                     self.ask(p, Decision::DistributeCounters { left: left - 1 });
                 }
             }
+            (Decision::ReturnOwnCreatureOfColor { .. }, Action::Pick(c)) => self.move_to(c, Zone::Hand),
+            (Decision::LandFromHand, Action::Pick(c)) => self.move_to(c, Zone::Battlefield),
+            (Decision::LandFromHand, _) => {}
             (Decision::PickVoidCard, Action::Pick(c)) => {
                 let turn = self.turn;
                 let o = self.obj_mut(c);
@@ -10145,6 +10210,14 @@ impl Game {
                         .copied()
                         .filter(|&id| self.types_of(id).creature || self.types_of(id).planeswalker)
                         .map(Target::Object)
+                        .collect(),
+                    Recipient::FliersAndEachPlayer => self
+                        .battlefield
+                        .iter()
+                        .copied()
+                        .filter(|&id| self.types_of(id).creature && self.keywords(id).has(Keywords::FLYING))
+                        .map(Target::Object)
+                        .chain([Target::Player(item.controller), Target::Player(opponent(item.controller))])
                         .collect(),
                     Recipient::EachCreature { without_flying } => self
                         .battlefield
@@ -12761,6 +12834,46 @@ impl Game {
                     .any(|&c| self.obj(c).void_counter && self.obj(c).owner != p)
                 {
                     self.ask(p, Decision::PickVoidCard);
+                }
+            }
+            Effect::DrawUpToHandSize(n) => {
+                let p = item.controller;
+                let have = self.players[p].hand.len();
+                for _ in have..n as usize {
+                    self.draw(p);
+                }
+            }
+            Effect::ExtraTurnSkipUntap => {
+                self.extra_turns.push(item.controller);
+                self.skip_next_untap[item.controller] = true;
+            }
+            Effect::ReturnCreatureOfColorYouControl(color) => {
+                let p = item.controller;
+                if self.creatures(p).any(|c| self.colors_of(c)[color as usize]) {
+                    self.ask(p, Decision::ReturnOwnCreatureOfColor { color });
+                }
+            }
+            Effect::MayPutLandFromHand => {
+                let p = item.controller;
+                if self.players[p].hand.iter().any(|&x| self.def_of(x).types.land) {
+                    self.ask(p, Decision::LandFromHand);
+                }
+            }
+            Effect::LandsBecomeCreaturesEot { power, toughness } => {
+                let turn = self.turn;
+                for l in self.permanents(item.controller).collect::<Vec<_>>() {
+                    if self.types_of(l).land {
+                        self.obj_mut(l).eot_creature = Some((turn, power, toughness, "", Keywords::NONE));
+                    }
+                }
+            }
+            Effect::DrawXTarget(slot) => {
+                if let (Some(&Chosen::Player(q)), true) =
+                    (item.targets.get(slot as usize), legal.get(slot as usize).copied().unwrap_or(false))
+                {
+                    for _ in 0..item.x {
+                        self.draw(q);
+                    }
                 }
             }
             Effect::ChangeTargets(slot) => {
@@ -15414,6 +15527,14 @@ impl Game {
         let next = match self.step {
             Step::PreGame => Step::Untap,
             Step::Untap => Step::Upkeep,
+            // Damia, Sage of Stone: "Skip your draw step."
+            Step::Upkeep
+                if self
+                    .permanents(self.active)
+                    .any(|x| self.def_of(x).skip_draw_step && !self.lost_abilities(x)) =>
+            {
+                Step::Main1
+            }
             Step::Upkeep => Step::Draw,
             Step::Draw => Step::Main1,
             // CR 500.8: an additional combat phase comes right after this main phase.
@@ -15543,8 +15664,27 @@ impl Game {
         match step {
             Step::PreGame => unreachable!("the game never returns to pre-game"),
             Step::Untap => {
-                // Seedborn Muse: "Untap all permanents you control during each other player's untap step."
+                // Savor the Moment: this turn's untap step is skipped (its permanents stay tapped).
+                if std::mem::take(&mut self.skip_next_untap[a]) {
+                    for id in self.permanents(a).collect::<Vec<_>>() {
+                        self.obj_mut(id).skip_untap = true;
+                    }
+                }
+                // Drumbellower: "Untap all creatures you control during each other player's untap step."
                 let o = opponent(a);
+                if self
+                    .permanents(o)
+                    .any(|x| self.def_of(x).creatures_untap_on_others_untap && !self.lost_abilities(x))
+                {
+                    for id in self.creatures(o).collect::<Vec<_>>() {
+                        if self.obj(id).stun > 0 && self.obj(id).tapped {
+                            self.obj_mut(id).stun -= 1;
+                        } else if !self.def_of(id).doesnt_untap && !self.enchanted_doesnt_untap(id) {
+                            self.obj_mut(id).tapped = false;
+                        }
+                    }
+                }
+                // Seedborn Muse: "Untap all permanents you control during each other player's untap step."
                 if self
                     .permanents(o)
                     .any(|x| self.def_of(x).untaps_on_others_untap && !self.lost_abilities(x))
