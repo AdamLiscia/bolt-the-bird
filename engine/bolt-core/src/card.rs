@@ -809,6 +809,11 @@ pub struct CardDef {
     pub flash_cast_sacrificed: bool,
     /// Mana, costs and keywords (the d1 theme), grouped so adding one touches only [`ManaExt`].
     pub mana_ext: ManaExt,
+    /// "... don't cause abilities to trigger" (Hushbringer, Doorkeeper Thrull, Elesh Norn).
+    pub suppresses_triggers: Option<Suppression>,
+    /// "If a triggered ability of [a kind of source] you control triggers, that ability triggers an
+    /// additional time" (Harmonic Prodigy, Delney).
+    pub doubles_triggers_of: Option<TriggerDoubler>,
 }
 
 /// A card's mana, cost and keyword pieces added by the d1 theme (see [`CardDef::mana_ext`]).
@@ -851,11 +856,6 @@ pub struct ManaExt {
     /// cost." (Force of Will: blue, 1): (WUBRG index, life). Cast with `Action::CastWith` naming
     /// the card.
     pub pitch_with_life: Option<(u8, i32)>,
-    /// "... don't cause abilities to trigger" (Hushbringer, Doorkeeper Thrull, Elesh Norn).
-    pub suppresses_triggers: Option<Suppression>,
-    /// "If a triggered ability of [a kind of source] you control triggers, that ability triggers an
-    /// additional time" (Harmonic Prodigy, Delney).
-    pub doubles_triggers_of: Option<TriggerDoubler>,
 }
 
 /// Which events don't cause abilities to trigger (see [`CardDef::suppresses_triggers`]).

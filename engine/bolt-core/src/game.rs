@@ -16906,13 +16906,6 @@ impl Game {
                     self.ask(p, Decision::BraidsSacrifice);
                 }
             }
-            Effect::UntapAttached => {
-                if let Some((id, zcc)) = self.obj(src).attached_to {
-                    if self.obj(id).zcc == zcc && self.obj(id).zone == Zone::Battlefield {
-                        self.untap_by_effect(id);
-                    }
-                }
-            }
             Effect::ExileOpponentsCreaturesTheyFetchBasicsTapped => {
                 let q = opponent(item.controller);
                 let theirs: Vec<ObjId> = self.creatures(q).collect();

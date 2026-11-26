@@ -1693,17 +1693,6 @@ pub enum Effect {
     /// Evoke's "When this permanent enters, if its evoke cost was paid, its controller sacrifices
     /// it." (CR 702.74a)
     SacrificeIfEvoked,
-}
-
-/// What an [`Effect::AddManaPerCount`] counts.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ManaCount {
-    /// Permanents you control with this subtype ("for each Swamp you control").
-    YouControlSubtype(&'static str),
-    /// Basic permanents you control with this subtype ("for each basic Swamp you control").
-    YouControlBasicSubtype(&'static str),
-    /// Permanents on the battlefield with this subtype, anyone's ("for each Elf on the battlefield").
-    OnBattlefieldSubtype(&'static str),
     /// You gain life and draw cards equal to the source's power, its last known power if it left
     /// the battlefield (Lifeblood Hydra: "When this creature dies, ...").
     GainLifeAndDrawSourcePower,
@@ -1858,8 +1847,6 @@ pub enum ManaCount {
     /// opponent may sacrifice a permanent that shares a card type with it, and if they don't, they
     /// lose 2 life and you draw a card (Braids, Arisen Nightmare).
     BraidsEndStep,
-    /// Untap the creature the source (an Equipment) is attached to (Genji Glove).
-    UntapAttached,
     /// Each noncreature artifact you control becomes a 0/0 artifact creature for good, with `n`
     /// +1/+1 counters (Rise and Shine, overloaded).
     NoncreatureArtifactsBecomeZeroZeroWithCounters(u8),
@@ -1886,6 +1873,17 @@ pub enum ManaCount {
     /// then a +1/+1 counter on it per nonland card discarded (Raffine), as
     /// `Decision::ConniveDiscard`.
     ConniveAttackers(u8),
+}
+
+/// What an [`Effect::AddManaPerCount`] counts.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ManaCount {
+    /// Permanents you control with this subtype ("for each Swamp you control").
+    YouControlSubtype(&'static str),
+    /// Basic permanents you control with this subtype ("for each basic Swamp you control").
+    YouControlBasicSubtype(&'static str),
+    /// Permanents on the battlefield with this subtype, anyone's ("for each Elf on the battlefield").
+    OnBattlefieldSubtype(&'static str),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
