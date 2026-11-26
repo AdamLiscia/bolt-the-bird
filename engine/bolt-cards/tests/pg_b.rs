@@ -2836,3 +2836,140 @@ fn kozileks_command_chooses_x_then_two_modes() {
         (Zone::Exile, Zone::Exile, Zone::Graveyard)
     );
 }
+
+// ---- Ugin, the Ineffable (Zhulodok), 2026-11-26 ----
+
+#[test]
+fn ugin_the_ineffable_discounts_colorless_spells_and_destroys_a_colored_permanent() {
+    let mut g = game(&[]);
+    let ugin = put(&mut g, 0, "Ugin, the Ineffable");
+    g.objects[ugin.0 as usize].loyalty = 4;
+    let stone = hand(&mut g, 0, "Mind Stone"); // {2}: free with Ugin
+    let lions_card = hand(&mut g, 0, "Savannah Lions"); // {W}: colored, no discount
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Cast(stone)));
+    assert!(!legal.contains(&Action::Cast(lions_card)));
+    play(&mut g, stone, false, &[], &[]);
+    assert_eq!(g.obj(stone).zone, Zone::Battlefield);
+
+    let lions = put(&mut g, 1, "Savannah Lions");
+    let ring = put(&mut g, 1, "Sol Ring");
+    act(&mut g, Action::Loyalty(ugin, 1));
+    let legal = g.legal_actions();
+    assert!(
+        !legal.contains(&Action::Target(Target::Object(ring))),
+        "colorless"
+    );
+    act(&mut g, Action::Target(Target::Object(lions)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(ugin).loyalty, 1);
+    assert_eq!(g.obj(lions).zone, Zone::Graveyard);
+}
+
+#[test]
+fn ugin_the_ineffable_exiles_face_down_and_its_spirit_brings_the_card_back() {
+    let mut g = table();
+    let ugin = put(&mut g, 0, "Ugin, the Ineffable");
+    g.objects[ugin.0 as usize].loyalty = 4;
+    let top = g.add_card(0, cid("Sol Ring"), Zone::Library); // on top
+    act(&mut g, Action::Loyalty(ugin, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(ugin).loyalty, 5);
+    assert_eq!(g.obj(top).zone, Zone::Exile);
+    assert!(g.obj(top).face_down);
+    let spirit = tokens(&g, 0, "Spirit");
+    assert_eq!(spirit.len(), 1);
+    assert_eq!((g.power(spirit[0]), g.toughness(spirit[0])), (2, 2));
+    assert_eq!(g.colors_of(spirit[0]), [false; 5]);
+    // The token leaves (Swords to Plowshares): the exiled card goes to your hand.
+    let swords = hand(&mut g, 0, "Swords to Plowshares");
+    play(&mut g, swords, false, &[Target::Object(spirit[0])], &[]);
+    assert_eq!(g.obj(top).zone, Zone::Hand);
+    assert!(!g.obj(top).face_down);
+}
+
+// ---- Oloro: Crested Sunmare, Ajani, Strength of the Pride (2026-11-26) ----
+
+/// Passes (finishing attacks, discarding as needed) until turn 3 is over.
+fn finish_turn_3(g: &mut Game) {
+    while g.turn == 3 {
+        let a = match g.pending {
+            Pending::DeclareAttackers(_) => Action::FinishAttacks,
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            Pending::Discard(_) | Pending::ChooseTarget(_) | Pending::Decide(_) => g.legal_actions()[0],
+            _ => Action::PassPriority,
+        };
+        act(g, a);
+    }
+}
+
+#[test]
+fn crested_sunmare_makes_a_horse_after_life_gain_and_shields_other_horses() {
+    let mut g = table();
+    let sunmare = put(&mut g, 0, "Crested Sunmare");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    // Swords to Plowshares on your own Lions: you gain 2 life.
+    let swords = hand(&mut g, 0, "Swords to Plowshares");
+    play(&mut g, swords, false, &[Target::Object(lions)], &[]);
+    assert_eq!(g.players[0].life, 42);
+    finish_turn_3(&mut g);
+    let horses = tokens(&g, 0, "Horse");
+    assert_eq!(horses.len(), 1, "one Horse at your end step");
+    assert_eq!((g.power(horses[0]), g.toughness(horses[0])), (5, 5));
+    assert_eq!(
+        g.colors_of(horses[0]),
+        [true, false, false, false, false],
+        "white"
+    );
+    assert!(g.keywords(horses[0]).has(Keywords::INDESTRUCTIBLE));
+    assert!(!g.keywords(sunmare).has(Keywords::INDESTRUCTIBLE), "other Horses");
+
+    // No life gained this turn: no Horse.
+    let mut g = table();
+    put(&mut g, 0, "Crested Sunmare");
+    finish_turn_3(&mut g);
+    assert!(tokens(&g, 0, "Horse").is_empty());
+}
+
+#[test]
+fn ajani_strength_of_the_pride_gains_makes_a_pridemate_and_exiles_their_board() {
+    // +1: a creature and a planeswalker you control.
+    let mut g = table();
+    let ajani = put(&mut g, 0, "Ajani, Strength of the Pride");
+    g.objects[ajani.0 as usize].loyalty = 5;
+    put(&mut g, 0, "Savannah Lions");
+    act(&mut g, Action::Loyalty(ajani, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].life, 42);
+    assert_eq!(g.obj(ajani).loyalty, 6);
+
+    // −2: Ajani's Pridemate.
+    let mut g = table();
+    let ajani = put(&mut g, 0, "Ajani, Strength of the Pride");
+    g.objects[ajani.0 as usize].loyalty = 5;
+    act(&mut g, Action::Loyalty(ajani, 1));
+    resolve_all(&mut g, &[]);
+    let cat = tokens(&g, 0, "Ajani's Pridemate");
+    assert_eq!(cat.len(), 1);
+    assert_eq!((g.power(cat[0]), g.toughness(cat[0])), (2, 2));
+    assert_eq!(g.colors_of(cat[0]), [true, false, false, false, false], "white");
+
+    // 0: only with 15 life more than the starting 40.
+    for (life, gone) in [(54, false), (55, true)] {
+        let mut g = table();
+        let ajani = put(&mut g, 0, "Ajani, Strength of the Pride");
+        g.objects[ajani.0 as usize].loyalty = 5;
+        g.players[0].life = life;
+        let ring = put(&mut g, 1, "Sol Ring");
+        let lions = put(&mut g, 1, "Savannah Lions");
+        let mine = put(&mut g, 0, "Sol Ring");
+        act(&mut g, Action::Loyalty(ajani, 2));
+        resolve_all(&mut g, &[]);
+        let exiled = if gone { Zone::Exile } else { Zone::Battlefield };
+        assert_eq!(
+            (g.obj(ring).zone, g.obj(lions).zone, g.obj(ajani).zone),
+            (exiled, exiled, exiled)
+        );
+        assert_eq!(g.obj(mine).zone, Zone::Battlefield);
+    }
+}

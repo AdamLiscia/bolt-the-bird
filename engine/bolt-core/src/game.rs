@@ -17,6 +17,8 @@ use crate::rng::Rng;
 
 // The d4 subsystems (dungeons and the initiative, emblems' triggers, dice): game/d4.rs.
 mod d4;
+// Mac C's objects-and-zones pieces (Auras put onto the battlefield attached): game/zones.rs.
+mod zones;
 use crate::effect::Dungeon;
 pub use d4::{rooms, Room, VENTURE_CHOICES};
 
@@ -314,6 +316,9 @@ pub struct Object {
     pub land_copy_pending: bool,
     /// Cast from the top of the library with Bolas's Citadel: its life is paid instead of mana.
     pub citadel_cast: bool,
+    /// Olivia, Crimson Bride: "When you don't control a legendary Vampire, exile this creature.",
+    /// for the object with this zone-change count.
+    pub exile_without_legendary_vampire: Option<u32>,
 }
 
 /// One resolved effect's change to a permanent's characteristics (lane d3's type-changing store):
@@ -1289,6 +1294,32 @@ pub enum Decision {
     /// "Pay {cost}. If you don't, you lose the game." (Pact of Negation): `Yes` pays (offered only if
     /// you can), `No` loses the game.
     PayOrLoseGame { cost: ManaCost },
+    /// `Pick` a nontoken artifact you control to sacrifice (Rootcast Apprenticeship).
+    SacrificeNontokenArtifact,
+    /// Insatiable Frugivore: `Pick` a card in your graveyard to exile (three, one at a time:
+    /// `chosen` so far), then a `food` token is created and you're asked again; or `No` (only
+    /// before the first pick) to stop.
+    ExileThreeForFood { food: usize, chosen: Vec<ObjId> },
+    /// Mac C (game/zones.rs): `Pick` an Aura to attach to `to` (while its zone-change count is
+    /// `zcc`), or `No` to stop. With `library`: one Aura card from your library with mana value at
+    /// most `max_mv` (and, with `new_name`, a name different from each Aura you control) that
+    /// could enchant it, then shuffle (Light-Paws, Sovereigns of Lost Alara). Otherwise, asked
+    /// again after each: an Aura on the battlefield that moves onto it, or an Aura card from your
+    /// graveyard or hand that enters attached to it (Bruna, Light of Alabaster).
+    AttachAura {
+        to: ObjId,
+        zcc: u32,
+        library: bool,
+        max_mv: u32,
+        new_name: bool,
+    },
+    /// Glimpse of Tomorrow: `Pick` the permanent `aura` (a revealed Aura card) enters attached to;
+    /// then the rest of `auras`, then `rest` go to the bottom of your library in a random order.
+    AuraEntersAttachedTo {
+        aura: ObjId,
+        auras: Vec<ObjId>,
+        rest: Vec<ObjId>,
+    },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -1691,6 +1722,16 @@ pub struct Game {
     /// Delayed "at the beginning of your next upkeep" triggers (Pact of Negation): (source, trigger
     /// number, controller, the turn it was set up; it waits for an upkeep of theirs after it).
     pub delayed_next_upkeep: Vec<(ObjId, usize, PlayerId, u32)>,
+    /// Ugin, the Ineffable: (token, its zcc on the battlefield, the exiled card, its zcc in exile,
+    /// the source, its trigger number, the controller). When the token leaves the battlefield, that
+    /// trigger puts the card into its owner's hand.
+    pub token_linked_exile: Vec<(ObjId, u32, ObjId, u32, ObjId, usize, PlayerId)>,
+    /// Creature spells that enter with additional +1/+1 counters: (spell, the zcc it will have on
+    /// the battlefield, how many) (Communal Brewing).
+    pub spell_enters_with_counters: Vec<(ObjId, u32, i32)>,
+    /// Dragonhawk: (source, trigger number, controller, the turn whose end step it waits for, the
+    /// exiled cards with their zone-change counts).
+    pub delayed_end_step_exiled: Vec<zones::EndStepExiled>,
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -1957,6 +1998,9 @@ impl Game {
             ring_tempted: [0; 2],
             ring_blocks_seen: Vec::new(),
             delayed_next_upkeep: Vec::new(),
+            token_linked_exile: Vec::new(),
+            spell_enters_with_counters: Vec::new(),
+            delayed_end_step_exiled: Vec::new(),
         }
     }
 
@@ -2191,6 +2235,7 @@ impl Game {
             return_at_upkeep: None,
             land_copy_pending: false,
             citadel_cast: false,
+            exile_without_legendary_vampire: None,
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -4078,6 +4123,9 @@ impl Game {
         for q in 0..2 {
             self.fire(q, When::PlayerSacrificesAnother, Some(id));
         }
+        if self.is_token(id) && !self.types_of(id).creature {
+            self.fire(opponent(p), When::OpponentSacrificesNoncreatureToken, None);
+        }
         if self.is_token(id) {
             self.fire(p, When::YouSacrificeToken, None);
         } else {
@@ -4620,6 +4668,21 @@ impl Game {
         }
         if from == Zone::Battlefield && to != Zone::Battlefield {
             self.fire_source(id, When::LeavesBattlefield);
+            // Ugin, the Ineffable: "When that token leaves the battlefield, put the exiled card into
+            // your hand." (a delayed trigger, so it works with Ugin gone too)
+            let was = self.obj(id).zcc - 1;
+            let (links, rest): (Vec<_>, Vec<_>) = std::mem::take(&mut self.token_linked_exile)
+                .into_iter()
+                .partition(|e| e.0 == id && e.1 == was);
+            self.token_linked_exile = rest;
+            for (_, _, card, czcc, source, n, p) in links {
+                self.triggered.push(StackItem {
+                    kind: StackKind::Trigger(n),
+                    extra: Some(card),
+                    amount: czcc as i32,
+                    ..Game::casting(source, p)
+                });
+            }
             if self.types_of(id).creature {
                 self.fire(
                     last_controller,
@@ -5005,6 +5068,17 @@ impl Game {
                 self.escaped.remove(pos);
                 let n = def.mana_ext.escape.map_or(0, |e| e.2);
                 self.add_counters(id, n);
+            }
+            // Communal Brewing: "that creature enters with X additional +1/+1 counters on it".
+            let extra: i32 = self
+                .spell_enters_with_counters
+                .iter()
+                .filter(|e| e.0 == id && e.1 == zcc)
+                .map(|e| e.2)
+                .sum();
+            if extra > 0 {
+                self.spell_enters_with_counters.retain(|e| e.0 != id);
+                self.add_counters(id, extra);
             }
             // Hall of the Bandit Lord: a creature spell its mana paid for gains haste.
             if let Some(pos) = self.haste_from_mana.iter().position(|&e| e == (id, zcc)) {
@@ -6451,6 +6525,10 @@ impl Game {
     /// eligible creature or card.
     fn cast_modes(&self, p: PlayerId, c: ObjId, from_graveyard: bool) -> Vec<(Action, CastMode)> {
         let def = self.def_of(c);
+        // CR 202.1b: no mana cost, so it's cast only without paying it (suspend).
+        if def.zones.no_mana_cost && !self.obj(c).cast_free {
+            return Vec::new();
+        }
         // Gaddock Teeg: noncreature spells with mana value 4 or more, or {X}, can't be cast.
         if !def.types.creature
             && (def.cost.mana_value() >= 4 || def.cost.x > 0)
@@ -7055,6 +7133,15 @@ impl Game {
             less.saturating_add(discount + second + battle)
                 .saturating_add(ext),
         );
+        // Ugin, the Ineffable: "Colorless spells you cast cost {2} less to cast."
+        if !self.colors_of(c).iter().any(|&k| k) {
+            let ugin: u8 = self
+                .permanents(p)
+                .filter(|&x| !self.lost_abilities(x))
+                .map(|x| self.def_of(x).colorless_spell_discount)
+                .fold(0u8, |a, b| a.saturating_add(b));
+            cost.generic = cost.generic.saturating_sub(ugin);
+        }
         // Dragon's Prey: "This spell costs {2} more to cast if it targets a Dragon."
         if let Some(Reduction::MoreIfTargetsSubtype(sub, n)) = def.reduction {
             let hits = targets
@@ -11076,6 +11163,7 @@ impl Game {
                             self.reanimate_attach(source, t, r.item.controller);
                         }
                     }
+                    self.cast_aura_entered(source); // Light-Paws (game/zones.rs)
                 }
                 // Necromancy cast at instant speed: sacrificed at the next end step.
                 if let Some(pos) = self.flash_casts.iter().position(|&(c, _)| c == source) {
@@ -11306,6 +11394,13 @@ impl Game {
             Pick::CreatureManaValueAtMost(n) => d.types.creature && d.cost.mana_value() <= n,
             Pick::CreatureOrPlaneswalker => d.types.creature || d.types.planeswalker,
         }
+    }
+
+    /// The nontoken artifacts `p` controls that can be sacrificed (Rootcast Apprenticeship).
+    fn nontoken_artifacts_to_sacrifice(&self, p: PlayerId) -> Vec<ObjId> {
+        self.permanents(p)
+            .filter(|&x| self.types_of(x).artifact && !self.is_token(x) && !self.cant_be_sacrificed(x))
+            .collect()
     }
 
     fn ask(&mut self, p: PlayerId, d: Decision) {
@@ -11720,6 +11815,24 @@ impl Game {
             }
             Decision::MayDrawGainOne { .. } => vec![Action::Yes, Action::No],
             Decision::ExpropriateVote { .. } => vec![Action::Yes, Action::No],
+            Decision::SacrificeNontokenArtifact => self
+                .nontoken_artifacts_to_sacrifice(p)
+                .into_iter()
+                .map(Action::Pick)
+                .collect(),
+            Decision::ExileThreeForFood { chosen, .. } => {
+                let mut v: Vec<Action> = self.players[p]
+                    .graveyard
+                    .iter()
+                    .copied()
+                    .filter(|c| !chosen.contains(c))
+                    .map(Action::Pick)
+                    .collect();
+                if chosen.is_empty() {
+                    v.push(Action::No);
+                }
+                v
+            }
             Decision::ExpropriatePick { owner, .. } => self
                 .battlefield
                 .iter()
@@ -12280,6 +12393,10 @@ impl Game {
                     .collect();
                 v.push(Action::No);
                 v
+            }
+            d @ Decision::AttachAura { .. } => self.attach_aura_actions(p, d),
+            Decision::AuraEntersAttachedTo { aura, .. } => {
+                self.aura_hosts(*aura, p).into_iter().map(Action::Pick).collect()
             }
         }
     }
@@ -13417,6 +13534,34 @@ impl Game {
                     self.expropriate_next_pick(caster, money);
                 }
             }
+            (Decision::SacrificeNontokenArtifact, Action::Pick(c)) => {
+                self.move_to(c, Zone::Graveyard);
+                self.sacrificed(c, p);
+            }
+            (Decision::ExileThreeForFood { food, mut chosen }, Action::Pick(c)) => {
+                chosen.push(c);
+                if chosen.len() < 3 {
+                    self.ask(p, Decision::ExileThreeForFood { food, chosen });
+                } else {
+                    for c in chosen {
+                        if self.obj(c).zone == Zone::Graveyard {
+                            self.move_to(c, Zone::Exile);
+                        }
+                    }
+                    // "If you do, repeat this process": another Food, then the choice again.
+                    self.create_token(p, food);
+                    if self.players[p].graveyard.len() >= 3 {
+                        self.ask(
+                            p,
+                            Decision::ExileThreeForFood {
+                                food,
+                                chosen: Vec::new(),
+                            },
+                        );
+                    }
+                }
+            }
+            (Decision::ExileThreeForFood { .. }, _) => {} // No: stop repeating
             (Decision::ExpropriatePick { money, .. }, Action::Pick(c)) => {
                 if self.obj(c).controller != p {
                     let turn = self.turn;
@@ -13766,6 +13911,14 @@ impl Game {
                 if let Some(q) = next {
                     self.sacrifice_nontoken_next(q, None);
                 }
+            }
+            (d @ Decision::AttachAura { .. }, a) => self.attach_aura_decide(p, d, a),
+            (Decision::AuraEntersAttachedTo { aura, auras, rest }, a) => {
+                if let Action::Pick(x) = a {
+                    let zcc = self.obj(x).zcc;
+                    self.put_aura_attached(aura, x, zcc, p);
+                }
+                self.glimpse_next_aura(p, auras, rest);
             }
             (d, a) => unreachable!("legal action {a:?} unhandled for {d:?}"),
         }
@@ -15638,7 +15791,8 @@ impl Game {
             Effect::LoseLifeCastSpellManaValue => {
                 if let Some(s) = item.extra {
                     let o = self.obj(s);
-                    let mv = self.def_of(s).cost.with_x(o.x).mana_value() as i32;
+                    // d4's stack_mana_cost: a split spell's cast half only (CR 709.3b).
+                    let mv = self.stack_mana_cost(s).with_x(o.x).mana_value() as i32;
                     self.lose_life(item.controller, mv);
                 }
             }
@@ -17905,6 +18059,135 @@ impl Game {
                     for _ in 0..item.x {
                         self.create_token(q, def);
                     }
+                }
+            }
+            Effect::ExileTopFaceDownCreateLinkedToken { def, trigger } => {
+                let p = item.controller;
+                let card = self.players[p].library.last().copied();
+                if let Some(c) = card {
+                    self.move_to(c, Zone::Exile);
+                }
+                // Looking at it is information only; it's face down to everyone else.
+                let card = card.filter(|&c| self.obj(c).zone == Zone::Exile);
+                if let Some(c) = card {
+                    self.obj_mut(c).face_down = true;
+                }
+                self.create_token(p, def);
+                if let Some(c) = card {
+                    let czcc = self.obj(c).zcc;
+                    for t in self.last_created.clone() {
+                        if self.obj(t).zone == Zone::Battlefield {
+                            let entry = (t, self.obj(t).zcc, c, czcc, src, trigger, p);
+                            self.token_linked_exile.push(entry);
+                        }
+                    }
+                }
+            }
+            Effect::LinkedExiledCardToHand => {
+                if let Some(c) = item.extra {
+                    let o = self.obj(c);
+                    if o.zone == Zone::Exile && o.zcc as i32 == item.amount {
+                        self.obj_mut(c).face_down = false;
+                        self.move_to(c, Zone::Hand);
+                    }
+                }
+                // Copies of the token share the card: once it's moved, the rest find it gone.
+            }
+            Effect::KindCounterSelfThenPerTargetDraw(slot) => {
+                let mut n = 1;
+                for q in self.players_for(item, legal, Who::TargetPlayer(slot)) {
+                    let before = self.players[q].hand.len();
+                    self.draw(q);
+                    n += self.players[q].hand.len().saturating_sub(before) as i32;
+                }
+                if self.obj(src).zone == Zone::Battlefield {
+                    let n = n * self.doubling(self.obj(src).controller);
+                    self.obj_mut(src).kind_counters += n;
+                    self.counters_placed(item.controller, n);
+                }
+            }
+            Effect::CastSpellEntersWithCountersPerKindCounter => {
+                let n = if self.obj(src).zone == Zone::Battlefield {
+                    self.obj(src).kind_counters
+                } else {
+                    0
+                };
+                if let Some(c) = item.extra.filter(|&c| self.obj(c).zone == Zone::Stack) {
+                    if n > 0 {
+                        let zcc = self.obj(c).zcc + 1;
+                        self.spell_enters_with_counters.push((c, zcc, n));
+                    }
+                }
+            }
+            Effect::SacrificeNontokenArtifact(who) => {
+                for p in self.players_for(item, legal, who) {
+                    let mine = self.nontoken_artifacts_to_sacrifice(p);
+                    match mine.len() {
+                        0 => {}
+                        1 => {
+                            self.move_to(mine[0], Zone::Graveyard);
+                            self.sacrificed(mine[0], p);
+                        }
+                        _ => {
+                            self.ask(p, Decision::SacrificeNontokenArtifact);
+                            return;
+                        }
+                    }
+                }
+            }
+            Effect::MayExileThreeRepeatFood { food } => {
+                let p = item.controller;
+                if self.players[p].graveyard.len() >= 3 {
+                    self.ask(
+                        p,
+                        Decision::ExileThreeForFood {
+                            food,
+                            chosen: Vec::new(),
+                        },
+                    );
+                }
+            }
+            Effect::PumpYoursXPowerGrant(keywords) => {
+                let x = item.x as i32;
+                for id in self.creatures(item.controller).collect::<Vec<_>>() {
+                    let zcc = self.obj(id).zcc;
+                    self.until_eot.push(Modifier {
+                        obj: id,
+                        zcc,
+                        power: x,
+                        toughness: 0,
+                        keywords,
+                        dies: None,
+                    });
+                }
+            }
+            Effect::GainLifePerCreatureAndPlaneswalkerYouControl => {
+                let p = item.controller;
+                let n = self
+                    .permanents(p)
+                    .filter(|&x| self.types_of(x).creature || self.types_of(x).planeswalker)
+                    .count() as i32;
+                self.gain_life(p, n);
+            }
+            Effect::ExileSelfAndOpponentsArtifactsCreaturesIfLifeAbove(n) => {
+                let p = item.controller;
+                if self.players[p].life >= self.starting_life + n {
+                    if self.obj(src).zone == Zone::Battlefield {
+                        self.move_to(src, Zone::Exile);
+                    }
+                    let theirs: Vec<ObjId> = self
+                        .permanents(opponent(p))
+                        .filter(|&x| self.types_of(x).artifact || self.types_of(x).creature)
+                        .collect();
+                    for x in theirs {
+                        self.move_to(x, Zone::Exile);
+                    }
+                }
+            }
+            Effect::PoisonCounters { who, n } => {
+                for q in self.players_for(item, legal, who) {
+                    self.players[q].poison += n;
+                    self.counters_placed(item.controller, n);
                 }
             }
             Effect::GiftExtraTurn => {
@@ -21576,6 +21859,33 @@ impl Game {
                     );
                 }
             }
+            Effect::AttachAurasToSource => {
+                if self.obj(src).zone == Zone::Battlefield {
+                    self.ask_attach_aura(item.controller, src, false, u32::MAX, false);
+                }
+            }
+            Effect::SearchAuraForSourceIfCast(slot) => self.search_aura_for_source_if_cast(item, legal, slot),
+            Effect::SearchAuraForLoneAttacker => self.search_aura_for_lone_attacker(item.controller),
+            Effect::ReturnAttackingUntilNoLegendaryVampire(slot) => {
+                if let Some(c) = Game::slot_object(item, legal, slot) {
+                    self.return_attacking_until_no_legendary_vampire(c, item.controller);
+                }
+            }
+            Effect::ExileTopPowerFourPlayableUntilNextEndStep { trigger } => {
+                self.exile_top_power_four(src, trigger, item.controller)
+            }
+            Effect::DamageEachOpponentAmount => {
+                if item.amount > 0 {
+                    self.deal_damage(src, Target::Player(opponent(item.controller)), item.amount);
+                }
+            }
+            Effect::SuspendSource(n) => self.suspend_source(src, n),
+            Effect::GlimpseOfTomorrow => self.glimpse_of_tomorrow(item.controller),
+            Effect::AmassIfExtraCreatureCard { subtype, n, def } => {
+                if item.extra.is_some_and(|c| self.def_of(c).types.creature) {
+                    self.run_effect(item, legal, Effect::Amass { subtype, n, def });
+                }
+            }
         }
     }
 
@@ -22091,6 +22401,7 @@ impl Game {
     /// State-based actions run before any player would receive priority (CR 117.5, 704.3).
     fn give_priority(&mut self, p: PlayerId) {
         self.state_based_actions();
+        self.exile_without_legendary_vampire(); // Olivia's returned creatures (game/zones.rs)
         if !self.is_over() && self.ask_commander_choice(p) {
             return;
         }
@@ -22625,7 +22936,8 @@ impl Game {
                         self.counters_placed(owner, n);
                     }
                 }
-                // CR 513.1: "at the beginning of the end step" triggers.
+                self.delayed_end_step_exiled_due(a); // Dragonhawk (game/zones.rs)
+                                                     // CR 513.1: "at the beginning of the end step" triggers.
                 self.fire(a, When::EndStep { your_turn_only: true }, None);
                 self.fire(
                     a,
@@ -23328,6 +23640,15 @@ impl Game {
                 if refers {
                     self.triggered[i].targets = vec![chosen];
                 }
+            }
+        }
+        // Toxic N (CR 702.164c): combat damage to a player also gives that player N poison counters.
+        if let Target::Player(p) = target {
+            let toxic = self.def_of(source).toxic as i32;
+            if toxic > 0 && amount > 0 && self.in_combat_damage && !self.lost_abilities(source) {
+                self.players[p].poison += toxic;
+                let by = self.obj(source).controller;
+                self.counters_placed(by, toxic);
             }
         }
         let k = self.keywords(source);
