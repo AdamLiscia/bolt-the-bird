@@ -672,3 +672,19 @@ Shortcuts: Vaultborn's token copy becomes an artifact just after it enters (a `T
 enters" triggers don't see it; its "this creature or another creature with power 4 or greater" trigger is
 `YourCreatureEntersWithPowerAtLeast(4)` (Vaultborn itself is 6/6).
 Glasspool Shore was already in the oracle data (no refetch needed).
+
+Objects and zones batch 7: morph (Aphetto Alchemist, Rattleclaw Mystic), back faces and their pieces (Sundering
+Eruption // Volcanic Fissure, Puppeteer Clique, Railway Brawler). Lane B's face-down work already covered casting
+face down for {3} (`CastAlternative`) and turning face up for the morph cost (`Activate(id, 0)`, a special
+action); morph needed only scripts, plus the trigger. Core: `When::TurnedFaceUp` (pushed by `Game::turned_face_up`
+from the special action and from `Decision::TurnFaceUp`), `Activated::plot` and `Object::plotted` (plot: activated
+from hand at sorcery speed, the card exiled as the cost and marked `cast_free`; castable from exile by its owner
+at sorcery timing on a later turn), `ZonesExt::shock_life` (Volcanic Fissure's 3 life, in the `ShockLand`
+answer), `Effect::{DestroyControllerMayFetchBasicTapped, CreaturesWithoutFlyingCantBlockThisTurn,
+ReanimateHasteExileAtEnd}`. Puppeteer Clique's persist is d1's `Effect::Persist`.
+Shortcuts: plot uses the stack (an ability with no effect) instead of being a special action. "Creatures without
+flying can't block this turn" applies to the creatures on the battlefield as it resolves. Puppeteer Clique's
+creature is exiled at the next end step (the same as "your next end step" unless it entered on an opponent's
+turn).
+Touched owned code (flag for review): the `ShockLand` life amount (d1's land entry), the plot exile-cast check
+in the castable-from-exile filter (merger's timing), and the hand condition of the activation listing.

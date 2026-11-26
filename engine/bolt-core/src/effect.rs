@@ -2246,6 +2246,15 @@ pub enum Effect {
     /// "You may move any number of +1/+1 counters from this creature onto other creatures." as
     /// `Decision::MoveCounterFrom`, one at a time (Forgotten Ancient).
     MayMoveCountersFromSource,
+    /// Destroy the permanent in `slot`; its controller may search for a basic land card and put it
+    /// onto the battlefield tapped (Sundering Eruption).
+    DestroyControllerMayFetchBasicTapped(u8),
+    /// "Creatures without flying can't block this turn." (Sundering Eruption): the creatures on
+    /// the battlefield without flying as it resolves.
+    CreaturesWithoutFlyingCantBlockThisTurn,
+    /// Put the creature card in graveyard `slot` onto the battlefield under your control; it gains
+    /// haste, and it's exiled at the beginning of the next end step (Puppeteer Clique).
+    ReanimateHasteExileAtEnd(u8),
     /// Exile each permanent with mana value X or less that's one or more colors, X the ability's
     /// X (Ugin, the Spirit Dragon's −X).
     ExileEachColoredPermanentMvAtMostX,
@@ -3129,6 +3138,8 @@ pub enum When {
     YourSubtypeDealCombatDamageToPlayer(&'static str),
     /// "When this Class becomes level N" (CR 716.2c).
     ClassBecomesLevel(u8),
+    /// "When this creature is turned face up" (morph, manifest; Rattleclaw Mystic).
+    TurnedFaceUp,
 }
 
 #[derive(Clone, Debug, PartialEq)]

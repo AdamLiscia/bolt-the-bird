@@ -320,6 +320,10 @@ pub struct Activated {
     pub min_class_level: u8,
     /// "Activate only if you control N or more artifacts." (Metallurgic Summonings: 6)
     pub min_artifacts: u8,
+    /// Plot (CR 702.170): activated from your hand at sorcery speed; as the cost the card is exiled,
+    /// plotted. On a later turn its owner may cast it from exile as a sorcery without paying its
+    /// mana cost (`Object::plotted`).
+    pub plot: bool,
 }
 
 /// A loyalty ability's cost of −X (CR 606.4, 107.3): `loyalty_abilities` uses this as the cost,
@@ -1926,6 +1930,8 @@ pub struct ZonesExt {
     pub copy_sacrifice_when_targeted: bool,
     /// It may copy only a creature with mana value at most the mana spent to cast it (Mockingbird).
     pub copy_mv_at_most_spent: bool,
+    /// With `shock_land`: the life it asks for instead of 2 (Volcanic Fissure: 3).
+    pub shock_life: i32,
 }
 
 #[cfg(test)]
