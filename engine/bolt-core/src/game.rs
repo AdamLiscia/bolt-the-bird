@@ -2829,6 +2829,16 @@ impl Game {
                                     .count()
                                     >= n as usize
                             }
+                            Some(StaticCondition::AttachedHasAnotherAura) => {
+                                so.attached_to.is_some_and(|(x, z)| {
+                                    self.obj(x).zcc == z
+                                        && self.battlefield.iter().any(|&a| {
+                                            a != src
+                                                && self.obj(a).attached_to == Some((x, z))
+                                                && (self.def_of(a).aura || self.def_of(a).reanimating_aura)
+                                        })
+                                })
+                            }
                         };
                         applies && condition_ok && (!s.your_turn_only || self.active == so.controller)
                     })

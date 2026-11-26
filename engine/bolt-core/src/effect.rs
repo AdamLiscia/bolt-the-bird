@@ -2660,6 +2660,8 @@ pub enum StaticCondition {
     /// Its controller controls at least this many artifacts (Teething Wurmlet: three). Printed card
     /// types are counted, as `ControlLandsAtLeast` does.
     ControlArtifactsAtLeast(u8),
+    /// Another Aura is attached to the creature the source is attached to (Face of Divinity).
+    AttachedHasAnotherAura,
 }
 
 /// A static ability that changes characteristics (CR 604, 613 layers 6 and 7c).

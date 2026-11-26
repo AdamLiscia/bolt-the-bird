@@ -3816,3 +3816,81 @@ fn professional_face_breaker_makes_treasure_on_damage_and_cashes_it_for_a_card()
     assert_eq!(g.obj(card).zone, Zone::Exile);
     assert!(g.legal_actions().contains(&Action::PlayLand(card)));
 }
+
+// ---- Bruna's Auras ----
+
+fn enchant(g: &mut Game, aura: &str, on: ObjId) -> ObjId {
+    let a = hand(g, 0, aura);
+    let z = g.obj(on).zcc;
+    assert!(g.put_aura_attached(a, on, z, 0));
+    a
+}
+
+#[test]
+fn steel_of_the_godhead_checks_the_enchanted_creatures_colors() {
+    let mut g = table();
+    let ghoul = put(&mut g, 0, "Hungry Ghoul");
+    let before = g.power(ghoul);
+    enchant(&mut g, "Steel of the Godhead", ghoul);
+    assert_eq!(g.power(ghoul), before, "black: neither");
+    let bruna = put(&mut g, 0, "Bruna, Light of Alabaster");
+    enchant(&mut g, "Steel of the Godhead", bruna);
+    assert_eq!(g.power(bruna), 5 + 2, "white and blue: both");
+    assert!(g.keywords(bruna).has(Keywords::LIFELINK));
+    assert!(g.keywords(bruna).has(Keywords::UNBLOCKABLE));
+}
+
+#[test]
+fn face_of_divinity_adds_first_strike_and_lifelink_with_another_aura() {
+    let mut g = table();
+    let ghoul = put(&mut g, 0, "Hungry Ghoul");
+    let before = g.power(ghoul);
+    enchant(&mut g, "Face of Divinity", ghoul);
+    assert_eq!(g.power(ghoul), before + 2);
+    assert!(!g.keywords(ghoul).has(Keywords::FIRST_STRIKE));
+    enchant(&mut g, "Wingspan Stride", ghoul);
+    assert!(g.keywords(ghoul).has(Keywords::FIRST_STRIKE));
+    assert!(g.keywords(ghoul).has(Keywords::LIFELINK));
+}
+
+#[test]
+fn shielded_by_faith_may_move_to_a_creature_that_enters() {
+    let mut g = table();
+    let ghoul = put(&mut g, 0, "Hungry Ghoul");
+    let sf = enchant(&mut g, "Shielded by Faith", ghoul);
+    assert!(g.keywords(ghoul).has(Keywords::INDESTRUCTIBLE));
+    let next = hand(&mut g, 0, "Hungry Ghoul");
+    play(&mut g, next, false, &[], &[Action::Yes]);
+    let z = g.obj(next).zcc;
+    assert_eq!(g.obj(sf).attached_to, Some((next, z)));
+    assert!(g.keywords(next).has(Keywords::INDESTRUCTIBLE));
+    assert!(!g.keywords(ghoul).has(Keywords::INDESTRUCTIBLE));
+}
+
+#[test]
+fn eldrazi_conscription_pumps_and_annihilates_two() {
+    let mut g = table();
+    let ghoul = put(&mut g, 0, "Hungry Ghoul");
+    let before = g.power(ghoul);
+    enchant(&mut g, "Eldrazi Conscription", ghoul);
+    assert_eq!(g.power(ghoul), before + 10);
+    assert!(g.keywords(ghoul).has(Keywords::TRAMPLE));
+    let theirs = g.permanents(1).count();
+    to_attackers(&mut g);
+    act(&mut g, Action::Attack(ghoul));
+    act(&mut g, Action::FinishAttacks);
+    while g.step == Step::DeclareAttackers {
+        let legal = g.legal_actions();
+        let a = if legal.contains(&Action::PassPriority) {
+            Action::PassPriority
+        } else {
+            legal[0]
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(
+        g.permanents(1).count(),
+        theirs - 2,
+        "defending player sacrificed two"
+    );
+}

@@ -772,6 +772,18 @@ Shortcuts: Light-Paws fizzles if the Aura has left before its trigger resolves. 
   Face-Breaker needed nothing new.
 Touched code owned elsewhere (flag for review): the `give_priority` line, the `Step::End` line, the `cast_modes` guard.
 
+## Objects and zones batch 10 (Bruna's Auras), unbuilt
+
+Steel of the Godhead (d3's `StaticCondition::AttachedIsColor`, no new core), Face of Divinity
+(`StaticCondition::AttachedHasAnotherAura`, an arm appended to the static-condition match), Shielded by Faith (the
+existing `Effect::Attach` from the two "a creature enters" triggers, as optional triggers), Eldrazi Conscription
+(+10/+10 trample and annihilator 2 as a `When::EquippedAttacks` trigger on the Aura, which fires for Auras too).
+Still needing core in Bruna: Daybreak Coronet (a target filter "creature with another Aura attached": d3's
+`Filter`), Super State (base P/T 9/9 from an Aura without losing abilities: `attached_static` treats any
+`base_pt` as Witness Protection's Citizen; d3), Celestial Mantle (an effect doubling a life total: d3), All That
+Glitters, Ethereal Armor, Auramancer's Guise, Sage's Reverie (counts in the scaled-statics block: d3), Unquestioned
+Authority (protection from creatures: d3), Open the Armory (a search for an Aura or Equipment card: d3).
+
 ## Held back (lane C), with what each needs
 
 Done since: Light-Paws, Sovereigns, Bruna, Olivia, Dragonhawk, Glimpse of Tomorrow (batches 8-9). Routed

@@ -1950,6 +1950,64 @@ pub fn script(name: &str) -> Option<Script> {
                 d.activated[n].sacrifice_subtype = Some("Treasure");
             },
         ),
+        // ---- Bruna's Auras (Mac C: attachments) ----
+        "Steel of the Godhead" => s(
+            &[
+                "Enchant creature",
+                "As long as enchanted creature is white, it gets +1/+1 and has lifelink.",
+                "As long as enchanted creature is blue, it gets +1/+1 and can't be blocked.",
+            ],
+            |d, _| {
+                d.aura = true;
+                d.spell = Some(Ability::new(vec![CREATURE], vec![]));
+                attached(d, false, 1, 1, Keywords::LIFELINK);
+                d.statics.last_mut().expect("just added").condition = Some(StaticCondition::AttachedIsColor(0));
+                attached(d, false, 1, 1, Keywords::UNBLOCKABLE);
+                d.statics.last_mut().expect("just added").condition = Some(StaticCondition::AttachedIsColor(1));
+            },
+        ),
+        "Face of Divinity" => s(
+            &[
+                "Enchant creature",
+                "Enchanted creature gets +2/+2.",
+                "As long as another Aura is attached to enchanted creature, it has first strike and lifelink.",
+            ],
+            |d, _| {
+                d.aura = true;
+                d.spell = Some(Ability::new(vec![CREATURE], vec![]));
+                attached(d, false, 2, 2, Keywords::NONE);
+                attached(d, false, 0, 0, Keywords::FIRST_STRIKE.with(Keywords::LIFELINK));
+                d.statics.last_mut().expect("just added").condition = Some(StaticCondition::AttachedHasAnotherAura);
+            },
+        ),
+        "Shielded by Faith" => s(
+            &[
+                "Enchant creature",
+                "Enchanted creature has indestructible.",
+                "Whenever a creature enters, you may attach this Aura to that creature.",
+            ],
+            |d, _| {
+                d.aura = true;
+                d.spell = Some(Ability::new(vec![CREATURE], vec![]));
+                attached(d, false, 0, 0, Keywords::INDESTRUCTIBLE);
+                // "A creature": one of yours or one of the opponent's.
+                let it = Filter { triggering: true, controller: Controller::Any, ..CREATURE };
+                for when in [When::AnotherCreatureYouControlEnters, When::CreatureOpponentControlsEnters] {
+                    may(d, when, vec![it], vec![Effect::Attach { slot: 0 }]);
+                }
+            },
+        ),
+        "Eldrazi Conscription" => s(
+            &["Enchant creature", "Enchanted creature gets +10/+10 and has trample and annihilator 2."],
+            |d, _| {
+                d.aura = true;
+                d.spell = Some(Ability::new(vec![CREATURE], vec![]));
+                attached(d, false, 10, 10, Keywords::TRAMPLE);
+                // Annihilator 2 (CR 702.86a), granted: "Whenever this creature attacks, defending
+                // player sacrifices two permanents of their choice."
+                on(d, When::EquippedAttacks, vec![], vec![Effect::SacrificePermanents { who: Who::EachOpponent, n: 2 }]);
+            },
+        ),
         _ => None,
     }
 }
@@ -2186,4 +2244,8 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Glimpse of Tomorrow",
     "Moria Scavenger",
     "Professional Face-Breaker",
+    "Steel of the Godhead",
+    "Face of Divinity",
+    "Shielded by Faith",
+    "Eldrazi Conscription",
 ];
