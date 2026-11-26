@@ -528,3 +528,201 @@ fn activate_only_if_you_attacked_with_two_or_more_minas_tirith_style() {
         "two attacked"
     );
 }
+
+/// A game on the CMD pool plus test sorceries (indices from the pool's length up), as `game`.
+fn game_plus(extra: Vec<bolt_core::CardDef>) -> (Game, usize) {
+    let mut defs = (*set("CMD").unwrap().defs).clone();
+    let base = defs.len();
+    defs.extend(extra);
+    let plains = vec![cid("Plains"); 99];
+    let mut g = Game::new_commander(
+        std::sync::Arc::new(defs),
+        [&plains, &plains],
+        [cid("Bello, Bard of the Brambles"), cid("Ms. Bumbleflower")],
+        7,
+        0,
+    );
+    g.auto_pass = false;
+    for land in ["Plains", "Island", "Swamp", "Mountain", "Forest"] {
+        for _ in 0..5 {
+            put(&mut g, 0, land);
+            put(&mut g, 1, land);
+        }
+    }
+    g.start_turn(3, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    (g, base)
+}
+
+fn sorcery(effect: bolt_core::Effect, targets: Vec<bolt_core::Filter>) -> bolt_core::CardDef {
+    bolt_core::CardDef::spell(
+        "Room",
+        "{1}",
+        false,
+        bolt_core::Ability::new(targets, vec![effect]),
+    )
+}
+
+#[test]
+fn twisted_caverns_cant_attack_until_your_next_turn() {
+    use bolt_core::{Effect, Filter};
+    let (mut g, base) = game_plus(vec![sorcery(
+        Effect::CantAttackUntilYourNextTurn(0),
+        vec![Filter::CREATURE],
+    )]);
+    let lions = put(&mut g, 0, "Savannah Lions");
+    let s = g.add_card(0, base, Zone::Hand);
+    play(&mut g, s, false, &[Target::Object(lions)], &[]);
+    while g.step != Step::Main2 {
+        assert_ne!(
+            g.pending,
+            Pending::DeclareAttackers(0),
+            "it can't attack this turn"
+        );
+        let a = match g.pending {
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(
+        g.cant_attack_until.last().map(|e| e.2),
+        Some(g.turn + 2),
+        "player 0's next turn"
+    );
+}
+
+#[test]
+fn arena_goads_a_creature_into_attacking() {
+    use bolt_core::{Effect, Filter};
+    let (mut g, base) = game_plus(vec![sorcery(Effect::Goad(0), vec![Filter::CREATURE])]);
+    let lions = put(&mut g, 1, "Savannah Lions");
+    let s = g.add_card(0, base, Zone::Hand);
+    play(&mut g, s, false, &[Target::Object(lions)], &[]);
+    assert!(g.is_goaded(lions));
+    g.start_turn(4, 1);
+    while g.pending != Pending::DeclareAttackers(1) {
+        let a = match g.pending {
+            Pending::Decide(_) | Pending::ChooseTarget(_) => *g.legal_actions().last().unwrap(),
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Attack(lions)));
+    assert!(!legal.contains(&Action::FinishAttacks), "goaded: it must attack");
+}
+
+#[test]
+fn mad_wizards_lair_draws_three_and_may_cast_one_free() {
+    let (mut g, base) = game_plus(vec![sorcery(bolt_core::Effect::DrawThreeMayCastOneFree, vec![])]);
+    let lions = [
+        g.add_card(0, cid("Savannah Lions"), Zone::Library),
+        g.add_card(0, cid("Savannah Lions"), Zone::Library),
+    ];
+    let plains = g.add_card(0, cid("Plains"), Zone::Library);
+    let s = g.add_card(0, base, Zone::Hand);
+    act(&mut g, Action::Cast(s));
+    while !matches!(g.pending, Pending::FreeCast(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Cast(lions[0])) && legal.contains(&Action::Cast(lions[1])));
+    assert_eq!(g.obj(plains).zone, Zone::Hand, "drawn, not castable");
+    act(&mut g, Action::Cast(lions[0]));
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(lions[1])),
+        "one spell only"
+    );
+}
+
+#[test]
+fn invert_polarity_takes_the_spell_or_counters_it() {
+    let (mut won, mut lost) = (false, false);
+    for seed in 0..16 {
+        let plains = vec![cid("Plains"); 99];
+        let mut g = Game::new_commander(
+            set("CMD").unwrap().defs.clone(),
+            [&plains, &plains],
+            [cid("Bello, Bard of the Brambles"), cid("Ms. Bumbleflower")],
+            seed,
+            0,
+        );
+        g.auto_pass = false;
+        for land in ["Island", "Island", "Mountain", "Mountain"] {
+            put(&mut g, 0, land);
+            put(&mut g, 1, land);
+        }
+        g.start_turn(3, 0);
+        while g.step != Step::Main1 {
+            act(&mut g, Action::PassPriority);
+        }
+        let bolt = hand(&mut g, 1, "Burst Lightning");
+        let invert = hand(&mut g, 0, "Invert Polarity");
+        act(&mut g, Action::PassPriority);
+        act(&mut g, Action::Cast(bolt));
+        act(&mut g, Action::Target(Target::Player(0)));
+        if g.pending == Pending::Decide(1) {
+            act(&mut g, Action::No); // not kicked
+        }
+        act(&mut g, Action::PassPriority);
+        act(&mut g, Action::Cast(invert));
+        act(&mut g, Action::Target(Target::Object(bolt)));
+        while g.items.len() > 1 || matches!(g.pending, Pending::ChooseTarget(_)) {
+            act(&mut g, Action::PassPriority);
+        }
+        if g.obj(bolt).zone == Zone::Graveyard && g.items.is_empty() && g.players[0].life == 40 {
+            lost = true; // countered
+            continue;
+        }
+        // Won: player 0 controls it and may pick a new target.
+        assert_eq!(g.items[0].controller, 0, "seed {seed}");
+        assert_eq!(g.pending, Pending::Decide(0));
+        act(&mut g, Action::Target(Target::Player(1)));
+        resolve_all(&mut g, &[]);
+        assert_eq!(g.players[1].life, 38);
+        won = true;
+    }
+    assert!(won && lost, "both outcomes over the seeds");
+}
+
+#[test]
+fn a_chapter_granted_ability_waits_for_its_chapter_urzas_saga() {
+    let island = cid("Island");
+    let mut defs = (*set("CMD").unwrap().defs).clone();
+    let draw = bolt_core::Ability::new(
+        vec![],
+        vec![bolt_core::Effect::Draw {
+            who: bolt_core::Who::You,
+            n: 1,
+        }],
+    );
+    defs[island].activated.push(bolt_core::Activated {
+        tap: true,
+        ability: draw,
+        ..Default::default()
+    });
+    let lib = vec![cid("Plains"); 99];
+    let with = |chapter: Vec<(u8, usize)>| {
+        let mut d = defs.clone();
+        d[island].subsystems.chapter_activated = chapter;
+        let mut g = Game::new_commander(
+            std::sync::Arc::new(d),
+            [&lib, &lib],
+            [cid("Bello, Bard of the Brambles"), cid("Ms. Bumbleflower")],
+            7,
+            0,
+        );
+        g.auto_pass = false;
+        let i = put(&mut g, 0, "Island");
+        g.start_turn(3, 0);
+        while g.step != Step::Main1 {
+            act(&mut g, Action::PassPriority);
+        }
+        g.legal_actions().contains(&Action::Activate(i, 0))
+    };
+    assert!(with(vec![]), "no chapter: a plain ability");
+    assert!(!with(vec![(2, 0)]), "chapter II hasn't granted it");
+}

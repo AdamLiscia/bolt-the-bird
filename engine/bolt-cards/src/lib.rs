@@ -499,6 +499,10 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         modes_once_each_turn: false,
         unspent_mana_becomes_colorless: false,
         cast_only_during_your_end_step: false,
+        attack_tax_player_only: false,
+        cast_only_during_opponents_declare_blockers: false,
+        foods_have_exiled_abilities: false,
+        zones: Default::default(),
     };
     def.color_identity = color_identity(o);
     def.phyrexian = phyrexian;

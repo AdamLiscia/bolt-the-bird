@@ -638,6 +638,8 @@ impl Game {
                             .collect();
                         e.set_item("options", next)?;
                     }
+                    // Lonis: the revealed cards are public.
+                    D::PutFromOpponentsTop { cards, .. } => e.set_item("cards", objs(cards))?,
                     _ => {}
                 }
                 d.set_item("decision", e)?;

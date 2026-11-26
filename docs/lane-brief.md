@@ -147,6 +147,13 @@ Fences:
   (one `if d == "<Name>"` line) and a test for it in `tests/test_decision_labels.py` (no engine needed); if you
   can't, name the decision and what each answer means in your report.
 
+## Services (the merger's)
+
+The three services (8766 FDN, 8767 TDM, 8768 CMD) run under launchd (docs/launchd.md); deploy with
+`launchctl kickstart -k gui/$UID/com.bolt.service-<port>`. **All tables are admin-only (Adam, 2026-11-26), so
+ending live games for a restart or deploy needs no `games_live` 0 wait and no OK.** Don't cut off a game you can
+see moving right now if a short wait is cheap. Lanes never restart services.
+
 ## Tests
 
 One behavior test per card in your test file. It checks what the text does, not just that the card casts.

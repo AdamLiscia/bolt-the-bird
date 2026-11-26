@@ -1592,12 +1592,12 @@ fn attack_tax_per_creature() {
         ..sphere
     };
     let (mut g, t) = game_with(vec![prison, sphere]);
-    assert_eq!(g.attack_tax(1), 0);
+    assert_eq!(g.attack_tax(1, false), 0);
     g.add_card(1, t, Zone::Battlefield);
-    assert_eq!(g.attack_tax(1), 2);
+    assert_eq!(g.attack_tax(1, false), 2);
     g.add_card(1, t + 1, Zone::Battlefield);
-    assert_eq!(g.attack_tax(1), 2 + 2, "two enchantments");
-    assert_eq!(g.attack_tax(0), 0);
+    assert_eq!(g.attack_tax(1, false), 2 + 2, "two enchantments");
+    assert_eq!(g.attack_tax(0, false), 0);
 }
 
 #[test]
@@ -2282,4 +2282,435 @@ fn target_filters_for_defenders_and_artifact_cards() {
     act(&mut g, Action::Cast(c));
     let legal = g.legal_actions();
     assert!(legal.contains(&Action::Target(obj(ring))) && !legal.contains(&Action::Target(obj(elves))));
+}
+
+// ---- batch 15 ----
+
+fn token_def(g: &Game, name: &str) -> usize {
+    (0..g.defs.len())
+        .find(|&i| g.defs[i].token && g.defs[i].name == name)
+        .expect("a token")
+}
+
+/// Passes priority until a decision comes up.
+fn to_decision(g: &mut Game) {
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(g, Action::PassPriority);
+    }
+}
+
+#[test]
+fn filters_for_power_or_toughness_one_or_less_and_for_sorcery_spells() {
+    let small = Filter {
+        creature_power_or_toughness_at_most: Some(1),
+        ..Filter::CREATURE
+    };
+    let sorcery_spell = Filter {
+        players: false,
+        creatures: false,
+        planeswalkers: false,
+        spells: true,
+        spell_sorcery: true,
+        ..Filter::ANY
+    };
+    let mut counter = sorcery(vec![sorcery_spell], vec![Effect::Counter(0)]);
+    counter.types = Types {
+        instant: true,
+        ..Types::default()
+    };
+    let (mut g, t) = game_with(vec![sorcery(vec![small], vec![Effect::Exile(0)]), counter]);
+    let elves = g.add_card(1, cid("Llanowar Elves"), Zone::Battlefield);
+    let skite = g.add_card(1, cid("Spellskite"), Zone::Battlefield); // 0/4
+    let angel = g.add_card(1, cid("Serra Angel"), Zone::Battlefield);
+    let c = g.add_card(0, t, Zone::Hand);
+    act(&mut g, Action::Cast(c));
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Target(obj(elves))) && legal.contains(&Action::Target(obj(skite))));
+    assert!(!legal.contains(&Action::Target(obj(angel))), "a 4/4");
+    act(&mut g, Action::Target(obj(skite)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(skite).zone, Zone::Exile);
+
+    let bolt = g.add_card(0, cid("Lightning Bolt"), Zone::Hand);
+    let c = g.add_card(0, t + 1, Zone::Hand);
+    act(&mut g, Action::Cast(bolt));
+    act(&mut g, Action::Target(Target::Player(1)));
+    assert!(!g.legal_actions().contains(&Action::Cast(c)), "an instant spell");
+    resolve_all(&mut g, &[]);
+    let wrath = g.add_card(0, cid("Wrath of God"), Zone::Hand);
+    act(&mut g, Action::Cast(wrath));
+    act(&mut g, Action::Cast(c));
+    act(&mut g, Action::Target(obj(wrath)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(elves).zone, Zone::Battlefield, "Wrath of God was countered");
+}
+
+#[test]
+fn each_player_with_an_artifact_or_enchantment_creates_a_token() {
+    let (g0, _) = game_with(vec![]);
+    let bear = token_def(&g0, "Bear");
+    let (mut g, t) = game_with(vec![sorcery(
+        vec![],
+        vec![Effect::EachPlayerWithArtifactOrEnchantmentCreatesToken { def: bear }],
+    )]);
+    g.add_card(1, cid("Sol Ring"), Zone::Battlefield);
+    cast_test(&mut g, t, &[], &[]);
+    let bears = |g: &Game, p| count(g, p, |g, x| g.def_of(x).name == "Bear");
+    assert_eq!((bears(&g, 0), bears(&g, 1)), (0, 1));
+    assert_eq!(
+        g.power(g.permanents(1).find(|&x| g.def_of(x).name == "Bear").unwrap()),
+        2
+    );
+    g.add_card(0, cid("Sterling Grove"), Zone::Battlefield);
+    cast_test(&mut g, t, &[], &[]);
+    assert_eq!((bears(&g, 0), bears(&g, 1)), (1, 2));
+}
+
+#[test]
+fn amass_makes_an_army_once_then_grows_it() {
+    let (g0, _) = game_with(vec![]);
+    let army = token_def(&g0, "Orc Army");
+    let amass = |n| {
+        sorcery(
+            vec![],
+            vec![Effect::Amass {
+                subtype: "Orc",
+                n,
+                def: army,
+            }],
+        )
+    };
+    let (mut g, t) = game_with(vec![amass(1), amass(2)]);
+    cast_test(&mut g, t, &[], &[]);
+    let armies: Vec<ObjId> = g
+        .permanents(0)
+        .filter(|&x| g.def_of(x).name == "Orc Army")
+        .collect();
+    assert_eq!(armies.len(), 1);
+    let a = armies[0];
+    assert_eq!((g.power(a), g.toughness(a)), (1, 1));
+    assert!(g.has_subtype(a, "Orc") && g.has_subtype(a, "Army"));
+    assert_eq!(g.colors_of(a), [false, false, true, false, false], "black");
+    cast_test(&mut g, t + 1, &[], &[]);
+    assert_eq!(
+        count(&g, 0, |g, x| g.def_of(x).name == "Orc Army"),
+        1,
+        "no second Army"
+    );
+    assert_eq!((g.power(a), g.toughness(a)), (3, 3));
+}
+
+#[test]
+fn amass_a_type_the_army_lacks_adds_that_type() {
+    let (g0, _) = game_with(vec![]);
+    let army = token_def(&g0, "Orc Army");
+    let (mut g, t) = game_with(vec![sorcery(
+        vec![],
+        vec![Effect::Amass {
+            subtype: "Zombie",
+            n: 1,
+            def: army,
+        }],
+    )]);
+    cast_test(&mut g, t, &[], &[]);
+    let a = g.permanents(0).find(|&x| g.def_of(x).name == "Orc Army").unwrap();
+    assert!(g.has_subtype(a, "Zombie") && g.has_subtype(a, "Army"));
+}
+
+#[test]
+fn return_an_instant_or_sorcery_card_at_random() {
+    let (mut g, t) = game_with(vec![sorcery(
+        vec![],
+        vec![Effect::ReturnRandomInstantOrSorceryFromGraveyard],
+    )]);
+    let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Graveyard);
+    let bolt = g.add_card(0, cid("Lightning Bolt"), Zone::Graveyard);
+    let theirs = g.add_card(1, cid("Opt"), Zone::Graveyard);
+    cast_test(&mut g, t, &[], &[]);
+    assert_eq!(
+        g.obj(bolt).zone,
+        Zone::Hand,
+        "the only instant or sorcery in your graveyard"
+    );
+    assert_eq!(
+        (g.obj(elves).zone, g.obj(theirs).zone),
+        (Zone::Graveyard, Zone::Graveyard)
+    );
+}
+
+#[test]
+fn look_at_three_one_to_hand_one_to_the_bottom_one_exiled_to_play() {
+    let (mut g, t) = game_with(vec![sorcery(vec![], vec![Effect::LookHandBottomExilePlay(3)])]);
+    let a = g.add_card(0, cid("Serra Angel"), Zone::Library);
+    let b = g.add_card(0, cid("Sol Ring"), Zone::Library);
+    let bolt = g.add_card(0, cid("Lightning Bolt"), Zone::Library);
+    let c = g.add_card(0, t, Zone::Hand);
+    act(&mut g, Action::Cast(c));
+    to_decision(&mut g);
+    resolve_all(&mut g, &[Action::Pick(a), Action::Pick(b)]);
+    assert_eq!(g.obj(a).zone, Zone::Hand);
+    assert_eq!(g.players[0].library[0], b, "on the bottom");
+    assert_eq!(g.obj(bolt).zone, Zone::Exile);
+    assert!(
+        g.legal_actions().contains(&Action::Cast(bolt)),
+        "playable this turn"
+    );
+    to_main1(&mut g, 4, 1);
+    to_main1(&mut g, 5, 0);
+    assert!(!g.legal_actions().contains(&Action::Cast(bolt)), "only this turn");
+}
+
+fn to_main1(g: &mut Game, turn: u32, active: usize) {
+    g.start_turn(turn, active);
+    while g.step != Step::Main1 {
+        act(g, Action::PassPriority);
+    }
+}
+
+#[test]
+fn choose_a_graveyard_spell_to_cast_this_turn_then_exile() {
+    let (mut g, t) = game_with(vec![sorcery(
+        vec![],
+        vec![Effect::ChooseGraveyardSpellToCastThisTurn],
+    )]);
+    let bolt = g.add_card(0, cid("Lightning Bolt"), Zone::Graveyard);
+    g.add_card(0, cid("Llanowar Elves"), Zone::Graveyard);
+    let c = g.add_card(0, t, Zone::Hand);
+    act(&mut g, Action::Cast(c));
+    to_decision(&mut g);
+    assert_eq!(g.legal_actions(), vec![Action::Pick(bolt)]);
+    resolve_all(&mut g, &[Action::Pick(bolt)]);
+    let life = g.players[1].life;
+    assert!(
+        g.legal_actions().contains(&Action::CastFlashback(bolt)),
+        "{:?}",
+        g.legal_actions()
+    );
+    act(&mut g, Action::CastFlashback(bolt));
+    act(&mut g, Action::Target(Target::Player(1)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].life, life - 3);
+    assert_eq!(
+        g.obj(bolt).zone,
+        Zone::Exile,
+        "exiled instead of going to the graveyard"
+    );
+}
+
+#[test]
+fn exile_each_instant_and_sorcery_and_cast_the_copies_free() {
+    let (mut g, t) = game_with(vec![sorcery(
+        vec![],
+        vec![Effect::ExileCastCopyFreeEachInstantSorcery],
+    )]);
+    let b1 = g.add_card(0, cid("Lightning Bolt"), Zone::Graveyard);
+    let b2 = g.add_card(0, cid("Lightning Bolt"), Zone::Graveyard);
+    let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Graveyard);
+    let c = g.add_card(0, t, Zone::Hand);
+    act(&mut g, Action::Cast(c));
+    while !matches!(g.pending, Pending::FreeCast(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(
+        (g.obj(b1).zone, g.obj(b2).zone, g.obj(elves).zone),
+        (Zone::Exile, Zone::Exile, Zone::Graveyard)
+    );
+    let copies: Vec<ObjId> = g
+        .legal_actions()
+        .into_iter()
+        .filter_map(|a| match a {
+            Action::Cast(c) => Some(c),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(copies.len(), 2, "{copies:?}");
+    assert!(
+        !copies.contains(&b1) && !copies.contains(&b2),
+        "copies, not the cards"
+    );
+    let life = g.players[1].life;
+    let pool_before = g.players[0].pool.len();
+    act(&mut g, Action::Cast(copies[0]));
+    act(&mut g, Action::Target(Target::Player(1)));
+    act(&mut g, Action::Cast(copies[1]));
+    act(&mut g, Action::Target(Target::Player(1)));
+    assert_eq!(g.players[0].pool.len(), pool_before);
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].life, life - 6);
+}
+
+// ---- batch 16 ----
+
+#[test]
+fn gain_life_and_a_counter_only_the_first_time_each_turn() {
+    let mut d = CardDef::creature("Test Wurmlet", "{0}", 1, 1, Keywords::NONE);
+    d.activated.push(bolt_core::Activated {
+        mana: ManaCost::parse("{0}").unwrap(),
+        ability: Ability::new(
+            vec![],
+            vec![Effect::GainLifeCountersIfFirstResolutionThisTurn { life: 1, counters: 1 }],
+        ),
+        ..bolt_core::Activated::default()
+    });
+    let (mut g, t) = game_with(vec![d]);
+    let w = g.add_card(0, t, Zone::Battlefield);
+    let life = g.players[0].life;
+    for _ in 0..2 {
+        act(&mut g, Action::Activate(w, 0));
+        resolve_all(&mut g, &[]);
+    }
+    assert_eq!(g.players[0].life, life + 2, "life every time");
+    assert_eq!(g.power(w), 2, "one counter: the first resolution only");
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Activate(w, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.power(w), 3, "a new turn");
+}
+
+#[test]
+fn an_even_mana_value_filter_and_an_odd_mana_value_return() {
+    let even = Filter {
+        players: false,
+        planeswalkers: false,
+        creatures: false,
+        any_permanent: true,
+        mana_value_even: true,
+        ..Filter::ANY
+    };
+    let (mut g, t) = game_with(vec![
+        sorcery(vec![even], vec![Effect::Exile(0)]),
+        sorcery(vec![], vec![Effect::ReturnOddManaValuePermanentToBattlefield]),
+    ]);
+    let mind_stone = g.add_card(1, cid("Mind Stone"), Zone::Battlefield); // 2
+    let ring = g.add_card(1, cid("Sol Ring"), Zone::Battlefield); // 1
+    let c = g.add_card(0, t, Zone::Hand);
+    act(&mut g, Action::Cast(c));
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Target(obj(mind_stone))) && !legal.contains(&Action::Target(obj(ring))));
+    let plains = g.permanents(1).find(|&x| g.def_of(x).name == "Plains").unwrap();
+    assert!(legal.contains(&Action::Target(obj(plains))), "zero is even");
+    act(&mut g, Action::Target(obj(mind_stone)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(mind_stone).zone, Zone::Exile);
+
+    let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Graveyard); // 1
+    let stone = g.add_card(0, cid("Mind Stone"), Zone::Graveyard); // 2
+    let bolt = g.add_card(0, cid("Lightning Bolt"), Zone::Graveyard); // 1, not a permanent
+    let c = g.add_card(0, t + 1, Zone::Hand);
+    act(&mut g, Action::Cast(c));
+    to_decision(&mut g);
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Pick(elves)));
+    assert!(!legal.contains(&Action::Pick(stone)) && !legal.contains(&Action::Pick(bolt)));
+    resolve_all(&mut g, &[Action::Pick(elves)]);
+    assert_eq!(g.obj(elves).zone, Zone::Battlefield);
+}
+
+// ---- batch 17 ----
+
+#[test]
+fn tap_all_creatures() {
+    let (mut g, t) = game_with(vec![sorcery(vec![], vec![Effect::TapAllCreatures])]);
+    let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
+    let angel = g.add_card(1, cid("Serra Angel"), Zone::Battlefield);
+    let ring = g.add_card(1, cid("Sol Ring"), Zone::Battlefield);
+    cast_test(&mut g, t, &[], &[]);
+    assert!(g.obj(elves).tapped && g.obj(angel).tapped);
+    assert!(!g.obj(ring).tapped, "not a creature");
+}
+
+#[test]
+fn look_at_seven_take_two_and_the_rest_on_the_bottom() {
+    let (mut g, t) = game_with(vec![sorcery(vec![], vec![Effect::LookTakeTwoBottomAnyOrder(3)])]);
+    let a = g.add_card(0, cid("Serra Angel"), Zone::Library);
+    let b = g.add_card(0, cid("Sol Ring"), Zone::Library);
+    let c3 = g.add_card(0, cid("Lightning Bolt"), Zone::Library);
+    let lib = g.players[0].library.len();
+    let c = g.add_card(0, t, Zone::Hand);
+    act(&mut g, Action::Cast(c));
+    to_decision(&mut g);
+    assert!(!g.legal_actions().contains(&Action::No), "two must be taken");
+    resolve_all(&mut g, &[Action::Pick(a), Action::Pick(c3)]);
+    assert_eq!((g.obj(a).zone, g.obj(c3).zone), (Zone::Hand, Zone::Hand));
+    assert_eq!(g.players[0].library[0], b, "the rest on the bottom");
+    assert_eq!(g.players[0].library.len(), lib - 2);
+}
+
+// ---- batch 18 ----
+
+#[test]
+fn x_times_lose_life_unless_sacrificing_a_nonland_permanent_or_discarding() {
+    let mut torment = sorcery(
+        vec![],
+        vec![Effect::OpponentLosesUnlessSacrificesOrDiscardsX { life: 3 }],
+    );
+    torment.cost = ManaCost::parse("{X}").unwrap();
+    let (mut g, t) = game_with(vec![torment]);
+    let ring = g.add_card(1, cid("Sol Ring"), Zone::Battlefield);
+    let opt = g.add_card(1, cid("Opt"), Zone::Hand);
+    let life = g.players[1].life;
+    let c = g.add_card(0, t, Zone::Hand);
+    act(&mut g, Action::CastX(c, 3));
+    while g.pending != Pending::Decide(1) {
+        act(&mut g, Action::PassPriority);
+    }
+    let legal = g.legal_actions();
+    assert!(
+        legal.contains(&Action::Pick(ring))
+            && legal.contains(&Action::Pick(opt))
+            && legal.contains(&Action::No)
+    );
+    let plains = g.permanents(1).find(|&x| g.def_of(x).name == "Plains").unwrap();
+    assert!(!legal.contains(&Action::Pick(plains)), "a land");
+    act(&mut g, Action::Pick(ring)); // sacrifice
+    act(&mut g, Action::Pick(opt)); // discard
+    act(&mut g, Action::No); // 3 life
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        (g.obj(ring).zone, g.obj(opt).zone),
+        (Zone::Graveyard, Zone::Graveyard)
+    );
+    assert_eq!(g.players[1].life, life - 3);
+}
+
+// ---- batch 19 ----
+
+#[test]
+fn exile_the_top_two_to_play_this_turn_only() {
+    let (mut g, t) = game_with(vec![sorcery(vec![], vec![Effect::ExileTopToPlayThisTurn(2)])]);
+    let forest = g.add_card(0, cid("Forest"), Zone::Library);
+    let bolt = g.add_card(0, cid("Lightning Bolt"), Zone::Library);
+    cast_test(&mut g, t, &[], &[]);
+    assert_eq!((g.obj(forest).zone, g.obj(bolt).zone), (Zone::Exile, Zone::Exile));
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Cast(bolt)) && legal.contains(&Action::PlayLand(forest)));
+    to_main1(&mut g, 4, 1);
+    to_main1(&mut g, 5, 0);
+    let legal = g.legal_actions();
+    assert!(!legal.contains(&Action::Cast(bolt)) && !legal.contains(&Action::PlayLand(forest)));
+}
+
+#[test]
+fn return_up_to_one_creature_card_with_small_mana_value_to_the_battlefield() {
+    let (mut g, t) = game_with(vec![sorcery(
+        vec![],
+        vec![Effect::ReturnCreatureMvAtMostToBattlefield(3)],
+    )]);
+    let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Graveyard);
+    let angel = g.add_card(0, cid("Serra Angel"), Zone::Graveyard);
+    let theirs = g.add_card(1, cid("Llanowar Elves"), Zone::Graveyard);
+    let c = g.add_card(0, t, Zone::Hand);
+    act(&mut g, Action::Cast(c));
+    to_decision(&mut g);
+    let legal = g.legal_actions();
+    assert!(
+        legal.contains(&Action::Pick(elves)) && legal.contains(&Action::No),
+        "up to one"
+    );
+    assert!(!legal.contains(&Action::Pick(angel)) && !legal.contains(&Action::Pick(theirs)));
+    resolve_all(&mut g, &[Action::Pick(elves)]);
+    assert_eq!(g.obj(elves).zone, Zone::Battlefield);
 }
