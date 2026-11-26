@@ -1643,3 +1643,108 @@ fn opponent_discards_or_loses_life_n_times() {
     assert_eq!(g.players[1].hand.len(), cards - 1);
     assert_eq!(g.players[1].life, 40 - 6 * 3);
 }
+
+// ---- batch 12: dungeon rooms' effects ----
+
+#[test]
+fn pump_until_your_next_turn() {
+    let shrink = Effect::PumpUntilYourNextTurn {
+        slot: 0,
+        power: -4,
+        toughness: 0,
+    };
+    let (mut g, t) = game_with(vec![sorcery(vec![Filter::CREATURE], vec![shrink])]);
+    let sphinx = g.add_card(1, cid("Consecrated Sphinx"), Zone::Battlefield);
+    cast_test(&mut g, t, &[obj(sphinx)], &[]);
+    assert_eq!((g.power(sphinx), g.toughness(sphinx)), (0, 6));
+    g.start_turn(4, 1);
+    assert_eq!(g.power(sphinx), 0, "through their turn");
+    g.start_turn(5, 0);
+    assert_eq!(g.power(sphinx), 4, "until your next turn");
+}
+
+#[test]
+fn each_player_loses_unless_they_discard_or_sacrifice() {
+    let veils = sorcery(
+        vec![],
+        vec![Effect::EachPlayerLosesUnless {
+            life: 2,
+            sacrifice: false,
+        }],
+    );
+    let sandfall = sorcery(
+        vec![],
+        vec![Effect::EachPlayerLosesUnless {
+            life: 2,
+            sacrifice: true,
+        }],
+    );
+    let (mut g, t) = game_with(vec![veils, sandfall]);
+    let mine = g.add_card(0, cid("Sol Ring"), Zone::Hand);
+    cast_test(&mut g, t, &[], &[Action::Pick(mine), Action::No]);
+    assert_eq!(g.obj(mine).zone, Zone::Graveyard);
+    assert_eq!((g.players[0].life, g.players[1].life), (40, 38));
+    let forest = g.permanents(1).find(|&x| g.def_of(x).name == "Forest").unwrap();
+    cast_test(&mut g, t + 1, &[], &[Action::No, Action::Pick(forest)]);
+    assert_eq!(g.obj(forest).zone, Zone::Graveyard);
+    assert_eq!((g.players[0].life, g.players[1].life), (38, 38));
+}
+
+#[test]
+fn sacrifice_an_artifact_a_creature_and_a_land() {
+    let (mut g, t) = game_with(vec![sorcery(
+        vec![],
+        vec![Effect::SacrificeArtifactCreatureAndLand],
+    )]);
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Battlefield);
+    let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
+    let angel = g.add_card(0, cid("Serra Angel"), Zone::Battlefield);
+    let forest = g.permanents(0).find(|&x| g.def_of(x).name == "Forest").unwrap();
+    let lands = g.permanents(0).filter(|&x| g.types_of(x).land).count();
+    cast_test(&mut g, t, &[], &[Action::Pick(angel), Action::Pick(forest)]);
+    assert_eq!(g.obj(ring).zone, Zone::Graveyard, "the only artifact");
+    assert_eq!(g.obj(angel).zone, Zone::Graveyard);
+    assert_eq!(g.obj(elves).zone, Zone::Battlefield);
+    assert_eq!(g.permanents(0).filter(|&x| g.types_of(x).land).count(), lands - 1);
+}
+
+#[test]
+fn reveal_top_creature_onto_battlefield_with_counters_and_hexproof() {
+    let throne = Effect::RevealTopCreatureOntoBattlefield {
+        n: 10,
+        counters: 3,
+        keywords: Keywords::HEXPROOF,
+    };
+    let (mut g, t) = game_with(vec![sorcery(vec![], vec![throne])]);
+    let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Library);
+    let angel = g.add_card(0, cid("Serra Angel"), Zone::Library);
+    cast_test(&mut g, t, &[], &[Action::Pick(angel)]);
+    assert_eq!(g.obj(angel).zone, Zone::Battlefield);
+    assert_eq!(g.obj(angel).counters, 3);
+    assert!(g.keywords(angel).has(Keywords::HEXPROOF));
+    assert_eq!(g.obj(elves).zone, Zone::Library);
+}
+
+#[test]
+fn search_for_an_artifact_with_mana_cost_zero_or_one() {
+    let urza = sorcery(
+        vec![],
+        vec![Effect::Search {
+            what: SearchFor::ArtifactManaCostZeroOrOne,
+            to: SearchTo::Hand,
+            n: 1,
+            kicked_n: None,
+        }],
+    );
+    let (mut g, t) = game_with(vec![urza]);
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Library); // {1}
+    let stone = g.add_card(0, cid("Mind Stone"), Zone::Library); // {2}
+    let c = g.add_card(0, t, Zone::Hand);
+    act(&mut g, Action::Cast(c));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Pick(ring)), "{legal:?}");
+    assert!(!legal.contains(&Action::Pick(stone)));
+}

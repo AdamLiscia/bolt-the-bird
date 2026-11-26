@@ -1122,6 +1122,24 @@ pub enum Decision {
     /// `Pick` a card from your hand to discard, or `No` to lose `life` life; `left` more times
     /// after this one (Professor Onyx's −8).
     DiscardOrLoseLife { left: u8, life: i32 },
+    /// `Pick` a card to discard (with `sacrifice`, an artifact, creature or land to sacrifice), or
+    /// `No` to lose `life` life; then `next` chooses (Veils of Fear, Sandfall Cell).
+    LoseUnless {
+        life: i32,
+        sacrifice: bool,
+        next: Option<PlayerId>,
+    },
+    /// `Pick` the permanent of type `ty` (0 artifact, 1 creature, 2 land) to sacrifice; `chosen`
+    /// so far (Oubliette).
+    SacrificeOfType { ty: u8, chosen: Vec<ObjId> },
+    /// `Pick` a creature card among `cards` (revealed from the top) to put onto the battlefield
+    /// with `counters` +1/+1 counters; it gains `keywords` until your next turn (Throne of the Dead
+    /// Three).
+    RevealedCreatureOnto {
+        cards: Vec<ObjId>,
+        counters: u8,
+        keywords: Keywords,
+    },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -1431,6 +1449,9 @@ pub struct Game {
     /// Vow counters (Promise of Loyalty): (creature, its zcc, the player it can't attack, nor
     /// that player's planeswalkers).
     pub vows: Vec<(ObjId, u32, PlayerId)>,
+    /// "+P/+T until your next turn": (creature, its zcc, power, toughness, the turn it ends at: the
+    /// controller's next turn in alternating turns) (Fungi Cavern).
+    pub next_turn_pt: Vec<(ObjId, u32, i32, i32, u32)>,
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -1660,6 +1681,7 @@ impl Game {
             life_lost_turn: [(0, 0); 2],
             protection_grants: Vec::new(),
             vows: Vec::new(),
+            next_turn_pt: Vec::new(),
         }
     }
 
@@ -2844,6 +2866,19 @@ impl Game {
             + self.obj(id).counters
             + self.modifiers(id).map(|m| m.power).sum::<i32>()
             + self.statics_on(id).map(|s| s.power).sum::<i32>()
+            + self.next_turn_pt(id).0
+    }
+
+    /// "Until your next turn" P/T changes on `id` (`Game::next_turn_pt`).
+    fn next_turn_pt(&self, id: ObjId) -> (i32, i32) {
+        if self.next_turn_pt.is_empty() {
+            return (0, 0);
+        }
+        let o = self.obj(id);
+        self.next_turn_pt
+            .iter()
+            .filter(|e| e.0 == id && e.1 == o.zcc && o.zone == Zone::Battlefield && self.turn < e.4)
+            .fold((0, 0), |(p, t), e| (p + e.2, t + e.3))
     }
 
     pub fn toughness(&self, id: ObjId) -> i32 {
@@ -2854,6 +2889,7 @@ impl Game {
             + self.obj(id).counters
             + self.modifiers(id).map(|m| m.toughness).sum::<i32>()
             + self.statics_on(id).map(|s| s.toughness).sum::<i32>()
+            + self.next_turn_pt(id).1
     }
 
     /// Taps a permanent; if it was untapped, its "whenever this becomes tapped" triggers fire.
@@ -9280,6 +9316,16 @@ impl Game {
                     SearchFor::ArtifactWithManaAbilityOrBasicLand => {
                         (d.types.basic && d.types.land) || (d.types.artifact && Game::has_mana_ability(d))
                     }
+                    SearchFor::ArtifactManaCostZeroOrOne => {
+                        let c = &d.cost;
+                        d.types.artifact
+                            && c.x == 0
+                            && c.colorless == 0
+                            && c.colored == [0; 5]
+                            && c.hybrid == [0; 10]
+                            && c.twobrid == [0; 5]
+                            && c.generic <= 1
+                    }
                 }
             })
             .collect()
@@ -9995,6 +10041,26 @@ impl Game {
                 v.push(Action::No);
                 v
             }
+            Decision::LoseUnless { sacrifice, .. } => {
+                let mut v: Vec<Action> = self
+                    .lose_unless_options(p, *sacrifice)
+                    .into_iter()
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
+            Decision::SacrificeOfType { ty, chosen } => self
+                .sacrifice_of_type_options(p, *ty, chosen)
+                .into_iter()
+                .map(Action::Pick)
+                .collect(),
+            Decision::RevealedCreatureOnto { cards, .. } => cards
+                .iter()
+                .copied()
+                .filter(|&c| self.def_of(c).types.creature)
+                .map(Action::Pick)
+                .collect(),
             Decision::BraidsOpponent { types, .. } => {
                 let mut v: Vec<Action> = self
                     .braids_options(p, Some(*types))
@@ -11228,6 +11294,34 @@ impl Game {
                 }
                 self.discard_or_lose_next(p, left, life);
             }
+            (
+                Decision::LoseUnless {
+                    life,
+                    sacrifice,
+                    next,
+                },
+                a,
+            ) => {
+                match a {
+                    Action::Pick(c) => self.move_to(c, Zone::Graveyard),
+                    _ => self.lose_life(p, life),
+                }
+                if let Some(q) = next {
+                    self.lose_unless_ask(q, life, sacrifice, None);
+                }
+            }
+            (Decision::SacrificeOfType { ty, mut chosen }, Action::Pick(c)) => {
+                chosen.push(c);
+                self.sacrifice_of_type_next(p, ty + 1, chosen);
+            }
+            (
+                Decision::RevealedCreatureOnto {
+                    counters, keywords, ..
+                },
+                Action::Pick(c),
+            ) => {
+                self.reveal_creature_onto(p, Some(c), counters, keywords);
+            }
             (d, a) => unreachable!("legal action {a:?} unhandled for {d:?}"),
         }
         if self.decision.is_none() {
@@ -11597,6 +11691,86 @@ impl Game {
             }
             self.lose_life(p, life);
         }
+    }
+
+    /// What `p` can give up instead of losing life: a card in hand, or with `sacrifice` an
+    /// artifact, creature or land they control (Veils of Fear, Sandfall Cell).
+    fn lose_unless_options(&self, p: PlayerId, sacrifice: bool) -> Vec<ObjId> {
+        if !sacrifice {
+            return self.players[p].hand.clone();
+        }
+        self.permanents(p)
+            .filter(|&x| {
+                let t = self.types_of(x);
+                (t.artifact || t.creature || t.land) && !self.cant_be_sacrificed(x)
+            })
+            .collect()
+    }
+
+    /// Asks `p` to pay or lose life (losing it at once with nothing to give up), then `next`.
+    fn lose_unless_ask(&mut self, p: PlayerId, life: i32, sacrifice: bool, next: Option<PlayerId>) {
+        if self.lose_unless_options(p, sacrifice).is_empty() {
+            self.lose_life(p, life);
+            if let Some(q) = next {
+                self.lose_unless_ask(q, life, sacrifice, None);
+            }
+            return;
+        }
+        self.ask(
+            p,
+            Decision::LoseUnless {
+                life,
+                sacrifice,
+                next,
+            },
+        );
+    }
+
+    /// Oubliette: `p`'s permanents of type `ty` (0 artifact, 1 creature, 2 land) not already chosen.
+    fn sacrifice_of_type_options(&self, p: PlayerId, ty: u8, chosen: &[ObjId]) -> Vec<ObjId> {
+        self.permanents(p)
+            .filter(|&x| {
+                let t = self.types_of(x);
+                let fits = match ty {
+                    0 => t.artifact,
+                    1 => t.creature,
+                    _ => t.land,
+                };
+                fits && !chosen.contains(&x) && !self.cant_be_sacrificed(x)
+            })
+            .collect()
+    }
+
+    /// Oubliette: choose the next type's permanent (asked only with a choice), then sacrifice them
+    /// together.
+    fn sacrifice_of_type_next(&mut self, p: PlayerId, mut ty: u8, mut chosen: Vec<ObjId>) {
+        while ty < 3 {
+            let options = self.sacrifice_of_type_options(p, ty, &chosen);
+            if options.len() > 1 {
+                self.ask(p, Decision::SacrificeOfType { ty, chosen });
+                return;
+            }
+            chosen.extend(options);
+            ty += 1;
+        }
+        for c in chosen {
+            self.move_to(c, Zone::Graveyard);
+        }
+    }
+
+    /// Throne of the Dead Three: `pick` onto the battlefield with `counters` +1/+1 counters and
+    /// `keywords` until your next turn; then shuffle.
+    fn reveal_creature_onto(&mut self, p: PlayerId, pick: Option<ObjId>, counters: u8, keywords: Keywords) {
+        if let Some(c) = pick {
+            self.move_to(c, Zone::Battlefield);
+            if self.obj(c).zone == Zone::Battlefield {
+                self.obj_mut(c).controller = p;
+                self.add_counters(c, counters as i32);
+                let zcc = self.obj(c).zcc;
+                self.until_your_next_turn.push((c, zcc, keywords, p));
+            }
+        }
+        self.shuffle_library(p);
     }
 
     /// Tainted Pact: exile the next card; stop on a repeated name or an empty library, else ask.
@@ -17393,6 +17567,55 @@ impl Game {
             Effect::OpponentDiscardsOrLosesLife { n, life } => {
                 let q = opponent(item.controller);
                 self.discard_or_lose_next(q, n, life);
+            }
+            Effect::PumpUntilYourNextTurn {
+                slot,
+                power,
+                toughness,
+            } => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    if self.obj(id).zone == Zone::Battlefield {
+                        let zcc = self.obj(id).zcc;
+                        // Your next turn: the next one in alternating turns.
+                        let ends = self.turn + if self.active == item.controller { 2 } else { 1 };
+                        let turn = self.turn;
+                        self.next_turn_pt.retain(|e| turn < e.4);
+                        self.next_turn_pt.push((id, zcc, power, toughness, ends));
+                    }
+                }
+            }
+            Effect::EachPlayerLosesUnless { life, sacrifice } => {
+                let a = self.active;
+                self.lose_unless_ask(a, life, sacrifice, Some(opponent(a)));
+            }
+            Effect::SacrificeArtifactCreatureAndLand => {
+                self.sacrifice_of_type_next(item.controller, 0, Vec::new());
+            }
+            Effect::RevealTopCreatureOntoBattlefield {
+                n,
+                counters,
+                keywords,
+            } => {
+                let p = item.controller;
+                let lib = &self.players[p].library;
+                let cards: Vec<ObjId> = lib.iter().rev().take(n as usize).copied().collect();
+                let creatures: Vec<ObjId> = cards
+                    .iter()
+                    .copied()
+                    .filter(|&c| self.def_of(c).types.creature)
+                    .collect();
+                if creatures.len() > 1 {
+                    self.ask(
+                        p,
+                        Decision::RevealedCreatureOnto {
+                            cards,
+                            counters,
+                            keywords,
+                        },
+                    );
+                } else {
+                    self.reveal_creature_onto(p, creatures.first().copied(), counters, keywords);
+                }
             }
         }
     }

@@ -1919,6 +1919,31 @@ pub enum Effect {
         n: u8,
         life: i32,
     },
+    /// The creature in `slot` gets +P/+T until your next turn (Fungi Cavern: −4/−0), kept in
+    /// `Game::next_turn_pt`.
+    PumpUntilYourNextTurn {
+        slot: u8,
+        power: i32,
+        toughness: i32,
+    },
+    /// Each player, the active player first, loses `life` life unless they discard a card, or with
+    /// `sacrifice`, unless they sacrifice an artifact, a creature or a land (Veils of Fear; Sandfall
+    /// Cell), as `Decision::LoseUnless`.
+    EachPlayerLosesUnless {
+        life: i32,
+        sacrifice: bool,
+    },
+    /// Sacrifice an artifact, a creature and a land (Oubliette, after its discard), as
+    /// `Decision::SacrificeOfType`; one permanent counts once.
+    SacrificeArtifactCreatureAndLand,
+    /// Reveal the top `n` cards of your library; put a creature card from among them onto the
+    /// battlefield with `counters` +1/+1 counters; it gains `keywords` until your next turn; then
+    /// shuffle (Throne of the Dead Three: 10, 3, hexproof), as `Decision::RevealedCreatureOnto`.
+    RevealTopCreatureOntoBattlefield {
+        n: u8,
+        counters: u8,
+        keywords: crate::Keywords,
+    },
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -1985,6 +2010,9 @@ pub enum SearchFor {
     ArtifactManaValue(u32),
     /// An artifact card with a mana ability, or a basic land card (Moonsilver Key).
     ArtifactWithManaAbilityOrBasicLand,
+    /// An artifact card with mana cost {0} or {1} (Urza's Saga). The engine's costs don't tell
+    /// {0} from no mana cost, so an artifact with none counts too.
+    ArtifactManaCostZeroOrOne,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

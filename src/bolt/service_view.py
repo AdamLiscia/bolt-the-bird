@@ -157,6 +157,9 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         verb = verb or {"KeepNonlandOfType": "Keep", "HandToBottom": "Put on the bottom:", "SacrificeAnyNumber": "Sacrifice", "SacrificeCreatureOrPlaneswalkerEach": "Sacrifice", "ReturnAnotherPermanentCard": "Return to your hand:", "BasicsTappedUpTo": "Put onto the battlefield tapped:", "SignalTheClans": "Reveal", "BraidsSacrifice": "Sacrifice", "BraidsOpponent": "Sacrifice"}.get(d)  # fmt: skip
         verb = verb or {"ConniveDiscard": "Discard (connive):"}.get(d)
         verb = verb or {"VowCreature": "Put a vow counter on (sacrifice the rest):", "DiscardOrLoseLife": "Discard"}.get(d)  # fmt: skip
+        verb = verb or {"SacrificeOfType": "Sacrifice", "RevealedCreatureOnto": "Put onto the battlefield:"}.get(d)  # fmt: skip
+        if d == "LoseUnless":
+            verb = "Sacrifice" if dec.get("sacrifice") else "Discard"
         return f"{verb} {card_name}" if verb else None
     yes = kind == "Yes"
     labels = {
@@ -188,8 +191,9 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
     d3_no = {"SacrificeAnyNumber": "Done sacrificing", "ReturnAnotherPermanentCard": "Return nothing", "BasicsTappedUpTo": "Find nothing", "SignalTheClans": "Done revealing", "BraidsSacrifice": "Don't sacrifice", "BraidsOpponent": "Don't sacrifice (lose 2 life)"}  # fmt: skip
     if not yes and d in d3_no:
         return d3_no[d]
-    if d == "DiscardOrLoseLife" and not yes:
-        return f"Don't discard (lose {dec.get('life', 0)} life)"
+    if d in ("DiscardOrLoseLife", "LoseUnless") and not yes:
+        life = f"lose {dec['life']} life" if "life" in dec else "lose the life"
+        return f"Don't {'sacrifice' if dec.get('sacrifice') else 'discard'} ({life})"
     if d in labels:
         return labels[d][0 if yes else 1]
     if not yes:
