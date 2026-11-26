@@ -6,7 +6,8 @@
   "effects": "new one-shot effects and statics: mass destroy/sacrifice, filtered searches (color, power, mana value), put-onto-battlefield, scaled statics",
   "replace_filter": "replacement effects (tokens, counters, life loss, damage)",
   "keywords": "keywords: annihilator, fear, intimidate, undying, persist, extort, evoke, echo, exalted, convoke, morph, phasing, cascade, ...",
-  "objects_zones": "tokens and objects (Clue, Food, copies), dungeons/initiative, back faces, emblems"
+  "objects_zones": "tokens and objects (Clue, Food, copies), dungeons/initiative, back faces, emblems",
+  "existing_code": "needs an existing function changed (target_ok filters, land entry, statics_on, blocking/targeting, type layers, timing): the merger's"
  },
  "owners": {
   "mana": "d1",
@@ -14,7 +15,8 @@
   "effects": "d3",
   "replace_filter": "mac-b",
   "keywords": "d1",
-  "objects_zones": "mac-c"
+  "objects_zones": "mac-c",
+  "existing_code": "merger"
  },
  "cards": [
   {
@@ -46,8 +48,8 @@
    "deck": "Ygra, Eater of All",
    "missing": "an effect: put up to two creature cards from your hand onto the battlefield",
    "lane": "d1",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "objects_zones",
+   "owner": "mac-c"
   },
   {
    "card": "Bane of Progress",
@@ -134,8 +136,8 @@
    "deck": "Ygra, Eater of All",
    "missing": "a static +1/+0 for each artifact you control (scale by artifacts)",
    "lane": "d1",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "existing_code",
+   "owner": "merger"
   },
   {
    "card": "Disciple of the Vault",
@@ -246,8 +248,8 @@
    "deck": "Ygra, Eater of All",
    "missing": "enters tapped unless you control a legendary creature; 'tap an untapped creature you control' as a cost",
    "lane": "d1",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "mana",
+   "owner": "d1"
   },
   {
    "card": "Wave of Vitriol",
@@ -270,8 +272,8 @@
    "deck": "Raggadragga, Goreguts Boss",
    "missing": "draw-step draw two extra, then pay 4 life or put back each of two cards drawn this turn",
    "lane": "d1",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "replace_filter",
+   "owner": "mac-b"
   },
   {
    "card": "Cavern of Souls",
@@ -350,8 +352,8 @@
    "deck": "Raggadragga, Goreguts Boss",
    "missing": "activate creatures' abilities as though they had haste",
    "lane": "d1",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "existing_code",
+   "owner": "merger"
   },
   {
    "card": "Walking Ballista",
@@ -366,8 +368,8 @@
    "deck": "Raggadragga, Goreguts Boss",
    "missing": "infect on an animated land (Phyrexian Blinkmoth artifact creature with flying and infect)",
    "lane": "d1",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "objects_zones",
+   "owner": "mac-c"
   },
   {
    "card": "Jeska's Will",
@@ -422,8 +424,8 @@
    "deck": "Raggadragga, Goreguts Boss",
    "missing": "nonbasic lands are Mountains",
    "lane": "d1",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "existing_code",
+   "owner": "merger"
   },
   {
    "card": "Boom // Bust",
@@ -486,16 +488,16 @@
    "deck": "Raggadragga, Goreguts Boss",
    "missing": "battles (Siege)",
    "lane": "d1",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "objects_zones",
+   "owner": "mac-c"
   },
   {
    "card": "Last March of the Ents",
    "deck": "Raggadragga, Goreguts Boss",
    "missing": "draw equal to greatest toughness; put any number of creature cards from hand onto the battlefield",
    "lane": "d1",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "objects_zones",
+   "owner": "mac-c"
   },
   {
    "card": "Leyline of Abundance",
@@ -606,8 +608,8 @@
    "deck": "Atla Palani, Nest Tender",
    "missing": "enters tapped unless you control two or more other lands",
    "lane": "d1",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "existing_code",
+   "owner": "merger"
   },
   {
    "card": "Atla Palani, Nest Tender",
@@ -678,8 +680,8 @@
    "deck": "Atla Palani, Nest Tender",
    "missing": "discover X",
    "lane": "d1",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "objects_zones",
+   "owner": "mac-c"
   },
   {
    "card": "Drumbellower",
@@ -806,8 +808,8 @@
    "deck": "Karador, Ghost Chieftain",
    "missing": "opponents can't make you sacrifice",
    "lane": "d1",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "replace_filter",
+   "owner": "mac-b"
   },
   {
    "card": "Cataclysmic Gearhulk",
@@ -894,8 +896,8 @@
    "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
    "missing": "a spell filter for artifact, creature or planeswalker spells",
    "lane": "d1",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "existing_code",
+   "owner": "merger"
   },
   {
    "card": "Jin-Gitaxias, Core Augur",
@@ -926,8 +928,8 @@
    "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
    "missing": "opponents can't draw more than one card each turn",
    "lane": "d1",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "replace_filter",
+   "owner": "mac-b"
   },
   {
    "card": "Aphetto Alchemist",
@@ -950,8 +952,8 @@
    "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
    "missing": "foretell",
    "lane": "d1",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "mana",
+   "owner": "d1"
   },
   {
    "card": "Braid of Fire",
@@ -974,16 +976,16 @@
    "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
    "missing": "delve",
    "lane": "d1",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "mana",
+   "owner": "d1"
   },
   {
    "card": "Disdainful Stroke",
    "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
    "missing": "a minimum mana value spell filter",
    "lane": "d1",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "existing_code",
+   "owner": "merger"
   },
   {
    "card": "Emry, Lurker of the Loch",
@@ -1134,8 +1136,8 @@
    "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
    "missing": "a blue filter for spells and permanents",
    "lane": "d1",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "existing_code",
+   "owner": "merger"
   },
   {
    "card": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
@@ -1222,8 +1224,8 @@
    "deck": "Zacama, Primal Calamity",
    "missing": "prevent from a chosen source and deal that much to its controller",
    "lane": "d1",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "replace_filter",
+   "owner": "mac-b"
   },
   {
    "card": "Dictate of Karametra",
@@ -1254,8 +1256,8 @@
    "deck": "Zacama, Primal Calamity",
    "missing": "meld",
    "lane": "d1",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "objects_zones",
+   "owner": "mac-c"
   },
   {
    "card": "Mesa Enchantress",
@@ -1294,8 +1296,8 @@
    "deck": "Zacama, Primal Calamity",
    "missing": "reveal X on cast from hand, cast one free",
    "lane": "d1",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "mana",
+   "owner": "d1"
   },
   {
    "card": "Sythis, Harvest's Hand",
@@ -1318,8 +1320,8 @@
    "deck": "Zacama, Primal Calamity",
    "missing": "+2/+2 for each other enchantment on the battlefield",
    "lane": "d1",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "existing_code",
+   "owner": "merger"
   },
   {
    "card": "Argothian Enchantress",
@@ -1350,8 +1352,8 @@
    "deck": "Zacama, Primal Calamity",
    "missing": "constellation; put a land or creature from hand onto the battlefield tapped",
    "lane": "d1",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "triggers",
+   "owner": "d2"
   },
   {
    "card": "Fertile Ground",
@@ -1390,8 +1392,8 @@
    "deck": "Zacama, Primal Calamity",
    "missing": "an end-step condition: no creatures on the battlefield",
    "lane": "d1",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "triggers",
+   "owner": "d2"
   },
   {
    "card": "Satyr Enchanter",
@@ -1454,8 +1456,8 @@
    "deck": "The Gitrog, Ravenous Ride (RuricMo)",
    "missing": "needs core: a static making each land a Swamp in addition to its types (only the Forest version exists)",
    "lane": "d2",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "existing_code",
+   "owner": "merger"
   },
   {
    "card": "Temple of the False God",
@@ -1534,8 +1536,8 @@
    "deck": "The Gitrog, Ravenous Ride (RuricMo)",
    "missing": "needs core: put your commander from the command zone into your hand",
    "lane": "d2",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "objects_zones",
+   "owner": "mac-c"
   },
   {
    "card": "Gray Merchant of Asphodel",
@@ -1574,8 +1576,8 @@
    "deck": "The Gitrog, Ravenous Ride (RuricMo)",
    "missing": "needs core: reveal the top card: a creature onto the battlefield, else you may put it on the bottom",
    "lane": "d2",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "objects_zones",
+   "owner": "mac-c"
   },
   {
    "card": "Ulamog, the Defiler",
@@ -1686,8 +1688,8 @@
    "deck": "The Gitrog, Ravenous Ride (RuricMo)",
    "missing": "needs core: power and toughness equal to the cards in all players' hands",
    "lane": "d2",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "existing_code",
+   "owner": "merger"
   },
   {
    "card": "Railway Brawler",
@@ -1806,8 +1808,8 @@
    "deck": "Kaalia of the Vast",
    "missing": "needs core: prevent half the damage dealt to you and your permanents, rounded up",
    "lane": "d2",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "replace_filter",
+   "owner": "mac-b"
   },
   {
    "card": "Ancient Copper Dragon",
@@ -1822,8 +1824,8 @@
    "deck": "Kaalia of the Vast",
    "missing": "needs core: 'attacks for the first time each turn' (the first-combat condition differs)",
    "lane": "d2",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "triggers",
+   "owner": "d2"
   },
   {
    "card": "Ancient Brass Dragon",
@@ -1886,8 +1888,8 @@
    "deck": "Kaalia of the Vast",
    "missing": "needs core: prevent the next 2 damage to target creature",
    "lane": "d2",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "replace_filter",
+   "owner": "mac-b"
   },
   {
    "card": "Hall of the Bandit Lord",
@@ -1942,8 +1944,8 @@
    "deck": "Kaalia of the Vast",
    "missing": "needs core: the Ring tempts you",
    "lane": "d2",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "objects_zones",
+   "owner": "mac-c"
   },
   {
    "card": "Demon of Death's Gate",
@@ -1958,8 +1960,8 @@
    "deck": "Kaalia of the Vast",
    "missing": "needs core: put an Angel, Demon or Dragon from hand onto the battlefield tapped and attacking",
    "lane": "d2",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "objects_zones",
+   "owner": "mac-c"
   },
   {
    "card": "Master of Cruelties",
@@ -2166,8 +2168,8 @@
    "deck": "Henrika Domnathi // Henrika, Infernal Seer",
    "missing": "needs core: a nonartifact creature target filter",
    "lane": "d2",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "existing_code",
+   "owner": "merger"
   },
   {
    "card": "Puppeteer Clique",
@@ -2198,8 +2200,8 @@
    "deck": "Henrika Domnathi // Henrika, Infernal Seer",
    "missing": "needs core: can't attack or block unless a creature died under your control this turn",
    "lane": "d2",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "triggers",
+   "owner": "d2"
   },
   {
    "card": "Cabal Pit",
@@ -2222,16 +2224,16 @@
    "deck": "Henrika Domnathi // Henrika, Infernal Seer",
    "missing": "needs core: a nonblack creature target filter",
    "lane": "d2",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "existing_code",
+   "owner": "merger"
   },
   {
    "card": "Emperor of Bones",
    "deck": "Henrika Domnathi // Henrika, Infernal Seer",
    "missing": "needs core: adapt, and putting a creature exiled with it onto the battlefield",
    "lane": "d2",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "objects_zones",
+   "owner": "mac-c"
   },
   {
    "card": "God-Eternal Bontu",
@@ -2286,8 +2288,8 @@
    "deck": "Henrika Domnathi // Henrika, Infernal Seer",
    "missing": "needs core: an opponent's life gain becomes life loss",
    "lane": "d2",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "replace_filter",
+   "owner": "mac-b"
   },
   {
    "card": "Rise of the Dread Marn",
@@ -2326,8 +2328,8 @@
    "deck": "Henrika Domnathi // Henrika, Infernal Seer",
    "missing": "needs core: Class levels",
    "lane": "d2",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "objects_zones",
+   "owner": "mac-c"
   },
   {
    "card": "Sphere Grid",
@@ -2526,8 +2528,8 @@
    "deck": "Damia, Sage of Stone",
    "missing": "needs core: a monocolored creature target filter",
    "lane": "d2",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "existing_code",
+   "owner": "merger"
   },
   {
    "card": "Witherbloom Apprentice",
@@ -2606,8 +2608,8 @@
    "deck": "Raffine, Scheming Seer",
    "missing": "needs core: exile a card from the opponent's hand until this leaves the battlefield",
    "lane": "d2",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "objects_zones",
+   "owner": "mac-c"
   },
   {
    "card": "Doorkeeper Thrull",
@@ -2694,8 +2696,8 @@
    "deck": "Raffine, Scheming Seer",
    "missing": "needs core: +X/+X for the cards drawn this turn",
    "lane": "d2",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "existing_code",
+   "owner": "merger"
   },
   {
    "card": "Malcolm, Alluring Scoundrel",
@@ -2726,8 +2728,8 @@
    "deck": "Raffine, Scheming Seer",
    "missing": "needs core: a discount on the first non-Lemur flying creature spell each turn",
    "lane": "d2",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "mana",
+   "owner": "d1"
   },
   {
    "card": "Monument to Endurance",
@@ -2750,8 +2752,8 @@
    "deck": "Raffine, Scheming Seer",
    "missing": "needs core: +1/+1 per other creature with flying, and forecast",
    "lane": "d2",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "existing_code",
+   "owner": "merger"
   },
   {
    "card": "Raffine, Scheming Seer",
@@ -2782,8 +2784,8 @@
    "deck": "Raffine, Scheming Seer",
    "missing": "needs core: a discount for white and black spells",
    "lane": "d2",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "mana",
+   "owner": "d1"
   },
   {
    "card": "Wan Shi Tong, Librarian",
@@ -2798,8 +2800,8 @@
    "deck": "Raffine, Scheming Seer",
    "missing": "needs core: a discount for creature spells with flying",
    "lane": "d2",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "mana",
+   "owner": "d1"
   },
   {
    "card": "Avacyn, Angel of Hope",
@@ -2974,8 +2976,8 @@
    "deck": "Sefris of the Hidden Ways",
    "missing": "needs core: venture into the dungeon, and tapping an untapped legendary creature as a cost",
    "lane": "d3",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "objects_zones",
+   "owner": "mac-c"
   },
   {
    "card": "From the Catacombs",
@@ -3046,8 +3048,8 @@
    "deck": "Sefris of the Hidden Ways",
    "missing": "needs core: venture into the dungeon, and 'can't be blocked except by legendary creatures' for your creatures",
    "lane": "d3",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "objects_zones",
+   "owner": "mac-c"
   },
   {
    "card": "Nadaar, Selfless Paladin",
@@ -3118,8 +3120,8 @@
    "deck": "Sefris of the Hidden Ways",
    "missing": "needs core: counter a spell or ability that targets you or a creature you control (a target filter)",
    "lane": "d3",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "existing_code",
+   "owner": "merger"
   },
   {
    "card": "Tortured Existence",
@@ -3182,24 +3184,24 @@
    "deck": "Najeela, the Blade-Blossom",
    "missing": "needs core: may exile it to search for an enchantment card onto the battlefield (a SearchFor for enchantments)",
    "lane": "d3",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "objects_zones",
+   "owner": "mac-c"
   },
   {
    "card": "Champion of Lambholt",
    "deck": "Najeela, the Blade-Blossom",
    "missing": "needs core: creatures with power less than this one's can't block creatures you control (for all your creatures)",
    "lane": "d3",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "existing_code",
+   "owner": "merger"
   },
   {
    "card": "Haunted Ridge",
    "deck": "Najeela, the Blade-Blossom",
    "missing": "needs core: enters tapped unless you control two or more other lands",
    "lane": "d3",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "existing_code",
+   "owner": "merger"
   },
   {
    "card": "Pact of Negation",
@@ -3246,8 +3248,8 @@
    "deck": "Najeela, the Blade-Blossom",
    "missing": "needs core: an activated ability from the command zone",
    "lane": "d3",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "objects_zones",
+   "owner": "mac-c"
   },
   {
    "card": "Druids' Repository",
@@ -3286,8 +3288,8 @@
    "deck": "Najeela, the Blade-Blossom",
    "missing": "needs core: casualty",
    "lane": "d3",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "mana",
+   "owner": "d1"
   },
   {
    "card": "Metallic Mimic",
@@ -3302,8 +3304,8 @@
    "deck": "Najeela, the Blade-Blossom",
    "missing": "needs core: enters tapped unless you control a legendary creature, and an 'attacked with two or more creatures this turn' condition",
    "lane": "d3",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "existing_code",
+   "owner": "merger"
   },
   {
    "card": "Najeela, the Blade-Blossom",
@@ -3326,24 +3328,24 @@
    "deck": "Najeela, the Blade-Blossom",
    "missing": "needs core: color filters: target blue spell, target blue permanent",
    "lane": "d3",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "existing_code",
+   "owner": "merger"
   },
   {
    "card": "Ruby Medallion",
    "deck": "Najeela, the Blade-Blossom",
    "missing": "needs core: a red-only spell discount",
    "lane": "d3",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "mana",
+   "owner": "d1"
   },
   {
    "card": "Shanna, Sisay's Legacy",
    "deck": "Najeela, the Blade-Blossom",
    "missing": "needs core: can't be the target of abilities your opponents control",
    "lane": "d3",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "existing_code",
+   "owner": "merger"
   },
   {
    "card": "Slip Out the Back",
@@ -3398,8 +3400,8 @@
    "deck": "Sheoldred, the Apocalypse",
    "missing": "needs core: a black-only spell discount",
    "lane": "d3",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "mana",
+   "owner": "d1"
   },
   {
    "card": "Dark Deal",
@@ -3414,8 +3416,8 @@
    "deck": "Sheoldred, the Apocalypse",
    "missing": "needs core: exile the attacked player's hand, they draw that many, and you may play the exiled cards",
    "lane": "d3",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "objects_zones",
+   "owner": "mac-c"
   },
   {
    "card": "Feed the Swarm",
@@ -3462,16 +3464,16 @@
    "deck": "Sheoldred, the Apocalypse",
    "missing": "needs core: pay {X} up to the life gained to draw X cards",
    "lane": "d3",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "triggers",
+   "owner": "d2"
   },
   {
    "card": "Witch of the Moors",
    "deck": "Sheoldred, the Apocalypse",
    "missing": "needs core: a 'you gained life this turn' condition",
    "lane": "d3",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "triggers",
+   "owner": "d2"
   },
   {
    "card": "Zenith Chronicler",
@@ -3614,8 +3616,8 @@
    "deck": "Animar, Soul of Elements",
    "missing": "needs core: +X/+X with X the greatest power among your creatures",
    "lane": "d3",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "existing_code",
+   "owner": "merger"
   },
   {
    "card": "The Ozolith",
@@ -3654,8 +3656,8 @@
    "deck": "Animar, Soul of Elements",
    "missing": "needs core: exchange control with a target creature",
    "lane": "d3",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "objects_zones",
+   "owner": "mac-c"
   },
   {
    "card": "Glimpse of Nature",
@@ -3702,8 +3704,8 @@
    "deck": "Animar, Soul of Elements",
    "missing": "needs core: free if it's the first spell you cast this game",
    "lane": "d3",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "mana",
+   "owner": "d1"
   },
   {
    "card": "Phantasmal Image",
@@ -3894,8 +3896,8 @@
    "deck": "Atraxa, Praetors' Voice",
    "missing": "needs core: cleave, and 'a spell that wasn't cast from its owner's hand'",
    "lane": "d3",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "mana",
+   "owner": "d1"
   },
   {
    "card": "Barkchannel Pathway // Tidechannel Pathway",
@@ -3998,8 +4000,8 @@
    "deck": "Lonis, Cryptozoologist",
    "missing": "needs core: transmute",
    "lane": "d3",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "mana",
+   "owner": "d1"
   },
   {
    "card": "Erdwal Illuminator",
@@ -4062,16 +4064,16 @@
    "deck": "Lonis, Cryptozoologist",
    "missing": "needs core: improvise for nonartifact spells",
    "lane": "d3",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "mana",
+   "owner": "d1"
   },
   {
    "card": "Kappa Cannoneer",
    "deck": "Lonis, Cryptozoologist",
    "missing": "needs core: improvise",
    "lane": "d3",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "mana",
+   "owner": "d1"
   },
   {
    "card": "Lonis, Cryptozoologist",
@@ -4142,8 +4144,8 @@
    "deck": "Lonis, Cryptozoologist",
    "missing": "needs core: improvise",
    "lane": "d3",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "mana",
+   "owner": "d1"
   },
   {
    "card": "Wavesifter",

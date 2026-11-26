@@ -126,6 +126,10 @@ Fences:
   directly, not just through a card. Merge `tarkir` in before every push. The Mac merges serially and runs
   the full suite.
 - Still no new `Action` variants, and no new tokens (ask for a number).
+- **New `Decision` variants are allowed** (appended), as long as they're answered with existing `Action`
+  variants (`Mode`, `Pick`, `Target`, `Yes`/`No`, `Amount`). A decision is a question; the actions are the play
+  model's vocabulary. Add its label to `label()` in `src/bolt/service_view.py` so a human player can read it
+  (one `if d == "<Name>"` line); if you can't, name the decision and what each answer means in your report.
 
 ## Tests
 
