@@ -2333,6 +2333,41 @@ pub enum Effect {
         slot: u8,
         def: usize,
     },
+    /// Exile the top card of your library face down (you may look at it) and create a `def` token;
+    /// when that token leaves the battlefield, the source's trigger `trigger` (a `When::Never`
+    /// trigger with `Effect::LinkedExiledCardToHand`) puts the card into your hand (Ugin, the
+    /// Ineffable's +1). See `Game::token_linked_exile`.
+    ExileTopFaceDownCreateLinkedToken {
+        def: usize,
+        trigger: usize,
+    },
+    /// The card in the stack item's `extra` (its zone-change count in `amount`) goes from exile to
+    /// its owner's hand, if it's still that exiled card (Ugin, the Ineffable's token leaving).
+    LinkedExiledCardToHand,
+    /// Put a counter of the source's own kind on it (`Object::kind_counters`), then the player in
+    /// `slot` (if any, and legal) draws a card, and another counter goes on it for each card drawn
+    /// (Communal Brewing's ingredient counters).
+    KindCounterSelfThenPerTargetDraw(u8),
+    /// The creature spell in `extra` enters with X additional +1/+1 counters, X the source's kind
+    /// counters (Communal Brewing), see `Game::spell_enters_with_counters`.
+    CastSpellEntersWithCountersPerKindCounter,
+    /// `who` sacrifices a nontoken artifact of their choice (Rootcast Apprenticeship), as
+    /// `Decision::SacrificeNontokenArtifact` (automatic with one).
+    SacrificeNontokenArtifact(Who),
+    /// You may exile three cards from your graveyard; if you do, create a `food` token and ask
+    /// again (Insatiable Frugivore's "repeat this process"), as `Decision::ExileThreeForFood`.
+    MayExileThreeRepeatFood {
+        food: usize,
+    },
+    /// Creatures you control get +X/+0 and gain `keywords` until end of turn, X the ability's X
+    /// (Insatiable Frugivore: menace, X the Foods sacrificed).
+    PumpYoursXPowerGrant(crate::Keywords),
+    /// `who` gets `n` poison counters (Bloodroot Apothecary: "that player gets two poison
+    /// counters").
+    PoisonCounters {
+        who: Who,
+        n: i32,
+    },
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -3215,6 +3250,9 @@ pub enum When {
     ClassBecomesLevel(u8),
     /// "When this creature is turned face up" (morph, manifest; Rattleclaw Mystic).
     TurnedFaceUp,
+    /// "Whenever an opponent sacrifices a noncreature token" (Bloodroot Apothecary), fired from
+    /// `Game::sacrificed`.
+    OpponentSacrificesNoncreatureToken,
 }
 
 #[derive(Clone, Debug, PartialEq)]

@@ -788,3 +788,31 @@ d3's effects for lane B's decks (moved 2026-11-26):
   (`one_attacker_one_blocker`), Expropriate (Decision::ExpropriateVote / ExpropriatePick).
 - Kozilek's Command: modal X casting (CastModal asks X first; ChooseCastX offers only X with legal targets for the mode), with d3's mana_value_at_most_x / up_to_x (up_to_x now counts only its own word's targets).
 - PPO blockers, round 2: Dragon's Prey's target-dependent {2} (castability needs an affordable target; ChooseTarget offers only affordable ones), and harmonize affordability excludes its creature as payment does (a Devotee's untapped mana ability).
+
+### Merger queue, 2026-11-26: Ugin, the Ineffable and four BLC cards
+
+Ugin, the Ineffable (pg_b), Communal Brewing, Rootcast Apprenticeship, Insatiable Frugivore,
+Bloodroot Apothecary (blc_b). Tests: tests/pg_b.rs (`ugin_the_ineffable_*`), tests/blc_b.rs.
+
+- `CardDef::colorless_spell_discount` (in `spell_cost`, after the d1 discounts) and `CardDef::toxic`
+  (in `deal_damage`: combat damage to a player adds N poison counters, CR 702.164c).
+- Ugin's +1: `Effect::ExileTopFaceDownCreateLinkedToken` with `Game::token_linked_exile`; the token
+  leaving the battlefield (in `zone_triggers_once`) puts the source's `When::Never` trigger
+  (`Effect::LinkedExiledCardToHand`, the card in `extra` and its zcc in `amount`) on the stack, so it
+  works with Ugin gone. Token 98: a colorless 2/2 Spirit (`Tokens::spirit_2`; 91-97 placeholders).
+  Its −3 uses d3's existing `Filter::colored`.
+- Communal Brewing: `Effect::KindCounterSelfThenPerTargetDraw` (ingredient counters are
+  `kind_counters`; "any number of target opponents" is up to one) and
+  `Effect::CastSpellEntersWithCountersPerKindCounter` with `Game::spell_enters_with_counters`, applied
+  in the enter path next to `escaped`.
+- Rootcast Apprenticeship: 20 modes (every multiset of three). `Effect::SacrificeNontokenArtifact`
+  with `Decision::SacrificeNontokenArtifact` (automatic with one). **Known hack:** a mode chosen more
+  than once has separate "target" words, but `Game::same_word_slots` treats a run of identical
+  filters as one word (different objects). Neighbouring slots therefore alternate `Filter::other`,
+  a no-op for a sorcery's targets, so three "target creature" slots may name one creature. If
+  `same_word_slots` or `other` changes, this breaks (the Rootcast test covers it).
+- Insatiable Frugivore: `Effect::MayExileThreeRepeatFood` with `Decision::ExileThreeForFood` (Pick
+  three, then a Food and asked again; No only before the first pick), `Effect::PumpYoursXPowerGrant`
+  with Chatterfang's `sacrifice_x_of_subtype("Food")`.
+- Bloodroot Apothecary: `When::OpponentSacrificesNoncreatureToken` (in `Game::sacrificed`),
+  `Effect::PoisonCounters`; "that player" is the opponent (1v1).

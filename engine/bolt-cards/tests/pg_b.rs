@@ -2836,3 +2836,54 @@ fn kozileks_command_chooses_x_then_two_modes() {
         (Zone::Exile, Zone::Exile, Zone::Graveyard)
     );
 }
+
+// ---- Ugin, the Ineffable (Zhulodok), 2026-11-26 ----
+
+#[test]
+fn ugin_the_ineffable_discounts_colorless_spells_and_destroys_a_colored_permanent() {
+    let mut g = game(&[]);
+    let ugin = put(&mut g, 0, "Ugin, the Ineffable");
+    g.objects[ugin.0 as usize].loyalty = 4;
+    let stone = hand(&mut g, 0, "Mind Stone"); // {2}: free with Ugin
+    let lions_card = hand(&mut g, 0, "Savannah Lions"); // {W}: colored, no discount
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Cast(stone)));
+    assert!(!legal.contains(&Action::Cast(lions_card)));
+    play(&mut g, stone, false, &[], &[]);
+    assert_eq!(g.obj(stone).zone, Zone::Battlefield);
+
+    let lions = put(&mut g, 1, "Savannah Lions");
+    let ring = put(&mut g, 1, "Sol Ring");
+    act(&mut g, Action::Loyalty(ugin, 1));
+    let legal = g.legal_actions();
+    assert!(
+        !legal.contains(&Action::Target(Target::Object(ring))),
+        "colorless"
+    );
+    act(&mut g, Action::Target(Target::Object(lions)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(ugin).loyalty, 1);
+    assert_eq!(g.obj(lions).zone, Zone::Graveyard);
+}
+
+#[test]
+fn ugin_the_ineffable_exiles_face_down_and_its_spirit_brings_the_card_back() {
+    let mut g = table();
+    let ugin = put(&mut g, 0, "Ugin, the Ineffable");
+    g.objects[ugin.0 as usize].loyalty = 4;
+    let top = g.add_card(0, cid("Sol Ring"), Zone::Library); // on top
+    act(&mut g, Action::Loyalty(ugin, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(ugin).loyalty, 5);
+    assert_eq!(g.obj(top).zone, Zone::Exile);
+    assert!(g.obj(top).face_down);
+    let spirit = tokens(&g, 0, "Spirit");
+    assert_eq!(spirit.len(), 1);
+    assert_eq!((g.power(spirit[0]), g.toughness(spirit[0])), (2, 2));
+    assert_eq!(g.colors_of(spirit[0]), [false; 5]);
+    // The token leaves (Swords to Plowshares): the exiled card goes to your hand.
+    let swords = hand(&mut g, 0, "Swords to Plowshares");
+    play(&mut g, swords, false, &[Target::Object(spirit[0])], &[]);
+    assert_eq!(g.obj(top).zone, Zone::Hand);
+    assert!(!g.obj(top).face_down);
+}

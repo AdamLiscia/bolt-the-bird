@@ -512,6 +512,8 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         attacks_only_with_artifacts: 0,
         treasures_plus_one: None,
         one_attacker_one_blocker: false,
+        colorless_spell_discount: 0,
+        toxic: 0,
     };
     def.color_identity = color_identity(o);
     def.phyrexian = phyrexian;

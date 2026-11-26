@@ -1769,6 +1769,30 @@ pub fn script(name: &str) -> Option<Script> {
                 modes(d, pairs);
             },
         ),
+        "Ugin, the Ineffable" => s(
+            &[
+                "Colorless spells you cast cost {2} less to cast.",
+                "+1: Exile the top card of your library face down and look at it. Create a 2/2 colorless Spirit creature token. When that token leaves the battlefield, put the exiled card into your hand.",
+                "\u{2212}3: Destroy target permanent that's one or more colors.",
+            ],
+            |d, t| {
+                d.colorless_spell_discount = 2;
+                // The delayed "when that token leaves the battlefield" (see `Game::token_linked_exile`).
+                on(d, When::Never, vec![], vec![Effect::LinkedExiledCardToHand]);
+                let trigger = d.triggers.len() - 1;
+                let plus = Effect::ExileTopFaceDownCreateLinkedToken { def: t.spirit_2, trigger };
+                loyalty(d, 1, Ability::new(vec![], vec![plus]));
+                let colored = Filter {
+                    players: false,
+                    creatures: false,
+                    planeswalkers: false,
+                    any_permanent: true,
+                    colored: true,
+                    ..Filter::ANY
+                };
+                loyalty(d, -3, Ability::new(vec![colored], vec![Effect::Destroy(0)]));
+            },
+        ),
         _ => None,
     }
 }
@@ -1983,6 +2007,7 @@ pub const PG_B_SCRIPTED: &[&str] = &[
     "Silent Arbiter",
     "Expropriate",
     "Kozilek's Command",
+    "Ugin, the Ineffable",
     // Ghyrson Starn (Spr3adsh33t)
     "Basilisk Collar",
     "Gorgon's Head",

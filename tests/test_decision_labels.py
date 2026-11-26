@@ -136,3 +136,11 @@ def test_a_split_or_omen_second_half_is_cast_by_its_name():
 
 def test_an_unknown_decision_keeps_the_generic_label():
     assert label({"kind": "SomethingNew"}, "Mode", 0) is None
+
+
+def test_rootcast_and_frugivore_decisions_read_as_their_moves():
+    rootcast = {"kind": "SacrificeNontokenArtifact"}
+    assert sv._decision_label(rootcast, "Pick", 0, "Sol Ring") == "Sacrifice Sol Ring"
+    frugivore = {"kind": "ExileThreeForFood", "food": 0, "chosen": []}
+    assert sv._decision_label(frugivore, "Pick", 0, "Plains") == "Exile (three for a Food): Plains"
+    assert label(frugivore, "No", 0) == "Don't exile (no more Food)"

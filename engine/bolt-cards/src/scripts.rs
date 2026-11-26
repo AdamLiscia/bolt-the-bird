@@ -296,6 +296,16 @@ pub fn token_defs() -> Vec<CardDef> {
         },
         blood(),
         red(token("Hamster", "Hamster", 1, 1, Keywords::NONE)), // Rolling Hamsphere
+        // 91-97: placeholders for other branches' tokens (d2's 91-93, 94 Walker, 95 Smaug, 96
+        // Utvara's Dragon, 97 Wicked Role), swapped in at the merge.
+        token("Placeholder", "Placeholder", 1, 1, Keywords::NONE),
+        token("Placeholder", "Placeholder", 1, 1, Keywords::NONE),
+        token("Placeholder", "Placeholder", 1, 1, Keywords::NONE),
+        token("Placeholder", "Placeholder", 1, 1, Keywords::NONE),
+        token("Placeholder", "Placeholder", 1, 1, Keywords::NONE),
+        token("Placeholder", "Placeholder", 1, 1, Keywords::NONE),
+        token("Placeholder", "Placeholder", 1, 1, Keywords::NONE),
+        token("Spirit", "Spirit", 2, 2, Keywords::NONE), // 98: Ugin, the Ineffable's colorless 2/2
     ]
 }
 
@@ -466,6 +476,7 @@ pub struct Tokens {
     pub orc_army: usize,
     pub eldrazi_scion: usize,
     pub bat: usize,
+    pub spirit_2: usize,
 }
 
 impl Tokens {
@@ -562,6 +573,7 @@ impl Tokens {
             orc_army: base + 86,
             eldrazi_scion: base + 87,
             bat: base + 83,
+            spirit_2: base + 98,
         }
     }
 }
