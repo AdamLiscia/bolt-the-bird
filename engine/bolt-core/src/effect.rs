@@ -1569,6 +1569,13 @@ pub enum Effect {
     /// "You may exile it. If you do, ...": exile the source from its owner's graveyard; if it isn't
     /// there, the rest of the effects don't happen (Academy Rector).
     ExileSourceFromGraveyardOrStop,
+    /// All creatures get -X/-X until end of turn, X the spell's X (Toxic Deluge).
+    AllCreaturesGetMinusX,
+    /// Draw a card for each creature you control of this color (Freyalise: green).
+    DrawPerCreatureYouControlOfColor(crate::Color),
+    /// Evoke's "When this permanent enters, if its evoke cost was paid, its controller sacrifices
+    /// it." (CR 702.74a)
+    SacrificeIfEvoked,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

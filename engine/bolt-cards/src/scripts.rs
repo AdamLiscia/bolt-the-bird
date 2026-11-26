@@ -172,6 +172,29 @@ pub fn token_defs() -> Vec<CardDef> {
         token("Pegasus", "Pegasus", 2, 2, Keywords::FLYING), // Archon of Sun's Grace's white 2/2
         token("Spirit", "Spirit", 3, 1, Keywords::FLYING), // Ghostly Dancers' white 3/1
         token("Phyrexian Beast", "Phyrexian Beast", 4, 4, Keywords::NONE), // Ezuri's Predation's green 4/4s
+        token("Lane B token 64", "Shapeshifter", 3, 2, Keywords::NONE), // placeholder: lane B's 64
+        {
+            // Placeholder for lane C's 65, a Clue artifact.
+            artifact_token("Clue")
+        },
+        {
+            // "a 0/1 colorless Eldrazi Spawn creature token with 'Sacrifice this token: Add {C}.'"
+            let mut t = token("Eldrazi Spawn", "Eldrazi Spawn", 0, 1, Keywords::NONE);
+            t.mana = Some(ManaSource {
+                colorless: true,
+                ..ManaSource::default()
+            });
+            t.sac_for_mana = true;
+            t.mana_ext.sac_mana_no_tap = true;
+            t
+        },
+        token("Spawn", "Spawn", 3, 3, Keywords::NONE), // Magnus the Red's red 3/3
+        {
+            // Freyalise: "a 1/1 green Elf Druid creature token with '{T}: Add {G}.'"
+            let mut t = token("Elf Druid", "Elf Druid", 1, 1, Keywords::NONE);
+            t.mana = Some(ManaSource::of(&[Color::Green]));
+            t
+        },
     ]
 }
 
@@ -277,6 +300,11 @@ pub struct Tokens {
     pub pegasus: usize,
     pub spirit_3_1: usize,
     pub phyrexian_beast: usize,
+    pub lane_b_64: usize,
+    pub lane_c_65: usize,
+    pub eldrazi_spawn: usize,
+    pub spawn_3: usize,
+    pub elf_druid: usize,
 }
 
 impl Tokens {
@@ -346,6 +374,11 @@ impl Tokens {
             pegasus: base + 61,
             spirit_3_1: base + 62,
             phyrexian_beast: base + 63,
+            lane_b_64: base + 64,
+            lane_c_65: base + 65,
+            eldrazi_spawn: base + 66,
+            spawn_3: base + 67,
+            elf_druid: base + 68,
         }
     }
 }

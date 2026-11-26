@@ -38,6 +38,8 @@ keywords! {
     ISLANDWALK = 16, "Islandwalk";
     SHROUD = 17, "Shroud";
     FORESTWALK = 18, "Forestwalk";
+    FEAR = 19, "Fear";
+    INTIMIDATE = 20, "Intimidate";
 }
 
 impl Keywords {
@@ -730,6 +732,50 @@ pub struct CardDef {
     /// token that's a copy of this creature, except it has haste and loses soulbond. Exile it at end
     /// of combat.'" (Mirage Phalanx; the pairing works as for `soulbond_flicker`).
     pub soulbond_combat_copies: bool,
+    /// Mana, costs and keywords (the d1 theme), grouped so adding one touches only [`ManaExt`].
+    pub mana_ext: ManaExt,
+}
+
+/// A card's mana, cost and keyword pieces added by the d1 theme (see [`CardDef::mana_ext`]).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct ManaExt {
+    /// Its mana ability's only cost is sacrificing it, no {T} (Eldrazi Spawn: "Sacrifice this
+    /// creature: Add {C}."), so it works tapped or the turn it enters. Needs `sac_for_mana`.
+    pub sac_mana_no_tap: bool,
+    /// "Enchantment spells you cast cost {N} less to cast." (Jukai Naturalist)
+    pub enchantment_spell_discount: u8,
+    /// "Black creature spells you cast cost {N} less to cast." (Bontu's Monument)
+    pub black_creature_spell_discount: u8,
+    /// "Creature spells you cast cost {1} less to cast for each +1/+1 counter on [this]." (Animar)
+    pub creature_discount_per_counter: bool,
+    /// "Instant and sorcery spells you cast cost {1} less to cast for each creature token you
+    /// control." (Magnus the Red)
+    pub instant_sorcery_discount_per_creature_token: bool,
+    /// "This land enters tapped unless you control N or more other lands." (Haunted Ridge: 2)
+    pub enters_tapped_unless_other_lands: u8,
+    /// "As an additional cost to cast this spell, pay X life." Cast with `Action::CastX`, X up to
+    /// your life total (Toxic Deluge).
+    pub pay_x_life: bool,
+    /// An Aura: "Whenever enchanted land is tapped for mana, its controller adds an additional one
+    /// mana of any color." (Fertile Ground)
+    pub enchanted_land_extra_any: bool,
+    /// "Whenever you tap a [subtype] for mana, add an additional [color]." (Crypt Ghast: Swamp, {B})
+    pub your_subtype_lands_add: Option<(&'static str, crate::Color)>,
+    /// "Lands you control have '{T}: Add one mana of any color.'" (Chromatic Lantern)
+    pub lands_tap_any_color: bool,
+    /// Its colored mana makes each opponent gain 1 life (Grove of the Burnwillows: "{T}: Add {R} or
+    /// {G}. Each opponent gains 1 life."); its {C} doesn't.
+    pub colored_gives_opponent_life: bool,
+    /// Evoke (CR 702.74): `alt_cost` is its evoke cost, and a cast paying it is recorded so its
+    /// "sacrificed when it enters" trigger ([`crate::Effect::SacrificeIfEvoked`]) knows.
+    pub evoke: bool,
+    /// Convoke (CR 702.51): each untapped creature you control can tap to pay {1} or one mana of
+    /// its color while you cast this spell.
+    pub convoke: bool,
+    /// "You may pay N life and exile a [color] card from your hand rather than pay this spell's mana
+    /// cost." (Force of Will: blue, 1): (WUBRG index, life). Cast with `Action::CastWith` naming
+    /// the card.
+    pub pitch_with_life: Option<(u8, i32)>,
 }
 
 /// What entering makes triggers happen again (see [`CardDef::entering_triggers_again`]).
@@ -973,6 +1019,7 @@ impl CardDef {
             top_spells_creatures: false,
             blitz: None,
             soulbond_combat_copies: false,
+            mana_ext: ManaExt::default(),
         }
     }
 
@@ -1184,6 +1231,7 @@ impl CardDef {
             top_spells_creatures: false,
             blitz: None,
             soulbond_combat_copies: false,
+            mana_ext: ManaExt::default(),
         }
     }
 
@@ -1395,6 +1443,7 @@ impl CardDef {
             top_spells_creatures: false,
             blitz: None,
             soulbond_combat_copies: false,
+            mana_ext: ManaExt::default(),
         }
     }
 }
