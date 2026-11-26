@@ -2377,3 +2377,52 @@ fn wildsear_gives_enchantments_from_hand_cascade() {
     play(&mut g, elder, false, &[], &[]);
     assert_eq!(g.obj(ring).zone, Zone::Library);
 }
+
+#[test]
+fn casualties_of_war_destroys_one_of_each_chosen_type() {
+    let mut g = table();
+    let ring = put(&mut g, 1, "Sol Ring");
+    let ghalta = put(&mut g, 1, "Ghalta, Primal Hunger");
+    let forest = put(&mut g, 1, "Forest");
+    let c = hand(&mut g, 0, "Casualties of War");
+    let modes = g.def_of(c).modes.len();
+    assert_eq!(modes, 31, "every nonempty set of the five");
+    // Mode set 0b01011: artifact, creature, land.
+    act(&mut g, Action::CastModal(c, 0b01011 - 1));
+    for x in [ring, ghalta, forest] {
+        act(&mut g, Action::Target(Target::Object(x)));
+    }
+    resolve_all(&mut g, &[]);
+    for x in [ring, ghalta, forest] {
+        assert_eq!(g.obj(x).zone, Zone::Graveyard);
+    }
+}
+
+#[test]
+fn esikas_chariot_makes_cats_crews_and_copies_a_token() {
+    let mut g = table();
+    let chariot = hand(&mut g, 0, "Esika's Chariot");
+    play(&mut g, chariot, false, &[], &[]);
+    let cats: Vec<ObjId> = g
+        .permanents(0)
+        .filter(|&x| g.def_of(x).name == "Cat")
+        .collect();
+    assert_eq!(cats.len(), 2);
+    assert!(!g.types_of(chariot).creature);
+    let ghalta = put(&mut g, 0, "Ghalta, Primal Hunger");
+    act(&mut g, Action::ActivateWith(chariot, 0, ghalta));
+    resolve_all(&mut g, &[]);
+    assert!(g.types_of(chariot).creature);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(chariot));
+    act(&mut g, Action::FinishAttacks);
+    act(&mut g, Action::Target(Target::Object(cats[0])));
+    resolve_all(&mut g, &[]);
+    let n = g
+        .permanents(0)
+        .filter(|&x| g.def_of(x).name == "Cat")
+        .count();
+    assert_eq!(n, 3);
+}

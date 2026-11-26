@@ -2665,7 +2665,7 @@ fn storm_kiln_artist_makes_treasure_and_grows_with_artifacts() {
 }
 
 #[test]
-fn misdirection_pitches_and_redirects_and_mana_confluence() {
+fn misdirection_pitches_and_redirects() {
     let mut g = table();
     let mine = put(&mut g, 0, "Savannah Lions");
     let theirs = put(&mut g, 1, "Llanowar Elves");
@@ -2682,9 +2682,15 @@ fn misdirection_pitches_and_redirects_and_mana_confluence() {
     resolve_all(&mut g, &[]);
     assert_eq!(g.obj(theirs).zone, Zone::Graveyard);
     assert_eq!(g.obj(mine).zone, Zone::Battlefield);
-    let conf = put(&mut g, 0, "Mana Confluence");
-    act(&mut g, Action::Activate(conf, 0));
-    resolve_all(&mut g, &[]);
-    assert_eq!(g.players[0].life, 39);
-    assert_eq!(g.players[0].pool.len(), 1);
+}
+
+#[test]
+fn young_pyromancer_makes_elementals() {
+    let mut g = table();
+    put(&mut g, 0, "Young Pyromancer");
+    let consider = hand(&mut g, 0, "Consider");
+    play(&mut g, consider, false, &[], &[Action::No]);
+    let e = tokens(&g, 0, "Elemental");
+    assert_eq!(e.len(), 1);
+    assert_eq!((g.power(e[0]), g.toughness(e[0])), (1, 1));
 }

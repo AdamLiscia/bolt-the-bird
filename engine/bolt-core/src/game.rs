@@ -1500,6 +1500,11 @@ pub struct Game {
     pub phased_out: Vec<(ObjId, PlayerId)>,
     /// Teferi's Protection: the turn number of each player's next turn, while their life is locked.
     pub life_locked_until: [Option<u32>; 2],
+    /// Glimpse the Impossible's exiled cards: (card, its zcc in exile, the player, the token def,
+    /// the first turn whose end step handles it).
+    pub exiled_until_end: Vec<(ObjId, u32, PlayerId, usize, u32)>,
+    /// Modes chosen this turn for a `modes_once_each_turn` trigger: (source, turn, mode).
+    pub modes_chosen: Vec<(ObjId, u32, u8)>,
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -1740,7 +1745,16 @@ impl Game {
             vows: Vec::new(),
             next_turn_pt: Vec::new(),
             escaped: Vec::new(),
+            exiled_until_end: Vec::new(),
+            modes_chosen: Vec::new(),
         }
+    }
+
+    /// Monument to Endurance: whether `source`'s once-each-turn modal trigger has used mode `m`
+    /// this turn (always false for other cards).
+    fn mode_chosen_this_turn(&self, source: ObjId, m: u8) -> bool {
+        self.def_of(source).modes_once_each_turn
+            && self.modes_chosen.iter().any(|&(s, t, k)| s == source && t == self.turn && k == m)
     }
 
     /// Creates a card owned by `owner` in `zone`. Library cards go on top. Permanents created on the
@@ -5653,6 +5667,9 @@ impl Game {
             if def.cast_only_during_your_combat && !(p == self.active && in_combat) {
                 continue; // Savage Beating
             }
+            if def.cast_only_during_your_end_step && !(p == self.active && self.step == Step::End) {
+                continue; // Necrologia
+            }
             // An X spell's targets can depend on X (Stolen by the Fae), and a kicked spell can have
             // its own targets (Tear Asunder): those are checked per way of casting below.
             let per_mode = def.cost.x > 0 || def.kicked_spell.is_some();
@@ -7011,6 +7028,7 @@ impl Game {
                     || (a.your_turn_only && p != self.active)
                     || (a.not_your_turn_only && p == self.active)
                     || (a.needs_delirium && self.graveyard_card_types(p) < 4)
+                    || (a.needs_threshold && self.players[p].graveyard.len() < 7)
                     || (a.if_card_left_graveyard && !self.graveyard_left_this_turn[p])
                     || (a.if_created_token_this_turn && self.token_created_turn[p] != self.turn)
                     || self.players[p].life < a.life
@@ -10255,6 +10273,7 @@ impl Game {
                 let modes = &self.def_of(item.source).triggers[n].ability.modes;
                 (0..modes.len())
                     .filter(|&m| self.trigger_can_target(item, &modes[m]))
+                    .filter(|&m| !self.mode_chosen_this_turn(item.source, m as u8))
                     .map(|m| Action::Mode(m as u8))
                     .collect()
             }
@@ -10732,6 +10751,11 @@ impl Game {
         if let (Decision::ChooseMode, Action::Mode(m)) = (&d, a) {
             let (mut item, then) = self.mode_pending.take().expect("a modal trigger");
             item.mode = Some(m);
+            if self.def_of(item.source).modes_once_each_turn {
+                let turn = self.turn;
+                self.modes_chosen.retain(|e| e.1 == turn);
+                self.modes_chosen.push((item.source, turn, m));
+            }
             self.triggered.insert(0, item);
             self.triggered_scanned += 1; // already looked at by Roaming Throne
             self.give_priority(then);
@@ -14537,6 +14561,20 @@ impl Game {
                 };
                 self.life_locked_until[p] = Some(next);
             }
+            Effect::ExileTopToPlayThenGraveyardTokens { n, def } => {
+                let p = item.controller;
+                let turn = self.turn;
+                // "The next end step": this turn's, unless it has already begun.
+                let at = if self.step == Step::End { turn + 1 } else { turn };
+                for _ in 0..n {
+                    if let Some(&c) = self.players[p].library.last() {
+                        self.move_to(c, Zone::Exile);
+                        self.obj_mut(c).playable = Some((p, turn));
+                        let zcc = self.obj(c).zcc;
+                        self.exiled_until_end.push((c, zcc, p, def, at));
+                    }
+                }
+            }
             Effect::BecomeCopyOfSlotUntilEot(n) => {
                 if let Some(card) = Game::slot_object(item, legal, n) {
                     if self.obj(src).zone == Zone::Battlefield {
@@ -17627,16 +17665,6 @@ impl Game {
                     }
                 }
             }
-            Effect::DrawPerColoredCreatureYouControl(color) => {
-                let p = item.controller;
-                let n = self
-                    .creatures(p)
-                    .filter(|&x| self.colors_of(x)[color as usize])
-                    .count();
-                for _ in 0..n {
-                    self.draw(p);
-                }
-            }
             Effect::RegenerateEachCreatureYouControl => {
                 let turn = self.turn;
                 for id in self.creatures(item.controller).collect::<Vec<_>>() {
@@ -18655,7 +18683,9 @@ impl Game {
             }
             if item.mode.is_none() && !ability.modes.is_empty() {
                 // CR 700.2b: the mode is chosen as the trigger goes on the stack.
-                let any = ability.modes.iter().any(|m| self.trigger_can_target(&item, m));
+                let any = (0..ability.modes.len()).any(|m| {
+                    self.trigger_can_target(&item, &ability.modes[m]) && !self.mode_chosen_this_turn(item.source, m as u8)
+                });
                 if any {
                     self.events.push(Event::Triggered { source: item.source });
                     let who = item.controller;
@@ -18875,8 +18905,24 @@ impl Game {
                     .any(|x| self.def_of(x).keeps_green_mana && !self.lost_abilities(x))
             })
             .collect();
+        // Kruphix, Horizon Stone: the mana that would empty becomes colorless instead.
+        let kruphix: Vec<bool> = (0..2)
+            .map(|q| {
+                self.permanents(q)
+                    .any(|x| self.def_of(x).unspent_mana_becomes_colorless && !self.lost_abilities(x))
+            })
+            .collect();
         for (q, pl) in self.players.iter_mut().enumerate() {
-            if omnath[q] {
+            if kruphix[q] {
+                for m in pl.pool.iter_mut() {
+                    if !(omnath[q] && Game::is_green_mana(m)) {
+                        *m = ManaSource {
+                            colorless: true,
+                            ..ManaSource::default()
+                        };
+                    }
+                }
+            } else if omnath[q] {
                 pl.pool.retain(Game::is_green_mana);
             } else {
                 pl.pool.clear();
@@ -19143,6 +19189,17 @@ impl Game {
                     .collect();
                 for c in back {
                     self.move_to(c, Zone::Command);
+                }
+                // Glimpse the Impossible: those still exiled go to the graveyard, a token for each.
+                let turn = self.turn;
+                let (due, later): (Vec<_>, Vec<_>) =
+                    std::mem::take(&mut self.exiled_until_end).into_iter().partition(|e| e.4 <= turn);
+                self.exiled_until_end = later;
+                for (c, zcc, p, def, _) in due {
+                    if self.obj(c).zcc == zcc && self.obj(c).zone == Zone::Exile {
+                        self.move_to(c, Zone::Graveyard);
+                        self.create_token(p, def);
+                    }
                 }
                 // Delayed "at the beginning of the next end step" returns (CR 603.7).
                 for (c, zcc, revival) in std::mem::take(&mut self.delayed_returns) {

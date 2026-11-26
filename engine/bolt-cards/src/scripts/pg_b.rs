@@ -1567,11 +1567,93 @@ pub fn script(name: &str) -> Option<Script> {
                 spell(d, vec![Filter { single_target: true, ..SPELL }], vec![Effect::ChangeTargets(0)]);
             },
         ),
-        "Mana Confluence" => s(&["{T}, Pay 1 life: Add one mana of any color."], |d, _| {
-            // On the stack, like Sunbaked Canyon's (d1).
-            let n = activated(d, "", true, vec![], vec![Effect::AddManaAnyColor]);
-            d.activated[n].life = 1;
+        "Young Pyromancer" => s(&["Whenever you cast an instant or sorcery spell, create a 1/1 red Elemental creature token."], |d, t| {
+            on(d, When::YouCastInstantOrSorcery, vec![], vec![Effect::CreateToken { who: Who::You, def: t.elemental_1, n: 1 }]);
         }),
+        "Monument to Endurance" => s(
+            &[
+                "Whenever you discard a card, choose one that hasn't been chosen this turn —",
+                "• Draw a card.",
+                "• Create a Treasure token.",
+                "• Each opponent loses 3 life.",
+            ],
+            |d, t| {
+                let modes = vec![
+                    Ability::new(vec![], vec![draw(1)]),
+                    Ability::new(vec![], vec![Effect::CreateToken { who: Who::You, def: t.treasure, n: 1 }]),
+                    Ability::new(vec![], vec![Effect::LoseLife { who: Who::EachOpponent, n: 3 }]),
+                ];
+                on_modal(d, When::YouDiscard, None, modes);
+                d.modes_once_each_turn = true;
+            },
+        ),
+        "Glimpse the Impossible" => s(
+            &["Exile the top three cards of your library. You may play those cards this turn. At the beginning of the next end step, if any of those cards remain exiled, put them into your graveyard, then create a 0/1 colorless Eldrazi Spawn creature token for each card put into your graveyard this way. Those tokens have \"Sacrifice this token: Add {C}.\""],
+            |d, t| spell(d, vec![], vec![Effect::ExileTopToPlayThenGraveyardTokens { n: 3, def: t.eldrazi_spawn }]),
+        ),
+        "Barbarian Ring" => s(
+            &[
+                "{T}: Add {R}. This land deals 1 damage to you.",
+                "Threshold — {R}, {T}, Sacrifice this land: It deals 2 damage to any target. Activate only if there are seven or more cards in your graveyard.",
+            ],
+            |d, _| {
+                d.mana = Some(ManaSource::of(&[Color::Red]));
+                d.pain_colored = true;
+                let n = activated(d, "{R}", true, vec![Filter::ANY], vec![damage(2, Recipient::Target(0))]);
+                d.activated[n].sacrifice_self = true;
+                d.activated[n].needs_threshold = true;
+            },
+        ),
+        "Cephalid Coliseum" => s(
+            &[
+                "{T}: Add {U}. This land deals 1 damage to you.",
+                "Threshold — {U}, {T}, Sacrifice this land: Target player draws three cards, then discards three cards. Activate only if there are seven or more cards in your graveyard.",
+            ],
+            |d, _| {
+                d.mana = Some(ManaSource::of(&[Color::Blue]));
+                d.pain_colored = true;
+                let effects = vec![Effect::Draw { who: Who::TargetPlayer(0), n: 3 }, Effect::Discard { who: Who::TargetPlayer(0), n: 3 }];
+                let n = activated(d, "{U}", true, vec![Filter::PLAYER], effects);
+                d.activated[n].sacrifice_self = true;
+                d.activated[n].needs_threshold = true;
+            },
+        ),
+        "Cabal Pit" => s(
+            &[
+                "{T}: Add {B}. This land deals 1 damage to you.",
+                "Threshold — {B}, {T}, Sacrifice this land: Target creature gets -2/-2 until end of turn. Activate only if there are seven or more cards in your graveyard.",
+            ],
+            |d, _| {
+                d.mana = Some(ManaSource::of(&[Color::Black]));
+                d.pain_colored = true;
+                let n = activated(d, "{B}", true, vec![CREATURE], vec![Effect::Pump { slot: 0, power: -2, toughness: -2 }]);
+                d.activated[n].sacrifice_self = true;
+                d.activated[n].needs_threshold = true;
+            },
+        ),
+        "Kruphix, God of Horizons" => s(
+            &[
+                "As long as your devotion to green and blue is less than seven, Kruphix isn't a creature.",
+                "You have no maximum hand size.",
+                "If you would lose unspent mana, that mana becomes colorless instead.",
+            ],
+            |d, _| {
+                d.creature_unless_devotion = Some(([false, true, false, false, true], 7));
+                d.no_max_hand_size = true;
+                d.unspent_mana_becomes_colorless = true;
+            },
+        ),
+        "Horizon Stone" => s(&["If you would lose unspent mana, that mana becomes colorless instead."], |d, _| {
+            d.unspent_mana_becomes_colorless = true;
+        }),
+        "Necrologia" => s(
+            &["Cast this spell only during your end step.", "As an additional cost to cast this spell, pay X life.", "Draw X cards."],
+            |d, _| {
+                d.cast_only_during_your_end_step = true;
+                d.mana_ext.pay_x_life = true;
+                spell(d, vec![], vec![Effect::DrawX]);
+            },
+        ),
         _ => None,
     }
 }
@@ -1765,7 +1847,15 @@ pub const PG_B_SCRIPTED: &[&str] = &[
     "Third Path Iconoclast",
     "Storm-Kiln Artist",
     "Misdirection",
-    "Mana Confluence",
+    "Young Pyromancer",
+    "Monument to Endurance",
+    "Glimpse the Impossible",
+    "Barbarian Ring",
+    "Cephalid Coliseum",
+    "Cabal Pit",
+    "Kruphix, God of Horizons",
+    "Horizon Stone",
+    "Necrologia",
     // Ghyrson Starn (Spr3adsh33t)
     "Basilisk Collar",
     "Gorgon's Head",

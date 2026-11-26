@@ -712,3 +712,19 @@ my ChangeTargets; keeping the target is also offered) and Mana Confluence (its m
 as d1's Sunbaked Canyon). Five of my Ghyrson scripts were dropped because d2 had scripted the same
 cards (Archmage Emeritus, Lobber Crew, Chandra's Spitfire, Curiosity, Ophidian Eye); Storm-Kiln
 Artist stays.
+
+Token 84: Young Pyromancer's 1/1 Elemental (83 is a placeholder for d2's Bat). Unified the draw
+effects: d1's DrawPerCreatureYouControlOfColor stays, d3's DrawPerColoredCreatureYouControl is gone
+(Regal Force and its core_effects test point at d1's). Split halves refetched (Dusk // Dawn,
+Commit // Memory, Walk-In Closet // Forgotten Cellar had no `split`; every PG DFC already had its
+back). Run the asset scripts with PYTHONPATH=src: the .venv's editable install otherwise resolves
+ROOT to ~/bolt-the-bird.
+BLC: Casualties of War (31 mode sets, as Farewell), Esika's Chariot.
+
+Merger pieces: `CardDef::modes_once_each_turn` + `Game::modes_chosen` (Monument to Endurance),
+`Effect::ExileTopToPlayThenGraveyardTokens` + `Game::exiled_until_end`, handled at the beginning of
+the next end step (Glimpse the Impossible, with d1's Eldrazi Spawn), `Activated::needs_threshold`
+(Barbarian Ring, Cephalid Coliseum, Cabal Pit). Tests in core_merger.rs.
+More merger pieces: `CardDef::unspent_mana_becomes_colorless` in the pool emptying (Kruphix,
+Horizon Stone; Omnath's green stays green) and `cast_only_during_your_end_step` (Necrologia, with
+d1's pay_x_life). Mana Confluence dropped: d1 has it.

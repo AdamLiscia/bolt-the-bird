@@ -278,6 +278,8 @@ pub struct Activated {
     /// With `sacrifice_subtype`: sacrifice this many of them ("Sacrifice four Foods"): the victim, then
     /// the engine picks the rest; 0 or 1: one.
     pub sacrifice_subtype_count: u8,
+    /// Threshold: "Activate only if there are seven or more cards in your graveyard." (Barbarian Ring)
+    pub needs_threshold: bool,
 }
 
 /// The printed card. Shared by every copy; per-copy state lives on the game object.
@@ -842,6 +844,13 @@ pub struct CardDef {
     pub attack_tax: u8,
     /// The attack tax is {X} per creature, X the enchantments you control (Sphere of Safety).
     pub attack_tax_per_enchantment: bool,
+    /// A modal trigger's modes can each be chosen once each turn ("choose one that hasn't been
+    /// chosen this turn", Monument to Endurance); see `Game::modes_chosen`.
+    pub modes_once_each_turn: bool,
+    /// "If you would lose unspent mana, that mana becomes colorless instead." (Kruphix, Horizon Stone)
+    pub unspent_mana_becomes_colorless: bool,
+    /// "Cast this spell only during your end step." (Necrologia)
+    pub cast_only_during_your_end_step: bool,
 }
 
 /// A card's pieces from the d4 subsystems (see [`CardDef::subsystems`]).
@@ -1206,6 +1215,9 @@ impl CardDef {
             swamps_are_creatures: false,
             attack_tax: 0,
             attack_tax_per_enchantment: false,
+            modes_once_each_turn: false,
+            unspent_mana_becomes_colorless: false,
+            cast_only_during_your_end_step: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -1455,6 +1467,9 @@ impl CardDef {
             swamps_are_creatures: false,
             attack_tax: 0,
             attack_tax_per_enchantment: false,
+            modes_once_each_turn: false,
+            unspent_mana_becomes_colorless: false,
+            cast_only_during_your_end_step: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -1704,6 +1719,9 @@ impl CardDef {
             swamps_are_creatures: false,
             attack_tax: 0,
             attack_tax_per_enchantment: false,
+            modes_once_each_turn: false,
+            unspent_mana_becomes_colorless: false,
+            cast_only_during_your_end_step: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,

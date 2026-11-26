@@ -317,7 +317,7 @@ fn cast_until_decision(g: &mut Game, def: usize, x: Option<u8>) {
 fn draw_per_colored_creature_counts_only_that_color() {
     let (mut g, t) = game_with(vec![sorcery(
         vec![],
-        vec![Effect::DrawPerColoredCreatureYouControl(4)],
+        vec![Effect::DrawPerCreatureYouControlOfColor(bolt_core::Color::Green)],
     )]);
     g.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
     g.add_card(0, cid("Birds of Paradise"), Zone::Battlefield);

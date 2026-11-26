@@ -1688,7 +1688,7 @@ pub enum Effect {
     ReanimateAttachSource(u8),
     /// All creatures get -X/-X until end of turn, X the spell's X (Toxic Deluge).
     AllCreaturesGetMinusX,
-    /// Draw a card for each creature you control of this color (Freyalise: green).
+    /// Draw a card for each creature you control of this color (Freyalise, Regal Force: green).
     DrawPerCreatureYouControlOfColor(crate::Color),
     /// Evoke's "When this permanent enters, if its evoke cost was paid, its controller sacrifices
     /// it." (CR 702.74a)
@@ -1730,8 +1730,6 @@ pub enum Effect {
     LoseLifeAmount(Who),
     /// `who` loses life equal to the life they've lost this turn (Wound Reflection).
     LoseLifeLostThisTurn(Who),
-    /// Draw a card for each creature you control of this color, WUBRG index (Regal Force: green).
-    DrawPerColoredCreatureYouControl(u8),
     /// Regenerate each creature you control (Loxodon Hierarch).
     RegenerateEachCreatureYouControl,
     /// Regenerate the creature the source (an Aura) is attached to (Blessing of Leeches).
@@ -1974,6 +1972,10 @@ pub enum Effect {
     /// Until your next turn, your life total can't change (and damage to you is prevented: you have
     /// protection from everything) (Teferi's Protection).
     LifeLockedUntilYourNextTurn,
+    /// Exile the top `n` cards of your library; you may play them this turn. At the beginning of
+    /// the next end step, those still exiled go to your graveyard and you create a `def` token for
+    /// each (Glimpse the Impossible); see `Game::exiled_until_end`.
+    ExileTopToPlayThenGraveyardTokens { n: u8, def: usize },
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

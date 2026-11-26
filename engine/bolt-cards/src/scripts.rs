@@ -265,6 +265,9 @@ pub fn token_defs() -> Vec<CardDef> {
             });
             t
         },
+        // base+83 is d2's Bat: a placeholder until it merges.
+        token("Lane d2 token 83", "Bat", 1, 1, Keywords::FLYING),
+        token("Elemental", "Elemental", 1, 1, Keywords::NONE), // Young Pyromancer's red 1/1
     ]
 }
 
@@ -406,6 +409,7 @@ pub struct Tokens {
     pub faerie_dragon: usize,
     pub spider_menace: usize,
     pub saga_construct: usize,
+    pub elemental_1: usize,
     pub goat: usize,
 }
 
@@ -494,6 +498,7 @@ impl Tokens {
             faerie_dragon: base + 80,
             spider_menace: base + 81,
             saga_construct: base + 82,
+            elemental_1: base + 84,
             goat: base + 76,
         }
     }

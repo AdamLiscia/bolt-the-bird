@@ -494,6 +494,9 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         swamps_are_creatures: false,
         attack_tax: 0,
         attack_tax_per_enchantment: false,
+        modes_once_each_turn: false,
+        unspent_mana_becomes_colorless: false,
+        cast_only_during_your_end_step: false,
     };
     def.color_identity = color_identity(o);
     def.phyrexian = phyrexian;
