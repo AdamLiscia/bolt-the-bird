@@ -2109,6 +2109,11 @@ pub enum Effect {
     /// (Desecrate Reality's adamant half), as `Decision::LookPick` with
     /// `Pick::PermanentOddManaValue`.
     ReturnOddManaValuePermanentToBattlefield,
+    /// Tap all creatures (Ensnare).
+    TapAllCreatures,
+    /// Look at the top `n` cards of your library; put two of them into your hand and the rest on the
+    /// bottom in any order (Dig Through Time: 7), as `Decision::TakeTwoBottomRest`.
+    LookTakeTwoBottomAnyOrder(u8),
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

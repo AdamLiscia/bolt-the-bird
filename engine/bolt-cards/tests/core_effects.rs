@@ -2608,3 +2608,33 @@ fn an_even_mana_value_filter_and_an_odd_mana_value_return() {
     resolve_all(&mut g, &[Action::Pick(elves)]);
     assert_eq!(g.obj(elves).zone, Zone::Battlefield);
 }
+
+// ---- batch 17 ----
+
+#[test]
+fn tap_all_creatures() {
+    let (mut g, t) = game_with(vec![sorcery(vec![], vec![Effect::TapAllCreatures])]);
+    let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
+    let angel = g.add_card(1, cid("Serra Angel"), Zone::Battlefield);
+    let ring = g.add_card(1, cid("Sol Ring"), Zone::Battlefield);
+    cast_test(&mut g, t, &[], &[]);
+    assert!(g.obj(elves).tapped && g.obj(angel).tapped);
+    assert!(!g.obj(ring).tapped, "not a creature");
+}
+
+#[test]
+fn look_at_seven_take_two_and_the_rest_on_the_bottom() {
+    let (mut g, t) = game_with(vec![sorcery(vec![], vec![Effect::LookTakeTwoBottomAnyOrder(3)])]);
+    let a = g.add_card(0, cid("Serra Angel"), Zone::Library);
+    let b = g.add_card(0, cid("Sol Ring"), Zone::Library);
+    let c3 = g.add_card(0, cid("Lightning Bolt"), Zone::Library);
+    let lib = g.players[0].library.len();
+    let c = g.add_card(0, t, Zone::Hand);
+    act(&mut g, Action::Cast(c));
+    to_decision(&mut g);
+    assert!(!g.legal_actions().contains(&Action::No), "two must be taken");
+    resolve_all(&mut g, &[Action::Pick(a), Action::Pick(c3)]);
+    assert_eq!((g.obj(a).zone, g.obj(c3).zone), (Zone::Hand, Zone::Hand));
+    assert_eq!(g.players[0].library[0], b, "the rest on the bottom");
+    assert_eq!(g.players[0].library.len(), lib - 2);
+}

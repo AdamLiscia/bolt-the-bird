@@ -94,6 +94,7 @@ def test_lane_d3_batch_5_decisions_read_as_their_moves():
     assert pick({"kind": "IterationPick", "cards": [], "to_hand": False}, "Opt") == "Put on the bottom: Opt"
     cast_later = "You may cast this turn (then exile it): Opt"
     assert pick({"kind": "CastFromGraveyardThisTurn", "cards": []}, "Opt") == cast_later
+    assert pick({"kind": "TakeTwoBottomRest", "cards": [], "left": 2}, "Opt") == "Put into your hand: Opt"
 
 
 def test_venturing_names_the_dungeon_or_room():

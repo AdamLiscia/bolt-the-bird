@@ -1192,6 +1192,9 @@ pub enum Decision {
     /// `Pick` an instant or sorcery card in your graveyard: you may cast it this turn, exiled instead
     /// of going to your graveyard (Mission Briefing).
     CastFromGraveyardThisTurn { cards: Vec<ObjId> },
+    /// `Pick` one of `cards` (looked at, on top of your library) to put into your hand; `left` picks
+    /// including this one; then the rest go on the bottom in the order you choose (Dig Through Time).
+    TakeTwoBottomRest { cards: Vec<ObjId>, left: u8 },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -10655,9 +10658,9 @@ impl Game {
                 v
             }
             Decision::ExileOwnPermanent { .. } => self.permanents(p).map(Action::Pick).collect(),
-            Decision::IterationPick { cards, .. } | Decision::CastFromGraveyardThisTurn { cards } => {
-                cards.iter().copied().map(Action::Pick).collect()
-            }
+            Decision::IterationPick { cards, .. }
+            | Decision::CastFromGraveyardThisTurn { cards }
+            | Decision::TakeTwoBottomRest { cards, .. } => cards.iter().copied().map(Action::Pick).collect(),
             Decision::BraidsOpponent { types, .. } => {
                 let mut v: Vec<Action> = self
                     .braids_options(p, Some(*types))
@@ -11962,6 +11965,11 @@ impl Game {
                 // instead": what a flashback grant for this turn does (Snapcaster Mage's).
                 self.obj_mut(c).flashback_eot = true;
             }
+            (Decision::TakeTwoBottomRest { cards, left }, Action::Pick(c)) => {
+                self.move_to(c, Zone::Hand);
+                let rest: Vec<ObjId> = cards.into_iter().filter(|&x| x != c).collect();
+                self.take_two_next(p, rest, left.saturating_sub(1));
+            }
             (d, a) => unreachable!("legal action {a:?} unhandled for {d:?}"),
         }
         if self.decision.is_none() {
@@ -12441,6 +12449,16 @@ impl Game {
                     to_hand: false,
                 },
             ),
+        }
+    }
+
+    /// Dig Through Time: take `left` more of `cards` into the hand (asked), then the rest on the
+    /// bottom in the order `p` chooses.
+    fn take_two_next(&mut self, p: PlayerId, cards: Vec<ObjId>, left: u8) {
+        if left > 0 && !cards.is_empty() {
+            self.ask(p, Decision::TakeTwoBottomRest { cards, left });
+        } else if !cards.is_empty() {
+            self.bottom_in_order(p, cards);
         }
     }
 
@@ -18823,6 +18841,28 @@ impl Game {
                         },
                     );
                 }
+            }
+            Effect::TapAllCreatures => {
+                let all: Vec<ObjId> = self
+                    .battlefield
+                    .iter()
+                    .copied()
+                    .filter(|&x| self.types_of(x).creature)
+                    .collect();
+                for c in all {
+                    self.become_tapped(c);
+                }
+            }
+            Effect::LookTakeTwoBottomAnyOrder(n) => {
+                let p = item.controller;
+                let cards: Vec<ObjId> = self.players[p]
+                    .library
+                    .iter()
+                    .rev()
+                    .take(n as usize)
+                    .copied()
+                    .collect();
+                self.take_two_next(p, cards, 2);
             }
         }
     }
