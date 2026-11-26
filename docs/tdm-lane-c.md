@@ -627,3 +627,11 @@ Adventures reuse the Omen path: the spell half is cast with `CastOmen` from the 
 `omen`; `adventure` makes it go to exile, castable by its owner from there, instead of shuffling in.
 Cards (12): Confirm Suspicions, Confront the Unknown, Erdwal Illuminator, Ethereal Investigator, Floodhound, Hold for
 Questioning, Ongoing Investigation, Tamiyo's Journal, Pippin, Savvy Hunter, Bramble Familiar, Monster Manual.
+
+Objects and zones batch 2: reanimating Auras (Animate Dead, Dance of the Dead, Necromancy). Fast-forwarded to tarkir
+e245c6b first. Core: `CardDef::{reanimating_aura, reanimates_tapped, flash_cast_sacrificed}`, `Effect::{ReanimateAttachSource,
+UntapAttached}`, `Game::{reanimate_attach, flash_casts}`. The Aura's enters trigger is done as it enters: an Aura spell
+with `reanimating_aura` brings its graveyard target back under your control and attaches to it (the state-based
+check accepts a creature for it); when it leaves the battlefield, `move_to` sacrifices that creature (computed
+before lane B's guarded replacement block, applied after the zone change). Necromancy cast when a sorcery couldn't
+be is sacrificed at the next end step (the cleanup step here).

@@ -102,6 +102,27 @@ pub struct Filter {
     pub legendary_only: bool,
     /// Artifact or creature spells only (Scatter Ray), with `spells`.
     pub spell_artifact_or_creature: bool,
+    /// Nonartifact permanents or spells only (Go for the Throat).
+    pub nonartifact: bool,
+    /// Only permanents or spells of this color, WUBRG index (Red Elemental Blast: blue).
+    pub color: Option<u8>,
+    /// Only permanents or spells that aren't this color (Doom Blade: nonblack).
+    pub not_color: Option<u8>,
+    /// Monocolored permanents or spells only (Sultai Charm).
+    pub monocolored: bool,
+    /// Spells with at least this mana value, X included (Disdainful Stroke).
+    pub spell_min_mana_value: Option<u32>,
+    /// Artifact, creature or planeswalker spells only (Strix Serenade), with `spells`.
+    pub spell_artifact_creature_or_planeswalker: bool,
+    /// Spells or abilities that target you or a creature you control (Siren Stormtamer).
+    pub targets_you_or_your_creature: bool,
+    /// Spells with a single target only (Imp's Mischief).
+    pub single_target: bool,
+    /// Only while it's your main phase (Return to Dust's second target: "If you cast this spell
+    /// during your main phase").
+    pub only_in_your_main_phase: bool,
+    /// Attacking creatures only (Reconnaissance).
+    pub attacking: bool,
 }
 
 impl Filter {
@@ -151,6 +172,16 @@ impl Filter {
         spells_enchantment_instant_sorcery: false,
         legendary_only: false,
         spell_artifact_or_creature: false,
+        nonartifact: false,
+        color: None,
+        not_color: None,
+        monocolored: false,
+        spell_min_mana_value: None,
+        spell_artifact_creature_or_planeswalker: false,
+        targets_you_or_your_creature: false,
+        single_target: false,
+        only_in_your_main_phase: false,
+        attacking: false,
     };
 
     pub const CREATURE: Filter = Filter {
@@ -1650,6 +1681,11 @@ pub enum Effect {
     /// Choose an exiled card an opponent owns with a void counter on it; you may play it this turn
     /// without paying its mana cost (Dauthi Voidwalker).
     PlayVoidCardFree,
+    /// Put the creature card in `slot` (from a graveyard) onto the battlefield under your control
+    /// and attach the source to it (Necromancy).
+    ReanimateAttachSource(u8),
+    /// Untap the creature the source is attached to.
+    UntapAttached,
     /// All creatures get -X/-X until end of turn, X the spell's X (Toxic Deluge).
     AllCreaturesGetMinusX,
     /// Draw a card for each creature you control of this color (Freyalise: green).
@@ -1657,6 +1693,186 @@ pub enum Effect {
     /// Evoke's "When this permanent enters, if its evoke cost was paid, its controller sacrifices
     /// it." (CR 702.74a)
     SacrificeIfEvoked,
+    /// You gain life and draw cards equal to the source's power, its last known power if it left
+    /// the battlefield (Lifeblood Hydra: "When this creature dies, ...").
+    GainLifeAndDrawSourcePower,
+    /// You gain 1 life for each spell you've cast this turn (Aetherflux Reservoir).
+    GainLifePerSpellCastThisTurn,
+    /// You gain half X life and draw half X cards, each rounded down, X the source spell's X (Hydroid
+    /// Krasis: "When you cast this spell, ...").
+    GainAndDrawHalfX,
+    /// You lose life equal to the mana value of the card or permanent in `slot` (Reanimate, Feed the
+    /// Swarm). Put it before the effect that moves that object, which keeps the slot legal.
+    LoseLifeSlotManaValue(u8),
+    /// Put the top card of your library into your hand (revealed); you lose life equal to its mana
+    /// value (Darkstar Augur, Dark Confidant).
+    RevealTopToHandLoseManaValue,
+    /// You lose life equal to the number of cards in your hand (Castle Locthwain).
+    LoseLifePerCardInHand,
+    /// `who` draws X cards and loses X life, X the cards in their graveyard as this resolves
+    /// (Eldritch Pact).
+    DrawAndLosePerGraveyardCard(Who),
+    /// Each player discards their hand, then draws that many cards minus one (Dark Deal).
+    DiscardHandsDrawThatManyMinusOne,
+    /// You draw X cards and lose X life, X the permanents you control with this subtype (Graveborn
+    /// Muse: Zombies).
+    DrawAndLosePerSubtypeYouControl(&'static str),
+    /// "Sacrifice another creature. You gain X life and draw X cards, where X is that creature's
+    /// power." (Disciple of Bolas; nothing if you control no other creature)
+    SacrificeAnotherGainAndDrawPower,
+    /// "Sacrifice it unless you return a non-[subtype] land you control to its owner's hand." (the
+    /// Lairs: Darigaaz's Caldera)
+    ReturnNonSubtypeLandOrSacrificeSelf(&'static str),
+    /// `who` loses life equal to the trigger's amount ("target opponent loses that much life":
+    /// Sanguine Bond, with `When::YouGainLife`).
+    LoseLifeAmount(Who),
+    /// `who` loses life equal to the life they've lost this turn (Wound Reflection).
+    LoseLifeLostThisTurn(Who),
+    /// Draw a card for each creature you control of this color, WUBRG index (Regal Force: green).
+    DrawPerColoredCreatureYouControl(u8),
+    /// Regenerate each creature you control (Loxodon Hierarch).
+    RegenerateEachCreatureYouControl,
+    /// Regenerate the creature the source (an Aura) is attached to (Blessing of Leeches).
+    RegenerateAttached,
+    /// `who` loses 1 life for each artifact they control (Emissary of Despair: the damaged player).
+    LoseLifePerArtifactTheyControl(Who),
+    /// Draw cards equal to the greatest power among non-Human creatures you control (Return of the
+    /// Wildspeaker).
+    DrawGreatestPowerNonHuman,
+    /// Non-Human creatures you control get +P/+T until end of turn (Return of the Wildspeaker).
+    PumpNonHumanYouControl {
+        power: i32,
+        toughness: i32,
+    },
+    /// Draw cards equal to the greatest toughness among creatures you control (Last March of the
+    /// Ents).
+    DrawGreatestToughnessYouControl,
+    /// Put up to `n` creature cards from your hand onto the battlefield, as
+    /// `Decision::CreaturesFromHandUpTo` (Tooth and Nail).
+    CreaturesFromHandUpTo(u8),
+    /// "You may shuffle": `Decision::MayShuffle` (Ponder).
+    MayShuffle,
+    /// Return a permanent you control to its owner's hand (only a nonland one with `nonland`), as
+    /// `Decision::ReturnOwnPermanent` (Dream Stalker, Ancestral Statue).
+    ReturnPermanentYouControl {
+        nonland: bool,
+    },
+    /// `who` may search their library for up to X creature cards (X the spell's X), reveal them, put
+    /// them into their hand, then shuffle (Weird Harvest; one effect per player).
+    SearchCreaturesUpToX(Who),
+    /// Untap all creatures that attacked this turn (Relentless Assault).
+    UntapCreaturesAttackedThisTurn,
+    /// Each noncreature artifact you control becomes a P/T artifact creature until end of turn
+    /// (Cyberdrive Awakener: 4/4).
+    NoncreatureArtifactsBecomeCreatures {
+        power: i32,
+        toughness: i32,
+    },
+    /// Search your library for a card, put it into your graveyard, then shuffle; if it's an instant
+    /// or sorcery card, put a +1/+1 counter on the source (Oriq Loremage), as
+    /// `Decision::SearchToGraveyardCounter`.
+    SearchToGraveyardCounterIfInstantOrSorcery,
+    /// Counter the spell in `slot` if it's this color, WUBRG index (Pyroblast: "if it's blue").
+    CounterIfColor {
+        slot: u8,
+        color: u8,
+    },
+    /// Destroy the permanent in `slot` if it's this color (Pyroblast).
+    DestroyIfColor {
+        slot: u8,
+        color: u8,
+    },
+    /// Creatures you control gain these keywords and get +X/+X until end of turn, X the greatest
+    /// power among creatures you control as it resolves (Pathbreaker Ibex).
+    PumpAllGreatestPowerGrant(Keywords),
+    /// All creatures get -1/-1 until end of turn for each Swamp you control (Mutilate).
+    AllCreaturesMinusPerSwampYouControl,
+    /// The creature in `slot` gets -1/-1 until end of turn for each Swamp you control (Defile).
+    MinusPerSwampYouControl(u8),
+    /// Destroy all artifacts; they can't be regenerated; the controller of each gains life equal to
+    /// its mana value (Seeds of Innocence).
+    DestroyAllArtifactsNoRegenGainManaValue,
+    /// Creatures you control with this subtype gain these keywords until end of turn (Jirina:
+    /// Humans, hexproof and indestructible).
+    GrantSubtypeYouControlEot {
+        sub: &'static str,
+        keywords: Keywords,
+    },
+    /// Tap or untap the creature the source (an Equipment) is attached to; it toggles (Sword of the
+    /// Paruns).
+    TapOrUntapAttached,
+    /// Sacrifice the source, if it's still on the battlefield (Defense of the Heart).
+    SacrificeSource,
+    /// Stop here unless the ability's `condition` holds as it resolves: an intervening "if" on a
+    /// spell (Gift of Estates), where conditions are otherwise checked only for triggers.
+    StopUnlessCondition,
+    /// Destroy the permanent in `slot`; its controller may search for a land card with a basic land
+    /// type and put it onto the battlefield untapped (Boseiju, Who Endures).
+    DestroyControllerMayFetchLandWithBasicType(u8),
+    /// Destroy the permanent in `slot`; the source deals `n` damage to its controller (Cindervines).
+    DestroyDamageController {
+        slot: u8,
+        n: i32,
+    },
+    /// Change the target of the single-target spell in `slot` to another legal one, if there is one
+    /// (Imp's Mischief), as `Decision::ChangeTheTarget`.
+    ChangeTheTarget(u8),
+    /// You lose life equal to the mana value (X included) of the spell in `slot` (Imp's Mischief).
+    LoseLifeSlotSpellManaValue(u8),
+    /// Change a target of the spell or ability in `slot` to the source, if the source is a legal
+    /// target for it (Spellskite); with a choice of targets, as `Decision::TargetToSource`.
+    ChangeATargetToSource(u8),
+    /// Each player chooses an artifact, a creature, an enchantment and a planeswalker from among
+    /// the nonland permanents they control, then sacrifices the rest (Cataclysmic Gearhulk), as
+    /// `Decision::KeepNonlandOfType`.
+    EachKeepsOneNonlandOfEachType,
+    /// `who` puts the cards in their hand on the bottom of their library in any order, then draws
+    /// that many (Teferi's Puzzle Box), as `Decision::HandToBottom`.
+    HandToBottomDrawThatMany(Who),
+    /// Sacrifice any number of other permanents, then draw that many cards (God-Eternal Bontu), as
+    /// `Decision::SacrificeAnyNumber`.
+    SacrificeOthersDrawThatMany,
+    /// Each player sacrifices a creature or planeswalker of their choice; if you sacrificed one, you
+    /// may return another permanent card from your graveyard to your hand (Deadly Brew).
+    EachSacrificeCreatureOrPlaneswalkerMayReturnOther,
+    /// Each player sacrifices all artifacts, enchantments and nonbasic lands they control; for each
+    /// land sacrificed, its controller may search for a basic land card and put it onto the
+    /// battlefield tapped (Wave of Vitriol), as `Decision::BasicsTappedUpTo`.
+    WaveOfVitriol,
+    /// Search for up to three creature cards and reveal them; if they're three with different names,
+    /// one at random goes to your hand; then shuffle (Signal the Clans), as
+    /// `Decision::SignalTheClans`.
+    SignalTheClans,
+    /// You may sacrifice an artifact, creature, enchantment, land or planeswalker; if you do, the
+    /// opponent may sacrifice a permanent that shares a card type with it, and if they don't, they
+    /// lose 2 life and you draw a card (Braids, Arisen Nightmare).
+    BraidsEndStep,
+    /// Each noncreature artifact you control becomes a 0/0 artifact creature for good, with `n`
+    /// +1/+1 counters (Rise and Shine, overloaded).
+    NoncreatureArtifactsBecomeZeroZeroWithCounters(u8),
+    /// Exile each creature you don't control; the opponent searches for that many basic land cards
+    /// and puts them onto the battlefield tapped, then shuffles (Winds of Abandon, overloaded).
+    ExileOpponentsCreaturesTheyFetchBasicsTapped,
+    /// Exile the top card of your library; you may put it into your hand unless it has the same
+    /// name as another card exiled this way; repeat until you put one into your hand or exile two
+    /// with the same name (Tainted Pact), as `Decision::TaintedPact`.
+    TaintedPact,
+    /// Exile from the top until a nonland card and put it into your hand; repeat while its mana
+    /// value is 4 or greater; the source deals 1 damage to you per card put into your hand
+    /// (Demonlord Belzenlok).
+    BelzenlokDig,
+    /// The creature in `slot` (the source, with `None`) gains protection from the color of your
+    /// choice until end of turn, as `Decision::ProtectionColor` (Benevolent Bodyguard, Cartel
+    /// Aristocrat).
+    ProtectionChosenColorEot(Option<u8>),
+    /// Creatures you control gain protection from each color until end of turn (Akroma's Will).
+    YourCreaturesProtectionEachColorEot,
+    /// Remove the creature in `slot` from combat and untap it (Reconnaissance).
+    RemoveFromCombatAndUntap(u8),
+    /// The creature in `slot` connives X, X the number of attacking creatures: draw X, discard X,
+    /// then a +1/+1 counter on it per nonland card discarded (Raffine), as
+    /// `Decision::ConniveDiscard`.
+    ConniveAttackers(u8),
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -1719,6 +1935,10 @@ pub enum SearchFor {
     CreaturePowerAtMost(i32),
     /// A creature card with exactly this mana value (Birthing Pod).
     CreatureMvExactly(u32),
+    /// An artifact card with exactly this mana value (Trophy Mage: 3).
+    ArtifactManaValue(u32),
+    /// An artifact card with a mana ability, or a basic land card (Moonsilver Key).
+    ArtifactWithManaAbilityOrBasicLand,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1777,6 +1997,18 @@ pub enum Scope {
     OtherYourPermanents,
     /// Creatures your opponents control (Elesh Norn, Grand Cenobite).
     OpponentsCreatures,
+    /// Other artifact creatures you control (Cyberdrive Awakener).
+    OtherYourArtifactCreatures,
+    /// Other enchantments you control (Sterling Grove).
+    OtherYourEnchantments,
+    /// Creatures with flying, printed or until end of turn; anyone's (Gravitational Shift).
+    CreaturesWithFlying,
+    /// Creatures without flying (printed or until end of turn); anyone's (Gravitational Shift).
+    CreaturesWithoutFlying,
+    /// Tapped creatures you control (Sword of the Paruns).
+    YourTappedCreatures,
+    /// Untapped creatures you control (Sword of the Paruns).
+    YourUntappedCreatures,
 }
 
 /// What a scaled static ability counts.
@@ -1796,6 +2028,17 @@ pub enum Scale {
     PerColorAmongYourPermanents,
     /// The source's own kind of counters (Chitterspitter's acorn counters).
     PerKindCounter,
+    /// Artifacts you control (Cranial Plating).
+    PerArtifactYouControl,
+    /// Enchantments on the battlefield other than the source (Ancestral Mask).
+    PerOtherEnchantmentOnBattlefield,
+    /// Cards you've drawn this turn (Knowledge Is Power).
+    PerCardDrawnThisTurn,
+    /// Other creatures on the battlefield with flying, printed or granted until end of turn (Pride
+    /// of the Clouds).
+    PerOtherCreatureWithFlying,
+    /// Cards in all players' hands (Multani, Maro-Sorcerer).
+    PerCardInAllHands,
 }
 
 /// A condition on a static ability ("as long as ...").
@@ -1823,6 +2066,11 @@ pub enum StaticCondition {
     CitysBlessing,
     /// Its controller controls at least this many lands.
     ControlLandsAtLeast(u8),
+    /// The creature the source is attached to is tapped (`true`) or untapped (`false`) (Sword of
+    /// the Paruns).
+    AttachedTapped(bool),
+    /// The creature the source is attached to is this color, WUBRG index (Shield of the Oversoul).
+    AttachedIsColor(u8),
 }
 
 /// A static ability that changes characteristics (CR 604, 613 layers 6 and 7c).
@@ -1988,6 +2236,22 @@ pub enum Condition {
     /// The cast creature spell (the trigger's `extra`) has power from `.0` through `.1` (checked as
     /// it triggers).
     CastPowerBetween(i32, i32),
+    /// The source is tapped ("if this artifact is tapped", Mana Vault).
+    SourceTapped,
+    /// The source is untapped ("if this artifact is untapped", Howling Mine).
+    SourceUntapped,
+    /// It's its controller's turn (a "your draw step" trigger built on `When::EachDrawStep`).
+    YourTurn,
+    /// Its controller controls their commander (lieutenant: "if you control your commander").
+    ControlCommander,
+    /// It isn't its controller's turn. With `When::PlayerPlaysLand`: "whenever an opponent plays a
+    /// land" (a land is played only on its player's own turn).
+    NotYourTurn,
+    /// Its controller controls at least `.1` permanents with subtype `.0` (Revel in Riches: ten or
+    /// more Treasures).
+    ControlSubtypeAtLeast(&'static str, u32),
+    /// An opponent controls at least this many creatures (Defense of the Heart).
+    OpponentControlsCreaturesAtLeast(u8),
 }
 
 /// A spell's effect or a triggered ability: target slots, then effects in order.
@@ -2267,6 +2531,46 @@ pub enum When {
     FirstMainPhaseYourTurn,
     /// "Whenever you investigate for the first time each turn" (Erdwal Illuminator).
     YouInvestigateFirstTimeEachTurn,
+    /// "Whenever a creature an opponent controls dies" (tokens included).
+    OpponentCreatureDies,
+    /// "Whenever another creature you control dies" (tokens included; `AnotherNontokenCreatureYouControlDies`
+    /// is nontoken only).
+    AnotherCreatureYouControlDies,
+    /// "Whenever this creature or another [subtype] you control dies" (tokens included; Undead
+    /// Augur: Zombie). The creature it was is checked as it last existed.
+    ThisOrAnotherYouControlDiesWithSubtype(&'static str),
+    /// "Whenever an artifact is put into a graveyard from the battlefield" (anyone's, tokens included).
+    ArtifactToGraveyardFromBattlefield,
+    /// "Whenever an artifact is put into an opponent's graveyard from the battlefield".
+    ArtifactToOpponentsGraveyardFromBattlefield,
+    /// "Whenever you discard a card" (cycling included: it discards the card). Slot 0, if its first
+    /// filter is `triggering`, is the discarded card in your graveyard.
+    YouDiscard,
+    /// "Whenever you cast an enchantment spell" (from any zone); the spell is in `extra`.
+    YouCastEnchantment,
+    /// "Whenever you cast an artifact spell" (from any zone); the spell is in `extra`.
+    YouCastArtifact,
+    /// "Whenever one or more +1/+1 counters are put on this creature": every time (entering with
+    /// them included, CR 122.6). `CountersPutOnThis` is the once-each-turn version.
+    PlusCountersPutOnThis,
+    /// "Whenever you lose life" (every time; the amount travels with the trigger).
+    YouLoseLife,
+    /// "Whenever you sacrifice a permanent" (each one).
+    YouSacrifice,
+    /// "Whenever a player sacrifices another permanent" (any player's, each one).
+    PlayerSacrificesAnother,
+    /// "Whenever you sacrifice a token".
+    YouSacrificeToken,
+    /// "Whenever you sacrifice a [subtype]" (each one; Rapacious Guest: Food).
+    YouSacrificeSubtype(&'static str),
+    /// "Whenever this creature or another creature or artifact you control dies" (tokens included;
+    /// Al Bhed Salvagers).
+    ThisOrAnotherCreatureOrArtifactYouControlDies,
+    /// "Whenever another permanent you control enters" (Altar of the Brood).
+    AnotherPermanentYouControlEnters,
+    /// "Whenever another creature you control of this color enters" (a `Color` index: Ivy Lane
+    /// Denizen, green).
+    AnotherCreatureYouControlEntersWithColor(usize),
 }
 
 #[derive(Clone, Debug, PartialEq)]

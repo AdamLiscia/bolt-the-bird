@@ -764,6 +764,9 @@ pub struct CardDef {
     /// and its owner may cast the card itself from exile later.
     pub adventure: bool,
     /// "Enchanted permanent's activated abilities can't be activated." (Hold for Questioning)
+    /// "As this enters, choose a card type." and "You and creatures you control have protection
+    /// from the chosen card type." (Serra's Emissary).
+    pub protection_chosen_card_type: bool,
     pub enchanted_stops_activations: bool,
     /// "If one or more +1/+1 counters would be put on a creature you control, that many plus one
     /// ... instead." (Hardened Scales)
@@ -795,8 +798,22 @@ pub struct CardDef {
     /// `ward_sacrifice` counts nonland permanents only (Valgavoth: "Ward—Sacrifice three nonland
     /// permanents.").
     pub ward_sacrifice_nonland: bool,
+    /// Animate Dead, Dance of the Dead, Necromancy: it reanimates its target creature card as it
+    /// enters (an Aura spell's target, or its enters trigger's) and is attached to it; when it
+    /// leaves the battlefield, that creature's controller sacrifices the creature.
+    pub reanimating_aura: bool,
+    /// The reanimated creature enters tapped (Dance of the Dead).
+    pub reanimates_tapped: bool,
+    /// "If you cast it any time a sorcery couldn't have been cast, ... sacrifices it at the
+    /// beginning of the next cleanup step." (Necromancy: at the next end step here)
+    pub flash_cast_sacrificed: bool,
     /// Mana, costs and keywords (the d1 theme), grouped so adding one touches only [`ManaExt`].
     pub mana_ext: ManaExt,
+    /// "... don't cause abilities to trigger" (Hushbringer, Doorkeeper Thrull, Elesh Norn).
+    pub suppresses_triggers: Option<Suppression>,
+    /// "If a triggered ability of [a kind of source] you control triggers, that ability triggers an
+    /// additional time" (Harmonic Prodigy, Delney).
+    pub doubles_triggers_of: Option<TriggerDoubler>,
 }
 
 /// A card's mana, cost and keyword pieces added by the d1 theme (see [`CardDef::mana_ext`]).
@@ -847,6 +864,27 @@ pub struct ManaExt {
     pub all_lands_add_same: bool,
     /// "Whenever you tap a creature for mana, add an additional [color]." (Leyline of Abundance)
     pub your_creatures_add: Option<crate::Color>,
+}
+
+/// Which events don't cause abilities to trigger (see [`CardDef::suppresses_triggers`]).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Suppression {
+    /// "Creatures entering or dying don't cause abilities to trigger." (Hushbringer)
+    CreaturesEnteringOrDying,
+    /// "Artifacts and creatures entering don't cause abilities to trigger." (Doorkeeper Thrull)
+    ArtifactsOrCreaturesEntering,
+    /// "Permanents entering don't cause abilities of permanents your opponents control to
+    /// trigger." (Elesh Norn, Mother of Machines)
+    PermanentsEnteringForOpponents,
+}
+
+/// Whose triggered abilities trigger an additional time (see [`CardDef::doubles_triggers_of`]).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TriggerDoubler {
+    /// "a Shaman or another Wizard you control" (Harmonic Prodigy).
+    ShamanOrOtherWizard,
+    /// "a creature you control with power N or less" (Delney).
+    CreaturePowerAtMost(i32),
 }
 
 /// What entering makes triggers happen again (see [`CardDef::entering_triggers_again`]).
@@ -1110,7 +1148,13 @@ impl CardDef {
             lands_are_swamps: false,
             creatures_abilities_haste: false,
             ward_sacrifice_nonland: false,
+            reanimating_aura: false,
+            reanimates_tapped: false,
+            flash_cast_sacrificed: false,
             mana_ext: ManaExt::default(),
+            suppresses_triggers: None,
+            doubles_triggers_of: None,
+            protection_chosen_card_type: false,
         }
     }
 
@@ -1342,7 +1386,13 @@ impl CardDef {
             lands_are_swamps: false,
             creatures_abilities_haste: false,
             ward_sacrifice_nonland: false,
+            reanimating_aura: false,
+            reanimates_tapped: false,
+            flash_cast_sacrificed: false,
             mana_ext: ManaExt::default(),
+            suppresses_triggers: None,
+            doubles_triggers_of: None,
+            protection_chosen_card_type: false,
         }
     }
 
@@ -1574,7 +1624,13 @@ impl CardDef {
             lands_are_swamps: false,
             creatures_abilities_haste: false,
             ward_sacrifice_nonland: false,
+            reanimating_aura: false,
+            reanimates_tapped: false,
+            flash_cast_sacrificed: false,
             mana_ext: ManaExt::default(),
+            suppresses_triggers: None,
+            doubles_triggers_of: None,
+            protection_chosen_card_type: false,
         }
     }
 }

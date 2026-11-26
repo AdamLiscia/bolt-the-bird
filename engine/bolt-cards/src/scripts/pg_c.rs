@@ -1341,6 +1341,50 @@ pub fn script(name: &str) -> Option<Script> {
                 d.adventure = true;
             },
         ),
+        "Animate Dead" => s(
+            &[
+                "Enchant creature card in a graveyard",
+                "When this Aura enters, if it's on the battlefield, it loses \"enchant creature card in a graveyard\" and gains \"enchant creature put onto the battlefield with this Aura.\" Return enchanted creature card to the battlefield under your control and attach this Aura to it. When this Aura leaves the battlefield, that creature's controller sacrifices it.",
+                "Enchanted creature gets -1/-0.",
+            ],
+            |d, _| {
+                // The return happens as the Aura enters (its enters trigger, done at once).
+                d.aura = true;
+                d.spell = Some(Ability::new(vec![graveyard_cards(true, Controller::Any)], vec![]));
+                d.reanimating_aura = true;
+                attached(d, false, -1, 0, Keywords::NONE);
+            },
+        ),
+        "Dance of the Dead" => s(
+            &[
+                "Enchant creature card in a graveyard",
+                "When this Aura enters, if it's on the battlefield, it loses \"enchant creature card in a graveyard\" and gains \"enchant creature put onto the battlefield with this Aura.\" Put enchanted creature card onto the battlefield tapped under your control and attach this Aura to it. When this Aura leaves the battlefield, that creature's controller sacrifices it.",
+                "Enchanted creature gets +1/+1 and doesn't untap during its controller's untap step.",
+                "At the beginning of the upkeep of enchanted creature's controller, that player may pay {1}{B}. If the player does, untap that creature.",
+            ],
+            |d, _| {
+                d.aura = true;
+                d.spell = Some(Ability::new(vec![graveyard_cards(true, Controller::Any)], vec![]));
+                d.reanimating_aura = true;
+                d.reanimates_tapped = true;
+                attached(d, false, 1, 1, Keywords::NONE);
+                d.enchanted_doesnt_untap = true;
+                let pay = Effect::MayPay(ManaCost::parse("{1}{B}").expect("cost"));
+                on(d, When::Upkeep { your_turn_only: true }, vec![], vec![pay, Effect::UntapAttached]);
+            },
+        ),
+        "Necromancy" => s(
+            &[
+                "You may cast this spell as though it had flash. If you cast it any time a sorcery couldn't have been cast, the controller of the permanent it becomes sacrifices it at the beginning of the next cleanup step.",
+                "When this enchantment enters, if it's on the battlefield, it becomes an Aura with \"enchant creature put onto the battlefield with Necromancy.\" Put target creature card from a graveyard onto the battlefield under your control and attach this enchantment to it. When this enchantment leaves the battlefield, that creature's controller sacrifices it.",
+            ],
+            |d, _| {
+                d.keywords = d.keywords.with(Keywords::FLASH);
+                d.flash_cast_sacrificed = true; // at the next end step here
+                d.reanimating_aura = true;
+                on(d, When::Enters, vec![graveyard_cards(true, Controller::Any)], vec![Effect::ReanimateAttachSource(0)]);
+            },
+        ),
         _ => None,
     }
 }
@@ -1503,4 +1547,7 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Savvy Hunter",
     "Bramble Familiar // Fetch Quest",
     "Monster Manual // Zoological Study",
+    "Animate Dead",
+    "Dance of the Dead",
+    "Necromancy",
 ];

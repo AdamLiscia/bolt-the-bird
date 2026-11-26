@@ -33,8 +33,8 @@ lane** (`"lane": "d1"`, ...). Ownership is fixed in the file, so two lanes can n
 **Cards that need engine core** go to the lead in your report, never into `queue.json`. The lead adds them
 to `handoff/lanes/needs_core.json`, which the Mac lanes work through.
 
-**Stop:** at the end of round 5 (all of your decks done), and report. **Pause:** 05:00–10:00 ET (the daily
-jobs), during Adam's streams, and on the desktop while Adam is gaming, when he or the orchestrator says so.
+**Stop:** at the end of round 5 (all of your decks done), and report. **Pause:** during Adam's streams, and on the desktop
+while Adam is gaming, when he or the orchestrator says so. (The 05:00–10:00 pause was lifted by Adam on 2026-11-26.)
 Finish or commit the current card first.
 
 ## Setting up
@@ -110,6 +110,7 @@ edit `bolt-core`" above, for your theme only:** everything outside it still goes
 | d3 | Effects and statics | 169 | new one-shot effects (mass destroy or sacrifice, put onto the battlefield), searches with filters (color, power, mana value), statics that scale (per artifact, per Elf) |
 | Mac B | Replacement effects | 22 | tokens, counters, life loss and damage replaced or doubled; plus its current decks |
 | Mac C | Objects and zones | 100 | Clue/investigate, Food, copies, dungeons and initiative, morph and phasing, split/adventure/MDFC back faces, emblems |
+| d4 (from 2026-11-26) | Subsystems | 18+ | new, self-contained systems d4 owns end to end: dungeons, venture and the initiative (with completed-dungeon conditions); Choose a Background; emblems; dice and coin flips; the Ring tempts you; sagas and chapter abilities. Then **split cards** (Boom // Bust, Fire // Ice): `scripts/fetch_oracle.py` keeps both halves (like the Omen and back-face fields) and the engine casts either half. |
 
 The entries are in `handoff/lanes/needs_core.json` (`theme` and `owner` on each). They were sorted by a keyword
 pass, so some are misfiled: a lane that finds one outside its theme sends it back to the merger. A theme lane
@@ -137,6 +138,7 @@ Fences:
   | d2 | **trigger events only**: in `move_to`, `zone_triggers_once`, the sacrifice sites, `gain_life`, `lose_life`, counter placement, combat damage, the cast path and the enter path, d2 may add the lines that emit an event (`self.fire(...)` and the data it needs) and the matching `When::` arms. It doesn't change what those functions do (where a card goes, how much life changes, what's legal). It also owns `fire()` itself, for suppressed and doubled triggers (Hushbringer, Elesh Norn, Harmonic Prodigy). |
   | Mac C | zone behaviour: where objects go and how they move (`move_to`'s destinations, exile-and-return, face-down, copies), but not its trigger emits, which are d2's |
   | d3 (from 2026-11-25 late) | types and abilities: `has_subtype` and type-changing effects (Mirror Entity's all types, Kormus Bell, Song of the Dryads, manlands), `lost_abilities` from effects, and **protection from a chosen quality**, kept in its own store (a `Game` list of grants, or a new `Object` field), **not** as a `Modifier` field, so no `Modifier` literal changes. Blood Moon and Urborg (lane B's, in `has_subtype`) are already there; keep them working. |
+  | d4 | its subsystems' own state and functions (dungeon progress, emblems, dice, the Ring, saga chapters), the split-card fields in `fetch_oracle.py` and the split-cast path. To use other lanes' code (a trigger on venturing, say), report "needs core" to that lane. |
   | merger | everything else, including timing permissions |
 
 - **New `Decision` variants are allowed** (appended), as long as they're answered with existing `Action`

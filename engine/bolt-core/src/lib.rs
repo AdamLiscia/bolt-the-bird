@@ -15,6 +15,7 @@ pub mod rollout;
 pub use card::{
     Activated, Behold, CardDef, EntryDoubler, ExtraCost, Keywords, Omen, Reduction, Stage, Types,
 };
+pub use card::{Suppression, TriggerDoubler};
 pub use effect::{
     Ability, Condition, Controller, Effect, Filter, Recipient, Scope, SearchFor, SearchTo, Static, Trigger,
     When, Who,

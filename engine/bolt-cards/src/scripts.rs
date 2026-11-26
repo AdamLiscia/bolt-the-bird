@@ -317,10 +317,10 @@ pub struct Tokens {
     pub phyrexian_beast: usize,
     pub shapeshifter: usize,
     pub clue: usize,
+    pub frog: usize,
     pub eldrazi_spawn: usize,
     pub spawn_3: usize,
     pub elf_druid: usize,
-    pub frog: usize,
 }
 
 impl Tokens {
@@ -392,10 +392,10 @@ impl Tokens {
             phyrexian_beast: base + 63,
             shapeshifter: base + 64,
             clue: base + 65,
+            frog: base + 69,
             eldrazi_spawn: base + 66,
             spawn_3: base + 67,
             elf_druid: base + 68,
-            frog: base + 69,
         }
     }
 }
