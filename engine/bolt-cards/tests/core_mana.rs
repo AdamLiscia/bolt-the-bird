@@ -2371,3 +2371,123 @@ fn adamant_counts_colorless_mana_spent_on_the_spell() {
         assert_eq!(g.players[0].hand.len() == hand + 1, draws, "{wastes} Wastes");
     }
 }
+
+#[test]
+fn colored_mana_for_life_only_with_an_artifact() {
+    use batch9::*;
+    let mut spire = colorless_land("Spire");
+    spire.mana = Some(bolt_core::ManaSource {
+        colorless: true,
+        ..bolt_core::ManaSource::of(&Color::ALL)
+    });
+    spire.mana_ext.colored_life_cost = true;
+    spire.mana_ext.colored_only_with_artifact = true;
+    let mut g = batch6_board(
+        vec![
+            spire,
+            draw_spell("Black", "{B}"),
+            artifact("Rock"),
+            draw_spell("One", "{1}"),
+        ],
+        0,
+    );
+    let s = put(&mut g, 0, 25);
+    let c = g.add_card(0, 26, Zone::Hand);
+    assert!(!g.legal_actions().contains(&Action::Cast(c)), "no artifact");
+    let rock = put(&mut g, 0, 27);
+    g.objects[rock.0 as usize].tapped = true;
+    let life = g.players[0].life;
+    act(&mut g, Action::Cast(c));
+    settle(&mut g);
+    assert_eq!(g.players[0].life, life - 1, "{{B}} for 1 life");
+    g.objects[s.0 as usize].tapped = false;
+    let one = g.add_card(0, 28, Zone::Hand);
+    act(&mut g, Action::Cast(one));
+    settle(&mut g);
+    assert_eq!(g.players[0].life, life - 1, "{{C}} is free");
+}
+
+#[test]
+fn reduction_by_noncombat_damage_to_opponents_this_turn() {
+    use batch9::*;
+    let mut big = draw_spell("Big", "{3}{B}");
+    big.reduction = Some(Reduction::NoncombatDamageToOpponentsThisTurn);
+    let mut g = batch6_board(vec![big], 2);
+    let c = g.add_card(0, 25, Zone::Hand);
+    assert!(!g.legal_actions().contains(&Action::Cast(c)));
+    g.noncombat_damage_to_player_turn[0] = (g.turn, 5);
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(c)),
+        "damage to you doesn't count"
+    );
+    g.noncombat_damage_to_player_turn[1] = (g.turn - 1, 5);
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(c)),
+        "last turn's doesn't"
+    );
+    g.noncombat_damage_to_player_turn[1] = (g.turn, 2);
+    act(&mut g, Action::Cast(c));
+    settle(&mut g);
+    assert_eq!(g.obj(c).zone, Zone::Graveyard, "{{1}}{{B}}");
+}
+
+#[test]
+fn foretell_exiles_from_hand_then_casts_for_its_cost_on_a_later_turn() {
+    use batch9::*;
+    let mut f = draw_spell("Foretold", "{3}{B}");
+    f.mana_ext.foretell = ManaCost::parse("{B}");
+    f.activated.push(Activated {
+        mana: ManaCost::parse("{2}").expect("cost"),
+        foretell: true,
+        your_turn_only: true,
+        ability: Ability::new(vec![], vec![]),
+        ..Activated::default()
+    });
+    let mut g = batch6_board(vec![f], 3);
+    let c = g.add_card(0, 25, Zone::Hand);
+    act(&mut g, Action::Activate(c, 0));
+    settle(&mut g);
+    assert_eq!(g.obj(c).zone, Zone::Exile);
+    assert!(!g.legal_actions().contains(&Action::Cast(c)), "the same turn");
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    let swamps: Vec<ObjId> = g.permanents(0).collect();
+    for &s in &swamps[1..] {
+        g.objects[s.0 as usize].tapped = true;
+    }
+    act(&mut g, Action::Cast(c));
+    settle(&mut g);
+    assert_eq!(g.obj(c).zone, Zone::Graveyard, "{{B}} from one Swamp");
+}
+
+#[test]
+fn forecast_activates_from_hand_only_during_your_upkeep_once() {
+    use batch9::*;
+    let mut f = draw_spell("Forecaster", "{5}");
+    f.activated.push(Activated {
+        mana: ManaCost::parse("{B}").expect("cost"),
+        forecast: true,
+        once_each_turn: true,
+        ability: Ability::new(vec![], vec![Effect::Draw { who: Who::You, n: 1 }]),
+        ..Activated::default()
+    });
+    let mut g = batch6_board(vec![f], 2);
+    let c = g.add_card(0, 25, Zone::Hand);
+    assert!(!g.legal_actions().contains(&Action::Activate(c, 0)), "main phase");
+    g.auto_pass = false;
+    g.start_turn(5, 0);
+    while g.step != Step::Upkeep {
+        act(&mut g, Action::PassPriority);
+    }
+    let hand = g.players[0].hand.len();
+    act(&mut g, Action::Activate(c, 0));
+    settle(&mut g);
+    assert_eq!(g.obj(c).zone, Zone::Hand, "revealed, not discarded");
+    assert_eq!(g.players[0].hand.len(), hand + 1);
+    assert!(
+        !g.legal_actions().contains(&Action::Activate(c, 0)),
+        "once each turn"
+    );
+}

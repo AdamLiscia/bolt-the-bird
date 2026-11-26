@@ -5510,6 +5510,38 @@
    "lane": "d1",
    "theme": "mana",
    "owner": "d1"
+  },
+  {
+   "card": "Skyscribing",
+   "deck": "d1 handback",
+   "missing": "d1's forecast is in (Activated::forecast): d3's 'each player draws X cards' (and 'each player draws a card' for the forecast)",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Pride of the Clouds",
+   "deck": "d1 handback",
+   "missing": "d1's forecast is in: a 1/1 white and blue Bird token with flying (needs a token number), and d3's +1/+1 for each other creature with flying",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Food Chain",
+   "deck": "d1 handback",
+   "missing": "still d1's: 'Exile a creature you control' as a mana cost, and pool mana restricted to creature spells (the pool has no restrictions yet)",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Waves of Aggression",
+   "deck": "d1 handback",
+   "missing": "still d1's: retrace (cast from the graveyard discarding a land card); plus Mac B's additional combat and main phase and untap the attackers",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
   }
  ]
 }

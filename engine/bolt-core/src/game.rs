@@ -1626,6 +1626,11 @@ pub struct Game {
     /// Colorless mana spent to cast each spell, as (spell, amount), set as it's cast (Desecrate
     /// Reality's adamant: `Condition::ColorlessSpentAtLeast`).
     pub colorless_spent: Vec<(ObjId, u32)>,
+    /// Noncombat damage each player was dealt this turn: (turn, amount) (Chandra's Incinerator).
+    pub noncombat_damage_to_player_turn: [(u32, i32); 2],
+    /// Foretold cards: (card, its zcc in exile). Castable from the next turn on (see
+    /// `ready_foretold`).
+    pub foretold: Vec<(ObjId, u32)>,
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -1883,6 +1888,8 @@ impl Game {
             haste_from_mana: Vec::new(),
             colorless_paid: 0,
             colorless_spent: Vec::new(),
+            noncombat_damage_to_player_turn: [(0, 0); 2],
+            foretold: Vec::new(),
         }
     }
 
@@ -6553,6 +6560,8 @@ impl Game {
             def.omen.as_ref().expect("an Omen").cost.with_x(mode.x)
         } else if let Some(left) = def.subsystems.left_cost {
             left.with_x(mode.x) // a split card's left half
+        } else if let (Some(f), true) = (def.mana_ext.foretell, self.foretold_cast(c)) {
+            f.with_x(mode.x) // foretold: its foretell cost
         } else {
             def.cost.with_x(mode.x)
         };
@@ -6693,6 +6702,14 @@ impl Game {
             Some(Reduction::IfOpponentGraveyardAtLeast(cards, n)) => {
                 if self.players[opponent(p)].graveyard.len() >= *cards as usize {
                     *n
+                } else {
+                    0
+                }
+            }
+            Some(Reduction::NoncombatDamageToOpponentsThisTurn) => {
+                let (t, n) = self.noncombat_damage_to_player_turn[opponent(p)];
+                if t == self.turn {
+                    n.clamp(0, 255) as u8
                 } else {
                     0
                 }
@@ -7021,8 +7038,9 @@ impl Game {
         for (k, &i) in paid.iter().enumerate() {
             let src = (i >= pool.len()).then(|| self.def_of(sources[i - pool.len()].0));
             let pain_colors = src.map_or([false; 5], |d| d.mana_ext.pain_colors);
-            if src.is_some_and(|d| d.pain_colored || d.mana_ext.colored_gives_opponent_life)
-                || pain_colors.iter().any(|&b| b)
+            if src.is_some_and(|d| {
+                d.pain_colored || d.mana_ext.colored_gives_opponent_life || d.mana_ext.colored_life_cost
+            }) || pain_colors.iter().any(|&b| b)
             {
                 let saved = painless[k];
                 painless[k] = if pain_colors.iter().any(|&b| b) {
@@ -7045,7 +7063,9 @@ impl Game {
             }
         }
         for land in pained {
-            if self.def_of(land).mana_ext.colored_gives_opponent_life {
+            if self.def_of(land).mana_ext.colored_life_cost {
+                self.lose_life(p, 1); // Spire of Industry: "Pay 1 life"
+            } else if self.def_of(land).mana_ext.colored_gives_opponent_life {
                 self.gain_life(opponent(p), 1); // Grove of the Burnwillows
             } else {
                 self.deal_damage(land, Target::Player(p), 1);
@@ -7227,6 +7247,9 @@ impl Game {
             || (c < 5 && self.def_of(id).mana_ext.pain_colors[c as usize])
         {
             self.deal_damage(id, Target::Player(p), 1);
+        }
+        if self.def_of(id).mana_ext.colored_life_cost && c != 5 {
+            self.lose_life(p, 1); // Spire of Industry
         }
         if self.def_of(id).mana_ext.colored_gives_opponent_life && c != 5 {
             self.gain_life(opponent(p), 1);
@@ -7746,7 +7769,7 @@ impl Game {
                 if self.lacks_chapter_activated(id, n) {
                     continue; // Urza's Saga: not until its chapter grants it
                 }
-                if a.from_hand_discard != in_hand
+                if (a.from_hand_discard || a.foretell || a.forecast) != in_hand
                     || (!in_hand && a.from_graveyard != in_graveyard)
                     || (!in_graveyard && self.lost_abilities(id))
                     || self.activation_stopped(id)
@@ -7773,6 +7796,7 @@ impl Game {
                         .is_some_and(|(sub, n)| self.untapped_with(p, sub, id).len() < n as usize)
                     || (a.tap_untapped_legendary && self.untapped_legendary(p, id).is_none())
                     || (a.forage && !self.can_forage(p, id))
+                    || (a.forecast && !(p == self.active && self.step == Step::Upkeep))
                     || (a.min_artifacts > 0
                         && self.permanents(p).filter(|&x| self.types_of(x).artifact).count()
                             < a.min_artifacts as usize)
@@ -8365,6 +8389,35 @@ impl Game {
             self.move_to(id, Zone::Graveyard); // cycling: "Discard this card"
             self.fire_source(id, When::YouCycleThis);
         }
+        if a.foretell && self.obj(id).zone == Zone::Hand {
+            self.move_to(id, Zone::Exile); // foretell: "exile this card from your hand"
+            let zcc = self.obj(id).zcc;
+            self.foretold.retain(|e| e.0 != id);
+            self.foretold.push((id, zcc));
+        }
+    }
+
+    /// Foretold cards become castable as a turn begins (any turn after the one they were
+    /// foretold on), by their owner, while they stay in exile.
+    fn ready_foretold(&mut self) {
+        self.foretold.retain(|&(c, z)| {
+            let o = &self.objects[c.0 as usize];
+            (o.zone == Zone::Exile && o.zcc == z) || (o.zone == Zone::Stack && o.zcc == z + 1)
+        });
+        for &(c, _) in &self.foretold {
+            let o = &mut self.objects[c.0 as usize];
+            if o.zone == Zone::Exile {
+                o.playable = Some((o.owner, u32::MAX));
+            }
+        }
+    }
+
+    /// Whether `c` is a foretold card in exile, or a spell cast from there.
+    fn foretold_cast(&self, c: ObjId) -> bool {
+        let o = self.obj(c);
+        self.foretold.iter().any(|&(x, z)| {
+            x == c && ((o.zone == Zone::Exile && o.zcc == z) || (o.zone == Zone::Stack && o.zcc == z + 1))
+        })
     }
 
     /// Creature types `p` could sensibly name: those of creatures they control and of creature
@@ -8711,6 +8764,9 @@ impl Game {
                 }
                 if d.colored_mana_only_if_you_control
                     .is_some_and(|sub| !self.permanents(p).any(|x| self.has_subtype(x, sub)))
+                    || (d.mana_ext.colored_only_with_artifact
+                        && !self.permanents(p).any(|x| self.types_of(x).artifact))
+                    || (d.mana_ext.colored_life_cost && self.players[p].life < 1)
                 {
                     // Tainted Wood: only its {C} without a Swamp.
                     return d.mana.map(|m| {
@@ -20995,6 +21051,7 @@ impl Game {
     }
 
     fn begin_next_turn(&mut self) {
+        self.ready_foretold();
         self.instants_sorceries_cast = [0; 2];
         self.spells_cast = [0; 2];
         self.cast_creature_noncreature = [[false; 2]; 2];
@@ -22026,6 +22083,11 @@ impl Game {
                 let turn = self.turn;
                 let (t, total) = self.damage_to_player_turn[p];
                 self.damage_to_player_turn[p] = (turn, if t == turn { total } else { 0 } + amount);
+                if !self.in_combat_damage {
+                    let (t, total) = self.noncombat_damage_to_player_turn[p];
+                    self.noncombat_damage_to_player_turn[p] =
+                        (turn, if t == turn { total } else { 0 } + amount);
+                }
                 self.lose_life(p, amount);
                 let controller = self.obj(source).controller;
                 if amount >= 5 {

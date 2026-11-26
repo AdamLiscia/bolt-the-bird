@@ -181,6 +181,8 @@ pub enum Reduction {
     /// ... {n} less (the second number) if an opponent has at least this many cards (the first) in
     /// their graveyard (Into the Story: seven, {3}).
     IfOpponentGraveyardAtLeast(u8, u8),
+    /// {X} less, X the noncombat damage dealt to your opponents this turn (Chandra's Incinerator).
+    NoncombatDamageToOpponentsThisTurn,
 }
 
 /// An activated ability: "[cost]: [effect]" (CR 602).
@@ -323,6 +325,14 @@ pub struct Activated {
     pub forage: bool,
     /// "Activate only if you control N or more artifacts." (Metallurgic Summonings: 6)
     pub min_artifacts: u8,
+    /// Foretell's "During your turn, you may pay {2} and exile this card from your hand": an
+    /// ability of the card in your hand (with `your_turn_only`); it's cast later for
+    /// `ManaExt::foretell`. (A special action in the rules, CR 702.143a; here it uses the stack.)
+    pub foretell: bool,
+    /// Forecast (CR 702.57): "[cost], Reveal this card from your hand: [effect]. (Activate only
+    /// during your upkeep and only once each turn.)" The card stays in your hand; set
+    /// `once_each_turn` too.
+    pub forecast: bool,
 }
 
 /// The printed card. Shared by every copy; per-copy state lives on the game object.
@@ -1056,6 +1066,15 @@ pub struct ManaExt {
     /// "{T}: Add {C}{C}. Spend this mana only to cast colorless spells. Activate only if you
     /// control seven or more lands." (Shrine of the Forsaken Gods): (amount, lands needed).
     pub colorless_spell_amount_with_lands: Option<(u8, u8)>,
+    /// "{T}, Pay 1 life: Add one mana of any color." (Spire of Industry): its colored mana costs 1
+    /// life (paid like a pain land's damage: only when the payment needs that color).
+    pub colored_life_cost: bool,
+    /// "Activate only if you control an artifact." on its colored mana (Spire of Industry); without
+    /// one it makes only its {C}.
+    pub colored_only_with_artifact: bool,
+    /// Foretell's cost (CR 702.143): cast from exile for it on a later turn, after an
+    /// `Activated::foretell` ability exiled the card from your hand.
+    pub foretell: Option<ManaCost>,
 }
 
 /// "You may pay [mana], [life] and sacrifice or tap [creatures] rather than pay this spell's mana

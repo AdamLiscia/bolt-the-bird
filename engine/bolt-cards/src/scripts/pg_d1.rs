@@ -17,6 +17,15 @@ fn urza_land(d: &mut CardDef, n: u8) {
     d.mana_ext.tron_amount = n;
 }
 
+/// Foretell (CR 702.143): "During your turn, you may pay {2} and exile this card from your hand
+/// face down. Cast it on a later turn for its foretell cost." The card is exiled face up here.
+fn foretell(d: &mut CardDef, cost: &str) {
+    d.mana_ext.foretell = ManaCost::parse(cost);
+    let n = activated(d, "{2}", false, vec![], vec![]);
+    d.activated[n].foretell = true;
+    d.activated[n].your_turn_only = true;
+}
+
 /// Exalted (CR 702.83): "Whenever a creature you control attacks alone, that creature gets +1/+1
 /// until end of turn." Each instance triggers on your attack and checks for a lone attacker.
 fn exalted(d: &mut CardDef) {
@@ -1192,6 +1201,30 @@ pub fn script(name: &str) -> Option<Script> {
                 d.spell = Some(a);
             },
         ),
+        "Spire of Industry" => s(
+            &["{T}: Add {C}.", "{T}, Pay 1 life: Add one mana of any color. Activate only if you control an artifact."],
+            |d, _| {
+                d.mana = Some(ManaSource { colorless: true, ..ManaSource::of(&Color::ALL) });
+                d.mana_ext.colored_life_cost = true;
+                d.mana_ext.colored_only_with_artifact = true;
+            },
+        ),
+        "Chandra's Incinerator" => s(
+            &[
+                "This spell costs {X} less to cast, where X is the total amount of noncombat damage dealt to your opponents this turn.",
+                "Whenever a source you control deals noncombat damage to an opponent, this creature deals that much damage to target creature or planeswalker that player controls.",
+            ],
+            |d, _| {
+                d.reduction = Some(Reduction::NoncombatDamageToOpponentsThisTurn);
+                // One opponent: "that player" is them.
+                let theirs = Filter { players: false, ..Filter::ANY }.controlled_by(Controller::Opponent);
+                on(d, When::YourSourceDealsNoncombatDamageToOpponent, vec![theirs], vec![Effect::DamageAmountTo(0)]);
+            },
+        ),
+        "Behold the Multiverse" => s(&["Scry 2, then draw two cards.", "Foretell {1}{U}"], |d, _| {
+            spell(d, vec![], vec![Effect::Scry { n: 2 }, draw(2)]);
+            foretell(d, "{1}{U}");
+        }),
         _ => None,
     }
 }
@@ -1353,4 +1386,7 @@ pub const PG_D1_SCRIPTED: &[&str] = &[
     "Minas Tirith",
     "Watcher of the Spheres",
     "Desecrate Reality",
+    "Spire of Industry",
+    "Chandra's Incinerator",
+    "Behold the Multiverse",
 ];

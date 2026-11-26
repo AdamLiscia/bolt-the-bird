@@ -2562,3 +2562,77 @@ fn desecrate_reality_returns_an_odd_permanent_only_with_three_colorless() {
         assert_eq!(back, returned, "Crystal Vein: {vein}");
     }
 }
+
+#[test]
+fn spire_of_industry_pays_life_for_color_only_with_an_artifact() {
+    let mut g = game(&["Spire of Industry"]);
+    let s = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "Spire of Industry")
+        .unwrap();
+    let elves = hand(&mut g, 0, "Llanowar Elves");
+    assert!(!legal(&g, Action::Cast(elves)), "no artifact: {{C}} only");
+    let stone = put(&mut g, 0, "Mind Stone");
+    g.objects[stone.0 as usize].tapped = true;
+    let life = g.players[0].life;
+    act(&mut g, Action::Cast(elves));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(elves).zone, Zone::Battlefield);
+    assert!(g.obj(s).tapped);
+    assert_eq!(g.players[0].life, life - 1, "1 life for {{G}}");
+    // Its {C} costs no life.
+    let mut g = game(&["Spire of Industry"]);
+    put(&mut g, 0, "Mind Stone");
+    let ring = hand(&mut g, 0, "Sol Ring");
+    let life = g.players[0].life;
+    act(&mut g, Action::Cast(ring));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].life, life);
+}
+
+#[test]
+fn chandras_incinerator_costs_less_after_noncombat_damage_and_redirects_it() {
+    let mut g = game(&["Mountain"; 4]);
+    let inc = hand(&mut g, 0, "Chandra's Incinerator");
+    assert!(!legal(&g, Action::Cast(inc)), "{{5}}{{R}} from four Mountains");
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    act(&mut g, Action::Cast(bolt));
+    act(&mut g, Action::Target(Target::Player(1)));
+    resolve_all(&mut g, &[]);
+    assert!(legal(&g, Action::Cast(inc)), "{{3}} less: {{2}}{{R}}");
+    act(&mut g, Action::Cast(inc));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(inc).zone, Zone::Battlefield);
+    // A noncombat hit on the opponent: that much to their creature.
+    let bear = put(&mut g, 1, "Savannah Lions");
+    let shock = hand(&mut g, 0, "Lightning Bolt");
+    put(&mut g, 0, "Mountain");
+    act(&mut g, Action::Cast(shock));
+    act(&mut g, Action::Target(Target::Player(1)));
+    resolve_all(&mut g, &[Action::Target(obj(bear))]);
+    assert_eq!(g.obj(bear).zone, Zone::Graveyard);
+}
+
+#[test]
+fn behold_the_multiverse_is_foretold_then_cast_for_its_foretell_cost_next_turn() {
+    let mut g = game(&["Island", "Island", "Island", "Island"]);
+    let c = hand(&mut g, 0, "Behold the Multiverse");
+    act(&mut g, Action::Activate(c, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(c).zone, Zone::Exile, "foretold for {{2}}");
+    assert!(!legal(&g, Action::Cast(c)), "not the turn it was foretold");
+    // Player 0's next turn.
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    let lands: Vec<ObjId> = g.permanents(0).filter(|&x| g.types_of(x).land).collect();
+    for &l in &lands[2..] {
+        g.objects[l.0 as usize].tapped = true;
+    }
+    let before = g.players[0].hand.len();
+    act(&mut g, Action::Cast(c));
+    resolve_all(&mut g, &[Action::Yes, Action::Yes]); // scry: both stay on top
+    assert_eq!(g.obj(c).zone, Zone::Graveyard, "{{1}}{{U}} from two Islands");
+    assert_eq!(g.players[0].hand.len(), before + 2);
+}
