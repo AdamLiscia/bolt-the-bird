@@ -2202,6 +2202,92 @@ pub enum Effect {
         slot: u8,
         trigger: usize,
     },
+    /// The source deals `n` damage to each untapped creature (Calamity of Cinders).
+    DamageEachUntappedCreature(i32),
+    /// Destroy all creatures without this subtype (Realm-Cloaked Giant's Cast Off: Giant).
+    DestroyAllCreaturesExceptSubtype(&'static str),
+    /// The defending player exiles the top `n` cards of their library (Ulamog, the Ceaseless Hunger).
+    DefendingPlayerExilesTop(u8),
+    /// Exile the top X cards of your library; you may cast instant and sorcery spells with mana value
+    /// X or less from among them free; the rest go to your graveyard (Epic Experiment).
+    EpicExperiment,
+    /// The source deals damage equal to the number of `subtype`s you control to the target in `slot`
+    /// (Rolling Hamsphere: Hamsters).
+    DamagePerYouControlSubtype {
+        subtype: &'static str,
+        slot: u8,
+    },
+    /// The source gets +X/+0 until end of turn, X the greatest mana value among artifacts you
+    /// control (Pyreswipe Hawk).
+    PumpSelfGreatestArtifactManaValue,
+    /// If you're the attacking player, each other attacking creature gets +P/+T until end of turn
+    /// (Martial Impetus: "each other creature that's attacking one of your opponents").
+    PumpOtherAttackersIfYouAttack {
+        power: i32,
+        toughness: i32,
+    },
+    /// "Each player may draw a card, then each player who drew a card this way gains 1 life."
+    /// (Kwain), as `Decision::MayDrawGainOne`, you first.
+    EachPlayerMayDrawGainOne,
+    /// Draw cards equal to the defending player's hand size minus yours; if none were drawn, you
+    /// may put a creature card from your hand onto the battlefield (Mr. Foxglove).
+    FoxgloveDraw,
+    /// The source Class becomes this level (CR 716.2c), and "when this Class becomes level N"
+    /// triggers.
+    ClassLevelUp(u8),
+    /// Return all creature cards with power `n` or less from your graveyard to your hand (Dawn).
+    ReturnCreatureCardsPowerAtMostToHand(i32),
+    /// Create a `def` token that's X/X, X the mana value of the spell that triggered this (the
+    /// trigger's `extra`; Metallurgic Summonings' Construct).
+    CreateTokenXxTriggeringSpellManaValue {
+        def: usize,
+    },
+    /// Return all instant and sorcery cards from your graveyard to your hand (Metallurgic
+    /// Summonings).
+    ReturnAllInstantsAndSorceriesToHand,
+    /// Mill `n`; you may put a permanent card from among them into your hand; then if you control
+    /// a Squirrel or returned a Squirrel card, create a `food` token (Cache Grab), as
+    /// `Decision::CacheGrabPick`.
+    CacheGrab {
+        n: u8,
+        food: usize,
+    },
+    /// "You may move any number of +1/+1 counters from this creature onto other creatures." as
+    /// `Decision::MoveCounterFrom`, one at a time (Forgotten Ancient).
+    MayMoveCountersFromSource,
+    /// Destroy the permanent in `slot`; its controller may search for a basic land card and put it
+    /// onto the battlefield tapped (Sundering Eruption).
+    DestroyControllerMayFetchBasicTapped(u8),
+    /// "Creatures without flying can't block this turn." (Sundering Eruption): the creatures on
+    /// the battlefield without flying as it resolves.
+    CreaturesWithoutFlyingCantBlockThisTurn,
+    /// Put the creature card in graveyard `slot` onto the battlefield under your control; it gains
+    /// haste, and it's exiled at the beginning of the next end step (Puppeteer Clique).
+    ReanimateHasteExileAtEnd(u8),
+    /// Exile each permanent with mana value X or less that's one or more colors, X the ability's
+    /// X (Ugin, the Spirit Dragon's −X).
+    ExileEachColoredPermanentMvAtMostX,
+    /// Put up to `n` permanent cards from your hand onto the battlefield, as
+    /// `Decision::PermanentsFromHandUpTo` (Ugin, the Spirit Dragon's −10).
+    PermanentsFromHandUpTo(u8),
+    /// Put a shield counter on the creature in `slot`; you control it for as long as it has a
+    /// shield counter (Shield Broker). A commander isn't affected (its filter can't exclude it).
+    ShieldCounterAndControlWhileShielded(u8),
+    /// "Exile any number of nontoken artifacts and/or creatures you control. Return those cards to
+    /// the battlefield under their owner's control at the beginning of your next upkeep." (Nahiri's
+    /// Resolve), one at a time as `Decision::ExileUntilYourNextUpkeep`.
+    ExileYoursUntilYourNextUpkeep,
+    /// Put a landmark counter on the source (its `kind_counters`); then with three or more, remove
+    /// three, transform it, and create three `def` tokens (Treasure Map).
+    LandmarkTransformTreasures {
+        def: usize,
+    },
+    /// The permanent in `slot` phases out until its controller's next untap step (Galadriel's
+    /// Dismissal).
+    PhaseOutSlot(u8),
+    /// Each creature the player in target `slot` controls phases out until that player's next untap
+    /// step (Galadriel's Dismissal, kicked).
+    PhaseOutCreaturesOfPlayer(u8),
     /// Exile the top card of your library face down (`Object::face_down`; CR 406.3: no player may
     /// look at it); put it into your hand at the beginning of your next end step (Necropotence),
     /// see `Game::face_down_to_hand`.
@@ -2663,6 +2749,8 @@ pub enum Condition {
     /// Its controller lost life this turn (Lunar Convocation: "if you gained and lost life this
     /// turn", with `Both` and `YouGainedLifeThisTurn`).
     YouLostLifeThisTurn,
+    /// Its Class is at this level or higher (a Class's level 2 and 3 triggered abilities).
+    ClassLevelAtLeast(u8),
 }
 
 /// A spell's effect or a triggered ability: target slots, then effects in order.
@@ -3112,6 +3200,15 @@ pub enum When {
     /// "Whenever you cast an instant or sorcery spell", with that spell's mana value (X included) as
     /// the trigger's amount and the spell in `extra` (Metallurgic Summonings).
     YouCastInstantOrSorceryWithMv,
+    /// "Whenever enchanted creature attacks" (Martial Impetus).
+    EnchantedAttacks,
+    /// "Whenever one or more [subtype]s you control deal combat damage to a player" (The Odd Acorn
+    /// Gang: Squirrels).
+    YourSubtypeDealCombatDamageToPlayer(&'static str),
+    /// "When this Class becomes level N" (CR 716.2c).
+    ClassBecomesLevel(u8),
+    /// "When this creature is turned face up" (morph, manifest; Rattleclaw Mystic).
+    TurnedFaceUp,
     /// "Whenever an artifact you control is put into a graveyard from the battlefield" (Marionette
     /// Master), its last controller's, this one included.
     ArtifactYouControlToGraveyardFromBattlefield,

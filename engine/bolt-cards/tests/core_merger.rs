@@ -726,3 +726,130 @@ fn a_chapter_granted_ability_waits_for_its_chapter_urzas_saga() {
     assert!(with(vec![]), "no chapter: a plain ability");
     assert!(!with(vec![(2, 0)]), "chapter II hasn't granted it");
 }
+
+#[test]
+fn a_class_level_ability_waits_for_its_level() {
+    // On a test definition: Island gains "Level 2" and a level-2 "{T}: Draw a card."
+    let island = cid("Island");
+    let mut defs = (*set("CMD").unwrap().defs).clone();
+    let up = bolt_core::Ability::new(vec![], vec![bolt_core::Effect::ClassLevelUp(2)]);
+    defs[island].activated.push(bolt_core::Activated {
+        level_up_to: 2,
+        sorcery: true,
+        ability: up,
+        ..Default::default()
+    });
+    let draw = bolt_core::Ability::new(
+        vec![],
+        vec![bolt_core::Effect::Draw {
+            who: bolt_core::Who::You,
+            n: 1,
+        }],
+    );
+    defs[island].activated.push(bolt_core::Activated {
+        tap: true,
+        min_class_level: 2,
+        ability: draw,
+        ..Default::default()
+    });
+    let lib = vec![cid("Plains"); 99];
+    let mut g = Game::new_commander(
+        std::sync::Arc::new(defs),
+        [&lib, &lib],
+        [cid("Bello, Bard of the Brambles"), cid("Ms. Bumbleflower")],
+        7,
+        0,
+    );
+    g.auto_pass = false;
+    let i = put(&mut g, 0, "Island");
+    g.start_turn(3, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(
+        !g.legal_actions().contains(&Action::Activate(i, 1)),
+        "level 1: not yet"
+    );
+    act(&mut g, Action::Activate(i, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.class_level(i), 2);
+    assert!(g.legal_actions().contains(&Action::Activate(i, 1)), "level 2");
+    assert!(
+        !g.legal_actions().contains(&Action::Activate(i, 0)),
+        "already level 2"
+    );
+}
+
+#[test]
+fn a_discard_trigger_in_cleanup_resolves_that_turn() {
+    // CR 514.3a: Monument to Endurance triggers on the discard to hand size, in cleanup.
+    let mut g = table();
+    put(&mut g, 0, "Monument to Endurance");
+    while g.players[0].hand.len() < 9 {
+        hand(&mut g, 0, "Plains");
+    }
+    while g.pending != Pending::Discard(0) {
+        let a = match g.pending {
+            Pending::DeclareAttackers(_) => Action::FinishAttacks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    let turn = g.turn;
+    while g.pending == Pending::Discard(0) {
+        let c = g.players[0].hand[0];
+        act(&mut g, Action::Discard(c));
+    }
+    // Both triggers are put on the stack in this cleanup step, choosing their modes.
+    while g.turn == turn && g.players[1].life == 40 {
+        let a = match g.pending {
+            Pending::Decide(_) => *g.legal_actions().last().unwrap(), // "Each opponent loses 3 life"
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.turn, turn, "resolved in the same turn's cleanup");
+    assert_eq!(g.step, Step::Cleanup);
+    assert_eq!(g.players[1].life, 37);
+}
+
+#[test]
+fn one_object_can_fill_two_different_target_words() {
+    // CR 115.3: Piercing Exhale's "target creature you control" and "target creature or
+    // planeswalker" are different words, so a lone creature can be both.
+    let mut g = table();
+    let lions = put(&mut g, 0, "Savannah Lions");
+    let exhale = hand(&mut g, 0, "Piercing Exhale");
+    assert!(g.legal_actions().contains(&Action::Cast(exhale)));
+    act(&mut g, Action::Cast(exhale));
+    while matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::No); // don't behold
+    }
+    act(&mut g, Action::Target(Target::Object(lions)));
+    assert!(
+        g.legal_actions().contains(&Action::Target(Target::Object(lions))),
+        "the same creature for the second word"
+    );
+    act(&mut g, Action::Target(Target::Object(lions)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(lions).zone, Zone::Graveyard, "2 damage to itself");
+}
+
+#[test]
+fn harmonize_x_counts_the_tapped_creature_as_spent() {
+    // Nature's Rhythm's harmonize {X}{G}{G}{G}{G}, tapping Llanowar Elves (power 1): the Elves can't
+    // also make mana, so 4 Forests pay X = 1 ({1} less) but not X = 2.
+    let mut g = game(&["Forest", "Forest", "Forest", "Forest"]);
+    let elves = put(&mut g, 0, "Llanowar Elves");
+    let rhythm = g.add_card(0, cid("Nature's Rhythm"), Zone::Graveyard);
+    assert!(g.legal_actions().contains(&Action::CastHarmonize(rhythm, elves)));
+    act(&mut g, Action::CastHarmonize(rhythm, elves));
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Amount(1)), "{legal:?}");
+    assert!(
+        !legal.contains(&Action::Amount(2)),
+        "the Elves are tapped for harmonize"
+    );
+    act(&mut g, Action::Amount(1));
+    assert!(g.obj(elves).tapped);
+}

@@ -90,5 +90,5 @@ def ppo_step(net, ref_net, opt, arr, idx, adv, clip=0.2, kl_coef=0.02, value_coe
     if not torch.isfinite(gn):
         raise FloatingPointError("non-finite gradient")
     opt.step()
-    stats["loss"] = float(total)
+    stats["loss"] = float(total.detach())
     return stats

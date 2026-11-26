@@ -11,12 +11,14 @@ Each job runs under scripts/guard.sh in active-time mode (a paused job's time do
 `OMP_NUM_THREADS`, and is started only while the total threads of running jobs stays within `--budget`. A job
 is done when its S3 pointer (`farm/<name>/latest.json`) says `"done": true`. The job writes that itself with
 `bolt.jobs.Job.save(..., done=True)`. A job that exits without finishing is started again on the next pass,
-and resumes from its last checkpoint.
+and resumes from its last checkpoint. SIGTERM to farm.py stops every job gracefully (each gets `grace` seconds, default
+180, to save a checkpoint) and exits without relaunching: send it to farm.py alone, not its process group.
 """
 
 import argparse
 import json
 import os
+import signal
 import subprocess
 import sys
 import time
@@ -41,7 +43,7 @@ def load_jobs() -> list[dict]:
 
 def start(j: dict) -> subprocess.Popen:
     env = {**os.environ, **j.get("env", {}), "GUARD_ACTIVE_TIME": "1", "OMP_NUM_THREADS": str(j["threads"]),
-           "BOLT_JOB": j["name"]}  # fmt: skip
+           "BOLT_JOB": j["name"], "GUARD_GRACE": str(j.get("grace", 180))}  # fmt: skip
     log = open(ROOT / "logs" / f"farm_{j['name']}.log", "a")  # noqa: SIM115 - kept open for the child
     cmd = [str(ROOT / "scripts" / "guard.sh"), str(j["seconds"]), str(j["mb"]), "--", *j["cmd"]]
     print(f"{time.strftime('%H:%M:%S')} start {j['name']}: {' '.join(j['cmd'])}", flush=True)
@@ -56,6 +58,21 @@ def main():
     a = ap.parse_args()
     (ROOT / "logs").mkdir(exist_ok=True)
     running: dict[str, tuple[subprocess.Popen, int]] = {}
+    stopping = {"now": False}
+
+    def stop(*_):
+        """SIGTERM: pass it to every job (each saves a checkpoint within its grace), wait, and exit without
+        starting anything again."""
+        stopping["now"] = True
+        for name, (proc, _) in running.items():
+            print(f"{time.strftime('%H:%M:%S')} stopping {name}", flush=True)
+            proc.terminate()
+        for proc, _ in running.values():
+            proc.wait()
+        sys.exit(0)
+
+    signal.signal(signal.SIGTERM, stop)
+    signal.signal(signal.SIGINT, stop)
     while True:
         for name, (proc, _) in list(running.items()):
             if proc.poll() is not None:

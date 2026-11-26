@@ -732,3 +732,134 @@ fn vaultborn_tyrant_returns_as_an_artifact_token_copy_once() {
         "a token makes no copy"
     );
 }
+
+// ---- Morph: turned face up (Rattleclaw Mystic, Aphetto Alchemist) ----
+
+#[test]
+fn rattleclaw_mystic_cast_face_down_adds_three_mana_when_turned_face_up() {
+    let mut g = table();
+    let rm = hand(&mut g, 0, "Rattleclaw Mystic");
+    act(&mut g, Action::CastAlternative(rm)); // face down for {3}
+    resolve_all(&mut g, &[]);
+    assert!(g.obj(rm).face_down);
+    assert_eq!((g.power(rm), g.toughness(rm)), (2, 2));
+    act(&mut g, Action::Activate(rm, 0)); // turn it face up for {2}
+    assert_eq!(g.def_of(rm).name, "Rattleclaw Mystic");
+    let pool = g.players[0].pool.len();
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].pool.len(), pool + 3, "{{G}}{{U}}{{R}}");
+}
+
+#[test]
+fn aphetto_alchemist_untaps_a_creature_and_has_morph() {
+    let mut g = table();
+    let al = put(&mut g, 0, "Aphetto Alchemist");
+    let ghoul = put(&mut g, 0, "Hungry Ghoul");
+    to_main1(&mut g, 5, 0);
+    g.objects[ghoul.0 as usize].tapped = true;
+    act(&mut g, Action::Activate(al, 0));
+    act(&mut g, Action::Target(obj(ghoul)));
+    resolve_all(&mut g, &[]);
+    assert!(!g.obj(ghoul).tapped);
+    let al2 = hand(&mut g, 0, "Aphetto Alchemist");
+    assert!(g.legal_actions().contains(&Action::CastAlternative(al2)), "morph");
+}
+
+// ---- Back faces: Sundering Eruption // Volcanic Fissure ----
+
+#[test]
+fn sundering_eruption_destroys_a_land_fetches_tapped_and_stops_ground_blockers() {
+    let mut g = table();
+    let land = g.permanents(1).find(|&x| g.def_of(x).name == "Forest").unwrap();
+    let ghoul = put(&mut g, 1, "Hungry Ghoul");
+    let angel = put(&mut g, 1, "Serra Angel");
+    let se = hand(&mut g, 0, "Sundering Eruption // Volcanic Fissure");
+    act(&mut g, Action::Cast(se));
+    act(&mut g, Action::Target(obj(land)));
+    until_decide(&mut g);
+    let pick = g
+        .legal_actions()
+        .into_iter()
+        .find(|a| matches!(a, Action::Pick(_)))
+        .expect("a basic to find");
+    let Action::Pick(basic) = pick else { unreachable!() };
+    act(&mut g, pick);
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(land).zone, Zone::Graveyard);
+    assert_eq!(g.obj(basic).zone, Zone::Battlefield);
+    assert!(g.obj(basic).tapped, "onto the battlefield tapped");
+    assert!(g.keywords(ghoul).has(Keywords::CANT_BLOCK));
+    assert!(!g.keywords(angel).has(Keywords::CANT_BLOCK), "it has flying");
+}
+
+#[test]
+fn volcanic_fissure_asks_three_life_or_enters_tapped() {
+    let mut g = table();
+    let vf = hand(&mut g, 0, "Sundering Eruption // Volcanic Fissure");
+    let life = g.players[0].life;
+    act(&mut g, Action::PlayLand(vf));
+    resolve_all(&mut g, &[Action::Yes]);
+    assert_eq!(g.def_of(vf).name, "Volcanic Fissure");
+    assert_eq!(g.players[0].life, life - 3);
+    assert!(!g.obj(vf).tapped);
+}
+
+// ---- Puppeteer Clique: an opponent's creature for a turn, and persist ----
+
+#[test]
+fn puppeteer_clique_borrows_a_creature_until_the_end_step_and_persists() {
+    let mut g = table();
+    let ghoul = g.add_card(1, cid("Hungry Ghoul"), Zone::Graveyard);
+    let pc = hand(&mut g, 0, "Puppeteer Clique");
+    play(&mut g, pc, false, &[], &[Action::Target(obj(ghoul))]);
+    assert_eq!(g.obj(ghoul).zone, Zone::Battlefield);
+    assert_eq!(g.obj(ghoul).controller, 0);
+    assert!(g.keywords(ghoul).has(Keywords::HASTE));
+    let kill = hand(&mut g, 0, "Hero's Downfall");
+    play(&mut g, kill, false, &[obj(pc)], &[]);
+    assert_eq!(g.obj(pc).zone, Zone::Battlefield, "persist");
+    assert_eq!(g.power(pc), 2, "with a -1/-1 counter");
+    let turn = g.turn;
+    for _ in 0..40 {
+        if g.turn != turn {
+            break;
+        }
+        let legal = g.legal_actions();
+        let a = if legal.contains(&Action::PassPriority) {
+            Action::PassPriority
+        } else {
+            legal[0] // a cleanup discard
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.obj(ghoul).zone, Zone::Exile, "exiled at the end step");
+}
+
+// ---- Plot (Railway Brawler) ----
+
+#[test]
+fn railway_brawler_is_plotted_then_cast_free_on_a_later_turn() {
+    let mut g = table();
+    let rb = hand(&mut g, 0, "Railway Brawler");
+    assert!(g.legal_actions().contains(&Action::Activate(rb, 0)));
+    act(&mut g, Action::Activate(rb, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(rb).zone, Zone::Exile);
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(rb)),
+        "not the turn it was plotted"
+    );
+    to_main1(&mut g, 5, 0);
+    assert!(g.legal_actions().contains(&Action::Cast(rb)));
+    let untapped = g.permanents(0).filter(|&x| !g.obj(x).tapped).count();
+    play(&mut g, rb, false, &[], &[]);
+    assert_eq!(g.obj(rb).zone, Zone::Battlefield);
+    assert_eq!(
+        g.permanents(0).filter(|&x| !g.obj(x).tapped).count(),
+        untapped + 1,
+        "free: no land tapped (and the Brawler itself)"
+    );
+    let elf = hand(&mut g, 0, "Llanowar Elves");
+    play(&mut g, elf, false, &[], &[]);
+    assert_eq!(g.power(elf), 2, "X +1/+1 counters, X its power");
+}
