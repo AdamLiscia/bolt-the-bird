@@ -863,6 +863,17 @@ fn malakir_rebirth_returns_the_creature_tapped_when_it_dies() {
         .find(|&c| g.def_of(c).name == "Savannah Lions")
         .expect("returned");
     assert!(g.obj(back).tapped);
+
+    // The back face: Malakir Mire, a land that enters tapped and taps for {B}.
+    let mut g = game(&[]);
+    let m = hand(&mut g, 0, "Malakir Rebirth // Malakir Mire");
+    act(&mut g, Action::PlayLand(m));
+    assert_eq!(g.obj(m).zone, Zone::Battlefield);
+    assert!(g.obj(m).tapped);
+    assert_eq!(
+        g.def_of(m).mana.map(|x| x.colors),
+        Some([false, false, true, false, false])
+    );
 }
 
 #[test]

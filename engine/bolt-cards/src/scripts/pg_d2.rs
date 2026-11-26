@@ -65,10 +65,18 @@ pub fn script(name: &str) -> Option<Script> {
             },
         ),
         "Malakir Rebirth // Malakir Mire" => s(
-            &["Choose target creature. You lose 2 life. Until end of turn, that creature gains \"When this creature dies, return it to the battlefield tapped under its owner's control.\""],
+            &[
+                "Choose target creature. You lose 2 life. Until end of turn, that creature gains \"When this creature dies, return it to the battlefield tapped under its owner's control.\"",
+                "Back: This land enters tapped.",
+                "Back: {T}: Add {B}.",
+            ],
             |d, _| {
-                // The granted trigger is Fake Your Own Death's (GrantDiesTrigger); the oracle data
-                // has no back face, so only the spell is played.
+                // The granted trigger is Fake Your Own Death's (GrantDiesTrigger). Its back face,
+                // Malakir Mire, is played as a land instead (a modal double-faced card).
+                d.modal_back = true;
+                let mire = d.back.as_mut().expect("Malakir Mire");
+                mire.enters_tapped = true;
+                mire.mana = Some(ManaSource::of(&[Color::Black]));
                 spell(
                     d,
                     vec![CREATURE],
