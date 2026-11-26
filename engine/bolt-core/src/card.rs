@@ -40,6 +40,7 @@ keywords! {
     FORESTWALK = 18, "Forestwalk";
     FEAR = 19, "Fear";
     INTIMIDATE = 20, "Intimidate";
+    SHADOW = 21, "Shadow";
 }
 
 impl Keywords {
@@ -278,6 +279,13 @@ pub struct Activated {
     /// With `sacrifice_subtype`: sacrifice this many of them ("Sacrifice four Foods"): the victim, then
     /// the engine picks the rest; 0 or 1: one.
     pub sacrifice_subtype_count: u8,
+    /// "Tap an untapped legendary creature you control" in the cost (Dungeon Descent); the engine
+    /// picks which (the first such creature).
+    pub tap_untapped_legendary: bool,
+    /// {Q} in a granted ability of the creature this is attached to (Umbral Mantle: "Equipped
+    /// creature has '{3}, {Q}: ...'"): the creature must be tapped and able to use {Q} (CR
+    /// 302.6), and untaps as the cost.
+    pub untap_attached: bool,
 }
 
 /// The printed card. Shared by every copy; per-copy state lives on the game object.
@@ -912,6 +920,37 @@ pub struct ManaExt {
     /// Cast from your graveyard with `Action::CastAlternative`; the engine picks the exiled cards,
     /// as for delve.
     pub escape: Option<(ManaCost, u8, i32)>,
+    /// "This creature can't be blocked as long as it's attacking alone." (Yuan-Ti Malison)
+    pub unblockable_attacking_alone: bool,
+    /// "Creatures you control can't be blocked except by legendary creatures." (Midnight
+    /// Pathlighter)
+    pub your_creatures_blocked_only_by_legendary: bool,
+    /// "Spells you cast cost {N} less to cast." (The Immortal Sun)
+    pub spell_discount_all: u8,
+    /// An alternative cost of mana plus life, sacrifices or taps (Demon of Death's Gate, Sephara):
+    /// cast with `Action::CastAlternative`; the engine picks the creatures.
+    pub alt_cost_ext: Option<AltCostExt>,
+    /// "Abilities you activate that aren't mana abilities cost {N} less to activate. This effect
+    /// can't reduce the mana in that cost to less than one mana." (Zirda, the Dawnwaker: 2)
+    pub ability_discount: u8,
+    /// "The first creature spell you cast each turn costs {N} less to cast." (Shadow in the Warp)
+    pub first_creature_spell_discount: u8,
+}
+
+/// "You may pay [mana], [life] and sacrifice or tap [creatures] rather than pay this spell's mana
+/// cost." (see [`ManaExt::alt_cost_ext`])
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct AltCostExt {
+    pub mana: ManaCost,
+    pub life: i32,
+    /// Sacrifice this many creatures you control (of this WUBRG color, if any): tokens first, then
+    /// the lowest mana value.
+    pub sacrifice: u8,
+    pub sacrifice_color: Option<u8>,
+    /// Tap this many untapped creatures you control with these keywords (Sephara: four with
+    /// flying).
+    pub tap: u8,
+    pub tap_keywords: Keywords,
 }
 
 /// Which events don't cause abilities to trigger (see [`CardDef::suppresses_triggers`]).

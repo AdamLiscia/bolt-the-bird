@@ -1974,6 +1974,11 @@ pub enum Effect {
     /// Until your next turn, your life total can't change (and damage to you is prevented: you have
     /// protection from everything) (Teferi's Protection).
     LifeLockedUntilYourNextTurn,
+    /// "You may cast a spell with mana value `max_mv` or less from your hand without paying its mana
+    /// cost." (Rishkar's Expertise): a free-cast window over those cards, for one spell.
+    MayCastFromHandFree {
+        max_mv: u32,
+    },
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

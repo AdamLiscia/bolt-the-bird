@@ -767,6 +767,108 @@ pub fn script(name: &str) -> Option<Script> {
                 d.mana_ext.escape = Some((ManaCost::parse("{3}{B}{B}").expect("cost"), 4, 2));
             },
         ),
+        // ---- d1 core, batch 6: alternative costs of life, sacrifices and taps; ability cost
+        // reduction; {Q}; shadow; first-creature-spell discount ----
+        "Demon of Death's Gate" => s(
+            &["You may pay 6 life and sacrifice three black creatures rather than pay this spell's mana cost."],
+            |d, _| {
+                d.mana_ext.alt_cost_ext = Some(bolt_core::card::AltCostExt {
+                    life: 6,
+                    sacrifice: 3,
+                    sacrifice_color: Some(2),
+                    ..Default::default()
+                });
+            },
+        ),
+        "Sephara, Sky's Blade" => s(
+            &[
+                "You may pay {W} and tap four untapped creatures you control with flying rather than pay this spell's mana cost.",
+                "Other creatures you control with flying have indestructible.",
+            ],
+            |d, _| {
+                d.mana_ext.alt_cost_ext = Some(bolt_core::card::AltCostExt {
+                    mana: ManaCost::parse("{W}").expect("cost"),
+                    tap: 4,
+                    tap_keywords: Keywords::FLYING,
+                    ..Default::default()
+                });
+                d.statics.push(Static {
+                    subtype: None,
+                    lose_abilities: false,
+                    base_pt: None,
+                    protection: [false; 5],
+                    scale: None,
+                    scope: Scope::OtherYourFliers,
+                    your_turn_only: false,
+                    condition: None,
+                    power: 0,
+                    toughness: 0,
+                    keywords: Keywords::INDESTRUCTIBLE,
+                    set_colors: None,
+                    becomes_land: false,
+                });
+            },
+        ),
+        "Zirda, the Dawnwaker" => s(
+            &[
+                "Companion — Each permanent card in your starting deck has an activated ability.",
+                "Abilities you activate that aren't mana abilities cost {2} less to activate. This effect can't reduce the mana in that cost to less than one mana.",
+                "{1}, {T}: Target creature can't block this turn.",
+            ],
+            |d, _| {
+                // Companion is a deckbuilding choice; the engine plays it from the deck.
+                d.mana_ext.ability_discount = 2;
+                activated(d, "{1}", true, vec![CREATURE], vec![Effect::Grant { slot: 0, keywords: Keywords::CANT_BLOCK }]);
+            },
+        ),
+        "Umbral Mantle" => s(
+            &["Equipped creature has \"{3}, {Q}: This creature gets +2/+2 until end of turn.\"", "Equip {0}"],
+            |d, _| {
+                let n = activated(d, "{3}", false, vec![], vec![Effect::PumpAttached { power: 2, toughness: 2 }]);
+                d.activated[n].granted_to_attached = true;
+                d.activated[n].untap_attached = true;
+                equip(d, "{0}");
+            },
+        ),
+        "Survival of the Fittest" => s(
+            &["{G}, Discard a creature card: Search your library for a creature card, reveal that card, put it into your hand, then shuffle."],
+            |d, _| {
+                let n = activated(d, "{G}", false, vec![], vec![search(SearchFor::CreatureMvAtLeast(0), SearchTo::Hand)]);
+                d.activated[n].discard_creature_card = true;
+            },
+        ),
+        "Selhoff Entomber" => s(&["{T}, Discard a creature card: Draw a card."], |d, _| {
+            let n = activated(d, "", true, vec![], vec![draw(1)]);
+            d.activated[n].discard_creature_card = true;
+        }),
+        "Tortured Existence" => s(
+            &["{B}, Discard a creature card: Return target creature card from your graveyard to your hand."],
+            |d, _| {
+                let n = activated(d, "{B}", false, vec![graveyard_cards(true, Controller::You)], vec![Effect::Bounce(0)]);
+                d.activated[n].discard_creature_card = true;
+            },
+        ),
+        "Mind Over Matter" => s(&["Discard a card: You may tap or untap target artifact, creature, or land."], |d, _| {
+            let f = Filter { artifacts: true, lands: true, ..CREATURE };
+            d.activated.push(Activated {
+                discard_any_card: true,
+                ability: up_to(vec![f], vec![Effect::TapOrUntap(0)]),
+                ..Activated::default()
+            });
+        }),
+        "Looter il-Kor" => s(&["Whenever this creature deals damage to an opponent, draw a card, then discard a card."], |d, _| {
+            on(d, When::DealsDamageToOpponent, vec![], vec![draw(1), discard(1)])
+        }),
+        "Shadow in the Warp" => s(
+            &[
+                "The first creature spell you cast each turn costs {2} less to cast.",
+                "Whenever an opponent casts their first noncreature spell each turn, this enchantment deals 2 damage to that player.",
+            ],
+            |d, _| {
+                d.mana_ext.first_creature_spell_discount = 2;
+                on(d, When::OpponentCastsFirstNoncreature, vec![], vec![damage(2, Recipient::EachOpponent)]);
+            },
+        ),
         _ => None,
     }
 }
@@ -883,4 +985,14 @@ pub const PG_D1_SCRIPTED: &[&str] = &[
     "Dictate of Karametra",
     "Leyline of Abundance",
     "Woe Strider",
+    "Demon of Death's Gate",
+    "Sephara, Sky's Blade",
+    "Zirda, the Dawnwaker",
+    "Umbral Mantle",
+    "Survival of the Fittest",
+    "Selhoff Entomber",
+    "Tortured Existence",
+    "Mind Over Matter",
+    "Looter il-Kor",
+    "Shadow in the Warp",
 ];
