@@ -172,8 +172,8 @@
    "deck": "Ygra, Eater of All",
    "missing": "a 'whenever you sacrifice one or more Foods' trigger; forage as a cost",
    "lane": "d1",
-   "theme": "triggers",
-   "owner": "d2"
+   "theme": "mana",
+   "owner": "d1"
   },
   {
    "card": "Creeping Corrosion",
@@ -220,8 +220,8 @@
    "deck": "Ygra, Eater of All",
    "missing": "triggers on sacrificing a black or a green creature",
    "lane": "d1",
-   "theme": "triggers",
-   "owner": "d2"
+   "theme": "effects",
+   "owner": "d3"
   },
   {
    "card": "Savvy Hunter",
@@ -420,8 +420,8 @@
    "deck": "Raggadragga, Goreguts Boss",
    "missing": "untap all creatures; a 'whenever a creature an opponent controls blocks, draw' delayed trigger",
    "lane": "d1",
-   "theme": "triggers",
-   "owner": "d2"
+   "theme": "effects",
+   "owner": "d3"
   },
   {
    "card": "Blood Moon",
@@ -1060,8 +1060,8 @@
    "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
    "missing": "a cast trigger for noncreature spells with mana value 3 or more; hand-size activation condition",
    "lane": "d1",
-   "theme": "triggers",
-   "owner": "d2"
+   "theme": "objects_zones",
+   "owner": "mac-c"
   },
   {
    "card": "Jin-Gitaxias, Progress Tyrant",
@@ -1412,8 +1412,8 @@
    "deck": "Zacama, Primal Calamity",
    "missing": "first creature spell each turn discount; opponent's first noncreature spell trigger",
    "lane": "d1",
-   "theme": "triggers",
-   "owner": "d2"
+   "theme": "mana",
+   "owner": "d1"
   },
   {
    "card": "Shield of the Oversoul",
@@ -1652,8 +1652,8 @@
    "deck": "The Gitrog, Ravenous Ride (RuricMo)",
    "missing": "needs core: counters on the enchanted creature from its granted trigger, and a becomes-untapped trigger outside the untap step",
    "lane": "d2",
-   "theme": "triggers",
-   "owner": "d2"
+   "theme": "effects",
+   "owner": "d3"
   },
   {
    "card": "Final Act",
@@ -1860,8 +1860,8 @@
    "deck": "Kaalia of the Vast",
    "missing": "needs core: a 'creature with flying enters' trigger, and Dragon-count damage from the entering Dragon",
    "lane": "d2",
-   "theme": "triggers",
-   "owner": "d2"
+   "theme": "effects",
+   "owner": "d3"
   },
   {
    "card": "Archfiend of Despair",
@@ -2284,8 +2284,8 @@
    "deck": "Henrika Domnathi // Henrika, Infernal Seer",
    "missing": "needs core: a 'whenever a creature dies this turn' delayed trigger",
    "lane": "d2",
-   "theme": "triggers",
-   "owner": "d2"
+   "theme": "effects",
+   "owner": "d3"
   },
   {
    "card": "Plague Drone",
@@ -2340,8 +2340,8 @@
    "deck": "Korvold, Fae-Cursed King",
    "missing": "needs core: a combat-damage trigger that knows which creature dealt the damage",
    "lane": "d2",
-   "theme": "triggers",
-   "owner": "d2"
+   "theme": "effects",
+   "owner": "d3"
   },
   {
    "card": "The Earth Crystal",
@@ -2524,8 +2524,8 @@
    "deck": "Damia, Sage of Stone",
    "missing": "needs core: magecraft ('cast or copy'; the engine's trigger is cast only)",
    "lane": "d2",
-   "theme": "triggers",
-   "owner": "d2"
+   "theme": "effects",
+   "owner": "d3"
   },
   {
    "card": "Sultai Charm",
@@ -2740,8 +2740,8 @@
    "deck": "Raffine, Scheming Seer",
    "missing": "needs core: a 'whenever you discard a card' trigger with modes not chosen this turn",
    "lane": "d2",
-   "theme": "triggers",
-   "owner": "d2"
+   "theme": "effects",
+   "owner": "d3"
   },
   {
    "card": "Moonstone, Harsh Mistress",
@@ -2796,8 +2796,8 @@
    "deck": "Raffine, Scheming Seer",
    "missing": "needs core: draw half X, and an 'opponent searches their library' trigger",
    "lane": "d2",
-   "theme": "triggers",
-   "owner": "d2"
+   "theme": "effects",
+   "owner": "d3"
   },
   {
    "card": "Watcher of the Spheres",
@@ -2884,8 +2884,8 @@
    "deck": "Sefris of the Hidden Ways",
    "missing": "needs core: connive, and a trigger on any player's second spell each turn",
    "lane": "d3",
-   "theme": "triggers",
-   "owner": "d2"
+   "theme": "effects",
+   "owner": "d3"
   },
   {
    "card": "Reveillark",
@@ -3044,8 +3044,8 @@
    "deck": "Sefris of the Hidden Ways",
    "missing": "needs core: shadow, and a 'deals damage to an opponent' trigger",
    "lane": "d3",
-   "theme": "triggers",
-   "owner": "d2"
+   "theme": "mana",
+   "owner": "d1"
   },
   {
    "card": "Midnight Pathlighter",
@@ -3316,8 +3316,8 @@
    "deck": "Najeela, the Blade-Blossom",
    "missing": "needs core: a trigger whenever any Warrior attacks, its controller making a 1/1 white Warrior tapped and attacking, and the untap-attackers extra combat",
    "lane": "d3",
-   "theme": "triggers",
-   "owner": "d2"
+   "theme": "merger_delegated",
+   "owner": "mac-b"
   },
   {
    "card": "Nature's Will",
@@ -5054,6 +5054,14 @@
    "lane": "mac-b",
    "theme": "objects_zones",
    "owner": "mac-c"
+  },
+  {
+   "card": "Teferi's Protection (player protection half)",
+   "deck": "Myrkul, Lord of Bones (DonSpider)",
+   "missing": "a player-level protection grant: from everything, until a given turn (your next turn), checked in ChooseTarget's Player arm and in damage to players. Lane C's phasing and life lock already play; add a test that an opponent can't Lightning Bolt you.",
+   "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
   }
  ]
 }

@@ -814,6 +814,23 @@ pub struct CardDef {
     /// "If a triggered ability of [a kind of source] you control triggers, that ability triggers an
     /// additional time" (Harmonic Prodigy, Delney).
     pub doubles_triggers_of: Option<TriggerDoubler>,
+    /// "Skip your draw step." (Damia, Sage of Stone)
+    pub skip_draw_step: bool,
+    /// "Untap all creatures you control during each other player's untap step." (Drumbellower)
+    pub creatures_untap_on_others_untap: bool,
+    /// "Noncreature spells with mana value 4 or greater can't be cast. Noncreature spells with {X} in
+    /// their mana costs can't be cast." (Gaddock Teeg)
+    pub teeg_lock: bool,
+    /// "Your maximum hand size is increased by N." (Trusted Advisor)
+    pub max_hand_plus: u8,
+    /// "Each opponent's maximum hand size is reduced by N." (Jin-Gitaxias, Core Augur)
+    pub opponents_max_hand_minus: u8,
+    /// "If you would draw a card while your library has no cards in it, you win the game instead."
+    /// (Laboratory Maniac)
+    pub win_on_empty_draw: bool,
+    /// An Aura with "Enchant player" whose enchanted player gets an additional upkeep step after
+    /// their first upkeep each turn (Paradox Haze).
+    pub extra_upkeep_for_enchanted: bool,
 }
 
 /// A card's mana, cost and keyword pieces added by the d1 theme (see [`CardDef::mana_ext`]).
@@ -1159,6 +1176,13 @@ impl CardDef {
             suppresses_triggers: None,
             doubles_triggers_of: None,
             protection_chosen_card_type: false,
+            skip_draw_step: false,
+            creatures_untap_on_others_untap: false,
+            teeg_lock: false,
+            max_hand_plus: 0,
+            opponents_max_hand_minus: 0,
+            win_on_empty_draw: false,
+            extra_upkeep_for_enchanted: false,
         }
     }
 
@@ -1397,6 +1421,13 @@ impl CardDef {
             suppresses_triggers: None,
             doubles_triggers_of: None,
             protection_chosen_card_type: false,
+            skip_draw_step: false,
+            creatures_untap_on_others_untap: false,
+            teeg_lock: false,
+            max_hand_plus: 0,
+            opponents_max_hand_minus: 0,
+            win_on_empty_draw: false,
+            extra_upkeep_for_enchanted: false,
         }
     }
 
@@ -1635,6 +1666,13 @@ impl CardDef {
             suppresses_triggers: None,
             doubles_triggers_of: None,
             protection_chosen_card_type: false,
+            skip_draw_step: false,
+            creatures_untap_on_others_untap: false,
+            teeg_lock: false,
+            max_hand_plus: 0,
+            opponents_max_hand_minus: 0,
+            win_on_empty_draw: false,
+            extra_upkeep_for_enchanted: false,
         }
     }
 }

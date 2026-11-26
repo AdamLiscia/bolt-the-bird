@@ -1479,3 +1479,316 @@ fn wound_reflection_doubles_the_opponents_loss_at_end_step() {
     }
     assert_eq!(g.players[1].life, 32);
 }
+
+// ---- Core: triggers, batch 6 (cast, copy, damage, graveyard and batched emits) ----
+
+/// Passes to player 0's second main phase, answering blocks with none and may-triggers with yes.
+fn through_combat(g: &mut Game) {
+    while g.step != Step::Main2 {
+        let a = match g.pending {
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            Pending::Decide(_) => Action::Yes,
+            _ => Action::PassPriority,
+        };
+        act(g, a);
+    }
+}
+
+#[test]
+fn witherbloom_apprentice_drains_on_an_instant() {
+    let mut g = table();
+    put(&mut g, 0, "Witherbloom Apprentice");
+    let lions = put(&mut g, 1, "Savannah Lions");
+    kill(&mut g, lions);
+    assert_eq!(g.players[1].life, 39);
+    assert_eq!(g.players[0].life, 41);
+    cast_settle(&mut g, "Sol Ring");
+    assert_eq!(g.players[1].life, 39, "an artifact spell isn't magecraft");
+}
+
+#[test]
+fn glimpse_of_nature_draws_for_each_creature_spell_this_turn() {
+    let mut g = table();
+    cast_settle(&mut g, "Glimpse of Nature");
+    let n = g.players[0].library.len();
+    cast_settle(&mut g, "Savannah Lions");
+    cast_settle(&mut g, "Savannah Lions");
+    cast_settle(&mut g, "Sol Ring");
+    assert_eq!(g.players[0].library.len(), n - 2);
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    let n = g.players[0].library.len();
+    cast_settle(&mut g, "Savannah Lions");
+    assert_eq!(g.players[0].library.len(), n, "only that turn");
+}
+
+#[test]
+fn zenith_chronicler_draws_for_the_other_player_on_a_first_multicolored_spell() {
+    let mut g = table();
+    put(&mut g, 0, "Zenith Chronicler");
+    let n = g.players[1].library.len();
+    for _ in 0..2 {
+        let ring = put(&mut g, 1, "Sol Ring");
+        let decay = hand(&mut g, 0, "Abrupt Decay");
+        play(&mut g, decay, false, &[obj(ring)], &[]);
+    }
+    assert_eq!(
+        g.players[1].library.len(),
+        n - 1,
+        "the first multicolored spell only"
+    );
+}
+
+#[test]
+fn no_mercy_destroys_a_creature_that_damages_you() {
+    let mut g = table();
+    put(&mut g, 1, "No Mercy");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    attack(&mut g, &[lions]);
+    through_combat(&mut g);
+    assert_eq!(g.players[1].life, 38);
+    assert!(in_graveyard(&g, 0, lions));
+}
+
+#[test]
+fn francisco_explores_when_a_pirate_deals_damage_to_a_player() {
+    let mut g = table();
+    let f = put(&mut g, 0, "Francisco, Fowl Marauder");
+    assert!(g.def_of(f).cant_block);
+    g.objects[f.0 as usize].counters = 1; // a 1/2 Pirate
+    let hand_before = g.players[0].hand.len();
+    attack(&mut g, &[f]);
+    through_combat(&mut g);
+    assert_eq!(g.players[1].life, 39);
+    // The draw step drew one; the explore revealed a Plains (a land) and took it.
+    assert_eq!(g.players[0].hand.len(), hand_before + 2);
+}
+
+#[test]
+fn syr_konrad_pings_for_deaths_discards_and_cards_leaving_your_graveyard() {
+    let mut g = table();
+    put(&mut g, 0, "Syr Konrad, the Grim");
+    let lions = put(&mut g, 1, "Savannah Lions");
+    kill(&mut g, lions);
+    assert_eq!(g.players[1].life, 39, "another creature died");
+    let mine = hand(&mut g, 0, "Savannah Lions");
+    loot_away(&mut g, mine);
+    assert_eq!(g.players[1].life, 38, "a creature card from anywhere else");
+    let ring = hand(&mut g, 0, "Sol Ring");
+    loot_away(&mut g, ring);
+    assert_eq!(g.players[1].life, 38, "not a creature card");
+    let lib = g.players[1].library.len();
+    let k = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "Syr Konrad, the Grim")
+        .unwrap();
+    act(&mut g, Action::Activate(k, 0));
+    settle(&mut g, Target::Player(1));
+    assert_eq!(g.players[1].library.len(), lib - 1, "each player mills");
+}
+
+#[test]
+fn species_specialist_draws_when_the_chosen_type_dies() {
+    let mut g = table();
+    let s = put(&mut g, 0, "Species Specialist");
+    g.objects[s.0 as usize].chosen_type = Some("Cat".to_string());
+    let n = g.players[0].library.len();
+    let lions = put(&mut g, 1, "Savannah Lions");
+    kill(&mut g, lions);
+    assert_eq!(g.players[0].library.len(), n - 1);
+    let angel = put(&mut g, 1, "Serra Angel");
+    kill(&mut g, angel);
+    assert_eq!(g.players[0].library.len(), n - 1, "not a Cat");
+}
+
+#[test]
+fn bloodchief_ascension_quests_on_life_lost_then_drains_on_cards_to_their_graveyard() {
+    let mut g = table();
+    let b = put(&mut g, 0, "Bloodchief Ascension");
+    let lions = put(&mut g, 1, "Savannah Lions");
+    kill(&mut g, lions);
+    assert_eq!(g.players[1].life, 40, "no quest counters yet");
+    let angel = put(&mut g, 0, "Serra Angel");
+    let f = hand(&mut g, 0, "Soul's Fire");
+    play(&mut g, f, false, &[obj(angel), Target::Player(1)], &[]);
+    while g.turn == 3 {
+        let legal = g.legal_actions();
+        let a = match g.pending {
+            Pending::DeclareAttackers(_) => Action::FinishAttacks,
+            _ if legal.contains(&Action::Yes) => Action::Yes,
+            _ if matches!(legal.first(), Some(Action::Discard(_))) => legal[0], // to hand size
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.obj(b).quest, 1);
+    g.objects[b.0 as usize].quest = 3;
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    let lions = put(&mut g, 1, "Savannah Lions");
+    let life = g.players[1].life;
+    kill(&mut g, lions);
+    assert_eq!(g.players[1].life, life - 2);
+    assert_eq!(g.players[0].life, 42);
+}
+
+#[test]
+fn cryptcaller_chariot_makes_tapped_zombies_for_discards() {
+    let mut g = table();
+    put(&mut g, 0, "Cryptcaller Chariot");
+    let c = hand(&mut g, 0, "Sol Ring");
+    loot_away(&mut g, c);
+    let z = tokens(&g, 0, "Zombie");
+    assert_eq!(z.len(), 1);
+    assert!(g.obj(z[0]).tapped);
+    assert_eq!((g.power(z[0]), g.toughness(z[0])), (2, 2));
+}
+
+// ---- Core: triggers, batch 7 ----
+
+/// Settles the stack, answering each target with the first legal one and each question with yes.
+fn settle_first(g: &mut Game) {
+    while !g.items.is_empty() || matches!(g.pending, Pending::ChooseTarget(_) | Pending::Decide(_)) {
+        let legal = g.legal_actions();
+        let a = match g.pending {
+            Pending::ChooseTarget(_) => legal[0],
+            Pending::Decide(_) if legal.contains(&Action::Yes) => Action::Yes,
+            Pending::Decide(_) => legal[0],
+            _ => Action::PassPriority,
+        };
+        act(g, a);
+    }
+}
+
+#[test]
+fn ghostly_pilferer_pays_to_draw_on_untap_and_draws_on_a_spell_not_from_hand() {
+    let mut g = table();
+    let gp = put(&mut g, 0, "Ghostly Pilferer");
+    g.objects[gp.0 as usize].tapped = true;
+    let lib = g.players[0].library.len();
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        let a = if matches!(g.pending, Pending::Decide(_)) {
+            Action::Yes
+        } else {
+            Action::PassPriority
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(
+        g.players[0].library.len(),
+        lib - 2,
+        "the draw step and the paid trigger"
+    );
+    // The opponent casts their commander from the command zone.
+    g.start_turn(6, 1);
+    while !(g.step == Step::Main1 && g.active == 1) {
+        act(&mut g, Action::PassPriority);
+    }
+    let lib = g.players[0].library.len();
+    let hand_spell = hand(&mut g, 1, "Sol Ring");
+    act(&mut g, Action::Cast(hand_spell));
+    settle_first(&mut g);
+    assert_eq!(g.players[0].library.len(), lib, "a spell from hand doesn't draw");
+    // (Cast before Ms. Bumbleflower is out: her cast trigger makes the opponent draw.)
+    let c = g.commanders[1].expect("a commander");
+    act(&mut g, Action::Cast(c));
+    settle_first(&mut g);
+    assert_eq!(g.players[0].library.len(), lib - 1, "cast from the command zone");
+}
+
+#[test]
+fn ghostly_pilferer_discards_to_become_unblockable() {
+    let mut g = table();
+    let gp = put(&mut g, 0, "Ghostly Pilferer");
+    let c = hand(&mut g, 0, "Sol Ring");
+    act(&mut g, Action::ActivateWith(gp, 0, c)); // the discarded card
+    while !g.items.is_empty() || matches!(g.pending, Pending::Decide(_)) {
+        let a = if g.legal_actions().contains(&Action::Discard(c)) {
+            Action::Discard(c)
+        } else {
+            Action::PassPriority
+        };
+        act(&mut g, a);
+    }
+    assert!(in_graveyard(&g, 0, c));
+    assert!(g.keywords(gp).has(Keywords::UNBLOCKABLE));
+}
+
+// ---- Core: triggers, batch 9 ----
+
+/// Player 0's main phase on turn 5, so creatures put in on turn 3 can tap.
+fn main5(g: &mut Game) {
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(g, Action::PassPriority);
+    }
+}
+
+#[test]
+fn archmage_emeritus_draws_on_an_instant() {
+    let mut g = table();
+    put(&mut g, 0, "Archmage Emeritus");
+    let n = g.players[0].library.len();
+    let lions = put(&mut g, 1, "Savannah Lions");
+    kill(&mut g, lions);
+    assert_eq!(g.players[0].library.len(), n - 1);
+    cast_settle(&mut g, "Sol Ring");
+    assert_eq!(g.players[0].library.len(), n - 1, "not an instant or sorcery");
+}
+
+#[test]
+fn lobber_crew_pings_and_untaps_on_a_multicolored_spell() {
+    let mut g = table();
+    let lc = put(&mut g, 0, "Lobber Crew");
+    let spitfire = put(&mut g, 0, "Chandra's Spitfire");
+    main5(&mut g);
+    act(&mut g, Action::Activate(lc, 0));
+    settle(&mut g, Target::Player(1));
+    assert_eq!(g.players[1].life, 39);
+    assert!(g.obj(lc).tapped);
+    assert_eq!(
+        g.power(spitfire),
+        4,
+        "Chandra's Spitfire: the opponent was dealt noncombat damage"
+    );
+    let ring = put(&mut g, 1, "Sol Ring");
+    let decay = hand(&mut g, 0, "Abrupt Decay");
+    play(&mut g, decay, false, &[obj(ring)], &[]);
+    assert!(!g.obj(lc).tapped, "a multicolored spell untaps it");
+}
+
+#[test]
+fn chandras_spitfire_ignores_combat_damage() {
+    let mut g = table();
+    let spitfire = put(&mut g, 0, "Chandra's Spitfire");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    attack(&mut g, &[lions]);
+    through_combat(&mut g);
+    assert_eq!(g.players[1].life, 38);
+    assert_eq!(g.power(spitfire), 1);
+}
+
+#[test]
+fn curiosity_and_ophidian_eye_draw_when_the_creature_damages_an_opponent() {
+    for aura in ["Curiosity", "Ophidian Eye"] {
+        let mut g = table();
+        let lions = put(&mut g, 0, "Savannah Lions");
+        let a = hand(&mut g, 0, aura);
+        play(&mut g, a, false, &[obj(lions)], &[]);
+        assert_eq!(g.obj(a).zone, Zone::Battlefield, "{aura}");
+        let n = g.players[0].library.len();
+        attack(&mut g, &[lions]);
+        through_combat(&mut g);
+        assert_eq!(g.players[1].life, 38, "{aura}");
+        assert_eq!(
+            g.players[0].library.len(),
+            n - 2,
+            "{aura}: the draw step and the trigger"
+        );
+    }
+}
