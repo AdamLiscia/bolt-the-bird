@@ -306,6 +306,9 @@ pub struct Object {
     pub plotted: Option<(u32, u32)>,
     /// Exiled until this player's next upkeep (Nahiri's Resolve), for its zone-change count in exile.
     pub return_at_upkeep: Option<(PlayerId, u32)>,
+    /// Vesuva just entered: whether to have it enter as a copy of a land is asked before anyone can
+    /// act (like a shock land's life).
+    pub land_copy_pending: bool,
 }
 
 /// One resolved effect's change to a permanent's characteristics (lane d3's type-changing store):
@@ -2090,6 +2093,7 @@ impl Game {
             class_level: 0,
             plotted: None,
             return_at_upkeep: None,
+            land_copy_pending: false,
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -4851,6 +4855,9 @@ impl Game {
             }
             if def.shock_land {
                 self.obj_mut(id).shock_pending = true;
+            }
+            if def.zones.enters_as_land_copy_tapped {
+                self.obj_mut(id).land_copy_pending = true; // Vesuva
             }
             if def.types.creature {
                 self.fire(
@@ -9438,6 +9445,10 @@ impl Game {
     fn copy_option(&self, clone: ObjId, x: ObjId) -> bool {
         let t = self.types_of(x);
         let d = self.def_of(clone);
+        // Vesuva: a land.
+        if d.zones.enters_as_land_copy_tapped {
+            return t.land;
+        }
         // Mirrormade: an artifact or an enchantment (not an Aura, which would need something to enchant).
         if d.zones.copy_artifact_or_enchantment {
             return (t.artifact || t.enchantment) && !self.def_of(x).aura;
@@ -11762,6 +11773,7 @@ impl Game {
                 let own = self.defs[printed].zones.clone();
                 let zcc = self.obj(card).zcc;
                 let o = self.obj_mut(card);
+                o.tapped |= own.enters_as_land_copy_tapped; // Vesuva enters tapped as the copy
                 o.extra_subtypes.extend(own.copy_adds_subtypes.iter().copied());
                 o.granted = o.granted.with(own.copy_adds_keywords);
                 if own.copy_sacrifice_when_targeted {
@@ -21153,6 +21165,20 @@ impl Game {
                 let owner = self.obj(c).controller;
                 self.ask(owner, Decision::ShockLand { card: c });
                 return;
+            }
+            // Vesuva: "You may have this land enter tapped as a copy of any land on the battlefield."
+            let vesuva = self
+                .battlefield
+                .iter()
+                .copied()
+                .find(|&x| self.obj(x).land_copy_pending);
+            if let Some(c) = vesuva {
+                self.obj_mut(c).land_copy_pending = false;
+                if self.battlefield.iter().any(|&x| x != c && self.copy_option(c, x)) {
+                    let owner = self.obj(c).controller;
+                    self.ask(owner, Decision::EnterAsCopy { card: c });
+                    return;
+                }
             }
         }
         if self.is_over() || !self.put_triggers_on_stack(p) {

@@ -718,3 +718,10 @@ Core: `Effect::{PhaseOutSlot, PhaseOutCreaturesOfPlayer}` (they phase in on thei
 
 Unsupported: 41 of 41. Batch 1 (9, no new core): Rakdos Signet, Wayfarer's Bauble, Faithless Looting, Tormenting
 Voice, Electric Revelation, Seize the Spoils, Unexpected Windfall, Cathartic Pyre, Foreboding Ruins.
+
+## Vaevictis Asmadi, the Dire (queue.json, lane C)
+
+Unsupported: 22 of 22. Batch 1 (2): Tranquility, Vesuva. Core: `ZonesExt::enters_as_land_copy_tapped` and
+`Object::land_copy_pending`: set as the land enters (however it enters), asked in `give_priority` right after shock
+lands as the existing `Decision::EnterAsCopy` (any land; a copy enters tapped, `No` leaves it untapped as itself).
+Shortcut: a Vesuva copying a shock land isn't asked for the 2 life (it's already tapped).

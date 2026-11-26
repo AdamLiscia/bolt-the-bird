@@ -3470,3 +3470,34 @@ fn foreboding_ruins_enters_untapped_revealing_a_swamp() {
     first_answers(&mut g);
     assert!(!g.obj(fr).tapped);
 }
+
+// ---- Vaevictis Asmadi, the Dire, batch 1 ----
+
+#[test]
+fn tranquility_destroys_all_enchantments() {
+    let mut g = table();
+    let a = put(&mut g, 0, "Nahiri's Resolve");
+    let b = put(&mut g, 1, "Mirrormade");
+    let t = hand(&mut g, 0, "Tranquility");
+    play(&mut g, t, false, &[], &[]);
+    assert_eq!(g.obj(a).zone, Zone::Graveyard);
+    assert_eq!(g.obj(b).zone, Zone::Graveyard);
+}
+
+#[test]
+fn vesuva_enters_tapped_as_a_copy_of_a_land_or_untapped_as_itself() {
+    let mut g = table();
+    let v = hand(&mut g, 0, "Vesuva");
+    let pool = g.permanents(1).find(|&x| g.def_of(x).name == "Island").unwrap();
+    act(&mut g, Action::PlayLand(v));
+    assert!(matches!(g.pending, Pending::Decide(_)));
+    act(&mut g, Action::Pick(pool));
+    assert_eq!(g.def_of(v).name, "Island");
+    assert!(g.obj(v).tapped);
+    let mut g = table();
+    let v = hand(&mut g, 0, "Vesuva");
+    act(&mut g, Action::PlayLand(v));
+    act(&mut g, Action::No);
+    assert_eq!(g.def_of(v).name, "Vesuva");
+    assert!(!g.obj(v).tapped);
+}

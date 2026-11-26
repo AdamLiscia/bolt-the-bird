@@ -1828,6 +1828,13 @@ pub fn script(name: &str) -> Option<Script> {
                 d.mana = Some(ManaSource::of(&[Color::Black, Color::Red]));
             },
         ),
+        // ---- Vaevictis Asmadi, the Dire (queue.json, lane C), batch 1 ----
+        "Tranquility" => s(&["Destroy all enchantments."], |d, _| {
+            spell(d, vec![], vec![Effect::DestroyAllMatching { artifacts: false, enchantments: true, creature_mv: (0, 0) }])
+        }),
+        "Vesuva" => s(&["You may have this land enter tapped as a copy of any land on the battlefield."], |d, _| {
+            d.zones.enters_as_land_copy_tapped = true;
+        }),
         _ => None,
     }
 }
@@ -2052,4 +2059,6 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Unexpected Windfall",
     "Cathartic Pyre",
     "Foreboding Ruins",
+    "Tranquility",
+    "Vesuva",
 ];
