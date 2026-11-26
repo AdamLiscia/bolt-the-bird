@@ -327,8 +327,31 @@ pub fn token_defs() -> Vec<CardDef> {
         },
         // 94, lane d2: Gisa's Favorite Shovel's Walker, "a 2/2 black Zombie creature token named Walker".
         black(token("Walker", "Zombie", 2, 2, Keywords::NONE)),
-        // 95: a placeholder until its lane's token lands (d4: Smaug). d4 replaces its own line.
-        token("Placeholder 95", "", 0, 0, Keywords::NONE),
+        {
+            // 95, lane d4: There and Back Again's "Smaug, a legendary 6/6 red Dragon creature token
+            // with flying, haste, and 'When Smaug dies, create fourteen Treasure tokens.'"
+            let mut t = red(token(
+                "Smaug",
+                "Dragon",
+                6,
+                6,
+                Keywords::FLYING.with(Keywords::HASTE),
+            ));
+            t.types.legendary = true;
+            t.triggers.push(Trigger {
+                when: When::Dies,
+                ability: Ability::new(
+                    vec![],
+                    vec![Effect::Subsystem(bolt_core::SubsystemEffect::RoomToken {
+                        name: "Treasure",
+                        power: 0,
+                        toughness: 0,
+                        n: 14,
+                    })],
+                ),
+            });
+            t
+        },
         // 96, lane d2: Utvara Hellkite's "6/6 red Dragon creature token with flying".
         red(token("Dragon", "Dragon", 6, 6, Keywords::FLYING)),
         wicked_role(), // 97, lane C
@@ -536,8 +559,8 @@ pub struct Tokens {
     pub servo: usize,
     /// 94: d2's Walker (a 2/2 black Zombie named Walker).
     pub walker: usize,
-    /// 95: a placeholder for d4's Smaug (d4 renames it).
-    pub placeholder_95: usize,
+    /// 95: Smaug, a legendary 6/6 red Dragon with flying and haste (There and Back Again).
+    pub smaug: usize,
     /// 96: d2's Utvara Hellkite Dragon, a 6/6 red flier.
     pub dragon_6_6: usize,
     pub wicked_role: usize,
@@ -642,7 +665,7 @@ impl Tokens {
             pincher: base + 92,
             servo: base + 93,
             walker: base + 94,
-            placeholder_95: base + 95,
+            smaug: base + 95,
             dragon_6_6: base + 96,
             wicked_role: base + 97,
             spirit_2: base + 98,

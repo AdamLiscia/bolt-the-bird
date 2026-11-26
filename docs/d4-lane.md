@@ -50,6 +50,13 @@ core in `engine/bolt-core/src/game/d4.rs` (a child module of game.rs; tests `tes
   `cast_mana_cost(item)`, which `finish_cast` now reads for Pollywog Prodigy and
   `YouCastNoncreatureMvAtLeast`/`YouCastColorlessMvAtLeast` (two lines changed in the split-cast
   path). Card: Fiery Inscription.
+- **04b3e9e** — Runestone Caverns on d3's `ExileTopToPlayThisTurn(2)`; with lane B's rooms every
+  dungeon room is ready (the `missing()` helper is gone).
+- **batch 6** — token 95 Smaug (legendary 6/6 red Dragon, flying, haste; dies into fourteen
+  Treasures via `RoomToken` by name), with placeholders 91-94. Barrowin of Clan Undurr on d3's
+  `ReturnCreatureMvAtMostToBattlefield(3)`. Sefris is d2's now (it uses d4's
+  `YouCompleteDungeon` emit). There and Back Again and the four Bloomburrow Talents are blocked
+  on other lanes' pieces (needs_core.json).
 
 ## Known rules gaps
 
