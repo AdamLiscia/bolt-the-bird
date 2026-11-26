@@ -1464,6 +1464,39 @@ pub enum Effect {
     ExileMakeEnchantmentCopy(u8),
     /// "... unless that player pays {X}, where X is this creature's power" (Esper Sentinel).
     UnlessOpponentPaysPower,
+    /// Exalted (CR 702.83), from a "whenever you attack" trigger: if exactly one creature you
+    /// control is attacking, it gets +1/+1 until end of turn.
+    Exalted,
+    /// Undying (CR 702.93), from the source's dies trigger: if it had no +1/+1 counters on it,
+    /// return it to the battlefield under its owner's control with a +1/+1 counter on it.
+    Undying,
+    /// Persist (CR 702.79), from the source's dies trigger: if it had no -1/-1 counters on it,
+    /// return it to the battlefield under its owner's control with a -1/-1 counter on it.
+    Persist,
+    /// Each opponent loses X life, X your devotion to these colors (WUBRG); you gain life equal to
+    /// the life lost this way (Gray Merchant of Asphodel).
+    DrainDevotion([bool; 5]),
+    /// Add mana of this color equal to your devotion to it (Nykthos, Shrine to Nyx).
+    AddManaDevotion(crate::Color),
+    /// Add one mana of this color for each permanent `count` counts (Cabal Coffers: each Swamp you
+    /// control).
+    AddManaPerCount {
+        color: crate::Color,
+        count: ManaCount,
+    },
+    /// Add mana of this color equal to the source's power (Heronblade Elite: X mana of one color).
+    AddManaSourcePower(crate::Color),
+}
+
+/// What an [`Effect::AddManaPerCount`] counts.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ManaCount {
+    /// Permanents you control with this subtype ("for each Swamp you control").
+    YouControlSubtype(&'static str),
+    /// Basic permanents you control with this subtype ("for each basic Swamp you control").
+    YouControlBasicSubtype(&'static str),
+    /// Permanents on the battlefield with this subtype, anyone's ("for each Elf on the battlefield").
+    OnBattlefieldSubtype(&'static str),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

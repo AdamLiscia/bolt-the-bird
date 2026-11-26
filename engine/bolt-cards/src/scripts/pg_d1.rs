@@ -3,9 +3,16 @@
 #![allow(unused_imports)]
 
 use super::*;
+use bolt_core::effect::ManaCount;
 
 /// Any creature card (a search with no mana value limit).
 const ANY_CREATURE_CARD: SearchFor = SearchFor::CreatureMvAtLeast(0);
+
+/// Exalted (CR 702.83): "Whenever a creature you control attacks alone, that creature gets +1/+1
+/// until end of turn." Each instance triggers on your attack and checks for a lone attacker.
+fn exalted(d: &mut CardDef) {
+    on(d, When::YouAttack, vec![], vec![Effect::Exalted]);
+}
 
 /// "Cycling {cost}": "{cost}, Discard this card: Draw a card." from your hand.
 fn cycling(d: &mut CardDef, cost: &str) {
@@ -304,6 +311,94 @@ pub fn script(name: &str) -> Option<Script> {
                 activated(d, "{2}{W}", false, vec![], vec![Effect::GainLife { who: Who::You, n: 3 }]);
             },
         ),
+        // ---- core theme d1 (mana, costs and keywords): the cards its pieces unblock ----
+        "Ignoble Hierarch" => s(&["Exalted", "{T}: Add {B}, {R}, or {G}."], |d, _| {
+            exalted(d);
+            d.mana = Some(ManaSource::of(&[Color::Black, Color::Red, Color::Green]));
+        }),
+        "Glen Elendra Archmage" => s(&["{U}, Sacrifice this creature: Counter target noncreature spell.", "Persist"], |d, _| {
+            let n = activated(d, "{U}", false, vec![Filter { spell_creature: Some(false), ..SPELL }], vec![Effect::Counter(0)]);
+            d.activated[n].sacrifice_self = true;
+            on(d, When::Dies, vec![], vec![Effect::Persist]);
+        }),
+        "Gray Merchant of Asphodel" => s(
+            &["When this creature enters, each opponent loses X life, where X is your devotion to black. You gain life equal to the life lost this way."],
+            |d, _| on(d, When::Enters, vec![], vec![Effect::DrainDevotion([false, false, true, false, false])]),
+        ),
+        "Nykthos, Shrine to Nyx" => s(
+            &["{T}: Add {C}.", "{2}, {T}: Choose a color. Add an amount of mana of that color equal to your devotion to that color."],
+            |d, _| {
+                d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                // The color is chosen as it's activated: one ability per color (as Koma's modes). It uses
+                // the stack, like the Altars' mana.
+                for c in Color::ALL {
+                    activated(d, "{2}", true, vec![], vec![Effect::AddManaDevotion(c)]);
+                }
+            },
+        ),
+        "Cabal Coffers" => s(&["{2}, {T}: Add {B} for each Swamp you control."], |d, _| {
+            let count = ManaCount::YouControlSubtype("Swamp");
+            activated(d, "{2}", true, vec![], vec![Effect::AddManaPerCount { color: Color::Black, count }]);
+        }),
+        "Cabal Stronghold" => s(&["{T}: Add {C}.", "{3}, {T}: Add {B} for each basic Swamp you control."], |d, _| {
+            d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+            let count = ManaCount::YouControlBasicSubtype("Swamp");
+            activated(d, "{3}", true, vec![], vec![Effect::AddManaPerCount { color: Color::Black, count }]);
+        }),
+        "Priest of Titania" => s(&["{T}: Add {G} for each Elf on the battlefield."], |d, _| {
+            let count = ManaCount::OnBattlefieldSubtype("Elf");
+            activated(d, "", true, vec![], vec![Effect::AddManaPerCount { color: Color::Green, count }]);
+        }),
+        "Heronblade Elite" => s(
+            &[
+                "Whenever another Human you control enters, put a +1/+1 counter on this creature.",
+                "{T}: Add X mana of any one color, where X is this creature's power.",
+            ],
+            |d, _| {
+                on(d, When::AnotherYouControlEntersWithSubtype("Human"), vec![], vec![Effect::CountersSelf { n: 1 }]);
+                // One ability per color, on the stack (as Nykthos).
+                for c in Color::ALL {
+                    activated(d, "", true, vec![], vec![Effect::AddManaSourcePower(c)]);
+                }
+            },
+        ),
+        "Into the Story" => s(
+            &["This spell costs {3} less to cast if an opponent has seven or more cards in their graveyard.", "Draw four cards."],
+            |d, _| {
+                d.reduction = Some(Reduction::IfOpponentGraveyardAtLeast(7, 3));
+                spell(d, vec![], vec![draw(4)]);
+            },
+        ),
+        "Phyrexian Tower" => s(&["{T}: Add {C}.", "{T}, Sacrifice a creature: Add {B}{B}."], |d, _| {
+            d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+            // On the stack, like the Altars' mana.
+            let n = activated(d, "", true, vec![], vec![Effect::AddMana { color: Color::Black, n: 2 }]);
+            d.activated[n].sacrifice_other_creature = true; // a land: any creature
+        }),
+        "Sunbaked Canyon" => s(&["{T}, Pay 1 life: Add {R} or {W}.", "{1}, {T}, Sacrifice this land: Draw a card."], |d, _| {
+            // On the stack, like the Altars' mana.
+            let n = activated(d, "", true, vec![], vec![Effect::AddManaEither(Color::Red, Color::White)]);
+            d.activated[n].life = 1;
+            let n = activated(d, "{1}", true, vec![], vec![draw(1)]);
+            d.activated[n].sacrifice_self = true;
+        }),
+        "Wild Cantor" => s(&["Sacrifice this creature: Add one mana of any color."], |d, _| {
+            // On the stack, like the Altars' mana.
+            let n = activated(d, "", false, vec![], vec![Effect::AddManaAnyColor]);
+            d.activated[n].sacrifice_self = true;
+        }),
+        "Kozilek, Butcher of Truth" => s(
+            &[
+                "When you cast this spell, draw four cards.",
+                "Annihilator 4",
+                "When Kozilek is put into a graveyard from anywhere, its owner shuffles their graveyard into their library.",
+            ],
+            |d, _| {
+                on(d, When::CastThisSpell, vec![], vec![draw(4)]);
+                on(d, When::Attacks, vec![], vec![Effect::SacrificePermanents { who: Who::EachOpponent, n: 4 }]);
+                on(d, When::PutIntoGraveyardFromAnywhere, vec![], vec![Effect::OwnerShufflesGraveyardIntoLibrary]);
+            },
+        ),
         _ => None,
     }
 }
@@ -374,4 +469,18 @@ pub const PG_D1_SCRIPTED: &[&str] = &[
     "Sunhome, Fortress of the Legion",
     "Wilderness Reclamation",
     "Zacama, Primal Calamity",
+    // core theme d1 (mana, costs and keywords)
+    "Ignoble Hierarch",
+    "Glen Elendra Archmage",
+    "Gray Merchant of Asphodel",
+    "Nykthos, Shrine to Nyx",
+    "Cabal Coffers",
+    "Cabal Stronghold",
+    "Priest of Titania",
+    "Heronblade Elite",
+    "Into the Story",
+    "Phyrexian Tower",
+    "Sunbaked Canyon",
+    "Wild Cantor",
+    "Kozilek, Butcher of Truth",
 ];

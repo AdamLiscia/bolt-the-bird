@@ -4943,6 +4943,13 @@ impl Game {
                 Some(&Chosen::Object(x, _)) if self.obj(x).tapped && self.types_of(x).creature => *n,
                 _ => 0,
             },
+            Some(Reduction::IfOpponentGraveyardAtLeast(cards, n)) => {
+                if self.players[opponent(p)].graveyard.len() >= *cards as usize {
+                    *n
+                } else {
+                    0
+                }
+            }
             None => 0,
         };
         let discount: u8 = if def.types.instant || def.types.sorcery {
@@ -13930,6 +13937,98 @@ impl Game {
                         self.obj_mut(id).eot_creature = Some((turn, power, toughness, subtype, keywords));
                     }
                 }
+            }
+            Effect::Exalted => {
+                let p = item.controller;
+                let mine: Vec<ObjId> = self
+                    .combat
+                    .as_ref()
+                    .map(|c| {
+                        c.attackers
+                            .iter()
+                            .copied()
+                            .filter(|&a| self.obj(a).controller == p)
+                            .collect()
+                    })
+                    .unwrap_or_default();
+                if let [a] = mine[..] {
+                    if self.obj(a).zone == Zone::Battlefield {
+                        let zcc = self.obj(a).zcc;
+                        self.until_eot.push(Modifier {
+                            obj: a,
+                            zcc,
+                            power: 1,
+                            toughness: 1,
+                            keywords: Keywords::NONE,
+                            dies: None,
+                        });
+                    }
+                }
+            }
+            Effect::Undying | Effect::Persist => {
+                // Counters are kept net (CR 704.5q): positive is +1/+1 counters, negative -1/-1.
+                let (net, _, _) = self.obj(src).last_counters;
+                let undying = e == Effect::Undying;
+                let had_none = if undying { net <= 0 } else { net >= 0 };
+                if had_none && self.obj(src).zone == Zone::Graveyard {
+                    self.move_to(src, Zone::Battlefield);
+                    if self.obj(src).zone == Zone::Battlefield {
+                        let o = self.obj_mut(src);
+                        o.controller = o.owner;
+                        if undying {
+                            self.add_counters(src, 1);
+                        } else {
+                            self.obj_mut(src).counters -= 1;
+                        }
+                    }
+                }
+            }
+            Effect::DrainDevotion(colors) => {
+                let p = item.controller;
+                let x = self.devotion(p, colors) as i32;
+                if x > 0 {
+                    self.lose_life(opponent(p), x);
+                    self.gain_life(p, x);
+                }
+            }
+            Effect::AddManaDevotion(color) => {
+                let p = item.controller;
+                let mut mask = [false; 5];
+                mask[color as usize] = true;
+                let n = self.devotion(p, mask) as usize;
+                self.players[p]
+                    .pool
+                    .extend(std::iter::repeat_n(ManaSource::of(&[color]), n));
+            }
+            Effect::AddManaPerCount { color, count } => {
+                let p = item.controller;
+                let n = match count {
+                    crate::effect::ManaCount::YouControlSubtype(s) => {
+                        self.permanents(p).filter(|&x| self.has_subtype(x, s)).count()
+                    }
+                    crate::effect::ManaCount::YouControlBasicSubtype(s) => self
+                        .permanents(p)
+                        .filter(|&x| self.types_of(x).basic && self.has_subtype(x, s))
+                        .count(),
+                    crate::effect::ManaCount::OnBattlefieldSubtype(s) => self
+                        .battlefield
+                        .iter()
+                        .filter(|&&x| self.has_subtype(x, s))
+                        .count(),
+                };
+                self.players[p]
+                    .pool
+                    .extend(std::iter::repeat_n(ManaSource::of(&[color]), n));
+            }
+            Effect::AddManaSourcePower(color) => {
+                let n = if self.obj(src).zone == Zone::Battlefield {
+                    self.power(src)
+                } else {
+                    self.obj(src).last_power
+                };
+                self.players[item.controller]
+                    .pool
+                    .extend(std::iter::repeat_n(ManaSource::of(&[color]), n.max(0) as usize));
             }
         }
     }

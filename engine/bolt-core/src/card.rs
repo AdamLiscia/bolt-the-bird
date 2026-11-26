@@ -163,6 +163,9 @@ pub enum Reduction {
     GreatestPowerAmongYourCreatures,
     /// ... {X} less, X the greatest number of artifacts an opponent controls (Cavern-Hoard Dragon).
     GreatestArtifactsAnOpponentControls,
+    /// ... {n} less (the second number) if an opponent has at least this many cards (the first) in
+    /// their graveyard (Into the Story: seven, {3}).
+    IfOpponentGraveyardAtLeast(u8, u8),
 }
 
 /// An activated ability: "[cost]: [effect]" (CR 602).

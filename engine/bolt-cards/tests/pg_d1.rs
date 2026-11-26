@@ -956,3 +956,220 @@ fn zacama_untaps_lands_when_cast_and_has_three_abilities() {
     activate(&mut g, z, 2, &[]);
     assert_eq!(g.players[0].life, 43);
 }
+
+// ---- core theme d1 (mana, costs and keywords) ----
+
+/// How many mana of WUBRG color `c` are in player 0's pool.
+fn pooled(g: &Game, c: usize) -> usize {
+    g.players[0].pool.iter().filter(|m| m.colors[c]).count()
+}
+
+/// Passes until player 0 declares attackers, attacks with `attackers`, then plays on (answering any
+/// decision with its first legal action) until the second main phase.
+fn attack_with(g: &mut Game, attackers: &[ObjId]) {
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(g, Action::PassPriority);
+    }
+    for &a in attackers {
+        act(g, Action::Attack(a));
+    }
+    act(g, Action::FinishAttacks);
+    while g.step != Step::Main2 {
+        let a = match g.pending {
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            Pending::Decide(_) | Pending::ChooseTarget(_) => g.legal_actions()[0],
+            _ => Action::PassPriority,
+        };
+        act(g, a);
+    }
+}
+
+#[test]
+fn ignoble_hierarch_has_exalted_and_taps_for_black_red_or_green() {
+    let mut g = game(&["Ignoble Hierarch", "Fyndhorn Elves"]);
+    let h = named(&g, 0, "Ignoble Hierarch");
+    let elf = named(&g, 0, "Fyndhorn Elves");
+    assert_eq!(makes(&g, h), ([false, false, true, true, true], false));
+    attack_with(&mut g, &[elf]);
+    assert_eq!(g.players[1].life, 38, "a lone attacker: 1 + 1");
+}
+
+#[test]
+fn glen_elendra_archmage_counters_a_noncreature_spell_and_persists() {
+    let mut g = table();
+    let a = put(&mut g, 0, "Glen Elendra Archmage");
+    let nw = hand(&mut g, 0, "Night's Whisper");
+    act(&mut g, Action::Cast(nw));
+    act(&mut g, Action::Activate(a, 0));
+    act(&mut g, Action::Target(obj(nw)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(nw).zone, Zone::Graveyard);
+    assert_eq!(g.players[0].life, 40, "countered");
+    assert_eq!(g.obj(a).zone, Zone::Battlefield, "persist");
+    assert_eq!((g.power(a), g.obj(a).counters), (1, -1));
+    let elf = hand(&mut g, 0, "Fyndhorn Elves");
+    act(&mut g, Action::Cast(elf));
+    assert!(
+        !g.legal_actions().contains(&Action::Activate(a, 0)),
+        "no noncreature spell to target"
+    );
+    resolve_all(&mut g, &[]);
+    let nw2 = hand(&mut g, 0, "Night's Whisper");
+    act(&mut g, Action::Cast(nw2));
+    act(&mut g, Action::Activate(a, 0));
+    act(&mut g, Action::Target(obj(nw2)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(a).zone, Zone::Graveyard, "it had a -1/-1 counter");
+}
+
+#[test]
+fn gray_merchant_drains_your_devotion_to_black() {
+    let mut g = table();
+    put(&mut g, 0, "Dictate of Erebos"); // {3}{B}{B}
+    put(&mut g, 1, "Dictate of Erebos"); // the opponent's: not yours
+    let m = hand(&mut g, 0, "Gray Merchant of Asphodel");
+    play(&mut g, m, false, &[], &[]);
+    assert_eq!((g.players[0].life, g.players[1].life), (44, 36));
+}
+
+#[test]
+fn nykthos_taps_for_colorless_or_devotion_to_a_chosen_color() {
+    let mut g = table();
+    let n = put(&mut g, 0, "Nykthos, Shrine to Nyx");
+    assert_eq!(makes(&g, n), ([false; 5], true));
+    put(&mut g, 0, "Dictate of Erebos");
+    put(&mut g, 0, "Eternal Witness"); // {1}{G}{G}
+    activate(&mut g, n, 2, &[]); // black
+    assert_eq!(pooled(&g, 2), 2);
+    let mut g = table();
+    let n = put(&mut g, 0, "Nykthos, Shrine to Nyx");
+    put(&mut g, 0, "Eternal Witness");
+    activate(&mut g, n, 4, &[]); // green
+    assert_eq!(pooled(&g, 4), 2);
+}
+
+#[test]
+fn cabal_coffers_adds_black_for_each_swamp() {
+    let mut g = table();
+    let c = put(&mut g, 0, "Cabal Coffers");
+    activate(&mut g, c, 0, &[]);
+    assert_eq!(pooled(&g, 2), 5, "five Swamps");
+    assert!(g.obj(c).tapped);
+}
+
+#[test]
+fn cabal_stronghold_adds_black_for_each_basic_swamp() {
+    let mut g = table();
+    let c = put(&mut g, 0, "Cabal Stronghold");
+    assert_eq!(makes(&g, c), ([false; 5], true));
+    put(&mut g, 0, "Overgrown Tomb"); // a nonbasic Swamp
+    activate(&mut g, c, 0, &[]);
+    assert_eq!(pooled(&g, 2), 5, "the five basic Swamps only");
+}
+
+#[test]
+fn priest_of_titania_adds_green_for_each_elf_on_the_battlefield() {
+    let mut g = game(&["Priest of Titania", "Fyndhorn Elves"]);
+    let p = named(&g, 0, "Priest of Titania");
+    put(&mut g, 1, "Fyndhorn Elves");
+    activate(&mut g, p, 0, &[]);
+    assert_eq!(pooled(&g, 4), 3, "itself, your Elves and the opponent's");
+}
+
+#[test]
+fn heronblade_elite_grows_with_humans_and_taps_for_its_power_in_one_color() {
+    let mut g = table();
+    let e = put(&mut g, 0, "Heronblade Elite");
+    let w = hand(&mut g, 0, "Eternal Witness"); // a Human
+    play(&mut g, w, false, &[], &[]);
+    assert_eq!(g.obj(e).counters, 1);
+    let mut g = game(&["Heronblade Elite"]);
+    let e = named(&g, 0, "Heronblade Elite");
+    set_counters(&mut g, e, 1);
+    activate(&mut g, e, 3, &[]); // red
+    assert_eq!(pooled(&g, 3), 2);
+    assert_eq!(g.players[0].pool.len(), 2);
+}
+
+#[test]
+fn into_the_story_costs_3_less_with_seven_cards_in_an_opponents_graveyard() {
+    let mut g = table();
+    for _ in 0..7 {
+        g.add_card(1, cid("Forest"), Zone::Graveyard);
+    }
+    let c = hand(&mut g, 0, "Into the Story");
+    let n = g.players[0].hand.len();
+    play(&mut g, c, false, &[], &[]);
+    assert_eq!(g.players[0].hand.len(), n + 3);
+    let tapped = g.permanents(0).filter(|&x| g.obj(x).tapped).count();
+    assert_eq!(tapped, 4, "{{2}}{{U}}{{U}}");
+}
+
+#[test]
+fn phyrexian_tower_sacrifices_a_creature_for_two_black() {
+    let mut g = table();
+    let t = put(&mut g, 0, "Phyrexian Tower");
+    assert_eq!(makes(&g, t), ([false; 5], true));
+    let elf = put(&mut g, 0, "Fyndhorn Elves");
+    act(&mut g, Action::ActivateWith(t, 0, elf));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(elf).zone, Zone::Graveyard);
+    assert_eq!(pooled(&g, 2), 2);
+}
+
+#[test]
+fn sunbaked_canyon_pays_life_for_red_or_white_and_cycles_itself() {
+    let mut g = table();
+    let c = put(&mut g, 0, "Sunbaked Canyon");
+    activate(&mut g, c, 0, &[]);
+    assert_eq!(g.players[0].life, 39);
+    let pool = &g.players[0].pool;
+    assert_eq!(pool.len(), 1);
+    assert!(
+        pool[0].colors[3] && pool[0].colors[0] && !pool[0].colors[4],
+        "{{R}} or {{W}}"
+    );
+    let c2 = put(&mut g, 0, "Sunbaked Canyon");
+    let n = g.players[0].hand.len();
+    activate(&mut g, c2, 1, &[]);
+    assert_eq!(g.obj(c2).zone, Zone::Graveyard);
+    assert_eq!(g.players[0].hand.len(), n + 1);
+}
+
+#[test]
+fn wild_cantor_sacrifices_itself_for_one_mana_of_any_color() {
+    let mut g = table();
+    let w = put(&mut g, 0, "Wild Cantor"); // no {T}: usable while summoning sick
+    activate(&mut g, w, 0, &[]);
+    assert_eq!(g.obj(w).zone, Zone::Graveyard);
+    assert_eq!(g.players[0].pool.len(), 1);
+    assert_eq!(g.players[0].pool[0].colors, [true; 5]);
+}
+
+#[test]
+fn kozilek_draws_four_on_cast_annihilates_and_shuffles_the_graveyard_back() {
+    let mut g = table();
+    for _ in 0..4 {
+        g.add_card(0, cid("Plains"), Zone::Library);
+    }
+    let k = hand(&mut g, 0, "Kozilek, Butcher of Truth");
+    let n = g.players[0].hand.len();
+    play(&mut g, k, false, &[], &[]);
+    assert_eq!(g.players[0].hand.len(), n - 1 + 4, "cast: draw four");
+    let altar = put(&mut g, 0, "Ashnod's Altar");
+    let gy = g.add_card(0, cid("Night's Whisper"), Zone::Graveyard);
+    act(&mut g, Action::ActivateWith(altar, 0, k));
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        (g.obj(k).zone, g.obj(gy).zone),
+        (Zone::Library, Zone::Library),
+        "the graveyard shuffled back"
+    );
+
+    let mut g = game(&["Kozilek, Butcher of Truth"]);
+    let k = named(&g, 0, "Kozilek, Butcher of Truth");
+    let before = g.permanents(1).count();
+    attack_with(&mut g, &[k]);
+    assert_eq!(g.permanents(1).count(), before - 4, "annihilator 4");
+    assert_eq!(g.players[1].life, 28);
+}
