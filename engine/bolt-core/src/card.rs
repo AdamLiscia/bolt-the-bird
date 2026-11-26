@@ -2070,6 +2070,9 @@ pub struct ZonesExt {
     /// The card has no mana cost (CR 202.1b): it can't be cast unless something lets it be cast
     /// without paying its mana cost (Glimpse of Tomorrow: suspend).
     pub no_mana_cost: bool,
+    /// "You may cast artifact spells and colorless spells from the top of your library." (Mystic
+    /// Forge)
+    pub top_spells_artifact_or_colorless: bool,
 }
 
 #[cfg(test)]

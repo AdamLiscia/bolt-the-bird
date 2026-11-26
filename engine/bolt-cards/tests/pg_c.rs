@@ -4098,3 +4098,65 @@ fn breath_of_fury_trades_its_creature_for_another_and_an_extra_combat() {
         "an additional combat"
     );
 }
+
+// ---- Lane B's decks, Mac C pieces ----
+
+#[test]
+fn kaalia_puts_a_dragon_from_hand_onto_the_battlefield_attacking() {
+    let mut g = table();
+    let kaalia = put(&mut g, 0, "Kaalia of the Vast");
+    to_attackers(&mut g);
+    let dragon = hand(&mut g, 0, "Terror of the Peaks");
+    let ghoul = hand(&mut g, 0, "Hungry Ghoul");
+    act(&mut g, Action::Attack(kaalia));
+    act(&mut g, Action::FinishAttacks);
+    pass_until(&mut g, |g| matches!(g.pending, Pending::Decide(0)));
+    assert!(
+        !g.legal_actions().contains(&Action::Pick(ghoul)),
+        "a Zombie isn't offered"
+    );
+    act(&mut g, Action::Pick(dragon));
+    assert_eq!(g.obj(dragon).zone, Zone::Battlefield);
+    assert!(g.obj(dragon).tapped);
+    assert!(
+        g.combat.as_ref().unwrap().attackers.contains(&dragon),
+        "tapped and attacking"
+    );
+}
+
+#[test]
+fn command_beacon_puts_your_commander_into_your_hand() {
+    let mut g = table();
+    let beacon = put(&mut g, 0, "Command Beacon");
+    let bello = g
+        .command
+        .iter()
+        .copied()
+        .find(|&c| g.obj(c).owner == 0)
+        .expect("the commander");
+    act(&mut g, Action::Activate(beacon, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(bello).zone, Zone::Hand);
+    assert_eq!(g.obj(beacon).zone, Zone::Graveyard);
+}
+
+#[test]
+fn mystic_forge_casts_artifacts_from_the_top_and_exiles_the_top_for_life() {
+    let mut g = table();
+    let forge = put(&mut g, 0, "Mystic Forge");
+    let ring = top(&mut g, "Sol Ring");
+    assert!(
+        g.legal_actions().contains(&Action::Cast(ring)),
+        "an artifact from the top"
+    );
+    let ghoul = top(&mut g, "Hungry Ghoul");
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(ghoul)),
+        "not a black creature"
+    );
+    let life = g.players[0].life;
+    act(&mut g, Action::Activate(forge, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(ghoul).zone, Zone::Exile);
+    assert_eq!(g.players[0].life, life - 1);
+}

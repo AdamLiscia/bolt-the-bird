@@ -2479,6 +2479,13 @@ pub enum Effect {
     /// creature you control (`Decision::MoveAuraTo`); the rest of the effects happen only if it's
     /// attached ("If you do").
     SacrificeEnchantedMoveAura,
+    /// Kaalia of the Vast: you may put a creature card with one of these subtypes from your hand onto
+    /// the battlefield tapped and attacking (`Decision::CreatureFromHandAttacking`).
+    CreatureFromHandAttacking(&'static [&'static str]),
+    /// Command Beacon: put your commander into your hand from the command zone.
+    CommanderFromCommandZoneToHand,
+    /// Exile the top `n` cards of your library (Mystic Forge: 1).
+    ExileTopCards(u8),
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

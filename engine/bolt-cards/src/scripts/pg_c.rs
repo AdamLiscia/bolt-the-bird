@@ -2103,6 +2103,34 @@ pub fn script(name: &str) -> Option<Script> {
                 );
             },
         ),
+        // ---- Lane B's decks, Mac C pieces (lane C scripts these) ----
+        "Kaalia of the Vast" => s(
+            &["Whenever Kaalia attacks an opponent, you may put an Angel, Demon, or Dragon creature card from your hand onto the battlefield tapped and attacking that opponent."],
+            |d, _| {
+                on(d, When::Attacks, vec![], vec![Effect::CreatureFromHandAttacking(&["Angel", "Demon", "Dragon"])]);
+            },
+        ),
+        "Command Beacon" => s(
+            &["{T}: Add {C}.", "{T}, Sacrifice this land: Put your commander into your hand from the command zone."],
+            |d, _| {
+                d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                let n = activated(d, "", true, vec![], vec![Effect::CommanderFromCommandZoneToHand]);
+                d.activated[n].sacrifice_self = true;
+            },
+        ),
+        "Mystic Forge" => s(
+            &[
+                "You may look at the top card of your library any time.",
+                "You may cast artifact spells and colorless spells from the top of your library.",
+                "{T}, Pay 1 life: Exile the top card of your library.",
+            ],
+            |d, _| {
+                // Looking at the top card any time is information only.
+                d.zones.top_spells_artifact_or_colorless = true;
+                let n = activated(d, "", true, vec![], vec![Effect::ExileTopCards(1)]);
+                d.activated[n].life = 1;
+            },
+        ),
         _ => None,
     }
 }
@@ -2350,4 +2378,7 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Mother of Runes",
     "Port Razer",
     "Breath of Fury",
+    "Kaalia of the Vast",
+    "Command Beacon",
+    "Mystic Forge",
 ];

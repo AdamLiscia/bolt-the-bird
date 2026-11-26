@@ -186,6 +186,7 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         verb = verb or {"AuraEntersAttachedTo": "Attach the Aura to"}.get(d)
         verb = verb or {"DiscardThenIfInstantOrSorcery": "Discard"}.get(d)
         verb = verb or {"MoveAuraTo": "Attach the Aura to"}.get(d)
+        verb = verb or {"CreatureFromHandAttacking": "Put onto the battlefield attacking:"}.get(d)
         if d == "LoseUnless":
             verb = "Sacrifice" if dec.get("sacrifice") else "Discard"
         return f"{verb} {card_name}" if verb else None

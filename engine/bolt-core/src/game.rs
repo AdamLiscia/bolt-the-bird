@@ -1339,6 +1339,9 @@ pub enum Decision {
     DiscardThenIfInstantOrSorcery,
     /// Breath of Fury: `Pick` a creature you control for the Aura `aura` to be attached to.
     MoveAuraTo { aura: ObjId },
+    /// Kaalia of the Vast: `Pick` a creature card in your hand with one of `subtypes` to put onto the
+    /// battlefield tapped and attacking, or `No`.
+    CreatureFromHandAttacking { subtypes: &'static [&'static str] },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -4407,6 +4410,7 @@ impl Game {
         if self.is_commander(id)
             && matches!(to, Zone::Graveyard | Zone::Exile | Zone::Hand | Zone::Library)
             && !choose_later
+            && !(from == Zone::Command && to == Zone::Hand)
         {
             to = Zone::Command;
         }
@@ -6418,6 +6422,8 @@ impl Game {
                         || s.top_spells_subtype
                             .is_some_and(|sub| d.subtypes.iter().any(|t| t == sub))
                         || (s.top_spells_creatures && d.types.creature)
+                        || (s.zones.top_spells_artifact_or_colorless
+                            && (d.types.artifact || !d.colors.iter().any(|&k| k)))
                 }
             })
         });
@@ -12681,6 +12687,15 @@ impl Game {
                 .into_iter()
                 .map(Action::Pick)
                 .collect(),
+            Decision::CreatureFromHandAttacking { subtypes } => {
+                let mut v: Vec<Action> = self
+                    .creatures_in_hand_with(p, subtypes)
+                    .into_iter()
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
             Decision::AuraEntersAttachedTo { aura, .. } => {
                 self.aura_hosts(*aura, p).into_iter().map(Action::Pick).collect()
             }
@@ -14199,6 +14214,11 @@ impl Game {
                 }
             }
             (d @ Decision::AttachAura { .. }, a) => self.attach_aura_decide(p, d, a),
+            (Decision::CreatureFromHandAttacking { .. }, a) => {
+                if let Action::Pick(c) = a {
+                    self.put_onto_battlefield_attacking(c, p);
+                }
+            }
             (Decision::MoveAuraTo { aura }, Action::Pick(c)) => {
                 let zcc = self.obj(c).zcc;
                 self.obj_mut(aura).attached_to = Some((c, zcc));
@@ -22197,6 +22217,35 @@ impl Game {
                 }
             }
             Effect::SacrificeEnchantedMoveAura => self.sacrifice_enchanted_move_aura(src, item.controller),
+            Effect::CreatureFromHandAttacking(subtypes) => {
+                let p = item.controller;
+                let at_walker = self
+                    .combat
+                    .as_ref()
+                    .is_some_and(|c| c.at_planeswalker.iter().any(|&(a, _)| a == src));
+                if !at_walker && !self.creatures_in_hand_with(p, subtypes).is_empty() {
+                    self.ask(p, Decision::CreatureFromHandAttacking { subtypes });
+                }
+            }
+            Effect::CommanderFromCommandZoneToHand => {
+                let p = item.controller;
+                let mine = self
+                    .command
+                    .iter()
+                    .copied()
+                    .find(|&c| self.obj(c).owner == p && self.is_commander(c));
+                if let Some(c) = mine {
+                    self.move_to(c, Zone::Hand);
+                }
+            }
+            Effect::ExileTopCards(n) => {
+                let p = item.controller;
+                for _ in 0..n {
+                    if let Some(&c) = self.players[p].library.last() {
+                        self.move_to(c, Zone::Exile);
+                    }
+                }
+            }
             Effect::DiscardThenIfInstantOrSorcery => {
                 let p = item.controller;
                 if self.players[p].hand.is_empty() {

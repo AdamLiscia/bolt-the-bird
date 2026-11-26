@@ -820,6 +820,17 @@ Still waiting, by owner:
 - d4: Invasion of Theros (battles), Summon: Bahamut (a Saga creature).
 - lane B: Rankle and Torbran ("choose any number" modes, the +2 damage replacement).
 
+## Lane B's decks, Mac C pieces, batch 1 (unbuilt; lane C scripts these, lane B skips them)
+
+Kaalia of the Vast (`Effect::CreatureFromHandAttacking(subtypes)` with `Decision::CreatureFromHandAttacking`,
+labelled; not when Kaalia attacks a planeswalker), Command Beacon (`Effect::CommanderFromCommandZoneToHand`; `move_to`
+no longer sends a commander moving from the command zone to its hand back to the command zone), Mystic Forge
+(`ZonesExt::top_spells_artifact_or_colorless`, one clause in the top-of-library cast check; `Effect::ExileTopCards`).
+Next in this list: Lithoform Engine, Thespian's Stage and The Mycosynth Gardens (copies), then Wandering Archaic.
+Waiting on others: Tendo Ice Bridge and Cavern of Souls (d1 mana), Kozilek, the Great Distortion (d1 cost, d3 draw),
+Flayer of Loyalties (d3: threaten with base P/T and granted annihilator), Rakdos, Patron of Chaos (d3), The One Ring
+(d3: player protection from everything), Prosper (d2: "whenever you play a card from exile").
+
 ## Held back (lane C), with what each needs
 
 Done since: Light-Paws, Sovereigns, Bruna, Olivia, Dragonhawk, Glimpse of Tomorrow (batches 8-9). Routed

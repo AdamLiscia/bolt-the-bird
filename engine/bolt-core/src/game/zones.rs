@@ -497,4 +497,33 @@ impl Game {
         }
         self.ask(p, Decision::MoveAuraTo { aura });
     }
+
+    /// Creature cards in `p`'s hand with one of `subtypes` (Kaalia: Angel, Demon, Dragon).
+    pub(super) fn creatures_in_hand_with(&self, p: PlayerId, subtypes: &[&str]) -> Vec<ObjId> {
+        self.players[p]
+            .hand
+            .iter()
+            .copied()
+            .filter(|&c| {
+                let d = self.def_of(c);
+                d.types.creature
+                    && (d.changeling || d.subtypes.iter().any(|s| subtypes.contains(&s.as_str())))
+            })
+            .collect()
+    }
+
+    /// Put `c` onto the battlefield under `p`'s control tapped and attacking (never declared as an
+    /// attacker, so "attacks" triggers don't fire, CR 506.3a).
+    pub(super) fn put_onto_battlefield_attacking(&mut self, c: ObjId, p: PlayerId) {
+        self.move_to(c, Zone::Battlefield);
+        if self.obj(c).zone != Zone::Battlefield {
+            return;
+        }
+        let o = self.obj_mut(c);
+        o.controller = p;
+        o.tapped = true;
+        if let Some(combat) = self.combat.as_mut() {
+            combat.attackers.push(c);
+        }
+    }
 }
