@@ -727,6 +727,32 @@ pub struct CardDef {
     /// token that's a copy of this creature, except it has haste and loses soulbond. Exile it at end
     /// of combat.'" (Mirage Phalanx; the pairing works as for `soulbond_flicker`).
     pub soulbond_combat_copies: bool,
+    /// "... don't cause abilities to trigger" (Hushbringer, Doorkeeper Thrull, Elesh Norn).
+    pub suppresses_triggers: Option<Suppression>,
+    /// "If a triggered ability of [a kind of source] you control triggers, that ability triggers an
+    /// additional time" (Harmonic Prodigy, Delney).
+    pub doubles_triggers_of: Option<TriggerDoubler>,
+}
+
+/// Which events don't cause abilities to trigger (see [`CardDef::suppresses_triggers`]).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Suppression {
+    /// "Creatures entering or dying don't cause abilities to trigger." (Hushbringer)
+    CreaturesEnteringOrDying,
+    /// "Artifacts and creatures entering don't cause abilities to trigger." (Doorkeeper Thrull)
+    ArtifactsOrCreaturesEntering,
+    /// "Permanents entering don't cause abilities of permanents your opponents control to
+    /// trigger." (Elesh Norn, Mother of Machines)
+    PermanentsEnteringForOpponents,
+}
+
+/// Whose triggered abilities trigger an additional time (see [`CardDef::doubles_triggers_of`]).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TriggerDoubler {
+    /// "a Shaman or another Wizard you control" (Harmonic Prodigy).
+    ShamanOrOtherWizard,
+    /// "a creature you control with power N or less" (Delney).
+    CreaturePowerAtMost(i32),
 }
 
 /// What entering makes triggers happen again (see [`CardDef::entering_triggers_again`]).
@@ -970,6 +996,8 @@ impl CardDef {
             top_spells_creatures: false,
             blitz: None,
             soulbond_combat_copies: false,
+            suppresses_triggers: None,
+            doubles_triggers_of: None,
         }
     }
 
@@ -1181,6 +1209,8 @@ impl CardDef {
             top_spells_creatures: false,
             blitz: None,
             soulbond_combat_copies: false,
+            suppresses_triggers: None,
+            doubles_triggers_of: None,
         }
     }
 
@@ -1392,6 +1422,8 @@ impl CardDef {
             top_spells_creatures: false,
             blitz: None,
             soulbond_combat_copies: false,
+            suppresses_triggers: None,
+            doubles_triggers_of: None,
         }
     }
 }

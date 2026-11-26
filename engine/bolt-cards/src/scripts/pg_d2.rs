@@ -3,6 +3,7 @@
 #![allow(unused_imports)]
 
 use super::*;
+use bolt_core::{EntryDoubler, Suppression, TriggerDoubler};
 
 pub fn script(name: &str) -> Option<Script> {
     let s = |lines, build| Some(Script { lines, build });
@@ -161,6 +162,174 @@ pub fn script(name: &str) -> Option<Script> {
             &["Whenever a player attacks one of your opponents, if that opponent has more life than another of your opponents, that attacking player draws a card and you put two +1/+1 counters on a creature you control."],
             |_, _| {
                 // 1v1: there's never "another of your opponents", so the trigger never does anything.
+            },
+        ),
+        // ---- Core: triggers, batch 3 (dies, discard, life and cast emits) ----
+        "Sanguine Bond" => s(&["Whenever you gain life, target opponent loses that much life."], |d, _| {
+            on(d, When::YouGainLife, vec![opponent_player()], vec![Effect::LoseLifeAmount(Who::TargetPlayer(0))])
+        }),
+        "Vito, Thorn of the Dusk Rose" => s(
+            &[
+                "Whenever you gain life, target opponent loses that much life.",
+                "{3}{B}{B}: Creatures you control gain lifelink until end of turn.",
+            ],
+            |d, _| {
+                on(d, When::YouGainLife, vec![opponent_player()], vec![Effect::LoseLifeAmount(Who::TargetPlayer(0))]);
+                activated(d, "{3}{B}{B}", false, vec![], vec![Effect::GrantAll { who: Who::You, keywords: Keywords::LIFELINK }]);
+            },
+        ),
+        "Defiant Bloodlord" => s(&["Whenever you gain life, target opponent loses that much life."], |d, _| {
+            on(d, When::YouGainLife, vec![opponent_player()], vec![Effect::LoseLifeAmount(Who::TargetPlayer(0))])
+        }),
+        "Pitiless Plunderer" => s(&["Whenever another creature you control dies, create a Treasure token."], |d, t| {
+            on(d, When::AnotherCreatureYouControlDies, vec![], vec![Effect::CreateToken { who: Who::You, def: t.treasure, n: 1 }])
+        }),
+        "Elas il-Kor, Sadistic Pilgrim" => s(
+            &[
+                "Whenever another creature you control enters, you gain 1 life.",
+                "Whenever another creature you control dies, each opponent loses 1 life.",
+            ],
+            |d, _| {
+                on(d, When::AnotherCreatureYouControlEnters, vec![], vec![Effect::GainLife { who: Who::You, n: 1 }]);
+                on(d, When::AnotherCreatureYouControlDies, vec![], vec![Effect::LoseLife { who: Who::EachOpponent, n: 1 }]);
+            },
+        ),
+        "Undead Augur" => s(
+            &["Whenever this creature or another Zombie you control dies, you draw a card and lose 1 life."],
+            |d, _| {
+                let effects = vec![draw(1), Effect::LoseLife { who: Who::You, n: 1 }];
+                on(d, When::ThisOrAnotherYouControlDiesWithSubtype("Zombie"), vec![], effects);
+            },
+        ),
+        "Disciple of the Vault" => s(
+            &["Whenever an artifact is put into a graveyard from the battlefield, you may have target opponent lose 1 life."],
+            |d, _| {
+                let lose = vec![Effect::LoseLife { who: Who::TargetPlayer(0), n: 1 }];
+                may(d, When::ArtifactToGraveyardFromBattlefield, vec![opponent_player()], lose);
+            },
+        ),
+        "Viridian Revel" => s(
+            &["Whenever an artifact is put into an opponent's graveyard from the battlefield, you may draw a card."],
+            |d, _| may(d, When::ArtifactToOpponentsGraveyardFromBattlefield, vec![], vec![draw(1)]),
+        ),
+        "Feast of Sanity" => s(
+            &["Whenever you discard a card, this enchantment deals 1 damage to any target and you gain 1 life."],
+            |d, _| {
+                let effects = vec![damage(1, Recipient::Target(0)), Effect::GainLife { who: Who::You, n: 1 }];
+                on(d, When::YouDiscard, vec![Filter::ANY], effects);
+            },
+        ),
+        "Shadowstorm Vizier" => s(
+            &["Whenever you cycle or discard a card, this creature gets +1/+1 until end of turn."],
+            |d, _| {
+                // Cycling discards the card (CR 702.29a): "cycle or discard" is one discard trigger.
+                on(d, When::YouDiscard, vec![], vec![Effect::PumpSelf { power: 1, toughness: 1 }]);
+            },
+        ),
+        "Drake Haven" => s(
+            &["Whenever you cycle or discard a card, you may pay {1}. If you do, create a 2/2 blue Drake creature token with flying."],
+            |d, t| {
+                // Cycling discards the card: one discard trigger. The engine's 2/2 flying Drake token
+                // (token colors aren't modeled).
+                let one = ManaCost::parse("{1}").expect("a mana cost");
+                let effects = vec![Effect::MayPay(one), Effect::CreateToken { who: Who::You, def: t.drake, n: 1 }];
+                on(d, When::YouDiscard, vec![], effects);
+            },
+        ),
+        "Enchantress's Presence" => s(&["Whenever you cast an enchantment spell, draw a card."], |d, _| {
+            on(d, When::YouCastEnchantment, vec![], vec![draw(1)])
+        }),
+        "Argothian Enchantress" => s(&["Whenever you cast an enchantment spell, draw a card."], |d, _| {
+            on(d, When::YouCastEnchantment, vec![], vec![draw(1)])
+        }),
+        "Satyr Enchanter" => s(&["Whenever you cast an enchantment spell, draw a card."], |d, _| {
+            on(d, When::YouCastEnchantment, vec![], vec![draw(1)])
+        }),
+        "Mesa Enchantress" => s(&["Whenever you cast an enchantment spell, you may draw a card."], |d, _| {
+            may(d, When::YouCastEnchantment, vec![], vec![draw(1)])
+        }),
+        "Verduran Enchantress" => s(&["Whenever you cast an enchantment spell, you may draw a card."], |d, _| {
+            may(d, When::YouCastEnchantment, vec![], vec![draw(1)])
+        }),
+        "Sythis, Harvest's Hand" => s(&["Whenever you cast an enchantment spell, you gain 1 life and draw a card."], |d, _| {
+            on(d, When::YouCastEnchantment, vec![], vec![Effect::GainLife { who: Who::You, n: 1 }, draw(1)])
+        }),
+        "Mirran Spy" => s(&["Whenever you cast an artifact spell, you may untap target creature."], |d, _| {
+            may(d, When::YouCastArtifact, vec![CREATURE], vec![Effect::UntapTarget(0)])
+        }),
+        "Revel in Riches" => s(
+            &[
+                "Whenever a creature an opponent controls dies, create a Treasure token.",
+                "At the beginning of your upkeep, if you control ten or more Treasures, you win the game.",
+            ],
+            |d, t| {
+                on(d, When::OpponentCreatureDies, vec![], vec![Effect::CreateToken { who: Who::You, def: t.treasure, n: 1 }]);
+                let ten = Condition::ControlSubtypeAtLeast("Treasure", 10);
+                conditional(d, When::Upkeep { your_turn_only: true }, ten, vec![], vec![Effect::WinTheGame]);
+            },
+        ),
+        "Yahenni, Undying Partisan" => s(
+            &[
+                "Whenever a creature an opponent controls dies, put a +1/+1 counter on Yahenni.",
+                "Sacrifice another creature: Yahenni gains indestructible until end of turn.",
+            ],
+            |d, _| {
+                on(d, When::OpponentCreatureDies, vec![], vec![Effect::CountersSelf { n: 1 }]);
+                let n = activated(d, "", false, vec![], vec![Effect::GrantSelf { keywords: Keywords::INDESTRUCTIBLE }]);
+                d.activated[n].sacrifice_other_creature = true;
+            },
+        ),
+        "Herd Baloth" => s(
+            &["Whenever one or more +1/+1 counters are put on this creature, you may create a 4/4 green Beast creature token."],
+            |d, t| may(d, When::PlusCountersPutOnThis, vec![], vec![Effect::CreateToken { who: Who::You, def: t.beast_4, n: 1 }]),
+        ),
+        "Scurry Oak" => s(
+            &[
+                "Evolve",
+                "Whenever one or more +1/+1 counters are put on this creature, you may create a 1/1 green Squirrel creature token.",
+            ],
+            |d, t| {
+                let that = Filter { triggering: true, ..CREATURE };
+                on(d, When::AnotherCreatureYouControlEnters, vec![that], vec![Effect::Evolve(0)]);
+                may(d, When::PlusCountersPutOnThis, vec![], vec![Effect::CreateToken { who: Who::You, def: t.squirrel, n: 1 }]);
+            },
+        ),
+        "Vilis, Broker of Blood" => s(
+            &[
+                "{B}, Pay 2 life: Target creature gets -1/-1 until end of turn.",
+                "Whenever you lose life, draw that many cards.",
+            ],
+            |d, _| {
+                let n = activated(d, "{B}", false, vec![CREATURE], vec![Effect::Pump { slot: 0, power: -1, toughness: -1 }]);
+                d.activated[n].life = 2;
+                on(d, When::YouLoseLife, vec![], vec![Effect::DrawAmount]);
+            },
+        ),
+        // ---- Core: triggers, batch 4 (suppressed and doubled triggers) ----
+        "Hushbringer" => s(&["Creatures entering or dying don't cause abilities to trigger."], |d, _| {
+            d.suppresses_triggers = Some(Suppression::CreaturesEnteringOrDying);
+        }),
+        "Doorkeeper Thrull" => s(&["Artifacts and creatures entering don't cause abilities to trigger."], |d, _| {
+            d.suppresses_triggers = Some(Suppression::ArtifactsOrCreaturesEntering);
+        }),
+        "Elesh Norn, Mother of Machines" => s(
+            &[
+                "If a permanent entering causes a triggered ability of a permanent you control to trigger, that ability triggers an additional time.",
+                "Permanents entering don't cause abilities of permanents your opponents control to trigger.",
+            ],
+            |d, _| {
+                d.entering_triggers_again = Some(EntryDoubler::Permanent);
+                d.suppresses_triggers = Some(Suppression::PermanentsEnteringForOpponents);
+            },
+        ),
+        "Harmonic Prodigy" => s(
+            &[
+                "Prowess",
+                "If a triggered ability of a Shaman or another Wizard you control triggers, that ability triggers an additional time.",
+            ],
+            |d, _| {
+                on(d, When::YouCastNoncreature, vec![], vec![Effect::PumpSelf { power: 1, toughness: 1 }]);
+                d.doubles_triggers_of = Some(TriggerDoubler::ShamanOrOtherWizard);
             },
         ),
         // ---- The Gitrog, Ravenous Ride ----
@@ -466,6 +635,11 @@ pub fn script(name: &str) -> Option<Script> {
     }
 }
 
+/// "target opponent"
+fn opponent_player() -> Filter {
+    Filter::PLAYER.controlled_by(Controller::Opponent)
+}
+
 const SHOCK_LAND: &[&str] = &["As this land enters, you may pay 2 life. If you don't, it enters tapped."];
 
 /// A shock land: taps for either of its two basic types' colors.
@@ -528,6 +702,35 @@ pub const PG_D2_SCRIPTED: &[&str] = &[
     "Graveborn Muse",
     "Disciple of Bolas",
     "Darigaaz's Caldera",
+    // Core: triggers, batch 3
+    "Sanguine Bond",
+    "Vito, Thorn of the Dusk Rose",
+    "Defiant Bloodlord",
+    "Pitiless Plunderer",
+    "Elas il-Kor, Sadistic Pilgrim",
+    "Undead Augur",
+    "Disciple of the Vault",
+    "Viridian Revel",
+    "Feast of Sanity",
+    "Shadowstorm Vizier",
+    "Drake Haven",
+    "Enchantress's Presence",
+    "Argothian Enchantress",
+    "Satyr Enchanter",
+    "Mesa Enchantress",
+    "Verduran Enchantress",
+    "Sythis, Harvest's Hand",
+    "Mirran Spy",
+    "Revel in Riches",
+    "Yahenni, Undying Partisan",
+    "Herd Baloth",
+    "Scurry Oak",
+    "Vilis, Broker of Blood",
+    // Core: triggers, batch 4
+    "Hushbringer",
+    "Doorkeeper Thrull",
+    "Elesh Norn, Mother of Machines",
+    "Harmonic Prodigy",
     // The Gitrog, Ravenous Ride
     "Demonic Tutor",
     "Exquisite Blood",

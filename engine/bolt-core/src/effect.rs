@@ -1559,6 +1559,9 @@ pub enum Effect {
     /// "Sacrifice it unless you return a non-[subtype] land you control to its owner's hand." (the
     /// Lairs: Darigaaz's Caldera)
     ReturnNonSubtypeLandOrSacrificeSelf(&'static str),
+    /// `who` loses life equal to the trigger's amount ("target opponent loses that much life":
+    /// Sanguine Bond, with `When::YouGainLife`).
+    LoseLifeAmount(Who),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1888,6 +1891,9 @@ pub enum Condition {
     /// It isn't its controller's turn. With `When::PlayerPlaysLand`: "whenever an opponent plays a
     /// land" (a land is played only on its player's own turn).
     NotYourTurn,
+    /// Its controller controls at least `.1` permanents with subtype `.0` (Revel in Riches: ten or
+    /// more Treasures).
+    ControlSubtypeAtLeast(&'static str, u32),
 }
 
 /// A spell's effect or a triggered ability: target slots, then effects in order.
@@ -2163,6 +2169,30 @@ pub enum When {
     PutIntoGraveyardFromAnywhere,
     /// "Whenever an enchantment you control enters" (constellation), this one included.
     EnchantmentYouControlEnters,
+    /// "Whenever a creature an opponent controls dies" (tokens included).
+    OpponentCreatureDies,
+    /// "Whenever another creature you control dies" (tokens included; `AnotherNontokenCreatureYouControlDies`
+    /// is nontoken only).
+    AnotherCreatureYouControlDies,
+    /// "Whenever this creature or another [subtype] you control dies" (tokens included; Undead
+    /// Augur: Zombie). The creature it was is checked as it last existed.
+    ThisOrAnotherYouControlDiesWithSubtype(&'static str),
+    /// "Whenever an artifact is put into a graveyard from the battlefield" (anyone's, tokens included).
+    ArtifactToGraveyardFromBattlefield,
+    /// "Whenever an artifact is put into an opponent's graveyard from the battlefield".
+    ArtifactToOpponentsGraveyardFromBattlefield,
+    /// "Whenever you discard a card" (cycling included: it discards the card). Slot 0, if its first
+    /// filter is `triggering`, is the discarded card in your graveyard.
+    YouDiscard,
+    /// "Whenever you cast an enchantment spell" (from any zone); the spell is in `extra`.
+    YouCastEnchantment,
+    /// "Whenever you cast an artifact spell" (from any zone); the spell is in `extra`.
+    YouCastArtifact,
+    /// "Whenever one or more +1/+1 counters are put on this creature": every time (entering with
+    /// them included, CR 122.6). `CountersPutOnThis` is the once-each-turn version.
+    PlusCountersPutOnThis,
+    /// "Whenever you lose life" (every time; the amount travels with the trigger).
+    YouLoseLife,
 }
 
 #[derive(Clone, Debug, PartialEq)]

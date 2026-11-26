@@ -1044,3 +1044,349 @@ fn darigaazs_caldera_bounces_a_non_lair_land_or_is_sacrificed() {
     resolve_all(&mut g, &[Action::No]);
     assert!(in_graveyard(&g, 0, c), "no other land to return");
 }
+
+// ---- Core: triggers, batch 3 (dies, discard, life and cast emits) ----
+
+/// Passes until the stack is empty, choosing `target` for every trigger and answering `Yes` to
+/// every "you may".
+fn settle(g: &mut Game, target: Target) {
+    while !g.items.is_empty() || matches!(g.pending, Pending::ChooseTarget(_) | Pending::Decide(_)) {
+        let a = match g.pending {
+            Pending::ChooseTarget(_) => Action::Target(target),
+            Pending::Decide(_) => Action::Yes,
+            _ => Action::PassPriority,
+        };
+        act(g, a);
+    }
+}
+
+/// Hero's Downfall (with three more Swamps for it) on `target`, then settles toward player 1.
+fn kill(g: &mut Game, target: ObjId) {
+    for _ in 0..3 {
+        put(g, 0, "Swamp");
+    }
+    let d = hand(g, 0, "Hero's Downfall");
+    act(g, Action::Cast(d));
+    act(g, Action::Target(obj(target)));
+    settle(g, Target::Player(1));
+    assert_eq!(g.obj(target).zone, Zone::Graveyard);
+}
+
+/// Casts `name` from hand and settles toward player 1.
+fn cast_settle(g: &mut Game, name: &str) -> ObjId {
+    let c = hand(g, 0, name);
+    act(g, Action::Cast(c));
+    settle(g, Target::Player(1));
+    c
+}
+
+#[test]
+fn sanguine_bond_vito_and_defiant_bloodlord_drain_what_you_gain() {
+    for name in [
+        "Sanguine Bond",
+        "Vito, Thorn of the Dusk Rose",
+        "Defiant Bloodlord",
+    ] {
+        let mut g = table();
+        put(&mut g, 0, name);
+        let kokusho = put(&mut g, 0, "Kokusho, the Evening Star");
+        kill(&mut g, kokusho); // each opponent loses 5, you gain 5
+        assert_eq!(g.players[0].life, 45, "{name}");
+        assert_eq!(g.players[1].life, 30, "{name}: then loses that much more");
+    }
+}
+
+#[test]
+fn vito_gives_your_creatures_lifelink() {
+    let mut g = table();
+    let vito = put(&mut g, 0, "Vito, Thorn of the Dusk Rose");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    act(&mut g, Action::Activate(vito, 0));
+    resolve_all(&mut g, &[]);
+    assert!(g.keywords(lions).has(Keywords::LIFELINK));
+}
+
+#[test]
+fn pitiless_plunderer_makes_a_treasure_when_another_of_yours_dies() {
+    let mut g = table();
+    let p = put(&mut g, 0, "Pitiless Plunderer");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    let theirs = put(&mut g, 1, "Savannah Lions");
+    kill(&mut g, lions);
+    assert_eq!(tokens(&g, 0, "Treasure").len(), 1);
+    kill(&mut g, theirs);
+    kill(&mut g, p);
+    assert_eq!(tokens(&g, 0, "Treasure").len(), 1, "not theirs, not itself");
+}
+
+#[test]
+fn elas_il_kor_gains_on_enter_and_drains_on_death() {
+    let mut g = table();
+    put(&mut g, 0, "Elas il-Kor, Sadistic Pilgrim");
+    let lions = cast_settle(&mut g, "Savannah Lions");
+    assert_eq!(g.players[0].life, 41);
+    kill(&mut g, lions);
+    assert_eq!(g.players[1].life, 39);
+}
+
+#[test]
+fn undead_augur_draws_and_loses_when_it_or_another_zombie_dies() {
+    let mut g = table();
+    let augur = put(&mut g, 0, "Undead Augur");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    let n = g.players[0].hand.len();
+    kill(&mut g, lions);
+    assert_eq!(g.players[0].hand.len(), n, "not a Zombie");
+    kill(&mut g, augur);
+    assert_eq!(g.players[0].hand.len(), n + 1);
+    assert_eq!(g.players[0].life, 39);
+}
+
+#[test]
+fn disciple_of_the_vault_drains_when_any_artifact_goes_to_a_graveyard() {
+    let mut g = table();
+    put(&mut g, 0, "Disciple of the Vault");
+    for p in [1, 0] {
+        let ring = put(&mut g, p, "Sol Ring");
+        let decay = hand(&mut g, 0, "Abrupt Decay");
+        act(&mut g, Action::Cast(decay));
+        act(&mut g, Action::Target(obj(ring)));
+        settle(&mut g, Target::Player(1));
+    }
+    assert_eq!(g.players[1].life, 38, "theirs and yours");
+}
+
+#[test]
+fn viridian_revel_draws_when_an_opponents_artifact_goes_to_the_graveyard() {
+    let mut g = table();
+    put(&mut g, 0, "Viridian Revel");
+    let n = g.players[0].hand.len();
+    for p in [1, 0] {
+        let ring = put(&mut g, p, "Sol Ring");
+        let decay = hand(&mut g, 0, "Abrupt Decay");
+        act(&mut g, Action::Cast(decay));
+        act(&mut g, Action::Target(obj(ring)));
+        settle(&mut g, Target::Player(1));
+    }
+    assert_eq!(g.players[0].hand.len(), n + 1, "only the opponent's");
+}
+
+/// Thrór's Map's "{2}, {T}: Draw a card, then discard a card", discarding `card`; triggers then
+/// settle toward player 1.
+fn loot_away(g: &mut Game, card: ObjId) {
+    let map = put(g, 0, "Thrór's Map");
+    act(g, Action::Activate(map, 0));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(g, Action::PassPriority);
+    }
+    act(g, Action::Discard(card));
+    settle(g, Target::Player(1));
+}
+
+#[test]
+fn feast_of_sanity_pings_and_gains_on_each_discard() {
+    let mut g = table();
+    put(&mut g, 0, "Feast of Sanity");
+    let c = hand(&mut g, 0, "Sol Ring");
+    loot_away(&mut g, c);
+    assert!(in_graveyard(&g, 0, c));
+    assert_eq!(g.players[1].life, 39);
+    assert_eq!(g.players[0].life, 41);
+}
+
+#[test]
+fn shadowstorm_vizier_grows_when_you_discard() {
+    let mut g = table();
+    let v = put(&mut g, 0, "Shadowstorm Vizier");
+    let c = hand(&mut g, 0, "Sol Ring");
+    loot_away(&mut g, c);
+    assert_eq!(g.power(v), 2);
+}
+
+#[test]
+fn drake_haven_pays_one_for_a_drake_on_each_discard() {
+    let mut g = table();
+    put(&mut g, 0, "Drake Haven");
+    let c = hand(&mut g, 0, "Sol Ring");
+    loot_away(&mut g, c);
+    assert_eq!(tokens(&g, 0, "Drake").len(), 1);
+}
+
+#[test]
+fn enchantresses_draw_when_you_cast_an_enchantment() {
+    for name in [
+        "Enchantress's Presence",
+        "Argothian Enchantress",
+        "Satyr Enchanter",
+        "Mesa Enchantress",
+        "Verduran Enchantress",
+        "Sythis, Harvest's Hand",
+    ] {
+        let mut g = table();
+        put(&mut g, 0, name);
+        let n = g.players[0].hand.len();
+        cast_settle(&mut g, "Sol Ring");
+        assert_eq!(
+            g.players[0].hand.len(),
+            n,
+            "{name}: an artifact isn't an enchantment"
+        );
+        cast_settle(&mut g, "Viridian Revel");
+        assert_eq!(g.players[0].hand.len(), n + 1, "{name}");
+        let gained = if name.starts_with("Sythis") { 1 } else { 0 };
+        assert_eq!(g.players[0].life, 40 + gained, "{name}");
+    }
+}
+
+#[test]
+fn mirran_spy_untaps_a_creature_when_you_cast_an_artifact() {
+    let mut g = table();
+    put(&mut g, 0, "Mirran Spy");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    attack(&mut g, &[lions]);
+    while g.step != Step::Main2 {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(g.obj(lions).tapped);
+    let ring = hand(&mut g, 0, "Sol Ring");
+    act(&mut g, Action::Cast(ring));
+    settle(&mut g, obj(lions));
+    assert!(!g.obj(lions).tapped);
+}
+
+#[test]
+fn revel_in_riches_makes_treasures_and_wins_with_ten() {
+    let mut g = table();
+    put(&mut g, 0, "Revel in Riches");
+    let theirs = put(&mut g, 1, "Savannah Lions");
+    kill(&mut g, theirs);
+    let treasure = tokens(&g, 0, "Treasure");
+    assert_eq!(treasure.len(), 1);
+    g.start_turn(4, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(g.result.is_none(), "one Treasure");
+    let def = g.obj(treasure[0]).def;
+    for _ in 0..9 {
+        g.add_card(0, def, Zone::Battlefield);
+    }
+    g.start_turn(5, 0);
+    while g.result.is_none() && g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.result, Some(bolt_core::Outcome::Winner(0)));
+}
+
+#[test]
+fn yahenni_grows_when_theirs_die_and_sacrifices_for_indestructible() {
+    let mut g = table();
+    let y = put(&mut g, 0, "Yahenni, Undying Partisan");
+    let theirs = put(&mut g, 1, "Savannah Lions");
+    let mine = put(&mut g, 0, "Savannah Lions");
+    kill(&mut g, theirs);
+    assert_eq!(g.power(y), 3);
+    act(&mut g, Action::ActivateWith(y, 0, mine));
+    resolve_all(&mut g, &[]);
+    assert!(in_graveyard(&g, 0, mine));
+    assert!(g.keywords(y).has(Keywords::INDESTRUCTIBLE));
+    assert_eq!(g.power(y), 3, "your own creature doesn't count");
+}
+
+/// Treetop Snarespinner's counter on `target`, twice.
+fn two_counters(g: &mut Game, target: ObjId) {
+    let s = put(g, 0, "Treetop Snarespinner");
+    for _ in 0..2 {
+        act(g, Action::Activate(s, 0));
+        act(g, Action::Target(obj(target)));
+        settle(g, Target::Player(1));
+    }
+}
+
+#[test]
+fn herd_baloth_makes_a_beast_each_time_counters_go_on_it() {
+    let mut g = table();
+    let b = put(&mut g, 0, "Herd Baloth");
+    two_counters(&mut g, b);
+    assert_eq!(tokens(&g, 0, "Beast").len(), 2, "every time, not once a turn");
+}
+
+#[test]
+fn scurry_oak_evolves_into_squirrels() {
+    let mut g = table();
+    let oak = put(&mut g, 0, "Scurry Oak");
+    cast_settle(&mut g, "Savannah Lions"); // 2/1: greater power
+    assert_eq!(g.power(oak), 2);
+    assert_eq!(tokens(&g, 0, "Squirrel").len(), 1);
+}
+
+#[test]
+fn vilis_draws_for_the_life_you_lose_and_shrinks_for_two_life() {
+    let mut g = table();
+    let vilis = put(&mut g, 0, "Vilis, Broker of Blood");
+    let lions = put(&mut g, 1, "Savannah Lions");
+    let n = g.players[0].hand.len();
+    act(&mut g, Action::Activate(vilis, 0));
+    act(&mut g, Action::Target(obj(lions)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].life, 38);
+    assert_eq!(g.players[0].hand.len(), n + 2, "paying 2 life is losing 2");
+    assert!(in_graveyard(&g, 1, lions), "a 2/1 with -1/-1");
+}
+
+// ---- Core: triggers, batch 4 (suppressed and doubled triggers) ----
+
+#[test]
+fn hushbringer_stops_creatures_entering_or_dying_from_triggering() {
+    let mut g = table();
+    put(&mut g, 1, "Hushbringer");
+    put(&mut g, 0, "Elas il-Kor, Sadistic Pilgrim");
+    let lions = cast_settle(&mut g, "Savannah Lions");
+    kill(&mut g, lions);
+    assert_eq!(g.players[0].life, 40);
+    assert_eq!(g.players[1].life, 40);
+}
+
+#[test]
+fn doorkeeper_thrull_stops_entering_but_not_dying() {
+    let mut g = table();
+    put(&mut g, 1, "Doorkeeper Thrull");
+    put(&mut g, 0, "Elas il-Kor, Sadistic Pilgrim");
+    let lions = cast_settle(&mut g, "Savannah Lions");
+    assert_eq!(g.players[0].life, 40);
+    kill(&mut g, lions);
+    assert_eq!(g.players[1].life, 39);
+}
+
+#[test]
+fn elesh_norn_doubles_your_entering_triggers_and_stops_theirs() {
+    let mut g = table();
+    put(&mut g, 0, "Elesh Norn, Mother of Machines");
+    put(&mut g, 0, "Elas il-Kor, Sadistic Pilgrim");
+    put(&mut g, 1, "Elas il-Kor, Sadistic Pilgrim");
+    cast_settle(&mut g, "Savannah Lions");
+    assert_eq!(g.players[0].life, 42, "twice");
+    g.start_turn(4, 1);
+    while !(g.step == Step::Main1 && g.pending == Pending::Priority(1)) {
+        act(&mut g, Action::PassPriority);
+    }
+    let theirs = hand(&mut g, 1, "Savannah Lions");
+    act(&mut g, Action::Cast(theirs));
+    settle(&mut g, Target::Player(0));
+    assert_eq!(g.obj(theirs).zone, Zone::Battlefield);
+    assert_eq!(g.players[1].life, 40, "their Elas doesn't trigger");
+}
+
+#[test]
+fn harmonic_prodigy_doubles_another_wizards_triggers() {
+    let mut g = table();
+    let prodigy = put(&mut g, 0, "Harmonic Prodigy");
+    let augur = put(&mut g, 0, "Undead Augur"); // a Zombie Wizard
+    let n = g.players[0].hand.len();
+    kill(&mut g, augur);
+    assert_eq!(g.players[0].hand.len(), n + 2, "twice");
+    assert_eq!(g.players[0].life, 38);
+    let before = g.power(prodigy);
+    cast_settle(&mut g, "Sol Ring");
+    assert_eq!(g.power(prodigy), before + 1, "its own prowess isn't doubled");
+}

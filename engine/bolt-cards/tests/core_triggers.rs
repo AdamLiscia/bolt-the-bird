@@ -380,3 +380,329 @@ fn return_non_subtype_land_or_sacrifice_self_returns_a_land_or_goes() {
         }
     }
 }
+
+// ---- batch 3: dies, discard, life and cast emits ----
+
+fn life(g: &Game, p: usize) -> i32 {
+    g.players[p].life
+}
+
+/// Exquisite Blood, carrying `triggers` too (an enchantment, so it isn't a creature or artifact).
+fn blood_with(triggers: Vec<Trigger>) -> impl Fn(&mut Vec<CardDef>) {
+    move |defs: &mut Vec<CardDef>| {
+        defs[cid("Exquisite Blood")]
+            .triggers
+            .extend(triggers.iter().cloned());
+    }
+}
+
+fn gain(n: i32) -> Vec<Effect> {
+    vec![Effect::GainLife { who: Who::You, n }]
+}
+
+/// Hero's Downfall on `target`, with three more Swamps to pay for it.
+fn kill(g: &mut Game, target: ObjId) {
+    for _ in 0..3 {
+        g.add_card(0, cid("Swamp"), Zone::Battlefield);
+    }
+    let d = g.add_card(0, cid("Hero's Downfall"), Zone::Hand);
+    play(g, d, false, &[obj(target)], &[]);
+    assert_eq!(g.obj(target).zone, Zone::Graveyard);
+}
+
+#[test]
+fn you_gain_life_carries_the_amount_gained() {
+    let mut drain = trigger(
+        When::YouGainLife,
+        None,
+        vec![Effect::LoseLifeAmount(Who::TargetPlayer(0))],
+    );
+    drain.ability.targets = vec![Filter::PLAYER];
+    let mut g = game_with(|defs| {
+        ring_with(drain.clone())(defs);
+        defs[cid("Hero's Downfall")].spell = Some(Ability::new(vec![], gain(3)));
+    });
+    g.add_card(0, cid("Sol Ring"), Zone::Battlefield);
+    let d = g.add_card(0, cid("Hero's Downfall"), Zone::Hand);
+    play(
+        &mut g,
+        d,
+        false,
+        &[],
+        &[Action::Target(bolt_core::Target::Player(1))],
+    );
+    assert_eq!(life(&g, 0), 43);
+    assert_eq!(life(&g, 1), 37, "that much life");
+}
+
+#[test]
+fn opponent_creature_dies_and_another_creature_you_control_dies() {
+    let mut g = game_with(|defs| {
+        blood_with(vec![trigger(When::OpponentCreatureDies, None, gain(1))])(defs);
+        let t = trigger(When::AnotherCreatureYouControlDies, None, gain(10));
+        defs[cid("Savannah Lions")].triggers.push(t);
+    });
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Battlefield);
+    let angel = g.add_card(0, cid("Serra Angel"), Zone::Battlefield);
+    let theirs = g.add_card(1, cid("Serra Angel"), Zone::Battlefield);
+    kill(&mut g, angel);
+    assert_eq!(life(&g, 0), 50, "another creature you control");
+    kill(&mut g, theirs);
+    assert_eq!(life(&g, 0), 51, "a creature an opponent controls");
+    kill(&mut g, lions);
+    assert_eq!(life(&g, 0), 51, "not another: itself, and it's yours");
+}
+
+#[test]
+fn another_creature_you_control_dies_counts_tokens() {
+    let mut g = game_with(|defs| {
+        let t = trigger(When::AnotherCreatureYouControlDies, None, gain(1));
+        defs[cid("Serra Angel")].triggers.push(t);
+        defs[cid("Savannah Lions")].token = true; // stands in for a creature token
+    });
+    g.add_card(0, cid("Serra Angel"), Zone::Battlefield);
+    let token = g.add_card(0, cid("Savannah Lions"), Zone::Battlefield);
+    assert!(g.is_token(token));
+    let d = g.add_card(0, cid("Hero's Downfall"), Zone::Hand);
+    play(&mut g, d, false, &[obj(token)], &[]);
+    assert_eq!(life(&g, 0), 41);
+}
+
+#[test]
+fn this_or_another_subtype_you_control_dies() {
+    let mut g = game_with(|defs| {
+        let t = trigger(When::ThisOrAnotherYouControlDiesWithSubtype("Cat"), None, gain(1));
+        defs[cid("Savannah Lions")].triggers.push(t); // a Cat Soldier
+    });
+    let _a = g.add_card(0, cid("Savannah Lions"), Zone::Battlefield);
+    let b = g.add_card(0, cid("Savannah Lions"), Zone::Battlefield);
+    let angel = g.add_card(0, cid("Serra Angel"), Zone::Battlefield);
+    let theirs = g.add_card(1, cid("Savannah Lions"), Zone::Battlefield);
+    kill(&mut g, angel);
+    assert_eq!(life(&g, 0), 40, "not a Cat");
+    kill(&mut g, b);
+    assert_eq!(life(&g, 0), 42, "itself, and another Cat for the other");
+    kill(&mut g, theirs);
+    assert_eq!(life(&g, 0), 42, "not yours");
+}
+
+#[test]
+fn artifact_to_a_graveyard_and_to_an_opponents_graveyard() {
+    let mut g = game_with(blood_with(vec![
+        trigger(When::ArtifactToGraveyardFromBattlefield, None, gain(1)),
+        trigger(When::ArtifactToOpponentsGraveyardFromBattlefield, None, gain(10)),
+    ]));
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    let mine = g.add_card(0, cid("Sol Ring"), Zone::Battlefield);
+    let theirs = g.add_card(1, cid("Sol Ring"), Zone::Battlefield);
+    let decay = g.add_card(0, cid("Abrupt Decay"), Zone::Hand);
+    play(&mut g, decay, false, &[obj(theirs)], &[]);
+    assert_eq!(life(&g, 0), 51);
+    let decay = g.add_card(0, cid("Abrupt Decay"), Zone::Hand);
+    play(&mut g, decay, false, &[obj(mine)], &[]);
+    assert_eq!(life(&g, 0), 52, "any graveyard, but not an opponent's");
+}
+
+/// Any card in a graveyard.
+fn graveyard_card() -> Filter {
+    Filter {
+        players: false,
+        creatures: false,
+        planeswalkers: false,
+        graveyard: Some(false),
+        ..Filter::ANY
+    }
+}
+
+#[test]
+fn you_discard_fills_the_discarded_card_and_skips_opponents_discards() {
+    let mut exile = trigger(When::YouDiscard, None, vec![Effect::Exile(0)]);
+    exile.ability.targets = vec![Filter {
+        triggering: true,
+        ..graveyard_card()
+    }];
+    let mut g = game_with(|defs| {
+        blood_with(vec![exile.clone()])(defs);
+        let both = vec![
+            Effect::Discard { who: Who::You, n: 1 },
+            Effect::Discard {
+                who: Who::EachOpponent,
+                n: 1,
+            },
+        ];
+        defs[cid("Hero's Downfall")].spell = Some(Ability::new(vec![], both));
+    });
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    let mine = g.add_card(0, cid("Sol Ring"), Zone::Hand);
+    let theirs = g.add_card(1, cid("Sol Ring"), Zone::Hand);
+    let d = g.add_card(0, cid("Hero's Downfall"), Zone::Hand);
+    play(
+        &mut g,
+        d,
+        false,
+        &[],
+        &[Action::Discard(mine), Action::Discard(theirs)],
+    );
+    assert_eq!(
+        g.obj(mine).zone,
+        Zone::Exile,
+        "your discard, exiled by the trigger"
+    );
+    assert_eq!(g.obj(theirs).zone, Zone::Graveyard, "theirs doesn't trigger it");
+}
+
+#[test]
+fn you_cast_enchantment_and_artifact_spells() {
+    let mut g = game_with(blood_with(vec![
+        trigger(When::YouCastEnchantment, None, gain(1)),
+        trigger(When::YouCastArtifact, None, gain(10)),
+    ]));
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Hand);
+    play(&mut g, ring, false, &[], &[]);
+    assert_eq!(life(&g, 0), 50);
+    let blood = g.add_card(0, cid("Exquisite Blood"), Zone::Hand);
+    play(&mut g, blood, false, &[], &[]);
+    assert_eq!(life(&g, 0), 51, "only the one already out triggers");
+    g.add_card(0, cid("Plains"), Zone::Battlefield);
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Hand);
+    play(&mut g, lions, false, &[], &[]);
+    assert_eq!(life(&g, 0), 51, "a creature spell is neither");
+}
+
+#[test]
+fn plus_counters_put_on_this_triggers_every_time() {
+    let mut g = game_with(|defs| {
+        let t = trigger(When::PlusCountersPutOnThis, None, gain(1));
+        defs[cid("Serra Angel")].triggers.push(t);
+        let c = vec![Effect::Counters { slot: 0, n: 1 }];
+        let creature = Filter {
+            players: false,
+            planeswalkers: false,
+            ..Filter::ANY
+        };
+        defs[cid("Hero's Downfall")].spell = Some(Ability::new(vec![creature], c));
+    });
+    let angel = g.add_card(0, cid("Serra Angel"), Zone::Battlefield);
+    for _ in 0..2 {
+        let d = g.add_card(0, cid("Hero's Downfall"), Zone::Hand);
+        play(&mut g, d, false, &[obj(angel)], &[]);
+    }
+    assert_eq!(life(&g, 0), 42, "twice in one turn");
+}
+
+#[test]
+fn you_lose_life_carries_the_amount_lost() {
+    let mut g = game_with(|defs| {
+        blood_with(vec![trigger(When::YouLoseLife, None, vec![Effect::DrawAmount])])(defs);
+        let lose = vec![Effect::LoseLife { who: Who::You, n: 3 }];
+        defs[cid("Hero's Downfall")].spell = Some(Ability::new(vec![], lose));
+    });
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    let d = g.add_card(0, cid("Hero's Downfall"), Zone::Hand);
+    let n = g.players[0].hand.len();
+    play(&mut g, d, false, &[], &[]);
+    assert_eq!(g.players[0].hand.len(), n - 1 + 3);
+}
+
+#[test]
+fn control_subtype_at_least_counts_your_permanents() {
+    for (n, gained) in [(5, 1), (6, 0)] {
+        let mut g = game_with(ring_with(trigger(
+            When::Upkeep { your_turn_only: true },
+            Some(Condition::ControlSubtypeAtLeast("Plains", n)),
+            gain_one(),
+        )));
+        g.add_card(0, cid("Sol Ring"), Zone::Battlefield);
+        g.start_turn(5, 0);
+        to_main(&mut g);
+        assert_eq!(life(&g, 0), 40 + gained, "five Plains, at least {n}");
+    }
+}
+
+// ---- batch 4: suppressed and doubled triggers ----
+
+/// Savannah Lions, Sol Ring and Exquisite Blood with "When this enters, you gain 1 life" and "When
+/// this dies, you gain 10 life".
+#[allow(clippy::ptr_arg)] // passed where `game_with` takes `Fn(&mut Vec<CardDef>)`
+fn enters_and_dies(defs: &mut Vec<CardDef>) {
+    for name in ["Savannah Lions", "Sol Ring", "Exquisite Blood"] {
+        defs[cid(name)]
+            .triggers
+            .push(trigger(When::Enters, None, gain(1)));
+        defs[cid(name)].triggers.push(trigger(When::Dies, None, gain(10)));
+    }
+}
+
+#[test]
+fn creatures_entering_or_dying_dont_trigger_with_hushbringer() {
+    let mut g = game_with(enters_and_dies);
+    g.add_card(1, cid("Hushbringer"), Zone::Battlefield);
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Hand);
+    play(&mut g, lions, false, &[], &[]);
+    kill(&mut g, lions);
+    assert_eq!(life(&g, 0), 40, "a creature entering or dying");
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Hand);
+    play(&mut g, ring, false, &[], &[]);
+    assert_eq!(life(&g, 0), 41, "an artifact entering still triggers");
+}
+
+#[test]
+fn artifacts_and_creatures_entering_dont_trigger_with_doorkeeper_thrull() {
+    let mut g = game_with(enters_and_dies);
+    g.add_card(1, cid("Doorkeeper Thrull"), Zone::Battlefield);
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Hand);
+    play(&mut g, ring, false, &[], &[]);
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Hand);
+    play(&mut g, lions, false, &[], &[]);
+    assert_eq!(life(&g, 0), 40);
+    kill(&mut g, lions);
+    assert_eq!(life(&g, 0), 50, "dying still triggers");
+    let blood = g.add_card(0, cid("Exquisite Blood"), Zone::Hand);
+    play(&mut g, blood, false, &[], &[]);
+    assert_eq!(life(&g, 0), 51, "an enchantment entering still triggers");
+}
+
+#[test]
+fn elesh_norn_doubles_yours_and_stops_opponents_entering_triggers() {
+    let mut g = game_with(enters_and_dies);
+    g.add_card(0, cid("Elesh Norn, Mother of Machines"), Zone::Battlefield);
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Hand);
+    play(&mut g, lions, false, &[], &[]);
+    assert_eq!(life(&g, 0), 42, "twice");
+    let theirs = g.add_card(1, cid("Savannah Lions"), Zone::Hand);
+    g.start_turn(4, 1);
+    while !(g.step == Step::Main1 && g.pending == bolt_core::Pending::Priority(1)) {
+        act(&mut g, Action::PassPriority);
+    }
+    play(&mut g, theirs, false, &[], &[]);
+    assert_eq!(life(&g, 1), 40, "the opponent's doesn't trigger");
+}
+
+#[test]
+fn trigger_doublers_by_kind_of_source() {
+    use bolt_core::TriggerDoubler;
+    let mut g = game_with(|defs| {
+        enters_and_dies(defs);
+        defs[cid("Serra Angel")]
+            .triggers
+            .push(trigger(When::Enters, None, gain(100)));
+        defs[cid("Sol Ring")].doubles_triggers_of = Some(TriggerDoubler::CreaturePowerAtMost(2));
+    });
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Hand);
+    play(&mut g, ring, false, &[], &[]);
+    assert_eq!(life(&g, 0), 41, "not a creature: once");
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Hand);
+    play(&mut g, lions, false, &[], &[]);
+    assert_eq!(life(&g, 0), 43, "power 2: twice");
+    let angel = g.add_card(0, cid("Serra Angel"), Zone::Hand);
+    play(&mut g, angel, false, &[], &[]);
+    assert_eq!(life(&g, 0), 143, "power 4: once");
+    kill(&mut g, lions);
+    assert_eq!(
+        life(&g, 0),
+        163,
+        "its dies trigger looks back at its power: twice"
+    );
+}

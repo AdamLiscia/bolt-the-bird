@@ -2888,6 +2888,22 @@ impl Game {
         self.triggered.extend(fresh);
     }
 
+    /// "That card" / "that creature": the triggers added since `before` whose first target filter is
+    /// `triggering` get `id` (as it is now) in slot 0.
+    fn fill_triggering(&mut self, before: usize, id: ObjId) {
+        let zcc = self.obj(id).zcc;
+        for i in before..self.triggered.len() {
+            let refers = self
+                .ability_of(&self.triggered[i])
+                .targets
+                .first()
+                .is_some_and(|f| f.triggering);
+            if refers {
+                self.triggered[i].targets = vec![Chosen::Object(id, zcc)];
+            }
+        }
+    }
+
     /// CR 119.3: losing life, with "whenever an opponent loses life" triggers.
     fn lose_life(&mut self, p: PlayerId, n: i32) {
         self.players[p].life -= n;
@@ -2895,6 +2911,7 @@ impl Game {
         self.events.push(Event::LifeLost { player: p, amount: n });
         let before = self.triggered.len();
         self.fire(opponent(p), When::OpponentLosesLife, None);
+        self.fire(p, When::YouLoseLife, None);
         for t in &mut self.triggered[before..] {
             t.amount = n;
         }
@@ -2906,7 +2923,11 @@ impl Game {
         self.events.push(Event::LifeGained { player: p, amount: n });
         self.life_gains_this_turn[p] += 1;
         self.life_gained_this_turn[p] += n;
+        let before = self.triggered.len();
         self.fire(p, When::YouGainLife, None);
+        for t in &mut self.triggered[before..] {
+            t.amount = n; // "that much life" (Sanguine Bond)
+        }
         if self.life_gains_this_turn[p] == 1 {
             self.fire(
                 p,
@@ -3218,6 +3239,7 @@ impl Game {
     fn zone_triggers(&mut self, id: ObjId, from: Zone, to: Zone, last_controller: PlayerId) {
         let before = self.triggered.len();
         self.zone_triggers_once(id, from, to, last_controller);
+        self.suppress_zone_triggers(before, id, from, to);
         if to != Zone::Battlefield || from == Zone::Battlefield || self.obj(id).zone != Zone::Battlefield {
             return;
         }
@@ -3249,6 +3271,52 @@ impl Game {
         }
     }
 
+    /// Hushbringer, Doorkeeper Thrull, Elesh Norn: the triggers `id` moving from `from` to `to`
+    /// just caused (those added since `before`) don't trigger. A Saga's chapter abilities trigger
+    /// from its lore counter, not from it entering, and stay. A suppressor that's leaving at the
+    /// same time still applies (leaving looks back in time, CR 603.10a).
+    fn suppress_zone_triggers(&mut self, before: usize, id: ObjId, from: Zone, to: Zone) {
+        use crate::card::Suppression;
+        let entering = to == Zone::Battlefield && from != Zone::Battlefield;
+        let dying = from == Zone::Battlefield && to == Zone::Graveyard;
+        if (!entering && !dying) || self.triggered.len() == before {
+            return;
+        }
+        let t = self.types_of(id);
+        let mut sources: Vec<ObjId> = self.battlefield.clone();
+        if from == Zone::Battlefield {
+            sources.push(id);
+        }
+        for s in sources {
+            let Some(kind) = self.def_of(s).suppresses_triggers else {
+                continue;
+            };
+            if s != id && self.lost_abilities(s) {
+                continue;
+            }
+            let owner_side = self.obj(s).controller;
+            let all = match kind {
+                Suppression::CreaturesEnteringOrDying => t.creature,
+                Suppression::ArtifactsOrCreaturesEntering => entering && (t.artifact || t.creature),
+                Suppression::PermanentsEnteringForOpponents => false,
+            };
+            let opponents_only = kind == Suppression::PermanentsEnteringForOpponents && entering;
+            if !all && !opponents_only {
+                continue;
+            }
+            let new = self.triggered.split_off(before);
+            for item in new {
+                let chapter = matches!(item.kind, StackKind::Trigger(n)
+                    if matches!(self.def_of(item.source).triggers.get(n).map(|tr| tr.when), Some(When::Chapter(_))));
+                let not_a_permanents = self.obj(item.source).zone != Zone::Battlefield;
+                let keep = chapter || (opponents_only && (item.controller == owner_side || not_a_permanents));
+                if keep {
+                    self.triggered.push(item);
+                }
+            }
+        }
+    }
+
     fn zone_triggers_once(&mut self, id: ObjId, from: Zone, to: Zone, last_controller: PlayerId) {
         if to == Zone::Battlefield && from != Zone::Battlefield && self.is_saga(id) {
             self.add_lore(id); // CR 714.3a: a Saga enters with a lore counter
@@ -3263,6 +3331,9 @@ impl Game {
             for t in &mut self.triggered[before..] {
                 t.targets = vec![Chosen::Object(id, now)];
             }
+            let before = self.triggered.len();
+            self.fire(owner, When::YouDiscard, None);
+            self.fill_triggering(before, id);
         }
         if from == Zone::Battlefield && to != Zone::Battlefield {
             self.fire_source(id, When::LeavesBattlefield);
@@ -3370,6 +3441,29 @@ impl Game {
                 }
             }
             self.fire(last_controller, When::CreatureYouControlDies, Some(id));
+            self.fire(opponent(last_controller), When::OpponentCreatureDies, None);
+            self.fire(last_controller, When::AnotherCreatureYouControlDies, Some(id));
+            // "this creature or another [subtype] you control": as it last existed. (Its own
+            // death is collected with its other own triggers below.)
+            let last_subs = self.obj(id).last_subtypes.clone();
+            let had =
+                |g: &Game, s: &str| g.def_of(id).subtypes.iter().any(|x| x == s) || last_subs.contains(&s);
+            for any in self.permanents(last_controller).collect::<Vec<_>>() {
+                if self.lost_abilities(any) {
+                    continue;
+                }
+                let whens: Vec<When> = self.def_of(any).triggers.iter().map(|tr| tr.when).collect();
+                for (n, w) in whens.into_iter().enumerate() {
+                    if let When::ThisOrAnotherYouControlDiesWithSubtype(sub) = w {
+                        if had(self, sub) {
+                            self.triggered.push(StackItem {
+                                kind: StackKind::Trigger(n),
+                                ..Game::casting(any, last_controller)
+                            });
+                        }
+                    }
+                }
+            }
             // "a creature you control without flying": as it last existed (printed and counters).
             let flew = self
                 .def_of(id)
@@ -3458,6 +3552,16 @@ impl Game {
                 self.fire(0, When::AnotherNontokenCreatureDies, Some(id));
                 self.fire(1, When::AnotherNontokenCreatureDies, Some(id));
             }
+        }
+        if dies && self.types_of(id).artifact {
+            let owner = self.obj(id).owner;
+            self.fire(0, When::ArtifactToGraveyardFromBattlefield, Some(id));
+            self.fire(1, When::ArtifactToGraveyardFromBattlefield, Some(id));
+            self.fire(
+                opponent(owner),
+                When::ArtifactToOpponentsGraveyardFromBattlefield,
+                None,
+            );
         }
         if to == Zone::Battlefield {
             self.obj_mut(id).chosen_mode = None; // a new object chooses again
@@ -3579,6 +3683,7 @@ impl Game {
                 let n = bonus * self.doubling(controller);
                 self.obj_mut(id).counters += n;
                 self.counter_put_on(id); // CR 122.6: entering with counters counts
+                self.fire_source(id, When::PlusCountersPutOnThis);
             }
             if let Some((n, cond)) = def.enters_counters {
                 let controller = self.obj(id).controller;
@@ -3596,6 +3701,7 @@ impl Game {
                     let n = n * self.doubling(controller);
                     self.obj_mut(id).counters += n;
                     self.counter_put_on(id);
+                    self.fire_source(id, When::PlusCountersPutOnThis);
                 }
             }
             if def.types.land {
@@ -3764,7 +3870,10 @@ impl Game {
         };
         let whens: Vec<When> = self.def_of(id).triggers.iter().map(|tr| tr.when).collect();
         for (n, when) in whens.into_iter().enumerate() {
-            let own_death = when == When::CreatureYouControlDies && dies && self.types_of(id).creature;
+            let own_death = (when == When::CreatureYouControlDies
+                || matches!(when, When::ThisOrAnotherYouControlDiesWithSubtype(_)))
+                && dies
+                && self.types_of(id).creature;
             let (plus, stun, kw) = self.obj(id).last_counters;
             let had_counters = plus != 0 || stun > 0 || kw != Keywords::NONE;
             if when == When::CreatureYouControlWithCountersDies
@@ -7236,6 +7345,16 @@ impl Game {
             }
         }
         let before = self.triggered.len();
+        if self.types_of(card).enchantment {
+            self.fire(p, When::YouCastEnchantment, None);
+        }
+        if self.types_of(card).artifact {
+            self.fire(p, When::YouCastArtifact, None);
+        }
+        for t in &mut self.triggered[before..] {
+            t.extra = Some(card); // "that spell"
+        }
+        let before = self.triggered.len();
         self.fire(p, When::YouCast, None);
         for t in &mut self.triggered[before..] {
             t.extra = t.extra.or(Some(card)); // "that spell" (Teval)
@@ -7986,6 +8105,7 @@ impl Game {
                 self.obj_mut(id).counter_trigger_turn = self.turn;
             }
         }
+        self.fire_source(id, When::PlusCountersPutOnThis);
     }
 
     /// Liliana's −9: walk the permanent types in order, asking which one to keep of each.
@@ -14496,6 +14616,13 @@ impl Game {
                     self.ask(p, Decision::ReturnLandOrSacrifice { source: src, sub });
                 }
             }
+            Effect::LoseLifeAmount(who) => {
+                if item.amount > 0 {
+                    for p in self.players_for(item, legal, who) {
+                        self.lose_life(p, item.amount);
+                    }
+                }
+            }
         }
     }
 
@@ -14585,6 +14712,12 @@ impl Game {
                 .permanents(controller)
                 .any(|x| self.is_commander(x) && self.obj(x).owner == controller),
             Some(Condition::NotYourTurn) => self.active != controller,
+            Some(Condition::ControlSubtypeAtLeast(sub, n)) => {
+                self.permanents(controller)
+                    .filter(|&x| self.has_subtype(x, sub))
+                    .count()
+                    >= *n as usize
+            }
         }
     }
 
@@ -14794,11 +14927,70 @@ impl Game {
         self.triggered_scanned = self.triggered.len();
     }
 
+    /// Harmonic Prodigy, Delney: each waiting trigger in `from..to` (the ones not looked at yet, before
+    /// Roaming Throne added its copies) of a source of the doubler's kind that the doubler's
+    /// controller controls triggers an additional time, once per doubler.
+    fn double_for_trigger_doublers(&mut self, from: usize, to: usize) {
+        use crate::card::TriggerDoubler;
+        let doublers: Vec<(ObjId, PlayerId, TriggerDoubler)> = self
+            .battlefield
+            .iter()
+            .copied()
+            .filter(|&d| !self.lost_abilities(d))
+            .filter_map(|d| {
+                self.def_of(d)
+                    .doubles_triggers_of
+                    .map(|k| (d, self.obj(d).controller, k))
+            })
+            .collect();
+        if doublers.is_empty() {
+            self.triggered_scanned = self.triggered.len();
+            return;
+        }
+        for i in from..to.min(self.triggered.len()) {
+            let item = self.triggered[i].clone();
+            if !matches!(item.kind, StackKind::Trigger(_)) {
+                continue;
+            }
+            let s = item.source;
+            let on_field = self.obj(s).zone == Zone::Battlefield;
+            // As it is, or as it last existed if it left (a dies trigger looks back).
+            let creature = self.types_of(s).creature || (!on_field && self.def_of(s).types.creature);
+            let power = if on_field {
+                self.power(s)
+            } else {
+                self.obj(s).last_power
+            };
+            let n = doublers
+                .iter()
+                .filter(|&&(d, c, k)| {
+                    c == item.controller
+                        && self.obj(s).controller == c
+                        && match k {
+                            TriggerDoubler::ShamanOrOtherWizard => {
+                                self.has_subtype(s, "Shaman") || (s != d && self.has_subtype(s, "Wizard"))
+                            }
+                            TriggerDoubler::CreaturePowerAtMost(n) => creature && power <= n,
+                        }
+                })
+                .count();
+            for _ in 0..n {
+                self.triggered.push(item.clone());
+            }
+        }
+        self.triggered_scanned = self.triggered.len();
+    }
+
     /// CR 603.3: triggered abilities go on the stack the next time a player would get priority,
     /// active player's first (APNAP, CR 101.4). Returns false if a target choice is now pending.
     fn put_triggers_on_stack(&mut self, then: PlayerId) -> bool {
         self.flush_graveyard_leaves();
+        let (scan_from, scan_to) = (
+            self.triggered_scanned.min(self.triggered.len()),
+            self.triggered.len(),
+        );
         self.double_for_thrones();
+        self.double_for_trigger_doublers(scan_from, scan_to);
         let active = self.active;
         self.triggered.sort_by_key(|t| t.controller != active);
         while !self.triggered.is_empty() {

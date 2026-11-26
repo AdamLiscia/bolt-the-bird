@@ -453,6 +453,8 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         top_spells_creatures: false,
         blitz: None,
         soulbond_combat_copies: false,
+        suppresses_triggers: None,
+        doubles_triggers_of: None,
     };
     def.color_identity = color_identity(o);
     def.phyrexian = phyrexian;
