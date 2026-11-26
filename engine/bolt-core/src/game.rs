@@ -7158,6 +7158,11 @@ impl Game {
     }
 
     fn tap_for_mana(&mut self, p: PlayerId, id: ObjId, c: u8) {
+        if self.lacks_chapter_mana(id) && !self.blood_mooned(id) {
+            // Urza's Saga before chapter I: not a mana ability yet, so nothing taps.
+            self.pending = Pending::Priority(p);
+            return;
+        }
         let made: Vec<ManaSource> = self
             .untapped_sources(p)
             .into_iter()
@@ -8512,6 +8517,8 @@ impl Game {
                 (self.can_tap(id) || self.def_of(id).mana_ext.sac_mana_no_tap && !self.lost_abilities(id))
                     && !self.activation_stopped(id)
                     && !self.abolished(p, id)
+                    // Urza's Saga: no "{T}: Add {C}" before chapter I (Blood Moon's {R} still is).
+                    && (!self.lacks_chapter_mana(id) || self.blood_mooned(id))
             })
             .filter_map(|id| {
                 if self.blood_mooned(id) {

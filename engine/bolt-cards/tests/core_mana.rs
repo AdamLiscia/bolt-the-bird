@@ -2203,3 +2203,25 @@ fn delve_as_a_keyword_exiles_graveyard_cards_for_generic_mana() {
     assert_eq!(g.obj(c).zone, Zone::Graveyard, "{{B}} and three delved cards");
     assert!(gy.iter().all(|&x| g.obj(x).zone == Zone::Exile));
 }
+
+#[test]
+fn a_chapter_granted_mana_ability_makes_no_mana_before_its_chapter() {
+    use batch9::*;
+    let mut saga = colorless_land("Saga");
+    saga.subsystems.chapter_mana = Some(1);
+    let mut g = batch6_board(vec![saga, draw_spell("One", "{1}")], 0);
+    let s = put(&mut g, 0, 25);
+    assert!(
+        g.mana_sources(0).iter().all(|m| m.0 != s),
+        "no {{T}}: Add {{C}} yet"
+    );
+    let c = g.add_card(0, 26, Zone::Hand);
+    assert!(!g.legal_actions().contains(&Action::Cast(c)));
+    let o = g.obj(s).zcc;
+    g.chapter_grants.push((s, o, 1));
+    assert!(g.mana_sources(0).iter().any(|m| m.0 == s), "chapter I resolved");
+    act(&mut g, Action::Cast(c));
+    settle(&mut g);
+    assert!(g.obj(s).tapped);
+    assert_eq!(g.obj(c).zone, Zone::Graveyard);
+}
