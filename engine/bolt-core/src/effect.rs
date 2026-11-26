@@ -2042,6 +2042,10 @@ pub enum Condition {
     /// Its controller controls at least `.1` permanents with subtype `.0` (Revel in Riches: ten or
     /// more Treasures).
     ControlSubtypeAtLeast(&'static str, u32),
+    /// An opponent lost at least this much life this turn (Bloodchief Ascension: 2).
+    OpponentLostLifeAtLeast(i32),
+    /// The source has at least this many quest counters (Bloodchief Ascension: three).
+    SourceQuestCountersAtLeast(i32),
 }
 
 /// A spell's effect or a triggered ability: target slots, then effects in order.
@@ -2361,6 +2365,71 @@ pub enum When {
     /// "Whenever another creature you control of this color enters" (a `Color` index: Ivy Lane
     /// Denizen, green).
     AnotherCreatureYouControlEntersWithColor(usize),
+    /// "Whenever you cast a noncreature spell with mana value N or greater" (Jin-Gitaxias: 3).
+    YouCastNoncreatureMvAtLeast(u32),
+    /// "Whenever a player casts their first multicolored spell each turn", for its controller's own
+    /// spell (Zenith Chronicler pairs it with `OpponentCastsFirstMulticolored`).
+    YouCastFirstMulticolored,
+    /// The opponent's first multicolored spell each turn (Zenith Chronicler).
+    OpponentCastsFirstMulticolored,
+    /// "Whenever an opponent casts their first noncreature spell each turn" (Shadow in the Warp).
+    OpponentCastsFirstNoncreature,
+    /// "Whenever you cast a legendary spell" (Rona, Herald of Invasion).
+    YouCastLegendary,
+    /// "Whenever you cast a [color] spell" (a `Color` index; K'rrik: black).
+    YouCastColor(usize),
+    /// "Whenever a player casts their second spell each turn" (Ledger Shredder).
+    PlayerCastsSecondSpell,
+    /// Magecraft: "Whenever you cast or copy an instant or sorcery spell" (the spell in `extra`).
+    YouCastOrCopyInstantOrSorcery,
+    /// "Whenever an opponent casts a spell from anywhere other than their hand" (Ghostly Pilferer).
+    OpponentCastsNotFromHand,
+    /// "Whenever a creature deals damage to you": that creature in slot 0 (No Mercy: destroy it).
+    CreatureDealsDamageToYou,
+    /// "Whenever a creature you control deals combat damage to a player": that creature in slot 0
+    /// (Sphere Grid).
+    YourCreatureDealsCombatDamageToPlayerIt,
+    /// "Whenever one or more [subtype]s you control deal damage to a player": once for a combat
+    /// damage step, once for each noncombat damage event (Francisco: Pirates).
+    YourSubtypeDealDamageToPlayer(&'static str),
+    /// "Whenever this creature deals damage to an opponent" (Looter il-Kor), combat or not.
+    DealsDamageToOpponent,
+    /// "Whenever a [subtype] attacks", anyone's: the attacker in slot 0 (Najeela: Warrior).
+    SubtypeAttacks(&'static str),
+    /// "Whenever this becomes untapped": in an untap step or by an effect (Ghostly Pilferer).
+    BecomesUntapped,
+    /// An Aura's grant: enchanted creature has "Whenever this creature becomes untapped, ... This
+    /// ability triggers only once each turn." (Well Rested): on the Aura, once each turn.
+    EnchantedBecomesUntappedOnceEachTurn,
+    /// "Whenever a card is put into an opponent's graveyard from anywhere" (Bloodchief Ascension;
+    /// tokens aren't cards).
+    CardToOpponentsGraveyard,
+    /// "Whenever ... a creature card is put into a graveyard from anywhere other than the
+    /// battlefield" (Syr Konrad), anyone's.
+    CreatureCardToGraveyardNotFromBattlefield,
+    /// "Whenever ... a creature card leaves your graveyard" (Syr Konrad).
+    CreatureCardLeavesYourGraveyard,
+    /// "Whenever a creature of the chosen type dies" (Species Specialist: the source's
+    /// `chosen_type`), anyone's, as it last existed.
+    CreatureOfChosenTypeDies,
+    /// A delayed "whenever a creature dies this turn" (Massacre Girl), for
+    /// `Effect::DelayedThisTurn`.
+    CreatureDiesThisTurn,
+    /// "Whenever you sacrifice a [color] creature" (a `Color` index; Savra: black, green).
+    YouSacrificeCreatureOfColor(usize),
+    /// "Whenever you discard one or more cards": one trigger for the discards before the next
+    /// priority, the count in its amount (Cryptcaller Chariot: "that many").
+    YouDiscardOneOrMore,
+    /// "Whenever you sacrifice one or more [subtype]s": one trigger for the sacrifices before the
+    /// next priority, the count in its amount (Camellia: Foods).
+    YouSacrificeOneOrMoreSubtype(&'static str),
+    /// "Whenever a creature you control with flying enters": that creature in slot 0 when the first
+    /// filter is `triggering` (Dragon Tempest).
+    CreatureWithFlyingYouControlEnters,
+    /// "Whenever a creature an opponent controls blocks" (Benefactor's Draught, delayed this turn).
+    OpponentCreatureBlocks,
+    /// "Whenever an opponent searches their library" (Wan Shi Tong).
+    OpponentSearchesLibrary,
 }
 
 #[derive(Clone, Debug, PartialEq)]

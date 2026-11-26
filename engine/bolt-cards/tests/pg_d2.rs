@@ -1479,3 +1479,171 @@ fn wound_reflection_doubles_the_opponents_loss_at_end_step() {
     }
     assert_eq!(g.players[1].life, 32);
 }
+
+// ---- Core: triggers, batch 6 (cast, copy, damage, graveyard and batched emits) ----
+
+/// Passes to player 0's second main phase, answering blocks with none and may-triggers with yes.
+fn through_combat(g: &mut Game) {
+    while g.step != Step::Main2 {
+        let a = match g.pending {
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            Pending::Decide(_) => Action::Yes,
+            _ => Action::PassPriority,
+        };
+        act(g, a);
+    }
+}
+
+#[test]
+fn witherbloom_apprentice_drains_on_an_instant() {
+    let mut g = table();
+    put(&mut g, 0, "Witherbloom Apprentice");
+    let lions = put(&mut g, 1, "Savannah Lions");
+    kill(&mut g, lions);
+    assert_eq!(g.players[1].life, 39);
+    assert_eq!(g.players[0].life, 41);
+    cast_settle(&mut g, "Sol Ring");
+    assert_eq!(g.players[1].life, 39, "an artifact spell isn't magecraft");
+}
+
+#[test]
+fn glimpse_of_nature_draws_for_each_creature_spell_this_turn() {
+    let mut g = table();
+    cast_settle(&mut g, "Glimpse of Nature");
+    let n = g.players[0].library.len();
+    cast_settle(&mut g, "Savannah Lions");
+    cast_settle(&mut g, "Savannah Lions");
+    cast_settle(&mut g, "Sol Ring");
+    assert_eq!(g.players[0].library.len(), n - 2);
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    let n = g.players[0].library.len();
+    cast_settle(&mut g, "Savannah Lions");
+    assert_eq!(g.players[0].library.len(), n, "only that turn");
+}
+
+#[test]
+fn zenith_chronicler_draws_for_the_other_player_on_a_first_multicolored_spell() {
+    let mut g = table();
+    put(&mut g, 0, "Zenith Chronicler");
+    let n = g.players[1].library.len();
+    for _ in 0..2 {
+        let ring = put(&mut g, 1, "Sol Ring");
+        let decay = hand(&mut g, 0, "Abrupt Decay");
+        play(&mut g, decay, false, &[obj(ring)], &[]);
+    }
+    assert_eq!(
+        g.players[1].library.len(),
+        n - 1,
+        "the first multicolored spell only"
+    );
+}
+
+#[test]
+fn no_mercy_destroys_a_creature_that_damages_you() {
+    let mut g = table();
+    put(&mut g, 1, "No Mercy");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    attack(&mut g, &[lions]);
+    through_combat(&mut g);
+    assert_eq!(g.players[1].life, 38);
+    assert!(in_graveyard(&g, 0, lions));
+}
+
+#[test]
+fn francisco_explores_when_a_pirate_deals_damage_to_a_player() {
+    let mut g = table();
+    let f = put(&mut g, 0, "Francisco, Fowl Marauder");
+    assert!(g.def_of(f).cant_block);
+    g.objects[f.0 as usize].counters = 1; // a 1/2 Pirate
+    let hand_before = g.players[0].hand.len();
+    attack(&mut g, &[f]);
+    through_combat(&mut g);
+    assert_eq!(g.players[1].life, 39);
+    // The draw step drew one; the explore revealed a Plains (a land) and took it.
+    assert_eq!(g.players[0].hand.len(), hand_before + 2);
+}
+
+#[test]
+fn syr_konrad_pings_for_deaths_discards_and_cards_leaving_your_graveyard() {
+    let mut g = table();
+    put(&mut g, 0, "Syr Konrad, the Grim");
+    let lions = put(&mut g, 1, "Savannah Lions");
+    kill(&mut g, lions);
+    assert_eq!(g.players[1].life, 39, "another creature died");
+    let mine = hand(&mut g, 0, "Savannah Lions");
+    loot_away(&mut g, mine);
+    assert_eq!(g.players[1].life, 38, "a creature card from anywhere else");
+    let ring = hand(&mut g, 0, "Sol Ring");
+    loot_away(&mut g, ring);
+    assert_eq!(g.players[1].life, 38, "not a creature card");
+    let lib = g.players[1].library.len();
+    let k = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "Syr Konrad, the Grim")
+        .unwrap();
+    act(&mut g, Action::Activate(k, 0));
+    settle(&mut g, Target::Player(1));
+    assert_eq!(g.players[1].library.len(), lib - 1, "each player mills");
+}
+
+#[test]
+fn species_specialist_draws_when_the_chosen_type_dies() {
+    let mut g = table();
+    let s = put(&mut g, 0, "Species Specialist");
+    g.objects[s.0 as usize].chosen_type = Some("Cat".to_string());
+    let n = g.players[0].library.len();
+    let lions = put(&mut g, 1, "Savannah Lions");
+    kill(&mut g, lions);
+    assert_eq!(g.players[0].library.len(), n - 1);
+    let angel = put(&mut g, 1, "Serra Angel");
+    kill(&mut g, angel);
+    assert_eq!(g.players[0].library.len(), n - 1, "not a Cat");
+}
+
+#[test]
+fn bloodchief_ascension_quests_on_life_lost_then_drains_on_cards_to_their_graveyard() {
+    let mut g = table();
+    let b = put(&mut g, 0, "Bloodchief Ascension");
+    let lions = put(&mut g, 1, "Savannah Lions");
+    kill(&mut g, lions);
+    assert_eq!(g.players[1].life, 40, "no quest counters yet");
+    let angel = put(&mut g, 0, "Serra Angel");
+    let f = hand(&mut g, 0, "Soul's Fire");
+    play(&mut g, f, false, &[obj(angel), Target::Player(1)], &[]);
+    while g.turn == 3 {
+        let legal = g.legal_actions();
+        let a = match g.pending {
+            Pending::DeclareAttackers(_) => Action::FinishAttacks,
+            _ if legal.contains(&Action::Yes) => Action::Yes,
+            _ if matches!(legal.first(), Some(Action::Discard(_))) => legal[0], // to hand size
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.obj(b).quest, 1);
+    g.objects[b.0 as usize].quest = 3;
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    let lions = put(&mut g, 1, "Savannah Lions");
+    let life = g.players[1].life;
+    kill(&mut g, lions);
+    assert_eq!(g.players[1].life, life - 2);
+    assert_eq!(g.players[0].life, 42);
+}
+
+#[test]
+fn cryptcaller_chariot_makes_tapped_zombies_for_discards() {
+    let mut g = table();
+    put(&mut g, 0, "Cryptcaller Chariot");
+    let c = hand(&mut g, 0, "Sol Ring");
+    loot_away(&mut g, c);
+    let z = tokens(&g, 0, "Zombie");
+    assert_eq!(z.len(), 1);
+    assert!(g.obj(z[0]).tapped);
+    assert_eq!((g.power(z[0]), g.toughness(z[0])), (2, 2));
+}
