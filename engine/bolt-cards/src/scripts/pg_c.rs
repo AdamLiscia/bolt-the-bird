@@ -1194,6 +1194,57 @@ pub fn script(name: &str) -> Option<Script> {
                 loyalty(d, -2, Ability::new(vec![], vec![Effect::NextCreatureSpellThisTurn(0)]));
             },
         ),
+        "Delina, Wild Mage" => s(
+            &[
+                "Whenever Delina attacks, choose target creature you control, then roll a d20.",
+                "1—14 | Create a tapped and attacking token that's a copy of that creature, except it's not legendary and it has \"At end of combat, exile this token.\"",
+                "15—20 | Create one of those tokens. You may roll again.",
+            ],
+            |d, _| on(d, When::Attacks, vec![YOUR_CREATURE], vec![Effect::DelinaRoll(0)]),
+        ),
+        "Jaxis, the Troublemaker" => s(
+            &[
+                "{R}, {T}, Discard a card: Create a token that's a copy of another target creature you control. It gains haste and \"When this token dies, draw a card.\" Sacrifice it at the beginning of the next end step. Activate only as a sorcery.",
+                "Blitz {1}{R}",
+            ],
+            |d, _| {
+                on(d, When::Never, vec![], vec![draw(1)]); // the granted "when this dies, draw a card"
+                let other = Filter { other: true, ..YOUR_CREATURE };
+                let n = activated(d, "{R}", true, vec![other], vec![Effect::CopyHasteDiesDrawSacrifice { slot: 0, trigger: 0 }]);
+                d.activated[n].discard_any_card = true;
+                d.activated[n].sorcery = true;
+                d.alt_cost = Some((ManaCost::parse("{1}{R}").expect("cost"), 0));
+                d.blitz = Some(0);
+            },
+        ),
+        "Zopandrel, Hunger Dominus" => s(
+            &[
+                "At the beginning of each combat, double the power and toughness of each creature you control until end of turn.",
+                "{G/P}{G/P}, Sacrifice two other creatures: Put an indestructible counter on Zopandrel.",
+            ],
+            |d, _| {
+                on(d, When::BeginCombatEachTurn, vec![], vec![Effect::DoublePowerToughnessAll]);
+                // {G/P}{G/P}: each pip {G} or 2 life (one ability per way to pay).
+                for (cost, life) in [("{G}{G}", 0), ("{G}", 2), ("", 4)] {
+                    let n = activated(d, cost, false, vec![], vec![Effect::KeywordCounterSelf(Keywords::INDESTRUCTIBLE)]);
+                    d.activated[n].sacrifice_two_others = true;
+                    d.activated[n].life = life;
+                }
+            },
+        ),
+        "Mirage Phalanx" => s(
+            &[
+                "Soulbond",
+                "As long as Mirage Phalanx is paired with another creature, each of those creatures has \"At the beginning of combat on your turn, create a token that's a copy of this creature, except it has haste and loses soulbond. Exile it at end of combat.\"",
+            ],
+            |d, _| {
+                d.soulbond_combat_copies = true;
+                may(d, When::Enters, vec![], vec![Effect::SoulbondPairOnEnter]);
+                let it = Filter { triggering: true, ..CREATURE };
+                may(d, When::AnotherCreatureYouControlEnters, vec![it], vec![Effect::SoulbondPairWith(0)]);
+                on(d, When::BeginCombatYourTurn, vec![], vec![Effect::PhalanxCopies]);
+            },
+        ),
         _ => None,
     }
 }
@@ -1340,4 +1391,8 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Cursed Mirror",
     "Wand of Wonder",
     "Vivien, Monsters' Advocate",
+    "Delina, Wild Mage",
+    "Jaxis, the Troublemaker",
+    "Zopandrel, Hunger Dominus",
+    "Mirage Phalanx",
 ];

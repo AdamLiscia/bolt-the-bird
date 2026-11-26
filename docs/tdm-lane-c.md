@@ -603,3 +603,11 @@ Core: `CardDef::{copy_until_eot_haste (with enter_as_copy), top_spells_creatures
 `Effect::{Hideaway, PlayHideaway, WandOfWonder, CreateTokenWithKeywordCounterChoice, NextCreatureSpellThisTurn,
 SearchCreatureLesserManaValue}`. A hideaway card is played through `playable` and `cast_free` for the turn (a land
 uses a land drop). Wand of Wonder: one opponent exiles one instant or sorcery, so X only caps it at one.
+
+Etali batch 7 (4): Delina, Wild Mage, Jaxis, the Troublemaker, Zopandrel, Hunger Dominus, Mirage Phalanx.
+Core: `CardDef::{blitz (with alt_cost), soulbond_combat_copies}`, `Activated::{discard_any_card, sacrifice_two_others}`,
+`Object::{exile_end_combat, lost_soulbond}`, `Decision::DelinaAgain`, `Effect::{DelinaRoll, CopyHasteDiesDrawSacrifice,
+KeywordCounterSelf, PhalanxCopies}`, `Game::{token_copy_of, delina_roll}`.
+Shortcuts: Zopandrel's second sacrifice is the engine's pick (your other creature with the least power); its
+{G/P}{G/P} is three abilities ({G}{G}; {G} and 2 life; 4 life). Mirage Phalanx's copy of each paired creature comes
+from Phalanx's own trigger (one trigger for both).
