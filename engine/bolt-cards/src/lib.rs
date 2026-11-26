@@ -480,6 +480,13 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         suppresses_triggers: None,
         doubles_triggers_of: None,
         protection_chosen_card_type: false,
+        skip_draw_step: false,
+        creatures_untap_on_others_untap: false,
+        teeg_lock: false,
+        max_hand_plus: 0,
+        opponents_max_hand_minus: 0,
+        win_on_empty_draw: false,
+        extra_upkeep_for_enchanted: false,
     };
     def.color_identity = color_identity(o);
     def.phyrexian = phyrexian;
