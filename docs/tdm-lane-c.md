@@ -713,3 +713,8 @@ Unsupported: 46 of 48. Batch 1 (11): Supreme Verdict, Idyllic Tutor, Talisman of
 Vista, Dovin's Veto, Eel Umbra, Crashing Drawbridge, Heliod's Pilgrim, Galadriel's Dismissal, Mirrormade.
 Core: `Effect::{PhaseOutSlot, PhaseOutCreaturesOfPlayer}` (they phase in on their controller's untap step, unlike
 `PhaseOut`, which uses the caster's), `ZonesExt::copy_artifact_or_enchantment` (in `copy_option`; Auras excluded).
+
+## Olivia, Crimson Bride (queue.json, lane C)
+
+Unsupported: 41 of 41. Batch 1 (9, no new core): Rakdos Signet, Wayfarer's Bauble, Faithless Looting, Tormenting
+Voice, Electric Revelation, Seize the Spoils, Unexpected Windfall, Cathartic Pyre, Foreboding Ruins.

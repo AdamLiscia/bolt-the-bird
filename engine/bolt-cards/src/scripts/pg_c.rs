@@ -1760,6 +1760,74 @@ pub fn script(name: &str) -> Option<Script> {
             d.enter_as_copy = true;
             d.zones.copy_artifact_or_enchantment = true;
         }),
+        // ---- Olivia, Crimson Bride (queue.json, lane C), batch 1: no new core ----
+        "Rakdos Signet" => s(&["{1}, {T}: Add {B}{R}."], |d, _| {
+            let br = [ManaSource::of(&[Color::Black]), ManaSource::of(&[Color::Red])];
+            d.paid_mana = Some((ManaCost::parse("{1}").expect("a mana cost"), br));
+        }),
+        "Wayfarer's Bauble" => s(
+            &["{2}, {T}, Sacrifice this artifact: Search your library for a basic land card, put that card onto the battlefield tapped, then shuffle."],
+            |d, _| {
+                let n = activated(d, "{2}", true, vec![], vec![search(SearchFor::BasicLand, SearchTo::Battlefield { tapped: true })]);
+                d.activated[n].sacrifice_self = true;
+            },
+        ),
+        "Faithless Looting" => s(&["Draw two cards, then discard two cards.", "Flashback {2}{R}"], |d, _| {
+            d.flashback = ManaCost::parse("{2}{R}");
+            spell(d, vec![], vec![draw(2), discard(2)]);
+        }),
+        "Tormenting Voice" => s(&["As an additional cost to cast this spell, discard a card.", "Draw two cards."], |d, _| {
+            d.extra_cost = Some(ExtraCost::Discard);
+            spell(d, vec![], vec![draw(2)]);
+        }),
+        "Electric Revelation" => s(
+            &["As an additional cost to cast this spell, discard a card.", "Draw two cards.", "Flashback {3}{R}"],
+            |d, _| {
+                d.extra_cost = Some(ExtraCost::Discard);
+                d.flashback = ManaCost::parse("{3}{R}");
+                spell(d, vec![], vec![draw(2)]);
+            },
+        ),
+        "Seize the Spoils" => s(
+            &["As an additional cost to cast this spell, discard a card.", "Draw two cards and create a Treasure token."],
+            |d, t| {
+                d.extra_cost = Some(ExtraCost::Discard);
+                spell(d, vec![], vec![draw(2), Effect::CreateToken { who: Who::You, def: t.treasure, n: 1 }]);
+            },
+        ),
+        "Unexpected Windfall" => s(
+            &["As an additional cost to cast this spell, discard a card.", "Draw two cards and create two Treasure tokens."],
+            |d, t| {
+                d.extra_cost = Some(ExtraCost::Discard);
+                spell(d, vec![], vec![draw(2), Effect::CreateToken { who: Who::You, def: t.treasure, n: 2 }]);
+            },
+        ),
+        "Cathartic Pyre" => s(
+            &[
+                "Choose one —",
+                "• Cathartic Pyre deals 3 damage to target creature or planeswalker.",
+                "• Discard up to two cards, then draw that many cards.",
+            ],
+            |d, _| {
+                modes(
+                    d,
+                    vec![
+                        Ability::new(vec![CREATURE_OR_PLANESWALKER], vec![damage(3, Recipient::Target(0))]),
+                        Ability::new(vec![], vec![Effect::DiscardUpToThenDrawThatMany(2)]),
+                    ],
+                )
+            },
+        ),
+        "Foreboding Ruins" => s(
+            &[
+                "As this land enters, you may reveal a Swamp or Mountain card from your hand. If you don't, this land enters tapped.",
+                "{T}: Add {B} or {R}.",
+            ],
+            |d, _| {
+                d.enters_tapped_unless_reveal = Some(["Swamp", "Mountain"]);
+                d.mana = Some(ManaSource::of(&[Color::Black, Color::Red]));
+            },
+        ),
         _ => None,
     }
 }
@@ -1975,4 +2043,13 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Heliod's Pilgrim",
     "Galadriel's Dismissal",
     "Mirrormade",
+    "Rakdos Signet",
+    "Wayfarer's Bauble",
+    "Faithless Looting",
+    "Tormenting Voice",
+    "Electric Revelation",
+    "Seize the Spoils",
+    "Unexpected Windfall",
+    "Cathartic Pyre",
+    "Foreboding Ruins",
 ];

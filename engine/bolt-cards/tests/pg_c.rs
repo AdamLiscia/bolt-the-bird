@@ -3388,3 +3388,85 @@ fn mirrormade_copies_an_artifact() {
     resolve_all(&mut g, &[]);
     assert_eq!(g.def_of(mm).name, "Sol Ring");
 }
+
+// ---- Olivia, Crimson Bride, batch 1 ----
+
+#[test]
+fn rakdos_signet_pays_for_a_black_red_spell() {
+    // {B}{R} from a Swamp and the Signet: the Swamp pays the Signet's {1}.
+    let mut g = game(&["Swamp", "Rakdos Signet"]);
+    let rc = hand(&mut g, 0, "Cathartic Pyre"); // {1}{R}
+    assert!(g.legal_actions().contains(&Action::Cast(rc)));
+}
+
+#[test]
+fn wayfarers_bauble_fetches_a_basic_tapped() {
+    let mut g = table();
+    let wb = put(&mut g, 0, "Wayfarer's Bauble");
+    let forest = top(&mut g, "Forest");
+    act(&mut g, Action::Activate(wb, 0));
+    resolve_all(&mut g, &[Action::Pick(forest)]);
+    assert_eq!(g.obj(forest).zone, Zone::Battlefield);
+    assert!(g.obj(forest).tapped);
+}
+
+#[test]
+fn faithless_looting_draws_two_discards_two_and_has_flashback() {
+    let mut g = table();
+    let fl = hand(&mut g, 0, "Faithless Looting");
+    let n = g.players[0].hand.len();
+    act(&mut g, Action::Cast(fl));
+    first_answers(&mut g);
+    assert_eq!(g.players[0].hand.len(), n - 1);
+    assert!(g.legal_actions().contains(&Action::CastFlashback(fl)));
+}
+
+#[test]
+fn the_discard_to_draw_spells_draw_two() {
+    for name in [
+        "Tormenting Voice",
+        "Electric Revelation",
+        "Seize the Spoils",
+        "Unexpected Windfall",
+    ] {
+        let mut g = table();
+        let c = hand(&mut g, 0, name);
+        let junk = hand(&mut g, 0, "Forest");
+        let n = g.players[0].hand.len();
+        act(&mut g, Action::CastWith(c, junk));
+        resolve_all(&mut g, &[]);
+        assert_eq!(g.obj(junk).zone, Zone::Graveyard, "{name}");
+        assert_eq!(
+            g.players[0].hand.len(),
+            n,
+            "{name}: two cast or discarded, two drawn"
+        );
+    }
+    let mut g = table();
+    let c = hand(&mut g, 0, "Unexpected Windfall");
+    let junk = hand(&mut g, 0, "Forest");
+    act(&mut g, Action::CastWith(c, junk));
+    resolve_all(&mut g, &[]);
+    assert_eq!(tokens(&g, 0, "Treasure").len(), 2);
+}
+
+#[test]
+fn cathartic_pyre_deals_three_or_cycles_two() {
+    let mut g = table();
+    let palin = put(&mut g, 1, "Palinchron");
+    let cp = hand(&mut g, 0, "Cathartic Pyre");
+    act(&mut g, Action::CastModal(cp, 0));
+    act(&mut g, Action::Target(obj(palin)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(palin).damage, 3);
+}
+
+#[test]
+fn foreboding_ruins_enters_untapped_revealing_a_swamp() {
+    let mut g = table();
+    hand(&mut g, 0, "Swamp");
+    let fr = hand(&mut g, 0, "Foreboding Ruins");
+    act(&mut g, Action::PlayLand(fr));
+    first_answers(&mut g);
+    assert!(!g.obj(fr).tapped);
+}
