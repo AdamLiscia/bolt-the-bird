@@ -102,6 +102,20 @@ pub struct Filter {
     pub legendary_only: bool,
     /// Artifact or creature spells only (Scatter Ray), with `spells`.
     pub spell_artifact_or_creature: bool,
+    /// Nonartifact permanents or spells only (Go for the Throat).
+    pub nonartifact: bool,
+    /// Only permanents or spells of this color, WUBRG index (Red Elemental Blast: blue).
+    pub color: Option<u8>,
+    /// Only permanents or spells that aren't this color (Doom Blade: nonblack).
+    pub not_color: Option<u8>,
+    /// Monocolored permanents or spells only (Sultai Charm).
+    pub monocolored: bool,
+    /// Spells with at least this mana value, X included (Disdainful Stroke).
+    pub spell_min_mana_value: Option<u32>,
+    /// Artifact, creature or planeswalker spells only (Strix Serenade), with `spells`.
+    pub spell_artifact_creature_or_planeswalker: bool,
+    /// Spells or abilities that target you or a creature you control (Siren Stormtamer).
+    pub targets_you_or_your_creature: bool,
 }
 
 impl Filter {
@@ -151,6 +165,13 @@ impl Filter {
         spells_enchantment_instant_sorcery: false,
         legendary_only: false,
         spell_artifact_or_creature: false,
+        nonartifact: false,
+        color: None,
+        not_color: None,
+        monocolored: false,
+        spell_min_mana_value: None,
+        spell_artifact_creature_or_planeswalker: false,
+        targets_you_or_your_creature: false,
     };
 
     pub const CREATURE: Filter = Filter {
@@ -1573,6 +1594,19 @@ pub enum Effect {
     /// or sorcery card, put a +1/+1 counter on the source (Oriq Loremage), as
     /// `Decision::SearchToGraveyardCounter`.
     SearchToGraveyardCounterIfInstantOrSorcery,
+    /// Counter the spell in `slot` if it's this color, WUBRG index (Pyroblast: "if it's blue").
+    CounterIfColor {
+        slot: u8,
+        color: u8,
+    },
+    /// Destroy the permanent in `slot` if it's this color (Pyroblast).
+    DestroyIfColor {
+        slot: u8,
+        color: u8,
+    },
+    /// Creatures you control gain these keywords and get +X/+X until end of turn, X the greatest
+    /// power among creatures you control as it resolves (Pathbreaker Ibex).
+    PumpAllGreatestPowerGrant(Keywords),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1701,6 +1735,17 @@ pub enum Scale {
     PerColorAmongYourPermanents,
     /// The source's own kind of counters (Chitterspitter's acorn counters).
     PerKindCounter,
+    /// Artifacts you control (Cranial Plating).
+    PerArtifactYouControl,
+    /// Enchantments on the battlefield other than the source (Ancestral Mask).
+    PerOtherEnchantmentOnBattlefield,
+    /// Cards you've drawn this turn (Knowledge Is Power).
+    PerCardDrawnThisTurn,
+    /// Other creatures on the battlefield with flying, printed or granted until end of turn (Pride
+    /// of the Clouds).
+    PerOtherCreatureWithFlying,
+    /// Cards in all players' hands (Multani, Maro-Sorcerer).
+    PerCardInAllHands,
 }
 
 /// A condition on a static ability ("as long as ...").

@@ -1709,3 +1709,234 @@ fn oriq_loremage_entombs_and_grows_on_an_instant_or_sorcery() {
     assert_eq!(g.obj(ring).zone, Zone::Graveyard);
     assert_eq!(g.obj(o).counters, 1, "not for an artifact");
 }
+
+// ---- Core theme d3, batch 3: target filters and scaled statics ----
+
+fn can_target(g: &Game, x: ObjId) -> bool {
+    g.legal_actions().contains(&Action::Target(obj(x)))
+}
+
+#[test]
+fn go_for_the_throat_kills_only_a_nonartifact_creature() {
+    let mut g = table();
+    let looter = put(&mut g, 1, "Merfolk Looter");
+    let golem = put(&mut g, 1, "Solemn Simulacrum");
+    let gft = hand(&mut g, 0, "Go for the Throat");
+    act(&mut g, Action::Cast(gft));
+    assert!(!can_target(&g, golem), "an artifact creature");
+    act(&mut g, Action::Target(obj(looter)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(looter).zone, Zone::Graveyard);
+}
+
+#[test]
+fn doom_blade_kills_only_a_nonblack_creature() {
+    let mut g = table();
+    let looter = put(&mut g, 1, "Merfolk Looter");
+    let black = put(&mut g, 1, "Emissary of Despair");
+    let db = hand(&mut g, 0, "Doom Blade");
+    act(&mut g, Action::Cast(db));
+    assert!(!can_target(&g, black));
+    act(&mut g, Action::Target(obj(looter)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(looter).zone, Zone::Graveyard);
+}
+
+#[test]
+fn red_elemental_blast_counters_a_blue_spell_or_destroys_a_blue_permanent() {
+    let mut g = table();
+    let elves = put(&mut g, 1, "Llanowar Elves");
+    let theirs = put(&mut g, 1, "Merfolk Looter");
+    let reb = hand(&mut g, 0, "Red Elemental Blast");
+    act(&mut g, Action::CastModal(reb, 1));
+    assert!(!can_target(&g, elves), "green");
+    act(&mut g, Action::Target(obj(theirs)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(theirs).zone, Zone::Graveyard);
+
+    let spell = hand(&mut g, 0, "Merfolk Looter");
+    act(&mut g, Action::Cast(spell));
+    let reb = hand(&mut g, 0, "Red Elemental Blast");
+    act(&mut g, Action::CastModal(reb, 0));
+    act(&mut g, Action::Target(obj(spell)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(spell).zone, Zone::Graveyard, "countered");
+}
+
+#[test]
+fn pyroblast_targets_anything_but_hits_only_blue() {
+    let mut g = table();
+    let elves = hand(&mut g, 0, "Llanowar Elves");
+    act(&mut g, Action::Cast(elves));
+    let p = hand(&mut g, 0, "Pyroblast");
+    act(&mut g, Action::CastModal(p, 0));
+    act(&mut g, Action::Target(obj(elves)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(elves).zone, Zone::Battlefield, "not blue: it resolves");
+    let looter = put(&mut g, 1, "Merfolk Looter");
+    let p = hand(&mut g, 0, "Pyroblast");
+    act(&mut g, Action::CastModal(p, 1));
+    assert!(can_target(&g, elves), "any permanent");
+    act(&mut g, Action::Target(obj(looter)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(looter).zone, Zone::Graveyard);
+}
+
+#[test]
+fn sultai_charm_kills_a_monocolored_creature_or_loots_two() {
+    let mut g = table();
+    let looter = put(&mut g, 1, "Merfolk Looter");
+    let atraxa = put(&mut g, 1, "Atraxa, Praetors' Voice");
+    let c = hand(&mut g, 0, "Sultai Charm");
+    act(&mut g, Action::CastModal(c, 0));
+    assert!(!can_target(&g, atraxa), "four colors");
+    act(&mut g, Action::Target(obj(looter)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(looter).zone, Zone::Graveyard);
+    let c = hand(&mut g, 0, "Sultai Charm");
+    let junk = hand(&mut g, 0, "Sol Ring");
+    let cards = g.players[0].hand.len();
+    act(&mut g, Action::CastModal(c, 2));
+    resolve_all(&mut g, &[Action::Discard(junk)]);
+    assert_eq!(g.players[0].hand.len(), cards - 1 + 2 - 1);
+    assert_eq!(g.obj(junk).zone, Zone::Graveyard);
+}
+
+#[test]
+fn disdainful_stroke_counters_mana_value_4_or_more() {
+    let mut g = table();
+    let sphinx = hand(&mut g, 0, "Consecrated Sphinx");
+    act(&mut g, Action::Cast(sphinx));
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    act(&mut g, Action::Cast(bolt));
+    act(&mut g, Action::Target(Target::Player(1)));
+    let ds = hand(&mut g, 0, "Disdainful Stroke");
+    act(&mut g, Action::Cast(ds));
+    assert!(!can_target(&g, bolt), "mana value 1");
+    act(&mut g, Action::Target(obj(sphinx)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(sphinx).zone, Zone::Graveyard);
+    assert_eq!(g.players[1].life, 37, "the Bolt resolved");
+}
+
+#[test]
+fn strix_serenade_counters_and_gives_its_controller_a_bird() {
+    let mut g = table();
+    let ring = hand(&mut g, 0, "Sol Ring");
+    act(&mut g, Action::Cast(ring));
+    let s = hand(&mut g, 0, "Strix Serenade");
+    act(&mut g, Action::Cast(s));
+    act(&mut g, Action::Target(obj(ring)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(ring).zone, Zone::Graveyard);
+    let bird = tokens(&g, 0, "Bird");
+    assert_eq!(bird.len(), 1);
+    assert_eq!((g.power(bird[0]), g.toughness(bird[0])), (2, 2));
+    assert!(g.keywords(bird[0]).has(Keywords::FLYING));
+}
+
+#[test]
+fn siren_stormtamer_counters_a_spell_targeting_your_creature() {
+    let mut g = table();
+    let st = put(&mut g, 0, "Siren Stormtamer");
+    let looter = put(&mut g, 0, "Merfolk Looter");
+    let theirs = put(&mut g, 1, "Merfolk Looter");
+    let ig = hand(&mut g, 0, "Infernal Grasp");
+    act(&mut g, Action::Cast(ig));
+    act(&mut g, Action::Target(obj(theirs)));
+    let ig2 = hand(&mut g, 0, "Infernal Grasp");
+    act(&mut g, Action::Cast(ig2));
+    act(&mut g, Action::Target(obj(looter)));
+    act(&mut g, Action::Activate(st, 0));
+    assert!(!can_target(&g, ig), "it targets their creature");
+    act(&mut g, Action::Target(obj(ig2)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(st).zone, Zone::Graveyard, "sacrificed");
+    assert_eq!(g.obj(looter).zone, Zone::Battlefield);
+    assert_eq!(g.obj(theirs).zone, Zone::Graveyard);
+}
+
+#[test]
+fn cranial_plating_counts_your_artifacts_and_moves_for_bb() {
+    let mut g = table();
+    let plating = put(&mut g, 0, "Cranial Plating");
+    let looter = put(&mut g, 0, "Merfolk Looter");
+    let elves = put(&mut g, 0, "Llanowar Elves");
+    act(&mut g, Action::Activate(plating, 1)); // equip {1}
+    act(&mut g, Action::Target(obj(looter)));
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.power(looter), g.toughness(looter)), (2, 1));
+    put(&mut g, 0, "Sol Ring");
+    put(&mut g, 1, "Sol Ring");
+    assert_eq!(g.power(looter), 3, "your two artifacts");
+    act(&mut g, Action::Activate(plating, 0)); // {B}{B}: attach
+    act(&mut g, Action::Target(obj(elves)));
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.power(looter), g.power(elves)), (1, 3));
+}
+
+#[test]
+fn ancestral_mask_grows_for_each_other_enchantment() {
+    let mut g = table();
+    let looter = put(&mut g, 0, "Merfolk Looter");
+    put(&mut g, 0, "Rhystic Study");
+    put(&mut g, 1, "Knowledge Is Power"); // no trigger on your spells
+    let m = hand(&mut g, 0, "Ancestral Mask");
+    play(&mut g, m, false, &[obj(looter)], &[]);
+    assert_eq!((g.power(looter), g.toughness(looter)), (5, 5));
+}
+
+#[test]
+fn knowledge_is_power_pumps_by_cards_drawn_this_turn() {
+    let mut g = table();
+    put(&mut g, 0, "Knowledge Is Power");
+    let looter = put(&mut g, 0, "Merfolk Looter");
+    let theirs = put(&mut g, 1, "Merfolk Looter");
+    to_main1(&mut g, 5, 0);
+    assert_eq!(
+        (g.power(looter), g.toughness(looter)),
+        (2, 2),
+        "the draw step's card"
+    );
+    assert_eq!(g.power(theirs), 1);
+    let p = hand(&mut g, 0, "Ponder");
+    let top3: Vec<ObjId> = g.players[0].library.iter().rev().take(2).copied().collect();
+    play(
+        &mut g,
+        p,
+        false,
+        &[],
+        &[Action::Pick(top3[0]), Action::Pick(top3[1]), Action::No],
+    );
+    assert_eq!(g.power(looter), 3);
+}
+
+#[test]
+fn multani_is_as_big_as_all_hands() {
+    let mut g = table();
+    let m = put(&mut g, 0, "Multani, Maro-Sorcerer");
+    let n = (g.players[0].hand.len() + g.players[1].hand.len()) as i32;
+    assert_eq!((g.power(m), g.toughness(m)), (n, n));
+    hand(&mut g, 1, "Sol Ring");
+    assert_eq!(g.power(m), n + 1);
+    assert!(g.keywords(m).has(Keywords::SHROUD));
+}
+
+#[test]
+fn pathbreaker_ibex_pumps_by_the_greatest_power() {
+    let mut g = table();
+    let ibex = put(&mut g, 0, "Pathbreaker Ibex");
+    let sphinx = put(&mut g, 0, "Consecrated Sphinx");
+    g.start_turn(5, 0);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(ibex));
+    act(&mut g, Action::FinishAttacks);
+    while !g.items.is_empty() {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!((g.power(ibex), g.toughness(ibex)), (7, 7));
+    assert_eq!(g.power(sphinx), 8);
+    assert!(g.keywords(sphinx).has(Keywords::TRAMPLE));
+}

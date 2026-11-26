@@ -5,7 +5,9 @@
 mod common;
 
 use bolt_cards::set;
-use bolt_core::effect::{Ability, Effect, Filter, Scope, SearchFor, SearchTo, Static, Trigger, When, Who};
+use bolt_core::effect::{
+    Ability, Effect, Filter, Scale, Scope, SearchFor, SearchTo, Static, Trigger, When, Who,
+};
 use bolt_core::{Action, CardDef, Game, Keywords, ManaCost, ObjId, Pending, Step, Target, Types, Zone};
 use common::{act, obj, play, resolve_all};
 
@@ -551,4 +553,195 @@ fn search_to_graveyard_counter_only_for_instants_and_sorceries() {
     assert!(g.legal_actions().contains(&Action::No));
     resolve_all(&mut g, &[Action::Pick(spell)]);
     assert_eq!(g.obj(spell).zone, Zone::Graveyard);
+}
+
+// ---- Batch 3: target filters and scaled statics ----
+
+/// A free instant doing `effects` with `targets` (castable with a spell on the stack).
+fn instant(targets: Vec<Filter>, effects: Vec<Effect>) -> CardDef {
+    let mut d = sorcery(targets, effects);
+    d.types = Types {
+        instant: true,
+        ..Types::default()
+    };
+    d
+}
+
+const SPELLS: Filter = Filter {
+    players: false,
+    creatures: false,
+    planeswalkers: false,
+    spells: true,
+    ..Filter::ANY
+};
+
+#[test]
+fn color_monocolored_and_nonartifact_filters() {
+    let (mut g, _) = game_with(vec![]);
+    let blue = g.add_card(0, cid("Merfolk Looter"), Zone::Battlefield);
+    let green = g.add_card(1, cid("Llanowar Elves"), Zone::Battlefield);
+    let multi = g.add_card(1, cid("Atraxa, Praetors' Voice"), Zone::Battlefield);
+    let golem = g.add_card(1, cid("Solemn Simulacrum"), Zone::Battlefield);
+    let ok = |g: &Game, f: Filter, x: ObjId| g.target_ok(&f, 0, Target::Object(x));
+    let blue_f = Filter {
+        color: Some(1),
+        ..Filter::CREATURE
+    };
+    assert!(ok(&g, blue_f, blue) && !ok(&g, blue_f, green) && ok(&g, blue_f, multi));
+    let nonblack = Filter {
+        not_color: Some(2),
+        ..Filter::CREATURE
+    };
+    assert!(ok(&g, nonblack, blue) && !ok(&g, nonblack, multi) && ok(&g, nonblack, golem));
+    let mono = Filter {
+        monocolored: true,
+        ..Filter::CREATURE
+    };
+    assert!(ok(&g, mono, blue) && ok(&g, mono, green));
+    assert!(!ok(&g, mono, multi), "four colors");
+    assert!(!ok(&g, mono, golem), "colorless");
+    let nonartifact = Filter {
+        nonartifact: true,
+        ..Filter::CREATURE
+    };
+    assert!(ok(&g, nonartifact, blue) && !ok(&g, nonartifact, golem));
+    // Unset, the new fields change nothing.
+    assert!(ok(&g, Filter::CREATURE, golem) && ok(&g, Filter::CREATURE, multi));
+}
+
+#[test]
+fn spell_mana_value_and_type_filters() {
+    let mut x_spell = instant(vec![], vec![]);
+    x_spell.cost = ManaCost::parse("{X}").unwrap();
+    let (mut g, t) = game_with(vec![x_spell]);
+    let sphinx = g.add_card(0, cid("Consecrated Sphinx"), Zone::Hand);
+    act(&mut g, Action::Cast(sphinx));
+    let ok = |g: &Game, f: Filter, x: ObjId| g.target_ok(&f, 1, Target::Object(x));
+    let four = Filter {
+        spell_min_mana_value: Some(4),
+        ..SPELLS
+    };
+    let seven = Filter {
+        spell_min_mana_value: Some(7),
+        ..SPELLS
+    };
+    let acp = Filter {
+        spell_artifact_creature_or_planeswalker: true,
+        ..SPELLS
+    };
+    assert!(ok(&g, four, sphinx) && !ok(&g, seven, sphinx) && ok(&g, acp, sphinx));
+    let x = g.add_card(0, t, Zone::Hand);
+    act(&mut g, Action::CastX(x, 5));
+    assert!(ok(&g, four, x), "X counts on the stack: mana value 5");
+    assert!(!ok(&g, seven, x));
+    assert!(!ok(&g, acp, x), "an instant");
+}
+
+#[test]
+fn targets_you_or_your_creature_filter() {
+    let (mut g, t) = game_with(vec![
+        instant(vec![Filter::CREATURE], vec![Effect::Destroy(0)]),
+        instant(
+            vec![Filter::PLAYER],
+            vec![Effect::LoseLife {
+                who: Who::TargetPlayer(0),
+                n: 1,
+            }],
+        ),
+    ]);
+    let looter = g.add_card(0, cid("Merfolk Looter"), Zone::Battlefield);
+    let f = Filter {
+        abilities: true,
+        targets_you_or_your_creature: true,
+        ..SPELLS
+    };
+    let kill = g.add_card(0, t, Zone::Hand);
+    act(&mut g, Action::Cast(kill));
+    act(&mut g, Action::Target(obj(looter)));
+    assert!(g.target_ok(&f, 0, obj(kill)), "it targets my creature");
+    assert!(!g.target_ok(&f, 1, obj(kill)), "not the opponent's");
+    let drain = g.add_card(0, t + 1, Zone::Hand);
+    act(&mut g, Action::Cast(drain));
+    act(&mut g, Action::Target(Target::Player(1)));
+    assert!(g.target_ok(&f, 1, obj(drain)), "it targets that player");
+    assert!(!g.target_ok(&f, 0, obj(drain)));
+}
+
+#[test]
+fn destroy_and_counter_if_color() {
+    let permanent = Filter {
+        players: false,
+        creatures: false,
+        planeswalkers: false,
+        any_permanent: true,
+        ..Filter::ANY
+    };
+    let (mut g, t) = game_with(vec![sorcery(
+        vec![permanent],
+        vec![Effect::DestroyIfColor { slot: 0, color: 1 }],
+    )]);
+    let blue = g.add_card(1, cid("Merfolk Looter"), Zone::Battlefield);
+    let green = g.add_card(1, cid("Llanowar Elves"), Zone::Battlefield);
+    cast_test(&mut g, t, &[obj(green)], &[]);
+    assert_eq!(g.obj(green).zone, Zone::Battlefield, "not blue: nothing");
+    cast_test(&mut g, t, &[obj(blue)], &[]);
+    assert_eq!(g.obj(blue).zone, Zone::Graveyard);
+}
+
+#[test]
+fn pump_all_greatest_power_grant() {
+    let (mut g, t) = game_with(vec![sorcery(
+        vec![],
+        vec![Effect::PumpAllGreatestPowerGrant(Keywords::TRAMPLE)],
+    )]);
+    let sphinx = g.add_card(0, cid("Consecrated Sphinx"), Zone::Battlefield);
+    let looter = g.add_card(0, cid("Merfolk Looter"), Zone::Battlefield);
+    let theirs = g.add_card(1, cid("Merfolk Looter"), Zone::Battlefield);
+    cast_test(&mut g, t, &[], &[]);
+    assert_eq!((g.power(looter), g.toughness(looter)), (5, 5));
+    assert_eq!(g.power(sphinx), 8);
+    assert!(g.keywords(looter).has(Keywords::TRAMPLE));
+    assert_eq!(g.power(theirs), 1);
+}
+
+fn scaled_creature(name: &str, scale: Scale) -> CardDef {
+    let mut d = CardDef::creature(name, "{0}", 0, 0, Keywords::NONE);
+    let mut s = static_of(Scope::This, 1, 1, Keywords::NONE);
+    s.scale = Some(scale);
+    d.statics.push(s);
+    d
+}
+
+#[test]
+fn new_scales_count_their_things() {
+    let (mut g, t) = game_with(vec![
+        scaled_creature("Test Artifacts", Scale::PerArtifactYouControl),
+        scaled_creature("Test Enchantments", Scale::PerOtherEnchantmentOnBattlefield),
+        scaled_creature("Test Draws", Scale::PerCardDrawnThisTurn),
+        scaled_creature("Test Fliers", Scale::PerOtherCreatureWithFlying),
+        scaled_creature("Test Hands", Scale::PerCardInAllHands),
+    ]);
+    let a = g.add_card(0, t, Zone::Battlefield);
+    g.add_card(0, cid("Sol Ring"), Zone::Battlefield);
+    g.add_card(0, cid("Solemn Simulacrum"), Zone::Battlefield);
+    g.add_card(1, cid("Sol Ring"), Zone::Battlefield);
+    assert_eq!(g.power(a), 2, "your two artifacts");
+
+    let e = g.add_card(0, t + 1, Zone::Battlefield);
+    g.add_card(0, cid("Rhystic Study"), Zone::Battlefield);
+    g.add_card(1, cid("Rhystic Study"), Zone::Battlefield);
+    assert_eq!(g.power(e), 2, "anyone's enchantments");
+
+    let d = g.add_card(0, t + 2, Zone::Battlefield);
+    g.draws_this_turn[0] = 3;
+    assert_eq!(g.toughness(d), 3);
+
+    let f = g.add_card(0, t + 3, Zone::Battlefield);
+    g.add_card(1, cid("Birds of Paradise"), Zone::Battlefield);
+    g.add_card(0, cid("Consecrated Sphinx"), Zone::Battlefield);
+    assert_eq!(g.power(f), 2, "both players' fliers");
+
+    let h = g.add_card(0, t + 4, Zone::Battlefield);
+    let n = g.players[0].hand.len() + g.players[1].hand.len();
+    assert_eq!(g.power(h), n as i32);
 }

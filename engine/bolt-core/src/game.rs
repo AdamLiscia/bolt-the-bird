@@ -2002,6 +2002,44 @@ impl Game {
                             s.power *= n;
                             s.toughness *= n;
                         }
+                        let scaled = match s.scale {
+                            Some(Scale::PerArtifactYouControl) => Some(
+                                self.permanents(so.controller)
+                                    .filter(|&x| self.types_of(x).artifact)
+                                    .count(),
+                            ),
+                            Some(Scale::PerOtherEnchantmentOnBattlefield) => Some(
+                                self.battlefield
+                                    .iter()
+                                    .filter(|&&x| x != src && self.types_of(x).enchantment)
+                                    .count(),
+                            ),
+                            Some(Scale::PerCardDrawnThisTurn) => {
+                                Some(self.draws_this_turn[so.controller] as usize)
+                            }
+                            Some(Scale::PerOtherCreatureWithFlying) => Some(
+                                // Printed or granted until end of turn, as `Scope::OtherYourFliers`.
+                                self.battlefield
+                                    .iter()
+                                    .filter(|&&x| {
+                                        x != src
+                                            && self.types_of(x).creature
+                                            && self
+                                                .modifiers(x)
+                                                .fold(self.def_of(x).keywords, |k, m| k.with(m.keywords))
+                                                .has(Keywords::FLYING)
+                                    })
+                                    .count(),
+                            ),
+                            Some(Scale::PerCardInAllHands) => {
+                                Some(self.players.iter().map(|pl| pl.hand.len()).sum())
+                            }
+                            _ => None,
+                        };
+                        if let Some(n) = scaled {
+                            s.power *= n as i32;
+                            s.toughness *= n as i32;
+                        }
                         s
                     })
             })
@@ -4107,6 +4145,9 @@ impl Game {
             }
             Target::Object(id) => {
                 let o = self.obj(id);
+                if !self.filter_extras_ok(f, controller, id) {
+                    return false;
+                }
                 if f.abilities && self.ability_on_stack(id).is_some() && o.zone != Zone::Stack {
                     return true; // "target ... ability": an ability of this source on the stack
                 }
@@ -4201,6 +4242,55 @@ impl Game {
                         .is_none_or(|m| self.def_of(id).cost.mana_value() >= m)
             }
         }
+    }
+
+    /// The filter restrictions lane d3 added (color, nonartifact, spell mana value and types, what a
+    /// spell or ability targets). Each is off by default, so filters without them pass.
+    fn filter_extras_ok(&self, f: &Filter, controller: PlayerId, id: ObjId) -> bool {
+        let on_stack = self.obj(id).zone == Zone::Stack;
+        if f.color.is_some() || f.not_color.is_some() || f.monocolored {
+            let colors = self.colors_of(id);
+            if f.color.is_some_and(|c| !colors[c as usize])
+                || f.not_color.is_some_and(|c| colors[c as usize])
+                || (f.monocolored && colors.iter().filter(|&&c| c).count() != 1)
+            {
+                return false;
+            }
+        }
+        if f.nonartifact && self.types_of(id).artifact {
+            return false;
+        }
+        if on_stack {
+            let ty = self.types_of(id);
+            if f.spell_artifact_creature_or_planeswalker && !(ty.artifact || ty.creature || ty.planeswalker) {
+                return false;
+            }
+            if let Some(m) = f.spell_min_mana_value {
+                let cost = &self.def_of(id).cost;
+                let x = self
+                    .items
+                    .iter()
+                    .rfind(|i| i.source == id && matches!(i.kind, StackKind::Spell | StackKind::SpellCopy))
+                    .map_or(0, |i| i.x as u32);
+                if cost.mana_value() + x * (cost.x as u32) < m {
+                    return false;
+                }
+            }
+        }
+        if f.targets_you_or_your_creature {
+            let Some(n) = self.targeted_item(id) else {
+                return false;
+            };
+            return self.items[n].targets.iter().any(|t| match *t {
+                Chosen::Player(p) => p == controller,
+                Chosen::Object(x, _) => {
+                    self.obj(x).zone == Zone::Battlefield
+                        && self.obj(x).controller == controller
+                        && self.types_of(x).creature
+                }
+            });
+        }
+        true
     }
 
     /// Every legal target for `f`, players first.
@@ -14549,6 +14639,31 @@ impl Game {
                     item.controller,
                     Decision::SearchToGraveyardCounter { source: src },
                 );
+            }
+            Effect::CounterIfColor { slot, color } => {
+                if Game::slot_object(item, legal, slot).is_some_and(|x| self.colors_of(x)[color as usize]) {
+                    self.run_effect(item, legal, Effect::Counter(slot));
+                }
+            }
+            Effect::DestroyIfColor { slot, color } => {
+                if Game::slot_object(item, legal, slot).is_some_and(|x| self.colors_of(x)[color as usize]) {
+                    self.run_effect(item, legal, Effect::Destroy(slot));
+                }
+            }
+            Effect::PumpAllGreatestPowerGrant(keywords) => {
+                let p = item.controller;
+                let x = self.creatures(p).map(|c| self.power(c)).max().unwrap_or(0);
+                for id in self.creatures(p).collect::<Vec<_>>() {
+                    let zcc = self.obj(id).zcc;
+                    self.until_eot.push(Modifier {
+                        obj: id,
+                        zcc,
+                        power: x,
+                        toughness: x,
+                        keywords,
+                        dies: None,
+                    });
+                }
             }
         }
     }

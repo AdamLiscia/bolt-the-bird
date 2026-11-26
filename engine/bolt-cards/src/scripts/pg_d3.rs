@@ -4,6 +4,15 @@
 
 use super::*;
 
+/// "target permanent": any permanent, lands included.
+const PERMANENT: Filter = Filter {
+    players: false,
+    creatures: false,
+    planeswalkers: false,
+    any_permanent: true,
+    ..Filter::ANY
+};
+
 /// "{T}: Add {A} or {B}." (or more colors).
 fn lands_mana(d: &mut CardDef, colors: &[Color]) {
     d.mana = Some(ManaSource::of(colors));
@@ -779,6 +788,118 @@ pub fn script(name: &str) -> Option<Script> {
                 activated(d, "", true, vec![], vec![Effect::SearchToGraveyardCounterIfInstantOrSorcery]);
             },
         ),
+        // ---- Unblocked by lane d3's core theme, batch 3 (target filters, scaled statics) ----
+        "Go for the Throat" => s(&["Destroy target nonartifact creature."], |d, _| {
+            spell(d, vec![Filter { nonartifact: true, ..CREATURE }], vec![Effect::Destroy(0)])
+        }),
+        "Doom Blade" => s(&["Destroy target nonblack creature."], |d, _| {
+            spell(d, vec![Filter { not_color: Some(2), ..CREATURE }], vec![Effect::Destroy(0)])
+        }),
+        "Red Elemental Blast" => s(
+            &["Choose one —", "• Counter target blue spell.", "• Destroy target blue permanent."],
+            |d, _| {
+                let blue_spell = Filter { color: Some(1), ..SPELL };
+                let blue_permanent = Filter { color: Some(1), ..PERMANENT };
+                modes(
+                    d,
+                    vec![
+                        Ability::new(vec![blue_spell], vec![Effect::Counter(0)]),
+                        Ability::new(vec![blue_permanent], vec![Effect::Destroy(0)]),
+                    ],
+                );
+            },
+        ),
+        "Pyroblast" => s(
+            &["Choose one —", "• Counter target spell if it's blue.", "• Destroy target permanent if it's blue."],
+            |d, _| {
+                modes(
+                    d,
+                    vec![
+                        Ability::new(vec![SPELL], vec![Effect::CounterIfColor { slot: 0, color: 1 }]),
+                        Ability::new(vec![PERMANENT], vec![Effect::DestroyIfColor { slot: 0, color: 1 }]),
+                    ],
+                );
+            },
+        ),
+        "Sultai Charm" => s(
+            &[
+                "Choose one —",
+                "• Destroy target monocolored creature.",
+                "• Destroy target artifact or enchantment.",
+                "• Draw two cards, then discard a card.",
+            ],
+            |d, _| {
+                modes(
+                    d,
+                    vec![
+                        Ability::new(vec![Filter { monocolored: true, ..CREATURE }], vec![Effect::Destroy(0)]),
+                        Ability::new(vec![ARTIFACT_OR_ENCHANTMENT], vec![Effect::Destroy(0)]),
+                        Ability::new(vec![], vec![draw(2), discard(1)]),
+                    ],
+                );
+            },
+        ),
+        "Disdainful Stroke" => s(&["Counter target spell with mana value 4 or greater."], |d, _| {
+            spell(d, vec![Filter { spell_min_mana_value: Some(4), ..SPELL }], vec![Effect::Counter(0)])
+        }),
+        "Strix Serenade" => s(
+            &["Counter target artifact, creature, or planeswalker spell. Its controller creates a 2/2 blue Bird creature token with flying."],
+            |d, t| {
+                let target = Filter { spell_artifact_creature_or_planeswalker: true, ..SPELL };
+                let bird = Effect::CreateToken { who: Who::ControllerOf(0), def: t.bird_2, n: 1 };
+                spell(d, vec![target], vec![bird, Effect::Counter(0)]);
+            },
+        ),
+        "Siren Stormtamer" => s(
+            &["{U}, Sacrifice this creature: Counter target spell or ability that targets you or a creature you control."],
+            |d, _| {
+                let target = Filter { abilities: true, targets_you_or_your_creature: true, ..SPELL };
+                let n = activated(d, "{U}", false, vec![target], vec![Effect::CounterSpellOrAbility(0)]);
+                d.activated[n].sacrifice_self = true;
+            },
+        ),
+        "Cranial Plating" => s(
+            &[
+                "Equipped creature gets +1/+0 for each artifact you control.",
+                "{B}{B}: Attach this Equipment to target creature you control.",
+                "Equip {1}",
+            ],
+            |d, _| {
+                attached(d, false, 1, 0, Keywords::NONE);
+                d.statics.last_mut().expect("just added").scale = Some(Scale::PerArtifactYouControl);
+                activated(d, "{B}{B}", false, vec![YOUR_CREATURE], vec![Effect::Attach { slot: 0 }]);
+                equip(d, "{1}");
+            },
+        ),
+        "Ancestral Mask" => s(
+            &["Enchant creature", "Enchanted creature gets +2/+2 for each other enchantment on the battlefield."],
+            |d, _| {
+                d.aura = true;
+                d.spell = Some(Ability::new(vec![CREATURE], vec![]));
+                attached(d, false, 2, 2, Keywords::NONE);
+                d.statics.last_mut().expect("just added").scale = Some(Scale::PerOtherEnchantmentOnBattlefield);
+            },
+        ),
+        "Knowledge Is Power" => s(
+            &["Creatures you control get +X/+X, where X is the number of cards you've drawn this turn."],
+            |d, _| {
+                static_on(d, Scope::YourCreatures, false, Keywords::NONE);
+                let s = d.statics.last_mut().expect("just added");
+                (s.power, s.toughness, s.scale) = (1, 1, Some(Scale::PerCardDrawnThisTurn));
+            },
+        ),
+        "Multani, Maro-Sorcerer" => s(
+            &["Multani's power and toughness are each equal to the total number of cards in all players' hands."],
+            |d, _| {
+                static_on(d, Scope::This, false, Keywords::NONE);
+                let s = d.statics.last_mut().expect("just added");
+                (s.power, s.toughness, s.scale) = (1, 1, Some(Scale::PerCardInAllHands));
+            },
+        ),
+        "Pathbreaker Ibex" => s(
+            &["Whenever this creature attacks, creatures you control gain trample and get +X/+X until end of turn, where X is the greatest power among creatures you control."],
+            |d, _| on(d, When::Attacks, vec![], vec![Effect::PumpAllGreatestPowerGrant(Keywords::TRAMPLE)]),
+        ),
         _ => None,
     }
 }
@@ -901,4 +1022,18 @@ pub const PG_D3_SCRIPTED: &[&str] = &[
     "Relentless Assault",
     "Cyberdrive Awakener",
     "Oriq Loremage",
+    // Core theme d3, batch 3 (target filters, scaled statics)
+    "Go for the Throat",
+    "Doom Blade",
+    "Red Elemental Blast",
+    "Pyroblast",
+    "Sultai Charm",
+    "Disdainful Stroke",
+    "Strix Serenade",
+    "Siren Stormtamer",
+    "Cranial Plating",
+    "Ancestral Mask",
+    "Knowledge Is Power",
+    "Multani, Maro-Sorcerer",
+    "Pathbreaker Ibex",
 ];
