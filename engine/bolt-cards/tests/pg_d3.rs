@@ -3824,3 +3824,69 @@ fn rishkars_expertise_draws_by_power_then_casts_one_free() {
     resolve_all(&mut g, &[]);
     assert_eq!(g.obj(elves).zone, Zone::Battlefield);
 }
+
+// ---- Core theme d3, batch 20 ----
+
+#[test]
+fn dragon_tempest_hastes_the_flier_and_the_dragon_burns_per_dragon() {
+    let mut g = table();
+    put(&mut g, 0, "Dragon Tempest");
+    put(&mut g, 0, "Shivan Dragon");
+    let d = hand(&mut g, 0, "Shivan Dragon");
+    let life = g.players[1].life;
+    act(&mut g, Action::Cast(d));
+    let mut guard = 0;
+    while (!g.items.is_empty() || !matches!(g.pending, Pending::Priority(_))) && guard < 40 {
+        let legal = g.legal_actions();
+        let a = if legal.contains(&Action::Target(Target::Player(1))) {
+            Action::Target(Target::Player(1))
+        } else if matches!(g.pending, Pending::Priority(_)) {
+            Action::PassPriority
+        } else {
+            legal[0]
+        };
+        act(&mut g, a);
+        guard += 1;
+    }
+    assert_eq!(g.players[1].life, life - 2, "two Dragons");
+    assert!(g.keywords(d).has(Keywords::HASTE));
+}
+
+#[test]
+fn ledger_shredder_connives_on_the_second_spell() {
+    let mut g = table();
+    let s = put(&mut g, 0, "Ledger Shredder");
+    let angel = hand(&mut g, 0, "Serra Angel");
+    for _ in 0..2 {
+        let e = hand(&mut g, 0, "Llanowar Elves");
+        act(&mut g, Action::Cast(e));
+        let mut guard = 0;
+        while (!g.items.is_empty() || matches!(g.pending, Pending::Decide(_))) && guard < 20 {
+            let a = if matches!(g.pending, Pending::Decide(_)) {
+                Action::Pick(angel)
+            } else {
+                Action::PassPriority
+            };
+            act(&mut g, a);
+            guard += 1;
+        }
+    }
+    assert_eq!(g.obj(angel).zone, Zone::Graveyard, "discarded");
+    assert_eq!(g.power(s), 2, "a nonland card: a counter");
+}
+
+#[test]
+fn ancient_brass_dragon_reanimates_from_either_graveyard() {
+    let mut g = table();
+    let brass = put(&mut g, 0, "Ancient Brass Dragon");
+    let theirs = g.add_card(1, cid("Llanowar Elves"), Zone::Graveyard);
+    let land = g.add_card(1, cid("Forest"), Zone::Graveyard);
+    g.start_turn(5, 0);
+    attack_until_decision(&mut g, brass);
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Pick(theirs)) && legal.contains(&Action::No));
+    assert!(!legal.contains(&Action::Pick(land)));
+    act(&mut g, Action::Pick(theirs));
+    assert_eq!(g.obj(theirs).zone, Zone::Battlefield);
+    assert_eq!(g.obj(theirs).controller, 0, "under your control");
+}
