@@ -72,8 +72,8 @@
    "deck": "Ygra, Eater of All",
    "missing": "an end-step 'sacrifice a permanent of a type, opponent sacrifices one sharing a type or loses 2 and you draw' effect",
    "lane": "d1",
-   "theme": "triggers",
-   "owner": "d2"
+   "theme": "effects",
+   "owner": "d3"
   },
   {
    "card": "Marionette Apprentice",
@@ -288,8 +288,8 @@
    "deck": "Raggadragga, Goreguts Boss",
    "missing": "'Discard a creature card' as a cost",
    "lane": "d1",
-   "theme": "triggers",
-   "owner": "d2"
+   "theme": "mana",
+   "owner": "d1"
   },
   {
    "card": "Finale of Devastation",
@@ -304,8 +304,8 @@
    "deck": "Raggadragga, Goreguts Boss",
    "missing": "an additional cost: sacrifice a green creature; a green creature card search",
    "lane": "d1",
-   "theme": "triggers",
-   "owner": "d2"
+   "theme": "mana",
+   "owner": "d1"
   },
   {
    "card": "Nyxbloom Ancient",
@@ -504,8 +504,8 @@
    "deck": "Raggadragga, Goreguts Boss",
    "missing": "an extra {G} whenever you tap a creature for mana",
    "lane": "d1",
-   "theme": "triggers",
-   "owner": "d2"
+   "theme": "mana",
+   "owner": "d1"
   },
   {
    "card": "Panglacial Wurm",
@@ -600,8 +600,8 @@
    "deck": "Atla Palani, Nest Tender",
    "missing": "a 0/2 red Dragon Egg creature token with defender that dies into a 2/2 red Dragon creature token with flying and firebreathing",
    "lane": "d1",
-   "theme": "triggers",
-   "owner": "d2"
+   "theme": "objects_zones",
+   "owner": "mac-c"
   },
   {
    "card": "Overgrown Farmland",
@@ -736,8 +736,8 @@
    "deck": "Atla Palani, Nest Tender",
    "missing": "creature-token tripling; return transformed when it dies",
    "lane": "d1",
-   "theme": "triggers",
-   "owner": "d2"
+   "theme": "replace_filter",
+   "owner": "mac-b"
   },
   {
    "card": "Palani's Hatcher",
@@ -872,16 +872,16 @@
    "deck": "Karador, Ghost Chieftain",
    "missing": "a delayed 'when target creature is put into your graveyard this turn, return it' trigger",
    "lane": "d1",
-   "theme": "triggers",
-   "owner": "d2"
+   "theme": "effects",
+   "owner": "d3"
   },
   {
    "card": "The Necrobloom",
    "deck": "Karador, Ghost Chieftain",
    "missing": "landfall token choice by seven-plus differently named lands (2/2 black Zombie instead of the 0/1 Plant); dredge 2 for land cards",
    "lane": "d1",
-   "theme": "triggers",
-   "owner": "d2"
+   "theme": "objects_zones",
+   "owner": "mac-c"
   },
   {
    "card": "Inexorable Tide",
@@ -1088,8 +1088,8 @@
    "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
    "missing": "'Discard a card' as a cost",
    "lane": "d1",
-   "theme": "triggers",
-   "owner": "d2"
+   "theme": "mana",
+   "owner": "d1"
   },
   {
    "card": "Mirran Spy",
@@ -1232,8 +1232,8 @@
    "deck": "Zacama, Primal Calamity",
    "missing": "extra mana whenever a player taps a land for mana",
    "lane": "d1",
-   "theme": "triggers",
-   "owner": "d2"
+   "theme": "mana",
+   "owner": "d1"
   },
   {
    "card": "Enchantress's Presence",
@@ -1440,8 +1440,8 @@
    "deck": "Zacama, Primal Calamity",
    "missing": "extra mana whenever you tap a land for mana",
    "lane": "d1",
-   "theme": "triggers",
-   "owner": "d2"
+   "theme": "mana",
+   "owner": "d1"
   },
   {
    "card": "Zirda, the Dawnwaker",
@@ -1664,8 +1664,8 @@
    "deck": "The Gitrog, Ravenous Ride (RuricMo)",
    "missing": "needs core: opponents lose life equal to the sacrificed creature's power, and a 'Sacrifice a Swamp and a Forest' graveyard ability",
    "lane": "d2",
-   "theme": "triggers",
-   "owner": "d2"
+   "theme": "mana",
+   "owner": "d1"
   },
   {
    "card": "Lifeblood Hydra",
@@ -1704,8 +1704,8 @@
    "deck": "The Gitrog, Ravenous Ride (RuricMo)",
    "missing": "needs core: saddle and its 'creature that saddled it' trigger",
    "lane": "d2",
-   "theme": "triggers",
-   "owner": "d2"
+   "theme": "mana",
+   "owner": "d1"
   },
   {
    "card": "Wurmcoil Engine",
@@ -1904,8 +1904,8 @@
    "deck": "Kaalia of the Vast",
    "missing": "needs core: lose life equal to the target spell's mana value",
    "lane": "d2",
-   "theme": "triggers",
-   "owner": "d2"
+   "theme": "effects",
+   "owner": "d3"
   },
   {
    "card": "Rakdos, Patron of Chaos",
@@ -1920,8 +1920,8 @@
    "deck": "Kaalia of the Vast",
    "missing": "needs core: choose two players; damage to one makes the other lose life",
    "lane": "d2",
-   "theme": "triggers",
-   "owner": "d2"
+   "theme": "replace_filter",
+   "owner": "mac-b"
   },
   {
    "card": "Vilis, Broker of Blood",
@@ -2088,8 +2088,8 @@
    "deck": "Henrika Domnathi // Henrika, Infernal Seer",
    "missing": "needs core: 'your opponents can't gain life'",
    "lane": "d2",
-   "theme": "triggers",
-   "owner": "d2"
+   "theme": "replace_filter",
+   "owner": "mac-b"
   },
   {
    "card": "Vito, Thorn of the Dusk Rose",
@@ -2200,8 +2200,8 @@
    "deck": "Henrika Domnathi // Henrika, Infernal Seer",
    "missing": "needs core: can't attack or block unless a creature died under your control this turn",
    "lane": "d2",
-   "theme": "triggers",
-   "owner": "d2"
+   "theme": "effects",
+   "owner": "d3"
   },
   {
    "card": "Cabal Pit",
@@ -2240,8 +2240,8 @@
    "deck": "Henrika Domnathi // Henrika, Infernal Seer",
    "missing": "needs core: sacrifice any number of permanents, then draw that many",
    "lane": "d2",
-   "theme": "triggers",
-   "owner": "d2"
+   "theme": "effects",
+   "owner": "d3"
   },
   {
    "card": "Grim Hireling",
@@ -2392,8 +2392,8 @@
    "deck": "Korvold, Fae-Cursed King",
    "missing": "needs core: gain life equal to the sacrificed creature's toughness",
    "lane": "d2",
-   "theme": "triggers",
-   "owner": "d2"
+   "theme": "mana",
+   "owner": "d1"
   },
   {
    "card": "Al Bhed Salvagers",
@@ -2704,8 +2704,8 @@
    "deck": "Raffine, Scheming Seer",
    "missing": "needs core: chorus counters and casting the discarded card free",
    "lane": "d2",
-   "theme": "triggers",
-   "owner": "d2"
+   "theme": "effects",
+   "owner": "d3"
   },
   {
    "card": "Mausoleum Wanderer",
@@ -2968,8 +2968,8 @@
    "deck": "Sefris of the Hidden Ways",
    "missing": "needs core: dungeons and Background (room abilities trigger an additional time)",
    "lane": "d3",
-   "theme": "triggers",
-   "owner": "d2"
+   "theme": "objects_zones",
+   "owner": "mac-c"
   },
   {
    "card": "Dungeon Descent",
@@ -3008,8 +3008,8 @@
    "deck": "Sefris of the Hidden Ways",
    "missing": "needs core: dungeons (room abilities trigger an additional time)",
    "lane": "d3",
-   "theme": "triggers",
-   "owner": "d2"
+   "theme": "objects_zones",
+   "owner": "mac-c"
   },
   {
    "card": "Hengegate Pathway // Mistgate Pathway",
@@ -3080,8 +3080,8 @@
    "deck": "Sefris of the Hidden Ways",
    "missing": "needs core: a 'whenever you cast a legendary spell' trigger, and the back face's abilities",
    "lane": "d3",
-   "theme": "triggers",
-   "owner": "d2"
+   "theme": "objects_zones",
+   "owner": "mac-c"
   },
   {
    "card": "Safana, Calimport Cutthroat",
@@ -3104,8 +3104,8 @@
    "deck": "Sefris of the Hidden Ways",
    "missing": "needs core: venture into the dungeon when creature cards go to your graveyard, and a 'whenever you complete a dungeon' trigger",
    "lane": "d3",
-   "theme": "triggers",
-   "owner": "d2"
+   "theme": "objects_zones",
+   "owner": "mac-c"
   },
   {
    "card": "Selhoff Entomber",
@@ -3272,8 +3272,8 @@
    "deck": "Najeela, the Blade-Blossom",
    "missing": "needs core: an intervening condition on a spell (conditions are checked only for triggers)",
    "lane": "d3",
-   "theme": "triggers",
-   "owner": "d2"
+   "theme": "effects",
+   "owner": "d3"
   },
   {
    "card": "Ignoble Hierarch",
@@ -3296,8 +3296,8 @@
    "deck": "Najeela, the Blade-Blossom",
    "missing": "needs core: other creatures of the chosen type enter with an extra counter (without Roaming Throne's trigger doubling)",
    "lane": "d3",
-   "theme": "triggers",
-   "owner": "d2"
+   "theme": "replace_filter",
+   "owner": "mac-b"
   },
   {
    "card": "Minas Tirith",
@@ -3432,8 +3432,8 @@
    "deck": "Sheoldred, the Apocalypse",
    "missing": "needs core: pay 2 life for each {B} in a cost, and a black-spell cast trigger",
    "lane": "d3",
-   "theme": "triggers",
-   "owner": "d2"
+   "theme": "mana",
+   "owner": "d1"
   },
   {
    "card": "Malakir Rebirth // Malakir Mire",
@@ -3560,8 +3560,8 @@
    "deck": "Sheoldred, the Apocalypse",
    "missing": "needs core: an emblem for the opponent ('whenever a player draws a card, you lose 2 life')",
    "lane": "d3",
-   "theme": "triggers",
-   "owner": "d2"
+   "theme": "objects_zones",
+   "owner": "mac-c"
   },
   {
    "card": "Otherworld Atlas",
@@ -3592,8 +3592,8 @@
    "deck": "Animar, Soul of Elements",
    "missing": "needs core: sacrifice a land as an activation cost",
    "lane": "d3",
-   "theme": "triggers",
-   "owner": "d2"
+   "theme": "mana",
+   "owner": "d1"
   },
   {
    "card": "Hullbreaker Horror",
@@ -3864,8 +3864,8 @@
    "deck": "Atraxa, Praetors' Voice",
    "missing": "needs core: a 2/1 black Spider creature token with reach and menace, a loyalty-on-death trigger, and an emblem",
    "lane": "d3",
-   "theme": "triggers",
-   "owner": "d2"
+   "theme": "objects_zones",
+   "owner": "mac-c"
   },
   {
    "card": "Nissa, Ascended Animist",
@@ -3888,8 +3888,8 @@
    "deck": "Atraxa, Praetors' Voice",
    "missing": "needs core: an emblem 'whenever you gain life, target opponent loses that much life'",
    "lane": "d3",
-   "theme": "triggers",
-   "owner": "d2"
+   "theme": "objects_zones",
+   "owner": "mac-c"
   },
   {
    "card": "Wash Away",
