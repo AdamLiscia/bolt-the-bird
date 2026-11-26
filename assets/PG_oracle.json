@@ -321,7 +321,17 @@
 "produced_mana": [
 "B"
 ],
-"collector_number": "90"
+"collector_number": "90",
+"back": {
+"name": "Agadeem, the Undercrypt",
+"mana_cost": "",
+"type_line": "Land",
+"oracle_text": "As this land enters, you may pay 3 life. If you don't, it enters tapped.\n{T}: Add {B}.",
+"power": null,
+"toughness": null,
+"colors": [],
+"loyalty": null
+}
 },
 {
 "name": "Agent of the Iron Throne",
@@ -2397,7 +2407,17 @@
 "produced_mana": [
 "G"
 ],
-"collector_number": "180"
+"collector_number": "180",
+"back": {
+"name": "Bala Ged Sanctuary",
+"mana_cost": "",
+"type_line": "Land",
+"oracle_text": "This land enters tapped.\n{T}: Add {G}.",
+"power": null,
+"toughness": null,
+"colors": [],
+"loyalty": null
+}
 },
 {
 "name": "Baldur's Gate",
@@ -2553,7 +2573,17 @@
 "G",
 "U"
 ],
-"collector_number": "251"
+"collector_number": "251",
+"back": {
+"name": "Tidechannel Pathway",
+"mana_cost": "",
+"type_line": "Land",
+"oracle_text": "{T}: Add {U}.",
+"power": null,
+"toughness": null,
+"colors": [],
+"loyalty": null
+}
 },
 {
 "name": "Barrowin of Clan Undurr",
@@ -3528,7 +3558,17 @@
 "B",
 "R"
 ],
-"collector_number": "252"
+"collector_number": "252",
+"back": {
+"name": "Searstep Pathway",
+"mana_cost": "",
+"type_line": "Land",
+"oracle_text": "{T}: Add {R}.",
+"power": null,
+"toughness": null,
+"colors": [],
+"loyalty": null
+}
 },
 {
 "name": "Blind Obedience",
@@ -3821,7 +3861,19 @@
 "layout": "transform",
 "loyalty": null,
 "produced_mana": null,
-"collector_number": "98"
+"collector_number": "98",
+"back": {
+"name": "Lord of Lineage",
+"mana_cost": "",
+"type_line": "Creature \u2014 Vampire",
+"oracle_text": "Flying\nOther Vampire creatures you control get +2/+2.\n{T}: Create a 2/2 black Vampire creature token with flying.",
+"power": "5",
+"toughness": "5",
+"colors": [
+"B"
+],
+"loyalty": null
+}
 },
 {
 "name": "Bloodline Necromancer",
@@ -4602,7 +4654,17 @@
 "produced_mana": [
 "G"
 ],
-"collector_number": "249"
+"collector_number": "249",
+"back": {
+"name": "Tanglespan Bridgeworks",
+"mana_cost": "",
+"type_line": "Land",
+"oracle_text": "As this land enters, you may pay 3 life. If you don't, it enters tapped.\n{T}: Add {G}.",
+"power": null,
+"toughness": null,
+"colors": [],
+"loyalty": null
+}
 },
 {
 "name": "Brightclimb Pathway // Grimclimb Pathway",
@@ -4621,7 +4683,17 @@
 "B",
 "W"
 ],
-"collector_number": "259"
+"collector_number": "259",
+"back": {
+"name": "Grimclimb Pathway",
+"mana_cost": "",
+"type_line": "Land",
+"oracle_text": "{T}: Add {B}.",
+"power": null,
+"toughness": null,
+"colors": [],
+"loyalty": null
+}
 },
 {
 "name": "Brigid, Clachan's Heart // Brigid, Doun's Mind",
@@ -4643,7 +4715,19 @@
 "produced_mana": [
 "G"
 ],
-"collector_number": "7"
+"collector_number": "7",
+"back": {
+"name": "Brigid, Doun's Mind",
+"mana_cost": "",
+"type_line": "Legendary Creature \u2014 Kithkin Soldier",
+"oracle_text": "{T}: Add X {G} or X {W}, where X is the number of other creatures you control.\nAt the beginning of your first main phase, you may pay {W}. If you do, transform Brigid.",
+"power": "3",
+"toughness": "2",
+"colors": [
+"G"
+],
+"loyalty": null
+}
 },
 {
 "name": "Brimaz, Blight of Oreskos",
@@ -6321,7 +6405,17 @@
 "B",
 "U"
 ],
-"collector_number": "260"
+"collector_number": "260",
+"back": {
+"name": "Murkwater Pathway",
+"mana_cost": "",
+"type_line": "Land",
+"oracle_text": "{T}: Add {B}.",
+"power": null,
+"toughness": null,
+"colors": [],
+"loyalty": null
+}
 },
 {
 "name": "Clever Concealment",
@@ -7201,7 +7295,17 @@
 "G",
 "R"
 ],
-"collector_number": "261"
+"collector_number": "261",
+"back": {
+"name": "Timbercrown Pathway",
+"mana_cost": "",
+"type_line": "Land",
+"oracle_text": "{T}: Add {G}.",
+"power": null,
+"toughness": null,
+"colors": [],
+"loyalty": null
+}
 },
 {
 "name": "Cranial Plating",
@@ -8024,7 +8128,19 @@
 "layout": "transform",
 "loyalty": null,
 "produced_mana": null,
-"collector_number": "54"
+"collector_number": "54",
+"back": {
+"name": "Bearer of Overwhelming Truths",
+"mana_cost": "",
+"type_line": "Creature \u2014 Human Wizard",
+"oracle_text": "Prowess (Whenever you cast a noncreature spell, this creature gets +1/+1 until end of turn.)\nWhenever this creature deals combat damage to a player, investigate. (Create a Clue token. It's an artifact with \"{2}, Sacrifice this token: Draw a card.\")",
+"power": "3",
+"toughness": "2",
+"colors": [
+"U"
+],
+"loyalty": null
+}
 },
 {
 "name": "Dark Deal",
@@ -8081,7 +8197,17 @@
 "B",
 "G"
 ],
-"collector_number": "254"
+"collector_number": "254",
+"back": {
+"name": "Slitherbore Pathway",
+"mana_cost": "",
+"type_line": "Land",
+"oracle_text": "{T}: Add {G}.",
+"power": null,
+"toughness": null,
+"colors": [],
+"loyalty": null
+}
 },
 {
 "name": "Darkslick Shores",
@@ -9535,7 +9661,17 @@
 "produced_mana": [
 "G"
 ],
-"collector_number": "250"
+"collector_number": "250",
+"back": {
+"name": "Garden of Freyalise",
+"mana_cost": "",
+"type_line": "Land",
+"oracle_text": "As this land enters, you may pay 3 life. If you don't, it enters tapped.\n{T}: Add {G}.",
+"power": null,
+"toughness": null,
+"colors": [],
+"loyalty": null
+}
 },
 {
 "name": "Disciple of the Vault",
@@ -9726,7 +9862,17 @@
 "layout": "transform",
 "loyalty": null,
 "produced_mana": null,
-"collector_number": "62"
+"collector_number": "62",
+"back": {
+"name": "Final Iteration",
+"mana_cost": "",
+"type_line": "Creature \u2014 Eldrazi Insect",
+"oracle_text": "Flying\nWizards you control get +2/+1 and have flying.\nWhenever you cast an instant or sorcery spell, create a 1/1 blue Human Wizard creature token.",
+"power": "6",
+"toughness": "5",
+"colors": [],
+"loyalty": null
+}
 },
 {
 "name": "Dockside Chef",
@@ -10756,7 +10902,19 @@
 "layout": "modal_dfc",
 "loyalty": null,
 "produced_mana": null,
-"collector_number": "92"
+"collector_number": "92",
+"back": {
+"name": "Throne of Death",
+"mana_cost": "{B}",
+"type_line": "Legendary Artifact",
+"oracle_text": "At the beginning of your upkeep, mill a card.\n{2}{B}, {T}, Exile a creature card from your graveyard: Draw a card.",
+"power": null,
+"toughness": null,
+"colors": [
+"B"
+],
+"loyalty": null
+}
 },
 {
 "name": "Eidolon of Blossoms",
@@ -11102,7 +11260,19 @@
 "layout": "transform",
 "loyalty": null,
 "produced_mana": null,
-"collector_number": "12"
+"collector_number": "12",
+"back": {
+"name": "The Argent Etchings",
+"mana_cost": "",
+"type_line": "Enchantment \u2014 Saga",
+"oracle_text": "(As this Saga enters and after your draw step, add a lore counter.)\nI \u2014 Incubate 2 five times, then transform all Incubator tokens you control.\nII \u2014 Creatures you control get +1/+1 and gain double strike until end of turn.\nIII \u2014 Destroy all other permanents except for artifacts, lands, and Phyrexians. Exile this Saga, then return it to the battlefield (front face up).",
+"power": null,
+"toughness": null,
+"colors": [
+"W"
+],
+"loyalty": null
+}
 },
 {
 "name": "Elesh Norn, Grand Cenobite",
@@ -11865,7 +12035,20 @@
 "layout": "transform",
 "loyalty": null,
 "produced_mana": null,
-"collector_number": "137"
+"collector_number": "137",
+"back": {
+"name": "Etali, Primal Sickness",
+"mana_cost": "",
+"type_line": "Legendary Creature \u2014 Phyrexian Elder Dinosaur",
+"oracle_text": "Trample, indestructible\nWhenever Etali deals combat damage to a player, they get that many poison counters. (A player with ten or more poison counters loses the game.)",
+"power": "11",
+"toughness": "11",
+"colors": [
+"G",
+"R"
+],
+"loyalty": null
+}
 },
 {
 "name": "Etali, Primal Conqueror // Etali, Primal Sickness",
@@ -12864,7 +13047,17 @@
 "produced_mana": [
 "B"
 ],
-"collector_number": "244"
+"collector_number": "244",
+"back": {
+"name": "Fell Mire",
+"mana_cost": "",
+"type_line": "Land",
+"oracle_text": "As this land enters, you may pay 3 life. If you don't, it enters tapped.\n{T}: Add {B}.",
+"power": null,
+"toughness": null,
+"colors": [],
+"loyalty": null
+}
 },
 {
 "name": "Fertile Ground",
@@ -15092,7 +15285,17 @@
 "produced_mana": [
 "U"
 ],
-"collector_number": "60"
+"collector_number": "60",
+"back": {
+"name": "Glasspool Shore",
+"mana_cost": "",
+"type_line": "Land",
+"oracle_text": "This land enters tapped.\n{T}: Add {U}.",
+"power": null,
+"toughness": null,
+"colors": [],
+"loyalty": null
+}
 },
 {
 "name": "Glen Elendra Archmage",
@@ -16373,7 +16576,17 @@
 "produced_mana": [
 "B"
 ],
-"collector_number": "106"
+"collector_number": "106",
+"back": {
+"name": "Hagra Broodpit",
+"mana_cost": "",
+"type_line": "Land",
+"oracle_text": "This land enters tapped.\n{T}: Add {B}.",
+"power": null,
+"toughness": null,
+"colors": [],
+"loyalty": null
+}
 },
 {
 "name": "Haliya, Guided by Light",
@@ -16825,7 +17038,20 @@
 "layout": "transform",
 "loyalty": null,
 "produced_mana": null,
-"collector_number": "17"
+"collector_number": "17",
+"back": {
+"name": "Heliod, the Warped Eclipse",
+"mana_cost": "",
+"type_line": "Legendary Enchantment Creature \u2014 Phyrexian God",
+"oracle_text": "You may cast spells as though they had flash.\nSpells you cast cost {1} less to cast for each card your opponents have drawn this turn.",
+"power": "4",
+"toughness": "6",
+"colors": [
+"U",
+"W"
+],
+"loyalty": null
+}
 },
 {
 "name": "Hellkite Charger",
@@ -16945,7 +17171,17 @@
 "U",
 "W"
 ],
-"collector_number": "260"
+"collector_number": "260",
+"back": {
+"name": "Mistgate Pathway",
+"mana_cost": "",
+"type_line": "Land",
+"oracle_text": "{T}: Add {U}.",
+"power": null,
+"toughness": null,
+"colors": [],
+"loyalty": null
+}
 },
 {
 "name": "Henrika Domnathi // Henrika, Infernal Seer",
@@ -16968,7 +17204,19 @@
 "layout": "transform",
 "loyalty": null,
 "produced_mana": null,
-"collector_number": "119"
+"collector_number": "119",
+"back": {
+"name": "Henrika, Infernal Seer",
+"mana_cost": "",
+"type_line": "Legendary Creature \u2014 Vampire",
+"oracle_text": "Flying, deathtouch, lifelink\n{1}{B}{B}: Each creature you control with flying, deathtouch, and/or lifelink gets +1/+0 until end of turn.",
+"power": "3",
+"toughness": "4",
+"colors": [
+"B"
+],
+"loyalty": null
+}
 },
 {
 "name": "Herald of Leshrac",
@@ -18376,7 +18624,19 @@
 "layout": "transform",
 "loyalty": null,
 "produced_mana": null,
-"collector_number": "61"
+"collector_number": "61",
+"back": {
+"name": "Invocation of the Founders",
+"mana_cost": "",
+"type_line": "Enchantment",
+"oracle_text": "Whenever you cast an instant or sorcery spell from your hand, you may copy that spell. You may choose new targets for the copy.",
+"power": null,
+"toughness": null,
+"colors": [
+"U"
+],
+"loyalty": null
+}
 },
 {
 "name": "Invasion of Ikoria // Zilortha, Apex of Ikoria",
@@ -18397,7 +18657,19 @@
 "layout": "transform",
 "loyalty": null,
 "produced_mana": null,
-"collector_number": "190"
+"collector_number": "190",
+"back": {
+"name": "Zilortha, Apex of Ikoria",
+"mana_cost": "",
+"type_line": "Legendary Creature \u2014 Dinosaur",
+"oracle_text": "Reach\nFor each non-Human creature you control, you may have that creature assign its combat damage as though it weren't blocked.",
+"power": "8",
+"toughness": "8",
+"colors": [
+"G"
+],
+"loyalty": null
+}
 },
 {
 "name": "Invasion of Theros // Ephara, Ever-Sheltering",
@@ -18417,7 +18689,20 @@
 "layout": "transform",
 "loyalty": null,
 "produced_mana": null,
-"collector_number": "23"
+"collector_number": "23",
+"back": {
+"name": "Ephara, Ever-Sheltering",
+"mana_cost": "",
+"type_line": "Legendary Enchantment Creature \u2014 God",
+"oracle_text": "Ephara has lifelink and indestructible as long as you control at least three other enchantments.\nWhenever another enchantment you control enters, draw a card.",
+"power": "4",
+"toughness": "4",
+"colors": [
+"U",
+"W"
+],
+"loyalty": null
+}
 },
 {
 "name": "Inventors' Fair",
@@ -18954,7 +19239,19 @@
 "layout": "transform",
 "loyalty": null,
 "produced_mana": null,
-"collector_number": "65"
+"collector_number": "65",
+"back": {
+"name": "The Great Synthesis",
+"mana_cost": "",
+"type_line": "Enchantment \u2014 Saga",
+"oracle_text": "(As this Saga enters and after your draw step, add a lore counter.)\nI \u2014 Draw cards equal to the number of cards in your hand. You have no maximum hand size for as long as you control this Saga.\nII \u2014 Return all non-Phyrexian creatures to their owners' hands.\nIII \u2014 You may cast any number of spells from your hand without paying their mana costs. Exile this Saga, then return it to the battlefield (front face up).",
+"power": null,
+"toughness": null,
+"colors": [
+"U"
+],
+"loyalty": null
+}
 },
 {
 "name": "Jin-Gitaxias, Core Augur",
@@ -19149,7 +19446,17 @@
 "produced_mana": [
 "U"
 ],
-"collector_number": "64"
+"collector_number": "64",
+"back": {
+"name": "Jwari Ruins",
+"mana_cost": "",
+"type_line": "Land",
+"oracle_text": "This land enters tapped.\n{T}: Add {U}.",
+"power": null,
+"toughness": null,
+"colors": [],
+"loyalty": null
+}
 },
 {
 "name": "K'rrik, Son of Yawgmoth",
@@ -20617,7 +20924,17 @@
 "produced_mana": [
 "W"
 ],
-"collector_number": "22"
+"collector_number": "22",
+"back": {
+"name": "Adanto, the First Fort",
+"mana_cost": "",
+"type_line": "Legendary Land",
+"oracle_text": "(Transforms from Legion's Landing.)\n{T}: Add {W}.\n{2}{W}, {T}: Create a 1/1 white Vampire creature token with lifelink.",
+"power": null,
+"toughness": null,
+"colors": [],
+"loyalty": null
+}
 },
 {
 "name": "Legolas's Quick Reflexes",
@@ -20904,7 +21221,19 @@
 "layout": "transform",
 "loyalty": null,
 "produced_mana": null,
-"collector_number": "1"
+"collector_number": "1",
+"back": {
+"name": "Liliana, Defiant Necromancer",
+"mana_cost": "",
+"type_line": "Legendary Planeswalker \u2014 Liliana",
+"oracle_text": "+2: Each player discards a card.\n\u2212X: Return target nonlegendary creature card with mana value X from your graveyard to the battlefield.\n\u22128: You get an emblem with \"Whenever a creature dies, return it to the battlefield under your control at the beginning of the next end step.\"",
+"power": null,
+"toughness": null,
+"colors": [
+"B"
+],
+"loyalty": "3"
+}
 },
 {
 "name": "Liquimetal Coating",
@@ -21620,7 +21949,17 @@
 "produced_mana": [
 "B"
 ],
-"collector_number": "111"
+"collector_number": "111",
+"back": {
+"name": "Malakir Mire",
+"mana_cost": "",
+"type_line": "Land",
+"oracle_text": "This land enters tapped.\n{T}: Add {B}.",
+"power": null,
+"toughness": null,
+"colors": [],
+"loyalty": null
+}
 },
 {
 "name": "Malcolm, Alluring Scoundrel",
@@ -24547,7 +24886,17 @@
 "R",
 "W"
 ],
-"collector_number": "263"
+"collector_number": "263",
+"back": {
+"name": "Pillarverge Pathway",
+"mana_cost": "",
+"type_line": "Land",
+"oracle_text": "{T}: Add {W}.",
+"power": null,
+"toughness": null,
+"colors": [],
+"loyalty": null
+}
 },
 {
 "name": "Negate",
@@ -25702,7 +26051,17 @@
 "produced_mana": [
 "R"
 ],
-"collector_number": "158"
+"collector_number": "158",
+"back": {
+"name": "Temple of Power",
+"mana_cost": "",
+"type_line": "Land",
+"oracle_text": "(Transforms from Ojer Axonil, Deepest Might.)\n{T}: Add {R}.\n{2}{R}, {T}: Transform this land. Activate only if red sources you controlled dealt 4 or more noncombat damage this turn and only as a sorcery.",
+"power": null,
+"toughness": null,
+"colors": [],
+"loyalty": null
+}
 },
 {
 "name": "Ojer Kaslem, Deepest Growth // Temple of Cultivation",
@@ -25758,7 +26117,17 @@
 "produced_mana": [
 "W"
 ],
-"collector_number": "26"
+"collector_number": "26",
+"back": {
+"name": "Temple of Civilization",
+"mana_cost": "",
+"type_line": "Land",
+"oracle_text": "(Transforms from Ojer Taq, Deepest Foundation.)\n{T}: Add {W}.\n{2}{W}, {T}: Transform this land. Activate only if you attacked with three or more creatures this turn and only as a sorcery.",
+"power": null,
+"toughness": null,
+"colors": [],
+"loyalty": null
+}
 },
 {
 "name": "Okina, Temple to the Grandfathers",
@@ -26015,7 +26384,17 @@
 "produced_mana": [
 "W"
 ],
-"collector_number": "30"
+"collector_number": "30",
+"back": {
+"name": "Ondu Skyruins",
+"mana_cost": "",
+"type_line": "Land",
+"oracle_text": "This land enters tapped.\n{T}: Add {W}.",
+"power": null,
+"toughness": null,
+"colors": [],
+"loyalty": null
+}
 },
 {
 "name": "Ongoing Investigation",
@@ -27720,7 +28099,20 @@
 "layout": "transform",
 "loyalty": null,
 "produced_mana": null,
-"collector_number": "200"
+"collector_number": "200",
+"back": {
+"name": "Polukranos, Engine of Ruin",
+"mana_cost": "",
+"type_line": "Legendary Creature \u2014 Phyrexian Hydra",
+"oracle_text": "Reach, lifelink\nWhenever Polukranos or another nontoken Hydra you control dies, create a 3/3 green and white Phyrexian Hydra creature token with reach and a 3/3 green and white Phyrexian Hydra creature token with lifelink.",
+"power": "6",
+"toughness": "6",
+"colors": [
+"G",
+"W"
+],
+"loyalty": null
+}
 },
 {
 "name": "Polukranos Reborn // Polukranos, Engine of Ruin",
@@ -27742,7 +28134,20 @@
 "layout": "transform",
 "loyalty": null,
 "produced_mana": null,
-"collector_number": "200"
+"collector_number": "200",
+"back": {
+"name": "Polukranos, Engine of Ruin",
+"mana_cost": "",
+"type_line": "Legendary Creature \u2014 Phyrexian Hydra",
+"oracle_text": "Reach, lifelink\nWhenever Polukranos or another nontoken Hydra you control dies, create a 3/3 green and white Phyrexian Hydra creature token with reach and a 3/3 green and white Phyrexian Hydra creature token with lifelink.",
+"power": "6",
+"toughness": "6",
+"colors": [
+"G",
+"W"
+],
+"loyalty": null
+}
 },
 {
 "name": "Ponder",
@@ -28917,7 +29322,20 @@
 "layout": "transform",
 "loyalty": null,
 "produced_mana": null,
-"collector_number": "247"
+"collector_number": "247",
+"back": {
+"name": "Ral, Leyline Prodigy",
+"mana_cost": "",
+"type_line": "Legendary Planeswalker \u2014 Ral",
+"oracle_text": "Ral enters with an additional loyalty counter on him for each instant and sorcery spell you've cast this turn.\n+1: Until your next turn, instant and sorcery spells you cast cost {1} less to cast.\n\u22122: Ral deals 2 damage divided as you choose among one or two targets. Draw a card if you control a blue permanent other than Ral.\n\u22128: Exile the top eight cards of your library. You may cast instant and sorcery spells from among them this turn without paying their mana costs.",
+"power": null,
+"toughness": null,
+"colors": [
+"R",
+"U"
+],
+"loyalty": "2"
+}
 },
 {
 "name": "Ral, Storm Conduit",
@@ -29765,7 +30183,17 @@
 "B",
 "G"
 ],
-"collector_number": "256"
+"collector_number": "256",
+"back": {
+"name": "Old-Growth Grove",
+"mana_cost": "",
+"type_line": "Land",
+"oracle_text": "This land enters tapped.\n{T}: Add {B} or {G}.",
+"power": null,
+"toughness": null,
+"colors": [],
+"loyalty": null
+}
 },
 {
 "name": "Revive the Shire",
@@ -30336,7 +30764,20 @@
 "layout": "transform",
 "loyalty": null,
 "produced_mana": null,
-"collector_number": "75"
+"collector_number": "75",
+"back": {
+"name": "Rona, Tolarian Obliterator",
+"mana_cost": "",
+"type_line": "Legendary Creature \u2014 Phyrexian Wizard",
+"oracle_text": "Trample\nWhenever a source deals damage to Rona, that source's controller exiles a card from their hand at random. If it's a land card, you may put it onto the battlefield under your control. Otherwise, you may cast it without paying its mana cost.",
+"power": "5",
+"toughness": "5",
+"colors": [
+"B",
+"U"
+],
+"loyalty": null
+}
 },
 {
 "name": "Rotting Regisaur",
@@ -32385,7 +32826,19 @@
 "layout": "transform",
 "loyalty": null,
 "produced_mana": null,
-"collector_number": "125"
+"collector_number": "125",
+"back": {
+"name": "The True Scriptures",
+"mana_cost": "",
+"type_line": "Enchantment \u2014 Saga",
+"oracle_text": "(As this Saga enters and after your draw step, add a lore counter.)\nI \u2014 For each opponent, destroy up to one target creature or planeswalker that player controls.\nII \u2014 Each opponent discards three cards, then mills three cards.\nIII \u2014 Put all creature cards from all graveyards onto the battlefield under your control. Exile this Saga, then return it to the battlefield (front face up).",
+"power": null,
+"toughness": null,
+"colors": [
+"B"
+],
+"loyalty": null
+}
 },
 {
 "name": "Sheoldred's Edict",
@@ -32905,7 +33358,17 @@
 "produced_mana": [
 "U"
 ],
-"collector_number": "80"
+"collector_number": "80",
+"back": {
+"name": "Silundi Isle",
+"mana_cost": "",
+"type_line": "Land",
+"oracle_text": "This land enters tapped.\n{T}: Add {U}.",
+"power": null,
+"toughness": null,
+"colors": [],
+"loyalty": null
+}
 },
 {
 "name": "Silverback Elder",
@@ -34965,7 +35428,17 @@
 "produced_mana": [
 "R"
 ],
-"collector_number": "248"
+"collector_number": "248",
+"back": {
+"name": "Volcanic Fissure",
+"mana_cost": "",
+"type_line": "Land",
+"oracle_text": "As this land enters, you may pay 3 life. If you don't, it enters tapped.\n{T}: Add {R}.",
+"power": null,
+"toughness": null,
+"colors": [],
+"loyalty": null
+}
 },
 {
 "name": "Sundial of the Infinite",
@@ -36217,7 +36690,19 @@
 "layout": "modal_dfc",
 "loyalty": null,
 "produced_mana": null,
-"collector_number": "112"
+"collector_number": "112",
+"back": {
+"name": "Tergrid's Lantern",
+"mana_cost": "{3}{B}",
+"type_line": "Legendary Artifact",
+"oracle_text": "{T}: Target player loses 3 life unless they sacrifice a nonland permanent of their choice or discard a card.\n{3}{B}: Untap Tergrid's Lantern.",
+"power": null,
+"toughness": null,
+"colors": [
+"B"
+],
+"loyalty": null
+}
 },
 {
 "name": "Terisian Mindbreaker",
@@ -37871,7 +38356,17 @@
 "U",
 "W"
 ],
-"collector_number": "267"
+"collector_number": "267",
+"back": {
+"name": "Treasure Cove",
+"mana_cost": "",
+"type_line": "Land",
+"oracle_text": "(Transforms from Treasure Map.)\n{T}: Add {C}.\n{T}, Sacrifice a Treasure: Draw a card.",
+"power": null,
+"toughness": null,
+"colors": [],
+"loyalty": null
+}
 },
 {
 "name": "Treasure Nabber",
@@ -38102,7 +38597,19 @@
 "layout": "transform",
 "loyalty": null,
 "produced_mana": null,
-"collector_number": "199"
+"collector_number": "199",
+"back": {
+"name": "Trystan, Penitent Culler",
+"mana_cost": "",
+"type_line": "Legendary Creature \u2014 Elf Warlock",
+"oracle_text": "Deathtouch\nWhenever this creature transforms into Trystan, Penitent Culler, mill three cards, then you may exile an Elf card from your graveyard. If you do, each opponent loses 2 life.\nAt the beginning of your first main phase, you may pay {G}. If you do, transform Trystan.",
+"power": "3",
+"toughness": "4",
+"colors": [
+"B"
+],
+"loyalty": null
+}
 },
 {
 "name": "Tundra",
@@ -38141,7 +38648,17 @@
 "produced_mana": [
 "G"
 ],
-"collector_number": "215"
+"collector_number": "215",
+"back": {
+"name": "Turntimber, Serpentine Wood",
+"mana_cost": "",
+"type_line": "Land",
+"oracle_text": "As this land enters, you may pay 3 life. If you don't, it enters tapped.\n{T}: Add {G}.",
+"power": null,
+"toughness": null,
+"colors": [],
+"loyalty": null
+}
 },
 {
 "name": "Twilight Diviner",
@@ -38802,7 +39319,19 @@
 "produced_mana": [
 "R"
 ],
-"collector_number": "169"
+"collector_number": "169",
+"back": {
+"name": "The Great Work",
+"mana_cost": "",
+"type_line": "Enchantment \u2014 Saga",
+"oracle_text": "(As this Saga enters and after your draw step, add a lore counter.)\nI \u2014 This Saga deals 3 damage to target opponent and each creature they control.\nII \u2014 Create three Treasure tokens.\nIII \u2014 Until end of turn, you may cast instant and sorcery spells from any graveyard. If a spell cast this way would be put into a graveyard, exile it instead. Exile this Saga, then return it to the battlefield (front face up).",
+"power": null,
+"toughness": null,
+"colors": [
+"R"
+],
+"loyalty": null
+}
 },
 {
 "name": "Urabrask the Hidden",
@@ -40512,7 +41041,17 @@
 "layout": "modal_dfc",
 "loyalty": null,
 "produced_mana": null,
-"collector_number": "6"
+"collector_number": "6",
+"back": {
+"name": "Explore the Vastlands",
+"mana_cost": "{3}",
+"type_line": "Sorcery",
+"oracle_text": "Each player looks at the top five cards of their library and may reveal a land card and/or an instant or sorcery card from among them. Each player puts the cards they revealed this way into their hand and the rest on the bottom of their library in a random order. Each player gains 3 life.",
+"power": null,
+"toughness": null,
+"colors": [],
+"loyalty": null
+}
 },
 {
 "name": "Waning Wurm",

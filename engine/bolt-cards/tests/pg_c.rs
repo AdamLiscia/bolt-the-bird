@@ -267,6 +267,18 @@ fn damnation_destroys_all_creatures() {
     assert_eq!((g.obj(a).zone, g.obj(b).zone), (Zone::Graveyard, Zone::Graveyard));
 }
 
+#[test]
+fn damnation_beats_regeneration() {
+    // "They can't be regenerated": a regeneration shield doesn't save Silvos.
+    let mut g = table();
+    let s = put(&mut g, 0, "Silvos, Rogue Elemental");
+    act(&mut g, Action::Activate(s, 0));
+    resolve_all(&mut g, &[]);
+    let c = hand(&mut g, 0, "Damnation");
+    play(&mut g, c, false, &[], &[]);
+    assert_eq!(g.obj(s).zone, Zone::Graveyard);
+}
+
 /// How many lands player 0 can play this turn, from a hand of Forests.
 fn land_drops(g: &mut Game) -> usize {
     let mut n = 0;

@@ -129,6 +129,10 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
             return f"{src}: choose {COLORS[value]}"
         if d == "ChooseCreatureType" and 0 <= value < len(dec.get("options", [])):
             return f"{src}: choose {dec['options'][value]}"
+        if d == "ChooseLandFace" and value in (0, 1):
+            faces = (src or "").split(" // ")
+            face = faces[value] if len(faces) == 2 else ("its front", "its back")[value]
+            return f"Play it as {face}"
         return None
     if kind == "Pick":
         verb = {"SacrificeCreatures": "Sacrifice", "SacrificeAnother": "Sacrifice", "Search": "Take",

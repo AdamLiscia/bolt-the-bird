@@ -1464,6 +1464,8 @@ pub enum Effect {
     ExileMakeEnchantmentCopy(u8),
     /// "... unless that player pays {X}, where X is this creature's power" (Esper Sentinel).
     UnlessOpponentPaysPower,
+    /// Destroy all creatures; they can't be regenerated (Damnation, Wrath of God).
+    DestroyAllCreaturesNoRegen,
     /// You gain life and draw cards equal to the source's power, its last known power if it left
     /// the battlefield (Lifeblood Hydra: "When this creature dies, ...").
     GainLifeAndDrawSourcePower,
