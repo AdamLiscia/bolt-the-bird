@@ -592,3 +592,24 @@ Mondrak, Glory Dominus, Exalted Sunborn, Grim Haruspex, Black Market Connections
 
 Needs core, not done: Teferi's Protection and Clever Concealment (phasing), Promise of Loyalty (vow
 counters), Sphere of Safety (attack tax), Mirkwood Bats ("whenever you sacrifice a token").
+
+### Core theme: replacement effects, batch 1 (2026-11-25)
+
+Cards: Hardened Scales, Bloodletter of Aclazotz, Alhammarret's Archive, Teferi's Ageless Insight,
+Quina, Qu Gourmet, Force of Negation, Deepglow Skate, Bogardan Dragonheart. Tests:
+tests/core_replace.rs.
+
+- `CardDef::counters_plus_one` (in `add_counters`, creatures you control), `opponents_lose_double_your_turn`
+  (in `lose_life`, so damage counts), `life_gain_doubled` (in `gain_life`, doubled for each),
+  `extra_draws_doubled` (in `draw`; the draw step's first draw is marked by `Game::in_draw_step_draw`;
+  `Game::draw_replacing` keeps it from replacing its own draws; two of them still draw two),
+  `tokens_plus_one` / `tokens_plus_each` (in `create_token`, not applied to their own extras:
+  `Game::token_replacing`; tokens made by copy effects don't get them yet).
+- `Effect::CounterExile`, `DoubleEachCounter` (+1/+1 and -1/-1, loyalty, stun, kind, quest, time
+  counters), `BecomeSubtypeUntilEot` (through `Object::eot_creature`).
+- Tokens: base+65 to +68 are placeholders for lane C's Clue and d1's Spawns and Elf Druid; Frog is
+  base+69.
+
+Not done here: Nyxbloom Ancient (mana production), Damn (overload cost) are d1's; Peregrin Took and
+Chatterfang have their replacement in place (`tokens_plus_one`, `tokens_plus_each`) but need "Sacrifice
+three Foods" / "Sacrifice X Squirrels" costs (d1); Academy Manufactor waits for lane C's Clue.

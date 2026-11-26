@@ -178,6 +178,13 @@ pub fn token_defs() -> Vec<CardDef> {
             t.changeling = true;
             t
         },
+        // base+65 to +68 are other lanes' (lane C's Clue, d1's Eldrazi Spawn, red Spawn 3/3, Elf
+        // Druid): placeholders until they merge.
+        token("Lane C token 65", "Clue", 0, 0, Keywords::NONE),
+        token("Lane d1 token 66", "Eldrazi Spawn", 0, 1, Keywords::NONE),
+        token("Lane d1 token 67", "Eldrazi Spawn", 3, 3, Keywords::NONE),
+        token("Lane d1 token 68", "Elf Druid", 1, 1, Keywords::NONE),
+        token("Frog", "Frog", 1, 1, Keywords::NONE), // Quina's green 1/1
     ]
 }
 
@@ -284,6 +291,7 @@ pub struct Tokens {
     pub spirit_3_1: usize,
     pub phyrexian_beast: usize,
     pub shapeshifter: usize,
+    pub frog: usize,
 }
 
 impl Tokens {
@@ -354,6 +362,7 @@ impl Tokens {
             spirit_3_1: base + 62,
             phyrexian_beast: base + 63,
             shapeshifter: base + 64,
+            frog: base + 69,
         }
     }
 }

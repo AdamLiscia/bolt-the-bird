@@ -1039,6 +1039,66 @@ pub fn script(name: &str) -> Option<Script> {
                 on_modal(d, When::FirstMainPhaseYourTurn, None, combos);
             },
         ),
+        // ---- Replacement effects (Mac B core theme) ----
+        "Hardened Scales" => s(
+            &["If one or more +1/+1 counters would be put on a creature you control, that many plus one +1/+1 counters are put on it instead."],
+            |d, _| d.counters_plus_one = true,
+        ),
+        "Bloodletter of Aclazotz" => s(
+            &["If an opponent would lose life during your turn, they lose twice that much life instead."],
+            |d, _| d.opponents_lose_double_your_turn = true,
+        ),
+        "Alhammarret's Archive" => s(
+            &[
+                "If you would gain life, you gain twice that much life instead.",
+                "If you would draw a card except the first one you draw in each of your draw steps, draw two cards instead.",
+            ],
+            |d, _| {
+                d.life_gain_doubled = true;
+                d.extra_draws_doubled = true;
+            },
+        ),
+        "Teferi's Ageless Insight" => s(
+            &["If you would draw a card except the first one you draw in each of your draw steps, draw two cards instead."],
+            |d, _| d.extra_draws_doubled = true,
+        ),
+        "Quina, Qu Gourmet" => s(
+            &[
+                "If one or more tokens would be created under your control, those tokens plus a 1/1 green Frog creature token are created instead.",
+                "{2}, Sacrifice a Frog: Put a +1/+1 counter on Quina.",
+            ],
+            |d, t| {
+                d.tokens_plus_one = Some(t.frog);
+                let n = activated(d, "{2}", false, vec![], vec![Effect::CountersSelf { n: 1 }]);
+                d.activated[n].sacrifice_subtype = Some("Frog");
+            },
+        ),
+        "Force of Negation" => s(
+            &[
+                "If it's not your turn, you may exile a blue card from your hand rather than pay this spell's mana cost.",
+                "Counter target noncreature spell. If that spell is countered this way, exile it instead of putting it into its owner's graveyard.",
+            ],
+            |d, _| {
+                d.pitch_not_your_turn = Some(1); // blue
+                spell(d, vec![Filter { spell_creature: Some(false), ..SPELL }], vec![Effect::CounterExile(0)]);
+            },
+        ),
+        "Deepglow Skate" => s(
+            &["When this creature enters, double the number of each kind of counter on any number of target permanents."],
+            |d, _| {
+                let any = Filter { players: false, creatures: false, planeswalkers: false, any_permanent: true, ..Filter::ANY };
+                let effects = (0..10).map(Effect::DoubleEachCounter).collect();
+                d.triggers.push(Trigger { when: When::Enters, ability: up_to(vec![any; 10], effects) });
+            },
+        ),
+        "Bogardan Dragonheart" => s(
+            &["Sacrifice another creature: Until end of turn, this creature becomes a Dragon with base power and toughness 4/4, flying, and haste."],
+            |d, _| {
+                let dragon = Effect::BecomeSubtypeUntilEot { subtype: "Dragon", power: 4, toughness: 4, keywords: Keywords::FLYING.with(Keywords::HASTE) };
+                let n = activated(d, "", false, vec![], vec![dragon]);
+                d.activated[n].sacrifice_other_creature = true;
+            },
+        ),
         _ => None,
     }
 }
@@ -1170,4 +1230,13 @@ pub const PG_B_SCRIPTED: &[&str] = &[
     "Exalted Sunborn",
     "Grim Haruspex",
     "Black Market Connections",
+    // Replacement effects (Mac B core theme)
+    "Hardened Scales",
+    "Bloodletter of Aclazotz",
+    "Alhammarret's Archive",
+    "Teferi's Ageless Insight",
+    "Quina, Qu Gourmet",
+    "Force of Negation",
+    "Deepglow Skate",
+    "Bogardan Dragonheart",
 ];

@@ -1275,6 +1275,11 @@ pub struct Game {
     pub combat_damage_prevented_except: Option<(u32, &'static str)>,
     /// The turn each player's tokens are doubled (Kaya's −2).
     pub tokens_doubled_turn: [u32; 2],
+    /// The draw-step draw is happening (Alhammarret's Archive doesn't replace it).
+    pub in_draw_step_draw: bool,
+    /// A replacement is drawing or making tokens now, so it doesn't apply to its own result.
+    pub draw_replacing: bool,
+    pub token_replacing: bool,
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -1494,6 +1499,9 @@ impl Game {
             player_hexproof_turn: [0; 2],
             combat_damage_prevented_except: None,
             tokens_doubled_turn: [0; 2],
+            in_draw_step_draw: false,
+            draw_replacing: false,
+            token_replacing: false,
         }
     }
 
@@ -2912,6 +2920,16 @@ impl Game {
 
     /// CR 119.3: losing life, with "whenever an opponent loses life" triggers.
     fn lose_life(&mut self, p: PlayerId, n: i32) {
+        // Bloodletter of Aclazotz: an opponent loses twice as much during your turn.
+        let n = if p != self.active
+            && self
+                .permanents(self.active)
+                .any(|x| self.def_of(x).opponents_lose_double_your_turn && !self.lost_abilities(x))
+        {
+            n * 2
+        } else {
+            n
+        };
         self.players[p].life -= n;
         self.life_lost_this_turn[p] = true;
         self.events.push(Event::LifeLost { player: p, amount: n });
@@ -2924,6 +2942,12 @@ impl Game {
 
     /// CR 119.3: gaining life, with "first time each turn" triggers.
     fn gain_life(&mut self, p: PlayerId, n: i32) {
+        // Alhammarret's Archive: twice that much, for each.
+        let k = self
+            .permanents(p)
+            .filter(|&x| self.def_of(x).life_gain_doubled && !self.lost_abilities(x))
+            .count();
+        let n = n << k.min(8);
         self.players[p].life += n;
         self.events.push(Event::LifeGained { player: p, amount: n });
         self.life_gains_this_turn[p] += 1;
@@ -3850,6 +3874,19 @@ impl Game {
 
     /// Draws a card. Drawing from an empty library loses at the next check (CR 704.5b).
     fn draw(&mut self, p: PlayerId) {
+        // Alhammarret's Archive, Teferi's Ageless Insight: two instead, except the draw step's first.
+        if !self.in_draw_step_draw
+            && !self.draw_replacing
+            && self
+                .permanents(p)
+                .any(|x| self.def_of(x).extra_draws_doubled && !self.lost_abilities(x))
+        {
+            self.draw_replacing = true;
+            self.draw(p);
+            self.draw(p);
+            self.draw_replacing = false;
+            return;
+        }
         match self.players[p].library.last().copied() {
             Some(card) => {
                 self.move_to(card, Zone::Hand);
@@ -8125,6 +8162,14 @@ impl Game {
             return;
         }
         let n = n * self.doubling(self.obj(id).controller);
+        // Hardened Scales: "that many plus one" on a creature you control.
+        let n = n + if self.types_of(id).creature {
+            self.permanents(self.obj(id).controller)
+                .filter(|&x| self.def_of(x).counters_plus_one && !self.lost_abilities(x))
+                .count() as i32
+        } else {
+            0
+        };
         self.obj_mut(id).counters += n;
         self.counter_put_on(id);
         if self.types_of(id).creature && !self.has_subtype(id, "Hydra") {
@@ -12409,6 +12454,52 @@ impl Game {
                     self.create_token(item.controller, def);
                 }
             }
+            Effect::CounterExile(n) => {
+                if let Some(id) = Game::slot_object(item, legal, n) {
+                    if let Some(pos) = self
+                        .items
+                        .iter()
+                        .position(|i| i.kind == StackKind::Spell && i.source == id)
+                    {
+                        if !self.uncounterable(id) {
+                            self.items.remove(pos);
+                            self.move_to(id, Zone::Exile);
+                        }
+                    }
+                }
+            }
+            Effect::DoubleEachCounter(n) => {
+                if let Some(id) = Game::slot_object(item, legal, n) {
+                    if self.obj(id).zone == Zone::Battlefield {
+                        let c = self.obj(id).counters;
+                        if c > 0 {
+                            self.add_counters(id, c);
+                        } else {
+                            self.obj_mut(id).counters = 2 * c; // -1/-1 counters
+                        }
+                        if self.types_of(id).planeswalker {
+                            let l = self.obj(id).loyalty;
+                            self.obj_mut(id).loyalty = 2 * l;
+                        }
+                        let o = self.obj_mut(id);
+                        o.stun *= 2;
+                        o.kind_counters *= 2;
+                        o.quest *= 2;
+                        o.time_counters = o.time_counters.saturating_mul(2);
+                    }
+                }
+            }
+            Effect::BecomeSubtypeUntilEot {
+                subtype,
+                power,
+                toughness,
+                keywords,
+            } => {
+                if self.obj(src).zone == Zone::Battlefield {
+                    let turn = self.turn;
+                    self.obj_mut(src).eot_creature = Some((turn, power, toughness, subtype, keywords));
+                }
+            }
             Effect::ChangeTargets(slot) => {
                 if let Some(id) = Game::slot_object(item, legal, slot) {
                     if let Some(i) = self.targeted_item(id) {
@@ -14739,6 +14830,34 @@ impl Game {
             self.obj_mut(id).since_turn = self.turn;
             self.zone_triggers(id, Zone::Gone, Zone::Battlefield, p);
         }
+        // Peregrin Took, Quina, Chatterfang: "those tokens plus ..." (not applied to their own extras).
+        if !self.token_replacing {
+            let made = self.last_created.clone();
+            let extras: Vec<(usize, usize)> = self
+                .permanents(p)
+                .filter(|&x| !self.lost_abilities(x))
+                .flat_map(|x| {
+                    let d = self.def_of(x);
+                    d.tokens_plus_one
+                        .map(|t| (t, 1))
+                        .into_iter()
+                        .chain(d.tokens_plus_each.map(|t| (t, made.len())))
+                        .collect::<Vec<_>>()
+                })
+                .collect();
+            self.token_replacing = true;
+            for (t, n) in extras {
+                for _ in 0..n {
+                    for _ in 0..self.token_doubling(p) {
+                        let id = self.add_card(p, t, Zone::Battlefield);
+                        self.obj_mut(id).since_turn = self.turn;
+                        self.zone_triggers(id, Zone::Gone, Zone::Battlefield, p);
+                    }
+                }
+            }
+            self.token_replacing = false;
+            self.last_created = made;
+        }
     }
 
     /// How many times over tokens for `p` are made: Doubling Season and token-only doublers (Elspeth).
@@ -15205,7 +15324,9 @@ impl Game {
             Step::Draw => {
                 // CR 103.8a: the player who goes first skips their first draw.
                 if self.turn > 1 {
+                    self.in_draw_step_draw = true;
                     self.draw(a);
+                    self.in_draw_step_draw = false;
                 }
                 self.fire(a, When::EachDrawStep, None);
                 self.fire(opponent(a), When::EachDrawStep, None);

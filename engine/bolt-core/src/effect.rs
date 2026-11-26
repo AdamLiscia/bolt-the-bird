@@ -1566,6 +1566,19 @@ pub enum Effect {
     ExileGraveyardsTokenPerCard {
         def: usize,
     },
+    /// Counter the spell in `slot`; if it's countered this way, exile it instead of putting it into
+    /// its owner's graveyard (Force of Negation).
+    CounterExile(u8),
+    /// Double the number of each kind of counter on the permanent in `slot` (Deepglow Skate).
+    DoubleEachCounter(u8),
+    /// Until end of turn, the source becomes a creature of this type with this base power and
+    /// toughness and these keywords (Bogardan Dragonheart: a 4/4 Dragon, flying and haste).
+    BecomeSubtypeUntilEot {
+        subtype: &'static str,
+        power: i32,
+        toughness: i32,
+        keywords: crate::Keywords,
+    },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

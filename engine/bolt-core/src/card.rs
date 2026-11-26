@@ -752,6 +752,23 @@ pub struct CardDef {
     pub morph: Option<ManaCost>,
     /// Changeling: every creature type (CR 702.73).
     pub changeling: bool,
+    /// "If one or more +1/+1 counters would be put on a creature you control, that many plus one
+    /// ... instead." (Hardened Scales)
+    pub counters_plus_one: bool,
+    /// "If an opponent would lose life during your turn, they lose twice that much life instead."
+    /// (Bloodletter of Aclazotz)
+    pub opponents_lose_double_your_turn: bool,
+    /// "If you would gain life, you gain twice that much life instead." (Alhammarret's Archive)
+    pub life_gain_doubled: bool,
+    /// "If you would draw a card except the first one you draw in each of your draw steps, draw two
+    /// cards instead." (Alhammarret's Archive, Teferi's Ageless Insight)
+    pub extra_draws_doubled: bool,
+    /// "If one or more tokens would be created under your control, those tokens plus an additional
+    /// [token] are created instead": this token definition, once per creation (Peregrin Took, Quina).
+    pub tokens_plus_one: Option<usize>,
+    /// "... those tokens plus that many [tokens] are created instead": one of this token for each
+    /// (Chatterfang).
+    pub tokens_plus_each: Option<usize>,
 }
 
 /// What entering makes triggers happen again (see [`CardDef::entering_triggers_again`]).
@@ -1002,6 +1019,12 @@ impl CardDef {
             warp: None,
             morph: None,
             changeling: false,
+            counters_plus_one: false,
+            opponents_lose_double_your_turn: false,
+            life_gain_doubled: false,
+            extra_draws_doubled: false,
+            tokens_plus_one: None,
+            tokens_plus_each: None,
         }
     }
 
@@ -1220,6 +1243,12 @@ impl CardDef {
             warp: None,
             morph: None,
             changeling: false,
+            counters_plus_one: false,
+            opponents_lose_double_your_turn: false,
+            life_gain_doubled: false,
+            extra_draws_doubled: false,
+            tokens_plus_one: None,
+            tokens_plus_each: None,
         }
     }
 
@@ -1438,6 +1467,12 @@ impl CardDef {
             warp: None,
             morph: None,
             changeling: false,
+            counters_plus_one: false,
+            opponents_lose_double_your_turn: false,
+            life_gain_doubled: false,
+            extra_draws_doubled: false,
+            tokens_plus_one: None,
+            tokens_plus_each: None,
         }
     }
 }

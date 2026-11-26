@@ -460,6 +460,12 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         warp: None,
         morph: None,
         changeling: false,
+        counters_plus_one: false,
+        opponents_lose_double_your_turn: false,
+        life_gain_doubled: false,
+        extra_draws_doubled: false,
+        tokens_plus_one: None,
+        tokens_plus_each: None,
     };
     def.color_identity = color_identity(o);
     def.phyrexian = phyrexian;
