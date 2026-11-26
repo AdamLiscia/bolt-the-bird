@@ -2945,3 +2945,23 @@ fn abigale_takes_a_creatures_abilities_and_gives_it_three_counters() {
         "keeps its types"
     );
 }
+
+// ---- batch 11 ----
+
+#[test]
+fn storm_of_souls_returns_your_creatures_as_one_one_flying_spirits() {
+    let mut g = table();
+    let sphinx = g.add_card(0, cid("Consecrated Sphinx"), Zone::Graveyard);
+    let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Graveyard);
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Graveyard);
+    let storm = hand(&mut g, 0, "Storm of Souls");
+    play(&mut g, storm, false, &[], &[]);
+    for c in [sphinx, elves] {
+        assert_eq!(g.obj(c).zone, Zone::Battlefield);
+        assert_eq!((g.power(c), g.toughness(c)), (1, 1));
+        assert!(g.has_subtype(c, "Spirit") && g.keywords(c).has(Keywords::FLYING));
+    }
+    assert!(g.has_subtype(sphinx, "Sphinx"));
+    assert_eq!(g.obj(ring).zone, Zone::Graveyard);
+    assert_eq!(g.obj(storm).zone, Zone::Exile);
+}

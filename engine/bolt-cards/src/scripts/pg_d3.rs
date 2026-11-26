@@ -1378,6 +1378,14 @@ pub fn script(name: &str) -> Option<Script> {
                 });
             },
         ),
+        // ---- Unblocked by lane d3's core theme, batch 11 ----
+        "Storm of Souls" => s(
+            &["Return all creature cards from your graveyard to the battlefield. Each of them is a 1/1 Spirit with flying in addition to its other types. Exile Storm of Souls."],
+            |d, _| {
+                let spirits = Effect::ReturnAllCreatureCardsAs { power: 1, toughness: 1, subtype: "Spirit", keywords: Keywords::FLYING };
+                spell(d, vec![], vec![spirits, Effect::ExileSourceSpell]);
+            },
+        ),
         _ => None,
     }
 }
@@ -1570,4 +1578,6 @@ pub const PG_D3_SCRIPTED: &[&str] = &[
     "Mishra's Factory",
     "Mutavault",
     "Abigale, Eloquent First-Year",
+    // Core theme d3, batch 11
+    "Storm of Souls",
 ];

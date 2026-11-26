@@ -1893,6 +1893,32 @@ pub enum Effect {
     /// The permanent in `slot` loses all abilities, for as long as it stays on the battlefield
     /// (Abigale). Keyword counters put on it afterwards still count.
     LoseAllAbilities(u8),
+    /// The source connives (CR 701.50): draw a card, then discard a card; if it was a nonland
+    /// card, a +1/+1 counter on the source (Ledger Shredder), as `Decision::ConniveDiscard`.
+    ConniveSelf,
+    /// Return all creature cards from your graveyard to the battlefield; each is a base P/T
+    /// `subtype` with `keywords` in addition to its other types, for as long as it stays (Storm of
+    /// Souls: a 1/1 Spirit with flying).
+    ReturnAllCreatureCardsAs {
+        power: i32,
+        toughness: i32,
+        subtype: &'static str,
+        keywords: crate::Keywords,
+    },
+    /// Each player, you first, puts a vow counter on a creature they control and sacrifices the
+    /// rest (Promise of Loyalty), as `Decision::VowCreature`. The vows are kept in `Game::vows`
+    /// (see `Game::vowed_against`).
+    EachVowsOneSacrificesRest,
+    /// The source deals the trigger's amount of damage to the player or object in `slot` (All
+    /// Will Be One: "target opponent, creature an opponent controls, or planeswalker an opponent
+    /// controls"). `DamageAmountTo` takes objects only.
+    DamageAmountToAny(u8),
+    /// `n` times: each opponent may discard a card; if they don't, they lose `life` life (Professor
+    /// Onyx's −8: 7 times, 3 life), as `Decision::DiscardOrLoseLife`.
+    OpponentDiscardsOrLosesLife {
+        n: u8,
+        life: i32,
+    },
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

@@ -71,6 +71,10 @@ def test_lane_d3_batch_5_decisions_read_as_their_moves():
     assert label({"kind": "ProtectionColor"}, "Mode", 3) == "Protection from red"
     assert label({"kind": "ChooseCardType"}, "Mode", 3) == "It: protection from instants"
     assert pick({"kind": "ConniveDiscard", "left": 2}, "Plains") == "Discard (connive): Plains"
+    vow = pick({"kind": "VowCreature", "caster": 0, "kept": [], "last": False}, "Llanowar Elves")
+    assert vow == "Put a vow counter on (sacrifice the rest): Llanowar Elves"
+    assert pick({"kind": "DiscardOrLoseLife", "left": 6, "life": 3}, "Opt") == "Discard Opt"
+    assert label({"kind": "DiscardOrLoseLife", "left": 6, "life": 3}, "No", 0) == "Don't discard (lose 3 life)"
 
 
 def test_an_unknown_decision_keeps_the_generic_label():

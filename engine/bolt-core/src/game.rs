@@ -1111,6 +1111,17 @@ pub enum Decision {
     /// Connive: `Pick` a card in your hand to discard (`left` more); `nonland` discarded so far put
     /// +1/+1 counters on `creature` at the end.
     ConniveDiscard { creature: ObjId, left: u8, nonland: u8 },
+    /// `Pick` a creature you control to put a vow counter on; the rest of your creatures are
+    /// sacrificed. `kept`: both players' so far; `last`: the second player is choosing (Promise of
+    /// Loyalty, cast by `caster`).
+    VowCreature {
+        caster: PlayerId,
+        kept: Vec<ObjId>,
+        last: bool,
+    },
+    /// `Pick` a card from your hand to discard, or `No` to lose `life` life; `left` more times
+    /// after this one (Professor Onyx's −8).
+    DiscardOrLoseLife { left: u8, life: i32 },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -1417,6 +1428,9 @@ pub struct Game {
     pub evoked: Vec<(ObjId, u32)>,
     /// Life each player has lost this turn: (turn, total) (Wound Reflection).
     pub life_lost_turn: [(u32, i32); 2],
+    /// Vow counters (Promise of Loyalty): (creature, its zcc, the player it can't attack, nor
+    /// that player's planeswalkers).
+    pub vows: Vec<(ObjId, u32, PlayerId)>,
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -1645,6 +1659,7 @@ impl Game {
             evoked: Vec::new(),
             life_lost_turn: [(0, 0); 2],
             protection_grants: Vec::new(),
+            vows: Vec::new(),
         }
     }
 
@@ -9974,6 +9989,12 @@ impl Game {
             Decision::ProtectionColor { .. } => (0..5).map(Action::Mode).collect(),
             Decision::ChooseCardType { .. } => (0..7).map(Action::Mode).collect(),
             Decision::ConniveDiscard { .. } => hand.iter().copied().map(Action::Pick).collect(),
+            Decision::VowCreature { .. } => self.creatures(p).map(Action::Pick).collect(),
+            Decision::DiscardOrLoseLife { .. } => {
+                let mut v: Vec<Action> = hand.iter().copied().map(Action::Pick).collect();
+                v.push(Action::No);
+                v
+            }
             Decision::BraidsOpponent { types, .. } => {
                 let mut v: Vec<Action> = self
                     .braids_options(p, Some(*types))
@@ -11189,6 +11210,24 @@ impl Game {
                 self.lose_life(p, 2);
                 self.draw(controller);
             }
+            (
+                Decision::VowCreature {
+                    caster,
+                    mut kept,
+                    last,
+                },
+                Action::Pick(c),
+            ) => {
+                kept.push(c);
+                self.vow_after(p, caster, kept, last);
+            }
+            (Decision::DiscardOrLoseLife { left, life }, a) => {
+                match a {
+                    Action::Pick(c) => self.move_to(c, Zone::Graveyard),
+                    _ => self.lose_life(p, life),
+                }
+                self.discard_or_lose_next(p, left, life);
+            }
             (d, a) => unreachable!("legal action {a:?} unhandled for {d:?}"),
         }
         if self.decision.is_none() {
@@ -11478,6 +11517,85 @@ impl Game {
             );
         } else if nonland > 0 && self.obj(creature).zone == Zone::Battlefield {
             self.add_counters(creature, nonland as i32);
+        }
+    }
+
+    /// Promise of Loyalty: `p` chooses the creature that gets a vow counter (asked only with a
+    /// choice to make), then the other player; at the end the vows go on and the rest are sacrificed.
+    fn vow_choose(&mut self, p: PlayerId, caster: PlayerId, mut kept: Vec<ObjId>, last: bool) {
+        let mine: Vec<ObjId> = self.creatures(p).collect();
+        if mine.len() > 1 {
+            self.ask(p, Decision::VowCreature { caster, kept, last });
+            return;
+        }
+        kept.extend(mine);
+        self.vow_after(p, caster, kept, last);
+    }
+
+    fn vow_after(&mut self, p: PlayerId, caster: PlayerId, kept: Vec<ObjId>, last: bool) {
+        if !last {
+            self.vow_choose(opponent(p), caster, kept, true);
+            return;
+        }
+        for &c in &kept {
+            let zcc = self.obj(c).zcc;
+            self.vows.push((c, zcc, caster));
+        }
+        let doomed: Vec<ObjId> = self
+            .battlefield
+            .iter()
+            .copied()
+            .filter(|&x| self.types_of(x).creature && !kept.contains(&x) && !self.cant_be_sacrificed(x))
+            .collect();
+        for x in doomed {
+            self.move_to(x, Zone::Graveyard);
+        }
+    }
+
+    /// Whether `id` has a vow counter that stops it attacking `defender` and `defender`'s
+    /// planeswalkers (Promise of Loyalty). For the attack legality check.
+    pub fn vowed_against(&self, id: ObjId, defender: PlayerId) -> bool {
+        let o = self.obj(id);
+        o.zone == Zone::Battlefield
+            && self
+                .vows
+                .iter()
+                .any(|&(c, zcc, q)| c == id && zcc == o.zcc && q == defender)
+    }
+
+    /// The attack tax `defender`'s permanents put on each creature attacking them or their
+    /// planeswalkers: "Creatures can't attack you unless their controller pays {N} for each" (Ghostly
+    /// Prison: 2; Sphere of Safety: the enchantments `defender` controls). For the attack legality
+    /// check and its payment.
+    pub fn attack_tax(&self, defender: PlayerId) -> u32 {
+        let enchantments = || {
+            self.permanents(defender)
+                .filter(|&x| self.types_of(x).enchantment)
+                .count() as u32
+        };
+        self.permanents(defender)
+            .filter(|&x| !self.lost_abilities(x))
+            .map(|x| {
+                let d = self.def_of(x);
+                d.attack_tax as u32
+                    + if d.attack_tax_per_enchantment {
+                        enchantments()
+                    } else {
+                        0
+                    }
+            })
+            .sum()
+    }
+
+    /// Professor Onyx's −8: the next of `left` more rounds for `p` (asked only with a card in hand).
+    fn discard_or_lose_next(&mut self, p: PlayerId, mut left: u8, life: i32) {
+        while left > 0 {
+            left -= 1;
+            if !self.players[p].hand.is_empty() {
+                self.ask(p, Decision::DiscardOrLoseLife { left, life });
+                return;
+            }
+            self.lose_life(p, life);
         }
     }
 
@@ -17227,6 +17345,54 @@ impl Game {
                         self.add_type_change(id, change);
                     }
                 }
+            }
+            Effect::ConniveSelf => {
+                let p = item.controller;
+                self.draw(p);
+                self.connive_next(p, src, 1, 0);
+            }
+            Effect::ReturnAllCreatureCardsAs {
+                power,
+                toughness,
+                subtype,
+                keywords,
+            } => {
+                let p = item.controller;
+                let cards: Vec<ObjId> = self.players[p]
+                    .graveyard
+                    .iter()
+                    .copied()
+                    .filter(|&c| self.def_of(c).types.creature)
+                    .collect();
+                for c in cards {
+                    self.move_to(c, Zone::Battlefield);
+                    if self.obj(c).zone == Zone::Battlefield {
+                        let o = self.obj_mut(c);
+                        o.controller = p;
+                        o.eot_creature = Some((u32::MAX, power, toughness, subtype, keywords));
+                    }
+                }
+            }
+            Effect::EachVowsOneSacrificesRest => {
+                let p = item.controller;
+                self.vow_choose(p, p, Vec::new(), false);
+            }
+            Effect::DamageAmountToAny(slot) => {
+                let target = match item.targets.get(slot as usize) {
+                    Some(&Chosen::Player(q)) => Some(Target::Player(q)),
+                    Some(&Chosen::Object(x, _)) => Some(Target::Object(x)),
+                    None => None,
+                };
+                let ok = legal.get(slot as usize).copied().unwrap_or(false);
+                if let (Some(t), true) = (target, ok) {
+                    if item.amount > 0 {
+                        self.deal_damage(src, t, item.amount);
+                    }
+                }
+            }
+            Effect::OpponentDiscardsOrLosesLife { n, life } => {
+                let q = opponent(item.controller);
+                self.discard_or_lose_next(q, n, life);
             }
         }
     }

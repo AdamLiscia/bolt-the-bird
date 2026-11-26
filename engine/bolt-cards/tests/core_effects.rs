@@ -1489,3 +1489,157 @@ fn aura_becomes_land_with_a_basic_type_and_imprisoned_has_no_subtypes() {
     assert!(!g.has_subtype(angel, "Angel") && !g.has_subtype(angel, "Citizen"));
     assert!(g.types_of(angel).land);
 }
+
+// ---- batch 11 ----
+
+/// A test 1/1 creature with "{0}: This creature connives."
+fn test_conniver() -> CardDef {
+    let mut d = CardDef {
+        name: "Test Conniver".into(),
+        cost: ManaCost::parse("{0}").unwrap(),
+        types: Types {
+            creature: true,
+            ..Types::default()
+        },
+        power: 1,
+        toughness: 1,
+        ..CardDef::default()
+    };
+    d.activated.push(bolt_core::Activated {
+        mana: ManaCost::parse("{0}").unwrap(),
+        ability: Ability::new(vec![], vec![Effect::ConniveSelf]),
+        ..bolt_core::Activated::default()
+    });
+    d
+}
+
+#[test]
+fn connive_self_draws_discards_and_counts_a_nonland() {
+    let (mut g, t) = game_with(vec![test_conniver()]);
+    let c = g.add_card(0, t, Zone::Battlefield);
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Hand);
+    let cards = g.players[0].hand.len();
+    act(&mut g, Action::Activate(c, 0));
+    resolve_all(&mut g, &[Action::Pick(ring)]);
+    assert_eq!(g.players[0].hand.len(), cards, "drew one, discarded one");
+    assert_eq!(g.obj(ring).zone, Zone::Graveyard);
+    assert_eq!(g.obj(c).counters, 1);
+}
+
+#[test]
+fn return_all_creature_cards_as_one_one_spirits() {
+    let spirits = Effect::ReturnAllCreatureCardsAs {
+        power: 1,
+        toughness: 1,
+        subtype: "Spirit",
+        keywords: Keywords::FLYING,
+    };
+    let (mut g, t) = game_with(vec![sorcery(vec![], vec![spirits])]);
+    let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Graveyard);
+    let sphinx = g.add_card(0, cid("Consecrated Sphinx"), Zone::Graveyard);
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Graveyard);
+    let theirs = g.add_card(1, cid("Serra Angel"), Zone::Graveyard);
+    cast_test(&mut g, t, &[], &[]);
+    for c in [elves, sphinx] {
+        assert_eq!(g.obj(c).zone, Zone::Battlefield);
+        assert_eq!((g.power(c), g.toughness(c)), (1, 1));
+        assert!(g.has_subtype(c, "Spirit") && g.keywords(c).has(Keywords::FLYING));
+    }
+    assert!(g.has_subtype(elves, "Elf"), "in addition to its other types");
+    assert_eq!(g.obj(ring).zone, Zone::Graveyard);
+    assert_eq!(g.obj(theirs).zone, Zone::Graveyard, "only yours");
+    g.start_turn(5, 1);
+    assert_eq!((g.power(sphinx), g.toughness(sphinx)), (1, 1), "for good");
+}
+
+#[test]
+fn each_vows_one_and_sacrifices_the_rest() {
+    let (mut g, t) = game_with(vec![sorcery(vec![], vec![Effect::EachVowsOneSacrificesRest])]);
+    let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
+    let angel = g.add_card(0, cid("Serra Angel"), Zone::Battlefield);
+    let lions = g.add_card(1, cid("Savannah Lions"), Zone::Battlefield);
+    let their_elves = g.add_card(1, cid("Llanowar Elves"), Zone::Battlefield);
+    cast_test(&mut g, t, &[], &[Action::Pick(angel), Action::Pick(lions)]);
+    assert_eq!(g.obj(elves).zone, Zone::Graveyard);
+    assert_eq!(g.obj(their_elves).zone, Zone::Graveyard);
+    assert_eq!(
+        (g.obj(angel).zone, g.obj(lions).zone),
+        (Zone::Battlefield, Zone::Battlefield)
+    );
+    assert!(g.vowed_against(lions, 0) && g.vowed_against(angel, 0));
+    assert!(!g.vowed_against(lions, 1), "only the caster");
+}
+
+#[test]
+fn attack_tax_per_creature() {
+    let prison = CardDef {
+        name: "Test Prison".into(),
+        cost: ManaCost::parse("{0}").unwrap(),
+        types: Types {
+            enchantment: true,
+            ..Types::default()
+        },
+        attack_tax: 2,
+        ..CardDef::default()
+    };
+    let sphere = CardDef {
+        name: "Test Sphere".into(),
+        attack_tax_per_enchantment: true,
+        ..prison.clone()
+    };
+    let sphere = CardDef {
+        attack_tax: 0,
+        ..sphere
+    };
+    let (mut g, t) = game_with(vec![prison, sphere]);
+    assert_eq!(g.attack_tax(1), 0);
+    g.add_card(1, t, Zone::Battlefield);
+    assert_eq!(g.attack_tax(1), 2);
+    g.add_card(1, t + 1, Zone::Battlefield);
+    assert_eq!(g.attack_tax(1), 2 + 2, "two enchantments");
+    assert_eq!(g.attack_tax(0), 0);
+}
+
+#[test]
+fn damage_amount_to_a_player() {
+    let mut bond = CardDef {
+        name: "Test Bond".into(),
+        cost: ManaCost::parse("{0}").unwrap(),
+        types: Types {
+            enchantment: true,
+            ..Types::default()
+        },
+        ..CardDef::default()
+    };
+    let any_player = Filter {
+        creatures: false,
+        planeswalkers: false,
+        ..Filter::ANY
+    };
+    bond.triggers.push(Trigger {
+        when: When::YouGainLife,
+        ability: Ability::new(vec![any_player], vec![Effect::DamageAmountToAny(0)]),
+    });
+    let gain = sorcery(vec![], vec![Effect::GainLife { who: Who::You, n: 3 }]);
+    let (mut g, t) = game_with(vec![bond, gain]);
+    g.add_card(0, t, Zone::Battlefield);
+    cast_test(&mut g, t + 1, &[], &[Action::Target(Target::Player(1))]);
+    assert_eq!(g.players[1].life, 37);
+}
+
+#[test]
+fn opponent_discards_or_loses_life_n_times() {
+    let onyx = sorcery(
+        vec![],
+        vec![Effect::OpponentDiscardsOrLosesLife { n: 7, life: 3 }],
+    );
+    let (mut g, t) = game_with(vec![onyx]);
+    let card = g.add_card(1, cid("Sol Ring"), Zone::Hand);
+    let cards = g.players[1].hand.len();
+    let mut answers = vec![Action::Pick(card)];
+    answers.extend([Action::No; 6]);
+    cast_test(&mut g, t, &[], &answers);
+    assert_eq!(g.obj(card).zone, Zone::Graveyard);
+    assert_eq!(g.players[1].hand.len(), cards - 1);
+    assert_eq!(g.players[1].life, 40 - 6 * 3);
+}
