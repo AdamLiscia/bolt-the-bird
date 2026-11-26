@@ -17,11 +17,17 @@ from bolt.rl import ppo_loss
 FIXED = (("net", "rules"), ("rules", "net"), ("net", "smart"), ("smart", "net"))
 
 
-def league(n_games: int, past: list) -> list:
+def league(n_games: int, past: list, self_only: bool = False) -> list:
     """(seats, games) for one iteration: a quarter against the rules-based player, a quarter against the
     smart player, a quarter against past checkpoints (seat "opp"), a quarter self-play (both seats
     recorded); with no past checkpoints yet, self-play takes that quarter too. Every pairing is
     played from both seats."""
+    if self_only:  # half against past checkpoints (once there are any), the rest against itself
+        parts = {}
+        if past:
+            parts[("net", "opp")] = parts[("opp", "net")] = n_games // 4
+        parts[("net", "net")] = n_games - sum(parts.values())
+        return list(parts.items())
     parts = {s: n_games // 8 for s in FIXED}
     if past:
         parts[("net", "opp")] = parts[("opp", "net")] = n_games // 8

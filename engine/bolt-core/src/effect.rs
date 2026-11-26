@@ -1487,6 +1487,8 @@ pub enum Effect {
     /// "You may exile it. If you do, ...": exile the source from its owner's graveyard; if it isn't
     /// there, the rest of the effects don't happen (Academy Rector).
     ExileSourceFromGraveyardOrStop,
+    /// Destroy all creatures; they can't be regenerated (Damnation, Wrath of God).
+    DestroyAllCreaturesNoRegen,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
