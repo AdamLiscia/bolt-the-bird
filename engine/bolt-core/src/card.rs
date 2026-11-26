@@ -42,6 +42,7 @@ keywords! {
     INTIMIDATE = 20, "Intimidate";
     SHADOW = 21, "Shadow";
     SWAMPWALK = 22, "Swampwalk";
+    UNDYING = 23, "Undying";
 }
 
 impl Keywords {
@@ -320,6 +321,8 @@ pub struct Activated {
     /// "Forage" in the cost (Camellia): exile three cards from your graveyard or sacrifice a Food.
     /// The engine picks: a Food if you have one, else three graveyard cards (as for delve).
     pub forage: bool,
+    /// "Activate only if you control N or more artifacts." (Metallurgic Summonings: 6)
+    pub min_artifacts: u8,
 }
 
 /// The printed card. Shared by every copy; per-copy state lives on the game object.

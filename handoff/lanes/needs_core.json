@@ -5486,6 +5486,30 @@
    "lane": "mac-b",
    "theme": "merger_delegated",
    "owner": "mac-b"
+  },
+  {
+   "card": "Mikaeus, the Unhallowed",
+   "deck": "d1 handback",
+   "missing": "d1's piece is in (Keywords::UNDYING, granted or printed, honored as it dies; intimidate exists): d3's 'other non-Human creatures you control get +1/+1 and have undying' static (Scope::OtherYourNonHumanCreatures, keywords UNDYING) and d2's 'whenever a Human deals damage to you, destroy it' trigger",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Metallurgic Summonings",
+   "deck": "d1 handback",
+   "missing": "d1's piece is in (Activated::min_artifacts = 6, exile_self): d3's X/X Construct token where X is the cast spell's mana value, and an effect returning all instant and sorcery cards from your graveyard to your hand",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Comet Storm",
+   "deck": "d1 handback",
+   "missing": "Game::times_kicked(id) is in for multikicker without {X}; Comet Storm has {X} and multikicker, so its kick count needs a second number at cast (a Decision answered with Amount, d1's next piece), then d3's one more target per kick",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
   }
  ]
 }

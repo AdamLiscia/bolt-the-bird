@@ -2485,3 +2485,80 @@ fn tainted_peak_adds_black_or_red_only_with_a_swamp() {
     put(&mut g, 0, "Swamp");
     assert_eq!(makes(&g, t), ([false, false, true, true, false], true));
 }
+
+// ---- d1 core, batch 11: Minas Tirith, Watcher of the Spheres ----
+
+#[test]
+fn minas_tirith_draws_only_after_attacking_with_two() {
+    let mut g = game(&[]);
+    let s = hand(&mut g, 0, "Minas Tirith");
+    act(&mut g, Action::PlayLand(s));
+    resolve_all(&mut g, &[]);
+    assert!(g.obj(s).tapped, "no legendary creature");
+    let mut g = game(&["Plains", "Plains"]);
+    let m = put(&mut g, 0, "Minas Tirith");
+    let lions = [put(&mut g, 0, "Savannah Lions"), put(&mut g, 0, "Savannah Lions")];
+    for &x in lions.iter().chain([&m]) {
+        g.objects[x.0 as usize].since_turn = 0;
+    }
+    assert!(!legal(&g, Action::Activate(m, 0)), "no attack yet");
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    for &l in &lions {
+        act(&mut g, Action::Attack(l));
+    }
+    act(&mut g, Action::FinishAttacks);
+    while g.step != Step::Main2 {
+        match g.pending {
+            Pending::DeclareBlockers(_) => {
+                act(&mut g, Action::FinishBlocks);
+            }
+            _ => {
+                act(&mut g, Action::PassPriority);
+            }
+        }
+    }
+    let before = g.players[0].hand.len();
+    act(&mut g, Action::Activate(m, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].hand.len(), before + 1);
+}
+
+#[test]
+fn watcher_of_the_spheres_discounts_fliers_and_grows_when_one_enters() {
+    let mut g = game(&["Plains", "Plains", "Plains", "Plains"]);
+    let w = put(&mut g, 0, "Watcher of the Spheres");
+    let angel = hand(&mut g, 0, "Serra Angel");
+    act(&mut g, Action::Cast(angel));
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        g.obj(angel).zone,
+        Zone::Battlefield,
+        "{{2}}{{W}}{{W}} from four Plains"
+    );
+    assert_eq!(g.power(w), 3, "+1/+1 for the Angel");
+}
+
+#[test]
+fn desecrate_reality_returns_an_odd_permanent_only_with_three_colorless() {
+    // Sol Ring's {C}{C}, plus Crystal Vein's {C} for the second cast.
+    for (vein, returned) in [(false, false), (true, true)] {
+        let mut lands = vec!["Sol Ring"];
+        if vein {
+            lands.push("Crystal Vein");
+        }
+        lands.extend(vec!["Plains"; 7 - 2 - vein as usize]);
+        let mut g = game(&lands);
+        let stone = put(&mut g, 1, "Mind Stone");
+        let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Graveyard);
+        let c = hand(&mut g, 0, "Desecrate Reality");
+        act(&mut g, Action::Cast(c));
+        act(&mut g, Action::Target(obj(stone)));
+        let pick = [Action::Pick(elves)];
+        resolve_all(&mut g, if returned { &pick } else { &[] });
+        assert_eq!(g.obj(stone).zone, Zone::Exile);
+        let back = g.obj(elves).zone == Zone::Battlefield;
+        assert_eq!(back, returned, "Crystal Vein: {vein}");
+    }
+}

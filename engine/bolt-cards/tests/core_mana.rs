@@ -2225,3 +2225,149 @@ fn a_chapter_granted_mana_ability_makes_no_mana_before_its_chapter() {
     assert!(g.obj(s).tapped);
     assert_eq!(g.obj(c).zone, Zone::Graveyard);
 }
+
+/// A {B} instant: destroy target creature (batch 3's board has no Doom).
+fn slay() -> CardDef {
+    CardDef::spell(
+        "Slay",
+        "{B}",
+        true,
+        Ability::new(vec![Filter::CREATURE], vec![Effect::Destroy(0)]),
+    )
+}
+
+/// Casts the `slay` def (index `spell`) on `target`, from player 0's hand.
+fn slay_it(g: &mut Game, spell: usize, target: ObjId) {
+    let c = g.add_card(0, spell, Zone::Hand);
+    act(g, Action::Cast(c));
+    if g.legal_actions()
+        .contains(&Action::Target(Target::Object(target)))
+    {
+        act(g, Action::Target(Target::Object(target)));
+    }
+    settle(g);
+}
+
+#[test]
+fn undying_as_a_keyword_returns_once_with_a_counter() {
+    let bear = CardDef::creature("Undying Bear", "{1}", 2, 2, Keywords::UNDYING);
+    let mut g = batch6_board(vec![bear, slay()], 2);
+    let b = put(&mut g, 0, 25);
+    slay_it(&mut g, 26, b);
+    assert_eq!(g.obj(b).zone, Zone::Battlefield, "returned");
+    assert_eq!(g.obj(b).counters, 1);
+    slay_it(&mut g, 26, b);
+    assert_eq!(g.obj(b).zone, Zone::Graveyard, "it had a +1/+1 counter");
+}
+
+#[test]
+fn undying_granted_by_a_static_counts_as_it_dies() {
+    use bolt_core::{Scope, Static};
+    let mut lord = CardDef::creature("Lord", "{1}", 1, 1, Keywords::NONE);
+    lord.statics.push(Static {
+        subtype: None,
+        lose_abilities: false,
+        base_pt: None,
+        protection: [false; 5],
+        scale: None,
+        scope: Scope::OtherYourCreatures,
+        your_turn_only: false,
+        condition: None,
+        power: 0,
+        toughness: 0,
+        keywords: Keywords::UNDYING,
+        set_colors: None,
+        becomes_land: false,
+    });
+    let bear = CardDef::creature("Bear", "{1}", 2, 2, Keywords::NONE);
+    let mut g = batch6_board(vec![lord, slay(), bear], 2);
+    let l = put(&mut g, 0, 25);
+    let b = put(&mut g, 0, 27);
+    slay_it(&mut g, 26, b);
+    assert_eq!(g.obj(b).zone, Zone::Battlefield, "granted undying");
+    assert_eq!(g.obj(b).counters, 1);
+    slay_it(&mut g, 26, l);
+    assert_eq!(
+        g.obj(l).zone,
+        Zone::Graveyard,
+        "the Lord doesn't grant itself undying"
+    );
+    // A card with its own scripted undying trigger and the keyword returns once, not twice.
+    let mut both = CardDef::creature("Both", "{1}", 2, 2, Keywords::UNDYING);
+    both.triggers.push(Trigger {
+        when: When::Dies,
+        ability: Ability::new(vec![], vec![Effect::Undying]),
+    });
+    let mut g = batch6_board(vec![both, slay()], 2);
+    let u = put(&mut g, 0, 25);
+    slay_it(&mut g, 26, u);
+    assert_eq!(g.obj(u).zone, Zone::Battlefield);
+    assert_eq!(g.obj(u).counters, 1);
+}
+
+#[test]
+fn activate_only_with_six_artifacts_and_times_kicked() {
+    use batch9::*;
+    let mut s = CardDef {
+        name: "Summonings".into(),
+        types: bolt_core::Types {
+            enchantment: true,
+            ..bolt_core::Types::default()
+        },
+        ..CardDef::default()
+    };
+    s.activated.push(Activated {
+        exile_self: true,
+        min_artifacts: 6,
+        ability: Ability::new(vec![], vec![Effect::Draw { who: Who::You, n: 1 }]),
+        ..Activated::default()
+    });
+    let mut g = batch6_board(vec![s, artifact("Rock")], 0);
+    let x = put(&mut g, 0, 25);
+    for _ in 0..5 {
+        put(&mut g, 0, 26);
+    }
+    assert!(
+        !g.legal_actions().contains(&Action::Activate(x, 0)),
+        "five artifacts"
+    );
+    put(&mut g, 0, 26);
+    act(&mut g, Action::Activate(x, 0));
+    settle(&mut g);
+    assert_eq!(g.obj(x).zone, Zone::Exile, "exiled as the cost");
+    // Multikicker's count, on the permanent it became.
+    let mut chalice = artifact("Chalice");
+    chalice.cost = ManaCost::default();
+    chalice.mana_ext.multikicker = ManaCost::parse("{B}");
+    let mut g = batch6_board(vec![chalice], 3);
+    let c = g.add_card(0, 25, Zone::Hand);
+    act(&mut g, Action::CastX(c, 3));
+    settle(&mut g);
+    assert_eq!(g.times_kicked(c), 3);
+}
+
+#[test]
+fn adamant_counts_colorless_mana_spent_on_the_spell() {
+    use batch3::*;
+    use bolt_core::Condition;
+    for (wastes, draws) in [(1, false), (2, true)] {
+        let mut a = Ability::new(
+            vec![],
+            vec![Effect::StopUnlessCondition, Effect::Draw { who: Who::You, n: 1 }],
+        );
+        a.condition = Some(Condition::ColorlessSpentAtLeast(2));
+        let spell = CardDef {
+            spell: Some(a),
+            ..CardDef::spell("Adamant", "{3}", true, Ability::new(vec![], vec![]))
+        };
+        let mut g = batch6_board(vec![spell], 3 - wastes);
+        for _ in 0..wastes {
+            put(&mut g, 0, WASTES);
+        }
+        let hand = g.players[0].hand.len();
+        let c = g.add_card(0, 25, Zone::Hand);
+        act(&mut g, Action::Cast(c));
+        settle(&mut g);
+        assert_eq!(g.players[0].hand.len() == hand + 1, draws, "{wastes} Wastes");
+    }
+}

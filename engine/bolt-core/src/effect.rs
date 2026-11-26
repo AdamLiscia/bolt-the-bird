@@ -2612,6 +2612,9 @@ pub enum Condition {
     /// Its controller lost life this turn (Lunar Convocation: "if you gained and lost life this
     /// turn", with `Both` and `YouGainedLifeThisTurn`).
     YouLostLifeThisTurn,
+    /// At least this much colorless mana was spent to cast the spell (Desecrate Reality's
+    /// adamant: 3), with `Effect::StopUnlessCondition` before the adamant part.
+    ColorlessSpentAtLeast(u32),
 }
 
 /// A spell's effect or a triggered ability: target slots, then effects in order.

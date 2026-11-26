@@ -673,6 +673,9 @@ pub enum StackKind {
     SacrificeWhenTargeted {
         zcc: u32,
     },
+    /// Undying from the keyword (`Keywords::UNDYING`, printed or granted): "When this creature
+    /// dies, if it had no +1/+1 counters on it, return it ... with a +1/+1 counter on it."
+    Undying,
 }
 
 /// The ability of a ward trigger, which has no targets or effects of its own.
@@ -693,6 +696,12 @@ static WARD_ABILITY: Ability = Ability {
 fn sacrifice_when_targeted_ability() -> &'static Ability {
     static A: std::sync::OnceLock<Ability> = std::sync::OnceLock::new();
     A.get_or_init(|| Ability::new(Vec::new(), vec![Effect::SacrificeSourceWhenTargeted]))
+}
+
+/// Undying's triggered ability (CR 702.93a), for `StackKind::Undying`.
+fn undying_ability() -> &'static Ability {
+    static A: std::sync::OnceLock<Ability> = std::sync::OnceLock::new();
+    A.get_or_init(|| Ability::new(Vec::new(), vec![Effect::Undying]))
 }
 
 /// Offspring's triggered ability (CR 702.175a): a 1/1 token copy of the creature.
@@ -1611,6 +1620,12 @@ pub struct Game {
     /// Creature spells paid for with Hall of the Bandit Lord's mana, as (object, the zone-change
     /// count it will have on the battlefield): each gains haste as it enters.
     pub haste_from_mana: Vec<(ObjId, u32)>,
+    /// Colorless mana ({C}: from a source that makes only colorless) spent so far on the spell or
+    /// ability being paid for (adamant counts it for spells).
+    pub colorless_paid: u32,
+    /// Colorless mana spent to cast each spell, as (spell, amount), set as it's cast (Desecrate
+    /// Reality's adamant: `Condition::ColorlessSpentAtLeast`).
+    pub colorless_spent: Vec<(ObjId, u32)>,
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -1866,6 +1881,8 @@ impl Game {
             normal_next: None,
             delayed_slot_to_graveyard: Vec::new(),
             haste_from_mana: Vec::new(),
+            colorless_paid: 0,
+            colorless_spent: Vec::new(),
         }
     }
 
@@ -4143,10 +4160,26 @@ impl Game {
             self.obj_mut(id).last_power = p;
         }
         let last_controller = self.obj(id).controller;
+        // Undying as a keyword (printed, or granted by a static like Mikaeus's), as it last existed
+        // on the battlefield; a card scripted with its own undying trigger keeps only that one.
+        let undying_kw = from == Zone::Battlefield
+            && to == Zone::Graveyard
+            && self.keywords(id).has(Keywords::UNDYING)
+            && !self
+                .def_of(id)
+                .triggers
+                .iter()
+                .any(|t| t.when == When::Dies && t.ability.effects.contains(&Effect::Undying));
         let list = self.zone_list(owner, from);
         let pos = list.iter().position(|&x| x == id).expect("object is in its zone");
         list.remove(pos);
         self.zone_list(owner, to).push(id);
+        if undying_kw {
+            self.triggered.push(StackItem {
+                kind: StackKind::Undying,
+                ..Game::casting(id, last_controller)
+            });
+        }
         if let (Some((c, z)), true) = (reanimated, to != Zone::Battlefield) {
             // "When this Aura leaves the battlefield, that creature's controller sacrifices it."
             let o = self.obj(c);
@@ -5472,6 +5505,7 @@ impl Game {
             StackKind::Activated(n) => &self.activated_of(item.source, n).ability,
             StackKind::Room { .. } | StackKind::InitiativeVenture => self.subsystem_ability(item.kind),
             StackKind::SacrificeWhenTargeted { .. } => sacrifice_when_targeted_ability(),
+            StackKind::Undying => undying_ability(),
         }
     }
 
@@ -6930,6 +6964,9 @@ impl Game {
                     self.become_tapped(f);
                 }
                 for i in paid {
+                    if Game::only_colorless(&all[i].1) {
+                        self.colorless_paid += 1;
+                    }
                     if i < pool_len {
                         self.players[p].pool.remove(i);
                     } else if let (Some(id), _) = all[i] {
@@ -7015,6 +7052,9 @@ impl Game {
             }
         }
         for i in paid {
+            if Game::only_colorless(&all[i]) {
+                self.colorless_paid += 1;
+            }
             if i < pool.len() {
                 self.players[p].pool.remove(i);
                 continue;
@@ -7733,6 +7773,9 @@ impl Game {
                         .is_some_and(|(sub, n)| self.untapped_with(p, sub, id).len() < n as usize)
                     || (a.tap_untapped_legendary && self.untapped_legendary(p, id).is_none())
                     || (a.forage && !self.can_forage(p, id))
+                    || (a.min_artifacts > 0
+                        && self.permanents(p).filter(|&x| self.types_of(x).artifact).count()
+                            < a.min_artifacts as usize)
                     || (a.tap_untapped_creature
                         && self.untapped_creature_for_cost(p, id).is_none_or(|c| {
                             // That creature can't also tap for the mana.
@@ -8880,6 +8923,22 @@ impl Game {
         v
     }
 
+    /// Mana that is only colorless ({C}), for adamant's count.
+    fn only_colorless(m: &ManaSource) -> bool {
+        m.colorless && !m.colors.iter().any(|&c| c)
+    }
+
+    /// How many times `id` (a spell, or the permanent it became) was kicked: its X as cast for a
+    /// multikicker card without {X} in its cost (`Action::CastX`), else 1 if kicked, else 0.
+    pub fn times_kicked(&self, id: ObjId) -> u8 {
+        let d = self.def_of(id);
+        if d.mana_ext.multikicker.is_some() && d.cost.x == 0 {
+            self.obj(id).x
+        } else {
+            self.obj(id).kicked as u8
+        }
+    }
+
     /// The d1 theme's other block restrictions (see [`crate::card::ManaExt`]): shadow, attacking
     /// alone (Yuan-Ti Malison), only legendary blockers (Midnight Pathlighter).
     fn mana_ext_block_ok(&self, blocker: ObjId, attacker: ObjId) -> bool {
@@ -9682,6 +9741,7 @@ impl Game {
             .extra
             .filter(|_| item.flashback && (self.def_of(card).harmonize || self.obj(card).harmonize_eot));
         self.snow_paid = 0;
+        self.colorless_paid = 0;
         // Sephara: tap the creatures for the alternative cost first, so none of them also taps
         // for its mana.
         if let Some(alt) = self.alt_ext_tapping(card, mode) {
@@ -9754,6 +9814,9 @@ impl Game {
         // Expend: "as you spend your Nth total mana to cast spells during a turn".
         let spent = cost.mana_value();
         self.obj_mut(card).mana_spent = spent; // Mockingbird
+                                               // Adamant's colorless count (CR 207.2c), for this cast of the card.
+        self.colorless_spent.retain(|e| e.0 != card);
+        self.colorless_spent.push((card, self.colorless_paid));
         let turn = self.turn;
         let (t, before) = self.mana_spent_on_spells[p];
         let before = if t == turn { before } else { 0 };
@@ -20329,6 +20392,9 @@ impl Game {
                 self.creatures(controller).any(|c| self.power(c) >= *n)
             }
             Some(Condition::Kicked) => self.obj(source).kicked,
+            Some(Condition::ColorlessSpentAtLeast(n)) => {
+                self.colorless_spent.iter().any(|&(c, k)| c == source && k >= *n)
+            }
             Some(Condition::ControlAnotherPowerAtLeast(n)) => self
                 .creatures(controller)
                 .any(|c| c != source && self.power(c) >= *n),

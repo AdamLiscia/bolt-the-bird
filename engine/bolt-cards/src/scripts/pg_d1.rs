@@ -1143,6 +1143,55 @@ pub fn script(name: &str) -> Option<Script> {
             d.mana = Some(ManaSource { colorless: true, ..ManaSource::of(&[Color::Black, Color::Red]) });
             d.colored_mana_only_if_you_control = Some("Swamp");
         }),
+        // ---- d1 core, batch 11: undying keyword, activation conditions ----
+        "Minas Tirith" => s(
+            &[
+                "Minas Tirith enters tapped unless you control a legendary creature.",
+                "{T}: Add {W}.",
+                "{1}{W}, {T}: Draw a card. Activate only if you attacked with two or more creatures this turn.",
+            ],
+            |d, _| {
+                d.mana_ext.enters_tapped_unless_legendary_creature = true;
+                d.mana = Some(ManaSource::of(&[Color::White]));
+                let n = activated(d, "{1}{W}", true, vec![], vec![draw(1)]);
+                d.activated[n].min_attackers_this_turn = 2;
+            },
+        ),
+        "Watcher of the Spheres" => s(
+            &[
+                "Creature spells with flying you cast cost {1} less to cast.",
+                "Whenever another creature you control with flying enters, this creature gets +1/+1 until end of turn.",
+            ],
+            |d, _| {
+                d.mana_ext.flying_creature_spell_discount = 1;
+                let pump = Effect::PumpSelf { power: 1, toughness: 1 };
+                on(d, When::AnotherCreatureWithFlyingYouControlEnters, vec![], vec![pump]);
+            },
+        ),
+        "Desecrate Reality" => s(
+            &[
+                "For each opponent, exile up to one target permanent that player controls with an even mana value.",
+                "Adamant — If at least three colorless mana was spent to cast this spell, return a permanent card with an odd mana value from your graveyard to the battlefield.",
+            ],
+            |d, _| {
+                // One opponent in a 1v1 game: up to one target.
+                let even = Filter {
+                    players: false,
+                    planeswalkers: false,
+                    creatures: false,
+                    any_permanent: true,
+                    mana_value_even: true,
+                    controller: Controller::Opponent,
+                    ..Filter::ANY
+                };
+                let mut a = up_to(
+                    vec![even],
+                    vec![Effect::Exile(0), Effect::StopUnlessCondition, Effect::ReturnOddManaValuePermanentToBattlefield],
+                );
+                a.condition = Some(Condition::ColorlessSpentAtLeast(3));
+                d.spell = Some(a);
+            },
+        ),
         _ => None,
     }
 }
@@ -1301,4 +1350,7 @@ pub const PG_D1_SCRIPTED: &[&str] = &[
     "Gloomlake Verge",
     "Wastewood Verge",
     "Tainted Peak",
+    "Minas Tirith",
+    "Watcher of the Spheres",
+    "Desecrate Reality",
 ];
