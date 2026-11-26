@@ -1874,6 +1874,31 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::DealsCombatDamageToPlayerFirstTimeEachTurn, vec![], effects);
             },
         ),
+        "The Immortal Sun" => s(
+            &[
+                "Players can't activate planeswalkers' loyalty abilities.",
+                "At the beginning of your draw step, draw an additional card.",
+                "Spells you cast cost {1} less to cast.",
+                "Creatures you control get +1/+1.",
+            ],
+            |d, _| {
+                d.players_cant_activate_loyalty = true;
+                conditional(d, When::EachDrawStep, Condition::YourTurn, vec![], vec![draw(1)]);
+                d.mana_ext.spell_discount_all = 1;
+                anthem(d, 1, 1);
+            },
+        ),
+        "Archfiend of Despair" => s(
+            &[
+                "Your opponents can't gain life.",
+                "At the beginning of each end step, each opponent loses life equal to the life that player lost this turn.",
+            ],
+            |d, _| {
+                d.opponents_cant_gain_life = true;
+                let lose = Effect::LoseLifeLostThisTurn(Who::EachOpponent);
+                on(d, When::EndStep { your_turn_only: false }, vec![], vec![lose]);
+            },
+        ),
         _ => None,
     }
 }
@@ -2094,6 +2119,8 @@ pub const PG_B_SCRIPTED: &[&str] = &[
     "Sheltered by Ghosts",
     "Rankle, Master of Pranks",
     "Raphael, Tag Team Tough",
+    "The Immortal Sun",
+    "Archfiend of Despair",
     // Ghyrson Starn (Spr3adsh33t)
     "Basilisk Collar",
     "Gorgon's Head",

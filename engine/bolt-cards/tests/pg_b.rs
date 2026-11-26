@@ -3089,5 +3089,56 @@ fn raphael_untaps_and_adds_one_combat_the_first_time_each_turn() {
     let raphael = put(&mut g, 0, "Raphael, Tag Team Tough");
     let combats = fight_through_turn_5(&mut g, &[raphael]);
     assert_eq!(combats, 2, "one extra combat, not one per hit");
-    assert_eq!(g.players[1].life, 40 - 12);
+    assert_eq!(g.players[1].life, 40 - 10, "a 5/5, twice");
+}
+
+#[test]
+fn the_immortal_sun_stops_loyalty_discounts_draws_and_pumps() {
+    let mut g = game(&["Plains"]);
+    let sun = put(&mut g, 0, "The Immortal Sun");
+    let ugin = put(&mut g, 0, "Ugin, the Spirit Dragon");
+    g.objects[ugin.0 as usize].loyalty = 7;
+    let lions = put(&mut g, 0, "Savannah Lions");
+    assert!(
+        !g.legal_actions().iter().any(|a| matches!(a, Action::Loyalty(..))),
+        "no loyalty abilities"
+    );
+    assert_eq!((g.power(lions), g.toughness(lions)), (3, 2));
+    let ring = hand(&mut g, 0, "Mind Stone"); // {2}, {1} less: one Plains pays
+    assert!(g.legal_actions().contains(&Action::Cast(ring)));
+    // Your draw step: two cards.
+    let before = g.players[0].hand.len();
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.players[0].hand.len(), before + 2);
+    let _ = sun;
+}
+
+#[test]
+fn archfiend_of_despair_stops_their_life_gain_and_doubles_their_loss() {
+    let mut g = table();
+    put(&mut g, 0, "Archfiend of Despair");
+    // Their creature is exiled by your Swords to Plowshares: they'd gain 2, but can't.
+    let lions = put(&mut g, 1, "Savannah Lions");
+    let swords = hand(&mut g, 0, "Swords to Plowshares");
+    play(&mut g, swords, false, &[Target::Object(lions)], &[]);
+    assert_eq!(g.players[1].life, 40);
+    // You still gain life: Swords on your own Lions.
+    let mine = put(&mut g, 0, "Savannah Lions");
+    let swords = hand(&mut g, 0, "Swords to Plowshares");
+    play(&mut g, swords, false, &[Target::Object(mine)], &[]);
+    assert_eq!(g.players[0].life, 42);
+    // They lose 3, then 3 more at the end step.
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    play(&mut g, bolt, false, &[Target::Player(1)], &[]);
+    while g.step != Step::Cleanup && g.turn == 3 {
+        let a = match g.pending {
+            Pending::DeclareAttackers(_) => Action::FinishAttacks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.players[1].life, 34);
 }

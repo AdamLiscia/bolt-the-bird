@@ -4220,6 +4220,13 @@ impl Game {
         if self.life_locked(p) {
             return;
         }
+        // Archfiend of Despair: "Your opponents can't gain life."
+        if self
+            .permanents(opponent(p))
+            .any(|x| self.def_of(x).opponents_cant_gain_life && !self.lost_abilities(x))
+        {
+            return;
+        }
         // Alhammarret's Archive: twice that much, for each.
         let k = self
             .permanents(p)
@@ -8069,6 +8076,14 @@ impl Game {
     fn loyalty_actions(&self, p: PlayerId, sorcery_timing: bool) -> Vec<Action> {
         let mut v = Vec::new();
         if !sorcery_timing {
+            return v;
+        }
+        // The Immortal Sun: "Players can't activate planeswalkers' loyalty abilities."
+        if self
+            .battlefield
+            .iter()
+            .any(|&x| self.def_of(x).players_cant_activate_loyalty && !self.lost_abilities(x))
+        {
             return v;
         }
         for id in self.permanents(p) {

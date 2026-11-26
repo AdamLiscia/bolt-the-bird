@@ -981,6 +981,11 @@ pub struct CardDef {
     /// instead), each applied once in order (Fisher's Talent: level 2 Fish to Shark, level 3 Shark
     /// to Octopus), in `Game::create_token`.
     pub class_token_replacements: Vec<(u8, usize, usize)>,
+    /// The Immortal Sun: "Players can't activate planeswalkers' loyalty abilities." (in
+    /// `Game::loyalty_actions`).
+    pub players_cant_activate_loyalty: bool,
+    /// "Your opponents can't gain life." (Archfiend of Despair), in `Game::gain_life`.
+    pub opponents_cant_gain_life: bool,
 }
 
 /// A card's pieces from the d4 subsystems (see [`CardDef::subsystems`]).
@@ -1478,6 +1483,8 @@ impl CardDef {
             enchanted_ward: None,
             opponents_creatures_die_exiled: false,
             class_token_replacements: Vec::new(),
+            players_cant_activate_loyalty: false,
+            opponents_cant_gain_life: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -1750,6 +1757,8 @@ impl CardDef {
             enchanted_ward: None,
             opponents_creatures_die_exiled: false,
             class_token_replacements: Vec::new(),
+            players_cant_activate_loyalty: false,
+            opponents_cant_gain_life: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -2022,6 +2031,8 @@ impl CardDef {
             enchanted_ward: None,
             opponents_creatures_die_exiled: false,
             class_token_replacements: Vec::new(),
+            players_cant_activate_loyalty: false,
+            opponents_cant_gain_life: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,

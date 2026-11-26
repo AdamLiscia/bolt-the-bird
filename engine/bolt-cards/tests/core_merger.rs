@@ -991,22 +991,24 @@ fn a_creature_cant_block_while_you_control_the_source() {
     }
     let ring = hand(&mut g, 0, "Sol Ring");
     play(&mut g, ring, false, &[], &[Action::Target(Target::Object(wall))]);
-    let blocks = |g: &mut Game| -> bool {
-        g.start_turn(5, 0);
+    // Turn 5: their Lions can't block, so no blockers are declared and the attack connects.
+    let attack = |g: &mut Game, turn: u32| -> bool {
+        g.start_turn(turn, 0);
         while g.pending != Pending::DeclareAttackers(0) {
             act(g, Action::PassPriority);
         }
         act(g, Action::Attack(lions));
         act(g, Action::FinishAttacks);
-        while g.pending != Pending::DeclareBlockers(1) {
+        while g.step != Step::CombatDamage && g.pending != Pending::DeclareBlockers(1) {
             act(g, Action::PassPriority);
         }
-        g.legal_actions().contains(&Action::Block {
-            blocker: wall,
-            attacker: lions,
-        })
+        g.pending == Pending::DeclareBlockers(1)
+            && g.legal_actions().contains(&Action::Block {
+                blocker: wall,
+                attacker: lions,
+            })
     };
-    assert!(!blocks(&mut g), "can't block while you control Sol Ring");
+    assert!(!attack(&mut g, 5), "can't block while you control Sol Ring");
     g.objects[ring.0 as usize].controller = 1; // you no longer control it
-    assert!(blocks(&mut g));
+    assert!(attack(&mut g, 7));
 }

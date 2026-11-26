@@ -842,3 +842,7 @@ Built 2026-11-26: Insatiable Frugivore's `No` gets its own answer arm (it was of
 - Gisa, Glorious Resurrector: `CardDef::opponents_creatures_die_exiled`, a replacement in `move_to`
   (an opponent's creature going from the battlefield to a graveyard is exiled), recorded in
   `Game::exiled_with` as (Gisa, its zcc, the card, its zcc in exile) for lane C's upkeep return.
+- The Immortal Sun: `CardDef::players_cant_activate_loyalty`, checked at the top of `loyalty_actions`;
+  its draw, discount and anthem were already in.
+- Archfiend of Despair: `CardDef::opponents_cant_gain_life`, checked in `gain_life`; its end step is
+  the existing `LoseLifeLostThisTurn`.
