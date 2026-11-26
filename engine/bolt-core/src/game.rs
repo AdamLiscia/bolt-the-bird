@@ -1493,6 +1493,8 @@ pub struct Game {
     /// "+P/+T until your next turn": (creature, its zcc, power, toughness, the turn it ends at: the
     /// controller's next turn in alternating turns) (Fungi Cavern).
     pub next_turn_pt: Vec<(ObjId, u32, i32, i32, u32)>,
+    /// Spells cast with escape: (card, the zone-change count it will have on the battlefield).
+    pub escaped: Vec<(ObjId, u32)>,
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -1730,6 +1732,7 @@ impl Game {
             initiative: None,
             vows: Vec::new(),
             next_turn_pt: Vec::new(),
+            escaped: Vec::new(),
         }
     }
 
@@ -4424,6 +4427,13 @@ impl Game {
                 let x = self.obj(id).x as i32;
                 self.add_counters(id, x);
             }
+            // "This creature escapes with N +1/+1 counters on it."
+            let zcc = self.obj(id).zcc;
+            if let Some(pos) = self.escaped.iter().position(|&e| e == (id, zcc)) {
+                self.escaped.remove(pos);
+                let n = def.mana_ext.escape.map_or(0, |e| e.2);
+                self.add_counters(id, n);
+            }
             // Displaced Dinosaurs: a historic permanent you control becomes a 7/7 Dinosaur.
             let historic =
                 def.types.artifact || def.types.legendary || def.subtypes.iter().any(|s| s == "Saga");
@@ -5471,6 +5481,7 @@ impl Game {
         let flashback = self.players[p].graveyard.iter().filter(|&&c| {
             let d = self.def_of(c);
             d.flashback.is_some()
+                || d.mana_ext.escape.is_some()
                 || ((self.obj(c).flashback_eot || self.obj(c).harmonize_eot)
                     && (d.types.instant || d.types.sorcery))
         });
@@ -5745,6 +5756,20 @@ impl Game {
                 })
                 .collect();
         }
+        if let (true, Some((_, n, _)), None) = (from_graveyard, def.mana_ext.escape, def.flashback) {
+            // Escape: its cost plus exiling `n` other cards from your graveyard.
+            let others = self.players[p].graveyard.iter().filter(|&&x| x != c).count();
+            if others < n as usize {
+                return Vec::new();
+            }
+            return vec![(
+                Action::CastAlternative(c),
+                CastMode {
+                    alt: true,
+                    ..CastMode::default()
+                },
+            )];
+        }
         if from_graveyard {
             // Dread Return: "Flashback—Sacrifice three creatures" needs that many to sacrifice.
             let victims = self.creatures(p).filter(|&x| !self.cant_be_sacrificed(x)).count();
@@ -5982,6 +6007,9 @@ impl Game {
         } else if mode.alt {
             match def.alt_cost {
                 Some((c, _)) => c,
+                None if def.mana_ext.escape.is_some() => {
+                    def.mana_ext.escape.expect("escape").0.with_x(mode.x)
+                }
                 None if def.phyrexian.iter().any(|&n| n > 0) => {
                     let mut c = def.cost.with_x(mode.x);
                     for (k, &n) in def.phyrexian.iter().enumerate() {
@@ -6260,6 +6288,11 @@ impl Game {
             }
             if creature && e.creature_discount_per_counter {
                 n += self.obj(x).counters.max(0) as usize;
+            }
+            if let Some((colors, k)) = e.colored_spell_discount {
+                if (0..5).any(|i| colors[i] && def.colors[i]) {
+                    n += k as usize;
+                }
             }
             if (t.instant || t.sorcery || mode.mode == Some(OMEN_MODE))
                 && e.instant_sorcery_discount_per_creature_token
@@ -7463,7 +7496,25 @@ impl Game {
             .filter(|&x| !self.lost_abilities(x))
             .filter_map(|x| self.def_of(x).mana_ext.your_subtype_lands_add)
             .collect();
+        let dictates = self
+            .battlefield
+            .iter()
+            .filter(|&&x| self.def_of(x).mana_ext.all_lands_add_same && !self.lost_abilities(x))
+            .count();
+        let creature_adders: Vec<crate::Color> = self
+            .permanents(p)
+            .filter(|&x| !self.lost_abilities(x))
+            .filter_map(|x| self.def_of(x).mana_ext.your_creatures_add)
+            .collect();
         for (id, m) in base {
+            if self.types_of(id).land && !self.def_of(id).vivid_mana {
+                out.extend(std::iter::repeat_n((id, m), dictates)); // Dictate of Karametra
+            }
+            if self.types_of(id).creature {
+                for &c in &creature_adders {
+                    out.push((id, ManaSource::of(&[c]))); // Leyline of Abundance
+                }
+            }
             if self.types_of(id).land && (!auras.is_empty() || !adders.is_empty()) {
                 let zcc = self.obj(id).zcc;
                 for &a in &auras {
@@ -7560,6 +7611,10 @@ impl Game {
     }
 
     fn single_sources(&self, p: PlayerId) -> Vec<(ObjId, ManaSource)> {
+        // Chromatic Lantern, checked once for all of `p`'s lands.
+        let lantern = self
+            .permanents(p)
+            .any(|x| self.def_of(x).mana_ext.lands_tap_any_color && !self.lost_abilities(x));
         self.permanents(p)
             .filter(|&id| {
                 (self.can_tap(id) || self.def_of(id).mana_ext.sac_mana_no_tap && !self.lost_abilities(id))
@@ -7744,11 +7799,7 @@ impl Game {
                 {
                     return Some((id, ManaSource::of(&[crate::Color::Green]))); // Rishkar
                 }
-                if self.types_of(id).land
-                    && self
-                        .permanents(p)
-                        .any(|x| self.def_of(x).mana_ext.lands_tap_any_color && !self.lost_abilities(x))
-                {
+                if lantern && self.types_of(id).land {
                     let mut m = d.mana.unwrap_or_default();
                     m.colors = [true; 5]; // Chromatic Lantern: "{T}: Add one mana of any color."
                     return Some((id, m));
@@ -8616,6 +8667,12 @@ impl Game {
         if let Some(x) = energy_by {
             let n = self.def_of(x).permanents_for_energy as u32;
             self.players[p].energy = self.players[p].energy.saturating_sub(n);
+        } else if let (true, Some((_, n, _))) = (item.alt, self.def_of(card).mana_ext.escape) {
+            // Escape: exile the other cards; it escapes with its counters (see `escaped`).
+            self.exile_for_delve(p, card, n);
+            let zcc = self.obj(card).zcc + 1;
+            self.escaped.retain(|e| e.0 != card);
+            self.escaped.push((card, zcc));
         } else if item.alt
             && self.def_of(card).alt_cost.is_none()
             && self.def_of(card).warp.is_none()

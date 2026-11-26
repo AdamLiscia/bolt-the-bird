@@ -900,6 +900,18 @@ pub struct ManaExt {
     /// cost." (Force of Will: blue, 1): (WUBRG index, life). Cast with `Action::CastWith` naming
     /// the card.
     pub pitch_with_life: Option<(u8, i32)>,
+    /// "[Color] spells (and [color] spells) you cast cost {N} less to cast": spells of any of these
+    /// colors (WUBRG), once each (Jet Medallion: black; Stormscape Familiar: white and black).
+    pub colored_spell_discount: Option<([bool; 5], u8)>,
+    /// "Whenever a player taps a land for mana, that player adds one mana of any type that land
+    /// produced." (Dictate of Karametra)
+    pub all_lands_add_same: bool,
+    /// "Whenever you tap a creature for mana, add an additional [color]." (Leyline of Abundance)
+    pub your_creatures_add: Option<crate::Color>,
+    /// Escape (CR 702.138): (cost, other graveyard cards to exile, +1/+1 counters it escapes with).
+    /// Cast from your graveyard with `Action::CastAlternative`; the engine picks the exiled cards,
+    /// as for delve.
+    pub escape: Option<(ManaCost, u8, i32)>,
 }
 
 /// Which events don't cause abilities to trigger (see [`CardDef::suppresses_triggers`]).

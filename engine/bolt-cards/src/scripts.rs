@@ -225,7 +225,7 @@ pub fn token_defs() -> Vec<CardDef> {
             t.types.artifact = true;
             t
         },
-        token("Placeholder 76", "Placeholder", 0, 0, Keywords::NONE), // d1's Goat (76) until it lands
+        token("Goat", "Goat", 0, 1, Keywords::NONE), // Woe Strider's white 0/1
         // 77-82: lane d4's (dungeon rooms, Ancient Gold Dragon, Lolth, Urza's Saga).
         black(token("Skeleton", "Skeleton", 1, 1, Keywords::NONE)), // Muiral's Graveyard
         black(token("Skeleton", "Skeleton", 4, 1, Keywords::MENACE)), // Catacombs
@@ -406,6 +406,7 @@ pub struct Tokens {
     pub faerie_dragon: usize,
     pub spider_menace: usize,
     pub saga_construct: usize,
+    pub goat: usize,
 }
 
 impl Tokens {
@@ -493,6 +494,7 @@ impl Tokens {
             faerie_dragon: base + 80,
             spider_menace: base + 81,
             saga_construct: base + 82,
+            goat: base + 76,
         }
     }
 }
