@@ -101,6 +101,8 @@ def test_lane_d3_batch_5_decisions_read_as_their_moves():
     brass = {"kind": "ReanimateTotalManaValue", "left": 9}
     assert pick(brass, "Serra Angel") == "Put onto the battlefield under your control: Serra Angel"
     assert label(brass, "No", 0) == "Done choosing"
+    marauder = {"kind": "SacrificeNontokenCreatureEach", "next": 1}
+    assert pick(marauder, "Serra Angel") == "Sacrifice Serra Angel"
 
 
 def test_lonis_puts_a_revealed_card_under_your_control():
@@ -129,6 +131,12 @@ def test_white_plume_adventurer_untaps_a_creature_by_name():
     assert sv._decision_label(dec, "Pick", 0, "Llanowar Elves") == "Untap Llanowar Elves"
 
 
+def test_the_ring_tempting_you_names_the_ring_bearer():
+    dec = {"kind": "ChooseRingBearer"}
+    label = sv._decision_label(dec, "Pick", 0, "Llanowar Elves")
+    assert label == "Choose as your Ring-bearer: Llanowar Elves"
+
+
 def test_a_split_or_omen_second_half_is_cast_by_its_name():
     assert sv._label("CastOmen", ["Fire // Ice"], (), 0, (0, 0, 0)) == "Cast Ice"
     assert sv._label("CastOmen", ["Sol Ring"], (), 0, (0, 0, 0)) == "Cast Sol Ring's Omen"
@@ -136,6 +144,14 @@ def test_a_split_or_omen_second_half_is_cast_by_its_name():
 
 def test_an_unknown_decision_keeps_the_generic_label():
     assert label({"kind": "SomethingNew"}, "Mode", 0) is None
+
+
+def test_a_pact_says_not_paying_loses_the_game():
+    dec = {"kind": "PayOrLoseGame", "cost": "{3}{U}{U}"}
+    assert label(dec, "Yes", 0) == "Pay {3}{U}{U}"
+    assert label(dec, "No", 0) == "Don't pay (you lose the game)"
+    sourced = {**dec, "source": [5, 1]}
+    assert label(sourced, "Yes", 0) == "Pay {3}{U}{U} (Thriving Heath)"
 
 
 def test_rootcast_and_frugivore_decisions_read_as_their_moves():

@@ -1770,6 +1770,51 @@ pub fn script(name: &str) -> Option<Script> {
             &["Whenever this creature deals combat damage to a player, roll a d20. When you do, put any number of target creature cards with total mana value X or less from graveyards onto the battlefield under your control, where X is the result."],
             |d, _| on(d, When::DealsCombatDamageToPlayer, vec![], vec![Effect::RollD20ReanimateTotalManaValue]),
         ),
+        // ---- Core theme d3, batch 21 ----
+        "Lord of Extinction" => s(
+            &["Lord of Extinction's power and toughness are each equal to the number of cards in all graveyards."],
+            |d, _| {
+                static_on(d, Scope::This, false, Keywords::NONE);
+                let s = d.statics.last_mut().expect("just added");
+                (s.power, s.toughness, s.scale) = (1, 1, Some(Scale::PerCardInAllGraveyards));
+            },
+        ),
+        "Accursed Marauder" => s(
+            &["When this creature enters, each player sacrifices a nontoken creature of their choice."],
+            |d, _| on(d, When::Enters, vec![], vec![Effect::EachPlayerSacrificesNontokenCreature]),
+        ),
+        "Drana, Liberator of Malakir" => s(
+            &["Whenever Drana deals combat damage to a player, put a +1/+1 counter on each attacking creature you control."],
+            |d, _| on(d, When::DealsCombatDamageToPlayer, vec![], vec![Effect::CountersOnEachAttackingYouControl]),
+        ),
+        "Canopy Gargantuan" => s(
+            &[
+                "Flying, ward {2}",
+                "At the beginning of your upkeep, put a number of +1/+1 counters on each other creature you control equal to that creature's toughness.",
+            ],
+            |d, _| {
+                d.keywords = d.keywords.with(Keywords::FLYING);
+                d.ward = ManaCost::parse("{2}");
+                on(d, When::Upkeep { your_turn_only: true }, vec![], vec![Effect::CountersOnOthersEqualToughness]);
+            },
+        ),
+        "Vampire Hexmage" => s(&["Sacrifice this creature: Remove all counters from target permanent."], |d, _| {
+            let n = activated(d, "", false, vec![PERMANENT], vec![Effect::RemoveEveryKindOfCounter(0)]);
+            d.activated[n].sacrifice_self = true;
+        }),
+        "Takenuma, Abandoned Mire" => s(
+            &[
+                "{T}: Add {B}.",
+                "Channel \u{2014} {3}{B}, Discard this card: Mill three cards, then return a creature or planeswalker card from your graveyard to your hand. This ability costs {1} less to activate for each legendary creature you control.",
+            ],
+            |d, _| {
+                d.mana = Some(ManaSource::of(&[Color::Black]));
+                let back = Effect::ReturnPickFromGraveyardToHand(Pick::CreatureOrPlaneswalker);
+                let n = activated(d, "{3}{B}", false, vec![], vec![Effect::Mill { who: Who::You, n: 3 }, back]);
+                d.activated[n].from_hand_discard = true;
+                d.activated[n].less_per_legendary_creature = true;
+            },
+        ),
         _ => None,
     }
 }
@@ -2012,4 +2057,11 @@ pub const PG_D3_SCRIPTED: &[&str] = &[
     "Dragon Tempest",
     "Ledger Shredder",
     "Ancient Brass Dragon",
+    // Core theme d3, batch 21
+    "Lord of Extinction",
+    "Accursed Marauder",
+    "Drana, Liberator of Malakir",
+    "Canopy Gargantuan",
+    "Vampire Hexmage",
+    "Takenuma, Abandoned Mire",
 ];

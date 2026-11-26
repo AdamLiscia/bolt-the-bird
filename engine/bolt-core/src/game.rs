@@ -1281,6 +1281,14 @@ pub enum Decision {
     },
     /// Expropriate: `Pick` a permanent `owner` owns to gain control of; then the rest of `money`.
     ExpropriatePick { owner: PlayerId, money: Vec<PlayerId> },
+    /// `Pick` a nontoken creature you control to sacrifice; then `next` chooses (Accursed
+    /// Marauder: each player, the active player first).
+    SacrificeNontokenCreatureEach { next: Option<PlayerId> },
+    /// The Ring tempts you (CR 701.54a): `Pick` a creature you control as your Ring-bearer.
+    ChooseRingBearer,
+    /// "Pay {cost}. If you don't, you lose the game." (Pact of Negation): `Yes` pays (offered only if
+    /// you can), `No` loses the game.
+    PayOrLoseGame { cost: ManaCost },
     /// `Pick` a nontoken artifact you control to sacrifice (Rootcast Apprenticeship).
     SacrificeNontokenArtifact,
     /// Insatiable Frugivore: `Pick` a card in your graveyard to exile (three, one at a time:
@@ -1678,6 +1686,17 @@ pub struct Game {
     /// While one effect creates its tokens: whether Xorn's additional Treasure has been made for
     /// it ("one or more Treasure tokens": once per event).
     xorn_batch: Option<bool>,
+    /// The Ring (CR 701.54): how many of its four abilities each player's Ring emblem has.
+    pub ring_level: [u8; 2],
+    /// Each player's Ring-bearer as chosen, (creature, its zcc) (CR 701.54a; see `Game::ring_bearer`).
+    pub ring_bearer: [Option<(ObjId, u32)>; 2],
+    /// How many times the Ring has tempted each player this game (CR 701.54d).
+    pub ring_tempted: [u32; 2],
+    /// Blockers the Ring's third ability has already triggered for: (blocker, its zcc, turn).
+    pub ring_blocks_seen: Vec<(ObjId, u32, u32)>,
+    /// Delayed "at the beginning of your next upkeep" triggers (Pact of Negation): (source, trigger
+    /// number, controller, the turn it was set up; it waits for an upkeep of theirs after it).
+    pub delayed_next_upkeep: Vec<(ObjId, usize, PlayerId, u32)>,
     /// Ugin, the Ineffable: (token, its zcc on the battlefield, the exiled card, its zcc in exile,
     /// the source, its trigger number, the controller). When the token leaves the battlefield, that
     /// trigger puts the card into its owner's hand.
@@ -1946,6 +1965,11 @@ impl Game {
             control_while_shielded: Vec::new(),
             nontoken_creatures_died: (0, 0),
             xorn_batch: None,
+            ring_level: [0; 2],
+            ring_bearer: [None; 2],
+            ring_tempted: [0; 2],
+            ring_blocks_seen: Vec::new(),
+            delayed_next_upkeep: Vec::new(),
             token_linked_exile: Vec::new(),
             spell_enters_with_counters: Vec::new(),
         }
@@ -2858,6 +2882,9 @@ impl Game {
                             ),
                             Some(Scale::PerCardInAllHands) => {
                                 Some(self.players.iter().map(|pl| pl.hand.len()).sum())
+                            }
+                            Some(Scale::PerCardInAllGraveyards) => {
+                                Some(self.players.iter().map(|pl| pl.graveyard.len()).sum())
                             }
                             _ => None,
                         };
@@ -4908,11 +4935,21 @@ impl Game {
                 When::ArtifactToOpponentsGraveyardFromBattlefield,
                 None,
             );
+            self.fire(
+                last_controller,
+                When::ArtifactYouControlToGraveyardFromBattlefield,
+                None,
+            );
         }
         if dies && (self.types_of(id).artifact || self.types_of(id).creature) {
             self.fire(
                 last_controller,
                 When::ThisOrAnotherCreatureOrArtifactYouControlDies,
+                Some(id),
+            );
+            self.fire(
+                last_controller,
+                When::AnotherCreatureOrArtifactYouControlToGraveyardFromBattlefield,
                 Some(id),
             );
         }
@@ -10253,7 +10290,7 @@ impl Game {
         if noncreature {
             self.fire(opponent(p), When::OpponentCastsNoncreature, None);
             // Pollywog Prodigy: only for a spell with mana value less than its power.
-            let cost = self.def_of(card).cost;
+            let cost = self.cast_mana_cost(&item);
             let mv = (cost.mana_value() + cost.x as u32 * item.x as u32) as i32;
             let before = self.triggered.len();
             self.fire(opponent(p), When::OpponentCastsNoncreatureMvBelowPower, None);
@@ -10346,7 +10383,7 @@ impl Game {
         if self.types_of(card).artifact {
             self.fire(p, When::YouCastArtifact, None);
         }
-        let spell_cost = self.def_of(card).cost;
+        let spell_cost = self.cast_mana_cost(&item);
         let spell_mv = spell_cost.mana_value() + spell_cost.x as u32 * item.x as u32;
         let colors = self.colors_of(card);
         if colors.iter().filter(|&&c| c).count() >= 2 {
@@ -11317,6 +11354,7 @@ impl Game {
             }
             Pick::PermanentOddManaValue => d.types.is_permanent() && !d.cost.mana_value().is_multiple_of(2),
             Pick::CreatureManaValueAtMost(n) => d.types.creature && d.cost.mana_value() <= n,
+            Pick::CreatureOrPlaneswalker => d.types.creature || d.types.planeswalker,
         }
     }
 
@@ -11437,7 +11475,7 @@ impl Game {
                 v
             }
             Decision::SplitPiles { .. } | Decision::ChoosePile { .. } => vec![Action::Yes, Action::No],
-            Decision::MayPay { cost } => {
+            Decision::MayPay { cost } | Decision::PayOrLoseGame { cost } => {
                 let mut v = Vec::new();
                 if self.can_pay(p, cost, None) {
                     v.push(Action::Yes);
@@ -11649,6 +11687,7 @@ impl Game {
                 self.subsystem_decision_actions(d)
             }
             Decision::UntapOwnCreature => self.untap_own_creature_options(p),
+            Decision::ChooseRingBearer => self.ring_bearer_options(p),
             Decision::DelinaAgain { .. } => vec![Action::Yes, Action::No],
             Decision::PickOneOf { cards, .. } => cards.iter().copied().map(Action::Pick).collect(),
             Decision::MayCreatureFromHand => {
@@ -12294,6 +12333,11 @@ impl Game {
                 v.push(Action::No);
                 v
             }
+            Decision::SacrificeNontokenCreatureEach { .. } => self
+                .nontoken_sacrifice_options(p)
+                .into_iter()
+                .map(Action::Pick)
+                .collect(),
             Decision::ReanimateTotalManaValue { left } => {
                 let mut v: Vec<Action> = self
                     .reanimate_total_options(*left)
@@ -12508,6 +12552,8 @@ impl Game {
                 self.sacrificed(c, p);
             }
             (Decision::MayPay { cost }, Action::Yes) => self.pay_mana(p, &cost, None),
+            (Decision::PayOrLoseGame { cost }, Action::Yes) => self.pay_mana(p, &cost, None),
+            (Decision::PayOrLoseGame { .. }, _) => self.players[p].lost = true,
             (Decision::KeepOfType { ty, mut kept }, Action::Pick(c)) => {
                 if !kept.contains(&c) {
                     kept.push(c);
@@ -13705,6 +13751,7 @@ impl Game {
                 self.subsystem_decide(p, d, a)
             }
             (d @ Decision::UntapOwnCreature, a) => self.subsystem_decide(p, d, a),
+            (d @ Decision::ChooseRingBearer, a) => self.subsystem_decide(p, d, a),
             (
                 Decision::VowCreature {
                     caster,
@@ -13811,6 +13858,15 @@ impl Game {
                         self.obj_mut(c).controller = p;
                     }
                     self.reanimate_total_next(p, left.saturating_sub(mv));
+                }
+            }
+            (Decision::SacrificeNontokenCreatureEach { next }, a) => {
+                if let Action::Pick(c) = a {
+                    self.move_to(c, Zone::Graveyard);
+                    self.sacrificed(c, p);
+                }
+                if let Some(q) = next {
+                    self.sacrifice_nontoken_next(q, None);
                 }
             }
             (d, a) => unreachable!("legal action {a:?} unhandled for {d:?}"),
@@ -14304,6 +14360,22 @@ impl Game {
             .collect();
         v.extend(self.players[p].hand.iter().copied());
         v
+    }
+
+    /// Nontoken creatures `p` controls that can be sacrificed (Accursed Marauder).
+    fn nontoken_sacrifice_options(&self, p: PlayerId) -> Vec<ObjId> {
+        self.creatures(p)
+            .filter(|&c| !self.is_token(c) && !self.cant_be_sacrificed(c))
+            .collect()
+    }
+
+    /// Accursed Marauder: `p` sacrifices a nontoken creature (asked only with one), then `next`.
+    fn sacrifice_nontoken_next(&mut self, p: PlayerId, next: Option<PlayerId>) {
+        if !self.nontoken_sacrifice_options(p).is_empty() {
+            self.ask(p, Decision::SacrificeNontokenCreatureEach { next });
+        } else if let Some(q) = next {
+            self.sacrifice_nontoken_next(q, None);
+        }
     }
 
     /// Creature cards in any graveyard with mana value at most `left` (Ancient Brass Dragon).
@@ -15668,7 +15740,8 @@ impl Game {
             Effect::LoseLifeCastSpellManaValue => {
                 if let Some(s) = item.extra {
                     let o = self.obj(s);
-                    let mv = self.def_of(s).cost.with_x(o.x).mana_value() as i32;
+                    // d4's stack_mana_cost: a split spell's cast half only (CR 709.3b).
+                    let mv = self.stack_mana_cost(s).with_x(o.x).mana_value() as i32;
                     self.lose_life(item.controller, mv);
                 }
             }
@@ -16739,6 +16812,11 @@ impl Game {
                     }
                 }
             }
+            Effect::DelayedAtYourNextUpkeep { trigger } => {
+                let entry = (src, trigger, item.controller, self.turn);
+                self.delayed_next_upkeep.push(entry);
+            }
+            Effect::PayOrLoseGame(cost) => self.ask(item.controller, Decision::PayOrLoseGame { cost }),
             Effect::BecomeCopyOfSlotUntilEot(n) => {
                 if let Some(card) = Game::slot_object(item, legal, n) {
                     if self.obj(src).zone == Zone::Battlefield {
@@ -21610,6 +21688,65 @@ impl Game {
                 let x = self.roll_die(20);
                 self.reanimate_total_next(item.controller, x);
             }
+            Effect::EachPlayerSacrificesNontokenCreature => {
+                let a = self.active;
+                self.sacrifice_nontoken_next(a, Some(opponent(a)));
+            }
+            Effect::CountersOnEachAttackingYouControl => {
+                let p = item.controller;
+                let attackers: Vec<ObjId> = self
+                    .combat
+                    .as_ref()
+                    .map(|c| c.attackers.clone())
+                    .unwrap_or_default();
+                for c in attackers {
+                    if self.obj(c).zone == Zone::Battlefield && self.obj(c).controller == p {
+                        self.add_counters(c, 1);
+                    }
+                }
+            }
+            Effect::CountersOnOthersEqualToughness => {
+                for c in self.creatures(item.controller).collect::<Vec<_>>() {
+                    let t = self.toughness(c);
+                    if c != src && t > 0 {
+                        self.add_counters(c, t);
+                    }
+                }
+            }
+            Effect::RemoveEveryKindOfCounter(slot) => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    let o = self.obj_mut(id);
+                    o.counters = 0;
+                    o.stun = 0;
+                    o.keyword_counters = Keywords::NONE;
+                    o.lore = 0;
+                    o.loyalty = 0;
+                    o.time_counters = 0;
+                    o.quest = 0;
+                    o.fellowship = 0;
+                    o.kind_counters = 0;
+                    o.void_counter = false;
+                }
+            }
+            Effect::ReturnPickFromGraveyardToHand(pick) => {
+                let cards: Vec<ObjId> = self.players[item.controller]
+                    .graveyard
+                    .iter()
+                    .copied()
+                    .filter(|&c| self.picks(c, pick))
+                    .collect();
+                if !cards.is_empty() {
+                    self.ask(
+                        item.controller,
+                        Decision::LookPick {
+                            cards,
+                            pick,
+                            to: LookTo::Hand,
+                            rest: None,
+                        },
+                    );
+                }
+            }
         }
     }
 
@@ -22714,6 +22851,18 @@ impl Game {
                     for _ in 0..n {
                         self.draw(q);
                     }
+                }
+                // Delayed "at the beginning of your next upkeep" triggers (Pact of Negation).
+                let turn = self.turn;
+                let (due, wait): (Vec<_>, Vec<_>) = std::mem::take(&mut self.delayed_next_upkeep)
+                    .into_iter()
+                    .partition(|&(_, _, q, t)| q == a && t < turn);
+                self.delayed_next_upkeep = wait;
+                for (src, n, q, _) in due {
+                    self.triggered.push(StackItem {
+                        kind: StackKind::Trigger(n),
+                        ..Game::casting(src, q)
+                    });
                 }
                 self.fire(a, When::Upkeep { your_turn_only: true }, None);
                 self.fire(
