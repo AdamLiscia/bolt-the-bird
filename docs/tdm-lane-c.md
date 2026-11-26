@@ -731,3 +731,23 @@ the Role subtype), with placeholders at 91-96 for d2's and d4's tokens. Core: `E
 MayDiscardToDrawN}` (one Role of yours per creature: the older goes to the graveyard, CR 303.7) and
 `When::ThisPutIntoGraveyardFromBattlefield` (one `fire_source` line in `move_to`, next to
 `PutIntoGraveyardFromAnywhere`; tokens included).
+
+## Held back (lane C), with what each needs
+
+- Light-Paws, Emperor's Voice: `When::SubtypeYouControlEnters("Aura")` exists, but "if you cast it" is about the
+  entering Aura, and nothing records that an object entered from the stack (`Condition::CastIt` is the source's;
+  `Object::mana_spent` isn't reset on zone changes). Then a search for an Aura with mana value at most that
+  Aura's and a name different from each Aura you control, put onto the battlefield attached to Light-Paws.
+- Sovereigns of Lost Alara: needs d2's "a creature you control attacks alone" trigger; then the same
+  "search for an Aura that could enchant it, onto the battlefield attached" piece.
+- Bruna, Light of Alabaster: attack-or-block trigger; attach any number of Auras on the battlefield to it, and put
+  any number of Aura cards from graveyard and hand onto the battlefield attached (a repeated Pick decision over
+  three zones). Shares the "Aura onto the battlefield attached" piece above.
+- Olivia, Crimson Bride: return target creature card tapped and attacking (`combat.attackers`, as Delina does),
+  plus a granted "when you don't control a legendary Vampire, exile this" state check (an Object flag checked in
+  state-based actions).
+- Dragonhawk, Fate's Tempest: exile the top X (creatures with power 4+), playable until your next end step
+  (`Object::playable`), then 2 damage per card still exiled at that end step (a delayed list on `Game`).
+- Glimpse of Tomorrow: suspend (exile with time counters from hand, remove one each upkeep, cast free at zero),
+  then "shuffle all permanents you own into your library, reveal that many, put the non-Auras then Auras onto the
+  battlefield".
