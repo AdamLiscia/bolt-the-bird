@@ -1948,3 +1948,294 @@ fn esper_sentinel_taxes_the_first_noncreature_spell() {
     resolve_all(&mut g, &[]);
     assert_eq!(hand_size(&g, 0), before + 1, "only the first");
 }
+
+#[test]
+fn austere_command_destroys_two_kinds() {
+    let mut g = table();
+    let ring = put(&mut g, 1, "Sol Ring");
+    let study = put(&mut g, 1, "Anointed Procession");
+    let lions = put(&mut g, 1, "Savannah Lions");
+    let elder = put(&mut g, 1, "Silverback Elder");
+    let cmd = hand(&mut g, 0, "Austere Command");
+    // Mode 2: artifacts and creatures with mana value 3 or less (pairs in order 01 02 03 12 13 23).
+    act(&mut g, Action::CastModal(cmd, 1));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(ring).zone, Zone::Graveyard);
+    assert_eq!(g.obj(lions).zone, Zone::Graveyard);
+    assert_eq!(g.obj(study).zone, Zone::Battlefield);
+    assert_eq!(g.obj(elder).zone, Zone::Battlefield);
+}
+
+#[test]
+fn dawns_truce_gives_you_hexproof() {
+    let mut g = table();
+    let truce = hand(&mut g, 0, "Dawn's Truce");
+    let bolt = hand(&mut g, 1, "Burst Lightning");
+    play(&mut g, truce, false, &[], &[]);
+    act(&mut g, Action::PassPriority);
+    act(&mut g, Action::Cast(bolt));
+    assert!(!has(&g, Action::Target(Target::Player(0))), "hexproof");
+}
+
+#[test]
+fn eldritch_evolution_and_birthing_pod_climb_mana_values() {
+    let mut g = table();
+    let lions = put(&mut g, 0, "Savannah Lions"); // mana value 1
+    let elder = g.add_card(0, cid("Silverback Elder"), Zone::Library); // 5
+    let courser = g.add_card(0, cid("Courser of Kruphix"), Zone::Library); // 3
+    let evo = hand(&mut g, 0, "Eldritch Evolution");
+    act(&mut g, Action::CastWith(evo, lions));
+    pass_until_asked(&mut g);
+    let legal = g.legal_actions();
+    assert!(
+        legal.contains(&Action::Pick(courser)) && !legal.contains(&Action::Pick(elder)),
+        "3 or less"
+    );
+    act(&mut g, Action::Pick(courser));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(courser).zone, Zone::Battlefield);
+    assert_eq!(g.obj(evo).zone, Zone::Exile);
+
+    let mut g = table();
+    let pod = put(&mut g, 0, "Birthing Pod");
+    let witness = put(&mut g, 0, "Eternal Witness"); // 3
+    let elder = g.add_card(0, cid("Silverback Elder"), Zone::Library); // 5
+    let medallion = g.add_card(0, cid("Nissa, Who Shakes the World"), Zone::Library); // 5, not a creature
+    let study = g.add_card(0, cid("Grim Guardian"), Zone::Library); // 3
+    let four = g.add_card(0, cid("Eidolon of Blossoms"), Zone::Library); // 4
+    act(&mut g, Action::ActivateWith(pod, 0, witness));
+    pass_until_asked(&mut g);
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Pick(four)));
+    assert!(
+        !legal.contains(&Action::Pick(elder))
+            && !legal.contains(&Action::Pick(study))
+            && !legal.contains(&Action::Pick(medallion))
+    );
+    act(&mut g, Action::Pick(four));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(four).zone, Zone::Battlefield);
+    assert_eq!(g.players[0].life, 40, "paid green mana, not life");
+}
+
+#[test]
+fn enduring_vitality_and_jaheira_make_mana() {
+    let mut g = table();
+    put(&mut g, 0, "Enduring Vitality");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    assert_eq!(colors_of(&g, lions), [[true; 5]]);
+    let mut g = table();
+    put(&mut g, 0, "Jaheira, Friend of the Forest");
+    let tithe = put(&mut g, 0, "Smothering Tithe");
+    let _ = tithe;
+    let mut h = table();
+    put(&mut h, 0, "Jaheira, Friend of the Forest");
+    put(&mut h, 0, "Archon of Sun's Grace");
+    let guardian = hand(&mut h, 0, "Grim Guardian");
+    play(&mut h, guardian, false, &[], &[]);
+    let pegasus = tokens(&h, 0, "Pegasus")[0];
+    h.start_turn(5, 0); // no longer summoning sick
+    assert_eq!(colors_of(&h, pegasus), [[false, false, false, false, true]]);
+}
+
+#[test]
+fn enduring_vitality_returns_as_an_enchantment() {
+    let mut g = table();
+    let vit = put(&mut g, 0, "Enduring Vitality");
+    g.objects[vit.0 as usize].damage = 3;
+    act(&mut g, Action::PassPriority);
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(vit).zone, Zone::Battlefield);
+    let t = g.types_of(vit);
+    assert!(t.enchantment && !t.creature);
+}
+
+#[test]
+fn arachnogenesis_makes_spiders_and_stops_other_combat_damage() {
+    let mut g = table();
+    let a = put(&mut g, 1, "Savannah Lions");
+    let b = put(&mut g, 1, "Savannah Lions");
+    let spell = hand(&mut g, 0, "Arachnogenesis");
+    g.start_turn(4, 1);
+    while g.pending != Pending::DeclareAttackers(1) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(a));
+    act(&mut g, Action::Attack(b));
+    act(&mut g, Action::FinishAttacks);
+    while g.pending != Pending::Priority(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Cast(spell));
+    resolve_all(&mut g, &[]);
+    assert_eq!(tokens(&g, 0, "Spider").len(), 2);
+    for _ in 0..20 {
+        if g.step == Step::End {
+            break;
+        }
+        let x = match g.pending {
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, x);
+    }
+    assert_eq!(g.players[0].life, 40);
+}
+
+#[test]
+fn for_the_common_good_copies_tokens_and_gains_life() {
+    let mut g = table();
+    put(&mut g, 0, "Archon of Sun's Grace");
+    let guardian = hand(&mut g, 0, "Grim Guardian");
+    play(&mut g, guardian, false, &[], &[]);
+    let pegasus = tokens(&g, 0, "Pegasus")[0];
+    let common = hand(&mut g, 0, "For the Common Good");
+    act(&mut g, Action::CastX(common, 2));
+    act(&mut g, Action::Target(Target::Object(pegasus)));
+    resolve_all(&mut g, &[]);
+    let all = tokens(&g, 0, "Pegasus");
+    assert_eq!(all.len(), 3);
+    assert!(g.keywords(all[2]).has(Keywords::INDESTRUCTIBLE));
+    assert_eq!(g.players[0].life, 43);
+}
+
+#[test]
+fn mirraris_wake_doubles_land_mana_and_pumps() {
+    let mut g = game(&["Forest", "Forest"]);
+    let lions = put(&mut g, 0, "Savannah Lions");
+    let courser = hand(&mut g, 0, "Courser of Kruphix");
+    assert!(!has(&g, Action::Cast(courser)));
+    put(&mut g, 0, "Mirari's Wake");
+    assert!(has(&g, Action::Cast(courser)));
+    assert_eq!(g.power(lions), 3);
+}
+
+#[test]
+fn kaya_doubles_tokens_and_exiles_graveyards() {
+    let mut g = table();
+    let kaya = put(&mut g, 0, "Kaya, Geist Hunter");
+    g.objects[kaya.0 as usize].loyalty = 3;
+    act(&mut g, Action::Loyalty(kaya, 1)); // −2
+    resolve_all(&mut g, &[]);
+    put(&mut g, 0, "Archon of Sun's Grace");
+    let guardian = hand(&mut g, 0, "Grim Guardian");
+    play(&mut g, guardian, false, &[], &[]);
+    assert_eq!(tokens(&g, 0, "Pegasus").len(), 2);
+    let mut g = table();
+    let kaya = put(&mut g, 0, "Kaya, Geist Hunter");
+    g.objects[kaya.0 as usize].loyalty = 6;
+    g.add_card(0, cid("Savannah Lions"), Zone::Graveyard);
+    g.add_card(1, cid("Savannah Lions"), Zone::Graveyard);
+    let base = g.players[0].graveyard.len() + g.players[1].graveyard.len();
+    act(&mut g, Action::Loyalty(kaya, 2));
+    resolve_all(&mut g, &[]);
+    assert!(g.players[0].graveyard.is_empty() && g.players[1].graveyard.is_empty());
+    // Kaya herself went to the graveyard at 0 loyalty before the ability resolved.
+    assert_eq!(tokens(&g, 0, "Spirit").len(), base + 1);
+}
+
+#[test]
+fn the_golden_throne_saves_you_once_and_makes_three_mana() {
+    let mut g = table();
+    let throne = put(&mut g, 0, "The Golden Throne");
+    g.players[0].life = 0;
+    act(&mut g, Action::PassPriority);
+    assert!(!g.is_over());
+    assert_eq!(g.players[0].life, 1);
+    assert_eq!(g.obj(throne).zone, Zone::Exile);
+    let mut g = table();
+    let throne = put(&mut g, 0, "The Golden Throne");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    act(&mut g, Action::ActivateWith(throne, 0, lions));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].pool.len(), 3);
+    assert_eq!(g.obj(lions).zone, Zone::Graveyard);
+}
+
+#[test]
+fn mondrak_doubles_tokens_and_gains_an_indestructible_counter() {
+    let mut g = table();
+    let mondrak = put(&mut g, 0, "Mondrak, Glory Dominus");
+    put(&mut g, 0, "Archon of Sun's Grace");
+    let guardian = hand(&mut g, 0, "Grim Guardian");
+    play(&mut g, guardian, false, &[], &[]);
+    let pegs = tokens(&g, 0, "Pegasus");
+    assert_eq!(pegs.len(), 2);
+    let ring = put(&mut g, 0, "Sol Ring");
+    act(&mut g, Action::ActivateWith(mondrak, 0, ring));
+    resolve_all(&mut g, &[]);
+    assert!(g.keywords(mondrak).has(Keywords::INDESTRUCTIBLE));
+    assert_eq!(g.obj(ring).zone, Zone::Graveyard);
+    assert_eq!(
+        tokens(&g, 0, "Pegasus").len(),
+        1,
+        "the second sacrifice was a token"
+    );
+}
+
+#[test]
+fn exalted_sunborn_warps_in_and_comes_back_from_exile() {
+    let mut g = table();
+    let sun = hand(&mut g, 0, "Exalted Sunborn");
+    assert!(has(&g, Action::CastAlternative(sun)));
+    act(&mut g, Action::CastAlternative(sun));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(sun).zone, Zone::Battlefield);
+    for _ in 0..40 {
+        if g.obj(sun).zone == Zone::Exile {
+            break;
+        }
+        let a = match g.pending {
+            Pending::DeclareAttackers(_) => Action::FinishAttacks,
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.obj(sun).zone, Zone::Exile);
+    g.start_turn(5, 0);
+    to_main(&mut g);
+    assert!(has(&g, Action::Cast(sun)), "castable from exile");
+}
+
+#[test]
+fn grim_haruspex_is_cast_face_down_and_turns_up_for_its_morph_cost() {
+    let mut g = table();
+    let har = hand(&mut g, 0, "Grim Haruspex");
+    act(&mut g, Action::CastAlternative(har));
+    resolve_all(&mut g, &[]);
+    assert!(g.obj(har).face_down);
+    assert_eq!((g.power(har), g.toughness(har)), (2, 2));
+    assert!(has(&g, Action::Activate(har, 0)));
+    act(&mut g, Action::Activate(har, 0));
+    assert!(!g.obj(har).face_down);
+    assert_eq!(g.def_of(har).name, "Grim Haruspex");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    let before = hand_size(&g, 0);
+    g.objects[lions.0 as usize].damage = 1;
+    act(&mut g, Action::PassPriority);
+    resolve_all(&mut g, &[]);
+    assert_eq!(hand_size(&g, 0), before + 1);
+}
+
+#[test]
+fn black_market_connections_chooses_one_or_more_each_first_main_phase() {
+    let mut g = table();
+    put(&mut g, 0, "Black Market Connections");
+    let before = hand_size(&g, 0);
+    g.start_turn(5, 0);
+    for _ in 0..20 {
+        if matches!(g.pending, Pending::Decide(_)) {
+            break;
+        }
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Mode(6)); // all three
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].life, 34);
+    assert_eq!(tokens(&g, 0, "Treasure").len(), 1);
+    let shifter = tokens(&g, 0, "Shapeshifter");
+    assert_eq!(shifter.len(), 1);
+    assert!(g.has_subtype(shifter[0], "Elf") && g.has_subtype(shifter[0], "Dragon"));
+    assert_eq!(hand_size(&g, 0), before + 2, "the draw step and Buy Information");
+}

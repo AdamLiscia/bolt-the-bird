@@ -1529,6 +1529,61 @@ pub enum Effect {
     /// "You may exile it. If you do, ...": exile the source from its owner's graveyard; if it isn't
     /// there, the rest of the effects don't happen (Academy Rector).
     ExileSourceFromGraveyardOrStop,
+    /// Destroy every artifact, enchantment, and/or creature with mana value in `creature_mv`
+    /// (inclusive; (0, 0) for none) (Austere Command's modes).
+    DestroyAllMatching {
+        artifacts: bool,
+        enchantments: bool,
+        creature_mv: (u8, u8),
+    },
+    /// You gain hexproof until end of turn (Dawn's Truce).
+    YouGainHexproofEot,
+    /// Search for a creature card with mana value at most (or exactly, with `exact`) `plus` more
+    /// than the sacrificed creature's (the stack entry's `extra`), put it onto the battlefield
+    /// (Eldritch Evolution, Birthing Pod).
+    SearchCreatureBySacrificedMv {
+        plus: u8,
+        exact: bool,
+    },
+    /// If the source was a creature when it died, return it to the battlefield as an enchantment and
+    /// no other card type (Enduring Vitality).
+    ReturnSelfAsEnchantment,
+    /// Create one `def` token for each creature attacking you (Arachnogenesis).
+    CreateTokensPerAttackers {
+        def: usize,
+    },
+    /// Prevent all combat damage this turn by creatures without this subtype.
+    PreventCombatDamageExceptSubtype(&'static str),
+    /// Create X tokens that are copies of the token in `slot` (X the spell's X).
+    CopyTokenX(u8),
+    /// Tokens you control gain these keywords until your next turn.
+    GrantTokensUntilYourNextTurn(crate::Keywords),
+    /// You gain 1 life for each token you control.
+    GainLifePerToken,
+    /// Until end of turn, tokens created under your control are doubled (Kaya's −2).
+    DoubleTokensThisTurn,
+    /// Exile all cards from all graveyards, then create a `def` token for each (Kaya's −6).
+    ExileGraveyardsTokenPerCard {
+        def: usize,
+    },
+    /// Investigate `n` times (CR 701.36): create `n` Clue tokens (`def`).
+    Investigate {
+        def: usize,
+        n: u8,
+    },
+    /// The creature in `slot` gets +1/+1 until end of turn for each permanent you control with this
+    /// subtype (Confront the Unknown: Clue).
+    PumpPerYourSubtype {
+        slot: u8,
+        sub: &'static str,
+    },
+    /// Mill `n`, then put a creature, enchantment or land card from among them onto the battlefield
+    /// (Fetch Quest).
+    MillPutCreatureEnchantmentOrLand(u8),
+    /// Mill `n`, then return a creature card milled this way to your hand (Zoological Study).
+    MillReturnCreatureToHand(u8),
+    /// You may put a creature card from your hand onto the battlefield (Monster Manual).
+    MayPutCreatureFromHand,
     /// You gain life and draw cards equal to the source's power, its last known power if it left
     /// the battlefield (Lifeblood Hydra: "When this creature dies, ...").
     GainLifeAndDrawSourcePower,
@@ -1613,6 +1668,8 @@ pub enum SearchFor {
     Enchantment,
     /// A creature card with at most this power (Imperial Recruiter).
     CreaturePowerAtMost(i32),
+    /// A creature card with exactly this mana value (Birthing Pod).
+    CreatureMvExactly(u32),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -2171,6 +2228,10 @@ pub enum When {
     PutIntoGraveyardFromAnywhere,
     /// "Whenever an enchantment you control enters" (constellation), this one included.
     EnchantmentYouControlEnters,
+    /// "At the beginning of your first main phase" (precombat main, CR 505.1a).
+    FirstMainPhaseYourTurn,
+    /// "Whenever you investigate for the first time each turn" (Erdwal Illuminator).
+    YouInvestigateFirstTimeEachTurn,
     /// "Whenever a creature an opponent controls dies" (tokens included).
     OpponentCreatureDies,
     /// "Whenever another creature you control dies" (tokens included; `AnotherNontokenCreatureYouControlDies`

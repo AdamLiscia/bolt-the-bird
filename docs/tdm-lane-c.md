@@ -615,3 +615,15 @@ from Phalanx's own trigger (one trigger for both).
 Merged tarkir 62051fe (lane B's Myrkul batch 1, desktop d3, core themes): end-of-block conflicts, tarkir's side first.
 With it: Ezuri's Predation (`Effect::TokenFightsEachOpponentCreature`; token Phyrexian Beast 4/4 at base+63, after lane
 B's 61 and 62). Etali (queue list) complete.
+
+## Core theme: objects and zones (mac-c), batch 1: Clues, Food costs, Adventures
+
+Fast-forwarded to tarkir-b 4c78d77 (lane B's Myrkul 40/45; its Shapeshifter is token 64). Tests: tests/core_objects.rs.
+Core: token Clue at base+65 (`scripts::clue`), `Effect::{Investigate, PumpPerYourSubtype, MillPutCreatureEnchantmentOrLand,
+MillReturnCreatureToHand, MayPutCreatureFromHand}`, `When::YouInvestigateFirstTimeEachTurn`, `Game::investigated_turn`,
+`Activated::sacrifice_subtype_count` ("Sacrifice four Foods": the victim, then the engine picks the rest),
+`CardDef::{adventure, enchanted_stops_activations}`, `Decision::{PickOneOf, MayCreatureFromHand}`.
+Adventures reuse the Omen path: the spell half is cast with `CastOmen` from the "Omen: " lines and the oracle's
+`omen`; `adventure` makes it go to exile, castable by its owner from there, instead of shuffling in.
+Cards (12): Confirm Suspicions, Confront the Unknown, Erdwal Illuminator, Ethereal Investigator, Floodhound, Hold for
+Questioning, Ongoing Investigation, Tamiyo's Journal, Pippin, Savvy Hunter, Bramble Familiar, Monster Manual.
