@@ -364,6 +364,137 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::EndStep { your_turn_only: false }, vec![], vec![Effect::LoseLifeLostThisTurn(Who::EachOpponent)]);
             },
         ),
+        // ---- Core: triggers, batch 6 (cast, copy, damage, graveyard and batched emits) ----
+        "Witherbloom Apprentice" => s(
+            &["Magecraft — Whenever you cast or copy an instant or sorcery spell, each opponent loses 1 life and you gain 1 life."],
+            |d, _| {
+                let drain = vec![Effect::LoseLife { who: Who::EachOpponent, n: 1 }, Effect::GainLife { who: Who::You, n: 1 }];
+                on(d, When::YouCastOrCopyInstantOrSorcery, vec![], drain);
+            },
+        ),
+        "Glimpse of Nature" => s(&["Whenever you cast a creature spell this turn, draw a card."], |d, _| {
+            spell(d, vec![], vec![Effect::DelayedThisTurn { when: When::YouCastCreature, trigger: 0 }]);
+            // Trigger 0 goes on the stack only from the delayed entry (a sorcery never fires it).
+            on(d, When::YouCastCreature, vec![], vec![draw(1)]);
+        }),
+        "Zenith Chronicler" => s(
+            &["Whenever a player casts their first multicolored spell each turn, each other player draws a card."],
+            |d, _| {
+                // 1v1: "each other player" is the caster's opponent.
+                on(d, When::YouCastFirstMulticolored, vec![], vec![Effect::Draw { who: Who::EachOpponent, n: 1 }]);
+                on(d, When::OpponentCastsFirstMulticolored, vec![], vec![draw(1)]);
+            },
+        ),
+        "No Mercy" => s(&["Whenever a creature deals damage to you, destroy it."], |d, _| {
+            let it = Filter { triggering: true, ..CREATURE };
+            on(d, When::CreatureDealsDamageToYou, vec![it], vec![Effect::Destroy(0)]);
+        }),
+        "Francisco, Fowl Marauder" => s(
+            &[
+                "Francisco can't block.",
+                "Whenever one or more Pirates you control deal damage to a player, Francisco explores.",
+                "Partner",
+            ],
+            |d, _| {
+                d.cant_block = true;
+                let this = Filter { triggering: true, ..CREATURE };
+                on(d, When::YourSubtypeDealDamageToPlayer("Pirate"), vec![this], vec![Effect::Explore(0)]);
+            },
+        ),
+        "Syr Konrad, the Grim" => s(
+            &[
+                "Whenever another creature dies, or a creature card is put into a graveyard from anywhere other than the battlefield, or a creature card leaves your graveyard, Syr Konrad deals 1 damage to each opponent.",
+                "{1}{B}: Each player mills a card.",
+            ],
+            |d, _| {
+                for when in [
+                    When::AnotherCreatureDies,
+                    When::CreatureCardToGraveyardNotFromBattlefield,
+                    When::CreatureCardLeavesYourGraveyard,
+                ] {
+                    on(d, when, vec![], vec![damage(1, Recipient::EachOpponent)]);
+                }
+                let mill = vec![Effect::Mill { who: Who::You, n: 1 }, Effect::Mill { who: Who::EachOpponent, n: 1 }];
+                activated(d, "{1}{B}", false, vec![], mill);
+            },
+        ),
+        "Species Specialist" => s(
+            &["As this creature enters, choose a creature type.", "Whenever a creature of the chosen type dies, you may draw a card."],
+            |d, _| {
+                d.choose_creature_type = true;
+                may(d, When::CreatureOfChosenTypeDies, vec![], vec![draw(1)]);
+            },
+        ),
+        "Bloodchief Ascension" => s(
+            &[
+                "At the beginning of each end step, if an opponent lost 2 or more life this turn, you may put a quest counter on this enchantment.",
+                "Whenever a card is put into an opponent's graveyard from anywhere, if this enchantment has three or more quest counters on it, you may have that player lose 2 life. If you do, you gain 2 life.",
+            ],
+            |d, _| {
+                let mut quest = Ability::new(vec![], vec![Effect::QuestCounterSelf]).optional();
+                quest.condition = Some(Condition::OpponentLostLifeAtLeast(2));
+                d.triggers.push(Trigger { when: When::EndStep { your_turn_only: false }, ability: quest });
+                // 1v1: "that player" is the one opponent.
+                let drain = vec![Effect::LoseLife { who: Who::EachOpponent, n: 2 }, Effect::GainLife { who: Who::You, n: 2 }];
+                let mut drain = Ability::new(vec![], drain).optional();
+                drain.condition = Some(Condition::SourceQuestCountersAtLeast(3));
+                d.triggers.push(Trigger { when: When::CardToOpponentsGraveyard, ability: drain });
+            },
+        ),
+        "Cryptcaller Chariot" => s(
+            &["Whenever you discard one or more cards, create that many tapped 2/2 black Zombie creature tokens.", "Crew 2"],
+            |d, t| {
+                on(d, When::YouDiscardOneOrMore, vec![], vec![Effect::CreateTokensAmountTapped { def: t.zombie }]);
+                let n = activated(d, "", false, vec![], vec![Effect::CrewedSelf]);
+                d.activated[n].crew = 2;
+            },
+        ),
+        // ---- Core: triggers, batch 7 ----
+        "Ghostly Pilferer" => s(
+            &[
+                "Whenever this creature becomes untapped, you may pay {2}. If you do, draw a card.",
+                "Whenever an opponent casts a spell from anywhere other than their hand, draw a card.",
+                "Discard a card: This creature can't be blocked this turn.",
+            ],
+            |d, _| {
+                let two = ManaCost::parse("{2}").expect("a mana cost");
+                on(d, When::BecomesUntapped, vec![], vec![Effect::MayPay(two), draw(1)]);
+                on(d, When::OpponentCastsNotFromHand, vec![], vec![draw(1)]);
+                let n = activated(d, "", false, vec![], vec![Effect::GrantSelf { keywords: Keywords::UNBLOCKABLE }]);
+                d.activated[n].discard_cost = true;
+            },
+        ),
+        // ---- Core: triggers, batch 9 ----
+        "Archmage Emeritus" => s(&["Magecraft — Whenever you cast or copy an instant or sorcery spell, draw a card."], |d, _| {
+            on(d, When::YouCastOrCopyInstantOrSorcery, vec![], vec![draw(1)])
+        }),
+        "Lobber Crew" => s(
+            &["{T}: This creature deals 1 damage to each opponent.", "Whenever you cast a multicolored spell, untap this creature."],
+            |d, _| {
+                activated(d, "", true, vec![], vec![damage(1, Recipient::EachOpponent)]);
+                on(d, When::YouCastMulticolored, vec![], vec![Effect::UntapSelf]);
+            },
+        ),
+        "Chandra's Spitfire" => s(
+            &["Whenever an opponent is dealt noncombat damage, this creature gets +3/+0 until end of turn."],
+            |d, _| on(d, When::OpponentDealtNoncombatDamage, vec![], vec![Effect::PumpSelf { power: 3, toughness: 0 }]),
+        ),
+        "Curiosity" => s(
+            &["Enchant creature", "Whenever enchanted creature deals damage to an opponent, you may draw a card."],
+            |d, _| {
+                d.aura = true;
+                d.spell = Some(Ability::new(vec![CREATURE], vec![]));
+                may(d, When::EnchantedDealsDamageToOpponent, vec![], vec![draw(1)]);
+            },
+        ),
+        "Ophidian Eye" => s(
+            &["Enchant creature", "Whenever enchanted creature deals damage to an opponent, you may draw a card."],
+            |d, _| {
+                d.aura = true;
+                d.spell = Some(Ability::new(vec![CREATURE], vec![]));
+                may(d, When::EnchantedDealsDamageToOpponent, vec![], vec![draw(1)]);
+            },
+        ),
         // ---- The Gitrog, Ravenous Ride ----
         "Demonic Tutor" => s(&["Search your library for a card, put that card into your hand, then shuffle."], |d, _| {
             spell(d, vec![], vec![search(SearchFor::Any, SearchTo::Hand)])
@@ -770,6 +901,24 @@ pub const PG_D2_SCRIPTED: &[&str] = &[
     "Altar of the Brood",
     "Ivy Lane Denizen",
     "Wound Reflection",
+    // Core: triggers, batch 6
+    "Witherbloom Apprentice",
+    "Glimpse of Nature",
+    "Zenith Chronicler",
+    "No Mercy",
+    "Francisco, Fowl Marauder",
+    "Syr Konrad, the Grim",
+    "Species Specialist",
+    "Bloodchief Ascension",
+    "Cryptcaller Chariot",
+    // Core: triggers, batch 7
+    "Ghostly Pilferer",
+    // Core: triggers, batch 9
+    "Archmage Emeritus",
+    "Lobber Crew",
+    "Chandra's Spitfire",
+    "Curiosity",
+    "Ophidian Eye",
     // The Gitrog, Ravenous Ride
     "Demonic Tutor",
     "Exquisite Blood",
