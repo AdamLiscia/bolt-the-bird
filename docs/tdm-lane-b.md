@@ -846,3 +846,19 @@ Built 2026-11-26: Insatiable Frugivore's `No` gets its own answer arm (it was of
   its draw, discount and anthem were already in.
 - Archfiend of Despair: `CardDef::opponents_cant_gain_life`, checked in `gain_life`; its end step is
   the existing `LoseLifeLostThisTurn`.
+
+### Script-only decks: Kaalia, Zhulodok, Malik (2026-11-26)
+
+Scripted: Brightclimb Pathway, Gisela, Blade of Goldnight, Sower of Discord, Eiganjo Castle, Bennie
+Bracks (pg_b). Pieces (lane B's replacement theme, plus one condition):
+- Gisela: `CardDef::prevents_half_damage_to_you_and_yours`; any source's damage to an opponent of
+  hers or their permanents is doubled after the other doublers, and damage to you or yours has half
+  prevented, rounded up (`Game::prevent_damage_replacements`).
+- `Effect::PreventNextDamageToTargetThisTurn` with `Game::damage_shields_on` (Eiganjo Castle).
+- Sower of Discord: `CardDef::damage_to_a_player_other_loses` (two players: both chosen), a
+  `When::Never` trigger put on the stack from `deal_damage` with the other player in a triggering
+  slot and the damage as the amount.
+- `Condition::YouCreatedTokenThisTurn` (Bennie Bracks), from `Game::token_created_turn`.
+- Malik, more: Inventors' Fair (`SearchFor::Artifact`), Smaug the Magnificent
+  (`Effect::SourceDamagePerSubtypeYouControl`), Mahadi (`Effect::CreateTokenPerCreatureDiedThisTurn`
+  with `Game::creatures_died`, tokens included). Small d3-style pieces nobody else was on.

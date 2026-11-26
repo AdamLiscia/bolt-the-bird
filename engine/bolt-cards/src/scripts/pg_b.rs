@@ -1899,6 +1899,82 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::EndStep { your_turn_only: false }, vec![], vec![lose]);
             },
         ),
+        "Brightclimb Pathway // Grimclimb Pathway" => s(&["{T}: Add {W}.", "Back: {T}: Add {B}."], |d, _| {
+            d.mana = Some(ManaSource::of(&[Color::White]));
+            d.modal_back = true;
+            d.back.as_mut().expect("Grimclimb Pathway").mana = Some(ManaSource::of(&[Color::Black]));
+        }),
+        "Gisela, Blade of Goldnight" => s(
+            &[
+                "If a source would deal damage to an opponent or a permanent an opponent controls, that source deals double that damage to that player or permanent instead.",
+                "If a source would deal damage to you or a permanent you control, prevent half that damage, rounded up.",
+            ],
+            |d, _| d.prevents_half_damage_to_you_and_yours = true,
+        ),
+        "Sower of Discord" => s(
+            &[
+                "As this creature enters, choose two players.",
+                "Whenever damage is dealt to one of the chosen players, the other chosen player also loses that much life.",
+            ],
+            |d, _| {
+                // Two players: both are chosen, so damage to either makes the other lose that much.
+                let other = Filter { triggering: true, ..Filter::PLAYER };
+                on(d, When::Never, vec![other], vec![Effect::LoseLifeAmount(Who::TargetPlayer(0))]);
+                d.damage_to_a_player_other_loses = Some(d.triggers.len() - 1);
+            },
+        ),
+        "Eiganjo Castle" => s(
+            &["{T}: Add {W}.", "{W}, {T}: Prevent the next 2 damage that would be dealt to target legendary creature this turn."],
+            |d, _| {
+                d.mana = Some(ManaSource::of(&[Color::White]));
+                let legendary = Filter { legendary_only: true, ..CREATURE };
+                let shield = Effect::PreventNextDamageToTargetThisTurn { slot: 0, n: 2 };
+                activated(d, "{W}", true, vec![legendary], vec![shield]);
+            },
+        ),
+        "Bennie Bracks, Zoologist" => s(
+            &["Convoke", "At the beginning of each end step, if you created a token this turn, draw a card."],
+            |d, _| {
+                d.mana_ext.convoke = true;
+                let each = When::EndStep { your_turn_only: false };
+                conditional(d, each, Condition::YouCreatedTokenThisTurn, vec![], vec![draw(1)]);
+            },
+        ),
+        "Inventors' Fair" => s(
+            &[
+                "At the beginning of your upkeep, if you control three or more artifacts, you gain 1 life.",
+                "{T}: Add {C}.",
+                "{4}, {T}, Sacrifice Inventors' Fair: Search your library for an artifact card, reveal it, put it into your hand, then shuffle. Activate only if you control three or more artifacts.",
+            ],
+            |d, _| {
+                let gain = Effect::GainLife { who: Who::You, n: 1 };
+                let upkeep = When::Upkeep { your_turn_only: true };
+                conditional(d, upkeep, Condition::ControlArtifactsAtLeast(3), vec![], vec![gain]);
+                d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                let n = activated(d, "{4}", true, vec![], vec![search(SearchFor::Artifact, SearchTo::Hand)]);
+                d.activated[n].sacrifice_self = true;
+                d.activated[n].min_artifacts = 3;
+            },
+        ),
+        "Smaug the Magnificent" => s(
+            &[
+                "Whenever Smaug attacks, he deals damage equal to the number of Treasures you control to any target.",
+                "At the beginning of your upkeep, create a Treasure token.",
+            ],
+            |d, t| {
+                let burn = Effect::SourceDamagePerSubtypeYouControl { to: 0, sub: "Treasure" };
+                on(d, When::Attacks, vec![Filter::ANY], vec![burn]);
+                let treasure = Effect::CreateToken { who: Who::You, def: t.treasure, n: 1 };
+                on(d, When::Upkeep { your_turn_only: true }, vec![], vec![treasure]);
+            },
+        ),
+        "Mahadi, Emporium Master" => s(
+            &["At the beginning of your end step, create a Treasure token for each creature that died this turn."],
+            |d, t| {
+                let treasures = Effect::CreateTokenPerCreatureDiedThisTurn { def: t.treasure };
+                on(d, When::EndStep { your_turn_only: true }, vec![], vec![treasures]);
+            },
+        ),
         _ => None,
     }
 }
@@ -2121,6 +2197,14 @@ pub const PG_B_SCRIPTED: &[&str] = &[
     "Raphael, Tag Team Tough",
     "The Immortal Sun",
     "Archfiend of Despair",
+    "Brightclimb Pathway // Grimclimb Pathway",
+    "Gisela, Blade of Goldnight",
+    "Sower of Discord",
+    "Eiganjo Castle",
+    "Bennie Bracks, Zoologist",
+    "Inventors' Fair",
+    "Smaug the Magnificent",
+    "Mahadi, Emporium Master",
     // Ghyrson Starn (Spr3adsh33t)
     "Basilisk Collar",
     "Gorgon's Head",

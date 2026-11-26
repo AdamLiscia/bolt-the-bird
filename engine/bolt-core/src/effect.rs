@@ -2475,6 +2475,22 @@ pub enum Effect {
     /// Discard a card (`Decision::DiscardThenIfInstantOrSorcery`); the rest of the effects happen
     /// only if it was an instant or sorcery card (Vohar, Vodalian Desecrator).
     DiscardThenIfInstantOrSorcery,
+    /// Prevent the next `n` damage that would be dealt to the permanent in `slot` this turn (Eiganjo
+    /// Castle: 2), see `Game::damage_shields_on`.
+    PreventNextDamageToTargetThisTurn {
+        slot: u8,
+        n: i32,
+    },
+    /// The source deals X damage to the target in `to`, X the permanents with subtype `sub` you
+    /// control (Smaug the Magnificent: Treasures), counted on resolution.
+    SourceDamagePerSubtypeYouControl {
+        to: u8,
+        sub: &'static str,
+    },
+    /// Create a `def` token for each creature that died this turn, tokens included (Mahadi).
+    CreateTokenPerCreatureDiedThisTurn {
+        def: usize,
+    },
     /// Breath of Fury: sacrifice the creature the source Aura enchants and attach the Aura to a
     /// creature you control (`Decision::MoveAuraTo`); the rest of the effects happen only if it's
     /// attached ("If you do").
@@ -2557,6 +2573,8 @@ pub enum SearchFor {
     ArtifactManaCostZeroOrOne,
     /// A colorless creature card (Sanctum of Ugin).
     ColorlessCreature,
+    /// An artifact card (Inventors' Fair, Goblin Engineer, Reckless Handling).
+    Artifact,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -2922,6 +2940,8 @@ pub enum Condition {
     /// At least this much colorless mana was spent to cast the spell (Desecrate Reality's
     /// adamant: 3), with `Effect::StopUnlessCondition` before the adamant part.
     ColorlessSpentAtLeast(u32),
+    /// Its controller created a token this turn (Bennie Bracks), from `Game::token_created_turn`.
+    YouCreatedTokenThisTurn,
 }
 
 /// A spell's effect or a triggered ability: target slots, then effects in order.
