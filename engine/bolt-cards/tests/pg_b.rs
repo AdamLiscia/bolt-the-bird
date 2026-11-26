@@ -2682,9 +2682,5 @@ fn misdirection_pitches_and_redirects_and_mana_confluence() {
     resolve_all(&mut g, &[]);
     assert_eq!(g.obj(theirs).zone, Zone::Graveyard);
     assert_eq!(g.obj(mine).zone, Zone::Battlefield);
-    let conf = put(&mut g, 0, "Mana Confluence");
-    act(&mut g, Action::Activate(conf, 0));
-    resolve_all(&mut g, &[]);
-    assert_eq!(g.players[0].life, 39);
-    assert_eq!(g.players[0].pool.len(), 1);
+    // Mana Confluence is desktop lane d1's (a mana source paid with life; tests/pg_d1.rs).
 }

@@ -1567,11 +1567,6 @@ pub fn script(name: &str) -> Option<Script> {
                 spell(d, vec![Filter { single_target: true, ..SPELL }], vec![Effect::ChangeTargets(0)]);
             },
         ),
-        "Mana Confluence" => s(&["{T}, Pay 1 life: Add one mana of any color."], |d, _| {
-            // On the stack, like Sunbaked Canyon's (d1).
-            let n = activated(d, "", true, vec![], vec![Effect::AddManaAnyColor]);
-            d.activated[n].life = 1;
-        }),
         _ => None,
     }
 }
@@ -1765,7 +1760,6 @@ pub const PG_B_SCRIPTED: &[&str] = &[
     "Third Path Iconoclast",
     "Storm-Kiln Artist",
     "Misdirection",
-    "Mana Confluence",
     // Ghyrson Starn (Spr3adsh33t)
     "Basilisk Collar",
     "Gorgon's Head",
