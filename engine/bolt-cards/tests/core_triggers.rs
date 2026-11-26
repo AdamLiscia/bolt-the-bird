@@ -1429,3 +1429,28 @@ fn another_source_deals_exactly_one_damage() {
     cast_now(&mut g, 0, "Abrupt Decay", &[]);
     assert_eq!(life(&g, 0), 51 + 2, "2 damage");
 }
+
+#[test]
+fn an_emblems_triggered_ability_triggers_through_fire() {
+    let mut g = game_with(|defs| {
+        defs[cid("Savannah Lions")]
+            .triggers
+            .push(trigger(When::Never, None, gain_one()));
+    });
+    let x = g.add_card(0, cid("Savannah Lions"), Zone::Graveyard);
+    let n = g.def_of(x).triggers.len() - 1;
+    g.emblems.push((
+        0,
+        bolt_core::EmblemKind::Triggered {
+            when: When::YouDraw,
+            trigger: n,
+        },
+        x,
+    ));
+    g.start_turn(4, 1);
+    to_main(&mut g);
+    assert_eq!(life(&g, 0), 40, "the opponent's draw isn't yours");
+    g.start_turn(5, 0);
+    to_main(&mut g);
+    assert_eq!(life(&g, 0), 41, "your draw-step draw triggers the emblem");
+}

@@ -3379,6 +3379,8 @@ impl Game {
                 }
             }
         }
+        // Emblems' triggered abilities and the initiative (lane d4's subsystems).
+        self.fire_subsystems(p, when);
     }
 
     /// "If a creature attacking causes a triggered ability of a permanent you control to trigger,
