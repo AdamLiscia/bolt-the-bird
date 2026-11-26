@@ -142,6 +142,8 @@ pub struct Filter {
     /// the filter in as many slots as X can reach, with `min_targets: Some(0)`; a slot is only
     /// legal while fewer than X other targets are chosen, so no more than X are.
     pub up_to_x: bool,
+    /// Tapped permanents only (Far Traveler: "up to one target tapped creature you control").
+    pub tapped_only: bool,
 }
 
 impl Filter {
@@ -209,6 +211,7 @@ impl Filter {
         mana_value_even: false,
         mana_value_at_most_x: false,
         up_to_x: false,
+        tapped_only: false,
     };
 
     pub const CREATURE: Filter = Filter {
@@ -2447,6 +2450,19 @@ pub enum Effect {
         n: u8,
         def: usize,
     },
+    /// Stop here unless the card discarded or sacrificed for the cost (the item's `extra`, with
+    /// `Activated::victim_in_extra`) is a creature card (Moria Scavenger: "If the discarded card
+    /// was a creature card, ...").
+    StopUnlessExtraIsCreatureCard,
+    /// Look at the top card of your library; if it's a land card, reveal it and create a `def`
+    /// token; then draw a card (Fisher's Talent: the Fish). "You may reveal it" is always taken:
+    /// revealing only adds the token.
+    CreateTokenIfTopIsLandThenDraw {
+        def: usize,
+    },
+    /// The creature in `slot` can't block for as long as you control the source (There and Back
+    /// Again's chapter I), see `Game::cant_block_while_controlled`.
+    TargetCantBlockWhileYouControlSource(u8),
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -2660,6 +2676,9 @@ pub enum StaticCondition {
     /// Its controller controls at least this many artifacts (Teething Wurmlet: three). Printed card
     /// types are counted, as `ControlLandsAtLeast` does.
     ControlArtifactsAtLeast(u8),
+    /// The source Class is at this level or higher (CR 716: a Class's level 2 and 3 statics), see
+    /// `Game::class_level`.
+    ClassLevelAtLeast(u8),
     /// Another Aura is attached to the creature the source is attached to (Face of Divinity).
     AttachedHasAnotherAura,
 }
@@ -2877,6 +2896,9 @@ pub enum Condition {
     YouLostLifeThisTurn,
     /// Its Class is at this level or higher (a Class's level 2 and 3 triggered abilities).
     ClassLevelAtLeast(u8),
+    /// At least this much colorless mana was spent to cast the spell (Desecrate Reality's
+    /// adamant: 3), with `Effect::StopUnlessCondition` before the adamant part.
+    ColorlessSpentAtLeast(u32),
 }
 
 /// A spell's effect or a triggered ability: target slots, then effects in order.
@@ -3351,6 +3373,9 @@ pub enum When {
     /// resolves onto the battlefield (`Game::cast_aura_entered`, game/zones.rs), with the Aura in a
     /// triggering first slot.
     CastAuraYouControlEnters,
+    /// "Whenever [this] deals combat damage to a player for the first time each turn" (Raphael, Tag
+    /// Team Tough), with the damage as the amount; see `Game::combat_damaged_player`.
+    DealsCombatDamageToPlayerFirstTimeEachTurn,
 }
 
 #[derive(Clone, Debug, PartialEq)]

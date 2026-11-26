@@ -45,7 +45,12 @@ pub fn token_defs() -> Vec<CardDef> {
         token("Koma's Coil", "Serpent", 3, 3, Keywords::NONE),
         token("Drake", "Drake", 2, 2, Keywords::FLYING),
         token("Spirit", "Spirit", 1, 1, Keywords::FLYING),
-        token("Fish", "Fish", 1, 1, Keywords::NONE),
+        {
+            // "a 1/1 blue Fish creature token" (Fishing Pole, Fountainport).
+            let mut t = token("Fish", "Fish", 1, 1, Keywords::NONE);
+            t.colors = [false, true, false, false, false];
+            t
+        },
         token("Rat", "Rat", 1, 1, Keywords::NONE),
         token("Zombie", "Zombie", 2, 2, Keywords::NONE),
         token("Ninja", "Ninja", 2, 1, Keywords::NONE),
@@ -139,12 +144,17 @@ pub fn token_defs() -> Vec<CardDef> {
             );
             pest
         },
-        token("Octopus", "Octopus", 8, 8, Keywords::NONE), // Octomancer's gift: a blue 8/8
+        {
+            // Octomancer's gift: "an 8/8 blue Octopus creature token".
+            let mut t = token("Octopus", "Octopus", 8, 8, Keywords::NONE);
+            t.colors = [false, true, false, false, false];
+            t
+        },
         token("Elemental", "Elemental", 4, 4, Keywords::FLYING), // Hoofprints of the Stag: white 4/4
         token("Dinosaur Beast", "Dinosaur Beast", 0, 0, Keywords::TRAMPLE), // Quartzwood Crasher's X/X
-        token("Plant", "Plant", 0, 1, Keywords::NONE),     // Avenger of Zendikar
-        token("Insect", "Insect", 1, 1, Keywords::NONE),   // Scute Swarm's green 1/1
-        token("Badger", "Badger", 3, 3, Keywords::NONE),   // Greensleeves
+        token("Plant", "Plant", 0, 1, Keywords::NONE),           // Avenger of Zendikar
+        token("Insect", "Insect", 1, 1, Keywords::NONE),         // Scute Swarm's green 1/1
+        token("Badger", "Badger", 3, 3, Keywords::NONE),         // Greensleeves
         {
             // Wrenn and Seven: "a green Treefolk creature token with reach and 'This token's power and
             // toughness are each equal to the number of lands you control.'"
@@ -328,11 +338,41 @@ pub fn token_defs() -> Vec<CardDef> {
         // 94-96: placeholders until their lanes' tokens land (d2: Walker, Utvara's 6/6 Dragon; d4:
         // Smaug). Each lane replaces its own line.
         token("Placeholder 94", "", 0, 0, Keywords::NONE),
-        token("Placeholder 95", "", 0, 0, Keywords::NONE),
+        {
+            // 95, lane d4: There and Back Again's "Smaug, a legendary 6/6 red Dragon creature token
+            // with flying, haste, and 'When Smaug dies, create fourteen Treasure tokens.'"
+            let mut t = red(token(
+                "Smaug",
+                "Dragon",
+                6,
+                6,
+                Keywords::FLYING.with(Keywords::HASTE),
+            ));
+            t.types.legendary = true;
+            t.triggers.push(Trigger {
+                when: When::Dies,
+                ability: Ability::new(
+                    vec![],
+                    vec![Effect::Subsystem(bolt_core::SubsystemEffect::RoomToken {
+                        name: "Treasure",
+                        power: 0,
+                        toughness: 0,
+                        n: 14,
+                    })],
+                ),
+            });
+            t
+        },
         token("Placeholder 96", "", 0, 0, Keywords::NONE),
         wicked_role(), // 97, lane C
         // 98, lane B: Ugin, the Ineffable's colorless 2/2 Spirit.
         token("Spirit", "Spirit", 2, 2, Keywords::NONE),
+        {
+            // 99, lane B: Fisher's Talent's "3/3 blue Shark creature token".
+            let mut t = token("Shark", "Shark", 3, 3, Keywords::NONE);
+            t.colors = [false, true, false, false, false];
+            t
+        },
     ]
 }
 
@@ -535,10 +575,12 @@ pub struct Tokens {
     pub servo: usize,
     /// 94-96: placeholders for d2's Walker and Utvara Dragon and d4's Smaug (each lane renames its own).
     pub placeholder_94: usize,
-    pub placeholder_95: usize,
+    /// 95: Smaug, a legendary 6/6 red Dragon with flying and haste (There and Back Again).
+    pub smaug: usize,
     pub placeholder_96: usize,
     pub wicked_role: usize,
     pub spirit_2: usize,
+    pub shark: usize,
 }
 
 impl Tokens {
@@ -639,10 +681,11 @@ impl Tokens {
             pincher: base + 92,
             servo: base + 93,
             placeholder_94: base + 94,
-            placeholder_95: base + 95,
+            smaug: base + 95,
             placeholder_96: base + 96,
             wicked_role: base + 97,
             spirit_2: base + 98,
+            shark: base + 99,
         }
     }
 }

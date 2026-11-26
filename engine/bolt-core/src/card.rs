@@ -42,6 +42,7 @@ keywords! {
     INTIMIDATE = 20, "Intimidate";
     SHADOW = 21, "Shadow";
     SWAMPWALK = 22, "Swampwalk";
+    UNDYING = 23, "Undying";
 }
 
 impl Keywords {
@@ -180,6 +181,8 @@ pub enum Reduction {
     /// ... {n} less (the second number) if an opponent has at least this many cards (the first) in
     /// their graveyard (Into the Story: seven, {3}).
     IfOpponentGraveyardAtLeast(u8, u8),
+    /// {X} less, X the noncombat damage dealt to your opponents this turn (Chandra's Incinerator).
+    NoncombatDamageToOpponentsThisTurn,
 }
 
 /// An activated ability: "[cost]: [effect]" (CR 602).
@@ -334,6 +337,17 @@ pub struct Activated {
     /// "Sacrifice N nonland permanents" in the cost (Bolas's Citadel: 10): the engine picks which
     /// (tokens first, then the lowest mana value, the source last).
     pub sacrifice_nonland_n: u8,
+    /// Foretell's "During your turn, you may pay {2} and exile this card from your hand": an
+    /// ability of the card in your hand (with `your_turn_only`); it's cast later for
+    /// `ManaExt::foretell`. (A special action in the rules, CR 702.143a; here it uses the stack.)
+    pub foretell: bool,
+    /// Forecast (CR 702.57): "[cost], Reveal this card from your hand: [effect]. (Activate only
+    /// during your upkeep and only once each turn.)" The card stays in your hand; set
+    /// `once_each_turn` too.
+    pub forecast: bool,
+    /// "Pay life equal to the number of colors in your commanders' color identity" in the cost
+    /// (War Room).
+    pub life_per_commander_color: bool,
 }
 
 /// A loyalty ability's cost of −X (CR 606.4, 107.3): `loyalty_abilities` uses this as the cost,
@@ -957,6 +971,21 @@ pub struct CardDef {
     /// Toxic N (CR 702.164): a player dealt combat damage by it also gets N poison counters
     /// (Bloodroot Apothecary: 2).
     pub toxic: u8,
+    /// An Aura or Equipment: "Enchanted creature has ward {N}." (Sheltered by Ghosts: {2}), in
+    /// `Game::ward_check` with the creature's own ward.
+    pub enchanted_ward: Option<ManaCost>,
+    /// Gisa, Glorious Resurrector: "If a creature an opponent controls would die, exile it
+    /// instead." (in `move_to`; the card is recorded in `Game::exiled_with`).
+    pub opponents_creatures_die_exiled: bool,
+    /// A Class's token replacements, as (the level it needs, the token it replaces, the token made
+    /// instead), each applied once in order (Fisher's Talent: level 2 Fish to Shark, level 3 Shark
+    /// to Octopus), in `Game::create_token`.
+    pub class_token_replacements: Vec<(u8, usize, usize)>,
+    /// The Immortal Sun: "Players can't activate planeswalkers' loyalty abilities." (in
+    /// `Game::loyalty_actions`).
+    pub players_cant_activate_loyalty: bool,
+    /// "Your opponents can't gain life." (Archfiend of Despair), in `Game::gain_life`.
+    pub opponents_cant_gain_life: bool,
 }
 
 /// A card's pieces from the d4 subsystems (see [`CardDef::subsystems`]).
@@ -1101,6 +1130,20 @@ pub struct ManaExt {
     /// "{T}: Add {C}{C}. Spend this mana only to cast colorless spells. Activate only if you
     /// control seven or more lands." (Shrine of the Forsaken Gods): (amount, lands needed).
     pub colorless_spell_amount_with_lands: Option<(u8, u8)>,
+    /// "{T}, Pay 1 life: Add one mana of any color." (Spire of Industry): its colored mana costs 1
+    /// life (paid like a pain land's damage: only when the payment needs that color).
+    pub colored_life_cost: bool,
+    /// "Activate only if you control an artifact." on its colored mana (Spire of Industry); without
+    /// one it makes only its {C}.
+    pub colored_only_with_artifact: bool,
+    /// Foretell's cost (CR 702.143): cast from exile for it on a later turn, after an
+    /// `Activated::foretell` ability exiled the card from your hand.
+    pub foretell: Option<ManaCost>,
+    /// "Colorless Eldrazi spells you cast cost {N} less to cast." (Eye of Ugin: 2)
+    pub colorless_eldrazi_spell_discount: u8,
+    /// "Colorless spells you cast with mana value N or greater cost {M} less to cast." as (N, M)
+    /// (It That Heralds the End: (7, 1)).
+    pub colorless_big_spell_discount: Option<(u8, u8)>,
 }
 
 /// "You may pay [mana], [life] and sacrifice or tap [creatures] rather than pay this spell's mana
@@ -1437,6 +1480,11 @@ impl CardDef {
             one_attacker_one_blocker: false,
             colorless_spell_discount: 0,
             toxic: 0,
+            enchanted_ward: None,
+            opponents_creatures_die_exiled: false,
+            class_token_replacements: Vec::new(),
+            players_cant_activate_loyalty: false,
+            opponents_cant_gain_life: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -1706,6 +1754,11 @@ impl CardDef {
             one_attacker_one_blocker: false,
             colorless_spell_discount: 0,
             toxic: 0,
+            enchanted_ward: None,
+            opponents_creatures_die_exiled: false,
+            class_token_replacements: Vec::new(),
+            players_cant_activate_loyalty: false,
+            opponents_cant_gain_life: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -1975,6 +2028,11 @@ impl CardDef {
             one_attacker_one_blocker: false,
             colorless_spell_discount: 0,
             toxic: 0,
+            enchanted_ward: None,
+            opponents_creatures_die_exiled: false,
+            class_token_replacements: Vec::new(),
+            players_cant_activate_loyalty: false,
+            opponents_cant_gain_life: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,

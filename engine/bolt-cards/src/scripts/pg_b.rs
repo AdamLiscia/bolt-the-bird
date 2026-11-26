@@ -1822,6 +1822,83 @@ pub fn script(name: &str) -> Option<Script> {
                 loyalty(d, 0, Ability::new(vec![], vec![zero]));
             },
         ),
+        "Sheltered by Ghosts" => s(
+            &[
+                "Enchant creature you control",
+                "When this Aura enters, exile target nonland permanent an opponent controls until this Aura leaves the battlefield.",
+                "Enchanted creature gets +1/+0 and has lifelink and ward {2}.",
+            ],
+            |d, _| {
+                d.aura = true;
+                d.spell = Some(Ability::new(vec![YOUR_CREATURE], vec![]));
+                on(d, When::Enters, vec![OPP_NONLAND], vec![Effect::ExileUntilSourceLeaves(0)]);
+                attached(d, false, 1, 0, Keywords::LIFELINK);
+                d.enchanted_ward = Some(ManaCost::parse("{2}").expect("cost"));
+            },
+        ),
+        "Rankle, Master of Pranks" => s(
+            &[
+                "Whenever Rankle deals combat damage to a player, choose any number \u{2014}",
+                "\u{2022} Each player discards a card.",
+                "\u{2022} Each player loses 1 life and draws a card.",
+                "\u{2022} Each player sacrifices a creature of their choice.",
+            ],
+            |d, _| {
+                // "Choose any number": every set of the three modes is one mode (bit i: mode i), the
+                // empty set last, as Casualties of War.
+                let part = |i: usize| -> Vec<Effect> {
+                    let both = [Who::You, Who::EachOpponent];
+                    match i {
+                        0 => both.iter().map(|&who| Effect::Discard { who, n: 1 }).collect(),
+                        1 => both
+                            .iter()
+                            .flat_map(|&who| [Effect::LoseLife { who, n: 1 }, Effect::Draw { who, n: 1 }])
+                            .collect(),
+                        _ => both.iter().map(|&who| Effect::SacrificeCreatures { who, n: 1 }).collect(),
+                    }
+                };
+                let mut sets: Vec<Ability> = (1u32..8)
+                    .map(|m| {
+                        let effects = (0..3).filter(|i| m & (1 << i) != 0).flat_map(part).collect();
+                        Ability::new(vec![], effects)
+                    })
+                    .collect();
+                sets.push(Ability::new(vec![], vec![]));
+                on_modal(d, When::DealsCombatDamageToPlayer, None, sets);
+            },
+        ),
+        "Raphael, Tag Team Tough" => s(
+            &["Whenever Raphael deals combat damage to a player for the first time each turn, untap all attacking creatures. After this combat phase, there is an additional combat phase."],
+            |d, _| {
+                let effects = vec![Effect::UntapAttackersAndGrant(Keywords::NONE), Effect::AdditionalCombatAfterThisPhase];
+                on(d, When::DealsCombatDamageToPlayerFirstTimeEachTurn, vec![], effects);
+            },
+        ),
+        "The Immortal Sun" => s(
+            &[
+                "Players can't activate planeswalkers' loyalty abilities.",
+                "At the beginning of your draw step, draw an additional card.",
+                "Spells you cast cost {1} less to cast.",
+                "Creatures you control get +1/+1.",
+            ],
+            |d, _| {
+                d.players_cant_activate_loyalty = true;
+                conditional(d, When::EachDrawStep, Condition::YourTurn, vec![], vec![draw(1)]);
+                d.mana_ext.spell_discount_all = 1;
+                anthem(d, 1, 1);
+            },
+        ),
+        "Archfiend of Despair" => s(
+            &[
+                "Your opponents can't gain life.",
+                "At the beginning of each end step, each opponent loses life equal to the life that player lost this turn.",
+            ],
+            |d, _| {
+                d.opponents_cant_gain_life = true;
+                let lose = Effect::LoseLifeLostThisTurn(Who::EachOpponent);
+                on(d, When::EndStep { your_turn_only: false }, vec![], vec![lose]);
+            },
+        ),
         _ => None,
     }
 }
@@ -2039,6 +2116,11 @@ pub const PG_B_SCRIPTED: &[&str] = &[
     "Ugin, the Ineffable",
     "Crested Sunmare",
     "Ajani, Strength of the Pride",
+    "Sheltered by Ghosts",
+    "Rankle, Master of Pranks",
+    "Raphael, Tag Team Tough",
+    "The Immortal Sun",
+    "Archfiend of Despair",
     // Ghyrson Starn (Spr3adsh33t)
     "Basilisk Collar",
     "Gorgon's Head",
