@@ -2368,16 +2368,6 @@ pub enum Effect {
     /// "Pay {cost}. If you don't, you lose the game." (a Pact's delayed trigger), as
     /// `Decision::PayOrLoseGame`.
     PayOrLoseGame(crate::mana::ManaCost),
-    /// Stop here unless the card discarded or sacrificed for the cost (the item's `extra`, with
-    /// `Activated::victim_in_extra`) is a creature card (Moria Scavenger: "If the discarded card
-    /// was a creature card, ...").
-    StopUnlessExtraIsCreatureCard,
-    /// Look at the top card of your library; if it's a land card, reveal it and create a `def`
-    /// token; then draw a card (Fisher's Talent: the Fish). "You may reveal it" is always taken:
-    /// revealing only adds the token.
-    CreateTokenIfTopIsLandThenDraw {
-        def: usize,
-    },
     /// Exile the top card of your library face down (you may look at it) and create a `def` token;
     /// when that token leaves the battlefield, the source's trigger `trigger` (a `When::Never`
     /// trigger with `Effect::LinkedExiledCardToHand`) puts the card into your hand (Ugin, the
@@ -2458,6 +2448,16 @@ pub enum Effect {
     AmassIfExtraCreatureCard {
         subtype: &'static str,
         n: u8,
+        def: usize,
+    },
+    /// Stop here unless the card discarded or sacrificed for the cost (the item's `extra`, with
+    /// `Activated::victim_in_extra`) is a creature card (Moria Scavenger: "If the discarded card
+    /// was a creature card, ...").
+    StopUnlessExtraIsCreatureCard,
+    /// Look at the top card of your library; if it's a land card, reveal it and create a `def`
+    /// token; then draw a card (Fisher's Talent: the Fish). "You may reveal it" is always taken:
+    /// revealing only adds the token.
+    CreateTokenIfTopIsLandThenDraw {
         def: usize,
     },
 }
@@ -2891,6 +2891,9 @@ pub enum Condition {
     YouLostLifeThisTurn,
     /// Its Class is at this level or higher (a Class's level 2 and 3 triggered abilities).
     ClassLevelAtLeast(u8),
+    /// At least this much colorless mana was spent to cast the spell (Desecrate Reality's
+    /// adamant: 3), with `Effect::StopUnlessCondition` before the adamant part.
+    ColorlessSpentAtLeast(u32),
 }
 
 /// A spell's effect or a triggered ability: target slots, then effects in order.

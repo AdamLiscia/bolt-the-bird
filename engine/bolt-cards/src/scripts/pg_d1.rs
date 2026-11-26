@@ -17,6 +17,15 @@ fn urza_land(d: &mut CardDef, n: u8) {
     d.mana_ext.tron_amount = n;
 }
 
+/// Foretell (CR 702.143): "During your turn, you may pay {2} and exile this card from your hand
+/// face down. Cast it on a later turn for its foretell cost." The card is exiled face up here.
+fn foretell(d: &mut CardDef, cost: &str) {
+    d.mana_ext.foretell = ManaCost::parse(cost);
+    let n = activated(d, "{2}", false, vec![], vec![]);
+    d.activated[n].foretell = true;
+    d.activated[n].your_turn_only = true;
+}
+
 /// Exalted (CR 702.83): "Whenever a creature you control attacks alone, that creature gets +1/+1
 /// until end of turn." Each instance triggers on your attack and checks for a lone attacker.
 fn exalted(d: &mut CardDef) {
@@ -1143,6 +1152,100 @@ pub fn script(name: &str) -> Option<Script> {
             d.mana = Some(ManaSource { colorless: true, ..ManaSource::of(&[Color::Black, Color::Red]) });
             d.colored_mana_only_if_you_control = Some("Swamp");
         }),
+        // ---- d1 core, batch 11: undying keyword, activation conditions ----
+        "Minas Tirith" => s(
+            &[
+                "Minas Tirith enters tapped unless you control a legendary creature.",
+                "{T}: Add {W}.",
+                "{1}{W}, {T}: Draw a card. Activate only if you attacked with two or more creatures this turn.",
+            ],
+            |d, _| {
+                d.mana_ext.enters_tapped_unless_legendary_creature = true;
+                d.mana = Some(ManaSource::of(&[Color::White]));
+                let n = activated(d, "{1}{W}", true, vec![], vec![draw(1)]);
+                d.activated[n].min_attackers_this_turn = 2;
+            },
+        ),
+        "Watcher of the Spheres" => s(
+            &[
+                "Creature spells with flying you cast cost {1} less to cast.",
+                "Whenever another creature you control with flying enters, this creature gets +1/+1 until end of turn.",
+            ],
+            |d, _| {
+                d.mana_ext.flying_creature_spell_discount = 1;
+                let pump = Effect::PumpSelf { power: 1, toughness: 1 };
+                on(d, When::AnotherCreatureWithFlyingYouControlEnters, vec![], vec![pump]);
+            },
+        ),
+        "Desecrate Reality" => s(
+            &[
+                "For each opponent, exile up to one target permanent that player controls with an even mana value.",
+                "Adamant — If at least three colorless mana was spent to cast this spell, return a permanent card with an odd mana value from your graveyard to the battlefield.",
+            ],
+            |d, _| {
+                // One opponent in a 1v1 game: up to one target.
+                let even = Filter {
+                    players: false,
+                    planeswalkers: false,
+                    creatures: false,
+                    any_permanent: true,
+                    mana_value_even: true,
+                    controller: Controller::Opponent,
+                    ..Filter::ANY
+                };
+                let mut a = up_to(
+                    vec![even],
+                    vec![Effect::Exile(0), Effect::StopUnlessCondition, Effect::ReturnOddManaValuePermanentToBattlefield],
+                );
+                a.condition = Some(Condition::ColorlessSpentAtLeast(3));
+                d.spell = Some(a);
+            },
+        ),
+        "Spire of Industry" => s(
+            &["{T}: Add {C}.", "{T}, Pay 1 life: Add one mana of any color. Activate only if you control an artifact."],
+            |d, _| {
+                d.mana = Some(ManaSource { colorless: true, ..ManaSource::of(&Color::ALL) });
+                d.mana_ext.colored_life_cost = true;
+                d.mana_ext.colored_only_with_artifact = true;
+            },
+        ),
+        "Chandra's Incinerator" => s(
+            &[
+                "This spell costs {X} less to cast, where X is the total amount of noncombat damage dealt to your opponents this turn.",
+                "Whenever a source you control deals noncombat damage to an opponent, this creature deals that much damage to target creature or planeswalker that player controls.",
+            ],
+            |d, _| {
+                d.reduction = Some(Reduction::NoncombatDamageToOpponentsThisTurn);
+                // One opponent: "that player" is them.
+                let theirs = Filter { players: false, ..Filter::ANY }.controlled_by(Controller::Opponent);
+                on(d, When::YourSourceDealsNoncombatDamageToOpponent, vec![theirs], vec![Effect::DamageAmountTo(0)]);
+            },
+        ),
+        "Behold the Multiverse" => s(&["Scry 2, then draw two cards.", "Foretell {1}{U}"], |d, _| {
+            spell(d, vec![], vec![Effect::Scry { n: 2 }, draw(2)]);
+            foretell(d, "{1}{U}");
+        }),
+        "Eye of Ugin" => s(
+            &[
+                "Colorless Eldrazi spells you cast cost {2} less to cast.",
+                "{7}, {T}: Search your library for a colorless creature card, reveal it, put it into your hand, then shuffle.",
+            ],
+            |d, _| {
+                d.mana_ext.colorless_eldrazi_spell_discount = 2;
+                activated(d, "{7}", true, vec![], vec![search(SearchFor::ColorlessCreature, SearchTo::Hand)]);
+            },
+        ),
+        "War Room" => s(
+            &[
+                "{T}: Add {C}.",
+                "{3}, {T}, Pay life equal to the number of colors in your commanders' color identity: Draw a card.",
+            ],
+            |d, _| {
+                d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                let n = activated(d, "{3}", true, vec![], vec![draw(1)]);
+                d.activated[n].life_per_commander_color = true;
+            },
+        ),
         _ => None,
     }
 }
@@ -1301,4 +1404,12 @@ pub const PG_D1_SCRIPTED: &[&str] = &[
     "Gloomlake Verge",
     "Wastewood Verge",
     "Tainted Peak",
+    "Minas Tirith",
+    "Watcher of the Spheres",
+    "Desecrate Reality",
+    "Spire of Industry",
+    "Chandra's Incinerator",
+    "Behold the Multiverse",
+    "Eye of Ugin",
+    "War Room",
 ];
