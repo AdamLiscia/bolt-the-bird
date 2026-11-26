@@ -172,11 +172,13 @@ pub fn token_defs() -> Vec<CardDef> {
         token("Pegasus", "Pegasus", 2, 2, Keywords::FLYING), // Archon of Sun's Grace's white 2/2
         token("Spirit", "Spirit", 3, 1, Keywords::FLYING), // Ghostly Dancers' white 3/1
         token("Phyrexian Beast", "Phyrexian Beast", 4, 4, Keywords::NONE), // Ezuri's Predation's green 4/4s
-        token("Lane B token 64", "Shapeshifter", 3, 2, Keywords::NONE), // placeholder: lane B's 64
         {
-            // Placeholder for lane C's 65, a Clue artifact.
-            artifact_token("Clue")
+            // Black Market Connections: "a 3/2 colorless Shapeshifter creature token with changeling".
+            let mut t = token("Shapeshifter", "Shapeshifter", 3, 2, Keywords::NONE);
+            t.changeling = true;
+            t
         },
+        clue(),
         {
             // "a 0/1 colorless Eldrazi Spawn creature token with 'Sacrifice this token: Add {C}.'"
             let mut t = token("Eldrazi Spawn", "Eldrazi Spawn", 0, 1, Keywords::NONE);
@@ -196,6 +198,18 @@ pub fn token_defs() -> Vec<CardDef> {
             t
         },
     ]
+}
+
+/// "{2}, Sacrifice this artifact: Draw a card." (CR 111.10f)
+fn clue() -> CardDef {
+    let mut d = artifact_token("Clue");
+    d.activated.push(Activated {
+        mana: ManaCost::parse("{2}").expect("cost"),
+        sacrifice_self: true,
+        ability: Ability::new(vec![], vec![Effect::Draw { who: Who::You, n: 1 }]),
+        ..Activated::default()
+    });
+    d
 }
 
 fn artifact_token(name: &str) -> CardDef {
@@ -300,8 +314,8 @@ pub struct Tokens {
     pub pegasus: usize,
     pub spirit_3_1: usize,
     pub phyrexian_beast: usize,
-    pub lane_b_64: usize,
-    pub lane_c_65: usize,
+    pub shapeshifter: usize,
+    pub clue: usize,
     pub eldrazi_spawn: usize,
     pub spawn_3: usize,
     pub elf_druid: usize,
@@ -374,8 +388,8 @@ impl Tokens {
             pegasus: base + 61,
             spirit_3_1: base + 62,
             phyrexian_beast: base + 63,
-            lane_b_64: base + 64,
-            lane_c_65: base + 65,
+            shapeshifter: base + 64,
+            clue: base + 65,
             eldrazi_spawn: base + 66,
             spawn_3: base + 67,
             elf_druid: base + 68,

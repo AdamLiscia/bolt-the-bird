@@ -399,7 +399,8 @@ impl Game {
                     format!("{key}_card")
                 };
                 // A card now face down on the battlefield isn't named in the log (CR 708.5).
-                let hidden = o.face_down && o.zone == bolt_core::Zone::Battlefield;
+                let hidden =
+                    o.face_down && matches!(o.zone, bolt_core::Zone::Battlefield | bolt_core::Zone::Stack);
                 d.set_item(card_key, if hidden { -2 } else { o.def as i64 })?;
                 if key == "id" {
                     d.set_item("owner", o.owner as i64)?;
@@ -480,7 +481,10 @@ impl Game {
         // A face-down permanent's card is hidden from the other player (CR 708.5): -2.
         let seen = |c: ObjId| -> i64 {
             let o = g.obj(c);
-            if o.face_down && o.zone == bolt_core::Zone::Battlefield && o.controller != player {
+            if o.face_down
+                && matches!(o.zone, bolt_core::Zone::Battlefield | bolt_core::Zone::Stack)
+                && o.controller != player
+            {
                 -2
             } else {
                 o.def as i64
