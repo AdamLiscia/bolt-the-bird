@@ -126,6 +126,20 @@ Fences:
   directly, not just through a card. Merge `tarkir` in before every push. The Mac merges serially and runs
   the full suite.
 - Still no new `Action` variants, and no new tokens (ask for a number).
+- **Owned existing code.** Only the lane named may edit these existing functions; every other lane reports
+  "needs core: <function>" to that lane's theme. Edits stay inside the function and keep its current
+  behaviour for every card that already works (the full suite proves it).
+
+  | Lane | May edit |
+  |---|---|
+  | d1 | `ManaCost::parse` (`{C}`, `{Q}`), cost payment (convoke, multikicker, forage, alternative costs, pay X life, static cost reductions), mana production (`tap_for_mana`, mana-source hooks), land entry (enters tapped unless), block legality (fear, intimidate, "can't block") |
+  | d3 | `target_ok` and `Filter`'s fields, the scaled-statics block in `statics_on` |
+  | merger | everything else, including type-changing layers (Blood Moon, Urborg) and timing permissions |
+
+- **New `Decision` variants are allowed** (appended), as long as they're answered with existing `Action`
+  variants (`Mode`, `Pick`, `Target`, `Yes`/`No`, `Amount`). A decision is a question; the actions are the play
+  model's vocabulary. Add its label to `label()` in `src/bolt/service_view.py` so a human player can read it
+  (one `if d == "<Name>"` line); if you can't, name the decision and what each answer means in your report.
 
 ## Tests
 
