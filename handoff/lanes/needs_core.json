@@ -7,7 +7,8 @@
   "replace_filter": "replacement effects (tokens, counters, life loss, damage)",
   "keywords": "keywords: annihilator, fear, intimidate, undying, persist, extort, evoke, echo, exalted, convoke, morph, phasing, cascade, ...",
   "objects_zones": "tokens and objects (Clue, Food, copies), dungeons/initiative, back faces, emblems",
-  "existing_code": "needs an existing function changed (target_ok filters, land entry, statics_on, blocking/targeting, type layers, timing): the merger's"
+  "existing_code": "needs an existing function changed (target_ok filters, land entry, statics_on, blocking/targeting, type layers, timing): the merger's",
+  "merger_delegated": "merger-owned code done by lane B: turn structure (skip draw, untap step), cast legality, max hand size"
  },
  "owners": {
   "mana": "d1",
@@ -16,7 +17,8 @@
   "replace_filter": "mac-b",
   "keywords": "d1",
   "objects_zones": "mac-c",
-  "existing_code": "merger"
+  "existing_code": "merger",
+  "merger_delegated": "mac-b"
  },
  "cards": [
   {
@@ -688,8 +690,8 @@
    "deck": "Atla Palani, Nest Tender",
    "missing": "untap all creatures you control during each other player's untap step",
    "lane": "d1",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "merger_delegated",
+   "owner": "mac-b"
   },
   {
    "card": "Instill Energy",
@@ -832,8 +834,8 @@
    "deck": "Karador, Ghost Chieftain",
    "missing": "casting restrictions on noncreature spells",
    "lane": "d1",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "merger_delegated",
+   "owner": "mac-b"
   },
   {
    "card": "Graveborn Muse",
@@ -904,8 +906,8 @@
    "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
    "missing": "opponents' maximum hand size reduced",
    "lane": "d1",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "merger_delegated",
+   "owner": "mac-b"
   },
   {
    "card": "Dramatic Reversal",
@@ -1056,16 +1058,16 @@
    "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
    "missing": "a cast trigger for noncreature spells with mana value 3 or more; hand-size activation condition",
    "lane": "d1",
-   "theme": "triggers",
-   "owner": "d2"
+   "theme": "merger_delegated",
+   "owner": "mac-b"
   },
   {
    "card": "Jin-Gitaxias, Progress Tyrant",
    "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
    "missing": "copy artifact/instant/sorcery spells; counter opponents' (once each turn)",
    "lane": "d1",
-   "theme": "objects_zones",
-   "owner": "mac-c"
+   "theme": "merger_delegated",
+   "owner": "mac-b"
   },
   {
    "card": "Magnus the Red",
@@ -1160,8 +1162,8 @@
    "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
    "missing": "skip the untap step of the extra turn",
    "lane": "d1",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "merger_delegated",
+   "owner": "mac-b"
   },
   {
    "card": "See Double",
@@ -1782,10 +1784,10 @@
   {
    "card": "Akroma's Will",
    "deck": "Kaalia of the Vast",
-   "missing": "needs core: grant protection from each color until end of turn",
+   "missing": "needs core: grant protection from each color until end of turn [protection on Modifier: merger migrates Modifier literals to ..Default::default() first]",
    "lane": "d2",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "existing_code",
+   "owner": "merger"
   },
   {
    "card": "Animate Dead",
@@ -2496,8 +2498,8 @@
    "deck": "Damia, Sage of Stone",
    "missing": "needs core: skip your draw step, and draw up to seven",
    "lane": "d2",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "merger_delegated",
+   "owner": "mac-b"
   },
   {
    "card": "Force of Negation",
@@ -2926,18 +2928,18 @@
   {
    "card": "Benevolent Bodyguard",
    "deck": "Sefris of the Hidden Ways",
-   "missing": "needs core: protection from a color of your choice until end of turn",
+   "missing": "needs core: protection from a color of your choice until end of turn [protection on Modifier: merger migrates Modifier literals to ..Default::default() first]",
    "lane": "d3",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "existing_code",
+   "owner": "merger"
   },
   {
    "card": "Cartel Aristocrat",
    "deck": "Sefris of the Hidden Ways",
-   "missing": "needs core: protection from a color of your choice until end of turn",
+   "missing": "needs core: protection from a color of your choice until end of turn [protection on Modifier: merger migrates Modifier literals to ..Default::default() first]",
    "lane": "d3",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "existing_code",
+   "owner": "merger"
   },
   {
    "card": "Clearwater Pathway // Murkwater Pathway",
@@ -4136,8 +4138,8 @@
    "deck": "Lonis, Cryptozoologist",
    "missing": "needs core: maximum hand size increased by two, and returning a blue creature you control",
    "lane": "d3",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "merger_delegated",
+   "owner": "mac-b"
   },
   {
    "card": "Universal Surveillance",
