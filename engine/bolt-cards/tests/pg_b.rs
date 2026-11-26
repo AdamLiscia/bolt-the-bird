@@ -2695,3 +2695,68 @@ fn young_pyromancer_makes_elementals() {
     assert_eq!(e.len(), 1);
     assert_eq!((g.power(e[0]), g.toughness(e[0])), (1, 1));
 }
+
+#[test]
+fn void_winnower_stops_even_blockers_and_ulamog_exiles_twenty() {
+    let mut g = table();
+    put(&mut g, 0, "Void Winnower");
+    let ulamog = put(&mut g, 0, "Ulamog, the Ceaseless Hunger");
+    let titan = put(&mut g, 1, "Inferno Titan"); // mana value 6
+    let elves = put(&mut g, 1, "Llanowar Elves"); // mana value 1
+    let before = g.players[1].library.len();
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(ulamog));
+    act(&mut g, Action::FinishAttacks);
+    while !matches!(g.pending, Pending::DeclareBlockers(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    let legal = g.legal_actions();
+    assert!(!legal.contains(&Action::Block { blocker: titan, attacker: ulamog }), "even");
+    assert!(legal.contains(&Action::Block { blocker: elves, attacker: ulamog }), "odd");
+    assert_eq!(g.players[1].library.len(), before - 20);
+}
+
+#[test]
+fn epic_experiment_casts_cheap_spells_and_bins_the_rest() {
+    let mut g = table();
+    let plains = g.add_card(0, cid("Plains"), Zone::Library);
+    let leak = g.add_card(0, cid("Mana Leak"), Zone::Library); // mana value 2, no target: not castable
+    let consider = g.add_card(0, cid("Consider"), Zone::Library);
+    let e = hand(&mut g, 0, "Epic Experiment");
+    act(&mut g, Action::CastX(e, 3));
+    while !matches!(g.pending, Pending::FreeCast(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(has(&g, Action::Cast(consider)));
+    act(&mut g, Action::Cast(consider));
+    while !g.items.is_empty() || matches!(g.pending, Pending::Decide(_) | Pending::FreeCast(_) | Pending::ChooseTarget(_)) {
+        let a = match g.pending {
+            Pending::Decide(_) => Action::No,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.obj(plains).zone, Zone::Graveyard);
+    assert_eq!(g.obj(leak).zone, Zone::Graveyard);
+    assert_eq!(g.obj(consider).zone, Zone::Graveyard, "cast, then resolved");
+}
+
+#[test]
+fn metallurgic_summonings_makes_constructs_the_spells_size() {
+    let mut g = table();
+    let ms = put(&mut g, 0, "Metallurgic Summonings");
+    let lyze = hand(&mut g, 0, "Electrolyze"); // mana value 3
+    act(&mut g, Action::Cast(lyze));
+    act(&mut g, Action::Target(Target::Player(1)));
+    act(&mut g, Action::No);
+    while matches!(g.pending, Pending::Divide(_)) {
+        act(&mut g, Action::Amount(2));
+    }
+    resolve_all(&mut g, &[]);
+    let c = tokens(&g, 0, "Construct");
+    assert_eq!(c.len(), 1);
+    assert_eq!((g.power(c[0]), g.toughness(c[0])), (3, 3));
+    assert!(!has(&g, Action::Activate(ms, 0)), "one artifact: not six");
+}

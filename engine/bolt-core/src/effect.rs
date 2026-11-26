@@ -2116,6 +2116,48 @@ pub enum Effect {
     /// Flip a coin: if you win, gain control of the spell in `slot` and you may choose new targets
     /// for it; if you lose, counter it (Invert Polarity).
     FlipGainControlOfSpellOrCounter(u8),
+    /// The source deals `n` damage to each untapped creature (Calamity of Cinders).
+    DamageEachUntappedCreature(i32),
+    /// Destroy all creatures without this subtype (Realm-Cloaked Giant's Cast Off: Giant).
+    DestroyAllCreaturesExceptSubtype(&'static str),
+    /// The defending player exiles the top `n` cards of their library (Ulamog, the Ceaseless Hunger).
+    DefendingPlayerExilesTop(u8),
+    /// Exile the top X cards of your library; you may cast instant and sorcery spells with mana value
+    /// X or less from among them free; the rest go to your graveyard (Epic Experiment).
+    EpicExperiment,
+    /// The source deals damage equal to the number of `subtype`s you control to the target in `slot`
+    /// (Rolling Hamsphere: Hamsters).
+    DamagePerYouControlSubtype { subtype: &'static str, slot: u8 },
+    /// The source gets +X/+0 until end of turn, X the greatest mana value among artifacts you
+    /// control (Pyreswipe Hawk).
+    PumpSelfGreatestArtifactManaValue,
+    /// If you're the attacking player, each other attacking creature gets +P/+T until end of turn
+    /// (Martial Impetus: "each other creature that's attacking one of your opponents").
+    PumpOtherAttackersIfYouAttack { power: i32, toughness: i32 },
+    /// "Each player may draw a card, then each player who drew a card this way gains 1 life."
+    /// (Kwain), as `Decision::MayDrawGainOne`, you first.
+    EachPlayerMayDrawGainOne,
+    /// Draw cards equal to the defending player's hand size minus yours; if none were drawn, you
+    /// may put a creature card from your hand onto the battlefield (Mr. Foxglove).
+    FoxgloveDraw,
+    /// The source Class becomes this level (CR 716.2c), and "when this Class becomes level N"
+    /// triggers.
+    ClassLevelUp(u8),
+    /// Return all creature cards with power `n` or less from your graveyard to your hand (Dawn).
+    ReturnCreatureCardsPowerAtMostToHand(i32),
+    /// Create a `def` token that's X/X, X the mana value of the spell that triggered this (the
+    /// trigger's `extra`; Metallurgic Summonings' Construct).
+    CreateTokenXxTriggeringSpellManaValue { def: usize },
+    /// Return all instant and sorcery cards from your graveyard to your hand (Metallurgic
+    /// Summonings).
+    ReturnAllInstantsAndSorceriesToHand,
+    /// Mill `n`; you may put a permanent card from among them into your hand; then if you control
+    /// a Squirrel or returned a Squirrel card, create a `food` token (Cache Grab), as
+    /// `Decision::CacheGrabPick`.
+    CacheGrab { n: u8, food: usize },
+    /// "You may move any number of +1/+1 counters from this creature onto other creatures." as
+    /// `Decision::MoveCounterFrom`, one at a time (Forgotten Ancient).
+    MayMoveCountersFromSource,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -2528,6 +2570,8 @@ pub enum Condition {
     LifeAtLeast(i32),
     /// No creatures are on the battlefield (Pyrohemia).
     NoCreaturesOnBattlefield,
+    /// Its Class is at this level or higher (a Class's level 2 and 3 triggered abilities).
+    ClassLevelAtLeast(u8),
 }
 
 /// A spell's effect or a triggered ability: target slots, then effects in order.
@@ -2959,6 +3003,13 @@ pub enum When {
     /// "Whenever one or more creatures an opponent controls attack you and aren't blocked"
     /// (Coveted Jewel), once blockers are declared.
     OpponentCreaturesAttackYouUnblocked,
+    /// "Whenever enchanted creature attacks" (Martial Impetus).
+    EnchantedAttacks,
+    /// "Whenever one or more [subtype]s you control deal combat damage to a player" (The Odd Acorn
+    /// Gang: Squirrels).
+    YourSubtypeDealCombatDamageToPlayer(&'static str),
+    /// "When this Class becomes level N" (CR 716.2c).
+    ClassBecomesLevel(u8),
 }
 
 #[derive(Clone, Debug, PartialEq)]

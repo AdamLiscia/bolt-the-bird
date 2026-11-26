@@ -2575,3 +2575,238 @@ fn hazels_brewmaster_gives_foods_the_exiled_creatures_abilities() {
     act(&mut g, Action::Activate(food, own));
     assert_ne!(g.obj(food).zone, Zone::Battlefield, "sacrificed the Food");
 }
+
+#[test]
+fn calamity_of_cinders_hits_only_untapped_creatures() {
+    let mut g = table();
+    let up = put(&mut g, 1, "Sakura-Tribe Elder");
+    let down = put(&mut g, 1, "Sakura-Tribe Elder");
+    g.objects[down.0 as usize].tapped = true;
+    let c = hand(&mut g, 0, "Calamity of Cinders");
+    play(&mut g, c, false, &[], &[]);
+    assert_eq!(g.obj(up).zone, Zone::Graveyard);
+    assert_eq!(g.obj(down).zone, Zone::Battlefield);
+}
+
+#[test]
+fn realm_cloaked_giants_cast_off_spares_giants() {
+    let mut g = table();
+    let elder = put(&mut g, 1, "Sakura-Tribe Elder");
+    let ghalta = put(&mut g, 0, "Ghalta, Primal Hunger");
+    let giant = hand(&mut g, 0, "Realm-Cloaked Giant // Cast Off");
+    act(&mut g, Action::CastOmen(giant));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(elder).zone, Zone::Graveyard);
+    assert_eq!(g.obj(ghalta).zone, Zone::Graveyard, "a Dinosaur, not a Giant");
+    assert_eq!(g.obj(giant).zone, Zone::Exile, "on an adventure");
+}
+
+#[test]
+fn swarmyard_regenerates_each_of_its_types() {
+    let mut g = table();
+    let yard = put(&mut g, 0, "Swarmyard");
+    assert_eq!(g.def_of(yard).activated.len(), 4);
+    let chatter = put(&mut g, 0, "Chatterfang, Squirrel General");
+    act(&mut g, Action::Activate(yard, 3));
+    act(&mut g, Action::Target(Target::Object(chatter)));
+    resolve_all(&mut g, &[]);
+    assert!(g.obj(yard).tapped);
+}
+
+#[test]
+fn rolling_hamsphere_makes_hamsters_and_hits_for_each() {
+    let mut g = table();
+    let ham = put(&mut g, 0, "Rolling Hamsphere");
+    let ghalta = put(&mut g, 0, "Ghalta, Primal Hunger");
+    act(&mut g, Action::ActivateWith(ham, 0, ghalta));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.power(ham), 4);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(ham));
+    act(&mut g, Action::FinishAttacks);
+    act(&mut g, Action::Target(Target::Player(1)));
+    resolve_all(&mut g, &[]);
+    let hamsters = g.permanents(0).filter(|&x| g.def_of(x).name == "Hamster").count();
+    assert_eq!(hamsters, 3);
+    assert_eq!(g.players[1].life, 40 - 3);
+    assert_eq!(g.power(ham), 7, "+1/+1 for each Hamster");
+}
+
+#[test]
+fn pyreswipe_hawk_grows_by_the_greatest_artifact() {
+    let mut g = table();
+    let hawk = put(&mut g, 0, "Pyreswipe Hawk");
+    put(&mut g, 0, "Coveted Jewel"); // mana value 6
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(hawk));
+    act(&mut g, Action::FinishAttacks);
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.power(hawk), 4 + 6);
+}
+
+#[test]
+fn martial_impetus_goads_and_pumps() {
+    let mut g = table();
+    let elder = put(&mut g, 1, "Sakura-Tribe Elder");
+    let aura = hand(&mut g, 0, "Martial Impetus");
+    play(&mut g, aura, false, &[Target::Object(elder)], &[]);
+    assert_eq!((g.power(elder), g.toughness(elder)), (2, 2));
+    assert!(g.is_goaded(elder));
+}
+
+#[test]
+fn bootleggers_stash_gives_lands_a_treasure_ability() {
+    let mut g = table();
+    put(&mut g, 0, "Bootleggers' Stash");
+    let forest = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "Forest")
+        .unwrap();
+    assert!(g.legal_actions().contains(&Action::Activate(forest, 0)));
+    act(&mut g, Action::Activate(forest, 0));
+    resolve_all(&mut g, &[]);
+    let treasures = g.permanents(0).filter(|&x| g.def_of(x).name == "Treasure").count();
+    assert_eq!(treasures, 1);
+}
+
+#[test]
+fn the_odd_acorn_gang_gives_squirrels_a_pump() {
+    let mut g = table();
+    put(&mut g, 0, "The Odd Acorn Gang");
+    let chatter = put(&mut g, 0, "Chatterfang, Squirrel General");
+    let own = g.def_of(chatter).activated.len();
+    act(&mut g, Action::Activate(chatter, own));
+    act(&mut g, Action::Target(Target::Object(chatter)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.power(chatter), 5);
+    assert!(g.keywords(chatter).has(Keywords::TRAMPLE));
+}
+
+#[test]
+fn kwain_lets_each_player_draw_and_gain() {
+    let mut g = table();
+    let kwain = put(&mut g, 0, "Kwain, Itinerant Meddler");
+    let (h0, h1) = (g.players[0].hand.len(), g.players[1].hand.len());
+    act(&mut g, Action::Activate(kwain, 0));
+    resolve_all(&mut g, &[Action::Yes, Action::No]);
+    assert_eq!((g.players[0].hand.len(), g.players[0].life), (h0 + 1, 41));
+    assert_eq!((g.players[1].hand.len(), g.players[1].life), (h1, 40), "the opponent declined");
+}
+
+#[test]
+fn mr_foxglove_draws_the_difference() {
+    let mut g = table();
+    let fox = put(&mut g, 0, "Mr. Foxglove");
+    g.objects[fox.0 as usize].since_turn = 0;
+    for _ in 0..3 {
+        g.add_card(1, bid("Plains"), Zone::Hand);
+    }
+    let diff = g.players[1].hand.len() - g.players[0].hand.len();
+    let n = g.players[0].hand.len();
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(fox));
+    act(&mut g, Action::FinishAttacks);
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].hand.len(), n + diff);
+}
+
+#[test]
+fn dusk_then_dawn_from_the_graveyard() {
+    let mut g = table();
+    let ghalta = put(&mut g, 1, "Ghalta, Primal Hunger");
+    let elder = put(&mut g, 0, "Sakura-Tribe Elder");
+    let dd = hand(&mut g, 0, "Dusk // Dawn");
+    assert!(!g.legal_actions().contains(&Action::CastOmen(dd)), "Dawn: only from the graveyard");
+    play(&mut g, dd, false, &[], &[]);
+    assert_eq!(g.obj(ghalta).zone, Zone::Graveyard);
+    assert_eq!(g.obj(elder).zone, Zone::Battlefield, "power 1");
+    assert_eq!(g.obj(dd).zone, Zone::Graveyard);
+    assert!(!g.legal_actions().contains(&Action::Cast(dd)), "Dusk isn't cast from the graveyard");
+    let small = g.add_card(0, bid("Sakura-Tribe Elder"), Zone::Graveyard);
+    act(&mut g, Action::CastOmen(dd));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(small).zone, Zone::Hand);
+    assert_eq!(g.obj(dd).zone, Zone::Exile, "aftermath: then exile it");
+}
+
+#[test]
+fn wizard_class_levels_up_in_order() {
+    let mut g = table();
+    let class = put(&mut g, 0, "Wizard Class");
+    assert_eq!(g.class_level(class), 1);
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Activate(class, 0)), "level 2");
+    assert!(!legal.contains(&Action::Activate(class, 1)), "not level 3 before level 2");
+    let n = g.players[0].hand.len();
+    act(&mut g, Action::Activate(class, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.class_level(class), 2);
+    assert_eq!(g.players[0].hand.len(), n + 2, "When this Class becomes level 2");
+    let legal = g.legal_actions();
+    assert!(!legal.contains(&Action::Activate(class, 0)));
+    assert!(legal.contains(&Action::Activate(class, 1)));
+}
+
+#[test]
+fn wizard_class_level_three_trigger_waits_for_level_three() {
+    let mut g = table();
+    let class = put(&mut g, 0, "Wizard Class");
+    let elder = put(&mut g, 0, "Sakura-Tribe Elder");
+    let kwain = put(&mut g, 0, "Kwain, Itinerant Meddler");
+    act(&mut g, Action::Activate(kwain, 0));
+    resolve_all(&mut g, &[Action::Yes, Action::No]);
+    assert_eq!(g.power(elder), 1, "level 1: no counter for the draw");
+    g.objects[class.0 as usize].class_level = 3;
+    g.objects[kwain.0 as usize].tapped = false;
+    act(&mut g, Action::Activate(kwain, 0));
+    while !g.items.is_empty() || matches!(g.pending, Pending::ChooseTarget(_) | Pending::Decide(_)) {
+        let a = match g.pending {
+            Pending::Decide(0) => Action::Yes,
+            Pending::Decide(_) => Action::No,
+            Pending::ChooseTarget(_) => Action::Target(Target::Object(elder)),
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.power(elder), 2, "level 3: a counter");
+}
+
+#[test]
+fn cache_grab_takes_a_permanent_and_a_squirrel_makes_food() {
+    let mut g = table();
+    let elder = g.add_card(0, bid("Sakura-Tribe Elder"), Zone::Library);
+    for _ in 0..3 {
+        g.add_card(0, bid("Plains"), Zone::Library);
+    }
+    put(&mut g, 0, "Chatterfang, Squirrel General");
+    let c = hand(&mut g, 0, "Cache Grab");
+    play(&mut g, c, false, &[], &[Action::Pick(elder)]);
+    assert_eq!(g.obj(elder).zone, Zone::Hand);
+    let food = g.permanents(0).filter(|&x| g.def_of(x).name == "Food").count();
+    assert_eq!(food, 1, "Chatterfang is a Squirrel (and adds a Squirrel token to the Food)");
+}
+
+#[test]
+fn forgotten_ancient_grows_and_moves_its_counters() {
+    let mut g = table();
+    let fa = put(&mut g, 0, "Forgotten Ancient");
+    let elder = put(&mut g, 0, "Sakura-Tribe Elder");
+    let ring = hand(&mut g, 0, "Sol Ring");
+    act(&mut g, Action::Cast(ring));
+    resolve_all(&mut g, &[Action::Yes]);
+    assert_eq!(g.obj(fa).counters, 1);
+    g.objects[fa.0 as usize].counters = 2;
+    g.start_turn(5, 0);
+    while !matches!(g.pending, Pending::Decide(0)) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Pick(elder));
+    act(&mut g, Action::No);
+    assert_eq!((g.obj(fa).counters, g.obj(elder).counters), (1, 1));
+}
