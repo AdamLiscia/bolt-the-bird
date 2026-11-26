@@ -672,3 +672,56 @@ Shortcuts: Vaultborn's token copy becomes an artifact just after it enters (a `T
 enters" triggers don't see it; its "this creature or another creature with power 4 or greater" trigger is
 `YourCreatureEntersWithPowerAtLeast(4)` (Vaultborn itself is 6/6).
 Glasspool Shore was already in the oracle data (no refetch needed).
+
+Objects and zones batch 7: morph (Aphetto Alchemist, Rattleclaw Mystic), back faces and their pieces (Sundering
+Eruption // Volcanic Fissure, Puppeteer Clique, Railway Brawler). Lane B's face-down work already covered casting
+face down for {3} (`CastAlternative`) and turning face up for the morph cost (`Activate(id, 0)`, a special
+action); morph needed only scripts, plus the trigger. Core: `When::TurnedFaceUp` (pushed by `Game::turned_face_up`
+from the special action and from `Decision::TurnFaceUp`), `Activated::plot` and `Object::plotted` (plot: activated
+from hand at sorcery speed, the card exiled as the cost and marked `cast_free`; castable from exile by its owner
+at sorcery timing on a later turn), `ZonesExt::shock_life` (Volcanic Fissure's 3 life, in the `ShockLand`
+answer), `Effect::{DestroyControllerMayFetchBasicTapped, CreaturesWithoutFlyingCantBlockThisTurn,
+ReanimateHasteExileAtEnd}`. Puppeteer Clique's persist is d1's `Effect::Persist`.
+Shortcuts: plot uses the stack (an ability with no effect) instead of being a special action. "Creatures without
+flying can't block this turn" applies to the creatures on the battlefield as it resolves. Puppeteer Clique's
+creature is exiled at the next end step (the same as "your next end step" unless it entered on an opponent's
+turn).
+Touched owned code (flag for review): the `ShockLand` life amount (d1's land entry), the plot exile-cast check
+in the castable-from-exile filter (merger's timing), and the hand condition of the activation listing.
+
+## Malik, Grim Manipulator (queue.json, lane C)
+
+Unsupported list from set_support (run from the batch 7 build's binary): 52 of 54.
+Batch 1 (17, no new core): Diabolic Tutor, Sundown Pass, Shattered Sanctum, Inspiring Vantage, Smoldering Marsh,
+Blightstep Pathway // Searstep Pathway, Needleverge Pathway // Pillarverge Pathway, Merciless Executioner, Massacre
+Wurm, Butcher of Malakir, Reckless Fireweaver, Mayhem Devil, Teleportation Circle, Crackling Doom, Charming Prince,
+Ephemerate, Treasure Vault.
+Shortcuts: Massacre Wurm's "that player" is the one opponent. Mayhem Devil uses `When::PlayerSacrificesAnother`,
+so sacrificing Mayhem Devil itself doesn't trigger it. Charming Prince's "another target creature you own" is one
+you control.
+Malik batch 2 (objects and zones): Nahiri's Resolve, Treasure Map // Treasure Cove. Core: `Effect::{ExileYoursUntilYourNextUpkeep,
+LandmarkTransformTreasures}`, `Decision::ExileUntilYourNextUpkeep` (Pick one at a time, No to stop; labelled),
+`Object::return_at_upkeep` (returned at the start of that player's upkeep step, before upkeep triggers). Landmark
+counters are the source's `kind_counters`; transforming is in place (`transformed`, same object).
+Still Malik, not done: Prosper, Tome-Bound (needs d2's "play a card from exile" trigger), Glimpse of Tomorrow
+(suspend, a later lane C batch), Gisa, Glorious Resurrector (Mac B's die-to-exile replacement first), Inventors'
+Fair (d3: a search for any artifact card).
+
+## Bruna, Light of Alabaster (queue.json, lane C)
+
+Unsupported: 46 of 48. Batch 1 (11): Supreme Verdict, Idyllic Tutor, Talisman of Progress, Deserted Beach, Prismatic
+Vista, Dovin's Veto, Eel Umbra, Crashing Drawbridge, Heliod's Pilgrim, Galadriel's Dismissal, Mirrormade.
+Core: `Effect::{PhaseOutSlot, PhaseOutCreaturesOfPlayer}` (they phase in on their controller's untap step, unlike
+`PhaseOut`, which uses the caster's), `ZonesExt::copy_artifact_or_enchantment` (in `copy_option`; Auras excluded).
+
+## Olivia, Crimson Bride (queue.json, lane C)
+
+Unsupported: 41 of 41. Batch 1 (9, no new core): Rakdos Signet, Wayfarer's Bauble, Faithless Looting, Tormenting
+Voice, Electric Revelation, Seize the Spoils, Unexpected Windfall, Cathartic Pyre, Foreboding Ruins.
+
+## Vaevictis Asmadi, the Dire (queue.json, lane C)
+
+Unsupported: 22 of 22. Batch 1 (2): Tranquility, Vesuva. Core: `ZonesExt::enters_as_land_copy_tapped` and
+`Object::land_copy_pending`: set as the land enters (however it enters), asked in `give_priority` right after shock
+lands as the existing `Decision::EnterAsCopy` (any land; a copy enters tapped, `No` leaves it untapped as itself).
+Shortcut: a Vesuva copying a shock land isn't asked for the 2 life (it's already tapped).

@@ -98,6 +98,9 @@ def test_lane_d3_batch_5_decisions_read_as_their_moves():
     torment = {"kind": "SacrificeDiscardOrLoseLife", "left": 2, "life": 3}
     assert pick(torment, "Opt") == "Sacrifice (or discard, from your hand): Opt"
     assert label(torment, "No", 0) == "Don't sacrifice or discard (lose 3 life)"
+    brass = {"kind": "ReanimateTotalManaValue", "left": 9}
+    assert pick(brass, "Serra Angel") == "Put onto the battlefield under your control: Serra Angel"
+    assert label(brass, "No", 0) == "Done choosing"
 
 
 def test_lonis_puts_a_revealed_card_under_your_control():
@@ -105,6 +108,13 @@ def test_lonis_puts_a_revealed_card_under_your_control():
     got = sv._decision_label(dec, "Pick", 0, "Sol Ring")
     assert got == "Put onto the battlefield under your control: Sol Ring"
     assert label(dec, "No", 0) == "Put none onto the battlefield"
+
+
+def test_nahiris_resolve_exiles_until_your_next_upkeep():
+    dec = {"kind": "ExileUntilYourNextUpkeep"}
+    got = sv._decision_label(dec, "Pick", 0, "Sol Ring")
+    assert got == "Exile until your next upkeep: Sol Ring"
+    assert label(dec, "No", 0) == "Done exiling"
 
 
 def test_venturing_names_the_dungeon_or_room():

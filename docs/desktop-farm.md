@@ -14,7 +14,7 @@ cut** without losing more than a few minutes of work and without counting anythi
 ## Setting up a clone (the desktop)
 
 ```bash
-python3 -m venv .venv && .venv/bin/pip install -e ".[dev,practice]"   # practice: tests/test_service.py needs fastapi
+python3 -m venv .venv && .venv/bin/pip install -e ".[dev,practice,farm]"   # practice: tests/test_service.py needs fastapi; farm: boto3
 source ~/.cargo/env && make engine-py                                   # the Rust engine into the venv (maturin, in dev)
 # The gitignored files the tests and the first job need, from S3 (profile bolt-desktop):
 aws s3 cp s3://nerdleagues-bolt-checkpoints-011834/data/m7/decks.txt data/m7/decks.txt --profile bolt-desktop

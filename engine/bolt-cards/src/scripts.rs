@@ -296,6 +296,36 @@ pub fn token_defs() -> Vec<CardDef> {
         },
         blood(),
         red(token("Hamster", "Hamster", 1, 1, Keywords::NONE)), // Rolling Hamsphere
+        // base+91 to 94: placeholders for other lanes' tokens until they merge.
+        token("Lane token 91", "Placeholder", 1, 1, Keywords::NONE),
+        token("Lane token 92", "Placeholder", 1, 1, Keywords::NONE),
+        token("Lane token 93", "Placeholder", 1, 1, Keywords::NONE),
+        token("Lane token 94", "Placeholder", 1, 1, Keywords::NONE),
+        {
+            // 95, lane d4: There and Back Again's "Smaug, a legendary 6/6 red Dragon creature token
+            // with flying, haste, and 'When Smaug dies, create fourteen Treasure tokens.'"
+            let mut t = red(token(
+                "Smaug",
+                "Dragon",
+                6,
+                6,
+                Keywords::FLYING.with(Keywords::HASTE),
+            ));
+            t.types.legendary = true;
+            t.triggers.push(Trigger {
+                when: When::Dies,
+                ability: Ability::new(
+                    vec![],
+                    vec![Effect::Subsystem(bolt_core::SubsystemEffect::RoomToken {
+                        name: "Treasure",
+                        power: 0,
+                        toughness: 0,
+                        n: 14,
+                    })],
+                ),
+            });
+            t
+        },
     ]
 }
 
@@ -466,6 +496,8 @@ pub struct Tokens {
     pub orc_army: usize,
     pub eldrazi_scion: usize,
     pub bat: usize,
+    /// 95: Smaug, a legendary 6/6 red Dragon with flying and haste (There and Back Again).
+    pub smaug: usize,
 }
 
 impl Tokens {
@@ -562,6 +594,7 @@ impl Tokens {
             orc_army: base + 86,
             eldrazi_scion: base + 87,
             bat: base + 83,
+            smaug: base + 95,
         }
     }
 }

@@ -1236,6 +1236,158 @@ pub fn script(name: &str) -> Option<Script> {
                 d.foods_have_exiled_abilities = true;
             },
         ),
+        "Calamity of Cinders" => s(&["Convoke", "Calamity of Cinders deals 6 damage to each untapped creature."], |d, _| {
+            d.mana_ext.convoke = true;
+            spell(d, vec![], vec![Effect::DamageEachUntappedCreature(6)]);
+        }),
+        "Realm-Cloaked Giant // Cast Off" => s(&["Omen: Destroy all non-Giant creatures."], |d, _| {
+            omen(d, Ability::new(vec![], vec![Effect::DestroyAllCreaturesExceptSubtype("Giant")]));
+            d.adventure = true;
+        }),
+        "Swarmyard" => s(&["{T}: Add {C}.", "{T}: Regenerate target Insect, Rat, Spider, or Squirrel."], |d, _| {
+            colorless(d);
+            // One ability per creature type (each {T}: only one can be activated).
+            for sub in ["Insect", "Rat", "Spider", "Squirrel"] {
+                let f = Filter { subtype: Some(sub), ..CREATURE };
+                activated(d, "", true, vec![f], vec![Effect::Regenerate(0)]);
+            }
+        }),
+        "Rolling Hamsphere" => s(
+            &[
+                "This Vehicle gets +1/+1 for each Hamster you control.",
+                "Whenever this Vehicle attacks, create three 1/1 red Hamster creature tokens, then it deals X damage to any target, where X is the number of Hamsters you control.",
+                "Crew 3",
+            ],
+            |d, t| {
+                d.statics.push(Static {
+                    subtype: None,
+                    lose_abilities: false,
+                    base_pt: None,
+                    protection: [false; 5],
+                    scale: Some(Scale::PerYouControlSubtype("Hamster")),
+                    scope: Scope::This,
+                    your_turn_only: false,
+                    condition: None,
+                    power: 1,
+                    toughness: 1,
+                    keywords: Keywords::NONE,
+                    set_colors: None,
+                    becomes_land: false,
+                });
+                let hamsters = Effect::CreateToken { who: Who::You, def: t.hamster, n: 3 };
+                on(d, When::Attacks, vec![Filter::ANY], vec![hamsters, Effect::DamagePerYouControlSubtype { subtype: "Hamster", slot: 0 }]);
+                let n = activated(d, "", false, vec![], vec![Effect::CrewedSelf]);
+                d.activated[n].crew = 3;
+            },
+        ),
+        "Pyreswipe Hawk" => s(
+            &[
+                "Whenever this creature attacks, it gets +X/+0 until end of turn, where X is the greatest mana value among artifacts you control.",
+                "Whenever you expend 6, gain control of up to one target artifact for as long as you control this creature.",
+            ],
+            |d, _| {
+                on(d, When::Attacks, vec![], vec![Effect::PumpSelfGreatestArtifactManaValue]);
+                d.triggers.push(Trigger { when: When::Expend(6), ability: up_to(vec![ARTIFACT], vec![Effect::GainControlWhileSource(0)]) });
+            },
+        ),
+        "Martial Impetus" => s(
+            &[
+                "Enchant creature",
+                "Enchanted creature gets +1/+1 and is goaded.",
+                "Whenever enchanted creature attacks, each other creature that's attacking one of your opponents gets +1/+1 until end of turn.",
+            ],
+            |d, _| {
+                d.aura = true;
+                d.spell = Some(Ability::new(vec![CREATURE], vec![]));
+                attached(d, false, 1, 1, Keywords::NONE);
+                d.goads_enchanted = true;
+                on(d, When::EnchantedAttacks, vec![], vec![Effect::PumpOtherAttackersIfYouAttack { power: 1, toughness: 1 }]);
+            },
+        ),
+        "Bootleggers' Stash" => s(&["Lands you control have \"{T}: Create a Treasure token.\""], |d, t| {
+            d.lands_you_control_have = vec![Activated {
+                tap: true,
+                ability: Ability::new(vec![], vec![Effect::CreateToken { who: Who::You, def: t.treasure, n: 1 }]),
+                ..Activated::default()
+            }];
+        }),
+        "The Odd Acorn Gang" => s(
+            &[
+                "Squirrels you control have \"{T}: Target Squirrel gets +2/+2 and gains trample until end of turn. Activate only as a sorcery.\"",
+                "Whenever one or more Squirrels you control deal combat damage to a player, draw a card.",
+            ],
+            |d, _| {
+                let squirrel = Filter { subtype: Some("Squirrel"), ..CREATURE };
+                let pump = vec![Effect::Pump { slot: 0, power: 2, toughness: 2 }, Effect::Grant { slot: 0, keywords: Keywords::TRAMPLE }];
+                let a = Activated { tap: true, sorcery: true, ability: Ability::new(vec![squirrel], pump), ..Activated::default() };
+                d.subtype_you_control_has = Some(("Squirrel", vec![a]));
+                on(d, When::YourSubtypeDealCombatDamageToPlayer("Squirrel"), vec![], vec![draw(1)]);
+            },
+        ),
+        "Kwain, Itinerant Meddler" => s(
+            &["{T}: Each player may draw a card, then each player who drew a card this way gains 1 life."],
+            |d, _| {
+                activated(d, "", true, vec![], vec![Effect::EachPlayerMayDrawGainOne]);
+            },
+        ),
+        "Mr. Foxglove" => s(
+            &["Whenever Mr. Foxglove attacks, draw cards equal to the number of cards in defending player's hand minus the number of cards in your hand. If you didn't draw cards this way, you may put a creature card from your hand onto the battlefield."],
+            |d, _| on(d, When::Attacks, vec![], vec![Effect::FoxgloveDraw]),
+        ),
+        "Dusk // Dawn" => s(
+            &[
+                "Destroy all creatures with power 3 or greater.",
+                "Split: Aftermath",
+                "Split: Return all creature cards with power 2 or less from your graveyard to your hand.",
+            ],
+            |d, _| {
+                spell(d, vec![], vec![Effect::DestroyAllCreaturesPowerAtLeast(3)]);
+                omen(d, Ability::new(vec![], vec![Effect::ReturnCreatureCardsPowerAtMostToHand(2)]));
+                d.aftermath = true;
+            },
+        ),
+        "Wizard Class" => s(
+            &[
+                "You have no maximum hand size.",
+                "{2}{U}: Level 2",
+                "When this Class becomes level 2, draw two cards.",
+                "{4}{U}: Level 3",
+                "Whenever you draw a card, put a +1/+1 counter on target creature you control.",
+            ],
+            |d, _| {
+                d.no_max_hand_size = true;
+                let n = activated(d, "{2}{U}", false, vec![], vec![Effect::ClassLevelUp(2)]);
+                d.activated[n].sorcery = true;
+                d.activated[n].level_up_to = 2;
+                on(d, When::ClassBecomesLevel(2), vec![], vec![draw(2)]);
+                let n = activated(d, "{4}{U}", false, vec![], vec![Effect::ClassLevelUp(3)]);
+                d.activated[n].sorcery = true;
+                d.activated[n].level_up_to = 3;
+                let mut grow = Ability::new(vec![YOUR_CREATURE], vec![Effect::Counters { slot: 0, n: 1 }]);
+                grow.condition = Some(Condition::ClassLevelAtLeast(3));
+                d.triggers.push(Trigger { when: When::YouDraw, ability: grow });
+            },
+        ),
+        "Cache Grab" => s(
+            &["Mill four cards. You may put a permanent card from among the cards milled this way into your hand. If you control a Squirrel or returned a Squirrel card to your hand this way, create a Food token."],
+            |d, t| spell(d, vec![], vec![Effect::CacheGrab { n: 4, food: t.food }]),
+        ),
+        "Forgotten Ancient" => s(
+            &[
+                "Whenever a player casts a spell, you may put a +1/+1 counter on this creature.",
+                "At the beginning of your upkeep, you may move any number of +1/+1 counters from this creature onto other creatures.",
+            ],
+            |d, _| {
+                for when in [When::YouCast, When::OpponentCasts] {
+                    may(d, when, vec![], vec![Effect::CountersSelf { n: 1 }]);
+                }
+                on(d, When::Upkeep { your_turn_only: true }, vec![], vec![Effect::MayMoveCountersFromSource]);
+            },
+        ),
+        "Shield Broker" => s(
+            &["When this creature enters, put a shield counter on target noncommander creature you don't control. You gain control of that creature for as long as it has a shield counter on it."],
+            |d, _| on(d, When::Enters, vec![OPP_CREATURE], vec![Effect::ShieldCounterAndControlWhileShielded(0)]),
+        ),
         _ => None,
     }
 }
@@ -1395,4 +1547,19 @@ pub const BLC_B_SCRIPTED: &[&str] = &[
     "Coveted Jewel",
     "Illusionist's Gambit",
     "Hazel's Brewmaster",
+    "Calamity of Cinders",
+    "Realm-Cloaked Giant // Cast Off",
+    "Swarmyard",
+    "Rolling Hamsphere",
+    "Pyreswipe Hawk",
+    "Martial Impetus",
+    "Bootleggers' Stash",
+    "The Odd Acorn Gang",
+    "Kwain, Itinerant Meddler",
+    "Mr. Foxglove",
+    "Dusk // Dawn",
+    "Wizard Class",
+    "Cache Grab",
+    "Forgotten Ancient",
+    "Shield Broker",
 ];
