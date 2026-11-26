@@ -168,6 +168,7 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         verb = verb or {"ReturnSharingType": "Return to its owner's hand:", "ExileOwnPermanent": "Exile"}.get(d)
         verb = verb or {"CastFromGraveyardThisTurn": "You may cast this turn (then exile it):"}.get(d)
         verb = verb or {"TakeTwoBottomRest": "Put into your hand:"}.get(d)
+        verb = verb or {"SacrificeDiscardOrLoseLife": "Sacrifice (or discard, from your hand):"}.get(d)
         if d == "IterationPick":
             verb = "Put into your hand:" if dec.get("to_hand") else "Put on the bottom:"
         if d == "LoseUnless":
@@ -212,6 +213,8 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
     if d in ("DiscardOrLoseLife", "LoseUnless") and not yes:
         life = f"lose {dec['life']} life" if "life" in dec else "lose the life"
         return f"Don't {'sacrifice' if dec.get('sacrifice') else 'discard'} ({life})"
+    if d == "SacrificeDiscardOrLoseLife" and not yes:
+        return f"Don't sacrifice or discard (lose {dec.get('life', 3)} life)"
     if d in labels:
         return labels[d][0 if yes else 1]
     if not yes:

@@ -95,6 +95,9 @@ def test_lane_d3_batch_5_decisions_read_as_their_moves():
     cast_later = "You may cast this turn (then exile it): Opt"
     assert pick({"kind": "CastFromGraveyardThisTurn", "cards": []}, "Opt") == cast_later
     assert pick({"kind": "TakeTwoBottomRest", "cards": [], "left": 2}, "Opt") == "Put into your hand: Opt"
+    torment = {"kind": "SacrificeDiscardOrLoseLife", "left": 2, "life": 3}
+    assert pick(torment, "Opt") == "Sacrifice (or discard, from your hand): Opt"
+    assert label(torment, "No", 0) == "Don't sacrifice or discard (lose 3 life)"
 
 
 def test_venturing_names_the_dungeon_or_room():

@@ -2126,6 +2126,11 @@ pub enum Effect {
     /// Look at the top `n` cards of your library; put two of them into your hand and the rest on the
     /// bottom in any order (Dig Through Time: 7), as `Decision::TakeTwoBottomRest`.
     LookTakeTwoBottomAnyOrder(u8),
+    /// X times: the opponent loses `life` life unless they sacrifice a nonland permanent or discard a
+    /// card, their choice each time (Torment of Hailfire: 3), as `Decision::SacrificeDiscardOrLoseLife`.
+    OpponentLosesUnlessSacrificesOrDiscardsX {
+        life: i32,
+    },
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

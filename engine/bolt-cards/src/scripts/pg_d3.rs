@@ -1669,6 +1669,86 @@ pub fn script(name: &str) -> Option<Script> {
                 d.kicked_spell = Some(Ability::new(vec![], vec![Effect::ExileCastCopyFreeEachInstantSorcery, Effect::ExileSourceSpell]));
             },
         ),
+        // ---- Core theme d3, batch 18 ----
+        "Minamo, School at Water's Edge" => s(&["{T}: Add {U}.", "{U}, {T}: Untap target legendary permanent."], |d, _| {
+            lands_mana(d, &[Color::Blue]);
+            let legendary = Filter { legendary_only: true, ..PERMANENT };
+            activated(d, "{U}", true, vec![legendary], vec![Effect::UntapTarget(0)]);
+        }),
+        "Torment of Hailfire" => s(
+            &["Repeat the following process X times. Each opponent loses 3 life unless that player sacrifices a nonland permanent of their choice or discards a card."],
+            |d, _| spell(d, vec![], vec![Effect::OpponentLosesUnlessSacrificesOrDiscardsX { life: 3 }]),
+        ),
+        "Ensnare" => s(
+            &["You may return two Islands you control to their owner's hand rather than pay this spell's mana cost.", "Tap all creatures."],
+            |d, _| {
+                d.mana_ext.alt_cost_ext = Some(bolt_core::card::AltCostExt {
+                    return_lands: 2,
+                    return_subtype: Some("Island"),
+                    ..Default::default()
+                });
+                spell(d, vec![], vec![Effect::TapAllCreatures]);
+            },
+        ),
+        "Kinnan, Bonder Prodigy" => s(
+            &[
+                "Whenever you tap a nonland permanent for mana, add one mana of any type that permanent produced.",
+                "{5}{G}{U}: Look at the top five cards of your library. You may put a non-Human creature card from among them onto the battlefield. Put the rest on the bottom of your library in a random order.",
+            ],
+            |d, _| {
+                d.mana_ext.nonland_add_same = true;
+                let look = Effect::LookAtTop { n: 5, pick: Pick::NonHumanCreature, chosen_to: LookTo::Battlefield, rest_to: LookRest::BottomRandom };
+                activated(d, "{5}{G}{U}", false, vec![], vec![look]);
+            },
+        ),
+        "Orcish Bowmasters" => s(
+            &["When this creature enters and whenever an opponent draws a card except the first one they draw in each of their draw steps, this creature deals 1 damage to any target. Then amass Orcs 1."],
+            |d, t| {
+                let ping = || vec![damage(1, Recipient::Target(0)), Effect::Amass { subtype: "Orc", n: 1, def: t.orc_army }];
+                on(d, When::Enters, vec![Filter::ANY], ping());
+                on(d, When::OpponentDrawsExceptFirstInDrawStep, vec![Filter::ANY], ping());
+            },
+        ),
+        "Cloudstone Curio" => s(
+            &["Whenever a nonartifact permanent you control enters, you may return another permanent you control that shares a permanent type with it to its owner's hand."],
+            |d, _| {
+                let it = Filter { triggering: true, ..PERMANENT };
+                on(d, When::NonartifactPermanentYouControlEnters, vec![it], vec![Effect::MayReturnAnotherSharingType(0)]);
+            },
+        ),
+        "Teething Wurmlet" => s(
+            &[
+                "This creature has deathtouch as long as you control three or more artifacts.",
+                "Whenever an artifact you control enters, you gain 1 life. If this is the first time this ability has resolved this turn, put a +1/+1 counter on this creature.",
+            ],
+            |d, _| {
+                d.statics.push(Static {
+                    keywords: Keywords::DEATHTOUCH,
+                    condition: Some(StaticCondition::ControlArtifactsAtLeast(3)),
+                    ..neutral_static()
+                });
+                let gain = Effect::GainLifeCountersIfFirstResolutionThisTurn { life: 1, counters: 1 };
+                on(d, When::ArtifactYouControlEnters, vec![], vec![gain]);
+            },
+        ),
+        "Sanctum of Ugin" => s(
+            &[
+                "{T}: Add {C}.",
+                "Whenever you cast a colorless spell with mana value 7 or greater, you may sacrifice this land. If you do, search your library for a colorless creature card, reveal it, put it into your hand, then shuffle.",
+            ],
+            |d, _| {
+                d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                let search = Effect::Search { what: SearchFor::ColorlessCreature, to: SearchTo::Hand, n: 1, kicked_n: None };
+                may(d, When::YouCastColorlessMvAtLeast(7), vec![], vec![Effect::SacrificeSource, search]);
+            },
+        ),
+        "Rishkar's Expertise" => s(
+            &[
+                "Draw cards equal to the greatest power among creatures you control.",
+                "You may cast a spell with mana value 5 or less from your hand without paying its mana cost.",
+            ],
+            |d, _| spell(d, vec![], vec![Effect::DrawGreatestPowerYouControl, Effect::MayCastFromHandFree { max_mv: 5 }]),
+        ),
         _ => None,
     }
 }
@@ -1897,4 +1977,14 @@ pub const PG_D3_SCRIPTED: &[&str] = &[
     "Expressive Iteration",
     "Mission Briefing",
     "Mizzix's Mastery",
+    // Core theme d3, batch 18
+    "Minamo, School at Water's Edge",
+    "Torment of Hailfire",
+    "Ensnare",
+    "Kinnan, Bonder Prodigy",
+    "Orcish Bowmasters",
+    "Cloudstone Curio",
+    "Teething Wurmlet",
+    "Sanctum of Ugin",
+    "Rishkar's Expertise",
 ];

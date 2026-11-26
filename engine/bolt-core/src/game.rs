@@ -1202,6 +1202,9 @@ pub enum Decision {
     /// `Pick` one of `cards` (looked at, on top of your library) to put into your hand; `left` picks
     /// including this one; then the rest go on the bottom in the order you choose (Dig Through Time).
     TakeTwoBottomRest { cards: Vec<ObjId>, left: u8 },
+    /// `Pick` a nonland permanent you control to sacrifice or a card in your hand to discard, or `No`
+    /// to lose `life` life; `left` more rounds after this one (Torment of Hailfire).
+    SacrificeDiscardOrLoseLife { left: u32, life: i32 },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -11103,6 +11106,11 @@ impl Game {
             Decision::IterationPick { cards, .. }
             | Decision::CastFromGraveyardThisTurn { cards }
             | Decision::TakeTwoBottomRest { cards, .. } => cards.iter().copied().map(Action::Pick).collect(),
+            Decision::SacrificeDiscardOrLoseLife { .. } => {
+                let mut v: Vec<Action> = self.torment_options(p).into_iter().map(Action::Pick).collect();
+                v.push(Action::No);
+                v
+            }
             Decision::BraidsOpponent { types, .. } => {
                 let mut v: Vec<Action> = self
                     .braids_options(p, Some(*types))
@@ -12427,6 +12435,17 @@ impl Game {
                 let rest: Vec<ObjId> = cards.into_iter().filter(|&x| x != c).collect();
                 self.take_two_next(p, rest, left.saturating_sub(1));
             }
+            (Decision::SacrificeDiscardOrLoseLife { left, life }, a) => {
+                match a {
+                    Action::Pick(c) if self.obj(c).zone == Zone::Battlefield => {
+                        self.move_to(c, Zone::Graveyard);
+                        self.sacrificed(c, p);
+                    }
+                    Action::Pick(c) => self.move_to(c, Zone::Graveyard), // discarded, as Onyx's −8
+                    _ => self.lose_life(p, life),
+                }
+                self.torment_next(p, left, life);
+            }
             (d, a) => unreachable!("legal action {a:?} unhandled for {d:?}"),
         }
         if self.decision.is_none() {
@@ -12906,6 +12925,28 @@ impl Game {
                     to_hand: false,
                 },
             ),
+        }
+    }
+
+    /// Torment of Hailfire: what `p` can give up instead of losing life.
+    fn torment_options(&self, p: PlayerId) -> Vec<ObjId> {
+        let mut v: Vec<ObjId> = self
+            .permanents(p)
+            .filter(|&x| !self.types_of(x).land && !self.cant_be_sacrificed(x))
+            .collect();
+        v.extend(self.players[p].hand.iter().copied());
+        v
+    }
+
+    /// Torment of Hailfire: `left` more rounds for `p` (asked only with something to give up).
+    fn torment_next(&mut self, p: PlayerId, mut left: u32, life: i32) {
+        while left > 0 {
+            left -= 1;
+            if !self.torment_options(p).is_empty() {
+                self.ask(p, Decision::SacrificeDiscardOrLoseLife { left, life });
+                return;
+            }
+            self.lose_life(p, life);
         }
     }
 
@@ -19363,6 +19404,10 @@ impl Game {
                     .copied()
                     .collect();
                 self.take_two_next(p, cards, 2);
+            }
+            Effect::OpponentLosesUnlessSacrificesOrDiscardsX { life } => {
+                let q = opponent(item.controller);
+                self.torment_next(q, item.x as u32, life);
             }
         }
     }

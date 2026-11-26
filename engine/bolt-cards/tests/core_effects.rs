@@ -2638,3 +2638,40 @@ fn look_at_seven_take_two_and_the_rest_on_the_bottom() {
     assert_eq!(g.players[0].library[0], b, "the rest on the bottom");
     assert_eq!(g.players[0].library.len(), lib - 2);
 }
+
+// ---- batch 18 ----
+
+#[test]
+fn x_times_lose_life_unless_sacrificing_a_nonland_permanent_or_discarding() {
+    let mut torment = sorcery(
+        vec![],
+        vec![Effect::OpponentLosesUnlessSacrificesOrDiscardsX { life: 3 }],
+    );
+    torment.cost = ManaCost::parse("{X}").unwrap();
+    let (mut g, t) = game_with(vec![torment]);
+    let ring = g.add_card(1, cid("Sol Ring"), Zone::Battlefield);
+    let opt = g.add_card(1, cid("Opt"), Zone::Hand);
+    let life = g.players[1].life;
+    let c = g.add_card(0, t, Zone::Hand);
+    act(&mut g, Action::CastX(c, 3));
+    while g.pending != Pending::Decide(1) {
+        act(&mut g, Action::PassPriority);
+    }
+    let legal = g.legal_actions();
+    assert!(
+        legal.contains(&Action::Pick(ring))
+            && legal.contains(&Action::Pick(opt))
+            && legal.contains(&Action::No)
+    );
+    let plains = g.permanents(1).find(|&x| g.def_of(x).name == "Plains").unwrap();
+    assert!(!legal.contains(&Action::Pick(plains)), "a land");
+    act(&mut g, Action::Pick(ring)); // sacrifice
+    act(&mut g, Action::Pick(opt)); // discard
+    act(&mut g, Action::No); // 3 life
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        (g.obj(ring).zone, g.obj(opt).zone),
+        (Zone::Graveyard, Zone::Graveyard)
+    );
+    assert_eq!(g.players[1].life, life - 3);
+}
