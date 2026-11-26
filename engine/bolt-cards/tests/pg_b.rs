@@ -2565,17 +2565,27 @@ fn ghyrson_burn_and_cantrips() {
     play(&mut g, bolt, false, &[Target::Player(1)], &[]);
     let shot = hand(&mut g, 0, "Grapeshot");
     play(&mut g, shot, false, &[Target::Player(1)], &[]);
-    assert_eq!(g.players[1].life, 36, "2, then 1 and a storm copy");
+    assert_eq!(
+        g.players[1].life, 35,
+        "2, then 1 and two storm copies (two spells before it)"
+    );
     let n = hand_size(&g, 0);
     let lyze = hand(&mut g, 0, "Electrolyze");
     let c = put(&mut g, 1, "Llanowar Elves");
     act(&mut g, Action::Cast(lyze));
     act(&mut g, Action::Target(Target::Object(c)));
     act(&mut g, Action::Target(Target::Player(1)));
-    resolve_all(&mut g, &[Action::Amount(1)]);
+    while matches!(g.pending, Pending::Divide(_)) {
+        act(&mut g, Action::Amount(1)); // 1 and 1
+    }
+    resolve_all(&mut g, &[]);
     assert_eq!(g.obj(c).zone, Zone::Graveyard);
-    assert_eq!(g.players[1].life, 35);
-    assert_eq!(hand_size(&g, 0), n);
+    assert_eq!(g.players[1].life, 34);
+    assert_eq!(
+        hand_size(&g, 0),
+        n + 1,
+        "Electrolyze was added after counting; it drew one"
+    );
 }
 
 #[test]
@@ -2638,6 +2648,8 @@ fn dawn_of_hope_mystic_and_iconoclast_make_tokens() {
     let birds = tokens(&g, 0, "Bird Illusion");
     assert_eq!(birds.len(), 1);
     assert!(g.keywords(birds[0]).has(Keywords::FLYING));
-    let art = tokens(&g, 0, "Soldier").into_iter().find(|&x| g.types_of(x).artifact);
+    let art = tokens(&g, 0, "Soldier")
+        .into_iter()
+        .find(|&x| g.types_of(x).artifact);
     assert!(art.is_some());
 }

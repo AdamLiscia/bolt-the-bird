@@ -764,6 +764,9 @@ pub struct CardDef {
     /// and its owner may cast the card itself from exile later.
     pub adventure: bool,
     /// "Enchanted permanent's activated abilities can't be activated." (Hold for Questioning)
+    /// "As this enters, choose a card type." and "You and creatures you control have protection
+    /// from the chosen card type." (Serra's Emissary).
+    pub protection_chosen_card_type: bool,
     pub enchanted_stops_activations: bool,
     /// "If one or more +1/+1 counters would be put on a creature you control, that many plus one
     /// ... instead." (Hardened Scales)
@@ -806,6 +809,11 @@ pub struct CardDef {
     pub flash_cast_sacrificed: bool,
     /// Mana, costs and keywords (the d1 theme), grouped so adding one touches only [`ManaExt`].
     pub mana_ext: ManaExt,
+    /// "... don't cause abilities to trigger" (Hushbringer, Doorkeeper Thrull, Elesh Norn).
+    pub suppresses_triggers: Option<Suppression>,
+    /// "If a triggered ability of [a kind of source] you control triggers, that ability triggers an
+    /// additional time" (Harmonic Prodigy, Delney).
+    pub doubles_triggers_of: Option<TriggerDoubler>,
     /// "Skip your draw step." (Damia, Sage of Stone)
     pub skip_draw_step: bool,
     /// "Untap all creatures you control during each other player's untap step." (Drumbellower)
@@ -865,6 +873,27 @@ pub struct ManaExt {
     /// cost." (Force of Will: blue, 1): (WUBRG index, life). Cast with `Action::CastWith` naming
     /// the card.
     pub pitch_with_life: Option<(u8, i32)>,
+}
+
+/// Which events don't cause abilities to trigger (see [`CardDef::suppresses_triggers`]).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Suppression {
+    /// "Creatures entering or dying don't cause abilities to trigger." (Hushbringer)
+    CreaturesEnteringOrDying,
+    /// "Artifacts and creatures entering don't cause abilities to trigger." (Doorkeeper Thrull)
+    ArtifactsOrCreaturesEntering,
+    /// "Permanents entering don't cause abilities of permanents your opponents control to
+    /// trigger." (Elesh Norn, Mother of Machines)
+    PermanentsEnteringForOpponents,
+}
+
+/// Whose triggered abilities trigger an additional time (see [`CardDef::doubles_triggers_of`]).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TriggerDoubler {
+    /// "a Shaman or another Wizard you control" (Harmonic Prodigy).
+    ShamanOrOtherWizard,
+    /// "a creature you control with power N or less" (Delney).
+    CreaturePowerAtMost(i32),
 }
 
 /// What entering makes triggers happen again (see [`CardDef::entering_triggers_again`]).
@@ -1132,6 +1161,9 @@ impl CardDef {
             reanimates_tapped: false,
             flash_cast_sacrificed: false,
             mana_ext: ManaExt::default(),
+            suppresses_triggers: None,
+            doubles_triggers_of: None,
+            protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
             teeg_lock: false,
@@ -1374,6 +1406,9 @@ impl CardDef {
             reanimates_tapped: false,
             flash_cast_sacrificed: false,
             mana_ext: ManaExt::default(),
+            suppresses_triggers: None,
+            doubles_triggers_of: None,
+            protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
             teeg_lock: false,
@@ -1616,6 +1651,9 @@ impl CardDef {
             reanimates_tapped: false,
             flash_cast_sacrificed: false,
             mana_ext: ManaExt::default(),
+            suppresses_triggers: None,
+            doubles_triggers_of: None,
+            protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
             teeg_lock: false,

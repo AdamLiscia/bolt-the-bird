@@ -33,5 +33,45 @@ def test_a_creature_type_choice_names_the_type():
     assert label(dec, "Mode", 1) == "Secluded Courtyard: choose Goblin"
 
 
+def test_lane_d3_decisions_read_as_their_moves():
+    # Tooth and Nail, Dream Stalker, Oriq Loremage: Pick a card; Ponder: Yes or No.
+    assert sv._decision_label({"kind": "CreaturesFromHandUpTo", "left": 2}, "Pick", 0, "Ashen Rider") == (
+        "Put onto the battlefield: Ashen Rider"
+    )
+    assert label({"kind": "CreaturesFromHandUpTo", "left": 1}, "No", 0) == "Done choosing"
+    assert sv._decision_label({"kind": "ReturnOwnPermanent", "nonland": True}, "Pick", 0, "Sol Ring") == (
+        "Return Sol Ring"
+    )
+    dec = {"kind": "SearchToGraveyardCounter", "source": [7, 1]}
+    assert sv._decision_label(dec, "Pick", 0, "Counterspell") == "Put into your graveyard: Counterspell"
+    assert label(dec, "No", 0) == "Find nothing"
+    assert label({"kind": "MayShuffle"}, "Yes", 0) == "Shuffle your library"
+    assert label({"kind": "MayShuffle"}, "No", 0) == "Don't shuffle"
+
+
+def test_lane_d3_batch_5_decisions_read_as_their_moves():
+    pick = lambda d, n: sv._decision_label(d, "Pick", 0, n)  # noqa: E731
+    assert pick({"kind": "KeepNonlandOfType", "ty": 0}, "Sol Ring") == "Keep Sol Ring"
+    assert pick({"kind": "HandToBottom", "n": 3}, "Opt") == "Put on the bottom: Opt"
+    assert pick({"kind": "SacrificeAnyNumber", "n": 0}, "Sol Ring") == "Sacrifice Sol Ring"
+    assert label({"kind": "SacrificeAnyNumber", "n": 1}, "No", 0) == "Done sacrificing"
+    assert pick({"kind": "SacrificeCreatureOrPlaneswalkerEach"}, "Grizzly Bears") == "Sacrifice Grizzly Bears"
+    assert pick({"kind": "ReturnAnotherPermanentCard"}, "Sol Ring") == "Return to your hand: Sol Ring"
+    assert label({"kind": "ReturnAnotherPermanentCard"}, "No", 0) == "Return nothing"
+    assert pick({"kind": "BasicsTappedUpTo", "left": 2}, "Forest") == "Put onto the battlefield tapped: Forest"
+    assert label({"kind": "BasicsTappedUpTo", "left": 2}, "No", 0) == "Find nothing"
+    assert pick({"kind": "SignalTheClans"}, "Merfolk Looter") == "Reveal Merfolk Looter"
+    assert label({"kind": "SignalTheClans"}, "No", 0) == "Done revealing"
+    assert pick({"kind": "BraidsSacrifice"}, "Sol Ring") == "Sacrifice Sol Ring"
+    assert label({"kind": "BraidsSacrifice"}, "No", 0) == "Don't sacrifice"
+    assert label({"kind": "BraidsOpponent"}, "No", 0) == "Don't sacrifice (lose 2 life)"
+    assert label({"kind": "TargetToSource"}, "Mode", 0) == "Change target 1 to this creature"
+    assert label({"kind": "TaintedPact"}, "Yes", 0) == "Put it into your hand"
+    assert label({"kind": "TaintedPact"}, "No", 0) == "Exile the next card"
+    assert label({"kind": "ProtectionColor"}, "Mode", 3) == "Protection from red"
+    assert label({"kind": "ChooseCardType"}, "Mode", 3) == "It: protection from instants"
+    assert pick({"kind": "ConniveDiscard", "left": 2}, "Plains") == "Discard (connive): Plains"
+
+
 def test_an_unknown_decision_keeps_the_generic_label():
     assert label({"kind": "SomethingNew"}, "Mode", 0) is None

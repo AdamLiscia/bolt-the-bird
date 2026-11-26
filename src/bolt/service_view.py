@@ -133,13 +133,29 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
             faces = (src or "").split(" // ")
             face = faces[value] if len(faces) == 2 else ("its front", "its back")[value]
             return f"Play it as {face}"
+        if d == "ProtectionColor" and 0 <= value < 5:
+            return f"Protection from {COLORS[value].lower()}"
+        if d == "ChooseCardType" and 0 <= value < 7:
+            kinds = ("artifacts", "creatures", "enchantments", "instants", "lands", "planeswalkers", "sorceries")
+            return f"{src or 'It'}: protection from {kinds[value]}"
+        if d == "TargetToSource":
+            return f"Change target {value + 1} to {src or 'this creature'}"
         return None
+    if kind == "Pick" and d == "SacrificeAnotherGainDraw":
+        return f"Sacrifice {card_name} (gain life and draw equal to its power)"
+    if kind == "Pick" and d == "ReturnLandOrSacrifice":
+        return f"Return {card_name} to your hand"
+    if kind == "No" and d == "ReturnLandOrSacrifice":
+        return f"Sacrifice {src} instead" if src else "Sacrifice it instead"
     if kind == "Pick":
         verb = {"SacrificeCreatures": "Sacrifice", "SacrificeAnother": "Sacrifice", "Search": "Take",
                 "LookPick": "Take", "KeepOfType": "Keep", "ScryOrder": "Put on top:", "GenesisPick": "Put onto the battlefield:", "PutPicksOntoBattlefield": "Put onto the battlefield:", "LandFromHandTapped": "Put onto the battlefield tapped:",
                 "DistributeCounters": "Put a +1/+1 counter on", "ManifestDread": "Manifest", "TurnFaceUp": "Turn face up:",
                 "PickVoidCard": "Play free this turn:", "ReturnOwnCreatureOfColor": "Return to its owner's hand:", "LandFromHand": "Put onto the battlefield:",
                 "PickDiscard": "Make them discard", "EnterAsCopy": f"{card or 'It'} enters as a copy of"}.get(d)  # fmt: skip
+        verb = verb or {"CreaturesFromHandUpTo": "Put onto the battlefield:", "ReturnOwnPermanent": "Return", "SearchToGraveyardCounter": "Put into your graveyard:"}.get(d)  # fmt: skip
+        verb = verb or {"KeepNonlandOfType": "Keep", "HandToBottom": "Put on the bottom:", "SacrificeAnyNumber": "Sacrifice", "SacrificeCreatureOrPlaneswalkerEach": "Sacrifice", "ReturnAnotherPermanentCard": "Return to your hand:", "BasicsTappedUpTo": "Put onto the battlefield tapped:", "SignalTheClans": "Reveal", "BraidsSacrifice": "Sacrifice", "BraidsOpponent": "Sacrifice"}.get(d)  # fmt: skip
+        verb = verb or {"ConniveDiscard": "Discard (connive):"}.get(d)
         return f"{verb} {card_name}" if verb else None
     yes = kind == "Yes"
     labels = {
@@ -161,9 +177,16 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         "ChoosePile": ("Choose pile A", "Choose pile B"),
         "PayToStop": (f"Pay {dec.get('cost', '')}", "Don't pay"),
         "PayUpkeep": (f"Pay the upkeep {dec.get('cost', '')}", f"Don't pay (sacrifice {subject or src})"),
+        "MayShuffle": ("Shuffle your library", "Don't shuffle"),
+        "TaintedPact": ("Put it into your hand", "Exile the next card"),
     }
+    if d in ("CreaturesFromHandUpTo", "SearchToGraveyardCounter") and not yes:
+        return "Done choosing" if d == "CreaturesFromHandUpTo" else "Find nothing"
     if d == "PutPicksOntoBattlefield" and not yes:
         return "Done choosing"
+    d3_no = {"SacrificeAnyNumber": "Done sacrificing", "ReturnAnotherPermanentCard": "Return nothing", "BasicsTappedUpTo": "Find nothing", "SignalTheClans": "Done revealing", "BraidsSacrifice": "Don't sacrifice", "BraidsOpponent": "Don't sacrifice (lose 2 life)"}  # fmt: skip
+    if not yes and d in d3_no:
+        return d3_no[d]
     if d in labels:
         return labels[d][0 if yes else 1]
     if not yes:
@@ -184,7 +207,7 @@ def actions(obs: dict, me: int) -> list[dict]:
         if kind in ("Mode", "Amount", "TargetPlayer", "TapForMana"):
             nums = ()
         label = _label(kind, names, nums, me, values)
-        if dec.get("kind") == "ChooseNewTarget" and kind in ("Target", "TargetPlayer", "No"):
+        if dec.get("kind") in ("ChooseNewTarget", "ChangeTheTarget") and kind in ("Target", "TargetPlayer", "No"):
             what = name(dec["card"][1]) if dec.get("card") else "it"
             if kind == "No":
                 label = "Keep the targets"

@@ -4,6 +4,15 @@
 
 use super::*;
 
+/// "target permanent": any permanent, lands included.
+const PERMANENT: Filter = Filter {
+    players: false,
+    creatures: false,
+    planeswalkers: false,
+    any_permanent: true,
+    ..Filter::ANY
+};
+
 /// "{T}: Add {A} or {B}." (or more colors).
 fn lands_mana(d: &mut CardDef, colors: &[Color]) {
     d.mana = Some(ManaSource::of(colors));
@@ -647,6 +656,578 @@ pub fn script(name: &str) -> Option<Script> {
             colorless(d);
             activated(d, "{4}", true, vec![], vec![Effect::Proliferate]);
         }),
+        // ---- Unblocked by lane d3's core theme (effects and statics), batch 2 ----
+        "Wrath of God" => s(&["Destroy all creatures. They can't be regenerated."], |d, _| {
+            spell(d, vec![], vec![Effect::DestroyAllCreaturesNoRegen])
+        }),
+        "Sword of Feast and Famine" => s(
+            &[
+                "Equipped creature gets +2/+2 and has protection from black and from green.",
+                "Whenever equipped creature deals combat damage to a player, that player discards a card and you untap all lands you control.",
+                "Equip {2}",
+            ],
+            |d, _| {
+                attached(d, false, 2, 2, Keywords::NONE);
+                d.statics.last_mut().expect("just added").protection = [false, false, true, false, true];
+                let discard = Effect::Discard { who: Who::EachOpponent, n: 1 };
+                on(d, When::EquippedDealsCombatDamageToPlayer, vec![], vec![discard, Effect::UntapLandsYouControl]);
+                equip(d, "{2}");
+            },
+        ),
+        "Regal Force" => s(&["When this creature enters, draw a card for each green creature you control."], |d, _| {
+            on(d, When::Enters, vec![], vec![Effect::DrawPerColoredCreatureYouControl(4)])
+        }),
+        "Loxodon Hierarch" => s(
+            &["When this creature enters, you gain 4 life.", "{G}{W}, Sacrifice this creature: Regenerate each creature you control."],
+            |d, _| {
+                on(d, When::Enters, vec![], vec![Effect::GainLife { who: Who::You, n: 4 }]);
+                let n = activated(d, "{G}{W}", false, vec![], vec![Effect::RegenerateEachCreatureYouControl]);
+                d.activated[n].sacrifice_self = true;
+            },
+        ),
+        "Blessing of Leeches" => s(
+            &["Enchant creature", "At the beginning of your upkeep, you lose 1 life.", "{0}: Regenerate enchanted creature."],
+            |d, _| {
+                d.aura = true;
+                d.spell = Some(Ability::new(vec![CREATURE], vec![]));
+                on(d, When::Upkeep { your_turn_only: true }, vec![], vec![Effect::LoseLife { who: Who::You, n: 1 }]);
+                activated(d, "{0}", false, vec![], vec![Effect::RegenerateAttached]);
+            },
+        ),
+        "Emissary of Despair" => s(
+            &["Whenever this creature deals combat damage to a player, that player loses 1 life for each artifact they control."],
+            |d, _| {
+                let lose = Effect::LoseLifePerArtifactTheyControl(Who::EachOpponent);
+                on(d, When::DealsCombatDamageToPlayer, vec![], vec![lose]);
+            },
+        ),
+        "Return of the Wildspeaker" => s(
+            &[
+                "Choose one —",
+                "• Draw cards equal to the greatest power among non-Human creatures you control.",
+                "• Non-Human creatures you control get +3/+3 until end of turn.",
+            ],
+            |d, _| {
+                let pump = Effect::PumpNonHumanYouControl { power: 3, toughness: 3 };
+                modes(
+                    d,
+                    vec![
+                        Ability::new(vec![], vec![Effect::DrawGreatestPowerNonHuman]),
+                        Ability::new(vec![], vec![pump]),
+                    ],
+                );
+            },
+        ),
+        "Last March of the Ents" => s(
+            &[
+                "This spell can't be countered.",
+                "Draw cards equal to the greatest toughness among creatures you control, then put any number of creature cards from your hand onto the battlefield.",
+            ],
+            |d, _| {
+                d.uncounterable = true;
+                let put = Effect::CreaturesFromHand;
+                spell(d, vec![], vec![Effect::DrawGreatestToughnessYouControl, put]);
+            },
+        ),
+        "Tooth and Nail" => s(
+            &[
+                "Choose one —",
+                "• Search your library for up to two creature cards, reveal them, put them into your hand, then shuffle.",
+                "• Put up to two creature cards from your hand onto the battlefield.",
+                "Entwine {2}",
+            ],
+            |d, _| {
+                let find = Effect::Search { what: SearchFor::CreatureMvAtLeast(0), to: SearchTo::Hand, n: 2, kicked_n: None };
+                let put = Effect::CreaturesFromHandUpTo(2);
+                modes(
+                    d,
+                    vec![
+                        Ability::new(vec![], vec![find]),
+                        Ability::new(vec![], vec![put]),
+                        Ability::new(vec![], vec![find, put]), // entwined
+                    ],
+                );
+                d.entwine = ManaCost::parse("{2}");
+            },
+        ),
+        "Ponder" => s(
+            &["Look at the top three cards of your library, then put them back in any order. You may shuffle.", "Draw a card."],
+            |d, _| spell(d, vec![], vec![Effect::LookTopReorder(3), Effect::MayShuffle, draw(1)]),
+        ),
+        "Dream Stalker" => s(&["When this creature enters, return a permanent you control to its owner's hand."], |d, _| {
+            on(d, When::Enters, vec![], vec![Effect::ReturnPermanentYouControl { nonland: false }])
+        }),
+        "Ancestral Statue" => s(&["When this creature enters, return a nonland permanent you control to its owner's hand."], |d, _| {
+            on(d, When::Enters, vec![], vec![Effect::ReturnPermanentYouControl { nonland: true }])
+        }),
+        "Weird Harvest" => s(
+            &["Each player may search their library for up to X creature cards, reveal those cards, put them into their hand, then shuffle."],
+            |d, _| {
+                let each = [Effect::SearchCreaturesUpToX(Who::You), Effect::SearchCreaturesUpToX(Who::EachOpponent)];
+                spell(d, vec![], each.to_vec());
+            },
+        ),
+        "Relentless Assault" => s(
+            &["Untap all creatures that attacked this turn. After this main phase, there is an additional combat phase followed by an additional main phase."],
+            |d, _| spell(d, vec![], vec![Effect::UntapCreaturesAttackedThisTurn, Effect::AdditionalCombatAndMain]),
+        ),
+        "Cyberdrive Awakener" => s(
+            &[
+                "Other artifact creatures you control have flying.",
+                "When this creature enters, each noncreature artifact you control becomes a 4/4 artifact creature until end of turn.",
+            ],
+            |d, _| {
+                static_on(d, Scope::OtherYourArtifactCreatures, false, Keywords::FLYING);
+                let animate = Effect::NoncreatureArtifactsBecomeCreatures { power: 4, toughness: 4 };
+                on(d, When::Enters, vec![], vec![animate]);
+            },
+        ),
+        "Oriq Loremage" => s(
+            &["{T}: Search your library for a card, put it into your graveyard, then shuffle. If it's an instant or sorcery card, put a +1/+1 counter on this creature."],
+            |d, _| {
+                activated(d, "", true, vec![], vec![Effect::SearchToGraveyardCounterIfInstantOrSorcery]);
+            },
+        ),
+        // ---- Unblocked by lane d3's core theme, batch 3 (target filters, scaled statics) ----
+        "Go for the Throat" => s(&["Destroy target nonartifact creature."], |d, _| {
+            spell(d, vec![Filter { nonartifact: true, ..CREATURE }], vec![Effect::Destroy(0)])
+        }),
+        "Doom Blade" => s(&["Destroy target nonblack creature."], |d, _| {
+            spell(d, vec![Filter { not_color: Some(2), ..CREATURE }], vec![Effect::Destroy(0)])
+        }),
+        "Red Elemental Blast" => s(
+            &["Choose one —", "• Counter target blue spell.", "• Destroy target blue permanent."],
+            |d, _| {
+                let blue_spell = Filter { color: Some(1), ..SPELL };
+                let blue_permanent = Filter { color: Some(1), ..PERMANENT };
+                modes(
+                    d,
+                    vec![
+                        Ability::new(vec![blue_spell], vec![Effect::Counter(0)]),
+                        Ability::new(vec![blue_permanent], vec![Effect::Destroy(0)]),
+                    ],
+                );
+            },
+        ),
+        "Pyroblast" => s(
+            &["Choose one —", "• Counter target spell if it's blue.", "• Destroy target permanent if it's blue."],
+            |d, _| {
+                modes(
+                    d,
+                    vec![
+                        Ability::new(vec![SPELL], vec![Effect::CounterIfColor { slot: 0, color: 1 }]),
+                        Ability::new(vec![PERMANENT], vec![Effect::DestroyIfColor { slot: 0, color: 1 }]),
+                    ],
+                );
+            },
+        ),
+        "Sultai Charm" => s(
+            &[
+                "Choose one —",
+                "• Destroy target monocolored creature.",
+                "• Destroy target artifact or enchantment.",
+                "• Draw two cards, then discard a card.",
+            ],
+            |d, _| {
+                modes(
+                    d,
+                    vec![
+                        Ability::new(vec![Filter { monocolored: true, ..CREATURE }], vec![Effect::Destroy(0)]),
+                        Ability::new(vec![ARTIFACT_OR_ENCHANTMENT], vec![Effect::Destroy(0)]),
+                        Ability::new(vec![], vec![draw(2), discard(1)]),
+                    ],
+                );
+            },
+        ),
+        "Disdainful Stroke" => s(&["Counter target spell with mana value 4 or greater."], |d, _| {
+            spell(d, vec![Filter { spell_min_mana_value: Some(4), ..SPELL }], vec![Effect::Counter(0)])
+        }),
+        "Strix Serenade" => s(
+            &["Counter target artifact, creature, or planeswalker spell. Its controller creates a 2/2 blue Bird creature token with flying."],
+            |d, t| {
+                let target = Filter { spell_artifact_creature_or_planeswalker: true, ..SPELL };
+                let bird = Effect::CreateToken { who: Who::ControllerOf(0), def: t.bird_2, n: 1 };
+                spell(d, vec![target], vec![bird, Effect::Counter(0)]);
+            },
+        ),
+        "Siren Stormtamer" => s(
+            &["{U}, Sacrifice this creature: Counter target spell or ability that targets you or a creature you control."],
+            |d, _| {
+                let target = Filter { abilities: true, targets_you_or_your_creature: true, ..SPELL };
+                let n = activated(d, "{U}", false, vec![target], vec![Effect::CounterSpellOrAbility(0)]);
+                d.activated[n].sacrifice_self = true;
+            },
+        ),
+        "Cranial Plating" => s(
+            &[
+                "Equipped creature gets +1/+0 for each artifact you control.",
+                "{B}{B}: Attach this Equipment to target creature you control.",
+                "Equip {1}",
+            ],
+            |d, _| {
+                attached(d, false, 1, 0, Keywords::NONE);
+                d.statics.last_mut().expect("just added").scale = Some(Scale::PerArtifactYouControl);
+                activated(d, "{B}{B}", false, vec![YOUR_CREATURE], vec![Effect::Attach { slot: 0 }]);
+                equip(d, "{1}");
+            },
+        ),
+        "Ancestral Mask" => s(
+            &["Enchant creature", "Enchanted creature gets +2/+2 for each other enchantment on the battlefield."],
+            |d, _| {
+                d.aura = true;
+                d.spell = Some(Ability::new(vec![CREATURE], vec![]));
+                attached(d, false, 2, 2, Keywords::NONE);
+                d.statics.last_mut().expect("just added").scale = Some(Scale::PerOtherEnchantmentOnBattlefield);
+            },
+        ),
+        "Knowledge Is Power" => s(
+            &["Creatures you control get +X/+X, where X is the number of cards you've drawn this turn."],
+            |d, _| {
+                static_on(d, Scope::YourCreatures, false, Keywords::NONE);
+                let s = d.statics.last_mut().expect("just added");
+                (s.power, s.toughness, s.scale) = (1, 1, Some(Scale::PerCardDrawnThisTurn));
+            },
+        ),
+        "Multani, Maro-Sorcerer" => s(
+            &["Multani's power and toughness are each equal to the total number of cards in all players' hands."],
+            |d, _| {
+                static_on(d, Scope::This, false, Keywords::NONE);
+                let s = d.statics.last_mut().expect("just added");
+                (s.power, s.toughness, s.scale) = (1, 1, Some(Scale::PerCardInAllHands));
+            },
+        ),
+        "Pathbreaker Ibex" => s(
+            &["Whenever this creature attacks, creatures you control gain trample and get +X/+X until end of turn, where X is the greatest power among creatures you control."],
+            |d, _| on(d, When::Attacks, vec![], vec![Effect::PumpAllGreatestPowerGrant(Keywords::TRAMPLE)]),
+        ),
+        // ---- Unblocked by lane d3's core theme, batch 4 ----
+        "Mutilate" => s(&["All creatures get -1/-1 until end of turn for each Swamp you control."], |d, _| {
+            spell(d, vec![], vec![Effect::AllCreaturesMinusPerSwampYouControl])
+        }),
+        "Defile" => s(&["Target creature gets -1/-1 until end of turn for each Swamp you control."], |d, _| {
+            spell(d, vec![CREATURE], vec![Effect::MinusPerSwampYouControl(0)])
+        }),
+        "Seeds of Innocence" => s(
+            &["Destroy all artifacts. They can't be regenerated. The controller of each of those artifacts gains life equal to its mana value."],
+            |d, _| spell(d, vec![], vec![Effect::DestroyAllArtifactsNoRegenGainManaValue]),
+        ),
+        "Trophy Mage" => s(
+            &["When this creature enters, you may search your library for an artifact card with mana value 3, reveal it, put it into your hand, then shuffle."],
+            |d, _| may(d, When::Enters, vec![], vec![search(SearchFor::ArtifactManaValue(3), SearchTo::Hand)]),
+        ),
+        "Jirina, Dauntless General" => s(
+            &["When Jirina enters, exile target player's graveyard.", "Sacrifice Jirina: Humans you control gain hexproof and indestructible until end of turn."],
+            |d, _| {
+                on(d, When::Enters, vec![Filter::PLAYER], vec![Effect::ExileGraveyard { who: Who::TargetPlayer(0) }]);
+                let grant = Effect::GrantSubtypeYouControlEot { sub: "Human", keywords: Keywords::HEXPROOF.with(Keywords::INDESTRUCTIBLE) };
+                let n = activated(d, "", false, vec![], vec![grant]);
+                d.activated[n].sacrifice_self = true;
+            },
+        ),
+        "Privileged Position" => s(&["Other permanents you control have hexproof."], |d, _| {
+            static_on(d, Scope::OtherYourPermanents, false, Keywords::HEXPROOF)
+        }),
+        "Sterling Grove" => s(
+            &[
+                "Other enchantments you control have shroud.",
+                "{1}, Sacrifice this enchantment: Search your library for an enchantment card, reveal it, then shuffle and put that card on top.",
+            ],
+            |d, _| {
+                static_on(d, Scope::OtherYourEnchantments, false, Keywords::SHROUD);
+                let n = activated(d, "{1}", false, vec![], vec![search(SearchFor::Enchantment, SearchTo::Top)]);
+                d.activated[n].sacrifice_self = true;
+            },
+        ),
+        "Farewell" => s(
+            &[
+                "Choose one or more —",
+                "• Exile all artifacts.",
+                "• Exile all creatures.",
+                "• Exile all enchantments.",
+                "• Exile all graveyards.",
+            ],
+            |d, _| {
+                // Every nonempty set of the four modes, as one mode each (bit i: mode i).
+                let one = |i: u32| match i {
+                    0 => vec![Effect::ExileAllOfType(0)],
+                    1 => vec![Effect::ExileAllOfType(1)],
+                    2 => vec![Effect::ExileAllOfType(2)],
+                    _ => vec![Effect::ExileGraveyard { who: Who::You }, Effect::ExileGraveyard { who: Who::EachOpponent }],
+                };
+                let sets = (1u32..16).map(|m| Ability::new(vec![], (0..4).filter(|i| m & (1 << i) != 0).flat_map(one).collect()));
+                modes(d, sets.collect());
+            },
+        ),
+        "Gravitational Shift" => s(&["Creatures with flying get +2/+0.", "Creatures without flying get -2/-0."], |d, _| {
+            static_on(d, Scope::CreaturesWithFlying, false, Keywords::NONE);
+            d.statics.last_mut().expect("just added").power = 2;
+            static_on(d, Scope::CreaturesWithoutFlying, false, Keywords::NONE);
+            d.statics.last_mut().expect("just added").power = -2;
+        }),
+        "Shield of the Oversoul" => s(
+            &[
+                "Enchant creature",
+                "As long as enchanted creature is green, it gets +1/+1 and has indestructible.",
+                "As long as enchanted creature is white, it gets +1/+1 and has flying.",
+            ],
+            |d, _| {
+                d.aura = true;
+                d.spell = Some(Ability::new(vec![CREATURE], vec![]));
+                attached(d, false, 1, 1, Keywords::INDESTRUCTIBLE);
+                d.statics.last_mut().expect("just added").condition = Some(StaticCondition::AttachedIsColor(4));
+                attached(d, false, 1, 1, Keywords::FLYING);
+                d.statics.last_mut().expect("just added").condition = Some(StaticCondition::AttachedIsColor(0));
+            },
+        ),
+        "Sword of the Paruns" => s(
+            &[
+                "As long as equipped creature is tapped, tapped creatures you control get +2/+0.",
+                "As long as equipped creature is untapped, untapped creatures you control get +0/+2.",
+                "{3}: You may tap or untap equipped creature.",
+                "Equip {3}",
+            ],
+            |d, _| {
+                static_on(d, Scope::YourTappedCreatures, false, Keywords::NONE);
+                let s = d.statics.last_mut().expect("just added");
+                (s.power, s.condition) = (2, Some(StaticCondition::AttachedTapped(true)));
+                static_on(d, Scope::YourUntappedCreatures, false, Keywords::NONE);
+                let s = d.statics.last_mut().expect("just added");
+                (s.toughness, s.condition) = (2, Some(StaticCondition::AttachedTapped(false)));
+                activated(d, "{3}", false, vec![], vec![Effect::TapOrUntapAttached]);
+                equip(d, "{3}");
+            },
+        ),
+        "Inexorable Tide" => s(&["Whenever you cast a spell, proliferate."], |d, _| {
+            on(d, When::YouCast, vec![], vec![Effect::Proliferate])
+        }),
+        "Volt Charge" => s(&["Volt Charge deals 3 damage to any target. Proliferate."], |d, _| {
+            spell(d, vec![Filter::ANY], vec![damage(3, Recipient::Target(0)), Effect::Proliferate])
+        }),
+        // ---- Unblocked by lane d3's core theme, batch 5 ----
+        "Cataclysmic Gearhulk" => s(
+            &["When this creature enters, each player chooses an artifact, a creature, an enchantment, and a planeswalker from among the nonland permanents they control, then sacrifices the rest."],
+            |d, _| on(d, When::Enters, vec![], vec![Effect::EachKeepsOneNonlandOfEachType]),
+        ),
+        "Teferi's Puzzle Box" => s(
+            &["At the beginning of each player's draw step, that player puts the cards in their hand on the bottom of their library in any order, then draws that many cards."],
+            |d, _| on(d, When::EachDrawStep, vec![], vec![Effect::HandToBottomDrawThatMany(Who::ActivePlayer)]),
+        ),
+        "Deadly Brew" => s(
+            &["Each player sacrifices a creature or planeswalker of their choice. If you sacrificed a permanent this way, you may return another permanent card from your graveyard to your hand."],
+            |d, _| spell(d, vec![], vec![Effect::EachSacrificeCreatureOrPlaneswalkerMayReturnOther]),
+        ),
+        "Wave of Vitriol" => s(
+            &["Each player sacrifices all artifacts, enchantments, and nonbasic lands they control. For each land sacrificed this way, its controller may search their library for a basic land card and put it onto the battlefield tapped. Then each player who searched their library this way shuffles."],
+            |d, _| spell(d, vec![], vec![Effect::WaveOfVitriol]),
+        ),
+        "Signal the Clans" => s(
+            &["Search your library for three creature cards and reveal them. If you reveal three cards with different names, choose one of them at random and put that card into your hand. Shuffle the rest into your library."],
+            |d, _| spell(d, vec![], vec![Effect::SignalTheClans]),
+        ),
+        "Moonsilver Key" => s(
+            &["{1}, {T}, Sacrifice this artifact: Search your library for an artifact card with a mana ability or a basic land card, reveal it, put it into your hand, then shuffle."],
+            |d, _| {
+                let n = activated(d, "{1}", true, vec![], vec![search(SearchFor::ArtifactWithManaAbilityOrBasicLand, SearchTo::Hand)]);
+                d.activated[n].sacrifice_self = true;
+            },
+        ),
+        "God-Eternal Bontu" => s(
+            &[
+                "When God-Eternal Bontu enters, sacrifice any number of other permanents, then draw that many cards.",
+                "When God-Eternal Bontu dies or is put into exile from the battlefield, you may put her into her owner's library third from the top.",
+            ],
+            |d, _| {
+                on(d, When::Enters, vec![], vec![Effect::SacrificeOthersDrawThatMany]);
+                let mut a = Ability::new(vec![], vec![Effect::SourceThirdFromTop]).optional();
+                a.condition = Some(Condition::SourceInGraveyardOrExile);
+                d.triggers.push(Trigger { when: When::LeavesBattlefield, ability: a });
+            },
+        ),
+        "Imp's Mischief" => s(
+            &["Change the target of target spell with a single target. You lose life equal to that spell's mana value."],
+            |d, _| {
+                let one = Filter { single_target: true, ..SPELL };
+                spell(d, vec![one], vec![Effect::ChangeTheTarget(0), Effect::LoseLifeSlotSpellManaValue(0)]);
+            },
+        ),
+        "Boseiju, Who Endures" => s(
+            &[
+                "{T}: Add {G}.",
+                "Channel — {1}{G}, Discard this card: Destroy target artifact, enchantment, or nonbasic land an opponent controls. That player may search their library for a land card with a basic land type, put it onto the battlefield, then shuffle. This ability costs {1} less to activate for each legendary creature you control.",
+            ],
+            |d, _| {
+                d.mana = Some(ManaSource::of(&[Color::Green]));
+                let f = Filter { lands: true, nonbasic: true, controller: Controller::Opponent, ..ARTIFACT_OR_ENCHANTMENT };
+                let n = activated(d, "{1}{G}", false, vec![f], vec![Effect::DestroyControllerMayFetchLandWithBasicType(0)]);
+                d.activated[n].from_hand_discard = true;
+                d.activated[n].less_per_legendary_creature = true;
+            },
+        ),
+        "Cindervines" => s(
+            &[
+                "Whenever an opponent casts a noncreature spell, this enchantment deals 1 damage to that player.",
+                "{1}, Sacrifice this enchantment: Destroy target artifact or enchantment. This enchantment deals 2 damage to that permanent's controller.",
+            ],
+            |d, _| {
+                on(d, When::OpponentCastsNoncreature, vec![], vec![damage(1, Recipient::EachOpponent)]);
+                let n = activated(d, "{1}", false, vec![ARTIFACT_OR_ENCHANTMENT], vec![Effect::DestroyDamageController { slot: 0, n: 2 }]);
+                d.activated[n].sacrifice_self = true;
+            },
+        ),
+        "Braids, Arisen Nightmare" => s(
+            &["At the beginning of your end step, you may sacrifice an artifact, creature, enchantment, land, or planeswalker. If you do, each opponent may sacrifice a permanent of their choice that shares a card type with it. For each opponent who doesn't, that player loses 2 life and you draw a card."],
+            |d, _| on(d, When::EndStep { your_turn_only: true }, vec![], vec![Effect::BraidsEndStep]),
+        ),
+        "Spellskite" => s(&["{U/P}: Change a target of target spell or ability to this creature."], |d, _| {
+            let target = Filter { abilities: true, ..SPELL };
+            let n = activated(d, "{U}", false, vec![target], vec![Effect::ChangeATargetToSource(0)]);
+            d.activated[n].phyrexian = [0, 1, 0, 0, 0];
+        }),
+        "Defense of the Heart" => s(
+            &["At the beginning of your upkeep, if an opponent controls three or more creatures, sacrifice this enchantment, search your library for up to two creature cards, put those cards onto the battlefield, then shuffle."],
+            |d, _| {
+                let fetch = Effect::Search { what: SearchFor::CreatureMvAtLeast(0), to: SearchTo::Battlefield { tapped: false }, n: 2, kicked_n: None };
+                let mut a = Ability::new(vec![], vec![Effect::SacrificeSource, fetch]);
+                a.condition = Some(Condition::OpponentControlsCreaturesAtLeast(3));
+                d.triggers.push(Trigger { when: When::Upkeep { your_turn_only: true }, ability: a });
+            },
+        ),
+        "Gift of Estates" => s(
+            &["If an opponent controls more lands than you, search your library for up to three Plains cards, reveal them, put them into your hand, then shuffle."],
+            |d, _| {
+                let plains = SearchFor::LandTypes { types: [true, false, false, false, false], basic: false };
+                let fetch = Effect::Search { what: plains, to: SearchTo::Hand, n: 3, kicked_n: None };
+                let mut a = Ability::new(vec![], vec![Effect::StopUnlessCondition, fetch]);
+                a.condition = Some(Condition::OpponentControlsMoreLands);
+                d.spell = Some(a);
+            },
+        ),
+        "Masked Vandal" => s(
+            &[
+                "Changeling",
+                "When this creature enters, you may exile a creature card from your graveyard. If you do, exile target artifact or enchantment an opponent controls.",
+            ],
+            |d, _| {
+                d.changeling = true;
+                let theirs = Filter { controller: Controller::Opponent, ..ARTIFACT_OR_ENCHANTMENT };
+                on(d, When::Enters, vec![theirs], vec![Effect::MayExileFromGraveyard { n: 1, creature_only: true }, Effect::Exile(0)]);
+            },
+        ),
+        // ---- Unblocked by lane d3's core theme, batch 6 ----
+        "Genji Glove" => s(
+            &[
+                "Equipped creature has double strike.",
+                "Whenever equipped creature attacks, if it's the first combat phase of the turn, untap it. After this phase, there is an additional combat phase.",
+                "Equip {3}",
+            ],
+            |d, _| {
+                attached(d, false, 0, 0, Keywords::DOUBLE_STRIKE);
+                let mut a = Ability::new(vec![], vec![Effect::UntapAttached, Effect::AdditionalCombatAfterThisPhase]);
+                a.condition = Some(Condition::FirstCombatOfTurn);
+                d.triggers.push(Trigger { when: When::EquippedAttacks, ability: a });
+                equip(d, "{3}");
+            },
+        ),
+        "Rise and Shine" => s(
+            &[
+                "Target noncreature artifact you control becomes a 0/0 artifact creature. Put four +1/+1 counters on each artifact that became a creature this way.",
+                "Overload {4}{U}{U}",
+            ],
+            |d, _| {
+                let mine = Filter { noncreature: true, controller: Controller::You, ..ARTIFACT };
+                let animate = Effect::SlotBecomesCreatureForGood { slot: 0, power: 0, toughness: 0, subtype: "" };
+                spell(d, vec![mine], vec![animate, Effect::Counters { slot: 0, n: 4 }]);
+                // Overload {4}{U}{U} is cast as a {3}{U} kicker on {1}{U}: the same total, and "kicked"
+                // swaps in the overloaded text ("each" instead of "target").
+                d.kicker = ManaCost::parse("{3}{U}");
+                d.kicked_spell = Some(Ability::new(vec![], vec![Effect::NoncreatureArtifactsBecomeZeroZeroWithCounters(4)]));
+            },
+        ),
+        // ---- Unblocked by lane d3's core theme, batch 7 ----
+        "Winds of Abandon" => s(
+            &[
+                "Exile target creature you don't control. For each creature exiled this way, its controller searches their library for a basic land card. Those players put those cards onto the battlefield tapped, then shuffle.",
+                "Overload {4}{W}{W}",
+            ],
+            |d, _| {
+                spell(d, vec![OPP_CREATURE], vec![Effect::ExileControllerMayFetchBasic(0)]);
+                // Overload {4}{W}{W} is cast as a {4}{W} kicker on {1}{W}: the same total, and
+                // "kicked" swaps in the overloaded text ("each" instead of "target").
+                d.kicker = ManaCost::parse("{4}{W}");
+                d.kicked_spell = Some(Ability::new(vec![], vec![Effect::ExileOpponentsCreaturesTheyFetchBasicsTapped]));
+            },
+        ),
+        "Tainted Pact" => s(
+            &["Exile the top card of your library. You may put that card into your hand unless it has the same name as another card exiled this way. Repeat this process until you put a card into your hand or you exile two cards with the same name, whichever comes first."],
+            |d, _| spell(d, vec![], vec![Effect::TaintedPact]),
+        ),
+        "Demonlord Belzenlok" => s(
+            &["When Demonlord Belzenlok enters, exile cards from the top of your library until you exile a nonland card, then put that card into your hand. If the card's mana value is 4 or greater, repeat this process. Demonlord Belzenlok deals 1 damage to you for each card put into your hand this way."],
+            |d, _| on(d, When::Enters, vec![], vec![Effect::BelzenlokDig]),
+        ),
+        // ---- Unblocked by lane d3's core theme, batch 8 (protection from a chosen quality) ----
+        "Benevolent Bodyguard" => s(
+            &["Sacrifice this creature: Target creature you control gains protection from the color of your choice until end of turn."],
+            |d, _| {
+                let n = activated(d, "", false, vec![YOUR_CREATURE], vec![Effect::ProtectionChosenColorEot(Some(0))]);
+                d.activated[n].sacrifice_self = true;
+            },
+        ),
+        "Cartel Aristocrat" => s(
+            &["Sacrifice another creature: This creature gains protection from the color of your choice until end of turn."],
+            |d, _| {
+                let n = activated(d, "", false, vec![], vec![Effect::ProtectionChosenColorEot(None)]);
+                d.activated[n].sacrifice_other_creature = true;
+            },
+        ),
+        "Akroma's Will" => s(
+            &[
+                "Choose one. If you control a commander as you cast this spell, you may choose both instead.",
+                "• Creatures you control gain flying, vigilance, and double strike until end of turn.",
+                "• Creatures you control gain lifelink, indestructible, and protection from each color until end of turn.",
+            ],
+            |d, _| {
+                let air = Effect::GrantAll { who: Who::You, keywords: Keywords::FLYING.with(Keywords::VIGILANCE).with(Keywords::DOUBLE_STRIKE) };
+                let guard = Effect::GrantAll { who: Who::You, keywords: Keywords::LIFELINK.with(Keywords::INDESTRUCTIBLE) };
+                let pro = Effect::YourCreaturesProtectionEachColorEot;
+                d.modes = vec![
+                    Ability::new(vec![], vec![air]),
+                    Ability::new(vec![], vec![guard, pro]),
+                    Ability::new(vec![], vec![air, guard, pro]),
+                ];
+                d.last_mode_needs_commander = true;
+            },
+        ),
+        "Serra's Emissary" => s(
+            &["As this creature enters, choose a card type.", "You and creatures you control have protection from the chosen card type."],
+            |d, _| d.protection_chosen_card_type = true,
+        ),
+        // ---- Unblocked by lane d3's core theme, batch 9 ----
+        "Return to Dust" => s(
+            &["Exile target artifact or enchantment. If you cast this spell during your main phase, you may exile up to one other target artifact or enchantment."],
+            |d, _| {
+                let second = Filter { only_in_your_main_phase: true, ..ARTIFACT_OR_ENCHANTMENT };
+                let mut a = Ability::new(vec![ARTIFACT_OR_ENCHANTMENT, second], vec![Effect::Exile(0), Effect::Exile(1)]);
+                a.min_targets = Some(1);
+                d.spell = Some(a);
+            },
+        ),
+        "Reconnaissance" => s(&["{0}: Remove target attacking creature you control from combat and untap it."], |d, _| {
+            let mine = Filter { attacking: true, ..YOUR_CREATURE };
+            activated(d, "{0}", false, vec![mine], vec![Effect::RemoveFromCombatAndUntap(0)]);
+        }),
+        "Raffine, Scheming Seer" => s(
+            &[
+                "Flying, ward {1}",
+                "Whenever you attack, target attacking creature connives X, where X is the number of attacking creatures.",
+            ],
+            |d, _| {
+                d.keywords = d.keywords.with(Keywords::FLYING);
+                d.ward = ManaCost::parse("{1}");
+                let attacker = Filter { attacking: true, ..YOUR_CREATURE };
+                on(d, When::YouAttack, vec![attacker], vec![Effect::ConniveAttackers(0)]);
+            },
+        ),
         _ => None,
     }
 }
@@ -752,4 +1333,81 @@ pub const PG_D3_SCRIPTED: &[&str] = &[
     "Elesh Norn, Grand Cenobite",
     "Atraxa, Praetors' Voice",
     "Karn's Bastion",
+    // Core theme d3 (effects and statics), batch 2
+    "Wrath of God",
+    "Sword of Feast and Famine",
+    "Regal Force",
+    "Loxodon Hierarch",
+    "Blessing of Leeches",
+    "Emissary of Despair",
+    "Return of the Wildspeaker",
+    "Last March of the Ents",
+    "Tooth and Nail",
+    "Ponder",
+    "Dream Stalker",
+    "Ancestral Statue",
+    "Weird Harvest",
+    "Relentless Assault",
+    "Cyberdrive Awakener",
+    "Oriq Loremage",
+    // Core theme d3, batch 3 (target filters, scaled statics)
+    "Go for the Throat",
+    "Doom Blade",
+    "Red Elemental Blast",
+    "Pyroblast",
+    "Sultai Charm",
+    "Disdainful Stroke",
+    "Strix Serenade",
+    "Siren Stormtamer",
+    "Cranial Plating",
+    "Ancestral Mask",
+    "Knowledge Is Power",
+    "Multani, Maro-Sorcerer",
+    "Pathbreaker Ibex",
+    // Core theme d3, batch 4
+    "Mutilate",
+    "Defile",
+    "Seeds of Innocence",
+    "Trophy Mage",
+    "Jirina, Dauntless General",
+    "Privileged Position",
+    "Sterling Grove",
+    "Farewell",
+    "Gravitational Shift",
+    "Shield of the Oversoul",
+    "Sword of the Paruns",
+    "Inexorable Tide",
+    "Volt Charge",
+    // Core theme d3, batch 5
+    "Cataclysmic Gearhulk",
+    "Teferi's Puzzle Box",
+    "Deadly Brew",
+    "Wave of Vitriol",
+    "Signal the Clans",
+    "Moonsilver Key",
+    "God-Eternal Bontu",
+    "Imp's Mischief",
+    "Boseiju, Who Endures",
+    "Cindervines",
+    "Braids, Arisen Nightmare",
+    "Spellskite",
+    "Defense of the Heart",
+    "Gift of Estates",
+    "Masked Vandal",
+    // Core theme d3, batch 6
+    "Genji Glove",
+    "Rise and Shine",
+    // Core theme d3, batch 7
+    "Winds of Abandon",
+    "Tainted Pact",
+    "Demonlord Belzenlok",
+    // Core theme d3, batch 8
+    "Benevolent Bodyguard",
+    "Cartel Aristocrat",
+    "Akroma's Will",
+    "Serra's Emissary",
+    // Core theme d3, batch 9
+    "Return to Dust",
+    "Reconnaissance",
+    "Raffine, Scheming Seer",
 ];

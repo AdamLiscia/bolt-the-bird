@@ -311,7 +311,9 @@ fn extra_upkeep_paradox_haze() {
                 asks += 1;
                 act(&mut g, Action::Yes);
             }
-            _ => act(&mut g, Action::PassPriority),
+            _ => {
+                act(&mut g, Action::PassPriority);
+            }
         }
     }
     assert_eq!(asks, 2);

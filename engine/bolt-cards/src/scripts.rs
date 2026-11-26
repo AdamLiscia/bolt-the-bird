@@ -204,7 +204,12 @@ pub fn token_defs() -> Vec<CardDef> {
             // Ajani, Strength of the Pride: "Ajani's Pridemate" with "Whenever you gain life, put a
             // +1/+1 counter on this token."
             let mut t = token("Ajani's Pridemate", "Cat Soldier", 2, 2, Keywords::NONE);
-            on(&mut t, When::YouGainLife, vec![], vec![Effect::CountersSelf { n: 1 }]);
+            on(
+                &mut t,
+                When::YouGainLife,
+                vec![],
+                vec![Effect::CountersSelf { n: 1 }],
+            );
             t
         },
         token("Bird Illusion", "Bird Illusion", 1, 1, Keywords::FLYING), // Murmuring Mystic's blue
