@@ -4393,6 +4393,9 @@ impl Game {
         if to == Zone::Graveyard && from != Zone::Graveyard && !self.is_token(id) {
             self.fire_source(id, When::PutIntoGraveyardFromAnywhere);
         }
+        if to == Zone::Graveyard && from == Zone::Battlefield {
+            self.fire_source(id, When::ThisPutIntoGraveyardFromBattlefield); // the Wicked Role
+        }
         if from == Zone::Graveyard && to != Zone::Graveyard && !self.is_token(id) {
             self.graveyard_left_this_turn[owner] = true;
             self.graveyard_leave_any_pending[owner] = true;
@@ -21338,6 +21341,44 @@ impl Game {
                         keywords: Keywords::CANT_BLOCK,
                         dies: None,
                     });
+                }
+            }
+            Effect::CreateRoleAttached { def, slot } => {
+                if let Some(c) = Game::slot_object(item, legal, slot) {
+                    if self.obj(c).zone == Zone::Battlefield {
+                        let p = item.controller;
+                        let zcc = self.obj(c).zcc;
+                        // CR 303.7: one Role of yours per creature; the older one goes.
+                        let old: Vec<ObjId> = self
+                            .permanents(p)
+                            .filter(|&r| {
+                                self.obj(r).attached_to == Some((c, zcc)) && self.has_subtype(r, "Role")
+                            })
+                            .collect();
+                        for r in old {
+                            self.move_to(r, Zone::Graveyard);
+                        }
+                        self.last_created.clear();
+                        self.create_token(p, def);
+                        for r in self.last_created.clone() {
+                            if self.obj(r).zone == Zone::Battlefield && self.def_of(r).aura {
+                                self.obj_mut(r).attached_to = Some((c, zcc));
+                            }
+                        }
+                    }
+                }
+            }
+            Effect::MayDiscardToDrawN(n) => {
+                let p = item.controller;
+                if !self.players[p].hand.is_empty() {
+                    self.ask(
+                        p,
+                        Decision::Discard {
+                            left: 1,
+                            optional: true,
+                            then_draw: n,
+                        },
+                    );
                 }
             }
             Effect::PhaseOutSlot(slot) => {

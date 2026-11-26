@@ -2288,6 +2288,14 @@ pub enum Effect {
     /// Each creature the player in target `slot` controls phases out until that player's next untap
     /// step (Galadriel's Dismissal, kicked).
     PhaseOutCreaturesOfPlayer(u8),
+    /// Create a Role token (`def`, an Aura) attached to the creature in `slot` (CR 111.10j). A Role
+    /// you already control on that creature is put into its owner's graveyard (CR 303.7).
+    CreateRoleAttached {
+        def: usize,
+        slot: u8,
+    },
+    /// "You may discard a card. If you do, draw `n` cards." (Witch's Mark: two)
+    MayDiscardToDrawN(u8),
     /// Exile the top card of your library face down (`Object::face_down`; CR 406.3: no player may
     /// look at it); put it into your hand at the beginning of your next end step (Necropotence),
     /// see `Game::face_down_to_hand`.
@@ -3252,6 +3260,9 @@ pub enum When {
     /// "Whenever another creature or artifact you control is put into a graveyard from the
     /// battlefield" (Marionette Apprentice).
     AnotherCreatureOrArtifactYouControlToGraveyardFromBattlefield,
+    /// "When this [permanent] is put into a graveyard from the battlefield", tokens included (the
+    /// Wicked Role).
+    ThisPutIntoGraveyardFromBattlefield,
 }
 
 #[derive(Clone, Debug, PartialEq)]

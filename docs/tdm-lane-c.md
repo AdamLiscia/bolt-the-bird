@@ -725,3 +725,9 @@ Unsupported: 22 of 22. Batch 1 (2): Tranquility, Vesuva. Core: `ZonesExt::enters
 `Object::land_copy_pending`: set as the land enters (however it enters), asked in `give_priority` right after shock
 lands as the existing `Decision::EnterAsCopy` (any land; a copy enters tapped, `No` leaves it untapped as itself).
 Shortcut: a Vesuva copying a shock land isn't asked for the 2 life (it's already tapped).
+
+Olivia batch 2: Charming Scoundrel, Witch's Mark. Token 97 is the Wicked Role (`Tokens::wicked_role`, an Aura token with
+the Role subtype), with placeholders at 91-96 for d2's and d4's tokens. Core: `Effect::{CreateRoleAttached,
+MayDiscardToDrawN}` (one Role of yours per creature: the older goes to the graveyard, CR 303.7) and
+`When::ThisPutIntoGraveyardFromBattlefield` (one `fire_source` line in `move_to`, next to
+`PutIntoGraveyardFromAnywhere`; tokens included).
