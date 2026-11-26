@@ -2091,6 +2091,42 @@ pub enum Effect {
     ImprintInstantFromHand,
     /// You may cast a copy of the source's imprinted card without paying its mana cost.
     CastImprintedCopy,
+    /// The creature in `slot` gets +X/-X until end of turn, X the ability's X (Chatterfang).
+    PumpXMinusX(u8),
+    /// "Gift an extra turn": the opponent takes an extra turn after this one (the gift was
+    /// promised: cast kicked), and "whenever you give a gift" triggers (Perch Protection).
+    GiftExtraTurn,
+    /// The attacking (active) player draws `n` cards and gains control of the source; untap it
+    /// (Coveted Jewel).
+    AttackingPlayerDrawsAndTakesSource(u8),
+    /// Remove all attacking creatures from combat and untap them; they can't attack the caster
+    /// (the only opponent here) or their planeswalkers for the rest of the turn, so they don't
+    /// attack in the additional combat (Illusionist's Gambit, with `AdditionalCombatAfterThisPhase`).
+    RemoveAttackersFromCombatUntapNoAttack,
+    /// Exile the graveyard card in `slot`, remembered as exiled with the source (Hazel's
+    /// Brewmaster); see `Game::exiled_with`.
+    ExileCardWithSource(u8),
+    /// The creature in `slot` can't attack until your next turn (Twisted Caverns).
+    CantAttackUntilYourNextTurn(u8),
+    /// Goad the creature in `slot` until your next turn (CR 701.38; Arena).
+    Goad(u8),
+    /// Draw three cards and reveal them; you may cast one of them without paying its mana cost
+    /// (Mad Wizard's Lair).
+    DrawThreeMayCastOneFree,
+    /// Flip a coin: if you win, gain control of the spell in `slot` and you may choose new targets
+    /// for it; if you lose, counter it (Invert Polarity).
+    FlipGainControlOfSpellOrCounter(u8),
+    /// The opponent in target `slot` reveals the top X cards of their library (X the item's `x`);
+    /// you may put a nonland permanent card with mana value X or less from among them onto the
+    /// battlefield under your control, as `Decision::PutFromOpponentsTop`; they put the rest on the
+    /// bottom in a random order (Lonis, Cryptozoologist).
+    OpponentRevealsTopXPutNonlandPermanent(u8),
+    /// Phantasmal Image's granted trigger (`StackKind::SacrificeWhenTargeted`): sacrifice the
+    /// source, if it's still the same object.
+    SacrificeSourceWhenTargeted,
+    /// "If it's not a token, create a token that's a copy of it, except it's an artifact in
+    /// addition to its other types." (Vaultborn Tyrant's dies trigger)
+    TokenCopyOfSourceArtifactIfNontoken,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -2931,6 +2967,9 @@ pub enum When {
     /// "Whenever another source you control deals exactly 1 damage to a permanent or player"
     /// (Ghyrson Starn); slot 0 (if `triggering`) is that permanent or player.
     AnotherSourceYouControlDealsExactlyOne,
+    /// "Whenever one or more creatures an opponent controls attack you and aren't blocked"
+    /// (Coveted Jewel), once blockers are declared.
+    OpponentCreaturesAttackYouUnblocked,
 }
 
 #[derive(Clone, Debug, PartialEq)]
