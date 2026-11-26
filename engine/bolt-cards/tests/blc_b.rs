@@ -2858,13 +2858,6 @@ fn shield_broker_steals_while_the_shield_lasts() {
 // ---- Lane B, 2026-11-26: Communal Brewing, Rootcast Apprenticeship, Insatiable Frugivore,
 // Bloodroot Apothecary ----
 
-fn token_def(g: &Game, name: &str) -> usize {
-    g.defs
-        .iter()
-        .position(|d| d.token && d.name == name)
-        .expect("a token definition")
-}
-
 #[test]
 fn communal_brewing_brews_for_each_card_drawn_and_grows_creature_spells() {
     let mut g = table();
@@ -2918,7 +2911,7 @@ fn rootcast_apprenticeship_repeats_modes_on_the_same_or_other_targets() {
     let mut g = table();
     let ring = put(&mut g, 1, "Sol Ring");
     let signet = put(&mut g, 1, "Arcane Signet");
-    let def = token_def(&g, "Treasure");
+    let def = token_def("Treasure");
     let treasure = g.add_card(1, def, Zone::Battlefield);
     let rc = hand(&mut g, 0, "Rootcast Apprenticeship");
     act(&mut g, Action::CastModal(rc, 19));
@@ -2932,7 +2925,7 @@ fn rootcast_apprenticeship_repeats_modes_on_the_same_or_other_targets() {
 
     // Mode 14: copy a token you control, you create a Squirrel, and they sacrifice an artifact.
     let mut g = table();
-    let def = token_def(&g, "Food");
+    let def = token_def("Food");
     let food = g.add_card(0, def, Zone::Battlefield);
     let ring = put(&mut g, 1, "Sol Ring");
     let rc = hand(&mut g, 0, "Rootcast Apprenticeship");
@@ -3005,7 +2998,7 @@ fn bloodroot_apothecary_shares_treasure_poisons_their_token_sacrifices_and_is_to
     assert_eq!(tokens_named(&g, 1, "Treasure").len(), 1);
 
     // The opponent sacrifices a Food on their turn: two poison counters.
-    let def = token_def(&g, "Food");
+    let def = token_def("Food");
     let food = g.add_card(1, def, Zone::Battlefield);
     g.start_turn(4, 1);
     while g.pending != Pending::Priority(1) || g.step != Step::Main1 {
@@ -3013,7 +3006,11 @@ fn bloodroot_apothecary_shares_treasure_poisons_their_token_sacrifices_and_is_to
     }
     act(&mut g, Action::Activate(food, 0));
     resolve_all(&mut g, &[]);
-    assert_eq!(g.obj(food).zone, Zone::Graveyard);
+    assert_eq!(
+        g.obj(food).zone,
+        Zone::Gone,
+        "sacrificed: a token ceases to exist"
+    );
     assert_eq!(g.players[1].poison, 2);
 
     // Toxic 2: combat damage to a player adds two poison counters too.
@@ -3026,5 +3023,5 @@ fn bloodroot_apothecary_shares_treasure_poisons_their_token_sacrifices_and_is_to
         act(&mut g, a);
     }
     assert_eq!(g.players[1].poison, 4);
-    assert_eq!(g.players[1].life, 37);
+    assert_eq!(g.players[1].life, 40, "43 after their Food, then 3 combat damage");
 }

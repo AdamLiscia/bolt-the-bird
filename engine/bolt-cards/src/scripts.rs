@@ -331,7 +331,8 @@ pub fn token_defs() -> Vec<CardDef> {
         token("Placeholder 95", "", 0, 0, Keywords::NONE),
         token("Placeholder 96", "", 0, 0, Keywords::NONE),
         wicked_role(), // 97, lane C
-        token("Spirit", "Spirit", 2, 2, Keywords::NONE), // 98: Ugin, the Ineffable's colorless 2/2
+        // 98, lane B: Ugin, the Ineffable's colorless 2/2 Spirit.
+        token("Spirit", "Spirit", 2, 2, Keywords::NONE),
     ]
 }
 

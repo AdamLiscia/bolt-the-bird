@@ -13522,6 +13522,7 @@ impl Game {
                     }
                 }
             }
+            (Decision::ExileThreeForFood { .. }, _) => {} // No: stop repeating
             (Decision::ExpropriatePick { money, .. }, Action::Pick(c)) => {
                 if self.obj(c).controller != p {
                     let turn = self.turn;

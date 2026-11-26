@@ -823,3 +823,4 @@ Ajani, Strength of the Pride (`Effect::GainLifePerCreatureAndPlaneswalkerYouCont
 `Effect::ExileSelfAndOpponentsArtifactsCreaturesIfLifeAbove(15)`, against `Game::starting_life`).
 Their tokens 70 (Horse 5/5) and 72 (Ajani's Pridemate) are colorless in `token_defs`, though the
 cards say white: the merger's to fix in the token block.
+Built 2026-11-26: Insatiable Frugivore's `No` gets its own answer arm (it was offered but unhandled).
