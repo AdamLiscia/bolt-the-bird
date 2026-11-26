@@ -2369,6 +2369,12 @@ pub enum Effect {
     /// `Activated::victim_in_extra`) is a creature card (Moria Scavenger: "If the discarded card
     /// was a creature card, ...").
     StopUnlessExtraIsCreatureCard,
+    /// Look at the top card of your library; if it's a land card, reveal it and create a `def`
+    /// token; then draw a card (Fisher's Talent: the Fish). "You may reveal it" is always taken:
+    /// revealing only adds the token.
+    CreateTokenIfTopIsLandThenDraw {
+        def: usize,
+    },
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

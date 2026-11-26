@@ -5402,7 +5402,7 @@
   {
    "card": "Fisher's Talent",
    "deck": "Bloomburrow Commander (BLC)",
-   "missing": "BLC (lane B's routing, 2026-11-26)",
+   "missing": "BLC (lane B's routing, 2026-11-26) [d3 batch 23: the level 1 Fish is Effect::CreateTokenIfTopIsLandThenDraw { def } (always reveals a land); the Fish/Shark/Octopus tokens and replacements are lane B's, then the card can be scripted]",
    "lane": "mac-b",
    "theme": "subsystems",
    "owner": "d4"
@@ -5418,7 +5418,7 @@
   {
    "card": "Gourmand's Talent",
    "deck": "Bloomburrow Commander (BLC)",
-   "missing": "BLC (lane B's routing, 2026-11-26)",
+   "missing": "BLC (lane B's routing, 2026-11-26) [d3: next: during your turn artifacts you control are Foods with the Food ability (a type grant plus a granted activated ability), not started]",
    "lane": "mac-b",
    "theme": "subsystems",
    "owner": "d4"

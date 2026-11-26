@@ -21582,6 +21582,15 @@ impl Game {
                     self.resolving.as_mut().expect("resolving").remaining.clear();
                 }
             }
+            Effect::CreateTokenIfTopIsLandThenDraw { def } => {
+                let p = item.controller;
+                if let Some(&top) = self.players[p].library.last() {
+                    if self.def_of(top).types.land {
+                        self.create_token(p, def);
+                    }
+                }
+                self.draw(p);
+            }
         }
     }
 

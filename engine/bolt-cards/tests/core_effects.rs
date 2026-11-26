@@ -2964,3 +2964,31 @@ fn stop_unless_the_discarded_card_was_a_creature_card() {
     resolve_all(&mut g, &[]);
     assert_eq!(g.players[0].hand.len(), h, "a creature card: drew");
 }
+
+// ---- batch 23 ----
+
+#[test]
+fn a_token_if_the_top_card_is_a_land_then_draw() {
+    // The token definitions are the pool's, so a probe game finds the index.
+    let elemental = token_def(&game_with(vec![]).0, "Elemental");
+    let fish = sorcery(
+        vec![],
+        vec![Effect::CreateTokenIfTopIsLandThenDraw { def: elemental }],
+    );
+    let (mut g, t) = game_with(vec![fish]);
+    let made = |g: &Game| count(g, 0, |g, x| g.is_token(x) && g.def_of(x).name == "Elemental");
+    let forest = g.add_card(0, cid("Forest"), Zone::Library);
+    cast_test(&mut g, t, &[], &[]);
+    assert_eq!(
+        (made(&g), g.obj(forest).zone),
+        (1, Zone::Hand),
+        "a land: the token, then drew it"
+    );
+    let opt = g.add_card(0, cid("Opt"), Zone::Library);
+    cast_test(&mut g, t, &[], &[]);
+    assert_eq!(
+        (made(&g), g.obj(opt).zone),
+        (1, Zone::Hand),
+        "not a land: no token, still drew"
+    );
+}
