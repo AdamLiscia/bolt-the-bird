@@ -762,10 +762,10 @@
   {
    "card": "Trostani, Selesnya's Voice",
    "deck": "Atla Palani, Nest Tender",
-   "missing": "gain life equal to the entering creature's toughness; populate",
+   "missing": "gain life equal to the entering creature's toughness; populate [done by lane C: Effect::Populate + GainLifeEqualSlotToughness]",
    "lane": "d1",
-   "theme": "triggers",
-   "owner": "d2"
+   "theme": "objects_zones",
+   "owner": "mac-c"
   },
   {
    "card": "Wrath of God",
@@ -5060,6 +5060,78 @@
    "deck": "Myrkul, Lord of Bones (DonSpider)",
    "missing": "a player-level protection grant: from everything, until a given turn (your next turn), checked in ChooseTarget's Player arm and in damage to players. Lane C's phasing and life lock already play; add a test that an opponent can't Lightning Bolt you.",
    "lane": "mac-c",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Dungeon rooms (Fungi Cavern, Throne of the Dead Three, Veils of Fear, Sandfall Cell, Oubliette, Mad Wizard's Lair, Runestone Caverns)",
+   "deck": "d4 handback",
+   "missing": "room effects",
+   "lane": "d4",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Urza's Saga (chapter III search)",
+   "deck": "d4 handback",
+   "missing": "search for an artifact card with mana cost {0} or {1}",
+   "lane": "d4",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Twisted Caverns / Arena (rooms)",
+   "deck": "d4 handback",
+   "missing": "can't attack; goad",
+   "lane": "d4",
+   "theme": "merger_delegated",
+   "owner": "mac-b"
+  },
+  {
+   "card": "Yuan-Ti Malison / Midnight Pathlighter (unblockable)",
+   "deck": "d4 handback",
+   "missing": "can't be blocked while venturing / except by legendary",
+   "lane": "d4",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Dungeon Descent (cost)",
+   "deck": "d4 handback",
+   "missing": "tap an untapped legendary creature you control as a cost",
+   "lane": "d4",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "fire_subsystems hook",
+   "deck": "d4 handback",
+   "missing": "one line at the end of fire() calling d4's fire_subsystems; unblocks emblems (Ob Nixilis, Dellian Fel), White Plume, Imoen, Safana, Sefris, Call of the Ring",
+   "lane": "d4",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Minamo, School at Water's Edge",
+   "deck": "Damia, Sage of Stone (Grande)",
+   "missing": "{U}, {T}: untap target legendary permanent (a legendary target filter)",
+   "lane": "merger",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Sheoldred, Whispering One",
+   "deck": "Damia, Sage of Stone (Grande)",
+   "missing": "swampwalk (block legality, d1); upkeep: return a creature card from your graveyard (d2 trigger) and each opponent sacrifices a creature at their upkeep (d2)",
+   "lane": "merger",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Torment of Hailfire",
+   "deck": "Damia, Sage of Stone (Grande)",
+   "missing": "repeat X times: each opponent loses 3 unless they sacrifice a nonland permanent or discard (like Onyx's \u22128)",
+   "lane": "merger",
    "theme": "effects",
    "owner": "d3"
   }

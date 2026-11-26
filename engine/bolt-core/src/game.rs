@@ -292,6 +292,8 @@ pub struct Object {
     /// Type, color, base power and toughness, and ability changes from resolved effects (layers 4-7b),
     /// in timestamp order; see `TypeChange`.
     pub type_changes: Vec<TypeChange>,
+    /// The turn it was first targeted (Kira, Great Glass-Spinner); 0: not yet.
+    pub kira_targeted_turn: u32,
 }
 
 /// One resolved effect's change to a permanent's characteristics (lane d3's type-changing store):
@@ -1167,6 +1169,30 @@ pub enum Decision {
         counters: u8,
         keywords: Keywords,
     },
+    /// `Pick` another permanent you control to sacrifice, other than `keep` (Korvold).
+    SacrificeAnotherPermanent { keep: ObjId },
+    /// `Yes` to pay `life` life (the rest of the ability then happens), or `No` (Savra).
+    MayPayLife { life: i32 },
+    /// `Yes` to pay `cost` and `life` life together, then take one of `cards` (milled), or `No`
+    /// (Ripples of Undeath).
+    MayPayManaAndLife {
+        cost: ManaCost,
+        life: i32,
+        cards: Vec<ObjId>,
+    },
+    /// `Pick` one of `cards` (milled, still in your graveyard) to put into your hand (Ripples of
+    /// Undeath).
+    TakeMilledCard { cards: Vec<ObjId> },
+    /// `Pick` another permanent you control sharing a permanent type with `with` to return to its
+    /// owner's hand, or `No` (Cloudstone Curio).
+    ReturnSharingType { with: ObjId },
+    /// `Pick` a permanent you control to exile; `left` more after this one (Bane of Bala Ged).
+    ExileOwnPermanent { left: u8 },
+    /// All Suns' Dawn: `Pick` a card of color `color` (WUBRG) from your graveyard for your hand, or
+    /// `No`; then the next color.
+    CardOfColorToHand { color: u8 },
+    /// Chain of Smog: `Mode(t)` copies `source` targeting player `t`, `No` doesn't.
+    ChainCopy { source: ObjId },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -1500,12 +1526,17 @@ pub struct Game {
     pub phased_out: Vec<(ObjId, PlayerId)>,
     /// Teferi's Protection: the turn number of each player's next turn, while their life is locked.
     pub life_locked_until: [Option<u32>; 2],
+    /// The open free-cast window allows one spell: it closes once one of [`Game::free_casts`] is
+    /// cast (Rishkar's Expertise: "a spell ... from your hand").
+    pub free_casts_one: bool,
     /// Permanents that entered since triggers were last put on the stack, with their zcc: "enters
     /// tapped" triggers check them then (Amulet of Vigor).
     pub entered_pending: Vec<(ObjId, u32)>,
     /// Creature cards went to each player's graveyard (from anywhere) since triggers were last put
     /// on the stack (Sefris).
     pub creature_cards_to_graveyard_pending: [bool; 2],
+    /// Whether each player has cast a spell this game (Once Upon a Time).
+    pub cast_a_spell_this_game: [bool; 2],
     /// Delayed "when [that creature] is put into your graveyard this turn" triggers (Saffi
     /// Eriksdotter): (creature, its zcc, source, trigger number, controller, turn).
     pub delayed_slot_to_graveyard: Vec<(ObjId, u32, ObjId, usize, PlayerId, u32)>,
@@ -1749,8 +1780,10 @@ impl Game {
             vows: Vec::new(),
             next_turn_pt: Vec::new(),
             escaped: Vec::new(),
+            free_casts_one: false,
             entered_pending: Vec::new(),
             creature_cards_to_graveyard_pending: [false; 2],
+            cast_a_spell_this_game: [false; 2],
             delayed_slot_to_graveyard: Vec::new(),
         }
     }
@@ -1872,6 +1905,7 @@ impl Game {
             chosen_card_type: None,
             enchanted_player: None,
             type_changes: Vec::new(),
+            kira_targeted_turn: 0,
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -2400,6 +2434,16 @@ impl Game {
                             Some(StaticCondition::CompletedDungeon) => {
                                 self.completed_a_dungeon(so.controller)
                             }
+                            Some(StaticCondition::ControlArtifactsAtLeast(n)) => {
+                                self.battlefield
+                                    .iter()
+                                    .filter(|&&x| {
+                                        self.obj(x).controller == so.controller
+                                            && self.def_of(x).types.artifact
+                                    })
+                                    .count()
+                                    >= n as usize
+                            }
                         };
                         applies && condition_ok && (!s.your_turn_only || self.active == so.controller)
                     })
@@ -2764,6 +2808,20 @@ impl Game {
         }
     }
 
+    /// All Suns' Dawn: ask for a card of `color` (WUBRG index) and the colors after it.
+    fn card_of_each_color(&mut self, p: PlayerId, color: u8) {
+        for c in color..5 {
+            if self.players[p]
+                .graveyard
+                .iter()
+                .any(|&x| self.def_of(x).colors[c as usize])
+            {
+                self.ask(p, Decision::CardOfColorToHand { color: c });
+                return;
+            }
+        }
+    }
+
     /// Primal Surge: exile the top card; a permanent card may go onto the battlefield (and repeat).
     fn primal_surge(&mut self, p: PlayerId) {
         if let Some(&c) = self.players[p].library.last() {
@@ -3070,6 +3128,7 @@ impl Game {
             for (n, a) in self.def_of(aura).activated.iter().enumerate() {
                 if a.granted_to_attached
                     && (!a.tap_attached || self.can_tap(c))
+                    && (!a.untap_attached || self.can_untap_for_cost(c))
                     && self.can_pay_for(p, &a.mana, None, PayFor::Ability(c))
                 {
                     v.push(Action::Activate(aura, n));
@@ -5347,9 +5406,20 @@ impl Game {
         if f.nonartifact && self.types_of(id).artifact {
             return false;
         }
+        if f.creature_needs_defender
+            && !(self.types_of(id).creature && self.keywords(id).has(Keywords::DEFENDER))
+        {
+            return false;
+        }
+        if f.artifact_cards && !self.types_of(id).artifact {
+            return false;
+        }
         if on_stack {
             let ty = self.types_of(id);
             if f.spell_artifact_creature_or_planeswalker && !(ty.artifact || ty.creature || ty.planeswalker) {
+                return false;
+            }
+            if f.spell_instant_or_sorcery && !(ty.instant || ty.sorcery) {
                 return false;
             }
             if let Some(m) = f.spell_min_mana_value {
@@ -5978,6 +6048,14 @@ impl Game {
                     .chain(creatures())
                     .collect()
             }
+            Some(ExtraCost::SacrificeLand) => self
+                .permanents(p)
+                .filter(|&x| self.types_of(x).land && !self.cant_be_sacrificed(x))
+                .map(|x| (Action::CastWith(c, x), CastMode::with(x)))
+                .collect(),
+            Some(ExtraCost::SacrificeCreatureOfColor(k)) => creatures()
+                .filter(|&(_, m)| m.extra.is_some_and(|x| self.colors_of(x)[*k as usize]))
+                .collect(),
             None => {
                 let mut v = vec![(Action::Cast(c), CastMode::default())];
                 // Defiler of Vigor: a green permanent spell may cost {G} less for 2 life.
@@ -6048,6 +6126,18 @@ impl Game {
                                 v.push((Action::CastWith(c, x), CastMode::with(x)));
                             }
                         }
+                    }
+                }
+                // Demon of Death's Gate, Sephara: life, sacrifices or taps rather than the mana cost.
+                if let Some(alt) = def.mana_ext.alt_cost_ext {
+                    if self.alt_ext_payable(p, &alt) {
+                        v.push((
+                            Action::CastAlternative(c),
+                            CastMode {
+                                alt: true,
+                                ..CastMode::default()
+                            },
+                        ));
                     }
                 }
                 // Force of Vigor: exile a card of that color from your hand instead, not on your turn.
@@ -6141,6 +6231,9 @@ impl Game {
         } else if mode.alt {
             match def.alt_cost {
                 Some((c, _)) => c,
+                None if def.mana_ext.alt_cost_ext.is_some() => {
+                    def.mana_ext.alt_cost_ext.expect("alt cost").mana
+                }
                 None if def.mana_ext.escape.is_some() => {
                     def.mana_ext.escape.expect("escape").0.with_x(mode.x)
                 }
@@ -6414,6 +6507,10 @@ impl Game {
                 continue;
             }
             let e = &self.def_of(x).mana_ext;
+            n += e.spell_discount_all as usize;
+            if creature && !self.cast_creature_noncreature[p][0] {
+                n += e.first_creature_spell_discount as usize; // Shadow in the Warp
+            }
             if t.enchantment && mode.mode != Some(OMEN_MODE) {
                 n += e.enchantment_spell_discount as usize;
             }
@@ -6439,6 +6536,46 @@ impl Game {
 
     /// Whether some legal choice of targets makes the spell affordable in `mode`.
     fn mode_affordable(&self, p: PlayerId, c: ObjId, mode: CastMode) -> bool {
+        // Sephara: the creatures tapped for the alternative cost can't also make its mana, so
+        // check the mana with them tapped (they're tapped first as it's paid, see `finish_cast`).
+        if let Some(alt) = self.alt_ext_tapping(c, mode) {
+            let taps = self.alt_ext_taps(p, &alt);
+            if taps.len() < alt.tap as usize {
+                return false;
+            }
+            let mut g = self.clone();
+            for t in taps {
+                g.obj_mut(t).tapped = true;
+            }
+            return g.mode_affordable_now(p, c, mode);
+        }
+        self.mode_affordable_now(p, c, mode)
+    }
+
+    /// The [`crate::card::AltCostExt`] a cast in `mode` pays that taps creatures, if any.
+    fn alt_ext_tapping(&self, c: ObjId, mode: CastMode) -> Option<crate::card::AltCostExt> {
+        let d = self.def_of(c);
+        let alt = d.mana_ext.alt_cost_ext?;
+        (mode.alt
+            && !mode.flashback
+            && alt.tap > 0
+            && d.alt_cost.is_none()
+            && d.mana_ext.escape.is_none()
+            && mode.extra.is_none())
+        .then_some(alt)
+    }
+
+    /// The creatures an [`crate::card::AltCostExt`] taps, as the engine picks them: those that
+    /// can't make mana first, so the mana sources stay free to pay its mana.
+    fn alt_ext_taps(&self, p: PlayerId, alt: &crate::card::AltCostExt) -> Vec<ObjId> {
+        let (_, mut tap) = self.alt_ext_creatures(p, alt);
+        let sources: Vec<ObjId> = self.untapped_sources(p).into_iter().map(|s| s.0).collect();
+        tap.sort_by_key(|x| sources.contains(x));
+        tap.truncate(alt.tap as usize);
+        tap
+    }
+
+    fn mode_affordable_now(&self, p: PlayerId, c: ObjId, mode: CastMode) -> bool {
         let mut cost = self.spell_cost(p, c, mode, &[]);
         cost.generic = cost.generic.saturating_sub(self.delve_available(p, c));
         if self.can_pay_for(p, &cost, None, pay_for_spell(c, mode.mode)) {
@@ -6515,6 +6652,10 @@ impl Game {
                         if self.types_of(id).snow {
                             self.snow_paid += 1;
                         }
+                        let life_cost = self.def_of(id).mana_ext.mana_life_cost;
+                        if life_cost > 0 && !self.obj(id).tapped {
+                            self.lose_life(p, life_cost); // Mana Confluence
+                        }
                         if !self.def_of(id).mana_ext.sac_mana_no_tap {
                             self.become_tapped(id);
                         }
@@ -6551,24 +6692,32 @@ impl Game {
         paid.sort_unstable_by(|a, b| b.cmp(a));
         // Pain lands: 1 damage for each one whose colored mana the payment needed, i.e.
         // the same sources couldn't pay with that land making only {C}.
+        // Each one in turn is held to its painless mana if the rest can still pay, so of two such
+        // lands paying {1}{B}, one makes the {B} and hurts.
         let mut pained = Vec::new();
-        for &i in &paid {
+        let mut painless: Vec<ManaSource> = paid.iter().map(|&j| all[j]).collect();
+        for (k, &i) in paid.iter().enumerate() {
             let src = (i >= pool.len()).then(|| self.def_of(sources[i - pool.len()].0));
-            if src.is_some_and(|d| d.pain_colored || d.mana_ext.colored_gives_opponent_life) {
-                let alt: Vec<ManaSource> = paid
-                    .iter()
-                    .map(|&j| {
-                        if j == i {
-                            ManaSource {
-                                colorless: true,
-                                ..ManaSource::default()
-                            }
-                        } else {
-                            all[j]
-                        }
-                    })
-                    .collect();
-                if mana::pay(cost, &alt).is_none() {
+            let pain_colors = src.map_or([false; 5], |d| d.mana_ext.pain_colors);
+            if src.is_some_and(|d| d.pain_colored || d.mana_ext.colored_gives_opponent_life)
+                || pain_colors.iter().any(|&b| b)
+            {
+                let saved = painless[k];
+                painless[k] = if pain_colors.iter().any(|&b| b) {
+                    // Murmuring Bosk: the same land making only its painless mana.
+                    let mut m = all[i];
+                    for (c, &hurts) in pain_colors.iter().enumerate() {
+                        m.colors[c] &= !hurts;
+                    }
+                    m
+                } else {
+                    ManaSource {
+                        colorless: true,
+                        ..ManaSource::default()
+                    }
+                };
+                if mana::pay(cost, &painless).is_none() {
+                    painless[k] = saved;
                     pained.push(sources[i - pool.len()].0);
                 }
             }
@@ -6603,6 +6752,10 @@ impl Game {
             let henge = self.def_of(id).mana_tap_life;
             if henge > 0 && !self.obj(id).tapped {
                 self.gain_life(p, henge); // The Great Henge
+            }
+            let life_cost = self.def_of(id).mana_ext.mana_life_cost;
+            if life_cost > 0 && !self.obj(id).tapped {
+                self.lose_life(p, life_cost); // Mana Confluence: "Pay 1 life"
             }
             if !self.def_of(id).mana_ext.sac_mana_no_tap {
                 self.become_tapped(id);
@@ -6726,7 +6879,9 @@ impl Game {
             };
             self.players[p].pool.push(one);
         }
-        if self.def_of(id).pain_colored && c != 5 {
+        if (self.def_of(id).pain_colored && c != 5)
+            || (c < 5 && self.def_of(id).mana_ext.pain_colors[c as usize])
+        {
             self.deal_damage(id, Target::Player(p), 1);
         }
         if self.def_of(id).mana_ext.colored_gives_opponent_life && c != 5 {
@@ -6739,6 +6894,10 @@ impl Game {
         let henge = self.def_of(id).mana_tap_life;
         if henge > 0 && !self.obj(id).tapped {
             self.gain_life(p, henge); // The Great Henge
+        }
+        let life_cost = self.def_of(id).mana_ext.mana_life_cost;
+        if life_cost > 0 && !self.obj(id).tapped {
+            self.lose_life(p, life_cost); // Mana Confluence: "Pay 1 life"
         }
         if !self.def_of(id).mana_ext.sac_mana_no_tap {
             self.become_tapped(id);
@@ -7038,6 +7197,61 @@ impl Game {
         }
     }
 
+    /// An untapped legendary creature `p` controls other than `except`, for a "Tap an untapped
+    /// legendary creature you control" cost (Dungeon Descent).
+    fn untapped_legendary(&self, p: PlayerId, except: ObjId) -> Option<ObjId> {
+        self.creatures(p)
+            .find(|&c| c != except && !self.obj(c).tapped && self.types_of(c).legendary)
+    }
+
+    /// Whether a tapped permanent can pay a {Q} cost: the same summoning-sickness rule as {T}
+    /// (CR 302.6).
+    fn can_untap_for_cost(&self, id: ObjId) -> bool {
+        let o = self.obj(id);
+        o.tapped
+            && (!self.types_of(id).creature
+                || o.since_turn < self.turn
+                || self.keywords(id).has(Keywords::HASTE)
+                || self
+                    .permanents(o.controller)
+                    .any(|x| self.def_of(x).creatures_abilities_haste && !self.lost_abilities(x)))
+    }
+
+    /// How much less `p`'s non-mana activated abilities cost (Zirda, the Dawnwaker).
+    fn ability_discount(&self, p: PlayerId) -> u8 {
+        self.permanents(p)
+            .filter(|&x| !self.lost_abilities(x))
+            .map(|x| self.def_of(x).mana_ext.ability_discount as u32)
+            .sum::<u32>()
+            .min(255) as u8
+    }
+
+    /// `cost` less `n` generic mana unless `a` is a mana ability, never below one mana (Zirda).
+    fn ability_discounted(a: &crate::Activated, n: u8, mut cost: ManaCost) -> ManaCost {
+        let mana_ability = a.ability.effects.iter().any(|e| {
+            matches!(
+                e,
+                Effect::AddMana { .. }
+                    | Effect::AddManaAnyColor
+                    | Effect::AddColorless { .. }
+                    | Effect::AddManaEither { .. }
+                    | Effect::AddManaAnyColorsX
+                    | Effect::AddAnyColorsGreatestPower
+                    | Effect::AddRedOrGreenPerCreature
+                    | Effect::AddManaDevotion(_)
+                    | Effect::AddManaPerCount { .. }
+                    | Effect::AddManaSourcePower(_)
+                    | Effect::AddManaPerHandSize { .. }
+            )
+        });
+        if n == 0 || mana_ability {
+            return cost;
+        }
+        let room = cost.mana_value().saturating_sub(1).min(u8::MAX as u32) as u8;
+        cost.generic = cost.generic.saturating_sub(n.min(room));
+        cost
+    }
+
     /// Untapped creatures `p` controls with this subtype, other than `except`.
     fn untapped_with(&self, p: PlayerId, sub: &str, except: ObjId) -> Vec<ObjId> {
         self.creatures(p)
@@ -7048,6 +7262,7 @@ impl Game {
     /// Activated abilities `p` can activate now (CR 602.2, 602.5).
     fn activations(&self, p: PlayerId) -> Vec<Action> {
         let mut v = Vec::new();
+        let ability_discount = self.ability_discount(p);
         let graveyard = self.players[p].graveyard.iter().copied();
         let hand = self.players[p].hand.iter().copied();
         for id in self.permanents(p).chain(graveyard).chain(hand) {
@@ -7094,6 +7309,7 @@ impl Game {
                             .is_some_and(|(c, z)| self.obj(c).zcc == z && self.can_tap(c)))
                     || a.tap_untapped
                         .is_some_and(|(sub, n)| self.untapped_with(p, sub, id).len() < n as usize)
+                    || (a.tap_untapped_legendary && self.untapped_legendary(p, id).is_none())
                     || !sorcery_ok
                     || self.permanents(p).count() < a.min_permanents as usize
                     || (a.opponent_min_lands > 0
@@ -7110,20 +7326,24 @@ impl Game {
                     || self.players[p].life < a.life
                     || !self.can_pay_for(
                         p,
-                        &if a.less_per_legendary_creature {
-                            let mut c = a.mana;
-                            c.generic = c.generic.saturating_sub(self.legendary_creatures(p));
-                            c
-                        } else if a.less_per_target_color {
-                            // The best target: the most colors among your creatures.
-                            let best = self
-                                .creatures(p)
-                                .max_by_key(|&c| self.colors_of(c).iter().filter(|&&b| b).count());
-                            self.color_discounted(a, best)
-                        } else {
-                            self.phyrexian_activation_cost(p, a, uses_self.then_some(id), id)
-                                .0
-                        },
+                        &Game::ability_discounted(
+                            a,
+                            ability_discount,
+                            if a.less_per_legendary_creature {
+                                let mut c = a.mana;
+                                c.generic = c.generic.saturating_sub(self.legendary_creatures(p));
+                                c
+                            } else if a.less_per_target_color {
+                                // The best target: the most colors among your creatures.
+                                let best = self
+                                    .creatures(p)
+                                    .max_by_key(|&c| self.colors_of(c).iter().filter(|&&b| b).count());
+                                self.color_discounted(a, best)
+                            } else {
+                                self.phyrexian_activation_cost(p, a, uses_self.then_some(id), id)
+                                    .0
+                            },
+                        ),
                         uses_self.then_some(id),
                         PayFor::Ability(id),
                     )
@@ -7240,6 +7460,29 @@ impl Game {
                             .iter()
                             .copied()
                             .filter(|&c| self.def_of(c).types.creature)
+                            .map(|c| Action::ActivateWith(id, n, c)),
+                    );
+                } else if a.discard_land_card {
+                    v.extend(
+                        self.players[p]
+                            .hand
+                            .iter()
+                            .copied()
+                            .filter(|&c| self.def_of(c).types.land)
+                            .map(|c| Action::ActivateWith(id, n, c)),
+                    );
+                } else if a.return_land {
+                    // Meloku: any land you control (it may tap for the mana first).
+                    v.extend(
+                        self.permanents(p)
+                            .filter(|&c| self.types_of(c).land)
+                            .map(|c| Action::ActivateWith(id, n, c)),
+                    );
+                } else if a.sacrifice_land {
+                    // Sylvan Safekeeper: any land you control (sacrificed after the mana).
+                    v.extend(
+                        self.permanents(p)
+                            .filter(|&c| self.types_of(c).land && !self.cant_be_sacrificed(c))
                             .map(|c| Action::ActivateWith(id, n, c)),
                     );
                 } else if a.crew > 0 {
@@ -7465,6 +7708,7 @@ impl Game {
         if life > 0 && a.mana.x == 0 {
             cost = cheaper; // Phyrexian pips paid with life
         }
+        let cost = Game::ability_discounted(&a, self.ability_discount(p), cost);
         self.pay_mana_for(p, &cost, exclude, PayFor::Ability(id));
         if life > 0 && a.mana.x == 0 {
             self.lose_life(p, life);
@@ -7475,6 +7719,7 @@ impl Game {
                 let sub = a.sacrifice_subtype.expect("a subtype");
                 if self.obj(v).zone == Zone::Battlefield {
                     self.move_to(v, Zone::Graveyard);
+                    self.sacrificed(v, p);
                 }
                 let more: Vec<ObjId> = self
                     .permanents(p)
@@ -7483,6 +7728,7 @@ impl Game {
                     .collect();
                 for c in more {
                     self.move_to(c, Zone::Graveyard);
+                    self.sacrificed(c, p);
                 }
             } else if a.crew > 0 {
                 self.become_tapped(v); // crew taps, it doesn't sacrifice
@@ -7497,9 +7743,13 @@ impl Game {
                 if let Some(c) = second {
                     self.move_to(c, Zone::Graveyard);
                 }
-            } else if a.discard_creature_card || a.discard_any_card {
+            } else if a.discard_creature_card || a.discard_any_card || a.discard_land_card {
                 if self.obj(v).zone == Zone::Hand {
                     self.move_to(v, Zone::Graveyard); // discarded
+                }
+            } else if a.return_land {
+                if self.obj(v).zone == Zone::Battlefield {
+                    self.move_to(v, Zone::Hand); // Meloku: returned, after the mana
                 }
             } else if a.exile_creature_card {
                 if self.obj(v).zone == Zone::Graveyard {
@@ -7568,8 +7818,18 @@ impl Game {
                 self.become_tapped(c);
             }
         }
+        if a.untap_attached {
+            if let Some((c, _)) = self.obj(id).attached_to {
+                self.untap_by_effect(c); // {Q}
+            }
+        }
         if let Some((sub, n)) = a.tap_untapped {
             for c in self.untapped_with(p, sub, id).into_iter().take(n as usize) {
+                self.become_tapped(c);
+            }
+        }
+        if a.tap_untapped_legendary {
+            if let Some(c) = self.untapped_legendary(p, id) {
                 self.become_tapped(c);
             }
         }
@@ -7640,7 +7900,16 @@ impl Game {
             .filter(|&x| !self.lost_abilities(x))
             .filter_map(|x| self.def_of(x).mana_ext.your_creatures_add)
             .collect();
+        let tron = base.iter().any(|s| self.def_of(s.0).mana_ext.tron_amount > 0)
+            // "Urza's Mine" and the others are two subtypes each, "Urza's" and "Mine" (CR 205.3g).
+            && ["Mine", "Power-Plant", "Tower"]
+                .iter()
+                .all(|sub| self.permanents(p).any(|x| self.has_subtype(x, sub)));
         for (id, m) in base {
+            let life_cost = self.def_of(id).mana_ext.mana_life_cost;
+            if life_cost > 0 && self.players[p].life < life_cost {
+                continue; // Mana Confluence: can't pay the life
+            }
             if self.types_of(id).land && !self.def_of(id).vivid_mana {
                 out.extend(std::iter::repeat_n((id, m), dictates)); // Dictate of Karametra
             }
@@ -7687,7 +7956,12 @@ impl Game {
                 n
             };
             let n = n.max(self.def_of(id).mana_amount as usize); // Sol Ring: {C}{C}
-                                                                 // Vorinclex: "Whenever you tap a land for mana, add one mana of any type that land produced."
+            let n = if tron {
+                n.max(self.def_of(id).mana_ext.tron_amount as usize) // Urza's Tower: {C}{C}{C}
+            } else {
+                n
+            };
+            // Vorinclex: "Whenever you tap a land for mana, add one mana of any type that land produced."
             let n = if self.types_of(id).land && self.permanents(p).any(|x| self.def_of(x).vorinclex) {
                 n * 2
             } else {
@@ -7708,6 +7982,14 @@ impl Game {
                 n
             };
             out.extend(std::iter::repeat_n((id, m), n));
+            // Kinnan: a nonland permanent tapped for mana adds one more of a type it produced.
+            if !self.types_of(id).land && !self.def_of(id).mana_ext.sac_mana_no_tap {
+                let kinnans = self
+                    .permanents(p)
+                    .filter(|&x| self.def_of(x).mana_ext.nonland_add_same && !self.lost_abilities(x))
+                    .count();
+                out.extend(std::iter::repeat_n((id, m), kinnans));
+            }
             // Mirari's Wake: a land tapped for mana adds one more of a type it produced.
             if self.types_of(id).land {
                 let wakes = self
@@ -8046,6 +8328,9 @@ impl Game {
     /// Fear and intimidate (CR 702.36b, 702.13b): only an artifact creature, or a black creature
     /// (fear) or one sharing a color with the attacker (intimidate), may block it.
     fn evades_ok(&self, blocker: ObjId, attacker: ObjId) -> bool {
+        if !self.mana_ext_block_ok(blocker, attacker) {
+            return false;
+        }
         let k = self.keywords(attacker);
         if self.types_of(blocker).artifact {
             return true;
@@ -8053,6 +8338,66 @@ impl Game {
         let b = self.colors_of(blocker);
         let a = self.colors_of(attacker);
         (!k.has(Keywords::FEAR) || b[2]) && (!k.has(Keywords::INTIMIDATE) || (0..5).any(|c| a[c] && b[c]))
+    }
+
+    /// The creatures `p` could sacrifice and tap for an [`crate::card::AltCostExt`], in the order the
+    /// engine picks them (sacrifices: tokens, then the lowest mana value).
+    fn alt_ext_creatures(&self, p: PlayerId, alt: &crate::card::AltCostExt) -> (Vec<ObjId>, Vec<ObjId>) {
+        let mut sac: Vec<ObjId> = self
+            .creatures(p)
+            .filter(|&x| {
+                !self.cant_be_sacrificed(x)
+                    && alt.sacrifice_color.is_none_or(|k| self.colors_of(x)[k as usize])
+            })
+            .collect();
+        sac.sort_by_key(|&x| (!self.is_token(x), self.def_of(x).cost.mana_value()));
+        let tap: Vec<ObjId> = self
+            .creatures(p)
+            .filter(|&x| !self.obj(x).tapped && self.keywords(x).has(alt.tap_keywords))
+            .collect();
+        (sac, tap)
+    }
+
+    /// Whether `p` can pay an [`crate::card::AltCostExt`]'s life, sacrifices and taps.
+    fn alt_ext_payable(&self, p: PlayerId, alt: &crate::card::AltCostExt) -> bool {
+        let (sac, tap) = self.alt_ext_creatures(p, alt);
+        self.players[p].life >= alt.life
+            && sac.len() >= alt.sacrifice as usize
+            && tap.len() >= alt.tap as usize
+            && self.alt_ext_returns(p, alt).len() >= alt.return_lands as usize
+            && !(alt.first_spell_this_game && self.cast_a_spell_this_game[p])
+    }
+
+    /// The permanents an [`crate::card::AltCostExt`] returns to hand, as the engine picks them:
+    /// tapped ones first (Gush: Islands already tapped for mana).
+    fn alt_ext_returns(&self, p: PlayerId, alt: &crate::card::AltCostExt) -> Vec<ObjId> {
+        let Some(sub) = alt.return_subtype.filter(|_| alt.return_lands > 0) else {
+            return Vec::new();
+        };
+        let mut v: Vec<ObjId> = self.permanents(p).filter(|&x| self.has_subtype(x, sub)).collect();
+        v.sort_by_key(|&x| !self.obj(x).tapped);
+        v.truncate(alt.return_lands as usize);
+        v
+    }
+
+    /// The d1 theme's other block restrictions (see [`crate::card::ManaExt`]): shadow, attacking
+    /// alone (Yuan-Ti Malison), only legendary blockers (Midnight Pathlighter).
+    fn mana_ext_block_ok(&self, blocker: ObjId, attacker: ObjId) -> bool {
+        // Shadow (CR 702.28b): blocks and is blocked only by creatures with shadow.
+        if self.keywords(attacker).has(Keywords::SHADOW) != self.keywords(blocker).has(Keywords::SHADOW) {
+            return false;
+        }
+        let alone = self.combat.as_ref().is_some_and(|c| c.attackers.len() == 1);
+        if alone
+            && self.def_of(attacker).mana_ext.unblockable_attacking_alone
+            && !self.lost_abilities(attacker)
+        {
+            return false;
+        }
+        let only_legendary = self.permanents(self.obj(attacker).controller).any(|x| {
+            self.def_of(x).mana_ext.your_creatures_blocked_only_by_legendary && !self.lost_abilities(x)
+        });
+        !only_legendary || self.types_of(blocker).legendary
     }
 
     /// The d1 theme's "enters tapped unless" rules (see [`crate::card::ManaExt`]): whether `id`,
@@ -8775,6 +9120,13 @@ impl Game {
             .extra
             .filter(|_| item.flashback && (self.def_of(card).harmonize || self.obj(card).harmonize_eot));
         self.snow_paid = 0;
+        // Sephara: tap the creatures for the alternative cost first, so none of them also taps
+        // for its mana.
+        if let Some(alt) = self.alt_ext_tapping(card, mode) {
+            for t in self.alt_ext_taps(p, &alt) {
+                self.become_tapped(t);
+            }
+        }
         self.pay_mana_for(p, &cost, harmonized, pay_for_spell(card, item.mode));
         if self.def_of(card).mana_ext.pay_x_life && item.x > 0 {
             self.lose_life(p, item.x as i32); // "As an additional cost ..., pay X life."
@@ -8810,6 +9162,21 @@ impl Game {
             let zcc = self.obj(card).zcc + 1;
             self.escaped.retain(|e| e.0 != card);
             self.escaped.push((card, zcc));
+        } else if let (true, Some(alt)) = (item.alt, self.def_of(card).mana_ext.alt_cost_ext) {
+            // Demon of Death's Gate: the life and sacrifices (the engine picks). Sephara's taps
+            // were paid before its mana.
+            let (sac, _) = self.alt_ext_creatures(p, &alt);
+            if alt.life > 0 {
+                self.lose_life(p, alt.life);
+            }
+            for v in sac.into_iter().take(alt.sacrifice as usize) {
+                self.move_to(v, Zone::Graveyard);
+                self.sacrificed(v, p);
+            }
+            // Gush, Thwart: return the Islands (after the mana, so they could tap for it first).
+            for r in self.alt_ext_returns(p, &alt) {
+                self.move_to(r, Zone::Hand);
+            }
         } else if item.alt
             && self.def_of(card).alt_cost.is_none()
             && self.def_of(card).warp.is_none()
@@ -8893,6 +9260,7 @@ impl Game {
             }
         }
         self.spells_cast[p] += 1;
+        self.cast_a_spell_this_game[p] = true;
         let is_creature = self.types_of(card).creature;
         if !is_creature {
             let (t, n) = self.noncreature_casts[p];
@@ -9155,9 +9523,15 @@ impl Game {
         if self.cant_cast_now(p) {
             return v; // Voice of Victory
         }
+        // A one-spell window may also offer cards in hand or a graveyard (see `free_casts_one`).
+        let one = self.free_casts_one;
+        let free_zone = |z: Zone| z == Zone::Exile || (one && matches!(z, Zone::Hand | Zone::Graveyard));
+        if self.free_casts_one && self.free_casts.iter().any(|&c| !free_zone(self.obj(c).zone)) {
+            return v; // one spell, already cast (Rishkar's Expertise)
+        }
         for &c in &self.free_casts {
             let def = self.def_of(c);
-            if self.obj(c).zone != Zone::Exile || def.types.land {
+            if !free_zone(self.obj(c).zone) || def.types.land {
                 continue;
             }
             let castable = def.types.is_permanent() || def.spell.is_some() || !def.modes.is_empty();
@@ -9192,6 +9566,7 @@ impl Game {
     fn close_free_casts(&mut self) {
         let to_hand = std::mem::take(&mut self.free_casts_to_hand);
         let to_bottom = std::mem::take(&mut self.free_casts_to_bottom);
+        self.free_casts_one = false;
         for c in std::mem::take(&mut self.free_casts) {
             self.obj_mut(c).cast_free = false;
             if to_hand && self.obj(c).zone == Zone::Exile {
@@ -9290,6 +9665,29 @@ impl Game {
     /// CR 702.21a: whenever a permanent with ward becomes the target of a spell or ability an
     /// opponent controls, its ward triggers.
     fn ward_check(&mut self, item: &StackItem) {
+        // Kira, Great Glass-Spinner: the first time each turn a creature of its controller's is
+        // targeted, counter that spell or ability.
+        for &t in &item.targets {
+            if let Chosen::Object(id, _) = t {
+                if self.obj(id).zone != Zone::Battlefield || !self.types_of(id).creature {
+                    continue;
+                }
+                let p = self.obj(id).controller;
+                let kira = self
+                    .permanents(p)
+                    .filter(|&k| !self.lost_abilities(k))
+                    .find_map(|k| self.def_of(k).kira_trigger.map(|n| (k, n)));
+                let turn = self.turn;
+                if let (Some((k, n)), true) = (kira, self.obj(id).kira_targeted_turn != turn) {
+                    self.obj_mut(id).kira_targeted_turn = turn;
+                    self.triggered.push(StackItem {
+                        kind: StackKind::Trigger(n),
+                        extra: Some(item.source),
+                        ..Game::casting(k, p)
+                    });
+                }
+            }
+        }
         // "Whenever a creature you control or a creature spell you control becomes the target of a
         // spell or ability an opponent controls" (Surrak).
         for &t in &item.targets {
@@ -9856,6 +10254,10 @@ impl Game {
                 let lands = self.permanents(owner).filter(|&x| self.types_of(x).land).count() as u32;
                 d.types.creature && d.cost.mana_value() <= lands
             }
+            // A changeling card is every creature type, Human included (CR 702.73a).
+            Pick::NonHumanCreature => {
+                d.types.creature && !d.changeling && !d.subtypes.iter().any(|s| s == "Human")
+            }
         }
     }
 
@@ -9917,6 +10319,7 @@ impl Game {
                             && c.twobrid == [0; 5]
                             && c.generic <= 1
                     }
+                    SearchFor::ColorlessCreature => d.types.creature && !d.colors.iter().any(|&c| c),
                 }
             })
             .collect()
@@ -10178,6 +10581,18 @@ impl Game {
                 v.push(Action::No);
                 v
             }
+            Decision::CardOfColorToHand { color } => {
+                let mut v: Vec<Action> = self.players[p]
+                    .graveyard
+                    .iter()
+                    .copied()
+                    .filter(|&c| self.def_of(c).colors[*color as usize])
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
+            Decision::ChainCopy { .. } => vec![Action::Mode(0), Action::Mode(1), Action::No],
             Decision::LandFromHand => {
                 let mut v: Vec<Action> = hand
                     .iter()
@@ -10660,6 +11075,36 @@ impl Game {
                 .filter(|&c| self.def_of(c).types.creature)
                 .map(Action::Pick)
                 .collect(),
+            Decision::SacrificeAnotherPermanent { keep } => self
+                .sacrifice_another_options(p, *keep)
+                .into_iter()
+                .map(Action::Pick)
+                .collect(),
+            Decision::MayPayLife { .. } => vec![Action::Yes, Action::No],
+            Decision::MayPayManaAndLife { cost, life, .. } => {
+                let mut v = Vec::new();
+                if self.can_pay(p, cost, None) && self.players[p].life >= *life {
+                    v.push(Action::Yes);
+                }
+                v.push(Action::No);
+                v
+            }
+            Decision::TakeMilledCard { cards } => cards
+                .iter()
+                .copied()
+                .filter(|&c| self.obj(c).zone == Zone::Graveyard)
+                .map(Action::Pick)
+                .collect(),
+            Decision::ReturnSharingType { with } => {
+                let mut v: Vec<Action> = self
+                    .sharing_type_options(p, *with)
+                    .into_iter()
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
+            Decision::ExileOwnPermanent { .. } => self.permanents(p).map(Action::Pick).collect(),
             Decision::BraidsOpponent { types, .. } => {
                 let mut v: Vec<Action> = self
                     .braids_options(p, Some(*types))
@@ -11477,6 +11922,21 @@ impl Game {
             (Decision::ScrollRackExile { exiled }, Action::No) => self.scroll_rack_finish(p, exiled),
             (Decision::LandFromHand, Action::Pick(c)) => self.move_to(c, Zone::Battlefield),
             (Decision::LandFromHand, Action::No) => {}
+            (Decision::CardOfColorToHand { color }, choice) => {
+                if let Action::Pick(c) = choice {
+                    self.move_to(c, Zone::Hand);
+                }
+                self.card_of_each_color(p, color + 1);
+            }
+            (Decision::ChainCopy { source }, Action::Mode(t)) => {
+                let copy = StackItem {
+                    kind: StackKind::SpellCopy,
+                    targets: vec![Chosen::Player(t as PlayerId)],
+                    ..Game::casting(source, p)
+                };
+                self.items.push(copy);
+            }
+            (Decision::ChainCopy { .. }, Action::No) => {}
             (Decision::PickOneOf { to_hand, .. }, Action::Pick(c)) => {
                 self.move_to(c, if to_hand { Zone::Hand } else { Zone::Battlefield });
             }
@@ -11928,6 +12388,27 @@ impl Game {
             ) => {
                 self.reveal_creature_onto(p, Some(c), counters, keywords);
             }
+            (Decision::SacrificeAnotherPermanent { .. }, Action::Pick(c)) => {
+                self.move_to(c, Zone::Graveyard);
+                self.sacrificed(c, p);
+            }
+            (Decision::MayPayLife { life }, Action::Yes) => self.lose_life(p, life),
+            (Decision::MayPayLife { .. }, Action::No) => {
+                self.resolving.as_mut().expect("resolving").remaining.clear();
+            }
+            (Decision::MayPayManaAndLife { cost, life, cards }, Action::Yes) => {
+                self.pay_mana(p, &cost, None);
+                self.lose_life(p, life);
+                self.take_milled_card(p, cards);
+            }
+            (Decision::MayPayManaAndLife { .. }, Action::No) => {}
+            (Decision::TakeMilledCard { .. }, Action::Pick(c)) => self.move_to(c, Zone::Hand),
+            (Decision::ReturnSharingType { .. }, Action::Pick(c)) => self.move_to(c, Zone::Hand),
+            (Decision::ReturnSharingType { .. }, Action::No) => {}
+            (Decision::ExileOwnPermanent { left }, Action::Pick(c)) => {
+                self.move_to(c, Zone::Exile);
+                self.exile_own_permanents(p, left);
+            }
             (d, a) => unreachable!("legal action {a:?} unhandled for {d:?}"),
         }
         if self.decision.is_none() {
@@ -12378,6 +12859,52 @@ impl Game {
             }
         }
         self.shuffle_library(p);
+    }
+
+    /// Ripples of Undeath: put one of the milled `cards` still in `p`'s graveyard into their hand
+    /// (asked only with a choice).
+    fn take_milled_card(&mut self, p: PlayerId, cards: Vec<ObjId>) {
+        let left: Vec<ObjId> = cards
+            .into_iter()
+            .filter(|&c| self.obj(c).zone == Zone::Graveyard)
+            .collect();
+        match left.len() {
+            0 => {}
+            1 => self.move_to(left[0], Zone::Hand),
+            _ => self.ask(p, Decision::TakeMilledCard { cards: left }),
+        }
+    }
+
+    /// Bane of Bala Ged: `p` exiles `n` permanents they control (all of them with `n` or fewer).
+    fn exile_own_permanents(&mut self, p: PlayerId, n: u8) {
+        if n == 0 {
+            return;
+        }
+        let mine: Vec<ObjId> = self.permanents(p).collect();
+        if mine.len() <= n as usize {
+            for x in mine {
+                self.move_to(x, Zone::Exile);
+            }
+        } else {
+            self.ask(p, Decision::ExileOwnPermanent { left: n - 1 });
+        }
+    }
+
+    /// Cloudstone Curio: `p`'s other permanents sharing a permanent type with `with`.
+    fn sharing_type_options(&self, p: PlayerId, with: ObjId) -> Vec<ObjId> {
+        let t = self.types_of(with);
+        let kinds = |t: Types| [t.artifact, t.creature, t.enchantment, t.land, t.planeswalker];
+        let mine = kinds(t);
+        self.permanents(p)
+            .filter(|&x| x != with && kinds(self.types_of(x)).iter().zip(mine).any(|(&a, b)| a && b))
+            .collect()
+    }
+
+    /// Korvold: the permanents `p` could sacrifice other than `keep`.
+    fn sacrifice_another_options(&self, p: PlayerId, keep: ObjId) -> Vec<ObjId> {
+        self.permanents(p)
+            .filter(|&x| x != keep && !self.cant_be_sacrificed(x))
+            .collect()
     }
 
     /// Tainted Pact: exile the next card; stop on a repeated name or an empty library, else ask.
@@ -14635,6 +15162,31 @@ impl Game {
                 };
                 self.life_locked_until[p] = Some(next);
             }
+            Effect::CounterExtra => {
+                if let Some(s) = item.extra {
+                    if let Some(pos) = self.targeted_item(s) {
+                        let it = self.items[pos].clone();
+                        if it.kind == StackKind::Spell {
+                            if !self.uncounterable(s) {
+                                self.items.remove(pos);
+                                self.leave_stack(s, it.flashback);
+                            }
+                        } else {
+                            self.items.remove(pos);
+                        }
+                    }
+                }
+            }
+            Effect::OneCardOfEachColorToHand => self.card_of_each_color(item.controller, 0),
+            Effect::ChainCopy(n) => {
+                if let Some(q) = self
+                    .players_for(item, legal, Who::TargetPlayer(n))
+                    .first()
+                    .copied()
+                {
+                    self.ask(q, Decision::ChainCopy { source: src });
+                }
+            }
             Effect::DelayedWhenSlotToYourGraveyardThisTurn { slot, trigger } => {
                 if let Some(c) = Game::slot_object(item, legal, slot) {
                     let entry = (c, self.obj(c).zcc, src, trigger, item.controller, self.turn);
@@ -15189,6 +15741,24 @@ impl Game {
                     for _ in 0..item.x {
                         self.draw(q);
                     }
+                }
+            }
+            Effect::MayCastFromHandFree { max_mv } => {
+                // Cast as the ability finishes resolving (CR 608.2g), one spell (`free_casts_one`).
+                let p = item.controller;
+                let cards: Vec<ObjId> = self.players[p]
+                    .hand
+                    .iter()
+                    .copied()
+                    .filter(|&c| !self.types_of(c).land && self.def_of(c).cost.mana_value() <= max_mv)
+                    .collect();
+                if !cards.is_empty() {
+                    for &c in &cards {
+                        self.obj_mut(c).cast_free = true;
+                    }
+                    self.free_casts.extend(cards);
+                    self.free_caster = p;
+                    self.free_casts_one = true;
                 }
             }
             Effect::ChangeTargets(slot) => {
@@ -18340,6 +18910,266 @@ impl Game {
                     self.reveal_creature_onto(p, creatures.first().copied(), counters, keywords);
                 }
             }
+            Effect::PumpEachOtherCreature { power, toughness } => {
+                let ids: Vec<ObjId> = (0..2)
+                    .flat_map(|p| self.creatures(p).collect::<Vec<_>>())
+                    .filter(|&c| c != src)
+                    .collect();
+                for id in ids {
+                    let zcc = self.obj(id).zcc;
+                    self.until_eot.push(Modifier {
+                        obj: id,
+                        zcc,
+                        power,
+                        toughness,
+                        keywords: Keywords::NONE,
+                        dies: None,
+                    });
+                }
+            }
+            Effect::MinusCounterEach(who) => {
+                for p in self.players_for(item, legal, who) {
+                    let ids: Vec<ObjId> = self.creatures(p).collect();
+                    let n = ids.len() as i32;
+                    for id in ids {
+                        self.obj_mut(id).counters -= 1;
+                    }
+                    if n > 0 {
+                        self.counters_placed(item.controller, n);
+                    }
+                }
+            }
+            Effect::AllCreaturesGetMinusSourceX => {
+                let x = self.obj(src).x as i32;
+                let ids: Vec<ObjId> = (0..2)
+                    .flat_map(|p| self.creatures(p).collect::<Vec<_>>())
+                    .collect();
+                for id in ids.into_iter().filter(|_| x > 0) {
+                    let zcc = self.obj(id).zcc;
+                    self.until_eot.push(Modifier {
+                        obj: id,
+                        zcc,
+                        power: -x,
+                        toughness: -x,
+                        keywords: Keywords::NONE,
+                        dies: None,
+                    });
+                }
+            }
+            Effect::CountersSelfXDrawHalfX => {
+                let x = self.obj(src).x as i32;
+                self.add_counters(src, x);
+                for _ in 0..x / 2 {
+                    self.draw(item.controller);
+                }
+            }
+            Effect::SacrificeAnotherPermanent => {
+                let p = item.controller;
+                let options = self.sacrifice_another_options(p, src);
+                match options.len() {
+                    0 => {}
+                    1 => {
+                        self.move_to(options[0], Zone::Graveyard);
+                        self.sacrificed(options[0], p);
+                    }
+                    _ => self.ask(p, Decision::SacrificeAnotherPermanent { keep: src }),
+                }
+            }
+            Effect::MayPayLife(life) => {
+                let p = item.controller;
+                if self.players[p].life >= life {
+                    self.ask(p, Decision::MayPayLife { life });
+                } else {
+                    self.resolving.as_mut().expect("resolving").remaining.clear();
+                }
+            }
+            Effect::UntapAllCreatures => {
+                let ids: Vec<ObjId> = (0..2)
+                    .flat_map(|p| self.creatures(p).collect::<Vec<_>>())
+                    .collect();
+                for id in ids {
+                    self.untap_by_effect(id);
+                }
+            }
+            Effect::CountersAttachedGainDraw {
+                counters,
+                life,
+                cards,
+            } => {
+                let on = self.obj(src).attached_to.and_then(|(c, zcc)| {
+                    let o = self.obj(c);
+                    (o.zcc == zcc && o.zone == Zone::Battlefield).then_some(c)
+                });
+                if let Some(c) = on {
+                    self.add_counters(c, counters);
+                    let p = self.obj(c).controller;
+                    self.gain_life(p, life);
+                    for _ in 0..cards {
+                        self.draw(p);
+                    }
+                }
+            }
+            Effect::LoseLifeSourcePower(who) => {
+                let power = if self.obj(src).zone == Zone::Battlefield {
+                    self.power(src)
+                } else {
+                    self.obj(src).last_power
+                };
+                if power > 0 {
+                    for p in self.players_for(item, legal, who) {
+                        self.lose_life(p, power);
+                    }
+                }
+            }
+            Effect::GainLifeSlotToughness(slot) => {
+                let id = match item.targets.get(slot as usize) {
+                    Some(&Chosen::Object(id, _)) => Some(id),
+                    _ => None,
+                };
+                if let Some(id) = id {
+                    let t = self.toughness(id);
+                    if t > 0 {
+                        self.gain_life(item.controller, t);
+                    }
+                }
+            }
+            Effect::DrawGreatestPowerYouControl => {
+                let p = item.controller;
+                let n = self.creatures(p).map(|x| self.power(x)).max().unwrap_or(0);
+                for _ in 0..n.max(0) {
+                    self.draw(p);
+                }
+            }
+            Effect::ExileGraveyardCardManaIfLandElseDrain { slot, life, damage } => {
+                let Some(card) = Game::slot_object(item, legal, slot) else {
+                    return;
+                };
+                if self.obj(card).zone != Zone::Graveyard {
+                    return;
+                }
+                let land = self.def_of(card).types.land;
+                self.move_to(card, Zone::Exile);
+                if land {
+                    let either = Effect::AddManaEither(crate::Color::Red, crate::Color::Green);
+                    self.run_effect(item, legal, either);
+                } else {
+                    self.gain_life(item.controller, life);
+                    let burn = Effect::Damage {
+                        amount: damage,
+                        kicked: None,
+                        to: Recipient::EachOpponent,
+                    };
+                    self.run_effect(item, legal, burn);
+                }
+            }
+            Effect::MillThenMayPayTakeOne { n, mana, life } => {
+                let p = item.controller;
+                let mut cards = Vec::new();
+                for _ in 0..n {
+                    if let Some(&c) = self.players[p].library.last() {
+                        self.move_to(c, Zone::Graveyard);
+                        cards.push(c);
+                    }
+                }
+                cards.retain(|&c| self.obj(c).zone == Zone::Graveyard);
+                if !cards.is_empty() {
+                    let cost = ManaCost {
+                        generic: mana,
+                        ..ManaCost::default()
+                    };
+                    self.ask(p, Decision::MayPayManaAndLife { cost, life, cards });
+                }
+            }
+            Effect::MayReturnAnotherSharingType(slot) => {
+                let with = match item.targets.get(slot as usize) {
+                    Some(&Chosen::Object(id, _)) => Some(id),
+                    _ => None,
+                };
+                if let Some(with) = with {
+                    let p = item.controller;
+                    if !self.sharing_type_options(p, with).is_empty() {
+                        self.ask(p, Decision::ReturnSharingType { with });
+                    }
+                }
+            }
+            Effect::DamageEachOpponentAndTheirs {
+                amount,
+                player,
+                planeswalkers,
+            } => {
+                let opp = opponent(item.controller);
+                let mut targets: Vec<Target> = self
+                    .permanents(opp)
+                    .filter(|&x| {
+                        let t = self.types_of(x);
+                        t.creature || (planeswalkers && t.planeswalker)
+                    })
+                    .map(Target::Object)
+                    .collect();
+                if player {
+                    targets.insert(0, Target::Player(opp));
+                }
+                for t in targets {
+                    self.deal_damage(src, t, amount);
+                }
+            }
+            Effect::DrainXTimes(n) => {
+                let opp = opponent(item.controller);
+                let life = item.x as i32 * n as i32;
+                if life > 0 {
+                    let before = self.players[opp].life;
+                    self.lose_life(opp, life);
+                    let lost = (before - self.players[opp].life).max(0);
+                    if lost > 0 {
+                        self.gain_life(item.controller, lost);
+                    }
+                }
+            }
+            Effect::GainLifeSlotPower(slot) => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    let power = self.power(id);
+                    if power > 0 {
+                        self.gain_life(item.controller, power);
+                    }
+                }
+            }
+            Effect::GainLifePerColorlessCreatureYouControl => {
+                let p = item.controller;
+                let n = self
+                    .creatures(p)
+                    .filter(|&c| !self.colors_of(c).iter().any(|&b| b))
+                    .count() as i32;
+                if n > 0 {
+                    self.gain_life(p, n);
+                }
+            }
+            Effect::SacrificeAllColoredPermanents => {
+                for p in [self.active, opponent(self.active)] {
+                    let colored: Vec<ObjId> = self
+                        .permanents(p)
+                        .filter(|&x| self.colors_of(x).iter().any(|&b| b) && !self.cant_be_sacrificed(x))
+                        .collect();
+                    for x in colored {
+                        self.move_to(x, Zone::Graveyard);
+                        self.sacrificed(x, p);
+                    }
+                }
+            }
+            Effect::OpponentExilesPermanents(n) => {
+                self.exile_own_permanents(opponent(item.controller), n);
+            }
+            Effect::ReanimateWithSubtype { slot, subtype } => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    if self.obj(id).zone == Zone::Graveyard {
+                        self.move_to(id, Zone::Battlefield);
+                        if self.obj(id).zone == Zone::Battlefield {
+                            let o = self.obj_mut(id);
+                            o.controller = item.controller;
+                            o.extra_subtypes.push(subtype);
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -18473,6 +19303,26 @@ impl Game {
             self.last_created.push(id);
             self.obj_mut(id).since_turn = self.turn;
             self.zone_triggers(id, Zone::Gone, Zone::Battlefield, p);
+        }
+        // Academy Manufactor: a Clue, Food or Treasure is one of each instead.
+        if !self.token_replacing {
+            let kinds = self
+                .permanents(p)
+                .filter(|&x| !self.lost_abilities(x))
+                .find_map(|x| self.def_of(x).clue_food_treasure);
+            if let Some(kinds) = kinds.filter(|k| k.contains(&def)) {
+                let made = self.last_created.clone();
+                self.token_replacing = true;
+                for t in kinds.into_iter().filter(|&t| t != def) {
+                    for _ in 0..self.token_doubling(p) {
+                        let id = self.add_card(p, t, Zone::Battlefield);
+                        self.obj_mut(id).since_turn = self.turn;
+                        self.zone_triggers(id, Zone::Gone, Zone::Battlefield, p);
+                    }
+                }
+                self.token_replacing = false;
+                self.last_created = made;
+            }
         }
         // Peregrin Took, Quina, Chatterfang: "those tokens plus ..." (not applied to their own extras).
         if !self.token_replacing {

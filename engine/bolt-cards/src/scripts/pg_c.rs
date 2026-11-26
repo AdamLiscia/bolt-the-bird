@@ -1400,6 +1400,42 @@ pub fn script(name: &str) -> Option<Script> {
             let yours = Filter { players: false, creatures: false, planeswalkers: false, nonland_permanents: true, controller: Controller::You, ..Filter::ANY };
             d.spell = Some(up_to(vec![yours; 8], vec![Effect::PhaseOut { all: false }]));
         }),
+        "Tireless Tracker" => s(
+            &[
+                "Landfall — Whenever a land you control enters, investigate.",
+                "Whenever you sacrifice a Clue, put a +1/+1 counter on this creature.",
+            ],
+            |d, t| {
+                on(d, When::LandYouControlEnters, vec![], vec![Effect::Investigate { def: t.clue, n: 1 }]);
+                on(d, When::YouSacrificeSubtype("Clue"), vec![], vec![Effect::CountersSelf { n: 1 }]);
+            },
+        ),
+        "Academy Manufactor" => s(&["If you would create a Clue, Food, or Treasure token, instead create one of each."], |d, t| {
+            d.clue_food_treasure = Some([t.clue, t.food, t.treasure]);
+        }),
+        "Wavesifter" => s(&["When this creature enters, investigate twice.", "Evoke {G}{U}"], |d, t| {
+            on(d, When::Enters, vec![], vec![Effect::Investigate { def: t.clue, n: 2 }]);
+            d.alt_cost = Some((ManaCost::parse("{G}{U}").expect("cost"), 0));
+            d.mana_ext.evoke = true;
+            on(d, When::Enters, vec![], vec![Effect::SacrificeIfEvoked]);
+        }),
+        // ---- Damia, Sage of Stone (Grande): its last three ----
+        "All Suns' Dawn" => s(
+            &["For each color, return up to one target card of that color from your graveyard to your hand. Exile All Suns' Dawn."],
+            // The cards are chosen as it resolves (a graveyard has no hexproof to target past).
+            |d, _| spell(d, vec![], vec![Effect::OneCardOfEachColorToHand, Effect::ExileSourceSpell]),
+        ),
+        "Chain of Smog" => s(
+            &["Target player discards two cards. That player may copy this spell and may choose a new target for that copy."],
+            |d, _| spell(d, vec![Filter::PLAYER], vec![Effect::Discard { who: Who::TargetPlayer(0), n: 2 }, Effect::ChainCopy(0)]),
+        ),
+        "Kira, Great Glass-Spinner" => s(
+            &["Creatures you control have \"Whenever this creature becomes the target of a spell or ability for the first time each turn, counter that spell or ability.\""],
+            |d, _| {
+                on(d, When::Never, vec![], vec![Effect::CounterExtra]);
+                d.kira_trigger = Some(0);
+            },
+        ),
         _ => None,
     }
 }
@@ -1567,4 +1603,10 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Necromancy",
     "Teferi's Protection",
     "Clever Concealment",
+    "Tireless Tracker",
+    "Academy Manufactor",
+    "Wavesifter",
+    "All Suns' Dawn",
+    "Chain of Smog",
+    "Kira, Great Glass-Spinner",
 ];

@@ -2653,3 +2653,34 @@ fn dawn_of_hope_mystic_and_iconoclast_make_tokens() {
         .find(|&x| g.types_of(x).artifact);
     assert!(art.is_some());
 }
+
+#[test]
+fn storm_kiln_artist_makes_treasure_and_grows_with_artifacts() {
+    let mut g = table();
+    let kiln = put(&mut g, 0, "Storm-Kiln Artist");
+    let consider = hand(&mut g, 0, "Consider");
+    play(&mut g, consider, false, &[], &[Action::No]);
+    assert_eq!(tokens(&g, 0, "Treasure").len(), 1);
+    assert_eq!(g.power(kiln), 3, "2 plus one artifact (the Treasure)");
+}
+
+#[test]
+fn misdirection_pitches_and_redirects_and_mana_confluence() {
+    let mut g = table();
+    let mine = put(&mut g, 0, "Savannah Lions");
+    let theirs = put(&mut g, 1, "Llanowar Elves");
+    let bolt = hand(&mut g, 0, "Burst Lightning");
+    let mis = hand(&mut g, 0, "Misdirection");
+    let blue = hand(&mut g, 0, "Mana Leak");
+    act(&mut g, Action::Cast(bolt));
+    act(&mut g, Action::Target(Target::Object(mine)));
+    assert!(has(&g, Action::CastWith(mis, blue)));
+    act(&mut g, Action::CastWith(mis, blue));
+    act(&mut g, Action::Target(Target::Object(bolt)));
+    pass_until_asked(&mut g);
+    act(&mut g, Action::Target(Target::Object(theirs)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(theirs).zone, Zone::Graveyard);
+    assert_eq!(g.obj(mine).zone, Zone::Battlefield);
+    // Mana Confluence is desktop lane d1's (a mana source paid with life; tests/pg_d1.rs).
+}

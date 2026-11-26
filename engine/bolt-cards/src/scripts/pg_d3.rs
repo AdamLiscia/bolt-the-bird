@@ -1386,6 +1386,228 @@ pub fn script(name: &str) -> Option<Script> {
                 spell(d, vec![], vec![spirits, Effect::ExileSourceSpell]);
             },
         ),
+        // ---- Unblocked by lane d3's core theme, batch 13 ----
+        "Massacre Girl" => s(
+            &["When Massacre Girl enters, each other creature gets -1/-1 until end of turn. Whenever a creature dies this turn, each creature other than Massacre Girl gets -1/-1 until end of turn."],
+            |d, _| {
+                let shrink = Effect::PumpEachOtherCreature { power: -1, toughness: -1 };
+                on(d, When::Enters, vec![], vec![shrink, Effect::DelayedThisTurn { when: When::CreatureDiesThisTurn, trigger: 1 }]);
+                on(d, When::Never, vec![], vec![shrink]);
+            },
+        ),
+        "Archfiend of Ifnir" => s(
+            &["Whenever you cycle or discard another card, put a -1/-1 counter on each creature your opponents control.", "Cycling {2}"],
+            |d, _| {
+                // Cycling discards the card, so YouDiscard covers both; Archfiend itself is in your hand then.
+                on(d, When::YouDiscard, vec![], vec![Effect::MinusCounterEach(Who::EachOpponent)]);
+                let n = activated(d, "{2}", false, vec![], vec![draw(1)]);
+                d.activated[n].from_hand_discard = true;
+            },
+        ),
+        "The Meathook Massacre" => s(
+            &[
+                "When The Meathook Massacre enters, each creature gets -X/-X until end of turn.",
+                "Whenever a creature you control dies, each opponent loses 1 life.",
+                "Whenever a creature an opponent controls dies, you gain 1 life.",
+            ],
+            |d, _| {
+                on(d, When::Enters, vec![], vec![Effect::AllCreaturesGetMinusSourceX]);
+                on(d, When::CreatureYouControlDies, vec![], vec![Effect::LoseLife { who: Who::EachOpponent, n: 1 }]);
+                on(d, When::OpponentCreatureDies, vec![], vec![Effect::GainLife { who: Who::You, n: 1 }]);
+            },
+        ),
+        "Wan Shi Tong, Librarian" => s(
+            &[
+                "When Wan Shi Tong enters, put X +1/+1 counters on him. Then draw half X cards, rounded down.",
+                "Whenever an opponent searches their library, put a +1/+1 counter on Wan Shi Tong and draw a card.",
+            ],
+            |d, _| {
+                on(d, When::Enters, vec![], vec![Effect::CountersSelfXDrawHalfX]);
+                on(d, When::OpponentSearchesLibrary, vec![], vec![Effect::CountersSelf { n: 1 }, draw(1)]);
+            },
+        ),
+        "Korvold, Fae-Cursed King" => s(
+            &[
+                "Whenever Korvold enters or attacks, sacrifice another permanent.",
+                "Whenever you sacrifice a permanent, put a +1/+1 counter on Korvold and draw a card.",
+            ],
+            |d, _| {
+                on(d, When::Enters, vec![], vec![Effect::SacrificeAnotherPermanent]);
+                on(d, When::Attacks, vec![], vec![Effect::SacrificeAnotherPermanent]);
+                on(d, When::YouSacrifice, vec![], vec![Effect::CountersSelf { n: 1 }, draw(1)]);
+            },
+        ),
+        "Savra, Queen of the Golgari" => s(
+            &[
+                "Whenever you sacrifice a black creature, you may pay 2 life. If you do, each other player sacrifices a creature of their choice.",
+                "Whenever you sacrifice a green creature, you may gain 2 life.",
+            ],
+            |d, _| {
+                // 1v1: "each other player" is the opponent.
+                let edict = Effect::SacrificeCreatures { who: Who::EachOpponent, n: 1 };
+                on(d, When::YouSacrificeCreatureOfColor(Color::Black as usize), vec![], vec![Effect::MayPayLife(2), edict]);
+                may(d, When::YouSacrificeCreatureOfColor(Color::Green as usize), vec![], vec![Effect::GainLife { who: Who::You, n: 2 }]);
+            },
+        ),
+        "Benefactor's Draught" => s(
+            &["Untap all creatures. Until end of turn, whenever a creature an opponent controls blocks, draw a card.", "Draw a card."],
+            |d, _| {
+                let delayed = Effect::DelayedThisTurn { when: When::OpponentCreatureBlocks, trigger: 0 };
+                spell(d, vec![], vec![Effect::UntapAllCreatures, delayed, draw(1)]);
+                on(d, When::Never, vec![], vec![draw(1)]);
+            },
+        ),
+        "Well Rested" => s(
+            &[
+                "Enchant creature",
+                "Enchanted creature has \"Whenever this creature becomes untapped, put two +1/+1 counters on it, then you gain 2 life and draw a card. This ability triggers only once each turn.\"",
+            ],
+            |d, _| {
+                d.aura = true;
+                d.spell = Some(Ability::new(vec![CREATURE], vec![]));
+                let rested = Effect::CountersAttachedGainDraw { counters: 2, life: 2, cards: 1 };
+                on(d, When::EnchantedBecomesUntappedOnceEachTurn, vec![], vec![rested]);
+            },
+        ),
+        "Sphere Grid" => s(
+            &[
+                "Whenever a creature you control deals combat damage to a player, put a +1/+1 counter on that creature.",
+                "Unlock Ability — Creatures you control with +1/+1 counters on them have reach and trample.",
+            ],
+            |d, _| {
+                let it = Filter { triggering: true, ..YOUR_CREATURE };
+                on(d, When::YourCreatureDealsCombatDamageToPlayerIt, vec![it], vec![Effect::Counters { slot: 0, n: 1 }]);
+                static_on(d, Scope::YourCreaturesWithCounters, false, Keywords::REACH.with(Keywords::TRAMPLE));
+            },
+        ),
+        "Rapacious Guest" => s(
+            &[
+                "Whenever one or more creatures you control deal combat damage to a player, create a Food token.",
+                "Whenever you sacrifice a Food, put a +1/+1 counter on this creature.",
+                "When this creature leaves the battlefield, target opponent loses life equal to its power.",
+            ],
+            |d, t| {
+                on(d, When::YourCreaturesDealCombatDamageToPlayer, vec![], vec![Effect::CreateToken { who: Who::You, def: t.food, n: 1 }]);
+                on(d, When::YouSacrificeSubtype("Food"), vec![], vec![Effect::CountersSelf { n: 1 }]);
+                let opp = Filter::PLAYER.controlled_by(Controller::Opponent);
+                on(d, When::LeavesBattlefield, vec![opp], vec![Effect::LoseLifeSourcePower(Who::TargetPlayer(0))]);
+            },
+        ),
+        "Klothys, God of Destiny" => s(
+            &[
+                "As long as your devotion to red and green is less than seven, Klothys isn't a creature.",
+                "At the beginning of your first main phase, exile target card from a graveyard. If it was a land card, add {R} or {G}. Otherwise, you gain 2 life and Klothys deals 2 damage to each opponent.",
+            ],
+            |d, _| {
+                d.creature_unless_devotion = Some(([false, false, false, true, true], 7));
+                let exile = Effect::ExileGraveyardCardManaIfLandElseDrain { slot: 0, life: 2, damage: 2 };
+                on(d, When::FirstMainPhaseYourTurn, vec![graveyard_cards(false, Controller::Any)], vec![exile]);
+            },
+        ),
+        "Ripples of Undeath" => s(
+            &["At the beginning of your first main phase, mill three cards. Then you may pay {1} and 3 life. If you do, put a card from among those cards into your hand."],
+            |d, _| {
+                on(d, When::FirstMainPhaseYourTurn, vec![], vec![Effect::MillThenMayPayTakeOne { n: 3, mana: 1, life: 3 }]);
+            },
+        ),
+        // ---- Core theme d3, batch 14 ----
+        "Professor Onyx" => s(
+            &[
+                "Magecraft — Whenever you cast or copy an instant or sorcery spell, each opponent loses 2 life and you gain 2 life.",
+                "+1: You lose 1 life. Look at the top three cards of your library. Put one of them into your hand and the rest into your graveyard.",
+                "−3: Each opponent sacrifices a creature with the greatest power among creatures that player controls.",
+                "−8: Each opponent may discard a card. If they don't, they lose 3 life. Repeat this process six more times.",
+            ],
+            |d, _| {
+                let drain = vec![Effect::LoseLife { who: Who::EachOpponent, n: 2 }, Effect::GainLife { who: Who::You, n: 2 }];
+                on(d, When::YouCastOrCopyInstantOrSorcery, vec![], drain);
+                let look = Effect::LookAtTop { n: 3, pick: Pick::Any, chosen_to: LookTo::Hand, rest_to: LookRest::GraveyardTakeOne };
+                loyalty(d, 1, Ability::new(vec![], vec![Effect::LoseLife { who: Who::You, n: 1 }, look]));
+                loyalty(d, -3, Ability::new(vec![], vec![Effect::SacrificeGreatestPower(Who::EachOpponent)]));
+                loyalty(d, -8, Ability::new(vec![], vec![Effect::OpponentDiscardsOrLosesLife { n: 7, life: 3 }]));
+            },
+        ),
+        "Flusterstorm" => s(
+            &["Counter target instant or sorcery spell unless its controller pays {1}.", "Storm"],
+            |d, _| {
+                let instant_or_sorcery = Filter { spell_instant_or_sorcery: true, ..SPELL };
+                spell(d, vec![instant_or_sorcery], vec![Effect::CounterUnlessPays(0, 1, 1)]);
+                on(d, When::YouCastThis, vec![], vec![Effect::CopySourceSpell { storm: true }]);
+            },
+        ),
+        "End the Festivities" => s(
+            &["End the Festivities deals 1 damage to each opponent and each creature and planeswalker they control."],
+            |d, _| {
+                spell(d, vec![], vec![Effect::DamageEachOpponentAndTheirs { amount: 1, player: true, planeswalkers: true }]);
+            },
+        ),
+        "Tectonic Hazard" => s(&["Tectonic Hazard deals 1 damage to each opponent and each creature they control."], |d, _| {
+            spell(d, vec![], vec![Effect::DamageEachOpponentAndTheirs { amount: 1, player: true, planeswalkers: false }]);
+        }),
+        "Smash to Dust" => s(
+            &[
+                "Choose one —",
+                "• Destroy target artifact.",
+                "• Destroy target creature with defender.",
+                "• Smash to Dust deals 1 damage to each creature your opponents control.",
+            ],
+            |d, _| {
+                let artifact = Filter { players: false, creatures: false, planeswalkers: false, artifacts: true, ..Filter::ANY };
+                let defender = Filter { creature_needs_defender: true, ..CREATURE };
+                let sweep = Effect::DamageEachOpponentAndTheirs { amount: 1, player: false, planeswalkers: false };
+                modes(
+                    d,
+                    vec![
+                        Ability::new(vec![artifact], vec![Effect::Destroy(0)]),
+                        Ability::new(vec![defender], vec![Effect::Destroy(0)]),
+                        Ability::new(vec![], vec![sweep]),
+                    ],
+                )
+            },
+        ),
+        "Debt to the Deathless" => s(
+            &["Each opponent loses two times X life. You gain life equal to the life lost this way."],
+            |d, _| spell(d, vec![], vec![Effect::DrainXTimes(2)]),
+        ),
+        "Wall of Reverence" => s(
+            &["At the beginning of your end step, you may gain life equal to the power of target creature you control."],
+            |d, _| may(d, When::EndStep { your_turn_only: true }, vec![YOUR_CREATURE], vec![Effect::GainLifeSlotPower(0)]),
+        ),
+        "Buried Ruin" => s(
+            &["{T}: Add {C}.", "{2}, {T}, Sacrifice this land: Return target artifact card from your graveyard to your hand."],
+            |d, _| {
+                d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                let artifact_card = Filter { artifact_cards: true, ..graveyard_cards(false, Controller::You) };
+                let n = activated(d, "{2}", true, vec![artifact_card], vec![Effect::Bounce(0)]);
+                d.activated[n].sacrifice_self = true;
+            },
+        ),
+        "Tomb of the Spirit Dragon" => s(&["{T}: Add {C}.", "{2}, {T}: You gain 1 life for each colorless creature you control."], |d, _| {
+            d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+            activated(d, "{2}", true, vec![], vec![Effect::GainLifePerColorlessCreatureYouControl]);
+        }),
+        "Zhalfirin Void" => s(&["When this land enters, scry 1.", "{T}: Add {C}."], |d, _| {
+            d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+            on(d, When::Enters, vec![], vec![Effect::Scry { n: 1 }]);
+        }),
+        "All Is Dust" => s(&["Each player sacrifices all permanents they control that are one or more colors."], |d, _| {
+            spell(d, vec![], vec![Effect::SacrificeAllColoredPermanents]);
+        }),
+        "Bane of Bala Ged" => s(&["Whenever this creature attacks, defending player exiles two permanents they control."], |d, _| {
+            // 1v1: the defending player is the opponent.
+            on(d, When::Attacks, vec![], vec![Effect::OpponentExilesPermanents(2)]);
+        }),
+        "Portal to Phyrexia" => s(
+            &[
+                "When this artifact enters, each opponent sacrifices three creatures of their choice.",
+                "At the beginning of your upkeep, put target creature card from a graveyard onto the battlefield under your control. It's a Phyrexian in addition to its other types.",
+            ],
+            |d, _| {
+                on(d, When::Enters, vec![], vec![Effect::SacrificeCreatures { who: Who::EachOpponent, n: 3 }]);
+                let reanimate = Effect::ReanimateWithSubtype { slot: 0, subtype: "Phyrexian" };
+                on(d, When::Upkeep { your_turn_only: true }, vec![graveyard_cards(true, Controller::Any)], vec![reanimate]);
+            },
+        ),
         _ => None,
     }
 }
@@ -1580,4 +1802,31 @@ pub const PG_D3_SCRIPTED: &[&str] = &[
     "Abigale, Eloquent First-Year",
     // Core theme d3, batch 11
     "Storm of Souls",
+    // Core theme d3, batch 13
+    "Massacre Girl",
+    "Archfiend of Ifnir",
+    "The Meathook Massacre",
+    "Wan Shi Tong, Librarian",
+    "Korvold, Fae-Cursed King",
+    "Savra, Queen of the Golgari",
+    "Benefactor's Draught",
+    "Well Rested",
+    "Sphere Grid",
+    "Rapacious Guest",
+    "Klothys, God of Destiny",
+    "Ripples of Undeath",
+    // Core theme d3, batch 14
+    "Professor Onyx",
+    "Flusterstorm",
+    "End the Festivities",
+    "Tectonic Hazard",
+    "Smash to Dust",
+    "Debt to the Deathless",
+    "Wall of Reverence",
+    "Buried Ruin",
+    "Tomb of the Spirit Dragon",
+    "Zhalfirin Void",
+    "All Is Dust",
+    "Bane of Bala Ged",
+    "Portal to Phyrexia",
 ];
