@@ -920,13 +920,13 @@ mod pg_d1;
 mod pg_d2;
 mod pg_d3;
 // The merger's own cards (core hooks and the cards that test them).
-mod pg_m;
 mod pg_d4;
+mod pg_m;
 pub use pg_d1::PG_D1_SCRIPTED;
 pub use pg_d2::PG_D2_SCRIPTED;
 pub use pg_d3::PG_D3_SCRIPTED;
-pub use pg_m::PG_M_SCRIPTED;
 pub use pg_d4::PG_D4_SCRIPTED;
+pub use pg_m::PG_M_SCRIPTED;
 
 fn script_core(name: &str) -> Option<Script> {
     let s = |lines, build| Some(Script { lines, build });

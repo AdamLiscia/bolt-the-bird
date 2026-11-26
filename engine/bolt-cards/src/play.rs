@@ -63,7 +63,8 @@ fn run(j: &Job, pilot: &Pilot) -> Played {
                 turns: g.turn,
             };
         }
-        let out_of_time = WALL_CLOCK_LIMIT.load(Ordering::Relaxed) && started.elapsed().as_secs() >= GAME_SECONDS;
+        let out_of_time =
+            WALL_CLOCK_LIMIT.load(Ordering::Relaxed) && started.elapsed().as_secs() >= GAME_SECONDS;
         if g.turn > MAX_TURNS || out_of_time {
             break;
         }

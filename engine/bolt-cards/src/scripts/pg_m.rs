@@ -24,4 +24,9 @@ pub fn script(name: &str) -> Option<Script> {
     }
 }
 
-pub const PG_M_SCRIPTED: &[&str] = &["Ghostly Prison", "Propaganda", "Sphere of Safety", "Promise of Loyalty"];
+pub const PG_M_SCRIPTED: &[&str] = &[
+    "Ghostly Prison",
+    "Propaganda",
+    "Sphere of Safety",
+    "Promise of Loyalty",
+];

@@ -70,9 +70,16 @@ fn tokens(g: &Game, p: usize, name: &str) -> Vec<ObjId> {
         .collect()
 }
 
-/// Passes until player `p`'s declare-attackers step, answering decisions with `No`.
-fn to_attackers(g: &mut Game, p: usize) {
-    while g.pending != Pending::DeclareAttackers(p) {
+/// Passes toward player `p`'s declare-attackers step: true if it comes (some creature may attack), false
+/// if the engine skips it (none can) and the turn reaches its second main phase.
+fn reaches_attackers(g: &mut Game, p: usize) -> bool {
+    loop {
+        if g.pending == Pending::DeclareAttackers(p) {
+            return true;
+        }
+        if g.step == Step::Main2 || g.step == Step::End {
+            return false;
+        }
         let a = match g.pending {
             Pending::DeclareBlockers(_) => Action::FinishBlocks,
             Pending::Decide(_) => Action::No,
@@ -90,16 +97,19 @@ fn ghostly_prison_taxes_each_attacker() {
         put(g, 1, "Ghostly Prison");
         lions = put(g, 0, "Savannah Lions");
     });
-    to_attackers(&mut g, 0);
-    assert!(!g.legal_actions().contains(&Action::Attack(lions)), "can't pay {{2}}");
+    assert!(!reaches_attackers(&mut g, 0), "can't pay {{2}}: no attack step");
+    let _ = lions;
     // Two Plains: it attacks, and both are tapped to pay.
     let mut g = game_with(&["Plains", "Plains"], |g| {
         put(g, 1, "Ghostly Prison");
         lions = put(g, 0, "Savannah Lions");
     });
-    to_attackers(&mut g, 0);
+    assert!(reaches_attackers(&mut g, 0));
     act(&mut g, Action::Attack(lions));
-    let untapped = g.permanents(0).filter(|&x| g.def_of(x).name == "Plains" && !g.obj(x).tapped).count();
+    let untapped = g
+        .permanents(0)
+        .filter(|&x| g.def_of(x).name == "Plains" && !g.obj(x).tapped)
+        .count();
     assert_eq!(untapped, 0, "the tax was paid");
 }
 
@@ -111,36 +121,46 @@ fn sphere_of_safety_taxes_per_enchantment() {
         put(g, 1, "Ghostly Prison"); // a second enchantment: X = 2, and Ghostly Prison's own {2}
         lions = put(g, 0, "Savannah Lions");
     });
-    to_attackers(&mut g, 0);
     assert_eq!(g.attack_tax(1), 4);
-    assert!(!g.legal_actions().contains(&Action::Attack(lions)), "{{4}} with two lands");
+    assert!(
+        !reaches_attackers(&mut g, 0),
+        "{{4}} with two lands: no attack step"
+    );
+    let _ = lions;
 }
 
 #[test]
 fn promise_of_loyalty_keeps_one_each_and_the_vowed_cant_attack_you() {
+    let mut mine = [ObjId(0); 2];
     let mut theirs = [ObjId(0); 2];
     let mut lands = Vec::new();
     for land in ["Plains", "Island", "Swamp", "Mountain", "Forest"] {
         lands.extend([land; 5]);
     }
     let mut g = game_with(&lands, |g| {
-        put(g, 0, "Savannah Lions");
-        put(g, 0, "Savannah Lions");
+        mine = [put(g, 0, "Savannah Lions"), put(g, 0, "Savannah Lions")];
         theirs = [put(g, 1, "Savannah Lions"), put(g, 1, "Savannah Lions")];
     });
     let c = hand(&mut g, 0, "Promise of Loyalty");
-    play(&mut g, c, false, &[], &[]);
-    // Each player picks the creature to keep.
-    while let Pending::Decide(_) = g.pending {
-        let pick = g.legal_actions().into_iter().find(|a| matches!(a, Action::Pick(_))).expect("a pick");
-        act(&mut g, pick);
-    }
-    resolve_all(&mut g, &[]);
-    let mine = g.permanents(0).filter(|&x| g.types_of(x).creature).count();
-    let kept: Vec<ObjId> = theirs.iter().copied().filter(|&x| g.obj(x).zone == Zone::Battlefield).collect();
-    assert_eq!((mine, kept.len()), (1, 1), "one creature each");
+    // You vow first, then the opponent; each keeps its first creature.
+    play(
+        &mut g,
+        c,
+        false,
+        &[],
+        &[Action::Pick(mine[0]), Action::Pick(theirs[0])],
+    );
+    let kept_mine = g.permanents(0).filter(|&x| g.types_of(x).creature).count();
+    let kept: Vec<ObjId> = theirs
+        .iter()
+        .copied()
+        .filter(|&x| g.obj(x).zone == Zone::Battlefield)
+        .collect();
+    assert_eq!((kept_mine, kept.len()), (1, 1), "one creature each");
     assert!(g.vowed_against(kept[0], 0));
     g.start_turn(4, 1);
-    to_attackers(&mut g, 1);
-    assert!(!g.legal_actions().contains(&Action::Attack(kept[0])), "it can't attack the caster");
+    assert!(
+        !reaches_attackers(&mut g, 1),
+        "its only creature is vowed: it can't attack the caster"
+    );
 }
