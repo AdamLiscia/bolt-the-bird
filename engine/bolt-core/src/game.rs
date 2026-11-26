@@ -294,6 +294,11 @@ pub struct Object {
     pub type_changes: Vec<TypeChange>,
     /// The turn it was first targeted (Kira, Great Glass-Spinner); 0: not yet.
     pub kira_targeted_turn: u32,
+    /// The mana spent to cast it, set as it's cast (Mockingbird).
+    pub mana_spent: u32,
+    /// Phantasmal Image as a copy: "When this creature becomes the target of a spell or ability,
+    /// sacrifice it.", for the object with this zone-change count.
+    pub sacrifice_when_targeted: Option<u32>,
 }
 
 /// One resolved effect's change to a permanent's characteristics (lane d3's type-changing store):
@@ -663,6 +668,11 @@ pub enum StackKind {
     },
     /// The initiative's "that player ventures into Undercity" (CR 725.2).
     InitiativeVenture,
+    /// Phantasmal Image's "When this creature becomes the target of a spell or ability, sacrifice
+    /// it.", for the source with this zone-change count.
+    SacrificeWhenTargeted {
+        zcc: u32,
+    },
 }
 
 /// The ability of a ward trigger, which has no targets or effects of its own.
@@ -678,6 +688,12 @@ static WARD_ABILITY: Ability = Ability {
     divide_lands: false,
     targets_exactly_x: false,
 };
+
+/// Phantasmal Image's granted trigger: sacrifice it.
+fn sacrifice_when_targeted_ability() -> &'static Ability {
+    static A: std::sync::OnceLock<Ability> = std::sync::OnceLock::new();
+    A.get_or_init(|| Ability::new(Vec::new(), vec![Effect::SacrificeSourceWhenTargeted]))
+}
 
 /// Offspring's triggered ability (CR 702.175a): a 1/1 token copy of the creature.
 fn offspring_ability() -> &'static Ability {
@@ -1198,6 +1214,14 @@ pub enum Decision {
     /// Imprint: `Pick` an instant card with mana value 2 or less in your hand to exile for `source`,
     /// or `No`.
     ImprintInstant { source: ObjId },
+    /// Lonis: `Pick` a nonland permanent card with mana value `max_mv` or less from among `cards`
+    /// (the top of `victim`'s library) to put onto the battlefield under your control, or `No`; the
+    /// rest go to the bottom of their library in a random order.
+    PutFromOpponentsTop {
+        victim: PlayerId,
+        cards: Vec<ObjId>,
+        max_mv: u32,
+    },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -1927,6 +1951,8 @@ impl Game {
             enchanted_player: None,
             type_changes: Vec::new(),
             kira_targeted_turn: 0,
+            mana_spent: 0,
+            sacrifice_when_targeted: None,
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -3495,6 +3521,13 @@ impl Game {
         d.types.is_permanent()
             && (!noncreature_nonland || (!d.types.creature && !d.types.land))
             && max_mv.is_none_or(|m| d.cost.mana_value() <= m)
+    }
+
+    /// Lonis: a revealed card that may be put onto the battlefield: a nonland permanent card with
+    /// mana value at most `max_mv`.
+    fn opponents_top_ok(&self, c: ObjId, max_mv: u32) -> bool {
+        let d = self.def_of(c);
+        d.types.is_permanent() && !d.types.land && d.cost.mana_value() <= max_mv
     }
 
     fn put_among_rest(&mut self, p: PlayerId, mut cards: Vec<ObjId>, to_hand: bool) {
@@ -5272,6 +5305,7 @@ impl Game {
             StackKind::Offspring => offspring_ability(),
             StackKind::Activated(n) => &self.activated_of(item.source, n).ability,
             StackKind::Room { .. } | StackKind::InitiativeVenture => self.subsystem_ability(item.kind),
+            StackKind::SacrificeWhenTargeted { .. } => sacrifice_when_targeted_ability(),
         }
     }
 
@@ -7464,6 +7498,23 @@ impl Game {
                     }
                     continue;
                 }
+                if let Some(sub) = a.sacrifice_x_subtype {
+                    // "Sacrifice X Clues" (Lonis): X from 1 to the number you could sacrifice.
+                    let have = self
+                        .permanents(p)
+                        .filter(|&c| self.has_subtype(c, sub) && !self.cant_be_sacrificed(c))
+                        .count()
+                        .min(30) as u8;
+                    for x in 1..=have {
+                        v.push(Action::ActivateX {
+                            id,
+                            n,
+                            victim: None,
+                            x,
+                        });
+                    }
+                    continue;
+                }
                 if a.tap_x_untapped_tokens {
                     let tokens = self.untapped_tokens(p, id).len().min(30) as u8;
                     for x in 0..=tokens {
@@ -7876,6 +7927,18 @@ impl Game {
             self.obj_mut(id).counters -= 1; // Devoted Druid: a -1/-1 counter
             let controller = self.obj(id).controller;
             self.counters_placed(controller, 1);
+        }
+        if let Some(sub) = a.sacrifice_x_subtype {
+            // "Sacrifice X Clues": the engine picks which, the first X.
+            let victims: Vec<ObjId> = self
+                .permanents(p)
+                .filter(|&c| self.has_subtype(c, sub) && !self.cant_be_sacrificed(c))
+                .take(x as usize)
+                .collect();
+            for c in victims {
+                self.move_to(c, Zone::Graveyard);
+                self.sacrificed(c, p);
+            }
         }
         if a.tap_x_untapped_tokens {
             // The payer picks which tokens to tap: the first X untapped ones.
@@ -9031,6 +9094,10 @@ impl Game {
     fn copy_option(&self, clone: ObjId, x: ObjId) -> bool {
         let t = self.types_of(x);
         let d = self.def_of(clone);
+        // Mockingbird: mana value at most the mana spent to cast it.
+        if d.zones.copy_mv_at_most_spent && self.def_of(x).cost.mana_value() > self.obj(clone).mana_spent {
+            return false;
+        }
         if d.copy_artifact {
             return t.artifact || t.creature;
         }
@@ -9293,6 +9360,7 @@ impl Game {
         }
         // Expend: "as you spend your Nth total mana to cast spells during a turn".
         let spent = cost.mana_value();
+        self.obj_mut(card).mana_spent = spent; // Mockingbird
         let turn = self.turn;
         let (t, before) = self.mana_spent_on_spells[p];
         let before = if t == turn { before } else { 0 };
@@ -9773,6 +9841,23 @@ impl Game {
     /// CR 702.21a: whenever a permanent with ward becomes the target of a spell or ability an
     /// opponent controls, its ward triggers.
     fn ward_check(&mut self, item: &StackItem) {
+        // Phantasmal Image: "When this creature becomes the target of a spell or ability, sacrifice
+        // it."
+        for &t in &item.targets {
+            if let Chosen::Object(id, _) = t {
+                let o = self.obj(id);
+                if o.zone == Zone::Battlefield
+                    && o.sacrifice_when_targeted == Some(o.zcc)
+                    && !self.lost_abilities(id)
+                {
+                    let (zcc, controller) = (o.zcc, o.controller);
+                    self.triggered.push(StackItem {
+                        kind: StackKind::SacrificeWhenTargeted { zcc },
+                        ..Game::casting(id, controller)
+                    });
+                }
+            }
+        }
         // Kira, Great Glass-Spinner: the first time each turn a creature of its controller's is
         // targeted, counter that spell or ability.
         for &t in &item.targets {
@@ -10706,6 +10791,16 @@ impl Game {
                 .filter(|&c| self.is_token(c))
                 .map(Action::Pick)
                 .collect(),
+            Decision::PutFromOpponentsTop { cards, max_mv, .. } => {
+                let mut v: Vec<Action> = cards
+                    .iter()
+                    .copied()
+                    .filter(|&c| self.opponents_top_ok(c, *max_mv))
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
             Decision::ImprintInstant { .. } => {
                 let mut v: Vec<Action> = hand
                     .iter()
@@ -11259,6 +11354,16 @@ impl Game {
                 let eot = self.defs[printed].copy_until_eot_haste;
                 self.become_copy(card, def);
                 self.obj_mut(card).copy_exceptions = true;
+                // Exceptions from the clone's own card: extra creature types and keywords, and
+                // Phantasmal Image's sacrifice trigger.
+                let own = self.defs[printed].zones.clone();
+                let zcc = self.obj(card).zcc;
+                let o = self.obj_mut(card);
+                o.extra_subtypes.extend(own.copy_adds_subtypes.iter().copied());
+                o.granted = o.granted.with(own.copy_adds_keywords);
+                if own.copy_sacrifice_when_targeted {
+                    o.sacrifice_when_targeted = Some(zcc);
+                }
                 if eot {
                     // Cursed Mirror: until end of turn, with haste.
                     let zcc = self.obj(card).zcc;
@@ -12059,6 +12164,18 @@ impl Game {
                 self.obj_mut(source).hideaway = Some(c); // the linked exiled card
             }
             (Decision::ImprintInstant { .. }, Action::No) => {}
+            (Decision::PutFromOpponentsTop { victim, cards, .. }, Action::Pick(c)) => {
+                let rest: Vec<ObjId> = cards.into_iter().filter(|&k| k != c).collect();
+                self.obj_mut(c).controller = p; // under your control as it enters
+                self.move_to(c, Zone::Battlefield);
+                if self.obj(c).zone == Zone::Battlefield {
+                    self.obj_mut(c).controller = p;
+                }
+                self.put_among_rest(victim, rest, false);
+            }
+            (Decision::PutFromOpponentsTop { victim, cards, .. }, Action::No) => {
+                self.put_among_rest(victim, cards, false)
+            }
             (Decision::Populate, Action::Pick(c)) => self.populate_copy(p, c),
             (Decision::CardOfColorToHand { color }, choice) => {
                 if let Action::Pick(c) = choice {
@@ -19346,6 +19463,64 @@ impl Game {
                             o.controller = item.controller;
                             o.extra_subtypes.push(subtype);
                         }
+                    }
+                }
+            }
+            Effect::OpponentRevealsTopXPutNonlandPermanent(slot) => {
+                if let Some(victim) = self
+                    .players_for(item, legal, Who::TargetPlayer(slot))
+                    .into_iter()
+                    .next()
+                {
+                    let max_mv = item.x as u32;
+                    let cards: Vec<ObjId> = self.players[victim]
+                        .library
+                        .iter()
+                        .rev()
+                        .take(item.x as usize)
+                        .copied()
+                        .collect();
+                    if cards.iter().any(|&c| self.opponents_top_ok(c, max_mv)) {
+                        self.ask(
+                            item.controller,
+                            Decision::PutFromOpponentsTop {
+                                victim,
+                                cards,
+                                max_mv,
+                            },
+                        );
+                    } else if !cards.is_empty() {
+                        self.put_among_rest(victim, cards, false);
+                    }
+                }
+            }
+            Effect::SacrificeSourceWhenTargeted => {
+                let same =
+                    matches!(item.kind, StackKind::SacrificeWhenTargeted { zcc } if zcc == self.obj(src).zcc);
+                if same && self.obj(src).zone == Zone::Battlefield && !self.cant_be_sacrificed(src) {
+                    let p = self.obj(src).controller;
+                    self.move_to(src, Zone::Graveyard);
+                    self.sacrificed(src, p);
+                }
+            }
+            Effect::TokenCopyOfSourceArtifactIfNontoken => {
+                if !self.is_token(src) {
+                    // CR 707.2: the copy takes its printed card.
+                    let def = self.obj(src).def;
+                    self.last_created.clear();
+                    for _ in 0..self.token_doubling(item.controller) {
+                        let id = self.add_card(item.controller, def, Zone::Hand);
+                        self.obj_mut(id).copy_token = true;
+                        self.move_to(id, Zone::Battlefield);
+                        self.add_type_change(
+                            id,
+                            TypeChange {
+                                artifact: true,
+                                turn: u32::MAX,
+                                ..TypeChange::default()
+                            },
+                        );
+                        self.last_created.push(id);
                     }
                 }
             }

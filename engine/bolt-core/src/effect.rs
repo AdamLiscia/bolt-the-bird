@@ -2091,6 +2091,17 @@ pub enum Effect {
     ImprintInstantFromHand,
     /// You may cast a copy of the source's imprinted card without paying its mana cost.
     CastImprintedCopy,
+    /// The opponent in target `slot` reveals the top X cards of their library (X the item's `x`);
+    /// you may put a nonland permanent card with mana value X or less from among them onto the
+    /// battlefield under your control, as `Decision::PutFromOpponentsTop`; they put the rest on the
+    /// bottom in a random order (Lonis, Cryptozoologist).
+    OpponentRevealsTopXPutNonlandPermanent(u8),
+    /// Phantasmal Image's granted trigger (`StackKind::SacrificeWhenTargeted`): sacrifice the
+    /// source, if it's still the same object.
+    SacrificeSourceWhenTargeted,
+    /// "If it's not a token, create a token that's a copy of it, except it's an artifact in
+    /// addition to its other types." (Vaultborn Tyrant's dies trigger)
+    TokenCopyOfSourceArtifactIfNontoken,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

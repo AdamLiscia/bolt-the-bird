@@ -1457,6 +1457,62 @@ pub fn script(name: &str) -> Option<Script> {
                 activated(d, "{2}", true, vec![], vec![Effect::CastImprintedCopy]);
             },
         ),
+        // ---- Objects and zones batch 6: sacrifice X Clues, and copies ----
+        "Lonis, Cryptozoologist" => s(
+            &[
+                "Whenever another nontoken creature you control enters, investigate.",
+                "{T}, Sacrifice X Clues: Target opponent reveals the top X cards of their library. You may put a nonland permanent card with mana value X or less from among them onto the battlefield under your control. That player puts the rest on the bottom of their library in a random order.",
+            ],
+            |d, t| {
+                on(d, When::AnotherNontokenCreatureYouControlEnters, vec![], vec![Effect::Investigate { def: t.clue, n: 1 }]);
+                let opp = Filter::PLAYER.controlled_by(Controller::Opponent);
+                let n = activated(d, "", true, vec![opp], vec![Effect::OpponentRevealsTopXPutNonlandPermanent(0)]);
+                d.activated[n].sacrifice_x_subtype = Some("Clue");
+            },
+        ),
+        "Vaultborn Tyrant" => s(
+            &[
+                "Whenever this creature or another creature you control with power 4 or greater enters, you gain 3 life and draw a card.",
+                "When this creature dies, if it's not a token, create a token that's a copy of it, except it's an artifact in addition to its other types.",
+            ],
+            |d, _| {
+                on(d, When::YourCreatureEntersWithPowerAtLeast(4), vec![], vec![Effect::GainLife { who: Who::You, n: 3 }, draw(1)]);
+                on(d, When::Dies, vec![], vec![Effect::TokenCopyOfSourceArtifactIfNontoken]);
+            },
+        ),
+        "Phantasmal Image" => s(
+            &["You may have this creature enter as a copy of any creature on the battlefield, except it's an Illusion in addition to its other types and it has \"When this creature becomes the target of a spell or ability, sacrifice it.\""],
+            |d, _| {
+                d.enter_as_copy = true;
+                d.zones.copy_adds_subtypes = &["Illusion"];
+                d.zones.copy_sacrifice_when_targeted = true;
+            },
+        ),
+        "Mockingbird" => s(
+            &["You may have this creature enter as a copy of any creature on the battlefield with mana value less than or equal to the amount of mana spent to cast this creature, except it's a Bird in addition to its other types and it has flying."],
+            |d, _| {
+                d.enter_as_copy = true;
+                d.zones.copy_mv_at_most_spent = true;
+                d.zones.copy_adds_subtypes = &["Bird"];
+                d.zones.copy_adds_keywords = Keywords::FLYING;
+            },
+        ),
+        "Glasspool Mimic // Glasspool Shore" => s(
+            &[
+                "You may have this creature enter as a copy of a creature you control, except it's a Shapeshifter Rogue in addition to its other types.",
+                "Back: This land enters tapped.",
+                "Back: {T}: Add {U}.",
+            ],
+            |d, _| {
+                d.enter_as_copy = true;
+                d.copy_only_yours = true;
+                d.zones.copy_adds_subtypes = &["Shapeshifter", "Rogue"];
+                d.modal_back = true;
+                let b = d.back.as_mut().expect("Glasspool Shore");
+                b.enters_tapped = true;
+                b.mana = Some(ManaSource::of(&[Color::Blue]));
+            },
+        ),
         _ => None,
     }
 }
@@ -1632,4 +1688,9 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Kira, Great Glass-Spinner",
     "Trostani, Selesnya's Voice",
     "Isochron Scepter",
+    "Lonis, Cryptozoologist",
+    "Vaultborn Tyrant",
+    "Phantasmal Image",
+    "Mockingbird",
+    "Glasspool Mimic // Glasspool Shore",
 ];

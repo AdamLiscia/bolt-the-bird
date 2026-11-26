@@ -309,6 +309,9 @@ pub struct Activated {
     /// "Tap an untapped creature you control" in the cost (The Shire); the engine picks which (one
     /// that isn't a mana source, then the least power).
     pub tap_untapped_creature: bool,
+    /// "Sacrifice X [subtype]" in the cost (Lonis: "Sacrifice X Clues"): activated as `ActivateX`
+    /// with no victim, X from 1 to the number you could sacrifice; the engine picks which.
+    pub sacrifice_x_subtype: Option<&'static str>,
 }
 
 /// The printed card. Shared by every copy; per-copy state lives on the game object.
@@ -886,6 +889,9 @@ pub struct CardDef {
     pub unspent_mana_becomes_colorless: bool,
     /// "Cast this spell only during your end step." (Necrologia)
     pub cast_only_during_your_end_step: bool,
+    /// The Mac C objects-and-zones pieces (copy exceptions, ...), grouped so adding one touches
+    /// only [`ZonesExt`].
+    pub zones: ZonesExt,
 }
 
 /// A card's pieces from the d4 subsystems (see [`CardDef::subsystems`]).
@@ -1325,6 +1331,7 @@ impl CardDef {
             opponents_max_hand_minus: 0,
             win_on_empty_draw: false,
             extra_upkeep_for_enchanted: false,
+            zones: ZonesExt::default(),
         }
     }
 
@@ -1579,6 +1586,7 @@ impl CardDef {
             opponents_max_hand_minus: 0,
             win_on_empty_draw: false,
             extra_upkeep_for_enchanted: false,
+            zones: ZonesExt::default(),
         }
     }
 
@@ -1833,8 +1841,25 @@ impl CardDef {
             opponents_max_hand_minus: 0,
             win_on_empty_draw: false,
             extra_upkeep_for_enchanted: false,
+            zones: ZonesExt::default(),
         }
     }
+}
+
+/// A card's objects-and-zones pieces added by the Mac C theme (see [`CardDef::zones`]).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct ZonesExt {
+    /// As a clone that entered as a copy (`enter_as_copy`): these creature types in addition to the
+    /// copied ones (Glasspool Mimic: Shapeshifter Rogue; Phantasmal Image: Illusion; Mockingbird:
+    /// Bird).
+    pub copy_adds_subtypes: &'static [&'static str],
+    /// As a clone that entered as a copy: these keywords too (Mockingbird: flying).
+    pub copy_adds_keywords: Keywords,
+    /// As a clone that entered as a copy: "When this creature becomes the target of a spell or
+    /// ability, sacrifice it." (Phantasmal Image)
+    pub copy_sacrifice_when_targeted: bool,
+    /// It may copy only a creature with mana value at most the mana spent to cast it (Mockingbird).
+    pub copy_mv_at_most_spent: bool,
 }
 
 #[cfg(test)]
