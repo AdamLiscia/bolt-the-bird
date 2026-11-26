@@ -1924,3 +1924,31 @@ fn tap_an_untapped_creature_as_a_cost_not_its_mana() {
     assert!(g.obj(bear).tapped && g.obj(d).tapped);
     assert!(!g.obj(s).tapped, "no {{T}}");
 }
+
+#[test]
+fn swampwalk_is_unblockable_while_the_defender_controls_a_swamp() {
+    use batch3::*;
+    let walker = || CardDef::creature("Walker", "{B}", 2, 2, Keywords::SWAMPWALK);
+    let mut g = batch6_board(vec![walker()], 0);
+    let a = put(&mut g, 0, 25);
+    let bear = put(&mut g, 1, GREEN_BEAR);
+    assert_eq!(blockers_for(&mut g, a), vec![bear], "no Swamp");
+    let mut g = batch6_board(vec![walker()], 0);
+    let a = put(&mut g, 0, 25);
+    put(&mut g, 1, GREEN_BEAR);
+    g.add_card(1, SWAMP, Zone::Battlefield);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(a));
+    act(&mut g, Action::FinishAttacks);
+    let life = g.players[1].life;
+    while g.step != Step::Main2 {
+        assert!(
+            !matches!(g.pending, Pending::DeclareBlockers(_)),
+            "the defender has a Swamp: no blocks"
+        );
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.players[1].life, life - 2);
+}

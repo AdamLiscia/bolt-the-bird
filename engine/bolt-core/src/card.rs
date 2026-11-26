@@ -41,6 +41,7 @@ keywords! {
     FEAR = 19, "Fear";
     INTIMIDATE = 20, "Intimidate";
     SHADOW = 21, "Shadow";
+    SWAMPWALK = 22, "Swampwalk";
 }
 
 impl Keywords {
