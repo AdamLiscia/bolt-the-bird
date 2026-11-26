@@ -732,3 +732,69 @@ fn commanders_plate_equips_a_commander_for_three() {
     );
     assert_eq!(g.protection(bello), [true, true, true, false, false]);
 }
+
+// ---- Sagas ----
+
+#[test]
+fn urzas_saga_gains_its_mana_then_its_construct_ability_chapter_by_chapter() {
+    supported("Urza's Saga");
+    let mut g = table();
+    let saga = put(&mut g, 0, "Urza's Saga");
+    assert!(g.lacks_chapter_mana(saga), "no {{T}}: Add {{C}} before chapter I");
+    assert!(g.lacks_chapter_activated(saga, 0));
+    g.chapter_grants.push((saga, g.obj(saga).zcc, 1));
+    assert!(!g.lacks_chapter_mana(saga), "chapter I: a mana source");
+    assert!(
+        !g.legal_actions().contains(&Action::Activate(saga, 0)),
+        "no Construct ability before chapter II"
+    );
+    g.chapter_grants.push((saga, g.obj(saga).zcc, 2));
+    assert!(g.legal_actions().contains(&Action::Activate(saga, 0)));
+    act(&mut g, Action::Activate(saga, 0));
+    resolve_all(&mut g, &[]);
+    let constructs = g
+        .permanents(0)
+        .filter(|&x| g.is_token(x) && g.def_of(x).name == "Construct")
+        .count();
+    assert_eq!(constructs, 1);
+}
+
+#[test]
+fn urzas_saga_chapters_run_from_playing_it_to_its_search_and_sacrifice() {
+    let mut g = table();
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Library);
+    g.players[0].library.rotate_right(1); // to the bottom, so the draw steps don't draw it
+    let saga = hand(&mut g, 0, "Urza's Saga");
+    act(&mut g, Action::PlayLand(saga));
+    resolve_all(&mut g, &[]);
+    assert!(
+        !g.lacks_chapter_mana(saga),
+        "chapter I resolved: {{T}}: Add {{C}}"
+    );
+    assert!(g.lacks_chapter_activated(saga, 0), "not chapter II yet");
+    let main = |g: &Game| {
+        g.active == 0
+            && g.step == Step::Main1
+            && g.items.is_empty()
+            && g.triggered.is_empty()
+            && matches!(g.pending, Pending::Priority(_))
+    };
+    advance(&mut g, |g| g.active == 1);
+    advance(&mut g, main);
+    assert!(
+        !g.lacks_chapter_activated(saga, 0),
+        "chapter II: the Construct ability"
+    );
+    advance(&mut g, |g| g.active == 1);
+    advance(&mut g, main);
+    assert_eq!(
+        g.obj(ring).zone,
+        Zone::Battlefield,
+        "chapter III: a {{1}} artifact"
+    );
+    assert_eq!(
+        g.obj(saga).zone,
+        Zone::Graveyard,
+        "sacrificed after its last chapter"
+    );
+}

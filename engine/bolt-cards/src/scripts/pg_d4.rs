@@ -354,6 +354,31 @@ pub fn script(name: &str) -> Option<Script> {
                 equip(d, "{5}");
             },
         ),
+        // ---- Sagas: chapter grants (`SubsystemEffect::GainChapterAbilities`) ----
+        "Urza's Saga" => s(
+            &[
+                "I — This Saga gains \"{T}: Add {C}.\"",
+                "II — This Saga gains \"{2}, {T}: Create a 0/0 colorless Construct artifact creature token with 'This token gets +1/+1 for each artifact you control.'\"",
+                "III — Search your library for an artifact card with mana cost {0} or {1}, put it onto the battlefield, then shuffle.",
+            ],
+            |d, t| {
+                // The granted abilities are printed here and gated: the mana ability until chapter I
+                // resolves (`lacks_chapter_mana`), activated ability 0 until chapter II resolves
+                // (`lacks_chapter_activated`).
+                d.mana = Some(ManaSource {
+                    colorless: true,
+                    ..ManaSource::default()
+                });
+                d.subsystems.chapter_mana = Some(1);
+                let construct = Effect::CreateToken { who: Who::You, def: t.saga_construct, n: 1 };
+                let n = activated(d, "{2}", true, vec![], vec![construct]);
+                d.subsystems.chapter_activated = vec![(2, n)];
+                chapter(d, 1, Ability::new(vec![], vec![sub(SubsystemEffect::GainChapterAbilities(1))]));
+                chapter(d, 2, Ability::new(vec![], vec![sub(SubsystemEffect::GainChapterAbilities(2))]));
+                let artifact = search(SearchFor::ArtifactManaCostZeroOrOne, SearchTo::Battlefield { tapped: false });
+                chapter(d, 3, Ability::new(vec![], vec![artifact]));
+            },
+        ),
         _ => None,
     }
 }
@@ -389,4 +414,6 @@ pub const PG_D4_SCRIPTED: &[&str] = &[
     // Lane B's effects entries
     "Echoing Assault",
     "Commander's Plate",
+    // Sagas
+    "Urza's Saga",
 ];
