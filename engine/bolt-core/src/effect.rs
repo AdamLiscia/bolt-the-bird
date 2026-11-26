@@ -1892,6 +1892,11 @@ pub enum Effect {
     },
     /// The player in `slot` draws X cards (X the spell's X) (Stroke of Genius).
     DrawXTarget(u8),
+    /// "You may cast a spell with mana value `max_mv` or less from your hand without paying its mana
+    /// cost." (Rishkar's Expertise): a free-cast window over those cards, for one spell.
+    MayCastFromHandFree {
+        max_mv: u32,
+    },
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

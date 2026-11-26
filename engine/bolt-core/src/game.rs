@@ -1378,6 +1378,9 @@ pub struct Game {
     pub extra_upkeeps: u8,
     /// Spells cast with escape: (card, the zone-change count it will have on the battlefield).
     pub escaped: Vec<(ObjId, u32)>,
+    /// The open free-cast window allows one spell: it closes once one of [`Game::free_casts`] is
+    /// cast (Rishkar's Expertise: "a spell ... from your hand").
+    pub free_casts_one: bool,
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -1611,6 +1614,7 @@ impl Game {
             upkeeps_this_turn: (0, 0),
             extra_upkeeps: 0,
             escaped: Vec::new(),
+            free_casts_one: false,
         }
     }
 
@@ -2762,6 +2766,7 @@ impl Game {
             for (n, a) in self.def_of(aura).activated.iter().enumerate() {
                 if a.granted_to_attached
                     && (!a.tap_attached || self.can_tap(c))
+                    && (!a.untap_attached || self.can_untap_for_cost(c))
                     && self.can_pay_for(p, &a.mana, None, PayFor::Ability(c))
                 {
                     v.push(Action::Activate(aura, n));
@@ -5653,6 +5658,18 @@ impl Game {
                         }
                     }
                 }
+                // Demon of Death's Gate, Sephara: life, sacrifices or taps rather than the mana cost.
+                if let Some(alt) = def.mana_ext.alt_cost_ext {
+                    if self.alt_ext_payable(p, &alt) {
+                        v.push((
+                            Action::CastAlternative(c),
+                            CastMode {
+                                alt: true,
+                                ..CastMode::default()
+                            },
+                        ));
+                    }
+                }
                 // Force of Vigor: exile a card of that color from your hand instead, not on your turn.
                 if let (Some(color), false) = (def.pitch_not_your_turn, p == self.active) {
                     for &x in &self.players[p].hand {
@@ -5744,6 +5761,9 @@ impl Game {
         } else if mode.alt {
             match def.alt_cost {
                 Some((c, _)) => c,
+                None if def.mana_ext.alt_cost_ext.is_some() => {
+                    def.mana_ext.alt_cost_ext.expect("alt cost").mana
+                }
                 None if def.mana_ext.escape.is_some() => {
                     def.mana_ext.escape.expect("escape").0.with_x(mode.x)
                 }
@@ -6015,6 +6035,10 @@ impl Game {
                 continue;
             }
             let e = &self.def_of(x).mana_ext;
+            n += e.spell_discount_all as usize;
+            if creature && !self.cast_creature_noncreature[p][0] {
+                n += e.first_creature_spell_discount as usize; // Shadow in the Warp
+            }
             if t.enchantment && mode.mode != Some(OMEN_MODE) {
                 n += e.enchantment_spell_discount as usize;
             }
@@ -6639,6 +6663,61 @@ impl Game {
         }
     }
 
+    /// An untapped legendary creature `p` controls other than `except`, for a "Tap an untapped
+    /// legendary creature you control" cost (Dungeon Descent).
+    fn untapped_legendary(&self, p: PlayerId, except: ObjId) -> Option<ObjId> {
+        self.creatures(p)
+            .find(|&c| c != except && !self.obj(c).tapped && self.types_of(c).legendary)
+    }
+
+    /// Whether a tapped permanent can pay a {Q} cost: the same summoning-sickness rule as {T}
+    /// (CR 302.6).
+    fn can_untap_for_cost(&self, id: ObjId) -> bool {
+        let o = self.obj(id);
+        o.tapped
+            && (!self.types_of(id).creature
+                || o.since_turn < self.turn
+                || self.keywords(id).has(Keywords::HASTE)
+                || self
+                    .permanents(o.controller)
+                    .any(|x| self.def_of(x).creatures_abilities_haste && !self.lost_abilities(x)))
+    }
+
+    /// How much less `p`'s non-mana activated abilities cost (Zirda, the Dawnwaker).
+    fn ability_discount(&self, p: PlayerId) -> u8 {
+        self.permanents(p)
+            .filter(|&x| !self.lost_abilities(x))
+            .map(|x| self.def_of(x).mana_ext.ability_discount as u32)
+            .sum::<u32>()
+            .min(255) as u8
+    }
+
+    /// `cost` less `n` generic mana unless `a` is a mana ability, never below one mana (Zirda).
+    fn ability_discounted(a: &crate::Activated, n: u8, mut cost: ManaCost) -> ManaCost {
+        let mana_ability = a.ability.effects.iter().any(|e| {
+            matches!(
+                e,
+                Effect::AddMana { .. }
+                    | Effect::AddManaAnyColor
+                    | Effect::AddColorless { .. }
+                    | Effect::AddManaEither { .. }
+                    | Effect::AddManaAnyColorsX
+                    | Effect::AddAnyColorsGreatestPower
+                    | Effect::AddRedOrGreenPerCreature
+                    | Effect::AddManaDevotion(_)
+                    | Effect::AddManaPerCount { .. }
+                    | Effect::AddManaSourcePower(_)
+                    | Effect::AddManaPerHandSize { .. }
+            )
+        });
+        if n == 0 || mana_ability {
+            return cost;
+        }
+        let room = cost.mana_value().saturating_sub(1).min(u8::MAX as u32) as u8;
+        cost.generic = cost.generic.saturating_sub(n.min(room));
+        cost
+    }
+
     /// Untapped creatures `p` controls with this subtype, other than `except`.
     fn untapped_with(&self, p: PlayerId, sub: &str, except: ObjId) -> Vec<ObjId> {
         self.creatures(p)
@@ -6649,6 +6728,7 @@ impl Game {
     /// Activated abilities `p` can activate now (CR 602.2, 602.5).
     fn activations(&self, p: PlayerId) -> Vec<Action> {
         let mut v = Vec::new();
+        let ability_discount = self.ability_discount(p);
         let graveyard = self.players[p].graveyard.iter().copied();
         let hand = self.players[p].hand.iter().copied();
         for id in self.permanents(p).chain(graveyard).chain(hand) {
@@ -6695,6 +6775,7 @@ impl Game {
                             .is_some_and(|(c, z)| self.obj(c).zcc == z && self.can_tap(c)))
                     || a.tap_untapped
                         .is_some_and(|(sub, n)| self.untapped_with(p, sub, id).len() < n as usize)
+                    || (a.tap_untapped_legendary && self.untapped_legendary(p, id).is_none())
                     || !sorcery_ok
                     || self.permanents(p).count() < a.min_permanents as usize
                     || (a.opponent_min_lands > 0
@@ -6711,20 +6792,24 @@ impl Game {
                     || self.players[p].life < a.life
                     || !self.can_pay_for(
                         p,
-                        &if a.less_per_legendary_creature {
-                            let mut c = a.mana;
-                            c.generic = c.generic.saturating_sub(self.legendary_creatures(p));
-                            c
-                        } else if a.less_per_target_color {
-                            // The best target: the most colors among your creatures.
-                            let best = self
-                                .creatures(p)
-                                .max_by_key(|&c| self.colors_of(c).iter().filter(|&&b| b).count());
-                            self.color_discounted(a, best)
-                        } else {
-                            self.phyrexian_activation_cost(p, a, uses_self.then_some(id), id)
-                                .0
-                        },
+                        &Game::ability_discounted(
+                            a,
+                            ability_discount,
+                            if a.less_per_legendary_creature {
+                                let mut c = a.mana;
+                                c.generic = c.generic.saturating_sub(self.legendary_creatures(p));
+                                c
+                            } else if a.less_per_target_color {
+                                // The best target: the most colors among your creatures.
+                                let best = self
+                                    .creatures(p)
+                                    .max_by_key(|&c| self.colors_of(c).iter().filter(|&&b| b).count());
+                                self.color_discounted(a, best)
+                            } else {
+                                self.phyrexian_activation_cost(p, a, uses_self.then_some(id), id)
+                                    .0
+                            },
+                        ),
                         uses_self.then_some(id),
                         PayFor::Ability(id),
                     )
@@ -7066,6 +7151,7 @@ impl Game {
         if life > 0 && a.mana.x == 0 {
             cost = cheaper; // Phyrexian pips paid with life
         }
+        let cost = Game::ability_discounted(&a, self.ability_discount(p), cost);
         self.pay_mana_for(p, &cost, exclude, PayFor::Ability(id));
         if life > 0 && a.mana.x == 0 {
             self.lose_life(p, life);
@@ -7169,8 +7255,18 @@ impl Game {
                 self.become_tapped(c);
             }
         }
+        if a.untap_attached {
+            if let Some((c, _)) = self.obj(id).attached_to {
+                self.untap_by_effect(c); // {Q}
+            }
+        }
         if let Some((sub, n)) = a.tap_untapped {
             for c in self.untapped_with(p, sub, id).into_iter().take(n as usize) {
+                self.become_tapped(c);
+            }
+        }
+        if a.tap_untapped_legendary {
+            if let Some(c) = self.untapped_legendary(p, id) {
                 self.become_tapped(c);
             }
         }
@@ -7623,6 +7719,9 @@ impl Game {
     /// Fear and intimidate (CR 702.36b, 702.13b): only an artifact creature, or a black creature
     /// (fear) or one sharing a color with the attacker (intimidate), may block it.
     fn evades_ok(&self, blocker: ObjId, attacker: ObjId) -> bool {
+        if !self.mana_ext_block_ok(blocker, attacker) {
+            return false;
+        }
         let k = self.keywords(attacker);
         if self.types_of(blocker).artifact {
             return true;
@@ -7630,6 +7729,52 @@ impl Game {
         let b = self.colors_of(blocker);
         let a = self.colors_of(attacker);
         (!k.has(Keywords::FEAR) || b[2]) && (!k.has(Keywords::INTIMIDATE) || (0..5).any(|c| a[c] && b[c]))
+    }
+
+    /// The creatures `p` could sacrifice and tap for an [`crate::card::AltCostExt`], in the order the
+    /// engine picks them (sacrifices: tokens, then the lowest mana value).
+    fn alt_ext_creatures(&self, p: PlayerId, alt: &crate::card::AltCostExt) -> (Vec<ObjId>, Vec<ObjId>) {
+        let mut sac: Vec<ObjId> = self
+            .creatures(p)
+            .filter(|&x| {
+                !self.cant_be_sacrificed(x)
+                    && alt.sacrifice_color.is_none_or(|k| self.colors_of(x)[k as usize])
+            })
+            .collect();
+        sac.sort_by_key(|&x| (!self.is_token(x), self.def_of(x).cost.mana_value()));
+        let tap: Vec<ObjId> = self
+            .creatures(p)
+            .filter(|&x| !self.obj(x).tapped && self.keywords(x).has(alt.tap_keywords))
+            .collect();
+        (sac, tap)
+    }
+
+    /// Whether `p` can pay an [`crate::card::AltCostExt`]'s life, sacrifices and taps.
+    fn alt_ext_payable(&self, p: PlayerId, alt: &crate::card::AltCostExt) -> bool {
+        let (sac, tap) = self.alt_ext_creatures(p, alt);
+        self.players[p].life >= alt.life
+            && sac.len() >= alt.sacrifice as usize
+            && tap.len() >= alt.tap as usize
+    }
+
+    /// The d1 theme's other block restrictions (see [`crate::card::ManaExt`]): shadow, attacking
+    /// alone (Yuan-Ti Malison), only legendary blockers (Midnight Pathlighter).
+    fn mana_ext_block_ok(&self, blocker: ObjId, attacker: ObjId) -> bool {
+        // Shadow (CR 702.28b): blocks and is blocked only by creatures with shadow.
+        if self.keywords(attacker).has(Keywords::SHADOW) != self.keywords(blocker).has(Keywords::SHADOW) {
+            return false;
+        }
+        let alone = self.combat.as_ref().is_some_and(|c| c.attackers.len() == 1);
+        if alone
+            && self.def_of(attacker).mana_ext.unblockable_attacking_alone
+            && !self.lost_abilities(attacker)
+        {
+            return false;
+        }
+        let only_legendary = self.permanents(self.obj(attacker).controller).any(|x| {
+            self.def_of(x).mana_ext.your_creatures_blocked_only_by_legendary && !self.lost_abilities(x)
+        });
+        !only_legendary || self.types_of(blocker).legendary
     }
 
     /// The d1 theme's "enters tapped unless" rules (see [`crate::card::ManaExt`]): whether `id`,
@@ -8379,6 +8524,19 @@ impl Game {
             let zcc = self.obj(card).zcc + 1;
             self.escaped.retain(|e| e.0 != card);
             self.escaped.push((card, zcc));
+        } else if let (true, Some(alt)) = (item.alt, self.def_of(card).mana_ext.alt_cost_ext) {
+            // Demon of Death's Gate, Sephara: the life, sacrifices and taps (the engine picks).
+            let (sac, tap) = self.alt_ext_creatures(p, &alt);
+            if alt.life > 0 {
+                self.lose_life(p, alt.life);
+            }
+            for v in sac.into_iter().take(alt.sacrifice as usize) {
+                self.move_to(v, Zone::Graveyard);
+                self.sacrificed(v, p);
+            }
+            for t in tap.into_iter().take(alt.tap as usize) {
+                self.become_tapped(t);
+            }
         } else if item.alt
             && self.def_of(card).alt_cost.is_none()
             && self.def_of(card).warp.is_none()
@@ -8723,9 +8881,15 @@ impl Game {
         if self.cant_cast_now(p) {
             return v; // Voice of Victory
         }
+        // A one-spell window may also offer cards in hand or a graveyard (see `free_casts_one`).
+        let one = self.free_casts_one;
+        let free_zone = |z: Zone| z == Zone::Exile || (one && matches!(z, Zone::Hand | Zone::Graveyard));
+        if self.free_casts_one && self.free_casts.iter().any(|&c| !free_zone(self.obj(c).zone)) {
+            return v; // one spell, already cast (Rishkar's Expertise)
+        }
         for &c in &self.free_casts {
             let def = self.def_of(c);
-            if self.obj(c).zone != Zone::Exile || def.types.land {
+            if !free_zone(self.obj(c).zone) || def.types.land {
                 continue;
             }
             let castable = def.types.is_permanent() || def.spell.is_some() || !def.modes.is_empty();
@@ -8760,6 +8924,7 @@ impl Game {
     fn close_free_casts(&mut self) {
         let to_hand = std::mem::take(&mut self.free_casts_to_hand);
         let to_bottom = std::mem::take(&mut self.free_casts_to_bottom);
+        self.free_casts_one = false;
         for c in std::mem::take(&mut self.free_casts) {
             self.obj_mut(c).cast_free = false;
             if to_hand && self.obj(c).zone == Zone::Exile {
@@ -14478,6 +14643,24 @@ impl Game {
                     for _ in 0..item.x {
                         self.draw(q);
                     }
+                }
+            }
+            Effect::MayCastFromHandFree { max_mv } => {
+                // Cast as the ability finishes resolving (CR 608.2g), one spell (`free_casts_one`).
+                let p = item.controller;
+                let cards: Vec<ObjId> = self.players[p]
+                    .hand
+                    .iter()
+                    .copied()
+                    .filter(|&c| !self.types_of(c).land && self.def_of(c).cost.mana_value() <= max_mv)
+                    .collect();
+                if !cards.is_empty() {
+                    for &c in &cards {
+                        self.obj_mut(c).cast_free = true;
+                    }
+                    self.free_casts.extend(cards);
+                    self.free_caster = p;
+                    self.free_casts_one = true;
                 }
             }
             Effect::ChangeTargets(slot) => {
