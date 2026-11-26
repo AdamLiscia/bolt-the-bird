@@ -265,9 +265,9 @@ pub fn token_defs() -> Vec<CardDef> {
             });
             t
         },
-        // 83: lane d2's Bat; 84: lane B's Elemental (placeholders here; the merger keeps theirs).
-        token("Placeholder 83", "Placeholder", 0, 0, Keywords::NONE),
-        token("Placeholder 84", "Placeholder", 0, 0, Keywords::NONE),
+        // base+83 is d2's Bat: a placeholder until it merges.
+        token("Lane d2 token 83", "Bat", 1, 1, Keywords::FLYING),
+        token("Elemental", "Elemental", 1, 1, Keywords::NONE), // Young Pyromancer's red 1/1
         {
             // Fade from History: "a 2/2 green Bear creature token".
             let mut t = token("Bear", "Bear", 2, 2, Keywords::NONE);
@@ -286,6 +286,12 @@ pub fn token_defs() -> Vec<CardDef> {
             });
             t.sac_for_mana = true;
             t.mana_ext.sac_mana_no_tap = true;
+            t
+        },
+        {
+            // 88, lane d1: Meloku's "1/1 blue Illusion creature token with flying".
+            let mut t = token("Illusion", "Illusion", 1, 1, Keywords::FLYING);
+            t.colors = [false, true, false, false, false];
             t
         },
     ]
@@ -429,7 +435,9 @@ pub struct Tokens {
     pub faerie_dragon: usize,
     pub spider_menace: usize,
     pub saga_construct: usize,
+    pub elemental_1: usize,
     pub goat: usize,
+    pub illusion_flying: usize,
     pub bear: usize,
     pub orc_army: usize,
     pub eldrazi_scion: usize,
@@ -520,7 +528,9 @@ impl Tokens {
             faerie_dragon: base + 80,
             spider_menace: base + 81,
             saga_construct: base + 82,
+            elemental_1: base + 84,
             goat: base + 76,
+            illusion_flying: base + 88,
             bear: base + 85,
             orc_army: base + 86,
             eldrazi_scion: base + 87,

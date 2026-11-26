@@ -715,7 +715,7 @@ pub fn script(name: &str) -> Option<Script> {
             },
         ),
         "Regal Force" => s(&["When this creature enters, draw a card for each green creature you control."], |d, _| {
-            on(d, When::Enters, vec![], vec![Effect::DrawPerColoredCreatureYouControl(4)])
+            on(d, When::Enters, vec![], vec![Effect::DrawPerCreatureYouControlOfColor(Color::Green)])
         }),
         "Loxodon Hierarch" => s(
             &["When this creature enters, you gain 4 life.", "{G}{W}, Sacrifice this creature: Regenerate each creature you control."],

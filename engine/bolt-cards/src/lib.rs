@@ -496,6 +496,9 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         attack_tax_per_enchantment: false,
         clue_food_treasure: None,
         kira_trigger: None,
+        modes_once_each_turn: false,
+        unspent_mana_becomes_colorless: false,
+        cast_only_during_your_end_step: false,
     };
     def.color_identity = color_identity(o);
     def.phyrexian = phyrexian;
