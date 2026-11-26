@@ -716,6 +716,42 @@ pub fn script(name: &str) -> Option<Script> {
                 // "can be your commander": a deckbuilding permission; the engine takes any commander.
             },
         ),
+        // ---- d1 core, batch 4: colored discounts and extra mana ----
+        "Ruby Medallion" => s(&["Red spells you cast cost {1} less to cast."], |d, _| {
+            d.red_spell_discount = 1;
+        }),
+        "Jet Medallion" => s(&["Black spells you cast cost {1} less to cast."], |d, _| {
+            d.mana_ext.colored_spell_discount = Some(([false, false, true, false, false], 1));
+        }),
+        "Stormscape Familiar" => s(&["White spells and black spells you cast cost {1} less to cast."], |d, _| {
+            d.mana_ext.colored_spell_discount = Some(([true, false, true, false, false], 1));
+        }),
+        "Zendikar Resurgent" => s(
+            &[
+                "Whenever you tap a land for mana, add one mana of any type that land produced.",
+                "Whenever you cast a creature spell, draw a card.",
+            ],
+            |d, _| {
+                d.lands_add_same = true;
+                on(d, When::YouCastCreature, vec![], vec![draw(1)]);
+            },
+        ),
+        "Dictate of Karametra" => s(
+            &["Whenever a player taps a land for mana, that player adds one mana of any type that land produced."],
+            |d, _| d.mana_ext.all_lands_add_same = true,
+        ),
+        "Leyline of Abundance" => s(
+            &[
+                "If this card is in your opening hand, you may begin the game with it on the battlefield.",
+                "Whenever you tap a creature for mana, add an additional {G}.",
+                "{6}{G}{G}: Put a +1/+1 counter on each creature you control.",
+            ],
+            |d, _| {
+                d.leyline = true;
+                d.mana_ext.your_creatures_add = Some(Color::Green);
+                activated(d, "{6}{G}{G}", false, vec![], vec![Effect::CountersAll { who: Who::You, n: 1 }]);
+            },
+        ),
         _ => None,
     }
 }
@@ -825,4 +861,10 @@ pub const PG_D1_SCRIPTED: &[&str] = &[
     "Unfathomable Truths",
     "Magnus the Red",
     "Freyalise, Llanowar's Fury",
+    "Ruby Medallion",
+    "Jet Medallion",
+    "Stormscape Familiar",
+    "Zendikar Resurgent",
+    "Dictate of Karametra",
+    "Leyline of Abundance",
 ];

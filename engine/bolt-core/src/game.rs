@@ -5236,6 +5236,11 @@ impl Game {
             if creature && e.creature_discount_per_counter {
                 n += self.obj(x).counters.max(0) as usize;
             }
+            if let Some((colors, k)) = e.colored_spell_discount {
+                if (0..5).any(|i| colors[i] && def.colors[i]) {
+                    n += k as usize;
+                }
+            }
             if (t.instant || t.sorcery || mode.mode == Some(OMEN_MODE))
                 && e.instant_sorcery_discount_per_creature_token
             {
@@ -6423,7 +6428,25 @@ impl Game {
             .filter(|&x| !self.lost_abilities(x))
             .filter_map(|x| self.def_of(x).mana_ext.your_subtype_lands_add)
             .collect();
+        let dictates = self
+            .battlefield
+            .iter()
+            .filter(|&&x| self.def_of(x).mana_ext.all_lands_add_same && !self.lost_abilities(x))
+            .count();
+        let creature_adders: Vec<crate::Color> = self
+            .permanents(p)
+            .filter(|&x| !self.lost_abilities(x))
+            .filter_map(|x| self.def_of(x).mana_ext.your_creatures_add)
+            .collect();
         for (id, m) in base {
+            if self.types_of(id).land && !self.def_of(id).vivid_mana {
+                out.extend(std::iter::repeat_n((id, m), dictates)); // Dictate of Karametra
+            }
+            if self.types_of(id).creature {
+                for &c in &creature_adders {
+                    out.push((id, ManaSource::of(&[c]))); // Leyline of Abundance
+                }
+            }
             if self.types_of(id).land && (!auras.is_empty() || !adders.is_empty()) {
                 let zcc = self.obj(id).zcc;
                 for &a in &auras {

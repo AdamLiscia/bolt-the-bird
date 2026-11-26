@@ -1671,3 +1671,68 @@ fn freyalise_makes_elf_druids_destroys_and_draws_per_green_creature() {
         "{{T}}: Add {{G}}"
     );
 }
+
+// ---- d1 core, batch 4 ----
+
+#[test]
+fn ruby_and_jet_medallions_discount_their_color() {
+    let mut g = table();
+    put(&mut g, 0, "Jet Medallion");
+    put(&mut g, 0, "Ruby Medallion");
+    let c = hand(&mut g, 0, "Gray Merchant of Asphodel");
+    play(&mut g, c, false, &[], &[]);
+    assert_eq!(tapped_lands(&g), 4, "black: {{3}}{{B}}{{B}} less {{1}}");
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    play(&mut g, bolt, false, &[Target::Player(1)], &[]);
+    assert_eq!(tapped_lands(&g), 5, "red {{R}}: no generic to take off");
+    let ench = hand(&mut g, 0, "Sylvan Library");
+    play(&mut g, ench, false, &[], &[]);
+    assert_eq!(tapped_lands(&g), 7, "green: full price");
+}
+
+#[test]
+fn stormscape_familiar_discounts_white_or_black_once() {
+    let mut g = table();
+    put(&mut g, 0, "Stormscape Familiar");
+    let c = hand(&mut g, 0, "Gray Merchant of Asphodel");
+    play(&mut g, c, false, &[], &[]);
+    assert_eq!(tapped_lands(&g), 4);
+}
+
+#[test]
+fn zendikar_resurgent_doubles_land_mana_and_draws_on_creature_casts() {
+    let mut g = table();
+    put(&mut g, 0, "Zendikar Resurgent");
+    let forest = first_named(&g, 0, "Forest");
+    assert_eq!(g.mana_sources(0).into_iter().filter(|s| s.0 == forest).count(), 2);
+    let n = g.players[0].hand.len();
+    let elf = hand(&mut g, 0, "Llanowar Elves");
+    play(&mut g, elf, false, &[], &[]);
+    assert_eq!(g.players[0].hand.len(), n + 1, "cast one, drew one");
+}
+
+#[test]
+fn dictate_of_karametra_doubles_every_players_lands() {
+    let mut g = table();
+    put(&mut g, 1, "Dictate of Karametra");
+    let forest = first_named(&g, 0, "Forest");
+    assert_eq!(g.mana_sources(0).into_iter().filter(|s| s.0 == forest).count(), 2);
+    let theirs = first_named(&g, 1, "Forest");
+    assert_eq!(g.mana_sources(1).into_iter().filter(|s| s.0 == theirs).count(), 2);
+}
+
+#[test]
+fn leyline_of_abundance_adds_g_for_creatures_and_pumps_everything() {
+    let mut g = table();
+    let l = put(&mut g, 0, "Leyline of Abundance");
+    let elf = put(&mut g, 0, "Llanowar Elves");
+    assert_eq!(g.mana_sources(0).into_iter().filter(|s| s.0 == elf).count(), 2);
+    let forest = first_named(&g, 0, "Forest");
+    assert_eq!(
+        g.mana_sources(0).into_iter().filter(|s| s.0 == forest).count(),
+        1,
+        "lands don't"
+    );
+    activate(&mut g, l, 0, &[]);
+    assert_eq!(g.obj(elf).counters, 1);
+}

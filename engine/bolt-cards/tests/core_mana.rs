@@ -1032,3 +1032,49 @@ fn convoke_taps_creatures_for_generic_or_their_color() {
     assert!(g.obj(green).tapped && g.obj(golem).tapped && g.obj(knight).tapped);
     assert_eq!(g.obj(c).zone, Zone::Graveyard);
 }
+
+#[test]
+fn colored_spell_discount_all_lands_add_same_and_creature_adders() {
+    use batch3::*;
+    let mut d = (*defs()).clone();
+    let mut jet = CardDef::creature("Jet", "{G}", 1, 1, Keywords::NONE);
+    jet.mana_ext.colored_spell_discount = Some(([true, false, true, false, false], 1));
+    let mut dictate = CardDef::creature("Dictate", "{G}", 1, 1, Keywords::NONE);
+    dictate.mana_ext.all_lands_add_same = true;
+    let mut leyline = CardDef::creature("Leyline", "{G}", 1, 1, Keywords::NONE);
+    leyline.mana_ext.your_creatures_add = Some(Color::Green);
+    let mut dork = CardDef::creature("Dork", "{G}", 1, 1, Keywords::NONE);
+    dork.mana = Some(bolt_core::ManaSource::of(&[Color::Green]));
+    d.extend([jet, dictate, leyline, dork]); // 25..=28
+    let mut g = Game::empty(Arc::new(d), 1, 0);
+    for p in 0..2 {
+        for _ in 0..10 {
+            g.add_card(p, GREEN_BEAR, Zone::Library);
+        }
+    }
+    for _ in 0..3 {
+        g.add_card(0, SWAMP, Zone::Battlefield);
+    }
+    g.auto_pass = false;
+    g.start_turn(3, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    put(&mut g, 0, 25);
+    let c = g.add_card(0, BLACK_BEAR, Zone::Hand);
+    act(&mut g, Action::Cast(c));
+    settle(&mut g);
+    assert_eq!(tapped_swamps(&g), 1, "black {{1}}{{B}} less {{1}}");
+    let swamp = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "Swamp" && !g.obj(x).tapped)
+        .unwrap();
+    assert_eq!(sources_of(&g, swamp).len(), 1);
+    put(&mut g, 1, 26);
+    assert_eq!(sources_of(&g, swamp).len(), 2, "an opponent's Dictate counts too");
+    let dork = put(&mut g, 0, 28);
+    assert_eq!(sources_of(&g, dork).len(), 1);
+    put(&mut g, 0, 27);
+    assert_eq!(sources_of(&g, dork).len(), 2);
+    assert_eq!(sources_of(&g, swamp).len(), 2, "lands aren't creatures");
+}
