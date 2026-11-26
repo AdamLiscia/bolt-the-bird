@@ -661,9 +661,8 @@ Objects and zones batch 5: populate (Trostani, Selesnya's Voice) and imprint/cop
 `Object::hideaway`; a copy is cast through the free-cast window (`card_copy`, `cast_free`).
 
 Objects and zones batch 6: sacrifice X Clues (Lonis, Cryptozoologist) and copy exceptions (Vaultborn Tyrant,
-Phantasmal Image, Mockingbird, Glasspool Mimic // Glasspool Shore). Core: `Activated::sacrifice_x_subtype`
-(offered as `ActivateX { victim: None, x }` for X from 1 to the count; the engine sacrifices the first X, each
-through `Game::sacrificed`), `CardDef::zones` (`ZonesExt`, the Mac C group: `copy_adds_subtypes`,
+Phantasmal Image, Mockingbird, Glasspool Mimic // Glasspool Shore). Lonis's "Sacrifice X Clues" uses lane B's `Activated::sacrifice_x_of_subtype` (Chatterfang; it arrived in
+the same merge, so lane C's own copy of the piece was dropped). Core: `CardDef::zones` (`ZonesExt`, the Mac C group: `copy_adds_subtypes`,
 `copy_adds_keywords`, `copy_sacrifice_when_targeted`, `copy_mv_at_most_spent`), `Object::{mana_spent,
 sacrifice_when_targeted}`, `StackKind::SacrificeWhenTargeted { zcc }` (pushed from `ward_check`),
 `Decision::PutFromOpponentsTop`, `Effect::{OpponentRevealsTopXPutNonlandPermanent, SacrificeSourceWhenTargeted,
@@ -671,5 +670,5 @@ TokenCopyOfSourceArtifactIfNontoken}`. The copy exceptions are applied as the cl
 (`Decision::EnterAsCopy`): extra creature types in `extra_subtypes`, keywords in `granted`.
 Shortcuts: Vaultborn's token copy becomes an artifact just after it enters (a `TypeChange`), so "artifact
 enters" triggers don't see it; its "this creature or another creature with power 4 or greater" trigger is
-`YourCreatureEntersWithPowerAtLeast(4)` (Vaultborn itself is 6/6). Lonis's X is at least 1.
+`YourCreatureEntersWithPowerAtLeast(4)` (Vaultborn itself is 6/6).
 Glasspool Shore was already in the oracle data (no refetch needed).

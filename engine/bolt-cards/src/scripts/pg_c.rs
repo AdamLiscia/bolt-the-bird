@@ -1467,7 +1467,7 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::AnotherNontokenCreatureYouControlEnters, vec![], vec![Effect::Investigate { def: t.clue, n: 1 }]);
                 let opp = Filter::PLAYER.controlled_by(Controller::Opponent);
                 let n = activated(d, "", true, vec![opp], vec![Effect::OpponentRevealsTopXPutNonlandPermanent(0)]);
-                d.activated[n].sacrifice_x_subtype = Some("Clue");
+                d.activated[n].sacrifice_x_of_subtype = Some("Clue");
             },
         ),
         "Vaultborn Tyrant" => s(

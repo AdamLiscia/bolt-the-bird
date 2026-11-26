@@ -133,18 +133,67 @@ fn rooms_still_missing_a_piece_are_listed() {
     .collect();
     assert_eq!(
         missing,
-        [
-            "Fungi Cavern",
-            "Twisted Caverns",
-            "Runestone Caverns",
-            "Mad Wizard's Lair",
-            "Veils of Fear",
-            "Oubliette",
-            "Sandfall Cell",
-            "Arena",
-            "Throne of the Dead Three",
-        ]
+        ["Runestone Caverns"],
+        "Twisted Caverns, Mad Wizard's Lair and Arena are lane B's (tests/core_merger.rs)"
     );
+}
+
+#[test]
+fn fungi_cavern_gives_target_creature_minus_four_until_your_next_turn() {
+    let mut g = venture_game();
+    let x = g.add_card(0, cid(CARD), Zone::Battlefield);
+    let y = g.add_card(1, cid(CARD), Zone::Battlefield);
+    g.venture[0] = Some((Dungeon::LostMine, 2)); // Mine Tunnels
+    activate(&mut g, x, &[Action::Mode(1), Action::Target(Target::Object(y))]);
+    assert_eq!(g.venture[0], Some((Dungeon::LostMine, 5)));
+    assert_eq!((g.power(y), g.toughness(y)), (-2, 1));
+}
+
+#[test]
+fn veils_of_fear_and_sandfall_cell_make_each_player_lose_two_unless() {
+    let mut g = venture_game();
+    let x = g.add_card(0, cid(CARD), Zone::Battlefield);
+    g.venture[0] = Some((Dungeon::Tomb, 0)); // Trapped Entry
+    let (me, them) = (g.players[0].life, g.players[1].life);
+    activate(&mut g, x, &[Action::Mode(0), Action::No, Action::No]); // Veils of Fear
+    assert_eq!(g.venture[0], Some((Dungeon::Tomb, 1)));
+    assert_eq!((g.players[0].life, g.players[1].life), (me - 2, them - 2));
+    let lands = g.permanents(1).count();
+    activate(&mut g, x, &[Action::No]); // Sandfall Cell: 0 loses, 1 sacrifices (first Pick)
+    assert_eq!(g.venture[0], Some((Dungeon::Tomb, 3)));
+    assert_eq!((g.players[0].life, g.players[1].life), (me - 4, them - 2));
+    assert_eq!(g.permanents(1).count(), lands - 1);
+}
+
+#[test]
+fn oubliette_discards_and_sacrifices_an_artifact_a_creature_and_a_land() {
+    let mut g = venture_game();
+    let x = g.add_card(0, cid(CARD), Zone::Battlefield);
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Battlefield);
+    g.add_card(0, cid("Plains"), Zone::Hand);
+    let hand = g.players[0].hand.len();
+    let lands = g.permanents(0).filter(|&p| g.types_of(p).land).count();
+    g.venture[0] = Some((Dungeon::Tomb, 0));
+    activate(&mut g, x, &[Action::Mode(1)]);
+    assert_eq!(g.venture[0], Some((Dungeon::Tomb, 2)));
+    assert_eq!(g.players[0].hand.len(), hand - 1);
+    assert_eq!(g.obj(ring).zone, Zone::Graveyard);
+    assert_eq!(g.obj(x).zone, Zone::Graveyard);
+    assert_eq!(g.permanents(0).filter(|&p| g.types_of(p).land).count(), lands - 1);
+}
+
+#[test]
+fn throne_of_the_dead_three_puts_a_creature_on_with_three_counters_and_completes_undercity() {
+    let mut g = game_with(vec![], vec![sub(SubsystemEffect::VentureUndercity)], |_| {});
+    let x = g.add_card(0, cid(CARD), Zone::Battlefield);
+    let elf = g.add_card(0, cid("Llanowar Elves"), Zone::Library);
+    g.venture[0] = Some((Dungeon::Undercity, 7)); // Catacombs
+    activate(&mut g, x, &[]);
+    assert_eq!(g.obj(elf).zone, Zone::Battlefield);
+    assert_eq!(g.power(elf), 4);
+    assert!(g.keywords(elf).has(Keywords::HEXPROOF));
+    assert!(g.completed_a_dungeon(0));
+    assert_eq!(g.venture[0], None);
 }
 
 #[test]
@@ -374,6 +423,126 @@ fn a_room_token_is_found_by_name_and_size() {
     assert!(g.keywords(mine[0]).has(Keywords::MENACE));
     assert!(g.keywords(mine[3]).has(Keywords::DEATHTOUCH));
     assert_eq!(g.colors_of(mine[3]), [false, false, true, false, false], "black");
+}
+
+#[test]
+fn a_chapter_grant_is_had_once_it_resolves_and_until_the_saga_leaves() {
+    let mut g = game_with(
+        vec![],
+        vec![sub(SubsystemEffect::GainChapterAbilities(1))],
+        |defs| {
+            let ext = &mut defs[cid(CARD)].subsystems;
+            ext.chapter_mana = Some(1);
+            ext.chapter_activated = vec![(2, 5)];
+        },
+    );
+    let x = g.add_card(0, cid(CARD), Zone::Battlefield);
+    assert!(g.lacks_chapter_mana(x) && g.lacks_chapter_activated(x, 5));
+    assert!(!g.lacks_chapter_activated(x, 0), "not a grant");
+    activate(&mut g, x, &[]);
+    assert!(!g.lacks_chapter_mana(x), "chapter I resolved");
+    assert!(g.lacks_chapter_activated(x, 5), "chapter II hasn't");
+    g.objects[x.0 as usize].zcc += 1; // it left and came back: a new object
+    assert!(g.lacks_chapter_mana(x), "a new object");
+}
+
+#[test]
+fn a_completed_dungeon_draws_more_and_makes_more_tokens() {
+    let treasure = set("CMD")
+        .unwrap()
+        .defs
+        .iter()
+        .position(|d| d.token && d.name == "Treasure")
+        .unwrap();
+    let effects = vec![
+        sub(SubsystemEffect::DrawIfCompletedDungeon(1)),
+        sub(SubsystemEffect::TokensByDungeon {
+            def: treasure,
+            n: 1,
+            completed: 3,
+        }),
+    ];
+    let mut g = game_with(vec![], effects, |_| {});
+    let x = g.add_card(0, cid(CARD), Zone::Battlefield);
+    let hand = g.players[0].hand.len();
+    activate(&mut g, x, &[]);
+    assert_eq!((g.players[0].hand.len(), tokens(&g, 0, "Treasure")), (hand, 1));
+    g.completed_dungeons[0] = 1;
+    activate(&mut g, x, &[]);
+    assert_eq!(
+        (g.players[0].hand.len(), tokens(&g, 0, "Treasure")),
+        (hand + 1, 4)
+    );
+}
+
+#[test]
+fn untap_one_creature_or_all_of_them_with_a_completed_dungeon() {
+    let mut g = game_with(vec![], vec![sub(SubsystemEffect::UntapOneOrAllByDungeon)], |_| {});
+    let x = g.add_card(0, cid(CARD), Zone::Battlefield);
+    let a = g.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
+    let b = g.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
+    g.objects[a.0 as usize].tapped = true;
+    g.objects[b.0 as usize].tapped = true;
+    act(&mut g, Action::Activate(x, 0));
+    act(&mut g, Action::PassPriority);
+    act(&mut g, Action::PassPriority);
+    assert_eq!(
+        g.legal_actions(),
+        [Action::Pick(a), Action::Pick(b)],
+        "only tapped ones"
+    );
+    act(&mut g, Action::Pick(b));
+    settle(&mut g, &[]);
+    assert!(g.obj(a).tapped && !g.obj(b).tapped);
+    g.objects[b.0 as usize].tapped = true;
+    g.completed_dungeons[0] = 1;
+    activate(&mut g, x, &[]);
+    assert!(!g.obj(a).tapped && !g.obj(b).tapped, "all of them");
+}
+
+#[test]
+fn the_opponent_loses_the_difference_from_life_lost_this_turn() {
+    let mut g = game_with(
+        vec![],
+        vec![sub(SubsystemEffect::OpponentLosesDifferenceFrom(8))],
+        |defs| {
+            defs[cid(CARD)].activated[0].ability.effects.insert(
+                0,
+                Effect::LoseLife {
+                    who: Who::EachOpponent,
+                    n: 3,
+                },
+            )
+        },
+    );
+    let x = g.add_card(0, cid(CARD), Zone::Battlefield);
+    let them = g.players[1].life;
+    activate(&mut g, x, &[]); // loses 3, then 8 - 3
+    assert_eq!(g.players[1].life, them - 8);
+    activate(&mut g, x, &[]); // loses 3 more: 11 this turn, so nothing
+    assert_eq!(g.players[1].life, them - 11);
+}
+
+#[test]
+fn a_lost_coin_flip_deals_the_damage_to_you() {
+    let mut g = game_with(
+        vec![],
+        vec![sub(SubsystemEffect::FlipCoinLoseDamageYou(3))],
+        |_| {},
+    );
+    let x = g.add_card(0, cid(CARD), Zone::Battlefield);
+    let wins = (0..200).filter(|_| g.flip_coin()).count();
+    assert!((60..=140).contains(&wins), "{wins}");
+    let mut seen = [false; 2];
+    for _ in 0..12 {
+        let life = g.players[0].life;
+        activate(&mut g, x, &[]);
+        let lost = life - g.players[0].life;
+        assert!(lost == 0 || lost == 3);
+        seen[(lost == 3) as usize] = true;
+    }
+    assert_eq!(seen, [true, true]);
+    assert!(g.players[1].life == 40, "only you");
 }
 
 #[test]

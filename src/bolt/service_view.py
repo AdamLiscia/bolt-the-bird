@@ -166,6 +166,7 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         verb = verb or {"SacrificeOfType": "Sacrifice", "RevealedCreatureOnto": "Put onto the battlefield:"}.get(d)  # fmt: skip
         verb = verb or {"SacrificeAnotherPermanent": "Sacrifice", "TakeMilledCard": "Put into your hand:"}.get(d)
         verb = verb or {"ReturnSharingType": "Return to its owner's hand:", "ExileOwnPermanent": "Exile"}.get(d)
+        verb = verb or {"UntapOwnCreature": "Untap"}.get(d)
         verb = verb or {"PutFromOpponentsTop": "Put onto the battlefield under your control:"}.get(d)
         if d == "LoseUnless":
             verb = "Sacrifice" if dec.get("sacrifice") else "Discard"

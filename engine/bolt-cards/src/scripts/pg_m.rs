@@ -10,7 +10,10 @@ pub fn script(name: &str) -> Option<Script> {
         // Myrkul's attack restrictions (the merger's hooks in attack_candidates and the Attack action).
         "Ghostly Prison" | "Propaganda" => s(
             &["Creatures can't attack you unless their controller pays {2} for each creature they control that's attacking you."],
-            |d, _| d.attack_tax = 2,
+            |d, _| {
+                d.attack_tax = 2;
+                d.attack_tax_player_only = true; // not "or planeswalkers you control"
+            },
         ),
         "Sphere of Safety" => s(
             &["Creatures can't attack you or planeswalkers you control unless their controller pays {X} for each of those creatures, where X is the number of enchantments you control."],
