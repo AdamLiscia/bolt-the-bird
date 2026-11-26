@@ -14,7 +14,8 @@ pub struct Room {
     pub name: &'static str,
     pub ability: Ability,
     pub next: &'static [u8],
-    /// False while a piece of the room ability is missing from the engine (its token or effect).
+    /// False while a piece of the room ability is missing from the engine (its token or effect);
+    /// every room is ready now.
     pub ready: bool,
 }
 
@@ -28,14 +29,6 @@ fn room(name: &'static str, targets: Vec<Filter>, mut effects: Vec<Effect>, next
         ability: Ability::new(targets, effects),
         next,
         ready: true,
-    }
-}
-
-/// A room whose ability needs a piece the engine doesn't have yet (it does nothing here).
-fn missing(name: &'static str, next: &'static [u8]) -> Room {
-    Room {
-        ready: false,
-        ..room(name, vec![], vec![], next)
     }
 }
 
@@ -103,7 +96,12 @@ pub fn rooms(d: Dungeon) -> &'static [Room] {
                 room("Dungeon Level", vec![], vec![scry(1)], &[2, 3]),
                 room("Goblin Bazaar", vec![], vec![treasure()], &[4]),
                 // "Target creature can't attack until your next turn."
-                missing("Twisted Caverns", &[4]),
+                room(
+                    "Twisted Caverns",
+                    creature(),
+                    vec![Effect::CantAttackUntilYourNextTurn(0)],
+                    &[4],
+                ),
                 room("Lost Level", vec![], vec![scry(2)], &[5, 6]),
                 // "Exile the top two cards of your library. You may play them." (this turn)
                 room(
@@ -121,7 +119,12 @@ pub fn rooms(d: Dungeon) -> &'static [Room] {
                 room("Deep Mines", vec![], vec![scry(3)], &[8]),
                 // "Draw three cards and reveal them. You may cast one of them without paying its
                 // mana cost."
-                missing("Mad Wizard's Lair", &[]),
+                room(
+                    "Mad Wizard's Lair",
+                    vec![],
+                    vec![Effect::DrawThreeMayCastOneFree],
+                    &[],
+                ),
             ],
             vec![
                 room(
@@ -193,7 +196,7 @@ pub fn rooms(d: Dungeon) -> &'static [Room] {
                     &[6],
                 ),
                 // "Goad target creature."
-                missing("Arena", &[6, 7]),
+                room("Arena", creature(), vec![Effect::Goad(0)], &[6, 7]),
                 room("Stash", vec![], vec![treasure()], &[7]),
                 room("Archives", vec![], vec![draw(1)], &[8]),
                 room("Catacombs", vec![], vec![token("Skeleton", 4, 1, 1)], &[8]),
@@ -391,6 +394,7 @@ impl Game {
         if self.venture[p] == Some((d, r)) && rooms(d)[r as usize].next.is_empty() {
             self.venture[p] = None;
             self.completed_dungeons[p] = self.completed_dungeons[p].saturating_add(1);
+            self.fire(p, When::YouCompleteDungeon, None); // lane d2's emit (Sefris)
         }
     }
 

@@ -131,7 +131,10 @@ fn rooms_still_missing_a_piece_are_listed() {
     .iter()
     .flat_map(|&d| rooms(d).iter().filter(|r| !r.ready).map(|r| r.name))
     .collect();
-    assert_eq!(missing, ["Twisted Caverns", "Mad Wizard's Lair", "Arena"]);
+    assert!(
+        missing.is_empty(),
+        "every room is ready (Twisted Caverns, Mad Wizard's Lair and Arena are lane B's: tests/core_merger.rs): {missing:?}"
+    );
 }
 
 #[test]

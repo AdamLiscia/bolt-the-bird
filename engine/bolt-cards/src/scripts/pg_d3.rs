@@ -1608,6 +1608,147 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::Upkeep { your_turn_only: true }, vec![graveyard_cards(true, Controller::Any)], vec![reanimate]);
             },
         ),
+        // ---- Core theme d3, batch 15 ----
+        "Fade from History" => s(
+            &["Each player who controls an artifact or enchantment creates a 2/2 green Bear creature token. Then destroy all artifacts and enchantments."],
+            |d, t| {
+                let bears = Effect::EachPlayerWithArtifactOrEnchantmentCreatesToken { def: t.bear };
+                let destroy = Effect::DestroyAllMatching { artifacts: true, enchantments: true, creature_mv: (0, 0) };
+                spell(d, vec![], vec![bears, destroy]);
+            },
+        ),
+        "Warping Wail" => s(
+            &[
+                "Choose one —",
+                "• Exile target creature with power or toughness 1 or less.",
+                "• Counter target sorcery spell.",
+                "• Create a 1/1 colorless Eldrazi Scion creature token. It has \"Sacrifice this token: Add {C}.\"",
+            ],
+            |d, t| {
+                let small = Filter { creature_power_or_toughness_at_most: Some(1), ..CREATURE };
+                let sorcery = Filter { spell_sorcery: true, ..SPELL };
+                modes(
+                    d,
+                    vec![
+                        Ability::new(vec![small], vec![Effect::Exile(0)]),
+                        Ability::new(vec![sorcery], vec![Effect::Counter(0)]),
+                        Ability::new(vec![], vec![Effect::CreateToken { who: Who::You, def: t.eldrazi_scion, n: 1 }]),
+                    ],
+                )
+            },
+        ),
+        "Exalted Flamer of Tzeentch" => s(
+            &[
+                "Sorcerous Inspiration — At the beginning of your upkeep, return an instant or sorcery card at random from your graveyard to your hand.",
+                "Fire of Tzeentch — Whenever you cast an instant or sorcery spell, this creature deals 1 damage to each opponent.",
+            ],
+            |d, _| {
+                on(d, When::Upkeep { your_turn_only: true }, vec![], vec![Effect::ReturnRandomInstantOrSorceryFromGraveyard]);
+                on(d, When::YouCastInstantOrSorcery, vec![], vec![damage(1, Recipient::EachOpponent)]);
+            },
+        ),
+        "Expressive Iteration" => s(
+            &["Look at the top three cards of your library. Put one of them into your hand, put one of them on the bottom of your library, and exile one of them. You may play the exiled card this turn."],
+            |d, _| spell(d, vec![], vec![Effect::LookHandBottomExilePlay(3)]),
+        ),
+        "Mission Briefing" => s(
+            &["Surveil 2, then choose an instant or sorcery card in your graveyard. You may cast it this turn. If that spell would be put into your graveyard, exile it instead."],
+            |d, _| spell(d, vec![], vec![Effect::Surveil { n: 2 }, Effect::ChooseGraveyardSpellToCastThisTurn]),
+        ),
+        "Mizzix's Mastery" => s(
+            &[
+                "Exile target card that's an instant or sorcery from your graveyard. For each card exiled this way, copy it, and you may cast the copy without paying its mana cost. Exile Mizzix's Mastery.",
+                "Overload {5}{R}{R}{R}",
+            ],
+            |d, _| {
+                let card = Filter { instant_or_sorcery: true, ..graveyard_cards(false, Controller::You) };
+                spell(d, vec![card], vec![Effect::ExileCastCopyFree(0), Effect::ExileSourceSpell]);
+                // Overload {5}{R}{R}{R} is cast as a {2}{R}{R} kicker on {3}{R}: the same total, and
+                // "kicked" swaps in the overloaded text ("each" instead of "target"), as Rise and Shine.
+                d.kicker = ManaCost::parse("{2}{R}{R}");
+                d.kicked_spell = Some(Ability::new(vec![], vec![Effect::ExileCastCopyFreeEachInstantSorcery, Effect::ExileSourceSpell]));
+            },
+        ),
+        // ---- Core theme d3, batch 18 ----
+        "Minamo, School at Water's Edge" => s(&["{T}: Add {U}.", "{U}, {T}: Untap target legendary permanent."], |d, _| {
+            lands_mana(d, &[Color::Blue]);
+            let legendary = Filter { legendary_only: true, ..PERMANENT };
+            activated(d, "{U}", true, vec![legendary], vec![Effect::UntapTarget(0)]);
+        }),
+        "Torment of Hailfire" => s(
+            &["Repeat the following process X times. Each opponent loses 3 life unless that player sacrifices a nonland permanent of their choice or discards a card."],
+            |d, _| spell(d, vec![], vec![Effect::OpponentLosesUnlessSacrificesOrDiscardsX { life: 3 }]),
+        ),
+        "Ensnare" => s(
+            &["You may return two Islands you control to their owner's hand rather than pay this spell's mana cost.", "Tap all creatures."],
+            |d, _| {
+                d.mana_ext.alt_cost_ext = Some(bolt_core::card::AltCostExt {
+                    return_lands: 2,
+                    return_subtype: Some("Island"),
+                    ..Default::default()
+                });
+                spell(d, vec![], vec![Effect::TapAllCreatures]);
+            },
+        ),
+        "Kinnan, Bonder Prodigy" => s(
+            &[
+                "Whenever you tap a nonland permanent for mana, add one mana of any type that permanent produced.",
+                "{5}{G}{U}: Look at the top five cards of your library. You may put a non-Human creature card from among them onto the battlefield. Put the rest on the bottom of your library in a random order.",
+            ],
+            |d, _| {
+                d.mana_ext.nonland_add_same = true;
+                let look = Effect::LookAtTop { n: 5, pick: Pick::NonHumanCreature, chosen_to: LookTo::Battlefield, rest_to: LookRest::BottomRandom };
+                activated(d, "{5}{G}{U}", false, vec![], vec![look]);
+            },
+        ),
+        "Orcish Bowmasters" => s(
+            &["When this creature enters and whenever an opponent draws a card except the first one they draw in each of their draw steps, this creature deals 1 damage to any target. Then amass Orcs 1."],
+            |d, t| {
+                let ping = || vec![damage(1, Recipient::Target(0)), Effect::Amass { subtype: "Orc", n: 1, def: t.orc_army }];
+                on(d, When::Enters, vec![Filter::ANY], ping());
+                on(d, When::OpponentDrawsExceptFirstInDrawStep, vec![Filter::ANY], ping());
+            },
+        ),
+        "Cloudstone Curio" => s(
+            &["Whenever a nonartifact permanent you control enters, you may return another permanent you control that shares a permanent type with it to its owner's hand."],
+            |d, _| {
+                let it = Filter { triggering: true, ..PERMANENT };
+                on(d, When::NonartifactPermanentYouControlEnters, vec![it], vec![Effect::MayReturnAnotherSharingType(0)]);
+            },
+        ),
+        "Teething Wurmlet" => s(
+            &[
+                "This creature has deathtouch as long as you control three or more artifacts.",
+                "Whenever an artifact you control enters, you gain 1 life. If this is the first time this ability has resolved this turn, put a +1/+1 counter on this creature.",
+            ],
+            |d, _| {
+                d.statics.push(Static {
+                    keywords: Keywords::DEATHTOUCH,
+                    condition: Some(StaticCondition::ControlArtifactsAtLeast(3)),
+                    ..neutral_static()
+                });
+                let gain = Effect::GainLifeCountersIfFirstResolutionThisTurn { life: 1, counters: 1 };
+                on(d, When::ArtifactYouControlEnters, vec![], vec![gain]);
+            },
+        ),
+        "Sanctum of Ugin" => s(
+            &[
+                "{T}: Add {C}.",
+                "Whenever you cast a colorless spell with mana value 7 or greater, you may sacrifice this land. If you do, search your library for a colorless creature card, reveal it, put it into your hand, then shuffle.",
+            ],
+            |d, _| {
+                d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                let search = Effect::Search { what: SearchFor::ColorlessCreature, to: SearchTo::Hand, n: 1, kicked_n: None };
+                may(d, When::YouCastColorlessMvAtLeast(7), vec![], vec![Effect::SacrificeSource, search]);
+            },
+        ),
+        "Rishkar's Expertise" => s(
+            &[
+                "Draw cards equal to the greatest power among creatures you control.",
+                "You may cast a spell with mana value 5 or less from your hand without paying its mana cost.",
+            ],
+            |d, _| spell(d, vec![], vec![Effect::DrawGreatestPowerYouControl, Effect::MayCastFromHandFree { max_mv: 5 }]),
+        ),
         _ => None,
     }
 }
@@ -1829,4 +1970,21 @@ pub const PG_D3_SCRIPTED: &[&str] = &[
     "All Is Dust",
     "Bane of Bala Ged",
     "Portal to Phyrexia",
+    // Core theme d3, batch 15
+    "Fade from History",
+    "Warping Wail",
+    "Exalted Flamer of Tzeentch",
+    "Expressive Iteration",
+    "Mission Briefing",
+    "Mizzix's Mastery",
+    // Core theme d3, batch 18
+    "Minamo, School at Water's Edge",
+    "Torment of Hailfire",
+    "Ensnare",
+    "Kinnan, Bonder Prodigy",
+    "Orcish Bowmasters",
+    "Cloudstone Curio",
+    "Teething Wurmlet",
+    "Sanctum of Ugin",
+    "Rishkar's Expertise",
 ];

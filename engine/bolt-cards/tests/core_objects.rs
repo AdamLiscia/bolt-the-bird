@@ -583,3 +583,152 @@ fn isochron_scepter_imprints_an_instant_and_casts_copies_free() {
     );
     assert_eq!(g.obj(think).zone, Zone::Exile, "the imprinted card stays");
 }
+
+// ---- Sacrifice X Clues (Lonis, Cryptozoologist) ----
+
+fn clue_def(g: &Game) -> usize {
+    g.defs.iter().position(|d| d.token && d.name == "Clue").unwrap()
+}
+
+/// Passes priority until a decision is asked (at most 20 times).
+fn until_decide(g: &mut Game) {
+    for _ in 0..20 {
+        if matches!(g.pending, Pending::Decide(_)) {
+            return;
+        }
+        act(g, Action::PassPriority);
+    }
+    panic!("no decision: {:?}", g.legal_actions());
+}
+
+#[test]
+fn sacrifice_x_clues_reports_each_sacrifice_and_puts_a_revealed_permanent_under_your_control() {
+    let mut g = table();
+    let lonis = put(&mut g, 0, "Lonis, Cryptozoologist");
+    let tt = put(&mut g, 0, "Tireless Tracker");
+    let clue = clue_def(&g);
+    for _ in 0..3 {
+        g.add_card(0, clue, Zone::Battlefield);
+    }
+    to_main1(&mut g, 5, 0);
+    let forest = g.add_card(1, cid("Forest"), Zone::Library);
+    let sol = g.add_card(1, cid("Sol Ring"), Zone::Library); // the top card
+    let legal = g.legal_actions();
+    let x = |x| Action::ActivateX {
+        id: lonis,
+        n: 0,
+        victim: None,
+        x,
+    };
+    assert!(legal.contains(&x(1)) && legal.contains(&x(3)));
+    assert!(!legal.contains(&x(4)), "only three Clues");
+    act(&mut g, x(2));
+    act(&mut g, Action::Target(Target::Player(1)));
+    assert_eq!(tokens(&g, 0, "Clue").len(), 1, "two sacrificed as the cost");
+    until_decide(&mut g);
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Pick(sol)));
+    assert!(!legal.contains(&Action::Pick(forest)), "a land can't be put");
+    act(&mut g, Action::Pick(sol));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(sol).zone, Zone::Battlefield);
+    assert_eq!(g.obj(sol).controller, 0, "under your control");
+    assert_eq!(g.players[1].library[0], forest, "the rest on the bottom");
+    assert_eq!(g.power(tt), 5, "Tireless Tracker saw both sacrifices");
+}
+
+#[test]
+fn lonis_investigates_for_another_nontoken_creature() {
+    let mut g = table();
+    put(&mut g, 0, "Lonis, Cryptozoologist");
+    let elf = hand(&mut g, 0, "Llanowar Elves");
+    play(&mut g, elf, false, &[], &[]);
+    assert_eq!(tokens(&g, 0, "Clue").len(), 1);
+}
+
+// ---- Copies: copy exceptions (Phantasmal Image, Mockingbird, Glasspool Mimic) ----
+
+#[test]
+fn phantasmal_image_is_an_illusion_and_is_sacrificed_when_targeted() {
+    let mut g = table();
+    let ghoul = put(&mut g, 1, "Hungry Ghoul");
+    let img = hand(&mut g, 0, "Phantasmal Image");
+    play(&mut g, img, false, &[], &[Action::Pick(ghoul)]);
+    assert_eq!(g.def_of(img).name, "Hungry Ghoul");
+    assert!(g.has_subtype(img, "Illusion") && g.has_subtype(img, "Zombie"));
+    let growth = hand(&mut g, 0, "Giant Growth");
+    play(&mut g, growth, false, &[obj(img)], &[]);
+    assert_eq!(g.obj(img).zone, Zone::Graveyard, "sacrificed as it was targeted");
+    assert_eq!(g.obj(ghoul).zone, Zone::Battlefield);
+}
+
+#[test]
+fn mockingbird_copies_only_up_to_the_mana_spent_and_is_a_flying_bird() {
+    let mut g = table();
+    let ghoul = put(&mut g, 1, "Hungry Ghoul"); // mana value 2
+    let mb = hand(&mut g, 0, "Mockingbird");
+    act(&mut g, Action::CastX(mb, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        g.def_of(mb).name,
+        "Mockingbird",
+        "one mana spent: nothing to copy"
+    );
+    let mb2 = hand(&mut g, 0, "Mockingbird");
+    act(&mut g, Action::CastX(mb2, 1));
+    resolve_all(&mut g, &[Action::Pick(ghoul)]);
+    assert_eq!(g.def_of(mb2).name, "Hungry Ghoul");
+    assert!(g.has_subtype(mb2, "Bird") && g.has_subtype(mb2, "Zombie"));
+    assert!(g.keywords(mb2).has(Keywords::FLYING));
+}
+
+#[test]
+fn glasspool_mimic_copies_your_creature_with_extra_types_or_is_played_as_its_land() {
+    let mut g = table();
+    let ghoul = put(&mut g, 0, "Hungry Ghoul");
+    let palin = put(&mut g, 1, "Palinchron");
+    let gm = hand(&mut g, 0, "Glasspool Mimic // Glasspool Shore");
+    act(&mut g, Action::Cast(gm));
+    until_decide(&mut g);
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Pick(ghoul)));
+    assert!(
+        !legal.contains(&Action::Pick(palin)),
+        "only a creature you control"
+    );
+    act(&mut g, Action::Pick(ghoul));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.def_of(gm).name, "Hungry Ghoul");
+    for t in ["Shapeshifter", "Rogue", "Zombie"] {
+        assert!(g.has_subtype(gm, t), "{t}");
+    }
+    let mut g = table();
+    let gs = hand(&mut g, 0, "Glasspool Mimic // Glasspool Shore");
+    act(&mut g, Action::PlayLand(gs));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.def_of(gs).name, "Glasspool Shore");
+    assert!(g.types_of(gs).land && g.obj(gs).tapped);
+}
+
+// ---- A token copy that's also an artifact (Vaultborn Tyrant) ----
+
+#[test]
+fn vaultborn_tyrant_returns_as_an_artifact_token_copy_once() {
+    let mut g = table();
+    let vt = put(&mut g, 0, "Vaultborn Tyrant");
+    let kill = hand(&mut g, 0, "Hero's Downfall");
+    let (life, n) = (g.players[0].life, g.players[0].hand.len());
+    play(&mut g, kill, false, &[obj(vt)], &[]);
+    let copies = tokens(&g, 0, "Vaultborn Tyrant");
+    assert_eq!(copies.len(), 1);
+    let t = copies[0];
+    assert!(g.types_of(t).artifact && g.types_of(t).creature);
+    assert_eq!(g.players[0].life, life + 3, "the copy entering: gain 3");
+    assert_eq!(g.players[0].hand.len(), n, "Downfall cast, one card drawn");
+    let kill2 = hand(&mut g, 0, "Hero's Downfall");
+    play(&mut g, kill2, false, &[obj(t)], &[]);
+    assert!(
+        tokens(&g, 0, "Vaultborn Tyrant").is_empty(),
+        "a token makes no copy"
+    );
+}
