@@ -133,12 +133,8 @@ fn rooms_still_missing_a_piece_are_listed() {
     .collect();
     assert_eq!(
         missing,
-        [
-            "Twisted Caverns",
-            "Runestone Caverns",
-            "Mad Wizard's Lair",
-            "Arena"
-        ]
+        ["Runestone Caverns"],
+        "Twisted Caverns, Mad Wizard's Lair and Arena are lane B's (tests/core_merger.rs)"
     );
 }
 

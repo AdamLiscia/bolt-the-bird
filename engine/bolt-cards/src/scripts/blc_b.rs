@@ -1158,6 +1158,84 @@ pub fn script(name: &str) -> Option<Script> {
                 d.activated[n].crew = 4;
             },
         ),
+        "Chatterfang, Squirrel General" => s(
+            &[
+                "If one or more tokens would be created under your control, those tokens plus that many 1/1 green Squirrel creature tokens are created instead.",
+                "{B}, Sacrifice X Squirrels: Target creature gets +X/-X until end of turn.",
+            ],
+            |d, t| {
+                d.tokens_plus_each = Some(t.squirrel);
+                let n = activated(d, "{B}", false, vec![CREATURE], vec![Effect::PumpXMinusX(0)]);
+                d.activated[n].sacrifice_x_of_subtype = Some("Squirrel");
+            },
+        ),
+        "Baird, Steward of Argive" => s(
+            &["Creatures can't attack you or planeswalkers you control unless their controller pays {1} for each of those creatures."],
+            // The merger's attack tax (Ghostly Prison's), which attacks on planeswalkers pay too.
+            |d, _| d.attack_tax = 1,
+        ),
+        "Perch Protection" => s(
+            &[
+                "Gift an extra turn",
+                "Create four 2/2 blue Bird creature tokens with flying. If the gift was promised, all permanents you control phase out, and until your next turn, your life total can't change and you gain protection from everything.",
+                "Exile Perch Protection.",
+            ],
+            |d, t| {
+                // The gift is promised by casting it "kicked" for no extra cost.
+                d.kicker = Some(ManaCost::default());
+                let birds = Effect::CreateToken { who: Who::You, def: t.bird_2, n: 4 };
+                spell(d, vec![], vec![birds, Effect::ExileSourceSpell]);
+                d.kicked_spell = Some(Ability::new(
+                    vec![],
+                    vec![
+                        Effect::GiftExtraTurn,
+                        birds,
+                        Effect::PhaseOut { all: true },
+                        Effect::LifeLockedUntilYourNextTurn,
+                        Effect::ExileSourceSpell,
+                    ],
+                ));
+            },
+        ),
+        "Coveted Jewel" => s(
+            &[
+                "When this artifact enters, draw three cards.",
+                "{T}: Add three mana of any one color.",
+                "Whenever one or more creatures an opponent controls attack you and aren't blocked, that player draws three cards and gains control of this artifact. Untap it.",
+            ],
+            |d, _| {
+                on(d, When::Enters, vec![], vec![draw(3)]);
+                d.mana = Some(ManaSource::of(&Color::ALL));
+                d.mana_amount = 3;
+                on(d, When::OpponentCreaturesAttackYouUnblocked, vec![], vec![Effect::AttackingPlayerDrawsAndTakesSource(3)]);
+            },
+        ),
+        "Illusionist's Gambit" => s(
+            &[
+                "Cast this spell only during the declare blockers step on an opponent's turn.",
+                "Remove all attacking creatures from combat and untap them. After this phase, there is an additional combat phase. Each of those creatures attacks that combat if able. They can't attack you or planeswalkers you control that combat.",
+            ],
+            |d, _| {
+                // Two players: "you or planeswalkers you control" is everything they could attack.
+                d.cast_only_during_opponents_declare_blockers = true;
+                spell(d, vec![], vec![Effect::RemoveAttackersFromCombatUntapNoAttack, Effect::AdditionalCombatAfterThisPhase]);
+            },
+        ),
+        "Hazel's Brewmaster" => s(
+            &[
+                "Whenever this creature enters or attacks, exile up to one target card from a graveyard and create a Food token.",
+                "Foods you control have all activated abilities of all creature cards exiled with this creature.",
+            ],
+            |d, t| {
+                let card = graveyard_cards(false, Controller::Any);
+                let effects = vec![Effect::ExileCardWithSource(0), Effect::CreateToken { who: Who::You, def: t.food, n: 1 }];
+                for when in [When::Enters, When::Attacks] {
+                    d.triggers.push(Trigger { when, ability: up_to(vec![card], effects.clone()) });
+                }
+                // Activated abilities only: a mana ability on the card (`CardDef::mana`) isn't borrowed.
+                d.foods_have_exiled_abilities = true;
+            },
+        ),
         _ => None,
     }
 }
@@ -1311,4 +1389,10 @@ pub const BLC_B_SCRIPTED: &[&str] = &[
     "Wildsear, Scouring Maw",
     "Casualties of War",
     "Esika's Chariot",
+    "Chatterfang, Squirrel General",
+    "Baird, Steward of Argive",
+    "Perch Protection",
+    "Coveted Jewel",
+    "Illusionist's Gambit",
+    "Hazel's Brewmaster",
 ];

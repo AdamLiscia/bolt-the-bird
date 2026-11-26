@@ -901,6 +901,46 @@ pub fn script(name: &str) -> Option<Script> {
                 activated(d, "{2}{W}{B}", true, vec![], vec![Effect::GrantAll { who: Who::You, keywords: k }]);
             },
         ),
+        // ---- Core: triggers, batch 12 ----
+        "Sefris of the Hidden Ways" => s(
+            &[
+                "Whenever one or more creature cards are put into your graveyard from anywhere, venture into the dungeon. This ability triggers only once each turn.",
+                "Create Undead — Whenever you complete a dungeon, return target creature card from your graveyard to the battlefield.",
+            ],
+            |d, _| {
+                let venture = Effect::Subsystem(bolt_core::SubsystemEffect::Venture);
+                on(d, When::CreatureCardsToYourGraveyardOnceEachTurn, vec![], vec![venture]);
+                on(d, When::YouCompleteDungeon, vec![graveyard_cards(true, Controller::You)], vec![Effect::Reanimate(0)]);
+            },
+        ),
+        "Lunar Convocation" => s(
+            &[
+                "At the beginning of your end step, if you gained life this turn, each opponent loses 1 life.",
+                "At the beginning of your end step, if you gained and lost life this turn, create a 1/1 black Bat creature token with flying.",
+                "{1}{B}, Pay 2 life: Draw a card.",
+            ],
+            |d, t| {
+                let end = When::EndStep { your_turn_only: true };
+                let drain = vec![Effect::LoseLife { who: Who::EachOpponent, n: 1 }];
+                conditional(d, end, Condition::YouGainedLifeThisTurn, vec![], drain);
+                let both = Condition::Both(Box::new(Condition::YouGainedLifeThisTurn), Box::new(Condition::YouLostLifeThisTurn));
+                conditional(d, end, both, vec![], vec![Effect::CreateToken { who: Who::You, def: t.bat, n: 1 }]);
+                let n = activated(d, "{1}{B}", false, vec![], vec![draw(1)]);
+                d.activated[n].life = 2;
+            },
+        ),
+        "Saffi Eriksdotter" => s(
+            &["Sacrifice Saffi Eriksdotter: When target creature is put into your graveyard this turn, return that card to the battlefield."],
+            |d, _| {
+                let trigger = d.triggers.len();
+                let delayed = Effect::DelayedWhenSlotToYourGraveyardThisTurn { slot: 0, trigger };
+                let n = activated(d, "", false, vec![Filter::CREATURE], vec![delayed]);
+                d.activated[n].sacrifice_self = true;
+                // Only from the delayed entry: "that card", in your graveyard, back under your control.
+                let that = Filter { triggering: true, ..graveyard_cards(false, Controller::Any) };
+                on(d, When::SlotCreatureToYourGraveyardThisTurn, vec![that], vec![Effect::Reanimate(0)]);
+            },
+        ),
         _ => None,
     }
 }
@@ -1039,6 +1079,10 @@ pub const PG_D2_SCRIPTED: &[&str] = &[
     "Aurelia, the Warleader",
     "Ghyrson Starn, Kelermorph",
     "Graf Mole",
+    // Core: triggers, batch 12
+    "Sefris of the Hidden Ways",
+    "Lunar Convocation",
+    "Saffi Eriksdotter",
     // The Gitrog, Ravenous Ride
     "Demonic Tutor",
     "Exquisite Blood",

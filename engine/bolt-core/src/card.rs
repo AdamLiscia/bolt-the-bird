@@ -313,6 +313,10 @@ pub struct Activated {
     /// "Tap an untapped creature you control" in the cost (The Shire); the engine picks which (one
     /// that isn't a mana source, then the least power).
     pub tap_untapped_creature: bool,
+    /// "Sacrifice X [subtype]s" in the cost (Chatterfang: Squirrels): `Action::ActivateX`, X up to
+    /// how many you control; the engine picks which (tokens first, then the lowest mana value,
+    /// the source last).
+    pub sacrifice_x_of_subtype: Option<&'static str>,
     /// "Forage" in the cost (Camellia): exile three cards from your graveyard or sacrifice a Food.
     /// The engine picks: a Food if you have one, else three graveyard cards (as for delve).
     pub forage: bool,
@@ -893,6 +897,18 @@ pub struct CardDef {
     pub unspent_mana_becomes_colorless: bool,
     /// "Cast this spell only during your end step." (Necrologia)
     pub cast_only_during_your_end_step: bool,
+    /// The attack tax applies only to attacks on you, not on your planeswalkers (Ghostly Prison,
+    /// Propaganda: "Creatures can't attack you unless ...").
+    pub attack_tax_player_only: bool,
+    /// "Cast this spell only during the declare blockers step on an opponent's turn."
+    /// (Illusionist's Gambit)
+    pub cast_only_during_opponents_declare_blockers: bool,
+    /// "Foods you control have all activated abilities of all creature cards exiled with this
+    /// creature." (Hazel's Brewmaster); see `Game::exiled_with`.
+    pub foods_have_exiled_abilities: bool,
+    /// The Mac C objects-and-zones pieces (copy exceptions, ...), grouped so adding one touches
+    /// only [`ZonesExt`].
+    pub zones: ZonesExt,
 }
 
 /// A card's pieces from the d4 subsystems (see [`CardDef::subsystems`]).
@@ -1359,6 +1375,9 @@ impl CardDef {
             modes_once_each_turn: false,
             unspent_mana_becomes_colorless: false,
             cast_only_during_your_end_step: false,
+            attack_tax_player_only: false,
+            cast_only_during_opponents_declare_blockers: false,
+            foods_have_exiled_abilities: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -1367,6 +1386,7 @@ impl CardDef {
             opponents_max_hand_minus: 0,
             win_on_empty_draw: false,
             extra_upkeep_for_enchanted: false,
+            zones: ZonesExt::default(),
         }
     }
 
@@ -1613,6 +1633,9 @@ impl CardDef {
             modes_once_each_turn: false,
             unspent_mana_becomes_colorless: false,
             cast_only_during_your_end_step: false,
+            attack_tax_player_only: false,
+            cast_only_during_opponents_declare_blockers: false,
+            foods_have_exiled_abilities: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -1621,6 +1644,7 @@ impl CardDef {
             opponents_max_hand_minus: 0,
             win_on_empty_draw: false,
             extra_upkeep_for_enchanted: false,
+            zones: ZonesExt::default(),
         }
     }
 
@@ -1867,6 +1891,9 @@ impl CardDef {
             modes_once_each_turn: false,
             unspent_mana_becomes_colorless: false,
             cast_only_during_your_end_step: false,
+            attack_tax_player_only: false,
+            cast_only_during_opponents_declare_blockers: false,
+            foods_have_exiled_abilities: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -1875,8 +1902,25 @@ impl CardDef {
             opponents_max_hand_minus: 0,
             win_on_empty_draw: false,
             extra_upkeep_for_enchanted: false,
+            zones: ZonesExt::default(),
         }
     }
+}
+
+/// A card's objects-and-zones pieces added by the Mac C theme (see [`CardDef::zones`]).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct ZonesExt {
+    /// As a clone that entered as a copy (`enter_as_copy`): these creature types in addition to the
+    /// copied ones (Glasspool Mimic: Shapeshifter Rogue; Phantasmal Image: Illusion; Mockingbird:
+    /// Bird).
+    pub copy_adds_subtypes: &'static [&'static str],
+    /// As a clone that entered as a copy: these keywords too (Mockingbird: flying).
+    pub copy_adds_keywords: Keywords,
+    /// As a clone that entered as a copy: "When this creature becomes the target of a spell or
+    /// ability, sacrifice it." (Phantasmal Image)
+    pub copy_sacrifice_when_targeted: bool,
+    /// It may copy only a creature with mana value at most the mana spent to cast it (Mockingbird).
+    pub copy_mv_at_most_spent: bool,
 }
 
 #[cfg(test)]
