@@ -990,6 +990,38 @@ pub fn script(name: &str) -> Option<Script> {
             &["{T}: Add {C}. If you control an Urza's Mine and an Urza's Power-Plant, add {C}{C}{C} instead."],
             |d, _| urza_land(d, 3),
         ),
+        // ---- d1 core, batch 8 ----
+        "K'rrik, Son of Yawgmoth" => s(
+            &[
+                "For each {B} in a cost, you may pay 2 life rather than pay that mana.",
+                "Whenever you cast a black spell, put a +1/+1 counter on K'rrik.",
+            ],
+            |d, _| {
+                // The engine pays mana first and 2 life only for the {B} the mana can't pay.
+                d.mana_ext.black_pips_for_life = true;
+                on(d, When::YouCastColor(2), vec![], vec![Effect::CountersSelf { n: 1 }]);
+            },
+        ),
+        "Meloku the Clouded Mirror" => s(
+            &["{1}, Return a land you control to its owner's hand: Create a 1/1 blue Illusion creature token with flying."],
+            |d, t| {
+                let n = activated(d, "{1}", false, vec![], vec![Effect::CreateToken { who: Who::You, def: t.illusion_flying, n: 1 }]);
+                d.activated[n].return_land = true;
+            },
+        ),
+        "The Shire" => s(
+            &[
+                "The Shire enters tapped unless you control a legendary creature.",
+                "{T}: Add {G}.",
+                "{1}{G}, {T}, Tap an untapped creature you control: Create a Food token.",
+            ],
+            |d, t| {
+                d.mana_ext.enters_tapped_unless_legendary_creature = true;
+                d.mana = Some(ManaSource::of(&[Color::Green]));
+                let n = activated(d, "{1}{G}", true, vec![], vec![Effect::CreateToken { who: Who::You, def: t.food, n: 1 }]);
+                d.activated[n].tap_untapped_creature = true;
+            },
+        ),
         _ => None,
     }
 }
@@ -1128,4 +1160,7 @@ pub const PG_D1_SCRIPTED: &[&str] = &[
     "Urza's Mine",
     "Urza's Power Plant",
     "Urza's Tower",
+    "K'rrik, Son of Yawgmoth",
+    "Meloku the Clouded Mirror",
+    "The Shire",
 ];

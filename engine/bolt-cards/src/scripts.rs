@@ -265,6 +265,19 @@ pub fn token_defs() -> Vec<CardDef> {
             });
             t
         },
+        // 83-87: placeholders for other lanes' tokens (83 d2's Bat, 84 lane B's Elemental, 85-87
+        // d3's); each lane's merge replaces its own.
+        token("Placeholder 83", "Bat", 1, 1, Keywords::NONE),
+        token("Placeholder 84", "Elemental", 1, 1, Keywords::NONE),
+        token("Placeholder 85", "Placeholder", 1, 1, Keywords::NONE),
+        token("Placeholder 86", "Placeholder", 1, 1, Keywords::NONE),
+        token("Placeholder 87", "Placeholder", 1, 1, Keywords::NONE),
+        {
+            // 88, lane d1: Meloku's "1/1 blue Illusion creature token with flying".
+            let mut t = token("Illusion", "Illusion", 1, 1, Keywords::FLYING);
+            t.colors = [false, true, false, false, false];
+            t
+        },
     ]
 }
 
@@ -407,6 +420,7 @@ pub struct Tokens {
     pub spider_menace: usize,
     pub saga_construct: usize,
     pub goat: usize,
+    pub illusion_flying: usize,
 }
 
 impl Tokens {
@@ -495,6 +509,7 @@ impl Tokens {
             spider_menace: base + 81,
             saga_construct: base + 82,
             goat: base + 76,
+            illusion_flying: base + 88,
         }
     }
 }

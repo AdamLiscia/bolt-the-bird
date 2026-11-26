@@ -301,6 +301,9 @@ pub struct Activated {
     /// "Sacrifice a land" in the cost (Sylvan Safekeeper): activated with `Action::ActivateWith`,
     /// that land the victim.
     pub sacrifice_land: bool,
+    /// "Tap an untapped creature you control" in the cost (The Shire); the engine picks which (one
+    /// that isn't a mana source, then the least power).
+    pub tap_untapped_creature: bool,
 }
 
 /// The printed card. Shared by every copy; per-copy state lives on the game object.
@@ -963,6 +966,17 @@ pub struct ManaExt {
     /// lands): it makes this much mana while you control all three of Urza's Mine, Power-Plant
     /// and Tower.
     pub tron_amount: u8,
+    /// "For each {B} in a cost, you may pay 2 life rather than pay that mana." (K'rrik): the engine
+    /// pays mana first and only the {B} it can't pay with life.
+    pub black_pips_for_life: bool,
+    /// "Creature spells with flying you cast cost {N} less to cast." (Watcher of the Spheres)
+    pub flying_creature_spell_discount: u8,
+    /// "The first non-Lemur creature spell with flying you cast during each of your turns costs
+    /// {N} less to cast." (Momo, Friendly Flier)
+    pub first_flier_discount_your_turn: u8,
+    /// "This land enters tapped unless you control a legendary creature." (The Shire, Minas
+    /// Tirith)
+    pub enters_tapped_unless_legendary_creature: bool,
 }
 
 /// "You may pay [mana], [life] and sacrifice or tap [creatures] rather than pay this spell's mana
