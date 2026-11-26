@@ -2365,6 +2365,88 @@ pub enum Effect {
     /// "Pay {cost}. If you don't, you lose the game." (a Pact's delayed trigger), as
     /// `Decision::PayOrLoseGame`.
     PayOrLoseGame(crate::mana::ManaCost),
+    /// Exile the top card of your library face down (you may look at it) and create a `def` token;
+    /// when that token leaves the battlefield, the source's trigger `trigger` (a `When::Never`
+    /// trigger with `Effect::LinkedExiledCardToHand`) puts the card into your hand (Ugin, the
+    /// Ineffable's +1). See `Game::token_linked_exile`.
+    ExileTopFaceDownCreateLinkedToken {
+        def: usize,
+        trigger: usize,
+    },
+    /// The card in the stack item's `extra` (its zone-change count in `amount`) goes from exile to
+    /// its owner's hand, if it's still that exiled card (Ugin, the Ineffable's token leaving).
+    LinkedExiledCardToHand,
+    /// Put a counter of the source's own kind on it (`Object::kind_counters`), then the player in
+    /// `slot` (if any, and legal) draws a card, and another counter goes on it for each card drawn
+    /// (Communal Brewing's ingredient counters).
+    KindCounterSelfThenPerTargetDraw(u8),
+    /// The creature spell in `extra` enters with X additional +1/+1 counters, X the source's kind
+    /// counters (Communal Brewing), see `Game::spell_enters_with_counters`.
+    CastSpellEntersWithCountersPerKindCounter,
+    /// `who` sacrifices a nontoken artifact of their choice (Rootcast Apprenticeship), as
+    /// `Decision::SacrificeNontokenArtifact` (automatic with one).
+    SacrificeNontokenArtifact(Who),
+    /// You may exile three cards from your graveyard; if you do, create a `food` token and ask
+    /// again (Insatiable Frugivore's "repeat this process"), as `Decision::ExileThreeForFood`.
+    MayExileThreeRepeatFood {
+        food: usize,
+    },
+    /// Creatures you control get +X/+0 and gain `keywords` until end of turn, X the ability's X
+    /// (Insatiable Frugivore: menace, X the Foods sacrificed).
+    PumpYoursXPowerGrant(crate::Keywords),
+    /// `who` gets `n` poison counters (Bloodroot Apothecary: "that player gets two poison
+    /// counters").
+    PoisonCounters {
+        who: Who,
+        n: i32,
+    },
+    /// You gain life equal to the number of creatures you control plus the number of planeswalkers
+    /// you control (Ajani, Strength of the Pride's +1).
+    GainLifePerCreatureAndPlaneswalkerYouControl,
+    /// If you have at least `n` life more than your starting life total, exile the source and each
+    /// artifact and creature your opponents control (Ajani, Strength of the Pride's 0: 15).
+    ExileSelfAndOpponentsArtifactsCreaturesIfLifeAbove(i32),
+    /// Bruna, Light of Alabaster: attach to the source any number of Auras on the battlefield, and
+    /// put onto the battlefield attached to it any number of Aura cards that could enchant it from
+    /// your graveyard and/or hand, one at a time as `Decision::AttachAura` (game/zones.rs).
+    AttachAurasToSource,
+    /// Light-Paws, Emperor's Voice: if the entering Aura in `slot` (a triggering slot) was cast, you
+    /// may search your library for an Aura card with mana value at most that Aura's and a name
+    /// different from each Aura you control, put it onto the battlefield attached to the source,
+    /// then shuffle.
+    SearchAuraForSourceIfCast(u8),
+    /// Sovereigns of Lost Alara, from a "whenever you attack" trigger: if exactly one creature you
+    /// control is attacking, you may search your library for an Aura card that could enchant it,
+    /// put it onto the battlefield attached to it, then shuffle.
+    SearchAuraForLoneAttacker,
+    /// Olivia, Crimson Bride: return the creature card in `slot` from your graveyard to the
+    /// battlefield tapped and attacking; it gains "When you don't control a legendary Vampire,
+    /// exile this creature." (`Object::exile_without_legendary_vampire`).
+    ReturnAttackingUntilNoLegendaryVampire(u8),
+    /// Dragonhawk, Fate's Tempest: exile the top X cards of your library, X the number of creatures
+    /// you control with power 4 or greater; you may play them until your next end step; at the
+    /// beginning of that end step, the source's trigger number `trigger` deals 2 damage to each
+    /// opponent for each of them still exiled (`Game::delayed_end_step_exiled`).
+    ExileTopPowerFourPlayableUntilNextEndStep {
+        trigger: usize,
+    },
+    /// Damage to each opponent equal to the trigger's amount (Dragonhawk's delayed trigger).
+    DamageEachOpponentAmount,
+    /// Suspend N (CR 702.62a), from an activated ability with `Activated::plot` (exiled from your
+    /// hand as its cost): the card stays exiled with N time counters instead of plotted.
+    SuspendSource(u8),
+    /// Glimpse of Tomorrow: shuffle all permanents you own into your library, reveal that many
+    /// cards from the top, put the non-Aura permanent cards onto the battlefield, then the Aura
+    /// cards (each attached as `Decision::AuraEntersAttachedTo`), then the rest on the bottom in a
+    /// random order.
+    GlimpseOfTomorrow,
+    /// "If the discarded card was a creature card, amass [subtype] `n`" (Moria Scavenger): the
+    /// discard cost's card is the item's `extra` (`Activated::victim_in_extra`).
+    AmassIfExtraCreatureCard {
+        subtype: &'static str,
+        n: u8,
+        def: usize,
+    },
     /// "You may pay {X}, where X is less than or equal to the amount of life you gained. If you do,
     /// draw X cards." (Well of Lost Dreams): the trigger's amount caps X, as `Decision::PayXDrawX`.
     MayPayXUpToAmountDrawX,
@@ -3263,6 +3345,13 @@ pub enum When {
     /// "When this [permanent] is put into a graveyard from the battlefield", tokens included (the
     /// Wicked Role).
     ThisPutIntoGraveyardFromBattlefield,
+    /// "Whenever an opponent sacrifices a noncreature token" (Bloodroot Apothecary), fired from
+    /// `Game::sacrificed`.
+    OpponentSacrificesNoncreatureToken,
+    /// "Whenever an Aura you control enters, if you cast it" (Light-Paws): fired as an Aura spell
+    /// resolves onto the battlefield (`Game::cast_aura_entered`, game/zones.rs), with the Aura in a
+    /// triggering first slot.
+    CastAuraYouControlEnters,
     /// "Whenever a [subtype] you control attacks" (Utvara Hellkite: Dragon), this one included; slot
     /// 0 (if `triggering`) is the attacker.
     SubtypeYouControlAttacks(&'static str),
