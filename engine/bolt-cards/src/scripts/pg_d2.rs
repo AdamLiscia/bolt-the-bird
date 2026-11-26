@@ -93,6 +93,56 @@ pub fn script(name: &str) -> Option<Script> {
                 conditional(d, When::PlayerPlaysLand, Condition::NotYourTurn, vec![], vec![Effect::MayLandFromHand]);
             },
         ),
+        // ---- Core: triggers, batch 2 (life lost and cards drawn by an amount) ----
+        "Reanimate" => s(
+            &["Put target creature card from a graveyard onto the battlefield under your control. You lose life equal to that card's mana value."],
+            |d, _| {
+                // The life loss is counted first, while the card is still the target in its graveyard.
+                let card = graveyard_cards(true, Controller::Any);
+                spell(d, vec![card], vec![Effect::LoseLifeSlotManaValue(0), Effect::Reanimate(0)]);
+            },
+        ),
+        "Feed the Swarm" => s(
+            &["Destroy target creature or enchantment an opponent controls. You lose life equal to that permanent's mana value."],
+            |d, _| {
+                let f = Filter { players: false, planeswalkers: false, enchantments: true, controller: Controller::Opponent, ..Filter::ANY };
+                spell(d, vec![f], vec![Effect::LoseLifeSlotManaValue(0), Effect::Destroy(0)]);
+            },
+        ),
+        "Darkstar Augur" => s(
+            &[
+                "Offspring {B}",
+                "At the beginning of your upkeep, reveal the top card of your library and put that card into your hand. You lose life equal to its mana value.",
+            ],
+            |d, _| {
+                d.offspring = ManaCost::parse("{B}");
+                on(d, When::Upkeep { your_turn_only: true }, vec![], vec![Effect::RevealTopToHandLoseManaValue]);
+            },
+        ),
+        "Castle Locthwain" => s(
+            &[
+                "This land enters tapped unless you control a Swamp.",
+                "{T}: Add {B}.",
+                "{1}{B}{B}, {T}: Draw a card, then you lose life equal to the number of cards in your hand.",
+            ],
+            |d, _| {
+                d.enters_tapped_unless = Some(["Swamp", "Swamp"]);
+                d.mana = Some(ManaSource::of(&[Color::Black]));
+                activated(d, "{1}{B}{B}", true, vec![], vec![draw(1), Effect::LoseLifePerCardInHand]);
+            },
+        ),
+        "Eldritch Pact" => s(
+            &["Target player draws X cards and loses X life, where X is the number of cards in their graveyard."],
+            |d, _| spell(d, vec![Filter::PLAYER], vec![Effect::DrawAndLosePerGraveyardCard(Who::TargetPlayer(0))]),
+        ),
+        "Dark Deal" => s(
+            &["Each player discards all the cards in their hand, then draws that many cards minus one."],
+            |d, _| spell(d, vec![], vec![Effect::DiscardHandsDrawThatManyMinusOne]),
+        ),
+        "Graveborn Muse" => s(
+            &["At the beginning of your upkeep, you draw X cards and lose X life, where X is the number of Zombies you control."],
+            |d, _| on(d, When::Upkeep { your_turn_only: true }, vec![], vec![Effect::DrawAndLosePerSubtypeYouControl("Zombie")]),
+        ),
         "Breena, the Demagogue" => s(
             &["Whenever a player attacks one of your opponents, if that opponent has more life than another of your opponents, that attacking player draws a card and you put two +1/+1 counters on a creature you control."],
             |_, _| {
@@ -454,6 +504,14 @@ pub const PG_D2_SCRIPTED: &[&str] = &[
     "Malakir Rebirth // Malakir Mire",
     "Breena, the Demagogue",
     "Burgeoning",
+    // Core: triggers, batch 2
+    "Reanimate",
+    "Feed the Swarm",
+    "Darkstar Augur",
+    "Castle Locthwain",
+    "Eldritch Pact",
+    "Dark Deal",
+    "Graveborn Muse",
     // The Gitrog, Ravenous Ride
     "Demonic Tutor",
     "Exquisite Blood",

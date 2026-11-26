@@ -7,7 +7,7 @@ mod common;
 use std::sync::Arc;
 
 use bolt_cards::set;
-use bolt_core::effect::{Ability, Condition, Effect, Trigger, When, Who};
+use bolt_core::effect::{Ability, Condition, Effect, Filter, Trigger, When, Who};
 use bolt_core::{Action, CardDef, Game, ObjId, Step, Zone};
 use common::{act, obj, play, resolve_all};
 
@@ -203,4 +203,107 @@ fn not_your_turn_with_player_plays_land_is_an_opponents_land_play() {
     act(&mut g, Action::PlayLand(theirs));
     resolve_all(&mut g, &[]);
     assert_eq!(g.players[0].life, 41, "the opponent's land play");
+}
+
+// ---- batch 2: life lost and cards drawn by an amount ----
+
+/// Hero's Downfall, its spell replaced by `targets` and `effects`.
+fn downfall_as(targets: Vec<Filter>, effects: Vec<Effect>) -> impl Fn(&mut Vec<CardDef>) {
+    move |defs: &mut Vec<CardDef>| {
+        defs[cid("Hero's Downfall")].spell = Some(Ability::new(targets.clone(), effects.clone()));
+    }
+}
+
+#[test]
+fn lose_life_slot_mana_value_reads_the_target_before_it_moves() {
+    let creature = Filter {
+        players: false,
+        planeswalkers: false,
+        ..Filter::ANY
+    };
+    let mut g = game_with(downfall_as(
+        vec![creature],
+        vec![Effect::LoseLifeSlotManaValue(0), Effect::Destroy(0)],
+    ));
+    let angel = g.add_card(1, cid("Serra Angel"), Zone::Battlefield); // mana value 5
+    let d = g.add_card(0, cid("Hero's Downfall"), Zone::Hand);
+    play(&mut g, d, false, &[obj(angel)], &[]);
+    assert_eq!(g.obj(angel).zone, Zone::Graveyard);
+    assert_eq!(g.players[0].life, 35);
+}
+
+#[test]
+fn reveal_top_to_hand_lose_mana_value_takes_the_top_card() {
+    let mut g = game_with(ring_with(trigger(
+        When::Upkeep { your_turn_only: true },
+        None,
+        vec![Effect::RevealTopToHandLoseManaValue],
+    )));
+    g.add_card(0, cid("Sol Ring"), Zone::Battlefield);
+    let top = g.add_card(0, cid("Serra Angel"), Zone::Library);
+    g.start_turn(5, 0);
+    to_main(&mut g);
+    assert_eq!(g.obj(top).zone, Zone::Hand);
+    assert_eq!(g.players[0].life, 35);
+}
+
+#[test]
+fn lose_life_per_card_in_hand_counts_on_resolution() {
+    let mut g = game_with(downfall_as(vec![], vec![Effect::LoseLifePerCardInHand]));
+    let d = g.add_card(0, cid("Hero's Downfall"), Zone::Hand);
+    let n = g.players[0].hand.len() as i32;
+    play(&mut g, d, false, &[], &[]);
+    assert_eq!(g.players[0].life, 40 - (n - 1), "the spell has left the hand");
+}
+
+#[test]
+fn draw_and_lose_per_graveyard_card_for_the_target_player() {
+    let mut g = game_with(downfall_as(
+        vec![Filter::PLAYER],
+        vec![Effect::DrawAndLosePerGraveyardCard(Who::TargetPlayer(0))],
+    ));
+    for _ in 0..3 {
+        g.add_card(1, cid("Plains"), Zone::Graveyard);
+    }
+    let n = g.players[1].hand.len();
+    let d = g.add_card(0, cid("Hero's Downfall"), Zone::Hand);
+    play(&mut g, d, false, &[bolt_core::Target::Player(1)], &[]);
+    assert_eq!(g.players[1].hand.len(), n + 3);
+    assert_eq!(g.players[1].life, 37);
+    assert_eq!(g.players[0].life, 40);
+}
+
+#[test]
+fn discard_hands_draw_that_many_minus_one_for_each_player() {
+    let mut g = game_with(downfall_as(
+        vec![],
+        vec![Effect::DiscardHandsDrawThatManyMinusOne],
+    ));
+    let d = g.add_card(0, cid("Hero's Downfall"), Zone::Hand);
+    let (a, b) = (g.players[0].hand.len() - 1, g.players[1].hand.len());
+    let (ga, gb) = (g.players[0].graveyard.len(), g.players[1].graveyard.len());
+    play(&mut g, d, false, &[], &[]);
+    assert_eq!(g.players[0].hand.len(), a - 1);
+    assert_eq!(g.players[1].hand.len(), b - 1);
+    assert_eq!(g.players[0].graveyard.len(), ga + a + 1, "its hand and the spell");
+    assert_eq!(g.players[1].graveyard.len(), gb + b);
+}
+
+#[test]
+fn draw_and_lose_per_subtype_you_control_counts_the_subtype() {
+    let mut g = game_with(ring_with(trigger(
+        When::Upkeep { your_turn_only: true },
+        None,
+        vec![Effect::DrawAndLosePerSubtypeYouControl("Cat")],
+    )));
+    g.add_card(0, cid("Sol Ring"), Zone::Battlefield);
+    for _ in 0..2 {
+        g.add_card(0, cid("Savannah Lions"), Zone::Battlefield); // Cat Soldier
+    }
+    g.add_card(1, cid("Savannah Lions"), Zone::Battlefield); // not yours
+    let n = g.players[0].hand.len();
+    g.start_turn(5, 0);
+    to_main(&mut g);
+    assert_eq!(g.players[0].hand.len(), n + 2 + 1, "two Cats, then the draw step");
+    assert_eq!(g.players[0].life, 38);
 }

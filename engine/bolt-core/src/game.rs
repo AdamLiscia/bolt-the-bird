@@ -13984,6 +13984,67 @@ impl Game {
                     }
                 }
             }
+            Effect::LoseLifeSlotManaValue(slot) => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    let mv = self.def_of(id).cost.mana_value() as i32;
+                    if mv > 0 {
+                        self.lose_life(item.controller, mv);
+                    }
+                }
+            }
+            Effect::RevealTopToHandLoseManaValue => {
+                let p = item.controller;
+                if let Some(top) = self.players[p].library.last().copied() {
+                    let mv = self.def_of(top).cost.mana_value() as i32;
+                    self.move_to(top, Zone::Hand);
+                    if mv > 0 {
+                        self.lose_life(p, mv);
+                    }
+                }
+            }
+            Effect::LoseLifePerCardInHand => {
+                let p = item.controller;
+                let n = self.players[p].hand.len() as i32;
+                if n > 0 {
+                    self.lose_life(p, n);
+                }
+            }
+            Effect::DrawAndLosePerGraveyardCard(who) => {
+                for p in self.players_for(item, legal, who) {
+                    let n = self.players[p].graveyard.len();
+                    for _ in 0..n {
+                        self.draw(p);
+                    }
+                    if n > 0 {
+                        self.lose_life(p, n as i32);
+                    }
+                }
+            }
+            Effect::DiscardHandsDrawThatManyMinusOne => {
+                let mut counts = [0usize; 2];
+                for (p, count) in counts.iter_mut().enumerate() {
+                    let hand = self.players[p].hand.clone();
+                    *count = hand.len();
+                    for c in hand {
+                        self.move_to(c, Zone::Graveyard); // discarded (CR 701.9)
+                    }
+                }
+                for (p, &n) in counts.iter().enumerate() {
+                    for _ in 0..n.saturating_sub(1) {
+                        self.draw(p);
+                    }
+                }
+            }
+            Effect::DrawAndLosePerSubtypeYouControl(sub) => {
+                let p = item.controller;
+                let n = self.permanents(p).filter(|&x| self.has_subtype(x, sub)).count();
+                for _ in 0..n {
+                    self.draw(p);
+                }
+                if n > 0 {
+                    self.lose_life(p, n as i32);
+                }
+            }
         }
     }
 

@@ -1474,6 +1474,22 @@ pub enum Effect {
     /// You gain half X life and draw half X cards, each rounded down, X the source spell's X (Hydroid
     /// Krasis: "When you cast this spell, ...").
     GainAndDrawHalfX,
+    /// You lose life equal to the mana value of the card or permanent in `slot` (Reanimate, Feed the
+    /// Swarm). Put it before the effect that moves that object, which keeps the slot legal.
+    LoseLifeSlotManaValue(u8),
+    /// Put the top card of your library into your hand (revealed); you lose life equal to its mana
+    /// value (Darkstar Augur, Dark Confidant).
+    RevealTopToHandLoseManaValue,
+    /// You lose life equal to the number of cards in your hand (Castle Locthwain).
+    LoseLifePerCardInHand,
+    /// `who` draws X cards and loses X life, X the cards in their graveyard as this resolves
+    /// (Eldritch Pact).
+    DrawAndLosePerGraveyardCard(Who),
+    /// Each player discards their hand, then draws that many cards minus one (Dark Deal).
+    DiscardHandsDrawThatManyMinusOne,
+    /// You draw X cards and lose X life, X the permanents you control with this subtype (Graveborn
+    /// Muse: Zombies).
+    DrawAndLosePerSubtypeYouControl(&'static str),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

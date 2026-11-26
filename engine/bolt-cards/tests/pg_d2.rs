@@ -907,3 +907,107 @@ fn burgeoning_puts_a_land_in_when_the_opponent_plays_one() {
     resolve_all(&mut g, &[Action::Pick(other)]); // a land card from hand, or No
     assert_eq!(g.obj(other).zone, Zone::Battlefield);
 }
+
+// ---- Core: triggers, batch 2 ----
+
+#[test]
+fn reanimate_takes_any_graveyards_creature_for_its_mana_value() {
+    let mut g = table();
+    let angel = g.add_card(1, cid("Serra Angel"), Zone::Graveyard); // mana value 5
+    let r = hand(&mut g, 0, "Reanimate");
+    play(&mut g, r, false, &[obj(angel)], &[]);
+    assert_eq!(g.obj(angel).zone, Zone::Battlefield);
+    assert_eq!(g.obj(angel).controller, 0);
+    assert_eq!(g.players[0].life, 35);
+}
+
+#[test]
+fn feed_the_swarm_destroys_and_costs_its_mana_value() {
+    let mut g = table();
+    let blood = put(&mut g, 1, "Exquisite Blood"); // mana value 5
+    let mine = put(&mut g, 0, "Savannah Lions");
+    let f = hand(&mut g, 0, "Feed the Swarm");
+    act(&mut g, Action::Cast(f));
+    assert!(!has(&g, Action::Target(obj(mine))), "an opponent's only");
+    act(&mut g, Action::Target(obj(blood)));
+    resolve_all(&mut g, &[]);
+    assert!(in_graveyard(&g, 1, blood));
+    assert_eq!(g.players[0].life, 35);
+}
+
+#[test]
+fn darkstar_augur_takes_the_top_card_each_upkeep_and_has_offspring() {
+    let mut g = table();
+    put(&mut g, 0, "Darkstar Augur");
+    let top = g.add_card(0, cid("Serra Angel"), Zone::Library);
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.obj(top).zone, Zone::Hand);
+    assert_eq!(g.players[0].life, 35);
+
+    let mut g = table();
+    let a = hand(&mut g, 0, "Darkstar Augur");
+    play(&mut g, a, true, &[], &[]);
+    let copies = tokens(&g, 0, "Darkstar Augur");
+    assert_eq!(copies.len(), 1, "offspring paid");
+    assert_eq!(g.power(copies[0]), 1);
+}
+
+#[test]
+fn castle_locthwain_draws_then_costs_life_per_card_in_hand() {
+    let mut g = game(&[]);
+    let c = hand(&mut g, 0, "Castle Locthwain");
+    act(&mut g, Action::PlayLand(c));
+    assert!(g.obj(c).tapped, "no Swamp");
+    let mut g = game(&["Swamp", "Swamp", "Swamp"]);
+    let c = hand(&mut g, 0, "Castle Locthwain");
+    act(&mut g, Action::PlayLand(c));
+    assert!(!g.obj(c).tapped, "a Swamp");
+    let n = g.players[0].hand.len() as i32;
+    act(&mut g, Action::Activate(c, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].life, 40 - (n + 1), "drew first, then counted");
+}
+
+#[test]
+fn eldritch_pact_draws_and_drains_by_graveyard_size() {
+    let mut g = table();
+    for _ in 0..4 {
+        g.add_card(0, cid("Plains"), Zone::Graveyard);
+    }
+    let p = hand(&mut g, 0, "Eldritch Pact");
+    let n = g.players[0].hand.len();
+    play(&mut g, p, false, &[Target::Player(0)], &[]);
+    assert_eq!(g.players[0].hand.len(), n - 1 + 4);
+    assert_eq!(g.players[0].life, 36);
+}
+
+#[test]
+fn dark_deal_redraws_each_hand_one_short() {
+    let mut g = table();
+    let d = hand(&mut g, 0, "Dark Deal");
+    let (a, b) = (g.players[0].hand.len() - 1, g.players[1].hand.len());
+    play(&mut g, d, false, &[], &[]);
+    assert_eq!(g.players[0].hand.len(), a - 1);
+    assert_eq!(g.players[1].hand.len(), b - 1);
+}
+
+#[test]
+fn graveborn_muse_draws_and_drains_per_zombie() {
+    let mut g = table();
+    put(&mut g, 0, "Graveborn Muse"); // a Zombie itself
+    put(&mut g, 0, "Undead Augur"); // Zombie Wizard
+    let n = g.players[0].hand.len();
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(
+        g.players[0].hand.len(),
+        n + 2 + 1,
+        "two Zombies, then the draw step"
+    );
+    assert_eq!(g.players[0].life, 38);
+}
