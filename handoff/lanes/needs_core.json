@@ -6414,6 +6414,62 @@
    "lane": "mac-c",
    "theme": "mana",
    "owner": "d1"
+  },
+  {
+   "card": "Alchemist's Talent",
+   "deck": "d4 handback (BLC Talents, Sagas)",
+   "missing": "Treasure mana grant; 'was Treasure mana spent'",
+   "lane": "d4",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Fisher's Talent (reveal-a-land Fish)",
+   "deck": "d4 handback (BLC Talents, Sagas)",
+   "missing": "reveal a land, create a Fish",
+   "lane": "d4",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Fisher's Talent (token replacements)",
+   "deck": "d4 handback (BLC Talents, Sagas)",
+   "missing": "Fish->Shark->Octopus token replacements and those tokens (numbers from the merger)",
+   "lane": "d4",
+   "theme": "replace_filter",
+   "owner": "mac-b"
+  },
+  {
+   "card": "Fortune Teller's Talent (play from top)",
+   "deck": "d4 handback (BLC Talents, Sagas)",
+   "missing": "play cards from the top of your library",
+   "lane": "d4",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Fortune Teller's Talent (cost reduction)",
+   "deck": "d4 handback (BLC Talents, Sagas)",
+   "missing": "spells not cast from hand cost less",
+   "lane": "d4",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Gourmand's Talent",
+   "deck": "d4 handback (BLC Talents, Sagas)",
+   "missing": "artifacts you control are Foods during your turn",
+   "lane": "d4",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "There and Back Again (chapter I)",
+   "deck": "d4 handback (BLC Talents, Sagas)",
+   "missing": "target creature can't block while you control this Saga",
+   "lane": "d4",
+   "theme": "merger_delegated",
+   "owner": "mac-b"
   }
  ]
 }
