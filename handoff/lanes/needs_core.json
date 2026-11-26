@@ -1634,7 +1634,7 @@
   {
    "card": "Canopy Gargantuan",
    "deck": "The Gitrog, Ravenous Ride (RuricMo)",
-   "missing": "needs core: counters on each other creature equal to its toughness",
+   "missing": "needs core: counters on each other creature equal to its toughness [done by d3 batch 21: Effect::CountersOnOthersEqualToughness]",
    "lane": "d2",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -1746,7 +1746,7 @@
   {
    "card": "Lord of Extinction",
    "deck": "The Gitrog, Ravenous Ride (RuricMo)",
-   "missing": "needs core: power and toughness equal to the cards in all graveyards",
+   "missing": "needs core: power and toughness equal to the cards in all graveyards [done by d3 batch 21: Scale::PerCardInAllGraveyards]",
    "lane": "d2",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -2138,7 +2138,7 @@
   {
    "card": "Accursed Marauder",
    "deck": "Henrika Domnathi // Henrika, Infernal Seer",
-   "missing": "needs core: each player sacrifices a nontoken creature",
+   "missing": "needs core: each player sacrifices a nontoken creature [done by d3 batch 21: Effect::EachPlayerSacrificesNontokenCreature, active player first]",
    "lane": "d2",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -2186,7 +2186,7 @@
   {
    "card": "Vampire Hexmage",
    "deck": "Henrika Domnathi // Henrika, Infernal Seer",
-   "missing": "needs core: remove all counters including loyalty counters",
+   "missing": "needs core: remove all counters including loyalty counters [done by d3 batch 21: Effect::RemoveEveryKindOfCounter, loyalty included]",
    "lane": "d2",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -2554,7 +2554,7 @@
   {
    "card": "Drana, Liberator of Malakir",
    "deck": "Raffine, Scheming Seer",
-   "missing": "needs core: +1/+1 counters on each attacking creature you control",
+   "missing": "needs core: +1/+1 counters on each attacking creature you control [done by d3 batch 21: Effect::CountersOnEachAttackingYouControl]",
    "lane": "d2",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -2898,7 +2898,7 @@
   {
    "card": "Takenuma, Abandoned Mire",
    "deck": "Sefris of the Hidden Ways",
-   "missing": "needs core: return a creature or planeswalker card from your graveyard (a Pick for creature-or-planeswalker)",
+   "missing": "needs core: return a creature or planeswalker card from your graveyard (a Pick for creature-or-planeswalker) [done by d3 batch 21: Pick::CreatureOrPlaneswalker, Effect::ReturnPickFromGraveyardToHand]",
    "lane": "d3",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -6464,46 +6464,6 @@
    "owner": "merger"
   },
   {
-   "card": "Urza's Saga (chapter grants)",
-   "deck": "d4 handback",
-   "missing": "activations() skips activated ability n of id when self.lacks_chapter_activated(id, n); d1's mana listing (single_sources / tap_for_mana) skips id when self.lacks_chapter_mana(id). Then d4 scripts it.",
-   "lane": "d4",
-   "theme": "existing_code",
-   "owner": "merger"
-  },
-  {
-   "card": "Sefris of the Hidden Ways",
-   "deck": "d4 handback",
-   "missing": "a 'whenever you complete a dungeon' When event, emitted from d4's Game::complete_dungeon where completed_dungeons is bumped",
-   "lane": "d4",
-   "theme": "triggers",
-   "owner": "d2"
-  },
-  {
-   "card": "Barrowin of Clan Undurr",
-   "deck": "d4 handback",
-   "missing": "an untargeted 'return up to one creature card with mana value 3 or less from your graveyard to the battlefield' effect (ReturnFromGraveyard goes to the hand; Reanimate is targeted)",
-   "lane": "d4",
-   "theme": "effects",
-   "owner": "d3"
-  },
-  {
-   "card": "Class enchantments (Wizard Class, Sorcerer Class, Warlock Class, the five Talents)",
-   "deck": "d4 handback",
-   "missing": "levels (CR 716): activations() needs a hook to offer 'Level N' only at level N-1 and as a sorcery (the same activation gate as Urza's Saga); d4 then adds the level state and level-gated abilities. Fisher's/Alchemist's/Gourmand's/Fortune Teller's Talent also need other lanes' pieces",
-   "lane": "d4",
-   "theme": "existing_code",
-   "owner": "merger"
-  },
-  {
-   "card": "Dusk // Dawn, Commit // Memory (aftermath)",
-   "deck": "d4 handback",
-   "missing": "aftermath (CR 702.127): cast the right half only from the graveyard (CastOmen offered for a graveyard card, not from the hand), then exile it; the legal-action listing is the merger's. Dawn also needs 'return all creature cards with power 2 or less from your graveyard to your hand' (d3)",
-   "lane": "d4",
-   "theme": "existing_code",
-   "owner": "merger"
-  },
-  {
    "card": "Far Traveler",
    "deck": "d4 handback",
    "missing": "a Filter for a tapped creature ('exile up to one target tapped creature you control'); d4 would grant the trigger to commander creatures like Dungeon Delver",
@@ -6550,6 +6510,14 @@
    "lane": "d4",
    "theme": "effects",
    "owner": "d3"
+  },
+  {
+   "card": "Urza's Saga (chapter mana)",
+   "deck": "d4 handback",
+   "missing": "d1's mana listing (single_sources / tap_for_mana) skips id when self.lacks_chapter_mana(id); the merger's activations() half is in. d4's script is drafted (stashed) and waits on this",
+   "lane": "d4",
+   "theme": "mana",
+   "owner": "d1"
   }
  ]
 }

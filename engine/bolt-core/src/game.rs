@@ -1281,8 +1281,14 @@ pub enum Decision {
     },
     /// Expropriate: `Pick` a permanent `owner` owns to gain control of; then the rest of `money`.
     ExpropriatePick { owner: PlayerId, money: Vec<PlayerId> },
+    /// `Pick` a nontoken creature you control to sacrifice; then `next` chooses (Accursed
+    /// Marauder: each player, the active player first).
+    SacrificeNontokenCreatureEach { next: Option<PlayerId> },
     /// The Ring tempts you (CR 701.54a): `Pick` a creature you control as your Ring-bearer.
     ChooseRingBearer,
+    /// "Pay {cost}. If you don't, you lose the game." (Pact of Negation): `Yes` pays (offered only if
+    /// you can), `No` loses the game.
+    PayOrLoseGame { cost: ManaCost },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -1682,6 +1688,9 @@ pub struct Game {
     pub ring_tempted: [u32; 2],
     /// Blockers the Ring's third ability has already triggered for: (blocker, its zcc, turn).
     pub ring_blocks_seen: Vec<(ObjId, u32, u32)>,
+    /// Delayed "at the beginning of your next upkeep" triggers (Pact of Negation): (source, trigger
+    /// number, controller, the turn it was set up; it waits for an upkeep of theirs after it).
+    pub delayed_next_upkeep: Vec<(ObjId, usize, PlayerId, u32)>,
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -1947,6 +1956,7 @@ impl Game {
             ring_bearer: [None; 2],
             ring_tempted: [0; 2],
             ring_blocks_seen: Vec::new(),
+            delayed_next_upkeep: Vec::new(),
         }
     }
 
@@ -2857,6 +2867,9 @@ impl Game {
                             ),
                             Some(Scale::PerCardInAllHands) => {
                                 Some(self.players.iter().map(|pl| pl.hand.len()).sum())
+                            }
+                            Some(Scale::PerCardInAllGraveyards) => {
+                                Some(self.players.iter().map(|pl| pl.graveyard.len()).sum())
                             }
                             _ => None,
                         };
@@ -4889,11 +4902,21 @@ impl Game {
                 When::ArtifactToOpponentsGraveyardFromBattlefield,
                 None,
             );
+            self.fire(
+                last_controller,
+                When::ArtifactYouControlToGraveyardFromBattlefield,
+                None,
+            );
         }
         if dies && (self.types_of(id).artifact || self.types_of(id).creature) {
             self.fire(
                 last_controller,
                 When::ThisOrAnotherCreatureOrArtifactYouControlDies,
+                Some(id),
+            );
+            self.fire(
+                last_controller,
+                When::AnotherCreatureOrArtifactYouControlToGraveyardFromBattlefield,
                 Some(id),
             );
         }
@@ -11278,6 +11301,7 @@ impl Game {
             }
             Pick::PermanentOddManaValue => d.types.is_permanent() && !d.cost.mana_value().is_multiple_of(2),
             Pick::CreatureManaValueAtMost(n) => d.types.creature && d.cost.mana_value() <= n,
+            Pick::CreatureOrPlaneswalker => d.types.creature || d.types.planeswalker,
         }
     }
 
@@ -11391,7 +11415,7 @@ impl Game {
                 v
             }
             Decision::SplitPiles { .. } | Decision::ChoosePile { .. } => vec![Action::Yes, Action::No],
-            Decision::MayPay { cost } => {
+            Decision::MayPay { cost } | Decision::PayOrLoseGame { cost } => {
                 let mut v = Vec::new();
                 if self.can_pay(p, cost, None) {
                     v.push(Action::Yes);
@@ -12231,6 +12255,11 @@ impl Game {
                 v.push(Action::No);
                 v
             }
+            Decision::SacrificeNontokenCreatureEach { .. } => self
+                .nontoken_sacrifice_options(p)
+                .into_iter()
+                .map(Action::Pick)
+                .collect(),
             Decision::ReanimateTotalManaValue { left } => {
                 let mut v: Vec<Action> = self
                     .reanimate_total_options(*left)
@@ -12445,6 +12474,8 @@ impl Game {
                 self.sacrificed(c, p);
             }
             (Decision::MayPay { cost }, Action::Yes) => self.pay_mana(p, &cost, None),
+            (Decision::PayOrLoseGame { cost }, Action::Yes) => self.pay_mana(p, &cost, None),
+            (Decision::PayOrLoseGame { .. }, _) => self.players[p].lost = true,
             (Decision::KeepOfType { ty, mut kept }, Action::Pick(c)) => {
                 if !kept.contains(&c) {
                     kept.push(c);
@@ -13724,6 +13755,15 @@ impl Game {
                     self.reanimate_total_next(p, left.saturating_sub(mv));
                 }
             }
+            (Decision::SacrificeNontokenCreatureEach { next }, a) => {
+                if let Action::Pick(c) = a {
+                    self.move_to(c, Zone::Graveyard);
+                    self.sacrificed(c, p);
+                }
+                if let Some(q) = next {
+                    self.sacrifice_nontoken_next(q, None);
+                }
+            }
             (d, a) => unreachable!("legal action {a:?} unhandled for {d:?}"),
         }
         if self.decision.is_none() {
@@ -14215,6 +14255,22 @@ impl Game {
             .collect();
         v.extend(self.players[p].hand.iter().copied());
         v
+    }
+
+    /// Nontoken creatures `p` controls that can be sacrificed (Accursed Marauder).
+    fn nontoken_sacrifice_options(&self, p: PlayerId) -> Vec<ObjId> {
+        self.creatures(p)
+            .filter(|&c| !self.is_token(c) && !self.cant_be_sacrificed(c))
+            .collect()
+    }
+
+    /// Accursed Marauder: `p` sacrifices a nontoken creature (asked only with one), then `next`.
+    fn sacrifice_nontoken_next(&mut self, p: PlayerId, next: Option<PlayerId>) {
+        if !self.nontoken_sacrifice_options(p).is_empty() {
+            self.ask(p, Decision::SacrificeNontokenCreatureEach { next });
+        } else if let Some(q) = next {
+            self.sacrifice_nontoken_next(q, None);
+        }
     }
 
     /// Creature cards in any graveyard with mana value at most `left` (Ancient Brass Dragon).
@@ -16650,6 +16706,11 @@ impl Game {
                     }
                 }
             }
+            Effect::DelayedAtYourNextUpkeep { trigger } => {
+                let entry = (src, trigger, item.controller, self.turn);
+                self.delayed_next_upkeep.push(entry);
+            }
+            Effect::PayOrLoseGame(cost) => self.ask(item.controller, Decision::PayOrLoseGame { cost }),
             Effect::BecomeCopyOfSlotUntilEot(n) => {
                 if let Some(card) = Game::slot_object(item, legal, n) {
                     if self.obj(src).zone == Zone::Battlefield {
@@ -21415,6 +21476,65 @@ impl Game {
                 let x = self.roll_die(20);
                 self.reanimate_total_next(item.controller, x);
             }
+            Effect::EachPlayerSacrificesNontokenCreature => {
+                let a = self.active;
+                self.sacrifice_nontoken_next(a, Some(opponent(a)));
+            }
+            Effect::CountersOnEachAttackingYouControl => {
+                let p = item.controller;
+                let attackers: Vec<ObjId> = self
+                    .combat
+                    .as_ref()
+                    .map(|c| c.attackers.clone())
+                    .unwrap_or_default();
+                for c in attackers {
+                    if self.obj(c).zone == Zone::Battlefield && self.obj(c).controller == p {
+                        self.add_counters(c, 1);
+                    }
+                }
+            }
+            Effect::CountersOnOthersEqualToughness => {
+                for c in self.creatures(item.controller).collect::<Vec<_>>() {
+                    let t = self.toughness(c);
+                    if c != src && t > 0 {
+                        self.add_counters(c, t);
+                    }
+                }
+            }
+            Effect::RemoveEveryKindOfCounter(slot) => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    let o = self.obj_mut(id);
+                    o.counters = 0;
+                    o.stun = 0;
+                    o.keyword_counters = Keywords::NONE;
+                    o.lore = 0;
+                    o.loyalty = 0;
+                    o.time_counters = 0;
+                    o.quest = 0;
+                    o.fellowship = 0;
+                    o.kind_counters = 0;
+                    o.void_counter = false;
+                }
+            }
+            Effect::ReturnPickFromGraveyardToHand(pick) => {
+                let cards: Vec<ObjId> = self.players[item.controller]
+                    .graveyard
+                    .iter()
+                    .copied()
+                    .filter(|&c| self.picks(c, pick))
+                    .collect();
+                if !cards.is_empty() {
+                    self.ask(
+                        item.controller,
+                        Decision::LookPick {
+                            cards,
+                            pick,
+                            to: LookTo::Hand,
+                            rest: None,
+                        },
+                    );
+                }
+            }
         }
     }
 
@@ -22519,6 +22639,18 @@ impl Game {
                     for _ in 0..n {
                         self.draw(q);
                     }
+                }
+                // Delayed "at the beginning of your next upkeep" triggers (Pact of Negation).
+                let turn = self.turn;
+                let (due, wait): (Vec<_>, Vec<_>) = std::mem::take(&mut self.delayed_next_upkeep)
+                    .into_iter()
+                    .partition(|&(_, _, q, t)| q == a && t < turn);
+                self.delayed_next_upkeep = wait;
+                for (src, n, q, _) in due {
+                    self.triggered.push(StackItem {
+                        kind: StackKind::Trigger(n),
+                        ..Game::casting(src, q)
+                    });
                 }
                 self.fire(a, When::Upkeep { your_turn_only: true }, None);
                 self.fire(

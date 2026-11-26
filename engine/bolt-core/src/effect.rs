@@ -2333,6 +2333,30 @@ pub enum Effect {
         slot: u8,
         def: usize,
     },
+    /// Each player, the active player first, sacrifices a nontoken creature of their choice
+    /// (Accursed Marauder), as `Decision::SacrificeNontokenCreatureEach`.
+    EachPlayerSacrificesNontokenCreature,
+    /// Put a +1/+1 counter on each attacking creature you control (Drana, Liberator of Malakir).
+    CountersOnEachAttackingYouControl,
+    /// Put +1/+1 counters on each other creature you control equal to that creature's toughness
+    /// (Canopy Gargantuan).
+    CountersOnOthersEqualToughness,
+    /// Remove all counters from the permanent in `slot`: +1/+1 and -1/-1, loyalty, stun, keyword,
+    /// lore, time, quest, fellowship, kind and void counters (Vampire Hexmage); `RemoveAllCounters`
+    /// takes only +1/+1, stun and keyword counters.
+    RemoveEveryKindOfCounter(u8),
+    /// Return a card of your choice that the `Pick` allows from your graveyard to your hand, not
+    /// targeted (Takenuma: a creature or planeswalker card), as `Decision::LookPick`.
+    ReturnPickFromGraveyardToHand(Pick),
+    /// "At the beginning of your next upkeep, ...": a delayed triggered ability (CR 603.7), the
+    /// source's trigger number `trigger`, at its controller's next upkeep (Pact of Negation); see
+    /// `Game::delayed_next_upkeep`.
+    DelayedAtYourNextUpkeep {
+        trigger: usize,
+    },
+    /// "Pay {cost}. If you don't, you lose the game." (a Pact's delayed trigger), as
+    /// `Decision::PayOrLoseGame`.
+    PayOrLoseGame(crate::mana::ManaCost),
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -2507,6 +2531,8 @@ pub enum Scale {
     PerOtherCreatureWithFlying,
     /// Cards in all players' hands (Multani, Maro-Sorcerer).
     PerCardInAllHands,
+    /// The number of cards in all graveyards (Lord of Extinction).
+    PerCardInAllGraveyards,
 }
 
 /// A condition on a static ability ("as long as ...").
@@ -2614,6 +2640,8 @@ pub enum Pick {
     PermanentOddManaValue,
     /// A creature card with mana value at most this (Barrowin of Clan Undurr: 3).
     CreatureManaValueAtMost(u32),
+    /// A creature or planeswalker card (Takenuma, Abandoned Mire).
+    CreatureOrPlaneswalker,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -3215,6 +3243,12 @@ pub enum When {
     ClassBecomesLevel(u8),
     /// "When this creature is turned face up" (morph, manifest; Rattleclaw Mystic).
     TurnedFaceUp,
+    /// "Whenever an artifact you control is put into a graveyard from the battlefield" (Marionette
+    /// Master), its last controller's, this one included.
+    ArtifactYouControlToGraveyardFromBattlefield,
+    /// "Whenever another creature or artifact you control is put into a graveyard from the
+    /// battlefield" (Marionette Apprentice).
+    AnotherCreatureOrArtifactYouControlToGraveyardFromBattlefield,
 }
 
 #[derive(Clone, Debug, PartialEq)]

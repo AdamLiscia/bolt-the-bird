@@ -296,10 +296,20 @@ pub fn token_defs() -> Vec<CardDef> {
         },
         blood(),
         red(token("Hamster", "Hamster", 1, 1, Keywords::NONE)), // Rolling Hamsphere
-        // base+91 to 94: placeholders for other lanes' tokens until they merge.
-        token("Lane token 91", "Placeholder", 1, 1, Keywords::NONE),
-        token("Lane token 92", "Placeholder", 1, 1, Keywords::NONE),
-        token("Lane token 93", "Placeholder", 1, 1, Keywords::NONE),
+        {
+            // 91, lane d2: Sigil of the Empty Throne's "4/4 white Angel creature token with flying".
+            let mut t = token("Angel", "Angel", 4, 4, Keywords::FLYING);
+            t.colors = [true, false, false, false, false];
+            t
+        },
+        token("Pincher", "Pincher", 2, 2, Keywords::NONE), // 92, lane d2: Summoning Station's colorless 2/2
+        {
+            // 93, lane d2 (d1's fabricate too): "a 1/1 colorless Servo artifact creature token".
+            let mut t = token("Servo", "Servo", 1, 1, Keywords::NONE);
+            t.types.artifact = true;
+            t
+        },
+        // base+94: a placeholder for another lane's token until it merges.
         token("Lane token 94", "Placeholder", 1, 1, Keywords::NONE),
         {
             // 95, lane d4: There and Back Again's "Smaug, a legendary 6/6 red Dragon creature token
@@ -496,6 +506,9 @@ pub struct Tokens {
     pub orc_army: usize,
     pub eldrazi_scion: usize,
     pub bat: usize,
+    pub angel_4: usize,
+    pub pincher: usize,
+    pub servo: usize,
     /// 95: Smaug, a legendary 6/6 red Dragon with flying and haste (There and Back Again).
     pub smaug: usize,
 }
@@ -594,6 +607,9 @@ impl Tokens {
             orc_army: base + 86,
             eldrazi_scion: base + 87,
             bat: base + 83,
+            angel_4: base + 91,
+            pincher: base + 92,
+            servo: base + 93,
             smaug: base + 95,
         }
     }
