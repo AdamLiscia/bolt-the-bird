@@ -887,6 +887,13 @@ pub struct SubsystemExt {
     /// A split card's left half's own mana cost, which casting it pays; `cost` is both halves'
     /// together, its mana value off the stack (CR 709.4).
     pub left_cost: Option<ManaCost>,
+    /// A Saga's chapter grants (Urza's Saga: "II — This Saga gains \"{2}, {T}: ...\""): (chapter,
+    /// index into `activated`) for each activated ability it has only once that chapter's
+    /// `SubsystemEffect::GainChapterAbilities` has resolved (see `Game::lacks_chapter_activated`).
+    pub chapter_activated: Vec<(u8, usize)>,
+    /// The chapter whose resolving grants its `mana` ability (Urza's Saga: "I — This Saga gains
+    /// \"{T}: Add {C}.\""; see `Game::lacks_chapter_mana`).
+    pub chapter_mana: Option<u8>,
 }
 
 /// A card's mana, cost and keyword pieces added by the d1 theme (see [`CardDef::mana_ext`]).

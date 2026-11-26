@@ -1193,6 +1193,9 @@ pub enum Decision {
     CardOfColorToHand { color: u8 },
     /// Chain of Smog: `Mode(t)` copies `source` targeting player `t`, `No` doesn't.
     ChainCopy { source: ObjId },
+    /// `Pick` a tapped creature you control to untap (White Plume Adventurer: "untap a creature
+    /// you control").
+    UntapOwnCreature,
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -1537,6 +1540,9 @@ pub struct Game {
     pub creature_cards_to_graveyard_pending: [bool; 2],
     /// Whether each player has cast a spell this game (Once Upon a Time).
     pub cast_a_spell_this_game: [bool; 2],
+    /// Saga chapter grants that have resolved: (Saga, its zcc, chapter) (Urza's Saga; see
+    /// `SubsystemExt::chapter_activated`).
+    pub chapter_grants: Vec<(ObjId, u32, u8)>,
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -1781,6 +1787,7 @@ impl Game {
             entered_pending: Vec::new(),
             creature_cards_to_graveyard_pending: [false; 2],
             cast_a_spell_this_game: [false; 2],
+            chapter_grants: Vec::new(),
         }
     }
 
@@ -10543,6 +10550,7 @@ impl Game {
             d @ (Decision::ChooseDungeon { .. } | Decision::ChooseRoom { .. }) => {
                 self.subsystem_decision_actions(d)
             }
+            Decision::UntapOwnCreature => self.untap_own_creature_options(p),
             Decision::DelinaAgain { .. } => vec![Action::Yes, Action::No],
             Decision::PickOneOf { cards, .. } => cards.iter().copied().map(Action::Pick).collect(),
             Decision::MayCreatureFromHand => {
@@ -12316,6 +12324,7 @@ impl Game {
             (d @ (Decision::ChooseDungeon { .. } | Decision::ChooseRoom { .. }), a) => {
                 self.subsystem_decide(p, d, a)
             }
+            (d @ Decision::UntapOwnCreature, a) => self.subsystem_decide(p, d, a),
             (
                 Decision::VowCreature {
                     caster,
