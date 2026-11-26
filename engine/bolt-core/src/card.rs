@@ -952,6 +952,9 @@ pub struct CardDef {
     /// Silent Arbiter: "No more than one creature can attack each combat. No more than one creature
     /// can block each combat."
     pub one_attacker_one_blocker: bool,
+    /// Gourmand's Talent: "During your turn, artifacts you control are Foods in addition to their
+    /// other types" (see `Game::has_subtype`; the Food ability is its `subtype_you_control_has`).
+    pub your_artifacts_are_food_your_turn: bool,
 }
 
 /// A card's pieces from the d4 subsystems (see [`CardDef::subsystems`]).
@@ -1430,6 +1433,7 @@ impl CardDef {
             attacks_only_with_artifacts: 0,
             treasures_plus_one: None,
             one_attacker_one_blocker: false,
+            your_artifacts_are_food_your_turn: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -1697,6 +1701,7 @@ impl CardDef {
             attacks_only_with_artifacts: 0,
             treasures_plus_one: None,
             one_attacker_one_blocker: false,
+            your_artifacts_are_food_your_turn: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -1964,6 +1969,7 @@ impl CardDef {
             attacks_only_with_artifacts: 0,
             treasures_plus_one: None,
             one_attacker_one_blocker: false,
+            your_artifacts_are_food_your_turn: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,

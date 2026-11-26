@@ -5418,7 +5418,7 @@
   {
    "card": "Gourmand's Talent",
    "deck": "Bloomburrow Commander (BLC)",
-   "missing": "BLC (lane B's routing, 2026-11-26) [d3: next: during your turn artifacts you control are Foods with the Food ability (a type grant plus a granted activated ability), not started]",
+   "missing": "BLC (lane B's routing, 2026-11-26) [d3: next: during your turn artifacts you control are Foods with the Food ability (a type grant plus a granted activated ability), not started] [d3 batch 25: CardDef::your_artifacts_are_food_your_turn makes them Foods in has_subtype; the Food ability through subtype_you_control_has needs the merger: borrowed_activated grants only to creatures (noncreature artifacts need it, deduped against a real Food), and a granted Sacrifice-this ability loses its ability once the source is in the graveyard (activated_of on the stack item)]",
    "lane": "mac-b",
    "theme": "subsystems",
    "owner": "d4"
@@ -6458,7 +6458,7 @@
   {
    "card": "Gourmand's Talent",
    "deck": "d4 handback (BLC Talents, Sagas)",
-   "missing": "artifacts you control are Foods during your turn",
+   "missing": "artifacts you control are Foods during your turn [d3 batch 25: CardDef::your_artifacts_are_food_your_turn makes them Foods in has_subtype; the Food ability through subtype_you_control_has needs the merger: borrowed_activated grants only to creatures (noncreature artifacts need it, deduped against a real Food), and a granted Sacrifice-this ability loses its ability once the source is in the graveyard (activated_of on the stack item)]",
    "lane": "d4",
    "theme": "effects",
    "owner": "d3"

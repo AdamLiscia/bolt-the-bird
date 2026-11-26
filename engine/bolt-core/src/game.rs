@@ -2637,10 +2637,25 @@ impl Game {
                 return s == "Mountain"; // its other land types are gone
             }
         }
+        if s == "Food" && self.artifact_food_on_your_turn(id) {
+            return true; // Gourmand's Talent
+        }
         self.has_base_subtype(id, s)
             || self.statics_on(id).any(|st| st.subtype == Some(s))
             || (matches!(s, "Plains" | "Island" | "Swamp" | "Mountain" | "Forest")
                 && self.every_basic_type(id))
+    }
+
+    /// Gourmand's Talent: an artifact on the battlefield, during its controller's turn, whose
+    /// controller has a permanent with `your_artifacts_are_food_your_turn`.
+    fn artifact_food_on_your_turn(&self, id: ObjId) -> bool {
+        let o = self.obj(id);
+        o.zone == Zone::Battlefield
+            && self.active == o.controller
+            && self.types_of(id).artifact
+            && self
+                .permanents(o.controller)
+                .any(|x| self.def_of(x).your_artifacts_are_food_your_turn && !self.lost_abilities(x))
     }
 
     /// Dryad of the Ilysian Grove: a land on the battlefield whose controller has it.

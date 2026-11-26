@@ -3009,3 +3009,40 @@ fn tapped_only_filter_takes_only_tapped_permanents() {
     assert!(!g.target_ok(&f, 0, obj(untapped)));
     assert!(g.target_ok(&Filter::CREATURE, 0, obj(untapped)), "off by default");
 }
+
+#[test]
+fn your_artifacts_are_foods_during_your_turn_only() {
+    let mut talent = CardDef {
+        name: "Test Talent".into(),
+        cost: ManaCost::parse("{G}").unwrap(),
+        types: Types {
+            enchantment: true,
+            ..Types::default()
+        },
+        ..CardDef::default()
+    };
+    talent.your_artifacts_are_food_your_turn = true;
+    talent.subtype_you_control_has = Some((
+        "Food",
+        vec![bolt_core::card::Activated {
+            mana: ManaCost::parse("{2}").unwrap(),
+            tap: true,
+            sacrifice_self: true,
+            ability: Ability::new(vec![], vec![Effect::GainLife { who: Who::You, n: 3 }]),
+            ..bolt_core::card::Activated::default()
+        }],
+    ));
+    let (mut g, t) = game_with(vec![talent]);
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Battlefield);
+    let thopter = g.add_card(0, cid("Ornithopter"), Zone::Battlefield);
+    let theirs = g.add_card(1, cid("Sol Ring"), Zone::Battlefield);
+    assert!(!g.has_subtype(ring, "Food"), "no Talent yet");
+    g.add_card(0, t, Zone::Battlefield);
+    assert!(g.has_subtype(ring, "Food") && g.has_subtype(thopter, "Food"));
+    assert!(!g.has_subtype(theirs, "Food"), "only yours");
+    // The grant (lane B's subtype_you_control_has) reaches artifact creatures; it resolving after
+    // the sacrifice, and reaching noncreature artifacts, are handed back to the merger.
+    assert!(g.legal_actions().contains(&Action::Activate(thopter, 0)));
+    g.start_turn(4, 1);
+    assert!(!g.has_subtype(ring, "Food"), "not on their turn");
+}
