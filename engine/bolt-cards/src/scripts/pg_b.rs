@@ -1699,6 +1699,76 @@ pub fn script(name: &str) -> Option<Script> {
                 loyalty(d, -10, Ability::new(vec![], ten));
             },
         ),
+        "Bolas's Citadel" => s(
+            &[
+                "You may look at the top card of your library any time.",
+                "You may play lands and cast spells from the top of your library. If you cast a spell this way, pay life equal to its mana value rather than pay its mana cost.",
+                "{T}, Sacrifice ten nonland permanents: Each opponent loses 10 life.",
+            ],
+            |d, _| {
+                // Looking at the top card any time is information only.
+                d.citadel = true;
+                let n = activated(d, "", true, vec![], vec![Effect::LoseLife { who: Who::EachOpponent, n: 10 }]);
+                d.activated[n].sacrifice_nonland_n = 10;
+            },
+        ),
+        "Gadrak, the Crown-Scourge" => s(
+            &[
+                "Gadrak can't attack unless you control four or more artifacts.",
+                "At the beginning of your end step, create a Treasure token for each nontoken creature that died this turn.",
+            ],
+            |d, t| {
+                d.attacks_only_with_artifacts = 4;
+                on(d, When::EndStep { your_turn_only: true }, vec![], vec![Effect::CreateTokenPerNontokenCreatureDiedThisTurn { def: t.treasure }]);
+            },
+        ),
+        "Xorn" => s(&["If you would create one or more Treasure tokens, instead create those tokens plus an additional Treasure token."], |d, t| {
+            d.treasures_plus_one = Some(t.treasure);
+        }),
+        "Silent Arbiter" => s(&["No more than one creature can attack each combat.", "No more than one creature can block each combat."], |d, _| {
+            d.one_attacker_one_blocker = true;
+        }),
+        "Expropriate" => s(
+            &["Council's dilemma — Starting with you, each player votes for time or money. For each time vote, take an extra turn after this one. For each money vote, choose a permanent owned by the voter and gain control of it. Exile Expropriate."],
+            |d, _| spell(d, vec![], vec![Effect::Expropriate, Effect::ExileSourceSpell]),
+        ),
+        "Kozilek's Command" => s(
+            &[
+                "Choose two —",
+                "• Target player creates X 0/1 colorless Eldrazi Spawn creature tokens with \"Sacrifice this token: Add {C}.\"",
+                "• Target player scries X, then draws a card.",
+                "• Exile target creature with mana value X or less.",
+                "• Exile up to X target cards from graveyards.",
+            ],
+            |d, t| {
+                // Each pair of modes is one mode; the "up to X" cards come last (they're optional).
+                let creature = Filter { mana_value_at_most_x: true, ..CREATURE };
+                let card = Filter { up_to_x: true, ..graveyard_cards(false, Controller::Any) };
+                const UP_TO: u8 = 12;
+                let part = |i: usize, slot: u8| -> (Vec<Filter>, Vec<Effect>) {
+                    match i {
+                        0 => (vec![Filter::PLAYER], vec![Effect::TargetPlayerCreatesXTokens { slot, def: t.eldrazi_spawn }]),
+                        1 => (vec![Filter::PLAYER], vec![Effect::ScryXTargetPlayer(slot), Effect::Draw { who: Who::TargetPlayer(slot), n: 1 }]),
+                        2 => (vec![creature], vec![Effect::Exile(slot)]),
+                        _ => (vec![card; UP_TO as usize], (slot..slot + UP_TO).map(Effect::Exile).collect()),
+                    }
+                };
+                let mut pairs = Vec::new();
+                for a in 0..4 {
+                    for b in a + 1..4 {
+                        let (mut targets, mut effects) = part(a, 0);
+                        let (t2, e2) = part(b, targets.len() as u8);
+                        targets.extend(t2);
+                        effects.extend(e2);
+                        let required = if b == 3 { targets.len() - UP_TO as usize } else { targets.len() };
+                        let mut ability = Ability::new(targets, effects);
+                        ability.min_targets = Some(required);
+                        pairs.push(ability);
+                    }
+                }
+                modes(d, pairs);
+            },
+        ),
         _ => None,
     }
 }
@@ -1907,6 +1977,12 @@ pub const PG_B_SCRIPTED: &[&str] = &[
     "Epic Experiment",
     "Metallurgic Summonings",
     "Ugin, the Spirit Dragon",
+    "Bolas's Citadel",
+    "Gadrak, the Crown-Scourge",
+    "Xorn",
+    "Silent Arbiter",
+    "Expropriate",
+    "Kozilek's Command",
     // Ghyrson Starn (Spr3adsh33t)
     "Basilisk Collar",
     "Gorgon's Head",
