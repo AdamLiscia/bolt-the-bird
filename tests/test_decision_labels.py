@@ -152,3 +152,12 @@ def test_a_pact_says_not_paying_loses_the_game():
     assert label(dec, "No", 0) == "Don't pay (you lose the game)"
     sourced = {**dec, "source": [5, 1]}
     assert label(sourced, "Yes", 0) == "Pay {3}{U}{U} (Thriving Heath)"
+
+
+def test_well_of_lost_dreams_pays_x_to_draw_x():
+    dec = {"kind": "PayXDrawX", "max": 3}
+    assert label(dec, "Amount", 0) == "Don't pay"
+    assert label(dec, "Amount", 1) == "Pay {1}: draw 1 card"
+    assert label(dec, "Amount", 3) == "Pay {3}: draw 3 cards"
+    sourced = {**dec, "source": [5, 1]}
+    assert label(sourced, "Amount", 2) == "Pay {2}: draw 2 cards (Thriving Heath)"

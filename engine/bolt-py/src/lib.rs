@@ -569,6 +569,7 @@ impl Game {
                     }
                     D::MayPay { cost } => e.set_item("cost", cost_text(cost))?,
                     D::PayOrLoseGame { cost } => e.set_item("cost", cost_text(cost))?,
+                    D::PayXDrawX { max } => e.set_item("max", *max)?,
                     D::PayToStop { cost } => e.set_item("cost", cost_text(cost))?,
                     D::PayUpkeep { cost, source } => {
                         e.set_item("cost", cost_text(cost))?;

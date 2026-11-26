@@ -309,11 +309,12 @@ pub fn token_defs() -> Vec<CardDef> {
             t.types.artifact = true;
             t
         },
-        // 94-96: placeholders until their lanes' tokens land (d2: Walker, Utvara's 6/6 Dragon; d4:
-        // Smaug). Each lane replaces its own line.
-        token("Placeholder 94", "", 0, 0, Keywords::NONE),
+        // 94, lane d2: Gisa's Favorite Shovel's Walker, "a 2/2 black Zombie creature token named Walker".
+        black(token("Walker", "Zombie", 2, 2, Keywords::NONE)),
+        // 95: a placeholder until its lane's token lands (d4: Smaug). d4 replaces its own line.
         token("Placeholder 95", "", 0, 0, Keywords::NONE),
-        token("Placeholder 96", "", 0, 0, Keywords::NONE),
+        // 96, lane d2: Utvara Hellkite's "6/6 red Dragon creature token with flying".
+        red(token("Dragon", "Dragon", 6, 6, Keywords::FLYING)),
         wicked_role(), // 97, lane C
     ]
 }
@@ -515,10 +516,12 @@ pub struct Tokens {
     pub angel_4: usize,
     pub pincher: usize,
     pub servo: usize,
-    /// 94-96: placeholders for d2's Walker and Utvara Dragon and d4's Smaug (each lane renames its own).
-    pub placeholder_94: usize,
+    /// 94: d2's Walker (a 2/2 black Zombie named Walker).
+    pub walker: usize,
+    /// 95: a placeholder for d4's Smaug (d4 renames it).
     pub placeholder_95: usize,
-    pub placeholder_96: usize,
+    /// 96: d2's Utvara Hellkite Dragon, a 6/6 red flier.
+    pub dragon_6_6: usize,
     pub wicked_role: usize,
 }
 
@@ -619,9 +622,9 @@ impl Tokens {
             angel_4: base + 91,
             pincher: base + 92,
             servo: base + 93,
-            placeholder_94: base + 94,
+            walker: base + 94,
             placeholder_95: base + 95,
-            placeholder_96: base + 96,
+            dragon_6_6: base + 96,
             wicked_role: base + 97,
         }
     }

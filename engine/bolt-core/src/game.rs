@@ -1289,6 +1289,9 @@ pub enum Decision {
     /// "Pay {cost}. If you don't, you lose the game." (Pact of Negation): `Yes` pays (offered only if
     /// you can), `No` loses the game.
     PayOrLoseGame { cost: ManaCost },
+    /// "You may pay {X}, where X is at most `max`. If you do, draw X cards." (Well of Lost Dreams):
+    /// `Amount(x)` pays {x} and draws x (offered for each x you can pay); `Amount(0)` declines.
+    PayXDrawX { max: u8 },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -3556,6 +3559,11 @@ impl Game {
                 self.fire(c, When::PermanentYouControlEntersTapped, None);
                 self.fill_triggering(before, id);
             }
+            // "When this enters untapped" (Witch's Cottage).
+            let o = self.obj(id);
+            if o.zone == Zone::Battlefield && o.zcc == zcc && !o.tapped {
+                self.fire_source(id, When::EntersUntapped);
+            }
         }
         for p in 0..2 {
             if std::mem::take(&mut self.graveyard_leave_any_pending[p]) {
@@ -4910,6 +4918,29 @@ impl Game {
                 When::ArtifactYouControlToGraveyardFromBattlefield,
                 None,
             );
+        }
+        // "Whenever a [subtype] is put into a graveyard from the battlefield" (Ygra: a Food), anyone's.
+        if dies {
+            for q in 0..2 {
+                for any in self.permanents(q).collect::<Vec<_>>() {
+                    if self.lost_abilities(any) {
+                        continue;
+                    }
+                    let whens: Vec<When> = self.def_of(any).triggers.iter().map(|tr| tr.when).collect();
+                    for (n, w) in whens.into_iter().enumerate() {
+                        if let When::SubtypeToGraveyardFromBattlefield(sub) = w {
+                            if self.has_subtype(id, sub) {
+                                let before = self.triggered.len();
+                                self.triggered.push(StackItem {
+                                    kind: StackKind::Trigger(n),
+                                    ..Game::casting(any, q)
+                                });
+                                self.fill_triggering(before, id);
+                            }
+                        }
+                    }
+                }
+            }
         }
         if dies && (self.types_of(id).artifact || self.types_of(id).creature) {
             self.fire(
@@ -9709,6 +9740,26 @@ impl Game {
                         }
                     }
                 }
+                // "Whenever a [subtype] you control attacks" (Utvara Hellkite): the attacker in slot 0.
+                let q = self.obj(c).controller;
+                for any in self.permanents(q).collect::<Vec<_>>() {
+                    if self.lost_abilities(any) {
+                        continue;
+                    }
+                    let whens: Vec<When> = self.def_of(any).triggers.iter().map(|tr| tr.when).collect();
+                    for (n, w) in whens.into_iter().enumerate() {
+                        if let When::SubtypeYouControlAttacks(sub) = w {
+                            if self.has_subtype(c, sub) {
+                                let before = self.triggered.len();
+                                self.triggered.push(StackItem {
+                                    kind: StackKind::Trigger(n),
+                                    ..Game::casting(any, q)
+                                });
+                                self.fill_triggering(before, c);
+                            }
+                        }
+                    }
+                }
                 self.attack_triggers_again(before);
             }
             (Pending::DeclareAttackers(_), Action::FinishAttacks) => {
@@ -11731,6 +11782,16 @@ impl Game {
                 let max = self.obj(*source).loyalty.clamp(0, 60) as u8;
                 (0..=max).map(Action::Amount).collect()
             }
+            Decision::PayXDrawX { max } => (0..=*max)
+                .filter(|&x| {
+                    let cost = ManaCost {
+                        generic: x,
+                        ..ManaCost::default()
+                    };
+                    x == 0 || self.can_pay(p, &cost, None)
+                })
+                .map(Action::Amount)
+                .collect(),
             Decision::PermanentsFromHandUpTo { .. } => {
                 let mut v: Vec<Action> = hand
                     .iter()
@@ -12477,6 +12538,18 @@ impl Game {
                 self.sacrificed(c, p);
             }
             (Decision::MayPay { cost }, Action::Yes) => self.pay_mana(p, &cost, None),
+            (Decision::PayXDrawX { .. }, Action::Amount(x)) => {
+                if x > 0 {
+                    let cost = ManaCost {
+                        generic: x,
+                        ..ManaCost::default()
+                    };
+                    self.pay_mana(p, &cost, None);
+                    for _ in 0..x {
+                        self.draw(p);
+                    }
+                }
+            }
             (Decision::PayOrLoseGame { cost }, Action::Yes) => self.pay_mana(p, &cost, None),
             (Decision::PayOrLoseGame { .. }, _) => self.players[p].lost = true,
             (Decision::KeepOfType { ty, mut kept }, Action::Pick(c)) => {
@@ -16714,6 +16787,12 @@ impl Game {
                 self.delayed_next_upkeep.push(entry);
             }
             Effect::PayOrLoseGame(cost) => self.ask(item.controller, Decision::PayOrLoseGame { cost }),
+            Effect::MayPayXUpToAmountDrawX => {
+                let max = item.amount.clamp(0, 60) as u8;
+                if max > 0 {
+                    self.ask(item.controller, Decision::PayXDrawX { max });
+                }
+            }
             Effect::BecomeCopyOfSlotUntilEot(n) => {
                 if let Some(card) = Game::slot_object(item, legal, n) {
                     if self.obj(src).zone == Zone::Battlefield {
@@ -22998,6 +23077,8 @@ impl Game {
             if self.is_token(a) {
                 self.fire(controller, When::YourCreatureTokenDealsCombatDamageToPlayer, None);
             }
+            // The Ring's "whenever your Ring-bearer deals combat damage to a player" (d4's).
+            self.ring_bearer_dealt_combat_damage(a);
         }
         for p in 0..2 {
             let tramplers: i32 = hit_player

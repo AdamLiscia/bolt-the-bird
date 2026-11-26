@@ -683,6 +683,7 @@ impl Game {
             _ => self.ask(p, Decision::ChooseRingBearer),
         }
         // Hook for d2: "Whenever the Ring tempts you" triggers fire here.
+        self.fire(p, When::RingTemptsYou, None);
     }
 
     /// `c` becomes `p`'s Ring-bearer (another creature stops being it; CR 701.54a).
@@ -690,6 +691,9 @@ impl Game {
         self.ring_bearer[p] = Some((c, self.obj(c).zcc));
         // Hook for d2: "Whenever you choose a creature as your Ring-bearer" (Call of the Ring)
         // triggers fire here, with `c` as the chosen creature.
+        let before = self.triggered.len();
+        self.fire(p, When::YouChooseRingBearer, None);
+        self.fill_triggering(before, c);
     }
 
     /// Hook for combat damage (d2): the Ring's fourth ability, "Whenever your Ring-bearer deals
