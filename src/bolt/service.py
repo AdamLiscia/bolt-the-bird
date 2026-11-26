@@ -487,12 +487,27 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
             raise ApiError(422, "a commander is one name, or two for partners")
         return names_
 
+    # Some deck lists truncate long double-faced names ("Etali, Primal Conqueror // Etali, Primal Sick"), and
+    # the pool carries those as separate unscripted rows. Such a name means the one full name it begins.
+    full_name: dict[str, str] = {}
+    if supported is not None:
+        names = list(kit.info.index)
+        for n in names:
+            if " // " in n and not supported[kit.info.index[n]]:
+                longer = [m for m in names if m != n and m.startswith(n) and supported[kit.info.index[m]]]
+                if len(longer) == 1:
+                    full_name[n] = longer[0]
+
+    def canon(n: str) -> str:
+        return full_name.get(n, n)
+
     def check_commander_deck(commanders: list[str], cards_: list[Card]) -> tuple[list[int], list[int], dict]:
         """Ids for the commanders and the rest of the deck (a listed commander is taken out once),
         plus what's wrong: names outside the pool, cards not scripted yet, and deck problems."""
+        commanders = [canon(n) for n in commanders]
         listed = []
         for c in cards_:
-            listed += [c.name] * max(c.qty, 0)
+            listed += [canon(c.name)] * max(c.qty, 0)
         for n in commanders:
             if n in listed:
                 listed.remove(n)
