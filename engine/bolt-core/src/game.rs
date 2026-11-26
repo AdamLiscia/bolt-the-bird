@@ -6824,6 +6824,16 @@ impl Game {
             }
             let e = &self.def_of(x).mana_ext;
             n += e.spell_discount_all as usize;
+            if def.colors == [false; 5] && mode.mode != Some(OMEN_MODE) {
+                if def.subtypes.iter().any(|s| s == "Eldrazi") {
+                    n += e.colorless_eldrazi_spell_discount as usize; // Eye of Ugin
+                }
+                if let Some((mv, less)) = e.colorless_big_spell_discount {
+                    if def.cost.mana_value() >= mv as u32 {
+                        n += less as usize; // It That Heralds the End
+                    }
+                }
+            }
             if creature && def.keywords.has(Keywords::FLYING) {
                 n += e.flying_creature_spell_discount as usize; // Watcher of the Spheres
                                                                 // Momo: the first non-Lemur creature spell with flying during each of your turns.
@@ -7797,6 +7807,7 @@ impl Game {
                     || (a.tap_untapped_legendary && self.untapped_legendary(p, id).is_none())
                     || (a.forage && !self.can_forage(p, id))
                     || (a.forecast && !(p == self.active && self.step == Step::Upkeep))
+                    || (a.life_per_commander_color && self.players[p].life < self.commander_color_count(p))
                     || (a.min_artifacts > 0
                         && self.permanents(p).filter(|&x| self.types_of(x).artifact).count()
                             < a.min_artifacts as usize)
@@ -8245,6 +8256,10 @@ impl Game {
         }
         if a.forage {
             self.forage(p, id); // Camellia: "{2}, Forage:"
+        }
+        if a.life_per_commander_color {
+            let n = self.commander_color_count(p);
+            self.lose_life(p, n); // War Room
         }
         if let Some(v) = victim {
             if a.sacrifice_subtype.is_some() && a.sacrifice_subtype_count > 1 {
@@ -8977,6 +8992,17 @@ impl Game {
         v.sort_by_key(|&x| !self.obj(x).tapped);
         v.truncate(alt.return_lands as usize);
         v
+    }
+
+    /// The number of colors in `p`'s commanders' color identity (War Room); 0 without a commander.
+    pub fn commander_color_count(&self, p: PlayerId) -> i32 {
+        let mut identity = [false; 5];
+        for c in [self.commanders[p], self.partners[p]].into_iter().flatten() {
+            for (i, has) in identity.iter_mut().zip(self.def_of(c).color_identity) {
+                *i |= has;
+            }
+        }
+        identity.iter().filter(|&&b| b).count() as i32
     }
 
     /// Mana that is only colorless ({C}), for adamant's count.

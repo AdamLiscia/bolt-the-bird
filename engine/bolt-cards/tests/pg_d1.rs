@@ -2636,3 +2636,28 @@ fn behold_the_multiverse_is_foretold_then_cast_for_its_foretell_cost_next_turn()
     assert_eq!(g.obj(c).zone, Zone::Graveyard, "{{1}}{{U}} from two Islands");
     assert_eq!(g.players[0].hand.len(), before + 2);
 }
+
+#[test]
+fn eye_of_ugin_discounts_colorless_eldrazi_spells() {
+    let mut g = game(&["Eye of Ugin", "Plains", "Plains", "Plains", "Plains"]);
+    let k = hand(&mut g, 0, "Conduit of Ruin"); // {6} colorless Eldrazi
+    act(&mut g, Action::Cast(k));
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        g.obj(k).zone,
+        Zone::Battlefield,
+        "{{4}}: four Plains (and the Eye's {{C}} spare)"
+    );
+}
+
+#[test]
+fn war_room_draws_for_life_equal_to_commander_colors() {
+    let mut g = game(&["War Room", "Plains", "Plains", "Plains"]);
+    let w = g.permanents(0).find(|&x| g.def_of(x).name == "War Room").unwrap();
+    let n = g.commander_color_count(0);
+    let (life, hand) = (g.players[0].life, g.players[0].hand.len());
+    act(&mut g, Action::Activate(w, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].life, life - n);
+    assert_eq!(g.players[0].hand.len(), hand + 1);
+}

@@ -1225,6 +1225,27 @@ pub fn script(name: &str) -> Option<Script> {
             spell(d, vec![], vec![Effect::Scry { n: 2 }, draw(2)]);
             foretell(d, "{1}{U}");
         }),
+        "Eye of Ugin" => s(
+            &[
+                "Colorless Eldrazi spells you cast cost {2} less to cast.",
+                "{7}, {T}: Search your library for a colorless creature card, reveal it, put it into your hand, then shuffle.",
+            ],
+            |d, _| {
+                d.mana_ext.colorless_eldrazi_spell_discount = 2;
+                activated(d, "{7}", true, vec![], vec![search(SearchFor::ColorlessCreature, SearchTo::Hand)]);
+            },
+        ),
+        "War Room" => s(
+            &[
+                "{T}: Add {C}.",
+                "{3}, {T}, Pay life equal to the number of colors in your commanders' color identity: Draw a card.",
+            ],
+            |d, _| {
+                d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                let n = activated(d, "{3}", true, vec![], vec![draw(1)]);
+                d.activated[n].life_per_commander_color = true;
+            },
+        ),
         _ => None,
     }
 }
@@ -1389,4 +1410,6 @@ pub const PG_D1_SCRIPTED: &[&str] = &[
     "Spire of Industry",
     "Chandra's Incinerator",
     "Behold the Multiverse",
+    "Eye of Ugin",
+    "War Room",
 ];

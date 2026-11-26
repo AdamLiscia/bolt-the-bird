@@ -333,6 +333,9 @@ pub struct Activated {
     /// during your upkeep and only once each turn.)" The card stays in your hand; set
     /// `once_each_turn` too.
     pub forecast: bool,
+    /// "Pay life equal to the number of colors in your commanders' color identity" in the cost
+    /// (War Room).
+    pub life_per_commander_color: bool,
 }
 
 /// The printed card. Shared by every copy; per-copy state lives on the game object.
@@ -1075,6 +1078,11 @@ pub struct ManaExt {
     /// Foretell's cost (CR 702.143): cast from exile for it on a later turn, after an
     /// `Activated::foretell` ability exiled the card from your hand.
     pub foretell: Option<ManaCost>,
+    /// "Colorless Eldrazi spells you cast cost {N} less to cast." (Eye of Ugin: 2)
+    pub colorless_eldrazi_spell_discount: u8,
+    /// "Colorless spells you cast with mana value N or greater cost {M} less to cast." as (N, M)
+    /// (It That Heralds the End: (7, 1)).
+    pub colorless_big_spell_discount: Option<(u8, u8)>,
 }
 
 /// "You may pay [mana], [life] and sacrifice or tap [creatures] rather than pay this spell's mana

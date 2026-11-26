@@ -2491,3 +2491,46 @@ fn forecast_activates_from_hand_only_during_your_upkeep_once() {
         "once each turn"
     );
 }
+
+#[test]
+fn colorless_eldrazi_and_big_colorless_spell_discounts() {
+    use batch9::*;
+    let mut eye = artifact("Eye");
+    eye.mana_ext.colorless_eldrazi_spell_discount = 2;
+    let mut herald = artifact("Herald");
+    herald.mana_ext.colorless_big_spell_discount = Some((7, 1));
+    let mut drone = CardDef::creature("Drone", "{4}", 4, 4, Keywords::NONE);
+    drone.subtypes = vec!["Eldrazi".into()];
+    let titan = CardDef::creature("Titan", "{7}", 7, 7, Keywords::NONE);
+    let mut black = CardDef::creature("Black Eldrazi", "{3}{B}", 4, 4, Keywords::NONE);
+    black.subtypes = vec!["Eldrazi".into()];
+    black.colors[2] = true;
+    let mut g = batch6_board(vec![eye, herald, drone, titan, black], 2);
+    put(&mut g, 0, 25);
+    let d = g.add_card(0, 27, Zone::Hand);
+    let b = g.add_card(0, 29, Zone::Hand);
+    assert!(!g.legal_actions().contains(&Action::Cast(b)), "not colorless");
+    act(&mut g, Action::Cast(d));
+    settle(&mut g);
+    assert_eq!(g.obj(d).zone, Zone::Battlefield, "{{4}} less {{2}}");
+    let mut g = batch6_board(
+        vec![
+            {
+                let mut h = artifact("Herald");
+                h.mana_ext.colorless_big_spell_discount = Some((7, 1));
+                h
+            },
+            CardDef::creature("Titan", "{7}", 7, 7, Keywords::NONE),
+        ],
+        6,
+    );
+    put(&mut g, 0, 25);
+    let t = g.add_card(0, 26, Zone::Hand);
+    act(&mut g, Action::Cast(t));
+    settle(&mut g);
+    assert_eq!(
+        g.obj(t).zone,
+        Zone::Battlefield,
+        "{{7}} less {{1}} from six Swamps"
+    );
+}

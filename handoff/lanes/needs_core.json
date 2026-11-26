@@ -5542,6 +5542,30 @@
    "lane": "d1",
    "theme": "mana",
    "owner": "d1"
+  },
+  {
+   "card": "It That Heralds the End",
+   "deck": "d1 handback",
+   "missing": "d1's discount is in (ManaExt::colorless_big_spell_discount = (7, 1)): d3's 'other colorless creatures you control get +1/+1' static",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Conduit of Ruin",
+   "deck": "d1 handback",
+   "missing": "its discount exists (first_creature_spell_discount = 2): a 'when you cast this spell' search for a colorless creature card with mana value 7 or greater, put on top of the library after shuffling",
+   "lane": "d1",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Darksteel Monolith",
+   "deck": "d1 handback",
+   "missing": "still d1's: once each turn, pay {0} rather than the mana cost of a colorless spell you cast from your hand",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
   }
  ]
 }
