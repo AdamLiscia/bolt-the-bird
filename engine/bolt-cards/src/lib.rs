@@ -476,6 +476,7 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         reanimating_aura: false,
         reanimates_tapped: false,
         flash_cast_sacrificed: false,
+        mana_ext: Default::default(),
         skip_draw_step: false,
         creatures_untap_on_others_untap: false,
         teeg_lock: false,
