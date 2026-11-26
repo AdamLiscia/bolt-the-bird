@@ -105,8 +105,13 @@ pub fn rooms(d: Dungeon) -> &'static [Room] {
                 // "Target creature can't attack until your next turn."
                 missing("Twisted Caverns", &[4]),
                 room("Lost Level", vec![], vec![scry(2)], &[5, 6]),
-                // "Exile the top two cards of your library. You may play them."
-                missing("Runestone Caverns", &[7]),
+                // "Exile the top two cards of your library. You may play them." (this turn)
+                room(
+                    "Runestone Caverns",
+                    vec![],
+                    vec![Effect::ExileTopToPlayThisTurn(2)],
+                    &[7],
+                ),
                 room(
                     "Muiral's Graveyard",
                     vec![],

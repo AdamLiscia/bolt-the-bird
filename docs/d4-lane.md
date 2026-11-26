@@ -66,9 +66,9 @@ core in `engine/bolt-core/src/game/d4.rs` (a child module of game.rs; tests `tes
 - A room ability's stack source is the card that made you venture (there's no dungeon object).
 - A bottommost room ability that fizzles (illegal targets) doesn't complete the dungeon.
 - Unready rooms still do nothing when entered: Twisted Caverns and Arena (lane B: "can't attack
-  until your next turn", goad), Runestone Caverns (how long "you may play them" lasts is unsettled
-  here), Mad Wizard's Lair (d3 handed it to the merger: a free cast of one of three drawn cards).
-  Arena, Twisted Caverns and Runestone Caverns each have a ready sibling room to pick instead;
+  until your next turn", goad), Mad Wizard's Lair (d3 handed it to the merger: a free cast of one
+  of three drawn cards). Runestone Caverns is ready (d3's `ExileTopToPlayThisTurn(2)`: "you may
+  play them" lasts this turn). Arena and Twisted Caverns each have a ready sibling room to pick instead;
   Mad Wizard's Lair is Dungeon of the Mad Mage's last room, so that dungeon's ending is a no-op.
 - Lolth's emblem and Ob Nixilis's "a player draws" act on the one opponent (1v1); Ob Nixilis's
   emblem is kept as two entries (its owner draws; the other player draws).
