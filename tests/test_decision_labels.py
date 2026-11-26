@@ -160,3 +160,11 @@ def test_a_pact_says_not_paying_loses_the_game():
     assert label(dec, "No", 0) == "Don't pay (you lose the game)"
     sourced = {**dec, "source": [5, 1]}
     assert label(sourced, "Yes", 0) == "Pay {3}{U}{U} (Thriving Heath)"
+
+
+def test_rootcast_and_frugivore_decisions_read_as_their_moves():
+    rootcast = {"kind": "SacrificeNontokenArtifact"}
+    assert sv._decision_label(rootcast, "Pick", 0, "Sol Ring") == "Sacrifice Sol Ring"
+    frugivore = {"kind": "ExileThreeForFood", "food": 0, "chosen": []}
+    assert sv._decision_label(frugivore, "Pick", 0, "Plains") == "Exile (three for a Food): Plains"
+    assert label(frugivore, "No", 0) == "Don't exile (no more Food)"

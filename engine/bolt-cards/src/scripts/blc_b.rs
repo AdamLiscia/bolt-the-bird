@@ -1388,6 +1388,102 @@ pub fn script(name: &str) -> Option<Script> {
             &["When this creature enters, put a shield counter on target noncommander creature you don't control. You gain control of that creature for as long as it has a shield counter on it."],
             |d, _| on(d, When::Enters, vec![OPP_CREATURE], vec![Effect::ShieldCounterAndControlWhileShielded(0)]),
         ),
+        "Communal Brewing" => s(
+            &[
+                "When this enchantment enters, any number of target opponents each draw a card. Put an ingredient counter on this enchantment, then put an ingredient counter on it for each card drawn this way.",
+                "Whenever you cast a creature spell, that creature enters with X additional +1/+1 counters on it, where X is the number of ingredient counters on this enchantment.",
+            ],
+            |d, _| {
+                // Two players: "any number of target opponents" is up to one. Ingredient counters are
+                // its own kind (`Object::kind_counters`).
+                let opp = Filter::PLAYER.controlled_by(Controller::Opponent);
+                let brew = up_to(vec![opp], vec![Effect::KindCounterSelfThenPerTargetDraw(0)]);
+                d.triggers.push(Trigger { when: When::Enters, ability: brew });
+                on(d, When::YouCastCreature, vec![], vec![Effect::CastSpellEntersWithCountersPerKindCounter]);
+            },
+        ),
+        "Rootcast Apprenticeship" => s(
+            &[
+                "Choose three. You may choose the same mode more than once.",
+                "• Put two +1/+1 counters on target creature.",
+                "• Create a token that's a copy of target token you control.",
+                "• Target player creates a 1/1 green Squirrel creature token.",
+                "• Target opponent sacrifices a nontoken artifact of their choice.",
+            ],
+            |d, t| {
+                // Every multiset of three modes is one mode (20), as Farewell and Kozilek's Command.
+                // A mode chosen twice has two separate "target" words, so both may name the same
+                // object: neighbouring slots alternate `other` (a no-op for a sorcery's targets),
+                // which keeps `Game::same_word_slots` from joining them into one word.
+                let token = Filter {
+                    players: false,
+                    creatures: false,
+                    planeswalkers: false,
+                    any_permanent: true,
+                    tokens_only: true,
+                    controller: Controller::You,
+                    ..Filter::ANY
+                };
+                let opp = Filter::PLAYER.controlled_by(Controller::Opponent);
+                let part = |i: usize, slot: u8| -> (Filter, Effect) {
+                    let other = slot % 2 == 1;
+                    match i {
+                        0 => (Filter { other, ..CREATURE }, Effect::Counters { slot, n: 2 }),
+                        1 => (
+                            Filter { other, ..token },
+                            Effect::CopyToken { slot: Some(slot), haste_and_sacrifice: false, extra_subtype: None },
+                        ),
+                        2 => (
+                            Filter { other, ..Filter::PLAYER },
+                            Effect::CreateToken { who: Who::TargetPlayer(slot), def: t.squirrel, n: 1 },
+                        ),
+                        _ => (Filter { other, ..opp }, Effect::SacrificeNontokenArtifact(Who::TargetPlayer(slot))),
+                    }
+                };
+                let mut sets = Vec::new();
+                for a in 0..4 {
+                    for b in a..4 {
+                        for c in b..4 {
+                            let (targets, effects): (Vec<Filter>, Vec<Effect>) =
+                                [a, b, c].into_iter().enumerate().map(|(k, i)| part(i, k as u8)).unzip();
+                            sets.push(Ability::new(targets, effects));
+                        }
+                    }
+                }
+                modes(d, sets);
+            },
+        ),
+        "Insatiable Frugivore" => s(
+            &[
+                "When this creature enters, create a Food token, then you may exile three cards from your graveyard. If you do, repeat this process.",
+                "{3}{B}, Sacrifice X Foods: Creatures you control get +X/+0 and gain menace until end of turn.",
+            ],
+            |d, t| {
+                let food = Effect::CreateToken { who: Who::You, def: t.food, n: 1 };
+                on(d, When::Enters, vec![], vec![food, Effect::MayExileThreeRepeatFood { food: t.food }]);
+                let n = activated(d, "{3}{B}", false, vec![], vec![Effect::PumpYoursXPowerGrant(Keywords::MENACE)]);
+                d.activated[n].sacrifice_x_of_subtype = Some("Food");
+            },
+        ),
+        "Bloodroot Apothecary" => s(
+            &[
+                "Toxic 2",
+                "When this creature enters, you and target opponent each create a Treasure token.",
+                "Whenever an opponent sacrifices a noncreature token, that player gets two poison counters.",
+            ],
+            |d, t| {
+                d.toxic = 2;
+                let opp = Filter::PLAYER.controlled_by(Controller::Opponent);
+                let treasures = vec![
+                    Effect::CreateToken { who: Who::You, def: t.treasure, n: 1 },
+                    Effect::CreateToken { who: Who::TargetPlayer(0), def: t.treasure, n: 1 },
+                ];
+                on(d, When::Enters, vec![opp], treasures);
+                // Two players: "that player" is your opponent.
+                let poison = Effect::PoisonCounters { who: Who::EachOpponent, n: 2 };
+                on(d, When::OpponentSacrificesNoncreatureToken, vec![], vec![poison]);
+            },
+        ),
         _ => None,
     }
 }
@@ -1562,4 +1658,8 @@ pub const BLC_B_SCRIPTED: &[&str] = &[
     "Cache Grab",
     "Forgotten Ancient",
     "Shield Broker",
+    "Communal Brewing",
+    "Rootcast Apprenticeship",
+    "Insatiable Frugivore",
+    "Bloodroot Apothecary",
 ];

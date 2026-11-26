@@ -2365,6 +2365,47 @@ pub enum Effect {
     /// "Pay {cost}. If you don't, you lose the game." (a Pact's delayed trigger), as
     /// `Decision::PayOrLoseGame`.
     PayOrLoseGame(crate::mana::ManaCost),
+    /// Exile the top card of your library face down (you may look at it) and create a `def` token;
+    /// when that token leaves the battlefield, the source's trigger `trigger` (a `When::Never`
+    /// trigger with `Effect::LinkedExiledCardToHand`) puts the card into your hand (Ugin, the
+    /// Ineffable's +1). See `Game::token_linked_exile`.
+    ExileTopFaceDownCreateLinkedToken {
+        def: usize,
+        trigger: usize,
+    },
+    /// The card in the stack item's `extra` (its zone-change count in `amount`) goes from exile to
+    /// its owner's hand, if it's still that exiled card (Ugin, the Ineffable's token leaving).
+    LinkedExiledCardToHand,
+    /// Put a counter of the source's own kind on it (`Object::kind_counters`), then the player in
+    /// `slot` (if any, and legal) draws a card, and another counter goes on it for each card drawn
+    /// (Communal Brewing's ingredient counters).
+    KindCounterSelfThenPerTargetDraw(u8),
+    /// The creature spell in `extra` enters with X additional +1/+1 counters, X the source's kind
+    /// counters (Communal Brewing), see `Game::spell_enters_with_counters`.
+    CastSpellEntersWithCountersPerKindCounter,
+    /// `who` sacrifices a nontoken artifact of their choice (Rootcast Apprenticeship), as
+    /// `Decision::SacrificeNontokenArtifact` (automatic with one).
+    SacrificeNontokenArtifact(Who),
+    /// You may exile three cards from your graveyard; if you do, create a `food` token and ask
+    /// again (Insatiable Frugivore's "repeat this process"), as `Decision::ExileThreeForFood`.
+    MayExileThreeRepeatFood {
+        food: usize,
+    },
+    /// Creatures you control get +X/+0 and gain `keywords` until end of turn, X the ability's X
+    /// (Insatiable Frugivore: menace, X the Foods sacrificed).
+    PumpYoursXPowerGrant(crate::Keywords),
+    /// `who` gets `n` poison counters (Bloodroot Apothecary: "that player gets two poison
+    /// counters").
+    PoisonCounters {
+        who: Who,
+        n: i32,
+    },
+    /// You gain life equal to the number of creatures you control plus the number of planeswalkers
+    /// you control (Ajani, Strength of the Pride's +1).
+    GainLifePerCreatureAndPlaneswalkerYouControl,
+    /// If you have at least `n` life more than your starting life total, exile the source and each
+    /// artifact and creature your opponents control (Ajani, Strength of the Pride's 0: 15).
+    ExileSelfAndOpponentsArtifactsCreaturesIfLifeAbove(i32),
     /// Bruna, Light of Alabaster: attach to the source any number of Auras on the battlefield, and
     /// put onto the battlefield attached to it any number of Aura cards that could enchant it from
     /// your graveyard and/or hand, one at a time as `Decision::AttachAura` (game/zones.rs).
@@ -3301,6 +3342,9 @@ pub enum When {
     /// "When this [permanent] is put into a graveyard from the battlefield", tokens included (the
     /// Wicked Role).
     ThisPutIntoGraveyardFromBattlefield,
+    /// "Whenever an opponent sacrifices a noncreature token" (Bloodroot Apothecary), fired from
+    /// `Game::sacrificed`.
+    OpponentSacrificesNoncreatureToken,
 }
 
 #[derive(Clone, Debug, PartialEq)]
