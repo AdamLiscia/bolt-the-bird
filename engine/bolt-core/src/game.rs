@@ -1181,6 +1181,11 @@ pub enum Decision {
     /// `Pick` one of `cards` (milled, still in your graveyard) to put into your hand (Ripples of
     /// Undeath).
     TakeMilledCard { cards: Vec<ObjId> },
+    /// `Pick` another permanent you control sharing a permanent type with `with` to return to its
+    /// owner's hand, or `No` (Cloudstone Curio).
+    ReturnSharingType { with: ObjId },
+    /// `Pick` a permanent you control to exile; `left` more after this one (Bane of Bala Ged).
+    ExileOwnPermanent { left: u8 },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -2401,6 +2406,16 @@ impl Game {
                                 .is_some_and(|(x, z)| self.obj(x).zcc == z && self.colors_of(x)[c as usize]),
                             Some(StaticCondition::CompletedDungeon) => {
                                 self.completed_a_dungeon(so.controller)
+                            }
+                            Some(StaticCondition::ControlArtifactsAtLeast(n)) => {
+                                self.battlefield
+                                    .iter()
+                                    .filter(|&&x| {
+                                        self.obj(x).controller == so.controller
+                                            && self.def_of(x).types.artifact
+                                    })
+                                    .count()
+                                    >= n as usize
                             }
                         };
                         applies && condition_ok && (!s.your_turn_only || self.active == so.controller)
@@ -5267,9 +5282,20 @@ impl Game {
         if f.nonartifact && self.types_of(id).artifact {
             return false;
         }
+        if f.creature_needs_defender
+            && !(self.types_of(id).creature && self.keywords(id).has(Keywords::DEFENDER))
+        {
+            return false;
+        }
+        if f.artifact_cards && !self.types_of(id).artifact {
+            return false;
+        }
         if on_stack {
             let ty = self.types_of(id);
             if f.spell_artifact_creature_or_planeswalker && !(ty.artifact || ty.creature || ty.planeswalker) {
+                return false;
+            }
+            if f.spell_instant_or_sorcery && !(ty.instant || ty.sorcery) {
                 return false;
             }
             if let Some(m) = f.spell_min_mana_value {
@@ -9772,6 +9798,10 @@ impl Game {
                 let lands = self.permanents(owner).filter(|&x| self.types_of(x).land).count() as u32;
                 d.types.creature && d.cost.mana_value() <= lands
             }
+            // A changeling card is every creature type, Human included (CR 702.73a).
+            Pick::NonHumanCreature => {
+                d.types.creature && !d.changeling && !d.subtypes.iter().any(|s| s == "Human")
+            }
         }
     }
 
@@ -9833,6 +9863,7 @@ impl Game {
                             && c.twobrid == [0; 5]
                             && c.generic <= 1
                     }
+                    SearchFor::ColorlessCreature => d.types.creature && !d.colors.iter().any(|&c| c),
                 }
             })
             .collect()
@@ -10596,6 +10627,16 @@ impl Game {
                 .filter(|&c| self.obj(c).zone == Zone::Graveyard)
                 .map(Action::Pick)
                 .collect(),
+            Decision::ReturnSharingType { with } => {
+                let mut v: Vec<Action> = self
+                    .sharing_type_options(p, *with)
+                    .into_iter()
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
+            Decision::ExileOwnPermanent { .. } => self.permanents(p).map(Action::Pick).collect(),
             Decision::BraidsOpponent { types, .. } => {
                 let mut v: Vec<Action> = self
                     .braids_options(p, Some(*types))
@@ -11879,6 +11920,12 @@ impl Game {
             }
             (Decision::MayPayManaAndLife { .. }, Action::No) => {}
             (Decision::TakeMilledCard { .. }, Action::Pick(c)) => self.move_to(c, Zone::Hand),
+            (Decision::ReturnSharingType { .. }, Action::Pick(c)) => self.move_to(c, Zone::Hand),
+            (Decision::ReturnSharingType { .. }, Action::No) => {}
+            (Decision::ExileOwnPermanent { left }, Action::Pick(c)) => {
+                self.move_to(c, Zone::Exile);
+                self.exile_own_permanents(p, left);
+            }
             (d, a) => unreachable!("legal action {a:?} unhandled for {d:?}"),
         }
         if self.decision.is_none() {
@@ -12343,6 +12390,31 @@ impl Game {
             1 => self.move_to(left[0], Zone::Hand),
             _ => self.ask(p, Decision::TakeMilledCard { cards: left }),
         }
+    }
+
+    /// Bane of Bala Ged: `p` exiles `n` permanents they control (all of them with `n` or fewer).
+    fn exile_own_permanents(&mut self, p: PlayerId, n: u8) {
+        if n == 0 {
+            return;
+        }
+        let mine: Vec<ObjId> = self.permanents(p).collect();
+        if mine.len() <= n as usize {
+            for x in mine {
+                self.move_to(x, Zone::Exile);
+            }
+        } else {
+            self.ask(p, Decision::ExileOwnPermanent { left: n - 1 });
+        }
+    }
+
+    /// Cloudstone Curio: `p`'s other permanents sharing a permanent type with `with`.
+    fn sharing_type_options(&self, p: PlayerId, with: ObjId) -> Vec<ObjId> {
+        let t = self.types_of(with);
+        let kinds = |t: Types| [t.artifact, t.creature, t.enchantment, t.land, t.planeswalker];
+        let mine = kinds(t);
+        self.permanents(p)
+            .filter(|&x| x != with && kinds(self.types_of(x)).iter().zip(mine).any(|(&a, b)| a && b))
+            .collect()
     }
 
     /// Korvold: the permanents `p` could sacrifice other than `keep`.
@@ -18474,6 +18546,96 @@ impl Game {
                         ..ManaCost::default()
                     };
                     self.ask(p, Decision::MayPayManaAndLife { cost, life, cards });
+                }
+            }
+            Effect::MayReturnAnotherSharingType(slot) => {
+                let with = match item.targets.get(slot as usize) {
+                    Some(&Chosen::Object(id, _)) => Some(id),
+                    _ => None,
+                };
+                if let Some(with) = with {
+                    let p = item.controller;
+                    if !self.sharing_type_options(p, with).is_empty() {
+                        self.ask(p, Decision::ReturnSharingType { with });
+                    }
+                }
+            }
+            Effect::DamageEachOpponentAndTheirs {
+                amount,
+                player,
+                planeswalkers,
+            } => {
+                let opp = opponent(item.controller);
+                let mut targets: Vec<Target> = self
+                    .permanents(opp)
+                    .filter(|&x| {
+                        let t = self.types_of(x);
+                        t.creature || (planeswalkers && t.planeswalker)
+                    })
+                    .map(Target::Object)
+                    .collect();
+                if player {
+                    targets.insert(0, Target::Player(opp));
+                }
+                for t in targets {
+                    self.deal_damage(src, t, amount);
+                }
+            }
+            Effect::DrainXTimes(n) => {
+                let opp = opponent(item.controller);
+                let life = item.x as i32 * n as i32;
+                if life > 0 {
+                    let before = self.players[opp].life;
+                    self.lose_life(opp, life);
+                    let lost = (before - self.players[opp].life).max(0);
+                    if lost > 0 {
+                        self.gain_life(item.controller, lost);
+                    }
+                }
+            }
+            Effect::GainLifeSlotPower(slot) => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    let power = self.power(id);
+                    if power > 0 {
+                        self.gain_life(item.controller, power);
+                    }
+                }
+            }
+            Effect::GainLifePerColorlessCreatureYouControl => {
+                let p = item.controller;
+                let n = self
+                    .creatures(p)
+                    .filter(|&c| !self.colors_of(c).iter().any(|&b| b))
+                    .count() as i32;
+                if n > 0 {
+                    self.gain_life(p, n);
+                }
+            }
+            Effect::SacrificeAllColoredPermanents => {
+                for p in [self.active, opponent(self.active)] {
+                    let colored: Vec<ObjId> = self
+                        .permanents(p)
+                        .filter(|&x| self.colors_of(x).iter().any(|&b| b) && !self.cant_be_sacrificed(x))
+                        .collect();
+                    for x in colored {
+                        self.move_to(x, Zone::Graveyard);
+                        self.sacrificed(x, p);
+                    }
+                }
+            }
+            Effect::OpponentExilesPermanents(n) => {
+                self.exile_own_permanents(opponent(item.controller), n);
+            }
+            Effect::ReanimateWithSubtype { slot, subtype } => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    if self.obj(id).zone == Zone::Graveyard {
+                        self.move_to(id, Zone::Battlefield);
+                        if self.obj(id).zone == Zone::Battlefield {
+                            let o = self.obj_mut(id);
+                            o.controller = item.controller;
+                            o.extra_subtypes.push(subtype);
+                        }
+                    }
                 }
             }
         }

@@ -123,6 +123,12 @@ pub struct Filter {
     pub only_in_your_main_phase: bool,
     /// Attacking creatures only (Reconnaissance).
     pub attacking: bool,
+    /// Instant and sorcery spells only (Flusterstorm), with `spells`.
+    pub spell_instant_or_sorcery: bool,
+    /// Creatures with defender only (Smash to Dust).
+    pub creature_needs_defender: bool,
+    /// Artifact cards only (graveyard targets: Buried Ruin).
+    pub artifact_cards: bool,
 }
 
 impl Filter {
@@ -182,6 +188,9 @@ impl Filter {
         single_target: false,
         only_in_your_main_phase: false,
         attacking: false,
+        spell_instant_or_sorcery: false,
+        creature_needs_defender: false,
+        artifact_cards: false,
     };
 
     pub const CREATURE: Filter = Filter {
@@ -2025,6 +2034,36 @@ pub enum Effect {
         mana: u8,
         life: i32,
     },
+    /// You may return another permanent you control that shares a permanent type with the one in
+    /// `slot` to its owner's hand (Cloudstone Curio), as `Decision::ReturnSharingType`.
+    MayReturnAnotherSharingType(u8),
+    /// The source deals `amount` damage to each creature each opponent controls, with `player` to
+    /// each opponent too, and with `planeswalkers` to each planeswalker they control (Tectonic Hazard,
+    /// End the Festivities, Smash to Dust).
+    DamageEachOpponentAndTheirs {
+        amount: i32,
+        player: bool,
+        planeswalkers: bool,
+    },
+    /// Each opponent loses `n` times X life; you gain life equal to the life lost (Debt to the
+    /// Deathless: 2).
+    DrainXTimes(u8),
+    /// You gain life equal to the power of the creature in `slot` (Wall of Reverence).
+    GainLifeSlotPower(u8),
+    /// You gain 1 life for each colorless creature you control (Tomb of the Spirit Dragon).
+    GainLifePerColorlessCreatureYouControl,
+    /// Each player sacrifices all permanents they control that are one or more colors (All Is
+    /// Dust).
+    SacrificeAllColoredPermanents,
+    /// The opponent (1v1: the defending player) exiles `n` permanents they control of their
+    /// choice, as `Decision::ExileOwnPermanent` (Bane of Bala Ged: 2).
+    OpponentExilesPermanents(u8),
+    /// Put the creature card in graveyard `slot` onto the battlefield under your control with an
+    /// extra creature type (Portal to Phyrexia: Phyrexian).
+    ReanimateWithSubtype {
+        slot: u8,
+        subtype: &'static str,
+    },
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -2094,6 +2133,8 @@ pub enum SearchFor {
     /// An artifact card with mana cost {0} or {1} (Urza's Saga). The engine's costs don't tell
     /// {0} from no mana cost, so an artifact with none counts too.
     ArtifactManaCostZeroOrOne,
+    /// A colorless creature card (Sanctum of Ugin).
+    ColorlessCreature,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -2228,6 +2269,9 @@ pub enum StaticCondition {
     AttachedIsColor(u8),
     /// The source's controller has completed a dungeon (Nadaar).
     CompletedDungeon,
+    /// Its controller controls at least this many artifacts (Teething Wurmlet: three). Printed card
+    /// types are counted, as `ControlLandsAtLeast` does.
+    ControlArtifactsAtLeast(u8),
 }
 
 /// A static ability that changes characteristics (CR 604, 613 layers 6 and 7c).
@@ -2292,6 +2336,8 @@ pub enum Pick {
     InstantSorceryOrSubtype(&'static str),
     /// An enchantment card.
     Enchantment,
+    /// A non-Human creature card (Kinnan, Bonder Prodigy).
+    NonHumanCreature,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

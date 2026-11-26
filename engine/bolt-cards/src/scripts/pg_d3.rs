@@ -1510,6 +1510,104 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::FirstMainPhaseYourTurn, vec![], vec![Effect::MillThenMayPayTakeOne { n: 3, mana: 1, life: 3 }]);
             },
         ),
+        // ---- Core theme d3, batch 14 ----
+        "Professor Onyx" => s(
+            &[
+                "Magecraft — Whenever you cast or copy an instant or sorcery spell, each opponent loses 2 life and you gain 2 life.",
+                "+1: You lose 1 life. Look at the top three cards of your library. Put one of them into your hand and the rest into your graveyard.",
+                "−3: Each opponent sacrifices a creature with the greatest power among creatures that player controls.",
+                "−8: Each opponent may discard a card. If they don't, they lose 3 life. Repeat this process six more times.",
+            ],
+            |d, _| {
+                let drain = vec![Effect::LoseLife { who: Who::EachOpponent, n: 2 }, Effect::GainLife { who: Who::You, n: 2 }];
+                on(d, When::YouCastOrCopyInstantOrSorcery, vec![], drain);
+                let look = Effect::LookAtTop { n: 3, pick: Pick::Any, chosen_to: LookTo::Hand, rest_to: LookRest::GraveyardTakeOne };
+                loyalty(d, 1, Ability::new(vec![], vec![Effect::LoseLife { who: Who::You, n: 1 }, look]));
+                loyalty(d, -3, Ability::new(vec![], vec![Effect::SacrificeGreatestPower(Who::EachOpponent)]));
+                loyalty(d, -8, Ability::new(vec![], vec![Effect::OpponentDiscardsOrLosesLife { n: 7, life: 3 }]));
+            },
+        ),
+        "Flusterstorm" => s(
+            &["Counter target instant or sorcery spell unless its controller pays {1}.", "Storm"],
+            |d, _| {
+                let instant_or_sorcery = Filter { spell_instant_or_sorcery: true, ..SPELL };
+                spell(d, vec![instant_or_sorcery], vec![Effect::CounterUnlessPays(0, 1, 1)]);
+                on(d, When::YouCastThis, vec![], vec![Effect::CopySourceSpell { storm: true }]);
+            },
+        ),
+        "End the Festivities" => s(
+            &["End the Festivities deals 1 damage to each opponent and each creature and planeswalker they control."],
+            |d, _| {
+                spell(d, vec![], vec![Effect::DamageEachOpponentAndTheirs { amount: 1, player: true, planeswalkers: true }]);
+            },
+        ),
+        "Tectonic Hazard" => s(&["Tectonic Hazard deals 1 damage to each opponent and each creature they control."], |d, _| {
+            spell(d, vec![], vec![Effect::DamageEachOpponentAndTheirs { amount: 1, player: true, planeswalkers: false }]);
+        }),
+        "Smash to Dust" => s(
+            &[
+                "Choose one —",
+                "• Destroy target artifact.",
+                "• Destroy target creature with defender.",
+                "• Smash to Dust deals 1 damage to each creature your opponents control.",
+            ],
+            |d, _| {
+                let artifact = Filter { players: false, creatures: false, planeswalkers: false, artifacts: true, ..Filter::ANY };
+                let defender = Filter { creature_needs_defender: true, ..CREATURE };
+                let sweep = Effect::DamageEachOpponentAndTheirs { amount: 1, player: false, planeswalkers: false };
+                modes(
+                    d,
+                    vec![
+                        Ability::new(vec![artifact], vec![Effect::Destroy(0)]),
+                        Ability::new(vec![defender], vec![Effect::Destroy(0)]),
+                        Ability::new(vec![], vec![sweep]),
+                    ],
+                )
+            },
+        ),
+        "Debt to the Deathless" => s(
+            &["Each opponent loses two times X life. You gain life equal to the life lost this way."],
+            |d, _| spell(d, vec![], vec![Effect::DrainXTimes(2)]),
+        ),
+        "Wall of Reverence" => s(
+            &["At the beginning of your end step, you may gain life equal to the power of target creature you control."],
+            |d, _| may(d, When::EndStep { your_turn_only: true }, vec![YOUR_CREATURE], vec![Effect::GainLifeSlotPower(0)]),
+        ),
+        "Buried Ruin" => s(
+            &["{T}: Add {C}.", "{2}, {T}, Sacrifice this land: Return target artifact card from your graveyard to your hand."],
+            |d, _| {
+                d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                let artifact_card = Filter { artifact_cards: true, ..graveyard_cards(false, Controller::You) };
+                let n = activated(d, "{2}", true, vec![artifact_card], vec![Effect::Bounce(0)]);
+                d.activated[n].sacrifice_self = true;
+            },
+        ),
+        "Tomb of the Spirit Dragon" => s(&["{T}: Add {C}.", "{2}, {T}: You gain 1 life for each colorless creature you control."], |d, _| {
+            d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+            activated(d, "{2}", true, vec![], vec![Effect::GainLifePerColorlessCreatureYouControl]);
+        }),
+        "Zhalfirin Void" => s(&["When this land enters, scry 1.", "{T}: Add {C}."], |d, _| {
+            d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+            on(d, When::Enters, vec![], vec![Effect::Scry { n: 1 }]);
+        }),
+        "All Is Dust" => s(&["Each player sacrifices all permanents they control that are one or more colors."], |d, _| {
+            spell(d, vec![], vec![Effect::SacrificeAllColoredPermanents]);
+        }),
+        "Bane of Bala Ged" => s(&["Whenever this creature attacks, defending player exiles two permanents they control."], |d, _| {
+            // 1v1: the defending player is the opponent.
+            on(d, When::Attacks, vec![], vec![Effect::OpponentExilesPermanents(2)]);
+        }),
+        "Portal to Phyrexia" => s(
+            &[
+                "When this artifact enters, each opponent sacrifices three creatures of their choice.",
+                "At the beginning of your upkeep, put target creature card from a graveyard onto the battlefield under your control. It's a Phyrexian in addition to its other types.",
+            ],
+            |d, _| {
+                on(d, When::Enters, vec![], vec![Effect::SacrificeCreatures { who: Who::EachOpponent, n: 3 }]);
+                let reanimate = Effect::ReanimateWithSubtype { slot: 0, subtype: "Phyrexian" };
+                on(d, When::Upkeep { your_turn_only: true }, vec![graveyard_cards(true, Controller::Any)], vec![reanimate]);
+            },
+        ),
         _ => None,
     }
 }
@@ -1717,4 +1815,18 @@ pub const PG_D3_SCRIPTED: &[&str] = &[
     "Rapacious Guest",
     "Klothys, God of Destiny",
     "Ripples of Undeath",
+    // Core theme d3, batch 14
+    "Professor Onyx",
+    "Flusterstorm",
+    "End the Festivities",
+    "Tectonic Hazard",
+    "Smash to Dust",
+    "Debt to the Deathless",
+    "Wall of Reverence",
+    "Buried Ruin",
+    "Tomb of the Spirit Dragon",
+    "Zhalfirin Void",
+    "All Is Dust",
+    "Bane of Bala Ged",
+    "Portal to Phyrexia",
 ];
