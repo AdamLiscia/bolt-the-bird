@@ -262,6 +262,17 @@ pub struct Activated {
     /// "Sacrifice two other creatures" in the cost: the victim, then the engine sacrifices another
     /// (the one with the least power) (Zopandrel).
     pub sacrifice_two_others: bool,
+    /// Phyrexian pips in `mana` by color: each is paid with 2 life when the mana can't be (the
+    /// engine's choice: mana first).
+    pub phyrexian: [u8; 5],
+    /// The sacrificed creature is kept as the stack entry's `extra` (Birthing Pod).
+    pub victim_in_extra: bool,
+    /// "Sacrifice two other artifacts and/or creatures" in the cost (Mondrak): the first named by
+    /// `ActivateWith`, the second the engine's choice (a token, else the lowest mana value).
+    pub sacrifice_two_artifacts_or_creatures: bool,
+    /// With `sacrifice_subtype`: sacrifice this many of them ("Sacrifice four Foods"): the victim, then
+    /// the engine picks the rest; 0 or 1: one.
+    pub sacrifice_subtype_count: u8,
 }
 
 /// The printed card. Shared by every copy; per-copy state lives on the game object.
@@ -727,6 +738,28 @@ pub struct CardDef {
     /// token that's a copy of this creature, except it has haste and loses soulbond. Exile it at end
     /// of combat.'" (Mirage Phalanx; the pairing works as for `soulbond_flicker`).
     pub soulbond_combat_copies: bool,
+    /// "Creatures you control have \"{T}: Add one mana of any color.\"" (Enduring Vitality)
+    pub creatures_tap_any_color: bool,
+    /// "Tokens you control have \"{T}: Add {G}.\"" (Jaheira, Friend of the Forest)
+    pub tokens_tap_for_green: bool,
+    /// "Whenever you tap a land for mana, add one mana of any type that land produced." (Mirari's Wake)
+    pub lands_add_same: bool,
+    /// "If you would lose the game, instead exile this and your life total becomes 1." (The Golden
+    /// Throne)
+    pub lose_replacement: bool,
+    /// Warp (Exalted Sunborn): cast from your hand for this with `Action::CastAlternative`; exiled at
+    /// the next end step, then castable from exile.
+    pub warp: Option<ManaCost>,
+    /// Morph (CR 702.37): cast face down for {3} with `Action::CastAlternative`; turned face up for
+    /// this cost.
+    pub morph: Option<ManaCost>,
+    /// Changeling: every creature type (CR 702.73).
+    pub changeling: bool,
+    /// An adventurer card (CR 715): its Adventure is cast as the `omen` half; on resolving it's exiled,
+    /// and its owner may cast the card itself from exile later.
+    pub adventure: bool,
+    /// "Enchanted permanent's activated abilities can't be activated." (Hold for Questioning)
+    pub enchanted_stops_activations: bool,
 }
 
 /// What entering makes triggers happen again (see [`CardDef::entering_triggers_again`]).
@@ -970,6 +1003,15 @@ impl CardDef {
             top_spells_creatures: false,
             blitz: None,
             soulbond_combat_copies: false,
+            creatures_tap_any_color: false,
+            tokens_tap_for_green: false,
+            lands_add_same: false,
+            lose_replacement: false,
+            warp: None,
+            morph: None,
+            changeling: false,
+            adventure: false,
+            enchanted_stops_activations: false,
         }
     }
 
@@ -1181,6 +1223,15 @@ impl CardDef {
             top_spells_creatures: false,
             blitz: None,
             soulbond_combat_copies: false,
+            creatures_tap_any_color: false,
+            tokens_tap_for_green: false,
+            lands_add_same: false,
+            lose_replacement: false,
+            warp: None,
+            morph: None,
+            changeling: false,
+            adventure: false,
+            enchanted_stops_activations: false,
         }
     }
 
@@ -1392,6 +1443,15 @@ impl CardDef {
             top_spells_creatures: false,
             blitz: None,
             soulbond_combat_copies: false,
+            creatures_tap_any_color: false,
+            tokens_tap_for_green: false,
+            lands_add_same: false,
+            lose_replacement: false,
+            warp: None,
+            morph: None,
+            changeling: false,
+            adventure: false,
+            enchanted_stops_activations: false,
         }
     }
 }

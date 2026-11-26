@@ -1227,6 +1227,120 @@ pub fn script(name: &str) -> Option<Script> {
             &["For each creature your opponents control, create a 4/4 green Phyrexian Beast creature token. Each of those tokens fights a different one of those creatures."],
             |d, t| spell(d, vec![], vec![Effect::TokenFightsEachOpponentCreature { def: t.phyrexian_beast }]),
         ),
+        // ---- Objects and zones (core theme, mac-c): Clues, Food costs, Adventures ----
+        "Confirm Suspicions" => s(&["Counter target spell.", "Investigate three times."], |d, t| {
+            spell(d, vec![SPELL], vec![Effect::Counter(0), Effect::Investigate { def: t.clue, n: 3 }]);
+        }),
+        "Confront the Unknown" => s(&["Investigate, then target creature gets +1/+1 until end of turn for each Clue you control."], |d, t| {
+            spell(d, vec![CREATURE], vec![Effect::Investigate { def: t.clue, n: 1 }, Effect::PumpPerYourSubtype { slot: 0, sub: "Clue" }]);
+        }),
+        "Erdwal Illuminator" => s(&["Whenever you investigate for the first time each turn, investigate an additional time."], |d, t| {
+            on(d, When::YouInvestigateFirstTimeEachTurn, vec![], vec![Effect::Investigate { def: t.clue, n: 1 }]);
+        }),
+        "Ethereal Investigator" => s(
+            &[
+                "When this creature enters, investigate X times, where X is the number of opponents you have.",
+                "Whenever you draw your second card each turn, create a 1/1 white Spirit creature token with flying.",
+            ],
+            |d, t| {
+                on(d, When::Enters, vec![], vec![Effect::Investigate { def: t.clue, n: 1 }]); // one opponent
+                on(d, When::YouDrawSecond, vec![], vec![Effect::CreateToken { who: Who::You, def: t.spirit, n: 1 }]);
+            },
+        ),
+        "Floodhound" => s(&["{3}, {T}: Investigate."], |d, t| {
+            activated(d, "{3}", true, vec![], vec![Effect::Investigate { def: t.clue, n: 1 }]);
+        }),
+        "Hold for Questioning" => s(
+            &[
+                "Enchant creature or planeswalker",
+                "When this Aura enters, tap enchanted permanent and investigate.",
+                "Enchanted permanent doesn't untap during its controller's untap step and its activated abilities can't be activated.",
+            ],
+            |d, t| {
+                d.aura = true;
+                d.spell = Some(Ability::new(vec![CREATURE_OR_PLANESWALKER], vec![]));
+                on(d, When::Enters, vec![], vec![Effect::TapAttached, Effect::Investigate { def: t.clue, n: 1 }]);
+                d.enchanted_doesnt_untap = true;
+                d.enchanted_stops_activations = true;
+            },
+        ),
+        "Ongoing Investigation" => s(
+            &[
+                "Whenever one or more creatures you control deal combat damage to a player, investigate.",
+                "{1}{G}, Exile a creature card from your graveyard: Investigate. You gain 2 life.",
+            ],
+            |d, t| {
+                on(d, When::YourCreaturesDealCombatDamageToPlayer, vec![], vec![Effect::Investigate { def: t.clue, n: 1 }]);
+                let n = activated(d, "{1}{G}", false, vec![], vec![Effect::Investigate { def: t.clue, n: 1 }, Effect::GainLife { who: Who::You, n: 2 }]);
+                d.activated[n].exile_creature_card = true;
+            },
+        ),
+        "Tamiyo's Journal" => s(
+            &[
+                "At the beginning of your upkeep, investigate.",
+                "{T}, Sacrifice three Clues: Search your library for a card, put that card into your hand, then shuffle.",
+            ],
+            |d, t| {
+                on(d, When::Upkeep { your_turn_only: true }, vec![], vec![Effect::Investigate { def: t.clue, n: 1 }]);
+                let n = activated(d, "", true, vec![], vec![search(SearchFor::Any, SearchTo::Hand)]);
+                d.activated[n].sacrifice_subtype = Some("Clue");
+                d.activated[n].sacrifice_subtype_count = 3;
+            },
+        ),
+        "Pippin, Warden of Isengard" => s(
+            &[
+                "Partner with Merry, Warden of Isengard",
+                "{1}, {T}: Create a Food token.",
+                "{T}, Sacrifice four Foods: Other creatures you control get +3/+3 and gain haste until end of turn. Activate only as a sorcery.",
+            ],
+            |d, t| {
+                // Partner with: "When this creature enters, target player may put Merry into their hand
+                // from their library" (you, in a two-player game).
+                may(d, When::Enters, vec![], vec![search(SearchFor::Named(&["Merry, Warden of Isengard"]), SearchTo::Hand)]);
+                activated(d, "{1}", true, vec![], vec![Effect::CreateToken { who: Who::You, def: t.food, n: 1 }]);
+                let pump = Effect::PumpOthersAndGrant { power: 3, toughness: 3, keywords: Keywords::HASTE };
+                let n = activated(d, "", true, vec![], vec![pump]);
+                d.activated[n].sacrifice_subtype = Some("Food");
+                d.activated[n].sacrifice_subtype_count = 4;
+                d.activated[n].sorcery = true;
+            },
+        ),
+        "Savvy Hunter" => s(
+            &["Whenever this creature attacks or blocks, create a Food token.", "Sacrifice two Foods: Draw a card."],
+            |d, t| {
+                for when in [When::Attacks, When::Blocks] {
+                    on(d, when, vec![], vec![Effect::CreateToken { who: Who::You, def: t.food, n: 1 }]);
+                }
+                let n = activated(d, "", false, vec![], vec![draw(1)]);
+                d.activated[n].sacrifice_subtype = Some("Food");
+                d.activated[n].sacrifice_subtype_count = 2;
+            },
+        ),
+        "Bramble Familiar // Fetch Quest" => s(
+            &[
+                "{T}: Add {G}.",
+                "{1}{G}, {T}, Discard a card: Return this creature to its owner's hand.",
+                "Omen: Mill seven cards. Then put a creature, enchantment, or land card from among the milled cards onto the battlefield.",
+            ],
+            |d, _| {
+                d.mana = Some(ManaSource::of(&[Color::Green]));
+                let n = activated(d, "{1}{G}", true, vec![], vec![Effect::BounceSelf]);
+                d.activated[n].discard_any_card = true;
+                omen(d, Ability::new(vec![], vec![Effect::MillPutCreatureEnchantmentOrLand(7)]));
+                d.adventure = true;
+            },
+        ),
+        "Monster Manual // Zoological Study" => s(
+            &[
+                "{1}{G}, {T}: You may put a creature card from your hand onto the battlefield.",
+                "Omen: Mill five cards, then return a creature card milled this way to your hand.",
+            ],
+            |d, _| {
+                activated(d, "{1}{G}", true, vec![], vec![Effect::MayPutCreatureFromHand]);
+                omen(d, Ability::new(vec![], vec![Effect::MillReturnCreatureToHand(5)]));
+                d.adventure = true;
+            },
+        ),
         _ => None,
     }
 }
@@ -1377,4 +1491,16 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Zopandrel, Hunger Dominus",
     "Mirage Phalanx",
     "Ezuri's Predation",
+    "Confirm Suspicions",
+    "Confront the Unknown",
+    "Erdwal Illuminator",
+    "Ethereal Investigator",
+    "Floodhound",
+    "Hold for Questioning",
+    "Ongoing Investigation",
+    "Tamiyo's Journal",
+    "Pippin, Warden of Isengard",
+    "Savvy Hunter",
+    "Bramble Familiar // Fetch Quest",
+    "Monster Manual // Zoological Study",
 ];

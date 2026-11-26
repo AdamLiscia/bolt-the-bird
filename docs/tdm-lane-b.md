@@ -551,3 +551,44 @@ fill a `triggering` target for "another nontoken creature you control dies" abil
 Sentinel: `Effect::UnlessOpponentPaysPower`, checked against `Game::noncreature_casts` as it
 resolves. Ghostly Dancers: the engine has no Rooms, so only the return half. Tokens: Pegasus
 (base+61) and Spirit 3/1 (base+62); base+59 and +60 are placeholders for lane C's Wurm and Satyr.
+
+### Myrkul batch 2 (2026-11-25)
+
+11 more (36 of 45): Austere Command, Dawn's Truce, Eldritch Evolution, Birthing Pod, Enduring
+Vitality, Jaheira, Friend of the Forest, Arachnogenesis, For the Common Good, Mirari's Wake, Kaya,
+Geist Hunter, The Golden Throne.
+
+- Austere Command's "choose two" is one mode for each pair (6 modes, `CastModal`), each two
+  `Effect::DestroyAllMatching`.
+- Dawn's Truce: gift as `CastKicked`; `Effect::YouGainHexproofEot` (`Game::player_hexproof_turn`).
+- `Effect::SearchCreatureBySacrificedMv` (the sacrificed creature in the entry's `extra`: a spell's
+  additional cost, or an ability's with `Activated::victim_in_extra`); `SearchFor::CreatureMvExactly`.
+- Phyrexian mana in activated costs: `Activated::phyrexian`; the engine pays the mana when it can and
+  2 life a pip otherwise (Birthing Pod).
+- `CardDef::creatures_tap_any_color`, `tokens_tap_for_green`, `lands_add_same` (Mirari's Wake: each
+  land tapped for mana offers one more of what it makes), `lose_replacement` (The Golden Throne, in
+  the state-based loss check; its sacrifice-a-creature mana ability uses the stack here).
+- Enduring Vitality: `Effect::ReturnSelfAsEnchantment` (`Object::last_enchantment_only` for "if it
+  was a creature").
+- Arachnogenesis: `Effect::CreateTokensPerAttackers`, `PreventCombatDamageExceptSubtype`
+  (`Game::combat_damage_prevented_except`).
+- For the Common Good: `Effect::CopyTokenX`, `GrantTokensUntilYourNextTurn`, `GainLifePerToken`.
+- Kaya: `Effect::DoubleTokensThisTurn` (`Game::tokens_doubled_turn`), `ExileGraveyardsTokenPerCard`.
+
+### Myrkul batch 3 (2026-11-25)
+
+Mondrak, Glory Dominus, Exalted Sunborn, Grim Haruspex, Black Market Connections (40 of 45).
+
+- `Activated::sacrifice_two_others` (the second is the engine's choice: a token, else the lowest
+  mana value), `Effect::KeywordCounterSelf`; Mondrak's {W/P} pips use `Activated::phyrexian`.
+- Warp: `CardDef::warp`, cast with `CastAlternative`; `Object::warped` exiles it at the next end
+  step with `playable` for its owner.
+- Morph: `CardDef::morph`, cast face down for {3} with `CastAlternative` (`Object::face_down` from the
+  cast on; revealed if it leaves the stack any other way); turned face up for the morph cost with
+  the `Activate(id, 0)` special action. bolt-py hides a face-down spell on the stack too.
+- `When::FirstMainPhaseYourTurn`; "choose one or more" as a mode for each nonempty set.
+- `CardDef::changeling` (every creature type, in `has_subtype`). Tokens: base+63 is a placeholder for
+  lane C's Phyrexian Beast, base+64 Shapeshifter 3/2 changeling.
+
+Needs core, not done: Teferi's Protection and Clever Concealment (phasing), Promise of Loyalty (vow
+counters), Sphere of Safety (attack tax), Mirkwood Bats ("whenever you sacrifice a token").
