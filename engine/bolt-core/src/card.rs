@@ -957,6 +957,16 @@ pub struct CardDef {
     /// Toxic N (CR 702.164): a player dealt combat damage by it also gets N poison counters
     /// (Bloodroot Apothecary: 2).
     pub toxic: u8,
+    /// An Aura or Equipment: "Enchanted creature has ward {N}." (Sheltered by Ghosts: {2}), in
+    /// `Game::ward_check` with the creature's own ward.
+    pub enchanted_ward: Option<ManaCost>,
+    /// Gisa, Glorious Resurrector: "If a creature an opponent controls would die, exile it
+    /// instead." (in `move_to`; the card is recorded in `Game::exiled_with`).
+    pub opponents_creatures_die_exiled: bool,
+    /// A Class's token replacements, as (the level it needs, the token it replaces, the token made
+    /// instead), each applied once in order (Fisher's Talent: level 2 Fish to Shark, level 3 Shark
+    /// to Octopus), in `Game::create_token`.
+    pub class_token_replacements: Vec<(u8, usize, usize)>,
 }
 
 /// A card's pieces from the d4 subsystems (see [`CardDef::subsystems`]).
@@ -1437,6 +1447,9 @@ impl CardDef {
             one_attacker_one_blocker: false,
             colorless_spell_discount: 0,
             toxic: 0,
+            enchanted_ward: None,
+            opponents_creatures_die_exiled: false,
+            class_token_replacements: Vec::new(),
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -1706,6 +1719,9 @@ impl CardDef {
             one_attacker_one_blocker: false,
             colorless_spell_discount: 0,
             toxic: 0,
+            enchanted_ward: None,
+            opponents_creatures_die_exiled: false,
+            class_token_replacements: Vec::new(),
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -1975,6 +1991,9 @@ impl CardDef {
             one_attacker_one_blocker: false,
             colorless_spell_discount: 0,
             toxic: 0,
+            enchanted_ward: None,
+            opponents_creatures_die_exiled: false,
+            class_token_replacements: Vec::new(),
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,

@@ -2461,6 +2461,11 @@ fn fountainport_makes_fish_and_treasure_and_draws() {
     assert_eq!(tokens(&g, 0, "Fish").len(), 1);
     assert_eq!(g.players[0].life, 39);
     let fish = tokens(&g, 0, "Fish")[0];
+    assert_eq!(
+        g.colors_of(fish),
+        [false, true, false, false, false],
+        "a blue Fish"
+    );
     g.objects[port.0 as usize].tapped = false;
     let n = hand_size(&g, 0);
     act(&mut g, Action::ActivateWith(port, 0, fish));
@@ -2972,4 +2977,117 @@ fn ajani_strength_of_the_pride_gains_makes_a_pridemate_and_exiles_their_board() 
         );
         assert_eq!(g.obj(mine).zone, Zone::Battlefield);
     }
+}
+
+// ---- Merger pieces: Sheltered by Ghosts, Rankle, Raphael (2026-11-26) ----
+
+/// Answers every target, decision and discard with the first legal action, attacking with
+/// `attackers` at each declaration and never blocking, until turn 5 reaches its end step. Returns
+/// how many times attackers were declared.
+fn fight_through_turn_5(g: &mut Game, attackers: &[ObjId]) -> usize {
+    g.start_turn(5, 0);
+    let mut combats = 0;
+    while g.step != Step::End {
+        let a = match g.pending {
+            Pending::DeclareAttackers(0) => {
+                combats += 1;
+                for &x in attackers {
+                    if g.legal_actions().contains(&Action::Attack(x)) {
+                        act(g, Action::Attack(x));
+                    }
+                }
+                Action::FinishAttacks
+            }
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            Pending::ChooseTarget(_) | Pending::Decide(_) | Pending::Discard(_) => g.legal_actions()[0],
+            _ => Action::PassPriority,
+        };
+        act(g, a);
+    }
+    combats
+}
+
+#[test]
+fn sheltered_by_ghosts_exiles_pumps_and_grants_ward() {
+    let mut g = table();
+    let lions = put(&mut g, 0, "Savannah Lions");
+    let ring = put(&mut g, 1, "Sol Ring");
+    let aura = hand(&mut g, 0, "Sheltered by Ghosts");
+    play(
+        &mut g,
+        aura,
+        false,
+        &[Target::Object(lions)],
+        &[Action::Target(Target::Object(ring))],
+    );
+    assert_eq!(g.obj(ring).zone, Zone::Exile);
+    assert_eq!(g.power(lions), 3);
+    assert!(g.keywords(lions).has(Keywords::LIFELINK));
+    // The opponent's Swords to Plowshares meets ward {2}: unpaid, it's countered.
+    g.start_turn(4, 1);
+    while g.pending != Pending::Priority(1) || g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    let swords = hand(&mut g, 1, "Swords to Plowshares");
+    act(&mut g, Action::Cast(swords));
+    act(&mut g, Action::Target(Target::Object(lions)));
+    let mut asked = false;
+    while !g.items.is_empty() || matches!(g.pending, Pending::Decide(_)) {
+        let a = if let Pending::Decide(_) = g.pending {
+            asked = true;
+            Action::No
+        } else {
+            Action::PassPriority
+        };
+        act(&mut g, a);
+    }
+    assert!(asked, "ward asks for {{2}}");
+    assert_eq!(g.obj(lions).zone, Zone::Battlefield);
+    assert_eq!(g.obj(swords).zone, Zone::Graveyard);
+}
+
+#[test]
+fn rankle_chooses_any_number_of_modes_on_combat_damage() {
+    let mut g = table();
+    let rankle = put(&mut g, 0, "Rankle, Master of Pranks");
+    let lions = put(&mut g, 1, "Savannah Lions");
+    let (mine, theirs) = (g.players[0].hand.len(), g.players[1].hand.len());
+    g.start_turn(5, 0);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(rankle));
+    act(&mut g, Action::FinishAttacks);
+    let mut moded = false;
+    while g.step != Step::End {
+        let a = match g.pending {
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ if !moded && g.legal_actions().contains(&Action::Mode(6)) => {
+                moded = true;
+                Action::Mode(6) // all three
+            }
+            Pending::ChooseTarget(_) | Pending::Decide(_) | Pending::Discard(_) => g.legal_actions()[0],
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert!(moded);
+    assert_eq!(g.players[1].life, 40 - 3 - 1);
+    assert_eq!(g.players[0].life, 39);
+    assert_eq!(g.obj(lions).zone, Zone::Graveyard, "they sacrifice a creature");
+    assert_eq!(g.obj(rankle).zone, Zone::Graveyard, "so do you");
+    // Turn 5's draw, then a discard and a draw each.
+    assert_eq!(
+        (g.players[0].hand.len(), g.players[1].hand.len()),
+        (mine + 1, theirs)
+    );
+}
+
+#[test]
+fn raphael_untaps_and_adds_one_combat_the_first_time_each_turn() {
+    let mut g = table();
+    let raphael = put(&mut g, 0, "Raphael, Tag Team Tough");
+    let combats = fight_through_turn_5(&mut g, &[raphael]);
+    assert_eq!(combats, 2, "one extra combat, not one per hit");
+    assert_eq!(g.players[1].life, 40 - 12);
 }

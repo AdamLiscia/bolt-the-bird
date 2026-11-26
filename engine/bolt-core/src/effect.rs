@@ -2406,6 +2406,9 @@ pub enum Effect {
     /// If you have at least `n` life more than your starting life total, exile the source and each
     /// artifact and creature your opponents control (Ajani, Strength of the Pride's 0: 15).
     ExileSelfAndOpponentsArtifactsCreaturesIfLifeAbove(i32),
+    /// The creature in `slot` can't block for as long as you control the source (There and Back
+    /// Again's chapter I), see `Game::cant_block_while_controlled`.
+    TargetCantBlockWhileYouControlSource(u8),
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -3304,6 +3307,9 @@ pub enum When {
     /// "Whenever an opponent sacrifices a noncreature token" (Bloodroot Apothecary), fired from
     /// `Game::sacrificed`.
     OpponentSacrificesNoncreatureToken,
+    /// "Whenever [this] deals combat damage to a player for the first time each turn" (Raphael, Tag
+    /// Team Tough), with the damage as the amount; see `Game::combat_damaged_player`.
+    DealsCombatDamageToPlayerFirstTimeEachTurn,
 }
 
 #[derive(Clone, Debug, PartialEq)]

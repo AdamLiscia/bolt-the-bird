@@ -957,3 +957,56 @@ fn harmonize_excludes_its_creature_from_paying_even_a_devotee() {
     let ride = g.add_card(0, cid("Wild Ride"), Zone::Graveyard);
     assert!(!g.legal_actions().contains(&Action::CastHarmonize(ride, devotee)));
 }
+
+// ---- Lane B, 2026-11-26: can't block while you control the source; first combat damage each turn ----
+
+#[test]
+fn a_creature_cant_block_while_you_control_the_source() {
+    // Sol Ring, given There and Back Again's chapter I effect as an enters trigger for this test.
+    let mut defs = (*set("CMD").unwrap().defs).clone();
+    defs[cid("Sol Ring")].triggers.push(bolt_core::Trigger {
+        when: bolt_core::When::Enters,
+        ability: bolt_core::Ability::new(
+            vec![bolt_core::Filter::CREATURE],
+            vec![bolt_core::Effect::TargetCantBlockWhileYouControlSource(0)],
+        ),
+    });
+    let plains = vec![cid("Plains"); 99];
+    let mut g = Game::new_commander(
+        std::sync::Arc::new(defs),
+        [&plains, &plains],
+        [cid("Bello, Bard of the Brambles"), cid("Ms. Bumbleflower")],
+        7,
+        0,
+    );
+    g.auto_pass = false;
+    for land in ["Plains", "Island", "Swamp", "Mountain", "Forest"] {
+        put(&mut g, 0, land);
+    }
+    let lions = put(&mut g, 0, "Savannah Lions");
+    let wall = put(&mut g, 1, "Savannah Lions");
+    g.start_turn(3, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    let ring = hand(&mut g, 0, "Sol Ring");
+    play(&mut g, ring, false, &[], &[Action::Target(Target::Object(wall))]);
+    let blocks = |g: &mut Game| -> bool {
+        g.start_turn(5, 0);
+        while g.pending != Pending::DeclareAttackers(0) {
+            act(g, Action::PassPriority);
+        }
+        act(g, Action::Attack(lions));
+        act(g, Action::FinishAttacks);
+        while g.pending != Pending::DeclareBlockers(1) {
+            act(g, Action::PassPriority);
+        }
+        g.legal_actions().contains(&Action::Block {
+            blocker: wall,
+            attacker: lions,
+        })
+    };
+    assert!(!blocks(&mut g), "can't block while you control Sol Ring");
+    g.objects[ring.0 as usize].controller = 1; // you no longer control it
+    assert!(blocks(&mut g));
+}

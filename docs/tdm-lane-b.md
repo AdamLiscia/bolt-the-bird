@@ -824,3 +824,21 @@ Ajani, Strength of the Pride (`Effect::GainLifePerCreatureAndPlaneswalkerYouCont
 Their tokens 70 (Horse 5/5) and 72 (Ajani's Pridemate) are colorless in `token_defs`, though the
 cards say white: the merger's to fix in the token block.
 Built 2026-11-26: Insatiable Frugivore's `No` gets its own answer arm (it was offered but unhandled).
+
+### Merger pieces, 2026-11-26 (second list)
+
+- Granted ward: `CardDef::enchanted_ward` on an Aura or Equipment, read in `Game::ward_check` next to the
+  creature's own ward (Sheltered by Ghosts, scripted in pg_b).
+- Rankle, Master of Pranks: "choose any number" as one mode per set of the three modes (7, then the
+  empty set last) through `on_modal`; no new core.
+- Raphael, Tag Team Tough: `When::DealsCombatDamageToPlayerFirstTimeEachTurn` with
+  `Game::combat_damaged_player`, then the existing untap-attackers and additional-combat effects.
+- Fisher's Talent's token replacements: `CardDef::class_token_replacements` (level, from, to),
+  applied once each in order at the top of `create_token` (`Game::class_token_replacement`). Token
+  99: a blue 3/3 Shark (`Tokens::shark`); Fish (18) and Octopus (49) are now blue, as every card
+  that makes them says. The card itself (its reveal-a-land Fish) waits on d3.
+- There and Back Again, chapter I: `Effect::TargetCantBlockWhileYouControlSource` with
+  `Game::cant_block_while_controlled`, checked first in `can_block`. The Saga itself is d4's.
+- Gisa, Glorious Resurrector: `CardDef::opponents_creatures_die_exiled`, a replacement in `move_to`
+  (an opponent's creature going from the battlefield to a graveyard is exiled), recorded in
+  `Game::exiled_with` as (Gisa, its zcc, the card, its zcc in exile) for lane C's upkeep return.

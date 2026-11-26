@@ -705,6 +705,11 @@ static WARD_ABILITY: Ability = Ability {
 };
 
 /// Phantasmal Image's granted trigger: sacrifice it.
+/// Whether moving `id` to `to` is a creature dying: battlefield to graveyard (CR 700.4).
+fn from_battlefield_creature_dies(g: &Game, id: ObjId, to: Zone) -> bool {
+    g.obj(id).zone == Zone::Battlefield && to == Zone::Graveyard && g.types_of(id).creature
+}
+
 fn sacrifice_when_targeted_ability() -> &'static Ability {
     static A: std::sync::OnceLock<Ability> = std::sync::OnceLock::new();
     A.get_or_init(|| Ability::new(Vec::new(), vec![Effect::SacrificeSourceWhenTargeted]))
@@ -1704,6 +1709,12 @@ pub struct Game {
     /// Creature spells that enter with additional +1/+1 counters: (spell, the zcc it will have on
     /// the battlefield, how many) (Communal Brewing).
     pub spell_enters_with_counters: Vec<(ObjId, u32, i32)>,
+    /// Sources that have dealt combat damage to a player: (source, its zcc, turn), for "for the first
+    /// time each turn" (Raphael, Tag Team Tough).
+    pub combat_damaged_player: Vec<(ObjId, u32, u32)>,
+    /// "Can't block for as long as you control [the source]": (creature, its zcc, source, its zcc,
+    /// you) (There and Back Again).
+    pub cant_block_while_controlled: Vec<(ObjId, u32, ObjId, u32, PlayerId)>,
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -1972,6 +1983,8 @@ impl Game {
             delayed_next_upkeep: Vec::new(),
             token_linked_exile: Vec::new(),
             spell_enters_with_counters: Vec::new(),
+            combat_damaged_player: Vec::new(),
+            cant_block_while_controlled: Vec::new(),
         }
     }
 
@@ -4295,6 +4308,17 @@ impl Game {
         if void {
             to = Zone::Exile;
         }
+        // Gisa, Glorious Resurrector: "If a creature an opponent controls would die, exile it instead."
+        let gisa = if from_battlefield_creature_dies(self, id, to) {
+            let c = self.obj(id).controller;
+            self.permanents(opponent(c))
+                .find(|&x| self.def_of(x).opponents_creatures_die_exiled && !self.lost_abilities(x))
+        } else {
+            None
+        };
+        if gisa.is_some() {
+            to = Zone::Exile;
+        }
         // Unearth (CR 702.84a): if it would leave the battlefield, it's exiled instead.
         if from == Zone::Battlefield && to != Zone::Battlefield && self.obj(id).unearthed {
             to = Zone::Exile;
@@ -4477,6 +4501,10 @@ impl Game {
             self.players[owner].library = lib;
         }
         self.events.push(Event::Moved { card: id, from, to });
+        if let (Some(g), Zone::Exile) = (gisa, self.obj(id).zone) {
+            let entry = (g, self.obj(g).zcc, id, self.obj(id).zcc);
+            self.exiled_with.push(entry); // "creature cards exiled with Gisa"
+        }
         self.zone_triggers(id, from, to, last_controller);
     }
 
@@ -9222,6 +9250,9 @@ impl Game {
 
     /// Whether `blocker` may block `attacker`, ignoring menace (CR 509.1b, 702.9b, 702.17b).
     fn can_block(&self, blocker: ObjId, attacker: ObjId) -> bool {
+        if self.held_from_blocking(blocker) {
+            return false; // There and Back Again
+        }
         if self.protected_from(attacker, blocker) {
             return false; // CR 702.16f
         }
@@ -10841,6 +10872,24 @@ impl Game {
                         ..Game::casting(id, controller)
                     });
                 }
+                // Sheltered by Ghosts: ward granted by an Aura or Equipment on it.
+                let zcc = self.obj(id).zcc;
+                let granted: Vec<ManaCost> = self
+                    .battlefield
+                    .iter()
+                    .copied()
+                    .filter(|&a| self.obj(a).attached_to == Some((id, zcc)) && !self.lost_abilities(a))
+                    .filter_map(|a| self.def_of(a).enchanted_ward)
+                    .collect();
+                for cost in granted {
+                    self.triggered.push(StackItem {
+                        kind: StackKind::Ward {
+                            cost,
+                            against: item.source,
+                        },
+                        ..Game::casting(id, controller)
+                    });
+                }
                 if let Some(cost) = self.def_of(id).ward {
                     self.triggered.push(StackItem {
                         source: id,
@@ -11366,6 +11415,39 @@ impl Game {
         self.permanents(p)
             .filter(|&x| self.types_of(x).artifact && !self.is_token(x) && !self.cant_be_sacrificed(x))
             .collect()
+    }
+
+    /// Whether `c` can't block because of `Effect::TargetCantBlockWhileYouControlSource`: its source
+    /// is still the same object on the battlefield, under the player who set it up.
+    fn held_from_blocking(&self, c: ObjId) -> bool {
+        let z = self.obj(c).zcc;
+        self.cant_block_while_controlled.iter().any(|&(x, xz, s, sz, p)| {
+            let so = self.obj(s);
+            x == c && xz == z && so.zone == Zone::Battlefield && so.zcc == sz && so.controller == p
+        })
+    }
+
+    /// The token `p` creates instead of `def` under their Classes' token replacements (Fisher's
+    /// Talent), each applied once, in order (CR 614.5).
+    fn class_token_replacement(&self, p: PlayerId, mut def: usize) -> usize {
+        let mut reps = Vec::new();
+        for x in self.permanents(p) {
+            if self.lost_abilities(x) {
+                continue;
+            }
+            let level = self.class_level(x);
+            for &(need, from, to) in &self.def_of(x).class_token_replacements {
+                if level >= need {
+                    reps.push((from, to));
+                }
+            }
+        }
+        for (from, to) in reps {
+            if def == from {
+                def = to;
+            }
+        }
+        def
     }
 
     fn ask(&mut self, p: PlayerId, d: Decision) {
@@ -18137,6 +18219,14 @@ impl Game {
                     }
                 }
             }
+            Effect::TargetCantBlockWhileYouControlSource(slot) => {
+                if let Some(c) = Game::slot_object(item, legal, slot) {
+                    if self.obj(src).zone == Zone::Battlefield {
+                        let entry = (c, self.obj(c).zcc, src, self.obj(src).zcc, item.controller);
+                        self.cant_block_while_controlled.push(entry);
+                    }
+                }
+            }
             Effect::PoisonCounters { who, n } => {
                 for q in self.players_for(item, legal, who) {
                     self.players[q].poison += n;
@@ -21940,6 +22030,8 @@ impl Game {
     }
 
     fn create_token(&mut self, p: PlayerId, def: usize) {
+        // Fisher's Talent: "If you would create a Fish token, create a ... Shark ... instead."
+        let def = self.class_token_replacement(p, def);
         self.last_created.clear();
         for _ in 0..self.token_doubling(p) {
             let id = self.add_card(p, def, Zone::Battlefield);
@@ -23266,6 +23358,17 @@ impl Game {
             self.fire_source(a, When::DealsCombatDamageToPlayer);
             for t in &mut self.triggered[before..] {
                 t.amount = amount;
+            }
+            let key = (a, self.obj(a).zcc, self.turn);
+            if !self.combat_damaged_player.contains(&key) {
+                let turn = self.turn;
+                self.combat_damaged_player.retain(|e| e.2 == turn);
+                self.combat_damaged_player.push(key);
+                let before = self.triggered.len();
+                self.fire_source(a, When::DealsCombatDamageToPlayerFirstTimeEachTurn);
+                for t in &mut self.triggered[before..] {
+                    t.amount = amount;
+                }
             }
             if let Some(bello) = self.bello_for(a) {
                 let controller = self.obj(a).controller;
