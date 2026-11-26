@@ -157,7 +157,7 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         verb = {"SacrificeCreatures": "Sacrifice", "SacrificeAnother": "Sacrifice", "Search": "Take",
                 "LookPick": "Take", "KeepOfType": "Keep", "ScryOrder": "Put on top:", "GenesisPick": "Put onto the battlefield:", "PutPicksOntoBattlefield": "Put onto the battlefield:", "LandFromHandTapped": "Put onto the battlefield tapped:",
                 "DistributeCounters": "Put a +1/+1 counter on", "ManifestDread": "Manifest", "TurnFaceUp": "Turn face up:",
-                "PickVoidCard": "Play free this turn:", "ReturnOwnCreatureOfColor": "Return to its owner's hand:", "LandFromHand": "Put onto the battlefield:",
+                "PickVoidCard": "Play free this turn:", "ReturnOwnCreatureOfColor": "Return to its owner's hand:", "CacheGrabPick": "Put into your hand:", "MoveCounterFrom": "Move a +1/+1 counter onto", "LandFromHand": "Put onto the battlefield:",
                 "PickDiscard": "Make them discard", "EnterAsCopy": f"{card or 'It'} enters as a copy of"}.get(d)  # fmt: skip
         verb = verb or {"CreaturesFromHandUpTo": "Put onto the battlefield:", "ReturnOwnPermanent": "Return", "SearchToGraveyardCounter": "Put into your graveyard:"}.get(d)  # fmt: skip
         verb = verb or {"KeepNonlandOfType": "Keep", "HandToBottom": "Put on the bottom:", "SacrificeAnyNumber": "Sacrifice", "SacrificeCreatureOrPlaneswalkerEach": "Sacrifice", "ReturnAnotherPermanentCard": "Return to your hand:", "BasicsTappedUpTo": "Put onto the battlefield tapped:", "SignalTheClans": "Reveal", "BraidsSacrifice": "Sacrifice", "BraidsOpponent": "Sacrifice"}.get(d)  # fmt: skip
@@ -168,6 +168,11 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         verb = verb or {"ReturnSharingType": "Return to its owner's hand:", "ExileOwnPermanent": "Exile"}.get(d)
         verb = verb or {"UntapOwnCreature": "Untap"}.get(d)
         verb = verb or {"PutFromOpponentsTop": "Put onto the battlefield under your control:"}.get(d)
+        verb = verb or {"CastFromGraveyardThisTurn": "You may cast this turn (then exile it):"}.get(d)
+        verb = verb or {"TakeTwoBottomRest": "Put into your hand:"}.get(d)
+        verb = verb or {"SacrificeDiscardOrLoseLife": "Sacrifice (or discard, from your hand):"}.get(d)
+        if d == "IterationPick":
+            verb = "Put into your hand:" if dec.get("to_hand") else "Put on the bottom:"
         if d == "LoseUnless":
             verb = "Sacrifice" if dec.get("sacrifice") else "Discard"
         return f"{verb} {card_name}" if verb else None
@@ -190,6 +195,7 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         "CommanderToCommandZone": (f"Move {subject} to the command zone", f"Leave {subject} there"),
         "ChoosePile": ("Choose pile A", "Choose pile B"),
         "PayToStop": (f"Pay {dec.get('cost', '')}", "Don't pay"),
+        "MayDrawGainOne": ("Draw a card and gain 1 life", "Don't draw"),
         "PayUpkeep": (f"Pay the upkeep {dec.get('cost', '')}", f"Don't pay (sacrifice {subject or src})"),
         "MayShuffle": ("Shuffle your library", "Don't shuffle"),
         "TaintedPact": ("Put it into your hand", "Exile the next card"),
@@ -212,6 +218,8 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
     if d in ("DiscardOrLoseLife", "LoseUnless") and not yes:
         life = f"lose {dec['life']} life" if "life" in dec else "lose the life"
         return f"Don't {'sacrifice' if dec.get('sacrifice') else 'discard'} ({life})"
+    if d == "SacrificeDiscardOrLoseLife" and not yes:
+        return f"Don't sacrifice or discard (lose {dec.get('life', 3)} life)"
     if d in labels:
         return labels[d][0 if yes else 1]
     if not yes:

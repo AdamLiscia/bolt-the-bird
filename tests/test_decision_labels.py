@@ -90,6 +90,14 @@ def test_lane_d3_batch_5_decisions_read_as_their_moves():
     assert pick({"kind": "ReturnSharingType", "with": 3}, "Sol Ring") == "Return to its owner's hand: Sol Ring"
     assert label({"kind": "ReturnSharingType", "with": 3}, "No", 0) == "Return nothing"
     assert pick({"kind": "ExileOwnPermanent", "left": 1}, "Sol Ring") == "Exile Sol Ring"
+    assert pick({"kind": "IterationPick", "cards": [], "to_hand": True}, "Opt") == "Put into your hand: Opt"
+    assert pick({"kind": "IterationPick", "cards": [], "to_hand": False}, "Opt") == "Put on the bottom: Opt"
+    cast_later = "You may cast this turn (then exile it): Opt"
+    assert pick({"kind": "CastFromGraveyardThisTurn", "cards": []}, "Opt") == cast_later
+    assert pick({"kind": "TakeTwoBottomRest", "cards": [], "left": 2}, "Opt") == "Put into your hand: Opt"
+    torment = {"kind": "SacrificeDiscardOrLoseLife", "left": 2, "life": 3}
+    assert pick(torment, "Opt") == "Sacrifice (or discard, from your hand): Opt"
+    assert label(torment, "No", 0) == "Don't sacrifice or discard (lose 3 life)"
 
 
 def test_lonis_puts_a_revealed_card_under_your_control():

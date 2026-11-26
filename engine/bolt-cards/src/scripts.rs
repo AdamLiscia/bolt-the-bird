@@ -265,13 +265,29 @@ pub fn token_defs() -> Vec<CardDef> {
             });
             t
         },
-        // base+83 is d2's Bat: a placeholder until it merges.
-        token("Lane d2 token 83", "Bat", 1, 1, Keywords::FLYING),
+        // 83: Lunar Convocation's Bat (lane d2). 84 is lane B's Elemental.
+        black(token("Bat", "Bat", 1, 1, Keywords::FLYING)),
         red(token("Elemental", "Elemental", 1, 1, Keywords::NONE)), // Young Pyromancer's red 1/1
-        // 85-87: placeholders for d3's Bear, the Orc Army and d3's Scion until they merge.
-        token("Placeholder 85", "Placeholder", 1, 1, Keywords::NONE),
-        token("Placeholder 86", "Placeholder", 1, 1, Keywords::NONE),
-        token("Placeholder 87", "Placeholder", 1, 1, Keywords::NONE),
+        {
+            // Fade from History: "a 2/2 green Bear creature token".
+            let mut t = token("Bear", "Bear", 2, 2, Keywords::NONE);
+            t.colors = [false, false, false, false, true];
+            t
+        },
+        // Amass: "a 0/0 black Orc Army creature token".
+        black(token("Orc Army", "Orc Army", 0, 0, Keywords::NONE)),
+        {
+            // Warping Wail: "a 1/1 colorless Eldrazi Scion creature token. It has 'Sacrifice this
+            // token: Add {C}.'"
+            let mut t = token("Eldrazi Scion", "Eldrazi Scion", 1, 1, Keywords::NONE);
+            t.mana = Some(ManaSource {
+                colorless: true,
+                ..ManaSource::default()
+            });
+            t.sac_for_mana = true;
+            t.mana_ext.sac_mana_no_tap = true;
+            t
+        },
         {
             // 88, lane d1: Meloku's "1/1 blue Illusion creature token with flying".
             let mut t = token("Illusion", "Illusion", 1, 1, Keywords::FLYING);
@@ -446,6 +462,10 @@ pub struct Tokens {
     pub hamster: usize,
     pub goat: usize,
     pub illusion_flying: usize,
+    pub bear: usize,
+    pub orc_army: usize,
+    pub eldrazi_scion: usize,
+    pub bat: usize,
 }
 
 impl Tokens {
@@ -538,6 +558,10 @@ impl Tokens {
             hamster: base + 90,
             goat: base + 76,
             illusion_flying: base + 88,
+            bear: base + 85,
+            orc_army: base + 86,
+            eldrazi_scion: base + 87,
+            bat: base + 83,
         }
     }
 }

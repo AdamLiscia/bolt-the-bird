@@ -313,6 +313,13 @@ pub struct Activated {
     /// how many you control; the engine picks which (tokens first, then the lowest mana value,
     /// the source last).
     pub sacrifice_x_of_subtype: Option<&'static str>,
+    /// A Class's level-up ("{1}{R}: Level 2", CR 716.2): activatable only at the level before this
+    /// one (and as a sorcery, `sorcery`); its effect is `Effect::ClassLevelUp`.
+    pub level_up_to: u8,
+    /// Activatable only while its Class is at this level or higher (0: always).
+    pub min_class_level: u8,
+    /// "Activate only if you control N or more artifacts." (Metallurgic Summonings: 6)
+    pub min_artifacts: u8,
     /// Plot (CR 702.170): activated from your hand at sorcery speed; as the cost the card is exiled,
     /// plotted. On a later turn its owner may cast it from exile as a sorcery without paying its
     /// mana cost (`Object::plotted`).
@@ -906,6 +913,20 @@ pub struct CardDef {
     /// The Mac C objects-and-zones pieces (copy exceptions, ...), grouped so adding one touches
     /// only [`ZonesExt`].
     pub zones: ZonesExt,
+    /// "Your opponents can't cast spells with even mana values." and "Your opponents can't block
+    /// with creatures with even mana values." (Void Winnower)
+    pub opponents_even_locked: bool,
+    /// "Enchanted creature ... is goaded." (Martial Impetus): see `Game::is_goaded`.
+    pub goads_enchanted: bool,
+    /// Activated abilities lands you control have (Bootleggers' Stash: "{T}: Create a Treasure
+    /// token.").
+    pub lands_you_control_have: Vec<Activated>,
+    /// Activated abilities creatures of this subtype you control have (The Odd Acorn Gang:
+    /// Squirrels).
+    pub subtype_you_control_has: Option<(&'static str, Vec<Activated>)>,
+    /// Aftermath (CR 702.127): the split card's right half (`omen`) is cast only from the
+    /// graveyard, and exiled as it resolves; the left half isn't cast from the graveyard.
+    pub aftermath: bool,
 }
 
 /// A card's pieces from the d4 subsystems (see [`CardDef::subsystems`]).
@@ -1347,6 +1368,11 @@ impl CardDef {
             attack_tax_player_only: false,
             cast_only_during_opponents_declare_blockers: false,
             foods_have_exiled_abilities: false,
+            opponents_even_locked: false,
+            goads_enchanted: false,
+            lands_you_control_have: Vec::new(),
+            subtype_you_control_has: None,
+            aftermath: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -1605,6 +1631,11 @@ impl CardDef {
             attack_tax_player_only: false,
             cast_only_during_opponents_declare_blockers: false,
             foods_have_exiled_abilities: false,
+            opponents_even_locked: false,
+            goads_enchanted: false,
+            lands_you_control_have: Vec::new(),
+            subtype_you_control_has: None,
+            aftermath: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -1863,6 +1894,11 @@ impl CardDef {
             attack_tax_player_only: false,
             cast_only_during_opponents_declare_blockers: false,
             foods_have_exiled_abilities: false,
+            opponents_even_locked: false,
+            goads_enchanted: false,
+            lands_you_control_have: Vec::new(),
+            subtype_you_control_has: None,
+            aftermath: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,

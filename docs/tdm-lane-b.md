@@ -756,3 +756,22 @@ won: the spell's controller changes and ChooseNewTarget is offered).
 Turn order after extra turns (CR 500.7): `Game::normal_next` keeps the player the normal order
 gives next, so a gifted extra turn for the opponent doesn't replace their own; `next_turn_of`
 follows the same rule. Coveted Jewel's trigger also fires when no blocks can be declared.
+
+d3's effects for lane B's decks (moved 2026-11-26):
+- BLC: Calamity of Cinders, Realm-Cloaked Giant, Swarmyard (one ability per type), Rolling
+  Hamsphere, Pyreswipe Hawk, Martial Impetus (`goads_enchanted`, When::EnchantedAttacks),
+  Bootleggers' Stash and The Odd Acorn Gang (`lands_you_control_have`, `subtype_you_control_has`,
+  in borrowed_activated; When::YourSubtypeDealCombatDamageToPlayer).
+- Zhulodok: Ulamog, Void Winnower (`opponents_even_locked`: the printed mana value; an X spell's X
+  isn't counted).
+- Ghyrson: Epic Experiment (free casts; `free_casts_rest_to_graveyard`).
+- BLC: Kwain (Decision::MayDrawGainOne, you then the opponent), Mr. Foxglove (FoxgloveDraw).
+- Merger: Aftermath (`CardDef::aftermath`: the right half cast from the graveyard only, exiled as
+  it resolves; Dusk // Dawn), Classes (`Object::class_level`, `Game::class_level`,
+  `Activated::level_up_to` / `min_class_level`, `Effect::ClassLevelUp`, When::ClassBecomesLevel,
+  Condition::ClassLevelAtLeast; Wizard Class). Level-gated statics still need d3's
+  StaticCondition arm. Exalted Flamer dropped (d3 has it).
+- Ghyrson: Metallurgic Summonings (YouCastInstantOrSorcery triggers now carry the spell as `extra`; Activated::min_artifacts).
+- BLC: Cache Grab (Decision::CacheGrabPick).
+- BLC: Forgotten Ancient (Decision::MoveCounterFrom).
+- Merger: priority in cleanup (CR 514.3a): finish_cleanup gives priority when something triggered, and `Game::cleanup_again` makes another cleanup step follow.

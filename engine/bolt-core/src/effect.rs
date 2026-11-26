@@ -129,6 +129,12 @@ pub struct Filter {
     pub creature_needs_defender: bool,
     /// Artifact cards only (graveyard targets: Buried Ruin).
     pub artifact_cards: bool,
+    /// Creatures with power or toughness at most this (Warping Wail: 1).
+    pub creature_power_or_toughness_at_most: Option<i32>,
+    /// Sorcery spells only (Warping Wail), with `spells`.
+    pub spell_sorcery: bool,
+    /// Only objects with an even mana value; zero is even (Desecrate Reality).
+    pub mana_value_even: bool,
 }
 
 impl Filter {
@@ -191,6 +197,9 @@ impl Filter {
         spell_instant_or_sorcery: false,
         creature_needs_defender: false,
         artifact_cards: false,
+        creature_power_or_toughness_at_most: None,
+        spell_sorcery: false,
+        mana_value_even: false,
     };
 
     pub const CREATURE: Filter = Filter {
@@ -2127,6 +2136,116 @@ pub enum Effect {
     /// "If it's not a token, create a token that's a copy of it, except it's an artifact in
     /// addition to its other types." (Vaultborn Tyrant's dies trigger)
     TokenCopyOfSourceArtifactIfNontoken,
+    /// Each player who controls an artifact or enchantment creates a token of definition `def`
+    /// (Fade from History: a 2/2 green Bear), active player first.
+    EachPlayerWithArtifactOrEnchantmentCreatesToken {
+        def: usize,
+    },
+    /// Amass [subtype] `n` (CR 701.44): if you don't control an Army creature, create a 0/0 black
+    /// [subtype] Army token (`def`); put `n` +1/+1 counters on an Army you control (the first one,
+    /// when there are several); it becomes a [subtype] in addition to its other types.
+    Amass {
+        subtype: &'static str,
+        n: u8,
+        def: usize,
+    },
+    /// Return an instant or sorcery card at random from your graveyard to your hand (Exalted Flamer
+    /// of Tzeentch).
+    ReturnRandomInstantOrSorceryFromGraveyard,
+    /// Look at the top `n` (3) cards of your library; put one into your hand, one on the bottom, and
+    /// exile the rest; you may play the exiled card this turn (Expressive Iteration), as
+    /// `Decision::IterationPick`.
+    LookHandBottomExilePlay(u8),
+    /// Choose an instant or sorcery card in your graveyard; you may cast it this turn, and it's exiled
+    /// instead of going to the graveyard (Mission Briefing), as `Decision::CastFromGraveyardThisTurn`.
+    ChooseGraveyardSpellToCastThisTurn,
+    /// Exile each instant and sorcery card from your graveyard; copy each one, and you may cast the
+    /// copies free (overloaded Mizzix's Mastery).
+    ExileCastCopyFreeEachInstantSorcery,
+    /// You gain `life`; if this is the first time this ability has resolved this turn, `counters`
+    /// +1/+1 counters on the source (Teething Wurmlet: 1 and 1; counted per source, each turn).
+    GainLifeCountersIfFirstResolutionThisTurn {
+        life: i32,
+        counters: i32,
+    },
+    /// Return a permanent card with an odd mana value from your graveyard to the battlefield
+    /// (Desecrate Reality's adamant half), as `Decision::LookPick` with
+    /// `Pick::PermanentOddManaValue`.
+    ReturnOddManaValuePermanentToBattlefield,
+    /// Tap all creatures (Ensnare).
+    TapAllCreatures,
+    /// Look at the top `n` cards of your library; put two of them into your hand and the rest on the
+    /// bottom in any order (Dig Through Time: 7), as `Decision::TakeTwoBottomRest`.
+    LookTakeTwoBottomAnyOrder(u8),
+    /// X times: the opponent loses `life` life unless they sacrifice a nonland permanent or discard a
+    /// card, their choice each time (Torment of Hailfire: 3), as `Decision::SacrificeDiscardOrLoseLife`.
+    OpponentLosesUnlessSacrificesOrDiscardsX {
+        life: i32,
+    },
+    /// Return up to one creature card with mana value `max_mv` or less from your graveyard to the
+    /// battlefield, not targeted (Barrowin of Clan Undurr: 3), as `Decision::LookPick` with
+    /// `Pick::CreatureManaValueAtMost`.
+    ReturnCreatureMvAtMostToBattlefield(u32),
+    /// "When [the creature in `slot`] is put into your graveyard this turn, ...": a delayed
+    /// triggered ability (CR 603.7), the source's trigger number `trigger`, with that card in slot 0
+    /// (Saffi Eriksdotter: return it to the battlefield). It triggers once, only for that object.
+    DelayedWhenSlotToYourGraveyardThisTurn {
+        slot: u8,
+        trigger: usize,
+    },
+    /// The source deals `n` damage to each untapped creature (Calamity of Cinders).
+    DamageEachUntappedCreature(i32),
+    /// Destroy all creatures without this subtype (Realm-Cloaked Giant's Cast Off: Giant).
+    DestroyAllCreaturesExceptSubtype(&'static str),
+    /// The defending player exiles the top `n` cards of their library (Ulamog, the Ceaseless Hunger).
+    DefendingPlayerExilesTop(u8),
+    /// Exile the top X cards of your library; you may cast instant and sorcery spells with mana value
+    /// X or less from among them free; the rest go to your graveyard (Epic Experiment).
+    EpicExperiment,
+    /// The source deals damage equal to the number of `subtype`s you control to the target in `slot`
+    /// (Rolling Hamsphere: Hamsters).
+    DamagePerYouControlSubtype {
+        subtype: &'static str,
+        slot: u8,
+    },
+    /// The source gets +X/+0 until end of turn, X the greatest mana value among artifacts you
+    /// control (Pyreswipe Hawk).
+    PumpSelfGreatestArtifactManaValue,
+    /// If you're the attacking player, each other attacking creature gets +P/+T until end of turn
+    /// (Martial Impetus: "each other creature that's attacking one of your opponents").
+    PumpOtherAttackersIfYouAttack {
+        power: i32,
+        toughness: i32,
+    },
+    /// "Each player may draw a card, then each player who drew a card this way gains 1 life."
+    /// (Kwain), as `Decision::MayDrawGainOne`, you first.
+    EachPlayerMayDrawGainOne,
+    /// Draw cards equal to the defending player's hand size minus yours; if none were drawn, you
+    /// may put a creature card from your hand onto the battlefield (Mr. Foxglove).
+    FoxgloveDraw,
+    /// The source Class becomes this level (CR 716.2c), and "when this Class becomes level N"
+    /// triggers.
+    ClassLevelUp(u8),
+    /// Return all creature cards with power `n` or less from your graveyard to your hand (Dawn).
+    ReturnCreatureCardsPowerAtMostToHand(i32),
+    /// Create a `def` token that's X/X, X the mana value of the spell that triggered this (the
+    /// trigger's `extra`; Metallurgic Summonings' Construct).
+    CreateTokenXxTriggeringSpellManaValue {
+        def: usize,
+    },
+    /// Return all instant and sorcery cards from your graveyard to your hand (Metallurgic
+    /// Summonings).
+    ReturnAllInstantsAndSorceriesToHand,
+    /// Mill `n`; you may put a permanent card from among them into your hand; then if you control
+    /// a Squirrel or returned a Squirrel card, create a `food` token (Cache Grab), as
+    /// `Decision::CacheGrabPick`.
+    CacheGrab {
+        n: u8,
+        food: usize,
+    },
+    /// "You may move any number of +1/+1 counters from this creature onto other creatures." as
+    /// `Decision::MoveCounterFrom`, one at a time (Forgotten Ancient).
+    MayMoveCountersFromSource,
     /// Destroy the permanent in `slot`; its controller may search for a basic land card and put it
     /// onto the battlefield tapped (Sundering Eruption).
     DestroyControllerMayFetchBasicTapped(u8),
@@ -2410,6 +2529,10 @@ pub enum Pick {
     Enchantment,
     /// A non-Human creature card (Kinnan, Bonder Prodigy).
     NonHumanCreature,
+    /// A permanent card with an odd mana value (Desecrate Reality).
+    PermanentOddManaValue,
+    /// A creature card with mana value at most this (Barrowin of Clan Undurr: 3).
+    CreatureManaValueAtMost(u32),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -2548,6 +2671,11 @@ pub enum Condition {
     LifeAtLeast(i32),
     /// No creatures are on the battlefield (Pyrohemia).
     NoCreaturesOnBattlefield,
+    /// Its controller lost life this turn (Lunar Convocation: "if you gained and lost life this
+    /// turn", with `Both` and `YouGainedLifeThisTurn`).
+    YouLostLifeThisTurn,
+    /// Its Class is at this level or higher (a Class's level 2 and 3 triggered abilities).
+    ClassLevelAtLeast(u8),
 }
 
 /// A spell's effect or a triggered ability: target slots, then effects in order.
@@ -2979,6 +3107,28 @@ pub enum When {
     /// "Whenever one or more creatures an opponent controls attack you and aren't blocked"
     /// (Coveted Jewel), once blockers are declared.
     OpponentCreaturesAttackYouUnblocked,
+    /// "Whenever you complete a dungeon" (Sefris; CR 309.7).
+    YouCompleteDungeon,
+    /// "Whenever another creature you control with flying enters" (Watcher of the Spheres); slot 0
+    /// (if `triggering`) is that creature.
+    AnotherCreatureWithFlyingYouControlEnters,
+    /// "Whenever a [subtype] deals damage to you" (Mikaeus, the Unhallowed: Human), any source with
+    /// the subtype; slot 0 (if `triggering`) is that source ("destroy it").
+    SubtypeDealsDamageToYou(&'static str),
+    /// "Whenever a [subtype] you control enters" (Dragon Tempest: Dragon), tokens included; slot 0
+    /// (if `triggering`) is that permanent ("it deals ...").
+    SubtypeYouControlEnters(&'static str),
+    /// The delayed "when target creature is put into your graveyard this turn" of
+    /// `Effect::DelayedWhenSlotToYourGraveyardThisTurn` (Saffi Eriksdotter); slot 0 (if
+    /// `triggering`) is that card in the graveyard. Never fired by `fire()`.
+    SlotCreatureToYourGraveyardThisTurn,
+    /// "Whenever enchanted creature attacks" (Martial Impetus).
+    EnchantedAttacks,
+    /// "Whenever one or more [subtype]s you control deal combat damage to a player" (The Odd Acorn
+    /// Gang: Squirrels).
+    YourSubtypeDealCombatDamageToPlayer(&'static str),
+    /// "When this Class becomes level N" (CR 716.2c).
+    ClassBecomesLevel(u8),
     /// "When this creature is turned face up" (morph, manifest; Rattleclaw Mystic).
     TurnedFaceUp,
 }
