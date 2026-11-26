@@ -1400,6 +1400,25 @@ pub fn script(name: &str) -> Option<Script> {
             let yours = Filter { players: false, creatures: false, planeswalkers: false, nonland_permanents: true, controller: Controller::You, ..Filter::ANY };
             d.spell = Some(up_to(vec![yours; 8], vec![Effect::PhaseOut { all: false }]));
         }),
+        "Tireless Tracker" => s(
+            &[
+                "Landfall — Whenever a land you control enters, investigate.",
+                "Whenever you sacrifice a Clue, put a +1/+1 counter on this creature.",
+            ],
+            |d, t| {
+                on(d, When::LandYouControlEnters, vec![], vec![Effect::Investigate { def: t.clue, n: 1 }]);
+                on(d, When::YouSacrificeSubtype("Clue"), vec![], vec![Effect::CountersSelf { n: 1 }]);
+            },
+        ),
+        "Academy Manufactor" => s(&["If you would create a Clue, Food, or Treasure token, instead create one of each."], |d, t| {
+            d.clue_food_treasure = Some([t.clue, t.food, t.treasure]);
+        }),
+        "Wavesifter" => s(&["When this creature enters, investigate twice.", "Evoke {G}{U}"], |d, t| {
+            on(d, When::Enters, vec![], vec![Effect::Investigate { def: t.clue, n: 2 }]);
+            d.alt_cost = Some((ManaCost::parse("{G}{U}").expect("cost"), 0));
+            d.mana_ext.evoke = true;
+            on(d, When::Enters, vec![], vec![Effect::SacrificeIfEvoked]);
+        }),
         _ => None,
     }
 }
@@ -1567,4 +1586,7 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Necromancy",
     "Teferi's Protection",
     "Clever Concealment",
+    "Tireless Tracker",
+    "Academy Manufactor",
+    "Wavesifter",
 ];

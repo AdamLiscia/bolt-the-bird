@@ -643,3 +643,8 @@ triggers); what's attached phases out with it; it phases in at the start of its 
 Savor the Moment's skip). Teferi's Protection: life can't change until your next turn (lose_life and gain_life),
 which also covers damage; d3's protection_grants hold only colors for an object this turn, so "protection from
 everything" against targeting waits for a player-level grant there.
+
+Objects and zones batch 4: Tireless Tracker, Academy Manufactor, Wavesifter (on lane B's 4c65873). Core:
+`CardDef::clue_food_treasure` (Academy Manufactor, in `create_token` before the "those tokens plus" extras).
+Tireless Tracker uses d2's `When::YouSacrificeSubtype("Clue")`; the "sacrifice N of a subtype" cost now reports each
+sacrifice through `Game::sacrificed` (a destroyed Clue doesn't count). Wavesifter uses d1's evoke.

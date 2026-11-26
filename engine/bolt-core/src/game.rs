@@ -7381,6 +7381,7 @@ impl Game {
                 let sub = a.sacrifice_subtype.expect("a subtype");
                 if self.obj(v).zone == Zone::Battlefield {
                     self.move_to(v, Zone::Graveyard);
+                    self.sacrificed(v, p);
                 }
                 let more: Vec<ObjId> = self
                     .permanents(p)
@@ -7389,6 +7390,7 @@ impl Game {
                     .collect();
                 for c in more {
                     self.move_to(c, Zone::Graveyard);
+                    self.sacrificed(c, p);
                 }
             } else if a.crew > 0 {
                 self.become_tapped(v); // crew taps, it doesn't sacrifice
@@ -18363,6 +18365,26 @@ impl Game {
             self.last_created.push(id);
             self.obj_mut(id).since_turn = self.turn;
             self.zone_triggers(id, Zone::Gone, Zone::Battlefield, p);
+        }
+        // Academy Manufactor: a Clue, Food or Treasure is one of each instead.
+        if !self.token_replacing {
+            let kinds = self
+                .permanents(p)
+                .filter(|&x| !self.lost_abilities(x))
+                .find_map(|x| self.def_of(x).clue_food_treasure);
+            if let Some(kinds) = kinds.filter(|k| k.contains(&def)) {
+                let made = self.last_created.clone();
+                self.token_replacing = true;
+                for t in kinds.into_iter().filter(|&t| t != def) {
+                    for _ in 0..self.token_doubling(p) {
+                        let id = self.add_card(p, t, Zone::Battlefield);
+                        self.obj_mut(id).since_turn = self.turn;
+                        self.zone_triggers(id, Zone::Gone, Zone::Battlefield, p);
+                    }
+                }
+                self.token_replacing = false;
+                self.last_created = made;
+            }
         }
         // Peregrin Took, Quina, Chatterfang: "those tokens plus ..." (not applied to their own extras).
         if !self.token_replacing {
