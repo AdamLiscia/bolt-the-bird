@@ -793,6 +793,9 @@ pub struct CardDef {
     /// `ward_sacrifice` counts nonland permanents only (Valgavoth: "Ward—Sacrifice three nonland
     /// permanents.").
     pub ward_sacrifice_nonland: bool,
+    /// "All Swamps are 1/1 black creatures that are still lands." (Kormus Bell; give it an empty
+    /// static too, so it's among the static sources)
+    pub swamps_are_creatures: bool,
 }
 
 /// What entering makes triggers happen again (see [`CardDef::entering_triggers_again`]).
@@ -1056,6 +1059,7 @@ impl CardDef {
             lands_are_swamps: false,
             creatures_abilities_haste: false,
             ward_sacrifice_nonland: false,
+            swamps_are_creatures: false,
             protection_chosen_card_type: false,
         }
     }
@@ -1288,6 +1292,7 @@ impl CardDef {
             lands_are_swamps: false,
             creatures_abilities_haste: false,
             ward_sacrifice_nonland: false,
+            swamps_are_creatures: false,
             protection_chosen_card_type: false,
         }
     }
@@ -1520,6 +1525,7 @@ impl CardDef {
             lands_are_swamps: false,
             creatures_abilities_haste: false,
             ward_sacrifice_nonland: false,
+            swamps_are_creatures: false,
             protection_chosen_card_type: false,
         }
     }

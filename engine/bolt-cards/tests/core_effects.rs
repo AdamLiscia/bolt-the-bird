@@ -1352,3 +1352,140 @@ fn main_phase_and_attacking_filters() {
     };
     assert!(!g.target_ok(&attacking, 0, obj(looter)), "not attacking");
 }
+
+// ---- batch 10: types and abilities ----
+
+/// A test land: "{0}: becomes a 3/2 green Elf Druid artifact creature with trample until end of
+/// turn."
+fn test_manland() -> CardDef {
+    let mut d = CardDef {
+        name: "Test Manland".into(),
+        cost: ManaCost::parse("{0}").unwrap(),
+        types: Types {
+            land: true,
+            ..Types::default()
+        },
+        ..CardDef::default()
+    };
+    d.activated.push(bolt_core::Activated {
+        mana: ManaCost::parse("{0}").unwrap(),
+        ability: Ability::new(
+            vec![],
+            vec![Effect::BecomeCreatureUntilEotWith {
+                power: 3,
+                toughness: 2,
+                subtypes: &["Elf", "Druid"],
+                keywords: Keywords::TRAMPLE,
+                colors: Some([false, false, false, false, true]),
+                artifact: true,
+                all_creature_types: false,
+            }],
+        ),
+        ..bolt_core::Activated::default()
+    });
+    d
+}
+
+#[test]
+fn become_creature_until_eot_with_colors_types_and_artifact() {
+    let (mut g, t) = game_with(vec![test_manland()]);
+    let l = g.add_card(0, t, Zone::Battlefield);
+    act(&mut g, Action::Activate(l, 0));
+    resolve_all(&mut g, &[]);
+    let ty = g.types_of(l);
+    assert!(ty.land && ty.creature && ty.artifact);
+    assert_eq!((g.power(l), g.toughness(l)), (3, 2));
+    assert!(g.has_subtype(l, "Elf") && g.has_subtype(l, "Druid") && !g.has_subtype(l, "Goblin"));
+    assert!(g.keywords(l).has(Keywords::TRAMPLE));
+    assert_eq!(g.colors_of(l), [false, false, false, false, true]);
+    // Until end of turn.
+    g.start_turn(5, 1);
+    assert!(!g.types_of(l).creature && !g.types_of(l).artifact);
+    assert_eq!(g.colors_of(l), [false; 5]);
+}
+
+#[test]
+fn base_x_all_types_and_its_timestamp_against_a_manland() {
+    let mut x_spell = sorcery(vec![], vec![Effect::YourCreaturesBaseXAllTypesEot]);
+    x_spell.cost = ManaCost::parse("{X}").unwrap();
+    let (mut g, t) = game_with(vec![x_spell, test_manland()]);
+    let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
+    let l = g.add_card(0, t + 1, Zone::Battlefield);
+    act(&mut g, Action::Activate(l, 0));
+    resolve_all(&mut g, &[]);
+    let c = g.add_card(0, t, Zone::Hand);
+    act(&mut g, Action::CastX(c, 5));
+    resolve_all(&mut g, &[]);
+    for x in [elves, l] {
+        assert_eq!((g.power(x), g.toughness(x)), (5, 5), "the later base P/T wins");
+        assert!(g.has_subtype(x, "Dragon"));
+    }
+    // The manland's ability again: now it's the later one.
+    act(&mut g, Action::Activate(l, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.power(l), g.toughness(l)), (3, 2));
+    assert!(g.has_subtype(l, "Dragon"), "all creature types stay");
+    g.start_turn(5, 1);
+    assert_eq!((g.power(elves), g.toughness(elves)), (1, 1));
+}
+
+#[test]
+fn lose_all_abilities_from_an_effect() {
+    let (mut g, t) = game_with(vec![sorcery(
+        vec![Filter::CREATURE],
+        vec![Effect::LoseAllAbilities(0)],
+    )]);
+    let vandal = g.add_card(0, cid("Masked Vandal"), Zone::Battlefield);
+    let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
+    let angel = g.add_card(1, cid("Serra Angel"), Zone::Battlefield);
+    assert!(g.has_subtype(vandal, "Goblin"), "changeling");
+    cast_test(&mut g, t, &[obj(vandal)], &[]);
+    assert!(!g.has_subtype(vandal, "Goblin"), "no changeling");
+    assert!(g.has_subtype(vandal, "Shapeshifter"), "its printed type stays");
+    cast_test(&mut g, t, &[obj(elves)], &[]);
+    assert!(!g.mana_sources(0).iter().any(|&(x, _)| x == elves));
+    cast_test(&mut g, t, &[obj(angel)], &[]);
+    assert!(!g.keywords(angel).has(Keywords::FLYING));
+    // For good, not just this turn.
+    g.start_turn(5, 1);
+    assert!(!g.keywords(angel).has(Keywords::FLYING));
+}
+
+#[test]
+fn kormus_bell_with_urborg_and_blood_moon() {
+    let (mut g, _) = game_with(vec![]);
+    let caves = g.add_card(0, cid("Caves of Koilos"), Zone::Battlefield);
+    g.add_card(0, cid("Kormus Bell"), Zone::Battlefield);
+    assert!(!g.types_of(caves).creature, "not a Swamp");
+    let urborg = g.add_card(0, cid("Urborg, Tomb of Yawgmoth"), Zone::Battlefield);
+    assert!(g.types_of(caves).creature && g.types_of(urborg).creature);
+    assert_eq!((g.power(caves), g.toughness(caves)), (1, 1));
+    // Blood Moon: nonbasic lands are Mountains, and Urborg loses its ability.
+    g.add_card(1, cid("Blood Moon"), Zone::Battlefield);
+    assert!(!g.types_of(caves).creature && !g.types_of(urborg).creature);
+    assert!(g.has_subtype(caves, "Mountain") && !g.has_subtype(caves, "Swamp"));
+    let swamp = g.permanents(0).find(|&x| g.def_of(x).name == "Swamp").unwrap();
+    assert!(g.types_of(swamp).creature, "a basic Swamp still is one");
+}
+
+#[test]
+fn aura_becomes_land_with_a_basic_type_and_imprisoned_has_no_subtypes() {
+    let (mut g, _) = game_with(vec![]);
+    let angel = g.add_card(1, cid("Serra Angel"), Zone::Battlefield);
+    let song = g.add_card(0, cid("Song of the Dryads"), Zone::Battlefield);
+    let zcc = g.obj(angel).zcc;
+    g.objects[song.0 as usize].attached_to = Some((angel, zcc));
+    assert!(g.has_subtype(angel, "Forest") && !g.has_subtype(angel, "Angel"));
+    assert!(!g.has_subtype(angel, "Citizen"));
+    // Urborg adds Swamp to it (a land).
+    g.add_card(0, cid("Urborg, Tomb of Yawgmoth"), Zone::Battlefield);
+    assert!(g.has_subtype(angel, "Swamp"));
+
+    let (mut g, _) = game_with(vec![]);
+    let angel = g.add_card(1, cid("Serra Angel"), Zone::Battlefield);
+    let moon = g.add_card(0, cid("Imprisoned in the Moon"), Zone::Battlefield);
+    let zcc = g.obj(angel).zcc;
+    g.objects[moon.0 as usize].attached_to = Some((angel, zcc));
+    assert!(!g.has_subtype(angel, "Angel") && !g.has_subtype(angel, "Citizen"));
+    assert!(g.types_of(angel).land);
+}

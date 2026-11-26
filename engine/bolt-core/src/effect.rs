@@ -1788,6 +1788,26 @@ pub enum Effect {
     /// then a +1/+1 counter on it per nonland card discarded (Raffine), as
     /// `Decision::ConniveDiscard`.
     ConniveAttackers(u8),
+    /// A manland: the source becomes a creature until end of turn, as `BecomeCreatureUntilEot`
+    /// (base power and toughness, keywords, the first of `subtypes`), and also has the other
+    /// `subtypes`, these `colors` (`None`: its own), is an artifact too if `artifact`, and has
+    /// every creature type if `all_creature_types`. It's still a land. Kept in
+    /// `Object::type_changes` (marked `own`, for `Condition::AnimatedByOwnAbility`).
+    BecomeCreatureUntilEotWith {
+        power: i32,
+        toughness: i32,
+        subtypes: &'static [&'static str],
+        keywords: crate::Keywords,
+        colors: Option<[bool; 5]>,
+        artifact: bool,
+        all_creature_types: bool,
+    },
+    /// "Until end of turn, creatures you control have base power and toughness X/X and gain all
+    /// creature types." (Mirror Entity; X from the activation)
+    YourCreaturesBaseXAllTypesEot,
+    /// The permanent in `slot` loses all abilities, for as long as it stays on the battlefield
+    /// (Abigale). Keyword counters put on it afterwards still count.
+    LoseAllAbilities(u8),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -2142,6 +2162,10 @@ pub enum Condition {
     CastPowerBetween(i32, i32),
     /// An opponent controls at least this many creatures (Defense of the Heart).
     OpponentControlsCreaturesAtLeast(u8),
+    /// The source is a creature this turn from its own "this becomes a creature" ability
+    /// (`Effect::BecomeCreatureUntilEotWith`): the ability it gains then (Raging Ravine's attack
+    /// trigger).
+    AnimatedByOwnAbility,
 }
 
 /// A spell's effect or a triggered ability: target slots, then effects in order.

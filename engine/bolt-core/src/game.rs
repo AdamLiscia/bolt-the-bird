@@ -282,7 +282,60 @@ pub struct Object {
     pub warped: bool,
     /// A void counter (Dauthi Voidwalker's exile).
     pub void_counter: bool,
+    /// Type, color, base power and toughness, and ability changes from resolved effects (layers 4-7b),
+    /// in timestamp order; see `TypeChange`.
+    pub type_changes: Vec<TypeChange>,
 }
+
+/// One resolved effect's change to a permanent's characteristics (lane d3's type-changing store):
+/// it applies while the permanent is the same object (`zcc`) and until the end of `turn`
+/// (`u32::MAX`: for as long as it stays). Later entries have later timestamps.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct TypeChange {
+    pub zcc: u32,
+    pub turn: u32,
+    /// Base power and toughness (layer 7b): Mirror Entity.
+    pub base_pt: Option<(i32, i32)>,
+    /// Its colors (layer 5): a manland's.
+    pub colors: Option<[bool; 5]>,
+    /// An artifact in addition to its other types (layer 4).
+    pub artifact: bool,
+    /// Every creature type (layer 4): Mirror Entity, Mutavault.
+    pub all_creature_types: bool,
+    /// These creature types in addition (layer 4).
+    pub subtypes: &'static [&'static str],
+    /// It loses all abilities (layer 6): Abigale.
+    pub lose_abilities: bool,
+    /// From its own "this becomes a creature" ability, which may grant it a triggered ability
+    /// (Raging Ravine; `Condition::AnimatedByOwnAbility`).
+    pub own: bool,
+}
+
+/// Subtypes that aren't creature types, for "all creature types" (CR 205.3).
+const NONCREATURE_SUBTYPES: [&str; 22] = [
+    "Plains",
+    "Island",
+    "Swamp",
+    "Mountain",
+    "Forest",
+    "Desert",
+    "Gate",
+    "Cave",
+    "Lair",
+    "Locus",
+    "Sphere",
+    "Town",
+    "Saga",
+    "Equipment",
+    "Aura",
+    "Vehicle",
+    "Food",
+    "Clue",
+    "Treasure",
+    "Shrine",
+    "Curse",
+    "Class",
+];
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Player {
@@ -1694,6 +1747,7 @@ impl Game {
             warped: false,
             void_counter: false,
             chosen_card_type: None,
+            type_changes: Vec::new(),
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -1783,12 +1837,18 @@ impl Game {
             t.creature = true;
         }
         if o.zone != Zone::Battlefield
-            || (o.animated.is_none() && o.eot_creature.is_none() && self.ability_loss_sources == 0)
+            || (o.animated.is_none()
+                && o.eot_creature.is_none()
+                && self.ability_loss_sources == 0
+                && o.type_changes.is_empty())
         {
-            return t;
+            return self.with_kormus_bell(id, t);
         }
         if o.animated.is_some() || self.eot_creature(id).is_some() {
             t.creature = true;
+        }
+        if self.type_changes(id).any(|c| c.artifact) {
+            t.artifact = true; // Blinkmoth Nexus, Mishra's Factory
         }
         if self.attached_static(id).is_some_and(|s| s.becomes_land) {
             t = Types {
@@ -1798,7 +1858,77 @@ impl Game {
                 ..Types::default()
             };
         }
+        self.with_kormus_bell(id, t)
+    }
+
+    /// The type changes from resolved effects that apply to `id` now (`Object::type_changes`).
+    fn type_changes(&self, id: ObjId) -> impl Iterator<Item = &TypeChange> + '_ {
+        let o = self.obj(id);
+        let turn = self.turn;
+        o.type_changes.iter().filter(move |c| {
+            o.zone == Zone::Battlefield && c.zcc == o.zcc && (c.turn == turn || c.turn == u32::MAX)
+        })
+    }
+
+    /// Adds a type change to `id` (dropping the ones that no longer apply).
+    fn add_type_change(&mut self, id: ObjId, change: TypeChange) {
+        let zcc = self.obj(id).zcc;
+        let turn = self.turn;
+        let o = self.obj_mut(id);
+        o.type_changes
+            .retain(|c| c.zcc == zcc && (c.turn == turn || c.turn == u32::MAX));
+        o.type_changes.push(TypeChange { zcc, ..change });
+    }
+
+    /// Whether a Kormus Bell with its ability is on the battlefield.
+    fn kormus_bell_on(&self) -> bool {
+        // Kormus Bell carries an empty static, so it's among the static sources.
+        self.static_sources
+            .iter()
+            .any(|&x| self.def_of(x).swamps_are_creatures && !self.lost_abilities(x))
+    }
+
+    /// Whether `id`, a land on the battlefield, is a Swamp for Kormus Bell: worked out without
+    /// `types_of` (which asks this), from its printed types, Song of the Dryads' kind of Aura, Blood
+    /// Moon, Urborg and Dryad of the Ilysian Grove.
+    fn bell_swamp(&self, id: ObjId) -> bool {
+        if self.blood_mooned(id) {
+            return false;
+        }
+        if let Some(s) = self.attached_static(id).filter(|s| s.becomes_land) {
+            return s.subtype == Some("Swamp");
+        }
+        let o = self.obj(id);
+        self.def_of(id).subtypes.iter().any(|x| x == "Swamp")
+            || o.extra_subtypes.contains(&"Swamp")
+            || o.subtype_override == Some("Swamp")
+            || self.battlefield.iter().any(|&x| {
+                self.def_of(x).lands_are_swamps && self.ability_loss(x).is_none() && !self.blood_mooned(x)
+            })
+            || self
+                .permanents(o.controller)
+                .any(|x| self.def_of(x).lands_every_basic_type && !self.lost_abilities(x))
+    }
+
+    /// Kormus Bell: "All Swamps are 1/1 black creatures that are still lands."
+    fn with_kormus_bell(&self, id: ObjId, mut t: Types) -> Types {
+        if t.land
+            && !t.creature
+            && self.obj(id).zone == Zone::Battlefield
+            && self.kormus_bell_on()
+            && self.bell_swamp(id)
+        {
+            t.creature = true;
+        }
         t
+    }
+
+    /// Whether Kormus Bell makes `id` a 1/1 black creature now.
+    fn belled(&self, id: ObjId) -> bool {
+        self.obj(id).zone == Zone::Battlefield
+            && self.kormus_bell_on()
+            && self.types_of(id).land
+            && self.bell_swamp(id)
     }
 
     /// The clone's own card, while it's a copy with that card's exceptions (`Object::copy_exceptions`).
@@ -1845,6 +1975,13 @@ impl Game {
         if self.obj(id).zone != Zone::Battlefield {
             return printed;
         }
+        // A resolved effect's colors (a manland's), else Kormus Bell's black; an Aura's set colors
+        // come after.
+        let printed = match self.type_changes(id).filter_map(|c| c.colors).last() {
+            Some(c) => c,
+            None if self.belled(id) => [false, false, true, false, false],
+            None => printed,
+        };
         self.attached_static(id)
             .and_then(|s| s.set_colors)
             .unwrap_or(printed)
@@ -1882,7 +2019,18 @@ impl Game {
     }
 
     fn lost_abilities(&self, id: ObjId) -> bool {
-        self.obj(id).zone == Zone::Battlefield && (self.ability_loss(id).is_some() || self.blood_mooned(id))
+        self.obj(id).zone == Zone::Battlefield
+            && (self.ability_loss(id).is_some()
+                || self.blood_mooned(id)
+                || self.type_changes(id).any(|c| c.lose_abilities))
+    }
+
+    /// Whether it lost its abilities only to a resolved effect (Abigale), not to an Aura or Blood
+    /// Moon: keyword counters put on it after still give their keywords (CR 613.7, 122.1b).
+    fn lost_abilities_to_effect_only(&self, id: ObjId) -> bool {
+        self.ability_loss(id).is_none()
+            && !self.blood_mooned(id)
+            && self.type_changes(id).any(|c| c.lose_abilities)
     }
 
     /// Blood Moon: a nonbasic land on the battlefield while a Blood Moon is (CR 613.1d): it's a
@@ -1933,11 +2081,24 @@ impl Game {
         if self.eot_creature(id).is_some_and(|e| e.3 == s) {
             return true;
         }
+        if self
+            .type_changes(id)
+            .any(|c| c.subtypes.contains(&s) || (c.all_creature_types && !NONCREATURE_SUBTYPES.contains(&s)))
+        {
+            return true; // a manland's types, Mirror Entity's "all creature types"
+        }
         if s == "Elemental" && self.bello_animates(id) {
             return true;
         }
-        if self.lost_abilities(id) && !self.loses_abilities_only(id) {
-            return s == "Citizen"; // Witness Protection
+        if let Some(st) = self.attached_static(id) {
+            if st.becomes_land {
+                // Imprisoned in the Moon, Song of the Dryads: no subtypes but the Aura's own
+                // (`Static::subtype`, through `statics_on`).
+                return false;
+            }
+            if st.base_pt.is_some() || st.set_colors.is_some() {
+                return s == "Citizen"; // Witness Protection
+            }
         }
         let o = self.obj(id);
         if let Some(only) = o.subtype_override {
@@ -1965,7 +2126,7 @@ impl Game {
             "Equipment",
             "Aura",
         ];
-        if self.def_of(id).changeling && !NOT_CREATURE_TYPES.contains(&s) {
+        if self.def_of(id).changeling && !NOT_CREATURE_TYPES.contains(&s) && !self.lost_abilities(id) {
             return true; // changeling: every creature type
         }
         if LAND_TYPES.contains(&s) && self.obj(id).zone == Zone::Battlefield && self.types_of(id).land {
@@ -2269,7 +2430,11 @@ impl Game {
 
     fn keywords_inner(&self, id: ObjId) -> Keywords {
         let printed = if self.lost_abilities(id) {
-            Keywords::NONE
+            if self.lost_abilities_to_effect_only(id) {
+                self.obj(id).keyword_counters // Abigale's counters, put on after
+            } else {
+                Keywords::NONE
+            }
         } else {
             self.def_of(id)
                 .keywords
@@ -2569,6 +2734,9 @@ impl Game {
     fn base_pt_set(&self, id: ObjId) -> (i32, i32) {
         let o = self.obj(id);
         let d = self.def_of(id);
+        if let Some(pt) = self.type_changes(id).filter_map(|c| c.base_pt).last() {
+            return pt; // Mirror Entity
+        }
         if let Some((_, p, t, _, _)) = self.eot_creature(id) {
             return (p, t);
         }
@@ -2577,6 +2745,9 @@ impl Game {
         }
         if let Some(pt) = o.animated {
             return pt;
+        }
+        if self.belled(id) {
+            return (1, 1); // Kormus Bell
         }
         // "During your turn, this creature has base power and toughness 5/2." (Snowmelt Stag)
         if let Some(pt) = self
@@ -6715,15 +6886,22 @@ impl Game {
                 }
                 if self.lost_abilities(id) {
                     // Imprisoned in the Moon grants "{T}: Add {C}"; other ability loss leaves none.
-                    let land = self.attached_static(id).is_some_and(|s| s.becomes_land);
-                    return land.then(|| {
-                        (
-                            id,
-                            ManaSource {
-                                colorless: true,
-                                ..ManaSource::default()
-                            },
-                        )
+                    let land = self.attached_static(id).filter(|s| s.becomes_land);
+                    return land.map(|s| {
+                        // Song of the Dryads: a Forest's "{T}: Add {G}" (CR 305.6).
+                        let basic = ["Plains", "Island", "Swamp", "Mountain", "Forest"]
+                            .iter()
+                            .position(|&b| s.subtype == Some(b));
+                        match basic {
+                            Some(c) => (id, ManaSource::of(&[crate::Color::ALL[c]])),
+                            None => (
+                                id,
+                                ManaSource {
+                                    colorless: true,
+                                    ..ManaSource::default()
+                                },
+                            ),
+                        }
                     });
                 }
                 let d = self.def_of(id);
@@ -16183,6 +16361,60 @@ impl Game {
                     self.add_counters(id, n as i32);
                 }
             }
+            Effect::BecomeCreatureUntilEotWith {
+                power,
+                toughness,
+                subtypes,
+                keywords,
+                colors,
+                artifact,
+                all_creature_types,
+            } => {
+                if self.obj(src).zone == Zone::Battlefield {
+                    let turn = self.turn;
+                    let first = subtypes.first().copied().unwrap_or("");
+                    self.obj_mut(src).eot_creature = Some((turn, power, toughness, first, keywords));
+                    // A later base power and toughness than an earlier effect's (Mirror Entity's).
+                    for c in &mut self.obj_mut(src).type_changes {
+                        c.base_pt = None;
+                    }
+                    let change = TypeChange {
+                        turn,
+                        colors,
+                        artifact,
+                        all_creature_types,
+                        subtypes,
+                        own: true,
+                        ..TypeChange::default()
+                    };
+                    self.add_type_change(src, change);
+                }
+            }
+            Effect::YourCreaturesBaseXAllTypesEot => {
+                let x = item.x as i32;
+                let turn = self.turn;
+                for c in self.creatures(item.controller).collect::<Vec<_>>() {
+                    let change = TypeChange {
+                        turn,
+                        base_pt: Some((x, x)),
+                        all_creature_types: true,
+                        ..TypeChange::default()
+                    };
+                    self.add_type_change(c, change);
+                }
+            }
+            Effect::LoseAllAbilities(slot) => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    if self.obj(id).zone == Zone::Battlefield {
+                        let change = TypeChange {
+                            turn: u32::MAX,
+                            lose_abilities: true,
+                            ..TypeChange::default()
+                        };
+                        self.add_type_change(id, change);
+                    }
+                }
+            }
         }
     }
 
@@ -16259,6 +16491,9 @@ impl Game {
             }
             Some(Condition::OpponentControlsCreaturesAtLeast(n)) => {
                 self.creatures(opponent(controller)).count() >= *n as usize
+            }
+            Some(Condition::AnimatedByOwnAbility) => {
+                self.eot_creature(source).is_some() && self.type_changes(source).any(|c| c.own)
             }
             Some(Condition::Both(a, b)) => {
                 let one = |c: &Condition| Ability {

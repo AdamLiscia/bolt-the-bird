@@ -2757,3 +2757,191 @@ fn raffine_connives_x_for_the_attackers() {
     assert_eq!(g.obj(looter).counters, 1, "one nonland card discarded");
     assert!(g.keywords(raffine).has(Keywords::FLYING));
 }
+
+// ---- batch 10: types and abilities ----
+
+fn untap(g: &mut Game, id: ObjId) {
+    g.objects[id.0 as usize].tapped = false;
+}
+
+#[test]
+fn mirror_entity_makes_your_creatures_x_x_with_all_types_this_turn() {
+    let mut g = table();
+    let mirror = put(&mut g, 0, "Mirror Entity");
+    let elves = put(&mut g, 0, "Llanowar Elves");
+    let angel = put(&mut g, 0, "Serra Angel");
+    let theirs = put(&mut g, 1, "Savannah Lions");
+    act(
+        &mut g,
+        Action::ActivateX {
+            id: mirror,
+            n: 0,
+            victim: None,
+            x: 4,
+        },
+    );
+    resolve_all(&mut g, &[]);
+    for c in [mirror, elves, angel] {
+        assert_eq!((g.power(c), g.toughness(c)), (4, 4));
+    }
+    assert!(g.has_subtype(elves, "Angel") && g.has_subtype(angel, "Elf"));
+    assert!(!g.has_subtype(elves, "Forest"), "creature types only");
+    assert_eq!((g.power(theirs), g.toughness(theirs)), (2, 1), "only yours");
+    to_main1(&mut g, 4, 1);
+    assert_eq!((g.power(elves), g.toughness(elves)), (1, 1));
+    assert!(!g.has_subtype(elves, "Angel"));
+}
+
+#[test]
+fn kormus_bell_makes_swamps_one_one_black_creatures() {
+    let mut g = table();
+    let swamp = g.permanents(0).find(|&x| g.def_of(x).name == "Swamp").unwrap();
+    let forest = g.permanents(0).find(|&x| g.def_of(x).name == "Forest").unwrap();
+    let theirs = g.permanents(1).find(|&x| g.def_of(x).name == "Swamp").unwrap();
+    assert!(!g.types_of(swamp).creature);
+    put(&mut g, 0, "Kormus Bell");
+    for s in [swamp, theirs] {
+        let t = g.types_of(s);
+        assert!(t.creature && t.land, "a creature that's still a land");
+        assert_eq!((g.power(s), g.toughness(s)), (1, 1));
+        assert_eq!(g.colors_of(s), [false, false, true, false, false]);
+    }
+    assert!(!g.types_of(forest).creature);
+    assert_eq!(
+        colors(&g, swamp),
+        [false, false, true, false, false],
+        "still taps for black"
+    );
+    // With Urborg, every land is a Swamp.
+    put(&mut g, 0, "Urborg, Tomb of Yawgmoth");
+    assert!(g.types_of(forest).creature);
+}
+
+#[test]
+fn song_of_the_dryads_makes_a_permanent_a_colorless_forest_land() {
+    let mut g = table();
+    let angel = put(&mut g, 1, "Serra Angel");
+    let song = hand(&mut g, 0, "Song of the Dryads");
+    play(&mut g, song, false, &[obj(angel)], &[]);
+    assert_eq!(g.obj(song).zone, Zone::Battlefield);
+    let t = g.types_of(angel);
+    assert!(t.land && !t.creature && !t.enchantment);
+    assert!(g.has_subtype(angel, "Forest") && !g.has_subtype(angel, "Angel"));
+    assert_eq!(g.colors_of(angel), [false; 5]);
+    assert!(!g.keywords(angel).has(Keywords::FLYING), "no abilities");
+    let green: Vec<_> = g
+        .mana_sources(1)
+        .into_iter()
+        .filter(|&(x, _)| x == angel)
+        .map(|(_, m)| m.colors)
+        .collect();
+    assert_eq!(
+        green,
+        [[false, false, false, false, true]],
+        "a Forest taps for green"
+    );
+}
+
+#[test]
+fn faerie_conclave_becomes_a_blue_faerie_flier_until_end_of_turn() {
+    let mut g = table();
+    let fc = put(&mut g, 0, "Faerie Conclave");
+    untap(&mut g, fc);
+    assert_eq!(colors(&g, fc), [false, true, false, false, false]);
+    act(&mut g, Action::Activate(fc, 0));
+    resolve_all(&mut g, &[]);
+    let t = g.types_of(fc);
+    assert!(t.creature && t.land);
+    assert_eq!((g.power(fc), g.toughness(fc)), (2, 1));
+    assert!(g.keywords(fc).has(Keywords::FLYING));
+    assert_eq!(g.colors_of(fc), [false, true, false, false, false]);
+    assert!(g.has_subtype(fc, "Faerie"));
+    to_main1(&mut g, 4, 1);
+    assert!(!g.types_of(fc).creature);
+    assert_eq!(g.colors_of(fc), [false; 5]);
+}
+
+#[test]
+fn raging_ravine_grows_when_it_attacks_as_a_creature() {
+    let mut g = table();
+    let rr = put(&mut g, 0, "Raging Ravine");
+    act(&mut g, Action::Activate(rr, 0));
+    resolve_all(&mut g, &[]);
+    untap(&mut g, rr);
+    assert_eq!(g.colors_of(rr), [false, false, false, true, true]);
+    assert!(g.has_subtype(rr, "Elemental"));
+    attack_until_decision(&mut g, rr);
+    assert_eq!(g.obj(rr).counters, 1, "the gained attack trigger");
+    assert_eq!(g.players[1].life, 36);
+}
+
+#[test]
+fn blinkmoth_nexus_becomes_an_artifact_flier_and_pumps_a_blinkmoth() {
+    let mut g = table();
+    let b = put(&mut g, 0, "Blinkmoth Nexus");
+    act(&mut g, Action::Activate(b, 0));
+    resolve_all(&mut g, &[]);
+    let t = g.types_of(b);
+    assert!(t.creature && t.artifact && t.land);
+    assert!(g.keywords(b).has(Keywords::FLYING) && g.has_subtype(b, "Blinkmoth"));
+    untap(&mut g, b);
+    act(&mut g, Action::Activate(b, 1));
+    act(&mut g, Action::Target(obj(b)));
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.power(b), g.toughness(b)), (2, 2));
+    to_main1(&mut g, 4, 1);
+    assert!(!g.types_of(b).artifact && !g.types_of(b).creature);
+}
+
+#[test]
+fn mishras_factory_becomes_an_assembly_worker_and_pumps_one() {
+    let mut g = table();
+    let m = put(&mut g, 0, "Mishra's Factory");
+    act(&mut g, Action::Activate(m, 0));
+    resolve_all(&mut g, &[]);
+    assert!(g.types_of(m).artifact && g.has_subtype(m, "Assembly-Worker"));
+    untap(&mut g, m);
+    act(&mut g, Action::Activate(m, 1));
+    act(&mut g, Action::Target(obj(m)));
+    resolve_all(&mut g, &[]);
+    assert!(g.obj(m).tapped);
+    assert_eq!((g.power(m), g.toughness(m)), (3, 3));
+}
+
+#[test]
+fn mutavault_becomes_a_two_two_with_all_creature_types() {
+    let mut g = table();
+    let m = put(&mut g, 0, "Mutavault");
+    assert!(!g.has_subtype(m, "Goblin"));
+    act(&mut g, Action::Activate(m, 0));
+    resolve_all(&mut g, &[]);
+    assert!(g.types_of(m).creature);
+    assert_eq!((g.power(m), g.toughness(m)), (2, 2));
+    assert!(g.has_subtype(m, "Goblin") && g.has_subtype(m, "Elf"));
+    assert!(!g.has_subtype(m, "Forest"));
+    to_main1(&mut g, 4, 1);
+    assert!(!g.types_of(m).creature && !g.has_subtype(m, "Goblin"));
+}
+
+#[test]
+fn abigale_takes_a_creatures_abilities_and_gives_it_three_counters() {
+    let mut g = table();
+    let angel = put(&mut g, 1, "Serra Angel");
+    let a = hand(&mut g, 0, "Abigale, Eloquent First-Year");
+    play(&mut g, a, false, &[], &[Action::Target(obj(angel))]);
+    let k = g.keywords(angel);
+    assert!(!k.has(Keywords::VIGILANCE), "lost");
+    assert!(k.has(Keywords::FLYING) && k.has(Keywords::FIRST_STRIKE) && k.has(Keywords::LIFELINK));
+    assert!(g.keywords(a).has(Keywords::LIFELINK), "not Abigale herself");
+    // A mana creature loses its mana ability.
+    let mut g = table();
+    let elves = put(&mut g, 1, "Llanowar Elves");
+    assert!(g.mana_sources(1).iter().any(|&(x, _)| x == elves));
+    let a = hand(&mut g, 0, "Abigale, Eloquent First-Year");
+    play(&mut g, a, false, &[], &[Action::Target(obj(elves))]);
+    assert!(!g.mana_sources(1).iter().any(|&(x, _)| x == elves));
+    assert!(
+        g.types_of(elves).creature && g.has_subtype(elves, "Elf"),
+        "keeps its types"
+    );
+}

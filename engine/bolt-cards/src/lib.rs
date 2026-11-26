@@ -474,6 +474,7 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         creatures_abilities_haste: false,
         ward_sacrifice_nonland: false,
         protection_chosen_card_type: false,
+        swamps_are_creatures: false,
     };
     def.color_identity = color_identity(o);
     def.phyrexian = phyrexian;
