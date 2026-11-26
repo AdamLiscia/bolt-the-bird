@@ -1784,6 +1784,9 @@ pub enum Condition {
     YourTurn,
     /// Its controller controls their commander (lieutenant: "if you control your commander").
     ControlCommander,
+    /// It isn't its controller's turn. With `When::PlayerPlaysLand`: "whenever an opponent plays a
+    /// land" (a land is played only on its player's own turn).
+    NotYourTurn,
 }
 
 /// A spell's effect or a triggered ability: target slots, then effects in order.

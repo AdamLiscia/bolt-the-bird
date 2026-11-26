@@ -77,6 +77,14 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::Never, vec![graveyard_cards(true, Controller::Any)], vec![Effect::ReturnTapped(0)]);
             },
         ),
+        "Burgeoning" => s(
+            &["Whenever an opponent plays a land, you may put a land card from your hand onto the battlefield."],
+            |d, _| {
+                // A land is played only on its player's own turn: "an opponent plays" is
+                // PlayerPlaysLand on a turn that isn't yours.
+                conditional(d, When::PlayerPlaysLand, Condition::NotYourTurn, vec![], vec![Effect::MayLandFromHand]);
+            },
+        ),
         "Breena, the Demagogue" => s(
             &["Whenever a player attacks one of your opponents, if that opponent has more life than another of your opponents, that attacking player draws a card and you put two +1/+1 counters on a creature you control."],
             |_, _| {
@@ -437,6 +445,7 @@ pub const PG_D2_SCRIPTED: &[&str] = &[
     "Hydroid Krasis",
     "Malakir Rebirth // Malakir Mire",
     "Breena, the Demagogue",
+    "Burgeoning",
     // The Gitrog, Ravenous Ride
     "Demonic Tutor",
     "Exquisite Blood",

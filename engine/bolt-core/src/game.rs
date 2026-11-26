@@ -14047,6 +14047,7 @@ impl Game {
             Some(Condition::ControlCommander) => self
                 .permanents(controller)
                 .any(|x| self.is_commander(x) && self.obj(x).owner == controller),
+            Some(Condition::NotYourTurn) => self.active != controller,
         }
     }
 

@@ -182,3 +182,25 @@ fn gain_and_draw_half_x_rounds_down() {
     assert_eq!(g.players[0].life, 42, "half of 5, rounded down");
     assert_eq!(g.players[0].hand.len(), hand - 1 + 2);
 }
+
+#[test]
+fn not_your_turn_with_player_plays_land_is_an_opponents_land_play() {
+    let mut g = game_with(ring_with(trigger(
+        When::PlayerPlaysLand,
+        Some(Condition::NotYourTurn),
+        gain_one(),
+    )));
+    g.add_card(0, cid("Sol Ring"), Zone::Battlefield);
+    let mine = g.add_card(0, cid("Forest"), Zone::Hand);
+    act(&mut g, Action::PlayLand(mine));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].life, 40, "your own land play");
+    g.start_turn(4, 1);
+    while !(g.step == Step::Main1 && g.pending == bolt_core::Pending::Priority(1)) {
+        act(&mut g, Action::PassPriority);
+    }
+    let theirs = g.add_card(1, cid("Forest"), Zone::Hand);
+    act(&mut g, Action::PlayLand(theirs));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].life, 41, "the opponent's land play");
+}

@@ -877,3 +877,22 @@ fn breenas_trigger_never_happens_one_on_one() {
     assert_eq!(g.players[0].hand.len(), n);
     assert!(g.creatures(0).all(|c| g.obj(c).counters == 0));
 }
+
+#[test]
+fn burgeoning_puts_a_land_in_when_the_opponent_plays_one() {
+    let mut g = table();
+    put(&mut g, 0, "Burgeoning");
+    let mine = hand(&mut g, 0, "Forest");
+    let other = hand(&mut g, 0, "Island");
+    act(&mut g, Action::PlayLand(mine));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(other).zone, Zone::Hand, "not on your own land play");
+    g.start_turn(4, 1);
+    while !(g.step == Step::Main1 && g.pending == Pending::Priority(1)) {
+        act(&mut g, Action::PassPriority);
+    }
+    let theirs = hand(&mut g, 1, "Forest");
+    act(&mut g, Action::PlayLand(theirs));
+    resolve_all(&mut g, &[Action::Pick(other)]); // a land card from hand, or No
+    assert_eq!(g.obj(other).zone, Zone::Battlefield);
+}
