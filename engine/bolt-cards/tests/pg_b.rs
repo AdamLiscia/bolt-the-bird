@@ -3224,3 +3224,14 @@ fn bennie_bracks_draws_at_an_end_step_after_you_made_a_token() {
         assert_eq!(g.players[0].hand.len(), before + usize::from(make));
     }
 }
+
+#[test]
+fn damage_gisela_prevents_entirely_isnt_dealt_so_lifelink_gains_nothing() {
+    let mut g = table();
+    put(&mut g, 1, "Gisela, Blade of Goldnight");
+    let hawk = put(&mut g, 0, "Healer's Hawk"); // 1/1 flying, lifelink
+    fight_through_turn_5(&mut g, &[hawk]);
+    assert_eq!(g.players[1].life, 40, "1 damage, half rounded up prevented: none");
+    assert_eq!(g.players[0].life, 40, "no damage dealt, so no lifelink");
+    assert!(!g.obj(hawk).dealt_damage);
+}
