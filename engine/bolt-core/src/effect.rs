@@ -1562,6 +1562,8 @@ pub enum Effect {
     /// `who` loses life equal to the trigger's amount ("target opponent loses that much life":
     /// Sanguine Bond, with `When::YouGainLife`).
     LoseLifeAmount(Who),
+    /// `who` loses life equal to the life they've lost this turn (Wound Reflection).
+    LoseLifeLostThisTurn(Who),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -2193,6 +2195,22 @@ pub enum When {
     PlusCountersPutOnThis,
     /// "Whenever you lose life" (every time; the amount travels with the trigger).
     YouLoseLife,
+    /// "Whenever you sacrifice a permanent" (each one).
+    YouSacrifice,
+    /// "Whenever a player sacrifices another permanent" (any player's, each one).
+    PlayerSacrificesAnother,
+    /// "Whenever you sacrifice a token".
+    YouSacrificeToken,
+    /// "Whenever you sacrifice a [subtype]" (each one; Rapacious Guest: Food).
+    YouSacrificeSubtype(&'static str),
+    /// "Whenever this creature or another creature or artifact you control dies" (tokens included;
+    /// Al Bhed Salvagers).
+    ThisOrAnotherCreatureOrArtifactYouControlDies,
+    /// "Whenever another permanent you control enters" (Altar of the Brood).
+    AnotherPermanentYouControlEnters,
+    /// "Whenever another creature you control of this color enters" (a `Color` index: Ivy Lane
+    /// Denizen, green).
+    AnotherCreatureYouControlEntersWithColor(usize),
 }
 
 #[derive(Clone, Debug, PartialEq)]

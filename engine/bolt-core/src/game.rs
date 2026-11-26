@@ -1271,6 +1271,8 @@ pub struct Game {
     pub damage_to_player_turn: [(u32, i32); 2],
     /// "When you next cast a creature spell this turn": (source, trigger, controller, turn) (Vivien).
     pub next_creature_spell: Vec<(ObjId, usize, PlayerId, u32)>,
+    /// Life each player has lost this turn: (turn, total) (Wound Reflection).
+    pub life_lost_turn: [(u32, i32); 2],
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -1487,6 +1489,7 @@ impl Game {
             noncreature_casts: [(0, 0); 2],
             damage_to_player_turn: [(0, 0); 2],
             next_creature_spell: Vec::new(),
+            life_lost_turn: [(0, 0); 2],
         }
     }
 
@@ -2237,6 +2240,7 @@ impl Game {
         if mine.len() <= n as usize {
             for x in mine {
                 self.move_to(x, Zone::Graveyard);
+                self.sacrificed(x, p);
             }
         } else {
             self.ask(p, Decision::SacrificePermanents { left: n });
@@ -2915,6 +2919,47 @@ impl Game {
         for t in &mut self.triggered[before..] {
             t.amount = n;
         }
+        let (t, lost) = self.life_lost_turn[p];
+        self.life_lost_turn[p] = (self.turn, if t == self.turn { lost + n } else { n });
+    }
+
+    /// The life `p` has lost this turn.
+    fn life_lost_now(&self, p: PlayerId) -> i32 {
+        let (t, lost) = self.life_lost_turn[p];
+        if t == self.turn {
+            lost
+        } else {
+            0
+        }
+    }
+
+    /// `id` was just sacrificed by `p` (it's already moved): "whenever you sacrifice" and "whenever
+    /// a player sacrifices" triggers.
+    fn sacrificed(&mut self, id: ObjId, p: PlayerId) {
+        self.fire(p, When::YouSacrifice, None);
+        for q in 0..2 {
+            self.fire(q, When::PlayerSacrificesAnother, Some(id));
+        }
+        if self.is_token(id) {
+            self.fire(p, When::YouSacrificeToken, None);
+        }
+        let subs: Vec<String> = self.def_of(id).subtypes.clone();
+        for any in self.permanents(p).collect::<Vec<_>>() {
+            if self.lost_abilities(any) {
+                continue;
+            }
+            let whens: Vec<When> = self.def_of(any).triggers.iter().map(|tr| tr.when).collect();
+            for (n, w) in whens.into_iter().enumerate() {
+                if let When::YouSacrificeSubtype(sub) = w {
+                    if subs.iter().any(|s| s == sub) {
+                        self.triggered.push(StackItem {
+                            kind: StackKind::Trigger(n),
+                            ..Game::casting(any, p)
+                        });
+                    }
+                }
+            }
+        }
     }
 
     /// CR 119.3: gaining life, with "first time each turn" triggers.
@@ -3563,6 +3608,17 @@ impl Game {
                 None,
             );
         }
+        if dies && (self.types_of(id).artifact || self.types_of(id).creature) {
+            self.fire(
+                last_controller,
+                When::ThisOrAnotherCreatureOrArtifactYouControlDies,
+                Some(id),
+            );
+        }
+        if to == Zone::Battlefield && from != Zone::Battlefield {
+            let c = self.obj(id).controller;
+            self.fire(c, When::AnotherPermanentYouControlEnters, Some(id));
+        }
         if to == Zone::Battlefield {
             self.obj_mut(id).chosen_mode = None; // a new object chooses again
             self.obj_mut(id).linked_card = None;
@@ -3760,6 +3816,9 @@ impl Game {
                             When::AnotherCreatureYouControlEntersNotCast => {
                                 any != id && (from != Zone::Stack || self.obj(id).card_copy)
                             }
+                            When::AnotherCreatureYouControlEntersWithColor(k) => {
+                                any != id && self.colors_of(id).get(k).copied().unwrap_or(false)
+                            }
                             _ => false,
                         };
                         if hit {
@@ -3870,10 +3929,13 @@ impl Game {
         };
         let whens: Vec<When> = self.def_of(id).triggers.iter().map(|tr| tr.when).collect();
         for (n, when) in whens.into_iter().enumerate() {
-            let own_death = (when == When::CreatureYouControlDies
+            let own_death = ((when == When::CreatureYouControlDies
                 || matches!(when, When::ThisOrAnotherYouControlDiesWithSubtype(_)))
                 && dies
-                && self.types_of(id).creature;
+                && self.types_of(id).creature)
+                || (when == When::ThisOrAnotherCreatureOrArtifactYouControlDies
+                    && dies
+                    && (self.types_of(id).creature || self.types_of(id).artifact));
             let (plus, stun, kw) = self.obj(id).last_counters;
             let had_counters = plus != 0 || stun > 0 || kw != Keywords::NONE;
             if when == When::CreatureYouControlWithCountersDies
@@ -5287,7 +5349,9 @@ impl Game {
                         }
                         self.become_tapped(id);
                         if self.def_of(id).sac_for_mana {
+                            let by = self.obj(id).controller;
                             self.move_to(id, Zone::Graveyard);
+                            self.sacrificed(id, by);
                         }
                     }
                     // Otherwise a two-mana output, paid for by tapping its Signet or filter land above.
@@ -5373,7 +5437,9 @@ impl Game {
                 }
             }
             if self.def_of(id).sac_for_mana {
+                let by = self.obj(id).controller;
                 self.move_to(id, Zone::Graveyard);
+                self.sacrificed(id, by);
             }
         }
     }
@@ -5502,7 +5568,9 @@ impl Game {
             }
         }
         if self.def_of(id).sac_for_mana {
+            let by = self.obj(id).controller;
             self.move_to(id, Zone::Graveyard);
+            self.sacrificed(id, by);
         }
         self.pending = Pending::Priority(p);
     }
@@ -6161,6 +6229,7 @@ impl Game {
                 }
             } else if self.obj(v).zone == Zone::Battlefield {
                 self.move_to(v, Zone::Graveyard);
+                self.sacrificed(v, p);
             }
         }
         if a.minus_counter_cost && self.obj(id).zone == Zone::Battlefield {
@@ -6206,6 +6275,7 @@ impl Game {
         }
         if a.sacrifice_self {
             self.move_to(id, Zone::Graveyard);
+            self.sacrificed(id, p);
         }
         if a.exile_self && self.obj(id).zone == Zone::Graveyard {
             self.move_to(id, Zone::Exile); // renew: "Exile this card from your graveyard"
@@ -7220,6 +7290,7 @@ impl Game {
             victims.sort_by_key(|&x| !self.obj(x).tapped);
             for v in victims.into_iter().take(n as usize) {
                 self.move_to(v, Zone::Graveyard);
+                self.sacrificed(v, p);
             }
         }
         let energy_by = item
@@ -7264,7 +7335,11 @@ impl Game {
             } else if self.def_of(card).pitch_not_your_turn.is_some() && !item.flashback {
                 self.move_to(x, Zone::Exile); // Force of Vigor: the pitched card is exiled
             } else if self.obj(x).zone != Zone::Graveyard {
+                let sacrifice = self.obj(x).zone == Zone::Battlefield; // else a discarded card
                 self.move_to(x, Zone::Graveyard);
+                if sacrifice {
+                    self.sacrificed(x, p);
+                }
             }
         }
         let noncreature = !self.types_of(card).creature;
@@ -8942,7 +9017,10 @@ impl Game {
             (Decision::PayWard { cost, .. } | Decision::PayOrCountered { cost, .. }, Action::Yes) => {
                 self.pay_mana(p, &cost, None)
             }
-            (Decision::SacrificeAnother { .. }, Action::Pick(c)) => self.move_to(c, Zone::Graveyard),
+            (Decision::SacrificeAnother { .. }, Action::Pick(c)) => {
+                self.move_to(c, Zone::Graveyard);
+                self.sacrificed(c, p);
+            }
             (Decision::MayPay { cost }, Action::Yes) => self.pay_mana(p, &cost, None),
             (Decision::KeepOfType { ty, mut kept }, Action::Pick(c)) => {
                 if !kept.contains(&c) {
@@ -8995,6 +9073,7 @@ impl Game {
             (Decision::ExileCreature, Action::Pick(c)) => self.move_to(c, Zone::Exile),
             (Decision::SacrificeCreatures { left }, Action::Pick(c)) => {
                 self.move_to(c, Zone::Graveyard);
+                self.sacrificed(c, p);
                 if left > 1 && self.creatures(p).next().is_some() {
                     self.ask(p, Decision::SacrificeCreatures { left: left - 1 });
                 }
@@ -9013,7 +9092,10 @@ impl Game {
             (Decision::PayWardLife { against, .. }, Action::No) => self.counter_from(against),
             (Decision::PayWardDiscard { .. }, Action::Discard(c)) => self.move_to(c, Zone::Graveyard),
             (Decision::PayWardDiscard { against }, Action::No) => self.counter_from(against),
-            (Decision::SacrificeNonland, Action::Pick(c)) => self.move_to(c, Zone::Graveyard),
+            (Decision::SacrificeNonland, Action::Pick(c)) => {
+                self.move_to(c, Zone::Graveyard);
+                self.sacrificed(c, p);
+            }
             (Decision::MayDiscardOrStop, Action::Discard(c)) => self.move_to(c, Zone::Graveyard),
             (Decision::MayDiscardOrStop, Action::No) => {
                 self.resolving.as_mut().expect("resolving").remaining.clear();
@@ -9243,7 +9325,10 @@ impl Game {
             (Decision::DiscardReflexive { .. }, Action::No) => {}
             (Decision::ReturnOwnCreature, Action::Pick(c)) => self.move_to(c, Zone::Hand),
             (Decision::ReturnOwnLand, Action::Pick(c)) => self.move_to(c, Zone::Hand),
-            (Decision::SacrificeToken, Action::Pick(c)) => self.move_to(c, Zone::Graveyard),
+            (Decision::SacrificeToken, Action::Pick(c)) => {
+                self.move_to(c, Zone::Graveyard);
+                self.sacrificed(c, p);
+            }
             (Decision::TemptOffer, Action::Yes) => {
                 self.tempt_accepted = true;
                 let land = Decision::Search {
@@ -9267,7 +9352,10 @@ impl Game {
             (Decision::SacrificeToken, Action::No) => {
                 self.resolving.as_mut().expect("resolving").remaining.clear();
             }
-            (Decision::SacrificeCreatureOrPlaneswalker, Action::Pick(c)) => self.move_to(c, Zone::Graveyard),
+            (Decision::SacrificeCreatureOrPlaneswalker, Action::Pick(c)) => {
+                self.move_to(c, Zone::Graveyard);
+                self.sacrificed(c, p);
+            }
             (Decision::SearchMonoNames { mut picked }, Action::Pick(c)) => {
                 picked.push(c);
                 let more = self.players[p]
@@ -9511,16 +9599,21 @@ impl Game {
                 }
             }
             (Decision::SacrificeLandOrThis { source }, choice) => match choice {
-                Action::Pick(land) => self.move_to(land, Zone::Graveyard),
+                Action::Pick(land) => {
+                    self.move_to(land, Zone::Graveyard);
+                    self.sacrificed(land, p);
+                }
                 _ => {
                     if self.obj(source).zone == Zone::Battlefield && !self.cant_be_sacrificed(source) {
                         self.move_to(source, Zone::Graveyard);
+                        self.sacrificed(source, p);
                     }
                 }
             },
             (Decision::SacrificeLandsThenSearch { n }, choice) => match choice {
                 Action::Pick(land) => {
                     self.move_to(land, Zone::Graveyard);
+                    self.sacrificed(land, p);
                     let more = self
                         .permanents(p)
                         .any(|x| self.types_of(x).land && !self.cant_be_sacrificed(x));
@@ -9532,9 +9625,13 @@ impl Game {
                 }
                 _ => self.scapeshift_search(p, n),
             },
-            (Decision::SacrificeOneOf { .. }, Action::Pick(c)) => self.move_to(c, Zone::Graveyard),
+            (Decision::SacrificeOneOf { .. }, Action::Pick(c)) => {
+                self.move_to(c, Zone::Graveyard);
+                self.sacrificed(c, p);
+            }
             (Decision::SacrificeThenReturnOther, Action::Pick(c)) => {
                 self.move_to(c, Zone::Graveyard);
+                self.sacrificed(c, p);
                 self.ask_return_other(p, c);
             }
             (Decision::ReturnOtherPermanent { .. }, Action::Pick(c)) => self.move_to(c, Zone::Battlefield),
@@ -9675,12 +9772,14 @@ impl Game {
             (Decision::ExiledToBattlefield { .. }, Action::No) => {}
             (Decision::SacrificePermanents { left }, Action::Pick(c)) => {
                 self.move_to(c, Zone::Graveyard);
+                self.sacrificed(c, p);
                 if left > 1 && self.permanents(p).any(|x| !self.cant_be_sacrificed(x)) {
                     self.ask(p, Decision::SacrificePermanents { left: left - 1 });
                 }
             }
             (Decision::PayWardSacrifice { left, against, .. }, Action::Pick(c)) => {
                 self.move_to(c, Zone::Graveyard);
+                self.sacrificed(c, p);
                 if left > 1 {
                     self.ask(
                         p,
@@ -9794,6 +9893,7 @@ impl Game {
             (Decision::SacrificeAnotherGainDraw { .. }, Action::Pick(c)) => {
                 let x = self.power(c); // its power as it's sacrificed
                 self.move_to(c, Zone::Graveyard);
+                self.sacrificed(c, p);
                 if x > 0 {
                     self.gain_life(p, x);
                     for _ in 0..x {
@@ -9805,6 +9905,7 @@ impl Game {
             (Decision::ReturnLandOrSacrifice { source, .. }, Action::No) => {
                 if self.obj(source).zone == Zone::Battlefield && !self.cant_be_sacrificed(source) {
                     self.move_to(source, Zone::Graveyard);
+                    self.sacrificed(source, p);
                 }
             }
             (d, a) => unreachable!("legal action {a:?} unhandled for {d:?}"),
@@ -13199,6 +13300,7 @@ impl Game {
                     if mine.len() <= n as usize {
                         for c in mine {
                             self.move_to(c, Zone::Graveyard);
+                            self.sacrificed(c, p);
                         }
                     } else {
                         self.ask(p, Decision::SacrificeCreatures { left: n });
@@ -14614,6 +14716,14 @@ impl Game {
                 if self.obj(src).zone == Zone::Battlefield {
                     let p = item.controller;
                     self.ask(p, Decision::ReturnLandOrSacrifice { source: src, sub });
+                }
+            }
+            Effect::LoseLifeLostThisTurn(who) => {
+                for p in self.players_for(item, legal, who) {
+                    let n = self.life_lost_now(p);
+                    if n > 0 {
+                        self.lose_life(p, n);
+                    }
                 }
             }
             Effect::LoseLifeAmount(who) => {

@@ -332,6 +332,38 @@ pub fn script(name: &str) -> Option<Script> {
                 d.doubles_triggers_of = Some(TriggerDoubler::ShamanOrOtherWizard);
             },
         ),
+        // ---- Core: triggers, batch 5 (sacrifice, enter and life-lost emits) ----
+        "Mazirek, Kraul Death Priest" => s(
+            &["Whenever a player sacrifices another permanent, put a +1/+1 counter on each creature you control."],
+            |d, _| on(d, When::PlayerSacrificesAnother, vec![], vec![Effect::CountersAll { who: Who::You, n: 1 }]),
+        ),
+        "Mirkwood Bats" => s(&["Whenever you create or sacrifice a token, each opponent loses 1 life."], |d, _| {
+            // A token entering the battlefield is a token being created.
+            for when in [When::TokenYouControlEnters, When::YouSacrificeToken] {
+                on(d, when, vec![], vec![Effect::LoseLife { who: Who::EachOpponent, n: 1 }]);
+            }
+        }),
+        "Al Bhed Salvagers" => s(
+            &["Whenever this creature or another creature or artifact you control dies, target opponent loses 1 life and you gain 1 life."],
+            |d, _| {
+                let drain = vec![Effect::LoseLife { who: Who::TargetPlayer(0), n: 1 }, Effect::GainLife { who: Who::You, n: 1 }];
+                on(d, When::ThisOrAnotherCreatureOrArtifactYouControlDies, vec![opponent_player()], drain);
+            },
+        ),
+        "Altar of the Brood" => s(&["Whenever another permanent you control enters, each opponent mills a card."], |d, _| {
+            on(d, When::AnotherPermanentYouControlEnters, vec![], vec![Effect::Mill { who: Who::EachOpponent, n: 1 }])
+        }),
+        "Ivy Lane Denizen" => s(
+            &["Whenever another green creature you control enters, put a +1/+1 counter on target creature."],
+            |d, _| on(d, When::AnotherCreatureYouControlEntersWithColor(4), vec![CREATURE], vec![Effect::Counters { slot: 0, n: 1 }]),
+        ),
+        "Wound Reflection" => s(
+            &["At the beginning of each end step, each opponent loses life equal to the life they lost this turn."],
+            |d, _| {
+                // 1v1: "each opponent" is the one opponent.
+                on(d, When::EndStep { your_turn_only: false }, vec![], vec![Effect::LoseLifeLostThisTurn(Who::EachOpponent)]);
+            },
+        ),
         // ---- The Gitrog, Ravenous Ride ----
         "Demonic Tutor" => s(&["Search your library for a card, put that card into your hand, then shuffle."], |d, _| {
             spell(d, vec![], vec![search(SearchFor::Any, SearchTo::Hand)])
@@ -731,6 +763,13 @@ pub const PG_D2_SCRIPTED: &[&str] = &[
     "Doorkeeper Thrull",
     "Elesh Norn, Mother of Machines",
     "Harmonic Prodigy",
+    // Core: triggers, batch 5
+    "Mazirek, Kraul Death Priest",
+    "Mirkwood Bats",
+    "Al Bhed Salvagers",
+    "Altar of the Brood",
+    "Ivy Lane Denizen",
+    "Wound Reflection",
     // The Gitrog, Ravenous Ride
     "Demonic Tutor",
     "Exquisite Blood",

@@ -1390,3 +1390,92 @@ fn harmonic_prodigy_doubles_another_wizards_triggers() {
     cast_settle(&mut g, "Sol Ring");
     assert_eq!(g.power(prodigy), before + 1, "its own prowess isn't doubled");
 }
+
+// ---- Core: triggers, batch 5 (sacrifice, enter and life-lost emits) ----
+
+#[test]
+fn mazirek_counters_your_creatures_when_a_player_sacrifices() {
+    let mut g = table();
+    let m = put(&mut g, 0, "Mazirek, Kraul Death Priest");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    put(&mut g, 1, "Savannah Lions");
+    let e = hand(&mut g, 0, "Diabolic Edict");
+    play(&mut g, e, false, &[Target::Player(1)], &[]);
+    assert_eq!(g.power(m), 3);
+    assert_eq!(g.power(lions), 3);
+}
+
+#[test]
+fn mirkwood_bats_drains_when_you_create_or_sacrifice_a_token() {
+    let mut g = table();
+    put(&mut g, 0, "Mirkwood Bats");
+    put(&mut g, 0, "Pitiless Plunderer");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    kill(&mut g, lions); // a Treasure is created
+    assert_eq!(g.players[1].life, 39);
+    let t = tokens(&g, 0, "Treasure")[0];
+    g.manual_mana[0] = true;
+    act(&mut g, Action::TapForMana(t, 0));
+    g.manual_mana[0] = false;
+    cast_settle(&mut g, "Sol Ring"); // triggers go on the stack as priority returns
+    assert!(g.obj(t).zone != Zone::Battlefield);
+    assert_eq!(g.players[1].life, 38, "sacrificed");
+}
+
+#[test]
+fn al_bhed_salvagers_drains_when_it_or_your_creature_or_artifact_dies() {
+    let mut g = table();
+    let a = put(&mut g, 0, "Al Bhed Salvagers");
+    let ring = put(&mut g, 0, "Sol Ring");
+    let decay = hand(&mut g, 0, "Abrupt Decay");
+    act(&mut g, Action::Cast(decay));
+    act(&mut g, Action::Target(obj(ring)));
+    settle(&mut g, Target::Player(1));
+    assert_eq!(g.players[1].life, 39);
+    kill(&mut g, a);
+    assert_eq!(g.players[1].life, 38, "itself");
+    assert_eq!(g.players[0].life, 42);
+}
+
+#[test]
+fn altar_of_the_brood_mills_when_another_permanent_of_yours_enters() {
+    let mut g = table();
+    put(&mut g, 0, "Altar of the Brood");
+    let n = g.players[1].graveyard.len();
+    let f = hand(&mut g, 0, "Forest");
+    act(&mut g, Action::PlayLand(f));
+    settle(&mut g, Target::Player(1));
+    assert_eq!(g.players[1].graveyard.len(), n + 1);
+}
+
+#[test]
+fn ivy_lane_denizen_counters_when_another_green_creature_enters() {
+    let mut g = table();
+    put(&mut g, 0, "Ivy Lane Denizen");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    cast_settle(&mut g, "Savannah Lions"); // white: nothing
+    assert_eq!(g.power(lions), 2);
+    let oak = hand(&mut g, 0, "Scurry Oak");
+    act(&mut g, Action::Cast(oak));
+    settle(&mut g, obj(lions));
+    assert_eq!(g.power(lions), 3);
+}
+
+#[test]
+fn wound_reflection_doubles_the_opponents_loss_at_end_step() {
+    let mut g = table();
+    put(&mut g, 0, "Wound Reflection");
+    let angel = put(&mut g, 0, "Serra Angel");
+    let f = hand(&mut g, 0, "Soul's Fire");
+    play(&mut g, f, false, &[obj(angel), Target::Player(1)], &[]);
+    assert_eq!(g.players[1].life, 36);
+    while g.step != Step::Cleanup && g.turn == 3 {
+        let a = if g.pending == Pending::DeclareAttackers(0) {
+            Action::FinishAttacks
+        } else {
+            Action::PassPriority
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.players[1].life, 32);
+}

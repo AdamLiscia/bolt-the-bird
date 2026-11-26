@@ -706,3 +706,116 @@ fn trigger_doublers_by_kind_of_source() {
         "its dies trigger looks back at its power: twice"
     );
 }
+
+// ---- batch 5: sacrifice, enter and life-lost emits ----
+
+#[test]
+fn sacrifice_emits_for_you_any_player_tokens_and_subtypes() {
+    let mut g = game_with(|defs| {
+        blood_with(vec![
+            trigger(When::YouSacrifice, None, gain(1)),
+            trigger(When::PlayerSacrificesAnother, None, gain(10)),
+            trigger(When::YouSacrificeToken, None, gain(100)),
+            trigger(When::YouSacrificeSubtype("Cat"), None, gain(1000)),
+        ])(defs);
+        defs[cid("Savannah Lions")].token = true; // a Cat Soldier token
+        let both = vec![
+            Effect::SacrificeCreatures { who: Who::You, n: 1 },
+            Effect::SacrificeCreatures {
+                who: Who::EachOpponent,
+                n: 1,
+            },
+        ];
+        defs[cid("Hero's Downfall")].spell = Some(Ability::new(vec![], both));
+    });
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Battlefield);
+    let angel = g.add_card(1, cid("Serra Angel"), Zone::Battlefield);
+    let d = g.add_card(0, cid("Hero's Downfall"), Zone::Hand);
+    play(&mut g, d, false, &[], &[]);
+    assert_ne!(g.obj(lions).zone, Zone::Battlefield, "a token: gone");
+    assert_eq!(g.obj(angel).zone, Zone::Graveyard);
+    assert_eq!(
+        life(&g, 0),
+        40 + 1111 + 10,
+        "yours: all four; theirs: a player sacrificed"
+    );
+}
+
+#[test]
+fn a_sacrifice_cost_emits_too() {
+    let mut g = game_with(blood_with(vec![trigger(When::YouSacrifice, None, gain(1))]));
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    // Diabolic Intent: "As an additional cost to cast this spell, sacrifice a creature."
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Battlefield);
+    let intent = g.add_card(0, cid("Diabolic Intent"), Zone::Hand);
+    act(&mut g, Action::CastWith(intent, lions));
+    while !g.items.is_empty()
+        || matches!(
+            g.pending,
+            bolt_core::Pending::Decide(_) | bolt_core::Pending::ChooseTarget(_)
+        )
+    {
+        let a = match g.pending {
+            bolt_core::Pending::Decide(_) | bolt_core::Pending::ChooseTarget(_) => {
+                let legal = g.legal_actions();
+                if legal.contains(&Action::Pick(lions)) {
+                    Action::Pick(lions)
+                } else {
+                    legal[0]
+                }
+            }
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(life(&g, 0), 41);
+}
+
+#[test]
+fn lose_life_lost_this_turn_doubles_the_loss() {
+    let mut g = game_with(downfall_as(
+        vec![],
+        vec![
+            Effect::LoseLife {
+                who: Who::EachOpponent,
+                n: 3,
+            },
+            Effect::LoseLifeLostThisTurn(Who::EachOpponent),
+        ],
+    ));
+    let d = g.add_card(0, cid("Hero's Downfall"), Zone::Hand);
+    play(&mut g, d, false, &[], &[]);
+    assert_eq!(life(&g, 1), 34);
+}
+
+#[test]
+fn creature_or_artifact_dies_and_another_permanent_enters() {
+    let mut g = game_with(blood_with(vec![
+        trigger(When::ThisOrAnotherCreatureOrArtifactYouControlDies, None, gain(1)),
+        trigger(When::AnotherPermanentYouControlEnters, None, gain(10)),
+    ]));
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Hand);
+    play(&mut g, ring, false, &[], &[]);
+    assert_eq!(life(&g, 0), 50, "a permanent entered");
+    let decay = g.add_card(0, cid("Abrupt Decay"), Zone::Hand);
+    play(&mut g, decay, false, &[obj(ring)], &[]);
+    assert_eq!(life(&g, 0), 51, "an artifact died");
+}
+
+#[test]
+fn another_creature_of_a_color_enters() {
+    let mut g = game_with(blood_with(vec![trigger(
+        When::AnotherCreatureYouControlEntersWithColor(0), // white
+        None,
+        gain(1),
+    )]));
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Hand);
+    play(&mut g, lions, false, &[], &[]);
+    assert_eq!(life(&g, 0), 41, "white");
+    let oak = g.add_card(0, cid("Scurry Oak"), Zone::Hand);
+    play(&mut g, oak, false, &[], &[]);
+    assert_eq!(life(&g, 0), 41, "green");
+}
