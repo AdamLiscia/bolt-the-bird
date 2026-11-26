@@ -134,6 +134,10 @@ pub enum ExtraCost {
     /// Sacrifice a creature of this color (WUBRG index) (Natural Order: green); cast with
     /// `Action::CastWith` naming it.
     SacrificeCreatureOfColor(u8),
+    /// "As an additional cost to cast this spell, forage or pay [mana]." (Feed the Cycle): cast
+    /// with `Action::Cast` paying the mana, or `Action::CastWith` naming a Food to sacrifice or a
+    /// card in your graveyard (it and two more, the engine's picks, are exiled).
+    ForageOrPay(ManaCost),
 }
 
 /// "This spell costs {N} less to cast if ..." (CR 601.2f).
@@ -313,6 +317,9 @@ pub struct Activated {
     /// how many you control; the engine picks which (tokens first, then the lowest mana value,
     /// the source last).
     pub sacrifice_x_of_subtype: Option<&'static str>,
+    /// "Forage" in the cost (Camellia): exile three cards from your graveyard or sacrifice a Food.
+    /// The engine picks: a Food if you have one, else three graveyard cards (as for delve).
+    pub forage: bool,
 }
 
 /// The printed card. Shared by every copy; per-copy state lives on the game object.
@@ -1018,6 +1025,34 @@ pub struct ManaExt {
     /// "This land enters tapped unless you control a legendary creature." (The Shire, Minas
     /// Tirith)
     pub enters_tapped_unless_legendary_creature: bool,
+    /// Improvise (CR 702.126): each untapped artifact you control can tap to pay {1} while you
+    /// cast this spell (Kappa Cannoneer).
+    pub improvise: bool,
+    /// "Nonartifact spells you cast have improvise." (Inspiring Statuary)
+    pub nonartifact_spells_improvise: bool,
+    /// "{T}: Add {W}. Activate only if you control an Island." (Nimbus Maze): each color (WUBRG)
+    /// it adds only while you control a permanent with that subtype, on top of `mana`.
+    pub colors_if_you_control: [Option<&'static str>; 5],
+    /// "{T}: Add {C}{C}. Spend this mana only to cast colorless Eldrazi spells or activate
+    /// abilities of colorless Eldrazi." (Eldrazi Temple): it makes this much {C} for those.
+    pub colorless_eldrazi_amount: u8,
+    /// Multikicker (CR 702.33c): cast with `Action::CastX`, X the times kicked, paying this that
+    /// many times (for a card without {X} in its cost).
+    pub multikicker: Option<ManaCost>,
+    /// "This artifact enters with a charge counter on it for each time it was kicked." (Everflowing
+    /// Chalice): its kind counters.
+    pub charge_per_kick: bool,
+    /// "{T}: Add {C} for each charge counter on this artifact.": its mana, once per kind counter.
+    pub mana_per_kind_counter: bool,
+    /// "If that mana is spent on a creature spell, it gains haste." (Hall of the Bandit Lord). The
+    /// payer spends it automatically (it isn't tapped by hand), so a creature spell it pays for
+    /// gains haste as it enters.
+    pub creature_spell_haste: bool,
+    /// Delve (CR 702.66): each card exiled from your graveyard while casting it pays for {1}.
+    pub delve: bool,
+    /// "{T}: Add {C}{C}. Spend this mana only to cast colorless spells. Activate only if you
+    /// control seven or more lands." (Shrine of the Forsaken Gods): (amount, lands needed).
+    pub colorless_spell_amount_with_lands: Option<(u8, u8)>,
 }
 
 /// "You may pay [mana], [life] and sacrifice or tap [creatures] rather than pay this spell's mana

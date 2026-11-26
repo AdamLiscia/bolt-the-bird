@@ -1022,6 +1022,127 @@ pub fn script(name: &str) -> Option<Script> {
                 d.activated[n].tap_untapped_creature = true;
             },
         ),
+        // ---- d1 core, batch 9: improvise, multikicker, forage, restricted and conditional mana ----
+        "Universal Surveillance" => s(&["Improvise", "Draw X cards."], |d, _| {
+            d.mana_ext.improvise = true;
+            spell(d, vec![], vec![Effect::DrawX]);
+        }),
+        "Inspiring Statuary" => s(&["Nonartifact spells you cast have improvise."], |d, _| {
+            d.mana_ext.nonartifact_spells_improvise = true;
+        }),
+        "Kappa Cannoneer" => s(
+            &[
+                "Improvise",
+                "Ward {4}",
+                "Whenever this creature or another artifact you control enters, put a +1/+1 counter on this creature. It can't be blocked this turn.",
+            ],
+            |d, _| {
+                d.mana_ext.improvise = true;
+                d.ward = ManaCost::parse("{4}");
+                // It's an artifact itself, so "an artifact you control enters" covers it too.
+                let unblockable = Effect::GrantSelf { keywords: Keywords::UNBLOCKABLE };
+                on(d, When::ArtifactYouControlEnters, vec![], vec![Effect::CountersSelf { n: 1 }, unblockable]);
+            },
+        ),
+        "Drift of Phantasms" => s(&["Transmute {1}{U}{U}"], |d, _| {
+            // Transmute (CR 702.53): discard it from your hand, as a sorcery.
+            let n = activated(d, "{1}{U}{U}", false, vec![], vec![search(SearchFor::ManaValue(3), SearchTo::Hand)]);
+            d.activated[n].from_hand_discard = true;
+            d.activated[n].sorcery = true;
+        }),
+        "Crystal Vein" => s(&["{T}: Add {C}.", "{T}, Sacrifice this land: Add {C}{C}."], |d, _| {
+            d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+            // Played on the stack, like Ashnod's Altar's: the automatic payer only taps it for {C}.
+            let n = activated(d, "", true, vec![], vec![Effect::AddColorless(2)]);
+            d.activated[n].sacrifice_self = true;
+        }),
+        "Eldrazi Temple" => s(
+            &[
+                "{T}: Add {C}.",
+                "{T}: Add {C}{C}. Spend this mana only to cast colorless Eldrazi spells or activate abilities of colorless Eldrazi.",
+            ],
+            |d, _| {
+                d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                d.mana_ext.colorless_eldrazi_amount = 2;
+            },
+        ),
+        "Shrine of the Forsaken Gods" => s(
+            &[
+                "{T}: Add {C}.",
+                "{T}: Add {C}{C}. Spend this mana only to cast colorless spells. Activate only if you control seven or more lands.",
+            ],
+            |d, _| {
+                d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                d.mana_ext.colorless_spell_amount_with_lands = Some((2, 7));
+            },
+        ),
+        "Nimbus Maze" => s(
+            &[
+                "{T}: Add {C}.",
+                "{T}: Add {W}. Activate only if you control an Island.",
+                "{T}: Add {U}. Activate only if you control a Plains.",
+            ],
+            |d, _| {
+                d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                d.mana_ext.colors_if_you_control = [Some("Island"), Some("Plains"), None, None, None];
+            },
+        ),
+        "Everflowing Chalice" => s(
+            &[
+                "Multikicker {2}",
+                "This artifact enters with a charge counter on it for each time it was kicked.",
+                "{T}: Add {C} for each charge counter on this artifact.",
+            ],
+            |d, _| {
+                d.mana_ext.multikicker = ManaCost::parse("{2}");
+                d.mana_ext.charge_per_kick = true;
+                d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                d.mana_ext.mana_per_kind_counter = true;
+            },
+        ),
+        "Hall of the Bandit Lord" => s(
+            &[
+                "Hall of the Bandit Lord enters tapped.",
+                "{T}, Pay 3 life: Add {C}. If that mana is spent on a creature spell, it gains haste.",
+            ],
+            |d, _| {
+                d.enters_tapped = true;
+                d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                d.mana_ext.mana_life_cost = 3;
+                d.mana_ext.creature_spell_haste = true;
+            },
+        ),
+        "Feed the Cycle" => s(
+            &["As an additional cost to cast this spell, forage or pay {B}.", "Destroy target creature or planeswalker."],
+            |d, _| {
+                d.extra_cost = Some(ExtraCost::ForageOrPay(ManaCost::parse("{B}").expect("cost")));
+                spell(d, vec![CREATURE_OR_PLANESWALKER], vec![Effect::Destroy(0)]);
+            },
+        ),
+        "Blazemire Verge" => s(&["{T}: Add {B}.", "{T}: Add {R}. Activate only if you control a Swamp or a Mountain."], |d, _| {
+            d.mana = Some(ManaSource::of(&[Color::Black]));
+            d.extra_color_if_you_control = Some((Color::Red, ["Swamp", "Mountain"]));
+        }),
+        "Bleachbone Verge" => s(&["{T}: Add {B}.", "{T}: Add {W}. Activate only if you control a Plains or a Swamp."], |d, _| {
+            d.mana = Some(ManaSource::of(&[Color::Black]));
+            d.extra_color_if_you_control = Some((Color::White, ["Plains", "Swamp"]));
+        }),
+        "Floodfarm Verge" => s(&["{T}: Add {W}.", "{T}: Add {U}. Activate only if you control a Plains or an Island."], |d, _| {
+            d.mana = Some(ManaSource::of(&[Color::White]));
+            d.extra_color_if_you_control = Some((Color::Blue, ["Plains", "Island"]));
+        }),
+        "Gloomlake Verge" => s(&["{T}: Add {U}.", "{T}: Add {B}. Activate only if you control an Island or a Swamp."], |d, _| {
+            d.mana = Some(ManaSource::of(&[Color::Blue]));
+            d.extra_color_if_you_control = Some((Color::Black, ["Island", "Swamp"]));
+        }),
+        "Wastewood Verge" => s(&["{T}: Add {G}.", "{T}: Add {B}. Activate only if you control a Swamp or a Forest."], |d, _| {
+            d.mana = Some(ManaSource::of(&[Color::Green]));
+            d.extra_color_if_you_control = Some((Color::Black, ["Swamp", "Forest"]));
+        }),
+        "Tainted Peak" => s(&["{T}: Add {C}.", "{T}: Add {B} or {R}. Activate only if you control a Swamp."], |d, _| {
+            d.mana = Some(ManaSource { colorless: true, ..ManaSource::of(&[Color::Black, Color::Red]) });
+            d.colored_mana_only_if_you_control = Some("Swamp");
+        }),
         _ => None,
     }
 }
@@ -1163,4 +1284,21 @@ pub const PG_D1_SCRIPTED: &[&str] = &[
     "K'rrik, Son of Yawgmoth",
     "Meloku the Clouded Mirror",
     "The Shire",
+    "Universal Surveillance",
+    "Inspiring Statuary",
+    "Kappa Cannoneer",
+    "Drift of Phantasms",
+    "Crystal Vein",
+    "Eldrazi Temple",
+    "Shrine of the Forsaken Gods",
+    "Nimbus Maze",
+    "Everflowing Chalice",
+    "Hall of the Bandit Lord",
+    "Feed the Cycle",
+    "Blazemire Verge",
+    "Bleachbone Verge",
+    "Floodfarm Verge",
+    "Gloomlake Verge",
+    "Wastewood Verge",
+    "Tainted Peak",
 ];
