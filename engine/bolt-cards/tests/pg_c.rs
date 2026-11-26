@@ -3507,3 +3507,51 @@ fn vesuva_enters_tapped_as_a_copy_of_a_land_or_untapped_as_itself() {
     assert_eq!(g.def_of(v).name, "Vesuva");
     assert!(!g.obj(v).tapped);
 }
+
+// ---- Olivia, batch 2: the Wicked Role ----
+
+#[test]
+fn charming_scoundrel_makes_a_wicked_role_that_drains_when_it_goes() {
+    let mut g = table();
+    let ghoul = put(&mut g, 0, "Hungry Ghoul");
+    let before = g.power(ghoul);
+    let cs = hand(&mut g, 0, "Charming Scoundrel");
+    play(
+        &mut g,
+        cs,
+        false,
+        &[],
+        &[Action::Mode(2), Action::Target(obj(ghoul))],
+    );
+    let role = tokens(&g, 0, "Wicked Role");
+    assert_eq!(role.len(), 1);
+    assert_eq!(g.power(ghoul), before + 1);
+    let life = g.players[1].life;
+    let kill = hand(&mut g, 0, "Hero's Downfall");
+    play(&mut g, kill, false, &[obj(ghoul)], &[]);
+    assert_eq!(g.players[1].life, life - 1, "the Role went to the graveyard");
+}
+
+#[test]
+fn witchs_mark_loots_two_and_a_second_role_replaces_the_first() {
+    let mut g = table();
+    let ghoul = put(&mut g, 0, "Hungry Ghoul");
+    let junk = hand(&mut g, 0, "Forest");
+    let wm = hand(&mut g, 0, "Witch's Mark");
+    let n = g.players[0].hand.len();
+    play(&mut g, wm, false, &[obj(ghoul)], &[Action::Discard(junk)]);
+    assert_eq!(
+        g.players[0].hand.len(),
+        n - 2 + 2,
+        "cast, discarded one, drew two"
+    );
+    let life = g.players[1].life;
+    let wm2 = hand(&mut g, 0, "Witch's Mark");
+    play(&mut g, wm2, false, &[obj(ghoul)], &[Action::No]);
+    assert_eq!(
+        tokens(&g, 0, "Wicked Role").len(),
+        1,
+        "one Role of yours per creature"
+    );
+    assert_eq!(g.players[1].life, life - 1, "the old Role drained as it went");
+}

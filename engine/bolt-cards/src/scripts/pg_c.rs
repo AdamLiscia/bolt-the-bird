@@ -1835,6 +1835,39 @@ pub fn script(name: &str) -> Option<Script> {
         "Vesuva" => s(&["You may have this land enter tapped as a copy of any land on the battlefield."], |d, _| {
             d.zones.enters_as_land_copy_tapped = true;
         }),
+        // ---- Olivia, batch 2: the Wicked Role (token 97) ----
+        "Charming Scoundrel" => s(
+            &[
+                "When this creature enters, choose one —",
+                "• Discard a card, then draw a card.",
+                "• Create a Treasure token.",
+                "• Create a Wicked Role token attached to target creature you control.",
+            ],
+            |d, t| {
+                on_modal(
+                    d,
+                    When::Enters,
+                    None,
+                    vec![
+                        Ability::new(vec![], vec![discard(1), draw(1)]),
+                        Ability::new(vec![], vec![Effect::CreateToken { who: Who::You, def: t.treasure, n: 1 }]),
+                        Ability::new(vec![YOUR_CREATURE], vec![Effect::CreateRoleAttached { def: t.wicked_role, slot: 0 }]),
+                    ],
+                )
+            },
+        ),
+        "Witch's Mark" => s(
+            &[
+                "You may discard a card. If you do, draw two cards.",
+                "Create a Wicked Role token attached to up to one target creature you control.",
+            ],
+            |d, t| {
+                d.spell = Some(up_to(
+                    vec![YOUR_CREATURE],
+                    vec![Effect::MayDiscardToDrawN(2), Effect::CreateRoleAttached { def: t.wicked_role, slot: 0 }],
+                ));
+            },
+        ),
         _ => None,
     }
 }
@@ -2061,4 +2094,6 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Foreboding Ruins",
     "Tranquility",
     "Vesuva",
+    "Charming Scoundrel",
+    "Witch's Mark",
 ];
