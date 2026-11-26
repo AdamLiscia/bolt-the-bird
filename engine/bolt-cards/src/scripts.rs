@@ -265,8 +265,8 @@ pub fn token_defs() -> Vec<CardDef> {
             });
             t
         },
-        black(token("Bat", "Bat", 1, 1, Keywords::FLYING)), // 83: Lunar Convocation (lane d2)
-                                                            // 84: lane B's Elemental.
+        // 83: Lunar Convocation's Bat (lane d2). 84 is lane B's Elemental.
+        black(token("Bat", "Bat", 1, 1, Keywords::FLYING)),
     ]
 }
 
