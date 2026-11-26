@@ -164,6 +164,8 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         verb = verb or {"ConniveDiscard": "Discard (connive):"}.get(d)
         verb = verb or {"VowCreature": "Put a vow counter on (sacrifice the rest):", "DiscardOrLoseLife": "Discard"}.get(d)  # fmt: skip
         verb = verb or {"SacrificeOfType": "Sacrifice", "RevealedCreatureOnto": "Put onto the battlefield:"}.get(d)  # fmt: skip
+        verb = verb or {"SacrificeAnotherPermanent": "Sacrifice", "TakeMilledCard": "Put into your hand:"}.get(d)
+        verb = verb or {"ReturnSharingType": "Return to its owner's hand:", "ExileOwnPermanent": "Exile"}.get(d)
         if d == "LoseUnless":
             verb = "Sacrifice" if dec.get("sacrifice") else "Discard"
         return f"{verb} {card_name}" if verb else None
@@ -189,12 +191,18 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         "PayUpkeep": (f"Pay the upkeep {dec.get('cost', '')}", f"Don't pay (sacrifice {subject or src})"),
         "MayShuffle": ("Shuffle your library", "Don't shuffle"),
         "TaintedPact": ("Put it into your hand", "Exile the next card"),
+        "MayPayLife": (
+            f"Pay {dec.get('life', 0)} life ({src})" if src else f"Pay {dec.get('life', 0)} life",
+            "Don't pay",
+        ),
+        "MayPayManaAndLife": (f"Pay {dec.get('cost', '')} and {dec.get('life', 0)} life", "Don't pay"),
     }
     if d in ("CreaturesFromHandUpTo", "SearchToGraveyardCounter") and not yes:
         return "Done choosing" if d == "CreaturesFromHandUpTo" else "Find nothing"
     if d == "PutPicksOntoBattlefield" and not yes:
         return "Done choosing"
     d3_no = {"SacrificeAnyNumber": "Done sacrificing", "ReturnAnotherPermanentCard": "Return nothing", "BasicsTappedUpTo": "Find nothing", "SignalTheClans": "Done revealing", "BraidsSacrifice": "Don't sacrifice", "BraidsOpponent": "Don't sacrifice (lose 2 life)"}  # fmt: skip
+    d3_no["ReturnSharingType"] = "Return nothing"
     if not yes and d in d3_no:
         return d3_no[d]
     if d in ("DiscardOrLoseLife", "LoseUnless") and not yes:

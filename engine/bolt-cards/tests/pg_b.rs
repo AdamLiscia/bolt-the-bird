@@ -2682,6 +2682,7 @@ fn misdirection_pitches_and_redirects() {
     resolve_all(&mut g, &[]);
     assert_eq!(g.obj(theirs).zone, Zone::Graveyard);
     assert_eq!(g.obj(mine).zone, Zone::Battlefield);
+    // Mana Confluence is desktop lane d1's (a mana source paid with life; tests/pg_d1.rs).
 }
 
 #[test]

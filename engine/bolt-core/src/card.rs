@@ -40,6 +40,7 @@ keywords! {
     FORESTWALK = 18, "Forestwalk";
     FEAR = 19, "Fear";
     INTIMIDATE = 20, "Intimidate";
+    SHADOW = 21, "Shadow";
 }
 
 impl Keywords {
@@ -126,6 +127,12 @@ pub enum ExtraCost {
     SacrificeCreatureOrPay(ManaCost),
     /// Sacrifice an artifact or creature (Deadly Dispute).
     SacrificeArtifactOrCreature,
+    /// Sacrifice a land (Harrow); cast with `Action::CastWith` naming it. It may tap for the
+    /// spell's mana first.
+    SacrificeLand,
+    /// Sacrifice a creature of this color (WUBRG index) (Natural Order: green); cast with
+    /// `Action::CastWith` naming it.
+    SacrificeCreatureOfColor(u8),
 }
 
 /// "This spell costs {N} less to cast if ..." (CR 601.2f).
@@ -278,8 +285,26 @@ pub struct Activated {
     /// With `sacrifice_subtype`: sacrifice this many of them ("Sacrifice four Foods"): the victim, then
     /// the engine picks the rest; 0 or 1: one.
     pub sacrifice_subtype_count: u8,
+    /// "Tap an untapped legendary creature you control" in the cost (Dungeon Descent); the engine
+    /// picks which (the first such creature).
+    pub tap_untapped_legendary: bool,
+    /// {Q} in a granted ability of the creature this is attached to (Umbral Mantle: "Equipped
+    /// creature has '{3}, {Q}: ...'"): the creature must be tapped and able to use {Q} (CR
+    /// 302.6), and untaps as the cost.
+    pub untap_attached: bool,
+    /// "Return a land you control to its owner's hand" in the cost (Meloku): activated with
+    /// `Action::ActivateWith`, that land the victim. It may tap for the ability's mana first.
+    pub return_land: bool,
+    /// "Discard a land card" in the cost (Trade Routes): activated with `Action::ActivateWith`,
+    /// that card the victim.
+    pub discard_land_card: bool,
+    /// "Sacrifice a land" in the cost (Sylvan Safekeeper): activated with `Action::ActivateWith`,
+    /// that land the victim.
+    pub sacrifice_land: bool,
     /// Threshold: "Activate only if there are seven or more cards in your graveyard." (Barbarian Ring)
     pub needs_threshold: bool,
+    /// "Activate only if you attacked with N or more creatures this turn." (Minas Tirith: 2)
+    pub min_attackers_this_turn: u8,
 }
 
 /// The printed card. Shared by every copy; per-copy state lives on the game object.
@@ -844,6 +869,12 @@ pub struct CardDef {
     pub attack_tax: u8,
     /// The attack tax is {X} per creature, X the enchantments you control (Sphere of Safety).
     pub attack_tax_per_enchantment: bool,
+    /// Academy Manufactor: "If you would create a Clue, Food, or Treasure token, instead create one of
+    /// each." (the three token definitions)
+    pub clue_food_treasure: Option<[usize; 3]>,
+    /// Kira: "Creatures you control have 'Whenever this creature becomes the target of a spell or
+    /// ability for the first time each turn, counter that spell or ability.'" (its trigger number)
+    pub kira_trigger: Option<usize>,
     /// A modal trigger's modes can each be chosen once each turn ("choose one that hasn't been
     /// chosen this turn", Monument to Endurance); see `Game::modes_chosen`.
     pub modes_once_each_turn: bool,
@@ -921,6 +952,57 @@ pub struct ManaExt {
     /// Cast from your graveyard with `Action::CastAlternative`; the engine picks the exiled cards,
     /// as for delve.
     pub escape: Option<(ManaCost, u8, i32)>,
+    /// "This creature can't be blocked as long as it's attacking alone." (Yuan-Ti Malison)
+    pub unblockable_attacking_alone: bool,
+    /// "Creatures you control can't be blocked except by legendary creatures." (Midnight
+    /// Pathlighter)
+    pub your_creatures_blocked_only_by_legendary: bool,
+    /// "Spells you cast cost {N} less to cast." (The Immortal Sun)
+    pub spell_discount_all: u8,
+    /// An alternative cost of mana plus life, sacrifices or taps (Demon of Death's Gate, Sephara):
+    /// cast with `Action::CastAlternative`; the engine picks the creatures.
+    pub alt_cost_ext: Option<AltCostExt>,
+    /// "Abilities you activate that aren't mana abilities cost {N} less to activate. This effect
+    /// can't reduce the mana in that cost to less than one mana." (Zirda, the Dawnwaker: 2)
+    pub ability_discount: u8,
+    /// "The first creature spell you cast each turn costs {N} less to cast." (Shadow in the Warp)
+    pub first_creature_spell_discount: u8,
+    /// Its mana of these colors (WUBRG) deals 1 damage to you; its other mana doesn't (Murmuring
+    /// Bosk: "{T}: Add {W} or {B}. This land deals 1 damage to you.", and its Forest {G}).
+    pub pain_colors: [bool; 5],
+    /// "Whenever you tap a nonland permanent for mana, add one additional mana of any type that
+    /// permanent produced." (Kinnan, Bonder Prodigy)
+    pub nonland_add_same: bool,
+    /// "{T}, Pay N life: Add ..." (Mana Confluence: 1): its mana costs this much life, and it
+    /// can't be tapped for mana with less life than that.
+    pub mana_life_cost: i32,
+    /// "If you control an Urza's Power-Plant and an Urza's Tower, add {C}{C} instead." (the Urza
+    /// lands): it makes this much mana while you control all three of Urza's Mine, Power-Plant
+    /// and Tower.
+    pub tron_amount: u8,
+}
+
+/// "You may pay [mana], [life] and sacrifice or tap [creatures] rather than pay this spell's mana
+/// cost." (see [`ManaExt::alt_cost_ext`])
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct AltCostExt {
+    pub mana: ManaCost,
+    pub life: i32,
+    /// Sacrifice this many creatures you control (of this WUBRG color, if any): tokens first, then
+    /// the lowest mana value.
+    pub sacrifice: u8,
+    pub sacrifice_color: Option<u8>,
+    /// Tap this many untapped creatures you control with these keywords (Sephara: four with
+    /// flying).
+    pub tap: u8,
+    pub tap_keywords: Keywords,
+    /// Return this many permanents you control with `return_subtype` to their owner's hand (Gush:
+    /// two Islands): tapped ones first, the engine's choice.
+    pub return_lands: u8,
+    pub return_subtype: Option<&'static str>,
+    /// Only while you haven't cast a spell this game (Once Upon a Time: "If this spell is the first
+    /// spell you've cast this game, you may cast it without paying its mana cost.").
+    pub first_spell_this_game: bool,
 }
 
 /// Which events don't cause abilities to trigger (see [`CardDef::suppresses_triggers`]).
@@ -1215,6 +1297,8 @@ impl CardDef {
             swamps_are_creatures: false,
             attack_tax: 0,
             attack_tax_per_enchantment: false,
+            clue_food_treasure: None,
+            kira_trigger: None,
             modes_once_each_turn: false,
             unspent_mana_becomes_colorless: false,
             cast_only_during_your_end_step: false,
@@ -1467,6 +1551,8 @@ impl CardDef {
             swamps_are_creatures: false,
             attack_tax: 0,
             attack_tax_per_enchantment: false,
+            clue_food_treasure: None,
+            kira_trigger: None,
             modes_once_each_turn: false,
             unspent_mana_becomes_colorless: false,
             cast_only_during_your_end_step: false,
@@ -1719,6 +1805,8 @@ impl CardDef {
             swamps_are_creatures: false,
             attack_tax: 0,
             attack_tax_per_enchantment: false,
+            clue_food_treasure: None,
+            kira_trigger: None,
             modes_once_each_turn: false,
             unspent_mana_becomes_colorless: false,
             cast_only_during_your_end_step: false,

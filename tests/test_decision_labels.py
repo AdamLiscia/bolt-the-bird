@@ -81,6 +81,15 @@ def test_lane_d3_batch_5_decisions_read_as_their_moves():
     assert label({"kind": "LoseUnless", "life": 2, "sacrifice": True}, "No", 0) == "Don't sacrifice (lose 2 life)"
     assert pick({"kind": "SacrificeOfType", "ty": 0}, "Sol Ring") == "Sacrifice Sol Ring"
     assert pick({"kind": "RevealedCreatureOnto"}, "Serra Angel") == "Put onto the battlefield: Serra Angel"
+    assert pick({"kind": "SacrificeAnotherPermanent", "keep": 4}, "Sol Ring") == "Sacrifice Sol Ring"
+    assert label({"kind": "MayPayLife", "life": 2}, "Yes", 0) == "Pay 2 life"
+    assert label({"kind": "MayPayLife", "life": 2}, "No", 0) == "Don't pay"
+    assert label({"kind": "MayPayManaAndLife", "cost": "{1}", "life": 3}, "Yes", 0) == "Pay {1} and 3 life"
+    assert label({"kind": "MayPayManaAndLife", "cost": "{1}", "life": 3}, "No", 0) == "Don't pay"
+    assert pick({"kind": "TakeMilledCard", "cards": []}, "Opt") == "Put into your hand: Opt"
+    assert pick({"kind": "ReturnSharingType", "with": 3}, "Sol Ring") == "Return to its owner's hand: Sol Ring"
+    assert label({"kind": "ReturnSharingType", "with": 3}, "No", 0) == "Return nothing"
+    assert pick({"kind": "ExileOwnPermanent", "left": 1}, "Sol Ring") == "Exile Sol Ring"
 
 
 def test_venturing_names_the_dungeon_or_room():

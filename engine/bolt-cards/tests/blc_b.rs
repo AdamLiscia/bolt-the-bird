@@ -2403,12 +2403,10 @@ fn esikas_chariot_makes_cats_crews_and_copies_a_token() {
     let mut g = table();
     let chariot = hand(&mut g, 0, "Esika's Chariot");
     play(&mut g, chariot, false, &[], &[]);
-    let cats: Vec<ObjId> = g
-        .permanents(0)
-        .filter(|&x| g.def_of(x).name == "Cat")
-        .collect();
+    let cats: Vec<ObjId> = g.permanents(0).filter(|&x| g.def_of(x).name == "Cat").collect();
     assert_eq!(cats.len(), 2);
     assert!(!g.types_of(chariot).creature);
+    g.objects[chariot.0 as usize].since_turn = 0; // as if it had been here since the turn began
     let ghalta = put(&mut g, 0, "Ghalta, Primal Hunger");
     act(&mut g, Action::ActivateWith(chariot, 0, ghalta));
     resolve_all(&mut g, &[]);
@@ -2420,9 +2418,6 @@ fn esikas_chariot_makes_cats_crews_and_copies_a_token() {
     act(&mut g, Action::FinishAttacks);
     act(&mut g, Action::Target(Target::Object(cats[0])));
     resolve_all(&mut g, &[]);
-    let n = g
-        .permanents(0)
-        .filter(|&x| g.def_of(x).name == "Cat")
-        .count();
+    let n = g.permanents(0).filter(|&x| g.def_of(x).name == "Cat").count();
     assert_eq!(n, 3);
 }

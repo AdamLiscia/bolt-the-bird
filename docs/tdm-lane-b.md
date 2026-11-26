@@ -728,3 +728,5 @@ the next end step (Glimpse the Impossible, with d1's Eldrazi Spawn), `Activated:
 More merger pieces: `CardDef::unspent_mana_becomes_colorless` in the pool emptying (Kruphix,
 Horizon Stone; Omnath's green stays green) and `cast_only_during_your_end_step` (Necrologia, with
 d1's pay_x_life). Mana Confluence dropped: d1 has it.
+`Activated::min_attackers_this_turn` (Minas Tirith's draw: 2; only the active player has attacked),
+tested on a test definition since d1 scripts the card.
