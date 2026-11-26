@@ -581,3 +581,188 @@ fn rolling_a_die_creates_that_many_tokens() {
     activate(&mut g, x, &[]);
     assert!((1..=20).contains(&tokens(&g, 0, "Faerie")));
 }
+
+// ---- The Ring tempts you (CR 701.54) ----
+
+fn ring_game() -> Game {
+    game_with(vec![], vec![sub(SubsystemEffect::RingTempts)], |_| {})
+}
+
+/// Passes priority (taking the first legal answer to anything else) until `done`.
+fn advance(g: &mut Game, done: impl Fn(&Game) -> bool) {
+    while !done(g) {
+        let a = match g.pending {
+            Pending::Priority(_) => Action::PassPriority,
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => g.legal_actions()[0],
+        };
+        act(g, a);
+    }
+}
+
+fn ring_rows(g: &Game, n: u8) -> usize {
+    let kind = StackKind::Room {
+        dungeon: Dungeon::TheRing,
+        room: n,
+    };
+    g.triggered
+        .iter()
+        .chain(&g.items)
+        .filter(|t| t.kind == kind)
+        .count()
+}
+
+#[test]
+fn the_ring_tempting_you_chooses_your_only_creature_and_gains_up_to_four_abilities() {
+    let mut g = ring_game();
+    let x = g.add_card(0, cid(CARD), Zone::Battlefield);
+    assert_eq!((g.ring_level(0), g.ring_bearer(0)), (0, None));
+    activate(&mut g, x, &[]);
+    assert_eq!((g.ring_level(0), g.ring_bearer(0)), (1, Some(x)));
+    assert!(g.is_ring_bearer(x));
+    for _ in 0..4 {
+        activate(&mut g, x, &[]);
+    }
+    assert_eq!(g.ring_level(0), 4, "four abilities at most");
+    assert_eq!(g.ring_tempted[0], 5, "but it tempted you five times");
+    assert_eq!(g.ring_level(1), 0, "the opponent's Ring is their own");
+}
+
+#[test]
+fn with_two_creatures_you_choose_the_ring_bearer_and_it_stops_being_one_when_it_leaves() {
+    let mut g = ring_game();
+    let x = g.add_card(0, cid(CARD), Zone::Battlefield);
+    let y = g.add_card(0, cid(CARD), Zone::Battlefield);
+    act(&mut g, Action::Activate(x, 0));
+    advance(&mut g, |g| matches!(g.pending, Pending::Decide(_)));
+    let options = g.legal_actions();
+    assert!(options.contains(&Action::Pick(x)) && options.contains(&Action::Pick(y)));
+    act(&mut g, Action::Pick(y));
+    assert_eq!(g.ring_bearer(0), Some(y));
+    assert!(!g.is_ring_bearer(x));
+    g.objects[y.0 as usize].zcc += 1; // it left and came back: a new object
+    assert_eq!(g.ring_bearer(0), None);
+}
+
+#[test]
+fn the_ring_tempts_you_with_no_creatures_and_still_gains_its_ability() {
+    let mut g = ring_game();
+    g.ring_tempts(1);
+    assert_eq!((g.ring_level(1), g.ring_bearer(1)), (1, None));
+}
+
+#[test]
+fn the_rings_first_ability_makes_the_bearer_legendary_and_evasive_through_its_hooks() {
+    let mut g = ring_game();
+    let x = g.add_card(0, cid(CARD), Zone::Battlefield);
+    let big = g.add_card(1, cid("Ancient Gold Dragon"), Zone::Battlefield);
+    let small = g.add_card(1, cid(CARD), Zone::Battlefield);
+    assert!(!g.ring_makes_legendary(x));
+    activate(&mut g, x, &[]);
+    assert!(g.ring_makes_legendary(x));
+    assert!(!g.ring_makes_legendary(small), "not their Ring-bearer");
+    assert!(g.ring_evasion_forbids_block(big, x), "greater power");
+    assert!(!g.ring_evasion_forbids_block(small, x), "equal power can block");
+}
+
+#[test]
+fn the_rings_second_ability_loots_when_the_bearer_attacks() {
+    let mut g = ring_game();
+    let x = g.add_card(0, cid(CARD), Zone::Battlefield);
+    activate(&mut g, x, &[]);
+    advance(&mut g, |g| g.pending == Pending::DeclareAttackers(0));
+    act(&mut g, Action::Attack(x));
+    act(&mut g, Action::FinishAttacks);
+    assert_eq!(ring_rows(&g, 0), 0, "level 1: no loot");
+    advance(&mut g, |g| g.step == Step::Main2);
+    g.ring_level[0] = 2;
+    advance(&mut g, |g| {
+        g.pending == Pending::DeclareAttackers(0) && g.turn > 3
+    });
+    let (hand, graveyard) = (g.players[0].hand.len(), g.players[0].graveyard.len());
+    act(&mut g, Action::Attack(x));
+    act(&mut g, Action::FinishAttacks);
+    assert_eq!(ring_rows(&g, 0), 1, "level 2: loot");
+    advance(&mut g, |g| g.step == Step::Main2);
+    assert_eq!(g.players[0].hand.len(), hand, "drew one, discarded one");
+    assert_eq!(g.players[0].graveyard.len(), graveyard + 1);
+}
+
+#[test]
+fn the_rings_third_ability_sacrifices_a_blocker_at_end_of_combat() {
+    let mut g = ring_game();
+    let x = g.add_card(0, cid(CARD), Zone::Battlefield);
+    let dragon = g.add_card(1, cid("Ancient Gold Dragon"), Zone::Battlefield);
+    activate(&mut g, x, &[]);
+    g.ring_level[0] = 3;
+    advance(&mut g, |g| g.pending == Pending::DeclareAttackers(0));
+    act(&mut g, Action::Attack(x));
+    act(&mut g, Action::FinishAttacks);
+    advance(&mut g, |g| matches!(g.pending, Pending::DeclareBlockers(_)));
+    act(
+        &mut g,
+        Action::Block {
+            blocker: dragon,
+            attacker: x,
+        },
+    );
+    act(&mut g, Action::FinishBlocks);
+    assert_eq!(ring_rows(&g, 1), 1, "once for the one blocker");
+    advance(&mut g, |g| g.step == Step::Main2);
+    assert_eq!(g.obj(dragon).zone, Zone::Graveyard, "sacrificed at end of combat");
+}
+
+#[test]
+fn the_rings_fourth_ability_drains_each_opponent_through_its_hook() {
+    let mut g = ring_game();
+    let x = g.add_card(0, cid(CARD), Zone::Battlefield);
+    let y = g.add_card(0, cid(CARD), Zone::Battlefield);
+    activate(&mut g, x, &[Action::Pick(x)]);
+    g.ring_level[0] = 3;
+    g.ring_bearer_dealt_combat_damage(x);
+    assert!(g.triggered.is_empty(), "level 3");
+    g.ring_level[0] = 4;
+    g.ring_bearer_dealt_combat_damage(y);
+    assert!(g.triggered.is_empty(), "not the Ring-bearer");
+    g.ring_bearer_dealt_combat_damage(x);
+    assert_eq!(g.triggered.len(), 1);
+    let life = g.players[1].life;
+    act(&mut g, Action::PassPriority);
+    settle(&mut g, &[]);
+    assert_eq!(g.players[1].life, life - 3);
+}
+
+// ---- Split cards on the stack (CR 709.3b) ----
+
+#[test]
+fn a_split_spell_on_the_stack_has_only_its_cast_halfs_mana_value() {
+    let mut g = game_with(vec![], vec![], |defs| {
+        // "Whenever you cast a noncreature spell with mana value 5 or greater, gain 1 life."
+        defs[cid(CARD)].triggers.push(Trigger {
+            when: When::YouCastNoncreatureMvAtLeast(5),
+            ability: Ability::new(vec![], vec![Effect::GainLife { who: Who::You, n: 1 }]),
+        });
+    });
+    g.add_card(0, cid(CARD), Zone::Battlefield);
+    let boom = g.add_card(0, cid("Boom // Bust"), Zone::Hand);
+    assert_eq!(
+        g.stack_mana_cost(boom).mana_value(),
+        8,
+        "both halves off the stack"
+    );
+    let life = g.players[0].life;
+    let mine = g.add_card(0, cid("Plains"), Zone::Battlefield);
+    let theirs = g.add_card(1, cid("Plains"), Zone::Battlefield);
+    act(&mut g, Action::Cast(boom)); // Boom: {1}{R}
+    act(&mut g, Action::Target(common::obj(mine)));
+    act(&mut g, Action::Target(common::obj(theirs)));
+    assert_eq!(g.obj(boom).zone, Zone::Stack);
+    assert_eq!(g.stack_mana_cost(boom).mana_value(), 2);
+    settle(&mut g, &[]);
+    assert_eq!(g.players[0].life, life, "Boom has mana value 2, not 8");
+    let bust = g.add_card(0, cid("Boom // Bust"), Zone::Hand);
+    act(&mut g, Action::CastOmen(bust)); // Bust: {5}{R}
+    assert_eq!(g.stack_mana_cost(bust).mana_value(), 6);
+    settle(&mut g, &[]);
+    assert_eq!(g.players[0].life, life + 1, "Bust has mana value 6");
+}

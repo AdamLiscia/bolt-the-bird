@@ -34,13 +34,34 @@ core in `engine/bolt-core/src/game/d4.rs` (a child module of game.rs; tests `tes
   Dellian Fel; plus Radiant Solar and Nadaar; on d1's pieces Yuan-Ti Malison, Midnight
   Pathlighter, Dungeon Descent. Coin flips: `Game::flip_coin`, `FlipCoinLoseDamageYou` (Mana
   Crypt); Ancient Copper Dragon on `RollDieCreateTokens`.
+- **batch 5** — the Ring (CR 701.54): `SubsystemEffect::RingTempts`, `Game::ring_tempts`
+  (level up to 4, then the bearer: the only creature, or `Decision::ChooseRingBearer`, Pick a
+  creature you control, labeled "Choose as your Ring-bearer: <name>"), `Game` fields
+  `ring_level`/`ring_bearer` (creature, zcc)/`ring_tempted`/`ring_blocks_seen`, and
+  `ring_bearer(p)`/`is_ring_bearer`/`ring_level`. The Ring's triggered abilities are rows of
+  `rooms(Dungeon::TheRing)` (not a dungeon; `ring::LOOT`, `SACRIFICE_BLOCKER`, `DRAIN`) on
+  `StackKind::Room`, so no new stack kind or `ability_of` arm. Level 2 (loot when the bearer
+  attacks) and level 3 (a blocker of the bearer is sacrificed at end of combat,
+  `RingSacrificeBlocker`) fire from `fire_subsystems` on `YouAttack` / `OpponentCreatureBlocks`;
+  level 1 and 4 are hooks for other lanes (`ring_makes_legendary` d3, `ring_evasion_forbids_block`
+  d1, `ring_bearer_dealt_combat_damage` d2), and `choose_ring_bearer`/`ring_tempts` mark where d2
+  emits "you choose a Ring-bearer" / "the Ring tempts you". Split mana value on the stack:
+  `Game::stack_mana_cost(id)` (the cast half's cost on the stack, else `cost`) and
+  `cast_mana_cost(item)`, which `finish_cast` now reads for Pollywog Prodigy and
+  `YouCastNoncreatureMvAtLeast`/`YouCastColorlessMvAtLeast` (two lines changed in the split-cast
+  path). Card: Fiery Inscription.
 
 ## Known rules gaps
 
-- **Split card mana value on the stack (CR 709.3b):** a split spell's mana value should be only
-  the cast half's, but checks that read `def.cost` on the stack (Pollywog Prodigy, spell mana-value
-  filters) see both halves' sum. Fix later with a stack-side branch guarded on `split_card`. Also
-  flashback on a split card pays the sum, and the AI's keep-mana estimate counts the sum.
+- **Split card mana value on the stack (CR 709.3b):** the cast triggers in `finish_cast` read the
+  cast half's; `target_ok`'s spell mana-value filter (d3) and `LoseLifeCastSpellManaValue`
+  (merger) still read `def.cost` (handed back: use `stack_mana_cost`). Flashback on a split card
+  pays the sum, and the AI's keep-mana estimate counts the sum. `colors_of` on a split spell during
+  `finish_cast` (before its entry is on the stack) may still see both halves' colors.
+- The Ring: its abilities' stack source is the Ring-bearer (there's no emblem object). Its
+  level-3 trigger fires once per blocker per turn (`ring_blocks_seen`), so a second combat in the
+  same turn with the same blocker doesn't trigger again. Level 1 and 4 do nothing until the hooks
+  are called.
 - Venturing while still on a bottommost room completes that dungeon first, then starts a new one.
 - A room ability's stack source is the card that made you venture (there's no dungeon object).
 - A bottommost room ability that fizzles (illegal targets) doesn't complete the dungeon.
@@ -54,7 +75,8 @@ core in `engine/bolt-core/src/game/d4.rs` (a child module of game.rs; tests `tes
 
 ## Next
 
-- **Urza's Saga** (handed back): needs the merger's `activations()` to skip
+- All of the following are in `handoff/lanes/needs_core.json` ("d4 handback").
+- **Urza's Saga** (handed back; still blocked at tarkir 29be832): needs the merger's `activations()` to skip
   `self.lacks_chapter_activated(id, n)` and d1's mana sources (`single_sources`/`tap_for_mana`)
   to skip `self.lacks_chapter_mana(id)`. Then script it: `mana` {C} with `chapter_mana: Some(1)`,
   `activated[0]` "{2}, {T}: create `t.saga_construct`" with `chapter_activated: [(2, 0)]`,
@@ -64,10 +86,18 @@ core in `engine/bolt-core/src/game/d4.rs` (a child module of game.rs; tests `tes
   or less from your graveyard to the battlefield", untargeted), Sefris (d2: a "you complete a
   dungeon" event from `complete_dungeon`; its other trigger,
   `When::CreatureCardsToYourGraveyardOnceEachTurn`, is in).
-- The Ring (Call of the Ring): the tempting and Ring-bearer state would be d4's, but the Ring's
-  four abilities need d1 (blocked by greater power), d3 (legendary), d2 (bearer attacks / is
-  blocked / deals damage; "you choose a Ring-bearer"); not started.
+- Call of the Ring: needs d2's "whenever you choose a creature as your Ring-bearer" event (from
+  `choose_ring_bearer`); its upkeep tempting is ready. The Ring's level 1 (d3, d1) and level 4
+  (d2) hooks. There and Back Again (Saga with the Ring) needs "can't block for as long as you
+  control this Saga" and Smaug's token.
+- Classes (Wizard Class, Sorcerer Class, Warlock Class, the Talents): levels need an activation
+  gate in the merger's `activations()` (like Urza's Saga's), then d4 adds level state.
+- Aftermath (Dusk // Dawn, Commit // Memory): casting the right half only from the graveyard is
+  the merger's legal-action listing.
+- Backgrounds granting triggers: Far Traveler (d3: a tapped-creature filter), Agent of the Iron
+  Throne (d2: "an artifact or creature you control is put into a graveyard from the battlefield",
+  once for an artifact creature).
 - Dice and coins still waiting: Invert Polarity (gain control of a spell: merger/Mac C),
   Underdark Rift (into the library beneath the top X: d3/Mac C), Ancient Brass Dragon (reflexive
   trigger, total mana value X from graveyards: d3).
-- Split card mana value on the stack (above).
+- Split card mana value on the stack: the d3 and merger reads (above).

@@ -2950,6 +2950,10 @@ pub enum Dungeon {
     Tomb,
     /// Undercity: only by venturing into Undercity (the initiative, CR 725.2).
     Undercity,
+    /// Not a dungeon: the Ring emblem's triggered abilities (CR 701.54c), carried as
+    /// `StackKind::Room` rows of `rooms(TheRing)` so they need no stack kind of their own. Nothing
+    /// ventures into it.
+    TheRing,
 }
 
 /// The d4 subsystems' effects ([`Effect::Subsystem`]).
@@ -2992,4 +2996,10 @@ pub enum SubsystemEffect {
     OpponentLosesDifferenceFrom(i32),
     /// "Flip a coin. If you lose the flip, this [source] deals `n` damage to you." (Mana Crypt)
     FlipCoinLoseDamageYou(i32),
+    /// "The Ring tempts you" (CR 701.54a): choose your Ring-bearer, and your Ring emblem gains its
+    /// next ability.
+    RingTempts,
+    /// The Ring's third ability: the blocker in the item's `extra` is sacrificed by its controller
+    /// at end of combat, if it's still blocking.
+    RingSacrificeBlocker,
 }

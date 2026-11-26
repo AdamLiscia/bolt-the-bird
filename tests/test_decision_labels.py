@@ -104,6 +104,12 @@ def test_white_plume_adventurer_untaps_a_creature_by_name():
     assert sv._decision_label(dec, "Pick", 0, "Llanowar Elves") == "Untap Llanowar Elves"
 
 
+def test_the_ring_tempting_you_names_the_ring_bearer():
+    dec = {"kind": "ChooseRingBearer"}
+    label = sv._decision_label(dec, "Pick", 0, "Llanowar Elves")
+    assert label == "Choose as your Ring-bearer: Llanowar Elves"
+
+
 def test_a_split_or_omen_second_half_is_cast_by_its_name():
     assert sv._label("CastOmen", ["Fire // Ice"], (), 0, (0, 0, 0)) == "Cast Ice"
     assert sv._label("CastOmen", ["Sol Ring"], (), 0, (0, 0, 0)) == "Cast Sol Ring's Omen"

@@ -1,6 +1,10 @@
 //! The d4 subsystems' own state and functions: dungeons, venture and the initiative (CR 309,
-//! 701.49, 725), completed dungeons, emblems with triggered abilities (CR 114), and dice (CR 706).
-//! The hooks other lanes' code calls are [`Game::fire_subsystems`] (from `fire()`).
+//! 701.49, 725), completed dungeons, emblems with triggered abilities (CR 114), dice (CR 706), the
+//! Ring (CR 701.54), Saga chapter grants, and split cards' halves on the stack (CR 709.3).
+//! The hooks other lanes' code calls are [`Game::fire_subsystems`] (from `fire()`), and, not called
+//! yet, [`Game::ring_makes_legendary`] (d3), [`Game::ring_evasion_forbids_block`] (d1),
+//! [`Game::ring_bearer_dealt_combat_damage`] (d2), [`Game::lacks_chapter_activated`] (merger) and
+//! [`Game::lacks_chapter_mana`] (d1).
 
 use super::*;
 use crate::effect::{Dungeon, SubsystemEffect};
@@ -55,6 +59,9 @@ fn draw(n: u8) -> Effect {
 /// The four dungeon cards' rooms, top to bottom (Adventures in the Forgotten Realms, and
 /// Undercity from Commander Legends: Battle for Baldur's Gate).
 pub fn rooms(d: Dungeon) -> &'static [Room] {
+    if d == Dungeon::TheRing {
+        return ring_abilities();
+    }
     static ROOMS: std::sync::OnceLock<[Vec<Room>; 4]> = std::sync::OnceLock::new();
     let all = ROOMS.get_or_init(|| {
         let you = |n| Effect::GainLife { who: Who::You, n };
@@ -204,6 +211,49 @@ pub fn rooms(d: Dungeon) -> &'static [Room] {
     &all[d as usize]
 }
 
+/// The Ring emblem's triggered abilities (CR 701.54c), as `StackKind::Room` rows of
+/// `Dungeon::TheRing`; its first ability is a static one (`Game::ring_makes_legendary`,
+/// `Game::ring_evasion_forbids_block`).
+pub mod ring {
+    /// "Whenever your Ring-bearer attacks, draw a card, then discard a card." (level 2)
+    pub const LOOT: u8 = 0;
+    /// "Whenever your Ring-bearer becomes blocked by a creature, that creature's controller
+    /// sacrifices it at end of combat." (level 3)
+    pub const SACRIFICE_BLOCKER: u8 = 1;
+    /// "Whenever your Ring-bearer deals combat damage to a player, each opponent loses 3 life."
+    /// (level 4)
+    pub const DRAIN: u8 = 2;
+}
+
+fn ring_abilities() -> &'static [Room] {
+    static RING: std::sync::OnceLock<Vec<Room>> = std::sync::OnceLock::new();
+    RING.get_or_init(|| {
+        let row = |name, effects| Room {
+            name,
+            ability: Ability::new(vec![], effects),
+            next: &[],
+            ready: true,
+        };
+        vec![
+            row(
+                "The Ring: loot",
+                vec![draw(1), Effect::Discard { who: Who::You, n: 1 }],
+            ),
+            row(
+                "The Ring: sacrifice the blocker",
+                vec![Effect::Subsystem(SubsystemEffect::RingSacrificeBlocker)],
+            ),
+            row(
+                "The Ring: each opponent loses 3 life",
+                vec![Effect::LoseLife {
+                    who: Who::EachOpponent,
+                    n: 3,
+                }],
+            ),
+        ]
+    })
+}
+
 /// The room ability of the initiative (CR 725.2): "that player ventures into Undercity."
 fn initiative_ability() -> &'static Ability {
     static A: std::sync::OnceLock<Ability> = std::sync::OnceLock::new();
@@ -225,18 +275,7 @@ impl Game {
     /// A split card on the stack: the colors of the half being cast, from its mana cost (CR 709.3,
     /// 105.2), or None if its stack entry isn't found.
     pub(super) fn split_half_colors(&self, id: ObjId) -> Option<[bool; 5]> {
-        let item = self
-            .items
-            .iter()
-            .chain(self.resolving.as_ref().map(|r| &r.item))
-            .chain(self.choosing.as_ref().map(|c| &c.item))
-            .find(|i| i.source == id && matches!(i.kind, StackKind::Spell | StackKind::SpellCopy))?;
-        let def = self.def_of(id);
-        let cost = if item.mode == Some(OMEN_MODE) {
-            def.omen.as_ref()?.cost
-        } else {
-            def.subsystems.left_cost?
-        };
+        let cost = self.split_half_cost(id)?;
         let mut c = [false; 5];
         for (i, x) in c.iter_mut().enumerate() {
             *x = cost.colored[i] > 0 || cost.twobrid[i] > 0;
@@ -373,6 +412,7 @@ impl Game {
                 }
             }
         }
+        self.fire_ring(p, when);
         match (when, self.initiative) {
             (When::Upkeep { your_turn_only: true }, Some((q, source))) if q == p => {
                 self.triggered.push(StackItem {
@@ -419,6 +459,7 @@ impl Game {
                 self.enter_room(p, source, dungeon, next[(m as usize).min(next.len() - 1)]);
             }
             (Decision::UntapOwnCreature, Action::Pick(c)) => self.untap_by_effect(c),
+            (Decision::ChooseRingBearer, Action::Pick(c)) => self.choose_ring_bearer(p, c),
             (d, a) => unreachable!("legal action {a:?} unhandled for {d:?}"),
         }
     }
@@ -524,6 +565,180 @@ impl Game {
                     self.chapter_grants.push((id, zcc, n));
                 }
             }
+            SubsystemEffect::RingTempts => self.ring_tempts(p),
+            SubsystemEffect::RingSacrificeBlocker => {
+                if let Some(b) = item.extra {
+                    let blocking = self.combat.as_ref().is_some_and(|c| c.is_blocking(b));
+                    if blocking && self.obj(b).zone == Zone::Battlefield {
+                        self.obj_mut(b).sacrifice_end_combat = true;
+                    }
+                }
+            }
+        }
+    }
+
+    /// A split card's mana cost now (CR 709.3b, 709.4): on the stack, only the half being cast;
+    /// anywhere else (and for every other card), its `cost`. Mana value checks on spells read this.
+    pub fn stack_mana_cost(&self, id: ObjId) -> ManaCost {
+        let def = self.def_of(id);
+        if def.subsystems.split_card && self.obj(id).zone == Zone::Stack {
+            if let Some(half) = self.split_half_cost(id) {
+                return half;
+            }
+        }
+        def.cost
+    }
+
+    /// `stack_mana_cost` for a spell being cast as `item` (its stack entry may not be on the
+    /// stack yet): a split card's cast half, by `item.mode` (CR 709.3b).
+    pub(super) fn cast_mana_cost(&self, item: &StackItem) -> ManaCost {
+        let def = self.def_of(item.source);
+        if def.subsystems.split_card {
+            if let Some(half) = self.split_half_cost_by_mode(item.source, item.mode) {
+                return half;
+            }
+        }
+        def.cost
+    }
+
+    /// A split card on the stack: the mana cost of the half being cast, or None if its stack
+    /// entry isn't found.
+    fn split_half_cost(&self, id: ObjId) -> Option<ManaCost> {
+        let item = self
+            .items
+            .iter()
+            .chain(self.resolving.as_ref().map(|r| &r.item))
+            .chain(self.choosing.as_ref().map(|c| &c.item))
+            .find(|i| i.source == id && matches!(i.kind, StackKind::Spell | StackKind::SpellCopy))?;
+        self.split_half_cost_by_mode(id, item.mode)
+    }
+
+    /// A split card's half for a spell cast with `mode`: the right half's (an Omen-mode cast) or
+    /// the left half's.
+    fn split_half_cost_by_mode(&self, id: ObjId, mode: Option<u8>) -> Option<ManaCost> {
+        let def = self.def_of(id);
+        if mode == Some(OMEN_MODE) {
+            Some(def.omen.as_ref()?.cost)
+        } else {
+            def.subsystems.left_cost
+        }
+    }
+
+    // ---- The Ring (CR 701.54) ----
+
+    /// `p`'s Ring-bearer: the creature last chosen, while it's still that object on the
+    /// battlefield under `p`'s control (CR 701.54a, 701.54c).
+    pub fn ring_bearer(&self, p: PlayerId) -> Option<ObjId> {
+        let (c, zcc) = self.ring_bearer[p]?;
+        let o = self.obj(c);
+        (o.zone == Zone::Battlefield && o.zcc == zcc && o.controller == p && self.types_of(c).creature)
+            .then_some(c)
+    }
+
+    /// Whether `id` is its controller's Ring-bearer.
+    pub fn is_ring_bearer(&self, id: ObjId) -> bool {
+        self.ring_bearer(self.obj(id).controller) == Some(id)
+    }
+
+    /// How many of the Ring's abilities `p`'s emblem has (0 if the Ring has never tempted them).
+    pub fn ring_level(&self, p: PlayerId) -> u8 {
+        self.ring_level[p]
+    }
+
+    /// Hook for the type pass (d3's `types_of`): the Ring's first ability, "Your Ring-bearer is
+    /// legendary". Not called yet.
+    pub fn ring_makes_legendary(&self, id: ObjId) -> bool {
+        self.is_ring_bearer(id) && self.ring_level(self.obj(id).controller) >= 1
+    }
+
+    /// Hook for block legality (d1's `can_block`): the Ring's first ability, "[your Ring-bearer]
+    /// can't be blocked by creatures with greater power". Not called yet.
+    pub fn ring_evasion_forbids_block(&self, blocker: ObjId, attacker: ObjId) -> bool {
+        self.ring_makes_legendary(attacker) && self.power(blocker) > self.power(attacker)
+    }
+
+    /// `Decision::ChooseRingBearer`'s answers: the creatures `p` controls.
+    pub(super) fn ring_bearer_options(&self, p: PlayerId) -> Vec<Action> {
+        self.creatures(p).map(Action::Pick).collect()
+    }
+
+    /// The Ring tempts `p` (CR 701.54a): they choose a creature they control as their Ring-bearer
+    /// (asked only if there's more than one), and their emblem gains its next ability. Tempting
+    /// with no creature still gains the ability.
+    pub fn ring_tempts(&mut self, p: PlayerId) {
+        self.ring_tempted[p] = self.ring_tempted[p].saturating_add(1);
+        self.ring_level[p] = (self.ring_level[p] + 1).min(4);
+        match self.ring_bearer_options(p)[..] {
+            [] => {}
+            [Action::Pick(c)] => self.choose_ring_bearer(p, c),
+            _ => self.ask(p, Decision::ChooseRingBearer),
+        }
+        // Hook for d2: "Whenever the Ring tempts you" triggers fire here.
+    }
+
+    /// `c` becomes `p`'s Ring-bearer (another creature stops being it; CR 701.54a).
+    fn choose_ring_bearer(&mut self, p: PlayerId, c: ObjId) {
+        self.ring_bearer[p] = Some((c, self.obj(c).zcc));
+        // Hook for d2: "Whenever you choose a creature as your Ring-bearer" (Call of the Ring)
+        // triggers fire here, with `c` as the chosen creature.
+    }
+
+    /// Hook for combat damage (d2): the Ring's fourth ability, "Whenever your Ring-bearer deals
+    /// combat damage to a player, each opponent loses 3 life", for attacker `a` that just dealt
+    /// combat damage to a player. Not called yet.
+    pub fn ring_bearer_dealt_combat_damage(&mut self, a: ObjId) {
+        let p = self.obj(a).controller;
+        if self.ring_bearer(p) == Some(a) && self.ring_level(p) >= 4 {
+            self.push_ring_ability(p, a, ring::DRAIN, None);
+        }
+    }
+
+    fn push_ring_ability(&mut self, p: PlayerId, bearer: ObjId, n: u8, extra: Option<ObjId>) {
+        self.triggered.push(StackItem {
+            kind: StackKind::Room {
+                dungeon: Dungeon::TheRing,
+                room: n,
+            },
+            extra,
+            ..Game::casting(bearer, p)
+        });
+    }
+
+    /// The Ring's triggered abilities on events `fire()` already has: the bearer attacking (on
+    /// `YouAttack`, once attackers are declared) and becoming blocked (on `OpponentCreatureBlocks`,
+    /// once blockers are; once per blocker).
+    fn fire_ring(&mut self, p: PlayerId, when: When) {
+        let Some(bearer) = self.ring_bearer(p) else {
+            return;
+        };
+        let level = self.ring_level(p);
+        match when {
+            When::YouAttack if level >= 2 => {
+                if self
+                    .combat
+                    .as_ref()
+                    .is_some_and(|c| c.attackers.contains(&bearer))
+                {
+                    self.push_ring_ability(p, bearer, ring::LOOT, None);
+                }
+            }
+            When::OpponentCreatureBlocks if level >= 3 => {
+                let blockers: Vec<ObjId> = self
+                    .combat
+                    .as_ref()
+                    .map(|c| c.blockers_of(bearer).collect())
+                    .unwrap_or_default();
+                let turn = self.turn;
+                self.ring_blocks_seen.retain(|&(_, _, t)| t == turn);
+                for b in blockers {
+                    let zcc = self.obj(b).zcc;
+                    if !self.ring_blocks_seen.contains(&(b, zcc, turn)) {
+                        self.ring_blocks_seen.push((b, zcc, turn));
+                        self.push_ring_ability(p, bearer, ring::SACRIFICE_BLOCKER, Some(b));
+                    }
+                }
+            }
+            _ => {}
         }
     }
 
