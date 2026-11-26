@@ -175,6 +175,9 @@ the main phase, or put a spare card on top.
 
 ## Before every commit
 
+The slow game-playing tests (tests/play.rs) are `#[ignore]`d, so a lane's `cargo test` skips them; the merger runs
+`cargo test -- --include-ignored` at every merge. Don't un-ignore them.
+
 From `engine/`, all with your own target dir and `nice -n 15 -j 4` (the desktop has 16 threads; with three
 lanes, keep it to `-j 4` each).
 

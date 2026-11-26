@@ -334,6 +334,9 @@ pub struct Activated {
     /// plotted. On a later turn its owner may cast it from exile as a sorcery without paying its
     /// mana cost (`Object::plotted`).
     pub plot: bool,
+    /// "Sacrifice N nonland permanents" in the cost (Bolas's Citadel: 10): the engine picks which
+    /// (tokens first, then the lowest mana value, the source last).
+    pub sacrifice_nonland_n: u8,
     /// Foretell's "During your turn, you may pay {2} and exile this card from your hand": an
     /// ability of the card in your hand (with `your_turn_only`); it's cast later for
     /// `ManaExt::foretell`. (A special action in the rules, CR 702.143a; here it uses the stack.)
@@ -952,6 +955,17 @@ pub struct CardDef {
     /// Aftermath (CR 702.127): the split card's right half (`omen`) is cast only from the
     /// graveyard, and exiled as it resolves; the left half isn't cast from the graveyard.
     pub aftermath: bool,
+    /// Bolas's Citadel: "You may play lands and cast spells from the top of your library. If you
+    /// cast a spell this way, pay life equal to its mana value rather than pay its mana cost."
+    pub citadel: bool,
+    /// "[This] can't attack unless you control N or more artifacts." (Gadrak: 4)
+    pub attacks_only_with_artifacts: u8,
+    /// Xorn: "If you would create one or more Treasure tokens, instead create those tokens plus an
+    /// additional Treasure token." (the Treasure definition)
+    pub treasures_plus_one: Option<usize>,
+    /// Silent Arbiter: "No more than one creature can attack each combat. No more than one creature
+    /// can block each combat."
+    pub one_attacker_one_blocker: bool,
 }
 
 /// A card's pieces from the d4 subsystems (see [`CardDef::subsystems`]).
@@ -1440,6 +1454,10 @@ impl CardDef {
             lands_you_control_have: Vec::new(),
             subtype_you_control_has: None,
             aftermath: false,
+            citadel: false,
+            attacks_only_with_artifacts: 0,
+            treasures_plus_one: None,
+            one_attacker_one_blocker: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -1703,6 +1721,10 @@ impl CardDef {
             lands_you_control_have: Vec::new(),
             subtype_you_control_has: None,
             aftermath: false,
+            citadel: false,
+            attacks_only_with_artifacts: 0,
+            treasures_plus_one: None,
+            one_attacker_one_blocker: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -1966,6 +1988,10 @@ impl CardDef {
             lands_you_control_have: Vec::new(),
             subtype_you_control_has: None,
             aftermath: false,
+            citadel: false,
+            attacks_only_with_artifacts: 0,
+            treasures_plus_one: None,
+            one_attacker_one_blocker: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
