@@ -171,22 +171,33 @@ fn ghostly_prison_doesnt_tax_attacks_on_planeswalkers_but_baird_does() {
     let mut g = game_with(&[], |g| {
         put(g, 1, "Ghostly Prison");
         walker = put(g, 1, "Garruk, Cursed Huntsman");
+        g.objects[walker.0 as usize].loyalty = 5; // put onto the battlefield without entering
         lions = put(g, 0, "Savannah Lions");
     });
     assert_eq!((g.attack_tax(1, false), g.attack_tax(1, true)), (2, 0));
-    assert!(reaches_attackers(&mut g, 0), "the planeswalker can be attacked for free");
+    assert!(
+        reaches_attackers(&mut g, 0),
+        "the planeswalker can be attacked for free"
+    );
     let legal = g.legal_actions();
     assert!(legal.contains(&Action::AttackPlaneswalker(lions, walker)));
-    assert!(!legal.contains(&Action::Attack(lions)), "can't pay {{2}} to attack the player");
+    assert!(
+        !legal.contains(&Action::Attack(lions)),
+        "can't pay {{2}} to attack the player"
+    );
     act(&mut g, Action::AttackPlaneswalker(lions, walker));
     assert_eq!(g.combat.as_ref().unwrap().at_planeswalker, vec![(lions, walker)]);
 
     // Baird: "you or planeswalkers you control".
     let mut g = game_with(&[], |g| {
         put(g, 1, "Baird, Steward of Argive");
-        put(g, 1, "Garruk, Cursed Huntsman");
+        let w = put(g, 1, "Garruk, Cursed Huntsman");
+        g.objects[w.0 as usize].loyalty = 5;
         put(g, 0, "Savannah Lions");
     });
     assert_eq!((g.attack_tax(1, false), g.attack_tax(1, true)), (1, 1));
-    assert!(!reaches_attackers(&mut g, 0), "no mana for either: no attack step");
+    assert!(
+        !reaches_attackers(&mut g, 0),
+        "no mana for either: no attack step"
+    );
 }

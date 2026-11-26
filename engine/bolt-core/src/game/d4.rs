@@ -79,7 +79,16 @@ pub fn rooms(d: Dungeon) -> &'static [Room] {
                     &[6],
                 ),
                 // "Target creature gets -4/-0 until your next turn."
-                missing("Fungi Cavern", &[6]),
+                room(
+                    "Fungi Cavern",
+                    creature(),
+                    vec![Effect::PumpUntilYourNextTurn {
+                        slot: 0,
+                        power: -4,
+                        toughness: 0,
+                    }],
+                    &[6],
+                ),
                 room("Temple of Dumathoin", vec![], vec![draw(1)], &[]),
             ],
             vec![
@@ -105,7 +114,12 @@ pub fn rooms(d: Dungeon) -> &'static [Room] {
                 room("Deep Mines", vec![], vec![scry(3)], &[8]),
                 // "Draw three cards and reveal them. You may cast one of them without paying its
                 // mana cost."
-                room("Mad Wizard's Lair", vec![], vec![Effect::DrawThreeMayCastOneFree], &[]),
+                room(
+                    "Mad Wizard's Lair",
+                    vec![],
+                    vec![Effect::DrawThreeMayCastOneFree],
+                    &[],
+                ),
             ],
             vec![
                 room(
@@ -115,11 +129,35 @@ pub fn rooms(d: Dungeon) -> &'static [Room] {
                     &[1, 2],
                 ),
                 // "Each player loses 2 life unless they discard a card."
-                missing("Veils of Fear", &[3]),
+                room(
+                    "Veils of Fear",
+                    vec![],
+                    vec![Effect::EachPlayerLosesUnless {
+                        life: 2,
+                        sacrifice: false,
+                    }],
+                    &[3],
+                ),
                 // "Discard a card and sacrifice an artifact, a creature, and a land."
-                missing("Oubliette", &[4]),
+                room(
+                    "Oubliette",
+                    vec![],
+                    vec![
+                        Effect::Discard { who: Who::You, n: 1 },
+                        Effect::SacrificeArtifactCreatureAndLand,
+                    ],
+                    &[4],
+                ),
                 // "Each player loses 2 life unless they sacrifice an artifact, a creature, or a land."
-                missing("Sandfall Cell", &[4]),
+                room(
+                    "Sandfall Cell",
+                    vec![],
+                    vec![Effect::EachPlayerLosesUnless {
+                        life: 2,
+                        sacrifice: true,
+                    }],
+                    &[4],
+                ),
                 room(
                     "Cradle of the Death God",
                     vec![],
@@ -160,7 +198,16 @@ pub fn rooms(d: Dungeon) -> &'static [Room] {
                 // "Reveal the top ten cards of your library. Put a creature card from among them onto
                 // the battlefield with three +1/+1 counters on it. It gains hexproof until your next
                 // turn. Then shuffle."
-                missing("Throne of the Dead Three", &[]),
+                room(
+                    "Throne of the Dead Three",
+                    vec![],
+                    vec![Effect::RevealTopCreatureOntoBattlefield {
+                        n: 10,
+                        counters: 3,
+                        keywords: crate::Keywords::HEXPROOF,
+                    }],
+                    &[],
+                ),
             ],
         ]
     });
@@ -216,6 +263,11 @@ impl Game {
     /// Rolls a die with `sides` sides (CR 706.1): 1 through `sides`.
     pub fn roll_die(&mut self, sides: u32) -> u32 {
         self.rng.below(sides.max(1) as usize) as u32 + 1
+    }
+
+    /// Flips a coin (CR 705): true if its flipper wins the flip (a call guessed right, 1 in 2).
+    pub fn flip_coin(&mut self) -> bool {
+        self.rng.below(2) == 0
     }
 
     /// Whether `p` has completed a dungeon this game (CR 309.7).
@@ -376,6 +428,7 @@ impl Game {
                 let next = rooms(dungeon)[from as usize].next;
                 self.enter_room(p, source, dungeon, next[(m as usize).min(next.len() - 1)]);
             }
+            (Decision::UntapOwnCreature, Action::Pick(c)) => self.untap_by_effect(c),
             (d, a) => unreachable!("legal action {a:?} unhandled for {d:?}"),
         }
     }
@@ -431,6 +484,94 @@ impl Game {
                     }
                 }
             }
+            SubsystemEffect::DrawIfCompletedDungeon(n) => {
+                if self.completed_a_dungeon(p) {
+                    for _ in 0..n {
+                        self.draw(p);
+                    }
+                }
+            }
+            SubsystemEffect::TokensByDungeon { def, n, completed } => {
+                let k = if self.completed_a_dungeon(p) { completed } else { n };
+                for _ in 0..k {
+                    self.create_token(p, def);
+                }
+            }
+            SubsystemEffect::UntapOneOrAllByDungeon => {
+                if self.completed_a_dungeon(p) {
+                    for c in self.creatures(p).collect::<Vec<_>>() {
+                        self.untap_by_effect(c);
+                    }
+                } else {
+                    // Untapping an untapped creature does nothing, so only tapped ones are offered.
+                    match self.untap_own_creature_options(p)[..] {
+                        [] => {}
+                        [Action::Pick(c)] => self.untap_by_effect(c),
+                        _ => self.ask(p, Decision::UntapOwnCreature),
+                    }
+                }
+            }
+            SubsystemEffect::FlipCoinLoseDamageYou(n) => {
+                if !self.flip_coin() {
+                    self.deal_damage(item.source, Target::Player(p), n);
+                }
+            }
+            SubsystemEffect::OpponentLosesDifferenceFrom(n) => {
+                let q = opponent(p);
+                let (turn, lost) = self.life_lost_turn[q];
+                let lost = if turn == self.turn { lost } else { 0 };
+                if lost < n {
+                    self.lose_life(q, n - lost);
+                }
+            }
+            SubsystemEffect::GainChapterAbilities(n) => {
+                let id = item.source;
+                let o = self.obj(id);
+                if o.zone == Zone::Battlefield {
+                    let zcc = o.zcc;
+                    self.chapter_grants
+                        .retain(|&(x, z, _)| self.objects[x.0 as usize].zcc == z);
+                    self.chapter_grants.push((id, zcc, n));
+                }
+            }
         }
+    }
+
+    /// `Decision::UntapOwnCreature`'s answers: `p`'s tapped creatures.
+    pub(super) fn untap_own_creature_options(&self, p: PlayerId) -> Vec<Action> {
+        self.creatures(p)
+            .filter(|&c| self.obj(c).tapped)
+            .map(Action::Pick)
+            .collect()
+    }
+
+    /// Whether the Saga `id` has its chapter-`n` grants now: that chapter's grant resolved while
+    /// it's been on the battlefield (CR 714; Urza's Saga).
+    pub fn has_chapter_grant(&self, id: ObjId, n: u8) -> bool {
+        let o = self.obj(id);
+        o.zone == Zone::Battlefield
+            && self
+                .chapter_grants
+                .iter()
+                .any(|&(x, zcc, c)| x == id && zcc == o.zcc && c == n)
+    }
+
+    /// Whether activated ability `n` of `id` is a chapter grant it doesn't have yet
+    /// (`SubsystemExt::chapter_activated`): the activation check skips it.
+    pub fn lacks_chapter_activated(&self, id: ObjId, n: usize) -> bool {
+        self.def_of(id)
+            .subsystems
+            .chapter_activated
+            .iter()
+            .any(|&(c, i)| i == n && !self.has_chapter_grant(id, c))
+    }
+
+    /// Whether `id`'s `mana` ability is a chapter grant it doesn't have yet
+    /// (`SubsystemExt::chapter_mana`): it isn't a mana source until then.
+    pub fn lacks_chapter_mana(&self, id: ObjId) -> bool {
+        self.def_of(id)
+            .subsystems
+            .chapter_mana
+            .is_some_and(|c| !self.has_chapter_grant(id, c))
     }
 }

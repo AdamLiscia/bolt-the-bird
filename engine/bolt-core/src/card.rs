@@ -41,6 +41,7 @@ keywords! {
     FEAR = 19, "Fear";
     INTIMIDATE = 20, "Intimidate";
     SHADOW = 21, "Shadow";
+    SWAMPWALK = 22, "Swampwalk";
 }
 
 impl Keywords {
@@ -305,6 +306,9 @@ pub struct Activated {
     pub needs_threshold: bool,
     /// "Activate only if you attacked with N or more creatures this turn." (Minas Tirith: 2)
     pub min_attackers_this_turn: u8,
+    /// "Tap an untapped creature you control" in the cost (The Shire); the engine picks which (one
+    /// that isn't a mana source, then the least power).
+    pub tap_untapped_creature: bool,
     /// "Sacrifice X [subtype]s" in the cost (Chatterfang: Squirrels): `Action::ActivateX`, X up to
     /// how many you control; the engine picks which (tokens first, then the lowest mana value,
     /// the source last).
@@ -911,6 +915,13 @@ pub struct SubsystemExt {
     /// A split card's left half's own mana cost, which casting it pays; `cost` is both halves'
     /// together, its mana value off the stack (CR 709.4).
     pub left_cost: Option<ManaCost>,
+    /// A Saga's chapter grants (Urza's Saga: "II — This Saga gains \"{2}, {T}: ...\""): (chapter,
+    /// index into `activated`) for each activated ability it has only once that chapter's
+    /// `SubsystemEffect::GainChapterAbilities` has resolved (see `Game::lacks_chapter_activated`).
+    pub chapter_activated: Vec<(u8, usize)>,
+    /// The chapter whose resolving grants its `mana` ability (Urza's Saga: "I — This Saga gains
+    /// \"{T}: Add {C}.\""; see `Game::lacks_chapter_mana`).
+    pub chapter_mana: Option<u8>,
 }
 
 /// A card's mana, cost and keyword pieces added by the d1 theme (see [`CardDef::mana_ext`]).
@@ -993,6 +1004,17 @@ pub struct ManaExt {
     /// lands): it makes this much mana while you control all three of Urza's Mine, Power-Plant
     /// and Tower.
     pub tron_amount: u8,
+    /// "For each {B} in a cost, you may pay 2 life rather than pay that mana." (K'rrik): the engine
+    /// pays mana first and only the {B} it can't pay with life.
+    pub black_pips_for_life: bool,
+    /// "Creature spells with flying you cast cost {N} less to cast." (Watcher of the Spheres)
+    pub flying_creature_spell_discount: u8,
+    /// "The first non-Lemur creature spell with flying you cast during each of your turns costs
+    /// {N} less to cast." (Momo, Friendly Flier)
+    pub first_flier_discount_your_turn: u8,
+    /// "This land enters tapped unless you control a legendary creature." (The Shire, Minas
+    /// Tirith)
+    pub enters_tapped_unless_legendary_creature: bool,
 }
 
 /// "You may pay [mana], [life] and sacrifice or tap [creatures] rather than pay this spell's mana

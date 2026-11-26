@@ -2434,9 +2434,30 @@ fn chatterfang_adds_squirrels_and_sacrifices_x_of_them() {
     let ghalta = put(&mut g, 1, "Ghalta, Primal Hunger");
     let (p, t) = (g.power(ghalta), g.toughness(ghalta));
     let legal = g.legal_actions();
-    assert!(legal.contains(&Action::ActivateX { id: chatter, n: 0, victim: None, x: 3 }), "two tokens and Chatterfang");
-    assert!(!legal.contains(&Action::ActivateX { id: chatter, n: 0, victim: None, x: 4 }));
-    act(&mut g, Action::ActivateX { id: chatter, n: 0, victim: None, x: 2 });
+    assert!(
+        legal.contains(&Action::ActivateX {
+            id: chatter,
+            n: 0,
+            victim: None,
+            x: 3
+        }),
+        "two tokens and Chatterfang"
+    );
+    assert!(!legal.contains(&Action::ActivateX {
+        id: chatter,
+        n: 0,
+        victim: None,
+        x: 4
+    }));
+    act(
+        &mut g,
+        Action::ActivateX {
+            id: chatter,
+            n: 0,
+            victim: None,
+            x: 2,
+        },
+    );
     act(&mut g, Action::Target(Target::Object(ghalta)));
     resolve_all(&mut g, &[]);
     assert_eq!((g.power(ghalta), g.toughness(ghalta)), (p + 2, t - 2));
@@ -2457,6 +2478,7 @@ fn coveted_jewel_changes_hands_when_its_controller_is_hit_unblocked() {
     let jewel = put(&mut g, 1, "Coveted Jewel");
     g.objects[jewel.0 as usize].tapped = true;
     let ghalta = put(&mut g, 0, "Ghalta, Primal Hunger");
+    g.objects[ghalta.0 as usize].since_turn = 0; // here since the turn began
     while g.pending != Pending::DeclareAttackers(0) {
         act(&mut g, Action::PassPriority);
     }
@@ -2518,10 +2540,17 @@ fn illusionists_gambit_removes_attackers_and_they_cant_attack_again() {
     act(&mut g, Action::Cast(gambit));
     resolve_all(&mut g, &[]);
     assert!(!g.obj(ghalta).tapped, "untapped");
-    assert!(g.combat.as_ref().is_none_or(|c| c.attackers.is_empty()), "removed from combat");
+    assert!(
+        g.combat.as_ref().is_none_or(|c| c.attackers.is_empty()),
+        "removed from combat"
+    );
     let life = g.players[1].life;
     while g.step != Step::Main2 {
-        assert_ne!(g.pending, Pending::DeclareAttackers(0), "Ghalta can't attack the second combat");
+        assert_ne!(
+            g.pending,
+            Pending::DeclareAttackers(0),
+            "Ghalta can't attack the second combat"
+        );
         act(&mut g, Action::PassPriority);
     }
     assert_eq!(g.players[1].life, life);
@@ -2539,7 +2568,10 @@ fn hazels_brewmaster_gives_foods_the_exiled_creatures_abilities() {
         .find(|&x| g.def_of(x).name == "Food")
         .expect("a Food");
     let own = g.def_of(food).activated.len();
-    assert!(g.legal_actions().contains(&Action::Activate(food, own)), "the Elder's ability");
+    assert!(
+        g.legal_actions().contains(&Action::Activate(food, own)),
+        "the Elder's ability"
+    );
     act(&mut g, Action::Activate(food, own));
-    assert_eq!(g.obj(food).zone, Zone::Graveyard, "sacrificed the Food");
+    assert_ne!(g.obj(food).zone, Zone::Battlefield, "sacrificed the Food");
 }

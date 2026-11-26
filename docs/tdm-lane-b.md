@@ -750,3 +750,9 @@ d4's rooms: Twisted Caverns (`Effect::CantAttackUntilYourNextTurn`, `Game::cant_
 which Illusionist's Gambit now uses too), Arena (`Effect::Goad`, `Game::goaded`, `is_goaded` in
 the must-attack check), Mad Wizard's Lair (`Effect::DrawThreeMayCastOneFree`, Rishkar's free-cast
 window). Urza's Saga and Invert Polarity wait for d4's lacks_chapter_activated and flip_coin.
+After d4 batch 4: the activation list skips `lacks_chapter_activated` abilities (Urza's Saga's
+chapter grants), and Invert Polarity (`Effect::FlipGainControlOfSpellOrCounter`, d4's flip_coin;
+won: the spell's controller changes and ChooseNewTarget is offered).
+Turn order after extra turns (CR 500.7): `Game::normal_next` keeps the player the normal order
+gives next, so a gifted extra turn for the opponent doesn't replace their own; `next_turn_of`
+follows the same rule. Coveted Jewel's trigger also fires when no blocks can be declared.

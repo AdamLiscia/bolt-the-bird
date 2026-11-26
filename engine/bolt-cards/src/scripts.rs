@@ -268,11 +268,16 @@ pub fn token_defs() -> Vec<CardDef> {
         // base+83 is d2's Bat: a placeholder until it merges.
         token("Lane d2 token 83", "Bat", 1, 1, Keywords::FLYING),
         red(token("Elemental", "Elemental", 1, 1, Keywords::NONE)), // Young Pyromancer's red 1/1
-        // base+85 to 88: placeholders for other lanes' tokens until they merge.
-        token("Lane token 85", "Placeholder", 1, 1, Keywords::NONE),
-        token("Lane token 86", "Placeholder", 1, 1, Keywords::NONE),
-        token("Lane token 87", "Placeholder", 1, 1, Keywords::NONE),
-        token("Lane token 88", "Placeholder", 1, 1, Keywords::NONE),
+        // 85-87: placeholders for d3's Bear, the Orc Army and d3's Scion until they merge.
+        token("Placeholder 85", "Placeholder", 1, 1, Keywords::NONE),
+        token("Placeholder 86", "Placeholder", 1, 1, Keywords::NONE),
+        token("Placeholder 87", "Placeholder", 1, 1, Keywords::NONE),
+        {
+            // 88, lane d1: Meloku's "1/1 blue Illusion creature token with flying".
+            let mut t = token("Illusion", "Illusion", 1, 1, Keywords::FLYING);
+            t.colors = [false, true, false, false, false];
+            t
+        },
         blood(),
         red(token("Hamster", "Hamster", 1, 1, Keywords::NONE)), // Rolling Hamsphere
     ]
@@ -440,6 +445,7 @@ pub struct Tokens {
     pub blood: usize,
     pub hamster: usize,
     pub goat: usize,
+    pub illusion_flying: usize,
 }
 
 impl Tokens {
@@ -531,6 +537,7 @@ impl Tokens {
             blood: base + 89,
             hamster: base + 90,
             goat: base + 76,
+            illusion_flying: base + 88,
         }
     }
 }

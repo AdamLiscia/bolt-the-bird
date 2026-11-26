@@ -2081,6 +2081,16 @@ pub enum Effect {
         n: u8,
         def: usize,
     },
+    /// Populate (CR 701.31): create a token that's a copy of a creature token you control (your
+    /// choice when there's more than one).
+    Populate,
+    /// You gain life equal to the toughness of the creature in `slot` (Trostani).
+    GainLifeEqualSlotToughness(u8),
+    /// Imprint (Isochron Scepter): you may exile an instant card with mana value 2 or less from your
+    /// hand, linked to the source.
+    ImprintInstantFromHand,
+    /// You may cast a copy of the source's imprinted card without paying its mana cost.
+    CastImprintedCopy,
     /// The creature in `slot` gets +X/-X until end of turn, X the ability's X (Chatterfang).
     PumpXMinusX(u8),
     /// "Gift an extra turn": the opponent takes an extra turn after this one (the gift was
@@ -2103,6 +2113,9 @@ pub enum Effect {
     /// Draw three cards and reveal them; you may cast one of them without paying its mana cost
     /// (Mad Wizard's Lair).
     DrawThreeMayCastOneFree,
+    /// Flip a coin: if you win, gain control of the spell in `slot` and you may choose new targets
+    /// for it; if you lose, counter it (Invert Polarity).
+    FlipGainControlOfSpellOrCounter(u8),
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -2991,4 +3004,20 @@ pub enum SubsystemEffect {
     /// The end of a bottommost room's ability: the dungeon is completed once the last copy of it
     /// leaves the stack (CR 704.5t).
     CompleteDungeon,
+    /// "This Saga gains ..." (Urza's Saga): the source has its chapter-`n` grants from now on, while
+    /// it stays on the battlefield (`SubsystemExt::chapter_activated`, `chapter_mana`).
+    GainChapterAbilities(u8),
+    /// "Draw another card if you've completed a dungeon." (Imoen): `n` cards then.
+    DrawIfCompletedDungeon(u8),
+    /// "Create `n` [tokens]. Create `completed` of those tokens instead if you've completed a
+    /// dungeon." (Safana: Treasures, 1 or 3)
+    TokensByDungeon { def: usize, n: u8, completed: u8 },
+    /// "Untap a creature you control. If you've completed a dungeon, untap all creatures you
+    /// control instead." (White Plume Adventurer), as `Decision::UntapOwnCreature`.
+    UntapOneOrAllByDungeon,
+    /// "If that player lost less than `n` life this turn, they lose life equal to the difference."
+    /// (Lolth's emblem, on the damaged opponent: the one opponent in 1v1)
+    OpponentLosesDifferenceFrom(i32),
+    /// "Flip a coin. If you lose the flip, this [source] deals `n` damage to you." (Mana Crypt)
+    FlipCoinLoseDamageYou(i32),
 }
