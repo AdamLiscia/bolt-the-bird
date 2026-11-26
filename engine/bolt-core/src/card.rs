@@ -323,6 +323,17 @@ pub struct Activated {
     /// "Forage" in the cost (Camellia): exile three cards from your graveyard or sacrifice a Food.
     /// The engine picks: a Food if you have one, else three graveyard cards (as for delve).
     pub forage: bool,
+    /// A Class's level-up ("{1}{R}: Level 2", CR 716.2): activatable only at the level before this
+    /// one (and as a sorcery, `sorcery`); its effect is `Effect::ClassLevelUp`.
+    pub level_up_to: u8,
+    /// Activatable only while its Class is at this level or higher (0: always).
+    pub min_class_level: u8,
+    /// "Activate only if you control N or more artifacts." (Metallurgic Summonings: 6)
+    pub min_artifacts: u8,
+    /// Plot (CR 702.170): activated from your hand at sorcery speed; as the cost the card is exiled,
+    /// plotted. On a later turn its owner may cast it from exile as a sorcery without paying its
+    /// mana cost (`Object::plotted`).
+    pub plot: bool,
     /// Foretell's "During your turn, you may pay {2} and exile this card from your hand": an
     /// ability of the card in your hand (with `your_turn_only`); it's cast later for
     /// `ManaExt::foretell`. (A special action in the rules, CR 702.143a; here it uses the stack.)
@@ -335,6 +346,10 @@ pub struct Activated {
     /// (War Room).
     pub life_per_commander_color: bool,
 }
+
+/// A loyalty ability's cost of −X (CR 606.4, 107.3): `loyalty_abilities` uses this as the cost,
+/// and X is chosen as it's activated (`Decision::ChooseLoyaltyX`), up to the loyalty.
+pub const LOYALTY_MINUS_X: i32 = i32::MIN;
 
 /// The printed card. Shared by every copy; per-copy state lives on the game object.
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -923,6 +938,20 @@ pub struct CardDef {
     /// The Mac C objects-and-zones pieces (copy exceptions, ...), grouped so adding one touches
     /// only [`ZonesExt`].
     pub zones: ZonesExt,
+    /// "Your opponents can't cast spells with even mana values." and "Your opponents can't block
+    /// with creatures with even mana values." (Void Winnower)
+    pub opponents_even_locked: bool,
+    /// "Enchanted creature ... is goaded." (Martial Impetus): see `Game::is_goaded`.
+    pub goads_enchanted: bool,
+    /// Activated abilities lands you control have (Bootleggers' Stash: "{T}: Create a Treasure
+    /// token.").
+    pub lands_you_control_have: Vec<Activated>,
+    /// Activated abilities creatures of this subtype you control have (The Odd Acorn Gang:
+    /// Squirrels).
+    pub subtype_you_control_has: Option<(&'static str, Vec<Activated>)>,
+    /// Aftermath (CR 702.127): the split card's right half (`omen`) is cast only from the
+    /// graveyard, and exiled as it resolves; the left half isn't cast from the graveyard.
+    pub aftermath: bool,
 }
 
 /// A card's pieces from the d4 subsystems (see [`CardDef::subsystems`]).
@@ -1406,6 +1435,11 @@ impl CardDef {
             attack_tax_player_only: false,
             cast_only_during_opponents_declare_blockers: false,
             foods_have_exiled_abilities: false,
+            opponents_even_locked: false,
+            goads_enchanted: false,
+            lands_you_control_have: Vec::new(),
+            subtype_you_control_has: None,
+            aftermath: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -1664,6 +1698,11 @@ impl CardDef {
             attack_tax_player_only: false,
             cast_only_during_opponents_declare_blockers: false,
             foods_have_exiled_abilities: false,
+            opponents_even_locked: false,
+            goads_enchanted: false,
+            lands_you_control_have: Vec::new(),
+            subtype_you_control_has: None,
+            aftermath: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -1922,6 +1961,11 @@ impl CardDef {
             attack_tax_player_only: false,
             cast_only_during_opponents_declare_blockers: false,
             foods_have_exiled_abilities: false,
+            opponents_even_locked: false,
+            goads_enchanted: false,
+            lands_you_control_have: Vec::new(),
+            subtype_you_control_has: None,
+            aftermath: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -1949,6 +1993,13 @@ pub struct ZonesExt {
     pub copy_sacrifice_when_targeted: bool,
     /// It may copy only a creature with mana value at most the mana spent to cast it (Mockingbird).
     pub copy_mv_at_most_spent: bool,
+    /// With `shock_land`: the life it asks for instead of 2 (Volcanic Fissure: 3).
+    pub shock_life: i32,
+    /// With `enter_as_copy`: it may copy an artifact or a non-Aura enchantment only (Mirrormade).
+    pub copy_artifact_or_enchantment: bool,
+    /// "You may have this land enter tapped as a copy of any land on the battlefield." (Vesuva): asked
+    /// as it enters, however it enters (`Object::land_copy_pending`).
+    pub enters_as_land_copy_tapped: bool,
 }
 
 #[cfg(test)]

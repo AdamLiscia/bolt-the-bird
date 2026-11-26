@@ -82,6 +82,9 @@ def run_games(net, jobs, seats=("net", "rules"), sample=True, seed=0, smart=(1, 
                     seat = seats[who]
                     if seat in ("net", "opp"):
                         obs = g.observation(who)
+                        if not obs["legal_actions"]:  # an engine bug: nothing legal to do
+                            results[gi] = {"result": "error", "turn": g.turn}
+                            break
                         if len(obs["legal_actions"]) == 1:
                             play(gi, 0)
                             continue
@@ -97,7 +100,9 @@ def run_games(net, jobs, seats=("net", "rules"), sample=True, seed=0, smart=(1, 
                             steps.append({"game": game_offset + gi, "seat": who, "enc": encode(obs, who),
                                           "action": i, "logp": None, "value": None})  # fmt: skip
                     play(gi, i)
-            except Exception:  # an engine error ends that game, not the batch
+            except BaseException as e:  # an engine error (a Rust panic is a BaseException) ends that game
+                if isinstance(e, (KeyboardInterrupt, SystemExit)):
+                    raise
                 results[gi] = {"result": "error", "turn": g.turn}
         if waiting:
             mine = [w for w in waiting if seats[w[1]] == "net"]
@@ -117,13 +122,17 @@ def run_games(net, jobs, seats=("net", "rules"), sample=True, seed=0, smart=(1, 
                         step["played"] = i
                         try:
                             step["action"] = games[gi].smart(label_with[0], label_with[1], seed_)
-                        except Exception:
+                        except BaseException as e:  # a Rust panic too
+                            if isinstance(e, (KeyboardInterrupt, SystemExit)):
+                                raise
                             step = None
                     if step is not None:
                         steps.append(step)
                 try:
                     play(gi, i)
-                except Exception:
+                except BaseException as e:  # a Rust panic too
+                    if isinstance(e, (KeyboardInterrupt, SystemExit)):
+                        raise
                     results[gi] = {"result": "error", "turn": games[gi].turn}
         live = [gi for gi in live if results[gi] is None]
     return {"results": results, "steps": steps}

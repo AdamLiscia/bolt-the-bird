@@ -1658,6 +1658,47 @@ pub fn script(name: &str) -> Option<Script> {
             &["Choose target spell, then flip a coin. If you win the flip, gain control of that spell and you may choose new targets for it. If you lose the flip, counter that spell."],
             |d, _| spell(d, vec![SPELL], vec![Effect::FlipGainControlOfSpellOrCounter(0)]),
         ),
+        "Ulamog, the Ceaseless Hunger" => s(
+            &["When you cast this spell, exile two target permanents.", "Whenever Ulamog attacks, defending player exiles the top twenty cards of their library."],
+            |d, _| {
+                let perm = Filter { players: false, creatures: false, planeswalkers: false, any_permanent: true, ..Filter::ANY };
+                on(d, When::CastThisSpell, vec![perm, perm], vec![Effect::Exile(0), Effect::Exile(1)]);
+                on(d, When::Attacks, vec![], vec![Effect::DefendingPlayerExilesTop(20)]);
+            },
+        ),
+        "Void Winnower" => s(
+            &["Your opponents can't cast spells with even mana values.", "Your opponents can't block with creatures with even mana values."],
+            |d, _| d.opponents_even_locked = true,
+        ),
+        "Epic Experiment" => s(
+            &["Exile the top X cards of your library. You may cast instant and sorcery spells with mana value X or less from among them without paying their mana costs. Then put all cards exiled this way that weren't cast into your graveyard."],
+            |d, _| spell(d, vec![], vec![Effect::EpicExperiment]),
+        ),
+        "Metallurgic Summonings" => s(
+            &[
+                "Whenever you cast an instant or sorcery spell, create an X/X colorless Construct artifact creature token, where X is that spell's mana value.",
+                "{3}{U}{U}, Exile this enchantment: Return all instant and sorcery cards from your graveyard to your hand. Activate only if you control six or more artifacts.",
+            ],
+            |d, t| {
+                on(d, When::YouCastInstantOrSorcery, vec![], vec![Effect::CreateTokenXxTriggeringSpellManaValue { def: t.construct_x }]);
+                let n = activated(d, "{3}{U}{U}", false, vec![], vec![Effect::ReturnAllInstantsAndSorceriesToHand]);
+                d.activated[n].exile_self = true;
+                d.activated[n].min_artifacts = 6;
+            },
+        ),
+        "Ugin, the Spirit Dragon" => s(
+            &[
+                "+2: Ugin deals 3 damage to any target.",
+                "\u{2212}X: Exile each permanent with mana value X or less that's one or more colors.",
+                "\u{2212}10: You gain 7 life, draw seven cards, then put up to seven permanent cards from your hand onto the battlefield.",
+            ],
+            |d, _| {
+                loyalty(d, 2, Ability::new(vec![Filter::ANY], vec![damage(3, Recipient::Target(0))]));
+                loyalty(d, bolt_core::card::LOYALTY_MINUS_X, Ability::new(vec![], vec![Effect::ExileEachColoredPermanentMvAtMostX]));
+                let ten = vec![Effect::GainLife { who: Who::You, n: 7 }, draw(7), Effect::PermanentsFromHandUpTo(7)];
+                loyalty(d, -10, Ability::new(vec![], ten));
+            },
+        ),
         _ => None,
     }
 }
@@ -1861,6 +1902,11 @@ pub const PG_B_SCRIPTED: &[&str] = &[
     "Horizon Stone",
     "Necrologia",
     "Invert Polarity",
+    "Ulamog, the Ceaseless Hunger",
+    "Void Winnower",
+    "Epic Experiment",
+    "Metallurgic Summonings",
+    "Ugin, the Spirit Dragon",
     // Ghyrson Starn (Spr3adsh33t)
     "Basilisk Collar",
     "Gorgon's Head",

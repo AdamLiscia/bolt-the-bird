@@ -2968,3 +2968,542 @@ fn ezuris_predation_makes_a_beast_to_fight_each_opponent_creature() {
         "the one that fought Palinchron died"
     );
 }
+
+// ---- Malik, Grim Manipulator, batch 1 ----
+
+/// Resolves the stack, answering each decision with its first legal choice.
+fn first_answers(g: &mut Game) {
+    for _ in 0..40 {
+        if g.items.is_empty() && !matches!(g.pending, Pending::Decide(_) | Pending::ChooseTarget(_)) {
+            break;
+        }
+        let a = match g.pending {
+            Pending::Decide(_) | Pending::ChooseTarget(_) => g.legal_actions()[0],
+            _ => Action::PassPriority,
+        };
+        act(g, a);
+    }
+}
+
+fn enters_tapped(lands: &[&str], name: &str) -> bool {
+    let mut g = game(lands);
+    let c = hand(&mut g, 0, name);
+    act(&mut g, Action::PlayLand(c));
+    g.obj(c).tapped
+}
+
+#[test]
+fn diabolic_tutor_finds_any_card() {
+    let mut g = table();
+    let ring = top(&mut g, "Sol Ring");
+    let dt = hand(&mut g, 0, "Diabolic Tutor");
+    play(&mut g, dt, false, &[], &[Action::Pick(ring)]);
+    assert_eq!(g.obj(ring).zone, Zone::Hand);
+}
+
+#[test]
+fn slow_lands_enter_untapped_with_two_other_lands() {
+    for name in ["Sundown Pass", "Shattered Sanctum"] {
+        assert!(enters_tapped(&["Plains"], name), "{name}");
+        assert!(!enters_tapped(&["Plains", "Swamp"], name), "{name}");
+    }
+    let mut g = game(&[]);
+    let c = put(&mut g, 0, "Shattered Sanctum");
+    assert_eq!(colors(&g, c), [true, false, true, false, false]);
+}
+
+#[test]
+fn inspiring_vantage_enters_untapped_with_two_or_fewer_other_lands() {
+    assert!(!enters_tapped(&["Plains", "Mountain"], "Inspiring Vantage"));
+    assert!(enters_tapped(
+        &["Plains", "Mountain", "Plains"],
+        "Inspiring Vantage"
+    ));
+}
+
+#[test]
+fn smoldering_marsh_enters_untapped_with_two_basics() {
+    assert!(enters_tapped(&["Swamp"], "Smoldering Marsh"));
+    assert!(!enters_tapped(&["Swamp", "Mountain"], "Smoldering Marsh"));
+}
+
+#[test]
+fn the_pathways_tap_for_their_front_color() {
+    let mut g = game(&[]);
+    let b = put(&mut g, 0, "Blightstep Pathway // Searstep Pathway");
+    let r = put(&mut g, 0, "Needleverge Pathway // Pillarverge Pathway");
+    assert_eq!(colors(&g, b), [false, false, true, false, false]);
+    assert_eq!(colors(&g, r), [false, false, false, true, false]);
+}
+
+#[test]
+fn merciless_executioner_makes_each_player_sacrifice() {
+    let mut g = table();
+    let mine = put(&mut g, 0, "Hungry Ghoul");
+    let theirs = put(&mut g, 1, "Palinchron");
+    let me = hand(&mut g, 0, "Merciless Executioner");
+    act(&mut g, Action::Cast(me));
+    first_answers(&mut g);
+    assert_eq!(g.obj(theirs).zone, Zone::Graveyard);
+    let left = [me, mine]
+        .iter()
+        .filter(|&&x| g.obj(x).zone == Zone::Battlefield)
+        .count();
+    assert_eq!(left, 1, "you sacrifice one of your two");
+}
+
+#[test]
+fn massacre_wurm_shrinks_their_creatures_and_drains_for_each_death() {
+    let mut g = table();
+    put(&mut g, 1, "Hungry Ghoul"); // 1/1 dies
+    let palin = put(&mut g, 1, "Palinchron"); // 4/5 lives
+    let life = g.players[1].life;
+    let mw = hand(&mut g, 0, "Massacre Wurm");
+    play(&mut g, mw, false, &[], &[]);
+    assert_eq!(g.players[1].life, life - 2);
+    assert_eq!(g.obj(palin).zone, Zone::Battlefield);
+    assert_eq!(g.power(palin), 2);
+}
+
+#[test]
+fn butcher_of_malakir_makes_them_sacrifice_when_yours_die() {
+    let mut g = table();
+    put(&mut g, 0, "Butcher of Malakir");
+    let ghoul = put(&mut g, 0, "Hungry Ghoul");
+    let theirs = put(&mut g, 1, "Palinchron");
+    let kill = hand(&mut g, 0, "Hero's Downfall");
+    act(&mut g, Action::Cast(kill));
+    act(&mut g, Action::Target(obj(ghoul)));
+    first_answers(&mut g);
+    assert_eq!(g.obj(theirs).zone, Zone::Graveyard);
+}
+
+#[test]
+fn reckless_fireweaver_pings_for_each_artifact() {
+    let mut g = table();
+    put(&mut g, 0, "Reckless Fireweaver");
+    let life = g.players[1].life;
+    let ring = hand(&mut g, 0, "Sol Ring");
+    play(&mut g, ring, false, &[], &[]);
+    assert_eq!(g.players[1].life, life - 1);
+}
+
+#[test]
+fn mayhem_devil_pings_when_a_permanent_is_sacrificed() {
+    let mut g = table();
+    put(&mut g, 0, "Mayhem Devil");
+    let fh = put(&mut g, 0, "Floodhound");
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Activate(fh, 0));
+    resolve_all(&mut g, &[]);
+    let clue = tokens(&g, 0, "Clue")[0];
+    let life = g.players[1].life;
+    act(&mut g, Action::Activate(clue, 0));
+    resolve_all(&mut g, &[Action::Target(Target::Player(1))]);
+    assert_eq!(g.players[1].life, life - 1);
+}
+
+#[test]
+fn teleportation_circle_blinks_at_your_end_step() {
+    let mut g = table();
+    put(&mut g, 0, "Teleportation Circle");
+    let ghoul = put(&mut g, 0, "Hungry Ghoul");
+    let zcc = g.obj(ghoul).zcc;
+    let mut targeted = false;
+    for _ in 0..40 {
+        if g.step == Step::Cleanup || g.turn != 3 {
+            break;
+        }
+        let a = match g.pending {
+            Pending::ChooseTarget(_) if !targeted => {
+                targeted = true;
+                Action::Target(obj(ghoul))
+            }
+            Pending::Decide(_) | Pending::ChooseTarget(_) => g.legal_actions()[0],
+            Pending::DeclareAttackers(_) => Action::FinishAttacks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert!(targeted);
+    assert_eq!(g.obj(ghoul).zone, Zone::Battlefield);
+    assert!(g.obj(ghoul).zcc > zcc, "exiled and returned");
+}
+
+#[test]
+fn crackling_doom_deals_two_and_takes_their_biggest() {
+    let mut g = table();
+    let small = put(&mut g, 1, "Hungry Ghoul");
+    let big = put(&mut g, 1, "Palinchron");
+    let life = g.players[1].life;
+    let cd = hand(&mut g, 0, "Crackling Doom");
+    play(&mut g, cd, false, &[], &[]);
+    assert_eq!(g.players[1].life, life - 2);
+    assert_eq!(g.obj(big).zone, Zone::Graveyard);
+    assert_eq!(g.obj(small).zone, Zone::Battlefield);
+}
+
+#[test]
+fn charming_prince_gains_three_life() {
+    let mut g = table();
+    let life = g.players[0].life;
+    let cp = hand(&mut g, 0, "Charming Prince");
+    play(&mut g, cp, false, &[], &[Action::Mode(1)]);
+    assert_eq!(g.players[0].life, life + 3);
+}
+
+#[test]
+fn ephemerate_blinks_and_rebounds() {
+    let mut g = table();
+    let ghoul = put(&mut g, 0, "Hungry Ghoul");
+    let zcc = g.obj(ghoul).zcc;
+    let e = hand(&mut g, 0, "Ephemerate");
+    play(&mut g, e, false, &[obj(ghoul)], &[]);
+    assert_eq!(g.obj(ghoul).zone, Zone::Battlefield);
+    assert!(g.obj(ghoul).zcc > zcc);
+    assert_eq!(g.obj(e).zone, Zone::Exile, "rebound");
+}
+
+#[test]
+fn treasure_vault_makes_x_treasures() {
+    let mut g = table();
+    let tv = put(&mut g, 0, "Treasure Vault");
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    act(
+        &mut g,
+        Action::ActivateX {
+            id: tv,
+            n: 0,
+            victim: None,
+            x: 2,
+        },
+    );
+    resolve_all(&mut g, &[]);
+    assert_eq!(tokens(&g, 0, "Treasure").len(), 2);
+    assert_eq!(g.obj(tv).zone, Zone::Graveyard);
+}
+
+// ---- Malik, batch 2 ----
+
+fn to_main(g: &mut Game, turn: u32, active: usize) {
+    g.start_turn(turn, active);
+    while g.step != Step::Main1 {
+        let legal = g.legal_actions();
+        let a = if legal.contains(&Action::PassPriority) {
+            Action::PassPriority
+        } else if legal.contains(&Action::FinishAttacks) {
+            Action::FinishAttacks
+        } else {
+            legal[0]
+        };
+        act(g, a);
+    }
+}
+
+#[test]
+fn nahiris_resolve_pumps_and_exiles_until_your_next_upkeep() {
+    let mut g = table();
+    put(&mut g, 0, "Nahiri's Resolve");
+    let ghoul = put(&mut g, 0, "Hungry Ghoul");
+    assert_eq!(g.power(ghoul), g.def_of(ghoul).power + 1);
+    assert!(g.keywords(ghoul).has(Keywords::HASTE));
+    let mut exiled = false;
+    for _ in 0..40 {
+        if g.turn != 3 {
+            break;
+        }
+        let legal = g.legal_actions();
+        let a = if legal.contains(&Action::Pick(ghoul)) && !exiled {
+            exiled = true;
+            Action::Pick(ghoul)
+        } else if legal.contains(&Action::PassPriority) {
+            Action::PassPriority
+        } else if legal.contains(&Action::FinishAttacks) {
+            Action::FinishAttacks
+        } else {
+            legal[0]
+        };
+        act(&mut g, a);
+    }
+    assert!(exiled);
+    assert_eq!(g.obj(ghoul).zone, Zone::Exile);
+    to_main(&mut g, 5, 0);
+    assert_eq!(g.obj(ghoul).zone, Zone::Battlefield, "back at your next upkeep");
+}
+
+#[test]
+fn treasure_map_transforms_on_its_third_landmark_into_treasure_cove() {
+    let mut g = table();
+    let map = put(&mut g, 0, "Treasure Map // Treasure Cove");
+    for turn in [5, 7, 9] {
+        to_main(&mut g, turn, 0);
+        act(&mut g, Action::Activate(map, 0));
+        first_answers(&mut g);
+    }
+    assert_eq!(g.def_of(map).name, "Treasure Cove");
+    let treasures = tokens(&g, 0, "Treasure");
+    assert_eq!(treasures.len(), 3);
+    to_main(&mut g, 11, 0);
+    let n = g.players[0].hand.len();
+    act(&mut g, Action::ActivateWith(map, 0, treasures[0]));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].hand.len(), n + 1);
+}
+
+// ---- Bruna, Light of Alabaster, batch 1 ----
+
+#[test]
+fn supreme_verdict_destroys_all_creatures_and_cant_be_countered() {
+    let mut g = table();
+    let a = put(&mut g, 0, "Hungry Ghoul");
+    let b = put(&mut g, 1, "Palinchron");
+    let sv = hand(&mut g, 0, "Supreme Verdict");
+    assert!(g.def_of(sv).uncounterable);
+    play(&mut g, sv, false, &[], &[]);
+    assert_eq!(g.obj(a).zone, Zone::Graveyard);
+    assert_eq!(g.obj(b).zone, Zone::Graveyard);
+}
+
+#[test]
+fn idyllic_tutor_finds_an_enchantment() {
+    let mut g = table();
+    let e = top(&mut g, "Nahiri's Resolve");
+    let it = hand(&mut g, 0, "Idyllic Tutor");
+    play(&mut g, it, false, &[], &[Action::Pick(e)]);
+    assert_eq!(g.obj(e).zone, Zone::Hand);
+}
+
+#[test]
+fn talisman_of_progress_and_deserted_beach_make_white_or_blue() {
+    let mut g = game(&[]);
+    let t = put(&mut g, 0, "Talisman of Progress");
+    assert_eq!(colors(&g, t), [true, true, false, false, false]);
+    assert!(enters_tapped(&["Plains"], "Deserted Beach"));
+    assert!(!enters_tapped(&["Plains", "Island"], "Deserted Beach"));
+}
+
+#[test]
+fn prismatic_vista_pays_a_life_for_a_basic() {
+    let mut g = game(&["Prismatic Vista"]);
+    let pv = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "Prismatic Vista")
+        .unwrap();
+    let forest = top(&mut g, "Forest");
+    let life = g.players[0].life;
+    act(&mut g, Action::Activate(pv, 0));
+    resolve_all(&mut g, &[Action::Pick(forest)]);
+    assert_eq!(g.obj(forest).zone, Zone::Battlefield);
+    assert!(!g.obj(forest).tapped);
+    assert_eq!(g.players[0].life, life - 1);
+}
+
+#[test]
+fn dovins_veto_counters_a_noncreature_spell() {
+    let mut g = table();
+    let think = hand(&mut g, 0, "Think Twice");
+    let dv = hand(&mut g, 0, "Dovin's Veto");
+    act(&mut g, Action::Cast(think));
+    act(&mut g, Action::Cast(dv));
+    resolve_all(&mut g, &[Action::Target(obj(think))]);
+    assert_eq!(g.obj(think).zone, Zone::Graveyard);
+    assert!(g.def_of(dv).uncounterable);
+}
+
+#[test]
+fn eel_umbra_pumps_and_saves_with_umbra_armor() {
+    let mut g = table();
+    let ghoul = put(&mut g, 0, "Hungry Ghoul");
+    let eu = hand(&mut g, 0, "Eel Umbra");
+    let before = g.power(ghoul);
+    play(&mut g, eu, false, &[obj(ghoul)], &[]);
+    assert_eq!(g.power(ghoul), before + 1);
+    let kill = hand(&mut g, 0, "Hero's Downfall");
+    play(&mut g, kill, false, &[obj(ghoul)], &[]);
+    assert_eq!(g.obj(ghoul).zone, Zone::Battlefield, "umbra armor");
+    assert_eq!(g.obj(eu).zone, Zone::Graveyard);
+}
+
+#[test]
+fn crashing_drawbridge_gives_your_creatures_haste() {
+    let mut g = table();
+    let cd = put(&mut g, 0, "Crashing Drawbridge");
+    to_main(&mut g, 5, 0);
+    let ghoul = put(&mut g, 0, "Hungry Ghoul");
+    act(&mut g, Action::Activate(cd, 0));
+    resolve_all(&mut g, &[]);
+    assert!(g.keywords(ghoul).has(Keywords::HASTE));
+}
+
+#[test]
+fn heliods_pilgrim_may_find_an_aura() {
+    let mut g = table();
+    let aura = top(&mut g, "Eel Umbra");
+    let hp = hand(&mut g, 0, "Heliod's Pilgrim");
+    play(&mut g, hp, false, &[], &[Action::Yes, Action::Pick(aura)]);
+    assert_eq!(g.obj(aura).zone, Zone::Hand);
+}
+
+#[test]
+fn galadriels_dismissal_phases_out_a_creature_or_kicked_all_of_a_players() {
+    let mut g = table();
+    let a = put(&mut g, 1, "Hungry Ghoul");
+    let b = put(&mut g, 1, "Palinchron");
+    let gd = hand(&mut g, 0, "Galadriel's Dismissal");
+    play(&mut g, gd, false, &[obj(a)], &[]);
+    assert!(
+        !g.battlefield.contains(&a) && g.obj(a).zone == Zone::Battlefield,
+        "phased out"
+    );
+    assert!(g.battlefield.contains(&b));
+    let gd2 = hand(&mut g, 0, "Galadriel's Dismissal");
+    play(&mut g, gd2, true, &[Target::Player(1)], &[]);
+    assert!(!g.battlefield.contains(&b), "kicked: all of their creatures");
+    to_main(&mut g, 4, 1);
+    assert!(
+        g.battlefield.contains(&a) && g.battlefield.contains(&b),
+        "back on their untap step"
+    );
+}
+
+#[test]
+fn mirrormade_copies_an_artifact() {
+    let mut g = table();
+    put(&mut g, 1, "Sol Ring");
+    let ghoul = put(&mut g, 1, "Hungry Ghoul");
+    let mm = hand(&mut g, 0, "Mirrormade");
+    act(&mut g, Action::Cast(mm));
+    for _ in 0..10 {
+        if matches!(g.pending, Pending::Decide(_)) {
+            break;
+        }
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(
+        !g.legal_actions().contains(&Action::Pick(ghoul)),
+        "not a creature"
+    );
+    let ring = g.permanents(1).find(|&x| g.def_of(x).name == "Sol Ring").unwrap();
+    act(&mut g, Action::Pick(ring));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.def_of(mm).name, "Sol Ring");
+}
+
+// ---- Olivia, Crimson Bride, batch 1 ----
+
+#[test]
+fn rakdos_signet_pays_for_a_black_red_spell() {
+    // {B}{R} from a Swamp and the Signet: the Swamp pays the Signet's {1}.
+    let mut g = game(&["Swamp", "Rakdos Signet"]);
+    let fl = hand(&mut g, 0, "Faithless Looting"); // {R}: only the Signet makes red
+    assert!(g.legal_actions().contains(&Action::Cast(fl)));
+}
+
+#[test]
+fn wayfarers_bauble_fetches_a_basic_tapped() {
+    let mut g = table();
+    let wb = put(&mut g, 0, "Wayfarer's Bauble");
+    let forest = top(&mut g, "Forest");
+    act(&mut g, Action::Activate(wb, 0));
+    resolve_all(&mut g, &[Action::Pick(forest)]);
+    assert_eq!(g.obj(forest).zone, Zone::Battlefield);
+    assert!(g.obj(forest).tapped);
+}
+
+#[test]
+fn faithless_looting_draws_two_discards_two_and_has_flashback() {
+    let mut g = table();
+    let fl = hand(&mut g, 0, "Faithless Looting");
+    let n = g.players[0].hand.len();
+    act(&mut g, Action::Cast(fl));
+    first_answers(&mut g);
+    assert_eq!(g.players[0].hand.len(), n - 1);
+    assert!(g.legal_actions().contains(&Action::CastFlashback(fl)));
+}
+
+#[test]
+fn the_discard_to_draw_spells_draw_two() {
+    for name in [
+        "Tormenting Voice",
+        "Electric Revelation",
+        "Seize the Spoils",
+        "Unexpected Windfall",
+    ] {
+        let mut g = table();
+        let c = hand(&mut g, 0, name);
+        let junk = hand(&mut g, 0, "Forest");
+        let n = g.players[0].hand.len();
+        act(&mut g, Action::CastWith(c, junk));
+        resolve_all(&mut g, &[]);
+        assert_eq!(g.obj(junk).zone, Zone::Graveyard, "{name}");
+        assert_eq!(
+            g.players[0].hand.len(),
+            n,
+            "{name}: two cast or discarded, two drawn"
+        );
+    }
+    let mut g = table();
+    let c = hand(&mut g, 0, "Unexpected Windfall");
+    let junk = hand(&mut g, 0, "Forest");
+    act(&mut g, Action::CastWith(c, junk));
+    resolve_all(&mut g, &[]);
+    assert_eq!(tokens(&g, 0, "Treasure").len(), 2);
+}
+
+#[test]
+fn cathartic_pyre_deals_three_or_cycles_two() {
+    let mut g = table();
+    let palin = put(&mut g, 1, "Palinchron");
+    let cp = hand(&mut g, 0, "Cathartic Pyre");
+    act(&mut g, Action::CastModal(cp, 0));
+    act(&mut g, Action::Target(obj(palin)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(palin).damage, 3);
+}
+
+#[test]
+fn foreboding_ruins_enters_untapped_revealing_a_swamp() {
+    let mut g = table();
+    hand(&mut g, 0, "Swamp");
+    let fr = hand(&mut g, 0, "Foreboding Ruins");
+    act(&mut g, Action::PlayLand(fr));
+    first_answers(&mut g);
+    assert!(!g.obj(fr).tapped);
+}
+
+// ---- Vaevictis Asmadi, the Dire, batch 1 ----
+
+#[test]
+fn tranquility_destroys_all_enchantments() {
+    let mut g = table();
+    let a = put(&mut g, 0, "Nahiri's Resolve");
+    let b = put(&mut g, 1, "Mirrormade");
+    let t = hand(&mut g, 0, "Tranquility");
+    play(&mut g, t, false, &[], &[]);
+    assert_eq!(g.obj(a).zone, Zone::Graveyard);
+    assert_eq!(g.obj(b).zone, Zone::Graveyard);
+}
+
+#[test]
+fn vesuva_enters_tapped_as_a_copy_of_a_land_or_untapped_as_itself() {
+    let mut g = table();
+    let v = hand(&mut g, 0, "Vesuva");
+    let pool = g.permanents(1).find(|&x| g.def_of(x).name == "Island").unwrap();
+    act(&mut g, Action::PlayLand(v));
+    assert!(matches!(g.pending, Pending::Decide(_)));
+    act(&mut g, Action::Pick(pool));
+    assert_eq!(g.def_of(v).name, "Island");
+    assert!(g.obj(v).tapped);
+    let mut g = table();
+    let v = hand(&mut g, 0, "Vesuva");
+    act(&mut g, Action::PlayLand(v));
+    act(&mut g, Action::No);
+    assert_eq!(g.def_of(v).name, "Vesuva");
+    assert!(!g.obj(v).tapped);
+}
