@@ -309,7 +309,40 @@ pub fn token_defs() -> Vec<CardDef> {
             t.types.artifact = true;
             t
         },
+        // 94-96: placeholders until their lanes' tokens land (d2: Walker, Utvara's 6/6 Dragon; d4:
+        // Smaug). Each lane replaces its own line.
+        token("Placeholder 94", "", 0, 0, Keywords::NONE),
+        token("Placeholder 95", "", 0, 0, Keywords::NONE),
+        token("Placeholder 96", "", 0, 0, Keywords::NONE),
+        wicked_role(), // 97, lane C
     ]
+}
+
+/// The Wicked Role (CR 111.10j): an Aura token, "Enchanted creature gets +1/+1. When this Aura is put
+/// into a graveyard, each opponent loses 1 life."
+fn wicked_role() -> CardDef {
+    let mut d = CardDef {
+        name: "Wicked Role".to_string(),
+        types: Types {
+            enchantment: true,
+            ..Types::default()
+        },
+        subtypes: vec!["Aura".to_string(), "Role".to_string()],
+        token: true,
+        aura: true,
+        ..CardDef::default()
+    };
+    attached(&mut d, false, 1, 1, Keywords::NONE);
+    on(
+        &mut d,
+        When::ThisPutIntoGraveyardFromBattlefield,
+        vec![],
+        vec![Effect::LoseLife {
+            who: Who::EachOpponent,
+            n: 1,
+        }],
+    );
+    d
 }
 
 /// A red token.
@@ -482,6 +515,11 @@ pub struct Tokens {
     pub angel_4: usize,
     pub pincher: usize,
     pub servo: usize,
+    /// 94-96: placeholders for d2's Walker and Utvara Dragon and d4's Smaug (each lane renames its own).
+    pub placeholder_94: usize,
+    pub placeholder_95: usize,
+    pub placeholder_96: usize,
+    pub wicked_role: usize,
 }
 
 impl Tokens {
@@ -581,6 +619,10 @@ impl Tokens {
             angel_4: base + 91,
             pincher: base + 92,
             servo: base + 93,
+            placeholder_94: base + 94,
+            placeholder_95: base + 95,
+            placeholder_96: base + 96,
+            wicked_role: base + 97,
         }
     }
 }
