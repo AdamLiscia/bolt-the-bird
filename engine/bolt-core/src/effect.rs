@@ -1610,6 +1610,11 @@ pub enum Effect {
     /// Choose an exiled card an opponent owns with a void counter on it; you may play it this turn
     /// without paying its mana cost (Dauthi Voidwalker).
     PlayVoidCardFree,
+    /// Put the creature card in `slot` (from a graveyard) onto the battlefield under your control
+    /// and attach the source to it (Necromancy).
+    ReanimateAttachSource(u8),
+    /// Untap the creature the source is attached to.
+    UntapAttached,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

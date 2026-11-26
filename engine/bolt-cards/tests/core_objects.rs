@@ -286,3 +286,62 @@ fn monster_manual_studies_then_puts_creatures_in() {
     resolve_all(&mut g, &[Action::Pick(pal)]);
     assert_eq!(g.obj(pal).zone, Zone::Battlefield);
 }
+
+// ---- Reanimating Auras ----
+
+#[test]
+fn animate_dead_returns_a_creature_and_takes_it_back_when_it_leaves() {
+    let mut g = table();
+    let theirs = g.add_card(1, cid("Palinchron"), Zone::Graveyard);
+    let ad = hand(&mut g, 0, "Animate Dead");
+    play(&mut g, ad, false, &[obj(theirs)], &[]);
+    assert_eq!(g.obj(theirs).zone, Zone::Battlefield);
+    assert_eq!(g.obj(theirs).controller, 0);
+    assert_eq!(
+        g.obj(ad).zone,
+        Zone::Battlefield,
+        "attached, not a state-based death"
+    );
+    assert_eq!(g.power(theirs), 3, "-1/-0");
+    let br = hand(&mut g, 0, "Broken Bond");
+    play(&mut g, br, false, &[obj(ad)], &[Action::No]); // no land from hand
+    assert_eq!(g.obj(ad).zone, Zone::Graveyard);
+    assert_eq!(
+        g.obj(theirs).zone,
+        Zone::Graveyard,
+        "sacrificed when the Aura left"
+    );
+}
+
+#[test]
+fn dance_of_the_dead_returns_it_tapped_and_can_untap_it() {
+    let mut g = table();
+    let mine = g.add_card(0, cid("Hungry Ghoul"), Zone::Graveyard);
+    let dd = hand(&mut g, 0, "Dance of the Dead");
+    play(&mut g, dd, false, &[obj(mine)], &[]);
+    assert!(g.obj(mine).tapped);
+    assert_eq!(g.power(mine), 3);
+    g.start_turn(5, 0);
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    resolve_all(&mut g, &[Action::Yes]);
+    assert!(!g.obj(mine).tapped, "paid {{1}}{{B}}");
+}
+
+#[test]
+fn necromancy_at_instant_speed_is_sacrificed_at_end_of_turn() {
+    let mut g = table();
+    let ghoul = g.add_card(1, cid("Hungry Ghoul"), Zone::Graveyard);
+    let nec = hand(&mut g, 0, "Necromancy");
+    to_main1(&mut g, 4, 1);
+    act(&mut g, Action::PassPriority);
+    act(&mut g, Action::Cast(nec));
+    resolve_all(&mut g, &[Action::Target(obj(ghoul))]);
+    assert_eq!(g.obj(ghoul).zone, Zone::Battlefield);
+    assert_eq!(g.obj(ghoul).controller, 0);
+    assert!(
+        g.obj(nec).sacrifice_at_end,
+        "cast when a sorcery couldn't have been"
+    );
+}
