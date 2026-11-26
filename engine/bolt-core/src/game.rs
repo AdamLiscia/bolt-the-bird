@@ -7834,9 +7834,6 @@ impl Game {
                     || (a.forage && !self.can_forage(p, id))
                     || (a.forecast && !(p == self.active && self.step == Step::Upkeep))
                     || (a.life_per_commander_color && self.players[p].life < self.commander_color_count(p))
-                    || (a.min_artifacts > 0
-                        && self.permanents(p).filter(|&x| self.types_of(x).artifact).count()
-                            < a.min_artifacts as usize)
                     || (a.tap_untapped_creature
                         && self.untapped_creature_for_cost(p, id).is_none_or(|c| {
                             // That creature can't also tap for the mana.

@@ -323,8 +323,6 @@ pub struct Activated {
     /// "Forage" in the cost (Camellia): exile three cards from your graveyard or sacrifice a Food.
     /// The engine picks: a Food if you have one, else three graveyard cards (as for delve).
     pub forage: bool,
-    /// "Activate only if you control N or more artifacts." (Metallurgic Summonings: 6)
-    pub min_artifacts: u8,
     /// Foretell's "During your turn, you may pay {2} and exile this card from your hand": an
     /// ability of the card in your hand (with `your_turn_only`); it's cast later for
     /// `ManaExt::foretell`. (A special action in the rules, CR 702.143a; here it uses the stack.)

@@ -2306,35 +2306,8 @@ fn undying_granted_by_a_static_counts_as_it_dies() {
 }
 
 #[test]
-fn activate_only_with_six_artifacts_and_times_kicked() {
+fn times_kicked_counts_multikicker_kicks() {
     use batch9::*;
-    let mut s = CardDef {
-        name: "Summonings".into(),
-        types: bolt_core::Types {
-            enchantment: true,
-            ..bolt_core::Types::default()
-        },
-        ..CardDef::default()
-    };
-    s.activated.push(Activated {
-        exile_self: true,
-        min_artifacts: 6,
-        ability: Ability::new(vec![], vec![Effect::Draw { who: Who::You, n: 1 }]),
-        ..Activated::default()
-    });
-    let mut g = batch6_board(vec![s, artifact("Rock")], 0);
-    let x = put(&mut g, 0, 25);
-    for _ in 0..5 {
-        put(&mut g, 0, 26);
-    }
-    assert!(
-        !g.legal_actions().contains(&Action::Activate(x, 0)),
-        "five artifacts"
-    );
-    put(&mut g, 0, 26);
-    act(&mut g, Action::Activate(x, 0));
-    settle(&mut g);
-    assert_eq!(g.obj(x).zone, Zone::Exile, "exiled as the cost");
     // Multikicker's count, on the permanent it became.
     let mut chalice = artifact("Chalice");
     chalice.cost = ManaCost::default();
