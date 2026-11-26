@@ -1284,6 +1284,8 @@ pub enum Decision {
     /// `Pick` a nontoken creature you control to sacrifice; then `next` chooses (Accursed
     /// Marauder: each player, the active player first).
     SacrificeNontokenCreatureEach { next: Option<PlayerId> },
+    /// The Ring tempts you (CR 701.54a): `Pick` a creature you control as your Ring-bearer.
+    ChooseRingBearer,
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -1675,6 +1677,14 @@ pub struct Game {
     /// While one effect creates its tokens: whether Xorn's additional Treasure has been made for
     /// it ("one or more Treasure tokens": once per event).
     xorn_batch: Option<bool>,
+    /// The Ring (CR 701.54): how many of its four abilities each player's Ring emblem has.
+    pub ring_level: [u8; 2],
+    /// Each player's Ring-bearer as chosen, (creature, its zcc) (CR 701.54a; see `Game::ring_bearer`).
+    pub ring_bearer: [Option<(ObjId, u32)>; 2],
+    /// How many times the Ring has tempted each player this game (CR 701.54d).
+    pub ring_tempted: [u32; 2],
+    /// Blockers the Ring's third ability has already triggered for: (blocker, its zcc, turn).
+    pub ring_blocks_seen: Vec<(ObjId, u32, u32)>,
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -1936,6 +1946,10 @@ impl Game {
             control_while_shielded: Vec::new(),
             nontoken_creatures_died: (0, 0),
             xorn_batch: None,
+            ring_level: [0; 2],
+            ring_bearer: [None; 2],
+            ring_tempted: [0; 2],
+            ring_blocks_seen: Vec::new(),
         }
     }
 
@@ -10206,7 +10220,7 @@ impl Game {
         if noncreature {
             self.fire(opponent(p), When::OpponentCastsNoncreature, None);
             // Pollywog Prodigy: only for a spell with mana value less than its power.
-            let cost = self.def_of(card).cost;
+            let cost = self.cast_mana_cost(&item);
             let mv = (cost.mana_value() + cost.x as u32 * item.x as u32) as i32;
             let before = self.triggered.len();
             self.fire(opponent(p), When::OpponentCastsNoncreatureMvBelowPower, None);
@@ -10299,7 +10313,7 @@ impl Game {
         if self.types_of(card).artifact {
             self.fire(p, When::YouCastArtifact, None);
         }
-        let spell_cost = self.def_of(card).cost;
+        let spell_cost = self.cast_mana_cost(&item);
         let spell_mv = spell_cost.mana_value() + spell_cost.x as u32 * item.x as u32;
         let colors = self.colors_of(card);
         if colors.iter().filter(|&&c| c).count() >= 2 {
@@ -11596,6 +11610,7 @@ impl Game {
                 self.subsystem_decision_actions(d)
             }
             Decision::UntapOwnCreature => self.untap_own_creature_options(p),
+            Decision::ChooseRingBearer => self.ring_bearer_options(p),
             Decision::DelinaAgain { .. } => vec![Action::Yes, Action::No],
             Decision::PickOneOf { cards, .. } => cards.iter().copied().map(Action::Pick).collect(),
             Decision::MayCreatureFromHand => {
@@ -13612,6 +13627,7 @@ impl Game {
                 self.subsystem_decide(p, d, a)
             }
             (d @ Decision::UntapOwnCreature, a) => self.subsystem_decide(p, d, a),
+            (d @ Decision::ChooseRingBearer, a) => self.subsystem_decide(p, d, a),
             (
                 Decision::VowCreature {
                     caster,

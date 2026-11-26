@@ -288,6 +288,17 @@ pub fn script(name: &str) -> Option<Script> {
                 d.mana_amount = 2;
             },
         ),
+        // ---- The Ring tempts you (CR 701.54: `SubsystemEffect::RingTempts`) ----
+        "Fiery Inscription" => s(
+            &[
+                "When this enchantment enters, the Ring tempts you.",
+                "Whenever you cast an instant or sorcery spell, this enchantment deals 2 damage to each opponent.",
+            ],
+            |d, _| {
+                on(d, When::Enters, vec![], vec![sub(SubsystemEffect::RingTempts)]);
+                on(d, When::YouCastInstantOrSorcery, vec![], vec![damage(2, Recipient::EachOpponent)]);
+            },
+        ),
         _ => None,
     }
 }
@@ -317,4 +328,6 @@ pub const PG_D4_SCRIPTED: &[&str] = &[
     "Ancient Copper Dragon",
     // Coin flips
     "Mana Crypt",
+    // The Ring
+    "Fiery Inscription",
 ];
