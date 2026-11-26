@@ -834,6 +834,14 @@ pub struct CardDef {
     /// The d4 subsystems' pieces (dungeons, Backgrounds, split cards), grouped so adding one
     /// touches only [`SubsystemExt`].
     pub subsystems: SubsystemExt,
+    /// "All Swamps are 1/1 black creatures that are still lands." (Kormus Bell; give it an empty
+    /// static too, so it's among the static sources)
+    pub swamps_are_creatures: bool,
+    /// "Creatures can't attack you unless their controller pays {N} for each creature they
+    /// control that's attacking you." (Ghostly Prison, Propaganda: 2), see `Game::attack_tax`.
+    pub attack_tax: u8,
+    /// The attack tax is {X} per creature, X the enchantments you control (Sphere of Safety).
+    pub attack_tax_per_enchantment: bool,
 }
 
 /// A card's pieces from the d4 subsystems (see [`CardDef::subsystems`]).
@@ -1183,6 +1191,9 @@ impl CardDef {
             suppresses_triggers: None,
             doubles_triggers_of: None,
             subsystems: Default::default(),
+            swamps_are_creatures: false,
+            attack_tax: 0,
+            attack_tax_per_enchantment: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -1429,6 +1440,9 @@ impl CardDef {
             suppresses_triggers: None,
             doubles_triggers_of: None,
             subsystems: Default::default(),
+            swamps_are_creatures: false,
+            attack_tax: 0,
+            attack_tax_per_enchantment: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -1675,6 +1689,9 @@ impl CardDef {
             suppresses_triggers: None,
             doubles_triggers_of: None,
             subsystems: Default::default(),
+            swamps_are_creatures: false,
+            attack_tax: 0,
+            attack_tax_per_enchantment: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,

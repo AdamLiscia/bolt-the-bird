@@ -893,6 +893,7 @@ pub fn script(name: &str) -> Option<Script> {
         .or_else(|| pg_d1::script(name))
         .or_else(|| pg_d2::script(name))
         .or_else(|| pg_d3::script(name))
+        .or_else(|| pg_m::script(name))
         .or_else(|| pg_d4::script(name))
 }
 
@@ -916,10 +917,13 @@ pub use pg_c::PG_C_SCRIPTED;
 mod pg_d1;
 mod pg_d2;
 mod pg_d3;
+// The merger's own cards (core hooks and the cards that test them).
+mod pg_m;
 mod pg_d4;
 pub use pg_d1::PG_D1_SCRIPTED;
 pub use pg_d2::PG_D2_SCRIPTED;
 pub use pg_d3::PG_D3_SCRIPTED;
+pub use pg_m::PG_M_SCRIPTED;
 pub use pg_d4::PG_D4_SCRIPTED;
 
 fn script_core(name: &str) -> Option<Script> {
@@ -4613,6 +4617,7 @@ mod one_script_per_card {
             ("pg_d1", PG_D1_SCRIPTED),
             ("pg_d2", PG_D2_SCRIPTED),
             ("pg_d3", PG_D3_SCRIPTED),
+            ("pg_m", PG_M_SCRIPTED),
             ("pg_d4", PG_D4_SCRIPTED),
         ]
     }

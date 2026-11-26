@@ -491,6 +491,9 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         opponents_max_hand_minus: 0,
         win_on_empty_draw: false,
         extra_upkeep_for_enchanted: false,
+        swamps_are_creatures: false,
+        attack_tax: 0,
+        attack_tax_per_enchantment: false,
     };
     def.color_identity = color_identity(o);
     def.phyrexian = phyrexian;
@@ -840,6 +843,7 @@ mod tests {
             .chain(scripts::PG_D1_SCRIPTED)
             .chain(scripts::PG_D2_SCRIPTED)
             .chain(scripts::PG_D3_SCRIPTED)
+            .chain(scripts::PG_M_SCRIPTED)
             .chain(scripts::PG_D4_SCRIPTED)
         {
             let i = t
