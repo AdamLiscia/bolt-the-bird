@@ -596,3 +596,22 @@ CopyIfChosenTypeExileAtEnd, CoinFlipCopiesExileAtEnd, CommanderFromCommandZoneUn
 DrawIfGreatestPower, AddAnyColorsGreatestPower, PrimalSurge}`, `Game::{primal_surge, copies_exile_at_end}`.
 Shortcuts: Selvala's "may draw" always draws. Twinflame's strive is one mode per number of targets (1 to 5), each
 with its added cost in `mode_costs`. Ezuri's Predation waits for token slot 63 (after lane B's 61 and 62).
+
+Etali batch 6 (5): Mosswort Bridge, Spinerock Knoll, Cursed Mirror, Wand of Wonder, Vivien, Monsters' Advocate.
+Core: `CardDef::{copy_until_eot_haste (with enter_as_copy), top_spells_creatures}`, `Object::hideaway`,
+`Game::{damage_to_player_turn, next_creature_spell}`, `Decision::{HideawayPick, KeywordCounterChoice}`,
+`Effect::{Hideaway, PlayHideaway, WandOfWonder, CreateTokenWithKeywordCounterChoice, NextCreatureSpellThisTurn,
+SearchCreatureLesserManaValue}`. A hideaway card is played through `playable` and `cast_free` for the turn (a land
+uses a land drop). Wand of Wonder: one opponent exiles one instant or sorcery, so X only caps it at one.
+
+Etali batch 7 (4): Delina, Wild Mage, Jaxis, the Troublemaker, Zopandrel, Hunger Dominus, Mirage Phalanx.
+Core: `CardDef::{blitz (with alt_cost), soulbond_combat_copies}`, `Activated::{discard_any_card, sacrifice_two_others}`,
+`Object::{exile_end_combat, lost_soulbond}`, `Decision::DelinaAgain`, `Effect::{DelinaRoll, CopyHasteDiesDrawSacrifice,
+KeywordCounterSelf, PhalanxCopies}`, `Game::{token_copy_of, delina_roll}`.
+Shortcuts: Zopandrel's second sacrifice is the engine's pick (your other creature with the least power); its
+{G/P}{G/P} is three abilities ({G}{G}; {G} and 2 life; 4 life). Mirage Phalanx's copy of each paired creature comes
+from Phalanx's own trigger (one trigger for both).
+
+Merged tarkir 62051fe (lane B's Myrkul batch 1, desktop d3, core themes): end-of-block conflicts, tarkir's side first.
+With it: Ezuri's Predation (`Effect::TokenFightsEachOpponentCreature`; token Phyrexian Beast 4/4 at base+63, after lane
+B's 61 and 62). Etali (queue list) complete.
