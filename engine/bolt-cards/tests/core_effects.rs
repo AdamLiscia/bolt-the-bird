@@ -1256,3 +1256,38 @@ fn untap_attached_and_noncreature_artifacts_become_zero_zero_with_counters() {
     resolve_all(&mut g, &[]);
     assert!(!g.obj(looter).tapped, "untaps only, never taps");
 }
+
+// ---- batch 7 ----
+
+#[test]
+fn exile_their_creatures_fetch_basics_tainted_pact_and_belzenlok_dig() {
+    let (mut g, t) = game_with(vec![
+        sorcery(vec![], vec![Effect::ExileOpponentsCreaturesTheyFetchBasicsTapped]),
+        sorcery(vec![], vec![Effect::TaintedPact]),
+        sorcery(vec![], vec![Effect::BelzenlokDig]),
+    ]);
+    let a = g.add_card(1, cid("Merfolk Looter"), Zone::Battlefield);
+    let mine = g.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
+    let basic = g.add_card(1, cid("Forest"), Zone::Library);
+    cast_test(&mut g, t, &[], &[Action::Pick(basic)]);
+    assert_eq!(
+        (g.obj(a).zone, g.obj(mine).zone),
+        (Zone::Exile, Zone::Battlefield)
+    );
+    assert!(g.obj(basic).tapped);
+
+    let x = g.add_card(0, cid("Sol Ring"), Zone::Library);
+    let y = g.add_card(0, cid("Sol Ring"), Zone::Library);
+    cast_test(&mut g, t + 1, &[], &[Action::No]);
+    assert_eq!(
+        (g.obj(x).zone, g.obj(y).zone),
+        (Zone::Exile, Zone::Exile),
+        "a repeated name stops it"
+    );
+
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Library);
+    let land = g.add_card(0, cid("Forest"), Zone::Library);
+    cast_test(&mut g, t + 2, &[], &[]);
+    assert_eq!((g.obj(land).zone, g.obj(ring).zone), (Zone::Exile, Zone::Hand));
+    assert_eq!(g.players[0].life, 39, "mana value 1: once");
+}

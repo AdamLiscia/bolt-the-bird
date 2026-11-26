@@ -1143,6 +1143,28 @@ pub fn script(name: &str) -> Option<Script> {
                 d.kicked_spell = Some(Ability::new(vec![], vec![Effect::NoncreatureArtifactsBecomeZeroZeroWithCounters(4)]));
             },
         ),
+        // ---- Unblocked by lane d3's core theme, batch 7 ----
+        "Winds of Abandon" => s(
+            &[
+                "Exile target creature you don't control. For each creature exiled this way, its controller searches their library for a basic land card. Those players put those cards onto the battlefield tapped, then shuffle.",
+                "Overload {4}{W}{W}",
+            ],
+            |d, _| {
+                spell(d, vec![OPP_CREATURE], vec![Effect::ExileControllerMayFetchBasic(0)]);
+                // Overload {4}{W}{W} is cast as a {4}{W} kicker on {1}{W}: the same total, and
+                // "kicked" swaps in the overloaded text ("each" instead of "target").
+                d.kicker = ManaCost::parse("{4}{W}");
+                d.kicked_spell = Some(Ability::new(vec![], vec![Effect::ExileOpponentsCreaturesTheyFetchBasicsTapped]));
+            },
+        ),
+        "Tainted Pact" => s(
+            &["Exile the top card of your library. You may put that card into your hand unless it has the same name as another card exiled this way. Repeat this process until you put a card into your hand or you exile two cards with the same name, whichever comes first."],
+            |d, _| spell(d, vec![], vec![Effect::TaintedPact]),
+        ),
+        "Demonlord Belzenlok" => s(
+            &["When Demonlord Belzenlok enters, exile cards from the top of your library until you exile a nonland card, then put that card into your hand. If the card's mana value is 4 or greater, repeat this process. Demonlord Belzenlok deals 1 damage to you for each card put into your hand this way."],
+            |d, _| on(d, When::Enters, vec![], vec![Effect::BelzenlokDig]),
+        ),
         _ => None,
     }
 }
@@ -1312,4 +1334,8 @@ pub const PG_D3_SCRIPTED: &[&str] = &[
     // Core theme d3, batch 6
     "Genji Glove",
     "Rise and Shine",
+    // Core theme d3, batch 7
+    "Winds of Abandon",
+    "Tainted Pact",
+    "Demonlord Belzenlok",
 ];

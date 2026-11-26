@@ -1732,6 +1732,17 @@ pub enum Effect {
     /// Each noncreature artifact you control becomes a 0/0 artifact creature for good, with `n`
     /// +1/+1 counters (Rise and Shine, overloaded).
     NoncreatureArtifactsBecomeZeroZeroWithCounters(u8),
+    /// Exile each creature you don't control; the opponent searches for that many basic land cards
+    /// and puts them onto the battlefield tapped, then shuffles (Winds of Abandon, overloaded).
+    ExileOpponentsCreaturesTheyFetchBasicsTapped,
+    /// Exile the top card of your library; you may put it into your hand unless it has the same
+    /// name as another card exiled this way; repeat until you put one into your hand or exile two
+    /// with the same name (Tainted Pact), as `Decision::TaintedPact`.
+    TaintedPact,
+    /// Exile from the top until a nonland card and put it into your hand; repeat while its mana
+    /// value is 4 or greater; the source deals 1 damage to you per card put into your hand
+    /// (Demonlord Belzenlok).
+    BelzenlokDig,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

@@ -1034,6 +1034,9 @@ pub enum Decision {
     /// `Pick` a permanent you control sharing a card type with `types` to sacrifice, or `No`: you
     /// lose 2 life and `controller` draws a card (Braids, Arisen Nightmare).
     BraidsOpponent { controller: PlayerId, types: Types },
+    /// `Yes` puts the last of `exiled` (the cards Tainted Pact exiled) into your hand; `No` exiles
+    /// the next one.
+    TaintedPact { exiled: Vec<ObjId> },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -9117,6 +9120,7 @@ impl Game {
                 v.push(Action::No);
                 v
             }
+            Decision::TaintedPact { .. } => vec![Action::Yes, Action::No],
             Decision::BraidsOpponent { types, .. } => {
                 let mut v: Vec<Action> = self
                     .braids_options(p, Some(*types))
@@ -10244,6 +10248,12 @@ impl Game {
                 }
             }
             (Decision::BraidsSacrifice, _) => {}
+            (Decision::TaintedPact { exiled }, Action::Yes) => {
+                if let Some(&c) = exiled.last() {
+                    self.move_to(c, Zone::Hand);
+                }
+            }
+            (Decision::TaintedPact { exiled }, _) => self.tainted_pact_next(p, exiled),
             (Decision::BraidsOpponent { .. }, Action::Pick(c)) => self.move_to(c, Zone::Graveyard),
             (Decision::BraidsOpponent { controller, .. }, _) => {
                 self.lose_life(p, 2);
@@ -10499,6 +10509,20 @@ impl Game {
             self.move_to(picked[k], Zone::Hand);
         }
         self.shuffle_library(p);
+    }
+
+    /// Tainted Pact: exile the next card; stop on a repeated name or an empty library, else ask.
+    fn tainted_pact_next(&mut self, p: PlayerId, mut exiled: Vec<ObjId>) {
+        let Some(&c) = self.players[p].library.last() else {
+            return;
+        };
+        self.move_to(c, Zone::Exile);
+        let name = &self.def_of(c).name;
+        let repeated = exiled.iter().any(|&x| &self.def_of(x).name == name);
+        exiled.push(c);
+        if !repeated {
+            self.ask(p, Decision::TaintedPact { exiled });
+        }
     }
 
     /// Braids: `p`'s permanents that could be sacrificed: any artifact, creature, enchantment, land
@@ -15703,6 +15727,46 @@ impl Game {
                     if self.obj(id).zcc == zcc && self.obj(id).zone == Zone::Battlefield {
                         self.untap_by_effect(id);
                     }
+                }
+            }
+            Effect::ExileOpponentsCreaturesTheyFetchBasicsTapped => {
+                let q = opponent(item.controller);
+                let theirs: Vec<ObjId> = self.creatures(q).collect();
+                let mut n = 0u8;
+                for x in theirs {
+                    let owner_side = self.obj(x).controller;
+                    self.move_to(x, Zone::Exile);
+                    if self.obj(x).zone == Zone::Exile && owner_side == q {
+                        n = n.saturating_add(1);
+                    }
+                }
+                if n > 0 {
+                    self.ask(q, Decision::BasicsTappedUpTo { left: n, next: None });
+                }
+            }
+            Effect::TaintedPact => {
+                let p = item.controller;
+                self.tainted_pact_next(p, Vec::new());
+            }
+            Effect::BelzenlokDig => {
+                let p = item.controller;
+                let mut put = 0;
+                loop {
+                    let Some(&c) = self.players[p].library.last() else {
+                        break;
+                    };
+                    self.move_to(c, Zone::Exile);
+                    if self.def_of(c).types.land {
+                        continue;
+                    }
+                    self.move_to(c, Zone::Hand);
+                    put += 1;
+                    if self.def_of(c).cost.mana_value() < 4 {
+                        break;
+                    }
+                }
+                if put > 0 {
+                    self.deal_damage(src, Target::Player(p), put);
                 }
             }
             Effect::NoncreatureArtifactsBecomeZeroZeroWithCounters(n) => {

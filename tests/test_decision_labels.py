@@ -66,6 +66,8 @@ def test_lane_d3_batch_5_decisions_read_as_their_moves():
     assert label({"kind": "BraidsSacrifice"}, "No", 0) == "Don't sacrifice"
     assert label({"kind": "BraidsOpponent"}, "No", 0) == "Don't sacrifice (lose 2 life)"
     assert label({"kind": "TargetToSource"}, "Mode", 0) == "Change target 1 to this creature"
+    assert label({"kind": "TaintedPact"}, "Yes", 0) == "Put it into your hand"
+    assert label({"kind": "TaintedPact"}, "No", 0) == "Exile the next card"
 
 
 def test_an_unknown_decision_keeps_the_generic_label():

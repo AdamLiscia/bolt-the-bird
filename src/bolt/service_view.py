@@ -162,6 +162,7 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         "CommanderToCommandZone": (f"Move {subject} to the command zone", f"Leave {subject} there"),
         "ChoosePile": ("Choose pile A", "Choose pile B"),
         "MayShuffle": ("Shuffle your library", "Don't shuffle"),
+        "TaintedPact": ("Put it into your hand", "Exile the next card"),
     }
     if d in ("CreaturesFromHandUpTo", "SearchToGraveyardCounter") and not yes:
         return "Done choosing" if d == "CreaturesFromHandUpTo" else "Find nothing"

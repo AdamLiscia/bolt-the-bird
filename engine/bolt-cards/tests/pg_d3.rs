@@ -2554,3 +2554,62 @@ fn rise_and_shine_animates_one_or_overloaded_each_noncreature_artifact() {
     }
     assert!(!g.types_of(theirs).creature, "only yours");
 }
+
+// ---- Core theme d3, batch 7 ----
+
+#[test]
+fn winds_of_abandon_exiles_one_or_overloaded_each_for_tapped_basics() {
+    let mut g = table();
+    let looter = put(&mut g, 1, "Merfolk Looter");
+    let elves = put(&mut g, 1, "Llanowar Elves");
+    let mine = put(&mut g, 0, "Elvish Mystic");
+    let basic = g.players[1].library[0];
+    let w = hand(&mut g, 0, "Winds of Abandon");
+    play(&mut g, w, false, &[obj(looter)], &[Action::Pick(basic)]);
+    assert_eq!(
+        (g.obj(looter).zone, g.obj(elves).zone),
+        (Zone::Exile, Zone::Battlefield)
+    );
+    assert!(g.obj(basic).tapped && g.obj(basic).zone == Zone::Battlefield);
+
+    let more = put(&mut g, 1, "Merfolk Looter");
+    let (a, b) = (g.players[1].library[0], g.players[1].library[1]);
+    let w = hand(&mut g, 0, "Winds of Abandon");
+    play(&mut g, w, true, &[], &[Action::Pick(a), Action::Pick(b)]); // overloaded
+    assert_eq!(
+        (g.obj(elves).zone, g.obj(more).zone, g.obj(mine).zone),
+        (Zone::Exile, Zone::Exile, Zone::Battlefield)
+    );
+    assert!([a, b]
+        .iter()
+        .all(|&x| g.obj(x).zone == Zone::Battlefield && g.obj(x).tapped));
+}
+
+#[test]
+fn tainted_pact_digs_until_you_take_one_or_a_name_repeats() {
+    let mut g = table();
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Library);
+    let study = g.add_card(0, cid("Rhystic Study"), Zone::Library);
+    let p = hand(&mut g, 0, "Tainted Pact");
+    play(&mut g, p, false, &[], &[Action::No, Action::Yes]);
+    assert_eq!((g.obj(study).zone, g.obj(ring).zone), (Zone::Exile, Zone::Hand));
+
+    // Plains, then Plains: the repeat stops it.
+    let p = hand(&mut g, 0, "Tainted Pact");
+    let top = *g.players[0].library.last().unwrap();
+    play(&mut g, p, false, &[], &[Action::No]);
+    assert_eq!(g.obj(top).zone, Zone::Exile);
+    assert_eq!(g.players[0].graveyard.len(), 2, "both Pacts; nothing more asked");
+}
+
+#[test]
+fn demonlord_belzenlok_repeats_on_mana_value_four_or_more() {
+    let mut g = table();
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Library);
+    g.add_card(0, cid("Plains"), Zone::Library);
+    let sphinx = g.add_card(0, cid("Consecrated Sphinx"), Zone::Library);
+    let b = hand(&mut g, 0, "Demonlord Belzenlok");
+    play(&mut g, b, false, &[], &[]);
+    assert_eq!((g.obj(sphinx).zone, g.obj(ring).zone), (Zone::Hand, Zone::Hand));
+    assert_eq!(g.players[0].life, 38, "two cards into your hand");
+}
