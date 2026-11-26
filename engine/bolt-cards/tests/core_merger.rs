@@ -853,3 +853,107 @@ fn harmonize_x_counts_the_tapped_creature_as_spent() {
     act(&mut g, Action::Amount(1));
     assert!(g.obj(elves).tapped);
 }
+
+#[test]
+fn bolas_citadel_casts_from_the_top_for_life() {
+    let mut g = table();
+    put(&mut g, 0, "Bolas's Citadel");
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Library); // on top, mana value 1
+    assert!(g.legal_actions().contains(&Action::Cast(lions)));
+    let untapped = g.permanents(0).filter(|&x| !g.obj(x).tapped).count();
+    play(&mut g, lions, false, &[], &[]);
+    assert_eq!(g.obj(lions).zone, Zone::Battlefield);
+    assert_eq!(g.players[0].life, 39, "its mana value in life");
+    assert_eq!(
+        g.permanents(0).filter(|&x| !g.obj(x).tapped).count(),
+        untapped + 1,
+        "no mana: only the Lions are new"
+    );
+}
+
+#[test]
+fn xorn_adds_a_treasure_and_gadrak_needs_four_artifacts() {
+    let mut g = table();
+    put(&mut g, 0, "Xorn");
+    let gadrak = put(&mut g, 0, "Gadrak, the Crown-Scourge");
+    let score = hand(&mut g, 0, "Big Score"); // "create two Treasure tokens"
+    let junk = hand(&mut g, 0, "Plains");
+    act(&mut g, Action::CastWith(score, junk));
+    resolve_all(&mut g, &[]);
+    assert_eq!(tokens(&g, 0, "Treasure").len(), 3, "two plus one");
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    let legal = g.legal_actions();
+    assert!(
+        !legal.contains(&Action::Attack(gadrak)),
+        "three artifacts: Gadrak can't attack"
+    );
+}
+
+#[test]
+fn silent_arbiter_allows_one_attacker() {
+    let mut g = table();
+    put(&mut g, 1, "Silent Arbiter");
+    let a = put(&mut g, 0, "Savannah Lions");
+    let b = put(&mut g, 0, "Savannah Lions");
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(a));
+    assert!(
+        !g.legal_actions().contains(&Action::Attack(b)),
+        "one attacker each combat"
+    );
+}
+
+#[test]
+fn expropriate_counts_time_and_money_votes() {
+    let mut g = table();
+    let theirs = put(&mut g, 1, "Savannah Lions");
+    let e = hand(&mut g, 0, "Expropriate");
+    act(&mut g, Action::Cast(e));
+    while g.pending != Pending::Decide(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Yes); // time
+    act(&mut g, Action::No); // the opponent: money
+    act(&mut g, Action::Pick(theirs));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.extra_turns, vec![0]);
+    assert_eq!(g.obj(theirs).controller, 0);
+    assert_eq!(g.obj(e).zone, Zone::Exile);
+}
+
+#[test]
+fn a_target_that_raises_the_cost_needs_the_mana_dragons_prey() {
+    // CR 601.2f: the total cost is fixed after targets; a Dragon target costs {2} more.
+    let mut g = game(&["Swamp", "Swamp", "Swamp"]);
+    let dragon = put(&mut g, 1, "Magmatic Hellkite");
+    let prey = hand(&mut g, 0, "Dragon's Prey");
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(prey)),
+        "only a Dragon to target, and no {{2}} more"
+    );
+    let mut g = game(&["Swamp", "Swamp", "Swamp", "Swamp", "Swamp"]);
+    let dragon2 = put(&mut g, 1, "Magmatic Hellkite");
+    let prey = hand(&mut g, 0, "Dragon's Prey");
+    act(&mut g, Action::Cast(prey));
+    assert!(g
+        .legal_actions()
+        .contains(&Action::Target(Target::Object(dragon2))));
+    act(&mut g, Action::Target(Target::Object(dragon2)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(dragon2).zone, Zone::Graveyard);
+    let _ = dragon;
+}
+
+#[test]
+fn harmonize_excludes_its_creature_from_paying_even_a_devotee() {
+    // Mardu Devotee's "{1}: Add {R}" doesn't tap, but payment excludes the harmonize creature:
+    // so does castability. Four Plains can't make Wild Ride's {R} without it.
+    let mut g = game(&["Plains", "Plains", "Plains", "Plains"]);
+    let devotee = put(&mut g, 0, "Mardu Devotee");
+    let ride = g.add_card(0, cid("Wild Ride"), Zone::Graveyard);
+    assert!(!g.legal_actions().contains(&Action::CastHarmonize(ride, devotee)));
+}

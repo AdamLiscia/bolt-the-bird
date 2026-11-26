@@ -969,6 +969,36 @@ pub fn script(name: &str) -> Option<Script> {
                 d.activated[n].life = 1;
             },
         ),
+        // ---- Core: triggers, batch 14 ----
+        "Pact of Negation" => s(
+            &[
+                "Counter target spell.",
+                "At the beginning of your next upkeep, pay {3}{U}{U}. If you don't, you lose the game.",
+            ],
+            |d, _| {
+                let trigger = d.triggers.len();
+                spell(d, vec![SPELL], vec![Effect::Counter(0), Effect::DelayedAtYourNextUpkeep { trigger }]);
+                // Only from the delayed entry.
+                let cost = ManaCost::parse("{3}{U}{U}").expect("a mana cost");
+                on(d, When::Never, vec![], vec![Effect::PayOrLoseGame(cost)]);
+            },
+        ),
+        "Sigil of the Empty Throne" => s(
+            &["Whenever you cast an enchantment spell, create a 4/4 white Angel creature token with flying."],
+            |d, t| on(d, When::YouCastEnchantment, vec![], vec![Effect::CreateToken { who: Who::You, def: t.angel_4, n: 1 }]),
+        ),
+        "Summoning Station" => s(
+            &[
+                "{T}: Create a 2/2 colorless Pincher creature token.",
+                "Whenever an artifact is put into a graveyard from the battlefield, you may untap this artifact.",
+            ],
+            |d, t| {
+                activated(d, "", true, vec![], vec![Effect::CreateToken { who: Who::You, def: t.pincher, n: 1 }]);
+                on(d, When::ArtifactToGraveyardFromBattlefield, vec![], vec![Effect::UntapSelf]);
+                let n = d.triggers.len() - 1;
+                d.triggers[n].ability.optional = true;
+            },
+        ),
         _ => None,
     }
 }
@@ -1114,6 +1144,10 @@ pub const PG_D2_SCRIPTED: &[&str] = &[
     // Core: triggers, batch 13
     "Sheoldred, Whispering One",
     "Necropotence",
+    // Core: triggers, batch 14
+    "Pact of Negation",
+    "Sigil of the Empty Throne",
+    "Summoning Station",
     // The Gitrog, Ravenous Ride
     "Demonic Tutor",
     "Exquisite Blood",

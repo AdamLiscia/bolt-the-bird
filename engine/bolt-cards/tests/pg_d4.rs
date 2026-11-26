@@ -570,3 +570,29 @@ fn a_background_needs_a_commander_that_chooses_one() {
         "{problems:?}"
     );
 }
+
+// ---- The Ring ----
+
+#[test]
+fn fiery_inscription_tempts_you_and_burns_on_each_instant_or_sorcery() {
+    supported("Fiery Inscription");
+    let mut g = table();
+    let elf = put(&mut g, 0, "Llanowar Elves");
+    let f = hand(&mut g, 0, "Fiery Inscription");
+    play(&mut g, f, false, &[], &[]);
+    assert_eq!(g.obj(f).zone, Zone::Battlefield);
+    assert_eq!(
+        (g.ring_level(0), g.ring_bearer(0)),
+        (1, Some(elf)),
+        "the Ring tempted you"
+    );
+    let life = g.players[1].life;
+    let fire = hand(&mut g, 0, "Fire // Ice");
+    act(&mut g, Action::CastOmen(fire)); // Ice, an instant
+    act(&mut g, Action::Target(obj(elf)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].life, life - 2);
+    let lions = hand(&mut g, 0, "Savannah Lions");
+    play(&mut g, lions, false, &[], &[]);
+    assert_eq!(g.players[1].life, life - 2, "not for a creature spell");
+}

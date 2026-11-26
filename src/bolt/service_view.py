@@ -159,7 +159,7 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         verb = {"SacrificeCreatures": "Sacrifice", "SacrificeAnother": "Sacrifice", "Search": "Take",
                 "LookPick": "Take", "KeepOfType": "Keep", "ScryOrder": "Put on top:", "GenesisPick": "Put onto the battlefield:", "PutPicksOntoBattlefield": "Put onto the battlefield:", "LandFromHandTapped": "Put onto the battlefield tapped:",
                 "DistributeCounters": "Put a +1/+1 counter on", "ManifestDread": "Manifest", "TurnFaceUp": "Turn face up:",
-                "PickVoidCard": "Play free this turn:", "ReturnOwnCreatureOfColor": "Return to its owner's hand:", "CacheGrabPick": "Put into your hand:", "MoveCounterFrom": "Move a +1/+1 counter onto", "LandFromHand": "Put onto the battlefield:",
+                "PickVoidCard": "Play free this turn:", "ReturnOwnCreatureOfColor": "Return to its owner's hand:", "CacheGrabPick": "Put into your hand:", "MoveCounterFrom": "Move a +1/+1 counter onto", "ExpropriatePick": "Gain control of", "LandFromHand": "Put onto the battlefield:",
                 "PickDiscard": "Make them discard", "EnterAsCopy": f"{card or 'It'} enters as a copy of"}.get(d)  # fmt: skip
         verb = verb or {"CreaturesFromHandUpTo": "Put onto the battlefield:", "PermanentsFromHandUpTo": "Put onto the battlefield:", "ReturnOwnPermanent": "Return", "SearchToGraveyardCounter": "Put into your graveyard:"}.get(d)  # fmt: skip
         verb = verb or {"KeepNonlandOfType": "Keep", "HandToBottom": "Put on the bottom:", "SacrificeAnyNumber": "Sacrifice", "SacrificeCreatureOrPlaneswalkerEach": "Sacrifice", "ReturnAnotherPermanentCard": "Return to your hand:", "BasicsTappedUpTo": "Put onto the battlefield tapped:", "SignalTheClans": "Reveal", "BraidsSacrifice": "Sacrifice", "BraidsOpponent": "Sacrifice"}.get(d)  # fmt: skip
@@ -175,8 +175,10 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         verb = verb or {"TakeTwoBottomRest": "Put into your hand:"}.get(d)
         verb = verb or {"SacrificeDiscardOrLoseLife": "Sacrifice (or discard, from your hand):"}.get(d)
         verb = verb or {"ReanimateTotalManaValue": "Put onto the battlefield under your control:"}.get(d)
+        verb = verb or {"SacrificeNontokenCreatureEach": "Sacrifice"}.get(d)
         if d == "IterationPick":
             verb = "Put into your hand:" if dec.get("to_hand") else "Put on the bottom:"
+        verb = verb or {"ChooseRingBearer": "Choose as your Ring-bearer:"}.get(d)
         if d == "LoseUnless":
             verb = "Sacrifice" if dec.get("sacrifice") else "Discard"
         return f"{verb} {card_name}" if verb else None
@@ -191,6 +193,10 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         "Tuck": (f"Put {subject} on top of your library", f"Put {subject} on the bottom"),
         "May": (f"{src}: yes", f"{src}: no"),
         "MayPay": (f"Pay {dec.get('cost', '')} ({src})", "Don't pay"),
+        "PayOrLoseGame": (
+            f"Pay {dec.get('cost', '')} ({src})" if src else f"Pay {dec.get('cost', '')}",
+            "Don't pay (you lose the game)",
+        ),
         "PayWard": (f"Pay ward {dec.get('cost', '')} for {subject}", f"Don't pay ({subject} is countered)"),
         "PayWardLife": (f"Pay {dec.get('life', 0)} life for ward ({subject})", f"Don't pay ({subject} is countered)"),
         "PayOrCountered": (f"Pay {dec.get('cost', '')} ({subject} resolves)", f"Don't pay ({subject} is countered)"),
@@ -200,6 +206,7 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         "ChoosePile": ("Choose pile A", "Choose pile B"),
         "PayToStop": (f"Pay {dec.get('cost', '')}", "Don't pay"),
         "MayDrawGainOne": ("Draw a card and gain 1 life", "Don't draw"),
+        "ExpropriateVote": ("Vote time (an extra turn)", "Vote money (a permanent)"),
         "PayUpkeep": (f"Pay the upkeep {dec.get('cost', '')}", f"Don't pay (sacrifice {subject or src})"),
         "MayShuffle": ("Shuffle your library", "Don't shuffle"),
         "TaintedPact": ("Put it into your hand", "Exile the next card"),

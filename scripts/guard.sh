@@ -47,7 +47,18 @@ kill_tree() {
 
 # Stopping the guard (kill, Ctrl-C) stops everything it started: otherwise the command lives on
 # without its limits (2026-11-23: a stopped guard left the Bolt service holding its port).
-trap 'kill_tree; exit 143' TERM INT HUP
+# A stop signal first asks the command alone to stop (SIGTERM) and gives it GUARD_GRACE seconds (default 1) to
+# exit on its own: a farm job saves a checkpoint to S3 then. Whatever is still running after that is killed.
+graceful_stop() {
+  kill -TERM "$root" 2>/dev/null
+  waited=0
+  while kill -0 "$root" 2>/dev/null && [ "$waited" -lt "${GUARD_GRACE:-1}" ]; do
+    sleep 1
+    waited=$((waited + 1))
+  done
+  kill_tree
+}
+trap 'graceful_stop; exit 143' TERM INT HUP
 
 start=$(date +%s)
 active=0

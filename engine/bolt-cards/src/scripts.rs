@@ -296,11 +296,21 @@ pub fn token_defs() -> Vec<CardDef> {
         },
         blood(),
         red(token("Hamster", "Hamster", 1, 1, Keywords::NONE)), // Rolling Hamsphere
-        // 91-96: placeholders until their lanes' tokens land (d2: Angel, Pincher, Servo, Walker,
-        // Utvara's 6/6 Dragon; d4: Smaug). Each lane replaces its own line.
-        token("Placeholder 91", "", 0, 0, Keywords::NONE),
-        token("Placeholder 92", "", 0, 0, Keywords::NONE),
-        token("Placeholder 93", "", 0, 0, Keywords::NONE),
+        {
+            // 91, lane d2: Sigil of the Empty Throne's "4/4 white Angel creature token with flying".
+            let mut t = token("Angel", "Angel", 4, 4, Keywords::FLYING);
+            t.colors = [true, false, false, false, false];
+            t
+        },
+        token("Pincher", "Pincher", 2, 2, Keywords::NONE), // 92, lane d2: Summoning Station's colorless 2/2
+        {
+            // 93, lane d2 (d1's fabricate too): "a 1/1 colorless Servo artifact creature token".
+            let mut t = token("Servo", "Servo", 1, 1, Keywords::NONE);
+            t.types.artifact = true;
+            t
+        },
+        // 94-96: placeholders until their lanes' tokens land (d2: Walker, Utvara's 6/6 Dragon; d4:
+        // Smaug). Each lane replaces its own line.
         token("Placeholder 94", "", 0, 0, Keywords::NONE),
         token("Placeholder 95", "", 0, 0, Keywords::NONE),
         token("Placeholder 96", "", 0, 0, Keywords::NONE),
@@ -502,6 +512,9 @@ pub struct Tokens {
     pub orc_army: usize,
     pub eldrazi_scion: usize,
     pub bat: usize,
+    pub angel_4: usize,
+    pub pincher: usize,
+    pub servo: usize,
     pub wicked_role: usize,
 }
 
@@ -599,6 +612,9 @@ impl Tokens {
             orc_army: base + 86,
             eldrazi_scion: base + 87,
             bat: base + 83,
+            angel_4: base + 91,
+            pincher: base + 92,
+            servo: base + 93,
             wicked_role: base + 97,
         }
     }
