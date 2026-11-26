@@ -119,6 +119,14 @@ def test_nahiris_resolve_exiles_until_your_next_upkeep():
     assert label(dec, "No", 0) == "Done exiling"
 
 
+def test_bruna_and_light_paws_attach_auras():
+    dec = {"kind": "AttachAura"}
+    assert sv._decision_label(dec, "Pick", 0, "Rancor") == "Attach Rancor"
+    assert label(dec, "No", 0) == "Done attaching Auras"
+    glimpse = {"kind": "AuraEntersAttachedTo"}
+    assert sv._decision_label(glimpse, "Pick", 0, "Hungry Ghoul") == "Attach the Aura to Hungry Ghoul"
+
+
 def test_venturing_names_the_dungeon_or_room():
     dec = {"kind": "ChooseDungeon", "options": ["Lost Mine of Phandelver", "Dungeon of the Mad Mage"]}
     assert label(dec, "Mode", 1) == "Venture into Dungeon of the Mad Mage"

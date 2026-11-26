@@ -1868,6 +1868,88 @@ pub fn script(name: &str) -> Option<Script> {
                 ));
             },
         ),
+        // ---- Mac C: Auras put onto the battlefield attached (game/zones.rs) ----
+        "Bruna, Light of Alabaster" => s(
+            &["Whenever Bruna attacks or blocks, you may attach to it any number of Auras on the battlefield and you may put onto the battlefield attached to it any number of Aura cards that could enchant it from your graveyard and/or hand."],
+            |d, _| {
+                on(d, When::Attacks, vec![], vec![Effect::AttachAurasToSource]);
+                on(d, When::Blocks, vec![], vec![Effect::AttachAurasToSource]);
+            },
+        ),
+        "Light-Paws, Emperor's Voice" => s(
+            &["Whenever an Aura you control enters, if you cast it, you may search your library for an Aura card with mana value less than or equal to that Aura and with a different name than each Aura you control, put that card onto the battlefield attached to Light-Paws, then shuffle."],
+            |d, _| {
+                let that = Filter { triggering: true, enchantments: true, ..Filter::default() };
+                on(d, When::SubtypeYouControlEnters("Aura"), vec![that], vec![Effect::SearchAuraForSourceIfCast(0)]);
+            },
+        ),
+        "Sovereigns of Lost Alara" => s(
+            &[
+                "Exalted",
+                "Whenever a creature you control attacks alone, you may search your library for an Aura card that could enchant that creature, put it onto the battlefield attached to that creature, then shuffle.",
+            ],
+            |d, _| {
+                on(d, When::YouAttack, vec![], vec![Effect::Exalted]);
+                on(d, When::YouAttack, vec![], vec![Effect::SearchAuraForLoneAttacker]);
+            },
+        ),
+        // ---- Mac C batch 2: exile-and-return, delayed end-step damage, suspend ----
+        "Olivia, Crimson Bride" => s(
+            &["Whenever Olivia attacks, return target creature card from your graveyard to the battlefield tapped and attacking. It gains \"When you don't control a legendary Vampire, exile this creature.\""],
+            |d, _| {
+                on(
+                    d,
+                    When::Attacks,
+                    vec![graveyard_cards(true, Controller::You)],
+                    vec![Effect::ReturnAttackingUntilNoLegendaryVampire(0)],
+                );
+            },
+        ),
+        "Dragonhawk, Fate's Tempest" => s(
+            &["Whenever Dragonhawk enters or attacks, exile the top X cards of your library, where X is the number of creatures you control with power 4 or greater. You may play those cards until your next end step. At the beginning of your next end step, Dragonhawk deals 2 damage to each opponent for each of those cards that are still exiled."],
+            |d, _| {
+                // Trigger 2 is the delayed end-step trigger.
+                let exile = Effect::ExileTopPowerFourPlayableUntilNextEndStep { trigger: 2 };
+                on(d, When::Enters, vec![], vec![exile]);
+                on(d, When::Attacks, vec![], vec![exile]);
+                on(d, When::Never, vec![], vec![Effect::DamageEachOpponentAmount]);
+            },
+        ),
+        "Glimpse of Tomorrow" => s(
+            &[
+                "Suspend 3—{R}{R}",
+                "Shuffle all permanents you own into your library, then reveal that many cards from the top of your library. Put all non-Aura permanent cards revealed this way onto the battlefield, then do the same for Aura cards, then put the rest on the bottom of your library in a random order.",
+            ],
+            |d, _| {
+                d.zones.no_mana_cost = true;
+                spell(d, vec![], vec![Effect::GlimpseOfTomorrow]);
+                // Suspend: from your hand any time you could cast it (a sorcery), exiled as the cost.
+                let n = activated(d, "{R}{R}", false, vec![], vec![Effect::SuspendSource(3)]);
+                d.activated[n].plot = true;
+                d.activated[n].sorcery = true;
+            },
+        ),
+        // ---- Malik and Olivia: the rest that need nothing new, or only a small piece ----
+        "Moria Scavenger" => s(
+            &["{T}, Discard a card: Draw a card. If the discarded card was a creature card, amass Orcs 1."],
+            |d, t| {
+                let amass = Effect::AmassIfExtraCreatureCard { subtype: "Orc", n: 1, def: t.orc_army };
+                let n = activated(d, "", true, vec![], vec![draw(1), amass]);
+                d.activated[n].discard_any_card = true;
+                d.activated[n].victim_in_extra = true;
+            },
+        ),
+        "Professional Face-Breaker" => s(
+            &[
+                "Whenever one or more creatures you control deal combat damage to a player, create a Treasure token.",
+                "Sacrifice a Treasure: Exile the top card of your library. You may play that card this turn.",
+            ],
+            |d, t| {
+                on(d, When::YourCreaturesDealCombatDamageToPlayer, vec![], vec![Effect::CreateToken { who: Who::You, def: t.treasure, n: 1 }]);
+                let n = activated(d, "", false, vec![], vec![Effect::ExileTopToPlayThisTurn(1)]);
+                d.activated[n].sacrifice_subtype = Some("Treasure");
+            },
+        ),
         _ => None,
     }
 }
@@ -2096,4 +2178,12 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Vesuva",
     "Charming Scoundrel",
     "Witch's Mark",
+    "Bruna, Light of Alabaster",
+    "Light-Paws, Emperor's Voice",
+    "Sovereigns of Lost Alara",
+    "Olivia, Crimson Bride",
+    "Dragonhawk, Fate's Tempest",
+    "Glimpse of Tomorrow",
+    "Moria Scavenger",
+    "Professional Face-Breaker",
 ];

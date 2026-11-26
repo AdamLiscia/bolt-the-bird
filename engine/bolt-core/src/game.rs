@@ -17,6 +17,8 @@ use crate::rng::Rng;
 
 // The d4 subsystems (dungeons and the initiative, emblems' triggers, dice): game/d4.rs.
 mod d4;
+// Mac C's objects-and-zones pieces (Auras put onto the battlefield attached): game/zones.rs.
+mod zones;
 use crate::effect::Dungeon;
 pub use d4::{rooms, Room, VENTURE_CHOICES};
 
@@ -314,6 +316,9 @@ pub struct Object {
     pub land_copy_pending: bool,
     /// Cast from the top of the library with Bolas's Citadel: its life is paid instead of mana.
     pub citadel_cast: bool,
+    /// Olivia, Crimson Bride: "When you don't control a legendary Vampire, exile this creature.",
+    /// for the object with this zone-change count.
+    pub exile_without_legendary_vampire: Option<u32>,
 }
 
 /// One resolved effect's change to a permanent's characteristics (lane d3's type-changing store):
@@ -1289,6 +1294,26 @@ pub enum Decision {
     /// "Pay {cost}. If you don't, you lose the game." (Pact of Negation): `Yes` pays (offered only if
     /// you can), `No` loses the game.
     PayOrLoseGame { cost: ManaCost },
+    /// Mac C (game/zones.rs): `Pick` an Aura to attach to `to` (while its zone-change count is
+    /// `zcc`), or `No` to stop. With `library`: one Aura card from your library with mana value at
+    /// most `max_mv` (and, with `new_name`, a name different from each Aura you control) that
+    /// could enchant it, then shuffle (Light-Paws, Sovereigns of Lost Alara). Otherwise, asked
+    /// again after each: an Aura on the battlefield that moves onto it, or an Aura card from your
+    /// graveyard or hand that enters attached to it (Bruna, Light of Alabaster).
+    AttachAura {
+        to: ObjId,
+        zcc: u32,
+        library: bool,
+        max_mv: u32,
+        new_name: bool,
+    },
+    /// Glimpse of Tomorrow: `Pick` the permanent `aura` (a revealed Aura card) enters attached to;
+    /// then the rest of `auras`, then `rest` go to the bottom of your library in a random order.
+    AuraEntersAttachedTo {
+        aura: ObjId,
+        auras: Vec<ObjId>,
+        rest: Vec<ObjId>,
+    },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -1691,6 +1716,9 @@ pub struct Game {
     /// Delayed "at the beginning of your next upkeep" triggers (Pact of Negation): (source, trigger
     /// number, controller, the turn it was set up; it waits for an upkeep of theirs after it).
     pub delayed_next_upkeep: Vec<(ObjId, usize, PlayerId, u32)>,
+    /// Dragonhawk: (source, trigger number, controller, the turn whose end step it waits for, the
+    /// exiled cards with their zone-change counts).
+    pub delayed_end_step_exiled: Vec<(ObjId, usize, PlayerId, u32, Vec<(ObjId, u32)>)>,
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -1957,6 +1985,7 @@ impl Game {
             ring_tempted: [0; 2],
             ring_blocks_seen: Vec::new(),
             delayed_next_upkeep: Vec::new(),
+            delayed_end_step_exiled: Vec::new(),
         }
     }
 
@@ -2191,6 +2220,7 @@ impl Game {
             return_at_upkeep: None,
             land_copy_pending: false,
             citadel_cast: false,
+            exile_without_legendary_vampire: None,
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -6451,6 +6481,10 @@ impl Game {
     /// eligible creature or card.
     fn cast_modes(&self, p: PlayerId, c: ObjId, from_graveyard: bool) -> Vec<(Action, CastMode)> {
         let def = self.def_of(c);
+        // CR 202.1b: no mana cost, so it's cast only without paying it (suspend).
+        if def.zones.no_mana_cost && !self.obj(c).cast_free {
+            return Vec::new();
+        }
         // Gaddock Teeg: noncreature spells with mana value 4 or more, or {X}, can't be cast.
         if !def.types.creature
             && (def.cost.mana_value() >= 4 || def.cost.x > 0)
@@ -12281,6 +12315,10 @@ impl Game {
                 v.push(Action::No);
                 v
             }
+            d @ Decision::AttachAura { .. } => self.attach_aura_actions(p, d),
+            Decision::AuraEntersAttachedTo { aura, .. } => {
+                self.aura_hosts(*aura, p).into_iter().map(Action::Pick).collect()
+            }
         }
     }
 
@@ -13766,6 +13804,14 @@ impl Game {
                 if let Some(q) = next {
                     self.sacrifice_nontoken_next(q, None);
                 }
+            }
+            (d @ Decision::AttachAura { .. }, a) => self.attach_aura_decide(p, d, a),
+            (Decision::AuraEntersAttachedTo { aura, auras, rest }, a) => {
+                if let Action::Pick(x) = a {
+                    let zcc = self.obj(x).zcc;
+                    self.put_aura_attached(aura, x, zcc, p);
+                }
+                self.glimpse_next_aura(p, auras, rest);
             }
             (d, a) => unreachable!("legal action {a:?} unhandled for {d:?}"),
         }
@@ -21576,6 +21622,33 @@ impl Game {
                     );
                 }
             }
+            Effect::AttachAurasToSource => {
+                if self.obj(src).zone == Zone::Battlefield {
+                    self.ask_attach_aura(item.controller, src, false, u32::MAX, false);
+                }
+            }
+            Effect::SearchAuraForSourceIfCast(slot) => self.search_aura_for_source_if_cast(item, legal, slot),
+            Effect::SearchAuraForLoneAttacker => self.search_aura_for_lone_attacker(item.controller),
+            Effect::ReturnAttackingUntilNoLegendaryVampire(slot) => {
+                if let Some(c) = Game::slot_object(item, legal, slot) {
+                    self.return_attacking_until_no_legendary_vampire(c, item.controller);
+                }
+            }
+            Effect::ExileTopPowerFourPlayableUntilNextEndStep { trigger } => {
+                self.exile_top_power_four(src, trigger, item.controller)
+            }
+            Effect::DamageEachOpponentAmount => {
+                if item.amount > 0 {
+                    self.deal_damage(src, Target::Player(opponent(item.controller)), item.amount);
+                }
+            }
+            Effect::SuspendSource(n) => self.suspend_source(src, n),
+            Effect::GlimpseOfTomorrow => self.glimpse_of_tomorrow(item.controller),
+            Effect::AmassIfExtraCreatureCard { subtype, n, def } => {
+                if item.extra.is_some_and(|c| self.def_of(c).types.creature) {
+                    self.run_effect(item, legal, Effect::Amass { subtype, n, def });
+                }
+            }
         }
     }
 
@@ -22091,6 +22164,7 @@ impl Game {
     /// State-based actions run before any player would receive priority (CR 117.5, 704.3).
     fn give_priority(&mut self, p: PlayerId) {
         self.state_based_actions();
+        self.exile_without_legendary_vampire(); // Olivia's returned creatures (game/zones.rs)
         if !self.is_over() && self.ask_commander_choice(p) {
             return;
         }
@@ -22625,7 +22699,8 @@ impl Game {
                         self.counters_placed(owner, n);
                     }
                 }
-                // CR 513.1: "at the beginning of the end step" triggers.
+                self.delayed_end_step_exiled_due(a); // Dragonhawk (game/zones.rs)
+                                                     // CR 513.1: "at the beginning of the end step" triggers.
                 self.fire(a, When::EndStep { your_turn_only: true }, None);
                 self.fire(
                     a,

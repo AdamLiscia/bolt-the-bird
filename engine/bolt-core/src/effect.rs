@@ -2365,6 +2365,47 @@ pub enum Effect {
     /// "Pay {cost}. If you don't, you lose the game." (a Pact's delayed trigger), as
     /// `Decision::PayOrLoseGame`.
     PayOrLoseGame(crate::mana::ManaCost),
+    /// Bruna, Light of Alabaster: attach to the source any number of Auras on the battlefield, and
+    /// put onto the battlefield attached to it any number of Aura cards that could enchant it from
+    /// your graveyard and/or hand, one at a time as `Decision::AttachAura` (game/zones.rs).
+    AttachAurasToSource,
+    /// Light-Paws, Emperor's Voice: if the entering Aura in `slot` (a triggering slot) was cast, you
+    /// may search your library for an Aura card with mana value at most that Aura's and a name
+    /// different from each Aura you control, put it onto the battlefield attached to the source,
+    /// then shuffle.
+    SearchAuraForSourceIfCast(u8),
+    /// Sovereigns of Lost Alara, from a "whenever you attack" trigger: if exactly one creature you
+    /// control is attacking, you may search your library for an Aura card that could enchant it,
+    /// put it onto the battlefield attached to it, then shuffle.
+    SearchAuraForLoneAttacker,
+    /// Olivia, Crimson Bride: return the creature card in `slot` from your graveyard to the
+    /// battlefield tapped and attacking; it gains "When you don't control a legendary Vampire,
+    /// exile this creature." (`Object::exile_without_legendary_vampire`).
+    ReturnAttackingUntilNoLegendaryVampire(u8),
+    /// Dragonhawk, Fate's Tempest: exile the top X cards of your library, X the number of creatures
+    /// you control with power 4 or greater; you may play them until your next end step; at the
+    /// beginning of that end step, the source's trigger number `trigger` deals 2 damage to each
+    /// opponent for each of them still exiled (`Game::delayed_end_step_exiled`).
+    ExileTopPowerFourPlayableUntilNextEndStep {
+        trigger: usize,
+    },
+    /// Damage to each opponent equal to the trigger's amount (Dragonhawk's delayed trigger).
+    DamageEachOpponentAmount,
+    /// Suspend N (CR 702.62a), from an activated ability with `Activated::plot` (exiled from your
+    /// hand as its cost): the card stays exiled with N time counters instead of plotted.
+    SuspendSource(u8),
+    /// Glimpse of Tomorrow: shuffle all permanents you own into your library, reveal that many
+    /// cards from the top, put the non-Aura permanent cards onto the battlefield, then the Aura
+    /// cards (each attached as `Decision::AuraEntersAttachedTo`), then the rest on the bottom in a
+    /// random order.
+    GlimpseOfTomorrow,
+    /// "If the discarded card was a creature card, amass [subtype] `n`" (Moria Scavenger): the
+    /// discard cost's card is the item's `extra` (`Activated::victim_in_extra`).
+    AmassIfExtraCreatureCard {
+        subtype: &'static str,
+        n: u8,
+        def: usize,
+    },
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

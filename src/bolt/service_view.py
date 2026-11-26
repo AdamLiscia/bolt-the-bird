@@ -179,6 +179,8 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         if d == "IterationPick":
             verb = "Put into your hand:" if dec.get("to_hand") else "Put on the bottom:"
         verb = verb or {"ChooseRingBearer": "Choose as your Ring-bearer:"}.get(d)
+        verb = verb or {"AttachAura": "Attach"}.get(d)
+        verb = verb or {"AuraEntersAttachedTo": "Attach the Aura to"}.get(d)
         if d == "LoseUnless":
             verb = "Sacrifice" if dec.get("sacrifice") else "Discard"
         return f"{verb} {card_name}" if verb else None
@@ -224,6 +226,8 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         return "Put none onto the battlefield"
     if d == "ExileUntilYourNextUpkeep" and not yes:
         return "Done exiling"
+    if d == "AttachAura" and not yes:
+        return "Done attaching Auras"
     d3_no = {"SacrificeAnyNumber": "Done sacrificing", "ReturnAnotherPermanentCard": "Return nothing", "BasicsTappedUpTo": "Find nothing", "SignalTheClans": "Done revealing", "BraidsSacrifice": "Don't sacrifice", "BraidsOpponent": "Don't sacrifice (lose 2 life)"}  # fmt: skip
     d3_no["ReturnSharingType"] = "Return nothing"
     d3_no["ReanimateTotalManaValue"] = "Done choosing"

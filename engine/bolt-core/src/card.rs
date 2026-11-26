@@ -1998,6 +1998,9 @@ pub struct ZonesExt {
     /// "You may have this land enter tapped as a copy of any land on the battlefield." (Vesuva): asked
     /// as it enters, however it enters (`Object::land_copy_pending`).
     pub enters_as_land_copy_tapped: bool,
+    /// The card has no mana cost (CR 202.1b): it can't be cast unless something lets it be cast
+    /// without paying its mana cost (Glimpse of Tomorrow: suspend).
+    pub no_mana_cost: bool,
 }
 
 #[cfg(test)]

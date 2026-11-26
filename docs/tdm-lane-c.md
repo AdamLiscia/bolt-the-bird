@@ -732,6 +732,43 @@ MayDiscardToDrawN}` (one Role of yours per creature: the older goes to the grave
 `When::ThisPutIntoGraveyardFromBattlefield` (one `fire_source` line in `move_to`, next to
 `PutIntoGraveyardFromAnywhere`; tokens included).
 
+## Objects and zones batch 8: Auras put onto the battlefield attached (Bruna, Light-Paws, Sovereigns)
+
+Core in a new file, `engine/bolt-core/src/game/zones.rs` (`mod zones;` next to `mod d4;`); game.rs gets only
+dispatch arms at the ends of `run_effect`, `decision_actions` and `decide`.
+- `Game::put_aura_attached(aura, to, zcc, p)` (pub): an Aura card enters attached without being cast (CR 303.4f);
+  if it couldn't enchant `to`, it stays where it was. `Game::could_enchant(aura, x, p)`: the Aura's enchant
+  filter (its spell's first target) through `target_ok` with `triggering` set (no shroud or hexproof check, as it
+  isn't targeted) and `protected_from`.
+- `Decision::AttachAura { to, zcc, library, max_mv, new_name }` (Pick or No; labelled): from the library one card,
+  then shuffle (Light-Paws, Sovereigns); otherwise asked again after each, over Auras on the battlefield (moved
+  onto it) and Aura cards in your graveyard and hand (Bruna).
+- `Effect::{AttachAurasToSource, SearchAuraForSourceIfCast(slot), SearchAuraForLoneAttacker}`.
+- "If you cast it" is the existing `Object::was_cast` (set as a spell resolves onto the battlefield, cleared by
+  `move_to` as anything enters), read on the triggering Aura.
+Shortcuts: Light-Paws checks "if you cast it" on resolution only, and fizzles if the Aura has left. Sovereigns is a
+`When::YouAttack` trigger with a lone-attacker check on resolution (as d1's exalted), so it doesn't wait on d2.
+
+## Objects and zones batch 9: Olivia, Dragonhawk, Glimpse of Tomorrow (suspend); Moria Scavenger, Professional Face-Breaker
+
+- `Effect::ReturnAttackingUntilNoLegendaryVampire(slot)` with `Object::exile_without_legendary_vampire` (a zcc):
+  checked at the top of `give_priority` (`Game::exile_without_legendary_vampire`, right after state-based
+  actions). Shortcut: the state trigger exiles at once instead of using the stack.
+- `Effect::{ExileTopPowerFourPlayableUntilNextEndStep { trigger }, DamageEachOpponentAmount}` and
+  `Game::delayed_end_step_exiled`: at the beginning of that end step (one call in `Step::End`, before the end-step
+  triggers fire) the source's `When::Never` trigger goes on the stack with 2 per card still exiled as its amount.
+  The cards are playable through that turn (`playable` until its number), so also during its end step.
+- Suspend: an `Activated::plot` ability (exiled from hand as the cost, sorcery speed) whose effect
+  `Effect::SuspendSource(n)` swaps plotted for n time counters; the existing upkeep code removes them and casts it
+  free. Uses the stack (like plot), rather than being a special action. `ZonesExt::no_mana_cost`: `cast_modes`
+  offers nothing unless `cast_free` (CR 202.1b), one guard line at its top.
+- `Effect::GlimpseOfTomorrow` with `Decision::AuraEntersAttachedTo { aura, auras, rest }` (Pick the host; labelled).
+  Tokens and card copies shuffled in cease to exist; "that many" counts them. Enchant-player Auras and Animate
+  Dead-style Auras find no host and go to the bottom.
+- `Effect::AmassIfExtraCreatureCard` (Moria Scavenger; the discarded card is the item's `extra`). Professional
+  Face-Breaker needed nothing new.
+Touched code owned elsewhere (flag for review): the `give_priority` line, the `Step::End` line, the `cast_modes` guard.
+
 ## Held back (lane C), with what each needs
 
 - Light-Paws, Emperor's Voice: `When::SubtypeYouControlEnters("Aura")` exists, but "if you cast it" is about the
