@@ -1542,6 +1542,8 @@ pub struct Game {
     pub exiled_until_end: Vec<(ObjId, u32, PlayerId, usize, u32)>,
     /// Modes chosen this turn for a `modes_once_each_turn` trigger: (source, turn, mode).
     pub modes_chosen: Vec<(ObjId, u32, u8)>,
+    /// The turn each player last cast a non-Lemur creature spell with flying (Momo).
+    pub flier_cast_turn: [u32; 2],
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -1788,6 +1790,7 @@ impl Game {
             cast_a_spell_this_game: [false; 2],
             exiled_until_end: Vec::new(),
             modes_chosen: Vec::new(),
+            flier_cast_turn: [0; 2],
         }
     }
 
@@ -6502,6 +6505,16 @@ impl Game {
             }
             let e = &self.def_of(x).mana_ext;
             n += e.spell_discount_all as usize;
+            if creature && def.keywords.has(Keywords::FLYING) {
+                n += e.flying_creature_spell_discount as usize; // Watcher of the Spheres
+                                                                // Momo: the first non-Lemur creature spell with flying during each of your turns.
+                if p == self.active
+                    && self.flier_cast_turn[p] != self.turn
+                    && !def.subtypes.iter().any(|s| s == "Lemur")
+                {
+                    n += e.first_flier_discount_your_turn as usize;
+                }
+            }
             if creature && !self.cast_creature_noncreature[p][0] {
                 n += e.first_creature_spell_discount as usize; // Shadow in the Warp
             }
@@ -6623,6 +6636,15 @@ impl Game {
 
     /// Pays `cost`, for casting `spell` if given (restricted mana can then help).
     fn pay_mana_for(&mut self, p: PlayerId, cost: &ManaCost, exclude: Option<ObjId>, spell: PayFor) {
+        // K'rrik: {B} that mana can't pay are paid with 2 life each.
+        let mut with_life = *cost;
+        if !self.can_pay_mana(p, cost, exclude, spell) {
+            if let Some(k) = self.black_pips_as_life(p, cost, exclude, spell) {
+                self.lose_life(p, 2 * k as i32);
+                with_life.colored[2] -= k;
+            }
+        }
+        let cost = &with_life;
         if !self.can_pay_direct(p, cost, exclude, spell)
             && self.devotee_fix(p, cost, exclude, spell).is_none()
         {
@@ -7021,9 +7043,40 @@ impl Game {
     }
 
     fn can_pay_for(&self, p: PlayerId, cost: &ManaCost, exclude: Option<ObjId>, spell: PayFor) -> bool {
+        self.can_pay_mana(p, cost, exclude, spell)
+            || self.black_pips_as_life(p, cost, exclude, spell).is_some()
+    }
+
+    /// Whether mana alone (with Devotees and Signets) pays `cost`.
+    fn can_pay_mana(&self, p: PlayerId, cost: &ManaCost, exclude: Option<ObjId>, spell: PayFor) -> bool {
         self.can_pay_direct(p, cost, exclude, spell)
             || self.devotee_fix(p, cost, exclude, spell).is_some()
             || self.paid_mana_plan(p, cost, exclude, spell).is_some()
+    }
+
+    /// K'rrik: the fewest {B} of `cost` paid with 2 life each that make the rest payable with
+    /// mana, when mana alone can't (the engine's choice: mana first).
+    fn black_pips_as_life(
+        &self,
+        p: PlayerId,
+        cost: &ManaCost,
+        exclude: Option<ObjId>,
+        spell: PayFor,
+    ) -> Option<u8> {
+        if cost.colored[2] == 0
+            || !self
+                .permanents(p)
+                .any(|x| self.def_of(x).mana_ext.black_pips_for_life && !self.lost_abilities(x))
+        {
+            return None;
+        }
+        (1..=cost.colored[2])
+            .take_while(|&k| self.players[p].life >= 2 * k as i32)
+            .find(|&k| {
+                let mut c = *cost;
+                c.colored[2] -= k;
+                self.can_pay_mana(p, &c, exclude, spell)
+            })
     }
 
     /// Signets and filter lands ("{1}, {T}: Add {W}{U}"): the smallest set of them that makes `cost`
@@ -7198,6 +7251,15 @@ impl Game {
             .find(|&c| c != except && !self.obj(c).tapped && self.types_of(c).legendary)
     }
 
+    /// The untapped creature `p` taps for "Tap an untapped creature you control" (The Shire), as
+    /// the engine picks: one that isn't a mana source, then the least power.
+    fn untapped_creature_for_cost(&self, p: PlayerId, except: ObjId) -> Option<ObjId> {
+        let sources: Vec<ObjId> = self.untapped_sources(p).into_iter().map(|s| s.0).collect();
+        self.creatures(p)
+            .filter(|&c| c != except && !self.obj(c).tapped)
+            .min_by_key(|&c| (sources.contains(&c), self.power(c)))
+    }
+
     /// Whether a tapped permanent can pay a {Q} cost: the same summoning-sickness rule as {T}
     /// (CR 302.6).
     fn can_untap_for_cost(&self, id: ObjId) -> bool {
@@ -7304,6 +7366,18 @@ impl Game {
                     || a.tap_untapped
                         .is_some_and(|(sub, n)| self.untapped_with(p, sub, id).len() < n as usize)
                     || (a.tap_untapped_legendary && self.untapped_legendary(p, id).is_none())
+                    || (a.tap_untapped_creature
+                        && self.untapped_creature_for_cost(p, id).is_none_or(|c| {
+                            // That creature can't also tap for the mana.
+                            let mut g = self.clone();
+                            g.obj_mut(c).tapped = true;
+                            !g.can_pay_for(
+                                p,
+                                &Game::ability_discounted(a, ability_discount, a.mana),
+                                uses_self.then_some(id),
+                                PayFor::Ability(id),
+                            )
+                        }))
                     || !sorcery_ok
                     || self.permanents(p).count() < a.min_permanents as usize
                     || (a.opponent_min_lands > 0
@@ -7707,6 +7781,12 @@ impl Game {
             cost = cheaper; // Phyrexian pips paid with life
         }
         let cost = Game::ability_discounted(&a, self.ability_discount(p), cost);
+        // The Shire: the creature tapped for the cost first, so it can't also tap for the mana.
+        if a.tap_untapped_creature {
+            if let Some(c) = self.untapped_creature_for_cost(p, id) {
+                self.become_tapped(c);
+            }
+        }
         self.pay_mana_for(p, &cost, exclude, PayFor::Ability(id));
         if life > 0 && a.mana.x == 0 {
             self.lose_life(p, life);
@@ -8385,6 +8465,14 @@ impl Game {
         if self.keywords(attacker).has(Keywords::SHADOW) != self.keywords(blocker).has(Keywords::SHADOW) {
             return false;
         }
+        // Swampwalk (CR 702.14): can't be blocked while the defending player controls a Swamp.
+        if self.keywords(attacker).has(Keywords::SWAMPWALK)
+            && self
+                .permanents(self.obj(blocker).controller)
+                .any(|x| self.types_of(x).land && self.has_subtype(x, "Swamp"))
+        {
+            return false;
+        }
         let alone = self.combat.as_ref().is_some_and(|c| c.attackers.len() == 1);
         if alone
             && self.def_of(attacker).mana_ext.unblockable_attacking_alone
@@ -8406,7 +8494,9 @@ impl Game {
             .permanents(p)
             .filter(|&x| x != id && self.types_of(x).land)
             .count();
-        e.enters_tapped_unless_other_lands > 0 && other_lands < e.enters_tapped_unless_other_lands as usize
+        (e.enters_tapped_unless_other_lands > 0 && other_lands < e.enters_tapped_unless_other_lands as usize)
+            || (e.enters_tapped_unless_legendary_creature
+                && !self.creatures(p).any(|x| x != id && self.types_of(x).legendary))
     }
 
     fn block_actions(&self, p: PlayerId) -> Vec<Action> {
@@ -9259,6 +9349,12 @@ impl Game {
         }
         self.spells_cast[p] += 1;
         self.cast_a_spell_this_game[p] = true;
+        let d = self.def_of(card);
+        let flier =
+            d.types.creature && d.keywords.has(Keywords::FLYING) && !d.subtypes.iter().any(|s| s == "Lemur");
+        if flier {
+            self.flier_cast_turn[p] = self.turn; // Momo's "first ... each of your turns"
+        }
         let is_creature = self.types_of(card).creature;
         if !is_creature {
             let (t, n) = self.noncreature_casts[p];

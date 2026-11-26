@@ -268,6 +268,16 @@ pub fn token_defs() -> Vec<CardDef> {
         // base+83 is d2's Bat: a placeholder until it merges.
         token("Lane d2 token 83", "Bat", 1, 1, Keywords::FLYING),
         token("Elemental", "Elemental", 1, 1, Keywords::NONE), // Young Pyromancer's red 1/1
+        // 85-87: placeholders for d3's Bear, the Orc Army and d3's Scion until they merge.
+        token("Placeholder 85", "Placeholder", 1, 1, Keywords::NONE),
+        token("Placeholder 86", "Placeholder", 1, 1, Keywords::NONE),
+        token("Placeholder 87", "Placeholder", 1, 1, Keywords::NONE),
+        {
+            // 88, lane d1: Meloku's "1/1 blue Illusion creature token with flying".
+            let mut t = token("Illusion", "Illusion", 1, 1, Keywords::FLYING);
+            t.colors = [false, true, false, false, false];
+            t
+        },
     ]
 }
 
@@ -411,6 +421,7 @@ pub struct Tokens {
     pub saga_construct: usize,
     pub elemental_1: usize,
     pub goat: usize,
+    pub illusion_flying: usize,
 }
 
 impl Tokens {
@@ -500,6 +511,7 @@ impl Tokens {
             saga_construct: base + 82,
             elemental_1: base + 84,
             goat: base + 76,
+            illusion_flying: base + 88,
         }
     }
 }
