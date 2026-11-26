@@ -167,6 +167,10 @@ pub fn token_defs() -> Vec<CardDef> {
             t.types.legendary = true;
             t
         },
+        token("Wurm", "Wurm", 5, 5, Keywords::TRAMPLE), // Worldspine Wurm's green 5/5s
+        token("Satyr", "Satyr", 2, 2, Keywords::HASTE), // Xenagos, the Reveler's red and green 2/2
+        token("Pegasus", "Pegasus", 2, 2, Keywords::FLYING), // Archon of Sun's Grace's white 2/2
+        token("Spirit", "Spirit", 3, 1, Keywords::FLYING), // Ghostly Dancers' white 3/1
     ]
 }
 
@@ -267,6 +271,10 @@ pub struct Tokens {
     pub bird_2: usize,
     pub forest_dryad: usize,
     pub ashaya: usize,
+    pub wurm_5: usize,
+    pub satyr: usize,
+    pub pegasus: usize,
+    pub spirit_3_1: usize,
 }
 
 impl Tokens {
@@ -331,6 +339,10 @@ impl Tokens {
             bird_2: base + 56,
             forest_dryad: base + 57,
             ashaya: base + 58,
+            wurm_5: base + 59,
+            satyr: base + 60,
+            pegasus: base + 61,
+            spirit_3_1: base + 62,
         }
     }
 }
