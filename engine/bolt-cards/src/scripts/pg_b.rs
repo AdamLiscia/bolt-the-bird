@@ -1654,6 +1654,10 @@ pub fn script(name: &str) -> Option<Script> {
                 spell(d, vec![], vec![Effect::DrawX]);
             },
         ),
+        "Invert Polarity" => s(
+            &["Choose target spell, then flip a coin. If you win the flip, gain control of that spell and you may choose new targets for it. If you lose the flip, counter that spell."],
+            |d, _| spell(d, vec![SPELL], vec![Effect::FlipGainControlOfSpellOrCounter(0)]),
+        ),
         _ => None,
     }
 }
@@ -1856,6 +1860,7 @@ pub const PG_B_SCRIPTED: &[&str] = &[
     "Kruphix, God of Horizons",
     "Horizon Stone",
     "Necrologia",
+    "Invert Polarity",
     // Ghyrson Starn (Spr3adsh33t)
     "Basilisk Collar",
     "Gorgon's Head",

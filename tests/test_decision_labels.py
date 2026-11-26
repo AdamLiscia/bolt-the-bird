@@ -100,6 +100,13 @@ def test_lane_d3_batch_5_decisions_read_as_their_moves():
     assert label(torment, "No", 0) == "Don't sacrifice or discard (lose 3 life)"
 
 
+def test_lonis_puts_a_revealed_card_under_your_control():
+    dec = {"kind": "PutFromOpponentsTop", "cards": []}
+    got = sv._decision_label(dec, "Pick", 0, "Sol Ring")
+    assert got == "Put onto the battlefield under your control: Sol Ring"
+    assert label(dec, "No", 0) == "Put none onto the battlefield"
+
+
 def test_venturing_names_the_dungeon_or_room():
     dec = {"kind": "ChooseDungeon", "options": ["Lost Mine of Phandelver", "Dungeon of the Mad Mage"]}
     assert label(dec, "Mode", 1) == "Venture into Dungeon of the Mad Mage"

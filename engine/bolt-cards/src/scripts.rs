@@ -267,7 +267,7 @@ pub fn token_defs() -> Vec<CardDef> {
         },
         // base+83 is d2's Bat: a placeholder until it merges.
         token("Lane d2 token 83", "Bat", 1, 1, Keywords::FLYING),
-        token("Elemental", "Elemental", 1, 1, Keywords::NONE), // Young Pyromancer's red 1/1
+        red(token("Elemental", "Elemental", 1, 1, Keywords::NONE)), // Young Pyromancer's red 1/1
         {
             // Fade from History: "a 2/2 green Bear creature token".
             let mut t = token("Bear", "Bear", 2, 2, Keywords::NONE);
@@ -294,7 +294,29 @@ pub fn token_defs() -> Vec<CardDef> {
             t.colors = [false, true, false, false, false];
             t
         },
+        blood(),
+        red(token("Hamster", "Hamster", 1, 1, Keywords::NONE)), // Rolling Hamsphere
     ]
+}
+
+/// A red token.
+fn red(mut d: CardDef) -> CardDef {
+    d.colors = [false, false, false, true, false];
+    d
+}
+
+/// Blood: "{1}, {T}, Discard a card, Sacrifice this token: Draw a card." (CR 111.10g)
+fn blood() -> CardDef {
+    let mut d = artifact_token("Blood");
+    d.activated.push(Activated {
+        mana: ManaCost::parse("{1}").expect("cost"),
+        tap: true,
+        sacrifice_self: true,
+        discard_any_card: true,
+        ability: Ability::new(vec![], vec![Effect::Draw { who: Who::You, n: 1 }]),
+        ..Activated::default()
+    });
+    d
 }
 
 /// A black token.
@@ -436,6 +458,8 @@ pub struct Tokens {
     pub spider_menace: usize,
     pub saga_construct: usize,
     pub elemental_1: usize,
+    pub blood: usize,
+    pub hamster: usize,
     pub goat: usize,
     pub illusion_flying: usize,
     pub bear: usize,
@@ -529,6 +553,8 @@ impl Tokens {
             spider_menace: base + 81,
             saga_construct: base + 82,
             elemental_1: base + 84,
+            blood: base + 89,
+            hamster: base + 90,
             goat: base + 76,
             illusion_flying: base + 88,
             bear: base + 85,

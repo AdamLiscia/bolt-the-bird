@@ -1592,12 +1592,12 @@ fn attack_tax_per_creature() {
         ..sphere
     };
     let (mut g, t) = game_with(vec![prison, sphere]);
-    assert_eq!(g.attack_tax(1), 0);
+    assert_eq!(g.attack_tax(1, false), 0);
     g.add_card(1, t, Zone::Battlefield);
-    assert_eq!(g.attack_tax(1), 2);
+    assert_eq!(g.attack_tax(1, false), 2);
     g.add_card(1, t + 1, Zone::Battlefield);
-    assert_eq!(g.attack_tax(1), 2 + 2, "two enchantments");
-    assert_eq!(g.attack_tax(0), 0);
+    assert_eq!(g.attack_tax(1, false), 2 + 2, "two enchantments");
+    assert_eq!(g.attack_tax(0, false), 0);
 }
 
 #[test]

@@ -13,6 +13,7 @@ pub mod rng;
 pub mod rollout;
 
 pub use card::SubsystemExt;
+pub use card::ZonesExt;
 pub use card::{
     Activated, Behold, CardDef, EntryDoubler, ExtraCost, Keywords, Omen, Reduction, Stage, Types,
 };
