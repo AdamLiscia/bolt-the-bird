@@ -1193,6 +1193,9 @@ pub enum Decision {
     CardOfColorToHand { color: u8 },
     /// Chain of Smog: `Mode(t)` copies `source` targeting player `t`, `No` doesn't.
     ChainCopy { source: ObjId },
+    /// `Pick` a tapped creature you control to untap (White Plume Adventurer: "untap a creature
+    /// you control").
+    UntapOwnCreature,
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -1544,6 +1547,9 @@ pub struct Game {
     pub modes_chosen: Vec<(ObjId, u32, u8)>,
     /// The turn each player last cast a non-Lemur creature spell with flying (Momo).
     pub flier_cast_turn: [u32; 2],
+    /// Saga chapter grants that have resolved: (Saga, its zcc, chapter) (Urza's Saga; see
+    /// `SubsystemExt::chapter_activated`).
+    pub chapter_grants: Vec<(ObjId, u32, u8)>,
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -1791,6 +1797,7 @@ impl Game {
             exiled_until_end: Vec::new(),
             modes_chosen: Vec::new(),
             flier_cast_turn: [0; 2],
+            chapter_grants: Vec::new(),
         }
     }
 
@@ -10663,6 +10670,7 @@ impl Game {
             d @ (Decision::ChooseDungeon { .. } | Decision::ChooseRoom { .. }) => {
                 self.subsystem_decision_actions(d)
             }
+            Decision::UntapOwnCreature => self.untap_own_creature_options(p),
             Decision::DelinaAgain { .. } => vec![Action::Yes, Action::No],
             Decision::PickOneOf { cards, .. } => cards.iter().copied().map(Action::Pick).collect(),
             Decision::MayCreatureFromHand => {
@@ -12442,6 +12450,7 @@ impl Game {
             (d @ (Decision::ChooseDungeon { .. } | Decision::ChooseRoom { .. }), a) => {
                 self.subsystem_decide(p, d, a)
             }
+            (d @ Decision::UntapOwnCreature, a) => self.subsystem_decide(p, d, a),
             (
                 Decision::VowCreature {
                     caster,

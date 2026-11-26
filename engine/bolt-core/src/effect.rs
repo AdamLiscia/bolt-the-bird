@@ -2966,4 +2966,20 @@ pub enum SubsystemEffect {
     /// The end of a bottommost room's ability: the dungeon is completed once the last copy of it
     /// leaves the stack (CR 704.5t).
     CompleteDungeon,
+    /// "This Saga gains ..." (Urza's Saga): the source has its chapter-`n` grants from now on, while
+    /// it stays on the battlefield (`SubsystemExt::chapter_activated`, `chapter_mana`).
+    GainChapterAbilities(u8),
+    /// "Draw another card if you've completed a dungeon." (Imoen): `n` cards then.
+    DrawIfCompletedDungeon(u8),
+    /// "Create `n` [tokens]. Create `completed` of those tokens instead if you've completed a
+    /// dungeon." (Safana: Treasures, 1 or 3)
+    TokensByDungeon { def: usize, n: u8, completed: u8 },
+    /// "Untap a creature you control. If you've completed a dungeon, untap all creatures you
+    /// control instead." (White Plume Adventurer), as `Decision::UntapOwnCreature`.
+    UntapOneOrAllByDungeon,
+    /// "If that player lost less than `n` life this turn, they lose life equal to the difference."
+    /// (Lolth's emblem, on the damaged opponent: the one opponent in 1v1)
+    OpponentLosesDifferenceFrom(i32),
+    /// "Flip a coin. If you lose the flip, this [source] deals `n` damage to you." (Mana Crypt)
+    FlipCoinLoseDamageYou(i32),
 }
