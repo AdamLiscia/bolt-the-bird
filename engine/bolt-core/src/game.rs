@@ -22149,6 +22149,7 @@ impl Game {
             }
             Effect::SuspendSource(n) => self.suspend_source(src, n),
             Effect::GlimpseOfTomorrow => self.glimpse_of_tomorrow(item.controller),
+            Effect::ReturnExiledWithSourceDecayed => self.return_exiled_with_decayed(src, item.controller),
             Effect::AmassIfExtraCreatureCard { subtype, n, def } => {
                 if item.extra.is_some_and(|c| self.def_of(c).types.creature) {
                     self.run_effect(item, legal, Effect::Amass { subtype, n, def });

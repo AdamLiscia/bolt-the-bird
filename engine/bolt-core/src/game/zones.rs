@@ -416,4 +416,27 @@ impl Game {
             }
         }
     }
+
+    /// Gisa, Glorious Resurrector's upkeep: the creature cards exiled with `src` (this object of
+    /// it) that are still those exiled cards come back under `p`'s control with decayed.
+    pub(super) fn return_exiled_with_decayed(&mut self, src: ObjId, p: PlayerId) {
+        let szcc = self.obj(src).zcc;
+        let (mine, rest): (Vec<_>, Vec<_>) = std::mem::take(&mut self.exiled_with)
+            .into_iter()
+            .partition(|e| e.0 == src && e.1 == szcc);
+        self.exiled_with = rest;
+        for (_, _, c, czcc) in mine {
+            let o = self.obj(c);
+            if o.zone != Zone::Exile || o.zcc != czcc || !self.def_of(c).types.creature {
+                continue;
+            }
+            self.obj_mut(c).controller = p;
+            self.move_to(c, Zone::Battlefield);
+            if self.obj(c).zone == Zone::Battlefield {
+                let o = self.obj_mut(c);
+                o.controller = p;
+                o.decayed = true;
+            }
+        }
+    }
 }

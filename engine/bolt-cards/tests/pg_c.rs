@@ -3894,3 +3894,20 @@ fn eldrazi_conscription_pumps_and_annihilates_two() {
         "defending player sacrificed two"
     );
 }
+
+#[test]
+fn gisa_exiles_dying_opponent_creatures_and_returns_them_decayed() {
+    let mut g = table();
+    put(&mut g, 0, "Gisa, Glorious Resurrector");
+    let ghoul = put(&mut g, 1, "Hungry Ghoul");
+    let kill = hand(&mut g, 0, "Hero's Downfall");
+    play(&mut g, kill, false, &[obj(ghoul)], &[]);
+    assert_eq!(g.obj(ghoul).zone, Zone::Exile, "exiled instead of dying");
+    g.start_turn(5, 0);
+    while g.step == Step::Upkeep || !g.items.is_empty() {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.obj(ghoul).zone, Zone::Battlefield);
+    assert_eq!(g.obj(ghoul).controller, 0);
+    assert!(g.obj(ghoul).decayed, "it gains decayed");
+}

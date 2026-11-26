@@ -2463,6 +2463,9 @@ pub enum Effect {
     /// The creature in `slot` can't block for as long as you control the source (There and Back
     /// Again's chapter I), see `Game::cant_block_while_controlled`.
     TargetCantBlockWhileYouControlSource(u8),
+    /// Gisa, Glorious Resurrector: put all creature cards exiled with the source
+    /// (`Game::exiled_with`) onto the battlefield under your control; they gain decayed.
+    ReturnExiledWithSourceDecayed,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

@@ -2008,6 +2008,17 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::EquippedAttacks, vec![], vec![Effect::SacrificePermanents { who: Who::EachOpponent, n: 2 }]);
             },
         ),
+        // ---- Malik: Gisa, on lane B's die-to-exile replacement ----
+        "Gisa, Glorious Resurrector" => s(
+            &[
+                "If a creature an opponent controls would die, exile it instead.",
+                "At the beginning of your upkeep, put all creature cards exiled with Gisa onto the battlefield under your control. They gain decayed.",
+            ],
+            |d, _| {
+                d.opponents_creatures_die_exiled = true;
+                on(d, When::Upkeep { your_turn_only: true }, vec![], vec![Effect::ReturnExiledWithSourceDecayed]);
+            },
+        ),
         _ => None,
     }
 }
@@ -2248,4 +2259,5 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Face of Divinity",
     "Shielded by Faith",
     "Eldrazi Conscription",
+    "Gisa, Glorious Resurrector",
 ];
