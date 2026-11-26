@@ -1299,6 +1299,11 @@ pub struct Game {
     /// Words of War: the next draw this turn deals damage instead: (player, source, target, damage,
     /// turn).
     pub draw_damage_shields: Vec<(PlayerId, ObjId, Target, i32, u32)>,
+    /// Cards cast at a time a sorcery couldn't have been (Necromancy's drawback), with their zcc.
+    pub flash_casts: Vec<(ObjId, u32)>,
+    /// Spells cast for their evoke cost: (card, the zone-change count it will have on the
+    /// battlefield).
+    pub evoked: Vec<(ObjId, u32)>,
     /// Life each player has lost this turn: (turn, total) (Wound Reflection).
     pub life_lost_turn: [(u32, i32); 2],
 }
@@ -1525,6 +1530,8 @@ impl Game {
             draw_replacing: false,
             token_replacing: false,
             draw_damage_shields: Vec::new(),
+            flash_casts: Vec::new(),
+            evoked: Vec::new(),
             life_lost_turn: [(0, 0); 2],
         }
     }
@@ -2287,6 +2294,28 @@ impl Game {
         }
         if roll >= 15 && self.obj(target).zone == Zone::Battlefield {
             self.ask(p, Decision::DelinaAgain { target });
+        }
+    }
+
+    /// Animate Dead: `card` (a creature card in a graveyard) onto the battlefield under `p`'s control,
+    /// with `aura` attached to it.
+    fn reanimate_attach(&mut self, aura: ObjId, card: ObjId, p: PlayerId) {
+        if self.obj(card).zone != Zone::Graveyard || !self.def_of(card).types.creature {
+            self.obj_mut(aura).attached_to = None;
+            return;
+        }
+        let tapped = self.def_of(aura).reanimates_tapped;
+        self.move_to(card, Zone::Battlefield);
+        if self.obj(card).zone == Zone::Battlefield {
+            let turn = self.turn;
+            let o = self.obj_mut(card);
+            o.controller = p;
+            o.since_turn = turn;
+            o.tapped |= tapped;
+            let zcc = o.zcc;
+            self.obj_mut(aura).attached_to = Some((card, zcc));
+        } else {
+            self.obj_mut(aura).attached_to = None;
         }
     }
 
@@ -3184,6 +3213,10 @@ impl Game {
 
     fn move_to(&mut self, id: ObjId, to: Zone) {
         self.work();
+        // Animate Dead and friends: the creature it brought back, sacrificed when it leaves.
+        let reanimated = (self.obj(id).zone == Zone::Battlefield && self.def_of(id).reanimating_aura)
+            .then(|| self.obj(id).attached_to)
+            .flatten();
         let (owner, from) = (self.obj(id).owner, self.obj(id).zone);
         // Replacement effects on going to a graveyard (CR 614.6).
         let mut to = to;
@@ -3248,6 +3281,13 @@ impl Game {
         let pos = list.iter().position(|&x| x == id).expect("object is in its zone");
         list.remove(pos);
         self.zone_list(owner, to).push(id);
+        if let (Some((c, z)), true) = (reanimated, to != Zone::Battlefield) {
+            // "When this Aura leaves the battlefield, that creature's controller sacrifices it."
+            let o = self.obj(c);
+            if o.zcc == z && o.zone == Zone::Battlefield && !self.cant_be_sacrificed(c) {
+                self.move_to(c, Zone::Graveyard);
+            }
+        }
         let turn = self.turn;
         if to == Zone::Graveyard && from != Zone::Graveyard && !self.is_token(id) {
             if self.def_of(id).types.land {
@@ -3778,6 +3818,7 @@ impl Game {
                 })
                 || few_basics
                 || many_lands
+                || self.mana_ext_enters_tapped(id, controller_now)
             {
                 self.obj_mut(id).tapped = true;
             }
@@ -4971,9 +5012,25 @@ impl Game {
     /// eligible creature or card.
     fn cast_modes(&self, p: PlayerId, c: ObjId, from_graveyard: bool) -> Vec<(Action, CastMode)> {
         let def = self.def_of(c);
+        if def.mana_ext.pay_x_life && !from_graveyard {
+            // "Pay X life": X is chosen as it's cast, up to your life total (CR 119.4).
+            let max = self.players[p].life.clamp(0, 30) as u8;
+            return (0..=max)
+                .map(|x| {
+                    (
+                        Action::CastX(c, x),
+                        CastMode {
+                            x,
+                            ..CastMode::default()
+                        },
+                    )
+                })
+                .collect();
+        }
         if def.cost.x > 0 && !from_graveyard {
-            // One mode per affordable X (capped by the mana available).
-            let max = (self.untapped_sources(p).len() + self.players[p].pool.len()).min(30) as u8;
+            // One mode per affordable X (capped by the mana available, convoke's creatures included).
+            let convoke = self.convoke_sources(p, None, PayFor::Spell(c)).len();
+            let max = (self.untapped_sources(p).len() + self.players[p].pool.len() + convoke).min(30) as u8;
             return (0..=max)
                 .map(|x| {
                     (
@@ -5122,6 +5179,16 @@ impl Game {
                         ));
                     }
                 }
+                // Force of Will: pay life and exile a card of that color from your hand instead.
+                if let Some((color, life)) = def.mana_ext.pitch_with_life {
+                    if self.players[p].life >= life {
+                        for &x in &self.players[p].hand {
+                            if x != c && self.def_of(x).colors[color as usize] {
+                                v.push((Action::CastWith(c, x), CastMode::with(x)));
+                            }
+                        }
+                    }
+                }
                 // Force of Vigor: exile a card of that color from your hand instead, not on your turn.
                 if let (Some(color), false) = (def.pitch_not_your_turn, p == self.active) {
                     for &x in &self.players[p].hand {
@@ -5201,7 +5268,9 @@ impl Game {
             && mode.x == 0
             && !mode.alt
             && !mode.flashback;
-        let pitched = def.pitch_not_your_turn.is_some() && mode.extra.is_some() && !mode.flashback;
+        let pitched = (def.pitch_not_your_turn.is_some() || def.mana_ext.pitch_with_life.is_some())
+            && mode.extra.is_some()
+            && !mode.flashback;
         let energized = mode.alt
             && mode
                 .extra
@@ -5363,6 +5432,13 @@ impl Game {
                 Some(&Chosen::Object(x, _)) if self.obj(x).tapped && self.types_of(x).creature => *n,
                 _ => 0,
             },
+            Some(Reduction::IfOpponentGraveyardAtLeast(cards, n)) => {
+                if self.players[opponent(p)].graveyard.len() >= *cards as usize {
+                    *n
+                } else {
+                    0
+                }
+            }
             None => 0,
         };
         let discount: u8 = if def.types.instant || def.types.sorcery {
@@ -5435,7 +5511,11 @@ impl Game {
         } else {
             0
         };
-        cost.generic = cost.generic.saturating_sub(less + discount + second + battle);
+        let ext = self.mana_ext_discount(p, c, mode);
+        cost.generic = cost.generic.saturating_sub(
+            less.saturating_add(discount + second + battle)
+                .saturating_add(ext),
+        );
         // Dragon's Prey: "This spell costs {2} more to cast if it targets a Dragon."
         if let Some(Reduction::MoreIfTargetsSubtype(sub, n)) = def.reduction {
             let hits = targets
@@ -5450,8 +5530,40 @@ impl Game {
             // "Mana of any type can be spent": colored pips become generic.
             cost.generic += cost.colored.iter().sum::<u8>();
             cost.colored = [0; 5];
+            cost.generic += cost.colorless;
+            cost.colorless = 0;
         }
         cost
+    }
+
+    /// The d1 theme's static spell-cost reductions (see [`crate::card::ManaExt`]) from `p`'s permanents,
+    /// for casting `c`.
+    fn mana_ext_discount(&self, p: PlayerId, c: ObjId, mode: CastMode) -> u8 {
+        let def = self.def_of(c);
+        let t = def.types;
+        let creature = t.creature && mode.mode != Some(OMEN_MODE);
+        let mut n = 0usize;
+        for x in self.permanents(p) {
+            if self.lost_abilities(x) {
+                continue;
+            }
+            let e = &self.def_of(x).mana_ext;
+            if t.enchantment && mode.mode != Some(OMEN_MODE) {
+                n += e.enchantment_spell_discount as usize;
+            }
+            if creature && def.colors[2] {
+                n += e.black_creature_spell_discount as usize;
+            }
+            if creature && e.creature_discount_per_counter {
+                n += self.obj(x).counters.max(0) as usize;
+            }
+            if (t.instant || t.sorcery || mode.mode == Some(OMEN_MODE))
+                && e.instant_sorcery_discount_per_creature_token
+            {
+                n += self.creatures(p).filter(|&k| self.is_token(k)).count();
+            }
+        }
+        n.min(255) as u8
     }
 
     /// Whether some legal choice of targets makes the spell affordable in `mode`.
@@ -5532,7 +5644,9 @@ impl Game {
                         if self.types_of(id).snow {
                             self.snow_paid += 1;
                         }
-                        self.become_tapped(id);
+                        if !self.def_of(id).mana_ext.sac_mana_no_tap {
+                            self.become_tapped(id);
+                        }
                         if self.def_of(id).sac_for_mana {
                             let by = self.obj(id).controller;
                             self.move_to(id, Zone::Graveyard);
@@ -5568,7 +5682,8 @@ impl Game {
         // the same sources couldn't pay with that land making only {C}.
         let mut pained = Vec::new();
         for &i in &paid {
-            if i >= pool.len() && self.def_of(sources[i - pool.len()].0).pain_colored {
+            let src = (i >= pool.len()).then(|| self.def_of(sources[i - pool.len()].0));
+            if src.is_some_and(|d| d.pain_colored || d.mana_ext.colored_gives_opponent_life) {
                 let alt: Vec<ManaSource> = paid
                     .iter()
                     .map(|&j| {
@@ -5588,7 +5703,11 @@ impl Game {
             }
         }
         for land in pained {
-            self.deal_damage(land, Target::Player(p), 1);
+            if self.def_of(land).mana_ext.colored_gives_opponent_life {
+                self.gain_life(opponent(p), 1); // Grove of the Burnwillows
+            } else {
+                self.deal_damage(land, Target::Player(p), 1);
+            }
         }
         for i in paid {
             if i < pool.len() {
@@ -5614,7 +5733,9 @@ impl Game {
             if henge > 0 && !self.obj(id).tapped {
                 self.gain_life(p, henge); // The Great Henge
             }
-            self.become_tapped(id);
+            if !self.def_of(id).mana_ext.sac_mana_no_tap {
+                self.become_tapped(id);
+            }
             self.land_tapped_for_mana(p, id);
             if self.def_of(id).mana_taps_creature {
                 if let Some(c) = self.relic_partner(p, exclude) {
@@ -5737,6 +5858,9 @@ impl Game {
         if self.def_of(id).pain_colored && c != 5 {
             self.deal_damage(id, Target::Player(p), 1);
         }
+        if self.def_of(id).mana_ext.colored_gives_opponent_life && c != 5 {
+            self.gain_life(opponent(p), 1);
+        }
         let tomb = self.def_of(id).mana_tap_damage;
         if tomb > 0 && !self.obj(id).tapped {
             self.deal_damage(id, Target::Player(p), tomb as i32); // Ancient Tomb
@@ -5745,7 +5869,9 @@ impl Game {
         if henge > 0 && !self.obj(id).tapped {
             self.gain_life(p, henge); // The Great Henge
         }
-        self.become_tapped(id);
+        if !self.def_of(id).mana_ext.sac_mana_no_tap {
+            self.become_tapped(id);
+        }
         self.land_tapped_for_mana(p, id);
         if self.def_of(id).mana_taps_creature {
             if let Some(partner) = self.relic_partner(p, None) {
@@ -5834,6 +5960,38 @@ impl Game {
                 } else {
                     (id, m)
                 }
+            })
+            .chain(self.convoke_sources(p, exclude, spell))
+            .collect()
+    }
+
+    /// Convoke: the untapped creatures `p` controls that aren't already mana sources, each paying
+    /// {1} or one mana of its colors (summoning sickness doesn't matter: CR 702.51a).
+    fn convoke_sources(
+        &self,
+        p: PlayerId,
+        exclude: Option<ObjId>,
+        spell: PayFor,
+    ) -> Vec<(ObjId, ManaSource)> {
+        let PayFor::Spell(c) = spell else {
+            return Vec::new();
+        };
+        if !self.def_of(c).mana_ext.convoke {
+            return Vec::new();
+        }
+        let sources = self.untapped_sources(p);
+        self.creatures(p)
+            .filter(|&x| x != c && Some(x) != exclude && !self.obj(x).tapped)
+            .filter(|&x| !sources.iter().any(|s| s.0 == x))
+            .map(|x| {
+                let colors = self.colors_of(x);
+                (
+                    x,
+                    ManaSource {
+                        colors,
+                        colorless: false,
+                    },
+                )
             })
             .collect()
     }
@@ -6585,7 +6743,32 @@ impl Game {
     fn untapped_sources(&self, p: PlayerId) -> Vec<(ObjId, ManaSource)> {
         let base = self.single_sources(p);
         let mut out = Vec::with_capacity(base.len());
+        // The d1 theme's additional mana (see `ManaExt`): mana Auras on lands, and Crypt Ghast.
+        let auras: Vec<ObjId> = self
+            .battlefield
+            .iter()
+            .copied()
+            .filter(|&a| self.def_of(a).mana_ext.enchanted_land_extra_any && !self.lost_abilities(a))
+            .collect();
+        let adders: Vec<(&'static str, crate::Color)> = self
+            .permanents(p)
+            .filter(|&x| !self.lost_abilities(x))
+            .filter_map(|x| self.def_of(x).mana_ext.your_subtype_lands_add)
+            .collect();
         for (id, m) in base {
+            if self.types_of(id).land && (!auras.is_empty() || !adders.is_empty()) {
+                let zcc = self.obj(id).zcc;
+                for &a in &auras {
+                    if self.obj(a).attached_to == Some((id, zcc)) {
+                        out.push((id, ManaSource::of(&crate::Color::ALL)));
+                    }
+                }
+                for &(sub, c) in &adders {
+                    if self.has_subtype(id, sub) {
+                        out.push((id, ManaSource::of(&[c])));
+                    }
+                }
+            }
             if self.def_of(id).vivid_mana {
                 // One mana of each color among permanents you control.
                 for c in 0..5 {
@@ -6670,7 +6853,11 @@ impl Game {
 
     fn single_sources(&self, p: PlayerId) -> Vec<(ObjId, ManaSource)> {
         self.permanents(p)
-            .filter(|&id| self.can_tap(id) && !self.activation_stopped(id) && !self.abolished(p, id))
+            .filter(|&id| {
+                (self.can_tap(id) || self.def_of(id).mana_ext.sac_mana_no_tap && !self.lost_abilities(id))
+                    && !self.activation_stopped(id)
+                    && !self.abolished(p, id)
+            })
             .filter_map(|id| {
                 if self.blood_mooned(id) {
                     // Blood Moon: a Mountain's "{T}: Add {R}" (plus Urborg's Swamp, if one applies).
@@ -6842,6 +7029,15 @@ impl Game {
                 {
                     return Some((id, ManaSource::of(&[crate::Color::Green]))); // Rishkar
                 }
+                if self.types_of(id).land
+                    && self
+                        .permanents(p)
+                        .any(|x| self.def_of(x).mana_ext.lands_tap_any_color && !self.lost_abilities(x))
+                {
+                    let mut m = d.mana.unwrap_or_default();
+                    m.colors = [true; 5]; // Chromatic Lantern: "{T}: Add one mana of any color."
+                    return Some((id, m));
+                }
                 let forests = self.types_of(id).land
                     && self
                         .battlefield
@@ -6891,6 +7087,9 @@ impl Game {
         if self.protected_from(attacker, blocker) {
             return false; // CR 702.16f
         }
+        if !self.evades_ok(blocker, attacker) {
+            return false;
+        }
         if self.def_of(blocker).cant_block
             || (self.def_of(blocker).fights_only_with_blessing
                 && !self.city_blessing[self.obj(blocker).controller])
@@ -6925,6 +7124,29 @@ impl Game {
         }
         let b = self.keywords(blocker);
         !self.keywords(attacker).has(Keywords::FLYING) || b.has(Keywords::FLYING) || b.has(Keywords::REACH)
+    }
+
+    /// Fear and intimidate (CR 702.36b, 702.13b): only an artifact creature, or a black creature
+    /// (fear) or one sharing a color with the attacker (intimidate), may block it.
+    fn evades_ok(&self, blocker: ObjId, attacker: ObjId) -> bool {
+        let k = self.keywords(attacker);
+        if self.types_of(blocker).artifact {
+            return true;
+        }
+        let b = self.colors_of(blocker);
+        let a = self.colors_of(attacker);
+        (!k.has(Keywords::FEAR) || b[2]) && (!k.has(Keywords::INTIMIDATE) || (0..5).any(|c| a[c] && b[c]))
+    }
+
+    /// The d1 theme's "enters tapped unless" rules (see [`crate::card::ManaExt`]): whether `id`,
+    /// entering under `p`'s control, enters tapped.
+    fn mana_ext_enters_tapped(&self, id: ObjId, p: PlayerId) -> bool {
+        let e = &self.def_of(id).mana_ext;
+        let other_lands = self
+            .permanents(p)
+            .filter(|&x| x != id && self.types_of(x).land)
+            .count();
+        e.enters_tapped_unless_other_lands > 0 && other_lands < e.enters_tapped_unless_other_lands as usize
     }
 
     fn block_actions(&self, p: PlayerId) -> Vec<Action> {
@@ -7490,6 +7712,12 @@ impl Game {
             self.commander_casts[owner] = self.commander_casts[owner].saturating_add(1);
         }
         self.move_to(card, Zone::Stack);
+        if mode.alt && self.def_of(card).mana_ext.evoke {
+            // Evoked: remembered for the object it becomes on the battlefield.
+            let zcc = self.obj(card).zcc + 1;
+            self.evoked.retain(|e| e.0 != card);
+            self.evoked.push((card, zcc));
+        }
         self.obj_mut(card).controller = p;
         self.obj_mut(card).kicked = mode.kicked;
         self.obj_mut(card).x = mode.x;
@@ -7546,6 +7774,13 @@ impl Game {
     fn finish_cast(&mut self, item: StackItem) {
         let (p, card) = (item.controller, item.source);
         let flashback_cast = item.flashback;
+        let sorcery_now = p == self.active
+            && matches!(self.step, Step::Main1 | Step::Main2)
+            && self.items.iter().all(|i| i.source == card);
+        if self.def_of(card).flash_cast_sacrificed && !sorcery_now {
+            let zcc = self.obj(card).zcc;
+            self.flash_casts.push((card, zcc));
+        }
         // Terror of the Peaks: "cost an additional 3 life" for each of its controller's such targets.
         let tax: i32 = item
             .targets
@@ -7583,6 +7818,9 @@ impl Game {
             .filter(|_| item.flashback && (self.def_of(card).harmonize || self.obj(card).harmonize_eot));
         self.snow_paid = 0;
         self.pay_mana_for(p, &cost, harmonized, pay_for_spell(card, item.mode));
+        if self.def_of(card).mana_ext.pay_x_life && item.x > 0 {
+            self.lose_life(p, item.x as i32); // "As an additional cost ..., pay X life."
+        }
         let mut item = item;
         if item.alt && self.def_of(card).morph.is_some() {
             self.obj_mut(card).face_down = true; // morph: a face-down 2/2 spell (CR 702.37c)
@@ -7647,6 +7885,11 @@ impl Game {
                 self.become_tapped(x); // harmonize taps the creature; it isn't sacrificed
             } else if self.def_of(card).pitch_not_your_turn.is_some() && !item.flashback {
                 self.move_to(x, Zone::Exile); // Force of Vigor: the pitched card is exiled
+            } else if let (Some((_, life)), false) =
+                (self.def_of(card).mana_ext.pitch_with_life, item.flashback)
+            {
+                self.move_to(x, Zone::Exile); // Force of Will: exiled, and the life paid
+                self.lose_life(p, life);
             } else if self.obj(x).zone != Zone::Graveyard {
                 let sacrifice = self.obj(x).zone == Zone::Battlefield; // else a discarded card
                 self.move_to(x, Zone::Graveyard);
@@ -8365,7 +8608,15 @@ impl Game {
                 if self.def_of(source).aura {
                     if let Some(&Chosen::Object(t, z)) = r.item.targets.first() {
                         self.obj_mut(source).attached_to = Some((t, z));
+                        if self.def_of(source).reanimating_aura {
+                            self.reanimate_attach(source, t, r.item.controller);
+                        }
                     }
+                }
+                // Necromancy cast at instant speed: sacrificed at the next end step.
+                if let Some(pos) = self.flash_casts.iter().position(|&(c, _)| c == source) {
+                    self.flash_casts.remove(pos);
+                    self.obj_mut(source).sacrifice_at_end = true;
                 }
             } else if self.obj(source).zone == Zone::Stack {
                 if r.acts && r.item.kicked && self.def_of(source).buyback_sacrifice.is_some() {
@@ -12518,6 +12769,20 @@ impl Game {
                     self.ask(p, Decision::MayCreatureFromHand);
                 }
             }
+            Effect::ReanimateAttachSource(n) => {
+                if let Some(c) = Game::slot_object(item, legal, n) {
+                    if self.obj(src).zone == Zone::Battlefield {
+                        self.reanimate_attach(src, c, item.controller);
+                    }
+                }
+            }
+            Effect::UntapAttached => {
+                if let Some((c, zcc)) = self.obj(src).attached_to {
+                    if self.obj(c).zcc == zcc && self.obj(c).zone == Zone::Battlefield {
+                        self.untap_by_effect(c);
+                    }
+                }
+            }
             Effect::BecomeCopyOfSlotUntilEot(n) => {
                 if let Some(card) = Game::slot_object(item, legal, n) {
                     if self.obj(src).zone == Zone::Battlefield {
@@ -15156,6 +15421,51 @@ impl Game {
                     }
                 }
             }
+            Effect::Exalted => {
+                let p = item.controller;
+                let mine: Vec<ObjId> = self
+                    .combat
+                    .as_ref()
+                    .map(|c| {
+                        c.attackers
+                            .iter()
+                            .copied()
+                            .filter(|&a| self.obj(a).controller == p)
+                            .collect()
+                    })
+                    .unwrap_or_default();
+                if let [a] = mine[..] {
+                    if self.obj(a).zone == Zone::Battlefield {
+                        let zcc = self.obj(a).zcc;
+                        self.until_eot.push(Modifier {
+                            obj: a,
+                            zcc,
+                            power: 1,
+                            toughness: 1,
+                            keywords: Keywords::NONE,
+                            dies: None,
+                        });
+                    }
+                }
+            }
+            Effect::Undying | Effect::Persist => {
+                // Counters are kept net (CR 704.5q): positive is +1/+1 counters, negative -1/-1.
+                let (net, _, _) = self.obj(src).last_counters;
+                let undying = e == Effect::Undying;
+                let had_none = if undying { net <= 0 } else { net >= 0 };
+                if had_none && self.obj(src).zone == Zone::Graveyard {
+                    self.move_to(src, Zone::Battlefield);
+                    if self.obj(src).zone == Zone::Battlefield {
+                        let o = self.obj_mut(src);
+                        o.controller = o.owner;
+                        if undying {
+                            self.add_counters(src, 1);
+                        } else {
+                            self.obj_mut(src).counters -= 1;
+                        }
+                    }
+                }
+            }
             Effect::MillAmount(slot) => {
                 let n = item.amount.max(0);
                 for p in self.players_for(item, legal, Who::TargetPlayer(slot)) {
@@ -15164,6 +15474,111 @@ impl Game {
                             self.move_to(c, Zone::Graveyard);
                         }
                     }
+                }
+            }
+            Effect::DrainDevotion(colors) => {
+                let p = item.controller;
+                let x = self.devotion(p, colors) as i32;
+                if x > 0 {
+                    self.lose_life(opponent(p), x);
+                    self.gain_life(p, x);
+                }
+            }
+            Effect::AddManaDevotion(color) => {
+                let p = item.controller;
+                let mut mask = [false; 5];
+                mask[color as usize] = true;
+                let n = self.devotion(p, mask) as usize;
+                self.players[p]
+                    .pool
+                    .extend(std::iter::repeat_n(ManaSource::of(&[color]), n));
+            }
+            Effect::AddManaPerCount { color, count } => {
+                let p = item.controller;
+                let n = match count {
+                    crate::effect::ManaCount::YouControlSubtype(s) => {
+                        self.permanents(p).filter(|&x| self.has_subtype(x, s)).count()
+                    }
+                    crate::effect::ManaCount::YouControlBasicSubtype(s) => self
+                        .permanents(p)
+                        .filter(|&x| self.types_of(x).basic && self.has_subtype(x, s))
+                        .count(),
+                    crate::effect::ManaCount::OnBattlefieldSubtype(s) => self
+                        .battlefield
+                        .iter()
+                        .filter(|&&x| self.has_subtype(x, s))
+                        .count(),
+                };
+                self.players[p]
+                    .pool
+                    .extend(std::iter::repeat_n(ManaSource::of(&[color]), n));
+            }
+            Effect::AddManaSourcePower(color) => {
+                let n = if self.obj(src).zone == Zone::Battlefield {
+                    self.power(src)
+                } else {
+                    self.obj(src).last_power
+                };
+                self.players[item.controller]
+                    .pool
+                    .extend(std::iter::repeat_n(ManaSource::of(&[color]), n.max(0) as usize));
+            }
+            Effect::Echo(cost) => {
+                let o = self.obj(src);
+                let due = o.zone == Zone::Battlefield
+                    && o.controller == item.controller
+                    && o.since_turn < self.turn
+                    && o.since_turn + 2 >= self.turn;
+                if due {
+                    self.ask(item.controller, Decision::PayUpkeep { cost, source: src });
+                }
+            }
+            Effect::OpponentDrawsIfAltCost(n) => {
+                if item.alt {
+                    let opp = opponent(item.controller);
+                    for _ in 0..n {
+                        self.draw(opp);
+                    }
+                }
+            }
+            Effect::TapOpponentsLands => {
+                let opp = opponent(item.controller);
+                let lands: Vec<ObjId> = self.permanents(opp).filter(|&x| self.types_of(x).land).collect();
+                for l in lands {
+                    self.become_tapped(l);
+                }
+            }
+            Effect::AddManaPerHandSize { color, slot } => {
+                let who = match item.targets.get(slot as usize) {
+                    Some(&Chosen::Player(q)) if legal.get(slot as usize).copied().unwrap_or(false) => Some(q),
+                    _ => None,
+                };
+                if let Some(q) = who {
+                    let n = self.players[q].hand.len();
+                    self.players[item.controller]
+                        .pool
+                        .extend(std::iter::repeat_n(ManaSource::of(&[color]), n));
+                }
+            }
+            Effect::ExileTopToPlayThisTurn(n) => {
+                let p = item.controller;
+                let turn = self.turn;
+                for _ in 0..n {
+                    if let Some(&c) = self.players[p].library.last() {
+                        self.move_to(c, Zone::Exile);
+                        self.obj_mut(c).playable = Some((p, turn));
+                    }
+                }
+            }
+            Effect::DamagePerSpellsCastThisTurn(slot) => {
+                let n = self.spells_cast[item.controller] as i32;
+                if n > 0 {
+                    let hit = Effect::Damage {
+                        amount: n,
+                        kicked: None,
+                        to: Recipient::Target(slot),
+                    };
+                    self.run_effect(item, legal, hit);
                 }
             }
             Effect::DestroyAllArtifacts => {
@@ -15236,6 +15651,36 @@ impl Game {
                 if n > 0 {
                     self.gain_life(p, n as i32);
                 }
+                for _ in 0..n {
+                    self.draw(p);
+                }
+            }
+            Effect::AllCreaturesGetMinusX => {
+                let x = item.x as i32;
+                for who in [Who::You, Who::EachOpponent] {
+                    if x > 0 {
+                        let all = Effect::PumpAll {
+                            who,
+                            power: -x,
+                            toughness: -x,
+                        };
+                        self.run_effect(item, legal, all);
+                    }
+                }
+            }
+            Effect::SacrificeIfEvoked => {
+                let o = self.obj(src);
+                let evoked = self.evoked.contains(&(src, o.zcc));
+                if evoked && o.zone == Zone::Battlefield && !self.cant_be_sacrificed(src) {
+                    self.move_to(src, Zone::Graveyard);
+                }
+            }
+            Effect::DrawPerCreatureYouControlOfColor(color) => {
+                let p = item.controller;
+                let n = self
+                    .creatures(p)
+                    .filter(|&c| self.colors_of(c)[color as usize])
+                    .count();
                 for _ in 0..n {
                     self.draw(p);
                 }
@@ -16938,6 +17383,7 @@ impl Game {
                     // An Aura checks its own "enchant" restriction (CR 303.4d); Equipment needs a
                     // creature (CR 301.5c).
                     let fits = match self.def_of(id).spell.as_ref().and_then(|s| s.targets.first()) {
+                        _ if self.def_of(id).reanimating_aura => ty.creature,
                         Some(f) if self.def_of(id).aura => {
                             (ty.creature && f.creatures)
                                 || (ty.land && f.lands)
@@ -16947,7 +17393,7 @@ impl Game {
                     };
                     let ok = o.zone == Zone::Battlefield && o.zcc == z && fits;
                     if !ok {
-                        if self.def_of(id).aura {
+                        if self.def_of(id).aura || self.def_of(id).reanimating_aura {
                             dies.push(id);
                         } else {
                             self.obj_mut(id).attached_to = None;
@@ -17141,6 +17587,7 @@ impl Game {
 fn add_costs(a: &ManaCost, b: &ManaCost) -> ManaCost {
     let mut c = *a;
     c.generic += b.generic;
+    c.colorless += b.colorless;
     for i in 0..5 {
         c.colored[i] += b.colored[i];
         c.twobrid[i] += b.twobrid[i];

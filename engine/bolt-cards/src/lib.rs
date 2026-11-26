@@ -473,6 +473,10 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         lands_are_swamps: false,
         creatures_abilities_haste: false,
         ward_sacrifice_nonland: false,
+        reanimating_aura: false,
+        reanimates_tapped: false,
+        flash_cast_sacrificed: false,
+        mana_ext: Default::default(),
         suppresses_triggers: None,
         doubles_triggers_of: None,
     };

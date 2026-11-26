@@ -980,3 +980,694 @@ fn a_pathway_is_played_as_either_face() {
         );
     }
 }
+
+// ---- core theme d1 (mana, costs and keywords) ----
+
+/// How many mana of WUBRG color `c` are in player 0's pool.
+fn pooled(g: &Game, c: usize) -> usize {
+    g.players[0].pool.iter().filter(|m| m.colors[c]).count()
+}
+
+/// Passes until player 0 declares attackers, attacks with `attackers`, then plays on (answering any
+/// decision with its first legal action) until the second main phase.
+fn attack_with(g: &mut Game, attackers: &[ObjId]) {
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(g, Action::PassPriority);
+    }
+    for &a in attackers {
+        act(g, Action::Attack(a));
+    }
+    act(g, Action::FinishAttacks);
+    while g.step != Step::Main2 {
+        let a = match g.pending {
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            Pending::Decide(_) | Pending::ChooseTarget(_) => g.legal_actions()[0],
+            _ => Action::PassPriority,
+        };
+        act(g, a);
+    }
+}
+
+#[test]
+fn ignoble_hierarch_has_exalted_and_taps_for_black_red_or_green() {
+    let mut g = game(&["Ignoble Hierarch", "Fyndhorn Elves"]);
+    let h = named(&g, 0, "Ignoble Hierarch");
+    let elf = named(&g, 0, "Fyndhorn Elves");
+    assert_eq!(makes(&g, h), ([false, false, true, true, true], false));
+    attack_with(&mut g, &[elf]);
+    assert_eq!(g.players[1].life, 38, "a lone attacker: 1 + 1");
+}
+
+#[test]
+fn glen_elendra_archmage_counters_a_noncreature_spell_and_persists() {
+    let mut g = table();
+    let a = put(&mut g, 0, "Glen Elendra Archmage");
+    let nw = hand(&mut g, 0, "Night's Whisper");
+    act(&mut g, Action::Cast(nw));
+    act(&mut g, Action::Activate(a, 0));
+    act(&mut g, Action::Target(obj(nw)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(nw).zone, Zone::Graveyard);
+    assert_eq!(g.players[0].life, 40, "countered");
+    assert_eq!(g.obj(a).zone, Zone::Battlefield, "persist");
+    assert_eq!((g.power(a), g.obj(a).counters), (1, -1));
+    let elf = hand(&mut g, 0, "Fyndhorn Elves");
+    act(&mut g, Action::Cast(elf));
+    assert!(
+        !g.legal_actions().contains(&Action::Activate(a, 0)),
+        "no noncreature spell to target"
+    );
+    resolve_all(&mut g, &[]);
+    let nw2 = hand(&mut g, 0, "Night's Whisper");
+    act(&mut g, Action::Cast(nw2));
+    act(&mut g, Action::Activate(a, 0));
+    act(&mut g, Action::Target(obj(nw2)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(a).zone, Zone::Graveyard, "it had a -1/-1 counter");
+}
+
+#[test]
+fn gray_merchant_drains_your_devotion_to_black() {
+    let mut g = table();
+    put(&mut g, 0, "Dictate of Erebos"); // {3}{B}{B}
+    put(&mut g, 1, "Dictate of Erebos"); // the opponent's: not yours
+    let m = hand(&mut g, 0, "Gray Merchant of Asphodel");
+    play(&mut g, m, false, &[], &[]);
+    assert_eq!((g.players[0].life, g.players[1].life), (44, 36));
+}
+
+#[test]
+fn nykthos_taps_for_colorless_or_devotion_to_a_chosen_color() {
+    let mut g = table();
+    let n = put(&mut g, 0, "Nykthos, Shrine to Nyx");
+    assert_eq!(makes(&g, n), ([false; 5], true));
+    put(&mut g, 0, "Dictate of Erebos");
+    put(&mut g, 0, "Eternal Witness"); // {1}{G}{G}
+    activate(&mut g, n, 2, &[]); // black
+    assert_eq!(pooled(&g, 2), 2);
+    let mut g = table();
+    let n = put(&mut g, 0, "Nykthos, Shrine to Nyx");
+    put(&mut g, 0, "Eternal Witness");
+    activate(&mut g, n, 4, &[]); // green
+    assert_eq!(pooled(&g, 4), 2);
+}
+
+#[test]
+fn cabal_coffers_adds_black_for_each_swamp() {
+    let mut g = table();
+    let c = put(&mut g, 0, "Cabal Coffers");
+    activate(&mut g, c, 0, &[]);
+    assert_eq!(pooled(&g, 2), 5, "five Swamps");
+    assert!(g.obj(c).tapped);
+}
+
+#[test]
+fn cabal_stronghold_adds_black_for_each_basic_swamp() {
+    let mut g = table();
+    let c = put(&mut g, 0, "Cabal Stronghold");
+    assert_eq!(makes(&g, c), ([false; 5], true));
+    put(&mut g, 0, "Overgrown Tomb"); // a nonbasic Swamp
+    activate(&mut g, c, 0, &[]);
+    assert_eq!(pooled(&g, 2), 5, "the five basic Swamps only");
+}
+
+#[test]
+fn priest_of_titania_adds_green_for_each_elf_on_the_battlefield() {
+    let mut g = game(&["Priest of Titania", "Fyndhorn Elves"]);
+    let p = named(&g, 0, "Priest of Titania");
+    put(&mut g, 1, "Fyndhorn Elves");
+    activate(&mut g, p, 0, &[]);
+    assert_eq!(pooled(&g, 4), 3, "itself, your Elves and the opponent's");
+}
+
+#[test]
+fn heronblade_elite_grows_with_humans_and_taps_for_its_power_in_one_color() {
+    let mut g = table();
+    let e = put(&mut g, 0, "Heronblade Elite");
+    let w = hand(&mut g, 0, "Eternal Witness"); // a Human
+    play(&mut g, w, false, &[], &[]);
+    assert_eq!(g.obj(e).counters, 1);
+    let mut g = game(&["Heronblade Elite"]);
+    let e = named(&g, 0, "Heronblade Elite");
+    set_counters(&mut g, e, 1);
+    activate(&mut g, e, 3, &[]); // red
+    assert_eq!(pooled(&g, 3), 2);
+    assert_eq!(g.players[0].pool.len(), 2);
+}
+
+#[test]
+fn into_the_story_costs_3_less_with_seven_cards_in_an_opponents_graveyard() {
+    let mut g = table();
+    for _ in 0..7 {
+        g.add_card(1, cid("Forest"), Zone::Graveyard);
+    }
+    let c = hand(&mut g, 0, "Into the Story");
+    let n = g.players[0].hand.len();
+    play(&mut g, c, false, &[], &[]);
+    assert_eq!(g.players[0].hand.len(), n + 3);
+    let tapped = g.permanents(0).filter(|&x| g.obj(x).tapped).count();
+    assert_eq!(tapped, 4, "{{2}}{{U}}{{U}}");
+}
+
+#[test]
+fn phyrexian_tower_sacrifices_a_creature_for_two_black() {
+    let mut g = table();
+    let t = put(&mut g, 0, "Phyrexian Tower");
+    assert_eq!(makes(&g, t), ([false; 5], true));
+    let elf = put(&mut g, 0, "Fyndhorn Elves");
+    act(&mut g, Action::ActivateWith(t, 0, elf));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(elf).zone, Zone::Graveyard);
+    assert_eq!(pooled(&g, 2), 2);
+}
+
+#[test]
+fn sunbaked_canyon_pays_life_for_red_or_white_and_cycles_itself() {
+    let mut g = table();
+    let c = put(&mut g, 0, "Sunbaked Canyon");
+    activate(&mut g, c, 0, &[]);
+    assert_eq!(g.players[0].life, 39);
+    let pool = &g.players[0].pool;
+    assert_eq!(pool.len(), 1);
+    assert!(
+        pool[0].colors[3] && pool[0].colors[0] && !pool[0].colors[4],
+        "{{R}} or {{W}}"
+    );
+    let c2 = put(&mut g, 0, "Sunbaked Canyon");
+    let n = g.players[0].hand.len();
+    activate(&mut g, c2, 1, &[]);
+    assert_eq!(g.obj(c2).zone, Zone::Graveyard);
+    assert_eq!(g.players[0].hand.len(), n + 1);
+}
+
+#[test]
+fn wild_cantor_sacrifices_itself_for_one_mana_of_any_color() {
+    let mut g = table();
+    let w = put(&mut g, 0, "Wild Cantor"); // no {T}: usable while summoning sick
+    activate(&mut g, w, 0, &[]);
+    assert_eq!(g.obj(w).zone, Zone::Graveyard);
+    assert_eq!(g.players[0].pool.len(), 1);
+    assert_eq!(g.players[0].pool[0].colors, [true; 5]);
+}
+
+#[test]
+fn kozilek_draws_four_on_cast_annihilates_and_shuffles_the_graveyard_back() {
+    let mut g = table();
+    for _ in 0..4 {
+        g.add_card(0, cid("Plains"), Zone::Library);
+    }
+    let k = hand(&mut g, 0, "Kozilek, Butcher of Truth");
+    let n = g.players[0].hand.len();
+    play(&mut g, k, false, &[], &[]);
+    assert_eq!(g.players[0].hand.len(), n - 1 + 4, "cast: draw four");
+    let altar = put(&mut g, 0, "Ashnod's Altar");
+    let gy = g.add_card(0, cid("Night's Whisper"), Zone::Graveyard);
+    act(&mut g, Action::ActivateWith(altar, 0, k));
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        (g.obj(k).zone, g.obj(gy).zone),
+        (Zone::Library, Zone::Library),
+        "the graveyard shuffled back"
+    );
+
+    let mut g = game(&["Kozilek, Butcher of Truth"]);
+    let k = named(&g, 0, "Kozilek, Butcher of Truth");
+    let before = g.permanents(1).count();
+    attack_with(&mut g, &[k]);
+    assert_eq!(g.permanents(1).count(), before - 4, "annihilator 4");
+    assert_eq!(g.players[1].life, 28);
+}
+
+/// Passes until the stack is empty, targeting player 1 when asked and saying yes to decisions.
+fn resolve_yes_at_opponent(g: &mut Game) {
+    while !g.items.is_empty() || matches!(g.pending, Pending::ChooseTarget(_) | Pending::Decide(_)) {
+        let legal = g.legal_actions();
+        let a = match g.pending {
+            Pending::ChooseTarget(_) if legal.contains(&Action::Target(Target::Player(1))) => {
+                Action::Target(Target::Player(1))
+            }
+            Pending::Decide(_) if legal.contains(&Action::Yes) => Action::Yes,
+            Pending::ChooseTarget(_) | Pending::Decide(_) => legal[0],
+            // A free cast (cascade) is offered as a cast at priority.
+            _ => legal
+                .iter()
+                .copied()
+                .find(|a| matches!(a, Action::Cast(_)))
+                .unwrap_or(Action::PassPriority),
+        };
+        act(g, a);
+    }
+}
+
+#[test]
+fn noise_marine_cascades_and_deals_damage_per_spell_cast() {
+    let mut g = table();
+    let nw = g.add_card(0, cid("Night's Whisper"), Zone::Library); // mana value 2: cascaded into
+    let m = hand(&mut g, 0, "Noise Marine");
+    act(&mut g, Action::Cast(m));
+    resolve_yes_at_opponent(&mut g);
+    assert_eq!(g.obj(nw).zone, Zone::Graveyard, "cast free and resolved");
+    assert_eq!(g.players[0].life, 38, "Night's Whisper's 2 life");
+    assert_eq!(g.players[1].life, 38, "two spells cast this turn");
+    assert_eq!(g.obj(m).zone, Zone::Battlefield);
+}
+
+#[test]
+fn baleful_mastery_exiles_and_the_cheap_cost_gifts_a_card() {
+    let mut g = table();
+    let a = put(&mut g, 1, "Blood Artist");
+    let c = hand(&mut g, 0, "Baleful Mastery");
+    let n = g.players[1].hand.len();
+    act(&mut g, Action::CastAlternative(c));
+    act(&mut g, Action::Target(obj(a)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(a).zone, Zone::Exile);
+    assert_eq!(
+        g.players[1].hand.len(),
+        n + 1,
+        "{{1}}{{B}} paid: the opponent draws"
+    );
+    assert_eq!(g.permanents(0).filter(|&x| g.obj(x).tapped).count(), 2);
+    let b = put(&mut g, 1, "Blood Artist");
+    let c = hand(&mut g, 0, "Baleful Mastery");
+    let n = g.players[1].hand.len();
+    play(&mut g, c, false, &[obj(b)], &[]);
+    assert_eq!(g.obj(b).zone, Zone::Exile);
+    assert_eq!(g.players[1].hand.len(), n, "the mana cost: no card");
+}
+
+#[test]
+fn natures_will_taps_their_lands_and_untaps_yours_on_combat_damage() {
+    let mut g = game(&["Fyndhorn Elves", "Forest", "Forest"]);
+    put(&mut g, 0, "Nature's Will");
+    let elf = named(&g, 0, "Fyndhorn Elves");
+    let mine: Vec<ObjId> = g
+        .permanents(0)
+        .filter(|&x| g.def_of(x).name == "Forest")
+        .collect();
+    for &f in &mine {
+        tap(&mut g, f);
+    }
+    attack_with(&mut g, &[elf]);
+    assert_eq!(g.players[1].life, 39);
+    assert!(
+        g.permanents(1)
+            .filter(|&x| g.types_of(x).land)
+            .all(|x| g.obj(x).tapped),
+        "theirs tapped"
+    );
+    assert!(mine.iter().all(|&f| !g.obj(f).tapped), "yours untapped");
+}
+
+#[test]
+fn jeskas_will_adds_red_per_card_in_their_hand_or_exiles_three_to_play() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Jeska's Will");
+    assert!(
+        !g.legal_actions().contains(&Action::CastModal(c, 2)),
+        "both only with a commander out"
+    );
+    let n = g.players[1].hand.len();
+    act(&mut g, Action::CastModal(c, 0));
+    act(&mut g, Action::Target(Target::Player(1)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(pooled(&g, 3), n);
+    let mut g = table();
+    let top: Vec<ObjId> = (0..3)
+        .map(|_| g.add_card(0, cid("Forest"), Zone::Library))
+        .collect();
+    let c = hand(&mut g, 0, "Jeska's Will");
+    act(&mut g, Action::CastModal(c, 1));
+    resolve_all(&mut g, &[]);
+    assert!(top.iter().all(|&x| g.obj(x).zone == Zone::Exile));
+    assert!(
+        g.legal_actions().contains(&Action::PlayLand(top[0])),
+        "playable this turn"
+    );
+}
+
+#[test]
+fn karmic_guide_reanimates_and_has_echo() {
+    let mut g = table();
+    let artist = g.add_card(0, cid("Viscera Seer"), Zone::Graveyard);
+    let k = hand(&mut g, 0, "Karmic Guide");
+    play(&mut g, k, false, &[], &[Action::Target(obj(artist))]);
+    assert_eq!(g.obj(artist).zone, Zone::Battlefield);
+    assert!(g.keywords(k).has(Keywords::FLYING));
+    g.start_turn(5, 0);
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::No); // don't pay echo
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(k).zone, Zone::Graveyard, "sacrificed");
+}
+
+// ---- d1 core, batch 3: static cost reductions ----
+
+fn tapped_lands(g: &Game) -> usize {
+    g.permanents(0)
+        .filter(|&x| g.obj(x).tapped && g.types_of(x).land)
+        .count()
+}
+
+#[test]
+fn jukai_naturalist_makes_enchantment_spells_cost_1_less() {
+    let mut g = table();
+    put(&mut g, 0, "Jukai Naturalist");
+    let c = hand(&mut g, 0, "Sylvan Library");
+    play(&mut g, c, false, &[], &[]);
+    assert_eq!(g.obj(c).zone, Zone::Battlefield);
+    assert_eq!(tapped_lands(&g), 1, "{{1}}{{G}} less {{1}}");
+}
+
+#[test]
+fn bontus_monument_discounts_black_creatures_and_drains_on_creature_casts() {
+    let mut g = table();
+    put(&mut g, 0, "Bontu's Monument");
+    let c = hand(&mut g, 0, "Gray Merchant of Asphodel");
+    play(&mut g, c, false, &[], &[]);
+    assert_eq!(g.obj(c).zone, Zone::Battlefield);
+    assert_eq!(tapped_lands(&g), 4, "{{3}}{{B}}{{B}} less {{1}}");
+    // The Monument drains 1, then Gray Merchant drains its devotion (2).
+    assert_eq!(g.players[1].life, 40 - 1 - 2);
+    assert_eq!(g.players[0].life, 40 + 1 + 2);
+    // A green creature isn't discounted, but still drains.
+    let elf = hand(&mut g, 0, "Llanowar Elves");
+    play(&mut g, elf, false, &[], &[]);
+    assert_eq!(tapped_lands(&g), 5);
+    assert_eq!(g.players[1].life, 36);
+}
+
+#[test]
+fn animar_grows_on_creature_casts_and_discounts_per_counter() {
+    let mut g = table();
+    let a = put(&mut g, 0, "Animar, Soul of Elements");
+    g.objects[a.0 as usize].counters = 2;
+    let c = hand(&mut g, 0, "Gray Merchant of Asphodel");
+    play(&mut g, c, false, &[], &[]);
+    assert_eq!(g.obj(c).zone, Zone::Battlefield);
+    assert_eq!(tapped_lands(&g), 3, "{{3}}{{B}}{{B}} less {{2}}");
+    assert_eq!(g.obj(a).counters, 3);
+}
+
+#[test]
+fn rise_of_the_eldrazi_needs_colorless_mana_and_destroys_draws_and_takes_a_turn() {
+    let mut g = table();
+    let ring = put(&mut g, 0, "Sol Ring");
+    let rise = hand(&mut g, 0, "Rise of the Eldrazi");
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(rise)),
+        "Sol Ring's {{C}}{{C}} can't pay {{C}}{{C}}{{C}}"
+    );
+    let dynamo = put(&mut g, 0, "Thran Dynamo");
+    let forest = g.permanents(1).find(|&x| g.def_of(x).name == "Forest").unwrap();
+    let n = g.players[0].hand.len();
+    play(&mut g, rise, false, &[obj(forest), Target::Player(0)], &[]);
+    assert_eq!(g.obj(forest).zone, Zone::Graveyard);
+    assert_eq!(g.players[0].hand.len(), n - 1 + 4);
+    assert_eq!(g.extra_turns, vec![0]);
+    assert_eq!(g.obj(rise).zone, Zone::Exile);
+    assert!(
+        g.obj(dynamo).tapped && g.obj(ring).tapped,
+        "the {{C}} came from the rocks"
+    );
+}
+
+#[test]
+fn shizo_gives_a_legendary_creature_fear() {
+    let mut g = table();
+    let shizo = put(&mut g, 0, "Shizo, Death's Storehouse");
+    let mut lands = 0;
+    for x in g.permanents(0).collect::<Vec<_>>() {
+        if g.def_of(x).name == "Swamp" && lands < 1 {
+            lands += 1;
+        } else if g.types_of(x).land && x != shizo {
+            tap(&mut g, x); // only a Swamp left to pay {B}
+        }
+    }
+    let animar = put(&mut g, 0, "Animar, Soul of Elements");
+    assert!(makes(&g, shizo).0[2], "{{T}}: Add {{B}}");
+    activate(&mut g, shizo, 0, &[obj(animar)]);
+    assert!(g.keywords(animar).has(Keywords::FEAR));
+    assert!(g.obj(shizo).tapped);
+}
+
+#[test]
+fn haunted_ridge_enters_tapped_unless_you_control_two_other_lands() {
+    let mut g = game(&["Swamp"]);
+    let early = hand(&mut g, 0, "Haunted Ridge");
+    act(&mut g, Action::PlayLand(early));
+    assert!(g.obj(early).tapped, "one other land");
+    let mut g = game(&["Swamp", "Forest"]);
+    let late = hand(&mut g, 0, "Overgrown Farmland");
+    act(&mut g, Action::PlayLand(late));
+    assert!(!g.obj(late).tapped, "two other lands");
+    assert_eq!(makes(&g, late), ([true, false, false, false, true], false));
+}
+
+#[test]
+fn toxic_deluge_pays_x_life_and_shrinks_every_creature() {
+    let mut g = table();
+    let mine = put(&mut g, 0, "Llanowar Elves");
+    let animar = put(&mut g, 0, "Animar, Soul of Elements");
+    set_counters(&mut g, animar, 3); // a 4/4
+    let theirs = put(&mut g, 1, "Gray Merchant of Asphodel"); // 2/4
+    let c = hand(&mut g, 0, "Toxic Deluge");
+    assert!(g.legal_actions().contains(&Action::CastX(c, 30)));
+    act(&mut g, Action::CastX(c, 3));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].life, 37, "paid 3 life");
+    assert_eq!(g.obj(mine).zone, Zone::Graveyard);
+    assert_eq!(g.obj(theirs).zone, Zone::Battlefield, "a 2/4 lives at -1/1");
+    assert_eq!(g.obj(animar).zone, Zone::Battlefield);
+    assert_eq!(g.power(animar), 1);
+}
+
+fn tap_for(g: &mut Game, id: ObjId, color: u8) {
+    g.manual_mana[0] = true;
+    act(g, Action::TapForMana(id, color));
+}
+
+/// Casts the Aura `name` on player 0's land `land`.
+fn enchant_land(g: &mut Game, name: &str, land: ObjId) -> ObjId {
+    let c = hand(g, 0, name);
+    act(g, Action::Cast(c));
+    act(g, Action::Target(obj(land)));
+    resolve_all(g, &[]);
+    assert_eq!(g.obj(c).attached_to.map(|a| a.0), Some(land));
+    g.objects[land.0 as usize].tapped = false; // it may have paid for the Aura
+    c
+}
+
+fn first_named(g: &Game, p: usize, name: &str) -> ObjId {
+    g.permanents(p).find(|&x| g.def_of(x).name == name).unwrap()
+}
+
+#[test]
+fn fertile_ground_adds_one_mana_of_any_color() {
+    let mut g = table();
+    let forest = first_named(&g, 0, "Forest");
+    enchant_land(&mut g, "Fertile Ground", forest);
+    let made: Vec<_> = g.mana_sources(0).into_iter().filter(|s| s.0 == forest).collect();
+    assert_eq!(made.len(), 2);
+    assert!(made.iter().any(|s| s.1.colors == [true; 5]));
+    tap_for(&mut g, forest, 4);
+    assert_eq!(pooled(&g, 4), 2);
+}
+
+#[test]
+fn trace_of_abundance_gives_shroud_and_extra_mana() {
+    let mut g = table();
+    let island = first_named(&g, 0, "Island");
+    enchant_land(&mut g, "Trace of Abundance", island);
+    assert!(g.keywords(island).has(Keywords::SHROUD));
+    assert_eq!(g.mana_sources(0).into_iter().filter(|s| s.0 == island).count(), 2);
+}
+
+#[test]
+fn buried_in_the_garden_exiles_until_it_leaves_and_adds_mana() {
+    let mut g = table();
+    let theirs = put(&mut g, 1, "Sol Ring");
+    let forest = first_named(&g, 0, "Forest");
+    let c = hand(&mut g, 0, "Buried in the Garden");
+    act(&mut g, Action::Cast(c));
+    act(&mut g, Action::Target(obj(forest)));
+    resolve_all(&mut g, &[Action::Target(obj(theirs))]);
+    g.objects[forest.0 as usize].tapped = false; // it may have paid for the Aura
+    assert_eq!(g.obj(theirs).zone, Zone::Exile);
+    assert_eq!(g.mana_sources(0).into_iter().filter(|s| s.0 == forest).count(), 2);
+}
+
+#[test]
+fn crypt_ghast_doubles_swamps_and_extorts() {
+    let mut g = table();
+    put(&mut g, 0, "Crypt Ghast");
+    let swamp = first_named(&g, 0, "Swamp");
+    tap_for(&mut g, swamp, 2);
+    assert_eq!(pooled(&g, 2), 2, "an additional {{B}}");
+    let forest = first_named(&g, 0, "Forest");
+    assert_eq!(g.mana_sources(0).into_iter().filter(|s| s.0 == forest).count(), 1);
+    // Extort: cast a spell, pay {W/B} from the pool, drain 1.
+    let elf = hand(&mut g, 0, "Llanowar Elves");
+    play(&mut g, elf, false, &[], &[Action::Yes]);
+    assert_eq!(g.obj(elf).zone, Zone::Battlefield);
+    assert_eq!(g.players[1].life, 39);
+    assert_eq!(g.players[0].life, 41);
+}
+
+#[test]
+fn chromatic_lantern_lets_lands_tap_for_any_color() {
+    let mut g = table();
+    let plains = first_named(&g, 0, "Plains");
+    assert_eq!(makes(&g, plains).0, [true, false, false, false, false]);
+    let lantern = put(&mut g, 0, "Chromatic Lantern");
+    assert_eq!(makes(&g, plains).0, [true; 5]);
+    assert_eq!(makes(&g, lantern).0, [true; 5]);
+}
+
+#[test]
+fn grove_of_the_burnwillows_gives_life_only_for_colored_mana() {
+    let mut g = game(&["Grove of the Burnwillows", "Grove of the Burnwillows"]);
+    let groves: Vec<_> = g.permanents(0).collect();
+    assert_eq!(makes(&g, groves[0]), ([false, false, false, true, true], true));
+    tap_for(&mut g, groves[0], 5);
+    assert_eq!(g.players[1].life, 40);
+    tap_for(&mut g, groves[1], 3);
+    assert_eq!(g.players[1].life, 41);
+}
+
+#[test]
+fn mulldrifter_draws_two_and_evoked_is_sacrificed() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Mulldrifter");
+    let n = g.players[0].hand.len();
+    act(&mut g, Action::CastAlternative(c));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].hand.len(), n - 1 + 2);
+    assert_eq!(g.obj(c).zone, Zone::Graveyard, "evoked: sacrificed");
+    assert_eq!(tapped_lands(&g), 3, "{{2}}{{U}}");
+    // Cast for its mana cost, it stays.
+    let c = hand(&mut g, 0, "Mulldrifter");
+    play(&mut g, c, false, &[], &[]);
+    assert_eq!(g.obj(c).zone, Zone::Battlefield);
+    assert!(g.keywords(c).has(Keywords::FLYING));
+}
+
+#[test]
+fn reveillark_evoked_returns_two_small_creatures() {
+    let mut g = table();
+    let a = g.add_card(0, cid("Llanowar Elves"), Zone::Graveyard);
+    let b = g.add_card(0, cid("Fyndhorn Elves"), Zone::Graveyard);
+    let big = g.add_card(0, cid("Gray Merchant of Asphodel"), Zone::Graveyard);
+    let c = hand(&mut g, 0, "Reveillark");
+    act(&mut g, Action::CastAlternative(c));
+    resolve_all(&mut g, &[Action::Target(obj(a)), Action::Target(obj(b))]);
+    assert_eq!(g.obj(c).zone, Zone::Graveyard, "evoked: sacrificed");
+    assert_eq!(g.obj(a).zone, Zone::Battlefield);
+    assert_eq!(g.obj(b).zone, Zone::Battlefield);
+    assert_eq!(g.obj(big).zone, Zone::Graveyard, "power 2 or less only");
+}
+
+#[test]
+fn chord_of_calling_convokes_with_creatures_and_fetches_up_to_x() {
+    // Only three Forests: {X}{G}{G}{G} with X = 2 needs two creatures to tap.
+    let mut g = game(&["Forest", "Forest", "Forest"]);
+    let a = put(&mut g, 0, "Gray Merchant of Asphodel");
+    let b = put(&mut g, 0, "Animar, Soul of Elements");
+    g.objects[b.0 as usize].since_turn = g.turn; // summoning sick still convokes
+    let target = g.add_card(0, cid("Fyndhorn Elves"), Zone::Library);
+    let c = hand(&mut g, 0, "Chord of Calling");
+    assert!(g.legal_actions().contains(&Action::CastX(c, 2)));
+    act(&mut g, Action::CastX(c, 2));
+    resolve_all(&mut g, &[Action::Pick(target)]);
+    assert_eq!(g.obj(target).zone, Zone::Battlefield);
+    assert!(g.obj(a).tapped && g.obj(b).tapped, "both creatures convoked");
+}
+
+#[test]
+fn force_of_will_pitches_a_blue_card_and_1_life_to_counter() {
+    let mut g = game(&["Forest"]);
+    let fow = hand(&mut g, 0, "Force of Will");
+    let blue = hand(&mut g, 0, "Brainstorm");
+    let elf = hand(&mut g, 0, "Llanowar Elves");
+    act(&mut g, Action::Cast(elf));
+    assert!(g.legal_actions().contains(&Action::CastWith(fow, blue)));
+    act(&mut g, Action::CastWith(fow, blue));
+    act(&mut g, Action::Target(obj(elf)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(elf).zone, Zone::Graveyard, "countered");
+    assert_eq!(g.obj(blue).zone, Zone::Exile);
+    assert_eq!(g.obj(fow).zone, Zone::Graveyard);
+    assert_eq!(g.players[0].life, 39);
+}
+
+#[test]
+fn unfathomable_truths_draws_three_and_makes_a_spawn_that_sacrifices_for_colorless() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Unfathomable Truths");
+    assert_eq!(g.colors_of(c), [false; 5], "devoid");
+    let n = g.players[0].hand.len();
+    play(&mut g, c, false, &[], &[]);
+    assert_eq!(g.players[0].hand.len(), n - 1 + 3);
+    let spawn = tokens(&g, 0, "Eldrazi Spawn");
+    assert_eq!(spawn.len(), 1);
+    let s = spawn[0];
+    assert_eq!((g.power(s), g.toughness(s)), (0, 1));
+    assert_eq!(g.colors_of(s), [false; 5]);
+    // Just made, and no {T} in its cost: it can still be sacrificed for {C}.
+    assert_eq!(makes(&g, s), ([false; 5], true));
+    g.manual_mana[0] = true;
+    act(&mut g, Action::TapForMana(s, 5));
+    assert!(g.players[0].pool.iter().any(|m| m.colorless));
+    assert!(tokens(&g, 0, "Eldrazi Spawn").is_empty(), "sacrificed");
+}
+
+#[test]
+fn magnus_the_red_discounts_spells_per_creature_token_and_makes_spawn() {
+    let mut g = table();
+    let magnus = put(&mut g, 0, "Magnus the Red");
+    let truths = hand(&mut g, 0, "Unfathomable Truths");
+    play(&mut g, truths, false, &[], &[]);
+    assert_eq!(tapped_lands(&g), 5, "no tokens yet: {{4}}{{U}}");
+    // One Spawn now: {1} less. Keep it out of the payment by counting it.
+    let c = hand(&mut g, 0, "Unfathomable Truths");
+    let before = tapped_lands(&g);
+    play(&mut g, c, false, &[], &[]);
+    let spawns_left = tokens(&g, 0, "Eldrazi Spawn").len();
+    let used = tapped_lands(&g) - before + (2 - spawns_left);
+    assert_eq!(used, 4, "{{4}}{{U}} less {{1}} for the one creature token");
+    // Blade of Magnus.
+    attack_with(&mut g, &[magnus]);
+    assert_eq!(tokens(&g, 0, "Spawn").len(), 1);
+    let spawn = tokens(&g, 0, "Spawn")[0];
+    assert_eq!((g.power(spawn), g.toughness(spawn)), (3, 3));
+}
+
+#[test]
+fn freyalise_makes_elf_druids_destroys_and_draws_per_green_creature() {
+    let mut g = table();
+    let f = put(&mut g, 0, "Freyalise, Llanowar's Fury");
+    let start = g.obj(f).loyalty;
+    act(&mut g, Action::Loyalty(f, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(f).loyalty, start + 2);
+    let elf = tokens(&g, 0, "Elf Druid");
+    assert_eq!(elf.len(), 1);
+    assert_eq!((g.power(elf[0]), g.toughness(elf[0])), (1, 1));
+    assert_eq!(
+        g.def_of(elf[0]).subtypes,
+        vec!["Elf".to_string(), "Druid".to_string()]
+    );
+    assert_eq!(
+        makes(&g, elf[0]),
+        ([false, false, false, false, false], false),
+        "summoning sick"
+    );
+    g.objects[elf[0].0 as usize].since_turn = 0;
+    assert_eq!(
+        makes(&g, elf[0]),
+        ([false, false, false, false, true], false),
+        "{{T}}: Add {{G}}"
+    );
+}
