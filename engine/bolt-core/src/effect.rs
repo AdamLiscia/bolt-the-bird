@@ -1426,6 +1426,33 @@ pub enum Effect {
     /// or 6), or with power 7 or more, 4 damage to each opponent and each creature and planeswalker
     /// they control. The cast spell is the item's `extra`.
     UnsealingDamage(u8),
+    /// Create `n` token copies of the creature in `slot` with haste; exile them at the beginning of
+    /// the next end step (`n` 0: one plus the instant and sorcery spells you've cast this turn,
+    /// Rionya).
+    CopiesHasteExileAtEnd {
+        slot: u8,
+        n: u8,
+    },
+    /// Molten Echoes: a hasty copy, exiled at end step, of the creature in `slot` if it has the
+    /// source's chosen creature type.
+    CopyIfChosenTypeExileAtEnd(u8),
+    /// Mirror March: flip a coin until you lose a flip; a hasty copy (exiled at end step) of the
+    /// creature in `slot` for each flip won.
+    CoinFlipCopiesExileAtEnd(u8),
+    /// You may put a commander you own from the command zone onto the battlefield; it gains haste,
+    /// and returns to the command zone at the beginning of the next end step (Hellkite Courser).
+    CommanderFromCommandZoneUntilEnd,
+    /// Search for any number of creature cards with total mana value `n` or less, onto the
+    /// battlefield (Protean Hulk).
+    SearchCreaturesTotalManaValue(u32),
+    /// The creature in `slot`'s controller draws a card if its power is greater than each other
+    /// creature's power (Selvala).
+    DrawIfGreatestPower(u8),
+    /// Add X mana in any combination of colors, X the greatest power among creatures you control.
+    AddAnyColorsGreatestPower,
+    /// Primal Surge: exile the top card; if it's a permanent card, you may put it onto the
+    /// battlefield, and if you do, repeat.
+    PrimalSurge,
     /// A -1/-1 counter on the creature in `slot` (kept as negative `Object::counters`, so +1/+1 and
     /// -1/-1 counters cancel out, CR 704.5q).
     MinusCounter(u8),

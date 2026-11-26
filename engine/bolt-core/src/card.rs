@@ -694,6 +694,9 @@ pub struct CardDef {
     pub targeted_life_tax: i32,
     /// "Red spells you cast cost {N} less to cast." (The Fire Crystal)
     pub red_spell_discount: u8,
+    /// Vigor: "If damage would be dealt to another creature you control, prevent that damage. Put
+    /// a +1/+1 counter on that creature for each 1 damage prevented this way."
+    pub damage_to_yours_becomes_counters: bool,
     /// Its mana ability makes one mana for each enchantment you control (Serra's Sanctum, Sanctum
     /// Weaver), instead of one.
     pub mana_per_enchantment: bool,
@@ -940,6 +943,7 @@ impl CardDef {
             vorinclex: false,
             targeted_life_tax: 0,
             red_spell_discount: 0,
+            damage_to_yours_becomes_counters: false,
             mana_per_enchantment: false,
             opponents_cant_activate_your_turn: false,
             protection_from_subtype: None,
@@ -1146,6 +1150,7 @@ impl CardDef {
             vorinclex: false,
             targeted_life_tax: 0,
             red_spell_discount: 0,
+            damage_to_yours_becomes_counters: false,
             mana_per_enchantment: false,
             opponents_cant_activate_your_turn: false,
             protection_from_subtype: None,
@@ -1352,6 +1357,7 @@ impl CardDef {
             vorinclex: false,
             targeted_life_tax: 0,
             red_spell_discount: 0,
+            damage_to_yours_becomes_counters: false,
             mana_per_enchantment: false,
             opponents_cant_activate_your_turn: false,
             protection_from_subtype: None,

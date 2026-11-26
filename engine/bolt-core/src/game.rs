@@ -261,6 +261,10 @@ pub struct Object {
     pub paired_with: Option<(ObjId, u32)>,
     /// Returned with unearth: exiled at the next end step or instead of leaving the battlefield.
     pub unearthed: bool,
+    /// Exile it at the beginning of the next end step (hasty token copies: Molten Echoes, Rionya).
+    pub exile_at_end: bool,
+    /// Return it to the command zone at the beginning of the next end step (Hellkite Courser).
+    pub command_at_end: bool,
     /// A token copy that's an enchantment and no other card type (Myrkul).
     pub copy_enchantment_only: bool,
 }
@@ -959,6 +963,13 @@ pub enum Decision {
     LandTappedDrawRepeat,
     /// `Pick` a basic land card in your hand to put onto the battlefield tapped, or `No`.
     BasicFromHandTapped,
+    /// Protean Hulk: `Pick` a creature card with mana value at most `budget`, or `No` to stop.
+    HulkSearch { budget: u32 },
+    /// Primal Surge: `Yes` puts `card` (a permanent card) onto the battlefield and repeats, `No`
+    /// stops.
+    PrimalSurge { card: ObjId },
+    /// Hellkite Courser: `Yes` puts your commander onto the battlefield, `No` doesn't.
+    CommanderCourser { card: ObjId },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -1557,6 +1568,8 @@ impl Game {
             conduit_turn: 0,
             paired_with: None,
             unearthed: false,
+            exile_at_end: false,
+            command_at_end: false,
             copy_enchantment_only: false,
         });
         self.zone_list(owner, zone).push(id);
@@ -2122,6 +2135,33 @@ impl Game {
                 .emblems
                 .iter()
                 .any(|&(q, k, _)| q == o.controller && k == kind)
+    }
+
+    /// Primal Surge: exile the top card; a permanent card may go onto the battlefield (and repeat).
+    fn primal_surge(&mut self, p: PlayerId) {
+        if let Some(&c) = self.players[p].library.last() {
+            self.move_to(c, Zone::Exile);
+            if self.def_of(c).types.is_permanent() {
+                self.ask(p, Decision::PrimalSurge { card: c });
+            }
+        }
+    }
+
+    /// Hasty token copies of `of` that are exiled at the next end step.
+    fn copies_exile_at_end(&mut self, item: &StackItem, legal: &[bool], slot: u8, n: u32) {
+        for _ in 0..n {
+            let copy = Effect::CopyToken {
+                slot: Some(slot),
+                haste_and_sacrifice: false,
+                extra_subtype: None,
+            };
+            self.run_effect(item, legal, copy);
+            for id in self.last_created.clone() {
+                let o = self.obj_mut(id);
+                o.granted = o.granted.with(Keywords::HASTE);
+                o.exile_at_end = true;
+            }
+        }
     }
 
     /// `p` sacrifices `n` permanents of their choice: all of them if they have `n` or fewer.
@@ -2998,6 +3038,8 @@ impl Game {
         if from == Zone::Battlefield {
             o.bait = 0;
             o.sacrifice_at_end = false;
+            o.exile_at_end = false;
+            o.command_at_end = false;
         }
         if to == Zone::Graveyard {
             o.graveyard_turn = turn;
@@ -8130,6 +8172,18 @@ impl Game {
                 v.push(Action::No);
                 v
             }
+            Decision::HulkSearch { budget } => {
+                let mut v: Vec<Action> = self.players[p]
+                    .library
+                    .iter()
+                    .copied()
+                    .filter(|&c| self.def_of(c).types.creature && self.def_of(c).cost.mana_value() <= *budget)
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
+            Decision::PrimalSurge { .. } | Decision::CommanderCourser { .. } => vec![Action::Yes, Action::No],
             Decision::LandFromHand => {
                 let mut v: Vec<Action> = hand
                     .iter()
@@ -9213,6 +9267,42 @@ impl Game {
             (Decision::ScrollRackExile { exiled }, Action::No) => self.scroll_rack_finish(p, exiled),
             (Decision::LandFromHand, Action::Pick(c)) => self.move_to(c, Zone::Battlefield),
             (Decision::LandFromHand, Action::No) => {}
+            (Decision::HulkSearch { budget }, Action::Pick(c)) => {
+                let mv = self.def_of(c).cost.mana_value();
+                self.move_to(c, Zone::Battlefield);
+                let budget = budget.saturating_sub(mv);
+                let more = self.players[p]
+                    .library
+                    .iter()
+                    .any(|&x| self.def_of(x).types.creature && self.def_of(x).cost.mana_value() <= budget);
+                if more {
+                    self.ask(p, Decision::HulkSearch { budget });
+                } else {
+                    self.shuffle_library(p);
+                }
+            }
+            (Decision::HulkSearch { .. }, Action::No) => self.shuffle_library(p),
+            (Decision::PrimalSurge { card }, Action::Yes) => {
+                self.move_to(card, Zone::Battlefield);
+                self.primal_surge(p);
+            }
+            (Decision::PrimalSurge { .. }, Action::No) => {}
+            (Decision::CommanderCourser { card }, Action::Yes) => {
+                if self.obj(card).zone == Zone::Command {
+                    self.move_to(card, Zone::Battlefield);
+                    let zcc = self.obj(card).zcc;
+                    self.until_eot.push(Modifier {
+                        obj: card,
+                        zcc,
+                        power: 0,
+                        toughness: 0,
+                        keywords: Keywords::HASTE,
+                        dies: None,
+                    });
+                    self.obj_mut(card).command_at_end = true;
+                }
+            }
+            (Decision::CommanderCourser { .. }, Action::No) => {}
             (Decision::CreaturesFromHand, Action::Pick(c)) => {
                 self.move_to(c, Zone::Battlefield);
                 if self.players[p]
@@ -11344,6 +11434,75 @@ impl Game {
                     }
                 }
             }
+            Effect::CopiesHasteExileAtEnd { slot, n } => {
+                let n = if n == 0 {
+                    1 + self.instants_sorceries_cast[item.controller]
+                } else {
+                    n as u32
+                };
+                self.copies_exile_at_end(item, legal, slot, n);
+            }
+            Effect::CopyIfChosenTypeExileAtEnd(slot) => {
+                if let Some(c) = Game::slot_object(item, legal, slot) {
+                    let chosen = self.obj(src).chosen_type.clone();
+                    if chosen.is_some_and(|t| self.has_subtype(c, &t)) {
+                        self.copies_exile_at_end(item, legal, slot, 1);
+                    }
+                }
+            }
+            Effect::CoinFlipCopiesExileAtEnd(slot) => {
+                let mut wins = 0;
+                while self.rng.below(2) == 0 && wins < 50 {
+                    wins += 1;
+                }
+                self.copies_exile_at_end(item, legal, slot, wins);
+            }
+            Effect::CommanderFromCommandZoneUntilEnd => {
+                let p = item.controller;
+                let card = self
+                    .command
+                    .iter()
+                    .copied()
+                    .find(|&c| self.obj(c).owner == p && self.is_commander(c));
+                if let Some(card) = card {
+                    self.ask(p, Decision::CommanderCourser { card });
+                }
+            }
+            Effect::SearchCreaturesTotalManaValue(n) => {
+                let p = item.controller;
+                let any = self.players[p]
+                    .library
+                    .iter()
+                    .any(|&x| self.def_of(x).types.creature && self.def_of(x).cost.mana_value() <= n);
+                if any {
+                    self.ask(p, Decision::HulkSearch { budget: n });
+                } else {
+                    self.shuffle_library(p);
+                }
+            }
+            Effect::DrawIfGreatestPower(slot) => {
+                if let Some(c) = Game::slot_object(item, legal, slot) {
+                    let power = self.power(c);
+                    let others = self
+                        .battlefield
+                        .iter()
+                        .copied()
+                        .filter(|&x| x != c && self.types_of(x).creature)
+                        .all(|x| self.power(x) < power);
+                    if others {
+                        let q = self.obj(c).controller;
+                        self.draw(q);
+                    }
+                }
+            }
+            Effect::AddAnyColorsGreatestPower => {
+                let p = item.controller;
+                let n = self.creatures(p).map(|c| self.power(c)).max().unwrap_or(0).max(0);
+                for _ in 0..n {
+                    self.players[p].pool.push(ManaSource::of(&crate::Color::ALL));
+                }
+            }
+            Effect::PrimalSurge => self.primal_surge(item.controller),
             Effect::BecomeCopyOfSlotUntilEot(n) => {
                 if let Some(card) = Game::slot_object(item, legal, n) {
                     if self.obj(src).zone == Zone::Battlefield {
@@ -14473,6 +14632,26 @@ impl Game {
                 for c in doomed {
                     self.move_to(c, Zone::Graveyard);
                 }
+                // "Exile them at the beginning of the next end step."
+                let exiled: Vec<ObjId> = self
+                    .battlefield
+                    .iter()
+                    .copied()
+                    .filter(|&c| self.obj(c).exile_at_end)
+                    .collect();
+                for c in exiled {
+                    self.move_to(c, Zone::Exile);
+                }
+                // Hellkite Courser: "Return it to the command zone".
+                let back: Vec<ObjId> = self
+                    .battlefield
+                    .iter()
+                    .copied()
+                    .filter(|&c| self.obj(c).command_at_end)
+                    .collect();
+                for c in back {
+                    self.move_to(c, Zone::Command);
+                }
                 // Delayed "at the beginning of the next end step" returns (CR 603.7).
                 for (c, zcc, revival) in std::mem::take(&mut self.delayed_returns) {
                     let o = self.obj(c);
@@ -14979,6 +15158,18 @@ impl Game {
             }
             let zcc = self.obj(id).zcc;
             if self.in_combat_damage && self.combat_damage_prevented.contains(&(id, zcc)) {
+                return;
+            }
+            // Vigor: damage to another creature you control becomes +1/+1 counters.
+            let controller = self.obj(id).controller;
+            if amount > 0
+                && self.obj(id).zone == Zone::Battlefield
+                && self.types_of(id).creature
+                && self.permanents(controller).any(|v| {
+                    v != id && self.def_of(v).damage_to_yours_becomes_counters && !self.lost_abilities(v)
+                })
+            {
+                self.add_counters(id, amount);
                 return;
             }
             let controller = self.obj(id).controller;
