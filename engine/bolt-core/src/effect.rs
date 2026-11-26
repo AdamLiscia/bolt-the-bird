@@ -1499,6 +1499,46 @@ pub enum Effect {
     UnlessOpponentPaysPower,
     /// Destroy all creatures; they can't be regenerated (Damnation, Wrath of God).
     DestroyAllCreaturesNoRegen,
+    /// Exalted (CR 702.83), from a "whenever you attack" trigger: if exactly one creature you
+    /// control is attacking, it gets +1/+1 until end of turn.
+    Exalted,
+    /// Undying (CR 702.93), from the source's dies trigger: if it had no +1/+1 counters on it,
+    /// return it to the battlefield under its owner's control with a +1/+1 counter on it.
+    Undying,
+    /// Persist (CR 702.79), from the source's dies trigger: if it had no -1/-1 counters on it,
+    /// return it to the battlefield under its owner's control with a -1/-1 counter on it.
+    Persist,
+    /// Each opponent loses X life, X your devotion to these colors (WUBRG); you gain life equal to
+    /// the life lost this way (Gray Merchant of Asphodel).
+    DrainDevotion([bool; 5]),
+    /// Add mana of this color equal to your devotion to it (Nykthos, Shrine to Nyx).
+    AddManaDevotion(crate::Color),
+    /// Add one mana of this color for each permanent `count` counts (Cabal Coffers: each Swamp you
+    /// control).
+    AddManaPerCount {
+        color: crate::Color,
+        count: ManaCount,
+    },
+    /// Add mana of this color equal to the source's power (Heronblade Elite: X mana of one color).
+    AddManaSourcePower(crate::Color),
+    /// Echo {cost} (CR 702.30), from an upkeep trigger: if the source came under your control since
+    /// your last upkeep, sacrifice it unless you pay the cost (`Decision::PayUpkeep`). Two players:
+    /// your last upkeep was two turns ago (extra turns aren't tracked).
+    Echo(crate::mana::ManaCost),
+    /// The opponent draws `n` cards if this spell was cast for its alternative cost (Baleful Mastery).
+    OpponentDrawsIfAltCost(u8),
+    /// Tap all lands the opponent controls (Nature's Will: "that player", one opponent).
+    TapOpponentsLands,
+    /// Add one mana of this color for each card in the hand of the player in `slot` (Jeska's Will).
+    AddManaPerHandSize {
+        color: crate::Color,
+        slot: u8,
+    },
+    /// Exile the top `n` cards of your library; you may play them this turn (Jeska's Will).
+    ExileTopToPlayThisTurn(u8),
+    /// The source deals damage equal to the spells you've cast this turn to the target in `slot`
+    /// (Noise Marine).
+    DamagePerSpellsCastThisTurn(u8),
     /// Hideaway `n` (CR 702.75): look at the top `n` cards, exile one face down (linked to the
     /// source), and put the rest on the bottom in a random order.
     Hideaway(u8),
@@ -1641,6 +1681,16 @@ pub enum Effect {
     /// Choose an exiled card an opponent owns with a void counter on it; you may play it this turn
     /// without paying its mana cost (Dauthi Voidwalker).
     PlayVoidCardFree,
+    /// Put the creature card in `slot` (from a graveyard) onto the battlefield under your control
+    /// and attach the source to it (Necromancy).
+    ReanimateAttachSource(u8),
+    /// All creatures get -X/-X until end of turn, X the spell's X (Toxic Deluge).
+    AllCreaturesGetMinusX,
+    /// Draw a card for each creature you control of this color (Freyalise: green).
+    DrawPerCreatureYouControlOfColor(crate::Color),
+    /// Evoke's "When this permanent enters, if its evoke cost was paid, its controller sacrifices
+    /// it." (CR 702.74a)
+    SacrificeIfEvoked,
     /// Draw a card for each creature you control of this color, WUBRG index (Regal Force: green).
     DrawPerColoredCreatureYouControl(u8),
     /// Regenerate each creature you control (Loxodon Hierarch).
@@ -1808,6 +1858,17 @@ pub enum Effect {
     /// The permanent in `slot` loses all abilities, for as long as it stays on the battlefield
     /// (Abigale). Keyword counters put on it afterwards still count.
     LoseAllAbilities(u8),
+}
+
+/// What an [`Effect::AddManaPerCount`] counts.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ManaCount {
+    /// Permanents you control with this subtype ("for each Swamp you control").
+    YouControlSubtype(&'static str),
+    /// Basic permanents you control with this subtype ("for each basic Swamp you control").
+    YouControlBasicSubtype(&'static str),
+    /// Permanents on the battlefield with this subtype, anyone's ("for each Elf on the battlefield").
+    OnBattlefieldSubtype(&'static str),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

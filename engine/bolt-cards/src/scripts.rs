@@ -179,11 +179,24 @@ pub fn token_defs() -> Vec<CardDef> {
             t
         },
         clue(),
-        // base+66 to +68 are d1's (Eldrazi Spawn, red Spawn 3/3, Elf Druid): placeholders until they
-        // merge.
-        token("Lane d1 token 66", "Eldrazi Spawn", 0, 1, Keywords::NONE),
-        token("Lane d1 token 67", "Eldrazi Spawn", 3, 3, Keywords::NONE),
-        token("Lane d1 token 68", "Elf Druid", 1, 1, Keywords::NONE),
+        {
+            // "a 0/1 colorless Eldrazi Spawn creature token with 'Sacrifice this token: Add {C}.'"
+            let mut t = token("Eldrazi Spawn", "Eldrazi Spawn", 0, 1, Keywords::NONE);
+            t.mana = Some(ManaSource {
+                colorless: true,
+                ..ManaSource::default()
+            });
+            t.sac_for_mana = true;
+            t.mana_ext.sac_mana_no_tap = true;
+            t
+        },
+        token("Spawn", "Spawn", 3, 3, Keywords::NONE), // Magnus the Red's red 3/3
+        {
+            // Freyalise: "a 1/1 green Elf Druid creature token with '{T}: Add {G}.'"
+            let mut t = token("Elf Druid", "Elf Druid", 1, 1, Keywords::NONE);
+            t.mana = Some(ManaSource::of(&[Color::Green]));
+            t
+        },
         token("Frog", "Frog", 1, 1, Keywords::NONE), // Quina's green 1/1
     ]
 }
@@ -305,6 +318,9 @@ pub struct Tokens {
     pub shapeshifter: usize,
     pub clue: usize,
     pub frog: usize,
+    pub eldrazi_spawn: usize,
+    pub spawn_3: usize,
+    pub elf_druid: usize,
 }
 
 impl Tokens {
@@ -377,6 +393,9 @@ impl Tokens {
             shapeshifter: base + 64,
             clue: base + 65,
             frog: base + 69,
+            eldrazi_spawn: base + 66,
+            spawn_3: base + 67,
+            elf_druid: base + 68,
         }
     }
 }
