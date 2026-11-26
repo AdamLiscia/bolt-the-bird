@@ -42,6 +42,7 @@ keywords! {
     INTIMIDATE = 20, "Intimidate";
     SHADOW = 21, "Shadow";
     SWAMPWALK = 22, "Swampwalk";
+    UNDYING = 23, "Undying";
 }
 
 impl Keywords {
@@ -180,6 +181,8 @@ pub enum Reduction {
     /// ... {n} less (the second number) if an opponent has at least this many cards (the first) in
     /// their graveyard (Into the Story: seven, {3}).
     IfOpponentGraveyardAtLeast(u8, u8),
+    /// {X} less, X the noncombat damage dealt to your opponents this turn (Chandra's Incinerator).
+    NoncombatDamageToOpponentsThisTurn,
 }
 
 /// An activated ability: "[cost]: [effect]" (CR 602).
@@ -334,6 +337,17 @@ pub struct Activated {
     /// "Sacrifice N nonland permanents" in the cost (Bolas's Citadel: 10): the engine picks which
     /// (tokens first, then the lowest mana value, the source last).
     pub sacrifice_nonland_n: u8,
+    /// Foretell's "During your turn, you may pay {2} and exile this card from your hand": an
+    /// ability of the card in your hand (with `your_turn_only`); it's cast later for
+    /// `ManaExt::foretell`. (A special action in the rules, CR 702.143a; here it uses the stack.)
+    pub foretell: bool,
+    /// Forecast (CR 702.57): "[cost], Reveal this card from your hand: [effect]. (Activate only
+    /// during your upkeep and only once each turn.)" The card stays in your hand; set
+    /// `once_each_turn` too.
+    pub forecast: bool,
+    /// "Pay life equal to the number of colors in your commanders' color identity" in the cost
+    /// (War Room).
+    pub life_per_commander_color: bool,
 }
 
 /// A loyalty ability's cost of −X (CR 606.4, 107.3): `loyalty_abilities` uses this as the cost,
@@ -1111,6 +1125,20 @@ pub struct ManaExt {
     /// "{T}: Add {C}{C}. Spend this mana only to cast colorless spells. Activate only if you
     /// control seven or more lands." (Shrine of the Forsaken Gods): (amount, lands needed).
     pub colorless_spell_amount_with_lands: Option<(u8, u8)>,
+    /// "{T}, Pay 1 life: Add one mana of any color." (Spire of Industry): its colored mana costs 1
+    /// life (paid like a pain land's damage: only when the payment needs that color).
+    pub colored_life_cost: bool,
+    /// "Activate only if you control an artifact." on its colored mana (Spire of Industry); without
+    /// one it makes only its {C}.
+    pub colored_only_with_artifact: bool,
+    /// Foretell's cost (CR 702.143): cast from exile for it on a later turn, after an
+    /// `Activated::foretell` ability exiled the card from your hand.
+    pub foretell: Option<ManaCost>,
+    /// "Colorless Eldrazi spells you cast cost {N} less to cast." (Eye of Ugin: 2)
+    pub colorless_eldrazi_spell_discount: u8,
+    /// "Colorless spells you cast with mana value N or greater cost {M} less to cast." as (N, M)
+    /// (It That Heralds the End: (7, 1)).
+    pub colorless_big_spell_discount: Option<(u8, u8)>,
 }
 
 /// "You may pay [mana], [life] and sacrifice or tap [creatures] rather than pay this spell's mana
@@ -2028,6 +2056,9 @@ pub struct ZonesExt {
     /// "You may have this land enter tapped as a copy of any land on the battlefield." (Vesuva): asked
     /// as it enters, however it enters (`Object::land_copy_pending`).
     pub enters_as_land_copy_tapped: bool,
+    /// The card has no mana cost (CR 202.1b): it can't be cast unless something lets it be cast
+    /// without paying its mana cost (Glimpse of Tomorrow: suspend).
+    pub no_mana_cost: bool,
 }
 
 #[cfg(test)]

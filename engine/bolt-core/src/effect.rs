@@ -142,6 +142,8 @@ pub struct Filter {
     /// the filter in as many slots as X can reach, with `min_targets: Some(0)`; a slot is only
     /// legal while fewer than X other targets are chosen, so no more than X are.
     pub up_to_x: bool,
+    /// Tapped permanents only (Far Traveler: "up to one target tapped creature you control").
+    pub tapped_only: bool,
 }
 
 impl Filter {
@@ -209,6 +211,7 @@ impl Filter {
         mana_value_even: false,
         mana_value_at_most_x: false,
         up_to_x: false,
+        tapped_only: false,
     };
 
     pub const CREATURE: Filter = Filter {
@@ -2406,6 +2409,57 @@ pub enum Effect {
     /// If you have at least `n` life more than your starting life total, exile the source and each
     /// artifact and creature your opponents control (Ajani, Strength of the Pride's 0: 15).
     ExileSelfAndOpponentsArtifactsCreaturesIfLifeAbove(i32),
+    /// Bruna, Light of Alabaster: attach to the source any number of Auras on the battlefield, and
+    /// put onto the battlefield attached to it any number of Aura cards that could enchant it from
+    /// your graveyard and/or hand, one at a time as `Decision::AttachAura` (game/zones.rs).
+    AttachAurasToSource,
+    /// Light-Paws, Emperor's Voice: if the entering Aura in `slot` (a triggering slot) was cast, you
+    /// may search your library for an Aura card with mana value at most that Aura's and a name
+    /// different from each Aura you control, put it onto the battlefield attached to the source,
+    /// then shuffle.
+    SearchAuraForSourceIfCast(u8),
+    /// Sovereigns of Lost Alara, from a "whenever you attack" trigger: if exactly one creature you
+    /// control is attacking, you may search your library for an Aura card that could enchant it,
+    /// put it onto the battlefield attached to it, then shuffle.
+    SearchAuraForLoneAttacker,
+    /// Olivia, Crimson Bride: return the creature card in `slot` from your graveyard to the
+    /// battlefield tapped and attacking; it gains "When you don't control a legendary Vampire,
+    /// exile this creature." (`Object::exile_without_legendary_vampire`).
+    ReturnAttackingUntilNoLegendaryVampire(u8),
+    /// Dragonhawk, Fate's Tempest: exile the top X cards of your library, X the number of creatures
+    /// you control with power 4 or greater; you may play them until your next end step; at the
+    /// beginning of that end step, the source's trigger number `trigger` deals 2 damage to each
+    /// opponent for each of them still exiled (`Game::delayed_end_step_exiled`).
+    ExileTopPowerFourPlayableUntilNextEndStep {
+        trigger: usize,
+    },
+    /// Damage to each opponent equal to the trigger's amount (Dragonhawk's delayed trigger).
+    DamageEachOpponentAmount,
+    /// Suspend N (CR 702.62a), from an activated ability with `Activated::plot` (exiled from your
+    /// hand as its cost): the card stays exiled with N time counters instead of plotted.
+    SuspendSource(u8),
+    /// Glimpse of Tomorrow: shuffle all permanents you own into your library, reveal that many
+    /// cards from the top, put the non-Aura permanent cards onto the battlefield, then the Aura
+    /// cards (each attached as `Decision::AuraEntersAttachedTo`), then the rest on the bottom in a
+    /// random order.
+    GlimpseOfTomorrow,
+    /// "If the discarded card was a creature card, amass [subtype] `n`" (Moria Scavenger): the
+    /// discard cost's card is the item's `extra` (`Activated::victim_in_extra`).
+    AmassIfExtraCreatureCard {
+        subtype: &'static str,
+        n: u8,
+        def: usize,
+    },
+    /// Stop here unless the card discarded or sacrificed for the cost (the item's `extra`, with
+    /// `Activated::victim_in_extra`) is a creature card (Moria Scavenger: "If the discarded card
+    /// was a creature card, ...").
+    StopUnlessExtraIsCreatureCard,
+    /// Look at the top card of your library; if it's a land card, reveal it and create a `def`
+    /// token; then draw a card (Fisher's Talent: the Fish). "You may reveal it" is always taken:
+    /// revealing only adds the token.
+    CreateTokenIfTopIsLandThenDraw {
+        def: usize,
+    },
     /// The creature in `slot` can't block for as long as you control the source (There and Back
     /// Again's chapter I), see `Game::cant_block_while_controlled`.
     TargetCantBlockWhileYouControlSource(u8),
@@ -2622,6 +2676,9 @@ pub enum StaticCondition {
     /// Its controller controls at least this many artifacts (Teething Wurmlet: three). Printed card
     /// types are counted, as `ControlLandsAtLeast` does.
     ControlArtifactsAtLeast(u8),
+    /// The source Class is at this level or higher (CR 716: a Class's level 2 and 3 statics), see
+    /// `Game::class_level`.
+    ClassLevelAtLeast(u8),
 }
 
 /// A static ability that changes characteristics (CR 604, 613 layers 6 and 7c).
@@ -2837,6 +2894,9 @@ pub enum Condition {
     YouLostLifeThisTurn,
     /// Its Class is at this level or higher (a Class's level 2 and 3 triggered abilities).
     ClassLevelAtLeast(u8),
+    /// At least this much colorless mana was spent to cast the spell (Desecrate Reality's
+    /// adamant: 3), with `Effect::StopUnlessCondition` before the adamant part.
+    ColorlessSpentAtLeast(u32),
 }
 
 /// A spell's effect or a triggered ability: target slots, then effects in order.
@@ -3307,6 +3367,10 @@ pub enum When {
     /// "Whenever an opponent sacrifices a noncreature token" (Bloodroot Apothecary), fired from
     /// `Game::sacrificed`.
     OpponentSacrificesNoncreatureToken,
+    /// "Whenever an Aura you control enters, if you cast it" (Light-Paws): fired as an Aura spell
+    /// resolves onto the battlefield (`Game::cast_aura_entered`, game/zones.rs), with the Aura in a
+    /// triggering first slot.
+    CastAuraYouControlEnters,
     /// "Whenever [this] deals combat damage to a player for the first time each turn" (Raphael, Tag
     /// Team Tough), with the damage as the amount; see `Game::combat_damaged_player`.
     DealsCombatDamageToPlayerFirstTimeEachTurn,

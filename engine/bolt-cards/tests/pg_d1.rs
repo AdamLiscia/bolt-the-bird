@@ -2485,3 +2485,179 @@ fn tainted_peak_adds_black_or_red_only_with_a_swamp() {
     put(&mut g, 0, "Swamp");
     assert_eq!(makes(&g, t), ([false, false, true, true, false], true));
 }
+
+// ---- d1 core, batch 11: Minas Tirith, Watcher of the Spheres ----
+
+#[test]
+fn minas_tirith_draws_only_after_attacking_with_two() {
+    let mut g = game(&[]);
+    let s = hand(&mut g, 0, "Minas Tirith");
+    act(&mut g, Action::PlayLand(s));
+    resolve_all(&mut g, &[]);
+    assert!(g.obj(s).tapped, "no legendary creature");
+    let mut g = game(&["Plains", "Plains"]);
+    let m = put(&mut g, 0, "Minas Tirith");
+    let lions = [put(&mut g, 0, "Savannah Lions"), put(&mut g, 0, "Savannah Lions")];
+    for &x in lions.iter().chain([&m]) {
+        g.objects[x.0 as usize].since_turn = 0;
+    }
+    assert!(!legal(&g, Action::Activate(m, 0)), "no attack yet");
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    for &l in &lions {
+        act(&mut g, Action::Attack(l));
+    }
+    act(&mut g, Action::FinishAttacks);
+    while g.step != Step::Main2 {
+        match g.pending {
+            Pending::DeclareBlockers(_) => {
+                act(&mut g, Action::FinishBlocks);
+            }
+            _ => {
+                act(&mut g, Action::PassPriority);
+            }
+        }
+    }
+    let before = g.players[0].hand.len();
+    act(&mut g, Action::Activate(m, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].hand.len(), before + 1);
+}
+
+#[test]
+fn watcher_of_the_spheres_discounts_fliers_and_grows_when_one_enters() {
+    let mut g = game(&["Plains", "Plains", "Plains", "Plains"]);
+    let w = put(&mut g, 0, "Watcher of the Spheres");
+    let angel = hand(&mut g, 0, "Serra Angel");
+    act(&mut g, Action::Cast(angel));
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        g.obj(angel).zone,
+        Zone::Battlefield,
+        "{{2}}{{W}}{{W}} from four Plains"
+    );
+    assert_eq!(g.power(w), 3, "+1/+1 for the Angel");
+}
+
+#[test]
+fn desecrate_reality_returns_an_odd_permanent_only_with_three_colorless() {
+    // Sol Ring's {C}{C}, plus Crystal Vein's {C} for the second cast.
+    for (vein, returned) in [(false, false), (true, true)] {
+        let mut lands = vec!["Sol Ring"];
+        if vein {
+            lands.push("Crystal Vein");
+        }
+        lands.extend(vec!["Plains"; 7 - 2 - vein as usize]);
+        let mut g = game(&lands);
+        let stone = put(&mut g, 1, "Mind Stone");
+        let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Graveyard);
+        let c = hand(&mut g, 0, "Desecrate Reality");
+        act(&mut g, Action::Cast(c));
+        act(&mut g, Action::Target(obj(stone)));
+        let pick = [Action::Pick(elves)];
+        resolve_all(&mut g, if returned { &pick } else { &[] });
+        assert_eq!(g.obj(stone).zone, Zone::Exile);
+        let back = g.obj(elves).zone == Zone::Battlefield;
+        assert_eq!(back, returned, "Crystal Vein: {vein}");
+    }
+}
+
+#[test]
+fn spire_of_industry_pays_life_for_color_only_with_an_artifact() {
+    let mut g = game(&["Spire of Industry"]);
+    let s = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "Spire of Industry")
+        .unwrap();
+    let elves = hand(&mut g, 0, "Llanowar Elves");
+    assert!(!legal(&g, Action::Cast(elves)), "no artifact: {{C}} only");
+    let stone = put(&mut g, 0, "Mind Stone");
+    g.objects[stone.0 as usize].tapped = true;
+    let life = g.players[0].life;
+    act(&mut g, Action::Cast(elves));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(elves).zone, Zone::Battlefield);
+    assert!(g.obj(s).tapped);
+    assert_eq!(g.players[0].life, life - 1, "1 life for {{G}}");
+    // Its {C} costs no life.
+    let mut g = game(&["Spire of Industry"]);
+    put(&mut g, 0, "Mind Stone");
+    let ring = hand(&mut g, 0, "Sol Ring");
+    let life = g.players[0].life;
+    act(&mut g, Action::Cast(ring));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].life, life);
+}
+
+#[test]
+fn chandras_incinerator_costs_less_after_noncombat_damage_and_redirects_it() {
+    let mut g = game(&["Mountain"; 4]);
+    let inc = hand(&mut g, 0, "Chandra's Incinerator");
+    assert!(!legal(&g, Action::Cast(inc)), "{{5}}{{R}} from four Mountains");
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    act(&mut g, Action::Cast(bolt));
+    act(&mut g, Action::Target(Target::Player(1)));
+    resolve_all(&mut g, &[]);
+    assert!(legal(&g, Action::Cast(inc)), "{{3}} less: {{2}}{{R}}");
+    act(&mut g, Action::Cast(inc));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(inc).zone, Zone::Battlefield);
+    // A noncombat hit on the opponent: that much to their creature.
+    let bear = put(&mut g, 1, "Savannah Lions");
+    let shock = hand(&mut g, 0, "Lightning Bolt");
+    put(&mut g, 0, "Mountain");
+    act(&mut g, Action::Cast(shock));
+    act(&mut g, Action::Target(Target::Player(1)));
+    resolve_all(&mut g, &[Action::Target(obj(bear))]);
+    assert_eq!(g.obj(bear).zone, Zone::Graveyard);
+}
+
+#[test]
+fn behold_the_multiverse_is_foretold_then_cast_for_its_foretell_cost_next_turn() {
+    let mut g = game(&["Island", "Island", "Island", "Island"]);
+    let c = hand(&mut g, 0, "Behold the Multiverse");
+    act(&mut g, Action::Activate(c, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(c).zone, Zone::Exile, "foretold for {{2}}");
+    assert!(!legal(&g, Action::Cast(c)), "not the turn it was foretold");
+    // Player 0's next turn.
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    let lands: Vec<ObjId> = g.permanents(0).filter(|&x| g.types_of(x).land).collect();
+    for &l in &lands[2..] {
+        g.objects[l.0 as usize].tapped = true;
+    }
+    let before = g.players[0].hand.len();
+    act(&mut g, Action::Cast(c));
+    resolve_all(&mut g, &[Action::Yes, Action::Yes]); // scry: both stay on top
+    assert_eq!(g.obj(c).zone, Zone::Graveyard, "{{1}}{{U}} from two Islands");
+    assert_eq!(g.players[0].hand.len(), before + 2);
+}
+
+#[test]
+fn eye_of_ugin_discounts_colorless_eldrazi_spells() {
+    let mut g = game(&["Eye of Ugin", "Plains", "Plains", "Plains", "Plains"]);
+    let k = hand(&mut g, 0, "Conduit of Ruin"); // {6} colorless Eldrazi
+    act(&mut g, Action::Cast(k));
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        g.obj(k).zone,
+        Zone::Battlefield,
+        "{{4}}: four Plains (and the Eye's {{C}} spare)"
+    );
+}
+
+#[test]
+fn war_room_draws_for_life_equal_to_commander_colors() {
+    let mut g = game(&["War Room", "Plains", "Plains", "Plains"]);
+    let w = g.permanents(0).find(|&x| g.def_of(x).name == "War Room").unwrap();
+    let n = g.commander_color_count(0);
+    let (life, hand) = (g.players[0].life, g.players[0].hand.len());
+    act(&mut g, Action::Activate(w, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].life, life - n);
+    assert_eq!(g.players[0].hand.len(), hand + 1);
+}

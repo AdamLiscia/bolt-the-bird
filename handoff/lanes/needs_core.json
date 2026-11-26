@@ -170,7 +170,7 @@
   {
    "card": "Camellia, the Seedmiser",
    "deck": "Ygra, Eater of All",
-   "missing": "a 'whenever you sacrifice one or more Foods' trigger; forage as a cost [d3 batch 20: Effect::CountersOnOtherYourSubtype(Squirrel) is in; waits on d1's forage]",
+   "missing": "a 'whenever you sacrifice one or more Foods' trigger; forage as a cost [d3 batch 20: Effect::CountersOnOtherYourSubtype(Squirrel) is in; waits on d1's forage] [done by d3 batch 22: d1's forage, When::YouSacrificeOneOrMoreSubtype(Food), CountersOnOtherYourSubtype]",
    "lane": "d1",
    "theme": "mana",
    "owner": "d1"
@@ -450,7 +450,7 @@
   {
    "card": "Comet Storm",
    "deck": "Raggadragga, Goreguts Boss",
-   "missing": "multikicker [d3: blocked on d1's multikicker; a target slot per kick needs the kick count d1 stores, then d3 adds the Filter]",
+   "missing": "multikicker [d3: blocked on d1's multikicker; a target slot per kick needs the kick count d1 stores, then d3 adds the Filter] [d3 batch 22: still blocked: d1's multikicker is offered only when the cost has no X (cost.x == 0); an X spell with multikicker needs d1, then d3 adds a target slot per kick]",
    "lane": "d1",
    "theme": "mana",
    "owner": "d1"
@@ -978,7 +978,7 @@
   {
    "card": "Dig Through Time",
    "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
-   "missing": "delve",
+   "missing": "delve [done by d3 batch 22: Effect::LookTakeTwoBottomAnyOrder(7) with d1's delve]",
    "lane": "d1",
    "theme": "mana",
    "owner": "d1"
@@ -1754,7 +1754,7 @@
   {
    "card": "The Immortal Sun",
    "deck": "The Gitrog, Ravenous Ride (RuricMo)",
-   "missing": "needs core: stop loyalty abilities, an extra draw, and a discount on all spells you cast",
+   "missing": "needs core: stop loyalty abilities, an extra draw, and a discount on all spells you cast [d3 batch 22: the discount (spell_discount_all) and the rest exist; needs the merger: a players-cant-activate-loyalty check in the loyalty loop of legal actions]",
    "lane": "d2",
    "theme": "effects",
    "owner": "d3"
@@ -2042,7 +2042,7 @@
   {
    "card": "Waves of Aggression",
    "deck": "Kaalia of the Vast",
-   "missing": "needs core: untap all creatures that attacked this turn, and retrace",
+   "missing": "needs core: untap all creatures that attacked this turn, and retrace [d3 batch 22: the effects exist (UntapCreaturesAttackedThisTurn, AdditionalCombatAndMain, as Relentless Assault); needs d1: retrace]",
    "lane": "d2",
    "theme": "effects",
    "owner": "d3"
@@ -2130,10 +2130,10 @@
   {
    "card": "Rankle, Master of Pranks",
    "deck": "Henrika Domnathi // Henrika, Infernal Seer",
-   "missing": "needs core: choose any number of modes",
+   "missing": "needs core: choose any number of modes [lane B, 21dd51e]",
    "lane": "d2",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "merger_delegated",
+   "owner": "mac-b"
   },
   {
    "card": "Accursed Marauder",
@@ -4578,18 +4578,18 @@
   {
    "card": "Desecrate Reality",
    "deck": "Zhulodok, Void Gorger (Adam)",
-   "missing": "effects and statics [moved from d3 to lane B, 2026-11-26]",
+   "missing": "effects and statics [moved from d3 to lane B, 2026-11-26] [to d4, 2026-11-26]",
    "lane": "mac-b",
    "theme": "effects",
-   "owner": "mac-b"
+   "owner": "d4"
   },
   {
    "card": "Titan's Presence",
    "deck": "Zhulodok, Void Gorger (Adam)",
-   "missing": "effects and statics [moved from d3 to lane B, 2026-11-26]",
+   "missing": "effects and statics [moved from d3 to lane B, 2026-11-26] [to d4, 2026-11-26]",
    "lane": "mac-b",
    "theme": "effects",
-   "owner": "mac-b"
+   "owner": "d4"
   },
   {
    "card": "Ulamog, the Ceaseless Hunger",
@@ -4658,18 +4658,18 @@
   {
    "card": "Commander's Plate",
    "deck": "Zhulodok, Void Gorger (Adam)",
-   "missing": "effects and statics [moved from d3 to lane B, 2026-11-26]",
+   "missing": "effects and statics [moved from d3 to lane B, 2026-11-26] [to d4, 2026-11-26]",
    "lane": "mac-b",
    "theme": "effects",
-   "owner": "mac-b"
+   "owner": "d4"
   },
   {
    "card": "Ugin, the Spirit Dragon",
    "deck": "Zhulodok, Void Gorger (Adam)",
-   "missing": "effects and statics [moved from d3 to lane B, 2026-11-26]",
+   "missing": "effects and statics [moved from d3 to lane B, 2026-11-26] [to d4, 2026-11-26]",
    "lane": "mac-b",
    "theme": "effects",
-   "owner": "mac-b"
+   "owner": "d4"
   },
   {
    "card": "Ugin, the Ineffable",
@@ -5282,10 +5282,10 @@
   {
    "card": "Echoing Assault",
    "deck": "Bloomburrow Commander (BLC)",
-   "missing": "BLC (lane B's routing, 2026-11-26) [moved from d3 to lane B, 2026-11-26]",
+   "missing": "BLC (lane B's routing, 2026-11-26) [moved from d3 to lane B, 2026-11-26] [to d4, 2026-11-26]",
    "lane": "mac-b",
    "theme": "effects",
-   "owner": "mac-b"
+   "owner": "d4"
   },
   {
    "card": "Forgotten Ancient",
@@ -5370,10 +5370,10 @@
   {
    "card": "Shield Broker",
    "deck": "Bloomburrow Commander (BLC)",
-   "missing": "BLC (lane B's routing, 2026-11-26) [moved from d3 to lane B, 2026-11-26]",
+   "missing": "BLC (lane B's routing, 2026-11-26) [moved from d3 to lane B, 2026-11-26] [to d4, 2026-11-26]",
    "lane": "mac-b",
    "theme": "effects",
-   "owner": "mac-b"
+   "owner": "d4"
   },
   {
    "card": "Bloodroot Apothecary",
@@ -5402,7 +5402,7 @@
   {
    "card": "Fisher's Talent",
    "deck": "Bloomburrow Commander (BLC)",
-   "missing": "BLC (lane B's routing, 2026-11-26)",
+   "missing": "BLC (lane B's routing, 2026-11-26) [d3 batch 23: the level 1 Fish is Effect::CreateTokenIfTopIsLandThenDraw { def } (always reveals a land); the Fish/Shark/Octopus tokens and replacements are lane B's, then the card can be scripted]",
    "lane": "mac-b",
    "theme": "subsystems",
    "owner": "d4"
@@ -5418,7 +5418,7 @@
   {
    "card": "Gourmand's Talent",
    "deck": "Bloomburrow Commander (BLC)",
-   "missing": "BLC (lane B's routing, 2026-11-26)",
+   "missing": "BLC (lane B's routing, 2026-11-26) [d3: next: during your turn artifacts you control are Foods with the Food ability (a type grant plus a granted activated ability), not started]",
    "lane": "mac-b",
    "theme": "subsystems",
    "owner": "d4"
@@ -5730,10 +5730,10 @@
   {
    "card": "Gisa, Glorious Resurrector",
    "deck": "Malik, Grim Manipulator (Spr3adsh33)",
-   "missing": "lane C's Malik routing (2026-11-26); multi-owner cards: see its report",
+   "missing": "lane C's Malik routing (2026-11-26); multi-owner cards: see its report [lane B, 21dd51e]",
    "lane": "mac-c",
-   "theme": "objects_zones",
-   "owner": "mac-c"
+   "theme": "merger_delegated",
+   "owner": "mac-b"
   },
   {
    "card": "All That Glitters",
@@ -6098,10 +6098,10 @@
   {
    "card": "Raphael, the Muse",
    "deck": "Olivia, Crimson Bride (DonSpider)",
-   "missing": "lane C's routing (2026-11-26)",
+   "missing": "lane C's routing (2026-11-26) [lane B, 21dd51e]",
    "lane": "mac-c",
-   "theme": "triggers",
-   "owner": "d2"
+   "theme": "merger_delegated",
+   "owner": "mac-b"
   },
   {
    "card": "Tag Team Tough",
@@ -6250,7 +6250,7 @@
   {
    "card": "Moria Scavenger",
    "deck": "Olivia, Crimson Bride (DonSpider)",
-   "missing": "lane C's routing (2026-11-26)",
+   "missing": "lane C's routing (2026-11-26) [done by d3 batch 22: Effect::StopUnlessExtraIsCreatureCard on the discard cost]",
    "lane": "mac-c",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -6412,6 +6412,238 @@
    "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
    "missing": "lane C's routing (2026-11-26)",
    "lane": "mac-c",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Alchemist's Talent",
+   "deck": "d4 handback (BLC Talents, Sagas)",
+   "missing": "Treasure mana grant; 'was Treasure mana spent'",
+   "lane": "d4",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Fisher's Talent (reveal-a-land Fish)",
+   "deck": "d4 handback (BLC Talents, Sagas)",
+   "missing": "reveal a land, create a Fish",
+   "lane": "d4",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Fisher's Talent (token replacements)",
+   "deck": "d4 handback (BLC Talents, Sagas)",
+   "missing": "Fish->Shark->Octopus token replacements and those tokens (numbers from the merger)",
+   "lane": "d4",
+   "theme": "replace_filter",
+   "owner": "mac-b"
+  },
+  {
+   "card": "Fortune Teller's Talent (play from top)",
+   "deck": "d4 handback (BLC Talents, Sagas)",
+   "missing": "play cards from the top of your library",
+   "lane": "d4",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Fortune Teller's Talent (cost reduction)",
+   "deck": "d4 handback (BLC Talents, Sagas)",
+   "missing": "spells not cast from hand cost less",
+   "lane": "d4",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Gourmand's Talent",
+   "deck": "d4 handback (BLC Talents, Sagas)",
+   "missing": "artifacts you control are Foods during your turn",
+   "lane": "d4",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "There and Back Again (chapter I)",
+   "deck": "d4 handback (BLC Talents, Sagas)",
+   "missing": "target creature can't block while you control this Saga",
+   "lane": "d4",
+   "theme": "merger_delegated",
+   "owner": "mac-b"
+  },
+  {
+   "card": "Mikaeus, the Unhallowed",
+   "deck": "d1 handback",
+   "missing": "d1's piece is in (Keywords::UNDYING, granted or printed, honored as it dies; intimidate exists): d3's 'other non-Human creatures you control get +1/+1 and have undying' static (Scope::OtherYourNonHumanCreatures, keywords UNDYING) and d2's 'whenever a Human deals damage to you, destroy it' trigger",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Comet Storm",
+   "deck": "d1 handback",
+   "missing": "Game::times_kicked(id) is in for multikicker without {X}; Comet Storm has {X} and multikicker, so its kick count needs a second number at cast (a Decision answered with Amount, d1's next piece), then d3's one more target per kick",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Skyscribing",
+   "deck": "d1 handback",
+   "missing": "d1's forecast is in (Activated::forecast): d3's 'each player draws X cards' (and 'each player draws a card' for the forecast)",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Pride of the Clouds",
+   "deck": "d1 handback",
+   "missing": "d1's forecast is in: a 1/1 white and blue Bird token with flying (needs a token number), and d3's +1/+1 for each other creature with flying",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Food Chain",
+   "deck": "d1 handback",
+   "missing": "still d1's: 'Exile a creature you control' as a mana cost, and pool mana restricted to creature spells (the pool has no restrictions yet)",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Waves of Aggression",
+   "deck": "d1 handback",
+   "missing": "still d1's: retrace (cast from the graveyard discarding a land card); plus Mac B's additional combat and main phase and untap the attackers",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "It That Heralds the End",
+   "deck": "d1 handback",
+   "missing": "d1's discount is in (ManaExt::colorless_big_spell_discount = (7, 1)): d3's 'other colorless creatures you control get +1/+1' static",
+   "lane": "d1",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Conduit of Ruin",
+   "deck": "d1 handback",
+   "missing": "its discount exists (first_creature_spell_discount = 2): a 'when you cast this spell' search for a colorless creature card with mana value 7 or greater, put on top of the library after shuffling",
+   "lane": "d1",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Darksteel Monolith",
+   "deck": "d1 handback",
+   "missing": "still d1's: once each turn, pay {0} rather than the mana cost of a colorless spell you cast from your hand",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "The Ring: legendary Ring-bearer",
+   "deck": "d4 handback",
+   "missing": "the Ring's first ability, 'your Ring-bearer is legendary': types_of sets legendary when self.ring_makes_legendary(id) (d4 hook, game/d4.rs)",
+   "lane": "d4",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "The Ring: greater-power evasion",
+   "deck": "d4 handback",
+   "missing": "the Ring's first ability, 'can't be blocked by creatures with greater power': can_block returns false when self.ring_evasion_forbids_block(blocker, attacker) (d4 hook, game/d4.rs)",
+   "lane": "d4",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "The Ring: Ring-bearer combat damage",
+   "deck": "d4 handback",
+   "missing": "the Ring's fourth ability: in the combat-damage hit_player loop, call self.ring_bearer_dealt_combat_damage(a) once per creature that dealt combat damage to a player (d4 hook; it pushes the 'each opponent loses 3 life' trigger itself)",
+   "lane": "d4",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Call of the Ring",
+   "deck": "d4 handback",
+   "missing": "'Whenever you choose a creature as your Ring-bearer': a When event emitted from d4's Game::choose_ring_bearer (hook comment marks the spot; the chosen creature is c). Also 'Whenever the Ring tempts you' from Game::ring_tempts (no card in the pool yet). Its first line is ready (SubsystemEffect::RingTempts on an upkeep trigger).",
+   "lane": "d4",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Split mana value on the stack (CR 709.3b)",
+   "deck": "d4 handback",
+   "missing": "read self.stack_mana_cost(id) instead of def_of(id).cost for spells on the stack in target_ok (f.max_mana_value on spell targets) so a split spell has only its cast half's mana value",
+   "lane": "d4",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Split mana value on the stack (CR 709.3b), effects",
+   "deck": "d4 handback",
+   "missing": "Effect::LoseLifeCastSpellManaValue (and any other resolution-time read of a spell's mana value) should read self.stack_mana_cost(s); d4 already did finish_cast's (Pollywog, YouCastNoncreatureMvAtLeast)",
+   "lane": "d4",
+   "theme": "existing_code",
+   "owner": "merger"
+  },
+  {
+   "card": "Far Traveler",
+   "deck": "d4 handback",
+   "missing": "a Filter for a tapped creature ('exile up to one target tapped creature you control'); d4 would grant the trigger to commander creatures like Dungeon Delver",
+   "lane": "d4",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "There and Back Again",
+   "deck": "d4 handback",
+   "missing": "chapter I: 'up to one target creature can't block for as long as you control this Saga' (a can't-block that lasts while the source stays under your control). Smaug is token 95 (in lane-d4); The Ring tempts you, the Mountain search and chapter III are ready",
+   "lane": "d4",
+   "theme": "merger_delegated",
+   "owner": "mac-b"
+  },
+  {
+   "card": "Alchemist's Talent",
+   "deck": "d4 handback",
+   "missing": "level 2: Treasures you control have '{T}, Sacrifice this artifact: Add two mana of any one color' (d1); level 3: 'if mana from a Treasure was spent to cast it' tracking (d1). Levels are ready (lane B's)",
+   "lane": "d4",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Fisher's Talent",
+   "deck": "d4 handback",
+   "missing": "level 1: look at the top card, reveal it if it's a land for a 1/1 blue Fish token (d3); levels 2 and 3: token replacements Fish -> 3/3 blue Shark -> 8/8 blue Octopus (Mac B), and those tokens",
+   "lane": "d4",
+   "theme": "replace_filter",
+   "owner": "mac-b"
+  },
+  {
+   "card": "Fortune Teller's Talent",
+   "deck": "d4 handback",
+   "missing": "level 2: 'as long as you've cast a spell this turn, you may play cards from the top of your library' (Mac C zones); level 3: spells cast from anywhere other than your hand cost {2} less (d1)",
+   "lane": "d4",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Gourmand's Talent",
+   "deck": "d4 handback",
+   "missing": "level 1: during your turn, artifacts you control are Foods and have '{2}, {T}, Sacrifice this artifact: You gain 3 life' (d3 types and a granted ability); levels 2 and 3 are on existing pieces (first life gain each turn: Raccoon 3/3, counters on each creature)",
+   "lane": "d4",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Urza's Saga (chapter mana)",
+   "deck": "d4 handback",
+   "missing": "d1's mana listing (single_sources / tap_for_mana) skips id when self.lacks_chapter_mana(id); the merger's activations() half is in. d4's script is drafted (stashed) and waits on this",
+   "lane": "d4",
    "theme": "mana",
    "owner": "d1"
   }

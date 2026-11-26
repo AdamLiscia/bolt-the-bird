@@ -596,3 +596,61 @@ fn fiery_inscription_tempts_you_and_burns_on_each_instant_or_sorcery() {
     play(&mut g, lions, false, &[], &[]);
     assert_eq!(g.players[1].life, life - 2, "not for a creature spell");
 }
+
+#[test]
+fn barrowin_returns_a_small_creature_card_when_attacking_after_a_completed_dungeon() {
+    supported("Barrowin of Clan Undurr");
+    let mut g = table();
+    let b = put(&mut g, 0, "Barrowin of Clan Undurr");
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Graveyard);
+    let dragon = g.add_card(0, cid("Ancient Gold Dragon"), Zone::Graveyard);
+    attack(&mut g, &[b]);
+    assert_eq!(g.obj(lions).zone, Zone::Graveyard, "no completed dungeon yet");
+    g.completed_dungeons[0] = 1;
+    g.start_turn(5, 0);
+    advance(&mut g, |g| g.pending == Pending::DeclareAttackers(0));
+    act(&mut g, Action::Attack(b));
+    act(&mut g, Action::FinishAttacks);
+    let mut offered = Vec::new();
+    while g.step != Step::Main2 {
+        let a = match g.pending {
+            Pending::Decide(_) => {
+                offered = g.legal_actions();
+                Action::Pick(lions)
+            }
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            Pending::Priority(_) => Action::PassPriority,
+            _ => g.legal_actions()[0],
+        };
+        act(&mut g, a);
+    }
+    assert!(offered.contains(&Action::Pick(lions)), "{offered:?}");
+    assert!(!offered.contains(&Action::Pick(dragon)), "mana value 3 or less");
+    assert_eq!(g.obj(lions).zone, Zone::Battlefield);
+    assert_eq!(g.obj(dragon).zone, Zone::Graveyard);
+}
+
+#[test]
+fn smaug_is_token_95_a_legendary_flying_haste_dragon_that_dies_into_fourteen_treasures() {
+    let s = set("CMD").unwrap();
+    let token = |name: &str| s.defs.iter().position(|d| d.token && d.name == name).unwrap();
+    let smaug = token("Smaug");
+    assert_eq!(smaug, token("Hamster") + 5, "slot 95: Hamster is 90");
+    let d = &s.defs[smaug];
+    assert!(d.types.legendary && d.types.creature);
+    assert_eq!((d.power, d.toughness), (6, 6));
+    assert!(d.keywords.has(Keywords::FLYING) && d.keywords.has(Keywords::HASTE));
+    let mut g = table();
+    let x = g.add_card(0, smaug, Zone::Battlefield);
+    let treasures = |g: &Game| {
+        g.permanents(0)
+            .filter(|&t| g.def_of(t).name == "Treasure")
+            .count()
+    };
+    let before = treasures(&g);
+    g.objects[x.0 as usize].damage = 6; // lethal damage: it dies to state-based actions
+    act(&mut g, Action::PassPriority);
+    resolve_all(&mut g, &[]);
+    assert_ne!(g.obj(x).zone, Zone::Battlefield);
+    assert_eq!(treasures(&g), before + 14);
+}

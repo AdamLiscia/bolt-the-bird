@@ -3555,3 +3555,264 @@ fn witchs_mark_loots_two_and_a_second_role_replaces_the_first() {
     );
     assert_eq!(g.players[1].life, life - 1, "the old Role drained as it went");
 }
+
+// ---- Mac C: Auras put onto the battlefield attached ----
+
+fn to_attackers(g: &mut Game) {
+    g.start_turn(5, 0);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(g, Action::PassPriority);
+    }
+}
+
+fn picks(g: &Game) -> Vec<ObjId> {
+    g.legal_actions()
+        .into_iter()
+        .filter_map(|a| match a {
+            Action::Pick(c) => Some(c),
+            _ => None,
+        })
+        .collect()
+}
+
+#[test]
+fn bruna_attaches_auras_from_the_battlefield_graveyard_and_hand_when_she_attacks() {
+    let mut g = table();
+    let bruna = put(&mut g, 0, "Bruna, Light of Alabaster");
+    let ghoul = put(&mut g, 0, "Hungry Ghoul");
+    let eel = hand(&mut g, 0, "Eel Umbra");
+    let gz = g.obj(ghoul).zcc;
+    assert!(g.put_aura_attached(eel, ghoul, gz, 0));
+    let ws = hand(&mut g, 0, "Wingspan Stride");
+    let armor = g.add_card(0, cid("Blanchwood Armor"), Zone::Graveyard);
+    let land = hand(&mut g, 0, "Forest");
+    to_attackers(&mut g);
+    act(&mut g, Action::Attack(bruna));
+    act(&mut g, Action::FinishAttacks);
+    while !matches!(g.pending, Pending::Decide(0)) {
+        act(&mut g, Action::PassPriority);
+    }
+    let offered = picks(&g);
+    for c in [eel, ws, armor] {
+        assert!(offered.contains(&c), "every Aura that could enchant her");
+    }
+    assert!(!offered.contains(&land));
+    let bz = g.obj(bruna).zcc;
+    resolve_all(
+        &mut g,
+        &[Action::Pick(eel), Action::Pick(armor), Action::Pick(ws)],
+    );
+    for c in [eel, ws, armor] {
+        assert_eq!(g.obj(c).attached_to, Some((bruna, bz)));
+    }
+    assert_eq!(g.obj(ws).zone, Zone::Battlefield);
+    assert_eq!(g.obj(armor).zone, Zone::Battlefield);
+    assert_eq!(
+        g.power(bruna),
+        5 + 1 + 1 + 5,
+        "Eel Umbra, Wingspan Stride, and a Forest each"
+    );
+}
+
+#[test]
+fn light_paws_finds_a_cheaper_aura_with_a_new_name_only_for_a_cast_aura() {
+    let mut g = table();
+    let lp = put(&mut g, 0, "Light-Paws, Emperor's Voice");
+    let ws = top(&mut g, "Wingspan Stride");
+    let armor = top(&mut g, "Blanchwood Armor");
+    let eel2 = top(&mut g, "Eel Umbra");
+    let eel = hand(&mut g, 0, "Eel Umbra");
+    act(&mut g, Action::Cast(eel));
+    act(&mut g, Action::Target(obj(lp)));
+    while !matches!(g.pending, Pending::Decide(0)) {
+        act(&mut g, Action::PassPriority);
+    }
+    let offered = picks(&g);
+    assert_eq!(
+        offered,
+        vec![ws],
+        "mana value 2 or less, and not a second Eel Umbra"
+    );
+    assert!(!offered.contains(&armor) && !offered.contains(&eel2));
+    // The Wingspan Stride it puts onto the battlefield wasn't cast: no second search.
+    resolve_all(&mut g, &[Action::Pick(ws)]);
+    let z = g.obj(lp).zcc;
+    assert_eq!(g.obj(ws).attached_to, Some((lp, z)));
+    assert!(g.keywords(lp).has(Keywords::FLYING));
+    assert_eq!(g.obj(armor).zone, Zone::Library);
+}
+
+#[test]
+fn sovereigns_of_lost_alara_exalts_and_attaches_an_aura_to_a_lone_attacker() {
+    let mut g = table();
+    put(&mut g, 0, "Sovereigns of Lost Alara");
+    let ghoul = put(&mut g, 0, "Hungry Ghoul");
+    let before = g.power(ghoul);
+    to_attackers(&mut g);
+    let ws = top(&mut g, "Wingspan Stride"); // after the draw step
+    act(&mut g, Action::Attack(ghoul));
+    act(&mut g, Action::FinishAttacks);
+    while !matches!(g.pending, Pending::Decide(0)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(picks(&g).contains(&ws));
+    resolve_all(&mut g, &[Action::Pick(ws)]);
+    let z = g.obj(ghoul).zcc;
+    assert_eq!(g.obj(ws).attached_to, Some((ghoul, z)));
+    assert_eq!(g.power(ghoul), before + 2, "exalted and Wingspan Stride");
+    assert!(g.keywords(ghoul).has(Keywords::FLYING));
+}
+
+// ---- Mac C batch 2 ----
+
+#[test]
+fn olivia_returns_a_creature_attacking_that_is_exiled_without_a_legendary_vampire() {
+    let mut g = table();
+    let olivia = put(&mut g, 0, "Olivia, Crimson Bride");
+    let ghoul = g.add_card(0, cid("Hungry Ghoul"), Zone::Graveyard);
+    to_attackers(&mut g);
+    act(&mut g, Action::Attack(olivia));
+    act(&mut g, Action::FinishAttacks);
+    while !matches!(g.pending, Pending::ChooseTarget(0)) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Target(obj(ghoul)));
+    while !g.items.is_empty() {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.obj(ghoul).zone, Zone::Battlefield);
+    assert!(g.obj(ghoul).tapped);
+    assert!(
+        g.combat.as_ref().unwrap().attackers.contains(&ghoul),
+        "tapped and attacking"
+    );
+    let kill = hand(&mut g, 0, "Hero's Downfall");
+    play(&mut g, kill, false, &[obj(olivia)], &[]);
+    assert_ne!(g.obj(olivia).zone, Zone::Battlefield);
+    assert_eq!(g.obj(ghoul).zone, Zone::Exile, "no legendary Vampire: exiled");
+}
+
+#[test]
+fn dragonhawk_exiles_per_big_creature_and_burns_for_each_card_left_at_the_end_step() {
+    let mut g = table();
+    put(&mut g, 0, "Sovereigns of Lost Alara"); // power 4: X is 2 with Dragonhawk
+    let ghoul = top(&mut g, "Hungry Ghoul");
+    let forest = top(&mut g, "Forest");
+    let dh = hand(&mut g, 0, "Dragonhawk, Fate's Tempest");
+    play(&mut g, dh, false, &[], &[]);
+    assert_eq!(g.obj(ghoul).zone, Zone::Exile);
+    assert_eq!(g.obj(forest).zone, Zone::Exile);
+    assert!(
+        g.legal_actions().contains(&Action::PlayLand(forest)),
+        "playable from exile"
+    );
+    act(&mut g, Action::PlayLand(forest));
+    assert_eq!(g.obj(forest).zone, Zone::Battlefield);
+    let life = g.players[1].life;
+    while g.turn == 3 && !g.is_over() {
+        let legal = g.legal_actions();
+        let a = if legal.contains(&Action::PassPriority) {
+            Action::PassPriority
+        } else if legal.contains(&Action::FinishAttacks) {
+            Action::FinishAttacks
+        } else {
+            legal[0] // a cleanup discard
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(
+        g.players[1].life,
+        life - 2,
+        "2 damage for the one card still exiled"
+    );
+}
+
+#[test]
+fn glimpse_of_tomorrow_is_suspended_then_puts_your_permanents_back_auras_last() {
+    let mut g = game(&["Mountain", "Mountain"]);
+    let gl = hand(&mut g, 0, "Glimpse of Tomorrow");
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(gl)),
+        "no mana cost: not cast from hand"
+    );
+    act(&mut g, Action::Activate(gl, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(gl).zone, Zone::Exile);
+    assert_eq!(g.obj(gl).time_counters, 3);
+    let ghoul = put(&mut g, 0, "Hungry Ghoul");
+    let ws = hand(&mut g, 0, "Wingspan Stride");
+    let z = g.obj(ghoul).zcc;
+    assert!(g.put_aura_attached(ws, ghoul, z, 0));
+    g.start_turn(5, 0);
+    g.start_turn(7, 0);
+    assert_eq!(g.obj(gl).time_counters, 1);
+    g.start_turn(9, 0);
+    while !matches!(g.pending, Pending::FreeCast(0)) {
+        act(&mut g, Action::PassPriority);
+    }
+    // Only its own permanents in the library, so "that many" reveals exactly them.
+    g.players[0].library.clear();
+    act(&mut g, Action::Cast(gl));
+    while !matches!(g.pending, Pending::Decide(0)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.obj(ghoul).zone, Zone::Battlefield, "the non-Auras first");
+    assert_eq!(g.permanents(0).filter(|&x| g.types_of(x).land).count(), 2);
+    act(&mut g, Action::Pick(ghoul));
+    let z = g.obj(ghoul).zcc;
+    assert_eq!(g.obj(ws).attached_to, Some((ghoul, z)));
+    assert_eq!(g.obj(gl).zone, Zone::Graveyard);
+}
+
+// ---- Malik and Olivia: small pieces ----
+
+#[test]
+fn moria_scavenger_loots_and_amasses_only_for_a_creature_card() {
+    let mut g = table();
+    let ms = put(&mut g, 0, "Moria Scavenger");
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    let land = hand(&mut g, 0, "Forest");
+    let n = g.players[0].hand.len();
+    act(&mut g, Action::ActivateWith(ms, 0, land));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].hand.len(), n, "discarded one, drew one");
+    assert!(tokens(&g, 0, "Orc Army").is_empty(), "a land: no amass");
+    g.start_turn(7, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    let ghoul = hand(&mut g, 0, "Hungry Ghoul");
+    act(&mut g, Action::ActivateWith(ms, 0, ghoul));
+    resolve_all(&mut g, &[]);
+    let army = tokens(&g, 0, "Orc Army");
+    assert_eq!(army.len(), 1);
+    assert_eq!(g.power(army[0]), 1);
+}
+
+#[test]
+fn professional_face_breaker_makes_treasure_on_damage_and_cashes_it_for_a_card() {
+    let mut g = table();
+    let fb = put(&mut g, 0, "Professional Face-Breaker");
+    to_attackers(&mut g);
+    act(&mut g, Action::Attack(fb));
+    act(&mut g, Action::FinishAttacks);
+    while g.step != Step::Main2 {
+        let legal = g.legal_actions();
+        let a = if legal.contains(&Action::FinishBlocks) {
+            Action::FinishBlocks
+        } else {
+            Action::PassPriority
+        };
+        act(&mut g, a);
+    }
+    let treasure = tokens(&g, 0, "Treasure");
+    assert_eq!(treasure.len(), 1);
+    let card = top(&mut g, "Forest");
+    act(&mut g, Action::ActivateWith(fb, 0, treasure[0]));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(card).zone, Zone::Exile);
+    assert!(g.legal_actions().contains(&Action::PlayLand(card)));
+}
