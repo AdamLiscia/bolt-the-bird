@@ -3449,3 +3449,202 @@ fn portal_to_phyrexia_edicts_three_and_reanimates_each_upkeep_as_a_phyrexian() {
     assert_eq!(g.obj(a).controller, 0);
     assert!(g.has_subtype(a, "Phyrexian") && g.has_subtype(a, "Angel"));
 }
+
+// ---- Core theme d3, batch 15 ----
+
+#[test]
+fn fade_from_history_gives_bears_to_artifact_and_enchantment_players_then_destroys_them() {
+    let mut g = table();
+    let grove = put(&mut g, 0, "Sterling Grove");
+    let ring = put(&mut g, 1, "Sol Ring");
+    let fade = hand(&mut g, 0, "Fade from History");
+    play(&mut g, fade, false, &[], &[]);
+    assert_eq!(
+        (g.obj(grove).zone, g.obj(ring).zone),
+        (Zone::Graveyard, Zone::Graveyard)
+    );
+    for p in 0..2 {
+        let bears = tokens(&g, p, "Bear");
+        assert_eq!(bears.len(), 1);
+        assert_eq!((g.power(bears[0]), g.toughness(bears[0])), (2, 2));
+        assert_eq!(g.colors_of(bears[0]), [false, false, false, false, true], "green");
+    }
+    let fade = hand(&mut g, 0, "Fade from History");
+    play(&mut g, fade, false, &[], &[]);
+    assert_eq!(
+        (tokens(&g, 0, "Bear").len(), tokens(&g, 1, "Bear").len()),
+        (1, 1),
+        "nobody has one now"
+    );
+}
+
+#[test]
+fn warping_wail_exiles_a_small_creature_counters_a_sorcery_or_makes_a_scion() {
+    let mut g = table();
+    put(&mut g, 0, "Sol Ring");
+    put(&mut g, 0, "Sol Ring");
+    let skite = put(&mut g, 1, "Spellskite");
+    let angel = put(&mut g, 1, "Serra Angel");
+    let wail = hand(&mut g, 0, "Warping Wail");
+    act(&mut g, Action::CastModal(wail, 0));
+    let legal = g.legal_actions();
+    assert!(!legal.contains(&Action::Target(obj(angel))));
+    act(&mut g, Action::Target(obj(skite)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(skite).zone, Zone::Exile, "toughness 4 but power 0");
+
+    let wail = hand(&mut g, 0, "Warping Wail");
+    act(&mut g, Action::CastModal(wail, 2));
+    resolve_all(&mut g, &[]);
+    let scions = tokens(&g, 0, "Eldrazi Scion");
+    assert_eq!(scions.len(), 1);
+    let s = scions[0];
+    assert_eq!((g.power(s), g.toughness(s)), (1, 1));
+    assert_eq!(g.colors_of(s), [false; 5]);
+    g.manual_mana[0] = true;
+    act(&mut g, Action::TapForMana(s, 5));
+    assert!(g.players[0].pool.iter().any(|m| m.colorless));
+    assert!(tokens(&g, 0, "Eldrazi Scion").is_empty(), "sacrificed");
+}
+
+#[test]
+fn warping_wail_counters_only_sorcery_spells() {
+    let mut g = table();
+    put(&mut g, 0, "Sol Ring");
+    let wail = hand(&mut g, 0, "Warping Wail");
+    g.start_turn(4, 1);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    let ponder = g.add_card(1, cid("Ponder"), Zone::Hand);
+    act(&mut g, Action::Cast(ponder));
+    act(&mut g, Action::PassPriority);
+    assert!(g.legal_actions().contains(&Action::CastModal(wail, 1)));
+    act(&mut g, Action::CastModal(wail, 1));
+    act(&mut g, Action::Target(obj(ponder)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(ponder).zone, Zone::Graveyard, "countered: no look");
+}
+
+#[test]
+fn exalted_flamer_returns_a_random_spell_each_upkeep_and_pings_on_spells() {
+    let mut g = table();
+    let flamer = put(&mut g, 0, "Exalted Flamer of Tzeentch");
+    let life = g.players[1].life;
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    play(&mut g, bolt, false, &[Target::Object(flamer)], &[]);
+    // The bolt hit the Flamer (2/4): still alive; the trigger dealt 1 to the opponent.
+    assert_eq!(g.players[1].life, life - 1);
+    assert_eq!(g.obj(flamer).zone, Zone::Battlefield);
+    let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Graveyard);
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.obj(bolt).zone, Zone::Hand, "the only instant or sorcery");
+    assert_eq!(g.obj(elves).zone, Zone::Graveyard);
+}
+
+#[test]
+fn expressive_iteration_hand_bottom_and_exile_to_play_this_turn() {
+    let mut g = table();
+    let angel = g.add_card(0, cid("Serra Angel"), Zone::Library);
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Library);
+    let forest = g.add_card(0, cid("Forest"), Zone::Library);
+    let it = hand(&mut g, 0, "Expressive Iteration");
+    play(&mut g, it, false, &[], &[Action::Pick(angel), Action::Pick(ring)]);
+    assert_eq!(g.obj(angel).zone, Zone::Hand);
+    assert_eq!(g.players[0].library[0], ring);
+    assert_eq!(g.obj(forest).zone, Zone::Exile);
+    act(&mut g, Action::PlayLand(forest));
+    assert_eq!(
+        g.obj(forest).zone,
+        Zone::Battlefield,
+        "the exiled land is playable"
+    );
+}
+
+#[test]
+fn mission_briefing_surveils_then_lets_you_cast_a_spell_from_the_graveyard_once() {
+    let mut g = table();
+    let bolt = g.add_card(0, cid("Lightning Bolt"), Zone::Library);
+    let top = g.add_card(0, cid("Serra Angel"), Zone::Library);
+    let mb = hand(&mut g, 0, "Mission Briefing");
+    act(&mut g, Action::Cast(mb));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    // Surveil 2: both into the graveyard, then choose the Bolt.
+    let mut guard = 0;
+    while g.obj(bolt).zone == Zone::Library && guard < 4 {
+        let legal = g.legal_actions();
+        let a = legal
+            .iter()
+            .find(|a| matches!(a, Action::Pick(_)))
+            .copied()
+            .unwrap_or(legal[0]);
+        act(&mut g, a);
+        guard += 1;
+    }
+    assert_eq!(
+        (g.obj(bolt).zone, g.obj(top).zone),
+        (Zone::Graveyard, Zone::Graveyard)
+    );
+    resolve_all(&mut g, &[Action::Pick(bolt)]);
+    let life = g.players[1].life;
+    act(&mut g, Action::CastFlashback(bolt));
+    act(&mut g, Action::Target(Target::Player(1)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].life, life - 3);
+    assert_eq!(g.obj(bolt).zone, Zone::Exile);
+}
+
+#[test]
+fn mizzixs_mastery_casts_a_copy_free_and_overloaded_copies_each() {
+    let mut g = table();
+    let b1 = g.add_card(0, cid("Lightning Bolt"), Zone::Graveyard);
+    let b2 = g.add_card(0, cid("Lightning Bolt"), Zone::Graveyard);
+    let mm = hand(&mut g, 0, "Mizzix's Mastery");
+    act(&mut g, Action::Cast(mm));
+    act(&mut g, Action::Target(obj(b1)));
+    while !matches!(g.pending, Pending::FreeCast(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    let copies = free_casts(&g);
+    assert_eq!(copies.len(), 1);
+    let life = g.players[1].life;
+    act(&mut g, Action::Cast(copies[0]));
+    act(&mut g, Action::Target(Target::Player(1)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].life, life - 3);
+    assert_eq!(
+        (g.obj(b1).zone, g.obj(b2).zone, g.obj(mm).zone),
+        (Zone::Exile, Zone::Graveyard, Zone::Exile)
+    );
+
+    // Overload {5}{R}{R}{R}: each instant and sorcery card.
+    g.add_card(0, cid("Lightning Bolt"), Zone::Graveyard);
+    for _ in 0..3 {
+        put(&mut g, 0, "Mountain");
+    }
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    let mm = hand(&mut g, 0, "Mizzix's Mastery");
+    act(&mut g, Action::CastKicked(mm));
+    while !matches!(g.pending, Pending::FreeCast(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(free_casts(&g).len(), 2);
+}
+
+fn free_casts(g: &Game) -> Vec<ObjId> {
+    g.legal_actions()
+        .into_iter()
+        .filter_map(|a| match a {
+            Action::Cast(c) => Some(c),
+            _ => None,
+        })
+        .collect()
+}

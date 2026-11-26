@@ -265,6 +265,29 @@ pub fn token_defs() -> Vec<CardDef> {
             });
             t
         },
+        // 83: lane d2's Bat; 84: lane B's Elemental (placeholders here; the merger keeps theirs).
+        token("Placeholder 83", "Placeholder", 0, 0, Keywords::NONE),
+        token("Placeholder 84", "Placeholder", 0, 0, Keywords::NONE),
+        {
+            // Fade from History: "a 2/2 green Bear creature token".
+            let mut t = token("Bear", "Bear", 2, 2, Keywords::NONE);
+            t.colors = [false, false, false, false, true];
+            t
+        },
+        // Amass: "a 0/0 black Orc Army creature token".
+        black(token("Orc Army", "Orc Army", 0, 0, Keywords::NONE)),
+        {
+            // Warping Wail: "a 1/1 colorless Eldrazi Scion creature token. It has 'Sacrifice this
+            // token: Add {C}.'"
+            let mut t = token("Eldrazi Scion", "Eldrazi Scion", 1, 1, Keywords::NONE);
+            t.mana = Some(ManaSource {
+                colorless: true,
+                ..ManaSource::default()
+            });
+            t.sac_for_mana = true;
+            t.mana_ext.sac_mana_no_tap = true;
+            t
+        },
     ]
 }
 
@@ -407,6 +430,9 @@ pub struct Tokens {
     pub spider_menace: usize,
     pub saga_construct: usize,
     pub goat: usize,
+    pub bear: usize,
+    pub orc_army: usize,
+    pub eldrazi_scion: usize,
 }
 
 impl Tokens {
@@ -495,6 +521,9 @@ impl Tokens {
             spider_menace: base + 81,
             saga_construct: base + 82,
             goat: base + 76,
+            bear: base + 85,
+            orc_army: base + 86,
+            eldrazi_scion: base + 87,
         }
     }
 }

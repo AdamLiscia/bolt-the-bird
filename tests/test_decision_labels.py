@@ -90,6 +90,10 @@ def test_lane_d3_batch_5_decisions_read_as_their_moves():
     assert pick({"kind": "ReturnSharingType", "with": 3}, "Sol Ring") == "Return to its owner's hand: Sol Ring"
     assert label({"kind": "ReturnSharingType", "with": 3}, "No", 0) == "Return nothing"
     assert pick({"kind": "ExileOwnPermanent", "left": 1}, "Sol Ring") == "Exile Sol Ring"
+    assert pick({"kind": "IterationPick", "cards": [], "to_hand": True}, "Opt") == "Put into your hand: Opt"
+    assert pick({"kind": "IterationPick", "cards": [], "to_hand": False}, "Opt") == "Put on the bottom: Opt"
+    cast_later = "You may cast this turn (then exile it): Opt"
+    assert pick({"kind": "CastFromGraveyardThisTurn", "cards": []}, "Opt") == cast_later
 
 
 def test_venturing_names_the_dungeon_or_room():

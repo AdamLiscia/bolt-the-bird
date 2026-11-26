@@ -1608,6 +1608,67 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::Upkeep { your_turn_only: true }, vec![graveyard_cards(true, Controller::Any)], vec![reanimate]);
             },
         ),
+        // ---- Core theme d3, batch 15 ----
+        "Fade from History" => s(
+            &["Each player who controls an artifact or enchantment creates a 2/2 green Bear creature token. Then destroy all artifacts and enchantments."],
+            |d, t| {
+                let bears = Effect::EachPlayerWithArtifactOrEnchantmentCreatesToken { def: t.bear };
+                let destroy = Effect::DestroyAllMatching { artifacts: true, enchantments: true, creature_mv: (0, 0) };
+                spell(d, vec![], vec![bears, destroy]);
+            },
+        ),
+        "Warping Wail" => s(
+            &[
+                "Choose one —",
+                "• Exile target creature with power or toughness 1 or less.",
+                "• Counter target sorcery spell.",
+                "• Create a 1/1 colorless Eldrazi Scion creature token. It has \"Sacrifice this token: Add {C}.\"",
+            ],
+            |d, t| {
+                let small = Filter { creature_power_or_toughness_at_most: Some(1), ..CREATURE };
+                let sorcery = Filter { spell_sorcery: true, ..SPELL };
+                modes(
+                    d,
+                    vec![
+                        Ability::new(vec![small], vec![Effect::Exile(0)]),
+                        Ability::new(vec![sorcery], vec![Effect::Counter(0)]),
+                        Ability::new(vec![], vec![Effect::CreateToken { who: Who::You, def: t.eldrazi_scion, n: 1 }]),
+                    ],
+                )
+            },
+        ),
+        "Exalted Flamer of Tzeentch" => s(
+            &[
+                "Sorcerous Inspiration — At the beginning of your upkeep, return an instant or sorcery card at random from your graveyard to your hand.",
+                "Fire of Tzeentch — Whenever you cast an instant or sorcery spell, this creature deals 1 damage to each opponent.",
+            ],
+            |d, _| {
+                on(d, When::Upkeep { your_turn_only: true }, vec![], vec![Effect::ReturnRandomInstantOrSorceryFromGraveyard]);
+                on(d, When::YouCastInstantOrSorcery, vec![], vec![damage(1, Recipient::EachOpponent)]);
+            },
+        ),
+        "Expressive Iteration" => s(
+            &["Look at the top three cards of your library. Put one of them into your hand, put one of them on the bottom of your library, and exile one of them. You may play the exiled card this turn."],
+            |d, _| spell(d, vec![], vec![Effect::LookHandBottomExilePlay(3)]),
+        ),
+        "Mission Briefing" => s(
+            &["Surveil 2, then choose an instant or sorcery card in your graveyard. You may cast it this turn. If that spell would be put into your graveyard, exile it instead."],
+            |d, _| spell(d, vec![], vec![Effect::Surveil { n: 2 }, Effect::ChooseGraveyardSpellToCastThisTurn]),
+        ),
+        "Mizzix's Mastery" => s(
+            &[
+                "Exile target card that's an instant or sorcery from your graveyard. For each card exiled this way, copy it, and you may cast the copy without paying its mana cost. Exile Mizzix's Mastery.",
+                "Overload {5}{R}{R}{R}",
+            ],
+            |d, _| {
+                let card = Filter { instant_or_sorcery: true, ..graveyard_cards(false, Controller::You) };
+                spell(d, vec![card], vec![Effect::ExileCastCopyFree(0), Effect::ExileSourceSpell]);
+                // Overload {5}{R}{R}{R} is cast as a {2}{R}{R} kicker on {3}{R}: the same total, and
+                // "kicked" swaps in the overloaded text ("each" instead of "target"), as Rise and Shine.
+                d.kicker = ManaCost::parse("{2}{R}{R}");
+                d.kicked_spell = Some(Ability::new(vec![], vec![Effect::ExileCastCopyFreeEachInstantSorcery, Effect::ExileSourceSpell]));
+            },
+        ),
         _ => None,
     }
 }
@@ -1829,4 +1890,11 @@ pub const PG_D3_SCRIPTED: &[&str] = &[
     "All Is Dust",
     "Bane of Bala Ged",
     "Portal to Phyrexia",
+    // Core theme d3, batch 15
+    "Fade from History",
+    "Warping Wail",
+    "Exalted Flamer of Tzeentch",
+    "Expressive Iteration",
+    "Mission Briefing",
+    "Mizzix's Mastery",
 ];

@@ -1186,6 +1186,12 @@ pub enum Decision {
     ReturnSharingType { with: ObjId },
     /// `Pick` a permanent you control to exile; `left` more after this one (Bane of Bala Ged).
     ExileOwnPermanent { left: u8 },
+    /// `Pick` one of `cards` (looked at, still on top of your library) to put into your hand
+    /// (`to_hand`) or on the bottom; the rest are exiled, playable this turn (Expressive Iteration).
+    IterationPick { cards: Vec<ObjId>, to_hand: bool },
+    /// `Pick` an instant or sorcery card in your graveyard: you may cast it this turn, exiled instead
+    /// of going to your graveyard (Mission Briefing).
+    CastFromGraveyardThisTurn { cards: Vec<ObjId> },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -5288,6 +5294,14 @@ impl Game {
             return false;
         }
         if f.artifact_cards && !self.types_of(id).artifact {
+            return false;
+        }
+        if let Some(m) = f.creature_power_or_toughness_at_most {
+            if !on_stack && !(self.power(id) <= m || self.toughness(id) <= m) {
+                return false;
+            }
+        }
+        if f.spell_sorcery && !(on_stack && self.types_of(id).sorcery) {
             return false;
         }
         if on_stack {
@@ -10637,6 +10651,9 @@ impl Game {
                 v
             }
             Decision::ExileOwnPermanent { .. } => self.permanents(p).map(Action::Pick).collect(),
+            Decision::IterationPick { cards, .. } | Decision::CastFromGraveyardThisTurn { cards } => {
+                cards.iter().copied().map(Action::Pick).collect()
+            }
             Decision::BraidsOpponent { types, .. } => {
                 let mut v: Vec<Action> = self
                     .braids_options(p, Some(*types))
@@ -11926,6 +11943,21 @@ impl Game {
                 self.move_to(c, Zone::Exile);
                 self.exile_own_permanents(p, left);
             }
+            (Decision::IterationPick { cards, to_hand }, Action::Pick(c)) => {
+                let rest: Vec<ObjId> = cards.into_iter().filter(|&x| x != c).collect();
+                if to_hand {
+                    self.move_to(c, Zone::Hand);
+                    self.iteration_next(p, rest);
+                } else {
+                    self.put_on_bottom(c);
+                    self.iteration_exile(p, rest);
+                }
+            }
+            (Decision::CastFromGraveyardThisTurn { .. }, Action::Pick(c)) => {
+                // "You may cast it this turn. If that spell would be put into your graveyard, exile it
+                // instead": what a flashback grant for this turn does (Snapcaster Mage's).
+                self.obj_mut(c).flashback_eot = true;
+            }
             (d, a) => unreachable!("legal action {a:?} unhandled for {d:?}"),
         }
         if self.decision.is_none() {
@@ -12389,6 +12421,32 @@ impl Game {
             0 => {}
             1 => self.move_to(left[0], Zone::Hand),
             _ => self.ask(p, Decision::TakeMilledCard { cards: left }),
+        }
+    }
+
+    /// Expressive Iteration, after the card for the hand: one of `rest` to the bottom (asked when
+    /// there's a choice), the others exiled.
+    fn iteration_next(&mut self, p: PlayerId, rest: Vec<ObjId>) {
+        match rest.len() {
+            0 => {}
+            1 => self.put_on_bottom(rest[0]),
+            _ => self.ask(
+                p,
+                Decision::IterationPick {
+                    cards: rest,
+                    to_hand: false,
+                },
+            ),
+        }
+    }
+
+    /// Expressive Iteration: exile `cards`; `p` may play them this turn.
+    fn iteration_exile(&mut self, p: PlayerId, cards: Vec<ObjId>) {
+        for c in cards {
+            self.move_to(c, Zone::Exile);
+            if self.obj(c).zone == Zone::Exile {
+                self.obj_mut(c).playable = Some((p, self.turn));
+            }
         }
     }
 
@@ -18636,6 +18694,96 @@ impl Game {
                             o.extra_subtypes.push(subtype);
                         }
                     }
+                }
+            }
+            Effect::EachPlayerWithArtifactOrEnchantmentCreatesToken { def } => {
+                for p in [self.active, opponent(self.active)] {
+                    let has = self.permanents(p).any(|x| {
+                        let t = self.types_of(x);
+                        t.artifact || t.enchantment
+                    });
+                    if has {
+                        self.create_token(p, def);
+                    }
+                }
+            }
+            Effect::Amass { subtype, n, def } => {
+                let p = item.controller;
+                let army = |g: &Game| g.creatures(p).find(|&c| g.has_subtype(c, "Army"));
+                if army(self).is_none() {
+                    self.create_token(p, def);
+                }
+                if let Some(a) = army(self) {
+                    self.add_counters(a, n as i32);
+                    if !self.has_subtype(a, subtype) {
+                        self.obj_mut(a).extra_subtypes.push(subtype);
+                    }
+                }
+            }
+            Effect::ReturnRandomInstantOrSorceryFromGraveyard => {
+                let p = item.controller;
+                let cards: Vec<ObjId> = self.players[p]
+                    .graveyard
+                    .iter()
+                    .copied()
+                    .filter(|&c| {
+                        let t = self.def_of(c).types;
+                        t.instant || t.sorcery
+                    })
+                    .collect();
+                if !cards.is_empty() {
+                    let c = cards[self.rng.below(cards.len())];
+                    self.move_to(c, Zone::Hand);
+                }
+            }
+            Effect::LookHandBottomExilePlay(n) => {
+                let p = item.controller;
+                let cards: Vec<ObjId> = self.players[p]
+                    .library
+                    .iter()
+                    .rev()
+                    .take(n as usize)
+                    .copied()
+                    .collect();
+                if !cards.is_empty() {
+                    self.ask(p, Decision::IterationPick { cards, to_hand: true });
+                }
+            }
+            Effect::ChooseGraveyardSpellToCastThisTurn => {
+                let p = item.controller;
+                let cards: Vec<ObjId> = self.players[p]
+                    .graveyard
+                    .iter()
+                    .copied()
+                    .filter(|&c| {
+                        let t = self.def_of(c).types;
+                        t.instant || t.sorcery
+                    })
+                    .collect();
+                if !cards.is_empty() {
+                    self.ask(p, Decision::CastFromGraveyardThisTurn { cards });
+                }
+            }
+            Effect::ExileCastCopyFreeEachInstantSorcery => {
+                let p = item.controller;
+                let cards: Vec<ObjId> = self.players[p]
+                    .graveyard
+                    .iter()
+                    .copied()
+                    .filter(|&c| {
+                        let t = self.def_of(c).types;
+                        t.instant || t.sorcery
+                    })
+                    .collect();
+                for card in cards {
+                    self.move_to(card, Zone::Exile);
+                    let def = self.obj(card).def;
+                    let copy = self.add_card(p, def, Zone::Exile);
+                    let o = self.obj_mut(copy);
+                    o.card_copy = true;
+                    o.cast_free = true;
+                    self.free_casts.push(copy);
+                    self.free_caster = p;
                 }
             }
         }

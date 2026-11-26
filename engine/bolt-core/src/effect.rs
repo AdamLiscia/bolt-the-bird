@@ -129,6 +129,10 @@ pub struct Filter {
     pub creature_needs_defender: bool,
     /// Artifact cards only (graveyard targets: Buried Ruin).
     pub artifact_cards: bool,
+    /// Creatures with power or toughness at most this (Warping Wail: 1).
+    pub creature_power_or_toughness_at_most: Option<i32>,
+    /// Sorcery spells only (Warping Wail), with `spells`.
+    pub spell_sorcery: bool,
 }
 
 impl Filter {
@@ -191,6 +195,8 @@ impl Filter {
         spell_instant_or_sorcery: false,
         creature_needs_defender: false,
         artifact_cards: false,
+        creature_power_or_toughness_at_most: None,
+        spell_sorcery: false,
     };
 
     pub const CREATURE: Filter = Filter {
@@ -2064,6 +2070,32 @@ pub enum Effect {
         slot: u8,
         subtype: &'static str,
     },
+    /// Each player who controls an artifact or enchantment creates a token of definition `def`
+    /// (Fade from History: a 2/2 green Bear), active player first.
+    EachPlayerWithArtifactOrEnchantmentCreatesToken {
+        def: usize,
+    },
+    /// Amass [subtype] `n` (CR 701.44): if you don't control an Army creature, create a 0/0 black
+    /// [subtype] Army token (`def`); put `n` +1/+1 counters on an Army you control (the first one,
+    /// when there are several); it becomes a [subtype] in addition to its other types.
+    Amass {
+        subtype: &'static str,
+        n: u8,
+        def: usize,
+    },
+    /// Return an instant or sorcery card at random from your graveyard to your hand (Exalted Flamer
+    /// of Tzeentch).
+    ReturnRandomInstantOrSorceryFromGraveyard,
+    /// Look at the top `n` (3) cards of your library; put one into your hand, one on the bottom, and
+    /// exile the rest; you may play the exiled card this turn (Expressive Iteration), as
+    /// `Decision::IterationPick`.
+    LookHandBottomExilePlay(u8),
+    /// Choose an instant or sorcery card in your graveyard; you may cast it this turn, and it's exiled
+    /// instead of going to the graveyard (Mission Briefing), as `Decision::CastFromGraveyardThisTurn`.
+    ChooseGraveyardSpellToCastThisTurn,
+    /// Exile each instant and sorcery card from your graveyard; copy each one, and you may cast the
+    /// copies free (overloaded Mizzix's Mastery).
+    ExileCastCopyFreeEachInstantSorcery,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
