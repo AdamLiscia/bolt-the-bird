@@ -520,3 +520,66 @@ fn kira_counters_the_first_spell_targeting_each_creature_each_turn() {
     resolve_all(&mut g, &[]);
     assert_eq!(g.obj(ghoul).zone, Zone::Graveyard, "not the first time this turn");
 }
+
+// ---- Populate (Trostani, Selesnya's Voice) ----
+
+#[test]
+fn populate_copies_a_creature_token_and_trostani_gains_toughness() {
+    let mut lands = vec!["Trostani, Selesnya's Voice"];
+    lands.extend(["Forest", "Plains", "Plains"]);
+    let mut g = game(&lands);
+    let tr = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "Trostani, Selesnya's Voice")
+        .unwrap();
+    let beast = g
+        .defs
+        .iter()
+        .position(|d| d.token && d.name == "Phyrexian Beast")
+        .unwrap();
+    g.add_card(0, beast, Zone::Battlefield);
+    let life = g.players[0].life;
+    act(&mut g, Action::Activate(tr, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(tokens(&g, 0, "Phyrexian Beast").len(), 2, "populated");
+    assert_eq!(g.players[0].life, life + 4, "the copy's toughness");
+}
+
+// ---- Imprint and copy-cast (Isochron Scepter) ----
+
+#[test]
+fn isochron_scepter_imprints_an_instant_and_casts_copies_free() {
+    let mut g = table();
+    let think = hand(&mut g, 0, "Think Twice"); // mana value 2
+    let sc = hand(&mut g, 0, "Isochron Scepter");
+    play(&mut g, sc, false, &[], &[Action::Pick(think)]);
+    assert_eq!(g.obj(think).zone, Zone::Exile);
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    let n = g.players[0].hand.len();
+    act(&mut g, Action::Activate(sc, 0));
+    let mut cast = false;
+    for _ in 0..20 {
+        let free = g
+            .legal_actions()
+            .into_iter()
+            .find(|a| matches!(a, Action::Cast(_)));
+        let a = match free {
+            Some(c) if !cast => {
+                cast = true;
+                c // the free copy
+            }
+            _ if g.items.is_empty() && cast => break,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(
+        g.players[0].hand.len(),
+        n + 1,
+        "the copy of Think Twice drew a card"
+    );
+    assert_eq!(g.obj(think).zone, Zone::Exile, "the imprinted card stays");
+}

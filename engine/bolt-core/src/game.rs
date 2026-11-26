@@ -1193,6 +1193,11 @@ pub enum Decision {
     CardOfColorToHand { color: u8 },
     /// Chain of Smog: `Mode(t)` copies `source` targeting player `t`, `No` doesn't.
     ChainCopy { source: ObjId },
+    /// Populate: `Pick` the creature token to copy.
+    Populate,
+    /// Imprint: `Pick` an instant card with mana value 2 or less in your hand to exile for `source`,
+    /// or `No`.
+    ImprintInstant { source: ObjId },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -2821,6 +2826,15 @@ impl Game {
                     c.blocks.retain(|b| b.0 != y && b.1 != y);
                 }
             }
+        }
+    }
+
+    /// Populate: a token copy of the creature token `of` (CR 701.31, 707.2).
+    fn populate_copy(&mut self, p: PlayerId, of: ObjId) {
+        let def = self.obj(of).def;
+        self.create_token(p, def);
+        for id in self.last_created.clone() {
+            self.obj_mut(id).copy_token = true;
         }
     }
 
@@ -10687,6 +10701,24 @@ impl Game {
                 v
             }
             Decision::ChainCopy { .. } => vec![Action::Mode(0), Action::Mode(1), Action::No],
+            Decision::Populate => self
+                .creatures(p)
+                .filter(|&c| self.is_token(c))
+                .map(Action::Pick)
+                .collect(),
+            Decision::ImprintInstant { .. } => {
+                let mut v: Vec<Action> = hand
+                    .iter()
+                    .copied()
+                    .filter(|&x| {
+                        let d = self.def_of(x);
+                        d.types.instant && d.cost.mana_value() <= 2
+                    })
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
             Decision::LandFromHand => {
                 let mut v: Vec<Action> = hand
                     .iter()
@@ -12022,6 +12054,12 @@ impl Game {
             (Decision::ScrollRackExile { exiled }, Action::No) => self.scroll_rack_finish(p, exiled),
             (Decision::LandFromHand, Action::Pick(c)) => self.move_to(c, Zone::Battlefield),
             (Decision::LandFromHand, Action::No) => {}
+            (Decision::ImprintInstant { source }, Action::Pick(c)) => {
+                self.move_to(c, Zone::Exile);
+                self.obj_mut(source).hideaway = Some(c); // the linked exiled card
+            }
+            (Decision::ImprintInstant { .. }, Action::No) => {}
+            (Decision::Populate, Action::Pick(c)) => self.populate_copy(p, c),
             (Decision::CardOfColorToHand { color }, choice) => {
                 if let Action::Pick(c) = choice {
                     self.move_to(c, Zone::Hand);
@@ -15298,6 +15336,49 @@ impl Game {
                         self.obj_mut(c).playable = Some((p, turn));
                         let zcc = self.obj(c).zcc;
                         self.exiled_until_end.push((c, zcc, p, def, at));
+                    }
+                }
+            }
+            Effect::ImprintInstantFromHand => {
+                let p = item.controller;
+                let any = self.players[p].hand.iter().any(|&x| {
+                    let d = self.def_of(x);
+                    d.types.instant && d.cost.mana_value() <= 2
+                });
+                if any && self.obj(src).zone == Zone::Battlefield {
+                    self.ask(p, Decision::ImprintInstant { source: src });
+                }
+            }
+            Effect::CastImprintedCopy => {
+                if let Some(card) = self
+                    .obj(src)
+                    .hideaway
+                    .filter(|&c| self.obj(c).zone == Zone::Exile)
+                {
+                    let p = item.controller;
+                    let def = self.obj(card).def;
+                    let copy = self.add_card(p, def, Zone::Exile);
+                    let o = self.obj_mut(copy);
+                    o.card_copy = true;
+                    o.cast_free = true;
+                    self.free_casts.push(copy);
+                    self.free_caster = p;
+                }
+            }
+            Effect::Populate => {
+                let p = item.controller;
+                let toks: Vec<ObjId> = self.creatures(p).filter(|&c| self.is_token(c)).collect();
+                match toks.len() {
+                    0 => {}
+                    1 => self.populate_copy(p, toks[0]),
+                    _ => self.ask(p, Decision::Populate),
+                }
+            }
+            Effect::GainLifeEqualSlotToughness(n) => {
+                if let Some(c) = Game::slot_object(item, legal, n) {
+                    let t = self.toughness(c).max(0);
+                    if t > 0 {
+                        self.gain_life(item.controller, t);
                     }
                 }
             }
