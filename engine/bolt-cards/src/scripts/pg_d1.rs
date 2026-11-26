@@ -30,9 +30,6 @@ pub fn script(name: &str) -> Option<Script> {
             let n = activated(d, "", false, vec![], vec![Effect::AddColorless(2)]);
             d.activated[n].sacrifice_other_creature = true; // an artifact: "another" is any creature
         }),
-        "Eternal Witness" => s(&["When this creature enters, you may return target card from your graveyard to your hand."], |d, _| {
-            may(d, When::Enters, vec![graveyard_cards(false, Controller::You)], vec![Effect::Bounce(0)])
-        }),
         "Worldly Tutor" => s(&["Search your library for a creature card, reveal it, then shuffle and put the card on top."], |d, _| {
             spell(d, vec![], vec![search(ANY_CREATURE_CARD, SearchTo::Top)])
         }),
@@ -83,9 +80,10 @@ pub fn script(name: &str) -> Option<Script> {
             let n = activated(d, "", false, vec![], vec![Effect::CountersSelf { n: 1 }]);
             d.activated[n].sacrifice_creature = true;
         }),
-        "Darkbore Pathway // Slitherbore Pathway" => s(&["{T}: Add {B}."], |d, _| {
-            // The card data has no back face (Slitherbore Pathway, {T}: Add {G}): it plays as its front.
+        "Darkbore Pathway // Slitherbore Pathway" => s(&["{T}: Add {B}.", "Back: {T}: Add {G}."], |d, _| {
             d.mana = Some(ManaSource::of(&[Color::Black]));
+            d.modal_back = true;
+            d.back.as_mut().expect("Slitherbore Pathway").mana = Some(ManaSource::of(&[Color::Green]));
         }),
         "Fyndhorn Elves" => s(&["{T}: Add {G}."], |d, _| d.mana = Some(ManaSource::of(&[Color::Green]))),
         "Krosan Grip" => s(&["Split second", "Destroy target artifact or enchantment."], |d, _| {
@@ -136,9 +134,10 @@ pub fn script(name: &str) -> Option<Script> {
             activated(d, "{G}", true, vec![elf], vec![Effect::UntapTarget(0)]);
         }),
         "Boreal Druid" => s(&["{T}: Add {C}."], |d, _| d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() })),
-        "Cragcrown Pathway // Timbercrown Pathway" => s(&["{T}: Add {R}."], |d, _| {
-            // The card data has no back face (Timbercrown Pathway, {T}: Add {G}): it plays as its front.
+        "Cragcrown Pathway // Timbercrown Pathway" => s(&["{T}: Add {R}.", "Back: {T}: Add {G}."], |d, _| {
             d.mana = Some(ManaSource::of(&[Color::Red]));
+            d.modal_back = true;
+            d.back.as_mut().expect("Timbercrown Pathway").mana = Some(ManaSource::of(&[Color::Green]));
         }),
         "Marwyn, the Nurturer" => s(
             &["Whenever another Elf you control enters, put a +1/+1 counter on Marwyn.", "{T}: Add an amount of {G} equal to Marwyn's power."],
@@ -252,10 +251,16 @@ pub fn script(name: &str) -> Option<Script> {
             // Looking at a hand is information only: no rules effect.
             spell(d, vec![Filter::PLAYER], vec![draw(1)])
         }),
-        "Jwari Disruption // Jwari Ruins" => s(&["Counter target spell unless its controller pays {1}."], |d, _| {
-            // The card data has no back face (Jwari Ruins, a land): it plays as its front.
-            spell(d, vec![SPELL], vec![Effect::CounterUnlessPays(0, 1, 1)])
-        }),
+        "Jwari Disruption // Jwari Ruins" => s(
+            &["Counter target spell unless its controller pays {1}.", "Back: This land enters tapped.", "Back: {T}: Add {U}."],
+            |d, _| {
+                spell(d, vec![SPELL], vec![Effect::CounterUnlessPays(0, 1, 1)]);
+                d.modal_back = true;
+                let b = d.back.as_mut().expect("Jwari Ruins");
+                b.enters_tapped = true;
+                b.mana = Some(ManaSource::of(&[Color::Blue]));
+            },
+        ),
         "Lightning Bolt" => s(&["Lightning Bolt deals 3 damage to any target."], |d, _| {
             spell(d, vec![Filter::ANY], vec![damage(3, Recipient::Target(0))])
         }),
@@ -468,7 +473,6 @@ pub fn script(name: &str) -> Option<Script> {
 pub const PG_D1_SCRIPTED: &[&str] = &[
     // Ygra, Eater of All (Grande)
     "Ashnod's Altar",
-    "Eternal Witness",
     "Worldly Tutor",
     "Warren Soultrader",
     "Blood Artist",

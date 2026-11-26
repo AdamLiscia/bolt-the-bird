@@ -1464,6 +1464,8 @@ pub enum Effect {
     ExileMakeEnchantmentCopy(u8),
     /// "... unless that player pays {X}, where X is this creature's power" (Esper Sentinel).
     UnlessOpponentPaysPower,
+    /// Destroy all creatures; they can't be regenerated (Damnation, Wrath of God).
+    DestroyAllCreaturesNoRegen,
     /// Exalted (CR 702.83), from a "whenever you attack" trigger: if exactly one creature you
     /// control is attacking, it gets +1/+1 until end of turn.
     Exalted,

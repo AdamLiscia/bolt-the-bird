@@ -71,8 +71,7 @@ pub fn script(name: &str) -> Option<Script> {
         "Overgrown Tomb" => s(SHOCK_LAND, |d, _| shock_land(d, Color::Black, Color::Green)),
         "Watery Grave" => s(SHOCK_LAND, |d, _| shock_land(d, Color::Blue, Color::Black)),
         "Damnation" => s(&["Destroy all creatures. They can't be regenerated."], |d, _| {
-            // The engine has no regeneration.
-            spell(d, vec![], vec![Effect::DestroyAllCreatures])
+            spell(d, vec![], vec![Effect::DestroyAllCreaturesNoRegen])
         }),
         "Exploration" => s(&["You may play an additional land on each of your turns."], |d, _| d.extra_land_drops = 1),
         "Azusa, Lost but Seeking" => s(&["You may play two additional lands on each of your turns."], |d, _| d.extra_land_drops = 2),
@@ -760,27 +759,6 @@ pub fn script(name: &str) -> Option<Script> {
             &["When this creature enters, destroy all artifacts and enchantments. Put a +1/+1 counter on this creature for each permanent destroyed this way."],
             |d, _| on(d, When::Enters, vec![], vec![Effect::DestroyArtifactsEnchantmentsCountersSelf]),
         ),
-        "Silverback Elder" => s(
-            &[
-                "Whenever you cast a creature spell, choose one —",
-                "• Destroy target artifact or enchantment.",
-                "• Look at the top five cards of your library. You may put a land card from among them onto the battlefield tapped. Put the rest on the bottom of your library in a random order.",
-                "• You gain 4 life.",
-            ],
-            |d, _| {
-                let look = Effect::LookAtTop { n: 5, pick: Pick::Land, chosen_to: LookTo::BattlefieldTapped, rest_to: LookRest::BottomRandom };
-                on_modal(
-                    d,
-                    When::YouCastCreature,
-                    None,
-                    vec![
-                        Ability::new(vec![ARTIFACT_OR_ENCHANTMENT], vec![Effect::Destroy(0)]),
-                        Ability::new(vec![], vec![look]),
-                        Ability::new(vec![], vec![Effect::GainLife { who: Who::You, n: 4 }]),
-                    ],
-                );
-            },
-        ),
         "Temple of the False God" => s(&["{T}: Add {C}{C}. Activate only if you control five or more lands."], |d, _| {
             d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
             d.mana_amount = 2;
@@ -1230,7 +1208,6 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Deadeye Navigator",
     "Green Sun's Zenith",
     "Bane of Progress",
-    "Silverback Elder",
     "Temple of the False God",
     "Circle of Dreams Druid",
     "Tribute to the World Tree",

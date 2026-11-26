@@ -81,6 +81,11 @@ def main():
     ap.add_argument("--eval-pairs", type=int, default=200)
     ap.add_argument("--stall-minutes", type=float, default=30)
     ap.add_argument("--resume", action="store_true")
+    ap.add_argument(
+        "--self-play",
+        action="store_true",
+        help="train only against itself and its past checkpoints (no rules or smart opponents)",
+    )
     a = ap.parse_args()
     torch.set_num_threads(a.threads)
     ck = ROOT / "checkpoints" / "play" / a.name
@@ -98,6 +103,24 @@ def main():
         opt.load_state_dict(s["opt"])
         state = s["state"]
         print(f"resumed at iteration {state['iter']}", flush=True)
+    # On the farm (BOLT_JOB set by farm.py): power-cut-safe checkpoints on S3 (bolt.jobs), resumed first.
+    job = None
+    if os.environ.get("BOLT_JOB"):
+        from bolt.jobs import Job
+
+        job = Job(os.environ["BOLT_JOB"])
+        s = job.resume()
+        if s is not None:
+            net.load_state_dict(s["model"])
+            opt.load_state_dict(s["opt"])
+            state = s["state"]
+            for f in state["past"]:  # a fresh disk: fetch the past opponents too
+                if not (ck / f).exists():
+                    data = job._get(f"{job.prefix}/past/{f}")
+                    if data is not None:
+                        (ck / f).write_bytes(data)
+            state["past"] = [f for f in state["past"] if (ck / f).exists()]
+            print(f"resumed from S3 at iteration {state['iter']}", flush=True)
     lines = DECKS.read_text().split("\n")
     decks = [list(map(int, x.split())) for x in lines[:512]]
 
@@ -130,7 +153,7 @@ def main():
         kl_coef = a.kl + (a.kl_final - a.kl) * min(1.0, (it - 1) / max(1, a.kl_iters))
         net.eval()
         parts, won = [], {}
-        for k, (seats, n) in enumerate(league(a.games, state["past"])):
+        for k, (seats, n) in enumerate(league(a.games, state["past"], self_only=a.self_play)):
             jobs = []
             for i in range(n):
                 d1, d2 = rng.sample(range(512), 2)
@@ -172,6 +195,8 @@ def main():
         upload_quietly(ck / f"iter_{it}.pt")
         if it % a.past_every == 0:
             state["past"].append(f"iter_{it}.pt")
+            if job:
+                job._put(f"{job.prefix}/past/iter_{it}.pt", (ck / f"iter_{it}.pt").read_bytes())
         row = {"iter": it, "games": a.games, "decisions": n, "kl_coef": round(kl_coef, 4),
                **{f"won_{k}": round(float(np.mean(v)), 3) for k, v in won.items()},
                **{k: round(v / max(1, steps), 4) for k, v in sums.items()},
@@ -190,6 +215,13 @@ def main():
             beat["t"] = time.time()
         save_atomic({"model": net.state_dict(), "opt": opt.state_dict(), "state": state}, ck / "state.pt")
         write_results()
+        if job and job.due():
+            job.save({"model": net.state_dict(), "opt": opt.state_dict(), "state": state}, step=it)
+            if job.stop_requested:
+                print(f"stopped at iteration {it} (SIGTERM); checkpoint saved", flush=True)
+                return
+    if job:
+        job.save({"model": net.state_dict(), "opt": opt.state_dict(), "state": state}, step=state["iter"], done=True)
 
 
 if __name__ == "__main__":
