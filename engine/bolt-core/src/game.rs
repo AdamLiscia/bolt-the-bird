@@ -1615,9 +1615,6 @@ pub struct Game {
     /// Creature spells paid for with Hall of the Bandit Lord's mana, as (object, the zone-change
     /// count it will have on the battlefield): each gains haste as it enters.
     pub haste_from_mana: Vec<(ObjId, u32)>,
-    /// Delayed "when [that creature] is put into your graveyard this turn" triggers (Saffi
-    /// Eriksdotter): (creature, its zcc, source, trigger number, controller, turn).
-    pub delayed_slot_to_graveyard: Vec<(ObjId, u32, ObjId, usize, PlayerId, u32)>,
     /// Necropotence's face-down exiled cards, to their player's hand at the beginning of that
     /// player's next end step: (card, its zcc in exile, player, turn exiled, exiled during that
     /// player's own end step or cleanup, so not this turn's).
@@ -1877,7 +1874,6 @@ impl Game {
             normal_next: None,
             delayed_slot_to_graveyard: Vec::new(),
             haste_from_mana: Vec::new(),
-            delayed_slot_to_graveyard: Vec::new(),
             face_down_to_hand: Vec::new(),
         }
     }
