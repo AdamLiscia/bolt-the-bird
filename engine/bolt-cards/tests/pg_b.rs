@@ -2653,3 +2653,33 @@ fn dawn_of_hope_mystic_and_iconoclast_make_tokens() {
         .find(|&x| g.types_of(x).artifact);
     assert!(art.is_some());
 }
+
+#[test]
+fn ghyrson_magecraft_multicolor_and_aura_draws() {
+    let mut g = table();
+    put(&mut g, 0, "Archmage Emeritus");
+    let kiln = put(&mut g, 0, "Storm-Kiln Artist");
+    let n = hand_size(&g, 0);
+    let consider = hand(&mut g, 0, "Consider");
+    play(&mut g, consider, false, &[], &[Action::No]);
+    assert_eq!(hand_size(&g, 0), n + 1, "Consider's draw and Emeritus's");
+    assert_eq!(tokens(&g, 0, "Treasure").len(), 1);
+    assert_eq!(g.power(kiln), 3, "2 plus one artifact (the Treasure)");
+    let spit = put(&mut g, 0, "Chandra's Spitfire");
+    let bolt = hand(&mut g, 0, "Burst Lightning");
+    play(&mut g, bolt, false, &[Target::Player(1)], &[]);
+    assert_eq!(g.power(spit), 4);
+    let crew = put(&mut g, 0, "Lobber Crew");
+    act(&mut g, Action::Activate(crew, 0));
+    resolve_all(&mut g, &[]);
+    assert!(g.obj(crew).tapped);
+    let lyze = hand(&mut g, 0, "Electrolyze"); // multicolored
+    act(&mut g, Action::Cast(lyze));
+    act(&mut g, Action::Target(Target::Player(1)));
+    act(&mut g, Action::No);
+    while matches!(g.pending, Pending::Divide(_)) {
+        act(&mut g, Action::Amount(2));
+    }
+    resolve_all(&mut g, &[]);
+    assert!(!g.obj(crew).tapped);
+}

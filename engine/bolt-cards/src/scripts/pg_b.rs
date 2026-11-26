@@ -1535,6 +1535,53 @@ pub fn script(name: &str) -> Option<Script> {
             &["Whenever you cast a noncreature spell, create a 1/1 colorless Soldier artifact creature token."],
             |d, t| on(d, When::YouCastNoncreature, vec![], vec![Effect::CreateToken { who: Who::You, def: t.soldier_artifact, n: 1 }]),
         ),
+        "Archmage Emeritus" => s(&["Magecraft — Whenever you cast or copy an instant or sorcery spell, draw a card."], |d, _| {
+            on(d, When::YouCastOrCopyInstantOrSorcery, vec![], vec![draw(1)]);
+        }),
+        "Storm-Kiln Artist" => s(
+            &[
+                "This creature gets +1/+0 for each artifact you control.",
+                "Magecraft — Whenever you cast or copy an instant or sorcery spell, create a Treasure token.",
+            ],
+            |d, t| {
+                d.statics.push(Static {
+                    subtype: None,
+                    lose_abilities: false,
+                    base_pt: None,
+                    protection: [false; 5],
+                    scale: Some(Scale::PerArtifactYouControl),
+                    scope: Scope::This,
+                    your_turn_only: false,
+                    condition: None,
+                    power: 1,
+                    toughness: 0,
+                    keywords: Keywords::NONE,
+                    set_colors: None,
+                    becomes_land: false,
+                });
+                on(d, When::YouCastOrCopyInstantOrSorcery, vec![], vec![Effect::CreateToken { who: Who::You, def: t.treasure, n: 1 }]);
+            },
+        ),
+        "Lobber Crew" => s(
+            &["{T}: This creature deals 1 damage to each opponent.", "Whenever you cast a multicolored spell, untap this creature."],
+            |d, _| {
+                activated(d, "", true, vec![], vec![damage(1, Recipient::EachOpponent)]);
+                on(d, When::YouCastMulticolored, vec![], vec![Effect::UntapSelf]);
+            },
+        ),
+        "Chandra's Spitfire" => s(&["Whenever an opponent is dealt noncombat damage, this creature gets +3/+0 until end of turn."], |d, _| {
+            on(d, When::OpponentDealtNoncombatDamage, vec![], vec![Effect::PumpSelf { power: 3, toughness: 0 }]);
+        }),
+        "Curiosity" => s(&["Enchant creature", "Whenever enchanted creature deals damage to an opponent, you may draw a card."], |d, _| {
+            d.aura = true;
+            d.spell = Some(Ability::new(vec![CREATURE], vec![]));
+            may(d, When::EnchantedDealsDamageToOpponent, vec![], vec![draw(1)]);
+        }),
+        "Ophidian Eye" => s(&["Enchant creature", "Whenever enchanted creature deals damage to an opponent, you may draw a card."], |d, _| {
+            d.aura = true;
+            d.spell = Some(Ability::new(vec![CREATURE], vec![]));
+            may(d, When::EnchantedDealsDamageToOpponent, vec![], vec![draw(1)]);
+        }),
         _ => None,
     }
 }
@@ -1726,6 +1773,12 @@ pub const PG_B_SCRIPTED: &[&str] = &[
     "Dawn of Hope",
     "Murmuring Mystic",
     "Third Path Iconoclast",
+    "Archmage Emeritus",
+    "Storm-Kiln Artist",
+    "Lobber Crew",
+    "Chandra's Spitfire",
+    "Curiosity",
+    "Ophidian Eye",
     // Ghyrson Starn (Spr3adsh33t)
     "Basilisk Collar",
     "Gorgon's Head",

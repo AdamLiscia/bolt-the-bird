@@ -703,3 +703,6 @@ Also: Paradox Haze (merger: `CardDef::extra_upkeep_for_enchanted`, `Object::ench
 "Enchant player" Auras, `Game::upkeeps_this_turn` and `extra_upkeeps` in the step machine), and with
 tokens 70 to 75 (Horse 5/5, Soldier 1/1 lifelink, Ajani's Pridemate, Bird Illusion, Soldier 1/1
 artifact, Construct 0/0 artifact): Dawn of Hope, Murmuring Mystic, Third Path Iconoclast.
+
+Ghyrson, with d2's new triggers: Archmage Emeritus, Storm-Kiln Artist, Lobber Crew, Chandra's
+Spitfire, Curiosity, Ophidian Eye.
