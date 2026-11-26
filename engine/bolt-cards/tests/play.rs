@@ -54,6 +54,8 @@ fn every_game_ends_with_a_result_and_a_turn_count() {
 
 #[test]
 fn many_games_on_threads_match_one_at_a_time_in_order() {
+    // Deterministic: no wall-clock cut (it lands on different turns under load); MAX_TURNS still ends games.
+    bolt_cards::play::WALL_CLOCK_LIMIT.store(false, std::sync::atomic::Ordering::Relaxed);
     let js = jobs(12);
     for p in [Pilot::Baseline, smart()] {
         let one: Vec<_> = js.iter().map(|j| play_game(j, &p)).collect();

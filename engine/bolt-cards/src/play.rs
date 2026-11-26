@@ -14,6 +14,11 @@ use crate::fdn;
 pub const MAX_TURNS: u32 = 200;
 /// A game still going after this long is a timeout (only ever the smart pilot, on huge boards).
 pub const GAME_SECONDS: u64 = 180;
+
+/// Whether `GAME_SECONDS` applies (on by default). Tests that compare games played on threads with games
+/// played one at a time turn it off: under load the wall-clock cut lands on different turns, and
+/// `MAX_TURNS` alone still ends every game.
+pub static WALL_CLOCK_LIMIT: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
 /// Stack for each game thread (reserved, not used up front).
 pub const STACK_BYTES: usize = 64 << 20;
 
@@ -58,7 +63,8 @@ fn run(j: &Job, pilot: &Pilot) -> Played {
                 turns: g.turn,
             };
         }
-        if g.turn > MAX_TURNS || started.elapsed().as_secs() >= GAME_SECONDS {
+        let out_of_time = WALL_CLOCK_LIMIT.load(Ordering::Relaxed) && started.elapsed().as_secs() >= GAME_SECONDS;
+        if g.turn > MAX_TURNS || out_of_time {
             break;
         }
         let legal = g.legal_actions();
