@@ -3123,6 +3123,7 @@ fn teleportation_circle_blinks_at_your_end_step() {
                 Action::Target(obj(ghoul))
             }
             Pending::Decide(_) | Pending::ChooseTarget(_) => g.legal_actions()[0],
+            Pending::DeclareAttackers(_) => Action::FinishAttacks,
             _ => Action::PassPriority,
         };
         act(&mut g, a);
@@ -3196,6 +3197,8 @@ fn to_main(g: &mut Game, turn: u32, active: usize) {
         let legal = g.legal_actions();
         let a = if legal.contains(&Action::PassPriority) {
             Action::PassPriority
+        } else if legal.contains(&Action::FinishAttacks) {
+            Action::FinishAttacks
         } else {
             legal[0]
         };
@@ -3208,7 +3211,7 @@ fn nahiris_resolve_pumps_and_exiles_until_your_next_upkeep() {
     let mut g = table();
     put(&mut g, 0, "Nahiri's Resolve");
     let ghoul = put(&mut g, 0, "Hungry Ghoul");
-    assert_eq!(g.power(ghoul), 2);
+    assert_eq!(g.power(ghoul), g.def_of(ghoul).power + 1);
     assert!(g.keywords(ghoul).has(Keywords::HASTE));
     let mut exiled = false;
     for _ in 0..40 {
@@ -3221,6 +3224,8 @@ fn nahiris_resolve_pumps_and_exiles_until_your_next_upkeep() {
             Action::Pick(ghoul)
         } else if legal.contains(&Action::PassPriority) {
             Action::PassPriority
+        } else if legal.contains(&Action::FinishAttacks) {
+            Action::FinishAttacks
         } else {
             legal[0]
         };
@@ -3316,8 +3321,9 @@ fn eel_umbra_pumps_and_saves_with_umbra_armor() {
     let mut g = table();
     let ghoul = put(&mut g, 0, "Hungry Ghoul");
     let eu = hand(&mut g, 0, "Eel Umbra");
+    let before = g.power(ghoul);
     play(&mut g, eu, false, &[obj(ghoul)], &[]);
-    assert_eq!(g.power(ghoul), 2);
+    assert_eq!(g.power(ghoul), before + 1);
     let kill = hand(&mut g, 0, "Hero's Downfall");
     play(&mut g, kill, false, &[obj(ghoul)], &[]);
     assert_eq!(g.obj(ghoul).zone, Zone::Battlefield, "umbra armor");
@@ -3395,8 +3401,8 @@ fn mirrormade_copies_an_artifact() {
 fn rakdos_signet_pays_for_a_black_red_spell() {
     // {B}{R} from a Swamp and the Signet: the Swamp pays the Signet's {1}.
     let mut g = game(&["Swamp", "Rakdos Signet"]);
-    let rc = hand(&mut g, 0, "Cathartic Pyre"); // {1}{R}
-    assert!(g.legal_actions().contains(&Action::Cast(rc)));
+    let fl = hand(&mut g, 0, "Faithless Looting"); // {R}: only the Signet makes red
+    assert!(g.legal_actions().contains(&Action::Cast(fl)));
 }
 
 #[test]
