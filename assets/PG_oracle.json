@@ -11887,7 +11887,20 @@
 "layout": "transform",
 "loyalty": null,
 "produced_mana": null,
-"collector_number": "137"
+"collector_number": "137",
+"back": {
+"name": "Etali, Primal Sickness",
+"mana_cost": "",
+"type_line": "Legendary Creature \u2014 Phyrexian Elder Dinosaur",
+"oracle_text": "Trample, indestructible\nWhenever Etali deals combat damage to a player, they get that many poison counters. (A player with ten or more poison counters loses the game.)",
+"power": "11",
+"toughness": "11",
+"colors": [
+"G",
+"R"
+],
+"loyalty": null
+}
 },
 {
 "name": "Etched Champion",

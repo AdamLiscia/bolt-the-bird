@@ -1720,3 +1720,231 @@ fn blessing_of_frost_counts_snow_mana() {
         "cast one, drew one for the power-4 Lions"
     );
 }
+
+// ---- Myrkul, Lord of Bones (DonSpider), lane B ----
+
+#[test]
+fn myrkul_lands_tap_for_their_colors() {
+    let mut g = game(&[]);
+    for (name, colors) in [
+        ("Temple Garden", [false, false, false, false, true]),
+        ("Godless Shrine", [true, false, true, false, false]),
+        ("Vault of Champions", [true, false, true, false, false]),
+        ("Bountiful Promenade", [true, false, false, false, true]),
+        ("Caves of Koilos", [true, false, true, false, false]),
+    ] {
+        let land = put(&mut g, 0, name);
+        let made = colors_of(&g, land);
+        assert!(!made.is_empty(), "{name} taps for mana");
+        for (i, &want) in colors.iter().enumerate() {
+            if want {
+                assert!(made.iter().any(|m| m[i]), "{name} makes color {i}");
+            }
+        }
+    }
+    // A bounce-free dual that enters tapped in a two-player game.
+    let mut g = game(&[]);
+    let vault = hand(&mut g, 0, "Vault of Champions");
+    act(&mut g, Action::PlayLand(vault));
+    assert!(g.obj(vault).tapped);
+}
+
+#[test]
+fn city_of_brass_pings_you_when_tapped() {
+    let mut g = game(&["City of Brass"]);
+    let elves = hand(&mut g, 0, "Llanowar Elves");
+    play(&mut g, elves, false, &[], &[]);
+    assert_eq!(g.obj(elves).zone, Zone::Battlefield);
+    assert_eq!(g.players[0].life, 39);
+}
+
+#[test]
+fn despark_and_anguished_unmaking_exile() {
+    let mut g = table();
+    let small = put(&mut g, 1, "Savannah Lions");
+    let big = put(&mut g, 1, "Silverback Elder");
+    let despark = hand(&mut g, 0, "Despark");
+    act(&mut g, Action::Cast(despark));
+    assert!(
+        !has(&g, Action::Target(Target::Object(small))),
+        "mana value 4 or greater"
+    );
+    act(&mut g, Action::Target(Target::Object(big)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(big).zone, Zone::Exile);
+    let unmaking = hand(&mut g, 0, "Anguished Unmaking");
+    play(&mut g, unmaking, false, &[Target::Object(small)], &[]);
+    assert_eq!(g.obj(small).zone, Zone::Exile);
+    assert_eq!(g.players[0].life, 37);
+}
+
+#[test]
+fn anointed_procession_vanquish_the_horde_and_smothering_tithe() {
+    let mut g = table();
+    put(&mut g, 0, "Anointed Procession");
+    put(&mut g, 0, "Smothering Tithe");
+    // Player 1 draws on their turn and doesn't pay: two Treasures (doubled).
+    g.start_turn(4, 1);
+    for _ in 0..20 {
+        if matches!(g.pending, Pending::Decide(1)) {
+            break;
+        }
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::No);
+    resolve_all(&mut g, &[]);
+    assert_eq!(tokens(&g, 0, "Treasure").len(), 2);
+
+    let mut g = game(&["Plains", "Plains"]);
+    for _ in 0..3 {
+        put(&mut g, 0, "Savannah Lions");
+        put(&mut g, 1, "Savannah Lions");
+    }
+    let horde = hand(&mut g, 0, "Vanquish the Horde"); // {6}{W}{W}, {6} less
+    assert!(has(&g, Action::Cast(horde)));
+    play(&mut g, horde, false, &[], &[]);
+    assert_eq!(g.creatures(0).count() + g.creatures(1).count(), 0);
+}
+
+#[test]
+fn constellation_creatures_trigger_on_enchantments() {
+    let mut g = table();
+    let champ = put(&mut g, 0, "Setessan Champion");
+    put(&mut g, 0, "Archon of Sun's Grace");
+    let guardian = hand(&mut g, 0, "Grim Guardian"); // an enchantment creature
+    let before = hand_size(&g, 0);
+    play(&mut g, guardian, false, &[], &[]);
+    assert_eq!(g.obj(champ).counters, 1);
+    assert_eq!(hand_size(&g, 0), before, "cast it, drew one");
+    assert_eq!(g.players[1].life, 39, "Grim Guardian itself entering");
+    let pegasus = tokens(&g, 0, "Pegasus");
+    assert_eq!(pegasus.len(), 1);
+    assert!(g.keywords(pegasus[0]).has(Keywords::LIFELINK));
+    assert!(g.keywords(pegasus[0]).has(Keywords::FLYING));
+}
+
+#[test]
+fn ghostly_dancers_returns_an_enchantment_and_makes_spirits() {
+    let mut g = table();
+    let study = g.add_card(0, cid("Rhystic Study"), Zone::Graveyard);
+    let dancers = hand(&mut g, 0, "Ghostly Dancers");
+    play(&mut g, dancers, false, &[], &[Action::Pick(study)]);
+    assert_eq!(g.obj(study).zone, Zone::Hand);
+    play(&mut g, study, false, &[], &[]);
+    let spirits: Vec<ObjId> = tokens(&g, 0, "Spirit");
+    assert_eq!(spirits.len(), 1);
+    assert_eq!((g.power(spirits[0]), g.toughness(spirits[0])), (3, 1));
+}
+
+#[test]
+fn serras_sanctum_and_sanctum_weaver_count_enchantments() {
+    let mut g = game(&[]);
+    let sanctum = put(&mut g, 0, "Serra's Sanctum");
+    assert!(colors_of(&g, sanctum).is_empty(), "no enchantments: no mana");
+    put(&mut g, 0, "Rhystic Study");
+    let weaver = put(&mut g, 0, "Sanctum Weaver");
+    assert_eq!(colors_of(&g, sanctum).len(), 2);
+    assert_eq!(colors_of(&g, weaver).len(), 2);
+}
+
+#[test]
+fn grand_abolisher_stops_opponents_on_your_turn() {
+    let mut g = table();
+    put(&mut g, 0, "Grand Abolisher");
+    let bolt = hand(&mut g, 1, "Burst Lightning");
+    let birds = put(&mut g, 1, "Birds of Paradise");
+    act(&mut g, Action::PassPriority);
+    assert!(!has(&g, Action::Cast(bolt)));
+    assert!(colors_of(&g, birds).is_empty() || g.mana_sources(1).iter().all(|&(x, _)| x != birds));
+}
+
+#[test]
+fn devoted_druid_untaps_for_a_minus_counter() {
+    let mut g = game(&[]);
+    let druid = put(&mut g, 0, "Devoted Druid");
+    g.objects[druid.0 as usize].tapped = true;
+    assert!(has(&g, Action::Activate(druid, 0)));
+    act(&mut g, Action::Activate(druid, 0));
+    resolve_all(&mut g, &[]);
+    assert!(!g.obj(druid).tapped);
+    assert_eq!(g.toughness(druid), 1);
+    g.objects[druid.0 as usize].tapped = true;
+    act(&mut g, Action::Activate(druid, 0));
+    resolve_all(&mut g, &[]);
+    act(&mut g, Action::PassPriority);
+    assert_eq!(g.obj(druid).zone, Zone::Graveyard, "0/0 after the second counter");
+}
+
+#[test]
+fn yawgmoth_sacrifices_for_counters_and_proliferates() {
+    let mut g = table();
+    let yawg = put(&mut g, 0, "Yawgmoth, Thran Physician");
+    let fodder = put(&mut g, 0, "Savannah Lions");
+    let theirs = put(&mut g, 1, "Silverback Elder");
+    act(&mut g, Action::ActivateWith(yawg, 0, fodder));
+    act(&mut g, Action::Target(Target::Object(theirs)));
+    let before = hand_size(&g, 0);
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].life, 39);
+    assert_eq!(g.obj(fodder).zone, Zone::Graveyard);
+    assert_eq!(g.toughness(theirs), 6);
+    assert_eq!(hand_size(&g, 0), before + 1);
+    let card = g.players[0].hand[0];
+    act(&mut g, Action::ActivateWith(yawg, 1, card));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.toughness(theirs), 5, "proliferated their -1/-1 counter");
+    assert_eq!(g.obj(card).zone, Zone::Graveyard);
+}
+
+#[test]
+fn myrkul_makes_enchantment_copies_and_is_indestructible_at_half_life() {
+    let mut g = table();
+    let myrkul = put(&mut g, 0, "Myrkul, Lord of Bones");
+    assert!(!g.keywords(myrkul).has(Keywords::INDESTRUCTIBLE));
+    g.players[0].life = 20;
+    assert!(g.keywords(myrkul).has(Keywords::INDESTRUCTIBLE));
+    let witness = put(&mut g, 0, "Eternal Witness");
+    let study = g.add_card(0, cid("Rhystic Study"), Zone::Graveyard);
+    g.objects[witness.0 as usize].damage = 2;
+    act(&mut g, Action::PassPriority);
+    // Myrkul's may, then the token copy's "enters" trigger (a copy of Eternal Witness).
+    resolve_all(
+        &mut g,
+        &[Action::Yes, Action::Target(Target::Object(study)), Action::Yes],
+    );
+    assert_eq!(g.obj(witness).zone, Zone::Exile);
+    let copies = tokens(&g, 0, "Eternal Witness");
+    assert_eq!(copies.len(), 1);
+    let t = g.types_of(copies[0]);
+    assert!(t.enchantment && !t.creature);
+    assert_eq!(g.obj(study).zone, Zone::Hand);
+}
+
+#[test]
+fn maha_makes_their_creatures_base_toughness_one() {
+    let mut g = table();
+    put(&mut g, 0, "Maha, Its Feathers Night");
+    let elder = put(&mut g, 1, "Silverback Elder");
+    let mine = put(&mut g, 0, "Silverback Elder");
+    assert_eq!(g.toughness(elder), 1);
+    assert_eq!(g.toughness(mine), 7);
+}
+
+#[test]
+fn esper_sentinel_taxes_the_first_noncreature_spell() {
+    let mut g = table();
+    put(&mut g, 0, "Esper Sentinel");
+    let a = hand(&mut g, 1, "Burst Lightning");
+    let b = hand(&mut g, 1, "Burst Lightning");
+    let before = hand_size(&g, 0);
+    act(&mut g, Action::PassPriority);
+    act(&mut g, Action::Cast(a));
+    act(&mut g, Action::Target(Target::Player(0)));
+    resolve_all(&mut g, &[Action::No]);
+    assert_eq!(hand_size(&g, 0), before + 1);
+    act(&mut g, Action::PassPriority);
+    act(&mut g, Action::Cast(b));
+    act(&mut g, Action::Target(Target::Player(0)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(hand_size(&g, 0), before + 1, "only the first");
+}
