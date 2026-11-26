@@ -2256,6 +2256,12 @@ pub enum Condition {
     OpponentLostLifeAtLeast(i32),
     /// The source has at least this many quest counters (Bloodchief Ascension: three).
     SourceQuestCountersAtLeast(i32),
+    /// Its controller gained life this turn (Witch of the Moors).
+    YouGainedLifeThisTurn,
+    /// Its controller has at least this much life (Felidar Sovereign: 40).
+    LifeAtLeast(i32),
+    /// No creatures are on the battlefield (Pyrohemia).
+    NoCreaturesOnBattlefield,
 }
 
 /// A spell's effect or a triggered ability: target slots, then effects in order.
@@ -2651,6 +2657,39 @@ pub enum When {
     /// An Aura's "Whenever enchanted creature deals damage to an opponent" (Curiosity, Ophidian
     /// Eye), combat or not.
     EnchantedDealsDamageToOpponent,
+    /// "Whenever a permanent you control enters tapped" (Amulet of Vigor): checked as triggers are
+    /// next put on the stack, so "enters tapped" set by the effect that put it there counts. Slot 0
+    /// (if `triggering`) is that permanent.
+    PermanentYouControlEntersTapped,
+    /// "Whenever a nonartifact permanent you control enters" (Cloudstone Curio); slot 0 (if
+    /// `triggering`) is that permanent.
+    NonartifactPermanentYouControlEnters,
+    /// "Whenever an artifact you control enters" (Teething Wurmlet); slot 0 (if `triggering`) is
+    /// that artifact.
+    ArtifactYouControlEnters,
+    /// "Whenever this creature attacks for the first time each turn" (Aurelia).
+    AttacksFirstTimeEachTurn,
+    /// "Whenever you sacrifice a nontoken permanent" (Skittering Precursor); slot 0 (if
+    /// `triggering`) is that card.
+    YouSacrificeNontoken,
+    /// "Whenever an opponent sacrifices a nontoken permanent" (It That Betrays); slot 0 (if
+    /// `triggering`) is that card where it went.
+    OpponentSacrificesNontoken,
+    /// "Whenever an opponent draws a card except the first one they draw in each of their draw
+    /// steps" (Orcish Bowmasters).
+    OpponentDrawsExceptFirstInDrawStep,
+    /// "Whenever another colorless creature you control enters" (Glaring Fleshraker); slot 0 (if
+    /// `triggering`) is that creature.
+    AnotherColorlessCreatureYouControlEnters,
+    /// "Whenever you cast a colorless spell with mana value N or greater" (Sanctum of Ugin: 7); the
+    /// spell in `extra`.
+    YouCastColorlessMvAtLeast(u32),
+    /// "Whenever one or more creature cards are put into your graveyard from anywhere, ... This
+    /// ability triggers only once each turn." (Sefris; tokens aren't cards).
+    CreatureCardsToYourGraveyardOnceEachTurn,
+    /// "Whenever another source you control deals exactly 1 damage to a permanent or player"
+    /// (Ghyrson Starn); slot 0 (if `triggering`) is that permanent or player.
+    AnotherSourceYouControlDealsExactlyOne,
 }
 
 #[derive(Clone, Debug, PartialEq)]
