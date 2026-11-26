@@ -1535,6 +1535,43 @@ pub fn script(name: &str) -> Option<Script> {
             &["Whenever you cast a noncreature spell, create a 1/1 colorless Soldier artifact creature token."],
             |d, t| on(d, When::YouCastNoncreature, vec![], vec![Effect::CreateToken { who: Who::You, def: t.soldier_artifact, n: 1 }]),
         ),
+        "Storm-Kiln Artist" => s(
+            &[
+                "This creature gets +1/+0 for each artifact you control.",
+                "Magecraft — Whenever you cast or copy an instant or sorcery spell, create a Treasure token.",
+            ],
+            |d, t| {
+                d.statics.push(Static {
+                    subtype: None,
+                    lose_abilities: false,
+                    base_pt: None,
+                    protection: [false; 5],
+                    scale: Some(Scale::PerArtifactYouControl),
+                    scope: Scope::This,
+                    your_turn_only: false,
+                    condition: None,
+                    power: 1,
+                    toughness: 0,
+                    keywords: Keywords::NONE,
+                    set_colors: None,
+                    becomes_land: false,
+                });
+                on(d, When::YouCastOrCopyInstantOrSorcery, vec![], vec![Effect::CreateToken { who: Who::You, def: t.treasure, n: 1 }]);
+            },
+        ),
+        "Misdirection" => s(
+            &["You may exile a blue card from your hand rather than pay this spell's mana cost.", "Change the target of target spell with a single target."],
+            |d, _| {
+                d.mana_ext.pitch_with_life = Some((1, 0)); // blue, no life
+                // "Change the target": offered as ChooseNewTarget, where keeping it is also allowed.
+                spell(d, vec![Filter { single_target: true, ..SPELL }], vec![Effect::ChangeTargets(0)]);
+            },
+        ),
+        "Mana Confluence" => s(&["{T}, Pay 1 life: Add one mana of any color."], |d, _| {
+            // On the stack, like Sunbaked Canyon's (d1).
+            let n = activated(d, "", true, vec![], vec![Effect::AddManaAnyColor]);
+            d.activated[n].life = 1;
+        }),
         _ => None,
     }
 }
@@ -1726,6 +1763,9 @@ pub const PG_B_SCRIPTED: &[&str] = &[
     "Dawn of Hope",
     "Murmuring Mystic",
     "Third Path Iconoclast",
+    "Storm-Kiln Artist",
+    "Misdirection",
+    "Mana Confluence",
     // Ghyrson Starn (Spr3adsh33t)
     "Basilisk Collar",
     "Gorgon's Head",

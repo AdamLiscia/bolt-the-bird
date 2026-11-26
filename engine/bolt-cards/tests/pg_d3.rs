@@ -2965,3 +2965,487 @@ fn storm_of_souls_returns_your_creatures_as_one_one_flying_spirits() {
     assert_eq!(g.obj(ring).zone, Zone::Graveyard);
     assert_eq!(g.obj(storm).zone, Zone::Exile);
 }
+
+// ---- Core theme d3, batch 13 ----
+
+#[test]
+fn massacre_girl_shrinks_the_others_again_whenever_a_creature_dies_this_turn() {
+    let mut g = table();
+    let elves = put(&mut g, 1, "Llanowar Elves"); // 1/1: dies to the first -1/-1
+    let angel = put(&mut g, 1, "Serra Angel"); // 4/4
+    let sphinx = put(&mut g, 0, "Consecrated Sphinx"); // 4/6
+    let girl = hand(&mut g, 0, "Massacre Girl");
+    play(&mut g, girl, false, &[], &[]);
+    assert_eq!(g.obj(elves).zone, Zone::Graveyard);
+    assert_eq!(g.power(angel), 2, "-1/-1, then -1/-1 again for the Elves");
+    assert_eq!(g.toughness(sphinx), 4);
+    assert_eq!(g.power(girl), 4, "not Massacre Girl");
+}
+
+#[test]
+fn archfiend_of_ifnir_puts_a_minus_counter_on_their_creatures_when_you_discard() {
+    let mut g = table();
+    put(&mut g, 0, "Archfiend of Ifnir");
+    let looter = put(&mut g, 0, "Merfolk Looter");
+    let angel = put(&mut g, 1, "Serra Angel");
+    let elves = put(&mut g, 1, "Llanowar Elves");
+    let mine = put(&mut g, 0, "Llanowar Elves");
+    to_main1(&mut g, 5, 0);
+    let junk = hand(&mut g, 0, "Counterspell");
+    act(&mut g, Action::Activate(looter, 0));
+    resolve_all(&mut g, &[Action::Discard(junk)]);
+    assert_eq!(g.obj(junk).zone, Zone::Graveyard);
+    assert_eq!(g.power(angel), 3, "a -1/-1 counter");
+    assert_eq!(g.obj(elves).zone, Zone::Graveyard);
+    assert_eq!(g.obj(mine).zone, Zone::Battlefield, "only the opponent's");
+    // Cycling {2} from the hand draws a card.
+    let fiend = hand(&mut g, 0, "Archfiend of Ifnir");
+    let n = g.players[0].hand.len();
+    act(&mut g, Action::Activate(fiend, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(fiend).zone, Zone::Graveyard);
+    assert_eq!(g.players[0].hand.len(), n, "cycled one, drew one");
+    assert_eq!(
+        g.power(angel),
+        2,
+        "cycling discards: the Archfiend on the battlefield triggers"
+    );
+}
+
+#[test]
+fn the_meathook_massacre_shrinks_by_x_and_drains_on_deaths() {
+    let mut g = table();
+    let mine = put(&mut g, 0, "Llanowar Elves");
+    let theirs = put(&mut g, 1, "Llanowar Elves");
+    let angel = put(&mut g, 1, "Serra Angel");
+    let m = hand(&mut g, 0, "The Meathook Massacre");
+    act(&mut g, Action::CastX(m, 2));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(m).zone, Zone::Battlefield);
+    assert_eq!(
+        (g.obj(mine).zone, g.obj(theirs).zone),
+        (Zone::Graveyard, Zone::Graveyard)
+    );
+    assert_eq!(g.power(angel), 2, "-2/-2");
+    assert_eq!(g.players[1].life, 39, "your creature died");
+    assert_eq!(g.players[0].life, 41, "their creature died");
+}
+
+#[test]
+fn wan_shi_tong_enters_with_x_counters_and_draws_half_x() {
+    let mut g = table();
+    let w = hand(&mut g, 0, "Wan Shi Tong, Librarian");
+    let n = g.players[0].hand.len();
+    act(&mut g, Action::CastX(w, 5));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(w).counters, 5);
+    assert_eq!(g.power(w), 6);
+    assert_eq!(g.players[0].hand.len(), n - 1 + 2, "half of 5, rounded down");
+    assert!(g.keywords(w).has(Keywords::FLYING.with(Keywords::VIGILANCE)));
+}
+
+#[test]
+fn korvold_sacrifices_another_permanent_and_grows_and_draws() {
+    let mut g = table();
+    let ring = put(&mut g, 0, "Sol Ring");
+    let elves = put(&mut g, 0, "Llanowar Elves");
+    let k = hand(&mut g, 0, "Korvold, Fae-Cursed King");
+    let n = g.players[0].hand.len();
+    act(&mut g, Action::Cast(k));
+    while !matches!(g.pending, Pending::Decide(0)) {
+        act(&mut g, Action::PassPriority);
+    }
+    let legal = g.legal_actions();
+    assert!(!legal.contains(&Action::Pick(k)), "another permanent");
+    assert!(legal.contains(&Action::Pick(elves)));
+    resolve_all(&mut g, &[Action::Pick(ring)]);
+    assert_eq!(g.obj(ring).zone, Zone::Graveyard);
+    assert_eq!(g.obj(k).counters, 1);
+    assert_eq!(g.players[0].hand.len(), n - 1 + 1);
+}
+
+#[test]
+fn savra_pays_2_life_for_an_edict_on_a_black_sacrifice_and_gains_on_a_green_one() {
+    let mut g = table();
+    put(&mut g, 0, "Savra, Queen of the Golgari");
+    let altar = put(&mut g, 0, "Altar of Dementia");
+    let entomber = put(&mut g, 0, "Vile Entomber"); // black
+    let elves = put(&mut g, 0, "Llanowar Elves"); // green
+    let angel = put(&mut g, 1, "Serra Angel");
+    act(&mut g, Action::ActivateWith(altar, 0, entomber));
+    act(&mut g, Action::Target(Target::Player(1)));
+    resolve_all(&mut g, &[Action::Yes]); // pay 2 life
+    assert_eq!(g.players[0].life, 38);
+    assert_eq!(g.obj(angel).zone, Zone::Graveyard, "their only creature");
+    act(&mut g, Action::ActivateWith(altar, 0, elves));
+    act(&mut g, Action::Target(Target::Player(1)));
+    resolve_all(&mut g, &[Action::Yes]); // gain 2 life
+    assert_eq!(g.players[0].life, 40);
+}
+
+#[test]
+fn benefactors_draught_untaps_all_creatures_and_draws_when_their_creature_blocks() {
+    let mut g = table();
+    let mine = put(&mut g, 0, "Llanowar Elves");
+    let theirs = put(&mut g, 1, "Serra Angel");
+    to_main1(&mut g, 5, 0);
+    g.objects[mine.0 as usize].tapped = true;
+    g.objects[theirs.0 as usize].tapped = true;
+    let b = hand(&mut g, 0, "Benefactor's Draught");
+    let n = g.players[0].hand.len();
+    play(&mut g, b, false, &[], &[]);
+    assert!(!g.obj(mine).tapped && !g.obj(theirs).tapped);
+    assert_eq!(g.players[0].hand.len(), n, "cast one, drew one");
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(mine));
+    act(&mut g, Action::FinishAttacks);
+    while !matches!(g.pending, Pending::DeclareBlockers(1)) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(
+        &mut g,
+        Action::Block {
+            blocker: theirs,
+            attacker: mine,
+        },
+    );
+    act(&mut g, Action::FinishBlocks);
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].hand.len(), n + 1, "their creature blocked");
+}
+
+#[test]
+fn well_rested_grows_the_creature_and_gains_and_draws_when_it_untaps() {
+    let mut g = table();
+    let elves = put(&mut g, 0, "Llanowar Elves");
+    let w = hand(&mut g, 0, "Well Rested");
+    play(&mut g, w, false, &[obj(elves)], &[]);
+    assert_eq!(g.obj(w).attached_to.map(|a| a.0), Some(elves));
+    g.objects[elves.0 as usize].tapped = true;
+    let n = g.players[0].hand.len();
+    to_main1(&mut g, 5, 0);
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(elves).counters, 2);
+    assert_eq!(g.players[0].life, 42);
+    assert_eq!(g.players[0].hand.len(), n + 2, "the draw step and Well Rested");
+}
+
+#[test]
+fn sphere_grid_counters_a_creature_that_hits_and_gives_countered_creatures_reach_and_trample() {
+    let mut g = table();
+    put(&mut g, 0, "Sphere Grid");
+    let elves = put(&mut g, 0, "Llanowar Elves");
+    g.objects[elves.0 as usize].since_turn = 0;
+    assert!(!g.keywords(elves).has(Keywords::TRAMPLE));
+    g.start_turn(5, 0);
+    attack_until_decision(&mut g, elves);
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].life, 39);
+    assert_eq!(g.obj(elves).counters, 1);
+    assert!(g.keywords(elves).has(Keywords::REACH.with(Keywords::TRAMPLE)));
+}
+
+#[test]
+fn rapacious_guest_makes_food_grows_on_food_and_drains_its_power_when_it_leaves() {
+    let mut g = table();
+    let guest = put(&mut g, 0, "Rapacious Guest");
+    g.objects[guest.0 as usize].since_turn = 0;
+    g.start_turn(5, 0);
+    attack_until_decision(&mut g, guest);
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].life, 38);
+    let food = tokens(&g, 0, "Food");
+    assert_eq!(food.len(), 1);
+    while g.step != Step::Main2 {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Activate(food[0], 0)); // {2}, {T}, sacrifice: gain 3
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(guest).counters, 1);
+    let grasp = hand(&mut g, 0, "Infernal Grasp");
+    play(
+        &mut g,
+        grasp,
+        false,
+        &[obj(guest)],
+        &[Action::Target(Target::Player(1))],
+    );
+    assert_eq!(g.obj(guest).zone, Zone::Graveyard);
+    assert_eq!(g.players[1].life, 35, "its power: 3");
+}
+
+#[test]
+fn klothys_exiles_a_graveyard_card_for_mana_or_a_drain() {
+    let mut g = table();
+    let k = put(&mut g, 0, "Klothys, God of Destiny");
+    assert!(!g.types_of(k).creature, "devotion 2 of 7");
+    let bolt = g.add_card(1, cid("Counterspell"), Zone::Graveyard);
+    let land = g.add_card(1, cid("Forest"), Zone::Graveyard);
+    to_main1(&mut g, 5, 0);
+    resolve_all(&mut g, &[Action::Target(obj(bolt))]);
+    assert_eq!(g.obj(bolt).zone, Zone::Exile);
+    assert_eq!((g.players[0].life, g.players[1].life), (42, 38));
+    to_main1(&mut g, 7, 0);
+    let pool = g.players[0].pool.len();
+    resolve_all(&mut g, &[Action::Target(obj(land))]);
+    assert_eq!(g.obj(land).zone, Zone::Exile);
+    assert_eq!(g.players[0].pool.len(), pool + 1, "{{R}} or {{G}}");
+    assert_eq!(g.players[0].life, 42, "a land: no drain");
+}
+
+#[test]
+fn ripples_of_undeath_mills_three_and_pays_to_keep_one() {
+    let mut g = table();
+    put(&mut g, 0, "Ripples of Undeath");
+    let a = g.add_card(0, cid("Counterspell"), Zone::Library);
+    let b = g.add_card(0, cid("Entomb"), Zone::Library);
+    let c = g.add_card(0, cid("Opt"), Zone::Library);
+    g.add_card(0, cid("Plains"), Zone::Library); // the draw step's
+    to_main1(&mut g, 5, 0);
+    resolve_all(&mut g, &[Action::Yes, Action::Pick(b)]);
+    assert_eq!(g.obj(b).zone, Zone::Hand);
+    assert_eq!((g.obj(a).zone, g.obj(c).zone), (Zone::Graveyard, Zone::Graveyard));
+    assert_eq!(g.players[0].life, 37);
+    // Declining keeps the life.
+    to_main1(&mut g, 7, 0);
+    resolve_all(&mut g, &[Action::No]);
+    assert_eq!(g.players[0].life, 37);
+}
+
+// ---- Core theme d3, batch 14 ----
+
+#[test]
+fn professor_onyx_magecraft_drains_and_her_abilities_work() {
+    let mut g = table();
+    let elves = put(&mut g, 1, "Llanowar Elves");
+    let angel = put(&mut g, 1, "Serra Angel");
+    let a = g.add_card(0, cid("Counterspell"), Zone::Library);
+    let b = g.add_card(0, cid("Entomb"), Zone::Library);
+    let c = g.add_card(0, cid("Opt"), Zone::Library);
+    let onyx = hand(&mut g, 0, "Professor Onyx");
+    play(&mut g, onyx, false, &[], &[]);
+    act(&mut g, Action::Loyalty(onyx, 0)); // +1
+    resolve_all(&mut g, &[Action::Pick(c)]);
+    assert_eq!(g.players[0].life, 39);
+    assert_eq!(g.obj(c).zone, Zone::Hand);
+    assert_eq!((g.obj(a).zone, g.obj(b).zone), (Zone::Graveyard, Zone::Graveyard));
+    play(&mut g, c, false, &[], &[Action::No]); // Opt: keep the top card
+    assert_eq!((g.players[0].life, g.players[1].life), (41, 38), "magecraft");
+    to_main1(&mut g, 5, 0);
+    act(&mut g, Action::Loyalty(onyx, 1)); // −3
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(angel).zone, Zone::Graveyard, "the greatest power");
+    assert_eq!(g.obj(elves).zone, Zone::Battlefield);
+}
+
+/// Passes priority and answers every question with No (or the only answer) until the stack is empty.
+fn settle_declining(g: &mut Game) {
+    while !g.items.is_empty() || matches!(g.pending, Pending::Decide(_) | Pending::ChooseTarget(_)) {
+        let legal = g.legal_actions();
+        let a = match g.pending {
+            Pending::Decide(_) | Pending::ChooseTarget(_) if legal.contains(&Action::No) => Action::No,
+            Pending::Decide(_) | Pending::ChooseTarget(_) => legal[0],
+            _ => Action::PassPriority,
+        };
+        act(g, a);
+    }
+}
+
+#[test]
+fn flusterstorm_counters_only_instants_and_sorceries_unless_they_pay() {
+    let mut g = table();
+    let elves = hand(&mut g, 0, "Llanowar Elves");
+    let f = hand(&mut g, 0, "Flusterstorm");
+    act(&mut g, Action::Cast(elves));
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(f)),
+        "a creature spell isn't a legal target"
+    );
+    resolve_all(&mut g, &[]);
+    let opt = hand(&mut g, 0, "Opt");
+    let n = g.players[0].hand.len();
+    act(&mut g, Action::Cast(opt));
+    act(&mut g, Action::Cast(f));
+    act(&mut g, Action::Target(obj(opt)));
+    settle_declining(&mut g); // don't pay {1}
+    assert_eq!(
+        (g.obj(opt).zone, g.obj(f).zone),
+        (Zone::Graveyard, Zone::Graveyard)
+    );
+    assert_eq!(g.players[0].hand.len(), n - 2, "Opt was countered: no draw");
+}
+
+#[test]
+fn end_the_festivities_and_tectonic_hazard_ping_the_opponent_and_their_creatures() {
+    for name in ["End the Festivities", "Tectonic Hazard"] {
+        let mut g = table();
+        let theirs = put(&mut g, 1, "Llanowar Elves");
+        let angel = put(&mut g, 1, "Serra Angel");
+        let mine = put(&mut g, 0, "Llanowar Elves");
+        let c = hand(&mut g, 0, name);
+        play(&mut g, c, false, &[], &[]);
+        assert_eq!(g.obj(theirs).zone, Zone::Graveyard, "{name}");
+        assert_eq!(g.obj(angel).damage, 1);
+        assert_eq!(g.obj(mine).zone, Zone::Battlefield, "only theirs");
+        assert_eq!((g.players[0].life, g.players[1].life), (40, 39));
+    }
+}
+
+#[test]
+fn smash_to_dust_destroys_an_artifact_or_a_defender_or_pings_their_creatures() {
+    let mut g = table();
+    let ring = put(&mut g, 1, "Sol Ring");
+    let wall = put(&mut g, 1, "Wall of Reverence");
+    let angel = put(&mut g, 1, "Serra Angel");
+    let elves = put(&mut g, 1, "Llanowar Elves");
+    let c = hand(&mut g, 0, "Smash to Dust");
+    act(&mut g, Action::CastModal(c, 0));
+    act(&mut g, Action::Target(obj(ring)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(ring).zone, Zone::Graveyard);
+    let c = hand(&mut g, 0, "Smash to Dust");
+    act(&mut g, Action::CastModal(c, 1));
+    let legal = g.legal_actions();
+    assert!(
+        legal.contains(&Action::Target(obj(wall))) && !legal.contains(&Action::Target(obj(angel))),
+        "defender only"
+    );
+    act(&mut g, Action::Target(obj(wall)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(wall).zone, Zone::Graveyard);
+    let c = hand(&mut g, 0, "Smash to Dust");
+    act(&mut g, Action::CastModal(c, 2));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(elves).zone, Zone::Graveyard);
+    assert_eq!((g.obj(angel).damage, g.players[1].life), (1, 40));
+}
+
+#[test]
+fn debt_to_the_deathless_drains_two_times_x() {
+    let mut g = table();
+    let c = hand(&mut g, 0, "Debt to the Deathless");
+    act(&mut g, Action::CastX(c, 3));
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.players[0].life, g.players[1].life), (46, 34));
+}
+
+#[test]
+fn wall_of_reverence_gains_life_equal_to_a_creatures_power_at_your_end_step() {
+    let mut g = table();
+    put(&mut g, 0, "Wall of Reverence");
+    let angel = put(&mut g, 0, "Serra Angel");
+    while !matches!(g.pending, Pending::ChooseTarget(_)) {
+        let a = match g.pending {
+            Pending::DeclareAttackers(_) => Action::FinishAttacks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.step, Step::End);
+    resolve_all(&mut g, &[Action::Target(obj(angel)), Action::Yes]);
+    assert_eq!(g.players[0].life, 44);
+}
+
+#[test]
+fn buried_ruin_returns_an_artifact_card_from_your_graveyard() {
+    let mut g = table();
+    let ruin = put(&mut g, 0, "Buried Ruin");
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Graveyard);
+    let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Graveyard);
+    act(&mut g, Action::Activate(ruin, 0));
+    assert!(
+        !g.legal_actions().contains(&Action::Target(obj(elves))),
+        "artifact cards only"
+    );
+    act(&mut g, Action::Target(obj(ring)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        (g.obj(ring).zone, g.obj(ruin).zone),
+        (Zone::Hand, Zone::Graveyard)
+    );
+}
+
+#[test]
+fn tomb_of_the_spirit_dragon_gains_one_per_colorless_creature() {
+    let mut g = table();
+    let tomb = put(&mut g, 0, "Tomb of the Spirit Dragon");
+    put(&mut g, 0, "Spellskite");
+    put(&mut g, 0, "Spellskite");
+    put(&mut g, 0, "Llanowar Elves");
+    act(&mut g, Action::Activate(tomb, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].life, 42);
+}
+
+#[test]
+fn zhalfirin_void_scries_1_on_entering_and_taps_for_colorless() {
+    let mut g = table();
+    let top = g.add_card(0, cid("Counterspell"), Zone::Library);
+    let v = hand(&mut g, 0, "Zhalfirin Void");
+    act(&mut g, Action::PlayLand(v));
+    resolve_all(&mut g, &[Action::Yes]); // to the bottom
+    assert_eq!(g.players[0].library[0], top);
+    assert_eq!(colors(&g, v), [false; 5], "colorless");
+}
+
+#[test]
+fn all_is_dust_sacrifices_every_colored_permanent() {
+    let mut g = table();
+    let ring = put(&mut g, 0, "Sol Ring");
+    let mine = put(&mut g, 0, "Llanowar Elves");
+    let theirs = put(&mut g, 1, "Serra Angel");
+    let c = hand(&mut g, 0, "All Is Dust");
+    play(&mut g, c, false, &[], &[]);
+    assert_eq!(
+        (g.obj(mine).zone, g.obj(theirs).zone),
+        (Zone::Graveyard, Zone::Graveyard)
+    );
+    assert_eq!(g.obj(ring).zone, Zone::Battlefield, "colorless");
+    assert_eq!(
+        g.permanents(1).filter(|&x| g.types_of(x).land).count(),
+        25,
+        "lands are colorless"
+    );
+}
+
+#[test]
+fn bane_of_bala_ged_makes_the_defender_exile_two_permanents() {
+    let mut g = table();
+    let bane = put(&mut g, 0, "Bane of Bala Ged");
+    g.objects[bane.0 as usize].since_turn = 0;
+    let angel = put(&mut g, 1, "Serra Angel");
+    let ring = put(&mut g, 1, "Sol Ring");
+    g.start_turn(5, 0);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(bane));
+    act(&mut g, Action::FinishAttacks);
+    while g.pending != Pending::Decide(1) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Pick(angel));
+    act(&mut g, Action::Pick(ring));
+    assert_eq!((g.obj(angel).zone, g.obj(ring).zone), (Zone::Exile, Zone::Exile));
+}
+
+#[test]
+fn portal_to_phyrexia_edicts_three_and_reanimates_each_upkeep_as_a_phyrexian() {
+    let mut g = table();
+    let a = put(&mut g, 1, "Serra Angel");
+    let b = put(&mut g, 1, "Llanowar Elves");
+    let c = put(&mut g, 1, "Consecrated Sphinx");
+    let portal = hand(&mut g, 0, "Portal to Phyrexia");
+    play(&mut g, portal, false, &[], &[]);
+    assert!([a, b, c].iter().all(|&x| g.obj(x).zone == Zone::Graveyard));
+    g.start_turn(5, 0);
+    while !matches!(g.pending, Pending::ChooseTarget(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    resolve_all(&mut g, &[Action::Target(obj(a))]);
+    assert_eq!(g.obj(a).zone, Zone::Battlefield);
+    assert_eq!(g.obj(a).controller, 0);
+    assert!(g.has_subtype(a, "Phyrexian") && g.has_subtype(a, "Angel"));
+}

@@ -495,6 +495,113 @@ pub fn script(name: &str) -> Option<Script> {
                 may(d, When::EnchantedDealsDamageToOpponent, vec![], vec![draw(1)]);
             },
         ),
+        // ---- Core: triggers, batch 10 (life and board conditions, enters tapped, nontoken sacrifice) ----
+        "Witch of the Moors" => s(
+            &["At the beginning of your end step, if you gained life this turn, each opponent sacrifices a creature of their choice and you return up to one target creature card from your graveyard to your hand."],
+            |d, _| {
+                let mut ability = up_to(
+                    vec![graveyard_cards(true, Controller::You)],
+                    vec![Effect::SacrificeCreatures { who: Who::EachOpponent, n: 1 }, Effect::Bounce(0)],
+                );
+                ability.condition = Some(Condition::YouGainedLifeThisTurn);
+                d.triggers.push(Trigger { when: When::EndStep { your_turn_only: true }, ability });
+            },
+        ),
+        "Felidar Sovereign" => s(&["At the beginning of your upkeep, if you have 40 or more life, you win the game."], |d, _| {
+            conditional(d, When::Upkeep { your_turn_only: true }, Condition::LifeAtLeast(40), vec![], vec![Effect::WinTheGame])
+        }),
+        "Test of Endurance" => s(&["At the beginning of your upkeep, if you have 50 or more life, you win the game."], |d, _| {
+            conditional(d, When::Upkeep { your_turn_only: true }, Condition::LifeAtLeast(50), vec![], vec![Effect::WinTheGame])
+        }),
+        "Pyrohemia" => s(
+            &[
+                "At the beginning of the end step, if no creatures are on the battlefield, sacrifice this enchantment.",
+                "{R}: This enchantment deals 1 damage to each creature and each player.",
+            ],
+            |d, _| {
+                let end = When::EndStep { your_turn_only: false };
+                conditional(d, end, Condition::NoCreaturesOnBattlefield, vec![], vec![Effect::SacrificeSource]);
+                let each = vec![damage(1, Recipient::EachCreature { without_flying: false }), damage(1, Recipient::EachPlayer)];
+                activated(d, "{R}", false, vec![], each);
+            },
+        ),
+        "Vizkopa Guildmage" => s(
+            &[
+                "{1}{W}{B}: Target creature gains lifelink until end of turn.",
+                "{1}{W}{B}: Whenever you gain life this turn, each opponent loses that much life.",
+            ],
+            |d, _| {
+                // Trigger 0: the delayed "whenever you gain life this turn" (the amount is the life gained).
+                on(d, When::Never, vec![], vec![Effect::LoseLifeAmount(Who::EachOpponent)]);
+                activated(d, "{1}{W}{B}", false, vec![CREATURE], vec![Effect::Grant { slot: 0, keywords: Keywords::LIFELINK }]);
+                let delayed = Effect::DelayedThisTurn { when: When::YouGainLife, trigger: 0 };
+                activated(d, "{1}{W}{B}", false, vec![], vec![delayed]);
+            },
+        ),
+        "Amulet of Vigor" => s(&["Whenever a permanent you control enters tapped, untap it."], |d, _| {
+            let it = Filter {
+                triggering: true,
+                any_permanent: true,
+                players: false,
+                creatures: false,
+                planeswalkers: false,
+                controller: Controller::You,
+                ..Filter::ANY
+            };
+            on(d, When::PermanentYouControlEntersTapped, vec![it], vec![Effect::UntapTarget(0)]);
+        }),
+        "Skittering Precursor" => s(
+            &[
+                "Devoid",
+                "Whenever you sacrifice a nontoken permanent, create a 0/1 colorless Eldrazi Spawn creature token with \"Sacrifice this token: Add {C}.\"",
+            ],
+            |d, t| {
+                // Devoid: the card's colors are already none (CR 702.114a).
+                d.colors = [false; 5];
+                let spawn = Effect::CreateToken { who: Who::You, def: t.eldrazi_spawn, n: 1 };
+                on(d, When::YouSacrificeNontoken, vec![], vec![spawn]);
+            },
+        ),
+        "It That Betrays" => s(
+            &["Annihilator 2", "Whenever an opponent sacrifices a nontoken permanent, put that card onto the battlefield under your control."],
+            |d, _| {
+                on(d, When::Attacks, vec![], vec![Effect::SacrificePermanents { who: Who::EachOpponent, n: 2 }]);
+                let that = Filter { triggering: true, ..graveyard_cards(false, Controller::Any) };
+                on(d, When::OpponentSacrificesNontoken, vec![that], vec![Effect::Reanimate(0)]);
+            },
+        ),
+        "Glaring Fleshraker" => s(
+            &[
+                "Whenever you cast a colorless spell, create a 0/1 colorless Eldrazi Spawn creature token with \"Sacrifice this token: Add {C}.\"",
+                "Whenever another colorless creature you control enters, this creature deals 1 damage to each opponent.",
+            ],
+            |d, t| {
+                let spawn = Effect::CreateToken { who: Who::You, def: t.eldrazi_spawn, n: 1 };
+                on(d, When::YouCastColorless, vec![], vec![spawn]);
+                on(d, When::AnotherColorlessCreatureYouControlEnters, vec![], vec![damage(1, Recipient::EachOpponent)]);
+            },
+        ),
+        "Aurelia, the Warleader" => s(
+            &["Whenever Aurelia attacks for the first time each turn, untap all creatures you control. After this phase, there is an additional combat phase."],
+            |d, _| {
+                let effects = vec![Effect::UntapCreaturesYouControl, Effect::AdditionalCombatAfterThisPhase];
+                on(d, When::AttacksFirstTimeEachTurn, vec![], effects);
+            },
+        ),
+        "Ghyrson Starn, Kelermorph" => s(
+            &[
+                "Ward {2}",
+                "Three Autostubs — Whenever another source you control deals exactly 1 damage to a permanent or player, Ghyrson Starn deals 2 damage to that permanent or player.",
+            ],
+            |d, _| {
+                d.ward = ManaCost::parse("{2}");
+                let that = Filter { triggering: true, any_permanent: true, ..Filter::ANY };
+                on(d, When::AnotherSourceYouControlDealsExactlyOne, vec![that], vec![damage(2, Recipient::Target(0))]);
+            },
+        ),
+        "Graf Mole" => s(&["Whenever you sacrifice a Clue, you gain 3 life."], |d, _| {
+            on(d, When::YouSacrificeSubtype("Clue"), vec![], vec![Effect::GainLife { who: Who::You, n: 3 }])
+        }),
         // ---- The Gitrog, Ravenous Ride ----
         "Demonic Tutor" => s(&["Search your library for a card, put that card into your hand, then shuffle."], |d, _| {
             spell(d, vec![], vec![search(SearchFor::Any, SearchTo::Hand)])
@@ -919,6 +1026,19 @@ pub const PG_D2_SCRIPTED: &[&str] = &[
     "Chandra's Spitfire",
     "Curiosity",
     "Ophidian Eye",
+    // Core: triggers, batch 10
+    "Witch of the Moors",
+    "Felidar Sovereign",
+    "Test of Endurance",
+    "Pyrohemia",
+    "Vizkopa Guildmage",
+    "Amulet of Vigor",
+    "Skittering Precursor",
+    "It That Betrays",
+    "Glaring Fleshraker",
+    "Aurelia, the Warleader",
+    "Ghyrson Starn, Kelermorph",
+    "Graf Mole",
     // The Gitrog, Ravenous Ride
     "Demonic Tutor",
     "Exquisite Blood",
