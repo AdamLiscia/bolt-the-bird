@@ -1,0 +1,897 @@
+[
+ {
+  "card": "Necropotence",
+  "deck": "Ygra, Eater of All",
+  "missing": "skip your draw step; a 'whenever you discard a card' trigger that exiles it; pay 1 life: exile top face down, to hand at your next end step"
+ },
+ {
+  "card": "Green Sun's Zenith",
+  "deck": "Ygra, Eater of All",
+  "missing": "a color filter in searches (green creature card with mana value X or less)"
+ },
+ {
+  "card": "Syr Konrad, the Grim",
+  "deck": "Ygra, Eater of All",
+  "missing": "a trigger on another creature dying, a creature card put into a graveyard from anywhere else, or a creature card leaving your graveyard"
+ },
+ {
+  "card": "Tooth and Nail",
+  "deck": "Ygra, Eater of All",
+  "missing": "an effect: put up to two creature cards from your hand onto the battlefield"
+ },
+ {
+  "card": "Bane of Progress",
+  "deck": "Ygra, Eater of All",
+  "missing": "an effect: destroy all artifacts and enchantments, then +1/+1 counters for each permanent destroyed"
+ },
+ {
+  "card": "Academy Manufactor",
+  "deck": "Ygra, Eater of All",
+  "missing": "a Clue/Food/Treasure token replacement (create one of each); a Clue artifact token"
+ },
+ {
+  "card": "Braids, Arisen Nightmare",
+  "deck": "Ygra, Eater of All",
+  "missing": "an end-step 'sacrifice a permanent of a type, opponent sacrifices one sharing a type or loses 2 and you draw' effect"
+ },
+ {
+  "card": "Marionette Apprentice",
+  "deck": "Ygra, Eater of All",
+  "missing": "fabricate N; a 1/1 colorless Servo artifact creature token; a trigger on another creature or artifact you control going to the graveyard from the battlefield"
+ },
+ {
+  "card": "Pitiless Plunderer",
+  "deck": "Ygra, Eater of All",
+  "missing": "a trigger 'whenever another creature you control dies' that includes tokens (CreatureYouControlDies fires on its own death too)"
+ },
+ {
+  "card": "Chatterfang, Squirrel General",
+  "deck": "Ygra, Eater of All",
+  "missing": "a token-creation replacement (plus that many 1/1 Squirrels); 'Sacrifice X Squirrels' as a cost"
+ },
+ {
+  "card": "Hardened Scales",
+  "deck": "Ygra, Eater of All",
+  "missing": "a +1/+1 counter replacement (that many plus one)"
+ },
+ {
+  "card": "Marionette Master",
+  "deck": "Ygra, Eater of All",
+  "missing": "fabricate N; a 1/1 colorless Servo artifact creature token; an artifact-you-control-to-graveyard trigger; lose life equal to this creature's power"
+ },
+ {
+  "card": "Viridian Revel",
+  "deck": "Ygra, Eater of All",
+  "missing": "a trigger on an artifact going to an opponent's graveyard from the battlefield"
+ },
+ {
+  "card": "Woe Strider",
+  "deck": "Ygra, Eater of All",
+  "missing": "a 0/1 white Goat creature token; escape"
+ },
+ {
+  "card": "Cranial Plating",
+  "deck": "Ygra, Eater of All",
+  "missing": "a static +1/+0 for each artifact you control (scale by artifacts)"
+ },
+ {
+  "card": "Disciple of the Vault",
+  "deck": "Ygra, Eater of All",
+  "missing": "a trigger on an artifact going to a graveyard from the battlefield"
+ },
+ {
+  "card": "Peregrin Took",
+  "deck": "Ygra, Eater of All",
+  "missing": "a token-creation replacement (plus a Food); 'Sacrifice three Foods' as a cost"
+ },
+ {
+  "card": "Ygra, Eater of All",
+  "deck": "Ygra, Eater of All",
+  "missing": "ward—sacrifice a Food; other creatures are Food artifacts with the Food ability; a Food-to-graveyard trigger"
+ },
+ {
+  "card": "Camellia, the Seedmiser",
+  "deck": "Ygra, Eater of All",
+  "missing": "a 'whenever you sacrifice one or more Foods' trigger; forage as a cost"
+ },
+ {
+  "card": "Creeping Corrosion",
+  "deck": "Ygra, Eater of All",
+  "missing": "an effect: destroy all artifacts (every player's)"
+ },
+ {
+  "card": "Fade from History",
+  "deck": "Ygra, Eater of All",
+  "missing": "an effect: each player with an artifact or enchantment creates a 2/2 green Bear creature token, then destroy all artifacts and enchantments"
+ },
+ {
+  "card": "Feed the Cycle",
+  "deck": "Ygra, Eater of All",
+  "missing": "an additional cost: forage or pay {B}"
+ },
+ {
+  "card": "Pippin, Warden of Isengard",
+  "deck": "Ygra, Eater of All",
+  "missing": "'Sacrifice four Foods' as a cost"
+ },
+ {
+  "card": "Rapacious Guest",
+  "deck": "Ygra, Eater of All",
+  "missing": "a 'whenever you sacrifice a Food' trigger; leaves-the-battlefield 'target opponent loses life equal to its power'"
+ },
+ {
+  "card": "Savra, Queen of the Golgari",
+  "deck": "Ygra, Eater of All",
+  "missing": "triggers on sacrificing a black or a green creature"
+ },
+ {
+  "card": "Savvy Hunter",
+  "deck": "Ygra, Eater of All",
+  "missing": "'Sacrifice two Foods' as a cost"
+ },
+ {
+  "card": "Seeds of Innocence",
+  "deck": "Ygra, Eater of All",
+  "missing": "an effect: destroy all artifacts, no regeneration, each controller gains life equal to its mana value"
+ },
+ {
+  "card": "Summoning Station",
+  "deck": "Ygra, Eater of All",
+  "missing": "a 2/2 colorless Pincher creature token; a trigger on an artifact going to a graveyard from the battlefield"
+ },
+ {
+  "card": "The Shire",
+  "deck": "Ygra, Eater of All",
+  "missing": "enters tapped unless you control a legendary creature; 'tap an untapped creature you control' as a cost"
+ },
+ {
+  "card": "Wave of Vitriol",
+  "deck": "Ygra, Eater of All",
+  "missing": "an effect: each player sacrifices artifacts, enchantments and nonbasic lands, then may fetch a basic per land"
+ },
+ {
+  "card": "Nykthos, Shrine to Nyx",
+  "deck": "Raggadragga, Goreguts Boss",
+  "missing": "devotion mana (mana equal to your devotion to a chosen color)"
+ },
+ {
+  "card": "Sylvan Library",
+  "deck": "Raggadragga, Goreguts Boss",
+  "missing": "draw-step draw two extra, then pay 4 life or put back each of two cards drawn this turn"
+ },
+ {
+  "card": "Cavern of Souls",
+  "deck": "Raggadragga, Goreguts Boss",
+  "missing": "chosen-type mana that makes the spell uncounterable"
+ },
+ {
+  "card": "Survival of the Fittest",
+  "deck": "Raggadragga, Goreguts Boss",
+  "missing": "'Discard a creature card' as a cost"
+ },
+ {
+  "card": "Finale of Devastation",
+  "deck": "Raggadragga, Goreguts Boss",
+  "missing": "search library and/or graveyard; if X is 10 or more, pump and haste"
+ },
+ {
+  "card": "Natural Order",
+  "deck": "Raggadragga, Goreguts Boss",
+  "missing": "an additional cost: sacrifice a green creature; a green creature card search"
+ },
+ {
+  "card": "Nyxbloom Ancient",
+  "deck": "Raggadragga, Goreguts Boss",
+  "missing": "a mana-tripling replacement"
+ },
+ {
+  "card": "Rhythm of the Wild",
+  "deck": "Raggadragga, Goreguts Boss",
+  "missing": "creature spells you control can't be countered; riot for nontoken creatures"
+ },
+ {
+  "card": "Chord of Calling",
+  "deck": "Raggadragga, Goreguts Boss",
+  "missing": "convoke"
+ },
+ {
+  "card": "Imperial Recruiter",
+  "deck": "Raggadragga, Goreguts Boss",
+  "missing": "a search for a creature card with power 2 or less"
+ },
+ {
+  "card": "Regal Force",
+  "deck": "Raggadragga, Goreguts Boss",
+  "missing": "draw a card for each green creature you control"
+ },
+ {
+  "card": "Thousand-Year Elixir",
+  "deck": "Raggadragga, Goreguts Boss",
+  "missing": "activate creatures' abilities as though they had haste"
+ },
+ {
+  "card": "Walking Ballista",
+  "deck": "Raggadragga, Goreguts Boss",
+  "missing": "'Remove a +1/+1 counter from this creature' as a cost"
+ },
+ {
+  "card": "Inkmoth Nexus",
+  "deck": "Raggadragga, Goreguts Boss",
+  "missing": "infect on an animated land (Phyrexian Blinkmoth artifact creature with flying and infect)"
+ },
+ {
+  "card": "Jeska's Will",
+  "deck": "Raggadragga, Goreguts Boss",
+  "missing": "add {R} for each card in target opponent's hand; exile top three, playable this turn"
+ },
+ {
+  "card": "Kami of Whispered Hopes",
+  "deck": "Raggadragga, Goreguts Boss",
+  "missing": "a +1/+1 counter replacement; X mana of any one color, X its power"
+ },
+ {
+  "card": "Rise of the Eldrazi",
+  "deck": "Raggadragga, Goreguts Boss",
+  "missing": "the {C} mana symbol in costs (ManaCost::parse)"
+ },
+ {
+  "card": "Umbral Mantle",
+  "deck": "Raggadragga, Goreguts Boss",
+  "missing": "the {Q} untap symbol in a granted cost"
+ },
+ {
+  "card": "Allosaurus Shepherd",
+  "deck": "Raggadragga, Goreguts Boss",
+  "missing": "green spells you control can't be countered; Elves become 5/5 Dinosaurs"
+ },
+ {
+  "card": "Benefactor's Draught",
+  "deck": "Raggadragga, Goreguts Boss",
+  "missing": "untap all creatures; a 'whenever a creature an opponent controls blocks, draw' delayed trigger"
+ },
+ {
+  "card": "Blood Moon",
+  "deck": "Raggadragga, Goreguts Boss",
+  "missing": "nonbasic lands are Mountains"
+ },
+ {
+  "card": "Boom // Bust",
+  "deck": "Raggadragga, Goreguts Boss",
+  "missing": "split cards"
+ },
+ {
+  "card": "Bramble Familiar // Fetch Quest",
+  "deck": "Raggadragga, Goreguts Boss",
+  "missing": "adventure cards"
+ },
+ {
+  "card": "Comet Storm",
+  "deck": "Raggadragga, Goreguts Boss",
+  "missing": "multikicker"
+ },
+ {
+  "card": "Cradle Clearcutter",
+  "deck": "Raggadragga, Goreguts Boss",
+  "missing": "prototype"
+ },
+ {
+  "card": "Enduring Courage",
+  "deck": "Raggadragga, Goreguts Boss",
+  "missing": "pump and haste the entering creature; return as a non-creature enchantment when it dies"
+ },
+ {
+  "card": "Grove of the Burnwillows",
+  "deck": "Raggadragga, Goreguts Boss",
+  "missing": "colored mana that gives each opponent 1 life"
+ },
+ {
+  "card": "Heronblade Elite",
+  "deck": "Raggadragga, Goreguts Boss",
+  "missing": "X mana of any one color, X its power (mana_equal_power is green only)"
+ },
+ {
+  "card": "Invasion of Ikoria // Zilortha, Apex of Ikoria",
+  "deck": "Raggadragga, Goreguts Boss",
+  "missing": "battles (Siege)"
+ },
+ {
+  "card": "Last March of the Ents",
+  "deck": "Raggadragga, Goreguts Boss",
+  "missing": "draw equal to greatest toughness; put any number of creature cards from hand onto the battlefield"
+ },
+ {
+  "card": "Leyline of Abundance",
+  "deck": "Raggadragga, Goreguts Boss",
+  "missing": "an extra {G} whenever you tap a creature for mana"
+ },
+ {
+  "card": "Panglacial Wurm",
+  "deck": "Raggadragga, Goreguts Boss",
+  "missing": "cast from your library while searching"
+ },
+ {
+  "card": "Priest of Titania",
+  "deck": "Raggadragga, Goreguts Boss",
+  "missing": "{G} for each Elf on the battlefield (both players')"
+ },
+ {
+  "card": "Raggadragga, Goreguts Boss",
+  "deck": "Raggadragga, Goreguts Boss",
+  "missing": "statics and triggers for creatures with a mana ability; a 'seven or more mana spent' cast trigger"
+ },
+ {
+  "card": "Return of the Wildspeaker",
+  "deck": "Raggadragga, Goreguts Boss",
+  "missing": "non-Human filters (greatest power, pump)"
+ },
+ {
+  "card": "Signal the Clans",
+  "deck": "Raggadragga, Goreguts Boss",
+  "missing": "search three creature cards with different names, one at random to hand"
+ },
+ {
+  "card": "Song of Totentanz",
+  "deck": "Raggadragga, Goreguts Boss",
+  "missing": "a 1/1 black Rat creature token with 'This token can't block.'"
+ },
+ {
+  "card": "Sword of the Paruns",
+  "deck": "Raggadragga, Goreguts Boss",
+  "missing": "statics conditioned on the equipped creature being tapped/untapped"
+ },
+ {
+  "card": "Topiary Lecturer",
+  "deck": "Raggadragga, Goreguts Boss",
+  "missing": "increment"
+ },
+ {
+  "card": "Turntimber Symbiosis // Turntimber, Serpentine Wood",
+  "deck": "Raggadragga, Goreguts Boss",
+  "missing": "look at top seven, creature onto the battlefield with three extra counters if mana value 3 or less"
+ },
+ {
+  "card": "Farewell",
+  "deck": "Atla Palani, Nest Tender",
+  "missing": "'choose one or more' exile-all modes"
+ },
+ {
+  "card": "Kozilek, Butcher of Truth",
+  "deck": "Atla Palani, Nest Tender",
+  "missing": "annihilator; shuffle your graveyard into your library when put into a graveyard from anywhere"
+ },
+ {
+  "card": "Nesting Dragon",
+  "deck": "Atla Palani, Nest Tender",
+  "missing": "a 0/2 red Dragon Egg creature token with defender that dies into a 2/2 red Dragon creature token with flying and firebreathing"
+ },
+ {
+  "card": "Overgrown Farmland",
+  "deck": "Atla Palani, Nest Tender",
+  "missing": "enters tapped unless you control two or more other lands"
+ },
+ {
+  "card": "Atla Palani, Nest Tender",
+  "deck": "Atla Palani, Nest Tender",
+  "missing": "a 0/1 green Egg creature token with defender; an 'Egg you control dies' reveal-until-creature trigger"
+ },
+ {
+  "card": "Elesh Norn, Mother of Machines",
+  "deck": "Atla Palani, Nest Tender",
+  "missing": "permanents entering don't trigger opponents' abilities"
+ },
+ {
+  "card": "Harmonic Prodigy",
+  "deck": "Atla Palani, Nest Tender",
+  "missing": "trigger doubling for Shamans and other Wizards"
+ },
+ {
+  "card": "Mirror Entity",
+  "deck": "Atla Palani, Nest Tender",
+  "missing": "{X}: creatures you control become base X/X with all creature types"
+ },
+ {
+  "card": "Rith's Grove",
+  "deck": "Atla Palani, Nest Tender",
+  "missing": "a karoo that must return a non-Lair land or is sacrificed"
+ },
+ {
+  "card": "Bogardan Dragonheart",
+  "deck": "Atla Palani, Nest Tender",
+  "missing": "becomes a Dragon (types replaced) with base 4/4, flying, haste"
+ },
+ {
+  "card": "Cabaretti Courtyard",
+  "deck": "Atla Palani, Nest Tender",
+  "missing": "sacrifice on enter with a reflexive fetch and life gain"
+ },
+ {
+  "card": "Delney, Streetwise Lookout",
+  "deck": "Atla Palani, Nest Tender",
+  "missing": "blocking restriction by power; trigger doubling for power 2 or less"
+ },
+ {
+  "card": "Dinosaur Egg",
+  "deck": "Atla Palani, Nest Tender",
+  "missing": "discover X"
+ },
+ {
+  "card": "Drumbellower",
+  "deck": "Atla Palani, Nest Tender",
+  "missing": "untap all creatures you control during each other player's untap step"
+ },
+ {
+  "card": "Instill Energy",
+  "deck": "Atla Palani, Nest Tender",
+  "missing": "an Aura granting haste-attacking and a once-per-turn untap"
+ },
+ {
+  "card": "Irregular Cohort",
+  "deck": "Atla Palani, Nest Tender",
+  "missing": "changeling; a 2/2 colorless Shapeshifter creature token with changeling"
+ },
+ {
+  "card": "Masked Vandal",
+  "deck": "Atla Palani, Nest Tender",
+  "missing": "changeling"
+ },
+ {
+  "card": "Maskwood Nexus",
+  "deck": "Atla Palani, Nest Tender",
+  "missing": "creatures are every creature type; a 2/2 blue Shapeshifter creature token with changeling"
+ },
+ {
+  "card": "Moonsilver Key",
+  "deck": "Atla Palani, Nest Tender",
+  "missing": "a search for an artifact card with a mana ability or a basic land"
+ },
+ {
+  "card": "Ojer Taq, Deepest Foundation // Temple of Civilization",
+  "deck": "Atla Palani, Nest Tender",
+  "missing": "creature-token tripling; return transformed when it dies"
+ },
+ {
+  "card": "Palani's Hatcher",
+  "deck": "Atla Palani, Nest Tender",
+  "missing": "a 0/1 green Dinosaur Egg creature token; a 3/3 green Dinosaur creature token; sacrifice an Egg"
+ },
+ {
+  "card": "Spawning Pit",
+  "deck": "Atla Palani, Nest Tender",
+  "missing": "charge counters; a 2/2 colorless Spawn artifact creature token"
+ },
+ {
+  "card": "Trostani, Selesnya's Voice",
+  "deck": "Atla Palani, Nest Tender",
+  "missing": "gain life equal to the entering creature's toughness; populate"
+ },
+ {
+  "card": "Wrath of God",
+  "deck": "Karador, Ghost Chieftain",
+  "missing": "destroy all creatures without regeneration (DestroyAllCreatures honors regeneration shields)"
+ },
+ {
+  "card": "Hornet Queen",
+  "deck": "Karador, Ghost Chieftain",
+  "missing": "a 1/1 green Insect creature token with flying and deathtouch"
+ },
+ {
+  "card": "Necromancy",
+  "deck": "Karador, Ghost Chieftain",
+  "missing": "Necromancy's enchantment-becomes-Aura reanimation"
+ },
+ {
+  "card": "Return to Dust",
+  "deck": "Karador, Ghost Chieftain",
+  "missing": "a second target only if cast during your main phase"
+ },
+ {
+  "card": "Ripples of Undeath",
+  "deck": "Karador, Ghost Chieftain",
+  "missing": "a first-main-phase trigger; mill then pay to keep one"
+ },
+ {
+  "card": "Sigarda, Host of Herons",
+  "deck": "Karador, Ghost Chieftain",
+  "missing": "opponents can't make you sacrifice"
+ },
+ {
+  "card": "Cataclysmic Gearhulk",
+  "deck": "Karador, Ghost Chieftain",
+  "missing": "each player keeps one of each nonland type and sacrifices the rest"
+ },
+ {
+  "card": "Elas il-Kor, Sadistic Pilgrim",
+  "deck": "Karador, Ghost Chieftain",
+  "missing": "a trigger 'whenever another creature you control dies' that includes tokens"
+ },
+ {
+  "card": "Gaddock Teeg",
+  "deck": "Karador, Ghost Chieftain",
+  "missing": "casting restrictions on noncreature spells"
+ },
+ {
+  "card": "Graveborn Muse",
+  "deck": "Karador, Ghost Chieftain",
+  "missing": "draw and lose life per Zombie you control"
+ },
+ {
+  "card": "Karador, Ghost Chieftain",
+  "deck": "Karador, Ghost Chieftain",
+  "missing": "cost reduction per creature card in graveyard; cast a creature from your graveyard once each turn"
+ },
+ {
+  "card": "Loxodon Hierarch",
+  "deck": "Karador, Ghost Chieftain",
+  "missing": "regenerate each creature you control"
+ },
+ {
+  "card": "Murmuring Bosk",
+  "deck": "Karador, Ghost Chieftain",
+  "missing": "a Treefolk-reveal snarl with a pain {W}/{B} and a free {G}"
+ },
+ {
+  "card": "Saffi Eriksdotter",
+  "deck": "Karador, Ghost Chieftain",
+  "missing": "a delayed 'when target creature is put into your graveyard this turn, return it' trigger"
+ },
+ {
+  "card": "The Necrobloom",
+  "deck": "Karador, Ghost Chieftain",
+  "missing": "landfall token choice by seven-plus differently named lands (2/2 black Zombie instead of the 0/1 Plant); dredge 2 for land cards"
+ },
+ {
+  "card": "Inexorable Tide",
+  "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+  "missing": "proliferate"
+ },
+ {
+  "card": "Strix Serenade",
+  "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+  "missing": "a spell filter for artifact, creature or planeswalker spells"
+ },
+ {
+  "card": "Jin-Gitaxias, Core Augur",
+  "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+  "missing": "opponents' maximum hand size reduced"
+ },
+ {
+  "card": "Dramatic Reversal",
+  "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+  "missing": "untap all nonland permanents you control (only yours)"
+ },
+ {
+  "card": "Isochron Scepter",
+  "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+  "missing": "imprint and copy-cast"
+ },
+ {
+  "card": "Narset, Parter of Veils",
+  "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+  "missing": "opponents can't draw more than one card each turn"
+ },
+ {
+  "card": "Aphetto Alchemist",
+  "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+  "missing": "morph"
+ },
+ {
+  "card": "Barbarian Ring",
+  "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+  "missing": "a threshold activation condition"
+ },
+ {
+  "card": "Behold the Multiverse",
+  "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+  "missing": "foretell"
+ },
+ {
+  "card": "Braid of Fire",
+  "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+  "missing": "cumulative upkeep"
+ },
+ {
+  "card": "Cephalid Coliseum",
+  "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+  "missing": "a threshold activation condition"
+ },
+ {
+  "card": "Dig Through Time",
+  "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+  "missing": "delve"
+ },
+ {
+  "card": "Disdainful Stroke",
+  "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+  "missing": "a minimum mana value spell filter"
+ },
+ {
+  "card": "Emry, Lurker of the Loch",
+  "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+  "missing": "affinity for artifacts; cast an artifact card from graveyard this turn"
+ },
+ {
+  "card": "Faerie Conclave",
+  "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+  "missing": "an animated land that becomes blue"
+ },
+ {
+  "card": "Fire // Ice",
+  "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+  "missing": "split cards"
+ },
+ {
+  "card": "Glimpse the Impossible",
+  "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+  "missing": "a 0/1 colorless Eldrazi Spawn creature token with 'Sacrifice this token: Add {C}'; exiled-cards-to-graveyard end-step trigger"
+ },
+ {
+  "card": "High Tide",
+  "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+  "missing": "extra {U} when a player taps an Island this turn"
+ },
+ {
+  "card": "Illusionist's Gambit",
+  "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+  "missing": "remove attackers from combat, extra combat with attack restrictions"
+ },
+ {
+  "card": "Into the Story",
+  "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+  "missing": "cost reduction if an opponent has seven or more cards in their graveyard"
+ },
+ {
+  "card": "Invert Polarity",
+  "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+  "missing": "coin flips; gain control of a spell"
+ },
+ {
+  "card": "Jin-Gitaxias // The Great Synthesis",
+  "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+  "missing": "a cast trigger for noncreature spells with mana value 3 or more; hand-size activation condition"
+ },
+ {
+  "card": "Jin-Gitaxias, Progress Tyrant",
+  "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+  "missing": "copy artifact/instant/sorcery spells; counter opponents' (once each turn)"
+ },
+ {
+  "card": "Magnus the Red",
+  "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+  "missing": "cost reduction per creature token; a 3/3 red Spawn creature token"
+ },
+ {
+  "card": "Mana Crypt",
+  "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+  "missing": "coin flips"
+ },
+ {
+  "card": "Mind Over Matter",
+  "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+  "missing": "'Discard a card' as a cost"
+ },
+ {
+  "card": "Mirran Spy",
+  "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+  "missing": "a 'whenever you cast an artifact spell' trigger"
+ },
+ {
+  "card": "Mystic Sanctuary",
+  "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+  "missing": "enters tapped unless three or more other Islands; an 'enters untapped' trigger"
+ },
+ {
+  "card": "Nesting Grounds",
+  "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+  "missing": "move a counter between permanents"
+ },
+ {
+  "card": "Noise Marine",
+  "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+  "missing": "damage equal to spells cast this turn (its cascade exists)"
+ },
+ {
+  "card": "Pink Horror",
+  "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+  "missing": "a 2/2 blue and red Demon Horror creature token named Blue Horror with an instant-or-sorcery ping"
+ },
+ {
+  "card": "Pyroblast",
+  "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+  "missing": "a blue filter for spells and permanents"
+ },
+ {
+  "card": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+  "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+  "missing": "coin flips"
+ },
+ {
+  "card": "Rings of Brighthearth",
+  "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+  "missing": "copy activated abilities"
+ },
+ {
+  "card": "Savor the Moment",
+  "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+  "missing": "skip the untap step of the extra turn"
+ },
+ {
+  "card": "See Double",
+  "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+  "missing": "copy a spell; an opponent-graveyard mode condition"
+ },
+ {
+  "card": "Skittering Precursor",
+  "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+  "missing": "a 'whenever you sacrifice a nontoken permanent' trigger; a 0/1 colorless Eldrazi Spawn creature token with 'Sacrifice this token: Add {C}'"
+ },
+ {
+  "card": "Sundering Eruption // Volcanic Fissure",
+  "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+  "missing": "controller's basic fetch tapped; creatures without flying can't block"
+ },
+ {
+  "card": "Unfathomable Truths",
+  "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+  "missing": "a 0/1 colorless Eldrazi Spawn creature token with 'Sacrifice this token: Add {C}'"
+ },
+ {
+  "card": "Volt Charge",
+  "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+  "missing": "proliferate"
+ },
+ {
+  "card": "Whirlwind Denial",
+  "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+  "missing": "counter each opponent spell and ability unless paid {4}"
+ },
+ {
+  "card": "Words of War",
+  "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+  "missing": "a draw replacement"
+ },
+ {
+  "card": "Deflecting Palm",
+  "deck": "Zacama, Primal Calamity",
+  "missing": "prevent from a chosen source and deal that much to its controller"
+ },
+ {
+  "card": "Dictate of Karametra",
+  "deck": "Zacama, Primal Calamity",
+  "missing": "extra mana whenever a player taps a land for mana"
+ },
+ {
+  "card": "Enchantress's Presence",
+  "deck": "Zacama, Primal Calamity",
+  "missing": "a 'whenever you cast an enchantment spell' trigger (any zone)"
+ },
+ {
+  "card": "Hallowed Haunting",
+  "deck": "Zacama, Primal Calamity",
+  "missing": "a 'whenever you cast an enchantment spell' trigger; a white Spirit Cleric creature token with P/T equal to Spirits you control; seven-enchantments static"
+ },
+ {
+  "card": "Hanweir Battlements",
+  "deck": "Zacama, Primal Calamity",
+  "missing": "meld"
+ },
+ {
+  "card": "Mesa Enchantress",
+  "deck": "Zacama, Primal Calamity",
+  "missing": "a 'whenever you cast an enchantment spell' trigger (any zone)"
+ },
+ {
+  "card": "Rishkar's Expertise",
+  "deck": "Zacama, Primal Calamity",
+  "missing": "draw equal to greatest power; cast a spell with mana value 5 or less free"
+ },
+ {
+  "card": "Song of the Dryads",
+  "deck": "Zacama, Primal Calamity",
+  "missing": "enchanted permanent is a colorless Forest land"
+ },
+ {
+  "card": "Sterling Grove",
+  "deck": "Zacama, Primal Calamity",
+  "missing": "other enchantments have shroud; an enchantment card search to top"
+ },
+ {
+  "card": "Sunbird's Invocation",
+  "deck": "Zacama, Primal Calamity",
+  "missing": "reveal X on cast from hand, cast one free"
+ },
+ {
+  "card": "Sythis, Harvest's Hand",
+  "deck": "Zacama, Primal Calamity",
+  "missing": "a 'whenever you cast an enchantment spell' trigger (any zone)"
+ },
+ {
+  "card": "Verduran Enchantress",
+  "deck": "Zacama, Primal Calamity",
+  "missing": "a 'whenever you cast an enchantment spell' trigger (any zone)"
+ },
+ {
+  "card": "Ancestral Mask",
+  "deck": "Zacama, Primal Calamity",
+  "missing": "+2/+2 for each other enchantment on the battlefield"
+ },
+ {
+  "card": "Argothian Enchantress",
+  "deck": "Zacama, Primal Calamity",
+  "missing": "a 'whenever you cast an enchantment spell' trigger (any zone)"
+ },
+ {
+  "card": "Buried in the Garden",
+  "deck": "Zacama, Primal Calamity",
+  "missing": "a mana Aura on a land (extra mana of any color)"
+ },
+ {
+  "card": "Cindervines",
+  "deck": "Zacama, Primal Calamity",
+  "missing": "damage to the controller of the destroyed permanent"
+ },
+ {
+  "card": "Composer of Spring",
+  "deck": "Zacama, Primal Calamity",
+  "missing": "constellation; put a land or creature from hand onto the battlefield tapped"
+ },
+ {
+  "card": "Fertile Ground",
+  "deck": "Zacama, Primal Calamity",
+  "missing": "a mana Aura on a land (extra mana of any color)"
+ },
+ {
+  "card": "Jukai Naturalist",
+  "deck": "Zacama, Primal Calamity",
+  "missing": "enchantment spells cost {1} less"
+ },
+ {
+  "card": "Klothys, God of Destiny",
+  "deck": "Zacama, Primal Calamity",
+  "missing": "a first-main-phase trigger"
+ },
+ {
+  "card": "Privileged Position",
+  "deck": "Zacama, Primal Calamity",
+  "missing": "other permanents you control have hexproof"
+ },
+ {
+  "card": "Pyrohemia",
+  "deck": "Zacama, Primal Calamity",
+  "missing": "an end-step condition: no creatures on the battlefield"
+ },
+ {
+  "card": "Satyr Enchanter",
+  "deck": "Zacama, Primal Calamity",
+  "missing": "a 'whenever you cast an enchantment spell' trigger (any zone)"
+ },
+ {
+  "card": "Shadow in the Warp",
+  "deck": "Zacama, Primal Calamity",
+  "missing": "first creature spell each turn discount; opponent's first noncreature spell trigger"
+ },
+ {
+  "card": "Shield of the Oversoul",
+  "deck": "Zacama, Primal Calamity",
+  "missing": "Aura statics conditioned on the enchanted creature's color"
+ },
+ {
+  "card": "Sigil of the Empty Throne",
+  "deck": "Zacama, Primal Calamity",
+  "missing": "a 'whenever you cast an enchantment spell' trigger; a 4/4 white Angel creature token with flying"
+ },
+ {
+  "card": "Trace of Abundance",
+  "deck": "Zacama, Primal Calamity",
+  "missing": "a mana Aura on a land (extra mana of any color); enchanted land has shroud"
+ },
+ {
+  "card": "Zendikar Resurgent",
+  "deck": "Zacama, Primal Calamity",
+  "missing": "extra mana whenever you tap a land for mana"
+ },
+ {
+  "card": "Zirda, the Dawnwaker",
+  "deck": "Zacama, Primal Calamity",
+  "missing": "activated-ability cost reduction; companion"
+ }
+]
