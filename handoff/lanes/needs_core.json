@@ -1634,7 +1634,7 @@
   {
    "card": "Canopy Gargantuan",
    "deck": "The Gitrog, Ravenous Ride (RuricMo)",
-   "missing": "needs core: counters on each other creature equal to its toughness",
+   "missing": "needs core: counters on each other creature equal to its toughness [done by d3 batch 21: Effect::CountersOnOthersEqualToughness]",
    "lane": "d2",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -1746,7 +1746,7 @@
   {
    "card": "Lord of Extinction",
    "deck": "The Gitrog, Ravenous Ride (RuricMo)",
-   "missing": "needs core: power and toughness equal to the cards in all graveyards",
+   "missing": "needs core: power and toughness equal to the cards in all graveyards [done by d3 batch 21: Scale::PerCardInAllGraveyards]",
    "lane": "d2",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -2138,7 +2138,7 @@
   {
    "card": "Accursed Marauder",
    "deck": "Henrika Domnathi // Henrika, Infernal Seer",
-   "missing": "needs core: each player sacrifices a nontoken creature",
+   "missing": "needs core: each player sacrifices a nontoken creature [done by d3 batch 21: Effect::EachPlayerSacrificesNontokenCreature, active player first]",
    "lane": "d2",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -2186,7 +2186,7 @@
   {
    "card": "Vampire Hexmage",
    "deck": "Henrika Domnathi // Henrika, Infernal Seer",
-   "missing": "needs core: remove all counters including loyalty counters",
+   "missing": "needs core: remove all counters including loyalty counters [done by d3 batch 21: Effect::RemoveEveryKindOfCounter, loyalty included]",
    "lane": "d2",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -2554,7 +2554,7 @@
   {
    "card": "Drana, Liberator of Malakir",
    "deck": "Raffine, Scheming Seer",
-   "missing": "needs core: +1/+1 counters on each attacking creature you control",
+   "missing": "needs core: +1/+1 counters on each attacking creature you control [done by d3 batch 21: Effect::CountersOnEachAttackingYouControl]",
    "lane": "d2",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -2898,7 +2898,7 @@
   {
    "card": "Takenuma, Abandoned Mire",
    "deck": "Sefris of the Hidden Ways",
-   "missing": "needs core: return a creature or planeswalker card from your graveyard (a Pick for creature-or-planeswalker)",
+   "missing": "needs core: return a creature or planeswalker card from your graveyard (a Pick for creature-or-planeswalker) [done by d3 batch 21: Pick::CreatureOrPlaneswalker, Effect::ReturnPickFromGraveyardToHand]",
    "lane": "d3",
    "theme": "objects_zones",
    "owner": "mac-c"

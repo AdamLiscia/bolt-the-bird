@@ -172,6 +172,7 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         verb = verb or {"TakeTwoBottomRest": "Put into your hand:"}.get(d)
         verb = verb or {"SacrificeDiscardOrLoseLife": "Sacrifice (or discard, from your hand):"}.get(d)
         verb = verb or {"ReanimateTotalManaValue": "Put onto the battlefield under your control:"}.get(d)
+        verb = verb or {"SacrificeNontokenCreatureEach": "Sacrifice"}.get(d)
         if d == "IterationPick":
             verb = "Put into your hand:" if dec.get("to_hand") else "Put on the bottom:"
         if d == "LoseUnless":

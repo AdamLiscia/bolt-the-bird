@@ -1241,6 +1241,9 @@ pub enum Decision {
     /// battlefield under your control, or `No` to stop; `left` is what's left of the total (Ancient
     /// Brass Dragon: the d20's result).
     ReanimateTotalManaValue { left: u32 },
+    /// `Pick` a nontoken creature you control to sacrifice; then `next` chooses (Accursed
+    /// Marauder: each player, the active player first).
+    SacrificeNontokenCreatureEach { next: Option<PlayerId> },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -2698,6 +2701,9 @@ impl Game {
                             ),
                             Some(Scale::PerCardInAllHands) => {
                                 Some(self.players.iter().map(|pl| pl.hand.len()).sum())
+                            }
+                            Some(Scale::PerCardInAllGraveyards) => {
+                                Some(self.players.iter().map(|pl| pl.graveyard.len()).sum())
                             }
                             _ => None,
                         };
@@ -10656,6 +10662,7 @@ impl Game {
             }
             Pick::PermanentOddManaValue => d.types.is_permanent() && !d.cost.mana_value().is_multiple_of(2),
             Pick::CreatureManaValueAtMost(n) => d.types.creature && d.cost.mana_value() <= n,
+            Pick::CreatureOrPlaneswalker => d.types.creature || d.types.planeswalker,
         }
     }
 
@@ -11541,6 +11548,11 @@ impl Game {
                 v.push(Action::No);
                 v
             }
+            Decision::SacrificeNontokenCreatureEach { .. } => self
+                .nontoken_sacrifice_options(p)
+                .into_iter()
+                .map(Action::Pick)
+                .collect(),
             Decision::ReanimateTotalManaValue { left } => {
                 let mut v: Vec<Action> = self
                     .reanimate_total_options(*left)
@@ -12929,6 +12941,15 @@ impl Game {
                     self.reanimate_total_next(p, left.saturating_sub(mv));
                 }
             }
+            (Decision::SacrificeNontokenCreatureEach { next }, a) => {
+                if let Action::Pick(c) = a {
+                    self.move_to(c, Zone::Graveyard);
+                    self.sacrificed(c, p);
+                }
+                if let Some(q) = next {
+                    self.sacrifice_nontoken_next(q, None);
+                }
+            }
             (d, a) => unreachable!("legal action {a:?} unhandled for {d:?}"),
         }
         if self.decision.is_none() {
@@ -13420,6 +13441,22 @@ impl Game {
             .collect();
         v.extend(self.players[p].hand.iter().copied());
         v
+    }
+
+    /// Nontoken creatures `p` controls that can be sacrificed (Accursed Marauder).
+    fn nontoken_sacrifice_options(&self, p: PlayerId) -> Vec<ObjId> {
+        self.creatures(p)
+            .filter(|&c| !self.is_token(c) && !self.cant_be_sacrificed(c))
+            .collect()
+    }
+
+    /// Accursed Marauder: `p` sacrifices a nontoken creature (asked only with one), then `next`.
+    fn sacrifice_nontoken_next(&mut self, p: PlayerId, next: Option<PlayerId>) {
+        if !self.nontoken_sacrifice_options(p).is_empty() {
+            self.ask(p, Decision::SacrificeNontokenCreatureEach { next });
+        } else if let Some(q) = next {
+            self.sacrifice_nontoken_next(q, None);
+        }
     }
 
     /// Creature cards in any graveyard with mana value at most `left` (Ancient Brass Dragon).
@@ -20208,6 +20245,65 @@ impl Game {
             Effect::RollD20ReanimateTotalManaValue => {
                 let x = self.roll_die(20);
                 self.reanimate_total_next(item.controller, x);
+            }
+            Effect::EachPlayerSacrificesNontokenCreature => {
+                let a = self.active;
+                self.sacrifice_nontoken_next(a, Some(opponent(a)));
+            }
+            Effect::CountersOnEachAttackingYouControl => {
+                let p = item.controller;
+                let attackers: Vec<ObjId> = self
+                    .combat
+                    .as_ref()
+                    .map(|c| c.attackers.clone())
+                    .unwrap_or_default();
+                for c in attackers {
+                    if self.obj(c).zone == Zone::Battlefield && self.obj(c).controller == p {
+                        self.add_counters(c, 1);
+                    }
+                }
+            }
+            Effect::CountersOnOthersEqualToughness => {
+                for c in self.creatures(item.controller).collect::<Vec<_>>() {
+                    let t = self.toughness(c);
+                    if c != src && t > 0 {
+                        self.add_counters(c, t);
+                    }
+                }
+            }
+            Effect::RemoveEveryKindOfCounter(slot) => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    let o = self.obj_mut(id);
+                    o.counters = 0;
+                    o.stun = 0;
+                    o.keyword_counters = Keywords::NONE;
+                    o.lore = 0;
+                    o.loyalty = 0;
+                    o.time_counters = 0;
+                    o.quest = 0;
+                    o.fellowship = 0;
+                    o.kind_counters = 0;
+                    o.void_counter = false;
+                }
+            }
+            Effect::ReturnPickFromGraveyardToHand(pick) => {
+                let cards: Vec<ObjId> = self.players[item.controller]
+                    .graveyard
+                    .iter()
+                    .copied()
+                    .filter(|&c| self.picks(c, pick))
+                    .collect();
+                if !cards.is_empty() {
+                    self.ask(
+                        item.controller,
+                        Decision::LookPick {
+                            cards,
+                            pick,
+                            to: LookTo::Hand,
+                            rest: None,
+                        },
+                    );
+                }
             }
         }
     }
