@@ -3890,3 +3890,88 @@ fn ancient_brass_dragon_reanimates_from_either_graveyard() {
     assert_eq!(g.obj(theirs).zone, Zone::Battlefield);
     assert_eq!(g.obj(theirs).controller, 0, "under your control");
 }
+
+// ---- Core theme d3, batch 21 ----
+
+#[test]
+fn lord_of_extinction_counts_every_graveyard() {
+    let mut g = table();
+    let lord = put(&mut g, 0, "Lord of Extinction");
+    for (p, c) in [(0, "Opt"), (1, "Forest"), (1, "Serra Angel")] {
+        g.add_card(p, cid(c), Zone::Graveyard);
+    }
+    let n = (g.players[0].graveyard.len() + g.players[1].graveyard.len()) as i32;
+    assert_eq!((g.power(lord), g.toughness(lord)), (n, n));
+}
+
+#[test]
+fn accursed_marauder_makes_each_player_sacrifice_a_nontoken_creature() {
+    let mut g = table();
+    let elves = put(&mut g, 0, "Llanowar Elves");
+    let angel = put(&mut g, 1, "Serra Angel");
+    let m = hand(&mut g, 0, "Accursed Marauder");
+    act(&mut g, Action::Cast(m));
+    let mut guard = 0;
+    while (!g.items.is_empty() || matches!(g.pending, Pending::Decide(_))) && guard < 20 {
+        let a = match g.pending {
+            Pending::Decide(0) => Action::Pick(elves),
+            Pending::Decide(_) => Action::Pick(angel),
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+        guard += 1;
+    }
+    assert_eq!(
+        (g.obj(elves).zone, g.obj(angel).zone),
+        (Zone::Graveyard, Zone::Graveyard)
+    );
+    assert_eq!(g.obj(m).zone, Zone::Battlefield);
+}
+
+#[test]
+fn drana_counters_each_attacker_after_first_strike_damage() {
+    let mut g = table();
+    let drana = put(&mut g, 0, "Drana, Liberator of Malakir");
+    g.start_turn(5, 0);
+    attack_to_main2(&mut g, drana);
+    assert_eq!(g.obj(drana).counters, 1);
+    assert_eq!(
+        g.players[1].life, 38,
+        "first strike: 2 damage, before the counter"
+    );
+}
+
+#[test]
+fn canopy_gargantuan_doubles_toughness_in_counters_at_upkeep() {
+    let mut g = table();
+    put(&mut g, 0, "Canopy Gargantuan");
+    let angel = put(&mut g, 0, "Serra Angel");
+    let theirs = put(&mut g, 1, "Serra Angel");
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!((g.obj(angel).counters, g.obj(theirs).counters), (4, 0));
+}
+
+#[test]
+fn vampire_hexmage_removes_all_counters() {
+    let mut g = table();
+    let hex = put(&mut g, 0, "Vampire Hexmage");
+    let angel = put(&mut g, 1, "Serra Angel");
+    g.objects[angel.0 as usize].counters = 3;
+    act(&mut g, Action::Activate(hex, 0));
+    act(&mut g, Action::Target(obj(angel)));
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.obj(angel).counters, g.obj(hex).zone), (0, Zone::Graveyard));
+}
+
+#[test]
+fn takenuma_mills_three_then_returns_a_creature_card() {
+    let mut g = table();
+    let angel = g.add_card(0, cid("Serra Angel"), Zone::Library);
+    let t = hand(&mut g, 0, "Takenuma, Abandoned Mire");
+    act(&mut g, Action::Activate(t, 0));
+    resolve_all(&mut g, &[Action::Pick(angel)]);
+    assert_eq!((g.obj(angel).zone, g.obj(t).zone), (Zone::Hand, Zone::Graveyard));
+}
