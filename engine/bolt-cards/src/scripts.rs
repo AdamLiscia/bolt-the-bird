@@ -198,6 +198,28 @@ pub fn token_defs() -> Vec<CardDef> {
             t
         },
         token("Frog", "Frog", 1, 1, Keywords::NONE), // Quina's green 1/1
+        token("Horse", "Horse", 5, 5, Keywords::NONE), // Crested Sunmare's white 5/5
+        token("Soldier", "Soldier", 1, 1, Keywords::LIFELINK), // Dawn of Hope's white 1/1 lifelink
+        {
+            // Ajani, Strength of the Pride: "Ajani's Pridemate" with "Whenever you gain life, put a
+            // +1/+1 counter on this token."
+            let mut t = token("Ajani's Pridemate", "Cat Soldier", 2, 2, Keywords::NONE);
+            on(&mut t, When::YouGainLife, vec![], vec![Effect::CountersSelf { n: 1 }]);
+            t
+        },
+        token("Bird Illusion", "Bird Illusion", 1, 1, Keywords::FLYING), // Murmuring Mystic's blue
+        {
+            // Third Path Iconoclast: "a 1/1 colorless Soldier artifact creature token".
+            let mut t = token("Soldier", "Soldier", 1, 1, Keywords::NONE);
+            t.types.artifact = true;
+            t
+        },
+        {
+            // Metallurgic Summonings: "an X/X colorless Construct artifact creature token".
+            let mut t = token("Construct", "Construct", 0, 0, Keywords::NONE);
+            t.types.artifact = true;
+            t
+        },
     ]
 }
 
@@ -318,6 +340,12 @@ pub struct Tokens {
     pub shapeshifter: usize,
     pub clue: usize,
     pub frog: usize,
+    pub horse_5: usize,
+    pub soldier_lifelink: usize,
+    pub ajanis_pridemate: usize,
+    pub bird_illusion: usize,
+    pub soldier_artifact: usize,
+    pub construct_x: usize,
     pub eldrazi_spawn: usize,
     pub spawn_3: usize,
     pub elf_druid: usize,
@@ -393,6 +421,12 @@ impl Tokens {
             shapeshifter: base + 64,
             clue: base + 65,
             frog: base + 69,
+            horse_5: base + 70,
+            soldier_lifelink: base + 71,
+            ajanis_pridemate: base + 72,
+            bird_illusion: base + 73,
+            soldier_artifact: base + 74,
+            construct_x: base + 75,
             eldrazi_spawn: base + 66,
             spawn_3: base + 67,
             elf_druid: base + 68,

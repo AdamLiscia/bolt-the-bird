@@ -483,6 +483,7 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         max_hand_plus: 0,
         opponents_max_hand_minus: 0,
         win_on_empty_draw: false,
+        extra_upkeep_for_enchanted: false,
     };
     def.color_identity = color_identity(o);
     def.phyrexian = phyrexian;

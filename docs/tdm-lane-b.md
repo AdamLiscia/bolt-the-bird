@@ -674,3 +674,32 @@ counters are its own kind of counter.
 
 Needs core (routed by the lead): Ensnare, Gush, Thwart, Harrow, Meloku, Misdirection, Trade Routes,
 Kruphix (d1); Amulet of Vigor, Cloudstone Curio (d2); Misdirection's single-target filter (d3).
+
+### Zhulodok, Void Gorger (Adam), batch 1 (2026-11-26)
+
+11 of 70, on existing core only: Expedition Map, Strip Mine, Wasteland, Palladium Myr, Worn
+Powerstone, Voltaic Key, Manifold Key, Urza's Cave, Mithril Coat, Artisan of Kozilek (annihilator as
+an attack trigger, as d1 does), Fountainport. The other 59 need core, routed to the lead by theme.
+
+### Oloro, Ageless Ascetic (Adam), batch 1 (2026-11-26)
+
+9 of 26, on existing core: Sea of Clouds, Archangel of Thune, Cliffhaven Vampire, Drogskol Reaver,
+Rhox Faithmender, Serra Ascendant, Divinity of Pride, Voice of the Blessed, Heliod, Sun-Crowned. The
+rest need core (routed): Ghostly Prison, Propaganda (attack tax, d3); Paradox Haze (an extra upkeep,
+merger); Mana Confluence (pay-life mana, d1); Felidar Sovereign, Test of Endurance (upkeep life
+checks, d2); Oloro (a command-zone trigger, d2); Crested Sunmare, Dawn of Hope (tokens: Horse 5/5,
+Soldier with lifelink); Karlov (remove counters as a cost, d1); Ajani, Angel of Destiny, Debt to the
+Deathless, Lunar Convocation, Vizkopa Guildmage, Wall of Reverence, Will (d1/d2/d3).
+
+### Ghyrson Starn, Kelermorph (Spr3adsh33t), batch 1 (2026-11-26)
+
+19 of 50, on existing core: Basilisk Collar, Gorgon's Head, Electrostatic Field, Erebor Flamesmith,
+Kessig Flamebreather, Grapeshot (its storm copies keep the original's target), The Surgical Bay, The
+Autonomous Furnace, Training Center, Blisterspit Gremlin, Thermo-Alchemist, Unruly Catapult,
+Gelectrode, Goblin Sharpshooter, Cast into the Fire, Consider, Serum Visions, Electrolyze, Niv-Mizzet,
+Parun. The rest need core (routed in the report).
+
+Also: Paradox Haze (merger: `CardDef::extra_upkeep_for_enchanted`, `Object::enchanted_player` for
+"Enchant player" Auras, `Game::upkeeps_this_turn` and `extra_upkeeps` in the step machine), and with
+tokens 70 to 75 (Horse 5/5, Soldier 1/1 lifelink, Ajani's Pridemate, Bird Illusion, Soldier 1/1
+artifact, Construct 0/0 artifact): Dawn of Hope, Murmuring Mystic, Third Path Iconoclast.

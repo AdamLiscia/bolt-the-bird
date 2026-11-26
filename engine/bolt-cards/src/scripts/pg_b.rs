@@ -32,6 +32,25 @@ fn anthem(d: &mut CardDef, power: i32, toughness: i32) {
     });
 }
 
+/// "This creature gets +P/+T [and has keywords] as long as <condition>."
+fn this_if(d: &mut CardDef, condition: StaticCondition, power: i32, toughness: i32, keywords: Keywords) {
+    d.statics.push(Static {
+        subtype: None,
+        lose_abilities: false,
+        base_pt: None,
+        protection: [false; 5],
+        scale: None,
+        scope: Scope::This,
+        your_turn_only: false,
+        condition: Some(condition),
+        power,
+        toughness,
+        keywords,
+        set_colors: None,
+        becomes_land: false,
+    });
+}
+
 pub fn script(name: &str) -> Option<Script> {
     let s = |lines, build| Some(Script { lines, build });
     match name {
@@ -1250,6 +1269,272 @@ pub fn script(name: &str) -> Option<Script> {
             &["If you would draw a card while your library has no cards in it, you win the game instead."],
             |d, _| d.win_on_empty_draw = true,
         ),
+        // ---- Zhulodok, Void Gorger (Adam), lane B ----
+        "Expedition Map" => s(
+            &["{2}, {T}, Sacrifice this artifact: Search your library for a land card, reveal it, put it into your hand, then shuffle."],
+            |d, _| {
+                let n = activated(d, "{2}", true, vec![], vec![search(SearchFor::Land, SearchTo::Hand)]);
+                d.activated[n].sacrifice_self = true;
+            },
+        ),
+        "Strip Mine" => s(&["{T}: Add {C}.", "{T}, Sacrifice this land: Destroy target land."], |d, _| {
+            d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+            let land = Filter { players: false, creatures: false, planeswalkers: false, lands: true, ..Filter::ANY };
+            let n = activated(d, "", true, vec![land], vec![Effect::Destroy(0)]);
+            d.activated[n].sacrifice_self = true;
+        }),
+        "Wasteland" => s(&["{T}: Add {C}.", "{T}, Sacrifice this land: Destroy target nonbasic land."], |d, _| {
+            d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+            let land = Filter { players: false, creatures: false, planeswalkers: false, lands: true, nonbasic: true, ..Filter::ANY };
+            let n = activated(d, "", true, vec![land], vec![Effect::Destroy(0)]);
+            d.activated[n].sacrifice_self = true;
+        }),
+        "Palladium Myr" => s(&["{T}: Add {C}{C}."], |d, _| {
+            d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+            d.mana_amount = 2;
+        }),
+        "Worn Powerstone" => s(&["This artifact enters tapped.", "{T}: Add {C}{C}."], |d, _| {
+            d.enters_tapped = true;
+            d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+            d.mana_amount = 2;
+        }),
+        "Voltaic Key" => s(&["{1}, {T}: Untap target artifact."], |d, _| {
+            let artifact = Filter { players: false, creatures: false, planeswalkers: false, artifacts: true, ..Filter::ANY };
+            activated(d, "{1}", true, vec![artifact], vec![Effect::UntapTarget(0)]);
+        }),
+        "Manifold Key" => s(&["{1}, {T}: Untap another target artifact.", "{3}, {T}: Target creature can't be blocked this turn."], |d, _| {
+            let artifact = Filter { players: false, creatures: false, planeswalkers: false, artifacts: true, other: true, ..Filter::ANY };
+            activated(d, "{1}", true, vec![artifact], vec![Effect::UntapTarget(0)]);
+            activated(d, "{3}", true, vec![CREATURE], vec![Effect::Grant { slot: 0, keywords: Keywords::UNBLOCKABLE }]);
+        }),
+        "Urza's Cave" => s(
+            &["{T}: Add {C}.", "{3}, {T}, Sacrifice this land: Search your library for a land card, put it onto the battlefield tapped, then shuffle."],
+            |d, _| {
+                d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                let n = activated(d, "{3}", true, vec![], vec![search(SearchFor::Land, SearchTo::Battlefield { tapped: true })]);
+                d.activated[n].sacrifice_self = true;
+            },
+        ),
+        "Mithril Coat" => s(
+            &["When Mithril Coat enters, attach it to target legendary creature you control.", "Equipped creature has indestructible.", "Equip {3}"],
+            |d, _| {
+                let legend = Filter { legendary_only: true, ..YOUR_CREATURE };
+                on(d, When::Enters, vec![legend], vec![Effect::Attach { slot: 0 }]);
+                attached(d, false, 0, 0, Keywords::INDESTRUCTIBLE);
+                equip(d, "{3}");
+            },
+        ),
+        "Artisan of Kozilek" => s(
+            &["When you cast this spell, you may return target creature card from your graveyard to the battlefield.", "Annihilator 2"],
+            |d, _| {
+                may(d, When::CastThisSpell, vec![graveyard_cards(true, Controller::You)], vec![Effect::Reanimate(0)]);
+                on(d, When::Attacks, vec![], vec![Effect::SacrificePermanents { who: Who::EachOpponent, n: 2 }]);
+            },
+        ),
+        "Fountainport" => s(
+            &[
+                "{T}: Add {C}.",
+                "{2}, {T}, Sacrifice a token: Draw a card.",
+                "{3}, {T}, Pay 1 life: Create a 1/1 blue Fish creature token.",
+                "{4}, {T}: Create a Treasure token.",
+            ],
+            |d, t| {
+                d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                let n = activated(d, "{2}", true, vec![], vec![draw(1)]);
+                d.activated[n].sacrifice_token = true;
+                let n = activated(d, "{3}", true, vec![], vec![Effect::CreateToken { who: Who::You, def: t.fish, n: 1 }]);
+                d.activated[n].life = 1;
+                activated(d, "{4}", true, vec![], vec![Effect::CreateToken { who: Who::You, def: t.treasure, n: 1 }]);
+            },
+        ),
+        // ---- Oloro, Ageless Ascetic (Adam), lane B ----
+        "Sea of Clouds" => s(&["This land enters tapped unless you have two or more opponents.", "{T}: Add {W} or {U}."], |d, _| {
+            d.enters_tapped = true; // a two-player game: one opponent
+            d.mana = Some(ManaSource::of(&[Color::White, Color::Blue]));
+        }),
+        "Archangel of Thune" => s(&["Whenever you gain life, put a +1/+1 counter on each creature you control."], |d, _| {
+            on(d, When::YouGainLife, vec![], vec![Effect::CountersAll { who: Who::You, n: 1 }]);
+        }),
+        "Cliffhaven Vampire" => s(&["Whenever you gain life, each opponent loses 1 life."], |d, _| {
+            on(d, When::YouGainLife, vec![], vec![Effect::LoseLife { who: Who::EachOpponent, n: 1 }]);
+        }),
+        "Drogskol Reaver" => s(&["Whenever you gain life, draw a card."], |d, _| on(d, When::YouGainLife, vec![], vec![draw(1)])),
+        "Rhox Faithmender" => s(&["If you would gain life, you gain twice that much life instead."], |d, _| d.life_gain_doubled = true),
+        "Serra Ascendant" => s(&["As long as you have 30 or more life, this creature gets +5/+5 and has flying."], |d, _| {
+            this_if(d, StaticCondition::LifeAtLeast(30), 5, 5, Keywords::FLYING);
+        }),
+        "Divinity of Pride" => s(&["This creature gets +4/+4 as long as you have 25 or more life."], |d, _| {
+            this_if(d, StaticCondition::LifeAtLeast(25), 4, 4, Keywords::NONE);
+        }),
+        "Voice of the Blessed" => s(
+            &[
+                "Whenever you gain life, put a +1/+1 counter on this creature.",
+                "As long as this creature has four or more +1/+1 counters on it, it has flying and vigilance.",
+                "As long as this creature has ten or more +1/+1 counters on it, it has indestructible.",
+            ],
+            |d, _| {
+                on(d, When::YouGainLife, vec![], vec![Effect::CountersSelf { n: 1 }]);
+                this_if(d, StaticCondition::CountersAtLeast(4), 0, 0, Keywords::FLYING.with(Keywords::VIGILANCE));
+                this_if(d, StaticCondition::CountersAtLeast(10), 0, 0, Keywords::INDESTRUCTIBLE);
+            },
+        ),
+        "Heliod, Sun-Crowned" => s(
+            &[
+                "As long as your devotion to white is less than five, Heliod isn't a creature.",
+                "Whenever you gain life, put a +1/+1 counter on target creature or enchantment you control.",
+                "{1}{W}: Another target creature gains lifelink until end of turn.",
+            ],
+            |d, _| {
+                d.creature_unless_devotion = Some(([true, false, false, false, false], 5));
+                let yours = Filter { players: false, planeswalkers: false, enchantments: true, controller: Controller::You, ..Filter::CREATURE };
+                on(d, When::YouGainLife, vec![yours], vec![Effect::Counters { slot: 0, n: 1 }]);
+                let other = Filter { other: true, ..CREATURE };
+                activated(d, "{1}{W}", false, vec![other], vec![Effect::Grant { slot: 0, keywords: Keywords::LIFELINK }]);
+            },
+        ),
+        // ---- Ghyrson Starn, Kelermorph (Spr3adsh33t), lane B ----
+        "Basilisk Collar" => s(&["Equipped creature has deathtouch and lifelink.", "Equip {2}"], |d, _| {
+            attached(d, false, 0, 0, Keywords::DEATHTOUCH.with(Keywords::LIFELINK));
+            equip(d, "{2}");
+        }),
+        "Gorgon's Head" => s(&["Equipped creature has deathtouch.", "Equip {2}"], |d, _| {
+            attached(d, false, 0, 0, Keywords::DEATHTOUCH);
+            equip(d, "{2}");
+        }),
+        "Electrostatic Field" => s(&["Whenever you cast an instant or sorcery spell, this creature deals 1 damage to each opponent."], |d, _| {
+            on(d, When::YouCastInstantOrSorcery, vec![], vec![damage(1, Recipient::EachOpponent)]);
+        }),
+        "Erebor Flamesmith" => s(&["Whenever you cast an instant or sorcery spell, this creature deals 1 damage to each opponent."], |d, _| {
+            on(d, When::YouCastInstantOrSorcery, vec![], vec![damage(1, Recipient::EachOpponent)]);
+        }),
+        "Kessig Flamebreather" => s(&["Whenever you cast a noncreature spell, this creature deals 1 damage to each opponent."], |d, _| {
+            on(d, When::YouCastNoncreature, vec![], vec![damage(1, Recipient::EachOpponent)]);
+        }),
+        "Grapeshot" => s(&["Grapeshot deals 1 damage to any target.", "Storm"], |d, _| {
+            // The storm copies keep the original's target (choosing new ones isn't offered).
+            spell(d, vec![Filter::ANY], vec![damage(1, Recipient::Target(0))]);
+            on(d, When::YouCastThis, vec![], vec![Effect::CopySourceSpell { storm: true }]);
+        }),
+        "The Surgical Bay" => s(&["This land enters tapped.", "{T}: Add {U}.", "{1}{U}, {T}, Sacrifice this land: Draw a card."], |d, _| {
+            d.enters_tapped = true;
+            d.mana = Some(ManaSource::of(&[Color::Blue]));
+            let n = activated(d, "{1}{U}", true, vec![], vec![draw(1)]);
+            d.activated[n].sacrifice_self = true;
+        }),
+        "The Autonomous Furnace" => s(&["This land enters tapped.", "{T}: Add {R}.", "{1}{R}, {T}, Sacrifice this land: Draw a card."], |d, _| {
+            d.enters_tapped = true;
+            d.mana = Some(ManaSource::of(&[Color::Red]));
+            let n = activated(d, "{1}{R}", true, vec![], vec![draw(1)]);
+            d.activated[n].sacrifice_self = true;
+        }),
+        "Training Center" => s(&["This land enters tapped unless you have two or more opponents.", "{T}: Add {U} or {R}."], |d, _| {
+            d.enters_tapped = true; // a two-player game: one opponent
+            d.mana = Some(ManaSource::of(&[Color::Blue, Color::Red]));
+        }),
+        "Blisterspit Gremlin" => s(
+            &["{1}, {T}: This creature deals 1 damage to each opponent.", "Whenever you cast a noncreature spell, untap this creature."],
+            |d, _| {
+                activated(d, "{1}", true, vec![], vec![damage(1, Recipient::EachOpponent)]);
+                on(d, When::YouCastNoncreature, vec![], vec![Effect::UntapSelf]);
+            },
+        ),
+        "Thermo-Alchemist" => s(
+            &["{T}: This creature deals 1 damage to each opponent.", "Whenever you cast an instant or sorcery spell, untap this creature."],
+            |d, _| {
+                activated(d, "", true, vec![], vec![damage(1, Recipient::EachOpponent)]);
+                on(d, When::YouCastInstantOrSorcery, vec![], vec![Effect::UntapSelf]);
+            },
+        ),
+        "Unruly Catapult" => s(
+            &["{T}: This creature deals 1 damage to each opponent.", "Whenever you cast an instant or sorcery spell, untap this creature."],
+            |d, _| {
+                activated(d, "", true, vec![], vec![damage(1, Recipient::EachOpponent)]);
+                on(d, When::YouCastInstantOrSorcery, vec![], vec![Effect::UntapSelf]);
+            },
+        ),
+        "Gelectrode" => s(
+            &["{T}: This creature deals 1 damage to any target.", "Whenever you cast an instant or sorcery spell, you may untap this creature."],
+            |d, _| {
+                activated(d, "", true, vec![Filter::ANY], vec![damage(1, Recipient::Target(0))]);
+                may(d, When::YouCastInstantOrSorcery, vec![], vec![Effect::UntapSelf]);
+            },
+        ),
+        "Goblin Sharpshooter" => s(
+            &[
+                "This creature doesn't untap during your untap step.",
+                "Whenever a creature dies, untap this creature.",
+                "{T}: This creature deals 1 damage to any target.",
+            ],
+            |d, _| {
+                d.doesnt_untap = true;
+                on(d, When::AnotherCreatureDies, vec![], vec![Effect::UntapSelf]);
+                activated(d, "", true, vec![Filter::ANY], vec![damage(1, Recipient::Target(0))]);
+            },
+        ),
+        "Cast into the Fire" => s(
+            &[
+                "Choose one —",
+                "• Cast into the Fire deals 1 damage to each of up to two target creatures.",
+                "• Exile target artifact.",
+            ],
+            |d, _| {
+                let artifact = Filter { players: false, creatures: false, planeswalkers: false, artifacts: true, ..Filter::ANY };
+                modes(
+                    d,
+                    vec![
+                        up_to(vec![CREATURE, CREATURE], vec![damage(1, Recipient::Target(0)), damage(1, Recipient::Target(1))]),
+                        Ability::new(vec![artifact], vec![Effect::Exile(0)]),
+                    ],
+                );
+            },
+        ),
+        "Consider" => s(&["Surveil 1.", "Draw a card."], |d, _| spell(d, vec![], vec![Effect::Surveil { n: 1 }, draw(1)])),
+        "Serum Visions" => s(&["Draw a card. Scry 2."], |d, _| spell(d, vec![], vec![draw(1), Effect::Scry { n: 2 }])),
+        "Electrolyze" => s(&["Electrolyze deals 2 damage divided as you choose among one or two targets.", "Draw a card."], |d, _| {
+            let mut a = Ability::new(vec![Filter::ANY, Filter::ANY], vec![Effect::DividedDamage, draw(1)]);
+            a.min_targets = Some(1);
+            a.divide = 2;
+            d.spell = Some(a);
+        }),
+        "Niv-Mizzet, Parun" => s(
+            &[
+                "This spell can't be countered.",
+                "Whenever you draw a card, Niv-Mizzet deals 1 damage to any target.",
+                "Whenever a player casts an instant or sorcery spell, you draw a card.",
+            ],
+            |d, _| {
+                d.uncounterable = true;
+                on(d, When::YouDraw, vec![Filter::ANY], vec![damage(1, Recipient::Target(0))]);
+                on(d, When::YouCastInstantOrSorcery, vec![], vec![draw(1)]);
+                on(d, When::OpponentCastsInstantOrSorcery, vec![], vec![draw(1)]);
+            },
+        ),
+        "Paradox Haze" => s(
+            &[
+                "Enchant player",
+                "At the beginning of enchanted player's first upkeep each turn, that player gets an additional upkeep step after this step.",
+            ],
+            |d, _| {
+                d.aura = true;
+                d.extra_upkeep_for_enchanted = true;
+                spell(d, vec![Filter::PLAYER], vec![]);
+            },
+        ),
+        "Dawn of Hope" => s(
+            &["Whenever you gain life, you may pay {2}. If you do, draw a card.", "{3}{W}: Create a 1/1 white Soldier creature token with lifelink."],
+            |d, t| {
+                on(d, When::YouGainLife, vec![], vec![Effect::MayPay(ManaCost::parse("{2}").expect("cost")), draw(1)]);
+                activated(d, "{3}{W}", false, vec![], vec![Effect::CreateToken { who: Who::You, def: t.soldier_lifelink, n: 1 }]);
+            },
+        ),
+        "Murmuring Mystic" => s(
+            &["Whenever you cast an instant or sorcery spell, create a 1/1 blue Bird Illusion creature token with flying."],
+            |d, t| on(d, When::YouCastInstantOrSorcery, vec![], vec![Effect::CreateToken { who: Who::You, def: t.bird_illusion, n: 1 }]),
+        ),
+        "Third Path Iconoclast" => s(
+            &["Whenever you cast a noncreature spell, create a 1/1 colorless Soldier artifact creature token."],
+            |d, t| on(d, When::YouCastNoncreature, vec![], vec![Effect::CreateToken { who: Who::You, def: t.soldier_artifact, n: 1 }]),
+        ),
         _ => None,
     }
 }
@@ -1415,4 +1700,50 @@ pub const PG_B_SCRIPTED: &[&str] = &[
     "Stroke of Genius",
     "Wipe Away",
     "Laboratory Maniac",
+    // Zhulodok (Adam)
+    "Expedition Map",
+    "Strip Mine",
+    "Wasteland",
+    "Palladium Myr",
+    "Worn Powerstone",
+    "Voltaic Key",
+    "Manifold Key",
+    "Urza's Cave",
+    "Mithril Coat",
+    "Artisan of Kozilek",
+    "Fountainport",
+    // Oloro (Adam)
+    "Sea of Clouds",
+    "Archangel of Thune",
+    "Cliffhaven Vampire",
+    "Drogskol Reaver",
+    "Rhox Faithmender",
+    "Serra Ascendant",
+    "Divinity of Pride",
+    "Voice of the Blessed",
+    "Heliod, Sun-Crowned",
+    "Paradox Haze",
+    "Dawn of Hope",
+    "Murmuring Mystic",
+    "Third Path Iconoclast",
+    // Ghyrson Starn (Spr3adsh33t)
+    "Basilisk Collar",
+    "Gorgon's Head",
+    "Electrostatic Field",
+    "Erebor Flamesmith",
+    "Kessig Flamebreather",
+    "Grapeshot",
+    "The Surgical Bay",
+    "The Autonomous Furnace",
+    "Training Center",
+    "Blisterspit Gremlin",
+    "Thermo-Alchemist",
+    "Unruly Catapult",
+    "Gelectrode",
+    "Goblin Sharpshooter",
+    "Cast into the Fire",
+    "Consider",
+    "Serum Visions",
+    "Electrolyze",
+    "Niv-Mizzet, Parun",
 ];

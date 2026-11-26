@@ -820,6 +820,9 @@ pub struct CardDef {
     /// "If you would draw a card while your library has no cards in it, you win the game instead."
     /// (Laboratory Maniac)
     pub win_on_empty_draw: bool,
+    /// An Aura with "Enchant player" whose enchanted player gets an additional upkeep step after
+    /// their first upkeep each turn (Paradox Haze).
+    pub extra_upkeep_for_enchanted: bool,
 }
 
 /// A card's mana, cost and keyword pieces added by the d1 theme (see [`CardDef::mana_ext`]).
@@ -1135,6 +1138,7 @@ impl CardDef {
             max_hand_plus: 0,
             opponents_max_hand_minus: 0,
             win_on_empty_draw: false,
+            extra_upkeep_for_enchanted: false,
         }
     }
 
@@ -1376,6 +1380,7 @@ impl CardDef {
             max_hand_plus: 0,
             opponents_max_hand_minus: 0,
             win_on_empty_draw: false,
+            extra_upkeep_for_enchanted: false,
         }
     }
 
@@ -1617,6 +1622,7 @@ impl CardDef {
             max_hand_plus: 0,
             opponents_max_hand_minus: 0,
             win_on_empty_draw: false,
+            extra_upkeep_for_enchanted: false,
         }
     }
 }

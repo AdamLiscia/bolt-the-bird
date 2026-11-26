@@ -288,3 +288,45 @@ fn max_hand_plus_and_opponents_minus() {
     }
     assert_eq!(g.players[0].hand.len(), 0, "maximum hand size 0");
 }
+
+#[test]
+fn extra_upkeep_paradox_haze() {
+    let mut g = table();
+    let haze = hand(&mut g, 0, "Paradox Haze");
+    act(&mut g, Action::Cast(haze));
+    act(&mut g, Action::Target(Target::Player(0)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(haze).zone, Zone::Battlefield);
+    assert_eq!(g.obj(haze).enchanted_player, Some(0));
+    put(&mut g, 0, "Mystic Remora");
+    g.start_turn(5, 0);
+    // Cumulative upkeep asks twice: once in each upkeep step.
+    let mut asks = 0;
+    for _ in 0..40 {
+        if g.step == Step::Main1 {
+            break;
+        }
+        match g.pending {
+            Pending::Decide(_) => {
+                asks += 1;
+                act(&mut g, Action::Yes);
+            }
+            _ => act(&mut g, Action::PassPriority),
+        }
+    }
+    assert_eq!(asks, 2);
+}
+
+#[test]
+fn an_aura_on_a_creature_that_leaves_goes_to_the_graveyard() {
+    // Paradox Haze's player Auras don't change CR 704.5m for Auras on objects.
+    let mut g = table();
+    let lions = put(&mut g, 0, "Savannah Lions");
+    let blessing = hand(&mut g, 0, "Twinblade Blessing");
+    play(&mut g, blessing, false, &[Target::Object(lions)], &[]);
+    assert_eq!(g.obj(blessing).zone, Zone::Battlefield);
+    let bolt = hand(&mut g, 0, "Burst Lightning");
+    play(&mut g, bolt, false, &[Target::Object(lions)], &[]);
+    assert_eq!(g.obj(lions).zone, Zone::Graveyard);
+    assert_eq!(g.obj(blessing).zone, Zone::Graveyard);
+}

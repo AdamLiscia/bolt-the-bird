@@ -279,6 +279,8 @@ pub struct Object {
     pub warped: bool,
     /// A void counter (Dauthi Voidwalker's exile).
     pub void_counter: bool,
+    /// The player an "Enchant player" Aura is attached to (Paradox Haze).
+    pub enchanted_player: Option<PlayerId>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -1302,6 +1304,10 @@ pub struct Game {
     pub evoked: Vec<(ObjId, u32)>,
     /// Skip each player's next untap step (Savor the Moment's extra turn).
     pub skip_next_untap: [bool; 2],
+    /// Upkeep steps begun this turn: (turn, count) (Paradox Haze's "first upkeep each turn").
+    pub upkeeps_this_turn: (u32, u8),
+    /// Additional upkeep steps still to come this turn.
+    pub extra_upkeeps: u8,
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -1529,6 +1535,8 @@ impl Game {
             flash_casts: Vec::new(),
             evoked: Vec::new(),
             skip_next_untap: [false; 2],
+            upkeeps_this_turn: (0, 0),
+            extra_upkeeps: 0,
         }
     }
 
@@ -1646,6 +1654,7 @@ impl Game {
             last_enchantment_only: false,
             warped: false,
             void_counter: false,
+            enchanted_player: None,
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -3988,6 +3997,7 @@ impl Game {
             self.obj_mut(id).copy_exceptions = false;
             self.obj_mut(id).face_down = false;
             self.obj_mut(id).unearthed = false;
+            self.obj_mut(id).enchanted_player = None;
             let was = self.obj(id).copy_enchantment_only;
             self.obj_mut(id).last_enchantment_only = was;
             self.obj_mut(id).copy_enchantment_only = false;
@@ -8450,6 +8460,10 @@ impl Game {
                 }
                 // CR 303.4f: an Aura spell enters attached to its target.
                 if self.def_of(source).aura {
+                    // "Enchant player": attached to the chosen player (Paradox Haze).
+                    if let Some(&Chosen::Player(q)) = r.item.targets.first() {
+                        self.obj_mut(source).enchanted_player = Some(q);
+                    }
                     if let Some(&Chosen::Object(t, z)) = r.item.targets.first() {
                         self.obj_mut(source).attached_to = Some((t, z));
                         if self.def_of(source).reanimating_aura {
@@ -15961,6 +15975,11 @@ impl Game {
         let next = match self.step {
             Step::PreGame => Step::Untap,
             Step::Untap => Step::Upkeep,
+            // Paradox Haze: an additional upkeep step after this one.
+            Step::Upkeep if self.extra_upkeeps > 0 => {
+                self.extra_upkeeps -= 1;
+                Step::Upkeep
+            }
             // Damia, Sage of Stone: "Skip your draw step."
             Step::Upkeep
                 if self
@@ -16369,6 +16388,23 @@ impl Game {
                 self.give_priority(a);
             }
             Step::Upkeep => {
+                // Paradox Haze: "At the beginning of enchanted player's first upkeep each turn, that
+                // player gets an additional upkeep step after this step."
+                let (t, n) = self.upkeeps_this_turn;
+                let n = if t == self.turn { n.saturating_add(1) } else { 1 };
+                self.upkeeps_this_turn = (self.turn, n);
+                if n == 1 {
+                    let hazes = self
+                        .battlefield
+                        .iter()
+                        .filter(|&&x| {
+                            self.def_of(x).extra_upkeep_for_enchanted
+                                && self.obj(x).enchanted_player == Some(a)
+                                && !self.lost_abilities(x)
+                        })
+                        .count();
+                    self.extra_upkeeps = hazes.min(u8::MAX as usize) as u8;
+                }
                 // Arcane Denial: "at the beginning of the next turn's upkeep".
                 for (q, n) in std::mem::take(&mut self.next_upkeep_draws) {
                     for _ in 0..n {
