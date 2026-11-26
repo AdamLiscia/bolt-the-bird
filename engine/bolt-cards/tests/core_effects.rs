@@ -2879,3 +2879,41 @@ fn roll_a_d20_and_reanimate_up_to_that_total_mana_value() {
     resolve_all(&mut g, &[]);
     assert_eq!(g.obj(mine).zone, Zone::Graveyard, "stopped");
 }
+
+// ---- batch 21 ----
+
+#[test]
+fn each_player_sacrifices_a_nontoken_creature_never_a_token() {
+    let (mut g, t) = game_with(vec![sorcery(
+        vec![],
+        vec![Effect::EachPlayerSacrificesNontokenCreature],
+    )]);
+    let elemental = token_def(&g, "Elemental");
+    let tok = g.add_card(1, elemental, Zone::Battlefield);
+    let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
+    let c = g.add_card(0, t, Zone::Hand);
+    act(&mut g, Action::Cast(c));
+    to_decision(&mut g);
+    assert_eq!(g.legal_actions(), vec![Action::Pick(elves)]);
+    resolve_all(&mut g, &[Action::Pick(elves)]);
+    assert_eq!(g.obj(elves).zone, Zone::Graveyard);
+    assert_eq!(
+        g.obj(tok).zone,
+        Zone::Battlefield,
+        "they had only a token: not asked"
+    );
+}
+
+#[test]
+fn return_a_creature_or_planeswalker_card_from_your_graveyard() {
+    let back = Effect::ReturnPickFromGraveyardToHand(bolt_core::effect::Pick::CreatureOrPlaneswalker);
+    let (mut g, t) = game_with(vec![sorcery(vec![], vec![back])]);
+    let opt = g.add_card(0, cid("Opt"), Zone::Graveyard);
+    let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Graveyard);
+    let c = g.add_card(0, t, Zone::Hand);
+    act(&mut g, Action::Cast(c));
+    to_decision(&mut g);
+    assert!(!g.legal_actions().contains(&Action::Pick(opt)));
+    resolve_all(&mut g, &[Action::Pick(elves)]);
+    assert_eq!(g.obj(elves).zone, Zone::Hand);
+}
