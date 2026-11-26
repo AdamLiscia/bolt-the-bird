@@ -1464,6 +1464,8 @@ pub enum Effect {
     ExileMakeEnchantmentCopy(u8),
     /// "... unless that player pays {X}, where X is this creature's power" (Esper Sentinel).
     UnlessOpponentPaysPower,
+    /// Destroy all creatures; they can't be regenerated (Damnation, Wrath of God).
+    DestroyAllCreaturesNoRegen,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
