@@ -13,6 +13,25 @@ fn forest() -> SearchFor {
     }
 }
 
+/// "Creatures you control get +P/+T."
+fn anthem(d: &mut CardDef, power: i32, toughness: i32) {
+    d.statics.push(Static {
+        subtype: None,
+        lose_abilities: false,
+        base_pt: None,
+        protection: [false; 5],
+        scale: None,
+        scope: Scope::YourCreatures,
+        your_turn_only: false,
+        condition: None,
+        power,
+        toughness,
+        keywords: Keywords::NONE,
+        set_colors: None,
+        becomes_land: false,
+    });
+}
+
 pub fn script(name: &str) -> Option<Script> {
     let s = |lines, build| Some(Script { lines, build });
     match name {
@@ -841,6 +860,185 @@ pub fn script(name: &str) -> Option<Script> {
             &["Whenever an opponent casts their first noncreature spell each turn, draw a card unless that player pays {X}, where X is this creature's power."],
             |d, _| on(d, When::OpponentCastsNoncreature, vec![], vec![Effect::UnlessOpponentPaysPower, draw(1)]),
         ),
+        "Austere Command" => s(
+            &[
+                "Choose two —",
+                "• Destroy all artifacts.",
+                "• Destroy all enchantments.",
+                "• Destroy all creatures with mana value 3 or less.",
+                "• Destroy all creatures with mana value 4 or greater.",
+            ],
+            |d, _| {
+                // The two modes chosen, as one mode for each pair (CR 700.2).
+                let parts = [(true, false, (0, 0)), (false, true, (0, 0)), (false, false, (0, 3)), (false, false, (4, u8::MAX))];
+                let mut pairs = Vec::new();
+                for i in 0..4 {
+                    for j in i + 1..4 {
+                        let (a, b) = (parts[i], parts[j]);
+                        pairs.push(Ability::new(
+                            vec![],
+                            vec![
+                                Effect::DestroyAllMatching { artifacts: a.0, enchantments: a.1, creature_mv: a.2 },
+                                Effect::DestroyAllMatching { artifacts: b.0, enchantments: b.1, creature_mv: b.2 },
+                            ],
+                        ));
+                    }
+                }
+                modes(d, pairs);
+            },
+        ),
+        "Dawn's Truce" => s(
+            &[
+                "Gift a card",
+                "You and permanents you control gain hexproof until end of turn. If the gift was promised, permanents you control also gain indestructible until end of turn.",
+            ],
+            |d, _| {
+                // Gift: an optional free additional cost, cast with `Action::CastKicked`.
+                d.kicker = ManaCost::parse("{0}");
+                spell(d, vec![], vec![Effect::YouGainHexproofEot, Effect::GrantAllPermanentsYouControl(Keywords::HEXPROOF)]);
+                d.kicked_spell = Some(Ability::new(
+                    vec![],
+                    vec![
+                        Effect::Draw { who: Who::EachOpponent, n: 1 },
+                        Effect::YouGainHexproofEot,
+                        Effect::GrantAllPermanentsYouControl(Keywords::HEXPROOF.with(Keywords::INDESTRUCTIBLE)),
+                    ],
+                ));
+            },
+        ),
+        "Eldritch Evolution" => s(
+            &[
+                "As an additional cost to cast this spell, sacrifice a creature.",
+                "Search your library for a creature card with mana value X or less, where X is 2 plus the sacrificed creature's mana value. Put that card onto the battlefield, then shuffle. Exile Eldritch Evolution.",
+            ],
+            |d, _| {
+                d.extra_cost = Some(ExtraCost::SacrificeCreature);
+                spell(d, vec![], vec![Effect::SearchCreatureBySacrificedMv { plus: 2, exact: false }, Effect::ExileSourceSpell]);
+            },
+        ),
+        "Birthing Pod" => s(
+            &["{1}{G/P}, {T}, Sacrifice a creature: Search your library for a creature card with mana value equal to 1 plus the sacrificed creature's mana value, put that card onto the battlefield, then shuffle. Activate only as a sorcery."],
+            |d, _| {
+                let n = activated(d, "{1}{G}", true, vec![], vec![Effect::SearchCreatureBySacrificedMv { plus: 1, exact: true }]);
+                d.activated[n].phyrexian = [0, 0, 0, 0, 1];
+                d.activated[n].sacrifice_creature = true;
+                d.activated[n].victim_in_extra = true;
+                d.activated[n].sorcery = true;
+            },
+        ),
+        "Enduring Vitality" => s(
+            &[
+                "Creatures you control have \"{T}: Add one mana of any color.\"",
+                "When Enduring Vitality dies, if it was a creature, return it to the battlefield under its owner's control. It's an enchantment.",
+            ],
+            |d, _| {
+                d.creatures_tap_any_color = true;
+                on(d, When::Dies, vec![], vec![Effect::ReturnSelfAsEnchantment]);
+            },
+        ),
+        "Jaheira, Friend of the Forest" => s(&["Tokens you control have \"{T}: Add {G}.\"", "Choose a Background"], |d, _| {
+            d.tokens_tap_for_green = true; // "Choose a Background" is deck building only
+        }),
+        "Arachnogenesis" => s(
+            &["Create X 1/2 green Spider creature tokens with reach, where X is the number of creatures attacking you. Prevent all combat damage that would be dealt this turn by non-Spider creatures."],
+            |d, t| spell(d, vec![], vec![Effect::CreateTokensPerAttackers { def: t.spider }, Effect::PreventCombatDamageExceptSubtype("Spider")]),
+        ),
+        "For the Common Good" => s(
+            &["Create X tokens that are copies of target token you control. Then tokens you control gain indestructible until your next turn. You gain 1 life for each token you control."],
+            |d, _| {
+                let token = Filter { players: false, creatures: false, planeswalkers: false, any_permanent: true, tokens_only: true, controller: Controller::You, ..Filter::ANY };
+                spell(
+                    d,
+                    vec![token],
+                    vec![Effect::CopyTokenX(0), Effect::GrantTokensUntilYourNextTurn(Keywords::INDESTRUCTIBLE), Effect::GainLifePerToken],
+                );
+            },
+        ),
+        "Mirari's Wake" => s(
+            &["Creatures you control get +1/+1.", "Whenever you tap a land for mana, add one mana of any type that land produced."],
+            |d, _| {
+                anthem(d, 1, 1);
+                d.lands_add_same = true;
+            },
+        ),
+        "Kaya, Geist Hunter" => s(
+            &[
+                "+1: Creatures you control gain deathtouch until end of turn. Put a +1/+1 counter on up to one target creature token you control.",
+                "−2: Until end of turn, if one or more tokens would be created under your control, twice that many of those tokens are created instead.",
+                "−6: Exile all cards from all graveyards, then create a 1/1 white Spirit creature token with flying for each card exiled this way.",
+            ],
+            |d, t| {
+                let token = Filter { tokens_only: true, ..YOUR_CREATURE };
+                loyalty(d, 1, up_to(vec![token], vec![Effect::GrantAll { who: Who::You, keywords: Keywords::DEATHTOUCH }, Effect::Counters { slot: 0, n: 1 }]));
+                loyalty(d, -2, Ability::new(vec![], vec![Effect::DoubleTokensThisTurn]));
+                loyalty(d, -6, Ability::new(vec![], vec![Effect::ExileGraveyardsTokenPerCard { def: t.spirit }]));
+            },
+        ),
+        "The Golden Throne" => s(
+            &[
+                "Arcane Life-support — If you would lose the game, instead exile The Golden Throne and your life total becomes 1.",
+                "A Thousand Souls Die Every Day — {T}, Sacrifice a creature: Add three mana in any combination of colors.",
+            ],
+            |d, _| {
+                d.lose_replacement = true;
+                // The mana ability uses the stack here (docs/tdm-lane-b.md).
+                let n = activated(d, "", true, vec![], vec![Effect::AddManaAnyColor, Effect::AddManaAnyColor, Effect::AddManaAnyColor]);
+                d.activated[n].sacrifice_creature = true;
+            },
+        ),
+        "Mondrak, Glory Dominus" => s(
+            &[
+                "If one or more tokens would be created under your control, twice that many of those tokens are created instead.",
+                "{1}{W/P}{W/P}, Sacrifice two other artifacts and/or creatures: Put an indestructible counter on Mondrak.",
+            ],
+            |d, _| {
+                d.doubles_tokens = true;
+                let n = activated(d, "{1}{W}{W}", false, vec![], vec![Effect::KeywordCounterSelf(Keywords::INDESTRUCTIBLE)]);
+                d.activated[n].phyrexian = [2, 0, 0, 0, 0];
+                d.activated[n].sacrifice_two_others = true;
+            },
+        ),
+        "Exalted Sunborn" => s(
+            &[
+                "If one or more tokens would be created under your control, twice that many of those tokens are created instead.",
+                "Warp {1}{W}",
+            ],
+            |d, _| {
+                d.doubles_tokens = true;
+                d.warp = ManaCost::parse("{1}{W}");
+            },
+        ),
+        "Grim Haruspex" => s(&["Morph {B}", "Whenever another nontoken creature you control dies, draw a card."], |d, _| {
+            d.morph = ManaCost::parse("{B}");
+            on(d, When::AnotherNontokenCreatureYouControlDies, vec![], vec![draw(1)]);
+        }),
+        "Black Market Connections" => s(
+            &[
+                "At the beginning of your first main phase, choose one or more —",
+                "• Sell Contraband — Create a Treasure token. You lose 1 life.",
+                "• Buy Information — Draw a card. You lose 2 life.",
+                "• Hire a Mercenary — Create a 3/2 colorless Shapeshifter creature token with changeling. You lose 3 life.",
+            ],
+            |d, t| {
+                // "One or more": a mode for each nonempty set of the three (CR 700.2).
+                let parts: [Vec<Effect>; 3] = [
+                    vec![Effect::CreateToken { who: Who::You, def: t.treasure, n: 1 }, Effect::LoseLife { who: Who::You, n: 1 }],
+                    vec![draw(1), Effect::LoseLife { who: Who::You, n: 2 }],
+                    vec![Effect::CreateToken { who: Who::You, def: t.shapeshifter, n: 1 }, Effect::LoseLife { who: Who::You, n: 3 }],
+                ];
+                let mut combos = Vec::new();
+                for mask in 1..8u8 {
+                    let mut effects = Vec::new();
+                    for (i, p) in parts.iter().enumerate() {
+                        if mask & (1 << i) != 0 {
+                            effects.extend(p.iter().copied());
+                        }
+                    }
+                    combos.push(Ability::new(vec![], effects));
+                }
+                on_modal(d, When::FirstMainPhaseYourTurn, None, combos);
+            },
+        ),
         _ => None,
     }
 }
@@ -957,4 +1155,19 @@ pub const PG_B_SCRIPTED: &[&str] = &[
     "Myrkul, Lord of Bones",
     "Maha, Its Feathers Night",
     "Esper Sentinel",
+    "Austere Command",
+    "Dawn's Truce",
+    "Eldritch Evolution",
+    "Birthing Pod",
+    "Enduring Vitality",
+    "Jaheira, Friend of the Forest",
+    "Arachnogenesis",
+    "For the Common Good",
+    "Mirari's Wake",
+    "Kaya, Geist Hunter",
+    "The Golden Throne",
+    "Mondrak, Glory Dominus",
+    "Exalted Sunborn",
+    "Grim Haruspex",
+    "Black Market Connections",
 ];

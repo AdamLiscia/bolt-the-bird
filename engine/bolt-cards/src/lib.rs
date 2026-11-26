@@ -449,6 +449,13 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         protection_from_subtype: None,
         indestructible_at_half_life: false,
         opponents_creatures_base_toughness_one: false,
+        creatures_tap_any_color: false,
+        tokens_tap_for_green: false,
+        lands_add_same: false,
+        lose_replacement: false,
+        warp: None,
+        morph: None,
+        changeling: false,
     };
     def.color_identity = color_identity(o);
     def.phyrexian = phyrexian;

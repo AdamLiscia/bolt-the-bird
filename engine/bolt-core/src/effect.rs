@@ -1464,6 +1464,45 @@ pub enum Effect {
     ExileMakeEnchantmentCopy(u8),
     /// "... unless that player pays {X}, where X is this creature's power" (Esper Sentinel).
     UnlessOpponentPaysPower,
+    /// Destroy every artifact, enchantment, and/or creature with mana value in `creature_mv`
+    /// (inclusive; (0, 0) for none) (Austere Command's modes).
+    DestroyAllMatching {
+        artifacts: bool,
+        enchantments: bool,
+        creature_mv: (u8, u8),
+    },
+    /// You gain hexproof until end of turn (Dawn's Truce).
+    YouGainHexproofEot,
+    /// Search for a creature card with mana value at most (or exactly, with `exact`) `plus` more
+    /// than the sacrificed creature's (the stack entry's `extra`), put it onto the battlefield
+    /// (Eldritch Evolution, Birthing Pod).
+    SearchCreatureBySacrificedMv {
+        plus: u8,
+        exact: bool,
+    },
+    /// If the source was a creature when it died, return it to the battlefield as an enchantment and
+    /// no other card type (Enduring Vitality).
+    ReturnSelfAsEnchantment,
+    /// Create one `def` token for each creature attacking you (Arachnogenesis).
+    CreateTokensPerAttackers {
+        def: usize,
+    },
+    /// Prevent all combat damage this turn by creatures without this subtype.
+    PreventCombatDamageExceptSubtype(&'static str),
+    /// Create X tokens that are copies of the token in `slot` (X the spell's X).
+    CopyTokenX(u8),
+    /// Tokens you control gain these keywords until your next turn.
+    GrantTokensUntilYourNextTurn(crate::Keywords),
+    /// You gain 1 life for each token you control.
+    GainLifePerToken,
+    /// Until end of turn, tokens created under your control are doubled (Kaya's −2).
+    DoubleTokensThisTurn,
+    /// Exile all cards from all graveyards, then create a `def` token for each (Kaya's −6).
+    ExileGraveyardsTokenPerCard {
+        def: usize,
+    },
+    /// Put a counter of these keywords on the source (Mondrak: an indestructible counter).
+    KeywordCounterSelf(crate::Keywords),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1503,6 +1542,8 @@ pub enum SearchFor {
     GreenCreatureMvAtMostX,
     /// A creature card of this color (WUBRG index) with mana value at most this.
     ColoredCreatureMvAtMost(u8, u32),
+    /// A creature card with exactly this mana value (Birthing Pod).
+    CreatureMvExactly(u32),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -2043,6 +2084,8 @@ pub enum When {
     PutIntoGraveyardFromAnywhere,
     /// "Whenever an enchantment you control enters" (constellation), this one included.
     EnchantmentYouControlEnters,
+    /// "At the beginning of your first main phase" (precombat main, CR 505.1a).
+    FirstMainPhaseYourTurn,
 }
 
 #[derive(Clone, Debug, PartialEq)]

@@ -171,6 +171,14 @@ pub fn token_defs() -> Vec<CardDef> {
         token("Satyr", "Satyr", 2, 2, Keywords::HASTE), // Xenagos, the Reveler's red and green 2/2
         token("Pegasus", "Pegasus", 2, 2, Keywords::FLYING), // Archon of Sun's Grace's white 2/2
         token("Spirit", "Spirit", 3, 1, Keywords::FLYING), // Ghostly Dancers' white 3/1
+        // base+63 is lane C's Phyrexian Beast: a placeholder until it merges.
+        token("Lane C token 63", "Phyrexian Beast", 4, 4, Keywords::NONE),
+        {
+            // Black Market Connections: "a 3/2 colorless Shapeshifter creature token with changeling".
+            let mut t = token("Shapeshifter", "Shapeshifter", 3, 2, Keywords::NONE);
+            t.changeling = true;
+            t
+        },
     ]
 }
 
@@ -275,6 +283,7 @@ pub struct Tokens {
     pub satyr: usize,
     pub pegasus: usize,
     pub spirit_3_1: usize,
+    pub shapeshifter: usize,
 }
 
 impl Tokens {
@@ -343,6 +352,7 @@ impl Tokens {
             satyr: base + 60,
             pegasus: base + 61,
             spirit_3_1: base + 62,
+            shapeshifter: base + 64,
         }
     }
 }
