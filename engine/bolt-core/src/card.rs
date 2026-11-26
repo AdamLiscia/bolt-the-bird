@@ -969,6 +969,11 @@ pub struct CardDef {
     /// Silent Arbiter: "No more than one creature can attack each combat. No more than one creature
     /// can block each combat."
     pub one_attacker_one_blocker: bool,
+    /// "Colorless spells you cast cost {N} less to cast." (Ugin, the Ineffable: 2), in `spell_cost`.
+    pub colorless_spell_discount: u8,
+    /// Toxic N (CR 702.164): a player dealt combat damage by it also gets N poison counters
+    /// (Bloodroot Apothecary: 2).
+    pub toxic: u8,
 }
 
 /// A card's pieces from the d4 subsystems (see [`CardDef::subsystems`]).
@@ -1475,6 +1480,8 @@ impl CardDef {
             attacks_only_with_artifacts: 0,
             treasures_plus_one: None,
             one_attacker_one_blocker: false,
+            colorless_spell_discount: 0,
+            toxic: 0,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -1742,6 +1749,8 @@ impl CardDef {
             attacks_only_with_artifacts: 0,
             treasures_plus_one: None,
             one_attacker_one_blocker: false,
+            colorless_spell_discount: 0,
+            toxic: 0,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -2009,6 +2018,8 @@ impl CardDef {
             attacks_only_with_artifacts: 0,
             treasures_plus_one: None,
             one_attacker_one_blocker: false,
+            colorless_spell_discount: 0,
+            toxic: 0,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -2043,6 +2054,9 @@ pub struct ZonesExt {
     /// "You may have this land enter tapped as a copy of any land on the battlefield." (Vesuva): asked
     /// as it enters, however it enters (`Object::land_copy_pending`).
     pub enters_as_land_copy_tapped: bool,
+    /// The card has no mana cost (CR 202.1b): it can't be cast unless something lets it be cast
+    /// without paying its mana cost (Glimpse of Tomorrow: suspend).
+    pub no_mana_cost: bool,
 }
 
 #[cfg(test)]

@@ -863,3 +863,33 @@ fn railway_brawler_is_plotted_then_cast_free_on_a_later_turn() {
     play(&mut g, elf, false, &[], &[]);
     assert_eq!(g.power(elf), 2, "X +1/+1 counters, X its power");
 }
+
+// ---- Auras put onto the battlefield attached, not cast (game/zones.rs) ----
+
+#[test]
+fn an_aura_put_onto_the_battlefield_enters_attached_only_to_what_it_could_enchant() {
+    let mut g = table();
+    let ghoul = put(&mut g, 0, "Hungry Ghoul");
+    let land = g.permanents(0).find(|&x| g.types_of(x).land).unwrap();
+    let before = g.power(ghoul);
+    let ws = hand(&mut g, 0, "Wingspan Stride");
+    let land_zcc = g.obj(land).zcc;
+    assert!(
+        !g.put_aura_attached(ws, land, land_zcc, 0),
+        "Enchant creature: not a land"
+    );
+    assert_eq!(g.obj(ws).zone, Zone::Hand, "it stays where it was (CR 303.4g)");
+    let zcc = g.obj(ghoul).zcc;
+    assert!(
+        !g.put_aura_attached(ws, ghoul, zcc + 1, 0),
+        "not once the creature has left"
+    );
+    assert!(g.put_aura_attached(ws, ghoul, zcc, 0));
+    assert_eq!(g.obj(ws).zone, Zone::Battlefield);
+    assert_eq!(g.obj(ws).attached_to, Some((ghoul, zcc)));
+    assert_eq!(g.power(ghoul), before + 1);
+    assert!(g.keywords(ghoul).has(Keywords::FLYING));
+    let dead = g.add_card(0, cid("Blanchwood Armor"), Zone::Graveyard);
+    assert!(g.put_aura_attached(dead, ghoul, zcc, 0), "from a graveyard too");
+    assert_eq!(g.obj(dead).attached_to, Some((ghoul, zcc)));
+}
