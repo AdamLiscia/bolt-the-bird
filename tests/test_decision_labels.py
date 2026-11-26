@@ -98,6 +98,9 @@ def test_lane_d3_batch_5_decisions_read_as_their_moves():
     torment = {"kind": "SacrificeDiscardOrLoseLife", "left": 2, "life": 3}
     assert pick(torment, "Opt") == "Sacrifice (or discard, from your hand): Opt"
     assert label(torment, "No", 0) == "Don't sacrifice or discard (lose 3 life)"
+    brass = {"kind": "ReanimateTotalManaValue", "left": 9}
+    assert pick(brass, "Serra Angel") == "Put onto the battlefield under your control: Serra Angel"
+    assert label(brass, "No", 0) == "Done choosing"
 
 
 def test_lonis_puts_a_revealed_card_under_your_control():

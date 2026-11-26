@@ -171,6 +171,7 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         verb = verb or {"CastFromGraveyardThisTurn": "You may cast this turn (then exile it):"}.get(d)
         verb = verb or {"TakeTwoBottomRest": "Put into your hand:"}.get(d)
         verb = verb or {"SacrificeDiscardOrLoseLife": "Sacrifice (or discard, from your hand):"}.get(d)
+        verb = verb or {"ReanimateTotalManaValue": "Put onto the battlefield under your control:"}.get(d)
         if d == "IterationPick":
             verb = "Put into your hand:" if dec.get("to_hand") else "Put on the bottom:"
         if d == "LoseUnless":
@@ -216,6 +217,7 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         return "Put none onto the battlefield"
     d3_no = {"SacrificeAnyNumber": "Done sacrificing", "ReturnAnotherPermanentCard": "Return nothing", "BasicsTappedUpTo": "Find nothing", "SignalTheClans": "Done revealing", "BraidsSacrifice": "Don't sacrifice", "BraidsOpponent": "Don't sacrifice (lose 2 life)"}  # fmt: skip
     d3_no["ReturnSharingType"] = "Return nothing"
+    d3_no["ReanimateTotalManaValue"] = "Done choosing"
     if not yes and d in d3_no:
         return d3_no[d]
     if d in ("DiscardOrLoseLife", "LoseUnless") and not yes:

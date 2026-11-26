@@ -2235,3 +2235,253 @@ fn the_shire_enters_tapped_without_a_legend_and_taps_a_creature_for_food() {
     assert_eq!(tokens(&g, 0, "Food").len(), 1);
     assert!(g.obj(s).tapped && g.obj(z).tapped, "the Shire and a creature");
 }
+
+// ---- d1 core, batch 9: improvise, multikicker, forage, restricted and conditional mana ----
+
+fn legal(g: &Game, a: Action) -> bool {
+    g.legal_actions().contains(&a)
+}
+
+#[test]
+fn universal_surveillance_improvises_with_untapped_artifacts() {
+    let mut g = game(&["Island", "Island", "Island"]);
+    let racks = [put(&mut g, 0, "Scroll Rack"), put(&mut g, 0, "Scroll Rack")];
+    let c = hand(&mut g, 0, "Universal Surveillance");
+    assert!(
+        legal(&g, Action::CastX(c, 2)),
+        "{{2}}{{U}}{{U}}{{U}}: three Islands and two artifacts"
+    );
+    assert!(!legal(&g, Action::CastX(c, 3)));
+    let before = g.players[0].hand.len();
+    act(&mut g, Action::CastX(c, 2));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].hand.len(), before - 1 + 2, "drew X = 2");
+    assert!(
+        racks.iter().all(|&r| g.obj(r).tapped),
+        "both artifacts tapped for {{1}} each"
+    );
+}
+
+#[test]
+fn inspiring_statuary_gives_nonartifact_spells_improvise() {
+    let mut g = game(&["Swamp"]);
+    let statuary = put(&mut g, 0, "Inspiring Statuary");
+    let whisper = hand(&mut g, 0, "Night's Whisper");
+    let altar = hand(&mut g, 0, "Ashnod's Altar");
+    put(&mut g, 0, "Scroll Rack");
+    assert!(
+        !legal(&g, Action::Cast(altar)),
+        "an artifact spell doesn't improvise: {{3}} from one Swamp"
+    );
+    act(&mut g, Action::Cast(whisper));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(whisper).zone, Zone::Graveyard);
+    let tapped = g
+        .permanents(0)
+        .filter(|&x| g.types_of(x).artifact && g.obj(x).tapped)
+        .count();
+    assert_eq!(tapped, 1, "one artifact paid the {{1}}");
+    assert!(g.obj(statuary).zone == Zone::Battlefield);
+}
+
+#[test]
+fn kappa_cannoneer_improvises_and_grows_unblockable_when_artifacts_enter() {
+    let mut g = game(&["Island", "Swamp"]);
+    for _ in 0..4 {
+        put(&mut g, 0, "Scroll Rack");
+    }
+    let k = hand(&mut g, 0, "Kappa Cannoneer");
+    act(&mut g, Action::Cast(k));
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        g.obj(k).zone,
+        Zone::Battlefield,
+        "{{5}}{{U}}: two lands and four artifacts"
+    );
+    assert_eq!(g.obj(k).counters, 1, "it's an artifact entering itself");
+    assert!(g.keywords(k).has(Keywords::UNBLOCKABLE));
+    assert!(g.def_of(k).ward.is_some());
+}
+
+#[test]
+fn drift_of_phantasms_transmutes_for_a_three_drop() {
+    let mut g = game(&["Island", "Island", "Island"]);
+    let target = g.add_card(0, cid("Inspiring Statuary"), Zone::Library);
+    let drift = hand(&mut g, 0, "Drift of Phantasms");
+    act(&mut g, Action::Activate(drift, 0));
+    resolve_all(&mut g, &[Action::Pick(target)]);
+    assert_eq!(g.obj(drift).zone, Zone::Graveyard);
+    assert_eq!(g.obj(target).zone, Zone::Hand);
+}
+
+#[test]
+fn crystal_vein_taps_for_one_or_sacrifices_for_two() {
+    let mut g = game(&[]);
+    let v = put(&mut g, 0, "Crystal Vein");
+    assert_eq!(makes(&g, v), ([false; 5], true));
+    act(&mut g, Action::Activate(v, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(v).zone, Zone::Graveyard);
+    assert_eq!(g.players[0].pool.len(), 2);
+}
+
+#[test]
+fn eldrazi_temple_makes_two_for_colorless_eldrazi_only() {
+    let mut g = game(&["Plains"]);
+    let t = put(&mut g, 0, "Eldrazi Temple");
+    assert_eq!(makes(&g, t), ([false; 5], true));
+    let raker = hand(&mut g, 0, "Glaring Fleshraker");
+    let altar = hand(&mut g, 0, "Ashnod's Altar");
+    assert!(
+        !legal(&g, Action::Cast(altar)),
+        "{{3}} for a non-Eldrazi: two mana"
+    );
+    act(&mut g, Action::Cast(raker));
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        g.obj(raker).zone,
+        Zone::Battlefield,
+        "{{2}}{{C}}: the Temple's {{C}}{{C}} and a Plains"
+    );
+}
+
+#[test]
+fn shrine_of_the_forsaken_gods_makes_two_for_colorless_spells_with_seven_lands() {
+    let mut g = game(&["Plains"; 6]);
+    put(&mut g, 0, "Shrine of the Forsaken Gods");
+    let p = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "Plains")
+        .expect("a Plains");
+    tap(&mut g, p);
+    let sire = hand(&mut g, 0, "Sire of Seven Deaths");
+    act(&mut g, Action::Cast(sire));
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        g.obj(sire).zone,
+        Zone::Battlefield,
+        "{{7}}: five Plains and the Shrine's {{C}}{{C}}"
+    );
+    let mut g2 = game(&["Plains"; 5]);
+    put(&mut g2, 0, "Shrine of the Forsaken Gods");
+    let sire = hand(&mut g2, 0, "Sire of Seven Deaths");
+    assert!(!legal(&g2, Action::Cast(sire)), "six lands: only {{C}}");
+}
+
+#[test]
+fn nimbus_maze_adds_white_with_an_island_and_blue_with_a_plains() {
+    let mut g = game(&[]);
+    let m = put(&mut g, 0, "Nimbus Maze");
+    assert_eq!(makes(&g, m), ([false; 5], true));
+    put(&mut g, 0, "Island");
+    assert_eq!(makes(&g, m), ([true, false, false, false, false], true));
+    put(&mut g, 0, "Plains");
+    assert_eq!(makes(&g, m), ([true, true, false, false, false], true));
+}
+
+#[test]
+fn everflowing_chalice_enters_with_a_charge_counter_per_kick() {
+    let mut g = game(&["Plains"; 4]);
+    let c = hand(&mut g, 0, "Everflowing Chalice");
+    assert!(legal(&g, Action::CastX(c, 2)));
+    assert!(!legal(&g, Action::CastX(c, 3)), "three kicks cost {{6}}");
+    act(&mut g, Action::CastX(c, 2));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(c).kind_counters, 2);
+    let n = g.mana_sources(0).iter().filter(|s| s.0 == c).count();
+    assert_eq!(n, 2, "{{C}} for each charge counter");
+    let mut g = game(&[]);
+    let c = hand(&mut g, 0, "Everflowing Chalice");
+    act(&mut g, Action::CastX(c, 0));
+    resolve_all(&mut g, &[]);
+    assert!(g.mana_sources(0).iter().all(|s| s.0 != c), "no counters, no mana");
+}
+
+#[test]
+fn hall_of_the_bandit_lord_costs_three_life_and_gives_its_creature_haste() {
+    let mut g = game(&["Swamp"]);
+    let hall = put(&mut g, 0, "Hall of the Bandit Lord");
+    let artist = hand(&mut g, 0, "Blood Artist");
+    act(&mut g, Action::Cast(artist));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(artist).zone, Zone::Battlefield);
+    assert!(g.obj(hall).tapped);
+    assert_eq!(g.players[0].life, 37);
+    assert!(
+        g.keywords(artist).has(Keywords::HASTE),
+        "its mana paid for a creature spell"
+    );
+    let mut g = game(&[]);
+    let h = hand(&mut g, 0, "Hall of the Bandit Lord");
+    act(&mut g, Action::PlayLand(h));
+    assert!(g.obj(h).tapped, "enters tapped");
+}
+
+#[test]
+fn feed_the_cycle_forages_or_pays_black() {
+    let mut g = game(&["Swamp", "Plains"]);
+    let elf = put(&mut g, 1, "Fyndhorn Elves");
+    let c = hand(&mut g, 0, "Feed the Cycle");
+    assert!(!legal(&g, Action::Cast(c)), "{{1}}{{B}} and {{B}} from two lands");
+    let gy: Vec<ObjId> = (0..3)
+        .map(|_| g.add_card(0, cid("Plains"), Zone::Graveyard))
+        .collect();
+    let named = g
+        .legal_actions()
+        .into_iter()
+        .find_map(|a| match a {
+            Action::CastWith(x, y) if x == c => Some(y),
+            _ => None,
+        })
+        .expect("forage by exiling three");
+    assert!(gy.contains(&named));
+    act(&mut g, Action::CastWith(c, named));
+    act(&mut g, Action::Target(obj(elf)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(elf).zone, Zone::Graveyard);
+    assert!(
+        gy.iter().all(|&x| g.obj(x).zone == Zone::Exile),
+        "foraged: three cards exiled"
+    );
+    let mut g = game(&["Swamp", "Swamp", "Swamp"]);
+    let elf = put(&mut g, 1, "Fyndhorn Elves");
+    let c = hand(&mut g, 0, "Feed the Cycle");
+    act(&mut g, Action::Cast(c));
+    act(&mut g, Action::Target(obj(elf)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(elf).zone, Zone::Graveyard, "paid {{1}}{{B}}{{B}}");
+}
+
+#[test]
+fn verges_add_their_second_color_with_either_land_type() {
+    for (name, first, second, types) in [
+        ("Blazemire Verge", 2, 3, ["Swamp", "Mountain"]),
+        ("Bleachbone Verge", 2, 0, ["Plains", "Swamp"]),
+        ("Floodfarm Verge", 0, 1, ["Plains", "Island"]),
+        ("Gloomlake Verge", 1, 2, ["Island", "Swamp"]),
+        ("Wastewood Verge", 4, 2, ["Swamp", "Forest"]),
+    ] {
+        let mut g = game(&[]);
+        let v = put(&mut g, 0, name);
+        let mut only = [false; 5];
+        only[first] = true;
+        assert_eq!(makes(&g, v), (only, false), "{name} alone");
+        for t in types {
+            let mut g = game(&[]);
+            let v = put(&mut g, 0, name);
+            put(&mut g, 0, t);
+            let mut both = only;
+            both[second] = true;
+            assert_eq!(makes(&g, v), (both, false), "{name} with a {t}");
+        }
+    }
+}
+
+#[test]
+fn tainted_peak_adds_black_or_red_only_with_a_swamp() {
+    let mut g = game(&[]);
+    let t = put(&mut g, 0, "Tainted Peak");
+    assert_eq!(makes(&g, t), ([false; 5], true));
+    put(&mut g, 0, "Swamp");
+    assert_eq!(makes(&g, t), ([false, false, true, true, false], true));
+}
