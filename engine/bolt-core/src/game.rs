@@ -10397,6 +10397,7 @@ impl Game {
                 d.types.creature && !d.changeling && !d.subtypes.iter().any(|s| s == "Human")
             }
             Pick::PermanentOddManaValue => d.types.is_permanent() && !d.cost.mana_value().is_multiple_of(2),
+            Pick::CreatureManaValueAtMost(n) => d.types.creature && d.cost.mana_value() <= n,
         }
     }
 
@@ -19628,6 +19629,26 @@ impl Game {
             Effect::OpponentLosesUnlessSacrificesOrDiscardsX { life } => {
                 let q = opponent(item.controller);
                 self.torment_next(q, item.x as u32, life);
+            }
+            Effect::ReturnCreatureMvAtMostToBattlefield(n) => {
+                let pick = Pick::CreatureManaValueAtMost(n);
+                let cards: Vec<ObjId> = self.players[item.controller]
+                    .graveyard
+                    .iter()
+                    .copied()
+                    .filter(|&c| self.picks(c, pick))
+                    .collect();
+                if !cards.is_empty() {
+                    self.ask(
+                        item.controller,
+                        Decision::LookPick {
+                            cards,
+                            pick,
+                            to: LookTo::Battlefield,
+                            rest: None,
+                        },
+                    );
+                }
             }
         }
     }

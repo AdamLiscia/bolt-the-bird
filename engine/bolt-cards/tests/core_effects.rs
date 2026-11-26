@@ -2675,3 +2675,42 @@ fn x_times_lose_life_unless_sacrificing_a_nonland_permanent_or_discarding() {
     );
     assert_eq!(g.players[1].life, life - 3);
 }
+
+// ---- batch 19 ----
+
+#[test]
+fn exile_the_top_two_to_play_this_turn_only() {
+    let (mut g, t) = game_with(vec![sorcery(vec![], vec![Effect::ExileTopToPlayThisTurn(2)])]);
+    let forest = g.add_card(0, cid("Forest"), Zone::Library);
+    let bolt = g.add_card(0, cid("Lightning Bolt"), Zone::Library);
+    cast_test(&mut g, t, &[], &[]);
+    assert_eq!((g.obj(forest).zone, g.obj(bolt).zone), (Zone::Exile, Zone::Exile));
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Cast(bolt)) && legal.contains(&Action::PlayLand(forest)));
+    to_main1(&mut g, 4, 1);
+    to_main1(&mut g, 5, 0);
+    let legal = g.legal_actions();
+    assert!(!legal.contains(&Action::Cast(bolt)) && !legal.contains(&Action::PlayLand(forest)));
+}
+
+#[test]
+fn return_up_to_one_creature_card_with_small_mana_value_to_the_battlefield() {
+    let (mut g, t) = game_with(vec![sorcery(
+        vec![],
+        vec![Effect::ReturnCreatureMvAtMostToBattlefield(3)],
+    )]);
+    let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Graveyard);
+    let angel = g.add_card(0, cid("Serra Angel"), Zone::Graveyard);
+    let theirs = g.add_card(1, cid("Llanowar Elves"), Zone::Graveyard);
+    let c = g.add_card(0, t, Zone::Hand);
+    act(&mut g, Action::Cast(c));
+    to_decision(&mut g);
+    let legal = g.legal_actions();
+    assert!(
+        legal.contains(&Action::Pick(elves)) && legal.contains(&Action::No),
+        "up to one"
+    );
+    assert!(!legal.contains(&Action::Pick(angel)) && !legal.contains(&Action::Pick(theirs)));
+    resolve_all(&mut g, &[Action::Pick(elves)]);
+    assert_eq!(g.obj(elves).zone, Zone::Battlefield);
+}

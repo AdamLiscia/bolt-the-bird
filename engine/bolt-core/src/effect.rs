@@ -2146,6 +2146,10 @@ pub enum Effect {
     OpponentLosesUnlessSacrificesOrDiscardsX {
         life: i32,
     },
+    /// Return up to one creature card with mana value `max_mv` or less from your graveyard to the
+    /// battlefield, not targeted (Barrowin of Clan Undurr: 3), as `Decision::LookPick` with
+    /// `Pick::CreatureManaValueAtMost`.
+    ReturnCreatureMvAtMostToBattlefield(u32),
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -2422,6 +2426,8 @@ pub enum Pick {
     NonHumanCreature,
     /// A permanent card with an odd mana value (Desecrate Reality).
     PermanentOddManaValue,
+    /// A creature card with mana value at most this (Barrowin of Clan Undurr: 3).
+    CreatureManaValueAtMost(u32),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
