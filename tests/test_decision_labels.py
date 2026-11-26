@@ -144,3 +144,11 @@ def test_a_split_or_omen_second_half_is_cast_by_its_name():
 
 def test_an_unknown_decision_keeps_the_generic_label():
     assert label({"kind": "SomethingNew"}, "Mode", 0) is None
+
+
+def test_a_pact_says_not_paying_loses_the_game():
+    dec = {"kind": "PayOrLoseGame", "cost": "{3}{U}{U}"}
+    assert label(dec, "Yes", 0) == "Pay {3}{U}{U}"
+    assert label(dec, "No", 0) == "Don't pay (you lose the game)"
+    sourced = {**dec, "source": [5, 1]}
+    assert label(sourced, "Yes", 0) == "Pay {3}{U}{U} (Thriving Heath)"

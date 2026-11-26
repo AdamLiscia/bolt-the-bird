@@ -2348,6 +2348,15 @@ pub enum Effect {
     /// Return a card of your choice that the `Pick` allows from your graveyard to your hand, not
     /// targeted (Takenuma: a creature or planeswalker card), as `Decision::LookPick`.
     ReturnPickFromGraveyardToHand(Pick),
+    /// "At the beginning of your next upkeep, ...": a delayed triggered ability (CR 603.7), the
+    /// source's trigger number `trigger`, at its controller's next upkeep (Pact of Negation); see
+    /// `Game::delayed_next_upkeep`.
+    DelayedAtYourNextUpkeep {
+        trigger: usize,
+    },
+    /// "Pay {cost}. If you don't, you lose the game." (a Pact's delayed trigger), as
+    /// `Decision::PayOrLoseGame`.
+    PayOrLoseGame(crate::mana::ManaCost),
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -3234,6 +3243,12 @@ pub enum When {
     ClassBecomesLevel(u8),
     /// "When this creature is turned face up" (morph, manifest; Rattleclaw Mystic).
     TurnedFaceUp,
+    /// "Whenever an artifact you control is put into a graveyard from the battlefield" (Marionette
+    /// Master), its last controller's, this one included.
+    ArtifactYouControlToGraveyardFromBattlefield,
+    /// "Whenever another creature or artifact you control is put into a graveyard from the
+    /// battlefield" (Marionette Apprentice).
+    AnotherCreatureOrArtifactYouControlToGraveyardFromBattlefield,
 }
 
 #[derive(Clone, Debug, PartialEq)]

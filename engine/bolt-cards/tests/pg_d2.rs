@@ -2171,3 +2171,73 @@ fn sheoldred_whispering_one_reanimates_at_your_upkeep_and_edicts_at_theirs() {
     assert_eq!(g.obj(theirs).zone, Zone::Graveyard, "they sacrificed it");
     assert_eq!(g.obj(lions).zone, Zone::Battlefield);
 }
+
+#[test]
+fn pact_of_negation_counters_then_demands_payment_at_your_upkeep() {
+    let mut g = table();
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    act(&mut g, Action::Cast(bolt));
+    act(&mut g, Action::Target(Target::Player(1)));
+    let pact = hand(&mut g, 0, "Pact of Negation");
+    act(&mut g, Action::Cast(pact));
+    act(&mut g, Action::Target(Target::Object(bolt)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].life, 40, "countered");
+    let mut skip = g.clone();
+    g.start_turn(5, 0);
+    let mut asked = 0;
+    while g.step != Step::Main1 {
+        let a = if matches!(g.pending, Pending::Decide(_)) {
+            asked += 1;
+            Action::Yes
+        } else {
+            Action::PassPriority
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(asked, 1, "asked once, at the upkeep");
+    assert!(!g.players[0].lost, "paid {{3}}{{U}}{{U}}");
+    // Not paying: lose.
+    skip.start_turn(5, 0);
+    while !matches!(skip.pending, Pending::Decide(_)) {
+        act(&mut skip, Action::PassPriority);
+    }
+    act(&mut skip, Action::No);
+    assert!(skip.players[0].lost || skip.result.is_some());
+}
+
+#[test]
+fn sigil_of_the_empty_throne_makes_an_angel_for_an_enchantment_spell() {
+    let mut g = table();
+    put(&mut g, 0, "Sigil of the Empty Throne");
+    cast_settle(&mut g, "Sol Ring");
+    assert!(tokens(&g, 0, "Angel").is_empty(), "not an enchantment");
+    cast_settle(&mut g, "Exquisite Blood");
+    let angel = tokens(&g, 0, "Angel");
+    assert_eq!(angel.len(), 1);
+    assert_eq!((g.power(angel[0]), g.toughness(angel[0])), (4, 4));
+    assert!(g.keywords(angel[0]).has(Keywords::FLYING));
+    assert_eq!(g.colors_of(angel[0]), [true, false, false, false, false]);
+}
+
+#[test]
+fn summoning_station_makes_pinchers_and_untaps_when_an_artifact_dies() {
+    let mut g = table();
+    let station = put(&mut g, 0, "Summoning Station");
+    act(&mut g, Action::Activate(station, 0));
+    resolve_all(&mut g, &[]);
+    let pincher = tokens(&g, 0, "Pincher");
+    assert_eq!(pincher.len(), 1);
+    assert_eq!((g.power(pincher[0]), g.toughness(pincher[0])), (2, 2));
+    assert!(g.obj(station).tapped);
+    let clue_def = set("CMD")
+        .unwrap()
+        .defs
+        .iter()
+        .position(|d| d.token && d.name == "Clue")
+        .expect("the Clue token");
+    let clue = g.add_card(0, clue_def, Zone::Battlefield);
+    act(&mut g, Action::Activate(clue, 0));
+    resolve_all(&mut g, &[Action::Yes]); // "you may untap"
+    assert!(!g.obj(station).tapped, "untapped");
+}
