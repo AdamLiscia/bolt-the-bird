@@ -4578,18 +4578,18 @@
   {
    "card": "Desecrate Reality",
    "deck": "Zhulodok, Void Gorger (Adam)",
-   "missing": "effects and statics [moved from d3 to lane B, 2026-11-26]",
+   "missing": "effects and statics [moved from d3 to lane B, 2026-11-26] [to d4, 2026-11-26]",
    "lane": "mac-b",
    "theme": "effects",
-   "owner": "mac-b"
+   "owner": "d4"
   },
   {
    "card": "Titan's Presence",
    "deck": "Zhulodok, Void Gorger (Adam)",
-   "missing": "effects and statics [moved from d3 to lane B, 2026-11-26]",
+   "missing": "effects and statics [moved from d3 to lane B, 2026-11-26] [to d4, 2026-11-26]",
    "lane": "mac-b",
    "theme": "effects",
-   "owner": "mac-b"
+   "owner": "d4"
   },
   {
    "card": "Ulamog, the Ceaseless Hunger",
@@ -4658,18 +4658,18 @@
   {
    "card": "Commander's Plate",
    "deck": "Zhulodok, Void Gorger (Adam)",
-   "missing": "effects and statics [moved from d3 to lane B, 2026-11-26]",
+   "missing": "effects and statics [moved from d3 to lane B, 2026-11-26] [to d4, 2026-11-26]",
    "lane": "mac-b",
    "theme": "effects",
-   "owner": "mac-b"
+   "owner": "d4"
   },
   {
    "card": "Ugin, the Spirit Dragon",
    "deck": "Zhulodok, Void Gorger (Adam)",
-   "missing": "effects and statics [moved from d3 to lane B, 2026-11-26]",
+   "missing": "effects and statics [moved from d3 to lane B, 2026-11-26] [to d4, 2026-11-26]",
    "lane": "mac-b",
    "theme": "effects",
-   "owner": "mac-b"
+   "owner": "d4"
   },
   {
    "card": "Ugin, the Ineffable",
@@ -5282,10 +5282,10 @@
   {
    "card": "Echoing Assault",
    "deck": "Bloomburrow Commander (BLC)",
-   "missing": "BLC (lane B's routing, 2026-11-26) [moved from d3 to lane B, 2026-11-26]",
+   "missing": "BLC (lane B's routing, 2026-11-26) [moved from d3 to lane B, 2026-11-26] [to d4, 2026-11-26]",
    "lane": "mac-b",
    "theme": "effects",
-   "owner": "mac-b"
+   "owner": "d4"
   },
   {
    "card": "Forgotten Ancient",
@@ -5370,10 +5370,10 @@
   {
    "card": "Shield Broker",
    "deck": "Bloomburrow Commander (BLC)",
-   "missing": "BLC (lane B's routing, 2026-11-26) [moved from d3 to lane B, 2026-11-26]",
+   "missing": "BLC (lane B's routing, 2026-11-26) [moved from d3 to lane B, 2026-11-26] [to d4, 2026-11-26]",
    "lane": "mac-b",
    "theme": "effects",
-   "owner": "mac-b"
+   "owner": "d4"
   },
   {
    "card": "Bloodroot Apothecary",
