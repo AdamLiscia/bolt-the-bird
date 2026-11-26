@@ -292,6 +292,8 @@ pub struct Object {
     /// Type, color, base power and toughness, and ability changes from resolved effects (layers 4-7b),
     /// in timestamp order; see `TypeChange`.
     pub type_changes: Vec<TypeChange>,
+    /// The turn it was first targeted (Kira, Great Glass-Spinner); 0: not yet.
+    pub kira_targeted_turn: u32,
 }
 
 /// One resolved effect's change to a permanent's characteristics (lane d3's type-changing store):
@@ -1167,6 +1169,11 @@ pub enum Decision {
         counters: u8,
         keywords: Keywords,
     },
+    /// All Suns' Dawn: `Pick` a card of color `color` (WUBRG) from your graveyard for your hand, or
+    /// `No`; then the next color.
+    CardOfColorToHand { color: u8 },
+    /// Chain of Smog: `Mode(t)` copies `source` targeting player `t`, `No` doesn't.
+    ChainCopy { source: ObjId },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -1860,6 +1867,7 @@ impl Game {
             chosen_card_type: None,
             enchanted_player: None,
             type_changes: Vec::new(),
+            kira_targeted_turn: 0,
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -2748,6 +2756,20 @@ impl Game {
                     c.attackers.retain(|&a| a != y);
                     c.blocks.retain(|b| b.0 != y && b.1 != y);
                 }
+            }
+        }
+    }
+
+    /// All Suns' Dawn: ask for a card of `color` (WUBRG index) and the colors after it.
+    fn card_of_each_color(&mut self, p: PlayerId, color: u8) {
+        for c in color..5 {
+            if self.players[p]
+                .graveyard
+                .iter()
+                .any(|&x| self.def_of(x).colors[c as usize])
+            {
+                self.ask(p, Decision::CardOfColorToHand { color: c });
+                return;
             }
         }
     }
@@ -9194,6 +9216,29 @@ impl Game {
     /// CR 702.21a: whenever a permanent with ward becomes the target of a spell or ability an
     /// opponent controls, its ward triggers.
     fn ward_check(&mut self, item: &StackItem) {
+        // Kira, Great Glass-Spinner: the first time each turn a creature of its controller's is
+        // targeted, counter that spell or ability.
+        for &t in &item.targets {
+            if let Chosen::Object(id, _) = t {
+                if self.obj(id).zone != Zone::Battlefield || !self.types_of(id).creature {
+                    continue;
+                }
+                let p = self.obj(id).controller;
+                let kira = self
+                    .permanents(p)
+                    .filter(|&k| !self.lost_abilities(k))
+                    .find_map(|k| self.def_of(k).kira_trigger.map(|n| (k, n)));
+                let turn = self.turn;
+                if let (Some((k, n)), true) = (kira, self.obj(id).kira_targeted_turn != turn) {
+                    self.obj_mut(id).kira_targeted_turn = turn;
+                    self.triggered.push(StackItem {
+                        kind: StackKind::Trigger(n),
+                        extra: Some(item.source),
+                        ..Game::casting(k, p)
+                    });
+                }
+            }
+        }
         // "Whenever a creature you control or a creature spell you control becomes the target of a
         // spell or ability an opponent controls" (Surrak).
         for &t in &item.targets {
@@ -10082,6 +10127,18 @@ impl Game {
                 v.push(Action::No);
                 v
             }
+            Decision::CardOfColorToHand { color } => {
+                let mut v: Vec<Action> = self.players[p]
+                    .graveyard
+                    .iter()
+                    .copied()
+                    .filter(|&c| self.def_of(c).colors[*color as usize])
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
+            Decision::ChainCopy { .. } => vec![Action::Mode(0), Action::Mode(1), Action::No],
             Decision::LandFromHand => {
                 let mut v: Vec<Action> = hand
                     .iter()
@@ -11381,6 +11438,21 @@ impl Game {
             (Decision::ScrollRackExile { exiled }, Action::No) => self.scroll_rack_finish(p, exiled),
             (Decision::LandFromHand, Action::Pick(c)) => self.move_to(c, Zone::Battlefield),
             (Decision::LandFromHand, Action::No) => {}
+            (Decision::CardOfColorToHand { color }, choice) => {
+                if let Action::Pick(c) = choice {
+                    self.move_to(c, Zone::Hand);
+                }
+                self.card_of_each_color(p, color + 1);
+            }
+            (Decision::ChainCopy { source }, Action::Mode(t)) => {
+                let copy = StackItem {
+                    kind: StackKind::SpellCopy,
+                    targets: vec![Chosen::Player(t as PlayerId)],
+                    ..Game::casting(source, p)
+                };
+                self.items.push(copy);
+            }
+            (Decision::ChainCopy { .. }, Action::No) => {}
             (Decision::PickOneOf { to_hand, .. }, Action::Pick(c)) => {
                 self.move_to(c, if to_hand { Zone::Hand } else { Zone::Battlefield });
             }
@@ -14538,6 +14610,31 @@ impl Game {
                     self.turn + 1
                 };
                 self.life_locked_until[p] = Some(next);
+            }
+            Effect::CounterExtra => {
+                if let Some(s) = item.extra {
+                    if let Some(pos) = self.targeted_item(s) {
+                        let it = self.items[pos].clone();
+                        if it.kind == StackKind::Spell {
+                            if !self.uncounterable(s) {
+                                self.items.remove(pos);
+                                self.leave_stack(s, it.flashback);
+                            }
+                        } else {
+                            self.items.remove(pos);
+                        }
+                    }
+                }
+            }
+            Effect::OneCardOfEachColorToHand => self.card_of_each_color(item.controller, 0),
+            Effect::ChainCopy(n) => {
+                if let Some(q) = self
+                    .players_for(item, legal, Who::TargetPlayer(n))
+                    .first()
+                    .copied()
+                {
+                    self.ask(q, Decision::ChainCopy { source: src });
+                }
             }
             Effect::BecomeCopyOfSlotUntilEot(n) => {
                 if let Some(card) = Game::slot_object(item, legal, n) {

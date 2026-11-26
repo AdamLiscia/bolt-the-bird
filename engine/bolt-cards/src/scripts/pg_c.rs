@@ -1419,6 +1419,23 @@ pub fn script(name: &str) -> Option<Script> {
             d.mana_ext.evoke = true;
             on(d, When::Enters, vec![], vec![Effect::SacrificeIfEvoked]);
         }),
+        // ---- Damia, Sage of Stone (Grande): its last three ----
+        "All Suns' Dawn" => s(
+            &["For each color, return up to one target card of that color from your graveyard to your hand. Exile All Suns' Dawn."],
+            // The cards are chosen as it resolves (a graveyard has no hexproof to target past).
+            |d, _| spell(d, vec![], vec![Effect::OneCardOfEachColorToHand, Effect::ExileSourceSpell]),
+        ),
+        "Chain of Smog" => s(
+            &["Target player discards two cards. That player may copy this spell and may choose a new target for that copy."],
+            |d, _| spell(d, vec![Filter::PLAYER], vec![Effect::Discard { who: Who::TargetPlayer(0), n: 2 }, Effect::ChainCopy(0)]),
+        ),
+        "Kira, Great Glass-Spinner" => s(
+            &["Creatures you control have \"Whenever this creature becomes the target of a spell or ability for the first time each turn, counter that spell or ability.\""],
+            |d, _| {
+                on(d, When::Never, vec![], vec![Effect::CounterExtra]);
+                d.kira_trigger = Some(0);
+            },
+        ),
         _ => None,
     }
 }
@@ -1589,4 +1606,7 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Tireless Tracker",
     "Academy Manufactor",
     "Wavesifter",
+    "All Suns' Dawn",
+    "Chain of Smog",
+    "Kira, Great Glass-Spinner",
 ];

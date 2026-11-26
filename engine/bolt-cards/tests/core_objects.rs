@@ -441,3 +441,82 @@ fn a_destroyed_clue_is_not_sacrificed_for_tireless_tracker() {
     assert!(tokens(&g, 0, "Clue").is_empty(), "destroyed");
     assert_eq!(g.power(tt), 3, "destroyed, not sacrificed: no counter");
 }
+
+// ---- Damia's last three: All Suns' Dawn, Chain of Smog, Kira ----
+
+#[test]
+fn all_suns_dawn_returns_one_card_of_each_color() {
+    let mut g = table();
+    let green = g.add_card(0, cid("Avenger of Zendikar"), Zone::Graveyard);
+    let green2 = g.add_card(0, cid("Fauna Shaman"), Zone::Graveyard);
+    let black = g.add_card(0, cid("Hungry Ghoul"), Zone::Graveyard);
+    let asd = hand(&mut g, 0, "All Suns' Dawn");
+    play(
+        &mut g,
+        asd,
+        false,
+        &[],
+        &[Action::Pick(black), Action::Pick(green)],
+    );
+    assert_eq!(g.obj(black).zone, Zone::Hand);
+    assert_eq!(g.obj(green).zone, Zone::Hand);
+    assert_eq!(g.obj(green2).zone, Zone::Graveyard, "up to one of each color");
+    assert_eq!(g.obj(asd).zone, Zone::Exile);
+}
+
+#[test]
+fn chain_of_smog_can_be_copied_back_by_its_target() {
+    let mut g = table();
+    let cs = hand(&mut g, 0, "Chain of Smog");
+    let n0 = g.players[0].hand.len() - 1;
+    let n1 = g.players[1].hand.len();
+    act(&mut g, Action::Cast(cs));
+    act(&mut g, Action::Target(Target::Player(1)));
+    let mut copied = false;
+    for _ in 0..60 {
+        if g.items.is_empty() && !matches!(g.pending, Pending::Decide(_) | Pending::ChooseTarget(_)) {
+            break;
+        }
+        let a = match &g.decision {
+            Some(bolt_core::Decision::ChainCopy { .. }) if !copied => {
+                copied = true;
+                Action::Mode(0) // copy it back at the caster
+            }
+            Some(bolt_core::Decision::ChainCopy { .. }) => Action::No,
+            Some(_) if matches!(g.pending, Pending::Decide(_)) => g.legal_actions()[0],
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.players[1].hand.len(), n1 - 2);
+    assert_eq!(
+        g.players[0].hand.len(),
+        n0 - 2,
+        "the copy made the caster discard two"
+    );
+}
+
+#[test]
+fn kira_counters_the_first_spell_targeting_each_creature_each_turn() {
+    let mut g = table();
+    put(&mut g, 1, "Kira, Great Glass-Spinner");
+    let ghoul = put(&mut g, 1, "Hungry Ghoul");
+    let k1 = hand(&mut g, 0, "Khalni Ambush // Khalni Territory");
+    let mine = put(&mut g, 0, "Palinchron");
+    act(&mut g, Action::Cast(k1));
+    act(&mut g, Action::Target(obj(mine)));
+    act(&mut g, Action::Target(obj(ghoul)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        g.obj(ghoul).zone,
+        Zone::Battlefield,
+        "the first targeting is countered"
+    );
+    assert_eq!(g.obj(k1).zone, Zone::Graveyard);
+    let k2 = hand(&mut g, 0, "Khalni Ambush // Khalni Territory");
+    act(&mut g, Action::Cast(k2));
+    act(&mut g, Action::Target(obj(mine)));
+    act(&mut g, Action::Target(obj(ghoul)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(ghoul).zone, Zone::Graveyard, "not the first time this turn");
+}

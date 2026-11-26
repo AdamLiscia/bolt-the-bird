@@ -845,6 +845,9 @@ pub struct CardDef {
     /// Academy Manufactor: "If you would create a Clue, Food, or Treasure token, instead create one of
     /// each." (the three token definitions)
     pub clue_food_treasure: Option<[usize; 3]>,
+    /// Kira: "Creatures you control have 'Whenever this creature becomes the target of a spell or
+    /// ability for the first time each turn, counter that spell or ability.'" (its trigger number)
+    pub kira_trigger: Option<usize>,
 }
 
 /// A card's pieces from the d4 subsystems (see [`CardDef::subsystems`]).
@@ -1210,6 +1213,7 @@ impl CardDef {
             attack_tax: 0,
             attack_tax_per_enchantment: false,
             clue_food_treasure: None,
+            kira_trigger: None,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -1460,6 +1464,7 @@ impl CardDef {
             attack_tax: 0,
             attack_tax_per_enchantment: false,
             clue_food_treasure: None,
+            kira_trigger: None,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -1710,6 +1715,7 @@ impl CardDef {
             attack_tax: 0,
             attack_tax_per_enchantment: false,
             clue_food_treasure: None,
+            kira_trigger: None,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,

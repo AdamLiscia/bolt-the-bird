@@ -648,3 +648,9 @@ Objects and zones batch 4: Tireless Tracker, Academy Manufactor, Wavesifter (on 
 `CardDef::clue_food_treasure` (Academy Manufactor, in `create_token` before the "those tokens plus" extras).
 Tireless Tracker uses d2's `When::YouSacrificeSubtype("Clue")`; the "sacrifice N of a subtype" cost now reports each
 sacrifice through `Game::sacrificed` (a destroyed Clue doesn't count). Wavesifter uses d1's evoke.
+
+Damia, Sage of Stone (Grande): its last three, All Suns' Dawn, Chain of Smog, Kira. Core: `CardDef::kira_trigger`,
+`Object::kira_targeted_turn` (checked in `ward_check`: the first time each turn a creature of a Kira controller is
+targeted, Kira's trigger counters that spell or ability via `Effect::CounterExtra`), `Effect::{OneCardOfEachColorToHand,
+ChainCopy}`, `Decision::{CardOfColorToHand, ChainCopy}`. All Suns' Dawn picks its cards as it resolves (one per color);
+Chain of Smog's copy is a `SpellCopy` controlled by the target player with the player they choose as its target.

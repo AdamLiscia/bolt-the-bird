@@ -1974,6 +1974,13 @@ pub enum Effect {
     /// Until your next turn, your life total can't change (and damage to you is prevented: you have
     /// protection from everything) (Teferi's Protection).
     LifeLockedUntilYourNextTurn,
+    /// Counter the spell or ability from the item's `extra` source (Kira's granted trigger).
+    CounterExtra,
+    /// All Suns' Dawn: for each color, return up to one card of that color from your graveyard to
+    /// your hand.
+    OneCardOfEachColorToHand,
+    /// Chain of Smog: the player in `slot` may copy this spell, choosing a new target player.
+    ChainCopy(u8),
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
