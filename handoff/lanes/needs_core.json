@@ -2130,10 +2130,10 @@
   {
    "card": "Rankle, Master of Pranks",
    "deck": "Henrika Domnathi // Henrika, Infernal Seer",
-   "missing": "needs core: choose any number of modes",
+   "missing": "needs core: choose any number of modes [lane B, 21dd51e]",
    "lane": "d2",
-   "theme": "effects",
-   "owner": "d3"
+   "theme": "merger_delegated",
+   "owner": "mac-b"
   },
   {
    "card": "Accursed Marauder",
@@ -5730,10 +5730,10 @@
   {
    "card": "Gisa, Glorious Resurrector",
    "deck": "Malik, Grim Manipulator (Spr3adsh33)",
-   "missing": "lane C's Malik routing (2026-11-26); multi-owner cards: see its report",
+   "missing": "lane C's Malik routing (2026-11-26); multi-owner cards: see its report [lane B, 21dd51e]",
    "lane": "mac-c",
-   "theme": "objects_zones",
-   "owner": "mac-c"
+   "theme": "merger_delegated",
+   "owner": "mac-b"
   },
   {
    "card": "All That Glitters",
@@ -6098,10 +6098,10 @@
   {
    "card": "Raphael, the Muse",
    "deck": "Olivia, Crimson Bride (DonSpider)",
-   "missing": "lane C's routing (2026-11-26)",
+   "missing": "lane C's routing (2026-11-26) [lane B, 21dd51e]",
    "lane": "mac-c",
-   "theme": "triggers",
-   "owner": "d2"
+   "theme": "merger_delegated",
+   "owner": "mac-b"
   },
   {
    "card": "Tag Team Tough",

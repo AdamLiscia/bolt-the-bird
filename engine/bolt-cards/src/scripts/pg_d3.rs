@@ -1849,15 +1849,6 @@ pub fn script(name: &str) -> Option<Script> {
                 spell(d, vec![], vec![Effect::LookTakeTwoBottomAnyOrder(7)]);
             },
         ),
-        "Moria Scavenger" => s(
-            &["{T}, Discard a card: Draw a card. If the discarded card was a creature card, amass Orcs 1."],
-            |d, t| {
-                let amass = Effect::Amass { subtype: "Orc", n: 1, def: t.orc_army };
-                let n = activated(d, "", true, vec![], vec![draw(1), Effect::StopUnlessExtraIsCreatureCard, amass]);
-                d.activated[n].discard_any_card = true;
-                d.activated[n].victim_in_extra = true;
-            },
-        ),
         _ => None,
     }
 }
@@ -2111,5 +2102,4 @@ pub const PG_D3_SCRIPTED: &[&str] = &[
     "Organic Extinction",
     "Camellia, the Seedmiser",
     "Dig Through Time",
-    "Moria Scavenger",
 ];
