@@ -1992,6 +1992,11 @@ pub enum Effect {
     /// Until your next turn, your life total can't change (and damage to you is prevented: you have
     /// protection from everything) (Teferi's Protection).
     LifeLockedUntilYourNextTurn,
+    /// "You may cast a spell with mana value `max_mv` or less from your hand without paying its mana
+    /// cost." (Rishkar's Expertise): a free-cast window over those cards, for one spell.
+    MayCastFromHandFree {
+        max_mv: u32,
+    },
     /// Each creature other than the source, anyone's, gets +P/+T until end of turn (Massacre Girl:
     /// −1/−1).
     PumpEachOtherCreature {
@@ -2073,6 +2078,13 @@ pub enum Effect {
         slot: u8,
         subtype: &'static str,
     },
+    /// Counter the spell or ability from the item's `extra` source (Kira's granted trigger).
+    CounterExtra,
+    /// All Suns' Dawn: for each color, return up to one card of that color from your graveyard to
+    /// your hand.
+    OneCardOfEachColorToHand,
+    /// Chain of Smog: the player in `slot` may copy this spell, choosing a new target player.
+    ChainCopy(u8),
     /// Each player who controls an artifact or enchantment creates a token of definition `def`
     /// (Fade from History: a 2/2 green Bear), active player first.
     EachPlayerWithArtifactOrEnchantmentCreatesToken {
@@ -2522,6 +2534,12 @@ pub enum Condition {
     /// (`Effect::BecomeCreatureUntilEotWith`): the ability it gains then (Raging Ravine's attack
     /// trigger).
     AnimatedByOwnAbility,
+    /// Its controller gained life this turn (Witch of the Moors).
+    YouGainedLifeThisTurn,
+    /// Its controller has at least this much life (Felidar Sovereign: 40).
+    LifeAtLeast(i32),
+    /// No creatures are on the battlefield (Pyrohemia).
+    NoCreaturesOnBattlefield,
 }
 
 /// A spell's effect or a triggered ability: target slots, then effects in order.
@@ -2917,6 +2935,39 @@ pub enum When {
     /// An Aura's "Whenever enchanted creature deals damage to an opponent" (Curiosity, Ophidian
     /// Eye), combat or not.
     EnchantedDealsDamageToOpponent,
+    /// "Whenever a permanent you control enters tapped" (Amulet of Vigor): checked as triggers are
+    /// next put on the stack, so "enters tapped" set by the effect that put it there counts. Slot 0
+    /// (if `triggering`) is that permanent.
+    PermanentYouControlEntersTapped,
+    /// "Whenever a nonartifact permanent you control enters" (Cloudstone Curio); slot 0 (if
+    /// `triggering`) is that permanent.
+    NonartifactPermanentYouControlEnters,
+    /// "Whenever an artifact you control enters" (Teething Wurmlet); slot 0 (if `triggering`) is
+    /// that artifact.
+    ArtifactYouControlEnters,
+    /// "Whenever this creature attacks for the first time each turn" (Aurelia).
+    AttacksFirstTimeEachTurn,
+    /// "Whenever you sacrifice a nontoken permanent" (Skittering Precursor); slot 0 (if
+    /// `triggering`) is that card.
+    YouSacrificeNontoken,
+    /// "Whenever an opponent sacrifices a nontoken permanent" (It That Betrays); slot 0 (if
+    /// `triggering`) is that card where it went.
+    OpponentSacrificesNontoken,
+    /// "Whenever an opponent draws a card except the first one they draw in each of their draw
+    /// steps" (Orcish Bowmasters).
+    OpponentDrawsExceptFirstInDrawStep,
+    /// "Whenever another colorless creature you control enters" (Glaring Fleshraker); slot 0 (if
+    /// `triggering`) is that creature.
+    AnotherColorlessCreatureYouControlEnters,
+    /// "Whenever you cast a colorless spell with mana value N or greater" (Sanctum of Ugin: 7); the
+    /// spell in `extra`.
+    YouCastColorlessMvAtLeast(u32),
+    /// "Whenever one or more creature cards are put into your graveyard from anywhere, ... This
+    /// ability triggers only once each turn." (Sefris; tokens aren't cards).
+    CreatureCardsToYourGraveyardOnceEachTurn,
+    /// "Whenever another source you control deals exactly 1 damage to a permanent or player"
+    /// (Ghyrson Starn); slot 0 (if `triggering`) is that permanent or player.
+    AnotherSourceYouControlDealsExactlyOne,
 }
 
 #[derive(Clone, Debug, PartialEq)]

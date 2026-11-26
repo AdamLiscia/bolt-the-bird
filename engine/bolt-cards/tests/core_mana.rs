@@ -1112,3 +1112,699 @@ fn escape_casts_from_the_graveyard_exiling_others_and_adds_counters() {
     assert!(g.players[0].graveyard.is_empty());
     assert_eq!(g.exile.len(), 2);
 }
+
+// ---- batch 6: attacking-alone and legendary-only block restrictions, tapping a legendary
+// creature as a cost, a discount on every spell, free casts from hand ----
+
+/// Player 0's main phase on turn 3 with `extra` appended to batch 3's cards (from index 25),
+/// libraries of Green Bears and `swamps` Swamps for player 0.
+fn batch6_board(extra: Vec<CardDef>, swamps: usize) -> Game {
+    use batch3::*;
+    let mut d = (*defs()).clone();
+    d.extend(extra);
+    let mut g = Game::empty(Arc::new(d), 1, 0);
+    for p in 0..2 {
+        for _ in 0..10 {
+            g.add_card(p, GREEN_BEAR, Zone::Library);
+        }
+    }
+    for _ in 0..swamps {
+        g.add_card(0, SWAMP, Zone::Battlefield);
+    }
+    g.auto_pass = false;
+    g.start_turn(3, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    g
+}
+
+#[test]
+fn unblockable_while_attacking_alone() {
+    use batch3::*;
+    let mut snake = CardDef::creature("Snake", "{1}{U}", 1, 1, Keywords::NONE);
+    snake.mana_ext.unblockable_attacking_alone = true;
+    let mut g = batch6_board(vec![snake], 0);
+    let s = put(&mut g, 0, 25);
+    put(&mut g, 1, GREEN_BEAR);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(s));
+    act(&mut g, Action::FinishAttacks);
+    while g.step != Step::Main2 {
+        let block = g
+            .legal_actions()
+            .iter()
+            .any(|a| matches!(a, Action::Block { .. }));
+        assert!(!block, "attacking alone: unblockable");
+        let a = if matches!(g.pending, Pending::DeclareBlockers(_)) {
+            Action::FinishBlocks
+        } else {
+            Action::PassPriority
+        };
+        act(&mut g, a);
+    }
+
+    let mut snake = CardDef::creature("Snake", "{1}{U}", 1, 1, Keywords::NONE);
+    snake.mana_ext.unblockable_attacking_alone = true;
+    let mut g = batch6_board(vec![snake], 0);
+    let s = put(&mut g, 0, 25);
+    let other = put(&mut g, 0, GREEN_BEAR);
+    let b2 = put(&mut g, 1, GREEN_BEAR);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(s));
+    act(&mut g, Action::Attack(other));
+    act(&mut g, Action::FinishAttacks);
+    while !matches!(g.pending, Pending::DeclareBlockers(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(g.legal_actions().contains(&Action::Block {
+        blocker: b2,
+        attacker: s
+    }));
+}
+
+#[test]
+fn your_creatures_blocked_only_by_legendary_creatures() {
+    use batch3::*;
+    let mut lighter = CardDef::creature("Lighter", "{2}{W}{U}", 2, 2, Keywords::NONE);
+    lighter.mana_ext.your_creatures_blocked_only_by_legendary = true;
+    let mut legend = CardDef::creature("Legend", "{1}{G}", 2, 2, Keywords::NONE);
+    legend.types.legendary = true;
+    let mut g = batch6_board(vec![lighter, legend], 0);
+    put(&mut g, 0, 25);
+    let a = put(&mut g, 0, GREEN_BEAR);
+    let blockers = [GREEN_BEAR, GOLEM, 26].map(|b| put(&mut g, 1, b));
+    let able = blockers_for(&mut g, a);
+    assert_eq!(able, vec![blockers[2]], "only the legendary creature");
+}
+
+#[test]
+fn tap_an_untapped_legendary_creature_as_a_cost() {
+    use batch3::*;
+    let mut descent = land("Descent");
+    descent.activated.push(Activated {
+        mana: ManaCost::default(),
+        tap: true,
+        tap_untapped_legendary: true,
+        ability: Ability::new(vec![], vec![Effect::Draw { who: Who::You, n: 1 }]),
+        ..Activated::default()
+    });
+    let mut legend = CardDef::creature("Legend", "{1}{G}", 2, 2, Keywords::NONE);
+    legend.types.legendary = true;
+    let mut g = batch6_board(vec![descent, legend], 0);
+    let d = put(&mut g, 0, 25);
+    put(&mut g, 0, GREEN_BEAR);
+    assert!(
+        !g.legal_actions().contains(&Action::Activate(d, 0)),
+        "no legendary creature"
+    );
+    let l = put(&mut g, 0, 26);
+    g.objects[l.0 as usize].since_turn = g.turn; // summoning sick still pays a tap cost that isn't {T}
+    let n = g.players[0].hand.len();
+    act(&mut g, Action::Activate(d, 0));
+    settle(&mut g);
+    assert!(g.obj(d).tapped && g.obj(l).tapped);
+    assert_eq!(g.players[0].hand.len(), n + 1);
+    g.objects[d.0 as usize].tapped = false;
+    assert!(
+        !g.legal_actions().contains(&Action::Activate(d, 0)),
+        "the legendary creature is tapped"
+    );
+}
+
+#[test]
+fn every_spell_costs_one_less() {
+    use batch3::*;
+    let sun = CardDef {
+        name: "Sun".into(),
+        types: bolt_core::Types {
+            artifact: true,
+            ..bolt_core::Types::default()
+        },
+        mana_ext: bolt_core::card::ManaExt {
+            spell_discount_all: 1,
+            ..bolt_core::card::ManaExt::default()
+        },
+        ..CardDef::default()
+    };
+    let mut g = batch6_board(vec![sun], 5);
+    put(&mut g, 0, 25);
+    cast(&mut g, BIG_ONE);
+    assert_eq!(tapped_swamps(&g), 2, "{{3}} less {{1}}");
+    cast(&mut g, BLACK_BEAR);
+    assert_eq!(tapped_swamps(&g), 3, "{{1}}{{B}} less {{1}}");
+    put(&mut g, 1, 25);
+    cast(&mut g, BIG_ONE);
+    assert_eq!(
+        tapped_swamps(&g),
+        5,
+        "an opponent's Sun doesn't discount your spells"
+    );
+}
+
+#[test]
+fn a_free_cast_from_hand_casts_one_spell_up_to_the_mana_value() {
+    use batch3::*;
+    let expert = CardDef::spell(
+        "Expert",
+        "{B}",
+        false,
+        Ability::new(vec![], vec![Effect::MayCastFromHandFree { max_mv: 5 }]),
+    );
+    let six = CardDef::creature("Six", "{5}{G}", 6, 6, Keywords::NONE);
+    let mut g = batch6_board(vec![expert, six], 1);
+    let big = [
+        g.add_card(0, BIG_ONE, Zone::Hand),
+        g.add_card(0, BIG_ONE, Zone::Hand),
+    ];
+    let six = g.add_card(0, 26, Zone::Hand);
+    let swamp = g.add_card(0, SWAMP, Zone::Hand);
+    let e = g.add_card(0, 25, Zone::Hand);
+    act(&mut g, Action::Cast(e));
+    settle(&mut g);
+    assert_eq!(g.pending, Pending::FreeCast(0));
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Cast(big[0])) && legal.contains(&Action::Cast(big[1])));
+    assert!(!legal.contains(&Action::Cast(six)), "mana value 6");
+    assert!(!legal.contains(&Action::PlayLand(swamp)) && !legal.contains(&Action::Cast(swamp)));
+    let n = g.players[0].hand.len();
+    act(&mut g, Action::Cast(big[0]));
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(big[1])),
+        "one spell only"
+    );
+    settle(&mut g);
+    assert_eq!(g.obj(big[0]).zone, Zone::Graveyard);
+    assert_eq!(g.players[0].hand.len(), n - 1 + 1, "cast one, drew one");
+    assert_eq!(tapped_swamps(&g), 1, "only Expert was paid for");
+    assert!(!g.obj(big[1]).cast_free);
+}
+
+#[test]
+fn shadow_blocks_and_is_blocked_only_by_shadow() {
+    use batch3::*;
+    let shade = || CardDef::creature("Shade", "{B}", 1, 1, Keywords::SHADOW);
+    let mut g = batch6_board(vec![shade(), shade()], 0);
+    let a = put(&mut g, 0, 25);
+    let bear = put(&mut g, 1, GREEN_BEAR);
+    let other = put(&mut g, 1, 26);
+    assert_eq!(blockers_for(&mut g, a), vec![other], "{:?} can't", bear);
+    let mut g = batch6_board(vec![shade()], 0);
+    let a = put(&mut g, 0, GREEN_BEAR);
+    put(&mut g, 1, 25);
+    let bear = put(&mut g, 1, GREEN_BEAR);
+    assert_eq!(
+        blockers_for(&mut g, a),
+        vec![bear],
+        "a shadow creature can't block it"
+    );
+}
+
+#[test]
+fn alternative_cost_of_life_sacrifices_and_taps() {
+    use batch3::*;
+    use bolt_core::card::AltCostExt;
+    let mut demon = CardDef::creature("Demon", "{9}", 9, 9, Keywords::NONE);
+    demon.mana_ext.alt_cost_ext = Some(AltCostExt {
+        life: 6,
+        sacrifice: 2,
+        sacrifice_color: Some(2),
+        ..AltCostExt::default()
+    });
+    let mut angel = CardDef::creature("Angel", "{9}", 7, 7, Keywords::NONE);
+    angel.mana_ext.alt_cost_ext = Some(AltCostExt {
+        mana: ManaCost::parse("{B}").expect("cost"),
+        tap: 2,
+        tap_keywords: Keywords::FEAR,
+        ..AltCostExt::default()
+    });
+    let mut g = batch6_board(vec![demon, angel], 1);
+    let blacks = [put(&mut g, 0, BLACK_KNIGHT), put(&mut g, 0, BLACK_BEAR)];
+    let green = put(&mut g, 0, GREEN_BEAR);
+    let d = g.add_card(0, 25, Zone::Hand);
+    g.players[0].life = 5;
+    assert!(!g.legal_actions().contains(&Action::CastAlternative(d)), "5 life");
+    g.players[0].life = 7;
+    act(&mut g, Action::CastAlternative(d));
+    settle(&mut g);
+    assert_eq!(g.obj(d).zone, Zone::Battlefield);
+    assert_eq!(g.players[0].life, 1);
+    assert!(blacks.iter().all(|&b| g.obj(b).zone == Zone::Graveyard));
+    assert_eq!(g.obj(green).zone, Zone::Battlefield);
+
+    let mut g = batch6_board(
+        vec![CardDef::default(), {
+            let mut a = CardDef::creature("Angel", "{9}", 7, 7, Keywords::NONE);
+            a.mana_ext.alt_cost_ext = Some(AltCostExt {
+                mana: ManaCost::parse("{B}").expect("cost"),
+                tap: 2,
+                tap_keywords: Keywords::FEAR,
+                ..AltCostExt::default()
+            });
+            a
+        }],
+        1,
+    );
+    let f = put(&mut g, 0, FEARFUL);
+    put(&mut g, 0, GREEN_BEAR);
+    let c = g.add_card(0, 26, Zone::Hand);
+    assert!(
+        !g.legal_actions().contains(&Action::CastAlternative(c)),
+        "one with fear"
+    );
+    let f2 = put(&mut g, 0, FEARFUL);
+    act(&mut g, Action::CastAlternative(c));
+    settle(&mut g);
+    assert_eq!(g.obj(c).zone, Zone::Battlefield);
+    assert!(g.obj(f).tapped && g.obj(f2).tapped);
+    assert_eq!(tapped_swamps(&g), 1, "{{B}}");
+}
+
+#[test]
+fn ability_discount_skips_mana_abilities_and_leaves_one_mana() {
+    use batch3::*;
+    let mut zirda = CardDef::creature("Zirda", "{R}", 3, 3, Keywords::NONE);
+    zirda.mana_ext.ability_discount = 2;
+    let mut pinger = CardDef::creature("Pinger", "{R}", 1, 1, Keywords::NONE);
+    for cost in ["{3}{B}", "{2}"] {
+        pinger.activated.push(Activated {
+            mana: ManaCost::parse(cost).expect("cost"),
+            ability: Ability::new(vec![], vec![Effect::Draw { who: Who::You, n: 1 }]),
+            ..Activated::default()
+        });
+    }
+    pinger.activated.push(Activated {
+        mana: ManaCost::parse("{1}").expect("cost"),
+        ability: Ability::new(
+            vec![],
+            vec![Effect::AddMana {
+                color: Color::Black,
+                n: 2,
+            }],
+        ),
+        ..Activated::default()
+    });
+    let mut g = batch6_board(vec![zirda, pinger], 5);
+    put(&mut g, 0, 25);
+    let p = put(&mut g, 0, 26);
+    act(&mut g, Action::Activate(p, 0));
+    settle(&mut g);
+    assert_eq!(tapped_swamps(&g), 2, "{{3}}{{B}} less {{2}}");
+    act(&mut g, Action::Activate(p, 1));
+    settle(&mut g);
+    assert_eq!(tapped_swamps(&g), 3, "{{2}}: one mana is left");
+}
+
+#[test]
+fn untap_symbol_on_a_granted_ability_untaps_the_equipped_creature() {
+    use batch3::*;
+    let mut mantle = CardDef {
+        name: "Mantle".into(),
+        types: bolt_core::Types {
+            artifact: true,
+            ..bolt_core::Types::default()
+        },
+        ..CardDef::default()
+    };
+    mantle.activated.push(Activated {
+        mana: ManaCost::parse("{1}").expect("cost"),
+        granted_to_attached: true,
+        untap_attached: true,
+        ability: Ability::new(
+            vec![],
+            vec![Effect::PumpAttached {
+                power: 2,
+                toughness: 2,
+            }],
+        ),
+        ..Activated::default()
+    });
+    let mut g = batch6_board(vec![mantle], 2);
+    let m = put(&mut g, 0, 25);
+    let bear = put(&mut g, 0, GREEN_BEAR);
+    let zcc = g.obj(bear).zcc;
+    g.objects[m.0 as usize].attached_to = Some((bear, zcc));
+    assert!(!g.legal_actions().contains(&Action::Activate(m, 0)), "untapped");
+    g.objects[bear.0 as usize].tapped = true;
+    g.objects[bear.0 as usize].since_turn = g.turn;
+    assert!(
+        !g.legal_actions().contains(&Action::Activate(m, 0)),
+        "summoning sick"
+    );
+    g.objects[bear.0 as usize].since_turn = 0;
+    act(&mut g, Action::Activate(m, 0));
+    settle(&mut g);
+    assert!(!g.obj(bear).tapped);
+    assert_eq!(g.power(bear), 4);
+}
+
+#[test]
+fn first_creature_spell_each_turn_discount() {
+    use batch3::*;
+    let mut warp = CardDef::creature("Warp", "{R}", 0, 1, Keywords::NONE);
+    warp.mana_ext.first_creature_spell_discount = 2;
+    let mut g = batch6_board(vec![warp], 6);
+    put(&mut g, 0, 25);
+    cast(&mut g, BIG_ONE);
+    assert_eq!(tapped_swamps(&g), 3, "not a creature spell");
+    cast(&mut g, BLACK_BEAR);
+    assert_eq!(tapped_swamps(&g), 4, "{{1}}{{B}} less {{2}}");
+    cast(&mut g, BLACK_BEAR);
+    assert_eq!(tapped_swamps(&g), 6, "the second creature spell");
+}
+
+// ---- batch 7: alternative-cost taps kept off the mana, returning lands as an alternative cost,
+// sacrificing a land as an additional cost, land costs on abilities, partial pain, Kinnan ----
+
+#[test]
+fn creatures_tapped_for_an_alternative_cost_cant_also_pay_its_mana() {
+    use batch3::*;
+    use bolt_core::card::AltCostExt;
+    use bolt_core::ManaSource;
+    let mut angel = CardDef::creature("Angel", "{9}", 7, 7, Keywords::NONE);
+    angel.mana_ext.alt_cost_ext = Some(AltCostExt {
+        mana: ManaCost::parse("{B}").expect("cost"),
+        tap: 2,
+        tap_keywords: Keywords::FEAR,
+        ..AltCostExt::default()
+    });
+    let mut dork = CardDef::creature("Dork", "{B}", 1, 1, Keywords::FEAR);
+    dork.mana = Some(ManaSource::of(&[Color::Black]));
+    let mut g = batch6_board(vec![angel, dork], 0);
+    let d1 = put(&mut g, 0, 26);
+    let f1 = put(&mut g, 0, FEARFUL);
+    let c = g.add_card(0, 25, Zone::Hand);
+    assert!(
+        !g.legal_actions().contains(&Action::CastAlternative(c)),
+        "the Dork can't tap for the cost and for {{B}}"
+    );
+    let f2 = put(&mut g, 0, FEARFUL);
+    act(&mut g, Action::CastAlternative(c));
+    settle(&mut g);
+    assert_eq!(g.obj(c).zone, Zone::Battlefield);
+    assert!(
+        g.obj(f1).tapped && g.obj(f2).tapped,
+        "the two without mana pay the taps"
+    );
+    assert!(g.obj(d1).tapped, "the Dork made the {{B}}");
+}
+
+#[test]
+fn alternative_cost_returns_lands_tapped_ones_first() {
+    use bolt_core::card::AltCostExt;
+    let mut rush = CardDef::spell(
+        "Rush",
+        "{9}",
+        true,
+        Ability::new(vec![], vec![Effect::Draw { who: Who::You, n: 2 }]),
+    );
+    rush.mana_ext.alt_cost_ext = Some(AltCostExt {
+        return_lands: 2,
+        return_subtype: Some("Swamp"),
+        ..AltCostExt::default()
+    });
+    let mut g = batch6_board(vec![rush.clone()], 1);
+    let c = g.add_card(0, 25, Zone::Hand);
+    assert!(
+        !g.legal_actions().contains(&Action::CastAlternative(c)),
+        "one Swamp"
+    );
+    let mut g = batch6_board(vec![rush], 3);
+    let swamps: Vec<ObjId> = g.permanents(0).collect();
+    g.objects[swamps[2].0 as usize].tapped = true;
+    let c = g.add_card(0, 25, Zone::Hand);
+    let n = g.players[0].hand.len();
+    act(&mut g, Action::CastAlternative(c));
+    settle(&mut g);
+    assert_eq!(g.obj(c).zone, Zone::Graveyard);
+    assert_eq!(g.obj(swamps[2]).zone, Zone::Hand, "the tapped one");
+    assert_eq!(g.permanents(0).count(), 1);
+    assert_eq!(g.players[0].hand.len(), n - 1 + 2 + 2, "two Swamps and two cards");
+}
+
+#[test]
+fn sacrifice_a_land_as_an_additional_cost_after_it_taps_for_the_mana() {
+    let mut harrow = CardDef::spell(
+        "Harrowing",
+        "{1}",
+        true,
+        Ability::new(vec![], vec![Effect::Draw { who: Who::You, n: 1 }]),
+    );
+    harrow.extra_cost = Some(bolt_core::ExtraCost::SacrificeLand);
+    let mut g = batch6_board(vec![harrow], 1);
+    let swamp = g.permanents(0).next().expect("a Swamp");
+    let c = g.add_card(0, 25, Zone::Hand);
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(c)),
+        "a land must be sacrificed"
+    );
+    act(&mut g, Action::CastWith(c, swamp));
+    settle(&mut g);
+    assert_eq!(g.obj(c).zone, Zone::Graveyard);
+    assert_eq!(
+        g.obj(swamp).zone,
+        Zone::Graveyard,
+        "tapped for {{1}}, then sacrificed"
+    );
+}
+
+#[test]
+fn return_a_land_and_discard_a_land_card_as_ability_costs() {
+    use batch3::*;
+    let draw = || Ability::new(vec![], vec![Effect::Draw { who: Who::You, n: 1 }]);
+    let mut mirror = CardDef::creature("Mirror", "{4}{U}", 2, 4, Keywords::NONE);
+    mirror.activated.push(Activated {
+        mana: ManaCost::parse("{1}").expect("cost"),
+        return_land: true,
+        ability: draw(),
+        ..Activated::default()
+    });
+    mirror.activated.push(Activated {
+        mana: ManaCost::parse("{1}").expect("cost"),
+        discard_land_card: true,
+        ability: draw(),
+        ..Activated::default()
+    });
+    let mut g = batch6_board(vec![mirror], 1);
+    let swamp = g.permanents(0).next().expect("a Swamp");
+    let m = put(&mut g, 0, 25);
+    let land_card = g.add_card(0, SWAMP, Zone::Hand);
+    let bear = g.add_card(0, GREEN_BEAR, Zone::Hand);
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::ActivateWith(m, 1, land_card)));
+    assert!(
+        !legal.contains(&Action::ActivateWith(m, 1, bear)),
+        "not a land card"
+    );
+    assert!(!legal.contains(&Action::ActivateWith(m, 0, m)), "not a land");
+    let n = g.players[0].hand.len();
+    act(&mut g, Action::ActivateWith(m, 0, swamp));
+    settle(&mut g);
+    assert_eq!(g.obj(swamp).zone, Zone::Hand, "tapped for {{1}}, then returned");
+    assert_eq!(g.players[0].hand.len(), n + 2);
+    g.add_card(0, SWAMP, Zone::Battlefield);
+    act(&mut g, Action::ActivateWith(m, 1, land_card));
+    settle(&mut g);
+    assert_eq!(g.obj(land_card).zone, Zone::Graveyard, "discarded");
+    assert_eq!(g.players[0].hand.len(), n + 2);
+}
+
+#[test]
+fn only_the_painful_colors_of_a_land_deal_damage() {
+    use batch3::*;
+    use bolt_core::ManaSource;
+    let bosk = || {
+        let mut b = land("Bosk");
+        b.mana = Some(ManaSource::of(&[Color::White, Color::Black, Color::Green]));
+        b.mana_ext.pain_colors = [true, false, true, false, false];
+        b
+    };
+    let mut g = batch6_board(vec![bosk()], 0);
+    put(&mut g, 0, 25);
+    put(&mut g, 0, WASTES);
+    let life = g.players[0].life;
+    cast(&mut g, GREEN_BEAR);
+    assert_eq!(g.players[0].life, life, "its {{G}} is painless");
+    let mut g = batch6_board(vec![bosk()], 0);
+    put(&mut g, 0, 25);
+    put(&mut g, 0, WASTES);
+    cast(&mut g, BLACK_BEAR);
+    assert_eq!(g.players[0].life, life - 1, "only the {{B}} hurts");
+    let mut g = batch6_board(vec![bosk()], 0);
+    put(&mut g, 0, 25);
+    put(&mut g, 0, 25);
+    cast(&mut g, BLACK_BEAR);
+    assert_eq!(
+        g.players[0].life,
+        life - 1,
+        "two of them: the one making {{B}} hurts"
+    );
+}
+
+#[test]
+fn nonland_permanents_tapped_for_mana_add_one_more() {
+    use batch3::*;
+    use bolt_core::{ManaSource, Types};
+    let mut kinnan = CardDef::creature("Kinnan", "{G}{U}", 2, 2, Keywords::NONE);
+    kinnan.mana_ext.nonland_add_same = true;
+    let rock = CardDef {
+        name: "Rock".into(),
+        types: Types {
+            artifact: true,
+            ..Types::default()
+        },
+        mana: Some(ManaSource {
+            colorless: true,
+            ..ManaSource::default()
+        }),
+        ..CardDef::default()
+    };
+    let mut g = batch6_board(vec![kinnan.clone(), rock.clone()], 1);
+    put(&mut g, 0, 26);
+    let big = g.add_card(0, BIG_ONE, Zone::Hand);
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(big)),
+        "{{C}} and a Swamp"
+    );
+    put(&mut g, 0, 25);
+    act(&mut g, Action::Cast(big));
+    settle(&mut g);
+    assert_eq!(g.obj(big).zone, Zone::Graveyard, "the Rock made {{C}}{{C}}");
+    let mut g = batch6_board(vec![kinnan, rock], 2);
+    put(&mut g, 0, 25);
+    let big = g.add_card(0, BIG_ONE, Zone::Hand);
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(big)),
+        "lands don't add more"
+    );
+}
+
+#[test]
+fn sacrifice_a_creature_of_a_color_as_an_additional_cost() {
+    use batch3::*;
+    let mut order = CardDef::spell(
+        "Order",
+        "",
+        false,
+        Ability::new(vec![], vec![Effect::Draw { who: Who::You, n: 1 }]),
+    );
+    order.extra_cost = Some(bolt_core::ExtraCost::SacrificeCreatureOfColor(4));
+    let mut g = batch6_board(vec![order], 0);
+    let black = put(&mut g, 0, BLACK_BEAR);
+    let green = put(&mut g, 0, GREEN_BEAR);
+    let c = g.add_card(0, 25, Zone::Hand);
+    let legal = g.legal_actions();
+    assert!(!legal.contains(&Action::CastWith(c, black)), "not green");
+    assert!(!legal.contains(&Action::Cast(c)));
+    act(&mut g, Action::CastWith(c, green));
+    settle(&mut g);
+    assert_eq!(g.obj(green).zone, Zone::Graveyard);
+    assert_eq!(g.obj(black).zone, Zone::Battlefield);
+}
+
+#[test]
+fn sacrifice_a_land_as_an_ability_cost() {
+    use batch3::*;
+    let mut keeper = CardDef::creature("Keeper", "{G}", 1, 1, Keywords::NONE);
+    keeper.activated.push(Activated {
+        sacrifice_land: true,
+        ability: Ability::new(vec![], vec![Effect::Draw { who: Who::You, n: 1 }]),
+        ..Activated::default()
+    });
+    let mut g = batch6_board(vec![keeper], 1);
+    let swamp = g.permanents(0).next().expect("a Swamp");
+    let k = put(&mut g, 0, 25);
+    let bear = put(&mut g, 0, GREEN_BEAR);
+    assert!(
+        !g.legal_actions().contains(&Action::ActivateWith(k, 0, bear)),
+        "a land"
+    );
+    let n = g.players[0].hand.len();
+    act(&mut g, Action::ActivateWith(k, 0, swamp));
+    settle(&mut g);
+    assert_eq!(g.obj(swamp).zone, Zone::Graveyard);
+    assert_eq!(g.players[0].hand.len(), n + 1);
+}
+
+#[test]
+fn free_only_as_the_first_spell_this_game() {
+    use batch3::*;
+    use bolt_core::card::AltCostExt;
+    let mut tale = CardDef::spell(
+        "Tale",
+        "{1}{G}",
+        true,
+        Ability::new(vec![], vec![Effect::Draw { who: Who::You, n: 1 }]),
+    );
+    tale.mana_ext.alt_cost_ext = Some(AltCostExt {
+        first_spell_this_game: true,
+        ..AltCostExt::default()
+    });
+    let mut g = batch6_board(vec![tale], 2);
+    let c = g.add_card(0, 25, Zone::Hand);
+    act(&mut g, Action::CastAlternative(c));
+    settle(&mut g);
+    assert_eq!(g.obj(c).zone, Zone::Graveyard);
+    assert_eq!(tapped_swamps(&g), 0);
+    assert!(g.cast_a_spell_this_game[0] && !g.cast_a_spell_this_game[1]);
+    let c = g.add_card(0, 25, Zone::Hand);
+    assert!(!g.legal_actions().contains(&Action::CastAlternative(c)));
+}
+
+#[test]
+fn mana_that_costs_life() {
+    use batch3::*;
+    use bolt_core::ManaSource;
+    let mut conf = land("Confluence");
+    conf.mana = Some(ManaSource::of(&Color::ALL));
+    conf.mana_ext.mana_life_cost = 1;
+    let mut g = batch6_board(vec![conf], 0);
+    let x = put(&mut g, 0, 25);
+    let life = g.players[0].life;
+    cast(&mut g, ONE);
+    assert_eq!(g.players[0].life, life - 1, "paid 1 life");
+    g.objects[x.0 as usize].tapped = false;
+    g.players[0].life = 0;
+    let c = g.add_card(0, ONE, Zone::Hand);
+    assert!(!g.legal_actions().contains(&Action::Cast(c)), "no life to pay");
+}
+
+#[test]
+fn urza_lands_make_more_together() {
+    use batch3::*;
+    use bolt_core::ManaSource;
+    let urza = |sub: &str, n: u8| {
+        let mut d = land(sub);
+        d.subtypes = vec!["Urza's".into(), sub.into()];
+        d.mana = Some(ManaSource {
+            colorless: true,
+            ..ManaSource::default()
+        });
+        d.mana_ext.tron_amount = n;
+        d
+    };
+    let draw = || Ability::new(vec![], vec![Effect::Draw { who: Who::You, n: 1 }]);
+    let defs = vec![
+        urza("Mine", 2),
+        urza("Power-Plant", 2),
+        urza("Tower", 3),
+        CardDef::spell("Seven", "{7}", true, draw()),
+        CardDef::spell("Eight", "{8}", true, draw()),
+    ];
+    let mut g = batch6_board(defs, 0);
+    put(&mut g, 0, 25);
+    put(&mut g, 0, 26);
+    let seven = g.add_card(0, 28, Zone::Hand);
+    let eight = g.add_card(0, 29, Zone::Hand);
+    let big = g.add_card(0, BIG_ONE, Zone::Hand);
+    let legal = g.legal_actions();
+    assert!(!legal.contains(&Action::Cast(big)), "no Tower: {{C}}{{C}}");
+    put(&mut g, 0, 27);
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Cast(seven)), "2 + 2 + 3");
+    assert!(!legal.contains(&Action::Cast(eight)));
+}

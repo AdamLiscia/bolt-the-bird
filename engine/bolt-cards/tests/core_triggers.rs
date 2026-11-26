@@ -1249,3 +1249,208 @@ fn every_multicolored_spell_and_noncombat_damage_to_an_opponent() {
     // Exquisite Blood itself gains the 1 the opponent lost.
     assert_eq!(life(&g, 0), 42 + 10 + 1);
 }
+
+// ---- Batch 10: enters (artifact, nonartifact, tapped), nontoken sacrifices, draws, colorless MV,
+// life and board conditions ----
+
+/// Passes (and answers with the first legal choice) until player `p`'s turn `turn` is over.
+fn finish_turn(g: &mut Game, turn: u32) {
+    while g.turn == turn && g.result.is_none() {
+        let legal = g.legal_actions();
+        let a = if legal.contains(&Action::PassPriority) {
+            Action::PassPriority
+        } else if legal.contains(&Action::FinishAttacks) {
+            Action::FinishAttacks
+        } else if legal.contains(&Action::FinishBlocks) {
+            Action::FinishBlocks
+        } else {
+            legal[0]
+        };
+        act(g, a);
+    }
+}
+
+#[test]
+fn artifact_nonartifact_and_tapped_enters() {
+    let mut g = game_with(blood_with(vec![
+        trigger(When::ArtifactYouControlEnters, None, gain(1)),
+        trigger(When::NonartifactPermanentYouControlEnters, None, gain(10)),
+        trigger(When::PermanentYouControlEntersTapped, None, gain(100)),
+    ]));
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    cast_now(&mut g, 0, "Sol Ring", &[]);
+    assert_eq!(life(&g, 0), 41, "an artifact, untapped");
+    cast_now(&mut g, 0, "Sakura-Tribe Elder", &[]);
+    assert_eq!(life(&g, 0), 51, "a nonartifact permanent");
+    let elder = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "Sakura-Tribe Elder")
+        .unwrap();
+    let forest = g.add_card(0, cid("Forest"), Zone::Library);
+    act(&mut g, Action::Activate(elder, 0));
+    resolve_all(&mut g, &[Action::Pick(forest)]);
+    assert!(
+        g.obj(forest).tapped,
+        "put onto the battlefield tapped by the effect"
+    );
+    assert_eq!(life(&g, 0), 161, "a nonartifact permanent that entered tapped");
+}
+
+#[test]
+fn nontoken_sacrifices_yours_and_the_opponents() {
+    let mut g = game_with(blood_with(vec![
+        trigger(When::YouSacrificeNontoken, None, gain(1)),
+        trigger(When::OpponentSacrificesNontoken, None, gain(10)),
+    ]));
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    let elder = g.add_card(0, cid("Sakura-Tribe Elder"), Zone::Battlefield);
+    g.add_card(1, cid("Savannah Lions"), Zone::Battlefield);
+    let forest = g.add_card(0, cid("Forest"), Zone::Library);
+    act(&mut g, Action::Activate(elder, 0));
+    resolve_all(&mut g, &[Action::Pick(forest)]);
+    assert_eq!(life(&g, 0), 41);
+    cast_now(&mut g, 0, "Diabolic Edict", &[bolt_core::Target::Player(1)]);
+    assert_eq!(life(&g, 0), 51);
+}
+
+#[test]
+fn opponent_draws_except_the_first_in_their_draw_step() {
+    let mut g = game_with(blood_with(vec![trigger(
+        When::OpponentDrawsExceptFirstInDrawStep,
+        None,
+        gain(1),
+    )]));
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    finish_turn(&mut g, 3);
+    to_main(&mut g);
+    assert_eq!(g.active, 1);
+    assert_eq!(life(&g, 0), 40, "the draw step's first draw");
+    g.add_card(0, cid("Howling Mine"), Zone::Battlefield);
+    g.start_turn(5, 1);
+    to_main(&mut g);
+    assert_eq!(life(&g, 0), 41, "Howling Mine's extra draw");
+}
+
+#[test]
+fn colorless_spell_with_mana_value_seven_or_more() {
+    let mut g = game_with(blood_with(vec![trigger(
+        When::YouCastColorlessMvAtLeast(7),
+        None,
+        gain(1),
+    )]));
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    cast_now(&mut g, 0, "Sol Ring", &[]);
+    assert_eq!(life(&g, 0), 40, "mana value 1");
+    cast_now(&mut g, 0, "Kozilek, Butcher of Truth", &[]);
+    assert_eq!(life(&g, 0), 41);
+}
+
+#[test]
+fn life_total_life_gained_and_no_creatures_conditions() {
+    let mut g = game_with(blood_with(vec![
+        trigger(
+            When::Upkeep { your_turn_only: true },
+            Some(Condition::LifeAtLeast(40)),
+            gain(1),
+        ),
+        trigger(
+            When::Upkeep { your_turn_only: true },
+            Some(Condition::LifeAtLeast(42)),
+            gain(1000),
+        ),
+        trigger(
+            When::EndStep { your_turn_only: true },
+            Some(Condition::YouGainedLifeThisTurn),
+            gain(10),
+        ),
+        trigger(
+            When::EndStep { your_turn_only: true },
+            Some(Condition::NoCreaturesOnBattlefield),
+            gain(100),
+        ),
+    ]));
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    finish_turn(&mut g, 3);
+    assert_eq!(life(&g, 0), 140, "no life gained on turn 3; no creatures");
+    g.players[0].life = 40;
+    g.add_card(1, cid("Savannah Lions"), Zone::Battlefield);
+    g.start_turn(5, 0);
+    to_main(&mut g);
+    assert_eq!(life(&g, 0), 41, "40 or more, not 42 or more");
+    finish_turn(&mut g, 5);
+    assert_eq!(life(&g, 0), 51, "gained life this turn; a creature is out");
+}
+
+#[test]
+fn creature_cards_to_your_graveyard_once_each_turn() {
+    let mut g = game_with(blood_with(vec![trigger(
+        When::CreatureCardsToYourGraveyardOnceEachTurn,
+        None,
+        gain(1),
+    )]));
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    let a = g.add_card(0, cid("Savannah Lions"), Zone::Battlefield);
+    let b = g.add_card(0, cid("Savannah Lions"), Zone::Battlefield);
+    let theirs = g.add_card(1, cid("Savannah Lions"), Zone::Battlefield);
+    kill(&mut g, theirs);
+    assert_eq!(life(&g, 0), 40, "the opponent's graveyard");
+    kill(&mut g, a);
+    assert_eq!(life(&g, 0), 41);
+    kill(&mut g, b);
+    assert_eq!(life(&g, 0), 41, "once each turn");
+    g.start_turn(5, 0);
+    to_main(&mut g);
+    let c = g.add_card(0, cid("Savannah Lions"), Zone::Battlefield);
+    kill(&mut g, c);
+    assert_eq!(life(&g, 0), 42, "a new turn");
+}
+
+#[test]
+fn another_source_deals_exactly_one_damage() {
+    let mut g = game_with(|defs| {
+        blood_with(vec![trigger(
+            When::AnotherSourceYouControlDealsExactlyOne,
+            None,
+            gain(10),
+        )])(defs);
+        let burn = |n| {
+            vec![Effect::Damage {
+                amount: n,
+                kicked: None,
+                to: bolt_core::effect::Recipient::EachOpponent,
+            }]
+        };
+        defs[cid("Hero's Downfall")].spell = Some(Ability::new(vec![], burn(1)));
+        defs[cid("Abrupt Decay")].spell = Some(Ability::new(vec![], burn(2)));
+    });
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    cast_now(&mut g, 0, "Hero's Downfall", &[]);
+    assert_eq!(life(&g, 0), 40 + 10 + 1, "exactly 1 (and Exquisite Blood's 1)");
+    cast_now(&mut g, 0, "Abrupt Decay", &[]);
+    assert_eq!(life(&g, 0), 51 + 2, "2 damage");
+}
+
+#[test]
+fn an_emblems_triggered_ability_triggers_through_fire() {
+    let mut g = game_with(|defs| {
+        defs[cid("Savannah Lions")]
+            .triggers
+            .push(trigger(When::Never, None, gain_one()));
+    });
+    let x = g.add_card(0, cid("Savannah Lions"), Zone::Graveyard);
+    let n = g.def_of(x).triggers.len() - 1;
+    g.emblems.push((
+        0,
+        bolt_core::EmblemKind::Triggered {
+            when: When::YouDraw,
+            trigger: n,
+        },
+        x,
+    ));
+    g.start_turn(4, 1);
+    to_main(&mut g);
+    assert_eq!(life(&g, 0), 40, "the opponent's draw isn't yours");
+    g.start_turn(5, 0);
+    to_main(&mut g);
+    assert_eq!(life(&g, 0), 41, "your draw-step draw triggers the emblem");
+}

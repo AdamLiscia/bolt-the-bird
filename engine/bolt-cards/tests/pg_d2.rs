@@ -1792,3 +1792,232 @@ fn curiosity_and_ophidian_eye_draw_when_the_creature_damages_an_opponent() {
         );
     }
 }
+
+// ---- Core: triggers, batch 10 ----
+
+/// Passes (answering with `target` when it's legal, else the first legal choice) until the turn
+/// that's on now is over.
+fn finish_turn(g: &mut Game, target: Target) {
+    let turn = g.turn;
+    while g.turn == turn && g.result.is_none() {
+        let legal = g.legal_actions();
+        let a = if legal.contains(&Action::Target(target)) {
+            Action::Target(target)
+        } else if legal.contains(&Action::PassPriority) {
+            Action::PassPriority
+        } else if legal.contains(&Action::FinishAttacks) {
+            Action::FinishAttacks
+        } else if legal.contains(&Action::FinishBlocks) {
+            Action::FinishBlocks
+        } else {
+            legal[0]
+        };
+        act(g, a);
+    }
+}
+
+#[test]
+fn witch_of_the_moors_needs_life_gained_this_turn() {
+    for gain in [false, true] {
+        let mut g = table();
+        put(&mut g, 0, "Witch of the Moors");
+        let theirs = put(&mut g, 1, "Savannah Lions");
+        let card = g.add_card(0, cid("Savannah Lions"), Zone::Graveyard);
+        if gain {
+            let mine = put(&mut g, 0, "Savannah Lions");
+            let s = hand(&mut g, 0, "Swords to Plowshares");
+            play(&mut g, s, false, &[obj(mine)], &[]);
+            assert_eq!(g.players[0].life, 42);
+        }
+        finish_turn(&mut g, obj(card));
+        assert_eq!(in_graveyard(&g, 1, theirs), gain, "the opponent sacrifices");
+        assert_eq!(g.obj(card).zone == Zone::Hand, gain, "the card comes back");
+    }
+}
+
+#[test]
+fn felidar_sovereign_and_test_of_endurance_win_at_their_life_totals() {
+    for (name, n) in [("Felidar Sovereign", 40), ("Test of Endurance", 50)] {
+        let mut g = table();
+        put(&mut g, 0, name);
+        g.players[0].life = n - 1;
+        g.start_turn(5, 0);
+        to_main1(&mut g);
+        assert!(g.result.is_none(), "{name}: {} life", n - 1);
+        g.players[0].life = n;
+        g.start_turn(7, 0);
+        to_main1(&mut g);
+        assert_eq!(g.result, Some(bolt_core::Outcome::Winner(0)), "{name}");
+    }
+}
+
+fn to_main1(g: &mut Game) {
+    while g.result.is_none() && g.step != Step::Main1 {
+        act(g, Action::PassPriority);
+    }
+}
+
+#[test]
+fn pyrohemia_pings_everything_and_goes_with_no_creatures() {
+    let mut g = table();
+    let p = put(&mut g, 0, "Pyrohemia");
+    let lions = put(&mut g, 1, "Savannah Lions");
+    let bears = put(&mut g, 1, "Vampire Nighthawk");
+    act(&mut g, Action::Activate(p, 0));
+    resolve_all(&mut g, &[]);
+    assert!(in_graveyard(&g, 1, lions));
+    assert_eq!(g.obj(bears).zone, Zone::Battlefield, "2 toughness");
+    assert_eq!((g.players[0].life, g.players[1].life), (39, 39));
+    finish_turn(&mut g, Target::Player(1));
+    assert_eq!(g.obj(p).zone, Zone::Battlefield, "a creature is out");
+    let mut g = table();
+    let p = put(&mut g, 0, "Pyrohemia");
+    finish_turn(&mut g, Target::Player(1));
+    assert!(in_graveyard(&g, 0, p), "no creatures at the end step");
+}
+
+#[test]
+fn vizkopa_guildmage_grants_lifelink_and_drains_what_you_gain() {
+    let mut g = table();
+    let vg = put(&mut g, 0, "Vizkopa Guildmage");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    act(&mut g, Action::Activate(vg, 0));
+    act(&mut g, Action::Target(obj(lions)));
+    resolve_all(&mut g, &[]);
+    assert!(g.keywords(lions).has(Keywords::LIFELINK));
+    act(&mut g, Action::Activate(vg, 1));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].life, 40, "nothing gained yet");
+    let s = hand(&mut g, 0, "Swords to Plowshares");
+    play(&mut g, s, false, &[obj(lions)], &[]);
+    assert_eq!(g.players[0].life, 42);
+    assert_eq!(g.players[1].life, 38, "that much life");
+    g.start_turn(5, 0);
+    to_main1(&mut g);
+    let other = put(&mut g, 0, "Savannah Lions");
+    let s = hand(&mut g, 0, "Swords to Plowshares");
+    play(&mut g, s, false, &[obj(other)], &[]);
+    assert_eq!(g.players[1].life, 38, "only that turn");
+}
+
+#[test]
+fn amulet_of_vigor_untaps_what_enters_tapped() {
+    let mut g = table();
+    put(&mut g, 0, "Amulet of Vigor");
+    let elder = put(&mut g, 0, "Sakura-Tribe Elder");
+    let forest = g.add_card(0, cid("Forest"), Zone::Library);
+    act(&mut g, Action::Activate(elder, 0));
+    resolve_all(&mut g, &[Action::Pick(forest)]);
+    assert_eq!(g.obj(forest).zone, Zone::Battlefield);
+    assert!(!g.obj(forest).tapped, "it entered tapped, then untapped");
+}
+
+#[test]
+fn skittering_precursor_makes_a_spawn_for_a_nontoken_sacrifice() {
+    let mut g = table();
+    let sp = put(&mut g, 0, "Skittering Precursor");
+    assert_eq!(g.colors_of(sp), [false; 5], "devoid");
+    let elder = put(&mut g, 0, "Sakura-Tribe Elder");
+    let forest = g.add_card(0, cid("Forest"), Zone::Library);
+    act(&mut g, Action::Activate(elder, 0));
+    resolve_all(&mut g, &[Action::Pick(forest)]);
+    let spawn = tokens(&g, 0, "Eldrazi Spawn");
+    assert_eq!(spawn.len(), 1);
+    g.manual_mana[0] = true;
+    let n = g
+        .legal_actions()
+        .into_iter()
+        .find(|a| matches!(a, Action::Activate(x, _) | Action::TapForMana(x, _) if *x == spawn[0]))
+        .expect("the spawn's mana ability");
+    act(&mut g, n);
+    resolve_all(&mut g, &[]);
+    assert!(tokens(&g, 0, "Eldrazi Spawn").is_empty(), "a token: no new spawn");
+}
+
+#[test]
+fn it_that_betrays_takes_what_the_opponent_sacrifices() {
+    let mut g = table();
+    put(&mut g, 0, "It That Betrays");
+    let lions = put(&mut g, 1, "Savannah Lions");
+    let e = hand(&mut g, 0, "Diabolic Edict");
+    play(&mut g, e, false, &[Target::Player(1)], &[]);
+    assert_eq!(g.obj(lions).zone, Zone::Battlefield);
+    assert_eq!(g.obj(lions).controller, 0);
+}
+
+#[test]
+fn glaring_fleshraker_makes_spawn_that_ping() {
+    let mut g = table();
+    put(&mut g, 0, "Glaring Fleshraker");
+    cast_settle(&mut g, "Sol Ring");
+    assert_eq!(tokens(&g, 0, "Eldrazi Spawn").len(), 1);
+    assert_eq!(g.players[1].life, 39, "the spawn is a colorless creature");
+    cast_settle(&mut g, "Savannah Lions");
+    assert_eq!(tokens(&g, 0, "Eldrazi Spawn").len(), 1, "a white spell");
+    assert_eq!(g.players[1].life, 39, "a white creature");
+}
+
+#[test]
+fn aurelia_untaps_and_adds_a_combat_the_first_time_only() {
+    let mut g = table();
+    let a = put(&mut g, 0, "Aurelia, the Warleader");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    attack(&mut g, &[a, lions]);
+    while !g.items.is_empty()
+        || g.legal_actions().contains(&Action::PassPriority) && g.step == Step::DeclareAttackers
+    {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(!g.obj(lions).tapped, "untapped");
+    let mut attacks = 1;
+    while g.step != Step::Main2 {
+        let legal = g.legal_actions();
+        let next = if g.pending == Pending::DeclareAttackers(0) {
+            attacks += 1;
+            act(&mut g, Action::Attack(a));
+            Action::FinishAttacks
+        } else if legal.contains(&Action::FinishBlocks) {
+            Action::FinishBlocks
+        } else {
+            Action::PassPriority
+        };
+        act(&mut g, next);
+    }
+    assert_eq!(attacks, 2, "one additional combat");
+    assert_eq!(
+        g.players[1].life,
+        40 - 3 - 2 - 3,
+        "Aurelia (3/4) twice, the Lions once"
+    );
+}
+
+#[test]
+fn ghyrson_starn_adds_two_to_exactly_one_damage() {
+    let mut g = table();
+    put(&mut g, 0, "Ghyrson Starn, Kelermorph");
+    let lc = put(&mut g, 0, "Lobber Crew");
+    main5(&mut g);
+    act(&mut g, Action::Activate(lc, 0));
+    settle(&mut g, Target::Player(1));
+    assert_eq!(g.players[1].life, 37, "1, then Ghyrson's 2");
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    play(&mut g, bolt, false, &[Target::Player(1)], &[]);
+    assert_eq!(g.players[1].life, 34, "3 damage isn't exactly 1");
+}
+
+#[test]
+fn graf_mole_gains_three_when_you_sacrifice_a_clue() {
+    let mut g = table();
+    put(&mut g, 0, "Graf Mole");
+    let clue_def = set("CMD")
+        .unwrap()
+        .defs
+        .iter()
+        .position(|d| d.token && d.name == "Clue")
+        .expect("the Clue token");
+    let clue = g.add_card(0, clue_def, Zone::Battlefield);
+    act(&mut g, Action::Activate(clue, 0));
+    resolve_all(&mut g, &[]);
+    assert_ne!(g.obj(clue).zone, Zone::Battlefield);
+    assert_eq!(g.players[0].life, 43);
+}
