@@ -198,7 +198,80 @@ pub fn token_defs() -> Vec<CardDef> {
             t
         },
         token("Frog", "Frog", 1, 1, Keywords::NONE), // Quina's green 1/1
+        token("Horse", "Horse", 5, 5, Keywords::NONE), // Crested Sunmare's white 5/5
+        token("Soldier", "Soldier", 1, 1, Keywords::LIFELINK), // Dawn of Hope's white 1/1 lifelink
+        {
+            // Ajani, Strength of the Pride: "Ajani's Pridemate" with "Whenever you gain life, put a
+            // +1/+1 counter on this token."
+            let mut t = token("Ajani's Pridemate", "Cat Soldier", 2, 2, Keywords::NONE);
+            on(
+                &mut t,
+                When::YouGainLife,
+                vec![],
+                vec![Effect::CountersSelf { n: 1 }],
+            );
+            t
+        },
+        token("Bird Illusion", "Bird Illusion", 1, 1, Keywords::FLYING), // Murmuring Mystic's blue
+        {
+            // Third Path Iconoclast: "a 1/1 colorless Soldier artifact creature token".
+            let mut t = token("Soldier", "Soldier", 1, 1, Keywords::NONE);
+            t.types.artifact = true;
+            t
+        },
+        {
+            // Metallurgic Summonings: "an X/X colorless Construct artifact creature token".
+            let mut t = token("Construct", "Construct", 0, 0, Keywords::NONE);
+            t.types.artifact = true;
+            t
+        },
+        token("Goat", "Goat", 0, 1, Keywords::NONE), // Woe Strider's white 0/1
+        // 77-82: lane d4's (dungeon rooms, Ancient Gold Dragon, Lolth, Urza's Saga).
+        black(token("Skeleton", "Skeleton", 1, 1, Keywords::NONE)), // Muiral's Graveyard
+        black(token("Skeleton", "Skeleton", 4, 1, Keywords::MENACE)), // Catacombs
+        black(token("God Horror", "God Horror", 4, 4, Keywords::DEATHTOUCH)), // Cradle of the Death God
+        {
+            // Ancient Gold Dragon: "1/1 blue Faerie Dragon creature tokens with flying".
+            let mut t = token("Faerie Dragon", "Faerie Dragon", 1, 1, Keywords::FLYING);
+            t.colors = [false, true, false, false, false];
+            t
+        },
+        black(token(
+            "Spider",
+            "Spider",
+            2,
+            1,
+            Keywords::REACH.with(Keywords::MENACE),
+        )), // Lolth
+        {
+            // Urza's Saga: "a 0/0 colorless Construct artifact creature token with 'This token gets
+            // +1/+1 for each artifact you control.'"
+            let mut t = token("Construct", "Construct", 0, 0, Keywords::NONE);
+            t.types.artifact = true;
+            t.statics.push(Static {
+                subtype: None,
+                lose_abilities: false,
+                base_pt: None,
+                protection: [false; 5],
+                scale: Some(Scale::PerArtifactYouControl),
+                scope: Scope::This,
+                your_turn_only: false,
+                condition: None,
+                power: 1,
+                toughness: 1,
+                keywords: Keywords::NONE,
+                set_colors: None,
+                becomes_land: false,
+            });
+            t
+        },
     ]
+}
+
+/// A black token.
+fn black(mut d: CardDef) -> CardDef {
+    d.colors = [false, false, true, false, false];
+    d
 }
 
 /// "{2}, Sacrifice this artifact: Draw a card." (CR 111.10f)
@@ -318,9 +391,22 @@ pub struct Tokens {
     pub shapeshifter: usize,
     pub clue: usize,
     pub frog: usize,
+    pub horse_5: usize,
+    pub soldier_lifelink: usize,
+    pub ajanis_pridemate: usize,
+    pub bird_illusion: usize,
+    pub soldier_artifact: usize,
+    pub construct_x: usize,
     pub eldrazi_spawn: usize,
     pub spawn_3: usize,
     pub elf_druid: usize,
+    pub skeleton: usize,
+    pub skeleton_menace: usize,
+    pub god_horror: usize,
+    pub faerie_dragon: usize,
+    pub spider_menace: usize,
+    pub saga_construct: usize,
+    pub goat: usize,
 }
 
 impl Tokens {
@@ -393,9 +479,22 @@ impl Tokens {
             shapeshifter: base + 64,
             clue: base + 65,
             frog: base + 69,
+            horse_5: base + 70,
+            soldier_lifelink: base + 71,
+            ajanis_pridemate: base + 72,
+            bird_illusion: base + 73,
+            soldier_artifact: base + 74,
+            construct_x: base + 75,
             eldrazi_spawn: base + 66,
             spawn_3: base + 67,
             elf_druid: base + 68,
+            skeleton: base + 77,
+            skeleton_menace: base + 78,
+            god_horror: base + 79,
+            faerie_dragon: base + 80,
+            spider_menace: base + 81,
+            saga_construct: base + 82,
+            goat: base + 76,
         }
     }
 }
@@ -796,6 +895,8 @@ pub fn script(name: &str) -> Option<Script> {
         .or_else(|| pg_d1::script(name))
         .or_else(|| pg_d2::script(name))
         .or_else(|| pg_d3::script(name))
+        .or_else(|| pg_m::script(name))
+        .or_else(|| pg_d4::script(name))
 }
 
 // Parallel lanes for plain Tarkir cards (no engine-core changes): each owns its module and test file.
@@ -818,9 +919,14 @@ pub use pg_c::PG_C_SCRIPTED;
 mod pg_d1;
 mod pg_d2;
 mod pg_d3;
+// The merger's own cards (core hooks and the cards that test them).
+mod pg_d4;
+mod pg_m;
 pub use pg_d1::PG_D1_SCRIPTED;
 pub use pg_d2::PG_D2_SCRIPTED;
 pub use pg_d3::PG_D3_SCRIPTED;
+pub use pg_d4::PG_D4_SCRIPTED;
+pub use pg_m::PG_M_SCRIPTED;
 
 fn script_core(name: &str) -> Option<Script> {
     let s = |lines, build| Some(Script { lines, build });
@@ -4513,6 +4619,8 @@ mod one_script_per_card {
             ("pg_d1", PG_D1_SCRIPTED),
             ("pg_d2", PG_D2_SCRIPTED),
             ("pg_d3", PG_D3_SCRIPTED),
+            ("pg_m", PG_M_SCRIPTED),
+            ("pg_d4", PG_D4_SCRIPTED),
         ]
     }
 

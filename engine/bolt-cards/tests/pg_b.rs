@@ -2239,3 +2239,417 @@ fn black_market_connections_chooses_one_or_more_each_first_main_phase() {
     assert!(g.has_subtype(shifter[0], "Elf") && g.has_subtype(shifter[0], "Dragon"));
     assert_eq!(hand_size(&g, 0), before + 2, "the draw step and Buy Information");
 }
+
+// ---- Tatyova, Benthic Druid (Grande), lane B ----
+
+#[test]
+fn tatyova_land_ramp() {
+    let mut g = table();
+    let f1 = top(&mut g, 0, "Forest");
+    let f2 = top(&mut g, 0, "Island");
+    let path = hand(&mut g, 0, "Migration Path");
+    play(&mut g, path, false, &[], &[Action::Pick(f1), Action::Pick(f2)]);
+    assert!(g.obj(f1).tapped && g.obj(f2).zone == Zone::Battlefield);
+    // Cycling from hand.
+    let path2 = hand(&mut g, 0, "Migration Path");
+    assert!(has(&g, Action::Activate(path2, 0)));
+    // Sakura-Tribe Scout: an untapped land from hand.
+    let scout = put(&mut g, 0, "Sakura-Tribe Scout");
+    let land = hand(&mut g, 0, "Forest");
+    act(&mut g, Action::Activate(scout, 0));
+    resolve_all(&mut g, &[Action::Pick(land)]);
+    assert!(g.obj(land).zone == Zone::Battlefield && !g.obj(land).tapped);
+    // Splendid Reclamation.
+    let a = g.add_card(0, cid("Forest"), Zone::Graveyard);
+    let rec = hand(&mut g, 0, "Splendid Reclamation");
+    play(&mut g, rec, false, &[], &[]);
+    assert!(g.obj(a).zone == Zone::Battlefield && g.obj(a).tapped);
+}
+
+/// Resolves the stack, answering each decision with its first move (discarding other cards) until
+/// `land` can be picked, then picks it.
+fn answer_until_land(g: &mut Game, land: ObjId) {
+    for _ in 0..60 {
+        if g.obj(land).zone == Zone::Battlefield {
+            break;
+        }
+        let legal = g.legal_actions();
+        let a = if legal.contains(&Action::Pick(land)) {
+            Action::Pick(land)
+        } else if matches!(g.pending, Pending::Decide(_) | Pending::ChooseTarget(_)) {
+            *legal
+                .iter()
+                .find(|a| !matches!(a, Action::Discard(c) if *c == land))
+                .unwrap()
+        } else {
+            Action::PassPriority
+        };
+        act(g, a);
+    }
+    resolve_all(g, &[]);
+}
+
+#[test]
+fn joint_exploration_and_khalni_heart_expedition() {
+    let mut g = table();
+    let land = hand(&mut g, 0, "Forest");
+    let je = hand(&mut g, 0, "Joint Exploration");
+    act(&mut g, Action::CastKicked(je));
+    answer_until_land(&mut g, land);
+    assert!(g.obj(land).zone == Zone::Battlefield && !g.obj(land).tapped);
+    let mut g = table();
+    let khalni = put(&mut g, 0, "Khalni Heart Expedition");
+    g.objects[khalni.0 as usize].kind_counters = 2;
+    let f = hand(&mut g, 0, "Forest");
+    act(&mut g, Action::PlayLand(f));
+    resolve_all(&mut g, &[Action::Yes]);
+    assert_eq!(g.obj(khalni).kind_counters, 3);
+    let b1 = top(&mut g, 0, "Forest");
+    let b2 = top(&mut g, 0, "Forest");
+    act(&mut g, Action::Activate(khalni, 0));
+    resolve_all(&mut g, &[Action::Pick(b2), Action::Pick(b1)]);
+    assert_eq!(g.obj(khalni).zone, Zone::Graveyard);
+    assert!(g.obj(b1).tapped);
+}
+
+#[test]
+fn noxious_revival_on_the_trail_and_rude_awakening() {
+    let mut g = table();
+    let dead = g.add_card(1, cid("Savannah Lions"), Zone::Graveyard);
+    let rev = hand(&mut g, 0, "Noxious Revival");
+    assert!(
+        has(&g, Action::CastAlternative(rev)),
+        "2 life for the Phyrexian pip"
+    );
+    play(&mut g, rev, false, &[Target::Object(dead)], &[]);
+    assert_eq!(g.players[1].library.last(), Some(&dead));
+    let mut g = table();
+    put(&mut g, 0, "On the Trail");
+    let land = hand(&mut g, 0, "Forest");
+    let search = hand(&mut g, 0, "Frantic Search");
+    let n = hand_size(&g, 0);
+    act(&mut g, Action::Cast(search));
+    let _ = n;
+    answer_until_land(&mut g, land); // the discards, then On the Trail's land
+    assert!(g.obj(land).zone == Zone::Battlefield && g.obj(land).tapped);
+    let mut g = table();
+    let rude = hand(&mut g, 0, "Rude Awakening");
+    act(&mut g, Action::CastModal(rude, 2)); // entwined
+    resolve_all(&mut g, &[]);
+    let l = g.permanents(0).find(|&x| g.types_of(x).land).unwrap();
+    assert!(g.types_of(l).creature && !g.obj(l).tapped);
+    assert_eq!(g.power(l), 2);
+}
+
+#[test]
+fn squall_line_stroke_of_genius_wipe_away_and_lab_maniac() {
+    let mut g = table();
+    let flier = put(&mut g, 1, "Birds of Paradise");
+    let ground = put(&mut g, 1, "Savannah Lions");
+    let squall = hand(&mut g, 0, "Squall Line");
+    act(&mut g, Action::CastX(squall, 1));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(flier).zone, Zone::Graveyard);
+    assert_eq!(g.obj(ground).zone, Zone::Battlefield);
+    assert_eq!((g.players[0].life, g.players[1].life), (39, 39));
+    let stroke = hand(&mut g, 0, "Stroke of Genius");
+    let n = hand_size(&g, 1);
+    act(&mut g, Action::CastX(stroke, 2));
+    act(&mut g, Action::Target(Target::Player(1)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(hand_size(&g, 1), n + 2);
+    let wipe = hand(&mut g, 0, "Wipe Away");
+    play(&mut g, wipe, false, &[Target::Object(ground)], &[]);
+    assert_eq!(g.obj(ground).zone, Zone::Hand);
+    // Laboratory Maniac with an empty library.
+    let mut g = table();
+    put(&mut g, 0, "Laboratory Maniac");
+    g.players[0].library.clear();
+    let search = hand(&mut g, 0, "Frantic Search");
+    act(&mut g, Action::Cast(search));
+    for _ in 0..5 {
+        if g.is_over() {
+            break;
+        }
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(g.is_over());
+    assert!(g.players[1].lost);
+}
+
+// ---- Zhulodok, Void Gorger (Adam), lane B ----
+
+#[test]
+fn zhulodok_utility_lands_and_rocks() {
+    let mut g = table();
+    let map = put(&mut g, 0, "Expedition Map");
+    let land = g.add_card(0, cid("Strip Mine"), Zone::Library);
+    act(&mut g, Action::Activate(map, 0));
+    resolve_all(&mut g, &[Action::Pick(land)]);
+    assert_eq!(g.obj(land).zone, Zone::Hand);
+    act(&mut g, Action::PlayLand(land));
+    let theirs = g.permanents(1).find(|&x| g.types_of(x).land).unwrap();
+    act(&mut g, Action::Activate(land, 0));
+    act(&mut g, Action::Target(Target::Object(theirs)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(theirs).zone, Zone::Graveyard);
+    assert_eq!(g.obj(land).zone, Zone::Graveyard);
+    let mut g = table();
+    let waste = put(&mut g, 0, "Wasteland");
+    act(&mut g, Action::Activate(waste, 0));
+    let basic = g.permanents(1).find(|&x| g.types_of(x).basic).unwrap();
+    assert!(!has(&g, Action::Target(Target::Object(basic))), "nonbasic only");
+    let mut g = game(&[]);
+    let myr = put(&mut g, 0, "Palladium Myr");
+    assert_eq!(g.mana_sources(0).iter().filter(|&&(x, _)| x == myr).count(), 2);
+    let stone = hand(&mut g, 0, "Worn Powerstone");
+    let _ = stone;
+    let mut g = table();
+    let cave = put(&mut g, 0, "Urza's Cave");
+    let target = g.add_card(0, cid("Wasteland"), Zone::Library);
+    act(&mut g, Action::Activate(cave, 0));
+    resolve_all(&mut g, &[Action::Pick(target)]);
+    assert!(g.obj(target).zone == Zone::Battlefield && g.obj(target).tapped);
+}
+
+#[test]
+fn zhulodok_keys_coat_and_artisan() {
+    let mut g = table();
+    let vkey = put(&mut g, 0, "Voltaic Key");
+    let ring = put(&mut g, 0, "Sol Ring");
+    g.objects[ring.0 as usize].tapped = true;
+    act(&mut g, Action::Activate(vkey, 0));
+    act(&mut g, Action::Target(Target::Object(ring)));
+    resolve_all(&mut g, &[]);
+    assert!(!g.obj(ring).tapped);
+    let mkey = put(&mut g, 0, "Manifold Key");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    act(&mut g, Action::Activate(mkey, 1));
+    act(&mut g, Action::Target(Target::Object(lions)));
+    resolve_all(&mut g, &[]);
+    assert!(g.keywords(lions).has(Keywords::UNBLOCKABLE));
+    // Mithril Coat attaches itself to a legendary creature.
+    let mut g = table();
+    let myrkul = put(&mut g, 0, "Maha, Its Feathers Night");
+    let plain = put(&mut g, 0, "Savannah Lions");
+    let coat = hand(&mut g, 0, "Mithril Coat");
+    act(&mut g, Action::Cast(coat));
+    pass_until_asked(&mut g);
+    assert!(!has(&g, Action::Target(Target::Object(plain))), "legendary only");
+    act(&mut g, Action::Target(Target::Object(myrkul)));
+    resolve_all(&mut g, &[]);
+    assert!(g.keywords(myrkul).has(Keywords::INDESTRUCTIBLE));
+    // Artisan of Kozilek: a cast trigger reanimates.
+    let mut g = table();
+    let dead = g.add_card(0, cid("Silverback Elder"), Zone::Graveyard);
+    for _ in 0..5 {
+        put(&mut g, 0, "Sol Ring");
+    }
+    let artisan = hand(&mut g, 0, "Artisan of Kozilek");
+    act(&mut g, Action::Cast(artisan));
+    resolve_all(&mut g, &[Action::Target(Target::Object(dead)), Action::Yes]);
+    assert_eq!(g.obj(dead).zone, Zone::Battlefield);
+    assert_eq!(g.obj(artisan).zone, Zone::Battlefield);
+}
+
+#[test]
+fn fountainport_makes_fish_and_treasure_and_draws() {
+    let mut g = table();
+    let port = put(&mut g, 0, "Fountainport");
+    act(&mut g, Action::Activate(port, 1));
+    resolve_all(&mut g, &[]);
+    assert_eq!(tokens(&g, 0, "Fish").len(), 1);
+    assert_eq!(g.players[0].life, 39);
+    let fish = tokens(&g, 0, "Fish")[0];
+    g.objects[port.0 as usize].tapped = false;
+    let n = hand_size(&g, 0);
+    act(&mut g, Action::ActivateWith(port, 0, fish));
+    resolve_all(&mut g, &[]);
+    assert_eq!(hand_size(&g, 0), n + 1);
+    g.objects[port.0 as usize].tapped = false;
+    act(&mut g, Action::Activate(port, 2));
+    resolve_all(&mut g, &[]);
+    assert_eq!(tokens(&g, 0, "Treasure").len(), 1);
+}
+
+// ---- Oloro, Ageless Ascetic (Adam), lane B ----
+
+#[test]
+fn oloro_lifegain_payoffs() {
+    let mut g = table();
+    let thune = put(&mut g, 0, "Archangel of Thune");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    put(&mut g, 0, "Cliffhaven Vampire");
+    put(&mut g, 0, "Drogskol Reaver");
+    put(&mut g, 0, "Rhox Faithmender");
+    let voice = put(&mut g, 0, "Voice of the Blessed");
+    put(&mut g, 0, "Courser of Kruphix");
+    let n = hand_size(&g, 0);
+    let land = hand(&mut g, 0, "Forest");
+    act(&mut g, Action::PlayLand(land));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].life, 42, "1 doubled");
+    assert_eq!(g.players[1].life, 39);
+    assert_eq!(hand_size(&g, 0), n + 1 - 1 + 1, "played the land, drew one");
+    assert_eq!(g.obj(lions).counters, 1);
+    assert_eq!(g.obj(thune).counters, 1);
+    assert_eq!(g.obj(voice).counters, 2, "Thune's and its own");
+}
+
+#[test]
+fn oloro_life_total_statics() {
+    let mut g = table();
+    let serra = put(&mut g, 0, "Serra Ascendant");
+    let divinity = put(&mut g, 0, "Divinity of Pride");
+    assert_eq!(g.power(serra), 6, "40 life");
+    assert!(g.keywords(serra).has(Keywords::FLYING));
+    assert_eq!(g.power(divinity), 8);
+    g.players[0].life = 20;
+    assert_eq!(g.power(serra), 1);
+    assert_eq!(g.power(divinity), 4);
+    let voice = put(&mut g, 0, "Voice of the Blessed");
+    g.objects[voice.0 as usize].counters = 4;
+    assert!(g.keywords(voice).has(Keywords::FLYING) && !g.keywords(voice).has(Keywords::INDESTRUCTIBLE));
+    g.objects[voice.0 as usize].counters = 10;
+    assert!(g.keywords(voice).has(Keywords::INDESTRUCTIBLE));
+}
+
+#[test]
+fn heliod_grows_on_lifegain_and_grants_lifelink() {
+    let mut g = table();
+    let heliod = put(&mut g, 0, "Heliod, Sun-Crowned");
+    assert!(!g.types_of(heliod).creature, "no devotion");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    act(&mut g, Action::Activate(heliod, 0));
+    act(&mut g, Action::Target(Target::Object(lions)));
+    resolve_all(&mut g, &[]);
+    assert!(g.keywords(lions).has(Keywords::LIFELINK));
+    put(&mut g, 0, "Courser of Kruphix");
+    let land = hand(&mut g, 0, "Forest");
+    act(&mut g, Action::PlayLand(land));
+    resolve_all(&mut g, &[Action::Target(Target::Object(lions))]);
+    assert_eq!(g.obj(lions).counters, 1);
+}
+
+// ---- Ghyrson Starn, Kelermorph (Spr3adsh33t), lane B ----
+
+#[test]
+fn ghyrson_spell_payoffs_ping_and_untap() {
+    let mut g = table();
+    put(&mut g, 0, "Electrostatic Field");
+    put(&mut g, 0, "Erebor Flamesmith");
+    put(&mut g, 0, "Kessig Flamebreather");
+    let thermo = put(&mut g, 0, "Thermo-Alchemist");
+    g.objects[thermo.0 as usize].tapped = true;
+    let consider = hand(&mut g, 0, "Consider");
+    play(&mut g, consider, false, &[], &[Action::No]);
+    assert_eq!(g.players[1].life, 37, "three pings");
+    assert!(!g.obj(thermo).tapped);
+    act(&mut g, Action::Activate(thermo, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].life, 36);
+}
+
+#[test]
+fn ghyrson_burn_and_cantrips() {
+    let mut g = table();
+    let a = put(&mut g, 1, "Llanowar Elves");
+    let b = put(&mut g, 1, "Llanowar Elves");
+    let fire = hand(&mut g, 0, "Cast into the Fire");
+    act(&mut g, Action::CastModal(fire, 0));
+    act(&mut g, Action::Target(Target::Object(a)));
+    act(&mut g, Action::Target(Target::Object(b)));
+    resolve_all(&mut g, &[]);
+    assert!(g.obj(a).zone == Zone::Graveyard && g.obj(b).zone == Zone::Graveyard);
+    let bolt = hand(&mut g, 0, "Burst Lightning");
+    play(&mut g, bolt, false, &[Target::Player(1)], &[]);
+    let shot = hand(&mut g, 0, "Grapeshot");
+    play(&mut g, shot, false, &[Target::Player(1)], &[]);
+    assert_eq!(
+        g.players[1].life, 35,
+        "2, then 1 and two storm copies (two spells before it)"
+    );
+    let n = hand_size(&g, 0);
+    let lyze = hand(&mut g, 0, "Electrolyze");
+    let c = put(&mut g, 1, "Llanowar Elves");
+    act(&mut g, Action::Cast(lyze));
+    act(&mut g, Action::Target(Target::Object(c)));
+    act(&mut g, Action::Target(Target::Player(1)));
+    while matches!(g.pending, Pending::Divide(_)) {
+        act(&mut g, Action::Amount(1)); // 1 and 1
+    }
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(c).zone, Zone::Graveyard);
+    assert_eq!(g.players[1].life, 34);
+    assert_eq!(
+        hand_size(&g, 0),
+        n + 1,
+        "Electrolyze was added after counting; it drew one"
+    );
+}
+
+#[test]
+fn niv_mizzet_draws_and_pings_and_sharpshooter_untaps() {
+    let mut g = table();
+    put(&mut g, 0, "Niv-Mizzet, Parun");
+    let serum = hand(&mut g, 0, "Serum Visions");
+    act(&mut g, Action::Cast(serum));
+    // Niv's cast trigger draws; each draw pings (target player 1).
+    for _ in 0..30 {
+        if g.items.is_empty() && !matches!(g.pending, Pending::Decide(_) | Pending::ChooseTarget(_)) {
+            break;
+        }
+        let a = match g.pending {
+            Pending::ChooseTarget(_) => Action::Target(Target::Player(1)),
+            Pending::Decide(_) => *g.legal_actions().last().unwrap(),
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.players[1].life, 38, "two draws: Niv's and Serum Visions'");
+    let mut g = table();
+    let shooter = put(&mut g, 0, "Goblin Sharpshooter");
+    let elves = put(&mut g, 1, "Llanowar Elves");
+    act(&mut g, Action::Activate(shooter, 0));
+    act(&mut g, Action::Target(Target::Object(elves)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(elves).zone, Zone::Graveyard);
+    assert!(!g.obj(shooter).tapped, "untapped when the Elves died");
+}
+
+#[test]
+fn ghyrson_lands_and_equipment() {
+    let mut g = table();
+    let bay = put(&mut g, 0, "The Surgical Bay");
+    let n = hand_size(&g, 0);
+    act(&mut g, Action::Activate(bay, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(hand_size(&g, 0), n + 1);
+    let lions = put(&mut g, 0, "Savannah Lions");
+    let collar = put(&mut g, 0, "Basilisk Collar");
+    act(&mut g, Action::Activate(collar, 0));
+    resolve_all(&mut g, &[Action::Target(Target::Object(lions))]);
+    assert!(g.keywords(lions).has(Keywords::DEATHTOUCH) && g.keywords(lions).has(Keywords::LIFELINK));
+}
+
+#[test]
+fn dawn_of_hope_mystic_and_iconoclast_make_tokens() {
+    let mut g = table();
+    let dawn = put(&mut g, 0, "Dawn of Hope");
+    act(&mut g, Action::Activate(dawn, 0));
+    resolve_all(&mut g, &[]);
+    let soldiers = tokens(&g, 0, "Soldier");
+    assert_eq!(soldiers.len(), 1);
+    assert!(g.keywords(soldiers[0]).has(Keywords::LIFELINK));
+    put(&mut g, 0, "Murmuring Mystic");
+    put(&mut g, 0, "Third Path Iconoclast");
+    let consider = hand(&mut g, 0, "Consider");
+    play(&mut g, consider, false, &[], &[Action::No]);
+    let birds = tokens(&g, 0, "Bird Illusion");
+    assert_eq!(birds.len(), 1);
+    assert!(g.keywords(birds[0]).has(Keywords::FLYING));
+    let art = tokens(&g, 0, "Soldier")
+        .into_iter()
+        .find(|&x| g.types_of(x).artifact);
+    assert!(art.is_some());
+}

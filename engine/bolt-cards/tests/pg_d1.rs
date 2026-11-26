@@ -1671,3 +1671,104 @@ fn freyalise_makes_elf_druids_destroys_and_draws_per_green_creature() {
         "{{T}}: Add {{G}}"
     );
 }
+
+// ---- d1 core, batch 4 ----
+
+#[test]
+fn ruby_and_jet_medallions_discount_their_color() {
+    let mut g = table();
+    put(&mut g, 0, "Jet Medallion");
+    put(&mut g, 0, "Ruby Medallion");
+    let c = hand(&mut g, 0, "Gray Merchant of Asphodel");
+    play(&mut g, c, false, &[], &[]);
+    assert_eq!(tapped_lands(&g), 4, "black: {{3}}{{B}}{{B}} less {{1}}");
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    play(&mut g, bolt, false, &[Target::Player(1)], &[]);
+    assert_eq!(tapped_lands(&g), 5, "red {{R}}: no generic to take off");
+    let ench = hand(&mut g, 0, "Sylvan Library");
+    play(&mut g, ench, false, &[], &[]);
+    assert_eq!(tapped_lands(&g), 7, "green: full price");
+}
+
+#[test]
+fn stormscape_familiar_discounts_white_or_black_once() {
+    let mut g = table();
+    put(&mut g, 0, "Stormscape Familiar");
+    let c = hand(&mut g, 0, "Gray Merchant of Asphodel");
+    play(&mut g, c, false, &[], &[]);
+    assert_eq!(tapped_lands(&g), 4);
+}
+
+#[test]
+fn zendikar_resurgent_doubles_land_mana_and_draws_on_creature_casts() {
+    let mut g = table();
+    put(&mut g, 0, "Zendikar Resurgent");
+    let forest = first_named(&g, 0, "Forest");
+    assert_eq!(g.mana_sources(0).into_iter().filter(|s| s.0 == forest).count(), 2);
+    let n = g.players[0].hand.len();
+    let elf = hand(&mut g, 0, "Llanowar Elves");
+    play(&mut g, elf, false, &[], &[]);
+    assert_eq!(g.players[0].hand.len(), n + 1, "cast one, drew one");
+}
+
+#[test]
+fn dictate_of_karametra_doubles_every_players_lands() {
+    let mut g = table();
+    put(&mut g, 1, "Dictate of Karametra");
+    let forest = first_named(&g, 0, "Forest");
+    assert_eq!(g.mana_sources(0).into_iter().filter(|s| s.0 == forest).count(), 2);
+    let theirs = first_named(&g, 1, "Forest");
+    assert_eq!(g.mana_sources(1).into_iter().filter(|s| s.0 == theirs).count(), 2);
+}
+
+#[test]
+fn leyline_of_abundance_adds_g_for_creatures_and_pumps_everything() {
+    let mut g = table();
+    let l = put(&mut g, 0, "Leyline of Abundance");
+    let elf = put(&mut g, 0, "Llanowar Elves");
+    assert_eq!(g.mana_sources(0).into_iter().filter(|s| s.0 == elf).count(), 2);
+    let forest = first_named(&g, 0, "Forest");
+    assert_eq!(
+        g.mana_sources(0).into_iter().filter(|s| s.0 == forest).count(),
+        1,
+        "lands don't"
+    );
+    activate(&mut g, l, 0, &[]);
+    assert_eq!(g.obj(elf).counters, 1);
+}
+
+#[test]
+fn woe_strider_makes_a_goat_scries_and_escapes_with_two_counters() {
+    let mut g = table();
+    let w = hand(&mut g, 0, "Woe Strider");
+    play(&mut g, w, false, &[], &[]);
+    let goat = tokens(&g, 0, "Goat");
+    assert_eq!(goat.len(), 1);
+    assert_eq!((g.power(goat[0]), g.toughness(goat[0])), (0, 1));
+    // Sacrifice another creature: Scry 1.
+    act(&mut g, Action::ActivateWith(w, 0, goat[0]));
+    while !g.items.is_empty() || matches!(g.pending, Pending::Decide(_)) {
+        let a = match g.pending {
+            Pending::Decide(_) => g.legal_actions()[0],
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert!(tokens(&g, 0, "Goat").is_empty(), "sacrificed");
+    // A second one in the graveyard with only three other cards: no escape.
+    let w = g.add_card(0, cid("Woe Strider"), Zone::Graveyard);
+    for _ in 0..3 {
+        g.add_card(0, cid("Forest"), Zone::Graveyard);
+    }
+    assert!(!g.legal_actions().contains(&Action::CastAlternative(w)));
+    let fourth = g.add_card(0, cid("Forest"), Zone::Graveyard);
+    assert!(g.legal_actions().contains(&Action::CastAlternative(w)));
+    let before = tapped_lands(&g);
+    act(&mut g, Action::CastAlternative(w));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(w).zone, Zone::Battlefield);
+    assert_eq!(g.obj(w).counters, 2, "escapes with two +1/+1 counters");
+    assert_eq!(tapped_lands(&g) - before, 5, "{{3}}{{B}}{{B}}");
+    assert_eq!(g.obj(fourth).zone, Zone::Exile);
+    assert_eq!(g.players[0].graveyard.len(), 0, "four other cards exiled");
+}
