@@ -667,14 +667,16 @@ fn mockingbird_copies_only_up_to_the_mana_spent_and_is_a_flying_bird() {
     let mut g = table();
     let ghoul = put(&mut g, 1, "Hungry Ghoul"); // mana value 2
     let mb = hand(&mut g, 0, "Mockingbird");
-    play(&mut g, mb, false, &[], &[Action::Amount(0)]);
+    act(&mut g, Action::CastX(mb, 0));
+    resolve_all(&mut g, &[]);
     assert_eq!(
         g.def_of(mb).name,
         "Mockingbird",
         "one mana spent: nothing to copy"
     );
     let mb2 = hand(&mut g, 0, "Mockingbird");
-    play(&mut g, mb2, false, &[], &[Action::Amount(1), Action::Pick(ghoul)]);
+    act(&mut g, Action::CastX(mb2, 1));
+    resolve_all(&mut g, &[Action::Pick(ghoul)]);
     assert_eq!(g.def_of(mb2).name, "Hungry Ghoul");
     assert!(g.has_subtype(mb2, "Bird") && g.has_subtype(mb2, "Zombie"));
     assert!(g.keywords(mb2).has(Keywords::FLYING));
