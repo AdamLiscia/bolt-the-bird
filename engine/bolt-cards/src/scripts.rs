@@ -198,6 +198,14 @@ pub fn token_defs() -> Vec<CardDef> {
             t
         },
         token("Frog", "Frog", 1, 1, Keywords::NONE), // Quina's green 1/1
+        // 70 to 75 are lane B's: placeholders until they merge.
+        token("Lane B token 70", "Placeholder", 1, 1, Keywords::NONE),
+        token("Lane B token 71", "Placeholder", 1, 1, Keywords::NONE),
+        token("Lane B token 72", "Placeholder", 1, 1, Keywords::NONE),
+        token("Lane B token 73", "Placeholder", 1, 1, Keywords::NONE),
+        token("Lane B token 74", "Placeholder", 1, 1, Keywords::NONE),
+        token("Lane B token 75", "Placeholder", 1, 1, Keywords::NONE),
+        token("Goat", "Goat", 0, 1, Keywords::NONE), // Woe Strider's white 0/1
     ]
 }
 
@@ -321,6 +329,7 @@ pub struct Tokens {
     pub eldrazi_spawn: usize,
     pub spawn_3: usize,
     pub elf_druid: usize,
+    pub goat: usize,
 }
 
 impl Tokens {
@@ -396,6 +405,7 @@ impl Tokens {
             eldrazi_spawn: base + 66,
             spawn_3: base + 67,
             elf_druid: base + 68,
+            goat: base + 76,
         }
     }
 }

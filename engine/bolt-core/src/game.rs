@@ -1364,6 +1364,8 @@ pub struct Game {
     pub evoked: Vec<(ObjId, u32)>,
     /// Life each player has lost this turn: (turn, total) (Wound Reflection).
     pub life_lost_turn: [(u32, i32); 2],
+    /// Spells cast with escape: (card, the zone-change count it will have on the battlefield).
+    pub escaped: Vec<(ObjId, u32)>,
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -1592,6 +1594,7 @@ impl Game {
             evoked: Vec::new(),
             life_lost_turn: [(0, 0); 2],
             protection_grants: Vec::new(),
+            escaped: Vec::new(),
         }
     }
 
@@ -3977,6 +3980,13 @@ impl Game {
                 let x = self.obj(id).x as i32;
                 self.add_counters(id, x);
             }
+            // "This creature escapes with N +1/+1 counters on it."
+            let zcc = self.obj(id).zcc;
+            if let Some(pos) = self.escaped.iter().position(|&e| e == (id, zcc)) {
+                self.escaped.remove(pos);
+                let n = def.mana_ext.escape.map_or(0, |e| e.2);
+                self.add_counters(id, n);
+            }
             // Displaced Dinosaurs: a historic permanent you control becomes a 7/7 Dinosaur.
             let historic =
                 def.types.artifact || def.types.legendary || def.subtypes.iter().any(|s| s == "Saga");
@@ -4999,6 +5009,7 @@ impl Game {
         let flashback = self.players[p].graveyard.iter().filter(|&&c| {
             let d = self.def_of(c);
             d.flashback.is_some()
+                || d.mana_ext.escape.is_some()
                 || ((self.obj(c).flashback_eot || self.obj(c).harmonize_eot)
                     && (d.types.instant || d.types.sorcery))
         });
@@ -5263,6 +5274,20 @@ impl Game {
                 })
                 .collect();
         }
+        if let (true, Some((_, n, _)), None) = (from_graveyard, def.mana_ext.escape, def.flashback) {
+            // Escape: its cost plus exiling `n` other cards from your graveyard.
+            let others = self.players[p].graveyard.iter().filter(|&&x| x != c).count();
+            if others < n as usize {
+                return Vec::new();
+            }
+            return vec![(
+                Action::CastAlternative(c),
+                CastMode {
+                    alt: true,
+                    ..CastMode::default()
+                },
+            )];
+        }
         if from_graveyard {
             // Dread Return: "Flashback—Sacrifice three creatures" needs that many to sacrifice.
             let victims = self.creatures(p).filter(|&x| !self.cant_be_sacrificed(x)).count();
@@ -5500,6 +5525,9 @@ impl Game {
         } else if mode.alt {
             match def.alt_cost {
                 Some((c, _)) => c,
+                None if def.mana_ext.escape.is_some() => {
+                    def.mana_ext.escape.expect("escape").0.with_x(mode.x)
+                }
                 None if def.phyrexian.iter().any(|&n| n > 0) => {
                     let mut c = def.cost.with_x(mode.x);
                     for (k, &n) in def.phyrexian.iter().enumerate() {
@@ -8089,6 +8117,12 @@ impl Game {
         if let Some(x) = energy_by {
             let n = self.def_of(x).permanents_for_energy as u32;
             self.players[p].energy = self.players[p].energy.saturating_sub(n);
+        } else if let (true, Some((_, n, _))) = (item.alt, self.def_of(card).mana_ext.escape) {
+            // Escape: exile the other cards; it escapes with its counters (see `escaped`).
+            self.exile_for_delve(p, card, n);
+            let zcc = self.obj(card).zcc + 1;
+            self.escaped.retain(|e| e.0 != card);
+            self.escaped.push((card, zcc));
         } else if item.alt
             && self.def_of(card).alt_cost.is_none()
             && self.def_of(card).warp.is_none()

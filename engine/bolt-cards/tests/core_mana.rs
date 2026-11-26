@@ -1078,3 +1078,37 @@ fn colored_spell_discount_all_lands_add_same_and_creature_adders() {
     assert_eq!(sources_of(&g, dork).len(), 2);
     assert_eq!(sources_of(&g, swamp).len(), 2, "lands aren't creatures");
 }
+
+#[test]
+fn escape_casts_from_the_graveyard_exiling_others_and_adds_counters() {
+    use batch3::*;
+    let mut d = (*defs()).clone();
+    let mut esc = CardDef::creature("Escaper", "{5}", 1, 1, Keywords::NONE);
+    esc.mana_ext.escape = Some((ManaCost::parse("{1}").expect("cost"), 2, 3));
+    d.push(esc); // 25
+    let mut g = Game::empty(Arc::new(d), 1, 0);
+    for p in 0..2 {
+        for _ in 0..10 {
+            g.add_card(p, GREEN_BEAR, Zone::Library);
+        }
+    }
+    g.add_card(0, SWAMP, Zone::Battlefield);
+    g.auto_pass = false;
+    g.start_turn(3, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    let e = g.add_card(0, 25, Zone::Graveyard);
+    g.add_card(0, ENCH, Zone::Graveyard);
+    assert!(
+        !g.legal_actions().contains(&Action::CastAlternative(e)),
+        "one other card"
+    );
+    g.add_card(0, ENCH, Zone::Graveyard);
+    act(&mut g, Action::CastAlternative(e));
+    settle(&mut g);
+    assert_eq!(g.obj(e).zone, Zone::Battlefield);
+    assert_eq!(g.obj(e).counters, 3);
+    assert!(g.players[0].graveyard.is_empty());
+    assert_eq!(g.exile.len(), 2);
+}

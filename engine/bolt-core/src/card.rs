@@ -864,6 +864,10 @@ pub struct ManaExt {
     pub all_lands_add_same: bool,
     /// "Whenever you tap a creature for mana, add an additional [color]." (Leyline of Abundance)
     pub your_creatures_add: Option<crate::Color>,
+    /// Escape (CR 702.138): (cost, other graveyard cards to exile, +1/+1 counters it escapes with).
+    /// Cast from your graveyard with `Action::CastAlternative`; the engine picks the exiled cards,
+    /// as for delve.
+    pub escape: Option<(ManaCost, u8, i32)>,
 }
 
 /// Which events don't cause abilities to trigger (see [`CardDef::suppresses_triggers`]).

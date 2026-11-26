@@ -1736,3 +1736,39 @@ fn leyline_of_abundance_adds_g_for_creatures_and_pumps_everything() {
     activate(&mut g, l, 0, &[]);
     assert_eq!(g.obj(elf).counters, 1);
 }
+
+#[test]
+fn woe_strider_makes_a_goat_scries_and_escapes_with_two_counters() {
+    let mut g = table();
+    let w = hand(&mut g, 0, "Woe Strider");
+    play(&mut g, w, false, &[], &[]);
+    let goat = tokens(&g, 0, "Goat");
+    assert_eq!(goat.len(), 1);
+    assert_eq!((g.power(goat[0]), g.toughness(goat[0])), (0, 1));
+    // Sacrifice another creature: Scry 1.
+    act(&mut g, Action::ActivateWith(w, 0, goat[0]));
+    while !g.items.is_empty() || matches!(g.pending, Pending::Decide(_)) {
+        let a = match g.pending {
+            Pending::Decide(_) => g.legal_actions()[0],
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert!(tokens(&g, 0, "Goat").is_empty(), "sacrificed");
+    // A second one in the graveyard with only three other cards: no escape.
+    let w = g.add_card(0, cid("Woe Strider"), Zone::Graveyard);
+    for _ in 0..3 {
+        g.add_card(0, cid("Forest"), Zone::Graveyard);
+    }
+    assert!(!g.legal_actions().contains(&Action::CastAlternative(w)));
+    let fourth = g.add_card(0, cid("Forest"), Zone::Graveyard);
+    assert!(g.legal_actions().contains(&Action::CastAlternative(w)));
+    let before = tapped_lands(&g);
+    act(&mut g, Action::CastAlternative(w));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(w).zone, Zone::Battlefield);
+    assert_eq!(g.obj(w).counters, 2, "escapes with two +1/+1 counters");
+    assert_eq!(tapped_lands(&g) - before, 5, "{{3}}{{B}}{{B}}");
+    assert_eq!(g.obj(fourth).zone, Zone::Exile);
+    assert_eq!(g.players[0].graveyard.len(), 0, "four other cards exiled");
+}

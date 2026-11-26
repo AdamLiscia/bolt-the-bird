@@ -752,6 +752,21 @@ pub fn script(name: &str) -> Option<Script> {
                 activated(d, "{6}{G}{G}", false, vec![], vec![Effect::CountersAll { who: Who::You, n: 1 }]);
             },
         ),
+        // ---- d1 core, batch 4: escape ----
+        "Woe Strider" => s(
+            &[
+                "When this creature enters, create a 0/1 white Goat creature token.",
+                "Sacrifice another creature: Scry 1.",
+                "Escape—{3}{B}{B}, Exile four other cards from your graveyard.",
+                "This creature escapes with two +1/+1 counters on it.",
+            ],
+            |d, t| {
+                on(d, When::Enters, vec![], vec![Effect::CreateToken { who: Who::You, def: t.goat, n: 1 }]);
+                let n = activated(d, "", false, vec![], vec![Effect::Scry { n: 1 }]);
+                d.activated[n].sacrifice_other_creature = true;
+                d.mana_ext.escape = Some((ManaCost::parse("{3}{B}{B}").expect("cost"), 4, 2));
+            },
+        ),
         _ => None,
     }
 }
@@ -867,4 +882,5 @@ pub const PG_D1_SCRIPTED: &[&str] = &[
     "Zendikar Resurgent",
     "Dictate of Karametra",
     "Leyline of Abundance",
+    "Woe Strider",
 ];
