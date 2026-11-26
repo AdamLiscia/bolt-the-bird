@@ -1503,6 +1503,8 @@ pub struct Game {
     /// The open free-cast window allows one spell: it closes once one of [`Game::free_casts`] is
     /// cast (Rishkar's Expertise: "a spell ... from your hand").
     pub free_casts_one: bool,
+    /// Whether each player has cast a spell this game (Once Upon a Time).
+    pub cast_a_spell_this_game: [bool; 2],
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -1744,6 +1746,7 @@ impl Game {
             next_turn_pt: Vec::new(),
             escaped: Vec::new(),
             free_casts_one: false,
+            cast_a_spell_this_game: [false; 2],
         }
     }
 
@@ -5889,6 +5892,14 @@ impl Game {
                     .chain(creatures())
                     .collect()
             }
+            Some(ExtraCost::SacrificeLand) => self
+                .permanents(p)
+                .filter(|&x| self.types_of(x).land && !self.cant_be_sacrificed(x))
+                .map(|x| (Action::CastWith(c, x), CastMode::with(x)))
+                .collect(),
+            Some(ExtraCost::SacrificeCreatureOfColor(k)) => creatures()
+                .filter(|&(_, m)| m.extra.is_some_and(|x| self.colors_of(x)[*k as usize]))
+                .collect(),
             None => {
                 let mut v = vec![(Action::Cast(c), CastMode::default())];
                 // Defiler of Vigor: a green permanent spell may cost {G} less for 2 life.
@@ -6369,6 +6380,46 @@ impl Game {
 
     /// Whether some legal choice of targets makes the spell affordable in `mode`.
     fn mode_affordable(&self, p: PlayerId, c: ObjId, mode: CastMode) -> bool {
+        // Sephara: the creatures tapped for the alternative cost can't also make its mana, so
+        // check the mana with them tapped (they're tapped first as it's paid, see `finish_cast`).
+        if let Some(alt) = self.alt_ext_tapping(c, mode) {
+            let taps = self.alt_ext_taps(p, &alt);
+            if taps.len() < alt.tap as usize {
+                return false;
+            }
+            let mut g = self.clone();
+            for t in taps {
+                g.obj_mut(t).tapped = true;
+            }
+            return g.mode_affordable_now(p, c, mode);
+        }
+        self.mode_affordable_now(p, c, mode)
+    }
+
+    /// The [`crate::card::AltCostExt`] a cast in `mode` pays that taps creatures, if any.
+    fn alt_ext_tapping(&self, c: ObjId, mode: CastMode) -> Option<crate::card::AltCostExt> {
+        let d = self.def_of(c);
+        let alt = d.mana_ext.alt_cost_ext?;
+        (mode.alt
+            && !mode.flashback
+            && alt.tap > 0
+            && d.alt_cost.is_none()
+            && d.mana_ext.escape.is_none()
+            && mode.extra.is_none())
+        .then_some(alt)
+    }
+
+    /// The creatures an [`crate::card::AltCostExt`] taps, as the engine picks them: those that
+    /// can't make mana first, so the mana sources stay free to pay its mana.
+    fn alt_ext_taps(&self, p: PlayerId, alt: &crate::card::AltCostExt) -> Vec<ObjId> {
+        let (_, mut tap) = self.alt_ext_creatures(p, alt);
+        let sources: Vec<ObjId> = self.untapped_sources(p).into_iter().map(|s| s.0).collect();
+        tap.sort_by_key(|x| sources.contains(x));
+        tap.truncate(alt.tap as usize);
+        tap
+    }
+
+    fn mode_affordable_now(&self, p: PlayerId, c: ObjId, mode: CastMode) -> bool {
         let mut cost = self.spell_cost(p, c, mode, &[]);
         cost.generic = cost.generic.saturating_sub(self.delve_available(p, c));
         if self.can_pay_for(p, &cost, None, pay_for_spell(c, mode.mode)) {
@@ -6445,6 +6496,10 @@ impl Game {
                         if self.types_of(id).snow {
                             self.snow_paid += 1;
                         }
+                        let life_cost = self.def_of(id).mana_ext.mana_life_cost;
+                        if life_cost > 0 && !self.obj(id).tapped {
+                            self.lose_life(p, life_cost); // Mana Confluence
+                        }
                         if !self.def_of(id).mana_ext.sac_mana_no_tap {
                             self.become_tapped(id);
                         }
@@ -6481,24 +6536,32 @@ impl Game {
         paid.sort_unstable_by(|a, b| b.cmp(a));
         // Pain lands: 1 damage for each one whose colored mana the payment needed, i.e.
         // the same sources couldn't pay with that land making only {C}.
+        // Each one in turn is held to its painless mana if the rest can still pay, so of two such
+        // lands paying {1}{B}, one makes the {B} and hurts.
         let mut pained = Vec::new();
-        for &i in &paid {
+        let mut painless: Vec<ManaSource> = paid.iter().map(|&j| all[j]).collect();
+        for (k, &i) in paid.iter().enumerate() {
             let src = (i >= pool.len()).then(|| self.def_of(sources[i - pool.len()].0));
-            if src.is_some_and(|d| d.pain_colored || d.mana_ext.colored_gives_opponent_life) {
-                let alt: Vec<ManaSource> = paid
-                    .iter()
-                    .map(|&j| {
-                        if j == i {
-                            ManaSource {
-                                colorless: true,
-                                ..ManaSource::default()
-                            }
-                        } else {
-                            all[j]
-                        }
-                    })
-                    .collect();
-                if mana::pay(cost, &alt).is_none() {
+            let pain_colors = src.map_or([false; 5], |d| d.mana_ext.pain_colors);
+            if src.is_some_and(|d| d.pain_colored || d.mana_ext.colored_gives_opponent_life)
+                || pain_colors.iter().any(|&b| b)
+            {
+                let saved = painless[k];
+                painless[k] = if pain_colors.iter().any(|&b| b) {
+                    // Murmuring Bosk: the same land making only its painless mana.
+                    let mut m = all[i];
+                    for (c, &hurts) in pain_colors.iter().enumerate() {
+                        m.colors[c] &= !hurts;
+                    }
+                    m
+                } else {
+                    ManaSource {
+                        colorless: true,
+                        ..ManaSource::default()
+                    }
+                };
+                if mana::pay(cost, &painless).is_none() {
+                    painless[k] = saved;
                     pained.push(sources[i - pool.len()].0);
                 }
             }
@@ -6533,6 +6596,10 @@ impl Game {
             let henge = self.def_of(id).mana_tap_life;
             if henge > 0 && !self.obj(id).tapped {
                 self.gain_life(p, henge); // The Great Henge
+            }
+            let life_cost = self.def_of(id).mana_ext.mana_life_cost;
+            if life_cost > 0 && !self.obj(id).tapped {
+                self.lose_life(p, life_cost); // Mana Confluence: "Pay 1 life"
             }
             if !self.def_of(id).mana_ext.sac_mana_no_tap {
                 self.become_tapped(id);
@@ -6656,7 +6723,9 @@ impl Game {
             };
             self.players[p].pool.push(one);
         }
-        if self.def_of(id).pain_colored && c != 5 {
+        if (self.def_of(id).pain_colored && c != 5)
+            || (c < 5 && self.def_of(id).mana_ext.pain_colors[c as usize])
+        {
             self.deal_damage(id, Target::Player(p), 1);
         }
         if self.def_of(id).mana_ext.colored_gives_opponent_life && c != 5 {
@@ -6669,6 +6738,10 @@ impl Game {
         let henge = self.def_of(id).mana_tap_life;
         if henge > 0 && !self.obj(id).tapped {
             self.gain_life(p, henge); // The Great Henge
+        }
+        let life_cost = self.def_of(id).mana_ext.mana_life_cost;
+        if life_cost > 0 && !self.obj(id).tapped {
+            self.lose_life(p, life_cost); // Mana Confluence: "Pay 1 life"
         }
         if !self.def_of(id).mana_ext.sac_mana_no_tap {
             self.become_tapped(id);
@@ -7233,6 +7306,29 @@ impl Game {
                             .filter(|&c| self.def_of(c).types.creature)
                             .map(|c| Action::ActivateWith(id, n, c)),
                     );
+                } else if a.discard_land_card {
+                    v.extend(
+                        self.players[p]
+                            .hand
+                            .iter()
+                            .copied()
+                            .filter(|&c| self.def_of(c).types.land)
+                            .map(|c| Action::ActivateWith(id, n, c)),
+                    );
+                } else if a.return_land {
+                    // Meloku: any land you control (it may tap for the mana first).
+                    v.extend(
+                        self.permanents(p)
+                            .filter(|&c| self.types_of(c).land)
+                            .map(|c| Action::ActivateWith(id, n, c)),
+                    );
+                } else if a.sacrifice_land {
+                    // Sylvan Safekeeper: any land you control (sacrificed after the mana).
+                    v.extend(
+                        self.permanents(p)
+                            .filter(|&c| self.types_of(c).land && !self.cant_be_sacrificed(c))
+                            .map(|c| Action::ActivateWith(id, n, c)),
+                    );
                 } else if a.crew > 0 {
                     // Crew: tap an untapped creature with enough power (summoning sickness doesn't matter).
                     v.extend(
@@ -7489,9 +7585,13 @@ impl Game {
                 if let Some(c) = second {
                     self.move_to(c, Zone::Graveyard);
                 }
-            } else if a.discard_creature_card || a.discard_any_card {
+            } else if a.discard_creature_card || a.discard_any_card || a.discard_land_card {
                 if self.obj(v).zone == Zone::Hand {
                     self.move_to(v, Zone::Graveyard); // discarded
+                }
+            } else if a.return_land {
+                if self.obj(v).zone == Zone::Battlefield {
+                    self.move_to(v, Zone::Hand); // Meloku: returned, after the mana
                 }
             } else if a.exile_creature_card {
                 if self.obj(v).zone == Zone::Graveyard {
@@ -7642,7 +7742,16 @@ impl Game {
             .filter(|&x| !self.lost_abilities(x))
             .filter_map(|x| self.def_of(x).mana_ext.your_creatures_add)
             .collect();
+        let tron = base.iter().any(|s| self.def_of(s.0).mana_ext.tron_amount > 0)
+            // "Urza's Mine" and the others are two subtypes each, "Urza's" and "Mine" (CR 205.3g).
+            && ["Mine", "Power-Plant", "Tower"]
+                .iter()
+                .all(|sub| self.permanents(p).any(|x| self.has_subtype(x, sub)));
         for (id, m) in base {
+            let life_cost = self.def_of(id).mana_ext.mana_life_cost;
+            if life_cost > 0 && self.players[p].life < life_cost {
+                continue; // Mana Confluence: can't pay the life
+            }
             if self.types_of(id).land && !self.def_of(id).vivid_mana {
                 out.extend(std::iter::repeat_n((id, m), dictates)); // Dictate of Karametra
             }
@@ -7689,7 +7798,12 @@ impl Game {
                 n
             };
             let n = n.max(self.def_of(id).mana_amount as usize); // Sol Ring: {C}{C}
-                                                                 // Vorinclex: "Whenever you tap a land for mana, add one mana of any type that land produced."
+            let n = if tron {
+                n.max(self.def_of(id).mana_ext.tron_amount as usize) // Urza's Tower: {C}{C}{C}
+            } else {
+                n
+            };
+            // Vorinclex: "Whenever you tap a land for mana, add one mana of any type that land produced."
             let n = if self.types_of(id).land && self.permanents(p).any(|x| self.def_of(x).vorinclex) {
                 n * 2
             } else {
@@ -7710,6 +7824,14 @@ impl Game {
                 n
             };
             out.extend(std::iter::repeat_n((id, m), n));
+            // Kinnan: a nonland permanent tapped for mana adds one more of a type it produced.
+            if !self.types_of(id).land && !self.def_of(id).mana_ext.sac_mana_no_tap {
+                let kinnans = self
+                    .permanents(p)
+                    .filter(|&x| self.def_of(x).mana_ext.nonland_add_same && !self.lost_abilities(x))
+                    .count();
+                out.extend(std::iter::repeat_n((id, m), kinnans));
+            }
             // Mirari's Wake: a land tapped for mana adds one more of a type it produced.
             if self.types_of(id).land {
                 let wakes = self
@@ -8084,6 +8206,20 @@ impl Game {
         self.players[p].life >= alt.life
             && sac.len() >= alt.sacrifice as usize
             && tap.len() >= alt.tap as usize
+            && self.alt_ext_returns(p, alt).len() >= alt.return_lands as usize
+            && !(alt.first_spell_this_game && self.cast_a_spell_this_game[p])
+    }
+
+    /// The permanents an [`crate::card::AltCostExt`] returns to hand, as the engine picks them:
+    /// tapped ones first (Gush: Islands already tapped for mana).
+    fn alt_ext_returns(&self, p: PlayerId, alt: &crate::card::AltCostExt) -> Vec<ObjId> {
+        let Some(sub) = alt.return_subtype.filter(|_| alt.return_lands > 0) else {
+            return Vec::new();
+        };
+        let mut v: Vec<ObjId> = self.permanents(p).filter(|&x| self.has_subtype(x, sub)).collect();
+        v.sort_by_key(|&x| !self.obj(x).tapped);
+        v.truncate(alt.return_lands as usize);
+        v
     }
 
     /// The d1 theme's other block restrictions (see [`crate::card::ManaExt`]): shadow, attacking
@@ -8823,6 +8959,13 @@ impl Game {
             .extra
             .filter(|_| item.flashback && (self.def_of(card).harmonize || self.obj(card).harmonize_eot));
         self.snow_paid = 0;
+        // Sephara: tap the creatures for the alternative cost first, so none of them also taps
+        // for its mana.
+        if let Some(alt) = self.alt_ext_tapping(card, mode) {
+            for t in self.alt_ext_taps(p, &alt) {
+                self.become_tapped(t);
+            }
+        }
         self.pay_mana_for(p, &cost, harmonized, pay_for_spell(card, item.mode));
         if self.def_of(card).mana_ext.pay_x_life && item.x > 0 {
             self.lose_life(p, item.x as i32); // "As an additional cost ..., pay X life."
@@ -8859,8 +9002,9 @@ impl Game {
             self.escaped.retain(|e| e.0 != card);
             self.escaped.push((card, zcc));
         } else if let (true, Some(alt)) = (item.alt, self.def_of(card).mana_ext.alt_cost_ext) {
-            // Demon of Death's Gate, Sephara: the life, sacrifices and taps (the engine picks).
-            let (sac, tap) = self.alt_ext_creatures(p, &alt);
+            // Demon of Death's Gate: the life and sacrifices (the engine picks). Sephara's taps
+            // were paid before its mana.
+            let (sac, _) = self.alt_ext_creatures(p, &alt);
             if alt.life > 0 {
                 self.lose_life(p, alt.life);
             }
@@ -8868,8 +9012,9 @@ impl Game {
                 self.move_to(v, Zone::Graveyard);
                 self.sacrificed(v, p);
             }
-            for t in tap.into_iter().take(alt.tap as usize) {
-                self.become_tapped(t);
+            // Gush, Thwart: return the Islands (after the mana, so they could tap for it first).
+            for r in self.alt_ext_returns(p, &alt) {
+                self.move_to(r, Zone::Hand);
             }
         } else if item.alt
             && self.def_of(card).alt_cost.is_none()
@@ -8954,6 +9099,7 @@ impl Game {
             }
         }
         self.spells_cast[p] += 1;
+        self.cast_a_spell_this_game[p] = true;
         let is_creature = self.types_of(card).creature;
         if !is_creature {
             let (t, n) = self.noncreature_casts[p];

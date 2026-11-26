@@ -8,6 +8,15 @@ use bolt_core::effect::ManaCount;
 /// Any creature card (a search with no mana value limit).
 const ANY_CREATURE_CARD: SearchFor = SearchFor::CreatureMvAtLeast(0);
 
+/// An Urza land: {C}, or `n` colorless while you control Urza's Mine, Power-Plant and Tower.
+fn urza_land(d: &mut CardDef, n: u8) {
+    d.mana = Some(ManaSource {
+        colorless: true,
+        ..ManaSource::default()
+    });
+    d.mana_ext.tron_amount = n;
+}
+
 /// Exalted (CR 702.83): "Whenever a creature you control attacks alone, that creature gets +1/+1
 /// until end of turn." Each instance triggers on your attack and checks for a lone attacker.
 fn exalted(d: &mut CardDef) {
@@ -869,6 +878,118 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::OpponentCastsFirstNoncreature, vec![], vec![damage(2, Recipient::EachOpponent)]);
             },
         ),
+        // ---- d1 core, batch 7: return-lands alternative costs, sacrifice-a-land, land costs on
+        // abilities, partial pain ----
+        "Gush" => s(
+            &[
+                "You may return two Islands you control to their owner's hand rather than pay this spell's mana cost.",
+                "Draw two cards.",
+            ],
+            |d, _| {
+                d.mana_ext.alt_cost_ext = Some(bolt_core::card::AltCostExt {
+                    return_lands: 2,
+                    return_subtype: Some("Island"),
+                    ..Default::default()
+                });
+                spell(d, vec![], vec![draw(2)]);
+            },
+        ),
+        "Thwart" => s(
+            &[
+                "You may return three Islands you control to their owner's hand rather than pay this spell's mana cost.",
+                "Counter target spell.",
+            ],
+            |d, _| {
+                d.mana_ext.alt_cost_ext = Some(bolt_core::card::AltCostExt {
+                    return_lands: 3,
+                    return_subtype: Some("Island"),
+                    ..Default::default()
+                });
+                spell(d, vec![SPELL], vec![Effect::Counter(0)]);
+            },
+        ),
+        "Harrow" => s(
+            &[
+                "As an additional cost to cast this spell, sacrifice a land.",
+                "Search your library for up to two basic land cards, put them onto the battlefield, then shuffle.",
+            ],
+            |d, _| {
+                d.extra_cost = Some(ExtraCost::SacrificeLand);
+                let to = SearchTo::Battlefield { tapped: false };
+                spell(d, vec![], vec![Effect::Search { what: SearchFor::BasicLand, to, n: 2, kicked_n: None }]);
+            },
+        ),
+        "Trade Routes" => s(
+            &["{1}: Return target land you control to its owner's hand.", "{1}, Discard a land card: Draw a card."],
+            |d, _| {
+                let land = Filter {
+                    players: false,
+                    creatures: false,
+                    planeswalkers: false,
+                    lands: true,
+                    controller: Controller::You,
+                    ..Filter::ANY
+                };
+                activated(d, "{1}", false, vec![land], vec![Effect::Bounce(0)]);
+                let n = activated(d, "{1}", false, vec![], vec![draw(1)]);
+                d.activated[n].discard_land_card = true;
+            },
+        ),
+        "Murmuring Bosk" => s(
+            &[
+                "As this land enters, you may reveal a Treefolk card from your hand. If you don't, this land enters tapped.",
+                "{T}: Add {W} or {B}. This land deals 1 damage to you.",
+            ],
+            |d, _| {
+                d.enters_tapped_unless_reveal = Some(["Treefolk", "Treefolk"]);
+                // Its Forest type's {G}, and the painful {W} or {B}.
+                d.mana = Some(ManaSource::of(&[Color::White, Color::Black, Color::Green]));
+                d.mana_ext.pain_colors = [true, false, true, false, false];
+            },
+        ),
+        "Natural Order" => s(
+            &[
+                "As an additional cost to cast this spell, sacrifice a green creature.",
+                "Search your library for a green creature card, put it onto the battlefield, then shuffle.",
+            ],
+            |d, _| {
+                d.extra_cost = Some(ExtraCost::SacrificeCreatureOfColor(4));
+                let to = SearchTo::Battlefield { tapped: false };
+                spell(d, vec![], vec![search(SearchFor::ColoredCreatureMvAtMost(4, u32::MAX), to)]);
+            },
+        ),
+        "Sylvan Safekeeper" => s(&["Sacrifice a land: Target creature you control gains shroud until end of turn."], |d, _| {
+            let n = activated(d, "", false, vec![YOUR_CREATURE], vec![Effect::Grant { slot: 0, keywords: Keywords::SHROUD }]);
+            d.activated[n].sacrifice_land = true;
+        }),
+        "Once Upon a Time" => s(
+            &[
+                "If this spell is the first spell you've cast this game, you may cast it without paying its mana cost.",
+                "Look at the top five cards of your library. You may reveal a creature or land card from among them and put it into your hand. Put the rest on the bottom of your library in a random order.",
+            ],
+            |d, _| {
+                d.mana_ext.alt_cost_ext =
+                    Some(bolt_core::card::AltCostExt { first_spell_this_game: true, ..Default::default() });
+                let look = Effect::LookAtTop { n: 5, pick: Pick::CreatureOrLand, chosen_to: LookTo::Hand, rest_to: LookRest::BottomRandom };
+                spell(d, vec![], vec![look]);
+            },
+        ),
+        "Mana Confluence" => s(&["{T}, Pay 1 life: Add one mana of any color."], |d, _| {
+            d.mana = Some(ManaSource::of(&Color::ALL));
+            d.mana_ext.mana_life_cost = 1;
+        }),
+        "Urza's Mine" => s(
+            &["{T}: Add {C}. If you control an Urza's Power-Plant and an Urza's Tower, add {C}{C} instead."],
+            |d, _| urza_land(d, 2),
+        ),
+        "Urza's Power Plant" => s(
+            &["{T}: Add {C}. If you control an Urza's Mine and an Urza's Tower, add {C}{C} instead."],
+            |d, _| urza_land(d, 2),
+        ),
+        "Urza's Tower" => s(
+            &["{T}: Add {C}. If you control an Urza's Mine and an Urza's Power-Plant, add {C}{C}{C} instead."],
+            |d, _| urza_land(d, 3),
+        ),
         _ => None,
     }
 }
@@ -995,4 +1116,16 @@ pub const PG_D1_SCRIPTED: &[&str] = &[
     "Mind Over Matter",
     "Looter il-Kor",
     "Shadow in the Warp",
+    "Gush",
+    "Thwart",
+    "Harrow",
+    "Trade Routes",
+    "Murmuring Bosk",
+    "Natural Order",
+    "Sylvan Safekeeper",
+    "Once Upon a Time",
+    "Mana Confluence",
+    "Urza's Mine",
+    "Urza's Power Plant",
+    "Urza's Tower",
 ];

@@ -127,6 +127,12 @@ pub enum ExtraCost {
     SacrificeCreatureOrPay(ManaCost),
     /// Sacrifice an artifact or creature (Deadly Dispute).
     SacrificeArtifactOrCreature,
+    /// Sacrifice a land (Harrow); cast with `Action::CastWith` naming it. It may tap for the
+    /// spell's mana first.
+    SacrificeLand,
+    /// Sacrifice a creature of this color (WUBRG index) (Natural Order: green); cast with
+    /// `Action::CastWith` naming it.
+    SacrificeCreatureOfColor(u8),
 }
 
 /// "This spell costs {N} less to cast if ..." (CR 601.2f).
@@ -286,6 +292,15 @@ pub struct Activated {
     /// creature has '{3}, {Q}: ...'"): the creature must be tapped and able to use {Q} (CR
     /// 302.6), and untaps as the cost.
     pub untap_attached: bool,
+    /// "Return a land you control to its owner's hand" in the cost (Meloku): activated with
+    /// `Action::ActivateWith`, that land the victim. It may tap for the ability's mana first.
+    pub return_land: bool,
+    /// "Discard a land card" in the cost (Trade Routes): activated with `Action::ActivateWith`,
+    /// that card the victim.
+    pub discard_land_card: bool,
+    /// "Sacrifice a land" in the cost (Sylvan Safekeeper): activated with `Action::ActivateWith`,
+    /// that land the victim.
+    pub sacrifice_land: bool,
 }
 
 /// The printed card. Shared by every copy; per-copy state lives on the game object.
@@ -935,6 +950,19 @@ pub struct ManaExt {
     pub ability_discount: u8,
     /// "The first creature spell you cast each turn costs {N} less to cast." (Shadow in the Warp)
     pub first_creature_spell_discount: u8,
+    /// Its mana of these colors (WUBRG) deals 1 damage to you; its other mana doesn't (Murmuring
+    /// Bosk: "{T}: Add {W} or {B}. This land deals 1 damage to you.", and its Forest {G}).
+    pub pain_colors: [bool; 5],
+    /// "Whenever you tap a nonland permanent for mana, add one additional mana of any type that
+    /// permanent produced." (Kinnan, Bonder Prodigy)
+    pub nonland_add_same: bool,
+    /// "{T}, Pay N life: Add ..." (Mana Confluence: 1): its mana costs this much life, and it
+    /// can't be tapped for mana with less life than that.
+    pub mana_life_cost: i32,
+    /// "If you control an Urza's Power-Plant and an Urza's Tower, add {C}{C} instead." (the Urza
+    /// lands): it makes this much mana while you control all three of Urza's Mine, Power-Plant
+    /// and Tower.
+    pub tron_amount: u8,
 }
 
 /// "You may pay [mana], [life] and sacrifice or tap [creatures] rather than pay this spell's mana
@@ -951,6 +979,13 @@ pub struct AltCostExt {
     /// flying).
     pub tap: u8,
     pub tap_keywords: Keywords,
+    /// Return this many permanents you control with `return_subtype` to their owner's hand (Gush:
+    /// two Islands): tapped ones first, the engine's choice.
+    pub return_lands: u8,
+    pub return_subtype: Option<&'static str>,
+    /// Only while you haven't cast a spell this game (Once Upon a Time: "If this spell is the first
+    /// spell you've cast this game, you may cast it without paying its mana cost.").
+    pub first_spell_this_game: bool,
 }
 
 /// Which events don't cause abilities to trigger (see [`CardDef::suppresses_triggers`]).

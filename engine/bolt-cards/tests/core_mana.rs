@@ -1476,3 +1476,335 @@ fn first_creature_spell_each_turn_discount() {
     cast(&mut g, BLACK_BEAR);
     assert_eq!(tapped_swamps(&g), 6, "the second creature spell");
 }
+
+// ---- batch 7: alternative-cost taps kept off the mana, returning lands as an alternative cost,
+// sacrificing a land as an additional cost, land costs on abilities, partial pain, Kinnan ----
+
+#[test]
+fn creatures_tapped_for_an_alternative_cost_cant_also_pay_its_mana() {
+    use batch3::*;
+    use bolt_core::card::AltCostExt;
+    use bolt_core::ManaSource;
+    let mut angel = CardDef::creature("Angel", "{9}", 7, 7, Keywords::NONE);
+    angel.mana_ext.alt_cost_ext = Some(AltCostExt {
+        mana: ManaCost::parse("{B}").expect("cost"),
+        tap: 2,
+        tap_keywords: Keywords::FEAR,
+        ..AltCostExt::default()
+    });
+    let mut dork = CardDef::creature("Dork", "{B}", 1, 1, Keywords::FEAR);
+    dork.mana = Some(ManaSource::of(&[Color::Black]));
+    let mut g = batch6_board(vec![angel, dork], 0);
+    let d1 = put(&mut g, 0, 26);
+    let f1 = put(&mut g, 0, FEARFUL);
+    let c = g.add_card(0, 25, Zone::Hand);
+    assert!(
+        !g.legal_actions().contains(&Action::CastAlternative(c)),
+        "the Dork can't tap for the cost and for {{B}}"
+    );
+    let f2 = put(&mut g, 0, FEARFUL);
+    act(&mut g, Action::CastAlternative(c));
+    settle(&mut g);
+    assert_eq!(g.obj(c).zone, Zone::Battlefield);
+    assert!(
+        g.obj(f1).tapped && g.obj(f2).tapped,
+        "the two without mana pay the taps"
+    );
+    assert!(g.obj(d1).tapped, "the Dork made the {{B}}");
+}
+
+#[test]
+fn alternative_cost_returns_lands_tapped_ones_first() {
+    use bolt_core::card::AltCostExt;
+    let mut rush = CardDef::spell(
+        "Rush",
+        "{9}",
+        true,
+        Ability::new(vec![], vec![Effect::Draw { who: Who::You, n: 2 }]),
+    );
+    rush.mana_ext.alt_cost_ext = Some(AltCostExt {
+        return_lands: 2,
+        return_subtype: Some("Swamp"),
+        ..AltCostExt::default()
+    });
+    let mut g = batch6_board(vec![rush.clone()], 1);
+    let c = g.add_card(0, 25, Zone::Hand);
+    assert!(
+        !g.legal_actions().contains(&Action::CastAlternative(c)),
+        "one Swamp"
+    );
+    let mut g = batch6_board(vec![rush], 3);
+    let swamps: Vec<ObjId> = g.permanents(0).collect();
+    g.objects[swamps[2].0 as usize].tapped = true;
+    let c = g.add_card(0, 25, Zone::Hand);
+    let n = g.players[0].hand.len();
+    act(&mut g, Action::CastAlternative(c));
+    settle(&mut g);
+    assert_eq!(g.obj(c).zone, Zone::Graveyard);
+    assert_eq!(g.obj(swamps[2]).zone, Zone::Hand, "the tapped one");
+    assert_eq!(g.permanents(0).count(), 1);
+    assert_eq!(g.players[0].hand.len(), n - 1 + 2 + 2, "two Swamps and two cards");
+}
+
+#[test]
+fn sacrifice_a_land_as_an_additional_cost_after_it_taps_for_the_mana() {
+    let mut harrow = CardDef::spell(
+        "Harrowing",
+        "{1}",
+        true,
+        Ability::new(vec![], vec![Effect::Draw { who: Who::You, n: 1 }]),
+    );
+    harrow.extra_cost = Some(bolt_core::ExtraCost::SacrificeLand);
+    let mut g = batch6_board(vec![harrow], 1);
+    let swamp = g.permanents(0).next().expect("a Swamp");
+    let c = g.add_card(0, 25, Zone::Hand);
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(c)),
+        "a land must be sacrificed"
+    );
+    act(&mut g, Action::CastWith(c, swamp));
+    settle(&mut g);
+    assert_eq!(g.obj(c).zone, Zone::Graveyard);
+    assert_eq!(
+        g.obj(swamp).zone,
+        Zone::Graveyard,
+        "tapped for {{1}}, then sacrificed"
+    );
+}
+
+#[test]
+fn return_a_land_and_discard_a_land_card_as_ability_costs() {
+    use batch3::*;
+    let draw = || Ability::new(vec![], vec![Effect::Draw { who: Who::You, n: 1 }]);
+    let mut mirror = CardDef::creature("Mirror", "{4}{U}", 2, 4, Keywords::NONE);
+    mirror.activated.push(Activated {
+        mana: ManaCost::parse("{1}").expect("cost"),
+        return_land: true,
+        ability: draw(),
+        ..Activated::default()
+    });
+    mirror.activated.push(Activated {
+        mana: ManaCost::parse("{1}").expect("cost"),
+        discard_land_card: true,
+        ability: draw(),
+        ..Activated::default()
+    });
+    let mut g = batch6_board(vec![mirror], 1);
+    let swamp = g.permanents(0).next().expect("a Swamp");
+    let m = put(&mut g, 0, 25);
+    let land_card = g.add_card(0, SWAMP, Zone::Hand);
+    let bear = g.add_card(0, GREEN_BEAR, Zone::Hand);
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::ActivateWith(m, 1, land_card)));
+    assert!(
+        !legal.contains(&Action::ActivateWith(m, 1, bear)),
+        "not a land card"
+    );
+    assert!(!legal.contains(&Action::ActivateWith(m, 0, m)), "not a land");
+    let n = g.players[0].hand.len();
+    act(&mut g, Action::ActivateWith(m, 0, swamp));
+    settle(&mut g);
+    assert_eq!(g.obj(swamp).zone, Zone::Hand, "tapped for {{1}}, then returned");
+    assert_eq!(g.players[0].hand.len(), n + 2);
+    g.add_card(0, SWAMP, Zone::Battlefield);
+    act(&mut g, Action::ActivateWith(m, 1, land_card));
+    settle(&mut g);
+    assert_eq!(g.obj(land_card).zone, Zone::Graveyard, "discarded");
+    assert_eq!(g.players[0].hand.len(), n + 2);
+}
+
+#[test]
+fn only_the_painful_colors_of_a_land_deal_damage() {
+    use batch3::*;
+    use bolt_core::ManaSource;
+    let bosk = || {
+        let mut b = land("Bosk");
+        b.mana = Some(ManaSource::of(&[Color::White, Color::Black, Color::Green]));
+        b.mana_ext.pain_colors = [true, false, true, false, false];
+        b
+    };
+    let mut g = batch6_board(vec![bosk()], 0);
+    put(&mut g, 0, 25);
+    put(&mut g, 0, WASTES);
+    let life = g.players[0].life;
+    cast(&mut g, GREEN_BEAR);
+    assert_eq!(g.players[0].life, life, "its {{G}} is painless");
+    let mut g = batch6_board(vec![bosk()], 0);
+    put(&mut g, 0, 25);
+    put(&mut g, 0, WASTES);
+    cast(&mut g, BLACK_BEAR);
+    assert_eq!(g.players[0].life, life - 1, "only the {{B}} hurts");
+    let mut g = batch6_board(vec![bosk()], 0);
+    put(&mut g, 0, 25);
+    put(&mut g, 0, 25);
+    cast(&mut g, BLACK_BEAR);
+    assert_eq!(
+        g.players[0].life,
+        life - 1,
+        "two of them: the one making {{B}} hurts"
+    );
+}
+
+#[test]
+fn nonland_permanents_tapped_for_mana_add_one_more() {
+    use batch3::*;
+    use bolt_core::{ManaSource, Types};
+    let mut kinnan = CardDef::creature("Kinnan", "{G}{U}", 2, 2, Keywords::NONE);
+    kinnan.mana_ext.nonland_add_same = true;
+    let rock = CardDef {
+        name: "Rock".into(),
+        types: Types {
+            artifact: true,
+            ..Types::default()
+        },
+        mana: Some(ManaSource {
+            colorless: true,
+            ..ManaSource::default()
+        }),
+        ..CardDef::default()
+    };
+    let mut g = batch6_board(vec![kinnan.clone(), rock.clone()], 1);
+    put(&mut g, 0, 26);
+    let big = g.add_card(0, BIG_ONE, Zone::Hand);
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(big)),
+        "{{C}} and a Swamp"
+    );
+    put(&mut g, 0, 25);
+    act(&mut g, Action::Cast(big));
+    settle(&mut g);
+    assert_eq!(g.obj(big).zone, Zone::Graveyard, "the Rock made {{C}}{{C}}");
+    let mut g = batch6_board(vec![kinnan, rock], 2);
+    put(&mut g, 0, 25);
+    let big = g.add_card(0, BIG_ONE, Zone::Hand);
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(big)),
+        "lands don't add more"
+    );
+}
+
+#[test]
+fn sacrifice_a_creature_of_a_color_as_an_additional_cost() {
+    use batch3::*;
+    let mut order = CardDef::spell(
+        "Order",
+        "",
+        false,
+        Ability::new(vec![], vec![Effect::Draw { who: Who::You, n: 1 }]),
+    );
+    order.extra_cost = Some(bolt_core::ExtraCost::SacrificeCreatureOfColor(4));
+    let mut g = batch6_board(vec![order], 0);
+    let black = put(&mut g, 0, BLACK_BEAR);
+    let green = put(&mut g, 0, GREEN_BEAR);
+    let c = g.add_card(0, 25, Zone::Hand);
+    let legal = g.legal_actions();
+    assert!(!legal.contains(&Action::CastWith(c, black)), "not green");
+    assert!(!legal.contains(&Action::Cast(c)));
+    act(&mut g, Action::CastWith(c, green));
+    settle(&mut g);
+    assert_eq!(g.obj(green).zone, Zone::Graveyard);
+    assert_eq!(g.obj(black).zone, Zone::Battlefield);
+}
+
+#[test]
+fn sacrifice_a_land_as_an_ability_cost() {
+    use batch3::*;
+    let mut keeper = CardDef::creature("Keeper", "{G}", 1, 1, Keywords::NONE);
+    keeper.activated.push(Activated {
+        sacrifice_land: true,
+        ability: Ability::new(vec![], vec![Effect::Draw { who: Who::You, n: 1 }]),
+        ..Activated::default()
+    });
+    let mut g = batch6_board(vec![keeper], 1);
+    let swamp = g.permanents(0).next().expect("a Swamp");
+    let k = put(&mut g, 0, 25);
+    let bear = put(&mut g, 0, GREEN_BEAR);
+    assert!(
+        !g.legal_actions().contains(&Action::ActivateWith(k, 0, bear)),
+        "a land"
+    );
+    let n = g.players[0].hand.len();
+    act(&mut g, Action::ActivateWith(k, 0, swamp));
+    settle(&mut g);
+    assert_eq!(g.obj(swamp).zone, Zone::Graveyard);
+    assert_eq!(g.players[0].hand.len(), n + 1);
+}
+
+#[test]
+fn free_only_as_the_first_spell_this_game() {
+    use batch3::*;
+    use bolt_core::card::AltCostExt;
+    let mut tale = CardDef::spell(
+        "Tale",
+        "{1}{G}",
+        true,
+        Ability::new(vec![], vec![Effect::Draw { who: Who::You, n: 1 }]),
+    );
+    tale.mana_ext.alt_cost_ext = Some(AltCostExt {
+        first_spell_this_game: true,
+        ..AltCostExt::default()
+    });
+    let mut g = batch6_board(vec![tale], 2);
+    let c = g.add_card(0, 25, Zone::Hand);
+    act(&mut g, Action::CastAlternative(c));
+    settle(&mut g);
+    assert_eq!(g.obj(c).zone, Zone::Graveyard);
+    assert_eq!(tapped_swamps(&g), 0);
+    assert!(g.cast_a_spell_this_game[0] && !g.cast_a_spell_this_game[1]);
+    let c = g.add_card(0, 25, Zone::Hand);
+    assert!(!g.legal_actions().contains(&Action::CastAlternative(c)));
+}
+
+#[test]
+fn mana_that_costs_life() {
+    use batch3::*;
+    use bolt_core::ManaSource;
+    let mut conf = land("Confluence");
+    conf.mana = Some(ManaSource::of(&Color::ALL));
+    conf.mana_ext.mana_life_cost = 1;
+    let mut g = batch6_board(vec![conf], 0);
+    let x = put(&mut g, 0, 25);
+    let life = g.players[0].life;
+    cast(&mut g, ONE);
+    assert_eq!(g.players[0].life, life - 1, "paid 1 life");
+    g.objects[x.0 as usize].tapped = false;
+    g.players[0].life = 0;
+    let c = g.add_card(0, ONE, Zone::Hand);
+    assert!(!g.legal_actions().contains(&Action::Cast(c)), "no life to pay");
+}
+
+#[test]
+fn urza_lands_make_more_together() {
+    use batch3::*;
+    use bolt_core::ManaSource;
+    let urza = |sub: &str, n: u8| {
+        let mut d = land(sub);
+        d.subtypes = vec!["Urza's".into(), sub.into()];
+        d.mana = Some(ManaSource {
+            colorless: true,
+            ..ManaSource::default()
+        });
+        d.mana_ext.tron_amount = n;
+        d
+    };
+    let draw = || Ability::new(vec![], vec![Effect::Draw { who: Who::You, n: 1 }]);
+    let defs = vec![
+        urza("Mine", 2),
+        urza("Power-Plant", 2),
+        urza("Tower", 3),
+        CardDef::spell("Seven", "{7}", true, draw()),
+        CardDef::spell("Eight", "{8}", true, draw()),
+    ];
+    let mut g = batch6_board(defs, 0);
+    put(&mut g, 0, 25);
+    put(&mut g, 0, 26);
+    let seven = g.add_card(0, 28, Zone::Hand);
+    let eight = g.add_card(0, 29, Zone::Hand);
+    let big = g.add_card(0, BIG_ONE, Zone::Hand);
+    let legal = g.legal_actions();
+    assert!(!legal.contains(&Action::Cast(big)), "no Tower: {{C}}{{C}}");
+    put(&mut g, 0, 27);
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Cast(seven)), "2 + 2 + 3");
+    assert!(!legal.contains(&Action::Cast(eight)));
+}
