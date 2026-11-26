@@ -764,6 +764,9 @@ pub struct CardDef {
     /// and its owner may cast the card itself from exile later.
     pub adventure: bool,
     /// "Enchanted permanent's activated abilities can't be activated." (Hold for Questioning)
+    /// "As this enters, choose a card type." and "You and creatures you control have protection
+    /// from the chosen card type." (Serra's Emissary).
+    pub protection_chosen_card_type: bool,
     pub enchanted_stops_activations: bool,
     /// "If one or more +1/+1 counters would be put on a creature you control, that many plus one
     /// ... instead." (Hardened Scales)
@@ -1143,6 +1146,7 @@ impl CardDef {
             mana_ext: ManaExt::default(),
             suppresses_triggers: None,
             doubles_triggers_of: None,
+            protection_chosen_card_type: false,
         }
     }
 
@@ -1380,6 +1384,7 @@ impl CardDef {
             mana_ext: ManaExt::default(),
             suppresses_triggers: None,
             doubles_triggers_of: None,
+            protection_chosen_card_type: false,
         }
     }
 
@@ -1617,6 +1622,7 @@ impl CardDef {
             mana_ext: ManaExt::default(),
             suppresses_triggers: None,
             doubles_triggers_of: None,
+            protection_chosen_card_type: false,
         }
     }
 }

@@ -479,6 +479,7 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         mana_ext: Default::default(),
         suppresses_triggers: None,
         doubles_triggers_of: None,
+        protection_chosen_card_type: false,
     };
     def.color_identity = color_identity(o);
     def.phyrexian = phyrexian;
