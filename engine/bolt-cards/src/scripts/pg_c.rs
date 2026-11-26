@@ -2019,6 +2019,49 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::Upkeep { your_turn_only: true }, vec![], vec![Effect::ReturnExiledWithSourceDecayed]);
             },
         ),
+        // ---- Mac C: casting a modal double-faced card's nonland back face ----
+        "Tergrid, God of Fright // Tergrid's Lantern" => s(
+            &[
+                "Whenever an opponent sacrifices a nontoken permanent or discards a permanent card, you may put that card from a graveyard onto the battlefield under your control.",
+                "Back: {T}: Target player loses 3 life unless they sacrifice a nonland permanent of their choice or discard a card.",
+                "Back: {3}{B}: Untap Tergrid's Lantern.",
+            ],
+            |d, _| {
+                let sacrificed = Filter { triggering: true, ..graveyard_cards(false, Controller::Any) };
+                may(d, When::OpponentSacrificesNontoken, vec![sacrificed], vec![Effect::Reanimate(0)]);
+                let discarded = Filter { triggering: true, permanent_cards: true, ..graveyard_cards(false, Controller::Any) };
+                may(d, When::OpponentDiscards, vec![discarded], vec![Effect::Reanimate(0)]);
+                d.modal_back = true;
+                let b = d.back.as_mut().expect("Tergrid's Lantern");
+                activated(b, "", true, vec![Filter::PLAYER], vec![Effect::TargetPlayerLosesUnlessSacrificesOrDiscards { slot: 0, life: 3 }]);
+                activated(b, "{3}{B}", false, vec![], vec![Effect::UntapSelf]);
+            },
+        ),
+        "Vohar, Vodalian Desecrator" => s(
+            &[
+                "{T}: Draw a card, then discard a card. If you discarded an instant or sorcery card this way, each opponent loses 1 life and you gain 1 life.",
+                "{2}, Sacrifice Vohar: You may cast target instant or sorcery card from your graveyard this turn. If that spell would be put into your graveyard, exile it instead. Activate only as a sorcery.",
+            ],
+            |d, _| {
+                activated(
+                    d,
+                    "",
+                    true,
+                    vec![],
+                    vec![
+                        draw(1),
+                        Effect::DiscardThenIfInstantOrSorcery,
+                        Effect::LoseLife { who: Who::EachOpponent, n: 1 },
+                        Effect::GainLife { who: Who::You, n: 1 },
+                    ],
+                );
+                // A flashback grant for this turn: cast for its mana cost, exiled instead (Snapcaster's).
+                let spell = Filter { instant_or_sorcery: true, ..graveyard_cards(false, Controller::You) };
+                let n = activated(d, "{2}", false, vec![spell], vec![Effect::GrantFlashback(0)]);
+                d.activated[n].sacrifice_self = true;
+                d.activated[n].sorcery = true;
+            },
+        ),
         _ => None,
     }
 }
@@ -2260,4 +2303,6 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Shielded by Faith",
     "Eldrazi Conscription",
     "Gisa, Glorious Resurrector",
+    "Tergrid, God of Fright // Tergrid's Lantern",
+    "Vohar, Vodalian Desecrator",
 ];

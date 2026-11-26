@@ -2466,6 +2466,15 @@ pub enum Effect {
     /// Gisa, Glorious Resurrector: put all creature cards exiled with the source
     /// (`Game::exiled_with`) onto the battlefield under your control; they gain decayed.
     ReturnExiledWithSourceDecayed,
+    /// The player in `slot` loses `life` life unless they sacrifice a nonland permanent or discard a
+    /// card (Tergrid's Lantern: 3), as `Decision::SacrificeDiscardOrLoseLife`.
+    TargetPlayerLosesUnlessSacrificesOrDiscards {
+        slot: u8,
+        life: i32,
+    },
+    /// Discard a card (`Decision::DiscardThenIfInstantOrSorcery`); the rest of the effects happen
+    /// only if it was an instant or sorcery card (Vohar, Vodalian Desecrator).
+    DiscardThenIfInstantOrSorcery,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

@@ -439,4 +439,33 @@ impl Game {
             }
         }
     }
+
+    /// Whether `p` may cast the modal double-faced card `c` from hand as its back face now: a
+    /// nonland permanent back (not an Aura) with no {X}, at its timing (`timing_ok` is sorcery timing
+    /// or flash for everything; a back with flash ignores it), with its mana cost affordable. Offered
+    /// as `Action::CastModal(c, 1)` (the front has no modes).
+    pub(super) fn back_face_castable(&self, p: PlayerId, c: ObjId, timing_ok: bool) -> bool {
+        let d = &self.defs[self.obj(c).def];
+        let Some(b) = d.back.as_ref() else {
+            return false;
+        };
+        d.modal_back
+            && d.modes.is_empty()
+            && self.obj(c).zone == Zone::Hand
+            && !self.obj(c).transformed
+            && !b.types.land
+            && b.types.is_permanent()
+            && !b.aura
+            && b.cost.x == 0
+            && (timing_ok || b.keywords.has(Keywords::FLASH))
+            && !self.cant_cast_now(p)
+            && self.can_pay_for(p, &b.cost, None, PayFor::Spell(c))
+    }
+
+    /// `Action::CastModal(c, 1)` means "cast its back face" for a modal double-faced card in hand
+    /// whose front has no modes.
+    pub(super) fn casts_back_face(&self, c: ObjId) -> bool {
+        let d = &self.defs[self.obj(c).def];
+        d.modal_back && d.modes.is_empty() && self.obj(c).zone == Zone::Hand && d.back.is_some()
+    }
 }

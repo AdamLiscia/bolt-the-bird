@@ -784,6 +784,22 @@ Still needing core in Bruna: Daybreak Coronet (a target filter "creature with an
 Glitters, Ethereal Armor, Auramancer's Guise, Sage's Reverie (counts in the scaled-statics block: d3), Unquestioned
 Authority (protection from creatures: d3), Open the Armory (a search for an Aura or Equipment card: d3).
 
+## Objects and zones batch 11 (unbuilt): Gisa, then Tergrid and Vohar
+
+- Gisa, Glorious Resurrector (built, verified at 9dab6d8): lane B's `opponents_creatures_die_exiled` and
+  `Game::exiled_with`; `Effect::ReturnExiledWithSourceDecayed` (`Game::return_exiled_with_decayed`).
+- Casting a nonland modal back face: `Action::CastModal(c, 1)` for a modal double-faced card in hand whose front
+  has no modes (`Game::back_face_castable` lists it: a nonland permanent back, not an Aura, no {X}, at its
+  timing, affordable). The apply arm sets `transformed` and casts it normally, so the spell is the back face;
+  `move_to` clears `transformed` when it leaves the stack for anywhere but the battlefield. The service view
+  labels it "Cast <back name>". Not covered: instant or sorcery backs, Aura backs, X backs, backs with targets
+  beyond what `cast` checks.
+- Tergrid, God of Fright // Tergrid's Lantern: d2's `OpponentSacrificesNontoken` and `OpponentDiscards` as optional
+  triggers with `Reanimate`; the Lantern's `Effect::TargetPlayerLosesUnlessSacrificesOrDiscards` (the existing
+  Torment decision, once) and an untap ability.
+- Vohar, Vodalian Desecrator: `Effect::DiscardThenIfInstantOrSorcery` with `Decision::DiscardThenIfInstantOrSorcery`
+  (labelled), and the sacrifice ability as `GrantFlashback` (Snapcaster's grant: its mana cost, exiled instead).
+
 ## Held back (lane C), with what each needs
 
 Done since: Light-Paws, Sovereigns, Bruna, Olivia, Dragonhawk, Glimpse of Tomorrow (batches 8-9). Routed

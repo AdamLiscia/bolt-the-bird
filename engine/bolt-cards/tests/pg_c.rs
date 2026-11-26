@@ -3911,3 +3911,98 @@ fn gisa_exiles_dying_opponent_creatures_and_returns_them_decayed() {
     assert_eq!(g.obj(ghoul).controller, 0);
     assert!(g.obj(ghoul).decayed, "it gains decayed");
 }
+
+// ---- Mac C: modal double-faced back faces cast; Vohar ----
+
+/// Resolves the stack, answering player 0's decisions with `pick` when offered (else Yes, else the
+/// first choice) and the opponent's with their first choice.
+fn resolve_picking(g: &mut Game, pick: ObjId) {
+    while !g.items.is_empty() || matches!(g.pending, Pending::Decide(_) | Pending::ChooseTarget(_)) {
+        let legal = g.legal_actions();
+        let a = match g.pending {
+            Pending::Decide(0) if legal.contains(&Action::Pick(pick)) => Action::Pick(pick),
+            Pending::Decide(0) if legal.contains(&Action::Yes) => Action::Yes,
+            Pending::Decide(_) | Pending::ChooseTarget(_) => legal[0],
+            _ => Action::PassPriority,
+        };
+        act(g, a);
+    }
+}
+
+#[test]
+fn tergrid_takes_what_an_opponent_sacrifices() {
+    let mut g = table();
+    put(&mut g, 0, "Tergrid, God of Fright // Tergrid's Lantern");
+    let ghoul = put(&mut g, 1, "Hungry Ghoul");
+    let exe = hand(&mut g, 0, "Merciless Executioner");
+    act(&mut g, Action::Cast(exe));
+    resolve_picking(&mut g, exe);
+    assert_eq!(g.obj(exe).zone, Zone::Graveyard);
+    assert_eq!(g.obj(ghoul).zone, Zone::Battlefield, "back from their graveyard");
+    assert_eq!(g.obj(ghoul).controller, 0);
+}
+
+#[test]
+fn tergrids_lantern_is_cast_as_the_back_face_and_taxes_a_player() {
+    let mut g = table();
+    let t = hand(&mut g, 0, "Tergrid, God of Fright // Tergrid's Lantern");
+    assert!(g.legal_actions().contains(&Action::Cast(t)), "the front");
+    assert!(g.legal_actions().contains(&Action::CastModal(t, 1)), "the back");
+    act(&mut g, Action::CastModal(t, 1));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(t).zone, Zone::Battlefield);
+    assert_eq!(g.def_of(t).name, "Tergrid's Lantern");
+    assert!(!g.types_of(t).creature && g.types_of(t).artifact);
+    let life = g.players[1].life;
+    act(&mut g, Action::Activate(t, 0));
+    act(&mut g, Action::Target(Target::Player(1)));
+    resolve_all(&mut g, &[Action::No]);
+    assert_eq!(g.players[1].life, life - 3, "didn't sacrifice or discard");
+    assert!(g.obj(t).tapped);
+    act(&mut g, Action::Activate(t, 1));
+    resolve_all(&mut g, &[]);
+    assert!(!g.obj(t).tapped, "{{3}}{{B}}: untap");
+}
+
+#[test]
+fn a_back_face_spell_that_is_countered_is_its_front_again() {
+    let mut g = table();
+    let t = hand(&mut g, 0, "Tergrid, God of Fright // Tergrid's Lantern");
+    act(&mut g, Action::CastModal(t, 1));
+    assert_eq!(
+        g.def_of(t).name,
+        "Tergrid's Lantern",
+        "on the stack as its back face"
+    );
+    act(&mut g, Action::PassPriority);
+    let veto = hand(&mut g, 1, "Dovin's Veto");
+    act(&mut g, Action::Cast(veto));
+    act(&mut g, Action::Target(obj(t)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(t).zone, Zone::Graveyard);
+    assert_eq!(g.def_of(t).name, "Tergrid, God of Fright // Tergrid's Lantern");
+}
+
+#[test]
+fn vohar_loots_drains_on_a_discarded_sorcery_and_grants_a_graveyard_cast() {
+    let mut g = table();
+    let v = put(&mut g, 0, "Vohar, Vodalian Desecrator");
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    let sorcery = hand(&mut g, 0, "Tranquility");
+    let (mine, theirs) = (g.players[0].life, g.players[1].life);
+    act(&mut g, Action::Activate(v, 0));
+    resolve_all(&mut g, &[Action::Pick(sorcery)]);
+    assert_eq!(g.obj(sorcery).zone, Zone::Graveyard);
+    assert_eq!((g.players[0].life, g.players[1].life), (mine + 1, theirs - 1));
+    act(&mut g, Action::Activate(v, 1));
+    act(&mut g, Action::Target(obj(sorcery)));
+    resolve_all(&mut g, &[]);
+    assert_ne!(g.obj(v).zone, Zone::Battlefield, "sacrificed");
+    assert!(
+        g.legal_actions().contains(&Action::CastFlashback(sorcery)),
+        "castable from the graveyard this turn"
+    );
+}

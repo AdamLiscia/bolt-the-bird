@@ -1334,6 +1334,9 @@ pub enum Decision {
         auras: Vec<ObjId>,
         rest: Vec<ObjId>,
     },
+    /// Vohar: `Pick` a card in your hand to discard; the rest of the effects happen only if it's an
+    /// instant or sorcery card.
+    DiscardThenIfInstantOrSorcery,
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -4495,11 +4498,18 @@ impl Game {
         }
         let commander_waits =
             self.commander_choice && matches!(to, Zone::Graveyard | Zone::Exile) && self.is_commander(id);
+        // A modal double-faced card cast as its back face is its front again off the stack, unless
+        // it resolves onto the battlefield (CR 712.14).
+        let mdfc_spell_leaves =
+            from == Zone::Stack && to != Zone::Battlefield && self.defs[self.obj(id).def].modal_back;
         let o = self.obj_mut(id);
         o.zone = to;
         o.void_counter = void && to == Zone::Exile;
         if from == Zone::Stack && to != Zone::Battlefield {
             o.face_down = false; // a face-down spell is revealed as it leaves the stack
+        }
+        if mdfc_spell_leaves {
+            o.transformed = false;
         }
         o.commander_choice_pending = commander_waits;
         o.zcc += 1;
@@ -6470,6 +6480,10 @@ impl Game {
                 {
                     v.push(Action::CastOmen(c));
                 }
+            }
+            // A modal double-faced card's nonland back face, cast from hand (game/zones.rs).
+            if self.back_face_castable(p, c, sorcery_timing || flash_all) {
+                v.push(Action::CastModal(c, 1));
             }
             if def.aftermath && self.obj(c).zone == Zone::Graveyard {
                 continue; // only its aftermath half is cast from there
@@ -9860,6 +9874,10 @@ impl Game {
                     ..CastMode::default()
                 },
             ),
+            (Pending::Priority(p), Action::CastModal(c, 1)) if self.casts_back_face(c) => {
+                self.obj_mut(c).transformed = true; // cast as its back face (CR 712.11b)
+                self.cast(p, c, CastMode::default())
+            }
             (Pending::Priority(p), Action::CastModal(c, m)) if self.def_of(c).cost.x > 0 => {
                 // A modal X spell (Kozilek's Command): X is chosen first, then its targets.
                 let max = (self.untapped_sources(p).len() + self.players[p].pool.len()).min(30) as u8;
@@ -12655,6 +12673,7 @@ impl Game {
                 v
             }
             d @ Decision::AttachAura { .. } => self.attach_aura_actions(p, d),
+            Decision::DiscardThenIfInstantOrSorcery => hand.iter().copied().map(Action::Pick).collect(),
             Decision::AuraEntersAttachedTo { aura, .. } => {
                 self.aura_hosts(*aura, p).into_iter().map(Action::Pick).collect()
             }
@@ -14173,6 +14192,13 @@ impl Game {
                 }
             }
             (d @ Decision::AttachAura { .. }, a) => self.attach_aura_decide(p, d, a),
+            (Decision::DiscardThenIfInstantOrSorcery, Action::Pick(c)) => {
+                let t = self.def_of(c).types;
+                self.move_to(c, Zone::Graveyard); // discarded
+                if !(t.instant || t.sorcery) {
+                    self.resolving.as_mut().expect("resolving").remaining.clear();
+                }
+            }
             (Decision::AuraEntersAttachedTo { aura, auras, rest }, a) => {
                 if let Action::Pick(x) = a {
                     let zcc = self.obj(x).zcc;
@@ -22150,6 +22176,23 @@ impl Game {
             Effect::SuspendSource(n) => self.suspend_source(src, n),
             Effect::GlimpseOfTomorrow => self.glimpse_of_tomorrow(item.controller),
             Effect::ReturnExiledWithSourceDecayed => self.return_exiled_with_decayed(src, item.controller),
+            Effect::TargetPlayerLosesUnlessSacrificesOrDiscards { slot, life } => {
+                if let Some(q) = self
+                    .players_for(item, legal, Who::TargetPlayer(slot))
+                    .first()
+                    .copied()
+                {
+                    self.torment_next(q, 1, life);
+                }
+            }
+            Effect::DiscardThenIfInstantOrSorcery => {
+                let p = item.controller;
+                if self.players[p].hand.is_empty() {
+                    self.resolving.as_mut().expect("resolving").remaining.clear();
+                } else {
+                    self.ask(p, Decision::DiscardThenIfInstantOrSorcery);
+                }
+            }
             Effect::AmassIfExtraCreatureCard { subtype, n, def } => {
                 if item.extra.is_some_and(|c| self.def_of(c).types.creature) {
                     self.run_effect(item, legal, Effect::Amass { subtype, n, def });

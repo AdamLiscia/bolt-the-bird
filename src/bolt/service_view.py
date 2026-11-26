@@ -50,6 +50,8 @@ def _label(kind: str, cards: list, nums: tuple, me: int, values: tuple) -> str:
     if kind == "CastOmen" and " // " in c:  # an Omen's or a split card's second half, by its name
         return f"Cast {c.split(' // ', 1)[1]}"
     n = nums[0] if nums else None
+    if kind == "CastModal" and n == 1 and " // " in c:  # a modal double-faced card's back face
+        return f"Cast {c.split(' // ', 1)[1]}"
     return {
         "Bottom": f"Put {c} on the bottom", "PlayLand": f"Play {c}", "Cast": f"Cast {c}",
         "CastKicked": f"Cast {c} (kicked)", "CastWith": f"Cast {c} using {c2}",
@@ -182,6 +184,7 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         verb = verb or {"ChooseRingBearer": "Choose as your Ring-bearer:"}.get(d)
         verb = verb or {"AttachAura": "Attach"}.get(d)
         verb = verb or {"AuraEntersAttachedTo": "Attach the Aura to"}.get(d)
+        verb = verb or {"DiscardThenIfInstantOrSorcery": "Discard"}.get(d)
         if d == "LoseUnless":
             verb = "Sacrifice" if dec.get("sacrifice") else "Discard"
         return f"{verb} {card_name}" if verb else None
