@@ -3648,8 +3648,8 @@ fn sovereigns_of_lost_alara_exalts_and_attaches_an_aura_to_a_lone_attacker() {
     put(&mut g, 0, "Sovereigns of Lost Alara");
     let ghoul = put(&mut g, 0, "Hungry Ghoul");
     let before = g.power(ghoul);
-    let ws = top(&mut g, "Wingspan Stride");
     to_attackers(&mut g);
+    let ws = top(&mut g, "Wingspan Stride"); // after the draw step
     act(&mut g, Action::Attack(ghoul));
     act(&mut g, Action::FinishAttacks);
     while !matches!(g.pending, Pending::Decide(0)) {

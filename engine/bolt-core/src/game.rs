@@ -1731,7 +1731,7 @@ pub struct Game {
     pub spell_enters_with_counters: Vec<(ObjId, u32, i32)>,
     /// Dragonhawk: (source, trigger number, controller, the turn whose end step it waits for, the
     /// exiled cards with their zone-change counts).
-    pub delayed_end_step_exiled: Vec<(ObjId, usize, PlayerId, u32, Vec<(ObjId, u32)>)>,
+    pub delayed_end_step_exiled: Vec<zones::EndStepExiled>,
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -11163,6 +11163,7 @@ impl Game {
                             self.reanimate_attach(source, t, r.item.controller);
                         }
                     }
+                    self.cast_aura_entered(source); // Light-Paws (game/zones.rs)
                 }
                 // Necromancy cast at instant speed: sacrificed at the next end step.
                 if let Some(pos) = self.flash_casts.iter().position(|&(c, _)| c == source) {

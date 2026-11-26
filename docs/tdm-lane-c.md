@@ -746,7 +746,10 @@ dispatch arms at the ends of `run_effect`, `decision_actions` and `decide`.
 - `Effect::{AttachAurasToSource, SearchAuraForSourceIfCast(slot), SearchAuraForLoneAttacker}`.
 - "If you cast it" is the existing `Object::was_cast` (set as a spell resolves onto the battlefield, cleared by
   `move_to` as anything enters), read on the triggering Aura.
-Shortcuts: Light-Paws checks "if you cast it" on resolution only, and fizzles if the Aura has left. Sovereigns is a
+- `When::CastAuraYouControlEnters`: `When::SubtypeYouControlEnters` fires only for entering creatures, so Light-Paws
+  triggers from one call (`Game::cast_aura_entered`) in the Aura-spell block of the resolution path, after it's
+  attached; the trigger itself is therefore "if you cast it".
+Shortcuts: Light-Paws fizzles if the Aura has left before its trigger resolves. Sovereigns is a
 `When::YouAttack` trigger with a lone-attacker check on resolution (as d1's exalted), so it doesn't wait on d2.
 
 ## Objects and zones batch 9: Olivia, Dragonhawk, Glimpse of Tomorrow (suspend); Moria Scavenger, Professional Face-Breaker
@@ -771,20 +774,7 @@ Touched code owned elsewhere (flag for review): the `give_priority` line, the `S
 
 ## Held back (lane C), with what each needs
 
-- Light-Paws, Emperor's Voice: `When::SubtypeYouControlEnters("Aura")` exists, but "if you cast it" is about the
-  entering Aura, and nothing records that an object entered from the stack (`Condition::CastIt` is the source's;
-  `Object::mana_spent` isn't reset on zone changes). Then a search for an Aura with mana value at most that
-  Aura's and a name different from each Aura you control, put onto the battlefield attached to Light-Paws.
-- Sovereigns of Lost Alara: needs d2's "a creature you control attacks alone" trigger; then the same
-  "search for an Aura that could enchant it, onto the battlefield attached" piece.
-- Bruna, Light of Alabaster: attack-or-block trigger; attach any number of Auras on the battlefield to it, and put
-  any number of Aura cards from graveyard and hand onto the battlefield attached (a repeated Pick decision over
-  three zones). Shares the "Aura onto the battlefield attached" piece above.
-- Olivia, Crimson Bride: return target creature card tapped and attacking (`combat.attackers`, as Delina does),
-  plus a granted "when you don't control a legendary Vampire, exile this" state check (an Object flag checked in
-  state-based actions).
-- Dragonhawk, Fate's Tempest: exile the top X (creatures with power 4+), playable until your next end step
-  (`Object::playable`), then 2 damage per card still exiled at that end step (a delayed list on `Game`).
-- Glimpse of Tomorrow: suspend (exile with time counters from hand, remove one each upkeep, cast free at zero),
-  then "shuffle all permanents you own into your library, reveal that many, put the non-Auras then Auras onto the
-  battlefield".
+Done since: Light-Paws, Sovereigns, Bruna, Olivia, Dragonhawk, Glimpse of Tomorrow (batches 8-9). Routed
+(2026-11-26): Sheltered by Ghosts (Aura-granted ward: lane B, merger work), Smaug the Magnificent (d3), Rankle and
+Torbran and Raphael (lane B), Pippin, Guard of the Citadel (d3: a per-object chosen-card-type protection grant, and a
+card-type choice askable mid-resolution). Waiting on others: Gisa (Mac B), Prosper (d2), Inventors' Fair (d3).

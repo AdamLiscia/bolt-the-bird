@@ -3345,6 +3345,10 @@ pub enum When {
     /// "Whenever an opponent sacrifices a noncreature token" (Bloodroot Apothecary), fired from
     /// `Game::sacrificed`.
     OpponentSacrificesNoncreatureToken,
+    /// "Whenever an Aura you control enters, if you cast it" (Light-Paws): fired as an Aura spell
+    /// resolves onto the battlefield (`Game::cast_aura_entered`, game/zones.rs), with the Aura in a
+    /// triggering first slot.
+    CastAuraYouControlEnters,
 }
 
 #[derive(Clone, Debug, PartialEq)]

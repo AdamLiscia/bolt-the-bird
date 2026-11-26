@@ -1880,7 +1880,7 @@ pub fn script(name: &str) -> Option<Script> {
             &["Whenever an Aura you control enters, if you cast it, you may search your library for an Aura card with mana value less than or equal to that Aura and with a different name than each Aura you control, put that card onto the battlefield attached to Light-Paws, then shuffle."],
             |d, _| {
                 let that = Filter { triggering: true, enchantments: true, ..Filter::default() };
-                on(d, When::SubtypeYouControlEnters("Aura"), vec![that], vec![Effect::SearchAuraForSourceIfCast(0)]);
+                on(d, When::CastAuraYouControlEnters, vec![that], vec![Effect::SearchAuraForSourceIfCast(0)]);
             },
         ),
         "Sovereigns of Lost Alara" => s(

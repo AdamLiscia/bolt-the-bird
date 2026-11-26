@@ -5,6 +5,10 @@
 
 use super::*;
 
+/// Dragonhawk's delayed end-step damage: (source, trigger number, controller, the turn whose end step
+/// it waits for, the exiled cards with their zone-change counts).
+pub type EndStepExiled = (ObjId, usize, PlayerId, u32, Vec<(ObjId, u32)>);
+
 impl Game {
     /// Whether `aura` could enchant `x` (CR 303.4a), for an Aura controlled by `p`: the Aura's
     /// "enchant" restriction (its spell's first target) and protection. It isn't targeted, so
@@ -386,5 +390,30 @@ impl Game {
             .filter(|&c| self.obj(c).zone == Zone::Library)
             .collect();
         self.put_among_rest(p, rest, false);
+    }
+
+    /// An Aura spell `aura` just resolved onto the battlefield: its controller's "whenever an Aura
+    /// you control enters, if you cast it" triggers (`When::CastAuraYouControlEnters`).
+    pub(super) fn cast_aura_entered(&mut self, aura: ObjId) {
+        if self.obj(aura).zone != Zone::Battlefield {
+            return;
+        }
+        let p = self.obj(aura).controller;
+        for x in self.permanents(p).collect::<Vec<_>>() {
+            if self.lost_abilities(x) {
+                continue;
+            }
+            let whens: Vec<When> = self.def_of(x).triggers.iter().map(|t| t.when).collect();
+            for (n, w) in whens.into_iter().enumerate() {
+                if w == When::CastAuraYouControlEnters {
+                    let before = self.triggered.len();
+                    self.triggered.push(StackItem {
+                        kind: StackKind::Trigger(n),
+                        ..Game::casting(x, p)
+                    });
+                    self.fill_triggering(before, aura);
+                }
+            }
+        }
     }
 }
