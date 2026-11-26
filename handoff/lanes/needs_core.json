@@ -571,7 +571,7 @@
    "missing": "increment",
    "lane": "d1",
    "theme": "effects",
-   "owner": "d3"
+   "owner": "d1"
   },
   {
    "card": "Turntimber Symbiosis // Turntimber, Serpentine Wood",
@@ -651,7 +651,7 @@
    "missing": "a karoo that must return a non-Lair land or is sacrificed",
    "lane": "d1",
    "theme": "effects",
-   "owner": "d3"
+   "owner": "d1"
   },
   {
    "card": "Bogardan Dragonheart",
@@ -667,7 +667,7 @@
    "missing": "sacrifice on enter with a reflexive fetch and life gain",
    "lane": "d1",
    "theme": "effects",
-   "owner": "d3"
+   "owner": "d1"
   },
   {
    "card": "Delney, Streetwise Lookout",
@@ -699,7 +699,7 @@
    "missing": "an Aura granting haste-attacking and a once-per-turn untap",
    "lane": "d1",
    "theme": "effects",
-   "owner": "d3"
+   "owner": "d1"
   },
   {
    "card": "Irregular Cohort",
@@ -787,7 +787,7 @@
    "missing": "Necromancy's enchantment-becomes-Aura reanimation",
    "lane": "d1",
    "theme": "effects",
-   "owner": "d3"
+   "owner": "mac-c"
   },
   {
    "card": "Return to Dust",
@@ -867,7 +867,7 @@
    "missing": "a Treefolk-reveal snarl with a pain {W}/{B} and a free {G}",
    "lane": "d1",
    "theme": "effects",
-   "owner": "d3"
+   "owner": "d1"
   },
   {
    "card": "Saffi Eriksdotter",
@@ -963,7 +963,7 @@
    "missing": "cumulative upkeep",
    "lane": "d1",
    "theme": "effects",
-   "owner": "d3"
+   "owner": "d1"
   },
   {
    "card": "Cephalid Coliseum",
@@ -995,7 +995,7 @@
    "missing": "affinity for artifacts; cast an artifact card from graveyard this turn",
    "lane": "d1",
    "theme": "effects",
-   "owner": "d3"
+   "owner": "d1"
   },
   {
    "card": "Faerie Conclave",
@@ -1027,7 +1027,7 @@
    "missing": "extra {U} when a player taps an Island this turn",
    "lane": "d1",
    "theme": "effects",
-   "owner": "d3"
+   "owner": "d1"
   },
   {
    "card": "Illusionist's Gambit",
@@ -1035,7 +1035,7 @@
    "missing": "remove attackers from combat, extra combat with attack restrictions",
    "lane": "d1",
    "theme": "effects",
-   "owner": "d3"
+   "owner": "mac-b"
   },
   {
    "card": "Into the Story",
@@ -1058,16 +1058,16 @@
    "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
    "missing": "a cast trigger for noncreature spells with mana value 3 or more; hand-size activation condition",
    "lane": "d1",
-   "theme": "merger_delegated",
-   "owner": "mac-b"
+   "theme": "triggers",
+   "owner": "d2"
   },
   {
    "card": "Jin-Gitaxias, Progress Tyrant",
    "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
    "missing": "copy artifact/instant/sorcery spells; counter opponents' (once each turn)",
    "lane": "d1",
-   "theme": "merger_delegated",
-   "owner": "mac-b"
+   "theme": "effects",
+   "owner": "d3"
   },
   {
    "card": "Magnus the Red",
@@ -1187,7 +1187,7 @@
    "missing": "controller's basic fetch tapped; creatures without flying can't block",
    "lane": "d1",
    "theme": "effects",
-   "owner": "d3"
+   "owner": "mac-c"
   },
   {
    "card": "Unfathomable Truths",
@@ -1275,7 +1275,7 @@
    "missing": "draw equal to greatest power; cast a spell with mana value 5 or less free",
    "lane": "d1",
    "theme": "effects",
-   "owner": "d3"
+   "owner": "d1"
   },
   {
    "card": "Song of the Dryads",
@@ -1491,7 +1491,7 @@
    "missing": "needs core: annihilator N, and a 'put into a graveyard from anywhere' trigger that shuffles the graveyard into the library",
    "lane": "d2",
    "theme": "keywords",
-   "owner": "d1"
+   "owner": "d2"
   },
   {
    "card": "Circle of Dreams Druid",
@@ -1587,7 +1587,7 @@
    "missing": "needs core: ward\u2014sacrifice two permanents, counters from the greatest mana value in exile, annihilator X, and exiling half a library",
    "lane": "d2",
    "theme": "effects",
-   "owner": "d3"
+   "owner": "d2"
   },
   {
    "card": "Worldspine Wurm",
@@ -1699,7 +1699,7 @@
    "missing": "needs core: plot",
    "lane": "d2",
    "theme": "effects",
-   "owner": "d3"
+   "owner": "mac-c"
   },
   {
    "card": "The Gitrog, Ravenous Ride",
@@ -1787,7 +1787,7 @@
    "missing": "needs core: grant protection from each color until end of turn [protection on Modifier: merger migrates Modifier literals to ..Default::default() first]",
    "lane": "d2",
    "theme": "existing_code",
-   "owner": "merger"
+   "owner": "d3"
   },
   {
    "card": "Animate Dead",
@@ -1971,7 +1971,7 @@
    "missing": "needs core: attacks alone, and the unblocked 'life total becomes 1'",
    "lane": "d2",
    "theme": "effects",
-   "owner": "d3"
+   "owner": "d1"
   },
   {
    "card": "Overpowering Attack",
@@ -1979,7 +1979,7 @@
    "missing": "needs core: freerunning, and untap creatures that attacked this turn",
    "lane": "d2",
    "theme": "effects",
-   "owner": "d3"
+   "owner": "d1"
   },
   {
    "card": "Reconnaissance",
@@ -2179,7 +2179,7 @@
    "missing": "needs core: persist, and reanimating from an opponent's graveyard until your next end step",
    "lane": "d2",
    "theme": "effects",
-   "owner": "d3"
+   "owner": "mac-c"
   },
   {
    "card": "Vampire Hexmage",
@@ -2203,7 +2203,7 @@
    "missing": "needs core: can't attack or block unless a creature died under your control this turn",
    "lane": "d2",
    "theme": "effects",
-   "owner": "d3"
+   "owner": "d1"
   },
   {
    "card": "Cabal Pit",
@@ -2931,7 +2931,7 @@
    "missing": "needs core: protection from a color of your choice until end of turn [protection on Modifier: merger migrates Modifier literals to ..Default::default() first]",
    "lane": "d3",
    "theme": "existing_code",
-   "owner": "merger"
+   "owner": "d3"
   },
   {
    "card": "Cartel Aristocrat",
@@ -2939,7 +2939,7 @@
    "missing": "needs core: protection from a color of your choice until end of turn [protection on Modifier: merger migrates Modifier literals to ..Default::default() first]",
    "lane": "d3",
    "theme": "existing_code",
-   "owner": "merger"
+   "owner": "d3"
   },
   {
    "card": "Clearwater Pathway // Murkwater Pathway",
@@ -3211,7 +3211,7 @@
    "missing": "needs core: pay {3}{U}{U} at your next upkeep or lose the game",
    "lane": "d3",
    "theme": "effects",
-   "owner": "d3"
+   "owner": "d2"
   },
   {
    "card": "Ponder",
@@ -3947,7 +3947,7 @@
    "missing": "needs core: metalcraft (an 'if you control three or more artifacts' activation condition)",
    "lane": "d3",
    "theme": "effects",
-   "owner": "d3"
+   "owner": "d1"
   },
   {
    "card": "Briarbridge Patrol",
@@ -4043,7 +4043,7 @@
    "missing": "needs core: exile the creatures that crewed it and return them at the next end step",
    "lane": "d3",
    "theme": "effects",
-   "owner": "d3"
+   "owner": "d1"
   },
   {
    "card": "Graf Mole",
@@ -4179,7 +4179,7 @@
    "missing": "vow counters (a creature with one can't attack you or your planeswalkers)",
    "lane": "mac-b",
    "theme": "effects",
-   "owner": "d3"
+   "owner": "d1"
   },
   {
    "card": "Sphere of Safety",
@@ -4187,12 +4187,92 @@
    "missing": "an attack tax: creatures can't attack you unless their controller pays {X} for each",
    "lane": "mac-b",
    "theme": "effects",
-   "owner": "d3"
+   "owner": "d1"
   },
   {
    "card": "Mirkwood Bats",
    "deck": "Myrkul, Lord of Bones (DonSpider)",
    "missing": "a trigger: whenever you create or sacrifice a token",
+   "lane": "mac-b",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Ensnare",
+   "deck": "Tatyova, Benthic Druid (Grande)",
+   "missing": "return two Islands as an alternative cost",
+   "lane": "mac-b",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Gush",
+   "deck": "Tatyova, Benthic Druid (Grande)",
+   "missing": "return two Islands as an alternative cost",
+   "lane": "mac-b",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Thwart",
+   "deck": "Tatyova, Benthic Druid (Grande)",
+   "missing": "return three Islands as an alternative cost",
+   "lane": "mac-b",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Harrow",
+   "deck": "Tatyova, Benthic Druid (Grande)",
+   "missing": "sacrifice a land as an additional cost",
+   "lane": "mac-b",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Meloku the Clouded Mirror",
+   "deck": "Tatyova, Benthic Druid (Grande)",
+   "missing": "return a land you control as an activation cost",
+   "lane": "mac-b",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Misdirection",
+   "deck": "Tatyova, Benthic Druid (Grande)",
+   "missing": "exile a blue card from hand as an alternative cost (any turn); a 'spell with a single target' filter (d3)",
+   "lane": "mac-b",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Trade Routes",
+   "deck": "Tatyova, Benthic Druid (Grande)",
+   "missing": "discard a land card as a cost",
+   "lane": "mac-b",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Kruphix, God of Horizons",
+   "deck": "Tatyova, Benthic Druid (Grande)",
+   "missing": "unspent mana becomes colorless (mana pool)",
+   "lane": "mac-b",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Amulet of Vigor",
+   "deck": "Tatyova, Benthic Druid (Grande)",
+   "missing": "a trigger: a permanent you control enters tapped",
+   "lane": "mac-b",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Cloudstone Curio",
+   "deck": "Tatyova, Benthic Druid (Grande)",
+   "missing": "a trigger: a nonartifact permanent you control enters; return one sharing a type",
    "lane": "mac-b",
    "theme": "triggers",
    "owner": "d2"
