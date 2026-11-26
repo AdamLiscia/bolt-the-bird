@@ -4253,7 +4253,13 @@
 "layout": "split",
 "loyalty": null,
 "produced_mana": null,
-"collector_number": "156"
+"collector_number": "156",
+"split": {
+"name": "Bust",
+"mana_cost": "{5}{R}",
+"type_line": "Sorcery",
+"oracle_text": "Destroy all lands."
+}
 },
 {
 "name": "Boreal Druid",
@@ -13369,7 +13375,13 @@
 "layout": "split",
 "loyalty": null,
 "produced_mana": null,
-"collector_number": "215"
+"collector_number": "215",
+"split": {
+"name": "Ice",
+"mana_cost": "{1}{U}",
+"type_line": "Instant",
+"oracle_text": "Tap target permanent.\nDraw a card."
+}
 },
 {
 "name": "Fire-Lit Thicket",

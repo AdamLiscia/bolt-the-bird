@@ -1385,6 +1385,21 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::Enters, vec![graveyard_cards(true, Controller::Any)], vec![Effect::ReanimateAttachSource(0)]);
             },
         ),
+        "Teferi's Protection" => s(
+            &[
+                "Until your next turn, your life total can't change and you gain protection from everything. All permanents you control phase out.",
+                "Exile Teferi's Protection.",
+            ],
+            |d, _| {
+                // Protection from everything for a player: damage to you can't change your life either.
+                spell(d, vec![], vec![Effect::LifeLockedUntilYourNextTurn, Effect::PhaseOut { all: true }, Effect::ExileSourceSpell]);
+            },
+        ),
+        "Clever Concealment" => s(&["Convoke", "Any number of target nonland permanents you control phase out."], |d, _| {
+            d.mana_ext.convoke = true;
+            let yours = Filter { players: false, creatures: false, planeswalkers: false, nonland_permanents: true, controller: Controller::You, ..Filter::ANY };
+            d.spell = Some(up_to(vec![yours; 8], vec![Effect::PhaseOut { all: false }]));
+        }),
         _ => None,
     }
 }
@@ -1550,4 +1565,6 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Animate Dead",
     "Dance of the Dead",
     "Necromancy",
+    "Teferi's Protection",
+    "Clever Concealment",
 ];

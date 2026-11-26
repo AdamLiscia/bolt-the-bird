@@ -839,6 +839,33 @@ pub struct CardDef {
     /// An Aura with "Enchant player" whose enchanted player gets an additional upkeep step after
     /// their first upkeep each turn (Paradox Haze).
     pub extra_upkeep_for_enchanted: bool,
+    /// The d4 subsystems' pieces (dungeons, Backgrounds, split cards), grouped so adding one
+    /// touches only [`SubsystemExt`].
+    pub subsystems: SubsystemExt,
+    /// "All Swamps are 1/1 black creatures that are still lands." (Kormus Bell; give it an empty
+    /// static too, so it's among the static sources)
+    pub swamps_are_creatures: bool,
+    /// "Creatures can't attack you unless their controller pays {N} for each creature they
+    /// control that's attacking you." (Ghostly Prison, Propaganda: 2), see `Game::attack_tax`.
+    pub attack_tax: u8,
+    /// The attack tax is {X} per creature, X the enchantments you control (Sphere of Safety).
+    pub attack_tax_per_enchantment: bool,
+}
+
+/// A card's pieces from the d4 subsystems (see [`CardDef::subsystems`]).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct SubsystemExt {
+    /// A split card (CR 709): `omen` holds its right half, cast like an Omen's, and either half goes
+    /// to its owner's graveyard as it resolves.
+    pub split_card: bool,
+    /// "Room abilities of dungeons you own trigger an additional time." (Hama Pashar)
+    pub rooms_trigger_again: bool,
+    /// "Commander creatures you own have 'Room abilities of dungeons you own trigger an additional
+    /// time.'" (Dungeon Delver)
+    pub commanders_rooms_trigger_again: bool,
+    /// A split card's left half's own mana cost, which casting it pays; `cost` is both halves'
+    /// together, its mana value off the stack (CR 709.4).
+    pub left_cost: Option<ManaCost>,
 }
 
 /// A card's mana, cost and keyword pieces added by the d1 theme (see [`CardDef::mana_ext`]).
@@ -1214,6 +1241,10 @@ impl CardDef {
             mana_ext: ManaExt::default(),
             suppresses_triggers: None,
             doubles_triggers_of: None,
+            subsystems: Default::default(),
+            swamps_are_creatures: false,
+            attack_tax: 0,
+            attack_tax_per_enchantment: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -1459,6 +1490,10 @@ impl CardDef {
             mana_ext: ManaExt::default(),
             suppresses_triggers: None,
             doubles_triggers_of: None,
+            subsystems: Default::default(),
+            swamps_are_creatures: false,
+            attack_tax: 0,
+            attack_tax_per_enchantment: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -1704,6 +1739,10 @@ impl CardDef {
             mana_ext: ManaExt::default(),
             suppresses_triggers: None,
             doubles_triggers_of: None,
+            subsystems: Default::default(),
+            swamps_are_creatures: false,
+            attack_tax: 0,
+            attack_tax_per_enchantment: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,

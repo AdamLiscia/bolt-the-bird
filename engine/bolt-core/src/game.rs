@@ -15,6 +15,11 @@ use crate::effect::{
 use crate::mana::{self, ManaCost, ManaSource};
 use crate::rng::Rng;
 
+// The d4 subsystems (dungeons and the initiative, emblems' triggers, dice): game/d4.rs.
+mod d4;
+use crate::effect::Dungeon;
+pub use d4::{rooms, Room, VENTURE_CHOICES};
+
 pub type PlayerId = usize;
 
 /// Starting life total (CR 103.4).
@@ -284,7 +289,60 @@ pub struct Object {
     pub void_counter: bool,
     /// The player an "Enchant player" Aura is attached to (Paradox Haze).
     pub enchanted_player: Option<PlayerId>,
+    /// Type, color, base power and toughness, and ability changes from resolved effects (layers 4-7b),
+    /// in timestamp order; see `TypeChange`.
+    pub type_changes: Vec<TypeChange>,
 }
+
+/// One resolved effect's change to a permanent's characteristics (lane d3's type-changing store):
+/// it applies while the permanent is the same object (`zcc`) and until the end of `turn`
+/// (`u32::MAX`: for as long as it stays). Later entries have later timestamps.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct TypeChange {
+    pub zcc: u32,
+    pub turn: u32,
+    /// Base power and toughness (layer 7b): Mirror Entity.
+    pub base_pt: Option<(i32, i32)>,
+    /// Its colors (layer 5): a manland's.
+    pub colors: Option<[bool; 5]>,
+    /// An artifact in addition to its other types (layer 4).
+    pub artifact: bool,
+    /// Every creature type (layer 4): Mirror Entity, Mutavault.
+    pub all_creature_types: bool,
+    /// These creature types in addition (layer 4).
+    pub subtypes: &'static [&'static str],
+    /// It loses all abilities (layer 6): Abigale.
+    pub lose_abilities: bool,
+    /// From its own "this becomes a creature" ability, which may grant it a triggered ability
+    /// (Raging Ravine; `Condition::AnimatedByOwnAbility`).
+    pub own: bool,
+}
+
+/// Subtypes that aren't creature types, for "all creature types" (CR 205.3).
+const NONCREATURE_SUBTYPES: [&str; 22] = [
+    "Plains",
+    "Island",
+    "Swamp",
+    "Mountain",
+    "Forest",
+    "Desert",
+    "Gate",
+    "Cave",
+    "Lair",
+    "Locus",
+    "Sphere",
+    "Town",
+    "Saga",
+    "Equipment",
+    "Aura",
+    "Vehicle",
+    "Food",
+    "Clue",
+    "Treasure",
+    "Shrine",
+    "Curse",
+    "Class",
+];
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Player {
@@ -595,6 +653,14 @@ pub enum StackKind {
         n: u8,
         against: ObjId,
     },
+    /// A room ability of the controller's dungeon (CR 309.4c); its source is the card that made
+    /// them venture.
+    Room {
+        dungeon: Dungeon,
+        room: u8,
+    },
+    /// The initiative's "that player ventures into Undercity" (CR 725.2).
+    InitiativeVenture,
 }
 
 /// The ability of a ward trigger, which has no targets or effects of its own.
@@ -1062,6 +1128,45 @@ pub enum Decision {
     ConniveDiscard { creature: ObjId, left: u8, nonland: u8 },
     /// `Pick` a creature you control of color `color` (WUBRG) to return to its owner's hand.
     ReturnOwnCreatureOfColor { color: u8 },
+    /// Venture into the dungeon with no dungeon: `Mode(i)` enters the first room of
+    /// `VENTURE_CHOICES[i]` (Lost Mine of Phandelver, Dungeon of the Mad Mage, Tomb of
+    /// Annihilation).
+    ChooseDungeon { source: ObjId },
+    /// Venture from room `from` of `dungeon`: `Mode(i)` moves to `rooms(dungeon)[from].next[i]`.
+    ChooseRoom {
+        dungeon: Dungeon,
+        from: u8,
+        source: ObjId,
+    },
+    /// `Pick` a creature you control to put a vow counter on; the rest of your creatures are
+    /// sacrificed. `kept`: both players' so far; `last`: the second player is choosing (Promise of
+    /// Loyalty, cast by `caster`).
+    VowCreature {
+        caster: PlayerId,
+        kept: Vec<ObjId>,
+        last: bool,
+    },
+    /// `Pick` a card from your hand to discard, or `No` to lose `life` life; `left` more times
+    /// after this one (Professor Onyx's −8).
+    DiscardOrLoseLife { left: u8, life: i32 },
+    /// `Pick` a card to discard (with `sacrifice`, an artifact, creature or land to sacrifice), or
+    /// `No` to lose `life` life; then `next` chooses (Veils of Fear, Sandfall Cell).
+    LoseUnless {
+        life: i32,
+        sacrifice: bool,
+        next: Option<PlayerId>,
+    },
+    /// `Pick` the permanent of type `ty` (0 artifact, 1 creature, 2 land) to sacrifice; `chosen`
+    /// so far (Oubliette).
+    SacrificeOfType { ty: u8, chosen: Vec<ObjId> },
+    /// `Pick` a creature card among `cards` (revealed from the top) to put onto the battlefield
+    /// with `counters` +1/+1 counters; it gains `keywords` until your next turn (Throne of the Dead
+    /// Three).
+    RevealedCreatureOnto {
+        cards: Vec<ObjId>,
+        counters: u8,
+        keywords: Keywords,
+    },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -1348,10 +1453,10 @@ pub struct Game {
     pub combat_damage_prevented_except: Option<(u32, &'static str)>,
     /// The turn each player's tokens are doubled (Kaya's −2).
     pub tokens_doubled_turn: [u32; 2],
-    /// Investigations each player did this turn: (turn, count).
     /// Protection from colors granted until end of turn: (object, its zone change count, the
     /// colors, WUBRG, the turn) (Benevolent Bodyguard, Akroma's Will).
     pub protection_grants: Vec<(ObjId, u32, [bool; 5], u32)>,
+    /// Investigations each player did this turn: (turn, count).
     pub investigated_turn: [(u32, u32); 2],
     /// The draw-step draw is happening (Alhammarret's Archive doesn't replace it).
     pub in_draw_step_draw: bool,
@@ -1376,8 +1481,25 @@ pub struct Game {
     pub upkeeps_this_turn: (u32, u8),
     /// Additional upkeep steps still to come this turn.
     pub extra_upkeeps: u8,
+    /// Each player's venture marker: their dungeon and the room it's in (CR 309.4).
+    pub venture: [Option<(Dungeon, u8)>; 2],
+    /// Dungeons each player has completed (CR 309.7).
+    pub completed_dungeons: [u8; 2],
+    /// Who has the initiative (CR 725), and the card that gave it (the source of its venture).
+    pub initiative: Option<(PlayerId, ObjId)>,
+    /// Vow counters (Promise of Loyalty): (creature, its zcc, the player it can't attack, nor
+    /// that player's planeswalkers).
+    pub vows: Vec<(ObjId, u32, PlayerId)>,
+    /// "+P/+T until your next turn": (creature, its zcc, power, toughness, the turn it ends at: the
+    /// controller's next turn in alternating turns) (Fungi Cavern).
+    pub next_turn_pt: Vec<(ObjId, u32, i32, i32, u32)>,
     /// Spells cast with escape: (card, the zone-change count it will have on the battlefield).
     pub escaped: Vec<(ObjId, u32)>,
+    /// Phased-out permanents (out of `battlefield`, still zone Battlefield), each with the player
+    /// before whose untap step it phases in.
+    pub phased_out: Vec<(ObjId, PlayerId)>,
+    /// Teferi's Protection: the turn number of each player's next turn, while their life is locked.
+    pub life_locked_until: [Option<u32>; 2],
     /// The open free-cast window allows one spell: it closes once one of [`Game::free_casts`] is
     /// cast (Rishkar's Expertise: "a spell ... from your hand").
     pub free_casts_one: bool,
@@ -1608,11 +1730,18 @@ impl Game {
             flash_casts: Vec::new(),
             evoked: Vec::new(),
             life_lost_turn: [(0, 0); 2],
+            phased_out: Vec::new(),
+            life_locked_until: [None; 2],
             protection_grants: Vec::new(),
             multicolored_cast_turn: [0; 2],
             skip_next_untap: [false; 2],
             upkeeps_this_turn: (0, 0),
             extra_upkeeps: 0,
+            venture: [None; 2],
+            completed_dungeons: [0; 2],
+            initiative: None,
+            vows: Vec::new(),
+            next_turn_pt: Vec::new(),
             escaped: Vec::new(),
             free_casts_one: false,
         }
@@ -1734,6 +1863,7 @@ impl Game {
             void_counter: false,
             chosen_card_type: None,
             enchanted_player: None,
+            type_changes: Vec::new(),
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -1823,12 +1953,18 @@ impl Game {
             t.creature = true;
         }
         if o.zone != Zone::Battlefield
-            || (o.animated.is_none() && o.eot_creature.is_none() && self.ability_loss_sources == 0)
+            || (o.animated.is_none()
+                && o.eot_creature.is_none()
+                && self.ability_loss_sources == 0
+                && o.type_changes.is_empty())
         {
-            return t;
+            return self.with_kormus_bell(id, t);
         }
         if o.animated.is_some() || self.eot_creature(id).is_some() {
             t.creature = true;
+        }
+        if self.type_changes(id).any(|c| c.artifact) {
+            t.artifact = true; // Blinkmoth Nexus, Mishra's Factory
         }
         if self.attached_static(id).is_some_and(|s| s.becomes_land) {
             t = Types {
@@ -1838,7 +1974,77 @@ impl Game {
                 ..Types::default()
             };
         }
+        self.with_kormus_bell(id, t)
+    }
+
+    /// The type changes from resolved effects that apply to `id` now (`Object::type_changes`).
+    fn type_changes(&self, id: ObjId) -> impl Iterator<Item = &TypeChange> + '_ {
+        let o = self.obj(id);
+        let turn = self.turn;
+        o.type_changes.iter().filter(move |c| {
+            o.zone == Zone::Battlefield && c.zcc == o.zcc && (c.turn == turn || c.turn == u32::MAX)
+        })
+    }
+
+    /// Adds a type change to `id` (dropping the ones that no longer apply).
+    fn add_type_change(&mut self, id: ObjId, change: TypeChange) {
+        let zcc = self.obj(id).zcc;
+        let turn = self.turn;
+        let o = self.obj_mut(id);
+        o.type_changes
+            .retain(|c| c.zcc == zcc && (c.turn == turn || c.turn == u32::MAX));
+        o.type_changes.push(TypeChange { zcc, ..change });
+    }
+
+    /// Whether a Kormus Bell with its ability is on the battlefield.
+    fn kormus_bell_on(&self) -> bool {
+        // Kormus Bell carries an empty static, so it's among the static sources.
+        self.static_sources
+            .iter()
+            .any(|&x| self.def_of(x).swamps_are_creatures && !self.lost_abilities(x))
+    }
+
+    /// Whether `id`, a land on the battlefield, is a Swamp for Kormus Bell: worked out without
+    /// `types_of` (which asks this), from its printed types, Song of the Dryads' kind of Aura, Blood
+    /// Moon, Urborg and Dryad of the Ilysian Grove.
+    fn bell_swamp(&self, id: ObjId) -> bool {
+        if self.blood_mooned(id) {
+            return false;
+        }
+        if let Some(s) = self.attached_static(id).filter(|s| s.becomes_land) {
+            return s.subtype == Some("Swamp");
+        }
+        let o = self.obj(id);
+        self.def_of(id).subtypes.iter().any(|x| x == "Swamp")
+            || o.extra_subtypes.contains(&"Swamp")
+            || o.subtype_override == Some("Swamp")
+            || self.battlefield.iter().any(|&x| {
+                self.def_of(x).lands_are_swamps && self.ability_loss(x).is_none() && !self.blood_mooned(x)
+            })
+            || self
+                .permanents(o.controller)
+                .any(|x| self.def_of(x).lands_every_basic_type && !self.lost_abilities(x))
+    }
+
+    /// Kormus Bell: "All Swamps are 1/1 black creatures that are still lands."
+    fn with_kormus_bell(&self, id: ObjId, mut t: Types) -> Types {
+        if t.land
+            && !t.creature
+            && self.obj(id).zone == Zone::Battlefield
+            && self.kormus_bell_on()
+            && self.bell_swamp(id)
+        {
+            t.creature = true;
+        }
         t
+    }
+
+    /// Whether Kormus Bell makes `id` a 1/1 black creature now.
+    fn belled(&self, id: ObjId) -> bool {
+        self.obj(id).zone == Zone::Battlefield
+            && self.kormus_bell_on()
+            && self.types_of(id).land
+            && self.bell_swamp(id)
     }
 
     /// The clone's own card, while it's a copy with that card's exceptions (`Object::copy_exceptions`).
@@ -1882,9 +2088,21 @@ impl Game {
             return [false, false, true, false, false]; // a black Zombie
         }
         let printed = self.def_of(id).colors;
+        if self.def_of(id).subsystems.split_card && self.obj(id).zone == Zone::Stack {
+            if let Some(half) = self.split_half_colors(id) {
+                return half; // CR 709.3: only the half being cast
+            }
+        }
         if self.obj(id).zone != Zone::Battlefield {
             return printed;
         }
+        // A resolved effect's colors (a manland's), else Kormus Bell's black; an Aura's set colors
+        // come after.
+        let printed = match self.type_changes(id).filter_map(|c| c.colors).last() {
+            Some(c) => c,
+            None if self.belled(id) => [false, false, true, false, false],
+            None => printed,
+        };
         self.attached_static(id)
             .and_then(|s| s.set_colors)
             .unwrap_or(printed)
@@ -1922,7 +2140,18 @@ impl Game {
     }
 
     fn lost_abilities(&self, id: ObjId) -> bool {
-        self.obj(id).zone == Zone::Battlefield && (self.ability_loss(id).is_some() || self.blood_mooned(id))
+        self.obj(id).zone == Zone::Battlefield
+            && (self.ability_loss(id).is_some()
+                || self.blood_mooned(id)
+                || self.type_changes(id).any(|c| c.lose_abilities))
+    }
+
+    /// Whether it lost its abilities only to a resolved effect (Abigale), not to an Aura or Blood
+    /// Moon: keyword counters put on it after still give their keywords (CR 613.7, 122.1b).
+    fn lost_abilities_to_effect_only(&self, id: ObjId) -> bool {
+        self.ability_loss(id).is_none()
+            && !self.blood_mooned(id)
+            && self.type_changes(id).any(|c| c.lose_abilities)
     }
 
     /// Blood Moon: a nonbasic land on the battlefield while a Blood Moon is (CR 613.1d): it's a
@@ -1973,11 +2202,24 @@ impl Game {
         if self.eot_creature(id).is_some_and(|e| e.3 == s) {
             return true;
         }
+        if self
+            .type_changes(id)
+            .any(|c| c.subtypes.contains(&s) || (c.all_creature_types && !NONCREATURE_SUBTYPES.contains(&s)))
+        {
+            return true; // a manland's types, Mirror Entity's "all creature types"
+        }
         if s == "Elemental" && self.bello_animates(id) {
             return true;
         }
-        if self.lost_abilities(id) && !self.loses_abilities_only(id) {
-            return s == "Citizen"; // Witness Protection
+        if let Some(st) = self.attached_static(id) {
+            if st.becomes_land {
+                // Imprisoned in the Moon, Song of the Dryads: no subtypes but the Aura's own
+                // (`Static::subtype`, through `statics_on`).
+                return false;
+            }
+            if st.base_pt.is_some() || st.set_colors.is_some() {
+                return s == "Citizen"; // Witness Protection
+            }
         }
         let o = self.obj(id);
         if let Some(only) = o.subtype_override {
@@ -2005,7 +2247,7 @@ impl Game {
             "Equipment",
             "Aura",
         ];
-        if self.def_of(id).changeling && !NOT_CREATURE_TYPES.contains(&s) {
+        if self.def_of(id).changeling && !NOT_CREATURE_TYPES.contains(&s) && !self.lost_abilities(id) {
             return true; // changeling: every creature type
         }
         if LAND_TYPES.contains(&s) && self.obj(id).zone == Zone::Battlefield && self.types_of(id).land {
@@ -2147,6 +2389,9 @@ impl Game {
                             Some(StaticCondition::AttachedIsColor(c)) => so
                                 .attached_to
                                 .is_some_and(|(x, z)| self.obj(x).zcc == z && self.colors_of(x)[c as usize]),
+                            Some(StaticCondition::CompletedDungeon) => {
+                                self.completed_a_dungeon(so.controller)
+                            }
                         };
                         applies && condition_ok && (!s.your_turn_only || self.active == so.controller)
                     })
@@ -2309,7 +2554,11 @@ impl Game {
 
     fn keywords_inner(&self, id: ObjId) -> Keywords {
         let printed = if self.lost_abilities(id) {
-            Keywords::NONE
+            if self.lost_abilities_to_effect_only(id) {
+                self.obj(id).keyword_counters // Abigale's counters, put on after
+            } else {
+                Keywords::NONE
+            }
         } else {
             self.def_of(id)
                 .keywords
@@ -2480,6 +2729,33 @@ impl Game {
         }
     }
 
+    /// Teferi's Protection: whether `p`'s life total can't change now.
+    fn life_locked(&self, p: PlayerId) -> bool {
+        self.life_locked_until[p].is_some_and(|t| self.turn < t)
+    }
+
+    /// Phase out `x` (and what's attached to it) until `p`'s next untap step: out of the battlefield
+    /// list without a zone change, so nothing leaves or enters (CR 702.26).
+    fn phase_out(&mut self, x: ObjId, p: PlayerId) {
+        let zcc = self.obj(x).zcc;
+        let attached: Vec<ObjId> = self
+            .battlefield
+            .iter()
+            .copied()
+            .filter(|&a| self.obj(a).attached_to == Some((x, zcc)))
+            .collect();
+        for y in std::iter::once(x).chain(attached) {
+            if let Some(pos) = self.battlefield.iter().position(|&b| b == y) {
+                self.battlefield.remove(pos);
+                self.phased_out.push((y, p));
+                if let Some(c) = self.combat.as_mut() {
+                    c.attackers.retain(|&a| a != y);
+                    c.blocks.retain(|b| b.0 != y && b.1 != y);
+                }
+            }
+        }
+    }
+
     /// Primal Surge: exile the top card; a permanent card may go onto the battlefield (and repeat).
     fn primal_surge(&mut self, p: PlayerId) {
         if let Some(&c) = self.players[p].library.last() {
@@ -2632,6 +2908,9 @@ impl Game {
     fn base_pt_set(&self, id: ObjId) -> (i32, i32) {
         let o = self.obj(id);
         let d = self.def_of(id);
+        if let Some(pt) = self.type_changes(id).filter_map(|c| c.base_pt).last() {
+            return pt; // Mirror Entity
+        }
         if let Some((_, p, t, _, _)) = self.eot_creature(id) {
             return (p, t);
         }
@@ -2640,6 +2919,9 @@ impl Game {
         }
         if let Some(pt) = o.animated {
             return pt;
+        }
+        if self.belled(id) {
+            return (1, 1); // Kormus Bell
         }
         // "During your turn, this creature has base power and toughness 5/2." (Snowmelt Stag)
         if let Some(pt) = self
@@ -2682,6 +2964,19 @@ impl Game {
             + self.obj(id).counters
             + self.modifiers(id).map(|m| m.power).sum::<i32>()
             + self.statics_on(id).map(|s| s.power).sum::<i32>()
+            + self.next_turn_pt(id).0
+    }
+
+    /// "Until your next turn" P/T changes on `id` (`Game::next_turn_pt`).
+    fn next_turn_pt(&self, id: ObjId) -> (i32, i32) {
+        if self.next_turn_pt.is_empty() {
+            return (0, 0);
+        }
+        let o = self.obj(id);
+        self.next_turn_pt
+            .iter()
+            .filter(|e| e.0 == id && e.1 == o.zcc && o.zone == Zone::Battlefield && self.turn < e.4)
+            .fold((0, 0), |(p, t), e| (p + e.2, t + e.3))
     }
 
     pub fn toughness(&self, id: ObjId) -> i32 {
@@ -2692,6 +2987,7 @@ impl Game {
             + self.obj(id).counters
             + self.modifiers(id).map(|m| m.toughness).sum::<i32>()
             + self.statics_on(id).map(|s| s.toughness).sum::<i32>()
+            + self.next_turn_pt(id).1
     }
 
     /// Taps a permanent; if it was untapped, its "whenever this becomes tapped" triggers fire.
@@ -3212,6 +3508,9 @@ impl Game {
 
     /// CR 119.3: losing life, with "whenever an opponent loses life" triggers.
     fn lose_life(&mut self, p: PlayerId, n: i32) {
+        if self.life_locked(p) {
+            return; // Teferi's Protection: "your life total can't change"
+        }
         // Bloodletter of Aclazotz: an opponent loses twice as much during your turn.
         let n = if p != self.active
             && self
@@ -3370,6 +3669,9 @@ impl Game {
 
     /// CR 119.3: gaining life, with "first time each turn" triggers.
     fn gain_life(&mut self, p: PlayerId, n: i32) {
+        if self.life_locked(p) {
+            return;
+        }
         // Alhammarret's Archive: twice that much, for each.
         let k = self
             .permanents(p)
@@ -4813,6 +5115,7 @@ impl Game {
             },
             StackKind::Offspring => offspring_ability(),
             StackKind::Activated(n) => &self.activated_of(item.source, n).ability,
+            StackKind::Room { .. } | StackKind::InitiativeVenture => self.subsystem_ability(item.kind),
         }
     }
 
@@ -5790,6 +6093,8 @@ impl Game {
             def.flashback.unwrap_or(def.cost).with_x(mode.x)
         } else if mode.mode == Some(OMEN_MODE) {
             def.omen.as_ref().expect("an Omen").cost.with_x(mode.x)
+        } else if let Some(left) = def.subsystems.left_cost {
+            left.with_x(mode.x) // a split card's left half
         } else {
             def.cost.with_x(mode.x)
         };
@@ -7461,15 +7766,22 @@ impl Game {
                 }
                 if self.lost_abilities(id) {
                     // Imprisoned in the Moon grants "{T}: Add {C}"; other ability loss leaves none.
-                    let land = self.attached_static(id).is_some_and(|s| s.becomes_land);
-                    return land.then(|| {
-                        (
-                            id,
-                            ManaSource {
-                                colorless: true,
-                                ..ManaSource::default()
-                            },
-                        )
+                    let land = self.attached_static(id).filter(|s| s.becomes_land);
+                    return land.map(|s| {
+                        // Song of the Dryads: a Forest's "{T}: Add {G}" (CR 305.6).
+                        let basic = ["Plains", "Island", "Swamp", "Mountain", "Forest"]
+                            .iter()
+                            .position(|&b| s.subtype == Some(b));
+                        match basic {
+                            Some(c) => (id, ManaSource::of(&[crate::Color::ALL[c]])),
+                            None => (
+                                id,
+                                ManaSource {
+                                    colorless: true,
+                                    ..ManaSource::default()
+                                },
+                            ),
+                        }
                     });
                 }
                 let d = self.def_of(id);
@@ -7669,7 +7981,24 @@ impl Game {
                 && !(self.def_of(id).cant_attack_twice_per_turn
                     && self.attacked_creatures_this_turn.contains(&id))
                 && (!self.def_of(id).fights_only_with_blessing || self.city_blessing[o.controller])
+                // Promise of Loyalty: a creature with a vow counter can't attack the player it vowed to.
+                && !self.vowed_against(id, opponent(p))
+                // Sphere of Safety, Ghostly Prison: it can attack only if its controller can pay the tax.
+                && self.attack_tax_payable(p)
         })
+    }
+
+    /// The defending player's attack tax on one more attacker, as a cost (0 when there's none).
+    fn attack_tax_cost(&self, p: PlayerId) -> ManaCost {
+        ManaCost {
+            generic: self.attack_tax(opponent(p)).min(u8::MAX as u32) as u8,
+            ..ManaCost::default()
+        }
+    }
+
+    fn attack_tax_payable(&self, p: PlayerId) -> bool {
+        let cost = self.attack_tax_cost(p);
+        cost.generic == 0 || self.can_pay(p, &cost, None)
     }
 
     /// Whether `blocker` may block `attacker`, ignoring menace (CR 509.1b, 702.9b, 702.17b).
@@ -8080,6 +8409,11 @@ impl Game {
             }
             (Pending::Decide(p), a) => self.decide(p, a),
             (Pending::DeclareAttackers(_), Action::Attack(c)) => {
+                // CR 508.1g: pay the attack tax (Sphere of Safety, Ghostly Prison) as it's declared.
+                let tax = self.attack_tax_cost(self.active);
+                if tax.generic > 0 {
+                    self.pay_mana(self.active, &tax, None);
+                }
                 // CR 508.1f: attacking taps the creature unless it has vigilance.
                 if !self.keywords(c).has(Keywords::VIGILANCE) {
                     self.become_tapped(c);
@@ -9293,7 +9627,8 @@ impl Game {
             }
         }
         if r.item.kind == StackKind::Spell {
-            let omen = r.item.mode == Some(OMEN_MODE);
+            // A split card's right half is cast through the Omen path but goes to the graveyard.
+            let omen = r.item.mode == Some(OMEN_MODE) && !self.def_of(source).subsystems.split_card;
             let shuffles = self.def_of(source).shuffle_on_resolve;
             if omen && self.def_of(source).adventure && self.obj(source).zone == Zone::Stack {
                 // An Adventure: exiled, and its owner may cast the card from exile later (CR 715.4).
@@ -9639,6 +9974,16 @@ impl Game {
                     SearchFor::ArtifactWithManaAbilityOrBasicLand => {
                         (d.types.basic && d.types.land) || (d.types.artifact && Game::has_mana_ability(d))
                     }
+                    SearchFor::ArtifactManaCostZeroOrOne => {
+                        let c = &d.cost;
+                        d.types.artifact
+                            && c.x == 0
+                            && c.colorless == 0
+                            && c.colored == [0; 5]
+                            && c.hybrid == [0; 10]
+                            && c.twobrid == [0; 5]
+                            && c.generic <= 1
+                    }
                 }
             })
             .collect()
@@ -9885,6 +10230,9 @@ impl Game {
             Decision::PrimalSurge { .. } | Decision::CommanderCourser { .. } => vec![Action::Yes, Action::No],
             Decision::HideawayPick { cards, .. } => cards.iter().copied().map(Action::Pick).collect(),
             Decision::KeywordCounterChoice { .. } => vec![Action::Mode(0), Action::Mode(1), Action::Mode(2)],
+            d @ (Decision::ChooseDungeon { .. } | Decision::ChooseRoom { .. }) => {
+                self.subsystem_decision_actions(d)
+            }
             Decision::DelinaAgain { .. } => vec![Action::Yes, Action::No],
             Decision::PickOneOf { cards, .. } => cards.iter().copied().map(Action::Pick).collect(),
             Decision::MayCreatureFromHand => {
@@ -10353,6 +10701,32 @@ impl Game {
             Decision::ProtectionColor { .. } => (0..5).map(Action::Mode).collect(),
             Decision::ChooseCardType { .. } => (0..7).map(Action::Mode).collect(),
             Decision::ConniveDiscard { .. } => hand.iter().copied().map(Action::Pick).collect(),
+            Decision::VowCreature { .. } => self.creatures(p).map(Action::Pick).collect(),
+            Decision::DiscardOrLoseLife { .. } => {
+                let mut v: Vec<Action> = hand.iter().copied().map(Action::Pick).collect();
+                v.push(Action::No);
+                v
+            }
+            Decision::LoseUnless { sacrifice, .. } => {
+                let mut v: Vec<Action> = self
+                    .lose_unless_options(p, *sacrifice)
+                    .into_iter()
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
+            Decision::SacrificeOfType { ty, chosen } => self
+                .sacrifice_of_type_options(p, *ty, chosen)
+                .into_iter()
+                .map(Action::Pick)
+                .collect(),
+            Decision::RevealedCreatureOnto { cards, .. } => cards
+                .iter()
+                .copied()
+                .filter(|&c| self.def_of(c).types.creature)
+                .map(Action::Pick)
+                .collect(),
             Decision::BraidsOpponent { types, .. } => {
                 let mut v: Vec<Action> = self
                     .braids_options(p, Some(*types))
@@ -11572,6 +11946,55 @@ impl Game {
                 self.lose_life(p, 2);
                 self.draw(controller);
             }
+            (d @ (Decision::ChooseDungeon { .. } | Decision::ChooseRoom { .. }), a) => {
+                self.subsystem_decide(p, d, a)
+            }
+            (
+                Decision::VowCreature {
+                    caster,
+                    mut kept,
+                    last,
+                },
+                Action::Pick(c),
+            ) => {
+                kept.push(c);
+                self.vow_after(p, caster, kept, last);
+            }
+            (Decision::DiscardOrLoseLife { left, life }, a) => {
+                match a {
+                    Action::Pick(c) => self.move_to(c, Zone::Graveyard),
+                    _ => self.lose_life(p, life),
+                }
+                self.discard_or_lose_next(p, left, life);
+            }
+            (
+                Decision::LoseUnless {
+                    life,
+                    sacrifice,
+                    next,
+                },
+                a,
+            ) => {
+                match a {
+                    Action::Pick(c) => self.move_to(c, Zone::Graveyard),
+                    _ => self.lose_life(p, life),
+                }
+                if let Some(q) = next {
+                    self.lose_unless_ask(q, life, sacrifice, None);
+                }
+            }
+            (Decision::SacrificeOfType { ty, mut chosen }, Action::Pick(c)) => {
+                chosen.push(c);
+                self.sacrifice_of_type_next(p, ty + 1, chosen);
+            }
+            (
+                Decision::RevealedCreatureOnto {
+                    counters, keywords, ..
+                },
+                Action::Pick(c),
+            ) => {
+                self.reveal_creature_onto(p, Some(c), counters, keywords);
+            }
             (d, a) => unreachable!("legal action {a:?} unhandled for {d:?}"),
         }
         if self.decision.is_none() {
@@ -11863,6 +12286,165 @@ impl Game {
         } else if nonland > 0 && self.obj(creature).zone == Zone::Battlefield {
             self.add_counters(creature, nonland as i32);
         }
+    }
+
+    /// Promise of Loyalty: `p` chooses the creature that gets a vow counter (asked only with a
+    /// choice to make), then the other player; at the end the vows go on and the rest are sacrificed.
+    fn vow_choose(&mut self, p: PlayerId, caster: PlayerId, mut kept: Vec<ObjId>, last: bool) {
+        let mine: Vec<ObjId> = self.creatures(p).collect();
+        if mine.len() > 1 {
+            self.ask(p, Decision::VowCreature { caster, kept, last });
+            return;
+        }
+        kept.extend(mine);
+        self.vow_after(p, caster, kept, last);
+    }
+
+    fn vow_after(&mut self, p: PlayerId, caster: PlayerId, kept: Vec<ObjId>, last: bool) {
+        if !last {
+            self.vow_choose(opponent(p), caster, kept, true);
+            return;
+        }
+        for &c in &kept {
+            let zcc = self.obj(c).zcc;
+            self.vows.push((c, zcc, caster));
+        }
+        let doomed: Vec<ObjId> = self
+            .battlefield
+            .iter()
+            .copied()
+            .filter(|&x| self.types_of(x).creature && !kept.contains(&x) && !self.cant_be_sacrificed(x))
+            .collect();
+        for x in doomed {
+            self.move_to(x, Zone::Graveyard);
+        }
+    }
+
+    /// Whether `id` has a vow counter that stops it attacking `defender` and `defender`'s
+    /// planeswalkers (Promise of Loyalty). For the attack legality check.
+    pub fn vowed_against(&self, id: ObjId, defender: PlayerId) -> bool {
+        let o = self.obj(id);
+        o.zone == Zone::Battlefield
+            && self
+                .vows
+                .iter()
+                .any(|&(c, zcc, q)| c == id && zcc == o.zcc && q == defender)
+    }
+
+    /// The attack tax `defender`'s permanents put on each creature attacking them or their
+    /// planeswalkers: "Creatures can't attack you unless their controller pays {N} for each" (Ghostly
+    /// Prison: 2; Sphere of Safety: the enchantments `defender` controls). For the attack legality
+    /// check and its payment.
+    pub fn attack_tax(&self, defender: PlayerId) -> u32 {
+        let enchantments = || {
+            self.permanents(defender)
+                .filter(|&x| self.types_of(x).enchantment)
+                .count() as u32
+        };
+        self.permanents(defender)
+            .filter(|&x| !self.lost_abilities(x))
+            .map(|x| {
+                let d = self.def_of(x);
+                d.attack_tax as u32
+                    + if d.attack_tax_per_enchantment {
+                        enchantments()
+                    } else {
+                        0
+                    }
+            })
+            .sum()
+    }
+
+    /// Professor Onyx's −8: the next of `left` more rounds for `p` (asked only with a card in hand).
+    fn discard_or_lose_next(&mut self, p: PlayerId, mut left: u8, life: i32) {
+        while left > 0 {
+            left -= 1;
+            if !self.players[p].hand.is_empty() {
+                self.ask(p, Decision::DiscardOrLoseLife { left, life });
+                return;
+            }
+            self.lose_life(p, life);
+        }
+    }
+
+    /// What `p` can give up instead of losing life: a card in hand, or with `sacrifice` an
+    /// artifact, creature or land they control (Veils of Fear, Sandfall Cell).
+    fn lose_unless_options(&self, p: PlayerId, sacrifice: bool) -> Vec<ObjId> {
+        if !sacrifice {
+            return self.players[p].hand.clone();
+        }
+        self.permanents(p)
+            .filter(|&x| {
+                let t = self.types_of(x);
+                (t.artifact || t.creature || t.land) && !self.cant_be_sacrificed(x)
+            })
+            .collect()
+    }
+
+    /// Asks `p` to pay or lose life (losing it at once with nothing to give up), then `next`.
+    fn lose_unless_ask(&mut self, p: PlayerId, life: i32, sacrifice: bool, next: Option<PlayerId>) {
+        if self.lose_unless_options(p, sacrifice).is_empty() {
+            self.lose_life(p, life);
+            if let Some(q) = next {
+                self.lose_unless_ask(q, life, sacrifice, None);
+            }
+            return;
+        }
+        self.ask(
+            p,
+            Decision::LoseUnless {
+                life,
+                sacrifice,
+                next,
+            },
+        );
+    }
+
+    /// Oubliette: `p`'s permanents of type `ty` (0 artifact, 1 creature, 2 land) not already chosen.
+    fn sacrifice_of_type_options(&self, p: PlayerId, ty: u8, chosen: &[ObjId]) -> Vec<ObjId> {
+        self.permanents(p)
+            .filter(|&x| {
+                let t = self.types_of(x);
+                let fits = match ty {
+                    0 => t.artifact,
+                    1 => t.creature,
+                    _ => t.land,
+                };
+                fits && !chosen.contains(&x) && !self.cant_be_sacrificed(x)
+            })
+            .collect()
+    }
+
+    /// Oubliette: choose the next type's permanent (asked only with a choice), then sacrifice them
+    /// together.
+    fn sacrifice_of_type_next(&mut self, p: PlayerId, mut ty: u8, mut chosen: Vec<ObjId>) {
+        while ty < 3 {
+            let options = self.sacrifice_of_type_options(p, ty, &chosen);
+            if options.len() > 1 {
+                self.ask(p, Decision::SacrificeOfType { ty, chosen });
+                return;
+            }
+            chosen.extend(options);
+            ty += 1;
+        }
+        for c in chosen {
+            self.move_to(c, Zone::Graveyard);
+        }
+    }
+
+    /// Throne of the Dead Three: `pick` onto the battlefield with `counters` +1/+1 counters and
+    /// `keywords` until your next turn; then shuffle.
+    fn reveal_creature_onto(&mut self, p: PlayerId, pick: Option<ObjId>, counters: u8, keywords: Keywords) {
+        if let Some(c) = pick {
+            self.move_to(c, Zone::Battlefield);
+            if self.obj(c).zone == Zone::Battlefield {
+                self.obj_mut(c).controller = p;
+                self.add_counters(c, counters as i32);
+                let zcc = self.obj(c).zcc;
+                self.until_your_next_turn.push((c, zcc, keywords, p));
+            }
+        }
+        self.shuffle_library(p);
     }
 
     /// Tainted Pact: exile the next card; stop on a repeated name or an empty library, else ask.
@@ -14094,6 +14676,31 @@ impl Game {
                         self.untap_by_effect(c);
                     }
                 }
+            }
+            Effect::PhaseOut { all } => {
+                let p = item.controller;
+                let xs: Vec<ObjId> = if all {
+                    self.permanents(p).collect()
+                } else {
+                    (0..item.targets.len() as u8)
+                        .filter_map(|n| Game::slot_object(item, legal, n))
+                        .collect()
+                };
+                for x in xs {
+                    if self.battlefield.contains(&x) {
+                        self.phase_out(x, p);
+                    }
+                }
+            }
+            Effect::LifeLockedUntilYourNextTurn => {
+                let p = item.controller;
+                // "Until your next turn": your next turn is the next one with you active.
+                let next = if self.active == p {
+                    self.turn + 2
+                } else {
+                    self.turn + 1
+                };
+                self.life_locked_until[p] = Some(next);
             }
             Effect::BecomeCopyOfSlotUntilEot(n) => {
                 if let Some(card) = Game::slot_object(item, legal, n) {
@@ -17660,12 +18267,166 @@ impl Game {
                     self.add_counters(id, n as i32);
                 }
             }
+            Effect::Subsystem(e) => self.subsystem_effect(item, legal, e),
+            Effect::BecomeCreatureUntilEotWith {
+                power,
+                toughness,
+                subtypes,
+                keywords,
+                colors,
+                artifact,
+                all_creature_types,
+            } => {
+                if self.obj(src).zone == Zone::Battlefield {
+                    let turn = self.turn;
+                    let first = subtypes.first().copied().unwrap_or("");
+                    self.obj_mut(src).eot_creature = Some((turn, power, toughness, first, keywords));
+                    // A later base power and toughness than an earlier effect's (Mirror Entity's).
+                    for c in &mut self.obj_mut(src).type_changes {
+                        c.base_pt = None;
+                    }
+                    let change = TypeChange {
+                        turn,
+                        colors,
+                        artifact,
+                        all_creature_types,
+                        subtypes,
+                        own: true,
+                        ..TypeChange::default()
+                    };
+                    self.add_type_change(src, change);
+                }
+            }
+            Effect::YourCreaturesBaseXAllTypesEot => {
+                let x = item.x as i32;
+                let turn = self.turn;
+                for c in self.creatures(item.controller).collect::<Vec<_>>() {
+                    let change = TypeChange {
+                        turn,
+                        base_pt: Some((x, x)),
+                        all_creature_types: true,
+                        ..TypeChange::default()
+                    };
+                    self.add_type_change(c, change);
+                }
+            }
+            Effect::LoseAllAbilities(slot) => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    if self.obj(id).zone == Zone::Battlefield {
+                        let change = TypeChange {
+                            turn: u32::MAX,
+                            lose_abilities: true,
+                            ..TypeChange::default()
+                        };
+                        self.add_type_change(id, change);
+                    }
+                }
+            }
+            Effect::ConniveSelf => {
+                let p = item.controller;
+                self.draw(p);
+                self.connive_next(p, src, 1, 0);
+            }
+            Effect::ReturnAllCreatureCardsAs {
+                power,
+                toughness,
+                subtype,
+                keywords,
+            } => {
+                let p = item.controller;
+                let cards: Vec<ObjId> = self.players[p]
+                    .graveyard
+                    .iter()
+                    .copied()
+                    .filter(|&c| self.def_of(c).types.creature)
+                    .collect();
+                for c in cards {
+                    self.move_to(c, Zone::Battlefield);
+                    if self.obj(c).zone == Zone::Battlefield {
+                        let o = self.obj_mut(c);
+                        o.controller = p;
+                        o.eot_creature = Some((u32::MAX, power, toughness, subtype, keywords));
+                    }
+                }
+            }
+            Effect::EachVowsOneSacrificesRest => {
+                let p = item.controller;
+                self.vow_choose(p, p, Vec::new(), false);
+            }
+            Effect::DamageAmountToAny(slot) => {
+                let target = match item.targets.get(slot as usize) {
+                    Some(&Chosen::Player(q)) => Some(Target::Player(q)),
+                    Some(&Chosen::Object(x, _)) => Some(Target::Object(x)),
+                    None => None,
+                };
+                let ok = legal.get(slot as usize).copied().unwrap_or(false);
+                if let (Some(t), true) = (target, ok) {
+                    if item.amount > 0 {
+                        self.deal_damage(src, t, item.amount);
+                    }
+                }
+            }
+            Effect::OpponentDiscardsOrLosesLife { n, life } => {
+                let q = opponent(item.controller);
+                self.discard_or_lose_next(q, n, life);
+            }
+            Effect::PumpUntilYourNextTurn {
+                slot,
+                power,
+                toughness,
+            } => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    if self.obj(id).zone == Zone::Battlefield {
+                        let zcc = self.obj(id).zcc;
+                        // Your next turn: the next one in alternating turns.
+                        let ends = self.turn + if self.active == item.controller { 2 } else { 1 };
+                        let turn = self.turn;
+                        self.next_turn_pt.retain(|e| turn < e.4);
+                        self.next_turn_pt.push((id, zcc, power, toughness, ends));
+                    }
+                }
+            }
+            Effect::EachPlayerLosesUnless { life, sacrifice } => {
+                let a = self.active;
+                self.lose_unless_ask(a, life, sacrifice, Some(opponent(a)));
+            }
+            Effect::SacrificeArtifactCreatureAndLand => {
+                self.sacrifice_of_type_next(item.controller, 0, Vec::new());
+            }
+            Effect::RevealTopCreatureOntoBattlefield {
+                n,
+                counters,
+                keywords,
+            } => {
+                let p = item.controller;
+                let lib = &self.players[p].library;
+                let cards: Vec<ObjId> = lib.iter().rev().take(n as usize).copied().collect();
+                let creatures: Vec<ObjId> = cards
+                    .iter()
+                    .copied()
+                    .filter(|&c| self.def_of(c).types.creature)
+                    .collect();
+                if creatures.len() > 1 {
+                    self.ask(
+                        p,
+                        Decision::RevealedCreatureOnto {
+                            cards,
+                            counters,
+                            keywords,
+                        },
+                    );
+                } else {
+                    self.reveal_creature_onto(p, creatures.first().copied(), counters, keywords);
+                }
+            }
         }
     }
 
     fn condition_holds(&self, ability: &Ability, controller: PlayerId, source: ObjId) -> bool {
         match &ability.condition {
             None => true,
+            Some(Condition::CompletedDungeon) => self.completed_a_dungeon(controller),
+            Some(Condition::HaveInitiative) => self.initiative.is_some_and(|(q, _)| q == controller),
             Some(Condition::Attacked) => self.attacked_this_turn[controller],
             Some(Condition::StageAtLeast(_)) => true, // checked as it triggered
             Some(Condition::ControlPowerAtLeast(n)) => {
@@ -17736,6 +18497,9 @@ impl Game {
             }
             Some(Condition::OpponentControlsCreaturesAtLeast(n)) => {
                 self.creatures(opponent(controller)).count() >= *n as usize
+            }
+            Some(Condition::AnimatedByOwnAbility) => {
+                self.eot_creature(source).is_some() && self.type_changes(source).any(|c| c.own)
             }
             Some(Condition::Both(a, b)) => {
                 let one = |c: &Condition| Ability {
@@ -18305,6 +19069,16 @@ impl Game {
         match step {
             Step::PreGame => unreachable!("the game never returns to pre-game"),
             Step::Untap => {
+                // Phasing (CR 502.1): the active player's phased-out permanents phase in first.
+                let (back, still): (Vec<_>, Vec<_>) = std::mem::take(&mut self.phased_out)
+                    .into_iter()
+                    .partition(|&(_, q)| q == a);
+                self.phased_out = still;
+                for (x, _) in back {
+                    if self.obj(x).zone == Zone::Battlefield && !self.battlefield.contains(&x) {
+                        self.battlefield.push(x);
+                    }
+                }
                 // Savor the Moment: this turn's untap step is skipped (its permanents stay tapped).
                 if std::mem::take(&mut self.skip_next_untap[a]) {
                     for id in self.permanents(a).collect::<Vec<_>>() {

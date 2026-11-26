@@ -345,3 +345,43 @@ fn necromancy_at_instant_speed_is_sacrificed_at_end_of_turn() {
         "cast when a sorcery couldn't have been"
     );
 }
+
+// ---- Phasing ----
+
+#[test]
+fn teferis_protection_phases_everything_out_and_locks_life_until_your_next_turn() {
+    let mut g = table();
+    let ghoul = put(&mut g, 0, "Hungry Ghoul");
+    let tp = hand(&mut g, 0, "Teferi's Protection");
+    play(&mut g, tp, false, &[], &[]);
+    assert_eq!(g.obj(tp).zone, Zone::Exile);
+    assert!(g.permanents(0).next().is_none(), "all phased out");
+    assert_eq!(g.obj(ghoul).zone, Zone::Battlefield, "no zone change");
+    to_main1(&mut g, 4, 1);
+    for _ in 0..3 {
+        put(&mut g, 1, "Hungry Ghoul");
+    }
+    let life = g.players[0].life;
+    let bio = hand(&mut g, 1, "Biorhythm"); // each life total becomes its creature count
+    play(&mut g, bio, false, &[], &[]);
+    assert_eq!(g.players[1].life, 3);
+    assert_eq!(g.players[0].life, life, "life can't change");
+    g.start_turn(5, 0);
+    assert!(g.permanents(0).any(|x| x == ghoul), "phased in on your untap");
+}
+
+#[test]
+fn clever_concealment_phases_out_chosen_permanents() {
+    let mut g = table();
+    let a = put(&mut g, 0, "Hungry Ghoul");
+    let b = put(&mut g, 0, "Aegis Turtle");
+    let cc = hand(&mut g, 0, "Clever Concealment");
+    act(&mut g, Action::Cast(cc));
+    act(&mut g, Action::Target(obj(a)));
+    act(&mut g, Action::No); // no more targets
+    resolve_all(&mut g, &[]);
+    assert!(!g.permanents(0).any(|x| x == a), "phased out");
+    assert!(g.permanents(0).any(|x| x == b));
+    g.start_turn(5, 0);
+    assert!(g.permanents(0).any(|x| x == a));
+}
