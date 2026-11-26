@@ -775,3 +775,10 @@ d3's effects for lane B's decks (moved 2026-11-26):
 - BLC: Cache Grab (Decision::CacheGrabPick).
 - BLC: Forgotten Ancient (Decision::MoveCounterFrom).
 - Merger: priority in cleanup (CR 514.3a): finish_cleanup gives priority when something triggered, and `Game::cleanup_again` makes another cleanup step follow.
+- PPO blockers: ChooseTarget excludes an object only within one "target" word (a run of
+  identical filters, `Game::same_word_slots`), and trigger_can_target needs as many objects as a
+  word has slots (Piercing Exhale); harmonize's affordability taps its creature first, so the X
+  offered is payable.
+- Merger: −X loyalty (`card::LOYALTY_MINUS_X`, Decision::ChooseLoyaltyX answered with Amount);
+  Ugin, the Spirit Dragon (ExileEachColoredPermanentMvAtMostX, PermanentsFromHandUpTo).
+- Shield counters (`Object::shield_counters`, replacing damage and destruction) and Shield Broker (`Game::control_while_shielded`; a commander target is skipped at resolution, since the filter can't exclude it: d3).

@@ -812,3 +812,44 @@ fn a_discard_trigger_in_cleanup_resolves_that_turn() {
     assert_eq!(g.step, Step::Cleanup);
     assert_eq!(g.players[1].life, 37);
 }
+
+#[test]
+fn one_object_can_fill_two_different_target_words() {
+    // CR 115.3: Piercing Exhale's "target creature you control" and "target creature or
+    // planeswalker" are different words, so a lone creature can be both.
+    let mut g = table();
+    let lions = put(&mut g, 0, "Savannah Lions");
+    let exhale = hand(&mut g, 0, "Piercing Exhale");
+    assert!(g.legal_actions().contains(&Action::Cast(exhale)));
+    act(&mut g, Action::Cast(exhale));
+    while matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::No); // don't behold
+    }
+    act(&mut g, Action::Target(Target::Object(lions)));
+    assert!(
+        g.legal_actions().contains(&Action::Target(Target::Object(lions))),
+        "the same creature for the second word"
+    );
+    act(&mut g, Action::Target(Target::Object(lions)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(lions).zone, Zone::Graveyard, "2 damage to itself");
+}
+
+#[test]
+fn harmonize_x_counts_the_tapped_creature_as_spent() {
+    // Nature's Rhythm's harmonize {X}{G}{G}{G}{G}, tapping Llanowar Elves (power 1): the Elves can't
+    // also make mana, so 4 Forests pay X = 1 ({1} less) but not X = 2.
+    let mut g = game(&["Forest", "Forest", "Forest", "Forest"]);
+    let elves = put(&mut g, 0, "Llanowar Elves");
+    let rhythm = g.add_card(0, cid("Nature's Rhythm"), Zone::Graveyard);
+    assert!(g.legal_actions().contains(&Action::CastHarmonize(rhythm, elves)));
+    act(&mut g, Action::CastHarmonize(rhythm, elves));
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Amount(1)), "{legal:?}");
+    assert!(
+        !legal.contains(&Action::Amount(2)),
+        "the Elves are tapped for harmonize"
+    );
+    act(&mut g, Action::Amount(1));
+    assert!(g.obj(elves).tapped);
+}

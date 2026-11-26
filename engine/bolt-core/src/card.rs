@@ -333,6 +333,10 @@ pub struct Activated {
     pub plot: bool,
 }
 
+/// A loyalty ability's cost of −X (CR 606.4, 107.3): `loyalty_abilities` uses this as the cost,
+/// and X is chosen as it's activated (`Decision::ChooseLoyaltyX`), up to the loyalty.
+pub const LOYALTY_MINUS_X: i32 = i32::MIN;
+
 /// The printed card. Shared by every copy; per-copy state lives on the game object.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct CardDef {

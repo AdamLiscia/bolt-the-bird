@@ -2264,6 +2264,15 @@ pub enum Effect {
     /// Put the creature card in graveyard `slot` onto the battlefield under your control; it gains
     /// haste, and it's exiled at the beginning of the next end step (Puppeteer Clique).
     ReanimateHasteExileAtEnd(u8),
+    /// Exile each permanent with mana value X or less that's one or more colors, X the ability's
+    /// X (Ugin, the Spirit Dragon's −X).
+    ExileEachColoredPermanentMvAtMostX,
+    /// Put up to `n` permanent cards from your hand onto the battlefield, as
+    /// `Decision::PermanentsFromHandUpTo` (Ugin, the Spirit Dragon's −10).
+    PermanentsFromHandUpTo(u8),
+    /// Put a shield counter on the creature in `slot`; you control it for as long as it has a
+    /// shield counter (Shield Broker). A commander isn't affected (its filter can't exclude it).
+    ShieldCounterAndControlWhileShielded(u8),
     /// "Exile any number of nontoken artifacts and/or creatures you control. Return those cards to
     /// the battlefield under their owner's control at the beginning of your next upkeep." (Nahiri's
     /// Resolve), one at a time as `Decision::ExileUntilYourNextUpkeep`.

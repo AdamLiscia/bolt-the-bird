@@ -2829,3 +2829,25 @@ fn forgotten_ancient_grows_and_moves_its_counters() {
     act(&mut g, Action::No);
     assert_eq!((g.obj(fa).counters, g.obj(elder).counters), (1, 1));
 }
+
+#[test]
+fn shield_broker_steals_while_the_shield_lasts() {
+    let mut g = table();
+    let ghalta = put(&mut g, 1, "Ghalta, Primal Hunger");
+    let broker = hand(&mut g, 0, "Shield Broker");
+    play(
+        &mut g,
+        broker,
+        false,
+        &[],
+        &[Action::Target(Target::Object(ghalta))],
+    );
+    assert_eq!(g.obj(ghalta).controller, 0);
+    assert_eq!(g.obj(ghalta).shield_counters, 1);
+    // Damage removes the shield instead, and control goes back.
+    let c = hand(&mut g, 0, "Calamity of Cinders");
+    play(&mut g, c, false, &[], &[]);
+    assert_eq!(g.obj(ghalta).damage, 0, "the shield took it");
+    assert_eq!(g.obj(ghalta).shield_counters, 0);
+    assert_eq!(g.obj(ghalta).controller, 1);
+}
