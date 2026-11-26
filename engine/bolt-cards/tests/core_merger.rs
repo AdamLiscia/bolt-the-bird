@@ -1012,3 +1012,65 @@ fn a_creature_cant_block_while_you_control_the_source() {
     g.objects[ring.0 as usize].controller = 1; // you no longer control it
     assert!(attack(&mut g, 7));
 }
+
+#[test]
+fn an_x_ability_targeting_mana_value_x_is_offered_only_for_that_x() {
+    // Sol Ring, given "{X}, {T}: Destroy target artifact an opponent controls with mana value X." for
+    // this test (The Mycosynth Gardens' shape): X is checked against the targets for each X.
+    let mut defs = (*set("CMD").unwrap().defs).clone();
+    let ring_def = cid("Sol Ring");
+    let n = defs[ring_def].activated.len();
+    let target = bolt_core::Filter {
+        players: false,
+        creatures: false,
+        planeswalkers: false,
+        artifacts: true,
+        mana_value_is_x: true,
+        controller: bolt_core::Controller::Opponent,
+        ..bolt_core::Filter::ANY
+    };
+    defs[ring_def].activated.push(bolt_core::Activated {
+        mana: bolt_core::ManaCost::parse("{X}").expect("cost"),
+        tap: true,
+        ability: bolt_core::Ability::new(vec![target], vec![bolt_core::Effect::Destroy(0)]),
+        ..bolt_core::Activated::default()
+    });
+    let plains = vec![cid("Plains"); 99];
+    let mut g = Game::new_commander(
+        std::sync::Arc::new(defs),
+        [&plains, &plains],
+        [cid("Bello, Bard of the Brambles"), cid("Ms. Bumbleflower")],
+        7,
+        0,
+    );
+    g.auto_pass = false;
+    for _ in 0..4 {
+        put(&mut g, 0, "Plains");
+    }
+    let ring = put(&mut g, 0, "Sol Ring");
+    let stone = put(&mut g, 1, "Mind Stone"); // mana value 2
+    g.start_turn(3, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    let offered: Vec<u8> = g
+        .legal_actions()
+        .iter()
+        .filter_map(|a| match *a {
+            Action::ActivateX { id, n: k, x, .. } if id == ring && k == n => Some(x),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(offered, vec![2]);
+    act(
+        &mut g,
+        Action::ActivateX {
+            id: ring,
+            n,
+            victim: None,
+            x: 2,
+        },
+    );
+    resolve_all(&mut g, &[Action::Target(Target::Object(stone))]);
+    assert_eq!(g.obj(stone).zone, Zone::Graveyard);
+}

@@ -862,3 +862,7 @@ Bracks (pg_b). Pieces (lane B's replacement theme, plus one condition):
 - Malik, more: Inventors' Fair (`SearchFor::Artifact`), Smaug the Magnificent
   (`Effect::SourceDamagePerSubtypeYouControl`), Mahadi (`Effect::CreateTokenPerCreatureDiedThisTurn`
   with `Game::creatures_died`, tokens included). Small d3-style pieces nobody else was on.
+- Activation listing, {X} abilities (found by lane C): targets were checked once with X = 0 before
+  the per-X loop, so a `mana_value_is_x` target (The Mycosynth Gardens) was never offered. Now an
+  {X} ability's targets are checked for each X inside the loop ("X target creatures" keeps its count
+  check and the old up-front check). Test: core_merger `an_x_ability_targeting_mana_value_x_...`.

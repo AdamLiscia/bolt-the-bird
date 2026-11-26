@@ -8395,6 +8395,7 @@ impl Game {
                         PayFor::Ability(id),
                     )
                     || (!a.sacrifice_mv_x
+                        && (a.mana.x == 0 || a.tap_x_untapped_tokens || a.ability.targets_exactly_x)
                         && !self.trigger_can_target(
                             &StackItem {
                                 kind: StackKind::Activated(n),
@@ -8491,6 +8492,16 @@ impl Game {
                                 if x as usize > legal {
                                     continue;
                                 }
+                            }
+                            // Targets that depend on X ("target ... with mana value X", The Mycosynth
+                            // Gardens) are checked for each X; "X target creatures" is counted above.
+                            let item = StackItem {
+                                kind: StackKind::Activated(n),
+                                x,
+                                ..Game::casting(id, p)
+                            };
+                            if !a.ability.targets_exactly_x && !self.trigger_can_target(&item, &a.ability) {
+                                continue;
                             }
                             if self.can_pay_for(
                                 p,
