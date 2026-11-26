@@ -1815,6 +1815,49 @@ pub fn script(name: &str) -> Option<Script> {
                 d.activated[n].less_per_legendary_creature = true;
             },
         ),
+        // ---- Core theme d3, batch 22 ----
+        "Organic Extinction" => s(&["Improvise", "Destroy all nonartifact creatures."], |d, _| {
+            d.mana_ext.improvise = true;
+            spell(d, vec![], vec![Effect::DestroyAllNonartifactCreatures]);
+        }),
+        "Camellia, the Seedmiser" => s(
+            &[
+                "Other Squirrels you control have menace.",
+                "Whenever you sacrifice one or more Foods, create a 1/1 green Squirrel creature token.",
+                "{2}, Forage: Put a +1/+1 counter on each other Squirrel you control.",
+            ],
+            |d, t| {
+                d.keywords = d.keywords.with(Keywords::MENACE);
+                d.statics.push(Static {
+                    scope: Scope::OtherYourSubtype("Squirrel"),
+                    keywords: Keywords::MENACE,
+                    ..neutral_static()
+                });
+                let squirrel = Effect::CreateToken { who: Who::You, def: t.squirrel, n: 1 };
+                on(d, When::YouSacrificeOneOrMoreSubtype("Food"), vec![], vec![squirrel]);
+                let n = activated(d, "{2}", false, vec![], vec![Effect::CountersOnOtherYourSubtype("Squirrel")]);
+                d.activated[n].forage = true;
+            },
+        ),
+        "Dig Through Time" => s(
+            &[
+                "Delve",
+                "Look at the top seven cards of your library. Put two of them into your hand and the rest on the bottom of your library in any order.",
+            ],
+            |d, _| {
+                d.mana_ext.delve = true;
+                spell(d, vec![], vec![Effect::LookTakeTwoBottomAnyOrder(7)]);
+            },
+        ),
+        "Moria Scavenger" => s(
+            &["{T}, Discard a card: Draw a card. If the discarded card was a creature card, amass Orcs 1."],
+            |d, t| {
+                let amass = Effect::Amass { subtype: "Orc", n: 1, def: t.orc_army };
+                let n = activated(d, "", true, vec![], vec![draw(1), Effect::StopUnlessExtraIsCreatureCard, amass]);
+                d.activated[n].discard_any_card = true;
+                d.activated[n].victim_in_extra = true;
+            },
+        ),
         _ => None,
     }
 }
@@ -2064,4 +2107,9 @@ pub const PG_D3_SCRIPTED: &[&str] = &[
     "Canopy Gargantuan",
     "Vampire Hexmage",
     "Takenuma, Abandoned Mire",
+    // Core theme d3, batch 22
+    "Organic Extinction",
+    "Camellia, the Seedmiser",
+    "Dig Through Time",
+    "Moria Scavenger",
 ];

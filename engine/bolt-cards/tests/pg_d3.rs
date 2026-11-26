@@ -3975,3 +3975,88 @@ fn takenuma_mills_three_then_returns_a_creature_card() {
     resolve_all(&mut g, &[Action::Pick(angel)]);
     assert_eq!((g.obj(angel).zone, g.obj(t).zone), (Zone::Hand, Zone::Graveyard));
 }
+
+// ---- Core theme d3, batch 22 ----
+
+#[test]
+fn organic_extinction_destroys_only_nonartifact_creatures() {
+    let mut g = table();
+    let elves = put(&mut g, 0, "Llanowar Elves");
+    let angel = put(&mut g, 1, "Serra Angel");
+    let thopter = put(&mut g, 1, "Ornithopter");
+    let c = hand(&mut g, 0, "Organic Extinction");
+    assert!(g.def_of(c).mana_ext.improvise);
+    act(&mut g, Action::Cast(c));
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        (g.obj(elves).zone, g.obj(angel).zone, g.obj(thopter).zone),
+        (Zone::Graveyard, Zone::Graveyard, Zone::Battlefield)
+    );
+}
+
+#[test]
+fn camellia_makes_squirrels_from_foods_and_forages_counters_onto_them() {
+    let mut g = table();
+    let cam = put(&mut g, 0, "Camellia, the Seedmiser");
+    let food = (0..g.defs.len())
+        .find(|&i| g.defs[i].token && g.defs[i].name == "Food")
+        .expect("Food");
+    let meal = g.add_card(0, food, Zone::Battlefield);
+    act(&mut g, Action::Activate(cam, 0));
+    resolve_all(&mut g, &[]);
+    assert_ne!(g.obj(meal).zone, Zone::Battlefield, "foraged the Food");
+    let squirrels = tokens(&g, 0, "Squirrel");
+    assert_eq!(squirrels.len(), 1, "the Food sacrifice made a Squirrel");
+    let sq = squirrels[0];
+    assert!(
+        g.keywords(sq).has(Keywords::MENACE),
+        "other Squirrels have menace"
+    );
+    for _ in 0..3 {
+        g.add_card(0, cid("Opt"), Zone::Graveyard);
+    }
+    act(&mut g, Action::Activate(cam, 0));
+    resolve_all(&mut g, &[]);
+    // The Squirrel trigger resolved before the first ability, so it got a counter then too.
+    assert_eq!((g.obj(sq).counters, g.obj(cam).counters), (2, 0));
+}
+
+#[test]
+fn dig_through_time_delves_and_takes_two_of_seven() {
+    let mut g = table();
+    let top: Vec<ObjId> = (0..7).map(|_| g.add_card(0, cid("Opt"), Zone::Library)).collect();
+    let gy: Vec<ObjId> = (0..6)
+        .map(|_| g.add_card(0, cid("Forest"), Zone::Graveyard))
+        .collect();
+    let c = hand(&mut g, 0, "Dig Through Time");
+    let lib = g.players[0].library.len();
+    act(&mut g, Action::Cast(c));
+    if let Pending::Decide(_) = g.pending {
+        act(&mut g, Action::Amount(6));
+    }
+    assert!(gy.iter().all(|&x| g.obj(x).zone == Zone::Exile), "delved six");
+    let picks: Vec<Action> = [0, 3, 1, 2, 4, 5].iter().map(|&i| Action::Pick(top[i])).collect();
+    resolve_all(&mut g, &picks);
+    assert_eq!((g.obj(top[0]).zone, g.obj(top[3]).zone), (Zone::Hand, Zone::Hand));
+    assert_eq!(g.players[0].library.len(), lib - 2);
+    assert_eq!(g.obj(c).zone, Zone::Graveyard);
+}
+
+#[test]
+fn moria_scavenger_amasses_only_for_a_discarded_creature_card() {
+    let mut g = table();
+    let m = put(&mut g, 0, "Moria Scavenger");
+    let opt = hand(&mut g, 0, "Opt");
+    let h = g.players[0].hand.len();
+    act(&mut g, Action::ActivateWith(m, 0, opt));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].hand.len(), h, "discarded one, drew one");
+    assert!(tokens(&g, 0, "Orc Army").is_empty(), "not a creature card");
+    g.objects[m.0 as usize].tapped = false;
+    let elves = hand(&mut g, 0, "Llanowar Elves");
+    act(&mut g, Action::ActivateWith(m, 0, elves));
+    resolve_all(&mut g, &[]);
+    let army = tokens(&g, 0, "Orc Army");
+    assert_eq!(army.len(), 1);
+    assert_eq!(g.obj(army[0]).counters, 1);
+}

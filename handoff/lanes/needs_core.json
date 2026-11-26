@@ -170,7 +170,7 @@
   {
    "card": "Camellia, the Seedmiser",
    "deck": "Ygra, Eater of All",
-   "missing": "a 'whenever you sacrifice one or more Foods' trigger; forage as a cost [d3 batch 20: Effect::CountersOnOtherYourSubtype(Squirrel) is in; waits on d1's forage]",
+   "missing": "a 'whenever you sacrifice one or more Foods' trigger; forage as a cost [d3 batch 20: Effect::CountersOnOtherYourSubtype(Squirrel) is in; waits on d1's forage] [done by d3 batch 22: d1's forage, When::YouSacrificeOneOrMoreSubtype(Food), CountersOnOtherYourSubtype]",
    "lane": "d1",
    "theme": "mana",
    "owner": "d1"
@@ -450,7 +450,7 @@
   {
    "card": "Comet Storm",
    "deck": "Raggadragga, Goreguts Boss",
-   "missing": "multikicker [d3: blocked on d1's multikicker; a target slot per kick needs the kick count d1 stores, then d3 adds the Filter]",
+   "missing": "multikicker [d3: blocked on d1's multikicker; a target slot per kick needs the kick count d1 stores, then d3 adds the Filter] [d3 batch 22: still blocked: d1's multikicker is offered only when the cost has no X (cost.x == 0); an X spell with multikicker needs d1, then d3 adds a target slot per kick]",
    "lane": "d1",
    "theme": "mana",
    "owner": "d1"
@@ -978,7 +978,7 @@
   {
    "card": "Dig Through Time",
    "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
-   "missing": "delve",
+   "missing": "delve [done by d3 batch 22: Effect::LookTakeTwoBottomAnyOrder(7) with d1's delve]",
    "lane": "d1",
    "theme": "mana",
    "owner": "d1"
@@ -1754,7 +1754,7 @@
   {
    "card": "The Immortal Sun",
    "deck": "The Gitrog, Ravenous Ride (RuricMo)",
-   "missing": "needs core: stop loyalty abilities, an extra draw, and a discount on all spells you cast",
+   "missing": "needs core: stop loyalty abilities, an extra draw, and a discount on all spells you cast [d3 batch 22: the discount (spell_discount_all) and the rest exist; needs the merger: a players-cant-activate-loyalty check in the loyalty loop of legal actions]",
    "lane": "d2",
    "theme": "effects",
    "owner": "d3"
@@ -2042,7 +2042,7 @@
   {
    "card": "Waves of Aggression",
    "deck": "Kaalia of the Vast",
-   "missing": "needs core: untap all creatures that attacked this turn, and retrace",
+   "missing": "needs core: untap all creatures that attacked this turn, and retrace [d3 batch 22: the effects exist (UntapCreaturesAttackedThisTurn, AdditionalCombatAndMain, as Relentless Assault); needs d1: retrace]",
    "lane": "d2",
    "theme": "effects",
    "owner": "d3"
@@ -5402,7 +5402,7 @@
   {
    "card": "Fisher's Talent",
    "deck": "Bloomburrow Commander (BLC)",
-   "missing": "BLC (lane B's routing, 2026-11-26)",
+   "missing": "BLC (lane B's routing, 2026-11-26) [d3 batch 23: the level 1 Fish is Effect::CreateTokenIfTopIsLandThenDraw { def } (always reveals a land); the Fish/Shark/Octopus tokens and replacements are lane B's, then the card can be scripted]",
    "lane": "mac-b",
    "theme": "subsystems",
    "owner": "d4"
@@ -5418,7 +5418,7 @@
   {
    "card": "Gourmand's Talent",
    "deck": "Bloomburrow Commander (BLC)",
-   "missing": "BLC (lane B's routing, 2026-11-26)",
+   "missing": "BLC (lane B's routing, 2026-11-26) [d3: next: during your turn artifacts you control are Foods with the Food ability (a type grant plus a granted activated ability), not started]",
    "lane": "mac-b",
    "theme": "subsystems",
    "owner": "d4"
@@ -6250,7 +6250,7 @@
   {
    "card": "Moria Scavenger",
    "deck": "Olivia, Crimson Bride (DonSpider)",
-   "missing": "lane C's routing (2026-11-26)",
+   "missing": "lane C's routing (2026-11-26) [done by d3 batch 22: Effect::StopUnlessExtraIsCreatureCard on the discard cost]",
    "lane": "mac-c",
    "theme": "objects_zones",
    "owner": "mac-c"

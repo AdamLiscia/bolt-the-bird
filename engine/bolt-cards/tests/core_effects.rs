@@ -2917,3 +2917,95 @@ fn return_a_creature_or_planeswalker_card_from_your_graveyard() {
     resolve_all(&mut g, &[Action::Pick(elves)]);
     assert_eq!(g.obj(elves).zone, Zone::Hand);
 }
+
+// ---- batch 22 ----
+
+#[test]
+fn class_level_static_condition_applies_from_that_level() {
+    let mut class = CardDef::creature("Test Class", "{1}", 1, 1, Keywords::NONE);
+    class.statics.push(Static {
+        condition: Some(bolt_core::effect::StaticCondition::ClassLevelAtLeast(2)),
+        ..static_of(Scope::This, 1, 1, Keywords::NONE)
+    });
+    let (mut g, t) = game_with(vec![class]);
+    let c = g.add_card(0, t, Zone::Battlefield);
+    assert_eq!(g.power(c), 1, "level 1");
+    g.objects[c.0 as usize].class_level = 2;
+    assert_eq!((g.power(c), g.toughness(c)), (2, 2), "level 2");
+    g.objects[c.0 as usize].class_level = 3;
+    assert_eq!(g.power(c), 2, "level 3 is at least 2");
+}
+
+#[test]
+fn stop_unless_the_discarded_card_was_a_creature_card() {
+    let mut looter = CardDef::creature("Test Looter", "{1}", 1, 1, Keywords::NONE);
+    looter.activated.push(bolt_core::card::Activated {
+        mana: ManaCost::parse("{0}").unwrap(),
+        discard_any_card: true,
+        victim_in_extra: true,
+        ability: Ability::new(
+            vec![],
+            vec![
+                Effect::StopUnlessExtraIsCreatureCard,
+                Effect::Draw { who: Who::You, n: 1 },
+            ],
+        ),
+        ..bolt_core::card::Activated::default()
+    });
+    let (mut g, t) = game_with(vec![looter]);
+    let l = g.add_card(0, t, Zone::Battlefield);
+    let opt = g.add_card(0, cid("Opt"), Zone::Hand);
+    let h = g.players[0].hand.len();
+    act(&mut g, Action::ActivateWith(l, 0, opt));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].hand.len(), h - 1, "an instant: stopped");
+    let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Hand);
+    act(&mut g, Action::ActivateWith(l, 0, elves));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].hand.len(), h, "a creature card: drew");
+}
+
+// ---- batch 23 ----
+
+#[test]
+fn a_token_if_the_top_card_is_a_land_then_draw() {
+    // The token definitions are the pool's, so a probe game finds the index.
+    let elemental = token_def(&game_with(vec![]).0, "Elemental");
+    let fish = sorcery(
+        vec![],
+        vec![Effect::CreateTokenIfTopIsLandThenDraw { def: elemental }],
+    );
+    let (mut g, t) = game_with(vec![fish]);
+    let made = |g: &Game| count(g, 0, |g, x| g.is_token(x) && g.def_of(x).name == "Elemental");
+    let forest = g.add_card(0, cid("Forest"), Zone::Library);
+    cast_test(&mut g, t, &[], &[]);
+    assert_eq!(
+        (made(&g), g.obj(forest).zone),
+        (1, Zone::Hand),
+        "a land: the token, then drew it"
+    );
+    let opt = g.add_card(0, cid("Opt"), Zone::Library);
+    cast_test(&mut g, t, &[], &[]);
+    assert_eq!(
+        (made(&g), g.obj(opt).zone),
+        (1, Zone::Hand),
+        "not a land: no token, still drew"
+    );
+}
+
+// ---- batch 24 ----
+
+#[test]
+fn tapped_only_filter_takes_only_tapped_permanents() {
+    let (mut g, _) = game_with(vec![]);
+    let tapped = g.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
+    let untapped = g.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
+    g.objects[tapped.0 as usize].tapped = true;
+    let f = Filter {
+        tapped_only: true,
+        ..Filter::CREATURE
+    };
+    assert!(g.target_ok(&f, 0, obj(tapped)));
+    assert!(!g.target_ok(&f, 0, obj(untapped)));
+    assert!(g.target_ok(&Filter::CREATURE, 0, obj(untapped)), "off by default");
+}
