@@ -6769,7 +6769,13 @@
 "layout": "split",
 "loyalty": null,
 "produced_mana": null,
-"collector_number": "147"
+"collector_number": "147",
+"split": {
+"name": "Memory",
+"mana_cost": "{4}{U}{U}",
+"type_line": "Sorcery",
+"oracle_text": "Aftermath (Cast this spell only from your graveyard. Then exile it.)\nEach player shuffles their hand and graveyard into their library, then draws seven cards."
+}
 },
 {
 "name": "Compleated Huntmaster",
@@ -40960,7 +40966,13 @@
 "layout": "split",
 "loyalty": null,
 "produced_mana": null,
-"collector_number": "205"
+"collector_number": "205",
+"split": {
+"name": "Forgotten Cellar",
+"mana_cost": "{3}{G}{G}",
+"type_line": "Enchantment \u2014 Room",
+"oracle_text": "When you unlock this door, you may cast spells from your graveyard this turn, and if a card would be put into your graveyard from anywhere this turn, exile it instead.\n(You may cast either half. That door unlocks on the battlefield. As a sorcery, you may pay the mana cost of a locked door to unlock it.)"
+}
 },
 {
 "name": "Walking Ballista",

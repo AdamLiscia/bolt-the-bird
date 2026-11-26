@@ -2665,7 +2665,7 @@ fn storm_kiln_artist_makes_treasure_and_grows_with_artifacts() {
 }
 
 #[test]
-fn misdirection_pitches_and_redirects_and_mana_confluence() {
+fn misdirection_pitches_and_redirects() {
     let mut g = table();
     let mine = put(&mut g, 0, "Savannah Lions");
     let theirs = put(&mut g, 1, "Llanowar Elves");
@@ -2683,4 +2683,15 @@ fn misdirection_pitches_and_redirects_and_mana_confluence() {
     assert_eq!(g.obj(theirs).zone, Zone::Graveyard);
     assert_eq!(g.obj(mine).zone, Zone::Battlefield);
     // Mana Confluence is desktop lane d1's (a mana source paid with life; tests/pg_d1.rs).
+}
+
+#[test]
+fn young_pyromancer_makes_elementals() {
+    let mut g = table();
+    put(&mut g, 0, "Young Pyromancer");
+    let consider = hand(&mut g, 0, "Consider");
+    play(&mut g, consider, false, &[], &[Action::No]);
+    let e = tokens(&g, 0, "Elemental");
+    assert_eq!(e.len(), 1);
+    assert_eq!((g.power(e[0]), g.toughness(e[0])), (1, 1));
 }

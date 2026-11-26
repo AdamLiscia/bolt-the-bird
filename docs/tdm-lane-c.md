@@ -654,3 +654,8 @@ Damia, Sage of Stone (Grande): its last three, All Suns' Dawn, Chain of Smog, Ki
 targeted, Kira's trigger counters that spell or ability via `Effect::CounterExtra`), `Effect::{OneCardOfEachColorToHand,
 ChainCopy}`, `Decision::{CardOfColorToHand, ChainCopy}`. All Suns' Dawn picks its cards as it resolves (one per color);
 Chain of Smog's copy is a `SpellCopy` controlled by the target player with the player they choose as its target.
+
+Objects and zones batch 5: populate (Trostani, Selesnya's Voice) and imprint/copy-cast (Isochron Scepter). Core:
+`Effect::{Populate, GainLifeEqualSlotToughness, ImprintInstantFromHand, CastImprintedCopy}`,
+`Decision::{Populate, ImprintInstant}`, `Game::populate_copy`. The imprinted card is linked through
+`Object::hideaway`; a copy is cast through the free-cast window (`card_copy`, `cast_free`).

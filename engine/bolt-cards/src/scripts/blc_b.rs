@@ -1108,6 +1108,56 @@ pub fn script(name: &str) -> Option<Script> {
             &["Enchantment spells you cast from your hand have cascade."],
             |d, _| on(d, When::YouCastEnchantmentFromHand, vec![], vec![Effect::Cascade]),
         ),
+        "Casualties of War" => s(
+            &[
+                "Choose one or more —",
+                "• Destroy target artifact.",
+                "• Destroy target creature.",
+                "• Destroy target enchantment.",
+                "• Destroy target land.",
+                "• Destroy target planeswalker.",
+            ],
+            |d, _| {
+                // Every nonempty set of the five modes, as one mode each (bit i: mode i), as Farewell (d3).
+                let none = Filter { players: false, creatures: false, planeswalkers: false, ..Filter::ANY };
+                let kinds = [
+                    ARTIFACT,
+                    CREATURE,
+                    Filter { enchantments: true, ..none },
+                    Filter { lands: true, ..none },
+                    Filter { planeswalkers: true, ..none },
+                ];
+                let sets = (1u32..32).map(|m| {
+                    let chosen: Vec<Filter> = (0..5).filter(|i| m & (1 << i) != 0).map(|i| kinds[i]).collect();
+                    let effects = (0..chosen.len() as u8).map(Effect::Destroy).collect();
+                    Ability::new(chosen, effects)
+                });
+                modes(d, sets.collect());
+            },
+        ),
+        "Esika's Chariot" => s(
+            &[
+                "When Esika's Chariot enters, create two 2/2 green Cat creature tokens.",
+                "Whenever Esika's Chariot attacks, create a token that's a copy of target token you control.",
+                "Crew 4",
+            ],
+            |d, t| {
+                on(d, When::Enters, vec![], vec![Effect::CreateToken { who: Who::You, def: t.cat_2, n: 2 }]);
+                let token = Filter {
+                    players: false,
+                    creatures: false,
+                    planeswalkers: false,
+                    any_permanent: true,
+                    tokens_only: true,
+                    controller: Controller::You,
+                    ..Filter::ANY
+                };
+                let copy = Effect::CopyToken { slot: Some(0), haste_and_sacrifice: false, extra_subtype: None };
+                on(d, When::Attacks, vec![token], vec![copy]);
+                let n = activated(d, "", false, vec![], vec![Effect::CrewedSelf]);
+                d.activated[n].crew = 4;
+            },
+        ),
         _ => None,
     }
 }
@@ -1259,4 +1309,6 @@ pub const BLC_B_SCRIPTED: &[&str] = &[
     "Helm of the Host",
     "Tempt with Discovery",
     "Wildsear, Scouring Maw",
+    "Casualties of War",
+    "Esika's Chariot",
 ];

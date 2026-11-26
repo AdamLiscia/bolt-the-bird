@@ -1193,6 +1193,14 @@ pub enum Decision {
     CardOfColorToHand { color: u8 },
     /// Chain of Smog: `Mode(t)` copies `source` targeting player `t`, `No` doesn't.
     ChainCopy { source: ObjId },
+    /// `Pick` a tapped creature you control to untap (White Plume Adventurer: "untap a creature
+    /// you control").
+    UntapOwnCreature,
+    /// Populate: `Pick` the creature token to copy.
+    Populate,
+    /// Imprint: `Pick` an instant card with mana value 2 or less in your hand to exile for `source`,
+    /// or `No`.
+    ImprintInstant { source: ObjId },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -1537,8 +1545,16 @@ pub struct Game {
     pub creature_cards_to_graveyard_pending: [bool; 2],
     /// Whether each player has cast a spell this game (Once Upon a Time).
     pub cast_a_spell_this_game: [bool; 2],
+    /// Glimpse the Impossible's exiled cards: (card, its zcc in exile, the player, the token def,
+    /// the first turn whose end step handles it).
+    pub exiled_until_end: Vec<(ObjId, u32, PlayerId, usize, u32)>,
+    /// Modes chosen this turn for a `modes_once_each_turn` trigger: (source, turn, mode).
+    pub modes_chosen: Vec<(ObjId, u32, u8)>,
     /// The turn each player last cast a non-Lemur creature spell with flying (Momo).
     pub flier_cast_turn: [u32; 2],
+    /// Saga chapter grants that have resolved: (Saga, its zcc, chapter) (Urza's Saga; see
+    /// `SubsystemExt::chapter_activated`).
+    pub chapter_grants: Vec<(ObjId, u32, u8)>,
     /// Creature spells paid for with Hall of the Bandit Lord's mana, as (object, the zone-change
     /// count it will have on the battlefield): each gains haste as it enters.
     pub haste_from_mana: Vec<(ObjId, u32)>,
@@ -1786,9 +1802,22 @@ impl Game {
             entered_pending: Vec::new(),
             creature_cards_to_graveyard_pending: [false; 2],
             cast_a_spell_this_game: [false; 2],
+            exiled_until_end: Vec::new(),
+            modes_chosen: Vec::new(),
             flier_cast_turn: [0; 2],
+            chapter_grants: Vec::new(),
             haste_from_mana: Vec::new(),
         }
+    }
+
+    /// Monument to Endurance: whether `source`'s once-each-turn modal trigger has used mode `m`
+    /// this turn (always false for other cards).
+    fn mode_chosen_this_turn(&self, source: ObjId, m: u8) -> bool {
+        self.def_of(source).modes_once_each_turn
+            && self
+                .modes_chosen
+                .iter()
+                .any(|&(s, t, k)| s == source && t == self.turn && k == m)
     }
 
     /// Creates a card owned by `owner` in `zone`. Library cards go on top. Permanents created on the
@@ -2808,6 +2837,15 @@ impl Game {
                     c.blocks.retain(|b| b.0 != y && b.1 != y);
                 }
             }
+        }
+    }
+
+    /// Populate: a token copy of the creature token `of` (CR 701.31, 707.2).
+    fn populate_copy(&mut self, p: PlayerId, of: ObjId) {
+        let def = self.obj(of).def;
+        self.create_token(p, def);
+        for id in self.last_created.clone() {
+            self.obj_mut(id).copy_token = true;
         }
     }
 
@@ -5808,6 +5846,9 @@ impl Game {
             if def.cast_only_during_your_combat && !(p == self.active && in_combat) {
                 continue; // Savage Beating
             }
+            if def.cast_only_during_your_end_step && !(p == self.active && self.step == Step::End) {
+                continue; // Necrologia
+            }
             // An X spell's targets can depend on X (Stolen by the Fae), and a kicked spell can have
             // its own targets (Tear Asunder): those are checked per way of casting below.
             let per_mode = def.cost.x > 0 || def.kicked_spell.is_some();
@@ -7511,6 +7552,10 @@ impl Game {
                     || (a.your_turn_only && p != self.active)
                     || (a.not_your_turn_only && p == self.active)
                     || (a.needs_delirium && self.graveyard_card_types(p) < 4)
+                    || (a.needs_threshold && self.players[p].graveyard.len() < 7)
+                    || (a.min_attackers_this_turn > 0
+                        && !(p == self.active
+                            && self.attacked_creatures_this_turn.len() >= a.min_attackers_this_turn as usize))
                     || (a.if_card_left_graveyard && !self.graveyard_left_this_turn[p])
                     || (a.if_created_token_this_turn && self.token_created_turn[p] != self.turn)
                     || self.players[p].life < a.life
@@ -10854,6 +10899,7 @@ impl Game {
             d @ (Decision::ChooseDungeon { .. } | Decision::ChooseRoom { .. }) => {
                 self.subsystem_decision_actions(d)
             }
+            Decision::UntapOwnCreature => self.untap_own_creature_options(p),
             Decision::DelinaAgain { .. } => vec![Action::Yes, Action::No],
             Decision::PickOneOf { cards, .. } => cards.iter().copied().map(Action::Pick).collect(),
             Decision::MayCreatureFromHand => {
@@ -10878,6 +10924,24 @@ impl Game {
                 v
             }
             Decision::ChainCopy { .. } => vec![Action::Mode(0), Action::Mode(1), Action::No],
+            Decision::Populate => self
+                .creatures(p)
+                .filter(|&c| self.is_token(c))
+                .map(Action::Pick)
+                .collect(),
+            Decision::ImprintInstant { .. } => {
+                let mut v: Vec<Action> = hand
+                    .iter()
+                    .copied()
+                    .filter(|&x| {
+                        let d = self.def_of(x);
+                        d.types.instant && d.cost.mana_value() <= 2
+                    })
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
             Decision::LandFromHand => {
                 let mut v: Vec<Action> = hand
                     .iter()
@@ -11053,6 +11117,7 @@ impl Game {
                 let modes = &self.def_of(item.source).triggers[n].ability.modes;
                 (0..modes.len())
                     .filter(|&m| self.trigger_can_target(item, &modes[m]))
+                    .filter(|&m| !self.mode_chosen_this_turn(item.source, m as u8))
                     .map(|m| Action::Mode(m as u8))
                     .collect()
             }
@@ -11560,6 +11625,11 @@ impl Game {
         if let (Decision::ChooseMode, Action::Mode(m)) = (&d, a) {
             let (mut item, then) = self.mode_pending.take().expect("a modal trigger");
             item.mode = Some(m);
+            if self.def_of(item.source).modes_once_each_turn {
+                let turn = self.turn;
+                self.modes_chosen.retain(|e| e.1 == turn);
+                self.modes_chosen.push((item.source, turn, m));
+            }
             self.triggered.insert(0, item);
             self.triggered_scanned += 1; // already looked at by Roaming Throne
             self.give_priority(then);
@@ -12207,6 +12277,12 @@ impl Game {
             (Decision::ScrollRackExile { exiled }, Action::No) => self.scroll_rack_finish(p, exiled),
             (Decision::LandFromHand, Action::Pick(c)) => self.move_to(c, Zone::Battlefield),
             (Decision::LandFromHand, Action::No) => {}
+            (Decision::ImprintInstant { source }, Action::Pick(c)) => {
+                self.move_to(c, Zone::Exile);
+                self.obj_mut(source).hideaway = Some(c); // the linked exiled card
+            }
+            (Decision::ImprintInstant { .. }, Action::No) => {}
+            (Decision::Populate, Action::Pick(c)) => self.populate_copy(p, c),
             (Decision::CardOfColorToHand { color }, choice) => {
                 if let Action::Pick(c) = choice {
                     self.move_to(c, Zone::Hand);
@@ -12627,6 +12703,7 @@ impl Game {
             (d @ (Decision::ChooseDungeon { .. } | Decision::ChooseRoom { .. }), a) => {
                 self.subsystem_decide(p, d, a)
             }
+            (d @ Decision::UntapOwnCreature, a) => self.subsystem_decide(p, d, a),
             (
                 Decision::VowCreature {
                     caster,
@@ -15470,6 +15547,63 @@ impl Game {
                     .copied()
                 {
                     self.ask(q, Decision::ChainCopy { source: src });
+                }
+            }
+            Effect::ExileTopToPlayThenGraveyardTokens { n, def } => {
+                let p = item.controller;
+                let turn = self.turn;
+                // "The next end step": this turn's, unless it has already begun.
+                let at = if self.step == Step::End { turn + 1 } else { turn };
+                for _ in 0..n {
+                    if let Some(&c) = self.players[p].library.last() {
+                        self.move_to(c, Zone::Exile);
+                        self.obj_mut(c).playable = Some((p, turn));
+                        let zcc = self.obj(c).zcc;
+                        self.exiled_until_end.push((c, zcc, p, def, at));
+                    }
+                }
+            }
+            Effect::ImprintInstantFromHand => {
+                let p = item.controller;
+                let any = self.players[p].hand.iter().any(|&x| {
+                    let d = self.def_of(x);
+                    d.types.instant && d.cost.mana_value() <= 2
+                });
+                if any && self.obj(src).zone == Zone::Battlefield {
+                    self.ask(p, Decision::ImprintInstant { source: src });
+                }
+            }
+            Effect::CastImprintedCopy => {
+                if let Some(card) = self
+                    .obj(src)
+                    .hideaway
+                    .filter(|&c| self.obj(c).zone == Zone::Exile)
+                {
+                    let p = item.controller;
+                    let def = self.obj(card).def;
+                    let copy = self.add_card(p, def, Zone::Exile);
+                    let o = self.obj_mut(copy);
+                    o.card_copy = true;
+                    o.cast_free = true;
+                    self.free_casts.push(copy);
+                    self.free_caster = p;
+                }
+            }
+            Effect::Populate => {
+                let p = item.controller;
+                let toks: Vec<ObjId> = self.creatures(p).filter(|&c| self.is_token(c)).collect();
+                match toks.len() {
+                    0 => {}
+                    1 => self.populate_copy(p, toks[0]),
+                    _ => self.ask(p, Decision::Populate),
+                }
+            }
+            Effect::GainLifeEqualSlotToughness(n) => {
+                if let Some(c) = Game::slot_object(item, legal, n) {
+                    let t = self.toughness(c).max(0);
+                    if t > 0 {
+                        self.gain_life(item.controller, t);
+                    }
                 }
             }
             Effect::BecomeCopyOfSlotUntilEot(n) => {
@@ -18580,16 +18714,6 @@ impl Game {
                     }
                 }
             }
-            Effect::DrawPerColoredCreatureYouControl(color) => {
-                let p = item.controller;
-                let n = self
-                    .creatures(p)
-                    .filter(|&x| self.colors_of(x)[color as usize])
-                    .count();
-                for _ in 0..n {
-                    self.draw(p);
-                }
-            }
             Effect::RegenerateEachCreatureYouControl => {
                 let turn = self.turn;
                 for id in self.creatures(item.controller).collect::<Vec<_>>() {
@@ -19893,7 +20017,10 @@ impl Game {
             }
             if item.mode.is_none() && !ability.modes.is_empty() {
                 // CR 700.2b: the mode is chosen as the trigger goes on the stack.
-                let any = ability.modes.iter().any(|m| self.trigger_can_target(&item, m));
+                let any = (0..ability.modes.len()).any(|m| {
+                    self.trigger_can_target(&item, &ability.modes[m])
+                        && !self.mode_chosen_this_turn(item.source, m as u8)
+                });
                 if any {
                     self.events.push(Event::Triggered { source: item.source });
                     let who = item.controller;
@@ -20113,8 +20240,24 @@ impl Game {
                     .any(|x| self.def_of(x).keeps_green_mana && !self.lost_abilities(x))
             })
             .collect();
+        // Kruphix, Horizon Stone: the mana that would empty becomes colorless instead.
+        let kruphix: Vec<bool> = (0..2)
+            .map(|q| {
+                self.permanents(q)
+                    .any(|x| self.def_of(x).unspent_mana_becomes_colorless && !self.lost_abilities(x))
+            })
+            .collect();
         for (q, pl) in self.players.iter_mut().enumerate() {
-            if omnath[q] {
+            if kruphix[q] {
+                for m in pl.pool.iter_mut() {
+                    if !(omnath[q] && Game::is_green_mana(m)) {
+                        *m = ManaSource {
+                            colorless: true,
+                            ..ManaSource::default()
+                        };
+                    }
+                }
+            } else if omnath[q] {
                 pl.pool.retain(Game::is_green_mana);
             } else {
                 pl.pool.clear();
@@ -20381,6 +20524,18 @@ impl Game {
                     .collect();
                 for c in back {
                     self.move_to(c, Zone::Command);
+                }
+                // Glimpse the Impossible: those still exiled go to the graveyard, a token for each.
+                let turn = self.turn;
+                let (due, later): (Vec<_>, Vec<_>) = std::mem::take(&mut self.exiled_until_end)
+                    .into_iter()
+                    .partition(|e| e.4 <= turn);
+                self.exiled_until_end = later;
+                for (c, zcc, p, def, _) in due {
+                    if self.obj(c).zcc == zcc && self.obj(c).zone == Zone::Exile {
+                        self.move_to(c, Zone::Graveyard);
+                        self.create_token(p, def);
+                    }
                 }
                 // Delayed "at the beginning of the next end step" returns (CR 603.7).
                 for (c, zcc, revival) in std::mem::take(&mut self.delayed_returns) {
