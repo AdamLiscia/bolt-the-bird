@@ -995,7 +995,7 @@ pub fn script(name: &str) -> Option<Script> {
                 d.doubles_tokens = true;
                 let n = activated(d, "{1}{W}{W}", false, vec![], vec![Effect::KeywordCounterSelf(Keywords::INDESTRUCTIBLE)]);
                 d.activated[n].phyrexian = [2, 0, 0, 0, 0];
-                d.activated[n].sacrifice_two_others = true;
+                d.activated[n].sacrifice_two_artifacts_or_creatures = true;
             },
         ),
         "Exalted Sunborn" => s(

@@ -71,8 +71,7 @@ pub fn script(name: &str) -> Option<Script> {
         "Overgrown Tomb" => s(SHOCK_LAND, |d, _| shock_land(d, Color::Black, Color::Green)),
         "Watery Grave" => s(SHOCK_LAND, |d, _| shock_land(d, Color::Blue, Color::Black)),
         "Damnation" => s(&["Destroy all creatures. They can't be regenerated."], |d, _| {
-            // The engine has no regeneration.
-            spell(d, vec![], vec![Effect::DestroyAllCreatures])
+            spell(d, vec![], vec![Effect::DestroyAllCreaturesNoRegen])
         }),
         "Exploration" => s(&["You may play an additional land on each of your turns."], |d, _| d.extra_land_drops = 1),
         "Azusa, Lost but Seeking" => s(&["You may play two additional lands on each of your turns."], |d, _| d.extra_land_drops = 2),
@@ -760,27 +759,6 @@ pub fn script(name: &str) -> Option<Script> {
             &["When this creature enters, destroy all artifacts and enchantments. Put a +1/+1 counter on this creature for each permanent destroyed this way."],
             |d, _| on(d, When::Enters, vec![], vec![Effect::DestroyArtifactsEnchantmentsCountersSelf]),
         ),
-        "Silverback Elder" => s(
-            &[
-                "Whenever you cast a creature spell, choose one —",
-                "• Destroy target artifact or enchantment.",
-                "• Look at the top five cards of your library. You may put a land card from among them onto the battlefield tapped. Put the rest on the bottom of your library in a random order.",
-                "• You gain 4 life.",
-            ],
-            |d, _| {
-                let look = Effect::LookAtTop { n: 5, pick: Pick::Land, chosen_to: LookTo::BattlefieldTapped, rest_to: LookRest::BottomRandom };
-                on_modal(
-                    d,
-                    When::YouCastCreature,
-                    None,
-                    vec![
-                        Ability::new(vec![ARTIFACT_OR_ENCHANTMENT], vec![Effect::Destroy(0)]),
-                        Ability::new(vec![], vec![look]),
-                        Ability::new(vec![], vec![Effect::GainLife { who: Who::You, n: 4 }]),
-                    ],
-                );
-            },
-        ),
         "Temple of the False God" => s(&["{T}: Add {C}{C}. Activate only if you control five or more lands."], |d, _| {
             d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
             d.mana_amount = 2;
@@ -1132,6 +1110,123 @@ pub fn script(name: &str) -> Option<Script> {
                     .to_vec();
             },
         ),
+        "Mosswort Bridge" => s(
+            &[
+                "Hideaway 4",
+                "This land enters tapped.",
+                "{T}: Add {G}.",
+                "{G}, {T}: You may play the exiled card without paying its mana cost if creatures you control have total power 10 or greater.",
+            ],
+            |d, _| {
+                on(d, When::Enters, vec![], vec![Effect::Hideaway(4)]);
+                d.enters_tapped = true;
+                d.mana = Some(ManaSource::of(&[Color::Green]));
+                activated(d, "{G}", true, vec![], vec![Effect::PlayHideaway(0)]);
+            },
+        ),
+        "Spinerock Knoll" => s(
+            &[
+                "Hideaway 4",
+                "This land enters tapped.",
+                "{T}: Add {R}.",
+                "{R}, {T}: You may play the exiled card without paying its mana cost if an opponent was dealt 7 or more damage this turn.",
+            ],
+            |d, _| {
+                on(d, When::Enters, vec![], vec![Effect::Hideaway(4)]);
+                d.enters_tapped = true;
+                d.mana = Some(ManaSource::of(&[Color::Red]));
+                activated(d, "{R}", true, vec![], vec![Effect::PlayHideaway(1)]);
+            },
+        ),
+        "Cursed Mirror" => s(
+            &["{T}: Add {R}.", "As this artifact enters, you may have it become a copy of any creature on the battlefield until end of turn, except it has haste."],
+            |d, _| {
+                d.mana = Some(ManaSource::of(&[Color::Red]));
+                d.enter_as_copy = true;
+                d.copy_until_eot_haste = true;
+            },
+        ),
+        "Wand of Wonder" => s(
+            &[
+                "{4}, {T}: Roll a d20. Each opponent exiles cards from the top of their library until they exile an instant or sorcery card, then shuffles the rest into their library. You may cast up to X instant and/or sorcery spells from among cards exiled this way without paying their mana costs.",
+                "1—9 | X is one.",
+                "10—19 | X is two.",
+                "20 | X is three.",
+            ],
+            // One opponent exiles one instant or sorcery, so up to one is cast whatever X is.
+            |d, _| {
+                activated(d, "{4}", true, vec![], vec![Effect::WandOfWonder]);
+            },
+        ),
+        "Vivien, Monsters' Advocate" => s(
+            &[
+                "You may look at the top card of your library any time.",
+                "You may cast creature spells from the top of your library.",
+                "+1: Create a 3/3 green Beast creature token. Put your choice of a reach counter, a vigilance counter, or a trample counter on it.",
+                "−2: When you next cast a creature spell this turn, search your library for a creature card with lesser mana value, put it onto the battlefield, then shuffle.",
+            ],
+            |d, t| {
+                d.top_spells_creatures = true; // looking at the top card is information only
+                on(d, When::Never, vec![], vec![Effect::SearchCreatureLesserManaValue]);
+                loyalty(d, 1, Ability::new(vec![], vec![Effect::CreateTokenWithKeywordCounterChoice { def: t.beast_3 }]));
+                loyalty(d, -2, Ability::new(vec![], vec![Effect::NextCreatureSpellThisTurn(0)]));
+            },
+        ),
+        "Delina, Wild Mage" => s(
+            &[
+                "Whenever Delina attacks, choose target creature you control, then roll a d20.",
+                "1—14 | Create a tapped and attacking token that's a copy of that creature, except it's not legendary and it has \"At end of combat, exile this token.\"",
+                "15—20 | Create one of those tokens. You may roll again.",
+            ],
+            |d, _| on(d, When::Attacks, vec![YOUR_CREATURE], vec![Effect::DelinaRoll(0)]),
+        ),
+        "Jaxis, the Troublemaker" => s(
+            &[
+                "{R}, {T}, Discard a card: Create a token that's a copy of another target creature you control. It gains haste and \"When this token dies, draw a card.\" Sacrifice it at the beginning of the next end step. Activate only as a sorcery.",
+                "Blitz {1}{R}",
+            ],
+            |d, _| {
+                on(d, When::Never, vec![], vec![draw(1)]); // the granted "when this dies, draw a card"
+                let other = Filter { other: true, ..YOUR_CREATURE };
+                let n = activated(d, "{R}", true, vec![other], vec![Effect::CopyHasteDiesDrawSacrifice { slot: 0, trigger: 0 }]);
+                d.activated[n].discard_any_card = true;
+                d.activated[n].sorcery = true;
+                d.alt_cost = Some((ManaCost::parse("{1}{R}").expect("cost"), 0));
+                d.blitz = Some(0);
+            },
+        ),
+        "Zopandrel, Hunger Dominus" => s(
+            &[
+                "At the beginning of each combat, double the power and toughness of each creature you control until end of turn.",
+                "{G/P}{G/P}, Sacrifice two other creatures: Put an indestructible counter on Zopandrel.",
+            ],
+            |d, _| {
+                on(d, When::BeginCombatEachTurn, vec![], vec![Effect::DoublePowerToughnessAll]);
+                // {G/P}{G/P}: each pip {G} or 2 life (one ability per way to pay).
+                for (cost, life) in [("{G}{G}", 0), ("{G}", 2), ("", 4)] {
+                    let n = activated(d, cost, false, vec![], vec![Effect::KeywordCounterSelf(Keywords::INDESTRUCTIBLE)]);
+                    d.activated[n].sacrifice_two_others = true;
+                    d.activated[n].life = life;
+                }
+            },
+        ),
+        "Mirage Phalanx" => s(
+            &[
+                "Soulbond",
+                "As long as Mirage Phalanx is paired with another creature, each of those creatures has \"At the beginning of combat on your turn, create a token that's a copy of this creature, except it has haste and loses soulbond. Exile it at end of combat.\"",
+            ],
+            |d, _| {
+                d.soulbond_combat_copies = true;
+                may(d, When::Enters, vec![], vec![Effect::SoulbondPairOnEnter]);
+                let it = Filter { triggering: true, ..CREATURE };
+                may(d, When::AnotherCreatureYouControlEnters, vec![it], vec![Effect::SoulbondPairWith(0)]);
+                on(d, When::BeginCombatYourTurn, vec![], vec![Effect::PhalanxCopies]);
+            },
+        ),
+        "Ezuri's Predation" => s(
+            &["For each creature your opponents control, create a 4/4 green Phyrexian Beast creature token. Each of those tokens fights a different one of those creatures."],
+            |d, t| spell(d, vec![], vec![Effect::TokenFightsEachOpponentCreature { def: t.phyrexian_beast }]),
+        ),
         _ => None,
     }
 }
@@ -1230,7 +1325,6 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Deadeye Navigator",
     "Green Sun's Zenith",
     "Bane of Progress",
-    "Silverback Elder",
     "Temple of the False God",
     "Circle of Dreams Druid",
     "Tribute to the World Tree",
@@ -1273,4 +1367,14 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Mirror March",
     "Rionya, Fire Dancer",
     "Twinflame",
+    "Mosswort Bridge",
+    "Spinerock Knoll",
+    "Cursed Mirror",
+    "Wand of Wonder",
+    "Vivien, Monsters' Advocate",
+    "Delina, Wild Mage",
+    "Jaxis, the Troublemaker",
+    "Zopandrel, Hunger Dominus",
+    "Mirage Phalanx",
+    "Ezuri's Predation",
 ];

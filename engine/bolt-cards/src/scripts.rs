@@ -171,8 +171,7 @@ pub fn token_defs() -> Vec<CardDef> {
         token("Satyr", "Satyr", 2, 2, Keywords::HASTE), // Xenagos, the Reveler's red and green 2/2
         token("Pegasus", "Pegasus", 2, 2, Keywords::FLYING), // Archon of Sun's Grace's white 2/2
         token("Spirit", "Spirit", 3, 1, Keywords::FLYING), // Ghostly Dancers' white 3/1
-        // base+63 is lane C's Phyrexian Beast: a placeholder until it merges.
-        token("Lane C token 63", "Phyrexian Beast", 4, 4, Keywords::NONE),
+        token("Phyrexian Beast", "Phyrexian Beast", 4, 4, Keywords::NONE), // Ezuri's Predation's green 4/4s
         {
             // Black Market Connections: "a 3/2 colorless Shapeshifter creature token with changeling".
             let mut t = token("Shapeshifter", "Shapeshifter", 3, 2, Keywords::NONE);
@@ -283,6 +282,7 @@ pub struct Tokens {
     pub satyr: usize,
     pub pegasus: usize,
     pub spirit_3_1: usize,
+    pub phyrexian_beast: usize,
     pub shapeshifter: usize,
 }
 
@@ -352,6 +352,7 @@ impl Tokens {
             satyr: base + 60,
             pegasus: base + 61,
             spirit_3_1: base + 62,
+            phyrexian_beast: base + 63,
             shapeshifter: base + 64,
         }
     }
@@ -4453,3 +4454,53 @@ pub const TDM_SCRIPTED: &[&str] = &[
     "Feral Deathgorger",
     "Purging Stormbrood",
 ];
+
+#[cfg(test)]
+mod one_script_per_card {
+    use super::*;
+
+    /// Every lane module's scripted names, in `script()`'s order.
+    fn lanes() -> Vec<(&'static str, &'static [&'static str])> {
+        vec![
+            ("tdm_b", TDM_B_SCRIPTED),
+            ("tdm_c", TDM_C_SCRIPTED),
+            ("blc_b", BLC_B_SCRIPTED),
+            ("blc_c", BLC_C_SCRIPTED),
+            ("pg_b", PG_B_SCRIPTED),
+            ("pg_c", PG_C_SCRIPTED),
+            ("pg_d1", PG_D1_SCRIPTED),
+            ("pg_d2", PG_D2_SCRIPTED),
+            ("pg_d3", PG_D3_SCRIPTED),
+        ]
+    }
+
+    #[test]
+    fn no_card_is_scripted_by_two_lanes() {
+        let mut seen = std::collections::HashMap::new();
+        let mut dup = vec![];
+        for (lane, names) in lanes() {
+            for &n in names {
+                if let Some(first) = seen.insert(n, lane) {
+                    dup.push(format!("{n}: {first} and {lane}"));
+                }
+            }
+        }
+        assert!(
+            dup.is_empty(),
+            "scripted twice (the first one wins silently): {dup:?}"
+        );
+    }
+
+    #[test]
+    fn no_lane_script_is_shadowed_by_the_core() {
+        let shadowed: Vec<&str> = lanes()
+            .into_iter()
+            .flat_map(|(_, names)| names.iter().copied())
+            .filter(|n| script_core(n).is_some())
+            .collect();
+        assert!(
+            shadowed.is_empty(),
+            "the core script wins over the lane's: {shadowed:?}"
+        );
+    }
+}
