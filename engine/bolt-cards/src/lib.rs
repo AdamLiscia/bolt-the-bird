@@ -113,6 +113,9 @@ pub struct Oracle {
     /// The back face of a transforming double-faced card (CR 712).
     #[serde(default)]
     pub back: Option<BackFace>,
+    /// A split card's right half (CR 709); the front fields are its left half.
+    #[serde(default)]
+    pub split: Option<OmenFace>,
 }
 
 /// A double-faced card's back face, as Scryfall describes it (`scripts/fetch_oracle.py`).
@@ -479,6 +482,7 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         mana_ext: Default::default(),
         suppresses_triggers: None,
         doubles_triggers_of: None,
+        subsystems: Default::default(),
         protection_chosen_card_type: false,
         skip_draw_step: false,
         creatures_untap_on_others_untap: false,
@@ -498,6 +502,14 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
                 .map(|l| format!("Omen: {l}")),
         );
     }
+    // A split card's right half: its lines are claimed too, written "Split: <line>".
+    if let Some(face) = &o.split {
+        rest.extend(
+            abilities(face.oracle_text.as_deref().unwrap_or(""))
+                .into_iter()
+                .map(|l| format!("Split: {l}")),
+        );
+    }
     // A transforming card's back face: its own definition, with its lines claimed by the front's
     // script, written "Back: <line>" (keyword-only lines are its keywords).
     if let Some(b) = &o.back {
@@ -513,6 +525,7 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
             loyalty: b.loyalty.clone(),
             omen: None,
             back: None,
+            split: None,
         };
         let (mut back, _) = definition(&face, tokens);
         back.cost = ManaCost::default();
@@ -536,6 +549,32 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
                 match face.mana_cost.as_deref().map(ManaCost::parse) {
                     Some(Some(c)) => half.cost = c,
                     _ => claimed = false,
+                }
+            }
+            // A split card's right half is cast the way an Omen half is, then goes to the graveyard.
+            def.subsystems.split_card = o.split.is_some() && def.omen.is_some();
+            if let (Some(face), Some(half)) = (&o.split, def.omen.as_mut()) {
+                half.name = face.name.clone();
+                half.instant = face.type_line.contains("Instant");
+                match face.mana_cost.as_deref().map(ManaCost::parse) {
+                    Some(Some(c)) => half.cost = c,
+                    _ => claimed = false,
+                }
+            }
+            // Off the stack its mana value is both halves' (CR 709.4): `cost` is their sum, and
+            // casting the left half pays `left_cost`.
+            if def.subsystems.split_card {
+                let right = def.omen.as_ref().expect("the right half").cost;
+                let left = def.cost;
+                def.subsystems.left_cost = Some(left);
+                def.cost.generic = left.generic.saturating_add(right.generic);
+                def.cost.colorless = left.colorless.saturating_add(right.colorless);
+                for i in 0..5 {
+                    def.cost.colored[i] = left.colored[i].saturating_add(right.colored[i]);
+                    def.cost.twobrid[i] = left.twobrid[i].saturating_add(right.twobrid[i]);
+                }
+                for i in 0..10 {
+                    def.cost.hybrid[i] = left.hybrid[i].saturating_add(right.hybrid[i]);
                 }
             }
         }
@@ -626,6 +665,23 @@ fn partners_with(o: &Oracle, other: &Oracle) -> bool {
         .any(|l| l == "Partner" || l.strip_prefix("Partner with ").is_some_and(|n| n == other.name))
 }
 
+/// A legendary Background enchantment card (CR 702.124k).
+fn is_background(o: &Oracle) -> bool {
+    let t = &o.type_line;
+    t.contains("Legendary") && t.contains("Enchantment") && t.contains("Background")
+}
+
+/// Choose a Background (CR 702.124k): a creature commander with "Choose a Background" and a
+/// legendary Background enchantment as the second commander, in either order.
+fn background_pair(a: &Oracle, b: &Oracle) -> bool {
+    let chooses = |o: &Oracle| {
+        abilities(o.oracle_text.as_deref().unwrap_or(""))
+            .iter()
+            .any(|l| l == "Choose a Background")
+    };
+    (chooses(a) && is_background(b)) || (chooses(b) && is_background(a))
+}
+
 /// [`commander_deck_problems`] for one or two commanders (two must be partners, CR 702.124);
 /// `deck` is the other cards (100 in all with the commanders), and the color identity is both
 /// commanders' together.
@@ -636,13 +692,17 @@ pub fn commander_deck_problems_for(set: &CardSet, commanders: &[usize], deck: &[
         return out;
     }
     let cs: Vec<&Oracle> = commanders.iter().map(|&c| &set.oracle[c]).collect();
+    let with_background = matches!(cs[..], [a, b] if background_pair(a, b));
     for c in &cs {
-        if !(c.type_line.contains("Legendary") && c.type_line.contains("Creature")) {
+        let legendary_creature = c.type_line.contains("Legendary") && c.type_line.contains("Creature");
+        let ok = legendary_creature || (with_background && is_background(c));
+        if !ok {
             out.push(format!("{} isn't a legendary creature", c.name));
         }
     }
     if let [a, b] = cs[..] {
-        if !(partners_with(a, b) && partners_with(b, a)) {
+        let partners = partners_with(a, b) && partners_with(b, a);
+        if !partners && !with_background {
             out.push(format!("{} and {} aren't partners", a.name, b.name));
         }
     }
@@ -780,6 +840,7 @@ mod tests {
             .chain(scripts::PG_D1_SCRIPTED)
             .chain(scripts::PG_D2_SCRIPTED)
             .chain(scripts::PG_D3_SCRIPTED)
+            .chain(scripts::PG_D4_SCRIPTED)
         {
             let i = t
                 .index_of(name)

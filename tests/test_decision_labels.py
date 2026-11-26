@@ -73,5 +73,17 @@ def test_lane_d3_batch_5_decisions_read_as_their_moves():
     assert pick({"kind": "ConniveDiscard", "left": 2}, "Plains") == "Discard (connive): Plains"
 
 
+def test_venturing_names_the_dungeon_or_room():
+    dec = {"kind": "ChooseDungeon", "options": ["Lost Mine of Phandelver", "Dungeon of the Mad Mage"]}
+    assert label(dec, "Mode", 1) == "Venture into Dungeon of the Mad Mage"
+    dec = {"kind": "ChooseRoom", "options": ["Goblin Lair", "Mine Tunnels"]}
+    assert label(dec, "Mode", 0) == "Venture into the room Goblin Lair"
+
+
+def test_a_split_or_omen_second_half_is_cast_by_its_name():
+    assert sv._label("CastOmen", ["Fire // Ice"], (), 0, (0, 0, 0)) == "Cast Ice"
+    assert sv._label("CastOmen", ["Sol Ring"], (), 0, (0, 0, 0)) == "Cast Sol Ring's Omen"
+
+
 def test_an_unknown_decision_keeps_the_generic_label():
     assert label({"kind": "SomethingNew"}, "Mode", 0) is None

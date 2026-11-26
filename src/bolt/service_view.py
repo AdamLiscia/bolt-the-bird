@@ -47,6 +47,8 @@ def _label(kind: str, cards: list, nums: tuple, me: int, values: tuple) -> str:
         return f"Choose mode {a + 1}"
     if kind == "Amount":
         return f"Choose {a}"
+    if kind == "CastOmen" and " // " in c:  # an Omen's or a split card's second half, by its name
+        return f"Cast {c.split(' // ', 1)[1]}"
     n = nums[0] if nums else None
     return {
         "Bottom": f"Put {c} on the bottom", "PlayLand": f"Play {c}", "Cast": f"Cast {c}",
@@ -140,6 +142,10 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
             return f"{src or 'It'}: protection from {kinds[value]}"
         if d == "TargetToSource":
             return f"Change target {value + 1} to {src or 'this creature'}"
+        if d == "ChooseDungeon" and 0 <= value < len(dec.get("options", [])):
+            return f"Venture into {dec['options'][value]}"
+        if d == "ChooseRoom" and 0 <= value < len(dec.get("options", [])):
+            return f"Venture into the room {dec['options'][value]}"
         return None
     if kind == "Pick" and d == "SacrificeAnotherGainDraw":
         return f"Sacrifice {card_name} (gain life and draw equal to its power)"

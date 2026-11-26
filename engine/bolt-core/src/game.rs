@@ -15,6 +15,11 @@ use crate::effect::{
 use crate::mana::{self, ManaCost, ManaSource};
 use crate::rng::Rng;
 
+// The d4 subsystems (dungeons and the initiative, emblems' triggers, dice): game/d4.rs.
+mod d4;
+use crate::effect::Dungeon;
+pub use d4::{rooms, Room, VENTURE_CHOICES};
+
 pub type PlayerId = usize;
 
 /// Starting life total (CR 103.4).
@@ -595,6 +600,14 @@ pub enum StackKind {
         n: u8,
         against: ObjId,
     },
+    /// A room ability of the controller's dungeon (CR 309.4c); its source is the card that made
+    /// them venture.
+    Room {
+        dungeon: Dungeon,
+        room: u8,
+    },
+    /// The initiative's "that player ventures into Undercity" (CR 725.2).
+    InitiativeVenture,
 }
 
 /// The ability of a ward trigger, which has no targets or effects of its own.
@@ -1062,6 +1075,16 @@ pub enum Decision {
     ConniveDiscard { creature: ObjId, left: u8, nonland: u8 },
     /// `Pick` a creature you control of color `color` (WUBRG) to return to its owner's hand.
     ReturnOwnCreatureOfColor { color: u8 },
+    /// Venture into the dungeon with no dungeon: `Mode(i)` enters the first room of
+    /// `VENTURE_CHOICES[i]` (Lost Mine of Phandelver, Dungeon of the Mad Mage, Tomb of
+    /// Annihilation).
+    ChooseDungeon { source: ObjId },
+    /// Venture from room `from` of `dungeon`: `Mode(i)` moves to `rooms(dungeon)[from].next[i]`.
+    ChooseRoom {
+        dungeon: Dungeon,
+        from: u8,
+        source: ObjId,
+    },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -1376,6 +1399,12 @@ pub struct Game {
     pub upkeeps_this_turn: (u32, u8),
     /// Additional upkeep steps still to come this turn.
     pub extra_upkeeps: u8,
+    /// Each player's venture marker: their dungeon and the room it's in (CR 309.4).
+    pub venture: [Option<(Dungeon, u8)>; 2],
+    /// Dungeons each player has completed (CR 309.7).
+    pub completed_dungeons: [u8; 2],
+    /// Who has the initiative (CR 725), and the card that gave it (the source of its venture).
+    pub initiative: Option<(PlayerId, ObjId)>,
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -1608,6 +1637,9 @@ impl Game {
             skip_next_untap: [false; 2],
             upkeeps_this_turn: (0, 0),
             extra_upkeeps: 0,
+            venture: [None; 2],
+            completed_dungeons: [0; 2],
+            initiative: None,
         }
     }
 
@@ -1875,6 +1907,11 @@ impl Game {
             return [false, false, true, false, false]; // a black Zombie
         }
         let printed = self.def_of(id).colors;
+        if self.def_of(id).subsystems.split_card && self.obj(id).zone == Zone::Stack {
+            if let Some(half) = self.split_half_colors(id) {
+                return half; // CR 709.3: only the half being cast
+            }
+        }
         if self.obj(id).zone != Zone::Battlefield {
             return printed;
         }
@@ -2140,6 +2177,9 @@ impl Game {
                             Some(StaticCondition::AttachedIsColor(c)) => so
                                 .attached_to
                                 .is_some_and(|(x, z)| self.obj(x).zcc == z && self.colors_of(x)[c as usize]),
+                            Some(StaticCondition::CompletedDungeon) => {
+                                self.completed_a_dungeon(so.controller)
+                            }
                         };
                         applies && condition_ok && (!s.your_turn_only || self.active == so.controller)
                     })
@@ -4798,6 +4838,7 @@ impl Game {
             },
             StackKind::Offspring => offspring_ability(),
             StackKind::Activated(n) => &self.activated_of(item.source, n).ability,
+            StackKind::Room { .. } | StackKind::InitiativeVenture => self.subsystem_ability(item.kind),
         }
     }
 
@@ -5742,6 +5783,8 @@ impl Game {
             def.flashback.unwrap_or(def.cost).with_x(mode.x)
         } else if mode.mode == Some(OMEN_MODE) {
             def.omen.as_ref().expect("an Omen").cost.with_x(mode.x)
+        } else if let Some(left) = def.subsystems.left_cost {
+            left.with_x(mode.x) // a split card's left half
         } else {
             def.cost.with_x(mode.x)
         };
@@ -9071,7 +9114,8 @@ impl Game {
             }
         }
         if r.item.kind == StackKind::Spell {
-            let omen = r.item.mode == Some(OMEN_MODE);
+            // A split card's right half is cast through the Omen path but goes to the graveyard.
+            let omen = r.item.mode == Some(OMEN_MODE) && !self.def_of(source).subsystems.split_card;
             let shuffles = self.def_of(source).shuffle_on_resolve;
             if omen && self.def_of(source).adventure && self.obj(source).zone == Zone::Stack {
                 // An Adventure: exiled, and its owner may cast the card from exile later (CR 715.4).
@@ -9663,6 +9707,9 @@ impl Game {
             Decision::PrimalSurge { .. } | Decision::CommanderCourser { .. } => vec![Action::Yes, Action::No],
             Decision::HideawayPick { cards, .. } => cards.iter().copied().map(Action::Pick).collect(),
             Decision::KeywordCounterChoice { .. } => vec![Action::Mode(0), Action::Mode(1), Action::Mode(2)],
+            d @ (Decision::ChooseDungeon { .. } | Decision::ChooseRoom { .. }) => {
+                self.subsystem_decision_actions(d)
+            }
             Decision::DelinaAgain { .. } => vec![Action::Yes, Action::No],
             Decision::PickOneOf { cards, .. } => cards.iter().copied().map(Action::Pick).collect(),
             Decision::MayCreatureFromHand => {
@@ -11349,6 +11396,9 @@ impl Game {
             (Decision::BraidsOpponent { controller, .. }, _) => {
                 self.lose_life(p, 2);
                 self.draw(controller);
+            }
+            (d @ (Decision::ChooseDungeon { .. } | Decision::ChooseRoom { .. }), a) => {
+                self.subsystem_decide(p, d, a)
             }
             (d, a) => unreachable!("legal action {a:?} unhandled for {d:?}"),
         }
@@ -17420,12 +17470,15 @@ impl Game {
                     self.add_counters(id, n as i32);
                 }
             }
+            Effect::Subsystem(e) => self.subsystem_effect(item, legal, e),
         }
     }
 
     fn condition_holds(&self, ability: &Ability, controller: PlayerId, source: ObjId) -> bool {
         match &ability.condition {
             None => true,
+            Some(Condition::CompletedDungeon) => self.completed_a_dungeon(controller),
+            Some(Condition::HaveInitiative) => self.initiative.is_some_and(|(q, _)| q == controller),
             Some(Condition::Attacked) => self.attacked_this_turn[controller],
             Some(Condition::StageAtLeast(_)) => true, // checked as it triggered
             Some(Condition::ControlPowerAtLeast(n)) => {
