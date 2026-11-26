@@ -2203,3 +2203,307 @@ fn delve_as_a_keyword_exiles_graveyard_cards_for_generic_mana() {
     assert_eq!(g.obj(c).zone, Zone::Graveyard, "{{B}} and three delved cards");
     assert!(gy.iter().all(|&x| g.obj(x).zone == Zone::Exile));
 }
+
+#[test]
+fn a_chapter_granted_mana_ability_makes_no_mana_before_its_chapter() {
+    use batch9::*;
+    let mut saga = colorless_land("Saga");
+    saga.subsystems.chapter_mana = Some(1);
+    let mut g = batch6_board(vec![saga, draw_spell("One", "{1}")], 0);
+    let s = put(&mut g, 0, 25);
+    assert!(
+        g.mana_sources(0).iter().all(|m| m.0 != s),
+        "no {{T}}: Add {{C}} yet"
+    );
+    let c = g.add_card(0, 26, Zone::Hand);
+    assert!(!g.legal_actions().contains(&Action::Cast(c)));
+    let o = g.obj(s).zcc;
+    g.chapter_grants.push((s, o, 1));
+    assert!(g.mana_sources(0).iter().any(|m| m.0 == s), "chapter I resolved");
+    act(&mut g, Action::Cast(c));
+    settle(&mut g);
+    assert!(g.obj(s).tapped);
+    assert_eq!(g.obj(c).zone, Zone::Graveyard);
+}
+
+/// A {B} instant: destroy target creature (batch 3's board has no Doom).
+fn slay() -> CardDef {
+    CardDef::spell(
+        "Slay",
+        "{B}",
+        true,
+        Ability::new(vec![Filter::CREATURE], vec![Effect::Destroy(0)]),
+    )
+}
+
+/// Casts the `slay` def (index `spell`) on `target`, from player 0's hand.
+fn slay_it(g: &mut Game, spell: usize, target: ObjId) {
+    let c = g.add_card(0, spell, Zone::Hand);
+    act(g, Action::Cast(c));
+    if g.legal_actions()
+        .contains(&Action::Target(Target::Object(target)))
+    {
+        act(g, Action::Target(Target::Object(target)));
+    }
+    settle(g);
+}
+
+#[test]
+fn undying_as_a_keyword_returns_once_with_a_counter() {
+    let bear = CardDef::creature("Undying Bear", "{1}", 2, 2, Keywords::UNDYING);
+    let mut g = batch6_board(vec![bear, slay()], 2);
+    let b = put(&mut g, 0, 25);
+    slay_it(&mut g, 26, b);
+    assert_eq!(g.obj(b).zone, Zone::Battlefield, "returned");
+    assert_eq!(g.obj(b).counters, 1);
+    slay_it(&mut g, 26, b);
+    assert_eq!(g.obj(b).zone, Zone::Graveyard, "it had a +1/+1 counter");
+}
+
+#[test]
+fn undying_granted_by_a_static_counts_as_it_dies() {
+    use bolt_core::{Scope, Static};
+    let mut lord = CardDef::creature("Lord", "{1}", 1, 1, Keywords::NONE);
+    lord.statics.push(Static {
+        subtype: None,
+        lose_abilities: false,
+        base_pt: None,
+        protection: [false; 5],
+        scale: None,
+        scope: Scope::OtherYourCreatures,
+        your_turn_only: false,
+        condition: None,
+        power: 0,
+        toughness: 0,
+        keywords: Keywords::UNDYING,
+        set_colors: None,
+        becomes_land: false,
+    });
+    let bear = CardDef::creature("Bear", "{1}", 2, 2, Keywords::NONE);
+    let mut g = batch6_board(vec![lord, slay(), bear], 2);
+    let l = put(&mut g, 0, 25);
+    let b = put(&mut g, 0, 27);
+    slay_it(&mut g, 26, b);
+    assert_eq!(g.obj(b).zone, Zone::Battlefield, "granted undying");
+    assert_eq!(g.obj(b).counters, 1);
+    slay_it(&mut g, 26, l);
+    assert_eq!(
+        g.obj(l).zone,
+        Zone::Graveyard,
+        "the Lord doesn't grant itself undying"
+    );
+    // A card with its own scripted undying trigger and the keyword returns once, not twice.
+    let mut both = CardDef::creature("Both", "{1}", 2, 2, Keywords::UNDYING);
+    both.triggers.push(Trigger {
+        when: When::Dies,
+        ability: Ability::new(vec![], vec![Effect::Undying]),
+    });
+    let mut g = batch6_board(vec![both, slay()], 2);
+    let u = put(&mut g, 0, 25);
+    slay_it(&mut g, 26, u);
+    assert_eq!(g.obj(u).zone, Zone::Battlefield);
+    assert_eq!(g.obj(u).counters, 1);
+}
+
+#[test]
+fn times_kicked_counts_multikicker_kicks() {
+    use batch9::*;
+    // Multikicker's count, on the permanent it became.
+    let mut chalice = artifact("Chalice");
+    chalice.cost = ManaCost::default();
+    chalice.mana_ext.multikicker = ManaCost::parse("{B}");
+    let mut g = batch6_board(vec![chalice], 3);
+    let c = g.add_card(0, 25, Zone::Hand);
+    act(&mut g, Action::CastX(c, 3));
+    settle(&mut g);
+    assert_eq!(g.times_kicked(c), 3);
+}
+
+#[test]
+fn adamant_counts_colorless_mana_spent_on_the_spell() {
+    use batch3::*;
+    use bolt_core::Condition;
+    for (wastes, draws) in [(1, false), (2, true)] {
+        let mut a = Ability::new(
+            vec![],
+            vec![Effect::StopUnlessCondition, Effect::Draw { who: Who::You, n: 1 }],
+        );
+        a.condition = Some(Condition::ColorlessSpentAtLeast(2));
+        let spell = CardDef {
+            spell: Some(a),
+            ..CardDef::spell("Adamant", "{3}", true, Ability::new(vec![], vec![]))
+        };
+        let mut g = batch6_board(vec![spell], 3 - wastes);
+        for _ in 0..wastes {
+            put(&mut g, 0, WASTES);
+        }
+        let hand = g.players[0].hand.len();
+        let c = g.add_card(0, 25, Zone::Hand);
+        act(&mut g, Action::Cast(c));
+        settle(&mut g);
+        assert_eq!(g.players[0].hand.len() == hand + 1, draws, "{wastes} Wastes");
+    }
+}
+
+#[test]
+fn colored_mana_for_life_only_with_an_artifact() {
+    use batch9::*;
+    let mut spire = colorless_land("Spire");
+    spire.mana = Some(bolt_core::ManaSource {
+        colorless: true,
+        ..bolt_core::ManaSource::of(&Color::ALL)
+    });
+    spire.mana_ext.colored_life_cost = true;
+    spire.mana_ext.colored_only_with_artifact = true;
+    let mut g = batch6_board(
+        vec![
+            spire,
+            draw_spell("Black", "{B}"),
+            artifact("Rock"),
+            draw_spell("One", "{1}"),
+        ],
+        0,
+    );
+    let s = put(&mut g, 0, 25);
+    let c = g.add_card(0, 26, Zone::Hand);
+    assert!(!g.legal_actions().contains(&Action::Cast(c)), "no artifact");
+    let rock = put(&mut g, 0, 27);
+    g.objects[rock.0 as usize].tapped = true;
+    let life = g.players[0].life;
+    act(&mut g, Action::Cast(c));
+    settle(&mut g);
+    assert_eq!(g.players[0].life, life - 1, "{{B}} for 1 life");
+    g.objects[s.0 as usize].tapped = false;
+    let one = g.add_card(0, 28, Zone::Hand);
+    act(&mut g, Action::Cast(one));
+    settle(&mut g);
+    assert_eq!(g.players[0].life, life - 1, "{{C}} is free");
+}
+
+#[test]
+fn reduction_by_noncombat_damage_to_opponents_this_turn() {
+    use batch9::*;
+    let mut big = draw_spell("Big", "{3}{B}");
+    big.reduction = Some(Reduction::NoncombatDamageToOpponentsThisTurn);
+    let mut g = batch6_board(vec![big], 2);
+    let c = g.add_card(0, 25, Zone::Hand);
+    assert!(!g.legal_actions().contains(&Action::Cast(c)));
+    g.noncombat_damage_to_player_turn[0] = (g.turn, 5);
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(c)),
+        "damage to you doesn't count"
+    );
+    g.noncombat_damage_to_player_turn[1] = (g.turn - 1, 5);
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(c)),
+        "last turn's doesn't"
+    );
+    g.noncombat_damage_to_player_turn[1] = (g.turn, 2);
+    act(&mut g, Action::Cast(c));
+    settle(&mut g);
+    assert_eq!(g.obj(c).zone, Zone::Graveyard, "{{1}}{{B}}");
+}
+
+#[test]
+fn foretell_exiles_from_hand_then_casts_for_its_cost_on_a_later_turn() {
+    use batch9::*;
+    let mut f = draw_spell("Foretold", "{3}{B}");
+    f.mana_ext.foretell = ManaCost::parse("{B}");
+    f.activated.push(Activated {
+        mana: ManaCost::parse("{2}").expect("cost"),
+        foretell: true,
+        your_turn_only: true,
+        ability: Ability::new(vec![], vec![]),
+        ..Activated::default()
+    });
+    let mut g = batch6_board(vec![f], 3);
+    let c = g.add_card(0, 25, Zone::Hand);
+    act(&mut g, Action::Activate(c, 0));
+    settle(&mut g);
+    assert_eq!(g.obj(c).zone, Zone::Exile);
+    assert!(!g.legal_actions().contains(&Action::Cast(c)), "the same turn");
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    let swamps: Vec<ObjId> = g.permanents(0).collect();
+    for &s in &swamps[1..] {
+        g.objects[s.0 as usize].tapped = true;
+    }
+    act(&mut g, Action::Cast(c));
+    settle(&mut g);
+    assert_eq!(g.obj(c).zone, Zone::Graveyard, "{{B}} from one Swamp");
+}
+
+#[test]
+fn forecast_activates_from_hand_only_during_your_upkeep_once() {
+    use batch9::*;
+    let mut f = draw_spell("Forecaster", "{5}");
+    f.activated.push(Activated {
+        mana: ManaCost::parse("{B}").expect("cost"),
+        forecast: true,
+        once_each_turn: true,
+        ability: Ability::new(vec![], vec![Effect::Draw { who: Who::You, n: 1 }]),
+        ..Activated::default()
+    });
+    let mut g = batch6_board(vec![f], 2);
+    let c = g.add_card(0, 25, Zone::Hand);
+    assert!(!g.legal_actions().contains(&Action::Activate(c, 0)), "main phase");
+    g.auto_pass = false;
+    g.start_turn(5, 0);
+    while g.step != Step::Upkeep {
+        act(&mut g, Action::PassPriority);
+    }
+    let hand = g.players[0].hand.len();
+    act(&mut g, Action::Activate(c, 0));
+    settle(&mut g);
+    assert_eq!(g.obj(c).zone, Zone::Hand, "revealed, not discarded");
+    assert_eq!(g.players[0].hand.len(), hand + 1);
+    assert!(
+        !g.legal_actions().contains(&Action::Activate(c, 0)),
+        "once each turn"
+    );
+}
+
+#[test]
+fn colorless_eldrazi_and_big_colorless_spell_discounts() {
+    use batch9::*;
+    let mut eye = artifact("Eye");
+    eye.mana_ext.colorless_eldrazi_spell_discount = 2;
+    let mut herald = artifact("Herald");
+    herald.mana_ext.colorless_big_spell_discount = Some((7, 1));
+    let mut drone = CardDef::creature("Drone", "{4}", 4, 4, Keywords::NONE);
+    drone.subtypes = vec!["Eldrazi".into()];
+    let titan = CardDef::creature("Titan", "{7}", 7, 7, Keywords::NONE);
+    let mut black = CardDef::creature("Black Eldrazi", "{3}{B}", 4, 4, Keywords::NONE);
+    black.subtypes = vec!["Eldrazi".into()];
+    black.colors[2] = true;
+    let mut g = batch6_board(vec![eye, herald, drone, titan, black], 2);
+    put(&mut g, 0, 25);
+    let d = g.add_card(0, 27, Zone::Hand);
+    let b = g.add_card(0, 29, Zone::Hand);
+    assert!(!g.legal_actions().contains(&Action::Cast(b)), "not colorless");
+    act(&mut g, Action::Cast(d));
+    settle(&mut g);
+    assert_eq!(g.obj(d).zone, Zone::Battlefield, "{{4}} less {{2}}");
+    let mut g = batch6_board(
+        vec![
+            {
+                let mut h = artifact("Herald");
+                h.mana_ext.colorless_big_spell_discount = Some((7, 1));
+                h
+            },
+            CardDef::creature("Titan", "{7}", 7, 7, Keywords::NONE),
+        ],
+        6,
+    );
+    put(&mut g, 0, 25);
+    let t = g.add_card(0, 26, Zone::Hand);
+    act(&mut g, Action::Cast(t));
+    settle(&mut g);
+    assert_eq!(
+        g.obj(t).zone,
+        Zone::Battlefield,
+        "{{7}} less {{1}} from six Swamps"
+    );
+}

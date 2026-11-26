@@ -999,6 +999,26 @@ pub fn script(name: &str) -> Option<Script> {
                 d.triggers[n].ability.optional = true;
             },
         ),
+        // ---- Core: triggers, batch 15 (Lonis: "whenever you sacrifice a Clue") ----
+        "Ulvenwald Mysteries" => s(
+            &[
+                "Whenever a nontoken creature you control dies, investigate.",
+                "Whenever you sacrifice a Clue, create a 1/1 white Human Soldier creature token.",
+            ],
+            |d, t| {
+                // The source is an enchantment, so "another" nontoken creature is every one.
+                on(d, When::AnotherNontokenCreatureYouControlDies, vec![], vec![Effect::Investigate { def: t.clue, n: 1 }]);
+                // The engine's 1/1 Human Soldier token (token colors aren't modeled).
+                on(d, When::YouSacrificeSubtype("Clue"), vec![], vec![Effect::CreateToken { who: Who::You, def: t.human_soldier, n: 1 }]);
+            },
+        ),
+        "Fleeting Memories" => s(
+            &["When this enchantment enters, investigate.", "Whenever you sacrifice a Clue, target player mills three cards."],
+            |d, t| {
+                on(d, When::Enters, vec![], vec![Effect::Investigate { def: t.clue, n: 1 }]);
+                on(d, When::YouSacrificeSubtype("Clue"), vec![Filter::PLAYER], vec![Effect::Mill { who: Who::TargetPlayer(0), n: 3 }]);
+            },
+        ),
         _ => None,
     }
 }
@@ -1148,6 +1168,9 @@ pub const PG_D2_SCRIPTED: &[&str] = &[
     "Pact of Negation",
     "Sigil of the Empty Throne",
     "Summoning Station",
+    // Core: triggers, batch 15
+    "Ulvenwald Mysteries",
+    "Fleeting Memories",
     // The Gitrog, Ravenous Ride
     "Demonic Tutor",
     "Exquisite Blood",
