@@ -508,6 +508,10 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         lands_you_control_have: Vec::new(),
         subtype_you_control_has: None,
         aftermath: false,
+        citadel: false,
+        attacks_only_with_artifacts: 0,
+        treasures_plus_one: None,
+        one_attacker_one_blocker: false,
     };
     def.color_identity = color_identity(o);
     def.phyrexian = phyrexian;
