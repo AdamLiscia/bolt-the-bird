@@ -1490,6 +1490,12 @@ pub enum Effect {
     /// You draw X cards and lose X life, X the permanents you control with this subtype (Graveborn
     /// Muse: Zombies).
     DrawAndLosePerSubtypeYouControl(&'static str),
+    /// "Sacrifice another creature. You gain X life and draw X cards, where X is that creature's
+    /// power." (Disciple of Bolas; nothing if you control no other creature)
+    SacrificeAnotherGainAndDrawPower,
+    /// "Sacrifice it unless you return a non-[subtype] land you control to its owner's hand." (the
+    /// Lairs: Darigaaz's Caldera)
+    ReturnNonSubtypeLandOrSacrificeSelf(&'static str),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

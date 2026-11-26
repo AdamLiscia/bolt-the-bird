@@ -307,3 +307,76 @@ fn draw_and_lose_per_subtype_you_control_counts_the_subtype() {
     assert_eq!(g.players[0].hand.len(), n + 2 + 1, "two Cats, then the draw step");
     assert_eq!(g.players[0].life, 38);
 }
+
+// ---- batch 2: decisions that pick what's sacrificed or returned ----
+
+fn named(g: &Game, p: usize, name: &str) -> ObjId {
+    g.permanents(p)
+        .find(|&x| g.def_of(x).name == name)
+        .expect("on the battlefield")
+}
+
+#[test]
+fn sacrifice_another_gain_and_draw_power_picks_another_creature() {
+    let enters = |defs: &mut Vec<CardDef>| {
+        let t = trigger(When::Enters, None, vec![Effect::SacrificeAnotherGainAndDrawPower]);
+        defs[cid("Savannah Lions")].triggers.push(t);
+    };
+    let mut g = game_with(enters);
+    let angel = g.add_card(0, cid("Serra Angel"), Zone::Battlefield); // 4/4
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Hand);
+    let n = g.players[0].hand.len();
+    act(&mut g, Action::Cast(lions));
+    while !matches!(g.pending, bolt_core::Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(
+        !g.legal_actions().contains(&Action::Pick(lions)),
+        "another creature"
+    );
+    resolve_all(&mut g, &[Action::Pick(angel)]);
+    assert_eq!(g.obj(angel).zone, Zone::Graveyard);
+    assert_eq!(g.players[0].life, 44);
+    assert_eq!(g.players[0].hand.len(), n - 1 + 4);
+
+    // Nothing else to sacrifice: nothing happens.
+    let mut g = game_with(enters);
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Hand);
+    play(&mut g, lions, false, &[], &[]);
+    assert_eq!(g.obj(lions).zone, Zone::Battlefield);
+    assert_eq!(g.players[0].life, 40);
+}
+
+#[test]
+fn return_non_subtype_land_or_sacrifice_self_returns_a_land_or_goes() {
+    let enters = |defs: &mut Vec<CardDef>| {
+        let t = trigger(
+            When::Enters,
+            None,
+            vec![Effect::ReturnNonSubtypeLandOrSacrificeSelf("Forest")],
+        );
+        defs[cid("Savage Lands")].triggers.push(t);
+    };
+    for keep in [false, true] {
+        let mut g = game_with(enters);
+        let plains = named(&g, 0, "Plains");
+        let forest = named(&g, 0, "Forest");
+        let s = g.add_card(0, cid("Savage Lands"), Zone::Hand);
+        act(&mut g, Action::PlayLand(s));
+        while !matches!(g.pending, bolt_core::Pending::Decide(_)) {
+            act(&mut g, Action::PassPriority);
+        }
+        let legal = g.legal_actions();
+        assert!(legal.contains(&Action::Pick(plains)));
+        assert!(!legal.contains(&Action::Pick(forest)), "it has the subtype");
+        assert!(!legal.contains(&Action::Pick(s)), "not itself");
+        if keep {
+            resolve_all(&mut g, &[Action::Pick(plains)]);
+            assert_eq!(g.obj(plains).zone, Zone::Hand);
+            assert_eq!(g.obj(s).zone, Zone::Battlefield);
+        } else {
+            resolve_all(&mut g, &[Action::No]);
+            assert_eq!(g.obj(s).zone, Zone::Graveyard, "sacrificed");
+        }
+    }
+}

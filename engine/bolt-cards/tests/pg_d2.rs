@@ -1011,3 +1011,36 @@ fn graveborn_muse_draws_and_drains_per_zombie() {
     );
     assert_eq!(g.players[0].life, 38);
 }
+
+#[test]
+fn disciple_of_bolas_sacrifices_another_for_life_and_cards() {
+    let mut g = table();
+    let angel = put(&mut g, 0, "Serra Angel"); // 4/4
+    let d = hand(&mut g, 0, "Disciple of Bolas");
+    let n = g.players[0].hand.len();
+    play(&mut g, d, false, &[], &[Action::Pick(angel)]);
+    assert!(in_graveyard(&g, 0, angel));
+    assert_eq!(g.obj(d).zone, Zone::Battlefield);
+    assert_eq!(g.players[0].life, 44);
+    assert_eq!(g.players[0].hand.len(), n - 1 + 4);
+}
+
+#[test]
+fn darigaazs_caldera_bounces_a_non_lair_land_or_is_sacrificed() {
+    let mut g = game(&["Swamp"]);
+    let swamp = g.permanents(0).find(|&x| g.def_of(x).name == "Swamp").unwrap();
+    let c = hand(&mut g, 0, "Darigaaz's Caldera");
+    act(&mut g, Action::PlayLand(c));
+    resolve_all(&mut g, &[Action::Pick(swamp)]);
+    assert_eq!(g.obj(swamp).zone, Zone::Hand);
+    assert_eq!(g.obj(c).zone, Zone::Battlefield);
+    assert_eq!(
+        g.def_of(c).mana.map(|m| m.colors),
+        Some([false, false, true, true, true])
+    );
+    let mut g = game(&[]);
+    let c = hand(&mut g, 0, "Darigaaz's Caldera");
+    act(&mut g, Action::PlayLand(c));
+    resolve_all(&mut g, &[Action::No]);
+    assert!(in_graveyard(&g, 0, c), "no other land to return");
+}

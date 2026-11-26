@@ -973,6 +973,12 @@ pub enum Decision {
     /// A modal double-faced card that's a land on both faces (the Pathways), just played: `Mode(0)` keeps its
     /// front, `Mode(1)` turns it to its back (CR 712.12).
     ChooseLandFace { card: ObjId },
+    /// `Pick` another creature you control to sacrifice; you gain life and draw cards equal to its
+    /// power (Disciple of Bolas).
+    SacrificeAnotherGainDraw { source: ObjId },
+    /// `Pick` a land you control without subtype `sub` to return to its owner's hand, or `No` to
+    /// sacrifice `source` (the Lairs).
+    ReturnLandOrSacrifice { source: ObjId, sub: &'static str },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -8520,6 +8526,20 @@ impl Game {
                 v.push(Action::No);
                 v
             }
+            Decision::SacrificeAnotherGainDraw { source } => self
+                .creatures(p)
+                .filter(|&c| c != *source && !self.cant_be_sacrificed(c))
+                .map(Action::Pick)
+                .collect(),
+            Decision::ReturnLandOrSacrifice { source, sub } => {
+                let mut v: Vec<Action> = self
+                    .permanents(p)
+                    .filter(|&x| x != *source && self.types_of(x).land && !self.has_subtype(x, sub))
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
         }
     }
 
@@ -9498,6 +9518,22 @@ impl Game {
                     self.items[item].targets[slot as usize] = chosen;
                 }
                 self.ask_new_target(p, item, slot as usize + 1);
+            }
+            (Decision::SacrificeAnotherGainDraw { .. }, Action::Pick(c)) => {
+                let x = self.power(c); // its power as it's sacrificed
+                self.move_to(c, Zone::Graveyard);
+                if x > 0 {
+                    self.gain_life(p, x);
+                    for _ in 0..x {
+                        self.draw(p);
+                    }
+                }
+            }
+            (Decision::ReturnLandOrSacrifice { .. }, Action::Pick(l)) => self.move_to(l, Zone::Hand),
+            (Decision::ReturnLandOrSacrifice { source, .. }, Action::No) => {
+                if self.obj(source).zone == Zone::Battlefield && !self.cant_be_sacrificed(source) {
+                    self.move_to(source, Zone::Graveyard);
+                }
             }
             (d, a) => unreachable!("legal action {a:?} unhandled for {d:?}"),
         }
@@ -14043,6 +14079,19 @@ impl Game {
                 }
                 if n > 0 {
                     self.lose_life(p, n as i32);
+                }
+            }
+            Effect::SacrificeAnotherGainAndDrawPower => {
+                let p = item.controller;
+                let any = self.creatures(p).any(|c| c != src && !self.cant_be_sacrificed(c));
+                if any {
+                    self.ask(p, Decision::SacrificeAnotherGainDraw { source: src });
+                }
+            }
+            Effect::ReturnNonSubtypeLandOrSacrificeSelf(sub) => {
+                if self.obj(src).zone == Zone::Battlefield {
+                    let p = item.controller;
+                    self.ask(p, Decision::ReturnLandOrSacrifice { source: src, sub });
                 }
             }
         }

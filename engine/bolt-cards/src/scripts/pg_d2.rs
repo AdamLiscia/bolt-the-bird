@@ -143,6 +143,20 @@ pub fn script(name: &str) -> Option<Script> {
             &["At the beginning of your upkeep, you draw X cards and lose X life, where X is the number of Zombies you control."],
             |d, _| on(d, When::Upkeep { your_turn_only: true }, vec![], vec![Effect::DrawAndLosePerSubtypeYouControl("Zombie")]),
         ),
+        "Disciple of Bolas" => s(
+            &["When this creature enters, sacrifice another creature. You gain X life and draw X cards, where X is that creature's power."],
+            |d, _| on(d, When::Enters, vec![], vec![Effect::SacrificeAnotherGainAndDrawPower]),
+        ),
+        "Darigaaz's Caldera" => s(
+            &[
+                "When this land enters, sacrifice it unless you return a non-Lair land you control to its owner's hand.",
+                "{T}: Add {B}, {R}, or {G}.",
+            ],
+            |d, _| {
+                on(d, When::Enters, vec![], vec![Effect::ReturnNonSubtypeLandOrSacrificeSelf("Lair")]);
+                d.mana = Some(ManaSource::of(&[Color::Black, Color::Red, Color::Green]));
+            },
+        ),
         "Breena, the Demagogue" => s(
             &["Whenever a player attacks one of your opponents, if that opponent has more life than another of your opponents, that attacking player draws a card and you put two +1/+1 counters on a creature you control."],
             |_, _| {
@@ -512,6 +526,8 @@ pub const PG_D2_SCRIPTED: &[&str] = &[
     "Eldritch Pact",
     "Dark Deal",
     "Graveborn Muse",
+    "Disciple of Bolas",
+    "Darigaaz's Caldera",
     // The Gitrog, Ravenous Ride
     "Demonic Tutor",
     "Exquisite Blood",
