@@ -1213,3 +1213,46 @@ fn braids_end_step_with_nothing_sharing_a_type() {
     assert_eq!(g.players[1].life, 38);
     assert_eq!(g.players[0].hand.len(), before + 1);
 }
+
+// ---- batch 6 ----
+
+#[test]
+fn untap_attached_and_noncreature_artifacts_become_zero_zero_with_counters() {
+    let (mut g, t) = game_with(vec![sorcery(
+        vec![],
+        vec![Effect::NoncreatureArtifactsBecomeZeroZeroWithCounters(2)],
+    )]);
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Battlefield);
+    let thopter = g.add_card(0, cid("Ornithopter"), Zone::Battlefield);
+    cast_test(&mut g, t, &[], &[]);
+    assert!(g.types_of(ring).creature);
+    assert_eq!((g.power(ring), g.toughness(ring)), (2, 2));
+    assert_eq!(g.obj(thopter).counters, 0, "already a creature");
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(g.types_of(ring).creature, "for good");
+
+    let mut equip = sorcery(vec![], vec![]);
+    equip.types = Types {
+        artifact: true,
+        ..Types::default()
+    };
+    equip.spell = None;
+    equip.activated.push(bolt_core::Activated {
+        ability: Ability::new(vec![], vec![Effect::UntapAttached]),
+        ..bolt_core::Activated::default()
+    });
+    let (mut g, t) = game_with(vec![equip]);
+    let looter = g.add_card(0, cid("Merfolk Looter"), Zone::Battlefield);
+    let e = g.add_card(0, t, Zone::Battlefield);
+    g.objects[e.0 as usize].attached_to = Some((looter, g.obj(looter).zcc));
+    g.objects[looter.0 as usize].tapped = true;
+    act(&mut g, Action::Activate(e, 0));
+    resolve_all(&mut g, &[]);
+    assert!(!g.obj(looter).tapped);
+    act(&mut g, Action::Activate(e, 0));
+    resolve_all(&mut g, &[]);
+    assert!(!g.obj(looter).tapped, "untaps only, never taps");
+}

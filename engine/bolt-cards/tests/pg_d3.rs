@@ -2489,3 +2489,68 @@ fn masked_vandal_is_every_creature_type_and_exiles_for_a_creature_card() {
     );
     assert!(g.has_subtype(v, "Elf") && g.has_subtype(v, "Wizard"));
 }
+
+// ---- Core theme d3, batch 6 ----
+
+#[test]
+fn genji_glove_gives_double_strike_and_untaps_for_an_extra_combat() {
+    let mut g = table();
+    let glove = put(&mut g, 0, "Genji Glove");
+    let looter = put(&mut g, 0, "Merfolk Looter");
+    g.objects[looter.0 as usize].since_turn = 0;
+    act(&mut g, Action::Activate(glove, 0)); // equip {3}
+    act(&mut g, Action::Target(obj(looter)));
+    resolve_all(&mut g, &[]);
+    assert!(g.keywords(looter).has(Keywords::DOUBLE_STRIKE));
+    while !g.legal_actions().contains(&Action::Attack(looter)) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(looter));
+    act(&mut g, Action::FinishAttacks);
+    while !g.items.is_empty() || g.obj(looter).tapped {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(!g.obj(looter).tapped, "untapped by the trigger");
+    // Through the first combat's damage (double strike: 2) and into the extra combat.
+    let mut attacked_again = false;
+    for _ in 0..40 {
+        let legal = g.legal_actions();
+        if legal.contains(&Action::Attack(looter)) {
+            attacked_again = true;
+            break;
+        }
+        act(
+            &mut g,
+            if legal.contains(&Action::PassPriority) {
+                Action::PassPriority
+            } else {
+                legal[0]
+            },
+        );
+    }
+    assert!(attacked_again, "an additional combat phase");
+    assert_eq!(g.players[1].life, 38);
+}
+
+#[test]
+fn rise_and_shine_animates_one_or_overloaded_each_noncreature_artifact() {
+    let mut g = table();
+    let ring = put(&mut g, 0, "Sol Ring");
+    let stone = put(&mut g, 0, "Mind Stone");
+    let r = hand(&mut g, 0, "Rise and Shine");
+    play(&mut g, r, false, &[obj(ring)], &[]);
+    assert!(g.types_of(ring).creature);
+    assert_eq!((g.power(ring), g.toughness(ring)), (4, 4));
+    assert!(!g.types_of(stone).creature);
+
+    let mut g = table();
+    let ring = put(&mut g, 0, "Sol Ring");
+    let stone = put(&mut g, 0, "Mind Stone");
+    let theirs = put(&mut g, 1, "Sol Ring");
+    let r = hand(&mut g, 0, "Rise and Shine");
+    play(&mut g, r, true, &[], &[]); // overloaded
+    for x in [ring, stone] {
+        assert_eq!((g.power(x), g.toughness(x)), (4, 4));
+    }
+    assert!(!g.types_of(theirs).creature, "only yours");
+}

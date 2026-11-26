@@ -1113,6 +1113,36 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::Enters, vec![theirs], vec![Effect::MayExileFromGraveyard { n: 1, creature_only: true }, Effect::Exile(0)]);
             },
         ),
+        // ---- Unblocked by lane d3's core theme, batch 6 ----
+        "Genji Glove" => s(
+            &[
+                "Equipped creature has double strike.",
+                "Whenever equipped creature attacks, if it's the first combat phase of the turn, untap it. After this phase, there is an additional combat phase.",
+                "Equip {3}",
+            ],
+            |d, _| {
+                attached(d, false, 0, 0, Keywords::DOUBLE_STRIKE);
+                let mut a = Ability::new(vec![], vec![Effect::UntapAttached, Effect::AdditionalCombatAfterThisPhase]);
+                a.condition = Some(Condition::FirstCombatOfTurn);
+                d.triggers.push(Trigger { when: When::EquippedAttacks, ability: a });
+                equip(d, "{3}");
+            },
+        ),
+        "Rise and Shine" => s(
+            &[
+                "Target noncreature artifact you control becomes a 0/0 artifact creature. Put four +1/+1 counters on each artifact that became a creature this way.",
+                "Overload {4}{U}{U}",
+            ],
+            |d, _| {
+                let mine = Filter { noncreature: true, controller: Controller::You, ..ARTIFACT };
+                let animate = Effect::SlotBecomesCreatureForGood { slot: 0, power: 0, toughness: 0, subtype: "" };
+                spell(d, vec![mine], vec![animate, Effect::Counters { slot: 0, n: 4 }]);
+                // Overload {4}{U}{U} is cast as a {3}{U} kicker on {1}{U}: the same total, and "kicked"
+                // swaps in the overloaded text ("each" instead of "target").
+                d.kicker = ManaCost::parse("{3}{U}");
+                d.kicked_spell = Some(Ability::new(vec![], vec![Effect::NoncreatureArtifactsBecomeZeroZeroWithCounters(4)]));
+            },
+        ),
         _ => None,
     }
 }
@@ -1279,4 +1309,7 @@ pub const PG_D3_SCRIPTED: &[&str] = &[
     "Defense of the Heart",
     "Gift of Estates",
     "Masked Vandal",
+    // Core theme d3, batch 6
+    "Genji Glove",
+    "Rise and Shine",
 ];

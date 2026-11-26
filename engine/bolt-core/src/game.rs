@@ -15698,6 +15698,26 @@ impl Game {
                     self.ask(p, Decision::BraidsSacrifice);
                 }
             }
+            Effect::UntapAttached => {
+                if let Some((id, zcc)) = self.obj(src).attached_to {
+                    if self.obj(id).zcc == zcc && self.obj(id).zone == Zone::Battlefield {
+                        self.untap_by_effect(id);
+                    }
+                }
+            }
+            Effect::NoncreatureArtifactsBecomeZeroZeroWithCounters(n) => {
+                let ids: Vec<ObjId> = self
+                    .permanents(item.controller)
+                    .filter(|&x| {
+                        let t = self.types_of(x);
+                        t.artifact && !t.creature
+                    })
+                    .collect();
+                for id in ids {
+                    self.obj_mut(id).eot_creature = Some((u32::MAX, 0, 0, "", Keywords::NONE));
+                    self.add_counters(id, n as i32);
+                }
+            }
         }
     }
 

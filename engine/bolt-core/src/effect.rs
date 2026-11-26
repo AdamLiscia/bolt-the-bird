@@ -1727,6 +1727,11 @@ pub enum Effect {
     /// opponent may sacrifice a permanent that shares a card type with it, and if they don't, they
     /// lose 2 life and you draw a card (Braids, Arisen Nightmare).
     BraidsEndStep,
+    /// Untap the creature the source (an Equipment) is attached to (Genji Glove).
+    UntapAttached,
+    /// Each noncreature artifact you control becomes a 0/0 artifact creature for good, with `n`
+    /// +1/+1 counters (Rise and Shine, overloaded).
+    NoncreatureArtifactsBecomeZeroZeroWithCounters(u8),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
