@@ -187,6 +187,10 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         "Tuck": (f"Put {subject} on top of your library", f"Put {subject} on the bottom"),
         "May": (f"{src}: yes", f"{src}: no"),
         "MayPay": (f"Pay {dec.get('cost', '')} ({src})", "Don't pay"),
+        "PayOrLoseGame": (
+            f"Pay {dec.get('cost', '')} ({src})" if src else f"Pay {dec.get('cost', '')}",
+            "Don't pay (you lose the game)",
+        ),
         "PayWard": (f"Pay ward {dec.get('cost', '')} for {subject}", f"Don't pay ({subject} is countered)"),
         "PayWardLife": (f"Pay {dec.get('life', 0)} life for ward ({subject})", f"Don't pay ({subject} is countered)"),
         "PayOrCountered": (f"Pay {dec.get('cost', '')} ({subject} resolves)", f"Don't pay ({subject} is countered)"),

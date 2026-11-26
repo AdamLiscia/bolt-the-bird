@@ -2197,6 +2197,15 @@ pub enum Effect {
     /// look at it); put it into your hand at the beginning of your next end step (Necropotence),
     /// see `Game::face_down_to_hand`.
     ExileTopFaceDownToHandAtYourNextEndStep,
+    /// "At the beginning of your next upkeep, ...": a delayed triggered ability (CR 603.7), the
+    /// source's trigger number `trigger`, at its controller's next upkeep (Pact of Negation); see
+    /// `Game::delayed_next_upkeep`.
+    DelayedAtYourNextUpkeep {
+        trigger: usize,
+    },
+    /// "Pay {cost}. If you don't, you lose the game." (a Pact's delayed trigger), as
+    /// `Decision::PayOrLoseGame`.
+    PayOrLoseGame(crate::mana::ManaCost),
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -3065,6 +3074,12 @@ pub enum When {
     /// "Whenever you cast an instant or sorcery spell", with that spell's mana value (X included) as
     /// the trigger's amount and the spell in `extra` (Metallurgic Summonings).
     YouCastInstantOrSorceryWithMv,
+    /// "Whenever an artifact you control is put into a graveyard from the battlefield" (Marionette
+    /// Master), its last controller's, this one included.
+    ArtifactYouControlToGraveyardFromBattlefield,
+    /// "Whenever another creature or artifact you control is put into a graveyard from the
+    /// battlefield" (Marionette Apprentice).
+    AnotherCreatureOrArtifactYouControlToGraveyardFromBattlefield,
 }
 
 #[derive(Clone, Debug, PartialEq)]

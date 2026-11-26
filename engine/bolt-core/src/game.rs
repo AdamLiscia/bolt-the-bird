@@ -1237,6 +1237,9 @@ pub enum Decision {
     /// `Pick` a nonland permanent you control to sacrifice or a card in your hand to discard, or `No`
     /// to lose `life` life; `left` more rounds after this one (Torment of Hailfire).
     SacrificeDiscardOrLoseLife { left: u32, life: i32 },
+    /// "Pay {cost}. If you don't, you lose the game." (Pact of Negation): `Yes` pays (offered only if
+    /// you can), `No` loses the game.
+    PayOrLoseGame { cost: ManaCost },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -1612,6 +1615,9 @@ pub struct Game {
     /// player's next end step: (card, its zcc in exile, player, turn exiled, exiled during that
     /// player's own end step or cleanup, so not this turn's).
     pub face_down_to_hand: Vec<(ObjId, u32, PlayerId, u32, bool)>,
+    /// Delayed "at the beginning of your next upkeep" triggers (Pact of Negation): (source, trigger
+    /// number, controller, the turn it was set up; it waits for an upkeep of theirs after it).
+    pub delayed_next_upkeep: Vec<(ObjId, usize, PlayerId, u32)>,
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -1867,6 +1873,7 @@ impl Game {
             normal_next: None,
             delayed_slot_to_graveyard: Vec::new(),
             face_down_to_hand: Vec::new(),
+            delayed_next_upkeep: Vec::new(),
         }
     }
 
@@ -4714,11 +4721,21 @@ impl Game {
                 When::ArtifactToOpponentsGraveyardFromBattlefield,
                 None,
             );
+            self.fire(
+                last_controller,
+                When::ArtifactYouControlToGraveyardFromBattlefield,
+                None,
+            );
         }
         if dies && (self.types_of(id).artifact || self.types_of(id).creature) {
             self.fire(
                 last_controller,
                 When::ThisOrAnotherCreatureOrArtifactYouControlDies,
+                Some(id),
+            );
+            self.fire(
+                last_controller,
+                When::AnotherCreatureOrArtifactYouControlToGraveyardFromBattlefield,
                 Some(id),
             );
         }
@@ -10759,7 +10776,7 @@ impl Game {
                 v
             }
             Decision::SplitPiles { .. } | Decision::ChoosePile { .. } => vec![Action::Yes, Action::No],
-            Decision::MayPay { cost } => {
+            Decision::MayPay { cost } | Decision::PayOrLoseGame { cost } => {
                 let mut v = Vec::new();
                 if self.can_pay(p, cost, None) {
                     v.push(Action::Yes);
@@ -11730,6 +11747,8 @@ impl Game {
                 self.sacrificed(c, p);
             }
             (Decision::MayPay { cost }, Action::Yes) => self.pay_mana(p, &cost, None),
+            (Decision::PayOrLoseGame { cost }, Action::Yes) => self.pay_mana(p, &cost, None),
+            (Decision::PayOrLoseGame { .. }, _) => self.players[p].lost = true,
             (Decision::KeepOfType { ty, mut kept }, Action::Pick(c)) => {
                 if !kept.contains(&c) {
                     kept.push(c);
@@ -15809,6 +15828,11 @@ impl Game {
                     }
                 }
             }
+            Effect::DelayedAtYourNextUpkeep { trigger } => {
+                let entry = (src, trigger, item.controller, self.turn);
+                self.delayed_next_upkeep.push(entry);
+            }
+            Effect::PayOrLoseGame(cost) => self.ask(item.controller, Decision::PayOrLoseGame { cost }),
             Effect::BecomeCopyOfSlotUntilEot(n) => {
                 if let Some(card) = Game::slot_object(item, legal, n) {
                     if self.obj(src).zone == Zone::Battlefield {
@@ -21158,6 +21182,18 @@ impl Game {
                     for _ in 0..n {
                         self.draw(q);
                     }
+                }
+                // Delayed "at the beginning of your next upkeep" triggers (Pact of Negation).
+                let turn = self.turn;
+                let (due, wait): (Vec<_>, Vec<_>) = std::mem::take(&mut self.delayed_next_upkeep)
+                    .into_iter()
+                    .partition(|&(_, _, q, t)| q == a && t < turn);
+                self.delayed_next_upkeep = wait;
+                for (src, n, q, _) in due {
+                    self.triggered.push(StackItem {
+                        kind: StackKind::Trigger(n),
+                        ..Game::casting(src, q)
+                    });
                 }
                 self.fire(a, When::Upkeep { your_turn_only: true }, None);
                 self.fire(
