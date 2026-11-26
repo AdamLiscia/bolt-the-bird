@@ -735,3 +735,747 @@ fn vault_of_the_archangel_gives_deathtouch_and_lifelink() {
     let k = g.keywords(lions);
     assert!(k.has(Keywords::DEATHTOUCH) && k.has(Keywords::LIFELINK));
 }
+
+// ---- Core: triggers, batch 1 ----
+
+/// Passes to `turn`'s first main phase, answering any yes/no along the way with `yes`.
+fn to_main_answering(g: &mut Game, turn: u32, active: usize, yes: bool) {
+    g.start_turn(turn, active);
+    while g.step != Step::Main1 {
+        if let Pending::Decide(_) = g.pending {
+            act(g, if yes { Action::Yes } else { Action::No });
+        } else {
+            act(g, Action::PassPriority);
+        }
+    }
+}
+
+#[test]
+fn lifeblood_hydra_dies_into_life_and_cards_equal_to_its_power() {
+    let mut g = table();
+    let h = hand(&mut g, 0, "Lifeblood Hydra");
+    act(&mut g, Action::CastX(h, 3));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.power(h), 3);
+    assert!(g.keywords(h).has(Keywords::TRAMPLE));
+    let kill = hand(&mut g, 0, "Hero's Downfall");
+    let n = g.players[0].hand.len();
+    play(&mut g, kill, false, &[obj(h)], &[]);
+    assert_eq!(g.players[0].life, 43);
+    assert_eq!(g.players[0].hand.len(), n - 1 + 3);
+}
+
+#[test]
+fn mana_vault_makes_three_stays_tapped_and_hurts_on_your_draw_step() {
+    let mut g = game(&[]);
+    let vault = put(&mut g, 0, "Mana Vault");
+    assert_eq!(g.mana_sources(0).iter().filter(|&&(x, _)| x == vault).count(), 3);
+    g.manual_mana[0] = true;
+    act(&mut g, Action::TapForMana(vault, 5)); // {C}{C}{C}
+    g.manual_mana[0] = false;
+    for _ in 0..4 {
+        put(&mut g, 0, "Plains");
+    }
+    to_main_answering(&mut g, 5, 0, false);
+    assert!(g.obj(vault).tapped, "declined the {{4}}");
+    assert_eq!(g.players[0].life, 39, "1 damage in your draw step");
+    to_main_answering(&mut g, 6, 1, false);
+    assert_eq!(g.players[0].life, 39, "not on the opponent's draw step");
+    to_main_answering(&mut g, 7, 0, true);
+    assert!(!g.obj(vault).tapped, "paid {{4}} to untap");
+    assert_eq!(g.players[0].life, 39, "untapped by the draw step");
+}
+
+#[test]
+fn howling_mine_gives_each_player_an_extra_draw_while_untapped() {
+    let mut g = table();
+    put(&mut g, 0, "Howling Mine");
+    let (a, b) = (g.players[0].hand.len(), g.players[1].hand.len());
+    to_main_answering(&mut g, 4, 1, false);
+    assert_eq!(g.players[1].hand.len(), b + 2);
+    to_main_answering(&mut g, 5, 0, false);
+    assert_eq!(g.players[0].hand.len(), a + 2);
+}
+
+#[test]
+fn loyal_drake_draws_at_combat_only_with_your_commander_out() {
+    let mut g = table();
+    put(&mut g, 0, "Loyal Drake");
+    let combat = |g: &mut Game| {
+        while g.step != Step::BeginCombat {
+            act(g, Action::PassPriority);
+        }
+        resolve_all(g, &[]);
+    };
+    let n = g.players[0].hand.len();
+    combat(&mut g);
+    assert_eq!(g.players[0].hand.len(), n, "no commander");
+    commander_on_field(&mut g, "Bello, Bard of the Brambles");
+    to_main_answering(&mut g, 5, 0, false);
+    let n = g.players[0].hand.len();
+    combat(&mut g);
+    assert_eq!(g.players[0].hand.len(), n + 1, "lieutenant");
+}
+
+#[test]
+fn aetherflux_reservoir_gains_per_spell_and_fires_for_fifty_life() {
+    let mut g = table();
+    let r = put(&mut g, 0, "Aetherflux Reservoir");
+    for _ in 0..2 {
+        let ring = hand(&mut g, 0, "Sol Ring");
+        play(&mut g, ring, false, &[], &[]);
+    }
+    assert_eq!(g.players[0].life, 43, "1, then 2");
+    assert!(!has(&g, Action::Activate(r, 0)), "43 life can't pay 50");
+    g.players[0].life = 60;
+    act(&mut g, Action::Activate(r, 0));
+    act(&mut g, Action::Target(Target::Player(1)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].life, 10);
+    assert!(g.players[1].life <= 0);
+}
+
+#[test]
+fn hydroid_krasis_gains_and_draws_half_x_as_its_cast() {
+    let mut g = table();
+    let h = hand(&mut g, 0, "Hydroid Krasis");
+    let n = g.players[0].hand.len();
+    act(&mut g, Action::CastX(h, 5));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].life, 42);
+    assert_eq!(g.players[0].hand.len(), n - 1 + 2);
+    assert_eq!(g.obj(h).counters, 5);
+    let k = g.keywords(h);
+    assert!(k.has(Keywords::FLYING) && k.has(Keywords::TRAMPLE));
+}
+
+#[test]
+fn malakir_rebirth_returns_the_creature_tapped_when_it_dies() {
+    let mut g = table();
+    let lions = put(&mut g, 0, "Savannah Lions");
+    let r = hand(&mut g, 0, "Malakir Rebirth // Malakir Mire");
+    play(&mut g, r, false, &[obj(lions)], &[]);
+    assert_eq!(g.players[0].life, 38);
+    let kill = hand(&mut g, 0, "Hero's Downfall");
+    play(&mut g, kill, false, &[obj(lions)], &[]);
+    let back = g
+        .creatures(0)
+        .find(|&c| g.def_of(c).name == "Savannah Lions")
+        .expect("returned");
+    assert!(g.obj(back).tapped);
+
+    // The back face: Malakir Mire, a land that enters tapped and taps for {B}.
+    let mut g = game(&[]);
+    let m = hand(&mut g, 0, "Malakir Rebirth // Malakir Mire");
+    act(&mut g, Action::PlayLand(m));
+    assert_eq!(g.obj(m).zone, Zone::Battlefield);
+    assert!(g.obj(m).tapped);
+    assert_eq!(
+        g.def_of(m).mana.map(|x| x.colors),
+        Some([false, false, true, false, false])
+    );
+}
+
+#[test]
+fn breenas_trigger_never_happens_one_on_one() {
+    let mut g = table();
+    let b = put(&mut g, 0, "Breena, the Demagogue");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    assert!(g.keywords(b).has(Keywords::FLYING));
+    attack(&mut g, &[lions]);
+    let n = g.players[0].hand.len();
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].hand.len(), n);
+    assert!(g.creatures(0).all(|c| g.obj(c).counters == 0));
+}
+
+#[test]
+fn burgeoning_puts_a_land_in_when_the_opponent_plays_one() {
+    let mut g = table();
+    put(&mut g, 0, "Burgeoning");
+    let mine = hand(&mut g, 0, "Forest");
+    let other = hand(&mut g, 0, "Island");
+    act(&mut g, Action::PlayLand(mine));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(other).zone, Zone::Hand, "not on your own land play");
+    g.start_turn(4, 1);
+    while !(g.step == Step::Main1 && g.pending == Pending::Priority(1)) {
+        act(&mut g, Action::PassPriority);
+    }
+    let theirs = hand(&mut g, 1, "Forest");
+    act(&mut g, Action::PlayLand(theirs));
+    resolve_all(&mut g, &[Action::Pick(other)]); // a land card from hand, or No
+    assert_eq!(g.obj(other).zone, Zone::Battlefield);
+}
+
+// ---- Core: triggers, batch 2 ----
+
+#[test]
+fn reanimate_takes_any_graveyards_creature_for_its_mana_value() {
+    let mut g = table();
+    let angel = g.add_card(1, cid("Serra Angel"), Zone::Graveyard); // mana value 5
+    let r = hand(&mut g, 0, "Reanimate");
+    play(&mut g, r, false, &[obj(angel)], &[]);
+    assert_eq!(g.obj(angel).zone, Zone::Battlefield);
+    assert_eq!(g.obj(angel).controller, 0);
+    assert_eq!(g.players[0].life, 35);
+}
+
+#[test]
+fn feed_the_swarm_destroys_and_costs_its_mana_value() {
+    let mut g = table();
+    let blood = put(&mut g, 1, "Exquisite Blood"); // mana value 5
+    let mine = put(&mut g, 0, "Savannah Lions");
+    let f = hand(&mut g, 0, "Feed the Swarm");
+    act(&mut g, Action::Cast(f));
+    assert!(!has(&g, Action::Target(obj(mine))), "an opponent's only");
+    act(&mut g, Action::Target(obj(blood)));
+    resolve_all(&mut g, &[]);
+    assert!(in_graveyard(&g, 1, blood));
+    assert_eq!(g.players[0].life, 35);
+}
+
+#[test]
+fn darkstar_augur_takes_the_top_card_each_upkeep_and_has_offspring() {
+    let mut g = table();
+    put(&mut g, 0, "Darkstar Augur");
+    let top = g.add_card(0, cid("Serra Angel"), Zone::Library);
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.obj(top).zone, Zone::Hand);
+    assert_eq!(g.players[0].life, 35);
+
+    let mut g = table();
+    let a = hand(&mut g, 0, "Darkstar Augur");
+    play(&mut g, a, true, &[], &[]);
+    let copies = tokens(&g, 0, "Darkstar Augur");
+    assert_eq!(copies.len(), 1, "offspring paid");
+    assert_eq!(g.power(copies[0]), 1);
+}
+
+#[test]
+fn castle_locthwain_draws_then_costs_life_per_card_in_hand() {
+    let mut g = game(&[]);
+    let c = hand(&mut g, 0, "Castle Locthwain");
+    act(&mut g, Action::PlayLand(c));
+    assert!(g.obj(c).tapped, "no Swamp");
+    let mut g = game(&["Swamp", "Swamp", "Swamp"]);
+    let c = hand(&mut g, 0, "Castle Locthwain");
+    act(&mut g, Action::PlayLand(c));
+    assert!(!g.obj(c).tapped, "a Swamp");
+    let n = g.players[0].hand.len() as i32;
+    act(&mut g, Action::Activate(c, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].life, 40 - (n + 1), "drew first, then counted");
+}
+
+#[test]
+fn eldritch_pact_draws_and_drains_by_graveyard_size() {
+    let mut g = table();
+    for _ in 0..4 {
+        g.add_card(0, cid("Plains"), Zone::Graveyard);
+    }
+    let p = hand(&mut g, 0, "Eldritch Pact");
+    let n = g.players[0].hand.len();
+    play(&mut g, p, false, &[Target::Player(0)], &[]);
+    assert_eq!(g.players[0].hand.len(), n - 1 + 4);
+    assert_eq!(g.players[0].life, 36);
+}
+
+#[test]
+fn dark_deal_redraws_each_hand_one_short() {
+    let mut g = table();
+    let d = hand(&mut g, 0, "Dark Deal");
+    let (a, b) = (g.players[0].hand.len() - 1, g.players[1].hand.len());
+    play(&mut g, d, false, &[], &[]);
+    assert_eq!(g.players[0].hand.len(), a - 1);
+    assert_eq!(g.players[1].hand.len(), b - 1);
+}
+
+#[test]
+fn graveborn_muse_draws_and_drains_per_zombie() {
+    let mut g = table();
+    put(&mut g, 0, "Graveborn Muse"); // a Zombie itself
+    put(&mut g, 0, "Undead Augur"); // Zombie Wizard
+    let n = g.players[0].hand.len();
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(
+        g.players[0].hand.len(),
+        n + 2 + 1,
+        "two Zombies, then the draw step"
+    );
+    assert_eq!(g.players[0].life, 38);
+}
+
+#[test]
+fn disciple_of_bolas_sacrifices_another_for_life_and_cards() {
+    let mut g = table();
+    let angel = put(&mut g, 0, "Serra Angel"); // 4/4
+    let d = hand(&mut g, 0, "Disciple of Bolas");
+    let n = g.players[0].hand.len();
+    play(&mut g, d, false, &[], &[Action::Pick(angel)]);
+    assert!(in_graveyard(&g, 0, angel));
+    assert_eq!(g.obj(d).zone, Zone::Battlefield);
+    assert_eq!(g.players[0].life, 44);
+    assert_eq!(g.players[0].hand.len(), n - 1 + 4);
+}
+
+#[test]
+fn darigaazs_caldera_bounces_a_non_lair_land_or_is_sacrificed() {
+    let mut g = game(&["Swamp"]);
+    let swamp = g.permanents(0).find(|&x| g.def_of(x).name == "Swamp").unwrap();
+    let c = hand(&mut g, 0, "Darigaaz's Caldera");
+    act(&mut g, Action::PlayLand(c));
+    resolve_all(&mut g, &[Action::Pick(swamp)]);
+    assert_eq!(g.obj(swamp).zone, Zone::Hand);
+    assert_eq!(g.obj(c).zone, Zone::Battlefield);
+    assert_eq!(
+        g.def_of(c).mana.map(|m| m.colors),
+        Some([false, false, true, true, true])
+    );
+    let mut g = game(&[]);
+    let c = hand(&mut g, 0, "Darigaaz's Caldera");
+    act(&mut g, Action::PlayLand(c));
+    resolve_all(&mut g, &[Action::No]);
+    assert!(in_graveyard(&g, 0, c), "no other land to return");
+}
+
+// ---- Core: triggers, batch 3 (dies, discard, life and cast emits) ----
+
+/// Passes until the stack is empty, choosing `target` for every trigger and answering `Yes` to
+/// every "you may".
+fn settle(g: &mut Game, target: Target) {
+    while !g.items.is_empty() || matches!(g.pending, Pending::ChooseTarget(_) | Pending::Decide(_)) {
+        let a = match g.pending {
+            Pending::ChooseTarget(_) => Action::Target(target),
+            Pending::Decide(_) => Action::Yes,
+            _ => Action::PassPriority,
+        };
+        act(g, a);
+    }
+}
+
+/// Hero's Downfall (with three more Swamps for it) on `target`, then settles toward player 1.
+fn kill(g: &mut Game, target: ObjId) {
+    for _ in 0..3 {
+        put(g, 0, "Swamp");
+    }
+    let d = hand(g, 0, "Hero's Downfall");
+    act(g, Action::Cast(d));
+    act(g, Action::Target(obj(target)));
+    settle(g, Target::Player(1));
+    assert_eq!(g.obj(target).zone, Zone::Graveyard);
+}
+
+/// Casts `name` from hand and settles toward player 1.
+fn cast_settle(g: &mut Game, name: &str) -> ObjId {
+    let c = hand(g, 0, name);
+    act(g, Action::Cast(c));
+    settle(g, Target::Player(1));
+    c
+}
+
+#[test]
+fn sanguine_bond_vito_and_defiant_bloodlord_drain_what_you_gain() {
+    for name in [
+        "Sanguine Bond",
+        "Vito, Thorn of the Dusk Rose",
+        "Defiant Bloodlord",
+    ] {
+        let mut g = table();
+        put(&mut g, 0, name);
+        let kokusho = put(&mut g, 0, "Kokusho, the Evening Star");
+        kill(&mut g, kokusho); // each opponent loses 5, you gain 5
+        assert_eq!(g.players[0].life, 45, "{name}");
+        assert_eq!(g.players[1].life, 30, "{name}: then loses that much more");
+    }
+}
+
+#[test]
+fn vito_gives_your_creatures_lifelink() {
+    let mut g = table();
+    let vito = put(&mut g, 0, "Vito, Thorn of the Dusk Rose");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    act(&mut g, Action::Activate(vito, 0));
+    resolve_all(&mut g, &[]);
+    assert!(g.keywords(lions).has(Keywords::LIFELINK));
+}
+
+#[test]
+fn pitiless_plunderer_makes_a_treasure_when_another_of_yours_dies() {
+    let mut g = table();
+    let p = put(&mut g, 0, "Pitiless Plunderer");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    let theirs = put(&mut g, 1, "Savannah Lions");
+    kill(&mut g, lions);
+    assert_eq!(tokens(&g, 0, "Treasure").len(), 1);
+    kill(&mut g, theirs);
+    kill(&mut g, p);
+    assert_eq!(tokens(&g, 0, "Treasure").len(), 1, "not theirs, not itself");
+}
+
+#[test]
+fn elas_il_kor_gains_on_enter_and_drains_on_death() {
+    let mut g = table();
+    put(&mut g, 0, "Elas il-Kor, Sadistic Pilgrim");
+    let lions = cast_settle(&mut g, "Savannah Lions");
+    assert_eq!(g.players[0].life, 41);
+    kill(&mut g, lions);
+    assert_eq!(g.players[1].life, 39);
+}
+
+#[test]
+fn undead_augur_draws_and_loses_when_it_or_another_zombie_dies() {
+    let mut g = table();
+    let augur = put(&mut g, 0, "Undead Augur");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    let n = g.players[0].hand.len();
+    kill(&mut g, lions);
+    assert_eq!(g.players[0].hand.len(), n, "not a Zombie");
+    kill(&mut g, augur);
+    assert_eq!(g.players[0].hand.len(), n + 1);
+    assert_eq!(g.players[0].life, 39);
+}
+
+#[test]
+fn disciple_of_the_vault_drains_when_any_artifact_goes_to_a_graveyard() {
+    let mut g = table();
+    put(&mut g, 0, "Disciple of the Vault");
+    for p in [1, 0] {
+        let ring = put(&mut g, p, "Sol Ring");
+        let decay = hand(&mut g, 0, "Abrupt Decay");
+        act(&mut g, Action::Cast(decay));
+        act(&mut g, Action::Target(obj(ring)));
+        settle(&mut g, Target::Player(1));
+    }
+    assert_eq!(g.players[1].life, 38, "theirs and yours");
+}
+
+#[test]
+fn viridian_revel_draws_when_an_opponents_artifact_goes_to_the_graveyard() {
+    let mut g = table();
+    put(&mut g, 0, "Viridian Revel");
+    let n = g.players[0].hand.len();
+    for p in [1, 0] {
+        let ring = put(&mut g, p, "Sol Ring");
+        let decay = hand(&mut g, 0, "Abrupt Decay");
+        act(&mut g, Action::Cast(decay));
+        act(&mut g, Action::Target(obj(ring)));
+        settle(&mut g, Target::Player(1));
+    }
+    assert_eq!(g.players[0].hand.len(), n + 1, "only the opponent's");
+}
+
+/// Thrór's Map's "{2}, {T}: Draw a card, then discard a card", discarding `card`; triggers then
+/// settle toward player 1.
+fn loot_away(g: &mut Game, card: ObjId) {
+    let map = put(g, 0, "Thrór's Map");
+    act(g, Action::Activate(map, 0));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(g, Action::PassPriority);
+    }
+    act(g, Action::Discard(card));
+    settle(g, Target::Player(1));
+}
+
+#[test]
+fn feast_of_sanity_pings_and_gains_on_each_discard() {
+    let mut g = table();
+    put(&mut g, 0, "Feast of Sanity");
+    let c = hand(&mut g, 0, "Sol Ring");
+    loot_away(&mut g, c);
+    assert!(in_graveyard(&g, 0, c));
+    assert_eq!(g.players[1].life, 39);
+    assert_eq!(g.players[0].life, 41);
+}
+
+#[test]
+fn shadowstorm_vizier_grows_when_you_discard() {
+    let mut g = table();
+    let v = put(&mut g, 0, "Shadowstorm Vizier");
+    let c = hand(&mut g, 0, "Sol Ring");
+    loot_away(&mut g, c);
+    assert_eq!(g.power(v), 2);
+}
+
+#[test]
+fn drake_haven_pays_one_for_a_drake_on_each_discard() {
+    let mut g = table();
+    put(&mut g, 0, "Drake Haven");
+    let c = hand(&mut g, 0, "Sol Ring");
+    loot_away(&mut g, c);
+    assert_eq!(tokens(&g, 0, "Drake").len(), 1);
+}
+
+#[test]
+fn enchantresses_draw_when_you_cast_an_enchantment() {
+    for name in [
+        "Enchantress's Presence",
+        "Argothian Enchantress",
+        "Satyr Enchanter",
+        "Mesa Enchantress",
+        "Verduran Enchantress",
+        "Sythis, Harvest's Hand",
+    ] {
+        let mut g = table();
+        put(&mut g, 0, name);
+        let n = g.players[0].hand.len();
+        cast_settle(&mut g, "Sol Ring");
+        assert_eq!(
+            g.players[0].hand.len(),
+            n,
+            "{name}: an artifact isn't an enchantment"
+        );
+        cast_settle(&mut g, "Viridian Revel");
+        assert_eq!(g.players[0].hand.len(), n + 1, "{name}");
+        let gained = if name.starts_with("Sythis") { 1 } else { 0 };
+        assert_eq!(g.players[0].life, 40 + gained, "{name}");
+    }
+}
+
+#[test]
+fn mirran_spy_untaps_a_creature_when_you_cast_an_artifact() {
+    let mut g = table();
+    put(&mut g, 0, "Mirran Spy");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    attack(&mut g, &[lions]);
+    while g.step != Step::Main2 {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(g.obj(lions).tapped);
+    let ring = hand(&mut g, 0, "Sol Ring");
+    act(&mut g, Action::Cast(ring));
+    settle(&mut g, obj(lions));
+    assert!(!g.obj(lions).tapped);
+}
+
+#[test]
+fn revel_in_riches_makes_treasures_and_wins_with_ten() {
+    let mut g = table();
+    put(&mut g, 0, "Revel in Riches");
+    let theirs = put(&mut g, 1, "Savannah Lions");
+    kill(&mut g, theirs);
+    let treasure = tokens(&g, 0, "Treasure");
+    assert_eq!(treasure.len(), 1);
+    g.start_turn(4, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(g.result.is_none(), "one Treasure");
+    let def = g.obj(treasure[0]).def;
+    for _ in 0..9 {
+        g.add_card(0, def, Zone::Battlefield);
+    }
+    g.start_turn(5, 0);
+    while g.result.is_none() && g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.result, Some(bolt_core::Outcome::Winner(0)));
+}
+
+#[test]
+fn yahenni_grows_when_theirs_die_and_sacrifices_for_indestructible() {
+    let mut g = table();
+    let y = put(&mut g, 0, "Yahenni, Undying Partisan");
+    let theirs = put(&mut g, 1, "Savannah Lions");
+    let mine = put(&mut g, 0, "Savannah Lions");
+    kill(&mut g, theirs);
+    assert_eq!(g.power(y), 3);
+    act(&mut g, Action::ActivateWith(y, 0, mine));
+    resolve_all(&mut g, &[]);
+    assert!(in_graveyard(&g, 0, mine));
+    assert!(g.keywords(y).has(Keywords::INDESTRUCTIBLE));
+    assert_eq!(g.power(y), 3, "your own creature doesn't count");
+}
+
+/// Treetop Snarespinner's counter on `target`, twice.
+fn two_counters(g: &mut Game, target: ObjId) {
+    let s = put(g, 0, "Treetop Snarespinner");
+    for _ in 0..2 {
+        act(g, Action::Activate(s, 0));
+        act(g, Action::Target(obj(target)));
+        settle(g, Target::Player(1));
+    }
+}
+
+#[test]
+fn herd_baloth_makes_a_beast_each_time_counters_go_on_it() {
+    let mut g = table();
+    let b = put(&mut g, 0, "Herd Baloth");
+    two_counters(&mut g, b);
+    assert_eq!(tokens(&g, 0, "Beast").len(), 2, "every time, not once a turn");
+}
+
+#[test]
+fn scurry_oak_evolves_into_squirrels() {
+    let mut g = table();
+    let oak = put(&mut g, 0, "Scurry Oak");
+    cast_settle(&mut g, "Savannah Lions"); // 2/1: greater power
+    assert_eq!(g.power(oak), 2);
+    assert_eq!(tokens(&g, 0, "Squirrel").len(), 1);
+}
+
+#[test]
+fn vilis_draws_for_the_life_you_lose_and_shrinks_for_two_life() {
+    let mut g = table();
+    let vilis = put(&mut g, 0, "Vilis, Broker of Blood");
+    let lions = put(&mut g, 1, "Savannah Lions");
+    let n = g.players[0].hand.len();
+    act(&mut g, Action::Activate(vilis, 0));
+    act(&mut g, Action::Target(obj(lions)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].life, 38);
+    assert_eq!(g.players[0].hand.len(), n + 2, "paying 2 life is losing 2");
+    assert!(in_graveyard(&g, 1, lions), "a 2/1 with -1/-1");
+}
+
+// ---- Core: triggers, batch 4 (suppressed and doubled triggers) ----
+
+#[test]
+fn hushbringer_stops_creatures_entering_or_dying_from_triggering() {
+    let mut g = table();
+    put(&mut g, 1, "Hushbringer");
+    put(&mut g, 0, "Elas il-Kor, Sadistic Pilgrim");
+    let lions = cast_settle(&mut g, "Savannah Lions");
+    kill(&mut g, lions);
+    assert_eq!(g.players[0].life, 40);
+    assert_eq!(g.players[1].life, 40);
+}
+
+#[test]
+fn doorkeeper_thrull_stops_entering_but_not_dying() {
+    let mut g = table();
+    put(&mut g, 1, "Doorkeeper Thrull");
+    put(&mut g, 0, "Elas il-Kor, Sadistic Pilgrim");
+    let lions = cast_settle(&mut g, "Savannah Lions");
+    assert_eq!(g.players[0].life, 40);
+    kill(&mut g, lions);
+    assert_eq!(g.players[1].life, 39);
+}
+
+#[test]
+fn elesh_norn_doubles_your_entering_triggers_and_stops_theirs() {
+    let mut g = table();
+    put(&mut g, 0, "Elesh Norn, Mother of Machines");
+    put(&mut g, 0, "Elas il-Kor, Sadistic Pilgrim");
+    put(&mut g, 1, "Elas il-Kor, Sadistic Pilgrim");
+    cast_settle(&mut g, "Savannah Lions");
+    assert_eq!(g.players[0].life, 42, "twice");
+    g.start_turn(4, 1);
+    while !(g.step == Step::Main1 && g.pending == Pending::Priority(1)) {
+        act(&mut g, Action::PassPriority);
+    }
+    let theirs = hand(&mut g, 1, "Savannah Lions");
+    act(&mut g, Action::Cast(theirs));
+    settle(&mut g, Target::Player(0));
+    assert_eq!(g.obj(theirs).zone, Zone::Battlefield);
+    assert_eq!(g.players[1].life, 40, "their Elas doesn't trigger");
+}
+
+#[test]
+fn harmonic_prodigy_doubles_another_wizards_triggers() {
+    let mut g = table();
+    let prodigy = put(&mut g, 0, "Harmonic Prodigy");
+    let augur = put(&mut g, 0, "Undead Augur"); // a Zombie Wizard
+    let n = g.players[0].hand.len();
+    kill(&mut g, augur);
+    assert_eq!(g.players[0].hand.len(), n + 2, "twice");
+    assert_eq!(g.players[0].life, 38);
+    let before = g.power(prodigy);
+    cast_settle(&mut g, "Sol Ring");
+    assert_eq!(g.power(prodigy), before + 1, "its own prowess isn't doubled");
+}
+
+// ---- Core: triggers, batch 5 (sacrifice, enter and life-lost emits) ----
+
+#[test]
+fn mazirek_counters_your_creatures_when_a_player_sacrifices() {
+    let mut g = table();
+    let m = put(&mut g, 0, "Mazirek, Kraul Death Priest");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    put(&mut g, 1, "Savannah Lions");
+    let e = hand(&mut g, 0, "Diabolic Edict");
+    play(&mut g, e, false, &[Target::Player(1)], &[]);
+    assert_eq!(g.power(m), 3);
+    assert_eq!(g.power(lions), 3);
+}
+
+#[test]
+fn mirkwood_bats_drains_when_you_create_or_sacrifice_a_token() {
+    let mut g = table();
+    put(&mut g, 0, "Mirkwood Bats");
+    put(&mut g, 0, "Pitiless Plunderer");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    kill(&mut g, lions); // a Treasure is created
+    assert_eq!(g.players[1].life, 39);
+    let t = tokens(&g, 0, "Treasure")[0];
+    g.manual_mana[0] = true;
+    act(&mut g, Action::TapForMana(t, 0));
+    g.manual_mana[0] = false;
+    cast_settle(&mut g, "Sol Ring"); // triggers go on the stack as priority returns
+    assert!(g.obj(t).zone != Zone::Battlefield);
+    assert_eq!(g.players[1].life, 38, "sacrificed");
+}
+
+#[test]
+fn al_bhed_salvagers_drains_when_it_or_your_creature_or_artifact_dies() {
+    let mut g = table();
+    let a = put(&mut g, 0, "Al Bhed Salvagers");
+    let ring = put(&mut g, 0, "Sol Ring");
+    let decay = hand(&mut g, 0, "Abrupt Decay");
+    act(&mut g, Action::Cast(decay));
+    act(&mut g, Action::Target(obj(ring)));
+    settle(&mut g, Target::Player(1));
+    assert_eq!(g.players[1].life, 39);
+    kill(&mut g, a);
+    assert_eq!(g.players[1].life, 38, "itself");
+    assert_eq!(g.players[0].life, 42);
+}
+
+#[test]
+fn altar_of_the_brood_mills_when_another_permanent_of_yours_enters() {
+    let mut g = table();
+    put(&mut g, 0, "Altar of the Brood");
+    let n = g.players[1].graveyard.len();
+    let f = hand(&mut g, 0, "Forest");
+    act(&mut g, Action::PlayLand(f));
+    settle(&mut g, Target::Player(1));
+    assert_eq!(g.players[1].graveyard.len(), n + 1);
+}
+
+#[test]
+fn ivy_lane_denizen_counters_when_another_green_creature_enters() {
+    let mut g = table();
+    put(&mut g, 0, "Ivy Lane Denizen");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    cast_settle(&mut g, "Savannah Lions"); // white: nothing
+    assert_eq!(g.power(lions), 2);
+    let oak = hand(&mut g, 0, "Scurry Oak");
+    act(&mut g, Action::Cast(oak));
+    settle(&mut g, obj(lions));
+    assert_eq!(g.power(lions), 3);
+}
+
+#[test]
+fn wound_reflection_doubles_the_opponents_loss_at_end_step() {
+    let mut g = table();
+    put(&mut g, 0, "Wound Reflection");
+    let angel = put(&mut g, 0, "Serra Angel");
+    let f = hand(&mut g, 0, "Soul's Fire");
+    play(&mut g, f, false, &[obj(angel), Target::Player(1)], &[]);
+    assert_eq!(g.players[1].life, 36);
+    while g.step != Step::Cleanup && g.turn == 3 {
+        let a = if g.pending == Pending::DeclareAttackers(0) {
+            Action::FinishAttacks
+        } else {
+            Action::PassPriority
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.players[1].life, 32);
+}

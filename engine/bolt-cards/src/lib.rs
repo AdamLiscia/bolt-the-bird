@@ -477,6 +477,8 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         reanimates_tapped: false,
         flash_cast_sacrificed: false,
         mana_ext: Default::default(),
+        suppresses_triggers: None,
+        doubles_triggers_of: None,
     };
     def.color_identity = color_identity(o);
     def.phyrexian = phyrexian;
