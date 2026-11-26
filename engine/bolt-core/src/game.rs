@@ -1273,7 +1273,12 @@ pub enum Decision {
     PermanentsFromHandUpTo { left: u8 },
     /// Expropriate's vote: `Yes` for time, `No` for money; `voter` votes, then `next` (if any).
     /// `money` holds the money voters so far, `time` the time votes.
-    ExpropriateVote { voter: PlayerId, next: Option<PlayerId>, time: u8, money: Vec<PlayerId> },
+    ExpropriateVote {
+        voter: PlayerId,
+        next: Option<PlayerId>,
+        time: u8,
+        money: Vec<PlayerId>,
+    },
     /// Expropriate: `Pick` a permanent `owner` owns to gain control of; then the rest of `money`.
     ExpropriatePick { owner: PlayerId, money: Vec<PlayerId> },
 }
@@ -1664,6 +1669,9 @@ pub struct Game {
     pub control_while_shielded: Vec<(ObjId, u32, PlayerId, PlayerId)>,
     /// Nontoken creatures that died this turn: (turn, how many) (Gadrak).
     pub nontoken_creatures_died: (u32, u32),
+    /// While one effect creates its tokens: whether Xorn's additional Treasure has been made for
+    /// it ("one or more Treasure tokens": once per event).
+    xorn_batch: Option<bool>,
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -1924,6 +1932,7 @@ impl Game {
             cleanup_again: false,
             control_while_shielded: Vec::new(),
             nontoken_creatures_died: (0, 0),
+            xorn_batch: None,
         }
     }
 
@@ -1981,7 +1990,9 @@ impl Game {
     fn citadel_top(&self, p: PlayerId, c: ObjId) -> bool {
         self.obj(c).zone == Zone::Library
             && self.players[p].library.last() == Some(&c)
-            && self.permanents(p).any(|x| self.def_of(x).citadel && !self.lost_abilities(x))
+            && self
+                .permanents(p)
+                .any(|x| self.def_of(x).citadel && !self.lost_abilities(x))
     }
 
     /// Whether a Silent Arbiter is on the battlefield ("no more than one creature can attack /
@@ -6053,7 +6064,9 @@ impl Game {
                 .targets
                 .iter()
                 .enumerate()
-                .filter(|&(i, &c)| filters.get(i).is_some_and(|g| g.up_to_x) && c != Chosen::Object(x, self.obj(x).zcc))
+                .filter(|&(i, &c)| {
+                    filters.get(i).is_some_and(|g| g.up_to_x) && c != Chosen::Object(x, self.obj(x).zcc)
+                })
                 .count();
             if others >= item.x as usize {
                 return false;
@@ -6440,7 +6453,7 @@ impl Game {
                 })
                 .collect();
         }
-        if def.cost.x > 0 && !from_graveyard {
+        if def.cost.x > 0 && !from_graveyard && def.modes.is_empty() {
             // One mode per affordable X (capped by the mana available, convoke's creatures included).
             let convoke = self.convoke_sources(p, None, PayFor::Spell(c)).len();
             let max = (self.untapped_sources(p).len() + self.players[p].pool.len() + convoke).min(30) as u8;
@@ -7124,11 +7137,16 @@ impl Game {
         let mut cost = self.spell_cost(p, c, mode, &[]);
         cost.generic = cost.generic.saturating_sub(self.delve_available(p, c));
         let exclude = self.harmonize_creature(c, mode);
-        let target_priced = matches!(self.def_of(c).reduction, Some(Reduction::MoreIfTargetsSubtype(..)));
+        let target_priced = matches!(
+            self.def_of(c).reduction,
+            Some(Reduction::MoreIfTargetsSubtype(..))
+        );
         if self.can_pay_for(p, &cost, exclude, pay_for_spell(c, mode.mode)) && !target_priced {
             return true;
         }
-        if let Some(Reduction::IfTargetsTapped(_) | Reduction::MoreIfTargetsSubtype(..)) = self.def_of(c).reduction {
+        if let Some(Reduction::IfTargetsTapped(_) | Reduction::MoreIfTargetsSubtype(..)) =
+            self.def_of(c).reduction
+        {
             let f = self
                 .def_of(c)
                 .spell
@@ -9083,7 +9101,7 @@ impl Game {
                 && (self.def_of(id).attacks_only_with_artifacts == 0
                     || self.permanents(p).filter(|&x| self.types_of(x).artifact).count()
                         >= self.def_of(id).attacks_only_with_artifacts as usize)
-                && !(arbiter && !declared.is_empty())
+                && (!arbiter || declared.is_empty())
                 && !self.cant_attack_until.iter().any(|&(x, zcc, until)| x == id && zcc == o.zcc && self.turn < until)
                 && (!self.def_of(id).fights_only_with_blessing || self.city_blessing[o.controller])
                 // Promise of Loyalty: a creature with a vow counter can't attack the player it vowed to.
@@ -9261,7 +9279,7 @@ impl Game {
         let free: Vec<ObjId> = self
             .creatures(p)
             .filter(|&id| !self.obj(id).tapped && !combat.is_blocking(id))
-            .filter(|_| !(arbiter && !combat.blocks.is_empty()))
+            .filter(|_| !arbiter || combat.blocks.is_empty())
             .collect();
         let mut v = Vec::new();
         for &a in &combat.attackers {
@@ -11412,8 +11430,12 @@ impl Game {
                 .filter(|&x| self.mode_affordable(p, *card, CastMode { x, ..*mode }))
                 .filter(|&x| {
                     // A mode whose targets depend on X needs a legal choice at that X.
-                    let Some(m) = mode.mode.filter(|&m| m != OMEN_MODE) else { return true };
-                    let Some(ability) = self.def_of(*card).modes.get(m as usize) else { return true };
+                    let Some(m) = mode.mode.filter(|&m| m != OMEN_MODE) else {
+                        return true;
+                    };
+                    let Some(ability) = self.def_of(*card).modes.get(m as usize) else {
+                        return true;
+                    };
                     let mut it = Game::casting(*card, p);
                     it.x = x;
                     it.mode = Some(m);
@@ -13313,7 +13335,15 @@ impl Game {
                 }
             }
             (Decision::MoveCounterFrom { .. }, _) => {}
-            (Decision::ExpropriateVote { voter, next, mut time, mut money }, a) => {
+            (
+                Decision::ExpropriateVote {
+                    voter,
+                    next,
+                    mut time,
+                    mut money,
+                },
+                a,
+            ) => {
                 // The asked player is the voter; the spell's controller is the one who asked first.
                 let caster = if next.is_some() { voter } else { opponent(voter) };
                 if a == Action::Yes {
@@ -13322,7 +13352,15 @@ impl Game {
                     money.push(voter);
                 }
                 if let Some(q) = next {
-                    self.ask(q, Decision::ExpropriateVote { voter: q, next: None, time, money });
+                    self.ask(
+                        q,
+                        Decision::ExpropriateVote {
+                            voter: q,
+                            next: None,
+                            time,
+                            money,
+                        },
+                    );
                 } else {
                     for _ in 0..time {
                         self.extra_turns.push(caster);
@@ -14455,10 +14493,12 @@ impl Game {
                 // Every token this effect makes is "just created" (for "They gain ..."), not only the last.
                 let mut made = Vec::new();
                 for p in self.players_for(item, legal, who) {
+                    self.xorn_batch = Some(false);
                     for _ in 0..n {
                         self.create_token(p, def);
                         made.extend(self.last_created.iter().copied());
                     }
+                    self.xorn_batch = None;
                 }
                 self.last_created = made;
             }
@@ -17752,16 +17792,36 @@ impl Game {
                 );
             }
             Effect::ScryXTargetPlayer(slot) => {
-                if let Some(q) = self.players_for(item, legal, Who::TargetPlayer(slot)).first().copied() {
+                if let Some(q) = self
+                    .players_for(item, legal, Who::TargetPlayer(slot))
+                    .first()
+                    .copied()
+                {
                     self.fire(q, When::YouScryOrSurveil, None);
-                    let cards: Vec<ObjId> = self.players[q].library.iter().rev().take(item.x as usize).copied().collect();
+                    let cards: Vec<ObjId> = self.players[q]
+                        .library
+                        .iter()
+                        .rev()
+                        .take(item.x as usize)
+                        .copied()
+                        .collect();
                     if !cards.is_empty() {
-                        self.ask(q, Decision::Scry { cards, kept: Vec::new() });
+                        self.ask(
+                            q,
+                            Decision::Scry {
+                                cards,
+                                kept: Vec::new(),
+                            },
+                        );
                     }
                 }
             }
             Effect::TargetPlayerCreatesXTokens { slot, def } => {
-                if let Some(q) = self.players_for(item, legal, Who::TargetPlayer(slot)).first().copied() {
+                if let Some(q) = self
+                    .players_for(item, legal, Who::TargetPlayer(slot))
+                    .first()
+                    .copied()
+                {
                     for _ in 0..item.x {
                         self.create_token(q, def);
                     }
@@ -21505,11 +21565,22 @@ impl Game {
                     d.tokens_plus_one
                         .map(|t| (t, 1))
                         .into_iter()
-                        .chain(d.treasures_plus_one.filter(|&t| t == def).map(|t| (t, 1)))
+                        .chain(
+                            d.treasures_plus_one
+                                .filter(|&t| t == def && self.xorn_batch != Some(true))
+                                .map(|t| (t, 1)),
+                        )
                         .chain(d.tokens_plus_each.map(|t| (t, made.len())))
                         .collect::<Vec<_>>()
                 })
                 .collect();
+            // Xorn: once for the whole event, so the next token of this effect makes none.
+            let xorn = self
+                .permanents(p)
+                .any(|x| !self.lost_abilities(x) && self.def_of(x).treasures_plus_one == Some(def));
+            if xorn && self.xorn_batch == Some(false) {
+                self.xorn_batch = Some(true);
+            }
             self.token_replacing = true;
             for (t, n) in extras {
                 for _ in 0..n {

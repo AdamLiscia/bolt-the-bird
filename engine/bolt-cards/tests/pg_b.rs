@@ -2806,22 +2806,33 @@ fn kozileks_command_chooses_x_then_two_modes() {
     put(&mut g, 0, "Sol Ring"); // {C}{C}
     let lions = put(&mut g, 1, "Savannah Lions"); // mana value 1
     let titan = put(&mut g, 1, "Inferno Titan"); // mana value 6
-    let gy: Vec<ObjId> = (0..3).map(|_| g.add_card(1, cid("Plains"), Zone::Graveyard)).collect();
+    let gy: Vec<ObjId> = (0..3)
+        .map(|_| g.add_card(1, cid("Plains"), Zone::Graveyard))
+        .collect();
     let cmd = hand(&mut g, 0, "Kozilek's Command");
     // Mode 5: exile a creature with mana value X or less, and up to X graveyard cards.
     act(&mut g, Action::CastModal(cmd, 5));
     act(&mut g, Action::Amount(2));
     let legal = g.legal_actions();
     assert!(legal.contains(&Action::Target(Target::Object(lions))));
-    assert!(!legal.contains(&Action::Target(Target::Object(titan))), "mana value 6 > X");
+    assert!(
+        !legal.contains(&Action::Target(Target::Object(titan))),
+        "mana value 6 > X"
+    );
     act(&mut g, Action::Target(Target::Object(lions)));
     act(&mut g, Action::Target(Target::Object(gy[0])));
     act(&mut g, Action::Target(Target::Object(gy[1])));
-    assert!(!g.legal_actions().contains(&Action::Target(Target::Object(gy[2]))), "up to X = 2");
+    assert!(
+        !g.legal_actions().contains(&Action::Target(Target::Object(gy[2]))),
+        "up to X = 2"
+    );
     if matches!(g.pending, Pending::ChooseTarget(_)) {
         act(&mut g, Action::No); // stop choosing
     }
     resolve_all(&mut g, &[]);
     assert_eq!(g.obj(lions).zone, Zone::Exile);
-    assert_eq!((g.obj(gy[0]).zone, g.obj(gy[1]).zone, g.obj(gy[2]).zone), (Zone::Exile, Zone::Exile, Zone::Graveyard));
+    assert_eq!(
+        (g.obj(gy[0]).zone, g.obj(gy[1]).zone, g.obj(gy[2]).zone),
+        (Zone::Exile, Zone::Exile, Zone::Graveyard)
+    );
 }

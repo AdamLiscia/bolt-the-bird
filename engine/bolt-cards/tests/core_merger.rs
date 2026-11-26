@@ -864,7 +864,11 @@ fn bolas_citadel_casts_from_the_top_for_life() {
     play(&mut g, lions, false, &[], &[]);
     assert_eq!(g.obj(lions).zone, Zone::Battlefield);
     assert_eq!(g.players[0].life, 39, "its mana value in life");
-    assert_eq!(g.permanents(0).filter(|&x| !g.obj(x).tapped).count(), untapped + 1, "no mana: only the Lions are new");
+    assert_eq!(
+        g.permanents(0).filter(|&x| !g.obj(x).tapped).count(),
+        untapped + 1,
+        "no mana: only the Lions are new"
+    );
 }
 
 #[test]
@@ -877,15 +881,14 @@ fn xorn_adds_a_treasure_and_gadrak_needs_four_artifacts() {
     act(&mut g, Action::CastWith(score, junk));
     resolve_all(&mut g, &[]);
     assert_eq!(tokens(&g, 0, "Treasure").len(), 3, "two plus one");
-    while g.step != Step::Main2 {
-        assert_ne!(g.pending, Pending::DeclareAttackers(0), "three artifacts: Gadrak can't attack");
-        let a = match g.pending {
-            Pending::DeclareBlockers(_) => Action::FinishBlocks,
-            _ => Action::PassPriority,
-        };
-        act(&mut g, a);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
     }
-    let _ = gadrak;
+    let legal = g.legal_actions();
+    assert!(
+        !legal.contains(&Action::Attack(gadrak)),
+        "three artifacts: Gadrak can't attack"
+    );
 }
 
 #[test]
@@ -898,7 +901,10 @@ fn silent_arbiter_allows_one_attacker() {
         act(&mut g, Action::PassPriority);
     }
     act(&mut g, Action::Attack(a));
-    assert!(!g.legal_actions().contains(&Action::Attack(b)), "one attacker each combat");
+    assert!(
+        !g.legal_actions().contains(&Action::Attack(b)),
+        "one attacker each combat"
+    );
 }
 
 #[test]
@@ -925,12 +931,17 @@ fn a_target_that_raises_the_cost_needs_the_mana_dragons_prey() {
     let mut g = game(&["Swamp", "Swamp", "Swamp"]);
     let dragon = put(&mut g, 1, "Magmatic Hellkite");
     let prey = hand(&mut g, 0, "Dragon's Prey");
-    assert!(!g.legal_actions().contains(&Action::Cast(prey)), "only a Dragon to target, and no {{2}} more");
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(prey)),
+        "only a Dragon to target, and no {{2}} more"
+    );
     let mut g = game(&["Swamp", "Swamp", "Swamp", "Swamp", "Swamp"]);
     let dragon2 = put(&mut g, 1, "Magmatic Hellkite");
     let prey = hand(&mut g, 0, "Dragon's Prey");
     act(&mut g, Action::Cast(prey));
-    assert!(g.legal_actions().contains(&Action::Target(Target::Object(dragon2))));
+    assert!(g
+        .legal_actions()
+        .contains(&Action::Target(Target::Object(dragon2))));
     act(&mut g, Action::Target(Target::Object(dragon2)));
     resolve_all(&mut g, &[]);
     assert_eq!(g.obj(dragon2).zone, Zone::Graveyard);
