@@ -724,8 +724,8 @@
    "deck": "Atla Palani, Nest Tender",
    "missing": "creatures are every creature type; a 2/2 blue Shapeshifter creature token with changeling",
    "lane": "d1",
-   "theme": "objects_zones",
-   "owner": "mac-c"
+   "theme": "effects",
+   "owner": "d3"
   },
   {
    "card": "Moonsilver Key",
@@ -1036,7 +1036,7 @@
    "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
    "missing": "remove attackers from combat, extra combat with attack restrictions",
    "lane": "d1",
-   "theme": "effects",
+   "theme": "merger_delegated",
    "owner": "mac-b"
   },
   {
@@ -5134,6 +5134,358 @@
    "lane": "merger",
    "theme": "effects",
    "owner": "d3"
+  },
+  {
+   "card": "Path of Ancestry",
+   "deck": "Bloomburrow Commander (BLC)",
+   "missing": "BLC (lane B's routing, 2026-11-26)",
+   "lane": "mac-b",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Brightcap Badger",
+   "deck": "Bloomburrow Commander (BLC)",
+   "missing": "BLC (lane B's routing, 2026-11-26)",
+   "lane": "mac-b",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Plumb the Forbidden",
+   "deck": "Bloomburrow Commander (BLC)",
+   "missing": "BLC (lane B's routing, 2026-11-26)",
+   "lane": "mac-b",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Rain of Riches",
+   "deck": "Bloomburrow Commander (BLC)",
+   "missing": "BLC (lane B's routing, 2026-11-26)",
+   "lane": "mac-b",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Wolfwillow Haven",
+   "deck": "Bloomburrow Commander (BLC)",
+   "missing": "BLC (lane B's routing, 2026-11-26)",
+   "lane": "mac-b",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Ghirapur Orrery",
+   "deck": "Bloomburrow Commander (BLC)",
+   "missing": "BLC (lane B's routing, 2026-11-26)",
+   "lane": "mac-b",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Kodama of the East Tree",
+   "deck": "Bloomburrow Commander (BLC)",
+   "missing": "BLC (lane B's routing, 2026-11-26)",
+   "lane": "mac-b",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Rose Room Treasurer",
+   "deck": "Bloomburrow Commander (BLC)",
+   "missing": "BLC (lane B's routing, 2026-11-26)",
+   "lane": "mac-b",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Tenuous Truce",
+   "deck": "Bloomburrow Commander (BLC)",
+   "missing": "BLC (lane B's routing, 2026-11-26)",
+   "lane": "mac-b",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Ravenous Squirrel",
+   "deck": "Bloomburrow Commander (BLC)",
+   "missing": "BLC (lane B's routing, 2026-11-26)",
+   "lane": "mac-b",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Simic Ascendancy",
+   "deck": "Bloomburrow Commander (BLC)",
+   "missing": "BLC (lane B's routing, 2026-11-26)",
+   "lane": "mac-b",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Grothama, All-Devouring",
+   "deck": "Bloomburrow Commander (BLC)",
+   "missing": "BLC (lane B's routing, 2026-11-26)",
+   "lane": "mac-b",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Tamiyo, Field Researcher",
+   "deck": "Bloomburrow Commander (BLC)",
+   "missing": "BLC (lane B's routing, 2026-11-26)",
+   "lane": "mac-b",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Moonstone Eulogist",
+   "deck": "Bloomburrow Commander (BLC)",
+   "missing": "BLC (lane B's routing, 2026-11-26)",
+   "lane": "mac-b",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Bootleggers' Stash",
+   "deck": "Bloomburrow Commander (BLC)",
+   "missing": "BLC (lane B's routing, 2026-11-26)",
+   "lane": "mac-b",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Cache Grab",
+   "deck": "Bloomburrow Commander (BLC)",
+   "missing": "BLC (lane B's routing, 2026-11-26)",
+   "lane": "mac-b",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Calamity of Cinders",
+   "deck": "Bloomburrow Commander (BLC)",
+   "missing": "BLC (lane B's routing, 2026-11-26)",
+   "lane": "mac-b",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Communal Brewing",
+   "deck": "Bloomburrow Commander (BLC)",
+   "missing": "BLC (lane B's routing, 2026-11-26)",
+   "lane": "mac-b",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Echoing Assault",
+   "deck": "Bloomburrow Commander (BLC)",
+   "missing": "BLC (lane B's routing, 2026-11-26)",
+   "lane": "mac-b",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Forgotten Ancient",
+   "deck": "Bloomburrow Commander (BLC)",
+   "missing": "BLC (lane B's routing, 2026-11-26)",
+   "lane": "mac-b",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Kwain, Itinerant Meddler",
+   "deck": "Bloomburrow Commander (BLC)",
+   "missing": "BLC (lane B's routing, 2026-11-26)",
+   "lane": "mac-b",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Martial Impetus",
+   "deck": "Bloomburrow Commander (BLC)",
+   "missing": "BLC (lane B's routing, 2026-11-26)",
+   "lane": "mac-b",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Mr. Foxglove",
+   "deck": "Bloomburrow Commander (BLC)",
+   "missing": "BLC (lane B's routing, 2026-11-26)",
+   "lane": "mac-b",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Realm-Cloaked Giant // Cast Off",
+   "deck": "Bloomburrow Commander (BLC)",
+   "missing": "BLC (lane B's routing, 2026-11-26)",
+   "lane": "mac-b",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Rootcast Apprenticeship",
+   "deck": "Bloomburrow Commander (BLC)",
+   "missing": "BLC (lane B's routing, 2026-11-26)",
+   "lane": "mac-b",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Swarmyard",
+   "deck": "Bloomburrow Commander (BLC)",
+   "missing": "BLC (lane B's routing, 2026-11-26)",
+   "lane": "mac-b",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "The Odd Acorn Gang",
+   "deck": "Bloomburrow Commander (BLC)",
+   "missing": "BLC (lane B's routing, 2026-11-26)",
+   "lane": "mac-b",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Insatiable Frugivore",
+   "deck": "Bloomburrow Commander (BLC)",
+   "missing": "BLC (lane B's routing, 2026-11-26)",
+   "lane": "mac-b",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Pyreswipe Hawk",
+   "deck": "Bloomburrow Commander (BLC)",
+   "missing": "BLC (lane B's routing, 2026-11-26)",
+   "lane": "mac-b",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Shield Broker",
+   "deck": "Bloomburrow Commander (BLC)",
+   "missing": "BLC (lane B's routing, 2026-11-26)",
+   "lane": "mac-b",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Bloodroot Apothecary",
+   "deck": "Bloomburrow Commander (BLC)",
+   "missing": "BLC (lane B's routing, 2026-11-26)",
+   "lane": "mac-b",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Rolling Hamsphere",
+   "deck": "Bloomburrow Commander (BLC)",
+   "missing": "BLC (lane B's routing, 2026-11-26)",
+   "lane": "mac-b",
+   "theme": "effects",
+   "owner": "d3"
+  },
+  {
+   "card": "Alchemist's Talent",
+   "deck": "Bloomburrow Commander (BLC)",
+   "missing": "BLC (lane B's routing, 2026-11-26)",
+   "lane": "mac-b",
+   "theme": "subsystems",
+   "owner": "d4"
+  },
+  {
+   "card": "Fisher's Talent",
+   "deck": "Bloomburrow Commander (BLC)",
+   "missing": "BLC (lane B's routing, 2026-11-26)",
+   "lane": "mac-b",
+   "theme": "subsystems",
+   "owner": "d4"
+  },
+  {
+   "card": "Fortune Teller's Talent",
+   "deck": "Bloomburrow Commander (BLC)",
+   "missing": "BLC (lane B's routing, 2026-11-26)",
+   "lane": "mac-b",
+   "theme": "subsystems",
+   "owner": "d4"
+  },
+  {
+   "card": "Gourmand's Talent",
+   "deck": "Bloomburrow Commander (BLC)",
+   "missing": "BLC (lane B's routing, 2026-11-26)",
+   "lane": "mac-b",
+   "theme": "subsystems",
+   "owner": "d4"
+  },
+  {
+   "card": "Wizard Class",
+   "deck": "Bloomburrow Commander (BLC)",
+   "missing": "BLC (lane B's routing, 2026-11-26)",
+   "lane": "mac-b",
+   "theme": "subsystems",
+   "owner": "d4"
+  },
+  {
+   "card": "Dusk // Dawn",
+   "deck": "Bloomburrow Commander (BLC)",
+   "missing": "BLC (lane B's routing, 2026-11-26)",
+   "lane": "mac-b",
+   "theme": "subsystems",
+   "owner": "d4"
+  },
+  {
+   "card": "Evercoat Ursine",
+   "deck": "Bloomburrow Commander (BLC)",
+   "missing": "BLC (lane B's routing, 2026-11-26)",
+   "lane": "mac-b",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Saw in Half",
+   "deck": "Bloomburrow Commander (BLC)",
+   "missing": "BLC (lane B's routing, 2026-11-26)",
+   "lane": "mac-b",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Arthur, Marigold Knight",
+   "deck": "Bloomburrow Commander (BLC)",
+   "missing": "BLC (lane B's routing, 2026-11-26)",
+   "lane": "mac-b",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Coveted Jewel",
+   "deck": "Bloomburrow Commander (BLC)",
+   "missing": "BLC (lane B's routing, 2026-11-26)",
+   "lane": "mac-b",
+   "theme": "merger_delegated",
+   "owner": "mac-b"
+  },
+  {
+   "card": "Hazel's Brewmaster",
+   "deck": "Bloomburrow Commander (BLC)",
+   "missing": "BLC (lane B's routing, 2026-11-26)",
+   "lane": "mac-b",
+   "theme": "merger_delegated",
+   "owner": "mac-b"
+  },
+  {
+   "card": "Perch Protection",
+   "deck": "Bloomburrow Commander (BLC)",
+   "missing": "BLC (lane B's routing, 2026-11-26)",
+   "lane": "mac-b",
+   "theme": "merger_delegated",
+   "owner": "mac-b"
   }
  ]
 }
