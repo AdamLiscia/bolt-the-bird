@@ -296,7 +296,43 @@ pub fn token_defs() -> Vec<CardDef> {
         },
         blood(),
         red(token("Hamster", "Hamster", 1, 1, Keywords::NONE)), // Rolling Hamsphere
+        // 91-96: placeholders until their lanes' tokens land (d2: Angel, Pincher, Servo, Walker,
+        // Utvara's 6/6 Dragon; d4: Smaug). Each lane replaces its own line.
+        token("Placeholder 91", "", 0, 0, Keywords::NONE),
+        token("Placeholder 92", "", 0, 0, Keywords::NONE),
+        token("Placeholder 93", "", 0, 0, Keywords::NONE),
+        token("Placeholder 94", "", 0, 0, Keywords::NONE),
+        token("Placeholder 95", "", 0, 0, Keywords::NONE),
+        token("Placeholder 96", "", 0, 0, Keywords::NONE),
+        wicked_role(), // 97, lane C
     ]
+}
+
+/// The Wicked Role (CR 111.10j): an Aura token, "Enchanted creature gets +1/+1. When this Aura is put
+/// into a graveyard, each opponent loses 1 life."
+fn wicked_role() -> CardDef {
+    let mut d = CardDef {
+        name: "Wicked Role".to_string(),
+        types: Types {
+            enchantment: true,
+            ..Types::default()
+        },
+        subtypes: vec!["Aura".to_string(), "Role".to_string()],
+        token: true,
+        aura: true,
+        ..CardDef::default()
+    };
+    attached(&mut d, false, 1, 1, Keywords::NONE);
+    on(
+        &mut d,
+        When::ThisPutIntoGraveyardFromBattlefield,
+        vec![],
+        vec![Effect::LoseLife {
+            who: Who::EachOpponent,
+            n: 1,
+        }],
+    );
+    d
 }
 
 /// A red token.
@@ -466,6 +502,7 @@ pub struct Tokens {
     pub orc_army: usize,
     pub eldrazi_scion: usize,
     pub bat: usize,
+    pub wicked_role: usize,
 }
 
 impl Tokens {
@@ -562,6 +599,7 @@ impl Tokens {
             orc_army: base + 86,
             eldrazi_scion: base + 87,
             bat: base + 83,
+            wicked_role: base + 97,
         }
     }
 }
