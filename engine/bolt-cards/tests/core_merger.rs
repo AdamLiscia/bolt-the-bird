@@ -733,9 +733,25 @@ fn a_class_level_ability_waits_for_its_level() {
     let island = cid("Island");
     let mut defs = (*set("CMD").unwrap().defs).clone();
     let up = bolt_core::Ability::new(vec![], vec![bolt_core::Effect::ClassLevelUp(2)]);
-    defs[island].activated.push(bolt_core::Activated { level_up_to: 2, sorcery: true, ability: up, ..Default::default() });
-    let draw = bolt_core::Ability::new(vec![], vec![bolt_core::Effect::Draw { who: bolt_core::Who::You, n: 1 }]);
-    defs[island].activated.push(bolt_core::Activated { tap: true, min_class_level: 2, ability: draw, ..Default::default() });
+    defs[island].activated.push(bolt_core::Activated {
+        level_up_to: 2,
+        sorcery: true,
+        ability: up,
+        ..Default::default()
+    });
+    let draw = bolt_core::Ability::new(
+        vec![],
+        vec![bolt_core::Effect::Draw {
+            who: bolt_core::Who::You,
+            n: 1,
+        }],
+    );
+    defs[island].activated.push(bolt_core::Activated {
+        tap: true,
+        min_class_level: 2,
+        ability: draw,
+        ..Default::default()
+    });
     let lib = vec![cid("Plains"); 99];
     let mut g = Game::new_commander(
         std::sync::Arc::new(defs),
@@ -750,12 +766,18 @@ fn a_class_level_ability_waits_for_its_level() {
     while g.step != Step::Main1 {
         act(&mut g, Action::PassPriority);
     }
-    assert!(!g.legal_actions().contains(&Action::Activate(i, 1)), "level 1: not yet");
+    assert!(
+        !g.legal_actions().contains(&Action::Activate(i, 1)),
+        "level 1: not yet"
+    );
     act(&mut g, Action::Activate(i, 0));
     resolve_all(&mut g, &[]);
     assert_eq!(g.class_level(i), 2);
     assert!(g.legal_actions().contains(&Action::Activate(i, 1)), "level 2");
-    assert!(!g.legal_actions().contains(&Action::Activate(i, 0)), "already level 2");
+    assert!(
+        !g.legal_actions().contains(&Action::Activate(i, 0)),
+        "already level 2"
+    );
 }
 
 #[test]

@@ -906,6 +906,9 @@ pub struct CardDef {
     /// "Foods you control have all activated abilities of all creature cards exiled with this
     /// creature." (Hazel's Brewmaster); see `Game::exiled_with`.
     pub foods_have_exiled_abilities: bool,
+    /// The Mac C objects-and-zones pieces (copy exceptions, ...), grouped so adding one touches
+    /// only [`ZonesExt`].
+    pub zones: ZonesExt,
     /// "Your opponents can't cast spells with even mana values." and "Your opponents can't block
     /// with creatures with even mana values." (Void Winnower)
     pub opponents_even_locked: bool,
@@ -1374,6 +1377,7 @@ impl CardDef {
             opponents_max_hand_minus: 0,
             win_on_empty_draw: false,
             extra_upkeep_for_enchanted: false,
+            zones: ZonesExt::default(),
         }
     }
 
@@ -1636,6 +1640,7 @@ impl CardDef {
             opponents_max_hand_minus: 0,
             win_on_empty_draw: false,
             extra_upkeep_for_enchanted: false,
+            zones: ZonesExt::default(),
         }
     }
 
@@ -1898,8 +1903,25 @@ impl CardDef {
             opponents_max_hand_minus: 0,
             win_on_empty_draw: false,
             extra_upkeep_for_enchanted: false,
+            zones: ZonesExt::default(),
         }
     }
+}
+
+/// A card's objects-and-zones pieces added by the Mac C theme (see [`CardDef::zones`]).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct ZonesExt {
+    /// As a clone that entered as a copy (`enter_as_copy`): these creature types in addition to the
+    /// copied ones (Glasspool Mimic: Shapeshifter Rogue; Phantasmal Image: Illusion; Mockingbird:
+    /// Bird).
+    pub copy_adds_subtypes: &'static [&'static str],
+    /// As a clone that entered as a copy: these keywords too (Mockingbird: flying).
+    pub copy_adds_keywords: Keywords,
+    /// As a clone that entered as a copy: "When this creature becomes the target of a spell or
+    /// ability, sacrifice it." (Phantasmal Image)
+    pub copy_sacrifice_when_targeted: bool,
+    /// It may copy only a creature with mana value at most the mana spent to cast it (Mockingbird).
+    pub copy_mv_at_most_spent: bool,
 }
 
 #[cfg(test)]

@@ -2662,14 +2662,14 @@ fn martial_impetus_goads_and_pumps() {
 fn bootleggers_stash_gives_lands_a_treasure_ability() {
     let mut g = table();
     put(&mut g, 0, "Bootleggers' Stash");
-    let forest = g
-        .permanents(0)
-        .find(|&x| g.def_of(x).name == "Forest")
-        .unwrap();
+    let forest = g.permanents(0).find(|&x| g.def_of(x).name == "Forest").unwrap();
     assert!(g.legal_actions().contains(&Action::Activate(forest, 0)));
     act(&mut g, Action::Activate(forest, 0));
     resolve_all(&mut g, &[]);
-    let treasures = g.permanents(0).filter(|&x| g.def_of(x).name == "Treasure").count();
+    let treasures = g
+        .permanents(0)
+        .filter(|&x| g.def_of(x).name == "Treasure")
+        .count();
     assert_eq!(treasures, 1);
 }
 
@@ -2694,7 +2694,11 @@ fn kwain_lets_each_player_draw_and_gain() {
     act(&mut g, Action::Activate(kwain, 0));
     resolve_all(&mut g, &[Action::Yes, Action::No]);
     assert_eq!((g.players[0].hand.len(), g.players[0].life), (h0 + 1, 41));
-    assert_eq!((g.players[1].hand.len(), g.players[1].life), (h1, 40), "the opponent declined");
+    assert_eq!(
+        (g.players[1].hand.len(), g.players[1].life),
+        (h1, 40),
+        "the opponent declined"
+    );
 }
 
 #[test]
@@ -2722,13 +2726,22 @@ fn dusk_then_dawn_from_the_graveyard() {
     let ghalta = put(&mut g, 1, "Ghalta, Primal Hunger");
     let elder = put(&mut g, 0, "Sakura-Tribe Elder");
     let dd = hand(&mut g, 0, "Dusk // Dawn");
-    assert!(!g.legal_actions().contains(&Action::CastOmen(dd)), "Dawn: only from the graveyard");
+    assert!(
+        !g.legal_actions().contains(&Action::CastOmen(dd)),
+        "Dawn: only from the graveyard"
+    );
     play(&mut g, dd, false, &[], &[]);
     assert_eq!(g.obj(ghalta).zone, Zone::Graveyard);
     assert_eq!(g.obj(elder).zone, Zone::Battlefield, "power 1");
     assert_eq!(g.obj(dd).zone, Zone::Graveyard);
-    assert!(!g.legal_actions().contains(&Action::Cast(dd)), "Dusk isn't cast from the graveyard");
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(dd)),
+        "Dusk isn't cast from the graveyard"
+    );
     let small = g.add_card(0, bid("Sakura-Tribe Elder"), Zone::Graveyard);
+    for _ in 0..2 {
+        put(&mut g, 0, "Plains"); // Dusk's {W}{W} may have used most of them
+    }
     act(&mut g, Action::CastOmen(dd));
     resolve_all(&mut g, &[]);
     assert_eq!(g.obj(small).zone, Zone::Hand);
@@ -2742,7 +2755,10 @@ fn wizard_class_levels_up_in_order() {
     assert_eq!(g.class_level(class), 1);
     let legal = g.legal_actions();
     assert!(legal.contains(&Action::Activate(class, 0)), "level 2");
-    assert!(!legal.contains(&Action::Activate(class, 1)), "not level 3 before level 2");
+    assert!(
+        !legal.contains(&Action::Activate(class, 1)),
+        "not level 3 before level 2"
+    );
     let n = g.players[0].hand.len();
     act(&mut g, Action::Activate(class, 0));
     resolve_all(&mut g, &[]);
@@ -2789,7 +2805,10 @@ fn cache_grab_takes_a_permanent_and_a_squirrel_makes_food() {
     play(&mut g, c, false, &[], &[Action::Pick(elder)]);
     assert_eq!(g.obj(elder).zone, Zone::Hand);
     let food = g.permanents(0).filter(|&x| g.def_of(x).name == "Food").count();
-    assert_eq!(food, 1, "Chatterfang is a Squirrel (and adds a Squirrel token to the Food)");
+    assert_eq!(
+        food, 1,
+        "Chatterfang is a Squirrel (and adds a Squirrel token to the Food)"
+    );
 }
 
 #[test]

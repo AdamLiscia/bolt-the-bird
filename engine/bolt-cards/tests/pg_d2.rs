@@ -2021,3 +2021,79 @@ fn graf_mole_gains_three_when_you_sacrifice_a_clue() {
     assert_ne!(g.obj(clue).zone, Zone::Battlefield);
     assert_eq!(g.players[0].life, 43);
 }
+
+/// Passes until turn `turn` is over (attacks and blocks declared empty).
+fn end_turn(g: &mut Game, turn: u32) {
+    while g.turn == turn && g.result.is_none() {
+        let legal = g.legal_actions();
+        let a = [Action::PassPriority, Action::FinishAttacks, Action::FinishBlocks]
+            .into_iter()
+            .find(|a| legal.contains(a))
+            .unwrap_or(legal[0]);
+        act(g, a);
+    }
+}
+
+#[test]
+fn lunar_convocation_drains_after_a_gain_and_makes_a_bat_after_both() {
+    let mut g = table();
+    let lc = put(&mut g, 0, "Lunar Convocation");
+    put(&mut g, 0, "Aetherflux Reservoir");
+    cast_settle(&mut g, "Sol Ring"); // Aetherflux: gain 1
+    end_turn(&mut g, 3);
+    assert_eq!(g.players[1].life, 39, "gained life: each opponent loses 1");
+    assert!(tokens(&g, 0, "Bat").is_empty(), "no life lost");
+    main5(&mut g);
+    act(&mut g, Action::Activate(lc, 0)); // {1}{B}, pay 2 life: draw
+    resolve_all(&mut g, &[]);
+    cast_settle(&mut g, "Sol Ring");
+    end_turn(&mut g, 5);
+    assert_eq!(g.players[1].life, 38);
+    let bat = tokens(&g, 0, "Bat");
+    assert_eq!(bat.len(), 1, "gained and lost life");
+    assert!(g.keywords(bat[0]).has(Keywords::FLYING));
+    assert_eq!(g.colors_of(bat[0]), [false, false, true, false, false]);
+    assert_eq!(g.power(bat[0]), 1);
+}
+
+#[test]
+fn saffi_returns_the_target_creature_when_it_dies_this_turn() {
+    let mut g = table();
+    let saffi = put(&mut g, 0, "Saffi Eriksdotter");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    act(&mut g, Action::Activate(saffi, 0));
+    act(&mut g, Action::Target(Target::Object(lions)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(saffi).zone, Zone::Graveyard, "sacrificed as the cost");
+    for _ in 0..3 {
+        put(&mut g, 0, "Swamp");
+    }
+    let d = hand(&mut g, 0, "Hero's Downfall");
+    play(&mut g, d, false, &[Target::Object(lions)], &[]);
+    assert_eq!(g.obj(lions).zone, Zone::Battlefield, "back");
+}
+
+#[test]
+fn sefris_ventures_on_a_creature_card_and_reanimates_on_completing_a_dungeon() {
+    use bolt_core::{rooms, Dungeon};
+    let mut g = table();
+    put(&mut g, 0, "Sefris of the Hidden Ways");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    let bottom = rooms(Dungeon::LostMine)
+        .iter()
+        .position(|r| r.next.is_empty())
+        .expect("a bottommost room") as u8;
+    g.venture[0] = Some((Dungeon::LostMine, bottom));
+    for _ in 0..3 {
+        put(&mut g, 0, "Swamp");
+    }
+    let d = hand(&mut g, 0, "Hero's Downfall");
+    act(&mut g, Action::Cast(d));
+    act(&mut g, Action::Target(obj(lions)));
+    // The venture completes Lost Mine (then a new dungeon: the first choice); Create Undead
+    // returns the Lions, the only creature card in the graveyard.
+    settle_first(&mut g);
+    assert_eq!(g.completed_dungeons[0], 1);
+    assert_eq!(g.obj(lions).zone, Zone::Battlefield, "returned");
+    assert!(g.venture[0].is_some(), "and into a new dungeon");
+}

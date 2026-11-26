@@ -2713,8 +2713,20 @@ fn void_winnower_stops_even_blockers_and_ulamog_exiles_twenty() {
         act(&mut g, Action::PassPriority);
     }
     let legal = g.legal_actions();
-    assert!(!legal.contains(&Action::Block { blocker: titan, attacker: ulamog }), "even");
-    assert!(legal.contains(&Action::Block { blocker: elves, attacker: ulamog }), "odd");
+    assert!(
+        !legal.contains(&Action::Block {
+            blocker: titan,
+            attacker: ulamog
+        }),
+        "even"
+    );
+    assert!(
+        legal.contains(&Action::Block {
+            blocker: elves,
+            attacker: ulamog
+        }),
+        "odd"
+    );
     assert_eq!(g.players[1].library.len(), before - 20);
 }
 
@@ -2731,7 +2743,12 @@ fn epic_experiment_casts_cheap_spells_and_bins_the_rest() {
     }
     assert!(has(&g, Action::Cast(consider)));
     act(&mut g, Action::Cast(consider));
-    while !g.items.is_empty() || matches!(g.pending, Pending::Decide(_) | Pending::FreeCast(_) | Pending::ChooseTarget(_)) {
+    while !g.items.is_empty()
+        || matches!(
+            g.pending,
+            Pending::Decide(_) | Pending::FreeCast(_) | Pending::ChooseTarget(_)
+        )
+    {
         let a = match g.pending {
             Pending::Decide(_) => Action::No,
             _ => Action::PassPriority,

@@ -502,6 +502,7 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         attack_tax_player_only: false,
         cast_only_during_opponents_declare_blockers: false,
         foods_have_exiled_abilities: false,
+        zones: Default::default(),
         opponents_even_locked: false,
         goads_enchanted: false,
         lands_you_control_have: Vec::new(),
