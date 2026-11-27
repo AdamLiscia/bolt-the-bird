@@ -2495,3 +2495,25 @@ fn creatures_with_a_mana_ability_attacking_and_seven_mana_spells() {
     assert!(!g.obj(elves).tapped, "untapped: it has a mana ability");
     assert!(g.obj(lions).tapped);
 }
+
+// ---- batch 39: "when that creature dies this turn" ----
+
+#[test]
+fn delayed_when_that_creature_dies_this_turn_only_for_it() {
+    let mut g = game_with(|defs: &mut Vec<CardDef>| {
+        let d = &mut defs[cid("Hero's Downfall")];
+        let n = d.triggers.len();
+        // "When that creature dies this turn, you gain life equal to its power."
+        d.spell
+            .as_mut()
+            .expect("a spell")
+            .effects
+            .insert(0, Effect::DelayedWhenSlotDiesThisTurn { slot: 0, trigger: n });
+        d.triggers
+            .push(trigger(When::Never, None, vec![Effect::GainLifeAmount]));
+    });
+    let lions = g.add_card(1, cid("Savannah Lions"), Zone::Battlefield);
+    g.add_card(1, cid("Llanowar Elves"), Zone::Battlefield);
+    cast_now(&mut g, 0, "Hero's Downfall", &[obj(lions)]);
+    assert_eq!(life(&g, 0), 42, "the power it died with");
+}

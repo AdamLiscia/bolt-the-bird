@@ -301,7 +301,8 @@ pub struct Object {
     /// Phantasmal Image as a copy: "When this creature becomes the target of a spell or ability,
     /// sacrifice it.", for the object with this zone-change count.
     pub sacrifice_when_targeted: Option<u32>,
-    /// A Class's level (CR 716): 0 and 1 are both level 1; see `Game::class_level`.
+    /// Classes: the current level (CR 716): 0 and 1 are both level 1; see `Game::class_level`.
+    /// Cases: 2 = solved (`Effect::SolveCase`, `Condition::CaseSolved`), below 2 = unsolved.
     pub class_level: u8,
     /// Plotted (CR 702.170): the turn it was plotted and its zone-change count in exile. Castable
     /// from exile on a later turn as a sorcery, free.
@@ -1508,6 +1509,9 @@ pub enum Decision {
     /// Choose a card name (Demonic Consultation): `Pick(c)` names the card `c` in your library (one
     /// option per name), `No` names a card that isn't in your library.
     NameCardInLibrary { source: ObjId },
+    /// `Pick` one of `cards` (just exiled); until the end of your next turn, you may play it
+    /// (End-Blaze Epiphany).
+    ChooseExiledToPlay { cards: Vec<ObjId> },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -2059,6 +2063,9 @@ pub struct Game {
     /// Clues each player has sacrificed: (turn, count) (Briarbridge Patrol,
     /// `Condition::SacrificedCluesThisTurnAtLeast`).
     pub clues_sacrificed: [(u32, u32); 2],
+    /// End-Blaze Epiphany's "when that creature dies this turn": (creature, its zcc, source, the
+    /// source's trigger number, controller, the turn), once.
+    pub delayed_slot_dies: Vec<(ObjId, u32, ObjId, usize, PlayerId, u32)>,
 }
 
 /// `Action::CastFromGraveyardAs`'s second number for Karador, Ghost Chieftain's once-each-turn
@@ -2381,6 +2388,7 @@ impl Game {
             triggered_once_turn: Vec::new(),
             copy_next_instant_sorcery: Vec::new(),
             clues_sacrificed: [(0, 0); 2],
+            delayed_slot_dies: Vec::new(),
         }
     }
 
@@ -5817,6 +5825,22 @@ impl Game {
                     ..Game::casting(src, who)
                 });
                 self.fill_triggering(before, id);
+            }
+            // End-Blaze Epiphany: "When that creature dies this turn", once, with the power it died with.
+            let hits: Vec<_> = self
+                .delayed_slot_dies
+                .iter()
+                .copied()
+                .filter(|&(c, z, .., t)| c == id && z + 1 == zcc && t == turn)
+                .collect();
+            self.delayed_slot_dies
+                .retain(|&(c, z, ..)| !(c == id && z + 1 == zcc));
+            for (_, _, src, n, who, _) in hits {
+                self.triggered.push(StackItem {
+                    kind: StackKind::Trigger(n),
+                    amount: self.obj(id).last_power.max(0),
+                    ..Game::casting(src, who)
+                });
             }
             // "Whenever a creature of the chosen type dies", as it last existed.
             let last = self.obj(id).last_subtypes.clone();
@@ -14823,6 +14847,7 @@ impl Game {
                 v.push(Action::No);
                 v
             }
+            Decision::ChooseExiledToPlay { cards } => cards.iter().copied().map(Action::Pick).collect(),
             Decision::NameCardInLibrary { .. } => {
                 let mut seen: Vec<&str> = Vec::new();
                 let mut v = Vec::new();
@@ -15654,6 +15679,15 @@ impl Game {
             }
             (Decision::MaySacrificeLand { .. }, _) | (Decision::MaySacrificeArtifactOrCreature { .. }, _) => {
                 self.resolving.as_mut().expect("resolving").remaining.clear();
+            }
+            (Decision::ChooseExiledToPlay { .. }, Action::Pick(c)) => {
+                // Until the end of your next turn (CR 611.2c).
+                let until = if self.active == p {
+                    self.turn + 2
+                } else {
+                    self.turn + 1
+                };
+                self.obj_mut(c).playable = Some((p, until));
             }
             (Decision::NameCardInLibrary { .. }, a) => {
                 let name = match a {
@@ -26037,6 +26071,26 @@ impl Game {
                             },
                         );
                     }
+                }
+            }
+            Effect::DelayedWhenSlotDiesThisTurn { slot, trigger } => {
+                if let Some(c) = Game::slot_object(item, legal, slot) {
+                    let entry = (c, self.obj(c).zcc, src, trigger, item.controller, self.turn);
+                    self.delayed_slot_dies.push(entry);
+                }
+            }
+            Effect::ExileTopAmountChooseOnePlayableUntilYourNextTurn => {
+                let p = item.controller;
+                let mut cards = Vec::new();
+                for _ in 0..item.amount.max(0) {
+                    let Some(&c) = self.players[p].library.last() else {
+                        break;
+                    };
+                    self.move_to(c, Zone::Exile);
+                    cards.push(c);
+                }
+                if !cards.is_empty() {
+                    self.ask(p, Decision::ChooseExiledToPlay { cards });
                 }
             }
             Effect::SolveCase => {

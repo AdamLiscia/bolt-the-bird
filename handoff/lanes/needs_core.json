@@ -7503,6 +7503,15 @@
    "lane": "d3",
    "theme": "effects and statics",
    "owner": "d3"
+  },
+  {
+   "card": "End-Blaze Epiphany",
+   "deck": "Niv-Mizzet, Visionary (idea)",
+   "missing": "a delayed 'when that creature dies this turn' with its power; exile that many, choose one to play",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "done: d2 batch 39"
   }
  ]
 }

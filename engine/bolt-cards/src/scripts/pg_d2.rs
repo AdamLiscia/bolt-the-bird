@@ -1818,6 +1818,22 @@ pub fn script(name: &str) -> Option<Script> {
                 );
             },
         ),
+        // ---- Core: triggers, batch 39 ----
+        "End-Blaze Epiphany" => s(
+            &["End-Blaze Epiphany deals X damage to target creature. When that creature dies this turn, exile a number of cards from the top of your library equal to its power, then choose a card exiled this way. Until the end of your next turn, you may play that card."],
+            |d, _| {
+                let n = d.triggers.len();
+                spell(
+                    d,
+                    vec![CREATURE],
+                    vec![
+                        Effect::DamageX { to: Recipient::Target(0) },
+                        Effect::DelayedWhenSlotDiesThisTurn { slot: 0, trigger: n },
+                    ],
+                );
+                on(d, When::Never, vec![], vec![Effect::ExileTopAmountChooseOnePlayableUntilYourNextTurn]);
+            },
+        ),
         _ => None,
     }
 }
@@ -2103,4 +2119,6 @@ pub const PG_D2_SCRIPTED: &[&str] = &[
     "Case of the Ransacked Lab",
     "Briarbridge Patrol",
     "Raggadragga, Goreguts Boss",
+    // Core: triggers, batch 39
+    "End-Blaze Epiphany",
 ];

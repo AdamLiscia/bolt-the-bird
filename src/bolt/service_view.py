@@ -238,6 +238,7 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         verb = verb or {"SacrificeOfSubtype": "Sacrifice"}.get(d)
         verb = verb or {"MaySacrificeLand": "Sacrifice", "MaySacrificeArtifactOrCreature": "Sacrifice"}.get(d)  # fmt: skip
         verb = verb or {"NameCardInLibrary": "Name"}.get(d)
+        verb = verb or {"ChooseExiledToPlay": "You may play until the end of your next turn:"}.get(d)
         if d == "DiscardMayCastFree":
             verb = "Discard (you may cast it free)" if dec.get("free") else "Discard"
         verb = verb or {"MoveAuraTo": "Attach the Aura to"}.get(d)

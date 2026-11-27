@@ -3992,3 +3992,35 @@ fn raggadragga_pumps_and_untaps_mana_creatures_and_rewards_seven_mana_spells() {
     resolve_all(&mut g, &[]);
     assert!(!g.obj(elves).tapped, "untap it");
 }
+
+// ---- Core: triggers, batch 39 (Niv-Mizzet) ----
+
+#[test]
+fn end_blaze_epiphany_exiles_by_the_dead_creatures_power_and_plays_one() {
+    let mut g = table();
+    let lions = put(&mut g, 1, "Savannah Lions"); // 2/1
+    let top = g.players[0].library.len();
+    let bolt = g.add_card(0, cid("Lightning Bolt"), Zone::Library); // second from the top
+    g.players[0].library.swap(top, top - 1);
+    let epiphany = hand(&mut g, 0, "End-Blaze Epiphany");
+    act(&mut g, Action::CastX(epiphany, 2));
+    act(&mut g, Action::Target(obj(lions)));
+    resolve_all(&mut g, &[Action::Pick(bolt)]);
+    assert_eq!(g.obj(lions).zone, Zone::Graveyard);
+    assert_eq!(g.players[0].library.len(), top - 1, "two exiled: its power");
+    assert_eq!(g.obj(bolt).zone, Zone::Exile);
+    assert!(
+        g.legal_actions()
+            .iter()
+            .any(|a| matches!(a, Action::Cast(c) if *c == bolt)),
+        "the chosen card can be played"
+    );
+    // A creature that survives: no trigger.
+    let thopter = put(&mut g, 1, "Ornithopter"); // 0/2
+    let library = g.players[0].library.len();
+    let epiphany = hand(&mut g, 0, "End-Blaze Epiphany");
+    act(&mut g, Action::CastX(epiphany, 1));
+    act(&mut g, Action::Target(obj(thopter)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].library.len(), library);
+}

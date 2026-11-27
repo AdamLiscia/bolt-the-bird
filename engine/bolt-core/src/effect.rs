@@ -3009,6 +3009,17 @@ pub enum Effect {
     /// The source Case becomes solved (CR 719.3): its "To solve" trigger. Stored as level 2 of
     /// `Object::class_level` (a Case is never a Class), read by `Condition::CaseSolved`.
     SolveCase,
+    /// "When that creature dies this turn, ..." (End-Blaze Epiphany): the creature in `slot`, as
+    /// this object (`Game::delayed_slot_dies`); the source's trigger number `trigger` fires once,
+    /// with the power it died with as the amount.
+    DelayedWhenSlotDiesThisTurn {
+        slot: u8,
+        trigger: usize,
+    },
+    /// Exile the top N cards of your library (N the trigger's amount), then choose one of them
+    /// (`Decision::ChooseExiledToPlay`); until the end of your next turn, you may play it
+    /// (End-Blaze Epiphany).
+    ExileTopAmountChooseOnePlayableUntilYourNextTurn,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

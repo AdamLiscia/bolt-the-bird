@@ -374,3 +374,8 @@ def test_demonic_consultation_names_a_card():
     dec = {"kind": "NameCardInLibrary"}
     assert sv._decision_label(dec, "Pick", 0, "Thassa's Oracle") == "Name Thassa's Oracle"
     assert label(dec, "No", 0) == "Name a card that isn't in your library"
+
+
+def test_end_blaze_epiphany_chooses_an_exiled_card_to_play():
+    dec = {"kind": "ChooseExiledToPlay"}
+    assert sv._decision_label(dec, "Pick", 0, "Sol Ring") == "You may play until the end of your next turn: Sol Ring"
