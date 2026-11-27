@@ -1010,6 +1010,17 @@ pub struct CardDef {
     /// (`Game::with_kormus_bell` and `Game::has_subtype`). Give the card a static too, so it's among
     /// the static sources.
     pub other_creatures_are_food_artifacts: bool,
+    /// Sigarda, Host of Herons: "Spells and abilities your opponents control can't cause you to
+    /// sacrifice permanents." (`Game::forced_sacrifice_blocked`, in `cant_be_sacrificed`).
+    pub opponents_cant_make_you_sacrifice: bool,
+    /// Valgavoth, Terror Eater: "If a card you didn't control would be put into an opponent's
+    /// graveyard from anywhere, exile it instead. During your turn, you may play cards exiled with
+    /// Valgavoth. If you cast a spell this way, pay life equal to its mana value rather than pay its
+    /// mana cost." (`move_to`, `Game::exiled_with`, `Game::valgavoth_exiled`).
+    pub exiles_opponents_cards_to_play: bool,
+    /// "You may activate loyalty abilities of [this] on any player's turn any time you could cast an
+    /// instant." (Teferi, Master of Time), in `Game::loyalty_actions`.
+    pub loyalty_at_instant_speed: bool,
 }
 
 /// A card's pieces from the d4 subsystems (see [`CardDef::subsystems`]).
@@ -1515,6 +1526,9 @@ impl CardDef {
             triples_mana_tapped: false,
             your_artifacts_are_food_your_turn: false,
             other_creatures_are_food_artifacts: false,
+            opponents_cant_make_you_sacrifice: false,
+            exiles_opponents_cards_to_play: false,
+            loyalty_at_instant_speed: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -1795,6 +1809,9 @@ impl CardDef {
             triples_mana_tapped: false,
             your_artifacts_are_food_your_turn: false,
             other_creatures_are_food_artifacts: false,
+            opponents_cant_make_you_sacrifice: false,
+            exiles_opponents_cards_to_play: false,
+            loyalty_at_instant_speed: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -2075,6 +2092,9 @@ impl CardDef {
             triples_mana_tapped: false,
             your_artifacts_are_food_your_turn: false,
             other_creatures_are_food_artifacts: false,
+            opponents_cant_make_you_sacrifice: false,
+            exiles_opponents_cards_to_play: false,
+            loyalty_at_instant_speed: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
