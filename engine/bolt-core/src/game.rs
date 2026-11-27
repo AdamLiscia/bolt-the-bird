@@ -724,6 +724,7 @@ static WARD_ABILITY: Ability = Ability {
     divide: 0,
     divide_lands: false,
     targets_exactly_x: false,
+    targets_one_plus_kicks: false,
 };
 
 /// Phantasmal Image's granted trigger: sacrifice it.
@@ -5896,6 +5897,10 @@ impl Game {
                 let controller = self.obj(id).controller;
                 self.counters_placed(controller, l);
             }
+            if def.mana_ext.enters_with_minus_counters > 0 {
+                // Glen Elendra Guardian: -1/-1 counters, which cancel +1/+1 ones (CR 704.5q).
+                self.obj_mut(id).counters -= def.mana_ext.enters_with_minus_counters as i32;
+            }
             if def.enters_with_x_counters {
                 let x = self.obj(id).x as i32;
                 self.add_counters(id, x);
@@ -6477,8 +6482,16 @@ impl Game {
                         options.retain(|&t| matches!(t, Target::Object(x) if self.obj(x).owner == owner));
                     }
                 }
+                // Comet Storm: one target plus one for each time it was kicked.
+                let kick_targets = ability
+                    .targets_one_plus_kicks
+                    .then(|| 1 + self.times_kicked(c.item.source) as usize);
+                if kick_targets.is_some_and(|n| c.item.targets.len() >= n) {
+                    options.clear();
+                }
                 let can_stop = c.item.targets.len() >= ability.min_targets.unwrap_or(usize::MAX)
-                    && (!ability.targets_exactly_x || c.item.targets.len() == c.item.x as usize);
+                    && (!ability.targets_exactly_x || c.item.targets.len() == c.item.x as usize)
+                    && kick_targets.is_none_or(|n| c.item.targets.len() == n);
                 // Dragonfire Blade's equip: only targets whose discount makes it affordable.
                 if let (false, StackKind::Activated(n)) = (c.cast, c.item.kind) {
                     let a = &self.activated_of(c.item.source, n);
@@ -9434,6 +9447,7 @@ impl Game {
                     || (a.once_each_turn && self.obj(id).activated_turn == Some(self.turn))
                     || self.obj(id).kind_counters < a.remove_kind_counters
                     || (a.remove_plus_counters > 0 && self.obj(id).counters < a.remove_plus_counters as i32)
+                    || (a.remove_counters_self as i32 > self.counter_total(id))
                     || (a.sacrifice_n_creatures > 0
                         && self.creatures(p).filter(|&c| !self.cant_be_sacrificed(c)).count()
                             < a.sacrifice_n_creatures as usize)
@@ -10148,6 +10162,9 @@ impl Game {
         }
         self.obj_mut(id).kind_counters -= a.remove_kind_counters;
         self.obj_mut(id).counters -= a.remove_plus_counters as i32; // Walking Ballista, Karlov
+        for _ in 0..a.remove_counters_self {
+            self.remove_any_counter(id); // Glen Elendra Guardian, Reaping Willow
+        }
         if a.tap_attached {
             if let Some((c, _)) = self.obj(id).attached_to {
                 self.become_tapped(c);
@@ -11929,6 +11946,17 @@ impl Game {
     /// Removes one counter from `x` (Tekuthal's cost; the player picked `x`). Demo rule until the
     /// kind is a Mode pick: the kind with the most counters on it, but never loyalty while another
     /// kind is present (ties: +1/+1 or -1/-1, its own kind, stun, revival).
+    /// How many counters `remove_any_counter` could remove from `x`, one at a time.
+    fn counter_total(&self, x: ObjId) -> i32 {
+        let o = self.obj(x);
+        let loyalty = if self.types_of(x).planeswalker {
+            o.loyalty.max(0)
+        } else {
+            0
+        };
+        o.counters.abs() + o.kind_counters.max(0) + o.stun.max(0) + o.revival.max(0) + loyalty
+    }
+
     fn remove_any_counter(&mut self, x: ObjId) {
         let walker = self.types_of(x).planeswalker;
         let o = self.obj(x);
@@ -25249,6 +25277,29 @@ impl Game {
                             n,
                         },
                     );
+                }
+            }
+            Effect::DamageEachOpponentCastSpellManaValue => {
+                if let Some(s) = item.extra {
+                    let mv = self.stack_mana_cost(s).with_x(self.obj(s).x).mana_value() as i32;
+                    let to = crate::effect::Recipient::EachOpponent;
+                    self.run_effect(
+                        item,
+                        legal,
+                        Effect::Damage {
+                            amount: mv,
+                            kicked: None,
+                            to,
+                        },
+                    );
+                }
+            }
+            Effect::CreateTokensTapped { def, n } => {
+                for _ in 0..n {
+                    self.create_token(item.controller, def);
+                    for t in self.last_created.clone() {
+                        self.obj_mut(t).tapped = true;
+                    }
                 }
             }
             Effect::AddManaOneColor(n) => {

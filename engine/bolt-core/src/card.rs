@@ -411,6 +411,10 @@ pub struct Activated {
     /// (`Decision::SacrificeCreaturesForCost`) before the ability is activated; they're
     /// sacrificed as it's activated, before its mana is paid.
     pub sacrifice_n_creatures: u8,
+    /// "Remove N counters from this creature" in the cost (Glen Elendra Guardian: 1, Reaping Willow:
+    /// 2): any kind; with more than one kind on it, `Game::remove_any_counter`'s demo rule picks (as
+    /// Tekuthal's).
+    pub remove_counters_self: u8,
 }
 
 /// A loyalty ability's cost of −X (CR 606.4, 107.3): `loyalty_abilities` uses this as the cost,
@@ -1362,6 +1366,9 @@ pub struct ManaExt {
     pub enters_discard_land_or_graveyard: bool,
     /// "Enchanted creature can attack as though it had haste." (Instill Energy)
     pub enchanted_attacks_as_haste: bool,
+    /// "This creature enters with N -1/-1 counters on it." (Glen Elendra Guardian, Flitterwing
+    /// Nuisance: 1)
+    pub enters_with_minus_counters: u8,
 }
 
 /// "You may pay [mana], [life] and sacrifice or tap [creatures] rather than pay this spell's mana

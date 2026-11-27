@@ -2836,6 +2836,14 @@ pub enum Effect {
     /// Cumulative upkeep—Add {R} (Braid of Fire): an age counter, then add {R} for each age counter
     /// or sacrifice it, as `Decision::UpkeepAddManaOrSacrifice`.
     CumulativeUpkeepAddMana(crate::Color),
+    /// The source deals damage equal to the mana value of the spell in the trigger's `extra` to each
+    /// opponent (Alchemist's Talent, level 3).
+    DamageEachOpponentCastSpellManaValue,
+    /// Create `n` tapped tokens of `def` (Alchemist's Talent: two tapped Treasures).
+    CreateTokensTapped {
+        def: usize,
+        n: u8,
+    },
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -3334,6 +3342,9 @@ pub struct Ability {
     pub divide_lands: bool,
     /// "Each of X target ...": exactly the ability's X targets.
     pub targets_exactly_x: bool,
+    /// "Choose any target, then choose another target for each time this spell was kicked"
+    /// (Comet Storm): exactly 1 + `Game::times_kicked` of its slots are chosen.
+    pub targets_one_plus_kicks: bool,
 }
 
 impl Ability {
@@ -3349,6 +3360,7 @@ impl Ability {
             divide: 0,
             divide_lands: false,
             targets_exactly_x: false,
+            targets_one_plus_kicks: false,
         }
     }
 

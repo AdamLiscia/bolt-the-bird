@@ -4043,3 +4043,139 @@ fn braid_of_fire_adds_red_per_age_counter_or_is_sacrificed() {
         .all(|m| m.colors == [false, false, false, true, false]));
     assert_eq!(g.obj(braid).zone, Zone::Battlefield);
 }
+
+#[test]
+fn glen_elendra_guardian_enters_shrunk_and_removes_its_counter_to_counter_a_spell() {
+    let mut g = table();
+    let gg = hand(&mut g, 0, "Glen Elendra Guardian");
+    act(&mut g, Action::Cast(gg));
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.power(gg), g.toughness(gg)), (2, 3), "a -1/-1 counter");
+    let elf = hand(&mut g, 0, "Llanowar Elves");
+    act(&mut g, Action::Cast(elf));
+    assert!(
+        !g.legal_actions().contains(&Action::Activate(gg, 0)),
+        "a creature spell isn't a target"
+    );
+    resolve_all(&mut g, &[]);
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    act(&mut g, Action::Cast(bolt));
+    act(&mut g, Action::Target(Target::Player(1)));
+    let cards = g.players[0].hand.len();
+    act(&mut g, Action::Activate(gg, 0));
+    act(&mut g, Action::Target(Target::Object(bolt)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(bolt).zone, Zone::Graveyard, "countered");
+    assert_eq!(g.players[1].life, 40);
+    assert_eq!(g.players[0].hand.len(), cards + 1, "its controller draws");
+    assert_eq!((g.power(gg), g.toughness(gg)), (3, 4), "the counter is gone");
+    assert!(
+        !g.legal_actions().contains(&Action::Activate(gg, 0)),
+        "no counter left"
+    );
+}
+
+#[test]
+fn alchemists_talent_makes_tapped_treasures_and_burns_for_treasure_paid_spells() {
+    let mut g = table();
+    let talent = hand(&mut g, 0, "Alchemist's Talent");
+    act(&mut g, Action::Cast(talent));
+    resolve_all(&mut g, &[]);
+    let treasures: Vec<ObjId> = g
+        .permanents(0)
+        .filter(|&x| g.def_of(x).name == "Treasure")
+        .collect();
+    assert_eq!(treasures.len(), 2);
+    assert!(treasures.iter().all(|&x| g.obj(x).tapped), "tapped");
+    act(&mut g, Action::Activate(talent, 0));
+    resolve_all(&mut g, &[]);
+    act(&mut g, Action::Activate(talent, 1));
+    resolve_all(&mut g, &[]);
+    // Only the Treasures can pay now.
+    for x in g.permanents(0).collect::<Vec<_>>() {
+        g.objects[x.0 as usize].tapped = g.types_of(x).land;
+    }
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    act(&mut g, Action::Cast(bolt));
+    act(&mut g, Action::Target(Target::Player(1)));
+    settle(&mut g);
+    assert_eq!(
+        g.players[1].life, 36,
+        "3 from the Bolt, 1 (its mana value) from the Class"
+    );
+
+    // Paid with a land: no damage from the Class.
+    for x in g.permanents(0).collect::<Vec<_>>() {
+        g.objects[x.0 as usize].tapped = !g.types_of(x).land;
+    }
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    act(&mut g, Action::Cast(bolt));
+    act(&mut g, Action::Target(Target::Player(1)));
+    settle(&mut g);
+    assert_eq!(g.players[1].life, 33);
+}
+
+#[test]
+fn comet_storm_hits_one_target_plus_one_per_kick() {
+    let mut g = table();
+    let elf = put(&mut g, 1, "Llanowar Elves");
+    let storm = hand(&mut g, 0, "Comet Storm");
+    act(&mut g, Action::CastX(storm, 2));
+    assert!(matches!(g.pending, Pending::Decide(_)), "the kick count");
+    act(&mut g, Action::Amount(1));
+    act(&mut g, Action::Target(Target::Player(1)));
+    assert!(
+        !g.legal_actions().contains(&Action::No),
+        "kicked once: a second target"
+    );
+    act(&mut g, Action::Target(Target::Object(elf)));
+    assert!(
+        !g.legal_actions().iter().any(|a| matches!(a, Action::Target(_))),
+        "two targets, no more"
+    );
+    settle(&mut g);
+    assert_eq!(g.players[1].life, 38);
+    assert_eq!(g.obj(elf).zone, Zone::Graveyard);
+}
+
+#[test]
+fn changeling_wayfinder_fetches_a_basic_to_hand() {
+    let mut g = table();
+    let forest = g.add_card(0, cid("Forest"), Zone::Library);
+    let w = hand(&mut g, 0, "Changeling Wayfinder");
+    act(&mut g, Action::Cast(w));
+    settle(&mut g);
+    assert!(g.has_subtype(w, "Elf"), "changeling");
+    assert!(
+        g.players[0].hand.iter().any(|&c| g.types_of(c).basic),
+        "a basic in hand"
+    );
+    let _ = forest;
+}
+
+#[test]
+fn reaping_willow_spends_its_two_counters_to_reanimate_a_small_creature() {
+    let mut g = table();
+    let willow = hand(&mut g, 0, "Reaping Willow");
+    act(&mut g, Action::Cast(willow));
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        (g.power(willow), g.toughness(willow)),
+        (1, 4),
+        "two -1/-1 counters"
+    );
+    let elf = g.add_card(0, cid("Llanowar Elves"), Zone::Graveyard);
+    act(&mut g, Action::Activate(willow, 0));
+    act(&mut g, Action::Target(Target::Object(elf)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(elf).zone, Zone::Battlefield);
+    assert_eq!(
+        (g.power(willow), g.toughness(willow)),
+        (3, 6),
+        "both counters removed"
+    );
+    assert!(
+        !g.legal_actions().contains(&Action::Activate(willow, 0)),
+        "no counters left"
+    );
+}

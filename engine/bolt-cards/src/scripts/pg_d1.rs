@@ -1951,6 +1951,91 @@ pub fn script(name: &str) -> Option<Script> {
                 activated(d, "{G}", true, vec![creature], vec![Effect::Exile(0), Effect::GainLife { who: Who::You, n: 2 }]);
             },
         ),
+        // ---- Raffine ----
+        "Glen Elendra Guardian" => s(
+            &[
+                "This creature enters with a -1/-1 counter on it.",
+                "{1}{U}, Remove a counter from this creature: Counter target noncreature spell. Its controller draws a card.",
+            ],
+            |d, _| {
+                d.mana_ext.enters_with_minus_counters = 1;
+                let noncreature = Filter { spell_creature: Some(false), ..SPELL };
+                let n = activated(
+                    d,
+                    "{1}{U}",
+                    false,
+                    vec![noncreature],
+                    vec![Effect::Draw { who: Who::ControllerOf(0), n: 1 }, Effect::Counter(0)],
+                );
+                d.activated[n].remove_counters_self = 1;
+            },
+        ),
+        // ---- Bello ----
+        "Alchemist's Talent" => s(
+            &[
+                "When this Class enters, create two tapped Treasure tokens.",
+                "{1}{R}: Level 2",
+                "Treasures you control have \"{T}, Sacrifice this artifact: Add two mana of any one color.\"",
+                "{4}{R}: Level 3",
+                "Whenever you cast a spell, if mana from a Treasure was spent to cast it, this Class deals damage equal to that spell's mana value to each opponent.",
+            ],
+            |d, t| {
+                on(d, When::Enters, vec![], vec![Effect::CreateTokensTapped { def: t.treasure, n: 2 }]);
+                let n = activated(d, "{1}{R}", false, vec![], vec![Effect::ClassLevelUp(2)]);
+                d.activated[n].sorcery = true;
+                d.activated[n].level_up_to = 2;
+                d.mana_ext.treasures_add_two_at_level = 2;
+                let n = activated(d, "{4}{R}", false, vec![], vec![Effect::ClassLevelUp(3)]);
+                d.activated[n].sorcery = true;
+                d.activated[n].level_up_to = 3;
+                let mut burn = Ability::new(
+                    vec![],
+                    vec![Effect::StopUnlessTreasureManaSpentOnExtra, Effect::DamageEachOpponentCastSpellManaValue],
+                );
+                burn.condition = Some(Condition::ClassLevelAtLeast(3));
+                d.triggers.push(Trigger { when: When::YouCast, ability: burn });
+            },
+        ),
+        // ---- Raggadragga ----
+        "Comet Storm" => s(
+            &[
+                "Multikicker {1}",
+                "Choose any target, then choose another target for each time this spell was kicked. Comet Storm deals X damage to each of them.",
+            ],
+            |d, _| {
+                // Up to seven kicks (eight targets): more than a 1v1 board offers.
+                d.mana_ext.multikicker = ManaCost::parse("{1}");
+                let mut a = Ability::new(
+                    vec![Filter::ANY; 8],
+                    (0..8).map(|i| Effect::DamageX { to: Recipient::Target(i) }).collect(),
+                );
+                a.min_targets = Some(1);
+                a.targets_one_plus_kicks = true;
+                d.spell = Some(a);
+            },
+        ),
+        // ---- Hearthhull, Neriv ----
+        "Changeling Wayfinder" => s(
+            &["Changeling", "When this creature enters, you may search your library for a basic land card, reveal it, put it into your hand, then shuffle."],
+            |d, _| {
+                // Searching may find nothing, which covers "you may".
+                d.changeling = true;
+                on(d, When::Enters, vec![], vec![search(SearchFor::BasicLand, SearchTo::Hand)]);
+            },
+        ),
+        "Reaping Willow" => s(
+            &[
+                "This creature enters with two -1/-1 counters on it.",
+                "{1}{W/B}, Remove two counters from this creature: Return target creature card with mana value 3 or less from your graveyard to the battlefield. Activate only as a sorcery.",
+            ],
+            |d, _| {
+                d.mana_ext.enters_with_minus_counters = 2;
+                let card = Filter { max_mana_value: Some(3), ..graveyard_cards(true, Controller::You) };
+                let n = activated(d, "{1}{W/B}", false, vec![card], vec![Effect::Reanimate(0)]);
+                d.activated[n].remove_counters_self = 2;
+                d.activated[n].sorcery = true;
+            },
+        ),
         // ---- Ral ----
         "Braid of Fire" => s(&["Cumulative upkeep—Add {R}."], |d, _| {
             on(d, When::Upkeep { your_turn_only: true }, vec![], vec![Effect::CumulativeUpkeepAddMana(Color::Red)]);
@@ -2208,4 +2293,9 @@ pub const PG_D1_SCRIPTED: &[&str] = &[
     "Tekuthal, Inquiry Dominus",
     "Deathrite Shaman",
     "Braid of Fire",
+    "Glen Elendra Guardian",
+    "Alchemist's Talent",
+    "Comet Storm",
+    "Changeling Wayfinder",
+    "Reaping Willow",
 ];
