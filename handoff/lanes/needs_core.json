@@ -7604,6 +7604,22 @@
    "lane": "d3",
    "theme": "effects and statics",
    "owner": "d3"
+  },
+  {
+   "card": "Archon of Cruelty",
+   "deck": "",
+   "missing": "d3 batch 46 (routed from d2, 2026-11-27): Effect::TargetPlayerSacrificesCreatureOrPlaneswalker, scripted (pg_d3)",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Papalymo Totolymo",
+   "deck": "",
+   "missing": "d3 batch 46 (routed from d2, 2026-11-27): Effect::OpponentsWhoLostLifeSacrificeGreatestPower, scripted (pg_d3)",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
   }
  ]
 }

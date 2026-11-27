@@ -3095,6 +3095,13 @@ pub enum Effect {
     /// "Shuffle your library, then exile the top card. Until end of turn, you may play that card
     /// without paying its mana cost." (Urza, Lord High Artificer)
     ShuffleExileTopPlayFreeThisTurn,
+    /// The player in target slot `n` sacrifices a creature or planeswalker of their choice (Archon
+    /// of Cruelty), as `Decision::EachSacrificesCreatureOrPlaneswalker` with no next player.
+    TargetPlayerSacrificesCreatureOrPlaneswalker(u8),
+    /// "Each opponent who lost life this turn sacrifices a creature with the greatest power among
+    /// creatures they control." (Papalymo Totolymo): `SacrificeGreatestPower` for those opponents
+    /// (a tie is the sacrificing player's `Decision::SacrificeOneOf`).
+    OpponentsWhoLostLifeSacrificeGreatestPower,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

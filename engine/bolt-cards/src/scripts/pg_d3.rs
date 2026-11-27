@@ -2540,6 +2540,35 @@ pub fn script(name: &str) -> Option<Script> {
                 spell(d, vec![], vec![Effect::CreateTokensX { def: t.rat_cant_block }, haste]);
             },
         ),
+        // ---- d3 batch 46: d2's handbacks ----
+        "Archon of Cruelty" => s(
+            &["Whenever this creature enters or attacks, target opponent sacrifices a creature or planeswalker of their choice, discards a card, and loses 3 life. You draw a card and gain 3 life."],
+            |d, _| {
+                for when in [When::Enters, When::Attacks] {
+                    let opp = Filter::PLAYER.controlled_by(Controller::Opponent);
+                    let effects = vec![
+                        Effect::TargetPlayerSacrificesCreatureOrPlaneswalker(0),
+                        Effect::Discard { who: Who::TargetPlayer(0), n: 1 },
+                        Effect::LoseLife { who: Who::TargetPlayer(0), n: 3 },
+                        Effect::Draw { who: Who::You, n: 1 },
+                        Effect::GainLife { who: Who::You, n: 3 },
+                    ];
+                    on(d, when, vec![opp], effects);
+                }
+            },
+        ),
+        "Papalymo Totolymo" => s(
+            &[
+                "Whenever you cast a noncreature spell, Papalymo Totolymo deals 1 damage to each opponent and you gain 1 life.",
+                "{4}, {T}, Sacrifice Papalymo Totolymo: Each opponent who lost life this turn sacrifices a creature with the greatest power among creatures they control.",
+            ],
+            |d, _| {
+                let ping = Effect::Damage { amount: 1, kicked: None, to: Recipient::EachOpponent };
+                on(d, When::YouCastNoncreature, vec![], vec![ping, Effect::GainLife { who: Who::You, n: 1 }]);
+                let n = activated(d, "{4}", true, vec![], vec![Effect::OpponentsWhoLostLifeSacrificeGreatestPower]);
+                d.activated[n].sacrifice_self = true;
+            },
+        ),
         "Lathliss, Dragon Queen" => s(
             &[
                 "Whenever another nontoken Dragon you control enters, create a 5/5 red Dragon creature token with flying.",
@@ -2902,4 +2931,6 @@ pub const PG_D3_SCRIPTED: &[&str] = &[
     "Allosaurus Shepherd",
     "Finale of Devastation",
     "Song of Totentanz",
+    "Archon of Cruelty",
+    "Papalymo Totolymo",
 ];

@@ -5637,3 +5637,71 @@ fn urzas_five_exiles_the_top_card_to_play_free_this_turn() {
     }
     assert!(g.legal_actions().contains(&Action::Cast(elves)));
 }
+
+// ---- d3 batch 46: Archon of Cruelty, Papalymo Totolymo ----
+
+#[test]
+fn archon_of_cruelty_enters_opponent_sacrifices_discards_and_loses() {
+    let mut g = table();
+    let elves = put(&mut g, 1, "Llanowar Elves");
+    let lions = put(&mut g, 1, "Savannah Lions");
+    let card = hand(&mut g, 1, "Lightning Bolt");
+    let archon = hand(&mut g, 0, "Archon of Cruelty");
+    let (life0, life1, hand0) = (g.players[0].life, g.players[1].life, g.players[0].hand.len());
+    act(&mut g, Action::Cast(archon));
+    for _ in 0..20 {
+        match g.pending {
+            Pending::ChooseTarget(0) => {
+                act(&mut g, Action::Target(Target::Player(1)));
+            }
+            Pending::Decide(1) => {
+                let legal = g.legal_actions();
+                if legal.contains(&Action::Pick(lions)) {
+                    assert!(legal.contains(&Action::Pick(elves)), "their choice");
+                    act(&mut g, Action::Pick(lions));
+                } else {
+                    act(&mut g, Action::Discard(card));
+                }
+            }
+            _ if g.items.is_empty() && g.triggered.is_empty() && g.obj(archon).zone == Zone::Battlefield => {
+                break
+            }
+            _ => {
+                act(&mut g, Action::PassPriority);
+            }
+        }
+    }
+    assert_eq!(g.obj(lions).zone, Zone::Graveyard);
+    assert_eq!(g.obj(elves).zone, Zone::Battlefield);
+    assert_eq!(g.obj(card).zone, Zone::Graveyard, "discarded");
+    assert_eq!(g.players[1].life, life1 - 3);
+    assert_eq!(g.players[0].life, life0 + 3);
+    assert_eq!(g.players[0].hand.len(), hand0, "cast the Archon, drew one");
+}
+
+#[test]
+fn papalymo_pings_on_noncreature_casts_and_sacrifices_the_biggest() {
+    let mut g = table();
+    let pap = put(&mut g, 0, "Papalymo Totolymo");
+    let elves = put(&mut g, 1, "Llanowar Elves");
+    let lions = put(&mut g, 1, "Savannah Lions");
+    // No life lost yet: nothing is sacrificed.
+    let mut h = g.clone();
+    act(&mut h, Action::Activate(pap, 0));
+    resolve_all(&mut h, &[]);
+    assert_eq!(
+        (h.obj(elves).zone, h.obj(lions).zone),
+        (Zone::Battlefield, Zone::Battlefield)
+    );
+    // A noncreature spell: 1 damage to the opponent, 1 life for you.
+    let (life0, life1) = (g.players[0].life, g.players[1].life);
+    let nw = hand(&mut g, 0, "Night's Whisper");
+    play(&mut g, nw, false, &[], &[]);
+    assert_eq!(g.players[1].life, life1 - 1);
+    assert_eq!(g.players[0].life, life0 - 2 + 1);
+    act(&mut g, Action::Activate(pap, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(pap).zone, Zone::Graveyard, "sacrificed as a cost");
+    assert_eq!(g.obj(lions).zone, Zone::Graveyard, "the greatest power");
+    assert_eq!(g.obj(elves).zone, Zone::Battlefield);
+}

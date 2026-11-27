@@ -25665,6 +25665,19 @@ impl Game {
                     o.cast_free = true;
                 }
             }
+            Effect::TargetPlayerSacrificesCreatureOrPlaneswalker(slot) => {
+                let ok = legal.get(slot as usize).copied().unwrap_or(false);
+                if let (Some(&Chosen::Player(q)), true) = (item.targets.get(slot as usize), ok) {
+                    self.sacrifice_creature_or_walker_next(q, None);
+                }
+            }
+            Effect::OpponentsWhoLostLifeSacrificeGreatestPower => {
+                let q = opponent(item.controller);
+                let (turn, lost) = self.life_lost_turn[q];
+                if self.turn > 0 && turn == self.turn && lost > 0 {
+                    self.run_effect(item, legal, Effect::SacrificeGreatestPower(Who::EachOpponent));
+                }
+            }
             Effect::BounceThenOwnerExilesFromHand(slot) => {
                 if let Some(id) = Game::slot_object(item, legal, slot) {
                     if self.obj(id).zone == Zone::Battlefield {
