@@ -356,3 +356,10 @@ def test_land_sacrifice_and_ad_nauseam_labels():
 def test_flare_of_malice_sacrifices_the_greatest():
     dec = {"kind": "SacrificeGreatestMv"}
     assert sv._decision_label(dec, "Pick", 0, "Sol Ring") == "Sacrifice Sol Ring"
+
+
+def test_sanars_vivid_exile_and_color():
+    dec = {"kind": "VividExile"}
+    assert sv._decision_label(dec, "Pick", 0, "Opt") == "Exile (you may cast it this turn): Opt"
+    assert label(dec, "No", 0) == "Exile nothing more (shuffle)"
+    assert label({"kind": "VividColor"}, "Mode", 3) == "It counts as Red (Sanar)"

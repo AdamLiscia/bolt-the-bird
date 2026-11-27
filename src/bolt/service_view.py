@@ -161,6 +161,8 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         if kind == "Yes":
             return "Done choosing (proliferate)"
     if kind == "Mode":
+        if d == "VividColor" and 0 <= value < 5:
+            return f"It counts as {COLORS[value]} (Sanar)"
         if d == "ChooseColor" and 0 <= value < 5:
             return f"{src}: choose {COLORS[value]}"
         if d == "ChooseCreatureType" and 0 <= value < len(dec.get("options", [])):
@@ -216,6 +218,7 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         verb = verb or {"ReanimateTotalManaValue": "Put onto the battlefield under your control:"}.get(d)
         verb = verb or {"SacrificeNontokenCreatureEach": "Sacrifice"}.get(d)
         verb = verb or {"SacrificeNontokenCreatureOrPlaneswalker": "Sacrifice"}.get(d)
+        verb = verb or {"VividExile": "Exile (you may cast it this turn):"}.get(d)
         verb = verb or {"SacrificeNontokenArtifact": "Sacrifice", "ExileThreeForFood": "Exile (three for a Food):"}.get(d)  # fmt: skip
         verb = verb or {"SylvanPick": "Choose (pay 4 life or put it back):"}.get(d)
         verb = verb or {"CrewTap": "Also tap (to crew or saddle):"}.get(d)
@@ -325,7 +328,8 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
     if not yes:
         return {"Discard": "Don't discard", "PayWardDiscard": "Don't discard (it's countered)", "LoseOrDiscard": f"Lose {dec.get('life', 0)} life instead",
                 "SacrificeAnother": "Don't sacrifice", "Search": "Find nothing", "LookPick": "Take nothing",
-                "GenesisPick": "Done choosing", "EnterAsCopy": "Don't copy anything"}.get(d)  # fmt: skip
+                "GenesisPick": "Done choosing", "EnterAsCopy": "Don't copy anything",
+                "VividExile": "Exile nothing more (shuffle)"}.get(d)  # fmt: skip
     return None
 
 

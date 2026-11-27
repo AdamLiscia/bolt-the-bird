@@ -2963,6 +2963,11 @@ pub enum Effect {
     /// "Each nonland permanent you control becomes a copy of" the permanent in `slot`, for good
     /// (Mirrorform).
     YourNonlandPermanentsBecomeCopyOf(u8),
+    /// Sanar, Innovative First-Year's vivid trigger: reveal from the top until X nonland cards (X the
+    /// colors among your permanents); for each of those colors you may exile a card of that color
+    /// from among them (`Decision::{VividExile, VividColor}`); then shuffle; you may cast the exiled
+    /// cards this turn.
+    VividRevealExileByColor,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

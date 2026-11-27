@@ -1202,4 +1202,103 @@ impl Game {
             self.become_copy(id, def);
         }
     }
+
+    /// Sanar's vivid reveal: X is the colors among `p`'s permanents; reveal from the top until X
+    /// nonland cards (they stay in the library while `p` chooses).
+    pub(super) fn vivid_reveal(&mut self, p: PlayerId) {
+        let mut colors = [false; 5];
+        for x in self.permanents(p).collect::<Vec<_>>() {
+            for (c, has) in self.colors_of(x).into_iter().enumerate() {
+                colors[c] |= has;
+            }
+        }
+        let x = colors.iter().filter(|&&b| b).count();
+        let mut cards = Vec::new();
+        let mut nonland = 0;
+        for &c in self.players[p].library.iter().rev() {
+            if nonland >= x {
+                break;
+            }
+            cards.push(c);
+            if !self.def_of(c).types.land {
+                nonland += 1;
+            }
+        }
+        self.vivid_next(p, cards, colors);
+    }
+
+    /// The revealed cards `p` may still exile for one of `colors`.
+    fn vivid_candidates(&self, cards: &[ObjId], colors: &[bool; 5]) -> Vec<ObjId> {
+        cards
+            .iter()
+            .copied()
+            .filter(|&c| self.obj(c).zone == Zone::Library)
+            .filter(|&c| self.colors_of(c).iter().zip(colors).any(|(&a, &b)| a && b))
+            .collect()
+    }
+
+    /// Asks for the next card to exile, or shuffles once there's nothing left to choose.
+    pub(super) fn vivid_next(&mut self, p: PlayerId, cards: Vec<ObjId>, colors: [bool; 5]) {
+        if self.vivid_candidates(&cards, &colors).is_empty() {
+            self.shuffle_library(p);
+        } else {
+            self.ask(p, Decision::VividExile { cards, colors });
+        }
+    }
+
+    pub(super) fn vivid_exile_actions(&self, cards: &[ObjId], colors: &[bool; 5]) -> Vec<Action> {
+        let mut v: Vec<Action> = self
+            .vivid_candidates(cards, colors)
+            .into_iter()
+            .map(Action::Pick)
+            .collect();
+        v.push(Action::No);
+        v
+    }
+
+    pub(super) fn vivid_color_actions(&self, card: ObjId, colors: &[bool; 5]) -> Vec<Action> {
+        let has = self.colors_of(card);
+        (0..5u8)
+            .filter(|&i| has[i as usize] && colors[i as usize])
+            .map(Action::Mode)
+            .collect()
+    }
+
+    /// `Pick(c)`: exile it, castable this turn; it uses up one of its colors (asked if it has more
+    /// than one left). `No`: stop and shuffle.
+    pub(super) fn vivid_exile_decide(
+        &mut self,
+        p: PlayerId,
+        cards: Vec<ObjId>,
+        colors: [bool; 5],
+        a: Action,
+    ) {
+        let Action::Pick(c) = a else {
+            self.shuffle_library(p);
+            return;
+        };
+        let has = self.colors_of(c);
+        self.move_to(c, Zone::Exile);
+        if self.obj(c).zone == Zone::Exile {
+            let turn = self.turn;
+            self.obj_mut(c).playable = Some((p, turn));
+        }
+        let left: Vec<usize> = (0..5).filter(|&i| has[i] && colors[i]).collect();
+        if left.len() > 1 {
+            self.ask(
+                p,
+                Decision::VividColor {
+                    cards,
+                    colors,
+                    card: c,
+                },
+            );
+        } else {
+            let mut colors = colors;
+            for i in left {
+                colors[i] = false;
+            }
+            self.vivid_next(p, cards, colors);
+        }
+    }
 }

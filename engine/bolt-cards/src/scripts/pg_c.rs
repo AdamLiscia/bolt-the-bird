@@ -2558,6 +2558,10 @@ pub fn script(name: &str) -> Option<Script> {
             let non_aura = Filter { players: false, creatures: false, planeswalkers: false, any_permanent: true, not_subtype: Some("Aura"), controller: Controller::Any, ..Filter::ANY };
             spell(d, vec![non_aura], vec![Effect::YourNonlandPermanentsBecomeCopyOf(0)]);
         }),
+        "Sanar, Innovative First-Year" => s(
+            &["Vivid — At the beginning of your first main phase, reveal cards from the top of your library until you reveal X nonland cards, where X is the number of colors among permanents you control. For each of those colors, you may exile a card of that color from among the revealed cards. Then shuffle. You may cast the exiled cards this turn."],
+            |d, _| on(d, When::FirstMainPhaseYourTurn, vec![], vec![Effect::VividRevealExileByColor]),
+        ),
         "Fortune Teller's Talent" => s(
             &[
                 "You may look at the top card of your library any time.",
@@ -2921,5 +2925,6 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Court of Grace",
     "Forth Eorlingas!",
     "Mirrorform",
+    "Sanar, Innovative First-Year",
     // Not "Evercoat Ursine" (unclaimed: a hidden land must be playable as a land play).
 ];

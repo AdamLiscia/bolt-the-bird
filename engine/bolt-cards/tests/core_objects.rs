@@ -2175,3 +2175,29 @@ fn mirrorform_turns_your_nonland_permanents_into_copies() {
     );
     assert_eq!(g.def_of(elves).name, "Llanowar Elves");
 }
+
+#[test]
+fn sanar_reveals_until_x_nonland_and_exiles_one_per_color_to_cast_this_turn() {
+    let mut g = table();
+    put(&mut g, 0, "Sanar, Innovative First-Year"); // blue and red: X = 2
+    let opt = top(&mut g, "Opt");
+    let mountain = top(&mut g, "Mountain");
+    let bolt = top(&mut g, "Lightning Bolt");
+    top(&mut g, "Plains"); // drawn in the draw step
+    to_main1(&mut g, 5, 0);
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Pick(bolt)) && legal.contains(&Action::Pick(opt)));
+    assert!(!legal.contains(&Action::Pick(mountain)), "a land has no color");
+    resolve_all(&mut g, &[Action::Pick(bolt), Action::Pick(opt)]);
+    assert_eq!((g.obj(bolt).zone, g.obj(opt).zone), (Zone::Exile, Zone::Exile));
+    assert_eq!(g.obj(mountain).zone, Zone::Library, "shuffled back");
+    assert!(
+        g.legal_actions().contains(&Action::Cast(opt)),
+        "castable this turn"
+    );
+    to_main1(&mut g, 7, 0);
+    assert!(!g.legal_actions().contains(&Action::Cast(opt)), "only this turn");
+}

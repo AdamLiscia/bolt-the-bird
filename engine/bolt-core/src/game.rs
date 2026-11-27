@@ -1501,6 +1501,16 @@ pub enum Decision {
     /// `Pick` one of your creatures or planeswalkers tied for the greatest mana value to sacrifice
     /// (Flare of Malice).
     SacrificeGreatestMv,
+    /// Sanar's vivid reveal: `Pick` one of the revealed `cards` with a color still in `colors` to
+    /// exile (you may cast it this turn), or `No` to stop; then the library is shuffled.
+    VividExile { cards: Vec<ObjId>, colors: [bool; 5] },
+    /// Which of its colors the card just exiled counts for: `Mode(i)` for color `i` (WUBRG) among
+    /// `colors`.
+    VividColor {
+        cards: Vec<ObjId>,
+        colors: [bool; 5],
+        card: ObjId,
+    },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -15046,6 +15056,8 @@ impl Game {
             Decision::PatronOfChaosSacrifice { first, .. } => self.patron_of_chaos_actions(p, *first),
             Decision::ExileFromHandUntilSourceLeaves { victim, .. } => self.hand_link_actions(*victim),
             Decision::MayPutExiledLandOntoBattlefield { .. } => vec![Action::Yes, Action::No],
+            Decision::VividExile { cards, colors } => self.vivid_exile_actions(cards, colors),
+            Decision::VividColor { colors, card, .. } => self.vivid_color_actions(*card, colors),
             Decision::SacrificeNontokenCreatureOrPlaneswalker => self
                 .nontoken_creature_or_planeswalker_options(p)
                 .into_iter()
@@ -16894,6 +16906,12 @@ impl Game {
             (Decision::SacrificeNontokenCreatureOrPlaneswalker, Action::Pick(c)) => {
                 self.move_to(c, Zone::Graveyard);
                 self.sacrificed(c, p);
+            }
+            (Decision::VividExile { cards, colors }, a) => self.vivid_exile_decide(p, cards, colors, a),
+            (Decision::VividColor { cards, colors, .. }, Action::Mode(i)) => {
+                let mut colors = colors;
+                colors[i as usize % 5] = false;
+                self.vivid_next(p, cards, colors);
             }
             (Decision::MayPutExiledLandOntoBattlefield { card }, a) => {
                 if a == Action::Yes && self.obj(card).zone == Zone::Exile {
@@ -25961,6 +25979,7 @@ impl Game {
             Effect::HideawayAnother(n) => self.hideaway_another(src, item.controller, n),
             Effect::OpponentGainsControlOfSource => self.give_source_to_opponent(src, item.controller),
             Effect::BecomeMonarch => self.monarch = Some((item.controller, src)),
+            Effect::VividRevealExileByColor => self.vivid_reveal(item.controller),
             Effect::YourNonlandPermanentsBecomeCopyOf(slot) => {
                 if let Some(t) = Game::slot_object(item, legal, slot) {
                     self.nonland_permanents_become_copy(item.controller, t);

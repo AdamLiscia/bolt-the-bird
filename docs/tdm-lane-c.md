@@ -1272,3 +1272,9 @@ Ghoul's attack on turn 6 for player 1, `CastX(forth, 2)` paying {2}{R}{W}.
   from your graveyard.") and the Room reminder; Forgotten Cellar's text and cost aren't in it, and Rooms (two
   doors, unlocking) aren't in the engine. Needs `fetch_oracle.py` to keep both doors (as d4's split fields do)
   and a Room/unlock subsystem; claiming the card on its first door alone would leave out half of it.
+- Sanar, Innovative First-Year: `Effect::VividRevealExileByColor` on `When::FirstMainPhaseYourTurn`, with
+  `Decision::VividExile { cards, colors }` (Pick a revealed card with a color still open, or No: stop and
+  shuffle) and `Decision::VividColor { cards, colors, card }` (Mode: which of its open colors a multicolored
+  card uses up; asked only when there's more than one). Exiled cards get `playable` this turn. Labelled in
+  service_view, tested in test_decision_labels; test in core_objects (92). The revealed cards stay in the
+  library while choosing, then it's shuffled.
