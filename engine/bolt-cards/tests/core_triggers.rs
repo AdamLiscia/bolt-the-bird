@@ -2230,3 +2230,70 @@ fn may_sacrifice_an_artifact_or_creature_lets_you_pick_or_decline() {
     assert_eq!(g.obj(lions).zone, Zone::Graveyard);
     assert_eq!(g.players[0].hand.len(), before - 1 + 2);
 }
+
+#[test]
+fn delayed_creature_combat_damage_to_a_player_this_turn_draws() {
+    // Sol Ring: "Whenever you cast a spell, until end of turn, whenever a creature you control
+    // deals combat damage to a player or planeswalker, draw a card."
+    let mut g = game_with(move |defs: &mut Vec<CardDef>| {
+        let d = &mut defs[cid("Sol Ring")];
+        let n = d.triggers.len() + 1;
+        d.triggers.push(trigger(
+            When::YouCast,
+            None,
+            vec![Effect::DelayedThisTurn {
+                when: When::YourCreatureDealsCombatDamageToPlayerOrPlaneswalkerThisTurn,
+                trigger: n,
+            }],
+        ));
+        d.triggers.push(trigger(
+            When::Never,
+            None,
+            vec![Effect::Draw { who: Who::You, n: 1 }],
+        ));
+    });
+    g.add_card(0, cid("Sol Ring"), Zone::Battlefield);
+    let a = g.add_card(0, cid("Savannah Lions"), Zone::Battlefield);
+    let b = g.add_card(0, cid("Savannah Lions"), Zone::Battlefield);
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Hand);
+    play(&mut g, elves, false, &[], &[]);
+    while g.pending != bolt_core::Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(a));
+    act(&mut g, Action::Attack(b));
+    act(&mut g, Action::FinishAttacks);
+    let before = g.players[0].hand.len();
+    while g.step != Step::Main2 {
+        let a = match g.pending {
+            bolt_core::Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(
+        g.players[0].hand.len(),
+        before + 2,
+        "one card for each creature that hit"
+    );
+    // Not on a later turn.
+    g.start_turn(7, 0);
+    while g.pending != bolt_core::Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(a));
+    act(&mut g, Action::FinishAttacks);
+    let before = g.players[0].hand.len();
+    while g.step != Step::Main2 {
+        let x = match g.pending {
+            bolt_core::Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, x);
+    }
+    assert_eq!(g.players[0].hand.len(), before, "this turn only");
+}
