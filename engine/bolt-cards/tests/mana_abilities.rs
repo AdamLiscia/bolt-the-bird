@@ -98,8 +98,9 @@ fn phyrexian_altar_adds_mana_and_the_dies_trigger_goes_on_the_stack() {
 
 #[test]
 fn lions_eye_diamond_discards_and_adds_three_with_no_response_window() {
-    // Lion's Eye Diamond is desktop lane d1's (batch 32); until that lands in this pool, nothing to test.
-    if set("CMD").unwrap().index_of("Lion's Eye Diamond").is_none() {
+    // Lion's Eye Diamond is desktop lane d1's (batch 32); until it's scripted in this pool, nothing to test.
+    let cs = set("CMD").unwrap();
+    if !cs.index_of("Lion's Eye Diamond").is_some_and(|i| cs.supported[i]) {
         return;
     }
     let mut g = table();
