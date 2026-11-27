@@ -2429,3 +2429,127 @@ fn angel_of_destiny_shares_the_life_and_wins_at_fifteen_over() {
     }
     assert!(g.players[1].lost, "it attacked this turn");
 }
+
+#[test]
+fn bonus_round_copies_each_instant_or_sorcery_cast_this_turn() {
+    let mut g = table();
+    let round = hand(&mut g, 0, "Bonus Round");
+    play(&mut g, round, false, &[], &[]);
+    assert_eq!(g.obj(round).zone, Zone::Graveyard);
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    act(&mut g, Action::Cast(bolt));
+    act(&mut g, Action::Target(Target::Player(1)));
+    // Keep the copy's target (the opponent).
+    while !g.items.is_empty() || matches!(g.pending, Pending::ChooseTarget(_) | Pending::Decide(_)) {
+        let legal = g.legal_actions();
+        let a = match g.pending {
+            Pending::ChooseTarget(_) if legal.contains(&Action::Target(Target::Player(1))) => {
+                Action::Target(Target::Player(1))
+            }
+            Pending::ChooseTarget(_) | Pending::Decide(_) if legal.contains(&Action::No) => Action::No,
+            Pending::ChooseTarget(_) | Pending::Decide(_) => legal[0],
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.players[1].life, 34, "the Bolt and its copy");
+    // Next turn it's over.
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    let bolt2 = hand(&mut g, 0, "Lightning Bolt");
+    play(&mut g, bolt2, false, &[Target::Player(1)], &[]);
+    assert_eq!(g.players[1].life, 31, "until end of turn only");
+}
+
+// ---- Ygra, Eater of All ----
+
+fn token_def(g: &Game, name: &str) -> usize {
+    g.defs
+        .iter()
+        .position(|d| d.token && d.name == name)
+        .unwrap_or_else(|| panic!("the {name} token"))
+}
+
+/// Lightning Bolt from player 0 at `target`, passing until the ward's question or until it leaves
+/// the stack.
+fn bolt_at(g: &mut Game, target: ObjId) -> ObjId {
+    let bolt = hand(g, 0, "Lightning Bolt");
+    act(g, Action::Cast(bolt));
+    act(g, Action::Target(Target::Object(target)));
+    for _ in 0..20 {
+        if matches!(g.pending, Pending::Decide(0)) || g.obj(bolt).zone != Zone::Stack {
+            break;
+        }
+        act(g, Action::PassPriority);
+    }
+    bolt
+}
+
+#[test]
+fn ygra_ward_takes_a_food_and_the_food_feeds_ygra() {
+    let mut g = table();
+    let ygra = put(&mut g, 1, "Ygra, Eater of All");
+    // Player 0 controls no creature (so no Food): the ward can't be paid.
+    let bolt = bolt_at(&mut g, ygra);
+    assert_eq!(g.obj(bolt).zone, Zone::Graveyard, "countered");
+    assert_eq!(g.obj(ygra).damage, 0);
+    // A creature of theirs is a Food: the ward offers it.
+    let lions = put(&mut g, 0, "Savannah Lions");
+    let bolt = bolt_at(&mut g, ygra);
+    assert!(matches!(g.pending, Pending::Decide(0)));
+    assert!(has(&g, Action::Pick(lions)));
+    act(&mut g, Action::Pick(lions));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(lions).zone, Zone::Graveyard, "sacrificed for the ward");
+    assert_eq!(g.obj(bolt).zone, Zone::Graveyard);
+    assert_eq!(g.obj(ygra).damage, 3, "the Bolt resolved");
+    assert_eq!(g.obj(ygra).counters, 2, "a Food went to the graveyard");
+}
+
+#[test]
+fn ygra_makes_every_other_creature_a_food_artifact_with_the_food_ability() {
+    let mut g = table();
+    let ygra = put(&mut g, 0, "Ygra, Eater of All");
+    let mine = put(&mut g, 0, "Savannah Lions");
+    let theirs = put(&mut g, 1, "Serra Angel");
+    for c in [mine, theirs] {
+        assert!(g.types_of(c).artifact && g.types_of(c).creature && g.has_subtype(c, "Food"));
+    }
+    assert!(
+        !g.types_of(ygra).artifact && !g.has_subtype(ygra, "Food"),
+        "other creatures only"
+    );
+    assert!(
+        has(&g, Action::Activate(mine, 0)),
+        "{{2}}, {{T}}, sacrifice: gain 3"
+    );
+    act(&mut g, Action::Activate(mine, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(mine).zone, Zone::Graveyard);
+    assert_eq!(g.players[0].life, 43);
+    assert_eq!(g.obj(ygra).counters, 2);
+    // Without Ygra they're plain creatures again.
+    let d = hand(&mut g, 0, "Hero's Downfall");
+    play(&mut g, d, false, &[obj(ygra)], &[]);
+    assert!(!g.types_of(theirs).artifact && !g.has_subtype(theirs, "Food"));
+}
+
+#[test]
+fn ygra_grows_on_any_food_to_a_graveyard_but_not_other_artifacts() {
+    let mut g = table();
+    let ygra = put(&mut g, 0, "Ygra, Eater of All");
+    let food = g.add_card(0, token_def(&g, "Food"), Zone::Battlefield);
+    act(&mut g, Action::Activate(food, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(ygra).counters, 2, "a Food token");
+    let clue = g.add_card(0, token_def(&g, "Clue"), Zone::Battlefield);
+    act(&mut g, Action::Activate(clue, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(ygra).counters, 2, "a Clue isn't a Food");
+    let theirs = put(&mut g, 1, "Serra Angel");
+    let d = hand(&mut g, 0, "Hero's Downfall");
+    play(&mut g, d, false, &[obj(theirs)], &[]);
+    assert_eq!(g.obj(ygra).counters, 4, "the opponent's creature was a Food");
+}

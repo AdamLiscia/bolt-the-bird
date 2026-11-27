@@ -3599,6 +3599,9 @@ pub enum When {
     CreatureOfSubtypeAttacks(&'static str),
     /// "Whenever you cast a spell from your hand" (Sunbird's Invocation), with the spell in `extra`.
     YouCastSpellFromHand,
+    /// With `Effect::DelayedThisTurn`: "until end of turn, whenever a player casts an instant or
+    /// sorcery spell" (Bonus Round), controlled by that player, with the spell in `extra`.
+    PlayerCastsInstantOrSorceryThisTurn,
 }
 
 #[derive(Clone, Debug, PartialEq)]

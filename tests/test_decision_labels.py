@@ -231,3 +231,10 @@ def test_fabricate_offers_counters_or_servos():
     dec = {"kind": "Fabricate", "x": 3, "source": [5, 2]}
     assert label(dec, "Yes", 0) == "Secluded Courtyard: put 3 +1/+1 counters on it"
     assert label(dec, "No", 0) == "Secluded Courtyard: create 3 1/1 Servo tokens"
+
+
+def test_crewing_with_several_creatures_reads_as_its_moves():
+    dec = {"kind": "CrewTap"}
+    assert sv._decision_label(dec, "Pick", 0, "Savannah Lions") == "Also tap to crew: Savannah Lions"
+    assert label(dec, "Yes", 0) == "Crew with the chosen creatures"
+    assert label(dec, "No", 0) == "Don't crew"
