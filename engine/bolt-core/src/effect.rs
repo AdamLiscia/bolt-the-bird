@@ -2564,15 +2564,18 @@ pub enum Effect {
     /// Exile the creature in `slot` if its power is at most the power of the card in the item's
     /// `extra` (Titan's Presence: the revealed card).
     ExileIfPowerAtMostExtra(u8),
-    /// "You may pay {X}, where X is less than or equal to the amount of life you gained. If you do,
-    /// draw X cards." (Well of Lost Dreams): the trigger's amount caps X, as `Decision::PayXDrawX`.
-    MayPayXUpToAmountDrawX,
     /// "You may put a land card from your hand onto the battlefield tapped. If you control
     /// `enchantments` or more enchantments, instead you may put a creature or land card ..."
     /// (Composer of Spring: 6), as `Decision::LandOrCreatureFromHandTapped`.
     MayPutLandOrCreatureFromHandTapped {
         enchantments: u8,
     },
+    /// "That player gains that much life": the opponent gains the trigger's amount (Angel of
+    /// Destiny, 1v1: the damaged player).
+    OpponentGainsLifeAmount,
+    /// "Each player this creature attacked this turn loses the game" (Angel of Destiny), 1v1: the
+    /// opponent, if the source attacked this turn.
+    OpponentLosesIfSourceAttackedThisTurn,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -3021,6 +3024,9 @@ pub enum Condition {
     /// Its controller controls at least this many lands with different names (The Necrobloom, Field
     /// of the Dead: seven).
     ControlLandsWithDifferentNamesAtLeast(u8),
+    /// Its controller has at least this much life more than their starting life total (Angel of
+    /// Destiny: 15).
+    LifeAtLeastStartingPlus(i32),
 }
 
 /// A spell's effect or a triggered ability: target slots, then effects in order.
@@ -3517,6 +3523,9 @@ pub enum When {
     /// "Whenever you choose a creature as your Ring-bearer" (Call of the Ring), the same one again
     /// included (CR 701.54c); slot 0 (if `triggering`) is that creature.
     YouChooseRingBearer,
+    /// "At the beginning of your upkeep, if [this] is in the command zone" (Oloro, Ageless
+    /// Ascetic): fired for the active player's cards in the command zone, not their permanents.
+    YourUpkeepInCommandZone,
 }
 
 #[derive(Clone, Debug, PartialEq)]

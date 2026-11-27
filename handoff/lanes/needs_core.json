@@ -4778,7 +4778,7 @@
   {
    "card": "Oloro, Ageless Ascetic",
    "deck": "Oloro, Ageless Ascetic (Adam)",
-   "missing": "upkeep/end-step conditional triggers",
+   "missing": "upkeep/end-step conditional triggers [done by d2 batch 18, scripted in pg_d2]",
    "lane": "mac-b",
    "theme": "triggers",
    "owner": "d2"
@@ -4802,7 +4802,7 @@
   {
    "card": "Angel of Destiny",
    "deck": "Oloro, Ageless Ascetic (Adam)",
-   "missing": "upkeep/end-step conditional triggers",
+   "missing": "upkeep/end-step conditional triggers [done by d2 batch 18, scripted in pg_d2]",
    "lane": "mac-b",
    "theme": "triggers",
    "owner": "d2"
