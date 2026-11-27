@@ -576,8 +576,14 @@ pub fn token_defs() -> Vec<CardDef> {
         },
         // 126: another lane's token, a placeholder until it lands on tarkir.
         token("Placeholder 126", "Placeholder", 0, 0, Keywords::NONE),
-        // 127: another lane's token, a placeholder until it lands on tarkir.
-        token("Placeholder 127", "Placeholder", 0, 0, Keywords::NONE),
+        {
+            // 127, lane d1: Dragon Broodmother's "1/1 red and green Dragon creature token with
+            // flying and devour 2".
+            let mut t = token("Dragon", "Dragon", 1, 1, Keywords::FLYING);
+            t.colors = [false, false, false, true, true];
+            t.mana_ext.devour = 2;
+            t
+        },
         // 128: another lane's token, a placeholder until it lands on tarkir.
         token("Placeholder 128", "Placeholder", 0, 0, Keywords::NONE),
         // 129: another lane's token, a placeholder until it lands on tarkir.
@@ -875,8 +881,8 @@ pub struct Tokens {
     pub cat_bird: usize,
     /// 126: another lane's token, a placeholder until it lands on tarkir.
     pub placeholder_126: usize,
-    /// 127: another lane's token, a placeholder until it lands on tarkir.
-    pub placeholder_127: usize,
+    /// 127: d1's Dragon Broodmother Dragon, a 1/1 red and green with flying and devour 2.
+    pub dragon_devour: usize,
     /// 128: another lane's token, a placeholder until it lands on tarkir.
     pub placeholder_128: usize,
     /// 129: another lane's token, a placeholder until it lands on tarkir.
@@ -1027,7 +1033,7 @@ impl Tokens {
             dragon_2_firebreathing: base + 124,
             cat_bird: base + 125,
             placeholder_126: base + 126,
-            placeholder_127: base + 127,
+            dragon_devour: base + 127,
             placeholder_128: base + 128,
             placeholder_129: base + 129,
             placeholder_130: base + 130,

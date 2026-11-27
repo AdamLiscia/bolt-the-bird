@@ -370,10 +370,10 @@
   {
    "card": "Inkmoth Nexus",
    "deck": "Raggadragga, Goreguts Boss",
-   "missing": "infect on an animated land (Phyrexian Blinkmoth artifact creature with flying and infect)",
+   "missing": "manland with flying and infect until end of turn [d1 batch 44: scripted]",
    "lane": "d1",
-   "theme": "objects_zones",
-   "owner": "mac-c"
+   "theme": "mana",
+   "owner": "d1"
   },
   {
    "card": "Jeska's Will",
@@ -458,10 +458,10 @@
   {
    "card": "Cradle Clearcutter",
    "deck": "Raggadragga, Goreguts Boss",
-   "missing": "prototype",
+   "missing": "prototype; {G} equal to its power (handback from d3) [d1 batch 46: scripted]",
    "lane": "d1",
-   "theme": "objects_zones",
-   "owner": "mac-c"
+   "theme": "mana",
+   "owner": "d1"
   },
   {
    "card": "Enduring Courage",
@@ -6954,7 +6954,7 @@
   {
    "card": "Gemstone Caverns",
    "deck": "Kenrith, the Returned King",
-   "missing": "opening-hand start; luck counter mana [claimed by d1, idea decks]",
+   "missing": "opening-hand start; luck counter mana [claimed by d1, idea decks] [d1 batch 42: scripted, on lane B's pregame action]",
    "lane": "d1",
    "theme": "mana",
    "owner": "d1"
@@ -8168,6 +8168,134 @@
    "missing": "d3 batch 46 (routed from d2, 2026-11-27): Effect::OpponentsWhoLostLifeSacrificeGreatestPower, scripted (pg_d3)",
    "lane": "d3",
    "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Gravecrawler",
+   "deck": "Sephiroth (idea)",
+   "missing": "cast from your graveyard as long as you control a Zombie; can't block [d1 batch 41: scripted]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Timeline Culler",
+   "deck": "Sephiroth (idea)",
+   "missing": "cast from your graveyard using its warp ability; warp cost includes 2 life [d1 batch 41: scripted]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+   "deck": "Ral (idea)",
+   "missing": "both faces: flip-coin transform; entering loyalty (lane B 99c53b6); +1 discount; -2 divided damage, draw if blue; -8 free instants and sorceries from exile [d1 batch 43: scripted]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Urza's Incubator",
+   "deck": "Vaevictis Asmadi, the Dire",
+   "missing": "chosen creature type; creature spells of that type cost {2} less (moved from d3) [d1 batch 44: scripted]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Haven of the Spirit Dragon",
+   "deck": "Vaevictis Asmadi, the Dire",
+   "missing": "any color only for Dragon creature spells; sacrifice to return a Dragon or Ugin card (moved from d3) [d1 batch 44: scripted] [known limit: the return accepts any card with subtype Dragon or Ugin, so a future noncreature Dragon card would also be accepted; exact in print]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Crypt of Agadeem",
+   "deck": "Henrika",
+   "missing": "{B} per black creature card in your graveyard [d1 batch 44: scripted]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Nesting Grounds",
+   "deck": "Ral (idea)",
+   "missing": "move a counter between targets; the kind is a Decision [d1 batch 44: scripted]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Hushwood Verge",
+   "deck": "Sythis, Harvest's Hand",
+   "missing": "conditional second color [d1 batch 45: scripted]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Tainted Field",
+   "deck": "Ratadrabik of Urborg",
+   "missing": "colored mana only if you control a Swamp [d1 batch 45: scripted]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Gaea's Cradle",
+   "deck": "Tymna the Weaver + Tana, the Bloodsower",
+   "missing": "{G} for each creature you control [d1 batch 45: scripted]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Thalia, Guardian of Thraben",
+   "deck": "Tymna the Weaver + Tana, the Bloodsower",
+   "missing": "noncreature spells cost {1} more (everyone's) [d1 batch 45: scripted]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Oakhame Adversary",
+   "deck": "Tymna the Weaver + Tana, the Bloodsower",
+   "missing": "costs {2} less if an opponent controls a green permanent [d1 batch 45: scripted]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Nogi, Draco-Zealot",
+   "deck": "Vaevictis Asmadi, the Dire",
+   "missing": "Dragon spells cost {1} less; attack becomes a 5/5 flying Dragon with three Dragons (handback from d3)",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Klauth, Unrivaled Ancient",
+   "deck": "Vaevictis Asmadi, the Dire",
+   "missing": "attack: X spell-only mana that lasts the turn, X the attackers' total power (handback from d3)",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Dragon Broodmother",
+   "deck": "Vaevictis Asmadi, the Dire",
+   "missing": "devour; an upkeep 1/1 red and green flying Dragon token with devour 2 (token 127) (handback from d3) [d1 batch 46: scripted. Known limit: devour's sacrifices are asked just after it enters, before anyone gets priority, so enter triggers see it without the counters]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Urza, Lord High Artificer",
+   "deck": "Vaevictis Asmadi, the Dire",
+   "missing": "'Tap an untapped artifact you control: Add {U}' [d1 batch 46: piece in, d3 scripts the card: Activated::tap_named_permanent = Some(artifact filter controlled by You), the player names the artifact via ActivateWith; with Effect::AddMana it's a mana ability]",
+   "lane": "d1",
+   "theme": "mana",
    "owner": "d3"
   }
  ]

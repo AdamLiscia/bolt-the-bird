@@ -3040,6 +3040,11 @@ pub enum Effect {
     SacrificeTargetsRevealTopPermanent(u8),
     /// Put the source onto the battlefield from the command zone (Derevi); it isn't cast.
     PutSourceOntoBattlefieldFromCommand,
+    /// Gluttonous Hellkite's cast trigger: "each player sacrifices X creatures" (X of the spell
+    /// that is the source, from its cast snapshot), starting with the active player, as
+    /// `Decision::EachSacrificesXCreatures`; the spell then "enters with `n` +1/+1 counters on it
+    /// for each creature sacrificed this way" (`Game::sacrifice_enter_counters`).
+    EachPlayerSacrificesXCreaturesCountersPer(i32),
     /// "Until your next turn, instant and sorcery spells you cast cost {N} less to cast." (Ral,
     /// Leyline Prodigy's +1: 1), kept in `Game::instant_sorcery_discount_until`.
     InstantSorceryDiscountUntilYourNextTurn(u8),
@@ -3154,6 +3159,33 @@ pub enum Effect {
     /// creatures they control." (Papalymo Totolymo): `SacrificeGreatestPower` for those opponents
     /// (a tie is the sacrificing player's `Decision::SacrificeOneOf`).
     OpponentsWhoLostLifeSacrificeGreatestPower,
+    /// "Cumulative upkeep—Gain control of a land you don't control." (Herald of Leshrac): an age
+    /// counter, then `Decision::UpkeepGainLandsOrSacrifice` picks one land you don't control per age
+    /// counter (for good), or `No` sacrifices the source.
+    CumulativeUpkeepGainLand,
+    /// "Each player gains control of each land they own that you control." (Herald of Leshrac,
+    /// leaving the battlefield): "you" is the item's controller.
+    OwnersRegainLandsYouControl,
+    /// "Exile the top `n` cards of your library. You may cast instant and sorcery spells from among
+    /// them this turn without paying their mana costs." (Ral, Leyline Prodigy's -8: 8)
+    ExileTopCastInstantsSorceriesFreeThisTurn(u8),
+    /// "Draw a card if you control a [color] permanent other than [the source]." (Ral, Leyline
+    /// Prodigy's -2: blue)
+    DrawIfControlAnotherOfColor(crate::Color),
+    /// The source gains infect until end of turn (Inkmoth Nexus, as it becomes a creature).
+    SourceGainsInfectUntilEot,
+    /// "Move a counter from target permanent you control onto a second target permanent." (Nesting
+    /// Grounds): one counter from the permanent in `from` onto the one in `to`; with more than one
+    /// kind on it, `Decision::MoveCounterKind` picks which.
+    MoveCounterBetweenTargets {
+        from: u8,
+        to: u8,
+    },
+    /// "Add X mana in any combination of colors, where X is the total power of attacking creatures.
+    /// Spend this mana only to cast spells. Until end of turn, you don't lose this mana as steps
+    /// and phases end." (Klauth, Unrivaled Ancient): held in `Game::spell_mana_eot` as any-color
+    /// mana, its colors fixed as it's spent.
+    AddSpellManaUntilEotPerAttackingPower,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -3165,6 +3197,8 @@ pub enum ManaCount {
     YouControlBasicSubtype(&'static str),
     /// Permanents on the battlefield with this subtype, anyone's ("for each Elf on the battlefield").
     OnBattlefieldSubtype(&'static str),
+    /// Creature cards of this color (WUBRG index) in your graveyard (Crypt of Agadeem: black).
+    CreatureCardsOfColorInYourGraveyard(u8),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

@@ -386,6 +386,11 @@ def test_demonic_consultation_names_a_card():
     assert label(dec, "No", 0) == "Name a card that isn't in your library"
 
 
+def test_gluttonous_hellkite_sacrifices_each_creature_by_name():
+    dec = {"kind": "EachSacrificesXCreatures", "left": 2, "n": 2}
+    assert sv._decision_label(dec, "Pick", 0, "Llanowar Elves") == "Sacrifice Llanowar Elves"
+
+
 def test_the_moxen_and_lions_eye_diamond_ask_their_choices():
     imprint = {"kind": "ImprintNonartifactNonland", "source": [3, 1]}
     assert sv._decision_label(imprint, "Pick", 0, "Forest") == "Exile (imprint): Forest"
@@ -445,3 +450,21 @@ def test_lithoforming_sacrifices_a_land_to_draw():
 def test_reckless_endeavor_picks_the_damage_roll():
     dec = {"kind": "ChooseDamageRoll", "rolls": [3, 9]}
     assert label(dec, "Mode", 1) == "9 damage to each creature, 3 tokens"
+
+
+def test_herald_of_leshrac_gains_a_land_or_is_sacrificed():
+    dec = {"kind": "UpkeepGainLandsOrSacrifice", "source": [3, 1], "chosen": [], "need": 1}
+    assert sv._decision_label(dec, "Pick", 0, "Forest") == "Gain control of (cumulative upkeep): Forest"
+    assert label(dec, "No", 0) == "Sacrifice Thriving Heath"
+
+
+def test_nesting_grounds_picks_the_counter_kind_to_move():
+    dec = {"kind": "MoveCounterKind", "from": [3, 1], "to": [4, 1], "kinds": [0, 2]}
+    assert label(dec, "Mode", 0) == "Move a +1/+1 counter"
+    assert label(dec, "Mode", 2) == "Move a stun counter"
+
+
+def test_devour_picks_each_creature_or_stops():
+    dec = {"kind": "Devour", "card": [3, 1], "n": 2}
+    assert sv._decision_label(dec, "Pick", 0, "Llanowar Elves") == "Devour (sacrifice): Llanowar Elves"
+    assert label(dec, "No", 0) == "Done devouring"

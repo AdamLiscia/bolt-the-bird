@@ -147,10 +147,11 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
             times = "once" if value == 1 else f"{value} times"
             return f"Kick {card} {times}" if card else f"Kick {times}"
         return None
-    if d == "ChooseCounterKind" and kind == "Mode":
+    if d in ("ChooseCounterKind", "MoveCounterKind") and kind == "Mode":
         kinds = ("+1/+1", "-1/-1", "stun", "incubation", "soul", "revival", "fellowship", "bait")
         kinds += ("quest", "its own kind of", "slime", "time", "shield", "loyalty", "lore")
-        return f"Another {kinds[value]} counter" if 0 <= value < len(kinds) else None
+        verb = "Another" if d == "ChooseCounterKind" else "Move a"
+        return f"{verb} {kinds[value]} counter" if 0 <= value < len(kinds) else None
     if d == "AdNauseamAgain" and kind in ("Yes", "No"):
         return "Reveal another card (Ad Nauseam)" if kind == "Yes" else "Stop (Ad Nauseam)"
     if d == "Proliferate":
@@ -247,6 +248,7 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         verb = verb or {"SacrificeLandsDraw": "Sacrifice (draw a card)"}.get(d)
         verb = verb or {"SacrificeGreatestMv": "Sacrifice"}.get(d)
         verb = verb or {"EachSacrificesCreatureOrPlaneswalker": "Sacrifice"}.get(d)
+        verb = verb or {"EachSacrificesXCreatures": "Sacrifice"}.get(d)
         verb = verb or {"SacrificeOfSubtype": "Sacrifice"}.get(d)
         verb = verb or {"MaySacrificeLand": "Sacrifice", "MaySacrificeArtifactOrCreature": "Sacrifice"}.get(d)  # fmt: skip
         verb = verb or {"NameCardInLibrary": "Name"}.get(d)
@@ -258,6 +260,8 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         verb = verb or {"PatronOfChaosSacrifice": "Sacrifice (one of two):"}.get(d)
         verb = verb or {"ExileFromHandUntilSourceLeaves": "Exile until it leaves:"}.get(d)
         verb = verb or {"BlightCreature": f"Blight {dec.get('n', 1)} (-1/-1 counters on):"}.get(d)
+        verb = verb or {"UpkeepGainLandsOrSacrifice": "Gain control of (cumulative upkeep):"}.get(d)
+        verb = verb or {"Devour": "Devour (sacrifice):"}.get(d)
         if d == "LoseUnless":
             verb = "Sacrifice" if dec.get("sacrifice") else "Discard"
         return f"{verb} {card_name}" if verb else None
@@ -301,6 +305,8 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
             f"Add {dec.get('n', 1)} mana (keep {subject or 'it'})",
             f"Sacrifice {subject or 'it'}",
         ),
+        "UpkeepGainLandsOrSacrifice": ("Gain control of a land", f"Sacrifice {src or 'it'}"),
+        "Devour": ("Devour", "Done devouring"),
         "DiscardLandOrGraveyard": ("Discard a land", f"Don't discard ({subject or 'it'} goes to the graveyard)"),
         "SylvanPayOrTop": (f"Pay 4 life to keep {subject or 'it'}", f"Put {subject or 'it'} on top of your library"),
         "ExpropriateVote": ("Vote time (an extra turn)", "Vote money (a permanent)"),
