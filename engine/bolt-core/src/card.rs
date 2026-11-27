@@ -259,8 +259,9 @@ pub struct Activated {
     pub sacrifice_another: bool,
     /// "Activate only if you control N or more permanents." (Temple of Cultivation)
     pub min_permanents: u8,
-    /// Crew N (CR 702.122): tap an untapped creature you control with power N or more (activated
-    /// with `Action::ActivateWith`, that creature as the victim).
+    /// Crew N (CR 702.122): tap any number of other untapped creatures you control with total power
+    /// N or more (`Action::ActivateWith` names the first; `Decision::CrewTap` picks the rest when it
+    /// isn't enough alone).
     pub crew: u8,
     /// Only while it's a copy that keeps its own abilities (Sakashima the Impostor's "{2}{U}{U}:
     /// Return ..."): the printed card itself doesn't have it.

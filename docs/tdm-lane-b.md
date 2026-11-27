@@ -996,3 +996,12 @@ Pieces for lane C's cards (tested on edited definitions in core_replace): Inkshi
 (`Effect::PreventCombatDamageToYouMakingTokens`, `Game::combat_shield_tokens`; token 105 Inkling),
 The One Ring (`Effect::YouGainProtectionUntilYourNextTurn`, `Game::player_protected_until`: damage to
 you prevented and you can't be targeted; "can't be enchanted" isn't modelled).
+
+### Crew with any number of creatures (2026-11-27)
+
+Crew N (CR 702.122a) is now "tap any number of other untapped creatures with total power N or
+more". The activation list offers `ActivateWith(vehicle, n, c)` for each other untapped creature
+when their total power reaches N; if `c` alone is enough it crews at once as before, otherwise
+`Decision::CrewTap` asks for more (`Pick` another, `Yes` once the total reaches N, `No` to not
+crew, with nothing paid). The others are tapped with the named one in `pay_activation`
+(`Game::crew_extra`). Saddle will use the same cost once d1 batch 19 is on tarkir.

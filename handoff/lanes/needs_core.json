@@ -82,7 +82,7 @@
   {
    "card": "Marionette Apprentice",
    "deck": "Ygra, Eater of All",
-   "missing": "fabricate N; a 1/1 colorless Servo artifact creature token; a trigger on another creature or artifact you control going to the graveyard from the battlefield [d2 batch 19: its artifact/creature graveyard trigger sees Ygra's Food artifacts as they last existed (Object::left_as_artifact)]",
+   "missing": "fabricate N; a 1/1 colorless Servo artifact creature token; a trigger on another creature or artifact you control going to the graveyard from the battlefield",
    "lane": "d1",
    "theme": "triggers",
    "owner": "d2"
@@ -114,7 +114,7 @@
   {
    "card": "Marionette Master",
    "deck": "Ygra, Eater of All",
-   "missing": "fabricate N; a 1/1 colorless Servo artifact creature token; an artifact-you-control-to-graveyard trigger; lose life equal to this creature's power [d2 batch 19: its artifact graveyard trigger sees Ygra's Food artifacts as they last existed (Object::left_as_artifact)]",
+   "missing": "fabricate N; a 1/1 colorless Servo artifact creature token; an artifact-you-control-to-graveyard trigger; lose life equal to this creature's power",
    "lane": "d1",
    "theme": "triggers",
    "owner": "d2"
@@ -162,7 +162,7 @@
   {
    "card": "Ygra, Eater of All",
    "deck": "Ygra, Eater of All",
-   "missing": "d2 batch 16: the Food-to-graveyard trigger is in (When::SubtypeToGraveyardFromBattlefield(\"Food\")). Still needs: ward\u2014sacrifice a Food (d1, costs); other creatures are Food artifacts with the Food ability (d3, types) [script: d2, 2026-11-27, on lane B's other_creatures_have + d1's ward + d3's Food types] [done by d2 batch 20: scripted in pg_d2 with d1's ward (batch 15), d3's Food artifacts (batch 26), lane B's other_creatures_have and d2's Food trigger]",
+   "missing": "d2 batch 16: the Food-to-graveyard trigger is in (When::SubtypeToGraveyardFromBattlefield(\"Food\")). d1 batch 15: ward\u2014sacrifice a Food is in (d.ward_sacrifice = 1 with d.mana_ext.ward_sacrifice_subtype = Some(\"Food\")). Still needs: other creatures are Food artifacts with the Food ability (d3, types) [script: d2, 2026-11-27, on lane B's other_creatures_have + d1's ward + d3's Food types]",
    "lane": "d1",
    "theme": "effects",
    "owner": "d2"
@@ -850,7 +850,7 @@
   {
    "card": "Karador, Ghost Chieftain",
    "deck": "Karador, Ghost Chieftain",
-   "missing": "cost reduction per creature card in graveyard; cast a creature from your graveyard once each turn [lane C 2026-11-26: blocked on d1: costs {1} less per creature card in your graveyard; lane C's part: once during each of your turns, cast a creature spell from your graveyard]",
+   "missing": "cost reduction per creature card in graveyard; cast a creature from your graveyard once each turn [lane C 2026-11-26: blocked on d1: costs {1} less per creature card in your graveyard; lane C's part: once during each of your turns, cast a creature spell from your graveyard] [d1 takes both halves, 2026-11-27: cost reduction and the once-each-turn graveyard cast; lane C dropped its part]",
    "lane": "d1",
    "theme": "objects_zones",
    "owner": "d1"
@@ -1298,7 +1298,7 @@
   {
    "card": "Sunbird's Invocation",
    "deck": "Zacama, Primal Calamity",
-   "missing": "reveal X on cast from hand, cast one free",
+   "missing": "reveal X on cast from hand, cast one free [done by d1 batch 18: When::YouCastSpellFromHand, Effect::RevealTopMvMayCastOneFree; scripted in pg_d1]",
    "lane": "d1",
    "theme": "mana",
    "owner": "d1"
@@ -1962,10 +1962,10 @@
   {
    "card": "Master of Cruelties",
    "deck": "Kaalia of the Vast",
-   "missing": "needs core: attacks alone, and the unblocked 'life total becomes 1'",
+   "missing": "needs core: attacks alone, and the unblocked 'life total becomes 1' [all of it borrowed by lane B, 2026-11-27: AttacksAndIsntBlocked, defender's life becomes 1, no combat damage; d2/d3 skip]",
    "lane": "d2",
    "theme": "effects",
-   "owner": "d1"
+   "owner": "mac-b"
   },
   {
    "card": "Overpowering Attack",
