@@ -236,6 +236,7 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         verb = verb or {"SacrificeLands": "Sacrifice"}.get(d)
         verb = verb or {"SacrificeGreatestMv": "Sacrifice"}.get(d)
         verb = verb or {"EachSacrificesCreatureOrPlaneswalker": "Sacrifice"}.get(d)
+        verb = verb or {"EachSacrificesXCreatures": "Sacrifice"}.get(d)
 
         verb = verb or {"SacrificeOfSubtype": "Sacrifice"}.get(d)
         verb = verb or {"MaySacrificeLand": "Sacrifice", "MaySacrificeArtifactOrCreature": "Sacrifice"}.get(d)  # fmt: skip

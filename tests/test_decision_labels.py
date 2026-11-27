@@ -382,3 +382,8 @@ def test_demonic_consultation_names_a_card():
     dec = {"kind": "NameCardInLibrary"}
     assert sv._decision_label(dec, "Pick", 0, "Thassa's Oracle") == "Name Thassa's Oracle"
     assert label(dec, "No", 0) == "Name a card that isn't in your library"
+
+
+def test_gluttonous_hellkite_sacrifices_each_creature_by_name():
+    dec = {"kind": "EachSacrificesXCreatures", "left": 2, "n": 2}
+    assert sv._decision_label(dec, "Pick", 0, "Llanowar Elves") == "Sacrifice Llanowar Elves"

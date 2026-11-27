@@ -1151,6 +1151,9 @@ pub struct CardDef {
     /// you do, exile a card from your hand." Asked in `Game::pregame_actions`
     /// (`Decision::GemstoneCaverns`); the luck counter is `Object::kind_counters`.
     pub begins_game_with_luck_counter: bool,
+    /// "[This] enters with an additional loyalty counter on [it] for each instant and sorcery spell
+    /// you've cast this turn." (Ral, Leyline Prodigy), from `Game::instants_sorceries_cast`.
+    pub loyalty_plus_instants_sorceries_cast: bool,
 }
 
 /// A card's pieces from the d4 subsystems (see [`CardDef::subsystems`]).
@@ -1761,6 +1764,7 @@ impl CardDef {
             your_planeswalkers_have_loyalty: Vec::new(),
             artifact_tokens_plus_one: None,
             begins_game_with_luck_counter: false,
+            loyalty_plus_instants_sorceries_cast: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -2068,6 +2072,7 @@ impl CardDef {
             your_planeswalkers_have_loyalty: Vec::new(),
             artifact_tokens_plus_one: None,
             begins_game_with_luck_counter: false,
+            loyalty_plus_instants_sorceries_cast: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -2375,6 +2380,7 @@ impl CardDef {
             your_planeswalkers_have_loyalty: Vec::new(),
             artifact_tokens_plus_one: None,
             begins_game_with_luck_counter: false,
+            loyalty_plus_instants_sorceries_cast: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,

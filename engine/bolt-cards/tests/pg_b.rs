@@ -4510,3 +4510,51 @@ fn demons_disciple_makes_each_player_sacrifice_a_creature_or_planeswalker() {
     );
     assert_eq!(g.obj(c).zone, Zone::Battlefield, "it kept its own creature");
 }
+
+// ---- Gluttonous Hellkite; Ral, Leyline Prodigy's loyalty ----
+
+#[test]
+fn gluttonous_hellkite_has_each_player_sacrifice_x_and_enters_with_two_counters_each() {
+    let mut g = table();
+    let elves = put(&mut g, 0, "Llanowar Elves");
+    let thopter = put(&mut g, 0, "Ornithopter");
+    let theirs = put(&mut g, 1, "Llanowar Elves");
+    let kite = hand(&mut g, 0, "Gluttonous Hellkite");
+    act(&mut g, Action::CastX(kite, 1));
+    // The cast trigger: two creatures, one to sacrifice (asked); the opponent's one goes unasked.
+    resolve_all(&mut g, &[Action::Pick(thopter)]);
+    assert_eq!(g.obj(thopter).zone, Zone::Graveyard);
+    assert_eq!(g.obj(elves).zone, Zone::Battlefield);
+    assert_eq!(g.obj(theirs).zone, Zone::Graveyard);
+    assert_eq!(g.obj(kite).zone, Zone::Battlefield);
+    assert_eq!(
+        (g.power(kite), g.toughness(kite)),
+        (7, 7),
+        "two creatures: four counters"
+    );
+}
+
+#[test]
+fn gluttonous_hellkite_for_x_zero_enters_without_counters() {
+    let mut g = table();
+    let elves = put(&mut g, 0, "Llanowar Elves");
+    let kite = hand(&mut g, 0, "Gluttonous Hellkite");
+    act(&mut g, Action::CastX(kite, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(elves).zone, Zone::Battlefield);
+    assert_eq!((g.power(kite), g.toughness(kite)), (3, 3));
+}
+
+#[test]
+fn a_walker_enters_with_a_loyalty_counter_per_instant_and_sorcery_cast_this_turn() {
+    let mut g = table();
+    let jace = cid("Jace Beleren");
+    std::sync::Arc::make_mut(&mut g.defs)[jace].loyalty_plus_instants_sorceries_cast = true;
+    for _ in 0..2 {
+        let bolt = hand(&mut g, 0, "Lightning Bolt");
+        play(&mut g, bolt, false, &[Target::Player(1)], &[]);
+    }
+    let j = hand(&mut g, 0, "Jace Beleren");
+    play(&mut g, j, false, &[], &[]);
+    assert_eq!(g.obj(j).loyalty, 3 + 2, "two instants cast this turn");
+}

@@ -1512,6 +1512,14 @@ pub enum Decision {
     /// false, `Yes` begins the game with `card` on the battlefield with a luck counter, `No` keeps
     /// it in hand; with `exile` true, `Pick` the card in hand to exile.
     GemstoneCaverns { card: ObjId, exile: bool },
+    /// Gluttonous Hellkite: `Pick` a creature to sacrifice, `left` to go (this one included), then
+    /// `next` sacrifices `n`; each one adds to `spell`'s entry in `Game::sacrifice_enter_counters`.
+    EachSacrificesXCreatures {
+        left: u8,
+        n: u8,
+        next: Option<PlayerId>,
+        spell: ObjId,
+    },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -2068,6 +2076,9 @@ pub struct Game {
     artifact_plus_batch: Option<bool>,
     /// The Gemstone Caverns already asked about before the first turn (`Game::pregame_actions`).
     pregame_asked: Vec<ObjId>,
+    /// Gluttonous Hellkite: (spell, the zone change count it enters with, +1/+1 counters per
+    /// creature sacrificed, counters so far), read as it enters.
+    sacrifice_enter_counters: Vec<(ObjId, u32, i32, i32)>,
 }
 
 /// `Action::CastFromGraveyardAs`'s second number for Karador, Ghost Chieftain's once-each-turn
@@ -2375,6 +2386,7 @@ impl Game {
             loyalty_snapshots: Vec::new(),
             artifact_plus_batch: None,
             pregame_asked: Vec::new(),
+            sacrifice_enter_counters: Vec::new(),
             hand_links: Vec::new(),
             hand_at_end_combat: Vec::new(),
             dream_marked: Vec::new(),
@@ -6163,7 +6175,13 @@ impl Game {
                     .iter()
                     .find(|e| e.0 == id && e.1 == zcc)
                     .map_or(0, |e| 2 * e.2 as i32);
-                let l = (l - fewer).max(0) * self.doubling(self.obj(id).controller);
+                // Ral, Leyline Prodigy: one more for each instant and sorcery cast this turn.
+                let more = if def.loyalty_plus_instants_sorceries_cast {
+                    self.instants_sorceries_cast[self.obj(id).controller] as i32
+                } else {
+                    0
+                };
+                let l = (l - fewer + more).max(0) * self.doubling(self.obj(id).controller);
                 self.obj_mut(id).loyalty = l; // CR 306.5b
                 let controller = self.obj(id).controller;
                 self.counters_placed(controller, l);
@@ -6171,6 +6189,18 @@ impl Game {
             if def.enters_with_x_counters {
                 let x = self.obj(id).x as i32;
                 self.add_counters(id, x);
+            }
+            // Gluttonous Hellkite: counters for the creatures its cast trigger had sacrificed.
+            let zcc = self.obj(id).zcc;
+            if let Some(pos) = self
+                .sacrifice_enter_counters
+                .iter()
+                .position(|e| e.0 == id && e.1 == zcc)
+            {
+                let n = self.sacrifice_enter_counters.remove(pos).3;
+                if n > 0 {
+                    self.add_counters(id, n);
+                }
             }
             // "This creature escapes with N +1/+1 counters on it."
             let zcc = self.obj(id).zcc;
@@ -15321,6 +15351,11 @@ impl Game {
                 .into_iter()
                 .map(Action::Pick)
                 .collect(),
+            Decision::EachSacrificesXCreatures { .. } => self
+                .creatures(p)
+                .filter(|&c| !self.cant_be_sacrificed(c))
+                .map(Action::Pick)
+                .collect(),
             Decision::EachSacrificesCreatureOrPlaneswalker { .. } => self
                 .creature_or_walker_sacrifice_options(p)
                 .into_iter()
@@ -17299,6 +17334,14 @@ impl Game {
                 self.sacrificed(c, p);
             }
             (Decision::AdNauseamAgain, _) => {}
+            (Decision::EachSacrificesXCreatures { left, n, next, spell }, Action::Pick(c)) => {
+                self.sacrifice_for_counters(c, p, spell);
+                if left > 1 {
+                    self.sacrifice_x_creatures_next(p, left - 1, n, next, spell);
+                } else if let Some(q) = next {
+                    self.sacrifice_x_creatures_next(q, n, n, None, spell);
+                }
+            }
             (Decision::EachSacrificesCreatureOrPlaneswalker { next }, a) => {
                 if let Action::Pick(c) = a {
                     self.move_to(c, Zone::Graveyard);
@@ -17867,6 +17910,50 @@ impl Game {
                 (t.creature || t.planeswalker) && !self.cant_be_sacrificed(c)
             })
             .collect()
+    }
+
+    /// Gluttonous Hellkite: `p` sacrifices `left` creatures (all of them, unasked, with that many
+    /// or fewer), then `next` sacrifices `x`.
+    fn sacrifice_x_creatures_next(
+        &mut self,
+        p: PlayerId,
+        left: u8,
+        x: u8,
+        next: Option<PlayerId>,
+        spell: ObjId,
+    ) {
+        let mine: Vec<ObjId> = self
+            .creatures(p)
+            .filter(|&c| !self.cant_be_sacrificed(c))
+            .collect();
+        if left > 0 && mine.len() > left as usize {
+            return self.ask(
+                p,
+                Decision::EachSacrificesXCreatures {
+                    left,
+                    n: x,
+                    next,
+                    spell,
+                },
+            );
+        }
+        if left > 0 {
+            for c in mine {
+                self.sacrifice_for_counters(c, p, spell);
+            }
+        }
+        if let Some(q) = next {
+            self.sacrifice_x_creatures_next(q, x, x, None, spell);
+        }
+    }
+
+    /// Sacrifice `c` (controlled by `p`), adding its counters to `spell`'s entry.
+    fn sacrifice_for_counters(&mut self, c: ObjId, p: PlayerId, spell: ObjId) {
+        self.move_to(c, Zone::Graveyard);
+        self.sacrificed(c, p);
+        if let Some(e) = self.sacrifice_enter_counters.iter_mut().find(|e| e.0 == spell) {
+            e.3 += e.2;
+        }
     }
 
     /// Demon's Disciple: `p` sacrifices a creature or planeswalker (asked only with one), then
@@ -26363,6 +26450,21 @@ impl Game {
                     });
                     self.copied_or_cast_instant_sorcery(item.controller, c);
                 }
+            }
+            Effect::EachPlayerSacrificesXCreaturesCountersPer(per) => {
+                let x = self
+                    .cast_snapshots
+                    .iter()
+                    .rev()
+                    .find(|s| s.source == src)
+                    .map_or(0, |s| s.x);
+                if self.obj(src).zone == Zone::Stack {
+                    let zcc = self.obj(src).zcc + 1; // the permanent it becomes
+                    self.sacrifice_enter_counters.retain(|e| e.0 != src);
+                    self.sacrifice_enter_counters.push((src, zcc, per, 0));
+                }
+                let a = self.active;
+                self.sacrifice_x_creatures_next(a, x, x, Some(opponent(a)), src);
             }
             Effect::EachPlayerSacrificesCreatureOrPlaneswalker => {
                 let a = self.active;
