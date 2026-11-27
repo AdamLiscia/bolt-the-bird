@@ -367,6 +367,8 @@ pub struct Activated {
     /// Saddle N (CR 702.171): tap another untapped creature you control with power N or more (one
     /// creature, as crew here; `Action::ActivateWith`, that creature as the victim). Scripted with
     /// `sorcery` and `victim_in_extra`, its `Effect::BecomeSaddled` records the rider.
+    /// Saddle currently uses crew's one-creature shortcut; lane B is replacing both with a
+    /// total-power cost.
     pub saddle: u8,
 }
 
@@ -1240,6 +1242,16 @@ pub struct ManaExt {
     /// "This land enters tapped unless you control N or more other [subtype]." (Witch's Cottage:
     /// ("Swamp", 3)).
     pub enters_tapped_unless_other_subtype: Option<(&'static str, u8)>,
+    /// Freerunning (CR 702.173): "You may cast this spell for its freerunning cost if you dealt
+    /// combat damage to a player this turn with an Assassin or commander." Cast with
+    /// `Action::CastAlternative` (Overpowering Attack: {2}{R}).
+    pub freerunning: Option<ManaCost>,
+    /// "{T}, Remove a charge counter from this land: Add one mana of any color." (Tendo Ice
+    /// Bridge): its colored mana (its `mana` has `colorless` and the colors) needs one of its own
+    /// kind of counter (`Object::kind_counters`), removed when the payment needs a color.
+    pub colored_removes_kind_counter: bool,
+    /// "This creature can only attack alone." (Master of Cruelties)
+    pub attacks_only_alone: bool,
 }
 
 /// "You may pay [mana], [life] and sacrifice or tap [creatures] rather than pay this spell's mana

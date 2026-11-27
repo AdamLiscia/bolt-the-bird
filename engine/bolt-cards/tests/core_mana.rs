@@ -2839,3 +2839,120 @@ mod any_color_mana {
         assert!(!g.obj(bolt).any_color_mana, "gone with the zone change");
     }
 }
+
+/// Kaalia's pieces: freerunning (Overpowering Attack), a charge counter for colored mana (Tendo Ice
+/// Bridge), "can only attack alone" (Master of Cruelties), on test definitions.
+mod kaalia_pieces {
+    use bolt_cards::set;
+    use bolt_core::{Action, CardDef, Game, ManaCost, ManaSource, Pending, Step, Target, Zone};
+
+    fn cid(name: &str) -> usize {
+        set("CMD").unwrap().index_of(name).unwrap()
+    }
+
+    fn game(defs: Vec<CardDef>, lands: &[&str]) -> Game {
+        let plains = vec![cid("Plains"); 99];
+        let mut g = Game::new_commander(
+            std::sync::Arc::new(defs),
+            [&plains, &plains],
+            [cid("Bello, Bard of the Brambles"), cid("Ms. Bumbleflower")],
+            7,
+            0,
+        );
+        g.auto_pass = false;
+        for &l in lands {
+            g.add_card(0, cid(l), Zone::Battlefield);
+        }
+        g.start_turn(3, 0);
+        while g.step != Step::Main1 {
+            g.apply(Action::PassPriority).unwrap();
+        }
+        g
+    }
+
+    fn resolve(g: &mut Game) {
+        while !g.items.is_empty() {
+            g.apply(Action::PassPriority).unwrap();
+        }
+    }
+
+    #[test]
+    fn freerunning_after_combat_damage_from_a_commander() {
+        let mut defs = (*set("CMD").unwrap().defs).clone();
+        let bolt = cid("Lightning Bolt");
+        defs[bolt].mana_ext.freerunning = ManaCost::parse("{W}");
+        let mut g = game(defs, &["Plains"]);
+        let b = g.add_card(0, bolt, Zone::Hand);
+        assert!(
+            !g.legal_actions().contains(&Action::CastAlternative(b)),
+            "no combat damage yet"
+        );
+        let cmdr = g.commanders[0].expect("a commander");
+        let (zcc, turn) = (g.obj(cmdr).zcc, g.turn);
+        g.combat_damaged_player.push((cmdr, zcc, turn));
+        assert!(
+            !g.legal_actions().contains(&Action::Cast(b)),
+            "{{R}} with a Plains"
+        );
+        assert!(
+            g.legal_actions().contains(&Action::CastAlternative(b)),
+            "freerunning {{W}}"
+        );
+        let life = g.players[0].life;
+        g.apply(Action::CastAlternative(b)).unwrap();
+        g.apply(Action::Target(Target::Player(1))).unwrap();
+        resolve(&mut g);
+        assert_eq!(g.players[1].life, 37);
+        assert_eq!(g.players[0].life, life, "no life paid for it");
+    }
+
+    #[test]
+    fn a_charge_counter_pays_for_one_colored_mana() {
+        let mut defs = (*set("CMD").unwrap().defs).clone();
+        let bridge = cid("Reliquary Tower");
+        defs[bridge].mana = Some(ManaSource {
+            colorless: true,
+            colors: [true; 5],
+        });
+        defs[bridge].mana_ext.colored_removes_kind_counter = true;
+        let mut g = game(defs, &[]);
+        let t = g.add_card(0, bridge, Zone::Battlefield);
+        let b = g.add_card(0, cid("Lightning Bolt"), Zone::Hand);
+        assert!(
+            !g.legal_actions().contains(&Action::Cast(b)),
+            "no charge counter: only {{C}}"
+        );
+        g.objects[t.0 as usize].kind_counters = 1;
+        assert!(g.legal_actions().contains(&Action::Cast(b)));
+        g.apply(Action::Cast(b)).unwrap();
+        g.apply(Action::Target(Target::Player(1))).unwrap();
+        resolve(&mut g);
+        assert_eq!(g.players[1].life, 37);
+        assert_eq!(g.obj(t).kind_counters, 0, "the counter removed for {{R}}");
+        g.objects[t.0 as usize].tapped = false;
+        let b2 = g.add_card(0, cid("Lightning Bolt"), Zone::Hand);
+        assert!(!g.legal_actions().contains(&Action::Cast(b2)));
+    }
+
+    #[test]
+    fn a_creature_that_can_only_attack_alone() {
+        let mut defs = (*set("CMD").unwrap().defs).clone();
+        let master = cid("Llanowar Elves");
+        defs[master].mana_ext.attacks_only_alone = true;
+        for first in [0, 1] {
+            let mut g = game(defs.clone(), &[]);
+            let m = g.add_card(0, master, Zone::Battlefield);
+            let other = g.add_card(0, cid("Fyndhorn Elves"), Zone::Battlefield);
+            for c in [m, other] {
+                g.objects[c.0 as usize].since_turn = 0;
+            }
+            while g.pending != Pending::DeclareAttackers(0) {
+                g.apply(Action::PassPriority).unwrap();
+            }
+            let (a, b) = if first == 0 { (m, other) } else { (other, m) };
+            assert!(g.legal_actions().contains(&Action::Attack(a)));
+            g.apply(Action::Attack(a)).unwrap();
+            assert!(!g.legal_actions().contains(&Action::Attack(b)), "alone");
+        }
+    }
+}
