@@ -3055,6 +3055,29 @@ pub enum Effect {
     /// `Game::creature_ability_color_mana`, it pays as Somberwald Sage's mana does, for a creature
     /// spell or an ability whose source is a creature.
     AddCreatureSpellOrAbilityMana(u8, crate::Color),
+    /// The source Case becomes solved (CR 719.3): its "To solve" trigger. Stored as level 2 of
+    /// `Object::class_level` (a Case is never a Class), read by `Condition::CaseSolved`.
+    SolveCase,
+    /// "When that creature dies this turn, ..." (End-Blaze Epiphany): the creature in `slot`, as
+    /// this object (`Game::delayed_slot_dies`); the source's trigger number `trigger` fires once,
+    /// with the power it died with as the amount.
+    DelayedWhenSlotDiesThisTurn {
+        slot: u8,
+        trigger: usize,
+    },
+    /// Exile the top N cards of your library (N the trigger's amount), then choose one of them
+    /// (`Decision::ChooseExiledToPlay`); until the end of your next turn, you may play it
+    /// (End-Blaze Epiphany).
+    ExileTopAmountChooseOnePlayableUntilYourNextTurn,
+    /// Create `n` `def` tokens that are tapped and attacking (CR 506.3a), not sacrificed later
+    /// (Adeline, Resplendent Cathar: one for each opponent).
+    CreateTokensTappedAndAttacking {
+        def: usize,
+        n: u8,
+    },
+    /// Return the card in `slot` (in a graveyard or exile) to the battlefield under its owner's
+    /// control at the beginning of the next end step (`Game::delayed_returns`; Lifeline).
+    ReturnSlotAtNextEndStep(u8),
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -3218,6 +3241,8 @@ pub enum Scope {
     OtherYourColorlessCreatures,
     /// Other tapped creatures you control (Adept Watershaper).
     OtherYourTappedCreatures,
+    /// Creatures you control with a mana ability, as printed (Raggadragga, Goreguts Boss).
+    YourCreaturesWithManaAbility,
 }
 
 /// What a scaled static ability counts.
@@ -3552,6 +3577,22 @@ pub enum Condition {
     /// The source has at least this many kind counters (`Object::kind_counters`; Simic Ascendancy:
     /// twenty growth counters).
     SourceKindCountersAtLeast(i32),
+    /// Its controller has cast at least this many instant and sorcery spells this turn
+    /// (`Game::instants_sorceries_cast`; Case of the Ransacked Lab: four).
+    InstantsSorceriesCastThisTurnAtLeast(u8),
+    /// The source Case is solved (`Effect::SolveCase`): its "Solved" abilities.
+    CaseSolved,
+    /// The source Case isn't solved yet: its "To solve" end-step trigger (CR 719.3).
+    CaseUnsolved,
+    /// Its controller has sacrificed at least this many Clues this turn (`Game::clues_sacrificed`;
+    /// Briarbridge Patrol: three).
+    SacrificedCluesThisTurnAtLeast(u32),
+    /// With `When::YouCast`: at least this much mana was spent to cast that spell
+    /// (`Object::mana_spent`; Raggadragga: seven), checked as it triggers.
+    ManaSpentToCastAtLeast(u32),
+    /// A creature is on the battlefield (Lifeline: "if another creature is on the battlefield",
+    /// checked after the dying creature has left).
+    CreatureOnBattlefield,
 }
 
 /// A spell's effect or a triggered ability: target slots, then effects in order.
@@ -4118,6 +4159,30 @@ pub enum When {
     /// `Object::chosen_type`, chosen as it entered (`CardDef::choose_creature_type`); the spell in
     /// `extra`.
     YouCastCreatureOfChosenType,
+    /// "Whenever this creature deals damage to one or more creatures" (Briarbridge Patrol): once for
+    /// each combat damage step it deals damage to creatures in, and once for each other damage
+    /// event.
+    DealsDamageToOneOrMoreCreatures,
+    /// "Whenever a creature you control with a mana ability attacks" (Raggadragga): once for each
+    /// such attacker, which is the trigger's `extra` (`Effect::UntapExtra`: "untap it").
+    CreatureYouControlWithManaAbilityAttacks,
+    /// "Whenever you cast an artifact or enchantment spell" (Alela, Artful Provocateur): once for
+    /// each such spell, an artifact enchantment included.
+    YouCastArtifactOrEnchantment,
+    /// "Whenever an artifact creature you control deals combat damage to a player" (Sharding
+    /// Sphinx): once for each such creature.
+    YourArtifactCreatureDealsCombatDamageToPlayer,
+    /// "Whenever one or more artifact creatures you control deal combat damage to a player"
+    /// (Thopter Spy Network): once for each combat damage step.
+    YourArtifactCreaturesDealCombatDamageToPlayer,
+    /// An Aura's grant "as long as enchanted creature is <color> (WUBRG index), it has 'Whenever
+    /// this creature deals damage to an opponent, ...'" (Helm of the Ghastlord). The ability is the
+    /// creature's, so the creature's controller controls the trigger; "that player" is the
+    /// opponent it damaged.
+    EnchantedOfColorDealsDamageToOpponent(u8),
+    /// "Whenever a creature dies" (Lifeline): any creature other than the source, with the card that
+    /// died in slot 0 when the first target filter is `triggering`.
+    AnotherCreatureDiesIt,
 }
 
 #[derive(Clone, Debug, PartialEq)]

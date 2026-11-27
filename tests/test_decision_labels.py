@@ -423,3 +423,8 @@ def test_scuzzback_scrounger_blights_a_creature_or_declines():
     dec = {"kind": "BlightCreature", "n": 1}
     assert sv._decision_label(dec, "Pick", 0, "Llanowar Elves") == "Blight 1 (-1/-1 counters on): Llanowar Elves"
     assert label(dec, "No", 0) == "Don't blight"
+
+
+def test_end_blaze_epiphany_chooses_an_exiled_card_to_play():
+    dec = {"kind": "ChooseExiledToPlay"}
+    assert sv._decision_label(dec, "Pick", 0, "Sol Ring") == "You may play until the end of your next turn: Sol Ring"
