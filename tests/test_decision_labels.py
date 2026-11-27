@@ -186,3 +186,12 @@ def test_sylvan_library_decisions_read_as_their_moves():
     pay = {"kind": "SylvanPayOrTop", "left": 2, "chosen": []}
     assert label(pay, "Yes", 0) == "Pay 4 life to keep it"
     assert label(pay, "No", 0) == "Put it on top of your library"
+
+
+def test_well_of_lost_dreams_pays_x_to_draw_x():
+    dec = {"kind": "PayXDrawX", "max": 3}
+    assert label(dec, "Amount", 0) == "Don't pay"
+    assert label(dec, "Amount", 1) == "Pay {1}: draw 1 card"
+    assert label(dec, "Amount", 3) == "Pay {3}: draw 3 cards"
+    sourced = {**dec, "source": [5, 1]}
+    assert label(sourced, "Amount", 2) == "Pay {2}: draw 2 cards (Thriving Heath)"

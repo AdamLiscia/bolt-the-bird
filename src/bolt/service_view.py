@@ -126,6 +126,11 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
             return f"Cast {card} with X = {value}" if card else f"X = {value}"
         if d == "ChooseLoyaltyX":
             return f"{src}: \u2212X with X = {value}" if src else f"X = {value}"
+        if d == "PayXDrawX":
+            if value == 0:
+                return "Don't pay"
+            word = "card" if value == 1 else "cards"
+            return f"Pay {{{value}}}: draw {value} {word}" + (f" ({src})" if src else "")
         if d == "ChooseDelve":
             word = "card" if value == 1 else "cards"
             return f"Delve: exile {value} {word} from your graveyard" + (f" ({card})" if card else "")

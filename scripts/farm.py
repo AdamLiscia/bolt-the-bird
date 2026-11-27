@@ -96,7 +96,7 @@ def main():
             if j["name"] in running or used + j["threads"] > a.budget:
                 continue
             try:
-                if Job(j["name"]).done():
+                if Job(j["name"], handle_signals=False).done():
                     continue
             except Exception as e:  # noqa: BLE001 - S3 unreachable: try again next pass
                 print(f"{j['name']}: can't read its pointer ({e}); skipping this pass", flush=True)
