@@ -29,7 +29,7 @@ sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from bolt.backup import upload_quietly  # noqa: E402
-from bolt.play_data import concat  # noqa: E402
+from bolt.play_data import concat, within  # noqa: E402
 from bolt.play_net import load_into, pad_optimizer  # noqa: E402
 from bolt.play_ppo import gae, league, ppo_step  # noqa: E402
 from bolt.play_runner import run_parallel  # noqa: E402
@@ -131,7 +131,13 @@ def main():
     ap.add_argument("--eval-every", type=int, default=10)
     ap.add_argument("--eval-pairs", type=int, default=200)
     ap.add_argument("--stall-minutes", type=float, default=30)
-    ap.add_argument("--eval-smart-ms", type=int, default=None, help="cap the smart opponent's time per move")
+    ap.add_argument(
+        "--smart-ms",
+        type=int,
+        default=200,
+        help="cap on every smart-player move in training games (0 = none): uncapped, one move can take minutes",
+    )
+    ap.add_argument("--eval-smart-ms", type=int, default=None, help="the same cap in evaluations (default --smart-ms)")
     ap.add_argument("--resume", action="store_true")
     ap.add_argument(
         "--self-play",
@@ -139,6 +145,8 @@ def main():
         help="train only against itself and its past checkpoints (no rules or smart opponents)",
     )
     a = ap.parse_args()
+    if a.eval_smart_ms is None:
+        a.eval_smart_ms = a.smart_ms or None
     if os.environ.get("BOLT_THREADS"):  # farm.py --job-threads (the 12-thread nights)
         a.workers = a.threads = int(os.environ["BOLT_THREADS"])
     torch.set_num_threads(a.threads)
@@ -217,7 +225,9 @@ def main():
             record = tuple(i for i, s in enumerate(seats) if s == "net")
             # Commander games vary a lot in length: small chunks (4 a worker) keep every worker busy to the end
             chunk = max(1, -(-len(jobs) // (4 * a.workers))) if COMMANDER else 20
+            smart = (1, 2, a.smart_ms) if a.smart_ms else (1, 2)
             r = run_parallel(net, jobs, workers=a.workers, chunk=chunk, seats=seats, sample=True, seed=it * 100 + k,
+                             smart=smart,
                              record=record, opp_net=opp, compact=True)  # fmt: skip
             part = r["arrays"]
             part["adv"], part["ret"] = gae(part, lam=a.lam)  # per matchup: game numbers restart per call
@@ -233,16 +243,23 @@ def main():
                     ends[x["result"]] += 1
             beat["t"] = time.time()
         arr = concat(parts)
-        n = len(arr["action"])
+        n_all = len(arr["action"])
+        # Positions over --max-objects are dropped whole, never truncated (2026-11-27: Scute Swarm boards of
+        # 213-559 permanents made the update grow 185 -> 344 s). Advantages were computed per game beforehand.
+        keep = within(arr, a.max_objects)
+        dropped_big = n_all - len(keep)
+        n = len(keep)
         adv = arr["adv"]
-        adv = torch.as_tensor((adv - adv.mean()) / (adv.std() + 1e-6))
+        if n > 1:
+            adv = (adv - adv[keep].mean()) / (adv[keep].std() + 1e-6)
+        adv = torch.as_tensor(adv)
         ret = torch.as_tensor(arr["ret"])
         t1 = time.time()
         net.train()
         sums, steps = {"loss": 0.0, "clipped": 0.0, "kl": 0.0, "value_mse": 0.0}, 0
         prng = np.random.default_rng(it)
         for _ in range(a.epochs):
-            perm = prng.permutation(n)
+            perm = keep[prng.permutation(n)]
             for s in range(0, n - a.batch + 1, a.batch):
                 idx = np.sort(perm[s : s + a.batch])
                 st = ppo_step(net, ref, opt, arr, idx, adv[idx], a.clip, kl_coef, a.value_coef, ret=ret[idx])
@@ -257,7 +274,7 @@ def main():
             state["past"].append(f"iter_{it}.pt")
             if job:
                 job._put(f"{job.prefix}/past/iter_{it}.pt", (ck / f"iter_{it}.pt").read_bytes())
-        row = {"iter": it, "games": a.games, "decisions": n, "kl_coef": round(kl_coef, 4), "errors": ends["error"],
+        row = {"iter": it, "games": a.games, "decisions": n, "dropped_big": dropped_big, "kl_coef": round(kl_coef, 4), "errors": ends["error"],
                "timeouts": ends["timeout"],
                **{f"won_{k}": round(float(np.mean(v)), 3) for k, v in won.items()},
                **{k: round(v / max(1, steps), 4) for k, v in sums.items()},

@@ -103,7 +103,7 @@ def run_games(net, jobs, seats=("net", "rules"), sample=True, seed=0, smart=(1, 
     {"results": [{"result", "turn"}], "steps": [...]}. smart=(rollouts, candidates[, ms]): the smart seat's
     search, ms capping its time per move.
 
-    label_with=(rollouts, candidates): recorded network steps get the smart player's choice in that
+    label_with=(rollouts, candidates[, ms]): recorded network steps get the smart player's choice in that
     position as "action" (the label) and the network's own move as "played", which is what the game
     follows (DAgger: the teacher labels the positions the student reaches).
 
@@ -213,7 +213,7 @@ def run_games(net, jobs, seats=("net", "rules"), sample=True, seed=0, smart=(1, 
                         step["played"] = i
                         try:
                             _beat(gi)
-                            step["action"] = games[gi].smart(label_with[0], label_with[1], seed_)
+                            step["action"] = games[gi].smart(label_with[0], label_with[1], seed_, *label_with[2:])
                         except BaseException as e:  # a Rust panic too
                             if isinstance(e, (KeyboardInterrupt, SystemExit)):
                                 raise
@@ -304,8 +304,11 @@ def _proc(slot, beats, out_q, worker, key, args, parent):
 def _hang_record(job, seats, kw, index):
     a, b, seed_, first = job
     return {"time": time.strftime("%Y-%m-%d %H:%M:%S"), "set": PLAY_SET, "format": PLAY_FORMAT, "job": index,
-            "seed": seed_, "first": first, "seats": list(seats), "smart": list(kw.get("smart", (1, 2))),
-            "sample": kw.get("sample", True), "deck_a": a, "deck_b": b}  # fmt: skip
+            "seed": seed_, "first": first, "seats": list(seats), "sample": kw.get("sample", True),
+            # the smart player's settings only where it played (a smart seat) or labelled (label_with)
+            **({"smart": list(kw.get("smart", (1, 2)))} if "smart" in seats else {}),
+            **({"label_with": list(kw["label_with"])} if kw.get("label_with") else {}),
+            "deck_a": a, "deck_b": b}  # fmt: skip
 
 
 def run_parallel(net, jobs, workers=6, chunk=None, seed=0, retries=2, compact=False, hang_s=None, hang_log=None,

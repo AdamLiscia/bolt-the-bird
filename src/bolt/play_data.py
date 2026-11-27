@@ -74,12 +74,21 @@ def concat(parts: list[dict]) -> dict:
 BIG_OBJECTS, BIG_MOVES = 128, 256
 GROUP_ROWS = 64
 GROUP_BUDGET = GROUP_ROWS * (BIG_OBJECTS + BIG_MOVES)  # rows x (objects + moves) of padding a group may hold
+# and rows x objects^2: attention is quadratic in objects, so a 559-object board shares with at most 2 others
+GROUP_ATTENTION = GROUP_ROWS * BIG_OBJECTS**2
+
+
+def within(arr: dict, max_objects: int) -> np.ndarray:
+    """The decisions (indices) whose positions have at most max_objects objects (0 = all of them)."""
+    n_obj = np.diff(arr["obj_off"])
+    return np.flatnonzero(n_obj <= max_objects) if max_objects else np.arange(len(n_obj))
 
 
 def groups(arr, idx):
     """idx split into groups of similar size, so padding stays small: rows sorted by object then move count,
     at most GROUP_ROWS a group, and fewer when they're big (token-filled boards: up to ~460 objects, ~1,600
-    moves), keeping rows x the largest (objects + moves) within GROUP_BUDGET. Every row lands in one group,
+    moves), keeping rows x the largest (objects + moves) within GROUP_BUDGET and rows x the largest objects^2
+    within GROUP_ATTENTION. Every row lands in one group,
     and the loss is the same however rows are grouped (ppo_step weights each group by its size).
 
     2026-11-27: Commander positions (median 41 objects and 2 moves, a 99th percentile of 133 and 83) padded
@@ -89,14 +98,16 @@ def groups(arr, idx):
     n_obj = arr["obj_off"][idx + 1] - arr["obj_off"][idx]
     n_act = arr["act_off"][idx + 1] - arr["act_off"][idx]
     order = np.lexsort((n_act, n_obj))
-    out, cur, widest = [], [], 0
+    out, cur, widest, deepest = [], [], 0, 0
     for k in order:
-        w = max(widest, int(n_obj[k] + n_act[k]))
-        if cur and (len(cur) >= GROUP_ROWS or (len(cur) + 1) * w > GROUP_BUDGET):
+        w, d = max(widest, int(n_obj[k] + n_act[k])), max(deepest, int(n_obj[k]))
+        if cur and (
+            len(cur) >= GROUP_ROWS or (len(cur) + 1) * w > GROUP_BUDGET or (len(cur) + 1) * d * d > GROUP_ATTENTION
+        ):
             out.append(idx[cur])
-            cur, w = [], int(n_obj[k] + n_act[k])
+            cur, w, d = [], int(n_obj[k] + n_act[k]), int(n_obj[k])
         cur.append(k)
-        widest = w
+        widest, deepest = w, d
     if cur:
         out.append(idx[cur])
     return out
