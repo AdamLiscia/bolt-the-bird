@@ -3906,7 +3906,7 @@
   {
    "card": "Urza, Lord High Artificer",
    "deck": "Lonis, Cryptozoologist",
-   "missing": "needs core: a 0/0 colorless Construct artifact creature token (+1/+1 per artifact), tapping an artifact for mana, and a free play from the top [d3 batch 45: Effect::ShuffleExileTopPlayFreeThisTurn (the {5}); the Construct is t.saga_construct. Waiting on d1's tap_named_permanent(Filter) for 'Tap an untapped artifact you control: Add {U}'; d3 scripts it after that reaches tarkir]",
+   "missing": "needs core: a 0/0 colorless Construct artifact creature token (+1/+1 per artifact), tapping an artifact for mana, and a free play from the top [d3 batch 45: Effect::ShuffleExileTopPlayFreeThisTurn (the {5}); the Construct is t.saga_construct. Waiting on d1's tap_named_permanent(Filter) for 'Tap an untapped artifact you control: Add {U}'; d3 scripts it after that reaches tarkir] [d3 batch 47: scripted (pg_d3) on d1's tap_named_permanent (lane-d1 bd46fc2)]",
    "lane": "d3",
    "theme": "objects_zones",
    "owner": "d3"
@@ -8293,7 +8293,7 @@
   {
    "card": "Urza, Lord High Artificer",
    "deck": "Vaevictis Asmadi, the Dire",
-   "missing": "'Tap an untapped artifact you control: Add {U}' [d1 batch 46: piece in, d3 scripts the card: Activated::tap_named_permanent = Some(artifact filter controlled by You), the player names the artifact via ActivateWith; with Effect::AddMana it's a mana ability]",
+   "missing": "'Tap an untapped artifact you control: Add {U}' [d1 batch 46: piece in, d3 scripts the card: Activated::tap_named_permanent = Some(artifact filter controlled by You), the player names the artifact via ActivateWith; with Effect::AddMana it's a mana ability] [d3 batch 47: scripted (pg_d3) on d1's tap_named_permanent (lane-d1 bd46fc2)]",
    "lane": "d1",
    "theme": "mana",
    "owner": "d3"

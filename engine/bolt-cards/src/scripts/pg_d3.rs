@@ -2569,6 +2569,21 @@ pub fn script(name: &str) -> Option<Script> {
                 d.activated[n].sacrifice_self = true;
             },
         ),
+        // ---- d3 batch 47: Lonis ----
+        "Urza, Lord High Artificer" => s(
+            &[
+                "When Urza enters, create a 0/0 colorless Construct artifact creature token with \"This token gets +1/+1 for each artifact you control.\"",
+                "Tap an untapped artifact you control: Add {U}.",
+                "{5}: Shuffle your library, then exile the top card. Until end of turn, you may play that card without paying its mana cost.",
+            ],
+            |d, t| {
+                on(d, When::Enters, vec![], vec![Effect::CreateToken { who: Who::You, def: t.saga_construct, n: 1 }]);
+                let artifact = Filter { players: false, creatures: false, planeswalkers: false, artifacts: true, ..Filter::ANY };
+                let n = activated(d, "", false, vec![], vec![Effect::AddMana { color: Color::Blue, n: 1 }]);
+                d.activated[n].tap_named_permanent = Some(artifact.controlled_by(Controller::You));
+                activated(d, "{5}", false, vec![], vec![Effect::ShuffleExileTopPlayFreeThisTurn]);
+            },
+        ),
         "Lathliss, Dragon Queen" => s(
             &[
                 "Whenever another nontoken Dragon you control enters, create a 5/5 red Dragon creature token with flying.",
@@ -2933,4 +2948,5 @@ pub const PG_D3_SCRIPTED: &[&str] = &[
     "Song of Totentanz",
     "Archon of Cruelty",
     "Papalymo Totolymo",
+    "Urza, Lord High Artificer",
 ];

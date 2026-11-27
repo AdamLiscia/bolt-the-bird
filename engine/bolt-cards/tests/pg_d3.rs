@@ -5705,3 +5705,37 @@ fn papalymo_pings_on_noncreature_casts_and_sacrifices_the_biggest() {
     assert_eq!(g.obj(lions).zone, Zone::Graveyard, "the greatest power");
     assert_eq!(g.obj(elves).zone, Zone::Battlefield);
 }
+
+// ---- d3 batch 47: Urza, Lord High Artificer ----
+
+#[test]
+fn urza_makes_a_construct_taps_artifacts_for_blue_and_plays_the_top_free() {
+    let mut g = table();
+    let urza = hand(&mut g, 0, "Urza, Lord High Artificer");
+    play(&mut g, urza, false, &[], &[]);
+    let cons = tokens(&g, 0, "Construct");
+    assert_eq!(cons.len(), 1);
+    assert_eq!(
+        (g.power(cons[0]), g.toughness(cons[0])),
+        (1, 1),
+        "one artifact: itself"
+    );
+    let ring = put(&mut g, 0, "Sol Ring");
+    assert_eq!(g.power(cons[0]), 2);
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::ActivateWith(urza, 0, ring)));
+    assert!(
+        !legal.contains(&Action::ActivateWith(urza, 0, urza)),
+        "Urza isn't an artifact"
+    );
+    act(&mut g, Action::ActivateWith(urza, 0, ring));
+    assert!(g.obj(ring).tapped);
+    assert!(g.players[0].pool.iter().any(|m| m.colors[1]), "blue, no stack");
+    g.players[0].library.clear();
+    let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Library);
+    act(&mut g, Action::Activate(urza, 1));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(elves).zone, Zone::Exile);
+    assert_eq!(g.obj(elves).playable, Some((0, g.turn)));
+    assert!(g.obj(elves).cast_free);
+}
