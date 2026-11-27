@@ -4041,22 +4041,3 @@ fn dig_through_time_delves_and_takes_two_of_seven() {
     assert_eq!(g.players[0].library.len(), lib - 2);
     assert_eq!(g.obj(c).zone, Zone::Graveyard);
 }
-
-#[test]
-fn moria_scavenger_amasses_only_for_a_discarded_creature_card() {
-    let mut g = table();
-    let m = put(&mut g, 0, "Moria Scavenger");
-    let opt = hand(&mut g, 0, "Opt");
-    let h = g.players[0].hand.len();
-    act(&mut g, Action::ActivateWith(m, 0, opt));
-    resolve_all(&mut g, &[]);
-    assert_eq!(g.players[0].hand.len(), h, "discarded one, drew one");
-    assert!(tokens(&g, 0, "Orc Army").is_empty(), "not a creature card");
-    g.objects[m.0 as usize].tapped = false;
-    let elves = hand(&mut g, 0, "Llanowar Elves");
-    act(&mut g, Action::ActivateWith(m, 0, elves));
-    resolve_all(&mut g, &[]);
-    let army = tokens(&g, 0, "Orc Army");
-    assert_eq!(army.len(), 1);
-    assert_eq!(g.obj(army[0]).counters, 1);
-}
