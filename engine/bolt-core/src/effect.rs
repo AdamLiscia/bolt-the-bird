@@ -2579,6 +2579,11 @@ pub enum Effect {
     /// the spell in `extra` (a cast trigger's spell) was paid for with Treasure mana
     /// (`Game::treasure_mana_spent`).
     StopUnlessTreasureManaSpentOnExtra,
+    /// Sunbird's Invocation: reveal the top X cards of your library, X the mana value of the spell
+    /// in `extra` (its {X} included); you may cast one with mana value X or less from among them
+    /// free (`free_casts_one`); the rest go to the bottom in a random order. The revealed cards
+    /// wait in exile, as cascade's do.
+    RevealTopMvMayCastOneFree,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -3523,6 +3528,8 @@ pub enum When {
     /// "Whenever you choose a creature as your Ring-bearer" (Call of the Ring), the same one again
     /// included (CR 701.54c); slot 0 (if `triggering`) is that creature.
     YouChooseRingBearer,
+    /// "Whenever you cast a spell from your hand" (Sunbird's Invocation), with the spell in `extra`.
+    YouCastSpellFromHand,
 }
 
 #[derive(Clone, Debug, PartialEq)]

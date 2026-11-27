@@ -1298,7 +1298,7 @@
   {
    "card": "Sunbird's Invocation",
    "deck": "Zacama, Primal Calamity",
-   "missing": "reveal X on cast from hand, cast one free",
+   "missing": "reveal X on cast from hand, cast one free [done by d1 batch 18: When::YouCastSpellFromHand, Effect::RevealTopMvMayCastOneFree; scripted in pg_d1]",
    "lane": "d1",
    "theme": "mana",
    "owner": "d1"
