@@ -1278,3 +1278,6 @@ Ghoul's attack on turn 6 for player 1, `CastX(forth, 2)` paying {2}{R}{W}.
   card uses up; asked only when there's more than one). Exiled cards get `playable` this turn. Labelled in
   service_view, tested in test_decision_labels; test in core_objects (92). The revealed cards stay in the
   library while choosing, then it's shuffled.
+Merger approved (2026-11-27): token 133 `human_knight_2_trample_haste` (append its row once 125-132 are on
+tarkir, at the build), the three monarch hooks, and holding Walk-In Closet (logged in needs_core.json, owner
+mac-c: "Rooms subsystem plus a second-door oracle fetch").

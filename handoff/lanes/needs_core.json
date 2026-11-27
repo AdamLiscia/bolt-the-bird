@@ -7342,6 +7342,14 @@
    "lane": "d3",
    "theme": "effects and statics",
    "owner": "d3"
+  },
+  {
+   "card": "Walk-In Closet // Forgotten Cellar",
+   "deck": "idea (top 9)",
+   "missing": "Rooms subsystem plus a second-door oracle fetch: the oracle data has only Walk-In Closet's door (and the Room reminder); Forgotten Cellar's text and cost need fetch_oracle.py to keep both doors, and the engine needs Rooms (cast either half, unlock a door as a sorcery). Held by lane C 2026-11-27.",
+   "lane": "mac-c",
+   "theme": "objects_zones",
+   "owner": "mac-c"
   }
  ]
 }
