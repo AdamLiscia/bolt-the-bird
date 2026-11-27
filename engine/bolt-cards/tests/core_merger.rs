@@ -1208,3 +1208,83 @@ fn control_lands_with_different_names_counts_names_not_lands() {
     upkeep(&mut g, 5);
     assert_eq!(g.players[0].life, 41, "seven names");
 }
+
+#[test]
+fn saddle_taps_any_number_of_creatures_with_total_power_n() {
+    // The Gitrog, given Saddle 4 for this test (its own is Saddle 1).
+    let mut defs = (*set("CMD").unwrap().defs).clone();
+    let gitrog = cid("The Gitrog, Ravenous Ride");
+    let n = defs[gitrog]
+        .activated
+        .iter()
+        .position(|a| a.saddle > 0)
+        .expect("saddle");
+    defs[gitrog].activated[n].saddle = 4;
+    let plains = vec![cid("Plains"); 99];
+    let mut g = Game::new_commander(
+        std::sync::Arc::new(defs),
+        [&plains, &plains],
+        [cid("Bello, Bard of the Brambles"), cid("Ms. Bumbleflower")],
+        7,
+        0,
+    );
+    g.auto_pass = false;
+    let mount = put(&mut g, 0, "The Gitrog, Ravenous Ride");
+    let a = put(&mut g, 0, "Savannah Lions"); // 2 power
+    let b = put(&mut g, 0, "Savannah Lions");
+    g.start_turn(3, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::ActivateWith(mount, n, a));
+    assert!(matches!(g.pending, Pending::Decide(0)), "2 power isn't 4");
+    act(&mut g, Action::Pick(b));
+    act(&mut g, Action::Yes);
+    resolve_all(&mut g, &[]);
+    assert!(g.obj(a).tapped && g.obj(b).tapped);
+    let riders: Vec<ObjId> = g.saddled.iter().filter(|e| e.0 == mount).map(|e| e.2).collect();
+    assert!(riders.contains(&a) && riders.contains(&b), "both saddled it");
+}
+
+#[test]
+fn attacks_and_isnt_blocked_sets_life_to_one_and_assigns_no_damage() {
+    // Savannah Lions, given Master of Cruelties' trigger for this test.
+    let mut defs = (*set("CMD").unwrap().defs).clone();
+    defs[cid("Savannah Lions")].triggers.push(bolt_core::Trigger {
+        when: bolt_core::When::AttacksAndIsntBlocked,
+        ability: bolt_core::Ability::new(
+            vec![],
+            vec![
+                bolt_core::Effect::OpponentLifeBecomesOne,
+                bolt_core::Effect::SourceAssignsNoCombatDamage,
+            ],
+        ),
+    });
+    let plains = vec![cid("Plains"); 99];
+    let mut g = Game::new_commander(
+        std::sync::Arc::new(defs),
+        [&plains, &plains],
+        [cid("Bello, Bard of the Brambles"), cid("Ms. Bumbleflower")],
+        7,
+        0,
+    );
+    g.auto_pass = false;
+    let lions = put(&mut g, 0, "Savannah Lions");
+    g.start_turn(5, 0);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(lions));
+    act(&mut g, Action::FinishAttacks);
+    while g.step != Step::Main2 {
+        let a = match g.pending {
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(
+        g.players[1].life, 1,
+        "life total becomes 1, and no combat damage after"
+    );
+}

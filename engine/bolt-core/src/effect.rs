@@ -2635,6 +2635,19 @@ pub enum Effect {
     /// free (`free_casts_one`); the rest go to the bottom in a random order. The revealed cards
     /// wait in exile, as cascade's do.
     RevealTopMvMayCastOneFree,
+    /// Saddle's effect: the source becomes saddled until end of turn by the creature in `extra`
+    /// (`Game::saddled`).
+    BecomeSaddled,
+    /// The Gitrog, Ravenous Ride: sacrifice a creature that saddled the source this turn (the
+    /// engine picks the most powerful); if you do, draw X cards, then put up to X land cards from
+    /// your hand onto the battlefield tapped (the engine puts as many as it can), X its power.
+    SacrificeSaddlerDrawXLandsX,
+    /// The defending player's life total becomes 1 (Master of Cruelties): they lose (or gain) the
+    /// difference (CR 119.5).
+    OpponentLifeBecomesOne,
+    /// The source assigns no combat damage this combat (Master of Cruelties), see
+    /// `Game::no_combat_damage_from`.
+    SourceAssignsNoCombatDamage,
     /// Palantír of Orthanc: the player in `slot` may have you draw a card
     /// (`Decision::LetDrawOrMill`); if they don't, you mill X cards, X the source's own kind of
     /// counters (influence), and they lose life equal to the total mana value of those cards.
@@ -3605,6 +3618,9 @@ pub enum When {
     /// "Whenever a permanent becomes untapped" (Mesmeric Orb), anyone's, this one included; slot 0
     /// (if `triggering`) is that permanent.
     PermanentBecomesUntapped,
+    /// "Whenever [this] attacks a player and isn't blocked" (Master of Cruelties), once blockers are
+    /// declared (`Game::fire_unblocked_at_player`).
+    AttacksAndIsntBlocked,
 }
 
 #[derive(Clone, Debug, PartialEq)]

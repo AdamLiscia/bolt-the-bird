@@ -2839,3 +2839,28 @@ fn sunbirds_invocation_reveals_the_spells_mana_value_and_casts_one_free() {
     );
     assert_eq!(g.obj(signet).zone, Zone::Battlefield);
 }
+
+#[test]
+fn the_gitrog_is_saddled_then_sacrifices_its_rider_to_draw_and_drop_lands() {
+    let mut g = table();
+    let gitrog = put(&mut g, 0, "The Gitrog, Ravenous Ride");
+    let rider = put(&mut g, 0, "Llanowar Elves");
+    let tiny = put(&mut g, 0, "Ornithopter"); // power 0: can't saddle
+    assert!(!g.legal_actions().contains(&Action::ActivateWith(gitrog, 0, tiny)));
+    act(&mut g, Action::ActivateWith(gitrog, 0, rider));
+    resolve_all(&mut g, &[]);
+    assert!(g.obj(rider).tapped, "saddling taps it");
+    let forest = g.add_card(0, cid("Forest"), Zone::Hand);
+    let hand = g.players[0].hand.len();
+    let lands = g.permanents(0).filter(|&x| g.types_of(x).land).count();
+    // Combat: The Gitrog attacks and connects ("you may": the first answer, Yes).
+    attack_with(&mut g, &[gitrog]);
+    assert_eq!(g.obj(rider).zone, Zone::Graveyard, "the rider sacrificed");
+    let dropped: Vec<ObjId> = g
+        .permanents(0)
+        .filter(|&x| g.types_of(x).land && g.obj(x).tapped && (x == forest || g.def_of(x).name == "Plains"))
+        .collect();
+    assert!(!dropped.is_empty(), "a land from hand, tapped");
+    assert_eq!(g.players[0].hand.len(), hand, "drew one, put one down");
+    assert_eq!(g.permanents(0).filter(|&x| g.types_of(x).land).count(), lands + 1);
+}

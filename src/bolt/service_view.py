@@ -191,7 +191,7 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         verb = verb or {"SacrificeNontokenCreatureEach": "Sacrifice"}.get(d)
         verb = verb or {"SacrificeNontokenArtifact": "Sacrifice", "ExileThreeForFood": "Exile (three for a Food):"}.get(d)  # fmt: skip
         verb = verb or {"SylvanPick": "Choose (pay 4 life or put it back):"}.get(d)
-        verb = verb or {"CrewTap": "Also tap to crew:"}.get(d)
+        verb = verb or {"CrewTap": "Also tap (to crew or saddle):"}.get(d)
         if d == "IterationPick":
             verb = "Put into your hand:" if dec.get("to_hand") else "Put on the bottom:"
         verb = verb or {"ChooseRingBearer": "Choose as your Ring-bearer:"}.get(d)
@@ -230,7 +230,7 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         "PayToStop": (f"Pay {dec.get('cost', '')}", "Don't pay"),
         "MayDrawGainOne": ("Draw a card and gain 1 life", "Don't draw"),
         "SylvanDraw": ("Draw two additional cards", "Don't draw"),
-        "CrewTap": ("Crew with the chosen creatures", "Don't crew"),
+        "CrewTap": ("Tap the chosen creatures", "Don't tap them"),
         "SylvanPayOrTop": (f"Pay 4 life to keep {subject or 'it'}", f"Put {subject or 'it'} on top of your library"),
         "ExpropriateVote": ("Vote time (an extra turn)", "Vote money (a permanent)"),
         "PayUpkeep": (f"Pay the upkeep {dec.get('cost', '')}", f"Don't pay (sacrifice {subject or src})"),
