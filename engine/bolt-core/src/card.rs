@@ -371,6 +371,12 @@ pub struct Activated {
     /// Saddle currently uses crew's one-creature shortcut; lane B is replacing both with a
     /// total-power cost.
     pub saddle: u8,
+    /// "Activate only if you've cast N or more instant and/or sorcery spells this turn." (Urabrask:
+    /// 3), from `Game::instants_sorceries_cast`.
+    pub min_instants_sorceries_this_turn: u8,
+    /// "Activate only if an opponent has N or more cards in their graveyard." (Sheoldred // The
+    /// True Scriptures: 8)
+    pub opponent_min_graveyard: u8,
 }
 
 /// A loyalty ability's cost of −X (CR 606.4, 107.3): `loyalty_abilities` uses this as the cost,

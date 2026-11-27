@@ -1401,6 +1401,9 @@ pub enum Decision {
     /// Palantír of Orthanc, asked of the targeted opponent: `Yes` has `player` draw a card; `No`
     /// has `player` mill `x` cards and you lose life equal to their total mana value.
     LetDrawOrMill { player: PlayerId, x: u8 },
+    /// Rona, Tolarian Obliterator: `Yes` puts the exiled land `card` onto the battlefield under
+    /// your control, `No` leaves it in exile.
+    MayPutExiledLandOntoBattlefield { card: ObjId },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -8947,6 +8950,9 @@ impl Game {
                     || (a.not_your_turn_only && p == self.active)
                     || (a.needs_delirium && self.graveyard_card_types(p) < 4)
                     || (a.needs_threshold && self.players[p].graveyard.len() < 7)
+                    || (self.instants_sorceries_cast[p] < a.min_instants_sorceries_this_turn as u32)
+                    || (a.opponent_min_graveyard > 0
+                        && self.players[opponent(p)].graveyard.len() < a.opponent_min_graveyard as usize)
                     || (a.min_attackers_this_turn > 0
                         && !(p == self.active
                             && self.attacked_creatures_this_turn.len() >= a.min_attackers_this_turn as usize))
@@ -13769,6 +13775,7 @@ impl Game {
             Decision::DiscardThenIfInstantOrSorcery => hand.iter().copied().map(Action::Pick).collect(),
             Decision::PatronOfChaosSacrifice { first, .. } => self.patron_of_chaos_actions(p, *first),
             Decision::ExileFromHandUntilSourceLeaves { victim, .. } => self.hand_link_actions(*victim),
+            Decision::MayPutExiledLandOntoBattlefield { .. } => vec![Action::Yes, Action::No],
             Decision::MoveAuraTo { aura } => self
                 .move_aura_options(*aura, p)
                 .into_iter()
@@ -15440,6 +15447,12 @@ impl Game {
             }
             (Decision::ExileFromHandUntilSourceLeaves { source, zcc, .. }, a) => {
                 self.hand_link_decide(source, zcc, a)
+            }
+            (Decision::MayPutExiledLandOntoBattlefield { card }, a) => {
+                if a == Action::Yes && self.obj(card).zone == Zone::Exile {
+                    self.obj_mut(card).controller = p;
+                    self.move_to(card, Zone::Battlefield);
+                }
             }
             (Decision::MoveAuraTo { aura }, Action::Pick(c)) => {
                 let zcc = self.obj(c).zcc;
@@ -23784,6 +23797,11 @@ impl Game {
                     self.hand_link_ask(src, item.controller, q);
                 }
             }
+            Effect::DamageSourceControllerExilesRandomFromHand => {
+                if let Some(source) = item.extra {
+                    self.exile_random_from_damager_hand(source, item.controller);
+                }
+            }
             Effect::DiscardThenIfInstantOrSorcery => {
                 let p = item.controller;
                 if self.players[p].hand.is_empty() {
@@ -25825,6 +25843,7 @@ impl Game {
                     self.fire_source(id, When::DealtDamage);
                     for t in &mut self.triggered[before..] {
                         t.amount = amount;
+                        t.extra = t.extra.or(Some(source)); // borrowed from d2: the damage source (Rona)
                     }
                 }
             }

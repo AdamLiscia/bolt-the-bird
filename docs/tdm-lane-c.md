@@ -1041,3 +1041,30 @@ modelled), Deep-Cavern Bat. Tests in core_objects (59). Fix: `to_end_step_target
 and blocks on the way.
 Built: 2,220 Rust tests pass (core_objects 59, pg_c 212, play.rs 3 ignored), every binary's count equals its
 `#[test]` count; clippy, fmt, ruff (check and format) clean; pytest 172.
+
+## Batch 16 (unbuilt, waiting on the merger's go): Rona, and the Urabrask and Sheoldred transform conditions
+
+tarkir-c fast-forwarded to tarkir 2a99d72 (it already held 0f8556c; no merge commit needed).
+Core (appended):
+- `Activated::{min_instants_sorceries_this_turn, opponent_min_graveyard}` with two clauses in the activation
+  legality check (next to `needs_threshold`). **An edit inside an existing function: needs the merger's OK.**
+- `Effect::DamageSourceControllerExilesRandomFromHand` (zones.rs `exile_random_from_damager_hand`): a land asks
+  the new `Decision::MayPutExiledLandOntoBattlefield { card }` (Yes/No; labelled, tested); a nonland card goes to
+  `free_casts` with `free_caster` = you.
+- **Recorded borrow from d2:** one line in the `When::DealtDamage` emit (deal_damage, `Target::Object`) sets each
+  trigger's `extra` to the damage source if it was empty. Only blc_c's `DrawAmount` cards use that trigger, and
+  they ignore `extra`.
+- `When::YouCastLegendary` was already on tarkir (d2), so no borrow there.
+Cards (1): Rona, Herald of Invasion // Rona, Tolarian Obliterator. Tests in core_objects (61: Rona, and the two
+activation conditions on an edited Otherworld Atlas).
+Not scripted, by blocker:
+- Urabrask // The Great Work: the transform is `ExileSelfReturn { transformed: true }` with `sorcery` and
+  `min_instants_sorceries_this_turn = 3`. Waits on d4's chapter III (cast instants/sorceries from any graveyard
+  this turn, exile them instead). Chapters I and II look doable with existing effects.
+- Sheoldred // The True Scriptures: transform is `ExileSelfReturn` + `sorcery` + `opponent_min_graveyard = 8`.
+  Waits on d4's Saga. Also the front's "each opponent sacrifices a nontoken creature or planeswalker" has no
+  effect yet (`EachPlayerSacrificesNontokenCreature` is creatures only, every player). Chapter III could be
+  `ReanimateAll { all_graveyards: true, .. }` then `ExileSelfReturn { transformed: false }`.
+- Toxrill: dropped per the merger (d3 slime store, d2 Slug 109 and dies trigger). 104 still free.
+Likely failure spots when built: the Rona test (the {B/P} transform paid from table(), `play` answering `Yes`
+for the land decision), `g.objects[..].tapped` set directly.

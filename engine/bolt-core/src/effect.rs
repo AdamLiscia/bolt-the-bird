@@ -2652,6 +2652,12 @@ pub enum Effect {
     /// (`Decision::LetDrawOrMill`); if they don't, you mill X cards, X the source's own kind of
     /// counters (influence), and they lose life equal to the total mana value of those cards.
     TargetMayLetYouDrawElseMillKindCounters(u8),
+    /// "Whenever a source deals damage to [this], that source's controller exiles a card from their
+    /// hand at random. If it's a land card, you may put it onto the battlefield under your control.
+    /// Otherwise, you may cast it without paying its mana cost." (Rona, Tolarian Obliterator): the
+    /// source is the trigger's `extra`; a land asks `Decision::MayPutExiledLandOntoBattlefield`, a
+    /// nonland card opens a free cast (`Game::free_casts`).
+    DamageSourceControllerExilesRandomFromHand,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

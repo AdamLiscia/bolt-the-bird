@@ -264,6 +264,8 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         return "Don't sacrifice (they draw two cards)"
     if d == "ExileFromHandUntilSourceLeaves" and not yes:
         return "Exile nothing"
+    if d == "MayPutExiledLandOntoBattlefield":
+        return "Put the land onto the battlefield" if yes else "Leave it in exile"
     d3_no = {"SacrificeAnyNumber": "Done sacrificing", "ReturnAnotherPermanentCard": "Return nothing", "BasicsTappedUpTo": "Find nothing", "SignalTheClans": "Done revealing", "BraidsSacrifice": "Don't sacrifice", "BraidsOpponent": "Don't sacrifice (lose 2 life)"}  # fmt: skip
     d3_no["ReturnSharingType"] = "Return nothing"
     d3_no["ReanimateTotalManaValue"] = "Done choosing"

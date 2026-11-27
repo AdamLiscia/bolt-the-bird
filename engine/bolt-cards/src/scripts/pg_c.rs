@@ -2303,6 +2303,23 @@ pub fn script(name: &str) -> Option<Script> {
                 activated(d, "", true, vec![], vec![Effect::KindCounterSelf(1), Effect::YouDrawPerKindCounter]);
             },
         ),
+        "Rona, Herald of Invasion // Rona, Tolarian Obliterator" => s(
+            &[
+                "Whenever you cast a legendary spell, untap Rona.",
+                "{T}: Draw a card, then discard a card.",
+                "{5}{B/P}: Transform Rona. Activate only as a sorcery.",
+                "Back: Whenever a source deals damage to Rona, that source's controller exiles a card from their hand at random. If it's a land card, you may put it onto the battlefield under your control. Otherwise, you may cast it without paying its mana cost.",
+            ],
+            |d, _| {
+                on(d, When::YouCastLegendary, vec![], vec![Effect::UntapSelf]);
+                activated(d, "", true, vec![], vec![draw(1), discard(1)]);
+                let n = activated(d, "{5}{B}", false, vec![], vec![Effect::TransformSelf]);
+                d.activated[n].phyrexian = [0, 0, 1, 0, 0];
+                d.activated[n].sorcery = true;
+                let b = d.back.as_mut().expect("Rona, Tolarian Obliterator");
+                on(b, When::DealtDamage, vec![], vec![Effect::DamageSourceControllerExilesRandomFromHand]);
+            },
+        ),
         "Deep-Cavern Bat" => s(
             &["When this creature enters, look at target opponent's hand. You may exile a nonland card from it until this creature leaves the battlefield."],
             |d, _| {
@@ -2617,4 +2634,5 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Inkshield",
     "The One Ring",
     "Deep-Cavern Bat",
+    "Rona, Herald of Invasion // Rona, Tolarian Obliterator",
 ];

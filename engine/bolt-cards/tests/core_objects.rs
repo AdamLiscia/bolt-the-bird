@@ -1412,3 +1412,102 @@ fn resolve_until_decision(g: &mut Game) {
         act(g, a);
     }
 }
+
+// ---- Sefris, Urabrask, The True Scriptures: transforms and Rona's back face ----
+
+/// `game(&[])` with every basic five times for each player, after `edit` changes the CMD defs.
+fn table_with(edit: impl Fn(&mut Vec<bolt_core::CardDef>)) -> Game {
+    let mut defs = (*set("CMD").unwrap().defs).clone();
+    edit(&mut defs);
+    let plains = vec![cid("Plains"); 99];
+    let mut g = Game::new_commander(
+        std::sync::Arc::new(defs),
+        [&plains, &plains],
+        [cid("Bello, Bard of the Brambles"), cid("Ms. Bumbleflower")],
+        7,
+        0,
+    );
+    g.auto_pass = false;
+    for land in ["Plains", "Island", "Swamp", "Mountain", "Forest"] {
+        for p in 0..2 {
+            for _ in 0..5 {
+                put(&mut g, p, land);
+            }
+        }
+    }
+    g.start_turn(3, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    g
+}
+
+#[test]
+fn activate_only_after_three_instants_or_sorceries_or_with_eight_in_an_opponents_graveyard() {
+    let mut g = table_with(|defs| {
+        let atlas = &mut defs[cid("Otherworld Atlas")];
+        atlas.activated[0].min_instants_sorceries_this_turn = 1;
+        atlas.activated[1].opponent_min_graveyard = 2;
+    });
+    let atlas = put(&mut g, 0, "Otherworld Atlas");
+    let legal = g.legal_actions();
+    assert!(
+        !legal.contains(&Action::Activate(atlas, 0)),
+        "no instant cast yet"
+    );
+    assert!(
+        !legal.contains(&Action::Activate(atlas, 1)),
+        "their graveyard is empty"
+    );
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    play(&mut g, bolt, false, &[Target::Player(1)], &[]);
+    g.add_card(1, cid("Plains"), Zone::Graveyard);
+    assert!(
+        g.legal_actions().contains(&Action::Activate(atlas, 0)),
+        "one cast"
+    );
+    assert!(
+        !g.legal_actions().contains(&Action::Activate(atlas, 1)),
+        "one card"
+    );
+    g.add_card(1, cid("Plains"), Zone::Graveyard);
+    assert!(
+        g.legal_actions().contains(&Action::Activate(atlas, 1)),
+        "two cards"
+    );
+}
+
+#[test]
+fn rona_untaps_on_legendary_casts_transforms_and_takes_a_land_from_the_damagers_hand() {
+    let mut g = table();
+    let rona = put(
+        &mut g,
+        0,
+        "Rona, Herald of Invasion // Rona, Tolarian Obliterator",
+    );
+    g.objects[rona.0 as usize].tapped = true;
+    let squee = hand(&mut g, 0, "Squee, the Immortal");
+    play(&mut g, squee, false, &[], &[]);
+    assert!(!g.obj(rona).tapped, "a legendary spell untaps Rona");
+    act(&mut g, Action::Activate(rona, 1));
+    resolve_all(&mut g, &[]);
+    assert!(g.obj(rona).transformed);
+    assert_eq!(g.def_of(rona).name, "Rona, Tolarian Obliterator");
+    // Player 0's own Lightning Bolt: its controller (player 0) exiles a card at random, and the
+    // rest of player 0's hand is Plains.
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    let lands = g.permanents(0).filter(|&x| g.types_of(x).land).count();
+    let hand0 = g.players[0].hand.len();
+    play(&mut g, bolt, false, &[obj(rona)], &[Action::Yes]);
+    assert_eq!(g.obj(rona).zone, Zone::Battlefield, "5 toughness");
+    assert_eq!(
+        g.players[0].hand.len(),
+        hand0 - 2,
+        "the Bolt, and the exiled card"
+    );
+    assert_eq!(
+        g.permanents(0).filter(|&x| g.types_of(x).land).count(),
+        lands + 1,
+        "the land onto the battlefield"
+    );
+}

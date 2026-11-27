@@ -916,4 +916,26 @@ impl Game {
             }
         }
     }
+
+    /// Rona, Tolarian Obliterator: `source`'s controller exiles a card from their hand at random;
+    /// `p` may put a land onto the battlefield under their control, or cast anything else free.
+    pub(super) fn exile_random_from_damager_hand(&mut self, source: ObjId, p: PlayerId) {
+        let q = self.obj(source).controller;
+        let n = self.players[q].hand.len();
+        if n == 0 {
+            return;
+        }
+        let c = self.players[q].hand[self.rng.below(n)];
+        self.move_to(c, Zone::Exile);
+        if self.obj(c).zone != Zone::Exile {
+            return;
+        }
+        if self.types_of(c).land {
+            self.ask(p, Decision::MayPutExiledLandOntoBattlefield { card: c });
+        } else {
+            self.obj_mut(c).cast_free = true;
+            self.free_casts.push(c);
+            self.free_caster = p;
+        }
+    }
 }

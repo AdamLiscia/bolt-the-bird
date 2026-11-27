@@ -145,6 +145,12 @@ def test_deep_cavern_bat_exile_from_hand_until_it_leaves():
     assert label(dec, "No", 0) == "Exile nothing"
 
 
+def test_rona_may_put_the_exiled_land_onto_the_battlefield():
+    dec = {"kind": "MayPutExiledLandOntoBattlefield"}
+    assert label(dec, "Yes", 0) == "Put the land onto the battlefield"
+    assert label(dec, "No", 0) == "Leave it in exile"
+
+
 def test_venturing_names_the_dungeon_or_room():
     dec = {"kind": "ChooseDungeon", "options": ["Lost Mine of Phandelver", "Dungeon of the Mad Mage"]}
     assert label(dec, "Mode", 1) == "Venture into Dungeon of the Mad Mage"
