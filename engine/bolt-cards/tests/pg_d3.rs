@@ -4906,3 +4906,107 @@ fn vaevictis_makes_each_player_sacrifice_a_target_and_flip_a_permanent_onto_the_
     assert_eq!(g.obj(my_top).controller, 0);
     assert_eq!(g.obj(their_top).zone, Zone::Library, "an instant stays");
 }
+
+#[test]
+fn kindred_summons_puts_x_creatures_of_the_chosen_type_onto_the_battlefield() {
+    let mut g = table();
+    put(&mut g, 0, "Shivan Dragon");
+    put(&mut g, 0, "Utvara Hellkite");
+    put(&mut g, 0, "Savannah Lions");
+    let a = g.add_card(0, cid("Goldspan Dragon"), Zone::Library);
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Library);
+    let b = g.add_card(0, cid("Shivan Dragon"), Zone::Library);
+    let c = hand(&mut g, 0, "Kindred Summons");
+    act(&mut g, Action::Cast(c));
+    while !matches!(g.pending, Pending::Decide(0)) {
+        act(&mut g, Action::PassPriority);
+    }
+    let dragon = g
+        .creature_types_known_to(0)
+        .iter()
+        .position(|t| t == "Dragon")
+        .unwrap();
+    resolve_all(&mut g, &[Action::Mode(dragon as u8)]);
+    assert_eq!(
+        (g.obj(a).zone, g.obj(b).zone),
+        (Zone::Battlefield, Zone::Battlefield),
+        "two Dragons you control: two"
+    );
+    assert_eq!(g.obj(lions).zone, Zone::Library, "not a Dragon: shuffled back");
+}
+
+#[test]
+fn shadowspear_equips_and_strips_opponents_hexproof_and_indestructible() {
+    let mut g = table();
+    let spear = put(&mut g, 0, "Shadowspear");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    let shield = Keywords::HEXPROOF.with(Keywords::INDESTRUCTIBLE);
+    g.objects[lions.0 as usize].granted = shield;
+    let theirs = put(&mut g, 1, "Savannah Lions");
+    g.objects[theirs.0 as usize].granted = shield;
+    let equip = g.def_of(spear).activated.len() - 1;
+    act(&mut g, Action::Activate(spear, equip));
+    act(&mut g, Action::Target(obj(lions)));
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.power(lions), g.toughness(lions)), (3, 2));
+    assert!(g.keywords(lions).has(Keywords::TRAMPLE.with(Keywords::LIFELINK)));
+    act(&mut g, Action::Activate(spear, 0));
+    resolve_all(&mut g, &[]);
+    assert!(!g.keywords(theirs).has(Keywords::HEXPROOF) && !g.keywords(theirs).has(Keywords::INDESTRUCTIBLE));
+    assert!(g.keywords(lions).has(shield), "yours keep them");
+    g.start_turn(5, 1);
+    assert!(g.keywords(theirs).has(shield), "until end of turn");
+}
+
+#[test]
+fn brain_freeze_mills_three_per_copy() {
+    let mut g = table();
+    for _ in 0..12 {
+        g.add_card(1, cid("Forest"), Zone::Library);
+    }
+    let before = g.players[1].graveyard.len();
+    let ring = hand(&mut g, 0, "Sol Ring");
+    play(&mut g, ring, false, &[], &[]);
+    let bf = hand(&mut g, 0, "Brain Freeze");
+    act(&mut g, Action::Cast(bf));
+    act(&mut g, Action::Target(Target::Player(1)));
+    // The storm copy (one spell before it) may choose a new target: keep the opponent.
+    let mut n = 0;
+    while !g.items.is_empty() || matches!(g.pending, Pending::ChooseTarget(_) | Pending::Decide(_)) {
+        let a = match g.pending {
+            Pending::ChooseTarget(_) => Action::Target(Target::Player(1)),
+            Pending::Decide(_) => {
+                n += 1;
+                g.legal_actions()[0]
+            }
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+        assert!(n < 10);
+    }
+    assert_eq!(
+        g.players[1].graveyard.len() - before,
+        6,
+        "the spell and one storm copy"
+    );
+}
+
+#[test]
+fn blackblade_reforged_grows_per_land_and_equips_legends_cheaply() {
+    let mut g = game(&[
+        "Forest", "Forest", "Forest", "Forest", "Forest", "Forest", "Forest",
+    ]);
+    let blade = put(&mut g, 0, "Blackblade Reforged");
+    let legend = put(&mut g, 0, "Pippin, Guard of the Citadel");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    let base = g.power(legend);
+    act(&mut g, Action::Activate(blade, 0));
+    act(&mut g, Action::Target(obj(legend)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.power(legend), base + 7, "seven lands");
+    act(&mut g, Action::Activate(blade, 0));
+    assert!(
+        !g.legal_actions().contains(&Action::Target(obj(lions))),
+        "the {{3}} equip is for legendary creatures"
+    );
+}

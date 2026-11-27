@@ -57,7 +57,7 @@ pub fn random_game(
             return Err(format!("seed {seed}: no legal actions but the game is not over"));
         }
         let action = legal[rng.below(legal.len())];
-        // A runaway action panics (see `WORK_BUDGET`); report it with its seed.
+        // A runaway action ends the game (`Game::end_reason`); a panic is a bug. Report either with its seed.
         let applied =
             std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| g.apply(action))).map_err(|e| {
                 let msg = e
@@ -68,6 +68,9 @@ pub fn random_game(
                 format!("seed {seed}: {action:?} panicked: {msg}")
             })?;
         let events = applied.map_err(|e| format!("seed {seed}: legal action rejected: {e}"))?;
+        if let Some(why) = g.end_reason {
+            return Err(format!("seed {seed}: {action:?}: {why}"));
+        }
         if check {
             for e in &events {
                 match *e {

@@ -543,8 +543,12 @@ pub fn token_defs() -> Vec<CardDef> {
             t.changeling = true;
             t
         },
-        // 122: d1's Human Cleric, a placeholder until it lands on tarkir.
-        token("Placeholder 122", "Placeholder", 0, 0, Keywords::NONE),
+        {
+            // 122, lane d1: Westvale Abbey's "1/1 white and black Human Cleric creature token".
+            let mut t = token("Human Cleric", "Human Cleric", 1, 1, Keywords::NONE);
+            t.colors = [true, false, true, false, false];
+            t
+        },
         // 123, lane C: Nesting Dragon's "0/2 red Dragon Egg creature token with defender"; its dies
         // trigger (making 124) is wired in `CardSet::load`, since a row here can't name another token.
         red(token("Dragon Egg", "Dragon Egg", 0, 2, Keywords::DEFENDER)),
@@ -591,6 +595,18 @@ pub fn token_defs() -> Vec<CardDef> {
             // 130, lane d2: Hermes's "1/1 blue Bird creature token with flying and vigilance".
             let mut t = token("Bird", "Bird", 1, 1, Keywords::FLYING.with(Keywords::VIGILANCE));
             t.colors = [false, true, false, false, false];
+            t
+        },
+        // 131: another lane's token, a placeholder until it lands on tarkir.
+        token("Placeholder 131", "Placeholder", 0, 0, Keywords::NONE),
+        // 132: another lane's token, a placeholder until it lands on tarkir.
+        token("Placeholder 132", "Placeholder", 0, 0, Keywords::NONE),
+        // 133: another lane's token, a placeholder until it lands on tarkir.
+        token("Placeholder 133", "Placeholder", 0, 0, Keywords::NONE),
+        {
+            // 134, lane d1: Wolfwillow Haven's "2/2 green Wolf creature token".
+            let mut t = token("Wolf", "Wolf", 2, 2, Keywords::NONE);
+            t.colors = [false, false, false, false, true];
             t
         },
     ]
@@ -844,8 +860,8 @@ pub struct Tokens {
     pub nightmare: usize,
     /// 121: d3's Maskwood Nexus Shapeshifter, a 2/2 blue with changeling.
     pub shapeshifter_changeling_blue: usize,
-    /// 122: d1's Human Cleric, a placeholder until it lands on tarkir.
-    pub placeholder_122: usize,
+    /// 122: d1's Westvale Abbey Human Cleric, a 1/1 white and black.
+    pub human_cleric: usize,
     /// 123: lane C's Nesting Dragon Egg, a 0/2 red with defender (dies: token 124).
     pub dragon_egg: usize,
     /// 124: lane C's 2/2 red flying Dragon with "{R}: +1/+0".
@@ -862,6 +878,14 @@ pub struct Tokens {
     pub hero: usize,
     /// 130, lane d2: Hermes's 1/1 blue Bird with flying and vigilance.
     pub bird_flying_vigilance: usize,
+    /// 131: another lane's token, a placeholder until it lands on tarkir.
+    pub placeholder_131: usize,
+    /// 132: another lane's token, a placeholder until it lands on tarkir.
+    pub placeholder_132: usize,
+    /// 133: another lane's token, a placeholder until it lands on tarkir.
+    pub placeholder_133: usize,
+    /// 134: d1's Wolfwillow Haven Wolf, a plain 2/2 green.
+    pub wolf_green: usize,
 }
 
 impl Tokens {
@@ -989,7 +1013,7 @@ impl Tokens {
             shapeshifter_changeling_1: base + 119,
             nightmare: base + 120,
             shapeshifter_changeling_blue: base + 121,
-            placeholder_122: base + 122,
+            human_cleric: base + 122,
             dragon_egg: base + 123,
             dragon_2_firebreathing: base + 124,
             cat_bird: base + 125,
@@ -998,6 +1022,10 @@ impl Tokens {
             vampire_lifelink: base + 128,
             hero: base + 129,
             bird_flying_vigilance: base + 130,
+            placeholder_131: base + 131,
+            placeholder_132: base + 132,
+            placeholder_133: base + 133,
+            wolf_green: base + 134,
         }
     }
 }

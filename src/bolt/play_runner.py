@@ -56,7 +56,10 @@ HANG_LOG = os.environ.get("BOLT_HANG_LOG")
 # A game's own time budget (its engine calls and encoding, not the shared network passes): past it the game is
 # a timeout with no samples. 2026-11-27: a cmd_play_1 game crawled instead of freezing (each move slower, the
 # heartbeat still beating), and ran the same seed into the ground three times. Normal games take 1-30 s.
-GAME_S = float(os.environ.get("BOLT_GAME_S", "150"))  # where hung games are written (one JSON line each), if set
+GAME_S = float(os.environ.get("BOLT_GAME_S", "150"))
+# Smart moves are slow by design (up to their ms cap each): a game gets its smart moves' allowance on top of
+# GAME_S (ms per move made, or the measured time when uncapped), so an eval game of ~350 capped smart moves
+# (~70 s) isn't cut as a crawl (2026-11-27, BOLT_GAME_S=60: eval seeds 9030 and 9033).  # where hung games are written (one JSON line each), if set
 
 
 def _beat(gi: int) -> None:
@@ -103,12 +106,13 @@ def run_games(net, jobs, seats=("net", "rules"), sample=True, seed=0, smart=(1, 
     {"results": [{"result", "turn"}], "steps": [...]}. smart=(rollouts, candidates[, ms]): the smart seat's
     search, ms capping its time per move.
 
-    label_with=(rollouts, candidates): recorded network steps get the smart player's choice in that
+    label_with=(rollouts, candidates[, ms]): recorded network steps get the smart player's choice in that
     position as "action" (the label) and the network's own move as "played", which is what the game
     follows (DAgger: the teacher labels the positions the student reaches).
 
     skip: games (indices into jobs) not played: an earlier run hung on them. Each is a timeout with no steps.
-    game_s: each game's own time budget (default GAME_S, 0 = none); a game past it is a timeout with no steps,
+    game_s: each game's own time budget (default GAME_S, 0 = none), plus its smart moves' allowance (ms each, or
+    their time when uncapped); a game past it is a timeout with no steps,
     its result carrying "slow": {moves, turn, permanents, most_common} for the hang log."""
     game_s = GAME_S if game_s is None else game_s
     record = {i for i, s in enumerate(seats) if s == "net"} if record is None else set(record)
@@ -132,8 +136,17 @@ def run_games(net, jobs, seats=("net", "rules"), sample=True, seed=0, smart=(1, 
     own = [0.0] * len(games)  # each game's own seconds so far
     slow: set = set()
 
+    allowance = [0.0] * len(games)  # each game's smart moves' allowance, on top of game_s
+
+    def smart_call(gi, args, cap):
+        t = time.time()
+        try:
+            return games[gi].smart(*args)
+        finally:
+            allowance[gi] += cap / 1000 if cap else time.time() - t
+
     def over(gi, since):
-        if not game_s or own[gi] + time.time() - since <= game_s:
+        if not game_s or own[gi] + time.time() - since <= game_s + allowance[gi]:
             return False
         own[gi] += time.time() - since
         results[gi] = {"result": "timeout", "turn": games[gi].turn, "hung": True,
@@ -177,7 +190,10 @@ def run_games(net, jobs, seats=("net", "rules"), sample=True, seed=0, smart=(1, 
                     if seat == "rules":
                         i = g.baseline()
                     else:
-                        i = g.smart(smart[0], smart[1], (jobs[gi][2] * 1_000_003 + moves[gi]) % 2**64, *smart[2:])
+                        seed_ = (jobs[gi][2] * 1_000_003 + moves[gi]) % 2**64
+                        i = smart_call(
+                            gi, (smart[0], smart[1], seed_, *smart[2:]), smart[2] if len(smart) > 2 else None
+                        )
                     if who in record:
                         obs = g.observation(who)
                         if len(obs["legal_actions"]) > 1:
@@ -213,7 +229,8 @@ def run_games(net, jobs, seats=("net", "rules"), sample=True, seed=0, smart=(1, 
                         step["played"] = i
                         try:
                             _beat(gi)
-                            step["action"] = games[gi].smart(label_with[0], label_with[1], seed_)
+                            step["action"] = smart_call(gi, (label_with[0], label_with[1], seed_, *label_with[2:]),
+                                                        label_with[2] if len(label_with) > 2 else None)  # fmt: skip
                         except BaseException as e:  # a Rust panic too
                             if isinstance(e, (KeyboardInterrupt, SystemExit)):
                                 raise
@@ -304,19 +321,27 @@ def _proc(slot, beats, out_q, worker, key, args, parent):
 def _hang_record(job, seats, kw, index):
     a, b, seed_, first = job
     return {"time": time.strftime("%Y-%m-%d %H:%M:%S"), "set": PLAY_SET, "format": PLAY_FORMAT, "job": index,
-            "seed": seed_, "first": first, "seats": list(seats), "smart": list(kw.get("smart", (1, 2))),
-            "sample": kw.get("sample", True), "deck_a": a, "deck_b": b}  # fmt: skip
+            "seed": seed_, "first": first, "seats": list(seats), "sample": kw.get("sample", True),
+            # the smart player's settings only where it played (a smart seat) or labelled (label_with)
+            **({"smart": list(kw.get("smart", (1, 2)))} if "smart" in seats else {}),
+            **({"label_with": list(kw["label_with"])} if kw.get("label_with") else {}),
+            "deck_a": a, "deck_b": b}  # fmt: skip
+
+
+class Stopped(Exception):
+    """run_parallel's `stop` said to stop: its workers are killed, nothing is returned."""
 
 
 def run_parallel(net, jobs, workers=6, chunk=None, seed=0, retries=2, compact=False, hang_s=None, hang_log=None,
-                 worker=None, **kw):  # fmt: skip
+                 worker=None, stop=None, **kw):  # fmt: skip
     """run_games split across spawn worker processes; results in job order. With compact=True the
     workers return recorded steps as bolt.play_data arrays ("arrays") instead of "steps".
 
     A worker whose heartbeat stops for hang_s seconds (default HANG_S; 0 turns it off), an engine call that
     never returns, is killed, and its chunk rerun without that game: a timeout with no steps, written to
     hang_log (default BOLT_HANG_LOG) as one JSON line with its decks, seed, seats and pilot settings. A worker
-    that dies (the engine's rare memory corruption) has its chunk rerun, up to `retries` times."""
+    that dies (the engine's rare memory corruption) has its chunk rerun, up to `retries` times. `stop`, a
+    callable checked about once a second, ends the run early: workers killed, Stopped raised."""
     import collections
     import json
     import queue
@@ -354,7 +379,7 @@ def run_parallel(net, jobs, workers=6, chunk=None, seed=0, retries=2, compact=Fa
             with open(hang_log, "a") as f:
                 f.write(json.dumps(rec) + "\n")
 
-    def stop(k, gi, why):
+    def leave_out(k, gi, why):
         """Leave game gi of chunk k out of its rerun: a timeout, logged."""
         skip[k].add(gi)
         rec = {**_hang_record(parts[k][gi], seats, kw, k + gi), "why": why}
@@ -370,6 +395,11 @@ def run_parallel(net, jobs, workers=6, chunk=None, seed=0, retries=2, compact=Fa
         free.append(slot)
 
     while pending or running:
+        if stop is not None and stop():  # e.g. SIGTERM: the caller saves what it has and exits
+            for k in list(running):
+                running[k][0].kill()
+                release(k)
+            raise Stopped()
         while pending and free:
             k = pending.popleft()
             slot = free.pop()
@@ -398,14 +428,14 @@ def run_parallel(net, jobs, workers=6, chunk=None, seed=0, retries=2, compact=Fa
                     if crashes[k] > 1 and 0 <= gi < len(parts[k]) and gi not in skip[k]:
                         # died twice: the second time, leave out the game it was playing (a seed that kills
                         # its worker every time, e.g. out of memory, must not end the run)
-                        stop(k, gi, "worker died twice")
+                        leave_out(k, gi, "worker died twice")
                     pending.append(k)
             elif hang_s and time.time() - beats[2 * slot] > hang_s:
                 gi = int(beats[2 * slot + 1])
                 p.kill()
                 release(k)
                 if 0 <= gi < len(parts[k]) and gi not in skip[k]:
-                    stop(k, gi, f"no engine call returned for {hang_s:.0f}s")
+                    leave_out(k, gi, f"no engine call returned for {hang_s:.0f}s")
                 else:  # stalled outside a game's engine call: rerun the chunk as for a crash
                     crashes[k] += 1
                     if crashes[k] > retries:

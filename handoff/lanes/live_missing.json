@@ -1,5 +1,5 @@
 {
- "engine": "ab4fbce",
+ "engine": "6cb92a6",
  "note": "pending_on = lane branches on origin that already script the card (not merged yet)",
  "decks": [
   {
@@ -40,7 +40,7 @@
   },
   {
    "owner": "RuricMo",
-   "commander": "Etali, Primal Conqueror // Etali, Primal Sick",
+   "commander": "Etali, Primal Conqueror // Etali, Primal Sickness",
    "list": "31",
    "missing": []
   },
@@ -49,362 +49,6 @@
    "commander": "Myrkul, Lord of Bones",
    "list": "31",
    "missing": []
-  },
-  {
-   "owner": "Grande",
-   "commander": "Kaalia of the Vast",
-   "list": "31",
-   "missing": []
-  },
-  {
-   "owner": "Grande",
-   "commander": "Tatyova, Benthic Druid",
-   "list": "31",
-   "missing": []
-  },
-  {
-   "owner": "Spr3adsh33t",
-   "commander": "Sheoldred, the Apocalypse",
-   "list": "31",
-   "missing": []
-  },
-  {
-   "owner": "Grande",
-   "commander": "Karador, Ghost Chieftain",
-   "list": "31",
-   "missing": []
-  },
-  {
-   "owner": "Adam",
-   "commander": "Animar, Soul of Elements",
-   "list": "31",
-   "missing": []
-  },
-  {
-   "owner": "Grande",
-   "commander": "Damia, Sage of Stone",
-   "list": "31",
-   "missing": []
-  },
-  {
-   "owner": "Adam",
-   "commander": "Oloro, Ageless Ascetic",
-   "list": "31",
-   "missing": []
-  },
-  {
-   "owner": "DonSpider",
-   "commander": "Zacama, Primal Calamity",
-   "list": "31",
-   "missing": []
-  },
-  {
-   "owner": "DonSpider",
-   "commander": "Zinnia, Valley's Voice",
-   "list": "idea",
-   "missing": []
-  },
-  {
-   "owner": "RuricMo",
-   "commander": "Korvold, Fae-Cursed King",
-   "list": "31",
-   "missing": [
-    {
-     "card": "The Earth Crystal",
-     "pending_on": []
-    }
-   ]
-  },
-  {
-   "owner": "Adam",
-   "commander": "Atraxa, Praetors' Voice",
-   "list": "31",
-   "missing": [
-    {
-     "card": "Ichormoon Gauntlet",
-     "pending_on": []
-    },
-    {
-     "card": "Tekuthal, Inquiry Dominus",
-     "pending_on": [
-      "lane-d1"
-     ]
-    }
-   ]
-  },
-  {
-   "owner": "Spr3adsh33t",
-   "commander": "Lonis, Cryptozoologist",
-   "list": "31",
-   "missing": [
-    {
-     "card": "Briarbridge Patrol",
-     "pending_on": []
-    },
-    {
-     "card": "Urza, Lord High Artificer",
-     "pending_on": []
-    }
-   ]
-  },
-  {
-   "owner": "Spr3adsh33t",
-   "commander": "Bello, Bard of the Brambles",
-   "list": "idea",
-   "missing": [
-    {
-     "card": "Evercoat Ursine",
-     "pending_on": [
-      "tarkir-c"
-     ]
-    },
-    {
-     "card": "Grothama, All-Devouring",
-     "pending_on": [
-      "lane-d2"
-     ]
-    }
-   ]
-  },
-  {
-   "owner": "Time",
-   "commander": "Najeela, the Blade-Blossom",
-   "list": "31",
-   "missing": [
-    {
-     "card": "Derevi, Empyrial Tactician",
-     "pending_on": [
-      "tarkir-b"
-     ]
-    },
-    {
-     "card": "Druids' Repository",
-     "pending_on": []
-    },
-    {
-     "card": "Veil of Summer",
-     "pending_on": []
-    }
-   ]
-  },
-  {
-   "owner": "Spr3adsh33t",
-   "commander": "Ghyrson Starn, Kelermorph",
-   "list": "31",
-   "missing": [
-    {
-     "card": "Case of the Ransacked Lab",
-     "pending_on": []
-    },
-    {
-     "card": "Invasion of Arcavios // Invocation of the Founders",
-     "pending_on": []
-    },
-    {
-     "card": "Ral, Storm Conduit",
-     "pending_on": [
-      "lane-d2"
-     ]
-    }
-   ]
-  },
-  {
-   "owner": "Adam",
-   "commander": "Neriv, Heart of the Storm",
-   "list": "idea",
-   "missing": [
-    {
-     "card": "Changeling Wayfinder",
-     "pending_on": [
-      "lane-d1"
-     ]
-    },
-    {
-     "card": "Purging Stormbrood // Absorb Essence",
-     "pending_on": []
-    },
-    {
-     "card": "Reaping Willow",
-     "pending_on": [
-      "lane-d1"
-     ]
-    }
-   ]
-  },
-  {
-   "owner": "DonSpider",
-   "commander": "Raffine, Scheming Seer",
-   "list": "31",
-   "missing": [
-    {
-     "card": "Flitterwing Nuisance",
-     "pending_on": []
-    },
-    {
-     "card": "Glen Elendra Guardian",
-     "pending_on": [
-      "lane-d1"
-     ]
-    },
-    {
-     "card": "Mausoleum Wanderer",
-     "pending_on": [
-      "lane-d3"
-     ]
-    },
-    {
-     "card": "Skycat Sovereign",
-     "pending_on": [
-      "lane-d3"
-     ]
-    }
-   ]
-  },
-  {
-   "owner": "Grande",
-   "commander": "Hearthhull, the Worldseed",
-   "list": "idea",
-   "missing": [
-    {
-     "card": "Hearthhull, the Worldseed",
-     "pending_on": []
-    },
-    {
-     "card": "Horizon Explorer",
-     "pending_on": [
-      "lane-d2"
-     ]
-    },
-    {
-     "card": "Mina and Denn, Wildborn",
-     "pending_on": []
-    },
-    {
-     "card": "Nahiri's Lithoforming",
-     "pending_on": []
-    },
-    {
-     "card": "Walk-In Closet // Forgotten Cellar",
-     "pending_on": []
-    }
-   ]
-  },
-  {
-   "owner": "Adam",
-   "commander": "Niv-Mizzet, Visionary",
-   "list": "idea",
-   "missing": [
-    {
-     "card": "Ashling, Rekindled // Ashling, Rimebound",
-     "pending_on": []
-    },
-    {
-     "card": "Blossombind",
-     "pending_on": []
-    },
-    {
-     "card": "Changeling Wayfinder",
-     "pending_on": [
-      "lane-d1"
-     ]
-    },
-    {
-     "card": "End-Blaze Epiphany",
-     "pending_on": []
-    },
-    {
-     "card": "Mirrorform",
-     "pending_on": []
-    },
-    {
-     "card": "Sanar, Innovative First-Year",
-     "pending_on": []
-    }
-   ]
-  },
-  {
-   "owner": "RuricMo",
-   "commander": "Atla Palani, Nest Tender",
-   "list": "31",
-   "missing": [
-    {
-     "card": "Atla Palani, Nest Tender",
-     "pending_on": [
-      "lane-d2"
-     ]
-    },
-    {
-     "card": "Delney, Streetwise Lookout",
-     "pending_on": [
-      "lane-d2"
-     ]
-    },
-    {
-     "card": "Dinosaur Egg",
-     "pending_on": []
-    },
-    {
-     "card": "Instill Energy",
-     "pending_on": [
-      "lane-d1"
-     ]
-    },
-    {
-     "card": "Irregular Cohort",
-     "pending_on": []
-    },
-    {
-     "card": "Palani's Hatcher",
-     "pending_on": [
-      "lane-d2"
-     ]
-    },
-    {
-     "card": "Spawning Pit",
-     "pending_on": []
-    }
-   ]
-  },
-  {
-   "owner": "Grande",
-   "commander": "Zurgo, Thunder's Decree",
-   "list": "idea",
-   "missing": [
-    {
-     "card": "Feral Deathgorger // Dusk Sight",
-     "pending_on": []
-    },
-    {
-     "card": "Kinbinding",
-     "pending_on": [
-      "lane-d2"
-     ]
-    },
-    {
-     "card": "Purging Stormbrood // Absorb Essence",
-     "pending_on": []
-    },
-    {
-     "card": "Riling Dawnbreaker // Signaling Roar",
-     "pending_on": []
-    },
-    {
-     "card": "Scavenger Regent // Exude Toxin",
-     "pending_on": []
-    },
-    {
-     "card": "Scuzzback Scrounger",
-     "pending_on": []
-    },
-    {
-     "card": "Stormshriek Feral // Flush Out",
-     "pending_on": []
-    },
-    {
-     "card": "Twinmaw Stormbrood // Charring Bite",
-     "pending_on": []
-    }
-   ]
   },
   {
    "owner": "Adam",
@@ -416,12 +60,6 @@
      "pending_on": []
     },
     {
-     "card": "Comet Storm",
-     "pending_on": [
-      "lane-d1"
-     ]
-    },
-    {
      "card": "Cradle Clearcutter",
      "pending_on": []
     },
@@ -431,7 +69,9 @@
     },
     {
      "card": "Inkmoth Nexus",
-     "pending_on": []
+     "pending_on": [
+      "lane-d1"
+     ]
     },
     {
      "card": "Invasion of Ikoria // Zilortha, Apex of Ikoria",
@@ -439,10 +79,6 @@
     },
     {
      "card": "Panglacial Wurm",
-     "pending_on": []
-    },
-    {
-     "card": "Raggadragga, Goreguts Boss",
      "pending_on": []
     },
     {
@@ -456,24 +92,129 @@
    ]
   },
   {
+   "owner": "Grande",
+   "commander": "Kaalia of the Vast",
+   "list": "31",
+   "missing": []
+  },
+  {
    "owner": "Time",
-   "commander": "Henrika Domnathi // Henrika, Infernal Seer",
+   "commander": "Najeela, the Blade-Blossom",
    "list": "31",
    "missing": [
     {
-     "card": "Bitterblossom",
+     "card": "Druids' Repository",
+     "pending_on": [
+      "tarkir-c"
+     ]
+    },
+    {
+     "card": "Veil of Summer",
+     "pending_on": []
+    }
+   ]
+  },
+  {
+   "owner": "Spr3adsh33t",
+   "commander": "Malik, Grim Manipulator",
+   "list": "31",
+   "missing": [
+    {
+     "card": "Agent of the Iron Throne",
+     "pending_on": []
+    },
+    {
+     "card": "Evin, Waterdeep Opportunist",
+     "pending_on": []
+    },
+    {
+     "card": "Gisa's Favorite Shovel",
+     "pending_on": []
+    },
+    {
+     "card": "Goldspan Dragon",
      "pending_on": [
       "lane-d2"
      ]
     },
     {
-     "card": "Crypt of Agadeem",
+     "card": "Ingenious Artillerist",
      "pending_on": []
     },
     {
-     "card": "Demon's Disciple",
+     "card": "Kaya's Guile",
+     "pending_on": []
+    },
+    {
+     "card": "Make an Example",
+     "pending_on": []
+    },
+    {
+     "card": "Malik, Grim Manipulator",
+     "pending_on": []
+    },
+    {
+     "card": "Mythos of Snapdax",
+     "pending_on": []
+    },
+    {
+     "card": "Sheoldred's Edict",
+     "pending_on": []
+    },
+    {
+     "card": "Soul Shatter",
+     "pending_on": []
+    },
+    {
+     "card": "Thalisse, Reverent Medium",
+     "pending_on": []
+    },
+    {
+     "card": "Vona's Hunger",
+     "pending_on": []
+    }
+   ]
+  },
+  {
+   "owner": "Grande",
+   "commander": "Tatyova, Benthic Druid",
+   "list": "31",
+   "missing": []
+  },
+  {
+   "owner": "RuricMo",
+   "commander": "Atla Palani, Nest Tender",
+   "list": "31",
+   "missing": [
+    {
+     "card": "Dinosaur Egg",
      "pending_on": [
-      "tarkir-b"
+      "lane-d1",
+      "lane-d2",
+      "lane-d3",
+      "tarkir-b",
+      "tarkir-s"
+     ]
+    },
+    {
+     "card": "Irregular Cohort",
+     "pending_on": []
+    },
+    {
+     "card": "Spawning Pit",
+     "pending_on": []
+    }
+   ]
+  },
+  {
+   "owner": "Time",
+   "commander": "Henrika Domnathi // Henrika, Infernal Seer",
+   "list": "31",
+   "missing": [
+    {
+     "card": "Crypt of Agadeem",
+     "pending_on": [
+      "lane-d1"
      ]
     },
     {
@@ -497,300 +238,16 @@
      "pending_on": []
     },
     {
-     "card": "Underdark Rift",
-     "pending_on": [
-      "lane-d3"
-     ]
-    },
-    {
      "card": "Warlock Class",
      "pending_on": []
     }
    ]
   },
   {
-   "owner": "Time",
-   "commander": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
-   "list": "31",
-   "missing": [
-    {
-     "card": "Braid of Fire",
-     "pending_on": [
-      "lane-d1"
-     ]
-    },
-    {
-     "card": "Invasion of Arcavios // Invocation of the Founders",
-     "pending_on": []
-    },
-    {
-     "card": "Jin-Gitaxias // The Great Synthesis",
-     "pending_on": []
-    },
-    {
-     "card": "Nesting Grounds",
-     "pending_on": []
-    },
-    {
-     "card": "Pink Horror",
-     "pending_on": []
-    },
-    {
-     "card": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
-     "pending_on": []
-    },
-    {
-     "card": "Ral, Storm Conduit",
-     "pending_on": [
-      "lane-d2"
-     ]
-    },
-    {
-     "card": "Rings of Brighthearth",
-     "pending_on": []
-    },
-    {
-     "card": "See Double",
-     "pending_on": []
-    },
-    {
-     "card": "Whirlwind Denial",
-     "pending_on": []
-    }
-   ]
-  },
-  {
-   "owner": "Adam",
-   "commander": "Tifa Lockhart",
-   "list": "idea",
-   "missing": [
-    {
-     "card": "Blackblade Reforged",
-     "pending_on": []
-    },
-    {
-     "card": "Bristly Bill, Spine Sower",
-     "pending_on": [
-      "lane-d2"
-     ]
-    },
-    {
-     "card": "Claim the Kingdom",
-     "pending_on": [
-      "lane-d2"
-     ]
-    },
-    {
-     "card": "Mightform Harmonizer",
-     "pending_on": [
-      "lane-d2"
-     ]
-    },
-    {
-     "card": "Overprotect",
-     "pending_on": [
-      "lane-d2"
-     ]
-    },
-    {
-     "card": "Scythecat Cub",
-     "pending_on": [
-      "lane-d2"
-     ]
-    },
-    {
-     "card": "Skyclave Pick-Axe",
-     "pending_on": [
-      "lane-d2"
-     ]
-    },
-    {
-     "card": "Springbloom Druid",
-     "pending_on": [
-      "lane-d2"
-     ]
-    },
-    {
-     "card": "Staff of Titania",
-     "pending_on": [
-      "lane-d2"
-     ]
-    },
-    {
-     "card": "Tamiyo's Safekeeping",
-     "pending_on": [
-      "lane-d2"
-     ]
-    },
-    {
-     "card": "Tifa Lockhart",
-     "pending_on": [
-      "lane-d2"
-     ]
-    },
-    {
-     "card": "Tyvar's Stand",
-     "pending_on": [
-      "lane-d2"
-     ]
-    }
-   ]
-  },
-  {
-   "owner": "Adam",
-   "commander": "Sephiroth, Fabled SOLDIER // Sephiroth, One-Winged Angel",
-   "list": "idea",
-   "missing": [
-    {
-     "card": "Bitterblossom",
-     "pending_on": [
-      "lane-d2"
-     ]
-    },
-    {
-     "card": "Flare of Malice",
-     "pending_on": []
-    },
-    {
-     "card": "Forsaken Miner",
-     "pending_on": [
-      "lane-d2"
-     ]
-    },
-    {
-     "card": "Gravecrawler",
-     "pending_on": []
-    },
-    {
-     "card": "Greedy Freebooter",
-     "pending_on": [
-      "lane-d2"
-     ]
-    },
-    {
-     "card": "Hoarding Broodlord",
-     "pending_on": []
-    },
-    {
-     "card": "Jadar, Ghoulcaller of Nephalia",
-     "pending_on": [
-      "lane-d2"
-     ]
-    },
-    {
-     "card": "Midgar, City of Mako // Reactor Raid",
-     "pending_on": []
-    },
-    {
-     "card": "Ophiomancer",
-     "pending_on": [
-      "lane-d2"
-     ]
-    },
-    {
-     "card": "Saw in Half",
-     "pending_on": []
-    },
-    {
-     "card": "Sephiroth, Fabled SOLDIER // Sephiroth, One-Winged Angel",
-     "pending_on": []
-    },
-    {
-     "card": "Stridehangar Automaton",
-     "pending_on": [
-      "tarkir-b"
-     ]
-    },
-    {
-     "card": "Timeline Culler",
-     "pending_on": []
-    },
-    {
-     "card": "Westvale Abbey // Ormendahl, Profane Prince",
-     "pending_on": []
-    },
-    {
-     "card": "Wishclaw Talisman",
-     "pending_on": []
-    }
-   ]
-  },
-  {
    "owner": "Spr3adsh33t",
-   "commander": "Malik, Grim Manipulator",
+   "commander": "Sheoldred, the Apocalypse",
    "list": "31",
-   "missing": [
-    {
-     "card": "Agent of the Iron Throne",
-     "pending_on": []
-    },
-    {
-     "card": "Demon's Disciple",
-     "pending_on": [
-      "tarkir-b"
-     ]
-    },
-    {
-     "card": "Evin, Waterdeep Opportunist",
-     "pending_on": []
-    },
-    {
-     "card": "Gisa's Favorite Shovel",
-     "pending_on": []
-    },
-    {
-     "card": "Goldspan Dragon",
-     "pending_on": []
-    },
-    {
-     "card": "Ingenious Artillerist",
-     "pending_on": []
-    },
-    {
-     "card": "Kaya's Guile",
-     "pending_on": []
-    },
-    {
-     "card": "Make an Example",
-     "pending_on": []
-    },
-    {
-     "card": "Malik, Grim Manipulator",
-     "pending_on": []
-    },
-    {
-     "card": "Mythos of Snapdax",
-     "pending_on": []
-    },
-    {
-     "card": "Reckless Handling",
-     "pending_on": [
-      "tarkir-b"
-     ]
-    },
-    {
-     "card": "Sheoldred's Edict",
-     "pending_on": []
-    },
-    {
-     "card": "Soul Shatter",
-     "pending_on": []
-    },
-    {
-     "card": "Thalisse, Reverent Medium",
-     "pending_on": []
-    },
-    {
-     "card": "There and Back Again",
-     "pending_on": [
-      "tarkir-b"
-     ]
-    },
-    {
-     "card": "Vona's Hunger",
-     "pending_on": []
-    }
-   ]
+   "missing": []
   },
   {
    "owner": "DonSpider",
@@ -873,114 +330,133 @@
   },
   {
    "owner": "Adam",
-   "commander": "Kenrith, the Returned King",
-   "list": "idea",
+   "commander": "Zhulodok, Void Gorger",
+   "list": "31",
    "missing": [
     {
-     "card": "Brain Freeze",
+     "card": "Bonders' Enclave",
      "pending_on": []
     },
     {
-     "card": "Chain of Vapor",
+     "card": "Chimil, the Inner Sun",
      "pending_on": []
     },
     {
-     "card": "Chrome Mox",
+     "card": "Cityscape Leveler",
+     "pending_on": []
+    },
+    {
+     "card": "Conduit of Ruin",
+     "pending_on": []
+    },
+    {
+     "card": "Echoes of Eternity",
+     "pending_on": []
+    },
+    {
+     "card": "Emrakul, the Promised End",
+     "pending_on": []
+    },
+    {
+     "card": "Emrakul, the World Anew",
+     "pending_on": []
+    },
+    {
+     "card": "Flayer of Loyalties",
+     "pending_on": []
+    },
+    {
+     "card": "Forsaken Monument",
+     "pending_on": []
+    },
+    {
+     "card": "It That Heralds the End",
+     "pending_on": []
+    },
+    {
+     "card": "Kaldra Compleat",
+     "pending_on": []
+    },
+    {
+     "card": "Kozilek, the Great Distortion",
+     "pending_on": []
+    },
+    {
+     "card": "Liberator, Urza's Battlethopter",
+     "pending_on": []
+    },
+    {
+     "card": "Not of This World",
+     "pending_on": []
+    },
+    {
+     "card": "Pathrazer of Ulamog",
+     "pending_on": []
+    },
+    {
+     "card": "Planar Nexus",
+     "pending_on": []
+    },
+    {
+     "card": "Scorched Ruins",
+     "pending_on": []
+    },
+    {
+     "card": "Skittering Cicada",
+     "pending_on": []
+    },
+    {
+     "card": "Ugin's Labyrinth",
+     "pending_on": []
+    },
+    {
+     "card": "Urza's Incubator",
      "pending_on": [
       "lane-d1"
      ]
     },
     {
-     "card": "Deathrite Shaman",
-     "pending_on": [
-      "lane-d1"
-     ]
-    },
-    {
-     "card": "Demonic Consultation",
-     "pending_on": [
-      "lane-d2"
-     ]
-    },
-    {
-     "card": "Elvish Spirit Guide",
-     "pending_on": [
-      "lane-d1"
-     ]
-    },
-    {
-     "card": "Forbidden Orchard",
+     "card": "Urza's Workshop",
      "pending_on": []
     },
     {
-     "card": "Gamble",
-     "pending_on": [
-      "lane-d2"
-     ]
-    },
-    {
-     "card": "Gemstone Caverns",
+     "card": "Wandering Archaic // Explore the Vastlands",
      "pending_on": []
     },
     {
-     "card": "Imperial Seal",
-     "pending_on": [
-      "lane-d2"
-     ]
-    },
-    {
-     "card": "Kenrith, the Returned King",
-     "pending_on": [
-      "lane-d2"
-     ]
-    },
-    {
-     "card": "Lion's Eye Diamond",
-     "pending_on": [
-      "lane-d1"
-     ]
-    },
-    {
-     "card": "Mox Diamond",
-     "pending_on": [
-      "lane-d1"
-     ]
-    },
-    {
-     "card": "Summoner's Pact",
-     "pending_on": [
-      "lane-d2"
-     ]
-    },
-    {
-     "card": "Thassa's Oracle",
-     "pending_on": [
-      "lane-d2"
-     ]
-    },
-    {
-     "card": "Underworld Breach",
+     "card": "Wastes (not in the CMD pool)",
      "pending_on": []
     },
     {
-     "card": "Utopia Sprawl",
-     "pending_on": []
-    },
-    {
-     "card": "Veil of Summer",
-     "pending_on": []
-    },
-    {
-     "card": "Wheel of Fortune",
-     "pending_on": [
-      "lane-d2"
-     ]
-    },
-    {
-     "card": "Wild Growth",
+     "card": "Zhulodok, Void Gorger",
      "pending_on": []
     }
    ]
+  },
+  {
+   "owner": "Grande",
+   "commander": "Karador, Ghost Chieftain",
+   "list": "31",
+   "missing": []
+  },
+  {
+   "owner": "RuricMo",
+   "commander": "Korvold, Fae-Cursed King",
+   "list": "31",
+   "missing": [
+    {
+     "card": "The Earth Crystal",
+     "pending_on": [
+      "tarkir-b"
+     ]
+    }
+   ]
+  },
+  {
+   "owner": "Adam",
+   "commander": "Animar, Soul of Elements",
+   "list": "31",
+   "missing": []
   },
   {
    "owner": "DonSpider",
@@ -1074,33 +550,104 @@
    ]
   },
   {
+   "owner": "Spr3adsh33t",
+   "commander": "Ghyrson Starn, Kelermorph",
+   "list": "31",
+   "missing": [
+    {
+     "card": "Invasion of Arcavios // Invocation of the Founders",
+     "pending_on": []
+    }
+   ]
+  },
+  {
+   "owner": "Time",
+   "commander": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+   "list": "31",
+   "missing": [
+    {
+     "card": "Invasion of Arcavios // Invocation of the Founders",
+     "pending_on": []
+    },
+    {
+     "card": "Jin-Gitaxias // The Great Synthesis",
+     "pending_on": [
+      "lane-d1",
+      "lane-d2",
+      "lane-d3",
+      "tarkir-b",
+      "tarkir-c",
+      "tarkir-s",
+      "tarkir-t"
+     ]
+    },
+    {
+     "card": "Nesting Grounds",
+     "pending_on": [
+      "lane-d1"
+     ]
+    },
+    {
+     "card": "Pink Horror",
+     "pending_on": []
+    },
+    {
+     "card": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+     "pending_on": [
+      "lane-d1"
+     ]
+    },
+    {
+     "card": "Rings of Brighthearth",
+     "pending_on": []
+    },
+    {
+     "card": "See Double",
+     "pending_on": []
+    },
+    {
+     "card": "Whirlwind Denial",
+     "pending_on": []
+    }
+   ]
+  },
+  {
+   "owner": "Grande",
+   "commander": "Damia, Sage of Stone",
+   "list": "31",
+   "missing": []
+  },
+  {
+   "owner": "Adam",
+   "commander": "Atraxa, Praetors' Voice",
+   "list": "31",
+   "missing": [
+    {
+     "card": "Ichormoon Gauntlet",
+     "pending_on": []
+    }
+   ]
+  },
+  {
    "owner": "RuricMo",
    "commander": "Vaevictis Asmadi, the Dire",
    "list": "31",
    "missing": [
     {
-     "card": "Apocalypse",
+     "card": "Atarka, World Render",
      "pending_on": [
       "lane-d3"
      ]
-    },
-    {
-     "card": "Atarka, World Render",
-     "pending_on": []
     },
     {
      "card": "Broodcaller Scourge",
      "pending_on": []
     },
     {
-     "card": "Crux of Fate",
-     "pending_on": [
-      "lane-d3"
-     ]
-    },
-    {
      "card": "Descendants' Path",
-     "pending_on": []
+     "pending_on": [
+      "tarkir-c"
+     ]
     },
     {
      "card": "Dragon Broodmother",
@@ -1108,66 +655,320 @@
     },
     {
      "card": "Gluttonous Hellkite",
-     "pending_on": []
+     "pending_on": [
+      "lane-d1",
+      "tarkir-b"
+     ]
     },
     {
      "card": "Goldspan Dragon",
-     "pending_on": []
+     "pending_on": [
+      "lane-d2"
+     ]
     },
     {
      "card": "Haven of the Spirit Dragon",
-     "pending_on": []
-    },
-    {
-     "card": "Karrthus, Tyrant of Jund",
      "pending_on": [
-      "lane-d3"
+      "lane-d1"
      ]
-    },
-    {
-     "card": "Kindred Summons",
-     "pending_on": []
     },
     {
      "card": "Klauth, Unrivaled Ancient",
-     "pending_on": []
+     "pending_on": [
+      "lane-d1"
+     ]
     },
     {
      "card": "Lathliss, Dragon Queen",
-     "pending_on": []
-    },
-    {
-     "card": "Nogi, Draco-Zealot",
-     "pending_on": []
-    },
-    {
-     "card": "Scourge of Valkas",
-     "pending_on": []
-    },
-    {
-     "card": "Scourge of the Throne",
-     "pending_on": []
-    },
-    {
-     "card": "Shadowspear",
-     "pending_on": []
-    },
-    {
-     "card": "Three Tree City",
-     "pending_on": []
-    },
-    {
-     "card": "Urza's Incubator",
-     "pending_on": []
-    },
-    {
-     "card": "Vaevictis Asmadi, the Dire",
      "pending_on": [
       "lane-d3"
      ]
     },
     {
-     "card": "Vanquisher's Banner",
+     "card": "Nogi, Draco-Zealot",
+     "pending_on": [
+      "lane-d1"
+     ]
+    },
+    {
+     "card": "Scourge of Valkas",
+     "pending_on": [
+      "lane-d3"
+     ]
+    },
+    {
+     "card": "Scourge of the Throne",
+     "pending_on": [
+      "lane-d3"
+     ]
+    },
+    {
+     "card": "Urza's Incubator",
+     "pending_on": [
+      "lane-d1"
+     ]
+    }
+   ]
+  },
+  {
+   "owner": "Adam",
+   "commander": "Oloro, Ageless Ascetic",
+   "list": "31",
+   "missing": []
+  },
+  {
+   "owner": "DonSpider",
+   "commander": "Zacama, Primal Calamity",
+   "list": "31",
+   "missing": []
+  },
+  {
+   "owner": "DonSpider",
+   "commander": "Raffine, Scheming Seer",
+   "list": "31",
+   "missing": []
+  },
+  {
+   "owner": "Spr3adsh33t",
+   "commander": "Lonis, Cryptozoologist",
+   "list": "31",
+   "missing": [
+    {
+     "card": "Urza, Lord High Artificer",
+     "pending_on": []
+    }
+   ]
+  },
+  {
+   "owner": "DonSpider",
+   "commander": "Zinnia, Valley's Voice",
+   "list": "idea",
+   "missing": []
+  },
+  {
+   "owner": "Spr3adsh33t",
+   "commander": "Bello, Bard of the Brambles",
+   "list": "idea",
+   "missing": [
+    {
+     "card": "Evercoat Ursine",
+     "pending_on": [
+      "lane-d1",
+      "lane-d2",
+      "lane-d3",
+      "tarkir-b",
+      "tarkir-c",
+      "tarkir-s",
+      "tarkir-t"
+     ]
+    }
+   ]
+  },
+  {
+   "owner": "Adam",
+   "commander": "Neriv, Heart of the Storm",
+   "list": "idea",
+   "missing": []
+  },
+  {
+   "owner": "Grande",
+   "commander": "Hearthhull, the Worldseed",
+   "list": "idea",
+   "missing": [
+    {
+     "card": "Hearthhull, the Worldseed",
+     "pending_on": []
+    },
+    {
+     "card": "Nahiri's Lithoforming",
+     "pending_on": []
+    },
+    {
+     "card": "Walk-In Closet // Forgotten Cellar",
+     "pending_on": []
+    }
+   ]
+  },
+  {
+   "owner": "Grande",
+   "commander": "Zurgo, Thunder's Decree",
+   "list": "idea",
+   "missing": []
+  },
+  {
+   "owner": "Adam",
+   "commander": "Niv-Mizzet, Visionary",
+   "list": "idea",
+   "missing": [
+    {
+     "card": "Ashling, Rekindled // Ashling, Rimebound",
+     "pending_on": []
+    },
+    {
+     "card": "Blossombind",
+     "pending_on": [
+      "tarkir-b"
+     ]
+    },
+    {
+     "card": "Mirrorform",
+     "pending_on": [
+      "tarkir-c"
+     ]
+    },
+    {
+     "card": "Sanar, Innovative First-Year",
+     "pending_on": [
+      "tarkir-c"
+     ]
+    }
+   ]
+  },
+  {
+   "owner": "Adam",
+   "commander": "Sephiroth, Fabled SOLDIER // Sephiroth, One-Winged Angel",
+   "list": "idea",
+   "missing": [
+    {
+     "card": "Gravecrawler",
+     "pending_on": [
+      "lane-d1"
+     ]
+    },
+    {
+     "card": "Hoarding Broodlord",
+     "pending_on": []
+    },
+    {
+     "card": "Midgar, City of Mako // Reactor Raid",
+     "pending_on": [
+      "tarkir-c"
+     ]
+    },
+    {
+     "card": "Saw in Half",
+     "pending_on": []
+    },
+    {
+     "card": "Timeline Culler",
+     "pending_on": [
+      "lane-d1"
+     ]
+    },
+    {
+     "card": "Wishclaw Talisman",
+     "pending_on": [
+      "tarkir-c"
+     ]
+    }
+   ]
+  },
+  {
+   "owner": "Adam",
+   "commander": "Tifa Lockhart",
+   "list": "idea",
+   "missing": []
+  },
+  {
+   "owner": "Adam",
+   "commander": "Kenrith, the Returned King",
+   "list": "idea",
+   "missing": [
+    {
+     "card": "Chain of Vapor",
+     "pending_on": []
+    },
+    {
+     "card": "Gemstone Caverns",
+     "pending_on": [
+      "lane-d1"
+     ]
+    },
+    {
+     "card": "Underworld Breach",
+     "pending_on": []
+    },
+    {
+     "card": "Veil of Summer",
+     "pending_on": []
+    }
+   ]
+  },
+  {
+   "owner": "DonSpider",
+   "commander": "Sythis, Harvest's Hand",
+   "list": "idea",
+   "missing": [
+    {
+     "card": "All That Glitters",
+     "pending_on": []
+    },
+    {
+     "card": "Bilbo's Gambit",
+     "pending_on": []
+    },
+    {
+     "card": "Bruna, the Fading Light",
+     "pending_on": []
+    },
+    {
+     "card": "Champions from Beyond",
+     "pending_on": []
+    },
+    {
+     "card": "Containment Priest",
+     "pending_on": []
+    },
+    {
+     "card": "Darksteel Mutation",
+     "pending_on": [
+      "lane-d3"
+     ]
+    },
+    {
+     "card": "Gauntlets of Light",
+     "pending_on": []
+    },
+    {
+     "card": "Gisela, the Broken Blade",
+     "pending_on": []
+    },
+    {
+     "card": "Gleaming Splendor",
+     "pending_on": [
+      "lane-d2"
+     ]
+    },
+    {
+     "card": "Hushwood Verge",
+     "pending_on": [
+      "lane-d1"
+     ]
+    },
+    {
+     "card": "Katilda, Dawnhart Martyr // Katilda's Rising Dawn",
+     "pending_on": []
+    },
+    {
+     "card": "Kenrith's Transformation",
+     "pending_on": [
+      "lane-d3"
+     ]
+    },
+    {
+     "card": "Linvala, Keeper of Silence",
+     "pending_on": []
+    },
+    {
+     "card": "Seal of Cleansing",
+     "pending_on": []
+    },
+    {
+     "card": "Secret Arcade // Dusty Parlor",
+     "pending_on": []
+    },
+    {
+     "card": "Soaring Lightbringer",
      "pending_on": [
       "lane-d2"
      ]
@@ -1175,48 +976,739 @@
    ]
   },
   {
-   "owner": "Adam",
-   "commander": "Zhulodok, Void Gorger",
-   "list": "31",
+   "owner": "Spr3adsh33t",
+   "commander": "Ratadrabik of Urborg",
+   "list": "idea",
    "missing": [
     {
-     "card": "Bonders' Enclave",
+     "card": "Ayara, First of Locthwain",
      "pending_on": []
     },
     {
-     "card": "Chimil, the Inner Sun",
+     "card": "Bartolomé del Presidio",
      "pending_on": []
     },
     {
-     "card": "Cityscape Leveler",
+     "card": "Bloodflow Connoisseur",
      "pending_on": []
     },
     {
-     "card": "Conduit of Ruin",
+     "card": "Boromir, Warden of the Tower",
+     "pending_on": [
+      "lane-d2"
+     ]
+    },
+    {
+     "card": "Cruel Celebrant",
+     "pending_on": [
+      "lane-d2"
+     ]
+    },
+    {
+     "card": "Gandalf the White",
      "pending_on": []
     },
     {
-     "card": "Echoes of Eternity",
+     "card": "Gollum, Patient Plotter",
      "pending_on": []
     },
     {
-     "card": "Emrakul, the Promised End",
+     "card": "Kambal, Profiteering Mayor",
+     "pending_on": [
+      "tarkir-c"
+     ]
+    },
+    {
+     "card": "Loran's Escape",
+     "pending_on": [
+      "lane-d3"
+     ]
+    },
+    {
+     "card": "Lotho, Corrupt Shirriff",
+     "pending_on": [
+      "lane-d2"
+     ]
+    },
+    {
+     "card": "Nasty End",
      "pending_on": []
     },
     {
-     "card": "Emrakul, the World Anew",
+     "card": "Nazgûl",
+     "pending_on": [
+      "lane-d2"
+     ]
+    },
+    {
+     "card": "Ratadrabik of Urborg",
      "pending_on": []
     },
     {
-     "card": "Flayer of Loyalties",
+     "card": "Relic of Legends",
      "pending_on": []
     },
     {
-     "card": "Forsaken Monument",
+     "card": "Samwise the Stouthearted",
      "pending_on": []
     },
     {
-     "card": "It That Heralds the End",
+     "card": "Surge of Salvation",
+     "pending_on": []
+    },
+    {
+     "card": "Tainted Field",
+     "pending_on": [
+      "lane-d1"
+     ]
+    },
+    {
+     "card": "Teysa Karlov",
+     "pending_on": []
+    },
+    {
+     "card": "The Celestus",
+     "pending_on": []
+    },
+    {
+     "card": "Urza's Ruinous Blast",
+     "pending_on": [
+      "tarkir-b"
+     ]
+    },
+    {
+     "card": "War of the Last Alliance",
+     "pending_on": []
+    }
+   ]
+  },
+  {
+   "owner": "DonSpider",
+   "commander": "Baylen, the Haymaker",
+   "list": "idea",
+   "missing": [
+    {
+     "card": "Artifact Mutation",
+     "pending_on": []
+    },
+    {
+     "card": "Aura Mutation",
+     "pending_on": []
+    },
+    {
+     "card": "Baylen, the Haymaker",
+     "pending_on": []
+    },
+    {
+     "card": "Brigid, Clachan's Heart // Brigid, Doun's Mind",
+     "pending_on": []
+    },
+    {
+     "card": "Cadira, Caller of the Small",
+     "pending_on": [
+      "lane-d2"
+     ]
+    },
+    {
+     "card": "Charismatic Conqueror",
+     "pending_on": [
+      "lane-d2"
+     ]
+    },
+    {
+     "card": "Farmer Cotton",
+     "pending_on": []
+    },
+    {
+     "card": "Forth Eorlingas!",
+     "pending_on": [
+      "tarkir-c"
+     ]
+    },
+    {
+     "card": "Jinnie Fay, Jetmir's Second",
+     "pending_on": []
+    },
+    {
+     "card": "Jolene, the Plunder Queen",
+     "pending_on": []
+    },
+    {
+     "card": "Kher Keep",
+     "pending_on": []
+    },
+    {
+     "card": "Knuckles the Echidna",
+     "pending_on": [
+      "lane-d2"
+     ]
+    },
+    {
+     "card": "Ocelot Pride",
+     "pending_on": [
+      "tarkir-c"
+     ]
+    },
+    {
+     "card": "Rosie Cotton of South Lane",
+     "pending_on": [
+      "lane-d2"
+     ]
+    },
+    {
+     "card": "Season of the Burrow",
+     "pending_on": []
+    },
+    {
+     "card": "Secure the Wastes",
+     "pending_on": []
+    },
+    {
+     "card": "Springleaf Parade",
+     "pending_on": []
+    },
+    {
+     "card": "Tender Wildguide",
+     "pending_on": []
+    },
+    {
+     "card": "The Battle of Bywater",
+     "pending_on": [
+      "lane-d3"
+     ]
+    },
+    {
+     "card": "The Cabbage Merchant",
+     "pending_on": []
+    },
+    {
+     "card": "Wildfire Awakener",
+     "pending_on": []
+    }
+   ]
+  },
+  {
+   "owner": "Time",
+   "commander": "Rocco, Cabaretti Caterer",
+   "list": "idea",
+   "missing": [
+    {
+     "card": "Archon of Emeria",
+     "pending_on": []
+    },
+    {
+     "card": "Aven Mindcensor",
+     "pending_on": []
+    },
+    {
+     "card": "Containment Priest",
+     "pending_on": []
+    },
+    {
+     "card": "Cursed Totem",
+     "pending_on": []
+    },
+    {
+     "card": "Deafening Silence",
+     "pending_on": []
+    },
+    {
+     "card": "Fiend Hunter",
+     "pending_on": []
+    },
+    {
+     "card": "Finale of Devastation",
+     "pending_on": []
+    },
+    {
+     "card": "Kitchen Finks",
+     "pending_on": []
+    },
+    {
+     "card": "Leonin Relic-Warder",
+     "pending_on": []
+    },
+    {
+     "card": "Linvala, Keeper of Silence",
+     "pending_on": []
+    },
+    {
+     "card": "Melira, Sylvok Outcast",
+     "pending_on": []
+    },
+    {
+     "card": "Ranger-Captain of Eos",
+     "pending_on": []
+    },
+    {
+     "card": "Rest in Peace",
+     "pending_on": []
+    },
+    {
+     "card": "Rocco, Cabaretti Caterer",
+     "pending_on": []
+    },
+    {
+     "card": "Sanctum Prelate",
+     "pending_on": []
+    },
+    {
+     "card": "Veil of Summer",
+     "pending_on": []
+    }
+   ]
+  },
+  {
+   "owner": "Time",
+   "commander": "Toski, Bearer of Secrets",
+   "list": "idea",
+   "missing": [
+    {
+     "card": "Allosaurus Shepherd",
+     "pending_on": []
+    },
+    {
+     "card": "Ashaya, Soul of the Wild",
+     "pending_on": [
+      "lane-d3"
+     ]
+    },
+    {
+     "card": "Autumn's Veil",
+     "pending_on": []
+    },
+    {
+     "card": "Bala Ged Recovery // Bala Ged Sanctuary",
+     "pending_on": []
+    },
+    {
+     "card": "Carpet of Flowers",
+     "pending_on": []
+    },
+    {
+     "card": "Duskwatch Recruiter // Krallenhorde Howler",
+     "pending_on": []
+    },
+    {
+     "card": "Endurance",
+     "pending_on": []
+    },
+    {
+     "card": "Finale of Devastation",
+     "pending_on": []
+    },
+    {
+     "card": "Heritage Druid",
+     "pending_on": []
+    },
+    {
+     "card": "Joraga Treespeaker",
+     "pending_on": []
+    },
+    {
+     "card": "Manglehorn",
+     "pending_on": []
+    },
+    {
+     "card": "Regrowth",
+     "pending_on": []
+    },
+    {
+     "card": "Veil of Summer",
+     "pending_on": []
+    }
+   ]
+  },
+  {
+   "owner": "DonSpider",
+   "commander": "Y'shtola, Night's Blessed",
+   "list": "idea",
+   "missing": [
+    {
+     "card": "Black Mage's Rod",
+     "pending_on": []
+    },
+    {
+     "card": "Brainsurge",
+     "pending_on": []
+    },
+    {
+     "card": "Chrome Host Seedshark",
+     "pending_on": []
+    },
+    {
+     "card": "Circle of Power",
+     "pending_on": []
+    },
+    {
+     "card": "Cornered by Black Mages",
+     "pending_on": []
+    },
+    {
+     "card": "Fandaniel, Telophoroi Ascian",
+     "pending_on": []
+    },
+    {
+     "card": "G'raha Tia, Scion Reborn",
+     "pending_on": []
+    },
+    {
+     "card": "Hermes, Overseer of Elpis",
+     "pending_on": [
+      "lane-d2"
+     ]
+    },
+    {
+     "card": "Irenicus's Vile Duplication",
+     "pending_on": []
+    },
+    {
+     "card": "Jin-Gitaxias // The Great Synthesis",
+     "pending_on": [
+      "lane-d1",
+      "lane-d2",
+      "lane-d3",
+      "tarkir-b",
+      "tarkir-c",
+      "tarkir-s",
+      "tarkir-t"
+     ]
+    },
+    {
+     "card": "Kambal, Consul of Allocation",
+     "pending_on": [
+      "lane-d2"
+     ]
+    },
+    {
+     "card": "Lyse Hext",
+     "pending_on": []
+    },
+    {
+     "card": "Mai, Scornful Striker",
+     "pending_on": [
+      "lane-d2"
+     ]
+    },
+    {
+     "card": "Papalymo Totolymo",
+     "pending_on": []
+    },
+    {
+     "card": "Read the Bones",
+     "pending_on": []
+    },
+    {
+     "card": "Spark Double",
+     "pending_on": []
+    },
+    {
+     "card": "Starscape Cleric",
+     "pending_on": [
+      "lane-d2"
+     ]
+    },
+    {
+     "card": "The Destined Black Mage",
+     "pending_on": []
+    },
+    {
+     "card": "Transpose",
+     "pending_on": []
+    },
+    {
+     "card": "Uncover the Moon-Letters",
+     "pending_on": [
+      "lane-d2"
+     ]
+    },
+    {
+     "card": "Valeria Richards, Precocious",
+     "pending_on": []
+    },
+    {
+     "card": "Wizard's Staff",
+     "pending_on": []
+    },
+    {
+     "card": "Y'shtola Rhul",
+     "pending_on": []
+    },
+    {
+     "card": "Y'shtola, Night's Blessed",
+     "pending_on": [
+      "lane-d2"
+     ]
+    }
+   ]
+  },
+  {
+   "owner": "Time",
+   "commander": "Rocco, Cabaretti Caterer",
+   "list": "idea",
+   "missing": [
+    {
+     "card": "Aluren",
+     "pending_on": []
+    },
+    {
+     "card": "Angelic Renewal",
+     "pending_on": []
+    },
+    {
+     "card": "Enduring Renewal",
+     "pending_on": []
+    },
+    {
+     "card": "Fecundity",
+     "pending_on": []
+    },
+    {
+     "card": "Fiend Hunter",
+     "pending_on": []
+    },
+    {
+     "card": "Garruk, Primal Hunter",
+     "pending_on": [
+      "lane-d3"
+     ]
+    },
+    {
+     "card": "Gift of Immortality",
+     "pending_on": []
+    },
+    {
+     "card": "Karn Liberated",
+     "pending_on": []
+    },
+    {
+     "card": "Kitchen Finks",
+     "pending_on": []
+    },
+    {
+     "card": "Leonin Relic-Warder",
+     "pending_on": []
+    },
+    {
+     "card": "Liege of the Hollows",
+     "pending_on": []
+    },
+    {
+     "card": "Life's Legacy",
+     "pending_on": []
+    },
+    {
+     "card": "Lifecrafter's Bestiary",
+     "pending_on": [
+      "lane-d2"
+     ]
+    },
+    {
+     "card": "Melira, Sylvok Outcast",
+     "pending_on": []
+    },
+    {
+     "card": "Nim Deathmantle",
+     "pending_on": [
+      "lane-d3"
+     ]
+    },
+    {
+     "card": "Oblivion Ring",
+     "pending_on": []
+    },
+    {
+     "card": "Rocco, Cabaretti Caterer",
+     "pending_on": []
+    },
+    {
+     "card": "Slate of Ancestry",
+     "pending_on": []
+    },
+    {
+     "card": "Spawning Pit",
+     "pending_on": []
+    },
+    {
+     "card": "Twilight Drover",
+     "pending_on": [
+      "lane-d2"
+     ]
+    },
+    {
+     "card": "Woodfall Primus",
+     "pending_on": []
+    }
+   ]
+  },
+  {
+   "owner": "Time",
+   "commander": "Tymna the Weaver",
+   "list": "idea",
+   "missing": [
+    {
+     "card": "Archon of Emeria",
+     "pending_on": []
+    },
+    {
+     "card": "Aven Mindcensor",
+     "pending_on": []
+    },
+    {
+     "card": "Containment Priest",
+     "pending_on": []
+    },
+    {
+     "card": "Cursed Totem",
+     "pending_on": []
+    },
+    {
+     "card": "Gaea's Cradle",
+     "pending_on": [
+      "lane-d1"
+     ]
+    },
+    {
+     "card": "Giver of Runes",
+     "pending_on": []
+    },
+    {
+     "card": "Grafdigger's Cage",
+     "pending_on": []
+    },
+    {
+     "card": "Kataki, War's Wage",
+     "pending_on": []
+    },
+    {
+     "card": "Leonin Arbiter",
+     "pending_on": []
+    },
+    {
+     "card": "Leyline of the Void",
+     "pending_on": []
+    },
+    {
+     "card": "Linvala, Keeper of Silence",
+     "pending_on": []
+    },
+    {
+     "card": "Luminarch Aspirant",
+     "pending_on": [
+      "lane-d2"
+     ]
+    },
+    {
+     "card": "Oakhame Adversary",
+     "pending_on": [
+      "lane-d1"
+     ]
+    },
+    {
+     "card": "Ranger-Captain of Eos",
+     "pending_on": []
+    },
+    {
+     "card": "Rest in Peace",
+     "pending_on": []
+    },
+    {
+     "card": "Rule of Law",
+     "pending_on": []
+    },
+    {
+     "card": "Skrelv, Defector Mite",
+     "pending_on": []
+    },
+    {
+     "card": "Tana, the Bloodsower",
+     "pending_on": [
+      "lane-d2"
+     ]
+    },
+    {
+     "card": "Thalia, Guardian of Thraben",
+     "pending_on": [
+      "lane-d1"
+     ]
+    },
+    {
+     "card": "Tithe Taker",
+     "pending_on": []
+    },
+    {
+     "card": "Torpor Orb",
+     "pending_on": []
+    },
+    {
+     "card": "Tymna the Weaver",
+     "pending_on": [
+      "lane-d2"
+     ]
+    },
+    {
+     "card": "Vindicate",
+     "pending_on": []
+    },
+    {
+     "card": "Wear // Tear",
+     "pending_on": [
+      "lane-d1",
+      "lane-d2",
+      "lane-d3",
+      "tarkir-b",
+      "tarkir-c",
+      "tarkir-s",
+      "tarkir-t"
+     ]
+    }
+   ]
+  },
+  {
+   "owner": "Adam",
+   "commander": "Alela, Artful Provocateur",
+   "list": "idea",
+   "missing": [
+    {
+     "card": "Archon of Cruelty",
+     "pending_on": []
+    },
+    {
+     "card": "Baleful Strix",
+     "pending_on": []
+    },
+    {
+     "card": "Black Market",
+     "pending_on": [
+      "lane-d1",
+      "lane-d2",
+      "lane-d3",
+      "tarkir-b",
+      "tarkir-c",
+      "tarkir-s",
+      "tarkir-t"
+     ]
+    },
+    {
+     "card": "Court of Grace",
+     "pending_on": [
+      "tarkir-c"
+     ]
+    },
+    {
+     "card": "Ethersworn Adjudicator",
+     "pending_on": []
+    },
+    {
+     "card": "Faerie Artisans",
+     "pending_on": []
+    },
+    {
+     "card": "Filigree Angel",
+     "pending_on": []
+    },
+    {
+     "card": "Jubilant Skybonder",
      "pending_on": []
     },
     {
@@ -1224,39 +1716,5902 @@
      "pending_on": []
     },
     {
+     "card": "Latchkey Faerie",
+     "pending_on": []
+    },
+    {
+     "card": "Magister Sphinx",
+     "pending_on": []
+    },
+    {
+     "card": "Medomai the Ageless",
+     "pending_on": []
+    },
+    {
+     "card": "Norn's Annex",
+     "pending_on": []
+    },
+    {
+     "card": "Oblivion Ring",
+     "pending_on": []
+    },
+    {
+     "card": "Open the Vaults",
+     "pending_on": []
+    },
+    {
+     "card": "Platinum Angel",
+     "pending_on": []
+    },
+    {
+     "card": "Reconnaissance Mission",
+     "pending_on": [
+      "lane-d2"
+     ]
+    },
+    {
+     "card": "Render Silent",
+     "pending_on": []
+    },
+    {
+     "card": "Scion of Oona",
+     "pending_on": [
+      "lane-d3"
+     ]
+    },
+    {
+     "card": "Sharuum the Hegemon",
+     "pending_on": []
+    },
+    {
+     "card": "Sphinx Summoner",
+     "pending_on": []
+    },
+    {
+     "card": "Steel Hellkite",
+     "pending_on": []
+    },
+    {
+     "card": "Sword of Light and Shadow",
+     "pending_on": [
+      "lane-d3"
+     ]
+    },
+    {
+     "card": "Thopter Assembly",
+     "pending_on": [
+      "lane-d2"
+     ]
+    },
+    {
+     "card": "Vindicate",
+     "pending_on": []
+    },
+    {
+     "card": "Zur the Enchanter",
+     "pending_on": [
+      "lane-d3"
+     ]
+    }
+   ]
+  },
+  {
+   "owner": "Adam",
+   "commander": "Prosper, Tome-Bound",
+   "list": "idea",
+   "missing": [
+    {
+     "card": "Bedevil",
+     "pending_on": []
+    },
+    {
+     "card": "Birgi, God of Storytelling // Harnfel, Horn of Bounty",
+     "pending_on": []
+    },
+    {
+     "card": "Bonehoard Dracosaur",
+     "pending_on": []
+    },
+    {
+     "card": "Commune with Lava",
+     "pending_on": []
+    },
+    {
+     "card": "Crime Novelist",
+     "pending_on": [
+      "lane-d2"
+     ]
+    },
+    {
+     "card": "Decadent Dragon // Expensive Taste",
+     "pending_on": []
+    },
+    {
+     "card": "Delayed Blast Fireball",
+     "pending_on": []
+    },
+    {
+     "card": "Dream Devourer",
+     "pending_on": []
+    },
+    {
+     "card": "Fevered Suspicion",
+     "pending_on": []
+    },
+    {
+     "card": "Goldspan Dragon",
+     "pending_on": [
+      "lane-d2"
+     ]
+    },
+    {
+     "card": "Grim Hireling",
+     "pending_on": []
+    },
+    {
+     "card": "Hex Magic",
+     "pending_on": []
+    },
+    {
+     "card": "Hurl Through Hell",
+     "pending_on": []
+    },
+    {
+     "card": "Ignite the Future",
+     "pending_on": []
+    },
+    {
+     "card": "Improvisation Capstone",
+     "pending_on": []
+    },
+    {
+     "card": "Ingenious Artillerist",
+     "pending_on": []
+    },
+    {
+     "card": "Laelia, the Blade Reforged",
+     "pending_on": [
+      "lane-d2"
+     ]
+    },
+    {
+     "card": "Light Up the Stage",
+     "pending_on": []
+    },
+    {
+     "card": "Passionate Archaeologist",
+     "pending_on": []
+    },
+    {
+     "card": "Rakdos Charm",
+     "pending_on": []
+    },
+    {
+     "card": "Reckless Endeavor",
+     "pending_on": [
+      "lane-d3"
+     ]
+    },
+    {
+     "card": "Reckless Impulse",
+     "pending_on": []
+    },
+    {
+     "card": "Smaug, Wicked Worm",
+     "pending_on": [
+      "lane-d2"
+     ]
+    },
+    {
+     "card": "Theater of Horrors",
+     "pending_on": []
+    },
+    {
+     "card": "Weftstalker Ardent",
+     "pending_on": []
+    },
+    {
+     "card": "Wild-Magic Sorcerer",
+     "pending_on": []
+    },
+    {
+     "card": "Wrenn's Resolve",
+     "pending_on": []
+    },
+    {
+     "card": "You Find Some Prisoners",
+     "pending_on": []
+    }
+   ]
+  },
+  {
+   "owner": "Time",
+   "commander": "Dakkon Blackblade",
+   "list": "idea",
+   "missing": [
+    {
+     "card": "Aether Spellbomb",
+     "pending_on": []
+    },
+    {
+     "card": "Back to Basics",
+     "pending_on": []
+    },
+    {
+     "card": "Baleful Strix",
+     "pending_on": []
+    },
+    {
+     "card": "Chain of Vapor",
+     "pending_on": []
+    },
+    {
+     "card": "Cursed Totem",
+     "pending_on": []
+    },
+    {
+     "card": "Dakkon Blackblade",
+     "pending_on": [
+      "lane-d3"
+     ]
+    },
+    {
+     "card": "Delay",
+     "pending_on": []
+    },
+    {
+     "card": "Dress Down",
+     "pending_on": []
+    },
+    {
+     "card": "Herald of Leshrac",
+     "pending_on": [
+      "lane-d1"
+     ]
+    },
+    {
+     "card": "March of Swirling Mist",
+     "pending_on": []
+    },
+    {
+     "card": "Nihil Spellbomb",
+     "pending_on": [
+      "lane-d2"
+     ]
+    },
+    {
+     "card": "Notion Thief",
+     "pending_on": []
+    },
+    {
+     "card": "Ranger-Captain of Eos",
+     "pending_on": []
+    },
+    {
+     "card": "Sevinne's Reclamation",
+     "pending_on": []
+    },
+    {
+     "card": "Snapcaster Mage",
+     "pending_on": []
+    },
+    {
+     "card": "Spellseeker",
+     "pending_on": []
+    },
+    {
+     "card": "Talion, the Kindly Lord",
+     "pending_on": []
+    },
+    {
+     "card": "Wishclaw Talisman",
+     "pending_on": [
+      "tarkir-c"
+     ]
+    }
+   ]
+  },
+  {
+   "owner": "Time",
+   "commander": "Kraum, Ludevic's Opus",
+   "list": "idea",
+   "missing": [
+    {
+     "card": "A-Orcish Bowmasters (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "A-The One Ring (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Aether Spellbomb",
+     "pending_on": []
+    },
+    {
+     "card": "Approach of the Second Sun",
+     "pending_on": []
+    },
+    {
+     "card": "Back to Basics",
+     "pending_on": []
+    },
+    {
+     "card": "Boseiju, Who Shelters All (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Cursed Totem",
+     "pending_on": []
+    },
+    {
+     "card": "Dress Down",
+     "pending_on": []
+    },
+    {
+     "card": "Energy Field (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Flood of Recollection (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Kraum, Ludevic's Opus (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Linvala, Keeper of Silence",
+     "pending_on": []
+    },
+    {
+     "card": "Narset's Reversal (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Nihil Spellbomb",
+     "pending_on": [
+      "lane-d2"
+     ]
+    },
+    {
+     "card": "Reprieve (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Rest in Peace",
+     "pending_on": []
+    },
+    {
+     "card": "Stasis (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Torpor Orb",
+     "pending_on": []
+    },
+    {
+     "card": "Tymna the Weaver",
+     "pending_on": [
+      "lane-d2"
+     ]
+    },
+    {
+     "card": "Winter Orb (not in the CMD pool)",
+     "pending_on": []
+    }
+   ]
+  },
+  {
+   "owner": "Time",
+   "commander": "Gandalf the Grey",
+   "list": "idea",
+   "missing": [
+    {
+     "card": "Academy Ruins",
+     "pending_on": []
+    },
+    {
+     "card": "Aetherspouts (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Alrund's Epiphany (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Capture of Jingzhou (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "City of Traitors (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Dualcaster Mage",
+     "pending_on": []
+    },
+    {
+     "card": "Emergence Zone (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Flame of Anor",
+     "pending_on": []
+    },
+    {
+     "card": "Gandalf the Grey (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Intuition (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Irenicus's Vile Duplication",
+     "pending_on": []
+    },
+    {
+     "card": "Merchant Scroll (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Narset's Reversal (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Nexus of Fate (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Personal Tutor (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Quantum Misalignment (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Reality Shift",
+     "pending_on": []
+    },
+    {
+     "card": "Resculpt (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Snapcaster Mage",
+     "pending_on": []
+    },
+    {
+     "card": "Solve the Equation (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Spark Double",
+     "pending_on": []
+    },
+    {
+     "card": "Spellseeker",
+     "pending_on": []
+    },
+    {
+     "card": "Spirebluff Canal",
+     "pending_on": []
+    },
+    {
+     "card": "Stormcarved Coast",
+     "pending_on": []
+    },
+    {
+     "card": "Talisman of Creativity (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Temporal Trespass (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Time Warp",
+     "pending_on": []
+    },
+    {
+     "card": "Underworld Breach",
+     "pending_on": []
+    }
+   ]
+  },
+  {
+   "owner": "Spr3adsh33t",
+   "commander": "Gishath, Sun's Avatar",
+   "list": "idea",
+   "missing": [
+    {
+     "card": "Agonasaur Rex (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Apex Altisaur (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Bala Ged Recovery // Bala Ged Sanctuary",
+     "pending_on": []
+    },
+    {
+     "card": "Bonehoard Dracosaur",
+     "pending_on": []
+    },
+    {
+     "card": "Bronzebeak Foragers (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Burning Sun's Avatar (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Curious Altisaur (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Dinosaurs on a Spaceship (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Don't Move (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Earthshaker Dreadmaw (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Faith's Reward (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Final Showdown (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Finale of Devastation",
+     "pending_on": []
+    },
+    {
+     "card": "Gishath, Sun's Avatar (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Goring Ceratops (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Kinjalli's Sunwing (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Pantlaza, Sun-Favored (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Patchwork Banner (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Regal Behemoth",
+     "pending_on": []
+    },
+    {
+     "card": "Return the Favor (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Runic Armasaur (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Sawhorn Nemesis (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Sunfrill Imitator (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Swooping Pteranodon (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Temple Altisaur (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "The Skullspore Nexus (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Thrashing Brontodon (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Topiary Stomper (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Tranquil Frillback (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Trumpeting Carnosaur (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Verdant Sun's Avatar (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Wakening Sun's Avatar (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Welcome to . . . // Jurassic Park (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Yidaro, Wandering Monster (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Zetalpa, Primal Dawn (not in the CMD pool)",
+     "pending_on": []
+    }
+   ]
+  },
+  {
+   "owner": "Time",
+   "commander": "Stella Lee, Wild Card",
+   "list": "idea",
+   "missing": [
+    {
+     "card": "Arcane Bombardment (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Baral's Expertise (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Bloodthirsty Adversary (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Crackling Spellslinger (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Curse of the Swine (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Deep Analysis (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Elemental Eruption (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Eris, Roar of the Storm (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Finale of Promise (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Finale of Revelation (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Forger's Foundry (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Frostboil Snarl (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Galvanic Iteration (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Goblin Electromancer (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Guttersnipe (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Haughty Djinn (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Izzet Boilerworks",
+     "pending_on": []
+    },
+    {
+     "card": "Kaza, Roil Chaser (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Leyline Dowser (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Lock and Load (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Midnight Clock (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Octavia, Living Thesis (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Pongify (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Pteramander (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Pyretic Charge (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Radical Idea (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Rousing Refrain (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Shark Typhoon (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Smoldering Stagecoach (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Stella Lee, Wild Card (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Talrand, Sky Summoner (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Tezzeret's Gambit",
+     "pending_on": []
+    },
+    {
+     "card": "Thunderclap Drake (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Treasure Cruise (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Veyran, Voice of Duality (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Volcanic Torrent (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Windfall",
+     "pending_on": []
+    },
+    {
+     "card": "Winged Boots (not in the CMD pool)",
+     "pending_on": []
+    }
+   ]
+  },
+  {
+   "owner": "Time",
+   "commander": "Sokka, Tenacious Tactician",
+   "list": "idea",
+   "missing": [
+    {
+     "card": "Banishing Knack (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Brainstone (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Dispel (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Echo of Eons",
+     "pending_on": []
+    },
+    {
+     "card": "Fabricate",
+     "pending_on": [
+      "lane-d1",
+      "lane-d2",
+      "lane-d3",
+      "tarkir-b",
+      "tarkir-c",
+      "tarkir-s",
+      "tarkir-t"
+     ]
+    },
+    {
+     "card": "Fiery Islet (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Gemstone Caverns",
+     "pending_on": [
+      "lane-d1"
+     ]
+    },
+    {
+     "card": "Hall of Heliod's Generosity",
+     "pending_on": []
+    },
+    {
+     "card": "Impulse (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Intuition (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Jeskai Ascendancy (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Monastery Mentor (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Mox Opal (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Mystical Dispute (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Past in Flames (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Pieces of the Puzzle (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Ragavan, Nimble Pilferer (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Repeal (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Retraction Helix (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Sevinne's Reclamation",
+     "pending_on": []
+    },
+    {
+     "card": "Sokka, Tenacious Tactician (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Solve the Equation (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Spirebluff Canal",
+     "pending_on": []
+    },
+    {
+     "card": "Springleaf Drum",
+     "pending_on": []
+    },
+    {
+     "card": "Stifle (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Thought Scour (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Transmute Artifact (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Underworld Breach",
+     "pending_on": []
+    },
+    {
+     "card": "Universal Solvent (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Wheel of Misfortune",
+     "pending_on": []
+    }
+   ]
+  },
+  {
+   "owner": "Spr3adsh33t",
+   "commander": "Belbe, Corrupted Observer",
+   "list": "idea",
+   "missing": [
+    {
+     "card": "Archon of Cruelty",
+     "pending_on": []
+    },
+    {
+     "card": "Belbe, Corrupted Observer (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Blooming Marsh (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Conduit of Ruin",
+     "pending_on": []
+    },
+    {
+     "card": "Creeping Bloodsucker (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Devourer of Destiny (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Dreg Recycler (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Drossclaw (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Echoes of Eternity",
+     "pending_on": []
+    },
+    {
+     "card": "Emergent Woodwurm (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "God-Pharaoh's Statue (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Herald of Leshrac",
+     "pending_on": [
+      "lane-d1"
+     ]
+    },
+    {
+     "card": "In Garruk's Wake",
+     "pending_on": []
+    },
+    {
      "card": "Kozilek, the Great Distortion",
      "pending_on": []
     },
     {
-     "card": "Liberator, Urza's Battlethopter",
+     "card": "Lampad of Death's Vigil (not in the CMD pool)",
      "pending_on": []
     },
     {
-     "card": "Not of This World",
+     "card": "Leechridden Swamp (not in the CMD pool)",
      "pending_on": []
     },
     {
-     "card": "Pathrazer of Ulamog",
+     "card": "Lesser Masticore (not in the CMD pool)",
      "pending_on": []
     },
     {
-     "card": "Planar Nexus",
+     "card": "Lodestone Golem (not in the CMD pool)",
      "pending_on": []
     },
     {
-     "card": "Scorched Ruins",
+     "card": "Loyal Subordinate (not in the CMD pool)",
      "pending_on": []
     },
     {
-     "card": "Skittering Cicada",
+     "card": "Mardu Shadowspear (not in the CMD pool)",
      "pending_on": []
     },
     {
-     "card": "Ugin's Labyrinth",
+     "card": "Melira, Sylvok Outcast",
+     "pending_on": []
+    },
+    {
+     "card": "Myojin of Night's Reach",
+     "pending_on": []
+    },
+    {
+     "card": "Night Market Lookout (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Oblivion Sower (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Okiba Reckoner Raid // Nezumi Road Captain (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Planar Bridge",
+     "pending_on": []
+    },
+    {
+     "card": "Pulse Tracker (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Sanctum of Stone Fangs",
+     "pending_on": []
+    },
+    {
+     "card": "Shadowgrange Archfiend (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Shepherd of Rot (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Staff of Nin (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Steel Hellkite",
+     "pending_on": []
+    },
+    {
+     "card": "Terastodon",
+     "pending_on": []
+    },
+    {
+     "card": "Thornbow Archer (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Thrull Parasite (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Ulamog's Crusher (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Up the Beanstalk (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Vicious Conquistador (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Ward of Bones (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Wondrous Crucible (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "World Breaker (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Zhulodok, Void Gorger",
+     "pending_on": []
+    }
+   ]
+  },
+  {
+   "owner": "Adam",
+   "commander": "Atraxa, Praetors' Voice",
+   "list": "idea",
+   "missing": [
+    {
+     "card": "Ajani, Sleeper Agent",
+     "pending_on": []
+    },
+    {
+     "card": "Astral Cornucopia",
+     "pending_on": []
+    },
+    {
+     "card": "Blighted Agent",
+     "pending_on": []
+    },
+    {
+     "card": "Bloated Contaminator",
+     "pending_on": []
+    },
+    {
+     "card": "Cankerbloom",
+     "pending_on": []
+    },
+    {
+     "card": "Contagion Engine",
+     "pending_on": []
+    },
+    {
+     "card": "Contaminant Grafter",
+     "pending_on": []
+    },
+    {
+     "card": "Contentious Plan",
+     "pending_on": []
+    },
+    {
+     "card": "Dreamtide Whale",
+     "pending_on": []
+    },
+    {
+     "card": "Evolution Sage",
+     "pending_on": []
+    },
+    {
+     "card": "Experimental Augury",
+     "pending_on": []
+    },
+    {
+     "card": "Ezuri, Stalker of Spheres",
+     "pending_on": []
+    },
+    {
+     "card": "Flux Channeler",
+     "pending_on": []
+    },
+    {
+     "card": "Glistening Sphere",
+     "pending_on": []
+    },
+    {
+     "card": "Ichor Rats",
+     "pending_on": []
+    },
+    {
+     "card": "Indatha Triome",
+     "pending_on": []
+    },
+    {
+     "card": "Infectious Bite",
+     "pending_on": []
+    },
+    {
+     "card": "Infectious Inquiry",
+     "pending_on": []
+    },
+    {
+     "card": "Inkmoth Nexus",
+     "pending_on": [
+      "lane-d1"
+     ]
+    },
+    {
+     "card": "Ixhel, Scion of Atraxa",
+     "pending_on": []
+    },
+    {
+     "card": "Metastatic Evangel",
+     "pending_on": []
+    },
+    {
+     "card": "Norn's Decree",
+     "pending_on": []
+    },
+    {
+     "card": "Phyresis Outbreak",
+     "pending_on": []
+    },
+    {
+     "card": "Phyrexian Swarmlord",
+     "pending_on": []
+    },
+    {
+     "card": "Plague Stinger",
+     "pending_on": []
+    },
+    {
+     "card": "Prologue to Phyresis",
+     "pending_on": []
+    },
+    {
+     "card": "Radstorm",
+     "pending_on": []
+    },
+    {
+     "card": "Skithiryx, the Blight Dragon",
+     "pending_on": []
+    },
+    {
+     "card": "Skrelv's Hive",
+     "pending_on": []
+    },
+    {
+     "card": "Skrelv, Defector Mite",
+     "pending_on": []
+    },
+    {
+     "card": "Spara's Headquarters",
+     "pending_on": []
+    },
+    {
+     "card": "Sword of Truth and Justice",
+     "pending_on": []
+    },
+    {
+     "card": "Tainted Observer",
+     "pending_on": []
+    },
+    {
+     "card": "Tezzeret's Gambit",
+     "pending_on": []
+    },
+    {
+     "card": "Thrummingbird",
+     "pending_on": []
+    },
+    {
+     "card": "Unnatural Restoration",
+     "pending_on": []
+    },
+    {
+     "card": "Venerated Rotpriest",
+     "pending_on": []
+    },
+    {
+     "card": "Viral Drake",
+     "pending_on": []
+    },
+    {
+     "card": "Viridian Corrupter",
+     "pending_on": []
+    },
+    {
+     "card": "Voidwing Hybrid",
+     "pending_on": []
+    },
+    {
+     "card": "Vorinclex, Monstrous Raider",
+     "pending_on": []
+    },
+    {
+     "card": "Vraska's Fall",
+     "pending_on": []
+    }
+   ]
+  },
+  {
+   "owner": "Adam",
+   "commander": "Tegwyll, Duke of Splendor",
+   "list": "idea",
+   "missing": [
+    {
+     "card": "Alela, Cunning Conqueror (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Archmage of Echoes (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Blightwing Bandit (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Brazen Borrower // Petty Theft (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Dimir Aqueduct",
+     "pending_on": []
+    },
+    {
+     "card": "Distant Melody (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Fact or Fiction (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Faerie Bladecrafter (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Faerie Formation (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Faerie Seer (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Glen Elendra Liege (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Halo Forager (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Hypnotic Sprite // Mesmeric Glare (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Keep Watch (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Kindred Dominance (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Malleable Impostor (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Midnight Clock (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Misleading Signpost (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Nettling Nuisance (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Nightmare Unmaking (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Nightveil Sprite (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Nymris, Oona's Trickster (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Obyra, Dreaming Duelist (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Oona, Queen of the Fae (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Picklock Prankster // Free the Fae (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Quickling (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Reality Shift",
+     "pending_on": []
+    },
+    {
+     "card": "Reckless Spite (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Reconnaissance Mission",
+     "pending_on": [
+      "lane-d2"
+     ]
+    },
+    {
+     "card": "Reflections of Littjara",
+     "pending_on": []
+    },
+    {
+     "card": "Repulse (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Scion of Oona",
+     "pending_on": [
+      "lane-d3"
+     ]
+    },
+    {
+     "card": "Secluded Glen (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Shadow Puppeteers (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Snap (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Sower of Temptation",
+     "pending_on": []
+    },
+    {
+     "card": "Spell Stutter (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Spellscorn Coven // Take It Back (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Tainted Isle (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Tegwyll's Scouring (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Tegwyll, Duke of Splendor (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Temple of Deceit (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Theoretical Duplication (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Thrilling Encore (not in the CMD pool)",
+     "pending_on": []
+    }
+   ]
+  },
+  {
+   "owner": "Spr3adsh33t",
+   "commander": "Tor Wauki the Younger",
+   "list": "idea",
+   "missing": [
+    {
+     "card": "Aphotic Wisps (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Arcane Bombardment (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Birgi, God of Storytelling // Harnfel, Horn of Bounty",
+     "pending_on": []
+    },
+    {
+     "card": "Blackcleave Cliffs (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Bladebrand (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Blood for the Blood God! (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "City on Fire",
+     "pending_on": []
+    },
+    {
+     "card": "Crash Through (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Creeping Bloodsucker (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Crimson Wisps (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Delayed Blast Fireball",
+     "pending_on": []
+    },
+    {
+     "card": "Descent into Avernus (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Expedite (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Glittering Stockpile (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Grafted Exoskeleton (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Guttersnipe (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Light Up the Stage",
+     "pending_on": []
+    },
+    {
+     "card": "Mana Geyser (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Mechanized Warfare (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Mirrodin Avenged (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Needle Drop (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Neheb, the Eternal",
+     "pending_on": []
+    },
+    {
+     "card": "Nightscape Familiar",
+     "pending_on": []
+    },
+    {
+     "card": "Ob Nixilis, Captive Kingpin (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Obosh, the Preypiercer (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Offer Immortality (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Pestilent Spirit (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Phyresis",
+     "pending_on": []
+    },
+    {
+     "card": "Read the Bones",
+     "pending_on": []
+    },
+    {
+     "card": "Renegade Tactics (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Risk Factor (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Runaway Steam-Kin (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Sawblade Scamp (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Seething Song (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Solphim, Mayhem Dominus",
+     "pending_on": []
+    },
+    {
+     "card": "Syphon Soul (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Tainted Strike (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Theater of Horrors",
+     "pending_on": []
+    },
+    {
+     "card": "Tor Wauki the Younger (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Torbran, Thane of Red Fell (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Valakut Awakening // Valakut Stoneforge (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "You Are Already Dead (not in the CMD pool)",
+     "pending_on": []
+    }
+   ]
+  },
+  {
+   "owner": "Spr3adsh33t",
+   "commander": "Hearthhull, the Worldseed",
+   "list": "idea",
+   "missing": [
+    {
+     "card": "Aftermath Analyst",
+     "pending_on": []
+    },
+    {
+     "card": "Augur of Autumn (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Baloth Prime (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Canyon Slough (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Centaur Vinecrasher (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Dakmor Salvage (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Escape to the Wilds (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Eumidian Hatchery (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Eumidian Wastewaker (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Evendo Brushrazer (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Exploration Broodship (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Festering Thicket (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Formless Genesis (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Gaze of Granite (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Groundskeeper (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Hammer of Purphoros (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Hearthhull, the Worldseed",
+     "pending_on": []
+    },
+    {
+     "card": "Juri, Master of the Revue (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Loamcrafter Faun (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Maestros Theater",
+     "pending_on": []
+    },
+    {
+     "card": "Mountain Valley (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Multani, Yavimaya's Avatar (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Omnath, Locus of Rage (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Pest Infestation",
+     "pending_on": []
+    },
+    {
+     "card": "Planetary Annihilation (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Rakdos Charm",
+     "pending_on": []
+    },
+    {
+     "card": "Rocky Tar Pit (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Satyr Wayfinder (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Scouring Swarm (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Soul of Windgrace (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Sprouting Goblin (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Szarel, Genesis Shepherd (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Titania, Protector of Argoth",
+     "pending_on": []
+    },
+    {
+     "card": "Uurg, Spawn of Turg (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Wastes (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "World Breaker (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Worldsoul's Rage (not in the CMD pool)",
+     "pending_on": []
+    }
+   ]
+  },
+  {
+   "owner": "Time",
+   "commander": "Magda, Brazen Outlaw",
+   "list": "idea",
+   "missing": [
+    {
+     "card": "Arcane Lighthouse (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Birgi, God of Storytelling // Harnfel, Horn of Bounty",
+     "pending_on": []
+    },
+    {
+     "card": "Bloodline Pretender (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Castle Embereth (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Cathartic Reunion",
+     "pending_on": []
+    },
+    {
+     "card": "Cryptic Caves (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Cursed Totem",
+     "pending_on": []
+    },
+    {
+     "card": "Dwarven Forge-Chanter (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Dwarven Recruiter (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Ensnaring Bridge (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Final Fortune (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Flamekin Village (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Galvanic Blast (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Gimli, Counter of Kills (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Goblin Matron (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Goldspan Dragon",
+     "pending_on": [
+      "lane-d2"
+     ]
+    },
+    {
+     "card": "Grafdigger's Cage",
+     "pending_on": []
+    },
+    {
+     "card": "Grinning Ignus (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Kiki-Jiki, Mirror Breaker (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Kuldotha Forgemaster",
+     "pending_on": []
+    },
+    {
+     "card": "Legion Loyalist (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Magda, Brazen Outlaw (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Magda, the Hoardmaster (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Magmatic Insight (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Mines of Moria (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Opal Palace (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Phyrexian Revoker (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Rimrock Knight // Boulder Rush (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Seven Dwarves (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Simian Spirit Guide (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Sokenzan, Crucible of Defiance (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Sudden Shock (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Sundial of the Infinite",
+     "pending_on": []
+    },
+    {
+     "card": "Tibalt's Trickery (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Torpor Orb",
+     "pending_on": []
+    },
+    {
+     "card": "Trinisphere (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Tyrite Sanctum (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Underworld Breach",
+     "pending_on": []
+    },
+    {
+     "card": "Unholy Heat (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Vault Robber (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Zealous Conscripts (not in the CMD pool)",
+     "pending_on": []
+    }
+   ]
+  },
+  {
+   "owner": "Adam",
+   "commander": "Giada, Font of Hope",
+   "list": "idea",
+   "missing": [
+    {
+     "card": "Angel of Serenity (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Angel of Vitality (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Angelic Accord (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Angelic Field Marshal (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Arch of Orazca (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Archangel of Tithes (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Arden Angel (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Bishop of Wings (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Bonders' Enclave",
+     "pending_on": []
+    },
+    {
+     "card": "Breathkeeper Seraph (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Bruna, the Fading Light",
+     "pending_on": []
+    },
+    {
+     "card": "Cleansing Nova (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Cosmos Elixir (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Court of Grace",
+     "pending_on": [
+      "tarkir-c"
+     ]
+    },
+    {
+     "card": "Dawnbreak Reclaimer (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Dismantling Wave (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Emeria Shepherd (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Emeria, the Sky Ruin (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Endless Atlas (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Entreat the Angels (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Gisela, the Broken Blade",
+     "pending_on": []
+    },
+    {
+     "card": "Griffin Aerie (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Heirloom Blade (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Invoke the Divine (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Karoo (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Keeper of the Accord (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Kindred Boon (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Marble Diamond (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Mazemind Tome (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Nykthos Paragon",
+     "pending_on": []
+    },
+    {
+     "card": "Oketra's Monument (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Pearl Medallion (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Righteous Valkyrie (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Search for Glory (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Seraph Sanctuary (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Shattered Angel (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Sigarda's Aid",
+     "pending_on": []
+    },
+    {
+     "card": "Speaker of the Heavens (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Starnheim Aspirant (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "The Book of Exalted Deeds (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Throne of Eldraine",
+     "pending_on": []
+    },
+    {
+     "card": "Tome of Legends (not in the CMD pool)",
      "pending_on": []
     },
     {
      "card": "Urza's Incubator",
+     "pending_on": [
+      "lane-d1"
+     ]
+    },
+    {
+     "card": "Valkyrie Harbinger (not in the CMD pool)",
+     "pending_on": []
+    }
+   ]
+  },
+  {
+   "owner": "DonSpider",
+   "commander": "Teval, the Balanced Scale",
+   "list": "idea",
+   "missing": [
+    {
+     "card": "Afterlife from the Loam (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Amphin Mutineer (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Contaminated Aquifer (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Crawling Sensation (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Crypt of Agadeem",
+     "pending_on": [
+      "lane-d1"
+     ]
+    },
+    {
+     "card": "Diviner of Mist (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Dreamroot Cascade",
+     "pending_on": []
+    },
+    {
+     "card": "Drownyard Temple (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Fetid Pools (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Floral Evoker (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Forbidden Alchemy (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Foreboding Landscape (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Grapple with the Past (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Gravecrawler",
+     "pending_on": [
+      "lane-d1"
+     ]
+    },
+    {
+     "card": "Grisly Salvage (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Hedron Crab (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Junji, the Midnight Sky",
+     "pending_on": []
+    },
+    {
+     "card": "Kotis, Sibsig Champion (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Lethal Scheme (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Life from the Loam",
+     "pending_on": []
+    },
+    {
+     "card": "Living Death",
+     "pending_on": []
+    },
+    {
+     "card": "Lord of the Forsaken (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Memorial to Folly (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Meren of Clan Nel Toth (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Millikin (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Multani, Yavimaya's Avatar (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Necromantic Selection (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Necropolis Fiend (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Noxious Gearhulk (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Nyx Weaver (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Phyrexian Reclamation",
+     "pending_on": []
+    },
+    {
+     "card": "River Kelpie (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Satyr Wayfinder (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Shigeki, Jukai Visionary (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Skull Prophet (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Steward of the Harvest (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Stitcher's Supplier (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Tasigur, the Golden Fang (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Teval's Judgment (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Timeless Witness (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Treasure Cruise (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Victimize (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Welcome the Dead (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Will of the Sultai (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Wonder (not in the CMD pool)",
+     "pending_on": []
+    }
+   ]
+  },
+  {
+   "owner": "Spr3adsh33t",
+   "commander": "Teval, the Balanced Scale",
+   "list": "idea",
+   "missing": [
+    {
+     "card": "Afterlife from the Loam (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Amphin Mutineer (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Contaminated Aquifer (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Crawling Sensation (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Crypt of Agadeem",
+     "pending_on": [
+      "lane-d1"
+     ]
+    },
+    {
+     "card": "Diviner of Mist (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Dreamroot Cascade",
+     "pending_on": []
+    },
+    {
+     "card": "Drownyard Temple (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Fetid Pools (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Floral Evoker (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Forbidden Alchemy (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Foreboding Landscape (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Grapple with the Past (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Gravecrawler",
+     "pending_on": [
+      "lane-d1"
+     ]
+    },
+    {
+     "card": "Grisly Salvage (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Hedron Crab (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Junji, the Midnight Sky",
+     "pending_on": []
+    },
+    {
+     "card": "Kotis, Sibsig Champion (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Lethal Scheme (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Life from the Loam",
+     "pending_on": []
+    },
+    {
+     "card": "Living Death",
+     "pending_on": []
+    },
+    {
+     "card": "Lord of the Forsaken (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Memorial to Folly (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Meren of Clan Nel Toth (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Millikin (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Multani, Yavimaya's Avatar (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Necromantic Selection (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Necropolis Fiend (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Noxious Gearhulk (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Nyx Weaver (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Phyrexian Reclamation",
+     "pending_on": []
+    },
+    {
+     "card": "River Kelpie (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Satyr Wayfinder (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Shigeki, Jukai Visionary (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Skull Prophet (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Steward of the Harvest (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Stitcher's Supplier (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Tasigur, the Golden Fang (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Teval's Judgment (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Timeless Witness (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Treasure Cruise (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Victimize (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Welcome the Dead (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Will of the Sultai (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Wonder (not in the CMD pool)",
+     "pending_on": []
+    }
+   ]
+  },
+  {
+   "owner": "Grande",
+   "commander": "Sauron, Lord of the Rings",
+   "list": "idea",
+   "missing": [
+    {
+     "card": "Anger (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Bitter Downfall (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Boon of the Wish-Giver (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Commander's Sphere (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Corsairs of Umbar (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Crumbling Necropolis",
+     "pending_on": []
+    },
+    {
+     "card": "Deep Analysis (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Desolate Lighthouse (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Extract from Darkness",
+     "pending_on": []
+    },
+    {
+     "card": "Fact or Fiction (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Field of Ruin (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Forbidden Alchemy (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Frostboil Snarl (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Goblin Cratermaker (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Goblin Dark-Dwellers (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Grishnákh, Brash Instigator (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Gríma, Saruman's Footman (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Guttersnipe (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Hostage Taker (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "In the Darkness Bind Them (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Knollspine Dragon (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Languish (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Lidless Gaze (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Living Death",
+     "pending_on": []
+    },
+    {
+     "card": "Lord of the Nazgûl (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Monstrosity of the Lake (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Notion Thief",
+     "pending_on": []
+    },
+    {
+     "card": "Orcish Siegemaster (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Rampaging War Mammoth (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Relic of Sauron (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Revenge of Ravens (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Saruman, the White Hand (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Sauron, Lord of the Rings (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Scourge of the Throne",
+     "pending_on": [
+      "lane-d3"
+     ]
+    },
+    {
+     "card": "Shelob, Dread Weaver (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Shiny Impetus",
+     "pending_on": []
+    },
+    {
+     "card": "Subjugate the Hobbits (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Summons of Saruman (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "The Balrog of Moria (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "The Mouth of Sauron (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Too Greedily, Too Deep (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Treason of Isengard (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Treasure Nabber",
+     "pending_on": []
+    },
+    {
+     "card": "Troll of Khazad-dûm (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Voracious Fell Beast (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Wake the Dragon (not in the CMD pool)",
+     "pending_on": []
+    }
+   ]
+  },
+  {
+   "owner": "Spr3adsh33t",
+   "commander": "T'Challa, the Black Panther",
+   "list": "idea",
+   "missing": [
+    {
+     "card": "Ancestral Communion (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Bast, Panther Goddess (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Dispatch (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Divine Visitation (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Dora Milaje Elite (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Everett K. Ross, Hapless Attaché (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Fight for the Throne (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Fleecemane Lion (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Fortified Village",
+     "pending_on": []
+    },
+    {
+     "card": "Hammer of Nazahn (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Hatut Zeraze Strike Force (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Heart-Shaped Herb (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Ingenious Smith (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Kimoyo Beads (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "King Solomon's Frogs (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Loyal Guardian (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Loyal Retainers (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "M'Baku, Jabari Chieftain (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Metalwork Colossus (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Midnight Angel Armor (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Mind's Eye (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "N'Yami-Class Mother Ship (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Nakia, Wakandan Operative (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Okoye, Mighty and Adored (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Overwhelming Stampede (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Palace Jailer (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Panther Habit (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Panther Robot (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Queen Mother Ramonda (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Royal Talon Fighter Jet (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Scattered Groves",
+     "pending_on": []
+    },
+    {
+     "card": "Scavenger Grounds (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Scourglass",
+     "pending_on": []
+    },
+    {
+     "card": "Shuri's Fabricator (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Shuri, the Black Panther (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Storm, Queen of Wakanda (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "T'Chaka, Venerable King (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "T'Challa, the Black Panther (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "The Great Mound (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "The Spear of Bashenga (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Throne of the High City (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Trading Post (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Valorous Stance (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Vibranium Mining Mech (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Vibranium Strike Gauntlets (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "W'Kabi, Shield of the Nation (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Wakanda Forever! (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Whispersilk Cloak",
+     "pending_on": []
+    },
+    {
+     "card": "Zuri, Warrior of Wakanda (not in the CMD pool)",
+     "pending_on": []
+    }
+   ]
+  },
+  {
+   "owner": "Adam",
+   "commander": "Eshki, Temur's Roar",
+   "list": "idea",
+   "missing": [
+    {
+     "card": "Atarka, World Render",
+     "pending_on": [
+      "lane-d3"
+     ]
+    },
+    {
+     "card": "Atsushi, the Blazing Sky (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Become the Avalanche (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Bountiful Landscape (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Broodcaller Scourge",
+     "pending_on": []
+    },
+    {
+     "card": "Deceptive Frostkite (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Draconic Lore (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Dragon's Hoard",
+     "pending_on": []
+    },
+    {
+     "card": "Dragonlord Atarka (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Dragonlord's Servant (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Dragonmaster Outcast (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Elemental Bond",
+     "pending_on": []
+    },
+    {
+     "card": "Eshki, Temur's Roar (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Frontier Siege (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Glorybringer (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Hammerhead Tyrant (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Harbinger of the Hunt (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Haven of the Spirit Dragon",
+     "pending_on": [
+      "lane-d1"
+     ]
+    },
+    {
+     "card": "Keiga, the Tide Star (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Lathliss, Dragon Queen",
+     "pending_on": [
+      "lane-d3"
+     ]
+    },
+    {
+     "card": "Leyline Tyrant (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Nogi, Draco-Zealot",
+     "pending_on": [
+      "lane-d1"
+     ]
+    },
+    {
+     "card": "Opportunistic Dragon (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Parapet Thrasher (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Rapacious Dragon (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Reality Shift",
+     "pending_on": []
+    },
+    {
+     "card": "Reflections of Littjara",
+     "pending_on": []
+    },
+    {
+     "card": "Rockfall Vale",
+     "pending_on": []
+    },
+    {
+     "card": "Sarkhan, Soul Aflame (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Scourge of the Throne",
+     "pending_on": [
+      "lane-d3"
+     ]
+    },
+    {
+     "card": "Selvala's Stampede",
+     "pending_on": []
+    },
+    {
+     "card": "Skarrgan Hellkite (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Spit Flame (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Steel Hellkite",
+     "pending_on": []
+    },
+    {
+     "card": "Storm's Wrath (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Stormbreath Dragon (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Talisman of Creativity (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Taurean Mauler (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Temple of the Dragon Queen (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Temur Ascendancy",
+     "pending_on": []
+    },
+    {
+     "card": "Territorial Hellkite (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Thunderbreak Regent (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Thundermane Dragon (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Ureni of the Unwritten (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Vengeful Ancestor",
+     "pending_on": []
+    },
+    {
+     "card": "Verix Bladewing (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Will of the Temur (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Zenith Festival (not in the CMD pool)",
+     "pending_on": []
+    }
+   ]
+  },
+  {
+   "owner": "Time",
+   "commander": "Terra, Herald of Hope",
+   "list": "idea",
+   "missing": [
+    {
+     "card": "Anger (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Archfiend of Depravity (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Banon, the Returners' Leader (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Bedevil",
+     "pending_on": []
+    },
+    {
+     "card": "Celes, Rune Knight (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Coin of Fate (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Combustible Gearhulk (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Commander's Sphere (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Cyan, Vengeful Samurai (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Demolition Field (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Desolate Mire (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Edgar, Master Machinist (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Espers to Magicite (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Flayer of the Hatebound (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Furycalm Snarl (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Gau, Feral Youth (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "General Leo Cristophe (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Geothermal Bog (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Gogo, Mysterious Mime (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Interceptor, Shadow's Hound (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Kefka, Dancing Mad (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Key to the City (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Laughing Mad (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Legions to Ashes (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Locke, Treasure Hunter (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Millikin (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Mog, Moogle Warrior (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Palace Jailer (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Phoenix Down (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Priest of Fell Rites (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Rejoin the Fight (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Ruin Grinder (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Sabin, Master Monk (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Sacred Peaks (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Sepulchral Primordial",
+     "pending_on": []
+    },
+    {
+     "card": "Setzer, Wandering Gambler (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Shadow, Mysterious Assassin (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Shineshadow Snarl",
+     "pending_on": []
+    },
+    {
+     "card": "Siegfried, Famed Swordsman (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Snort (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Stitch Together (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Stitcher's Supplier (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Strago and Relm (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Summon: Esper Valigarmanda (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Sunlit Marsh (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Talisman of Conviction",
+     "pending_on": []
+    },
+    {
+     "card": "Terra, Herald of Hope (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "The Falcon, Airship Restored (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "The Warring Triad (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Tragic Arrogance (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Umaro, Raging Yeti (not in the CMD pool)",
+     "pending_on": []
+    }
+   ]
+  },
+  {
+   "owner": "Adam",
+   "commander": "Sidar Jabari of Zhalfir",
+   "list": "idea",
+   "missing": [
+    {
+     "card": "Acclaimed Contender (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Arvad the Cursed (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Aryel, Knight of Windgrace (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Chivalric Alliance (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Commander's Sphere (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Conjurer's Mantle (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Corpse Knight (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Distant Melody (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Elenda and Azor (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Ethersworn Adjudicator",
+     "pending_on": []
+    },
+    {
+     "card": "Exsanguinator Cavalry (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Fell the Mighty (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Foulmire Knight // Profane Insight (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Fractured Powerstone (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Haakon, Stromgald Scourge (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Herald of Hoofbeats (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Herald's Horn",
+     "pending_on": []
+    },
+    {
+     "card": "Hero of Bladehold (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Ichor Elixir (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Josu Vess, Lich Knight (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Knight Exemplar (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Knight of the Last Breath (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Knight of the White Orchid (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Knights of the Black Rose (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Knights' Charge (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Liliana's Standard Bearer (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Locthwain Lancer (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Maul of the Skyclaves (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Midnight Reaper (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Murderous Rider // Swift End (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Order of Midnight // Alter Fate (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Painful Truths (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Path of the Enigma (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Read the Bones",
+     "pending_on": []
+    },
+    {
+     "card": "Shineshadow Snarl",
+     "pending_on": []
+    },
+    {
+     "card": "Sidar Jabari of Zhalfir (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Sigiled Sword of Valeron (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Silverwing Squadron (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Smitten Swordmaster // Curry Favor (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Syr Elenora, the Discerning (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Temple of Deceit (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Temple of Silence",
+     "pending_on": []
+    },
+    {
+     "card": "Thriving Moor (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Unbreakable Formation",
+     "pending_on": []
+    },
+    {
+     "card": "Valiant Knight (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Vodalian Wave-Knight (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Vona, Butcher of Magan",
+     "pending_on": []
+    },
+    {
+     "card": "Wintermoor Commander (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Worthy Knight (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Xerex Strobe-Knight (not in the CMD pool)",
+     "pending_on": []
+    }
+   ]
+  },
+  {
+   "owner": "Spr3adsh33t",
+   "commander": "Hakbal of the Surging Soul",
+   "list": "idea",
+   "missing": [
+    {
+     "card": "Alchemist's Refuge (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Benthic Biomancer (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Branching Evolution (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Bygone Marvels (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Cold-Eyed Selkie (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Commander's Sphere (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Commit // Memory",
+     "pending_on": []
+    },
+    {
+     "card": "Coralhelm Commander (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Curse of the Swine (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Deeproot Elite (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Deeproot Historian (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Deeproot Waters (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Emperor Mihail II (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Evolution Sage",
+     "pending_on": []
+    },
+    {
+     "card": "Hakbal of the Surging Soul (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Herald of Secret Streams (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Kindred Discovery",
+     "pending_on": []
+    },
+    {
+     "card": "Kopala, Warden of Waves (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Kumena, Tyrant of Orazca (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Llanowar Reborn (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Master of the Pearl Trident (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Merfolk Cave-Diver (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Merfolk Mistbinder (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Merfolk Skydiver (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Merfolk Sovereign (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Merrow Reejerey (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Mist Dancer (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Nicanzil, Current Conductor (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Prime Speaker Zegana",
+     "pending_on": []
+    },
+    {
+     "card": "Quandrix Command (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Ravenform (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Realmwalker (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Reflections of Littjara",
+     "pending_on": []
+    },
+    {
+     "card": "Ripples of Potential (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Ruinous Intrusion (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Sage of Fables",
+     "pending_on": []
+    },
+    {
+     "card": "Seafloor Oracle (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Singer of Swift Rivers (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Stonybrook Banneret",
+     "pending_on": []
+    },
+    {
+     "card": "Surgespanner (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Svyelun of Sea and Sky (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Thassa, God of the Sea (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Thieving Skydiver (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Tishana, Voice of Thunder (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Topography Tracker (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Tributary Instructor (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Unclaimed Territory (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Vorel of the Hull Clade",
+     "pending_on": []
+    },
+    {
+     "card": "Wave Goodbye",
+     "pending_on": []
+    },
+    {
+     "card": "Xolatoyac, the Smiling Flood (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Zegana, Utopian Speaker (not in the CMD pool)",
+     "pending_on": []
+    }
+   ]
+  },
+  {
+   "owner": "Adam",
+   "commander": "Ixhel, Scion of Atraxa",
+   "list": "idea",
+   "missing": [
+    {
+     "card": "Bilious Skulldweller",
+     "pending_on": []
+    },
+    {
+     "card": "Bloated Contaminator",
+     "pending_on": []
+    },
+    {
+     "card": "Cankerbloom",
+     "pending_on": []
+    },
+    {
+     "card": "Carrion Call (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Commander's Sphere (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Contagion Clasp (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Contaminant Grafter",
+     "pending_on": []
+    },
+    {
+     "card": "Culling Ritual",
+     "pending_on": []
+    },
+    {
+     "card": "Evolution Sage",
+     "pending_on": []
+    },
+    {
+     "card": "Expand the Sphere (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Feed the Infection (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Fortified Village",
+     "pending_on": []
+    },
+    {
+     "card": "Fumigate (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Geth's Summons (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Glistening Sphere",
+     "pending_on": []
+    },
+    {
+     "card": "Grafted Exoskeleton (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Grateful Apparition (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Ichor Rats",
+     "pending_on": []
+    },
+    {
+     "card": "Infectious Bite",
+     "pending_on": []
+    },
+    {
+     "card": "Infectious Inquiry",
+     "pending_on": []
+    },
+    {
+     "card": "Ixhel, Scion of Atraxa",
+     "pending_on": []
+    },
+    {
+     "card": "Krosan Verge (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Mycosynth Fiend (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Myr Convert",
+     "pending_on": []
+    },
+    {
+     "card": "Norn's Annex",
+     "pending_on": []
+    },
+    {
+     "card": "Norn's Choirmaster",
+     "pending_on": []
+    },
+    {
+     "card": "Norn's Decree",
+     "pending_on": []
+    },
+    {
+     "card": "Phyresis Outbreak",
+     "pending_on": []
+    },
+    {
+     "card": "Phyrexian Atlas (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Phyrexian Obliterator",
+     "pending_on": []
+    },
+    {
+     "card": "Phyrexian Rebirth (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Phyrexian Swarmlord",
+     "pending_on": []
+    },
+    {
+     "card": "Phyrexian Vindicator (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Plague Myr (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Plague Stinger",
+     "pending_on": []
+    },
+    {
+     "card": "Shineshadow Snarl",
+     "pending_on": []
+    },
+    {
+     "card": "Skrelv's Hive",
+     "pending_on": []
+    },
+    {
+     "card": "Skrelv, Defector Mite",
+     "pending_on": []
+    },
+    {
+     "card": "Staff of Compleation (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Sword of Forge and Frontier (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Tainted Field",
+     "pending_on": [
+      "lane-d1"
+     ]
+    },
+    {
+     "card": "Temple of Silence",
+     "pending_on": []
+    },
+    {
+     "card": "Trailblazer's Boots (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Tyrranax Rex (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Unnatural Restoration",
+     "pending_on": []
+    },
+    {
+     "card": "Vat Emergence (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Viridian Corrupter",
+     "pending_on": []
+    },
+    {
+     "card": "Vishgraz, the Doomhive (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Vraska's Fall",
+     "pending_on": []
+    },
+    {
+     "card": "White Sun's Twilight",
+     "pending_on": []
+    },
+    {
+     "card": "Wurmquake (not in the CMD pool)",
+     "pending_on": []
+    }
+   ]
+  },
+  {
+   "owner": "RuricMo",
+   "commander": "Nelly Borca, Impulsive Accuser",
+   "list": "idea",
+   "missing": [
+    {
+     "card": "Access Tunnel (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Agitator Ant",
+     "pending_on": []
+    },
+    {
+     "card": "Ancient Stone Idol (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Anya, Merciless Angel (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Bloodthirsty Blade (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Boros Garrison",
+     "pending_on": []
+    },
+    {
+     "card": "Boros Reckoner (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Brash Taunter (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Comeuppance (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Curse of Opulence",
+     "pending_on": []
+    },
+    {
+     "card": "Darien, King of Kjeldor (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Disrupt Decorum",
+     "pending_on": []
+    },
+    {
+     "card": "Duelist's Heritage",
+     "pending_on": []
+    },
+    {
+     "card": "Feather, Radiant Arbiter (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Fiendish Duo (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Frontier Warmonger",
+     "pending_on": []
+    },
+    {
+     "card": "Furycalm Snarl (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Gideon's Sacrifice (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Havoc Eater (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Hot Pursuit (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Immortal Obligation (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Kazuul, Tyrant of the Cliffs (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Keeper of the Accord (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Kher Keep",
+     "pending_on": []
+    },
+    {
+     "card": "Labyrinth of Skophos (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Mob Verdict (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Needle Spires (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Nelly Borca, Impulsive Accuser",
+     "pending_on": []
+    },
+    {
+     "card": "Orzhov Advokist (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Otherworldly Escort (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Prisoner's Dilemma",
+     "pending_on": []
+    },
+    {
+     "card": "Ransom Note (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Redemption Arc (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Rite of the Raging Storm (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Scavenger Grounds (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Seal of Cleansing",
+     "pending_on": []
+    },
+    {
+     "card": "Selfless Squire (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Sevinne's Reclamation",
+     "pending_on": []
+    },
+    {
+     "card": "Shiny Impetus",
+     "pending_on": []
+    },
+    {
+     "card": "Slayers' Stronghold (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Smuggler's Share (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Soul Snare (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Spectacular Showdown (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Stalking Leonin (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Steel Hellkite",
+     "pending_on": []
+    },
+    {
+     "card": "Take the Bait (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Throne of the High City (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Tome of Legends (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Trouble in Pairs (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Vengeful Ancestor",
+     "pending_on": []
+    },
+    {
+     "card": "Vow of Duty (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Vow of Lightning (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Wall of Omens (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Windborn Muse",
+     "pending_on": []
+    },
+    {
+     "card": "Winds of Rath (not in the CMD pool)",
+     "pending_on": []
+    }
+   ]
+  },
+  {
+   "owner": "Adam",
+   "commander": "Zimone, Infinite Analyst",
+   "list": "idea",
+   "missing": [
+    {
+     "card": "Alchemist's Refuge (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Altered Ego (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Animist's Awakening (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Astral Cornucopia",
+     "pending_on": []
+    },
+    {
+     "card": "Benevolent Hydra (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Biomass Mutation",
+     "pending_on": []
+    },
+    {
+     "card": "Brass Infiniscope (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Commander's Insight (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Curse of the Swine (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Decisive Denial (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Deekah, Fractal Theorist (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Elementalist's Palette (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Elusive Otter // Grove's Bounty (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Entrancing Melody (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Eureka Moment (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Expansion Algorithm (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Fractal Harness (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Guardian Augmenter (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Hangarback Walker (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Ingenious Prodigy (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Kinetic Ooze (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Lattice Library (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Mana Bloom (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Nev, the Practical Dean (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Nexus Mentality (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Opal Palace (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Open the Way (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Oversimplify (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Owlin Spiralmancer (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Ozolith, the Shattered Spire",
+     "pending_on": []
+    },
+    {
+     "card": "Paradox Gardens (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Primal Might (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Primo, the Unbounded (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Primordial Hydra",
+     "pending_on": []
+    },
+    {
+     "card": "Quandrix Apprentice (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Quandrix Campus (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Quandrix Charm (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Quandrix Command (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Rain-Slicked Copse (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Silkguard (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Sodden Verdure (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Steelbane Hydra",
+     "pending_on": []
+    },
+    {
+     "card": "Stonecoil Serpent (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Striding Shotcaller (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Study Hall (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Tanazir Quandrix (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Tangled Islet (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "The Goose Mother (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Troyan, Gutsy Explorer (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Turbulent Wilderness (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Unbound Flourishing (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Yavimaya Bloomsage (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Zimone's Hypothesis (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Zimone, All-Questioning (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Zimone, Infinite Analyst (not in the CMD pool)",
+     "pending_on": []
+    }
+   ]
+  },
+  {
+   "owner": "Spr3adsh33t",
+   "commander": "Zimone, Infinite Analyst",
+   "list": "idea",
+   "missing": [
+    {
+     "card": "Alchemist's Refuge (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Altered Ego (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Animist's Awakening (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Astral Cornucopia",
+     "pending_on": []
+    },
+    {
+     "card": "Benevolent Hydra (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Biomass Mutation",
+     "pending_on": []
+    },
+    {
+     "card": "Brass Infiniscope (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Commander's Insight (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Curse of the Swine (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Decisive Denial (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Deekah, Fractal Theorist (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Elementalist's Palette (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Elusive Otter // Grove's Bounty (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Entrancing Melody (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Eureka Moment (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Expansion Algorithm (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Fractal Harness (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Guardian Augmenter (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Hangarback Walker (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Ingenious Prodigy (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Kinetic Ooze (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Lattice Library (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Mana Bloom (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Nev, the Practical Dean (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Nexus Mentality (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Opal Palace (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Open the Way (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Oversimplify (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Owlin Spiralmancer (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Ozolith, the Shattered Spire",
+     "pending_on": []
+    },
+    {
+     "card": "Paradox Gardens (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Primal Might (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Primo, the Unbounded (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Primordial Hydra",
+     "pending_on": []
+    },
+    {
+     "card": "Quandrix Apprentice (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Quandrix Campus (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Quandrix Charm (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Quandrix Command (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Rain-Slicked Copse (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Silkguard (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Sodden Verdure (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Steelbane Hydra",
+     "pending_on": []
+    },
+    {
+     "card": "Stonecoil Serpent (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Striding Shotcaller (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Study Hall (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Tanazir Quandrix (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Tangled Islet (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "The Goose Mother (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Troyan, Gutsy Explorer (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Turbulent Wilderness (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Unbound Flourishing (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Yavimaya Bloomsage (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Zimone's Hypothesis (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Zimone, All-Questioning (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Zimone, Infinite Analyst (not in the CMD pool)",
+     "pending_on": []
+    }
+   ]
+  },
+  {
+   "owner": "Adam",
+   "commander": "Perrie, the Pulverizer",
+   "list": "idea",
+   "missing": [
+    {
+     "card": "Agent's Toolkit (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Ajani Unyielding (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Angelic Sleuth (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Aven Courier (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Aven Mimeomancer (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Avenging Huntbonder (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Bant Charm (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Bant Panorama (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Bribe Taker (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Brokers Charm (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Brokers Confluence (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Commander's Sphere (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Contractual Safeguard (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Crystalline Giant (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Damning Verdict",
+     "pending_on": []
+    },
+    {
+     "card": "Declaration in Stone (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Denry Klin, Editor in Chief (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Evolution Sage",
+     "pending_on": []
+    },
+    {
+     "card": "Exotic Pets (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Family's Favor (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Fathom Mage",
+     "pending_on": []
+    },
+    {
+     "card": "Fortified Village",
+     "pending_on": []
+    },
+    {
+     "card": "Gavel of the Righteous (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Grateful Apparition (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Incubation Druid",
+     "pending_on": []
+    },
+    {
+     "card": "Jenara, Asura of War (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Kros, Defense Contractor (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Littjara Mirrorlake (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Llanowar Reborn (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Luminarch Aspirant",
+     "pending_on": [
+      "lane-d2"
+     ]
+    },
+    {
+     "card": "Midnight Clock (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Nesting Grounds",
+     "pending_on": [
+      "lane-d1"
+     ]
+    },
+    {
+     "card": "Oblivion Stone (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Oracle's Vault (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Park Heights Maverick (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Perrie, the Pulverizer (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Planar Outburst (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Power Conduit (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Primal Empathy (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Resourceful Defense (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Roalesk, Apex Hybrid (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Skyboon Evangelist (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Skyship Plunderer (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Slippery Bogbonder (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Steelbane Hydra",
+     "pending_on": []
+    },
+    {
+     "card": "Storm of Forms (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Tezzeret's Gambit",
+     "pending_on": []
+    },
+    {
+     "card": "Thrummingbird",
+     "pending_on": []
+    },
+    {
+     "card": "Together Forever (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Urban Evolution (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Vivid Creek (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Vivid Grove (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Vivid Meadow (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Vorel of the Hull Clade",
+     "pending_on": []
+    },
+    {
+     "card": "Wall of Roots (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Wickerbough Elder (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Wingspan Mentor (not in the CMD pool)",
+     "pending_on": []
+    }
+   ]
+  },
+  {
+   "owner": "Adam",
+   "commander": "Doctor Doom, King of Latveria",
+   "list": "idea",
+   "missing": [
+    {
+     "card": "Abomination, World Ravager (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Age of Ultron (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Archnemesis (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Baron Strucker, HYDRA Overlord (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Batroc the Leaper (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Bedevil",
+     "pending_on": []
+    },
+    {
+     "card": "Canyon Slough (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Chameleon, Master of Disguise (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Coastal Peak (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Containment Construct (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Crumbling Necropolis",
+     "pending_on": []
+    },
+    {
+     "card": "Damocles Base, Sword of Kang (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Doctor Doom, King of Latveria (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Doom's Time Platform (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Endless Ranks of HYDRA (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Extract Power (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Fetid Pools (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Frostboil Snarl (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Glorious Purpose (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Helmut Zemo, Mastermind (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Iron Monger, Sadistic Tycoon (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Kang Dynasty (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Kang Prime (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Kang, Temporal Tyrant (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Killmonger, Ruthless Usurper (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Kindred Dominance (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Klaw, Master of Sound (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Lady Loki, Agent of Chaos (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Lethal Scheme (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Living Laser (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Loki's Scepter (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Loki, the Deceiver (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Madame Hydra (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Molecule Man (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Patchwork Banner (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Progenitor's Icon (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Prowler, Clawed Thief (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Puppet Master, String Puller (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Red Ghost, Intangible Genius (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Scavenger Grounds (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Scorched Geyser (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Spark Double",
+     "pending_on": []
+    },
+    {
+     "card": "Stilt-Man, Towering Terror (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Superior Foes of Spider-Man (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Syphon Mind (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "The Frightful Four (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "The Squadron Sinister (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Titan of Littjara (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Titania, Proud Pummeler (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Tombstone, Career Criminal (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Tri-Sentinel, Act of Vengeance (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Typhoid Mary, Fractured (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Ultron, Unlimited (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Unclaimed Territory (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Villainous Hideout (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Withering Torment (not in the CMD pool)",
+     "pending_on": []
+    }
+   ]
+  },
+  {
+   "owner": "Time",
+   "commander": "Rowan, Scion of War",
+   "list": "idea",
+   "missing": [
+    {
+     "card": "Apex of Power (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Apprentice Necromancer",
+     "pending_on": []
+    },
+    {
+     "card": "Behold the Beyond (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Beseech the Queen",
+     "pending_on": []
+    },
+    {
+     "card": "Boggart Trawler // Boggart Bog (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Claim // Fame (not in the CMD pool)",
+     "pending_on": [
+      "lane-d1",
+      "lane-d2",
+      "lane-d3",
+      "tarkir-b",
+      "tarkir-s"
+     ]
+    },
+    {
+     "card": "Claim the Firstborn (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Crippling Fear (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Cruelclaw's Heist (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Dark Petition (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Diabolic Revelation",
+     "pending_on": []
+    },
+    {
+     "card": "Dualcaster Mage",
+     "pending_on": []
+    },
+    {
+     "card": "Dwarven Ruins (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Ebon Stronghold (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Erebos's Intervention (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Eumidian Hatchery (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Final Parting (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Flamekin Village (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Flare of Duplication (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Fury Storm (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Generator Servant (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Gogo, Mysterious Mime (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Ifnir Deadlands (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Ignite the Future",
+     "pending_on": []
+    },
+    {
+     "card": "Increasing Ambition (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Increasing Vengeance (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Inspired Tinkering (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Lively Dirge (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "March of Wretched Sorrow (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Marshland Bloodcaster (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Marvin, Murderous Mimic (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Megaton's Fate (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Mount Doom (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Myr Convert",
+     "pending_on": []
+    },
+    {
+     "card": "Overmaster (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Past in Flames (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Path of the Pyromancer (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Patriar's Seal (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Pirate's Pillage (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Plunge into Darkness (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Ramunap Ruins (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Reckless Charge (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Return the Favor (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Reverberate (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Rowan, Scion of War (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Searing Touch (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Simian Spirit Guide (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Skirk Prospector (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Snort (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Sorceress's Schemes (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Street Wraith (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Strike It Rich (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Thran Portal",
+     "pending_on": []
+    },
+    {
+     "card": "Tomb of Urami (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Unearth",
+     "pending_on": [
+      "lane-d1",
+      "lane-d2",
+      "lane-d3",
+      "tarkir-b",
+      "tarkir-c",
+      "tarkir-s",
+      "tarkir-t"
+     ]
+    },
+    {
+     "card": "Wall of Blood (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "________ Goblin (not in the CMD pool)",
+     "pending_on": []
+    }
+   ]
+  },
+  {
+   "owner": "Spr3adsh33t",
+   "commander": "Eriette of the Charmed Apple",
+   "list": "idea",
+   "missing": [
+    {
+     "card": "All That Glitters",
+     "pending_on": []
+    },
+    {
+     "card": "Angelic Gift (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Ardenn, Intrepid Archaeologist (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Chains of Custody",
+     "pending_on": []
+    },
+    {
+     "card": "Clawing Torment (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Curse of Disturbance (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Curse of Exhaustion (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Curse of Fool's Wisdom (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Curse of Misfortunes (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Curse of Thirst (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Curse of Vitality (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Curse of the Forsaken (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Curse of the Restless Dead (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Danitha Capashen, Paragon (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Darksteel Mutation",
+     "pending_on": [
+      "lane-d3"
+     ]
+    },
+    {
+     "card": "Daxos the Returned (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Dead Man's Chest (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Eriette of the Charmed Apple (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Ethereal Armor",
+     "pending_on": []
+    },
+    {
+     "card": "Ghoulish Impetus (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Gift of Immortality",
+     "pending_on": []
+    },
+    {
+     "card": "Glistening Oil (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Hall of Heliod's Generosity",
+     "pending_on": []
+    },
+    {
+     "card": "Hateful Eidolon (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Hero of Iroas",
+     "pending_on": []
+    },
+    {
+     "card": "Kaya's Ghostform",
+     "pending_on": []
+    },
+    {
+     "card": "Killian, Ink Duelist (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Kor Spiritdancer",
+     "pending_on": []
+    },
+    {
+     "card": "Lord Skitter's Blessing (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Lurrus of the Dream-Den (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Minion's Return (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Nurgle's Rot (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Ondu Spiritdancer (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Open the Armory",
+     "pending_on": []
+    },
+    {
+     "card": "Parasitic Impetus",
+     "pending_on": []
+    },
+    {
+     "card": "Pariah",
+     "pending_on": []
+    },
+    {
+     "card": "Phyresis",
+     "pending_on": []
+    },
+    {
+     "card": "Realmbreaker's Grasp (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Reprobation",
+     "pending_on": []
+    },
+    {
+     "card": "Resurgent Belief",
+     "pending_on": []
+    },
+    {
+     "card": "Retether",
+     "pending_on": []
+    },
+    {
+     "card": "Rune of Mortality (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Sage's Reverie",
+     "pending_on": []
+    },
+    {
+     "card": "Screams from Within (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Soul Link (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Spellbook Vendor (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Spirit Link (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Spirit Mantle",
+     "pending_on": []
+    },
+    {
+     "card": "Sram, Senior Edificer",
+     "pending_on": []
+    },
+    {
+     "card": "Starfield Mystic (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Starnheim Courser (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Tenuous Truce",
+     "pending_on": []
+    },
+    {
+     "card": "Timely Ward",
+     "pending_on": []
+    },
+    {
+     "card": "Transcendent Envoy",
+     "pending_on": []
+    },
+    {
+     "card": "Trespasser's Curse (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Underworld Connections (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Unholy Indenture (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Unquestioned Authority",
+     "pending_on": []
+    },
+    {
+     "card": "Vampiric Link (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Vow of Malice (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Vow of Torment (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Winds of Rath (not in the CMD pool)",
+     "pending_on": []
+    }
+   ]
+  },
+  {
+   "owner": "Time",
+   "commander": "Elesh Norn, Mother of Machines",
+   "list": "idea",
+   "missing": [
+    {
+     "card": "Angel of Invention (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Animal Sanctuary (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Astral Cornucopia",
+     "pending_on": []
+    },
+    {
+     "card": "Banisher Priest (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Banishment (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Basri's Lieutenant (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Circle of Confinement (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Clockwork Dragon (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Clockwork Servant (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Cloud Key (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Defenders of Humanity (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Demolition Field (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Dimensional Breach (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Exclusion Ritual (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Faith's Fetters (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Field of Ruin (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Final Judgment (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Flickerwisp (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "For the Emperor! (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Grasp of Fate (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Horn of Gondor (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Idyllic Grange (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Ingenious Smith (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Journey to Oblivion (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Knight Paladin (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Knight of the White Orchid (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Launch the Fleet (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Lavabrink Venturer (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Legion's Landing // Adanto, the First Fort",
+     "pending_on": []
+    },
+    {
+     "card": "Lembas (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Mace of the Valiant (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Mentor of the Meek (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Mirrorworks (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Mobilized District (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Myojin of Blooming Dawn (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Myr Battlesphere",
+     "pending_on": []
+    },
+    {
+     "card": "Nevermore (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "New Benalia (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Phyrexia's Core (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Phyrexian Vindicator (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Priest of Ancient Lore (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Prison Realm (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Ravnica at War (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Rune of Sustenance (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Runed Halo (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Sceptre of Eternal Glory (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Scholar of New Horizons (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Sleeper Dart (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Space Marine Scout (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Static Net (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Stoic Farmer (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Stonecoil Serpent (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Strionic Resonator",
+     "pending_on": []
+    },
+    {
+     "card": "Thunder Totem (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Tome of Legends (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Untaidake, the Cloud Keeper (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Urza's Factory (not in the CMD pool)",
      "pending_on": []
     },
     {
@@ -1264,11 +7619,605 @@
      "pending_on": []
     },
     {
-     "card": "Wandering Archaic // Explore the Vastlands",
+     "card": "Wall of Omens (not in the CMD pool)",
      "pending_on": []
     },
     {
-     "card": "Zhulodok, Void Gorger",
+     "card": "Windbrisk Heights",
+     "pending_on": []
+    }
+   ]
+  },
+  {
+   "owner": "Spr3adsh33t",
+   "commander": "Captain America, Team Leader",
+   "list": "idea",
+   "missing": [
+    {
+     "card": "Ant-Man, Elusive Avenger (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Avenge (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Avengers Quinjet (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Avengers Tower (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Bastion Protector (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Black Widow, Agile Avenger (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Captain America, Living Legend (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Captain America, Team Leader (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Captain Mar-Vell, Space-Born (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Captain Marvel, Apex Avenger (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Coastal Peak (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Destroy Evil (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Director Nick Fury (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Dismantling Wave (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Door of Destinies",
+     "pending_on": []
+    },
+    {
+     "card": "Falcon and Redwing (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Firebird, Blazing Ranger (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Folk Hero (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Frostboil Snarl (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Furycalm Snarl (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Gift of Immortality",
+     "pending_on": []
+    },
+    {
+     "card": "Glittering Massif (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Hawkeye, Avenging Archer (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Herald's Horn",
+     "pending_on": []
+    },
+    {
+     "card": "Hercules, Olympian Hero (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Hero's Blade (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Heroic Return (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Heroic Sacrifice (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Hulkbuster Armor (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Iron Man, Armored Avenger (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Irrigated Farmland (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Jarvis, Earth's Mightiest Butler (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Jocasta, Automaton Avenger (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Kindred Discovery",
+     "pending_on": []
+    },
+    {
+     "card": "Love on the Battlefield (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Methods of the Mighty (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Patriot, Shield Wielder (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Photon, Mighty Marvel (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Professor Hulk (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Quicksilver, Speedster (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Radiant Summit (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Raise the Palisade (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Reconnaissance Mission",
+     "pending_on": [
+      "lane-d2"
+     ]
+    },
+    {
+     "card": "Relic of Legends",
+     "pending_on": []
+    },
+    {
+     "card": "Rescue, Pepper Potts (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Rip Apart (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Scarlet Witch, Chaotic Avenger (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Scavenger Grounds (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Scorched Geyser (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Shang-Chi and the Ten Rings (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "She-Hulk, Wallbreaker (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Speed, Young Avenger (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Talisman of Conviction",
+     "pending_on": []
+    },
+    {
+     "card": "Talisman of Creativity (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "The Wasp, Winsome Avenger (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Thor, Asgard's Avenger (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Tome of Legends (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Unclaimed Territory (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Vision, Synthezoid Avenger (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "War Machine, Avenging Arsenal (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "West Coast Expansion (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Winter Soldier, Reborn Avenger (not in the CMD pool)",
+     "pending_on": []
+    }
+   ]
+  },
+  {
+   "owner": "Grande",
+   "commander": "Hashaton, Scarab's Fist",
+   "list": "idea",
+   "missing": [
+    {
+     "card": "Absolute Virtue (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Ancient Silver Dragon (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Angel of Despair (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Angelic Arbiter (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Aquamoeba (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Archon of Cruelty",
+     "pending_on": []
+    },
+    {
+     "card": "Astral Dragon (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Bitter Triumph",
+     "pending_on": []
+    },
+    {
+     "card": "Blazing Archon (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Bone Miser (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Cabal Initiate (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Call the Bloodline (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Careful Study (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Chamber of Manipulation (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Chancellor of the Annex (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Chancellor of the Spires (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Charm Peddler (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Compulsion (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Cryptbreaker (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Diluvian Primordial",
+     "pending_on": []
+    },
+    {
+     "card": "Dread Defiler (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Eldrazi Displacer (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Exquisite Archangel (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Faithful Mending (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Fleeting Spirit (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Gifts Ungiven",
+     "pending_on": []
+    },
+    {
+     "card": "Gleaming Overseer (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Godhead of Awe",
+     "pending_on": []
+    },
+    {
+     "card": "Grave Researcher // Reanimate (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Great Whale (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Grozoth (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Guardian of New Benalia (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Hashaton, Scarab's Fist (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Herald of Leshrac",
+     "pending_on": [
+      "lane-d1"
+     ]
+    },
+    {
+     "card": "Highcliff Felidar (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Hoarding Broodlord",
+     "pending_on": []
+    },
+    {
+     "card": "Immobilizing Ink (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Iron-Shield Elf",
+     "pending_on": []
+    },
+    {
+     "card": "Jace Reawakened (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Kaito Shizuki (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Key to the City (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Kitsa, Otterball Elite (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Kozilek, the Great Distortion",
+     "pending_on": []
+    },
+    {
+     "card": "Likeness Looter (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Luminate Primordial (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Magister Sphinx",
+     "pending_on": []
+    },
+    {
+     "card": "Mental Discipline (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Metamorphosis Fanatic (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Mister Negative (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Nezahal, Primal Tide (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Oblivion Crown (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Olivia's Dragoon (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Oona's Prowler (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Patrol Hound (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Phantatog (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Phyrexian Delver",
+     "pending_on": []
+    },
+    {
+     "card": "Platinum Emperion (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Psychatog (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Psychic Frog (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Pulse of the Grid (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Putrid Imp (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Rhet-Tomb Mystic (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Scuttletide (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Seasoned Hallowblade (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Sepulchral Primordial",
+     "pending_on": []
+    },
+    {
+     "card": "Shadowgrange Archfiend (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Sharuum the Hegemon",
+     "pending_on": []
+    },
+    {
+     "card": "Skirge Familiar",
+     "pending_on": []
+    },
+    {
+     "card": "Spawnsire of Ulamog (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Sphinx of the Final Word (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Sphinx of the Second Sun (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Tainted Indulgence (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "The Soul Stone (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "The Underworld Cookbook (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "The Walls of Ba Sing Se (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Thirst for Identity (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Tireless Tribe (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Trained Pronghorn (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Transpose",
+     "pending_on": []
+    },
+    {
+     "card": "Trickster Mage (not in the CMD pool)",
+     "pending_on": []
+    },
+    {
+     "card": "Vile Mutilator",
+     "pending_on": []
+    },
+    {
+     "card": "Zetalpa, Primal Dawn (not in the CMD pool)",
      "pending_on": []
     }
    ]

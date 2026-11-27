@@ -47,6 +47,14 @@ fn mana_aura(d: &mut CardDef) {
     d.mana_ext.enchanted_land_extra_any = true;
 }
 
+/// "Return a [subtype] you control to its owner's hand: Untap target creature. Activate only once
+/// each turn." (Quirion Ranger, Wirewood Symbiote)
+fn return_to_untap(d: &mut CardDef, sub: &'static str) {
+    let n = activated(d, "", false, vec![CREATURE], vec![Effect::UntapTarget(0)]);
+    d.activated[n].return_own_subtype = Some(sub);
+    d.activated[n].once_each_turn = true;
+}
+
 /// Extort (CR 702.101): "Whenever you cast a spell, you may pay {W/B}. If you do, each opponent
 /// loses 1 life and you gain that much life."
 fn extort(d: &mut CardDef) {
@@ -1869,6 +1877,339 @@ pub fn script(name: &str) -> Option<Script> {
                 ];
             },
         ),
+        // ---- idea decks: Kenrith ----
+        "Chrome Mox" => s(
+            &[
+                "Imprint — When this artifact enters, you may exile a nonartifact, nonland card from your hand.",
+                "{T}: Add one mana of any of the exiled card's colors.",
+            ],
+            |d, _| {
+                on(d, When::Enters, vec![], vec![Effect::ImprintNonartifactNonlandFromHand]);
+                d.mana = Some(ManaSource::of(&Color::ALL));
+                d.mana_ext.mana_imprinted_colors = true;
+            },
+        ),
+        "Mox Diamond" => s(
+            &[
+                "If this artifact would enter, you may discard a land card instead. If you do, put this artifact onto the battlefield. If you don't, put it into its owner's graveyard.",
+                "{T}: Add one mana of any color.",
+            ],
+            |d, _| {
+                // Asked as the spell resolves, before it would enter (CR 614.1c). Simplification: put
+                // onto the battlefield by an effect instead of cast, it isn't asked.
+                d.mana_ext.enters_discard_land_or_graveyard = true;
+                d.mana = Some(ManaSource::of(&Color::ALL));
+            },
+        ),
+        "Elvish Spirit Guide" => s(&["Exile this card from your hand: Add {G}."], |d, _| {
+            // On the stack, like Phyrexian Altar.
+            let n = activated(d, "", false, vec![], vec![Effect::AddMana { color: Color::Green, n: 1 }]);
+            d.activated[n].from_hand_exile = true;
+        }),
+        "Lion's Eye Diamond" => s(
+            &["Discard your hand, Sacrifice this artifact: Add three mana of any one color. Activate only as an instant."],
+            |d, _| {
+                // On the stack, like Phyrexian Altar.
+                let n = activated(d, "", false, vec![], vec![Effect::AddManaOneColor(3)]);
+                d.activated[n].sacrifice_self = true;
+                d.activated[n].discard_hand = true;
+            },
+        ),
+        // ---- idea decks: Sephiroth ----
+        "Westvale Abbey // Ormendahl, Profane Prince" => s(
+            &[
+                "{T}: Add {C}.",
+                "{5}, {T}, Pay 1 life: Create a 1/1 white and black Human Cleric creature token.",
+                "{5}, {T}, Sacrifice five creatures: Transform this land, then untap it.",
+            ],
+            |d, t| {
+                d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                let n = activated(d, "{5}", true, vec![], vec![Effect::CreateToken { who: Who::You, def: t.human_cleric, n: 1 }]);
+                d.activated[n].life = 1;
+                let n = activated(d, "{5}", true, vec![], vec![Effect::TransformSelf, Effect::UntapSelf]);
+                d.activated[n].sacrifice_n_creatures = 5;
+            },
+        ),
+        "Tekuthal, Inquiry Dominus" => s(
+            &[
+                "If you would proliferate, proliferate twice instead.",
+                "{1}{U/P}{U/P}, Remove three counters from among other artifacts, creatures, and planeswalkers you control: Put an indestructible counter on Tekuthal.",
+            ],
+            |d, _| {
+                d.proliferate_twice = true;
+                let n = activated(d, "{1}{U}{U}", false, vec![], vec![Effect::KeywordCounterSelf(Keywords::INDESTRUCTIBLE)]);
+                d.activated[n].phyrexian = [0, 2, 0, 0, 0];
+                d.activated[n].remove_counters_from_others = 3;
+            },
+        ),
+        "Deathrite Shaman" => s(
+            &[
+                "{T}: Exile target land card from a graveyard. Add one mana of any color.",
+                "{B}, {T}: Exile target instant or sorcery card from a graveyard. Each opponent loses 2 life.",
+                "{G}, {T}: Exile target creature card from a graveyard. You gain 2 life.",
+            ],
+            |d, _| {
+                // The mana ability goes on the stack, like Phyrexian Altar (it has a target).
+                let card = Filter { players: false, creatures: false, planeswalkers: false, graveyard: Some(false), ..Filter::ANY };
+                let land = Filter { land_cards: true, ..card };
+                activated(d, "", true, vec![land], vec![Effect::Exile(0), Effect::AddManaAnyColor]);
+                let spell_card = Filter { instant_or_sorcery: true, ..card };
+                activated(d, "{B}", true, vec![spell_card], vec![Effect::Exile(0), Effect::LoseLife { who: Who::EachOpponent, n: 2 }]);
+                let creature = Filter { graveyard: Some(true), ..card };
+                activated(d, "{G}", true, vec![creature], vec![Effect::Exile(0), Effect::GainLife { who: Who::You, n: 2 }]);
+            },
+        ),
+        // ---- Raffine ----
+        "Glen Elendra Guardian" => s(
+            &[
+                "This creature enters with a -1/-1 counter on it.",
+                "{1}{U}, Remove a counter from this creature: Counter target noncreature spell. Its controller draws a card.",
+            ],
+            |d, _| {
+                d.mana_ext.enters_with_minus_counters = 1;
+                let noncreature = Filter { spell_creature: Some(false), ..SPELL };
+                let n = activated(
+                    d,
+                    "{1}{U}",
+                    false,
+                    vec![noncreature],
+                    vec![Effect::Draw { who: Who::ControllerOf(0), n: 1 }, Effect::Counter(0)],
+                );
+                d.activated[n].remove_counters_self = 1;
+            },
+        ),
+        // ---- Raggadragga ----
+        "Comet Storm" => s(
+            &[
+                "Multikicker {1}",
+                "Choose any target, then choose another target for each time this spell was kicked. Comet Storm deals X damage to each of them.",
+            ],
+            |d, _| {
+                // Up to seven kicks (eight targets): more than a 1v1 board offers.
+                d.mana_ext.multikicker = ManaCost::parse("{1}");
+                let mut a = Ability::new(
+                    vec![Filter::ANY; 8],
+                    (0..8).map(|i| Effect::DamageX { to: Recipient::Target(i) }).collect(),
+                );
+                a.min_targets = Some(1);
+                a.targets_one_plus_kicks = true;
+                d.spell = Some(a);
+            },
+        ),
+        // ---- Hearthhull, Neriv ----
+        "Changeling Wayfinder" => s(
+            &["Changeling", "When this creature enters, you may search your library for a basic land card, reveal it, put it into your hand, then shuffle."],
+            |d, _| {
+                // Searching may find nothing, which covers "you may".
+                d.changeling = true;
+                on(d, When::Enters, vec![], vec![search(SearchFor::BasicLand, SearchTo::Hand)]);
+            },
+        ),
+        "Reaping Willow" => s(
+            &[
+                "This creature enters with two -1/-1 counters on it.",
+                "{1}{W/B}, Remove two counters from this creature: Return target creature card with mana value 3 or less from your graveyard to the battlefield. Activate only as a sorcery.",
+            ],
+            |d, _| {
+                d.mana_ext.enters_with_minus_counters = 2;
+                let card = Filter { max_mana_value: Some(3), ..graveyard_cards(true, Controller::You) };
+                let n = activated(d, "{1}{W/B}", false, vec![card], vec![Effect::Reanimate(0)]);
+                d.activated[n].remove_counters_self = 2;
+                d.activated[n].sorcery = true;
+            },
+        ),
+        "Flitterwing Nuisance" => s(
+            &[
+                "This creature enters with a -1/-1 counter on it.",
+                "{2}{U}, Remove a counter from this creature: Whenever a creature you control deals combat damage to a player or planeswalker this turn, draw a card.",
+            ],
+            |d, _| {
+                d.mana_ext.enters_with_minus_counters = 1;
+                // The draw goes on the stack only from the delayed entry (as Glimpse of Nature).
+                let k = d.triggers.len();
+                on(d, When::Never, vec![], vec![draw(1)]);
+                let when = When::YourCreatureDealsCombatDamageToPlayerOrPlaneswalkerThisTurn;
+                let n = activated(d, "{2}{U}", false, vec![], vec![Effect::DelayedThisTurn { when, trigger: k }]);
+                d.activated[n].remove_counters_self = 1;
+            },
+        ),
+        "Forbidden Orchard" => s(
+            &[
+                "{T}: Add one mana of any color.",
+                "Whenever you tap this land for mana, target opponent creates a 1/1 colorless Spirit creature token.",
+            ],
+            |d, t| {
+                d.mana = Some(ManaSource::of(&Color::ALL));
+                on(d, When::TappedForMana, vec![Filter::PLAYER.controlled_by(Controller::Opponent)], vec![Effect::CreateToken { who: Who::TargetPlayer(0), def: t.spirit_1, n: 1 }]);
+            },
+        ),
+        // ---- Vaevictis ----
+        "Three Tree City" => s(
+            &[
+                "As Three Tree City enters, choose a creature type.",
+                "{T}: Add {C}.",
+                "{2}, {T}: Choose a color. Add an amount of mana of that color equal to the number of creatures you control of the chosen type.",
+            ],
+            |d, _| {
+                // The second ability goes on the stack, like Phyrexian Altar.
+                d.choose_creature_type = true;
+                d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                activated(d, "{2}", true, vec![], vec![Effect::AddManaOneColorPerChosenType]);
+            },
+        ),
+        "Flare of Malice" => s(
+            &[
+                "You may sacrifice a nontoken black creature rather than pay this spell's mana cost.",
+                "Each opponent sacrifices a creature or planeswalker with the greatest mana value among creatures and planeswalkers they control.",
+            ],
+            |d, _| {
+                d.mana_ext.alt_sacrifice_nontoken_color = Some(2);
+                spell(d, vec![], vec![Effect::OpponentSacrificesGreatestMvCreatureOrPlaneswalker]);
+            },
+        ),
+        "Scuzzback Scrounger" => s(
+            &["At the beginning of your first main phase, you may blight 1. If you do, create a Treasure token."],
+            |d, t| {
+                let treasure = Effect::CreateToken { who: Who::You, def: t.treasure, n: 1 };
+                on(d, When::FirstMainPhaseYourTurn, vec![], vec![Effect::MayBlightThen(1), treasure]);
+            },
+        ),
+        "Mina and Denn, Wildborn" => s(
+            &[
+                "You may play an additional land on each of your turns.",
+                "{R}{G}, Return a land you control to its owner's hand: Target creature gains trample until end of turn.",
+            ],
+            |d, _| {
+                d.extra_land_drops = 1;
+                let n = activated(d, "{R}{G}", false, vec![CREATURE], vec![Effect::Grant { slot: 0, keywords: Keywords::TRAMPLE }]);
+                d.activated[n].return_land = true;
+            },
+        ),
+        "Wild Growth" => s(
+            &["Enchant land", "Whenever enchanted land is tapped for mana, its controller adds an additional {G}."],
+            |d, _| {
+                mana_aura(d);
+                d.mana_ext.enchanted_land_extra_color = Some(4);
+            },
+        ),
+        "Utopia Sprawl" => s(
+            &[
+                "Enchant Forest",
+                "As this Aura enters, choose a color.",
+                "Whenever enchanted Forest is tapped for mana, its controller adds an additional one mana of the chosen color.",
+            ],
+            |d, _| {
+                mana_aura(d);
+                let forest = Filter {
+                    players: false,
+                    creatures: false,
+                    planeswalkers: false,
+                    lands: true,
+                    subtype: Some("Forest"),
+                    ..Filter::ANY
+                };
+                d.spell = Some(Ability::new(vec![forest], vec![]));
+                d.choose_color = true;
+                d.mana_ext.enchanted_land_extra_color = Some(5);
+            },
+        ),
+        "Shimmerwilds Growth" => s(
+            &[
+                "Enchant land",
+                "As this Aura enters, choose a color.",
+                "Enchanted land is the chosen color.",
+                "Whenever enchanted land is tapped for mana, its controller adds an additional one mana of the chosen color.",
+            ],
+            |d, _| {
+                // Simplification: the land doesn't become the chosen color (only its mana matters).
+                mana_aura(d);
+                d.choose_color = true;
+                d.mana_ext.enchanted_land_extra_color = Some(5);
+            },
+        ),
+        "Concordant Crossroads" => s(&["All creatures have haste."], |d, _| {
+            static_on(d, Scope::YourCreatures, false, Keywords::HASTE);
+            static_on(d, Scope::OpponentsCreatures, false, Keywords::HASTE);
+        }),
+        "Quirion Ranger" => s(
+            &["Return a Forest you control to its owner's hand: Untap target creature. Activate only once each turn."],
+            |d, _| return_to_untap(d, "Forest"),
+        ),
+        "Scryb Ranger" => s(
+            &[
+                "Flying, protection from blue",
+                "Return a Forest you control to its owner's hand: Untap target creature. Activate only once each turn.",
+            ],
+            |d, _| {
+                d.keywords = d.keywords.with(Keywords::FLASH).with(Keywords::FLYING);
+                static_on(d, Scope::This, false, Keywords::NONE);
+                d.statics.last_mut().expect("just added").protection = [false, true, false, false, false];
+                return_to_untap(d, "Forest");
+            },
+        ),
+        "Wirewood Symbiote" => s(
+            &["Return an Elf you control to its owner's hand: Untap target creature. Activate only once each turn."],
+            |d, _| return_to_untap(d, "Elf"),
+        ),
+        "Wolfwillow Haven" => s(
+            &[
+                "Enchant land",
+                "Whenever enchanted land is tapped for mana, its controller adds an additional {G}.",
+                "{4}{G}, Sacrifice this Aura: Create a 2/2 green Wolf creature token. Activate only during your turn.",
+            ],
+            |d, t| {
+                mana_aura(d);
+                d.mana_ext.enchanted_land_extra_color = Some(4);
+                let wolf = Effect::CreateToken { who: Who::You, def: t.wolf_green, n: 1 };
+                let n = activated(d, "{4}{G}", false, vec![], vec![wolf]);
+                d.activated[n].sacrifice_self = true;
+                d.activated[n].your_turn_only = true;
+            },
+        ),
+        "Earthcraft" => s(&["Tap an untapped creature you control: Untap target basic land."], |d, _| {
+            let basic = Filter {
+                players: false,
+                creatures: false,
+                planeswalkers: false,
+                lands: true,
+                basic_only: true,
+                ..Filter::ANY
+            };
+            let n = activated(d, "", false, vec![basic], vec![Effect::UntapTarget(0)]);
+            d.activated[n].tap_named_creature = true;
+        }),
+        "Castle Garenbrig" => s(
+            &[
+                "This land enters tapped unless you control a Forest.",
+                "{T}: Add {G}.",
+                "{2}{G}{G}, {T}: Add six {G}. Spend this mana only to cast creature spells or activate abilities of creatures.",
+            ],
+            |d, _| {
+                d.mana_ext.enters_tapped_unless_other_subtype = Some(("Forest", 1));
+                d.mana = Some(ManaSource::of(&[Color::Green]));
+                activated(d, "{2}{G}{G}", true, vec![], vec![Effect::AddCreatureSpellOrAbilityMana(6, Color::Green)]);
+            },
+        ),
+        // ---- Ral ----
+        "Braid of Fire" => s(&["Cumulative upkeep—Add {R}."], |d, _| {
+            on(d, When::Upkeep { your_turn_only: true }, vec![], vec![Effect::CumulativeUpkeepAddMana(Color::Red)]);
+        }),
+        // ---- Atla Palani ----
+        "Instill Energy" => s(
+            &[
+                "Enchant creature",
+                "Enchanted creature can attack as though it had haste.",
+                "{0}: Untap enchanted creature. Activate only during your turn and only once each turn.",
+            ],
+            |d, _| {
+                d.aura = true;
+                d.spell = Some(Ability::new(vec![CREATURE], vec![]));
+                d.mana_ext.enchanted_attacks_as_haste = true;
+                let n = activated(d, "{0}", false, vec![], vec![Effect::UntapAttached]);
+                d.activated[n].your_turn_only = true;
+                d.activated[n].once_each_turn = true;
+            },
+        ),
         _ => None,
     }
 }
@@ -2097,4 +2438,33 @@ pub const PG_D1_SCRIPTED: &[&str] = &[
     "Invigorate",
     "Pyrrhic Strike",
     "Tifa's Limit Break",
+    "Chrome Mox",
+    "Mox Diamond",
+    "Elvish Spirit Guide",
+    "Lion's Eye Diamond",
+    "Instill Energy",
+    "Westvale Abbey // Ormendahl, Profane Prince",
+    "Tekuthal, Inquiry Dominus",
+    "Deathrite Shaman",
+    "Braid of Fire",
+    "Flare of Malice",
+    "Scuzzback Scrounger",
+    "Mina and Denn, Wildborn",
+    "Wild Growth",
+    "Utopia Sprawl",
+    "Shimmerwilds Growth",
+    "Concordant Crossroads",
+    "Quirion Ranger",
+    "Scryb Ranger",
+    "Wirewood Symbiote",
+    "Wolfwillow Haven",
+    "Earthcraft",
+    "Castle Garenbrig",
+    "Glen Elendra Guardian",
+    "Comet Storm",
+    "Changeling Wayfinder",
+    "Reaping Willow",
+    "Flitterwing Nuisance",
+    "Forbidden Orchard",
+    "Three Tree City",
 ];

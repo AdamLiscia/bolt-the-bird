@@ -162,7 +162,7 @@
   {
    "card": "Ygra, Eater of All",
    "deck": "Ygra, Eater of All",
-   "missing": "d2 batch 16: the Food-to-graveyard trigger is in (When::SubtypeToGraveyardFromBattlefield(\"Food\")). d1 batch 15: ward—sacrifice a Food is in (d.ward_sacrifice = 1 with d.mana_ext.ward_sacrifice_subtype = Some(\"Food\")). Still needs: other creatures are Food artifacts with the Food ability (d3, types) [script: d2, 2026-11-27, on lane B's other_creatures_have + d1's ward + d3's Food types]",
+   "missing": "d2 batch 16: the Food-to-graveyard trigger is in (When::SubtypeToGraveyardFromBattlefield(\"Food\")). d1 batch 15: ward\u2014sacrifice a Food is in (d.ward_sacrifice = 1 with d.mana_ext.ward_sacrifice_subtype = Some(\"Food\")). Still needs: other creatures are Food artifacts with the Food ability (d3, types) [script: d2, 2026-11-27, on lane B's other_creatures_have + d1's ward + d3's Food types]",
    "lane": "d1",
    "theme": "effects",
    "owner": "d2"
@@ -1590,7 +1590,7 @@
   {
    "card": "Ulamog, the Defiler",
    "deck": "The Gitrog, Ravenous Ride (RuricMo)",
-   "missing": "needs core: ward—sacrifice two permanents, counters from the greatest mana value in exile, annihilator X, and exiling half a library",
+   "missing": "needs core: ward\u2014sacrifice two permanents, counters from the greatest mana value in exile, annihilator X, and exiling half a library",
    "lane": "d2",
    "theme": "effects",
    "owner": "d2"
@@ -2030,7 +2030,7 @@
   {
    "card": "Valgavoth, Terror Eater",
    "deck": "Kaalia of the Vast",
-   "missing": "needs core: ward—sacrifice three, exile-instead-of-graveyard, and playing those cards for life",
+   "missing": "needs core: ward\u2014sacrifice three, exile-instead-of-graveyard, and playing those cards for life",
    "lane": "d2",
    "theme": "replace_filter",
    "owner": "mac-b"
@@ -2263,7 +2263,7 @@
   {
    "card": "Liliana, Heretical Healer // Liliana, Defiant Necromancer",
    "deck": "Henrika Domnathi // Henrika, Infernal Seer",
-   "missing": "needs core: its back face's −X reanimation and emblem",
+   "missing": "needs core: its back face's \u2212X reanimation and emblem",
    "lane": "d2",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -4512,7 +4512,7 @@
    "owner": "d2"
   },
   {
-   "card": "Palantír of Orthanc",
+   "card": "Palant\u00edr of Orthanc",
    "deck": "Zhulodok, Void Gorger (Adam)",
    "missing": "trigger (Zhulodok: cast trigger; its cascade is d3's) [done by d2 batch 22: Effect::TargetMayLetYouDrawElseMillKindCounters, Decision::LetDrawOrMill, scripted in pg_d2]",
    "lane": "mac-b",
@@ -5116,7 +5116,7 @@
   {
    "card": "Torment of Hailfire",
    "deck": "Damia, Sage of Stone (Grande)",
-   "missing": "repeat X times: each opponent loses 3 unless they sacrifice a nonland permanent or discard (like Onyx's −8)",
+   "missing": "repeat X times: each opponent loses 3 unless they sacrifice a nonland permanent or discard (like Onyx's \u22128)",
    "lane": "merger",
    "theme": "effects",
    "owner": "d3"
@@ -7505,6 +7505,78 @@
    "status": "waiting: 'enters with three wish counters' (a CardDef field for kind counters on entering; merger) and 'an opponent gains control of this artifact' (an effect)"
   },
   {
+   "card": "Wild Growth",
+   "deck": "Sythis, Harvest's Hand",
+   "missing": "enchanted land adds an additional {G} [claimed by d1, idea_next11]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Utopia Sprawl",
+   "deck": "Sythis, Harvest's Hand",
+   "missing": "enchant Forest; chosen color; enchanted land adds that color [claimed by d1, idea_next11]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Shimmerwilds Growth",
+   "deck": "Sythis, Harvest's Hand",
+   "missing": "chosen color; enchanted land adds that color [claimed by d1, idea_next11] [d1 batch 37: scripted. Known limit (accepted for the demo): \"Enchanted land is the chosen color\" isn't applied, only the mana]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Concordant Crossroads",
+   "deck": "Toski, Bearer of Secrets",
+   "missing": "all creatures have haste (keywords) [claimed by d1, idea_next11]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Quirion Ranger",
+   "deck": "Toski, Bearer of Secrets",
+   "missing": "return a Forest you control as a cost; once each turn [claimed by d1, idea_next11]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Scryb Ranger",
+   "deck": "Toski, Bearer of Secrets",
+   "missing": "return a Forest you control as a cost; once each turn [claimed by d1, idea_next11]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Wirewood Symbiote",
+   "deck": "Toski, Bearer of Secrets",
+   "missing": "return an Elf you control as a cost; once each turn [claimed by d1, idea_next11]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Earthcraft",
+   "deck": "Rocco, Cabaretti Caterer",
+   "missing": "tap a named untapped creature as a cost; target basic land [claimed by d1, idea_next11]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Castle Garenbrig",
+   "deck": "Toski, Bearer of Secrets",
+   "missing": "six {G} only for creature spells or creatures' abilities [claimed by d1, idea_next11]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
    "card": "End-Blaze Epiphany",
    "deck": "Niv-Mizzet, Visionary (idea)",
    "missing": "a delayed 'when that creature dies this turn' with its power; exile that many, choose one to play",
@@ -7787,10 +7859,10 @@
    "card": "Nim Deathmantle",
    "deck": "IDEA Rocco, Cabaretti Caterer",
    "missing": "a nontoken creature to your graveyard from the battlefield: may pay {4}, return and attach",
-   "lane": "d3",
+   "lane": "d2",
    "theme": "triggers",
-   "owner": "d3",
-   "status": "moved to d3 whole (coordinator, 2026-11-27): d3 has the pieces on its branch (db510f5)"
+   "owner": "d2",
+   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
   },
   {
    "card": "Twilight Drover",
@@ -7931,10 +8003,10 @@
    "card": "Zur the Enchanter",
    "deck": "IDEA Alela, Artful Provocateur",
    "missing": "attacks: may search an enchantment MV 3 or less onto the battlefield",
-   "lane": "d3",
+   "lane": "d2",
    "theme": "triggers",
-   "owner": "d3",
-   "status": "moved to d3 whole (coordinator, 2026-11-27): d3 has the pieces on its branch (db510f5)"
+   "owner": "d2",
+   "status": "needs core (d3, searches with filters): SearchFor an enchantment card with mana value 3 or less; the attack trigger exists (When::Attacks + may)"
   },
   {
    "card": "Crime Novelist",
@@ -8009,7 +8081,137 @@
    "status": "done: d2 batch 43 (existing pieces)"
   },
   {
-   "card": "Nazgûl",
+   "card": "Brain Freeze",
+   "deck": "IDEA Kenrith, the Returned King",
+   "missing": "idea-deck claim (2026-11-27) [done by d3 batch 39: scripted (pg_d3)]",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Blackblade Reforged",
+   "deck": "IDEA Tifa Lockhart",
+   "missing": "idea-deck claim (2026-11-27) [done by d3 batch 39: Scale::PerLandYouControl, scripted (pg_d3)]",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Nahiri's Lithoforming",
+   "deck": "IDEA Hearthhull, the Worldseed",
+   "missing": "idea-deck claim (2026-11-27) [d3 batch 40: Effect::SacrificeXLandsDrawEach (Decision::SacrificeLandsDraw) and Effect::ExtraLandsThisTurnX are in; needs d1: 'Lands you control enter tapped this turn' (land entry), then d3 scripts it]",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Darksteel Mutation",
+   "deck": "IDEA Sythis, Harvest's Hand",
+   "missing": "idea-deck claim (idea_next11, 2026-11-27): type change and lost abilities on the enchanted creature (Insect artifact creature 0/1, indestructible); scripted after the pool push",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Kenrith's Transformation",
+   "deck": "IDEA Sythis, Harvest's Hand",
+   "missing": "idea-deck claim (idea_next11, 2026-11-27): type change and lost abilities on the enchanted creature (green Elk 3/3); scripted after the pool push",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Katilda, Dawnhart Martyr // Katilda's Rising Dawn",
+   "deck": "IDEA Sythis, Harvest's Hand",
+   "missing": "idea-deck claim (idea_next11, 2026-11-27): scaled P/T (Spirits and/or enchantments you control); disturb is Mac C's; scripted after the pool push",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Urza's Ruinous Blast",
+   "deck": "IDEA Ratadrabik of Urborg",
+   "missing": "idea-deck claim (idea_next11, 2026-11-27): exile all nonland permanents that aren't legendary; scripted after the pool push",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "The Battle of Bywater",
+   "deck": "IDEA Baylen, the Haymaker",
+   "missing": "idea-deck claim (idea_next11, 2026-11-27): destroy all creatures with power 3 or greater, then a Food per creature you control; scripted after the pool push",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Ashaya, Soul of the Wild",
+   "deck": "IDEA Toski, Bearer of Secrets",
+   "missing": "idea-deck claim (idea_next11, 2026-11-27): scaled P/T (lands you control) and nontoken creatures you control are Forest lands; scripted after the pool push",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Dakkon Blackblade",
+   "deck": "IDEA Dakkon Blackblade",
+   "missing": "idea-deck claim (idea_next11, 2026-11-27): scaled P/T (lands you control: Scale::PerLandYouControl, d3 batch 39); scripted after the pool push",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Reckless Endeavor",
+   "deck": "IDEA Prosper, Tome-Bound",
+   "missing": "idea-deck claim (idea_next11, 2026-11-27): roll two d12 and choose one result (damage to each creature, Treasures for the other); scripted after the pool push",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Scion of Oona",
+   "deck": "IDEA Alela, Artful Provocateur",
+   "missing": "idea-deck claim (idea_next11, 2026-11-27): Faerie lord with granted shroud; scripted after the pool push",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Loran's Escape",
+   "deck": "IDEA Ratadrabik of Urborg",
+   "missing": "idea-deck claim (idea_next11, 2026-11-27): artifact-or-creature target granted hexproof and indestructible, then scry 1; scripted after the pool push",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Garruk, Primal Hunter",
+   "deck": "IDEA Rocco, Cabaretti Caterer",
+   "missing": "idea-deck claim (idea_next11, 2026-11-27): -3 draws by the greatest power among your creatures; -6 a Wurm per land you control; scripted after the pool push",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Nim Deathmantle",
+   "deck": "IDEA Rocco, Cabaretti Caterer",
+   "missing": "a nontoken creature to your graveyard from the battlefield: may pay {4}, return and attach",
+   "lane": "d3",
+   "theme": "triggers",
+   "owner": "d3",
+   "status": "moved to d3 whole (coordinator, 2026-11-27): d3 has the pieces on its branch (db510f5)"
+  },
+  {
+   "card": "Zur the Enchanter",
+   "deck": "IDEA Alela, Artful Provocateur",
+   "missing": "attacks: may search an enchantment MV 3 or less onto the battlefield",
+   "lane": "d3",
+   "theme": "triggers",
+   "owner": "d3",
+   "status": "moved to d3 whole (coordinator, 2026-11-27): d3 has the pieces on its branch (db510f5)"
+  },
+  {
+   "card": "Nazg\u00fbl",
    "deck": "the Ring (Bolt's ruling: d2)",
    "missing": "the Ring tempts you: counters on each Wraith (on d4's Ring subsystem)",
    "lane": "d2",

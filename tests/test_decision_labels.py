@@ -384,9 +384,60 @@ def test_demonic_consultation_names_a_card():
     assert label(dec, "No", 0) == "Name a card that isn't in your library"
 
 
+def test_the_moxen_and_lions_eye_diamond_ask_their_choices():
+    imprint = {"kind": "ImprintNonartifactNonland", "source": [3, 1]}
+    assert sv._decision_label(imprint, "Pick", 0, "Forest") == "Exile (imprint): Forest"
+    assert label(imprint, "No", 0) == "Don't exile a card"
+    mox = {"kind": "DiscardLandOrGraveyard", "card": [3, 1]}
+    assert sv._decision_label(mox, "Pick", 0, "Forest") == "Discard (it stays): Forest"
+    assert label(mox, "No", 0) == "Don't discard (Thriving Heath goes to the graveyard)"
+    led = {"kind": "ManaOfOneColor", "source": [3, 1], "n": 3}
+    assert label(led, "Mode", 3) == "Add 3 red mana"
+
+
+def test_a_shock_land_names_its_life():
+    assert (
+        label({"kind": "ShockLand", "card": [3, 1], "life": 3}, "Yes", 0)
+        == "Pay 3 life: Thriving Heath enters untapped"
+    )
+    assert (
+        label({"kind": "ShockLand", "card": [3, 1], "life": 2}, "Yes", 0)
+        == "Pay 2 life: Thriving Heath enters untapped"
+    )
+    assert label({"kind": "ShockLand", "card": [3, 1]}, "No", 0) == "Thriving Heath enters tapped"
+
+
+def test_westvale_abbey_picks_each_creature_to_sacrifice():
+    dec = {"kind": "SacrificeCreaturesForCost", "left": 5}
+    assert sv._decision_label(dec, "Pick", 0, "Llanowar Elves") == "Sacrifice (for the cost): Llanowar Elves"
+    assert label(dec, "No", 0) == "Don't activate it"
+
+
+def test_braid_of_fire_adds_mana_or_is_sacrificed():
+    dec = {"kind": "UpkeepAddManaOrSacrifice", "card": [3, 1], "n": 2}
+    assert label(dec, "Yes", 0) == "Add 2 mana (keep Thriving Heath)"
+    assert label(dec, "No", 0) == "Sacrifice Thriving Heath"
+
+
+def test_scuzzback_scrounger_blights_a_creature_or_declines():
+    dec = {"kind": "BlightCreature", "n": 1}
+    assert sv._decision_label(dec, "Pick", 0, "Llanowar Elves") == "Blight 1 (-1/-1 counters on): Llanowar Elves"
+    assert label(dec, "No", 0) == "Don't blight"
+
+
 def test_end_blaze_epiphany_chooses_an_exiled_card_to_play():
     dec = {"kind": "ChooseExiledToPlay"}
     assert sv._decision_label(dec, "Pick", 0, "Sol Ring") == "You may play until the end of your next turn: Sol Ring"
+
+
+def test_kindred_summons_names_a_creature_type():
+    dec = {"kind": "KindredSummonsType", "options": ["Dragon", "Elf"]}
+    assert label(dec, "Mode", 1) == "Kindred Summons: choose Elf"
+
+
+def test_lithoforming_sacrifices_a_land_to_draw():
+    dec = {"kind": "SacrificeLandsDraw", "left": 1, "drawn": 0}
+    assert sv._decision_label(dec, "Pick", 0, "Mountain") == "Sacrifice (draw a card) Mountain"
 
 
 def test_charismatic_conqueror_asks_to_tap_the_permanent_or_give_a_token():
