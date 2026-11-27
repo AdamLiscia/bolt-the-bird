@@ -184,6 +184,7 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         verb = verb or {"KeepNonlandOfType": "Keep", "HandToBottom": "Put on the bottom:", "SacrificeAnyNumber": "Sacrifice", "SacrificeCreatureOrPlaneswalkerEach": "Sacrifice", "ReturnAnotherPermanentCard": "Return to your hand:", "BasicsTappedUpTo": "Put onto the battlefield tapped:", "SignalTheClans": "Reveal", "BraidsSacrifice": "Sacrifice", "BraidsOpponent": "Sacrifice"}.get(d)  # fmt: skip
         verb = verb or {"ConniveDiscard": "Discard (connive):"}.get(d)
         verb = verb or {"LandOrCreatureFromHandTapped": "Put onto the battlefield tapped:"}.get(d)
+        verb = verb or {"ExiledWithToGraveyard": "Put into its owner's graveyard:"}.get(d)
         verb = verb or {"VowCreature": "Put a vow counter on (sacrifice the rest):", "DiscardOrLoseLife": "Discard"}.get(d)  # fmt: skip
         verb = verb or {"SacrificeOfType": "Sacrifice", "RevealedCreatureOnto": "Put onto the battlefield:"}.get(d)  # fmt: skip
         verb = verb or {"SacrificeAnotherPermanent": "Sacrifice", "TakeMilledCard": "Put into your hand:"}.get(d)

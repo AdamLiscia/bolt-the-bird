@@ -2668,6 +2668,13 @@ pub enum Effect {
     /// "Each opponent sacrifices a nontoken creature or planeswalker of their choice." (Sheoldred //
     /// The True Scriptures), as `Decision::SacrificeNontokenCreatureOrPlaneswalker`.
     OpponentSacrificesNontokenCreatureOrPlaneswalker,
+    /// Currency Converter: put a card exiled with the source (`Game::exiled_with`) into its
+    /// owner's graveyard (`Decision::ExiledWithToGraveyard`); create a `land` token if it's a land
+    /// card, a `nonland` token otherwise.
+    ExiledWithSourceToGraveyardToken {
+        land: usize,
+        nonland: usize,
+    },
     /// "Add N mana of any one color. Spend this mana only to cast creature spells." (Somberwald
     /// Sage: 3, one ability per color): N mana of that color held for creature spells
     /// (`Game::creature_color_mana`); it pays that color's pips, hybrid pips with it, and generic.

@@ -180,6 +180,9 @@ fn sylvan_library_draws_two_extra_and_pays_or_puts_back() {
 Pitfall: the draw step draws the top card of the library, so add library cards after the game reaches
 the main phase, or put a spare card on top.
 
+- **Desktop test suites (Adam, 2026-11-27):** two full suites may run at once on the desktop (two lock slots,
+  `-j 2` each, the second paused if memory dips); see docs/desktop-farm.md. The Mac stays one at a time.
+
 ## Before every commit
 
 The slow game-playing tests (tests/play.rs) are `#[ignore]`d, so a lane's `cargo test` skips them; the merger runs

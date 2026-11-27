@@ -1417,6 +1417,13 @@ pub enum Decision {
     /// Sheoldred // The True Scriptures: `Pick` a nontoken creature or planeswalker you control to
     /// sacrifice (asked only when there is one).
     SacrificeNontokenCreatureOrPlaneswalker,
+    /// Currency Converter: `Pick` one of `cards` (exiled with it) to put into its owner's
+    /// graveyard; then a `land` token for a land card, a `nonland` token otherwise.
+    ExiledWithToGraveyard {
+        cards: Vec<ObjId>,
+        land: usize,
+        nonland: usize,
+    },
     /// The Gitrog, Ravenous Ride: `Pick` a creature that saddled `mount` this turn to sacrifice, or
     /// `No` ("you may").
     SacrificeSaddler { mount: ObjId },
@@ -5077,6 +5084,9 @@ impl Game {
                 Some(EntryDoubler::Land) => land,
                 Some(EntryDoubler::LandOrSubtype(sub)) => {
                     (land || self.has_subtype(id, sub)) && self.obj(id).controller == self.obj(x).controller
+                }
+                Some(EntryDoubler::ArtifactOrCreature) => {
+                    self.types_of(id).artifact || self.types_of(id).creature
                 }
                 None => false,
             })
@@ -13318,6 +13328,9 @@ impl Game {
             Decision::ChooseRingBearer => self.ring_bearer_options(p),
             Decision::DelinaAgain { .. } => vec![Action::Yes, Action::No],
             Decision::LetDrawOrMill { .. } => vec![Action::Yes, Action::No],
+            Decision::ExiledWithToGraveyard { cards, .. } => {
+                cards.iter().copied().map(Action::Pick).collect()
+            }
             Decision::PickOneOf { cards, .. } => cards.iter().copied().map(Action::Pick).collect(),
             Decision::LandOrCreatureFromHandTapped { creature } => {
                 let creature = *creature;
@@ -15077,6 +15090,13 @@ impl Game {
             }
             (Decision::DelinaAgain { target }, Action::Yes) => self.delina_roll(p, target),
             (Decision::DelinaAgain { .. }, Action::No) => {}
+            (Decision::ExiledWithToGraveyard { land, nonland, .. }, Action::Pick(c)) => {
+                let is_land = self.def_of(c).types.land;
+                self.exiled_with.retain(|e| e.2 != c);
+                self.move_to(c, Zone::Graveyard);
+                self.create_token(p, if is_land { land } else { nonland });
+            }
+            (Decision::ExiledWithToGraveyard { .. }, _) => {}
             (Decision::LetDrawOrMill { player, .. }, Action::Yes) => {
                 self.draw(player);
             }
@@ -19970,6 +19990,23 @@ impl Game {
                         money: Vec::new(),
                     },
                 );
+            }
+            Effect::ExiledWithSourceToGraveyardToken { land, nonland } => {
+                let szcc = self.obj(src).zcc;
+                let cards: Vec<ObjId> = self
+                    .exiled_with
+                    .iter()
+                    .filter(|&&(s, sz, c, cz)| {
+                        s == src && sz == szcc && self.obj(c).zone == Zone::Exile && self.obj(c).zcc == cz
+                    })
+                    .map(|e| e.2)
+                    .collect();
+                if !cards.is_empty() {
+                    self.ask(
+                        item.controller,
+                        Decision::ExiledWithToGraveyard { cards, land, nonland },
+                    );
+                }
             }
             Effect::TargetMayLetYouDrawElseMillKindCounters(slot) => {
                 if let Some(q) = self
