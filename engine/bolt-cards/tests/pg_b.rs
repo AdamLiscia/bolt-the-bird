@@ -1891,7 +1891,7 @@ fn yawgmoth_sacrifices_for_counters_and_proliferates() {
     assert_eq!(hand_size(&g, 0), before + 1);
     let card = g.players[0].hand[0];
     act(&mut g, Action::ActivateWith(yawg, 1, card));
-    resolve_all(&mut g, &[]);
+    resolve_all(&mut g, &[Action::Pick(theirs), Action::Yes]); // proliferate is the player's choice
     assert_eq!(g.toughness(theirs), 5, "proliferated their -1/-1 counter");
     assert_eq!(g.obj(card).zone, Zone::Graveyard);
 }

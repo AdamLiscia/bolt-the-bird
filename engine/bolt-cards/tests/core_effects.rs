@@ -3245,3 +3245,86 @@ fn a_spell_targets_filter_reads_a_split_spells_cast_half_mana_value() {
     assert!(g.target_ok(&at_most(2), 1, common::obj(boom)));
     assert!(!g.target_ok(&at_most(1), 1, common::obj(boom)));
 }
+
+#[test]
+fn exile_top_cards_cast_those_of_a_color_this_turn() {
+    let (mut g, t) = game_with(vec![sorcery(
+        vec![],
+        vec![Effect::ExileTopCastColorThisTurn {
+            n: 2,
+            color: bolt_core::Color::Red,
+        }],
+    )]);
+    let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Library);
+    let bolt = g.add_card(0, cid("Lightning Bolt"), Zone::Library);
+    let c = g.add_card(0, t, Zone::Hand);
+    act(&mut g, Action::Cast(c));
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.obj(bolt).zone, g.obj(elves).zone), (Zone::Exile, Zone::Exile));
+    assert!(g.obj(bolt).playable.is_some(), "red: castable this turn");
+    assert!(g.obj(elves).playable.is_none(), "green: stays exiled");
+}
+
+#[test]
+fn proliferate_chooses_permanents_and_players_and_adds_each_kind() {
+    let (mut g, t) = game_with(vec![sorcery(vec![], vec![Effect::Proliferate])]);
+    let mine = g.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
+    let other = g.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
+    let theirs = g.add_card(1, cid("Pippin, Guard of the Citadel"), Zone::Battlefield); // 2/2
+    let plain = g.add_card(1, cid("Llanowar Elves"), Zone::Battlefield);
+    g.objects[mine.0 as usize].counters = 1;
+    g.objects[mine.0 as usize].stun = 1;
+    g.objects[other.0 as usize].counters = 1;
+    g.objects[theirs.0 as usize].counters = -1;
+    g.objects[theirs.0 as usize].slime = 2;
+    g.players[1].poison = 3;
+    g.players[0].poison = 1;
+    let c = g.add_card(0, t, Zone::Hand);
+    act(&mut g, Action::Cast(c));
+    while !matches!(g.pending, Pending::Decide(0)) {
+        act(&mut g, Action::PassPriority);
+    }
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Pick(mine)) && legal.contains(&Action::Pick(theirs)));
+    assert!(!legal.contains(&Action::Pick(plain)), "no counters");
+    assert!(legal.contains(&Action::Mode(1)) && legal.contains(&Action::Yes));
+    act(&mut g, Action::Pick(mine));
+    assert!(!g.legal_actions().contains(&Action::Pick(mine)), "once each");
+    act(&mut g, Action::Pick(theirs));
+    act(&mut g, Action::Mode(1));
+    act(&mut g, Action::Yes);
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        (g.obj(mine).counters, g.obj(mine).stun),
+        (2, 2),
+        "each kind it has"
+    );
+    assert_eq!(g.obj(other).counters, 1, "not chosen");
+    // A 2/2 with two -1/-1 counters dies; its slime is remembered.
+    assert_eq!(
+        (g.obj(theirs).zone, g.obj(theirs).last_slime),
+        (Zone::Graveyard, 3)
+    );
+    assert_eq!((g.players[1].poison, g.players[0].poison), (4, 1));
+}
+
+#[test]
+fn proliferate_may_choose_nothing_and_twice_with_tekuthal() {
+    let mut tek = CardDef::creature("Test Tekuthal", "{0}", 3, 5, Keywords::NONE);
+    tek.proliferate_twice = true;
+    let (mut g, t) = game_with(vec![sorcery(vec![], vec![Effect::Proliferate]), tek]);
+    let mine = g.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
+    g.objects[mine.0 as usize].counters = 1;
+    let c = g.add_card(0, t, Zone::Hand);
+    act(&mut g, Action::Cast(c));
+    resolve_all(&mut g, &[Action::Yes]);
+    assert_eq!(g.obj(mine).counters, 1, "none chosen");
+    g.add_card(0, t + 1, Zone::Battlefield);
+    let c = g.add_card(0, t, Zone::Hand);
+    act(&mut g, Action::Cast(c));
+    resolve_all(
+        &mut g,
+        &[Action::Pick(mine), Action::Yes, Action::Pick(mine), Action::Yes],
+    );
+    assert_eq!(g.obj(mine).counters, 3, "proliferated twice");
+}

@@ -278,3 +278,17 @@ def test_currency_converter_returns_an_exiled_card():
 def test_pippin_protection_from_a_card_type():
     assert label({"kind": "ProtectionCardType"}, "Mode", 1) == "Protection from creatures"
     assert label({"kind": "ProtectionCardType"}, "Mode", 6) == "Protection from sorceries"
+
+
+def test_malcolm_discards_and_may_cast_it_free():
+    dec = {"kind": "DiscardMayCastFree", "free": True}
+    assert sv._decision_label(dec, "Pick", 0, "Opt") == "Discard (you may cast it free) Opt"
+    dec = {"kind": "DiscardMayCastFree", "free": False}
+    assert sv._decision_label(dec, "Pick", 0, "Opt") == "Discard Opt"
+
+
+def test_proliferate_chooses_permanents_and_players():
+    dec = {"kind": "Proliferate", "picked": [], "players": [False, False], "rounds": 1}
+    assert sv._decision_label(dec, "Pick", 0, "Llanowar Elves") == "Proliferate: Llanowar Elves"
+    assert label(dec, "Mode", 1) == "Proliferate: player 2"
+    assert label(dec, "Yes", 0) == "Done choosing (proliferate)"

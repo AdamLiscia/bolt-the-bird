@@ -1521,8 +1521,9 @@ pub enum Effect {
     /// A -1/-1 counter on the creature in `slot` (kept as negative `Object::counters`, so +1/+1 and
     /// -1/-1 counters cancel out, CR 704.5q).
     MinusCounter(u8),
-    /// Proliferate (CR 701.27), choosing for you: your permanents with +1/+1 counters and your
-    /// planeswalkers, and opponents' permanents with -1/-1 counters.
+    /// Proliferate (CR 701.27): choose any number of permanents and players with counters
+    /// (`Decision::Proliferate`), then give each another counter of each kind it already has
+    /// (`Game::proliferate_one`); twice per Tekuthal (`CardDef::proliferate_twice`).
     Proliferate,
     /// Myrkul: you may exile the card in `slot` (the creature that died); if you do, create a token
     /// that's a copy of it, except it's an enchantment and loses its other card types.
@@ -2695,6 +2696,16 @@ pub enum Effect {
     /// Put a slime counter (`Object::slime`) on each creature you don't control (Toxrill, the
     /// Corrosive's end step trigger).
     SlimeCounterOnEachCreatureYouDontControl,
+    /// Discard a card (`Decision::DiscardMayCastFree`); if the source has `n` or more of its own
+    /// kind of counter (`Object::kind_counters`), you may cast the discarded card without paying
+    /// its mana cost (Malcolm, Alluring Scoundrel: chorus counters, 4).
+    DiscardThenMayCastFreeIfKindCounters(u8),
+    /// Exile the top `n` cards of your library; you may cast those of `color` this turn
+    /// (Chandra, Dressed to Kill: 1 for the +1, 5 for the -7, red).
+    ExileTopCastColorThisTurn {
+        n: u8,
+        color: crate::Color,
+    },
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

@@ -1074,6 +1074,12 @@ pub struct CardDef {
     pub triples_creature_tokens: bool,
     /// The Necrobloom: "Land cards in your graveyard have dredge N." (2), see `Game::dredge_options`.
     pub lands_in_graveyard_have_dredge: Option<u8>,
+    /// "Each [subtype] and [subtype] you control has \"{T}: Add {G}.\"" (Brightcap Badger:
+    /// Fungus, Saproling), in the mana-source pass.
+    pub your_subtypes_tap_for_green: &'static [&'static str],
+    /// "If you would proliferate, proliferate twice instead." (Tekuthal, Inquiry Dominus), in
+    /// `Effect::Proliferate`.
+    pub proliferate_twice: bool,
 }
 
 /// A card's pieces from the d4 subsystems (see [`CardDef::subsystems`]).
@@ -1631,6 +1637,8 @@ impl CardDef {
             others_of_chosen_type_enter_with_counter: false,
             triples_creature_tokens: false,
             lands_in_graveyard_have_dredge: None,
+            your_subtypes_tap_for_green: &[],
+            proliferate_twice: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -1924,6 +1932,8 @@ impl CardDef {
             others_of_chosen_type_enter_with_counter: false,
             triples_creature_tokens: false,
             lands_in_graveyard_have_dredge: None,
+            your_subtypes_tap_for_green: &[],
+            proliferate_twice: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -2217,6 +2227,8 @@ impl CardDef {
             others_of_chosen_type_enter_with_counter: false,
             triples_creature_tokens: false,
             lands_in_graveyard_have_dredge: None,
+            your_subtypes_tap_for_green: &[],
+            proliferate_twice: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
