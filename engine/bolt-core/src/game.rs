@@ -8254,7 +8254,8 @@ impl Game {
             if (o.loyalty_turn == self.turn && self.turn > 0) || self.activation_stopped(id) {
                 continue;
             }
-            if !sorcery_timing && !(self.def_of(id).loyalty_at_instant_speed && !self.lost_abilities(id)) {
+            let any_time = self.def_of(id).loyalty_at_instant_speed && !self.lost_abilities(id);
+            if !sorcery_timing && !any_time {
                 continue;
             }
             for (n, (cost, ability)) in self.def_of(id).loyalty_abilities.iter().enumerate() {
