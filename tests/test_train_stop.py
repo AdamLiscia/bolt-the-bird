@@ -86,3 +86,15 @@ def test_a_sigterm_right_after_an_iterations_line_resumes_on_that_iteration(trai
     back = Job("stoptest", client=s3, local=tmp_path / "elsewhere", handle_signals=False).resume()
     assert back is not None and back["state"]["iter"] == 2
     assert np.isclose(back["state"]["history"][-1]["iter"], 2)
+
+
+def test_every_iteration_row_reports_entropy_and_ratio_deviation(trainer, monkeypatch):
+    import json
+
+    t, made, s3, tmp_path = trainer
+    monkeypatch.setattr(sys, "argv", [*sys.argv[:7], "2", *sys.argv[8:]])  # --iters 2
+    t.main()
+    rows = json.loads((tmp_path / "results" / "ppo_play_stoptest.json").read_text())["history"]
+    assert len(rows) == 2
+    for r in rows:
+        assert r["entropy"] > 0 and r["ratio_dev"] >= 0, r

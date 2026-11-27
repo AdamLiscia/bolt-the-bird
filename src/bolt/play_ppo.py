@@ -62,7 +62,7 @@ def ppo_step(net, ref_net, opt, arr, idx, adv, clip=0.2, kl_coef=0.02, value_coe
     n = len(idx)
     pos = {int(i): k for k, i in enumerate(idx)}
     total = 0.0
-    stats = {"clipped": 0.0, "kl": 0.0, "value_mse": 0.0}
+    stats = {"clipped": 0.0, "kl": 0.0, "value_mse": 0.0, "entropy": 0.0, "ratio_dev": 0.0}
     for g in groups(arr, idx):
         x, action, z = batch(arr, g)
         logits, value = net(x)
@@ -81,6 +81,10 @@ def ppo_step(net, ref_net, opt, arr, idx, adv, clip=0.2, kl_coef=0.02, value_coe
         total = total + w * (pl + value_coef * vl)
         stats["clipped"] += w * st["clipped"]
         stats["kl"] += w * st["kl"]
+        stats["ratio_dev"] += w * st["ratio_dev"]
+        with torch.no_grad():  # the policy's entropy over each decision's legal moves (diagnostic only)
+            lp = torch.log_softmax(logits, -1)
+            stats["entropy"] += w * float(-torch.where(lp.isfinite(), lp.exp() * lp, 0.0).sum(-1).mean())
         stats["value_mse"] += w * vl.item()
     if not torch.isfinite(total):
         raise FloatingPointError("non-finite PPO loss")
