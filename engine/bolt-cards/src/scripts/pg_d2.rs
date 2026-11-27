@@ -1335,6 +1335,41 @@ pub fn script(name: &str) -> Option<Script> {
             &["Counter target spell. At the beginning of your next main phase, add an amount of {C} equal to that spell's mana value."],
             |d, _| spell(d, vec![SPELL], vec![Effect::CounterThenColorlessAtYourNextMain(0)]),
         ),
+        // ---- Core: triggers, batch 28 (Zinnia, Ghyrson) ----
+        "Beza, the Bounding Spring" => s(
+            &["When Beza enters, create a Treasure token if an opponent controls more lands than you. You gain 4 life if an opponent has more life than you. Create two 1/1 blue Fish creature tokens if an opponent controls more creatures than you. Draw a card if an opponent has more cards in hand than you."],
+            |d, t| on(d, When::Enters, vec![], vec![Effect::BezaCatchUp { treasure: t.treasure, fish: t.fish }]),
+        ),
+        "Tandem Lookout" => s(
+            &[
+                "Soulbond",
+                "As long as Tandem Lookout is paired with another creature, each of those creatures has \"Whenever this creature deals damage to an opponent, draw a card.\"",
+            ],
+            |d, _| {
+                // Soulbond: pair as it enters, or as another creature enters while it's unpaired.
+                may(d, When::Enters, vec![], vec![Effect::SoulbondPairOnEnter]);
+                let it = Filter { triggering: true, ..CREATURE };
+                may(d, When::AnotherCreatureYouControlEnters, vec![it], vec![Effect::SoulbondPairWith(0)]);
+                d.soulbond_damage_draw = true;
+                on(d, When::PairedDealsDamageToOpponent, vec![], vec![draw(1)]);
+            },
+        ),
+        "Rose Room Treasurer" => s(
+            &["Alliance — Whenever another creature you control enters, create a Treasure token if this is the first or second time this ability has resolved this turn. Otherwise, you may pay {X}. When you do, this creature deals X damage to any target."],
+            |d, t| {
+                // The damage's target is chosen as the trigger goes on the stack.
+                on(d, When::AnotherCreatureYouControlEnters, vec![Filter::ANY], vec![Effect::TreasureTwiceThenPayXDamage { treasure: t.treasure, slot: 0 }]);
+            },
+        ),
+        "Sabotender" => s(&["Landfall — Whenever a land you control enters, this creature deals 1 damage to each opponent."], |d, _| {
+            on(d, When::LandYouControlEnters, vec![], vec![damage(1, Recipient::EachOpponent)]);
+        }),
+        "Tannuk, Memorial Ensign" => s(
+            &["Landfall — Whenever a land you control enters, Tannuk deals 1 damage to each opponent. If this is the second time this ability has resolved this turn, draw a card."],
+            |d, _| {
+                on(d, When::LandYouControlEnters, vec![], vec![damage(1, Recipient::EachOpponent), Effect::DrawIfSecondResolutionThisTurn(1)]);
+            },
+        ),
         _ => None,
     }
 }
@@ -1568,4 +1603,9 @@ pub const PG_D2_SCRIPTED: &[&str] = &[
     "Mystic Sanctuary",
     "Bontu the Glorified",
     "Mana Drain",
+    "Beza, the Bounding Spring",
+    "Tandem Lookout",
+    "Rose Room Treasurer",
+    "Sabotender",
+    "Tannuk, Memorial Ensign",
 ];

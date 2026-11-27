@@ -2928,3 +2928,106 @@ fn mana_drain_counters_and_adds_colorless_at_your_next_main_phase() {
         "its mana value in {{C}}"
     );
 }
+
+#[test]
+fn beza_catches_up_on_each_count_an_opponent_leads() {
+    let mut g = table();
+    put(&mut g, 1, "Forest"); // more lands
+    g.players[1].life = 50; // more life
+    put(&mut g, 1, "Savannah Lions");
+    put(&mut g, 1, "Llanowar Elves"); // two creatures to Beza's one
+    for _ in 0..4 {
+        hand(&mut g, 1, "Plains"); // more cards in hand
+    }
+    let beza = hand(&mut g, 0, "Beza, the Bounding Spring");
+    let before = g.players[0].hand.len();
+    play(&mut g, beza, false, &[], &[]);
+    assert_eq!(tokens(&g, 0, "Treasure").len(), 1);
+    assert_eq!(g.players[0].life, 44);
+    assert_eq!(tokens(&g, 0, "Fish").len(), 2);
+    assert_eq!(g.players[0].hand.len(), before - 1 + 1, "cast Beza, drew one");
+
+    let mut g = table(); // level on everything
+    let beza = hand(&mut g, 0, "Beza, the Bounding Spring");
+    for _ in 0..8 {
+        hand(&mut g, 0, "Plains");
+    }
+    play(&mut g, beza, false, &[], &[]);
+    assert!(tokens(&g, 0, "Treasure").is_empty() && tokens(&g, 0, "Fish").is_empty());
+    assert_eq!(g.players[0].life, 40);
+}
+
+#[test]
+fn tandem_lookout_pairs_and_each_draws_on_damage_to_an_opponent() {
+    let mut g = table();
+    let lions = put(&mut g, 0, "Savannah Lions");
+    let lookout = hand(&mut g, 0, "Tandem Lookout");
+    act(&mut g, Action::Cast(lookout));
+    while !g.items.is_empty() || matches!(g.pending, Pending::Decide(_)) {
+        let a = if has(&g, Action::Pick(lions)) {
+            Action::Pick(lions)
+        } else if matches!(g.pending, Pending::Decide(_)) {
+            Action::Yes
+        } else {
+            Action::PassPriority
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.paired_partner(lookout), Some(lions));
+    attack(&mut g, &[lions]);
+    let before = g.players[0].hand.len();
+    through_combat(&mut g);
+    assert_eq!(g.players[1].life, 38);
+    assert_eq!(
+        g.players[0].hand.len(),
+        before + 1,
+        "the paired Lions drew a card"
+    );
+}
+
+#[test]
+fn rose_room_treasurer_makes_two_treasures_then_pays_x_for_damage() {
+    let mut g = table();
+    put(&mut g, 0, "Rose Room Treasurer");
+    for n in 1..=3 {
+        let elves = hand(&mut g, 0, "Llanowar Elves");
+        act(&mut g, Action::Cast(elves));
+        while !g.items.is_empty() || matches!(g.pending, Pending::ChooseTarget(_) | Pending::Decide(_)) {
+            let a = match g.pending {
+                Pending::ChooseTarget(_) => Action::Target(Target::Player(1)),
+                Pending::Decide(_) => Action::Amount(2),
+                _ => Action::PassPriority,
+            };
+            act(&mut g, a);
+        }
+        assert_eq!(
+            tokens(&g, 0, "Treasure").len(),
+            n.min(2),
+            "the first and second time"
+        );
+    }
+    assert_eq!(g.players[1].life, 38, "the third time: pay {{2}}, 2 damage");
+}
+
+#[test]
+fn sabotender_and_tannuk_burn_on_landfall_and_tannuk_draws_the_second_time() {
+    let mut g = table();
+    put(&mut g, 0, "Sabotender");
+    put(&mut g, 0, "Tannuk, Memorial Ensign");
+    put(&mut g, 0, "Composer of Spring");
+    let forest = hand(&mut g, 0, "Forest");
+    act(&mut g, Action::PlayLand(forest));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].life, 38, "1 each");
+    let island = hand(&mut g, 0, "Island");
+    let blood = hand(&mut g, 0, "Exquisite Blood");
+    let before = g.players[0].hand.len();
+    play(&mut g, blood, false, &[], &[Action::Pick(island)]); // Composer puts the Island in
+    assert_eq!(g.obj(island).zone, Zone::Battlefield);
+    assert_eq!(g.players[1].life, 36);
+    assert_eq!(
+        g.players[0].hand.len(),
+        before - 2 + 1,
+        "Tannuk's second resolution draws"
+    );
+}

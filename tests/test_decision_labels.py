@@ -273,3 +273,9 @@ def test_karadors_graveyard_cast_is_named():
 def test_currency_converter_returns_an_exiled_card():
     dec = {"kind": "ExiledWithToGraveyard"}
     assert sv._decision_label(dec, "Pick", 0, "Forest") == "Put into its owner's graveyard: Forest"
+
+
+def test_rose_room_treasurer_pays_x_for_x_damage():
+    dec = {"kind": "PayXDamage", "max": 4}
+    assert label(dec, "Amount", 0) == "Don't pay"
+    assert label(dec, "Amount", 3) == "Pay {3}: 3 damage"

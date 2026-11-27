@@ -1424,6 +1424,9 @@ pub enum Decision {
         land: usize,
         nonland: usize,
     },
+    /// Rose Room Treasurer: `Amount(x)` pays {x} and `source` deals x damage to `target` (offered
+    /// for each x you can pay, up to `max`); `Amount(0)` declines.
+    PayXDamage { source: ObjId, target: Target, max: u8 },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -13373,6 +13376,16 @@ impl Game {
                 let max = self.obj(*source).loyalty.clamp(0, 60) as u8;
                 (0..=max).map(Action::Amount).collect()
             }
+            Decision::PayXDamage { max, .. } => (0..=*max)
+                .filter(|&x| {
+                    let cost = ManaCost {
+                        generic: x,
+                        ..ManaCost::default()
+                    };
+                    x == 0 || self.can_pay(p, &cost, None)
+                })
+                .map(Action::Amount)
+                .collect(),
             Decision::PayXDrawX { max } => (0..=*max)
                 .filter(|&x| {
                     let cost = ManaCost {
@@ -14235,6 +14248,16 @@ impl Game {
                 self.sacrificed(c, p);
             }
             (Decision::MayPay { cost }, Action::Yes) => self.pay_mana(p, &cost, None),
+            (Decision::PayXDamage { source, target, .. }, Action::Amount(x)) => {
+                if x > 0 {
+                    let cost = ManaCost {
+                        generic: x,
+                        ..ManaCost::default()
+                    };
+                    self.pay_mana(p, &cost, None);
+                    self.deal_damage(source, target, x as i32);
+                }
+            }
             (Decision::PayXDrawX { .. }, Action::Amount(x)) => {
                 if x > 0 {
                     let cost = ManaCost {
@@ -16648,6 +16671,47 @@ impl Game {
                     t => t,
                 };
                 self.ask(item.controller, Decision::Search { what, to, left: n });
+            }
+            Effect::TreasureTwiceThenPayXDamage { treasure, slot } => {
+                let count = self.bump_resolutions(src);
+                if count <= 2 {
+                    self.create_token(item.controller, treasure);
+                } else {
+                    let target = match item.targets.get(slot as usize) {
+                        Some(&Chosen::Player(q)) => Some(Target::Player(q)),
+                        Some(&Chosen::Object(x, _)) => Some(Target::Object(x)),
+                        None => None,
+                    };
+                    let ok = legal.get(slot as usize).copied().unwrap_or(false);
+                    if let (Some(target), true) = (target, ok) {
+                        self.ask(
+                            item.controller,
+                            Decision::PayXDamage {
+                                source: src,
+                                target,
+                                max: 20,
+                            },
+                        );
+                    }
+                }
+            }
+            Effect::BezaCatchUp { treasure, fish } => {
+                let p = item.controller;
+                let o = opponent(p);
+                let lands = |g: &Game, q: PlayerId| g.permanents(q).filter(|&x| g.types_of(x).land).count();
+                if lands(self, o) > lands(self, p) {
+                    self.create_token(p, treasure);
+                }
+                if self.players[o].life > self.players[p].life {
+                    self.gain_life(p, 4);
+                }
+                if self.creatures(o).count() > self.creatures(p).count() {
+                    self.create_token(p, fish);
+                    self.create_token(p, fish);
+                }
+                if self.players[o].hand.len() > self.players[p].hand.len() {
+                    self.draw(p);
+                }
             }
             Effect::CounterThenColorlessAtYourNextMain(n) => {
                 if let Some(id) = Game::slot_object(item, legal, n) {
@@ -25416,6 +25480,18 @@ impl Game {
         }
     }
 
+    /// One more resolution this turn of `id`'s counted ability (`Object::resolved_this_turn`, as
+    /// Ms. Bumbleflower's; Rose Room Treasurer); the count, this one included.
+    fn bump_resolutions(&mut self, id: ObjId) -> u32 {
+        let turn = self.turn;
+        let o = self.obj_mut(id);
+        if o.resolved_this_turn.0 != turn {
+            o.resolved_this_turn = (turn, 0);
+        }
+        o.resolved_this_turn.1 = o.resolved_this_turn.1.saturating_add(1);
+        o.resolved_this_turn.1
+    }
+
     /// Mana Drain: as `a`'s main phase begins, the {C} set up before it (`next_main_colorless`).
     fn next_main_mana(&mut self, a: PlayerId) {
         let (turn, step) = (self.turn, self.step);
@@ -26151,6 +26227,29 @@ impl Game {
                     self.fill_triggering(before, source);
                     if controller != p {
                         self.fire_source(source, When::DealsDamageToOpponent);
+                        // Tandem Lookout: "each of those creatures has 'Whenever this creature deals
+                        // damage to an opponent, draw a card.'"
+                        if let Some(x) = self.paired_partner(source) {
+                            for holder in [source, x] {
+                                let d = self.def_of(holder);
+                                if !d.soulbond_damage_draw
+                                    || self.lost_abilities(holder)
+                                    || self.obj(holder).lost_soulbond
+                                {
+                                    continue;
+                                }
+                                let n = d
+                                    .triggers
+                                    .iter()
+                                    .position(|t| t.when == When::PairedDealsDamageToOpponent);
+                                if let Some(n) = n {
+                                    self.triggered.push(StackItem {
+                                        kind: StackKind::Trigger(n),
+                                        ..Game::casting(holder, controller)
+                                    });
+                                }
+                            }
+                        }
                     }
                     if !self.in_combat_damage {
                         self.fire(opponent(p), When::OpponentDealtNoncombatDamage, None);

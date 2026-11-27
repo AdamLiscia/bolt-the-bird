@@ -2691,6 +2691,20 @@ pub enum Effect {
     /// Mana Drain: counter the spell in `slot`; at the beginning of your next main phase, add {C}
     /// equal to its mana value (`Game::next_main_colorless`).
     CounterThenColorlessAtYourNextMain(u8),
+    /// Beza, the Bounding Spring: a `treasure` token if an opponent controls more lands than you;
+    /// gain 4 life if an opponent has more life; two `fish` tokens if an opponent controls more
+    /// creatures; draw a card if an opponent has more cards in hand (each checked as it resolves).
+    BezaCatchUp {
+        treasure: usize,
+        fish: usize,
+    },
+    /// Rose Room Treasurer: a `treasure` token the first and second time this resolves this turn
+    /// (`Object::resolved_this_turn`); otherwise you may pay {X} and the source deals X damage to
+    /// the target in `slot` (`Decision::PayXDamage`).
+    TreasureTwiceThenPayXDamage {
+        treasure: usize,
+        slot: u8,
+    },
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -3662,6 +3676,10 @@ pub enum When {
     /// "Whenever [this] attacks a player and isn't blocked" (Master of Cruelties), once blockers are
     /// declared (`Game::fire_unblocked_at_player`).
     AttacksAndIsntBlocked,
+    /// Tandem Lookout's granted "whenever this creature deals damage to an opponent": fired on the
+    /// card with `CardDef::soulbond_damage_draw` when it or the creature paired with it deals
+    /// damage to an opponent (controlled by the damaging creature's controller).
+    PairedDealsDamageToOpponent,
 }
 
 #[derive(Clone, Debug, PartialEq)]
