@@ -3006,6 +3006,24 @@ pub enum Effect {
         subtype: &'static str,
         n_if: i32,
     },
+    /// "Counter target spell unless its controller pays {X}, where X is this creature's power"
+    /// (Mausoleum Wanderer): the source's power, or its last-known power if it was sacrificed as
+    /// the cost. Asked as `Decision::PayOrCountered`.
+    CounterUnlessPaysSourcePower(u8),
+    /// Destroy all creatures with this subtype (Crux of Fate: Dragon); the other mode is
+    /// `DestroyAllCreaturesExceptSubtype`.
+    DestroyAllCreaturesWithSubtype(&'static str),
+    /// Exile all permanents (Apocalypse).
+    ExileAllPermanents,
+    /// You discard your hand (Apocalypse).
+    YouDiscardHand,
+    /// Gain control of all permanents with this subtype, then untap all of them (Karrthus, Tyrant of
+    /// Jund: Dragons).
+    GainControlAllSubtypeThenUntap(&'static str),
+    /// Vaevictis Asmadi, the Dire: the controller of each permanent in target slots `0..n` sacrifices
+    /// it; each player who sacrificed a permanent this way reveals the top card of their library and
+    /// puts it onto the battlefield if it's a permanent card.
+    SacrificeTargetsRevealTopPermanent(u8),
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -3207,6 +3225,9 @@ pub enum Scale {
     /// Creatures that entered the battlefield under your control this turn (Kinbinding;
     /// `Game::creatures_entered`).
     PerCreatureEnteredUnderYourControlThisTurn,
+    /// Other creatures you control with flying, printed or granted until end of turn (Skycat
+    /// Sovereign).
+    PerOtherYourCreatureWithFlying,
 }
 
 /// A condition on a static ability ("as long as ...").
@@ -4152,4 +4173,11 @@ pub enum SubsystemEffect {
     /// "This [source] deals X damage to [the target in `slot`], where X is the amount of mana spent to
     /// cast that spell." (Chandra, Dressed to Kill's emblem; that spell is the item's `extra`)
     DamageManaSpentOnThatSpell(u8),
+    /// "Roll a d`sides`. Put [the permanent in `slot`] into its owner's library just beneath the top
+    /// X cards of that library, where X is the result." (Underdark Rift: a d10)
+    RollDiePutTargetBeneathTop { sides: u32, slot: u8 },
+    /// "Flip a coin. If you lose the flip, this [source] deals `n` damage to you. If you win the
+    /// flip, ...": a lost flip deals the damage and skips the rest of the effects; a won flip goes
+    /// on to them (Ral, Monsoon Mage: 1, then "you may exile Ral ...").
+    FlipCoinLoseDamageYouElseContinue(i32),
 }
