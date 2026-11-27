@@ -44,6 +44,11 @@ pub const WORK_BUDGET: u64 = 200_000;
 /// are multiplying without end (doublers feeding each other) and the game ends in a draw.
 pub const MAX_OBJECTS: usize = 10_000;
 
+/// The most permanents the battlefield may hold before the game is a draw ("board too large").
+/// Scute Swarm doubling itself on every land drop reached 549 permanents in self-play, each step
+/// slower than the last; a real Commander board stays well under it.
+pub const MAX_PERMANENTS: usize = 300;
+
 /// The most passes `settle` makes for players with nothing else to do before the game is a draw:
 /// turns that go by forever with no one able to act or lose.
 pub const SETTLE_PASSES: u32 = 10_000;
@@ -2105,7 +2110,7 @@ pub struct Game {
     /// response).
     pub trigger_snapshots: Vec<(ObjId, u32, usize, Ability)>,
     /// Why the engine ended the game itself, when it did: one of its loop caps tripped
-    /// ([`WORK_BUDGET`], [`MAX_OBJECTS`], [`SETTLE_PASSES`]); the result is a draw.
+    /// ([`WORK_BUDGET`], [`MAX_OBJECTS`], [`MAX_PERMANENTS`], [`SETTLE_PASSES`]); the result is a draw.
     pub end_reason: Option<&'static str>,
 }
 
@@ -29032,6 +29037,9 @@ impl Game {
         }
         loop {
             self.work();
+            if self.battlefield.len() > MAX_PERMANENTS {
+                self.runaway("board too large: over MAX_PERMANENTS permanents");
+            }
             if self.end_reason.is_some() {
                 return; // a loop cap ended the game
             }

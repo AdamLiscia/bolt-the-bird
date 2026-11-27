@@ -394,3 +394,34 @@ fn turns_with_no_decisions_forever_end_in_a_draw() {
     assert_eq!(g.result, Some(bolt_core::Outcome::Draw));
     assert!(g.end_reason.is_some(), "turn {}: no loop cap tripped", g.turn);
 }
+
+/// Desktop self-play, 2026-11-27: Scute Swarm copies doubling on every land drop reached 549
+/// permanents, every step slower. Past MAX_PERMANENTS the game is a draw, "board too large".
+#[test]
+fn scute_swarm_past_the_permanent_cap_ends_in_a_draw() {
+    let mut g = table();
+    let swarm = cid("Scute Swarm");
+    while g.battlefield.len() < bolt_core::game::MAX_PERMANENTS - 1 {
+        g.add_card(0, swarm, Zone::Battlefield);
+    }
+    // Two lands entering: every Swarm's landfall makes a copy (six or more lands), far past the cap.
+    let woods = g.add_card(0, cid("Awaken the Woods"), Zone::Hand);
+    act(&mut g, Action::CastX(woods, 2));
+    let mut steps = 0;
+    while !g.is_over() && steps < 10_000 {
+        let legal = g.legal_actions();
+        act(&mut g, baseline::choose(&g, &legal));
+        steps += 1;
+    }
+    assert_eq!(g.result, Some(bolt_core::Outcome::Draw));
+    assert!(
+        g.end_reason.is_some_and(|r| r.contains("board too large")),
+        "{:?}",
+        g.end_reason
+    );
+    assert!(
+        g.battlefield.len() < 2 * bolt_core::game::MAX_PERMANENTS,
+        "{}",
+        g.battlefield.len()
+    );
+}
