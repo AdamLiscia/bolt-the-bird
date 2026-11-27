@@ -415,8 +415,13 @@ pub fn token_defs() -> Vec<CardDef> {
             t.types.artifact = true;
             t
         },
-        // 104: a placeholder for lane C's token, swapped in at the merge.
-        token("Placeholder 104", "", 0, 0, Keywords::NONE),
+        {
+            // 104, lane B: Glen Elendra's Answer's "1/1 blue and black Faerie creature token with
+            // flying".
+            let mut t = token("Faerie", "Faerie", 1, 1, Keywords::FLYING);
+            t.colors = [false, true, true, false, false];
+            t
+        },
         {
             // 105, lane B: Inkshield's "2/1 white and black Inkling creature token with flying".
             let mut t = token("Inkling", "Inkling", 2, 1, Keywords::FLYING);
@@ -453,6 +458,15 @@ pub fn token_defs() -> Vec<CardDef> {
         },
         // 108, lane d2: Currency Converter's "2/2 black Rogue creature token".
         black(token("Rogue", "Rogue", 2, 2, Keywords::NONE)),
+        // 109, lane d2: Toxrill, the Corrosive's "1/1 black Slug creature token".
+        black(token("Slug", "Slug", 1, 1, Keywords::NONE)),
+        {
+            // 110, lane d1: Nissa, Ascended Animist's "X/X green Phyrexian Horror creature token"
+            // (0/0, its P/T set from X).
+            let mut t = token("Phyrexian Horror", "Phyrexian Horror", 0, 0, Keywords::NONE);
+            t.colors = [false, false, false, false, true];
+            t
+        },
     ]
 }
 
@@ -670,13 +684,17 @@ pub struct Tokens {
     pub wurm_deathtouch: usize,
     /// 103: a 3/3 colorless Phyrexian Wurm artifact creature with lifelink (Wurmcoil Engine).
     pub wurm_lifelink: usize,
-    pub placeholder_104: usize,
+    pub faerie_ub: usize,
     pub inkling: usize,
     pub warrior_white: usize,
     /// 107: d2's Hallowed Haunting Spirit Cleric, white, */* the Spirits you control.
     pub spirit_cleric: usize,
     /// 108: d2's Currency Converter Rogue, a 2/2 black.
     pub rogue_2: usize,
+    /// 109: d2's Toxrill Slug, a 1/1 black.
+    pub slug: usize,
+    /// 110: Nissa, Ascended Animist's X/X green Phyrexian Horror (0/0, P/T set from X).
+    pub phyrexian_horror_x: usize,
 }
 
 impl Tokens {
@@ -786,11 +804,13 @@ impl Tokens {
             insect_deathtouch: base + 101,
             wurm_deathtouch: base + 102,
             wurm_lifelink: base + 103,
-            placeholder_104: base + 104,
+            faerie_ub: base + 104,
             inkling: base + 105,
             warrior_white: base + 106,
             spirit_cleric: base + 107,
             rogue_2: base + 108,
+            slug: base + 109,
+            phyrexian_horror_x: base + 110,
         }
     }
 }

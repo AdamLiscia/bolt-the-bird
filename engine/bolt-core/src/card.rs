@@ -143,6 +143,10 @@ pub enum ExtraCost {
     /// (Titan's Presence): cast with `Action::CastWith` naming it; it stays in your hand, and is the
     /// spell's `extra`.
     RevealColorlessCreature,
+    /// Casualty N (CR 702.153): "As you cast this spell, you may sacrifice a creature with power N
+    /// or greater." Cast with `Action::Cast` (none) or `Action::CastWith` naming it (it's the
+    /// spell's `extra`); `Effect::CopySourceSpellIfCasualty` makes the copy.
+    Casualty(u8),
 }
 
 /// "This spell costs {N} less to cast if ..." (CR 601.2f).
@@ -189,6 +193,9 @@ pub enum Reduction {
     NoncombatDamageToOpponentsThisTurn,
     /// {1} less for each creature card in your graveyard (Karador, Ghost Chieftain).
     PerCreatureCardInYourGraveyard,
+    /// Affinity for artifacts (CR 702.41): {1} less for each artifact you control (Emry, Lurker of
+    /// the Loch).
+    PerArtifactYouControl,
 }
 
 /// An activated ability: "[cost]: [effect]" (CR 602).
@@ -378,6 +385,11 @@ pub struct Activated {
     /// "Activate only if an opponent has N or more cards in their graveyard." (Sheoldred // The
     /// True Scriptures: 8)
     pub opponent_min_graveyard: u8,
+    /// "Remove N +1/+1 counters from this creature" in the cost (Walking Ballista: 1, Karlov of
+    /// the Ghost Council: 6).
+    pub remove_plus_counters: u8,
+    /// The stack item's amount is the sacrificed creature's toughness (Miren, the Moaning Well).
+    pub amount_from_victim_toughness: bool,
 }
 
 /// A loyalty ability's cost of −X (CR 606.4, 107.3): `loyalty_abilities` uses this as the cost,
@@ -1074,6 +1086,22 @@ pub struct CardDef {
     pub triples_creature_tokens: bool,
     /// The Necrobloom: "Land cards in your graveyard have dredge N." (2), see `Game::dredge_options`.
     pub lands_in_graveyard_have_dredge: Option<u8>,
+    /// Mirrormind Crown: "As long as this Equipment is attached to a creature, the first time you
+    /// would create one or more tokens each turn, you may instead create that many tokens that are
+    /// copies of equipped creature." (`Game::mirrormind_crown`; the engine always takes the copies)
+    pub first_tokens_copy_equipped: bool,
+    /// "[This] can't attack or block unless a creature died under your control this turn." (Bontu
+    /// the Glorified), from `Game::creature_died_under`.
+    pub fights_only_if_creature_died: bool,
+    /// Tandem Lookout: while paired (soulbond), each of the pair has "Whenever this creature deals
+    /// damage to an opponent, draw a card.": this card's `When::PairedDealsDamageToOpponent` trigger.
+    pub soulbond_damage_draw: bool,
+    /// "Each [subtype] and [subtype] you control has \"{T}: Add {G}.\"" (Brightcap Badger:
+    /// Fungus, Saproling), in the mana-source pass.
+    pub your_subtypes_tap_for_green: &'static [&'static str],
+    /// "If you would proliferate, proliferate twice instead." (Tekuthal, Inquiry Dominus), in
+    /// `Effect::Proliferate`.
+    pub proliferate_twice: bool,
 }
 
 /// A card's pieces from the d4 subsystems (see [`CardDef::subsystems`]).
@@ -1269,6 +1297,21 @@ pub struct ManaExt {
     /// "Once during each of your turns, you may cast a creature spell from your graveyard."
     /// (Karador, Ghost Chieftain): `Action::CastFromGraveyardAs(card, KARADOR_CAST)`.
     pub creature_from_graveyard_once_each_turn: bool,
+    /// "You can spend mana of any type to cast creature spells." (Vizier of the Menagerie): your
+    /// creature spells' colored, hybrid and {C} pips are paid as generic.
+    pub creature_spells_any_type_mana: bool,
+    /// "Creatures with power less than this creature's power can't block creatures you control."
+    /// (Champion of Lambholt)
+    pub smaller_cant_block_yours: bool,
+    /// Compleated (CR 702.150): for each Phyrexian pip paid with life (its
+    /// `Action::CastAlternative`), it enters with two fewer loyalty counters.
+    pub compleated: bool,
+    /// Path of Ancestry: when its mana is spent on a creature spell that shares a creature type
+    /// with your commander, `When::ManaSpentOnCommanderTypeCreature` fires on it.
+    pub scry_if_commander_type_creature: bool,
+    /// Cleave (CR 702.148): cast for this cost with `Action::CastAlternative`; the spell's effect
+    /// reads the item's `alt` (Wash Away: {1}{U}{U}).
+    pub cleave: Option<ManaCost>,
 }
 
 /// "You may pay [mana], [life] and sacrifice or tap [creatures] rather than pay this spell's mana
@@ -1631,6 +1674,11 @@ impl CardDef {
             others_of_chosen_type_enter_with_counter: false,
             triples_creature_tokens: false,
             lands_in_graveyard_have_dredge: None,
+            first_tokens_copy_equipped: false,
+            fights_only_if_creature_died: false,
+            soulbond_damage_draw: false,
+            your_subtypes_tap_for_green: &[],
+            proliferate_twice: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -1924,6 +1972,11 @@ impl CardDef {
             others_of_chosen_type_enter_with_counter: false,
             triples_creature_tokens: false,
             lands_in_graveyard_have_dredge: None,
+            first_tokens_copy_equipped: false,
+            fights_only_if_creature_died: false,
+            soulbond_damage_draw: false,
+            your_subtypes_tap_for_green: &[],
+            proliferate_twice: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -2217,6 +2270,11 @@ impl CardDef {
             others_of_chosen_type_enter_with_counter: false,
             triples_creature_tokens: false,
             lands_in_graveyard_have_dredge: None,
+            first_tokens_copy_equipped: false,
+            fights_only_if_creature_died: false,
+            soulbond_damage_draw: false,
+            your_subtypes_tap_for_green: &[],
+            proliferate_twice: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,

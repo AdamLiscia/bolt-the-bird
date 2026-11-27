@@ -290,17 +290,27 @@ impl Game {
     /// The index of the move the smart (rollout) player would make here: `candidates` moves, each
     /// played out `rollouts` times in guessed worlds, searched with `seed`. With the seed the
     /// engine's own smart games use (game seed × 1,000,003 + move number) it plays the same game.
-    #[pyo3(signature = (rollouts = 1, candidates = 2, seed = 0))]
-    fn smart(&self, rollouts: u32, candidates: usize, seed: u64) -> PyResult<usize> {
+    /// `ms` caps the search's time: past it, the best move scored so far (or the baseline's). The
+    /// search runs with Python's lock released, so other threads keep going while it thinks.
+    #[pyo3(signature = (rollouts = 1, candidates = 2, seed = 0, ms = None))]
+    fn smart(
+        &self,
+        py: Python<'_>,
+        rollouts: u32,
+        candidates: usize,
+        seed: u64,
+        ms: Option<u64>,
+    ) -> PyResult<usize> {
         if self.legal.is_empty() {
             return Err(PyValueError::new_err("the game is over"));
         }
         let cfg = bolt_core::rollout::Config {
             rollouts,
             max_candidates: candidates,
+            time_limit: ms.map(std::time::Duration::from_millis),
             ..Default::default()
         };
-        let a = bolt_core::rollout::choose(&self.g, &self.legal, &cfg, seed);
+        let a = py.detach(|| bolt_core::rollout::choose(&self.g, &self.legal, &cfg, seed));
         Ok(self
             .legal
             .iter()
@@ -570,6 +580,7 @@ impl Game {
                     D::MayPay { cost } => e.set_item("cost", cost_text(cost))?,
                     D::PayOrLoseGame { cost } => e.set_item("cost", cost_text(cost))?,
                     D::PayXDrawX { max } => e.set_item("max", *max)?,
+                    D::PayXDamage { max, .. } => e.set_item("max", *max)?,
                     D::PayToStop { cost } => e.set_item("cost", cost_text(cost))?,
                     D::PayUpkeep { cost, source } => {
                         e.set_item("cost", cost_text(cost))?;

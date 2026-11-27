@@ -59,6 +59,7 @@ fn main() {
             max_candidates: num(8, 6) as usize,
             max_actions: 5_000,
             max_objects: 2_000,
+            time_limit: None,
         }),
         p => panic!("unknown pilot {p:?}"),
     };

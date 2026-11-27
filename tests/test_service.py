@@ -464,3 +464,87 @@ def test_manual_mana_taps_a_land_into_the_pool_and_can_be_switched_off():
     assert off["version"] > s["version"]
     assert not any(m["kind"] == "TapForMana" for m in off["legal_actions"])
     assert c.post(f"/v1/game/{gid}/mana", headers=h, json={"seat": 1, "manual": True}).status_code == 409
+
+
+def test_a_bot_thinking_in_one_game_holds_up_nothing_else(monkeypatch):
+    """2026-11-27, before the Commander demo: one global lock meant a bot's move in one game (minutes, for
+    some Commander positions) stalled /health and every other table. Now each game has its own lock."""
+    import threading
+    import time
+
+    import bolt.service as service
+
+    c = TestClient(create_app(load_kit(), key="k"))
+    h = {"X-Bolt-Key": "k"}
+    deck = [{"name": "Forest", "qty": 20}, {"name": "Llanowar Elves", "qty": 20}]
+    base = {"set": "FDN", "deck_a": deck, "deck_b": deck, "pilot": "rules", "seed": 5, "first": 0}
+    other = c.post("/v1/game", headers=h, json={**base, "human_seat": 0}).json()["game_id"]
+
+    thinking, done = threading.Event(), threading.Event()
+    real = service.bot_move
+
+    def slow(rec, kit, model_lock):  # a pilot that thinks until the test lets it go
+        thinking.set()
+        done.wait(30)
+        return real(rec, kit, model_lock)
+
+    monkeypatch.setattr(service, "bot_move", slow)
+    out = []
+    t = threading.Thread(target=lambda: out.append(c.post("/v1/game", headers=h, json={**base, "human_seat": 1})))
+    t.start()  # the bot plays first (seat 0), so creating this game waits on its move
+    try:
+        assert thinking.wait(30), "the bot started its move"
+        t0 = time.time()
+        health = c.get("/v1/health", headers=h)
+        shown = c.get(f"/v1/game/{other}?seat=0", headers=h)
+        valid = c.post("/v1/deck/validate", headers=h, json={"commander": "Nobody", "deck": []})
+        took = time.time() - t0
+        assert health.status_code == 200 and health.json()["games_live"] == 2
+        assert shown.status_code == 200 and valid.status_code in (200, 422)
+        assert took < 5, f"{took:.1f}s while another game's bot was thinking"
+        assert t.is_alive(), "the slow move was still going"
+    finally:
+        done.set()
+        t.join(60)
+    assert out and out[0].status_code == 200, out
+    for gid in (other, out[0].json()["game_id"]):
+        c.delete(f"/v1/game/{gid}", headers=h)
+
+
+def test_the_smart_pilot_lets_python_run_while_it_thinks():
+    """The engine releases Python's lock during the smart search, and `ms` caps the search's time."""
+    import threading
+    import time
+
+    import bolt_engine as be
+
+    deck = [be.card_names().index(n) for n in ["Forest"] * 17 + ["Llanowar Elves"] * 23]
+    g = be.Game(deck, deck, 3)
+    while g.pending() != "Priority" or len(g.legal_actions()) < 2:
+        g.step(g.baseline())
+    try:
+        g.smart(1, 2, 0, ms=1)
+    except TypeError:
+        pytest.skip("the installed engine predates smart(..., ms=)")
+    gaps, stop = [], threading.Event()
+
+    def tick():  # Python work on another thread: stalls if the search holds the lock
+        last = time.perf_counter()
+        while not stop.is_set():
+            time.sleep(0.005)
+            now = time.perf_counter()
+            gaps.append(now - last)
+            last = now
+
+    t = threading.Thread(target=tick)
+    t.start()
+    t0 = time.perf_counter()
+    try:
+        i = g.smart(1000, 8, 1, ms=600)
+    finally:
+        stop.set()
+        t.join()
+    took = time.perf_counter() - t0
+    assert 0 <= i < len(g.legal_actions())
+    assert took < 5, f"a 600 ms search took {took:.1f}s"
+    assert gaps and max(gaps) < 0.3, f"Python stalled {max(gaps):.2f}s during the search"

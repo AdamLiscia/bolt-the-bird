@@ -57,9 +57,10 @@ def main():
     # Play vs Bolt: a human seat against the smart pilot (no network needed); the network pilot is refused.
     s, bot = call("POST", "/game", {**body, "human_seats": None, "human_seat": 0, "pilot": "smart", "frames": False})
     assert s == 200, (s, bot)
-    gid, view = bot["game_id"], bot["state"]
-    for k in range(6):
-        acts = view["actions"]
+    gid = bot["game_id"]
+    for k in range(8):
+        view = call("GET", f"/game/{gid}?seat=0")[1]
+        acts = view.get("legal_actions") or []
         if not acts:
             break
         pick = next((a for a in acts if a["kind"] in ("Keep", "PlayLand")), acts[0])
@@ -67,8 +68,7 @@ def main():
             "POST", f"/game/{gid}/act", {"seat": 0, "action_index": pick["index"], "version": view["version"]}
         )
         assert s == 200, (s, out)
-        view = out["state"]
-        print(f"vs Bolt move {k}: {pick['label']!r} -> turn {view.get('turn')}")
+        print(f"vs Bolt move {k}: {pick['label']!r} -> {s}")
     s, net = call("POST", "/game", {**body, "human_seats": None, "human_seat": 0, "pilot": "network"})
     print("network pilot refused", s, net.get("error"))
     s, d = call("POST", "/deck/random", {"set": "CMD"})

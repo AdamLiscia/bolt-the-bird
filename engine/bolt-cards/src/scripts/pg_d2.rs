@@ -1216,6 +1216,172 @@ pub fn script(name: &str) -> Option<Script> {
                 activated(d, "{0}", true, vec![], vec![Effect::ExiledWithSourceToGraveyardToken { land: t.treasure, nonland: t.rogue_2 }]);
             },
         ),
+        // ---- Core: triggers, batch 25 (counters put: All Will Be One; adapt) ----
+        "All Will Be One" => s(
+            &["Whenever you put one or more counters on a permanent or player, this enchantment deals that much damage to target opponent, creature an opponent controls, or planeswalker an opponent controls."],
+            |d, _| {
+                on(d, When::YouPutCounters, vec![Filter::ANY.controlled_by(Controller::Opponent)], vec![Effect::DamageAmountToAny(0)]);
+            },
+        ),
+        "Basking Broodscale" => s(
+            &[
+                "Devoid",
+                "{1}{G}: Adapt 1.",
+                "Whenever one or more +1/+1 counters are put on this creature, you may create a 0/1 colorless Eldrazi Spawn creature token with \"Sacrifice this token: Add {C}.\"",
+            ],
+            |d, t| {
+                // Devoid: the card's colors are already none (CR 702.114a).
+                d.colors = [false; 5];
+                activated(d, "{1}{G}", false, vec![], vec![Effect::AdaptSelf(1)]);
+                may(d, When::PlusCountersPutOnThis, vec![], vec![Effect::CreateToken { who: Who::You, def: t.eldrazi_spawn, n: 1 }]);
+            },
+        ),
+        // ---- Core: triggers, batch 26 (a discard exiles the card to play until your next turn) ----
+        "Moonstone, Harsh Mistress" => s(
+            &["Whenever you discard a card, you may exile that card from your graveyard. If you do, until the end of your next turn, you may play that card."],
+            |d, _| {
+                let that = Filter { triggering: true, ..graveyard_cards(false, Controller::You) };
+                may(d, When::YouDiscard, vec![that], vec![Effect::ExileGraveyardCardPlayableUntilYourNextTurn(0)]);
+            },
+        ),
+        "The Ozolith" => s(
+            &[
+                "Whenever a creature you control leaves the battlefield, if it had counters on it, put those counters on The Ozolith.",
+                "At the beginning of combat on your turn, if The Ozolith has counters on it, you may move all counters from The Ozolith onto target creature.",
+            ],
+            |d, _| {
+                // +1/+1 counters (the engine's kinds on a creature that the Ozolith can hold).
+                on(d, When::CreatureYouControlLeavesBattlefield, vec![], vec![Effect::CountersSelfAmount]);
+                let mut a = Ability::new(vec![CREATURE], vec![Effect::MoveAllCountersFromSourceTo(0)]).optional();
+                a.condition = Some(Condition::SourceHasCounters);
+                d.triggers.push(Trigger { when: When::BeginCombatYourTurn, ability: a });
+            },
+        ),
+        // ---- Core: triggers, batch 27 (demo decks: Oloro, Raggadragga, Atla, Ral, Henrika, Animar, Zinnia) ----
+        "Enduring Tenacity" => s(
+            &[
+                "Whenever you gain life, target opponent loses that much life.",
+                "When Enduring Tenacity dies, if it was a creature, return it to the battlefield under its owner's control. It's an enchantment.",
+            ],
+            |d, _| {
+                on(d, When::YouGainLife, vec![opponent_player()], vec![Effect::LoseLifeAmount(Who::TargetPlayer(0))]);
+                on(d, When::Dies, vec![], vec![Effect::ReturnSelfAsEnchantment]);
+            },
+        ),
+        "Enduring Courage" => s(
+            &[
+                "Whenever another creature you control enters, it gets +2/+0 and gains haste until end of turn.",
+                "When Enduring Courage dies, if it was a creature, return it to the battlefield under its owner's control. It's an enchantment.",
+            ],
+            |d, _| {
+                let it = Filter { triggering: true, ..CREATURE };
+                on(
+                    d,
+                    When::AnotherCreatureYouControlEnters,
+                    vec![it],
+                    vec![Effect::Pump { slot: 0, power: 2, toughness: 0 }, Effect::Grant { slot: 0, keywords: Keywords::HASTE }],
+                );
+                on(d, When::Dies, vec![], vec![Effect::ReturnSelfAsEnchantment]);
+            },
+        ),
+        "Field of the Dead" => s(
+            &[
+                "This land enters tapped.",
+                "{T}: Add {C}.",
+                "Whenever this land or another land you control enters, if you control seven or more lands with different names, create a 2/2 black Zombie creature token.",
+            ],
+            |d, t| {
+                d.enters_tapped = true;
+                d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                conditional(
+                    d,
+                    When::LandYouControlEnters,
+                    Condition::ControlLandsWithDifferentNamesAtLeast(7),
+                    vec![],
+                    vec![Effect::CreateToken { who: Who::You, def: t.zombie, n: 1 }],
+                );
+            },
+        ),
+        "Mystic Sanctuary" => s(
+            &[
+                "This land enters tapped unless you control three or more other Islands.",
+                "When this land enters untapped, you may put target instant or sorcery card from your graveyard on top of your library.",
+            ],
+            |d, _| {
+                d.mana = Some(ManaSource::of(&[Color::Blue]));
+                d.mana_ext.enters_tapped_unless_other_subtype = Some(("Island", 3));
+                let spell = Filter { instant_or_sorcery: true, ..graveyard_cards(false, Controller::You) };
+                may(d, When::EntersUntapped, vec![spell], vec![Effect::ToLibrary(0, true)]);
+            },
+        ),
+        "Bontu the Glorified" => s(
+            &[
+                "Bontu can't attack or block unless a creature died under your control this turn.",
+                "{1}{B}, Sacrifice another creature: Scry 1. Each opponent loses 1 life and you gain 1 life.",
+            ],
+            |d, _| {
+                d.fights_only_if_creature_died = true;
+                let n = activated(
+                    d,
+                    "{1}{B}",
+                    false,
+                    vec![],
+                    vec![Effect::Scry { n: 1 }, Effect::LoseLife { who: Who::EachOpponent, n: 1 }, Effect::GainLife { who: Who::You, n: 1 }],
+                );
+                d.activated[n].sacrifice_other_creature = true;
+            },
+        ),
+        "Mana Drain" => s(
+            &["Counter target spell. At the beginning of your next main phase, add an amount of {C} equal to that spell's mana value."],
+            |d, _| spell(d, vec![SPELL], vec![Effect::CounterThenColorlessAtYourNextMain(0)]),
+        ),
+        // ---- Core: triggers, batch 28 (Zinnia, Ghyrson) ----
+        "Beza, the Bounding Spring" => s(
+            &["When Beza enters, create a Treasure token if an opponent controls more lands than you. You gain 4 life if an opponent has more life than you. Create two 1/1 blue Fish creature tokens if an opponent controls more creatures than you. Draw a card if an opponent has more cards in hand than you."],
+            |d, t| on(d, When::Enters, vec![], vec![Effect::BezaCatchUp { treasure: t.treasure, fish: t.fish }]),
+        ),
+        "Tandem Lookout" => s(
+            &[
+                "Soulbond",
+                "As long as Tandem Lookout is paired with another creature, each of those creatures has \"Whenever this creature deals damage to an opponent, draw a card.\"",
+            ],
+            |d, _| {
+                // Soulbond: pair as it enters, or as another creature enters while it's unpaired.
+                may(d, When::Enters, vec![], vec![Effect::SoulbondPairOnEnter]);
+                let it = Filter { triggering: true, ..CREATURE };
+                may(d, When::AnotherCreatureYouControlEnters, vec![it], vec![Effect::SoulbondPairWith(0)]);
+                d.soulbond_damage_draw = true;
+                on(d, When::PairedDealsDamageToOpponent, vec![], vec![draw(1)]);
+            },
+        ),
+        "Rose Room Treasurer" => s(
+            &["Alliance — Whenever another creature you control enters, create a Treasure token if this is the first or second time this ability has resolved this turn. Otherwise, you may pay {X}. When you do, this creature deals X damage to any target."],
+            |d, t| {
+                // The damage's target is chosen as the trigger goes on the stack.
+                on(d, When::AnotherCreatureYouControlEnters, vec![Filter::ANY], vec![Effect::TreasureTwiceThenPayXDamage { treasure: t.treasure, slot: 0 }]);
+            },
+        ),
+        "Sabotender" => s(&["Landfall — Whenever a land you control enters, this creature deals 1 damage to each opponent."], |d, _| {
+            on(d, When::LandYouControlEnters, vec![], vec![damage(1, Recipient::EachOpponent)]);
+        }),
+        "Tannuk, Memorial Ensign" => s(
+            &["Landfall — Whenever a land you control enters, Tannuk deals 1 damage to each opponent. If this is the second time this ability has resolved this turn, draw a card."],
+            |d, _| {
+                on(d, When::LandYouControlEnters, vec![], vec![damage(1, Recipient::EachOpponent), Effect::DrawIfSecondResolutionThisTurn(1)]);
+            },
+        ),
+        // ---- Sefris (d3's batch 30 pieces) ----
+        "Seasoned Dungeoneer" => s(
+            &[
+                "When this creature enters, you take the initiative.",
+                "Whenever you attack, target attacking Cleric, Rogue, Warrior, or Wizard gains protection from creatures until end of turn. It explores.",
+            ],
+            |d, _| {
+                on(d, When::Enters, vec![], vec![Effect::Subsystem(bolt_core::effect::SubsystemEffect::TakeInitiative)]);
+                let party = Filter { attacking: true, subtypes_any: &["Cleric", "Rogue", "Warrior", "Wizard"], ..CREATURE };
+                on(d, When::YouAttack, vec![party], vec![Effect::ProtectionFromCardTypeEot { slot: Some(0), kind: 1 }, Effect::Explore(0)]);
+            },
+        ),
         _ => None,
     }
 }
@@ -1439,4 +1605,20 @@ pub const PG_D2_SCRIPTED: &[&str] = &[
     "Panharmonicon",
     "Daring Sleuth // Bearer of Overwhelming Truths",
     "Currency Converter",
+    "All Will Be One",
+    "Basking Broodscale",
+    "Moonstone, Harsh Mistress",
+    "The Ozolith",
+    "Enduring Tenacity",
+    "Enduring Courage",
+    "Field of the Dead",
+    "Mystic Sanctuary",
+    "Bontu the Glorified",
+    "Mana Drain",
+    "Beza, the Bounding Spring",
+    "Tandem Lookout",
+    "Rose Room Treasurer",
+    "Sabotender",
+    "Tannuk, Memorial Ensign",
+    "Seasoned Dungeoneer",
 ];
