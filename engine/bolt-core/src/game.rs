@@ -1495,6 +1495,9 @@ pub enum Decision {
     SacrificeGreatestMv,
     /// Kindred Summons: `Mode(i)` names `options[i]` as the creature type.
     KindredSummonsType { options: Vec<String> },
+    /// Nahiri's Lithoforming: `Pick` a land to sacrifice (`left` more after this one); `drawn` lands
+    /// are sacrificed so far, and that many cards are drawn after the last.
+    SacrificeLandsDraw { left: u8, drawn: u8 },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -4245,6 +4248,27 @@ impl Game {
             && self
                 .permanents(opponent(p))
                 .any(|x| self.def_of(x).opponents_cast_only_from_hand && !self.lost_abilities(x))
+    }
+
+    /// Nahiri's Lithoforming: asks `p` to sacrifice one of `left` more lands, if they have one;
+    /// once done, draws a card for each of the `drawn` lands sacrificed.
+    fn ask_sacrifice_lands_draw(&mut self, p: PlayerId, left: u8, drawn: u8) {
+        let any = self
+            .permanents(p)
+            .any(|x| self.types_of(x).land && !self.cant_be_sacrificed(x));
+        if left > 0 && any {
+            self.ask(
+                p,
+                Decision::SacrificeLandsDraw {
+                    left: left - 1,
+                    drawn,
+                },
+            );
+        } else {
+            for _ in 0..drawn {
+                self.draw(p);
+            }
+        }
     }
 
     /// Asks `p` to sacrifice one of `left` more lands, if they have one.
@@ -15053,6 +15077,11 @@ impl Game {
                 .map(Action::Pick)
                 .collect(),
             Decision::AdNauseamAgain => vec![Action::Yes, Action::No],
+            Decision::SacrificeLandsDraw { .. } => self
+                .permanents(p)
+                .filter(|&x| self.types_of(x).land && !self.cant_be_sacrificed(x))
+                .map(Action::Pick)
+                .collect(),
             Decision::KindredSummonsType { options } => (0..options.len() as u8).map(Action::Mode).collect(),
             Decision::SacrificeGreatestMv => self
                 .greatest_mv_sacrifice_options(p)
@@ -16999,6 +17028,11 @@ impl Game {
                 self.ask_sacrifice_lands(p, left);
             }
             (Decision::AdNauseamAgain, Action::Yes) => self.ad_nauseam_step(p),
+            (Decision::SacrificeLandsDraw { left, drawn }, Action::Pick(c)) => {
+                self.move_to(c, Zone::Graveyard);
+                self.sacrificed(c, p);
+                self.ask_sacrifice_lands_draw(p, left, drawn + 1);
+            }
             (Decision::KindredSummonsType { options }, Action::Mode(i)) => {
                 if let Some(t) = options.get(i as usize).cloned() {
                     self.kindred_summons(p, &t);
@@ -25729,6 +25763,11 @@ impl Game {
                 }
             }
             Effect::SacrificeLands(n) => self.ask_sacrifice_lands(item.controller, n),
+            Effect::SacrificeXLandsDrawEach => self.ask_sacrifice_lands_draw(item.controller, item.x, 0),
+            Effect::ExtraLandsThisTurnX => {
+                let p = item.controller;
+                self.extra_lands_this_turn[p] = self.extra_lands_this_turn[p].saturating_add(item.x);
+            }
             Effect::SearchMoreIfControlPower {
                 what,
                 to,

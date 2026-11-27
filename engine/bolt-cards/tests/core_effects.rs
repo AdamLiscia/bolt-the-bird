@@ -3728,3 +3728,42 @@ fn per_land_you_control_counts_your_lands() {
     g.add_card(0, cid("Sol Ring"), Zone::Battlefield);
     assert_eq!(g.toughness(a), 25, "only your lands");
 }
+
+#[test]
+fn sacrifice_x_lands_draws_after_and_x_extra_land_plays() {
+    let mut def = sorcery(
+        vec![],
+        vec![Effect::SacrificeXLandsDrawEach, Effect::ExtraLandsThisTurnX],
+    );
+    def.cost = ManaCost::parse("{X}").unwrap();
+    let (mut g, t) = game_with(vec![def]);
+    for _ in 0..5 {
+        g.add_card(0, cid("Island"), Zone::Library);
+    }
+    let lands = g.permanents(0).filter(|&x| g.types_of(x).land).count();
+    let hand = g.players[0].hand.len();
+    let c = g.add_card(0, t, Zone::Hand);
+    act(&mut g, Action::CastX(c, 2));
+    while !matches!(g.pending, Pending::Decide(0)) {
+        act(&mut g, Action::PassPriority);
+    }
+    let pick = |g: &Game| {
+        *g.legal_actions()
+            .iter()
+            .find(|a| matches!(a, Action::Pick(_)))
+            .unwrap()
+    };
+    let a = pick(&g);
+    act(&mut g, a);
+    assert_eq!(
+        g.players[0].hand.len(),
+        hand,
+        "nothing drawn before the last sacrifice"
+    );
+    let a = pick(&g);
+    resolve_all(&mut g, &[a]);
+    let now = g.permanents(0).filter(|&x| g.types_of(x).land).count();
+    // Two sacrificed; X = 2 paid with two more tapped (still on the battlefield).
+    assert_eq!((lands - now, g.players[0].hand.len() - hand), (2, 2));
+    assert_eq!(g.extra_lands_this_turn[0], 2);
+}

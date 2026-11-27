@@ -361,3 +361,8 @@ def test_flare_of_malice_sacrifices_the_greatest():
 def test_kindred_summons_names_a_creature_type():
     dec = {"kind": "KindredSummonsType", "options": ["Dragon", "Elf"]}
     assert label(dec, "Mode", 1) == "Kindred Summons: choose Elf"
+
+
+def test_lithoforming_sacrifices_a_land_to_draw():
+    dec = {"kind": "SacrificeLandsDraw", "left": 1, "drawn": 0}
+    assert sv._decision_label(dec, "Pick", 0, "Mountain") == "Sacrifice (draw a card) Mountain"

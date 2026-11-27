@@ -235,6 +235,7 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         verb = verb or {"PermanentFromHandMaxMv": "Put onto the battlefield:"}.get(d)
         verb = verb or {"ExileCardFromHand": "Exile from your hand:"}.get(d)
         verb = verb or {"SacrificeLands": "Sacrifice"}.get(d)
+        verb = verb or {"SacrificeLandsDraw": "Sacrifice (draw a card)"}.get(d)
         verb = verb or {"SacrificeGreatestMv": "Sacrifice"}.get(d)
         verb = verb or {"EachSacrificesCreatureOrPlaneswalker": "Sacrifice"}.get(d)
         if d == "DiscardMayCastFree":
