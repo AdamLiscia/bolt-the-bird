@@ -1014,3 +1014,7 @@ tapped" trigger would want one). The others are tapped with the named one in `pa
   `fire_unblocked_at_player`), `Effect::OpponentLifeBecomesOne`, `Effect::SourceAssignsNoCombatDamage`
   (`Game::no_combat_damage_from`, skipped in `combat_damage`). The card waits for d1 batch 20's
   attacks-alone.
+- Kaalia's last three (on d1 batch 20): Master of Cruelties (d1's `attacks_only_alone` and my
+  unblocked-attack pieces), Overpowering Attack (d1's freerunning; Waves of Aggression's untap and
+  additional combat and main phase), Tendo Ice Bridge (a charge counter as it enters, from an enters
+  trigger; d1's `colored_removes_kind_counter`).
