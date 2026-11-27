@@ -5033,6 +5033,9 @@ impl Game {
                 Some(EntryDoubler::LandOrSubtype(sub)) => {
                     (land || self.has_subtype(id, sub)) && self.obj(id).controller == self.obj(x).controller
                 }
+                Some(EntryDoubler::ArtifactOrCreature) => {
+                    self.types_of(id).artifact || self.types_of(id).creature
+                }
                 None => false,
             })
             .map(|x| self.obj(x).controller)

@@ -2657,3 +2657,40 @@ fn palantir_of_orthanc_draws_or_mills_by_influence_and_drains() {
     }
     assert_eq!(g.players[1].life, 30, "two mana value 5 cards");
 }
+
+#[test]
+fn panharmonicon_doubles_triggers_from_artifacts_and_creatures_entering() {
+    let mut g = table();
+    put(&mut g, 0, "Panharmonicon");
+    put(&mut g, 0, "Impact Tremors");
+    let elves = hand(&mut g, 0, "Llanowar Elves");
+    play(&mut g, elves, false, &[], &[]);
+    assert_eq!(g.players[1].life, 38, "Impact Tremors twice");
+    let hand_before = g.players[0].hand.len();
+    let visionary = hand(&mut g, 0, "Elvish Visionary");
+    play(&mut g, visionary, false, &[], &[]);
+    assert_eq!(
+        g.players[0].hand.len(),
+        hand_before + 2,
+        "its own enter trigger twice"
+    );
+    assert_eq!(g.players[1].life, 36);
+}
+
+#[test]
+fn daring_sleuth_transforms_on_a_clue_and_investigates_on_combat_damage() {
+    let mut g = table();
+    let sleuth = put(&mut g, 0, "Daring Sleuth // Bearer of Overwhelming Truths");
+    let clue = g.add_card(0, token_def(&g, "Clue"), Zone::Battlefield);
+    act(&mut g, Action::Activate(clue, 0)); // {2}, sacrifice: draw
+    resolve_all(&mut g, &[]);
+    assert!(g.obj(sleuth).transformed);
+    assert_eq!(g.def_of(sleuth).name, "Bearer of Overwhelming Truths");
+    attack(&mut g, &[sleuth]);
+    through_combat(&mut g);
+    assert_eq!(tokens(&g, 0, "Clue").len(), 1, "investigated");
+    let power = g.power(sleuth);
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    play(&mut g, bolt, false, &[Target::Player(1)], &[]);
+    assert_eq!(g.power(sleuth), power + 1, "prowess");
+}

@@ -1184,6 +1184,24 @@ pub fn script(name: &str) -> Option<Script> {
                 );
             },
         ),
+        // ---- Core: triggers, batch 23 (an artifact or creature entering triggers again; Lonis) ----
+        "Panharmonicon" => s(
+            &["If an artifact or creature entering causes a triggered ability of a permanent you control to trigger, that ability triggers an additional time."],
+            |d, _| d.entering_triggers_again = Some(EntryDoubler::ArtifactOrCreature),
+        ),
+        "Daring Sleuth // Bearer of Overwhelming Truths" => s(
+            &[
+                "When you sacrifice a Clue, transform this creature.",
+                "Back: Prowess",
+                "Back: Whenever this creature deals combat damage to a player, investigate.",
+            ],
+            |d, t| {
+                on(d, When::YouSacrificeSubtype("Clue"), vec![], vec![Effect::TransformSelf]);
+                let b = d.back.as_mut().expect("Bearer of Overwhelming Truths");
+                on(b, When::YouCastNoncreature, vec![], vec![Effect::PumpSelf { power: 1, toughness: 1 }]);
+                on(b, When::DealsCombatDamageToPlayer, vec![], vec![Effect::Investigate { def: t.clue, n: 1 }]);
+            },
+        ),
         _ => None,
     }
 }
@@ -1404,4 +1422,6 @@ pub const PG_D2_SCRIPTED: &[&str] = &[
     "Mesmeric Orb",
     "Hallowed Haunting",
     "Palant\u{ed}r of Orthanc",
+    "Panharmonicon",
+    "Daring Sleuth // Bearer of Overwhelming Truths",
 ];
