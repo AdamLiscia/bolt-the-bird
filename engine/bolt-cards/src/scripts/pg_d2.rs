@@ -1216,6 +1216,47 @@ pub fn script(name: &str) -> Option<Script> {
                 activated(d, "{0}", true, vec![], vec![Effect::ExiledWithSourceToGraveyardToken { land: t.treasure, nonland: t.rogue_2 }]);
             },
         ),
+        // ---- Core: triggers, batch 25 (counters put: All Will Be One; adapt) ----
+        "All Will Be One" => s(
+            &["Whenever you put one or more counters on a permanent or player, this enchantment deals that much damage to target opponent, creature an opponent controls, or planeswalker an opponent controls."],
+            |d, _| {
+                on(d, When::YouPutCounters, vec![Filter::ANY.controlled_by(Controller::Opponent)], vec![Effect::DamageAmountToAny(0)]);
+            },
+        ),
+        "Basking Broodscale" => s(
+            &[
+                "Devoid",
+                "{1}{G}: Adapt 1.",
+                "Whenever one or more +1/+1 counters are put on this creature, you may create a 0/1 colorless Eldrazi Spawn creature token with \"Sacrifice this token: Add {C}.\"",
+            ],
+            |d, t| {
+                // Devoid: the card's colors are already none (CR 702.114a).
+                d.colors = [false; 5];
+                activated(d, "{1}{G}", false, vec![], vec![Effect::AdaptSelf(1)]);
+                may(d, When::PlusCountersPutOnThis, vec![], vec![Effect::CreateToken { who: Who::You, def: t.eldrazi_spawn, n: 1 }]);
+            },
+        ),
+        // ---- Core: triggers, batch 26 (a discard exiles the card to play until your next turn) ----
+        "Moonstone, Harsh Mistress" => s(
+            &["Whenever you discard a card, you may exile that card from your graveyard. If you do, until the end of your next turn, you may play that card."],
+            |d, _| {
+                let that = Filter { triggering: true, ..graveyard_cards(false, Controller::You) };
+                may(d, When::YouDiscard, vec![that], vec![Effect::ExileGraveyardCardPlayableUntilYourNextTurn(0)]);
+            },
+        ),
+        "The Ozolith" => s(
+            &[
+                "Whenever a creature you control leaves the battlefield, if it had counters on it, put those counters on The Ozolith.",
+                "At the beginning of combat on your turn, if The Ozolith has counters on it, you may move all counters from The Ozolith onto target creature.",
+            ],
+            |d, _| {
+                // +1/+1 counters (the engine's kinds on a creature that the Ozolith can hold).
+                on(d, When::CreatureYouControlLeavesBattlefield, vec![], vec![Effect::CountersSelfAmount]);
+                let mut a = Ability::new(vec![CREATURE], vec![Effect::MoveAllCountersFromSourceTo(0)]).optional();
+                a.condition = Some(Condition::SourceHasCounters);
+                d.triggers.push(Trigger { when: When::BeginCombatYourTurn, ability: a });
+            },
+        ),
         _ => None,
     }
 }
@@ -1439,4 +1480,8 @@ pub const PG_D2_SCRIPTED: &[&str] = &[
     "Panharmonicon",
     "Daring Sleuth // Bearer of Overwhelming Truths",
     "Currency Converter",
+    "All Will Be One",
+    "Basking Broodscale",
+    "Moonstone, Harsh Mistress",
+    "The Ozolith",
 ];

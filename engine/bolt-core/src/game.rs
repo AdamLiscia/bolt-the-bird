@@ -5242,11 +5242,18 @@ impl Game {
                 });
             }
             if self.types_of(id).creature {
+                let before = self.triggered.len();
                 self.fire(
                     last_controller,
                     When::CreatureYouControlLeavesBattlefield,
                     Some(id),
                 );
+                // The Ozolith: "those counters", the +1/+1 counters it had as it left.
+                let plus = self.obj(id).last_counters.0;
+                for t in &mut self.triggered[before..] {
+                    t.amount = plus;
+                    t.extra = Some(id);
+                }
             }
             if self.is_token(id) {
                 self.fire(last_controller, When::TokenYouControlLeaves, Some(id));
@@ -16985,6 +16992,43 @@ impl Game {
             Effect::CountersSelf { n } => {
                 self.add_counters(src, n);
             }
+            Effect::AdaptSelf(n) => {
+                if self.obj(src).counters <= 0 {
+                    self.add_counters(src, n);
+                }
+            }
+            Effect::CountersSelfAmount => {
+                if item.amount > 0 && self.obj(src).zone == Zone::Battlefield {
+                    self.add_counters(src, item.amount);
+                }
+            }
+            Effect::MoveAllCountersFromSourceTo(slot) => {
+                let n = self.obj(src).counters;
+                if let Some(c) = Game::slot_object(item, legal, slot) {
+                    if n > 0
+                        && self.obj(src).zone == Zone::Battlefield
+                        && self.obj(c).zone == Zone::Battlefield
+                    {
+                        self.obj_mut(src).counters = 0;
+                        self.add_counters(c, n);
+                    }
+                }
+            }
+            Effect::ExileGraveyardCardPlayableUntilYourNextTurn(slot) => {
+                if let Some(c) = Game::slot_object(item, legal, slot) {
+                    if self.obj(c).zone == Zone::Graveyard {
+                        let p = item.controller;
+                        self.move_to(c, Zone::Exile);
+                        // Until the end of your next turn (CR 611.2c).
+                        let until = if self.active == p {
+                            self.turn + 2
+                        } else {
+                            self.turn + 1
+                        };
+                        self.obj_mut(c).playable = Some((p, until));
+                    }
+                }
+            }
             Effect::PumpAll {
                 who,
                 power,
@@ -24507,6 +24551,7 @@ impl Game {
             Some(Condition::LifeAtLeastStartingPlus(n)) => {
                 self.players[controller].life >= self.starting_life + n
             }
+            Some(Condition::SourceHasCounters) => self.obj(source).counters > 0,
             Some(Condition::ColorlessSpentAtLeast(n)) => {
                 self.colorless_spent.iter().any(|&(c, k)| c == source && k >= *n)
             }

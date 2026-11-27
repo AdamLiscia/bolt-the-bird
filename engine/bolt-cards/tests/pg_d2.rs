@@ -2743,3 +2743,75 @@ fn currency_converter_exiles_discards_and_turns_them_into_treasure_or_rogues() {
     assert_eq!(g.obj(forest).zone, Zone::Graveyard);
     assert_eq!(tokens(&g, 0, "Treasure").len(), 1);
 }
+
+/// Resolves everything, targeting the opponent and answering yes.
+fn settle_yes_at_opponent(g: &mut Game) {
+    while !g.items.is_empty() || matches!(g.pending, Pending::ChooseTarget(_) | Pending::Decide(_)) {
+        let a = match g.pending {
+            Pending::ChooseTarget(_) => Action::Target(Target::Player(1)),
+            Pending::Decide(_) => Action::Yes,
+            _ => Action::PassPriority,
+        };
+        act(g, a);
+    }
+}
+
+#[test]
+fn basking_broodscale_adapts_once_and_all_will_be_one_burns_for_the_counters() {
+    let mut g = table();
+    put(&mut g, 0, "All Will Be One");
+    let lizard = put(&mut g, 0, "Basking Broodscale");
+    act(&mut g, Action::Activate(lizard, 0)); // adapt 1
+    settle_yes_at_opponent(&mut g);
+    assert_eq!(g.obj(lizard).counters, 1);
+    assert_eq!(tokens(&g, 0, "Eldrazi Spawn").len(), 1, "a counter was put on it");
+    assert_eq!(g.players[1].life, 39, "one counter: 1 damage");
+    act(&mut g, Action::Activate(lizard, 0)); // it has a counter: adapt does nothing
+    settle_yes_at_opponent(&mut g);
+    assert_eq!(g.obj(lizard).counters, 1);
+    assert_eq!(tokens(&g, 0, "Eldrazi Spawn").len(), 1);
+    assert_eq!(g.players[1].life, 39);
+}
+
+#[test]
+fn moonstone_exiles_a_discarded_card_to_play_until_your_next_turn() {
+    let mut g = table();
+    put(&mut g, 0, "Moonstone, Harsh Mistress");
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    loot_away(&mut g, bolt); // Moonstone's may is taken
+    assert_eq!(g.obj(bolt).zone, Zone::Exile);
+    assert!(has(&g, Action::Cast(bolt)), "playable from exile");
+    play(&mut g, bolt, false, &[Target::Player(1)], &[]);
+    assert_eq!(g.players[1].life, 37);
+}
+
+#[test]
+fn the_ozolith_keeps_a_leaving_creatures_counters_and_moves_them_at_combat() {
+    let mut g = table();
+    let oz = put(&mut g, 0, "The Ozolith");
+    let lizard = put(&mut g, 0, "Basking Broodscale");
+    act(&mut g, Action::Activate(lizard, 0)); // adapt 1
+    settle_yes_at_opponent(&mut g);
+    assert_eq!(g.obj(lizard).counters, 1);
+    let d = hand(&mut g, 0, "Hero's Downfall");
+    play(&mut g, d, false, &[obj(lizard)], &[]);
+    assert_eq!(g.obj(oz).counters, 1, "those counters");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    g.start_turn(5, 0);
+    for _ in 0..100 {
+        match g.pending {
+            Pending::ChooseTarget(_) => {
+                act(&mut g, Action::Target(Target::Object(lions)));
+            }
+            Pending::Decide(_) => {
+                act(&mut g, Action::Yes);
+            }
+            _ if g.obj(oz).counters == 0 && g.items.is_empty() => break,
+            _ => {
+                act(&mut g, Action::PassPriority);
+            }
+        }
+    }
+    assert_eq!(g.obj(lions).counters, 1, "moved onto the Lions");
+    assert_eq!(g.obj(oz).counters, 0);
+}
