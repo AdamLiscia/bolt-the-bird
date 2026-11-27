@@ -214,8 +214,9 @@ def test_an_errored_game_drops_its_recorded_steps_in_every_seat_layout(monkeypat
     monkeypatch.setattr(pr, "encode", lambda o, who: real_encode(obs(), who))
     net, opp = (PlayNet(n_cards=8, dim=16, layers=1, heads=2).eval() for _ in range(2))
     record = tuple(i for i, s in enumerate(seats) if s == "net")
+    # progress on, as in the workers: its "longest game" line once shadowed the dropped-games set (2026-11-27)
     out = pr.run_games(net, [("a", "b", 666, 0), ("a", "b", 1, 0)], seats=seats, record=record, opp_net=opp,
-                       game_s=0)  # fmt: skip
+                       game_s=0, progress=1)  # fmt: skip
     assert [r["result"] for r in out["results"]] == ["error", "p0"]
     assert out["results"][0]["dropped_steps"] == 3 * len(record), "the recorded seats' moves before the panic"
     assert {st["game"] for st in out["steps"]} == {1}
