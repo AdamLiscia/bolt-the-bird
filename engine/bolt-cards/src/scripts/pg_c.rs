@@ -2234,6 +2234,35 @@ pub fn script(name: &str) -> Option<Script> {
             &["When this creature enters, create four 1/1 green Insect creature tokens with flying and deathtouch."],
             |d, t| on(d, When::Enters, vec![], vec![Effect::CreateToken { who: Who::You, def: t.insect_deathtouch, n: 4 }]),
         ),
+        "Wurmcoil Engine" => s(
+            &["When this creature dies, create a 3/3 colorless Phyrexian Wurm artifact creature token with deathtouch and a 3/3 colorless Phyrexian Wurm artifact creature token with lifelink."],
+            |d, t| {
+                let wurm = |def| Effect::CreateToken { who: Who::You, def, n: 1 };
+                on(d, When::Dies, vec![], vec![wurm(t.wurm_deathtouch), wurm(t.wurm_lifelink)]);
+            },
+        ),
+        "Bone Sabres" => s(
+            &["Whenever equipped creature attacks, put four +1/+1 counters on it.", "Equip {3}"],
+            |d, _| {
+                on(d, When::EquippedAttacks, vec![], vec![Effect::CountersOnAttached(4)]);
+                equip(d, "{3}");
+            },
+        ),
+        "Squee, the Immortal" => s(&["You may cast this card from your graveyard or from exile."], |d, _| {
+            d.zones.cast_from_graveyard_or_exile = true;
+        }),
+        "Mechanized Production" => s(
+            &[
+                "Enchant artifact you control",
+                "At the beginning of your upkeep, create a token that's a copy of enchanted artifact. Then if you control eight or more artifacts with the same name as one another, you win the game.",
+            ],
+            |d, _| {
+                d.aura = true;
+                let yours = Filter { players: false, creatures: false, planeswalkers: false, artifacts: true, controller: Controller::You, ..Filter::ANY };
+                d.spell = Some(Ability::new(vec![yours], vec![]));
+                on(d, When::Upkeep { your_turn_only: true }, vec![], vec![Effect::CopyAttachedThenEightSameNameWins]);
+            },
+        ),
         _ => None,
     }
 }
@@ -2494,4 +2523,8 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Neoform",
     "Gilded Drake",
     "Hornet Queen",
+    "Wurmcoil Engine",
+    "Bone Sabres",
+    "Squee, the Immortal",
+    "Mechanized Production",
 ];

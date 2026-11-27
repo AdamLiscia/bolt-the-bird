@@ -2546,6 +2546,13 @@ pub enum Effect {
     /// Exchange control of the source and the creature in `slot`; if you don't or can't (no target,
     /// or either has left), sacrifice the source (Gilded Drake).
     ExchangeControlWithSlotOrSacrifice(u8),
+    /// Put `n` +1/+1 counters on the creature the source (an Equipment or Aura) is attached to (Bone
+    /// Sabres).
+    CountersOnAttached(i32),
+    /// Create a token that's a copy of the artifact the source (an Aura) enchants; then, if you
+    /// control eight or more artifacts with the same name as one another, you win the game
+    /// (Mechanized Production).
+    CopyAttachedThenEightSameNameWins,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

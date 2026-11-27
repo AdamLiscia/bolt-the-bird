@@ -690,4 +690,55 @@ impl Game {
             self.sacrificed(src, p);
         }
     }
+
+    /// The creature `src` (an Equipment or Aura) is attached to, if it's still that object on the
+    /// battlefield.
+    fn attached_creature(&self, src: ObjId) -> Option<ObjId> {
+        self.obj(src).attached_to.and_then(|(c, zcc)| {
+            let o = self.obj(c);
+            (o.zcc == zcc && o.zone == Zone::Battlefield).then_some(c)
+        })
+    }
+
+    /// Bone Sabres: `n` +1/+1 counters on the equipped creature.
+    pub(super) fn counters_on_attached(&mut self, src: ObjId, n: i32) {
+        if let Some(c) = self.attached_creature(src) {
+            self.add_counters(c, n);
+        }
+    }
+
+    /// Mechanized Production: a token copy of the enchanted artifact for `p` (doubled like any
+    /// token), then `p` wins if they control eight or more artifacts with the same name.
+    pub(super) fn copy_attached_then_eight_same_name_wins(&mut self, src: ObjId, p: PlayerId) {
+        if let Some(a) = self.attached_creature(src) {
+            self.last_created.clear();
+            for _ in 0..self.token_doubling(p) {
+                if let Some(id) = self.token_copy_of(p, a) {
+                    self.last_created.push(id);
+                }
+            }
+        }
+        let mut names: Vec<&str> = self
+            .permanents(p)
+            .filter(|&x| self.types_of(x).artifact)
+            .map(|x| self.def_of(x).name.as_str())
+            .collect();
+        names.sort_unstable();
+        let most = names
+            .chunk_by(|a, b| a == b)
+            .map(<[&str]>::len)
+            .max()
+            .unwrap_or(0);
+        if most < 8 {
+            return;
+        }
+        let opp = opponent(p);
+        let protected = self.permanents(opp).any(|c| self.def_of(c).cant_lose);
+        if !protected && !self.players[opp].lost {
+            self.players[opp].lost = true;
+            self.events.push(Event::Lost { player: opp });
+            self.result = Some(Outcome::Winner(p));
+            self.pending = Pending::GameOver;
+        }
+    }
 }

@@ -948,3 +948,32 @@ Open lane C work, waiting on other owners (needs_core.json names each blocker an
   and lane B's decks' Mac C pieces.
 Rules that bit this lane: Effect is `Copy` (no `.clone()`, clippy fails); test bindings must be used or `_`-named;
 `obj_mut` isn't public to tests (drive state through actions, `start_turn`, `to_main1`).
+
+## Merge of tarkir 25c40ea, and needs_core (mac-c) batch 13 (unbuilt)
+
+Merge 09782f0: tarkir 25c40ea (lane B) into tarkir-c. One conflict, the end of `Effect` (lane B's
+`DamageExtrasControllerAmount`, `SylvanLibrary`, then lane C's batch 12 variants). Tokens: tarkir's, then 100, 101.
+needs_core.json: union (828 entries both sides). Every variant/field set checked as the union, no duplicates.
+Unbuilt: the merger held the build slot (2026-11-26).
+
+Batch 13, unbuilt. Core (appended; arms after `ExchangeControlWithSlotOrSacrifice`, functions in game/zones.rs):
+- `Effect::CountersOnAttached(n)` (Bone Sabres), `Effect::CopyAttachedThenEightSameNameWins` (Mechanized
+  Production: token copy of the enchanted artifact via `token_copy_of`, doubled, then the eight-same-name win).
+- `ZonesExt::cast_from_graveyard_or_exile` (Squee): two lines in `priority_actions`' `from_exile` (owner only) and
+  `from_graveyard` filters.
+- Tokens 102 `wurm_deathtouch`, 103 `wurm_lifelink` (Wurmcoil Engine). 104 still free.
+Cards (4): Wurmcoil Engine, Bone Sabres, Squee, the Immortal, Mechanized Production. Tests in core_objects (51).
+Likely failure spots: the Squee test (cast from exile/graveyard through `play`), Mechanized Production's
+`upkeep_through` (start_turn(5, 0) and (7, 0) on player 0 only).
+
+Looked at and left (mac-c owner in needs_core.json, blocker elsewhere):
+- Urza, Lord High Artificer: "Tap an untapped artifact you control: Add {U}" (d1, mana production). The Construct is
+  `saga_construct`; the {5} shuffle-exile-play-free is lane C's once the mana piece lands.
+- The Necrobloom: dredge 2 is a draw replacement (Mac B); the landfall choice is simple.
+- Final Act: d3-shaped (destroy all planeswalkers, mass effects) plus "each opponent loses all counters"; no battles in
+  the engine. Doable Farewell-style (31 mode sets) if the merger hands it over.
+- Briarbridge Patrol: "deals damage to one or more creatures" trigger and a clues-sacrificed-this-turn count (d2).
+- Toxrill: slime-counter scaled static (d3) and a dies-with-slime trigger (d2), plus a Slug token.
+- Teferi, Master of Time: instant-speed loyalty (merger timing); phasing and extra turns exist.
+- Rona: "whenever you cast a legendary spell" (d2), then the back face (lane C).
+- Karador: lane C's once-each-turn graveyard creature cast still waits on d1's cost reduction.

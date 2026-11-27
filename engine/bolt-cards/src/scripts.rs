@@ -386,6 +386,20 @@ pub fn token_defs() -> Vec<CardDef> {
             t.colors = [false, false, false, false, true];
             t
         },
+        {
+            // 102, lane C: Wurmcoil Engine's "3/3 colorless Phyrexian Wurm artifact creature token
+            // with deathtouch".
+            let mut t = token("Phyrexian Wurm", "Phyrexian Wurm", 3, 3, Keywords::DEATHTOUCH);
+            t.types.artifact = true;
+            t
+        },
+        {
+            // 103, lane C: Wurmcoil Engine's "3/3 colorless Phyrexian Wurm artifact creature token
+            // with lifelink".
+            let mut t = token("Phyrexian Wurm", "Phyrexian Wurm", 3, 3, Keywords::LIFELINK);
+            t.types.artifact = true;
+            t
+        },
     ]
 }
 
@@ -598,6 +612,10 @@ pub struct Tokens {
     pub placeholder_100: usize,
     /// 101: a 1/1 green Insect with flying and deathtouch (Hornet Queen).
     pub insect_deathtouch: usize,
+    /// 102: a 3/3 colorless Phyrexian Wurm artifact creature with deathtouch (Wurmcoil Engine).
+    pub wurm_deathtouch: usize,
+    /// 103: a 3/3 colorless Phyrexian Wurm artifact creature with lifelink (Wurmcoil Engine).
+    pub wurm_lifelink: usize,
 }
 
 impl Tokens {
@@ -705,6 +723,8 @@ impl Tokens {
             shark: base + 99,
             placeholder_100: base + 100,
             insect_deathtouch: base + 101,
+            wurm_deathtouch: base + 102,
+            wurm_lifelink: base + 103,
         }
     }
 }

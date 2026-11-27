@@ -1069,3 +1069,103 @@ fn gilded_drake_exchanges_control_with_an_opponents_creature() {
     assert_eq!(g.obj(drake).controller, 1);
     assert_eq!(g.obj(theirs).controller, 0);
 }
+
+// ---- Batch 13: counters on the attached creature, cast from graveyard or exile, copy the enchanted artifact ----
+
+#[test]
+fn wurmcoil_engine_dies_into_a_deathtouch_wurm_and_a_lifelink_wurm() {
+    let mut g = table();
+    let engine = put(&mut g, 0, "Wurmcoil Engine");
+    let dam = hand(&mut g, 0, "Damnation");
+    play(&mut g, dam, false, &[], &[]);
+    assert_eq!(g.obj(engine).zone, Zone::Graveyard);
+    let wurms = tokens(&g, 0, "Phyrexian Wurm");
+    assert_eq!(wurms.len(), 2);
+    assert!(wurms
+        .iter()
+        .all(|&w| g.types_of(w).artifact && g.power(w) == 3 && g.toughness(w) == 3));
+    assert!(wurms.iter().all(|&w| g.colors_of(w) == [false; 5]), "colorless");
+    let dt = wurms
+        .iter()
+        .filter(|&&w| g.keywords(w).has(Keywords::DEATHTOUCH))
+        .count();
+    let ll = wurms
+        .iter()
+        .filter(|&&w| g.keywords(w).has(Keywords::LIFELINK))
+        .count();
+    assert_eq!((dt, ll), (1, 1), "one with deathtouch, the other with lifelink");
+}
+
+#[test]
+fn counters_on_attached_bone_sabres_puts_four_counters_on_the_attacker() {
+    let mut lands = vec!["Hungry Ghoul"];
+    for land in ["Plains", "Island", "Swamp", "Mountain", "Forest"] {
+        lands.extend([land; 5]);
+    }
+    let mut g = game(&lands);
+    let ghoul = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "Hungry Ghoul")
+        .unwrap();
+    let sabres = put(&mut g, 0, "Bone Sabres");
+    act(&mut g, Action::Activate(sabres, 0));
+    resolve_all(&mut g, &[Action::Target(obj(ghoul))]);
+    assert_eq!(g.obj(sabres).attached_to.map(|(c, _)| c), Some(ghoul));
+    let base = g.power(ghoul);
+    while g.step != Step::DeclareAttackers {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(ghoul));
+    act(&mut g, Action::FinishAttacks);
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(ghoul).counters, 4);
+    assert_eq!(g.power(ghoul), base + 4);
+}
+
+#[test]
+fn cast_from_graveyard_or_exile_squee_comes_back_from_either_zone() {
+    let mut g = table();
+    let dead = g.add_card(0, cid("Squee, the Immortal"), Zone::Graveyard);
+    let gone = g.add_card(0, cid("Squee, the Immortal"), Zone::Exile);
+    let theirs = g.add_card(1, cid("Squee, the Immortal"), Zone::Exile);
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Cast(dead)), "from your graveyard");
+    assert!(legal.contains(&Action::Cast(gone)), "from exile");
+    assert!(
+        !legal.contains(&Action::Cast(theirs)),
+        "only its owner's permission"
+    );
+    play(&mut g, dead, false, &[], &[]);
+    assert_eq!(g.obj(dead).zone, Zone::Battlefield);
+    play(&mut g, gone, false, &[], &[]);
+    assert_eq!(g.obj(gone).zone, Zone::Battlefield);
+}
+
+/// Passes from the start of player 0's turn `turn` until main phase 1 or the game ends.
+fn upkeep_through(g: &mut Game, turn: u32) {
+    g.start_turn(turn, 0);
+    while g.step != Step::Main1 && g.result.is_none() {
+        act(g, Action::PassPriority);
+    }
+}
+
+#[test]
+fn copy_attached_mechanized_production_copies_each_upkeep_and_wins_at_eight() {
+    let mut g = table();
+    let ring = put(&mut g, 0, "Sol Ring");
+    let mp = hand(&mut g, 0, "Mechanized Production");
+    play(&mut g, mp, false, &[obj(ring)], &[]);
+    assert_eq!(g.obj(mp).attached_to.map(|(c, _)| c), Some(ring));
+    upkeep_through(&mut g, 5);
+    assert_eq!(
+        tokens(&g, 0, "Sol Ring").len(),
+        1,
+        "a token copy of the enchanted artifact"
+    );
+    assert!(g.result.is_none(), "two Sol Rings");
+    for _ in 0..5 {
+        put(&mut g, 0, "Sol Ring");
+    }
+    upkeep_through(&mut g, 7);
+    assert_eq!(g.result, Some(bolt_core::Outcome::Winner(0)), "eight Sol Rings");
+}

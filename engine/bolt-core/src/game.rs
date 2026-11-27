@@ -6404,7 +6404,12 @@ impl Game {
             let plotted = o
                 .plotted
                 .is_some_and(|(t, zcc)| zcc == o.zcc && t < turn && o.owner == p && sorcery_timing);
-            stashed || plotted || o.playable.is_some_and(|(q, until)| q == p && turn <= until)
+            // Squee, the Immortal: its owner may cast it from exile (game/zones.rs).
+            let own_permission = o.owner == p && self.def_of(c).zones.cast_from_graveyard_or_exile;
+            stashed
+                || plotted
+                || own_permission
+                || o.playable.is_some_and(|(q, until)| q == p && turn <= until)
         });
         // Cards an effect lets you cast from your graveyard this turn (Zul Ashur).
         let conduit_ok = self.spells_cast[p] == 0;
@@ -6413,6 +6418,7 @@ impl Game {
                 .playable
                 .is_some_and(|(q, until)| q == p && turn <= until)
                 || (conduit_ok && turn > 0 && self.obj(c).conduit_turn == turn)
+                || self.def_of(c).zones.cast_from_graveyard_or_exile // Squee, the Immortal
         });
         // Aftermath halves, cast from your graveyard (CR 702.127a).
         let aftermath = self.players[p]
@@ -22495,6 +22501,10 @@ impl Game {
             }
             Effect::ExchangeControlWithSlotOrSacrifice(slot) => {
                 self.exchange_control_or_sacrifice(item, legal, slot)
+            }
+            Effect::CountersOnAttached(n) => self.counters_on_attached(src, n),
+            Effect::CopyAttachedThenEightSameNameWins => {
+                self.copy_attached_then_eight_same_name_wins(src, item.controller)
             }
             Effect::DiscardThenIfInstantOrSorcery => {
                 let p = item.controller;
