@@ -121,3 +121,73 @@ def test_a_changed_lr_applies_to_the_resumed_optimizer(monkeypatch):
     assert [g["lr"] for g in opt2.param_groups] == [5e-5], "load_state_dict alone would restore 2e-5"
     m, m2 = opt.state[net.value.weight]["exp_avg"], opt2.state[net2.value.weight]["exp_avg"]
     assert torch.equal(m, m2), "Adam's moments carry over"
+
+
+def test_an_errored_past_checkpoint_game_is_counted_in_the_row(trainer, monkeypatch):
+    """2026-11-27, iteration 30: a panic in an opp/net game (the net in seat 1) and a row with dropped_error 0.
+    Here the real run_games plays every game in-process; seat layouts come from the real league."""
+    import json
+
+    from test_play_hang import CrawlingGame, PanickingGame
+
+    import bolt.play_runner as pr
+
+    t, made, s3, tmp_path = trainer
+    real_encode = __import__("bolt.play_encoding", fromlist=["encode"]).encode
+    monkeypatch.setattr(pr, "encode", lambda o, who: real_encode(obs(), who))
+    layouts = []
+
+    def in_process(net, jobs, stop=None, workers=1, chunk=None, **kw):
+        layouts.append(tuple(kw["seats"]))
+        return pr._worker((pr._state(net), jobs, {**kw, "opp_net": pr._state(kw.get("opp_net")), "game_s": 0}))
+
+    def new_game(a, b, seed, first):  # iteration 2, the ("opp", "net") matchup's first game panics
+        return PanickingGame() if seed == 20_000_000 + 2 * 10_000 + 1_000 else CrawlingGame(False)
+
+    monkeypatch.setattr(pr, "new_game", new_game)
+    monkeypatch.setattr(t, "run_parallel", in_process)
+    monkeypatch.setattr(sys, "argv", [*sys.argv[:7], "2", *sys.argv[8:], "--past-every", "1"])  # 2 iterations
+    t.main()
+    assert ("opp", "net") in layouts
+    rows = json.loads((tmp_path / "results" / "ppo_play_stoptest.json").read_text())["history"]
+    r = rows[1]
+    assert r["errors"] == 1
+    assert r["dropped_error"] == 3, "the net seat's 3 decisions before the panic"
+
+
+def test_ref_sets_the_kl_reference_and_a_resume_keeps_it(trainer, monkeypatch, capsys):
+    t, made, s3, tmp_path = trainer
+    torch.manual_seed(7)
+    other = PlayNet(n_cards=8, dim=16, layers=1, heads=2)
+    ref_path = tmp_path / "ref.pt"
+    torch.save({"config": other.config, "model": other.state_dict()}, ref_path)
+    loaded, refs_used = [], []
+    real_load, real_step = t.load_net, t.ppo_step
+
+    def load_net(path):
+        loaded.append(str(path))
+        return real_load(path)  # load_checkpoint on today's pool (BOLT_PLAY_SET), like --init
+
+    def ppo_step(net, ref_net, *args, **kw):
+        refs_used.append(ref_net)
+        return real_step(net, ref_net, *args, **kw)
+
+    monkeypatch.setattr(t, "load_net", load_net)
+    monkeypatch.setattr(t, "ppo_step", ppo_step)
+    argv = [*sys.argv[:7], "1", *sys.argv[8:], "--ref", str(ref_path)]
+    monkeypatch.setattr(sys, "argv", argv)
+    t.main()
+    assert str(ref_path) in loaded and f"KL reference: {ref_path}" in capsys.readouterr().out
+    assert refs_used and all(torch.equal(r.value.weight, other.value.weight) for r in refs_used)
+    # the same run resumed without --ref keeps it
+    loaded.clear()
+    monkeypatch.setattr(sys, "argv", [*sys.argv[:7], "1", *sys.argv[8:-2]])
+    t.main()
+    assert str(ref_path) in loaded and f"KL reference: {ref_path}" in capsys.readouterr().out
+
+
+def test_without_ref_the_kl_reference_is_init(trainer, monkeypatch, capsys):
+    t, made, s3, tmp_path = trainer
+    monkeypatch.setattr(sys, "argv", [*sys.argv[:7], "1", *sys.argv[8:]])
+    t.main()
+    assert f"KL reference: {tmp_path / 'init.pt'}" in capsys.readouterr().out
