@@ -11,12 +11,9 @@ probability and the value estimate. `run_parallel` splits the jobs across worker
 that dies (the engine's rare memory corruption) has its share rerun in a fresh process.
 """
 
-import contextlib
 import multiprocessing as mp
 import os
 import time
-from concurrent.futures import ProcessPoolExecutor
-from concurrent.futures.process import BrokenProcessPool
 
 import bolt_engine as be
 import torch
@@ -49,6 +46,22 @@ CMD_MAX_TURNS = 80
 CMD_MAX_MOVES = 6_000
 
 
+# A worker's heartbeat (set by _proc): a shared array, and this worker's slot in it, holding the time of
+# its last engine call and the game (index in its chunk) the call was for. The parent kills a worker whose
+# heartbeat stops for HANG_S seconds: a single engine call that never returns (2026-11-27, cmd_play_1: a
+# worker 9.5 minutes at full CPU inside one call, so no move cap ever got a turn).
+_BEAT = None
+HANG_S = float(os.environ.get("BOLT_HANG_S", "120"))
+HANG_LOG = os.environ.get("BOLT_HANG_LOG")  # where hung games are written (one JSON line each), if set
+
+
+def _beat(gi: int) -> None:
+    if _BEAT is not None:
+        arr, slot = _BEAT
+        arr[2 * slot] = time.time()
+        arr[2 * slot + 1] = gi
+
+
 def _result(g) -> str:
     return g.result()
 
@@ -64,14 +77,17 @@ def _forward(net, encs, chunk=256):
 
 
 def run_games(net, jobs, seats=("net", "rules"), sample=True, seed=0, smart=(1, 2), record=None,
-              max_turns=None, game_offset=0, max_moves=None, label_with=None, opp_net=None, progress=0):  # fmt: skip
+              max_turns=None, game_offset=0, max_moves=None, label_with=None, opp_net=None, progress=0,
+              skip=()):  # fmt: skip
     """jobs: (deck_a, deck_b, seed, first), a Commander deck being (commanders, cards). Returns
     {"results": [{"result", "turn"}], "steps": [...]}. smart=(rollouts, candidates[, ms]): the smart seat's
     search, ms capping its time per move.
 
     label_with=(rollouts, candidates): recorded network steps get the smart player's choice in that
     position as "action" (the label) and the network's own move as "played", which is what the game
-    follows (DAgger: the teacher labels the positions the student reaches)."""
+    follows (DAgger: the teacher labels the positions the student reaches).
+
+    skip: games (indices into jobs) not played: an earlier run hung on them. Each is a timeout with no steps."""
     record = {i for i, s in enumerate(seats) if s == "net"} if record is None else set(record)
     commander = PLAY_FORMAT == "commander"
     if max_turns is None:
@@ -80,14 +96,19 @@ def run_games(net, jobs, seats=("net", "rules"), sample=True, seed=0, smart=(1, 
         max_moves = CMD_MAX_MOVES if commander else MAX_MOVES
     # seat "opp": another network (a past checkpoint) samples its moves; it is never recorded
     gen = torch.Generator().manual_seed(seed)
-    games = [new_game(a, b, s, f) for a, b, s, f in jobs]
+    skip = set(skip)
+    games = []
+    for gi, (a, b, s, f) in enumerate(jobs):
+        _beat(gi)
+        games.append(None if gi in skip else new_game(a, b, s, f))
     moves = [0] * len(games)
-    results: list = [None] * len(games)
+    results: list = [{"result": "timeout", "turn": 0, "hung": True} if gi in skip else None for gi in range(len(games))]
     steps = []
-    live = list(range(len(games)))
+    live = [gi for gi in range(len(games)) if gi not in skip]
     t0 = time.time()
 
     def play(gi, i):
+        _beat(gi)
         games[gi].step(i)
         moves[gi] += 1
 
@@ -97,6 +118,7 @@ def run_games(net, jobs, seats=("net", "rules"), sample=True, seed=0, smart=(1, 
             g = games[gi]
             try:
                 while True:
+                    _beat(gi)
                     if g.is_over():
                         results[gi] = {"result": _result(g), "turn": g.turn}
                         break
@@ -130,6 +152,7 @@ def run_games(net, jobs, seats=("net", "rules"), sample=True, seed=0, smart=(1, 
                     raise
                 results[gi] = {"result": "error", "turn": g.turn}
         if waiting:
+            _beat(-1)  # the network's forward pass: no game's engine call
             mine = [w for w in waiting if seats[w[1]] == "net"]
             theirs = [w for w in waiting if seats[w[1]] == "opp"]
             logits, values = _forward(net, [e for _, _, e in mine]) if mine else ([], [])
@@ -146,6 +169,7 @@ def run_games(net, jobs, seats=("net", "rules"), sample=True, seed=0, smart=(1, 
                         seed_ = (jobs[gi][2] * 1_000_003 + moves[gi]) % 2**64
                         step["played"] = i
                         try:
+                            _beat(gi)
                             step["action"] = games[gi].smart(label_with[0], label_with[1], seed_)
                         except BaseException as e:  # a Rust panic too
                             if isinstance(e, (KeyboardInterrupt, SystemExit)):
@@ -222,29 +246,113 @@ def _worker(args):
     return out
 
 
-def run_parallel(net, jobs, workers=6, chunk=None, seed=0, retries=2, compact=False, **kw):
+def _proc(slot, beats, out_q, worker, key, args, parent):
+    """One worker process: plays its chunk, heartbeat in beats[slot], and sends (key, result) back."""
+    global _BEAT
+    _die_with_parent(parent)
+    _BEAT = (beats, slot)
+    out_q.put((key, worker(args)))
+
+
+def _hang_record(job, seats, kw, index):
+    a, b, seed_, first = job
+    return {"time": time.strftime("%Y-%m-%d %H:%M:%S"), "set": PLAY_SET, "format": PLAY_FORMAT, "job": index,
+            "seed": seed_, "first": first, "seats": list(seats), "smart": list(kw.get("smart", (1, 2))),
+            "sample": kw.get("sample", True), "deck_a": a, "deck_b": b}  # fmt: skip
+
+
+def run_parallel(net, jobs, workers=6, chunk=None, seed=0, retries=2, compact=False, hang_s=None, hang_log=None,
+                 worker=None, **kw):  # fmt: skip
     """run_games split across spawn worker processes; results in job order. With compact=True the
-    workers return recorded steps as bolt.play_data arrays ("arrays") instead of "steps"."""
+    workers return recorded steps as bolt.play_data arrays ("arrays") instead of "steps".
+
+    A worker whose heartbeat stops for hang_s seconds (default HANG_S; 0 turns it off), an engine call that
+    never returns, is killed, and its chunk rerun without that game: a timeout with no steps, written to
+    hang_log (default BOLT_HANG_LOG) as one JSON line with its decks, seed, seats and pilot settings. A worker
+    that dies (the engine's rare memory corruption) has its chunk rerun, up to `retries` times."""
+    import collections
+    import json
+    import queue
+
+    worker = worker or _worker
+    hang_s = HANG_S if hang_s is None else hang_s
+    hang_log = hang_log or HANG_LOG
     net_state = _state(net)
     if kw.get("opp_net") is not None:
         kw["opp_net"] = _state(kw["opp_net"])
     chunk = chunk or max(1, -(-len(jobs) // workers))
     parts = {k: jobs[k : k + chunk] for k in range(0, len(jobs), chunk)}
+    ctx = mp.get_context("spawn")
+    out_q = ctx.Queue()
+    beats = ctx.RawArray("d", 2 * workers)
+    pending = collections.deque(sorted(parts))
+    running: dict = {}  # chunk key -> (process, slot)
+    free = list(range(workers))
     done: dict = {}
-    for _ in range(retries + 1):
-        todo = [k for k in parts if k not in done]
-        if not todo:
-            break
-        with ProcessPoolExecutor(workers, mp_context=mp.get_context("spawn"), initializer=_die_with_parent,
-                                 initargs=(os.getpid(),)) as ex:  # fmt: skip
-            futs = {k: ex.submit(_worker, (net_state, parts[k], {**kw, "seed": seed + k, "game_offset": k, "compact": compact}))
-                    for k in todo}  # fmt: skip
-            for k, f in futs.items():
-                with contextlib.suppress(BrokenProcessPool):  # rerun in a fresh pool
-                    done[k] = f.result()
-    missing = [k for k in parts if k not in done]
-    if missing:
-        raise RuntimeError(f"worker processes kept dying on job chunks {missing}")
+    crashes: collections.Counter = collections.Counter()
+    skip: dict = collections.defaultdict(set)
+    seats = kw.get("seats", ("net", "rules"))
+
+    def drain(wait):
+        while True:
+            try:
+                key, out = out_q.get(timeout=wait)
+            except queue.Empty:
+                return
+            done[key] = out
+            wait = 0.05
+
+    def release(k):
+        p, slot = running.pop(k)
+        p.join(timeout=10)
+        if p.is_alive():
+            p.kill()
+            p.join()
+        free.append(slot)
+
+    while pending or running:
+        while pending and free:
+            k = pending.popleft()
+            slot = free.pop()
+            beats[2 * slot], beats[2 * slot + 1] = time.time(), -1
+            args = (
+                net_state,
+                parts[k],
+                {**kw, "seed": seed + k, "game_offset": k, "compact": compact, "skip": skip[k]},
+            )
+            p = ctx.Process(target=_proc, args=(slot, beats, out_q, worker, k, args, os.getpid()), daemon=True)
+            p.start()
+            running[k] = (p, slot)
+        drain(1.0)
+        for k in list(running):
+            p, slot = running[k]
+            if k in done:
+                release(k)
+            elif not p.is_alive():
+                drain(0.5)  # a result sent just before it exited
+                if k not in done:
+                    release(k)
+                    crashes[k] += 1
+                    if crashes[k] > retries:
+                        raise RuntimeError(f"worker processes kept dying on job chunks {[k]}")
+                    pending.append(k)
+            elif hang_s and time.time() - beats[2 * slot] > hang_s:
+                gi = int(beats[2 * slot + 1])
+                p.kill()
+                release(k)
+                if 0 <= gi < len(parts[k]) and gi not in skip[k]:
+                    skip[k].add(gi)
+                    rec = _hang_record(parts[k][gi], seats, kw, k + gi)
+                    print(f"HANG: game {k + gi} (seed {rec['seed']}) stalled {hang_s:.0f}s; worker killed, chunk rerun "
+                          f"without it", flush=True)  # fmt: skip
+                    if hang_log:
+                        with open(hang_log, "a") as f:
+                            f.write(json.dumps(rec) + "\n")
+                else:  # stalled outside a game's engine call: rerun the chunk as for a crash
+                    crashes[k] += 1
+                    if crashes[k] > retries:
+                        raise RuntimeError(f"job chunk {k} kept stalling outside a game")
+                pending.appendleft(k)
     keys = sorted(done)
     results = [r for k in keys for r in done[k]["results"]]
     if compact:

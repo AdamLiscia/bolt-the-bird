@@ -14,9 +14,13 @@ from bolt.play_encoding import FEATS, GLOBAL_NAMES, KINDS, ZONE
 
 
 class PlayNet(nn.Module):
-    def __init__(self, n_cards: int, dim: int = 128, layers: int = 4, heads: int = 4, dropout: float = 0.0):
+    def __init__(self, n_cards: int, dim: int = 128, layers: int = 4, heads: int = 4, dropout: float = 0.0,
+                 set_name: str | None = None, card_names: list[str] | None = None):  # fmt: skip
+        """`set_name` and `card_names` (the card set and its names, by card number) travel with every checkpoint
+        so a later engine whose pool grew can move each row to its card's new number (`load_checkpoint`)."""
         super().__init__()
-        self.config = {"n_cards": n_cards, "dim": dim, "layers": layers, "heads": heads, "dropout": dropout}
+        self.config = {"n_cards": n_cards, "dim": dim, "layers": layers, "heads": heads, "dropout": dropout,
+                       "set_name": set_name, "card_names": None if card_names is None else list(card_names)}  # fmt: skip
         self.card = nn.Embedding(n_cards + 2, dim, padding_idx=0)
         self.zone = nn.Embedding(len(ZONE), dim)
         self.feats = nn.Linear(len(FEATS), dim)
@@ -79,19 +83,110 @@ def pad_state(state: dict) -> dict:
     return state
 
 
-def pad_optimizer(opt: torch.optim.Optimizer, net: nn.Module) -> None:
-    """After `opt.load_state_dict` of a state saved before inputs were appended: Adam's moment estimates for
-    the grown tensors, zero-padded the way pad_state pads the weights (kinds: new rows zero too)."""
+# Checkpoints saved before card names were stored: how many of the set's cards (not tokens) their pool had.
+# Cards and tokens are both only ever appended, so the old pool is the first LEGACY_CARDS cards of today's,
+# then the first (rows - LEGACY_CARDS) of today's tokens. CMD: 3,131 cards until tarkir 9327e46 added 172.
+LEGACY_CARDS = {"CMD": 3131}
+
+
+def current_names(set_name: str) -> list[str]:
+    """The engine's card names for a set, by card number (cards, then tokens)."""
+    import bolt_engine as be
+
+    return list(be.card_names() if set_name.upper() == "FDN" else be.card_names(set_name.upper()))
+
+
+def legacy_names(
+    set_name: str, n_cards: int, now: list[str] | None = None, n_tokens_now: int | None = None
+) -> list[str]:
+    """The names of an n_cards pool of `set_name` saved before checkpoints carried names (see LEGACY_CARDS), from
+    today's names and token count (the engine's unless given)."""
+    s = set_name.upper()
+    if now is None:
+        now = current_names(s)
+    if n_tokens_now is None:
+        import bolt_engine as be
+
+        n_tokens_now = len(be.token_info() if s == "FDN" else be.token_info(s))
+    cards_now = len(now) - n_tokens_now
+    cards = LEGACY_CARDS.get(s, cards_now)
+    tokens = n_cards - cards
+    if not 0 <= tokens <= n_tokens_now or cards > cards_now:
+        raise ValueError(f"can't rebuild a {n_cards}-card {s} pool: {cards} cards then {tokens} tokens")
+    return now[:cards] + now[cards_now : cards_now + tokens]
+
+
+def card_rows(old: list[str], new: list[str]) -> list[int]:
+    """For each card number in `new`, its number in `old` (-1 for a card `old` lacks). A name used more than once
+    (token names: several Spirits) is matched by occurrence: the k-th Spirit to the k-th Spirit."""
+    seen: dict[str, list[int]] = {}
+    for i, n in enumerate(old):
+        seen.setdefault(n, []).append(i)
+    used: dict[str, int] = {}
+    rows = []
+    for n in new:
+        k = used.get(n, 0)
+        used[n] = k + 1
+        rows.append(seen[n][k] if k < len(seen.get(n, [])) else -1)
+    return rows
+
+
+def remap_cards(state: dict, rows: list[int]) -> dict:
+    """card.weight moved to the new card numbers: row 0 (padding) and the last row (a card the player can't see)
+    kept, each card's row moved to its new number, a new card starting as the can't-see row ("some card")."""
+    w = state["card.weight"]
+    out = w[-1].repeat(len(rows) + 2, 1)
+    out[0] = w[0]
+    for i, r in enumerate(rows):
+        if r >= 0:
+            out[i + 1] = w[r + 1]
+    return {**state, "card.weight": out}
+
+
+def _pool(c: dict, set_name: str | None) -> tuple[str | None, list[str] | None]:
+    """(set, its names when the checkpoint was saved) of a checkpoint dict, or (None, None) when unknown."""
+    config = c.get("config", {})
+    s = set_name or config.get("set_name") or c.get("set")
+    if not s:
+        return None, None
+    names = config.get("card_names") or c.get("card_names")
+    if names is None:
+        names = legacy_names(s, c["model"]["card.weight"].shape[0] - 2)
+    return s.upper(), list(names)
+
+
+def load_into(net: "PlayNet", state: dict, old_names: list[str] | None = None) -> list[int] | None:
+    """Load a state dict into `net`, growing its inputs (`pad_state`) and, given the names its card rows were
+    saved under, moving them to `net`'s card numbers. Returns the row map (for `pad_optimizer`), or None."""
+    state = pad_state(state)
+    rows = None
+    names = net.config.get("card_names")
+    if old_names is not None and names is not None and list(old_names) != list(names):
+        rows = card_rows(old_names, names)
+        state = remap_cards(state, rows)
+    net.load_state_dict(state)
+    return rows
+
+
+def pad_optimizer(opt: torch.optim.Optimizer, net: nn.Module, rows: list[int] | None = None) -> None:
+    """After `opt.load_state_dict` of a state saved before inputs were appended or the card pool grew: Adam's
+    moment estimates for the grown tensors, zero-padded the way pad_state pads the weights (kinds: new rows
+    zero too), and the card table's moved like its rows (`rows` from `load_into`; new cards start at zero)."""
     for p in net.parameters():
         st = opt.state.get(p)
         if not st:
             continue
         for k in ("exp_avg", "exp_avg_sq"):
             m = st.get(k)
-            if m is None or m.shape == p.shape:
+            if m is None or (m.shape == p.shape and not (rows is not None and p is net.card.weight)):
                 continue
             out = m.new_zeros(p.shape)
-            if p is net.kind.weight:  # old rows before the unknown-kind row, which stays last
+            if p is net.card.weight and rows is not None:
+                out[0], out[-1] = m[0], m[-1]
+                for i, r in enumerate(rows):
+                    if r >= 0:
+                        out[i + 1] = m[r + 1]
+            elif p is net.kind.weight:  # old rows before the unknown-kind row, which stays last
                 out[: m.shape[0] - 1] = m[:-1]
                 out[-1] = m[-1]
             else:
@@ -99,14 +194,27 @@ def pad_optimizer(opt: torch.optim.Optimizer, net: nn.Module) -> None:
             st[k] = out
 
 
-def load_checkpoint(path_or_obj) -> "PlayNet":
+def load_checkpoint(path_or_obj, set_name: str | None = None) -> "PlayNet":
     """A PlayNet from a checkpoint (a path, or the loaded {"config", "model"} dict); one saved before inputs
-    were appended is grown by `pad_state`, so it plays exactly as before on everything it knew."""
+    were appended is grown by `pad_state`, so it plays exactly as before on everything it knew.
+
+    When the card set is known (`set_name`, or stored in the checkpoint) and the engine's pool for it differs
+    from the one the checkpoint was saved with (its stored names, or for older checkpoints `legacy_names`),
+    the card table is moved to the engine's numbers: each card keeps its row, new cards start as the
+    can't-see row (2026-11-27: 172 cards added to CMD moved every token's number)."""
     c = (
         path_or_obj
         if isinstance(path_or_obj, dict)
         else torch.load(path_or_obj, map_location="cpu", weights_only=False)
     )
-    net = PlayNet(**c["config"])
-    net.load_state_dict(pad_state(c["model"]))
+    try:
+        s, old = _pool(c, set_name)
+        now = current_names(s) if s is not None else None
+    except (ImportError, AttributeError, TypeError):  # an engine without card sets: load as saved
+        s, old, now = None, None, None
+    config = dict(c["config"])
+    if now is not None:
+        config.update(n_cards=len(now), set_name=s, card_names=now)
+    net = PlayNet(**config)
+    load_into(net, c["model"], old)
     return net
