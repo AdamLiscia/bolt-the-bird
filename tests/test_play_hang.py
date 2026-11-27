@@ -114,3 +114,86 @@ def test_smart_moves_get_their_cap_on_top_of_the_game_budget(monkeypatch):
     # the allowance covers smart moves only: slow rules moves (8 x 0.05 s) still run the game out of budget
     out = pr.run_games(None, [("a", "b", 666, 0)], seats=("rules", "smart"), record=(), smart=(1, 2, 50), game_s=0.2)
     assert out["results"][0]["result"] == "timeout" and out["results"][0]["slow"]
+
+
+class PanickingGame(CrawlingGame):
+    """An engine whose 6th move panics, like finish_cast's .expect("payable")."""
+
+    def __init__(self):
+        super().__init__(crawl=False)
+
+    def is_over(self):
+        return False
+
+    def legal_actions(self):
+        return [("Cast", 7, -1, -1), ("PassPriority", -1, -1, -1)]
+
+    def step(self, i):
+        if self.n == 5:
+            raise RuntimeError("payable")
+        self.n += 1
+
+
+def test_a_panicking_game_records_its_last_moves_and_message(monkeypatch):
+    import bolt.play_runner as pr
+
+    monkeypatch.setattr(pr, "new_game", lambda a, b, s, f: PanickingGame())
+    out = pr.run_games(None, [("a", "b", 1, 0)], seats=("rules", "rules"), record=())
+    r = out["results"][0]
+    assert r["result"] == "error"
+    p = r["panic"]
+    # 5 moves made; the 6th, the one that panicked, is the last in the list
+    assert p["message"] == "payable" and p["moves"] == 5 and [k for k, _ in p["last"]] == ["Cast"] * 6
+
+
+def test_panicked_games_reach_the_hang_log(tmp_path):
+    log = tmp_path / "hangs.jsonl"
+    out = run_parallel(None, [("x", "y", 888, 1)], workers=1, hang_s=0, hang_log=str(log), worker=worker,
+                       seats=("net", "rules"))  # fmt: skip
+    assert out["results"][0]["result"] == "error"
+    (row,) = [json.loads(x) for x in log.read_text().splitlines()]
+    assert row["why"] == "engine panic" and row["seed"] == 888 and row["first"] == 1 and row["deck_a"] == "x"
+    assert row["message"] == "payable" and row["moves"] == 12 and row["last"] == [["Cast", "Sol Ring"]]
+
+
+def test_a_game_ended_by_an_engine_error_leaves_no_samples(monkeypatch):
+    """2026-11-27: iteration 30's one panicked game, then a non-finite loss: its partial trajectory has no real
+    outcome, so none of it reaches the update."""
+    import bolt.play_runner as pr
+
+    monkeypatch.setattr(pr, "new_game", lambda a, b, s, f: PanickingGame() if s == 666 else CrawlingGame(False))
+    monkeypatch.setattr(pr, "encode", lambda obs, who: {"act_kind": [0, 0]})
+    jobs = [("a", "b", 1, 0), ("a", "b", 666, 0)]
+    out = pr.run_games(None, jobs, seats=("rules", "rules"), record=(0, 1), game_s=0)
+    assert [r["result"] for r in out["results"]] == ["p0", "error"]
+    assert out["steps"] and {st["game"] for st in out["steps"]} == {0}
+
+
+def test_a_batch_with_an_errored_game_gives_a_finite_loss(monkeypatch):
+    """The iteration-30 shape: one game panics mid-trajectory; the update over the batch stays finite."""
+    import numpy as np
+    import torch
+    from test_play_commander import obs
+
+    import bolt.play_runner as pr
+    from bolt.play_data import to_arrays
+    from bolt.play_encoding import encode as real_encode
+    from bolt.play_net import PlayNet
+    from bolt.play_ppo import gae, ppo_step
+
+    monkeypatch.setattr("bolt.play_encoding.card_table", lambda s: ())
+    monkeypatch.setattr(pr, "new_game", lambda a, b, s, f: PanickingGame() if s == 666 else CrawlingGame(False))
+    monkeypatch.setattr(pr, "encode", lambda o, who: real_encode(obs(), who))
+    jobs = [("a", "b", 1, 0), ("a", "b", 666, 0), ("a", "b", 3, 1)]
+    out = pr.run_games(None, jobs, seats=("rules", "rules"), record=(0, 1), game_s=0)
+    assert [r["result"] for r in out["results"]] == ["p0", "error", "p0"]
+    assert out["results"][1]["dropped_steps"] > 0
+    for st in out["steps"]:
+        st["logp"], st["value"] = -0.7, 0.0
+    arr = to_arrays(out["steps"], out["results"])
+    adv, ret = gae(arr, lam=0.95)
+    net = PlayNet(n_cards=8, dim=16, layers=1, heads=2)
+    idx = np.arange(len(arr["action"]))
+    st = ppo_step(net, None, torch.optim.AdamW(net.parameters(), lr=1e-3), arr, idx, torch.as_tensor(adv),
+                  ret=torch.as_tensor(ret))  # fmt: skip
+    assert np.isfinite(st["loss"]) and st["bad_groups"] == 0 and st["bad_grad"] == 0
