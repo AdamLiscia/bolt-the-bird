@@ -472,6 +472,18 @@ impl Game {
                     });
                 }
             }
+            if let EmblemKind::OnYourColorSpellCast { color, trigger } = kind {
+                // `fire(p, YouCast)` comes as the spell is cast: it's the newest card on the stack.
+                let spell = self.stack.last().copied();
+                let hit = spell.is_some_and(|s| self.colors_of(s).get(color).copied().unwrap_or(false));
+                if owner == p && when == When::YouCast && hit {
+                    self.triggered.push(StackItem {
+                        kind: StackKind::Trigger(trigger),
+                        extra: spell,
+                        ..Game::casting(card, owner)
+                    });
+                }
+            }
         }
         self.fire_ring(p, when);
         match (when, self.initiative) {
@@ -662,6 +674,21 @@ impl Game {
                         let zcc = self.obj(c).zcc;
                         self.obj_mut(src).attached_to = Some((c, zcc));
                     }
+                }
+            }
+            SubsystemEffect::CastSpellsFromAnyGraveyardThisTurn => {
+                self.any_graveyard_spells_turn[p] = self.turn;
+            }
+            SubsystemEffect::DamageManaSpentOnThatSpell(slot) => {
+                let n = item.extra.map_or(0, |s| self.obj(s).mana_spent) as i32;
+                let ok = n > 0 && legal.get(slot as usize).copied().unwrap_or(false);
+                let t = match item.targets.get(slot as usize) {
+                    Some(&Chosen::Player(q)) if ok => Some(Target::Player(q)),
+                    Some(&Chosen::Object(o, _)) if ok => Some(Target::Object(o)),
+                    _ => None,
+                };
+                if let Some(t) = t {
+                    self.deal_damage(item.source, t, n);
                 }
             }
             SubsystemEffect::DamageEachOpponentTotalManaValueOfOthers => {
@@ -889,6 +916,16 @@ impl Game {
 
     /// Whether the Saga `id` has its chapter-`n` grants now: that chapter's grant resolved while
     /// it's been on the battlefield (CR 714; Urza's Saga).
+    /// Whether `p` may cast the instant or sorcery card `c` from a graveyard now, exiled instead
+    /// (`SubsystemEffect::CastSpellsFromAnyGraveyardThisTurn`, this turn only).
+    pub fn casts_from_any_graveyard(&self, p: PlayerId, c: ObjId) -> bool {
+        let t = self.def_of(c).types;
+        self.turn > 0
+            && self.any_graveyard_spells_turn[p] == self.turn
+            && self.obj(c).zone == Zone::Graveyard
+            && (t.instant || t.sorcery)
+    }
+
     pub fn has_chapter_grant(&self, id: ObjId, n: u8) -> bool {
         let o = self.obj(id);
         o.zone == Zone::Battlefield

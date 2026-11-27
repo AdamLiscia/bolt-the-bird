@@ -1895,6 +1895,9 @@ pub struct Game {
     /// Saddle: the other creatures that saddled a Mount with its named one, as (mount, riders),
     /// recorded as the cost is paid for `Effect::BecomeSaddled`.
     saddle_extra: Vec<(ObjId, Vec<ObjId>)>,
+    /// The turn each player may cast instant and sorcery spells from any graveyard in (The Great
+    /// Work's chapter III; see `Game::casts_from_any_graveyard`).
+    pub any_graveyard_spells_turn: [u32; 2],
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -2188,6 +2191,7 @@ impl Game {
             saddle_extra: Vec::new(),
             hand_links: Vec::new(),
             saddled: Vec::new(),
+            any_graveyard_spells_turn: [0; 2],
         }
     }
 
@@ -6836,7 +6840,13 @@ impl Game {
                 || d.mana_ext.retrace
                 || ((self.obj(c).flashback_eot || self.obj(c).harmonize_eot)
                     && (d.types.instant || d.types.sorcery))
+                || self.casts_from_any_graveyard(p, c) // The Great Work: its own exile-instead cast
         });
+        // The Great Work: instants and sorceries in the other graveyard, cast the same way.
+        let any_graveyard = self.players[opponent(p)]
+            .graveyard
+            .iter()
+            .filter(move |&&c| self.casts_from_any_graveyard(p, c));
         let turn = self.turn;
         let from_exile = self.exile.iter().copied().filter(move |&c| {
             let o = self.obj(c);
@@ -6914,6 +6924,7 @@ impl Game {
             .chain(top.map(|c| (c, false)))
             .chain(command.map(|c| (c, false)))
             .chain(flashback.map(|&c| (c, true)))
+            .chain(any_graveyard.map(|&c| (c, true)))
             .chain(from_exile.map(|c| (c, false)))
             .chain(from_graveyard.map(|c| (c, false)))
             .chain(aftermath.map(|c| (c, false)))

@@ -903,3 +903,83 @@ fn damage_equal_to_the_total_mana_value_of_your_other_permanents() {
     );
     assert_eq!(g.players[0].life, me);
 }
+
+// ---- The Great Work's chapter III; Chandra, Dressed to Kill's emblem ----
+
+#[test]
+fn instants_and_sorceries_in_any_graveyard_are_castable_this_turn_and_exiled_instead() {
+    let mut g = game_with(
+        vec![],
+        vec![sub(SubsystemEffect::CastSpellsFromAnyGraveyardThisTurn)],
+        |_| {},
+    );
+    let x = g.add_card(0, cid(CARD), Zone::Battlefield);
+    let theirs = g.add_card(1, cid("Lightning Bolt"), Zone::Graveyard);
+    let mine = g.add_card(0, cid("Lightning Bolt"), Zone::Graveyard);
+    let creature = g.add_card(1, cid("Llanowar Elves"), Zone::Graveyard);
+    let legal = g.legal_actions();
+    assert!(!legal.contains(&Action::CastFlashback(theirs)));
+    assert!(!legal.contains(&Action::CastFlashback(mine)));
+    activate(&mut g, x, &[]);
+    assert!(g.casts_from_any_graveyard(0, theirs));
+    assert!(!g.casts_from_any_graveyard(1, theirs), "only its controller");
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::CastFlashback(theirs)));
+    assert!(legal.contains(&Action::CastFlashback(mine)));
+    assert!(!legal.contains(&Action::CastFlashback(creature)));
+    let life = g.players[1].life;
+    for c in [theirs, mine] {
+        act(&mut g, Action::CastFlashback(c));
+        act(&mut g, Action::Target(Target::Player(1)));
+        settle(&mut g, &[]);
+        assert_eq!(g.obj(c).zone, Zone::Exile, "exiled instead");
+    }
+    assert_eq!(g.players[1].life, life - 6);
+    // Only this turn.
+    let late = g.add_card(1, cid("Lightning Bolt"), Zone::Graveyard);
+    assert!(
+        g.casts_from_any_graveyard(0, late),
+        "any card, while the turn lasts"
+    );
+    g.any_graveyard_spells_turn[0] = g.turn - 1;
+    assert!(!g.casts_from_any_graveyard(0, late), "an earlier turn's");
+    assert!(!g.legal_actions().contains(&Action::CastFlashback(late)));
+}
+
+#[test]
+fn a_color_spell_emblem_triggers_on_its_owners_spells_of_that_color_for_the_mana_spent() {
+    let mut g = game_with(vec![], vec![], |defs| {
+        defs[cid(CARD)].triggers.push(Trigger {
+            when: When::Never,
+            ability: Ability::new(
+                vec![Filter::ANY],
+                vec![sub(SubsystemEffect::DamageManaSpentOnThatSpell(0))],
+            ),
+        });
+    });
+    let x = g.add_card(0, cid(CARD), Zone::Graveyard);
+    let n = g.def_of(x).triggers.len() - 1;
+    g.emblems
+        .push((0, EmblemKind::OnYourColorSpellCast { color: 3, trigger: n }, x));
+    let life = g.players[1].life;
+    // A green spell: no trigger.
+    let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Hand);
+    act(&mut g, Action::Cast(elves));
+    assert!(
+        !matches!(g.pending, Pending::ChooseTarget(_)),
+        "no trigger to target"
+    );
+    settle(&mut g, &[]);
+    assert_eq!(g.players[1].life, life);
+    // A red spell with mana value 1: 1 damage, to the target chosen for the emblem's trigger.
+    let bolt = g.add_card(0, cid("Lightning Bolt"), Zone::Hand);
+    act(&mut g, Action::Cast(bolt));
+    act(&mut g, Action::Target(Target::Player(1)));
+    settle(&mut g, &[Action::Target(Target::Player(1))]);
+    assert_eq!(g.players[1].life, life - 4, "the Bolt's 3 and the emblem's 1");
+    // The opponent's red spells don't trigger it.
+    let theirs = g.add_card(1, cid("Lightning Bolt"), Zone::Hand);
+    g.fire_subsystems(1, When::YouCast);
+    assert!(g.triggered.is_empty());
+    let _ = theirs;
+}
