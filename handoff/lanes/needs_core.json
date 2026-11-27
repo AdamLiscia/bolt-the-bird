@@ -6954,7 +6954,7 @@
   {
    "card": "Gemstone Caverns",
    "deck": "Kenrith, the Returned King",
-   "missing": "opening-hand start; luck counter mana [claimed by d1, idea decks]",
+   "missing": "opening-hand start; luck counter mana [claimed by d1, idea decks] [d1 batch 42: scripted, on lane B's pregame action]",
    "lane": "d1",
    "theme": "mana",
    "owner": "d1"

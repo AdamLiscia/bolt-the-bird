@@ -2211,6 +2211,17 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::LeavesBattlefield, vec![], vec![Effect::OwnersRegainLandsYouControl]);
             },
         ),
+        "Gemstone Caverns" => s(
+            &[
+                "If this card is in your opening hand and you're not the starting player, you may begin the game with Gemstone Caverns on the battlefield with a luck counter on it. If you do, exile a card from your hand.",
+                "{T}: Add {C}. If Gemstone Caverns has a luck counter on it, instead add one mana of any color.",
+            ],
+            |d, _| {
+                d.begins_game_with_luck_counter = true; // lane B's pregame action
+                d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                d.mana_ext.any_color_with_kind_counter = true;
+            },
+        ),
         "Castle Garenbrig" => s(
             &[
                 "This land enters tapped unless you control a Forest.",
@@ -2503,4 +2514,5 @@ pub const PG_D1_SCRIPTED: &[&str] = &[
     "Gravecrawler",
     "Timeline Culler",
     "Herald of Leshrac",
+    "Gemstone Caverns",
 ];

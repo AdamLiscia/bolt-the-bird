@@ -4578,3 +4578,13 @@ fn herald_of_leshrac_is_sacrificed_when_not_paid() {
     resolve_all(&mut g, &[]);
     assert_eq!(g.obj(h).zone, Zone::Graveyard);
 }
+
+#[test]
+fn gemstone_caverns_taps_for_colorless_or_any_color_with_a_luck_counter() {
+    let mut g = table();
+    let gc = put(&mut g, 0, "Gemstone Caverns");
+    assert!(g.def_of(gc).begins_game_with_luck_counter);
+    assert_eq!(makes(&g, gc), ([false; 5], true), "{{C}}");
+    g.objects[gc.0 as usize].kind_counters = 1; // a luck counter
+    assert_eq!(makes(&g, gc), ([true; 5], false), "any color instead");
+}

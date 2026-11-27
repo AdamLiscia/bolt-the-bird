@@ -1432,6 +1432,9 @@ pub struct ManaExt {
     pub warp_life: i32,
     /// "This creature gets +1/+1 for each land you control but don't own." (Herald of Leshrac)
     pub pt_per_land_controlled_not_owned: bool,
+    /// "{T}: Add {C}. If [this] has a luck counter on it, instead add one mana of any color."
+    /// (Gemstone Caverns): with a kind counter (`Object::kind_counters`) its `mana` is any color.
+    pub any_color_with_kind_counter: bool,
 }
 
 /// "You may pay [mana], [life] and sacrifice or tap [creatures] rather than pay this spell's mana

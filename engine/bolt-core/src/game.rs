@@ -11111,6 +11111,10 @@ impl Game {
                         .collect();
                     return (!colors.is_empty()).then(|| (id, ManaSource::of(&colors)));
                 }
+                if d.mana_ext.any_color_with_kind_counter && self.obj(id).kind_counters > 0 {
+                    // Gemstone Caverns with its luck counter: any color instead of {C}.
+                    return Some((id, ManaSource::of(&crate::Color::ALL)));
+                }
                 let need = d.mana_only_with_lands as usize;
                 if need > 0 && self.permanents(p).filter(|&x| self.types_of(x).land).count() < need {
                     return None; // Temple of the False God
