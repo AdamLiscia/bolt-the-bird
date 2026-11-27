@@ -467,6 +467,28 @@ pub fn token_defs() -> Vec<CardDef> {
             t.colors = [false, false, false, false, true];
             t
         },
+        // 111: another lane's token, a placeholder until it lands on tarkir.
+        token("Placeholder 111", "Placeholder", 0, 0, Keywords::NONE),
+        // 112: another lane's token, a placeholder until it lands on tarkir.
+        token("Placeholder 112", "Placeholder", 0, 0, Keywords::NONE),
+        // 113: another lane's token, a placeholder until it lands on tarkir.
+        token("Placeholder 113", "Placeholder", 0, 0, Keywords::NONE),
+        // 114: another lane's token, a placeholder until it lands on tarkir.
+        token("Placeholder 114", "Placeholder", 0, 0, Keywords::NONE),
+        // 115: another lane's token, a placeholder until it lands on tarkir.
+        token("Placeholder 115", "Placeholder", 0, 0, Keywords::NONE),
+        // 116: another lane's token, a placeholder until it lands on tarkir.
+        token("Placeholder 116", "Placeholder", 0, 0, Keywords::NONE),
+        // 117: another lane's token, a placeholder until it lands on tarkir.
+        token("Placeholder 117", "Placeholder", 0, 0, Keywords::NONE),
+        // 118: another lane's token, a placeholder until it lands on tarkir.
+        token("Placeholder 118", "Placeholder", 0, 0, Keywords::NONE),
+        {
+            // 119, lane d3: Crib Swap's "1/1 colorless Shapeshifter creature token with changeling".
+            let mut t = token("Shapeshifter", "Shapeshifter", 1, 1, Keywords::NONE);
+            t.changeling = true;
+            t
+        },
     ]
 }
 
@@ -695,6 +717,17 @@ pub struct Tokens {
     pub slug: usize,
     /// 110: Nissa, Ascended Animist's X/X green Phyrexian Horror (0/0, P/T set from X).
     pub phyrexian_horror_x: usize,
+    /// 111-118: d2's tokens, placeholders until they land on tarkir.
+    pub placeholder_111: usize,
+    pub placeholder_112: usize,
+    pub placeholder_113: usize,
+    pub placeholder_114: usize,
+    pub placeholder_115: usize,
+    pub placeholder_116: usize,
+    pub placeholder_117: usize,
+    pub placeholder_118: usize,
+    /// 119: d3's Crib Swap Shapeshifter, a 1/1 colorless with changeling.
+    pub shapeshifter_changeling_1: usize,
 }
 
 impl Tokens {
@@ -811,6 +844,15 @@ impl Tokens {
             rogue_2: base + 108,
             slug: base + 109,
             phyrexian_horror_x: base + 110,
+            placeholder_111: base + 111,
+            placeholder_112: base + 112,
+            placeholder_113: base + 113,
+            placeholder_114: base + 114,
+            placeholder_115: base + 115,
+            placeholder_116: base + 116,
+            placeholder_117: base + 117,
+            placeholder_118: base + 118,
+            shapeshifter_changeling_1: base + 119,
         }
     }
 }

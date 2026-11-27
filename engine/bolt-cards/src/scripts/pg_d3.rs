@@ -3,6 +3,7 @@
 #![allow(unused_imports)]
 
 use super::*;
+use bolt_core::SubsystemEffect;
 
 /// "target permanent": any permanent, lands included.
 const PERMANENT: Filter = Filter {
@@ -1914,6 +1915,131 @@ pub fn script(name: &str) -> Option<Script> {
                 });
             },
         ),
+        "Chandra, Dressed to Kill" => s(
+            &[
+                "+1: Add {R}. Chandra deals 1 damage to up to one target player or planeswalker.",
+                "+1: Exile the top card of your library. If it's red, you may cast it this turn.",
+                "−7: Exile the top five cards of your library. You may cast red spells from among them this turn. You get an emblem with \"Whenever you cast a red spell, this emblem deals X damage to any target, where X is the amount of mana spent to cast that spell.\"",
+            ],
+            |d, _| {
+                // Trigger 0 belongs to the emblem (d4's EmblemKind::OnYourColorSpellCast).
+                let n = d.triggers.len();
+                let emblem_damage = Effect::Subsystem(SubsystemEffect::DamageManaSpentOnThatSpell(0));
+                on(d, When::Never, vec![Filter::ANY], vec![emblem_damage]);
+                let player_or_walker = Filter { creatures: false, ..Filter::ANY };
+                let ping = vec![Effect::AddMana { color: Color::Red, n: 1 }, damage(1, Recipient::Target(0))];
+                loyalty(d, 1, up_to(vec![player_or_walker], ping));
+                let one = Effect::ExileTopCastColorThisTurn { n: 1, color: Color::Red };
+                loyalty(d, 1, Ability::new(vec![], vec![one]));
+                let five = Effect::ExileTopCastColorThisTurn { n: 5, color: Color::Red };
+                let emblem = Effect::Emblem(EmblemKind::OnYourColorSpellCast { color: Color::Red as usize, trigger: n });
+                loyalty(d, -7, Ability::new(vec![], vec![five, emblem]));
+            },
+        ),
+        "Adept Watershaper" => s(&["Other tapped creatures you control have indestructible."], |d, _| {
+            d.statics.push(Static {
+                scope: Scope::OtherYourTappedCreatures,
+                keywords: Keywords::INDESTRUCTIBLE,
+                ..neutral_static()
+            });
+        }),
+        "Riverguard's Reflexes" => s(
+            &["Target creature gets +2/+2 and gains first strike until end of turn. Untap it."],
+            |d, _| {
+                let effects = vec![
+                    Effect::Pump { slot: 0, power: 2, toughness: 2 },
+                    Effect::Grant { slot: 0, keywords: Keywords::FIRST_STRIKE },
+                    Effect::UntapTarget(0),
+                ];
+                spell(d, vec![CREATURE], effects);
+            },
+        ),
+        "Keep Out" => s(
+            &[
+                "Choose one —",
+                "• Keep Out deals 4 damage to target tapped creature.",
+                "• Destroy target enchantment.",
+            ],
+            |d, _| {
+                let tapped = Filter { tapped_only: true, ..CREATURE };
+                let enchantment = Filter { artifacts: false, ..ARTIFACT_OR_ENCHANTMENT };
+                modes(
+                    d,
+                    vec![
+                        Ability::new(vec![tapped], vec![damage(4, Recipient::Target(0))]),
+                        Ability::new(vec![enchantment], vec![Effect::Destroy(0)]),
+                    ],
+                );
+            },
+        ),
+        "Terminate" => s(&["Destroy target creature. It can't be regenerated."], |d, _| {
+            spell(d, vec![CREATURE], vec![Effect::DestroyNoRegen(0)])
+        }),
+        "Sear" => s(&["Sear deals 4 damage to target creature or planeswalker."], |d, _| {
+            spell(d, vec![CREATURE_OR_PLANESWALKER], vec![damage(4, Recipient::Target(0))])
+        }),
+        "Boulder Dash" => s(
+            &["Boulder Dash deals 2 damage to any target and 1 damage to any other target."],
+            |d, _| {
+                // Two slots of one filter take two different targets (CR 115.3).
+                let effects = vec![damage(2, Recipient::Target(0)), damage(1, Recipient::Target(1))];
+                spell(d, vec![Filter::ANY, Filter::ANY], effects);
+            },
+        ),
+        "Goatnap" => s(
+            &["Gain control of target creature until end of turn. Untap that creature. It gains haste until end of turn. If that creature is a Goat, it also gets +3/+0 until end of turn."],
+            |d, _| {
+                let effects = vec![
+                    Effect::GainControlUntilEot(0),
+                    Effect::UntapTarget(0),
+                    Effect::Grant { slot: 0, keywords: Keywords::HASTE },
+                    Effect::PumpIfSubtype { slot: 0, subtype: "Goat", power: 3, toughness: 0 },
+                ];
+                spell(d, vec![CREATURE], effects);
+            },
+        ),
+        "Crib Swap" => s(
+            &[
+                "Changeling",
+                "Exile target creature. Its controller creates a 1/1 colorless Shapeshifter creature token with changeling.",
+            ],
+            |d, t| {
+                d.changeling = true;
+                let token = Effect::CreateToken { who: Who::ControllerOf(0), def: t.shapeshifter_changeling_1, n: 1 };
+                spell(d, vec![CREATURE], vec![Effect::Exile(0), token]);
+            },
+        ),
+        "Kinscaer Sentry" => s(
+            &["Whenever this creature attacks, you may put a creature card with mana value X or less from your hand onto the battlefield tapped and attacking, where X is the number of attacking creatures you control."],
+            |d, _| on(d, When::Attacks, vec![], vec![Effect::CreatureFromHandAttackingMvAtMostAttackers]),
+        ),
+        "Alesha, Who Smiles at Death" => s(
+            &["Whenever Alesha attacks, you may pay {W/B}{W/B}. If you do, return target creature card with power 2 or less from your graveyard to the battlefield tapped and attacking."],
+            |d, _| {
+                let card = Filter { creature_max_power: Some(2), ..graveyard_cards(true, Controller::You) };
+                let pay = Effect::MayPay(ManaCost::parse("{W/B}{W/B}").expect("hybrid"));
+                on(d, When::Attacks, vec![card], vec![pay, Effect::ReturnSlotToBattlefieldAttacking(0)]);
+            },
+        ),
+        "Ride the Shoopuf" => s(
+            &[
+                "Landfall — Whenever a land you control enters, put a +1/+1 counter on target creature you control.",
+                "{5}{G}{G}: This enchantment becomes a 7/7 Beast creature in addition to its other types.",
+            ],
+            |d, _| {
+                on(d, When::LandYouControlEnters, vec![YOUR_CREATURE], vec![Effect::Counters { slot: 0, n: 1 }]);
+                let beast = Effect::SourceBecomesCreature { power: 7, toughness: 7, subtypes: &["Beast"] };
+                activated(d, "{5}{G}{G}", false, vec![], vec![beast]);
+            },
+        ),
+        "Kodama of the East Tree" => s(
+            &[
+                "Whenever another permanent you control enters, if it wasn't put onto the battlefield with this ability, you may put a permanent card with equal or lesser mana value from your hand onto the battlefield.",
+                "Partner",
+            ],
+            // "Partner" is deck building only (CR 702.124).
+            |d, _| on(d, When::AnotherPermanentYouControlEnters, vec![], vec![Effect::MayPutPermanentFromHandMvAtMostExtra]),
+        ),
         "Skyscribing" => s(
             &[
                 "Each player draws X cards.",
@@ -2193,4 +2319,19 @@ pub const PG_D3_SCRIPTED: &[&str] = &[
     "Brightcap Badger // Fungus Frolic",
     // Core theme d3, batch 32
     "Shanna, Sisay's Legacy",
+    // Core theme d3, batch 33
+    "Chandra, Dressed to Kill",
+    "Adept Watershaper",
+    "Riverguard's Reflexes",
+    "Keep Out",
+    "Terminate",
+    "Sear",
+    "Boulder Dash",
+    "Goatnap",
+    "Crib Swap",
+    // Core theme d3, batch 34
+    "Kinscaer Sentry",
+    "Alesha, Who Smiles at Death",
+    "Ride the Shoopuf",
+    "Kodama of the East Tree",
 ];

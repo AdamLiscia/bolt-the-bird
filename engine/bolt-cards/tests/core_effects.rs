@@ -3394,3 +3394,71 @@ fn proliferating_a_saga_triggers_its_next_chapter() {
     assert_eq!(g.obj(city).lore, 2, "a lore counter");
     assert_eq!(treasures(&g).len(), 2, "chapter II copied the Treasure");
 }
+
+#[test]
+fn another_counter_of_the_chosen_kind() {
+    let (mut g, t) = game_with(vec![sorcery(
+        vec![Filter::CREATURE],
+        vec![Effect::AddCounterOfChosenKind(0)],
+    )]);
+    let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
+    g.objects[elves.0 as usize].counters = 1;
+    let c = g.add_card(0, t, Zone::Hand);
+    act(&mut g, Action::Cast(c));
+    act(&mut g, Action::Target(obj(elves)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(elves).counters, 2, "one kind: no choice");
+    g.objects[elves.0 as usize].stun = 1;
+    let c = g.add_card(0, t, Zone::Hand);
+    act(&mut g, Action::Cast(c));
+    act(&mut g, Action::Target(obj(elves)));
+    while !matches!(g.pending, Pending::Decide(0)) {
+        act(&mut g, Action::PassPriority);
+    }
+    let legal = g.legal_actions();
+    assert_eq!(legal, vec![Action::Mode(0), Action::Mode(2)], "+1/+1 or stun");
+    act(&mut g, Action::Mode(2));
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.obj(elves).counters, g.obj(elves).stun), (2, 2));
+}
+
+#[test]
+fn scale_per_creature_entered_under_your_control_this_turn() {
+    let mut kb = CardDef::creature("Test Kinbinding", "{0}", 0, 0, Keywords::NONE);
+    kb.types = Types {
+        enchantment: true,
+        ..Types::default()
+    };
+    kb.statics.push(Static {
+        scale: Some(Scale::PerCreatureEnteredUnderYourControlThisTurn),
+        ..static_of(Scope::YourCreatures, 1, 1, Keywords::NONE)
+    });
+    let (mut g, t) = game_with(vec![kb]);
+    g.add_card(0, t, Zone::Battlefield);
+    let a = g.add_card(0, cid("Llanowar Elves"), Zone::Hand);
+    let b = g.add_card(0, cid("Llanowar Elves"), Zone::Hand);
+    play(&mut g, a, false, &[], &[]);
+    assert_eq!(g.power(a), 2, "one entered");
+    play(&mut g, b, false, &[], &[]);
+    assert_eq!((g.power(a), g.power(b)), (3, 3), "two entered");
+    g.start_turn(5, 0);
+    assert_eq!(g.power(a), 1, "a new turn");
+}
+
+#[test]
+fn bounce_then_the_owner_exiles_a_card_from_hand() {
+    let (mut g, t) = game_with(vec![sorcery(
+        vec![Filter::CREATURE],
+        vec![Effect::BounceThenOwnerExilesFromHand(0)],
+    )]);
+    let theirs = g.add_card(1, cid("Llanowar Elves"), Zone::Battlefield);
+    let c = g.add_card(0, t, Zone::Hand);
+    act(&mut g, Action::Cast(c));
+    act(&mut g, Action::Target(obj(theirs)));
+    while !matches!(g.pending, Pending::Decide(1)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.obj(theirs).zone, Zone::Hand);
+    act(&mut g, Action::Pick(theirs));
+    assert_eq!(g.obj(theirs).zone, Zone::Exile, "its owner chose it");
+}

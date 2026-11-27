@@ -321,3 +321,20 @@ def test_tekuthal_picks_each_counter_to_remove():
     dec = {"kind": "RemoveCountersFromOthers", "left": 3}
     assert sv._decision_label(dec, "Pick", 0, "Sol Ring") == "Remove a counter from Sol Ring"
     assert label(dec, "No", 0) == "Don't activate it"
+
+
+def test_ichormoon_gauntlet_chooses_a_counter_kind():
+    dec = {"kind": "ChooseCounterKind", "kinds": [0, 2]}
+    assert label(dec, "Mode", 0) == "Another +1/+1 counter"
+    assert label(dec, "Mode", 2) == "Another stun counter"
+
+
+def test_hand_to_battlefield_and_exile_from_hand_picks():
+    sentry = {"kind": "CreatureFromHandAttackingMaxMv", "max": 2}
+    assert (
+        sv._decision_label(sentry, "Pick", 0, "Llanowar Elves") == "Put onto the battlefield attacking: Llanowar Elves"
+    )
+    kodama = {"kind": "PermanentFromHandMaxMv", "max": 3}
+    assert sv._decision_label(kodama, "Pick", 0, "Sol Ring") == "Put onto the battlefield: Sol Ring"
+    ashiok = {"kind": "ExileCardFromHand"}
+    assert sv._decision_label(ashiok, "Pick", 0, "Opt") == "Exile from your hand: Opt"
