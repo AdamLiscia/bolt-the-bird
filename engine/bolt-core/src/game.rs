@@ -1483,6 +1483,9 @@ pub enum Decision {
     /// `Pick` a card in your hand to exile (Ashiok, Nightmare Muse's -3: the bounced permanent's
     /// owner).
     ExileCardFromHand,
+    /// `Pick` a creature or planeswalker you control to sacrifice, then `next` does (Demon's
+    /// Disciple; asked only when there is one).
+    EachSacrificesCreatureOrPlaneswalker { next: Option<PlayerId> },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -2740,6 +2743,36 @@ impl Game {
         })
     }
 
+    /// The one creature type an Aura on creature `id` leaves it (Noggle the Mind).
+    fn attached_creature_type(&self, id: ObjId) -> Option<&'static str> {
+        let o = self.obj(id);
+        if o.zone != Zone::Battlefield {
+            return None;
+        }
+        self.battlefield.iter().find_map(|&a| {
+            let only = self.def_of(a).enchanted_creature_type_becomes?;
+            (self.obj(a).attached_to == Some((id, o.zcc)) && !self.lost_abilities(a)).then_some(only)
+        })
+    }
+
+    /// Maskwood Nexus: `id` is a creature (on the battlefield, by its current types), a creature
+    /// spell, or a creature card elsewhere, of the player controlling (or owning, off the battlefield
+    /// and stack) a Maskwood Nexus.
+    fn maskwood_every_type(&self, id: ObjId) -> bool {
+        let o = self.obj(id);
+        let (creature, p) = match o.zone {
+            Zone::Battlefield => (self.types_of(id).creature, o.controller),
+            Zone::Stack => (self.def_of(id).types.creature, o.controller),
+            _ => (self.def_of(id).types.creature, o.owner),
+        };
+        creature
+            && self.battlefield.iter().any(|&x| {
+                self.def_of(x).your_creatures_every_creature_type
+                    && self.obj(x).controller == p
+                    && !self.lost_abilities(x)
+            })
+    }
+
     /// Whether a resolved effect made `id` a Treasure artifact (`TypeChange::treasure_form`).
     pub fn treasure_form(&self, id: ObjId) -> bool {
         self.type_changes(id).any(|c| c.treasure_form)
@@ -3126,6 +3159,15 @@ impl Game {
             "Equipment",
             "Aura",
         ];
+        let creature_type = !NONCREATURE_SUBTYPES.contains(&s);
+        if creature_type {
+            if let Some(only) = self.attached_creature_type(id) {
+                return s == only; // Noggle the Mind: "loses all other creature types"
+            }
+            if self.maskwood_every_type(id) {
+                return true; // Maskwood Nexus
+            }
+        }
         if self.def_of(id).changeling && !NOT_CREATURE_TYPES.contains(&s) && !self.lost_abilities(id) {
             return true; // changeling: every creature type
         }
@@ -14808,6 +14850,11 @@ impl Game {
                 v
             }
             Decision::ExileCardFromHand => hand.iter().copied().map(Action::Pick).collect(),
+            Decision::EachSacrificesCreatureOrPlaneswalker { .. } => self
+                .creature_or_walker_sacrifice_options(p)
+                .into_iter()
+                .map(Action::Pick)
+                .collect(),
             Decision::Proliferate { picked, players, .. } => {
                 let mut v: Vec<Action> = self
                     .battlefield
@@ -16717,6 +16764,15 @@ impl Game {
                 }
             }
             (Decision::ExileCardFromHand, Action::Pick(c)) => self.move_to(c, Zone::Exile),
+            (Decision::EachSacrificesCreatureOrPlaneswalker { next }, a) => {
+                if let Action::Pick(c) = a {
+                    self.move_to(c, Zone::Graveyard);
+                    self.sacrificed(c, p);
+                }
+                if let Some(q) = next {
+                    self.sacrifice_creature_or_walker_next(q, None);
+                }
+            }
             (Decision::ChooseCounterKind { target, .. }, Action::Mode(k)) => {
                 if self.obj(target).zone == Zone::Battlefield && self.add_counter_kind(target, k) > 0 {
                     self.counters_placed(p, 1);
@@ -17266,6 +17322,26 @@ impl Game {
             .collect();
         v.extend(self.players[p].hand.iter().copied());
         v
+    }
+
+    /// Creatures and planeswalkers `p` controls that can be sacrificed (Demon's Disciple).
+    fn creature_or_walker_sacrifice_options(&self, p: PlayerId) -> Vec<ObjId> {
+        self.permanents(p)
+            .filter(|&c| {
+                let t = self.types_of(c);
+                (t.creature || t.planeswalker) && !self.cant_be_sacrificed(c)
+            })
+            .collect()
+    }
+
+    /// Demon's Disciple: `p` sacrifices a creature or planeswalker (asked only with one), then
+    /// `next`.
+    fn sacrifice_creature_or_walker_next(&mut self, p: PlayerId, next: Option<PlayerId>) {
+        if !self.creature_or_walker_sacrifice_options(p).is_empty() {
+            self.ask(p, Decision::EachSacrificesCreatureOrPlaneswalker { next });
+        } else if let Some(q) = next {
+            self.sacrifice_creature_or_walker_next(q, None);
+        }
     }
 
     /// Nontoken creatures `p` controls that can be sacrificed (Accursed Marauder).
@@ -25348,6 +25424,27 @@ impl Game {
             Effect::RollD20ReanimateTotalManaValue => {
                 let x = self.roll_die(20);
                 self.reanimate_total_next(item.controller, x);
+            }
+            Effect::EachPlayerSacrificesCreatureOrPlaneswalker => {
+                let a = self.active;
+                self.sacrifice_creature_or_walker_next(a, Some(opponent(a)));
+            }
+            Effect::DiscardRandomIfArtifactDamageEachOpponent(n) => {
+                let p = item.controller;
+                let len = self.players[p].hand.len();
+                if len > 0 {
+                    let c = self.players[p].hand[self.rng.below(len)];
+                    let artifact = self.def_of(c).types.artifact;
+                    self.move_to(c, Zone::Graveyard); // discarded
+                    if artifact {
+                        let hit = Effect::Damage {
+                            amount: n,
+                            kicked: None,
+                            to: Recipient::EachOpponent,
+                        };
+                        self.run_effect(item, legal, hit);
+                    }
+                }
             }
             Effect::EachPlayerSacrificesNontokenCreature => {
                 let a = self.active;

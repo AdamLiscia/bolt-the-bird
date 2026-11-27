@@ -489,6 +489,15 @@ pub fn token_defs() -> Vec<CardDef> {
             t.changeling = true;
             t
         },
+        // 120: lane C's Nightmare, a placeholder until it lands on tarkir.
+        token("Placeholder 120", "Placeholder", 0, 0, Keywords::NONE),
+        {
+            // 121, lane d3: Maskwood Nexus's "2/2 blue Shapeshifter creature token with changeling".
+            let mut t = token("Shapeshifter", "Shapeshifter", 2, 2, Keywords::NONE);
+            t.colors = [false, true, false, false, false];
+            t.changeling = true;
+            t
+        },
     ]
 }
 
@@ -728,6 +737,10 @@ pub struct Tokens {
     pub placeholder_118: usize,
     /// 119: d3's Crib Swap Shapeshifter, a 1/1 colorless with changeling.
     pub shapeshifter_changeling_1: usize,
+    /// 120: lane C's Nightmare, a placeholder until it lands on tarkir.
+    pub placeholder_120: usize,
+    /// 121: d3's Maskwood Nexus Shapeshifter, a 2/2 blue with changeling.
+    pub shapeshifter_changeling_blue: usize,
 }
 
 impl Tokens {
@@ -853,6 +866,8 @@ impl Tokens {
             placeholder_117: base + 117,
             placeholder_118: base + 118,
             shapeshifter_changeling_1: base + 119,
+            placeholder_120: base + 120,
+            shapeshifter_changeling_blue: base + 121,
         }
     }
 }

@@ -1119,6 +1119,12 @@ pub struct CardDef {
     /// "[This] can't be the target of abilities your opponents control." (Shanna, Sisay's
     /// Legacy), in `target_legal`.
     pub untargetable_by_opponents_abilities: bool,
+    /// An Aura: "Enchanted creature ... is a [type]" losing all other creature types (Noggle the
+    /// Mind: "Noggle"), in `Game::has_subtype`; its static gives the rest.
+    pub enchanted_creature_type_becomes: Option<&'static str>,
+    /// "Creatures you control are every creature type. The same is true for creature spells you
+    /// control and creature cards you own that aren't on the battlefield." (Maskwood Nexus)
+    pub your_creatures_every_creature_type: bool,
 }
 
 /// A card's pieces from the d4 subsystems (see [`CardDef::subsystems`]).
@@ -1721,6 +1727,8 @@ impl CardDef {
             your_subtypes_tap_for_green: &[],
             proliferate_twice: false,
             untargetable_by_opponents_abilities: false,
+            enchanted_creature_type_becomes: None,
+            your_creatures_every_creature_type: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -2020,6 +2028,8 @@ impl CardDef {
             your_subtypes_tap_for_green: &[],
             proliferate_twice: false,
             untargetable_by_opponents_abilities: false,
+            enchanted_creature_type_becomes: None,
+            your_creatures_every_creature_type: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -2319,6 +2329,8 @@ impl CardDef {
             your_subtypes_tap_for_green: &[],
             proliferate_twice: false,
             untargetable_by_opponents_abilities: false,
+            enchanted_creature_type_becomes: None,
+            your_creatures_every_creature_type: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,

@@ -2040,6 +2040,35 @@ pub fn script(name: &str) -> Option<Script> {
             // "Partner" is deck building only (CR 702.124).
             |d, _| on(d, When::AnotherPermanentYouControlEnters, vec![], vec![Effect::MayPutPermanentFromHandMvAtMostExtra]),
         ),
+        "Noggle the Mind" => s(
+            &[
+                "Enchant creature",
+                "Enchanted creature loses all abilities and is a colorless Noggle with base power and toughness 1/1.",
+            ],
+            |d, _| {
+                d.aura = true;
+                d.spell = Some(Ability::new(vec![CREATURE], vec![]));
+                d.enchanted_creature_type_becomes = Some("Noggle");
+                d.statics.push(Static {
+                    scope: Scope::Attached,
+                    lose_abilities: true,
+                    base_pt: Some((1, 1)),
+                    set_colors: Some([false; 5]),
+                    ..neutral_static()
+                });
+            },
+        ),
+        "Maskwood Nexus" => s(
+            &[
+                "Creatures you control are every creature type. The same is true for creature spells you control and creature cards you own that aren't on the battlefield.",
+                "{3}, {T}: Create a 2/2 blue Shapeshifter creature token with changeling.",
+            ],
+            |d, t| {
+                d.your_creatures_every_creature_type = true;
+                let token = Effect::CreateToken { who: Who::You, def: t.shapeshifter_changeling_blue, n: 1 };
+                activated(d, "{3}", true, vec![], vec![token]);
+            },
+        ),
         "Skyscribing" => s(
             &[
                 "Each player draws X cards.",
@@ -2334,4 +2363,7 @@ pub const PG_D3_SCRIPTED: &[&str] = &[
     "Alesha, Who Smiles at Death",
     "Ride the Shoopuf",
     "Kodama of the East Tree",
+    // Core theme d3, batch 35
+    "Noggle the Mind",
+    "Maskwood Nexus",
 ];

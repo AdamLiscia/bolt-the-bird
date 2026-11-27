@@ -2868,6 +2868,12 @@ pub enum Effect {
     /// Return the nonland permanent in `slot` to its owner's hand, then that player exiles a card
     /// from their hand (Ashiok, Nightmare Muse's -3), as `Decision::ExileCardFromHand`.
     BounceThenOwnerExilesFromHand(u8),
+    /// Discard a card at random (the game's seeded rng); if it's an artifact card, the source deals
+    /// `n` damage to each opponent (Reckless Handling: 2).
+    DiscardRandomIfArtifactDamageEachOpponent(i32),
+    /// Each player, starting with the active player, sacrifices a creature or planeswalker of their
+    /// choice (Demon's Disciple), as `Decision::EachSacrificesCreatureOrPlaneswalker`.
+    EachPlayerSacrificesCreatureOrPlaneswalker,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
