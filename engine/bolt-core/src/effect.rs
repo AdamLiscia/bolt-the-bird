@@ -2704,6 +2704,20 @@ pub enum Effect {
     /// Rain of Riches: stop unless the spell in `extra` was paid for with Treasure mana and is the
     /// first such spell this turn for the source (`Game::treasure_spell_turn`).
     StopUnlessFirstTreasureSpellThisTurn,
+    /// Nissa, Ascended Animist's +1: create the `def` token (printed 0/0) with base power and
+    /// toughness X/X, X the source's loyalty as it resolves.
+    CreateTokenXxSourceLoyalty {
+        def: usize,
+    },
+    /// Creatures you control get +1/+1 for each permanent you control with subtype `sub` and gain
+    /// `keywords` until end of turn (Nissa, Ascended Animist's −7: Forests, trample).
+    PumpYourCreaturesPerSubtype {
+        sub: &'static str,
+        keywords: crate::Keywords,
+    },
+    /// Wash Away: counter the spell in `slot` if it wasn't cast from its owner's hand, or any
+    /// spell if this was cast for its cleave cost (the item's `alt`).
+    CounterIfNotFromHandUnlessCleaved(u8),
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

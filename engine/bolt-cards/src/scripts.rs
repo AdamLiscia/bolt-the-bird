@@ -453,6 +453,15 @@ pub fn token_defs() -> Vec<CardDef> {
         },
         // 108, lane d2: Currency Converter's "2/2 black Rogue creature token".
         black(token("Rogue", "Rogue", 2, 2, Keywords::NONE)),
+        // 109: a placeholder (not on tarkir yet), so d1's 110 keeps its slot.
+        token("Placeholder 109", "", 0, 0, Keywords::NONE),
+        {
+            // 110, lane d1: Nissa, Ascended Animist's "X/X green Phyrexian Horror creature token"
+            // (0/0, its P/T set from X).
+            let mut t = token("Phyrexian Horror", "Phyrexian Horror", 0, 0, Keywords::NONE);
+            t.colors = [false, false, false, false, true];
+            t
+        },
     ]
 }
 
@@ -677,6 +686,10 @@ pub struct Tokens {
     pub spirit_cleric: usize,
     /// 108: d2's Currency Converter Rogue, a 2/2 black.
     pub rogue_2: usize,
+    /// 109: placeholder.
+    pub placeholder_109: usize,
+    /// 110: Nissa, Ascended Animist's X/X green Phyrexian Horror (0/0, P/T set from X).
+    pub phyrexian_horror_x: usize,
 }
 
 impl Tokens {
@@ -791,6 +804,8 @@ impl Tokens {
             warrior_white: base + 106,
             spirit_cleric: base + 107,
             rogue_2: base + 108,
+            placeholder_109: base + 109,
+            phyrexian_horror_x: base + 110,
         }
     }
 }

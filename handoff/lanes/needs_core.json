@@ -666,7 +666,7 @@
   {
    "card": "Cabaretti Courtyard",
    "deck": "Atla Palani, Nest Tender",
-   "missing": "sacrifice on enter with a reflexive fetch and life gain",
+   "missing": "sacrifice on enter with a reflexive fetch and life gain [done by d1 batch 27: scripted in pg_d1]",
    "lane": "d1",
    "theme": "effects",
    "owner": "d1"
@@ -994,7 +994,7 @@
   {
    "card": "Emry, Lurker of the Loch",
    "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
-   "missing": "affinity for artifacts; cast an artifact card from graveyard this turn",
+   "missing": "affinity for artifacts; cast an artifact card from graveyard this turn [done by d1 batch 27: scripted in pg_d1 (affinity, d3's artifact_cards filter)]",
    "lane": "d1",
    "theme": "effects",
    "owner": "d1"
@@ -3850,7 +3850,7 @@
   {
    "card": "Nissa, Ascended Animist",
    "deck": "Atraxa, Praetors' Voice",
-   "missing": "needs core: an X/X green Phyrexian Horror creature token (X its loyalty), compleated, and +1/+1 per Forest [d1 batch 25: compleated is in (ManaExt::compleated); the card still needs its X/X Horror token and script]",
+   "missing": "needs core: an X/X green Phyrexian Horror creature token (X its loyalty), compleated, and +1/+1 per Forest [d1 batch 25: compleated is in (ManaExt::compleated); the card still needs its X/X Horror token and script] [done by d1 batch 27: token 110, Effect::CreateTokenXxSourceLoyalty, Effect::PumpYourCreaturesPerSubtype; scripted in pg_d1]",
    "lane": "d3",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -3874,7 +3874,7 @@
   {
    "card": "Wash Away",
    "deck": "Atraxa, Praetors' Voice",
-   "missing": "needs core: cleave, and 'a spell that wasn't cast from its owner's hand'",
+   "missing": "needs core: cleave, and 'a spell that wasn't cast from its owner's hand' [done by d1 batch 27: ManaExt::cleave, Effect::CounterIfNotFromHandUnlessCleaved; scripted in pg_d1]",
    "lane": "d3",
    "theme": "mana",
    "owner": "d1"
@@ -6794,7 +6794,7 @@
   {
    "card": "Brokers Hideout",
    "deck": "Tifa Lockhart",
-   "missing": "enters: sacrifice, fetch a basic tapped, gain 1 [claimed by d1, idea decks]",
+   "missing": "enters: sacrifice, fetch a basic tapped, gain 1 [claimed by d1, idea decks] [done by d1 batch 27: scripted in pg_d1]",
    "lane": "d1",
    "theme": "mana",
    "owner": "d1"
@@ -6802,7 +6802,7 @@
   {
    "card": "Riveteers Overlook",
    "deck": "Tifa Lockhart",
-   "missing": "enters: sacrifice, fetch a basic tapped, gain 1 [claimed by d1, idea decks]",
+   "missing": "enters: sacrifice, fetch a basic tapped, gain 1 [claimed by d1, idea decks] [done by d1 batch 27: scripted in pg_d1]",
    "lane": "d1",
    "theme": "mana",
    "owner": "d1"
