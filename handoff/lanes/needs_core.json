@@ -850,7 +850,7 @@
   {
    "card": "Karador, Ghost Chieftain",
    "deck": "Karador, Ghost Chieftain",
-   "missing": "cost reduction per creature card in graveyard; cast a creature from your graveyard once each turn [lane C 2026-11-26: blocked on d1: costs {1} less per creature card in your graveyard; lane C's part: once during each of your turns, cast a creature spell from your graveyard] [d1 takes both halves, 2026-11-27: cost reduction and the once-each-turn graveyard cast; lane C dropped its part]",
+   "missing": "cost reduction per creature card in graveyard; cast a creature from your graveyard once each turn [lane C 2026-11-26: blocked on d1: costs {1} less per creature card in your graveyard; lane C's part: once during each of your turns, cast a creature spell from your graveyard] [d1 takes both halves, 2026-11-27: cost reduction and the once-each-turn graveyard cast; lane C dropped its part] [done by d1 batch 21: Reduction::PerCreatureCardInYourGraveyard, ManaExt::creature_from_graveyard_once_each_turn (Action::CastFromGraveyardAs(c, KARADOR_CAST)); scripted in pg_d1]",
    "lane": "d1",
    "theme": "objects_zones",
    "owner": "d1"

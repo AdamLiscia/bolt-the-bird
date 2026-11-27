@@ -2870,3 +2870,38 @@ fn the_gitrog_is_saddled_then_sacrifices_its_rider_to_draw_and_drop_lands() {
     assert_eq!(g.players[0].hand.len(), hand, "drew one, put one down");
     assert_eq!(g.permanents(0).filter(|&x| g.types_of(x).land).count(), lands + 1);
 }
+
+// ---- Karador, Ghost Chieftain ----
+
+#[test]
+fn karador_costs_less_per_creature_card_and_casts_one_creature_from_the_graveyard_each_turn() {
+    let mut g = game(&["Plains", "Swamp", "Forest", "Forest"]);
+    let k = hand(&mut g, 0, "Karador, Ghost Chieftain");
+    for _ in 0..3 {
+        g.add_card(0, cid("Fyndhorn Elves"), Zone::Graveyard);
+    }
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(k)),
+        "{{2}}{{W}}{{B}}{{G}} with four lands"
+    );
+    g.add_card(0, cid("Fyndhorn Elves"), Zone::Graveyard);
+    assert!(
+        g.legal_actions().contains(&Action::Cast(k)),
+        "{{1}}{{W}}{{B}}{{G}}"
+    );
+
+    let mut g = table();
+    put(&mut g, 0, "Karador, Ghost Chieftain");
+    let a = g.add_card(0, cid("Llanowar Elves"), Zone::Graveyard);
+    let b = g.add_card(0, cid("Fyndhorn Elves"), Zone::Graveyard);
+    let karador = Action::CastFromGraveyardAs(a, bolt_core::game::KARADOR_CAST);
+    assert!(g.legal_actions().contains(&karador));
+    act(&mut g, karador);
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(a).zone, Zone::Battlefield);
+    assert!(
+        !g.legal_actions()
+            .contains(&Action::CastFromGraveyardAs(b, bolt_core::game::KARADOR_CAST)),
+        "once each turn"
+    );
+}

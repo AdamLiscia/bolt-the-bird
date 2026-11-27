@@ -1358,6 +1358,17 @@ pub fn script(name: &str) -> Option<Script> {
                 d.activated[n].victim_in_extra = true;
             },
         ),
+        // ---- Karador, Ghost Chieftain ----
+        "Karador, Ghost Chieftain" => s(
+            &[
+                "This spell costs {1} less to cast for each creature card in your graveyard.",
+                "Once during each of your turns, you may cast a creature spell from your graveyard.",
+            ],
+            |d, _| {
+                d.reduction = Some(Reduction::PerCreatureCardInYourGraveyard);
+                d.mana_ext.creature_from_graveyard_once_each_turn = true;
+            },
+        ),
         _ => None,
     }
 }
@@ -1534,4 +1545,5 @@ pub const PG_D1_SCRIPTED: &[&str] = &[
     "Jarad, Golgari Lich Lord",
     "Sunbird's Invocation",
     "The Gitrog, Ravenous Ride",
+    "Karador, Ghost Chieftain",
 ];

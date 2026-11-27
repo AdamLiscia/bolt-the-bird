@@ -187,6 +187,8 @@ pub enum Reduction {
     IfOpponentGraveyardAtLeast(u8, u8),
     /// {X} less, X the noncombat damage dealt to your opponents this turn (Chandra's Incinerator).
     NoncombatDamageToOpponentsThisTurn,
+    /// {1} less for each creature card in your graveyard (Karador, Ghost Chieftain).
+    PerCreatureCardInYourGraveyard,
 }
 
 /// An activated ability: "[cost]: [effect]" (CR 602).
@@ -1259,6 +1261,9 @@ pub struct ManaExt {
     pub colored_removes_kind_counter: bool,
     /// "This creature can only attack alone." (Master of Cruelties)
     pub attacks_only_alone: bool,
+    /// "Once during each of your turns, you may cast a creature spell from your graveyard."
+    /// (Karador, Ghost Chieftain): `Action::CastFromGraveyardAs(card, KARADOR_CAST)`.
+    pub creature_from_graveyard_once_each_turn: bool,
 }
 
 /// "You may pay [mana], [life] and sacrifice or tap [creatures] rather than pay this spell's mana
