@@ -6427,7 +6427,11 @@ impl Game {
             }
             Pending::ChooseTarget(_) => {
                 let c = self.choosing.as_ref().expect("choosing targets");
-                let filter = self.ability_of(&c.item).targets[c.item.targets.len()];
+                // Every slot filled (a stack entry that came with more targets than its ability has):
+                // all that's left is to finish choosing.
+                let Some(&filter) = self.ability_of(&c.item).targets.get(c.item.targets.len()) else {
+                    return vec![Action::No];
+                };
                 let ability = self.ability_of(&c.item);
                 let mut options = self.candidates(&filter, c.item.controller);
                 // CR 115.3: one object can't be chosen twice for one "target" word, but may be for
@@ -6636,8 +6640,8 @@ impl Game {
                 }
             },
             StackKind::Offspring => offspring_ability(),
-            // Not one of its own: the ability as it was activated (its source may have left).
-            StackKind::Activated(n) if n >= def.activated.len() => {
+            // The ability as it was activated: its source may have left or changed since.
+            StackKind::Activated(n) => {
                 match self
                     .activated_snapshots
                     .iter()
@@ -6648,7 +6652,6 @@ impl Game {
                     None => &self.activated_of(item.source, n).ability,
                 }
             }
-            StackKind::Activated(n) => &self.activated_of(item.source, n).ability,
             StackKind::Room { .. } | StackKind::InitiativeVenture => self.subsystem_ability(item.kind),
             StackKind::SacrificeWhenTargeted { .. } => sacrifice_when_targeted_ability(),
             StackKind::Undying => undying_ability(),
@@ -9759,6 +9762,7 @@ impl Game {
             self.give_priority(p);
             return;
         }
+        self.snapshot_activated(id, n);
         let granted = self.activated_of(id, n).granted_to_attached;
         let extra = if granted {
             self.obj(id).attached_to.map(|(c, _)| c)
@@ -9815,6 +9819,7 @@ impl Game {
 
     /// Activates an ability with {X} in its cost.
     fn activate_x(&mut self, p: PlayerId, id: ObjId, n: usize, victim: Option<ObjId>, x: u8) {
+        self.snapshot_activated(id, n);
         let item = StackItem {
             kind: StackKind::Activated(n),
             x,
@@ -9867,6 +9872,15 @@ impl Game {
         } else {
             (a.mana, 0)
         }
+    }
+
+    /// Remembers activated ability `n` of `id` as it's activated, so it resolves as that ability even
+    /// if its source changes before then (Shifting Woodland becoming a copy of a card with other
+    /// abilities, or none).
+    fn snapshot_activated(&mut self, id: ObjId, n: usize) {
+        let a = self.activated_of(id, n).clone();
+        self.activated_snapshots.retain(|e| !(e.0 == id && e.1 == n));
+        self.activated_snapshots.push((id, n, a));
     }
 
     fn pay_activation(&mut self, p: PlayerId, id: ObjId, n: usize, victim: Option<ObjId>, x: u8) {
@@ -12554,7 +12568,7 @@ impl Game {
         c.item.targets.push(chosen);
         let c = self.choosing.as_ref().expect("choosing targets");
         let exact = self.ability_of(&c.item).targets_exactly_x && c.item.targets.len() >= c.item.x as usize;
-        let done = c.item.targets.len() == self.ability_of(&c.item).targets.len() || exact;
+        let done = c.item.targets.len() >= self.ability_of(&c.item).targets.len() || exact;
         if done {
             self.finish_choosing();
         }
@@ -12612,7 +12626,10 @@ impl Game {
 
     /// Whether a chosen target is still legal (CR 608.2b).
     fn still_legal(&self, item: &StackItem, slot: usize) -> bool {
-        let f = &self.ability_of(item).targets[slot];
+        // A target its ability has no slot for (it came with the entry) isn't checked.
+        let Some(f) = self.ability_of(item).targets.get(slot) else {
+            return true;
+        };
         match item.targets[slot] {
             Chosen::Player(p) => {
                 !self.players[p].lost && self.target_ok(f, item.controller, Target::Player(p))
@@ -25639,7 +25656,11 @@ impl Game {
             if item.mode.is_none() {
                 self.events.push(Event::Triggered { source: item.source });
             }
-            if ability.targets.len() == item.targets.len() {
+            if item.targets.len() >= ability.targets.len() {
+                // A granted "when this dies" trigger comes with the creature that died as its first
+                // target; an ability with no slot for it (Jaxis's and blitz's "draw a card") drops it.
+                let mut item = item;
+                item.targets.truncate(ability.targets.len());
                 self.push_item(item);
             } else if self.trigger_can_target(&item, &ability) {
                 let who = item.controller;

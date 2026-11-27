@@ -12,7 +12,7 @@ mod common;
 
 use bolt_cards::set;
 use bolt_core::rng::Rng;
-use bolt_core::{baseline, rollout, Action, Game, Pending, StackItem, StackKind, Step, Zone};
+use bolt_core::{baseline, rollout, Action, Game, Pending, StackItem, StackKind, Step, Target, Zone};
 use common::{act, resolve_all};
 
 fn cid(name: &str) -> usize {
@@ -232,4 +232,50 @@ fn the_time_limit_stops_the_search() {
     let a = rollout::choose(&g, &legal, &some, 1);
     assert!(legal.contains(&a));
     assert!(t.elapsed().as_secs() < 10, "{:?} for a 200 ms limit", t.elapsed());
+}
+
+/// Desktop Commander training, 2026-11-27: "index out of bounds: the len is 0 but the index is 1" in
+/// `legal_actions` (choosing targets). Jaxis, the Troublemaker cast for blitz dies: its granted "when
+/// this creature dies, draw a card" came with the creature that died as a target its ability has no
+/// slot for, so the engine asked for a second target that doesn't exist.
+#[test]
+fn jaxis_blitzed_dies_and_draws() {
+    let mut g = table();
+    let jaxis = g.add_card(0, cid("Jaxis, the Troublemaker"), Zone::Hand);
+    act(&mut g, Action::CastAlternative(jaxis));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(jaxis).zone, Zone::Battlefield);
+    let hand = g.players[0].hand.len();
+    g.move_card(jaxis, Zone::Graveyard); // it dies
+    act(&mut g, Action::PassPriority);
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        g.players[0].hand.len(),
+        hand + 1,
+        "blitz: when it dies, draw a card"
+    );
+}
+
+/// The same training run: "the len is 0 but the index is 0" in `still_legal`. Shifting Woodland's
+/// copy ability activated twice: the first to resolve made it a copy of a creature card with no such
+/// ability, and the other then resolved as that card's (missing) ability instead of the one activated.
+#[test]
+fn shifting_woodland_activated_twice_copies_both_in_turn() {
+    let mut g = table();
+    let woodland = g.add_card(0, cid("Shifting Woodland"), Zone::Battlefield);
+    let cobra = g.add_card(0, cid("Lotus Cobra"), Zone::Graveyard);
+    let oracle = g.add_card(0, cid("Coiling Oracle"), Zone::Graveyard);
+    for c in ["Sol Ring", "Opt", "Rampant Growth", "Forest"] {
+        g.add_card(0, cid(c), Zone::Graveyard); // delirium: artifact, instant, sorcery, land
+    }
+    for t in [cobra, oracle] {
+        act(&mut g, Action::Activate(woodland, 0));
+        act(&mut g, Action::Target(Target::Object(t)));
+    }
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        g.def_of(woodland).name,
+        "Lotus Cobra",
+        "the first activation resolves last"
+    );
 }
