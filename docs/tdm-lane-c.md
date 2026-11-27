@@ -1310,3 +1310,7 @@ through the normal cast path (targets, X), as for cascade. Tests in core_objects
 (bottom), no shared type (bottom, no window), changeling.
 Likely failure spots when built: casting from the library through `cast_modes` in the window, the
 `upkeep_window` helper's loop.
+Merger approved (2026-11-27) both edits and the window. View check: the free-cast window's moves are ordinary
+`Cast` actions, labelled from `legal_cards`; bolt-py's `seen()` hides only face-down cards, so the revealed
+library card is named ("Cast Gravecrawler") exactly as cascade's exiled card is. No view change needed;
+re-check in the service view at build.
