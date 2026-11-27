@@ -4201,3 +4201,716 @@ fn lifeline_returns_a_dead_creature_at_the_end_step_if_another_creature_is_out()
     drain(&mut g);
     assert_eq!(g.obj(lions).zone, Zone::Graveyard);
 }
+
+// ---- Core: triggers, batch 41 (idea decks: Sythis, Ratadrabik, Baylen; the Ring) ----
+
+#[test]
+fn nazgul_tempts_you_and_counters_each_wraith_when_the_ring_tempts_you() {
+    let mut g = table();
+    let first = put(&mut g, 0, "Nazgûl");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    let second = hand(&mut g, 0, "Nazgûl");
+    act(&mut g, Action::Cast(second));
+    drain(&mut g);
+    assert_eq!(g.obj(second).zone, Zone::Battlefield);
+    assert!(g.ring_bearer(0).is_some(), "the Ring tempted you");
+    assert_eq!(
+        (g.obj(first).counters, g.obj(second).counters),
+        (2, 2),
+        "each Nazgûl's trigger counters each Wraith"
+    );
+    assert_eq!(g.obj(lions).counters, 0, "not a Wraith");
+}
+
+#[test]
+fn boromir_counters_a_free_opponent_spell_and_sacrifices_for_indestructible() {
+    let mut g = table();
+    let boromir = put(&mut g, 0, "Boromir, Warden of the Tower");
+    // The opponent casts a free spell (Ornithopter, {0}) and a paid one, on their turn.
+    to_step(&mut g, 4, 1, Step::Main1);
+    let thopter = hand(&mut g, 1, "Ornithopter");
+    act(&mut g, Action::Cast(thopter));
+    drain(&mut g);
+    assert!(in_graveyard(&g, 1, thopter), "no mana spent: countered");
+    let lions = hand(&mut g, 1, "Savannah Lions");
+    act(&mut g, Action::Cast(lions));
+    drain(&mut g);
+    assert_eq!(g.obj(lions).zone, Zone::Battlefield, "mana spent");
+    // Back on your turn: sacrifice Boromir.
+    to_step(&mut g, 5, 0, Step::Main1);
+    let elves = put(&mut g, 0, "Llanowar Elves");
+    let n = g
+        .legal_actions()
+        .into_iter()
+        .find(|a| matches!(a, Action::Activate(x, _) if *x == boromir))
+        .expect("Boromir's ability");
+    act(&mut g, n);
+    drain(&mut g);
+    assert!(in_graveyard(&g, 0, boromir));
+    assert!(g.keywords(elves).has(Keywords::INDESTRUCTIBLE));
+    assert_eq!(g.ring_bearer(0), Some(elves), "the Ring tempts you");
+}
+
+#[test]
+fn gleaming_splendor_makes_a_treasure_on_the_opponents_second_draw_and_both_draw() {
+    let mut g = table();
+    put(&mut g, 0, "Gleaming Splendor");
+    let n = g
+        .legal_actions()
+        .into_iter()
+        .find(|a| matches!(a, Action::Activate(x, _) if g.def_of(*x).name == "Gleaming Splendor"))
+        .expect("its ability");
+    let (mine, theirs) = (g.players[0].hand.len(), g.players[1].hand.len());
+    act(&mut g, n);
+    drain(&mut g);
+    assert_eq!(
+        (g.players[0].hand.len(), g.players[1].hand.len()),
+        (mine + 1, theirs + 1)
+    );
+    assert!(tokens(&g, 0, "Treasure").is_empty(), "their first card this turn");
+    act(&mut g, n);
+    drain(&mut g);
+    assert_eq!(tokens(&g, 0, "Treasure").len(), 1, "their second card this turn");
+}
+
+#[test]
+fn cruel_celebrant_drains_when_it_or_your_creature_or_planeswalker_dies() {
+    let mut g = table();
+    let celebrant = put(&mut g, 0, "Cruel Celebrant");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    kill(&mut g, lions);
+    assert_eq!((g.players[0].life, g.players[1].life), (41, 39));
+    let walker = put(&mut g, 0, "Jace Beleren");
+    g.objects[walker.0 as usize].loyalty = 3;
+    kill(&mut g, walker);
+    assert_eq!((g.players[0].life, g.players[1].life), (42, 38), "a planeswalker");
+    kill(&mut g, celebrant);
+    assert_eq!((g.players[0].life, g.players[1].life), (43, 37), "itself");
+}
+
+#[test]
+fn lotho_pays_a_life_for_a_treasure_on_each_players_second_spell() {
+    let mut g = table();
+    put(&mut g, 0, "Lotho, Corrupt Shirriff");
+    for name in ["Savannah Lions", "Llanowar Elves", "Sol Ring"] {
+        let c = hand(&mut g, 0, name);
+        play(&mut g, c, false, &[], &[]);
+    }
+    assert_eq!(g.players[0].life, 39);
+    assert_eq!(tokens(&g, 0, "Treasure").len(), 1, "only the second");
+}
+
+#[test]
+fn cadira_makes_a_rabbit_for_each_token_you_control() {
+    let mut g = table();
+    let cadira = put(&mut g, 0, "Cadira, Caller of the Small");
+    let food = token_def(&g, "Food");
+    g.add_card(0, food, Zone::Battlefield);
+    g.add_card(0, food, Zone::Battlefield);
+    attack(&mut g, &[cadira]);
+    fight(&mut g);
+    assert_eq!(g.players[1].life, 37);
+    assert_eq!(tokens(&g, 0, "Rabbit").len(), 2, "two tokens: two Rabbits");
+}
+
+#[test]
+fn knuckles_makes_a_treasure_on_combat_damage_and_wins_with_thirty_artifacts() {
+    let mut g = table();
+    let knuckles = put(&mut g, 0, "Knuckles the Echidna");
+    attack(&mut g, &[knuckles]);
+    fight(&mut g);
+    assert_eq!(g.players[1].life, 36, "double strike");
+    assert_eq!(tokens(&g, 0, "Treasure").len(), 2, "once per combat damage step");
+    for _ in 0..28 {
+        put(&mut g, 0, "Sol Ring");
+    }
+    g.start_turn(7, 0);
+    while g.result.is_none() && g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(
+        g.result,
+        Some(bolt_core::Outcome::Winner(0)),
+        "thirty artifacts at upkeep"
+    );
+}
+
+#[test]
+fn rosie_cotton_makes_food_and_counters_another_creature_for_each_token() {
+    let mut g = table();
+    let lions = put(&mut g, 0, "Savannah Lions");
+    let rosie = hand(&mut g, 0, "Rosie Cotton of South Lane");
+    act(&mut g, Action::Cast(rosie));
+    drain(&mut g);
+    assert_eq!(tokens(&g, 0, "Food").len(), 1);
+    assert_eq!(g.obj(lions).counters, 1, "the Food was a token you created");
+    assert_eq!(g.obj(rosie).counters, 0, "other than Rosie");
+}
+
+// ---- Batch 42 (idea decks, existing pieces) ----
+
+#[test]
+fn starscape_cleric_drains_on_each_life_gain_and_cant_block() {
+    let mut g = table();
+    let cleric = put(&mut g, 0, "Starscape Cleric");
+    assert!(g.def_of(cleric).cant_block);
+    assert!(g.def_of(cleric).offspring.is_some());
+    let hawk = put(&mut g, 0, "Vampire Nighthawk"); // lifelink
+    attack(&mut g, &[hawk]);
+    fight(&mut g);
+    assert_eq!(g.players[0].life, 42);
+    assert_eq!(g.players[1].life, 40 - 2 - 1, "the Nighthawk, then the drain");
+}
+
+#[test]
+fn mai_makes_each_noncreature_caster_lose_two() {
+    let mut g = table();
+    put(&mut g, 0, "Mai, Scornful Striker");
+    let ring = hand(&mut g, 0, "Sol Ring");
+    play(&mut g, ring, false, &[], &[]);
+    assert_eq!(g.players[0].life, 38, "you cast it");
+    let lions = hand(&mut g, 0, "Savannah Lions");
+    play(&mut g, lions, false, &[], &[]);
+    assert_eq!(g.players[0].life, 38, "a creature spell");
+    to_step(&mut g, 4, 1, Step::Main1);
+    let signet = hand(&mut g, 1, "Arcane Signet");
+    play(&mut g, signet, false, &[], &[]);
+    assert_eq!(g.players[1].life, 38, "they cast it");
+}
+
+#[test]
+fn kambal_drains_two_when_the_opponent_casts_a_noncreature_spell() {
+    let mut g = table();
+    put(&mut g, 0, "Kambal, Consul of Allocation");
+    let ring = hand(&mut g, 0, "Sol Ring");
+    play(&mut g, ring, false, &[], &[]);
+    assert_eq!(g.players[0].life, 40, "yours doesn't count");
+    to_step(&mut g, 4, 1, Step::Main1);
+    let signet = hand(&mut g, 1, "Arcane Signet");
+    play(&mut g, signet, false, &[], &[]);
+    assert_eq!((g.players[0].life, g.players[1].life), (42, 38));
+}
+
+#[test]
+fn luminarch_aspirant_counters_a_creature_at_your_combat() {
+    let mut g = table();
+    let aspirant = put(&mut g, 0, "Luminarch Aspirant");
+    to_step(&mut g, 5, 0, Step::Main2);
+    assert_eq!(g.obj(aspirant).counters, 1, "the only creature you control");
+    to_step(&mut g, 6, 1, Step::Main2);
+    assert_eq!(g.obj(aspirant).counters, 1, "only on your turn");
+}
+
+#[test]
+fn tana_makes_a_saproling_per_point_of_combat_damage() {
+    let mut g = table();
+    let tana = put(&mut g, 0, "Tana, the Bloodsower");
+    g.objects[tana.0 as usize].counters = 1; // a 3/3
+    attack(&mut g, &[tana]);
+    fight(&mut g);
+    assert_eq!(g.players[1].life, 37);
+    assert_eq!(tokens(&g, 0, "Saproling").len(), 3);
+}
+
+#[test]
+fn reconnaissance_mission_may_draw_for_each_creature_that_connects() {
+    let mut g = table();
+    put(&mut g, 0, "Reconnaissance Mission");
+    let a = put(&mut g, 0, "Savannah Lions");
+    let b = put(&mut g, 0, "Llanowar Elves");
+    let library = g.players[0].library.len();
+    attack(&mut g, &[a, b]);
+    fight(&mut g);
+    assert_eq!(
+        g.players[0].library.len(),
+        library - 3,
+        "the draw step and two triggers"
+    );
+}
+
+#[test]
+fn lifecrafters_bestiary_scries_and_pays_green_to_draw_on_a_creature_spell() {
+    let mut g = table();
+    put(&mut g, 0, "Lifecrafter's Bestiary");
+    let lions = hand(&mut g, 0, "Savannah Lions");
+    let before = g.players[0].hand.len();
+    act(&mut g, Action::Cast(lions));
+    resolve_all(&mut g, &[Action::Yes]);
+    assert_eq!(g.players[0].hand.len(), before - 1 + 1, "paid {{G}}: drew");
+    let elves = hand(&mut g, 0, "Llanowar Elves");
+    let before = g.players[0].hand.len();
+    act(&mut g, Action::Cast(elves));
+    resolve_all(&mut g, &[Action::No]);
+    assert_eq!(g.players[0].hand.len(), before - 1, "declined: no card");
+}
+
+#[test]
+fn tymna_pays_a_life_to_draw_after_combat_damage_to_the_opponent() {
+    let mut g = table();
+    let tymna = put(&mut g, 0, "Tymna the Weaver");
+    to_step(&mut g, 5, 0, Step::Main2);
+    assert_eq!(g.players[0].life, 40, "no combat damage: no trigger");
+    attack(&mut g, &[tymna]);
+    let hand = g.players[0].hand.len();
+    while g.step != Step::Main2 || !g.items.is_empty() || matches!(g.pending, Pending::Decide(_)) {
+        let a = match g.pending {
+            Pending::Decide(_) => Action::Yes,
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.players[0].life, 40 + 2 - 1, "lifelink, then paid one");
+    assert_eq!(g.players[0].hand.len(), hand + 1);
+}
+
+// ---- Core: triggers, batch 43 ----
+
+#[test]
+fn yshtola_draws_after_a_big_loss_and_drains_on_big_noncreature_spells() {
+    let mut g = table();
+    put(&mut g, 0, "Y'shtola, Night's Blessed");
+    let ring = hand(&mut g, 0, "Sol Ring");
+    play(&mut g, ring, false, &[], &[]);
+    assert_eq!(g.players[1].life, 40, "mana value 1");
+    let blood = hand(&mut g, 0, "Exquisite Blood"); // mana value 5
+    play(&mut g, blood, false, &[], &[]);
+    assert_eq!(
+        (g.players[0].life, g.players[1].life),
+        (42, 38),
+        "Y'shtola's drain"
+    );
+    let library = g.players[0].library.len();
+    into_end_step(&mut g);
+    drain(&mut g);
+    assert_eq!(g.players[0].library.len(), library, "only 2 lost this turn");
+    // Next turn: two drains are 4 life lost.
+    to_step(&mut g, 5, 0, Step::Main1);
+    for _ in 0..2 {
+        let blood = hand(&mut g, 0, "Exquisite Blood");
+        put(&mut g, 0, "Swamp");
+        play(&mut g, blood, false, &[], &[]);
+    }
+    assert!(g.players[1].life <= 34);
+    let library = g.players[0].library.len();
+    into_end_step(&mut g);
+    drain(&mut g);
+    assert_eq!(g.players[0].library.len(), library - 1, "4 lost: draw");
+}
+
+#[test]
+fn uncover_the_moon_letters_draws_the_mana_spent_then_discards_two() {
+    let mut g = table();
+    put(&mut g, 0, "Uncover the Moon-Letters");
+    let signet = hand(&mut g, 0, "Arcane Signet");
+    let before = g.players[0].hand.len();
+    act(&mut g, Action::Cast(signet));
+    drain(&mut g);
+    // -1 cast, +2 drawn, -2 discarded.
+    assert_eq!(g.players[0].hand.len(), before - 1);
+    assert_eq!(g.players[0].graveyard.len(), 2);
+}
+
+#[test]
+fn thopter_assembly_bounces_itself_for_five_thopters_when_alone() {
+    let mut g = table();
+    let assembly = put(&mut g, 0, "Thopter Assembly");
+    to_step(&mut g, 5, 0, Step::Main1);
+    assert_eq!(g.obj(assembly).zone, Zone::Hand);
+    assert_eq!(tokens(&g, 0, "Thopter").len(), 5);
+    let again = put(&mut g, 0, "Thopter Assembly");
+    to_step(&mut g, 7, 0, Step::Main1);
+    assert_eq!(g.obj(again).zone, Zone::Battlefield, "other Thopters: nothing");
+}
+
+#[test]
+fn nihil_spellbomb_exiles_a_graveyard_and_pays_black_to_draw() {
+    let mut g = table();
+    let bomb = put(&mut g, 0, "Nihil Spellbomb");
+    let card = g.add_card(1, cid("Lightning Bolt"), Zone::Graveyard);
+    let library = g.players[0].library.len();
+    act(&mut g, Action::Activate(bomb, 0));
+    act(&mut g, Action::Target(Target::Player(1)));
+    resolve_all(&mut g, &[Action::Yes]);
+    assert_eq!(g.obj(card).zone, Zone::Exile);
+    assert!(in_graveyard(&g, 0, bomb));
+    assert_eq!(g.players[0].library.len(), library - 1, "paid {{B}}: drew");
+}
+
+#[test]
+fn crime_novelist_grows_and_adds_red_on_an_artifact_sacrifice() {
+    let mut g = table();
+    let novelist = put(&mut g, 0, "Crime Novelist");
+    let bomb = put(&mut g, 0, "Nihil Spellbomb");
+    act(&mut g, Action::Activate(bomb, 0));
+    act(&mut g, Action::Target(Target::Player(1)));
+    resolve_all(&mut g, &[Action::No]);
+    assert_eq!(g.obj(novelist).counters, 1);
+}
+
+#[test]
+fn smaug_makes_tapped_treasures_per_opponent_artifact_and_draws_on_treasure_spells() {
+    let mut g = table();
+    put(&mut g, 1, "Sol Ring");
+    put(&mut g, 1, "Arcane Signet");
+    let smaug = hand(&mut g, 0, "Smaug, Wicked Worm");
+    play(&mut g, smaug, false, &[], &[]);
+    let treasures = tokens(&g, 0, "Treasure");
+    assert_eq!(treasures.len(), 2);
+    assert!(treasures.iter().all(|&t| g.obj(t).tapped));
+    let library = g.players[0].library.len();
+    let lions = hand(&mut g, 0, "Savannah Lions");
+    play(&mut g, lions, false, &[], &[]);
+    assert_eq!(g.players[0].library.len(), library, "no Treasure mana: no card");
+}
+
+#[test]
+fn twilight_drover_grows_when_any_creature_token_leaves_and_makes_spirits() {
+    let mut g = table();
+    let drover = put(&mut g, 0, "Twilight Drover");
+    let spirit = token_def(&g, "Spirit");
+    let theirs = g.add_card(1, spirit, Zone::Battlefield);
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    play(&mut g, bolt, false, &[obj(theirs)], &[]);
+    assert_eq!(g.obj(drover).counters, 1, "the opponent's token");
+    let n = g
+        .legal_actions()
+        .into_iter()
+        .find(|a| matches!(a, Action::Activate(x, _) if *x == drover))
+        .expect("its ability");
+    act(&mut g, n);
+    drain(&mut g);
+    assert_eq!(g.obj(drover).counters, 0);
+    assert_eq!(tokens(&g, 0, "Spirit").len(), 2);
+}
+
+// ---- Core: triggers, batch 44 ----
+
+#[test]
+fn soaring_lightbringer_gives_enchantment_creatures_flying_and_makes_attacking_glimmers() {
+    let mut g = table();
+    put(&mut g, 0, "Soaring Lightbringer");
+    let courser = put(&mut g, 0, "Courser of Kruphix"); // an enchantment creature
+    assert!(g.keywords(courser).has(Keywords::FLYING));
+    let lions = put(&mut g, 0, "Savannah Lions");
+    assert!(!g.keywords(lions).has(Keywords::FLYING));
+    attack(&mut g, &[lions]);
+    drain(&mut g);
+    let glimmers = tokens(&g, 0, "Glimmer");
+    assert_eq!(glimmers.len(), 1);
+    assert!(g.def_of(glimmers[0]).types.enchantment);
+    assert!(
+        g.keywords(glimmers[0]).has(Keywords::FLYING),
+        "an enchantment creature"
+    );
+    assert!(g
+        .combat
+        .as_ref()
+        .expect("in combat")
+        .attackers
+        .contains(&glimmers[0]));
+}
+
+#[test]
+fn hermes_makes_birds_on_noncreature_spells_and_scries_when_birds_attack() {
+    let mut g = table();
+    put(&mut g, 0, "Hermes, Overseer of Elpis");
+    let ring = hand(&mut g, 0, "Sol Ring");
+    play(&mut g, ring, false, &[], &[]);
+    let birds = tokens(&g, 0, "Bird");
+    assert_eq!(birds.len(), 1);
+    assert!(g.keywords(birds[0]).has(Keywords::FLYING) && g.keywords(birds[0]).has(Keywords::VIGILANCE));
+    attack(&mut g, &birds);
+    assert!(
+        matches!(g.pending, Pending::Decide(_)) || !g.items.is_empty(),
+        "the scry trigger"
+    );
+    drain(&mut g);
+}
+
+#[test]
+fn charismatic_conqueror_makes_a_vampire_unless_the_opponent_taps_their_permanent() {
+    let mut g = table();
+    put(&mut g, 0, "Charismatic Conqueror");
+    to_step(&mut g, 4, 1, Step::Main1);
+    let ring = hand(&mut g, 1, "Sol Ring");
+    act(&mut g, Action::Cast(ring));
+    resolve_all(&mut g, &[Action::No]);
+    assert_eq!(tokens(&g, 0, "Vampire").len(), 1, "they didn't tap it");
+    let signet = hand(&mut g, 1, "Arcane Signet");
+    act(&mut g, Action::Cast(signet));
+    resolve_all(&mut g, &[Action::Yes]);
+    assert!(g.obj(signet).tapped);
+    assert_eq!(tokens(&g, 0, "Vampire").len(), 1, "tapped: no token");
+    assert!(g.keywords(tokens(&g, 0, "Vampire")[0]).has(Keywords::LIFELINK));
+}
+
+#[test]
+fn laelia_exiles_the_top_card_to_play_and_grows_once_per_exile() {
+    let mut g = table();
+    let laelia = put(&mut g, 0, "Laelia, the Blade Reforged");
+    attack(&mut g, &[laelia]);
+    drain(&mut g);
+    assert_eq!(g.obj(laelia).counters, 1, "one card from the library");
+    fight(&mut g);
+    assert_eq!(g.players[1].life, 37, "a 3/3 by damage");
+}
+
+// ---- Core: triggers, batch 45 ----
+
+#[test]
+fn goldspan_dragon_makes_a_treasure_when_it_attacks_or_a_spell_targets_it() {
+    let mut g = table();
+    let dragon = put(&mut g, 0, "Goldspan Dragon");
+    assert_eq!(g.def_of(dragon).mana_ext.treasures_add_two_at_level, 1);
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    play(&mut g, bolt, false, &[obj(dragon)], &[]);
+    assert_eq!(tokens(&g, 0, "Treasure").len(), 1, "targeted by a spell");
+    attack(&mut g, &[dragon]);
+    drain(&mut g);
+    assert_eq!(tokens(&g, 0, "Treasure").len(), 2, "it attacked");
+}
+
+// ---- Core: triggers, batch 46 ----
+
+#[test]
+fn graha_tia_pays_the_spells_mana_value_for_a_hero_once_each_turn() {
+    let mut g = table();
+    put(&mut g, 0, "G'raha Tia, Scion Reborn");
+    let signet = hand(&mut g, 0, "Arcane Signet"); // mana value 2
+    act(&mut g, Action::Cast(signet));
+    resolve_all(&mut g, &[Action::Yes]);
+    assert_eq!(g.players[0].life, 38);
+    let heroes = tokens(&g, 0, "Hero");
+    assert_eq!(heroes.len(), 1);
+    assert_eq!(g.obj(heroes[0]).counters, 2);
+    let ring = hand(&mut g, 0, "Sol Ring");
+    play(&mut g, ring, false, &[], &[]);
+    assert_eq!(tokens(&g, 0, "Hero").len(), 1, "only once each turn: no question");
+}
+
+#[test]
+fn graha_tia_can_still_pay_later_in_the_turn_after_declining() {
+    let mut g = table();
+    put(&mut g, 0, "G'raha Tia, Scion Reborn");
+    let ring = hand(&mut g, 0, "Sol Ring");
+    act(&mut g, Action::Cast(ring));
+    resolve_all(&mut g, &[Action::No]);
+    assert!(tokens(&g, 0, "Hero").is_empty());
+    let signet = hand(&mut g, 0, "Arcane Signet");
+    act(&mut g, Action::Cast(signet));
+    resolve_all(&mut g, &[Action::Yes]);
+    assert_eq!(tokens(&g, 0, "Hero").len(), 1);
+}
+
+#[test]
+fn fecundity_lets_the_dead_creatures_controller_draw() {
+    let mut g = table();
+    put(&mut g, 0, "Fecundity");
+    let theirs = put(&mut g, 1, "Savannah Lions");
+    let hand1 = g.players[1].hand.len();
+    for _ in 0..3 {
+        put(&mut g, 0, "Swamp");
+    }
+    let d = hand(&mut g, 0, "Hero's Downfall");
+    act(&mut g, Action::Cast(d));
+    act(&mut g, Action::Target(obj(theirs)));
+    resolve_all(&mut g, &[Action::Yes]);
+    assert_eq!(g.players[1].hand.len(), hand1 + 1, "the opponent chose to draw");
+}
+
+#[test]
+fn angelic_renewal_trades_itself_for_your_dead_creature() {
+    let mut g = table();
+    let renewal = put(&mut g, 0, "Angelic Renewal");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    for _ in 0..3 {
+        put(&mut g, 0, "Swamp");
+    }
+    let d = hand(&mut g, 0, "Hero's Downfall");
+    act(&mut g, Action::Cast(d));
+    act(&mut g, Action::Target(obj(lions)));
+    resolve_all(&mut g, &[Action::Yes]);
+    assert_eq!(g.obj(lions).zone, Zone::Battlefield, "returned");
+    assert!(in_graveyard(&g, 0, renewal), "sacrificed");
+}
+
+// ---- Core: triggers, batch 47 (discover) ----
+
+/// Kills `victim` with Hero's Downfall (three Swamps added) and says yes to the "may" trigger.
+fn downfall_and_discover(g: &mut Game, victim: ObjId) {
+    for _ in 0..3 {
+        put(g, 0, "Swamp");
+    }
+    let d = hand(g, 0, "Hero's Downfall");
+    act(g, Action::Cast(d));
+    act(g, Action::Target(obj(victim)));
+    resolve_all(g, &[Action::Yes]);
+}
+
+#[test]
+fn dinosaur_egg_discovers_its_toughness_when_it_dies() {
+    let mut g = table();
+    let egg = put(&mut g, 0, "Dinosaur Egg");
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Library);
+    let plains = g.add_card(0, cid("Plains"), Zone::Library);
+    let pact = g.add_card(0, cid("Grave Pact"), Zone::Library); // on top: mana value 4 > 3
+    downfall_and_discover(&mut g, egg);
+    assert_eq!(
+        g.pending,
+        Pending::FreeCast(0),
+        "discover 3 offers Savannah Lions"
+    );
+    assert_eq!(g.obj(lions).zone, Zone::Exile);
+    let lib = &g.players[0].library;
+    assert!(
+        lib[..2].contains(&pact) && lib[..2].contains(&plains),
+        "the rest on the bottom"
+    );
+    act(&mut g, Action::Cast(lions));
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        g.obj(lions).zone,
+        Zone::Battlefield,
+        "cast without paying its mana cost"
+    );
+}
+
+#[test]
+fn dinosaur_egg_puts_the_discovered_card_into_your_hand_if_not_cast() {
+    let mut g = table();
+    let egg = put(&mut g, 0, "Dinosaur Egg");
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Library);
+    downfall_and_discover(&mut g, egg);
+    assert_eq!(g.pending, Pending::FreeCast(0));
+    act(&mut g, Action::PassPriority);
+    assert_eq!(g.obj(lions).zone, Zone::Hand, "not cast: into your hand");
+}
+
+#[test]
+fn dinosaur_egg_discovers_with_its_evolved_toughness() {
+    let mut g = table();
+    let egg = put(&mut g, 0, "Dinosaur Egg");
+    let lions = hand(&mut g, 0, "Savannah Lions");
+    act(&mut g, Action::Cast(lions));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.toughness(egg), 4, "evolved");
+    let pact = g.add_card(0, cid("Grave Pact"), Zone::Library);
+    downfall_and_discover(&mut g, egg);
+    assert_eq!(
+        g.pending,
+        Pending::FreeCast(0),
+        "discover 4 (last known toughness) hits Grave Pact"
+    );
+    assert_eq!(g.obj(pact).zone, Zone::Exile);
+}
+
+/// Player 0's turn `turn` up to the first decision (passing, attacking with nothing).
+fn to_decision(g: &mut Game, turn: u32) {
+    g.start_turn(turn, 0);
+    while !matches!(g.pending, Pending::Decide(_)) {
+        let a = match g.pending {
+            Pending::DeclareAttackers(_) => Action::FinishAttacks,
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(g, a);
+    }
+}
+
+#[test]
+fn fandaniel_makes_the_opponent_sacrifice_or_lose_two_per_spell_card() {
+    let mut g = table();
+    put(&mut g, 0, "Fandaniel, Telophoroi Ascian");
+    for name in ["Hero's Downfall", "Demonic Tutor", "Vampiric Tutor"] {
+        g.add_card(0, cid(name), Zone::Graveyard);
+    }
+    g.add_card(0, cid("Savannah Lions"), Zone::Graveyard); // not an instant or sorcery
+    let lions = put(&mut g, 1, "Savannah Lions");
+    to_decision(&mut g, 5);
+    assert_eq!(g.step, Step::End);
+    assert!(g.legal_actions().contains(&Action::Pick(lions)));
+    act(&mut g, Action::No);
+    assert_eq!(g.players[1].life, 40 - 6, "2 for each of three spell cards");
+    to_decision(&mut g, 7);
+    act(&mut g, Action::Pick(lions));
+    assert!(in_graveyard(&g, 1, lions), "sacrificed instead");
+    assert_eq!(g.players[1].life, 34);
+    to_step(&mut g, 9, 0, Step::Cleanup);
+    assert_eq!(
+        g.players[1].life, 28,
+        "no nontoken creature: they just lose the life"
+    );
+}
+
+#[test]
+fn talion_punishes_spells_matching_the_chosen_number() {
+    let mut g = table();
+    let talion = hand(&mut g, 0, "Talion, the Kindly Lord");
+    act(&mut g, Action::Cast(talion));
+    resolve_all(&mut g, &[Action::Amount(1)]);
+    assert_eq!(g.obj(talion).chosen_number, Some(1));
+    g.start_turn(4, 1);
+    while !(g.step == Step::Main1 && g.active == 1) {
+        act(&mut g, Action::PassPriority);
+    }
+    let cards = g.players[0].hand.len();
+    let lions = hand(&mut g, 1, "Savannah Lions"); // mana value 1
+    act(&mut g, Action::Cast(lions));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].life, 38);
+    assert_eq!(g.players[0].hand.len(), cards + 1);
+    let pact = hand(&mut g, 1, "Grave Pact"); // mana value 4
+    act(&mut g, Action::Cast(pact));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].life, 38, "no match");
+}
+
+#[test]
+fn passionate_archaeologist_gives_your_commander_damage_for_spells_cast_from_exile() {
+    let mut g = table();
+    put(&mut g, 0, "Passionate Archaeologist");
+    let egg = put(&mut g, 0, "Dinosaur Egg");
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Library);
+    downfall_and_discover(&mut g, egg);
+    act(&mut g, Action::Cast(lions));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].life, 40, "no commander creature: no trigger");
+
+    let mut g = table();
+    put(&mut g, 0, "Passionate Archaeologist");
+    commander_on_field(&mut g, "Bello, Bard of the Brambles");
+    let egg = put(&mut g, 0, "Dinosaur Egg");
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Library);
+    downfall_and_discover(&mut g, egg);
+    act(&mut g, Action::Cast(lions));
+    resolve_all(&mut g, &[Action::Target(Target::Player(1))]);
+    assert_eq!(g.players[1].life, 39, "Savannah Lions' mana value, 1");
+    assert_eq!(g.obj(lions).zone, Zone::Battlefield);
+}
+
+#[test]
+fn wizards_staff_gives_prowess_and_doubles_the_equipped_creatures_triggers() {
+    let mut g = table();
+    let staff = put(&mut g, 0, "Wizard's Staff");
+    let cyclops = put(&mut g, 0, "Crackling Cyclops"); // a Wizard: +3/+0 on noncreature spells
+    let lions = put(&mut g, 0, "Savannah Lions");
+    act(&mut g, Action::Activate(staff, 0));
+    assert!(
+        !g.legal_actions().contains(&Action::Target(obj(lions))),
+        "Equip Wizard: Wizards only"
+    );
+    act(&mut g, Action::Target(obj(cyclops)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(staff).attached_to.map(|a| a.0), Some(cyclops));
+    let base = g.power(cyclops);
+    let ring = hand(&mut g, 0, "Sol Ring");
+    act(&mut g, Action::Cast(ring));
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        g.power(cyclops),
+        base + 6 + 2,
+        "its trigger and prowess, each twice"
+    );
+    assert_eq!(g.power(lions), 2, "not equipped");
+}

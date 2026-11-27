@@ -1928,8 +1928,352 @@ pub fn script(name: &str) -> Option<Script> {
                 );
             },
         ),
+        // ---- Core: triggers, batch 41 (idea decks: Sythis, Ratadrabik, Baylen; the Ring) ----
+        "Nazgûl" => s(
+            &[
+                "When this creature enters, the Ring tempts you.",
+                "Whenever the Ring tempts you, put a +1/+1 counter on each Wraith you control.",
+                "A deck can have up to nine cards named Nazgûl.",
+            ],
+            |d, _| {
+                // The deck-building line does nothing in a game.
+                on(d, When::Enters, vec![], vec![Effect::Subsystem(bolt_core::effect::SubsystemEffect::RingTempts)]);
+                on(d, When::RingTemptsYou, vec![], vec![Effect::CountersOnYourSubtype("Wraith")]);
+            },
+        ),
+        "Boromir, Warden of the Tower" => s(
+            &[
+                "Whenever an opponent casts a spell, if no mana was spent to cast it, counter that spell.",
+                "Sacrifice Boromir: Creatures you control gain indestructible until end of turn. The Ring tempts you.",
+            ],
+            |d, _| {
+                on(d, When::OpponentCastsWithNoManaSpent, vec![], vec![Effect::CounterExtra]);
+                let effects = vec![Effect::GrantAll { who: Who::You, keywords: Keywords::INDESTRUCTIBLE }, Effect::Subsystem(bolt_core::effect::SubsystemEffect::RingTempts)];
+                let n = activated(d, "", false, vec![], effects);
+                d.activated[n].sacrifice_self = true;
+            },
+        ),
+        "Gleaming Splendor" => s(
+            &[
+                "Whenever an opponent draws their second card each turn, you create a Treasure token.",
+                "{2}{W}: Two target players each draw a card.",
+            ],
+            |d, t| {
+                on(d, When::OpponentDrawsSecond, vec![], vec![Effect::CreateToken { who: Who::You, def: t.treasure, n: 1 }]);
+                // 1v1: two different target players are both players.
+                let both = vec![Effect::Draw { who: Who::You, n: 1 }, Effect::Draw { who: Who::EachOpponent, n: 1 }];
+                activated(d, "{2}{W}", false, vec![], both);
+            },
+        ),
+        "Cruel Celebrant" => s(
+            &["Whenever this creature or another creature or planeswalker you control dies, each opponent loses 1 life and you gain 1 life."],
+            |d, _| {
+                for when in [When::Dies, When::AnotherCreatureYouControlDies, When::PlaneswalkerYouControlDies] {
+                    on(d, when, vec![], vec![Effect::LoseLife { who: Who::EachOpponent, n: 1 }, Effect::GainLife { who: Who::You, n: 1 }]);
+                }
+            },
+        ),
+        "Lotho, Corrupt Shirriff" => s(
+            &["Whenever a player casts their second spell each turn, you lose 1 life and create a Treasure token."],
+            |d, t| {
+                let effects = vec![Effect::LoseLife { who: Who::You, n: 1 }, Effect::CreateToken { who: Who::You, def: t.treasure, n: 1 }];
+                on(d, When::PlayerCastsSecondSpell, vec![], effects);
+            },
+        ),
+        "Cadira, Caller of the Small" => s(
+            &["Whenever Cadira deals combat damage to a player, for each token you control, create a 1/1 white Rabbit creature token."],
+            |d, t| on(d, When::DealsCombatDamageToPlayer, vec![], vec![Effect::CreateTokensPerTokenYouControl { def: t.rabbit }]),
+        ),
+        "Knuckles the Echidna" => s(
+            &[
+                "Whenever one or more creatures you control deal combat damage to a player, create a Treasure token.",
+                "Treasure Hunter — At the beginning of your upkeep, if you control thirty or more artifacts, you win the game.",
+            ],
+            |d, t| {
+                on(d, When::YourCreaturesDealCombatDamageToPlayer, vec![], vec![Effect::CreateToken { who: Who::You, def: t.treasure, n: 1 }]);
+                let upkeep = When::Upkeep { your_turn_only: true };
+                conditional(d, upkeep, Condition::ControlArtifactsAtLeast(30), vec![], vec![Effect::WinTheGame]);
+            },
+        ),
+        "Rosie Cotton of South Lane" => s(
+            &[
+                "When Rosie Cotton enters, create a Food token.",
+                "Whenever you create a token, put a +1/+1 counter on target creature you control other than Rosie Cotton.",
+            ],
+            |d, t| {
+                on(d, When::Enters, vec![], vec![Effect::CreateToken { who: Who::You, def: t.food, n: 1 }]);
+                // Each token you create enters under your control.
+                let other = Filter { other: true, ..YOUR_CREATURE };
+                on(d, When::TokenYouControlEnters, vec![other], vec![Effect::Counters { slot: 0, n: 1 }]);
+            },
+        ),
+        // ---- Batch 42 (idea decks: Rocco, Y'shtola, Tymna + Tana, Alela; existing pieces) ----
+        "Starscape Cleric" => s(
+            &["Offspring {2}{B}", "This creature can't block.", "Whenever you gain life, each opponent loses 1 life."],
+            |d, _| {
+                d.offspring = ManaCost::parse("{2}{B}");
+                d.cant_block = true;
+                on(d, When::YouGainLife, vec![], vec![Effect::LoseLife { who: Who::EachOpponent, n: 1 }]);
+            },
+        ),
+        "Mai, Scornful Striker" => s(&["Whenever a player casts a noncreature spell, they lose 2 life."], |d, _| {
+            on(d, When::YouCastNoncreature, vec![], vec![Effect::LoseLife { who: Who::You, n: 2 }]);
+            on(d, When::OpponentCastsNoncreature, vec![], vec![Effect::LoseLife { who: Who::EachOpponent, n: 2 }]);
+        }),
+        "Kambal, Consul of Allocation" => s(
+            &["Whenever an opponent casts a noncreature spell, that player loses 2 life and you gain 2 life."],
+            |d, _| {
+                let effects = vec![Effect::LoseLife { who: Who::EachOpponent, n: 2 }, Effect::GainLife { who: Who::You, n: 2 }];
+                on(d, When::OpponentCastsNoncreature, vec![], effects);
+            },
+        ),
+        "Luminarch Aspirant" => s(
+            &["At the beginning of combat on your turn, put a +1/+1 counter on target creature you control."],
+            |d, _| on(d, When::BeginCombatYourTurn, vec![YOUR_CREATURE], vec![Effect::Counters { slot: 0, n: 1 }]),
+        ),
+        "Tana, the Bloodsower" => s(
+            &["Whenever Tana deals combat damage to a player, create that many 1/1 green Saproling creature tokens.", "Partner"],
+            |d, t| on(d, When::DealsCombatDamageToPlayer, vec![], vec![Effect::CreateTokensAmount { def: t.saproling }]),
+        ),
+        "Reconnaissance Mission" => s(
+            &["Whenever a creature you control deals combat damage to a player, you may draw a card.", "Cycling {2}"],
+            |d, _| {
+                may(d, When::YourCreatureDealsCombatDamageToPlayer, vec![], vec![draw(1)]);
+                cycling(d, "{2}");
+            },
+        ),
+        "Tymna the Weaver" => s(
+            &[
+                "At the beginning of each of your postcombat main phases, you may pay X life, where X is the number of opponents that were dealt combat damage this turn. If you do, draw X cards.",
+                "Partner",
+            ],
+            |d, _| {
+                // 1v1: X is 1 when the opponent was dealt combat damage this turn, else the trigger
+                // does nothing.
+                let dealt = Condition::OpponentDealtCombatDamageThisTurn;
+                conditional(d, When::PostcombatMainYourTurn, dealt, vec![], vec![Effect::MayPayLife(1), draw(1)]);
+            },
+        ),
+        "Lifecrafter's Bestiary" => s(
+            &[
+                "At the beginning of your upkeep, scry 1.",
+                "Whenever you cast a creature spell, you may pay {G}. If you do, draw a card.",
+            ],
+            |d, _| {
+                on(d, When::Upkeep { your_turn_only: true }, vec![], vec![Effect::Scry { n: 1 }]);
+                let pay = Effect::MayPay(ManaCost::parse("{G}").expect("a mana cost"));
+                on(d, When::YouCastCreature, vec![], vec![pay, draw(1)]);
+            },
+        ),
+        // ---- Core: triggers, batch 43 (idea decks: Y'shtola, Rocco, Alela, Prosper, Dakkon; batched token entries) ----
+        "Y'shtola, Night's Blessed" => s(
+            &[
+                "At the beginning of each end step, if a player lost 4 or more life this turn, you draw a card.",
+                "Whenever you cast a noncreature spell with mana value 3 or greater, Y'shtola deals 2 damage to each opponent and you gain 2 life.",
+            ],
+            |d, _| {
+                let lost = Condition::PlayerLostLifeThisTurnAtLeast(4);
+                conditional(d, When::EndStep { your_turn_only: false }, lost, vec![], vec![draw(1)]);
+                let drain = vec![damage(2, Recipient::EachOpponent), Effect::GainLife { who: Who::You, n: 2 }];
+                on(d, When::YouCastNoncreatureMvAtLeast(3), vec![], drain);
+            },
+        ),
+        "Uncover the Moon-Letters" => s(
+            &["Whenever you cast a noncreature spell, you may draw X cards, where X is the amount of mana spent to cast that spell. If you do, discard two cards."],
+            |d, _| may(d, When::YouCastNoncreatureManaSpent, vec![], vec![Effect::DrawAmount, discard(2)]),
+        ),
+        "Thopter Assembly" => s(
+            &["At the beginning of your upkeep, if you control no Thopters other than this creature, return this creature to its owner's hand and create five 1/1 colorless Thopter artifact creature tokens with flying."],
+            |d, t| {
+                let alone = Condition::ControlNoOtherSubtype("Thopter");
+                let effects = vec![Effect::BounceSelf, Effect::CreateToken { who: Who::You, def: t.thopter, n: 5 }];
+                conditional(d, When::Upkeep { your_turn_only: true }, alone, vec![], effects);
+            },
+        ),
+        "Nihil Spellbomb" => s(
+            &[
+                "{T}, Sacrifice this artifact: Exile target player's graveyard.",
+                "When this artifact is put into a graveyard from the battlefield, you may pay {B}. If you do, draw a card.",
+            ],
+            |d, _| {
+                let n = activated(d, "", true, vec![Filter::PLAYER], vec![Effect::ExileGraveyard { who: Who::TargetPlayer(0) }]);
+                d.activated[n].sacrifice_self = true;
+                let pay = Effect::MayPay(ManaCost::parse("{B}").expect("a mana cost"));
+                on(d, When::ThisPutIntoGraveyardFromBattlefield, vec![], vec![pay, draw(1)]);
+            },
+        ),
+        "Crime Novelist" => s(
+            &["Whenever you sacrifice an artifact, put a +1/+1 counter on this creature and add {R}."],
+            |d, _| {
+                let effects = vec![Effect::CountersSelf { n: 1 }, Effect::AddMana { color: Color::Red, n: 1 }];
+                on(d, When::YouSacrificeArtifact, vec![], effects);
+            },
+        ),
+        "Smaug, Wicked Worm" => s(
+            &[
+                "When Smaug enters, create X tapped Treasure tokens, where X is the number of artifacts your opponents control.",
+                "Whenever you cast a spell, if mana from a Treasure was spent to cast it, you draw a card and lose 1 life.",
+            ],
+            |d, t| {
+                on(d, When::Enters, vec![], vec![Effect::CreateTappedTokensPerOpponentArtifact { def: t.treasure }]);
+                let effects = vec![Effect::StopUnlessTreasureManaSpentOnExtra, draw(1), Effect::LoseLife { who: Who::You, n: 1 }];
+                on(d, When::YouCast, vec![], effects);
+            },
+        ),
+        "Twilight Drover" => s(
+            &[
+                "Whenever a creature token leaves the battlefield, put a +1/+1 counter on this creature.",
+                "{2}{W}, Remove a +1/+1 counter from this creature: Create two 1/1 white Spirit creature tokens with flying.",
+            ],
+            |d, t| {
+                on(d, When::CreatureTokenLeavesBattlefield, vec![], vec![Effect::CountersSelf { n: 1 }]);
+                let n = activated(d, "{2}{W}", false, vec![], vec![Effect::CreateToken { who: Who::You, def: t.spirit, n: 2 }]);
+                d.activated[n].remove_plus_counters = 1;
+            },
+        ),
+        // ---- Core: triggers, batch 44 (idea decks: Sythis, Baylen, Y'shtola, Prosper; tokens 126, 128-130) ----
+        "Soaring Lightbringer" => s(
+            &[
+                "Other enchantment creatures you control have flying.",
+                "Whenever you attack a player, create a 1/1 white Glimmer enchantment creature token that's tapped and attacking that player.",
+            ],
+            |d, t| {
+                // Flying on a noncreature enchantment does nothing, so "your other enchantments" is the same.
+                static_on(d, Scope::OtherYourEnchantments, false, Keywords::FLYING);
+                // 1v1: "you attack a player" is "you attack".
+                on(d, When::YouAttack, vec![], vec![Effect::CreateTokensTappedAndAttacking { def: t.glimmer, n: 1 }]);
+            },
+        ),
+        "Hermes, Overseer of Elpis" => s(
+            &[
+                "Whenever you cast a noncreature spell, create a 1/1 blue Bird creature token with flying and vigilance.",
+                "Whenever you attack with one or more Birds, scry 2.",
+            ],
+            |d, t| {
+                on(d, When::YouCastNoncreature, vec![], vec![Effect::CreateToken { who: Who::You, def: t.bird_flying_vigilance, n: 1 }]);
+                on(d, When::YouAttackWithSubtype("Bird"), vec![], vec![Effect::Scry { n: 2 }]);
+            },
+        ),
+        "Charismatic Conqueror" => s(
+            &["Whenever an artifact or creature an opponent controls enters untapped, they may tap that permanent. If they don't, you create a 1/1 white Vampire creature token with lifelink."],
+            |d, t| {
+                let ask = Effect::ExtrasControllerMayTapElseToken { def: t.vampire_lifelink };
+                on(d, When::ArtifactOrCreatureOpponentControlsEntersUntapped, vec![], vec![ask]);
+            },
+        ),
+        "Laelia, the Blade Reforged" => s(
+            &[
+                "Whenever Laelia attacks, exile the top card of your library. You may play that card this turn.",
+                "Whenever one or more cards are put into exile from your library and/or your graveyard, put a +1/+1 counter on Laelia.",
+            ],
+            |d, _| {
+                on(d, When::Attacks, vec![], vec![Effect::ExileTopToPlayThisTurn(1)]);
+                on(d, When::CardsExiledFromYourLibraryOrGraveyard, vec![], vec![Effect::CountersSelf { n: 1 }]);
+            },
+        ),
+        // ---- Core: triggers, batch 45 (Vaevictis handbacks from d3) ----
+        "Goldspan Dragon" => s(
+            &[
+                "Whenever this creature attacks or becomes the target of a spell, create a Treasure token.",
+                "Treasures you control have \"{T}, Sacrifice this artifact: Add two mana of any one color.\"",
+            ],
+            |d, t| {
+                for when in [When::Attacks, When::BecomesTargetOfSpell] {
+                    on(d, when, vec![], vec![Effect::CreateToken { who: Who::You, def: t.treasure, n: 1 }]);
+                }
+                d.mana_ext.treasures_add_two_at_level = 1; // d1's two-mana Treasures, always
+            },
+        ),
+        // ---- Core: triggers, batch 46 (idea decks: Y'shtola, Rocco) ----
+        "G'raha Tia, Scion Reborn" => s(
+            &["Throw Wide the Gates — Whenever you cast a noncreature spell, you may pay X life, where X is that spell's mana value. If you do, create a 1/1 colorless Hero creature token and put X +1/+1 counters on it. Do this only once each turn."],
+            |d, t| {
+                let effects = vec![
+                    Effect::StopIfDoneThisTurn,
+                    Effect::MayPayLifeAmount,
+                    Effect::MarkDoneThisTurn,
+                    Effect::CreateTokenWithCountersAmount { def: t.hero },
+                ];
+                on(d, When::YouCastNoncreatureMv, vec![], effects);
+            },
+        ),
+        "Fecundity" => s(
+            &["Whenever a creature dies, that creature's controller may draw a card."],
+            |d, _| on(d, When::AnotherCreatureDiesIt, vec![], vec![Effect::ExtrasControllerMayDraw]),
+        ),
+        "Angelic Renewal" => s(
+            &["Whenever a creature is put into your graveyard from the battlefield, you may sacrifice this enchantment. If you do, return that card to the battlefield."],
+            |d, _| {
+                let it = Filter { triggering: true, ..graveyard_cards(true, Controller::Any) };
+                may(d, When::CreatureToYourGraveyardFromBattlefieldIt, vec![it], vec![Effect::SacrificeSource, Effect::Reanimate(0)]);
+            },
+        ),
+        // ---- Core: triggers, batch 47 (discover) ----
+        "Dinosaur Egg" => s(
+            &[
+                "Evolve",
+                "When this creature dies, you may discover X, where X is its toughness.",
+            ],
+            |d, _| {
+                let that = Filter { triggering: true, ..CREATURE };
+                on(d, When::AnotherCreatureYouControlEnters, vec![that], vec![Effect::Evolve(0)]);
+                may(d, When::Dies, vec![], vec![Effect::DiscoverSourceToughness]);
+            },
+        ),
+        "Fandaniel, Telophoroi Ascian" => s(
+            &[
+                "Whenever you cast an instant or sorcery spell, surveil 1.",
+                "At the beginning of your end step, each opponent may sacrifice a nontoken creature of their choice. Each opponent who doesn't loses 2 life for each instant and sorcery card in your graveyard.",
+            ],
+            |d, _| {
+                on(d, When::YouCastInstantOrSorcery, vec![], vec![Effect::Surveil { n: 1 }]);
+                let end = When::EndStep { your_turn_only: true };
+                on(d, end, vec![], vec![Effect::OpponentMaySacrificeNontokenCreatureElseLose { per: 2 }]);
+            },
+        ),
+        "Passionate Archaeologist" => s(
+            &["Commander creatures you own have \"Whenever you cast a spell from exile, this creature deals damage equal to that spell's mana value to target opponent.\""],
+            |d, _| {
+                on(d, When::YouCastSpellFromExile, vec![opponent_player()], vec![Effect::DamageEqualExtrasManaValue(0)]);
+                d.subsystems.commanders_have_trigger = Some(d.triggers.len() - 1);
+            },
+        ),
+        "Wizard's Staff" => s(
+            &[
+                "Equipped creature has prowess.",
+                "If a triggered ability of equipped creature triggers, that ability triggers an additional time.",
+                "Equip Wizard {1}",
+                "Equip {3}",
+            ],
+            |d, _| {
+                // Prowess as the Equipment's trigger on the attached creature (a no-op unattached).
+                on(d, When::YouCastNoncreature, vec![], vec![Effect::PumpAttached { power: 1, toughness: 1 }]);
+                d.doubles_triggers_of = Some(TriggerDoubler::EquippedCreature);
+                let wizard = Filter { subtype: Some("Wizard"), ..YOUR_CREATURE };
+                let n = activated(d, "{1}", false, vec![wizard], vec![Effect::Attach { slot: 0 }]);
+                d.activated[n].sorcery = true;
+                equip(d, "{3}");
+            },
+        ),
+        "Talion, the Kindly Lord" => s(
+            &[
+                "As Talion enters, choose a number between 1 and 10.",
+                "Whenever an opponent casts a spell with mana value, power, or toughness equal to the chosen number, that player loses 2 life and you draw a card.",
+            ],
+            |d, _| {
+                d.choose_number = Some((1, 10));
+                let lose = Effect::LoseLife { who: Who::EachOpponent, n: 2 };
+                on(d, When::OpponentCastsChosenNumber, vec![], vec![lose, draw(1)]);
+            },
+        ),
         _ => None,
     }
+}
+
+/// "Cycling {cost}": "{cost}, Discard this card: Draw a card." from your hand.
+fn cycling(d: &mut CardDef, cost: &str) {
+    let n = activated(d, cost, false, vec![], vec![draw(1)]);
+    d.activated[n].from_hand_discard = true;
 }
 
 /// "target opponent"
@@ -2224,4 +2568,47 @@ pub const PG_D2_SCRIPTED: &[&str] = &[
     "Thopter Spy Network",
     "Helm of the Ghastlord",
     "Lifeline",
+    // Core: triggers, batch 41
+    "Nazgûl",
+    "Boromir, Warden of the Tower",
+    "Gleaming Splendor",
+    "Cruel Celebrant",
+    "Lotho, Corrupt Shirriff",
+    "Cadira, Caller of the Small",
+    "Knuckles the Echidna",
+    "Rosie Cotton of South Lane",
+    // Batch 42
+    "Starscape Cleric",
+    "Mai, Scornful Striker",
+    "Kambal, Consul of Allocation",
+    "Luminarch Aspirant",
+    "Tana, the Bloodsower",
+    "Reconnaissance Mission",
+    "Tymna the Weaver",
+    "Lifecrafter's Bestiary",
+    // Core: triggers, batch 43
+    "Y'shtola, Night's Blessed",
+    "Uncover the Moon-Letters",
+    "Thopter Assembly",
+    "Nihil Spellbomb",
+    "Crime Novelist",
+    "Smaug, Wicked Worm",
+    "Twilight Drover",
+    // Core: triggers, batch 44
+    "Soaring Lightbringer",
+    "Hermes, Overseer of Elpis",
+    "Charismatic Conqueror",
+    "Laelia, the Blade Reforged",
+    // Core: triggers, batch 45
+    "Goldspan Dragon",
+    // Core: triggers, batch 46
+    "G'raha Tia, Scion Reborn",
+    "Fecundity",
+    "Angelic Renewal",
+    // Core: triggers, batch 47
+    "Dinosaur Egg",
+    "Fandaniel, Telophoroi Ascian",
+    "Talion, the Kindly Lord",
+    "Passionate Archaeologist",
+    "Wizard's Staff",
 ];

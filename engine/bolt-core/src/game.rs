@@ -354,6 +354,10 @@ pub struct Object {
     /// Put onto the battlefield by Kodama of the East Tree's ability (so its entering doesn't
     /// trigger that ability again); cleared as it leaves.
     pub put_by_kodama: bool,
+    /// Toughness when it last left the battlefield (last known information, CR 608.2h).
+    pub last_toughness: i32,
+    /// The number chosen as it entered (`CardDef::choose_number`; Talion), reset as it leaves.
+    pub chosen_number: Option<u8>,
     /// Cast for its prototype cost and resolved (CR 702.160): its `ManaExt::prototype` power,
     /// toughness and colors; cleared as it leaves.
     pub prototyped: bool,
@@ -1591,6 +1595,15 @@ pub enum Decision {
     /// Nahiri's Lithoforming: `Pick` a land to sacrifice (`left` more after this one); `drawn` lands
     /// are sacrificed so far, and that many cards are drawn after the last.
     SacrificeLandsDraw { left: u8, drawn: u8 },
+    /// `Yes` taps `card` (yours, which just entered untapped); `No` leaves it untapped and the
+    /// opponent creates a `def` token (Charismatic Conqueror).
+    MayTapElseOpponentToken { card: ObjId, def: usize },
+    /// `Yes` draws a card, `No` doesn't (Fecundity: the dead creature's controller decides).
+    MayDrawCard { source: ObjId },
+    /// "As this enters, choose a number": `Amount(n)` chooses n, `min` to `max` (Talion).
+    ChooseNumber { card: ObjId, min: u8, max: u8 },
+    /// `Pick` a nontoken creature to sacrifice, or `No` to lose `life` life (Fandaniel).
+    SacrificeNontokenCreatureOrLoseLife { life: i32 },
     /// Reckless Endeavor: `Mode(i)` picks `rolls[i]` as the damage to each creature from `source`;
     /// the other result is the number of `def` tokens created.
     ChooseDamageRoll {
@@ -1617,6 +1630,10 @@ pub enum Decision {
     /// +1/+1 counters for it), or `No` to stop.
     Devour { card: ObjId, n: u8 },
 }
+
+/// One batch of a "one or more tokens ... enter" trigger (`Game::token_enter_batches`): (source,
+/// trigger number, controller, the tokens that entered with their zcc).
+pub type TokenBatch = (ObjId, usize, PlayerId, Vec<(ObjId, u32)>);
 
 /// Options for [`Game::new_commander_with`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -2201,6 +2218,13 @@ pub struct Game {
     /// Why the engine ended the game itself, when it did: one of its loop caps tripped
     /// ([`WORK_BUDGET`], [`MAX_OBJECTS`], [`MAX_PERMANENTS`], [`SETTLE_PASSES`]); the result is a draw.
     pub end_reason: Option<&'static str>,
+    /// Batched "one or more tokens ... enter" triggers (`When::OneOrMoreTokensYouControlEnter`,
+    /// `When::OneOrMoreTokensOpponentsControlEnter`): (source, trigger number, controller, the
+    /// tokens that entered with their zcc), one entry per batch, newest last.
+    pub token_enter_batches: Vec<TokenBatch>,
+    /// "Do this only once each turn" (`Effect::StopIfDoneThisTurn`, `Effect::MarkDoneThisTurn`):
+    /// (source, its zcc, the turn).
+    pub done_once_turn: Vec<(ObjId, u32, u32)>,
     /// The turn each player last cast a spell of each color, WUBRG (Veil of Summer).
     pub color_cast_turn: [[u32; 5]; 2],
     /// The turn each player's spells can't be countered (Veil of Summer); 0 for none.
@@ -2555,6 +2579,8 @@ impl Game {
             delayed_slot_dies: Vec::new(),
             lose_hexproof_indestructible_turn: [0; 2],
             end_reason: None,
+            token_enter_batches: Vec::new(),
+            done_once_turn: Vec::new(),
             color_cast_turn: [[0; 5]; 2],
             spells_uncounterable_turn: [0; 2],
             player_hexproof_from_colors: [(0, [false; 5]); 2],
@@ -2841,6 +2867,8 @@ impl Game {
             last_slime: 0,
             damage_by: (0, [0; 2]),
             put_by_kodama: false,
+            last_toughness: 0,
+            chosen_number: None,
             prototyped: false,
         });
         self.zone_list(owner, zone).push(id);
@@ -5208,6 +5236,32 @@ impl Game {
         }
     }
 
+    /// Discover `x` (CR 701.57): exile from the top until a nonland card with mana value `x` or less,
+    /// offered as a free cast (the player casts it or passes, and a card not cast goes to their
+    /// hand); the others go to the bottom in a random order.
+    fn discover(&mut self, p: PlayerId, x: u32) {
+        let mut rest = Vec::new();
+        let mut hit = None;
+        while let Some(&c) = self.players[p].library.last() {
+            self.move_to(c, Zone::Exile);
+            if !self.def_of(c).types.land && self.def_of(c).cost.mana_value() <= x {
+                hit = Some(c);
+                break;
+            }
+            rest.push(c);
+        }
+        for &c in &rest {
+            self.move_to(c, Zone::Library);
+        }
+        self.put_among_rest(p, rest, false);
+        if let Some(c) = hit {
+            self.obj_mut(c).cast_free = true;
+            self.free_casts.push(c);
+            self.free_caster = p;
+            self.free_casts_to_hand = true;
+        }
+    }
+
     /// Decayed, printed or from a decayed counter (CR 702.147).
     fn is_decayed(&self, id: ObjId) -> bool {
         self.obj(id).zone == Zone::Battlefield && (self.def_of(id).decayed || self.obj(id).decayed)
@@ -5454,6 +5508,62 @@ impl Game {
                 ..Game::casting(source, p)
             });
         }
+    }
+
+    /// Token `token` entered: `p`'s "one or more tokens you control enter" triggers (`opponents`
+    /// false; `p` controls it) or "one or more tokens your opponents control enter" (`opponents`
+    /// true), batched as `batch_trigger` does, with the token added to the batch's list in
+    /// `Game::token_enter_batches`.
+    fn fire_token_batch(&mut self, p: PlayerId, token: ObjId, opponents: bool) {
+        let zcc = self.obj(token).zcc;
+        for id in self.permanents(p).collect::<Vec<_>>() {
+            if self.lost_abilities(id) {
+                continue;
+            }
+            let whens: Vec<When> = self.def_of(id).triggers.iter().map(|tr| tr.when).collect();
+            for (n, w) in whens.into_iter().enumerate() {
+                let once = match w {
+                    When::OneOrMoreTokensYouControlEnter if !opponents => false,
+                    When::OneOrMoreTokensOpponentsControlEnter { once_each_turn } if opponents => {
+                        once_each_turn
+                    }
+                    _ => continue,
+                };
+                let waiting = self
+                    .triggered
+                    .iter()
+                    .any(|t| t.source == id && t.kind == StackKind::Trigger(n) && t.controller == p);
+                if waiting {
+                    self.batch_trigger(id, n, p);
+                    if let Some(b) = self
+                        .token_enter_batches
+                        .iter_mut()
+                        .rev()
+                        .find(|b| b.0 == id && b.1 == n && b.2 == p)
+                    {
+                        b.3.push((token, zcc));
+                    }
+                } else if !once || self.first_trigger_this_turn(id, n) {
+                    self.batch_trigger(id, n, p);
+                    self.token_enter_batches.push((id, n, p, vec![(token, zcc)]));
+                }
+            }
+        }
+    }
+
+    /// The tokens of the batch a resolving "one or more tokens ... enter" trigger is for: the
+    /// newest batch recorded for its source, trigger and controller (as they entered: the zcc each
+    /// had on the battlefield). Lane C's "for each of them" effects read this.
+    pub fn token_batch(&self, item: &StackItem) -> Vec<(ObjId, u32)> {
+        let StackKind::Trigger(n) = item.kind else {
+            return Vec::new();
+        };
+        self.token_enter_batches
+            .iter()
+            .rev()
+            .find(|b| b.0 == item.source && b.1 == n && b.2 == item.controller)
+            .map(|b| b.3.clone())
+            .unwrap_or_default()
     }
 
     /// The triggers of `p`'s permanents with a `When` that `hit` accepts, each batched.
@@ -5795,6 +5905,8 @@ impl Game {
         if from == Zone::Battlefield {
             let p = self.power(id);
             self.obj_mut(id).last_power = p;
+            let t = self.toughness(id);
+            self.obj_mut(id).last_toughness = t;
         }
         let last_controller = self.obj(id).controller;
         // Undying as a keyword (printed, or granted by a static like Mikaeus's), as it last existed
@@ -5957,6 +6069,7 @@ impl Game {
             o.last_revival = o.revival;
             o.revival = 0;
             o.chosen_color = None;
+            o.chosen_number = None;
             o.chosen_type = None;
             o.animated = None;
             o.stage = 0;
@@ -6192,16 +6305,44 @@ impl Game {
             }
             if self.is_token(id) {
                 self.fire(last_controller, When::TokenYouControlLeaves, Some(id));
+                if self.types_of(id).creature {
+                    self.fire(0, When::CreatureTokenLeavesBattlefield, Some(id));
+                    self.fire(1, When::CreatureTokenLeavesBattlefield, Some(id));
+                }
             }
         }
         if to == Zone::Battlefield && from != Zone::Battlefield && self.is_token(id) {
             let c = self.obj(id).controller;
             self.token_created_turn[c] = self.turn;
             self.fire(c, When::TokenYouControlEnters, Some(id));
+            self.fire_token_batch(c, id, false);
+            self.fire_token_batch(opponent(c), id, true);
         }
         if to == Zone::Battlefield && from != Zone::Battlefield && self.types_of(id).enchantment {
             let c = self.obj(id).controller;
             self.fire(c, When::EnchantmentYouControlEnters, None); // constellation
+        }
+        if to == Zone::Battlefield
+            && from != Zone::Battlefield
+            && !self.obj(id).tapped
+            && (self.types_of(id).artifact || self.types_of(id).creature)
+        {
+            // Charismatic Conqueror: "an artifact or creature an opponent controls enters untapped".
+            let c = self.obj(id).controller;
+            let before = self.triggered.len();
+            self.fire(
+                opponent(c),
+                When::ArtifactOrCreatureOpponentControlsEntersUntapped,
+                None,
+            );
+            for t in &mut self.triggered[before..] {
+                t.extra = Some(id);
+            }
+        }
+        if to == Zone::Exile && matches!(from, Zone::Library | Zone::Graveyard) {
+            // Laelia: "one or more cards are put into exile from your library and/or graveyard".
+            let owner = self.obj(id).owner;
+            self.fire_batched(owner, |w| w == When::CardsExiledFromYourLibraryOrGraveyard);
         }
         if to == Zone::Battlefield && from != Zone::Battlefield {
             let c = self.obj(id).controller;
@@ -6233,6 +6374,10 @@ impl Game {
                 }
             }
         }
+        if dies && self.types_of(id).planeswalker && !self.types_of(id).creature {
+            self.fire(last_controller, When::PlaneswalkerYouControlDies, Some(id));
+            // Cruel Celebrant
+        }
         if dies && self.types_of(id).creature {
             // "Whenever equipped creature dies": Equipment still attached until state-based actions.
             let gear: Vec<ObjId> = self
@@ -6246,11 +6391,19 @@ impl Game {
             }
             self.fire(0, When::AnotherCreatureDies, Some(id));
             self.fire(1, When::AnotherCreatureDies, Some(id));
+            // Angelic Renewal: "a creature is put into your graveyard from the battlefield" (its owner's).
+            let owner = self.obj(id).owner;
+            let before = self.triggered.len();
+            self.fire(owner, When::CreatureToYourGraveyardFromBattlefieldIt, Some(id));
+            self.fill_triggering(before, id);
             // Lifeline: "whenever a creature dies, ... return the first card".
             for q in 0..2 {
                 let before = self.triggered.len();
                 self.fire(q, When::AnotherCreatureDiesIt, Some(id));
                 self.fill_triggering(before, id);
+                for t in &mut self.triggered[before..] {
+                    t.extra = Some(id); // Fecundity: "that creature's controller"
+                }
             }
             let before = self.triggered.len();
             self.fire(0, When::OtherCreaturesDieOnceEachTurn, Some(id));
@@ -7133,6 +7286,7 @@ impl Game {
                 }
                 if self.draws_this_turn[p] == 2 {
                     self.fire(p, When::YouDrawSecond, None);
+                    self.fire(opponent(p), When::OpponentDrawsSecond, None);
                 }
             }
             None => {
@@ -12872,6 +13026,25 @@ impl Game {
                 let before = self.triggered.len();
                 if self.combat.as_ref().is_some_and(|c| !c.attackers.is_empty()) {
                     self.fire(self.active, When::YouAttack, None);
+                    // Hermes: "Whenever you attack with one or more Birds".
+                    let attackers = self.combat.as_ref().map_or(Vec::new(), |c| c.attackers.clone());
+                    for id in self.permanents(self.active).collect::<Vec<_>>() {
+                        if self.lost_abilities(id) {
+                            continue;
+                        }
+                        let whens: Vec<When> = self.def_of(id).triggers.iter().map(|tr| tr.when).collect();
+                        for (n, w) in whens.into_iter().enumerate() {
+                            if let When::YouAttackWithSubtype(sub) = w {
+                                if attackers.iter().any(|&a| self.has_subtype(a, sub)) {
+                                    let p = self.active;
+                                    self.triggered.push(StackItem {
+                                        kind: StackKind::Trigger(n),
+                                        ..Game::casting(id, p)
+                                    });
+                                }
+                            }
+                        }
+                    }
                     let n = self.combat.as_ref().map_or(0, |c| c.attackers.len());
                     for _ in 0..n {
                         self.fire(self.active, When::CreatureYouControlAttacks, None);
@@ -13313,6 +13486,9 @@ impl Game {
             self.commander_casts[owner] = self.commander_casts[owner].saturating_add(1);
         }
         self.played_from_exile(p, card); // Prosper's Pact Boon
+        if self.obj(card).zone == Zone::Exile {
+            self.fire_with_extra(p, When::YouCastSpellFromExile, card); // Passionate Archaeologist
+        }
         let any_graveyard = !mode.flashback && self.casts_from_any_graveyard(p, card); // The Great Work
         self.move_to(card, Zone::Stack);
         if any_graveyard {
@@ -13613,6 +13789,33 @@ impl Game {
         }
         self.fire(opponent(p), When::OpponentCasts, None);
         if noncreature {
+            // Uncover the Moon-Letters: X is the mana spent to cast it.
+            let before = self.triggered.len();
+            self.fire(p, When::YouCastNoncreatureManaSpent, None);
+            let spent = self.obj(card).mana_spent as i32;
+            for t in &mut self.triggered[before..] {
+                t.amount = spent;
+                t.extra = Some(card);
+            }
+            // G'raha Tia: X is that spell's mana value.
+            let cost = self.cast_mana_cost(&item);
+            let mv = (cost.mana_value() + cost.x as u32 * item.x as u32) as i32;
+            let before = self.triggered.len();
+            self.fire(p, When::YouCastNoncreatureMv, None);
+            for t in &mut self.triggered[before..] {
+                t.amount = mv;
+                t.extra = Some(card);
+            }
+        }
+        if self.obj(card).mana_spent == 0 {
+            // Boromir: "if no mana was spent to cast it", and "that spell".
+            let before = self.triggered.len();
+            self.fire(opponent(p), When::OpponentCastsWithNoManaSpent, None);
+            for t in &mut self.triggered[before..] {
+                t.extra = Some(card);
+            }
+        }
+        if noncreature {
             self.fire(opponent(p), When::OpponentCastsNoncreature, None);
             // Pollywog Prodigy: only for a spell with mana value less than its power.
             let cost = self.cast_mana_cost(&item);
@@ -13629,6 +13832,23 @@ impl Game {
         if self.types_of(card).instant || self.types_of(card).sorcery {
             self.fire_with_extra(opponent(p), When::OpponentCastsInstantOrSorcery, card);
             // "that spell"
+        }
+        {
+            // Talion: "a spell with mana value, power, or toughness equal to the chosen number".
+            let cost = self.cast_mana_cost(&item);
+            let mv = (cost.mana_value() + cost.x as u32 * item.x as u32) as i32;
+            let creature = self.types_of(card).creature;
+            let (power, toughness) = (self.def_of(card).power, self.def_of(card).toughness);
+            let before = self.triggered.len();
+            self.fire_with_extra(opponent(p), When::OpponentCastsChosenNumber, card);
+            let new = self.triggered.split_off(before);
+            for t in new {
+                if let Some(n) = self.obj(t.source).chosen_number.map(i32::from) {
+                    if mv == n || (creature && (power == n || toughness == n)) {
+                        self.triggered.push(t);
+                    }
+                }
+            }
         }
         for (owner, kind, card) in self.emblems.clone() {
             if let EmblemKind::OnAnySpellCast { trigger } = kind {
@@ -14263,6 +14483,18 @@ impl Game {
     /// CR 702.21a: whenever a permanent with ward becomes the target of a spell or ability an
     /// opponent controls, its ward triggers.
     fn ward_check(&mut self, item: &StackItem) {
+        // Goldspan Dragon: "Whenever this creature becomes the target of a spell".
+        if matches!(item.kind, StackKind::Spell | StackKind::SpellCopy) {
+            let mut seen = Vec::new();
+            for &t in &item.targets {
+                if let Chosen::Object(id, _) = t {
+                    if self.obj(id).zone == Zone::Battlefield && !seen.contains(&id) {
+                        seen.push(id); // once per spell, however many of its targets it is
+                        self.fire_source(id, When::BecomesTargetOfSpell);
+                    }
+                }
+            }
+        }
         // Phantasmal Image: "When this creature becomes the target of a spell or ability, sacrifice
         // it."
         for &t in &item.targets {
@@ -14737,6 +14969,20 @@ impl Game {
             if r.acts && self.def_of(source).choose_color && self.obj(source).zone == Zone::Battlefield {
                 self.ask(r.item.controller, Decision::ChooseColor { card: source });
                 return;
+            }
+            // "As this enters, choose a number" (CR 614.12; Talion, the Kindly Lord).
+            if let Some((min, max)) = self.def_of(source).choose_number {
+                if r.acts && self.obj(source).zone == Zone::Battlefield {
+                    self.ask(
+                        r.item.controller,
+                        Decision::ChooseNumber {
+                            card: source,
+                            min,
+                            max,
+                        },
+                    );
+                    return;
+                }
             }
             if r.acts
                 && self.def_of(source).choose_creature_type
@@ -15864,6 +16110,18 @@ impl Game {
                 v
             }
             Decision::ChooseExiledToPlay { cards } => cards.iter().copied().map(Action::Pick).collect(),
+            Decision::MayTapElseOpponentToken { .. } => vec![Action::Yes, Action::No],
+            Decision::MayDrawCard { .. } => vec![Action::Yes, Action::No],
+            Decision::ChooseNumber { min, max, .. } => (*min..=*max).map(Action::Amount).collect(),
+            Decision::SacrificeNontokenCreatureOrLoseLife { .. } => {
+                let mut v: Vec<Action> = self
+                    .nontoken_sacrifice_options(p)
+                    .into_iter()
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
             Decision::NameCardInLibrary { .. } => {
                 let mut seen: Vec<&str> = Vec::new();
                 let mut v = Vec::new();
@@ -16757,6 +17015,15 @@ impl Game {
             }
             return;
         }
+        if let (Decision::ChooseNumber { card, .. }, Action::Amount(n)) = (&d, a) {
+            self.obj_mut(*card).chosen_number = Some(n);
+            if self.end_turn {
+                self.end_the_turn();
+            } else {
+                self.give_priority(self.active);
+            }
+            return;
+        }
         if let (Decision::ChooseColor { card }, Action::Mode(c)) = (&d, a) {
             self.obj_mut(*card).chosen_color = Some(c);
             if self.end_turn {
@@ -16799,6 +17066,21 @@ impl Game {
             (Decision::MaySacrificeLand { .. }, _) | (Decision::MaySacrificeArtifactOrCreature { .. }, _) => {
                 self.resolving.as_mut().expect("resolving").remaining.clear();
             }
+            (Decision::MayDrawCard { .. }, Action::Yes) => {
+                self.draws_with_dredge(vec![(p, 1)], false);
+            }
+            (Decision::MayDrawCard { .. }, _) => {}
+            (Decision::SacrificeNontokenCreatureOrLoseLife { .. }, Action::Pick(c)) => {
+                self.move_to(c, Zone::Graveyard);
+                self.sacrificed(c, p);
+            }
+            (Decision::SacrificeNontokenCreatureOrLoseLife { life }, _) => self.lose_life(p, life),
+            (Decision::MayTapElseOpponentToken { card, .. }, Action::Yes) => {
+                if self.obj(card).zone == Zone::Battlefield {
+                    self.obj_mut(card).tapped = true;
+                }
+            }
+            (Decision::MayTapElseOpponentToken { def, .. }, _) => self.create_token(opponent(p), def),
             (Decision::ChooseExiledToPlay { .. }, Action::Pick(c)) => {
                 // Until the end of your next turn (CR 611.2c).
                 let until = if self.active == p {
@@ -27555,6 +27837,104 @@ impl Game {
                     }
                 }
             }
+            Effect::MayPayLifeAmount => {
+                let (p, life) = (item.controller, item.amount.max(0));
+                if self.players[p].life >= life {
+                    self.ask(p, Decision::MayPayLife { life });
+                } else {
+                    self.resolving.as_mut().expect("resolving").remaining.clear();
+                }
+            }
+            Effect::StopIfDoneThisTurn => {
+                let (zcc, turn) = (self.obj(src).zcc, self.turn);
+                self.done_once_turn.retain(|e| e.2 == turn);
+                if self.done_once_turn.iter().any(|e| e.0 == src && e.1 == zcc) {
+                    self.resolving.as_mut().expect("resolving").remaining.clear();
+                }
+            }
+            Effect::MarkDoneThisTurn => {
+                let (zcc, turn) = (self.obj(src).zcc, self.turn);
+                self.done_once_turn.push((src, zcc, turn));
+            }
+            Effect::Discover(x) => self.discover(item.controller, x),
+            Effect::OpponentMaySacrificeNontokenCreatureElseLose { per } => {
+                let p = item.controller;
+                let cards = self.players[p]
+                    .graveyard
+                    .iter()
+                    .filter(|&&c| self.def_of(c).types.instant || self.def_of(c).types.sorcery)
+                    .count() as i32;
+                let (q, life) = (opponent(p), per * cards);
+                if self.nontoken_sacrifice_options(q).is_empty() {
+                    self.lose_life(q, life);
+                } else {
+                    self.ask(q, Decision::SacrificeNontokenCreatureOrLoseLife { life });
+                }
+            }
+            Effect::DamageEqualExtrasManaValue(slot) => {
+                let Some(spell) = item.extra else {
+                    return;
+                };
+                let x = self
+                    .items
+                    .iter()
+                    .rfind(|i| i.source == spell && i.kind == StackKind::Spell)
+                    .map_or(0, |i| i.x as u32);
+                let cost = self.stack_mana_cost(spell);
+                let mv = (cost.mana_value() + cost.x as u32 * x) as i32;
+                let target = match item.targets.get(slot as usize) {
+                    Some(&Chosen::Object(b, _)) if legal[slot as usize] => Target::Object(b),
+                    Some(&Chosen::Player(q)) if legal[slot as usize] => Target::Player(q),
+                    _ => return,
+                };
+                if mv > 0 {
+                    self.deal_damage(src, target, mv);
+                }
+            }
+            Effect::DiscoverSourceToughness => {
+                let t = if self.obj(src).zone == Zone::Battlefield {
+                    self.toughness(src)
+                } else {
+                    self.obj(src).last_toughness // CR 608.2h: last known information
+                };
+                self.discover(item.controller, t.max(0) as u32);
+            }
+            Effect::ExtrasControllerMayDraw => {
+                if let Some(c) = item.extra {
+                    let q = self.obj(c).controller;
+                    self.ask(q, Decision::MayDrawCard { source: src });
+                }
+            }
+            Effect::ExtrasControllerMayTapElseToken { def } => {
+                if let Some(card) = item.extra {
+                    if self.obj(card).zone == Zone::Battlefield && !self.obj(card).tapped {
+                        let q = self.obj(card).controller;
+                        self.ask(q, Decision::MayTapElseOpponentToken { card, def });
+                    } else {
+                        self.create_token(item.controller, def); // they can't tap it
+                    }
+                }
+            }
+            Effect::CreateTappedTokensPerOpponentArtifact { def } => {
+                let p = item.controller;
+                let n = self
+                    .permanents(opponent(p))
+                    .filter(|&x| self.types_of(x).artifact)
+                    .count();
+                for _ in 0..n {
+                    self.create_token(p, def);
+                    for id in self.last_created.clone() {
+                        self.obj_mut(id).tapped = true;
+                    }
+                }
+            }
+            Effect::CreateTokensPerTokenYouControl { def } => {
+                let p = item.controller;
+                let n = self.permanents(p).filter(|&x| self.is_token(x)).count();
+                for _ in 0..n {
+                    self.create_token(p, def);
+                }
+            }
             Effect::SolveCase => {
                 if self.obj(src).zone == Zone::Battlefield {
                     self.obj_mut(src).class_level = 2;
@@ -28442,6 +28822,18 @@ impl Game {
             Some(Condition::ControlNoCreatureWithDecayed) => !self
                 .creatures(controller)
                 .any(|c| self.def_of(c).decayed || self.obj(c).decayed),
+            Some(Condition::OpponentDealtCombatDamageThisTurn) => {
+                let turn = self.turn;
+                self.combat_damaged_player
+                    .iter()
+                    .any(|&(s, _, t)| t == turn && self.obj(s).controller == controller)
+            }
+            Some(Condition::PlayerLostLifeThisTurnAtLeast(n)) => {
+                self.life_lost_now(0) >= *n || self.life_lost_now(1) >= *n
+            }
+            Some(Condition::ControlNoOtherSubtype(sub)) => !self
+                .permanents(controller)
+                .any(|x| x != source && self.has_subtype(x, sub)),
             Some(Condition::CreatureOnBattlefield) => {
                 self.battlefield.iter().any(|&c| self.types_of(c).creature)
             }
@@ -28826,6 +29218,9 @@ impl Game {
                                 self.has_subtype(s, "Shaman") || (s != d && self.has_subtype(s, "Wizard"))
                             }
                             TriggerDoubler::CreaturePowerAtMost(n) => creature && power <= n,
+                            TriggerDoubler::EquippedCreature => {
+                                self.obj(d).attached_to.is_some_and(|(a, _)| a == s || s == d)
+                            }
                         }
                 })
                 .count();
@@ -29634,6 +30029,7 @@ impl Game {
             }
             Step::Main2 => {
                 self.next_main_mana(a);
+                self.fire(a, When::PostcombatMainYourTurn, None); // Tymna the Weaver
                 self.give_priority(a);
             }
         }
@@ -29945,7 +30341,25 @@ impl Game {
                 .collect();
             if !theirs.is_empty() {
                 self.subtype_dealt_damage_to_player(p, &theirs);
+                let before = self.triggered.len();
                 self.subtype_dealt_combat_damage_to_player(p, &theirs);
+                // The amount: the combat damage those creatures of the subtype dealt to players
+                // this step (Broodcaller Scourge's "that damage").
+                for i in before..self.triggered.len() {
+                    let t = &self.triggered[i];
+                    let StackKind::Trigger(n) = t.kind else { continue };
+                    let When::YourSubtypeDealCombatDamageToPlayer(sub) =
+                        self.def_of(t.source).triggers[n].when
+                    else {
+                        continue;
+                    };
+                    let total: i32 = hit_player
+                        .iter()
+                        .filter(|&&(a, _)| self.obj(a).controller == p && self.has_subtype(a, sub))
+                        .map(|&(_, amount)| amount)
+                        .sum();
+                    self.triggered[i].amount = total;
+                }
             }
         }
         for &(a, _) in &hit_player {
@@ -30427,6 +30841,14 @@ impl Game {
                         let before = self.triggered.len();
                         self.fire(p, When::CreatureDealsDamageToYou, None);
                         self.fill_triggering(before, source); // "destroy it"
+                        if self.in_combat_damage {
+                            let before = self.triggered.len();
+                            self.fire(p, When::CreatureDealsCombatDamageToYou, None);
+                            self.fill_triggering(before, source);
+                            for t in &mut self.triggered[before..] {
+                                t.amount = amount;
+                            }
+                        }
                     }
                     // "Whenever a [subtype] deals damage to you" (Mikaeus: a Human).
                     let before = self.triggered.len();

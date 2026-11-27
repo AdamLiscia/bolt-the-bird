@@ -3096,6 +3096,49 @@ pub enum Effect {
     SacrificeXLandsDrawEach,
     /// "You may play X additional lands this turn." (Nahiri's Lithoforming; X the spell's X)
     ExtraLandsThisTurnX,
+    /// "For each token you control, create a `def` token" (Cadira, Caller of the Small), counted
+    /// as it resolves.
+    CreateTokensPerTokenYouControl {
+        def: usize,
+    },
+    /// Create a tapped `def` token for each artifact the opponent controls (Smaug, Wicked Worm's
+    /// Treasures; one opponent).
+    CreateTappedTokensPerOpponentArtifact {
+        def: usize,
+    },
+    /// The controller of the permanent in the item's `extra` may tap it
+    /// (`Decision::MayTapElseOpponentToken`); if they don't, you create a `def` token
+    /// (Charismatic Conqueror).
+    ExtrasControllerMayTapElseToken {
+        def: usize,
+    },
+    /// "You may pay X life" with X the trigger's amount (`Decision::MayPayLife`); the rest only if
+    /// paid (G'raha Tia).
+    MayPayLifeAmount,
+    /// "Do this only once each turn": stop if the source's ability has done it this turn
+    /// (`Game::done_once_turn`), checked before the choice.
+    StopIfDoneThisTurn,
+    /// Records that the source's ability did it this turn (after the payment).
+    MarkDoneThisTurn,
+    /// The controller of the creature in the item's `extra` (one that died, a token included) may
+    /// draw a card (`Decision::MayDrawCard`; Fecundity).
+    ExtrasControllerMayDraw,
+    /// Discover N (CR 701.57): exile from the top until a nonland card with mana value N or less; you
+    /// may cast it without paying its mana cost (the free-cast window), or else it goes to your hand;
+    /// the rest go to the bottom in a random order.
+    Discover(u32),
+    /// Discover X, X the source's toughness (last known information if it left: Dinosaur Egg's
+    /// "When this creature dies, you may discover X, where X is its toughness").
+    DiscoverSourceToughness,
+    /// "Each opponent may sacrifice a nontoken creature of their choice. Each opponent who doesn't
+    /// loses `per` life for each instant and sorcery card in your graveyard." (Fandaniel), as
+    /// `Decision::SacrificeNontokenCreatureOrLoseLife`; with no nontoken creature, they just lose it.
+    OpponentMaySacrificeNontokenCreatureElseLose {
+        per: i32,
+    },
+    /// The source deals damage equal to the mana value of the spell in the item's `extra` (X
+    /// included while it's on the stack) to the target in `slot` (Passionate Archaeologist).
+    DamageEqualExtrasManaValue(u8),
     /// "Create a [token] for each creature you control." (The Battle of Bywater: Food)
     CreateTokensPerCreatureYouControl {
         def: usize,
@@ -3715,6 +3758,13 @@ pub enum Condition {
     /// A creature is on the battlefield (Lifeline: "if another creature is on the battlefield",
     /// checked after the dying creature has left).
     CreatureOnBattlefield,
+    /// A creature its controller controlled dealt combat damage to a player this turn
+    /// (`Game::combat_damaged_player`; 1v1: the opponent was dealt combat damage; Tymna's X is 1).
+    OpponentDealtCombatDamageThisTurn,
+    /// A player (either) lost at least this much life this turn (Y'shtola, Night's Blessed: four).
+    PlayerLostLifeThisTurnAtLeast(i32),
+    /// You control no permanent with this subtype other than the source (Thopter Assembly).
+    ControlNoOtherSubtype(&'static str),
 }
 
 /// A spell's effect or a triggered ability: target slots, then effects in order.
@@ -4305,6 +4355,56 @@ pub enum When {
     /// "Whenever a creature dies" (Lifeline): any creature other than the source, with the card that
     /// died in slot 0 when the first target filter is `triggering`.
     AnotherCreatureDiesIt,
+    /// "Whenever an opponent casts a spell, if no mana was spent to cast it" (Boromir, Warden of
+    /// the Tower): checked as it's cast (`Object::mana_spent`), with that spell as the trigger's
+    /// `extra` (`Effect::CounterExtra`).
+    OpponentCastsWithNoManaSpent,
+    /// "Whenever an opponent draws their second card each turn" (Gleaming Splendor).
+    OpponentDrawsSecond,
+    /// "Whenever ... a planeswalker you control dies" (Cruel Celebrant): a noncreature planeswalker
+    /// put into a graveyard from the battlefield (a creature one is `CreatureYouControlDies`'s).
+    PlaneswalkerYouControlDies,
+    /// "At the beginning of each of your postcombat main phases" (Tymna the Weaver).
+    PostcombatMainYourTurn,
+    /// "Whenever one or more tokens you control enter": once per batch of tokens entering before
+    /// the trigger goes on the stack (`Game::fire_token_batch`), with the count as the amount and
+    /// the tokens in `Game::token_enter_batches` (read with `Game::token_batch`).
+    OneOrMoreTokensYouControlEnter,
+    /// "Whenever one or more tokens your opponents control enter" (Kambal, Profiteering Mayor), as
+    /// `OneOrMoreTokensYouControlEnter`; with `once_each_turn`, "This ability triggers only once
+    /// each turn" (`Game::triggered_once_turn`).
+    OneOrMoreTokensOpponentsControlEnter { once_each_turn: bool },
+    /// "Whenever a creature token leaves the battlefield" (Twilight Drover): anyone's.
+    CreatureTokenLeavesBattlefield,
+    /// "Whenever you cast a noncreature spell", with the mana spent to cast it as the amount
+    /// (Uncover the Moon-Letters: "draw X cards, where X is the amount of mana spent").
+    YouCastNoncreatureManaSpent,
+    /// "Whenever you attack with one or more [subtype]" (Hermes, Overseer of Elpis: Birds): once
+    /// as attackers are declared, if any attacker has the subtype.
+    YouAttackWithSubtype(&'static str),
+    /// "Whenever an artifact or creature an opponent controls enters untapped" (Charismatic
+    /// Conqueror), with that permanent as the trigger's `extra`.
+    ArtifactOrCreatureOpponentControlsEntersUntapped,
+    /// "Whenever one or more cards are put into exile from your library and/or your graveyard"
+    /// (Laelia, the Blade Reforged): batched (`Game::fire_batched`), the count as the amount.
+    CardsExiledFromYourLibraryOrGraveyard,
+    /// "Whenever this creature becomes the target of a spell" (Goldspan Dragon): a spell's
+    /// targets (not an ability's), anyone's, as they're chosen.
+    BecomesTargetOfSpell,
+    /// "Whenever you cast a noncreature spell", with that spell's mana value (X included) as the
+    /// amount (G'raha Tia, Scion Reborn: "pay X life, where X is that spell's mana value").
+    YouCastNoncreatureMv,
+    /// "Whenever a creature is put into your graveyard from the battlefield" (Angelic Renewal): a
+    /// creature you own, with the card in slot 0 when the first target filter is `triggering`.
+    CreatureToYourGraveyardFromBattlefieldIt,
+    /// "Whenever a creature deals combat damage to you": that creature in slot 0, the damage as the
+    /// amount (The Cabbage Merchant). Combat damage only; `CreatureDealsDamageToYou` is any damage.
+    CreatureDealsCombatDamageToYou,
+    /// "Whenever an opponent casts a spell with mana value, power, or toughness equal to the chosen
+    /// number" (Talion, the Kindly Lord: `Object::chosen_number`), the spell in `extra`.
+    OpponentCastsChosenNumber,
+    /// "Whenever you cast a spell from exile", the spell in `extra` (Passionate Archaeologist).
+    YouCastSpellFromExile,
 }
 
 #[derive(Clone, Debug, PartialEq)]

@@ -447,6 +447,29 @@ def test_lithoforming_sacrifices_a_land_to_draw():
     assert sv._decision_label(dec, "Pick", 0, "Mountain") == "Sacrifice (draw a card) Mountain"
 
 
+def test_charismatic_conqueror_asks_to_tap_the_permanent_or_give_a_token():
+    dec = {"kind": "MayTapElseOpponentToken", "card": [7, 2], "def": 300}
+    assert label(dec, "Yes", 0) == "Tap Secluded Courtyard"
+    assert label(dec, "No", 0) == "Don't tap Secluded Courtyard (they create a token)"
+
+
+def test_fecundity_asks_the_dead_creatures_controller_to_draw():
+    dec = {"kind": "MayDrawCard", "source": [7, 1]}
+    assert label(dec, "Yes", 0) == "Draw a card (Thriving Heath)"
+    assert label(dec, "No", 0) == "Don't draw"
+
+
+def test_talion_chooses_a_number_as_it_enters():
+    dec = {"kind": "ChooseNumber", "card": [7, 1], "min": 1, "max": 10}
+    assert label(dec, "Amount", 3) == "Thriving Heath: choose 3"
+
+
+def test_fandaniel_asks_the_opponent_to_sacrifice_or_lose_life():
+    dec = {"kind": "SacrificeNontokenCreatureOrLoseLife", "life": 6}
+    assert sv._decision_label(dec, "Pick", 0, "Serra Angel") == "Sacrifice Serra Angel"
+    assert label(dec, "No", 0) == "Don't sacrifice (lose 6 life)"
+
+
 def test_reckless_endeavor_picks_the_damage_roll():
     dec = {"kind": "ChooseDamageRoll", "rolls": [3, 9]}
     assert label(dec, "Mode", 1) == "9 damage to each creature, 3 tokens"

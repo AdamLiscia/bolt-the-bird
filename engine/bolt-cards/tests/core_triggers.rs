@@ -2640,3 +2640,405 @@ fn create_tokens_tapped_and_attacking_joins_the_attack() {
     attack_through(&mut g, &[lions]);
     assert_eq!(life(&g, 1), 40 - 2 - 2, "two attacking 1/1s");
 }
+
+// ---- batch 41: free opponent spells, an opponent's second draw, planeswalker deaths, a token per token ----
+
+#[test]
+fn opponent_casts_with_no_mana_spent_only_for_free_spells() {
+    let mut g = game_with(blood_with(vec![trigger(
+        When::OpponentCastsWithNoManaSpent,
+        None,
+        gain(1),
+    )]));
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    g.start_turn(4, 1);
+    to_main(&mut g);
+    let thopter = g.add_card(1, cid("Ornithopter"), Zone::Hand);
+    play(&mut g, thopter, false, &[], &[]);
+    assert_eq!(life(&g, 0), 41, "{{0}}: no mana spent");
+    let lions = g.add_card(1, cid("Savannah Lions"), Zone::Hand);
+    play(&mut g, lions, false, &[], &[]);
+    assert_eq!(life(&g, 0), 41, "mana spent");
+}
+
+#[test]
+fn opponent_draws_second_card_each_turn() {
+    let mut g = game_with(blood_with(vec![trigger(
+        When::OpponentDrawsSecond,
+        None,
+        gain(1),
+    )]));
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    g.start_turn(4, 1);
+    to_main(&mut g);
+    assert_eq!(life(&g, 0), 40, "one draw");
+    g.add_card(0, cid("Howling Mine"), Zone::Battlefield);
+    g.start_turn(6, 1);
+    to_main(&mut g);
+    assert_eq!(life(&g, 0), 41, "the Mine's card is their second");
+    g.start_turn(7, 0);
+    to_main(&mut g);
+    assert_eq!(life(&g, 0), 41, "your own draws don't count");
+}
+
+#[test]
+fn planeswalker_you_control_dies() {
+    let mut g = game_with(blood_with(vec![trigger(
+        When::PlaneswalkerYouControlDies,
+        None,
+        gain(1),
+    )]));
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    let jace = g.add_card(0, cid("Jace Beleren"), Zone::Battlefield);
+    g.objects[jace.0 as usize].loyalty = 3;
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Battlefield);
+    kill(&mut g, lions);
+    assert_eq!(life(&g, 0), 40, "a creature");
+    kill(&mut g, jace);
+    assert_eq!(life(&g, 0), 41);
+}
+
+#[test]
+fn create_tokens_per_token_you_control_counts_them_first() {
+    let rabbit = token_def("Rabbit");
+    let mut g = game_with(blood_with(vec![trigger(
+        When::YouCastArtifact,
+        None,
+        vec![Effect::CreateTokensPerTokenYouControl { def: rabbit }],
+    )]));
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    let food = token_def("Food");
+    g.add_card(0, food, Zone::Battlefield);
+    g.add_card(0, food, Zone::Battlefield);
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Hand);
+    play(&mut g, ring, false, &[], &[]);
+    let rabbits = g.permanents(0).filter(|&x| g.def_of(x).name == "Rabbit").count();
+    assert_eq!(rabbits, 2);
+}
+
+// ---- batch 42: postcombat main phases and combat damage dealt this turn ----
+
+#[test]
+fn postcombat_main_your_turn_gated_on_combat_damage_dealt_this_turn() {
+    let mut g = game_with(blood_with(vec![
+        trigger(When::PostcombatMainYourTurn, None, gain(1)),
+        trigger(
+            When::PostcombatMainYourTurn,
+            Some(Condition::OpponentDealtCombatDamageThisTurn),
+            gain(10),
+        ),
+    ]));
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Battlefield);
+    attack_through(&mut g, &[]);
+    resolve_all(&mut g, &[]);
+    assert_eq!(life(&g, 0), 41, "no damage dealt: only the plain trigger");
+    attack_through(&mut g, &[lions]);
+    resolve_all(&mut g, &[]);
+    assert_eq!(life(&g, 0), 41 + 2 + 1 + 10, "Exquisite Blood, then both");
+}
+
+// ---- batch 43: batched token entries, creature tokens leaving, mana spent, life lost by a player ----
+
+#[test]
+fn one_or_more_tokens_enter_batches_per_event_with_the_token_list() {
+    let soldier = token_def("Soldier");
+    let mut g = game_with(|defs: &mut Vec<CardDef>| {
+        blood_with(vec![
+            trigger(
+                When::OneOrMoreTokensYouControlEnter,
+                None,
+                vec![Effect::GainLifeAmount],
+            ),
+            trigger(
+                When::OneOrMoreTokensOpponentsControlEnter { once_each_turn: true },
+                None,
+                gain(10),
+            ),
+        ])(defs);
+        // Sol Ring, edited: "When this enters, create three Soldiers" for its controller.
+        defs[cid("Sol Ring")].triggers.push(trigger(
+            When::Enters,
+            None,
+            vec![Effect::CreateToken {
+                who: Who::You,
+                def: soldier,
+                n: 3,
+            }],
+        ));
+    });
+    let blood = g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Hand);
+    play(&mut g, ring, false, &[], &[]);
+    assert_eq!(life(&g, 0), 43, "one trigger for three tokens, with the count");
+    let soldiers: Vec<ObjId> = g
+        .permanents(0)
+        .filter(|&x| g.def_of(x).name == "Soldier")
+        .collect();
+    assert_eq!(soldiers.len(), 3);
+    // The opponent's tokens: once each turn.
+    g.start_turn(4, 1);
+    to_main(&mut g);
+    for _ in 0..2 {
+        let ring = g.add_card(1, cid("Sol Ring"), Zone::Hand);
+        play(&mut g, ring, false, &[], &[]);
+    }
+    assert_eq!(life(&g, 0), 53, "once each turn, though two batches entered");
+    let _ = blood;
+}
+
+#[test]
+fn token_batch_lists_the_tokens_of_the_resolving_trigger() {
+    let soldier = token_def("Soldier");
+    let mut g = game_with(|defs: &mut Vec<CardDef>| {
+        blood_with(vec![trigger(When::OneOrMoreTokensYouControlEnter, None, gain(1))])(defs);
+        defs[cid("Sol Ring")].triggers.push(trigger(
+            When::Enters,
+            None,
+            vec![Effect::CreateToken {
+                who: Who::You,
+                def: soldier,
+                n: 2,
+            }],
+        ));
+    });
+    let blood = g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Hand);
+    act(&mut g, Action::Cast(ring));
+    let item = loop {
+        if let Some(it) = g.items.iter().find(|i| i.source == blood) {
+            break it.clone();
+        }
+        act(&mut g, Action::PassPriority);
+    };
+    assert_eq!(item.amount, 2);
+    let soldiers: Vec<ObjId> = g
+        .permanents(0)
+        .filter(|&x| g.def_of(x).name == "Soldier")
+        .collect();
+    let listed: Vec<ObjId> = g.token_batch(&item).into_iter().map(|(t, _)| t).collect();
+    assert_eq!(listed, soldiers);
+}
+
+#[test]
+fn creature_token_leaves_for_anyones_creature_tokens() {
+    let mut g = game_with(blood_with(vec![trigger(
+        When::CreatureTokenLeavesBattlefield,
+        None,
+        gain(1),
+    )]));
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    let theirs = g.add_card(1, token_def("Soldier"), Zone::Battlefield);
+    let bolt = g.add_card(0, cid("Lightning Bolt"), Zone::Hand);
+    play(&mut g, bolt, false, &[obj(theirs)], &[]);
+    assert_eq!(life(&g, 0), 41);
+}
+
+#[test]
+fn you_cast_noncreature_carries_the_mana_spent() {
+    let mut g = game_with(blood_with(vec![trigger(
+        When::YouCastNoncreatureManaSpent,
+        None,
+        vec![Effect::GainLifeAmount],
+    )]));
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    let signet = g.add_card(0, cid("Arcane Signet"), Zone::Hand);
+    play(&mut g, signet, false, &[], &[]);
+    assert_eq!(life(&g, 0), 42, "two mana spent");
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Hand);
+    play(&mut g, lions, false, &[], &[]);
+    assert_eq!(life(&g, 0), 42, "a creature spell");
+}
+
+#[test]
+fn a_player_lost_life_and_no_other_subtype_conditions() {
+    let mut g = game_with(blood_with(vec![
+        trigger(
+            When::YouCast,
+            Some(Condition::PlayerLostLifeThisTurnAtLeast(4)),
+            gain(1),
+        ),
+        trigger(
+            When::YouCast,
+            Some(Condition::ControlNoOtherSubtype("Thopter")),
+            gain(10),
+        ),
+    ]));
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Hand);
+    play(&mut g, ring, false, &[], &[]);
+    assert_eq!(life(&g, 0), 50, "no Thopters; no life lost");
+    g.add_card(0, cid("Ornithopter"), Zone::Battlefield);
+    g.life_lost_turn[0] = (g.turn, 4);
+    let signet = g.add_card(0, cid("Arcane Signet"), Zone::Hand);
+    play(&mut g, signet, false, &[], &[]);
+    assert_eq!(life(&g, 0), 51, "you lost 4; a Thopter now");
+    g.life_lost_turn[0] = (g.turn, 3);
+    g.life_lost_turn[1] = (g.turn, 4);
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Hand);
+    g.add_card(0, cid("Plains"), Zone::Battlefield);
+    play(&mut g, lions, false, &[], &[]);
+    assert_eq!(life(&g, 0), 52, "the opponent lost 4");
+}
+
+// ---- batch 44: attacking with a subtype, an opponent's untapped entries, exile from library or graveyard ----
+
+#[test]
+fn you_attack_with_subtype_triggers_once_if_any_attacker_has_it() {
+    let mut g = game_with(blood_with(vec![trigger(
+        When::YouAttackWithSubtype("Cat"),
+        None,
+        gain(1),
+    )]));
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    let a = g.add_card(0, cid("Savannah Lions"), Zone::Battlefield);
+    let b = g.add_card(0, cid("Savannah Lions"), Zone::Battlefield);
+    let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
+    attack_with(&mut g, &[a, b]);
+    resolve_all(&mut g, &[]);
+    assert_eq!(life(&g, 0), 41, "once for two Cats");
+    let mut g2 = game_with(blood_with(vec![trigger(
+        When::YouAttackWithSubtype("Cat"),
+        None,
+        gain(1),
+    )]));
+    g2.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    let elves2 = g2.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
+    attack_with(&mut g2, &[elves2]);
+    resolve_all(&mut g2, &[]);
+    assert_eq!(life(&g2, 0), 40, "no Cat");
+    let _ = elves;
+}
+
+#[test]
+fn an_opponents_artifact_or_creature_entering_untapped_carries_it() {
+    let tap = trigger(
+        When::ArtifactOrCreatureOpponentControlsEntersUntapped,
+        None,
+        gain(1),
+    );
+    let mut g = game_with(blood_with(vec![tap]));
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    g.start_turn(4, 1);
+    to_main(&mut g);
+    let ring = g.add_card(1, cid("Sol Ring"), Zone::Hand);
+    play(&mut g, ring, false, &[], &[]);
+    assert_eq!(life(&g, 0), 41);
+    let tapland = g.add_card(1, cid("Savage Lands"), Zone::Hand); // enters tapped
+    act(&mut g, Action::PlayLand(tapland));
+    resolve_all(&mut g, &[]);
+    assert_eq!(life(&g, 0), 41, "a land, and tapped");
+}
+
+#[test]
+fn cards_exiled_from_your_library_or_graveyard_batch() {
+    let mut g = game_with(blood_with(vec![trigger(
+        When::CardsExiledFromYourLibraryOrGraveyard,
+        None,
+        vec![Effect::GainLifeAmount],
+    )]));
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    for _ in 0..3 {
+        g.add_card(0, cid("Lightning Bolt"), Zone::Graveyard);
+    }
+    // Nihil Spellbomb exiles your own graveyard: one batch of three.
+    let bomb = g.add_card(0, cid("Nihil Spellbomb"), Zone::Battlefield);
+    act(&mut g, Action::Activate(bomb, 0));
+    act(&mut g, Action::Target(bolt_core::Target::Player(0)));
+    resolve_all(&mut g, &[Action::No]);
+    assert_eq!(
+        life(&g, 0),
+        44,
+        "one trigger: three Bolts and the sacrificed Spellbomb"
+    );
+}
+
+// ---- batch 45: becoming the target of a spell; the damage on a subtype's combat damage ----
+
+#[test]
+fn becomes_target_of_a_spell_but_not_of_an_ability() {
+    let mut g = game_with(|defs: &mut Vec<CardDef>| {
+        defs[cid("Ornithopter")]
+            .triggers
+            .push(trigger(When::BecomesTargetOfSpell, None, gain(1)));
+    });
+    let thopter = g.add_card(0, cid("Ornithopter"), Zone::Battlefield);
+    let bolt = g.add_card(1, cid("Lightning Bolt"), Zone::Hand);
+    g.start_turn(4, 1);
+    to_main(&mut g);
+    play(&mut g, bolt, false, &[obj(thopter)], &[]);
+    assert_eq!(life(&g, 0), 41, "the opponent's spell targeted it");
+}
+
+#[test]
+fn subtype_combat_damage_carries_the_damage_those_creatures_dealt() {
+    let mut g = game_with(blood_with(vec![trigger(
+        When::YourSubtypeDealCombatDamageToPlayer("Cat"),
+        None,
+        vec![Effect::GainLifeAmount],
+    )]));
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    let a = g.add_card(0, cid("Savannah Lions"), Zone::Battlefield);
+    let b = g.add_card(0, cid("Savannah Lions"), Zone::Battlefield);
+    let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
+    attack_through(&mut g, &[a, b, elves]);
+    assert_eq!(life(&g, 1), 35);
+    assert_eq!(life(&g, 0), 40 + 5 + 4, "Exquisite Blood, then the two Cats' 4");
+}
+
+// ---- batch 46: mana value on noncreature casts, your creatures to your graveyard, once each turn ----
+
+#[test]
+fn you_cast_noncreature_mv_carries_the_mana_value() {
+    let mut g = game_with(blood_with(vec![trigger(
+        When::YouCastNoncreatureMv,
+        None,
+        vec![Effect::GainLifeAmount],
+    )]));
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Hand);
+    play(&mut g, ring, false, &[], &[]);
+    assert_eq!(life(&g, 0), 41);
+}
+
+#[test]
+fn creature_to_your_graveyard_is_by_owner_and_once_each_turn_effects() {
+    let mut g = game_with(blood_with(vec![trigger(
+        When::CreatureToYourGraveyardFromBattlefieldIt,
+        None,
+        vec![
+            Effect::StopIfDoneThisTurn,
+            Effect::MarkDoneThisTurn,
+            Effect::GainLife { who: Who::You, n: 1 },
+        ],
+    )]));
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    let mine = g.add_card(0, cid("Savannah Lions"), Zone::Battlefield);
+    let theirs = g.add_card(1, cid("Savannah Lions"), Zone::Battlefield);
+    let more = g.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
+    kill(&mut g, theirs);
+    assert_eq!(life(&g, 0), 40, "the opponent's card");
+    kill(&mut g, mine);
+    assert_eq!(life(&g, 0), 41);
+    kill(&mut g, more);
+    assert_eq!(life(&g, 0), 41, "done once this turn");
+}
+
+// ---- batch 47: combat damage dealt to you by a creature ----
+
+#[test]
+fn creature_deals_combat_damage_to_you_carries_the_creature_and_the_damage() {
+    let it = Filter {
+        triggering: true,
+        ..Filter::CREATURE
+    };
+    let mut g = game_with(blood_with(vec![Trigger {
+        when: When::CreatureDealsCombatDamageToYou,
+        ability: Ability::new(vec![it], vec![Effect::GainLifeAmount, Effect::Destroy(0)]),
+    }]));
+    g.add_card(1, cid("Exquisite Blood"), Zone::Battlefield);
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Battlefield);
+    attack_through(&mut g, &[lions]);
+    assert_eq!(life(&g, 1), 40, "lost 2 in combat, gained the 2 back");
+    assert_eq!(g.obj(lions).zone, Zone::Graveyard, "the creature in slot 0");
+}

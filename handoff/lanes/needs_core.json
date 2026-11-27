@@ -533,7 +533,8 @@
    "missing": "statics and triggers for creatures with a mana ability; a 'seven or more mana spent' cast trigger",
    "lane": "d1",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 38"
   },
   {
    "card": "Return of the Wildspeaker",
@@ -621,7 +622,8 @@
    "missing": "a 0/1 green Egg creature token with defender; an 'Egg you control dies' reveal-until-creature trigger",
    "lane": "d1",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 32 (token 116)"
   },
   {
    "card": "Elesh Norn, Mother of Machines",
@@ -677,7 +679,8 @@
    "missing": "blocking restriction by power; trigger doubling for power 2 or less",
    "lane": "d1",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 35 (d1's block piece)"
   },
   {
    "card": "Dinosaur Egg",
@@ -749,7 +752,8 @@
    "missing": "a 0/1 green Dinosaur Egg creature token; a 3/3 green Dinosaur creature token; sacrifice an Egg",
    "lane": "d1",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 32 (tokens 117, 118)"
   },
   {
    "card": "Spawning Pit",
@@ -3229,7 +3233,8 @@
    "missing": "needs core: return a creature card tapped and attacking, after a may-pay hybrid cost",
    "lane": "d3",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d3 batch 34 (e865b23)"
   },
   {
    "card": "Deadly Brew",
@@ -3797,7 +3802,8 @@
    "missing": "needs core: a 2/3 blue and black Nightmare creature token with an attack/block trigger, and casting from exile [lane C 2026-11-27, batch 19 (unbuilt): the -7 (Effect::CastFaceUpOpponentExiledFreeUpTo) and the Nightmare's trigger (Effect::EachOpponentExilesTop) are in; the script waits on d3's -3 and token 120 (after d2's 111-118 and d3's 119)]",
    "lane": "d3",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "waiting: Nightmare token with attack/block trigger, -3 bounce then exile from hand, -7 cast from exile (d3/mac-c)"
   },
   {
    "card": "City of Shadows",
@@ -4909,7 +4915,8 @@
    "missing": "magecraft/damage triggers",
    "lane": "mac-b",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 31"
   },
   {
    "card": "Case of the Ransacked Lab",
@@ -4917,7 +4924,8 @@
    "missing": "magecraft/damage triggers",
    "lane": "mac-b",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 38 (solving stored as class_level 2; d1's discount)"
   },
   {
    "card": "End the Festivities",
@@ -5165,7 +5173,8 @@
    "missing": "BLC (lane B's routing, 2026-11-26)",
    "lane": "mac-b",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d3 batch 34 (e865b23)"
   },
   {
    "card": "Rose Room Treasurer",
@@ -5189,7 +5198,8 @@
    "missing": "BLC (lane B's routing, 2026-11-26)",
    "lane": "mac-b",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 35 (d1's cost)"
   },
   {
    "card": "Simic Ascendancy",
@@ -5197,7 +5207,8 @@
    "missing": "BLC (lane B's routing, 2026-11-26)",
    "lane": "mac-b",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 32"
   },
   {
    "card": "Grothama, All-Devouring",
@@ -5205,7 +5216,8 @@
    "missing": "BLC (lane B's routing, 2026-11-26)",
    "lane": "mac-b",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 31"
   },
   {
    "card": "Tamiyo, Field Researcher",
@@ -5221,7 +5233,8 @@
    "missing": "BLC (lane B's routing, 2026-11-26)",
    "lane": "mac-b",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 32"
   },
   {
    "card": "Bootleggers' Stash",
@@ -6981,7 +6994,8 @@
    "missing": "whenever you attack a player: a Lander token (needs a token number)",
    "lane": "d2",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 35 (token 111, d1's your_lands_enter_untapped)"
   },
   {
    "card": "Kinscaer Sentry",
@@ -6989,7 +7003,8 @@
    "missing": "attacks: put a creature card with mana value X or less from hand tapped and attacking, X attacking creatures",
    "lane": "d2",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d3 batch 34 (e865b23)"
   },
   {
    "card": "Goliath Daydreamer",
@@ -7005,7 +7020,8 @@
    "missing": "a commit-a-crime trigger from the graveyard",
    "lane": "d2",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 30"
   },
   {
    "card": "Greedy Freebooter",
@@ -7013,7 +7029,8 @@
    "missing": "dies: scry 1 and a Treasure",
    "lane": "d2",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 30"
   },
   {
    "card": "Jadar, Ghoulcaller of Nephalia",
@@ -7021,7 +7038,8 @@
    "missing": "end step, if you control no decayed creatures: a 2/2 decayed Zombie (token)",
    "lane": "d2",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 30 (token 113)"
   },
   {
    "card": "Ophiomancer",
@@ -7029,7 +7047,8 @@
    "missing": "each upkeep, if you control no Snakes: a 1/1 deathtouch Snake (token)",
    "lane": "d2",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 30 (token 114)"
   },
   {
    "card": "Rev, Tithe Extractor",
@@ -7037,7 +7056,8 @@
    "missing": "whenever you attack; one or more creatures deal combat damage to a player [lane C 2026-11-27: scripted in pg_c, batch 19 (unbuilt); both triggers already existed, the face-down castable exile is lane C's]",
    "lane": "d2",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "waiting: exile face down, castable while it stays exiled (mac-c)"
   },
   {
    "card": "Sephiroth, Fabled SOLDIER // Sephiroth, One-Winged Angel",
@@ -7045,7 +7065,8 @@
    "missing": "enters or attacks: may sacrifice to draw; another creature dies: drain 1, the fourth time this turn transform",
    "lane": "d2",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 31"
   },
   {
    "card": "Bristly Bill, Spine Sower",
@@ -7053,7 +7074,8 @@
    "missing": "landfall counter on target creature",
    "lane": "d2",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 30"
   },
   {
    "card": "Claim the Kingdom",
@@ -7061,7 +7083,8 @@
    "missing": "landfall counters and plan counters; the fourth plan counter",
    "lane": "d2",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 31"
   },
   {
    "card": "Mightform Harmonizer",
@@ -7069,7 +7092,8 @@
    "missing": "landfall: double target creature power",
    "lane": "d2",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 30"
   },
   {
    "card": "Ride the Shoopuf",
@@ -7077,7 +7101,8 @@
    "missing": "landfall counter on target creature you control",
    "lane": "d2",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d3 batch 34 (e865b23)"
   },
   {
    "card": "Roaring Earth",
@@ -7085,7 +7110,8 @@
    "missing": "landfall counter on target creature or Vehicle",
    "lane": "d2",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "waiting: channel, an ability activated from hand by discarding the card (merger/d1)"
   },
   {
    "card": "Scythecat Cub",
@@ -7093,7 +7119,8 @@
    "missing": "landfall counter; the second time this turn, double counters",
    "lane": "d2",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 31"
   },
   {
    "card": "Skyclave Pick-Axe",
@@ -7101,7 +7128,8 @@
    "missing": "enters attach; landfall pump equipped",
    "lane": "d2",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 30"
   },
   {
    "card": "Staff of Titania",
@@ -7109,7 +7137,8 @@
    "missing": "equipped attacks: a Forest Dryad land creature token",
    "lane": "d2",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 30"
   },
   {
    "card": "Tifa Lockhart",
@@ -7117,7 +7146,8 @@
    "missing": "landfall: double Tifa's power",
    "lane": "d2",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 30"
   },
   {
    "card": "Beza, the Bounding Spring",
@@ -7557,7 +7587,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 41 (When::OpponentDrawsSecond; 1v1 'two target players' = both)"
   },
   {
    "card": "Soaring Lightbringer",
@@ -7566,7 +7596,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 44. Known limit (OK for the demo): 'other enchantment creatures' is Scope::OtherYourEnchantments; 'whenever you attack a player' is YouAttack (1v1)"
   },
   {
    "card": "Ayara, First of Locthwain",
@@ -7575,7 +7605,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "handed back by d2, routed to d1: '{T}, Sacrifice another black creature' cost (the enters drain is existing pieces)"
   },
   {
    "card": "Cruel Celebrant",
@@ -7584,7 +7614,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 41 (When::PlaneswalkerYouControlDies)"
   },
   {
    "card": "Lotho, Corrupt Shirriff",
@@ -7593,7 +7623,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 41 (existing When::PlayerCastsSecondSpell)"
   },
   {
    "card": "Cadira, Caller of the Small",
@@ -7602,7 +7632,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 41 (Effect::CreateTokensPerTokenYouControl). Known limit (OK for the demo): t.rabbit is an uncolored row, not white"
   },
   {
    "card": "Cathars' Crusade",
@@ -7620,7 +7650,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 44 (token 128 Vampire; When::ArtifactOrCreatureOpponentControlsEntersUntapped, Decision::MayTapElseOpponentToken)"
   },
   {
    "card": "Knuckles the Echidna",
@@ -7629,7 +7659,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 41 (existing pieces)"
   },
   {
    "card": "Ocelot Pride",
@@ -7638,7 +7668,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "handed back by d2, routed to lane C: copy each token that entered this turn (city's blessing)"
   },
   {
    "card": "Rosie Cotton of South Lane",
@@ -7647,7 +7677,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 41. Known limit (OK for the demo): 'whenever you create a token' is When::TokenYouControlEnters"
   },
   {
    "card": "The Cabbage Merchant",
@@ -7656,7 +7686,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "handed back by d2, routed to d1: 'Tap two untapped Foods you control: Add one mana'; d2 batch 47 adds When::CreatureDealsCombatDamageToYou (combat only, the creature in slot 0, the damage as amount) for d1 to script it"
   },
   {
    "card": "Fandaniel, Telophoroi Ascian",
@@ -7665,7 +7695,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 47 (Effect::OpponentMaySacrificeNontokenCreatureElseLose, Decision::SacrificeNontokenCreatureOrLoseLife)"
   },
   {
    "card": "G'raha Tia, Scion Reborn",
@@ -7674,7 +7704,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 46 (token 129 Hero; When::YouCastNoncreatureMv, Effect::MayPayLifeAmount, StopIfDoneThisTurn, MarkDoneThisTurn)"
   },
   {
    "card": "Helm of the Ghastlord",
@@ -7692,7 +7722,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 44 (token 130 Bird; When::YouAttackWithSubtype)"
   },
   {
    "card": "Kambal, Consul of Allocation",
@@ -7701,7 +7731,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 42 (existing pieces; not Kambal, Profiteering Mayor, which is lane C's)"
   },
   {
    "card": "Mai, Scornful Striker",
@@ -7710,7 +7740,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 42 (YouCastNoncreature + OpponentCastsNoncreature)"
   },
   {
    "card": "Papalymo Totolymo",
@@ -7719,7 +7749,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "handed back by d2, routed to d3: each opponent who lost life this turn sacrifices a greatest-power creature"
   },
   {
    "card": "Starscape Cleric",
@@ -7728,7 +7758,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 42 (existing pieces)"
   },
   {
    "card": "Uncover the Moon-Letters",
@@ -7737,7 +7767,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 43 (When::YouCastNoncreatureManaSpent)"
   },
   {
    "card": "Valeria Richards, Precocious",
@@ -7746,7 +7776,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "handed back by d2, routed to d1: noncreature spells cost {1} less (the first-noncreature draw is a trigger d2 can add once the discount exists)"
   },
   {
    "card": "Wizard's Staff",
@@ -7755,7 +7785,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 47 (TriggerDoubler::EquippedCreature; prowess as the Equipment's PumpAttached trigger)"
   },
   {
    "card": "Y'shtola, Night's Blessed",
@@ -7764,7 +7794,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 43 (Condition::PlayerLostLifeThisTurnAtLeast)"
   },
   {
    "card": "Angelic Renewal",
@@ -7773,7 +7803,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 46 (When::CreatureToYourGraveyardFromBattlefieldIt)"
   },
   {
    "card": "Fecundity",
@@ -7782,7 +7812,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 46 (When::AnotherCreatureDiesIt's extra; Effect::ExtrasControllerMayDraw, Decision::MayDrawCard)"
   },
   {
    "card": "Juniper Order Ranger",
@@ -7800,7 +7830,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "handed back by d2, routed to d1: each player may pay any amount of mana"
   },
   {
    "card": "Lifecrafter's Bestiary",
@@ -7809,7 +7839,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 42 (existing pieces)"
   },
   {
    "card": "Lifeline",
@@ -7835,7 +7865,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 43 (When::CreatureTokenLeavesBattlefield)"
   },
   {
    "card": "Adeline, Resplendent Cathar",
@@ -7844,7 +7874,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "done: d2 batch 40 (Effect::CreateTokensTappedAndAttacking; t.human)"
+   "status": "done: d2 batch 40 (Effect::CreateTokensTappedAndAttacking). Known limit (OK for the demo): t.human is an uncolored row, not white"
   },
   {
    "card": "Luminarch Aspirant",
@@ -7853,7 +7883,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 42 (existing pieces)"
   },
   {
    "card": "Oakhame Adversary",
@@ -7871,7 +7901,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 42 (DealsCombatDamageToPlayer + CreateTokensAmount)"
   },
   {
    "card": "Tymna the Weaver",
@@ -7880,7 +7910,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 42 (When::PostcombatMainYourTurn, Condition::OpponentDealtCombatDamageThisTurn; 1v1 X is 1)"
   },
   {
    "card": "Alela, Artful Provocateur",
@@ -7889,7 +7919,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "done: d2 batch 40 (When::YouCastArtifactOrEnchantment; t.faerie, no new token)"
+   "status": "done: d2 batch 40 (When::YouCastArtifactOrEnchantment). Known limit (OK for the demo): t.faerie is an uncolored row, not blue"
   },
   {
    "card": "Archon of Cruelty",
@@ -7898,7 +7928,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "handed back by d2, routed to d3: target opponent sacrifices a creature or planeswalker (no discard fallback)"
   },
   {
    "card": "Black Market",
@@ -7916,7 +7946,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "handed back by d2, routed to lane B: can't attack during extra turns (the extra-turn trigger is existing pieces)"
   },
   {
    "card": "Reconnaissance Mission",
@@ -7925,7 +7955,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 42 (existing pieces)"
   },
   {
    "card": "Sharding Sphinx",
@@ -7934,7 +7964,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "done: d2 batch 40 (When::YourArtifactCreatureDealsCombatDamageToPlayer; t.thopter)"
+   "status": "done: d2 batch 40 (When::YourArtifactCreatureDealsCombatDamageToPlayer). Known limit (OK for the demo): t.thopter is colorless, not blue"
   },
   {
    "card": "Sword of Light and Shadow",
@@ -7951,7 +7981,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 43 (Condition::ControlNoOtherSubtype)"
   },
   {
    "card": "Thopter Spy Network",
@@ -7977,7 +8007,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 43 (existing pieces)"
   },
   {
    "card": "Decadent Dragon // Expensive Taste",
@@ -7986,7 +8016,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "handed back by d2, routed to lane C: the Omen half (the attack Treasure is existing pieces)"
   },
   {
    "card": "Laelia, the Blade Reforged",
@@ -7995,7 +8025,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 44 (When::CardsExiledFromYourLibraryOrGraveyard, batched)"
   },
   {
    "card": "Passionate Archaeologist",
@@ -8004,7 +8034,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 47 (When::YouCastSpellFromExile, Effect::DamageEqualExtrasManaValue, on d4's SubsystemExt::commanders_have_trigger)"
   },
   {
    "card": "Smaug, Wicked Worm",
@@ -8013,7 +8043,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 43 (Effect::CreateTappedTokensPerOpponentArtifact). Known limit (OK for the demo): the Treasure-mana check is on resolution only (StopUnlessTreasureManaSpentOnExtra), no intervening-if check as it triggers"
   },
   {
    "card": "Weftstalker Ardent",
@@ -8022,7 +8052,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "handed back by d2, routed to d1: warp (the enters trigger is existing pieces)"
   },
   {
    "card": "Talion, the Kindly Lord",
@@ -8031,7 +8061,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 47 (CardDef::choose_number, Decision::ChooseNumber, Object::chosen_number, When::OpponentCastsChosenNumber)"
   },
   {
    "card": "Nihil Spellbomb",
@@ -8040,7 +8070,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 43 (existing pieces)"
   },
   {
    "card": "Brain Freeze",
@@ -8153,6 +8183,49 @@
    "lane": "d3",
    "theme": "effects and statics",
    "owner": "d3"
+  },
+  {
+   "card": "Nim Deathmantle",
+   "deck": "IDEA Rocco, Cabaretti Caterer",
+   "missing": "d3 batch 43 (routed from d2, 2026-11-27): CardDef::attached_colors_become + enchanted_creature_type_becomes, MayPay {4} then ReanimateAttachSource, scripted (pg_d3) [known limit, accepted for the demo: 'put into your graveyard' is read as a nontoken creature you control dying (differs only for stolen creatures)]",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Zur the Enchanter",
+   "deck": "IDEA Alela, Artful Provocateur",
+   "missing": "d3 batch 43 (routed from d2, 2026-11-27): SearchFor::EnchantmentMvAtMost(3), scripted (pg_d3)",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Nazg\u00fbl",
+   "deck": "the Ring (Bolt's ruling: d2)",
+   "missing": "the Ring tempts you: counters on each Wraith (on d4's Ring subsystem)",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "done: d2 batch 41 (When::RingTemptsYou, SubsystemEffect::RingTempts)"
+  },
+  {
+   "card": "Boromir, Warden of the Tower",
+   "deck": "the Ring (Bolt's ruling: d2)",
+   "missing": "an opponent casts a spell with no mana spent: counter it; sacrifice: the Ring tempts you",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "done: d2 batch 41 (When::OpponentCastsWithNoManaSpent + Effect::CounterExtra)"
+  },
+  {
+   "card": "Goldspan Dragon",
+   "deck": "Vaevictis (d3 handback)",
+   "missing": "attacks or becomes the target of a spell: a Treasure; two-mana Treasures",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "done: d2 batch 45 (When::BecomesTargetOfSpell; d1's treasures_add_two_at_level)"
   },
   {
    "card": "Archon of Cruelty",
