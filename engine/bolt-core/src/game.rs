@@ -1478,6 +1478,13 @@ pub enum Decision {
         chosen: Vec<ObjId>,
         need: u8,
     },
+    /// Braid of Fire's cumulative upkeep: `Yes` adds `n` mana of `color` (one per age counter),
+    /// `No` sacrifices `source`.
+    UpkeepAddManaOrSacrifice {
+        source: ObjId,
+        color: crate::Color,
+        n: u8,
+    },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -6795,6 +6802,9 @@ impl Game {
     /// The filter restrictions lane d3 added (color, nonartifact, spell mana value and types, what a
     /// spell or ability targets). Each is off by default, so filters without them pass.
     fn filter_extras_ok(&self, f: &Filter, controller: PlayerId, id: ObjId) -> bool {
+        if f.land_cards && !self.types_of(id).land {
+            return false; // Deathrite Shaman
+        }
         let on_stack = self.obj(id).zone == Zone::Stack;
         if f.color.is_some() || f.not_color.is_some() || f.monocolored {
             let colors = self.colors_of(id);
@@ -14102,6 +14112,7 @@ impl Game {
                 v
             }
             Decision::ManaOfOneColor { .. } => (0..5).map(Action::Mode).collect(),
+            Decision::UpkeepAddManaOrSacrifice { .. } => vec![Action::Yes, Action::No],
             Decision::ImprintInstant { .. } => {
                 let mut v: Vec<Action> = hand
                     .iter()
@@ -15899,6 +15910,17 @@ impl Game {
                 self.obj_mut(source).hideaway = Some(c); // the imprinted card
             }
             (Decision::ImprintNonartifactNonland { .. }, Action::No) => {}
+            (Decision::UpkeepAddManaOrSacrifice { color, n, .. }, Action::Yes) => {
+                for _ in 0..n {
+                    self.players[p].pool.push(ManaSource::of(&[color]));
+                }
+            }
+            (Decision::UpkeepAddManaOrSacrifice { source, .. }, _) => {
+                if self.obj(source).zone == Zone::Battlefield && !self.cant_be_sacrificed(source) {
+                    self.move_to(source, Zone::Graveyard);
+                    self.sacrificed(source, p);
+                }
+            }
             (Decision::ManaOfOneColor { n, .. }, Action::Mode(i)) => {
                 for _ in 0..n {
                     self.players[p]
@@ -25212,6 +25234,21 @@ impl Game {
                 });
                 if any && self.obj(src).zone == Zone::Battlefield {
                     self.ask(p, Decision::ImprintNonartifactNonland { source: src });
+                }
+            }
+            Effect::CumulativeUpkeepAddMana(color) => {
+                if self.obj(src).zone == Zone::Battlefield {
+                    self.obj_mut(src).kind_counters += 1; // an age counter
+                    self.counters_placed(item.controller, 1);
+                    let n = self.obj(src).kind_counters.clamp(0, 255) as u8;
+                    self.ask(
+                        item.controller,
+                        Decision::UpkeepAddManaOrSacrifice {
+                            source: src,
+                            color,
+                            n,
+                        },
+                    );
                 }
             }
             Effect::AddManaOneColor(n) => {

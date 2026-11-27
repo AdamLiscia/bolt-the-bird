@@ -150,6 +150,8 @@ pub struct Filter {
     /// Spells not cast from their owner's hand only, unless this spell was cast for its alternative
     /// cost (Wash Away uncleaved: "target spell that wasn't cast from its owner's hand").
     pub spell_not_from_hand_unless_alt: bool,
+    /// Land cards or permanents only (Deathrite Shaman: "target land card from a graveyard").
+    pub land_cards: bool,
 }
 
 impl Filter {
@@ -220,6 +222,7 @@ impl Filter {
         tapped_only: false,
         subtypes_any: &[],
         spell_not_from_hand_unless_alt: false,
+        land_cards: false,
     };
 
     pub const CREATURE: Filter = Filter {
@@ -2830,6 +2833,9 @@ pub enum Effect {
     ImprintNonartifactNonlandFromHand,
     /// "Add N mana of any one color." (Lion's Eye Diamond: 3), as `Decision::ManaOfOneColor`.
     AddManaOneColor(u8),
+    /// Cumulative upkeep—Add {R} (Braid of Fire): an age counter, then add {R} for each age counter
+    /// or sacrifice it, as `Decision::UpkeepAddManaOrSacrifice`.
+    CumulativeUpkeepAddMana(crate::Color),
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

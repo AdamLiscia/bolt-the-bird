@@ -268,6 +268,10 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         "RemoveCountersFromOthers": ("Remove a counter", "Don't activate it"),
         "ImprintNonartifactNonland": ("Exile a card", "Don't exile a card"),
         "SacrificeCreaturesForCost": ("Sacrifice it", "Don't activate it"),
+        "UpkeepAddManaOrSacrifice": (
+            f"Add {dec.get('n', 1)} mana (keep {subject or 'it'})",
+            f"Sacrifice {subject or 'it'}",
+        ),
         "DiscardLandOrGraveyard": ("Discard a land", f"Don't discard ({subject or 'it'} goes to the graveyard)"),
         "SylvanPayOrTop": (f"Pay 4 life to keep {subject or 'it'}", f"Put {subject or 'it'} on top of your library"),
         "ExpropriateVote": ("Vote time (an extra turn)", "Vote money (a permanent)"),

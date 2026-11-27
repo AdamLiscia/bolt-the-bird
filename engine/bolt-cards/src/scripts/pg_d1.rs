@@ -1922,6 +1922,39 @@ pub fn script(name: &str) -> Option<Script> {
                 d.activated[n].sacrifice_n_creatures = 5;
             },
         ),
+        "Tekuthal, Inquiry Dominus" => s(
+            &[
+                "If you would proliferate, proliferate twice instead.",
+                "{1}{U/P}{U/P}, Remove three counters from among other artifacts, creatures, and planeswalkers you control: Put an indestructible counter on Tekuthal.",
+            ],
+            |d, _| {
+                d.proliferate_twice = true;
+                let n = activated(d, "{1}{U}{U}", false, vec![], vec![Effect::KeywordCounterSelf(Keywords::INDESTRUCTIBLE)]);
+                d.activated[n].phyrexian = [0, 2, 0, 0, 0];
+                d.activated[n].remove_counters_from_others = 3;
+            },
+        ),
+        "Deathrite Shaman" => s(
+            &[
+                "{T}: Exile target land card from a graveyard. Add one mana of any color.",
+                "{B}, {T}: Exile target instant or sorcery card from a graveyard. Each opponent loses 2 life.",
+                "{G}, {T}: Exile target creature card from a graveyard. You gain 2 life.",
+            ],
+            |d, _| {
+                // The mana ability goes on the stack, like Phyrexian Altar (it has a target).
+                let card = Filter { players: false, creatures: false, planeswalkers: false, graveyard: Some(false), ..Filter::ANY };
+                let land = Filter { land_cards: true, ..card };
+                activated(d, "", true, vec![land], vec![Effect::Exile(0), Effect::AddManaAnyColor]);
+                let spell_card = Filter { instant_or_sorcery: true, ..card };
+                activated(d, "{B}", true, vec![spell_card], vec![Effect::Exile(0), Effect::LoseLife { who: Who::EachOpponent, n: 2 }]);
+                let creature = Filter { graveyard: Some(true), ..card };
+                activated(d, "{G}", true, vec![creature], vec![Effect::Exile(0), Effect::GainLife { who: Who::You, n: 2 }]);
+            },
+        ),
+        // ---- Ral ----
+        "Braid of Fire" => s(&["Cumulative upkeep—Add {R}."], |d, _| {
+            on(d, When::Upkeep { your_turn_only: true }, vec![], vec![Effect::CumulativeUpkeepAddMana(Color::Red)]);
+        }),
         // ---- Atla Palani ----
         "Instill Energy" => s(
             &[
@@ -2172,4 +2205,7 @@ pub const PG_D1_SCRIPTED: &[&str] = &[
     "Lion's Eye Diamond",
     "Instill Energy",
     "Westvale Abbey // Ormendahl, Profane Prince",
+    "Tekuthal, Inquiry Dominus",
+    "Deathrite Shaman",
+    "Braid of Fire",
 ];

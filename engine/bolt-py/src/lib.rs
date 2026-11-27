@@ -619,6 +619,10 @@ impl Game {
                     }
                     D::DiscardLandOrGraveyard { card } => e.set_item("card", one(*card))?,
                     D::ManaOfOneColor { n, .. } => e.set_item("n", *n)?,
+                    D::UpkeepAddManaOrSacrifice { source, n, .. } => {
+                        e.set_item("card", one(*source))?;
+                        e.set_item("n", *n)?;
+                    }
                     D::SacrificeCreaturesForCost { chosen, need, .. } => {
                         e.set_item("left", *need as usize - chosen.len())?;
                     }

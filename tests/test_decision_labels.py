@@ -350,3 +350,9 @@ def test_westvale_abbey_picks_each_creature_to_sacrifice():
     dec = {"kind": "SacrificeCreaturesForCost", "left": 5}
     assert sv._decision_label(dec, "Pick", 0, "Llanowar Elves") == "Sacrifice (for the cost): Llanowar Elves"
     assert label(dec, "No", 0) == "Don't activate it"
+
+
+def test_braid_of_fire_adds_mana_or_is_sacrificed():
+    dec = {"kind": "UpkeepAddManaOrSacrifice", "card": [3, 1], "n": 2}
+    assert label(dec, "Yes", 0) == "Add 2 mana (keep Thriving Heath)"
+    assert label(dec, "No", 0) == "Sacrifice Thriving Heath"

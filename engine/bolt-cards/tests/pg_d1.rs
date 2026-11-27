@@ -3973,3 +3973,73 @@ fn westvale_abbey_makes_clerics_and_flips_on_five_picked_sacrifices() {
         "four creatures: can't"
     );
 }
+
+#[test]
+fn tekuthal_removes_three_picked_counters_for_an_indestructible_counter() {
+    let mut g = table();
+    let tek = put(&mut g, 0, "Tekuthal, Inquiry Dominus");
+    let a = put(&mut g, 0, "Llanowar Elves");
+    g.objects[a.0 as usize].counters = 3;
+    act(&mut g, Action::Activate(tek, 0));
+    for _ in 0..3 {
+        act(&mut g, Action::Pick(a));
+    }
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(a).counters, 0);
+    assert!(g.keywords(tek).has(Keywords::INDESTRUCTIBLE));
+    assert!(g.def_of(tek).proliferate_twice);
+}
+
+#[test]
+fn deathrite_shaman_exiles_graveyard_cards_by_type() {
+    let mut g = table();
+    let ds = put(&mut g, 0, "Deathrite Shaman");
+    g.objects[ds.0 as usize].since_turn = 0;
+    let bolt = g.add_card(1, cid("Lightning Bolt"), Zone::Graveyard);
+    let forest = g.add_card(1, cid("Forest"), Zone::Graveyard);
+    let elf = g.add_card(1, cid("Llanowar Elves"), Zone::Graveyard);
+    act(&mut g, Action::Activate(ds, 0));
+    assert!(
+        !g.legal_actions().contains(&Action::Target(Target::Object(bolt))),
+        "a land card only"
+    );
+    act(&mut g, Action::Target(Target::Object(forest)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(forest).zone, Zone::Exile);
+    assert_eq!(g.players[0].pool.len(), 1, "one mana of any color");
+
+    let mut g = table();
+    let ds = put(&mut g, 0, "Deathrite Shaman");
+    g.objects[ds.0 as usize].since_turn = 0;
+    let bolt = g.add_card(1, cid("Lightning Bolt"), Zone::Graveyard);
+    act(&mut g, Action::Activate(ds, 1));
+    act(&mut g, Action::Target(Target::Object(bolt)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(bolt).zone, Zone::Exile);
+    assert_eq!(g.players[1].life, 38);
+    let _ = elf;
+}
+
+#[test]
+fn braid_of_fire_adds_red_per_age_counter_or_is_sacrificed() {
+    let mut g = table();
+    let braid = put(&mut g, 0, "Braid of Fire");
+    // Through the opponent's turn to player 0's next upkeep.
+    while !matches!(g.pending, Pending::Decide(_)) {
+        let a = match g.pending {
+            Pending::DeclareAttackers(_) => Action::FinishAttacks,
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ if !g.legal_actions().contains(&Action::PassPriority) => g.legal_actions()[0], // cleanup discard
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!((g.active, g.step), (0, Step::Upkeep));
+    act(&mut g, Action::Yes);
+    assert_eq!(g.players[0].pool.len(), 1);
+    assert!(g.players[0]
+        .pool
+        .iter()
+        .all(|m| m.colors == [false, false, false, true, false]));
+    assert_eq!(g.obj(braid).zone, Zone::Battlefield);
+}
