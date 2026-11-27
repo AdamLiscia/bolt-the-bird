@@ -4731,3 +4731,22 @@ fn ichormoon_gauntlet_adds_a_counter_of_the_chosen_kind_on_a_noncreature_cast() 
     act(&mut g, Action::Cast(lions));
     assert!(!matches!(g.pending, Pending::ChooseTarget(_)));
 }
+
+#[test]
+fn kaya_geist_hunters_spirits_are_white_fliers() {
+    let mut g = table();
+    let kaya = put(&mut g, 0, "Kaya, Geist Hunter");
+    g.objects[kaya.0 as usize].loyalty = 6;
+    g.add_card(1, cid("Plains"), Zone::Graveyard);
+    let cards = g.players[0].graveyard.len() + g.players[1].graveyard.len();
+    act(&mut g, Action::Loyalty(kaya, 2)); // −6
+    resolve_all(&mut g, &[]);
+    let spirits = tokens(&g, 0, "Spirit");
+    assert_eq!(spirits.len(), cards, "one per card exiled");
+    assert_eq!(
+        g.colors_of(spirits[0]),
+        [true, false, false, false, false],
+        "white"
+    );
+    assert!(g.keywords(spirits[0]).has(Keywords::FLYING));
+}
