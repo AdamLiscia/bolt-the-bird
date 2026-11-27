@@ -2526,6 +2526,33 @@ pub enum Effect {
     /// choose two cards in your hand drawn this turn (`Decision::SylvanPick`), and for each pay 4
     /// life or put it on top of your library (`Decision::SylvanPayOrTop`).
     SylvanLibrary,
+    /// Destroy all creatures; you create a tapped `def` token for each nontoken creature destroyed
+    /// this way (Blood Money: Treasure).
+    DestroyAllCreaturesTappedTokenPerNontoken {
+        def: usize,
+    },
+    /// The player in `slot` draws half the cards in their library and loses half their life, each
+    /// rounded up (Peer into the Abyss).
+    TargetPlayerDrawsHalfLibraryLosesHalfLife(u8),
+    /// Each player draws a card for each of the source's own kind of counter (Otherworld Atlas's
+    /// charge counters, `Object::kind_counters`).
+    EachPlayerDrawsPerKindCounter,
+    /// Search for a creature card with mana value exactly `plus` more than the sacrificed creature's
+    /// (the stack entry's `extra`) and put it onto the battlefield with an additional +1/+1 counter,
+    /// then shuffle (Neoform).
+    SearchCreatureBySacrificedMvPlusCounter {
+        plus: u8,
+    },
+    /// Exchange control of the source and the creature in `slot`; if you don't or can't (no target,
+    /// or either has left), sacrifice the source (Gilded Drake).
+    ExchangeControlWithSlotOrSacrifice(u8),
+    /// Put `n` +1/+1 counters on the creature the source (an Equipment or Aura) is attached to (Bone
+    /// Sabres).
+    CountersOnAttached(i32),
+    /// Create a token that's a copy of the artifact the source (an Aura) enchants; then, if you
+    /// control eight or more artifacts with the same name as one another, you win the game
+    /// (Mechanized Production).
+    CopyAttachedThenEightSameNameWins,
     /// "You may pay {X}, where X is less than or equal to the amount of life you gained. If you do,
     /// draw X cards." (Well of Lost Dreams): the trigger's amount caps X, as `Decision::PayXDrawX`.
     MayPayXUpToAmountDrawX,
@@ -2629,6 +2656,8 @@ pub enum SearchTo {
     ExileCastFreeThisTurn,
     /// Onto the battlefield tapped under this player's control (Yavimaya Dryad).
     BattlefieldTappedUnder(u8),
+    /// Onto the battlefield with an additional +1/+1 counter (Neoform).
+    BattlefieldPlusCounter,
 }
 
 /// What a static ability affects.
