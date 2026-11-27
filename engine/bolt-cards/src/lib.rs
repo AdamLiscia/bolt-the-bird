@@ -522,6 +522,7 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         prevents_half_damage_to_you_and_yours: false,
         damage_to_a_player_other_loses: None,
         chosen_type_mana_uncounterable: false,
+        triples_mana_tapped: false,
         your_artifacts_are_food_your_turn: false,
         other_creatures_are_food_artifacts: false,
     };

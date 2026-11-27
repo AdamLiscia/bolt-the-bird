@@ -880,3 +880,14 @@ Bracks (pg_b). Pieces (lane B's replacement theme, plus one condition):
 - Cavern of Souls simplification: any of Cavern's mana that pays for a creature spell of the chosen
   type makes it uncounterable, {C} included. Choosing the any-color ability for that same generic mana
   is always possible, so the outcome is the same.
+
+### mac-b cards for Ygra, Lonis, Sheoldred, Sefris, Zacama (2026-11-26)
+
+Peregrin Took (the existing `tokens_plus_one` and "Sacrifice three Foods" via
+`sacrifice_subtype_count`), Erebos, God of the Dead (devotion, `opponents_cant_gain_life`), Clearwater,
+Hengegate and Barkchannel Pathways, Nyxbloom Ancient (`CardDef::triples_mana_tapped` in
+`untapped_sources`: the base mana of a permanent tapped for mana, times three per Nyxbloom; mana from
+abilities that don't tap, and the triggered extras like Mirari's Wake, aren't tripled), Sylvan Library
+(`Effect::SylvanLibrary`, `Game::drawn_this_turn` set in `draw`, Decisions SylvanDraw, SylvanPick,
+SylvanPayOrTop), Deflecting Palm (`Effect::DamageExtrasControllerAmount` after the existing prevention
+shield). Sigarda and Valgavoth not started.

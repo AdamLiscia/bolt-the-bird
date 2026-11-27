@@ -2519,6 +2519,13 @@ pub enum Effect {
         slot: u8,
         keep_own: bool,
     },
+    /// The source deals damage equal to the trigger's amount to the controller of the object in
+    /// `extra` (Deflecting Palm, after `PreventNextFromChosenSource`).
+    DamageExtrasControllerAmount,
+    /// Sylvan Library: you may draw two additional cards (`Decision::SylvanDraw`); if you do,
+    /// choose two cards in your hand drawn this turn (`Decision::SylvanPick`), and for each pay 4
+    /// life or put it on top of your library (`Decision::SylvanPayOrTop`).
+    SylvanLibrary,
     /// "Each player draws X cards." (Skyscribing), X the spell's X, you first.
     EachPlayerDrawsX,
 }

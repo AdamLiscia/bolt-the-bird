@@ -1000,6 +1000,9 @@ pub struct CardDef {
     /// Cavern of Souls, with `any_color_for_chosen_type`: its any-color mana is only for creature
     /// spells of the chosen type (not abilities), and a spell it pays for can't be countered.
     pub chosen_type_mana_uncounterable: bool,
+    /// Nyxbloom Ancient: "If you tap a permanent for mana, it produces three times as much of that
+    /// mana instead." (in `untapped_sources`; abilities that add mana without tapping aren't).
+    pub triples_mana_tapped: bool,
     /// Gourmand's Talent: "During your turn, artifacts you control are Foods in addition to their
     /// other types" (see `Game::has_subtype`; the Food ability is its `subtype_you_control_has`).
     pub your_artifacts_are_food_your_turn: bool,
@@ -1509,6 +1512,7 @@ impl CardDef {
             prevents_half_damage_to_you_and_yours: false,
             damage_to_a_player_other_loses: None,
             chosen_type_mana_uncounterable: false,
+            triples_mana_tapped: false,
             your_artifacts_are_food_your_turn: false,
             other_creatures_are_food_artifacts: false,
             protection_chosen_card_type: false,
@@ -1788,6 +1792,7 @@ impl CardDef {
             prevents_half_damage_to_you_and_yours: false,
             damage_to_a_player_other_loses: None,
             chosen_type_mana_uncounterable: false,
+            triples_mana_tapped: false,
             your_artifacts_are_food_your_turn: false,
             other_creatures_are_food_artifacts: false,
             protection_chosen_card_type: false,
@@ -2067,6 +2072,7 @@ impl CardDef {
             prevents_half_damage_to_you_and_yours: false,
             damage_to_a_player_other_loses: None,
             chosen_type_mana_uncounterable: false,
+            triples_mana_tapped: false,
             your_artifacts_are_food_your_turn: false,
             other_creatures_are_food_artifacts: false,
             protection_chosen_card_type: false,
