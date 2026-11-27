@@ -238,3 +238,10 @@ def test_crewing_with_several_creatures_reads_as_its_moves():
     assert sv._decision_label(dec, "Pick", 0, "Savannah Lions") == "Also tap (to crew or saddle): Savannah Lions"
     assert label(dec, "Yes", 0) == "Tap the chosen creatures"
     assert label(dec, "No", 0) == "Don't tap them"
+
+
+def test_karadors_graveyard_cast_is_named():
+    karador = sv._label("CastFromGraveyardAs", ["Llanowar Elves"], (5,), 0, (0, 5, -1))
+    assert karador == "Cast Llanowar Elves from your graveyard (Karador)"
+    muldrotha = sv._label("CastFromGraveyardAs", ["Llanowar Elves"], (1,), 0, (0, 1, -1))
+    assert muldrotha == "Cast Llanowar Elves from your graveyard (option 2)"
