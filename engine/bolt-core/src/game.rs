@@ -1398,6 +1398,9 @@ pub enum Decision {
         n: usize,
         chosen: Vec<ObjId>,
     },
+    /// Palantír of Orthanc, asked of the targeted opponent: `Yes` has `player` draw a card; `No`
+    /// has `player` mill `x` cards and you lose life equal to their total mana value.
+    LetDrawOrMill { player: PlayerId, x: u8 },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -13054,6 +13057,7 @@ impl Game {
             Decision::UntapOwnCreature => self.untap_own_creature_options(p),
             Decision::ChooseRingBearer => self.ring_bearer_options(p),
             Decision::DelinaAgain { .. } => vec![Action::Yes, Action::No],
+            Decision::LetDrawOrMill { .. } => vec![Action::Yes, Action::No],
             Decision::PickOneOf { cards, .. } => cards.iter().copied().map(Action::Pick).collect(),
             Decision::LandOrCreatureFromHandTapped { creature } => {
                 let creature = *creature;
@@ -14730,6 +14734,21 @@ impl Game {
             }
             (Decision::DelinaAgain { target }, Action::Yes) => self.delina_roll(p, target),
             (Decision::DelinaAgain { .. }, Action::No) => {}
+            (Decision::LetDrawOrMill { player, .. }, Action::Yes) => {
+                self.draw(player);
+            }
+            (Decision::LetDrawOrMill { player, x }, _) => {
+                let mut total = 0;
+                for _ in 0..x {
+                    if let Some(&c) = self.players[player].library.last() {
+                        total += self.def_of(c).cost.mana_value() as i32;
+                        self.move_to(c, Zone::Graveyard);
+                    }
+                }
+                if total > 0 {
+                    self.lose_life(p, total);
+                }
+            }
             (Decision::KeywordCounterChoice { token }, Action::Mode(m)) => {
                 let k = [Keywords::REACH, Keywords::VIGILANCE, Keywords::TRAMPLE][m.min(2) as usize];
                 if self.obj(token).zone == Zone::Battlefield {
@@ -19587,6 +19606,17 @@ impl Game {
                         money: Vec::new(),
                     },
                 );
+            }
+            Effect::TargetMayLetYouDrawElseMillKindCounters(slot) => {
+                if let Some(q) = self
+                    .players_for(item, legal, Who::TargetPlayer(slot))
+                    .first()
+                    .copied()
+                {
+                    let x = self.obj(src).kind_counters.clamp(0, 255) as u8;
+                    let player = item.controller;
+                    self.ask(q, Decision::LetDrawOrMill { player, x });
+                }
             }
             Effect::ScryXTargetPlayer(slot) => {
                 if let Some(q) = self

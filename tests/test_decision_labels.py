@@ -238,3 +238,9 @@ def test_crewing_with_several_creatures_reads_as_its_moves():
     assert sv._decision_label(dec, "Pick", 0, "Savannah Lions") == "Also tap (to crew or saddle): Savannah Lions"
     assert label(dec, "Yes", 0) == "Tap the chosen creatures"
     assert label(dec, "No", 0) == "Don't tap them"
+
+
+def test_palantir_asks_the_opponent_to_let_you_draw_or_mill():
+    dec = {"kind": "LetDrawOrMill", "x": 2}
+    assert label(dec, "Yes", 0) == "Let them draw a card"
+    assert label(dec, "No", 0) == "Make them mill 2 (you lose life equal to the total mana value)"

@@ -2648,6 +2648,10 @@ pub enum Effect {
     /// The source assigns no combat damage this combat (Master of Cruelties), see
     /// `Game::no_combat_damage_from`.
     SourceAssignsNoCombatDamage,
+    /// Palantír of Orthanc: the player in `slot` may have you draw a card
+    /// (`Decision::LetDrawOrMill`); if they don't, you mill X cards, X the source's own kind of
+    /// counters (influence), and they lose life equal to the total mana value of those cards.
+    TargetMayLetYouDrawElseMillKindCounters(u8),
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

@@ -4506,7 +4506,7 @@
   {
    "card": "Palant\u00edr of Orthanc",
    "deck": "Zhulodok, Void Gorger (Adam)",
-   "missing": "trigger (Zhulodok: cast trigger; its cascade is d3's)",
+   "missing": "trigger (Zhulodok: cast trigger; its cascade is d3's) [done by d2 batch 22: Effect::TargetMayLetYouDrawElseMillKindCounters, Decision::LetDrawOrMill, scripted in pg_d2]",
    "lane": "mac-b",
    "theme": "triggers",
    "owner": "d2"
