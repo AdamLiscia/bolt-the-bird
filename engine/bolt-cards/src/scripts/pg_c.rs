@@ -2562,6 +2562,20 @@ pub fn script(name: &str) -> Option<Script> {
             &["Vivid — At the beginning of your first main phase, reveal cards from the top of your library until you reveal X nonland cards, where X is the number of colors among permanents you control. For each of those colors, you may exile a card of that color from among the revealed cards. Then shuffle. You may cast the exiled cards this turn."],
             |d, _| on(d, When::FirstMainPhaseYourTurn, vec![], vec![Effect::VividRevealExileByColor]),
         ),
+        "Druids' Repository" => s(
+            &[
+                "Whenever a creature you control attacks, put a charge counter on this enchantment.",
+                "Remove a charge counter from this enchantment: Add one mana of any color.",
+            ],
+            |d, _| {
+                // Charge counters are the enchantment's own kind (`kind_counters`); d1's no-{T}
+                // counter mana removes one per mana.
+                on(d, When::CreatureYouControlAttacks, vec![], vec![Effect::KindCounterSelf(1)]);
+                d.mana = Some(ManaSource::of(&Color::ALL));
+                d.mana_ext.mana_per_kind_counter = true;
+                d.mana_ext.counter_mana_no_tap = true;
+            },
+        ),
         "Fortune Teller's Talent" => s(
             &[
                 "You may look at the top card of your library any time.",
@@ -2926,5 +2940,6 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Forth Eorlingas!",
     "Mirrorform",
     "Sanar, Innovative First-Year",
+    "Druids' Repository",
     // Not "Evercoat Ursine" (unclaimed: a hidden land must be playable as a land play).
 ];

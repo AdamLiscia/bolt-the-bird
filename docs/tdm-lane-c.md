@@ -1281,3 +1281,10 @@ Ghoul's attack on turn 6 for player 1, `CastX(forth, 2)` paying {2}{R}{W}.
 Merger approved (2026-11-27): token 133 `human_knight_2_trample_haste` (append its row once 125-132 are on
 tarkir, at the build), the three monarch hooks, and holding Walk-In Closet (logged in needs_core.json, owner
 mac-c: "Rooms subsystem plus a second-door oracle fetch").
+
+## Batch 25 (unbuilt): Druids' Repository (Najeela)
+
+On d1's `ManaExt::counter_mana_no_tap` (lane-d1 e4ce66a, **doesn't compile until it's on tarkir**): any-color
+`ManaSource`, `mana_per_kind_counter`, `counter_mana_no_tap`; charge counters are `kind_counters`, one per
+attacking creature you control (`When::CreatureYouControlAttacks`, `KindCounterSelf(1)`). Test in core_objects
+(93): two attackers, two counters; a landless Bolt paid by removing one.

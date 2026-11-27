@@ -2201,3 +2201,29 @@ fn sanar_reveals_until_x_nonland_and_exiles_one_per_color_to_cast_this_turn() {
     to_main1(&mut g, 7, 0);
     assert!(!g.legal_actions().contains(&Action::Cast(opt)), "only this turn");
 }
+
+#[test]
+fn druids_repository_stores_a_charge_per_attacker_and_spends_them_as_mana() {
+    let mut g = game(&[]);
+    let repo = put(&mut g, 0, "Druids' Repository");
+    let a = put(&mut g, 0, "Hungry Ghoul");
+    let b = put(&mut g, 0, "Llanowar Elves");
+    g.start_turn(5, 0);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(a));
+    act(&mut g, Action::Attack(b));
+    act(&mut g, Action::FinishAttacks);
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        g.obj(repo).kind_counters,
+        2,
+        "one charge counter per attacking creature"
+    );
+    pass_to(&mut g, Step::Main2);
+    // No lands: the Bolt is paid by removing a charge counter.
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    play(&mut g, bolt, false, &[Target::Player(1)], &[]);
+    assert_eq!(g.obj(repo).kind_counters, 1);
+}
