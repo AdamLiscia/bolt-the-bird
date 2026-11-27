@@ -1121,3 +1121,20 @@ only on spells with mana value 4 or greater (d1). Its transform (`MayPay` then `
 Likely failure spots when built: Arthur's `resolve_all` answer (the LookPick `Pick`), the `combat` check, and
 Goliath's free-cast window after the attack trigger (`Pending::FreeCast`).
 Merger approved (2026-11-27): the `return_hand_at_end_combat()` call at the top of `Step::EndCombat`, and the `else if !self.exile_with_dream_counter(source)` branch at resolution. Ashling held as recorded. Build after d3 (Mikaeus) and lane B, on the go.
+
+## Handoff (2026-11-27, context full): for the next lane C
+
+State: tarkir-c at the commit after 584431f (notes only). Built and on tarkir: everything through 096072f.
+**Unbuilt WIP on top: 662042a (batch 17) and 389f90e (batch 18), both accepted by the merger; build on its go**
+(order: merger verification, d3 Mikaeus, lane B, then lane C). Full check as in the batch 12 handoff above;
+core_objects should count 71. Likely failure spots are listed under batches 17 and 18.
+
+Queued by the merger, **once d3 b30 is on tarkir** (not there at b7d3a48). Write unbuilt, merge tarkir first:
+- Pippin, Guard of the Citadel (Bruna's deck, lane C's): d3's `Effect::ProtectionFromCardTypeEot { slot, kind }`,
+  kind in ChooseCardType order (0 artifact, 1 creature, 2 enchantment, 3 instant, 4 land, 5 planeswalker,
+  6 sorcery).
+- Toxrill, the Corrosive (Sefris): `Effect::SlimeCounterOnEachCreatureYouDontControl` at each end step
+  (`When::EndStep { your_turn_only: false }`), the static `Static { scope: Scope::OpponentsCreatures, power: -1,
+  toughness: -1, scale: Some(Scale::PerSlimeCounterOnIt) }`, d2's dies trigger (reads `last_slime > 0`, makes the
+  Slug, token 109), and "{U}{B}, Sacrifice a Slug: Draw a card" from existing pieces (`sacrifice_subtype`).
+Token 104 is lane B's now; ask the merger for any token. Report to the merger with hashes and totals; never push.
