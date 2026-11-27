@@ -1792,6 +1792,10 @@ pub struct Game {
     pub creatures_died: (u32, u32),
     /// Cards drawn this turn: (card, its zcc in hand, turn) (Sylvan Library).
     pub drawn_this_turn: Vec<(ObjId, u32, u32)>,
+    /// Granted, borrowed and kept activated abilities as they were activated: (source, ability
+    /// number, the ability), so one whose source left (a Food sacrificed for its own granted
+    /// ability) still resolves (see `ability_of`).
+    pub activated_snapshots: Vec<(ObjId, usize, Activated)>,
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -2070,6 +2074,7 @@ impl Game {
             damage_shields_on: Vec::new(),
             creatures_died: (0, 0),
             drawn_this_turn: Vec::new(),
+            activated_snapshots: Vec::new(),
         }
     }
 
@@ -2584,20 +2589,48 @@ impl Game {
         } else {
             Vec::new()
         };
-        let granted = granters.into_iter().flat_map(move |x| {
-            let d = self.def_of(x);
-            let from_lands = d.lands_you_control_have.iter().filter(move |_| land);
-            let from_subtype = d
-                .subtype_you_control_has
+        // Ygra: every other creature, whoever controls it.
+        let others: Vec<ObjId> = if creature {
+            self.battlefield
                 .iter()
-                .filter(move |(sub, _)| creature && self.has_subtype(id, sub))
-                .flat_map(|(_, v)| v.iter());
-            from_lands.chain(from_subtype)
-        });
+                .copied()
+                .filter(|&x| {
+                    x != id && !self.def_of(x).other_creatures_have.is_empty() && !self.lost_abilities(x)
+                })
+                .collect()
+        } else {
+            Vec::new()
+        };
+        let own = &self.def_of(id).activated;
+        let granted = granters
+            .into_iter()
+            .flat_map(move |x| {
+                let d = self.def_of(x);
+                let from_lands = d.lands_you_control_have.iter().filter(move |_| land);
+                // Any permanent of the subtype (Gourmand's Talent: noncreature artifacts that are Foods).
+                let from_subtype = d
+                    .subtype_you_control_has
+                    .iter()
+                    .filter(move |(sub, _)| on_battlefield && self.has_subtype(id, sub))
+                    .flat_map(|(_, v)| v.iter());
+                from_lands.chain(from_subtype)
+            })
+            .chain(
+                others
+                    .into_iter()
+                    .flat_map(move |x| self.def_of(x).other_creatures_have.iter()),
+            );
+        // The same ability twice (a real Food's own, or Ygra's and Gourmand's Talent's) is one.
+        let mut unique: Vec<&Activated> = Vec::new();
+        for a in granted {
+            if !own.contains(a) && !unique.contains(&a) {
+                unique.push(a);
+            }
+        }
         cards
             .into_iter()
             .flat_map(move |c| self.def_of(c).activated.iter())
-            .chain(granted)
+            .chain(unique)
     }
 
     /// Activated abilities its own card lends a copy that keeps them (`Activated::copy_only`).
@@ -6020,6 +6053,18 @@ impl Game {
                 }
             },
             StackKind::Offspring => offspring_ability(),
+            // Not one of its own: the ability as it was activated (its source may have left).
+            StackKind::Activated(n) if n >= def.activated.len() => {
+                match self
+                    .activated_snapshots
+                    .iter()
+                    .rev()
+                    .find(|e| e.0 == item.source && e.1 == n)
+                {
+                    Some(e) => &e.2.ability,
+                    None => &self.activated_of(item.source, n).ability,
+                }
+            }
             StackKind::Activated(n) => &self.activated_of(item.source, n).ability,
             StackKind::Room { .. } | StackKind::InitiativeVenture => self.subsystem_ability(item.kind),
             StackKind::SacrificeWhenTargeted { .. } => sacrifice_when_targeted_ability(),
@@ -8977,6 +9022,10 @@ impl Game {
 
     fn pay_activation(&mut self, p: PlayerId, id: ObjId, n: usize, victim: Option<ObjId>, x: u8) {
         let a = self.activated_of(id, n).clone();
+        if n >= self.def_of(id).activated.len() {
+            self.activated_snapshots.retain(|e| !(e.0 == id && e.1 == n));
+            self.activated_snapshots.push((id, n, a.clone()));
+        }
         let uses_self = a.tap || a.sacrifice_self;
         // A sacrificed token (a Treasure) can't also pay the mana.
         let exclude = if uses_self {

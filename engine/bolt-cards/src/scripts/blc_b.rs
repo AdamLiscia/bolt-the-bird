@@ -1484,6 +1484,41 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::OpponentSacrificesNoncreatureToken, vec![], vec![poison]);
             },
         ),
+        "Gourmand's Talent" => s(
+            &[
+                "During your turn, artifacts you control are Foods in addition to their other types and have \"{2}, {T}, Sacrifice this artifact: You gain 3 life.\"",
+                "{2}{G}: Level 2",
+                "Whenever you gain life for the first time each turn, create a 3/3 green Raccoon creature token.",
+                "{3}{G}: Level 3",
+                "Whenever you gain life for the first time each turn, put a +1/+1 counter on each creature you control.",
+            ],
+            |d, t| {
+                // d3's Foods during your turn; the ability through the Food grant (deduped against a
+                // real Food's own).
+                d.your_artifacts_are_food_your_turn = true;
+                let eat = Activated {
+                    mana: ManaCost::parse("{2}").expect("cost"),
+                    tap: true,
+                    sacrifice_self: true,
+                    ability: Ability::new(vec![], vec![Effect::GainLife { who: Who::You, n: 3 }]),
+                    ..Activated::default()
+                };
+                d.subtype_you_control_has = Some(("Food", vec![eat]));
+                let first = When::YouGainLifeFirstTime { your_turn_only: false };
+                let n = activated(d, "{2}{G}", false, vec![], vec![Effect::ClassLevelUp(2)]);
+                d.activated[n].sorcery = true;
+                d.activated[n].level_up_to = 2;
+                let mut raccoon = Ability::new(vec![], vec![Effect::CreateToken { who: Who::You, def: t.raccoon, n: 1 }]);
+                raccoon.condition = Some(Condition::ClassLevelAtLeast(2));
+                d.triggers.push(Trigger { when: first, ability: raccoon });
+                let n = activated(d, "{3}{G}", false, vec![], vec![Effect::ClassLevelUp(3)]);
+                d.activated[n].sorcery = true;
+                d.activated[n].level_up_to = 3;
+                let mut grow = Ability::new(vec![], vec![Effect::CountersAll { who: Who::You, n: 1 }]);
+                grow.condition = Some(Condition::ClassLevelAtLeast(3));
+                d.triggers.push(Trigger { when: first, ability: grow });
+            },
+        ),
         _ => None,
     }
 }
@@ -1662,4 +1697,5 @@ pub const BLC_B_SCRIPTED: &[&str] = &[
     "Rootcast Apprenticeship",
     "Insatiable Frugivore",
     "Bloodroot Apothecary",
+    "Gourmand's Talent",
 ];

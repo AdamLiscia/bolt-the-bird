@@ -1021,6 +1021,9 @@ pub struct CardDef {
     /// "You may activate loyalty abilities of [this] on any player's turn any time you could cast an
     /// instant." (Teferi, Master of Time), in `Game::loyalty_actions`.
     pub loyalty_at_instant_speed: bool,
+    /// Activated abilities every other creature has, whoever controls it (Ygra, Eater of All: "{2},
+    /// {T}, Sacrifice this permanent: You gain 3 life."), in `Game::borrowed_activated`.
+    pub other_creatures_have: Vec<Activated>,
 }
 
 /// A card's pieces from the d4 subsystems (see [`CardDef::subsystems`]).
@@ -1529,6 +1532,7 @@ impl CardDef {
             opponents_cant_make_you_sacrifice: false,
             exiles_opponents_cards_to_play: false,
             loyalty_at_instant_speed: false,
+            other_creatures_have: Vec::new(),
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -1812,6 +1816,7 @@ impl CardDef {
             opponents_cant_make_you_sacrifice: false,
             exiles_opponents_cards_to_play: false,
             loyalty_at_instant_speed: false,
+            other_creatures_have: Vec::new(),
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -2095,6 +2100,7 @@ impl CardDef {
             opponents_cant_make_you_sacrifice: false,
             exiles_opponents_cards_to_play: false,
             loyalty_at_instant_speed: false,
+            other_creatures_have: Vec::new(),
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
