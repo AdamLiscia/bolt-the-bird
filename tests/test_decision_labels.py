@@ -273,3 +273,8 @@ def test_karadors_graveyard_cast_is_named():
 def test_currency_converter_returns_an_exiled_card():
     dec = {"kind": "ExiledWithToGraveyard"}
     assert sv._decision_label(dec, "Pick", 0, "Forest") == "Put into its owner's graveyard: Forest"
+
+
+def test_pippin_protection_from_a_card_type():
+    assert label({"kind": "ProtectionCardType"}, "Mode", 1) == "Protection from creatures"
+    assert label({"kind": "ProtectionCardType"}, "Mode", 6) == "Protection from sorceries"

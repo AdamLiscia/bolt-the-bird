@@ -2676,6 +2676,22 @@ pub enum Effect {
     },
     /// "Each player draws X cards." (Skyscribing), X the spell's X, you first.
     EachPlayerDrawsX,
+    /// The creature in `slot` (the source, with `None`) gains protection from card type `kind`
+    /// until end of turn (`Decision::ChooseCardType`'s order: 0 artifact, 1 creature, 2
+    /// enchantment, 3 instant, 4 land, 5 planeswalker, 6 sorcery), in
+    /// `Game::type_protection_grants` (Seasoned Dungeoneer: "gains protection from creatures",
+    /// `kind: 1`).
+    ProtectionFromCardTypeEot {
+        slot: Option<u8>,
+        kind: u8,
+    },
+    /// The creature in `slot` (the source, with `None`) gains protection from the card type of
+    /// your choice until end of turn, as `Decision::ProtectionCardType` (Pippin, Guard of the
+    /// Citadel).
+    ProtectionChosenCardTypeEot(Option<u8>),
+    /// Put a slime counter (`Object::slime`) on each creature you don't control (Toxrill, the
+    /// Corrosive's end step trigger).
+    SlimeCounterOnEachCreatureYouDontControl,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -2861,6 +2877,9 @@ pub enum Scale {
     PerCardInAllHands,
     /// The number of cards in all graveyards (Lord of Extinction).
     PerCardInAllGraveyards,
+    /// Slime counters on the affected permanent itself (`Object::slime`; Toxrill, the Corrosive:
+    /// "Creatures you don't control get -1/-1 for each slime counter on them").
+    PerSlimeCounterOnIt,
 }
 
 /// A condition on a static ability ("as long as ...").

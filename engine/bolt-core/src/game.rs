@@ -328,6 +328,11 @@ pub struct Object {
     /// Whether it was an artifact when it last left the battlefield, statics included (last known
     /// information, CR 603.10a: Ygra's "other creatures are Food artifacts" for Marionette Master).
     pub left_as_artifact: bool,
+    /// Slime counters on it (Toxrill, the Corrosive): reset as it leaves the battlefield.
+    pub slime: i32,
+    /// The slime counters it had as it last left the battlefield (last known information, CR
+    /// 603.10a: Toxrill's "a creature you don't control with a slime counter on it dies").
+    pub last_slime: i32,
 }
 
 /// One resolved effect's change to a permanent's characteristics (lane d3's type-changing store):
@@ -1424,6 +1429,10 @@ pub enum Decision {
         land: usize,
         nonland: usize,
     },
+    /// `Mode(t)`: `target` gains protection from card type `t` (`ChooseCardType`'s order: 0
+    /// artifact, 1 creature, 2 enchantment, 3 instant, 4 land, 5 planeswalker, 6 sorcery) until end
+    /// of turn (Pippin, Guard of the Citadel).
+    ProtectionCardType { target: ObjId },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -1905,6 +1914,10 @@ pub struct Game {
     /// The turn each player last cast a creature spell from their graveyard with Karador's
     /// permission (`ManaExt::creature_from_graveyard_once_each_turn`).
     pub karador_turn: [u32; 2],
+    /// Protection from card types granted until end of turn: (object, its zone change count, the
+    /// card types as bits in `Decision::ChooseCardType`'s order, 1 << 0 artifact ... 1 << 6
+    /// sorcery, the turn) (Pippin, Guard of the Citadel; Seasoned Dungeoneer: creatures).
+    pub type_protection_grants: Vec<(ObjId, u32, u8, u32)>,
 }
 
 /// `Action::CastFromGraveyardAs`'s second number for Karador, Ghost Chieftain's once-each-turn
@@ -2203,6 +2216,7 @@ impl Game {
             hand_links: Vec::new(),
             saddled: Vec::new(),
             karador_turn: [0; 2],
+            type_protection_grants: Vec::new(),
         }
     }
 
@@ -2473,6 +2487,8 @@ impl Game {
             any_color_mana: false,
             corpse_counter: false,
             left_as_artifact: false,
+            slime: 0,
+            last_slime: 0,
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -2648,7 +2664,20 @@ impl Game {
         if t.creature && !t.artifact && self.ygra_food(id) {
             t.artifact = true; // Ygra: "Food artifacts in addition to their other types"
         }
+        if t.creature && !t.legendary && self.ring_bearer_now(id) {
+            t.legendary = true; // the Ring: "Your Ring-bearer is legendary"
+        }
         t
+    }
+
+    /// `Game::ring_makes_legendary` (d4) for the type pass, read from the Ring's state directly:
+    /// `ring_bearer` checks `types_of`, so calling it here would recurse. The caller has already
+    /// checked that `id` is a creature.
+    fn ring_bearer_now(&self, id: ObjId) -> bool {
+        let o = self.obj(id);
+        o.zone == Zone::Battlefield
+            && self.ring_level[o.controller] >= 1
+            && self.ring_bearer[o.controller] == Some((id, o.zcc))
     }
 
     /// Ygra, Eater of All: a creature on the battlefield while another permanent with
@@ -3245,6 +3274,7 @@ impl Game {
                             Some(Scale::PerCardInAllGraveyards) => {
                                 Some(self.players.iter().map(|pl| pl.graveyard.len()).sum())
                             }
+                            Some(Scale::PerSlimeCounterOnIt) => Some(o.slime.max(0) as usize),
                             _ => None,
                         };
                         if let Some(n) = scaled {
@@ -3317,8 +3347,47 @@ impl Game {
         {
             return true; // Serra's Emissary: "creatures you control"
         }
+        if self.type_protected(id, source) {
+            return true; // Pippin, Seasoned Dungeoneer: protection from a card type
+        }
         let p = self.protection(id);
         self.colors_of(source).iter().zip(p).any(|(c, pr)| *c && pr)
+    }
+
+    /// Whether a card-type protection grant on `id` this turn (`Game::type_protection_grants`)
+    /// covers one of `source`'s card types.
+    pub fn type_protected(&self, id: ObjId, source: ObjId) -> bool {
+        let zcc = self.obj(id).zcc;
+        let mask = self
+            .type_protection_grants
+            .iter()
+            .filter(|g| g.0 == id && g.1 == zcc && g.3 == self.turn)
+            .fold(0u8, |m, g| m | g.2);
+        if mask == 0 {
+            return false;
+        }
+        let t = self.types_of(source);
+        let kinds = [
+            t.artifact,
+            t.creature,
+            t.enchantment,
+            t.instant,
+            t.land,
+            t.planeswalker,
+            t.sorcery,
+        ];
+        kinds
+            .iter()
+            .enumerate()
+            .any(|(k, &has)| has && mask & (1 << k) != 0)
+    }
+
+    /// `id` gains protection from the card types in `mask` (`Game::type_protection_grants`'s bits)
+    /// until end of turn.
+    fn grant_type_protection(&mut self, id: ObjId, mask: u8) {
+        let (zcc, turn) = (self.obj(id).zcc, self.turn);
+        self.type_protection_grants.retain(|g| g.3 == turn);
+        self.type_protection_grants.push((id, zcc, mask, turn));
     }
 
     fn keywords_inner(&self, id: ObjId) -> Keywords {
@@ -4926,6 +4995,8 @@ impl Game {
         }
         if from == Zone::Battlefield {
             o.last_counters = (o.counters, o.stun, o.keyword_counters);
+            o.last_slime = o.slime;
+            o.slime = 0;
             o.corpse_counter = false;
             o.stun = 0;
             o.skip_untap = false;
@@ -6408,8 +6479,9 @@ impl Game {
                         })
                         && f.spell_creature.is_none_or(|c| c == ty.creature)
                         && (!f.spell_artifact_or_creature || ty.artifact || ty.creature)
+                        // A split spell has only its cast half's mana value (CR 709.3b).
                         && f.max_mana_value
-                            .is_none_or(|m| self.def_of(id).cost.mana_value() <= m);
+                            .is_none_or(|m| self.stack_mana_cost(id).mana_value() <= m);
                 }
                 if let Some(creature_only) = f.graveyard {
                     let d = self.def_of(id);
@@ -13809,6 +13881,7 @@ impl Game {
             }
             Decision::TaintedPact { .. } => vec![Action::Yes, Action::No],
             Decision::ProtectionColor { .. } => (0..5).map(Action::Mode).collect(),
+            Decision::ProtectionCardType { .. } => (0..7).map(Action::Mode).collect(),
             Decision::ChooseCardType { .. } => (0..7).map(Action::Mode).collect(),
             Decision::ConniveDiscard { .. } => hand.iter().copied().map(Action::Pick).collect(),
             Decision::VowCreature { .. } => self.creatures(p).map(Action::Pick).collect(),
@@ -15485,6 +15558,11 @@ impl Game {
                 let nonland = nonland + u8::from(!self.def_of(c).types.land);
                 self.move_to(c, Zone::Graveyard);
                 self.connive_next(p, creature, left - 1, nonland);
+            }
+            (Decision::ProtectionCardType { target }, Action::Mode(t)) => {
+                if self.obj(target).zone == Zone::Battlefield {
+                    self.grant_type_protection(target, 1 << (t % 7));
+                }
             }
             (Decision::ProtectionColor { target }, Action::Mode(c)) => {
                 let mut colors = [false; 5];
@@ -22954,6 +23032,39 @@ impl Game {
                 };
                 if let Some(t) = target.filter(|&t| self.obj(t).zone == Zone::Battlefield) {
                     self.ask(item.controller, Decision::ProtectionColor { target: t });
+                }
+            }
+            Effect::ProtectionFromCardTypeEot { slot, kind } => {
+                let target = match slot {
+                    Some(n) => Game::slot_object(item, legal, n),
+                    None => Some(src),
+                };
+                if let Some(t) = target.filter(|&t| self.obj(t).zone == Zone::Battlefield) {
+                    self.grant_type_protection(t, 1 << (kind % 7));
+                }
+            }
+            Effect::ProtectionChosenCardTypeEot(slot) => {
+                let target = match slot {
+                    Some(n) => Game::slot_object(item, legal, n),
+                    None => Some(src),
+                };
+                if let Some(t) = target.filter(|&t| self.obj(t).zone == Zone::Battlefield) {
+                    self.ask(item.controller, Decision::ProtectionCardType { target: t });
+                }
+            }
+            Effect::SlimeCounterOnEachCreatureYouDontControl => {
+                let p = item.controller;
+                let theirs: Vec<ObjId> = self
+                    .battlefield
+                    .iter()
+                    .copied()
+                    .filter(|&c| self.obj(c).controller != p && self.types_of(c).creature)
+                    .collect();
+                for c in theirs {
+                    let n = self.doubling(self.obj(c).controller);
+                    self.obj_mut(c).slime += n;
+                    self.counters_placed(p, n);
+                    self.counter_put_on(c);
                 }
             }
             Effect::YourCreaturesProtectionEachColorEot => {
