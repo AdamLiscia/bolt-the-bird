@@ -123,3 +123,26 @@ def test_the_value_head_regresses_to_the_given_returns():
     with torch.no_grad():
         after = ((m(x)[1] - target) ** 2).mean().item()
     assert after < before
+
+
+def test_value_mse_z_measures_the_value_against_the_result_whatever_the_target():
+    import numpy as np
+    import torch
+    from test_play_commander import obs
+
+    from bolt.play_data import to_arrays
+    from bolt.play_encoding import encode
+    from bolt.play_net import PlayNet
+    from bolt.play_ppo import ppo_step
+
+    steps = [{"game": 0, "seat": 0, "enc": encode(obs(), 0), "action": 1, "logp": -0.7, "value": 0.0}] * 4
+    arr = to_arrays(steps, [{"result": "p0"}])  # z = +1
+    net = PlayNet(n_cards=8, dim=16, layers=1, heads=2)
+    idx = np.arange(4)
+    with torch.no_grad():
+        v = net(__import__("bolt.play_data", fromlist=["batch"]).batch(arr, idx)[0])[1]
+    opt = torch.optim.SGD(net.parameters(), lr=0.0)
+    ret = torch.full((4,), float(v[0]))  # a target equal to V: value_mse 0, but V is still far from z
+    st = ppo_step(net, None, opt, arr, idx, torch.zeros(4), ret=ret)
+    assert st["value_mse"] < 1e-8
+    assert abs(st["value_mse_z"] - float(((v - 1) ** 2).mean())) < 1e-5

@@ -290,7 +290,18 @@ def main():
         ret = torch.as_tensor(arr["ret"])
         t1 = time.time()
         net.train()
-        sums, steps = {"loss": 0.0, "clipped": 0.0, "kl": 0.0, "value_mse": 0.0, "entropy": 0.0, "ratio_dev": 0.0}, 0
+        sums, steps = (
+            {
+                "loss": 0.0,
+                "clipped": 0.0,
+                "kl": 0.0,
+                "value_mse": 0.0,
+                "entropy": 0.0,
+                "ratio_dev": 0.0,
+                "value_mse_z": 0.0,
+            },
+            0,
+        )
         prng = np.random.default_rng(it)
         for _ in range(a.epochs):
             perm = keep[prng.permutation(n)]

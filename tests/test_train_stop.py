@@ -97,7 +97,7 @@ def test_every_iteration_row_reports_entropy_and_ratio_deviation(trainer, monkey
     rows = json.loads((tmp_path / "results" / "ppo_play_stoptest.json").read_text())["history"]
     assert len(rows) == 2
     for r in rows:
-        assert r["entropy"] > 0 and r["ratio_dev"] >= 0, r
+        assert r["entropy"] > 0 and r["ratio_dev"] >= 0 and r["value_mse_z"] >= 0, r
 
 
 def test_a_changed_lr_applies_to_the_resumed_optimizer(monkeypatch):

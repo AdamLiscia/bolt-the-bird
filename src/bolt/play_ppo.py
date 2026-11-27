@@ -62,7 +62,7 @@ def ppo_step(net, ref_net, opt, arr, idx, adv, clip=0.2, kl_coef=0.02, value_coe
     n = len(idx)
     pos = {int(i): k for k, i in enumerate(idx)}
     total = 0.0
-    stats = {"clipped": 0.0, "kl": 0.0, "value_mse": 0.0, "entropy": 0.0, "ratio_dev": 0.0}
+    stats = {"clipped": 0.0, "kl": 0.0, "value_mse": 0.0, "entropy": 0.0, "ratio_dev": 0.0, "value_mse_z": 0.0}
     for g in groups(arr, idx):
         x, action, z = batch(arr, g)
         logits, value = net(x)
@@ -74,6 +74,8 @@ def ppo_step(net, ref_net, opt, arr, idx, adv, clip=0.2, kl_coef=0.02, value_coe
         a = adv[[pos[int(i)] for i in g]]
         old = torch.as_tensor(arr["logp"][g])
         pl, st = ppo_loss(logits, ref, action, old, a, clip, kl_coef)
+        with torch.no_grad():  # against the game's result whatever the target: comparable across --lam settings
+            mse_z = torch.nn.functional.mse_loss(value, z).item()
         if ret is not None:
             z = ret[[pos[int(i)] for i in g]]
         vl = torch.nn.functional.mse_loss(value, z)
@@ -81,6 +83,7 @@ def ppo_step(net, ref_net, opt, arr, idx, adv, clip=0.2, kl_coef=0.02, value_coe
         total = total + w * (pl + value_coef * vl)
         stats["clipped"] += w * st["clipped"]
         stats["kl"] += w * st["kl"]
+        stats["value_mse_z"] += w * mse_z
         stats["ratio_dev"] += w * st["ratio_dev"]
         with torch.no_grad():  # the policy's entropy over each decision's legal moves (diagnostic only)
             lp = torch.log_softmax(logits, -1)
