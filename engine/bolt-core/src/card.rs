@@ -1160,6 +1160,10 @@ pub struct CardDef {
     /// Soul of the Wild), in `Game::types_of` and `Game::has_subtype`; it needs a static (a static
     /// source) so the check is cheap.
     pub your_nontoken_creatures_are_forest_lands: bool,
+    /// An Aura or Equipment: the permanent it's attached to is these colors and no others (Nim
+    /// Deathmantle: "is a black Zombie"; the Zombie is `enchanted_creature_type_becomes`, which
+    /// works for Equipment too), in `Game::colors_of`.
+    pub attached_colors_become: Option<[bool; 5]>,
 }
 
 /// A card's pieces from the d4 subsystems (see [`CardDef::subsystems`]).
@@ -1772,6 +1776,7 @@ impl CardDef {
             begins_game_with_luck_counter: false,
             enchanted_card_types_become: None,
             your_nontoken_creatures_are_forest_lands: false,
+            attached_colors_become: None,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -2081,6 +2086,7 @@ impl CardDef {
             begins_game_with_luck_counter: false,
             enchanted_card_types_become: None,
             your_nontoken_creatures_are_forest_lands: false,
+            attached_colors_become: None,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -2390,6 +2396,7 @@ impl CardDef {
             begins_game_with_luck_counter: false,
             enchanted_card_types_become: None,
             your_nontoken_creatures_are_forest_lands: false,
+            attached_colors_become: None,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,

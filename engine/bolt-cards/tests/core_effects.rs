@@ -3878,3 +3878,47 @@ fn roll_two_dice_asks_which_is_the_damage() {
         assert_eq!(dead, damage >= 4, "Courser has toughness 4");
     }
 }
+
+#[test]
+fn search_for_an_enchantment_with_mana_value_at_most() {
+    let search = Effect::Search {
+        what: SearchFor::EnchantmentMvAtMost(3),
+        to: SearchTo::Hand,
+        n: 1,
+        kicked_n: None,
+    };
+    let (mut g, t) = game_with(vec![sorcery(vec![], vec![search])]);
+    let small = g.add_card(0, cid("Darksteel Mutation"), Zone::Library);
+    let big = g.add_card(0, cid("Underworld Dreams"), Zone::Library);
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Library);
+    let c = g.add_card(0, t, Zone::Hand);
+    act(&mut g, Action::Cast(c));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Pick(small)) && legal.contains(&Action::Pick(big)));
+    assert!(!legal.contains(&Action::Pick(ring)));
+    resolve_all(&mut g, &[Action::Pick(small)]);
+    assert_eq!(g.obj(small).zone, Zone::Hand);
+}
+
+#[test]
+fn an_attached_permanent_can_set_the_creatures_colors_and_type() {
+    let mut eq = (*set("CMD").unwrap().defs)[cid("Shadowspear")].clone();
+    eq.name = "Test Deathmantle".into();
+    eq.attached_colors_become = Some([false, false, true, false, false]);
+    eq.enchanted_creature_type_becomes = Some("Zombie");
+    let (mut g, t) = game_with(vec![eq]);
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Battlefield);
+    let e = g.add_card(0, t, Zone::Battlefield);
+    assert_eq!(g.colors_of(lions), [true, false, false, false, false]);
+    let zcc = g.obj(lions).zcc;
+    g.objects[e.0 as usize].attached_to = Some((lions, zcc));
+    assert_eq!(
+        g.colors_of(lions),
+        [false, false, true, false, false],
+        "black only"
+    );
+    assert!(g.has_subtype(lions, "Zombie") && !g.has_subtype(lions, "Cat"));
+}

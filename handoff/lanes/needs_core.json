@@ -7520,7 +7520,7 @@
   {
    "card": "Urza's Ruinous Blast",
    "deck": "IDEA Ratadrabik of Urborg",
-   "missing": "idea-deck claim (idea_next11, 2026-11-27): exile all nonland permanents that aren't legendary; scripted after the pool push [d3 batch 41: held; needs merger: the legendary sorcery cast restriction (CR 205.4d); the exile-all-nonlegendary-nonland effect is d3's, built with the card]",
+   "missing": "idea-deck claim (idea_next11, 2026-11-27): exile all nonland permanents that aren't legendary; scripted after the pool push [d3 batch 41: held; needs merger: the legendary sorcery cast restriction (CR 205.4d); the exile-all-nonlegendary-nonland effect is d3's, built with the card] [routing 2026-11-27: the legendary sorcery cast restriction goes to lane B]",
    "lane": "d3",
    "theme": "effects and statics",
    "owner": "d3"
@@ -7536,7 +7536,7 @@
   {
    "card": "Ashaya, Soul of the Wild",
    "deck": "IDEA Toski, Bearer of Secrets",
-   "missing": "idea-deck claim (idea_next11, 2026-11-27): scaled P/T (lands you control) and nontoken creatures you control are Forest lands; scripted after the pool push [done by d3 batch 41: CardDef::your_nontoken_creatures_are_forest_lands (+ your_subtypes_tap_for_green Forest), scripted (pg_d3)]",
+   "missing": "idea-deck claim (idea_next11, 2026-11-27): scaled P/T (lands you control) and nontoken creatures you control are Forest lands; scripted after the pool push [done by d3 batch 41: CardDef::your_nontoken_creatures_are_forest_lands (+ your_subtypes_tap_for_green Forest), scripted (pg_d3)] [known limit, accepted for the demo: a creature with its own mana ability keeps only that one, not also the Forest's {T}: Add {G}]",
    "lane": "d3",
    "theme": "effects and statics",
    "owner": "d3"
@@ -7560,7 +7560,7 @@
   {
    "card": "Scion of Oona",
    "deck": "IDEA Alela, Artful Provocateur",
-   "missing": "idea-deck claim (idea_next11, 2026-11-27): Faerie lord with granted shroud; scripted after the pool push [done by d3 batch 41: scripted (pg_d3)]",
+   "missing": "idea-deck claim (idea_next11, 2026-11-27): Faerie lord with granted shroud; scripted after the pool push [done by d3 batch 41: scripted (pg_d3)] [known limit, accepted for the demo: the shroud covers Faerie creatures only]",
    "lane": "d3",
    "theme": "effects and statics",
    "owner": "d3"

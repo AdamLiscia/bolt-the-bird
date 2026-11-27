@@ -3125,6 +3125,8 @@ pub enum SearchFor {
     Artifact,
     /// A creature or land card (Archdruid's Charm).
     CreatureOrLand,
+    /// An enchantment card with mana value at most this (Zur the Enchanter: 3).
+    EnchantmentMvAtMost(u32),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

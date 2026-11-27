@@ -3132,9 +3132,20 @@ impl Game {
             None if self.belled(id) => [false, false, true, false, false],
             None => printed,
         };
+        let printed = self.attached_colors(id).unwrap_or(printed);
         self.attached_static(id)
             .and_then(|s| s.set_colors)
             .unwrap_or(printed)
+    }
+
+    /// The colors an Aura or Equipment attached to `id` (with its abilities) gives it
+    /// (`CardDef::attached_colors_become`: Nim Deathmantle).
+    fn attached_colors(&self, id: ObjId) -> Option<[bool; 5]> {
+        let zcc = self.obj(id).zcc;
+        self.static_sources.iter().find_map(|&a| {
+            let colors = self.def_of(a).attached_colors_become?;
+            (self.obj(a).attached_to == Some((id, zcc)) && !self.lost_abilities(a)).then_some(colors)
+        })
     }
 
     /// The ability-removing static of an Aura attached to `id`, if any (Witness Protection,
@@ -14466,6 +14477,7 @@ impl Game {
                             && c.generic <= 1
                     }
                     SearchFor::ColorlessCreature => d.types.creature && !d.colors.iter().any(|&c| c),
+                    SearchFor::EnchantmentMvAtMost(mv) => d.types.enchantment && d.cost.mana_value() <= mv,
                 }
             })
             .collect()
