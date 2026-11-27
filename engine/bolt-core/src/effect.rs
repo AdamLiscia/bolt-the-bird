@@ -2734,6 +2734,12 @@ pub enum Effect {
     /// Sorcerer Class, level 3: the spell in `extra` deals damage to each opponent equal to the
     /// number of instant and sorcery spells you've cast this turn (`Game::instants_sorceries_cast`).
     ExtraDamagesEachOpponentInstantsSorceriesThisTurn,
+    /// Roaring Earth's channel: X +1/+1 counters (the item's X) on the land in `slot`, and it
+    /// becomes a 0/0 creature with `subtype` and haste for good (still a land), as `Awaken`.
+    AwakenX {
+        slot: u8,
+        subtype: &'static str,
+    },
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

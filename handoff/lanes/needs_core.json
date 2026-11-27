@@ -4914,7 +4914,7 @@
   {
    "card": "Case of the Ransacked Lab",
    "deck": "Ghyrson Starn, Kelermorph (Spr3adsh33)",
-   "missing": "magecraft/damage triggers",
+   "missing": "magecraft/damage triggers [d1 batch 30: ManaExt::instant_sorcery_discount = 1 is in; still needs the Case 'to solve / solved' infrastructure (merger or lane B)]",
    "lane": "mac-b",
    "theme": "triggers",
    "owner": "d2"
@@ -6818,7 +6818,7 @@
   {
    "card": "Cabal Ritual",
    "deck": "Sephiroth, Fabled SOLDIER",
-   "missing": "add {B}{B}{B}, or five with threshold [claimed by d1, idea decks]",
+   "missing": "add {B}{B}{B}, or five with threshold [claimed by d1, idea decks] [done by d1 batch 30: scripted in pg_d1]",
    "lane": "d1",
    "theme": "mana",
    "owner": "d1"
@@ -6858,7 +6858,7 @@
   {
    "card": "Volrath's Stronghold",
    "deck": "Sephiroth, Fabled SOLDIER",
-   "missing": "{1}{B},{T}: creature card from graveyard on top [claimed by d1, idea decks]",
+   "missing": "{1}{B},{T}: creature card from graveyard on top [claimed by d1, idea decks] [done by d1 batch 30: scripted in pg_d1]",
    "lane": "d1",
    "theme": "mana",
    "owner": "d1"
@@ -6890,7 +6890,7 @@
   {
    "card": "Crop Rotation",
    "deck": "Tifa Lockhart",
-   "missing": "sacrifice a land as an additional cost [claimed by d1, idea decks]",
+   "missing": "sacrifice a land as an additional cost [claimed by d1, idea decks] [done by d1 batch 30: scripted in pg_d1]",
    "lane": "d1",
    "theme": "mana",
    "owner": "d1"
@@ -6971,6 +6971,14 @@
    "card": "Mox Diamond",
    "deck": "Kenrith, the Returned King",
    "missing": "discard a land or it goes to the graveyard [claimed by d1, idea decks]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Horizon Explorer",
+   "deck": "Hearthhull, the Worldseed",
+   "missing": "d1 batch 30: ManaExt::your_lands_enter_untapped is in; the script waits on d2's Lander token 111 (t.lander) reaching tarkir",
    "lane": "d1",
    "theme": "mana",
    "owner": "d1"

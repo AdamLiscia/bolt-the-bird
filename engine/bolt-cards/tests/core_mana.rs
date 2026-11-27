@@ -3147,3 +3147,45 @@ mod remove_counters_from_others {
         );
     }
 }
+/// Horizon Explorer's "Lands you control enter untapped" and Case of the Ransacked Lab's instant and
+/// sorcery discount (`ManaExt::your_lands_enter_untapped`, `ManaExt::instant_sorcery_discount`).
+mod untapped_lands_and_spell_discount {
+    use bolt_cards::set;
+    use bolt_core::{Action, Game, Step, Zone};
+
+    fn cid(name: &str) -> usize {
+        set("CMD").unwrap().index_of(name).unwrap()
+    }
+
+    #[test]
+    fn lands_enter_untapped_and_instants_cost_one_less() {
+        let mut defs = (*set("CMD").unwrap().defs).clone();
+        let explorer = cid("Ornithopter");
+        defs[explorer].mana_ext.your_lands_enter_untapped = true;
+        defs[explorer].mana_ext.instant_sorcery_discount = 1;
+        let plains = vec![cid("Plains"); 99];
+        let mut g = Game::new_commander(
+            std::sync::Arc::new(defs),
+            [&plains, &plains],
+            [cid("Bello, Bard of the Brambles"), cid("Ms. Bumbleflower")],
+            7,
+            0,
+        );
+        g.auto_pass = false;
+        g.start_turn(3, 0);
+        while g.step != Step::Main1 {
+            g.apply(Action::PassPriority).unwrap();
+        }
+        g.add_card(0, explorer, Zone::Battlefield);
+        let fen = g.add_card(0, cid("Vernal Fen"), Zone::Hand); // enters tapped without two basics
+        g.apply(Action::PlayLand(fen)).unwrap();
+        assert!(!g.obj(fen).tapped, "enters untapped");
+        let pyro = g.add_card(0, cid("Pyromatics"), Zone::Hand); // {1}{R}, with one Mountain: {R}
+        g.add_card(0, cid("Mountain"), Zone::Battlefield);
+        g.objects[fen.0 as usize].tapped = true;
+        assert!(
+            g.legal_actions().contains(&Action::CastX(pyro, 0)),
+            "{{1}} less (unreplicated)"
+        );
+    }
+}

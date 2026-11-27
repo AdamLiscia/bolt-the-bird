@@ -1318,6 +1318,10 @@ pub struct ManaExt {
     /// "Whenever a player taps a basic land for mana, that player adds one mana of any type that
     /// land produced." (Lavaleaper): each basic land makes one more of its mana.
     pub basic_lands_add_extra: bool,
+    /// "Lands you control enter untapped." (Horizon Explorer): overrides every "enters tapped".
+    pub your_lands_enter_untapped: bool,
+    /// "Instant and sorcery spells you cast cost {N} less to cast." (Case of the Ransacked Lab: 1)
+    pub instant_sorcery_discount: u8,
 }
 
 /// "You may pay [mana], [life] and sacrifice or tap [creatures] rather than pay this spell's mana

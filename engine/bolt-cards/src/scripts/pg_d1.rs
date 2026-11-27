@@ -1724,6 +1724,46 @@ pub fn script(name: &str) -> Option<Script> {
                 d.triggers.push(Trigger { when: When::Enters, ability: up_to(vec![other], vec![Effect::Bounce(0)]) });
             },
         ),
+        // ---- idea decks: Tifa ----
+        "Roaring Earth" => s(
+            &[
+                "Landfall — Whenever a land you control enters, put a +1/+1 counter on target creature or Vehicle you control.",
+                "Channel — {X}{G}{G}, Discard this card: Put X +1/+1 counters on target land you control. It becomes a 0/0 green Spirit creature with haste. It's still a land.",
+            ],
+            |d, _| {
+                // Simplification: a Vehicle isn't a target unless it's a creature; the Spirit keeps
+                // the land's colors.
+                on(d, When::LandYouControlEnters, vec![YOUR_CREATURE], vec![Effect::Counters { slot: 0, n: 1 }]);
+                let land = Filter { players: false, creatures: false, planeswalkers: false, lands: true, controller: Controller::You, ..Filter::ANY };
+                let n = activated(d, "{X}{G}{G}", false, vec![land], vec![Effect::AwakenX { slot: 0, subtype: "Spirit" }]);
+                d.activated[n].from_hand_discard = true;
+            },
+        ),
+        // ---- idea decks: Sephiroth, Tifa ----
+        "Cabal Ritual" => s(
+            &["Add {B}{B}{B}.", "Threshold — Add {B}{B}{B}{B}{B} instead if there are seven or more cards in your graveyard."],
+            |d, _| {
+                let three = Effect::AddMana { color: Color::Black, n: 3 };
+                let two = Effect::AddMana { color: Color::Black, n: 2 };
+                let mut a = Ability::new(vec![], vec![three, Effect::StopUnlessCondition, two]);
+                a.condition = Some(Condition::Threshold);
+                d.spell = Some(a);
+            },
+        ),
+        "Volrath's Stronghold" => s(
+            &["{T}: Add {C}.", "{1}{B}, {T}: Put target creature card from your graveyard on top of your library."],
+            |d, _| {
+                d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                activated(d, "{1}{B}", true, vec![graveyard_cards(true, Controller::You)], vec![Effect::ToLibrary(0, true)]);
+            },
+        ),
+        "Crop Rotation" => s(
+            &["As an additional cost to cast this spell, sacrifice a land.", "Search your library for a land card, put that card onto the battlefield, then shuffle."],
+            |d, _| {
+                d.extra_cost = Some(ExtraCost::SacrificeLand);
+                spell(d, vec![], vec![search(SearchFor::Land, SearchTo::Battlefield { tapped: false })]);
+            },
+        ),
         _ => None,
     }
 }
@@ -1941,4 +1981,8 @@ pub const PG_D1_SCRIPTED: &[&str] = &[
     "Iridescent Vinelasher",
     "Orcish Lumberjack",
     "Disruptor of Currents",
+    "Roaring Earth",
+    "Cabal Ritual",
+    "Volrath's Stronghold",
+    "Crop Rotation",
 ];

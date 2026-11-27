@@ -3550,3 +3550,59 @@ fn disruptor_has_flash_and_vinelasher_offers_offspring() {
     assert!(g.types_of(core).creature, "a 4/4 until end of turn");
     assert_eq!(g.power(core), 4);
 }
+
+#[test]
+fn roaring_earth_channels_from_hand_into_a_spirit_land() {
+    let mut g = table();
+    let re = hand(&mut g, 0, "Roaring Earth");
+    let forest = g.permanents(0).find(|&x| g.def_of(x).name == "Forest").unwrap();
+    let channel = g
+        .legal_actions()
+        .into_iter()
+        .find(|a| matches!(a, Action::ActivateX { id, x: 2, .. } if *id == re))
+        .expect("channel from hand with X = 2");
+    act(&mut g, channel);
+    act(&mut g, Action::Target(Target::Object(forest)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(re).zone, Zone::Graveyard, "discarded");
+    assert!(g.types_of(forest).creature && g.types_of(forest).land);
+    assert_eq!(g.power(forest), 2);
+}
+
+#[test]
+fn cabal_ritual_adds_five_with_threshold() {
+    for (cards, mana) in [(0, 3), (7, 5)] {
+        let mut g = game(&["Swamp", "Swamp"]); // {1}{B}
+        for _ in 0..cards {
+            g.add_card(0, cid("Plains"), Zone::Graveyard);
+        }
+        let r = hand(&mut g, 0, "Cabal Ritual");
+        act(&mut g, Action::Cast(r));
+        resolve_all(&mut g, &[]);
+        assert_eq!(g.players[0].pool.len(), mana, "{cards} cards in the graveyard");
+    }
+}
+
+#[test]
+fn crop_rotation_trades_a_land_and_volraths_stronghold_tops_a_creature() {
+    let mut g = game(&["Forest", "Swamp", "Swamp"]);
+    let forest = g.permanents(0).find(|&x| g.def_of(x).name == "Forest").unwrap();
+    let vs = g.add_card(0, cid("Volrath's Stronghold"), Zone::Library);
+    let cr = hand(&mut g, 0, "Crop Rotation");
+    act(&mut g, Action::CastWith(cr, forest));
+    while !g.items.is_empty() || matches!(g.pending, Pending::ChooseTarget(_) | Pending::Decide(_)) {
+        let a = match g.pending {
+            Pending::Decide(_) if g.legal_actions().contains(&Action::Pick(vs)) => Action::Pick(vs),
+            Pending::ChooseTarget(_) | Pending::Decide(_) => g.legal_actions()[0],
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.obj(forest).zone, Zone::Graveyard);
+    assert_eq!(g.obj(vs).zone, Zone::Battlefield);
+    let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Graveyard);
+    act(&mut g, Action::Activate(vs, 0));
+    act(&mut g, Action::Target(Target::Object(elves)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(*g.players[0].library.last().unwrap(), elves);
+}
