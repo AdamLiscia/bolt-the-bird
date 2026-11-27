@@ -2861,6 +2861,8 @@ pub enum Pick {
     CreatureManaValueAtMost(u32),
     /// A creature or planeswalker card (Takenuma, Abandoned Mire).
     CreatureOrPlaneswalker,
+    /// A noncreature, nonland card (Narset, Parter of Veils).
+    NoncreatureNonland,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

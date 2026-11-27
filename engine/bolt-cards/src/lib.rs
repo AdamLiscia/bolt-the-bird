@@ -532,6 +532,10 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         your_creature_spells_uncounterable: false,
         your_color_spells_uncounterable: None,
         your_nontoken_creatures_have_riot: false,
+        opponents_life_gain_becomes_loss: false,
+        opponents_draw_at_most_one: false,
+        overload_spell: None,
+        others_of_chosen_type_enter_with_counter: false,
     };
     def.color_identity = color_identity(o);
     def.phyrexian = phyrexian;

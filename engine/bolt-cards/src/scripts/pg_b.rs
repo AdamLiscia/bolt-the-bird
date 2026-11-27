@@ -2115,6 +2115,67 @@ pub fn script(name: &str) -> Option<Script> {
                 static_on(d, Scope::OtherYourCreatures, false, Keywords::TRAMPLE);
             },
         ),
+        "Plague Drone" => s(&["Rot Fly \u{2014} If an opponent would gain life, that player loses that much life instead."], |d, _| {
+            d.opponents_life_gain_becomes_loss = true;
+        }),
+        "Narset, Parter of Veils" => s(
+            &[
+                "Each opponent can't draw more than one card each turn.",
+                "\u{2212}2: Look at the top four cards of your library. You may reveal a noncreature, nonland card from among them and put it into your hand. Put the rest on the bottom of your library in a random order.",
+            ],
+            |d, _| {
+                d.opponents_draw_at_most_one = true;
+                let look = Effect::LookAtTop {
+                    n: 4,
+                    pick: Pick::NoncreatureNonland,
+                    chosen_to: LookTo::Hand,
+                    rest_to: LookRest::BottomRandom,
+                };
+                loyalty(d, -2, Ability::new(vec![], vec![look]));
+            },
+        ),
+        "Kami of Whispered Hopes" => s(
+            &[
+                "If one or more +1/+1 counters would be put on a permanent you control, that many plus one +1/+1 counters are put on that permanent instead.",
+                "{T}: Add X mana of any one color, where X is this creature's power.",
+            ],
+            |d, _| {
+                // Each of the X mana may be any color (the engine doesn't hold them to one color).
+                d.counters_plus_one = true;
+                d.mana = Some(ManaSource::of(&Color::ALL));
+                d.mana_equal_power = true;
+            },
+        ),
+        "Dauthi Voidwalker" => s(
+            &[
+                "If a card would be put into an opponent's graveyard from anywhere, instead exile it with a void counter on it.",
+                "{T}, Sacrifice this creature: Choose an exiled card an opponent owns with a void counter on it. You may play it this turn without paying its mana cost.",
+            ],
+            |d, _| {
+                d.opponents_cards_exiled_with_void = true;
+                let n = activated(d, "", true, vec![], vec![Effect::PlayVoidCardFree]);
+                d.activated[n].sacrifice_self = true;
+            },
+        ),
+        "Damn" => s(
+            &["Destroy target creature. A creature destroyed this way can't be regenerated.", "Overload {2}{W}{W}"],
+            |d, _| {
+                spell(d, vec![CREATURE], vec![Effect::DestroyNoRegen(0)]);
+                d.alt_cost = Some((ManaCost::parse("{2}{W}{W}").expect("cost"), 0));
+                d.overload_spell = Some(Ability::new(vec![], vec![Effect::DestroyAllCreaturesNoRegen]));
+            },
+        ),
+        "Metallic Mimic" => s(
+            &[
+                "As this creature enters, choose a creature type.",
+                "This creature is the chosen type in addition to its other types.",
+                "Each other creature you control of the chosen type enters with an additional +1/+1 counter on it.",
+            ],
+            |d, _| {
+                d.choose_creature_type = true;
+                d.others_of_chosen_type_enter_with_counter = true;
+            },
+        ),
         _ => None,
     }
 }
@@ -2361,6 +2422,12 @@ pub const PG_B_SCRIPTED: &[&str] = &[
     "Titan's Presence",
     "Rhythm of the Wild",
     "Surrak Dragonclaw",
+    "Plague Drone",
+    "Narset, Parter of Veils",
+    "Kami of Whispered Hopes",
+    "Dauthi Voidwalker",
+    "Damn",
+    "Metallic Mimic",
     // Ghyrson Starn (Spr3adsh33t)
     "Basilisk Collar",
     "Gorgon's Head",

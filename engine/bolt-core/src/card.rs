@@ -1036,6 +1036,16 @@ pub struct CardDef {
     /// "Nontoken creatures you control have riot." (Rhythm of the Wild): a nontoken creature spell
     /// you control resolving onto the battlefield asks `Decision::Riot`.
     pub your_nontoken_creatures_have_riot: bool,
+    /// Plague Drone: "If an opponent would gain life, that player loses that much life instead."
+    pub opponents_life_gain_becomes_loss: bool,
+    /// Narset, Parter of Veils: "Each opponent can't draw more than one card each turn." (in `draw`)
+    pub opponents_draw_at_most_one: bool,
+    /// Overload (CR 702.96): the spell cast for its `alt_cost` (with no creature requirement) does
+    /// this instead ("each" for "target"; Damn).
+    pub overload_spell: Option<crate::effect::Ability>,
+    /// Metallic Mimic: "Each other creature you control of the chosen type enters with an
+    /// additional +1/+1 counter on it." (its `chosen_type`, in the enter path)
+    pub others_of_chosen_type_enter_with_counter: bool,
 }
 
 /// A card's pieces from the d4 subsystems (see [`CardDef::subsystems`]).
@@ -1548,6 +1558,10 @@ impl CardDef {
             your_creature_spells_uncounterable: false,
             your_color_spells_uncounterable: None,
             your_nontoken_creatures_have_riot: false,
+            opponents_life_gain_becomes_loss: false,
+            opponents_draw_at_most_one: false,
+            overload_spell: None,
+            others_of_chosen_type_enter_with_counter: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -1835,6 +1849,10 @@ impl CardDef {
             your_creature_spells_uncounterable: false,
             your_color_spells_uncounterable: None,
             your_nontoken_creatures_have_riot: false,
+            opponents_life_gain_becomes_loss: false,
+            opponents_draw_at_most_one: false,
+            overload_spell: None,
+            others_of_chosen_type_enter_with_counter: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -2122,6 +2140,10 @@ impl CardDef {
             your_creature_spells_uncounterable: false,
             your_color_spells_uncounterable: None,
             your_nontoken_creatures_have_riot: false,
+            opponents_life_gain_becomes_loss: false,
+            opponents_draw_at_most_one: false,
+            overload_spell: None,
+            others_of_chosen_type_enter_with_counter: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,

@@ -2764,6 +2764,13 @@ impl Game {
         {
             return true;
         }
+        // Metallic Mimic: "This creature is the chosen type in addition to its other types."
+        if o.zone == Zone::Battlefield
+            && self.def_of(id).others_of_chosen_type_enter_with_counter
+            && o.chosen_type.as_deref() == Some(s)
+        {
+            return true;
+        }
         if o.zone == Zone::Battlefield && o.eot_subtype.is_some_and(|(t, sub)| t == self.turn && sub == s) {
             return true;
         }
@@ -4420,6 +4427,15 @@ impl Game {
         {
             return;
         }
+        // Plague Drone: "If an opponent would gain life, that player loses that much life instead."
+        if n > 0
+            && self
+                .permanents(opponent(p))
+                .any(|x| self.def_of(x).opponents_life_gain_becomes_loss && !self.lost_abilities(x))
+        {
+            self.lose_life(p, n);
+            return;
+        }
         // Alhammarret's Archive: twice that much, for each.
         let k = self
             .permanents(p)
@@ -5390,6 +5406,26 @@ impl Game {
                 let n = def.mana_ext.escape.map_or(0, |e| e.2);
                 self.add_counters(id, n);
             }
+            // Metallic Mimic: another creature of its chosen type enters with an additional counter.
+            if def.types.creature {
+                let mimics: Vec<ObjId> = self
+                    .permanents(self.obj(id).controller)
+                    .filter(|&x| x != id && self.def_of(x).others_of_chosen_type_enter_with_counter)
+                    .filter(|&x| !self.lost_abilities(x))
+                    .collect();
+                let n = mimics
+                    .into_iter()
+                    .filter(|&x| {
+                        self.obj(x)
+                            .chosen_type
+                            .as_deref()
+                            .is_some_and(|t| self.has_subtype(id, t))
+                    })
+                    .count() as i32;
+                if n > 0 {
+                    self.add_counters(id, n);
+                }
+            }
             // Rhythm of the Wild: riot for a nontoken creature entering under its controller, however
             // it enters; the choice is asked at the next priority (`give_priority`).
             if def.types.creature
@@ -5757,6 +5793,14 @@ impl Game {
 
     /// Draws a card. Drawing from an empty library loses at the next check (CR 704.5b).
     fn draw(&mut self, p: PlayerId) {
+        // Narset, Parter of Veils: an opponent of hers draws at most one card each turn.
+        if self.draws_this_turn[p] >= 1
+            && self
+                .permanents(opponent(p))
+                .any(|x| self.def_of(x).opponents_draw_at_most_one && !self.lost_abilities(x))
+        {
+            return;
+        }
         // Words of War: "The next time you would draw a card this turn, ... deals 2 damage instead."
         let turn = self.turn;
         if let Some(i) = self
@@ -6068,6 +6112,9 @@ impl Game {
                 Some(m) => &def.modes[m as usize],
                 None if item.kicked && def.kicked_spell.is_some() => {
                     def.kicked_spell.as_ref().expect("kicked")
+                }
+                None if item.alt && def.overload_spell.is_some() => {
+                    def.overload_spell.as_ref().expect("overload") // CR 702.96b
                 }
                 None => def.spell.as_ref().expect("a spell with an ability"),
             },
@@ -6792,7 +6839,7 @@ impl Game {
             }
             // An X spell's targets can depend on X (Stolen by the Fae), and a kicked spell can have
             // its own targets (Tear Asunder): those are checked per way of casting below.
-            let per_mode = def.cost.x > 0 || def.kicked_spell.is_some();
+            let per_mode = def.cost.x > 0 || def.kicked_spell.is_some() || def.overload_spell.is_some();
             if let Some(ability) = &def.spell {
                 if !per_mode && !self.trigger_can_target(&Game::casting(c, p), ability) {
                     continue; // CR 601.2c: a spell needs a legal choice for every target.
@@ -6815,6 +6862,8 @@ impl Game {
                 if per_mode && mode.mode.is_none() {
                     let ability = if mode.kicked {
                         def.kicked_spell.as_ref().or(def.spell.as_ref())
+                    } else if mode.alt && def.overload_spell.is_some() {
+                        def.overload_spell.as_ref() // overload: no targets
                     } else {
                         def.spell.as_ref()
                     };
@@ -10700,6 +10749,7 @@ impl Game {
             Some(OMEN_MODE) => def.omen.as_ref().map(|o| &o.spell),
             Some(m) => Some(&def.modes[m as usize]),
             None if mode.kicked && def.kicked_spell.is_some() => def.kicked_spell.as_ref(),
+            None if mode.alt && def.overload_spell.is_some() => def.overload_spell.as_ref(),
             None => def.spell.as_ref(),
         };
         let has_targets = ability.is_some_and(|s| !s.targets.is_empty());
@@ -12012,6 +12062,7 @@ impl Game {
             Pick::PermanentOddManaValue => d.types.is_permanent() && !d.cost.mana_value().is_multiple_of(2),
             Pick::CreatureManaValueAtMost(n) => d.types.creature && d.cost.mana_value() <= n,
             Pick::CreatureOrPlaneswalker => d.types.creature || d.types.planeswalker,
+            Pick::NoncreatureNonland => !d.types.creature && !d.types.land,
         }
     }
 

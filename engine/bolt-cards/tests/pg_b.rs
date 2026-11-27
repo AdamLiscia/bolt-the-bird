@@ -3745,3 +3745,111 @@ fn rhythm_of_the_wild_gives_riot_to_a_flickered_creature() {
     assert_eq!(g.obj(lions).zone, Zone::Battlefield);
     assert!(g.keywords(lions).has(Keywords::HASTE));
 }
+
+// ---- mac-b queue from the live validator (2026-11-27) ----
+
+#[test]
+fn plague_drone_turns_their_life_gain_into_loss() {
+    let mut g = table();
+    put(&mut g, 0, "Plague Drone");
+    let lions = put(&mut g, 1, "Savannah Lions");
+    let swords = hand(&mut g, 0, "Swords to Plowshares");
+    play(&mut g, swords, false, &[Target::Object(lions)], &[]);
+    assert_eq!(g.players[1].life, 38, "2 life gained becomes 2 lost");
+}
+
+#[test]
+fn narset_parter_of_veils_caps_their_draws_and_digs_for_a_noncreature_nonland() {
+    let mut g = table();
+    let narset = put(&mut g, 0, "Narset, Parter of Veils");
+    g.objects[narset.0 as usize].loyalty = 5;
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Library); // on top
+    act(&mut g, Action::Loyalty(narset, 0));
+    resolve_all(&mut g, &[Action::Pick(ring)]);
+    assert_eq!(g.obj(ring).zone, Zone::Hand);
+    // Their turn: the draw step's card, then Consider draws nothing more.
+    g.start_turn(4, 1);
+    while g.pending != Pending::Priority(1) || g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    let consider = hand(&mut g, 1, "Consider");
+    let n = g.players[1].hand.len();
+    act(&mut g, Action::Cast(consider));
+    while !g.items.is_empty() || matches!(g.pending, Pending::Decide(_)) {
+        let a = match g.pending {
+            Pending::Decide(_) => g.legal_actions()[0],
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.players[1].hand.len(), n - 1, "Consider left, no second draw");
+}
+
+#[test]
+fn kami_of_whispered_hopes_taps_for_its_power() {
+    let mut g = game(&[]);
+    let kami = put(&mut g, 0, "Kami of Whispered Hopes");
+    assert_eq!(colors_of(&g, kami).len(), 1);
+    g.objects[kami.0 as usize].counters = 2; // a 3/3
+    assert_eq!(colors_of(&g, kami).len(), 3);
+}
+
+#[test]
+fn dauthi_voidwalker_exiles_their_cards_and_plays_one_free() {
+    let mut g = table();
+    let dauthi = put(&mut g, 0, "Dauthi Voidwalker");
+    assert!(g.keywords(dauthi).has(Keywords::SHADOW));
+    let lions = put(&mut g, 1, "Savannah Lions");
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    play(&mut g, bolt, false, &[Target::Object(lions)], &[]);
+    assert_eq!(g.obj(lions).zone, Zone::Exile);
+    assert!(g.obj(lions).void_counter);
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Activate(dauthi, 0));
+    resolve_all(&mut g, &[Action::Pick(lions)]);
+    assert_eq!(g.obj(dauthi).zone, Zone::Graveyard, "sacrificed");
+    assert!(g.legal_actions().contains(&Action::Cast(lions)));
+    play(&mut g, lions, false, &[], &[]);
+    assert_eq!(
+        (g.obj(lions).zone, g.obj(lions).controller),
+        (Zone::Battlefield, 0)
+    );
+}
+
+#[test]
+fn damn_destroys_one_or_overloaded_all() {
+    let mut g = table();
+    let mine = put(&mut g, 0, "Llanowar Elves");
+    let theirs = put(&mut g, 1, "Savannah Lions");
+    let damn = hand(&mut g, 0, "Damn");
+    play(&mut g, damn, false, &[Target::Object(theirs)], &[]);
+    assert_eq!(
+        (g.obj(theirs).zone, g.obj(mine).zone),
+        (Zone::Graveyard, Zone::Battlefield)
+    );
+    let other = put(&mut g, 1, "Savannah Lions");
+    let damn = hand(&mut g, 0, "Damn");
+    act(&mut g, Action::CastAlternative(damn)); // overload {2}{W}{W}
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        (g.obj(other).zone, g.obj(mine).zone),
+        (Zone::Graveyard, Zone::Graveyard)
+    );
+}
+
+#[test]
+fn metallic_mimic_is_the_chosen_type_and_grows_the_others() {
+    let mut g = table();
+    let mimic = put(&mut g, 0, "Metallic Mimic");
+    g.objects[mimic.0 as usize].chosen_type = Some("Elf".to_string());
+    assert!(g.has_subtype(mimic, "Elf"));
+    let elves = hand(&mut g, 0, "Llanowar Elves");
+    play(&mut g, elves, false, &[], &[]);
+    assert_eq!(g.obj(elves).counters, 1);
+    let lions = hand(&mut g, 0, "Savannah Lions");
+    play(&mut g, lions, false, &[], &[]);
+    assert_eq!(g.obj(lions).counters, 0, "not an Elf");
+}
