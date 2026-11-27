@@ -357,6 +357,9 @@ pub struct TypeChange {
     /// From its own "this becomes a creature" ability, which may grant it a triggered ability
     /// (Raging Ravine; `Condition::AnimatedByOwnAbility`).
     pub own: bool,
+    /// It's a Treasure artifact with "{T}, Sacrifice this artifact: Add one mana of any color" and
+    /// no other card types (with `lose_abilities`): Vraska, Betrayal's Sting's -2.
+    pub treasure_form: bool,
 }
 
 /// Subtypes that aren't creature types, for "all creature types" (CR 205.3).
@@ -2611,6 +2614,15 @@ impl Game {
         if self.type_changes(id).any(|c| c.artifact) {
             t.artifact = true; // Blinkmoth Nexus, Mishra's Factory
         }
+        if self.treasure_form(id) {
+            // Vraska's -2: "loses all other card types" (supertypes stay, CR 205.1b).
+            t = Types {
+                artifact: true,
+                legendary: t.legendary,
+                snow: t.snow,
+                ..Types::default()
+            };
+        }
         if self.attached_static(id).is_some_and(|s| s.becomes_land) {
             t = Types {
                 land: true,
@@ -2629,6 +2641,16 @@ impl Game {
         o.type_changes.iter().filter(move |c| {
             o.zone == Zone::Battlefield && c.zcc == o.zcc && (c.turn == turn || c.turn == u32::MAX)
         })
+    }
+
+    /// Whether a resolved effect made `id` a Treasure artifact (`TypeChange::treasure_form`).
+    pub fn treasure_form(&self, id: ObjId) -> bool {
+        self.type_changes(id).any(|c| c.treasure_form)
+    }
+
+    /// Whether tapping `id` for mana sacrifices it: a Treasure, printed or made one by an effect.
+    fn sacs_for_mana(&self, id: ObjId) -> bool {
+        self.def_of(id).sac_for_mana || self.treasure_form(id)
     }
 
     /// Adds a type change to `id` (dropping the ones that no longer apply).
@@ -2977,6 +2999,9 @@ impl Game {
             if st.base_pt.is_some() || st.set_colors.is_some() {
                 return s == "Citizen"; // Witness Protection
             }
+        }
+        if self.treasure_form(id) {
+            return s == "Treasure"; // Vraska's -2: its only subtype
         }
         let o = self.obj(id);
         if let Some(only) = o.subtype_override {
@@ -3988,6 +4013,7 @@ impl Game {
             .any(|&n| n > 0)
             || o.time_counters > 0
             || o.shield_counters > 0
+            || o.lore > 0
             || (o.loyalty > 0 && self.types_of(id).planeswalker)
     }
 
@@ -3996,9 +4022,12 @@ impl Game {
         self.players[q].poison > 0 || self.players[q].energy > 0
     }
 
-    /// Proliferates `id`: another counter of each kind it has (`p` puts them). Lore counters
-    /// aren't added (a Saga's chapters aren't re-read here).
+    /// Proliferates `id`: another counter of each kind it has (`p` puts them). A lore counter goes
+    /// through `add_lore`, so a Saga's next chapter triggers (CR 701.27a, 714.2c).
     fn proliferate_one(&mut self, p: PlayerId, id: ObjId) {
+        if self.obj(id).lore > 0 {
+            self.add_lore(id);
+        }
         let (plus, minus) = (self.obj(id).counters > 0, self.obj(id).counters < 0);
         let pw = self.types_of(id).planeswalker && self.obj(id).loyalty > 0;
         if plus {
@@ -6908,6 +6937,15 @@ impl Game {
         {
             return false;
         }
+        let from_ability = !matches!(item.kind, StackKind::Spell | StackKind::SpellCopy);
+        if from_ability
+            && self.def_of(x).untargetable_by_opponents_abilities
+            && self.obj(x).controller != item.controller
+            && self.obj(x).zone == Zone::Battlefield
+            && !self.lost_abilities(x)
+        {
+            return false; // Shanna, Sisay's Legacy
+        }
         if f.other && x == item.source {
             return false;
         }
@@ -8283,7 +8321,7 @@ impl Game {
                             self.become_tapped(id);
                         }
                         // (A Treasure making two mana is sacrificed once.)
-                        if self.def_of(id).sac_for_mana && self.obj(id).zone == Zone::Battlefield {
+                        if self.sacs_for_mana(id) && self.obj(id).zone == Zone::Battlefield {
                             let by = self.obj(id).controller;
                             self.move_to(id, Zone::Graveyard);
                             self.sacrificed(id, by);
@@ -8405,7 +8443,7 @@ impl Game {
                 }
             }
             // (A Treasure making two mana is sacrificed once.)
-            if self.def_of(id).sac_for_mana && self.obj(id).zone == Zone::Battlefield {
+            if self.sacs_for_mana(id) && self.obj(id).zone == Zone::Battlefield {
                 let by = self.obj(id).controller;
                 self.move_to(id, Zone::Graveyard);
                 self.sacrificed(id, by);
@@ -8582,7 +8620,7 @@ impl Game {
                 self.become_tapped(partner);
             }
         }
-        if self.def_of(id).sac_for_mana {
+        if self.sacs_for_mana(id) {
             let by = self.obj(id).controller;
             self.move_to(id, Zone::Graveyard);
             self.sacrificed(id, by);
@@ -10122,6 +10160,10 @@ impl Game {
                     let mut m = ManaSource::of(&[crate::Color::Red]);
                     m.colors[crate::Color::Black as usize] |= self.urborged(id);
                     return Some((id, m));
+                }
+                if self.treasure_form(id) {
+                    // Vraska's -2: "{T}, Sacrifice this artifact: Add one mana of any color."
+                    return Some((id, ManaSource::of(&crate::Color::ALL)));
                 }
                 if self.lost_abilities(id) {
                     // Imprisoned in the Moon grants "{T}: Add {C}"; other ability loss leaves none.
@@ -23385,6 +23427,25 @@ impl Game {
                         ..TypeChange::default()
                     };
                     self.add_type_change(c, change);
+                }
+            }
+            Effect::BecomeTreasure(slot) => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    if self.obj(id).zone == Zone::Battlefield {
+                        let change = TypeChange {
+                            turn: u32::MAX,
+                            lose_abilities: true,
+                            treasure_form: true,
+                            ..TypeChange::default()
+                        };
+                        self.add_type_change(id, change);
+                    }
+                }
+            }
+            Effect::TargetPlayerPoisonUpTo { slot, n } => {
+                for q in self.players_for(item, legal, Who::TargetPlayer(slot)) {
+                    let pl = &mut self.players[q];
+                    pl.poison = pl.poison.max(n);
                 }
             }
             Effect::LoseAllAbilities(slot) => {

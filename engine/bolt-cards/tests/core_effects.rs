@@ -3328,3 +3328,69 @@ fn proliferate_may_choose_nothing_and_twice_with_tekuthal() {
     );
     assert_eq!(g.obj(mine).counters, 3, "proliferated twice");
 }
+
+#[test]
+fn a_creature_becomes_a_treasure_artifact() {
+    let (mut g, t) = game_with(vec![sorcery(
+        vec![Filter::CREATURE],
+        vec![Effect::BecomeTreasure(0)],
+    )]);
+    let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
+    let c = g.add_card(0, t, Zone::Hand);
+    act(&mut g, Action::Cast(c));
+    act(&mut g, Action::Target(obj(elves)));
+    resolve_all(&mut g, &[]);
+    let ty = g.types_of(elves);
+    assert!(
+        ty.artifact && !ty.creature,
+        "a Treasure artifact, no other card types"
+    );
+    assert!(g.has_subtype(elves, "Treasure") && !g.has_subtype(elves, "Elf"));
+    let any = g
+        .mana_sources(0)
+        .into_iter()
+        .find(|&(x, _)| x == elves)
+        .map(|(_, m)| m.colors);
+    assert_eq!(any, Some([true; 5]), "Treasure's mana, not the Elf's {{G}} alone");
+    g.start_turn(5, 0);
+    assert!(g.treasure_form(elves), "for as long as it stays");
+}
+
+#[test]
+fn target_player_gets_poison_up_to_nine() {
+    let to_player = Filter {
+        creatures: false,
+        planeswalkers: false,
+        ..Filter::ANY
+    };
+    let poison = Effect::TargetPlayerPoisonUpTo { slot: 0, n: 9 };
+    let (mut g, t) = game_with(vec![sorcery(vec![to_player], vec![poison])]);
+    g.players[1].poison = 2;
+    let c = g.add_card(0, t, Zone::Hand);
+    act(&mut g, Action::Cast(c));
+    act(&mut g, Action::Target(Target::Player(1)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].poison, 9);
+}
+
+#[test]
+fn proliferating_a_saga_triggers_its_next_chapter() {
+    let (mut g, t) = game_with(vec![sorcery(vec![], vec![Effect::Proliferate])]);
+    let city = g.add_card(0, cid("City of Death"), Zone::Hand);
+    play(&mut g, city, false, &[], &[]);
+    let treasures = |g: &Game| -> Vec<ObjId> {
+        g.permanents(0)
+            .filter(|&x| g.def_of(x).name == "Treasure")
+            .collect()
+    };
+    assert_eq!((g.obj(city).lore, treasures(&g).len()), (1, 1), "chapter I");
+    let treasure = treasures(&g)[0];
+    let c = g.add_card(0, t, Zone::Hand);
+    act(&mut g, Action::Cast(c));
+    resolve_all(
+        &mut g,
+        &[Action::Pick(city), Action::Yes, Action::Target(obj(treasure))],
+    );
+    assert_eq!(g.obj(city).lore, 2, "a lore counter");
+    assert_eq!(treasures(&g).len(), 2, "chapter II copied the Treasure");
+}
