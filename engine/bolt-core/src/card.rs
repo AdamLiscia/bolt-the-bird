@@ -189,6 +189,9 @@ pub enum Reduction {
     NoncombatDamageToOpponentsThisTurn,
     /// {1} less for each creature card in your graveyard (Karador, Ghost Chieftain).
     PerCreatureCardInYourGraveyard,
+    /// Affinity for artifacts (CR 702.41): {1} less for each artifact you control (Emry, Lurker of
+    /// the Loch).
+    PerArtifactYouControl,
 }
 
 /// An activated ability: "[cost]: [effect]" (CR 602).
@@ -378,6 +381,11 @@ pub struct Activated {
     /// "Activate only if an opponent has N or more cards in their graveyard." (Sheoldred // The
     /// True Scriptures: 8)
     pub opponent_min_graveyard: u8,
+    /// "Remove N +1/+1 counters from this creature" in the cost (Walking Ballista: 1, Karlov of
+    /// the Ghost Council: 6).
+    pub remove_plus_counters: u8,
+    /// The stack item's amount is the sacrificed creature's toughness (Miren, the Moaning Well).
+    pub amount_from_victim_toughness: bool,
 }
 
 /// A loyalty ability's cost of −X (CR 606.4, 107.3): `loyalty_abilities` uses this as the cost,
@@ -1273,6 +1281,12 @@ pub struct ManaExt {
     /// "Once during each of your turns, you may cast a creature spell from your graveyard."
     /// (Karador, Ghost Chieftain): `Action::CastFromGraveyardAs(card, KARADOR_CAST)`.
     pub creature_from_graveyard_once_each_turn: bool,
+    /// "You can spend mana of any type to cast creature spells." (Vizier of the Menagerie): your
+    /// creature spells' colored, hybrid and {C} pips are paid as generic.
+    pub creature_spells_any_type_mana: bool,
+    /// "Creatures with power less than this creature's power can't block creatures you control."
+    /// (Champion of Lambholt)
+    pub smaller_cant_block_yours: bool,
 }
 
 /// "You may pay [mana], [life] and sacrifice or tap [creatures] rather than pay this spell's mana

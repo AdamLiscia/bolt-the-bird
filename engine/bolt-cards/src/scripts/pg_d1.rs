@@ -1351,7 +1351,7 @@ pub fn script(name: &str) -> Option<Script> {
                 "Saddle 1",
             ],
             |d, _| {
-                may(d, When::DealsCombatDamageToPlayer, vec![], vec![Effect::SacrificeSaddlerDrawXLandsX]);
+                on(d, When::DealsCombatDamageToPlayer, vec![], vec![Effect::SacrificeSaddlerDrawXLandsX]);
                 let n = activated(d, "", false, vec![], vec![Effect::BecomeSaddled]);
                 d.activated[n].saddle = 1;
                 d.activated[n].sorcery = true;
@@ -1367,6 +1367,136 @@ pub fn script(name: &str) -> Option<Script> {
             |d, _| {
                 d.reduction = Some(Reduction::PerCreatureCardInYourGraveyard);
                 d.mana_ext.creature_from_graveyard_once_each_turn = true;
+            },
+        ),
+        // ---- Animar, Soul of Elements ----
+        "Walking Ballista" => s(
+            &[
+                "This creature enters with X +1/+1 counters on it.",
+                "{4}: Put a +1/+1 counter on this creature.",
+                "Remove a +1/+1 counter from this creature: It deals 1 damage to any target.",
+            ],
+            |d, _| {
+                d.enters_with_x_counters = true;
+                activated(d, "{4}", false, vec![], vec![Effect::CountersSelf { n: 1 }]);
+                let n = activated(d, "", false, vec![Filter::ANY], vec![damage(1, Recipient::Target(0))]);
+                d.activated[n].remove_plus_counters = 1;
+            },
+        ),
+        "Somberwald Sage" => s(
+            &["{T}: Add three mana of any one color. Spend this mana only to cast creature spells."],
+            |d, _| {
+                // One ability per color (as Kami of Whispered Hopes), all three of that color.
+                for c in Color::ALL {
+                    activated(d, "", true, vec![], vec![Effect::AddCreatureSpellMana(3, c)]);
+                }
+            },
+        ),
+        "Vizier of the Menagerie" => s(
+            &[
+                "You may look at the top card of your library any time.",
+                "You may cast creature spells from the top of your library.",
+                "You can spend mana of any type to cast creature spells.",
+            ],
+            |d, _| {
+                // Looking at the top card any time is information only.
+                d.top_spells_creatures = true;
+                d.mana_ext.creature_spells_any_type_mana = true;
+            },
+        ),
+        // ---- Lonis, Genetics Expert ----
+        "Argent Sphinx" => s(
+            &["Metalcraft — {U}: Exile this creature. Return it to the battlefield under your control at the beginning of the next end step. Activate only if you control three or more artifacts."],
+            |d, _| {
+                let n = activated(d, "{U}", false, vec![], vec![Effect::FlickerSelf]);
+                d.activated[n].min_artifacts = 3;
+            },
+        ),
+        // ---- Oloro, Ageless Ascetic ----
+        "Mystic Gate" => s(&["{T}: Add {C}.", "{W/U}, {T}: Add {W}{W}, {W}{U}, or {U}{U}."], |d, _| {
+            d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+            let wu = [Color::White, Color::Blue];
+            d.paid_mana = Some((ManaCost::parse("{W/U}").expect("a mana cost"), [ManaSource::of(&wu), ManaSource::of(&wu)]));
+        }),
+        "Karlov of the Ghost Council" => s(
+            &[
+                "Whenever you gain life, put two +1/+1 counters on Karlov.",
+                "{W}{B}, Remove six +1/+1 counters from Karlov: Exile target creature.",
+            ],
+            |d, _| {
+                on(d, When::YouGainLife, vec![], vec![Effect::CountersSelf { n: 2 }]);
+                let n = activated(d, "{W}{B}", false, vec![CREATURE], vec![Effect::Exile(0)]);
+                d.activated[n].remove_plus_counters = 6;
+            },
+        ),
+        // ---- Korvold, Fae-Cursed King ----
+        "Miren, the Moaning Well" => s(
+            &["{T}: Add {C}.", "{3}, {T}, Sacrifice a creature: You gain life equal to the sacrificed creature's toughness."],
+            |d, _| {
+                d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                let n = activated(d, "{3}", true, vec![], vec![Effect::GainLifeAmount]);
+                d.activated[n].sacrifice_other_creature = true;
+                d.activated[n].amount_from_victim_toughness = true;
+            },
+        ),
+        // ---- Raggadragga, Goreguts Boss ----
+        "Topiary Lecturer" => s(
+            &["Increment", "{T}: Add an amount of {G} equal to this creature's power."],
+            |d, _| {
+                on(d, When::YouCast, vec![], vec![Effect::IncrementSelf]);
+                activated(d, "", true, vec![], vec![Effect::AddManaSourcePower(Color::Green)]);
+            },
+        ),
+        // ---- Najeela, the Blade-Blossom ----
+        "Champion of Lambholt" => s(
+            &[
+                "Creatures with power less than this creature's power can't block creatures you control.",
+                "Whenever another creature you control enters, put a +1/+1 counter on this creature.",
+            ],
+            |d, _| {
+                d.mana_ext.smaller_cant_block_yours = true;
+                on(d, When::AnotherCreatureYouControlEnters, vec![], vec![Effect::CountersSelf { n: 1 }]);
+            },
+        ),
+        // ---- Oloro, Ageless Ascetic ----
+        "Will, Scion of Peace" => s(
+            &["{T}: Spells you cast this turn that are white and/or blue cost {X} less to cast, where X is the amount of life you gained this turn. Activate only as a sorcery."],
+            |d, _| {
+                let n = activated(d, "", true, vec![], vec![Effect::WhiteBlueSpellsCostLessLifeGainedThisTurn]);
+                d.activated[n].sorcery = true;
+            },
+        ),
+        // ---- Ral, Monsoon Mage ----
+        "High Tide" => s(
+            &["Until end of turn, whenever a player taps an Island for mana, that player adds an additional {U}."],
+            |d, _| spell(d, vec![], vec![Effect::IslandsAddExtraBlueThisTurn]),
+        ),
+        // ---- Ghyrson Starn, Kelermorph ----
+        "Pyromatics" => s(&["Replicate {1}{R}", "Pyromatics deals 1 damage to any target."], |d, _| {
+            d.mana_ext.multikicker = ManaCost::parse("{1}{R}");
+            on(d, When::YouCastThis, vec![], vec![Effect::CopySourceSpellPerReplicate]);
+            spell(d, vec![Filter::ANY], vec![damage(1, Recipient::Target(0))]);
+        }),
+        // ---- Atla Palani, Nest Tender ----
+        "Rith's Grove" => s(
+            &[
+                "When this land enters, sacrifice it unless you return a non-Lair land you control to its owner's hand.",
+                "{T}: Add {R}, {G}, or {W}.",
+            ],
+            |d, _| {
+                on(d, When::Enters, vec![], vec![Effect::ReturnNonSubtypeLandOrSacrificeSelf("Lair")]);
+                d.mana = Some(ManaSource::of(&[Color::Red, Color::Green, Color::White]));
+            },
+        ),
+        // ---- Raffine, Scheming Seer ----
+        "Momo, Friendly Flier" => s(
+            &[
+                "The first non-Lemur creature spell with flying you cast during each of your turns costs {1} less to cast.",
+                "Whenever another creature you control with flying enters, Momo gets +1/+1 until end of turn.",
+            ],
+            |d, _| {
+                d.mana_ext.first_flier_discount_your_turn = 1;
+                on(d, When::AnotherCreatureWithFlyingYouControlEnters, vec![], vec![Effect::PumpSelf { power: 1, toughness: 1 }]);
             },
         ),
         _ => None,
@@ -1546,4 +1676,18 @@ pub const PG_D1_SCRIPTED: &[&str] = &[
     "Sunbird's Invocation",
     "The Gitrog, Ravenous Ride",
     "Karador, Ghost Chieftain",
+    "Walking Ballista",
+    "Somberwald Sage",
+    "Vizier of the Menagerie",
+    "Argent Sphinx",
+    "Mystic Gate",
+    "Karlov of the Ghost Council",
+    "Miren, the Moaning Well",
+    "Topiary Lecturer",
+    "Champion of Lambholt",
+    "Will, Scion of Peace",
+    "High Tide",
+    "Pyromatics",
+    "Rith's Grove",
+    "Momo, Friendly Flier",
 ];

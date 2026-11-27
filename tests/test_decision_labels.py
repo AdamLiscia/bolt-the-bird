@@ -279,3 +279,14 @@ def test_mirrormind_crown_asks_copies_or_the_tokens():
     dec = {"kind": "MirrormindCopies"}
     assert label(dec, "Yes", 0) == "Make copies of the equipped creature instead"
     assert label(dec, "No", 0) == "Make the tokens"
+
+
+def test_the_gitrog_asks_for_a_rider_and_how_many_lands():
+    rider = {"kind": "SacrificeSaddler", "mount": [3, 1]}
+    assert sv._decision_label(rider, "Pick", 0, "Llanowar Elves") == "Sacrifice (it saddled the Mount): Llanowar Elves"
+    assert label(rider, "No", 0) == "Don't sacrifice"
+    count = {"kind": "GitrogLandCount", "max": 2}
+    assert label(count, "Amount", 0) == "Put no lands onto the battlefield"
+    assert label(count, "Amount", 2) == "Put 2 lands from your hand onto the battlefield tapped"
+    pick = {"kind": "GitrogLandPick", "left": 1}
+    assert sv._decision_label(pick, "Pick", 0, "Forest") == "Put onto the battlefield tapped: Forest"

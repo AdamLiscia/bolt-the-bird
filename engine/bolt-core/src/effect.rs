@@ -2638,9 +2638,10 @@ pub enum Effect {
     /// Saddle's effect: the source becomes saddled until end of turn by the creature in `extra`
     /// (`Game::saddled`).
     BecomeSaddled,
-    /// The Gitrog, Ravenous Ride: sacrifice a creature that saddled the source this turn (the
-    /// engine picks the most powerful); if you do, draw X cards, then put up to X land cards from
-    /// your hand onto the battlefield tapped (the engine puts as many as it can), X its power.
+    /// The Gitrog, Ravenous Ride: you may sacrifice a creature that saddled the source this turn
+    /// (`Decision::SacrificeSaddler`); if you do, draw X cards, then put up to X land cards from
+    /// your hand onto the battlefield tapped (`Decision::GitrogLandCount`, then
+    /// `Decision::GitrogLandPick`), X its power.
     SacrificeSaddlerDrawXLandsX,
     /// The defending player's life total becomes 1 (Master of Cruelties): they lose (or gain) the
     /// difference (CR 119.5).
@@ -2690,6 +2691,26 @@ pub enum Effect {
     CounterOpponentsSpellsAndAbilitiesTokenEach {
         def: usize,
     },
+    /// "Add N mana of any one color. Spend this mana only to cast creature spells." (Somberwald
+    /// Sage: 3, one ability per color): N mana of that color held for creature spells
+    /// (`Game::creature_color_mana`); it pays that color's pips, hybrid pips with it, and generic.
+    AddCreatureSpellMana(u8, crate::Color),
+    /// Exile the source; return it to the battlefield under its owner's control at the beginning
+    /// of the next end step (Argent Sphinx), as `Flicker`.
+    FlickerSelf,
+    /// Increment (Topiary Lecturer): if the mana spent on the spell in `extra` is greater than the
+    /// source's power or toughness, put a +1/+1 counter on the source.
+    IncrementSelf,
+    /// Will, Scion of Peace: white and/or blue spells you cast this turn cost {X} less, X the life
+    /// you've gained this turn (`Game::wu_discount_turn`).
+    WhiteBlueSpellsCostLessLifeGainedThisTurn,
+    /// High Tide: until end of turn, each Island tapped for mana adds an additional {U}
+    /// (`Game::high_tide`, counted per resolution).
+    IslandsAddExtraBlueThisTurn,
+    /// Replicate (CR 702.56): copy the source spell once for each time its replicate cost was paid
+    /// (scripted as `ManaExt::multikicker`, cast with `Action::CastX`; `Game::times_kicked`). The
+    /// copies keep the spell's targets (as `CopySourceSpell`).
+    CopySourceSpellPerReplicate,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
