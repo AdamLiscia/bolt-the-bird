@@ -2447,6 +2447,79 @@ pub fn script(name: &str) -> Option<Script> {
                 loyalty(d, -6, Ability::new(vec![], vec![Effect::CreateTokensPerLand { def: t.wurm_6 }]));
             },
         ),
+        // Core theme d3, batch 43 (d2's idea-deck cards, on batch 42's pieces)
+        "Zur the Enchanter" => s(
+            &["Whenever Zur attacks, you may search your library for an enchantment card with mana value 3 or less, put it onto the battlefield, then shuffle."],
+            |d, _| {
+                let find = search(SearchFor::EnchantmentMvAtMost(3), SearchTo::Battlefield { tapped: false });
+                may(d, When::Attacks, vec![], vec![find]);
+            },
+        ),
+        "Nim Deathmantle" => s(
+            &[
+                "Equipped creature gets +2/+2, has intimidate, and is a black Zombie.",
+                "Whenever a nontoken creature is put into your graveyard from the battlefield, you may pay {4}. If you do, return that card to the battlefield and attach this Equipment to it.",
+                "Equip {4}",
+            ],
+            |d, _| {
+                attached(d, false, 2, 2, Keywords::INTIMIDATE);
+                d.attached_colors_become = Some([false, false, true, false, false]);
+                d.enchanted_creature_type_becomes = Some("Zombie");
+                // 1v1: "put into your graveyard" is a nontoken creature you control dying.
+                let that = Filter { triggering: true, ..graveyard_cards(true, Controller::You) };
+                let pay = Effect::MayPay(ManaCost::parse("{4}").expect("a mana cost"));
+                on(d, When::AnotherNontokenCreatureYouControlDies, vec![that], vec![pay, Effect::ReanimateAttachSource(0)]);
+                equip(d, "{4}");
+            },
+        ),
+        // Core theme d3, batch 43 (Vaevictis Asmadi's Dragons)
+        "Scourge of Valkas" => s(
+            &[
+                "Whenever this creature or another Dragon you control enters, it deals X damage to any target, where X is the number of Dragons you control.",
+                "{R}: This creature gets +1/+0 until end of turn.",
+            ],
+            |d, _| {
+                let me = Effect::DamagePerYouControlSubtype { subtype: "Dragon", slot: 0 };
+                on(d, When::Enters, vec![Filter::ANY], vec![me]);
+                let it = Filter { triggering: true, ..CREATURE };
+                let burn = Effect::SlotDealsDamagePerSubtypeYouControl { from: 0, to: 1, sub: "Dragon" };
+                on(d, When::AnotherYouControlEntersWithAnySubtype(&["Dragon"]), vec![it, Filter::ANY], vec![burn]);
+                activated(d, "{R}", false, vec![], vec![Effect::PumpSelf { power: 1, toughness: 0 }]);
+            },
+        ),
+        "Atarka, World Render" => s(&["Whenever a Dragon you control attacks, it gains double strike until end of turn."], |d, _| {
+            let it = Filter { triggering: true, ..CREATURE };
+            on(d, When::SubtypeYouControlAttacks("Dragon"), vec![it], vec![Effect::Grant { slot: 0, keywords: Keywords::DOUBLE_STRIKE }]);
+        }),
+        "Lathliss, Dragon Queen" => s(
+            &[
+                "Whenever another nontoken Dragon you control enters, create a 5/5 red Dragon creature token with flying.",
+                "{1}{R}: Dragons you control get +1/+0 until end of turn.",
+            ],
+            |d, t| {
+                // The entering creature fills slot 0; a non-Dragon makes it fizzle.
+                let it = Filter { triggering: true, subtype: Some("Dragon"), ..CREATURE };
+                on(d, When::AnotherNontokenCreatureYouControlEnters, vec![it], vec![Effect::CreateToken { who: Who::You, def: t.dragon_5, n: 1 }]);
+                activated(d, "{1}{R}", false, vec![], vec![Effect::PumpYourSubtypeEot { sub: "Dragon", power: 1, toughness: 0 }]);
+            },
+        ),
+        "Scourge of the Throne" => s(
+            &[
+                "Dethrone",
+                "Whenever this creature attacks for the first time each turn, if it's attacking the player with the most life or tied for most life, untap all attacking creatures. After this phase, there is an additional combat phase.",
+            ],
+            |d, _| {
+                // Dethrone (CR 702.105): "Whenever this creature attacks the player with the most life or
+                // tied for most life, put a +1/+1 counter on it."
+                on(d, When::Attacks, vec![], vec![Effect::StopUnlessOpponentHasMostLife, Effect::CountersSelf { n: 1 }]);
+                let extra = vec![
+                    Effect::StopUnlessOpponentHasMostLife,
+                    Effect::UntapAttackersAndGrant(Keywords::NONE),
+                    Effect::AdditionalCombatAfterThisPhase,
+                ];
+                on(d, When::AttacksFirstTimeEachTurn, vec![], extra);
+            },
+        ),
         _ => None,
     }
 }
@@ -2769,4 +2842,11 @@ pub const PG_D3_SCRIPTED: &[&str] = &[
     "Sword of Light and Shadow",
     "Reckless Endeavor",
     "Garruk, Primal Hunter",
+    // Core theme d3, batch 43
+    "Zur the Enchanter",
+    "Nim Deathmantle",
+    "Scourge of Valkas",
+    "Atarka, World Render",
+    "Lathliss, Dragon Queen",
+    "Scourge of the Throne",
 ];

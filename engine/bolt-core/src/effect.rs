@@ -3050,6 +3050,15 @@ pub enum Effect {
         sides: u32,
         def: usize,
     },
+    /// "[Subtype]s you control get +P/+T until end of turn." (Lathliss, Dragon Queen: Dragons +1/+0)
+    PumpYourSubtypeEot {
+        sub: &'static str,
+        power: i32,
+        toughness: i32,
+    },
+    /// Stop here unless an opponent has the most life or is tied for it (dethrone, CR 702.105; one
+    /// opponent: their life is at least yours).
+    StopUnlessOpponentHasMostLife,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

@@ -3922,3 +3922,32 @@ fn an_attached_permanent_can_set_the_creatures_colors_and_type() {
     );
     assert!(g.has_subtype(lions, "Zombie") && !g.has_subtype(lions, "Cat"));
 }
+
+#[test]
+fn pump_your_subtype_until_end_of_turn() {
+    let e = Effect::PumpYourSubtypeEot {
+        sub: "Cat",
+        power: 1,
+        toughness: 0,
+    };
+    let (mut g, t) = game_with(vec![sorcery(vec![], vec![e])]);
+    let cat = g.add_card(0, cid("Savannah Lions"), Zone::Battlefield);
+    let elf = g.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
+    let theirs = g.add_card(1, cid("Savannah Lions"), Zone::Battlefield);
+    cast_test(&mut g, t, &[], &[]);
+    assert_eq!((g.power(cat), g.toughness(cat)), (3, 1));
+    assert_eq!((g.power(elf), g.power(theirs)), (1, 2), "your Cats only");
+}
+
+#[test]
+fn stop_unless_an_opponent_has_the_most_life() {
+    let gain = Effect::GainLife { who: Who::You, n: 5 };
+    let (mut g, t) = game_with(vec![sorcery(
+        vec![],
+        vec![Effect::StopUnlessOpponentHasMostLife, gain],
+    )]);
+    cast_test(&mut g, t, &[], &[]);
+    assert_eq!(g.players[0].life, 45, "tied: goes on");
+    cast_test(&mut g, t, &[], &[]);
+    assert_eq!(g.players[0].life, 45, "you have more: stops");
+}

@@ -4362,7 +4362,7 @@
   {
    "card": "Urza's Incubator",
    "deck": "Zhulodok, Void Gorger (Adam)",
-   "missing": "cost reduction or alternative cost",
+   "missing": "cost reduction or alternative cost [d3 handback: needs d1 (cost reductions): 'Creature spells of the chosen type cost {2} less' (a chosen-type spell discount)]",
    "lane": "mac-b",
    "theme": "mana",
    "owner": "d1"
@@ -5610,7 +5610,7 @@
   {
    "card": "Goldspan Dragon",
    "deck": "Malik, Grim Manipulator (Spr3adsh33)",
-   "missing": "lane C's Malik routing (2026-11-26); multi-owner cards: see its report",
+   "missing": "lane C's Malik routing (2026-11-26); multi-owner cards: see its report [d3 handback: needs d2 (triggers): 'becomes the target of a spell'; Treasures making two exists (treasures_make_two)]",
    "lane": "mac-c",
    "theme": "effects",
    "owner": "d3"
@@ -6298,31 +6298,31 @@
   {
    "card": "Atarka, World Render",
    "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
-   "missing": "lane C's routing (2026-11-26)",
+   "missing": "lane C's routing (2026-11-26) [d3 batch 43: scripted (pg_d3)]",
    "lane": "mac-c",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d3"
   },
   {
    "card": "Lathliss, Dragon Queen",
    "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
-   "missing": "lane C's routing (2026-11-26)",
+   "missing": "lane C's routing (2026-11-26) [d3 batch 43: Effect::PumpYourSubtypeEot, scripted (pg_d3); known limit: the 5/5 Dragon is the shared t.dragon_5 token, which is colorless (not red)]",
    "lane": "mac-c",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d3"
   },
   {
    "card": "Scourge of Valkas",
    "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
-   "missing": "lane C's routing (2026-11-26)",
+   "missing": "lane C's routing (2026-11-26) [d3 batch 43: scripted (pg_d3)]",
    "lane": "mac-c",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d3"
   },
   {
    "card": "Broodcaller Scourge",
    "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
-   "missing": "lane C's routing (2026-11-26)",
+   "missing": "lane C's routing (2026-11-26) [d3 handback: needs d2 (triggers): the damage amount on When::YourSubtypeDealCombatDamageToPlayer; then a put-from-hand with mana value at most that (d3)]",
    "lane": "mac-c",
    "theme": "triggers",
    "owner": "d2"
@@ -6330,15 +6330,15 @@
   {
    "card": "Scourge of the Throne",
    "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
-   "missing": "lane C's routing (2026-11-26)",
+   "missing": "lane C's routing (2026-11-26) [d3 batch 43: Effect::StopUnlessOpponentHasMostLife (dethrone), scripted (pg_d3)]",
    "lane": "mac-c",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d3"
   },
   {
    "card": "Descendants' Path",
    "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
-   "missing": "lane C's routing (2026-11-26)",
+   "missing": "lane C's routing (2026-11-26) [d3: not yet; needs a reveal-top 'shares a creature type with a creature you control' cast-free (Mac C's free cast from the top)]",
    "lane": "mac-c",
    "theme": "triggers",
    "owner": "d2"
@@ -6346,7 +6346,7 @@
   {
    "card": "Nogi, Draco-Zealot",
    "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
-   "missing": "lane C's routing (2026-11-26)",
+   "missing": "lane C's routing (2026-11-26) [d3 handback: needs d1 (cost reductions): 'Dragon spells you cast cost {1} less' (a subtype spell discount); the attack half (becomes a 5/5 Dragon with flying, if three or more Dragons) is d3's, built with the card]",
    "lane": "mac-c",
    "theme": "triggers",
    "owner": "d2"
@@ -6354,7 +6354,7 @@
   {
    "card": "Haven of the Spirit Dragon",
    "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
-   "missing": "lane C's routing (2026-11-26)",
+   "missing": "lane C's routing (2026-11-26) [d3 handback: needs d1 (mana): mana spendable only on Dragon creature spells; the return-a-Dragon-or-Ugin ability is d3's]",
    "lane": "mac-c",
    "theme": "mana",
    "owner": "d1"
@@ -6362,7 +6362,7 @@
   {
    "card": "Klauth, Unrivaled Ancient",
    "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
-   "missing": "lane C's routing (2026-11-26)",
+   "missing": "lane C's routing (2026-11-26) [d3 handback: needs d1 (mana): add X mana in any combination, spend only on spells, kept until end of turn]",
    "lane": "mac-c",
    "theme": "mana",
    "owner": "d1"
@@ -6370,7 +6370,7 @@
   {
    "card": "Dragon Broodmother",
    "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
-   "missing": "lane C's routing (2026-11-26)",
+   "missing": "lane C's routing (2026-11-26) [d3 handback: needs devour (d1, keywords) and a token: a 1/1 red and green Dragon with flying and devour 2]",
    "lane": "mac-c",
    "theme": "mana",
    "owner": "d1"
@@ -7585,6 +7585,22 @@
    "card": "Garruk, Primal Hunter",
    "deck": "IDEA Rocco, Cabaretti Caterer",
    "missing": "idea-deck claim (idea_next11, 2026-11-27): -3 draws by the greatest power among your creatures; -6 a Wurm per land you control; scripted after the pool push [done by d3 batch 41: token 135 t.wurm_6, scripted (pg_d3)]",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Zur the Enchanter",
+   "deck": "IDEA Alela, Artful Provocateur",
+   "missing": "d3 batch 43 (routed from d2, 2026-11-27): SearchFor::EnchantmentMvAtMost(3), scripted (pg_d3)",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Nim Deathmantle",
+   "deck": "IDEA Rocco, Cabaretti Caterer",
+   "missing": "d3 batch 43 (routed from d2, 2026-11-27): CardDef::attached_colors_become + enchanted_creature_type_becomes, MayPay {4} then ReanimateAttachSource, scripted (pg_d3); 1v1: 'put into your graveyard' is a nontoken creature you control dying",
    "lane": "d3",
    "theme": "effects and statics",
    "owner": "d3"

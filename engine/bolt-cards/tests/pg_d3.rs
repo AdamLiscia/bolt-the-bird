@@ -5198,3 +5198,139 @@ fn garruk_primal_hunter_makes_beasts_draws_and_makes_wurms() {
     assert_eq!((g.power(wurms[0]), g.toughness(wurms[0])), (6, 6));
     assert_eq!(g.colors_of(wurms[0]), [false, false, false, false, true]);
 }
+
+#[test]
+fn zur_the_enchanter_finds_a_small_enchantment_on_attack() {
+    let mut g = table();
+    let zur = put(&mut g, 0, "Zur the Enchanter");
+    to_main1(&mut g, 5, 0);
+    let small = g.add_card(0, cid("Darksteel Mutation"), Zone::Library);
+    let big = g.add_card(0, cid("Greed"), Zone::Library);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(zur));
+    act(&mut g, Action::FinishAttacks);
+    while !matches!(g.pending, Pending::Decide(0)) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Yes); // search
+    while !matches!(g.pending, Pending::Decide(0)) {
+        act(&mut g, Action::PassPriority);
+    }
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Pick(small)) && !legal.contains(&Action::Pick(big)));
+    act(&mut g, Action::Pick(small));
+    assert_eq!(g.obj(small).zone, Zone::Battlefield);
+}
+
+#[test]
+fn nim_deathmantle_makes_a_black_zombie_and_brings_back_the_dead_for_4() {
+    let mut g = table();
+    let nim = put(&mut g, 0, "Nim Deathmantle");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    to_main1(&mut g, 5, 0);
+    act(&mut g, Action::Activate(nim, 0));
+    act(&mut g, Action::Target(obj(lions)));
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.power(lions), g.toughness(lions)), (4, 3));
+    assert!(g.keywords(lions).has(Keywords::INTIMIDATE));
+    assert_eq!(g.colors_of(lions), [false, false, true, false, false]);
+    assert!(g.has_subtype(lions, "Zombie") && !g.has_subtype(lions, "Cat"));
+    for _ in 0..4 {
+        put(&mut g, 0, "Plains"); // untapped white for the Wraths
+    }
+    let wrath = hand(&mut g, 0, "Wrath of God");
+    play(&mut g, wrath, false, &[], &[Action::Yes]); // pay {4}
+    assert_eq!(g.obj(lions).zone, Zone::Battlefield, "returned");
+    let zcc = g.obj(lions).zcc;
+    assert_eq!(g.obj(nim).attached_to, Some((lions, zcc)), "and equipped");
+    assert_eq!(g.power(lions), 4);
+    // Declined: it stays in the graveyard.
+    let wrath = hand(&mut g, 0, "Wrath of God");
+    play(&mut g, wrath, false, &[], &[Action::No]);
+    assert_eq!(g.obj(lions).zone, Zone::Graveyard);
+}
+
+/// Attacks with `attacker` in the first combat (declaring no attackers in any extra combat), to the
+/// second main phase; returns how many declare-attackers steps player 0 got.
+fn attack_once_count_combats(g: &mut Game, attacker: ObjId) -> usize {
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(g, Action::PassPriority);
+    }
+    act(g, Action::Attack(attacker));
+    act(g, Action::FinishAttacks);
+    let mut combats = 1;
+    while g.step != Step::Main2 {
+        let a = match g.pending {
+            Pending::DeclareAttackers(0) => {
+                combats += 1;
+                Action::FinishAttacks
+            }
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            Pending::Decide(1) => g.legal_actions()[0],
+            _ => Action::PassPriority,
+        };
+        act(g, a);
+    }
+    combats
+}
+
+#[test]
+fn scourge_of_valkas_burns_for_each_dragon_as_dragons_enter() {
+    let mut g = table();
+    put(&mut g, 0, "Atarka, World Render");
+    let v = hand(&mut g, 0, "Scourge of Valkas");
+    play(&mut g, v, false, &[], &[Action::Target(Target::Player(1))]);
+    assert_eq!(g.players[1].life, 38, "two Dragons");
+    put(&mut g, 0, "Mountain");
+    let t = hand(&mut g, 0, "Scourge of the Throne"); // not legendary: no legend rule
+    play(&mut g, t, false, &[], &[Action::Target(Target::Player(1))]);
+    assert_eq!(g.players[1].life, 35, "another Dragon: three");
+    act(&mut g, Action::Activate(v, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.power(v), 5);
+}
+
+#[test]
+fn atarka_gives_attacking_dragons_double_strike() {
+    let mut g = table();
+    put(&mut g, 0, "Atarka, World Render");
+    let v = put(&mut g, 0, "Scourge of Valkas");
+    to_main1(&mut g, 5, 0);
+    attack_once_count_combats(&mut g, v);
+    assert_eq!(g.players[1].life, 32, "4 double strike");
+}
+
+#[test]
+fn lathliss_makes_a_dragon_for_each_nontoken_dragon_and_pumps_dragons() {
+    let mut g = table();
+    let l = put(&mut g, 0, "Lathliss, Dragon Queen");
+    let lions = hand(&mut g, 0, "Savannah Lions");
+    play(&mut g, lions, false, &[], &[]);
+    assert!(tokens(&g, 0, "Dragon").is_empty(), "not a Dragon");
+    let a = hand(&mut g, 0, "Atarka, World Render");
+    play(&mut g, a, false, &[], &[]);
+    let dragons = tokens(&g, 0, "Dragon");
+    assert_eq!(dragons.len(), 1, "not again for the token");
+    assert_eq!((g.power(dragons[0]), g.toughness(dragons[0])), (5, 5));
+    act(&mut g, Action::Activate(l, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.power(a), g.power(dragons[0]), g.power(l)), (7, 6, 7));
+}
+
+#[test]
+fn scourge_of_the_throne_dethrones_and_attacks_again() {
+    let mut g = table();
+    let s = put(&mut g, 0, "Scourge of the Throne");
+    to_main1(&mut g, 5, 0);
+    assert_eq!(attack_once_count_combats(&mut g, s), 2, "an additional combat");
+    assert_eq!(g.obj(s).counters, 1, "dethrone");
+    assert!(!g.obj(s).tapped, "untapped");
+    let mut g = table();
+    let s = put(&mut g, 0, "Scourge of the Throne");
+    to_main1(&mut g, 5, 0);
+    g.players[1].life = 30;
+    assert_eq!(attack_once_count_combats(&mut g, s), 1, "not the most life");
+    assert_eq!(g.obj(s).counters, 0);
+}

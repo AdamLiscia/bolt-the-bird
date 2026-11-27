@@ -26528,6 +26528,33 @@ impl Game {
             Effect::OpponentsPermanentsLoseHexproofIndestructibleEot => {
                 self.lose_hexproof_indestructible_turn[opponent(item.controller)] = self.turn;
             }
+            Effect::PumpYourSubtypeEot {
+                sub,
+                power,
+                toughness,
+            } => {
+                let ids: Vec<ObjId> = self
+                    .creatures(item.controller)
+                    .filter(|&c| self.has_subtype(c, sub))
+                    .collect();
+                for id in ids {
+                    let zcc = self.obj(id).zcc;
+                    self.until_eot.push(Modifier {
+                        obj: id,
+                        zcc,
+                        power,
+                        toughness,
+                        keywords: Keywords::NONE,
+                        dies: None,
+                    });
+                }
+            }
+            Effect::StopUnlessOpponentHasMostLife => {
+                let p = item.controller;
+                if self.players[opponent(p)].life < self.players[p].life {
+                    self.resolving.as_mut().expect("resolving").remaining.clear();
+                }
+            }
             Effect::CreateTokensPerCreatureYouControl { def } => {
                 let n = self.creatures(item.controller).count();
                 for _ in 0..n {
