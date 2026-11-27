@@ -1152,3 +1152,13 @@ One Ring's check in `deal_damage`). Claims recorded in needs_core.json.
   casts offered inside a resolving decision, such as cascade's.
 - Urza's Ruinous Blast: `Effect::ExileAllNonlandNonlegendary` (current types). The reminder line
   isn't scripted.
+
+### Medomai the Ageless (from d2, 2026-11-27)
+
+- Extra turns already existed (`Effect::ExtraTurn`, the `Game::extra_turns` queue that
+  `begin_next_turn` takes from, and `normal_next`). New: `Game::in_extra_turn`, set as each turn
+  begins from whether it was taken from the queue.
+- `CardDef::cant_attack_during_extra_turns`: in `attack_candidates`.
+- Script: `When::DealsCombatDamageToPlayer` makes an `ExtraTurn`. Test: it connects on turn 5;
+  turn 6 is player 0's extra turn, where Medomai isn't offered as an attacker; turn 7 is the
+  opponent's; on turn 8 it can attack again.

@@ -2173,6 +2173,8 @@ pub struct Game {
     /// Gluttonous Hellkite: (spell, the zone change count it enters with, +1/+1 counters per
     /// creature sacrificed, counters so far), read as it enters.
     sacrifice_enter_counters: Vec<(ObjId, u32, i32, i32)>,
+    /// Whether the current turn is an extra turn (CR 500.7), set as each turn begins.
+    pub in_extra_turn: bool,
 }
 
 /// `Action::CastFromGraveyardAs`'s second number for Karador, Ghost Chieftain's once-each-turn
@@ -2481,6 +2483,7 @@ impl Game {
             artifact_plus_batch: None,
             pregame_asked: Vec::new(),
             sacrifice_enter_counters: Vec::new(),
+            in_extra_turn: false,
             hand_links: Vec::new(),
             hand_at_end_combat: Vec::new(),
             dream_marked: Vec::new(),
@@ -11528,6 +11531,8 @@ impl Game {
                     || self.permanents(p).filter(|&x| self.types_of(x).artifact).count()
                         >= self.def_of(id).attacks_only_with_artifacts as usize)
                 && (!arbiter || declared.is_empty())
+                // Medomai the Ageless: "can't attack during extra turns."
+                && !(self.in_extra_turn && self.def_of(id).cant_attack_during_extra_turns)
                 && !self.cant_attack_until.iter().any(|&(x, zcc, until)| x == id && zcc == o.zcc && self.turn < until)
                 && (!self.def_of(id).fights_only_with_blessing || self.city_blessing[o.controller])
                 && (!self.def_of(id).fights_only_if_creature_died || self.creature_died_under[o.controller])
@@ -28410,6 +28415,7 @@ impl Game {
         self.turn += 1;
         // CR 500.7: an extra turn is inserted; afterward the normal order resumes with the player
         // who would have been next (an opponent's gifted turn doesn't replace their own).
+        self.in_extra_turn = !self.extra_turns.is_empty();
         self.active = match self.extra_turns.pop() {
             Some(q) => {
                 let normal = opponent(self.active);

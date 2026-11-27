@@ -2444,6 +2444,16 @@ pub fn script(name: &str) -> Option<Script> {
             // CR 205.4e (legendary sorcery) is checked as it's cast, from its type line.
             spell(d, vec![], vec![Effect::ExileAllNonlandNonlegendary]);
         }),
+        "Medomai the Ageless" => s(
+            &[
+                "Whenever Medomai deals combat damage to a player, take an extra turn after this one.",
+                "Medomai can't attack during extra turns.",
+            ],
+            |d, _| {
+                on(d, When::DealsCombatDamageToPlayer, vec![], vec![Effect::ExtraTurn]);
+                d.cant_attack_during_extra_turns = true;
+            },
+        ),
         _ => None,
     }
 }
@@ -2724,6 +2734,7 @@ pub const PG_B_SCRIPTED: &[&str] = &[
     "The Earth Crystal",
     "Blossombind",
     "Urza's Ruinous Blast",
+    "Medomai the Ageless",
     // Ghyrson Starn (Spr3adsh33t)
     "Basilisk Collar",
     "Gorgon's Head",

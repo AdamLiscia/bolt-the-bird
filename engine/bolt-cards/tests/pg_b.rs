@@ -4635,3 +4635,47 @@ fn urzas_ruinous_blast_exiles_nonland_permanents_that_arent_legendary() {
         assert_eq!(g.obj(x).zone, Zone::Battlefield, "legendary or a land");
     }
 }
+
+// ---- Medomai the Ageless (extra turns) ----
+
+/// Pass (discarding to hand size) until turn `turn` begins, collecting the attack actions offered
+/// along the way.
+fn pass_to_turn(g: &mut Game, turn: u32) -> Vec<Action> {
+    let mut offered = Vec::new();
+    for _ in 0..500 {
+        if g.turn >= turn {
+            break;
+        }
+        let legal = g.legal_actions();
+        offered.extend(legal.iter().copied().filter(|a| matches!(a, Action::Attack(_))));
+        let a = match g.pending {
+            Pending::Discard(p) => Action::Discard(g.players[p].hand[0]),
+            Pending::DeclareAttackers(_) => Action::FinishAttacks,
+            _ if legal.contains(&Action::PassPriority) => Action::PassPriority,
+            _ => legal[0],
+        };
+        act(g, a);
+    }
+    offered
+}
+
+#[test]
+fn medomai_takes_an_extra_turn_and_cant_attack_during_it() {
+    let mut g = table();
+    let medomai = put(&mut g, 0, "Medomai the Ageless");
+    attack(&mut g, &[medomai]);
+    let life = g.players[1].life;
+    pass_to_turn(&mut g, 6);
+    assert_eq!(g.players[1].life, life - 4);
+    assert_eq!((g.active, g.in_extra_turn), (0, true), "an extra turn");
+    let offered = pass_to_turn(&mut g, 7);
+    assert!(
+        !offered.contains(&Action::Attack(medomai)),
+        "can't attack during extra turns"
+    );
+    assert_eq!((g.active, g.in_extra_turn), (1, false), "then the normal order");
+    pass_to_turn(&mut g, 8);
+    assert_eq!((g.active, g.in_extra_turn), (0, false));
+    let offered = pass_to_turn(&mut g, 9);
+    assert!(offered.contains(&Action::Attack(medomai)), "a normal turn");
+}

@@ -1182,6 +1182,8 @@ pub struct CardDef {
     /// "Enchanted creature ... can't have counters put on it" (Blossombind): in `add_counters`,
     /// `add_counter_kind` and `minus_counters_for`.
     pub enchanted_cant_have_counters: bool,
+    /// "[This] can't attack during extra turns." (Medomai the Ageless), from `Game::in_extra_turn`.
+    pub cant_attack_during_extra_turns: bool,
 }
 
 /// A card's pieces from the d4 subsystems (see [`CardDef::subsystems`]).
@@ -1821,6 +1823,7 @@ impl CardDef {
             doubles_plus_counters_on_your_creatures: false,
             enchanted_cant_become_untapped: false,
             enchanted_cant_have_counters: false,
+            cant_attack_during_extra_turns: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -2132,6 +2135,7 @@ impl CardDef {
             doubles_plus_counters_on_your_creatures: false,
             enchanted_cant_become_untapped: false,
             enchanted_cant_have_counters: false,
+            cant_attack_during_extra_turns: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -2443,6 +2447,7 @@ impl CardDef {
             doubles_plus_counters_on_your_creatures: false,
             enchanted_cant_become_untapped: false,
             enchanted_cant_have_counters: false,
+            cant_attack_during_extra_turns: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
