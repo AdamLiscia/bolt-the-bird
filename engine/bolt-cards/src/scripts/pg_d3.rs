@@ -1874,6 +1874,31 @@ pub fn script(name: &str) -> Option<Script> {
                 d.activated[n].sacrifice_self = true;
             },
         ),
+        "Malcolm, Alluring Scoundrel" => s(
+            &[
+                "Whenever Malcolm deals combat damage to a player, put a chorus counter on it. Draw a card, then discard a card. If there are four or more chorus counters on Malcolm, you may cast the discarded card without paying its mana cost.",
+            ],
+            |d, _| {
+                // Chorus counters are its own kind (`Object::kind_counters`).
+                let loot = vec![Effect::KindCounterSelf(1), draw(1), Effect::DiscardThenMayCastFreeIfKindCounters(4)];
+                on(d, When::DealsCombatDamageToPlayer, vec![], loot);
+            },
+        ),
+        "Brightcap Badger // Fungus Frolic" => s(
+            &[
+                "Each Fungus and Saproling you control has \"{T}: Add {G}.\"",
+                "At the beginning of your end step, create a 1/1 green Saproling creature token.",
+                "Omen: Create two 1/1 green Saproling creature tokens.",
+            ],
+            |d, t| {
+                d.your_subtypes_tap_for_green = &["Fungus", "Saproling"];
+                let one = Effect::CreateToken { who: Who::You, def: t.saproling, n: 1 };
+                on(d, When::EndStep { your_turn_only: true }, vec![], vec![one]);
+                let two = Effect::CreateToken { who: Who::You, def: t.saproling, n: 2 };
+                omen(d, Ability::new(vec![], vec![two]));
+                d.adventure = true;
+            },
+        ),
         "Skyscribing" => s(
             &[
                 "Each player draws X cards.",
@@ -2148,4 +2173,7 @@ pub const PG_D3_SCRIPTED: &[&str] = &[
     "Skyscribing",
     // Core theme d3, batch 29
     "Fabled Passage",
+    // Core theme d3, batch 31
+    "Malcolm, Alluring Scoundrel",
+    "Brightcap Badger // Fungus Frolic",
 ];

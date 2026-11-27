@@ -147,6 +147,13 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
             times = "once" if value == 1 else f"{value} times"
             return f"Kick {card} {times}" if card else f"Kick {times}"
         return None
+    if d == "Proliferate":
+        if kind == "Pick":
+            return f"Proliferate: {card_name}"
+        if kind == "Mode":
+            return "Proliferate: player " + str(value + 1)
+        if kind == "Yes":
+            return "Done choosing (proliferate)"
     if kind == "Mode":
         if d == "ChooseColor" and 0 <= value < 5:
             return f"{src}: choose {COLORS[value]}"
@@ -215,6 +222,8 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         verb = verb or {"AttachAura": "Attach"}.get(d)
         verb = verb or {"AuraEntersAttachedTo": "Attach the Aura to"}.get(d)
         verb = verb or {"DiscardThenIfInstantOrSorcery": "Discard"}.get(d)
+        if d == "DiscardMayCastFree":
+            verb = "Discard (you may cast it free)" if dec.get("free") else "Discard"
         verb = verb or {"MoveAuraTo": "Attach the Aura to"}.get(d)
         verb = verb or {"CreatureFromHandAttacking": "Put onto the battlefield attacking:"}.get(d)
         verb = verb or {"PatronOfChaosSacrifice": "Sacrifice (one of two):"}.get(d)

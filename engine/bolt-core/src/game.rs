@@ -1448,6 +1448,18 @@ pub enum Decision {
     /// Rose Room Treasurer: `Amount(x)` pays {x} and `source` deals x damage to `target` (offered
     /// for each x you can pay, up to `max`); `Amount(0)` declines.
     PayXDamage { source: ObjId, target: Target, max: u8 },
+    /// `Pick` a card in your hand to discard; with `free`, you may then cast it without paying its
+    /// mana cost (Malcolm, Alluring Scoundrel).
+    DiscardMayCastFree { free: bool },
+    /// Proliferate (CR 701.27): `Pick` a permanent with counters or `Mode(p)` a player with
+    /// counters (poison, energy) to add it to `picked` / `players`; `Yes` when done (choosing none
+    /// is fine). Each chosen one then gets another counter of each kind it has, and `rounds` - 1
+    /// more proliferates follow (Tekuthal, Inquiry Dominus).
+    Proliferate {
+        picked: Vec<ObjId>,
+        players: [bool; 2],
+        rounds: u8,
+    },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -4003,6 +4015,97 @@ impl Game {
     }
 
     /// Whether the permanent has a counter of any kind on it (CR 122).
+    /// Proliferate's choice (`Decision::Proliferate`), skipped when no permanent or player has a
+    /// counter.
+    fn ask_proliferate(&mut self, p: PlayerId, rounds: u8) {
+        let any = self.battlefield.iter().any(|&x| self.proliferable(x))
+            || (0..2).any(|q| self.player_has_counters(q));
+        if any {
+            let d = Decision::Proliferate {
+                picked: Vec::new(),
+                players: [false; 2],
+                rounds,
+            };
+            self.ask(p, d);
+        }
+    }
+
+    /// Whether proliferating `id` would add a counter: it has a numbered counter of some kind.
+    pub fn proliferable(&self, id: ObjId) -> bool {
+        let o = self.obj(id);
+        o.counters != 0
+            || [
+                o.stun,
+                o.incubation,
+                o.soul,
+                o.revival,
+                o.fellowship,
+                o.bait,
+                o.quest,
+                o.kind_counters,
+                o.slime,
+            ]
+            .iter()
+            .any(|&n| n > 0)
+            || o.time_counters > 0
+            || o.shield_counters > 0
+            || (o.loyalty > 0 && self.types_of(id).planeswalker)
+    }
+
+    /// Whether player `q` has a counter proliferate can add to (poison, energy).
+    pub fn player_has_counters(&self, q: PlayerId) -> bool {
+        self.players[q].poison > 0 || self.players[q].energy > 0
+    }
+
+    /// Proliferates `id`: another counter of each kind it has (`p` puts them). Lore counters
+    /// aren't added (a Saga's chapters aren't re-read here).
+    fn proliferate_one(&mut self, p: PlayerId, id: ObjId) {
+        let (plus, minus) = (self.obj(id).counters > 0, self.obj(id).counters < 0);
+        let pw = self.types_of(id).planeswalker && self.obj(id).loyalty > 0;
+        if plus {
+            self.add_counters(id, 1);
+        }
+        let mut n = i32::from(minus);
+        {
+            let o = self.obj_mut(id);
+            if minus {
+                o.counters -= 1;
+            }
+            for c in [
+                &mut o.stun,
+                &mut o.incubation,
+                &mut o.soul,
+                &mut o.revival,
+                &mut o.fellowship,
+                &mut o.bait,
+                &mut o.quest,
+                &mut o.kind_counters,
+                &mut o.slime,
+            ] {
+                if *c > 0 {
+                    *c += 1;
+                    n += 1;
+                }
+            }
+            if o.time_counters > 0 {
+                o.time_counters = o.time_counters.saturating_add(1);
+                n += 1;
+            }
+            if o.shield_counters > 0 {
+                o.shield_counters = o.shield_counters.saturating_add(1);
+                n += 1;
+            }
+            if pw {
+                o.loyalty += 1;
+                n += 1;
+            }
+        }
+        if n > 0 {
+            self.counters_placed(p, n);
+            self.counter_put_on(id);
+        }
+    }
+
     pub fn has_counter(&self, id: ObjId) -> bool {
         let o = self.obj(id);
         o.counters != 0
@@ -10349,6 +10452,18 @@ impl Game {
                     return Some((id, ManaSource::of(&[crate::Color::Green]))); // Jaheira
                 }
                 if d.mana.is_none()
+                    && self.permanents(p).any(|x| {
+                        !self.lost_abilities(x)
+                            && self
+                                .def_of(x)
+                                .your_subtypes_tap_for_green
+                                .iter()
+                                .any(|s| self.has_subtype(id, s))
+                    })
+                {
+                    return Some((id, ManaSource::of(&[crate::Color::Green]))); // Brightcap Badger
+                }
+                if d.mana.is_none()
                     && self.types_of(id).creature
                     && self.has_counter(id)
                     && self
@@ -14298,6 +14413,23 @@ impl Game {
             }
             d @ Decision::AttachAura { .. } => self.attach_aura_actions(p, d),
             Decision::DiscardThenIfInstantOrSorcery => hand.iter().copied().map(Action::Pick).collect(),
+            Decision::DiscardMayCastFree { .. } => hand.iter().copied().map(Action::Pick).collect(),
+            Decision::Proliferate { picked, players, .. } => {
+                let mut v: Vec<Action> = self
+                    .battlefield
+                    .iter()
+                    .copied()
+                    .filter(|x| !picked.contains(x) && self.proliferable(*x))
+                    .map(Action::Pick)
+                    .collect();
+                for (q, &chosen) in players.iter().enumerate() {
+                    if !chosen && self.player_has_counters(q) {
+                        v.push(Action::Mode(q as u8));
+                    }
+                }
+                v.push(Action::Yes);
+                v
+            }
             Decision::PatronOfChaosSacrifice { first, .. } => self.patron_of_chaos_actions(p, *first),
             Decision::ExileFromHandUntilSourceLeaves { victim, .. } => self.hand_link_actions(*victim),
             Decision::MayPutExiledLandOntoBattlefield { .. } => vec![Action::Yes, Action::No],
@@ -16114,6 +16246,80 @@ impl Game {
             (Decision::MoveAuraTo { aura }, Action::Pick(c)) => {
                 let zcc = self.obj(c).zcc;
                 self.obj_mut(aura).attached_to = Some((c, zcc));
+            }
+            (
+                Decision::Proliferate {
+                    mut picked,
+                    players,
+                    rounds,
+                },
+                Action::Pick(x),
+            ) => {
+                picked.push(x);
+                self.ask(
+                    p,
+                    Decision::Proliferate {
+                        picked,
+                        players,
+                        rounds,
+                    },
+                );
+            }
+            (
+                Decision::Proliferate {
+                    picked,
+                    mut players,
+                    rounds,
+                },
+                Action::Mode(q),
+            ) => {
+                players[q as usize % 2] = true;
+                self.ask(
+                    p,
+                    Decision::Proliferate {
+                        picked,
+                        players,
+                        rounds,
+                    },
+                );
+            }
+            (
+                Decision::Proliferate {
+                    picked,
+                    players,
+                    rounds,
+                },
+                _,
+            ) => {
+                for x in picked {
+                    if self.obj(x).zone == Zone::Battlefield {
+                        self.proliferate_one(p, x);
+                    }
+                }
+                for (q, &chosen) in players.iter().enumerate() {
+                    if chosen {
+                        let pl = &mut self.players[q];
+                        if pl.poison > 0 {
+                            pl.poison += 1;
+                        }
+                        if pl.energy > 0 {
+                            pl.energy += 1;
+                        }
+                    }
+                }
+                if rounds > 1 {
+                    self.ask_proliferate(p, rounds - 1);
+                }
+            }
+            (Decision::DiscardMayCastFree { free }, Action::Pick(c)) => {
+                self.move_to(c, Zone::Graveyard); // discarded
+                if free && self.obj(c).zone == Zone::Graveyard && !self.def_of(c).types.land {
+                    // A one-spell window reaches the graveyard (`free_casts_one`); "you may": pass.
+                    self.obj_mut(c).cast_free = true;
+                    self.free_casts.push(c);
+                    self.free_casts_one = true;
+                    self.free_caster = p;
+                }
             }
             (Decision::DiscardThenIfInstantOrSorcery, Action::Pick(c)) => {
                 let t = self.def_of(c).types;
@@ -19490,20 +19696,11 @@ impl Game {
             }
             Effect::Proliferate => {
                 let p = item.controller;
-                for x in self.battlefield.clone() {
-                    let o = self.obj(x);
-                    let mine = o.controller == p;
-                    if mine && o.counters > 0 {
-                        self.add_counters(x, 1);
-                    } else if !mine && o.counters < 0 {
-                        self.obj_mut(x).counters -= 1;
-                        self.counters_placed(p, 1);
-                    }
-                    if mine && self.types_of(x).planeswalker {
-                        self.obj_mut(x).loyalty += 1;
-                        self.counters_placed(p, 1);
-                    }
-                }
+                let tekuthals = self
+                    .permanents(p)
+                    .filter(|&x| self.def_of(x).proliferate_twice && !self.lost_abilities(x))
+                    .count();
+                self.ask_proliferate(p, 1u8 << tekuthals.min(3));
             }
             Effect::ExileMakeEnchantmentCopy(slot) => {
                 if let Some(card) = Game::slot_object(item, legal, slot) {
@@ -24704,6 +24901,25 @@ impl Game {
             Effect::DamageSourceControllerExilesRandomFromHand => {
                 if let Some(source) = item.extra {
                     self.exile_random_from_damager_hand(source, item.controller);
+                }
+            }
+            Effect::DiscardThenMayCastFreeIfKindCounters(n) => {
+                let p = item.controller;
+                if !self.players[p].hand.is_empty() {
+                    let free = self.obj(src).kind_counters >= n as i32;
+                    self.ask(p, Decision::DiscardMayCastFree { free });
+                }
+            }
+            Effect::ExileTopCastColorThisTurn { n, color } => {
+                let p = item.controller;
+                let turn = self.turn;
+                for _ in 0..n {
+                    if let Some(&c) = self.players[p].library.last() {
+                        self.move_to(c, Zone::Exile);
+                        if self.colors_of(c)[color as usize] && !self.def_of(c).types.land {
+                            self.obj_mut(c).playable = Some((p, turn));
+                        }
+                    }
                 }
             }
             Effect::DiscardThenIfInstantOrSorcery => {

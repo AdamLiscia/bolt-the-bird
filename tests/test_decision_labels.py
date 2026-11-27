@@ -301,3 +301,17 @@ def test_rose_room_treasurer_pays_x_for_x_damage():
     dec = {"kind": "PayXDamage", "max": 4}
     assert label(dec, "Amount", 0) == "Don't pay"
     assert label(dec, "Amount", 3) == "Pay {3}: 3 damage"
+
+
+def test_malcolm_discards_and_may_cast_it_free():
+    dec = {"kind": "DiscardMayCastFree", "free": True}
+    assert sv._decision_label(dec, "Pick", 0, "Opt") == "Discard (you may cast it free) Opt"
+    dec = {"kind": "DiscardMayCastFree", "free": False}
+    assert sv._decision_label(dec, "Pick", 0, "Opt") == "Discard Opt"
+
+
+def test_proliferate_chooses_permanents_and_players():
+    dec = {"kind": "Proliferate", "picked": [], "players": [False, False], "rounds": 1}
+    assert sv._decision_label(dec, "Pick", 0, "Llanowar Elves") == "Proliferate: Llanowar Elves"
+    assert label(dec, "Mode", 1) == "Proliferate: player 2"
+    assert label(dec, "Yes", 0) == "Done choosing (proliferate)"

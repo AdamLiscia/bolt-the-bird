@@ -541,6 +541,8 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         first_tokens_copy_equipped: false,
         fights_only_if_creature_died: false,
         soulbond_damage_draw: false,
+        your_subtypes_tap_for_green: &[],
+        proliferate_twice: false,
     };
     def.color_identity = color_identity(o);
     def.phyrexian = phyrexian;

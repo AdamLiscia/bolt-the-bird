@@ -1096,6 +1096,12 @@ pub struct CardDef {
     /// Tandem Lookout: while paired (soulbond), each of the pair has "Whenever this creature deals
     /// damage to an opponent, draw a card.": this card's `When::PairedDealsDamageToOpponent` trigger.
     pub soulbond_damage_draw: bool,
+    /// "Each [subtype] and [subtype] you control has \"{T}: Add {G}.\"" (Brightcap Badger:
+    /// Fungus, Saproling), in the mana-source pass.
+    pub your_subtypes_tap_for_green: &'static [&'static str],
+    /// "If you would proliferate, proliferate twice instead." (Tekuthal, Inquiry Dominus), in
+    /// `Effect::Proliferate`.
+    pub proliferate_twice: bool,
 }
 
 /// A card's pieces from the d4 subsystems (see [`CardDef::subsystems`]).
@@ -1668,6 +1674,8 @@ impl CardDef {
             first_tokens_copy_equipped: false,
             fights_only_if_creature_died: false,
             soulbond_damage_draw: false,
+            your_subtypes_tap_for_green: &[],
+            proliferate_twice: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -1964,6 +1972,8 @@ impl CardDef {
             first_tokens_copy_equipped: false,
             fights_only_if_creature_died: false,
             soulbond_damage_draw: false,
+            your_subtypes_tap_for_green: &[],
+            proliferate_twice: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -2260,6 +2270,8 @@ impl CardDef {
             first_tokens_copy_equipped: false,
             fights_only_if_creature_died: false,
             soulbond_damage_draw: false,
+            your_subtypes_tap_for_green: &[],
+            proliferate_twice: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
