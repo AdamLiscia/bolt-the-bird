@@ -9152,13 +9152,20 @@ impl Game {
                             .filter(|&c| self.types_of(c).land && !self.cant_be_sacrificed(c))
                             .map(|c| Action::ActivateWith(id, n, c)),
                     );
-                } else if a.tap_power() > 0 {
+                } else if a.saddle > 0 {
+                    // Saddle: tap another untapped creature with enough power, as a sorcery.
+                    v.extend(
+                        self.creatures(p)
+                            .filter(|&c| c != id && !self.obj(c).tapped && self.power(c) >= a.saddle as i32)
+                            .map(|c| Action::ActivateWith(id, n, c)),
+                    );
+                } else if a.crew > 0 {
                     // Crew N (CR 702.122a): any number of other untapped creatures with total power N
                     // or more (summoning sickness doesn't matter). The one named first; more are
                     // picked with `Decision::CrewTap` if it isn't enough alone.
                     let crew: Vec<ObjId> = self.crew_candidates(p, id, &[]);
                     let total: i32 = crew.iter().map(|&c| self.power(c).max(0)).sum();
-                    if total >= a.tap_power() as i32 {
+                    if total >= a.crew as i32 {
                         v.extend(crew.into_iter().map(|c| Action::ActivateWith(id, n, c)));
                     }
                 } else if a.sacrifice_two_artifacts_or_creatures {
@@ -9434,16 +9441,10 @@ impl Game {
                     self.move_to(c, Zone::Graveyard);
                     self.sacrificed(c, p);
                 }
-            } else if a.tap_power() > 0 {
+            } else if a.crew > 0 || a.saddle > 0 {
                 self.become_tapped(v); // crew and saddle tap, they don't sacrifice
                 for c in std::mem::take(&mut self.crew_extra) {
                     self.become_tapped(c); // the others picked with Decision::CrewTap
-                    if a.saddle > 0 {
-                        // They saddled it too (the named one is recorded by BecomeSaddled).
-                        let (mz, cz, turn) = (self.obj(id).zcc, self.obj(c).zcc, self.turn);
-                        self.saddled.retain(|e| e.4 == turn);
-                        self.saddled.push((id, mz, c, cz, turn));
-                    }
                 }
             } else if a.sacrifice_two_others {
                 if self.obj(v).zone == Zone::Battlefield {
@@ -10762,7 +10763,7 @@ impl Game {
             ),
             (Pending::Priority(p), Action::Activate(id, n)) => self.activate(p, id, n, None),
             (Pending::Priority(p), Action::ActivateWith(id, n, victim)) => {
-                let crew = self.activated_of(id, n).tap_power() as i32; // crew or saddle
+                let crew = self.activated_of(id, n).crew as i32;
                 if crew > 0 && self.power(victim).max(0) < crew {
                     // Crew with more than one creature: pick the rest first (CR 702.122a).
                     let chosen = vec![victim];
@@ -12795,7 +12796,7 @@ impl Game {
             Decision::ChooseEnterMode { .. } => vec![Action::Mode(0), Action::Mode(1)],
             Decision::Riot { .. } => vec![Action::Mode(0), Action::Mode(1)],
             Decision::CrewTap { source, n, chosen } => {
-                let need = self.activated_of(*source, *n).tap_power() as i32;
+                let need = self.activated_of(*source, *n).crew as i32;
                 let have: i32 = chosen.iter().map(|&c| self.power(c).max(0)).sum();
                 let mut v: Vec<Action> = self
                     .crew_candidates(p, *source, chosen)
