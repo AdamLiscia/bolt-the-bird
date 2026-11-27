@@ -1,5 +1,5 @@
 """Smoke test for the Commander service (default 127.0.0.1:8768): cards, validate a real playgroup deck and
-a basics-only deck, a two-human Commander game, and the refused bot game and draft.
+a basics-only deck, a two-human Commander game, a game against the smart pilot, and the refused network pilot and draft.
 
     python scripts/smoke_cmd_service.py [port]
 """
@@ -54,8 +54,23 @@ def main():
             "POST", f"/game/{gid}/act", {"seat": who, "action_index": pick["index"], "version": view["version"]}
         )
         print(f"move {k}: seat {who} {pick['label']!r} -> {s}")
-    s, bot = call("POST", "/game", {**body, "human_seats": None, "human_seat": 0, "pilot": "smart"})
-    print("bot refused", s, bot.get("error"))
+    # Play vs Bolt: a human seat against the smart pilot (no network needed); the network pilot is refused.
+    s, bot = call("POST", "/game", {**body, "human_seats": None, "human_seat": 0, "pilot": "smart", "frames": False})
+    assert s == 200, (s, bot)
+    gid, view = bot["game_id"], bot["state"]
+    for k in range(6):
+        acts = view["actions"]
+        if not acts:
+            break
+        pick = next((a for a in acts if a["kind"] in ("Keep", "PlayLand")), acts[0])
+        s, out = call(
+            "POST", f"/game/{gid}/act", {"seat": 0, "action_index": pick["index"], "version": view["version"]}
+        )
+        assert s == 200, (s, out)
+        view = out["state"]
+        print(f"vs Bolt move {k}: {pick['label']!r} -> turn {view.get('turn')}")
+    s, net = call("POST", "/game", {**body, "human_seats": None, "human_seat": 0, "pilot": "network"})
+    print("network pilot refused", s, net.get("error"))
     s, d = call("POST", "/deck/random", {"set": "CMD"})
     print("draft refused", s, d.get("error"))
 
