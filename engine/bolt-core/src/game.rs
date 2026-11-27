@@ -11358,6 +11358,13 @@ impl Game {
                 t.extra = Some(card);
             }
         }
+        if self.obj(card).from_hand {
+            let before = self.triggered.len();
+            self.fire(p, When::YouCastSpellFromHand, None);
+            for t in &mut self.triggered[before..] {
+                t.extra = Some(card);
+            }
+        }
         if std::mem::take(&mut self.obj_mut(card).citadel_cast) {
             // Bolas's Citadel: life equal to its mana value instead of its mana cost.
             let mv = self.def_of(card).cost.mana_value() as i32;
@@ -21529,6 +21536,44 @@ impl Game {
                     self.obj_mut(c).cast_free = true;
                     self.free_casts.push(c);
                     self.free_caster = p;
+                    self.free_casts_to_bottom = true;
+                }
+            }
+            Effect::RevealTopMvMayCastOneFree => {
+                let Some(spell) = item.extra else {
+                    return;
+                };
+                let x = self
+                    .items
+                    .iter()
+                    .rfind(|i| i.source == spell && i.kind == StackKind::Spell)
+                    .map_or(0, |i| i.x as u32);
+                let cost = self.stack_mana_cost(spell);
+                let mv = cost.mana_value() + cost.x as u32 * x;
+                let p = item.controller;
+                let (mut hits, mut rest) = (Vec::new(), Vec::new());
+                for _ in 0..mv {
+                    let Some(&c) = self.players[p].library.last() else {
+                        break;
+                    };
+                    self.move_to(c, Zone::Exile);
+                    if !self.def_of(c).types.land && self.def_of(c).cost.mana_value() <= mv {
+                        hits.push(c);
+                    } else {
+                        rest.push(c);
+                    }
+                }
+                for &c in &rest {
+                    self.move_to(c, Zone::Library);
+                }
+                self.put_among_rest(p, rest, false);
+                if !hits.is_empty() {
+                    for &c in &hits {
+                        self.obj_mut(c).cast_free = true;
+                    }
+                    self.free_casts.extend(hits);
+                    self.free_caster = p;
+                    self.free_casts_one = true;
                     self.free_casts_to_bottom = true;
                 }
             }

@@ -2813,3 +2813,29 @@ fn jarad_drains_the_sacrificed_power_and_returns_for_a_swamp_and_a_forest() {
     assert_eq!(g2.obj(jarad).zone, Zone::Hand);
     assert_eq!((swamps(&g2), forests(&g2)), (s - 1, f - 1));
 }
+
+#[test]
+fn sunbirds_invocation_reveals_the_spells_mana_value_and_casts_one_free() {
+    let mut g = table();
+    put(&mut g, 0, "Sunbird's Invocation");
+    let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Library);
+    let forest = g.add_card(0, cid("Forest"), Zone::Library); // the top card
+    let deep = g.players[0].library[g.players[0].library.len() - 3];
+    let signet = hand(&mut g, 0, "Arcane Signet");
+    act(&mut g, Action::Cast(signet));
+    while !matches!(g.pending, Pending::FreeCast(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.obj(deep).zone, Zone::Library, "X is 2: only the top two");
+    assert_eq!(g.players[0].library[0], forest, "the land to the bottom");
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Cast(elves)), "{legal:?}");
+    act(&mut g, Action::Cast(elves));
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        g.obj(elves).zone,
+        Zone::Battlefield,
+        "cast free from among the revealed"
+    );
+    assert_eq!(g.obj(signet).zone, Zone::Battlefield);
+}

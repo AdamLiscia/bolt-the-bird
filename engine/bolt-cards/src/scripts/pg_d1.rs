@@ -1341,6 +1341,10 @@ pub fn script(name: &str) -> Option<Script> {
                 d.activated[n].sacrifice_two_subtypes = Some(["Swamp", "Forest"]);
             },
         ),
+        "Sunbird's Invocation" => s(
+            &["Whenever you cast a spell from your hand, reveal the top X cards of your library, where X is that spell's mana value. You may cast a spell with mana value X or less from among cards revealed this way without paying its mana cost. Put the rest on the bottom of your library in a random order."],
+            |d, _| on(d, When::YouCastSpellFromHand, vec![], vec![Effect::RevealTopMvMayCastOneFree]),
+        ),
         _ => None,
     }
 }
@@ -1515,4 +1519,5 @@ pub const PG_D1_SCRIPTED: &[&str] = &[
     "Darksteel Monolith",
     "Witch's Cottage",
     "Jarad, Golgari Lich Lord",
+    "Sunbird's Invocation",
 ];
