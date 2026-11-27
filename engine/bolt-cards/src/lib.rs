@@ -565,6 +565,7 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         your_planeswalkers_have_loyalty: Vec::new(),
         artifact_tokens_plus_one: None,
         begins_game_with_luck_counter: false,
+        loyalty_plus_instants_sorceries_cast: false,
     };
     def.color_identity = color_identity(o);
     def.phyrexian = phyrexian;

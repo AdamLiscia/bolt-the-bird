@@ -2401,6 +2401,16 @@ pub fn script(name: &str) -> Option<Script> {
             &["When this creature enters, each player sacrifices a creature or planeswalker of their choice."],
             |d, _| on(d, When::Enters, vec![], vec![Effect::EachPlayerSacrificesCreatureOrPlaneswalker]),
         ),
+        "Gluttonous Hellkite" => s(
+            &[
+                "When you cast this spell, each player sacrifices X creatures. This creature enters with two +1/+1 counters on it for each creature sacrificed this way.",
+                "Flying, trample",
+            ],
+            |d, _| {
+                on(d, When::YouCastThis, vec![], vec![Effect::EachPlayerSacrificesXCreaturesCountersPer(2)]);
+                d.keywords = d.keywords.with(Keywords::FLYING).with(Keywords::TRAMPLE);
+            },
+        ),
         _ => None,
     }
 }
@@ -2677,6 +2687,7 @@ pub const PG_B_SCRIPTED: &[&str] = &[
     "Stridehangar Automaton",
     "Reckless Handling",
     "Demon's Disciple",
+    "Gluttonous Hellkite",
     // Ghyrson Starn (Spr3adsh33t)
     "Basilisk Collar",
     "Gorgon's Head",

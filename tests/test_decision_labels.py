@@ -384,6 +384,11 @@ def test_demonic_consultation_names_a_card():
     assert label(dec, "No", 0) == "Name a card that isn't in your library"
 
 
+def test_gluttonous_hellkite_sacrifices_each_creature_by_name():
+    dec = {"kind": "EachSacrificesXCreatures", "left": 2, "n": 2}
+    assert sv._decision_label(dec, "Pick", 0, "Llanowar Elves") == "Sacrifice Llanowar Elves"
+
+
 def test_the_moxen_and_lions_eye_diamond_ask_their_choices():
     imprint = {"kind": "ImprintNonartifactNonland", "source": [3, 1]}
     assert sv._decision_label(imprint, "Pick", 0, "Forest") == "Exile (imprint): Forest"

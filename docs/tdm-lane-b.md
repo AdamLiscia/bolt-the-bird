@@ -1103,3 +1103,16 @@ One Ring's check in `deal_damage`). Claims recorded in needs_core.json.
   `pending_copies`. The rules give replicate and casualty copies new targets too (CR 702.56a,
   702.153a); that switch is d1's call. I also removed a duplicate
   `test_tekuthal_picks_each_counter_to_remove` that arrived from tarkir.
+
+### Gluttonous Hellkite; Ral, Leyline Prodigy's loyalty piece (2026-11-27)
+
+- Gluttonous Hellkite (Vaevictis): scripted as its oracle text reads, as a cast trigger
+  (`When::YouCastThis`) with `Effect::EachPlayerSacrificesXCreaturesCountersPer(2)`. X comes from
+  the spell's cast snapshot. The active player sacrifices first, then the other player
+  (`Decision::EachSacrificesXCreatures`). A player who has X or fewer creatures sacrifices them
+  all without being asked. Each sacrifice adds 2 to the spell's entry in
+  `Game::sacrifice_enter_counters`, keyed by the spell and the zone change count it enters with.
+  The counters go on as it enters, so a countered spell's entry is never read.
+- Ral, Leyline Prodigy (d1 scripts the card): `CardDef::loyalty_plus_instants_sorceries_cast`
+  adds `instants_sorceries_cast[controller]` to the printed loyalty as the walker enters, before
+  loyalty doubling. Tested on a flagged Jace Beleren.

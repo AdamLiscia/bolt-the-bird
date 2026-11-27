@@ -3040,6 +3040,11 @@ pub enum Effect {
     SacrificeTargetsRevealTopPermanent(u8),
     /// Put the source onto the battlefield from the command zone (Derevi); it isn't cast.
     PutSourceOntoBattlefieldFromCommand,
+    /// Gluttonous Hellkite's cast trigger: "each player sacrifices X creatures" (X of the spell
+    /// that is the source, from its cast snapshot), starting with the active player, as
+    /// `Decision::EachSacrificesXCreatures`; the spell then "enters with `n` +1/+1 counters on it
+    /// for each creature sacrificed this way" (`Game::sacrifice_enter_counters`).
+    EachPlayerSacrificesXCreaturesCountersPer(i32),
     /// "Until your next turn, instant and sorcery spells you cast cost {N} less to cast." (Ral,
     /// Leyline Prodigy's +1: 1), kept in `Game::instant_sorcery_discount_until`.
     InstantSorceryDiscountUntilYourNextTurn(u8),
