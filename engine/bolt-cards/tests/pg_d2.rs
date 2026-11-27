@@ -2380,3 +2380,52 @@ fn composer_of_spring_puts_a_land_or_with_six_enchantments_a_creature_tapped() {
     assert_eq!(g.obj(lions).zone, Zone::Battlefield);
     assert!(g.obj(lions).tapped);
 }
+
+#[test]
+fn oloro_gains_two_from_the_command_zone_at_your_upkeep() {
+    let mut g = table();
+    let oloro = g.add_card(0, cid("Oloro, Ageless Ascetic"), Zone::Command);
+    assert!(g.command.contains(&oloro));
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.players[0].life, 42, "the command-zone trigger only");
+    assert_eq!(
+        g.players[1].life, 40,
+        "its gain-life trigger works only on the battlefield"
+    );
+}
+
+#[test]
+fn oloro_on_the_battlefield_gains_two_and_pays_one_to_drain_and_draw() {
+    let mut g = table();
+    put(&mut g, 0, "Oloro, Ageless Ascetic");
+    g.start_turn(5, 0);
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.players[0].life, 42);
+    let before = g.players[0].hand.len();
+    act(&mut g, Action::Yes); // pay {1}
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].life, 39);
+    assert_eq!(g.players[0].hand.len(), before + 1);
+}
+
+#[test]
+fn angel_of_destiny_shares_the_life_and_wins_at_fifteen_over() {
+    let mut g = table();
+    let angel = put(&mut g, 0, "Angel of Destiny");
+    attack(&mut g, &[angel]);
+    through_combat(&mut g);
+    // Double strike: 2 and 2; each time both players gain that much.
+    assert_eq!(g.players[0].life, 44);
+    assert_eq!(g.players[1].life, 40);
+    assert!(!g.players[1].lost);
+    g.players[0].life = 55; // 15 over the starting 40
+    while g.result.is_none() && g.step != Step::Cleanup {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(g.players[1].lost, "it attacked this turn");
+}

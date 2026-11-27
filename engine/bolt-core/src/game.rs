@@ -19498,6 +19498,23 @@ impl Game {
                     self.gain_life(item.controller, item.amount);
                 }
             }
+            Effect::OpponentGainsLifeAmount => {
+                if item.amount > 0 {
+                    self.gain_life(opponent(item.controller), item.amount);
+                }
+            }
+            Effect::OpponentLosesIfSourceAttackedThisTurn => {
+                let p = item.controller;
+                let opp = opponent(p);
+                let attacked = self.attacked_creatures_this_turn.contains(&src);
+                let protected = self.permanents(opp).any(|c| self.def_of(c).cant_lose);
+                if attacked && !protected && !self.players[opp].lost {
+                    self.players[opp].lost = true;
+                    self.events.push(Event::Lost { player: opp });
+                    self.result = Some(Outcome::Winner(p));
+                    self.pending = Pending::GameOver;
+                }
+            }
             Effect::DrawAmount => {
                 for _ in 0..item.amount {
                     self.draw(item.controller);
@@ -22689,6 +22706,9 @@ impl Game {
             }
             Some(Condition::Kicked) => self.obj(source).kicked,
             Some(Condition::YouCreatedTokenThisTurn) => self.token_created_turn[controller] == self.turn,
+            Some(Condition::LifeAtLeastStartingPlus(n)) => {
+                self.players[controller].life >= self.starting_life + n
+            }
             Some(Condition::ColorlessSpentAtLeast(n)) => {
                 self.colorless_spent.iter().any(|&(c, k)| c == source && k >= *n)
             }
@@ -23801,6 +23821,21 @@ impl Game {
                     });
                 }
                 self.fire(a, When::Upkeep { your_turn_only: true }, None);
+                // "if [this] is in the command zone" (Oloro): its owner's cards there.
+                for c in self.command.clone() {
+                    if self.obj(c).owner != a || self.obj(c).zone != Zone::Command {
+                        continue;
+                    }
+                    let whens: Vec<When> = self.def_of(c).triggers.iter().map(|tr| tr.when).collect();
+                    for (n, w) in whens.into_iter().enumerate() {
+                        if w == When::YourUpkeepInCommandZone {
+                            self.triggered.push(StackItem {
+                                kind: StackKind::Trigger(n),
+                                ..Game::casting(c, a)
+                            });
+                        }
+                    }
+                }
                 self.fire(
                     a,
                     When::Upkeep {

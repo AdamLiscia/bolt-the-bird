@@ -1074,6 +1074,30 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::EnchantmentYouControlEnters, vec![], vec![Effect::MayPutLandOrCreatureFromHandTapped { enchantments: 6 }]);
             },
         ),
+        // ---- Core: triggers, batch 18 (an upkeep trigger from the command zone; Angel of Destiny) ----
+        "Oloro, Ageless Ascetic" => s(
+            &[
+                "At the beginning of your upkeep, you gain 2 life.",
+                "Whenever you gain life, you may pay {1}. If you do, draw a card and each opponent loses 1 life.",
+                "At the beginning of your upkeep, if Oloro is in the command zone, you gain 2 life.",
+            ],
+            |d, _| {
+                on(d, When::Upkeep { your_turn_only: true }, vec![], vec![Effect::GainLife { who: Who::You, n: 2 }]);
+                let one = ManaCost::parse("{1}").expect("a mana cost");
+                on(d, When::YouGainLife, vec![], vec![Effect::MayPay(one), draw(1), Effect::LoseLife { who: Who::EachOpponent, n: 1 }]);
+                on(d, When::YourUpkeepInCommandZone, vec![], vec![Effect::GainLife { who: Who::You, n: 2 }]);
+            },
+        ),
+        "Angel of Destiny" => s(
+            &[
+                "Whenever a creature you control deals combat damage to a player, you and that player each gain that much life.",
+                "At the beginning of your end step, if you have at least 15 life more than your starting life total, each player this creature attacked this turn loses the game.",
+            ],
+            |d, _| {
+                on(d, When::YourCreatureDealsCombatDamageToPlayerAmount, vec![], vec![Effect::GainLifeAmount, Effect::OpponentGainsLifeAmount]);
+                conditional(d, When::EndStep { your_turn_only: true }, Condition::LifeAtLeastStartingPlus(15), vec![], vec![Effect::OpponentLosesIfSourceAttackedThisTurn]);
+            },
+        ),
         _ => None,
     }
 }
@@ -1287,4 +1311,6 @@ pub const PG_D2_SCRIPTED: &[&str] = &[
     "Hullbreaker Horror",
     "Call of the Ring",
     "Composer of Spring",
+    "Oloro, Ageless Ascetic",
+    "Angel of Destiny",
 ];

@@ -2562,6 +2562,12 @@ pub enum Effect {
     MayPutLandOrCreatureFromHandTapped {
         enchantments: u8,
     },
+    /// "That player gains that much life": the opponent gains the trigger's amount (Angel of
+    /// Destiny, 1v1: the damaged player).
+    OpponentGainsLifeAmount,
+    /// "Each player this creature attacked this turn loses the game" (Angel of Destiny), 1v1: the
+    /// opponent, if the source attacked this turn.
+    OpponentLosesIfSourceAttackedThisTurn,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -3004,6 +3010,9 @@ pub enum Condition {
     ColorlessSpentAtLeast(u32),
     /// Its controller created a token this turn (Bennie Bracks), from `Game::token_created_turn`.
     YouCreatedTokenThisTurn,
+    /// Its controller has at least this much life more than their starting life total (Angel of
+    /// Destiny: 15).
+    LifeAtLeastStartingPlus(i32),
 }
 
 /// A spell's effect or a triggered ability: target slots, then effects in order.
@@ -3500,6 +3509,9 @@ pub enum When {
     /// "Whenever you choose a creature as your Ring-bearer" (Call of the Ring), the same one again
     /// included (CR 701.54c); slot 0 (if `triggering`) is that creature.
     YouChooseRingBearer,
+    /// "At the beginning of your upkeep, if [this] is in the command zone" (Oloro, Ageless
+    /// Ascetic): fired for the active player's cards in the command zone, not their permanents.
+    YourUpkeepInCommandZone,
 }
 
 #[derive(Clone, Debug, PartialEq)]
