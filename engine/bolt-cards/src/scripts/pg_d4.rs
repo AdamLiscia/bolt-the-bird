@@ -401,6 +401,59 @@ pub fn script(name: &str) -> Option<Script> {
                 d.class_token_replacements = vec![(2, t.fish, t.shark), (3, t.shark, t.octopus)];
             },
         ),
+        // ---- Sagas on a transforming card's back face ----
+        "Sheoldred // The True Scriptures" => s(
+            &[
+                "When Sheoldred enters, each opponent sacrifices a nontoken creature or planeswalker of their choice.",
+                "{4}{B}: Exile Sheoldred, then return it to the battlefield transformed under its owner's control. Activate only as a sorcery and only if an opponent has eight or more cards in their graveyard.",
+                "Back: I — For each opponent, destroy up to one target creature or planeswalker that player controls.",
+                "Back: II — Each opponent discards three cards, then mills three cards.",
+                "Back: III — Put all creature cards from all graveyards onto the battlefield under your control. Exile this Saga, then return it to the battlefield .",
+            ],
+            |d, _| {
+                on(d, When::Enters, vec![], vec![Effect::OpponentSacrificesNontokenCreatureOrPlaneswalker]);
+                let n = activated(d, "{4}{B}", false, vec![], vec![Effect::ExileSelfReturn { transformed: true }]);
+                d.activated[n].sorcery = true;
+                d.activated[n].opponent_min_graveyard = 8;
+                let b = d.back.as_mut().expect("The True Scriptures");
+                let theirs = CREATURE_OR_PLANESWALKER.controlled_by(Controller::Opponent);
+                chapter(b, 1, up_to(vec![theirs], vec![Effect::Destroy(0)]));
+                let two = vec![
+                    Effect::Discard { who: Who::EachOpponent, n: 3 },
+                    Effect::Mill { who: Who::EachOpponent, n: 3 },
+                ];
+                chapter(b, 2, Ability::new(vec![], two));
+                let all = Effect::ReanimateAll { all_graveyards: true, max_mana_value: None };
+                chapter(b, 3, Ability::new(vec![], vec![all, Effect::ExileSelfReturn { transformed: false }]));
+            },
+        ),
+        "Urabrask // The Great Work" => s(
+            &[
+                "Whenever you cast an instant or sorcery spell, Urabrask deals 1 damage to target opponent. Add {R}.",
+                "{R}: Exile Urabrask, then return it to the battlefield transformed under its owner's control. Activate only as a sorcery and only if you've cast three or more instant and/or sorcery spells this turn.",
+                "Back: I — This Saga deals 3 damage to target opponent and each creature they control.",
+                "Back: II — Create three Treasure tokens.",
+                "Back: III — Until end of turn, you may cast instant and sorcery spells from any graveyard. If a spell cast this way would be put into a graveyard, exile it instead. Exile this Saga, then return it to the battlefield .",
+            ],
+            |d, t| {
+                let ping = Effect::Damage { amount: 1, kicked: None, to: Recipient::Target(0) };
+                let red = Effect::AddMana { color: Color::Red, n: 1 };
+                on(d, When::YouCastInstantOrSorcery, vec![OPPONENT], vec![ping, red]);
+                let n = activated(d, "{R}", false, vec![], vec![Effect::ExileSelfReturn { transformed: true }]);
+                d.activated[n].sorcery = true;
+                d.activated[n].min_instants_sorceries_this_turn = 3;
+                let b = d.back.as_mut().expect("The Great Work");
+                // "they" is the target opponent: the one opponent in 1v1.
+                let three = vec![
+                    Effect::Damage { amount: 3, kicked: None, to: Recipient::Target(0) },
+                    Effect::DamageEachOpponentAndTheirs { amount: 3, player: false, planeswalkers: false },
+                ];
+                chapter(b, 1, Ability::new(vec![OPPONENT], three));
+                chapter(b, 2, Ability::new(vec![], vec![Effect::CreateToken { who: Who::You, def: t.treasure, n: 3 }]));
+                let any = sub(SubsystemEffect::CastSpellsFromAnyGraveyardThisTurn);
+                chapter(b, 3, Ability::new(vec![], vec![any, Effect::ExileSelfReturn { transformed: false }]));
+            },
+        ),
         _ => None,
     }
 }
@@ -440,4 +493,7 @@ pub const PG_D4_SCRIPTED: &[&str] = &[
     "Urza's Saga",
     // Bloomburrow Commander leftovers
     "Fisher's Talent",
+    // Sagas on a transforming card's back face
+    "Sheoldred // The True Scriptures",
+    "Urabrask // The Great Work",
 ];

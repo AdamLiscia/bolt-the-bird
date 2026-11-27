@@ -2959,6 +2959,10 @@ pub enum EmblemKind {
     /// An emblem with a triggered ability: trigger number `trigger` of the card that made it
     /// (written with `When::Never`) happens whenever `when` fires for the emblem's owner.
     Triggered { when: When, trigger: usize },
+    /// "Whenever you cast a [color] spell, ...": trigger number `trigger` of the card that made it
+    /// (written with `When::Never`), for its owner's spells of `color` (a `Color` index; Chandra,
+    /// Dressed to Kill: red). The trigger's `extra` is that spell.
+    OnYourColorSpellCast { color: usize, trigger: usize },
 }
 
 /// Which looked-at card may be picked.
@@ -3735,4 +3739,12 @@ pub enum SubsystemEffect {
     /// "This creature deals damage equal to the total mana value of other permanents you control
     /// to each opponent." (Summon: Bahamut's chapter IV, Mega Flare)
     DamageEachOpponentTotalManaValueOfOthers,
+    /// "Until end of turn, you may cast instant and sorcery spells from any graveyard. If a spell cast
+    /// this way would be put into a graveyard, exile it instead." (The Great Work's chapter III):
+    /// sets `Game::any_graveyard_spells_turn`; such a cast is a flashback-style cast (`CastFlashback`,
+    /// its mana cost, exiled as it leaves the stack).
+    CastSpellsFromAnyGraveyardThisTurn,
+    /// "This [source] deals X damage to [the target in `slot`], where X is the amount of mana spent to
+    /// cast that spell." (Chandra, Dressed to Kill's emblem; that spell is the item's `extra`)
+    DamageManaSpentOnThatSpell(u8),
 }
