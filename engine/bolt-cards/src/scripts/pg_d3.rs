@@ -2219,6 +2219,82 @@ pub fn script(name: &str) -> Option<Script> {
                 d.activated[n].once_each_turn = true;
             },
         ),
+        // Core theme d3, batch 38 (Raffine)
+        "Mausoleum Wanderer" => s(
+            &[
+                "Whenever another Spirit you control enters, this creature gets +1/+1 until end of turn.",
+                "Sacrifice this creature: Counter target instant or sorcery spell unless its controller pays {X}, where X is this creature's power.",
+            ],
+            |d, _| {
+                let pump = Effect::PumpSelf { power: 1, toughness: 1 };
+                on(d, When::AnotherYouControlEntersWithSubtype("Spirit"), vec![], vec![pump]);
+                let instant_or_sorcery = Filter { spell_instant_or_sorcery: true, ..SPELL };
+                let counter = vec![Effect::CounterUnlessPaysSourcePower(0)];
+                let n = activated(d, "{0}", false, vec![instant_or_sorcery], counter);
+                d.activated[n].sacrifice_self = true;
+            },
+        ),
+        "Skycat Sovereign" => s(
+            &[
+                "This creature gets +1/+1 for each other creature you control with flying.",
+                "{2}{W}{U}: Create a 1/1 white Cat Bird creature token with flying.",
+            ],
+            |d, t| {
+                static_on(d, Scope::This, false, Keywords::NONE);
+                let st = d.statics.last_mut().expect("just added");
+                (st.power, st.toughness, st.scale) = (1, 1, Some(Scale::PerOtherYourCreatureWithFlying));
+                let cat_bird = Effect::CreateToken { who: Who::You, def: t.cat_bird, n: 1 };
+                activated(d, "{2}{W}{U}", false, vec![], vec![cat_bird]);
+            },
+        ),
+        // Core theme d3, batch 38 (Henrika; d4's dice)
+        "Underdark Rift" => s(
+            &[
+                "{T}: Add {C}.",
+                "{5}, {T}, Exile this land: Roll a d10. Put target artifact, creature, or planeswalker into its owner's library just beneath the top X cards of that library, where X is the result. Activate only as a sorcery.",
+            ],
+            |d, _| {
+                d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                let what = Filter { players: false, artifacts: true, ..Filter::ANY };
+                let roll = Effect::Subsystem(SubsystemEffect::RollDiePutTargetBeneathTop { sides: 10, slot: 0 });
+                let n = activated(d, "{5}", true, vec![what], vec![roll]);
+                d.activated[n].exile_self = true;
+                d.activated[n].sorcery = true;
+            },
+        ),
+        // Core theme d3, batch 38 (Vaevictis Asmadi)
+        "Crux of Fate" => s(
+            &["Choose one —", "• Destroy all Dragon creatures.", "• Destroy all non-Dragon creatures."],
+            |d, _| {
+                modes(
+                    d,
+                    vec![
+                        Ability::new(vec![], vec![Effect::DestroyAllCreaturesWithSubtype("Dragon")]),
+                        Ability::new(vec![], vec![Effect::DestroyAllCreaturesExceptSubtype("Dragon")]),
+                    ],
+                );
+            },
+        ),
+        "Apocalypse" => s(&["Exile all permanents. You discard your hand."], |d, _| {
+            spell(d, vec![], vec![Effect::ExileAllPermanents, Effect::YouDiscardHand]);
+        }),
+        "Karrthus, Tyrant of Jund" => s(
+            &[
+                "When Karrthus enters, gain control of all Dragons, then untap all Dragons.",
+                "Other Dragon creatures you control have haste.",
+            ],
+            |d, _| {
+                on(d, When::Enters, vec![], vec![Effect::GainControlAllSubtypeThenUntap("Dragon")]);
+                static_on(d, Scope::OtherYourSubtype("Dragon"), false, Keywords::HASTE);
+            },
+        ),
+        "Vaevictis Asmadi, the Dire" => s(
+            &["Whenever Vaevictis Asmadi attacks, for each player, choose target permanent that player controls. Those players sacrifice those permanents. Each player who sacrificed a permanent this way reveals the top card of their library, then puts it onto the battlefield if it's a permanent card."],
+            |d, _| {
+                let targets = vec![PERMANENT.controlled_by(Controller::You), PERMANENT.controlled_by(Controller::Opponent)];
+                on(d, When::Attacks, targets, vec![Effect::SacrificeTargetsRevealTopPermanent(2)]);
+            },
+        ),
         _ => None,
     }
 }
@@ -2518,4 +2594,12 @@ pub const PG_D3_SCRIPTED: &[&str] = &[
     "Archdruid's Charm",
     "Ad Nauseam",
     "Vraska, Betrayal's Sting",
+    // Core theme d3, batch 38
+    "Mausoleum Wanderer",
+    "Skycat Sovereign",
+    "Underdark Rift",
+    "Crux of Fate",
+    "Apocalypse",
+    "Karrthus, Tyrant of Jund",
+    "Vaevictis Asmadi, the Dire",
 ];

@@ -895,7 +895,7 @@ pub fn script(name: &str) -> Option<Script> {
         "Selvala, Explorer Returned" => s(
             &["Parley — {T}: Each player reveals the top card of their library. For each nonland card revealed this way, add {G} and you gain 1 life. Then each player draws a card."],
             |d, _| {
-                // A mana ability played on the stack, like Hazel's.
+                // A mana ability activated at priority, like Hazel's.
                 activated(d, "", true, vec![], vec![Effect::SelvalaParley]);
             },
         ),

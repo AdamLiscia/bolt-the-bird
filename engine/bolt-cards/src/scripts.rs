@@ -568,8 +568,12 @@ pub fn token_defs() -> Vec<CardDef> {
             );
             t
         },
-        // 125: another lane's token, a placeholder until it lands on tarkir.
-        token("Placeholder 125", "Placeholder", 0, 0, Keywords::NONE),
+        {
+            // 125, lane d3: Skycat Sovereign's "1/1 white Cat Bird creature token with flying".
+            let mut t = token("Cat Bird", "Cat Bird", 1, 1, Keywords::FLYING);
+            t.colors = [true, false, false, false, false];
+            t
+        },
         // 126: another lane's token, a placeholder until it lands on tarkir.
         token("Placeholder 126", "Placeholder", 0, 0, Keywords::NONE),
         // 127: another lane's token, a placeholder until it lands on tarkir.
@@ -849,8 +853,8 @@ pub struct Tokens {
     pub dragon_egg: usize,
     /// 124: lane C's 2/2 red flying Dragon with "{R}: +1/+0".
     pub dragon_2_firebreathing: usize,
-    /// 125: another lane's token, a placeholder until it lands on tarkir.
-    pub placeholder_125: usize,
+    /// 125, lane d3: Skycat Sovereign's 1/1 white Cat Bird with flying.
+    pub cat_bird: usize,
     /// 126: another lane's token, a placeholder until it lands on tarkir.
     pub placeholder_126: usize,
     /// 127: another lane's token, a placeholder until it lands on tarkir.
@@ -999,7 +1003,7 @@ impl Tokens {
             human_cleric: base + 122,
             dragon_egg: base + 123,
             dragon_2_firebreathing: base + 124,
-            placeholder_125: base + 125,
+            cat_bird: base + 125,
             placeholder_126: base + 126,
             placeholder_127: base + 127,
             placeholder_128: base + 128,

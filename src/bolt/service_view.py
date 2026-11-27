@@ -222,6 +222,7 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         verb = verb or {"SylvanPick": "Choose (pay 4 life or put it back):"}.get(d)
         verb = verb or {"CrewTap": "Also tap (to crew or saddle):"}.get(d)
         verb = verb or {"Dredge": "Dredge instead of drawing:"}.get(d)
+        verb = verb or {"GemstoneCaverns": "Exile from your hand:"}.get(d)
         verb = verb or {"SacrificeSaddler": "Sacrifice (it saddled the Mount):"}.get(d)
         verb = verb or {"GitrogLandPick": "Put onto the battlefield tapped:"}.get(d)
         verb = verb or {"RemoveCountersFromOthers": "Remove a counter from"}.get(d)
@@ -280,6 +281,10 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         "CrewTap": ("Tap the chosen creatures", "Don't tap them"),
         "Dredge": ("Dredge", "Draw a card"),
         "MirrormindCopies": ("Make copies of the equipped creature instead", "Make the tokens"),
+        "GemstoneCaverns": (
+            f"Begin the game with {subject} on the battlefield (a luck counter)",
+            f"Keep {subject} in your hand",
+        ),  # fmt: skip
         "SacrificeSaddler": ("Sacrifice a creature that saddled it", "Don't sacrifice"),
         "RemoveCountersFromOthers": ("Remove a counter", "Don't activate it"),
         "ImprintNonartifactNonland": ("Exile a card", "Don't exile a card"),

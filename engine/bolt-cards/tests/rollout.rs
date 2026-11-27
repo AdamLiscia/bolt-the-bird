@@ -213,6 +213,7 @@ fn determinizing_keeps_cards_the_stack_refers_to() {
         alt: false,
         x: 0,
         division: Vec::new(),
+        source_zcc: None,
     });
     for seed in 0..20 {
         let mut h = g.clone();

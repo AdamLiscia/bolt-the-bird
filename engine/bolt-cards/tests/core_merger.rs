@@ -1288,3 +1288,46 @@ fn attacks_and_isnt_blocked_sets_life_to_one_and_assigns_no_damage() {
         "life total becomes 1, and no combat damage after"
     );
 }
+
+#[test]
+fn granted_loyalty_abilities_for_your_planeswalkers() {
+    // Ichormoon Gauntlet's grant on its own definition for this test (its counter trigger is d3's).
+    let mut defs = (*set("CMD").unwrap().defs).clone();
+    defs[cid("Ichormoon Gauntlet")].your_planeswalkers_have_loyalty = vec![
+        (
+            0,
+            bolt_core::Ability::new(vec![], vec![bolt_core::Effect::Proliferate]),
+        ),
+        (
+            -12,
+            bolt_core::Ability::new(vec![], vec![bolt_core::Effect::ExtraTurn]),
+        ),
+    ];
+    let plains = vec![cid("Plains"); 99];
+    let mut g = Game::new_commander(
+        std::sync::Arc::new(defs),
+        [&plains, &plains],
+        [cid("Bello, Bard of the Brambles"), cid("Ms. Bumbleflower")],
+        7,
+        0,
+    );
+    g.auto_pass = false;
+    let ugin = put(&mut g, 0, "Ugin, the Spirit Dragon"); // three loyalty abilities of its own
+    put(&mut g, 0, "Ichormoon Gauntlet");
+    g.objects[ugin.0 as usize].loyalty = 7;
+    g.start_turn(3, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Loyalty(ugin, 3)), "[0]: Proliferate");
+    assert!(
+        !legal.contains(&Action::Loyalty(ugin, 4)),
+        "[-12] needs 12 loyalty"
+    );
+    g.objects[ugin.0 as usize].loyalty = 12;
+    act(&mut g, Action::Loyalty(ugin, 4));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(ugin).zone, Zone::Graveyard, "no loyalty left");
+    assert!(g.extra_turns.contains(&0), "an extra turn after this one");
+}

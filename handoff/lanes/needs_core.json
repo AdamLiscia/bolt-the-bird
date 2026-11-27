@@ -2314,7 +2314,7 @@
   {
    "card": "Underdark Rift",
    "deck": "Henrika Domnathi // Henrika, Infernal Seer",
-   "missing": "needs core: a d10 roll",
+   "missing": "needs core: a d10 roll [done by d3 batch 38: SubsystemEffect::RollDiePutTargetBeneathTop { sides, slot }, scripted (pg_d3)]",
    "lane": "d2",
    "theme": "effects",
    "owner": "d3"
@@ -2706,7 +2706,7 @@
   {
    "card": "Mausoleum Wanderer",
    "deck": "Raffine, Scheming Seer",
-   "missing": "needs core: 'counter unless they pay X' where X is its power",
+   "missing": "needs core: 'counter unless they pay X' where X is its power [done by d3 batch 38: Effect::CounterUnlessPaysSourcePower(slot), scripted (pg_d3)]",
    "lane": "d2",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -2770,7 +2770,7 @@
   {
    "card": "Skycat Sovereign",
    "deck": "Raffine, Scheming Seer",
-   "missing": "needs core: +1/+1 per other creature you control with flying, and a 1/1 white Cat Bird creature token with flying",
+   "missing": "needs core: +1/+1 per other creature you control with flying, and a 1/1 white Cat Bird creature token with flying [done by d3 batch 38: Scale::PerOtherYourCreatureWithFlying and token 125 t.cat_bird, scripted (pg_d3)]",
    "lane": "d2",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -6226,7 +6226,7 @@
   {
    "card": "Crux of Fate",
    "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
-   "missing": "lane C's routing (2026-11-26)",
+   "missing": "lane C's routing (2026-11-26) [done by d3 batch 38: Effect::DestroyAllCreaturesWithSubtype, modal (Dragon or non-Dragon is the mode choice), scripted (pg_d3)]",
    "lane": "mac-c",
    "theme": "effects",
    "owner": "d3"
@@ -6234,7 +6234,7 @@
   {
    "card": "Apocalypse",
    "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
-   "missing": "lane C's routing (2026-11-26)",
+   "missing": "lane C's routing (2026-11-26) [done by d3 batch 38: Effect::ExileAllPermanents, Effect::YouDiscardHand, scripted (pg_d3)]",
    "lane": "mac-c",
    "theme": "effects",
    "owner": "d3"
@@ -6274,7 +6274,7 @@
   {
    "card": "Karrthus, Tyrant of Jund",
    "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
-   "missing": "lane C's routing (2026-11-26)",
+   "missing": "lane C's routing (2026-11-26) [done by d3 batch 38: Effect::GainControlAllSubtypeThenUntap, scripted (pg_d3)]",
    "lane": "mac-c",
    "theme": "effects",
    "owner": "d3"
@@ -6290,7 +6290,7 @@
   {
    "card": "Vaevictis Asmadi, the Dire",
    "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
-   "missing": "lane C's routing (2026-11-26)",
+   "missing": "lane C's routing (2026-11-26) [done by d3 batch 38: Effect::SacrificeTargetsRevealTopPermanent(n), scripted (pg_d3)]",
    "lane": "mac-c",
    "theme": "effects",
    "owner": "d3"
