@@ -1871,6 +1871,10 @@ pub struct Game {
     /// Food Chain's mana, which only creature spells may spend: (amount of any-color mana, the turn
     /// and step it was made in; it empties with the pool at the step's end).
     pub creature_spell_mana: [(u32, u32, Step); 2],
+    /// Creature-only mana of one color (Somberwald Sage), per color (WUBRG), with the turn and
+    /// step it was made in; it empties with the pool at the step's end. Food Chain's any-color
+    /// mana stays in `creature_spell_mana`.
+    pub creature_color_mana: [([u32; 5], u32, Step); 2],
     /// Darksteel Monolith's "once each turn": (the Monolith, the turn it was last used).
     pub monolith_used: Vec<(ObjId, u32)>,
     /// Inkshield: (player, turn, token) — that turn's combat damage to the player is prevented, a
@@ -2186,6 +2190,7 @@ impl Game {
             kick_counts: Vec::new(),
             treasure_spent: Vec::new(),
             creature_spell_mana: [(0, 0, Step::PreGame); 2],
+            creature_color_mana: [([0; 5], 0, Step::PreGame); 2],
             monolith_used: Vec::new(),
             combat_shield_tokens: Vec::new(),
             player_protected_until: [None; 2],
@@ -8052,9 +8057,12 @@ impl Game {
     /// Pays `cost`, for casting `spell` if given (restricted mana can then help).
     fn pay_mana_for(&mut self, p: PlayerId, cost: &ManaCost, exclude: Option<ObjId>, spell: PayFor) {
         // Food Chain: its mana pays for a creature spell first.
-        let (after_chain, used) = self.after_creature_mana(p, cost, spell);
+        let (after_chain, used, used_colors) = self.after_creature_mana(p, cost, spell);
         if used > 0 {
             self.creature_spell_mana[p].0 -= used;
+        }
+        for (k, n) in used_colors.into_iter().enumerate() {
+            self.creature_color_mana[p].0[k] -= n; // Somberwald Sage
         }
         let cost = &after_chain;
         // K'rrik: {B} that mana can't pay are paid with 2 life each.
@@ -8599,7 +8607,7 @@ impl Game {
 
     fn can_pay_for(&self, p: PlayerId, cost: &ManaCost, exclude: Option<ObjId>, spell: PayFor) -> bool {
         // Food Chain: its mana pays for a creature spell first.
-        let (after_chain, _) = self.after_creature_mana(p, cost, spell);
+        let (after_chain, _, _) = self.after_creature_mana(p, cost, spell);
         let cost = &after_chain;
         self.can_pay_mana(p, cost, exclude, spell)
             || self.black_pips_as_life(p, cost, exclude, spell).is_some()
@@ -10431,10 +10439,39 @@ impl Game {
 
     /// `cost` less what Food Chain's any-color mana pays of it, for a creature spell, and how much
     /// of that mana it uses: colored pips first, then hybrid and two-brid pips, then generic.
-    fn after_creature_mana(&self, p: PlayerId, cost: &ManaCost, spell: PayFor) -> (ManaCost, u32) {
+    fn after_creature_mana(&self, p: PlayerId, cost: &ManaCost, spell: PayFor) -> (ManaCost, u32, [u32; 5]) {
         let creature = matches!(spell, PayFor::Spell(c) if self.def_of(c).types.creature);
-        let mut left = if creature { self.creature_mana_now(p) } else { 0 };
         let mut cost = *cost;
+        // Somberwald Sage: each color's mana pays that color's pips, hybrid pips with it, its
+        // two-brid ({2/G}) pips, then generic.
+        let mut col = if creature {
+            self.creature_color_mana_now(p)
+        } else {
+            [0; 5]
+        };
+        let col_have = col;
+        for (pips, have) in cost.colored.iter_mut().zip(col.iter_mut()) {
+            let n = (*pips as u32).min(*have);
+            *pips -= n as u8;
+            *have -= n;
+        }
+        for (i, &(a, b)) in crate::mana::PAIRS.iter().enumerate() {
+            for k in [a, b] {
+                let n = (cost.hybrid[i] as u32).min(col[k]);
+                cost.hybrid[i] -= n as u8;
+                col[k] -= n;
+            }
+        }
+        for (pips, have) in cost.twobrid.iter_mut().zip(col.iter_mut()) {
+            let n = (*pips as u32).min(*have);
+            *pips -= n as u8;
+            *have -= n;
+            let n = (cost.generic as u32).min(*have);
+            cost.generic -= n as u8;
+            *have -= n;
+        }
+        let used_colors: [u32; 5] = std::array::from_fn(|k| col_have[k] - col[k]);
+        let mut left = if creature { self.creature_mana_now(p) } else { 0 };
         let have = left;
         let mut take = |pips: &mut u8| {
             let n = (*pips as u32).min(left);
@@ -10451,7 +10488,17 @@ impl Game {
             take(pips);
         }
         take(&mut cost.generic);
-        (cost, have - left)
+        (cost, have - left, used_colors)
+    }
+
+    /// Somberwald Sage's creature-only mana `p` has now, per color.
+    fn creature_color_mana_now(&self, p: PlayerId) -> [u32; 5] {
+        let (n, turn, step) = self.creature_color_mana[p];
+        if turn == self.turn && step == self.step {
+            n
+        } else {
+            [0; 5]
+        }
     }
 
     /// Whether `spell` was paid for with mana from a Treasure (Alchemist's Talent).
@@ -16546,10 +16593,11 @@ impl Game {
                     self.fabricate_servos(item.controller, n, servo); // CR 702.123b
                 }
             }
-            Effect::AddCreatureSpellMana(n) => {
+            Effect::AddCreatureSpellMana(n, color) => {
                 let p = item.controller;
-                let now = self.creature_mana_now(p);
-                self.creature_spell_mana[p] = (now + n as u32, self.turn, self.step);
+                let mut now = self.creature_color_mana_now(p);
+                now[color as usize] += n as u32;
+                self.creature_color_mana[p] = (now, self.turn, self.step);
             }
             Effect::AddCreatureSpellManaExtraMvPlusOne => {
                 let p = item.controller;

@@ -2668,9 +2668,9 @@ pub enum Effect {
     /// The True Scriptures), as `Decision::SacrificeNontokenCreatureOrPlaneswalker`.
     OpponentSacrificesNontokenCreatureOrPlaneswalker,
     /// "Add N mana of any one color. Spend this mana only to cast creature spells." (Somberwald
-    /// Sage: 3): held for creature spells with Food Chain's (`Game::creature_spell_mana`, any
-    /// color, not one chosen color).
-    AddCreatureSpellMana(u8),
+    /// Sage: 3, one ability per color): N mana of that color held for creature spells
+    /// (`Game::creature_color_mana`); it pays that color's pips, hybrid pips with it, and generic.
+    AddCreatureSpellMana(u8, crate::Color),
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

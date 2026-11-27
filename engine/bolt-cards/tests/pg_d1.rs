@@ -2918,20 +2918,28 @@ fn walking_ballista_enters_with_x_and_pings_by_removing_counters() {
 }
 
 #[test]
-fn somberwald_sage_makes_three_mana_for_creature_spells_only() {
+fn somberwald_sage_makes_three_mana_of_one_color_for_creature_spells_only() {
     let mut g = game(&[]);
     let sage = put(&mut g, 0, "Somberwald Sage");
     g.objects[sage.0 as usize].since_turn = 0;
     let bolt = hand(&mut g, 0, "Lightning Bolt");
-    let elves = hand(&mut g, 0, "Llanowar Elves");
-    act(&mut g, Action::Activate(sage, 0));
+    let gw = hand(&mut g, 0, "Jukai Naturalist"); // {G}{W}
+    let green = hand(&mut g, 0, "Reclamation Sage"); // {2}{G}
+    act(&mut g, Action::Activate(sage, 4)); // green (WUBRG order)
     resolve_all(&mut g, &[]);
     let legal = g.legal_actions();
     assert!(!legal.contains(&Action::Cast(bolt)), "not for an instant");
-    assert!(legal.contains(&Action::Cast(elves)), "{legal:?}");
-    act(&mut g, Action::Cast(elves));
+    assert!(
+        !legal.contains(&Action::Cast(gw)),
+        "green mana can't pay the {{W}}"
+    );
+    assert!(
+        legal.contains(&Action::Cast(green)),
+        "{{2}}{{G}} all paid in green: {legal:?}"
+    );
+    act(&mut g, Action::Cast(green));
     resolve_all(&mut g, &[]);
-    assert_eq!(g.obj(elves).zone, Zone::Battlefield);
+    assert_eq!(g.obj(green).zone, Zone::Battlefield);
 }
 
 #[test]

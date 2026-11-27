@@ -1386,7 +1386,10 @@ pub fn script(name: &str) -> Option<Script> {
         "Somberwald Sage" => s(
             &["{T}: Add three mana of any one color. Spend this mana only to cast creature spells."],
             |d, _| {
-                activated(d, "", true, vec![], vec![Effect::AddCreatureSpellMana(3)]);
+                // One ability per color (as Kami of Whispered Hopes), all three of that color.
+                for c in Color::ALL {
+                    activated(d, "", true, vec![], vec![Effect::AddCreatureSpellMana(3, c)]);
+                }
             },
         ),
         "Vizier of the Menagerie" => s(
