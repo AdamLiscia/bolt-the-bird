@@ -654,3 +654,147 @@ fn smaug_is_token_95_a_legendary_flying_haste_dragon_that_dies_into_fourteen_tre
     assert_ne!(g.obj(x).zone, Zone::Battlefield);
     assert_eq!(treasures(&g), before + 14);
 }
+
+// ---- Lane B's effects entries ----
+
+#[test]
+fn echoing_assault_makes_a_one_one_attacking_copy_sacrificed_at_end_step() {
+    supported("Echoing Assault");
+    let mut g = table();
+    put(&mut g, 0, "Echoing Assault");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    advance(&mut g, |g| g.pending == Pending::DeclareAttackers(0));
+    act(&mut g, Action::Attack(lions));
+    act(&mut g, Action::FinishAttacks);
+    // The one nontoken attacker is the trigger's only target.
+    advance(&mut g, |g| {
+        g.permanents(0).any(|c| g.is_token(c)) && matches!(g.pending, Pending::Priority(_))
+    });
+    let token = g.permanents(0).find(|&c| g.is_token(c)).expect("the copy");
+    assert_eq!(g.def_of(token).name, "Savannah Lions");
+    assert!(g.obj(token).tapped, "enters tapped");
+    assert_eq!((g.power(token), g.toughness(token)), (1, 1), "except it's 1/1");
+    assert!(
+        g.combat.as_ref().unwrap().attackers.contains(&token),
+        "and attacking"
+    );
+    assert!(
+        g.keywords(token).has(Keywords::MENACE),
+        "creature tokens have menace"
+    );
+    assert!(!g.keywords(lions).has(Keywords::MENACE), "not nontoken ones");
+    let life = g.players[1].life;
+    advance(&mut g, |g| g.step == Step::Main2);
+    assert_eq!(g.players[1].life, life - 3, "2 + 1 combat damage");
+    advance(&mut g, |g| g.step == Step::Cleanup || g.active == 1);
+    assert_ne!(g.obj(token).zone, Zone::Battlefield, "sacrificed at the end step");
+}
+
+#[test]
+fn commanders_plate_protects_from_colors_outside_the_commanders_identity() {
+    supported("Commander's Plate");
+    let mut g = table(); // player 0's commander: Bello (red and green)
+    let plate = put(&mut g, 0, "Commander's Plate");
+    let elf = put(&mut g, 0, "Llanowar Elves");
+    assert!(
+        !g.legal_actions().contains(&Action::Activate(plate, 0)),
+        "equip commander: no commander on the battlefield"
+    );
+    act(&mut g, Action::Activate(plate, 1)); // Equip {5}
+    advance(&mut g, |g| {
+        g.items.is_empty() && matches!(g.pending, Pending::Priority(_))
+    });
+    assert_eq!(g.obj(plate).attached_to.map(|a| a.0), Some(elf));
+    assert_eq!((g.power(elf), g.toughness(elf)), (4, 4));
+    assert_eq!(g.protection(elf), [true, true, true, false, false], "W, U and B");
+    // With no commander, every color.
+    g.commanders[0] = None;
+    assert_eq!(g.protection(elf), [true; 5]);
+}
+
+#[test]
+fn commanders_plate_equips_a_commander_for_three() {
+    let mut g = table();
+    let plate = put(&mut g, 0, "Commander's Plate");
+    put(&mut g, 0, "Llanowar Elves");
+    let bello = put(&mut g, 0, "Bello, Bard of the Brambles");
+    g.commanders[0] = Some(bello);
+    let untapped = g.permanents(0).filter(|&x| !g.obj(x).tapped).count();
+    act(&mut g, Action::Activate(plate, 0));
+    advance(&mut g, |g| {
+        g.items.is_empty() && matches!(g.pending, Pending::Priority(_))
+    });
+    assert_eq!(g.obj(plate).attached_to.map(|a| a.0), Some(bello));
+    assert_eq!(
+        g.permanents(0).filter(|&x| !g.obj(x).tapped).count(),
+        untapped - 3,
+        "three lands for {{3}}"
+    );
+    assert_eq!(g.protection(bello), [true, true, true, false, false]);
+}
+
+// ---- Sagas ----
+
+#[test]
+fn urzas_saga_gains_its_mana_then_its_construct_ability_chapter_by_chapter() {
+    supported("Urza's Saga");
+    let mut g = table();
+    let saga = put(&mut g, 0, "Urza's Saga");
+    assert!(g.lacks_chapter_mana(saga), "no {{T}}: Add {{C}} before chapter I");
+    assert!(g.lacks_chapter_activated(saga, 0));
+    g.chapter_grants.push((saga, g.obj(saga).zcc, 1));
+    assert!(!g.lacks_chapter_mana(saga), "chapter I: a mana source");
+    assert!(
+        !g.legal_actions().contains(&Action::Activate(saga, 0)),
+        "no Construct ability before chapter II"
+    );
+    g.chapter_grants.push((saga, g.obj(saga).zcc, 2));
+    assert!(g.legal_actions().contains(&Action::Activate(saga, 0)));
+    act(&mut g, Action::Activate(saga, 0));
+    resolve_all(&mut g, &[]);
+    let constructs = g
+        .permanents(0)
+        .filter(|&x| g.is_token(x) && g.def_of(x).name == "Construct")
+        .count();
+    assert_eq!(constructs, 1);
+}
+
+#[test]
+fn urzas_saga_chapters_run_from_playing_it_to_its_search_and_sacrifice() {
+    let mut g = table();
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Library);
+    g.players[0].library.rotate_right(1); // to the bottom, so the draw steps don't draw it
+    let saga = hand(&mut g, 0, "Urza's Saga");
+    act(&mut g, Action::PlayLand(saga));
+    resolve_all(&mut g, &[]);
+    assert!(
+        !g.lacks_chapter_mana(saga),
+        "chapter I resolved: {{T}}: Add {{C}}"
+    );
+    assert!(g.lacks_chapter_activated(saga, 0), "not chapter II yet");
+    let main = |g: &Game| {
+        g.active == 0
+            && g.step == Step::Main1
+            && g.items.is_empty()
+            && g.triggered.is_empty()
+            && matches!(g.pending, Pending::Priority(_))
+    };
+    advance(&mut g, |g| g.active == 1);
+    advance(&mut g, main);
+    assert!(
+        !g.lacks_chapter_activated(saga, 0),
+        "chapter II: the Construct ability"
+    );
+    advance(&mut g, |g| g.active == 1);
+    advance(&mut g, main);
+    assert_eq!(
+        g.obj(ring).zone,
+        Zone::Battlefield,
+        "chapter III: a {{1}} artifact"
+    );
+    assert_eq!(
+        g.obj(saga).zone,
+        Zone::Graveyard,
+        "sacrificed after its last chapter"
+    );
+}

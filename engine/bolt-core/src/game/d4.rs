@@ -1,10 +1,10 @@
 //! The d4 subsystems' own state and functions: dungeons, venture and the initiative (CR 309,
 //! 701.49, 725), completed dungeons, emblems with triggered abilities (CR 114), dice (CR 706), the
 //! Ring (CR 701.54), Saga chapter grants, and split cards' halves on the stack (CR 709.3).
-//! The hooks other lanes' code calls are [`Game::fire_subsystems`] (from `fire()`), and, not called
-//! yet, [`Game::ring_makes_legendary`] (d3), [`Game::ring_evasion_forbids_block`] (d1),
-//! [`Game::ring_bearer_dealt_combat_damage`] (d2), [`Game::lacks_chapter_activated`] (merger) and
-//! [`Game::lacks_chapter_mana`] (d1).
+//! The hooks other lanes' code calls are [`Game::fire_subsystems`] (from `fire()`),
+//! [`Game::ring_evasion_forbids_block`] (from `mana_ext_block_ok`), [`Game::lacks_chapter_activated`]
+//! (from `activations`), and, not called yet, [`Game::ring_makes_legendary`] (d3),
+//! [`Game::ring_bearer_dealt_combat_damage`] (d2) and [`Game::lacks_chapter_mana`] (d1).
 
 use super::*;
 use crate::effect::{Dungeon, SubsystemEffect};
@@ -583,7 +583,67 @@ impl Game {
                     }
                 }
             }
+            SubsystemEffect::AttackingOneOneCopy(slot) => {
+                if let Some(original) = Game::slot_object(item, legal, slot) {
+                    // CR 707.2: the copy takes the original's printed values, except its P/T.
+                    let def = self.obj(original).def;
+                    for _ in 0..self.token_doubling(p) {
+                        let id = self.add_card(p, def, Zone::Hand);
+                        let o = self.obj_mut(id);
+                        o.copy_token = true;
+                        o.copy_base_pt = Some((1, 1));
+                        self.move_to(id, Zone::Battlefield);
+                        let o = self.obj_mut(id);
+                        o.tapped = true;
+                        o.sacrifice_at_end = true;
+                        if let Some(c) = self.combat.as_mut() {
+                            c.attackers.push(id); // CR 506.3a: attacking without being declared
+                        }
+                    }
+                }
+            }
+            SubsystemEffect::AttachToYourCommander => {
+                let src = item.source;
+                if self.obj(src).zone == Zone::Battlefield {
+                    if let Some(c) = self.equip_commander_choice(src) {
+                        let zcc = self.obj(c).zcc;
+                        self.obj_mut(src).attached_to = Some((c, zcc));
+                    }
+                }
+            }
         }
+    }
+
+    /// Whether color `c` (WUBRG index) is outside `p`'s commander's color identity (CR 903.4; with
+    /// a partner, the union). With no commander, every color is.
+    pub fn outside_commander_identity(&self, p: PlayerId, c: u8) -> bool {
+        let has = |x: Option<ObjId>| x.is_some_and(|x| self.def_of(x).color_identity[c as usize]);
+        !has(self.commanders[p]) && !has(self.partners[p])
+    }
+
+    /// The commander creature "Equip commander" attaches `src` to: one its controller controls,
+    /// preferring one it isn't already attached to.
+    fn equip_commander_choice(&self, src: ObjId) -> Option<ObjId> {
+        let p = self.obj(src).controller;
+        let on = self.obj(src).attached_to.map(|(x, _)| x);
+        let mut all = self.creatures(p).filter(|&c| self.is_commander(c));
+        let first = all.next()?;
+        Some(if on == Some(first) {
+            all.next().unwrap_or(first)
+        } else {
+            first
+        })
+    }
+
+    /// Whether activated ability `n` of `id` is an "Equip commander" with no commander creature
+    /// to attach to (the activation check skips it, through `lacks_chapter_activated`).
+    fn equip_commander_unusable(&self, id: ObjId, n: usize) -> bool {
+        let equip = Effect::Subsystem(SubsystemEffect::AttachToYourCommander);
+        self.def_of(id)
+            .activated
+            .get(n)
+            .is_some_and(|a| a.ability.effects.contains(&equip))
+            && self.equip_commander_choice(id).is_none()
     }
 
     /// A split card's mana cost now (CR 709.3b, 709.4): on the stack, only the half being cast;
@@ -661,7 +721,7 @@ impl Game {
     }
 
     /// Hook for block legality (d1's `can_block`): the Ring's first ability, "[your Ring-bearer]
-    /// can't be blocked by creatures with greater power". Not called yet.
+    /// can't be blocked by creatures with greater power". Called from `mana_ext_block_ok`.
     pub fn ring_evasion_forbids_block(&self, blocker: ObjId, attacker: ObjId) -> bool {
         self.ring_makes_legendary(attacker) && self.power(blocker) > self.power(attacker)
     }
@@ -775,13 +835,15 @@ impl Game {
     }
 
     /// Whether activated ability `n` of `id` is a chapter grant it doesn't have yet
-    /// (`SubsystemExt::chapter_activated`): the activation check skips it.
+    /// (`SubsystemExt::chapter_activated`): the activation check skips it. It also skips an "Equip
+    /// commander" with no commander creature to attach to (Commander's Plate).
     pub fn lacks_chapter_activated(&self, id: ObjId, n: usize) -> bool {
         self.def_of(id)
             .subsystems
             .chapter_activated
             .iter()
             .any(|&(c, i)| i == n && !self.has_chapter_grant(id, c))
+            || self.equip_commander_unusable(id, n)
     }
 
     /// Whether `id`'s `mana` ability is a chapter grant it doesn't have yet
