@@ -2677,6 +2677,12 @@ pub enum Effect {
     /// Exile each creature that crewed the source this turn; return them to the battlefield tapped
     /// under their owner's control at the beginning of the next end step (Golden Argosy).
     ExileCrewersReturnTappedAtEnd,
+    /// Exile the creature in `slot`; return it to the battlefield tapped under its owner's control
+    /// at the beginning of the next end step (Morningtide's Light).
+    ExileSlotReturnTappedAtEnd(u8),
+    /// Until your next turn, prevent all damage that would be dealt to you (Morningtide's Light),
+    /// see `Game::damage_to_you_prevented_until`.
+    PreventDamageToYouUntilYourNextTurn,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

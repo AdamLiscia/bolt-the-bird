@@ -6670,6 +6670,70 @@
    "lane": "d1",
    "theme": "subsystems",
    "owner": "d4"
+  },
+  {
+   "card": "Badlands",
+   "deck": "Najeela, the Blade-Blossom",
+   "missing": "claimed by lane B 2026-11-27: scripted (a dual land, no core needed)",
+   "lane": "mac-b",
+   "theme": "merger_delegated",
+   "owner": "mac-b"
+  },
+  {
+   "card": "Bayou",
+   "deck": "Najeela, the Blade-Blossom",
+   "missing": "claimed by lane B 2026-11-27: scripted (a dual land, no core needed)",
+   "lane": "mac-b",
+   "theme": "merger_delegated",
+   "owner": "mac-b"
+  },
+  {
+   "card": "Plateau",
+   "deck": "Najeela, the Blade-Blossom",
+   "missing": "claimed by lane B 2026-11-27: scripted (a dual land, no core needed)",
+   "lane": "mac-b",
+   "theme": "merger_delegated",
+   "owner": "mac-b"
+  },
+  {
+   "card": "Savannah",
+   "deck": "Najeela, the Blade-Blossom",
+   "missing": "claimed by lane B 2026-11-27: scripted (a dual land, no core needed)",
+   "lane": "mac-b",
+   "theme": "merger_delegated",
+   "owner": "mac-b"
+  },
+  {
+   "card": "Scrubland",
+   "deck": "Najeela, the Blade-Blossom",
+   "missing": "claimed by lane B 2026-11-27: scripted (a dual land, no core needed)",
+   "lane": "mac-b",
+   "theme": "merger_delegated",
+   "owner": "mac-b"
+  },
+  {
+   "card": "Taiga",
+   "deck": "Najeela, the Blade-Blossom",
+   "missing": "claimed by lane B 2026-11-27: scripted (a dual land, no core needed)",
+   "lane": "mac-b",
+   "theme": "merger_delegated",
+   "owner": "mac-b"
+  },
+  {
+   "card": "Tundra",
+   "deck": "Najeela, the Blade-Blossom",
+   "missing": "claimed by lane B 2026-11-27: scripted (a dual land, no core needed)",
+   "lane": "mac-b",
+   "theme": "merger_delegated",
+   "owner": "mac-b"
+  },
+  {
+   "card": "Morningtide's Light",
+   "deck": "Neriv, Heart of the Storm (idea)",
+   "missing": "claimed by lane B 2026-11-27: Effect::ExileSlotReturnTappedAtEnd and Effect::PreventDamageToYouUntilYourNextTurn, scripted",
+   "lane": "mac-b",
+   "theme": "replace_filter",
+   "owner": "mac-b"
   }
  ]
 }

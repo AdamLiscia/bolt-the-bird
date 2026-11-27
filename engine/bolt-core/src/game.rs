@@ -1911,6 +1911,9 @@ pub struct Game {
     /// Exiled cards returned tapped under their owner's control at the beginning of the next end
     /// step: (card, its zcc in exile) (Golden Argosy).
     pub delayed_returns_tapped: Vec<(ObjId, u32)>,
+    /// "Until your next turn, prevent all damage that would be dealt to you": the turn it ends, per
+    /// player (Morningtide's Light).
+    pub damage_to_you_prevented_until: [Option<u32>; 2],
 }
 
 /// `Action::CastFromGraveyardAs`'s second number for Karador, Ghost Chieftain's once-each-turn
@@ -2208,6 +2211,7 @@ impl Game {
             saddle_extra: Vec::new(),
             crewed: Vec::new(),
             delayed_returns_tapped: Vec::new(),
+            damage_to_you_prevented_until: [None; 2],
             hand_links: Vec::new(),
             saddled: Vec::new(),
             karador_turn: [0; 2],
@@ -20025,6 +20029,20 @@ impl Game {
                 let def = if names.len() >= 7 { seven } else { fewer };
                 self.create_token(p, def);
             }
+            Effect::ExileSlotReturnTappedAtEnd(slot) => {
+                if let Some(c) = Game::slot_object(item, legal, slot) {
+                    self.move_to(c, Zone::Exile);
+                    if self.obj(c).zone == Zone::Exile && !self.is_token(c) {
+                        let zcc = self.obj(c).zcc;
+                        self.delayed_returns_tapped.push((c, zcc));
+                    }
+                }
+            }
+            Effect::PreventDamageToYouUntilYourNextTurn => {
+                let p = item.controller;
+                let next = self.next_turn_of(p);
+                self.damage_to_you_prevented_until[p] = Some(next);
+            }
             Effect::ExileCrewersReturnTappedAtEnd => {
                 let (sz, turn) = (self.obj(src).zcc, self.turn);
                 let crewers: Vec<ObjId> = self
@@ -25830,8 +25848,10 @@ impl Game {
                     .any(|x| self.def_of(x).your_combat_damage_cant_be_prevented && !self.lost_abilities(x)));
         // The One Ring (protection from everything) and Inkshield (combat damage, a token per point).
         if let (false, Target::Player(q), true) = (unpreventable, target, amount > 0) {
-            if self.player_protected_until[q].is_some_and(|until| self.turn < until) {
-                return;
+            if self.player_protected_until[q].is_some_and(|until| self.turn < until)
+                || self.damage_to_you_prevented_until[q].is_some_and(|until| self.turn < until)
+            {
+                return; // The One Ring, Morningtide's Light
             }
             let turn = self.turn;
             let shield = self

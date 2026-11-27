@@ -4157,3 +4157,56 @@ fn golden_argosy_exiles_its_crew_on_attack_and_returns_them_tapped_at_end_step()
     assert_eq!(g.obj(elves).zone, Zone::Battlefield, "back at the end step");
     assert!(g.obj(elves).tapped, "tapped");
 }
+
+// ---- Demo: Najeela's duals, Neriv's Morningtide's Light (2026-11-27) ----
+
+#[test]
+fn the_original_duals_tap_for_their_two_colors() {
+    let mut g = game(&[]);
+    let tundra = put(&mut g, 0, "Tundra");
+    assert_eq!(
+        colors_of(&g, tundra),
+        [[true, true, false, false, false]],
+        "{W} or {U}"
+    );
+    assert!(g.has_subtype(tundra, "Plains") && g.has_subtype(tundra, "Island"));
+    for name in ["Badlands", "Bayou", "Plateau", "Savannah", "Scrubland", "Taiga"] {
+        let l = put(&mut g, 0, name);
+        assert_eq!(colors_of(&g, l)[0].iter().filter(|&&c| c).count(), 2, "{name}");
+    }
+}
+
+#[test]
+fn morningtides_light_flickers_creatures_tapped_and_shields_you() {
+    let mut g = table();
+    let mine = put(&mut g, 0, "Savannah Lions");
+    let theirs = put(&mut g, 1, "Llanowar Elves");
+    let light = hand(&mut g, 0, "Morningtide's Light");
+    act(&mut g, Action::Cast(light));
+    act(&mut g, Action::Target(Target::Object(mine)));
+    act(&mut g, Action::Target(Target::Object(theirs)));
+    act(&mut g, Action::No); // no more targets
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.obj(mine).zone, g.obj(theirs).zone), (Zone::Exile, Zone::Exile));
+    assert_eq!(g.obj(light).zone, Zone::Exile, "Exile Morningtide's Light");
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    play(&mut g, bolt, false, &[Target::Player(0)], &[]);
+    assert_eq!(g.players[0].life, 40, "damage to you is prevented");
+    while g.step != Step::Cleanup {
+        let a = match g.pending {
+            Pending::DeclareAttackers(_) => Action::FinishAttacks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(
+        (g.obj(mine).zone, g.obj(theirs).zone),
+        (Zone::Battlefield, Zone::Battlefield)
+    );
+    assert!(g.obj(mine).tapped && g.obj(theirs).tapped);
+    assert_eq!(
+        (g.obj(mine).controller, g.obj(theirs).controller),
+        (0, 1),
+        "their owners' control"
+    );
+}

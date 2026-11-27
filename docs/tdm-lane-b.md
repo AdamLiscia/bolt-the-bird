@@ -1041,3 +1041,11 @@ seven or more land names) and dredge 2 for its controller's land cards. Tokens 5
 - Crewers are recorded like saddlers: `Game::crewed` (vehicle, zcc, crewer, zcc, turn), the named
   creature and the CrewTap picks. Golden Argosy (pg_b): `Effect::ExileCrewersReturnTappedAtEnd`,
   returned tapped through `Game::delayed_returns_tapped` at the next end step.
+
+### Demo push, closest deck first (2026-11-27)
+
+The 31's missing cards in lane B's decks are all owned elsewhere (d1, d2, d3, mac-c in needs_core),
+except Najeela's seven original duals (Badlands, Bayou, Plateau, Savannah, Scrubland, Taiga, Tundra),
+scripted here. Idea decks: Morningtide's Light (Neriv) with `Effect::ExileSlotReturnTappedAtEnd`
+and `Effect::PreventDamageToYouUntilYourNextTurn` (`Game::damage_to_you_prevented_until`, beside The
+One Ring's check in `deal_damage`). Claims recorded in needs_core.json.
