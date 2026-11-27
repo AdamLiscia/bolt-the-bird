@@ -564,6 +564,12 @@ pub fn token_defs() -> Vec<CardDef> {
             );
             t
         },
+        {
+            // 125, lane d3: Skycat Sovereign's "1/1 white Cat Bird creature token with flying".
+            let mut t = token("Cat Bird", "Cat Bird", 1, 1, Keywords::FLYING);
+            t.colors = [true, false, false, false, false];
+            t
+        },
     ]
 }
 
@@ -821,6 +827,8 @@ pub struct Tokens {
     pub dragon_egg: usize,
     /// 124: lane C's 2/2 red flying Dragon with "{R}: +1/+0".
     pub dragon_2_firebreathing: usize,
+    /// 125, lane d3: Skycat Sovereign's 1/1 white Cat Bird with flying.
+    pub cat_bird: usize,
 }
 
 impl Tokens {
@@ -951,6 +959,7 @@ impl Tokens {
             placeholder_122: base + 122,
             dragon_egg: base + 123,
             dragon_2_firebreathing: base + 124,
+            cat_bird: base + 125,
         }
     }
 }

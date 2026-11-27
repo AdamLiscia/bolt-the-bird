@@ -2875,26 +2875,6 @@ pub enum Effect {
         slot: u8,
         n: i32,
     },
-    /// Sorcerer Class, level 3: the spell in `extra` deals damage to each opponent equal to the
-    /// number of instant and sorcery spells you've cast this turn (`Game::instants_sorceries_cast`).
-    ExtraDamagesEachOpponentInstantsSorceriesThisTurn,
-    /// Roaring Earth's channel: X +1/+1 counters (the item's X) on the land in `slot`, and it
-    /// becomes a 0/0 creature with `subtype` and haste for good (still a land), as `Awaken`.
-    AwakenX {
-        slot: u8,
-        subtype: &'static str,
-    },
-    /// The creature in `slot` can't be blocked this turn by creatures the chosen player controls,
-    /// the chosen player one with the most life or tied (The Black Gate). One opponent: only the
-    /// other player's creatures can block it, so it gains unblockable when that player has the
-    /// most life or is tied (a tie's choice is that player; the other choice does nothing).
-    GrantUnblockableIfBlockersMostLife(u8),
-    /// The creature in `slot` connives X, X the number of creatures that died this turn
-    /// (Spymaster's Vault), as `Decision::ConniveDiscard`.
-    ConniveDiedThisTurn(u8),
-    /// "Triple the power and toughness of" the creature in `slot` until end of turn (Tifa's Limit
-    /// Break): +2X/+2Y.
-    TriplePowerToughness(u8),
     /// "Choose a counter on target permanent. Put an additional counter of that kind on that
     /// permanent." (Ichormoon Gauntlet): the permanent in `slot`; with more than one kind,
     /// `Decision::ChooseCounterKind`.
@@ -2928,6 +2908,26 @@ pub enum Effect {
     /// Return the nonland permanent in `slot` to its owner's hand, then that player exiles a card
     /// from their hand (Ashiok, Nightmare Muse's -3), as `Decision::ExileCardFromHand`.
     BounceThenOwnerExilesFromHand(u8),
+    /// Sorcerer Class, level 3: the spell in `extra` deals damage to each opponent equal to the
+    /// number of instant and sorcery spells you've cast this turn (`Game::instants_sorceries_cast`).
+    ExtraDamagesEachOpponentInstantsSorceriesThisTurn,
+    /// Roaring Earth's channel: X +1/+1 counters (the item's X) on the land in `slot`, and it
+    /// becomes a 0/0 creature with `subtype` and haste for good (still a land), as `Awaken`.
+    AwakenX {
+        slot: u8,
+        subtype: &'static str,
+    },
+    /// The creature in `slot` can't be blocked this turn by creatures the chosen player controls,
+    /// the chosen player one with the most life or tied (The Black Gate). One opponent: only the
+    /// other player's creatures can block it, so it gains unblockable when that player has the
+    /// most life or is tied (a tie's choice is that player; the other choice does nothing).
+    GrantUnblockableIfBlockersMostLife(u8),
+    /// The creature in `slot` connives X, X the number of creatures that died this turn
+    /// (Spymaster's Vault), as `Decision::ConniveDiscard`.
+    ConniveDiedThisTurn(u8),
+    /// "Triple the power and toughness of" the creature in `slot` until end of turn (Tifa's Limit
+    /// Break): +2X/+2Y.
+    TriplePowerToughness(u8),
     /// Discard a card at random (the game's seeded rng); if it's an artifact card, the source deals
     /// `n` damage to each opponent (Reckless Handling: 2).
     DiscardRandomIfArtifactDamageEachOpponent(i32),
@@ -3006,6 +3006,26 @@ pub enum Effect {
         subtype: &'static str,
         n_if: i32,
     },
+    /// "Counter target spell unless its controller pays {X}, where X is this creature's power"
+    /// (Mausoleum Wanderer): the source's power, or its last-known power if it was sacrificed as
+    /// the cost. Asked as `Decision::PayOrCountered`.
+    CounterUnlessPaysSourcePower(u8),
+    /// Destroy all creatures with this subtype (Crux of Fate: Dragon); the other mode is
+    /// `DestroyAllCreaturesExceptSubtype`.
+    DestroyAllCreaturesWithSubtype(&'static str),
+    /// Exile all permanents (Apocalypse).
+    ExileAllPermanents,
+    /// You discard your hand (Apocalypse).
+    YouDiscardHand,
+    /// Gain control of all permanents with this subtype, then untap all of them (Karrthus, Tyrant of
+    /// Jund: Dragons).
+    GainControlAllSubtypeThenUntap(&'static str),
+    /// Vaevictis Asmadi, the Dire: the controller of each permanent in target slots `0..n` sacrifices
+    /// it; each player who sacrificed a permanent this way reveals the top card of their library and
+    /// puts it onto the battlefield if it's a permanent card.
+    SacrificeTargetsRevealTopPermanent(u8),
+    /// Put the source onto the battlefield from the command zone (Derevi); it isn't cast.
+    PutSourceOntoBattlefieldFromCommand,
     /// The source Case becomes solved (CR 719.3): its "To solve" trigger. Stored as level 2 of
     /// `Object::class_level` (a Case is never a Class), read by `Condition::CaseSolved`.
     SolveCase,
@@ -3223,6 +3243,9 @@ pub enum Scale {
     /// Creatures that entered the battlefield under your control this turn (Kinbinding;
     /// `Game::creatures_entered`).
     PerCreatureEnteredUnderYourControlThisTurn,
+    /// Other creatures you control with flying, printed or granted until end of turn (Skycat
+    /// Sovereign).
+    PerOtherYourCreatureWithFlying,
 }
 
 /// A condition on a static ability ("as long as ...").
@@ -4188,4 +4211,11 @@ pub enum SubsystemEffect {
     /// "This [source] deals X damage to [the target in `slot`], where X is the amount of mana spent to
     /// cast that spell." (Chandra, Dressed to Kill's emblem; that spell is the item's `extra`)
     DamageManaSpentOnThatSpell(u8),
+    /// "Roll a d`sides`. Put [the permanent in `slot`] into its owner's library just beneath the top
+    /// X cards of that library, where X is the result." (Underdark Rift: a d10)
+    RollDiePutTargetBeneathTop { sides: u32, slot: u8 },
+    /// "Flip a coin. If you lose the flip, this [source] deals `n` damage to you. If you win the
+    /// flip, ...": a lost flip deals the damage and skips the rest of the effects; a won flip goes
+    /// on to them (Ral, Monsoon Mage: 1, then "you may exile Ral ...").
+    FlipCoinLoseDamageYouElseContinue(i32),
 }

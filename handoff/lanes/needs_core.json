@@ -162,7 +162,7 @@
   {
    "card": "Ygra, Eater of All",
    "deck": "Ygra, Eater of All",
-   "missing": "d2 batch 16: the Food-to-graveyard trigger is in (When::SubtypeToGraveyardFromBattlefield(\"Food\")). d1 batch 15: ward\u2014sacrifice a Food is in (d.ward_sacrifice = 1 with d.mana_ext.ward_sacrifice_subtype = Some(\"Food\")). Still needs: other creatures are Food artifacts with the Food ability (d3, types) [script: d2, 2026-11-27, on lane B's other_creatures_have + d1's ward + d3's Food types]",
+   "missing": "d2 batch 16: the Food-to-graveyard trigger is in (When::SubtypeToGraveyardFromBattlefield(\"Food\")). d1 batch 15: ward—sacrifice a Food is in (d.ward_sacrifice = 1 with d.mana_ext.ward_sacrifice_subtype = Some(\"Food\")). Still needs: other creatures are Food artifacts with the Food ability (d3, types) [script: d2, 2026-11-27, on lane B's other_creatures_have + d1's ward + d3's Food types]",
    "lane": "d1",
    "theme": "effects",
    "owner": "d2"
@@ -362,7 +362,7 @@
   {
    "card": "Walking Ballista",
    "deck": "Raggadragga, Goreguts Boss",
-   "missing": "'Remove a +1/+1 counter from this creature' as a cost [lane C 2026-11-26: blocked on d1: 'Remove a +1/+1 counter from this creature' as an activation cost; lane C's part: none; enters_with_x_counters and the {4} counter exist]",
+   "missing": "'Remove a +1/+1 counter from this creature' as a cost [lane C 2026-11-26: blocked on d1: 'Remove a +1/+1 counter from this creature' as an activation cost; lane C's part: none; enters_with_x_counters and the {4} counter exist] [done by d1 batch 22: Activated::remove_plus_counter; scripted in pg_d1]",
    "lane": "d1",
    "theme": "objects_zones",
    "owner": "d1"
@@ -571,7 +571,7 @@
   {
    "card": "Topiary Lecturer",
    "deck": "Raggadragga, Goreguts Boss",
-   "missing": "increment",
+   "missing": "increment [done by d1 batch 23: Effect::IncrementSelf; scripted in pg_d1]",
    "lane": "d1",
    "theme": "effects",
    "owner": "d1"
@@ -652,7 +652,7 @@
   {
    "card": "Rith's Grove",
    "deck": "Atla Palani, Nest Tender",
-   "missing": "a karoo that must return a non-Lair land or is sacrificed",
+   "missing": "a karoo that must return a non-Lair land or is sacrificed [done by d1 batch 24: scripted in pg_d1]",
    "lane": "d1",
    "theme": "effects",
    "owner": "d1"
@@ -1030,7 +1030,7 @@
   {
    "card": "High Tide",
    "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
-   "missing": "extra {U} when a player taps an Island this turn",
+   "missing": "extra {U} when a player taps an Island this turn [done by d1 batch 23: Effect::IslandsAddExtraBlueThisTurn; scripted in pg_d1]",
    "lane": "d1",
    "theme": "effects",
    "owner": "d1"
@@ -1590,7 +1590,7 @@
   {
    "card": "Ulamog, the Defiler",
    "deck": "The Gitrog, Ravenous Ride (RuricMo)",
-   "missing": "needs core: ward\u2014sacrifice two permanents, counters from the greatest mana value in exile, annihilator X, and exiling half a library",
+   "missing": "needs core: ward—sacrifice two permanents, counters from the greatest mana value in exile, annihilator X, and exiling half a library",
    "lane": "d2",
    "theme": "effects",
    "owner": "d2"
@@ -2030,7 +2030,7 @@
   {
    "card": "Valgavoth, Terror Eater",
    "deck": "Kaalia of the Vast",
-   "missing": "needs core: ward\u2014sacrifice three, exile-instead-of-graveyard, and playing those cards for life",
+   "missing": "needs core: ward—sacrifice three, exile-instead-of-graveyard, and playing those cards for life",
    "lane": "d2",
    "theme": "replace_filter",
    "owner": "mac-b"
@@ -2073,7 +2073,7 @@
    "missing": "needs core: a 1/1 black Faerie Rogue creature token with flying",
    "lane": "d2",
    "theme": "objects_zones",
-   "owner": "d2",
+   "owner": "mac-c",
    "status": "done: d2 batch 30 (token 115)"
   },
   {
@@ -2263,7 +2263,7 @@
   {
    "card": "Liliana, Heretical Healer // Liliana, Defiant Necromancer",
    "deck": "Henrika Domnathi // Henrika, Infernal Seer",
-   "missing": "needs core: its back face's \u2212X reanimation and emblem",
+   "missing": "needs core: its back face's −X reanimation and emblem",
    "lane": "d2",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -2319,7 +2319,7 @@
   {
    "card": "Underdark Rift",
    "deck": "Henrika Domnathi // Henrika, Infernal Seer",
-   "missing": "needs core: a d10 roll",
+   "missing": "needs core: a d10 roll [done by d3 batch 38: SubsystemEffect::RollDiePutTargetBeneathTop { sides, slot }, scripted (pg_d3)]",
    "lane": "d2",
    "theme": "effects",
    "owner": "d3"
@@ -2391,7 +2391,7 @@
   {
    "card": "Miren, the Moaning Well",
    "deck": "Korvold, Fae-Cursed King",
-   "missing": "needs core: gain life equal to the sacrificed creature's toughness",
+   "missing": "needs core: gain life equal to the sacrificed creature's toughness [done by d1 batch 23: Activated::amount_from_victim_toughness; scripted in pg_d1]",
    "lane": "d2",
    "theme": "mana",
    "owner": "d1"
@@ -2711,7 +2711,7 @@
   {
    "card": "Mausoleum Wanderer",
    "deck": "Raffine, Scheming Seer",
-   "missing": "needs core: 'counter unless they pay X' where X is its power",
+   "missing": "needs core: 'counter unless they pay X' where X is its power [done by d3 batch 38: Effect::CounterUnlessPaysSourcePower(slot), scripted (pg_d3)]",
    "lane": "d2",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -2727,7 +2727,7 @@
   {
    "card": "Momo, Friendly Flier",
    "deck": "Raffine, Scheming Seer",
-   "missing": "needs core: a discount on the first non-Lemur flying creature spell each turn",
+   "missing": "needs core: a discount on the first non-Lemur flying creature spell each turn [done by d1 batch 24: scripted in pg_d1]",
    "lane": "d2",
    "theme": "mana",
    "owner": "d1"
@@ -2775,7 +2775,7 @@
   {
    "card": "Skycat Sovereign",
    "deck": "Raffine, Scheming Seer",
-   "missing": "needs core: +1/+1 per other creature you control with flying, and a 1/1 white Cat Bird creature token with flying",
+   "missing": "needs core: +1/+1 per other creature you control with flying, and a 1/1 white Cat Bird creature token with flying [done by d3 batch 38: Scale::PerOtherYourCreatureWithFlying and token 125 t.cat_bird, scripted (pg_d3)]",
    "lane": "d2",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -2839,7 +2839,7 @@
   {
    "card": "Toxrill, the Corrosive",
    "deck": "Sefris of the Hidden Ways",
-   "missing": "needs core: slime counters with a -1/-1 per counter static, and a 1/1 black Slug creature token [d3 batch 30: the slime store is in: Object::slime, Object::last_slime (last known, as it left the battlefield), Effect::SlimeCounterOnEachCreatureYouDontControl (the end step trigger, When::EndStep { your_turn_only: false }), the static as Scope::OpponentsCreatures -1/-1 with scale Scale::PerSlimeCounterOnIt. Still: the dies trigger (d2) and the card (lane C)] [d2 batch 29: When::CreatureYouDontControlWithSlimeDies (reads Object::last_slime), token 109 Tokens::slug; lane C scripts the card]",
+   "missing": "needs core: slime counters with a -1/-1 per counter static, and a 1/1 black Slug creature token",
    "lane": "d3",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -3095,7 +3095,7 @@
   {
    "card": "Seasoned Dungeoneer",
    "deck": "Sefris of the Hidden Ways",
-   "missing": "needs core: take the initiative, protection from creatures, and explore on a 'whenever you attack' target [d3 batch 30: protection from creatures is in: Effect::ProtectionFromCardTypeEot { slot: Some(0), kind: 1 } (Game::type_protection_grants)] [done by d2 batch 29: d3 batch 30 ProtectionFromCardTypeEot, Filter::subtypes_any, scripted in pg_d2]",
+   "missing": "needs core: take the initiative, protection from creatures, and explore on a 'whenever you attack' target",
    "lane": "d3",
    "theme": "triggers",
    "owner": "d2"
@@ -3191,7 +3191,7 @@
   {
    "card": "Champion of Lambholt",
    "deck": "Najeela, the Blade-Blossom",
-   "missing": "needs core: creatures with power less than this one's can't block creatures you control (for all your creatures)",
+   "missing": "needs core: creatures with power less than this one's can't block creatures you control (for all your creatures) [done by d1 batch 23: ManaExt::smaller_cant_block_yours; scripted in pg_d1]",
    "lane": "d3",
    "theme": "mana",
    "owner": "d1"
@@ -3352,7 +3352,7 @@
   {
    "card": "Slip Out the Back",
    "deck": "Najeela, the Blade-Blossom",
-   "missing": "needs core: phasing out",
+   "missing": "needs core: phasing out [lane C 2026-11-27: scripted in pg_c, batch 17 (unbuilt)]",
    "lane": "d3",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -3616,7 +3616,7 @@
   {
    "card": "Vizier of the Menagerie",
    "deck": "Animar, Soul of Elements",
-   "missing": "needs core: cast creature spells from the top of your library, and spend mana as any type for them [lane C 2026-11-26: blocked on d1: spend mana of any type to cast creature spells; lane C's part: none; top_spells_creatures exists]",
+   "missing": "needs core: cast creature spells from the top of your library, and spend mana as any type for them [lane C 2026-11-26: blocked on d1: spend mana of any type to cast creature spells; lane C's part: none; top_spells_creatures exists] [done by d1 batch 22: ManaExt::creature_spells_any_type_mana; scripted in pg_d1]",
    "lane": "d3",
    "theme": "objects_zones",
    "owner": "d1"
@@ -3712,7 +3712,7 @@
   {
    "card": "Somberwald Sage",
    "deck": "Animar, Soul of Elements",
-   "missing": "needs core: three mana of one chosen color (the payer would split the colors) [lane C 2026-11-26: blocked on d1: three mana of one chosen color, spendable only on creature spells; lane C's part: none]",
+   "missing": "needs core: three mana of one chosen color (the payer would split the colors) [lane C 2026-11-26: blocked on d1: three mana of one chosen color, spendable only on creature spells; lane C's part: none] [done by d1 batch 22: Effect::AddCreatureSpellMana; scripted in pg_d1]",
    "lane": "d3",
    "theme": "objects_zones",
    "owner": "d1"
@@ -3809,7 +3809,7 @@
   {
    "card": "City of Shadows",
    "deck": "Atraxa, Praetors' Voice",
-   "missing": "needs core: storage counters and mana per counter",
+   "missing": "needs core: storage counters and mana per counter [lane C 2026-11-27: scripted in pg_c, batch 17 (unbuilt)]",
    "lane": "d3",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -3825,7 +3825,7 @@
   {
    "card": "Elspeth Tirel",
    "deck": "Atraxa, Praetors' Voice",
-   "missing": "needs core: gain 1 life per creature you control, and destroy all other permanents except lands and tokens",
+   "missing": "needs core: gain 1 life per creature you control, and destroy all other permanents except lands and tokens [lane C 2026-11-27: scripted in pg_c, batch 17 (unbuilt)]",
    "lane": "d3",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -3929,7 +3929,7 @@
   {
    "card": "Argent Sphinx",
    "deck": "Lonis, Cryptozoologist",
-   "missing": "needs core: metalcraft (an 'if you control three or more artifacts' activation condition)",
+   "missing": "needs core: metalcraft (an 'if you control three or more artifacts' activation condition) [done by d1 batch 23: Effect::FlickerSelf; scripted in pg_d1]",
    "lane": "d3",
    "theme": "effects",
    "owner": "d1"
@@ -3940,7 +3940,7 @@
    "missing": "needs core: a Clue artifact token (investigate), and a 'sacrificed three or more Clues this turn' condition",
    "lane": "d3",
    "theme": "objects_zones",
-   "owner": "d2",
+   "owner": "mac-c",
    "status": "done: d2 batch 38 (claimed by d2 from mac-c: both lines are trigger pieces)"
   },
   {
@@ -4512,7 +4512,7 @@
    "owner": "d2"
   },
   {
-   "card": "Palant\u00edr of Orthanc",
+   "card": "Palantír of Orthanc",
    "deck": "Zhulodok, Void Gorger (Adam)",
    "missing": "trigger (Zhulodok: cast trigger; its cascade is d3's) [done by d2 batch 22: Effect::TargetMayLetYouDrawElseMillKindCounters, Decision::LetDrawOrMill, scripted in pg_d2]",
    "lane": "mac-b",
@@ -4826,7 +4826,7 @@
   {
    "card": "Karlov of the Ghost Council",
    "deck": "Oloro, Ageless Ascetic (Adam)",
-   "missing": "pay-life mana; counter-removal cost; cost reduction",
+   "missing": "pay-life mana; counter-removal cost; cost reduction [done by d1 batch 23: Activated::remove_plus_counters; scripted in pg_d1]",
    "lane": "mac-b",
    "theme": "mana",
    "owner": "d1"
@@ -4834,7 +4834,7 @@
   {
    "card": "Will, Scion of Peace",
    "deck": "Oloro, Ageless Ascetic (Adam)",
-   "missing": "pay-life mana; counter-removal cost; cost reduction",
+   "missing": "pay-life mana; counter-removal cost; cost reduction [done by d1 batch 23: Effect::WhiteBlueSpellsCostLessLifeGainedThisTurn; scripted in pg_d1]",
    "lane": "mac-b",
    "theme": "mana",
    "owner": "d1"
@@ -5004,7 +5004,7 @@
   {
    "card": "Pyromatics",
    "deck": "Ghyrson Starn, Kelermorph (Spr3adsh33)",
-   "missing": "replicate; class levels",
+   "missing": "replicate; class levels [done by d1 batch 24: replicate (multikicker + Effect::CopySourceSpellPerReplicate); scripted in pg_d1]",
    "lane": "mac-b",
    "theme": "mana",
    "owner": "d1"
@@ -5020,7 +5020,7 @@
   {
    "card": "Silundi Vision // Silundi Isle",
    "deck": "Ghyrson Starn, Kelermorph (Spr3adsh33)",
-   "missing": "MDFC/battle; soulbond",
+   "missing": "MDFC/battle; soulbond [lane C 2026-11-27: scripted in pg_c, batch 17 (unbuilt)]",
    "lane": "mac-b",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -5036,7 +5036,7 @@
   {
    "card": "Tandem Lookout",
    "deck": "Ghyrson Starn, Kelermorph (Spr3adsh33)",
-   "missing": "MDFC/battle; soulbond [done by d2 batch 28: CardDef::soulbond_damage_draw, When::PairedDealsDamageToOpponent, scripted in pg_d2]",
+   "missing": "MDFC/battle; soulbond",
    "lane": "mac-b",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -5116,7 +5116,7 @@
   {
    "card": "Torment of Hailfire",
    "deck": "Damia, Sage of Stone (Grande)",
-   "missing": "repeat X times: each opponent loses 3 unless they sacrifice a nonland permanent or discard (like Onyx's \u22128)",
+   "missing": "repeat X times: each opponent loses 3 unless they sacrifice a nonland permanent or discard (like Onyx's −8)",
    "lane": "merger",
    "theme": "effects",
    "owner": "d3"
@@ -5181,7 +5181,7 @@
   {
    "card": "Rose Room Treasurer",
    "deck": "Bloomburrow Commander (BLC)",
-   "missing": "BLC (lane B's routing, 2026-11-26) [done by d2 batch 28: Effect::TreasureTwiceThenPayXDamage, Decision::PayXDamage, scripted in pg_d2]",
+   "missing": "BLC (lane B's routing, 2026-11-26)",
    "lane": "mac-b",
    "theme": "triggers",
    "owner": "d2"
@@ -5441,7 +5441,7 @@
   {
    "card": "Arthur, Marigold Knight",
    "deck": "Bloomburrow Commander (BLC)",
-   "missing": "BLC (lane B's routing, 2026-11-26)",
+   "missing": "BLC (lane B's routing, 2026-11-26) [lane C 2026-11-27: scripted in pg_c, batch 18 (unbuilt)]",
    "lane": "mac-b",
    "theme": "objects_zones",
    "owner": "mac-c",
@@ -5898,7 +5898,7 @@
   {
    "card": "Mystic Gate",
    "deck": "Bruna, Light of Alabaster (DonSpider)",
-   "missing": "lane C's Bruna routing (2026-11-26)",
+   "missing": "lane C's Bruna routing (2026-11-26) [done by d1 batch 23: scripted in pg_d1 (paid_mana)]",
    "lane": "mac-c",
    "theme": "mana",
    "owner": "d1"
@@ -6242,7 +6242,7 @@
   {
    "card": "Crux of Fate",
    "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
-   "missing": "lane C's routing (2026-11-26)",
+   "missing": "lane C's routing (2026-11-26) [done by d3 batch 38: Effect::DestroyAllCreaturesWithSubtype, modal (Dragon or non-Dragon is the mode choice), scripted (pg_d3)]",
    "lane": "mac-c",
    "theme": "effects",
    "owner": "d3"
@@ -6250,7 +6250,7 @@
   {
    "card": "Apocalypse",
    "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
-   "missing": "lane C's routing (2026-11-26)",
+   "missing": "lane C's routing (2026-11-26) [done by d3 batch 38: Effect::ExileAllPermanents, Effect::YouDiscardHand, scripted (pg_d3)]",
    "lane": "mac-c",
    "theme": "effects",
    "owner": "d3"
@@ -6291,7 +6291,7 @@
   {
    "card": "Karrthus, Tyrant of Jund",
    "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
-   "missing": "lane C's routing (2026-11-26)",
+   "missing": "lane C's routing (2026-11-26) [done by d3 batch 38: Effect::GainControlAllSubtypeThenUntap, scripted (pg_d3)]",
    "lane": "mac-c",
    "theme": "effects",
    "owner": "d3"
@@ -6307,7 +6307,7 @@
   {
    "card": "Vaevictis Asmadi, the Dire",
    "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
-   "missing": "lane C's routing (2026-11-26)",
+   "missing": "lane C's routing (2026-11-26) [done by d3 batch 38: Effect::SacrificeTargetsRevealTopPermanent(n), scripted (pg_d3)]",
    "lane": "mac-c",
    "theme": "effects",
    "owner": "d3"
@@ -6644,7 +6644,7 @@
    "card": "Pippin, Guard of the Citadel",
    "deck": "Bruna, Light of Alabaster",
    "owner": "d3",
-   "missing": "a protection-from-a-card-type grant [added from the live validator, 2026-11-27] [d3 batch 30: piece in: Effect::ProtectionChosenCardTypeEot(Some(0)) (Decision::ProtectionCardType) or ProtectionFromCardTypeEot { slot, kind }; Bruna is fenced, so lane C scripts the card]",
+   "missing": "a protection-from-a-card-type grant [added from the live validator, 2026-11-27]",
    "lane": "d3",
    "theme": "effects and statics"
   },
@@ -7013,9 +7013,9 @@
   {
    "card": "Goliath Daydreamer",
    "deck": "Niv-Mizzet, Visionary",
-   "missing": "cast-from-hand instant/sorcery exiled with a dream counter; attacks: cast one free",
-   "lane": "d2",
-   "theme": "triggers",
+   "missing": "idea quick win: claimed by lane C 2026-11-27, scripted in pg_c, batch 18 (unbuilt)",
+   "lane": "mac-c",
+   "theme": "objects_zones",
    "owner": "mac-c",
    "status": "done: lane C batch 18 (389f90e)"
   },
@@ -7267,6 +7267,118 @@
    "owner": "d3"
   },
   {
+   "card": "Silence",
+   "deck": "IDEA Kenrith, the Returned King",
+   "missing": "idea-deck claim (2026-11-27) [done by d3 batch 36: scripted (pg_d3)]",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Drannith Magistrate",
+   "deck": "IDEA Kenrith, the Returned King",
+   "missing": "idea-deck claim (2026-11-27) [done by d3 batch 36: scripted (pg_d3)]",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Vizier of Remedies",
+   "deck": "IDEA Kenrith, the Returned King",
+   "missing": "idea-deck claim (2026-11-27) [done by d3 batch 36: scripted (pg_d3)]",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Mental Misstep",
+   "deck": "IDEA Kenrith, the Returned King",
+   "missing": "idea-deck claim (2026-11-27) [done by d3 batch 36: scripted (pg_d3)]",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Spell Pierce",
+   "deck": "IDEA Kenrith, the Returned King",
+   "missing": "idea-deck claim (2026-11-27) [done by d3 batch 36: scripted (pg_d3)]",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Dismember",
+   "deck": "IDEA Sephiroth, Fabled SOLDIER",
+   "missing": "idea-deck claim (2026-11-27) [done by d3 batch 36: scripted (pg_d3)]",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Opposition Agent",
+   "deck": "IDEA Sephiroth, Fabled SOLDIER",
+   "missing": "idea-deck claim (2026-11-27) [done by d3 batch 36: scripted (pg_d3); known gap: you don't control the opponent while they search]",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Ad Nauseam",
+   "deck": "IDEA Sephiroth, Fabled SOLDIER",
+   "missing": "idea-deck claim (2026-11-27), d3 next",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Ram Through",
+   "deck": "IDEA Tifa Lockhart",
+   "missing": "idea-deck claim (2026-11-27), d3 next",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Scale Up",
+   "deck": "IDEA Tifa Lockhart",
+   "missing": "idea-deck claim (2026-11-27), d3 next",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Roiling Regrowth",
+   "deck": "IDEA Hearthhull, the Worldseed; IDEA Tifa Lockhart",
+   "missing": "idea-deck claim (2026-11-27), d3 next",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Planar Engineering",
+   "deck": "IDEA Tifa Lockhart",
+   "missing": "idea-deck claim (2026-11-27), d3 next",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Entish Restoration",
+   "deck": "IDEA Tifa Lockhart",
+   "missing": "idea-deck claim (2026-11-27), d3 next",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Archdruid's Charm",
+   "deck": "IDEA Tifa Lockhart",
+   "missing": "idea-deck claim (2026-11-27), d3 next",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
    "card": "Kinbinding",
    "deck": "Zurgo (idea)",
    "missing": "+X/+X per creature entered this turn (d3 scale); a 1/1 G/W Kithkin token",
@@ -7391,118 +7503,6 @@
    "theme": "triggers",
    "owner": "d2",
    "status": "waiting: 'enters with three wish counters' (a CardDef field for kind counters on entering; merger) and 'an opponent gains control of this artifact' (an effect)"
-  },
-  {
-   "card": "Silence",
-   "deck": "IDEA Kenrith, the Returned King",
-   "missing": "idea-deck claim (2026-11-27) [done by d3 batch 36: scripted (pg_d3)]",
-   "lane": "d3",
-   "theme": "effects and statics",
-   "owner": "d3"
-  },
-  {
-   "card": "Drannith Magistrate",
-   "deck": "IDEA Kenrith, the Returned King",
-   "missing": "idea-deck claim (2026-11-27) [done by d3 batch 36: scripted (pg_d3)]",
-   "lane": "d3",
-   "theme": "effects and statics",
-   "owner": "d3"
-  },
-  {
-   "card": "Vizier of Remedies",
-   "deck": "IDEA Kenrith, the Returned King",
-   "missing": "idea-deck claim (2026-11-27) [done by d3 batch 36: scripted (pg_d3)]",
-   "lane": "d3",
-   "theme": "effects and statics",
-   "owner": "d3"
-  },
-  {
-   "card": "Mental Misstep",
-   "deck": "IDEA Kenrith, the Returned King",
-   "missing": "idea-deck claim (2026-11-27) [done by d3 batch 36: scripted (pg_d3)]",
-   "lane": "d3",
-   "theme": "effects and statics",
-   "owner": "d3"
-  },
-  {
-   "card": "Spell Pierce",
-   "deck": "IDEA Kenrith, the Returned King",
-   "missing": "idea-deck claim (2026-11-27) [done by d3 batch 36: scripted (pg_d3)]",
-   "lane": "d3",
-   "theme": "effects and statics",
-   "owner": "d3"
-  },
-  {
-   "card": "Dismember",
-   "deck": "IDEA Sephiroth, Fabled SOLDIER",
-   "missing": "idea-deck claim (2026-11-27) [done by d3 batch 36: scripted (pg_d3)]",
-   "lane": "d3",
-   "theme": "effects and statics",
-   "owner": "d3"
-  },
-  {
-   "card": "Opposition Agent",
-   "deck": "IDEA Sephiroth, Fabled SOLDIER",
-   "missing": "idea-deck claim (2026-11-27) [done by d3 batch 36: scripted (pg_d3); known gap: you don't control the opponent while they search]",
-   "lane": "d3",
-   "theme": "effects and statics",
-   "owner": "d3"
-  },
-  {
-   "card": "Ad Nauseam",
-   "deck": "IDEA Sephiroth, Fabled SOLDIER",
-   "missing": "idea-deck claim (2026-11-27), d3 next",
-   "lane": "d3",
-   "theme": "effects and statics",
-   "owner": "d3"
-  },
-  {
-   "card": "Ram Through",
-   "deck": "IDEA Tifa Lockhart",
-   "missing": "idea-deck claim (2026-11-27), d3 next",
-   "lane": "d3",
-   "theme": "effects and statics",
-   "owner": "d3"
-  },
-  {
-   "card": "Scale Up",
-   "deck": "IDEA Tifa Lockhart",
-   "missing": "idea-deck claim (2026-11-27), d3 next",
-   "lane": "d3",
-   "theme": "effects and statics",
-   "owner": "d3"
-  },
-  {
-   "card": "Roiling Regrowth",
-   "deck": "IDEA Hearthhull, the Worldseed; IDEA Tifa Lockhart",
-   "missing": "idea-deck claim (2026-11-27), d3 next",
-   "lane": "d3",
-   "theme": "effects and statics",
-   "owner": "d3"
-  },
-  {
-   "card": "Planar Engineering",
-   "deck": "IDEA Tifa Lockhart",
-   "missing": "idea-deck claim (2026-11-27), d3 next",
-   "lane": "d3",
-   "theme": "effects and statics",
-   "owner": "d3"
-  },
-  {
-   "card": "Entish Restoration",
-   "deck": "IDEA Tifa Lockhart",
-   "missing": "idea-deck claim (2026-11-27), d3 next",
-   "lane": "d3",
-   "theme": "effects and statics",
-   "owner": "d3"
-  },
-  {
-   "card": "Archdruid's Charm",
-   "deck": "IDEA Tifa Lockhart",
-   "missing": "idea-deck claim (2026-11-27), d3 next",
-   "lane": "d3",
-   "theme": "effects and statics",
-   "owner": "d3"
   },
   {
    "card": "End-Blaze Epiphany",

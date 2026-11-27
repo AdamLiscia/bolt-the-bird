@@ -84,8 +84,8 @@ pub fn script(name: &str) -> Option<Script> {
     match name {
         // ---- Ygra, Eater of All (Grande) ----
         "Ashnod's Altar" => s(&["Sacrifice a creature: Add {C}{C}."], |d, _| {
-            // A mana ability played on the stack, like Gilded Goose's: the automatic payer never
-            // sacrifices creatures.
+            // A mana ability (it resolves at once, CR 605.3a), activated at priority: the automatic
+            // payer never sacrifices creatures.
             let n = activated(d, "", false, vec![], vec![Effect::AddColorless(2)]);
             d.activated[n].sacrifice_other_creature = true; // an artifact: "another" is any creature
         }),
@@ -109,7 +109,7 @@ pub fn script(name: &str) -> Option<Script> {
             on(d, When::CreatureYouControlDies, vec![], vec![Effect::SacrificeCreatures { who: Who::EachOpponent, n: 1 }])
         }),
         "Phyrexian Altar" => s(&["Sacrifice a creature: Add one mana of any color."], |d, _| {
-            // On the stack, like Ashnod's Altar.
+            // Activated at priority, like Ashnod's Altar.
             let n = activated(d, "", false, vec![], vec![Effect::AddManaAnyColor]);
             d.activated[n].sacrifice_other_creature = true;
         }),
@@ -435,19 +435,19 @@ pub fn script(name: &str) -> Option<Script> {
         ),
         "Phyrexian Tower" => s(&["{T}: Add {C}.", "{T}, Sacrifice a creature: Add {B}{B}."], |d, _| {
             d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
-            // On the stack, like the Altars' mana.
+            // A mana ability activated at priority, like the Altars'.
             let n = activated(d, "", true, vec![], vec![Effect::AddMana { color: Color::Black, n: 2 }]);
             d.activated[n].sacrifice_other_creature = true; // a land: any creature
         }),
         "Sunbaked Canyon" => s(&["{T}, Pay 1 life: Add {R} or {W}.", "{1}, {T}, Sacrifice this land: Draw a card."], |d, _| {
-            // On the stack, like the Altars' mana.
+            // A mana ability activated at priority, like the Altars'.
             let n = activated(d, "", true, vec![], vec![Effect::AddManaEither(Color::Red, Color::White)]);
             d.activated[n].life = 1;
             let n = activated(d, "{1}", true, vec![], vec![draw(1)]);
             d.activated[n].sacrifice_self = true;
         }),
         "Wild Cantor" => s(&["Sacrifice this creature: Add one mana of any color."], |d, _| {
-            // On the stack, like the Altars' mana.
+            // A mana ability activated at priority, like the Altars'.
             let n = activated(d, "", false, vec![], vec![Effect::AddManaAnyColor]);
             d.activated[n].sacrifice_self = true;
         }),
@@ -1061,7 +1061,7 @@ pub fn script(name: &str) -> Option<Script> {
         }),
         "Crystal Vein" => s(&["{T}: Add {C}.", "{T}, Sacrifice this land: Add {C}{C}."], |d, _| {
             d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
-            // Played on the stack, like Ashnod's Altar's: the automatic payer only taps it for {C}.
+            // Activated at priority, like Ashnod's Altar: the automatic payer only taps it for {C}.
             let n = activated(d, "", true, vec![], vec![Effect::AddColorless(2)]);
             d.activated[n].sacrifice_self = true;
         }),
@@ -1293,7 +1293,7 @@ pub fn script(name: &str) -> Option<Script> {
         "Food Chain" => s(
             &["Exile a creature you control: Add X mana of any one color, where X is 1 plus the exiled creature's mana value. Spend this mana only to cast creature spells."],
             |d, _| {
-                // On the stack, like Ashnod's Altar's.
+                // Activated at priority, like Ashnod's Altar.
                 let n = activated(d, "", false, vec![], vec![Effect::AddCreatureSpellManaExtraMvPlusOne]);
                 d.activated[n].exile_creature_you_control = true;
                 d.activated[n].victim_in_extra = true;
