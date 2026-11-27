@@ -2491,17 +2491,14 @@ pub fn script(name: &str) -> Option<Script> {
                 d.mana_ext.not_from_hand_discount = Some((3, 2)); // d1's discount
             },
         ),
-        "Evercoat Ursine" => s(
-            &[
-                "Hideaway 3, hideaway 3",
-                "Whenever this creature deals combat damage to a player, if there are cards exiled with it, you may play one of them without paying its mana cost.",
-            ],
-            |d, _| {
-                on(d, When::Enters, vec![], vec![Effect::Hideaway(3), Effect::HideawayAnother(3)]);
-                // Limit: a free-cast window is spells only, so a hidden land can't be played this way.
-                on(d, When::DealsCombatDamageToPlayer, vec![], vec![Effect::MayCastOneHideawayFree]);
-            },
-        ),
+        // Unclaimed on purpose: the damage line is left out of `lines`, so the card isn't supported (or
+        // built) until a free-cast window can offer a hidden land as a land play (CR 305.2). With it, the
+        // lines are "Hideaway 3, hideaway 3" and "Whenever this creature deals combat damage to a player,
+        // if there are cards exiled with it, you may play one of them without paying its mana cost."
+        "Evercoat Ursine" => s(&["Hideaway 3, hideaway 3"], |d, _| {
+            on(d, When::Enters, vec![], vec![Effect::Hideaway(3), Effect::HideawayAnother(3)]);
+            on(d, When::DealsCombatDamageToPlayer, vec![], vec![Effect::MayCastOneHideawayFree]);
+        }),
         "Deep-Cavern Bat" => s(
             &["When this creature enters, look at target opponent's hand. You may exile a nonland card from it until this creature leaves the battlefield."],
             |d, _| {
@@ -2830,5 +2827,5 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Rev, Tithe Extractor",
     "Alchemist's Talent",
     "Fortune Teller's Talent",
-    "Evercoat Ursine",
+    // Not "Evercoat Ursine" (unclaimed: a hidden land must be playable as a land play).
 ];

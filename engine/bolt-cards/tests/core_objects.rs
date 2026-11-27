@@ -1905,8 +1905,29 @@ fn fortune_tellers_talent_level_two_plays_the_top_after_a_spell() {
 }
 
 #[test]
-fn evercoat_ursine_hides_two_away_and_casts_one_free_on_combat_damage() {
-    let mut g = table();
+fn two_hideaways_and_one_free_spell_on_combat_damage() {
+    // Evercoat Ursine's pieces on an edited Hungry Ghoul (the Ursine itself is unclaimed).
+    let mut g = table_with(|defs| {
+        let d = &mut defs[cid("Hungry Ghoul")];
+        for (when, effects) in [
+            (
+                bolt_core::When::Enters,
+                vec![
+                    bolt_core::Effect::Hideaway(3),
+                    bolt_core::Effect::HideawayAnother(3),
+                ],
+            ),
+            (
+                bolt_core::When::DealsCombatDamageToPlayer,
+                vec![bolt_core::Effect::MayCastOneHideawayFree],
+            ),
+        ] {
+            d.triggers.push(bolt_core::Trigger {
+                when,
+                ability: bolt_core::Ability::new(vec![], effects),
+            });
+        }
+    });
     let first = top(&mut g, "Lightning Bolt");
     for _ in 0..2 {
         top(&mut g, "Plains");
@@ -1915,7 +1936,7 @@ fn evercoat_ursine_hides_two_away_and_casts_one_free_on_combat_damage() {
     for _ in 0..2 {
         top(&mut g, "Plains");
     }
-    let bear = hand(&mut g, 0, "Evercoat Ursine");
+    let bear = hand(&mut g, 0, "Hungry Ghoul");
     play(
         &mut g,
         bear,

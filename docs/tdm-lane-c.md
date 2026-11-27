@@ -1181,9 +1181,13 @@ Core (appended; arms before `EachOpponentExilesTop`, functions in game/zones.rs)
   filter (`top_cards_after_a_spell`), before the land/spell split, so lands and spells both. Lane C's
   top-of-library play, as the merger routed it.
 - `Effect::{HideawayAnother(n), MayCastOneHideawayFree}` with `Game::hideaway_more` (Evercoat Ursine: the first
-  hideaway card is kept there, then the existing `Decision::HideawayPick` is asked again). **Limit:** the free
-  play is a one-spell free-cast window, spells only, so a hidden land can't be played this way.
-Tests in core_objects (81: Alchemist's two, Fortune Teller's, Ursine's).
+  hideaway card is kept there, then the existing `Decision::HideawayPick` is asked again). **Ursine is unclaimed**
+  (script kept with only its hideaway line in `lines`, so it is not supported or built, and off `PG_C_SCRIPTED`;
+  merger 2026-11-27; unlisting alone would still claim it, since support comes from the lines): "play one of them" includes a hidden land played as a
+  land play (CR 305.2), and the one-spell free-cast window is spells only. Needs: `free_cast_actions` offering
+  `PlayLand` while a land play remains, the `Pending::FreeCast` mapping letting `PlayLand` through to its own arm,
+  and that arm closing the window (`close_free_casts`) after the land enters.
+Tests in core_objects (81: Alchemist's two, Fortune Teller's, and Ursine's pieces on an edited Hungry Ghoul).
 Likely failure spots when built: the Treasure-only Bolt (`game(&[])`, paid by the Treasure), the Ursine
 hideaway picks in `play`'s answers (second Bolt from the first three, then the first from the next three), the
 Class level set directly on `class_level`.

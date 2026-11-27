@@ -5410,7 +5410,7 @@
   {
    "card": "Evercoat Ursine",
    "deck": "Bloomburrow Commander (BLC)",
-   "missing": "BLC (lane B's routing, 2026-11-26) [lane C 2026-11-27: scripted in pg_c, batch 20 (unbuilt)]",
+   "missing": "BLC (lane B's routing, 2026-11-26) [lane C 2026-11-27, batch 20: script written but unlisted; needs a free-cast window that can offer a hidden land as a land play (CR 305.2): free_cast_actions, the FreeCast action mapping and a PlayLand arm that closes the window]",
    "lane": "mac-b",
    "theme": "objects_zones",
    "owner": "mac-c"
