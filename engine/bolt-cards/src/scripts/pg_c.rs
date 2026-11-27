@@ -2484,6 +2484,13 @@ pub fn script(name: &str) -> Option<Script> {
                 equip(d, "{1}");
             },
         ),
+        "Nesting Dragon" => s(
+            &["Landfall — Whenever a land you control enters, create a 0/2 red Dragon Egg creature token with defender and \"When this token dies, create a 2/2 red Dragon creature token with flying and '{R}: This token gets +1/+0 until end of turn.'\""],
+            |d, t| {
+                // Token 123, the Egg, carries the dies trigger that makes token 124.
+                on(d, When::LandYouControlEnters, vec![], vec![Effect::CreateToken { who: Who::You, def: t.dragon_egg, n: 1 }]);
+            },
+        ),
         "Fortune Teller's Talent" => s(
             &[
                 "You may look at the top card of your library any time.",
@@ -2840,5 +2847,6 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Alchemist's Talent",
     "Fortune Teller's Talent",
     "Blade of the Bloodchief",
+    "Nesting Dragon",
     // Not "Evercoat Ursine" (unclaimed: a hidden land must be playable as a land play).
 ];

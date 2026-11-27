@@ -1987,3 +1987,26 @@ fn blade_of_the_bloodchief_grows_its_creature_twice_as_fast_on_a_vampire() {
     assert_eq!(g.obj(bat).counters, 2, "a Vampire gets two");
     assert_eq!(g.obj(ghoul).counters, 1, "no longer equipped");
 }
+
+#[test]
+fn nesting_dragon_makes_eggs_that_hatch_into_firebreathing_dragons() {
+    let mut g = table();
+    put(&mut g, 0, "Nesting Dragon");
+    let land = hand(&mut g, 0, "Mountain");
+    act(&mut g, Action::PlayLand(land));
+    resolve_all(&mut g, &[]);
+    let eggs = tokens(&g, 0, "Dragon Egg");
+    assert_eq!(eggs.len(), 1, "landfall");
+    let egg = eggs[0];
+    assert_eq!((g.power(egg), g.toughness(egg)), (0, 2));
+    assert!(g.keywords(egg).has(Keywords::DEFENDER));
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    play(&mut g, bolt, false, &[obj(egg)], &[]);
+    let dragons = tokens(&g, 0, "Dragon");
+    assert_eq!(dragons.len(), 1, "the Egg died into a Dragon");
+    let dragon = dragons[0];
+    assert!(g.keywords(dragon).has(Keywords::FLYING));
+    act(&mut g, Action::Activate(dragon, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.power(dragon), g.toughness(dragon)), (3, 2), "{{R}}: +1/+0");
+}

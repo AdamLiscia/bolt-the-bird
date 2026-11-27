@@ -1199,3 +1199,15 @@ Core (appended): `Effect::CountersOnAttachedBySubtype { n, subtype, n_if }` (zon
 creature). Card (1): Blade of the Bloodchief. Test in core_objects (82).
 Nesting Dragon (Korvold) waits on two token numbers: a 0/2 red Dragon Egg with defender and a dies trigger, and a
 2/2 red flying Dragon with "{R}: +1/+0".
+
+### Nesting Dragon (written, unbuilt; needs its two tokens)
+
+Scripted against `t.dragon_egg` (123) and `t.dragon_2_firebreathing` (124), test in core_objects (83). To append
+once d2's 111-118, d3's 119 and 121 and d1's 122 are on tarkir, after 120 (Ashiok's Nightmare):
+- 123: `red(token("Dragon Egg", "Dragon Egg", 0, 2, Keywords::DEFENDER))`.
+- 124: a 2/2 red Dragon, `red(token("Dragon", "Dragon", 2, 2, Keywords::FLYING))` with `activated(&mut t, "{R}",
+  false, vec![], vec![Effect::PumpSelf { power: 1, toughness: 0 }])`.
+- The Egg's "When this token dies, create [124]": `token_defs()` doesn't know the token base, so no token row can
+  name another token. Proposed (merger's file, lib.rs `CardSet::load`, after `defs.extend(scripts::token_defs())`):
+  one line pushing `Trigger { when: When::Dies, ability: CreateToken { who: You, def: tokens.dragon_2_firebreathing,
+  n: 1 } }` onto `defs[tokens.dragon_egg]`. Or `token_defs(&Tokens)` if the merger prefers.
