@@ -36,8 +36,17 @@ pub const HAND_SIZE: usize = 7;
 pub const MAX_HAND: usize = 7;
 /// The most work (zone changes and state-based-action passes) one action may do. Real actions
 /// stay far below it, even with a thousand permanents; reaching it means an engine loop that never
-/// ends, so the action panics rather than eat the machine's memory.
-pub const WORK_BUDGET: u64 = 1_000_000;
+/// ends, so the game ends in a draw (`Game::end_reason`) rather than spin and eat the machine's
+/// memory.
+pub const WORK_BUDGET: u64 = 200_000;
+
+/// The most objects a game may make. A real Commander game makes a few hundred; past this, tokens
+/// are multiplying without end (doublers feeding each other) and the game ends in a draw.
+pub const MAX_OBJECTS: usize = 10_000;
+
+/// The most passes `settle` makes for players with nothing else to do before the game is a draw:
+/// turns that go by forever with no one able to act or lose.
+pub const SETTLE_PASSES: u32 = 10_000;
 
 /// Spells and abilities one turn may resolve before the game is a draw (CR 104.4b: a loop of
 /// mandatory actions with no way to stop). Real turns resolve a few dozen.
@@ -2095,6 +2104,9 @@ pub struct Game {
     /// still resolves as the copied card's (Phyrexian Metamorph as Agate Instigator, destroyed in
     /// response).
     pub trigger_snapshots: Vec<(ObjId, u32, usize, Ability)>,
+    /// Why the engine ended the game itself, when it did: one of its loop caps tripped
+    /// ([`WORK_BUDGET`], [`MAX_OBJECTS`], [`SETTLE_PASSES`]); the result is a draw.
+    pub end_reason: Option<&'static str>,
 }
 
 /// `Action::CastFromGraveyardAs`'s second number for Karador, Ghost Chieftain's once-each-turn
@@ -2421,6 +2433,7 @@ impl Game {
             copy_next_instant_sorcery: Vec::new(),
             mana_ability_then: None,
             trigger_snapshots: Vec::new(),
+            end_reason: None,
         }
     }
 
@@ -2565,6 +2578,9 @@ impl Game {
     /// battlefield have been there since before turn 1, so they can attack.
     pub fn add_card(&mut self, owner: PlayerId, def: usize, zone: Zone) -> ObjId {
         assert!(def < self.defs.len(), "no card definition {def}");
+        if self.objects.len() >= MAX_OBJECTS {
+            self.runaway("engine loop cap: over MAX_OBJECTS objects (tokens without end)");
+        }
         if zone == Zone::Battlefield && self.defs[def].statics.iter().any(|s| s.lose_abilities) {
             self.ability_loss_sources += 1;
         }
@@ -5271,11 +5287,24 @@ impl Game {
     /// Counts one unit of work toward [`WORK_BUDGET`].
     fn work(&mut self) {
         self.work += 1;
-        assert!(
-            self.work <= WORK_BUDGET,
-            "runaway action: over {WORK_BUDGET} zone changes or state-based-action passes \
-             (an engine loop that never ends)"
-        );
+        if self.work > WORK_BUDGET {
+            self.runaway("engine loop cap: an action did over WORK_BUDGET zone changes or passes");
+        }
+    }
+
+    /// One of the engine's loop caps tripped: the game ends in a draw now, logged once, instead of
+    /// spinning. Loops that keep going check `is_over` and stop.
+    fn runaway(&mut self, why: &'static str) {
+        if self.end_reason.is_none() {
+            eprintln!(
+                "bolt engine: {why} (turn {}, {} objects): the game is a draw",
+                self.turn,
+                self.objects.len()
+            );
+            self.end_reason = Some(why);
+            self.result = Some(Outcome::Draw);
+            self.pending = Pending::GameOver;
+        }
     }
 
     fn move_to(&mut self, id: ObjId, to: Zone) {
@@ -26953,6 +26982,9 @@ impl Game {
         self.last_created.clear();
         let times = self.token_doubling(p) * self.creature_token_tripling(p, self.defs[def].types.creature);
         for _ in 0..times {
+            if self.is_over() {
+                break; // a loop cap ended the game
+            }
             let id = self.add_card(p, def, Zone::Battlefield);
             self.last_created.push(id);
             self.obj_mut(id).since_turn = self.turn;
@@ -27309,6 +27341,10 @@ impl Game {
     /// CR 603.3: triggered abilities go on the stack the next time a player would get priority,
     /// active player's first (APNAP, CR 101.4). Returns false if a target choice is now pending.
     fn put_triggers_on_stack(&mut self, then: PlayerId) -> bool {
+        if self.is_over() {
+            self.triggered.clear();
+            return true;
+        }
         self.flush_graveyard_leaves();
         let (scan_from, scan_to) = (
             self.triggered_scanned.min(self.triggered.len()),
@@ -27431,7 +27467,13 @@ impl Game {
         if !self.auto_pass {
             return;
         }
+        let mut passes = 0;
         while let Pending::Priority(p) = self.pending {
+            passes += 1;
+            if passes > SETTLE_PASSES {
+                self.runaway("engine loop cap: SETTLE_PASSES forced passes with no decision");
+                break;
+            }
             // Mana moves alone aren't a reason to stop: nothing to spend them on.
             let real = self
                 .legal_actions()
@@ -28990,6 +29032,9 @@ impl Game {
         }
         loop {
             self.work();
+            if self.end_reason.is_some() {
+                return; // a loop cap ended the game
+            }
             // Ascend (CR 702.131b): ten or more permanents and an ascend permanent.
             for p in 0..2 {
                 if !self.city_blessing[p]

@@ -356,3 +356,41 @@ fn a_trigger_its_source_doesnt_have_does_nothing() {
     assert_eq!((g.players[0].life, g.players[1].life), life);
     assert_eq!(g.obj(plains).zone, Zone::Battlefield);
 }
+
+/// The desktop's cmd_play_1, 2026-11-27: one engine call spun for 9.5+ minutes. The engine's loop
+/// caps end such a game in a draw with a reason instead. Past MAX_OBJECTS, the next object made
+/// ends it.
+#[test]
+fn a_runaway_board_ends_the_game_in_a_draw() {
+    let mut g = table();
+    while g.objects.len() < bolt_core::game::MAX_OBJECTS {
+        g.add_card(0, cid("Plains"), Zone::Exile);
+    }
+    assert!(g.result.is_none());
+    g.add_card(0, cid("Plains"), Zone::Exile);
+    assert_eq!(g.result, Some(bolt_core::Outcome::Draw));
+    assert!(g.end_reason.is_some_and(|r| r.contains("MAX_OBJECTS")));
+    assert!(g.legal_actions().is_empty() || g.is_over());
+}
+
+/// Forced passes with nobody able to act or lose (empty libraries, but "you can't lose the game"):
+/// `settle` used to pass turn after turn forever inside one call. A loop cap now ends it in a draw.
+#[test]
+fn turns_with_no_decisions_forever_end_in_a_draw() {
+    let mut defs = (*set("CMD").unwrap().defs).clone();
+    let plains = cid("Plains");
+    defs[plains].cant_lose = true;
+    let mut g = Game::empty(std::sync::Arc::new(defs), 1, 0);
+    for p in 0..2 {
+        g.add_card(p, plains, Zone::Battlefield);
+    }
+    g.auto_pass = true;
+    g.start_turn(1, 0);
+    let t = std::time::Instant::now();
+    while !g.is_over() && t.elapsed().as_secs() < 60 {
+        let legal = g.legal_actions();
+        g.apply(baseline::choose(&g, &legal)).expect("legal");
+    }
+    assert_eq!(g.result, Some(bolt_core::Outcome::Draw));
+    assert!(g.end_reason.is_some(), "turn {}: no loop cap tripped", g.turn);
+}
