@@ -4,7 +4,7 @@
 //! looks only at the board, its own hand and the legal actions; it never peeks at hidden cards.
 
 use crate::effect::Effect;
-use crate::game::{Action, Game, ObjId, Pending, PlayerId, Step, Target};
+use crate::game::{Action, Decision, Game, ObjId, Pending, PlayerId, Step, Target};
 use crate::{Keywords, Zone};
 
 /// The baseline's choice from `legal`, which must be `g.legal_actions()` and not empty.
@@ -19,6 +19,16 @@ pub fn choose(g: &Game, legal: &[Action]) -> Action {
         Pending::DeclareBlockers(p) => Some(block(g, p, legal)),
         Pending::Discard(p) => discard(g, p, legal),
         Pending::ChooseTarget(p) => target(g, p, legal),
+        // Chain of Smog: copy it at the opponent only while they have cards to discard, never at
+        // yourself. (Always taking the first choice copied it at yourself forever.)
+        Pending::Decide(p) if matches!(g.decision, Some(Decision::ChainCopy { .. })) => {
+            let opp = 1 - p;
+            Some(if g.players[opp].hand.is_empty() {
+                Action::No
+            } else {
+                Action::Mode(opp as u8)
+            })
+        }
         Pending::Decide(_) => [Action::Yes]
             .into_iter()
             .find(|a| legal.contains(a))

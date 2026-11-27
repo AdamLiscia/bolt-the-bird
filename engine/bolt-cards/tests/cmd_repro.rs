@@ -304,3 +304,28 @@ fn a_copys_trigger_resolves_after_the_copy_leaves() {
     assert_eq!(g.def_of(meta).name, "Phyrexian Metamorph");
     assert_eq!(g.players[1].life, life - 2, "both triggers deal their 1");
 }
+
+/// Lane T's runaway hunt, 2026-11-27: Chain of Smog's "that player may copy this spell" asked again
+/// and again, the rules player always taking the first choice (a copy aimed at player 0, itself
+/// included). It now copies only at an opponent with cards to discard, so the chain ends.
+#[test]
+fn the_rules_player_ends_a_chain_of_smog() {
+    let mut g = table();
+    let smog = g.add_card(0, cid("Chain of Smog"), Zone::Hand);
+    g.add_card(0, cid("Plains"), Zone::Hand); // player 0 keeps one card
+    for _ in 0..3 {
+        g.add_card(1, cid("Plains"), Zone::Hand);
+    }
+    act(&mut g, Action::Cast(smog));
+    act(&mut g, Action::Target(Target::Player(1)));
+    let mut steps = 0;
+    while !g.items.is_empty() || !matches!(g.pending, Pending::Priority(_)) {
+        let legal = g.legal_actions();
+        act(&mut g, baseline::choose(&g, &legal));
+        steps += 1;
+        assert!(steps < 200, "the chain never ended: {:?}", g.pending);
+    }
+    // Player 1 discards 2 and copies it at player 0 (1 card), who discards it and copies it at
+    // player 1's last card; then neither has a card to lose and the chain stops.
+    assert!(g.players[0].hand.is_empty() && g.players[1].hand.is_empty());
+}
