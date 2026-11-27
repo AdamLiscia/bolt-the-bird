@@ -1,0 +1,8651 @@
+{
+ "generated": "2026-11-27",
+ "decks": [
+  {
+   "owner": "DonSpider",
+   "commander": "Zinnia, Valley's Voice",
+   "tier": "idea 1",
+   "missing": [
+    "Arthur, Marigold Knight",
+    "Beza, the Bounding Spring",
+    "Fortune Teller's Talent",
+    "Path of Ancestry",
+    "Rose Room Treasurer"
+   ]
+  },
+  {
+   "owner": "Spr3adsh33t",
+   "commander": "Bello, Bard of the Brambles",
+   "tier": "idea 2",
+   "missing": [
+    "Alchemist's Talent",
+    "Brightcap Badger // Fungus Frolic",
+    "Evercoat Ursine",
+    "Grothama, All-Devouring",
+    "Kodama of the East Tree",
+    "Path of Ancestry",
+    "Rain of Riches"
+   ]
+  },
+  {
+   "owner": "Adam",
+   "commander": "Neriv, Heart of the Storm",
+   "tier": "idea 3",
+   "missing": [
+    "Adept Watershaper",
+    "Bogslither's Embrace",
+    "Changeling Wayfinder",
+    "Firdoch Core",
+    "Keep Out",
+    "Kinscaer Sentry",
+    "Lavaleaper",
+    "Morningtide's Light",
+    "Purging Stormbrood // Absorb Essence",
+    "Reaping Willow",
+    "Riverguard's Reflexes"
+   ]
+  },
+  {
+   "owner": "Grande",
+   "commander": "Hearthhull, the Worldseed",
+   "tier": "idea 4",
+   "missing": [
+    "Hearthhull, the Worldseed",
+    "Horizon Explorer",
+    "Iridescent Vinelasher",
+    "Mina and Denn, Wildborn",
+    "Nahiri's Lithoforming",
+    "Orcish Lumberjack",
+    "Ramunap Excavator",
+    "Roiling Regrowth",
+    "Sabotender",
+    "Tannuk, Memorial Ensign",
+    "Terminate",
+    "Vernal Fen",
+    "Walk-In Closet // Forgotten Cellar"
+   ]
+  },
+  {
+   "owner": "Grande",
+   "commander": "Zurgo, Thunder's Decree",
+   "tier": "idea 5",
+   "missing": [
+    "Adept Watershaper",
+    "Bogslither's Embrace",
+    "Crib Swap",
+    "Feral Deathgorger // Dusk Sight",
+    "Kinbinding",
+    "Mirrormind Crown",
+    "Purging Stormbrood // Absorb Essence",
+    "Pyrrhic Strike",
+    "Riling Dawnbreaker // Signaling Roar",
+    "Scavenger Regent // Exude Toxin",
+    "Scuzzback Scrounger",
+    "Sear",
+    "Stormshriek Feral // Flush Out",
+    "Twinmaw Stormbrood // Charring Bite"
+   ]
+  },
+  {
+   "owner": "Adam",
+   "commander": "Niv-Mizzet, Visionary",
+   "tier": "idea 6",
+   "missing": [
+    "Aquitect's Defenses",
+    "Ashling, Rekindled // Ashling, Rimebound",
+    "Blossombind",
+    "Boulder Dash",
+    "Changeling Wayfinder",
+    "Disruptor of Currents",
+    "End-Blaze Epiphany",
+    "Glen Elendra's Answer",
+    "Goatnap",
+    "Goliath Daydreamer",
+    "Mirrorform",
+    "Noggle the Mind",
+    "Sanar, Innovative First-Year",
+    "Sear",
+    "Unexpected Assistance",
+    "Wild Unraveling"
+   ]
+  },
+  {
+   "owner": "Adam",
+   "commander": "Sephiroth, Fabled SOLDIER // Sephiroth, One-Winged Angel",
+   "tier": "idea 7",
+   "missing": [
+    "Ad Nauseam",
+    "Bitterblossom",
+    "Blood Pet",
+    "Cabal Ritual",
+    "Culling the Weak",
+    "Dismember",
+    "Flare of Malice",
+    "Forsaken Miner",
+    "Gravecrawler",
+    "Greedy Freebooter",
+    "Hoarding Broodlord",
+    "Jadar, Ghoulcaller of Nephalia",
+    "Midgar, City of Mako // Reactor Raid",
+    "Ophiomancer",
+    "Opposition Agent",
+    "Rev, Tithe Extractor",
+    "Saw in Half",
+    "Sephiroth, Fabled SOLDIER // Sephiroth, One-Winged Angel",
+    "Snuff Out",
+    "Spymaster's Vault",
+    "Stridehangar Automaton",
+    "The Black Gate",
+    "Timeline Culler",
+    "Volrath's Stronghold",
+    "Westvale Abbey // Ormendahl, Profane Prince",
+    "Wishclaw Talisman"
+   ]
+  },
+  {
+   "owner": "Adam",
+   "commander": "Tifa Lockhart",
+   "tier": "idea 8",
+   "missing": [
+    "Archdruid's Charm",
+    "Blackblade Reforged",
+    "Bristly Bill, Spine Sower",
+    "Brokers Hideout",
+    "Cabaretti Courtyard",
+    "Claim the Kingdom",
+    "Crop Rotation",
+    "Entish Restoration",
+    "Escape Tunnel",
+    "Fabled Passage",
+    "Invigorate",
+    "Mightform Harmonizer",
+    "Overprotect",
+    "Planar Engineering",
+    "Ram Through",
+    "Ramunap Excavator",
+    "Ride the Shoopuf",
+    "Riveteers Overlook",
+    "Roaring Earth",
+    "Roiling Regrowth",
+    "Scale Up",
+    "Scythecat Cub",
+    "Skyclave Pick-Axe",
+    "Springbloom Druid",
+    "Staff of Titania",
+    "Tamiyo's Safekeeping",
+    "Tifa Lockhart",
+    "Tifa's Limit Break",
+    "Tyvar's Stand"
+   ]
+  },
+  {
+   "owner": "Adam",
+   "commander": "Kenrith, the Returned King",
+   "tier": "idea 9",
+   "missing": [
+    "Brain Freeze",
+    "Chain of Vapor",
+    "Chrome Mox",
+    "Dark Ritual",
+    "Deathrite Shaman",
+    "Demonic Consultation",
+    "Drannith Magistrate",
+    "Elvish Spirit Guide",
+    "Forbidden Orchard",
+    "Gamble",
+    "Gemstone Caverns",
+    "Imperial Seal",
+    "Kenrith, the Returned King",
+    "Lion's Eye Diamond",
+    "Mana Drain",
+    "Mental Misstep",
+    "Mox Diamond",
+    "Noble Hierarch",
+    "Silence",
+    "Spell Pierce",
+    "Summoner's Pact",
+    "Thassa's Oracle",
+    "Tropical Island",
+    "Underground Sea",
+    "Underworld Breach",
+    "Utopia Sprawl",
+    "Veil of Summer",
+    "Vizier of Remedies",
+    "Volcanic Island",
+    "Walking Ballista",
+    "Wheel of Fortune",
+    "Wild Growth"
+   ]
+  },
+  {
+   "owner": "DonSpider",
+   "commander": "Sythis, Harvest's Hand",
+   "tier": "idea 10",
+   "missing": [
+    "All That Glitters",
+    "Bilbo's Gambit",
+    "Bruna, the Fading Light",
+    "Champions from Beyond",
+    "Containment Priest",
+    "Crop Rotation",
+    "Darksteel Mutation",
+    "Gauntlets of Light",
+    "Gisela, the Broken Blade",
+    "Gleaming Splendor",
+    "Hushwood Verge",
+    "Katilda, Dawnhart Martyr // Katilda's Rising Dawn",
+    "Kenrith's Transformation",
+    "Linvala, Keeper of Silence",
+    "Seal of Cleansing",
+    "Secret Arcade // Dusty Parlor",
+    "Shimmerwilds Growth",
+    "Soaring Lightbringer",
+    "Utopia Sprawl",
+    "Wild Growth",
+    "Wolfwillow Haven"
+   ]
+  },
+  {
+   "owner": "Spr3adsh33t",
+   "commander": "Ratadrabik of Urborg",
+   "tier": "idea 11",
+   "missing": [
+    "Ayara, First of Locthwain",
+    "Bartolom\u00e9 del Presidio",
+    "Bloodflow Connoisseur",
+    "Boromir, Warden of the Tower",
+    "Cruel Celebrant",
+    "Gandalf the White",
+    "Gollum, Patient Plotter",
+    "Kambal, Profiteering Mayor",
+    "Loran's Escape",
+    "Lotho, Corrupt Shirriff",
+    "Nasty End",
+    "Nazg\u00fbl",
+    "Ratadrabik of Urborg",
+    "Relic of Legends",
+    "Samwise the Stouthearted",
+    "Surge of Salvation",
+    "Tainted Field",
+    "Teysa Karlov",
+    "The Celestus",
+    "Urza's Ruinous Blast",
+    "War of the Last Alliance"
+   ]
+  },
+  {
+   "owner": "DonSpider",
+   "commander": "Baylen, the Haymaker",
+   "tier": "idea 12",
+   "missing": [
+    "Artifact Mutation",
+    "Aura Mutation",
+    "Baylen, the Haymaker",
+    "Brigid, Clachan's Heart // Brigid, Doun's Mind",
+    "Cadira, Caller of the Small",
+    "Cathars' Crusade",
+    "Charismatic Conqueror",
+    "Farmer Cotton",
+    "Forth Eorlingas!",
+    "Jinnie Fay, Jetmir's Second",
+    "Jolene, the Plunder Queen",
+    "Kher Keep",
+    "Knuckles the Echidna",
+    "Ocelot Pride",
+    "Rosie Cotton of South Lane",
+    "Season of the Burrow",
+    "Secure the Wastes",
+    "Springleaf Parade",
+    "Tender Wildguide",
+    "The Battle of Bywater",
+    "The Cabbage Merchant",
+    "Wild Growth",
+    "Wildfire Awakener"
+   ]
+  },
+  {
+   "owner": "Time",
+   "commander": "Rocco, Cabaretti Caterer",
+   "tier": "idea 13",
+   "missing": [
+    "Archon of Emeria",
+    "Aven Mindcensor",
+    "Chrome Mox",
+    "Containment Priest",
+    "Cursed Totem",
+    "Deafening Silence",
+    "Drannith Magistrate",
+    "Earthcraft",
+    "Fiend Hunter",
+    "Finale of Devastation",
+    "Kitchen Finks",
+    "Leonin Relic-Warder",
+    "Linvala, Keeper of Silence",
+    "Melira, Sylvok Outcast",
+    "Mox Diamond",
+    "Orcish Lumberjack",
+    "Ranger-Captain of Eos",
+    "Rest in Peace",
+    "Rocco, Cabaretti Caterer",
+    "Sanctum Prelate",
+    "Silence",
+    "Veil of Summer",
+    "Vizier of Remedies"
+   ]
+  },
+  {
+   "owner": "Time",
+   "commander": "Toski, Bearer of Secrets",
+   "tier": "idea 14",
+   "missing": [
+    "Allosaurus Shepherd",
+    "Ashaya, Soul of the Wild",
+    "Autumn's Veil",
+    "Bala Ged Recovery // Bala Ged Sanctuary",
+    "Carpet of Flowers",
+    "Castle Garenbrig",
+    "Chrome Mox",
+    "Concordant Crossroads",
+    "Crop Rotation",
+    "Duskwatch Recruiter // Krallenhorde Howler",
+    "Endurance",
+    "Finale of Devastation",
+    "Heritage Druid",
+    "Joraga Treespeaker",
+    "Manglehorn",
+    "Mox Diamond",
+    "Quirion Ranger",
+    "Regrowth",
+    "Scryb Ranger",
+    "Summoner's Pact",
+    "Utopia Sprawl",
+    "Veil of Summer",
+    "Walking Ballista",
+    "Wild Growth",
+    "Wirewood Symbiote"
+   ]
+  },
+  {
+   "owner": "DonSpider",
+   "commander": "Y'shtola, Night's Blessed",
+   "tier": "idea 15",
+   "missing": [
+    "Black Mage's Rod",
+    "Brainsurge",
+    "Chrome Host Seedshark",
+    "Circle of Power",
+    "Cornered by Black Mages",
+    "Enduring Tenacity",
+    "Fandaniel, Telophoroi Ascian",
+    "G'raha Tia, Scion Reborn",
+    "Helm of the Ghastlord",
+    "Hermes, Overseer of Elpis",
+    "Irenicus's Vile Duplication",
+    "Jin-Gitaxias // The Great Synthesis",
+    "Kambal, Consul of Allocation",
+    "Lyse Hext",
+    "Mai, Scornful Striker",
+    "Papalymo Totolymo",
+    "Read the Bones",
+    "Spark Double",
+    "Starscape Cleric",
+    "The Destined Black Mage",
+    "Transpose",
+    "Uncover the Moon-Letters",
+    "Valeria Richards, Precocious",
+    "Wizard's Staff",
+    "Y'shtola Rhul",
+    "Y'shtola, Night's Blessed"
+   ]
+  },
+  {
+   "owner": "Time",
+   "commander": "Rocco, Cabaretti Caterer",
+   "tier": "idea 16",
+   "missing": [
+    "Aluren",
+    "Angelic Renewal",
+    "Cathars' Crusade",
+    "Earthcraft",
+    "Enduring Renewal",
+    "Fecundity",
+    "Fiend Hunter",
+    "Garruk, Primal Hunter",
+    "Gift of Immortality",
+    "Juniper Order Ranger",
+    "Karn Liberated",
+    "Kitchen Finks",
+    "Leonin Relic-Warder",
+    "Liege of the Hollows",
+    "Life's Legacy",
+    "Lifecrafter's Bestiary",
+    "Lifeline",
+    "Melira, Sylvok Outcast",
+    "Miren, the Moaning Well",
+    "Nim Deathmantle",
+    "Oblivion Ring",
+    "Rocco, Cabaretti Caterer",
+    "Slate of Ancestry",
+    "Spawning Pit",
+    "Twilight Drover",
+    "Woodfall Primus"
+   ]
+  },
+  {
+   "owner": "Time",
+   "commander": "Tymna the Weaver + Tana, the Bloodsower",
+   "tier": "idea 17",
+   "missing": [
+    "Adeline, Resplendent Cathar",
+    "Archon of Emeria",
+    "Aven Mindcensor",
+    "Bitterblossom",
+    "Containment Priest",
+    "Cursed Totem",
+    "Drannith Magistrate",
+    "Gaea's Cradle",
+    "Gamble",
+    "Giver of Runes",
+    "Grafdigger's Cage",
+    "Kataki, War's Wage",
+    "Leonin Arbiter",
+    "Leyline of the Void",
+    "Linvala, Keeper of Silence",
+    "Luminarch Aspirant",
+    "Oakhame Adversary",
+    "Opposition Agent",
+    "Ranger-Captain of Eos",
+    "Rest in Peace",
+    "Rule of Law",
+    "Skrelv, Defector Mite",
+    "Tana, the Bloodsower",
+    "Thalia, Guardian of Thraben",
+    "Tithe Taker",
+    "Torpor Orb",
+    "Tymna the Weaver",
+    "Tymna the Weaver + Tana, the Bloodsower",
+    "Vindicate",
+    "Wear // Tear"
+   ]
+  },
+  {
+   "owner": "Adam",
+   "commander": "Alela, Artful Provocateur",
+   "tier": "idea 18",
+   "missing": [
+    "Alela, Artful Provocateur",
+    "Archon of Cruelty",
+    "Baleful Strix",
+    "Bitterblossom",
+    "Black Market",
+    "Court of Grace",
+    "Ethersworn Adjudicator",
+    "Faerie Artisans",
+    "Filigree Angel",
+    "Jubilant Skybonder",
+    "Kaldra Compleat",
+    "Latchkey Faerie",
+    "Magister Sphinx",
+    "Medomai the Ageless",
+    "Mystic Gate",
+    "Norn's Annex",
+    "Oblivion Ring",
+    "Open the Vaults",
+    "Platinum Angel",
+    "Reconnaissance Mission",
+    "Render Silent",
+    "Scion of Oona",
+    "Sharding Sphinx",
+    "Sharuum the Hegemon",
+    "Sphinx Summoner",
+    "Steel Hellkite",
+    "Sword of Light and Shadow",
+    "Thopter Assembly",
+    "Thopter Spy Network",
+    "Tidehollow Strix",
+    "Vindicate",
+    "Zur the Enchanter"
+   ]
+  },
+  {
+   "owner": "Adam",
+   "commander": "Prosper, Tome-Bound",
+   "tier": "idea 19",
+   "missing": [
+    "Alchemist's Talent",
+    "Bedevil",
+    "Birgi, God of Storytelling // Harnfel, Horn of Bounty",
+    "Bonehoard Dracosaur",
+    "Commune with Lava",
+    "Crime Novelist",
+    "Dark Ritual",
+    "Decadent Dragon // Expensive Taste",
+    "Delayed Blast Fireball",
+    "Dream Devourer",
+    "Fevered Suspicion",
+    "Goldspan Dragon",
+    "Grim Hireling",
+    "Hex Magic",
+    "Hurl Through Hell",
+    "Ignite the Future",
+    "Improvisation Capstone",
+    "Ingenious Artillerist",
+    "Laelia, the Blade Reforged",
+    "Light Up the Stage",
+    "Passionate Archaeologist",
+    "Rain of Riches",
+    "Rakdos Charm",
+    "Reckless Endeavor",
+    "Reckless Impulse",
+    "Smaug, Wicked Worm",
+    "Terminate",
+    "Theater of Horrors",
+    "Weftstalker Ardent",
+    "Wild-Magic Sorcerer",
+    "Wrenn's Resolve",
+    "You Find Some Prisoners"
+   ]
+  },
+  {
+   "owner": "Time",
+   "commander": "Dakkon Blackblade",
+   "tier": "idea 20",
+   "missing": [
+    "Ad Nauseam",
+    "Aether Spellbomb",
+    "Back to Basics",
+    "Baleful Strix",
+    "Cabal Ritual",
+    "Chain of Vapor",
+    "Chrome Mox",
+    "Cursed Totem",
+    "Dakkon Blackblade",
+    "Dark Ritual",
+    "Delay",
+    "Demonic Consultation",
+    "Drannith Magistrate",
+    "Dress Down",
+    "Herald of Leshrac",
+    "Imperial Seal",
+    "Mana Drain",
+    "March of Swirling Mist",
+    "Mox Diamond",
+    "Mystic Sanctuary",
+    "Nihil Spellbomb",
+    "Notion Thief",
+    "Opposition Agent",
+    "Ranger-Captain of Eos",
+    "Sevinne's Reclamation",
+    "Silence",
+    "Snapcaster Mage",
+    "Spell Pierce",
+    "Spellseeker",
+    "Talion, the Kindly Lord",
+    "Thassa's Oracle",
+    "Underground Sea",
+    "Wishclaw Talisman"
+   ]
+  },
+  {
+   "owner": "Time",
+   "commander": "Kraum, Ludevic's Opus + Tymna the Weaver",
+   "tier": "idea 21",
+   "missing": [
+    "A-Orcish Bowmasters",
+    "A-The One Ring",
+    "Ad Nauseam",
+    "Aether Spellbomb",
+    "Approach of the Second Sun",
+    "Back to Basics",
+    "Boseiju, Who Shelters All",
+    "Chrome Mox",
+    "Cursed Totem",
+    "Demonic Consultation",
+    "Dress Down",
+    "Energy Field",
+    "Flood of Recollection",
+    "Gamble",
+    "Imperial Seal",
+    "Kraum, Ludevic's Opus",
+    "Kraum, Ludevic's Opus + Tymna the Weaver",
+    "Linvala, Keeper of Silence",
+    "Mana Drain",
+    "Mox Diamond",
+    "Mystic Sanctuary",
+    "Narset's Reversal",
+    "Nihil Spellbomb",
+    "Reprieve",
+    "Rest in Peace",
+    "Silence",
+    "Spell Pierce",
+    "Stasis",
+    "Thassa's Oracle",
+    "Torpor Orb",
+    "Tymna the Weaver",
+    "Underground Sea",
+    "Volcanic Island",
+    "Winter Orb"
+   ]
+  },
+  {
+   "owner": "Time",
+   "commander": "Gandalf the Grey",
+   "tier": "idea 22",
+   "missing": [
+    "Academy Ruins",
+    "Aetherspouts",
+    "Alrund's Epiphany",
+    "Capture of Jingzhou",
+    "Chrome Mox",
+    "City of Traitors",
+    "Dualcaster Mage",
+    "Emergence Zone",
+    "Fabled Passage",
+    "Flame of Anor",
+    "Gamble",
+    "Gandalf the Grey",
+    "Intuition",
+    "Irenicus's Vile Duplication",
+    "Lion's Eye Diamond",
+    "Merchant Scroll",
+    "Mox Diamond",
+    "Mystic Sanctuary",
+    "Narset's Reversal",
+    "Nexus of Fate",
+    "Personal Tutor",
+    "Quantum Misalignment",
+    "Reality Shift",
+    "Resculpt",
+    "Snapcaster Mage",
+    "Solve the Equation",
+    "Spark Double",
+    "Spellseeker",
+    "Spirebluff Canal",
+    "Stormcarved Coast",
+    "Talisman of Creativity",
+    "Temporal Trespass",
+    "Time Warp",
+    "Underworld Breach",
+    "Volcanic Island"
+   ]
+  },
+  {
+   "owner": "Spr3adsh33t",
+   "commander": "Gishath, Sun's Avatar",
+   "tier": "idea 23",
+   "missing": [
+    "Agonasaur Rex",
+    "Apex Altisaur",
+    "Bala Ged Recovery // Bala Ged Sanctuary",
+    "Bonehoard Dracosaur",
+    "Bronzebeak Foragers",
+    "Burning Sun's Avatar",
+    "Curious Altisaur",
+    "Dinosaurs on a Spaceship",
+    "Don't Move",
+    "Earthshaker Dreadmaw",
+    "Faith's Reward",
+    "Final Showdown",
+    "Finale of Devastation",
+    "Gishath, Sun's Avatar",
+    "Goring Ceratops",
+    "Kinjalli's Sunwing",
+    "Pantlaza, Sun-Favored",
+    "Patchwork Banner",
+    "Path of Ancestry",
+    "Regal Behemoth",
+    "Return the Favor",
+    "Runic Armasaur",
+    "Sawhorn Nemesis",
+    "Springbloom Druid",
+    "Sunfrill Imitator",
+    "Swooping Pteranodon",
+    "Temple Altisaur",
+    "The Skullspore Nexus",
+    "Thrashing Brontodon",
+    "Topiary Stomper",
+    "Tranquil Frillback",
+    "Trumpeting Carnosaur",
+    "Verdant Sun's Avatar",
+    "Wakening Sun's Avatar",
+    "Welcome to . . . // Jurassic Park",
+    "Yidaro, Wandering Monster",
+    "Zetalpa, Primal Dawn"
+   ]
+  },
+  {
+   "owner": "Time",
+   "commander": "Stella Lee, Wild Card",
+   "tier": "idea 24",
+   "missing": [
+    "Arcane Bombardment",
+    "Baral's Expertise",
+    "Bloodthirsty Adversary",
+    "Crackling Spellslinger",
+    "Curse of the Swine",
+    "Deep Analysis",
+    "Elemental Eruption",
+    "Eris, Roar of the Storm",
+    "Finale of Promise",
+    "Finale of Revelation",
+    "Forger's Foundry",
+    "Frostboil Snarl",
+    "Galvanic Iteration",
+    "Goblin Electromancer",
+    "Guttersnipe",
+    "Haughty Djinn",
+    "Izzet Boilerworks",
+    "Kaza, Roil Chaser",
+    "Leyline Dowser",
+    "Lock and Load",
+    "Midnight Clock",
+    "Octavia, Living Thesis",
+    "Pongify",
+    "Pteramander",
+    "Pyretic Charge",
+    "Radical Idea",
+    "Rousing Refrain",
+    "Shark Typhoon",
+    "Smoldering Stagecoach",
+    "Stella Lee, Wild Card",
+    "Talrand, Sky Summoner",
+    "Tezzeret's Gambit",
+    "Thunderclap Drake",
+    "Treasure Cruise",
+    "Veyran, Voice of Duality",
+    "Volcanic Torrent",
+    "Windfall",
+    "Winged Boots"
+   ]
+  },
+  {
+   "owner": "Time",
+   "commander": "Sokka, Tenacious Tactician",
+   "tier": "idea 25",
+   "missing": [
+    "Banishing Knack",
+    "Brain Freeze",
+    "Brainstone",
+    "Chrome Mox",
+    "Dispel",
+    "Echo of Eons",
+    "Fabled Passage",
+    "Fabricate",
+    "Fiery Islet",
+    "Forbidden Orchard",
+    "Gamble",
+    "Gemstone Caverns",
+    "Hall of Heliod's Generosity",
+    "Impulse",
+    "Intuition",
+    "Jeskai Ascendancy",
+    "Lion's Eye Diamond",
+    "Mana Drain",
+    "Monastery Mentor",
+    "Mox Opal",
+    "Mystical Dispute",
+    "Past in Flames",
+    "Pieces of the Puzzle",
+    "Ragavan, Nimble Pilferer",
+    "Repeal",
+    "Retraction Helix",
+    "Sevinne's Reclamation",
+    "Silence",
+    "Sokka, Tenacious Tactician",
+    "Solve the Equation",
+    "Spirebluff Canal",
+    "Springleaf Drum",
+    "Stifle",
+    "Thought Scour",
+    "Transmute Artifact",
+    "Underworld Breach",
+    "Universal Solvent",
+    "Volcanic Island",
+    "Wheel of Fortune",
+    "Wheel of Misfortune"
+   ]
+  },
+  {
+   "owner": "Spr3adsh33t",
+   "commander": "Belbe, Corrupted Observer",
+   "tier": "idea 26",
+   "missing": [
+    "Archon of Cruelty",
+    "Belbe, Corrupted Observer",
+    "Blooming Marsh",
+    "Conduit of Ruin",
+    "Creeping Bloodsucker",
+    "Devourer of Destiny",
+    "Dreg Recycler",
+    "Drossclaw",
+    "Echoes of Eternity",
+    "Emergent Woodwurm",
+    "God-Pharaoh's Statue",
+    "Herald of Leshrac",
+    "In Garruk's Wake",
+    "Kozilek, the Great Distortion",
+    "Lampad of Death's Vigil",
+    "Leechridden Swamp",
+    "Lesser Masticore",
+    "Lodestone Golem",
+    "Loyal Subordinate",
+    "Mardu Shadowspear",
+    "Melira, Sylvok Outcast",
+    "Myojin of Night's Reach",
+    "Night Market Lookout",
+    "Oblivion Sower",
+    "Okiba Reckoner Raid // Nezumi Road Captain",
+    "Planar Bridge",
+    "Pulse Tracker",
+    "Sanctum of Stone Fangs",
+    "Shadowgrange Archfiend",
+    "Shepherd of Rot",
+    "Staff of Nin",
+    "Steel Hellkite",
+    "Terastodon",
+    "Thornbow Archer",
+    "Thrull Parasite",
+    "Ulamog's Crusher",
+    "Up the Beanstalk",
+    "Vicious Conquistador",
+    "Ward of Bones",
+    "Wondrous Crucible",
+    "World Breaker",
+    "Zhulodok, Void Gorger"
+   ]
+  },
+  {
+   "owner": "Adam",
+   "commander": "Atraxa, Praetors' Voice",
+   "tier": "idea 27",
+   "missing": [
+    "Ajani, Sleeper Agent",
+    "Astral Cornucopia",
+    "Blighted Agent",
+    "Bloated Contaminator",
+    "Cankerbloom",
+    "Contagion Engine",
+    "Contaminant Grafter",
+    "Contentious Plan",
+    "Dreamtide Whale",
+    "Evolution Sage",
+    "Experimental Augury",
+    "Ezuri, Stalker of Spheres",
+    "Flux Channeler",
+    "Glistening Sphere",
+    "Ichor Rats",
+    "Indatha Triome",
+    "Infectious Bite",
+    "Infectious Inquiry",
+    "Inkmoth Nexus",
+    "Ixhel, Scion of Atraxa",
+    "Mana Drain",
+    "Metastatic Evangel",
+    "Norn's Decree",
+    "Phyresis Outbreak",
+    "Phyrexian Swarmlord",
+    "Plague Stinger",
+    "Prologue to Phyresis",
+    "Radstorm",
+    "Skithiryx, the Blight Dragon",
+    "Skrelv's Hive",
+    "Skrelv, Defector Mite",
+    "Spara's Headquarters",
+    "Sword of Truth and Justice",
+    "Tainted Observer",
+    "Tekuthal, Inquiry Dominus",
+    "Tezzeret's Gambit",
+    "Thrummingbird",
+    "Unnatural Restoration",
+    "Venerated Rotpriest",
+    "Viral Drake",
+    "Viridian Corrupter",
+    "Voidwing Hybrid",
+    "Vorinclex, Monstrous Raider",
+    "Vraska's Fall",
+    "Vraska, Betrayal's Sting"
+   ]
+  },
+  {
+   "owner": "Adam",
+   "commander": "Tegwyll, Duke of Splendor",
+   "tier": "idea 28",
+   "missing": [
+    "Alela, Cunning Conqueror",
+    "Archmage of Echoes",
+    "Blightwing Bandit",
+    "Brazen Borrower // Petty Theft",
+    "Dimir Aqueduct",
+    "Distant Melody",
+    "Fact or Fiction",
+    "Faerie Bladecrafter",
+    "Faerie Formation",
+    "Faerie Seer",
+    "Glen Elendra Liege",
+    "Halo Forager",
+    "Hypnotic Sprite // Mesmeric Glare",
+    "Keep Watch",
+    "Kindred Dominance",
+    "Malleable Impostor",
+    "Midnight Clock",
+    "Misleading Signpost",
+    "Nettling Nuisance",
+    "Nightmare Unmaking",
+    "Nightveil Sprite",
+    "Nymris, Oona's Trickster",
+    "Obyra, Dreaming Duelist",
+    "Oona, Queen of the Fae",
+    "Path of Ancestry",
+    "Picklock Prankster // Free the Fae",
+    "Quickling",
+    "Reality Shift",
+    "Reckless Spite",
+    "Reconnaissance Mission",
+    "Reflections of Littjara",
+    "Repulse",
+    "Scion of Oona",
+    "Secluded Glen",
+    "Shadow Puppeteers",
+    "Snap",
+    "Sower of Temptation",
+    "Spell Stutter",
+    "Spellscorn Coven // Take It Back",
+    "Tainted Isle",
+    "Tegwyll's Scouring",
+    "Tegwyll, Duke of Splendor",
+    "Temple of Deceit",
+    "Theoretical Duplication",
+    "Thrilling Encore"
+   ]
+  },
+  {
+   "owner": "Spr3adsh33t",
+   "commander": "Tor Wauki the Younger",
+   "tier": "idea 29",
+   "missing": [
+    "Aphotic Wisps",
+    "Arcane Bombardment",
+    "Birgi, God of Storytelling // Harnfel, Horn of Bounty",
+    "Blackcleave Cliffs",
+    "Bladebrand",
+    "Blood for the Blood God!",
+    "City on Fire",
+    "Crash Through",
+    "Creeping Bloodsucker",
+    "Crimson Wisps",
+    "Dark Ritual",
+    "Delayed Blast Fireball",
+    "Descent into Avernus",
+    "Expedite",
+    "Glittering Stockpile",
+    "Grafted Exoskeleton",
+    "Guttersnipe",
+    "Light Up the Stage",
+    "Mana Geyser",
+    "Mechanized Warfare",
+    "Mirrodin Avenged",
+    "Needle Drop",
+    "Neheb, the Eternal",
+    "Nightscape Familiar",
+    "Ob Nixilis, Captive Kingpin",
+    "Obosh, the Preypiercer",
+    "Offer Immortality",
+    "Pestilent Spirit",
+    "Phyresis",
+    "Read the Bones",
+    "Reckless Handling",
+    "Renegade Tactics",
+    "Risk Factor",
+    "Runaway Steam-Kin",
+    "Sawblade Scamp",
+    "Seething Song",
+    "Solphim, Mayhem Dominus",
+    "Syphon Soul",
+    "Tainted Strike",
+    "Theater of Horrors",
+    "Tor Wauki the Younger",
+    "Torbran, Thane of Red Fell",
+    "Urabrask // The Great Work",
+    "Valakut Awakening // Valakut Stoneforge",
+    "You Are Already Dead"
+   ]
+  },
+  {
+   "owner": "Spr3adsh33t",
+   "commander": "Hearthhull, the Worldseed",
+   "tier": "idea 30",
+   "missing": [
+    "Aftermath Analyst",
+    "Augur of Autumn",
+    "Baloth Prime",
+    "Cabaretti Courtyard",
+    "Canyon Slough",
+    "Centaur Vinecrasher",
+    "Dakmor Salvage",
+    "Escape Tunnel",
+    "Escape to the Wilds",
+    "Eumidian Hatchery",
+    "Eumidian Wastewaker",
+    "Evendo Brushrazer",
+    "Exploration Broodship",
+    "Fabled Passage",
+    "Festering Thicket",
+    "Formless Genesis",
+    "Gaze of Granite",
+    "Groundskeeper",
+    "Hammer of Purphoros",
+    "Hearthhull, the Worldseed",
+    "Horizon Explorer",
+    "Juri, Master of the Revue",
+    "Loamcrafter Faun",
+    "Maestros Theater",
+    "Mountain Valley",
+    "Multani, Yavimaya's Avatar",
+    "Omnath, Locus of Rage",
+    "Pest Infestation",
+    "Planetary Annihilation",
+    "Rakdos Charm",
+    "Riveteers Overlook",
+    "Rocky Tar Pit",
+    "Roiling Regrowth",
+    "Satyr Wayfinder",
+    "Scouring Swarm",
+    "Soul of Windgrace",
+    "Springbloom Druid",
+    "Sprouting Goblin",
+    "Szarel, Genesis Shepherd",
+    "Titania, Protector of Argoth",
+    "Uurg, Spawn of Turg",
+    "Vernal Fen",
+    "Wastes",
+    "World Breaker",
+    "Worldsoul's Rage"
+   ]
+  },
+  {
+   "owner": "Time",
+   "commander": "Magda, Brazen Outlaw",
+   "tier": "idea 31",
+   "missing": [
+    "Arcane Lighthouse",
+    "Birgi, God of Storytelling // Harnfel, Horn of Bounty",
+    "Bloodline Pretender",
+    "Castle Embereth",
+    "Cathartic Reunion",
+    "Chrome Mox",
+    "Cryptic Caves",
+    "Cursed Totem",
+    "Dwarven Forge-Chanter",
+    "Dwarven Recruiter",
+    "Ensnaring Bridge",
+    "Final Fortune",
+    "Flamekin Village",
+    "Galvanic Blast",
+    "Gamble",
+    "Gimli, Counter of Kills",
+    "Goblin Matron",
+    "Goldspan Dragon",
+    "Grafdigger's Cage",
+    "Grinning Ignus",
+    "Kiki-Jiki, Mirror Breaker",
+    "Kuldotha Forgemaster",
+    "Legion Loyalist",
+    "Magda, Brazen Outlaw",
+    "Magda, the Hoardmaster",
+    "Magmatic Insight",
+    "Mines of Moria",
+    "Miren, the Moaning Well",
+    "Opal Palace",
+    "Phyrexian Revoker",
+    "Rimrock Knight // Boulder Rush",
+    "Seven Dwarves",
+    "Simian Spirit Guide",
+    "Sokenzan, Crucible of Defiance",
+    "Sudden Shock",
+    "Sundial of the Infinite",
+    "There and Back Again",
+    "Tibalt's Trickery",
+    "Torpor Orb",
+    "Trinisphere",
+    "Tyrite Sanctum",
+    "Underworld Breach",
+    "Unholy Heat",
+    "Vault Robber",
+    "Zealous Conscripts"
+   ]
+  },
+  {
+   "owner": "Adam",
+   "commander": "Giada, Font of Hope",
+   "tier": "idea 32",
+   "missing": [
+    "Angel of Serenity",
+    "Angel of Vitality",
+    "Angelic Accord",
+    "Angelic Field Marshal",
+    "Arch of Orazca",
+    "Archangel of Tithes",
+    "Arden Angel",
+    "Bishop of Wings",
+    "Bonders' Enclave",
+    "Breathkeeper Seraph",
+    "Bruna, the Fading Light",
+    "Cleansing Nova",
+    "Cosmos Elixir",
+    "Court of Grace",
+    "Dawnbreak Reclaimer",
+    "Dismantling Wave",
+    "Emeria Shepherd",
+    "Emeria, the Sky Ruin",
+    "Endless Atlas",
+    "Entreat the Angels",
+    "Gisela, the Broken Blade",
+    "Griffin Aerie",
+    "Heirloom Blade",
+    "Invoke the Divine",
+    "Karoo",
+    "Keeper of the Accord",
+    "Kindred Boon",
+    "Marble Diamond",
+    "Mazemind Tome",
+    "Nykthos Paragon",
+    "Oketra's Monument",
+    "Path of Ancestry",
+    "Pearl Medallion",
+    "Righteous Valkyrie",
+    "Search for Glory",
+    "Seraph Sanctuary",
+    "Shattered Angel",
+    "Sigarda's Aid",
+    "Speaker of the Heavens",
+    "Starnheim Aspirant",
+    "The Book of Exalted Deeds",
+    "Throne of Eldraine",
+    "Tome of Legends",
+    "Urza's Incubator",
+    "Valkyrie Harbinger",
+    "Vanquisher's Banner"
+   ]
+  },
+  {
+   "owner": "DonSpider",
+   "commander": "Teval, the Balanced Scale",
+   "tier": "idea 33",
+   "missing": [
+    "Afterlife from the Loam",
+    "Amphin Mutineer",
+    "Contaminated Aquifer",
+    "Crawling Sensation",
+    "Crypt of Agadeem",
+    "Diviner of Mist",
+    "Dreamroot Cascade",
+    "Drownyard Temple",
+    "Fetid Pools",
+    "Floral Evoker",
+    "Forbidden Alchemy",
+    "Foreboding Landscape",
+    "Grapple with the Past",
+    "Gravecrawler",
+    "Grisly Salvage",
+    "Hedron Crab",
+    "Junji, the Midnight Sky",
+    "Kotis, Sibsig Champion",
+    "Lethal Scheme",
+    "Life from the Loam",
+    "Living Death",
+    "Lord of the Forsaken",
+    "Memorial to Folly",
+    "Meren of Clan Nel Toth",
+    "Millikin",
+    "Multani, Yavimaya's Avatar",
+    "Necromantic Selection",
+    "Necropolis Fiend",
+    "Noxious Gearhulk",
+    "Nyx Weaver",
+    "Phyrexian Reclamation",
+    "River Kelpie",
+    "Satyr Wayfinder",
+    "Shigeki, Jukai Visionary",
+    "Skull Prophet",
+    "Springbloom Druid",
+    "Steward of the Harvest",
+    "Stitcher's Supplier",
+    "Tasigur, the Golden Fang",
+    "Teval's Judgment",
+    "Timeless Witness",
+    "Treasure Cruise",
+    "Victimize",
+    "Welcome the Dead",
+    "Will of the Sultai",
+    "Wonder"
+   ]
+  },
+  {
+   "owner": "Spr3adsh33t",
+   "commander": "Teval, the Balanced Scale",
+   "tier": "idea 34",
+   "missing": [
+    "Afterlife from the Loam",
+    "Amphin Mutineer",
+    "Contaminated Aquifer",
+    "Crawling Sensation",
+    "Crypt of Agadeem",
+    "Diviner of Mist",
+    "Dreamroot Cascade",
+    "Drownyard Temple",
+    "Fetid Pools",
+    "Floral Evoker",
+    "Forbidden Alchemy",
+    "Foreboding Landscape",
+    "Grapple with the Past",
+    "Gravecrawler",
+    "Grisly Salvage",
+    "Hedron Crab",
+    "Junji, the Midnight Sky",
+    "Kotis, Sibsig Champion",
+    "Lethal Scheme",
+    "Life from the Loam",
+    "Living Death",
+    "Lord of the Forsaken",
+    "Memorial to Folly",
+    "Meren of Clan Nel Toth",
+    "Millikin",
+    "Multani, Yavimaya's Avatar",
+    "Necromantic Selection",
+    "Necropolis Fiend",
+    "Noxious Gearhulk",
+    "Nyx Weaver",
+    "Phyrexian Reclamation",
+    "River Kelpie",
+    "Satyr Wayfinder",
+    "Shigeki, Jukai Visionary",
+    "Skull Prophet",
+    "Springbloom Druid",
+    "Steward of the Harvest",
+    "Stitcher's Supplier",
+    "Tasigur, the Golden Fang",
+    "Teval's Judgment",
+    "Timeless Witness",
+    "Treasure Cruise",
+    "Victimize",
+    "Welcome the Dead",
+    "Will of the Sultai",
+    "Wonder"
+   ]
+  },
+  {
+   "owner": "Grande",
+   "commander": "Sauron, Lord of the Rings",
+   "tier": "idea 35",
+   "missing": [
+    "Anger",
+    "Bitter Downfall",
+    "Boon of the Wish-Giver",
+    "Commander's Sphere",
+    "Corsairs of Umbar",
+    "Crumbling Necropolis",
+    "Deep Analysis",
+    "Desolate Lighthouse",
+    "Extract from Darkness",
+    "Fact or Fiction",
+    "Field of Ruin",
+    "Forbidden Alchemy",
+    "Frostboil Snarl",
+    "Goblin Cratermaker",
+    "Goblin Dark-Dwellers",
+    "Grishn\u00e1kh, Brash Instigator",
+    "Gr\u00edma, Saruman's Footman",
+    "Guttersnipe",
+    "Hostage Taker",
+    "In the Darkness Bind Them",
+    "Knollspine Dragon",
+    "Languish",
+    "Lidless Gaze",
+    "Living Death",
+    "Lord of the Nazg\u00fbl",
+    "Monstrosity of the Lake",
+    "Notion Thief",
+    "Orcish Siegemaster",
+    "Path of Ancestry",
+    "Rampaging War Mammoth",
+    "Relic of Sauron",
+    "Revenge of Ravens",
+    "Saruman, the White Hand",
+    "Sauron, Lord of the Rings",
+    "Scourge of the Throne",
+    "Shelob, Dread Weaver",
+    "Shiny Impetus",
+    "Subjugate the Hobbits",
+    "Summons of Saruman",
+    "The Balrog of Moria",
+    "The Black Gate",
+    "The Mouth of Sauron",
+    "Too Greedily, Too Deep",
+    "Treason of Isengard",
+    "Treasure Nabber",
+    "Troll of Khazad-d\u00fbm",
+    "Voracious Fell Beast",
+    "Wake the Dragon"
+   ]
+  },
+  {
+   "owner": "Spr3adsh33t",
+   "commander": "T'Challa, the Black Panther",
+   "tier": "idea 36",
+   "missing": [
+    "Ancestral Communion",
+    "Bast, Panther Goddess",
+    "Dispatch",
+    "Divine Visitation",
+    "Dora Milaje Elite",
+    "Everett K. Ross, Hapless Attach\u00e9",
+    "Fight for the Throne",
+    "Fleecemane Lion",
+    "Fortified Village",
+    "Hammer of Nazahn",
+    "Hatut Zeraze Strike Force",
+    "Heart-Shaped Herb",
+    "Ingenious Smith",
+    "Kimoyo Beads",
+    "King Solomon's Frogs",
+    "Loyal Guardian",
+    "Loyal Retainers",
+    "M'Baku, Jabari Chieftain",
+    "Metalwork Colossus",
+    "Midnight Angel Armor",
+    "Mind's Eye",
+    "N'Yami-Class Mother Ship",
+    "Nakia, Wakandan Operative",
+    "Okoye, Mighty and Adored",
+    "Overwhelming Stampede",
+    "Palace Jailer",
+    "Panther Habit",
+    "Panther Robot",
+    "Path of Ancestry",
+    "Queen Mother Ramonda",
+    "Royal Talon Fighter Jet",
+    "Scattered Groves",
+    "Scavenger Grounds",
+    "Scourglass",
+    "Shuri's Fabricator",
+    "Shuri, the Black Panther",
+    "Storm, Queen of Wakanda",
+    "T'Chaka, Venerable King",
+    "T'Challa, the Black Panther",
+    "The Great Mound",
+    "The Spear of Bashenga",
+    "Throne of the High City",
+    "Trading Post",
+    "Valorous Stance",
+    "Vibranium Mining Mech",
+    "Vibranium Strike Gauntlets",
+    "W'Kabi, Shield of the Nation",
+    "Wakanda Forever!",
+    "Whispersilk Cloak",
+    "Zuri, Warrior of Wakanda"
+   ]
+  },
+  {
+   "owner": "Adam",
+   "commander": "Eshki, Temur's Roar",
+   "tier": "idea 37",
+   "missing": [
+    "Atarka, World Render",
+    "Atsushi, the Blazing Sky",
+    "Become the Avalanche",
+    "Bountiful Landscape",
+    "Broodcaller Scourge",
+    "Deceptive Frostkite",
+    "Draconic Lore",
+    "Dragon's Hoard",
+    "Dragonlord Atarka",
+    "Dragonlord's Servant",
+    "Dragonmaster Outcast",
+    "Elemental Bond",
+    "Eshki, Temur's Roar",
+    "Frontier Siege",
+    "Glorybringer",
+    "Hammerhead Tyrant",
+    "Harbinger of the Hunt",
+    "Haven of the Spirit Dragon",
+    "Keiga, the Tide Star",
+    "Lathliss, Dragon Queen",
+    "Leyline Tyrant",
+    "Nesting Dragon",
+    "Nogi, Draco-Zealot",
+    "Opportunistic Dragon",
+    "Parapet Thrasher",
+    "Path of Ancestry",
+    "Rapacious Dragon",
+    "Reality Shift",
+    "Reflections of Littjara",
+    "Rockfall Vale",
+    "Sarkhan, Soul Aflame",
+    "Scourge of the Throne",
+    "Selvala's Stampede",
+    "Skarrgan Hellkite",
+    "Spit Flame",
+    "Steel Hellkite",
+    "Storm's Wrath",
+    "Stormbreath Dragon",
+    "Stormshriek Feral // Flush Out",
+    "Talisman of Creativity",
+    "Taurean Mauler",
+    "Temple of the Dragon Queen",
+    "Temur Ascendancy",
+    "Territorial Hellkite",
+    "Thunderbreak Regent",
+    "Thundermane Dragon",
+    "Ureni of the Unwritten",
+    "Vengeful Ancestor",
+    "Verix Bladewing",
+    "Whirlwing Stormbrood // Dynamic Soar",
+    "Will of the Temur",
+    "Zenith Festival"
+   ]
+  },
+  {
+   "owner": "Time",
+   "commander": "Terra, Herald of Hope",
+   "tier": "idea 38",
+   "missing": [
+    "Anger",
+    "Archfiend of Depravity",
+    "Banon, the Returners' Leader",
+    "Bedevil",
+    "Celes, Rune Knight",
+    "Coin of Fate",
+    "Combustible Gearhulk",
+    "Commander's Sphere",
+    "Cyan, Vengeful Samurai",
+    "Demolition Field",
+    "Desolate Mire",
+    "Edgar, Master Machinist",
+    "Espers to Magicite",
+    "Flayer of the Hatebound",
+    "Furycalm Snarl",
+    "Gau, Feral Youth",
+    "General Leo Cristophe",
+    "Geothermal Bog",
+    "Gogo, Mysterious Mime",
+    "Interceptor, Shadow's Hound",
+    "Kefka, Dancing Mad",
+    "Key to the City",
+    "Laughing Mad",
+    "Legions to Ashes",
+    "Locke, Treasure Hunter",
+    "Millikin",
+    "Mog, Moogle Warrior",
+    "Palace Jailer",
+    "Path of Ancestry",
+    "Phoenix Down",
+    "Priest of Fell Rites",
+    "Rejoin the Fight",
+    "Ruin Grinder",
+    "Sabin, Master Monk",
+    "Sacred Peaks",
+    "Sepulchral Primordial",
+    "Setzer, Wandering Gambler",
+    "Shadow, Mysterious Assassin",
+    "Shineshadow Snarl",
+    "Siegfried, Famed Swordsman",
+    "Snort",
+    "Stitch Together",
+    "Stitcher's Supplier",
+    "Strago and Relm",
+    "Summon: Esper Valigarmanda",
+    "Sunlit Marsh",
+    "Talisman of Conviction",
+    "Terra, Herald of Hope",
+    "The Falcon, Airship Restored",
+    "The Warring Triad",
+    "Tragic Arrogance",
+    "Umaro, Raging Yeti"
+   ]
+  },
+  {
+   "owner": "Adam",
+   "commander": "Sidar Jabari of Zhalfir",
+   "tier": "idea 39",
+   "missing": [
+    "Acclaimed Contender",
+    "Adeline, Resplendent Cathar",
+    "Arvad the Cursed",
+    "Aryel, Knight of Windgrace",
+    "Chivalric Alliance",
+    "Commander's Sphere",
+    "Conjurer's Mantle",
+    "Corpse Knight",
+    "Distant Melody",
+    "Elenda and Azor",
+    "Ethersworn Adjudicator",
+    "Exsanguinator Cavalry",
+    "Fell the Mighty",
+    "Foulmire Knight // Profane Insight",
+    "Fractured Powerstone",
+    "Haakon, Stromgald Scourge",
+    "Herald of Hoofbeats",
+    "Herald's Horn",
+    "Hero of Bladehold",
+    "Ichor Elixir",
+    "Josu Vess, Lich Knight",
+    "Knight Exemplar",
+    "Knight of the Last Breath",
+    "Knight of the White Orchid",
+    "Knights of the Black Rose",
+    "Knights' Charge",
+    "Liliana's Standard Bearer",
+    "Locthwain Lancer",
+    "Maul of the Skyclaves",
+    "Midnight Reaper",
+    "Murderous Rider // Swift End",
+    "Order of Midnight // Alter Fate",
+    "Painful Truths",
+    "Path of Ancestry",
+    "Path of the Enigma",
+    "Read the Bones",
+    "Shineshadow Snarl",
+    "Sidar Jabari of Zhalfir",
+    "Sigiled Sword of Valeron",
+    "Silverwing Squadron",
+    "Smitten Swordmaster // Curry Favor",
+    "Syr Elenora, the Discerning",
+    "Temple of Deceit",
+    "Temple of Silence",
+    "Thriving Moor",
+    "Unbreakable Formation",
+    "Valiant Knight",
+    "Vanquisher's Banner",
+    "Vodalian Wave-Knight",
+    "Vona, Butcher of Magan",
+    "Wintermoor Commander",
+    "Worthy Knight",
+    "Xerex Strobe-Knight"
+   ]
+  },
+  {
+   "owner": "Spr3adsh33t",
+   "commander": "Hakbal of the Surging Soul",
+   "tier": "idea 40",
+   "missing": [
+    "Alchemist's Refuge",
+    "Benthic Biomancer",
+    "Branching Evolution",
+    "Bygone Marvels",
+    "Cold-Eyed Selkie",
+    "Commander's Sphere",
+    "Commit // Memory",
+    "Coralhelm Commander",
+    "Curse of the Swine",
+    "Deeproot Elite",
+    "Deeproot Historian",
+    "Deeproot Waters",
+    "Emperor Mihail II",
+    "Evolution Sage",
+    "Hakbal of the Surging Soul",
+    "Herald of Secret Streams",
+    "Kindred Discovery",
+    "Kopala, Warden of Waves",
+    "Kumena, Tyrant of Orazca",
+    "Llanowar Reborn",
+    "Master of the Pearl Trident",
+    "Merfolk Cave-Diver",
+    "Merfolk Mistbinder",
+    "Merfolk Skydiver",
+    "Merfolk Sovereign",
+    "Merrow Reejerey",
+    "Mist Dancer",
+    "Nicanzil, Current Conductor",
+    "Path of Ancestry",
+    "Prime Speaker Zegana",
+    "Quandrix Command",
+    "Ravenform",
+    "Realmwalker",
+    "Reflections of Littjara",
+    "Ripples of Potential",
+    "Ruinous Intrusion",
+    "Sage of Fables",
+    "Seafloor Oracle",
+    "Simic Ascendancy",
+    "Singer of Swift Rivers",
+    "Stonybrook Banneret",
+    "Surgespanner",
+    "Svyelun of Sea and Sky",
+    "Thassa, God of the Sea",
+    "Thieving Skydiver",
+    "Tishana, Voice of Thunder",
+    "Topography Tracker",
+    "Tributary Instructor",
+    "Unclaimed Territory",
+    "Vorel of the Hull Clade",
+    "Wave Goodbye",
+    "Xolatoyac, the Smiling Flood",
+    "Zegana, Utopian Speaker"
+   ]
+  },
+  {
+   "owner": "Adam",
+   "commander": "Ixhel, Scion of Atraxa",
+   "tier": "idea 41",
+   "missing": [
+    "Bilious Skulldweller",
+    "Bloated Contaminator",
+    "Cankerbloom",
+    "Carrion Call",
+    "Commander's Sphere",
+    "Contagion Clasp",
+    "Contaminant Grafter",
+    "Culling Ritual",
+    "Evolution Sage",
+    "Expand the Sphere",
+    "Feed the Infection",
+    "Fortified Village",
+    "Fumigate",
+    "Geth's Summons",
+    "Glistening Sphere",
+    "Grafted Exoskeleton",
+    "Grateful Apparition",
+    "Ichor Rats",
+    "Infectious Bite",
+    "Infectious Inquiry",
+    "Ixhel, Scion of Atraxa",
+    "Krosan Verge",
+    "Mycosynth Fiend",
+    "Myr Convert",
+    "Norn's Annex",
+    "Norn's Choirmaster",
+    "Norn's Decree",
+    "Path of Ancestry",
+    "Phyresis Outbreak",
+    "Phyrexian Atlas",
+    "Phyrexian Obliterator",
+    "Phyrexian Rebirth",
+    "Phyrexian Swarmlord",
+    "Phyrexian Vindicator",
+    "Plague Myr",
+    "Plague Stinger",
+    "Shineshadow Snarl",
+    "Skrelv's Hive",
+    "Skrelv, Defector Mite",
+    "Staff of Compleation",
+    "Sword of Forge and Frontier",
+    "Tainted Field",
+    "Temple of Silence",
+    "Trailblazer's Boots",
+    "Tyrranax Rex",
+    "Tyvar's Stand",
+    "Unnatural Restoration",
+    "Vat Emergence",
+    "Viridian Corrupter",
+    "Vishgraz, the Doomhive",
+    "Vraska's Fall",
+    "Vraska, Betrayal's Sting",
+    "White Sun's Twilight",
+    "Wurmquake"
+   ]
+  },
+  {
+   "owner": "RuricMo",
+   "commander": "Nelly Borca, Impulsive Accuser",
+   "tier": "idea 42",
+   "missing": [
+    "Access Tunnel",
+    "Agitator Ant",
+    "Ancient Stone Idol",
+    "Anya, Merciless Angel",
+    "Bloodthirsty Blade",
+    "Boros Garrison",
+    "Boros Reckoner",
+    "Brash Taunter",
+    "Comeuppance",
+    "Curse of Opulence",
+    "Darien, King of Kjeldor",
+    "Disrupt Decorum",
+    "Duelist's Heritage",
+    "Escape Tunnel",
+    "Feather, Radiant Arbiter",
+    "Fiendish Duo",
+    "Frontier Warmonger",
+    "Furycalm Snarl",
+    "Gideon's Sacrifice",
+    "Havoc Eater",
+    "Hot Pursuit",
+    "Immortal Obligation",
+    "Kazuul, Tyrant of the Cliffs",
+    "Keeper of the Accord",
+    "Kher Keep",
+    "Labyrinth of Skophos",
+    "Mob Verdict",
+    "Needle Spires",
+    "Nelly Borca, Impulsive Accuser",
+    "Orzhov Advokist",
+    "Otherworldly Escort",
+    "Prisoner's Dilemma",
+    "Ransom Note",
+    "Redemption Arc",
+    "Rite of the Raging Storm",
+    "Scavenger Grounds",
+    "Seal of Cleansing",
+    "Selfless Squire",
+    "Sevinne's Reclamation",
+    "Shiny Impetus",
+    "Slayers' Stronghold",
+    "Smuggler's Share",
+    "Soul Snare",
+    "Spectacular Showdown",
+    "Stalking Leonin",
+    "Steel Hellkite",
+    "Take the Bait",
+    "Throne of the High City",
+    "Tome of Legends",
+    "Trouble in Pairs",
+    "Vengeful Ancestor",
+    "Vow of Duty",
+    "Vow of Lightning",
+    "Wall of Omens",
+    "Windborn Muse",
+    "Winds of Rath"
+   ]
+  },
+  {
+   "owner": "Adam",
+   "commander": "Zimone, Infinite Analyst",
+   "tier": "idea 43",
+   "missing": [
+    "Alchemist's Refuge",
+    "Altered Ego",
+    "Animist's Awakening",
+    "Astral Cornucopia",
+    "Benevolent Hydra",
+    "Biomass Mutation",
+    "Brass Infiniscope",
+    "Commander's Insight",
+    "Curse of the Swine",
+    "Decisive Denial",
+    "Deekah, Fractal Theorist",
+    "Elementalist's Palette",
+    "Elusive Otter // Grove's Bounty",
+    "Entrancing Melody",
+    "Eureka Moment",
+    "Expansion Algorithm",
+    "Fabled Passage",
+    "Fractal Harness",
+    "Guardian Augmenter",
+    "Hangarback Walker",
+    "Ingenious Prodigy",
+    "Kinetic Ooze",
+    "Lattice Library",
+    "Mana Bloom",
+    "Nev, the Practical Dean",
+    "Nexus Mentality",
+    "Opal Palace",
+    "Open the Way",
+    "Oversimplify",
+    "Owlin Spiralmancer",
+    "Ozolith, the Shattered Spire",
+    "Paradox Gardens",
+    "Path of Ancestry",
+    "Primal Might",
+    "Primo, the Unbounded",
+    "Primordial Hydra",
+    "Quandrix Apprentice",
+    "Quandrix Campus",
+    "Quandrix Charm",
+    "Quandrix Command",
+    "Rain-Slicked Copse",
+    "Silkguard",
+    "Sodden Verdure",
+    "Steelbane Hydra",
+    "Stonecoil Serpent",
+    "Striding Shotcaller",
+    "Study Hall",
+    "Tanazir Quandrix",
+    "Tangled Islet",
+    "The Goose Mother",
+    "Troyan, Gutsy Explorer",
+    "Turbulent Wilderness",
+    "Tyvar's Stand",
+    "Unbound Flourishing",
+    "Yavimaya Bloomsage",
+    "Zimone's Hypothesis",
+    "Zimone, All-Questioning",
+    "Zimone, Infinite Analyst"
+   ]
+  },
+  {
+   "owner": "Spr3adsh33t",
+   "commander": "Zimone, Infinite Analyst",
+   "tier": "idea 44",
+   "missing": [
+    "Alchemist's Refuge",
+    "Altered Ego",
+    "Animist's Awakening",
+    "Astral Cornucopia",
+    "Benevolent Hydra",
+    "Biomass Mutation",
+    "Brass Infiniscope",
+    "Commander's Insight",
+    "Curse of the Swine",
+    "Decisive Denial",
+    "Deekah, Fractal Theorist",
+    "Elementalist's Palette",
+    "Elusive Otter // Grove's Bounty",
+    "Entrancing Melody",
+    "Eureka Moment",
+    "Expansion Algorithm",
+    "Fabled Passage",
+    "Fractal Harness",
+    "Guardian Augmenter",
+    "Hangarback Walker",
+    "Ingenious Prodigy",
+    "Kinetic Ooze",
+    "Lattice Library",
+    "Mana Bloom",
+    "Nev, the Practical Dean",
+    "Nexus Mentality",
+    "Opal Palace",
+    "Open the Way",
+    "Oversimplify",
+    "Owlin Spiralmancer",
+    "Ozolith, the Shattered Spire",
+    "Paradox Gardens",
+    "Path of Ancestry",
+    "Primal Might",
+    "Primo, the Unbounded",
+    "Primordial Hydra",
+    "Quandrix Apprentice",
+    "Quandrix Campus",
+    "Quandrix Charm",
+    "Quandrix Command",
+    "Rain-Slicked Copse",
+    "Silkguard",
+    "Sodden Verdure",
+    "Steelbane Hydra",
+    "Stonecoil Serpent",
+    "Striding Shotcaller",
+    "Study Hall",
+    "Tanazir Quandrix",
+    "Tangled Islet",
+    "The Goose Mother",
+    "Troyan, Gutsy Explorer",
+    "Turbulent Wilderness",
+    "Tyvar's Stand",
+    "Unbound Flourishing",
+    "Yavimaya Bloomsage",
+    "Zimone's Hypothesis",
+    "Zimone, All-Questioning",
+    "Zimone, Infinite Analyst"
+   ]
+  },
+  {
+   "owner": "Adam",
+   "commander": "Perrie, the Pulverizer",
+   "tier": "idea 45",
+   "missing": [
+    "Agent's Toolkit",
+    "Ajani Unyielding",
+    "Angelic Sleuth",
+    "Aven Courier",
+    "Aven Mimeomancer",
+    "Avenging Huntbonder",
+    "Bant Charm",
+    "Bant Panorama",
+    "Bribe Taker",
+    "Brokers Charm",
+    "Brokers Confluence",
+    "Brokers Hideout",
+    "Commander's Sphere",
+    "Contractual Safeguard",
+    "Crystalline Giant",
+    "Damning Verdict",
+    "Declaration in Stone",
+    "Denry Klin, Editor in Chief",
+    "Evolution Sage",
+    "Exotic Pets",
+    "Family's Favor",
+    "Fathom Mage",
+    "Fortified Village",
+    "Gavel of the Righteous",
+    "Grateful Apparition",
+    "Incubation Druid",
+    "Jenara, Asura of War",
+    "Kros, Defense Contractor",
+    "Littjara Mirrorlake",
+    "Llanowar Reborn",
+    "Luminarch Aspirant",
+    "Midnight Clock",
+    "Nesting Grounds",
+    "Oblivion Stone",
+    "Oracle's Vault",
+    "Park Heights Maverick",
+    "Path of Ancestry",
+    "Perrie, the Pulverizer",
+    "Planar Outburst",
+    "Power Conduit",
+    "Primal Empathy",
+    "Resourceful Defense",
+    "Roalesk, Apex Hybrid",
+    "Skyboon Evangelist",
+    "Skyship Plunderer",
+    "Slippery Bogbonder",
+    "Steelbane Hydra",
+    "Storm of Forms",
+    "Tezzeret's Gambit",
+    "Thrummingbird",
+    "Together Forever",
+    "Urban Evolution",
+    "Vivid Creek",
+    "Vivid Grove",
+    "Vivid Meadow",
+    "Vorel of the Hull Clade",
+    "Wall of Roots",
+    "Wickerbough Elder",
+    "Wingspan Mentor"
+   ]
+  },
+  {
+   "owner": "Adam",
+   "commander": "Doctor Doom, King of Latveria",
+   "tier": "idea 46",
+   "missing": [
+    "Abomination, World Ravager",
+    "Age of Ultron",
+    "Archnemesis",
+    "Baron Strucker, HYDRA Overlord",
+    "Batroc the Leaper",
+    "Bedevil",
+    "Canyon Slough",
+    "Chameleon, Master of Disguise",
+    "Coastal Peak",
+    "Containment Construct",
+    "Crumbling Necropolis",
+    "Currency Converter",
+    "Damocles Base, Sword of Kang",
+    "Doctor Doom, King of Latveria",
+    "Doom's Time Platform",
+    "Endless Ranks of HYDRA",
+    "Extract Power",
+    "Fetid Pools",
+    "Frostboil Snarl",
+    "Glorious Purpose",
+    "Helmut Zemo, Mastermind",
+    "Iron Monger, Sadistic Tycoon",
+    "Kang Dynasty",
+    "Kang Prime",
+    "Kang, Temporal Tyrant",
+    "Killmonger, Ruthless Usurper",
+    "Kindred Dominance",
+    "Klaw, Master of Sound",
+    "Lady Loki, Agent of Chaos",
+    "Lethal Scheme",
+    "Living Laser",
+    "Loki's Scepter",
+    "Loki, the Deceiver",
+    "Madame Hydra",
+    "Molecule Man",
+    "Moonstone, Harsh Mistress",
+    "Patchwork Banner",
+    "Path of Ancestry",
+    "Progenitor's Icon",
+    "Prowler, Clawed Thief",
+    "Puppet Master, String Puller",
+    "Red Ghost, Intangible Genius",
+    "Scavenger Grounds",
+    "Scorched Geyser",
+    "Spark Double",
+    "Stilt-Man, Towering Terror",
+    "Superior Foes of Spider-Man",
+    "Syphon Mind",
+    "Terminate",
+    "The Frightful Four",
+    "The Squadron Sinister",
+    "Titan of Littjara",
+    "Titania, Proud Pummeler",
+    "Tombstone, Career Criminal",
+    "Tri-Sentinel, Act of Vengeance",
+    "Typhoid Mary, Fractured",
+    "Ultron, Unlimited",
+    "Unclaimed Territory",
+    "Villainous Hideout",
+    "Withering Torment"
+   ]
+  },
+  {
+   "owner": "Time",
+   "commander": "Rowan, Scion of War",
+   "tier": "idea 47",
+   "missing": [
+    "Apex of Power",
+    "Apprentice Necromancer",
+    "Behold the Beyond",
+    "Beseech the Queen",
+    "Blood Pet",
+    "Boggart Trawler // Boggart Bog",
+    "Claim // Fame",
+    "Claim the Firstborn",
+    "Crippling Fear",
+    "Cruelclaw's Heist",
+    "Dark Petition",
+    "Dark Ritual",
+    "Diabolic Revelation",
+    "Dismember",
+    "Dualcaster Mage",
+    "Dwarven Ruins",
+    "Ebon Stronghold",
+    "Erebos's Intervention",
+    "Eumidian Hatchery",
+    "Final Parting",
+    "Flamekin Village",
+    "Flare of Duplication",
+    "Fury Storm",
+    "Generator Servant",
+    "Gogo, Mysterious Mime",
+    "Ifnir Deadlands",
+    "Ignite the Future",
+    "Increasing Ambition",
+    "Increasing Vengeance",
+    "Inspired Tinkering",
+    "Lively Dirge",
+    "March of Wretched Sorrow",
+    "Marshland Bloodcaster",
+    "Marvin, Murderous Mimic",
+    "Megaton's Fate",
+    "Mount Doom",
+    "Myr Convert",
+    "Overmaster",
+    "Past in Flames",
+    "Path of the Pyromancer",
+    "Patriar's Seal",
+    "Pirate's Pillage",
+    "Plunge into Darkness",
+    "Ramunap Ruins",
+    "Reckless Charge",
+    "Return the Favor",
+    "Reverberate",
+    "Rowan, Scion of War",
+    "Searing Touch",
+    "Simian Spirit Guide",
+    "Skirk Prospector",
+    "Snort",
+    "Sorceress's Schemes",
+    "Street Wraith",
+    "Strike It Rich",
+    "Thran Portal",
+    "Tomb of Urami",
+    "Unearth",
+    "Wall of Blood",
+    "________ Goblin"
+   ]
+  },
+  {
+   "owner": "Spr3adsh33t",
+   "commander": "Eriette of the Charmed Apple",
+   "tier": "idea 48",
+   "missing": [
+    "All That Glitters",
+    "Angelic Gift",
+    "Ardenn, Intrepid Archaeologist",
+    "Chains of Custody",
+    "Clawing Torment",
+    "Curse of Disturbance",
+    "Curse of Exhaustion",
+    "Curse of Fool's Wisdom",
+    "Curse of Misfortunes",
+    "Curse of Thirst",
+    "Curse of Vitality",
+    "Curse of the Forsaken",
+    "Curse of the Restless Dead",
+    "Danitha Capashen, Paragon",
+    "Darksteel Mutation",
+    "Daxos the Returned",
+    "Dead Man's Chest",
+    "Eriette of the Charmed Apple",
+    "Ethereal Armor",
+    "Ghoulish Impetus",
+    "Gift of Immortality",
+    "Glistening Oil",
+    "Hall of Heliod's Generosity",
+    "Hateful Eidolon",
+    "Hero of Iroas",
+    "Kaya's Ghostform",
+    "Killian, Ink Duelist",
+    "Kor Spiritdancer",
+    "Lord Skitter's Blessing",
+    "Lurrus of the Dream-Den",
+    "Minion's Return",
+    "Nurgle's Rot",
+    "Ondu Spiritdancer",
+    "Open the Armory",
+    "Parasitic Impetus",
+    "Pariah",
+    "Phyresis",
+    "Realmbreaker's Grasp",
+    "Reprobation",
+    "Resurgent Belief",
+    "Retether",
+    "Rune of Mortality",
+    "Sage's Reverie",
+    "Screams from Within",
+    "Soul Link",
+    "Spellbook Vendor",
+    "Spirit Link",
+    "Spirit Mantle",
+    "Sram, Senior Edificer",
+    "Starfield Mystic",
+    "Starnheim Courser",
+    "Tenuous Truce",
+    "Timely Ward",
+    "Transcendent Envoy",
+    "Trespasser's Curse",
+    "Underworld Connections",
+    "Unholy Indenture",
+    "Unquestioned Authority",
+    "Vampiric Link",
+    "Vow of Malice",
+    "Vow of Torment",
+    "Winds of Rath"
+   ]
+  },
+  {
+   "owner": "Time",
+   "commander": "Elesh Norn, Mother of Machines",
+   "tier": "idea 49",
+   "missing": [
+    "Angel of Invention",
+    "Animal Sanctuary",
+    "Astral Cornucopia",
+    "Banisher Priest",
+    "Banishment",
+    "Basri's Lieutenant",
+    "Cathars' Crusade",
+    "Circle of Confinement",
+    "Clockwork Dragon",
+    "Clockwork Servant",
+    "Cloud Key",
+    "Defenders of Humanity",
+    "Demolition Field",
+    "Dimensional Breach",
+    "Exclusion Ritual",
+    "Faith's Fetters",
+    "Field of Ruin",
+    "Final Judgment",
+    "Flickerwisp",
+    "For the Emperor!",
+    "Grasp of Fate",
+    "Horn of Gondor",
+    "Idyllic Grange",
+    "Ingenious Smith",
+    "Journey to Oblivion",
+    "Knight Paladin",
+    "Knight of the White Orchid",
+    "Launch the Fleet",
+    "Lavabrink Venturer",
+    "Legion's Landing // Adanto, the First Fort",
+    "Lembas",
+    "Mace of the Valiant",
+    "Mentor of the Meek",
+    "Mirrorworks",
+    "Mobilized District",
+    "Myojin of Blooming Dawn",
+    "Myr Battlesphere",
+    "Nevermore",
+    "New Benalia",
+    "Panharmonicon",
+    "Phyrexia's Core",
+    "Phyrexian Vindicator",
+    "Priest of Ancient Lore",
+    "Prison Realm",
+    "Ravnica at War",
+    "Rune of Sustenance",
+    "Runed Halo",
+    "Sceptre of Eternal Glory",
+    "Scholar of New Horizons",
+    "Sleeper Dart",
+    "Space Marine Scout",
+    "Static Net",
+    "Stoic Farmer",
+    "Stonecoil Serpent",
+    "Strionic Resonator",
+    "Thunder Totem",
+    "Tome of Legends",
+    "Untaidake, the Cloud Keeper",
+    "Urza's Factory",
+    "Urza's Workshop",
+    "Wall of Omens",
+    "Windbrisk Heights"
+   ]
+  },
+  {
+   "owner": "Spr3adsh33t",
+   "commander": "Captain America, Team Leader",
+   "tier": "idea 50",
+   "missing": [
+    "Ant-Man, Elusive Avenger",
+    "Avenge",
+    "Avengers Quinjet",
+    "Avengers Tower",
+    "Bastion Protector",
+    "Black Widow, Agile Avenger",
+    "Captain America, Living Legend",
+    "Captain America, Team Leader",
+    "Captain Mar-Vell, Space-Born",
+    "Captain Marvel, Apex Avenger",
+    "Coastal Peak",
+    "Destroy Evil",
+    "Director Nick Fury",
+    "Dismantling Wave",
+    "Door of Destinies",
+    "Falcon and Redwing",
+    "Firebird, Blazing Ranger",
+    "Folk Hero",
+    "Frostboil Snarl",
+    "Furycalm Snarl",
+    "Gift of Immortality",
+    "Glittering Massif",
+    "Hawkeye, Avenging Archer",
+    "Herald's Horn",
+    "Hercules, Olympian Hero",
+    "Hero's Blade",
+    "Heroic Return",
+    "Heroic Sacrifice",
+    "Hulkbuster Armor",
+    "Iron Man, Armored Avenger",
+    "Irrigated Farmland",
+    "Jarvis, Earth's Mightiest Butler",
+    "Jocasta, Automaton Avenger",
+    "Kindred Discovery",
+    "Love on the Battlefield",
+    "Methods of the Mighty",
+    "Path of Ancestry",
+    "Patriot, Shield Wielder",
+    "Photon, Mighty Marvel",
+    "Professor Hulk",
+    "Quicksilver, Speedster",
+    "Radiant Summit",
+    "Raise the Palisade",
+    "Reconnaissance Mission",
+    "Relic of Legends",
+    "Rescue, Pepper Potts",
+    "Rip Apart",
+    "Scarlet Witch, Chaotic Avenger",
+    "Scavenger Grounds",
+    "Scorched Geyser",
+    "Shang-Chi and the Ten Rings",
+    "She-Hulk, Wallbreaker",
+    "Speed, Young Avenger",
+    "Talisman of Conviction",
+    "Talisman of Creativity",
+    "The Wasp, Winsome Avenger",
+    "Thor, Asgard's Avenger",
+    "Tome of Legends",
+    "Unclaimed Territory",
+    "Vision, Synthezoid Avenger",
+    "War Machine, Avenging Arsenal",
+    "West Coast Expansion",
+    "Winter Soldier, Reborn Avenger"
+   ]
+  },
+  {
+   "owner": "Grande",
+   "commander": "Hashaton, Scarab's Fist",
+   "tier": "idea 51",
+   "missing": [
+    "Absolute Virtue",
+    "Ancient Silver Dragon",
+    "Angel of Despair",
+    "Angelic Arbiter",
+    "Aquamoeba",
+    "Archon of Cruelty",
+    "Astral Dragon",
+    "Bitter Triumph",
+    "Blazing Archon",
+    "Bone Miser",
+    "Cabal Initiate",
+    "Call the Bloodline",
+    "Careful Study",
+    "Chamber of Manipulation",
+    "Chancellor of the Annex",
+    "Chancellor of the Spires",
+    "Charm Peddler",
+    "Compulsion",
+    "Cryptbreaker",
+    "Diluvian Primordial",
+    "Dread Defiler",
+    "Eldrazi Displacer",
+    "Exquisite Archangel",
+    "Faithful Mending",
+    "Fleeting Spirit",
+    "Gifts Ungiven",
+    "Gleaming Overseer",
+    "Godhead of Awe",
+    "Grave Researcher // Reanimate",
+    "Great Whale",
+    "Grozoth",
+    "Guardian of New Benalia",
+    "Hashaton, Scarab's Fist",
+    "Herald of Leshrac",
+    "Highcliff Felidar",
+    "Hoarding Broodlord",
+    "Immobilizing Ink",
+    "Iron-Shield Elf",
+    "Jace Reawakened",
+    "Jin-Gitaxias, Progress Tyrant",
+    "Kaito Shizuki",
+    "Key to the City",
+    "Kitsa, Otterball Elite",
+    "Kozilek, the Great Distortion",
+    "Likeness Looter",
+    "Luminate Primordial",
+    "Magister Sphinx",
+    "Malcolm, Alluring Scoundrel",
+    "Mental Discipline",
+    "Metamorphosis Fanatic",
+    "Mister Negative",
+    "Nezahal, Primal Tide",
+    "Oblivion Crown",
+    "Olivia's Dragoon",
+    "Oona's Prowler",
+    "Patrol Hound",
+    "Phantatog",
+    "Phyrexian Delver",
+    "Platinum Emperion",
+    "Psychatog",
+    "Psychic Frog",
+    "Pulse of the Grid",
+    "Putrid Imp",
+    "Rhet-Tomb Mystic",
+    "Scuttletide",
+    "Seasoned Hallowblade",
+    "Sepulchral Primordial",
+    "Shadowgrange Archfiend",
+    "Sharuum the Hegemon",
+    "Skirge Familiar",
+    "Spawnsire of Ulamog",
+    "Sphinx of the Final Word",
+    "Sphinx of the Second Sun",
+    "Tainted Indulgence",
+    "The Soul Stone",
+    "The Underworld Cookbook",
+    "The Walls of Ba Sing Se",
+    "Thirst for Identity",
+    "Tireless Tribe",
+    "Toxrill, the Corrosive",
+    "Trained Pronghorn",
+    "Transpose",
+    "Trickster Mage",
+    "Vile Mutilator",
+    "Zetalpa, Primal Dawn"
+   ]
+  }
+ ],
+ "card_counts": [
+  [
+   "Path of Ancestry",
+   17
+  ],
+  [
+   "Chrome Mox",
+   8
+  ],
+  [
+   "Fabled Passage",
+   6
+  ],
+  [
+   "Mox Diamond",
+   6
+  ],
+  [
+   "Gamble",
+   6
+  ],
+  [
+   "Commander's Sphere",
+   6
+  ],
+  [
+   "Springbloom Druid",
+   5
+  ],
+  [
+   "Mana Drain",
+   5
+  ],
+  [
+   "Dark Ritual",
+   5
+  ],
+  [
+   "Silence",
+   5
+  ],
+  [
+   "Cursed Totem",
+   5
+  ],
+  [
+   "Tyvar's Stand",
+   4
+  ],
+  [
+   "Volcanic Island",
+   4
+  ],
+  [
+   "Drannith Magistrate",
+   4
+  ],
+  [
+   "Underworld Breach",
+   4
+  ],
+  [
+   "Wild Growth",
+   4
+  ],
+  [
+   "Linvala, Keeper of Silence",
+   4
+  ],
+  [
+   "Steel Hellkite",
+   4
+  ],
+  [
+   "Curse of the Swine",
+   4
+  ],
+  [
+   "Frostboil Snarl",
+   4
+  ],
+  [
+   "Astral Cornucopia",
+   4
+  ],
+  [
+   "Evolution Sage",
+   4
+  ],
+  [
+   "Tome of Legends",
+   4
+  ],
+  [
+   "Scavenger Grounds",
+   4
+  ],
+  [
+   "Terminate",
+   3
+  ],
+  [
+   "Roiling Regrowth",
+   3
+  ],
+  [
+   "Ad Nauseam",
+   3
+  ],
+  [
+   "Bitterblossom",
+   3
+  ],
+  [
+   "Opposition Agent",
+   3
+  ],
+  [
+   "Gravecrawler",
+   3
+  ],
+  [
+   "Crop Rotation",
+   3
+  ],
+  [
+   "Escape Tunnel",
+   3
+  ],
+  [
+   "Veil of Summer",
+   3
+  ],
+  [
+   "Demonic Consultation",
+   3
+  ],
+  [
+   "Underground Sea",
+   3
+  ],
+  [
+   "Thassa's Oracle",
+   3
+  ],
+  [
+   "Lion's Eye Diamond",
+   3
+  ],
+  [
+   "Utopia Sprawl",
+   3
+  ],
+  [
+   "Imperial Seal",
+   3
+  ],
+  [
+   "Spell Pierce",
+   3
+  ],
+  [
+   "Containment Priest",
+   3
+  ],
+  [
+   "Cathars' Crusade",
+   3
+  ],
+  [
+   "Rest in Peace",
+   3
+  ],
+  [
+   "Ranger-Captain of Eos",
+   3
+  ],
+  [
+   "Melira, Sylvok Outcast",
+   3
+  ],
+  [
+   "Finale of Devastation",
+   3
+  ],
+  [
+   "Spark Double",
+   3
+  ],
+  [
+   "Read the Bones",
+   3
+  ],
+  [
+   "Gift of Immortality",
+   3
+  ],
+  [
+   "Torpor Orb",
+   3
+  ],
+  [
+   "Skrelv, Defector Mite",
+   3
+  ],
+  [
+   "Reconnaissance Mission",
+   3
+  ],
+  [
+   "Archon of Cruelty",
+   3
+  ],
+  [
+   "Birgi, God of Storytelling // Harnfel, Horn of Bounty",
+   3
+  ],
+  [
+   "Bedevil",
+   3
+  ],
+  [
+   "Herald of Leshrac",
+   3
+  ],
+  [
+   "Mystic Sanctuary",
+   3
+  ],
+  [
+   "Sevinne's Reclamation",
+   3
+  ],
+  [
+   "Reality Shift",
+   3
+  ],
+  [
+   "Talisman of Creativity",
+   3
+  ],
+  [
+   "Tezzeret's Gambit",
+   3
+  ],
+  [
+   "Guttersnipe",
+   3
+  ],
+  [
+   "Treasure Cruise",
+   3
+  ],
+  [
+   "Midnight Clock",
+   3
+  ],
+  [
+   "Reflections of Littjara",
+   3
+  ],
+  [
+   "Satyr Wayfinder",
+   3
+  ],
+  [
+   "Multani, Yavimaya's Avatar",
+   3
+  ],
+  [
+   "Opal Palace",
+   3
+  ],
+  [
+   "Fetid Pools",
+   3
+  ],
+  [
+   "Millikin",
+   3
+  ],
+  [
+   "Stitcher's Supplier",
+   3
+  ],
+  [
+   "Forbidden Alchemy",
+   3
+  ],
+  [
+   "Living Death",
+   3
+  ],
+  [
+   "Lethal Scheme",
+   3
+  ],
+  [
+   "Fortified Village",
+   3
+  ],
+  [
+   "Furycalm Snarl",
+   3
+  ],
+  [
+   "Shineshadow Snarl",
+   3
+  ],
+  [
+   "Alchemist's Refuge",
+   3
+  ],
+  [
+   "Unclaimed Territory",
+   3
+  ],
+  [
+   "Quandrix Command",
+   3
+  ],
+  [
+   "Steelbane Hydra",
+   3
+  ],
+  [
+   "Stonecoil Serpent",
+   3
+  ],
+  [
+   "Alchemist's Talent",
+   2
+  ],
+  [
+   "Rain of Riches",
+   2
+  ],
+  [
+   "Changeling Wayfinder",
+   2
+  ],
+  [
+   "Adept Watershaper",
+   2
+  ],
+  [
+   "Purging Stormbrood // Absorb Essence",
+   2
+  ],
+  [
+   "Bogslither's Embrace",
+   2
+  ],
+  [
+   "Orcish Lumberjack",
+   2
+  ],
+  [
+   "Ramunap Excavator",
+   2
+  ],
+  [
+   "Horizon Explorer",
+   2
+  ],
+  [
+   "Vernal Fen",
+   2
+  ],
+  [
+   "Hearthhull, the Worldseed",
+   2
+  ],
+  [
+   "Sear",
+   2
+  ],
+  [
+   "Stormshriek Feral // Flush Out",
+   2
+  ],
+  [
+   "Hoarding Broodlord",
+   2
+  ],
+  [
+   "Cabal Ritual",
+   2
+  ],
+  [
+   "Dismember",
+   2
+  ],
+  [
+   "Wishclaw Talisman",
+   2
+  ],
+  [
+   "The Black Gate",
+   2
+  ],
+  [
+   "Blood Pet",
+   2
+  ],
+  [
+   "Cabaretti Courtyard",
+   2
+  ],
+  [
+   "Brokers Hideout",
+   2
+  ],
+  [
+   "Riveteers Overlook",
+   2
+  ],
+  [
+   "Vizier of Remedies",
+   2
+  ],
+  [
+   "Brain Freeze",
+   2
+  ],
+  [
+   "Wheel of Fortune",
+   2
+  ],
+  [
+   "Gemstone Caverns",
+   2
+  ],
+  [
+   "Walking Ballista",
+   2
+  ],
+  [
+   "Forbidden Orchard",
+   2
+  ],
+  [
+   "Chain of Vapor",
+   2
+  ],
+  [
+   "Summoner's Pact",
+   2
+  ],
+  [
+   "Gisela, the Broken Blade",
+   2
+  ],
+  [
+   "Seal of Cleansing",
+   2
+  ],
+  [
+   "Darksteel Mutation",
+   2
+  ],
+  [
+   "All That Glitters",
+   2
+  ],
+  [
+   "Bruna, the Fading Light",
+   2
+  ],
+  [
+   "Relic of Legends",
+   2
+  ],
+  [
+   "Tainted Field",
+   2
+  ],
+  [
+   "Kher Keep",
+   2
+  ],
+  [
+   "Earthcraft",
+   2
+  ],
+  [
+   "Aven Mindcensor",
+   2
+  ],
+  [
+   "Fiend Hunter",
+   2
+  ],
+  [
+   "Rocco, Cabaretti Caterer",
+   2
+  ],
+  [
+   "Archon of Emeria",
+   2
+  ],
+  [
+   "Leonin Relic-Warder",
+   2
+  ],
+  [
+   "Kitchen Finks",
+   2
+  ],
+  [
+   "Bala Ged Recovery // Bala Ged Sanctuary",
+   2
+  ],
+  [
+   "Transpose",
+   2
+  ],
+  [
+   "Irenicus's Vile Duplication",
+   2
+  ],
+  [
+   "Miren, the Moaning Well",
+   2
+  ],
+  [
+   "Oblivion Ring",
+   2
+  ],
+  [
+   "Tymna the Weaver",
+   2
+  ],
+  [
+   "Grafdigger's Cage",
+   2
+  ],
+  [
+   "Vindicate",
+   2
+  ],
+  [
+   "Adeline, Resplendent Cathar",
+   2
+  ],
+  [
+   "Luminarch Aspirant",
+   2
+  ],
+  [
+   "Magister Sphinx",
+   2
+  ],
+  [
+   "Ethersworn Adjudicator",
+   2
+  ],
+  [
+   "Scion of Oona",
+   2
+  ],
+  [
+   "Sharuum the Hegemon",
+   2
+  ],
+  [
+   "Norn's Annex",
+   2
+  ],
+  [
+   "Baleful Strix",
+   2
+  ],
+  [
+   "Court of Grace",
+   2
+  ],
+  [
+   "Bonehoard Dracosaur",
+   2
+  ],
+  [
+   "Ignite the Future",
+   2
+  ],
+  [
+   "Delayed Blast Fireball",
+   2
+  ],
+  [
+   "Rakdos Charm",
+   2
+  ],
+  [
+   "Light Up the Stage",
+   2
+  ],
+  [
+   "Theater of Horrors",
+   2
+  ],
+  [
+   "Goldspan Dragon",
+   2
+  ],
+  [
+   "Spellseeker",
+   2
+  ],
+  [
+   "Nihil Spellbomb",
+   2
+  ],
+  [
+   "Back to Basics",
+   2
+  ],
+  [
+   "Aether Spellbomb",
+   2
+  ],
+  [
+   "Dress Down",
+   2
+  ],
+  [
+   "Snapcaster Mage",
+   2
+  ],
+  [
+   "Notion Thief",
+   2
+  ],
+  [
+   "Narset's Reversal",
+   2
+  ],
+  [
+   "Spirebluff Canal",
+   2
+  ],
+  [
+   "Solve the Equation",
+   2
+  ],
+  [
+   "Intuition",
+   2
+  ],
+  [
+   "Dualcaster Mage",
+   2
+  ],
+  [
+   "Zetalpa, Primal Dawn",
+   2
+  ],
+  [
+   "Patchwork Banner",
+   2
+  ],
+  [
+   "Return the Favor",
+   2
+  ],
+  [
+   "Arcane Bombardment",
+   2
+  ],
+  [
+   "Deep Analysis",
+   2
+  ],
+  [
+   "Past in Flames",
+   2
+  ],
+  [
+   "Hall of Heliod's Generosity",
+   2
+  ],
+  [
+   "World Breaker",
+   2
+  ],
+  [
+   "Shadowgrange Archfiend",
+   2
+  ],
+  [
+   "Creeping Bloodsucker",
+   2
+  ],
+  [
+   "Kozilek, the Great Distortion",
+   2
+  ],
+  [
+   "Plague Stinger",
+   2
+  ],
+  [
+   "Thrummingbird",
+   2
+  ],
+  [
+   "Unnatural Restoration",
+   2
+  ],
+  [
+   "Ichor Rats",
+   2
+  ],
+  [
+   "Infectious Bite",
+   2
+  ],
+  [
+   "Contaminant Grafter",
+   2
+  ],
+  [
+   "Norn's Decree",
+   2
+  ],
+  [
+   "Vraska, Betrayal's Sting",
+   2
+  ],
+  [
+   "Infectious Inquiry",
+   2
+  ],
+  [
+   "Bloated Contaminator",
+   2
+  ],
+  [
+   "Skrelv's Hive",
+   2
+  ],
+  [
+   "Phyresis Outbreak",
+   2
+  ],
+  [
+   "Glistening Sphere",
+   2
+  ],
+  [
+   "Ixhel, Scion of Atraxa",
+   2
+  ],
+  [
+   "Cankerbloom",
+   2
+  ],
+  [
+   "Viridian Corrupter",
+   2
+  ],
+  [
+   "Phyrexian Swarmlord",
+   2
+  ],
+  [
+   "Vraska's Fall",
+   2
+  ],
+  [
+   "Kindred Dominance",
+   2
+  ],
+  [
+   "Temple of Deceit",
+   2
+  ],
+  [
+   "Distant Melody",
+   2
+  ],
+  [
+   "Fact or Fiction",
+   2
+  ],
+  [
+   "Phyresis",
+   2
+  ],
+  [
+   "Grafted Exoskeleton",
+   2
+  ],
+  [
+   "Canyon Slough",
+   2
+  ],
+  [
+   "Eumidian Hatchery",
+   2
+  ],
+  [
+   "Flamekin Village",
+   2
+  ],
+  [
+   "Simian Spirit Guide",
+   2
+  ],
+  [
+   "Vanquisher's Banner",
+   2
+  ],
+  [
+   "Keeper of the Accord",
+   2
+  ],
+  [
+   "Dismantling Wave",
+   2
+  ],
+  [
+   "Necropolis Fiend",
+   2
+  ],
+  [
+   "River Kelpie",
+   2
+  ],
+  [
+   "Teval's Judgment",
+   2
+  ],
+  [
+   "Crawling Sensation",
+   2
+  ],
+  [
+   "Dreamroot Cascade",
+   2
+  ],
+  [
+   "Steward of the Harvest",
+   2
+  ],
+  [
+   "Grisly Salvage",
+   2
+  ],
+  [
+   "Contaminated Aquifer",
+   2
+  ],
+  [
+   "Floral Evoker",
+   2
+  ],
+  [
+   "Life from the Loam",
+   2
+  ],
+  [
+   "Nyx Weaver",
+   2
+  ],
+  [
+   "Will of the Sultai",
+   2
+  ],
+  [
+   "Necromantic Selection",
+   2
+  ],
+  [
+   "Lord of the Forsaken",
+   2
+  ],
+  [
+   "Timeless Witness",
+   2
+  ],
+  [
+   "Grapple with the Past",
+   2
+  ],
+  [
+   "Victimize",
+   2
+  ],
+  [
+   "Diviner of Mist",
+   2
+  ],
+  [
+   "Skull Prophet",
+   2
+  ],
+  [
+   "Tasigur, the Golden Fang",
+   2
+  ],
+  [
+   "Phyrexian Reclamation",
+   2
+  ],
+  [
+   "Foreboding Landscape",
+   2
+  ],
+  [
+   "Wonder",
+   2
+  ],
+  [
+   "Shigeki, Jukai Visionary",
+   2
+  ],
+  [
+   "Drownyard Temple",
+   2
+  ],
+  [
+   "Kotis, Sibsig Champion",
+   2
+  ],
+  [
+   "Junji, the Midnight Sky",
+   2
+  ],
+  [
+   "Afterlife from the Loam",
+   2
+  ],
+  [
+   "Noxious Gearhulk",
+   2
+  ],
+  [
+   "Amphin Mutineer",
+   2
+  ],
+  [
+   "Crypt of Agadeem",
+   2
+  ],
+  [
+   "Welcome the Dead",
+   2
+  ],
+  [
+   "Memorial to Folly",
+   2
+  ],
+  [
+   "Meren of Clan Nel Toth",
+   2
+  ],
+  [
+   "Hedron Crab",
+   2
+  ],
+  [
+   "Field of Ruin",
+   2
+  ],
+  [
+   "Shiny Impetus",
+   2
+  ],
+  [
+   "Crumbling Necropolis",
+   2
+  ],
+  [
+   "Anger",
+   2
+  ],
+  [
+   "Scourge of the Throne",
+   2
+  ],
+  [
+   "Palace Jailer",
+   2
+  ],
+  [
+   "Throne of the High City",
+   2
+  ],
+  [
+   "Ingenious Smith",
+   2
+  ],
+  [
+   "Vengeful Ancestor",
+   2
+  ],
+  [
+   "Demolition Field",
+   2
+  ],
+  [
+   "Gogo, Mysterious Mime",
+   2
+  ],
+  [
+   "Snort",
+   2
+  ],
+  [
+   "Sepulchral Primordial",
+   2
+  ],
+  [
+   "Talisman of Conviction",
+   2
+  ],
+  [
+   "Key to the City",
+   2
+  ],
+  [
+   "Knight of the White Orchid",
+   2
+  ],
+  [
+   "Herald's Horn",
+   2
+  ],
+  [
+   "Temple of Silence",
+   2
+  ],
+  [
+   "Llanowar Reborn",
+   2
+  ],
+  [
+   "Vorel of the Hull Clade",
+   2
+  ],
+  [
+   "Kindred Discovery",
+   2
+  ],
+  [
+   "Myr Convert",
+   2
+  ],
+  [
+   "Grateful Apparition",
+   2
+  ],
+  [
+   "Phyrexian Vindicator",
+   2
+  ],
+  [
+   "Winds of Rath",
+   2
+  ],
+  [
+   "Wall of Omens",
+   2
+  ],
+  [
+   "Study Hall",
+   2
+  ],
+  [
+   "Owlin Spiralmancer",
+   2
+  ],
+  [
+   "Rain-Slicked Copse",
+   2
+  ],
+  [
+   "Striding Shotcaller",
+   2
+  ],
+  [
+   "Paradox Gardens",
+   2
+  ],
+  [
+   "Elusive Otter // Grove's Bounty",
+   2
+  ],
+  [
+   "Tanazir Quandrix",
+   2
+  ],
+  [
+   "Yavimaya Bloomsage",
+   2
+  ],
+  [
+   "Quandrix Charm",
+   2
+  ],
+  [
+   "Unbound Flourishing",
+   2
+  ],
+  [
+   "Zimone, Infinite Analyst",
+   2
+  ],
+  [
+   "Lattice Library",
+   2
+  ],
+  [
+   "Sodden Verdure",
+   2
+  ],
+  [
+   "Elementalist's Palette",
+   2
+  ],
+  [
+   "Decisive Denial",
+   2
+  ],
+  [
+   "Guardian Augmenter",
+   2
+  ],
+  [
+   "Commander's Insight",
+   2
+  ],
+  [
+   "Quandrix Campus",
+   2
+  ],
+  [
+   "Deekah, Fractal Theorist",
+   2
+  ],
+  [
+   "Benevolent Hydra",
+   2
+  ],
+  [
+   "Nexus Mentality",
+   2
+  ],
+  [
+   "Kinetic Ooze",
+   2
+  ],
+  [
+   "Biomass Mutation",
+   2
+  ],
+  [
+   "Silkguard",
+   2
+  ],
+  [
+   "Brass Infiniscope",
+   2
+  ],
+  [
+   "Altered Ego",
+   2
+  ],
+  [
+   "Expansion Algorithm",
+   2
+  ],
+  [
+   "Hangarback Walker",
+   2
+  ],
+  [
+   "Oversimplify",
+   2
+  ],
+  [
+   "Tangled Islet",
+   2
+  ],
+  [
+   "Primordial Hydra",
+   2
+  ],
+  [
+   "Zimone's Hypothesis",
+   2
+  ],
+  [
+   "Zimone, All-Questioning",
+   2
+  ],
+  [
+   "Eureka Moment",
+   2
+  ],
+  [
+   "Open the Way",
+   2
+  ],
+  [
+   "Nev, the Practical Dean",
+   2
+  ],
+  [
+   "Quandrix Apprentice",
+   2
+  ],
+  [
+   "Mana Bloom",
+   2
+  ],
+  [
+   "The Goose Mother",
+   2
+  ],
+  [
+   "Turbulent Wilderness",
+   2
+  ],
+  [
+   "Ozolith, the Shattered Spire",
+   2
+  ],
+  [
+   "Primal Might",
+   2
+  ],
+  [
+   "Entrancing Melody",
+   2
+  ],
+  [
+   "Ingenious Prodigy",
+   2
+  ],
+  [
+   "Primo, the Unbounded",
+   2
+  ],
+  [
+   "Troyan, Gutsy Explorer",
+   2
+  ],
+  [
+   "Fractal Harness",
+   2
+  ],
+  [
+   "Animist's Awakening",
+   2
+  ],
+  [
+   "Scorched Geyser",
+   2
+  ],
+  [
+   "Coastal Peak",
+   2
+  ],
+  [
+   "Rose Room Treasurer",
+   1
+  ],
+  [
+   "Fortune Teller's Talent",
+   1
+  ],
+  [
+   "Arthur, Marigold Knight",
+   1
+  ],
+  [
+   "Beza, the Bounding Spring",
+   1
+  ],
+  [
+   "Kodama of the East Tree",
+   1
+  ],
+  [
+   "Brightcap Badger // Fungus Frolic",
+   1
+  ],
+  [
+   "Grothama, All-Devouring",
+   1
+  ],
+  [
+   "Evercoat Ursine",
+   1
+  ],
+  [
+   "Riverguard's Reflexes",
+   1
+  ],
+  [
+   "Firdoch Core",
+   1
+  ],
+  [
+   "Kinscaer Sentry",
+   1
+  ],
+  [
+   "Reaping Willow",
+   1
+  ],
+  [
+   "Morningtide's Light",
+   1
+  ],
+  [
+   "Lavaleaper",
+   1
+  ],
+  [
+   "Keep Out",
+   1
+  ],
+  [
+   "Walk-In Closet // Forgotten Cellar",
+   1
+  ],
+  [
+   "Sabotender",
+   1
+  ],
+  [
+   "Mina and Denn, Wildborn",
+   1
+  ],
+  [
+   "Iridescent Vinelasher",
+   1
+  ],
+  [
+   "Tannuk, Memorial Ensign",
+   1
+  ],
+  [
+   "Nahiri's Lithoforming",
+   1
+  ],
+  [
+   "Crib Swap",
+   1
+  ],
+  [
+   "Feral Deathgorger // Dusk Sight",
+   1
+  ],
+  [
+   "Riling Dawnbreaker // Signaling Roar",
+   1
+  ],
+  [
+   "Twinmaw Stormbrood // Charring Bite",
+   1
+  ],
+  [
+   "Scavenger Regent // Exude Toxin",
+   1
+  ],
+  [
+   "Kinbinding",
+   1
+  ],
+  [
+   "Scuzzback Scrounger",
+   1
+  ],
+  [
+   "Mirrormind Crown",
+   1
+  ],
+  [
+   "Pyrrhic Strike",
+   1
+  ],
+  [
+   "Ashling, Rekindled // Ashling, Rimebound",
+   1
+  ],
+  [
+   "Glen Elendra's Answer",
+   1
+  ],
+  [
+   "Sanar, Innovative First-Year",
+   1
+  ],
+  [
+   "Wild Unraveling",
+   1
+  ],
+  [
+   "End-Blaze Epiphany",
+   1
+  ],
+  [
+   "Boulder Dash",
+   1
+  ],
+  [
+   "Goatnap",
+   1
+  ],
+  [
+   "Mirrorform",
+   1
+  ],
+  [
+   "Noggle the Mind",
+   1
+  ],
+  [
+   "Goliath Daydreamer",
+   1
+  ],
+  [
+   "Blossombind",
+   1
+  ],
+  [
+   "Aquitect's Defenses",
+   1
+  ],
+  [
+   "Disruptor of Currents",
+   1
+  ],
+  [
+   "Unexpected Assistance",
+   1
+  ],
+  [
+   "Westvale Abbey // Ormendahl, Profane Prince",
+   1
+  ],
+  [
+   "Spymaster's Vault",
+   1
+  ],
+  [
+   "Culling the Weak",
+   1
+  ],
+  [
+   "Stridehangar Automaton",
+   1
+  ],
+  [
+   "Midgar, City of Mako // Reactor Raid",
+   1
+  ],
+  [
+   "Forsaken Miner",
+   1
+  ],
+  [
+   "Jadar, Ghoulcaller of Nephalia",
+   1
+  ],
+  [
+   "Snuff Out",
+   1
+  ],
+  [
+   "Greedy Freebooter",
+   1
+  ],
+  [
+   "Saw in Half",
+   1
+  ],
+  [
+   "Volrath's Stronghold",
+   1
+  ],
+  [
+   "Sephiroth, Fabled SOLDIER // Sephiroth, One-Winged Angel",
+   1
+  ],
+  [
+   "Rev, Tithe Extractor",
+   1
+  ],
+  [
+   "Timeline Culler",
+   1
+  ],
+  [
+   "Flare of Malice",
+   1
+  ],
+  [
+   "Ophiomancer",
+   1
+  ],
+  [
+   "Entish Restoration",
+   1
+  ],
+  [
+   "Archdruid's Charm",
+   1
+  ],
+  [
+   "Staff of Titania",
+   1
+  ],
+  [
+   "Tifa's Limit Break",
+   1
+  ],
+  [
+   "Overprotect",
+   1
+  ],
+  [
+   "Skyclave Pick-Axe",
+   1
+  ],
+  [
+   "Claim the Kingdom",
+   1
+  ],
+  [
+   "Scythecat Cub",
+   1
+  ],
+  [
+   "Ride the Shoopuf",
+   1
+  ],
+  [
+   "Tifa Lockhart",
+   1
+  ],
+  [
+   "Tamiyo's Safekeeping",
+   1
+  ],
+  [
+   "Bristly Bill, Spine Sower",
+   1
+  ],
+  [
+   "Planar Engineering",
+   1
+  ],
+  [
+   "Ram Through",
+   1
+  ],
+  [
+   "Blackblade Reforged",
+   1
+  ],
+  [
+   "Invigorate",
+   1
+  ],
+  [
+   "Roaring Earth",
+   1
+  ],
+  [
+   "Scale Up",
+   1
+  ],
+  [
+   "Mightform Harmonizer",
+   1
+  ],
+  [
+   "Noble Hierarch",
+   1
+  ],
+  [
+   "Mental Misstep",
+   1
+  ],
+  [
+   "Tropical Island",
+   1
+  ],
+  [
+   "Elvish Spirit Guide",
+   1
+  ],
+  [
+   "Deathrite Shaman",
+   1
+  ],
+  [
+   "Kenrith, the Returned King",
+   1
+  ],
+  [
+   "Soaring Lightbringer",
+   1
+  ],
+  [
+   "Bilbo's Gambit",
+   1
+  ],
+  [
+   "Shimmerwilds Growth",
+   1
+  ],
+  [
+   "Wolfwillow Haven",
+   1
+  ],
+  [
+   "Gleaming Splendor",
+   1
+  ],
+  [
+   "Kenrith's Transformation",
+   1
+  ],
+  [
+   "Hushwood Verge",
+   1
+  ],
+  [
+   "Katilda, Dawnhart Martyr // Katilda's Rising Dawn",
+   1
+  ],
+  [
+   "Champions from Beyond",
+   1
+  ],
+  [
+   "Gauntlets of Light",
+   1
+  ],
+  [
+   "Secret Arcade // Dusty Parlor",
+   1
+  ],
+  [
+   "Gandalf the White",
+   1
+  ],
+  [
+   "The Celestus",
+   1
+  ],
+  [
+   "Ratadrabik of Urborg",
+   1
+  ],
+  [
+   "Surge of Salvation",
+   1
+  ],
+  [
+   "Kambal, Profiteering Mayor",
+   1
+  ],
+  [
+   "Urza's Ruinous Blast",
+   1
+  ],
+  [
+   "Loran's Escape",
+   1
+  ],
+  [
+   "Boromir, Warden of the Tower",
+   1
+  ],
+  [
+   "Gollum, Patient Plotter",
+   1
+  ],
+  [
+   "Bartolom\u00e9 del Presidio",
+   1
+  ],
+  [
+   "Ayara, First of Locthwain",
+   1
+  ],
+  [
+   "Bloodflow Connoisseur",
+   1
+  ],
+  [
+   "Nasty End",
+   1
+  ],
+  [
+   "War of the Last Alliance",
+   1
+  ],
+  [
+   "Lotho, Corrupt Shirriff",
+   1
+  ],
+  [
+   "Samwise the Stouthearted",
+   1
+  ],
+  [
+   "Nazg\u00fbl",
+   1
+  ],
+  [
+   "Cruel Celebrant",
+   1
+  ],
+  [
+   "Teysa Karlov",
+   1
+  ],
+  [
+   "Tender Wildguide",
+   1
+  ],
+  [
+   "Charismatic Conqueror",
+   1
+  ],
+  [
+   "Wildfire Awakener",
+   1
+  ],
+  [
+   "Baylen, the Haymaker",
+   1
+  ],
+  [
+   "The Cabbage Merchant",
+   1
+  ],
+  [
+   "Rosie Cotton of South Lane",
+   1
+  ],
+  [
+   "Brigid, Clachan's Heart // Brigid, Doun's Mind",
+   1
+  ],
+  [
+   "Springleaf Parade",
+   1
+  ],
+  [
+   "Season of the Burrow",
+   1
+  ],
+  [
+   "The Battle of Bywater",
+   1
+  ],
+  [
+   "Jinnie Fay, Jetmir's Second",
+   1
+  ],
+  [
+   "Ocelot Pride",
+   1
+  ],
+  [
+   "Knuckles the Echidna",
+   1
+  ],
+  [
+   "Cadira, Caller of the Small",
+   1
+  ],
+  [
+   "Forth Eorlingas!",
+   1
+  ],
+  [
+   "Farmer Cotton",
+   1
+  ],
+  [
+   "Artifact Mutation",
+   1
+  ],
+  [
+   "Aura Mutation",
+   1
+  ],
+  [
+   "Secure the Wastes",
+   1
+  ],
+  [
+   "Jolene, the Plunder Queen",
+   1
+  ],
+  [
+   "Sanctum Prelate",
+   1
+  ],
+  [
+   "Deafening Silence",
+   1
+  ],
+  [
+   "Heritage Druid",
+   1
+  ],
+  [
+   "Autumn's Veil",
+   1
+  ],
+  [
+   "Duskwatch Recruiter // Krallenhorde Howler",
+   1
+  ],
+  [
+   "Regrowth",
+   1
+  ],
+  [
+   "Castle Garenbrig",
+   1
+  ],
+  [
+   "Manglehorn",
+   1
+  ],
+  [
+   "Endurance",
+   1
+  ],
+  [
+   "Ashaya, Soul of the Wild",
+   1
+  ],
+  [
+   "Wirewood Symbiote",
+   1
+  ],
+  [
+   "Carpet of Flowers",
+   1
+  ],
+  [
+   "Scryb Ranger",
+   1
+  ],
+  [
+   "Quirion Ranger",
+   1
+  ],
+  [
+   "Allosaurus Shepherd",
+   1
+  ],
+  [
+   "Concordant Crossroads",
+   1
+  ],
+  [
+   "Joraga Treespeaker",
+   1
+  ],
+  [
+   "G'raha Tia, Scion Reborn",
+   1
+  ],
+  [
+   "Y'shtola Rhul",
+   1
+  ],
+  [
+   "Jin-Gitaxias // The Great Synthesis",
+   1
+  ],
+  [
+   "Mai, Scornful Striker",
+   1
+  ],
+  [
+   "Starscape Cleric",
+   1
+  ],
+  [
+   "Papalymo Totolymo",
+   1
+  ],
+  [
+   "Fandaniel, Telophoroi Ascian",
+   1
+  ],
+  [
+   "Valeria Richards, Precocious",
+   1
+  ],
+  [
+   "Wizard's Staff",
+   1
+  ],
+  [
+   "The Destined Black Mage",
+   1
+  ],
+  [
+   "Kambal, Consul of Allocation",
+   1
+  ],
+  [
+   "Helm of the Ghastlord",
+   1
+  ],
+  [
+   "Cornered by Black Mages",
+   1
+  ],
+  [
+   "Lyse Hext",
+   1
+  ],
+  [
+   "Circle of Power",
+   1
+  ],
+  [
+   "Y'shtola, Night's Blessed",
+   1
+  ],
+  [
+   "Uncover the Moon-Letters",
+   1
+  ],
+  [
+   "Black Mage's Rod",
+   1
+  ],
+  [
+   "Chrome Host Seedshark",
+   1
+  ],
+  [
+   "Brainsurge",
+   1
+  ],
+  [
+   "Hermes, Overseer of Elpis",
+   1
+  ],
+  [
+   "Enduring Tenacity",
+   1
+  ],
+  [
+   "Karn Liberated",
+   1
+  ],
+  [
+   "Lifeline",
+   1
+  ],
+  [
+   "Lifecrafter's Bestiary",
+   1
+  ],
+  [
+   "Woodfall Primus",
+   1
+  ],
+  [
+   "Liege of the Hollows",
+   1
+  ],
+  [
+   "Fecundity",
+   1
+  ],
+  [
+   "Garruk, Primal Hunter",
+   1
+  ],
+  [
+   "Juniper Order Ranger",
+   1
+  ],
+  [
+   "Nim Deathmantle",
+   1
+  ],
+  [
+   "Twilight Drover",
+   1
+  ],
+  [
+   "Angelic Renewal",
+   1
+  ],
+  [
+   "Spawning Pit",
+   1
+  ],
+  [
+   "Slate of Ancestry",
+   1
+  ],
+  [
+   "Enduring Renewal",
+   1
+  ],
+  [
+   "Aluren",
+   1
+  ],
+  [
+   "Life's Legacy",
+   1
+  ],
+  [
+   "Tymna the Weaver + Tana, the Bloodsower",
+   1
+  ],
+  [
+   "Rule of Law",
+   1
+  ],
+  [
+   "Giver of Runes",
+   1
+  ],
+  [
+   "Leonin Arbiter",
+   1
+  ],
+  [
+   "Thalia, Guardian of Thraben",
+   1
+  ],
+  [
+   "Tithe Taker",
+   1
+  ],
+  [
+   "Leyline of the Void",
+   1
+  ],
+  [
+   "Gaea's Cradle",
+   1
+  ],
+  [
+   "Kataki, War's Wage",
+   1
+  ],
+  [
+   "Oakhame Adversary",
+   1
+  ],
+  [
+   "Tana, the Bloodsower",
+   1
+  ],
+  [
+   "Wear // Tear",
+   1
+  ],
+  [
+   "Medomai the Ageless",
+   1
+  ],
+  [
+   "Thopter Assembly",
+   1
+  ],
+  [
+   "Filigree Angel",
+   1
+  ],
+  [
+   "Faerie Artisans",
+   1
+  ],
+  [
+   "Alela, Artful Provocateur",
+   1
+  ],
+  [
+   "Sword of Light and Shadow",
+   1
+  ],
+  [
+   "Kaldra Compleat",
+   1
+  ],
+  [
+   "Platinum Angel",
+   1
+  ],
+  [
+   "Render Silent",
+   1
+  ],
+  [
+   "Jubilant Skybonder",
+   1
+  ],
+  [
+   "Mystic Gate",
+   1
+  ],
+  [
+   "Open the Vaults",
+   1
+  ],
+  [
+   "Sphinx Summoner",
+   1
+  ],
+  [
+   "Tidehollow Strix",
+   1
+  ],
+  [
+   "Thopter Spy Network",
+   1
+  ],
+  [
+   "Sharding Sphinx",
+   1
+  ],
+  [
+   "Zur the Enchanter",
+   1
+  ],
+  [
+   "Black Market",
+   1
+  ],
+  [
+   "Latchkey Faerie",
+   1
+  ],
+  [
+   "Decadent Dragon // Expensive Taste",
+   1
+  ],
+  [
+   "Hex Magic",
+   1
+  ],
+  [
+   "Passionate Archaeologist",
+   1
+  ],
+  [
+   "Dream Devourer",
+   1
+  ],
+  [
+   "Improvisation Capstone",
+   1
+  ],
+  [
+   "Wrenn's Resolve",
+   1
+  ],
+  [
+   "Ingenious Artillerist",
+   1
+  ],
+  [
+   "Commune with Lava",
+   1
+  ],
+  [
+   "Reckless Impulse",
+   1
+  ],
+  [
+   "Fevered Suspicion",
+   1
+  ],
+  [
+   "You Find Some Prisoners",
+   1
+  ],
+  [
+   "Reckless Endeavor",
+   1
+  ],
+  [
+   "Wild-Magic Sorcerer",
+   1
+  ],
+  [
+   "Grim Hireling",
+   1
+  ],
+  [
+   "Hurl Through Hell",
+   1
+  ],
+  [
+   "Smaug, Wicked Worm",
+   1
+  ],
+  [
+   "Weftstalker Ardent",
+   1
+  ],
+  [
+   "Laelia, the Blade Reforged",
+   1
+  ],
+  [
+   "Crime Novelist",
+   1
+  ],
+  [
+   "Delay",
+   1
+  ],
+  [
+   "March of Swirling Mist",
+   1
+  ],
+  [
+   "Talion, the Kindly Lord",
+   1
+  ],
+  [
+   "Dakkon Blackblade",
+   1
+  ],
+  [
+   "Energy Field",
+   1
+  ],
+  [
+   "A-The One Ring",
+   1
+  ],
+  [
+   "Flood of Recollection",
+   1
+  ],
+  [
+   "Boseiju, Who Shelters All",
+   1
+  ],
+  [
+   "Approach of the Second Sun",
+   1
+  ],
+  [
+   "Stasis",
+   1
+  ],
+  [
+   "Reprieve",
+   1
+  ],
+  [
+   "Kraum, Ludevic's Opus",
+   1
+  ],
+  [
+   "Winter Orb",
+   1
+  ],
+  [
+   "A-Orcish Bowmasters",
+   1
+  ],
+  [
+   "Kraum, Ludevic's Opus + Tymna the Weaver",
+   1
+  ],
+  [
+   "Flame of Anor",
+   1
+  ],
+  [
+   "Capture of Jingzhou",
+   1
+  ],
+  [
+   "Emergence Zone",
+   1
+  ],
+  [
+   "Merchant Scroll",
+   1
+  ],
+  [
+   "Stormcarved Coast",
+   1
+  ],
+  [
+   "Temporal Trespass",
+   1
+  ],
+  [
+   "Quantum Misalignment",
+   1
+  ],
+  [
+   "Aetherspouts",
+   1
+  ],
+  [
+   "Personal Tutor",
+   1
+  ],
+  [
+   "City of Traitors",
+   1
+  ],
+  [
+   "Resculpt",
+   1
+  ],
+  [
+   "Time Warp",
+   1
+  ],
+  [
+   "Academy Ruins",
+   1
+  ],
+  [
+   "Gandalf the Grey",
+   1
+  ],
+  [
+   "Nexus of Fate",
+   1
+  ],
+  [
+   "Alrund's Epiphany",
+   1
+  ],
+  [
+   "Swooping Pteranodon",
+   1
+  ],
+  [
+   "Welcome to . . . // Jurassic Park",
+   1
+  ],
+  [
+   "Runic Armasaur",
+   1
+  ],
+  [
+   "Wakening Sun's Avatar",
+   1
+  ],
+  [
+   "Curious Altisaur",
+   1
+  ],
+  [
+   "Burning Sun's Avatar",
+   1
+  ],
+  [
+   "Pantlaza, Sun-Favored",
+   1
+  ],
+  [
+   "Sawhorn Nemesis",
+   1
+  ],
+  [
+   "Sunfrill Imitator",
+   1
+  ],
+  [
+   "Thrashing Brontodon",
+   1
+  ],
+  [
+   "Dinosaurs on a Spaceship",
+   1
+  ],
+  [
+   "Temple Altisaur",
+   1
+  ],
+  [
+   "Goring Ceratops",
+   1
+  ],
+  [
+   "Earthshaker Dreadmaw",
+   1
+  ],
+  [
+   "Tranquil Frillback",
+   1
+  ],
+  [
+   "Trumpeting Carnosaur",
+   1
+  ],
+  [
+   "Don't Move",
+   1
+  ],
+  [
+   "Agonasaur Rex",
+   1
+  ],
+  [
+   "Final Showdown",
+   1
+  ],
+  [
+   "Bronzebeak Foragers",
+   1
+  ],
+  [
+   "Verdant Sun's Avatar",
+   1
+  ],
+  [
+   "The Skullspore Nexus",
+   1
+  ],
+  [
+   "Faith's Reward",
+   1
+  ],
+  [
+   "Apex Altisaur",
+   1
+  ],
+  [
+   "Topiary Stomper",
+   1
+  ],
+  [
+   "Kinjalli's Sunwing",
+   1
+  ],
+  [
+   "Yidaro, Wandering Monster",
+   1
+  ],
+  [
+   "Gishath, Sun's Avatar",
+   1
+  ],
+  [
+   "Regal Behemoth",
+   1
+  ],
+  [
+   "Finale of Revelation",
+   1
+  ],
+  [
+   "Galvanic Iteration",
+   1
+  ],
+  [
+   "Izzet Boilerworks",
+   1
+  ],
+  [
+   "Radical Idea",
+   1
+  ],
+  [
+   "Winged Boots",
+   1
+  ],
+  [
+   "Crackling Spellslinger",
+   1
+  ],
+  [
+   "Shark Typhoon",
+   1
+  ],
+  [
+   "Veyran, Voice of Duality",
+   1
+  ],
+  [
+   "Volcanic Torrent",
+   1
+  ],
+  [
+   "Forger's Foundry",
+   1
+  ],
+  [
+   "Windfall",
+   1
+  ],
+  [
+   "Lock and Load",
+   1
+  ],
+  [
+   "Baral's Expertise",
+   1
+  ],
+  [
+   "Leyline Dowser",
+   1
+  ],
+  [
+   "Octavia, Living Thesis",
+   1
+  ],
+  [
+   "Pteramander",
+   1
+  ],
+  [
+   "Bloodthirsty Adversary",
+   1
+  ],
+  [
+   "Finale of Promise",
+   1
+  ],
+  [
+   "Goblin Electromancer",
+   1
+  ],
+  [
+   "Pongify",
+   1
+  ],
+  [
+   "Smoldering Stagecoach",
+   1
+  ],
+  [
+   "Eris, Roar of the Storm",
+   1
+  ],
+  [
+   "Talrand, Sky Summoner",
+   1
+  ],
+  [
+   "Kaza, Roil Chaser",
+   1
+  ],
+  [
+   "Elemental Eruption",
+   1
+  ],
+  [
+   "Stella Lee, Wild Card",
+   1
+  ],
+  [
+   "Pyretic Charge",
+   1
+  ],
+  [
+   "Thunderclap Drake",
+   1
+  ],
+  [
+   "Rousing Refrain",
+   1
+  ],
+  [
+   "Haughty Djinn",
+   1
+  ],
+  [
+   "Fiery Islet",
+   1
+  ],
+  [
+   "Wheel of Misfortune",
+   1
+  ],
+  [
+   "Fabricate",
+   1
+  ],
+  [
+   "Springleaf Drum",
+   1
+  ],
+  [
+   "Dispel",
+   1
+  ],
+  [
+   "Brainstone",
+   1
+  ],
+  [
+   "Impulse",
+   1
+  ],
+  [
+   "Monastery Mentor",
+   1
+  ],
+  [
+   "Universal Solvent",
+   1
+  ],
+  [
+   "Mystical Dispute",
+   1
+  ],
+  [
+   "Mox Opal",
+   1
+  ],
+  [
+   "Thought Scour",
+   1
+  ],
+  [
+   "Sokka, Tenacious Tactician",
+   1
+  ],
+  [
+   "Ragavan, Nimble Pilferer",
+   1
+  ],
+  [
+   "Retraction Helix",
+   1
+  ],
+  [
+   "Stifle",
+   1
+  ],
+  [
+   "Jeskai Ascendancy",
+   1
+  ],
+  [
+   "Banishing Knack",
+   1
+  ],
+  [
+   "Repeal",
+   1
+  ],
+  [
+   "Pieces of the Puzzle",
+   1
+  ],
+  [
+   "Transmute Artifact",
+   1
+  ],
+  [
+   "Echo of Eons",
+   1
+  ],
+  [
+   "Emergent Woodwurm",
+   1
+  ],
+  [
+   "Conduit of Ruin",
+   1
+  ],
+  [
+   "Dreg Recycler",
+   1
+  ],
+  [
+   "Okiba Reckoner Raid // Nezumi Road Captain",
+   1
+  ],
+  [
+   "Staff of Nin",
+   1
+  ],
+  [
+   "God-Pharaoh's Statue",
+   1
+  ],
+  [
+   "Echoes of Eternity",
+   1
+  ],
+  [
+   "Lesser Masticore",
+   1
+  ],
+  [
+   "Planar Bridge",
+   1
+  ],
+  [
+   "Thornbow Archer",
+   1
+  ],
+  [
+   "Leechridden Swamp",
+   1
+  ],
+  [
+   "Ulamog's Crusher",
+   1
+  ],
+  [
+   "Wondrous Crucible",
+   1
+  ],
+  [
+   "Blooming Marsh",
+   1
+  ],
+  [
+   "Terastodon",
+   1
+  ],
+  [
+   "Myojin of Night's Reach",
+   1
+  ],
+  [
+   "Vicious Conquistador",
+   1
+  ],
+  [
+   "Ward of Bones",
+   1
+  ],
+  [
+   "Devourer of Destiny",
+   1
+  ],
+  [
+   "Night Market Lookout",
+   1
+  ],
+  [
+   "Lampad of Death's Vigil",
+   1
+  ],
+  [
+   "Mardu Shadowspear",
+   1
+  ],
+  [
+   "Up the Beanstalk",
+   1
+  ],
+  [
+   "Lodestone Golem",
+   1
+  ],
+  [
+   "Thrull Parasite",
+   1
+  ],
+  [
+   "Zhulodok, Void Gorger",
+   1
+  ],
+  [
+   "Pulse Tracker",
+   1
+  ],
+  [
+   "Sanctum of Stone Fangs",
+   1
+  ],
+  [
+   "Shepherd of Rot",
+   1
+  ],
+  [
+   "Belbe, Corrupted Observer",
+   1
+  ],
+  [
+   "Drossclaw",
+   1
+  ],
+  [
+   "In Garruk's Wake",
+   1
+  ],
+  [
+   "Oblivion Sower",
+   1
+  ],
+  [
+   "Loyal Subordinate",
+   1
+  ],
+  [
+   "Metastatic Evangel",
+   1
+  ],
+  [
+   "Contagion Engine",
+   1
+  ],
+  [
+   "Venerated Rotpriest",
+   1
+  ],
+  [
+   "Sword of Truth and Justice",
+   1
+  ],
+  [
+   "Skithiryx, the Blight Dragon",
+   1
+  ],
+  [
+   "Tekuthal, Inquiry Dominus",
+   1
+  ],
+  [
+   "Dreamtide Whale",
+   1
+  ],
+  [
+   "Prologue to Phyresis",
+   1
+  ],
+  [
+   "Experimental Augury",
+   1
+  ],
+  [
+   "Spara's Headquarters",
+   1
+  ],
+  [
+   "Voidwing Hybrid",
+   1
+  ],
+  [
+   "Viral Drake",
+   1
+  ],
+  [
+   "Vorinclex, Monstrous Raider",
+   1
+  ],
+  [
+   "Tainted Observer",
+   1
+  ],
+  [
+   "Radstorm",
+   1
+  ],
+  [
+   "Ezuri, Stalker of Spheres",
+   1
+  ],
+  [
+   "Flux Channeler",
+   1
+  ],
+  [
+   "Ajani, Sleeper Agent",
+   1
+  ],
+  [
+   "Blighted Agent",
+   1
+  ],
+  [
+   "Indatha Triome",
+   1
+  ],
+  [
+   "Inkmoth Nexus",
+   1
+  ],
+  [
+   "Contentious Plan",
+   1
+  ],
+  [
+   "Obyra, Dreaming Duelist",
+   1
+  ],
+  [
+   "Hypnotic Sprite // Mesmeric Glare",
+   1
+  ],
+  [
+   "Secluded Glen",
+   1
+  ],
+  [
+   "Tegwyll, Duke of Splendor",
+   1
+  ],
+  [
+   "Malleable Impostor",
+   1
+  ],
+  [
+   "Nettling Nuisance",
+   1
+  ],
+  [
+   "Nymris, Oona's Trickster",
+   1
+  ],
+  [
+   "Glen Elendra Liege",
+   1
+  ],
+  [
+   "Shadow Puppeteers",
+   1
+  ],
+  [
+   "Faerie Bladecrafter",
+   1
+  ],
+  [
+   "Faerie Seer",
+   1
+  ],
+  [
+   "Nightmare Unmaking",
+   1
+  ],
+  [
+   "Picklock Prankster // Free the Fae",
+   1
+  ],
+  [
+   "Sower of Temptation",
+   1
+  ],
+  [
+   "Halo Forager",
+   1
+  ],
+  [
+   "Misleading Signpost",
+   1
+  ],
+  [
+   "Repulse",
+   1
+  ],
+  [
+   "Alela, Cunning Conqueror",
+   1
+  ],
+  [
+   "Brazen Borrower // Petty Theft",
+   1
+  ],
+  [
+   "Oona, Queen of the Fae",
+   1
+  ],
+  [
+   "Spellscorn Coven // Take It Back",
+   1
+  ],
+  [
+   "Theoretical Duplication",
+   1
+  ],
+  [
+   "Tainted Isle",
+   1
+  ],
+  [
+   "Tegwyll's Scouring",
+   1
+  ],
+  [
+   "Keep Watch",
+   1
+  ],
+  [
+   "Blightwing Bandit",
+   1
+  ],
+  [
+   "Dimir Aqueduct",
+   1
+  ],
+  [
+   "Reckless Spite",
+   1
+  ],
+  [
+   "Spell Stutter",
+   1
+  ],
+  [
+   "Faerie Formation",
+   1
+  ],
+  [
+   "Nightveil Sprite",
+   1
+  ],
+  [
+   "Snap",
+   1
+  ],
+  [
+   "Thrilling Encore",
+   1
+  ],
+  [
+   "Archmage of Echoes",
+   1
+  ],
+  [
+   "Quickling",
+   1
+  ],
+  [
+   "Nightscape Familiar",
+   1
+  ],
+  [
+   "Tainted Strike",
+   1
+  ],
+  [
+   "Ob Nixilis, Captive Kingpin",
+   1
+  ],
+  [
+   "Descent into Avernus",
+   1
+  ],
+  [
+   "Risk Factor",
+   1
+  ],
+  [
+   "City on Fire",
+   1
+  ],
+  [
+   "Blackcleave Cliffs",
+   1
+  ],
+  [
+   "Tor Wauki the Younger",
+   1
+  ],
+  [
+   "Needle Drop",
+   1
+  ],
+  [
+   "Neheb, the Eternal",
+   1
+  ],
+  [
+   "Mechanized Warfare",
+   1
+  ],
+  [
+   "Bladebrand",
+   1
+  ],
+  [
+   "Offer Immortality",
+   1
+  ],
+  [
+   "Torbran, Thane of Red Fell",
+   1
+  ],
+  [
+   "Urabrask // The Great Work",
+   1
+  ],
+  [
+   "Aphotic Wisps",
+   1
+  ],
+  [
+   "Glittering Stockpile",
+   1
+  ],
+  [
+   "Sawblade Scamp",
+   1
+  ],
+  [
+   "Valakut Awakening // Valakut Stoneforge",
+   1
+  ],
+  [
+   "Runaway Steam-Kin",
+   1
+  ],
+  [
+   "You Are Already Dead",
+   1
+  ],
+  [
+   "Mana Geyser",
+   1
+  ],
+  [
+   "Crimson Wisps",
+   1
+  ],
+  [
+   "Solphim, Mayhem Dominus",
+   1
+  ],
+  [
+   "Syphon Soul",
+   1
+  ],
+  [
+   "Blood for the Blood God!",
+   1
+  ],
+  [
+   "Obosh, the Preypiercer",
+   1
+  ],
+  [
+   "Crash Through",
+   1
+  ],
+  [
+   "Renegade Tactics",
+   1
+  ],
+  [
+   "Reckless Handling",
+   1
+  ],
+  [
+   "Pestilent Spirit",
+   1
+  ],
+  [
+   "Expedite",
+   1
+  ],
+  [
+   "Seething Song",
+   1
+  ],
+  [
+   "Mirrodin Avenged",
+   1
+  ],
+  [
+   "Baloth Prime",
+   1
+  ],
+  [
+   "Eumidian Wastewaker",
+   1
+  ],
+  [
+   "Maestros Theater",
+   1
+  ],
+  [
+   "Gaze of Granite",
+   1
+  ],
+  [
+   "Planetary Annihilation",
+   1
+  ],
+  [
+   "Rocky Tar Pit",
+   1
+  ],
+  [
+   "Centaur Vinecrasher",
+   1
+  ],
+  [
+   "Worldsoul's Rage",
+   1
+  ],
+  [
+   "Loamcrafter Faun",
+   1
+  ],
+  [
+   "Dakmor Salvage",
+   1
+  ],
+  [
+   "Hammer of Purphoros",
+   1
+  ],
+  [
+   "Titania, Protector of Argoth",
+   1
+  ],
+  [
+   "Szarel, Genesis Shepherd",
+   1
+  ],
+  [
+   "Scouring Swarm",
+   1
+  ],
+  [
+   "Escape to the Wilds",
+   1
+  ],
+  [
+   "Formless Genesis",
+   1
+  ],
+  [
+   "Festering Thicket",
+   1
+  ],
+  [
+   "Augur of Autumn",
+   1
+  ],
+  [
+   "Soul of Windgrace",
+   1
+  ],
+  [
+   "Mountain Valley",
+   1
+  ],
+  [
+   "Pest Infestation",
+   1
+  ],
+  [
+   "Wastes",
+   1
+  ],
+  [
+   "Uurg, Spawn of Turg",
+   1
+  ],
+  [
+   "Evendo Brushrazer",
+   1
+  ],
+  [
+   "Groundskeeper",
+   1
+  ],
+  [
+   "Omnath, Locus of Rage",
+   1
+  ],
+  [
+   "Juri, Master of the Revue",
+   1
+  ],
+  [
+   "Aftermath Analyst",
+   1
+  ],
+  [
+   "Sprouting Goblin",
+   1
+  ],
+  [
+   "Exploration Broodship",
+   1
+  ],
+  [
+   "Grinning Ignus",
+   1
+  ],
+  [
+   "Zealous Conscripts",
+   1
+  ],
+  [
+   "Unholy Heat",
+   1
+  ],
+  [
+   "Dwarven Recruiter",
+   1
+  ],
+  [
+   "Kuldotha Forgemaster",
+   1
+  ],
+  [
+   "Sundial of the Infinite",
+   1
+  ],
+  [
+   "Rimrock Knight // Boulder Rush",
+   1
+  ],
+  [
+   "Sudden Shock",
+   1
+  ],
+  [
+   "Vault Robber",
+   1
+  ],
+  [
+   "Ensnaring Bridge",
+   1
+  ],
+  [
+   "Castle Embereth",
+   1
+  ],
+  [
+   "Kiki-Jiki, Mirror Breaker",
+   1
+  ],
+  [
+   "Legion Loyalist",
+   1
+  ],
+  [
+   "Bloodline Pretender",
+   1
+  ],
+  [
+   "Goblin Matron",
+   1
+  ],
+  [
+   "Cryptic Caves",
+   1
+  ],
+  [
+   "Magda, Brazen Outlaw",
+   1
+  ],
+  [
+   "Galvanic Blast",
+   1
+  ],
+  [
+   "There and Back Again",
+   1
+  ],
+  [
+   "Dwarven Forge-Chanter",
+   1
+  ],
+  [
+   "Cathartic Reunion",
+   1
+  ],
+  [
+   "Seven Dwarves",
+   1
+  ],
+  [
+   "Final Fortune",
+   1
+  ],
+  [
+   "Sokenzan, Crucible of Defiance",
+   1
+  ],
+  [
+   "Phyrexian Revoker",
+   1
+  ],
+  [
+   "Tibalt's Trickery",
+   1
+  ],
+  [
+   "Magmatic Insight",
+   1
+  ],
+  [
+   "Trinisphere",
+   1
+  ],
+  [
+   "Mines of Moria",
+   1
+  ],
+  [
+   "Gimli, Counter of Kills",
+   1
+  ],
+  [
+   "Magda, the Hoardmaster",
+   1
+  ],
+  [
+   "Tyrite Sanctum",
+   1
+  ],
+  [
+   "Arcane Lighthouse",
+   1
+  ],
+  [
+   "Shattered Angel",
+   1
+  ],
+  [
+   "Search for Glory",
+   1
+  ],
+  [
+   "Urza's Incubator",
+   1
+  ],
+  [
+   "Archangel of Tithes",
+   1
+  ],
+  [
+   "Sigarda's Aid",
+   1
+  ],
+  [
+   "Emeria, the Sky Ruin",
+   1
+  ],
+  [
+   "Valkyrie Harbinger",
+   1
+  ],
+  [
+   "Righteous Valkyrie",
+   1
+  ],
+  [
+   "Heirloom Blade",
+   1
+  ],
+  [
+   "Bishop of Wings",
+   1
+  ],
+  [
+   "Cleansing Nova",
+   1
+  ],
+  [
+   "Angel of Vitality",
+   1
+  ],
+  [
+   "Starnheim Aspirant",
+   1
+  ],
+  [
+   "Arden Angel",
+   1
+  ],
+  [
+   "The Book of Exalted Deeds",
+   1
+  ],
+  [
+   "Karoo",
+   1
+  ],
+  [
+   "Emeria Shepherd",
+   1
+  ],
+  [
+   "Marble Diamond",
+   1
+  ],
+  [
+   "Throne of Eldraine",
+   1
+  ],
+  [
+   "Angelic Field Marshal",
+   1
+  ],
+  [
+   "Angel of Serenity",
+   1
+  ],
+  [
+   "Dawnbreak Reclaimer",
+   1
+  ],
+  [
+   "Endless Atlas",
+   1
+  ],
+  [
+   "Breathkeeper Seraph",
+   1
+  ],
+  [
+   "Pearl Medallion",
+   1
+  ],
+  [
+   "Speaker of the Heavens",
+   1
+  ],
+  [
+   "Griffin Aerie",
+   1
+  ],
+  [
+   "Angelic Accord",
+   1
+  ],
+  [
+   "Nykthos Paragon",
+   1
+  ],
+  [
+   "Invoke the Divine",
+   1
+  ],
+  [
+   "Cosmos Elixir",
+   1
+  ],
+  [
+   "Oketra's Monument",
+   1
+  ],
+  [
+   "Bonders' Enclave",
+   1
+  ],
+  [
+   "Arch of Orazca",
+   1
+  ],
+  [
+   "Mazemind Tome",
+   1
+  ],
+  [
+   "Kindred Boon",
+   1
+  ],
+  [
+   "Entreat the Angels",
+   1
+  ],
+  [
+   "Seraph Sanctuary",
+   1
+  ],
+  [
+   "Orcish Siegemaster",
+   1
+  ],
+  [
+   "Boon of the Wish-Giver",
+   1
+  ],
+  [
+   "Knollspine Dragon",
+   1
+  ],
+  [
+   "Relic of Sauron",
+   1
+  ],
+  [
+   "The Mouth of Sauron",
+   1
+  ],
+  [
+   "Saruman, the White Hand",
+   1
+  ],
+  [
+   "Revenge of Ravens",
+   1
+  ],
+  [
+   "Goblin Dark-Dwellers",
+   1
+  ],
+  [
+   "Treasure Nabber",
+   1
+  ],
+  [
+   "Lord of the Nazg\u00fbl",
+   1
+  ],
+  [
+   "Gr\u00edma, Saruman's Footman",
+   1
+  ],
+  [
+   "Subjugate the Hobbits",
+   1
+  ],
+  [
+   "Goblin Cratermaker",
+   1
+  ],
+  [
+   "Hostage Taker",
+   1
+  ],
+  [
+   "Grishn\u00e1kh, Brash Instigator",
+   1
+  ],
+  [
+   "Summons of Saruman",
+   1
+  ],
+  [
+   "Monstrosity of the Lake",
+   1
+  ],
+  [
+   "Troll of Khazad-d\u00fbm",
+   1
+  ],
+  [
+   "The Balrog of Moria",
+   1
+  ],
+  [
+   "Desolate Lighthouse",
+   1
+  ],
+  [
+   "Too Greedily, Too Deep",
+   1
+  ],
+  [
+   "Rampaging War Mammoth",
+   1
+  ],
+  [
+   "Wake the Dragon",
+   1
+  ],
+  [
+   "Extract from Darkness",
+   1
+  ],
+  [
+   "Bitter Downfall",
+   1
+  ],
+  [
+   "Lidless Gaze",
+   1
+  ],
+  [
+   "Sauron, Lord of the Rings",
+   1
+  ],
+  [
+   "Treason of Isengard",
+   1
+  ],
+  [
+   "Shelob, Dread Weaver",
+   1
+  ],
+  [
+   "Voracious Fell Beast",
+   1
+  ],
+  [
+   "In the Darkness Bind Them",
+   1
+  ],
+  [
+   "Corsairs of Umbar",
+   1
+  ],
+  [
+   "Languish",
+   1
+  ],
+  [
+   "Okoye, Mighty and Adored",
+   1
+  ],
+  [
+   "Dispatch",
+   1
+  ],
+  [
+   "Kimoyo Beads",
+   1
+  ],
+  [
+   "Shuri's Fabricator",
+   1
+  ],
+  [
+   "Overwhelming Stampede",
+   1
+  ],
+  [
+   "Fight for the Throne",
+   1
+  ],
+  [
+   "Metalwork Colossus",
+   1
+  ],
+  [
+   "Zuri, Warrior of Wakanda",
+   1
+  ],
+  [
+   "Nakia, Wakandan Operative",
+   1
+  ],
+  [
+   "Panther Habit",
+   1
+  ],
+  [
+   "Fleecemane Lion",
+   1
+  ],
+  [
+   "King Solomon's Frogs",
+   1
+  ],
+  [
+   "T'Chaka, Venerable King",
+   1
+  ],
+  [
+   "Bast, Panther Goddess",
+   1
+  ],
+  [
+   "T'Challa, the Black Panther",
+   1
+  ],
+  [
+   "Trading Post",
+   1
+  ],
+  [
+   "Dora Milaje Elite",
+   1
+  ],
+  [
+   "Scourglass",
+   1
+  ],
+  [
+   "Scattered Groves",
+   1
+  ],
+  [
+   "Divine Visitation",
+   1
+  ],
+  [
+   "Royal Talon Fighter Jet",
+   1
+  ],
+  [
+   "Wakanda Forever!",
+   1
+  ],
+  [
+   "Vibranium Mining Mech",
+   1
+  ],
+  [
+   "The Great Mound",
+   1
+  ],
+  [
+   "Storm, Queen of Wakanda",
+   1
+  ],
+  [
+   "Heart-Shaped Herb",
+   1
+  ],
+  [
+   "Valorous Stance",
+   1
+  ],
+  [
+   "Everett K. Ross, Hapless Attach\u00e9",
+   1
+  ],
+  [
+   "Panther Robot",
+   1
+  ],
+  [
+   "Ancestral Communion",
+   1
+  ],
+  [
+   "M'Baku, Jabari Chieftain",
+   1
+  ],
+  [
+   "Queen Mother Ramonda",
+   1
+  ],
+  [
+   "Midnight Angel Armor",
+   1
+  ],
+  [
+   "Hammer of Nazahn",
+   1
+  ],
+  [
+   "Hatut Zeraze Strike Force",
+   1
+  ],
+  [
+   "W'Kabi, Shield of the Nation",
+   1
+  ],
+  [
+   "Shuri, the Black Panther",
+   1
+  ],
+  [
+   "Mind's Eye",
+   1
+  ],
+  [
+   "N'Yami-Class Mother Ship",
+   1
+  ],
+  [
+   "Vibranium Strike Gauntlets",
+   1
+  ],
+  [
+   "Loyal Retainers",
+   1
+  ],
+  [
+   "Whispersilk Cloak",
+   1
+  ],
+  [
+   "The Spear of Bashenga",
+   1
+  ],
+  [
+   "Loyal Guardian",
+   1
+  ],
+  [
+   "Hammerhead Tyrant",
+   1
+  ],
+  [
+   "Glorybringer",
+   1
+  ],
+  [
+   "Lathliss, Dragon Queen",
+   1
+  ],
+  [
+   "Keiga, the Tide Star",
+   1
+  ],
+  [
+   "Thunderbreak Regent",
+   1
+  ],
+  [
+   "Ureni of the Unwritten",
+   1
+  ],
+  [
+   "Draconic Lore",
+   1
+  ],
+  [
+   "Temple of the Dragon Queen",
+   1
+  ],
+  [
+   "Whirlwing Stormbrood // Dynamic Soar",
+   1
+  ],
+  [
+   "Nesting Dragon",
+   1
+  ],
+  [
+   "Bountiful Landscape",
+   1
+  ],
+  [
+   "Territorial Hellkite",
+   1
+  ],
+  [
+   "Taurean Mauler",
+   1
+  ],
+  [
+   "Temur Ascendancy",
+   1
+  ],
+  [
+   "Deceptive Frostkite",
+   1
+  ],
+  [
+   "Eshki, Temur's Roar",
+   1
+  ],
+  [
+   "Rapacious Dragon",
+   1
+  ],
+  [
+   "Atsushi, the Blazing Sky",
+   1
+  ],
+  [
+   "Stormbreath Dragon",
+   1
+  ],
+  [
+   "Leyline Tyrant",
+   1
+  ],
+  [
+   "Spit Flame",
+   1
+  ],
+  [
+   "Storm's Wrath",
+   1
+  ],
+  [
+   "Nogi, Draco-Zealot",
+   1
+  ],
+  [
+   "Elemental Bond",
+   1
+  ],
+  [
+   "Haven of the Spirit Dragon",
+   1
+  ],
+  [
+   "Opportunistic Dragon",
+   1
+  ],
+  [
+   "Parapet Thrasher",
+   1
+  ],
+  [
+   "Dragonlord Atarka",
+   1
+  ],
+  [
+   "Broodcaller Scourge",
+   1
+  ],
+  [
+   "Dragonlord's Servant",
+   1
+  ],
+  [
+   "Will of the Temur",
+   1
+  ],
+  [
+   "Selvala's Stampede",
+   1
+  ],
+  [
+   "Sarkhan, Soul Aflame",
+   1
+  ],
+  [
+   "Harbinger of the Hunt",
+   1
+  ],
+  [
+   "Verix Bladewing",
+   1
+  ],
+  [
+   "Thundermane Dragon",
+   1
+  ],
+  [
+   "Skarrgan Hellkite",
+   1
+  ],
+  [
+   "Become the Avalanche",
+   1
+  ],
+  [
+   "Zenith Festival",
+   1
+  ],
+  [
+   "Atarka, World Render",
+   1
+  ],
+  [
+   "Rockfall Vale",
+   1
+  ],
+  [
+   "Dragon's Hoard",
+   1
+  ],
+  [
+   "Frontier Siege",
+   1
+  ],
+  [
+   "Dragonmaster Outcast",
+   1
+  ],
+  [
+   "The Warring Triad",
+   1
+  ],
+  [
+   "Geothermal Bog",
+   1
+  ],
+  [
+   "Interceptor, Shadow's Hound",
+   1
+  ],
+  [
+   "Siegfried, Famed Swordsman",
+   1
+  ],
+  [
+   "Edgar, Master Machinist",
+   1
+  ],
+  [
+   "Mog, Moogle Warrior",
+   1
+  ],
+  [
+   "Banon, the Returners' Leader",
+   1
+  ],
+  [
+   "Laughing Mad",
+   1
+  ],
+  [
+   "Desolate Mire",
+   1
+  ],
+  [
+   "Sacred Peaks",
+   1
+  ],
+  [
+   "General Leo Cristophe",
+   1
+  ],
+  [
+   "Shadow, Mysterious Assassin",
+   1
+  ],
+  [
+   "Ruin Grinder",
+   1
+  ],
+  [
+   "Sunlit Marsh",
+   1
+  ],
+  [
+   "Sabin, Master Monk",
+   1
+  ],
+  [
+   "Strago and Relm",
+   1
+  ],
+  [
+   "The Falcon, Airship Restored",
+   1
+  ],
+  [
+   "Celes, Rune Knight",
+   1
+  ],
+  [
+   "Phoenix Down",
+   1
+  ],
+  [
+   "Priest of Fell Rites",
+   1
+  ],
+  [
+   "Cyan, Vengeful Samurai",
+   1
+  ],
+  [
+   "Summon: Esper Valigarmanda",
+   1
+  ],
+  [
+   "Terra, Herald of Hope",
+   1
+  ],
+  [
+   "Kefka, Dancing Mad",
+   1
+  ],
+  [
+   "Combustible Gearhulk",
+   1
+  ],
+  [
+   "Legions to Ashes",
+   1
+  ],
+  [
+   "Umaro, Raging Yeti",
+   1
+  ],
+  [
+   "Tragic Arrogance",
+   1
+  ],
+  [
+   "Coin of Fate",
+   1
+  ],
+  [
+   "Setzer, Wandering Gambler",
+   1
+  ],
+  [
+   "Archfiend of Depravity",
+   1
+  ],
+  [
+   "Locke, Treasure Hunter",
+   1
+  ],
+  [
+   "Gau, Feral Youth",
+   1
+  ],
+  [
+   "Rejoin the Fight",
+   1
+  ],
+  [
+   "Flayer of the Hatebound",
+   1
+  ],
+  [
+   "Stitch Together",
+   1
+  ],
+  [
+   "Espers to Magicite",
+   1
+  ],
+  [
+   "Sigiled Sword of Valeron",
+   1
+  ],
+  [
+   "Xerex Strobe-Knight",
+   1
+  ],
+  [
+   "Thriving Moor",
+   1
+  ],
+  [
+   "Aryel, Knight of Windgrace",
+   1
+  ],
+  [
+   "Foulmire Knight // Profane Insight",
+   1
+  ],
+  [
+   "Fell the Mighty",
+   1
+  ],
+  [
+   "Maul of the Skyclaves",
+   1
+  ],
+  [
+   "Chivalric Alliance",
+   1
+  ],
+  [
+   "Conjurer's Mantle",
+   1
+  ],
+  [
+   "Vodalian Wave-Knight",
+   1
+  ],
+  [
+   "Hero of Bladehold",
+   1
+  ],
+  [
+   "Murderous Rider // Swift End",
+   1
+  ],
+  [
+   "Silverwing Squadron",
+   1
+  ],
+  [
+   "Ichor Elixir",
+   1
+  ],
+  [
+   "Knight Exemplar",
+   1
+  ],
+  [
+   "Path of the Enigma",
+   1
+  ],
+  [
+   "Knights' Charge",
+   1
+  ],
+  [
+   "Arvad the Cursed",
+   1
+  ],
+  [
+   "Elenda and Azor",
+   1
+  ],
+  [
+   "Knights of the Black Rose",
+   1
+  ],
+  [
+   "Liliana's Standard Bearer",
+   1
+  ],
+  [
+   "Smitten Swordmaster // Curry Favor",
+   1
+  ],
+  [
+   "Corpse Knight",
+   1
+  ],
+  [
+   "Valiant Knight",
+   1
+  ],
+  [
+   "Haakon, Stromgald Scourge",
+   1
+  ],
+  [
+   "Josu Vess, Lich Knight",
+   1
+  ],
+  [
+   "Painful Truths",
+   1
+  ],
+  [
+   "Vona, Butcher of Magan",
+   1
+  ],
+  [
+   "Wintermoor Commander",
+   1
+  ],
+  [
+   "Order of Midnight // Alter Fate",
+   1
+  ],
+  [
+   "Acclaimed Contender",
+   1
+  ],
+  [
+   "Knight of the Last Breath",
+   1
+  ],
+  [
+   "Sidar Jabari of Zhalfir",
+   1
+  ],
+  [
+   "Worthy Knight",
+   1
+  ],
+  [
+   "Syr Elenora, the Discerning",
+   1
+  ],
+  [
+   "Exsanguinator Cavalry",
+   1
+  ],
+  [
+   "Fractured Powerstone",
+   1
+  ],
+  [
+   "Locthwain Lancer",
+   1
+  ],
+  [
+   "Herald of Hoofbeats",
+   1
+  ],
+  [
+   "Unbreakable Formation",
+   1
+  ],
+  [
+   "Midnight Reaper",
+   1
+  ],
+  [
+   "Mist Dancer",
+   1
+  ],
+  [
+   "Ripples of Potential",
+   1
+  ],
+  [
+   "Ruinous Intrusion",
+   1
+  ],
+  [
+   "Hakbal of the Surging Soul",
+   1
+  ],
+  [
+   "Xolatoyac, the Smiling Flood",
+   1
+  ],
+  [
+   "Branching Evolution",
+   1
+  ],
+  [
+   "Benthic Biomancer",
+   1
+  ],
+  [
+   "Tishana, Voice of Thunder",
+   1
+  ],
+  [
+   "Herald of Secret Streams",
+   1
+  ],
+  [
+   "Merfolk Cave-Diver",
+   1
+  ],
+  [
+   "Commit // Memory",
+   1
+  ],
+  [
+   "Master of the Pearl Trident",
+   1
+  ],
+  [
+   "Bygone Marvels",
+   1
+  ],
+  [
+   "Kumena, Tyrant of Orazca",
+   1
+  ],
+  [
+   "Deeproot Historian",
+   1
+  ],
+  [
+   "Merfolk Skydiver",
+   1
+  ],
+  [
+   "Coralhelm Commander",
+   1
+  ],
+  [
+   "Deeproot Elite",
+   1
+  ],
+  [
+   "Stonybrook Banneret",
+   1
+  ],
+  [
+   "Kopala, Warden of Waves",
+   1
+  ],
+  [
+   "Svyelun of Sea and Sky",
+   1
+  ],
+  [
+   "Tributary Instructor",
+   1
+  ],
+  [
+   "Thieving Skydiver",
+   1
+  ],
+  [
+   "Surgespanner",
+   1
+  ],
+  [
+   "Topography Tracker",
+   1
+  ],
+  [
+   "Merfolk Mistbinder",
+   1
+  ],
+  [
+   "Ravenform",
+   1
+  ],
+  [
+   "Zegana, Utopian Speaker",
+   1
+  ],
+  [
+   "Merfolk Sovereign",
+   1
+  ],
+  [
+   "Prime Speaker Zegana",
+   1
+  ],
+  [
+   "Thassa, God of the Sea",
+   1
+  ],
+  [
+   "Wave Goodbye",
+   1
+  ],
+  [
+   "Cold-Eyed Selkie",
+   1
+  ],
+  [
+   "Singer of Swift Rivers",
+   1
+  ],
+  [
+   "Sage of Fables",
+   1
+  ],
+  [
+   "Merrow Reejerey",
+   1
+  ],
+  [
+   "Deeproot Waters",
+   1
+  ],
+  [
+   "Seafloor Oracle",
+   1
+  ],
+  [
+   "Simic Ascendancy",
+   1
+  ],
+  [
+   "Emperor Mihail II",
+   1
+  ],
+  [
+   "Realmwalker",
+   1
+  ],
+  [
+   "Nicanzil, Current Conductor",
+   1
+  ],
+  [
+   "Staff of Compleation",
+   1
+  ],
+  [
+   "Carrion Call",
+   1
+  ],
+  [
+   "White Sun's Twilight",
+   1
+  ],
+  [
+   "Phyrexian Obliterator",
+   1
+  ],
+  [
+   "Geth's Summons",
+   1
+  ],
+  [
+   "Expand the Sphere",
+   1
+  ],
+  [
+   "Culling Ritual",
+   1
+  ],
+  [
+   "Krosan Verge",
+   1
+  ],
+  [
+   "Bilious Skulldweller",
+   1
+  ],
+  [
+   "Tyrranax Rex",
+   1
+  ],
+  [
+   "Trailblazer's Boots",
+   1
+  ],
+  [
+   "Norn's Choirmaster",
+   1
+  ],
+  [
+   "Sword of Forge and Frontier",
+   1
+  ],
+  [
+   "Feed the Infection",
+   1
+  ],
+  [
+   "Fumigate",
+   1
+  ],
+  [
+   "Plague Myr",
+   1
+  ],
+  [
+   "Wurmquake",
+   1
+  ],
+  [
+   "Phyrexian Rebirth",
+   1
+  ],
+  [
+   "Contagion Clasp",
+   1
+  ],
+  [
+   "Mycosynth Fiend",
+   1
+  ],
+  [
+   "Vat Emergence",
+   1
+  ],
+  [
+   "Phyrexian Atlas",
+   1
+  ],
+  [
+   "Vishgraz, the Doomhive",
+   1
+  ],
+  [
+   "Spectacular Showdown",
+   1
+  ],
+  [
+   "Ransom Note",
+   1
+  ],
+  [
+   "Darien, King of Kjeldor",
+   1
+  ],
+  [
+   "Immortal Obligation",
+   1
+  ],
+  [
+   "Orzhov Advokist",
+   1
+  ],
+  [
+   "Mob Verdict",
+   1
+  ],
+  [
+   "Curse of Opulence",
+   1
+  ],
+  [
+   "Rite of the Raging Storm",
+   1
+  ],
+  [
+   "Stalking Leonin",
+   1
+  ],
+  [
+   "Needle Spires",
+   1
+  ],
+  [
+   "Nelly Borca, Impulsive Accuser",
+   1
+  ],
+  [
+   "Soul Snare",
+   1
+  ],
+  [
+   "Kazuul, Tyrant of the Cliffs",
+   1
+  ],
+  [
+   "Boros Reckoner",
+   1
+  ],
+  [
+   "Ancient Stone Idol",
+   1
+  ],
+  [
+   "Feather, Radiant Arbiter",
+   1
+  ],
+  [
+   "Smuggler's Share",
+   1
+  ],
+  [
+   "Trouble in Pairs",
+   1
+  ],
+  [
+   "Boros Garrison",
+   1
+  ],
+  [
+   "Brash Taunter",
+   1
+  ],
+  [
+   "Fiendish Duo",
+   1
+  ],
+  [
+   "Agitator Ant",
+   1
+  ],
+  [
+   "Selfless Squire",
+   1
+  ],
+  [
+   "Duelist's Heritage",
+   1
+  ],
+  [
+   "Vow of Duty",
+   1
+  ],
+  [
+   "Prisoner's Dilemma",
+   1
+  ],
+  [
+   "Labyrinth of Skophos",
+   1
+  ],
+  [
+   "Disrupt Decorum",
+   1
+  ],
+  [
+   "Havoc Eater",
+   1
+  ],
+  [
+   "Bloodthirsty Blade",
+   1
+  ],
+  [
+   "Gideon's Sacrifice",
+   1
+  ],
+  [
+   "Slayers' Stronghold",
+   1
+  ],
+  [
+   "Comeuppance",
+   1
+  ],
+  [
+   "Windborn Muse",
+   1
+  ],
+  [
+   "Access Tunnel",
+   1
+  ],
+  [
+   "Hot Pursuit",
+   1
+  ],
+  [
+   "Otherworldly Escort",
+   1
+  ],
+  [
+   "Take the Bait",
+   1
+  ],
+  [
+   "Vow of Lightning",
+   1
+  ],
+  [
+   "Frontier Warmonger",
+   1
+  ],
+  [
+   "Redemption Arc",
+   1
+  ],
+  [
+   "Anya, Merciless Angel",
+   1
+  ],
+  [
+   "Wickerbough Elder",
+   1
+  ],
+  [
+   "Park Heights Maverick",
+   1
+  ],
+  [
+   "Exotic Pets",
+   1
+  ],
+  [
+   "Vivid Creek",
+   1
+  ],
+  [
+   "Aven Courier",
+   1
+  ],
+  [
+   "Kros, Defense Contractor",
+   1
+  ],
+  [
+   "Wingspan Mentor",
+   1
+  ],
+  [
+   "Angelic Sleuth",
+   1
+  ],
+  [
+   "Brokers Confluence",
+   1
+  ],
+  [
+   "Primal Empathy",
+   1
+  ],
+  [
+   "Declaration in Stone",
+   1
+  ],
+  [
+   "Littjara Mirrorlake",
+   1
+  ],
+  [
+   "Fathom Mage",
+   1
+  ],
+  [
+   "Power Conduit",
+   1
+  ],
+  [
+   "Jenara, Asura of War",
+   1
+  ],
+  [
+   "Incubation Druid",
+   1
+  ],
+  [
+   "Crystalline Giant",
+   1
+  ],
+  [
+   "Agent's Toolkit",
+   1
+  ],
+  [
+   "Family's Favor",
+   1
+  ],
+  [
+   "Nesting Grounds",
+   1
+  ],
+  [
+   "Oblivion Stone",
+   1
+  ],
+  [
+   "Planar Outburst",
+   1
+  ],
+  [
+   "Resourceful Defense",
+   1
+  ],
+  [
+   "Oracle's Vault",
+   1
+  ],
+  [
+   "Together Forever",
+   1
+  ],
+  [
+   "Slippery Bogbonder",
+   1
+  ],
+  [
+   "Vivid Meadow",
+   1
+  ],
+  [
+   "Perrie, the Pulverizer",
+   1
+  ],
+  [
+   "Contractual Safeguard",
+   1
+  ],
+  [
+   "Storm of Forms",
+   1
+  ],
+  [
+   "Roalesk, Apex Hybrid",
+   1
+  ],
+  [
+   "Denry Klin, Editor in Chief",
+   1
+  ],
+  [
+   "Vivid Grove",
+   1
+  ],
+  [
+   "Gavel of the Righteous",
+   1
+  ],
+  [
+   "Skyboon Evangelist",
+   1
+  ],
+  [
+   "Urban Evolution",
+   1
+  ],
+  [
+   "Aven Mimeomancer",
+   1
+  ],
+  [
+   "Bribe Taker",
+   1
+  ],
+  [
+   "Avenging Huntbonder",
+   1
+  ],
+  [
+   "Brokers Charm",
+   1
+  ],
+  [
+   "Bant Panorama",
+   1
+  ],
+  [
+   "Wall of Roots",
+   1
+  ],
+  [
+   "Ajani Unyielding",
+   1
+  ],
+  [
+   "Skyship Plunderer",
+   1
+  ],
+  [
+   "Damning Verdict",
+   1
+  ],
+  [
+   "Bant Charm",
+   1
+  ],
+  [
+   "Kang Dynasty",
+   1
+  ],
+  [
+   "Iron Monger, Sadistic Tycoon",
+   1
+  ],
+  [
+   "Containment Construct",
+   1
+  ],
+  [
+   "Age of Ultron",
+   1
+  ],
+  [
+   "Endless Ranks of HYDRA",
+   1
+  ],
+  [
+   "Damocles Base, Sword of Kang",
+   1
+  ],
+  [
+   "Klaw, Master of Sound",
+   1
+  ],
+  [
+   "Stilt-Man, Towering Terror",
+   1
+  ],
+  [
+   "Withering Torment",
+   1
+  ],
+  [
+   "Abomination, World Ravager",
+   1
+  ],
+  [
+   "Superior Foes of Spider-Man",
+   1
+  ],
+  [
+   "Syphon Mind",
+   1
+  ],
+  [
+   "Doctor Doom, King of Latveria",
+   1
+  ],
+  [
+   "Extract Power",
+   1
+  ],
+  [
+   "Kang, Temporal Tyrant",
+   1
+  ],
+  [
+   "Villainous Hideout",
+   1
+  ],
+  [
+   "Titania, Proud Pummeler",
+   1
+  ],
+  [
+   "Puppet Master, String Puller",
+   1
+  ],
+  [
+   "Tri-Sentinel, Act of Vengeance",
+   1
+  ],
+  [
+   "Red Ghost, Intangible Genius",
+   1
+  ],
+  [
+   "Kang Prime",
+   1
+  ],
+  [
+   "Currency Converter",
+   1
+  ],
+  [
+   "Prowler, Clawed Thief",
+   1
+  ],
+  [
+   "Batroc the Leaper",
+   1
+  ],
+  [
+   "Lady Loki, Agent of Chaos",
+   1
+  ],
+  [
+   "Tombstone, Career Criminal",
+   1
+  ],
+  [
+   "Glorious Purpose",
+   1
+  ],
+  [
+   "Killmonger, Ruthless Usurper",
+   1
+  ],
+  [
+   "Helmut Zemo, Mastermind",
+   1
+  ],
+  [
+   "Loki's Scepter",
+   1
+  ],
+  [
+   "The Frightful Four",
+   1
+  ],
+  [
+   "Ultron, Unlimited",
+   1
+  ],
+  [
+   "The Squadron Sinister",
+   1
+  ],
+  [
+   "Baron Strucker, HYDRA Overlord",
+   1
+  ],
+  [
+   "Typhoid Mary, Fractured",
+   1
+  ],
+  [
+   "Madame Hydra",
+   1
+  ],
+  [
+   "Titan of Littjara",
+   1
+  ],
+  [
+   "Doom's Time Platform",
+   1
+  ],
+  [
+   "Living Laser",
+   1
+  ],
+  [
+   "Loki, the Deceiver",
+   1
+  ],
+  [
+   "Chameleon, Master of Disguise",
+   1
+  ],
+  [
+   "Molecule Man",
+   1
+  ],
+  [
+   "Archnemesis",
+   1
+  ],
+  [
+   "Moonstone, Harsh Mistress",
+   1
+  ],
+  [
+   "Progenitor's Icon",
+   1
+  ],
+  [
+   "Beseech the Queen",
+   1
+  ],
+  [
+   "Overmaster",
+   1
+  ],
+  [
+   "Flare of Duplication",
+   1
+  ],
+  [
+   "Rowan, Scion of War",
+   1
+  ],
+  [
+   "Strike It Rich",
+   1
+  ],
+  [
+   "Marvin, Murderous Mimic",
+   1
+  ],
+  [
+   "Path of the Pyromancer",
+   1
+  ],
+  [
+   "Lively Dirge",
+   1
+  ],
+  [
+   "Plunge into Darkness",
+   1
+  ],
+  [
+   "Wall of Blood",
+   1
+  ],
+  [
+   "Unearth",
+   1
+  ],
+  [
+   "Dark Petition",
+   1
+  ],
+  [
+   "Skirk Prospector",
+   1
+  ],
+  [
+   "Pirate's Pillage",
+   1
+  ],
+  [
+   "Thran Portal",
+   1
+  ],
+  [
+   "Increasing Ambition",
+   1
+  ],
+  [
+   "Patriar's Seal",
+   1
+  ],
+  [
+   "Generator Servant",
+   1
+  ],
+  [
+   "Ifnir Deadlands",
+   1
+  ],
+  [
+   "Sorceress's Schemes",
+   1
+  ],
+  [
+   "Crippling Fear",
+   1
+  ],
+  [
+   "Claim // Fame",
+   1
+  ],
+  [
+   "Reckless Charge",
+   1
+  ],
+  [
+   "Apex of Power",
+   1
+  ],
+  [
+   "Diabolic Revelation",
+   1
+  ],
+  [
+   "Mount Doom",
+   1
+  ],
+  [
+   "Inspired Tinkering",
+   1
+  ],
+  [
+   "Erebos's Intervention",
+   1
+  ],
+  [
+   "Claim the Firstborn",
+   1
+  ],
+  [
+   "Final Parting",
+   1
+  ],
+  [
+   "Cruelclaw's Heist",
+   1
+  ],
+  [
+   "Reverberate",
+   1
+  ],
+  [
+   "________ Goblin",
+   1
+  ],
+  [
+   "Marshland Bloodcaster",
+   1
+  ],
+  [
+   "March of Wretched Sorrow",
+   1
+  ],
+  [
+   "Ramunap Ruins",
+   1
+  ],
+  [
+   "Ebon Stronghold",
+   1
+  ],
+  [
+   "Megaton's Fate",
+   1
+  ],
+  [
+   "Apprentice Necromancer",
+   1
+  ],
+  [
+   "Boggart Trawler // Boggart Bog",
+   1
+  ],
+  [
+   "Dwarven Ruins",
+   1
+  ],
+  [
+   "Fury Storm",
+   1
+  ],
+  [
+   "Street Wraith",
+   1
+  ],
+  [
+   "Tomb of Urami",
+   1
+  ],
+  [
+   "Searing Touch",
+   1
+  ],
+  [
+   "Behold the Beyond",
+   1
+  ],
+  [
+   "Increasing Vengeance",
+   1
+  ],
+  [
+   "Spirit Mantle",
+   1
+  ],
+  [
+   "Curse of Thirst",
+   1
+  ],
+  [
+   "Reprobation",
+   1
+  ],
+  [
+   "Ardenn, Intrepid Archaeologist",
+   1
+  ],
+  [
+   "Starnheim Courser",
+   1
+  ],
+  [
+   "Daxos the Returned",
+   1
+  ],
+  [
+   "Ghoulish Impetus",
+   1
+  ],
+  [
+   "Curse of Disturbance",
+   1
+  ],
+  [
+   "Curse of the Forsaken",
+   1
+  ],
+  [
+   "Tenuous Truce",
+   1
+  ],
+  [
+   "Ondu Spiritdancer",
+   1
+  ],
+  [
+   "Spellbook Vendor",
+   1
+  ],
+  [
+   "Parasitic Impetus",
+   1
+  ],
+  [
+   "Curse of the Restless Dead",
+   1
+  ],
+  [
+   "Pariah",
+   1
+  ],
+  [
+   "Retether",
+   1
+  ],
+  [
+   "Curse of Misfortunes",
+   1
+  ],
+  [
+   "Lurrus of the Dream-Den",
+   1
+  ],
+  [
+   "Open the Armory",
+   1
+  ],
+  [
+   "Angelic Gift",
+   1
+  ],
+  [
+   "Curse of Vitality",
+   1
+  ],
+  [
+   "Lord Skitter's Blessing",
+   1
+  ],
+  [
+   "Vow of Torment",
+   1
+  ],
+  [
+   "Transcendent Envoy",
+   1
+  ],
+  [
+   "Glistening Oil",
+   1
+  ],
+  [
+   "Vow of Malice",
+   1
+  ],
+  [
+   "Kor Spiritdancer",
+   1
+  ],
+  [
+   "Underworld Connections",
+   1
+  ],
+  [
+   "Curse of Fool's Wisdom",
+   1
+  ],
+  [
+   "Unholy Indenture",
+   1
+  ],
+  [
+   "Killian, Ink Duelist",
+   1
+  ],
+  [
+   "Vampiric Link",
+   1
+  ],
+  [
+   "Chains of Custody",
+   1
+  ],
+  [
+   "Realmbreaker's Grasp",
+   1
+  ],
+  [
+   "Rune of Mortality",
+   1
+  ],
+  [
+   "Nurgle's Rot",
+   1
+  ],
+  [
+   "Soul Link",
+   1
+  ],
+  [
+   "Sram, Senior Edificer",
+   1
+  ],
+  [
+   "Trespasser's Curse",
+   1
+  ],
+  [
+   "Timely Ward",
+   1
+  ],
+  [
+   "Curse of Exhaustion",
+   1
+  ],
+  [
+   "Danitha Capashen, Paragon",
+   1
+  ],
+  [
+   "Hero of Iroas",
+   1
+  ],
+  [
+   "Minion's Return",
+   1
+  ],
+  [
+   "Ethereal Armor",
+   1
+  ],
+  [
+   "Starfield Mystic",
+   1
+  ],
+  [
+   "Hateful Eidolon",
+   1
+  ],
+  [
+   "Unquestioned Authority",
+   1
+  ],
+  [
+   "Sage's Reverie",
+   1
+  ],
+  [
+   "Kaya's Ghostform",
+   1
+  ],
+  [
+   "Resurgent Belief",
+   1
+  ],
+  [
+   "Eriette of the Charmed Apple",
+   1
+  ],
+  [
+   "Dead Man's Chest",
+   1
+  ],
+  [
+   "Screams from Within",
+   1
+  ],
+  [
+   "Clawing Torment",
+   1
+  ],
+  [
+   "Spirit Link",
+   1
+  ],
+  [
+   "Clockwork Dragon",
+   1
+  ],
+  [
+   "Journey to Oblivion",
+   1
+  ],
+  [
+   "Cloud Key",
+   1
+  ],
+  [
+   "Strionic Resonator",
+   1
+  ],
+  [
+   "For the Emperor!",
+   1
+  ],
+  [
+   "Lembas",
+   1
+  ],
+  [
+   "Circle of Confinement",
+   1
+  ],
+  [
+   "Launch the Fleet",
+   1
+  ],
+  [
+   "New Benalia",
+   1
+  ],
+  [
+   "Basri's Lieutenant",
+   1
+  ],
+  [
+   "Rune of Sustenance",
+   1
+  ],
+  [
+   "Static Net",
+   1
+  ],
+  [
+   "Dimensional Breach",
+   1
+  ],
+  [
+   "Exclusion Ritual",
+   1
+  ],
+  [
+   "Clockwork Servant",
+   1
+  ],
+  [
+   "Sceptre of Eternal Glory",
+   1
+  ],
+  [
+   "Prison Realm",
+   1
+  ],
+  [
+   "Urza's Workshop",
+   1
+  ],
+  [
+   "Scholar of New Horizons",
+   1
+  ],
+  [
+   "Grasp of Fate",
+   1
+  ],
+  [
+   "Myr Battlesphere",
+   1
+  ],
+  [
+   "Flickerwisp",
+   1
+  ],
+  [
+   "Mentor of the Meek",
+   1
+  ],
+  [
+   "Banishment",
+   1
+  ],
+  [
+   "Mace of the Valiant",
+   1
+  ],
+  [
+   "Nevermore",
+   1
+  ],
+  [
+   "Stoic Farmer",
+   1
+  ],
+  [
+   "Final Judgment",
+   1
+  ],
+  [
+   "Ravnica at War",
+   1
+  ],
+  [
+   "Untaidake, the Cloud Keeper",
+   1
+  ],
+  [
+   "Thunder Totem",
+   1
+  ],
+  [
+   "Runed Halo",
+   1
+  ],
+  [
+   "Animal Sanctuary",
+   1
+  ],
+  [
+   "Horn of Gondor",
+   1
+  ],
+  [
+   "Mirrorworks",
+   1
+  ],
+  [
+   "Phyrexia's Core",
+   1
+  ],
+  [
+   "Priest of Ancient Lore",
+   1
+  ],
+  [
+   "Myojin of Blooming Dawn",
+   1
+  ],
+  [
+   "Sleeper Dart",
+   1
+  ],
+  [
+   "Defenders of Humanity",
+   1
+  ],
+  [
+   "Windbrisk Heights",
+   1
+  ],
+  [
+   "Idyllic Grange",
+   1
+  ],
+  [
+   "Banisher Priest",
+   1
+  ],
+  [
+   "Urza's Factory",
+   1
+  ],
+  [
+   "Panharmonicon",
+   1
+  ],
+  [
+   "Space Marine Scout",
+   1
+  ],
+  [
+   "Mobilized District",
+   1
+  ],
+  [
+   "Angel of Invention",
+   1
+  ],
+  [
+   "Faith's Fetters",
+   1
+  ],
+  [
+   "Knight Paladin",
+   1
+  ],
+  [
+   "Legion's Landing // Adanto, the First Fort",
+   1
+  ],
+  [
+   "Lavabrink Venturer",
+   1
+  ],
+  [
+   "West Coast Expansion",
+   1
+  ],
+  [
+   "Avengers Quinjet",
+   1
+  ],
+  [
+   "Thor, Asgard's Avenger",
+   1
+  ],
+  [
+   "Methods of the Mighty",
+   1
+  ],
+  [
+   "Raise the Palisade",
+   1
+  ],
+  [
+   "War Machine, Avenging Arsenal",
+   1
+  ],
+  [
+   "Captain America, Living Legend",
+   1
+  ],
+  [
+   "Bastion Protector",
+   1
+  ],
+  [
+   "Black Widow, Agile Avenger",
+   1
+  ],
+  [
+   "Folk Hero",
+   1
+  ],
+  [
+   "Heroic Sacrifice",
+   1
+  ],
+  [
+   "Shang-Chi and the Ten Rings",
+   1
+  ],
+  [
+   "Winter Soldier, Reborn Avenger",
+   1
+  ],
+  [
+   "Vision, Synthezoid Avenger",
+   1
+  ],
+  [
+   "Radiant Summit",
+   1
+  ],
+  [
+   "The Wasp, Winsome Avenger",
+   1
+  ],
+  [
+   "Hawkeye, Avenging Archer",
+   1
+  ],
+  [
+   "Rescue, Pepper Potts",
+   1
+  ],
+  [
+   "Heroic Return",
+   1
+  ],
+  [
+   "Jocasta, Automaton Avenger",
+   1
+  ],
+  [
+   "Avenge",
+   1
+  ],
+  [
+   "Patriot, Shield Wielder",
+   1
+  ],
+  [
+   "Iron Man, Armored Avenger",
+   1
+  ],
+  [
+   "Hercules, Olympian Hero",
+   1
+  ],
+  [
+   "Ant-Man, Elusive Avenger",
+   1
+  ],
+  [
+   "Love on the Battlefield",
+   1
+  ],
+  [
+   "Photon, Mighty Marvel",
+   1
+  ],
+  [
+   "She-Hulk, Wallbreaker",
+   1
+  ],
+  [
+   "Falcon and Redwing",
+   1
+  ],
+  [
+   "Director Nick Fury",
+   1
+  ],
+  [
+   "Hulkbuster Armor",
+   1
+  ],
+  [
+   "Glittering Massif",
+   1
+  ],
+  [
+   "Hero's Blade",
+   1
+  ],
+  [
+   "Captain America, Team Leader",
+   1
+  ],
+  [
+   "Rip Apart",
+   1
+  ],
+  [
+   "Door of Destinies",
+   1
+  ],
+  [
+   "Speed, Young Avenger",
+   1
+  ],
+  [
+   "Jarvis, Earth's Mightiest Butler",
+   1
+  ],
+  [
+   "Professor Hulk",
+   1
+  ],
+  [
+   "Firebird, Blazing Ranger",
+   1
+  ],
+  [
+   "Captain Mar-Vell, Space-Born",
+   1
+  ],
+  [
+   "Irrigated Farmland",
+   1
+  ],
+  [
+   "Destroy Evil",
+   1
+  ],
+  [
+   "Quicksilver, Speedster",
+   1
+  ],
+  [
+   "Scarlet Witch, Chaotic Avenger",
+   1
+  ],
+  [
+   "Avengers Tower",
+   1
+  ],
+  [
+   "Captain Marvel, Apex Avenger",
+   1
+  ],
+  [
+   "Dread Defiler",
+   1
+  ],
+  [
+   "Godhead of Awe",
+   1
+  ],
+  [
+   "Skirge Familiar",
+   1
+  ],
+  [
+   "Astral Dragon",
+   1
+  ],
+  [
+   "Highcliff Felidar",
+   1
+  ],
+  [
+   "Hashaton, Scarab's Fist",
+   1
+  ],
+  [
+   "Malcolm, Alluring Scoundrel",
+   1
+  ],
+  [
+   "Blazing Archon",
+   1
+  ],
+  [
+   "Grave Researcher // Reanimate",
+   1
+  ],
+  [
+   "Vile Mutilator",
+   1
+  ],
+  [
+   "Trickster Mage",
+   1
+  ],
+  [
+   "Chancellor of the Spires",
+   1
+  ],
+  [
+   "Aquamoeba",
+   1
+  ],
+  [
+   "Oona's Prowler",
+   1
+  ],
+  [
+   "Great Whale",
+   1
+  ],
+  [
+   "Eldrazi Displacer",
+   1
+  ],
+  [
+   "Trained Pronghorn",
+   1
+  ],
+  [
+   "Thirst for Identity",
+   1
+  ],
+  [
+   "Angelic Arbiter",
+   1
+  ],
+  [
+   "Tainted Indulgence",
+   1
+  ],
+  [
+   "Chamber of Manipulation",
+   1
+  ],
+  [
+   "Immobilizing Ink",
+   1
+  ],
+  [
+   "Exquisite Archangel",
+   1
+  ],
+  [
+   "Tireless Tribe",
+   1
+  ],
+  [
+   "Spawnsire of Ulamog",
+   1
+  ],
+  [
+   "The Walls of Ba Sing Se",
+   1
+  ],
+  [
+   "Luminate Primordial",
+   1
+  ],
+  [
+   "Psychic Frog",
+   1
+  ],
+  [
+   "Grozoth",
+   1
+  ],
+  [
+   "Cabal Initiate",
+   1
+  ],
+  [
+   "Seasoned Hallowblade",
+   1
+  ],
+  [
+   "Patrol Hound",
+   1
+  ],
+  [
+   "Olivia's Dragoon",
+   1
+  ],
+  [
+   "Faithful Mending",
+   1
+  ],
+  [
+   "Rhet-Tomb Mystic",
+   1
+  ],
+  [
+   "Pulse of the Grid",
+   1
+  ],
+  [
+   "Platinum Emperion",
+   1
+  ],
+  [
+   "Likeness Looter",
+   1
+  ],
+  [
+   "Putrid Imp",
+   1
+  ],
+  [
+   "Scuttletide",
+   1
+  ],
+  [
+   "Metamorphosis Fanatic",
+   1
+  ],
+  [
+   "Bone Miser",
+   1
+  ],
+  [
+   "The Underworld Cookbook",
+   1
+  ],
+  [
+   "Phyrexian Delver",
+   1
+  ],
+  [
+   "Mental Discipline",
+   1
+  ],
+  [
+   "Angel of Despair",
+   1
+  ],
+  [
+   "Kaito Shizuki",
+   1
+  ],
+  [
+   "Call the Bloodline",
+   1
+  ],
+  [
+   "Iron-Shield Elf",
+   1
+  ],
+  [
+   "Jace Reawakened",
+   1
+  ],
+  [
+   "Oblivion Crown",
+   1
+  ],
+  [
+   "Phantatog",
+   1
+  ],
+  [
+   "Diluvian Primordial",
+   1
+  ],
+  [
+   "Bitter Triumph",
+   1
+  ],
+  [
+   "Jin-Gitaxias, Progress Tyrant",
+   1
+  ],
+  [
+   "Psychatog",
+   1
+  ],
+  [
+   "Gleaming Overseer",
+   1
+  ],
+  [
+   "Sphinx of the Second Sun",
+   1
+  ],
+  [
+   "Nezahal, Primal Tide",
+   1
+  ],
+  [
+   "Kitsa, Otterball Elite",
+   1
+  ],
+  [
+   "Toxrill, the Corrosive",
+   1
+  ],
+  [
+   "Fleeting Spirit",
+   1
+  ],
+  [
+   "The Soul Stone",
+   1
+  ],
+  [
+   "Guardian of New Benalia",
+   1
+  ],
+  [
+   "Compulsion",
+   1
+  ],
+  [
+   "Mister Negative",
+   1
+  ],
+  [
+   "Cryptbreaker",
+   1
+  ],
+  [
+   "Gifts Ungiven",
+   1
+  ],
+  [
+   "Careful Study",
+   1
+  ],
+  [
+   "Sphinx of the Final Word",
+   1
+  ],
+  [
+   "Chancellor of the Annex",
+   1
+  ],
+  [
+   "Charm Peddler",
+   1
+  ],
+  [
+   "Absolute Virtue",
+   1
+  ],
+  [
+   "Ancient Silver Dragon",
+   1
+  ]
+ ]
+}

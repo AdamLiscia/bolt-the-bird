@@ -1417,6 +1417,13 @@ pub enum Decision {
     /// Sheoldred // The True Scriptures: `Pick` a nontoken creature or planeswalker you control to
     /// sacrifice (asked only when there is one).
     SacrificeNontokenCreatureOrPlaneswalker,
+    /// Currency Converter: `Pick` one of `cards` (exiled with it) to put into its owner's
+    /// graveyard; then a `land` token for a land card, a `nonland` token otherwise.
+    ExiledWithToGraveyard {
+        cards: Vec<ObjId>,
+        land: usize,
+        nonland: usize,
+    },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -1895,7 +1902,14 @@ pub struct Game {
     /// Saddle: the other creatures that saddled a Mount with its named one, as (mount, riders),
     /// recorded as the cost is paid for `Effect::BecomeSaddled`.
     saddle_extra: Vec<(ObjId, Vec<ObjId>)>,
+    /// The turn each player last cast a creature spell from their graveyard with Karador's
+    /// permission (`ManaExt::creature_from_graveyard_once_each_turn`).
+    pub karador_turn: [u32; 2],
 }
+
+/// `Action::CastFromGraveyardAs`'s second number for Karador, Ghost Chieftain's once-each-turn
+/// creature spell (0 through 4 are Muldrotha's permanent types).
+pub const KARADOR_CAST: u8 = 5;
 
 pub fn opponent(p: PlayerId) -> PlayerId {
     1 - p
@@ -2188,6 +2202,7 @@ impl Game {
             saddle_extra: Vec::new(),
             hand_links: Vec::new(),
             saddled: Vec::new(),
+            karador_turn: [0; 2],
         }
     }
 
@@ -5052,6 +5067,9 @@ impl Game {
                 Some(EntryDoubler::LandOrSubtype(sub)) => {
                     (land || self.has_subtype(id, sub)) && self.obj(id).controller == self.obj(x).controller
                 }
+                Some(EntryDoubler::ArtifactOrCreature) => {
+                    self.types_of(id).artifact || self.types_of(id).creature
+                }
                 None => false,
             })
             .map(|x| self.obj(x).controller)
@@ -7089,6 +7107,26 @@ impl Game {
                 }
             }
         }
+        // Karador: once during each of your turns, a creature spell from your graveyard.
+        if p == self.active
+            && self.karador_turn[p] != self.turn
+            && self.permanents(p).any(|x| {
+                self.def_of(x).mana_ext.creature_from_graveyard_once_each_turn && !self.lost_abilities(x)
+            })
+        {
+            let flash_all = self.permanents(p).any(|x| self.def_of(x).grants_flash);
+            for &c in &self.players[p].graveyard {
+                let def = self.def_of(c);
+                let timing = sorcery_timing || flash_all || def.keywords.has(Keywords::FLASH);
+                if def.types.creature
+                    && !def.types.land
+                    && timing
+                    && self.mode_affordable(p, c, CastMode::default())
+                {
+                    v.push(Action::CastFromGraveyardAs(c, KARADOR_CAST));
+                }
+            }
+        }
         // Cast from the graveyard by removing counters from your creatures.
         let available: i32 = self
             .creatures(p)
@@ -7612,6 +7650,12 @@ impl Game {
                     0
                 }
             }
+            Some(Reduction::PerCreatureCardInYourGraveyard) => self.players[p]
+                .graveyard
+                .iter()
+                .filter(|&&x| self.def_of(x).types.creature)
+                .count()
+                .min(255) as u8,
             Some(Reduction::PerInstantSorceryInGraveyard) => self.players[p]
                 .graveyard
                 .iter()
@@ -10655,7 +10699,11 @@ impl Game {
             }
             (Pending::Priority(p), Action::Cast(c)) => self.cast(p, c, CastMode::default()),
             (Pending::Priority(p), Action::CastFromGraveyardAs(c, t)) => {
-                self.graveyard_types_used[p][t as usize] = true;
+                if t == KARADOR_CAST {
+                    self.karador_turn[p] = self.turn;
+                } else {
+                    self.graveyard_types_used[p][t as usize] = true;
+                }
                 self.cast(p, c, CastMode::default());
             }
             (Pending::Priority(p), Action::CastFromGraveyard(c)) => {
@@ -13140,6 +13188,9 @@ impl Game {
             Decision::ChooseRingBearer => self.ring_bearer_options(p),
             Decision::DelinaAgain { .. } => vec![Action::Yes, Action::No],
             Decision::LetDrawOrMill { .. } => vec![Action::Yes, Action::No],
+            Decision::ExiledWithToGraveyard { cards, .. } => {
+                cards.iter().copied().map(Action::Pick).collect()
+            }
             Decision::PickOneOf { cards, .. } => cards.iter().copied().map(Action::Pick).collect(),
             Decision::LandOrCreatureFromHandTapped { creature } => {
                 let creature = *creature;
@@ -14863,6 +14914,13 @@ impl Game {
             }
             (Decision::DelinaAgain { target }, Action::Yes) => self.delina_roll(p, target),
             (Decision::DelinaAgain { .. }, Action::No) => {}
+            (Decision::ExiledWithToGraveyard { land, nonland, .. }, Action::Pick(c)) => {
+                let is_land = self.def_of(c).types.land;
+                self.exiled_with.retain(|e| e.2 != c);
+                self.move_to(c, Zone::Graveyard);
+                self.create_token(p, if is_land { land } else { nonland });
+            }
+            (Decision::ExiledWithToGraveyard { .. }, _) => {}
             (Decision::LetDrawOrMill { player, .. }, Action::Yes) => {
                 self.draw(player);
             }
@@ -19746,6 +19804,23 @@ impl Game {
                         money: Vec::new(),
                     },
                 );
+            }
+            Effect::ExiledWithSourceToGraveyardToken { land, nonland } => {
+                let szcc = self.obj(src).zcc;
+                let cards: Vec<ObjId> = self
+                    .exiled_with
+                    .iter()
+                    .filter(|&&(s, sz, c, cz)| {
+                        s == src && sz == szcc && self.obj(c).zone == Zone::Exile && self.obj(c).zcc == cz
+                    })
+                    .map(|e| e.2)
+                    .collect();
+                if !cards.is_empty() {
+                    self.ask(
+                        item.controller,
+                        Decision::ExiledWithToGraveyard { cards, land, nonland },
+                    );
+                }
             }
             Effect::TargetMayLetYouDrawElseMillKindCounters(slot) => {
                 if let Some(q) = self
