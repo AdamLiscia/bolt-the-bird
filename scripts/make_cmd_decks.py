@@ -1,6 +1,6 @@
 """The Commander training decks: every playgroup deck the engine fully supports, as a deck file (bolt.cmd_decks).
 
-    PYTHONPATH=src python scripts/make_cmd_decks.py [--out data/cmd/playable_decks.txt]
+    PYTHONPATH=src python scripts/make_cmd_decks.py [--out handoff/cmd/playable_decks.txt]
 
 Reads ~/bolt-handoff/playgroup_all.json (the playgroup's 31) and lowgame_all.json (the idea decks), the same
 lists and the same support test as scripts/debug/soak_cmd.py. Safe to re-run whenever more cards become
@@ -64,7 +64,7 @@ def playable(set_name: str = "CMD", hand: Path = HAND) -> tuple[list[tuple[list[
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--set", default="CMD")
-    ap.add_argument("--out", default=str(ROOT / "data" / "cmd" / "playable_decks.txt"))
+    ap.add_argument("--out", default=str(ROOT / "handoff" / "cmd" / "playable_decks.txt"))
     a = ap.parse_args()
     decks, skipped = playable(a.set)
     if not decks:

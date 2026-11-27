@@ -3,7 +3,7 @@ numbers, CMD by default), then the deck's name:
 
     2995 | 12 12 40 77 ... # Owner: Commander
 
-Two commanders (partners) are "a,b". scripts/make_cmd_decks.py writes data/cmd/playable_decks.txt from the
+Two commanders (partners) are "a,b". scripts/make_cmd_decks.py writes handoff/cmd/playable_decks.txt from the
 playgroup's deck lists, keeping only decks the engine fully supports; `read` loads one.
 """
 

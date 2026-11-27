@@ -19,6 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 from pad_cmd_net import pad_cards  # noqa: E402
 from test_play_commander import OLD_FEATS, OLD_GLOBALS, old_net, older  # noqa: E402
 
+from bolt.cmd_decks import read  # noqa: E402
 from bolt.play_encoding import FEATS, GLOBAL_NAMES, ZONE, collate, encode  # noqa: E402
 from bolt.play_net import PlayNet, load_checkpoint  # noqa: E402
 
@@ -60,15 +61,17 @@ def test_a_tdm_net_grown_for_commander_plays_a_tdm_position_identically():
     assert torch.equal(cmd.card.weight[shared + 1], after.card.weight[t.index(c[shared]) + 1])
 
 
-def test_real_commander_positions_encode():
-    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
-    from make_cmd_decks import playable
+DECKS = Path(__file__).resolve().parents[1] / "handoff" / "cmd" / "playable_decks.txt"
 
-    try:
-        decks, _ = playable()
-    except OSError:
-        pytest.skip("no playgroup deck lists here")
-    (ca, da, _), (cb, db, _) = decks[0], decks[1]
+
+def test_the_committed_deck_file_is_playable():
+    decks = read(DECKS)
+    ok = be.supported_mask("CMD")
+    assert len(decks) >= 2 and all(ok[c] for cmd, cards in decks for c in cmd + cards)
+
+
+def test_real_commander_positions_encode():
+    (ca, da), (cb, db) = read(DECKS)[:2]
     g = be.Game.commander(da, db, ca, cb, 5, first=0, set="CMD")
     seen = set()
     for _ in range(300):
@@ -86,19 +89,12 @@ def test_real_commander_positions_encode():
 
 
 def test_the_runner_plays_commander_games(monkeypatch):
-    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
-    from make_cmd_decks import playable
-
     import bolt.play_runner as pr
 
-    try:
-        decks, _ = playable()
-    except OSError:
-        pytest.skip("no playgroup deck lists here")
     monkeypatch.setattr(pr, "PLAY_FORMAT", "commander")
     monkeypatch.setattr(pr, "PLAY_SET", "CMD")
     monkeypatch.setenv("BOLT_PLAY_SET", "CMD")
-    d = [(c, cards) for c, cards, _ in decks[:3]]
+    d = read(DECKS)[:3]
     torch.manual_seed(0)
     net = PlayNet(n_cards=len(be.card_names("CMD")), dim=16, layers=1, heads=2).eval()
     out = pr.run_games(net, [(d[0], d[1], 7, 0), (d[2], d[0], 8, 1)], seats=("net", "net"), max_moves=300)
