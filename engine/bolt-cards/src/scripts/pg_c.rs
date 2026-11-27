@@ -2251,6 +2251,29 @@ pub fn script(name: &str) -> Option<Script> {
         "Squee, the Immortal" => s(&["You may cast this card from your graveyard or from exile."], |d, _| {
             d.zones.cast_from_graveyard_or_exile = true;
         }),
+        "Final Act" => s(
+            &[
+                "Choose one or more —",
+                "• Destroy all creatures.",
+                "• Destroy all planeswalkers.",
+                "• Destroy all battles.",
+                "• Exile all graveyards.",
+                "• Each opponent loses all counters.",
+            ],
+            |d, _| {
+                // Every nonempty set of the five modes, as one mode each (bit i: mode i), the Farewell
+                // way. The engine has no battles, so "destroy all battles" has nothing to destroy.
+                let one = |i: u32| match i {
+                    0 => vec![Effect::DestroyAllCreatures],
+                    1 => vec![Effect::DestroyAllPlaneswalkers],
+                    2 => vec![],
+                    3 => vec![Effect::ExileGraveyard { who: Who::You }, Effect::ExileGraveyard { who: Who::EachOpponent }],
+                    _ => vec![Effect::EachOpponentLosesAllCounters],
+                };
+                let sets = (1u32..32).map(|m| Ability::new(vec![], (0..5).filter(|i| m & (1 << i) != 0).flat_map(one).collect()));
+                modes(d, sets.collect());
+            },
+        ),
         "Mechanized Production" => s(
             &[
                 "Enchant artifact you control",
@@ -2527,4 +2550,5 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Bone Sabres",
     "Squee, the Immortal",
     "Mechanized Production",
+    "Final Act",
 ];
