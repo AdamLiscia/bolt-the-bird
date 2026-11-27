@@ -191,7 +191,9 @@ def main():
                 jobs.append((decks[d1], decks[d2], 20_000_000 + it * 10_000 + k * 1_000 + i, i % 2))
             opp = load_net(ck / rng.choice(state["past"])) if "opp" in seats else None
             record = tuple(i for i, s in enumerate(seats) if s == "net")
-            r = run_parallel(net, jobs, workers=a.workers, chunk=20, seats=seats, sample=True, seed=it * 100 + k,
+            # Commander games vary a lot in length: small chunks (4 a worker) keep every worker busy to the end
+            chunk = max(1, -(-len(jobs) // (4 * a.workers))) if COMMANDER else 20
+            r = run_parallel(net, jobs, workers=a.workers, chunk=chunk, seats=seats, sample=True, seed=it * 100 + k,
                              record=record, opp_net=opp, compact=True)  # fmt: skip
             part = r["arrays"]
             part["adv"], part["ret"] = gae(part, lam=a.lam)  # per matchup: game numbers restart per call
