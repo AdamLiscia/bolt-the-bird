@@ -1875,6 +1875,45 @@ fn a_subtype_to_a_graveyard_looks_back_at_static_subtypes() {
 }
 
 #[test]
+fn ygras_food_artifacts_trigger_food_and_artifact_graveyard_triggers() {
+    // Exquisite Blood with Ygra's "other creatures are Food artifacts", the Food trigger (10) and
+    // Marionette Master's "an artifact you control is put into a graveyard" (1).
+    let mut g = game_with(|defs| {
+        blood_with(vec![
+            trigger(When::SubtypeToGraveyardFromBattlefield("Food"), None, gain(10)),
+            trigger(When::ArtifactYouControlToGraveyardFromBattlefield, None, gain(1)),
+        ])(defs);
+        let d = &mut defs[cid("Exquisite Blood")];
+        d.other_creatures_are_food_artifacts = true;
+        d.statics.push(bolt_core::effect::Static {
+            scope: bolt_core::effect::Scope::This,
+            your_turn_only: false,
+            condition: None,
+            subtype: None,
+            lose_abilities: false,
+            base_pt: None,
+            protection: [false; 5],
+            scale: None,
+            power: 0,
+            toughness: 0,
+            keywords: bolt_core::Keywords::NONE,
+            set_colors: None,
+            becomes_land: false,
+        });
+    });
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    let angel = g.add_card(0, cid("Serra Angel"), Zone::Battlefield);
+    assert!(g.types_of(angel).artifact && g.has_subtype(angel, "Food"));
+    kill(&mut g, angel);
+    resolve_all(&mut g, &[]);
+    assert_eq!(life(&g, 0), 51, "a Food and an artifact as it last existed");
+    assert!(
+        !g.types_of(angel).artifact,
+        "a plain creature card in the graveyard"
+    );
+}
+
+#[test]
 fn enters_untapped_triggers_only_untapped() {
     for tapped in [false, true] {
         let mut g = game_with(|defs: &mut Vec<CardDef>| {
