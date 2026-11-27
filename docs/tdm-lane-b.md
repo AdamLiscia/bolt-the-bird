@@ -913,3 +913,17 @@ shield). Sigarda and Valgavoth not started.
 - The Necrobloom waits: dredge is a "may" draw replacement, and `draw` can't pause for a decision
   (every draw replacement so far is automatic); its landfall Zombie also needs a "seven or more lands
   with different names" condition.
+
+### Ygra and Gourmand's Talent grants (2026-11-26)
+
+- `CardDef::other_creatures_have`: activated abilities every other creature has, whoever controls it
+  (Ygra, with d3's `other_creatures_are_food_artifacts`), in `borrowed_activated`.
+- `subtype_you_control_has` now reaches any permanent of the subtype, not only creatures (Gourmand's
+  Talent's noncreature artifacts that are Foods on your turn); a granted ability equal to one the
+  permanent already has, or granted twice, is listed once.
+- `Game::activated_snapshots`: a granted, borrowed or kept ability is recorded as it's activated,
+  and `ability_of` resolves from that record, so "Sacrifice this artifact: You gain 3 life" still
+  resolves after its source is gone.
+- Gourmand's Talent scripted (blc_b). Token 14, Raccoon, is now green (its only makers, Sylvan
+  Scavenging and Gourmand's Talent, say green).
+- It That Heralds the End skipped: d3 batch 27's `Scope::OtherYourColorlessCreatures` isn't on tarkir.
