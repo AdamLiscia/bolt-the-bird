@@ -162,9 +162,9 @@
   {
    "card": "Ygra, Eater of All",
    "deck": "Ygra, Eater of All",
-   "missing": "ward\u2014sacrifice a Food; other creatures are Food artifacts with the Food ability; a Food-to-graveyard trigger [d3 batch 26: CardDef::other_creatures_are_food_artifacts (with a static so it is a static source) makes other creatures artifacts (types_of, via with_kormus_bell) and Foods (has_subtype). Still open: the granted Food ability for every other creature, any controller (subtype_you_control_has covers only yours; the merger/lane B), and ward\u2014sacrifice a Food]",
+   "missing": "d2 batch 16: the Food-to-graveyard trigger is in (When::SubtypeToGraveyardFromBattlefield(\"Food\")). d1 batch 15: ward\u2014sacrifice a Food is in (d.ward_sacrifice = 1 with d.mana_ext.ward_sacrifice_subtype = Some(\"Food\")). Still needs: other creatures are Food artifacts with the Food ability (d3, types) [script: d2, 2026-11-27, on lane B's other_creatures_have + d1's ward + d3's Food types]",
    "lane": "d1",
-   "theme": "triggers",
+   "theme": "effects",
    "owner": "d2"
   },
   {
@@ -322,10 +322,10 @@
   {
    "card": "Rhythm of the Wild",
    "deck": "Raggadragga, Goreguts Boss",
-   "missing": "creature spells you control can't be countered; riot for nontoken creatures",
+   "missing": "creature spells you control can't be countered; riot for nontoken creatures [lane C 2026-11-26: blocked on mac-b: riot for nontoken creatures, and 'creature spells you control can't be countered' (lane B, merger share); lane C's part: none]",
    "lane": "d1",
    "theme": "objects_zones",
-   "owner": "mac-c"
+   "owner": "mac-b"
   },
   {
    "card": "Chord of Calling",
@@ -362,10 +362,10 @@
   {
    "card": "Walking Ballista",
    "deck": "Raggadragga, Goreguts Boss",
-   "missing": "'Remove a +1/+1 counter from this creature' as a cost",
+   "missing": "'Remove a +1/+1 counter from this creature' as a cost [lane C 2026-11-26: blocked on d1: 'Remove a +1/+1 counter from this creature' as an activation cost; lane C's part: none; enters_with_x_counters and the {4} counter exist]",
    "lane": "d1",
    "theme": "objects_zones",
-   "owner": "mac-c"
+   "owner": "d1"
   },
   {
    "card": "Inkmoth Nexus",
@@ -850,10 +850,10 @@
   {
    "card": "Karador, Ghost Chieftain",
    "deck": "Karador, Ghost Chieftain",
-   "missing": "cost reduction per creature card in graveyard; cast a creature from your graveyard once each turn",
+   "missing": "cost reduction per creature card in graveyard; cast a creature from your graveyard once each turn [lane C 2026-11-26: blocked on d1: costs {1} less per creature card in your graveyard; lane C's part: once during each of your turns, cast a creature spell from your graveyard] [d1 takes both halves, 2026-11-27: cost reduction and the once-each-turn graveyard cast; lane C dropped its part]",
    "lane": "d1",
    "theme": "objects_zones",
-   "owner": "mac-c"
+   "owner": "d1"
   },
   {
    "card": "Loxodon Hierarch",
@@ -1250,7 +1250,7 @@
   {
    "card": "Hallowed Haunting",
    "deck": "Zacama, Primal Calamity",
-   "missing": "a 'whenever you cast an enchantment spell' trigger; a white Spirit Cleric creature token with P/T equal to Spirits you control; seven-enchantments static",
+   "missing": "a 'whenever you cast an enchantment spell' trigger; a white Spirit Cleric creature token with P/T equal to Spirits you control; seven-enchantments static [done by d2 batch 21: token 107 spirit_cleric, StaticCondition::ControlEnchantmentsAtLeast, scripted in pg_d2]",
    "lane": "d1",
    "theme": "triggers",
    "owner": "d2"
@@ -1298,7 +1298,7 @@
   {
    "card": "Sunbird's Invocation",
    "deck": "Zacama, Primal Calamity",
-   "missing": "reveal X on cast from hand, cast one free",
+   "missing": "reveal X on cast from hand, cast one free [done by d1 batch 18: When::YouCastSpellFromHand, Effect::RevealTopMvMayCastOneFree; scripted in pg_d1]",
    "lane": "d1",
    "theme": "mana",
    "owner": "d1"
@@ -1522,10 +1522,10 @@
   {
    "card": "Tergrid, God of Fright // Tergrid's Lantern",
    "deck": "The Gitrog, Ravenous Ride (RuricMo)",
-   "missing": "needs core: a trigger when an opponent sacrifices a nontoken permanent (and the back face is missing from the oracle data)",
+   "missing": "the triggers are in (OpponentSacrificesNontoken, OpponentDiscards with slot 0; Effect::Reanimate). Still needs: casting a nonland modal DFC back face (Tergrid's Lantern; modal_back plays only land backs) (Mac C)",
    "lane": "d2",
-   "theme": "triggers",
-   "owner": "d2"
+   "theme": "objects_zones",
+   "owner": "mac-c"
   },
   {
    "card": "Venser's Journal",
@@ -1706,7 +1706,7 @@
   {
    "card": "The Gitrog, Ravenous Ride",
    "deck": "The Gitrog, Ravenous Ride (RuricMo)",
-   "missing": "needs core: saddle and its 'creature that saddled it' trigger",
+   "missing": "needs core: saddle and its 'creature that saddled it' trigger [done by d1 batch 19: Activated::saddle, Effect::BecomeSaddled, Effect::SacrificeSaddlerDrawXLandsX; scripted in pg_d1]",
    "lane": "d2",
    "theme": "mana",
    "owner": "d1"
@@ -1762,10 +1762,10 @@
   {
    "card": "Witch's Cottage",
    "deck": "The Gitrog, Ravenous Ride (RuricMo)",
-   "missing": "needs core: enters tapped unless you control three or more other Swamps, and an 'enters untapped' trigger",
+   "missing": "d2 batch 16: When::EntersUntapped is in. Still needs: enters tapped unless you control three or more other Swamps (d1, land entry)",
    "lane": "d2",
-   "theme": "triggers",
-   "owner": "d2"
+   "theme": "mana",
+   "owner": "d1"
   },
   {
    "card": "Chromatic Lantern",
@@ -1866,10 +1866,10 @@
   {
    "card": "Archfiend of Despair",
    "deck": "Kaalia of the Vast",
-   "missing": "needs core: 'your opponents can't gain life', and end-step loss equal to the life lost this turn",
+   "missing": "the end-step loss is in (Effect::LoseLifeLostThisTurn, as Wound Reflection). Still needs: 'your opponents can't gain life', a static gain_life check (merger: gain_life's behaviour is outside d2's emit-only ownership)",
    "lane": "d2",
-   "theme": "triggers",
-   "owner": "d2"
+   "theme": "existing_code",
+   "owner": "merger"
   },
   {
    "card": "Armageddon",
@@ -1944,14 +1944,6 @@
    "owner": "d3"
   },
   {
-   "card": "Call of the Ring",
-   "deck": "Kaalia of the Vast",
-   "missing": "needs core: the Ring tempts you",
-   "lane": "d2",
-   "theme": "subsystems",
-   "owner": "d4"
-  },
-  {
    "card": "Demon of Death's Gate",
    "deck": "Kaalia of the Vast",
    "missing": "needs core: an alternative cost of 6 life and three black creatures",
@@ -1970,10 +1962,10 @@
   {
    "card": "Master of Cruelties",
    "deck": "Kaalia of the Vast",
-   "missing": "needs core: attacks alone, and the unblocked 'life total becomes 1'",
+   "missing": "needs core: attacks alone, and the unblocked 'life total becomes 1' [all of it borrowed by lane B, 2026-11-27: AttacksAndIsntBlocked, defender's life becomes 1, no combat damage; d2/d3 skip]",
    "lane": "d2",
    "theme": "effects",
-   "owner": "d1"
+   "owner": "mac-b"
   },
   {
    "card": "Overpowering Attack",
@@ -3418,10 +3410,10 @@
   {
    "card": "Elder Brain",
    "deck": "Sheoldred, the Apocalypse",
-   "missing": "needs core: exile the attacked player's hand, they draw that many, and you may play the exiled cards",
+   "missing": "needs core: exile the attacked player's hand, they draw that many, and you may play the exiled cards [lane C 2026-11-26: blocked on d1: spend mana as though it were mana of any color; lane C's part: exile the hand, they draw that many, play the exiled cards while exiled (uses playable)]",
    "lane": "d3",
    "theme": "objects_zones",
-   "owner": "mac-c"
+   "owner": "d1"
   },
   {
    "card": "Feed the Swarm",
@@ -3462,14 +3454,6 @@
    "lane": "d3",
    "theme": "effects",
    "owner": "d3"
-  },
-  {
-   "card": "Well of Lost Dreams",
-   "deck": "Sheoldred, the Apocalypse",
-   "missing": "needs core: pay {X} up to the life gained to draw X cards",
-   "lane": "d3",
-   "theme": "triggers",
-   "owner": "d2"
   },
   {
    "card": "Witch of the Moors",
@@ -3600,14 +3584,6 @@
    "owner": "d1"
   },
   {
-   "card": "Hullbreaker Horror",
-   "deck": "Animar, Soul of Elements",
-   "missing": "needs core: a choose-up-to-one trigger on each spell you cast, bouncing a spell you don't control",
-   "lane": "d3",
-   "theme": "triggers",
-   "owner": "d2"
-  },
-  {
    "card": "Hydroid Krasis",
    "deck": "Animar, Soul of Elements",
    "missing": "needs core: a cast trigger for half X life and half X cards",
@@ -3626,18 +3602,18 @@
   {
    "card": "The Ozolith",
    "deck": "Animar, Soul of Elements",
-   "missing": "needs core: keep the counters of creatures leaving and move them",
+   "missing": "needs core: keep the counters of creatures leaving and move them [lane C 2026-11-26: blocked on d2: a 'creature you control leaves the battlefield, if it had counters' trigger with its last-known counters; lane C's part: keeping the counters on The Ozolith and moving them at the beginning of combat]",
    "lane": "d3",
    "theme": "objects_zones",
-   "owner": "mac-c"
+   "owner": "d2"
   },
   {
    "card": "Vizier of the Menagerie",
    "deck": "Animar, Soul of Elements",
-   "missing": "needs core: cast creature spells from the top of your library, and spend mana as any type for them",
+   "missing": "needs core: cast creature spells from the top of your library, and spend mana as any type for them [lane C 2026-11-26: blocked on d1: spend mana of any type to cast creature spells; lane C's part: none; top_spells_creatures exists]",
    "lane": "d3",
    "theme": "objects_zones",
-   "owner": "mac-c"
+   "owner": "d1"
   },
   {
    "card": "Ancestral Statue",
@@ -3730,10 +3706,10 @@
   {
    "card": "Somberwald Sage",
    "deck": "Animar, Soul of Elements",
-   "missing": "needs core: three mana of one chosen color (the payer would split the colors)",
+   "missing": "needs core: three mana of one chosen color (the payer would split the colors) [lane C 2026-11-26: blocked on d1: three mana of one chosen color, spendable only on creature spells; lane C's part: none]",
    "lane": "d3",
    "theme": "objects_zones",
-   "owner": "mac-c"
+   "owner": "d1"
   },
   {
    "card": "Spellskite",
@@ -4530,7 +4506,7 @@
   {
    "card": "Palant\u00edr of Orthanc",
    "deck": "Zhulodok, Void Gorger (Adam)",
-   "missing": "trigger (Zhulodok: cast trigger; its cascade is d3's)",
+   "missing": "trigger (Zhulodok: cast trigger; its cascade is d3's) [done by d2 batch 22: Effect::TargetMayLetYouDrawElseMillKindCounters, Decision::LetDrawOrMill, scripted in pg_d2]",
    "lane": "mac-b",
    "theme": "triggers",
    "owner": "d2"
@@ -4802,7 +4778,7 @@
   {
    "card": "Oloro, Ageless Ascetic",
    "deck": "Oloro, Ageless Ascetic (Adam)",
-   "missing": "upkeep/end-step conditional triggers",
+   "missing": "upkeep/end-step conditional triggers [done by d2 batch 18, scripted in pg_d2]",
    "lane": "mac-b",
    "theme": "triggers",
    "owner": "d2"
@@ -4826,7 +4802,7 @@
   {
    "card": "Angel of Destiny",
    "deck": "Oloro, Ageless Ascetic (Adam)",
-   "missing": "upkeep/end-step conditional triggers",
+   "missing": "upkeep/end-step conditional triggers [done by d2 batch 18, scripted in pg_d2]",
    "lane": "mac-b",
    "theme": "triggers",
    "owner": "d2"
@@ -5874,7 +5850,7 @@
   {
    "card": "Mesmeric Orb",
    "deck": "Bruna, Light of Alabaster (DonSpider)",
-   "missing": "lane C's Bruna routing (2026-11-26)",
+   "missing": "lane C's Bruna routing (2026-11-26) [done by d2 batch 21: When::PermanentBecomesUntapped, scripted in pg_d2]",
    "lane": "mac-c",
    "theme": "triggers",
    "owner": "d2"
@@ -5978,7 +5954,7 @@
   {
    "card": "Bruna, Light of Alabaster",
    "deck": "Bruna, Light of Alabaster (DonSpider)",
-   "missing": "lane C's Bruna routing (2026-11-26)",
+   "missing": "lane C's Bruna routing (2026-11-26) [done by lane C: scripted in pg_c, built on tarkir]",
    "lane": "mac-c",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -5986,7 +5962,7 @@
   {
    "card": "Light-Paws, Emperor's Voice",
    "deck": "Bruna, Light of Alabaster (DonSpider)",
-   "missing": "lane C's Bruna routing (2026-11-26)",
+   "missing": "lane C's Bruna routing (2026-11-26) [done by lane C: scripted in pg_c, built on tarkir]",
    "lane": "mac-c",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -5994,7 +5970,7 @@
   {
    "card": "Sovereigns of Lost Alara",
    "deck": "Bruna, Light of Alabaster (DonSpider)",
-   "missing": "lane C's Bruna routing (2026-11-26)",
+   "missing": "lane C's Bruna routing (2026-11-26) [done by lane C: scripted in pg_c, built on tarkir]",
    "lane": "mac-c",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -6218,7 +6194,7 @@
   {
    "card": "Olivia, Crimson Bride",
    "deck": "Olivia, Crimson Bride (DonSpider)",
-   "missing": "lane C's routing (2026-11-26)",
+   "missing": "lane C's routing (2026-11-26) [done by lane C: scripted in pg_c, built on tarkir]",
    "lane": "mac-c",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -6226,7 +6202,7 @@
   {
    "card": "Dragonhawk, Fate's Tempest",
    "deck": "Olivia, Crimson Bride (DonSpider)",
-   "missing": "lane C's routing (2026-11-26)",
+   "missing": "lane C's routing (2026-11-26) [done by lane C: scripted in pg_c, built on tarkir]",
    "lane": "mac-c",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -6234,7 +6210,7 @@
   {
    "card": "Charming Scoundrel",
    "deck": "Olivia, Crimson Bride (DonSpider)",
-   "missing": "lane C's routing (2026-11-26)",
+   "missing": "lane C's routing (2026-11-26) [done by lane C: scripted in pg_c, built on tarkir]",
    "lane": "mac-c",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -6242,7 +6218,7 @@
   {
    "card": "Witch's Mark",
    "deck": "Olivia, Crimson Bride (DonSpider)",
-   "missing": "lane C's routing (2026-11-26)",
+   "missing": "lane C's routing (2026-11-26) [done by lane C: scripted in pg_c, built on tarkir]",
    "lane": "mac-c",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -6379,14 +6355,6 @@
    "card": "Nogi, Draco-Zealot",
    "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
    "missing": "lane C's routing (2026-11-26)",
-   "lane": "mac-c",
-   "theme": "triggers",
-   "owner": "d2"
-  },
-  {
-   "card": "Utvara Hellkite",
-   "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
-   "missing": "lane C's routing (2026-11-26) [token 96: 6/6 red Dragon, flying]",
    "lane": "mac-c",
    "theme": "triggers",
    "owner": "d2"
@@ -6552,25 +6520,9 @@
    "owner": "d3"
   },
   {
-   "card": "The Ring: greater-power evasion",
-   "deck": "d4 handback",
-   "missing": "the Ring's first ability, 'can't be blocked by creatures with greater power': can_block returns false when self.ring_evasion_forbids_block(blocker, attacker) (d4 hook, game/d4.rs)",
-   "lane": "d4",
-   "theme": "mana",
-   "owner": "d1"
-  },
-  {
    "card": "The Ring: Ring-bearer combat damage",
    "deck": "d4 handback",
    "missing": "the Ring's fourth ability: in the combat-damage hit_player loop, call self.ring_bearer_dealt_combat_damage(a) once per creature that dealt combat damage to a player (d4 hook; it pushes the 'each opponent loses 3 life' trigger itself)",
-   "lane": "d4",
-   "theme": "triggers",
-   "owner": "d2"
-  },
-  {
-   "card": "Call of the Ring",
-   "deck": "d4 handback",
-   "missing": "'Whenever you choose a creature as your Ring-bearer': a When event emitted from d4's Game::choose_ring_bearer (hook comment marks the spot; the chosen creature is c). Also 'Whenever the Ring tempts you' from Game::ring_tempts (no card in the pool yet). Its first line is ready (SubsystemEffect::RingTempts on an upkeep trigger).",
    "lane": "d4",
    "theme": "triggers",
    "owner": "d2"
@@ -6646,6 +6598,110 @@
    "lane": "d4",
    "theme": "mana",
    "owner": "d1"
+  },
+  {
+   "card": "Call of the Ring",
+   "deck": "Kaalia of the Vast",
+   "missing": "needs core: the Ring tempts you",
+   "lane": "d2",
+   "theme": "subsystems",
+   "owner": "d4"
+  },
+  {
+   "card": "Well of Lost Dreams",
+   "deck": "Sheoldred, the Apocalypse",
+   "missing": "needs core: pay {X} up to the life gained to draw X cards",
+   "lane": "d3",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Hullbreaker Horror",
+   "deck": "Animar, Soul of Elements",
+   "missing": "needs core: a choose-up-to-one trigger on each spell you cast, bouncing a spell you don't control",
+   "lane": "d3",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Utvara Hellkite",
+   "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
+   "missing": "lane C's routing (2026-11-26) [token 96: 6/6 red Dragon, flying]",
+   "lane": "mac-c",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Call of the Ring",
+   "deck": "d4 handback",
+   "missing": "'Whenever you choose a creature as your Ring-bearer': a When event emitted from d4's Game::choose_ring_bearer (hook comment marks the spot; the chosen creature is c). Also 'Whenever the Ring tempts you' from Game::ring_tempts (no card in the pool yet). Its first line is ready (SubsystemEffect::RingTempts on an upkeep trigger).",
+   "lane": "d4",
+   "theme": "triggers",
+   "owner": "d2"
+  },
+  {
+   "card": "Bonus Round",
+   "deck": "Ghyrson Starn, Kelermorph",
+   "owner": "d2",
+   "missing": "a trigger copying each instant and sorcery you cast this turn (reuse the copy pieces) [added from the live validator, 2026-11-27]",
+   "lane": "d2",
+   "theme": "triggers"
+  },
+  {
+   "card": "Urabrask",
+   "deck": "Ghyrson Starn, Kelermorph",
+   "owner": "d2",
+   "missing": "an opponent-casts trigger and exile-and-play (reuse the exile-and-play pieces) [added from the live validator, 2026-11-27]",
+   "lane": "d2",
+   "theme": "triggers"
+  },
+  {
+   "card": "Pippin, Guard of the Citadel",
+   "deck": "Bruna, Light of Alabaster",
+   "owner": "d3",
+   "missing": "a protection-from-a-card-type grant [added from the live validator, 2026-11-27]",
+   "lane": "d3",
+   "theme": "effects and statics"
+  },
+  {
+   "card": "Chandra, Dressed to Kill",
+   "deck": "Ghyrson Starn, Kelermorph",
+   "owner": "d3",
+   "missing": "its loyalty effects (exile top, play it); d4: the emblem [added from the live validator, 2026-11-27]",
+   "lane": "d3",
+   "theme": "effects and statics"
+  },
+  {
+   "card": "Rankle and Torbran",
+   "deck": "Olivia, Crimson Bride",
+   "owner": "mac-b",
+   "missing": "the +2 damage replacement (lane B); its other parts lane C [added from the live validator, 2026-11-27]",
+   "lane": "mac-b",
+   "theme": "replacements"
+  },
+  {
+   "card": "The Ring: greater-power evasion",
+   "deck": "d4 handback",
+   "missing": "the Ring's first ability, 'can't be blocked by creatures with greater power': can_block returns false when self.ring_evasion_forbids_block(blocker, attacker) (d4 hook, game/d4.rs)",
+   "lane": "d4",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Alchemist's Talent",
+   "deck": "d1 handback",
+   "missing": "d1's pieces are in: ManaExt::treasures_add_two_at_level = 2 (your Treasures make two mana while the Class is level 2+), Game::treasure_mana_spent(spell) and Effect::StopUnlessTreasureManaSpentOnExtra (the cast trigger's spell in extra) for level 3; d4 scripts the Class (two tapped Treasures on enter, the level-ups, the level-3 'whenever you cast a spell' trigger dealing the spell's mana value to each opponent)",
+   "lane": "d1",
+   "theme": "subsystems",
+   "owner": "d4"
+  },
+  {
+   "card": "Fortune Teller's Talent",
+   "deck": "d1 handback",
+   "missing": "d1's cost reduction is in: ManaExt::not_from_hand_discount = Some((3, 2)) (level 3: spells cast from anywhere but your hand cost {2} less); still Mac C's play-from-the-top (level 2) and look at the top card any time, then d4 scripts the Class",
+   "lane": "d1",
+   "theme": "subsystems",
+   "owner": "d4"
   }
  ]
 }

@@ -569,6 +569,7 @@ impl Game {
                     }
                     D::MayPay { cost } => e.set_item("cost", cost_text(cost))?,
                     D::PayOrLoseGame { cost } => e.set_item("cost", cost_text(cost))?,
+                    D::PayXDrawX { max } => e.set_item("max", *max)?,
                     D::PayToStop { cost } => e.set_item("cost", cost_text(cost))?,
                     D::PayUpkeep { cost, source } => {
                         e.set_item("cost", cost_text(cost))?;
@@ -643,6 +644,15 @@ impl Game {
                     D::PutFromOpponentsTop { cards, .. } => e.set_item("cards", objs(cards))?,
                     // Sylvan Library: the drawn card in question (in the decider's hand).
                     D::SylvanPayOrTop { card, .. } if mine => e.set_item("card", one(*card))?,
+                    // Riot: the creature that entered (public).
+                    D::Riot { card } => e.set_item("card", one(*card))?,
+                    // Comet Storm: the spell being kicked, and the most kicks the mana allows.
+                    D::ChooseKickCount { card, max, .. } => {
+                        e.set_item("card", one(*card))?;
+                        e.set_item("max", *max)?;
+                    }
+                    D::Fabricate { n, .. } => e.set_item("x", *n)?,
+                    D::LetDrawOrMill { x, .. } => e.set_item("x", *x)?,
                     _ => {}
                 }
                 d.set_item("decision", e)?;

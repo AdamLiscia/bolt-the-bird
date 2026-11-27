@@ -607,4 +607,345 @@ impl Game {
             self.fire(p, When::YouPlayCardFromExile, None);
         }
     }
+
+    /// A searched-for card onto the battlefield with an additional +1/+1 counter (Neoform). The
+    /// counter is put on as it arrives.
+    pub(super) fn enter_with_plus_counter(&mut self, c: ObjId) {
+        self.move_to(c, Zone::Battlefield);
+        if self.obj(c).zone == Zone::Battlefield {
+            self.add_counters(c, 1);
+        }
+    }
+
+    /// Blood Money: destroy all creatures, then a tapped `def` token for each nontoken creature
+    /// destroyed this way (one that's indestructible or regenerated doesn't count).
+    pub(super) fn destroy_all_creatures_tapped_token_per_nontoken(&mut self, p: PlayerId, def: usize) {
+        let all: Vec<ObjId> = self
+            .battlefield
+            .iter()
+            .copied()
+            .filter(|&c| self.types_of(c).creature)
+            .collect();
+        let mut n = 0;
+        for c in all {
+            let nontoken = !self.is_token(c);
+            self.destroy(c);
+            if nontoken && self.obj(c).zone != Zone::Battlefield {
+                n += 1;
+            }
+        }
+        for _ in 0..n {
+            self.create_token(p, def);
+            for t in self.last_created.clone() {
+                self.obj_mut(t).tapped = true;
+            }
+        }
+    }
+
+    /// Peer into the Abyss: `q` draws half the cards in their library and loses half their life,
+    /// each rounded up.
+    pub(super) fn draw_half_library_lose_half_life(&mut self, q: PlayerId) {
+        let n = self.players[q].library.len().div_ceil(2);
+        for _ in 0..n {
+            self.draw(q);
+        }
+        let life = self.players[q].life;
+        if life > 0 {
+            self.lose_life(q, (life + 1) / 2);
+        }
+    }
+
+    /// Otherworld Atlas: each player, the active player first, draws a card for each of the
+    /// source's kind counters.
+    pub(super) fn each_player_draws_per_kind_counter(&mut self, src: ObjId) {
+        let n = self.obj(src).kind_counters.max(0);
+        let first = self.active;
+        for q in [first, opponent(first)] {
+            for _ in 0..n {
+                self.draw(q);
+            }
+        }
+    }
+
+    /// Gilded Drake: exchange control of the source and the creature in `slot` (CR 701.12b: only if
+    /// both are still on the battlefield and controlled by different players); otherwise sacrifice
+    /// the source.
+    pub(super) fn exchange_control_or_sacrifice(&mut self, item: &StackItem, legal: &[bool], slot: u8) {
+        let src = item.source;
+        let on = |g: &Game, x: ObjId| g.obj(x).zone == Zone::Battlefield;
+        let other = Game::slot_object(item, legal, slot).filter(|&t| on(self, t));
+        if let Some(t) =
+            other.filter(|&t| on(self, src) && self.obj(t).controller != self.obj(src).controller)
+        {
+            let (a, b) = (self.obj(src).controller, self.obj(t).controller);
+            let turn = self.turn;
+            for (x, to) in [(src, b), (t, a)] {
+                let o = self.obj_mut(x);
+                o.controller = to;
+                o.since_turn = turn; // CR 302.6
+            }
+        } else if on(self, src) && !self.cant_be_sacrificed(src) {
+            let p = self.obj(src).controller;
+            self.move_to(src, Zone::Graveyard);
+            self.sacrificed(src, p);
+        }
+    }
+
+    /// The creature `src` (an Equipment or Aura) is attached to, if it's still that object on the
+    /// battlefield.
+    fn attached_creature(&self, src: ObjId) -> Option<ObjId> {
+        self.obj(src).attached_to.and_then(|(c, zcc)| {
+            let o = self.obj(c);
+            (o.zcc == zcc && o.zone == Zone::Battlefield).then_some(c)
+        })
+    }
+
+    /// Bone Sabres: `n` +1/+1 counters on the equipped creature.
+    pub(super) fn counters_on_attached(&mut self, src: ObjId, n: i32) {
+        if let Some(c) = self.attached_creature(src) {
+            self.add_counters(c, n);
+        }
+    }
+
+    /// Mechanized Production: a token copy of the enchanted artifact for `p` (doubled like any
+    /// token), then `p` wins if they control eight or more artifacts with the same name.
+    pub(super) fn copy_attached_then_eight_same_name_wins(&mut self, src: ObjId, p: PlayerId) {
+        if let Some(a) = self.attached_creature(src) {
+            self.last_created.clear();
+            for _ in 0..self.token_doubling(p) {
+                if let Some(id) = self.token_copy_of(p, a) {
+                    self.last_created.push(id);
+                }
+            }
+        }
+        let mut names: Vec<&str> = self
+            .permanents(p)
+            .filter(|&x| self.types_of(x).artifact)
+            .map(|x| self.def_of(x).name.as_str())
+            .collect();
+        names.sort_unstable();
+        let most = names
+            .chunk_by(|a, b| a == b)
+            .map(<[&str]>::len)
+            .max()
+            .unwrap_or(0);
+        if most < 8 {
+            return;
+        }
+        let opp = opponent(p);
+        let protected = self.permanents(opp).any(|c| self.def_of(c).cant_lose);
+        if !protected && !self.players[opp].lost {
+            self.players[opp].lost = true;
+            self.events.push(Event::Lost { player: opp });
+            self.result = Some(Outcome::Winner(p));
+            self.pending = Pending::GameOver;
+        }
+    }
+
+    /// Final Act: destroy all planeswalkers.
+    pub(super) fn destroy_all_planeswalkers(&mut self) {
+        let all: Vec<ObjId> = self
+            .battlefield
+            .iter()
+            .copied()
+            .filter(|&c| self.types_of(c).planeswalker)
+            .collect();
+        for c in all {
+            self.destroy(c);
+        }
+    }
+
+    /// Final Act: each opponent of `p` (the one opponent) loses all counters: poison and energy,
+    /// the player counters the engine has.
+    pub(super) fn opponent_loses_all_counters(&mut self, p: PlayerId) {
+        let q = &mut self.players[opponent(p)];
+        q.poison = 0;
+        q.energy = 0;
+    }
+
+    /// Rakdos, Patron of Chaos: `q`'s nonland, nontoken permanents that can be sacrificed.
+    fn patron_of_chaos_options(&self, q: PlayerId) -> Vec<ObjId> {
+        self.permanents(q)
+            .filter(|&x| !self.types_of(x).land && !self.is_token(x) && !self.cant_be_sacrificed(x))
+            .collect()
+    }
+
+    /// Ask `q` whether to sacrifice two, if they can; otherwise `controller` draws two.
+    pub(super) fn patron_of_chaos_ask(&mut self, q: PlayerId, controller: PlayerId) {
+        if self.patron_of_chaos_options(q).len() >= 2 {
+            self.ask(
+                q,
+                Decision::PatronOfChaosSacrifice {
+                    controller,
+                    first: None,
+                },
+            );
+        } else {
+            for _ in 0..2 {
+                self.draw(controller);
+            }
+        }
+    }
+
+    pub(super) fn patron_of_chaos_actions(&self, q: PlayerId, first: Option<ObjId>) -> Vec<Action> {
+        let mut v: Vec<Action> = self
+            .patron_of_chaos_options(q)
+            .into_iter()
+            .filter(|&x| Some(x) != first)
+            .map(Action::Pick)
+            .collect();
+        if first.is_none() {
+            v.push(Action::No);
+        }
+        v
+    }
+
+    /// The first pick waits for the second; both are then sacrificed together. `No` (before the
+    /// first) means they don't, so `controller` draws two.
+    pub(super) fn patron_of_chaos_decide(
+        &mut self,
+        q: PlayerId,
+        controller: PlayerId,
+        first: Option<ObjId>,
+        a: Action,
+    ) {
+        match (first, a) {
+            (None, Action::Pick(c)) => {
+                self.ask(
+                    q,
+                    Decision::PatronOfChaosSacrifice {
+                        controller,
+                        first: Some(c),
+                    },
+                );
+            }
+            (Some(f), Action::Pick(c)) => {
+                for x in [f, c] {
+                    if self.obj(x).zone == Zone::Battlefield {
+                        self.move_to(x, Zone::Graveyard);
+                        self.sacrificed(x, q);
+                    }
+                }
+            }
+            _ => {
+                for _ in 0..2 {
+                    self.draw(controller);
+                }
+            }
+        }
+    }
+
+    /// Elder Brain, attacking a player (1v1: the defending player): exile their hand, they draw
+    /// that many, and `p` may play the exiled cards while they stay exiled, spending mana as though
+    /// it were any color (`Object::any_color_mana`, see `Game::spell_cost`).
+    pub(super) fn exile_defending_hand_draw_that_many(&mut self, src: ObjId, p: PlayerId) {
+        let at_planeswalker = self
+            .combat
+            .as_ref()
+            .is_some_and(|c| c.at_planeswalker.iter().any(|&(x, _)| x == src));
+        if at_planeswalker {
+            return;
+        }
+        let q = opponent(p);
+        let hand = self.players[q].hand.clone();
+        let mut n = 0;
+        for c in hand {
+            self.move_to(c, Zone::Exile);
+            if self.obj(c).zone == Zone::Exile {
+                let o = self.obj_mut(c);
+                o.playable = Some((p, u32::MAX));
+                o.any_color_mana = true;
+                n += 1;
+            }
+        }
+        for _ in 0..n {
+            self.draw(q);
+        }
+    }
+
+    /// Deep-Cavern Bat: `p` looks at `victim`'s hand and may exile a nonland card from it, if the
+    /// source is still on the battlefield (CR 610.3c).
+    pub(super) fn hand_link_ask(&mut self, src: ObjId, p: PlayerId, victim: PlayerId) {
+        if self.obj(src).zone != Zone::Battlefield || self.hand_link_actions(victim).len() < 2 {
+            return;
+        }
+        let zcc = self.obj(src).zcc;
+        self.ask(
+            p,
+            Decision::ExileFromHandUntilSourceLeaves {
+                victim,
+                source: src,
+                zcc,
+            },
+        );
+    }
+
+    pub(super) fn hand_link_actions(&self, victim: PlayerId) -> Vec<Action> {
+        let mut v: Vec<Action> = self.players[victim]
+            .hand
+            .iter()
+            .filter(|&&c| !self.types_of(c).land)
+            .map(|&c| Action::Pick(c))
+            .collect();
+        v.push(Action::No);
+        v
+    }
+
+    pub(super) fn hand_link_decide(&mut self, src: ObjId, zcc: u32, a: Action) {
+        if let Action::Pick(c) = a {
+            let o = self.obj(src);
+            if o.zone == Zone::Battlefield && o.zcc == zcc {
+                self.move_to(c, Zone::Exile);
+                if self.obj(c).zone == Zone::Exile {
+                    self.hand_links.push((src, zcc, c));
+                }
+            }
+        }
+    }
+
+    /// `id` left the battlefield: the cards it exiled from a hand go back to their owners' hands.
+    pub(super) fn return_hand_links(&mut self, id: ObjId) {
+        let left_zcc = self.obj(id).zcc - 1;
+        let (back, keep): (Vec<_>, Vec<_>) = std::mem::take(&mut self.hand_links)
+            .into_iter()
+            .partition(|&(src, z, _)| src == id && z == left_zcc);
+        self.hand_links = keep;
+        for (_, _, card) in back {
+            if self.obj(card).zone == Zone::Exile {
+                self.move_to(card, Zone::Hand);
+            }
+        }
+    }
+
+    /// Rona, Tolarian Obliterator: `source`'s controller exiles a card from their hand at random;
+    /// `p` may put a land onto the battlefield under their control, or cast anything else free.
+    pub(super) fn exile_random_from_damager_hand(&mut self, source: ObjId, p: PlayerId) {
+        let q = self.obj(source).controller;
+        let n = self.players[q].hand.len();
+        if n == 0 {
+            return;
+        }
+        let c = self.players[q].hand[self.rng.below(n)];
+        self.move_to(c, Zone::Exile);
+        if self.obj(c).zone != Zone::Exile {
+            return;
+        }
+        if self.types_of(c).land {
+            self.ask(p, Decision::MayPutExiledLandOntoBattlefield { card: c });
+        } else {
+            self.obj_mut(c).cast_free = true;
+            self.free_casts.push(c);
+            self.free_caster = p;
+        }
+    }
+
+    /// Nontoken creatures and planeswalkers `q` controls that can be sacrificed (Sheoldred).
+    pub(super) fn nontoken_creature_or_planeswalker_options(&self, q: PlayerId) -> Vec<ObjId> {
+        self.permanents(q)
+            .filter(|&x| {
+                let t = self.types_of(x);
+                (t.creature || t.planeswalker) && !self.is_token(x) && !self.cant_be_sacrificed(x)
+            })
+            .collect()
+    }
 }

@@ -525,6 +525,19 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         triples_mana_tapped: false,
         your_artifacts_are_food_your_turn: false,
         other_creatures_are_food_artifacts: false,
+        opponents_cant_make_you_sacrifice: false,
+        exiles_opponents_cards_to_play: false,
+        loyalty_at_instant_speed: false,
+        other_creatures_have: Vec::new(),
+        your_creature_spells_uncounterable: false,
+        your_color_spells_uncounterable: None,
+        your_nontoken_creatures_have_riot: false,
+        opponents_life_gain_becomes_loss: false,
+        opponents_draw_at_most_one: false,
+        overload_spell: None,
+        others_of_chosen_type_enter_with_counter: false,
+        triples_creature_tokens: false,
+        lands_in_graveyard_have_dredge: None,
     };
     def.color_identity = color_identity(o);
     def.phyrexian = phyrexian;

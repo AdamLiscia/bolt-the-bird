@@ -1019,6 +1019,171 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::YouSacrificeSubtype("Clue"), vec![Filter::PLAYER], vec![Effect::Mill { who: Who::TargetPlayer(0), n: 3 }]);
             },
         ),
+        // ---- Core: triggers, batch 16 (a subtype you control attacks; pay X up to the life gained) ----
+        "Utvara Hellkite" => s(
+            &["Whenever a Dragon you control attacks, create a 6/6 red Dragon creature token with flying."],
+            |d, t| {
+                on(d, When::SubtypeYouControlAttacks("Dragon"), vec![], vec![Effect::CreateToken { who: Who::You, def: t.dragon_6_6, n: 1 }]);
+            },
+        ),
+        "Well of Lost Dreams" => s(
+            &["Whenever you gain life, you may pay {X}, where X is less than or equal to the amount of life you gained. If you do, draw X cards."],
+            |d, _| {
+                on(d, When::YouGainLife, vec![], vec![Effect::MayPayXUpToAmountDrawX]);
+            },
+        ),
+        "Hullbreaker Horror" => s(
+            &[
+                "This spell can't be countered.",
+                "Whenever you cast a spell, choose up to one —",
+                "• Return target spell you don't control to its owner's hand.",
+                "• Return target nonland permanent to its owner's hand.",
+            ],
+            |d, _| {
+                d.uncounterable = true;
+                // 1v1: a spell you don't control is the opponent's.
+                let their_spell = Filter { players: false, creatures: false, planeswalkers: false, spells: true, controller: Controller::Opponent, ..Filter::ANY };
+                let nonland = Filter { players: false, creatures: false, planeswalkers: false, nonland_permanents: true, ..Filter::ANY };
+                // "Up to one": the last mode is choosing none.
+                on_modal(
+                    d,
+                    When::YouCast,
+                    None,
+                    vec![
+                        Ability::new(vec![their_spell], vec![Effect::BounceSpellOrPermanent(0)]),
+                        Ability::new(vec![nonland], vec![Effect::BounceSpellOrPermanent(0)]),
+                        Ability::new(vec![], vec![]),
+                    ],
+                );
+            },
+        ),
+        "Call of the Ring" => s(
+            &[
+                "At the beginning of your upkeep, the Ring tempts you.",
+                "Whenever you choose a creature as your Ring-bearer, you may pay 2 life. If you do, draw a card.",
+            ],
+            |d, _| {
+                on(d, When::Upkeep { your_turn_only: true }, vec![], vec![Effect::Subsystem(bolt_core::effect::SubsystemEffect::RingTempts)]);
+                on(d, When::YouChooseRingBearer, vec![], vec![Effect::MayPayLife(2), draw(1)]);
+            },
+        ),
+        // ---- Core: triggers, batch 17 (constellation's land or creature from hand) ----
+        "Composer of Spring" => s(
+            &["Constellation — Whenever an enchantment you control enters, you may put a land card from your hand onto the battlefield tapped. If you control six or more enchantments, instead you may put a creature or land card from your hand onto the battlefield tapped."],
+            |d, _| {
+                on(d, When::EnchantmentYouControlEnters, vec![], vec![Effect::MayPutLandOrCreatureFromHandTapped { enchantments: 6 }]);
+            },
+        ),
+        // ---- Core: triggers, batch 18 (an upkeep trigger from the command zone; Angel of Destiny) ----
+        "Oloro, Ageless Ascetic" => s(
+            &[
+                "At the beginning of your upkeep, you gain 2 life.",
+                "Whenever you gain life, you may pay {1}. If you do, draw a card and each opponent loses 1 life.",
+                "At the beginning of your upkeep, if Oloro is in the command zone, you gain 2 life.",
+            ],
+            |d, _| {
+                on(d, When::Upkeep { your_turn_only: true }, vec![], vec![Effect::GainLife { who: Who::You, n: 2 }]);
+                let one = ManaCost::parse("{1}").expect("a mana cost");
+                on(d, When::YouGainLife, vec![], vec![Effect::MayPay(one), draw(1), Effect::LoseLife { who: Who::EachOpponent, n: 1 }]);
+                on(d, When::YourUpkeepInCommandZone, vec![], vec![Effect::GainLife { who: Who::You, n: 2 }]);
+            },
+        ),
+        "Angel of Destiny" => s(
+            &[
+                "Whenever a creature you control deals combat damage to a player, you and that player each gain that much life.",
+                "At the beginning of your end step, if you have at least 15 life more than your starting life total, each player this creature attacked this turn loses the game.",
+            ],
+            |d, _| {
+                on(d, When::YourCreatureDealsCombatDamageToPlayerAmount, vec![], vec![Effect::GainLifeAmount, Effect::OpponentGainsLifeAmount]);
+                conditional(d, When::EndStep { your_turn_only: true }, Condition::LifeAtLeastStartingPlus(15), vec![], vec![Effect::OpponentLosesIfSourceAttackedThisTurn]);
+            },
+        ),
+        // ---- Core: triggers, batch 19 (a delayed cast trigger for any player; LKI artifacts) ----
+        "Bonus Round" => s(
+            &["Until end of turn, whenever a player casts an instant or sorcery spell, that player copies it and may choose new targets for the copy."],
+            |d, _| {
+                d.spell = Some(Ability::new(vec![], vec![Effect::DelayedThisTurn { when: When::PlayerCastsInstantOrSorceryThisTurn, trigger: 0 }]));
+                on(d, When::Never, vec![], vec![Effect::CopySpellNewTargets]);
+            },
+        ),
+        // ---- Ygra, Eater of All (Grande): d1's ward, d3's Food artifacts, lane B's grant, d2's trigger ----
+        "Ygra, Eater of All" => s(
+            &[
+                "Ward\u{2014}Sacrifice a Food.",
+                "Other creatures are Food artifacts in addition to their other types and have \"{2}, {T}, Sacrifice this permanent: You gain 3 life.\"",
+                "Whenever a Food is put into a graveyard from the battlefield, put two +1/+1 counters on Ygra.",
+            ],
+            |d, _| {
+                d.ward_sacrifice = 1;
+                d.mana_ext.ward_sacrifice_subtype = Some("Food");
+                d.other_creatures_are_food_artifacts = true;
+                // A static, so it's among the static sources `ygra_food` checks.
+                d.statics.push(Static {
+                    scope: Scope::This,
+                    your_turn_only: false,
+                    condition: None,
+                    subtype: None,
+                    lose_abilities: false,
+                    base_pt: None,
+                    protection: [false; 5],
+                    scale: None,
+                    power: 0,
+                    toughness: 0,
+                    keywords: Keywords::NONE,
+                    set_colors: None,
+                    becomes_land: false,
+                });
+                d.other_creatures_have = vec![Activated {
+                    mana: ManaCost::parse("{2}").expect("a mana cost"),
+                    tap: true,
+                    sacrifice_self: true,
+                    ability: Ability::new(vec![], vec![Effect::GainLife { who: Who::You, n: 3 }]),
+                    ..Activated::default()
+                }];
+                on(d, When::SubtypeToGraveyardFromBattlefield("Food"), vec![], vec![Effect::CountersSelf { n: 2 }]);
+            },
+        ),
+        // ---- Core: triggers, batch 21 (a permanent becomes untapped; the Spirit Cleric, token 107) ----
+        "Mesmeric Orb" => s(&["Whenever a permanent becomes untapped, that permanent's controller mills a card."], |d, _| {
+            let that = Filter { triggering: true, any_permanent: true, ..Filter::default() };
+            on(d, When::PermanentBecomesUntapped, vec![that], vec![Effect::Mill { who: Who::ControllerOf(0), n: 1 }]);
+        }),
+        "Hallowed Haunting" => s(
+            &[
+                "As long as you control seven or more enchantments, creatures you control have flying and vigilance.",
+                "Whenever you cast an enchantment spell, create a white Spirit Cleric creature token with \"This token's power and toughness are each equal to the number of Spirits you control.\"",
+            ],
+            |d, t| {
+                d.statics.push(Static {
+                    scope: Scope::YourCreatures,
+                    your_turn_only: false,
+                    condition: Some(StaticCondition::ControlEnchantmentsAtLeast(7)),
+                    subtype: None,
+                    lose_abilities: false,
+                    base_pt: None,
+                    protection: [false; 5],
+                    scale: None,
+                    power: 0,
+                    toughness: 0,
+                    keywords: Keywords::FLYING.with(Keywords::VIGILANCE),
+                    set_colors: None,
+                    becomes_land: false,
+                });
+                on(d, When::YouCastEnchantment, vec![], vec![Effect::CreateToken { who: Who::You, def: t.spirit_cleric, n: 1 }]);
+            },
+        ),
+        // ---- Core: triggers, batch 22 (an end-step trigger with the opponent's choice) ----
+        "Palant\u{ed}r of Orthanc" => s(
+            &["At the beginning of your end step, put an influence counter on Palant\u{ed}r of Orthanc and scry 2. Then target opponent may have you draw a card. If that player doesn't, you mill X cards, where X is the number of influence counters on Palant\u{ed}r of Orthanc, and that player loses life equal to the total mana value of those cards."],
+            |d, _| {
+                on(
+                    d,
+                    When::EndStep { your_turn_only: true },
+                    vec![opponent_player()],
+                    vec![Effect::KindCounterSelf(1), Effect::Scry { n: 2 }, Effect::TargetMayLetYouDrawElseMillKindCounters(0)],
+                );
+            },
+        ),
         _ => None,
     }
 }
@@ -1226,4 +1391,17 @@ pub const PG_D2_SCRIPTED: &[&str] = &[
     "Bitterbloom Bearer",
     "Queza, Augur of Agonies",
     "Vault of the Archangel",
+    // Core: triggers, batch 16
+    "Utvara Hellkite",
+    "Well of Lost Dreams",
+    "Hullbreaker Horror",
+    "Call of the Ring",
+    "Composer of Spring",
+    "Oloro, Ageless Ascetic",
+    "Angel of Destiny",
+    "Bonus Round",
+    "Ygra, Eater of All",
+    "Mesmeric Orb",
+    "Hallowed Haunting",
+    "Palant\u{ed}r of Orthanc",
 ];

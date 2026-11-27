@@ -2191,6 +2191,177 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::YouPlayCardFromExile, vec![], vec![treasure]);
             },
         ),
+        // ---- needs_core (mac-c), batch 12: Sheoldred and Animar ----
+        "Blood Money" => s(
+            &["Destroy all creatures. For each nontoken creature destroyed this way, you create a tapped Treasure token."],
+            |d, t| spell(d, vec![], vec![Effect::DestroyAllCreaturesTappedTokenPerNontoken { def: t.treasure }]),
+        ),
+        "Peer into the Abyss" => s(
+            &["Target player draws cards equal to half the number of cards in their library and loses half their life. Round up each time."],
+            |d, _| spell(d, vec![Filter::PLAYER], vec![Effect::TargetPlayerDrawsHalfLibraryLosesHalfLife(0)]),
+        ),
+        "Otherworld Atlas" => s(
+            &[
+                "{T}: Put a charge counter on this artifact.",
+                "{T}: Each player draws a card for each charge counter on this artifact.",
+            ],
+            |d, _| {
+                activated(d, "", true, vec![], vec![Effect::KindCounterSelf(1)]);
+                activated(d, "", true, vec![], vec![Effect::EachPlayerDrawsPerKindCounter]);
+            },
+        ),
+        "Neoform" => s(
+            &[
+                "As an additional cost to cast this spell, sacrifice a creature.",
+                "Search your library for a creature card with mana value equal to 1 plus the sacrificed creature's mana value, put that card onto the battlefield with an additional +1/+1 counter on it, then shuffle.",
+            ],
+            |d, _| {
+                d.extra_cost = Some(ExtraCost::SacrificeCreature);
+                spell(d, vec![], vec![Effect::SearchCreatureBySacrificedMvPlusCounter { plus: 1 }]);
+            },
+        ),
+        "Gilded Drake" => s(
+            &["When this creature enters, exchange control of this creature and up to one target creature an opponent controls. If you don't or can't make an exchange, sacrifice this creature. This ability still resolves if its target becomes illegal."],
+            |d, _| {
+                // With its one target illegal, the ability doesn't resolve (CR 608.2b): no sacrifice.
+                d.triggers.push(Trigger {
+                    when: When::Enters,
+                    ability: up_to(vec![OPP_CREATURE], vec![Effect::ExchangeControlWithSlotOrSacrifice(0)]),
+                });
+            },
+        ),
+        "Hornet Queen" => s(
+            &["When this creature enters, create four 1/1 green Insect creature tokens with flying and deathtouch."],
+            |d, t| on(d, When::Enters, vec![], vec![Effect::CreateToken { who: Who::You, def: t.insect_deathtouch, n: 4 }]),
+        ),
+        "Wurmcoil Engine" => s(
+            &["When this creature dies, create a 3/3 colorless Phyrexian Wurm artifact creature token with deathtouch and a 3/3 colorless Phyrexian Wurm artifact creature token with lifelink."],
+            |d, t| {
+                let wurm = |def| Effect::CreateToken { who: Who::You, def, n: 1 };
+                on(d, When::Dies, vec![], vec![wurm(t.wurm_deathtouch), wurm(t.wurm_lifelink)]);
+            },
+        ),
+        "Bone Sabres" => s(
+            &["Whenever equipped creature attacks, put four +1/+1 counters on it.", "Equip {3}"],
+            |d, _| {
+                on(d, When::EquippedAttacks, vec![], vec![Effect::CountersOnAttached(4)]);
+                equip(d, "{3}");
+            },
+        ),
+        "Squee, the Immortal" => s(&["You may cast this card from your graveyard or from exile."], |d, _| {
+            d.zones.cast_from_graveyard_or_exile = true;
+        }),
+        "Rakdos, Patron of Chaos" => s(
+            &["At the beginning of your end step, target opponent may sacrifice two nonland, nontoken permanents of their choice. If they don't, you draw two cards."],
+            |d, _| {
+                let opp = Filter::PLAYER.controlled_by(Controller::Opponent);
+                on(d, When::EndStep { your_turn_only: true }, vec![opp], vec![Effect::TargetOpponentMaySacrificeTwoOrYouDrawTwo(0)]);
+            },
+        ),
+        "Hanweir Battlements" => s(
+            &[
+                "{T}: Add {C}.",
+                "{R}, {T}: Target creature gains haste until end of turn.",
+                "{3}{R}{R}, {T}: If you both own and control this land and a creature named Hanweir Garrison, exile them, then meld them into Hanweir, the Writhing Township.",
+            ],
+            |d, _| {
+                d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                activated(d, "{R}", true, vec![CREATURE], vec![Effect::Grant { slot: 0, keywords: Keywords::HASTE }]);
+                // Hanweir Garrison isn't in the card pool, so "if you both own and control this land and
+                // a creature named Hanweir Garrison" is never true: the ability resolves and does nothing.
+                // Meld itself isn't in the engine; a pool with the Garrison needs it.
+                activated(d, "{3}{R}{R}", true, vec![], vec![]);
+            },
+        ),
+        "Errant and Giada" => s(
+            &["You may look at the top card of your library any time.", "You may cast spells with flash or flying from the top of your library."],
+            |d, _| {
+                // Looking at the top card any time is information only.
+                d.zones.top_spells_flash_or_flying = true;
+            },
+        ),
+        "Elder Brain" => s(
+            &["Whenever this creature attacks a player, exile all cards from that player's hand, then they draw that many cards. You may play lands and cast spells from among the exiled cards for as long as they remain exiled. If you cast a spell this way, you may spend mana as though it were mana of any color to cast it."],
+            |d, _| on(d, When::Attacks, vec![], vec![Effect::ExileDefendingHandDrawThatManyPlayable]),
+        ),
+        "Inkshield" => s(
+            &["Prevent all combat damage that would be dealt to you this turn. For each 1 damage prevented this way, create a 2/1 white and black Inkling creature token with flying."],
+            |d, t| spell(d, vec![], vec![Effect::PreventCombatDamageToYouMakingTokens { def: t.inkling }]),
+        ),
+        "The One Ring" => s(
+            &[
+                "When The One Ring enters, if you cast it, you gain protection from everything until your next turn.",
+                "At the beginning of your upkeep, you lose 1 life for each burden counter on The One Ring.",
+                "{T}: Put a burden counter on The One Ring, then draw a card for each burden counter on The One Ring.",
+            ],
+            |d, _| {
+                // Protection from everything for a player (lane B's piece) prevents damage and
+                // targeting; "can't be enchanted" (a Curse) isn't modelled. Burden counters are
+                // the Ring's `kind_counters`.
+                conditional(d, When::Enters, Condition::CastIt, vec![], vec![Effect::YouGainProtectionUntilYourNextTurn]);
+                on(d, When::Upkeep { your_turn_only: true }, vec![], vec![Effect::YouLoseLifePerKindCounter]);
+                activated(d, "", true, vec![], vec![Effect::KindCounterSelf(1), Effect::YouDrawPerKindCounter]);
+            },
+        ),
+        "Rona, Herald of Invasion // Rona, Tolarian Obliterator" => s(
+            &[
+                "Whenever you cast a legendary spell, untap Rona.",
+                "{T}: Draw a card, then discard a card.",
+                "{5}{B/P}: Transform Rona. Activate only as a sorcery.",
+                "Back: Whenever a source deals damage to Rona, that source's controller exiles a card from their hand at random. If it's a land card, you may put it onto the battlefield under your control. Otherwise, you may cast it without paying its mana cost.",
+            ],
+            |d, _| {
+                on(d, When::YouCastLegendary, vec![], vec![Effect::UntapSelf]);
+                activated(d, "", true, vec![], vec![draw(1), discard(1)]);
+                let n = activated(d, "{5}{B}", false, vec![], vec![Effect::TransformSelf]);
+                d.activated[n].phyrexian = [0, 0, 1, 0, 0];
+                d.activated[n].sorcery = true;
+                let b = d.back.as_mut().expect("Rona, Tolarian Obliterator");
+                on(b, When::DealtDamage, vec![], vec![Effect::DamageSourceControllerExilesRandomFromHand]);
+            },
+        ),
+        "Deep-Cavern Bat" => s(
+            &["When this creature enters, look at target opponent's hand. You may exile a nonland card from it until this creature leaves the battlefield."],
+            |d, _| {
+                let opp = Filter::PLAYER.controlled_by(Controller::Opponent);
+                on(d, When::Enters, vec![opp], vec![Effect::ExileFromHandUntilSourceLeaves(0)]);
+            },
+        ),
+        "Final Act" => s(
+            &[
+                "Choose one or more —",
+                "• Destroy all creatures.",
+                "• Destroy all planeswalkers.",
+                "• Destroy all battles.",
+                "• Exile all graveyards.",
+                "• Each opponent loses all counters.",
+            ],
+            |d, _| {
+                // Every nonempty set of the five modes, as one mode each (bit i: mode i), the Farewell
+                // way. The engine has no battles, so "destroy all battles" has nothing to destroy.
+                let one = |i: u32| match i {
+                    0 => vec![Effect::DestroyAllCreatures],
+                    1 => vec![Effect::DestroyAllPlaneswalkers],
+                    2 => vec![],
+                    3 => vec![Effect::ExileGraveyard { who: Who::You }, Effect::ExileGraveyard { who: Who::EachOpponent }],
+                    _ => vec![Effect::EachOpponentLosesAllCounters],
+                };
+                let sets = (1u32..32).map(|m| Ability::new(vec![], (0..5).filter(|i| m & (1 << i) != 0).flat_map(one).collect()));
+                modes(d, sets.collect());
+            },
+        ),
+        "Mechanized Production" => s(
+            &[
+                "Enchant artifact you control",
+                "At the beginning of your upkeep, create a token that's a copy of enchanted artifact. Then if you control eight or more artifacts with the same name as one another, you win the game.",
+            ],
+            |d, _| {
+                d.aura = true;
+                let yours = Filter { players: false, creatures: false, planeswalkers: false, artifacts: true, controller: Controller::You, ..Filter::ANY };
+                d.spell = Some(Ability::new(vec![yours], vec![]));
+                on(d, When::Upkeep { your_turn_only: true }, vec![], vec![Effect::CopyAttachedThenEightSameNameWins]);
+            },
+        ),
         _ => None,
     }
 }
@@ -2445,4 +2616,23 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Thespian's Stage",
     "The Mycosynth Gardens",
     "Prosper, Tome-Bound",
+    "Blood Money",
+    "Peer into the Abyss",
+    "Otherworld Atlas",
+    "Neoform",
+    "Gilded Drake",
+    "Hornet Queen",
+    "Wurmcoil Engine",
+    "Bone Sabres",
+    "Squee, the Immortal",
+    "Mechanized Production",
+    "Final Act",
+    "Rakdos, Patron of Chaos",
+    "Hanweir Battlements",
+    "Errant and Giada",
+    "Elder Brain",
+    "Inkshield",
+    "The One Ring",
+    "Deep-Cavern Bat",
+    "Rona, Herald of Invasion // Rona, Tolarian Obliterator",
 ];

@@ -1246,6 +1246,118 @@ pub fn script(name: &str) -> Option<Script> {
                 d.activated[n].life_per_commander_color = true;
             },
         ),
+        // ---- d1 core, batch 14: kick count with {X}, fabricate, Treasure and Talent mana, retrace,
+        // creature-only mana, Darksteel Monolith ----
+        "Pride of the Clouds" => s(
+            &[
+                "This creature gets +1/+1 for each other creature on the battlefield with flying.",
+                "Forecast — {2}{W}{U}, Reveal this creature from your hand: Create a 1/1 white and blue Bird creature token with flying.",
+            ],
+            |d, t| {
+                static_on(d, Scope::This, false, Keywords::NONE);
+                let st = d.statics.last_mut().expect("just added");
+                (st.power, st.toughness, st.scale) = (1, 1, Some(Scale::PerOtherCreatureWithFlying));
+                let bird = Effect::CreateToken { who: Who::You, def: t.bird_flying_wu, n: 1 };
+                let n = activated(d, "{2}{W}{U}", false, vec![], vec![bird]);
+                d.activated[n].forecast = true;
+                d.activated[n].once_each_turn = true;
+            },
+        ),
+        "Marionette Apprentice" => s(
+            &[
+                "Fabricate 1",
+                "Whenever another creature or artifact you control is put into a graveyard from the battlefield, each opponent loses 1 life.",
+            ],
+            |d, t| {
+                on(d, When::Enters, vec![], vec![Effect::Fabricate { n: 1, servo: t.servo }]);
+                let drain = Effect::LoseLife { who: Who::EachOpponent, n: 1 };
+                on(d, When::AnotherCreatureOrArtifactYouControlToGraveyardFromBattlefield, vec![], vec![drain]);
+            },
+        ),
+        "Marionette Master" => s(
+            &[
+                "Fabricate 3",
+                "Whenever an artifact you control is put into a graveyard from the battlefield, target opponent loses life equal to this creature's power.",
+            ],
+            |d, t| {
+                on(d, When::Enters, vec![], vec![Effect::Fabricate { n: 3, servo: t.servo }]);
+                let opp = Filter::PLAYER.controlled_by(Controller::Opponent);
+                on(
+                    d,
+                    When::ArtifactYouControlToGraveyardFromBattlefield,
+                    vec![opp],
+                    vec![Effect::LoseLifeSourcePower(Who::TargetPlayer(0))],
+                );
+            },
+        ),
+        "Food Chain" => s(
+            &["Exile a creature you control: Add X mana of any one color, where X is 1 plus the exiled creature's mana value. Spend this mana only to cast creature spells."],
+            |d, _| {
+                // On the stack, like Ashnod's Altar's.
+                let n = activated(d, "", false, vec![], vec![Effect::AddCreatureSpellManaExtraMvPlusOne]);
+                d.activated[n].exile_creature_you_control = true;
+                d.activated[n].victim_in_extra = true;
+            },
+        ),
+        "Waves of Aggression" => s(
+            &[
+                "Untap all creatures that attacked this turn. After this main phase, there is an additional combat phase followed by an additional main phase.",
+                "Retrace",
+            ],
+            |d, _| {
+                spell(d, vec![], vec![Effect::UntapCreaturesAttackedThisTurn, Effect::AdditionalCombatAndMain]);
+                d.mana_ext.retrace = true;
+            },
+        ),
+        "Darksteel Monolith" => s(
+            &["Once each turn, you may pay {0} rather than pay the mana cost for a colorless spell you cast from your hand."],
+            |d, _| d.mana_ext.colorless_free_once_each_turn = true,
+        ),
+        // ---- The Gitrog, Ravenous Ride (RuricMo) ----
+        "Witch's Cottage" => s(
+            &[
+                "This land enters tapped unless you control three or more other Swamps.",
+                "When this land enters untapped, you may put target creature card from your graveyard on top of your library.",
+            ],
+            |d, _| {
+                d.mana = Some(ManaSource::of(&[Color::Black]));
+                d.mana_ext.enters_tapped_unless_other_subtype = Some(("Swamp", 3));
+                may(d, When::EntersUntapped, vec![graveyard_cards(true, Controller::You)], vec![Effect::ToLibrary(0, true)]);
+            },
+        ),
+        "Jarad, Golgari Lich Lord" => s(
+            &[
+                "Jarad gets +1/+1 for each creature card in your graveyard.",
+                "{1}{B}{G}, Sacrifice another creature: Each opponent loses life equal to the sacrificed creature's power.",
+                "Sacrifice a Swamp and a Forest: Return this card from your graveyard to your hand.",
+            ],
+            |d, _| {
+                d.pt_per_graveyard_creature = true;
+                let n = activated(d, "{1}{B}{G}", false, vec![], vec![Effect::LoseLifeAmount(Who::EachOpponent)]);
+                d.activated[n].sacrifice_other_creature = true;
+                d.activated[n].amount_from_victim_power = true;
+                let n = activated(d, "", false, vec![], vec![Effect::ReturnSelfToHand]);
+                d.activated[n].from_graveyard = true;
+                d.activated[n].sacrifice_two_subtypes = Some(["Swamp", "Forest"]);
+            },
+        ),
+        "Sunbird's Invocation" => s(
+            &["Whenever you cast a spell from your hand, reveal the top X cards of your library, where X is that spell's mana value. You may cast a spell with mana value X or less from among cards revealed this way without paying its mana cost. Put the rest on the bottom of your library in a random order."],
+            |d, _| on(d, When::YouCastSpellFromHand, vec![], vec![Effect::RevealTopMvMayCastOneFree]),
+        ),
+        "The Gitrog, Ravenous Ride" => s(
+            &[
+                "Whenever The Gitrog deals combat damage to a player, you may sacrifice a creature that saddled it this turn. If you do, draw X cards, then put up to X land cards from your hand onto the battlefield tapped, where X is the sacrificed creature's power.",
+                "Saddle 1",
+            ],
+            |d, _| {
+                may(d, When::DealsCombatDamageToPlayer, vec![], vec![Effect::SacrificeSaddlerDrawXLandsX]);
+                let n = activated(d, "", false, vec![], vec![Effect::BecomeSaddled]);
+                d.activated[n].saddle = 1;
+                d.activated[n].sorcery = true;
+                d.activated[n].victim_in_extra = true;
+            },
+        ),
         _ => None,
     }
 }
@@ -1412,4 +1524,14 @@ pub const PG_D1_SCRIPTED: &[&str] = &[
     "Behold the Multiverse",
     "Eye of Ugin",
     "War Room",
+    "Pride of the Clouds",
+    "Marionette Apprentice",
+    "Marionette Master",
+    "Food Chain",
+    "Waves of Aggression",
+    "Darksteel Monolith",
+    "Witch's Cottage",
+    "Jarad, Golgari Lich Lord",
+    "Sunbird's Invocation",
+    "The Gitrog, Ravenous Ride",
 ];

@@ -2056,6 +2056,240 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::Never, vec![], vec![Effect::DamageExtrasControllerAmount]);
             },
         ),
+        "Sigarda, Host of Herons" => s(&["Spells and abilities your opponents control can't cause you to sacrifice permanents."], |d, _| {
+            d.opponents_cant_make_you_sacrifice = true;
+        }),
+        "Valgavoth, Terror Eater" => s(
+            &[
+                "Ward\u{2014}Sacrifice three nonland permanents.",
+                "If a card you didn't control would be put into an opponent's graveyard from anywhere, exile it instead.",
+                "During your turn, you may play cards exiled with Valgavoth. If you cast a spell this way, pay life equal to its mana value rather than pay its mana cost.",
+            ],
+            |d, _| {
+                d.ward_sacrifice = 3;
+                d.ward_sacrifice_nonland = true;
+                d.exiles_opponents_cards_to_play = true;
+            },
+        ),
+        "Teferi, Master of Time" => s(
+            &[
+                "You may activate loyalty abilities of Teferi on any player's turn any time you could cast an instant.",
+                "+1: Draw a card, then discard a card.",
+                "\u{2212}3: Target creature you don't control phases out.",
+                "\u{2212}10: Take two extra turns after this one.",
+            ],
+            |d, _| {
+                d.loyalty_at_instant_speed = true;
+                loyalty(d, 1, Ability::new(vec![], vec![draw(1), discard(1)]));
+                let theirs = CREATURE.controlled_by(Controller::Opponent);
+                loyalty(d, -3, Ability::new(vec![theirs], vec![Effect::PhaseOutSlot(0)]));
+                loyalty(d, -10, Ability::new(vec![], vec![Effect::ExtraTurn, Effect::ExtraTurn]));
+            },
+        ),
+        "Titan's Presence" => s(
+            &[
+                "As an additional cost to cast this spell, reveal a colorless creature card from your hand.",
+                "Exile target creature if its power is less than or equal to the revealed card's power.",
+            ],
+            |d, _| {
+                d.extra_cost = Some(ExtraCost::RevealColorlessCreature);
+                spell(d, vec![CREATURE], vec![Effect::ExileIfPowerAtMostExtra(0)]);
+            },
+        ),
+        "Rhythm of the Wild" => s(
+            &["Creature spells you control can't be countered.", "Nontoken creatures you control have riot."],
+            |d, _| {
+                d.your_creature_spells_uncounterable = true;
+                d.your_nontoken_creatures_have_riot = true;
+            },
+        ),
+        "Surrak Dragonclaw" => s(
+            &[
+                "This spell can't be countered.",
+                "Creature spells you control can't be countered.",
+                "Other creatures you control have trample.",
+            ],
+            |d, _| {
+                d.uncounterable = true;
+                d.your_creature_spells_uncounterable = true;
+                static_on(d, Scope::OtherYourCreatures, false, Keywords::TRAMPLE);
+            },
+        ),
+        "Plague Drone" => s(&["Rot Fly \u{2014} If an opponent would gain life, that player loses that much life instead."], |d, _| {
+            d.opponents_life_gain_becomes_loss = true;
+        }),
+        "Narset, Parter of Veils" => s(
+            &[
+                "Each opponent can't draw more than one card each turn.",
+                "\u{2212}2: Look at the top four cards of your library. You may reveal a noncreature, nonland card from among them and put it into your hand. Put the rest on the bottom of your library in a random order.",
+            ],
+            |d, _| {
+                d.opponents_draw_at_most_one = true;
+                let look = Effect::LookAtTop {
+                    n: 4,
+                    pick: Pick::NoncreatureNonland,
+                    chosen_to: LookTo::Hand,
+                    rest_to: LookRest::BottomRandom,
+                };
+                loyalty(d, -2, Ability::new(vec![], vec![look]));
+            },
+        ),
+        "Kami of Whispered Hopes" => s(
+            &[
+                "If one or more +1/+1 counters would be put on a permanent you control, that many plus one +1/+1 counters are put on that permanent instead.",
+                "{T}: Add X mana of any one color, where X is this creature's power.",
+            ],
+            |d, _| {
+                d.counters_plus_one = true;
+                // One ability per color, all X of it that color (as Heronblade Elite).
+                for c in Color::ALL {
+                    activated(d, "", true, vec![], vec![Effect::AddManaSourcePower(c)]);
+                }
+            },
+        ),
+        "Dauthi Voidwalker" => s(
+            &[
+                "If a card would be put into an opponent's graveyard from anywhere, instead exile it with a void counter on it.",
+                "{T}, Sacrifice this creature: Choose an exiled card an opponent owns with a void counter on it. You may play it this turn without paying its mana cost.",
+            ],
+            |d, _| {
+                d.opponents_cards_exiled_with_void = true;
+                let n = activated(d, "", true, vec![], vec![Effect::PlayVoidCardFree]);
+                d.activated[n].sacrifice_self = true;
+            },
+        ),
+        "Damn" => s(
+            &["Destroy target creature. A creature destroyed this way can't be regenerated.", "Overload {2}{W}{W}"],
+            |d, _| {
+                spell(d, vec![CREATURE], vec![Effect::DestroyNoRegen(0)]);
+                d.alt_cost = Some((ManaCost::parse("{2}{W}{W}").expect("cost"), 0));
+                d.overload_spell = Some(Ability::new(vec![], vec![Effect::DestroyAllCreaturesNoRegen]));
+            },
+        ),
+        "Metallic Mimic" => s(
+            &[
+                "As this creature enters, choose a creature type.",
+                "This creature is the chosen type in addition to its other types.",
+                "Each other creature you control of the chosen type enters with an additional +1/+1 counter on it.",
+            ],
+            |d, _| {
+                d.choose_creature_type = true;
+                d.others_of_chosen_type_enter_with_counter = true;
+            },
+        ),
+        "Ojer Taq, Deepest Foundation // Temple of Civilization" => s(
+            &[
+                "If one or more creature tokens would be created under your control, three times that many of those tokens are created instead.",
+                "When Ojer Taq dies, return it to the battlefield tapped and transformed under its owner's control.",
+                "Back: {T}: Add {W}.",
+                "Back: {2}{W}, {T}: Transform this land. Activate only if you attacked with three or more creatures this turn and only as a sorcery.",
+            ],
+            |d, _| {
+                d.triples_creature_tokens = true;
+                on(d, When::Dies, vec![], vec![Effect::ReturnSelfTappedTransformed]);
+                let b = d.back.as_mut().expect("Temple of Civilization");
+                b.mana = Some(ManaSource::of(&[Color::White]));
+                let n = activated(b, "{2}{W}", true, vec![], vec![Effect::TransformSelf]);
+                b.activated[n].sorcery = true;
+                b.activated[n].min_attackers_this_turn = 3;
+            },
+        ),
+        "Najeela, the Blade-Blossom" => s(
+            &[
+                "Whenever a Warrior attacks, you may have its controller create a 1/1 white Warrior creature token that's tapped and attacking.",
+                "{W}{U}{B}{R}{G}: Untap all attacking creatures. They gain trample, lifelink, and haste until end of turn. After this phase, there is an additional combat phase. Activate only during combat.",
+            ],
+            |d, t| {
+                let warrior = Effect::ExtrasControllerCreatesAttackingToken { def: t.warrior_white };
+                may(d, When::CreatureOfSubtypeAttacks("Warrior"), vec![], vec![warrior]);
+                let keywords = Keywords::TRAMPLE.with(Keywords::LIFELINK).with(Keywords::HASTE);
+                let effects = vec![Effect::UntapAttackersAndGrant(keywords), Effect::AdditionalCombatAfterThisPhase];
+                let n = activated(d, "{W}{U}{B}{R}{G}", false, vec![], effects);
+                d.activated[n].only_during_combat = true;
+            },
+        ),
+        "From the Catacombs" => s(
+            &[
+                "Put target creature card from a graveyard onto the battlefield under your control with a corpse counter on it. You take the initiative. If that creature would leave the battlefield, exile it instead of putting it anywhere else.",
+                "Escape\u{2014}{3}{B}{B}, Exile five other cards from your graveyard.",
+            ],
+            |d, _| {
+                let card = graveyard_cards(true, Controller::Any);
+                let initiative = Effect::Subsystem(bolt_core::SubsystemEffect::TakeInitiative);
+                spell(d, vec![card], vec![Effect::ReanimateWithCorpseCounter(0), initiative]);
+                d.mana_ext.escape = Some((ManaCost::parse("{3}{B}{B}").expect("cost"), 5, 0));
+            },
+        ),
+        "Rankle and Torbran" => s(
+            &[
+                "Whenever Rankle and Torbran deals combat damage to a player or battle, choose any number \u{2014}",
+                "\u{2022} Each player creates a Treasure token.",
+                "\u{2022} Each player sacrifices a creature of their choice.",
+                "\u{2022} If a source would deal damage to a player or battle this turn, it deals that much damage plus 2 instead.",
+            ],
+            |d, t| {
+                // "Choose any number": each set of the three modes is one mode (bit i: mode i), the
+                // empty set last, as Rankle, Master of Pranks. There are no battles.
+                let part = |i: usize| -> Vec<Effect> {
+                    let both = [Who::You, Who::EachOpponent];
+                    match i {
+                        0 => both.iter().map(|&who| Effect::CreateToken { who, def: t.treasure, n: 1 }).collect(),
+                        1 => both.iter().map(|&who| Effect::SacrificeCreatures { who, n: 1 }).collect(),
+                        _ => vec![Effect::DamageToPlayersPlusTwoThisTurn],
+                    }
+                };
+                let mut sets: Vec<Ability> = (1u32..8)
+                    .map(|m| Ability::new(vec![], (0..3).filter(|i| m & (1 << i) != 0).flat_map(part).collect()))
+                    .collect();
+                sets.push(Ability::new(vec![], vec![]));
+                on_modal(d, When::DealsCombatDamageToPlayer, None, sets);
+            },
+        ),
+        "Master of Cruelties" => s(
+            &[
+                "This creature can only attack alone.",
+                "Whenever this creature attacks a player and isn't blocked, that player's life total becomes 1. This creature assigns no combat damage this combat.",
+            ],
+            |d, _| {
+                d.mana_ext.attacks_only_alone = true;
+                let effects = vec![Effect::OpponentLifeBecomesOne, Effect::SourceAssignsNoCombatDamage];
+                on(d, When::AttacksAndIsntBlocked, vec![], effects);
+            },
+        ),
+        "Overpowering Attack" => s(
+            &[
+                "Freerunning {2}{R}",
+                "Untap all creatures you control that attacked this turn. If it's your main phase, there is an additional combat phase after this phase, followed by an additional main phase.",
+            ],
+            |d, _| {
+                // A sorcery: always in a main phase. Only the active player's creatures attacked.
+                spell(d, vec![], vec![Effect::UntapCreaturesAttackedThisTurn, Effect::AdditionalCombatAndMain]);
+                d.mana_ext.freerunning = ManaCost::parse("{2}{R}");
+            },
+        ),
+        "Tendo Ice Bridge" => s(
+            &[
+                "This land enters with a charge counter on it.",
+                "{T}: Add {C}.",
+                "{T}, Remove a charge counter from this land: Add one mana of any color.",
+            ],
+            |d, _| {
+                on(d, When::Enters, vec![], vec![Effect::KindCounterSelf(1)]);
+                d.mana = Some(ManaSource { colorless: true, colors: [true; 5] });
+                d.mana_ext.colored_removes_kind_counter = true;
+            },
+        ),
+        "The Necrobloom" => s(
+            &[
+                "Landfall \u{2014} Whenever a land you control enters, create a 0/1 green Plant creature token. If you control seven or more lands with different names, create a 2/2 black Zombie creature token instead.",
+                "Land cards in your graveyard have dredge 2.",
+            ],
+            |d, t| {
+                let token = Effect::CreateTokenBySevenLandNames { fewer: t.plant, seven: t.zombie };
+                on(d, When::LandYouControlEnters, vec![], vec![token]);
+                d.lands_in_graveyard_have_dredge = Some(2);
+            },
+        ),
         _ => None,
     }
 }
@@ -2296,6 +2530,26 @@ pub const PG_B_SCRIPTED: &[&str] = &[
     "Nyxbloom Ancient",
     "Sylvan Library",
     "Deflecting Palm",
+    "Sigarda, Host of Herons",
+    "Valgavoth, Terror Eater",
+    "Teferi, Master of Time",
+    "Titan's Presence",
+    "Rhythm of the Wild",
+    "Surrak Dragonclaw",
+    "Plague Drone",
+    "Narset, Parter of Veils",
+    "Kami of Whispered Hopes",
+    "Dauthi Voidwalker",
+    "Damn",
+    "Metallic Mimic",
+    "Ojer Taq, Deepest Foundation // Temple of Civilization",
+    "Najeela, the Blade-Blossom",
+    "From the Catacombs",
+    "Rankle and Torbran",
+    "Master of Cruelties",
+    "Overpowering Attack",
+    "Tendo Ice Bridge",
+    "The Necrobloom",
     // Ghyrson Starn (Spr3adsh33t)
     "Basilisk Collar",
     "Gorgon's Head",

@@ -2269,3 +2269,391 @@ fn fleeting_memories_investigates_and_mills_on_a_clue_sacrifice() {
         "target player mills three"
     );
 }
+
+// ---- Core: triggers, batch 16 ----
+
+#[test]
+fn utvara_hellkite_makes_a_dragon_for_each_dragon_attacking() {
+    let mut g = table();
+    let utvara = put(&mut g, 0, "Utvara Hellkite");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    attack(&mut g, &[utvara, lions]);
+    resolve_all(&mut g, &[]);
+    let dragons = tokens(&g, 0, "Dragon");
+    assert_eq!(dragons.len(), 1, "for Utvara, not the Lions");
+    let d = dragons[0];
+    assert_eq!((g.power(d), g.toughness(d)), (6, 6));
+    assert!(g.keywords(d).has(Keywords::FLYING));
+    assert_eq!(g.def_of(d).colors, [false, false, false, true, false]);
+}
+
+#[test]
+fn well_of_lost_dreams_pays_x_up_to_the_life_gained_to_draw_x() {
+    let mut g = table();
+    put(&mut g, 0, "Well of Lost Dreams");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    let swords = hand(&mut g, 0, "Swords to Plowshares");
+    let before = g.players[0].hand.len();
+    act(&mut g, Action::Cast(swords));
+    act(&mut g, Action::Target(obj(lions)));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.players[0].life, 42, "gained the Lions' power");
+    assert!(
+        has(&g, Action::Amount(2)) && !has(&g, Action::Amount(3)),
+        "X at most 2"
+    );
+    resolve_all(&mut g, &[Action::Amount(2)]);
+    assert_eq!(g.players[0].hand.len(), before - 1 + 2);
+}
+
+#[test]
+fn hullbreaker_horror_bounces_on_each_spell_you_cast() {
+    let mut g = table();
+    let horror = put(&mut g, 0, "Hullbreaker Horror");
+    assert!(g.def_of(horror).uncounterable);
+    let theirs = put(&mut g, 1, "Savannah Lions");
+    let ring = hand(&mut g, 0, "Sol Ring");
+    act(&mut g, Action::Cast(ring));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    // Only your own spell is on the stack: no spell you don't control to return.
+    assert!(!has(&g, Action::Mode(0)));
+    assert!(
+        has(&g, Action::Mode(1)) && has(&g, Action::Mode(2)),
+        "a permanent, or none"
+    );
+    resolve_all(&mut g, &[Action::Mode(1), Action::Target(obj(theirs))]);
+    assert_eq!(g.obj(theirs).zone, Zone::Hand);
+    assert_eq!(g.obj(ring).zone, Zone::Battlefield);
+    let ring2 = hand(&mut g, 0, "Sol Ring");
+    act(&mut g, Action::Cast(ring2));
+    resolve_all(&mut g, &[Action::Mode(2)]);
+    assert_eq!(g.obj(ring2).zone, Zone::Battlefield, "choosing none");
+}
+
+#[test]
+fn call_of_the_ring_tempts_at_upkeep_and_draws_for_two_life_on_choosing() {
+    let mut g = table();
+    put(&mut g, 0, "Call of the Ring");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    g.start_turn(5, 0);
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.ring_bearer(0), Some(lions), "the only creature, chosen");
+    let before = g.players[0].hand.len();
+    act(&mut g, Action::Yes); // pay 2 life
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].life, 38);
+    assert_eq!(g.players[0].hand.len(), before + 1);
+}
+
+#[test]
+fn composer_of_spring_puts_a_land_or_with_six_enchantments_a_creature_tapped() {
+    let mut g = table();
+    put(&mut g, 0, "Composer of Spring");
+    let forest = hand(&mut g, 0, "Forest");
+    let lions = hand(&mut g, 0, "Savannah Lions");
+    let blood = hand(&mut g, 0, "Exquisite Blood");
+    act(&mut g, Action::Cast(blood));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(has(&g, Action::Pick(forest)) && has(&g, Action::No));
+    assert!(!has(&g, Action::Pick(lions)), "one enchantment: a land only");
+    act(&mut g, Action::Pick(forest));
+    assert_eq!(g.obj(forest).zone, Zone::Battlefield);
+    assert!(g.obj(forest).tapped);
+    for _ in 0..4 {
+        put(&mut g, 0, "Exquisite Blood"); // five enchantments; the next one cast makes six
+    }
+    let blood2 = hand(&mut g, 0, "Exquisite Blood");
+    act(&mut g, Action::Cast(blood2));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(has(&g, Action::Pick(lions)), "six enchantments: a creature too");
+    act(&mut g, Action::Pick(lions));
+    assert_eq!(g.obj(lions).zone, Zone::Battlefield);
+    assert!(g.obj(lions).tapped);
+}
+
+#[test]
+fn oloro_gains_two_from_the_command_zone_at_your_upkeep() {
+    let mut g = table();
+    let oloro = g.add_card(0, cid("Oloro, Ageless Ascetic"), Zone::Command);
+    assert!(g.command.contains(&oloro));
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.players[0].life, 42, "the command-zone trigger only");
+    assert_eq!(
+        g.players[1].life, 40,
+        "its gain-life trigger works only on the battlefield"
+    );
+}
+
+#[test]
+fn oloro_on_the_battlefield_gains_two_and_pays_one_to_drain_and_draw() {
+    let mut g = table();
+    put(&mut g, 0, "Oloro, Ageless Ascetic");
+    g.start_turn(5, 0);
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.players[0].life, 42);
+    let before = g.players[0].hand.len();
+    act(&mut g, Action::Yes); // pay {1}
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].life, 39);
+    assert_eq!(g.players[0].hand.len(), before + 1);
+}
+
+#[test]
+fn angel_of_destiny_shares_the_life_and_wins_at_fifteen_over() {
+    let mut g = table();
+    let angel = put(&mut g, 0, "Angel of Destiny");
+    attack(&mut g, &[angel]);
+    through_combat(&mut g);
+    // Double strike: 2 and 2; each time both players gain that much.
+    assert_eq!(g.players[0].life, 44);
+    assert_eq!(g.players[1].life, 40);
+    assert!(!g.players[1].lost);
+    g.players[0].life = 55; // 15 over the starting 40
+    while g.result.is_none() && g.step != Step::Cleanup {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(g.players[1].lost, "it attacked this turn");
+}
+
+#[test]
+fn bonus_round_copies_each_instant_or_sorcery_cast_this_turn() {
+    let mut g = table();
+    let round = hand(&mut g, 0, "Bonus Round");
+    play(&mut g, round, false, &[], &[]);
+    assert_eq!(g.obj(round).zone, Zone::Graveyard);
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    act(&mut g, Action::Cast(bolt));
+    act(&mut g, Action::Target(Target::Player(1)));
+    // Keep the copy's target (the opponent).
+    while !g.items.is_empty() || matches!(g.pending, Pending::ChooseTarget(_) | Pending::Decide(_)) {
+        let legal = g.legal_actions();
+        let a = match g.pending {
+            Pending::ChooseTarget(_) if legal.contains(&Action::Target(Target::Player(1))) => {
+                Action::Target(Target::Player(1))
+            }
+            Pending::ChooseTarget(_) | Pending::Decide(_) if legal.contains(&Action::No) => Action::No,
+            Pending::ChooseTarget(_) | Pending::Decide(_) => legal[0],
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.players[1].life, 34, "the Bolt and its copy");
+    // Next turn it's over.
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    let bolt2 = hand(&mut g, 0, "Lightning Bolt");
+    play(&mut g, bolt2, false, &[Target::Player(1)], &[]);
+    assert_eq!(g.players[1].life, 31, "until end of turn only");
+}
+
+// ---- Ygra, Eater of All ----
+
+fn token_def(g: &Game, name: &str) -> usize {
+    g.defs
+        .iter()
+        .position(|d| d.token && d.name == name)
+        .unwrap_or_else(|| panic!("the {name} token"))
+}
+
+/// Lightning Bolt from player 0 at `target`, passing until the ward's question or until it leaves
+/// the stack.
+fn bolt_at(g: &mut Game, target: ObjId) -> ObjId {
+    let bolt = hand(g, 0, "Lightning Bolt");
+    act(g, Action::Cast(bolt));
+    act(g, Action::Target(Target::Object(target)));
+    for _ in 0..20 {
+        if matches!(g.pending, Pending::Decide(0)) || g.obj(bolt).zone != Zone::Stack {
+            break;
+        }
+        act(g, Action::PassPriority);
+    }
+    bolt
+}
+
+#[test]
+fn ygra_ward_takes_a_food_and_the_food_feeds_ygra() {
+    let mut g = table();
+    let ygra = put(&mut g, 1, "Ygra, Eater of All");
+    // Player 0 controls no creature (so no Food): the ward can't be paid.
+    let bolt = bolt_at(&mut g, ygra);
+    assert_eq!(g.obj(bolt).zone, Zone::Graveyard, "countered");
+    assert_eq!(g.obj(ygra).damage, 0);
+    // A creature of theirs is a Food: the ward offers it.
+    let lions = put(&mut g, 0, "Savannah Lions");
+    let bolt = bolt_at(&mut g, ygra);
+    assert!(matches!(g.pending, Pending::Decide(0)));
+    assert!(has(&g, Action::Pick(lions)));
+    act(&mut g, Action::Pick(lions));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(lions).zone, Zone::Graveyard, "sacrificed for the ward");
+    assert_eq!(g.obj(bolt).zone, Zone::Graveyard);
+    assert_eq!(g.obj(ygra).damage, 3, "the Bolt resolved");
+    assert_eq!(g.obj(ygra).counters, 2, "a Food went to the graveyard");
+}
+
+#[test]
+fn ygra_makes_every_other_creature_a_food_artifact_with_the_food_ability() {
+    let mut g = table();
+    let ygra = put(&mut g, 0, "Ygra, Eater of All");
+    let mine = put(&mut g, 0, "Savannah Lions");
+    let theirs = put(&mut g, 1, "Serra Angel");
+    for c in [mine, theirs] {
+        assert!(g.types_of(c).artifact && g.types_of(c).creature && g.has_subtype(c, "Food"));
+    }
+    assert!(
+        !g.types_of(ygra).artifact && !g.has_subtype(ygra, "Food"),
+        "other creatures only"
+    );
+    assert!(
+        has(&g, Action::Activate(mine, 0)),
+        "{{2}}, {{T}}, sacrifice: gain 3"
+    );
+    act(&mut g, Action::Activate(mine, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(mine).zone, Zone::Graveyard);
+    assert_eq!(g.players[0].life, 43);
+    assert_eq!(g.obj(ygra).counters, 2);
+    // Without Ygra they're plain creatures again.
+    let d = hand(&mut g, 0, "Hero's Downfall");
+    play(&mut g, d, false, &[obj(ygra)], &[]);
+    assert!(!g.types_of(theirs).artifact && !g.has_subtype(theirs, "Food"));
+}
+
+#[test]
+fn ygra_grows_on_any_food_to_a_graveyard_but_not_other_artifacts() {
+    let mut g = table();
+    let ygra = put(&mut g, 0, "Ygra, Eater of All");
+    let food = g.add_card(0, token_def(&g, "Food"), Zone::Battlefield);
+    act(&mut g, Action::Activate(food, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(ygra).counters, 2, "a Food token");
+    let clue = g.add_card(0, token_def(&g, "Clue"), Zone::Battlefield);
+    act(&mut g, Action::Activate(clue, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(ygra).counters, 2, "a Clue isn't a Food");
+    let theirs = put(&mut g, 1, "Serra Angel");
+    let d = hand(&mut g, 0, "Hero's Downfall");
+    play(&mut g, d, false, &[obj(theirs)], &[]);
+    assert_eq!(g.obj(ygra).counters, 4, "the opponent's creature was a Food");
+}
+
+#[test]
+fn mesmeric_orb_mills_the_controller_of_each_permanent_that_untaps() {
+    let mut g = table();
+    put(&mut g, 0, "Mesmeric Orb");
+    let mine: Vec<ObjId> = (0..2).map(|_| put(&mut g, 0, "Forest")).collect();
+    let theirs = put(&mut g, 1, "Forest");
+    for &x in mine.iter().chain([&theirs]) {
+        g.objects[x.0 as usize].tapped = true;
+    }
+    let (gy0, gy1) = (g.players[0].graveyard.len(), g.players[1].graveyard.len());
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.players[0].graveyard.len(), gy0 + 2, "two of yours untapped");
+    assert_eq!(
+        g.players[1].graveyard.len(),
+        gy1,
+        "theirs stays tapped on your turn"
+    );
+    g.start_turn(6, 1);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.players[1].graveyard.len(), gy1 + 1, "its controller mills");
+}
+
+#[test]
+fn hallowed_haunting_makes_spirit_clerics_that_count_spirits_and_flies_at_seven() {
+    let mut g = table();
+    put(&mut g, 0, "Hallowed Haunting");
+    for n in 1..=2 {
+        let blood = hand(&mut g, 0, "Exquisite Blood");
+        play(&mut g, blood, false, &[], &[]);
+        let spirits = tokens(&g, 0, "Spirit Cleric");
+        assert_eq!(spirits.len(), n);
+        for &s in &spirits {
+            assert_eq!(
+                (g.power(s), g.toughness(s)),
+                (n as i32, n as i32),
+                "the Spirits you control"
+            );
+            assert!(!g.keywords(s).has(Keywords::FLYING), "{n}: three enchantments");
+        }
+    }
+    for _ in 0..4 {
+        put(&mut g, 0, "Exquisite Blood"); // seven enchantments
+    }
+    let lions = put(&mut g, 0, "Savannah Lions");
+    for c in [lions, tokens(&g, 0, "Spirit Cleric")[0]] {
+        assert!(g.keywords(c).has(Keywords::FLYING) && g.keywords(c).has(Keywords::VIGILANCE));
+    }
+    let theirs = put(&mut g, 1, "Savannah Lions");
+    assert!(!g.keywords(theirs).has(Keywords::FLYING), "creatures you control");
+}
+
+/// From player 0's main phase to the end step's Palantír question, answering the target and the
+/// scry along the way; returns whether the opponent was asked.
+fn palantir_to_the_question(g: &mut Game) -> bool {
+    for _ in 0..200 {
+        match g.pending {
+            Pending::Decide(1) => return true,
+            Pending::ChooseTarget(_) => {
+                act(g, Action::Target(Target::Player(1)));
+            }
+            Pending::Decide(_) => {
+                let a = g.legal_actions()[0];
+                act(g, a);
+            }
+            _ if g.step == Step::Cleanup || g.turn != 3 => return false,
+            _ => {
+                act(g, Action::PassPriority);
+            }
+        }
+    }
+    false
+}
+
+#[test]
+fn palantir_of_orthanc_draws_or_mills_by_influence_and_drains() {
+    let mut g = table();
+    let pal = put(&mut g, 0, "Palant\u{ed}r of Orthanc");
+    assert!(palantir_to_the_question(&mut g));
+    assert_eq!(g.obj(pal).kind_counters, 1, "an influence counter");
+    let hand_before = g.players[0].hand.len();
+    act(&mut g, Action::Yes); // they let you draw
+    assert_eq!(g.players[0].hand.len(), hand_before + 1);
+
+    let mut g = table();
+    let pal = put(&mut g, 0, "Palant\u{ed}r of Orthanc");
+    g.objects[pal.0 as usize].kind_counters = 1; // the second end step: two counters
+    assert!(palantir_to_the_question(&mut g));
+    assert_eq!(g.obj(pal).kind_counters, 2);
+    let angels = [
+        g.add_card(0, cid("Serra Angel"), Zone::Library),
+        g.add_card(0, cid("Serra Angel"), Zone::Library),
+    ];
+    act(&mut g, Action::No); // they refuse
+    for a in angels {
+        assert_eq!(g.obj(a).zone, Zone::Graveyard, "milled two");
+    }
+    assert_eq!(g.players[1].life, 30, "two mana value 5 cards");
+}

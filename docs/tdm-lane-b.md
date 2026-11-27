@@ -891,3 +891,150 @@ abilities that don't tap, and the triggered extras like Mirari's Wake, aren't tr
 (`Effect::SylvanLibrary`, `Game::drawn_this_turn` set in `draw`, Decisions SylvanDraw, SylvanPick,
 SylvanPayOrTop), Deflecting Palm (`Effect::DamageExtrasControllerAmount` after the existing prevention
 shield). Sigarda and Valgavoth not started.
+
+### Sigarda, Host of Herons and Valgavoth, Terror Eater (2026-11-26)
+
+- Sigarda: `CardDef::opponents_cant_make_you_sacrifice`, `Game::forced_sacrifice_blocked` (an
+  opponent's spell or ability is resolving), checked first in `cant_be_sacrificed`. Every forced
+  sacrifice already picks from `cant_be_sacrificed` (edicts, each player sacrifices, annihilator via
+  `sacrifice_permanents`, the greatest-power, nontoken, creature-or-planeswalker and vow sacrifices,
+  Torment-style "unless", ward—sacrifice); two gaps were closed: `Decision::LoseOrDiscard`'s
+  sacrifice options and the Ring's blocker sacrifice (d4). Your own costs and mana abilities are
+  unaffected. Animate Dead's "that creature's controller sacrifices it" asks
+  `cant_be_sacrificed_by(creature, the Aura's controller)`: Sigarda stops it only when the Aura is an
+  opponent's, whatever spell is resolving.
+- Valgavoth: ward was in; `CardDef::exiles_opponents_cards_to_play` (in `move_to`: a nontoken card its
+  controller didn't control, headed for an opponent's graveyard, is exiled and recorded in
+  `exiled_with`), playable from exile during your turn (`Game::valgavoth_exiled`, offered with life
+  for its mana value), cast for life through Bolas's Citadel's path (`citadel_top`).
+- Teferi, Master of Time: `CardDef::loyalty_at_instant_speed`, in `loyalty_actions` (offered without
+  sorcery timing, on any player's turn, still once each turn); its −3 is the existing
+  `PhaseOutSlot`, its −10 two `ExtraTurn`s.
+- The Necrobloom waits: dredge is a "may" draw replacement, and `draw` can't pause for a decision
+  (every draw replacement so far is automatic); its landfall Zombie also needs a "seven or more lands
+  with different names" condition.
+
+### Ygra and Gourmand's Talent grants (2026-11-26)
+
+- `CardDef::other_creatures_have`: activated abilities every other creature has, whoever controls it
+  (Ygra, with d3's `other_creatures_are_food_artifacts`), in `borrowed_activated`.
+- `subtype_you_control_has` now reaches any permanent of the subtype, not only creatures (Gourmand's
+  Talent's noncreature artifacts that are Foods on your turn); a granted ability equal to one the
+  permanent already has, or granted twice, is listed once.
+- `Game::activated_snapshots`: a granted, borrowed or kept ability is recorded as it's activated,
+  and `ability_of` resolves from that record, so "Sacrifice this artifact: You gain 3 life" still
+  resolves after its source is gone.
+- Gourmand's Talent scripted (blc_b). Token 14, Raccoon, is now green (its only makers, Sylvan
+  Scavenging and Gourmand's Talent, say green).
+- It That Heralds the End skipped: d3 batch 27's `Scope::OtherYourColorlessCreatures` isn't on tarkir.
+
+### Design note: a "may" draw replacement (dredge, The Necrobloom), not built
+
+The problem: dredge replaces one draw with "return a dredge card from your graveyard to your hand
+and mill N" at the player's choice (CR 702.52). `Game::draw` is synchronous: 69 call sites (66 in
+game.rs, 2 in game/zones.rs, 1 in game/d4.rs), most inside a `for _ in 0..n` loop in the middle of
+an effect, and some inside decision answers (Sylvan Library) or turn-based actions (the draw step).
+A Decision can only be asked by returning to the action loop, so `draw` itself can't ask.
+
+Option A (recommended): ask before the draw event, not inside it.
+- A new `Decision::Dredge { player, draws_left, then }` asked by the callers that start a draw
+  event, before any card moves: the draw step (`Step::Draw`) and `Effect::Draw` / `DrawXTarget` /
+  the few other draw effects (about 12 effect arms; most of the 69 sites are one-card draws inside
+  them or inside other effects).
+- `Pick` a dredge card (a land card in your graveyard, with N or more cards in your library) to
+  dredge the next draw, or `No` to draw normally; with several draws in one event, ask once per
+  draw (`draws_left` counts down), then the effect's remaining instructions continue (`then` is
+  the resolving item's remaining effects, as other mid-resolution decisions already do).
+- Draw sites not converted keep drawing automatically: that keeps every existing card working and
+  makes dredge optional only where it's asked. Those sites would be documented, so a card never
+  claims dredge on a draw it doesn't offer.
+- Cost: one Decision, a helper `draw_or_dredge(p, n)` used by the converted arms, the draw step
+  change, and the label; roughly 150 lines. Risk: effects that read "the cards drawn this way"
+  (Sylvan Library, Archive doubling) must count dredged draws as not drawn.
+
+Option B: an automatic policy (dredge whenever a land card is in the graveyard and the top N are
+known to be worse). Simple, but it's the engine choosing for the player, which dredge doesn't
+allow, so I don't recommend it.
+
+The Necrobloom also needs "if you control seven or more lands with different names" for its
+landfall Zombie (a small Condition, about 10 lines).
+
+### Can't-be-countered statics, riot, lands with different names (2026-11-27)
+
+- `CardDef::your_creature_spells_uncounterable`, `your_color_spells_uncounterable` (WUBRG index),
+  read in `Game::uncounterable` through `statically_uncounterable` (a spell on the stack whose
+  controller controls one): Rhythm of the Wild, Surrak Dragonclaw. Allosaurus Shepherd waits: its
+  Elves activation (base 5/5 and a Dinosaur until end of turn) has no effect yet (d3).
+- Riot from `CardDef::your_nontoken_creatures_have_riot`: every nontoken creature entering under
+  your control, however it enters (cast, reanimated, flickered, put onto the battlefield), is queued
+  in `Game::riot_pending` by the enter path, and `Decision::Riot` (Mode 0 a +1/+1 counter, Mode 1
+  haste, labelled) is asked at the next priority, as shock lands' choice is. Timing nuance: the
+  choice lands just after the creature enters, not as it enters, so an enters trigger that reads its
+  power (or counters) sees it without the riot counter.
+- `Condition::ControlLandsWithDifferentNamesAtLeast(n)` (The Necrobloom, Field of the Dead).
+
+### The live validator's mac-b queue (2026-11-27)
+
+Scripted (pg_b): Plague Drone (`opponents_life_gain_becomes_loss`, in `gain_life`), Narset, Parter of
+Veils (`opponents_draw_at_most_one`, at the top of `draw`; `Pick::NoncreatureNonland`), Kami of
+Whispered Hopes (the existing `counters_plus_one`; X mana of one color, one ability per color as
+Heronblade Elite),
+Dauthi Voidwalker (shadow and its void pieces were in), Damn (overload: `CardDef::overload_spell`
+with `alt_cost` needing no creatures, in the castability check, target choice and `ability_of`),
+Metallic Mimic (`others_of_chosen_type_enter_with_counter`, in the enter path and
+`has_base_subtype`), Ojer Taq (`triples_creature_tokens`, `Game::creature_token_tripling` in
+`create_token`, its extras and the token-copy makers), Najeela (`When::CreatureOfSubtypeAttacks`, any
+player's attacker, `Effect::ExtrasControllerCreatesAttackingToken`, `Activated::only_during_combat`;
+token 106 white Warrior), From the Catacombs (`Effect::ReanimateWithCorpseCounter`,
+`Object::corpse_counter` in `move_to`; d4's initiative, d1's escape).
+
+Rankle and Torbran (pg_b): "choose any number" as Rankle, Master of Pranks; its third mode is
+`Effect::DamageToPlayersPlusTwoThisTurn` (`Game::plus_two_to_players`: +2 to damage to players this
+turn, from any source, after the doublers; no battles exist).
+
+Pieces for lane C's cards (tested on edited definitions in core_replace): Inkshield
+(`Effect::PreventCombatDamageToYouMakingTokens`, `Game::combat_shield_tokens`; token 105 Inkling),
+The One Ring (`Effect::YouGainProtectionUntilYourNextTurn`, `Game::player_protected_until`: damage to
+you prevented and you can't be targeted; "can't be enchanted" isn't modelled).
+
+### Crew with any number of creatures (2026-11-27)
+
+Crew N (CR 702.122a) is now "tap any number of other untapped creatures with total power N or
+more". The activation list offers `ActivateWith(vehicle, n, c)` for each other untapped creature
+when their total power reaches N; if `c` alone is enough it crews at once as before, otherwise
+`Decision::CrewTap` asks for more (`Pick` another, `Yes` once the total reaches N, `No` to not
+crew, with nothing paid); creatures with 0 power aren't offered (they add nothing; only a "becomes
+tapped" trigger would want one). The others are tapped with the named one in `pay_activation`
+(`Game::crew_extra`). Saddle will use the same cost once d1 batch 19 is on tarkir.
+- Saddle (d1 batch 19's `Activated::saddle`) now uses the same summed-power cost: listed like crew,
+  as a sorcery, `Decision::CrewTap` for more creatures (labels now say "crew or saddle"); every
+  creature that saddled it is recorded in `Game::saddled` (`saddle_extra` carries the others to
+  `Effect::BecomeSaddled`).
+- Master of Cruelties' pieces: `When::AttacksAndIsntBlocked` (fired once blockers are declared, in
+  `fire_unblocked_at_player`), `Effect::OpponentLifeBecomesOne`, `Effect::SourceAssignsNoCombatDamage`
+  (`Game::no_combat_damage_from`, skipped in `combat_damage`). The card waits for d1 batch 20's
+  attacks-alone.
+- Kaalia's last three (on d1 batch 20): Master of Cruelties (d1's `attacks_only_alone` and my
+  unblocked-attack pieces), Overpowering Attack (d1's freerunning; Waves of Aggression's untap and
+  additional combat and main phase), Tendo Ice Bridge (a charge counter as it enters, from an enters
+  trigger; d1's `colored_removes_kind_counter`).
+
+### Dredge and The Necrobloom (2026-11-27)
+
+`Decision::Dredge { player, left, more, draw_step }` is asked before a draw starts, through
+`Game::draws_with_dredge`, whenever the player has a card with dredge in their graveyard and at
+least that many cards in their library (`Game::dredge_options`; The Necrobloom's
+`lands_in_graveyard_have_dredge`). `Pick` returns that card to the hand and mills N instead of
+drawing (not a draw: `draws_this_turn` and `drawn_this_turn` don't count it); `No` draws. Each draw
+of a multi-card draw is asked separately.
+
+Draws that offer dredge: the draw step's draw, `Effect::Draw`, `DrawX`, `DrawAmount`,
+`DrawXTarget`. Every other draw is automatic (no dredge offered), among them: the other `Draw*`
+effects (per creature, per power, if-conditions, `DrawThenPutBack`, `DrawUpToHandSize`,
+`DrawThreeMayCastOneFree` and the rest), draws inside decisions (Sylvan Library's two, Kwain's,
+loots and connive), Alhammarret's Archive's extra draw, draws from costs and mana abilities, and
+the draw in `Decision::MayDrawGainOne`.
+
+The Necrobloom: landfall `Effect::CreateTokenBySevenLandNames` (a 0/1 Plant, or a 2/2 Zombie with
+seven or more land names) and dredge 2 for its controller's land cards. Tokens 52 (Plant) and 20
+(Zombie) are now green and black, as every card that makes them says.
