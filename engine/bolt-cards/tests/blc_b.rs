@@ -3099,12 +3099,14 @@ fn one_three_power_creature_cant_crew_a_crew_4_and_no_cancels() {
             .any(|a| matches!(a, Action::ActivateWith(x, 0, _) if *x == chariot)),
         "3 total power isn't 4"
     );
-    let second = put(&mut g, 0, "Squirrel Sovereign"); // 2 more power
-    let first = g
+    // Squirrel Sovereign (2 power; it makes the Apothecary 4/4) is named first: not enough alone.
+    let first = put(&mut g, 0, "Squirrel Sovereign");
+    let second = g
         .permanents(0)
         .find(|&x| g.def_of(x).name == "Bloodroot Apothecary")
         .expect("it");
     act(&mut g, Action::ActivateWith(chariot, 0, first));
+    assert!(matches!(g.pending, Pending::Decide(0)));
     act(&mut g, Action::No); // changed my mind
     assert!(!g.types_of(chariot).creature);
     assert!(!g.obj(first).tapped && !g.obj(second).tapped, "nothing paid");
