@@ -3110,4 +3110,40 @@ mod remove_counters_from_others {
         assert_eq!((g.obj(a).counters, g.obj(b).counters), (0, 0));
         assert_eq!(g.obj(h).counters, 1, "the ability resolved");
     }
+
+    #[test]
+    fn the_kind_removed_is_the_most_numerous_and_never_loyalty_beside_another() {
+        let mut defs = (*set("CMD").unwrap().defs).clone();
+        let hub = cid("Ornithopter");
+        defs[hub].activated.push(Activated {
+            remove_counters_from_others: 1,
+            ability: Ability::new(vec![], vec![]),
+            ..Activated::default()
+        });
+        let plains = vec![cid("Plains"); 99];
+        let mut g = Game::new_commander(
+            std::sync::Arc::new(defs),
+            [&plains, &plains],
+            [cid("Bello, Bard of the Brambles"), cid("Ms. Bumbleflower")],
+            7,
+            0,
+        );
+        g.auto_pass = false;
+        g.start_turn(3, 0);
+        while g.step != Step::Main1 {
+            g.apply(Action::PassPriority).unwrap();
+        }
+        let h = g.add_card(0, hub, Zone::Battlefield);
+        let w = g.add_card(0, cid("Nissa, Ascended Animist"), Zone::Battlefield);
+        g.objects[w.0 as usize].loyalty = 1;
+        g.objects[w.0 as usize].counters = 2;
+        let n = g.def_of(h).activated.len() - 1;
+        g.apply(Action::Activate(h, n)).unwrap();
+        g.apply(Action::Pick(w)).unwrap();
+        assert_eq!(
+            (g.obj(w).loyalty, g.obj(w).counters),
+            (1, 1),
+            "a +1/+1 counter, not loyalty"
+        );
+    }
 }

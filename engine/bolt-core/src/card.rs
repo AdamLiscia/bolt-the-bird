@@ -395,8 +395,10 @@ pub struct Activated {
     /// The stack item's amount is the sacrificed creature's toughness (Miren, the Moaning Well).
     pub amount_from_victim_toughness: bool,
     /// "Remove N counters from among other artifacts, creatures, and planeswalkers you control" in
-    /// the cost (Tekuthal, Inquiry Dominus: 3): the player picks each one
-    /// (`Decision::RemoveCountersFromOthers`) before the ability is activated.
+    /// the cost (Tekuthal, Inquiry Dominus: 3): the player picks each permanent
+    /// (`Decision::RemoveCountersFromOthers`) before the ability is activated. Demo rule for the
+    /// kind (until it's a Mode pick): the kind with the most counters on that permanent, never
+    /// loyalty (or lore) while another kind is present (`Game::remove_any_counter`).
     pub remove_counters_from_others: u8,
 }
 

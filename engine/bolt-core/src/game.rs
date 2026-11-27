@@ -11542,21 +11542,30 @@ impl Game {
             .collect()
     }
 
-    /// Removes one counter from `x`: +1/+1 (or -1/-1) first, then loyalty, its own kind, stun,
-    /// revival (simplification: the player picks the permanent, not the kind).
+    /// Removes one counter from `x` (Tekuthal's cost; the player picked `x`). Demo rule until the
+    /// kind is a Mode pick: the kind with the most counters on it, but never loyalty while another
+    /// kind is present (ties: +1/+1 or -1/-1, its own kind, stun, revival).
     fn remove_any_counter(&mut self, x: ObjId) {
         let walker = self.types_of(x).planeswalker;
+        let o = self.obj(x);
+        let others = [
+            o.counters.abs(),
+            o.kind_counters.max(0),
+            o.stun.max(0),
+            o.revival.max(0),
+        ];
+        let loyalty = if walker { o.loyalty.max(0) } else { 0 };
+        let best = (0..4)
+            .max_by_key(|&k| (others[k], std::cmp::Reverse(k)))
+            .filter(|&k| others[k] > 0);
         let o = self.obj_mut(x);
-        if o.counters != 0 {
-            o.counters -= o.counters.signum();
-        } else if walker && o.loyalty > 0 {
-            o.loyalty -= 1;
-        } else if o.kind_counters > 0 {
-            o.kind_counters -= 1;
-        } else if o.stun > 0 {
-            o.stun -= 1;
-        } else if o.revival > 0 {
-            o.revival -= 1;
+        match best {
+            Some(0) => o.counters -= o.counters.signum(),
+            Some(1) => o.kind_counters -= 1,
+            Some(2) => o.stun -= 1,
+            Some(_) => o.revival -= 1,
+            None if loyalty > 0 => o.loyalty -= 1,
+            None => {}
         }
     }
 
