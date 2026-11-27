@@ -1,0 +1,88 @@
+"""train_ppo_play: a printed iteration is a saved one. A SIGTERM right after an iteration's line (2026-11-27: the
+farm resumed at iteration 7 although 8 had printed) resumes on that iteration, not the one before."""
+
+import sys
+
+import numpy as np
+import pytest
+import torch
+from test_jobs import FakeS3
+from test_play_commander import obs
+
+from bolt.jobs import Job
+from bolt.play_data import to_arrays
+from bolt.play_encoding import encode
+from bolt.play_net import PlayNet
+
+
+def fake_run_parallel(net, jobs, record=(0, 1), stop=None, **kw):
+    """Every game a two-move draw-free win for seat 0, both seats recorded, played by no engine."""
+    steps, results = [], []
+    for g in range(len(jobs)):
+        for seat in record:
+            for _ in range(2):
+                steps.append({"game": g, "seat": seat, "enc": encode(obs(), seat), "action": 1, "logp": -0.7,
+                              "value": 0.0})  # fmt: skip
+        results.append({"result": "p0", "turn": 3})
+    return {"results": results, "arrays": to_arrays(steps, results)}
+
+
+@pytest.fixture
+def trainer(tmp_path, monkeypatch):
+    sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[1] / "scripts"))
+    import train_ppo_play as t
+
+    monkeypatch.setattr("bolt.play_encoding.card_table", lambda s: ())
+    torch.manual_seed(0)
+    (tmp_path / "results").mkdir()
+    init = tmp_path / "init.pt"
+    net = PlayNet(n_cards=8, dim=16, layers=1, heads=2)
+    torch.save({"config": net.config, "model": net.state_dict()}, init)
+    monkeypatch.setattr(t, "ROOT", tmp_path)
+    monkeypatch.setattr(t, "PLAY_SET", None)
+    monkeypatch.setattr(t, "deck_sets", lambda: ([[1], [2], [3]], [[1], [2], [3]]))
+    monkeypatch.setattr(t, "run_parallel", fake_run_parallel)
+    monkeypatch.setattr(t, "evaluate", lambda *a, **k: {"rules": 0.5, "smart": 0.5})
+    monkeypatch.setattr(t, "upload_quietly", lambda p: None)
+    s3, made = FakeS3(), []
+
+    def make_job(name):
+        j = Job(name, every_s=900, client=s3, local=tmp_path / "ckpt", handle_signals=False)
+        made.append(j)
+        return j
+
+    monkeypatch.setattr("bolt.jobs.Job", make_job)
+    monkeypatch.setenv("BOLT_JOB", "stoptest")
+    monkeypatch.delenv("BOLT_THREADS", raising=False)
+    argv = ["train_ppo_play.py", "--name", "stoptest", "--init", str(init), "--self-play", "--iters", "5",
+            "--games", "4", "--workers", "1", "--threads", "1", "--eval-every", "100", "--batch", "8"]  # fmt: skip
+    monkeypatch.setattr(sys, "argv", argv)
+    return t, made, s3, tmp_path
+
+
+def test_a_sigterm_right_after_an_iterations_line_resumes_on_that_iteration(trainer, monkeypatch, capsys):
+    t, made, s3, tmp_path = trainer
+    real_print = print
+    armed = []
+
+    def printing(*args, **kw):
+        real_print(*args, **kw)
+        if args and str(args[0]).startswith('{"iter": 2,'):
+            armed.append(True)
+
+    def playing(*args, stop=None, **kw):
+        if armed:  # the SIGTERM lands while iteration 3's games play, seconds after iteration 2's line
+            made[0].stop_requested = True  # what Job's SIGTERM handler does
+            if stop is not None and stop():
+                raise t.Stopped()
+        return fake_run_parallel(*args, **kw)
+
+    monkeypatch.setattr(t, "print", printing, raising=False)
+    monkeypatch.setattr(t, "run_parallel", playing)
+    t.main()
+    out = capsys.readouterr().out
+    assert '"iter": 3' not in out, "the iteration the SIGTERM interrupted is dropped, not finished"
+    assert "stopped at iteration 2 (SIGTERM); checkpoint saved" in out
+    back = Job("stoptest", client=s3, local=tmp_path / "elsewhere", handle_signals=False).resume()
+    assert back is not None and back["state"]["iter"] == 2
+    assert np.isclose(back["state"]["history"][-1]["iter"], 2)
