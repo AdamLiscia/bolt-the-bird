@@ -1358,6 +1358,9 @@ pub enum Decision {
     PayXDrawX { max: u8 },
     /// Riot (CR 702.136): `Mode(0)` for a +1/+1 counter on `card`, `Mode(1)` for haste.
     Riot { card: ObjId },
+    /// Composer of Spring: `Pick` a land card in your hand (or, with `creature`, a creature or land
+    /// card) to put onto the battlefield tapped, or `No`.
+    LandOrCreatureFromHandTapped { creature: bool },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -4645,6 +4648,26 @@ impl Game {
                 .triggers
                 .iter()
                 .any(|t| t.when == When::Dies && t.ability.effects.contains(&Effect::Undying));
+        // "Whenever a [subtype] is put into a graveyard from the battlefield" looks back in time (CR
+        // 603.10a): the subtypes it had on the battlefield, statics included (Ygra's "other creatures
+        // are Food artifacts"), checked before it moves and kept in `last_subtypes`.
+        let was_subtypes: Vec<&'static str> = if from == Zone::Battlefield && to == Zone::Graveyard {
+            let mut subs = Vec::new();
+            for q in 0..2 {
+                for any in self.permanents(q) {
+                    for tr in &self.def_of(any).triggers {
+                        if let When::SubtypeToGraveyardFromBattlefield(sub) = tr.when {
+                            if !subs.contains(&sub) && self.has_subtype(id, sub) {
+                                subs.push(sub);
+                            }
+                        }
+                    }
+                }
+            }
+            subs
+        } else {
+            Vec::new()
+        };
         let list = self.zone_list(owner, from);
         let pos = list.iter().position(|&x| x == id).expect("object is in its zone");
         list.remove(pos);
@@ -4750,6 +4773,11 @@ impl Game {
         if from == Zone::Battlefield {
             let mut last = std::mem::take(&mut o.extra_subtypes);
             last.extend(o.subtype_override.take());
+            for s in was_subtypes {
+                if !last.contains(&s) {
+                    last.push(s);
+                }
+            }
             o.last_subtypes = last;
             o.granted = Keywords::NONE;
             o.keyword_counters = Keywords::NONE;
@@ -5282,7 +5310,7 @@ impl Game {
                     let whens: Vec<When> = self.def_of(any).triggers.iter().map(|tr| tr.when).collect();
                     for (n, w) in whens.into_iter().enumerate() {
                         if let When::SubtypeToGraveyardFromBattlefield(sub) = w {
-                            if self.has_subtype(id, sub) {
+                            if self.has_subtype(id, sub) || self.obj(id).last_subtypes.contains(&sub) {
                                 let before = self.triggered.len();
                                 self.triggered.push(StackItem {
                                     kind: StackKind::Trigger(n),
@@ -12422,6 +12450,20 @@ impl Game {
             Decision::ChooseRingBearer => self.ring_bearer_options(p),
             Decision::DelinaAgain { .. } => vec![Action::Yes, Action::No],
             Decision::PickOneOf { cards, .. } => cards.iter().copied().map(Action::Pick).collect(),
+            Decision::LandOrCreatureFromHandTapped { creature } => {
+                let creature = *creature;
+                let mut v: Vec<Action> = hand
+                    .iter()
+                    .copied()
+                    .filter(|&x| {
+                        let t = self.def_of(x).types;
+                        t.land || (creature && t.creature)
+                    })
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
             Decision::MayCreatureFromHand => {
                 let mut v: Vec<Action> = hand
                     .iter()
@@ -14410,6 +14452,11 @@ impl Game {
                 self.obj_mut(c).tapped = true;
             }
             (Decision::LandFromHandTapped, _) => {}
+            (Decision::LandOrCreatureFromHandTapped { .. }, Action::Pick(c)) => {
+                self.move_to(c, Zone::Battlefield);
+                self.obj_mut(c).tapped = true;
+            }
+            (Decision::LandOrCreatureFromHandTapped { .. }, _) => {}
             (Decision::ManifestDread { cards }, Action::Pick(c)) => {
                 self.manifest(p, c);
                 for x in cards {
@@ -17842,6 +17889,21 @@ impl Game {
                 let p = item.controller;
                 if self.players[p].hand.iter().any(|&x| self.def_of(x).types.land) {
                     self.ask(p, Decision::LandFromHandTapped);
+                }
+            }
+            Effect::MayPutLandOrCreatureFromHandTapped { enchantments } => {
+                let p = item.controller;
+                let have = self
+                    .permanents(p)
+                    .filter(|&x| self.types_of(x).enchantment)
+                    .count();
+                let creature = have >= enchantments as usize;
+                let ok = |g: &Game, x: ObjId| {
+                    let t = g.def_of(x).types;
+                    t.land || (creature && t.creature)
+                };
+                if self.players[p].hand.iter().any(|&x| ok(self, x)) {
+                    self.ask(p, Decision::LandOrCreatureFromHandTapped { creature });
                 }
             }
             Effect::DrawMoreIfLands { n, more, lands } => {

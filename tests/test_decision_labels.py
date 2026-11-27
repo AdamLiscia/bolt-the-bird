@@ -201,3 +201,8 @@ def test_riot_names_the_creature_and_the_choice():
     dec = {"kind": "Riot", "card": [7, 1]}
     assert label(dec, "Mode", 0) == "Thriving Heath: riot, a +1/+1 counter"
     assert label(dec, "Mode", 1) == "Thriving Heath: riot, haste"
+
+
+def test_composer_of_spring_puts_a_land_or_creature_tapped():
+    dec = {"kind": "LandOrCreatureFromHandTapped", "creature": True}
+    assert sv._decision_label(dec, "Pick", 0, "Forest") == "Put onto the battlefield tapped: Forest"
