@@ -189,6 +189,9 @@ pub enum Reduction {
     NoncombatDamageToOpponentsThisTurn,
     /// {1} less for each creature card in your graveyard (Karador, Ghost Chieftain).
     PerCreatureCardInYourGraveyard,
+    /// Affinity for artifacts (CR 702.41): {1} less for each artifact you control (Emry, Lurker of
+    /// the Loch).
+    PerArtifactYouControl,
 }
 
 /// An activated ability: "[cost]: [effect]" (CR 602).

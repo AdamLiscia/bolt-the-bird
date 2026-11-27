@@ -7649,6 +7649,11 @@ impl Game {
                     0
                 }
             }
+            Some(Reduction::PerArtifactYouControl) => self
+                .permanents(p)
+                .filter(|&x| self.types_of(x).artifact)
+                .count()
+                .min(255) as u8,
             Some(Reduction::PerCreatureCardInYourGraveyard) => self.players[p]
                 .graveyard
                 .iter()
