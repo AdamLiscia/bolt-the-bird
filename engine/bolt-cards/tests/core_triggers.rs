@@ -2065,3 +2065,168 @@ fn a_creature_you_dont_control_with_slime_dies() {
     resolve_all(&mut g, &[]);
     assert_eq!(slugs(&g), 1, "slime counter, as it last existed");
 }
+
+#[test]
+fn you_commit_a_crime_once_per_spell_that_targets_the_opponent_or_their_things() {
+    let crime = trigger(When::YouCommitCrime, None, gain_one());
+    let mut g = game_with(ring_with(crime));
+    g.add_card(0, cid("Sol Ring"), Zone::Battlefield);
+    let mine = g.add_card(0, cid("Savannah Lions"), Zone::Battlefield);
+    kill(&mut g, mine);
+    assert_eq!(g.players[0].life, 40, "your own creature: no crime");
+    let theirs = g.add_card(1, cid("Savannah Lions"), Zone::Battlefield);
+    kill(&mut g, theirs);
+    assert_eq!(g.players[0].life, 41, "the opponent's creature");
+    let bolt = g.add_card(0, cid("Lightning Bolt"), Zone::Hand);
+    play(&mut g, bolt, false, &[bolt_core::Target::Player(1)], &[]);
+    assert_eq!(g.players[0].life, 42, "the opponent");
+    let bolt = g.add_card(0, cid("Lightning Bolt"), Zone::Hand);
+    play(&mut g, bolt, false, &[bolt_core::Target::Player(0)], &[]);
+    assert_eq!(g.players[0].life, 42 - 3, "yourself: no crime");
+}
+
+#[test]
+fn control_no_subtype_and_no_decayed_conditions() {
+    let none = trigger(
+        When::YouCast,
+        Some(Condition::ControlNoSubtype("Cat")),
+        gain_one(),
+    );
+    let no_decayed = trigger(
+        When::YouCast,
+        Some(Condition::ControlNoCreatureWithDecayed),
+        gain_one(),
+    );
+    let mut g = game_with(move |defs: &mut Vec<CardDef>| {
+        ring_with(none.clone())(defs);
+        ring_with(no_decayed.clone())(defs);
+    });
+    g.add_card(0, cid("Sol Ring"), Zone::Battlefield);
+    let cast = |g: &mut Game| {
+        let c = g.add_card(0, cid("Llanowar Elves"), Zone::Hand);
+        play(g, c, false, &[], &[]);
+    };
+    cast(&mut g);
+    assert_eq!(g.players[0].life, 42, "both hold");
+    g.add_card(0, cid("Savannah Lions"), Zone::Battlefield); // a Cat
+    cast(&mut g);
+    assert_eq!(g.players[0].life, 43, "a Cat now");
+    let elf = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "Llanowar Elves")
+        .expect("an Elf");
+    g.objects[elf.0 as usize].decayed = true;
+    cast(&mut g);
+    assert_eq!(g.players[0].life, 43, "a Cat and a creature with decayed");
+}
+
+#[test]
+fn kind_counters_reach_n_triggers_once_as_the_nth_goes_on() {
+    // Sol Ring: "Whenever you cast a spell, put a [kind] counter on this"; "When the second one is
+    // put on this, you gain 1 life."
+    let count = trigger(When::YouCast, None, vec![Effect::KindCounterSelf(1)]);
+    let reach = trigger(When::KindCountersReachOnThis(2), None, gain_one());
+    let mut g = game_with(move |defs: &mut Vec<CardDef>| {
+        ring_with(count.clone())(defs);
+        ring_with(reach.clone())(defs);
+    });
+    g.add_card(0, cid("Sol Ring"), Zone::Battlefield);
+    let mut lives = Vec::new();
+    for _ in 0..3 {
+        let c = g.add_card(0, cid("Llanowar Elves"), Zone::Hand);
+        play(&mut g, c, false, &[], &[]);
+        lives.push(g.players[0].life);
+    }
+    assert_eq!(lives, vec![40, 41, 41], "only as the second counter is put on");
+}
+
+#[test]
+fn stop_unless_nth_resolution_lets_only_the_nth_this_turn_through() {
+    let third = trigger(
+        When::YouCast,
+        None,
+        vec![
+            Effect::StopUnlessNthResolutionThisTurn(3),
+            Effect::GainLife { who: Who::You, n: 1 },
+        ],
+    );
+    let mut g = game_with(ring_with(third));
+    g.add_card(0, cid("Sol Ring"), Zone::Battlefield);
+    let mut lives = Vec::new();
+    for _ in 0..4 {
+        let c = g.add_card(0, cid("Llanowar Elves"), Zone::Hand);
+        play(&mut g, c, false, &[], &[]);
+        lives.push(g.players[0].life);
+    }
+    assert_eq!(lives, vec![40, 40, 41, 41]);
+}
+
+#[test]
+fn sacrifice_your_subtype_asks_which_one_and_counts_as_a_sacrifice() {
+    // Sol Ring: "Whenever you cast a spell, sacrifice a Cat"; "Whenever you sacrifice a Cat, gain 1".
+    let sac = trigger(When::YouCast, None, vec![Effect::SacrificeYourSubtype("Cat")]);
+    let gain = trigger(When::YouSacrificeSubtype("Cat"), None, gain_one());
+    let mut g = game_with(move |defs: &mut Vec<CardDef>| {
+        ring_with(sac.clone())(defs);
+        ring_with(gain.clone())(defs);
+    });
+    g.add_card(0, cid("Sol Ring"), Zone::Battlefield);
+    let card = g.add_card(0, cid("Savannah Lions"), Zone::Battlefield);
+    let token = g.add_card(0, token_def("Cat"), Zone::Battlefield);
+    let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Hand);
+    assert!(g.has_subtype(elves, "Elf"));
+    play(&mut g, elves, false, &[], &[Action::Pick(card)]); // you choose: the card, not the token
+    assert_eq!(g.obj(card).zone, Zone::Graveyard);
+    assert_eq!(g.obj(token).zone, Zone::Battlefield);
+    assert_eq!(g.players[0].life, 41, "a sacrifice");
+}
+
+#[test]
+fn tapped_for_mana_triggers_after_the_mana_by_hand_or_by_the_payer() {
+    // Sol Ring, given "Whenever you tap this artifact for mana, you gain 1 life." for this test.
+    let mut g = game_with(ring_with(trigger(When::TappedForMana, None, gain_one())));
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Battlefield);
+    tap(&mut g, ring);
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].life, 41, "tapped by hand: a trigger on the stack");
+    // Untapped again, the automatic payer taps it for a {2} spell.
+    g.objects[ring.0 as usize].tapped = false;
+    g.players[0].pool.clear(); // the first tap's {C}{C}
+    for land in g
+        .permanents(0)
+        .filter(|&x| g.types_of(x).land)
+        .collect::<Vec<_>>()
+    {
+        g.objects[land.0 as usize].tapped = true;
+    }
+    let s = g.add_card(0, cid("Mind Stone"), Zone::Hand);
+    play(&mut g, s, false, &[], &[]);
+    assert_eq!(g.obj(s).zone, Zone::Battlefield);
+    assert_eq!(g.players[0].life, 42, "tapped by the payer");
+}
+
+#[test]
+fn may_sacrifice_an_artifact_or_creature_lets_you_pick_or_decline() {
+    // Sol Ring: "Whenever you cast a spell, you may sacrifice an artifact or creature. If you do,
+    // draw two cards."
+    let t = trigger(
+        When::YouCast,
+        None,
+        vec![
+            Effect::MaySacrificeArtifactOrCreature,
+            Effect::Draw { who: Who::You, n: 2 },
+        ],
+    );
+    let mut g = game_with(ring_with(t));
+    g.add_card(0, cid("Sol Ring"), Zone::Battlefield);
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Battlefield);
+    let c = g.add_card(0, cid("Llanowar Elves"), Zone::Hand);
+    let before = g.players[0].hand.len();
+    play(&mut g, c, false, &[], &[Action::No]);
+    assert_eq!(g.players[0].hand.len(), before - 1, "declined: no cards");
+    let c = g.add_card(0, cid("Llanowar Elves"), Zone::Hand);
+    let before = g.players[0].hand.len();
+    play(&mut g, c, false, &[], &[Action::Pick(lions)]);
+    assert_eq!(g.obj(lions).zone, Zone::Graveyard);
+    assert_eq!(g.players[0].hand.len(), before - 1 + 2);
+}

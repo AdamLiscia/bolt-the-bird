@@ -362,7 +362,7 @@
   {
    "card": "Walking Ballista",
    "deck": "Raggadragga, Goreguts Boss",
-   "missing": "'Remove a +1/+1 counter from this creature' as a cost [lane C 2026-11-26: blocked on d1: 'Remove a +1/+1 counter from this creature' as an activation cost; lane C's part: none; enters_with_x_counters and the {4} counter exist] [done by d1 batch 22: Activated::remove_plus_counter; scripted in pg_d1]",
+   "missing": "'Remove a +1/+1 counter from this creature' as a cost [lane C 2026-11-26: blocked on d1: 'Remove a +1/+1 counter from this creature' as an activation cost; lane C's part: none; enters_with_x_counters and the {4} counter exist]",
    "lane": "d1",
    "theme": "objects_zones",
    "owner": "d1"
@@ -570,7 +570,7 @@
   {
    "card": "Topiary Lecturer",
    "deck": "Raggadragga, Goreguts Boss",
-   "missing": "increment [done by d1 batch 23: Effect::IncrementSelf; scripted in pg_d1]",
+   "missing": "increment",
    "lane": "d1",
    "theme": "effects",
    "owner": "d1"
@@ -621,7 +621,8 @@
    "missing": "a 0/1 green Egg creature token with defender; an 'Egg you control dies' reveal-until-creature trigger",
    "lane": "d1",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 32 (token 116)"
   },
   {
    "card": "Elesh Norn, Mother of Machines",
@@ -650,7 +651,7 @@
   {
    "card": "Rith's Grove",
    "deck": "Atla Palani, Nest Tender",
-   "missing": "a karoo that must return a non-Lair land or is sacrificed [done by d1 batch 24: scripted in pg_d1]",
+   "missing": "a karoo that must return a non-Lair land or is sacrificed",
    "lane": "d1",
    "theme": "effects",
    "owner": "d1"
@@ -677,7 +678,8 @@
    "missing": "blocking restriction by power; trigger doubling for power 2 or less",
    "lane": "d1",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 35 (d1's block piece)"
   },
   {
    "card": "Dinosaur Egg",
@@ -749,7 +751,8 @@
    "missing": "a 0/1 green Dinosaur Egg creature token; a 3/3 green Dinosaur creature token; sacrifice an Egg",
    "lane": "d1",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 32 (tokens 117, 118)"
   },
   {
    "card": "Spawning Pit",
@@ -1026,7 +1029,7 @@
   {
    "card": "High Tide",
    "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
-   "missing": "extra {U} when a player taps an Island this turn [done by d1 batch 23: Effect::IslandsAddExtraBlueThisTurn; scripted in pg_d1]",
+   "missing": "extra {U} when a player taps an Island this turn",
    "lane": "d1",
    "theme": "effects",
    "owner": "d1"
@@ -2069,7 +2072,8 @@
    "missing": "needs core: a 1/1 black Faerie Rogue creature token with flying",
    "lane": "d2",
    "theme": "objects_zones",
-   "owner": "mac-c"
+   "owner": "d2",
+   "status": "done: d2 batch 30 (token 115)"
   },
   {
    "card": "Bloodchief Ascension",
@@ -2386,7 +2390,7 @@
   {
    "card": "Miren, the Moaning Well",
    "deck": "Korvold, Fae-Cursed King",
-   "missing": "needs core: gain life equal to the sacrificed creature's toughness [done by d1 batch 23: Activated::amount_from_victim_toughness; scripted in pg_d1]",
+   "missing": "needs core: gain life equal to the sacrificed creature's toughness",
    "lane": "d2",
    "theme": "mana",
    "owner": "d1"
@@ -2722,7 +2726,7 @@
   {
    "card": "Momo, Friendly Flier",
    "deck": "Raffine, Scheming Seer",
-   "missing": "needs core: a discount on the first non-Lemur flying creature spell each turn [done by d1 batch 24: scripted in pg_d1]",
+   "missing": "needs core: a discount on the first non-Lemur flying creature spell each turn",
    "lane": "d2",
    "theme": "mana",
    "owner": "d1"
@@ -2834,7 +2838,7 @@
   {
    "card": "Toxrill, the Corrosive",
    "deck": "Sefris of the Hidden Ways",
-   "missing": "needs core: slime counters with a -1/-1 per counter static, and a 1/1 black Slug creature token",
+   "missing": "needs core: slime counters with a -1/-1 per counter static, and a 1/1 black Slug creature token [d3 batch 30: the slime store is in: Object::slime, Object::last_slime (last known, as it left the battlefield), Effect::SlimeCounterOnEachCreatureYouDontControl (the end step trigger, When::EndStep { your_turn_only: false }), the static as Scope::OpponentsCreatures -1/-1 with scale Scale::PerSlimeCounterOnIt. Still: the dies trigger (d2) and the card (lane C)] [d2 batch 29: When::CreatureYouDontControlWithSlimeDies (reads Object::last_slime), token 109 Tokens::slug; lane C scripts the card]",
    "lane": "d3",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -3090,7 +3094,7 @@
   {
    "card": "Seasoned Dungeoneer",
    "deck": "Sefris of the Hidden Ways",
-   "missing": "needs core: take the initiative, protection from creatures, and explore on a 'whenever you attack' target",
+   "missing": "needs core: take the initiative, protection from creatures, and explore on a 'whenever you attack' target [d3 batch 30: protection from creatures is in: Effect::ProtectionFromCardTypeEot { slot: Some(0), kind: 1 } (Game::type_protection_grants)] [done by d2 batch 29: d3 batch 30 ProtectionFromCardTypeEot, Filter::subtypes_any, scripted in pg_d2]",
    "lane": "d3",
    "theme": "triggers",
    "owner": "d2"
@@ -3186,7 +3190,7 @@
   {
    "card": "Champion of Lambholt",
    "deck": "Najeela, the Blade-Blossom",
-   "missing": "needs core: creatures with power less than this one's can't block creatures you control (for all your creatures) [done by d1 batch 23: ManaExt::smaller_cant_block_yours; scripted in pg_d1]",
+   "missing": "needs core: creatures with power less than this one's can't block creatures you control (for all your creatures)",
    "lane": "d3",
    "theme": "mana",
    "owner": "d1"
@@ -3226,10 +3230,11 @@
   {
    "card": "Alesha, Who Smiles at Death",
    "deck": "Najeela, the Blade-Blossom",
-   "missing": "needs core: return a creature card tapped and attacking, after a may-pay hybrid cost",
+   "missing": "needs core: return a creature card tapped and attacking, after a may-pay hybrid cost [done by d3 batch 34: scripted (pg_d3), Effect::ReturnSlotToBattlefieldAttacking]",
    "lane": "d3",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d3 batch 34 (e865b23)"
   },
   {
    "card": "Deadly Brew",
@@ -3338,7 +3343,7 @@
   {
    "card": "Shanna, Sisay's Legacy",
    "deck": "Najeela, the Blade-Blossom",
-   "missing": "needs core: can't be the target of abilities your opponents control",
+   "missing": "needs core: can't be the target of abilities your opponents control [done by d3 batch 32: scripted (pg_d3); CardDef::untargetable_by_opponents_abilities, Scale::PerCreatureYouControl]",
    "lane": "d3",
    "theme": "mana",
    "owner": "d1"
@@ -3346,7 +3351,7 @@
   {
    "card": "Slip Out the Back",
    "deck": "Najeela, the Blade-Blossom",
-   "missing": "needs core: phasing out [lane C 2026-11-27: scripted in pg_c, batch 17 (unbuilt)]",
+   "missing": "needs core: phasing out",
    "lane": "d3",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -3610,7 +3615,7 @@
   {
    "card": "Vizier of the Menagerie",
    "deck": "Animar, Soul of Elements",
-   "missing": "needs core: cast creature spells from the top of your library, and spend mana as any type for them [lane C 2026-11-26: blocked on d1: spend mana of any type to cast creature spells; lane C's part: none; top_spells_creatures exists] [done by d1 batch 22: ManaExt::creature_spells_any_type_mana; scripted in pg_d1]",
+   "missing": "needs core: cast creature spells from the top of your library, and spend mana as any type for them [lane C 2026-11-26: blocked on d1: spend mana of any type to cast creature spells; lane C's part: none; top_spells_creatures exists]",
    "lane": "d3",
    "theme": "objects_zones",
    "owner": "d1"
@@ -3706,7 +3711,7 @@
   {
    "card": "Somberwald Sage",
    "deck": "Animar, Soul of Elements",
-   "missing": "needs core: three mana of one chosen color (the payer would split the colors) [lane C 2026-11-26: blocked on d1: three mana of one chosen color, spendable only on creature spells; lane C's part: none] [done by d1 batch 22: Effect::AddCreatureSpellMana; scripted in pg_d1]",
+   "missing": "needs core: three mana of one chosen color (the payer would split the colors) [lane C 2026-11-26: blocked on d1: three mana of one chosen color, spendable only on creature spells; lane C's part: none]",
    "lane": "d3",
    "theme": "objects_zones",
    "owner": "d1"
@@ -3778,7 +3783,7 @@
   {
    "card": "Vraska, Betrayal's Sting",
    "deck": "Atraxa, Praetors' Voice",
-   "missing": "needs core: proliferate, compleated, a creature becoming a Treasure, and poison counters",
+   "missing": "needs core: proliferate, compleated, a creature becoming a Treasure, and poison counters [d3 batches 31-32: proliferate (Decision::Proliferate), Effect::BecomeTreasure(slot) (-2), Effect::TargetPlayerPoisonUpTo { slot, n: 9 } (-9) are in; the card waits for d1 compleated on tarkir]",
    "lane": "d3",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -3786,7 +3791,7 @@
   {
    "card": "Tekuthal, Inquiry Dominus",
    "deck": "Atraxa, Praetors' Voice",
-   "missing": "needs core: proliferate twice, and removing counters from among your permanents as a cost",
+   "missing": "needs core: proliferate twice, and removing counters from among your permanents as a cost [d3 batch 31: CardDef::proliferate_twice is in; the remove-three-counters cost goes to d1]",
    "lane": "d3",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -3794,15 +3799,16 @@
   {
    "card": "Ashiok, Nightmare Muse",
    "deck": "Atraxa, Praetors' Voice",
-   "missing": "needs core: a 2/3 blue and black Nightmare creature token with an attack/block trigger, and casting from exile",
+   "missing": "needs core: a 2/3 blue and black Nightmare creature token with an attack/block trigger, and casting from exile [d3 batch 34: the -3 is Effect::BounceThenOwnerExilesFromHand(slot) (Decision::ExileCardFromHand); still: the +1 Nightmare token (needs a token number) and the -7]",
    "lane": "d3",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "waiting: Nightmare token with attack/block trigger, -3 bounce then exile from hand, -7 cast from exile (d3/mac-c)"
   },
   {
    "card": "City of Shadows",
    "deck": "Atraxa, Praetors' Voice",
-   "missing": "needs core: storage counters and mana per counter [lane C 2026-11-27: scripted in pg_c, batch 17 (unbuilt)]",
+   "missing": "needs core: storage counters and mana per counter",
    "lane": "d3",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -3818,7 +3824,7 @@
   {
    "card": "Elspeth Tirel",
    "deck": "Atraxa, Praetors' Voice",
-   "missing": "needs core: gain 1 life per creature you control, and destroy all other permanents except lands and tokens [lane C 2026-11-27: scripted in pg_c, batch 17 (unbuilt)]",
+   "missing": "needs core: gain 1 life per creature you control, and destroy all other permanents except lands and tokens",
    "lane": "d3",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -3834,7 +3840,7 @@
   {
    "card": "Ichormoon Gauntlet",
    "deck": "Atraxa, Praetors' Voice",
-   "missing": "needs core: loyalty abilities granted to planeswalkers, and an extra counter of a chosen kind",
+   "missing": "needs core: loyalty abilities granted to planeswalkers, and an extra counter of a chosen kind [routing 2026-11-27: lane B the granted loyalty abilities, d3 the additional counter of the chosen kind] [d3 batch 33: Effect::AddCounterOfChosenKind(slot) (Decision::ChooseCounterKind) is in; still lane B: the granted loyalty abilities]",
    "lane": "d3",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -3922,7 +3928,7 @@
   {
    "card": "Argent Sphinx",
    "deck": "Lonis, Cryptozoologist",
-   "missing": "needs core: metalcraft (an 'if you control three or more artifacts' activation condition) [done by d1 batch 23: Effect::FlickerSelf; scripted in pg_d1]",
+   "missing": "needs core: metalcraft (an 'if you control three or more artifacts' activation condition)",
    "lane": "d3",
    "theme": "effects",
    "owner": "d1"
@@ -4818,7 +4824,7 @@
   {
    "card": "Karlov of the Ghost Council",
    "deck": "Oloro, Ageless Ascetic (Adam)",
-   "missing": "pay-life mana; counter-removal cost; cost reduction [done by d1 batch 23: Activated::remove_plus_counters; scripted in pg_d1]",
+   "missing": "pay-life mana; counter-removal cost; cost reduction",
    "lane": "mac-b",
    "theme": "mana",
    "owner": "d1"
@@ -4826,7 +4832,7 @@
   {
    "card": "Will, Scion of Peace",
    "deck": "Oloro, Ageless Ascetic (Adam)",
-   "missing": "pay-life mana; counter-removal cost; cost reduction [done by d1 batch 23: Effect::WhiteBlueSpellsCostLessLifeGainedThisTurn; scripted in pg_d1]",
+   "missing": "pay-life mana; counter-removal cost; cost reduction",
    "lane": "mac-b",
    "theme": "mana",
    "owner": "d1"
@@ -4909,7 +4915,8 @@
    "missing": "magecraft/damage triggers",
    "lane": "mac-b",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 31"
   },
   {
    "card": "Case of the Ransacked Lab",
@@ -4917,7 +4924,8 @@
    "missing": "magecraft/damage triggers",
    "lane": "mac-b",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "waiting: Case / to-solve infrastructure (d4 or merger) and the instant/sorcery cost reduction (d1)"
   },
   {
    "card": "End the Festivities",
@@ -4994,7 +5002,7 @@
   {
    "card": "Pyromatics",
    "deck": "Ghyrson Starn, Kelermorph (Spr3adsh33)",
-   "missing": "replicate; class levels [done by d1 batch 24: replicate (multikicker + Effect::CopySourceSpellPerReplicate); scripted in pg_d1]",
+   "missing": "replicate; class levels",
    "lane": "mac-b",
    "theme": "mana",
    "owner": "d1"
@@ -5010,7 +5018,7 @@
   {
    "card": "Silundi Vision // Silundi Isle",
    "deck": "Ghyrson Starn, Kelermorph (Spr3adsh33)",
-   "missing": "MDFC/battle; soulbond [lane C 2026-11-27: scripted in pg_c, batch 17 (unbuilt)]",
+   "missing": "MDFC/battle; soulbond",
    "lane": "mac-b",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -5026,7 +5034,7 @@
   {
    "card": "Tandem Lookout",
    "deck": "Ghyrson Starn, Kelermorph (Spr3adsh33)",
-   "missing": "MDFC/battle; soulbond",
+   "missing": "MDFC/battle; soulbond [done by d2 batch 28: CardDef::soulbond_damage_draw, When::PairedDealsDamageToOpponent, scripted in pg_d2]",
    "lane": "mac-b",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -5162,15 +5170,16 @@
   {
    "card": "Kodama of the East Tree",
    "deck": "Bloomburrow Commander (BLC)",
-   "missing": "BLC (lane B's routing, 2026-11-26)",
+   "missing": "BLC (lane B's routing, 2026-11-26) [done by d3 batch 34: scripted (pg_d3), Effect::MayPutPermanentFromHandMvAtMostExtra (Object::put_by_kodama)]",
    "lane": "mac-b",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d3 batch 34 (e865b23)"
   },
   {
    "card": "Rose Room Treasurer",
    "deck": "Bloomburrow Commander (BLC)",
-   "missing": "BLC (lane B's routing, 2026-11-26)",
+   "missing": "BLC (lane B's routing, 2026-11-26) [done by d2 batch 28: Effect::TreasureTwiceThenPayXDamage, Decision::PayXDamage, scripted in pg_d2]",
    "lane": "mac-b",
    "theme": "triggers",
    "owner": "d2"
@@ -5189,7 +5198,8 @@
    "missing": "BLC (lane B's routing, 2026-11-26)",
    "lane": "mac-b",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 35 (d1's cost)"
   },
   {
    "card": "Simic Ascendancy",
@@ -5197,7 +5207,8 @@
    "missing": "BLC (lane B's routing, 2026-11-26)",
    "lane": "mac-b",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 32"
   },
   {
    "card": "Grothama, All-Devouring",
@@ -5205,7 +5216,8 @@
    "missing": "BLC (lane B's routing, 2026-11-26)",
    "lane": "mac-b",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 31"
   },
   {
    "card": "Tamiyo, Field Researcher",
@@ -5221,7 +5233,8 @@
    "missing": "BLC (lane B's routing, 2026-11-26)",
    "lane": "mac-b",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 32"
   },
   {
    "card": "Bootleggers' Stash",
@@ -5426,10 +5439,11 @@
   {
    "card": "Arthur, Marigold Knight",
    "deck": "Bloomburrow Commander (BLC)",
-   "missing": "BLC (lane B's routing, 2026-11-26) [lane C 2026-11-27: scripted in pg_c, batch 18 (unbuilt)]",
+   "missing": "BLC (lane B's routing, 2026-11-26)",
    "lane": "mac-b",
    "theme": "objects_zones",
-   "owner": "mac-c"
+   "owner": "mac-c",
+   "status": "done: lane C batch 18 (389f90e)"
   },
   {
    "card": "Coveted Jewel",
@@ -5882,7 +5896,7 @@
   {
    "card": "Mystic Gate",
    "deck": "Bruna, Light of Alabaster (DonSpider)",
-   "missing": "lane C's Bruna routing (2026-11-26) [done by d1 batch 23: scripted in pg_d1 (paid_mana)]",
+   "missing": "lane C's Bruna routing (2026-11-26)",
    "lane": "mac-c",
    "theme": "mana",
    "owner": "d1"
@@ -6627,7 +6641,7 @@
    "card": "Pippin, Guard of the Citadel",
    "deck": "Bruna, Light of Alabaster",
    "owner": "d3",
-   "missing": "a protection-from-a-card-type grant [added from the live validator, 2026-11-27]",
+   "missing": "a protection-from-a-card-type grant [added from the live validator, 2026-11-27] [d3 batch 30: piece in: Effect::ProtectionChosenCardTypeEot(Some(0)) (Decision::ProtectionCardType) or ProtectionFromCardTypeEot { slot, kind }; Bruna is fenced, so lane C scripts the card]",
    "lane": "d3",
    "theme": "effects and statics"
   },
@@ -6635,7 +6649,7 @@
    "card": "Chandra, Dressed to Kill",
    "deck": "Ghyrson Starn, Kelermorph",
    "owner": "d3",
-   "missing": "its loyalty effects (exile top, play it); d4: the emblem [added from the live validator, 2026-11-27] [d3 batch 31: Effect::ExileTopCastColorThisTurn { n, color } is in (both +1 and -7); the card waits for d4 emblem on tarkir]",
+   "missing": "its loyalty effects (exile top, play it); d4: the emblem [added from the live validator, 2026-11-27] [d3 batch 31: Effect::ExileTopCastColorThisTurn { n, color } is in (both +1 and -7); the card waits for d4 emblem on tarkir] [done by d3 batch 33: scripted (pg_d3) with d4 EmblemKind::OnYourColorSpellCast]",
    "lane": "d3",
    "theme": "effects and statics"
   },
@@ -6981,7 +6995,8 @@
    "missing": "whenever you attack a player: a Lander token (needs a token number)",
    "lane": "d2",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 35 (token 111, d1's your_lands_enter_untapped)"
   },
   {
    "card": "Kinscaer Sentry",
@@ -6989,15 +7004,17 @@
    "missing": "attacks: put a creature card with mana value X or less from hand tapped and attacking, X attacking creatures",
    "lane": "d2",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d3 batch 34 (e865b23)"
   },
   {
    "card": "Goliath Daydreamer",
    "deck": "Niv-Mizzet, Visionary",
-   "missing": "idea quick win: claimed by lane C 2026-11-27, scripted in pg_c, batch 18 (unbuilt)",
-   "lane": "mac-c",
-   "theme": "objects_zones",
-   "owner": "mac-c"
+   "missing": "cast-from-hand instant/sorcery exiled with a dream counter; attacks: cast one free",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "mac-c",
+   "status": "done: lane C batch 18 (389f90e)"
   },
   {
    "card": "Forsaken Miner",
@@ -7005,7 +7022,8 @@
    "missing": "a commit-a-crime trigger from the graveyard",
    "lane": "d2",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 30"
   },
   {
    "card": "Greedy Freebooter",
@@ -7013,7 +7031,8 @@
    "missing": "dies: scry 1 and a Treasure",
    "lane": "d2",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 30"
   },
   {
    "card": "Jadar, Ghoulcaller of Nephalia",
@@ -7021,7 +7040,8 @@
    "missing": "end step, if you control no decayed creatures: a 2/2 decayed Zombie (token)",
    "lane": "d2",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 30 (token 113)"
   },
   {
    "card": "Ophiomancer",
@@ -7029,7 +7049,8 @@
    "missing": "each upkeep, if you control no Snakes: a 1/1 deathtouch Snake (token)",
    "lane": "d2",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 30 (token 114)"
   },
   {
    "card": "Rev, Tithe Extractor",
@@ -7037,7 +7058,8 @@
    "missing": "whenever you attack; one or more creatures deal combat damage to a player",
    "lane": "d2",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "waiting: exile face down, castable while it stays exiled (mac-c)"
   },
   {
    "card": "Sephiroth, Fabled SOLDIER // Sephiroth, One-Winged Angel",
@@ -7045,7 +7067,8 @@
    "missing": "enters or attacks: may sacrifice to draw; another creature dies: drain 1, the fourth time this turn transform",
    "lane": "d2",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 31"
   },
   {
    "card": "Bristly Bill, Spine Sower",
@@ -7053,7 +7076,8 @@
    "missing": "landfall counter on target creature",
    "lane": "d2",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 30"
   },
   {
    "card": "Claim the Kingdom",
@@ -7061,7 +7085,8 @@
    "missing": "landfall counters and plan counters; the fourth plan counter",
    "lane": "d2",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 31"
   },
   {
    "card": "Mightform Harmonizer",
@@ -7069,7 +7094,8 @@
    "missing": "landfall: double target creature power",
    "lane": "d2",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 30"
   },
   {
    "card": "Ride the Shoopuf",
@@ -7077,7 +7103,8 @@
    "missing": "landfall counter on target creature you control",
    "lane": "d2",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d3 batch 34 (e865b23)"
   },
   {
    "card": "Roaring Earth",
@@ -7085,7 +7112,8 @@
    "missing": "landfall counter on target creature or Vehicle",
    "lane": "d2",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "waiting: channel, an ability activated from hand by discarding the card (merger/d1)"
   },
   {
    "card": "Scythecat Cub",
@@ -7093,7 +7121,8 @@
    "missing": "landfall counter; the second time this turn, double counters",
    "lane": "d2",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 31"
   },
   {
    "card": "Skyclave Pick-Axe",
@@ -7101,7 +7130,8 @@
    "missing": "enters attach; landfall pump equipped",
    "lane": "d2",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 30"
   },
   {
    "card": "Staff of Titania",
@@ -7109,7 +7139,8 @@
    "missing": "equipped attacks: a Forest Dryad land creature token",
    "lane": "d2",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 30"
   },
   {
    "card": "Tifa Lockhart",
@@ -7117,7 +7148,8 @@
    "missing": "landfall: double Tifa's power",
    "lane": "d2",
    "theme": "triggers",
-   "owner": "d2"
+   "owner": "d2",
+   "status": "done: d2 batch 30"
   },
   {
    "card": "Beza, the Bounding Spring",
@@ -7166,6 +7198,196 @@
    "lane": "mac-c",
    "theme": "objects_zones",
    "owner": "mac-c"
+  },
+  {
+   "card": "Adept Watershaper",
+   "deck": "IDEA Neriv, Heart of the Storm",
+   "missing": "idea-deck claim (2026-11-27) [done by d3 batch 33: scripted (pg_d3)]",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Riverguard's Reflexes",
+   "deck": "IDEA Neriv, Heart of the Storm",
+   "missing": "idea-deck claim (2026-11-27) [done by d3 batch 33: scripted (pg_d3)]",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Keep Out",
+   "deck": "IDEA Neriv, Heart of the Storm",
+   "missing": "idea-deck claim (2026-11-27) [done by d3 batch 33: scripted (pg_d3)]",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Terminate",
+   "deck": "IDEA Hearthhull, the Worldseed",
+   "missing": "idea-deck claim (2026-11-27) [done by d3 batch 33: scripted (pg_d3)]",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Sear",
+   "deck": "IDEA Zurgo, Thunder's Decree; IDEA Niv-Mizzet, Visionary",
+   "missing": "idea-deck claim (2026-11-27) [done by d3 batch 33: scripted (pg_d3)]",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Boulder Dash",
+   "deck": "IDEA Niv-Mizzet, Visionary",
+   "missing": "idea-deck claim (2026-11-27) [done by d3 batch 33: scripted (pg_d3)]",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Goatnap",
+   "deck": "IDEA Niv-Mizzet, Visionary",
+   "missing": "idea-deck claim (2026-11-27) [done by d3 batch 33: scripted (pg_d3)]",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Crib Swap",
+   "deck": "IDEA Zurgo, Thunder's Decree",
+   "missing": "idea-deck claim (2026-11-27) [done by d3 batch 33: scripted (pg_d3)]",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Kinbinding",
+   "deck": "Zurgo (idea)",
+   "missing": "+X/+X per creature entered this turn (d3 scale); a 1/1 G/W Kithkin token",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "done: d2 batch 33 (token 112, d3's Scale)"
+  },
+  {
+   "card": "Kenrith, the Returned King",
+   "deck": "Kenrith (idea)",
+   "missing": "five activated abilities; reanimate under its owner's control",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "done: d2 batch 34"
+  },
+  {
+   "card": "Imperial Seal",
+   "deck": "Kenrith (idea)",
+   "missing": "search any card to the top, lose 2 life",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "done: d2 batch 34"
+  },
+  {
+   "card": "Gamble",
+   "deck": "Kenrith (idea)",
+   "missing": "tutor, then discard at random (seeded RNG)",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "done: d2 batch 34"
+  },
+  {
+   "card": "Wheel of Fortune",
+   "deck": "Kenrith (idea)",
+   "missing": "each player discards their hand, then draws seven",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "done: d2 batch 34"
+  },
+  {
+   "card": "Summoner's Pact",
+   "deck": "Kenrith (idea)",
+   "missing": "green creature tutor; pay at next upkeep or lose",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "done: d2 batch 34"
+  },
+  {
+   "card": "Overprotect",
+   "deck": "Tifa (idea)",
+   "missing": "pump and grant",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "done: d2 batch 34"
+  },
+  {
+   "card": "Tamiyo's Safekeeping",
+   "deck": "Tifa (idea)",
+   "missing": "grant on a permanent you control, gain 2",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "done: d2 batch 34"
+  },
+  {
+   "card": "Tyvar's Stand",
+   "deck": "Tifa (idea)",
+   "missing": "+X/+X and grant",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "done: d2 batch 34"
+  },
+  {
+   "card": "Thassa's Oracle",
+   "deck": "Kenrith (idea)",
+   "missing": "enters: look at top X (devotion to blue), win if X >= library",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "done: d2 batch 35"
+  },
+  {
+   "card": "Springbloom Druid",
+   "deck": "Tifa (idea)",
+   "missing": "enters: may sacrifice a land; if you do, two basics tapped",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "done: d2 batch 35"
+  },
+  {
+   "card": "Demonic Consultation",
+   "deck": "Kenrith (idea)",
+   "missing": "name a card (a Decision), exile six, reveal until it",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "done: d2 batch 35"
+  },
+  {
+   "card": "Midgar, City of Mako // Reactor Raid",
+   "deck": "Sephiroth (idea)",
+   "missing": "Town land; back face",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "waiting (mac-c): a land with an Adventure; the cast-action list skips lands before the omen half (`if def.types.land { continue; }`), then the land played from exile. d2's Effect::MaySacrificeArtifactOrCreature (Decision::MaySacrificeArtifactOrCreature) is in for Reactor Raid's text."
+  },
+  {
+   "card": "Wishclaw Talisman",
+   "deck": "Sephiroth (idea)",
+   "missing": "wish counters; tutor; an opponent gains control",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "waiting: 'enters with three wish counters' (a CardDef field for kind counters on entering; merger) and 'an opponent gains control of this artifact' (an effect)"
   }
  ]
 }

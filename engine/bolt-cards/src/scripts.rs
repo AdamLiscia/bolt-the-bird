@@ -467,15 +467,64 @@ pub fn token_defs() -> Vec<CardDef> {
             t.colors = [false, false, false, false, true];
             t
         },
-        token("Placeholder 111", "", 0, 0, Keywords::NONE), // 111: another lane's slot
-        token("Placeholder 112", "", 0, 0, Keywords::NONE), // 112: another lane's slot
-        token("Placeholder 113", "", 0, 0, Keywords::NONE), // 113: another lane's slot
-        token("Placeholder 114", "", 0, 0, Keywords::NONE), // 114: another lane's slot
-        token("Placeholder 115", "", 0, 0, Keywords::NONE), // 115: another lane's slot
-        token("Placeholder 116", "", 0, 0, Keywords::NONE), // 116: another lane's slot
-        token("Placeholder 117", "", 0, 0, Keywords::NONE), // 117: another lane's slot
-        token("Placeholder 118", "", 0, 0, Keywords::NONE), // 118: another lane's slot
-        token("Placeholder 119", "", 0, 0, Keywords::NONE), // 119: another lane's slot
+        {
+            // 111, lane d2: Horizon Explorer's Lander, "an artifact with '{2}, {T}, Sacrifice this
+            // token: Search your library for a basic land card, put it onto the battlefield tapped,
+            // then shuffle.'"
+            let mut d = artifact_token("Lander");
+            let n = activated(
+                &mut d,
+                "{2}",
+                true,
+                vec![],
+                vec![search(
+                    SearchFor::BasicLand,
+                    SearchTo::Battlefield { tapped: true },
+                )],
+            );
+            d.activated[n].sacrifice_self = true;
+            d
+        },
+        {
+            // 112, lane d2: Kinbinding's "1/1 green and white Kithkin creature token".
+            let mut t = token("Kithkin", "Kithkin", 1, 1, Keywords::NONE);
+            t.colors = [true, false, false, false, true];
+            t
+        },
+        {
+            // 113, lane d2: Jadar's "2/2 black Zombie creature token with decayed".
+            let mut t = black(token("Zombie", "Zombie", 2, 2, Keywords::NONE));
+            t.decayed = true;
+            t
+        },
+        // 114, lane d2: Ophiomancer's "1/1 black Snake creature token with deathtouch".
+        black(token("Snake", "Snake", 1, 1, Keywords::DEATHTOUCH)),
+        // 115, lane d2: Bitterblossom's "1/1 black Faerie Rogue creature token with flying".
+        black(token("Faerie Rogue", "Faerie Rogue", 1, 1, Keywords::FLYING)),
+        {
+            // 116, lane d2: Atla Palani's "0/1 green Egg creature token with defender".
+            let mut t = token("Egg", "Egg", 0, 1, Keywords::DEFENDER);
+            t.colors = [false, false, false, false, true];
+            t
+        },
+        {
+            // 117, lane d2: Palani's Hatcher's "0/1 green Dinosaur Egg creature tokens".
+            let mut t = token("Dinosaur Egg", "Dinosaur Egg", 0, 1, Keywords::NONE);
+            t.colors = [false, false, false, false, true];
+            t
+        },
+        {
+            // 118, lane d2: Palani's Hatcher's "3/3 green Dinosaur creature token".
+            let mut t = token("Dinosaur", "Dinosaur", 3, 3, Keywords::NONE);
+            t.colors = [false, false, false, false, true];
+            t
+        },
+        {
+            // 119, lane d3: Crib Swap's "1/1 colorless Shapeshifter creature token with changeling".
+            let mut t = token("Shapeshifter", "Shapeshifter", 1, 1, Keywords::NONE);
+            t.changeling = true;
+            t
+        },
         token("Placeholder 120", "", 0, 0, Keywords::NONE), // 120: another lane's slot
         token("Placeholder 121", "", 0, 0, Keywords::NONE), // 121: another lane's slot
         {
@@ -712,24 +761,24 @@ pub struct Tokens {
     pub slug: usize,
     /// 110: Nissa, Ascended Animist's X/X green Phyrexian Horror (0/0, P/T set from X).
     pub phyrexian_horror_x: usize,
-    /// 111: placeholder (another lane's slot).
-    pub placeholder_111: usize,
-    /// 112: placeholder (another lane's slot).
-    pub placeholder_112: usize,
-    /// 113: placeholder (another lane's slot).
-    pub placeholder_113: usize,
-    /// 114: placeholder (another lane's slot).
-    pub placeholder_114: usize,
-    /// 115: placeholder (another lane's slot).
-    pub placeholder_115: usize,
-    /// 116: placeholder (another lane's slot).
-    pub placeholder_116: usize,
-    /// 117: placeholder (another lane's slot).
-    pub placeholder_117: usize,
-    /// 118: placeholder (another lane's slot).
-    pub placeholder_118: usize,
-    /// 119: placeholder (another lane's slot).
-    pub placeholder_119: usize,
+    /// 111: d2's Lander (Horizon Explorer): "{2}, {T}, Sacrifice: fetch a basic land, tapped".
+    pub lander: usize,
+    /// 112: d2's Kinbinding Kithkin, a 1/1 green and white.
+    pub kithkin: usize,
+    /// 113: d2's Jadar Zombie, a 2/2 black with decayed.
+    pub zombie_decayed: usize,
+    /// 114: d2's Ophiomancer Snake, a 1/1 black with deathtouch.
+    pub snake_deathtouch: usize,
+    /// 115: d2's Bitterblossom Faerie Rogue, a 1/1 black flier.
+    pub faerie_rogue: usize,
+    /// 116: d2's Atla Palani Egg, a 0/1 green with defender.
+    pub egg: usize,
+    /// 117: d2's Palani's Hatcher Dinosaur Egg, a 0/1 green.
+    pub dinosaur_egg: usize,
+    /// 118: d2's Palani's Hatcher Dinosaur, a 3/3 green.
+    pub dinosaur_3: usize,
+    /// 119: d3's Crib Swap Shapeshifter, a 1/1 colorless with changeling.
+    pub shapeshifter_changeling_1: usize,
     /// 120: placeholder (another lane's slot).
     pub placeholder_120: usize,
     /// 121: placeholder (another lane's slot).
@@ -852,15 +901,15 @@ impl Tokens {
             rogue_2: base + 108,
             slug: base + 109,
             phyrexian_horror_x: base + 110,
-            placeholder_111: base + 111,
-            placeholder_112: base + 112,
-            placeholder_113: base + 113,
-            placeholder_114: base + 114,
-            placeholder_115: base + 115,
-            placeholder_116: base + 116,
-            placeholder_117: base + 117,
-            placeholder_118: base + 118,
-            placeholder_119: base + 119,
+            lander: base + 111,
+            kithkin: base + 112,
+            zombie_decayed: base + 113,
+            snake_deathtouch: base + 114,
+            faerie_rogue: base + 115,
+            egg: base + 116,
+            dinosaur_egg: base + 117,
+            dinosaur_3: base + 118,
+            shapeshifter_changeling_1: base + 119,
             placeholder_120: base + 120,
             placeholder_121: base + 121,
             human_cleric: base + 122,

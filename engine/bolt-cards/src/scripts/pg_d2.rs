@@ -1382,6 +1382,368 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::YouAttack, vec![party], vec![Effect::ProtectionFromCardTypeEot { slot: Some(0), kind: 1 }, Effect::Explore(0)]);
             },
         ),
+        // ---- Core: triggers, batch 30 (idea decks: Sephiroth, Tifa) ----
+        "Greedy Freebooter" => s(&["When this creature dies, scry 1 and create a Treasure token."], |d, t| {
+            on(d, When::Dies, vec![], vec![Effect::Scry { n: 1 }, Effect::CreateToken { who: Who::You, def: t.treasure, n: 1 }]);
+        }),
+        "Bitterblossom" => s(
+            &["At the beginning of your upkeep, you lose 1 life and create a 1/1 black Faerie Rogue creature token with flying."],
+            |d, t| {
+                let effects = vec![Effect::LoseLife { who: Who::You, n: 1 }, Effect::CreateToken { who: Who::You, def: t.faerie_rogue, n: 1 }];
+                on(d, When::Upkeep { your_turn_only: true }, vec![], effects);
+            },
+        ),
+        "Jadar, Ghoulcaller of Nephalia" => s(
+            &["At the beginning of your end step, if you control no creatures with decayed, create a 2/2 black Zombie creature token with decayed."],
+            |d, t| {
+                let zombie = Effect::CreateToken { who: Who::You, def: t.zombie_decayed, n: 1 };
+                conditional(d, When::EndStep { your_turn_only: true }, Condition::ControlNoCreatureWithDecayed, vec![], vec![zombie]);
+            },
+        ),
+        "Ophiomancer" => s(
+            &["At the beginning of each upkeep, if you control no Snakes, create a 1/1 black Snake creature token with deathtouch."],
+            |d, t| {
+                let snake = Effect::CreateToken { who: Who::You, def: t.snake_deathtouch, n: 1 };
+                conditional(d, When::Upkeep { your_turn_only: false }, Condition::ControlNoSubtype("Snake"), vec![], vec![snake]);
+            },
+        ),
+        "Forsaken Miner" => s(
+            &[
+                "This creature can't block.",
+                "Whenever you commit a crime, you may pay {B}. If you do, return this card from your graveyard to the battlefield.",
+            ],
+            |d, _| {
+                d.cant_block = true;
+                let b = ManaCost::parse("{B}").expect("a mana cost");
+                let back = vec![Effect::MayPay(b), Effect::ReturnSelfFromGraveyard];
+                conditional(d, When::YouCommitCrime, Condition::SourceInGraveyardOrExile, vec![], back);
+            },
+        ),
+        "Tifa Lockhart" => s(
+            &["Landfall — Whenever a land you control enters, double Tifa Lockhart's power until end of turn."],
+            |d, _| on(d, When::LandYouControlEnters, vec![], vec![Effect::DoublePowerSelf]),
+        ),
+        "Bristly Bill, Spine Sower" => s(
+            &[
+                "Landfall — Whenever a land you control enters, put a +1/+1 counter on target creature.",
+                "{3}{G}{G}: Double the number of +1/+1 counters on each creature you control.",
+            ],
+            |d, _| {
+                on(d, When::LandYouControlEnters, vec![CREATURE], vec![Effect::Counters { slot: 0, n: 1 }]);
+                activated(d, "{3}{G}{G}", false, vec![], vec![Effect::DoubleCountersEachYours]);
+            },
+        ),
+        "Mightform Harmonizer" => s(
+            &[
+                "Landfall — Whenever a land you control enters, double the power of target creature you control until end of turn.",
+                "Warp {2}{G}",
+            ],
+            |d, _| {
+                on(d, When::LandYouControlEnters, vec![YOUR_CREATURE], vec![Effect::DoublePower(0)]);
+                d.warp = ManaCost::parse("{2}{G}");
+            },
+        ),
+        "Skyclave Pick-Axe" => s(
+            &[
+                "When this Equipment enters, attach it to target creature you control.",
+                "Landfall — Whenever a land you control enters, equipped creature gets +2/+2 until end of turn.",
+                "Equip {2}{G}",
+            ],
+            |d, _| {
+                on(d, When::Enters, vec![YOUR_CREATURE], vec![Effect::Attach { slot: 0 }]);
+                on(d, When::LandYouControlEnters, vec![], vec![Effect::PumpAttached { power: 2, toughness: 2 }]);
+                equip(d, "{2}{G}");
+            },
+        ),
+        "Staff of Titania" => s(
+            &[
+                "Equipped creature gets +X/+X, where X is the number of Forests you control.",
+                "Whenever equipped creature attacks, create a 1/1 green Forest Dryad land creature token.",
+                "Equip {3}",
+            ],
+            |d, t| {
+                d.statics.push(Static {
+                    subtype: None,
+                    lose_abilities: false,
+                    base_pt: None,
+                    protection: [false; 5],
+                    scale: Some(Scale::PerYouControlSubtype("Forest")),
+                    scope: Scope::Attached,
+                    your_turn_only: false,
+                    condition: None,
+                    power: 1,
+                    toughness: 1,
+                    keywords: Keywords::NONE,
+                    set_colors: None,
+                    becomes_land: false,
+                });
+                on(d, When::EquippedAttacks, vec![], vec![Effect::CreateToken { who: Who::You, def: t.forest_dryad, n: 1 }]);
+                equip(d, "{3}");
+            },
+        ),
+        // ---- Core: triggers, batch 31 (Bello, Ghyrson, Tifa, Sephiroth) ----
+        "Grothama, All-Devouring" => s(
+            &[
+                "Other creatures have \"Whenever this creature attacks, you may have it fight Grothama, All-Devouring.\"",
+                "When Grothama leaves the battlefield, each player draws cards equal to the amount of damage dealt to Grothama this turn by sources they controlled.",
+            ],
+            |d, _| {
+                may(d, When::OtherCreatureAttacksGranted, vec![], vec![Effect::ExtraFightsSource]);
+                on(d, When::LeavesBattlefield, vec![], vec![Effect::EachPlayerDrawsDamageDealtToSourceThisTurn]);
+            },
+        ),
+        "Ral, Storm Conduit" => s(
+            &[
+                "Whenever you cast or copy an instant or sorcery spell, Ral deals 1 damage to target opponent or planeswalker.",
+                "+2: Scry 1.",
+                "\u{2212}2: When you next cast an instant or sorcery spell this turn, copy that spell. You may choose new targets for the copy.",
+            ],
+            |d, _| {
+                // 1v1: the opponent or a planeswalker they control.
+                let opp_or_pw = Filter { creatures: false, ..Filter::ANY }.controlled_by(Controller::Opponent);
+                on(d, When::YouCastOrCopyInstantOrSorcery, vec![opp_or_pw], vec![damage(1, Recipient::Target(0))]);
+                on(d, When::Never, vec![], vec![Effect::CopySpellNewTargets]);
+                loyalty(d, 2, Ability::new(vec![], vec![Effect::Scry { n: 1 }]));
+                loyalty(d, -2, Ability::new(vec![], vec![Effect::CopyNextInstantOrSorceryThisTurn(1)]));
+            },
+        ),
+        "Scythecat Cub" => s(
+            &["Landfall — Whenever a land you control enters, put a +1/+1 counter on target creature you control. If this is the second time this ability has resolved this turn, double the number of +1/+1 counters on that creature instead."],
+            |d, _| on(d, When::LandYouControlEnters, vec![YOUR_CREATURE], vec![Effect::CounterOrDoubleOnSecondResolution(0)]),
+        ),
+        "Claim the Kingdom" => s(
+            &[
+                "Landfall — Whenever a land you control enters, put a +1/+1 counter on target creature you control and a plan counter on this enchantment.",
+                "When the fourth plan counter is put on this enchantment, sacrifice it. When you do, put an indestructible counter on target creature you control.",
+            ],
+            |d, _| {
+                on(d, When::LandYouControlEnters, vec![YOUR_CREATURE], vec![Effect::Counters { slot: 0, n: 1 }, Effect::KindCounterSelf(1)]);
+                on(d, When::KindCountersReachOnThis(4), vec![], vec![Effect::SacrificeSource, Effect::Reflexive(2)]);
+                let indestructible = Effect::KeywordCounter { slot: 0, keywords: Keywords::INDESTRUCTIBLE };
+                on(d, When::Never, vec![YOUR_CREATURE], vec![indestructible]);
+            },
+        ),
+        "Sephiroth, Fabled SOLDIER // Sephiroth, One-Winged Angel" => s(
+            &[
+                "Whenever Sephiroth enters or attacks, you may sacrifice another creature. If you do, draw a card.",
+                "Whenever another creature dies, target opponent loses 1 life and you gain 1 life. If this is the fourth time this ability has resolved this turn, transform Sephiroth.",
+                "Back: Super Nova — As this creature transforms into Sephiroth, One-Winged Angel, you get an emblem with \"Whenever a creature dies, target opponent loses 1 life and you gain 1 life.\"",
+                "Back: Whenever Sephiroth attacks, you may sacrifice any number of other creatures. If you do, draw that many cards.",
+            ],
+            |d, _| {
+                let drain = vec![Effect::LoseLife { who: Who::TargetPlayer(0), n: 1 }, Effect::GainLife { who: Who::You, n: 1 }];
+                // Trigger 0 on both faces: the Super Nova emblem's ability (it reads the card's
+                // current face).
+                on(d, When::Never, vec![opponent_player()], drain.clone());
+                let sac_draw = vec![Effect::MaySacrificeAnother, draw(1)];
+                on(d, When::Enters, vec![], sac_draw.clone());
+                on(d, When::Attacks, vec![], sac_draw);
+                let mut fourth = drain.clone();
+                fourth.extend([
+                    Effect::StopUnlessNthResolutionThisTurn(4),
+                    Effect::TransformSelf,
+                    // Super Nova: it transforms only this way, so the emblem comes with it.
+                    Effect::Emblem(EmblemKind::Triggered { when: When::AnotherCreatureDies, trigger: 0 }),
+                ]);
+                on(d, When::AnotherCreatureDies, vec![opponent_player()], fourth);
+                let b = d.back.as_mut().expect("Sephiroth, One-Winged Angel");
+                on(b, When::Never, vec![opponent_player()], drain);
+                // "Any number": one more creature at a time, each drawing a card, until you stop.
+                let mut any = Vec::new();
+                for _ in 0..20 {
+                    any.extend([Effect::MaySacrificeAnother, draw(1)]);
+                }
+                on(b, When::Attacks, vec![], any);
+            },
+        ),
+        // ---- Core: triggers, batch 32 (Atla Palani; tokens 116-118) ----
+        "Atla Palani, Nest Tender" => s(
+            &[
+                "{2}, {T}: Create a 0/1 green Egg creature token with defender.",
+                "Whenever an Egg you control dies, reveal cards from the top of your library until you reveal a creature card. Put that card onto the battlefield and the rest on the bottom of your library in a random order.",
+            ],
+            |d, t| {
+                activated(d, "{2}", true, vec![], vec![Effect::CreateToken { who: Who::You, def: t.egg, n: 1 }]);
+                on(d, When::ThisOrAnotherYouControlDiesWithSubtype("Egg"), vec![], vec![Effect::RevealUntilCreatureOntoBattlefield]);
+            },
+        ),
+        "Palani's Hatcher" => s(
+            &[
+                "Other Dinosaurs you control have haste.",
+                "When this creature enters, create two 0/1 green Dinosaur Egg creature tokens.",
+                "At the beginning of combat on your turn, if you control one or more Eggs, sacrifice an Egg, then create a 3/3 green Dinosaur creature token.",
+            ],
+            |d, t| {
+                static_on(d, Scope::OtherYourSubtype("Dinosaur"), false, Keywords::HASTE);
+                on(d, When::Enters, vec![], vec![Effect::CreateToken { who: Who::You, def: t.dinosaur_egg, n: 2 }]);
+                let hatch = vec![Effect::SacrificeYourSubtype("Egg"), Effect::CreateToken { who: Who::You, def: t.dinosaur_3, n: 1 }];
+                conditional(d, When::BeginCombatYourTurn, Condition::ControlSubtypeAtLeast("Egg", 1), vec![], hatch);
+            },
+        ),
+        "Moonstone Eulogist" => s(
+            &[
+                "Whenever a creature an opponent controls dies, you create a Blood token.",
+                "Whenever you sacrifice an artifact, put a +1/+1 counter on this creature and you gain 1 life.",
+            ],
+            |d, t| {
+                on(d, When::OpponentCreatureDies, vec![], vec![Effect::CreateToken { who: Who::You, def: t.blood, n: 1 }]);
+                on(d, When::YouSacrificeArtifact, vec![], vec![Effect::CountersSelf { n: 1 }, Effect::GainLife { who: Who::You, n: 1 }]);
+            },
+        ),
+        "Simic Ascendancy" => s(
+            &[
+                "{1}{G}{U}: Put a +1/+1 counter on target creature you control.",
+                "Whenever one or more +1/+1 counters are put on a creature you control, put that many growth counters on this enchantment.",
+                "At the beginning of your upkeep, if this enchantment has twenty or more growth counters on it, you win the game.",
+            ],
+            |d, _| {
+                activated(d, "{1}{G}{U}", false, vec![YOUR_CREATURE], vec![Effect::Counters { slot: 0, n: 1 }]);
+                on(d, When::PlusCountersOnYourCreature, vec![], vec![Effect::KindCountersSelfAmount]);
+                let twenty = Condition::SourceKindCountersAtLeast(20);
+                conditional(d, When::Upkeep { your_turn_only: true }, twenty, vec![], vec![Effect::WinTheGame]);
+            },
+        ),
+        // ---- Core: triggers, batch 33 (Zurgo: Kinbinding, on d3's scale; token 112) ----
+        "Kinbinding" => s(
+            &[
+                "Creatures you control get +X/+X, where X is the number of creatures that entered the battlefield under your control this turn.",
+                "At the beginning of combat on your turn, create a 1/1 green and white Kithkin creature token.",
+            ],
+            |d, t| {
+                d.statics.push(Static {
+                    subtype: None,
+                    lose_abilities: false,
+                    base_pt: None,
+                    protection: [false; 5],
+                    scale: Some(Scale::PerCreatureEnteredUnderYourControlThisTurn),
+                    scope: Scope::YourCreatures,
+                    your_turn_only: false,
+                    condition: None,
+                    power: 1,
+                    toughness: 1,
+                    keywords: Keywords::NONE,
+                    set_colors: None,
+                    becomes_land: false,
+                });
+                on(d, When::BeginCombatYourTurn, vec![], vec![Effect::CreateToken { who: Who::You, def: t.kithkin, n: 1 }]);
+            },
+        ),
+        // ---- Batch 34 (idea decks: Kenrith, Sephiroth, Tifa) ----
+        "Kenrith, the Returned King" => s(
+            &[
+                "{R}: All creatures gain trample and haste until end of turn.",
+                "{1}{G}: Put a +1/+1 counter on target creature.",
+                "{2}{W}: Target player gains 5 life.",
+                "{3}{U}: Target player draws a card.",
+                "{4}{B}: Put target creature card from a graveyard onto the battlefield under its owner's control.",
+            ],
+            |d, _| {
+                let k = Keywords::TRAMPLE.with(Keywords::HASTE);
+                let all = vec![Effect::GrantAll { who: Who::You, keywords: k }, Effect::GrantAll { who: Who::EachOpponent, keywords: k }];
+                activated(d, "{R}", false, vec![], all);
+                activated(d, "{1}{G}", false, vec![CREATURE], vec![Effect::Counters { slot: 0, n: 1 }]);
+                activated(d, "{2}{W}", false, vec![Filter::PLAYER], vec![Effect::GainLife { who: Who::TargetPlayer(0), n: 5 }]);
+                activated(d, "{3}{U}", false, vec![Filter::PLAYER], vec![Effect::Draw { who: Who::TargetPlayer(0), n: 1 }]);
+                let card = graveyard_cards(true, Controller::Any);
+                activated(d, "{4}{B}", false, vec![card], vec![Effect::ReanimateUnderOwner(0)]);
+            },
+        ),
+        "Imperial Seal" => s(&["Search your library for a card, then shuffle and put that card on top. You lose 2 life."], |d, _| {
+            spell(d, vec![], vec![search(SearchFor::Any, SearchTo::Top), Effect::LoseLife { who: Who::You, n: 2 }])
+        }),
+        "Gamble" => s(
+            &["Search your library for a card, put that card into your hand, discard a card at random, then shuffle."],
+            |d, _| spell(d, vec![], vec![search(SearchFor::Any, SearchTo::Hand), Effect::DiscardAtRandom { who: Who::You, n: 1 }]),
+        ),
+        "Wheel of Fortune" => s(&["Each player discards their hand, then draws seven cards."], |d, _| {
+            spell(d, vec![], vec![Effect::EachPlayerDiscardsHandThenDraws(7)])
+        }),
+        "Summoner's Pact" => s(
+            &[
+                "Search your library for a green creature card, reveal it, put it into your hand, then shuffle.",
+                "At the beginning of your next upkeep, pay {2}{G}{G}. If you don't, you lose the game.",
+            ],
+            |d, _| {
+                let trigger = d.triggers.len();
+                let green = search(SearchFor::ColoredCreatureMvAtMost(4, u32::MAX), SearchTo::Hand);
+                spell(d, vec![], vec![green, Effect::DelayedAtYourNextUpkeep { trigger }]);
+                let cost = ManaCost::parse("{2}{G}{G}").expect("a mana cost");
+                on(d, When::Never, vec![], vec![Effect::PayOrLoseGame(cost)]);
+            },
+        ),
+        "Overprotect" => s(
+            &["Target creature you control gets +3/+3 and gains trample, hexproof, and indestructible until end of turn."],
+            |d, _| {
+                let k = Keywords::TRAMPLE.with(Keywords::HEXPROOF).with(Keywords::INDESTRUCTIBLE);
+                spell(d, vec![YOUR_CREATURE], vec![Effect::Pump { slot: 0, power: 3, toughness: 3 }, Effect::Grant { slot: 0, keywords: k }]);
+            },
+        ),
+        "Tamiyo's Safekeeping" => s(
+            &["Target permanent you control gains hexproof and indestructible until end of turn. You gain 2 life."],
+            |d, _| {
+                let yours = Filter {
+                    players: false,
+                    creatures: false,
+                    planeswalkers: false,
+                    any_permanent: true,
+                    controller: Controller::You,
+                    ..Filter::ANY
+                };
+                let k = Keywords::HEXPROOF.with(Keywords::INDESTRUCTIBLE);
+                spell(d, vec![yours], vec![Effect::Grant { slot: 0, keywords: k }, Effect::GainLife { who: Who::You, n: 2 }]);
+            },
+        ),
+        "Tyvar's Stand" => s(
+            &["Target creature you control gets +X/+X and gains hexproof and indestructible until end of turn."],
+            |d, _| {
+                let k = Keywords::HEXPROOF.with(Keywords::INDESTRUCTIBLE);
+                spell(d, vec![YOUR_CREATURE], vec![Effect::PumpXXAndGrant { slot: 0, keywords: k }]);
+            },
+        ),
+        // ---- Batch 35 (idea decks: Kenrith, Tifa, Sephiroth) ----
+        "Thassa's Oracle" => s(
+            &["When this creature enters, look at the top X cards of your library, where X is your devotion to blue. Put up to one of them on top of your library and the rest on the bottom of your library in a random order. If X is greater than or equal to the number of cards in your library, you win the game."],
+            |d, _| on(d, When::Enters, vec![], vec![Effect::LookTopDevotionToBlueWinIfAtLeastLibrary]),
+        ),
+        "Springbloom Druid" => s(
+            &["When this creature enters, you may sacrifice a land. If you do, search your library for up to two basic land cards, put them onto the battlefield tapped, then shuffle."],
+            |d, _| {
+                let two = Effect::Search { what: SearchFor::BasicLand, to: SearchTo::Battlefield { tapped: true }, n: 2, kicked_n: None };
+                on(d, When::Enters, vec![], vec![Effect::MaySacrificeLand, two]);
+            },
+        ),
+        "Demonic Consultation" => s(
+            &["Choose a card name. Exile the top six cards of your library, then reveal cards from the top of your library until you reveal a card with the chosen name. Put that card into your hand and exile all other cards revealed this way."],
+            |d, _| spell(d, vec![], vec![Effect::DemonicConsultation]),
+        ),
+        "Ravenous Squirrel" => s(
+            &[
+                "Whenever you sacrifice an artifact or creature, put a +1/+1 counter on this creature.",
+                "{1}{B}{G}, Sacrifice an artifact or creature: You gain 1 life and draw a card.",
+            ],
+            |d, _| {
+                on(d, When::YouSacrificeArtifactOrCreature, vec![], vec![Effect::CountersSelf { n: 1 }]);
+                let n = activated(d, "{1}{B}{G}", false, vec![], vec![Effect::GainLife { who: Who::You, n: 1 }, draw(1)]);
+                d.activated[n].sacrifice_artifact_or_creature = true;
+            },
+        ),
+        "Delney, Streetwise Lookout" => s(
+            &[
+                "Creatures you control with power 2 or less can't be blocked by creatures with power 3 or greater.",
+                "If a triggered ability of a creature you control with power 2 or less triggers, that ability triggers an additional time.",
+            ],
+            |d, _| {
+                d.mana_ext.small_creatures_evade_big = true;
+                d.doubles_triggers_of = Some(TriggerDoubler::CreaturePowerAtMost(2));
+            },
+        ),
+        "Horizon Explorer" => s(
+            &["Lands you control enter untapped.", "Whenever you attack a player, create a Lander token."],
+            |d, t| {
+                d.mana_ext.your_lands_enter_untapped = true;
+                on(d, When::YouAttack, vec![], vec![Effect::CreateToken { who: Who::You, def: t.lander, n: 1 }]);
+            },
+        ),
         _ => None,
     }
 }
@@ -1621,4 +1983,44 @@ pub const PG_D2_SCRIPTED: &[&str] = &[
     "Sabotender",
     "Tannuk, Memorial Ensign",
     "Seasoned Dungeoneer",
+    // Core: triggers, batch 30
+    "Greedy Freebooter",
+    "Bitterblossom",
+    "Jadar, Ghoulcaller of Nephalia",
+    "Ophiomancer",
+    "Forsaken Miner",
+    "Tifa Lockhart",
+    "Bristly Bill, Spine Sower",
+    "Mightform Harmonizer",
+    "Skyclave Pick-Axe",
+    "Staff of Titania",
+    // Core: triggers, batch 31
+    "Grothama, All-Devouring",
+    "Ral, Storm Conduit",
+    "Scythecat Cub",
+    "Claim the Kingdom",
+    "Sephiroth, Fabled SOLDIER // Sephiroth, One-Winged Angel",
+    // Core: triggers, batch 32
+    "Atla Palani, Nest Tender",
+    "Palani's Hatcher",
+    "Moonstone Eulogist",
+    "Simic Ascendancy",
+    // Core: triggers, batch 33
+    "Kinbinding",
+    // Batch 34
+    "Kenrith, the Returned King",
+    "Imperial Seal",
+    "Gamble",
+    "Wheel of Fortune",
+    "Summoner's Pact",
+    "Overprotect",
+    "Tamiyo's Safekeeping",
+    "Tyvar's Stand",
+    // Batch 35
+    "Thassa's Oracle",
+    "Springbloom Druid",
+    "Demonic Consultation",
+    "Ravenous Squirrel",
+    "Delney, Streetwise Lookout",
+    "Horizon Explorer",
 ];

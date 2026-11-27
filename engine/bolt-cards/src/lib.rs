@@ -543,6 +543,7 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         soulbond_damage_draw: false,
         your_subtypes_tap_for_green: &[],
         proliferate_twice: false,
+        untargetable_by_opponents_abilities: false,
     };
     def.color_identity = color_identity(o);
     def.phyrexian = phyrexian;

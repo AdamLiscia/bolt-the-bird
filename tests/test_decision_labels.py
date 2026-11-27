@@ -317,10 +317,45 @@ def test_proliferate_chooses_permanents_and_players():
     assert label(dec, "Yes", 0) == "Done choosing (proliferate)"
 
 
+def test_ichormoon_gauntlet_chooses_a_counter_kind():
+    dec = {"kind": "ChooseCounterKind", "kinds": [0, 2]}
+    assert label(dec, "Mode", 0) == "Another +1/+1 counter"
+    assert label(dec, "Mode", 2) == "Another stun counter"
+
+
+def test_hand_to_battlefield_and_exile_from_hand_picks():
+    sentry = {"kind": "CreatureFromHandAttackingMaxMv", "max": 2}
+    assert (
+        sv._decision_label(sentry, "Pick", 0, "Llanowar Elves") == "Put onto the battlefield attacking: Llanowar Elves"
+    )
+    kodama = {"kind": "PermanentFromHandMaxMv", "max": 3}
+    assert sv._decision_label(kodama, "Pick", 0, "Sol Ring") == "Put onto the battlefield: Sol Ring"
+    ashiok = {"kind": "ExileCardFromHand"}
+    assert sv._decision_label(ashiok, "Pick", 0, "Opt") == "Exile from your hand: Opt"
+
+
+def test_palanis_hatcher_picks_the_egg_to_sacrifice():
+    dec = {"kind": "SacrificeOfSubtype", "sub": "Egg"}
+    assert sv._decision_label(dec, "Pick", 0, "Dinosaur Egg") == "Sacrifice Dinosaur Egg"
+
+
 def test_tekuthal_picks_each_counter_to_remove():
     dec = {"kind": "RemoveCountersFromOthers", "left": 3}
     assert sv._decision_label(dec, "Pick", 0, "Sol Ring") == "Remove a counter from Sol Ring"
     assert label(dec, "No", 0) == "Don't activate it"
+
+
+def test_may_sacrifice_a_land_or_an_artifact_or_creature():
+    for kind in ("MaySacrificeLand", "MaySacrificeArtifactOrCreature"):
+        dec = {"kind": kind}
+        assert sv._decision_label(dec, "Pick", 0, "Forest") == "Sacrifice Forest"
+        assert label(dec, "No", 0) == "Don't sacrifice"
+
+
+def test_demonic_consultation_names_a_card():
+    dec = {"kind": "NameCardInLibrary"}
+    assert sv._decision_label(dec, "Pick", 0, "Thassa's Oracle") == "Name Thassa's Oracle"
+    assert label(dec, "No", 0) == "Name a card that isn't in your library"
 
 
 def test_the_moxen_and_lions_eye_diamond_ask_their_choices():
