@@ -429,18 +429,40 @@ fn scute_swarm_past_the_permanent_cap_ends_in_a_draw() {
 }
 
 /// Farm, 2026-11-27: `finish_cast` panicked "payable": a spell offered as castable whose mana, as
-/// cast, couldn't be paid. Forced here with a cost that depends on the target (Dragon's Prey's
-/// "{2} more if it targets a Dragon", patched onto Lightning Bolt): castable with one Mountain, but
-/// not at an Elf. The cast is rolled back (the card in hand, the Mountain untapped, nothing on the
-/// stack), and that cast isn't offered again this step.
+/// cast, couldn't be paid. The guard's backstop: a cast whose payment fails (forced with the test
+/// hook) is rolled back (the card in hand, nothing tapped, nothing on the stack), and that cast isn't
+/// offered again this step.
 #[test]
 fn an_unpayable_cast_rolls_back_instead_of_panicking() {
+    let mut g = table();
+    let card = g.add_card(0, cid("Lightning Bolt"), Zone::Hand);
+    assert!(g.legal_actions().contains(&Action::Cast(card)));
+    let untapped = |g: &Game| g.permanents(0).filter(|&x| !g.obj(x).tapped).count();
+    let before = untapped(&g);
+    g.fail_next_payment = true;
+    act(&mut g, Action::Cast(card));
+    act(&mut g, Action::Target(Target::Player(1)));
+    assert_eq!(g.obj(card).zone, Zone::Hand, "rolled back");
+    assert_eq!(untapped(&g), before, "nothing paid");
+    assert!(g.items.is_empty() && g.choosing.is_none());
+    assert_eq!(g.pending, Pending::Priority(0));
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(card)),
+        "not offered again this step"
+    );
+}
+
+/// A spell priced by its target (Dragon's Prey's "{2} more if it targets a Dragon", as "{5} more at
+/// an Elf" on Lightning Bolt here): with one Mountain, the Elf isn't offered as a target (it
+/// couldn't be paid, CR 601.2h), the player is, and the cast at the player completes.
+#[test]
+fn only_targets_that_keep_a_spell_payable_are_offered() {
     let mut defs = (*set("CMD").unwrap().defs).clone();
     let bolt = cid("Lightning Bolt");
     defs[bolt].reduction = Some(bolt_core::Reduction::MoreIfTargetsSubtype("Elf", 5));
     let mut g = Game::empty(std::sync::Arc::new(defs), 1, 0);
     g.auto_pass = false;
-    let mountain = g.add_card(0, cid("Mountain"), Zone::Battlefield);
+    g.add_card(0, cid("Mountain"), Zone::Battlefield);
     let elves = g.add_card(1, cid("Llanowar Elves"), Zone::Battlefield);
     let card = g.add_card(0, bolt, Zone::Hand);
     for p in 0..2 {
@@ -452,17 +474,17 @@ fn an_unpayable_cast_rolls_back_instead_of_panicking() {
     while g.step != Step::Main1 {
         act(&mut g, Action::PassPriority);
     }
-    assert!(g.legal_actions().contains(&Action::Cast(card)));
     act(&mut g, Action::Cast(card));
-    act(&mut g, Action::Target(Target::Object(elves))); // {R} + {5}: can't pay
-    assert_eq!(g.obj(card).zone, Zone::Hand, "rolled back");
-    assert!(!g.obj(mountain).tapped && g.items.is_empty() && g.choosing.is_none());
-    assert_eq!(g.pending, Pending::Priority(0));
+    let legal = g.legal_actions();
     assert!(
-        !g.legal_actions().contains(&Action::Cast(card)),
-        "not offered again this step"
+        !legal.contains(&Action::Target(Target::Object(elves))),
+        "{legal:?}"
     );
-    assert_eq!(g.obj(elves).zone, Zone::Battlefield);
+    assert!(legal.contains(&Action::Target(Target::Player(1))), "{legal:?}");
+    act(&mut g, Action::Target(Target::Player(1)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].life, 17);
+    assert_eq!(g.obj(card).zone, Zone::Graveyard);
 }
 
 /// The guard covers activated abilities too: Mind Stone's "{1}, {T}, Sacrifice: Draw a card" whose
