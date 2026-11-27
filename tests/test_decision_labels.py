@@ -350,3 +350,8 @@ def test_land_sacrifice_and_ad_nauseam_labels():
 def test_flare_of_malice_sacrifices_the_greatest():
     dec = {"kind": "SacrificeGreatestMv"}
     assert sv._decision_label(dec, "Pick", 0, "Sol Ring") == "Sacrifice Sol Ring"
+
+
+def test_kindred_summons_names_a_creature_type():
+    dec = {"kind": "KindredSummonsType", "options": ["Dragon", "Elf"]}
+    assert label(dec, "Mode", 1) == "Kindred Summons: choose Elf"

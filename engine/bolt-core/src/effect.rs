@@ -2909,6 +2909,13 @@ pub enum Effect {
     /// it; each player who sacrificed a permanent this way reveals the top card of their library and
     /// puts it onto the battlefield if it's a permanent card.
     SacrificeTargetsRevealTopPermanent(u8),
+    /// Kindred Summons: choose a creature type (`Decision::KindredSummonsType`), then reveal from
+    /// the top until X creature cards of it, X the creatures you control of that type; those go onto
+    /// the battlefield, the rest are shuffled in.
+    KindredSummons,
+    /// "Permanents your opponents control lose hexproof and indestructible until end of turn."
+    /// (Shadowspear), as `Game::lose_hexproof_indestructible_turn`.
+    OpponentsPermanentsLoseHexproofIndestructibleEot,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -3113,6 +3120,8 @@ pub enum Scale {
     /// Other creatures you control with flying, printed or granted until end of turn (Skycat
     /// Sovereign).
     PerOtherYourCreatureWithFlying,
+    /// Lands you control (Blackblade Reforged).
+    PerLandYouControl,
 }
 
 /// A condition on a static ability ("as long as ...").

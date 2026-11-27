@@ -2362,6 +2362,13 @@ pub struct ZonesExt {
     pub top_spells_flash_or_flying: bool,
 }
 
+impl Keywords {
+    /// These keywords taken away (Shadowspear: "lose hexproof and indestructible").
+    pub fn without(self, k: Keywords) -> Keywords {
+        Keywords(self.0 & !k.0)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

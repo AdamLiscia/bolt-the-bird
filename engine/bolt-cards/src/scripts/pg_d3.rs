@@ -2295,6 +2295,43 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::Attacks, targets, vec![Effect::SacrificeTargetsRevealTopPermanent(2)]);
             },
         ),
+        "Kindred Summons" => s(
+            &["Choose a creature type. Reveal cards from the top of your library until you reveal X creature cards of the chosen type, where X is the number of creatures you control of that type. Put those cards onto the battlefield, then shuffle the rest of the revealed cards into your library."],
+            |d, _| spell(d, vec![], vec![Effect::KindredSummons]),
+        ),
+        "Shadowspear" => s(
+            &[
+                "Equipped creature gets +1/+1 and has trample and lifelink.",
+                "{1}: Permanents your opponents control lose hexproof and indestructible until end of turn.",
+                "Equip {2}",
+            ],
+            |d, _| {
+                attached(d, false, 1, 1, Keywords::TRAMPLE.with(Keywords::LIFELINK));
+                activated(d, "{1}", false, vec![], vec![Effect::OpponentsPermanentsLoseHexproofIndestructibleEot]);
+                equip(d, "{2}");
+            },
+        ),
+        // Core theme d3, batch 39 (idea decks: Kenrith, Tifa)
+        "Brain Freeze" => s(&["Target player mills three cards.", "Storm"], |d, _| {
+            let player = Filter { creatures: false, planeswalkers: false, ..Filter::ANY };
+            spell(d, vec![player], vec![Effect::Mill { who: Who::TargetPlayer(0), n: 3 }]);
+            on(d, When::YouCastThis, vec![], vec![Effect::CopySourceSpell { storm: true }]);
+        }),
+        "Blackblade Reforged" => s(
+            &[
+                "Equipped creature gets +1/+1 for each land you control.",
+                "Equip legendary creature {3}",
+                "Equip {7}",
+            ],
+            |d, _| {
+                attached(d, false, 1, 1, Keywords::NONE);
+                d.statics.last_mut().expect("just added").scale = Some(Scale::PerLandYouControl);
+                let legendary = Filter { legendary_only: true, ..YOUR_CREATURE };
+                let n = activated(d, "{3}", false, vec![legendary], vec![Effect::Attach { slot: 0 }]);
+                d.activated[n].sorcery = true;
+                equip(d, "{7}");
+            },
+        ),
         _ => None,
     }
 }
@@ -2602,4 +2639,8 @@ pub const PG_D3_SCRIPTED: &[&str] = &[
     "Apocalypse",
     "Karrthus, Tyrant of Jund",
     "Vaevictis Asmadi, the Dire",
+    "Kindred Summons",
+    "Shadowspear",
+    "Brain Freeze",
+    "Blackblade Reforged",
 ];

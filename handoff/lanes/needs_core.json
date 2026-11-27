@@ -6242,7 +6242,7 @@
   {
    "card": "Kindred Summons",
    "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
-   "missing": "lane C's routing (2026-11-26)",
+   "missing": "lane C's routing (2026-11-26) [done by d3 batch 39: Effect::KindredSummons with Decision::KindredSummonsType, scripted (pg_d3)]",
    "lane": "mac-c",
    "theme": "effects",
    "owner": "d3"
@@ -6250,7 +6250,7 @@
   {
    "card": "Shadowspear",
    "deck": "Vaevictis Asmadi, the Dire (RuricMo)",
-   "missing": "lane C's routing (2026-11-26)",
+   "missing": "lane C's routing (2026-11-26) [done by d3 batch 39: Effect::OpponentsPermanentsLoseHexproofIndestructibleEot (Game::lose_hexproof_indestructible_turn, Keywords::without), scripted (pg_d3)]",
    "lane": "mac-c",
    "theme": "effects",
    "owner": "d3"
@@ -7339,6 +7339,22 @@
    "card": "Archdruid's Charm",
    "deck": "IDEA Tifa Lockhart",
    "missing": "idea-deck claim (2026-11-27) [done by d3 batch 37: scripted (pg_d3)]",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Brain Freeze",
+   "deck": "IDEA Kenrith, the Returned King",
+   "missing": "idea-deck claim (2026-11-27) [done by d3 batch 39: scripted (pg_d3)]",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Blackblade Reforged",
+   "deck": "IDEA Tifa Lockhart",
+   "missing": "idea-deck claim (2026-11-27) [done by d3 batch 39: Scale::PerLandYouControl, scripted (pg_d3)]",
    "lane": "d3",
    "theme": "effects and statics",
    "owner": "d3"
