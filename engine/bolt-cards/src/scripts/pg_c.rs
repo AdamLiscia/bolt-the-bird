@@ -2280,6 +2280,36 @@ pub fn script(name: &str) -> Option<Script> {
                 d.zones.top_spells_flash_or_flying = true;
             },
         ),
+        "Elder Brain" => s(
+            &["Whenever this creature attacks a player, exile all cards from that player's hand, then they draw that many cards. You may play lands and cast spells from among the exiled cards for as long as they remain exiled. If you cast a spell this way, you may spend mana as though it were mana of any color to cast it."],
+            |d, _| on(d, When::Attacks, vec![], vec![Effect::ExileDefendingHandDrawThatManyPlayable]),
+        ),
+        "Inkshield" => s(
+            &["Prevent all combat damage that would be dealt to you this turn. For each 1 damage prevented this way, create a 2/1 white and black Inkling creature token with flying."],
+            |d, t| spell(d, vec![], vec![Effect::PreventCombatDamageToYouMakingTokens { def: t.inkling }]),
+        ),
+        "The One Ring" => s(
+            &[
+                "When The One Ring enters, if you cast it, you gain protection from everything until your next turn.",
+                "At the beginning of your upkeep, you lose 1 life for each burden counter on The One Ring.",
+                "{T}: Put a burden counter on The One Ring, then draw a card for each burden counter on The One Ring.",
+            ],
+            |d, _| {
+                // Protection from everything for a player (lane B's piece) prevents damage and
+                // targeting; "can't be enchanted" (a Curse) isn't modelled. Burden counters are
+                // the Ring's `kind_counters`.
+                conditional(d, When::Enters, Condition::CastIt, vec![], vec![Effect::YouGainProtectionUntilYourNextTurn]);
+                on(d, When::Upkeep { your_turn_only: true }, vec![], vec![Effect::YouLoseLifePerKindCounter]);
+                activated(d, "", true, vec![], vec![Effect::KindCounterSelf(1), Effect::YouDrawPerKindCounter]);
+            },
+        ),
+        "Deep-Cavern Bat" => s(
+            &["When this creature enters, look at target opponent's hand. You may exile a nonland card from it until this creature leaves the battlefield."],
+            |d, _| {
+                let opp = Filter::PLAYER.controlled_by(Controller::Opponent);
+                on(d, When::Enters, vec![opp], vec![Effect::ExileFromHandUntilSourceLeaves(0)]);
+            },
+        ),
         "Final Act" => s(
             &[
                 "Choose one or more —",
@@ -2583,4 +2613,8 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Rakdos, Patron of Chaos",
     "Hanweir Battlements",
     "Errant and Giada",
+    "Elder Brain",
+    "Inkshield",
+    "The One Ring",
+    "Deep-Cavern Bat",
 ];

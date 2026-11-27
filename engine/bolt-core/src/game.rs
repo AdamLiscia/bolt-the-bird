@@ -1379,6 +1379,13 @@ pub enum Decision {
         controller: PlayerId,
         first: Option<ObjId>,
     },
+    /// Deep-Cavern Bat: `Pick` a nonland card in `victim`'s hand to exile until `source` (with
+    /// zone-change count `zcc`) leaves the battlefield, or `No`.
+    ExileFromHandUntilSourceLeaves {
+        victim: PlayerId,
+        source: ObjId,
+        zcc: u32,
+    },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -1843,6 +1850,9 @@ pub struct Game {
     /// Rankle and Torbran: (turn, how many) of "it deals that much damage plus 2" for damage to
     /// players this turn.
     pub plus_two_to_players: (u32, u32),
+    /// Deep-Cavern Bat: (source, its zone-change count, card) — a card exiled from a hand until the
+    /// source leaves the battlefield, returned to its owner's hand when it does (CR 610.3).
+    pub hand_links: Vec<(ObjId, u32, ObjId)>,
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -2131,6 +2141,7 @@ impl Game {
             combat_shield_tokens: Vec::new(),
             player_protected_until: [None; 2],
             plus_two_to_players: (0, 0),
+            hand_links: Vec::new(),
         }
     }
 
@@ -5769,6 +5780,10 @@ impl Game {
                     self.move_to(card, Zone::Battlefield);
                 }
             }
+        }
+        if from == Zone::Battlefield {
+            // Deep-Cavern Bat: cards exiled from a hand until this leaves go back to their owner's hand.
+            self.return_hand_links(id);
         }
         if dies {
             // Granted "when this creature dies" triggers, from before it changed zones.
@@ -13575,6 +13590,7 @@ impl Game {
             d @ Decision::AttachAura { .. } => self.attach_aura_actions(p, d),
             Decision::DiscardThenIfInstantOrSorcery => hand.iter().copied().map(Action::Pick).collect(),
             Decision::PatronOfChaosSacrifice { first, .. } => self.patron_of_chaos_actions(p, *first),
+            Decision::ExileFromHandUntilSourceLeaves { victim, .. } => self.hand_link_actions(*victim),
             Decision::MoveAuraTo { aura } => self
                 .move_aura_options(*aura, p)
                 .into_iter()
@@ -15208,6 +15224,9 @@ impl Game {
             }
             (Decision::PatronOfChaosSacrifice { controller, first }, a) => {
                 self.patron_of_chaos_decide(p, controller, first, a)
+            }
+            (Decision::ExileFromHandUntilSourceLeaves { source, zcc, .. }, a) => {
+                self.hand_link_decide(source, zcc, a)
             }
             (Decision::MoveAuraTo { aura }, Action::Pick(c)) => {
                 let zcc = self.obj(c).zcc;
@@ -23409,6 +23428,25 @@ impl Game {
             Effect::TargetOpponentMaySacrificeTwoOrYouDrawTwo(slot) => {
                 for q in self.players_for(item, legal, Who::TargetPlayer(slot)) {
                     self.patron_of_chaos_ask(q, item.controller);
+                }
+            }
+            Effect::ExileDefendingHandDrawThatManyPlayable => {
+                self.exile_defending_hand_draw_that_many(src, item.controller)
+            }
+            Effect::YouLoseLifePerKindCounter => {
+                let n = self.obj(src).kind_counters.max(0);
+                if n > 0 {
+                    self.lose_life(item.controller, n);
+                }
+            }
+            Effect::YouDrawPerKindCounter => {
+                for _ in 0..self.obj(src).kind_counters.max(0) {
+                    self.draw(item.controller);
+                }
+            }
+            Effect::ExileFromHandUntilSourceLeaves(slot) => {
+                for q in self.players_for(item, legal, Who::TargetPlayer(slot)) {
+                    self.hand_link_ask(src, item.controller, q);
                 }
             }
             Effect::DiscardThenIfInstantOrSorcery => {

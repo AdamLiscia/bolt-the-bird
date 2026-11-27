@@ -1018,3 +1018,26 @@ Left, by blocker:
 - Deep-Cavern Bat: lane C, next (look at the hand, exile a nonland card until it leaves).
 - The One Ring: burden counters, the upkeep loss and the draw are lane C's; "you gain protection from everything"
   for a player needs damage prevention (Mac B) and untargetability (d3's target_ok). Next after the Bat, or split.
+
+## Merge of tarkir e369439, and batch 15: Elder Brain, Inkshield, The One Ring, Deep-Cavern Bat (built)
+
+Merge a1a959e: tarkir e369439 into tarkir-c. Conflicts only at the ends of `Effect` and `Decision` (tarkir's
+variants first, then lane C's). Tokens are tarkir's exactly: 100 `bird_flying_wu` (d1), 101-103 lane C, 104
+`placeholder_104` (lane B's, still free for lane C), 105 `inkling`, 106 `warrior_white`. needs_core.json: union by
+card (835).
+
+Core (appended; arms after `TargetOpponentMaySacrificeTwoOrYouDrawTwo`, functions in game/zones.rs):
+- `Effect::ExileDefendingHandDrawThatManyPlayable` (Elder Brain, on `When::Attacks`; nothing if it's attacking a
+  planeswalker): exiles the defending player's hand, sets `playable = Some((you, u32::MAX))` and d1's
+  `any_color_mana` on each, then they draw that many.
+- `Effect::{YouLoseLifePerKindCounter, YouDrawPerKindCounter}` (The One Ring; burden counters are `kind_counters`).
+- `Effect::ExileFromHandUntilSourceLeaves(slot)` with `Decision::ExileFromHandUntilSourceLeaves { victim, source,
+  zcc }` (Pick a nonland card, or No; labelled, tested) and `Game::hand_links`: one call in `move_to`'s
+  from-battlefield block (`return_hand_links`) sends the card back to its owner's hand (CR 610.3), unlike
+  `links`, which return to the battlefield.
+Cards (4): Elder Brain, Inkshield (lane B's `PreventCombatDamageToYouMakingTokens`, token 105), The One Ring (lane
+B's `YouGainProtectionUntilYourNextTurn` behind `Condition::CastIt`; "can't be enchanted" by a Curse isn't
+modelled), Deep-Cavern Bat. Tests in core_objects (59). Fix: `to_end_step_target` (Rakdos) now finishes attacks
+and blocks on the way.
+Built: 2,220 Rust tests pass (core_objects 59, pg_c 212, play.rs 3 ignored), every binary's count equals its
+`#[test]` count; clippy, fmt, ruff (check and format) clean; pytest 172.

@@ -2614,6 +2614,22 @@ pub enum Effect {
     /// The player in `slot` may sacrifice two nonland, nontoken permanents of their choice; if they
     /// don't, you draw two cards (Rakdos, Patron of Chaos; `Decision::PatronOfChaosSacrifice`).
     TargetOpponentMaySacrificeTwoOrYouDrawTwo(u8),
+    /// "Whenever this creature attacks a player, exile all cards from that player's hand, then they
+    /// draw that many cards. You may play lands and cast spells from among the exiled cards for as
+    /// long as they remain exiled. If you cast a spell this way, you may spend mana as though it
+    /// were mana of any color to cast it." (Elder Brain), 1v1: the defending player; nothing if the
+    /// source is attacking a planeswalker. See `Game::exile_defending_hand_draw_that_many`.
+    ExileDefendingHandDrawThatManyPlayable,
+    /// "You lose 1 life for each [kind] counter on [the source]" (The One Ring's burden counters,
+    /// `Object::kind_counters`).
+    YouLoseLifePerKindCounter,
+    /// "Draw a card for each [kind] counter on [the source]" (The One Ring).
+    YouDrawPerKindCounter,
+    /// "Look at target opponent's hand. You may exile a nonland card from it until this creature
+    /// leaves the battlefield." (Deep-Cavern Bat): the player in `slot`, as
+    /// `Decision::ExileFromHandUntilSourceLeaves`; the card returns to its owner's hand
+    /// (`Game::hand_links`).
+    ExileFromHandUntilSourceLeaves(u8),
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
