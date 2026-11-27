@@ -2,6 +2,8 @@
 
 import io
 import json
+import signal
+from pathlib import Path
 
 import pytest
 
@@ -101,3 +103,24 @@ def test_done_marks_the_job_finished(tmp_path):
     assert not j.done()
     j.save({}, step=2, done=True)
     assert job(tmp_path, s3).done()
+
+
+def test_a_pointer_check_leaves_the_callers_sigterm_handler(tmp_path):
+    """farm.py checks each job's pointer with a Job; that must not take over farm.py's SIGTERM handler."""
+
+    def farm_stop(*_):
+        pass
+
+    old = signal.signal(signal.SIGTERM, farm_stop)
+    try:
+        Job("run1", client=FakeS3(), local=tmp_path / "ckpt", handle_signals=False).done()
+        assert signal.getsignal(signal.SIGTERM) is farm_stop
+        Job("run1", client=FakeS3(), local=tmp_path / "ckpt")
+        assert signal.getsignal(signal.SIGTERM) is not farm_stop, "a training job still saves on SIGTERM"
+    finally:
+        signal.signal(signal.SIGTERM, old)
+
+
+def test_farm_checks_pointers_without_taking_signals():
+    farm = (Path(__file__).resolve().parents[1] / "scripts" / "farm.py").read_text()
+    assert 'Job(j["name"], handle_signals=False)' in farm
