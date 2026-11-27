@@ -26,6 +26,24 @@ HAND = Path.home() / "bolt-handoff"
 SOURCES = [("playgroup_all.json", 31), ("lowgame_all.json", None)]
 
 
+def expand(entries) -> list[str]:
+    """A deck list as one name per copy. The export gives either names (a repeated name is another copy), a
+    {name: quantity} map, or [name, quantity] / {"name", "qty" or "quantity" or "count"} entries."""
+    if isinstance(entries, dict):
+        entries = list(entries.items())
+    out = []
+    for e in entries:
+        if isinstance(e, str):
+            out.append(e)
+        elif isinstance(e, dict):
+            n = next((e[k] for k in ("qty", "quantity", "count") if k in e), 1)
+            out += [e["name"]] * int(n)
+        else:
+            name, n = e
+            out += [name] * int(n)
+    return out
+
+
 SIZE = re.compile(r"^\d+ cards with the commanders?, not 100$")
 
 
@@ -58,7 +76,7 @@ def playable(set_name: str = "CMD", hand: Path = HAND) -> tuple[list[tuple[list[
         for x in d["deck_order"][:cap]:
             cmd = [x["commander"]] + ([x["partner"]] if x.get("partner") else [])
             name = f"{x['owner']}: {cmd[0].split(',')[0]}"
-            cards = list(d["decks"][str(x["deck_id"])])
+            cards = expand(d["decks"][str(x["deck_id"])])
             for c in cmd:  # the list starts with the commander(s): take each out once
                 if c in cards:
                     cards.remove(c)
