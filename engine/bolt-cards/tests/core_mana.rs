@@ -2791,3 +2791,51 @@ mod ward_sacrifice_food {
         );
     }
 }
+
+/// "You may spend mana as though it were mana of any color to cast those spells." (Elder Brain):
+/// `Object::any_color_mana` on a card playable from exile.
+mod any_color_mana {
+    use bolt_cards::set;
+    use bolt_core::{Action, Game, Step, Target, Zone};
+
+    fn cid(name: &str) -> usize {
+        set("CMD").unwrap().index_of(name).unwrap()
+    }
+
+    #[test]
+    fn a_card_playable_from_exile_is_paid_with_mana_of_any_color() {
+        let plains = vec![cid("Plains"); 99];
+        let mut g = Game::new_commander(
+            set("CMD").unwrap().defs.clone(),
+            [&plains, &plains],
+            [cid("Bello, Bard of the Brambles"), cid("Ms. Bumbleflower")],
+            7,
+            0,
+        );
+        g.auto_pass = false;
+        g.add_card(0, cid("Plains"), Zone::Battlefield);
+        g.start_turn(3, 0);
+        while g.step != Step::Main1 {
+            g.apply(Action::PassPriority).unwrap();
+        }
+        let bolt = g.add_card(0, cid("Lightning Bolt"), Zone::Exile);
+        g.objects[bolt.0 as usize].playable = Some((0, 99));
+        assert!(
+            !g.legal_actions().contains(&Action::Cast(bolt)),
+            "{{R}} with only a Plains"
+        );
+        g.objects[bolt.0 as usize].any_color_mana = true;
+        assert!(
+            g.legal_actions().contains(&Action::Cast(bolt)),
+            "Plains mana spent as red"
+        );
+        g.apply(Action::Cast(bolt)).unwrap();
+        g.apply(Action::Target(Target::Player(1))).unwrap();
+        while !g.items.is_empty() {
+            g.apply(Action::PassPriority).unwrap();
+        }
+        assert_eq!(g.players[1].life, 37);
+        assert_eq!(g.obj(bolt).zone, Zone::Graveyard);
+        assert!(!g.obj(bolt).any_color_mana, "gone with the zone change");
+    }
+}
