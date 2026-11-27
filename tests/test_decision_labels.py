@@ -315,3 +315,8 @@ def test_hand_to_battlefield_and_exile_from_hand_picks():
     assert sv._decision_label(kodama, "Pick", 0, "Sol Ring") == "Put onto the battlefield: Sol Ring"
     ashiok = {"kind": "ExileCardFromHand"}
     assert sv._decision_label(ashiok, "Pick", 0, "Opt") == "Exile from your hand: Opt"
+
+
+def test_demons_disciple_each_player_sacrifices():
+    dec = {"kind": "EachSacrificesCreatureOrPlaneswalker", "next": 1}
+    assert sv._decision_label(dec, "Pick", 0, "Llanowar Elves") == "Sacrifice Llanowar Elves"

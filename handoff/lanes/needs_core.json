@@ -722,7 +722,7 @@
   {
    "card": "Maskwood Nexus",
    "deck": "Atla Palani, Nest Tender",
-   "missing": "creatures are every creature type; a 2/2 blue Shapeshifter creature token with changeling",
+   "missing": "creatures are every creature type; a 2/2 blue Shapeshifter creature token with changeling [done by d3 batch 35: scripted (pg_d3), CardDef::your_creatures_every_creature_type, token 121]",
    "lane": "d1",
    "theme": "effects",
    "owner": "d3"
@@ -5506,7 +5506,7 @@
   {
    "card": "Demon's Disciple",
    "deck": "Malik, Grim Manipulator (Spr3adsh33)",
-   "missing": "lane C's Malik routing (2026-11-26); multi-owner cards: see its report",
+   "missing": "lane C's Malik routing (2026-11-26); multi-owner cards: see its report [d3 batch 35: piece in: Effect::EachPlayerSacrificesCreatureOrPlaneswalker (Decision::EachSacrificesCreatureOrPlaneswalker); Malik is fenced, the Mac scripts the card]",
    "lane": "mac-c",
    "theme": "effects",
    "owner": "d3"
@@ -5554,7 +5554,7 @@
   {
    "card": "Reckless Handling",
    "deck": "Malik, Grim Manipulator (Spr3adsh33)",
-   "missing": "lane C's Malik routing (2026-11-26); multi-owner cards: see its report",
+   "missing": "lane C's Malik routing (2026-11-26); multi-owner cards: see its report [d3 batch 35: piece in: Effect::DiscardRandomIfArtifactDamageEachOpponent(2) (seeded rng) after search(SearchFor::Artifact, SearchTo::Hand); Malik is fenced, the Mac scripts the card]",
    "lane": "mac-c",
    "theme": "effects",
    "owner": "d3"

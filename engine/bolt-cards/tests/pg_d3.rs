@@ -4442,3 +4442,33 @@ fn kodama_puts_a_cheaper_permanent_but_not_from_its_own_put() {
     assert!(g.obj(lions).put_by_kodama);
     assert_ne!(g.pending, Pending::Decide(0), "the Lions don't trigger it again");
 }
+
+#[test]
+fn noggle_the_mind_makes_a_colorless_1_1_noggle() {
+    let mut g = table();
+    let elder = put(&mut g, 1, "Merfolk Looter");
+    let n = hand(&mut g, 0, "Noggle the Mind");
+    play(&mut g, n, false, &[obj(elder)], &[]);
+    assert_eq!((g.power(elder), g.toughness(elder)), (1, 1));
+    assert_eq!(g.colors_of(elder), [false; 5]);
+    assert!(g.has_subtype(elder, "Noggle") && !g.has_subtype(elder, "Merfolk"));
+}
+
+#[test]
+fn maskwood_nexus_makes_your_creatures_every_type_and_shapeshifters() {
+    let mut g = table();
+    let nexus = put(&mut g, 0, "Maskwood Nexus");
+    let elves = put(&mut g, 0, "Llanowar Elves");
+    let in_hand = hand(&mut g, 0, "Savannah Lions");
+    let theirs = put(&mut g, 1, "Llanowar Elves");
+    assert!(g.has_subtype(elves, "Dragon") && g.has_subtype(in_hand, "Goblin"));
+    assert!(!g.has_subtype(theirs, "Dragon"), "yours only");
+    assert!(!g.has_subtype(nexus, "Dragon"), "creatures only");
+    act(&mut g, Action::Activate(nexus, 0));
+    resolve_all(&mut g, &[]);
+    let shifters = tokens(&g, 0, "Shapeshifter");
+    assert_eq!(shifters.len(), 1);
+    let x = shifters[0];
+    assert_eq!((g.power(x), g.toughness(x)), (2, 2));
+    assert_eq!(g.colors_of(x), [false, true, false, false, false]);
+}

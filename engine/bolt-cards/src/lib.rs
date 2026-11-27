@@ -542,6 +542,8 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         your_subtypes_tap_for_green: &[],
         proliferate_twice: false,
         untargetable_by_opponents_abilities: false,
+        enchanted_creature_type_becomes: None,
+        your_creatures_every_creature_type: false,
     };
     def.color_identity = color_identity(o);
     def.phyrexian = phyrexian;
