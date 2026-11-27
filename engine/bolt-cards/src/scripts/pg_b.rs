@@ -2290,6 +2290,17 @@ pub fn script(name: &str) -> Option<Script> {
                 d.lands_in_graveyard_have_dredge = Some(2);
             },
         ),
+        "Golden Argosy" => s(
+            &[
+                "Whenever Golden Argosy attacks, exile each creature that crewed it this turn. Return them to the battlefield tapped under their owner's control at the beginning of the next end step.",
+                "Crew 1",
+            ],
+            |d, _| {
+                on(d, When::Attacks, vec![], vec![Effect::ExileCrewersReturnTappedAtEnd]);
+                let n = activated(d, "", false, vec![], vec![Effect::CrewedSelf]);
+                d.activated[n].crew = 1;
+            },
+        ),
         _ => None,
     }
 }
@@ -2550,6 +2561,7 @@ pub const PG_B_SCRIPTED: &[&str] = &[
     "Overpowering Attack",
     "Tendo Ice Bridge",
     "The Necrobloom",
+    "Golden Argosy",
     // Ghyrson Starn (Spr3adsh33t)
     "Basilisk Collar",
     "Gorgon's Head",

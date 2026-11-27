@@ -798,3 +798,51 @@ fn urzas_saga_chapters_run_from_playing_it_to_its_search_and_sacrifice() {
         "sacrificed after its last chapter"
     );
 }
+
+// ---- Bloomburrow Commander leftovers ----
+
+fn named_tokens(g: &Game, p: usize, name: &str) -> usize {
+    g.permanents(p)
+        .filter(|&x| g.is_token(x) && g.def_of(x).name == name)
+        .count()
+}
+
+#[test]
+fn fishers_talent_makes_a_fish_for_a_land_on_top_then_sharks_and_octopuses_by_level() {
+    supported("Fisher's Talent");
+    let mut g = table();
+    let talent = put(&mut g, 0, "Fisher's Talent");
+    let main = |g: &Game| {
+        g.active == 0
+            && g.step == Step::Main1
+            && g.items.is_empty()
+            && g.triggered.is_empty()
+            && matches!(g.pending, Pending::Priority(_))
+    };
+    let next_turn = |g: &mut Game, top: &str| {
+        advance(g, |g| g.active == 1);
+        let card = g.add_card(0, cid(top), Zone::Library); // on top, for the upkeep look
+        advance(g, main);
+        card
+    };
+    let bolt = next_turn(&mut g, "Lightning Bolt");
+    assert_eq!(named_tokens(&g, 0, "Fish"), 0, "not a land: no Fish");
+    assert_eq!(g.obj(bolt).zone, Zone::Hand, "then draw a card");
+    let forest = next_turn(&mut g, "Forest");
+    assert_eq!(named_tokens(&g, 0, "Fish"), 1, "a land: a Fish");
+    assert_eq!(g.obj(forest).zone, Zone::Hand);
+    assert!(
+        g.legal_actions().contains(&Action::Activate(talent, 0)),
+        "level 2"
+    );
+    act(&mut g, Action::Activate(talent, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.class_level(talent), 2);
+    next_turn(&mut g, "Forest");
+    assert_eq!(named_tokens(&g, 0, "Fish"), 1, "level 2: no new Fish");
+    assert_eq!(named_tokens(&g, 0, "Shark"), 1, "a Shark instead");
+    g.objects[talent.0 as usize].class_level = 3;
+    next_turn(&mut g, "Forest");
+    assert_eq!(named_tokens(&g, 0, "Shark"), 1, "level 3: no new Shark");
+    assert_eq!(named_tokens(&g, 0, "Octopus"), 1, "Fish to Shark to Octopus");
+}
