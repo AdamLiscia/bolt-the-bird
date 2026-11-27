@@ -167,3 +167,33 @@ def test_a_game_ended_by_an_engine_error_leaves_no_samples(monkeypatch):
     out = pr.run_games(None, jobs, seats=("rules", "rules"), record=(0, 1), game_s=0)
     assert [r["result"] for r in out["results"]] == ["p0", "error"]
     assert out["steps"] and {st["game"] for st in out["steps"]} == {0}
+
+
+def test_a_batch_with_an_errored_game_gives_a_finite_loss(monkeypatch):
+    """The iteration-30 shape: one game panics mid-trajectory; the update over the batch stays finite."""
+    import numpy as np
+    import torch
+    from test_play_commander import obs
+
+    import bolt.play_runner as pr
+    from bolt.play_data import to_arrays
+    from bolt.play_encoding import encode as real_encode
+    from bolt.play_net import PlayNet
+    from bolt.play_ppo import gae, ppo_step
+
+    monkeypatch.setattr("bolt.play_encoding.card_table", lambda s: ())
+    monkeypatch.setattr(pr, "new_game", lambda a, b, s, f: PanickingGame() if s == 666 else CrawlingGame(False))
+    monkeypatch.setattr(pr, "encode", lambda o, who: real_encode(obs(), who))
+    jobs = [("a", "b", 1, 0), ("a", "b", 666, 0), ("a", "b", 3, 1)]
+    out = pr.run_games(None, jobs, seats=("rules", "rules"), record=(0, 1), game_s=0)
+    assert [r["result"] for r in out["results"]] == ["p0", "error", "p0"]
+    assert out["results"][1]["dropped_steps"] > 0
+    for st in out["steps"]:
+        st["logp"], st["value"] = -0.7, 0.0
+    arr = to_arrays(out["steps"], out["results"])
+    adv, ret = gae(arr, lam=0.95)
+    net = PlayNet(n_cards=8, dim=16, layers=1, heads=2)
+    idx = np.arange(len(arr["action"]))
+    st = ppo_step(net, None, torch.optim.AdamW(net.parameters(), lr=1e-3), arr, idx, torch.as_tensor(adv),
+                  ret=torch.as_tensor(ret))  # fmt: skip
+    assert np.isfinite(st["loss"]) and st["bad_groups"] == 0 and st["bad_grad"] == 0

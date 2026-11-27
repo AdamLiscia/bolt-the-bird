@@ -102,7 +102,7 @@ def test_every_iteration_row_reports_entropy_and_ratio_deviation(trainer, monkey
         assert r["entropy"] > 0 and r["ratio_dev"] >= 0 and r["value_mse_z"] >= 0, r
         assert 0 < r["entropy_norm"] <= 1.0001 and r["log_legal"] > 0, r
         assert r["by_kind"]["Priority"]["share"] == 1.0, r["by_kind"]
-        assert r["dropped_nan"] == 1 and r["skipped_nan"] == 0, r
+        assert r["dropped_nan"] == 1 and r["skipped_nan"] == 0 and r["dropped_error"] == 0, r
 
 
 def test_a_changed_lr_applies_to_the_resumed_optimizer(monkeypatch):
