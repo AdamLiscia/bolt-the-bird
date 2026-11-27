@@ -2556,6 +2556,9 @@ pub enum Effect {
     /// "You may pay {X}, where X is less than or equal to the amount of life you gained. If you do,
     /// draw X cards." (Well of Lost Dreams): the trigger's amount caps X, as `Decision::PayXDrawX`.
     MayPayXUpToAmountDrawX,
+    /// Exile the creature in `slot` if its power is at most the power of the card in the item's
+    /// `extra` (Titan's Presence: the revealed card).
+    ExileIfPowerAtMostExtra(u8),
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

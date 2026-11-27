@@ -139,6 +139,10 @@ pub enum ExtraCost {
     /// with `Action::Cast` paying the mana, or `Action::CastWith` naming a Food to sacrifice or a
     /// card in your graveyard (it and two more, the engine's picks, are exiled).
     ForageOrPay(ManaCost),
+    /// "As an additional cost to cast this spell, reveal a colorless creature card from your hand."
+    /// (Titan's Presence): cast with `Action::CastWith` naming it; it stays in your hand, and is the
+    /// spell's `extra`.
+    RevealColorlessCreature,
 }
 
 /// "This spell costs {N} less to cast if ..." (CR 601.2f).

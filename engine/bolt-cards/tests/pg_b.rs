@@ -3640,3 +3640,29 @@ fn teferi_master_of_time_activates_on_the_opponents_turn_at_instant_speed() {
     }
     assert!(!g.legal_actions().iter().any(|a| matches!(a, Action::Loyalty(..))));
 }
+
+#[test]
+fn titans_presence_reveals_a_colorless_creature_and_exiles_by_its_power() {
+    let mut g = table();
+    let tp = hand(&mut g, 0, "Titan's Presence");
+    assert!(
+        !g.legal_actions()
+            .iter()
+            .any(|a| matches!(a, Action::Cast(x) | Action::CastWith(x, _) if *x == tp)),
+        "nothing to reveal"
+    );
+    let jug = hand(&mut g, 0, "Juggernaut"); // a colorless 5/3
+    let lions = put(&mut g, 1, "Savannah Lions"); // power 2
+    let titan = put(&mut g, 1, "Inferno Titan"); // power 6
+    assert!(g.legal_actions().contains(&Action::CastWith(tp, jug)));
+    act(&mut g, Action::CastWith(tp, jug));
+    act(&mut g, Action::Target(Target::Object(lions)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(lions).zone, Zone::Exile);
+    assert_eq!(g.obj(jug).zone, Zone::Hand, "revealed, not discarded");
+    let tp2 = hand(&mut g, 0, "Titan's Presence");
+    act(&mut g, Action::CastWith(tp2, jug));
+    act(&mut g, Action::Target(Target::Object(titan)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(titan).zone, Zone::Battlefield, "power 6 is more than 5");
+}

@@ -2086,6 +2086,16 @@ pub fn script(name: &str) -> Option<Script> {
                 loyalty(d, -10, Ability::new(vec![], vec![Effect::ExtraTurn, Effect::ExtraTurn]));
             },
         ),
+        "Titan's Presence" => s(
+            &[
+                "As an additional cost to cast this spell, reveal a colorless creature card from your hand.",
+                "Exile target creature if its power is less than or equal to the revealed card's power.",
+            ],
+            |d, _| {
+                d.extra_cost = Some(ExtraCost::RevealColorlessCreature);
+                spell(d, vec![CREATURE], vec![Effect::ExileIfPowerAtMostExtra(0)]);
+            },
+        ),
         _ => None,
     }
 }
@@ -2329,6 +2339,7 @@ pub const PG_B_SCRIPTED: &[&str] = &[
     "Sigarda, Host of Herons",
     "Valgavoth, Terror Eater",
     "Teferi, Master of Time",
+    "Titan's Presence",
     // Ghyrson Starn (Spr3adsh33t)
     "Basilisk Collar",
     "Gorgon's Head",

@@ -7022,6 +7022,14 @@ impl Game {
             Some(ExtraCost::SacrificeCreatureOfColor(k)) => creatures()
                 .filter(|&(_, m)| m.extra.is_some_and(|x| self.colors_of(x)[*k as usize]))
                 .collect(),
+            Some(ExtraCost::RevealColorlessCreature) => self.players[p]
+                .hand
+                .iter()
+                .filter(|&&x| {
+                    x != c && self.def_of(x).types.creature && !self.def_of(x).colors.iter().any(|&k| k)
+                })
+                .map(|&x| (Action::CastWith(c, x), CastMode::with(x)))
+                .collect(),
             Some(ExtraCost::ForageOrPay(_)) => {
                 // Pay the mana, sacrifice a Food, or exile three graveyard cards (named by the
                 // first one the engine would exile).
@@ -10845,7 +10853,15 @@ impl Game {
                 self.move_to(m, Zone::Exile);
             }
         }
-        if let Some(x) = item.extra.filter(|_| energy_by.is_none() && !foraged) {
+        // Titan's Presence: the revealed card stays in your hand.
+        let revealed = matches!(
+            self.def_of(card).extra_cost,
+            Some(ExtraCost::RevealColorlessCreature)
+        );
+        if let Some(x) = item
+            .extra
+            .filter(|_| energy_by.is_none() && !foraged && !revealed)
+        {
             if harmonized.is_some() {
                 self.become_tapped(x); // harmonize taps the creature; it isn't sacrificed
             } else if self.def_of(card).pitch_not_your_turn.is_some() && !item.flashback {
@@ -18945,6 +18961,13 @@ impl Game {
                         .collect();
                     for x in theirs {
                         self.move_to(x, Zone::Exile);
+                    }
+                }
+            }
+            Effect::ExileIfPowerAtMostExtra(slot) => {
+                if let (Some(c), Some(r)) = (Game::slot_object(item, legal, slot), item.extra) {
+                    if self.power(c) <= self.def_of(r).power {
+                        self.move_to(c, Zone::Exile);
                     }
                 }
             }
