@@ -2401,6 +2401,59 @@ pub fn script(name: &str) -> Option<Script> {
             &["When this creature enters, each player sacrifices a creature or planeswalker of their choice."],
             |d, _| on(d, When::Enters, vec![], vec![Effect::EachPlayerSacrificesCreatureOrPlaneswalker]),
         ),
+        "Gluttonous Hellkite" => s(
+            &[
+                "When you cast this spell, each player sacrifices X creatures. This creature enters with two +1/+1 counters on it for each creature sacrificed this way.",
+            ],
+            |d, _| {
+                on(d, When::YouCastThis, vec![], vec![Effect::EachPlayerSacrificesXCreaturesCountersPer(2)]);
+                d.keywords = d.keywords.with(Keywords::FLYING).with(Keywords::TRAMPLE);
+            },
+        ),
+        "The Earth Crystal" => s(
+            &[
+                "Green spells you cast cost {1} less to cast.",
+                "If one or more +1/+1 counters would be put on a creature you control, twice that many +1/+1 counters are put on that creature instead.",
+                "{4}{G}{G}, {T}: Distribute two +1/+1 counters among one or two target creatures you control.",
+            ],
+            |d, _| {
+                d.green_spell_discount = 1;
+                d.doubles_plus_counters_on_your_creatures = true;
+                let mut a = up_to(vec![YOUR_CREATURE; 2], vec![Effect::DividedCounters]);
+                a.min_targets = Some(1);
+                a.divide = 2;
+                let n = activated(d, "{4}{G}{G}", true, vec![], vec![]);
+                d.activated[n].ability = a;
+            },
+        ),
+        "Blossombind" => s(
+            &[
+                "Enchant creature",
+                "When this Aura enters, tap enchanted creature.",
+                "Enchanted creature can't become untapped and can't have counters put on it.",
+            ],
+            |d, _| {
+                d.aura = true;
+                d.spell = Some(Ability::new(vec![CREATURE], vec![]));
+                on(d, When::Enters, vec![], vec![Effect::TapAttached]);
+                d.enchanted_cant_become_untapped = true;
+                d.enchanted_cant_have_counters = true;
+            },
+        ),
+        "Urza's Ruinous Blast" => s(&["Exile all nonland permanents that aren't legendary."], |d, _| {
+            // CR 205.4e (legendary sorcery) is checked as it's cast, from its type line.
+            spell(d, vec![], vec![Effect::ExileAllNonlandNonlegendary]);
+        }),
+        "Medomai the Ageless" => s(
+            &[
+                "Whenever Medomai deals combat damage to a player, take an extra turn after this one.",
+                "Medomai can't attack during extra turns.",
+            ],
+            |d, _| {
+                on(d, When::DealsCombatDamageToPlayer, vec![], vec![Effect::ExtraTurn]);
+                d.cant_attack_during_extra_turns = true;
+            },
+        ),
         _ => None,
     }
 }
@@ -2677,6 +2730,11 @@ pub const PG_B_SCRIPTED: &[&str] = &[
     "Stridehangar Automaton",
     "Reckless Handling",
     "Demon's Disciple",
+    "Gluttonous Hellkite",
+    "The Earth Crystal",
+    "Blossombind",
+    "Urza's Ruinous Blast",
+    "Medomai the Ageless",
     // Ghyrson Starn (Spr3adsh33t)
     "Basilisk Collar",
     "Gorgon's Head",

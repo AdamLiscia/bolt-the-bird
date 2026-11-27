@@ -3091,6 +3091,13 @@ pub enum Effect {
     SacrificeXLandsDrawEach,
     /// "You may play X additional lands this turn." (Nahiri's Lithoforming; X the spell's X)
     ExtraLandsThisTurnX,
+    /// Gluttonous Hellkite's cast trigger: "each player sacrifices X creatures" (X of the spell
+    /// that is the source, from its cast snapshot), starting with the active player, as
+    /// `Decision::EachSacrificesXCreatures`; the spell then "enters with `n` +1/+1 counters on it
+    /// for each creature sacrificed this way" (`Game::sacrifice_enter_counters`).
+    EachPlayerSacrificesXCreaturesCountersPer(i32),
+    /// "Exile all nonland permanents that aren't legendary." (Urza's Ruinous Blast)
+    ExileAllNonlandNonlegendary,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

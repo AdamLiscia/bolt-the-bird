@@ -1169,6 +1169,21 @@ pub struct CardDef {
     /// you do, exile a card from your hand." Asked in `Game::pregame_actions`
     /// (`Decision::GemstoneCaverns`); the luck counter is `Object::kind_counters`.
     pub begins_game_with_luck_counter: bool,
+    /// "[This] enters with an additional loyalty counter on [it] for each instant and sorcery spell
+    /// you've cast this turn." (Ral, Leyline Prodigy), from `Game::instants_sorceries_cast`.
+    pub loyalty_plus_instants_sorceries_cast: bool,
+    /// "If one or more +1/+1 counters would be put on a creature you control, twice that many are
+    /// put on it instead." (The Earth Crystal), in `Game::add_counters` and entering with counters.
+    /// Each one doubles again, after Hardened Scales' +1 (the order its controller would pick).
+    pub doubles_plus_counters_on_your_creatures: bool,
+    /// "Enchanted creature can't become untapped" (Blossombind): no untap step and no untap effect
+    /// untaps it (`Game::enchanted_doesnt_untap`, `Game::untap_by_effect`).
+    pub enchanted_cant_become_untapped: bool,
+    /// "Enchanted creature ... can't have counters put on it" (Blossombind): in `add_counters`,
+    /// `add_counter_kind` and `minus_counters_for`.
+    pub enchanted_cant_have_counters: bool,
+    /// "[This] can't attack during extra turns." (Medomai the Ageless), from `Game::in_extra_turn`.
+    pub cant_attack_during_extra_turns: bool,
 }
 
 /// A card's pieces from the d4 subsystems (see [`CardDef::subsystems`]).
@@ -1804,6 +1819,11 @@ impl CardDef {
             your_planeswalkers_have_loyalty: Vec::new(),
             artifact_tokens_plus_one: None,
             begins_game_with_luck_counter: false,
+            loyalty_plus_instants_sorceries_cast: false,
+            doubles_plus_counters_on_your_creatures: false,
+            enchanted_cant_become_untapped: false,
+            enchanted_cant_have_counters: false,
+            cant_attack_during_extra_turns: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -2111,6 +2131,11 @@ impl CardDef {
             your_planeswalkers_have_loyalty: Vec::new(),
             artifact_tokens_plus_one: None,
             begins_game_with_luck_counter: false,
+            loyalty_plus_instants_sorceries_cast: false,
+            doubles_plus_counters_on_your_creatures: false,
+            enchanted_cant_become_untapped: false,
+            enchanted_cant_have_counters: false,
+            cant_attack_during_extra_turns: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -2418,6 +2443,11 @@ impl CardDef {
             your_planeswalkers_have_loyalty: Vec::new(),
             artifact_tokens_plus_one: None,
             begins_game_with_luck_counter: false,
+            loyalty_plus_instants_sorceries_cast: false,
+            doubles_plus_counters_on_your_creatures: false,
+            enchanted_cant_become_untapped: false,
+            enchanted_cant_have_counters: false,
+            cant_attack_during_extra_turns: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,

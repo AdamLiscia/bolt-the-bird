@@ -438,3 +438,8 @@ def test_kindred_summons_names_a_creature_type():
 def test_lithoforming_sacrifices_a_land_to_draw():
     dec = {"kind": "SacrificeLandsDraw", "left": 1, "drawn": 0}
     assert sv._decision_label(dec, "Pick", 0, "Mountain") == "Sacrifice (draw a card) Mountain"
+
+
+def test_gluttonous_hellkite_sacrifices_each_creature_by_name():
+    dec = {"kind": "EachSacrificesXCreatures", "left": 2, "n": 2}
+    assert sv._decision_label(dec, "Pick", 0, "Llanowar Elves") == "Sacrifice Llanowar Elves"

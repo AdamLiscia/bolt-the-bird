@@ -4510,3 +4510,172 @@ fn demons_disciple_makes_each_player_sacrifice_a_creature_or_planeswalker() {
     );
     assert_eq!(g.obj(c).zone, Zone::Battlefield, "it kept its own creature");
 }
+
+// ---- Gluttonous Hellkite; Ral, Leyline Prodigy's loyalty ----
+
+#[test]
+fn gluttonous_hellkite_has_each_player_sacrifice_x_and_enters_with_two_counters_each() {
+    let mut g = table();
+    let elves = put(&mut g, 0, "Llanowar Elves");
+    let thopter = put(&mut g, 0, "Ornithopter");
+    let theirs = put(&mut g, 1, "Llanowar Elves");
+    let kite = hand(&mut g, 0, "Gluttonous Hellkite");
+    act(&mut g, Action::CastX(kite, 1));
+    // The cast trigger: two creatures, one to sacrifice (asked); the opponent's one goes unasked.
+    resolve_all(&mut g, &[Action::Pick(thopter)]);
+    assert_eq!(g.obj(thopter).zone, Zone::Graveyard);
+    assert_eq!(g.obj(elves).zone, Zone::Battlefield);
+    assert_eq!(g.obj(theirs).zone, Zone::Graveyard);
+    assert_eq!(g.obj(kite).zone, Zone::Battlefield);
+    assert_eq!(
+        (g.power(kite), g.toughness(kite)),
+        (7, 7),
+        "two creatures: four counters"
+    );
+}
+
+#[test]
+fn gluttonous_hellkite_for_x_zero_enters_without_counters() {
+    let mut g = table();
+    let elves = put(&mut g, 0, "Llanowar Elves");
+    let kite = hand(&mut g, 0, "Gluttonous Hellkite");
+    act(&mut g, Action::CastX(kite, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(elves).zone, Zone::Battlefield);
+    assert_eq!((g.power(kite), g.toughness(kite)), (3, 3));
+}
+
+#[test]
+fn a_walker_enters_with_a_loyalty_counter_per_instant_and_sorcery_cast_this_turn() {
+    let mut g = table();
+    let jace = cid("Jace Beleren");
+    std::sync::Arc::make_mut(&mut g.defs)[jace].loyalty_plus_instants_sorceries_cast = true;
+    for _ in 0..2 {
+        let bolt = hand(&mut g, 0, "Lightning Bolt");
+        play(&mut g, bolt, false, &[Target::Player(1)], &[]);
+    }
+    let j = hand(&mut g, 0, "Jace Beleren");
+    play(&mut g, j, false, &[], &[]);
+    assert_eq!(g.obj(j).loyalty, 3 + 2, "two instants cast this turn");
+}
+
+// ---- The Earth Crystal (Korvold), Blossombind (Niv-Mizzet idea) ----
+
+#[test]
+fn the_earth_crystal_distributes_two_counters_and_doubles_them() {
+    let mut g = table();
+    let crystal = put(&mut g, 0, "The Earth Crystal");
+    let a = put(&mut g, 0, "Llanowar Elves");
+    let b = put(&mut g, 0, "Savannah Lions");
+    let theirs = put(&mut g, 1, "Llanowar Elves");
+    act(&mut g, Action::Activate(crystal, 0));
+    assert!(!g.legal_actions().contains(&Action::Target(obj(theirs))), "yours");
+    act(&mut g, Action::Target(obj(a)));
+    act(&mut g, Action::Target(obj(b)));
+    if g.legal_actions().contains(&Action::No) {
+        act(&mut g, Action::No);
+    }
+    assert!(matches!(g.pending, Pending::Divide(0)));
+    act(&mut g, Action::Amount(1));
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        (g.obj(a).counters, g.obj(b).counters),
+        (2, 2),
+        "one each, doubled"
+    );
+}
+
+#[test]
+fn blossombind_taps_and_keeps_the_creature_tapped_and_counterless() {
+    let mut g = table();
+    let champ = put(&mut g, 0, "Setessan Champion");
+    let bind = hand(&mut g, 0, "Blossombind");
+    play(&mut g, bind, false, &[obj(champ)], &[]);
+    assert!(g.obj(champ).tapped, "tapped as it enters");
+    let guardian = hand(&mut g, 0, "Grim Guardian");
+    play(&mut g, guardian, false, &[], &[]);
+    assert_eq!(g.obj(champ).counters, 0, "can't have counters put on it");
+    g.start_turn(5, 0);
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(g.obj(champ).tapped, "can't become untapped");
+}
+
+// ---- Legendary sorceries (CR 205.4e), Urza's Ruinous Blast ----
+
+#[test]
+fn a_legendary_sorcery_needs_a_legendary_creature_or_planeswalker() {
+    let mut g = table();
+    let blast = hand(&mut g, 0, "Urza's Ruinous Blast");
+    put(&mut g, 1, "Ms. Bumbleflower");
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(blast)),
+        "only the opponent's legend"
+    );
+    put(&mut g, 0, "Bello, Bard of the Brambles");
+    assert!(g.legal_actions().contains(&Action::Cast(blast)));
+}
+
+#[test]
+fn urzas_ruinous_blast_exiles_nonland_permanents_that_arent_legendary() {
+    let mut g = table();
+    let bello = put(&mut g, 0, "Bello, Bard of the Brambles");
+    let theirs = put(&mut g, 1, "Ms. Bumbleflower");
+    let elves = put(&mut g, 0, "Llanowar Elves");
+    let ring = put(&mut g, 1, "Sol Ring");
+    let lions = put(&mut g, 1, "Savannah Lions");
+    let land = g.permanents(0).find(|&x| g.def_of(x).name == "Plains").unwrap();
+    let blast = hand(&mut g, 0, "Urza's Ruinous Blast");
+    play(&mut g, blast, false, &[], &[]);
+    for x in [elves, ring, lions] {
+        assert_eq!(g.obj(x).zone, Zone::Exile);
+    }
+    for x in [bello, theirs, land] {
+        assert_eq!(g.obj(x).zone, Zone::Battlefield, "legendary or a land");
+    }
+}
+
+// ---- Medomai the Ageless (extra turns) ----
+
+/// Pass (discarding to hand size) until turn `turn` begins, collecting the attack actions offered
+/// along the way.
+fn pass_to_turn(g: &mut Game, turn: u32) -> Vec<Action> {
+    let mut offered = Vec::new();
+    for _ in 0..500 {
+        if g.turn >= turn {
+            break;
+        }
+        let legal = g.legal_actions();
+        offered.extend(legal.iter().copied().filter(|a| matches!(a, Action::Attack(_))));
+        let a = match g.pending {
+            Pending::Discard(p) => Action::Discard(g.players[p].hand[0]),
+            Pending::DeclareAttackers(_) => Action::FinishAttacks,
+            _ if legal.contains(&Action::PassPriority) => Action::PassPriority,
+            _ => legal[0],
+        };
+        act(g, a);
+    }
+    offered
+}
+
+#[test]
+fn medomai_takes_an_extra_turn_and_cant_attack_during_it() {
+    let mut g = table();
+    let medomai = put(&mut g, 0, "Medomai the Ageless");
+    attack(&mut g, &[medomai]);
+    let life = g.players[1].life;
+    pass_to_turn(&mut g, 6);
+    assert_eq!(g.players[1].life, life - 4);
+    assert_eq!((g.active, g.in_extra_turn), (0, true), "an extra turn");
+    let offered = pass_to_turn(&mut g, 7);
+    assert!(
+        !offered.contains(&Action::Attack(medomai)),
+        "can't attack during extra turns"
+    );
+    assert_eq!((g.active, g.in_extra_turn), (1, false), "then the normal order");
+    pass_to_turn(&mut g, 8);
+    assert_eq!((g.active, g.in_extra_turn), (0, false));
+    let offered = pass_to_turn(&mut g, 9);
+    assert!(offered.contains(&Action::Attack(medomai)), "a normal turn");
+}

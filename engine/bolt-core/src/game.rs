@@ -1580,6 +1580,14 @@ pub enum Decision {
     /// Nahiri's Lithoforming: `Pick` a land to sacrifice (`left` more after this one); `drawn` lands
     /// are sacrificed so far, and that many cards are drawn after the last.
     SacrificeLandsDraw { left: u8, drawn: u8 },
+    /// Gluttonous Hellkite: `Pick` a creature to sacrifice, `left` to go (this one included), then
+    /// `next` sacrifices `n`; each one adds to `spell`'s entry in `Game::sacrifice_enter_counters`.
+    EachSacrificesXCreatures {
+        left: u8,
+        n: u8,
+        next: Option<PlayerId>,
+        spell: ObjId,
+    },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -2162,6 +2170,11 @@ pub struct Game {
     /// Why the engine ended the game itself, when it did: one of its loop caps tripped
     /// ([`WORK_BUDGET`], [`MAX_OBJECTS`], [`MAX_PERMANENTS`], [`SETTLE_PASSES`]); the result is a draw.
     pub end_reason: Option<&'static str>,
+    /// Gluttonous Hellkite: (spell, the zone change count it enters with, +1/+1 counters per
+    /// creature sacrificed, counters so far), read as it enters.
+    sacrifice_enter_counters: Vec<(ObjId, u32, i32, i32)>,
+    /// Whether the current turn is an extra turn (CR 500.7), set as each turn begins.
+    pub in_extra_turn: bool,
 }
 
 /// `Action::CastFromGraveyardAs`'s second number for Karador, Ghost Chieftain's once-each-turn
@@ -2469,6 +2482,8 @@ impl Game {
             loyalty_snapshots: Vec::new(),
             artifact_plus_batch: None,
             pregame_asked: Vec::new(),
+            sacrifice_enter_counters: Vec::new(),
+            in_extra_turn: false,
             hand_links: Vec::new(),
             hand_at_end_combat: Vec::new(),
             dream_marked: Vec::new(),
@@ -4285,6 +4300,9 @@ impl Game {
     /// An effect untaps a permanent: a tapped one with a stun counter loses the counter instead
     /// (CR 122.1d).
     fn untap_by_effect(&mut self, id: ObjId) {
+        if self.attached_aura_has(id, |d| d.enchanted_cant_become_untapped) {
+            return; // Blossombind
+        }
         let o = self.obj_mut(id);
         let was_tapped = o.tapped;
         if o.tapped && o.stun > 0 {
@@ -4298,13 +4316,24 @@ impl Game {
     }
 
     /// An Aura on it says "Enchanted creature doesn't untap during its controller's untap step."
+    /// (or "can't become untapped", Blossombind).
     fn enchanted_doesnt_untap(&self, id: ObjId) -> bool {
+        self.attached_aura_has(id, |d| {
+            d.enchanted_doesnt_untap || d.enchanted_cant_become_untapped
+        })
+    }
+
+    /// Whether an Aura attached to `id` with its abilities has `what`.
+    fn attached_aura_has(&self, id: ObjId, what: fn(&CardDef) -> bool) -> bool {
         let zcc = self.obj(id).zcc;
         self.battlefield.iter().any(|&a| {
-            self.obj(a).attached_to == Some((id, zcc))
-                && self.def_of(a).enchanted_doesnt_untap
-                && !self.lost_abilities(a)
+            self.obj(a).attached_to == Some((id, zcc)) && what(self.def_of(a)) && !self.lost_abilities(a)
         })
+    }
+
+    /// Blossombind: "Enchanted creature ... can't have counters put on it."
+    fn cant_have_counters(&self, id: ObjId) -> bool {
+        self.attached_aura_has(id, |d| d.enchanted_cant_have_counters)
     }
 
     /// Total toughness of the creatures `p` controls.
@@ -4366,6 +4395,9 @@ impl Game {
     /// How many of `n` -1/-1 counters are put on `id`: one fewer per Vizier of Remedies its
     /// controller controls, if it's a creature.
     fn minus_counters_for(&self, id: ObjId, n: i32) -> i32 {
+        if self.cant_have_counters(id) {
+            return 0;
+        }
         if n <= 0 || !self.types_of(id).creature {
             return n.max(0);
         }
@@ -4374,6 +4406,18 @@ impl Game {
             .filter(|&x| self.def_of(x).your_minus_counters_minus_one && !self.lost_abilities(x))
             .count() as i32;
         (n - viziers).max(0)
+    }
+
+    /// CR 205.4e: "You may cast a legendary sorcery only if you control a legendary creature or
+    /// planeswalker." Whether that stops `p` casting `c`.
+    fn legendary_sorcery_blocked(&self, p: PlayerId, c: ObjId) -> bool {
+        let t = self.def_of(c).types;
+        t.legendary
+            && t.sorcery
+            && !self.permanents(p).any(|x| {
+                let t = self.types_of(x);
+                t.legendary && (t.creature || t.planeswalker)
+            })
     }
 
     /// Whether Drannith Magistrate stops `p` casting the card in `zone` (anywhere but a hand).
@@ -4516,6 +4560,9 @@ impl Game {
     /// `add_counters` and lore through `add_lore` (a Saga's next chapter triggers, CR 714.2c), which
     /// report their own placement; for the rest it returns 1 for the caller to report.
     fn add_counter_kind(&mut self, id: ObjId, k: u8) -> i32 {
+        if self.cant_have_counters(id) {
+            return 0;
+        }
         match k {
             0 => {
                 self.add_counters(id, 1);
@@ -6376,7 +6423,13 @@ impl Game {
                     .iter()
                     .find(|e| e.0 == id && e.1 == zcc)
                     .map_or(0, |e| 2 * e.2 as i32);
-                let l = (l - fewer).max(0) * self.doubling(self.obj(id).controller);
+                // Ral, Leyline Prodigy: one more for each instant and sorcery cast this turn.
+                let more = if def.loyalty_plus_instants_sorceries_cast {
+                    self.instants_sorceries_cast[self.obj(id).controller] as i32
+                } else {
+                    0
+                };
+                let l = (l - fewer + more).max(0) * self.doubling(self.obj(id).controller);
                 self.obj_mut(id).loyalty = l; // CR 306.5b
                 let controller = self.obj(id).controller;
                 self.counters_placed(controller, l);
@@ -6388,6 +6441,18 @@ impl Game {
             if def.enters_with_x_counters {
                 let x = self.obj(id).x as i32;
                 self.add_counters(id, x);
+            }
+            // Gluttonous Hellkite: counters for the creatures its cast trigger had sacrificed.
+            let zcc = self.obj(id).zcc;
+            if let Some(pos) = self
+                .sacrifice_enter_counters
+                .iter()
+                .position(|e| e.0 == id && e.1 == zcc)
+            {
+                let n = self.sacrifice_enter_counters.remove(pos).3;
+                if n > 0 {
+                    self.add_counters(id, n);
+                }
             }
             // "This creature escapes with N +1/+1 counters on it."
             let zcc = self.obj(id).zcc;
@@ -6510,7 +6575,7 @@ impl Game {
             }
             let bonus = bonus + flat + non + chauffeur;
             if bonus > 0 {
-                let n = bonus * self.doubling(controller);
+                let n = bonus * self.doubling(controller) * self.creature_counter_doubling(id);
                 self.obj_mut(id).counters += n;
                 self.counters_placed(controller, n);
                 self.counter_put_on(id); // CR 122.6: entering with counters counts
@@ -6530,7 +6595,7 @@ impl Game {
                     _ => false,
                 };
                 if yes {
-                    let n = n * self.doubling(controller);
+                    let n = n * self.doubling(controller) * self.creature_counter_doubling(id);
                     self.obj_mut(id).counters += n;
                     self.counters_placed(controller, n);
                     self.counter_put_on(id);
@@ -8077,7 +8142,9 @@ impl Game {
             | Action::CastFromGraveyard(c)
             | Action::CastFromGraveyardAs(c, _)
             | Action::CastHarmonize(c, _)
-            | Action::CastOmen(c) => !self.cast_zone_blocked(p, self.obj(c).zone),
+            | Action::CastOmen(c) => {
+                !self.cast_zone_blocked(p, self.obj(c).zone) && !self.legendary_sorcery_blocked(p, c)
+            }
             _ => true,
         });
         v.extend(self.activations(p));
@@ -11469,6 +11536,8 @@ impl Game {
                     || self.permanents(p).filter(|&x| self.types_of(x).artifact).count()
                         >= self.def_of(id).attacks_only_with_artifacts as usize)
                 && (!arbiter || declared.is_empty())
+                // Medomai the Ageless: "can't attack during extra turns."
+                && !(self.in_extra_turn && self.def_of(id).cant_attack_during_extra_turns)
                 && !self.cant_attack_until.iter().any(|&(x, zcc, until)| x == id && zcc == o.zcc && self.turn < until)
                 && (!self.def_of(id).fights_only_with_blessing || self.city_blessing[o.controller])
                 && (!self.def_of(id).fights_only_if_creature_died || self.creature_died_under[o.controller])
@@ -13605,7 +13674,11 @@ impl Game {
         }
         for &c in &self.free_casts {
             let def = self.def_of(c);
-            if !free_zone(self.obj(c).zone) || def.types.land || self.cast_zone_blocked(p, self.obj(c).zone) {
+            if !free_zone(self.obj(c).zone)
+                || def.types.land
+                || self.cast_zone_blocked(p, self.obj(c).zone)
+                || self.legendary_sorcery_blocked(p, c)
+            {
                 continue;
             }
             let castable = def.types.is_permanent() || def.spell.is_some() || !def.modes.is_empty();
@@ -14413,18 +14486,19 @@ impl Game {
     }
 
     fn add_counters(&mut self, id: ObjId, n: i32) {
-        if n <= 0 || self.obj(id).zone != Zone::Battlefield {
+        if n <= 0 || self.obj(id).zone != Zone::Battlefield || self.cant_have_counters(id) {
             return;
         }
-        let n = n * self.doubling(self.obj(id).controller);
-        // Hardened Scales: "that many plus one" on a creature you control.
-        let n = n + if self.types_of(id).creature {
+        // Replacements in the order the controller would pick (CR 616.1): Hardened Scales' "that
+        // many plus one" on a creature you control first, then each doubler.
+        let plus = if self.types_of(id).creature {
             self.permanents(self.obj(id).controller)
                 .filter(|&x| self.def_of(x).counters_plus_one && !self.lost_abilities(x))
                 .count() as i32
         } else {
             0
         };
+        let n = (n + plus) * self.doubling(self.obj(id).controller) * self.creature_counter_doubling(id);
         self.obj_mut(id).counters += n;
         let controller = self.obj(id).controller;
         self.counters_placed(controller, n);
@@ -15872,6 +15946,11 @@ impl Game {
             Decision::SacrificeGreatestMv => self
                 .greatest_mv_sacrifice_options(p)
                 .into_iter()
+                .map(Action::Pick)
+                .collect(),
+            Decision::EachSacrificesXCreatures { .. } => self
+                .creatures(p)
+                .filter(|&c| !self.cant_be_sacrificed(c))
                 .map(Action::Pick)
                 .collect(),
             Decision::EachSacrificesCreatureOrPlaneswalker { .. } => self
@@ -17953,6 +18032,14 @@ impl Game {
                 self.sacrificed(c, p);
             }
             (Decision::AdNauseamAgain, _) => {}
+            (Decision::EachSacrificesXCreatures { left, n, next, spell }, Action::Pick(c)) => {
+                self.sacrifice_for_counters(c, p, spell);
+                if left > 1 {
+                    self.sacrifice_x_creatures_next(p, left - 1, n, next, spell);
+                } else if let Some(q) = next {
+                    self.sacrifice_x_creatures_next(q, n, n, None, spell);
+                }
+            }
             (Decision::EachSacrificesCreatureOrPlaneswalker { next }, a) => {
                 if let Action::Pick(c) = a {
                     self.move_to(c, Zone::Graveyard);
@@ -18510,6 +18597,50 @@ impl Game {
                 (t.creature || t.planeswalker) && !self.cant_be_sacrificed(c)
             })
             .collect()
+    }
+
+    /// Gluttonous Hellkite: `p` sacrifices `left` creatures (all of them, unasked, with that many
+    /// or fewer), then `next` sacrifices `x`.
+    fn sacrifice_x_creatures_next(
+        &mut self,
+        p: PlayerId,
+        left: u8,
+        x: u8,
+        next: Option<PlayerId>,
+        spell: ObjId,
+    ) {
+        let mine: Vec<ObjId> = self
+            .creatures(p)
+            .filter(|&c| !self.cant_be_sacrificed(c))
+            .collect();
+        if left > 0 && mine.len() > left as usize {
+            return self.ask(
+                p,
+                Decision::EachSacrificesXCreatures {
+                    left,
+                    n: x,
+                    next,
+                    spell,
+                },
+            );
+        }
+        if left > 0 {
+            for c in mine {
+                self.sacrifice_for_counters(c, p, spell);
+            }
+        }
+        if let Some(q) = next {
+            self.sacrifice_x_creatures_next(q, x, x, None, spell);
+        }
+    }
+
+    /// Sacrifice `c` (controlled by `p`), adding its counters to `spell`'s entry.
+    fn sacrifice_for_counters(&mut self, c: ObjId, p: PlayerId, spell: ObjId) {
+        self.move_to(c, Zone::Graveyard);
+        self.sacrificed(c, p);
+        if let Some(e) = self.sacrifice_enter_counters.iter_mut().find(|e| e.0 == spell) {
+            e.3 += e.2;
+        }
     }
 
     /// Demon's Disciple: `p` sacrifices a creature or planeswalker (asked only with one), then
@@ -27019,6 +27150,14 @@ impl Game {
                     self.destroy(c);
                 }
             }
+            Effect::ExileAllNonlandNonlegendary => {
+                for x in self.battlefield.clone() {
+                    let t = self.types_of(x);
+                    if self.obj(x).zone == Zone::Battlefield && !t.land && !t.legendary {
+                        self.move_to(x, Zone::Exile);
+                    }
+                }
+            }
             Effect::ExileAllPermanents => {
                 for x in self.battlefield.clone() {
                     if self.obj(x).zone == Zone::Battlefield {
@@ -27127,6 +27266,21 @@ impl Game {
                     });
                     self.copied_or_cast_instant_sorcery(item.controller, c);
                 }
+            }
+            Effect::EachPlayerSacrificesXCreaturesCountersPer(per) => {
+                let x = self
+                    .cast_snapshots
+                    .iter()
+                    .rev()
+                    .find(|s| s.source == src)
+                    .map_or(0, |s| s.x);
+                if self.obj(src).zone == Zone::Stack {
+                    let zcc = self.obj(src).zcc + 1; // the permanent it becomes
+                    self.sacrifice_enter_counters.retain(|e| e.0 != src);
+                    self.sacrifice_enter_counters.push((src, zcc, per, 0));
+                }
+                let a = self.active;
+                self.sacrifice_x_creatures_next(a, x, x, Some(opponent(a)), src);
             }
             Effect::EachPlayerSacrificesCreatureOrPlaneswalker => {
                 let a = self.active;
@@ -27813,6 +27967,19 @@ impl Game {
     }
 
     /// How many times over tokens and counters for `p` are made: 2 per Doubling Season.
+    /// The Earth Crystal: 2 for each one its controller controls if `id` is a creature they
+    /// control, else 1 (+1/+1 counters only).
+    fn creature_counter_doubling(&self, id: ObjId) -> i32 {
+        if !self.types_of(id).creature {
+            return 1;
+        }
+        let n = self
+            .permanents(self.obj(id).controller)
+            .filter(|&x| self.def_of(x).doubles_plus_counters_on_your_creatures && !self.lost_abilities(x))
+            .count();
+        1 << n.min(10)
+    }
+
     fn doubling(&self, p: PlayerId) -> i32 {
         let n = self
             .permanents(p)
@@ -28253,6 +28420,7 @@ impl Game {
         self.turn += 1;
         // CR 500.7: an extra turn is inserted; afterward the normal order resumes with the player
         // who would have been next (an opponent's gifted turn doesn't replace their own).
+        self.in_extra_turn = !self.extra_turns.is_empty();
         self.active = match self.extra_turns.pop() {
             Some(q) => {
                 let normal = opponent(self.active);

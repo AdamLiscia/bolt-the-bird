@@ -1103,3 +1103,62 @@ One Ring's check in `deal_damage`). Claims recorded in needs_core.json.
   `pending_copies`. The rules give replicate and casualty copies new targets too (CR 702.56a,
   702.153a); that switch is d1's call. I also removed a duplicate
   `test_tekuthal_picks_each_counter_to_remove` that arrived from tarkir.
+
+### Gluttonous Hellkite; Ral, Leyline Prodigy's loyalty piece (2026-11-27)
+
+- Gluttonous Hellkite (Vaevictis): scripted as its oracle text reads, as a cast trigger
+  (`When::YouCastThis`) with `Effect::EachPlayerSacrificesXCreaturesCountersPer(2)`. X comes from
+  the spell's cast snapshot. The active player sacrifices first, then the other player
+  (`Decision::EachSacrificesXCreatures`). A player who has X or fewer creatures sacrifices them
+  all without being asked. Each sacrifice adds 2 to the spell's entry in
+  `Game::sacrifice_enter_counters`, keyed by the spell and the zone change count it enters with.
+  The counters go on as it enters, so a countered spell's entry is never read.
+- Ral, Leyline Prodigy (d1 scripts the card): `CardDef::loyalty_plus_instants_sorceries_cast`
+  adds `instants_sorceries_cast[controller]` to the printed loyalty as the walker enters, before
+  loyalty doubling. Tested on a flagged Jace Beleren.
+
+### The Earth Crystal's counter doubling (2026-11-27)
+
+- `CardDef::doubles_plus_counters_on_your_creatures` (The Earth Crystal): +1/+1 counters going
+  onto a creature its controller controls are doubled once for each one, in `add_counters` and in
+  both enter-with-counters paths, through `Game::creature_counter_doubling`.
+- Order: `add_counters` now applies Hardened Scales' +1 first and then every doubler, Doubling
+  Season included, which is the order the controller would pick (CR 616.1). It used to double
+  first, so Scales together with Doubling Season now gives (n + 1) × 2 rather than 2n + 1. The two
+  enter-with-counters paths still don't apply Hardened Scales; that is unchanged.
+- The card waits for d3's "distribute two +1/+1 counters among one or two target creatures you
+  control". The green discount is `green_spell_discount`. The tests use a flagged Sol Ring.
+- The Earth Crystal is now scripted in full: `green_spell_discount = 1`, the doubler, and
+  "{4}{G}{G}, {T}: Distribute two" through `Effect::DividedCounters` (`up_to` two of your
+  creatures, `min_targets` 1, `divide` 2), as on Armament Dragon.
+
+### Blossombind (Niv-Mizzet idea, 2026-11-27)
+
+- `CardDef::enchanted_cant_become_untapped`: counted by `enchanted_doesnt_untap`, so all three
+  untap-step paths skip the creature, and `untap_by_effect` does nothing to it. The two remaining
+  direct untaps are land-only (`UntapLandsYouControl`, a search that untaps lands) and don't check
+  it.
+- `CardDef::enchanted_cant_have_counters`: `add_counters` returns early, `add_counter_kind` puts
+  nothing, and `minus_counters_for` gives 0 -1/-1 counters. Not covered: counters a creature
+  enters with (the Aura can't be attached yet) and direct counter writes that bypass these three
+  (`endure_token` and a few cost removals; removals aren't "put").
+- Script: an Aura with `Effect::TapAttached` on enters.
+
+### Legendary sorceries, Urza's Ruinous Blast (2026-11-27)
+
+- CR 205.4e: `Game::legendary_sorcery_blocked` removes every cast action, and every free cast
+  from `free_cast_actions`, for a card whose printed types are Legendary and Sorcery unless its
+  caster controls a legendary creature or planeswalker (checked with current types). Not covered:
+  casts offered inside a resolving decision, such as cascade's.
+- Urza's Ruinous Blast: `Effect::ExileAllNonlandNonlegendary` (current types). The reminder line
+  isn't scripted.
+
+### Medomai the Ageless (from d2, 2026-11-27)
+
+- Extra turns already existed (`Effect::ExtraTurn`, the `Game::extra_turns` queue that
+  `begin_next_turn` takes from, and `normal_next`). New: `Game::in_extra_turn`, set as each turn
+  begins from whether it was taken from the queue.
+- `CardDef::cant_attack_during_extra_turns`: in `attack_candidates`.
+- Script: `When::DealsCombatDamageToPlayer` makes an `ExtraTurn`. Test: it connects on turn 5;
+  turn 6 is player 0's extra turn, where Medomai isn't offered as an attacker; turn 7 is the
+  opponent's; on turn 8 it can attack again.
