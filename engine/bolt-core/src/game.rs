@@ -323,6 +323,8 @@ pub struct Object {
     /// cards it exiles): its colored and hybrid pips are paid as generic (`Game::spell_cost`); {C}
     /// still needs colorless mana. Kept while it's in exile or on the stack.
     pub any_color_mana: bool,
+    /// A corpse counter (From the Catacombs): if it would leave the battlefield, it's exiled instead.
+    pub corpse_counter: bool,
 }
 
 /// One resolved effect's change to a permanent's characteristics (lane d3's type-changing store):
@@ -1362,6 +1364,9 @@ pub enum Decision {
     PayXDrawX { max: u8 },
     /// Riot (CR 702.136): `Mode(0)` for a +1/+1 counter on `card`, `Mode(1)` for haste.
     Riot { card: ObjId },
+    /// Composer of Spring: `Pick` a land card in your hand (or, with `creature`, a creature or land
+    /// card) to put onto the battlefield tapped, or `No`.
+    LandOrCreatureFromHandTapped { creature: bool },
     /// Multikicker on a card that also has {X} (Comet Storm): `Amount` the number of times it's
     /// kicked, after X (`mode.x`) was chosen; then it's cast.
     ChooseKickCount { card: ObjId, mode: CastMode, max: u8 },
@@ -1824,6 +1829,14 @@ pub struct Game {
     pub creature_spell_mana: [(u32, u32, Step); 2],
     /// Darksteel Monolith's "once each turn": (the Monolith, the turn it was last used).
     pub monolith_used: Vec<(ObjId, u32)>,
+    /// Inkshield: (player, turn, token) — that turn's combat damage to the player is prevented, a
+    /// token for each 1 prevented.
+    pub combat_shield_tokens: Vec<(PlayerId, u32, usize)>,
+    /// The One Ring: the turn before which each player has protection from everything.
+    pub player_protected_until: [Option<u32>; 2],
+    /// Rankle and Torbran: (turn, how many) of "it deals that much damage plus 2" for damage to
+    /// players this turn.
+    pub plus_two_to_players: (u32, u32),
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -2109,6 +2122,9 @@ impl Game {
             treasure_spent: Vec::new(),
             creature_spell_mana: [(0, 0, Step::PreGame); 2],
             monolith_used: Vec::new(),
+            combat_shield_tokens: Vec::new(),
+            player_protected_until: [None; 2],
+            plus_two_to_players: (0, 0),
         }
     }
 
@@ -2366,6 +2382,7 @@ impl Game {
             citadel_cast: false,
             exile_without_legendary_vampire: None,
             any_color_mana: false,
+            corpse_counter: false,
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -2786,6 +2803,13 @@ impl Game {
         // Roaming Throne: "This creature is the chosen type in addition to its other types."
         if o.zone == Zone::Battlefield
             && self.def_of(id).doubles_chosen_type_triggers
+            && o.chosen_type.as_deref() == Some(s)
+        {
+            return true;
+        }
+        // Metallic Mimic: "This creature is the chosen type in addition to its other types."
+        if o.zone == Zone::Battlefield
+            && self.def_of(id).others_of_chosen_type_enter_with_counter
             && o.chosen_type.as_deref() == Some(s)
         {
             return true;
@@ -3333,7 +3357,7 @@ impl Game {
     /// combat; on 15 or more, you may roll again.
     fn delina_roll(&mut self, p: PlayerId, target: ObjId) {
         let roll = self.rng.below(20) + 1;
-        for _ in 0..self.token_doubling(p) {
+        for _ in 0..self.token_doubling(p) * self.creature_token_tripling(p, self.types_of(target).creature) {
             if let Some(id) = self.token_copy_of(p, target) {
                 let o = self.obj_mut(id);
                 o.tapped = true;
@@ -4446,6 +4470,15 @@ impl Game {
         {
             return;
         }
+        // Plague Drone: "If an opponent would gain life, that player loses that much life instead."
+        if n > 0
+            && self
+                .permanents(opponent(p))
+                .any(|x| self.def_of(x).opponents_life_gain_becomes_loss && !self.lost_abilities(x))
+        {
+            self.lose_life(p, n);
+            return;
+        }
         // Alhammarret's Archive: twice that much, for each.
         let k = self
             .permanents(p)
@@ -4617,6 +4650,10 @@ impl Game {
         if from == Zone::Battlefield && to != Zone::Battlefield && self.obj(id).unearthed {
             to = Zone::Exile;
         }
+        // From the Catacombs: "If that creature would leave the battlefield, exile it instead."
+        if from == Zone::Battlefield && to != Zone::Battlefield && self.obj(id).corpse_counter {
+            to = Zone::Exile;
+        }
         let mut shuffle = false;
         // CR 903.9: a commander that would go to a graveyard, exile, a hand or a library goes to the
         // command zone instead. (The owner may choose; always choosing it is what players do.)
@@ -4671,6 +4708,26 @@ impl Game {
                 .triggers
                 .iter()
                 .any(|t| t.when == When::Dies && t.ability.effects.contains(&Effect::Undying));
+        // "Whenever a [subtype] is put into a graveyard from the battlefield" looks back in time (CR
+        // 603.10a): the subtypes it had on the battlefield, statics included (Ygra's "other creatures
+        // are Food artifacts"), checked before it moves and kept in `last_subtypes`.
+        let was_subtypes: Vec<&'static str> = if from == Zone::Battlefield && to == Zone::Graveyard {
+            let mut subs = Vec::new();
+            for q in 0..2 {
+                for any in self.permanents(q) {
+                    for tr in &self.def_of(any).triggers {
+                        if let When::SubtypeToGraveyardFromBattlefield(sub) = tr.when {
+                            if !subs.contains(&sub) && self.has_subtype(id, sub) {
+                                subs.push(sub);
+                            }
+                        }
+                    }
+                }
+            }
+            subs
+        } else {
+            Vec::new()
+        };
         let list = self.zone_list(owner, from);
         let pos = list.iter().position(|&x| x == id).expect("object is in its zone");
         list.remove(pos);
@@ -4759,6 +4816,7 @@ impl Game {
         }
         if from == Zone::Battlefield {
             o.last_counters = (o.counters, o.stun, o.keyword_counters);
+            o.corpse_counter = false;
             o.stun = 0;
             o.skip_untap = false;
             o.time_counters = 0;
@@ -4777,6 +4835,11 @@ impl Game {
         if from == Zone::Battlefield {
             let mut last = std::mem::take(&mut o.extra_subtypes);
             last.extend(o.subtype_override.take());
+            for s in was_subtypes {
+                if !last.contains(&s) {
+                    last.push(s);
+                }
+            }
             o.last_subtypes = last;
             o.granted = Keywords::NONE;
             o.keyword_counters = Keywords::NONE;
@@ -5309,7 +5372,7 @@ impl Game {
                     let whens: Vec<When> = self.def_of(any).triggers.iter().map(|tr| tr.when).collect();
                     for (n, w) in whens.into_iter().enumerate() {
                         if let When::SubtypeToGraveyardFromBattlefield(sub) = w {
-                            if self.has_subtype(id, sub) {
+                            if self.has_subtype(id, sub) || self.obj(id).last_subtypes.contains(&sub) {
                                 let before = self.triggered.len();
                                 self.triggered.push(StackItem {
                                     kind: StackKind::Trigger(n),
@@ -5416,6 +5479,26 @@ impl Game {
                 self.escaped.remove(pos);
                 let n = def.mana_ext.escape.map_or(0, |e| e.2);
                 self.add_counters(id, n);
+            }
+            // Metallic Mimic: another creature of its chosen type enters with an additional counter.
+            if def.types.creature {
+                let mimics: Vec<ObjId> = self
+                    .permanents(self.obj(id).controller)
+                    .filter(|&x| x != id && self.def_of(x).others_of_chosen_type_enter_with_counter)
+                    .filter(|&x| !self.lost_abilities(x))
+                    .collect();
+                let n = mimics
+                    .into_iter()
+                    .filter(|&x| {
+                        self.obj(x)
+                            .chosen_type
+                            .as_deref()
+                            .is_some_and(|t| self.has_subtype(id, t))
+                    })
+                    .count() as i32;
+                if n > 0 {
+                    self.add_counters(id, n);
+                }
             }
             // Rhythm of the Wild: riot for a nontoken creature entering under its controller, however
             // it enters; the choice is asked at the next priority (`give_priority`).
@@ -5784,6 +5867,14 @@ impl Game {
 
     /// Draws a card. Drawing from an empty library loses at the next check (CR 704.5b).
     fn draw(&mut self, p: PlayerId) {
+        // Narset, Parter of Veils: an opponent of hers draws at most one card each turn.
+        if self.draws_this_turn[p] >= 1
+            && self
+                .permanents(opponent(p))
+                .any(|x| self.def_of(x).opponents_draw_at_most_one && !self.lost_abilities(x))
+        {
+            return;
+        }
         // Words of War: "The next time you would draw a card this turn, ... deals 2 damage instead."
         let turn = self.turn;
         if let Some(i) = self
@@ -6096,6 +6187,9 @@ impl Game {
                 None if item.kicked && def.kicked_spell.is_some() => {
                     def.kicked_spell.as_ref().expect("kicked")
                 }
+                None if item.alt && def.overload_spell.is_some() => {
+                    def.overload_spell.as_ref().expect("overload") // CR 702.96b
+                }
                 None => def.spell.as_ref().expect("a spell with an ability"),
             },
             StackKind::Trigger(n) => match item.mode {
@@ -6156,6 +6250,8 @@ impl Game {
                 f.players
                     && Game::controller_ok(f.controller, controller, p)
                     && (p == controller || !self.player_has_hexproof(p))
+                    // The One Ring: protection from everything (CR 702.16b).
+                    && self.player_protected_until[p].is_none_or(|until| self.turn >= until)
             }
             Target::Object(id) => {
                 let o = self.obj(id);
@@ -6492,6 +6588,9 @@ impl Game {
     /// source's power".
     fn slot_ok(&self, item: &StackItem, f: &Filter, t: Target) -> bool {
         if let Target::Player(q) = t {
+            if self.player_protected_until[q].is_some_and(|until| self.turn < until) {
+                return false; // The One Ring: protection from everything
+            }
             if self.protects_from_chosen_type(q, item.source) {
                 return false; // Serra's Emissary: "You ... have protection"
             }
@@ -6820,7 +6919,7 @@ impl Game {
             }
             // An X spell's targets can depend on X (Stolen by the Fae), and a kicked spell can have
             // its own targets (Tear Asunder): those are checked per way of casting below.
-            let per_mode = def.cost.x > 0 || def.kicked_spell.is_some();
+            let per_mode = def.cost.x > 0 || def.kicked_spell.is_some() || def.overload_spell.is_some();
             if let Some(ability) = &def.spell {
                 if !per_mode && !self.trigger_can_target(&Game::casting(c, p), ability) {
                     continue; // CR 601.2c: a spell needs a legal choice for every target.
@@ -6843,6 +6942,8 @@ impl Game {
                 if per_mode && mode.mode.is_none() {
                     let ability = if mode.kicked {
                         def.kicked_spell.as_ref().or(def.spell.as_ref())
+                    } else if mode.alt && def.overload_spell.is_some() {
+                        def.overload_spell.as_ref() // overload: no targets
                     } else {
                         def.spell.as_ref()
                     };
@@ -8719,6 +8820,16 @@ impl Game {
                             )
                         }))
                     || !sorcery_ok
+                    || (a.only_during_combat
+                        && !matches!(
+                            self.step,
+                            Step::BeginCombat
+                                | Step::DeclareAttackers
+                                | Step::DeclareBlockers
+                                | Step::FirstStrikeDamage
+                                | Step::CombatDamage
+                                | Step::EndCombat
+                        ))
                     || self.permanents(p).count() < a.min_permanents as usize
                     || (a.opponent_min_lands > 0
                         && self
@@ -10550,6 +10661,28 @@ impl Game {
                 for x in auras {
                     self.fire_source(x, When::EnchantedAttacks);
                 }
+                // Najeela: "Whenever a Warrior attacks", whoever controls the watcher.
+                let mut watchers: Vec<(ObjId, usize)> = Vec::new();
+                for &x in &self.battlefield {
+                    if self.lost_abilities(x) {
+                        continue;
+                    }
+                    for (n, tr) in self.def_of(x).triggers.iter().enumerate() {
+                        if let When::CreatureOfSubtypeAttacks(sub) = tr.when {
+                            if self.has_subtype(c, sub) {
+                                watchers.push((x, n));
+                            }
+                        }
+                    }
+                }
+                for (x, n) in watchers {
+                    let q = self.obj(x).controller;
+                    self.triggered.push(StackItem {
+                        kind: StackKind::Trigger(n),
+                        extra: Some(c),
+                        ..Game::casting(x, q)
+                    });
+                }
                 let turn = self.turn;
                 let (t, n) = self.obj(c).attacks_turn;
                 self.obj_mut(c).attacks_turn = (turn, if t == turn { n.saturating_add(1) } else { 1 });
@@ -10992,6 +11125,7 @@ impl Game {
             Some(OMEN_MODE) => def.omen.as_ref().map(|o| &o.spell),
             Some(m) => Some(&def.modes[m as usize]),
             None if mode.kicked && def.kicked_spell.is_some() => def.kicked_spell.as_ref(),
+            None if mode.alt && def.overload_spell.is_some() => def.overload_spell.as_ref(),
             None => def.spell.as_ref(),
         };
         let has_targets = ability.is_some_and(|s| !s.targets.is_empty());
@@ -12320,6 +12454,7 @@ impl Game {
             Pick::PermanentOddManaValue => d.types.is_permanent() && !d.cost.mana_value().is_multiple_of(2),
             Pick::CreatureManaValueAtMost(n) => d.types.creature && d.cost.mana_value() <= n,
             Pick::CreatureOrPlaneswalker => d.types.creature || d.types.planeswalker,
+            Pick::NoncreatureNonland => !d.types.creature && !d.types.land,
         }
     }
 
@@ -12730,6 +12865,20 @@ impl Game {
             Decision::ChooseRingBearer => self.ring_bearer_options(p),
             Decision::DelinaAgain { .. } => vec![Action::Yes, Action::No],
             Decision::PickOneOf { cards, .. } => cards.iter().copied().map(Action::Pick).collect(),
+            Decision::LandOrCreatureFromHandTapped { creature } => {
+                let creature = *creature;
+                let mut v: Vec<Action> = hand
+                    .iter()
+                    .copied()
+                    .filter(|&x| {
+                        let t = self.def_of(x).types;
+                        t.land || (creature && t.creature)
+                    })
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
             Decision::MayCreatureFromHand => {
                 let mut v: Vec<Action> = hand
                     .iter()
@@ -14737,6 +14886,11 @@ impl Game {
                 self.obj_mut(c).tapped = true;
             }
             (Decision::LandFromHandTapped, _) => {}
+            (Decision::LandOrCreatureFromHandTapped { .. }, Action::Pick(c)) => {
+                self.move_to(c, Zone::Battlefield);
+                self.obj_mut(c).tapped = true;
+            }
+            (Decision::LandOrCreatureFromHandTapped { .. }, _) => {}
             (Decision::ManifestDread { cards }, Action::Pick(c)) => {
                 self.manifest(p, c);
                 for x in cards {
@@ -17775,7 +17929,9 @@ impl Game {
             Effect::CopyHasteDiesDrawSacrifice { slot, trigger } => {
                 if let Some(c) = Game::slot_object(item, legal, slot) {
                     let p = item.controller;
-                    for _ in 0..self.token_doubling(p) {
+                    for _ in
+                        0..self.token_doubling(p) * self.creature_token_tripling(p, self.types_of(c).creature)
+                    {
                         if let Some(id) = self.token_copy_of(p, c) {
                             let zcc = self.obj(id).zcc;
                             self.until_eot.push(Modifier {
@@ -17803,7 +17959,9 @@ impl Game {
                 let p = item.controller;
                 if let Some(partner) = self.paired_partner(src) {
                     for of in [src, partner] {
-                        for _ in 0..self.token_doubling(p) {
+                        for _ in 0..self.token_doubling(p)
+                            * self.creature_token_tripling(p, self.types_of(of).creature)
+                        {
                             if let Some(id) = self.token_copy_of(p, of) {
                                 let o = self.obj_mut(id);
                                 o.granted = o.granted.with(Keywords::HASTE);
@@ -18187,6 +18345,21 @@ impl Game {
                 let p = item.controller;
                 if self.players[p].hand.iter().any(|&x| self.def_of(x).types.land) {
                     self.ask(p, Decision::LandFromHandTapped);
+                }
+            }
+            Effect::MayPutLandOrCreatureFromHandTapped { enchantments } => {
+                let p = item.controller;
+                let have = self
+                    .permanents(p)
+                    .filter(|&x| self.types_of(x).enchantment)
+                    .count();
+                let creature = have >= enchantments as usize;
+                let ok = |g: &Game, x: ObjId| {
+                    let t = g.def_of(x).types;
+                    t.land || (creature && t.creature)
+                };
+                if self.players[p].hand.iter().any(|&x| ok(self, x)) {
+                    self.ask(p, Decision::LandOrCreatureFromHandTapped { creature });
                 }
             }
             Effect::DrawMoreIfLands { n, more, lands } => {
@@ -19363,6 +19536,42 @@ impl Game {
                     }
                 }
             }
+            Effect::DamageToPlayersPlusTwoThisTurn => {
+                let (t, n) = self.plus_two_to_players;
+                self.plus_two_to_players = (self.turn, if t == self.turn { n + 1 } else { 1 });
+            }
+            Effect::ReanimateWithCorpseCounter(n) => {
+                if let Some(id) = Game::slot_object(item, legal, n) {
+                    if self.obj(id).zone == Zone::Graveyard {
+                        self.move_to(id, Zone::Battlefield);
+                        if self.obj(id).zone == Zone::Battlefield {
+                            let o = self.obj_mut(id);
+                            o.controller = item.controller;
+                            o.corpse_counter = true;
+                        }
+                    }
+                }
+            }
+            Effect::ExtrasControllerCreatesAttackingToken { def } => {
+                if let Some(a) = item.extra {
+                    let q = self.obj(a).controller;
+                    self.create_token(q, def);
+                    for id in self.last_created.clone() {
+                        self.obj_mut(id).tapped = true;
+                        if let Some(c) = self.combat.as_mut() {
+                            c.attackers.push(id); // CR 506.3a: attacking without being declared
+                        }
+                    }
+                }
+            }
+            Effect::PreventCombatDamageToYouMakingTokens { def } => {
+                self.combat_shield_tokens.push((item.controller, self.turn, def));
+            }
+            Effect::YouGainProtectionUntilYourNextTurn => {
+                let p = item.controller;
+                let next = self.next_turn_of(p);
+                self.player_protected_until[p] = Some(next);
+            }
             Effect::DamageExtrasControllerAmount => {
                 if let (Some(s), true) = (item.extra, item.amount > 0) {
                     let them = self.obj(s).controller;
@@ -20022,6 +20231,23 @@ impl Game {
             Effect::GainLifeAmount => {
                 if item.amount > 0 {
                     self.gain_life(item.controller, item.amount);
+                }
+            }
+            Effect::OpponentGainsLifeAmount => {
+                if item.amount > 0 {
+                    self.gain_life(opponent(item.controller), item.amount);
+                }
+            }
+            Effect::OpponentLosesIfSourceAttackedThisTurn => {
+                let p = item.controller;
+                let opp = opponent(p);
+                let attacked = self.attacked_creatures_this_turn.contains(&src);
+                let protected = self.permanents(opp).any(|c| self.def_of(c).cant_lose);
+                if attacked && !protected && !self.players[opp].lost {
+                    self.players[opp].lost = true;
+                    self.events.push(Event::Lost { player: opp });
+                    self.result = Some(Outcome::Winner(p));
+                    self.pending = Pending::GameOver;
                 }
             }
             Effect::DrawAmount => {
@@ -23265,6 +23491,9 @@ impl Game {
                 names.dedup();
                 names.len() >= *n as usize
             }
+            Some(Condition::LifeAtLeastStartingPlus(n)) => {
+                self.players[controller].life >= self.starting_life + n
+            }
             Some(Condition::ColorlessSpentAtLeast(n)) => {
                 self.colorless_spent.iter().any(|&(c, k)| c == source && k >= *n)
             }
@@ -23395,7 +23624,8 @@ impl Game {
         // Fisher's Talent: "If you would create a Fish token, create a ... Shark ... instead."
         let def = self.class_token_replacement(p, def);
         self.last_created.clear();
-        for _ in 0..self.token_doubling(p) {
+        let times = self.token_doubling(p) * self.creature_token_tripling(p, self.defs[def].types.creature);
+        for _ in 0..times {
             let id = self.add_card(p, def, Zone::Battlefield);
             self.last_created.push(id);
             self.obj_mut(id).since_turn = self.turn;
@@ -23451,7 +23681,9 @@ impl Game {
             self.token_replacing = true;
             for (t, n) in extras {
                 for _ in 0..n {
-                    for _ in 0..self.token_doubling(p) {
+                    let times =
+                        self.token_doubling(p) * self.creature_token_tripling(p, self.defs[t].types.creature);
+                    for _ in 0..times {
                         let id = self.add_card(p, t, Zone::Battlefield);
                         self.obj_mut(id).since_turn = self.turn;
                         self.zone_triggers(id, Zone::Gone, Zone::Battlefield, p);
@@ -23464,6 +23696,18 @@ impl Game {
     }
 
     /// How many times over tokens for `p` are made: Doubling Season and token-only doublers (Elspeth).
+    /// Ojer Taq: three times as many creature tokens for each one `p` controls (1 for a noncreature).
+    fn creature_token_tripling(&self, p: PlayerId, creature: bool) -> i32 {
+        if !creature {
+            return 1;
+        }
+        let n = self
+            .permanents(p)
+            .filter(|&x| self.def_of(x).triples_creature_tokens && !self.lost_abilities(x))
+            .count() as u32;
+        3i32.pow(n.min(6))
+    }
+
     fn token_doubling(&self, p: PlayerId) -> i32 {
         let n = self
             .permanents(p)
@@ -24397,6 +24641,21 @@ impl Game {
                     });
                 }
                 self.fire(a, When::Upkeep { your_turn_only: true }, None);
+                // "if [this] is in the command zone" (Oloro): its owner's cards there.
+                for c in self.command.clone() {
+                    if self.obj(c).owner != a || self.obj(c).zone != Zone::Command {
+                        continue;
+                    }
+                    let whens: Vec<When> = self.def_of(c).triggers.iter().map(|tr| tr.when).collect();
+                    for (n, w) in whens.into_iter().enumerate() {
+                        if w == When::YourUpkeepInCommandZone {
+                            self.triggered.push(StackItem {
+                                kind: StackKind::Trigger(n),
+                                ..Game::casting(c, a)
+                            });
+                        }
+                    }
+                }
                 self.fire(
                     a,
                     When::Upkeep {
@@ -24945,6 +25204,24 @@ impl Game {
                 && self
                     .permanents(self.obj(source).controller)
                     .any(|x| self.def_of(x).your_combat_damage_cant_be_prevented && !self.lost_abilities(x)));
+        // The One Ring (protection from everything) and Inkshield (combat damage, a token per point).
+        if let (false, Target::Player(q), true) = (unpreventable, target, amount > 0) {
+            if self.player_protected_until[q].is_some_and(|until| self.turn < until) {
+                return;
+            }
+            let turn = self.turn;
+            let shield = self
+                .combat_shield_tokens
+                .iter()
+                .find(|e| e.0 == q && e.1 == turn && self.in_combat_damage)
+                .map(|e| e.2);
+            if let Some(def) = shield {
+                for _ in 0..amount {
+                    self.create_token(q, def);
+                }
+                return;
+            }
+        }
         if !unpreventable {
             if self.in_combat_damage && self.combat_damage_prevented_turn == Some(self.turn) {
                 return; // Spore Frog
@@ -25002,6 +25279,12 @@ impl Game {
             }
         }
         let amount = amount * self.damage_doubling(source, target);
+        // Rankle and Torbran: "If a source would deal damage to a player ... this turn, it deals
+        // that much damage plus 2 instead." (each resolved mode adds 2), after the doublers.
+        let amount = match (target, self.plus_two_to_players) {
+            (Target::Player(_), (t, n)) if amount > 0 && t == self.turn => amount + 2 * n as i32,
+            _ => amount,
+        };
         // Gisela: any source's damage to her controller's opponent or their permanents is doubled.
         let owner = match target {
             Target::Player(p) => p,

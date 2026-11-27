@@ -2564,6 +2564,18 @@ pub enum Effect {
     /// Exile the creature in `slot` if its power is at most the power of the card in the item's
     /// `extra` (Titan's Presence: the revealed card).
     ExileIfPowerAtMostExtra(u8),
+    /// "You may put a land card from your hand onto the battlefield tapped. If you control
+    /// `enchantments` or more enchantments, instead you may put a creature or land card ..."
+    /// (Composer of Spring: 6), as `Decision::LandOrCreatureFromHandTapped`.
+    MayPutLandOrCreatureFromHandTapped {
+        enchantments: u8,
+    },
+    /// "That player gains that much life": the opponent gains the trigger's amount (Angel of
+    /// Destiny, 1v1: the damaged player).
+    OpponentGainsLifeAmount,
+    /// "Each player this creature attacked this turn loses the game" (Angel of Destiny), 1v1: the
+    /// opponent, if the source attacked this turn.
+    OpponentLosesIfSourceAttackedThisTurn,
     /// Fabricate `n` (CR 702.123): `n` +1/+1 counters on the source, or `n` 1/1 Servo tokens (token
     /// definition `servo`), as `Decision::Fabricate`. Only Servos if the source has left the
     /// battlefield.
@@ -2579,6 +2591,26 @@ pub enum Effect {
     /// the spell in `extra` (a cast trigger's spell) was paid for with Treasure mana
     /// (`Game::treasure_mana_spent`).
     StopUnlessTreasureManaSpentOnExtra,
+    /// Prevent all combat damage that would be dealt to you this turn; for each 1 damage prevented
+    /// this way, create a `def` token (Inkshield: a 2/1 Inkling), see `Game::combat_shield_tokens`.
+    PreventCombatDamageToYouMakingTokens {
+        def: usize,
+    },
+    /// You gain protection from everything until your next turn (The One Ring): damage to you is
+    /// prevented, and nothing can target you (`Game::player_protected_until`).
+    YouGainProtectionUntilYourNextTurn,
+    /// The controller of the creature in the item's `extra` creates a `def` token that's tapped and
+    /// attacking (Najeela's Warriors).
+    ExtrasControllerCreatesAttackingToken {
+        def: usize,
+    },
+    /// Put the creature card in `slot` from a graveyard onto the battlefield under your control
+    /// with a corpse counter (`Object::corpse_counter`: exiled if it would leave) (From the
+    /// Catacombs).
+    ReanimateWithCorpseCounter(u8),
+    /// "If a source would deal damage to a player or battle this turn, it deals that much damage
+    /// plus 2 instead." (Rankle and Torbran), see `Game::plus_two_to_players`.
+    DamageToPlayersPlusTwoThisTurn,
     /// Sunbird's Invocation: reveal the top X cards of your library, X the mana value of the spell
     /// in `extra` (its {X} included); you may cast one with mana value X or less from among them
     /// free (`free_casts_one`); the rest go to the bottom in a random order. The revealed cards
@@ -2881,6 +2913,8 @@ pub enum Pick {
     CreatureManaValueAtMost(u32),
     /// A creature or planeswalker card (Takenuma, Abandoned Mire).
     CreatureOrPlaneswalker,
+    /// A noncreature, nonland card (Narset, Parter of Veils).
+    NoncreatureNonland,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -3032,6 +3066,9 @@ pub enum Condition {
     /// Its controller controls at least this many lands with different names (The Necrobloom, Field
     /// of the Dead: seven).
     ControlLandsWithDifferentNamesAtLeast(u8),
+    /// Its controller has at least this much life more than their starting life total (Angel of
+    /// Destiny: 15).
+    LifeAtLeastStartingPlus(i32),
 }
 
 /// A spell's effect or a triggered ability: target slots, then effects in order.
@@ -3517,7 +3554,7 @@ pub enum When {
     SubtypeYouControlAttacks(&'static str),
     /// "Whenever a [subtype] is put into a graveyard from the battlefield" (Ygra, Eater of All: a
     /// Food), anyone's, tokens included; slot 0 (if `triggering`) is that card. The subtype is
-    /// checked on the card in the graveyard.
+    /// checked as it last existed on the battlefield, statics included (Ygra's own Foods).
     SubtypeToGraveyardFromBattlefield(&'static str),
     /// "When this [permanent] enters untapped" (Witch's Cottage): checked with the "enters tapped"
     /// triggers, once its enter replacements have applied.
@@ -3528,6 +3565,12 @@ pub enum When {
     /// "Whenever you choose a creature as your Ring-bearer" (Call of the Ring), the same one again
     /// included (CR 701.54c); slot 0 (if `triggering`) is that creature.
     YouChooseRingBearer,
+    /// "At the beginning of your upkeep, if [this] is in the command zone" (Oloro, Ageless
+    /// Ascetic): fired for the active player's cards in the command zone, not their permanents.
+    YourUpkeepInCommandZone,
+    /// "Whenever a [subtype] attacks", any player's (Najeela: Warrior); the attacker is the item's
+    /// `extra`.
+    CreatureOfSubtypeAttacks(&'static str),
     /// "Whenever you cast a spell from your hand" (Sunbird's Invocation), with the spell in `extra`.
     YouCastSpellFromHand,
 }

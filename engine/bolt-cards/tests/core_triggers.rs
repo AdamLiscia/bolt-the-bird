@@ -1836,6 +1836,45 @@ fn a_subtype_put_into_a_graveyard_from_the_battlefield_is_anyones() {
 }
 
 #[test]
+fn a_subtype_to_a_graveyard_looks_back_at_static_subtypes() {
+    // Exquisite Blood, standing in for Ygra: "creatures you control are Foods" and the Food trigger.
+    let mut g = game_with(|defs| {
+        blood_with(vec![trigger(
+            When::SubtypeToGraveyardFromBattlefield("Food"),
+            None,
+            gain(1),
+        )])(defs);
+        defs[cid("Exquisite Blood")]
+            .statics
+            .push(bolt_core::effect::Static {
+                scope: bolt_core::effect::Scope::YourCreatures,
+                your_turn_only: false,
+                condition: None,
+                subtype: Some("Food"),
+                lose_abilities: false,
+                base_pt: None,
+                protection: [false; 5],
+                scale: None,
+                power: 0,
+                toughness: 0,
+                keywords: bolt_core::Keywords::NONE,
+                set_colors: None,
+                becomes_land: false,
+            });
+    });
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    let angel = g.add_card(0, cid("Serra Angel"), Zone::Battlefield);
+    let theirs = g.add_card(1, cid("Serra Angel"), Zone::Battlefield);
+    assert!(g.has_subtype(angel, "Food"));
+    kill(&mut g, angel);
+    resolve_all(&mut g, &[]);
+    assert_eq!(life(&g, 0), 41, "a Food on the battlefield, not in the graveyard");
+    kill(&mut g, theirs);
+    resolve_all(&mut g, &[]);
+    assert_eq!(life(&g, 0), 41, "the opponent's creature wasn't a Food");
+}
+
+#[test]
 fn enters_untapped_triggers_only_untapped() {
     for tapped in [false, true] {
         let mut g = game_with(|defs: &mut Vec<CardDef>| {

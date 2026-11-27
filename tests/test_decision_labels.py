@@ -203,6 +203,11 @@ def test_riot_names_the_creature_and_the_choice():
     assert label(dec, "Mode", 1) == "Thriving Heath: riot, haste"
 
 
+def test_composer_of_spring_puts_a_land_or_creature_tapped():
+    dec = {"kind": "LandOrCreatureFromHandTapped", "creature": True}
+    assert sv._decision_label(dec, "Pick", 0, "Forest") == "Put onto the battlefield tapped: Forest"
+
+
 def test_a_kick_count_names_the_spell_and_the_kicks():
     dec = {"kind": "ChooseKickCount", "card": [7, 1], "max": 3}
     assert label(dec, "Amount", 2) == "Kick Thriving Heath 2 times"
