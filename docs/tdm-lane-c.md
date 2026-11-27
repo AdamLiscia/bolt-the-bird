@@ -1120,3 +1120,4 @@ only on spells with mana value 4 or greater (d1). Its transform (`MayPay` then `
 `When::FirstMainPhaseYourTurn`) exists. Recorded in needs_core.json.
 Likely failure spots when built: Arthur's `resolve_all` answer (the LookPick `Pick`), the `combat` check, and
 Goliath's free-cast window after the attack trigger (`Pending::FreeCast`).
+Merger approved (2026-11-27): the `return_hand_at_end_combat()` call at the top of `Step::EndCombat`, and the `else if !self.exile_with_dream_counter(source)` branch at resolution. Ashling held as recorded. Build after d3 (Mikaeus) and lane B, on the go.
