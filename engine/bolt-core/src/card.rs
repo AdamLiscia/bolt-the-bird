@@ -147,6 +147,10 @@ pub enum ExtraCost {
     /// or greater." Cast with `Action::Cast` (none) or `Action::CastWith` naming it (it's the
     /// spell's `extra`); `Effect::CopySourceSpellIfCasualty` makes the copy.
     Casualty(u8),
+    /// "As an additional cost to cast this spell, blight N or pay [mana]." (Bogslither's Embrace:
+    /// 1, {3}; Wild Unraveling: 2, {1}): `Action::Cast` pays the mana, `Action::CastWith` names a
+    /// creature you control to put N -1/-1 counters on (to blight N).
+    BlightOrPay(u8, ManaCost),
 }
 
 /// "This spell costs {N} less to cast if ..." (CR 601.2f).
@@ -1309,6 +1313,9 @@ pub struct ManaExt {
     /// needed, colors): each untapped creature you control that could tap is a source of those
     /// colors when paying for an instant or sorcery spell or a Class's level-up.
     pub creatures_tap_for_instant_sorcery: Option<(u8, [bool; 5])>,
+    /// "Whenever a player taps a basic land for mana, that player adds one mana of any type that
+    /// land produced." (Lavaleaper): each basic land makes one more of its mana.
+    pub basic_lands_add_extra: bool,
 }
 
 /// "You may pay [mana], [life] and sacrifice or tap [creatures] rather than pay this spell's mana

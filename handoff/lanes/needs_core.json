@@ -6754,7 +6754,7 @@
   {
    "card": "Bogslither's Embrace",
    "deck": "Neriv, Heart of the Storm",
-   "missing": "blight N or pay {3} as an additional cost [claimed by d1, idea decks]",
+   "missing": "blight N or pay {3} as an additional cost [claimed by d1, idea decks] [done by d1 batch 29: ExtraCost::BlightOrPay; scripted in pg_d1]",
    "lane": "d1",
    "theme": "mana",
    "owner": "d1"
@@ -6762,7 +6762,7 @@
   {
    "card": "Firdoch Core",
    "deck": "Neriv, Heart of the Storm",
-   "missing": "{T}: any color; {4}: becomes a 4/4 artifact creature until end of turn [claimed by d1, idea decks]",
+   "missing": "{T}: any color; {4}: becomes a 4/4 artifact creature until end of turn [claimed by d1, idea decks] [done by d1 batch 29: scripted in pg_d1]",
    "lane": "d1",
    "theme": "mana",
    "owner": "d1"
@@ -6770,7 +6770,7 @@
   {
    "card": "Lavaleaper",
    "deck": "Neriv, Heart of the Storm",
-   "missing": "basic lands add one more mana of a type they produced [claimed by d1, idea decks]",
+   "missing": "basic lands add one more mana of a type they produced [claimed by d1, idea decks] [done by d1 batch 29: ManaExt::basic_lands_add_extra; scripted in pg_d1]",
    "lane": "d1",
    "theme": "mana",
    "owner": "d1"
@@ -6778,7 +6778,7 @@
   {
    "card": "Iridescent Vinelasher",
    "deck": "Hearthhull, the Worldseed",
-   "missing": "offspring {2} [claimed by d1, idea decks]",
+   "missing": "offspring {2} [claimed by d1, idea decks] [done by d1 batch 29: scripted in pg_d1 (offspring)]",
    "lane": "d1",
    "theme": "mana",
    "owner": "d1"
@@ -6786,7 +6786,7 @@
   {
    "card": "Orcish Lumberjack",
    "deck": "Hearthhull, the Worldseed",
-   "missing": "{T}, Sacrifice a Forest: three mana in any combination of {R} and/or {G} [claimed by d1, idea decks]",
+   "missing": "{T}, Sacrifice a Forest: three mana in any combination of {R} and/or {G} [claimed by d1, idea decks] [done by d1 batch 29: scripted in pg_d1]",
    "lane": "d1",
    "theme": "mana",
    "owner": "d1"
@@ -6802,7 +6802,7 @@
   {
    "card": "Wild Unraveling",
    "deck": "Niv-Mizzet, Visionary",
-   "missing": "blight 2 or pay {1} as an additional cost [claimed by d1, idea decks]",
+   "missing": "blight 2 or pay {1} as an additional cost [claimed by d1, idea decks] [done by d1 batch 29: ExtraCost::BlightOrPay; scripted in pg_d1]",
    "lane": "d1",
    "theme": "mana",
    "owner": "d1"
@@ -6810,7 +6810,7 @@
   {
    "card": "Disruptor of Currents",
    "deck": "Niv-Mizzet, Visionary",
-   "missing": "convoke (in); flash; its enters bounce [claimed by d1, idea decks]",
+   "missing": "convoke (in); flash; its enters bounce [claimed by d1, idea decks] [done by d1 batch 29: scripted in pg_d1]",
    "lane": "d1",
    "theme": "mana",
    "owner": "d1"

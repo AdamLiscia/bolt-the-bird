@@ -7418,6 +7418,12 @@ impl Game {
             Some(ExtraCost::SacrificeCreatureOfColor(k)) => creatures()
                 .filter(|&(_, m)| m.extra.is_some_and(|x| self.colors_of(x)[*k as usize]))
                 .collect(),
+            Some(ExtraCost::BlightOrPay(..)) => std::iter::once((Action::Cast(c), CastMode::default()))
+                .chain(
+                    self.creatures(p)
+                        .map(|x| (Action::CastWith(c, x), CastMode::with(x))),
+                )
+                .collect(),
             Some(ExtraCost::Casualty(n)) => std::iter::once((Action::Cast(c), CastMode::default()))
                 .chain(creatures().filter(|&(_, m)| m.extra.is_some_and(|x| self.power(x) >= *n as i32)))
                 .collect(),
@@ -7730,8 +7736,14 @@ impl Game {
             0
         };
         cost.generic = cost.generic.saturating_add(tax);
-        if let (Some(ExtraCost::SacrificeCreatureOrPay(m) | ExtraCost::ForageOrPay(m)), None) =
-            (&def.extra_cost, mode.extra)
+        if let (
+            Some(
+                ExtraCost::SacrificeCreatureOrPay(m)
+                | ExtraCost::ForageOrPay(m)
+                | ExtraCost::BlightOrPay(_, m),
+            ),
+            None,
+        ) = (&def.extra_cost, mode.extra)
         {
             cost = add_costs(&cost, m);
         }
@@ -9958,6 +9970,11 @@ impl Game {
         } else {
             0
         };
+        let leapers = self
+            .battlefield
+            .iter()
+            .filter(|&&x| self.def_of(x).mana_ext.basic_lands_add_extra && !self.lost_abilities(x))
+            .count();
         for (id, m) in base {
             let life_cost = self.def_of(id).mana_ext.mana_life_cost;
             if life_cost > 0 && self.players[p].life < life_cost {
@@ -9970,6 +9987,9 @@ impl Game {
                 for &c in &creature_adders {
                     out.push((id, ManaSource::of(&[c]))); // Leyline of Abundance
                 }
+            }
+            if leapers > 0 && self.types_of(id).land && self.types_of(id).basic {
+                out.extend(std::iter::repeat_n((id, m), leapers)); // Lavaleaper
             }
             if tide > 0 && self.types_of(id).land && self.has_subtype(id, "Island") {
                 // High Tide: an additional {U} for each one this turn.
@@ -11918,6 +11938,17 @@ impl Game {
             self.def_of(card).extra_cost,
             Some(ExtraCost::RevealColorlessCreature)
         );
+        // Blight N: N -1/-1 counters on the named creature instead of sacrificing it.
+        let blight = match self.def_of(card).extra_cost {
+            Some(ExtraCost::BlightOrPay(n, _)) if !item.flashback => Some(n),
+            _ => None,
+        };
+        if let (Some(n), Some(x)) = (blight, item.extra) {
+            if self.obj(x).zone == Zone::Battlefield {
+                self.obj_mut(x).counters -= n as i32;
+            }
+        }
+        let revealed = revealed || blight.is_some();
         if let Some(x) = item
             .extra
             .filter(|_| energy_by.is_none() && !foraged && !revealed)
