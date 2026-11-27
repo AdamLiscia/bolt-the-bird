@@ -1041,3 +1041,25 @@ seven or more land names) and dredge 2 for its controller's land cards. Tokens 5
 - Crewers are recorded like saddlers: `Game::crewed` (vehicle, zcc, crewer, zcc, turn), the named
   creature and the CrewTap picks. Golden Argosy (pg_b): `Effect::ExileCrewersReturnTappedAtEnd`,
   returned tapped through `Game::delayed_returns_tapped` at the next end step.
+
+### Demo push, closest deck first (2026-11-27)
+
+The 31's missing cards in lane B's decks are all owned elsewhere (d1, d2, d3, mac-c in needs_core),
+except Najeela's seven original duals (Badlands, Bayou, Plateau, Savannah, Scrubland, Taiga, Tundra),
+scripted here. Idea decks: Morningtide's Light (Neriv) with `Effect::ExileSlotReturnTappedAtEnd`
+and `Effect::PreventDamageToYouUntilYourNextTurn` (`Game::damage_to_you_prevented_until`, beside The
+One Ring's check in `deal_damage`). Claims recorded in needs_core.json.
+- Morningtide's Light: "any number of target creatures" is capped at twelve (a simplification).
+- Mirrormind Crown (Zurgo idea): `CardDef::first_tokens_copy_equipped`, `Game::mirrormind_used`.
+  When an `Effect::CreateToken` is about to make the Crown controller's first tokens this turn,
+  `Decision::MirrormindCopies` asks (Yes: that many token copies of the equipped creature, doubled
+  and tripled by Parallel Lives, Ojer Taq and the rest; No: the tokens). Either answer uses up the
+  turn's first time. Any token creation by the Crown's controller while it's attached (in
+  `create_token` and `token_copy_of`) uses up the first time too. Only `Effect::CreateToken` asks; every other token maker makes its real tokens
+  and doesn't use the Crown: token copies (`CopyToken` and the copy effects), Mobilize,
+  `CreateTokensAmount`/`Tapped`, per-count token effects (`CreateTokensPerLand`,
+  `CreateTokenPerCreatureDiedThisTurn` and the like), tokens from replacements (Peregrin, Xorn,
+  Academy Manufactor, Chatterfang's extras), tokens made inside decisions, costs and turn actions,
+  and the opponent's tokens.
+- Glen Elendra's Answer (Niv-Mizzet idea): `Effect::CounterOpponentsSpellsAndAbilitiesTokenEach`,
+  token 104 (`faerie_ub`, a 1/1 blue and black Faerie with flying).

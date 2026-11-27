@@ -328,6 +328,11 @@ pub struct Object {
     /// Whether it was an artifact when it last left the battlefield, statics included (last known
     /// information, CR 603.10a: Ygra's "other creatures are Food artifacts" for Marionette Master).
     pub left_as_artifact: bool,
+    /// Slime counters on it (Toxrill, the Corrosive): reset as it leaves the battlefield.
+    pub slime: i32,
+    /// The slime counters it had as it last left the battlefield (last known information, CR
+    /// 603.10a: Toxrill's "a creature you don't control with a slime counter on it dies").
+    pub last_slime: i32,
 }
 
 /// One resolved effect's change to a permanent's characteristics (lane d3's type-changing store):
@@ -1424,6 +1429,37 @@ pub enum Decision {
         land: usize,
         nonland: usize,
     },
+    /// Mirrormind Crown: before `player`'s first tokens this turn (`n` of `def`), `Yes` makes that
+    /// many token copies of the equipped creature instead, `No` makes the tokens.
+    MirrormindCopies { player: PlayerId, def: usize, n: u8 },
+    /// The Gitrog, Ravenous Ride: `Pick` a creature that saddled `mount` this turn to sacrifice, or
+    /// `No` ("you may").
+    SacrificeSaddler { mount: ObjId },
+    /// The Gitrog: `Amount(n)`, how many land cards (up to `max`) to put from your hand onto the
+    /// battlefield tapped.
+    GitrogLandCount { max: u8 },
+    /// The Gitrog: `Pick` a land card in your hand to put onto the battlefield tapped; `left` picks
+    /// including this one.
+    GitrogLandPick { left: u8 },
+    /// `Mode(t)`: `target` gains protection from card type `t` (`ChooseCardType`'s order: 0
+    /// artifact, 1 creature, 2 enchantment, 3 instant, 4 land, 5 planeswalker, 6 sorcery) until end
+    /// of turn (Pippin, Guard of the Citadel).
+    ProtectionCardType { target: ObjId },
+    /// Rose Room Treasurer: `Amount(x)` pays {x} and `source` deals x damage to `target` (offered
+    /// for each x you can pay, up to `max`); `Amount(0)` declines.
+    PayXDamage { source: ObjId, target: Target, max: u8 },
+    /// `Pick` a card in your hand to discard; with `free`, you may then cast it without paying its
+    /// mana cost (Malcolm, Alluring Scoundrel).
+    DiscardMayCastFree { free: bool },
+    /// Proliferate (CR 701.27): `Pick` a permanent with counters or `Mode(p)` a player with
+    /// counters (poison, energy) to add it to `picked` / `players`; `Yes` when done (choosing none
+    /// is fine). Each chosen one then gets another counter of each kind it has, and `rounds` - 1
+    /// more proliferates follow (Tekuthal, Inquiry Dominus).
+    Proliferate {
+        picked: Vec<ObjId>,
+        players: [bool; 2],
+        rounds: u8,
+    },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -1878,6 +1914,10 @@ pub struct Game {
     /// Food Chain's mana, which only creature spells may spend: (amount of any-color mana, the turn
     /// and step it was made in; it empties with the pool at the step's end).
     pub creature_spell_mana: [(u32, u32, Step); 2],
+    /// Creature-only mana of one color (Somberwald Sage), per color (WUBRG), with the turn and
+    /// step it was made in; it empties with the pool at the step's end. Food Chain's any-color
+    /// mana stays in `creature_spell_mana`.
+    pub creature_color_mana: [([u32; 5], u32, Step); 2],
     /// Darksteel Monolith's "once each turn": (the Monolith, the turn it was last used).
     pub monolith_used: Vec<(ObjId, u32)>,
     /// Inkshield: (player, turn, token) — that turn's combat damage to the player is prevented, a
@@ -1919,6 +1959,38 @@ pub struct Game {
     /// Exiled cards returned tapped under their owner's control at the beginning of the next end
     /// step: (card, its zcc in exile) (Golden Argosy).
     pub delayed_returns_tapped: Vec<(ObjId, u32)>,
+    /// The turn each player may cast instant and sorcery spells from any graveyard in (The Great
+    /// Work's chapter III; see `Game::casts_from_any_graveyard`).
+    pub any_graveyard_spells_turn: [u32; 2],
+    /// Spells cast for their mana cost from a graveyard under The Great Work's chapter III (cards
+    /// with their own flashback, which also have the `CastFlashback` route): (spell, its zcc on the
+    /// stack). `leave_stack` exiles them.
+    pub any_graveyard_casts: Vec<(ObjId, u32)>,
+    /// "Until your next turn, prevent all damage that would be dealt to you": the turn it ends, per
+    /// player (Morningtide's Light).
+    pub damage_to_you_prevented_until: [Option<u32>; 2],
+    /// Mirrormind Crown: the turn each player's first token creation was replaced (once each turn).
+    pub mirrormind_used: [u32; 2],
+    /// Will, Scion of Peace: the turn each player's white and/or blue spells cost less by the life
+    /// they gained this turn.
+    pub wu_discount_turn: [u32; 2],
+    /// High Tide: (turn, how many resolved this turn): each Island adds that many more {U}.
+    pub high_tide: (u32, u32),
+    /// Rain of Riches: (source, turn) for the first Treasure-paid spell each turn that got cascade.
+    pub treasure_spell_turn: Vec<(ObjId, u32)>,
+    /// Compleated permanent spells cast with life for their Phyrexian pips: (card, its zcc on the
+    /// battlefield, pips paid with life).
+    pub compleated_life: Vec<(ObjId, u32, u8)>,
+    /// Protection from card types granted until end of turn: (object, its zone change count, the
+    /// card types as bits in `Decision::ChooseCardType`'s order, 1 << 0 artifact ... 1 << 6
+    /// sorcery, the turn) (Pippin, Guard of the Citadel; Seasoned Dungeoneer: creatures).
+    pub type_protection_grants: Vec<(ObjId, u32, u8, u32)>,
+    /// Mana Drain: {C} to add at the beginning of a player's next main phase, as (player, amount,
+    /// the turn and step it was set up in, so a main phase it was cast in doesn't count).
+    pub next_main_colorless: Vec<(PlayerId, u32, u32, Step)>,
+    /// The spell being cast while `When::YouCast` fires (`fire` and `fire_subsystems` can read it:
+    /// "that spell"); `None` otherwise.
+    pub firing_spell: Option<ObjId>,
 }
 
 /// `Action::CastFromGraveyardAs`'s second number for Karador, Ghost Chieftain's once-each-turn
@@ -2207,6 +2279,11 @@ impl Game {
             kick_counts: Vec::new(),
             treasure_spent: Vec::new(),
             creature_spell_mana: [(0, 0, Step::PreGame); 2],
+            creature_color_mana: [([0; 5], 0, Step::PreGame); 2],
+            wu_discount_turn: [0; 2],
+            high_tide: (0, 0),
+            treasure_spell_turn: Vec::new(),
+            compleated_life: Vec::new(),
             monolith_used: Vec::new(),
             combat_shield_tokens: Vec::new(),
             player_protected_until: [None; 2],
@@ -2216,12 +2293,19 @@ impl Game {
             saddle_extra: Vec::new(),
             crewed: Vec::new(),
             delayed_returns_tapped: Vec::new(),
+            damage_to_you_prevented_until: [None; 2],
+            mirrormind_used: [0; 2],
             hand_links: Vec::new(),
             hand_at_end_combat: Vec::new(),
             dream_marked: Vec::new(),
             dream_counters: Vec::new(),
             saddled: Vec::new(),
             karador_turn: [0; 2],
+            any_graveyard_spells_turn: [0; 2],
+            any_graveyard_casts: Vec::new(),
+            type_protection_grants: Vec::new(),
+            next_main_colorless: Vec::new(),
+            firing_spell: None,
         }
     }
 
@@ -2492,6 +2576,8 @@ impl Game {
             any_color_mana: false,
             corpse_counter: false,
             left_as_artifact: false,
+            slime: 0,
+            last_slime: 0,
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -2667,7 +2753,20 @@ impl Game {
         if t.creature && !t.artifact && self.ygra_food(id) {
             t.artifact = true; // Ygra: "Food artifacts in addition to their other types"
         }
+        if t.creature && !t.legendary && self.ring_bearer_now(id) {
+            t.legendary = true; // the Ring: "Your Ring-bearer is legendary"
+        }
         t
+    }
+
+    /// `Game::ring_makes_legendary` (d4) for the type pass, read from the Ring's state directly:
+    /// `ring_bearer` checks `types_of`, so calling it here would recurse. The caller has already
+    /// checked that `id` is a creature.
+    fn ring_bearer_now(&self, id: ObjId) -> bool {
+        let o = self.obj(id);
+        o.zone == Zone::Battlefield
+            && self.ring_level[o.controller] >= 1
+            && self.ring_bearer[o.controller] == Some((id, o.zcc))
     }
 
     /// Ygra, Eater of All: a creature on the battlefield while another permanent with
@@ -3103,6 +3202,9 @@ impl Game {
                             Scope::OtherYourNonHumanCreatures => {
                                 mine && creature && src != id && !self.has_base_subtype(id, "Human")
                             }
+                            Scope::OtherYourColorlessCreatures => {
+                                mine && creature && src != id && self.colors_of(id) == [false; 5]
+                            }
                         };
                         let condition_ok = match s.condition {
                             None => true,
@@ -3261,6 +3363,7 @@ impl Game {
                             Some(Scale::PerCardInAllGraveyards) => {
                                 Some(self.players.iter().map(|pl| pl.graveyard.len()).sum())
                             }
+                            Some(Scale::PerSlimeCounterOnIt) => Some(o.slime.max(0) as usize),
                             _ => None,
                         };
                         if let Some(n) = scaled {
@@ -3333,8 +3436,47 @@ impl Game {
         {
             return true; // Serra's Emissary: "creatures you control"
         }
+        if self.type_protected(id, source) {
+            return true; // Pippin, Seasoned Dungeoneer: protection from a card type
+        }
         let p = self.protection(id);
         self.colors_of(source).iter().zip(p).any(|(c, pr)| *c && pr)
+    }
+
+    /// Whether a card-type protection grant on `id` this turn (`Game::type_protection_grants`)
+    /// covers one of `source`'s card types.
+    pub fn type_protected(&self, id: ObjId, source: ObjId) -> bool {
+        let zcc = self.obj(id).zcc;
+        let mask = self
+            .type_protection_grants
+            .iter()
+            .filter(|g| g.0 == id && g.1 == zcc && g.3 == self.turn)
+            .fold(0u8, |m, g| m | g.2);
+        if mask == 0 {
+            return false;
+        }
+        let t = self.types_of(source);
+        let kinds = [
+            t.artifact,
+            t.creature,
+            t.enchantment,
+            t.instant,
+            t.land,
+            t.planeswalker,
+            t.sorcery,
+        ];
+        kinds
+            .iter()
+            .enumerate()
+            .any(|(k, &has)| has && mask & (1 << k) != 0)
+    }
+
+    /// `id` gains protection from the card types in `mask` (`Game::type_protection_grants`'s bits)
+    /// until end of turn.
+    fn grant_type_protection(&mut self, id: ObjId, mask: u8) {
+        let (zcc, turn) = (self.obj(id).zcc, self.turn);
+        self.type_protection_grants.retain(|g| g.3 == turn);
+        self.type_protection_grants.push((id, zcc, mask, turn));
     }
 
     fn keywords_inner(&self, id: ObjId) -> Keywords {
@@ -3464,6 +3606,9 @@ impl Game {
     fn token_copy_of(&mut self, p: PlayerId, of: ObjId) -> Option<ObjId> {
         if self.obj(of).zone != Zone::Battlefield {
             return None;
+        }
+        if self.mirrormind_crown_creature(p).is_some() {
+            self.mirrormind_used[p] = self.turn; // a token copy is a token creation too
         }
         let def = self.obj(of).def;
         let id = self.add_card(p, def, Zone::Hand);
@@ -3881,6 +4026,97 @@ impl Game {
     }
 
     /// Whether the permanent has a counter of any kind on it (CR 122).
+    /// Proliferate's choice (`Decision::Proliferate`), skipped when no permanent or player has a
+    /// counter.
+    fn ask_proliferate(&mut self, p: PlayerId, rounds: u8) {
+        let any = self.battlefield.iter().any(|&x| self.proliferable(x))
+            || (0..2).any(|q| self.player_has_counters(q));
+        if any {
+            let d = Decision::Proliferate {
+                picked: Vec::new(),
+                players: [false; 2],
+                rounds,
+            };
+            self.ask(p, d);
+        }
+    }
+
+    /// Whether proliferating `id` would add a counter: it has a numbered counter of some kind.
+    pub fn proliferable(&self, id: ObjId) -> bool {
+        let o = self.obj(id);
+        o.counters != 0
+            || [
+                o.stun,
+                o.incubation,
+                o.soul,
+                o.revival,
+                o.fellowship,
+                o.bait,
+                o.quest,
+                o.kind_counters,
+                o.slime,
+            ]
+            .iter()
+            .any(|&n| n > 0)
+            || o.time_counters > 0
+            || o.shield_counters > 0
+            || (o.loyalty > 0 && self.types_of(id).planeswalker)
+    }
+
+    /// Whether player `q` has a counter proliferate can add to (poison, energy).
+    pub fn player_has_counters(&self, q: PlayerId) -> bool {
+        self.players[q].poison > 0 || self.players[q].energy > 0
+    }
+
+    /// Proliferates `id`: another counter of each kind it has (`p` puts them). Lore counters
+    /// aren't added (a Saga's chapters aren't re-read here).
+    fn proliferate_one(&mut self, p: PlayerId, id: ObjId) {
+        let (plus, minus) = (self.obj(id).counters > 0, self.obj(id).counters < 0);
+        let pw = self.types_of(id).planeswalker && self.obj(id).loyalty > 0;
+        if plus {
+            self.add_counters(id, 1);
+        }
+        let mut n = i32::from(minus);
+        {
+            let o = self.obj_mut(id);
+            if minus {
+                o.counters -= 1;
+            }
+            for c in [
+                &mut o.stun,
+                &mut o.incubation,
+                &mut o.soul,
+                &mut o.revival,
+                &mut o.fellowship,
+                &mut o.bait,
+                &mut o.quest,
+                &mut o.kind_counters,
+                &mut o.slime,
+            ] {
+                if *c > 0 {
+                    *c += 1;
+                    n += 1;
+                }
+            }
+            if o.time_counters > 0 {
+                o.time_counters = o.time_counters.saturating_add(1);
+                n += 1;
+            }
+            if o.shield_counters > 0 {
+                o.shield_counters = o.shield_counters.saturating_add(1);
+                n += 1;
+            }
+            if pw {
+                o.loyalty += 1;
+                n += 1;
+            }
+        }
+        if n > 0 {
+            self.counters_placed(p, n);
+            self.counter_put_on(id);
+        }
+    }
+
     pub fn has_counter(&self, id: ObjId) -> bool {
         let o = self.obj(id);
         o.counters != 0
@@ -4942,6 +5178,8 @@ impl Game {
         }
         if from == Zone::Battlefield {
             o.last_counters = (o.counters, o.stun, o.keyword_counters);
+            o.last_slime = o.slime;
+            o.slime = 0;
             o.corpse_counter = false;
             o.stun = 0;
             o.skip_untap = false;
@@ -5200,11 +5438,18 @@ impl Game {
                 });
             }
             if self.types_of(id).creature {
+                let before = self.triggered.len();
                 self.fire(
                     last_controller,
                     When::CreatureYouControlLeavesBattlefield,
                     Some(id),
                 );
+                // The Ozolith: "those counters", the +1/+1 counters it had as it left.
+                let plus = self.obj(id).last_counters.0;
+                for t in &mut self.triggered[before..] {
+                    t.amount = plus;
+                    t.extra = Some(id);
+                }
             }
             if self.is_token(id) {
                 self.fire(last_controller, When::TokenYouControlLeaves, Some(id));
@@ -5331,6 +5576,16 @@ impl Game {
             }
             self.creature_died_this_turn = true;
             self.creature_died_under[last_controller] = true;
+            // Toxrill: "a creature you don't control with a slime counter on it", as it last existed.
+            if self.obj(id).last_slime > 0 {
+                let before = self.triggered.len();
+                self.fire(
+                    opponent(last_controller),
+                    When::CreatureYouDontControlWithSlimeDies,
+                    None,
+                );
+                self.fill_triggering(before, id);
+            }
             let (t, n) = self.creatures_died;
             self.creatures_died = (self.turn, if t == self.turn { n + 1 } else { 1 });
             if !self.is_token(id) {
@@ -5596,7 +5851,14 @@ impl Game {
                 );
             }
             if let Some(l) = def.loyalty {
-                let l = l * self.doubling(self.obj(id).controller);
+                // Compleated: two fewer for each Phyrexian pip paid with life.
+                let zcc = self.obj(id).zcc;
+                let fewer = self
+                    .compleated_life
+                    .iter()
+                    .find(|e| e.0 == id && e.1 == zcc)
+                    .map_or(0, |e| 2 * e.2 as i32);
+                let l = (l - fewer).max(0) * self.doubling(self.obj(id).controller);
                 self.obj_mut(id).loyalty = l; // CR 306.5b
                 let controller = self.obj(id).controller;
                 self.counters_placed(controller, l);
@@ -6424,8 +6686,9 @@ impl Game {
                         })
                         && f.spell_creature.is_none_or(|c| c == ty.creature)
                         && (!f.spell_artifact_or_creature || ty.artifact || ty.creature)
+                        // A split spell has only its cast half's mana value (CR 709.3b).
                         && f.max_mana_value
-                            .is_none_or(|m| self.def_of(id).cost.mana_value() <= m);
+                            .is_none_or(|m| self.stack_mana_cost(id).mana_value() <= m);
                 }
                 if let Some(creature_only) = f.graveyard {
                     let d = self.def_of(id);
@@ -6567,6 +6830,9 @@ impl Game {
             return false;
         }
         if f.tapped_only && !self.obj(id).tapped {
+            return false;
+        }
+        if !f.subtypes_any.is_empty() && !f.subtypes_any.iter().any(|s| self.has_subtype(id, s)) {
             return false;
         }
         if f.single_target {
@@ -6873,7 +7139,13 @@ impl Game {
                 || d.mana_ext.retrace
                 || ((self.obj(c).flashback_eot || self.obj(c).harmonize_eot)
                     && (d.types.instant || d.types.sorcery))
+                || self.casts_from_any_graveyard(p, c) // The Great Work: its own exile-instead cast
         });
+        // The Great Work: instants and sorceries in the other graveyard, cast the same way.
+        let any_graveyard = self.players[opponent(p)]
+            .graveyard
+            .iter()
+            .filter(move |&&c| self.casts_from_any_graveyard(p, c));
         let turn = self.turn;
         let from_exile = self.exile.iter().copied().filter(move |&c| {
             let o = self.obj(c);
@@ -6951,6 +7223,12 @@ impl Game {
             .chain(top.map(|c| (c, false)))
             .chain(command.map(|c| (c, false)))
             .chain(flashback.map(|&c| (c, true)))
+            .chain(any_graveyard.map(|&c| (c, true)))
+            .chain(
+                self.any_graveyard_mana_cost_casts(p)
+                    .into_iter()
+                    .map(|c| (c, false)),
+            )
             .chain(from_exile.map(|c| (c, false)))
             .chain(from_graveyard.map(|c| (c, false)))
             .chain(aftermath.map(|c| (c, false)))
@@ -7354,6 +7632,9 @@ impl Game {
             Some(ExtraCost::SacrificeCreatureOfColor(k)) => creatures()
                 .filter(|&(_, m)| m.extra.is_some_and(|x| self.colors_of(x)[*k as usize]))
                 .collect(),
+            Some(ExtraCost::Casualty(n)) => std::iter::once((Action::Cast(c), CastMode::default()))
+                .chain(creatures().filter(|&(_, m)| m.extra.is_some_and(|x| self.power(x) >= *n as i32)))
+                .collect(),
             Some(ExtraCost::RevealColorlessCreature) => self.players[p]
                 .hand
                 .iter()
@@ -7392,6 +7673,16 @@ impl Game {
                 // Warp, morph: cast from hand for the alternative cost.
                 let in_hand_now = self.obj(c).zone == Zone::Hand;
                 if in_hand_now && def.alt_cost.is_none() && (def.warp.is_some() || def.morph.is_some()) {
+                    v.push((
+                        Action::CastAlternative(c),
+                        CastMode {
+                            alt: true,
+                            ..CastMode::default()
+                        },
+                    ));
+                }
+                // Cleave: the bracketed words removed, for the cleave cost.
+                if def.mana_ext.cleave.is_some() && def.alt_cost.is_none() {
                     v.push((
                         Action::CastAlternative(c),
                         CastMode {
@@ -7591,6 +7882,7 @@ impl Game {
                 },
                 None if def.warp.is_some() => def.warp.expect("warp"),
                 None if def.mana_ext.freerunning.is_some() => def.mana_ext.freerunning.expect("freerunning"),
+                None if def.mana_ext.cleave.is_some() => def.mana_ext.cleave.expect("cleave"),
                 None if self.monolith_alt(p, c) => ManaCost::default(), // Darksteel Monolith
                 None => {
                     // Defiler of Vigor: 2 life paid, {G} less.
@@ -7666,6 +7958,11 @@ impl Game {
                     0
                 }
             }
+            Some(Reduction::PerArtifactYouControl) => self
+                .permanents(p)
+                .filter(|&x| self.types_of(x).artifact)
+                .count()
+                .min(255) as u8,
             Some(Reduction::PerCreatureCardInYourGraveyard) => self.players[p]
                 .graveyard
                 .iter()
@@ -7884,6 +8181,21 @@ impl Game {
             cost.hybrid = [0; 10];
             cost.twobrid = [0; 5];
         }
+        if def.types.creature
+            && self
+                .permanents(p)
+                .any(|x| self.def_of(x).mana_ext.creature_spells_any_type_mana && !self.lost_abilities(x))
+        {
+            // Vizier of the Menagerie: "mana of any type": every pip is generic.
+            cost.generic += cost.colored.iter().sum::<u8>()
+                + cost.hybrid.iter().sum::<u8>()
+                + cost.twobrid.iter().sum::<u8>()
+                + cost.colorless;
+            cost.colored = [0; 5];
+            cost.hybrid = [0; 10];
+            cost.twobrid = [0; 5];
+            cost.colorless = 0;
+        }
         cost
     }
 
@@ -7951,6 +8263,10 @@ impl Game {
                     n += less as usize;
                 }
             }
+        }
+        // Will, Scion of Peace: white and/or blue spells, {X} less, X the life gained this turn.
+        if self.wu_discount_turn[p] == self.turn && self.turn > 0 && (def.colors[0] || def.colors[1]) {
+            n += self.life_gained_this_turn[p].max(0) as usize;
         }
         n.min(255) as u8
     }
@@ -8066,9 +8382,12 @@ impl Game {
     /// Pays `cost`, for casting `spell` if given (restricted mana can then help).
     fn pay_mana_for(&mut self, p: PlayerId, cost: &ManaCost, exclude: Option<ObjId>, spell: PayFor) {
         // Food Chain: its mana pays for a creature spell first.
-        let (after_chain, used) = self.after_creature_mana(p, cost, spell);
+        let (after_chain, used, used_colors) = self.after_creature_mana(p, cost, spell);
         if used > 0 {
             self.creature_spell_mana[p].0 -= used;
+        }
+        for (k, n) in used_colors.into_iter().enumerate() {
+            self.creature_color_mana[p].0[k] -= n; // Somberwald Sage
         }
         let cost = &after_chain;
         // K'rrik: {B} that mana can't pay are paid with 2 life each.
@@ -8108,6 +8427,7 @@ impl Game {
                         }
                         self.note_haste_mana(id, spell);
                         self.note_treasure_mana(id, spell);
+                        self.note_path_mana(id, spell);
                         let life_cost = self.def_of(id).mana_ext.mana_life_cost;
                         if life_cost > 0 && !self.obj(id).tapped {
                             self.lose_life(p, life_cost); // Mana Confluence
@@ -8216,6 +8536,7 @@ impl Game {
             }
             self.note_haste_mana(id, spell);
             self.note_treasure_mana(id, spell);
+            self.note_path_mana(id, spell);
             let tomb = self.def_of(id).mana_tap_damage;
             if tomb > 0 && !self.obj(id).tapped {
                 self.deal_damage(id, Target::Player(p), tomb as i32); // Ancient Tomb
@@ -8613,7 +8934,7 @@ impl Game {
 
     fn can_pay_for(&self, p: PlayerId, cost: &ManaCost, exclude: Option<ObjId>, spell: PayFor) -> bool {
         // Food Chain: its mana pays for a creature spell first.
-        let (after_chain, _) = self.after_creature_mana(p, cost, spell);
+        let (after_chain, _, _) = self.after_creature_mana(p, cost, spell);
         let cost = &after_chain;
         self.can_pay_mana(p, cost, exclude, spell)
             || self.black_pips_as_life(p, cost, exclude, spell).is_some()
@@ -8981,6 +9302,7 @@ impl Game {
                     || (a.once && self.obj(id).used_once)
                     || (a.once_each_turn && self.obj(id).activated_turn == Some(self.turn))
                     || self.obj(id).kind_counters < a.remove_kind_counters
+                    || (a.remove_plus_counters > 0 && self.obj(id).counters < a.remove_plus_counters as i32)
                     || (a.tap_attached
                         && !self
                             .obj(id)
@@ -9392,6 +9714,9 @@ impl Game {
             division: Vec::new(),
         };
         let mut item = item;
+        if let (true, Some(v)) = (self.activated_of(id, n).amount_from_victim_toughness, victim) {
+            item.amount = self.toughness(v); // Miren: the toughness as it was sacrificed
+        }
         if let (true, Some(v)) = (self.activated_of(id, n).amount_from_victim_power, victim) {
             item.amount = self.power(v); // Greater Good: the power as it was sacrificed
         }
@@ -9663,6 +9988,7 @@ impl Game {
             self.obj_mut(id).activated_turn = Some(self.turn);
         }
         self.obj_mut(id).kind_counters -= a.remove_kind_counters;
+        self.obj_mut(id).counters -= a.remove_plus_counters as i32; // Walking Ballista, Karlov
         if a.tap_attached {
             if let Some((c, _)) = self.obj(id).attached_to {
                 self.become_tapped(c);
@@ -9798,6 +10124,11 @@ impl Game {
                 .iter()
                 .all(|sub| self.permanents(p).any(|x| self.has_subtype(x, sub)));
         let treasures_two = self.treasures_make_two(p);
+        let tide = if self.high_tide.0 == self.turn {
+            self.high_tide.1 as usize
+        } else {
+            0
+        };
         for (id, m) in base {
             let life_cost = self.def_of(id).mana_ext.mana_life_cost;
             if life_cost > 0 && self.players[p].life < life_cost {
@@ -9810,6 +10141,13 @@ impl Game {
                 for &c in &creature_adders {
                     out.push((id, ManaSource::of(&[c]))); // Leyline of Abundance
                 }
+            }
+            if tide > 0 && self.types_of(id).land && self.has_subtype(id, "Island") {
+                // High Tide: an additional {U} for each one this turn.
+                out.extend(std::iter::repeat_n(
+                    (id, ManaSource::of(&[crate::Color::Blue])),
+                    tide,
+                ));
             }
             if self.types_of(id).land && (!auras.is_empty() || !adders.is_empty()) {
                 let zcc = self.obj(id).zcc;
@@ -10136,6 +10474,18 @@ impl Game {
                     return Some((id, ManaSource::of(&[crate::Color::Green]))); // Jaheira
                 }
                 if d.mana.is_none()
+                    && self.permanents(p).any(|x| {
+                        !self.lost_abilities(x)
+                            && self
+                                .def_of(x)
+                                .your_subtypes_tap_for_green
+                                .iter()
+                                .any(|s| self.has_subtype(id, s))
+                    })
+                {
+                    return Some((id, ManaSource::of(&[crate::Color::Green]))); // Brightcap Badger
+                }
+                if d.mana.is_none()
                     && self.types_of(id).creature
                     && self.has_counter(id)
                     && self
@@ -10199,6 +10549,7 @@ impl Game {
                 && (!arbiter || declared.is_empty())
                 && !self.cant_attack_until.iter().any(|&(x, zcc, until)| x == id && zcc == o.zcc && self.turn < until)
                 && (!self.def_of(id).fights_only_with_blessing || self.city_blessing[o.controller])
+                && (!self.def_of(id).fights_only_if_creature_died || self.creature_died_under[o.controller])
                 // Promise of Loyalty: a creature with a vow counter can't attack the player it vowed to.
                 && !self.vowed_against(id, opponent(p))
                 // Sphere of Safety, Ghostly Prison: it can attack only if its controller can pay the tax
@@ -10241,6 +10592,8 @@ impl Game {
         if self.def_of(blocker).cant_block
             || (self.def_of(blocker).fights_only_with_blessing
                 && !self.city_blessing[self.obj(blocker).controller])
+            || (self.def_of(blocker).fights_only_if_creature_died
+                && !self.creature_died_under[self.obj(blocker).controller])
             || self.is_decayed(blocker)
             || self.keywords(blocker).has(Keywords::CANT_BLOCK)
             || self.keywords(attacker).has(Keywords::UNBLOCKABLE)
@@ -10450,10 +10803,39 @@ impl Game {
 
     /// `cost` less what Food Chain's any-color mana pays of it, for a creature spell, and how much
     /// of that mana it uses: colored pips first, then hybrid and two-brid pips, then generic.
-    fn after_creature_mana(&self, p: PlayerId, cost: &ManaCost, spell: PayFor) -> (ManaCost, u32) {
+    fn after_creature_mana(&self, p: PlayerId, cost: &ManaCost, spell: PayFor) -> (ManaCost, u32, [u32; 5]) {
         let creature = matches!(spell, PayFor::Spell(c) if self.def_of(c).types.creature);
-        let mut left = if creature { self.creature_mana_now(p) } else { 0 };
         let mut cost = *cost;
+        // Somberwald Sage: each color's mana pays that color's pips, hybrid pips with it, its
+        // two-brid ({2/G}) pips, then generic.
+        let mut col = if creature {
+            self.creature_color_mana_now(p)
+        } else {
+            [0; 5]
+        };
+        let col_have = col;
+        for (pips, have) in cost.colored.iter_mut().zip(col.iter_mut()) {
+            let n = (*pips as u32).min(*have);
+            *pips -= n as u8;
+            *have -= n;
+        }
+        for (i, &(a, b)) in crate::mana::PAIRS.iter().enumerate() {
+            for k in [a, b] {
+                let n = (cost.hybrid[i] as u32).min(col[k]);
+                cost.hybrid[i] -= n as u8;
+                col[k] -= n;
+            }
+        }
+        for (pips, have) in cost.twobrid.iter_mut().zip(col.iter_mut()) {
+            let n = (*pips as u32).min(*have);
+            *pips -= n as u8;
+            *have -= n;
+            let n = (cost.generic as u32).min(*have);
+            cost.generic -= n as u8;
+            *have -= n;
+        }
+        let used_colors: [u32; 5] = std::array::from_fn(|k| col_have[k] - col[k]);
+        let mut left = if creature { self.creature_mana_now(p) } else { 0 };
         let have = left;
         let mut take = |pips: &mut u8| {
             let n = (*pips as u32).min(left);
@@ -10470,7 +10852,17 @@ impl Game {
             take(pips);
         }
         take(&mut cost.generic);
-        (cost, have - left)
+        (cost, have - left, used_colors)
+    }
+
+    /// Somberwald Sage's creature-only mana `p` has now, per color.
+    fn creature_color_mana_now(&self, p: PlayerId) -> [u32; 5] {
+        let (n, turn, step) = self.creature_color_mana[p];
+        if turn == self.turn && step == self.step {
+            n
+        } else {
+            [0; 5]
+        }
     }
 
     /// Whether `spell` was paid for with mana from a Treasure (Alchemist's Talent).
@@ -10484,6 +10876,28 @@ impl Game {
             if self.has_subtype(source, "Treasure") && !self.treasure_spent.contains(&c) {
                 self.treasure_spent.push(c);
             }
+        }
+    }
+
+    /// Path of Ancestry: its mana paid for a creature spell sharing a creature type with its
+    /// controller's commander.
+    fn note_path_mana(&mut self, source: ObjId, spell: PayFor) {
+        if !self.def_of(source).mana_ext.scry_if_commander_type_creature {
+            return;
+        }
+        let PayFor::Spell(c) = spell else {
+            return;
+        };
+        if !self.def_of(c).types.creature {
+            return;
+        }
+        let p = self.obj(source).controller;
+        let shares = [self.commanders[p], self.partners[p]]
+            .into_iter()
+            .flatten()
+            .any(|cmdr| self.def_of(cmdr).subtypes.iter().any(|s| self.has_subtype(c, s)));
+        if shares {
+            self.fire_source(source, When::ManaSpentOnCommanderTypeCreature);
         }
     }
 
@@ -10519,6 +10933,15 @@ impl Game {
             && self.def_of(attacker).mana_ext.unblockable_attacking_alone
             && !self.lost_abilities(attacker)
         {
+            return false;
+        }
+        // Champion of Lambholt: creatures with less power than it can't block yours.
+        let champion = self.permanents(self.obj(attacker).controller).any(|x| {
+            self.def_of(x).mana_ext.smaller_cant_block_yours
+                && !self.lost_abilities(x)
+                && self.power(blocker) < self.power(x)
+        });
+        if champion {
             return false;
         }
         let only_legendary = self.permanents(self.obj(attacker).controller).any(|x| {
@@ -11252,6 +11675,36 @@ impl Game {
         }
     }
 
+    /// The creatures that saddled `mount` this turn that `p` can still sacrifice (The Gitrog).
+    fn gitrog_riders(&self, p: PlayerId, mount: ObjId) -> Vec<ObjId> {
+        let (turn, mz) = (self.turn, self.obj(mount).zcc);
+        let mut v: Vec<ObjId> = self
+            .saddled
+            .iter()
+            .filter(|e| e.0 == mount && e.1 == mz && e.4 == turn)
+            .filter(|e| {
+                let o = self.obj(e.2);
+                o.zcc == e.3
+                    && o.zone == Zone::Battlefield
+                    && o.controller == p
+                    && !self.cant_be_sacrificed(e.2)
+            })
+            .map(|e| e.2)
+            .collect();
+        v.sort_unstable();
+        v.dedup();
+        v
+    }
+
+    fn hand_lands(&self, p: PlayerId) -> Vec<ObjId> {
+        self.players[p]
+            .hand
+            .iter()
+            .copied()
+            .filter(|&c| self.def_of(c).types.land)
+            .collect()
+    }
+
     /// Whether `x` can be sacrificed to pay the "Ward—Sacrifice ..." of `source`: nonland
     /// permanents only for Valgavoth (`ward_sacrifice_nonland`), permanents with a subtype only for
     /// Ygra (`ManaExt::ward_sacrifice_subtype`: Food).
@@ -11346,7 +11799,11 @@ impl Game {
             self.commander_casts[owner] = self.commander_casts[owner].saturating_add(1);
         }
         self.played_from_exile(p, card); // Prosper's Pact Boon
+        let any_graveyard = !mode.flashback && self.casts_from_any_graveyard(p, card); // The Great Work
         self.move_to(card, Zone::Stack);
+        if any_graveyard {
+            self.any_graveyard_casts.push((card, self.obj(card).zcc));
+        }
         self.obj_mut(card).citadel_cast = citadel;
         if mode.alt && self.def_of(card).mana_ext.evoke {
             // Evoked: remembered for the object it becomes on the battlefield.
@@ -11522,10 +11979,17 @@ impl Game {
             && self.def_of(card).warp.is_none()
             && self.def_of(card).morph.is_none()
             && self.def_of(card).mana_ext.freerunning.is_none()
+            && self.def_of(card).mana_ext.cleave.is_none()
         {
             let pips: u8 = self.def_of(card).phyrexian.iter().sum();
             // Phyrexian pips paid with life, or Defiler of Vigor's optional additional cost.
             self.lose_life(p, if pips > 0 { 2 * pips as i32 } else { 2 });
+            if pips > 0 && self.def_of(card).mana_ext.compleated {
+                // Compleated: remembered for the permanent it becomes.
+                let zcc = self.obj(card).zcc + 1;
+                self.compleated_life.retain(|e| e.0 != card);
+                self.compleated_life.push((card, zcc, pips));
+            }
         }
         if self.types_of(card).is_permanent() && self.def_of(card).colors[4] {
             self.fire(p, When::YouCastGreenPermanent, None);
@@ -11756,7 +12220,10 @@ impl Game {
             t.extra = Some(card); // "that spell"
         }
         let before = self.triggered.len();
+        // The spell is known while the triggers fire (emblems and d4's subsystems read it).
+        self.firing_spell = Some(card);
         self.fire(p, When::YouCast, None);
+        self.firing_spell = None;
         for t in &mut self.triggered[before..] {
             t.extra = t.extra.or(Some(card)); // "that spell" (Teval)
         }
@@ -12616,6 +13083,7 @@ impl Game {
 
     /// A spell leaves the stack: to the graveyard, or to exile if it was cast with flashback.
     fn leave_stack(&mut self, id: ObjId, flashback: bool) {
+        let flashback = flashback || self.take_any_graveyard_cast(id); // The Great Work
         self.move_to(id, if flashback { Zone::Exile } else { Zone::Graveyard });
     }
 
@@ -12793,6 +13261,26 @@ impl Game {
         false
     }
 
+    /// Mirrormind Crown: the creature `p`'s Crown is attached to, if `p` hasn't made their first
+    /// tokens this turn yet (`Game::mirrormind_used`).
+    fn mirrormind_crown(&self, p: PlayerId) -> Option<ObjId> {
+        if self.token_replacing || self.mirrormind_used[p] == self.turn {
+            return None;
+        }
+        self.mirrormind_crown_creature(p)
+    }
+
+    /// The creature `p`'s Mirrormind Crown is attached to.
+    fn mirrormind_crown_creature(&self, p: PlayerId) -> Option<ObjId> {
+        self.permanents(p)
+            .filter(|&x| self.def_of(x).first_tokens_copy_equipped && !self.lost_abilities(x))
+            .find_map(|x| {
+                let (c, z) = self.obj(x).attached_to?;
+                let on = self.obj(c).zcc == z && self.obj(c).zone == Zone::Battlefield;
+                (on && self.types_of(c).creature).then_some(c)
+            })
+    }
+
     /// The nontoken artifacts `p` controls that can be sacrificed (Rootcast Apprenticeship).
     fn nontoken_artifacts_to_sacrifice(&self, p: PlayerId) -> Vec<ObjId> {
         self.permanents(p)
@@ -12951,6 +13439,7 @@ impl Game {
             }
             Decision::ChooseEnterMode { .. } => vec![Action::Mode(0), Action::Mode(1)],
             Decision::Riot { .. } => vec![Action::Mode(0), Action::Mode(1)],
+            Decision::MirrormindCopies { .. } => vec![Action::Yes, Action::No],
             Decision::Dredge { player, .. } => {
                 let mut v: Vec<Action> = self
                     .dredge_options(*player)
@@ -13333,6 +13822,17 @@ impl Game {
             }
             Decision::ChooseKickCount { max, .. } => (0..=*max).map(Action::Amount).collect(),
             Decision::Fabricate { .. } => vec![Action::Yes, Action::No],
+            Decision::SacrificeSaddler { mount } => {
+                let mut v: Vec<Action> = self
+                    .gitrog_riders(p, *mount)
+                    .into_iter()
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
+            Decision::GitrogLandCount { max } => (0..=*max).map(Action::Amount).collect(),
+            Decision::GitrogLandPick { .. } => self.hand_lands(p).into_iter().map(Action::Pick).collect(),
             Decision::ExpropriateVote { .. } => vec![Action::Yes, Action::No],
             Decision::SacrificeNontokenArtifact => self
                 .nontoken_artifacts_to_sacrifice(p)
@@ -13363,6 +13863,16 @@ impl Game {
                 let max = self.obj(*source).loyalty.clamp(0, 60) as u8;
                 (0..=max).map(Action::Amount).collect()
             }
+            Decision::PayXDamage { max, .. } => (0..=*max)
+                .filter(|&x| {
+                    let cost = ManaCost {
+                        generic: x,
+                        ..ManaCost::default()
+                    };
+                    x == 0 || self.can_pay(p, &cost, None)
+                })
+                .map(Action::Amount)
+                .collect(),
             Decision::PayXDrawX { max } => (0..=*max)
                 .filter(|&x| {
                     let cost = ManaCost {
@@ -13834,6 +14344,7 @@ impl Game {
             }
             Decision::TaintedPact { .. } => vec![Action::Yes, Action::No],
             Decision::ProtectionColor { .. } => (0..5).map(Action::Mode).collect(),
+            Decision::ProtectionCardType { .. } => (0..7).map(Action::Mode).collect(),
             Decision::ChooseCardType { .. } => (0..7).map(Action::Mode).collect(),
             Decision::ConniveDiscard { .. } => hand.iter().copied().map(Action::Pick).collect(),
             Decision::VowCreature { .. } => self.creatures(p).map(Action::Pick).collect(),
@@ -13925,6 +14436,23 @@ impl Game {
             }
             d @ Decision::AttachAura { .. } => self.attach_aura_actions(p, d),
             Decision::DiscardThenIfInstantOrSorcery => hand.iter().copied().map(Action::Pick).collect(),
+            Decision::DiscardMayCastFree { .. } => hand.iter().copied().map(Action::Pick).collect(),
+            Decision::Proliferate { picked, players, .. } => {
+                let mut v: Vec<Action> = self
+                    .battlefield
+                    .iter()
+                    .copied()
+                    .filter(|x| !picked.contains(x) && self.proliferable(*x))
+                    .map(Action::Pick)
+                    .collect();
+                for (q, &chosen) in players.iter().enumerate() {
+                    if !chosen && self.player_has_counters(q) {
+                        v.push(Action::Mode(q as u8));
+                    }
+                }
+                v.push(Action::Yes);
+                v
+            }
             Decision::PatronOfChaosSacrifice { first, .. } => self.patron_of_chaos_actions(p, *first),
             Decision::ExileFromHandUntilSourceLeaves { victim, .. } => self.hand_link_actions(*victim),
             Decision::MayPutExiledLandOntoBattlefield { .. } => vec![Action::Yes, Action::No],
@@ -14060,6 +14588,31 @@ impl Game {
                 self.give_priority(p);
             } else {
                 self.open_free_casts();
+            }
+            return;
+        }
+        if let Decision::MirrormindCopies { player, def, n } = d {
+            self.mirrormind_used[player] = self.turn; // the first time this turn, either way
+            if let (Action::Yes, Some(c)) = (a, self.mirrormind_crown_creature(player)) {
+                // Copies of the equipped creature, doubled and tripled as the tokens would be.
+                let times = self.token_doubling(player) * self.creature_token_tripling(player, true);
+                let mut made = Vec::new();
+                for _ in 0..(n as i32 * times) {
+                    made.extend(self.token_copy_of(player, c));
+                }
+                self.last_created = made;
+            } else {
+                self.xorn_batch = Some(false);
+                let mut made = Vec::new();
+                for _ in 0..n {
+                    self.create_token(player, def);
+                    made.extend(self.last_created.iter().copied());
+                }
+                self.xorn_batch = None;
+                self.last_created = made;
+            }
+            if self.resolving.is_some() {
+                self.continue_resolving();
             }
             return;
         }
@@ -14225,6 +14778,16 @@ impl Game {
                 self.sacrificed(c, p);
             }
             (Decision::MayPay { cost }, Action::Yes) => self.pay_mana(p, &cost, None),
+            (Decision::PayXDamage { source, target, .. }, Action::Amount(x)) => {
+                if x > 0 {
+                    let cost = ManaCost {
+                        generic: x,
+                        ..ManaCost::default()
+                    };
+                    self.pay_mana(p, &cost, None);
+                    self.deal_damage(source, target, x as i32);
+                }
+            }
             (Decision::PayXDrawX { .. }, Action::Amount(x)) => {
                 if x > 0 {
                     let cost = ManaCost {
@@ -14693,6 +15256,31 @@ impl Game {
             (Decision::ExileFromGraveyard { .. }, Action::No) => {
                 self.resolving.as_mut().expect("resolving").remaining.clear();
             }
+            (Decision::SacrificeSaddler { .. }, Action::Pick(r)) => {
+                let x = self.power(r).max(0) as usize;
+                self.move_to(r, Zone::Graveyard);
+                self.sacrificed(r, p);
+                for _ in 0..x {
+                    self.draw(p);
+                }
+                let k = x.min(self.hand_lands(p).len()).min(u8::MAX as usize) as u8;
+                if k > 0 {
+                    self.ask(p, Decision::GitrogLandCount { max: k });
+                }
+            }
+            (Decision::SacrificeSaddler { .. }, _) => {} // declined
+            (Decision::GitrogLandCount { .. }, Action::Amount(n)) => {
+                if n > 0 {
+                    self.ask(p, Decision::GitrogLandPick { left: n });
+                }
+            }
+            (Decision::GitrogLandPick { left }, Action::Pick(l)) => {
+                self.move_to(l, Zone::Battlefield);
+                self.obj_mut(l).tapped = true;
+                if left > 1 && !self.hand_lands(p).is_empty() {
+                    self.ask(p, Decision::GitrogLandPick { left: left - 1 });
+                }
+            }
             (Decision::Fabricate { n, servo }, choice) => {
                 let src = self.resolving.as_ref().map(|r| r.item.source);
                 match src {
@@ -14787,6 +15375,16 @@ impl Game {
                         }
                     }
                     SearchTo::BattlefieldPlusCounter => self.enter_with_plus_counter(c),
+                    SearchTo::BattlefieldTappedUntapIfLands(n) => {
+                        self.move_to(c, Zone::Battlefield);
+                        if self.obj(c).zone == Zone::Battlefield {
+                            self.obj_mut(c).tapped = true;
+                            let lands = self.permanents(p).filter(|&x| self.types_of(x).land).count();
+                            if lands >= n as usize {
+                                self.obj_mut(c).tapped = false;
+                            }
+                        }
+                    }
                     SearchTo::ExileCastFreeThisTurn => {
                         self.move_to(c, Zone::Exile);
                         let turn = self.turn;
@@ -15504,6 +16102,11 @@ impl Game {
                 self.move_to(c, Zone::Graveyard);
                 self.connive_next(p, creature, left - 1, nonland);
             }
+            (Decision::ProtectionCardType { target }, Action::Mode(t)) => {
+                if self.obj(target).zone == Zone::Battlefield {
+                    self.grant_type_protection(target, 1 << (t % 7));
+                }
+            }
             (Decision::ProtectionColor { target }, Action::Mode(c)) => {
                 let mut colors = [false; 5];
                 colors[c as usize % 5] = true;
@@ -15669,6 +16272,80 @@ impl Game {
             (Decision::MoveAuraTo { aura }, Action::Pick(c)) => {
                 let zcc = self.obj(c).zcc;
                 self.obj_mut(aura).attached_to = Some((c, zcc));
+            }
+            (
+                Decision::Proliferate {
+                    mut picked,
+                    players,
+                    rounds,
+                },
+                Action::Pick(x),
+            ) => {
+                picked.push(x);
+                self.ask(
+                    p,
+                    Decision::Proliferate {
+                        picked,
+                        players,
+                        rounds,
+                    },
+                );
+            }
+            (
+                Decision::Proliferate {
+                    picked,
+                    mut players,
+                    rounds,
+                },
+                Action::Mode(q),
+            ) => {
+                players[q as usize % 2] = true;
+                self.ask(
+                    p,
+                    Decision::Proliferate {
+                        picked,
+                        players,
+                        rounds,
+                    },
+                );
+            }
+            (
+                Decision::Proliferate {
+                    picked,
+                    players,
+                    rounds,
+                },
+                _,
+            ) => {
+                for x in picked {
+                    if self.obj(x).zone == Zone::Battlefield {
+                        self.proliferate_one(p, x);
+                    }
+                }
+                for (q, &chosen) in players.iter().enumerate() {
+                    if chosen {
+                        let pl = &mut self.players[q];
+                        if pl.poison > 0 {
+                            pl.poison += 1;
+                        }
+                        if pl.energy > 0 {
+                            pl.energy += 1;
+                        }
+                    }
+                }
+                if rounds > 1 {
+                    self.ask_proliferate(p, rounds - 1);
+                }
+            }
+            (Decision::DiscardMayCastFree { free }, Action::Pick(c)) => {
+                self.move_to(c, Zone::Graveyard); // discarded
+                if free && self.obj(c).zone == Zone::Graveyard && !self.def_of(c).types.land {
+                    // A one-spell window reaches the graveyard (`free_casts_one`); "you may": pass.
+                    self.obj_mut(c).cast_free = true;
+                    self.free_casts.push(c);
+                    self.free_casts_one = true;
+                    self.free_caster = p;
+                }
             }
             (Decision::DiscardThenIfInstantOrSorcery, Action::Pick(c)) => {
                 let t = self.def_of(c).types;
@@ -16486,7 +17163,13 @@ impl Game {
             Effect::CreateToken { who, def, n } => {
                 // Every token this effect makes is "just created" (for "They gain ..."), not only the last.
                 let mut made = Vec::new();
+                let mut crown_player = None;
                 for p in self.players_for(item, legal, who) {
+                    // Mirrormind Crown: asked ("you may") after the other players' tokens.
+                    if n > 0 && self.mirrormind_crown(p).is_some() {
+                        crown_player = Some(p);
+                        continue;
+                    }
                     self.xorn_batch = Some(false);
                     for _ in 0..n {
                         self.create_token(p, def);
@@ -16495,6 +17178,9 @@ impl Game {
                     self.xorn_batch = None;
                 }
                 self.last_created = made;
+                if let Some(p) = crown_player {
+                    self.ask(p, Decision::MirrormindCopies { player: p, def, n });
+                }
             }
             Effect::PumpSelf { power, toughness } => {
                 if self.obj(src).zone == Zone::Battlefield {
@@ -16578,6 +17264,12 @@ impl Game {
                     self.fabricate_servos(item.controller, n, servo); // CR 702.123b
                 }
             }
+            Effect::AddCreatureSpellMana(n, color) => {
+                let p = item.controller;
+                let mut now = self.creature_color_mana_now(p);
+                now[color as usize] += n as u32;
+                self.creature_color_mana[p] = (now, self.turn, self.step);
+            }
             Effect::AddCreatureSpellManaExtraMvPlusOne => {
                 let p = item.controller;
                 let n = 1 + item.extra.map_or(0, |x| self.def_of(x).cost.mana_value());
@@ -16642,6 +17334,55 @@ impl Game {
                 };
                 self.ask(item.controller, Decision::Search { what, to, left: n });
             }
+            Effect::TreasureTwiceThenPayXDamage { treasure, slot } => {
+                let count = self.bump_resolutions(src);
+                if count <= 2 {
+                    self.create_token(item.controller, treasure);
+                } else {
+                    let target = match item.targets.get(slot as usize) {
+                        Some(&Chosen::Player(q)) => Some(Target::Player(q)),
+                        Some(&Chosen::Object(x, _)) => Some(Target::Object(x)),
+                        None => None,
+                    };
+                    let ok = legal.get(slot as usize).copied().unwrap_or(false);
+                    if let (Some(target), true) = (target, ok) {
+                        self.ask(
+                            item.controller,
+                            Decision::PayXDamage {
+                                source: src,
+                                target,
+                                max: 20,
+                            },
+                        );
+                    }
+                }
+            }
+            Effect::BezaCatchUp { treasure, fish } => {
+                let p = item.controller;
+                let o = opponent(p);
+                let lands = |g: &Game, q: PlayerId| g.permanents(q).filter(|&x| g.types_of(x).land).count();
+                if lands(self, o) > lands(self, p) {
+                    self.create_token(p, treasure);
+                }
+                if self.players[o].life > self.players[p].life {
+                    self.gain_life(p, 4);
+                }
+                if self.creatures(o).count() > self.creatures(p).count() {
+                    self.create_token(p, fish);
+                    self.create_token(p, fish);
+                }
+                if self.players[o].hand.len() > self.players[p].hand.len() {
+                    self.draw(p);
+                }
+            }
+            Effect::CounterThenColorlessAtYourNextMain(n) => {
+                if let Some(id) = Game::slot_object(item, legal, n) {
+                    let mv = self.def_of(id).cost.mana_value();
+                    let (turn, step) = (self.turn, self.step);
+                    self.next_main_colorless.push((item.controller, mv, turn, step));
+                }
+                self.run_effect(item, legal, Effect::Counter(n));
+            }
             Effect::Counter(n) => {
                 if let Some(id) = Game::slot_object(item, legal, n) {
                     if let Some(pos) = self
@@ -16659,6 +17400,43 @@ impl Game {
             }
             Effect::CountersSelf { n } => {
                 self.add_counters(src, n);
+            }
+            Effect::AdaptSelf(n) => {
+                if self.obj(src).counters <= 0 {
+                    self.add_counters(src, n);
+                }
+            }
+            Effect::CountersSelfAmount => {
+                if item.amount > 0 && self.obj(src).zone == Zone::Battlefield {
+                    self.add_counters(src, item.amount);
+                }
+            }
+            Effect::MoveAllCountersFromSourceTo(slot) => {
+                let n = self.obj(src).counters;
+                if let Some(c) = Game::slot_object(item, legal, slot) {
+                    if n > 0
+                        && self.obj(src).zone == Zone::Battlefield
+                        && self.obj(c).zone == Zone::Battlefield
+                    {
+                        self.obj_mut(src).counters = 0;
+                        self.add_counters(c, n);
+                    }
+                }
+            }
+            Effect::ExileGraveyardCardPlayableUntilYourNextTurn(slot) => {
+                if let Some(c) = Game::slot_object(item, legal, slot) {
+                    if self.obj(c).zone == Zone::Graveyard {
+                        let p = item.controller;
+                        self.move_to(c, Zone::Exile);
+                        // Until the end of your next turn (CR 611.2c).
+                        let until = if self.active == p {
+                            self.turn + 2
+                        } else {
+                            self.turn + 1
+                        };
+                        self.obj_mut(c).playable = Some((p, until));
+                    }
+                }
             }
             Effect::PumpAll {
                 who,
@@ -17400,14 +18178,24 @@ impl Game {
                     self.draw(item.controller);
                 }
             }
-            Effect::CopySourceSpell { storm } => {
-                let n = if storm { item.amount.max(0) as u32 } else { 1 };
+            Effect::CopySourceSpell { .. }
+            | Effect::CopySourceSpellPerReplicate
+            | Effect::CopySourceSpellIfCasualty => {
                 let snap = self
                     .cast_snapshots
                     .iter()
                     .rev()
                     .find(|s| s.source == src)
                     .cloned();
+                let n = match e {
+                    Effect::CopySourceSpell { storm: true } => item.amount.max(0) as u32,
+                    Effect::CopySourceSpellPerReplicate => self.times_kicked(src) as u32, // Pyromatics
+                    // Make Disappear: a creature was sacrificed for casualty.
+                    Effect::CopySourceSpellIfCasualty => {
+                        snap.as_ref().is_some_and(|s| s.extra.is_some()) as u32
+                    }
+                    _ => 1,
+                };
                 if let Some(snap) = snap {
                     for _ in 0..n {
                         let copy = StackItem {
@@ -18934,20 +19722,11 @@ impl Game {
             }
             Effect::Proliferate => {
                 let p = item.controller;
-                for x in self.battlefield.clone() {
-                    let o = self.obj(x);
-                    let mine = o.controller == p;
-                    if mine && o.counters > 0 {
-                        self.add_counters(x, 1);
-                    } else if !mine && o.counters < 0 {
-                        self.obj_mut(x).counters -= 1;
-                        self.counters_placed(p, 1);
-                    }
-                    if mine && self.types_of(x).planeswalker {
-                        self.obj_mut(x).loyalty += 1;
-                        self.counters_placed(p, 1);
-                    }
-                }
+                let tekuthals = self
+                    .permanents(p)
+                    .filter(|&x| self.def_of(x).proliferate_twice && !self.lost_abilities(x))
+                    .count();
+                self.ask_proliferate(p, 1u8 << tekuthals.min(3));
             }
             Effect::ExileMakeEnchantmentCopy(slot) => {
                 if let Some(card) = Game::slot_object(item, legal, slot) {
@@ -20039,6 +20818,40 @@ impl Game {
                 let def = if names.len() >= 7 { seven } else { fewer };
                 self.create_token(p, def);
             }
+            Effect::CounterOpponentsSpellsAndAbilitiesTokenEach { def } => {
+                let opp = opponent(item.controller);
+                let theirs: Vec<ObjId> = self
+                    .items
+                    .iter()
+                    .filter(|i| i.controller == opp && i.source != src)
+                    .map(|i| i.source)
+                    .collect();
+                let mut n = 0;
+                for s in theirs {
+                    let before = self.items.len();
+                    self.counter_from(s);
+                    if self.items.len() < before {
+                        n += 1;
+                    }
+                }
+                for _ in 0..n {
+                    self.create_token(item.controller, def);
+                }
+            }
+            Effect::ExileSlotReturnTappedAtEnd(slot) => {
+                if let Some(c) = Game::slot_object(item, legal, slot) {
+                    self.move_to(c, Zone::Exile);
+                    if self.obj(c).zone == Zone::Exile && !self.is_token(c) {
+                        let zcc = self.obj(c).zcc;
+                        self.delayed_returns_tapped.push((c, zcc));
+                    }
+                }
+            }
+            Effect::PreventDamageToYouUntilYourNextTurn => {
+                let p = item.controller;
+                let next = self.next_turn_of(p);
+                self.damage_to_you_prevented_until[p] = Some(next);
+            }
             Effect::ExileCrewersReturnTappedAtEnd => {
                 let (sz, turn) = (self.obj(src).zcc, self.turn);
                 let crewers: Vec<ObjId> = self
@@ -20291,6 +21104,13 @@ impl Game {
             Effect::DrawX => {
                 // A dredge decision may be pending: the rest follows its answer.
                 self.draws_with_dredge(vec![(item.controller, item.x as u32)], false);
+            }
+            Effect::EachPlayerDrawsX => {
+                for p in [item.controller, opponent(item.controller)] {
+                    for _ in 0..item.x {
+                        self.draw(p);
+                    }
+                }
             }
             Effect::AddManaAnyColor => {
                 self.players[item.controller]
@@ -20882,6 +21702,46 @@ impl Game {
                 };
                 if n > 0 {
                     self.lose_life(opponent(item.controller), n);
+                }
+            }
+            Effect::StopUnlessFirstTreasureSpellThisTurn => {
+                let turn = self.turn;
+                let ok = item.extra.is_some_and(|x| self.treasure_mana_spent(x))
+                    && !self.treasure_spell_turn.contains(&(src, turn));
+                if ok {
+                    self.treasure_spell_turn.retain(|t| t.1 == turn);
+                    self.treasure_spell_turn.push((src, turn));
+                } else {
+                    self.resolving.as_mut().expect("resolving").remaining.clear();
+                }
+            }
+            Effect::IncrementSelf => {
+                if let Some(spell) = item.extra {
+                    let spent = self.obj(spell).mana_spent as i32;
+                    if self.obj(src).zone == Zone::Battlefield
+                        && (spent > self.power(src) || spent > self.toughness(src))
+                    {
+                        self.add_counters(src, 1);
+                    }
+                }
+            }
+            Effect::WhiteBlueSpellsCostLessLifeGainedThisTurn => {
+                self.wu_discount_turn[item.controller] = self.turn;
+            }
+            Effect::IslandsAddExtraBlueThisTurn => {
+                let turn = self.turn;
+                let n = if self.high_tide.0 == turn {
+                    self.high_tide.1
+                } else {
+                    0
+                };
+                self.high_tide = (turn, n + 1);
+            }
+            Effect::FlickerSelf => {
+                if self.obj(src).zone == Zone::Battlefield {
+                    self.move_to(src, Zone::Exile);
+                    let zcc = self.obj(src).zcc;
+                    self.delayed_returns.push((src, zcc, 0));
                 }
             }
             Effect::Flicker(n) => {
@@ -22031,40 +22891,10 @@ impl Game {
                 }
             }
             Effect::SacrificeSaddlerDrawXLandsX => {
+                // The Gitrog: the player chooses the rider (or none), then how many lands.
                 let p = item.controller;
-                let (turn, mz) = (self.turn, self.obj(src).zcc);
-                let rider = self
-                    .saddled
-                    .iter()
-                    .filter(|e| e.0 == src && e.1 == mz && e.4 == turn)
-                    .map(|e| (e.2, e.3))
-                    .filter(|&(r, z)| {
-                        let o = self.obj(r);
-                        o.zcc == z
-                            && o.zone == Zone::Battlefield
-                            && o.controller == p
-                            && !self.cant_be_sacrificed(r)
-                    })
-                    .map(|(r, _)| r)
-                    .max_by_key(|&r| self.power(r));
-                if let Some(r) = rider {
-                    let x = self.power(r).max(0) as usize;
-                    self.move_to(r, Zone::Graveyard);
-                    self.sacrificed(r, p);
-                    for _ in 0..x {
-                        self.draw(p);
-                    }
-                    let lands: Vec<ObjId> = self.players[p]
-                        .hand
-                        .iter()
-                        .copied()
-                        .filter(|&c| self.def_of(c).types.land)
-                        .take(x)
-                        .collect();
-                    for l in lands {
-                        self.move_to(l, Zone::Battlefield);
-                        self.obj_mut(l).tapped = true;
-                    }
+                if !self.gitrog_riders(p, src).is_empty() {
+                    self.ask(p, Decision::SacrificeSaddler { mount: src });
                 }
             }
             Effect::YourCreaturesBasePtHandSize => {
@@ -22984,6 +23814,39 @@ impl Game {
                     self.ask(item.controller, Decision::ProtectionColor { target: t });
                 }
             }
+            Effect::ProtectionFromCardTypeEot { slot, kind } => {
+                let target = match slot {
+                    Some(n) => Game::slot_object(item, legal, n),
+                    None => Some(src),
+                };
+                if let Some(t) = target.filter(|&t| self.obj(t).zone == Zone::Battlefield) {
+                    self.grant_type_protection(t, 1 << (kind % 7));
+                }
+            }
+            Effect::ProtectionChosenCardTypeEot(slot) => {
+                let target = match slot {
+                    Some(n) => Game::slot_object(item, legal, n),
+                    None => Some(src),
+                };
+                if let Some(t) = target.filter(|&t| self.obj(t).zone == Zone::Battlefield) {
+                    self.ask(item.controller, Decision::ProtectionCardType { target: t });
+                }
+            }
+            Effect::SlimeCounterOnEachCreatureYouDontControl => {
+                let p = item.controller;
+                let theirs: Vec<ObjId> = self
+                    .battlefield
+                    .iter()
+                    .copied()
+                    .filter(|&c| self.obj(c).controller != p && self.types_of(c).creature)
+                    .collect();
+                for c in theirs {
+                    let n = self.doubling(self.obj(c).controller);
+                    self.obj_mut(c).slime += n;
+                    self.counters_placed(p, n);
+                    self.counter_put_on(c);
+                }
+            }
             Effect::YourCreaturesProtectionEachColorEot => {
                 let turn = self.turn;
                 self.protection_grants.retain(|g| g.3 == turn);
@@ -23852,6 +24715,35 @@ impl Game {
                     }
                 }
             }
+            Effect::CreateTokenXxSourceLoyalty { def } => {
+                let x = self.obj(src).loyalty.max(0);
+                self.create_token(item.controller, def);
+                for t in self.last_created.clone() {
+                    self.obj_mut(t).copy_base_pt = Some((x, x));
+                }
+            }
+            Effect::PumpYourCreaturesPerSubtype { sub, keywords } => {
+                let p = item.controller;
+                let n = self.permanents(p).filter(|&x| self.has_subtype(x, sub)).count() as i32;
+                for id in self.creatures(p).collect::<Vec<_>>() {
+                    let zcc = self.obj(id).zcc;
+                    self.until_eot.push(Modifier {
+                        obj: id,
+                        zcc,
+                        power: n,
+                        toughness: n,
+                        keywords,
+                        dies: None,
+                    });
+                }
+            }
+            Effect::CounterIfNotFromHandUnlessCleaved(slot) => {
+                if let Some(x) = Game::slot_object(item, legal, slot) {
+                    if item.alt || !self.obj(x).from_hand {
+                        self.run_effect(item, legal, Effect::Counter(slot));
+                    }
+                }
+            }
             Effect::CreateTokenXxAmount { def } => {
                 let x = item.amount.max(0);
                 self.create_token(item.controller, def);
@@ -24085,6 +24977,25 @@ impl Game {
                     self.exile_random_from_damager_hand(source, item.controller);
                 }
             }
+            Effect::DiscardThenMayCastFreeIfKindCounters(n) => {
+                let p = item.controller;
+                if !self.players[p].hand.is_empty() {
+                    let free = self.obj(src).kind_counters >= n as i32;
+                    self.ask(p, Decision::DiscardMayCastFree { free });
+                }
+            }
+            Effect::ExileTopCastColorThisTurn { n, color } => {
+                let p = item.controller;
+                let turn = self.turn;
+                for _ in 0..n {
+                    if let Some(&c) = self.players[p].library.last() {
+                        self.move_to(c, Zone::Exile);
+                        if self.colors_of(c)[color as usize] && !self.def_of(c).types.land {
+                            self.obj_mut(c).playable = Some((p, turn));
+                        }
+                    }
+                }
+            }
             Effect::DiscardThenIfInstantOrSorcery => {
                 let p = item.controller;
                 if self.players[p].hand.is_empty() {
@@ -24140,6 +25051,7 @@ impl Game {
             Some(Condition::LifeAtLeastStartingPlus(n)) => {
                 self.players[controller].life >= self.starting_life + n
             }
+            Some(Condition::SourceHasCounters) => self.obj(source).counters > 0,
             Some(Condition::ColorlessSpentAtLeast(n)) => {
                 self.colorless_spent.iter().any(|&(c, k)| c == source && k >= *n)
             }
@@ -24267,6 +25179,10 @@ impl Game {
     }
 
     fn create_token(&mut self, p: PlayerId, def: usize) {
+        // Mirrormind Crown: any token creation uses up "the first time ... each turn", asked or not.
+        if self.mirrormind_crown_creature(p).is_some() {
+            self.mirrormind_used[p] = self.turn;
+        }
         // Fisher's Talent: "If you would create a Fish token, create a ... Shark ... instead."
         let def = self.class_token_replacement(p, def);
         self.last_created.clear();
@@ -25366,6 +26282,7 @@ impl Game {
                 self.give_priority(a);
             }
             Step::Main1 => {
+                self.next_main_mana(a);
                 // CR 714.3b: as your precombat main phase begins, a lore counter on each Saga you control.
                 for id in self.permanents(a).collect::<Vec<_>>() {
                     if self.is_saga(id) {
@@ -25376,7 +26293,37 @@ impl Game {
                 self.give_priority(a);
             }
             Step::Main2 => {
+                self.next_main_mana(a);
                 self.give_priority(a);
+            }
+        }
+    }
+
+    /// One more resolution this turn of `id`'s counted ability (`Object::resolved_this_turn`, as
+    /// Ms. Bumbleflower's; Rose Room Treasurer); the count, this one included.
+    fn bump_resolutions(&mut self, id: ObjId) -> u32 {
+        let turn = self.turn;
+        let o = self.obj_mut(id);
+        if o.resolved_this_turn.0 != turn {
+            o.resolved_this_turn = (turn, 0);
+        }
+        o.resolved_this_turn.1 = o.resolved_this_turn.1.saturating_add(1);
+        o.resolved_this_turn.1
+    }
+
+    /// Mana Drain: as `a`'s main phase begins, the {C} set up before it (`next_main_colorless`).
+    fn next_main_mana(&mut self, a: PlayerId) {
+        let (turn, step) = (self.turn, self.step);
+        let (now, later): (Vec<_>, Vec<_>) = std::mem::take(&mut self.next_main_colorless)
+            .into_iter()
+            .partition(|&(p, _, t, st)| p == a && (t, st) != (turn, step));
+        self.next_main_colorless = later;
+        for (p, n, _, _) in now {
+            for _ in 0..n {
+                self.players[p].pool.push(ManaSource {
+                    colorless: true,
+                    ..ManaSource::default()
+                });
             }
         }
     }
@@ -25864,8 +26811,10 @@ impl Game {
                     .any(|x| self.def_of(x).your_combat_damage_cant_be_prevented && !self.lost_abilities(x)));
         // The One Ring (protection from everything) and Inkshield (combat damage, a token per point).
         if let (false, Target::Player(q), true) = (unpreventable, target, amount > 0) {
-            if self.player_protected_until[q].is_some_and(|until| self.turn < until) {
-                return;
+            if self.player_protected_until[q].is_some_and(|until| self.turn < until)
+                || self.damage_to_you_prevented_until[q].is_some_and(|until| self.turn < until)
+            {
+                return; // The One Ring, Morningtide's Light
             }
             let turn = self.turn;
             let shield = self
@@ -26099,6 +27048,29 @@ impl Game {
                     self.fill_triggering(before, source);
                     if controller != p {
                         self.fire_source(source, When::DealsDamageToOpponent);
+                        // Tandem Lookout: "each of those creatures has 'Whenever this creature deals
+                        // damage to an opponent, draw a card.'"
+                        if let Some(x) = self.paired_partner(source) {
+                            for holder in [source, x] {
+                                let d = self.def_of(holder);
+                                if !d.soulbond_damage_draw
+                                    || self.lost_abilities(holder)
+                                    || self.obj(holder).lost_soulbond
+                                {
+                                    continue;
+                                }
+                                let n = d
+                                    .triggers
+                                    .iter()
+                                    .position(|t| t.when == When::PairedDealsDamageToOpponent);
+                                if let Some(n) = n {
+                                    self.triggered.push(StackItem {
+                                        kind: StackKind::Trigger(n),
+                                        ..Game::casting(holder, controller)
+                                    });
+                                }
+                            }
+                        }
                     }
                     if !self.in_combat_damage {
                         self.fire(opponent(p), When::OpponentDealtNoncombatDamage, None);

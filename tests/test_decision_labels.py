@@ -273,3 +273,45 @@ def test_karadors_graveyard_cast_is_named():
 def test_currency_converter_returns_an_exiled_card():
     dec = {"kind": "ExiledWithToGraveyard"}
     assert sv._decision_label(dec, "Pick", 0, "Forest") == "Put into its owner's graveyard: Forest"
+
+
+def test_mirrormind_crown_asks_copies_or_the_tokens():
+    dec = {"kind": "MirrormindCopies"}
+    assert label(dec, "Yes", 0) == "Make copies of the equipped creature instead"
+    assert label(dec, "No", 0) == "Make the tokens"
+
+
+def test_the_gitrog_asks_for_a_rider_and_how_many_lands():
+    rider = {"kind": "SacrificeSaddler", "mount": [3, 1]}
+    assert sv._decision_label(rider, "Pick", 0, "Llanowar Elves") == "Sacrifice (it saddled the Mount): Llanowar Elves"
+    assert label(rider, "No", 0) == "Don't sacrifice"
+    count = {"kind": "GitrogLandCount", "max": 2}
+    assert label(count, "Amount", 0) == "Put no lands onto the battlefield"
+    assert label(count, "Amount", 2) == "Put 2 lands from your hand onto the battlefield tapped"
+    pick = {"kind": "GitrogLandPick", "left": 1}
+    assert sv._decision_label(pick, "Pick", 0, "Forest") == "Put onto the battlefield tapped: Forest"
+
+
+def test_pippin_protection_from_a_card_type():
+    assert label({"kind": "ProtectionCardType"}, "Mode", 1) == "Protection from creatures"
+    assert label({"kind": "ProtectionCardType"}, "Mode", 6) == "Protection from sorceries"
+
+
+def test_rose_room_treasurer_pays_x_for_x_damage():
+    dec = {"kind": "PayXDamage", "max": 4}
+    assert label(dec, "Amount", 0) == "Don't pay"
+    assert label(dec, "Amount", 3) == "Pay {3}: 3 damage"
+
+
+def test_malcolm_discards_and_may_cast_it_free():
+    dec = {"kind": "DiscardMayCastFree", "free": True}
+    assert sv._decision_label(dec, "Pick", 0, "Opt") == "Discard (you may cast it free) Opt"
+    dec = {"kind": "DiscardMayCastFree", "free": False}
+    assert sv._decision_label(dec, "Pick", 0, "Opt") == "Discard Opt"
+
+
+def test_proliferate_chooses_permanents_and_players():
+    dec = {"kind": "Proliferate", "picked": [], "players": [False, False], "rounds": 1}
+    assert sv._decision_label(dec, "Pick", 0, "Llanowar Elves") == "Proliferate: Llanowar Elves"
+    assert label(dec, "Mode", 1) == "Proliferate: player 2"
+    assert label(dec, "Yes", 0) == "Done choosing (proliferate)"

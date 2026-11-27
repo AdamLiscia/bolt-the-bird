@@ -570,6 +570,7 @@ impl Game {
                     D::MayPay { cost } => e.set_item("cost", cost_text(cost))?,
                     D::PayOrLoseGame { cost } => e.set_item("cost", cost_text(cost))?,
                     D::PayXDrawX { max } => e.set_item("max", *max)?,
+                    D::PayXDamage { max, .. } => e.set_item("max", *max)?,
                     D::PayToStop { cost } => e.set_item("cost", cost_text(cost))?,
                     D::PayUpkeep { cost, source } => {
                         e.set_item("cost", cost_text(cost))?;
@@ -707,6 +708,17 @@ impl Game {
                 .map(|&(c, _, n)| (id(c), g.obj(c).def as i64, g.obj(c).owner, n))
                 .collect();
             e.set_item("commander_damage", taken)?;
+            // The tax on each of this player's commanders wherever it is (the command-zone tuple only
+            // shows it there): (commander id, tax), 2 per earlier cast from the command zone.
+            let tax: Vec<(i64, u32)> = g
+                .commanders
+                .iter()
+                .chain(&g.partners)
+                .flatten()
+                .filter(|&&c| g.obj(c).owner == p)
+                .map(|&c| (id(c), 2 * g.obj(c).command_zone_casts as u32))
+                .collect();
+            e.set_item("commander_tax", tax)?;
             players.append(e)?;
         }
         d.set_item("players", players)?;
@@ -718,6 +730,8 @@ impl Game {
             .map(|&c| (id(c), g.obj(c).owner))
             .collect();
         d.set_item("commanders", commanders)?;
+        // Each player's starting life total (20, or 40 in Commander): the network scales life by it.
+        d.set_item("starting_life", g.starting_life)?;
         let field = PyList::empty(py);
         for &c in &g.battlefield {
             let o = g.obj(c);

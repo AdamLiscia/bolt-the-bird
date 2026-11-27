@@ -1849,6 +1849,72 @@ pub fn script(name: &str) -> Option<Script> {
                 spell(d, vec![], vec![Effect::LookTakeTwoBottomAnyOrder(7)]);
             },
         ),
+        "Mikaeus, the Unhallowed" => s(
+            &[
+                "Whenever a Human deals damage to you, destroy it.",
+                "Other non-Human creatures you control get +1/+1 and have undying.",
+            ],
+            |d, _| {
+                d.keywords = d.keywords.with(Keywords::INTIMIDATE);
+                let it = Filter { triggering: true, ..CREATURE };
+                on(d, When::SubtypeDealsDamageToYou("Human"), vec![it], vec![Effect::Destroy(0)]);
+                d.statics.push(Static {
+                    scope: Scope::OtherYourNonHumanCreatures,
+                    power: 1,
+                    toughness: 1,
+                    keywords: Keywords::UNDYING,
+                    ..neutral_static()
+                });
+            },
+        ),
+        "Fabled Passage" => s(
+            &["{T}, Sacrifice this land: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle. Then if you control four or more lands, untap that land."],
+            |d, _| {
+                let n = activated(d, "", true, vec![], vec![search(SearchFor::BasicLand, SearchTo::BattlefieldTappedUntapIfLands(4))]);
+                d.activated[n].sacrifice_self = true;
+            },
+        ),
+        "Malcolm, Alluring Scoundrel" => s(
+            &[
+                "Whenever Malcolm deals combat damage to a player, put a chorus counter on it. Draw a card, then discard a card. If there are four or more chorus counters on Malcolm, you may cast the discarded card without paying its mana cost.",
+            ],
+            |d, _| {
+                // Chorus counters are its own kind (`Object::kind_counters`).
+                let loot = vec![Effect::KindCounterSelf(1), draw(1), Effect::DiscardThenMayCastFreeIfKindCounters(4)];
+                on(d, When::DealsCombatDamageToPlayer, vec![], loot);
+            },
+        ),
+        "Brightcap Badger // Fungus Frolic" => s(
+            &[
+                "Each Fungus and Saproling you control has \"{T}: Add {G}.\"",
+                "At the beginning of your end step, create a 1/1 green Saproling creature token.",
+                "Omen: Create two 1/1 green Saproling creature tokens.",
+            ],
+            |d, t| {
+                d.your_subtypes_tap_for_green = &["Fungus", "Saproling"];
+                let one = Effect::CreateToken { who: Who::You, def: t.saproling, n: 1 };
+                on(d, When::EndStep { your_turn_only: true }, vec![], vec![one]);
+                let two = Effect::CreateToken { who: Who::You, def: t.saproling, n: 2 };
+                omen(d, Ability::new(vec![], vec![two]));
+                d.adventure = true;
+            },
+        ),
+        "Skyscribing" => s(
+            &[
+                "Each player draws X cards.",
+                "Forecast — {2}{U}, Reveal this card from your hand: Each player draws a card.",
+            ],
+            |d, _| {
+                spell(d, vec![], vec![Effect::EachPlayerDrawsX]);
+                let each = vec![
+                    Effect::Draw { who: Who::You, n: 1 },
+                    Effect::Draw { who: Who::EachOpponent, n: 1 },
+                ];
+                let n = activated(d, "{2}{U}", false, vec![], each);
+                d.activated[n].forecast = true;
+                d.activated[n].once_each_turn = true;
+            },
+        ),
         _ => None,
     }
 }
@@ -2102,4 +2168,12 @@ pub const PG_D3_SCRIPTED: &[&str] = &[
     "Organic Extinction",
     "Camellia, the Seedmiser",
     "Dig Through Time",
+    // Core theme d3, batch 27
+    "Mikaeus, the Unhallowed",
+    "Skyscribing",
+    // Core theme d3, batch 29
+    "Fabled Passage",
+    // Core theme d3, batch 31
+    "Malcolm, Alluring Scoundrel",
+    "Brightcap Badger // Fungus Frolic",
 ];

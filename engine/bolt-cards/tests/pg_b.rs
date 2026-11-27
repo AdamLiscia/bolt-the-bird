@@ -1891,7 +1891,7 @@ fn yawgmoth_sacrifices_for_counters_and_proliferates() {
     assert_eq!(hand_size(&g, 0), before + 1);
     let card = g.players[0].hand[0];
     act(&mut g, Action::ActivateWith(yawg, 1, card));
-    resolve_all(&mut g, &[]);
+    resolve_all(&mut g, &[Action::Pick(theirs), Action::Yes]); // proliferate is the player's choice
     assert_eq!(g.toughness(theirs), 5, "proliferated their -1/-1 counter");
     assert_eq!(g.obj(card).zone, Zone::Graveyard);
 }
@@ -4156,4 +4156,134 @@ fn golden_argosy_exiles_its_crew_on_attack_and_returns_them_tapped_at_end_step()
     }
     assert_eq!(g.obj(elves).zone, Zone::Battlefield, "back at the end step");
     assert!(g.obj(elves).tapped, "tapped");
+}
+
+// ---- Demo: Najeela's duals, Neriv's Morningtide's Light (2026-11-27) ----
+
+#[test]
+fn the_original_duals_tap_for_their_two_colors() {
+    let mut g = game(&[]);
+    let tundra = put(&mut g, 0, "Tundra");
+    assert_eq!(
+        colors_of(&g, tundra),
+        [[true, true, false, false, false]],
+        "{{W}} or {{U}}"
+    );
+    assert!(g.has_subtype(tundra, "Plains") && g.has_subtype(tundra, "Island"));
+    for name in ["Badlands", "Bayou", "Plateau", "Savannah", "Scrubland", "Taiga"] {
+        let l = put(&mut g, 0, name);
+        assert_eq!(colors_of(&g, l)[0].iter().filter(|&&c| c).count(), 2, "{name}");
+    }
+}
+
+#[test]
+fn morningtides_light_flickers_creatures_tapped_and_shields_you() {
+    let mut g = table();
+    let mine = put(&mut g, 0, "Savannah Lions");
+    let theirs = put(&mut g, 1, "Llanowar Elves");
+    let light = hand(&mut g, 0, "Morningtide's Light");
+    act(&mut g, Action::Cast(light));
+    act(&mut g, Action::Target(Target::Object(mine)));
+    act(&mut g, Action::Target(Target::Object(theirs)));
+    act(&mut g, Action::No); // no more targets
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.obj(mine).zone, g.obj(theirs).zone), (Zone::Exile, Zone::Exile));
+    assert_eq!(g.obj(light).zone, Zone::Exile, "Exile Morningtide's Light");
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    play(&mut g, bolt, false, &[Target::Player(0)], &[]);
+    assert_eq!(g.players[0].life, 40, "damage to you is prevented");
+    while g.step != Step::Cleanup {
+        let a = match g.pending {
+            Pending::DeclareAttackers(_) => Action::FinishAttacks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(
+        (g.obj(mine).zone, g.obj(theirs).zone),
+        (Zone::Battlefield, Zone::Battlefield)
+    );
+    assert!(g.obj(mine).tapped && g.obj(theirs).tapped);
+    assert_eq!(
+        (g.obj(mine).controller, g.obj(theirs).controller),
+        (0, 1),
+        "their owners' control"
+    );
+}
+
+#[test]
+fn mirrormind_crown_asks_and_makes_the_first_tokens_each_turn_copies_doubled() {
+    let mut g = table();
+    let lions = put(&mut g, 0, "Savannah Lions");
+    let crown = put(&mut g, 0, "Mirrormind Crown");
+    put(&mut g, 0, "Parallel Lives");
+    let z = g.obj(lions).zcc;
+    g.objects[crown.0 as usize].attached_to = Some((lions, z));
+    let port = put(&mut g, 0, "Fountainport");
+    act(&mut g, Action::Activate(port, 1)); // a Fish: two Lions copies instead (Parallel Lives)
+    resolve_all(&mut g, &[Action::Yes]);
+    assert!(tokens(&g, 0, "Fish").is_empty());
+    assert_eq!(tokens(&g, 0, "Savannah Lions").len(), 2, "doubled");
+    let port2 = put(&mut g, 0, "Fountainport");
+    act(&mut g, Action::Activate(port2, 1)); // not the first time: no question
+    resolve_all(&mut g, &[]);
+    assert_eq!(tokens(&g, 0, "Fish").len(), 2, "two real Fish");
+    // Declining makes the tokens, and uses up the first time.
+    let mut g = table();
+    let lions = put(&mut g, 0, "Savannah Lions");
+    let crown = put(&mut g, 0, "Mirrormind Crown");
+    let z = g.obj(lions).zcc;
+    g.objects[crown.0 as usize].attached_to = Some((lions, z));
+    let port = put(&mut g, 0, "Fountainport");
+    act(&mut g, Action::Activate(port, 1));
+    resolve_all(&mut g, &[Action::No]);
+    assert_eq!(tokens(&g, 0, "Fish").len(), 1);
+    assert!(tokens(&g, 0, "Savannah Lions").is_empty());
+}
+
+#[test]
+fn glen_elendras_answer_counters_their_spells_and_makes_faeries() {
+    let mut g = table();
+    let bolt = hand(&mut g, 1, "Lightning Bolt");
+    let answer = hand(&mut g, 0, "Glen Elendra's Answer");
+    act(&mut g, Action::PassPriority);
+    act(&mut g, Action::Cast(bolt));
+    act(&mut g, Action::Target(Target::Player(0)));
+    act(&mut g, Action::PassPriority); // back to player 0
+    act(&mut g, Action::Cast(answer));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].life, 40, "the Bolt was countered");
+    assert_eq!(g.obj(bolt).zone, Zone::Graveyard);
+    let faeries = tokens(&g, 0, "Faerie");
+    assert_eq!(faeries.len(), 1);
+    assert_eq!(g.colors_of(faeries[0]), [false, true, true, false, false]);
+    assert!(g.keywords(faeries[0]).has(Keywords::FLYING));
+}
+
+#[test]
+fn mirrormind_crowns_first_time_is_used_up_by_a_token_that_didnt_ask() {
+    let mut g = table();
+    let lancer = put(&mut g, 0, "Dragonback Lancer"); // Mobilize 1
+    let crown = put(&mut g, 0, "Mirrormind Crown");
+    let z = g.obj(lancer).zcc;
+    g.objects[crown.0 as usize].attached_to = Some((lancer, z));
+    g.start_turn(5, 0);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(lancer));
+    act(&mut g, Action::FinishAttacks);
+    resolve_all(&mut g, &[]); // Mobilize's Warrior: a real token, no question
+    assert_eq!(tokens(&g, 0, "Warrior").len(), 1);
+    while g.step != Step::Main2 {
+        let a = match g.pending {
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    let port = put(&mut g, 0, "Fountainport");
+    act(&mut g, Action::Activate(port, 1)); // a Fish later that turn: no question
+    resolve_all(&mut g, &[]);
+    assert_eq!(tokens(&g, 0, "Fish").len(), 1);
 }
