@@ -473,7 +473,10 @@ impl Game {
                 }
             }
             if let EmblemKind::OnYourColorSpellCast { color, trigger } = kind {
-                // `fire(p, YouCast)` comes as the spell is cast: it's the newest card on the stack.
+                // `fire(p, YouCast)` comes from `finish_cast` with the spell already moved to the stack
+                // zone and before anything else can be: it's the newest card there. (`fire` passes no
+                // `extra` here; the cast code sets the triggers' `extra` to the spell only after
+                // `fire` returns, too late for this color check, so this assumes that ordering.)
                 let spell = self.stack.last().copied();
                 let hit = spell.is_some_and(|s| self.colors_of(s).get(color).copied().unwrap_or(false));
                 if owner == p && when == When::YouCast && hit {
@@ -924,6 +927,25 @@ impl Game {
             && self.any_graveyard_spells_turn[p] == self.turn
             && self.obj(c).zone == Zone::Graveyard
             && (t.instant || t.sorcery)
+    }
+
+    /// The Great Work's normal-cost route: instant and sorcery cards with their own flashback in any
+    /// graveyard, castable now for their mana cost (`Action::Cast`) besides their flashback cost
+    /// (`Action::CastFlashback`). Either way the spell is exiled instead of going to a graveyard.
+    pub(super) fn any_graveyard_mana_cost_casts(&self, p: PlayerId) -> Vec<ObjId> {
+        (0..2)
+            .flat_map(|q| self.players[q].graveyard.iter().copied())
+            .filter(|&c| self.def_of(c).flashback.is_some() && self.casts_from_any_graveyard(p, c))
+            .collect()
+    }
+
+    /// Whether the spell `id` leaving the stack was cast through `any_graveyard_mana_cost_casts`
+    /// (and forgets it): it's exiled instead.
+    pub(super) fn take_any_graveyard_cast(&mut self, id: ObjId) -> bool {
+        let zcc = self.obj(id).zcc;
+        let before = self.any_graveyard_casts.len();
+        self.any_graveyard_casts.retain(|&e| e != (id, zcc));
+        self.any_graveyard_casts.len() != before
     }
 
     pub fn has_chapter_grant(&self, id: ObjId, n: u8) -> bool {

@@ -983,3 +983,53 @@ fn a_color_spell_emblem_triggers_on_its_owners_spells_of_that_color_for_the_mana
     assert!(g.triggered.is_empty());
     let _ = theirs;
 }
+
+#[test]
+fn a_card_with_its_own_flashback_is_castable_from_any_graveyard_for_either_cost() {
+    let mut g = game_with(
+        vec![],
+        vec![sub(SubsystemEffect::CastSpellsFromAnyGraveyardThisTurn)],
+        |_| {},
+    );
+    let x = g.add_card(0, cid(CARD), Zone::Battlefield);
+    let normal = g.add_card(1, cid("Think Twice"), Zone::Graveyard);
+    let flashback = g.add_card(1, cid("Think Twice"), Zone::Graveyard);
+    let own = g.add_card(0, cid("Think Twice"), Zone::Graveyard);
+    assert!(!g.legal_actions().contains(&Action::Cast(normal)));
+    activate(&mut g, x, &[]);
+    let legal = g.legal_actions();
+    for c in [normal, flashback, own] {
+        assert!(legal.contains(&Action::Cast(c)), "its mana cost");
+        assert!(legal.contains(&Action::CastFlashback(c)), "its flashback cost");
+    }
+    let untapped = |g: &Game| {
+        g.permanents(0)
+            .filter(|&l| g.def_of(l).types.land && !g.obj(l).tapped)
+            .count()
+    };
+    let hand = g.players[0].hand.len();
+    let lands = untapped(&g);
+    act(&mut g, Action::Cast(normal));
+    settle(&mut g, &[]);
+    assert_eq!(untapped(&g), lands - 2, "{{1}}{{U}}");
+    assert_eq!(g.obj(normal).zone, Zone::Exile, "exiled instead");
+    let lands = untapped(&g);
+    act(&mut g, Action::CastFlashback(flashback));
+    settle(&mut g, &[]);
+    assert_eq!(untapped(&g), lands - 3, "{{2}}{{U}}");
+    assert_eq!(g.obj(flashback).zone, Zone::Exile);
+    assert_eq!(g.players[0].hand.len(), hand + 2);
+    assert!(g.any_graveyard_casts.is_empty(), "forgotten as it left the stack");
+    // Its own graveyard too; a cast from hand still goes to the graveyard.
+    act(&mut g, Action::Cast(own));
+    settle(&mut g, &[]);
+    assert_eq!(g.obj(own).zone, Zone::Exile);
+    let from_hand = g.add_card(0, cid("Think Twice"), Zone::Hand);
+    act(&mut g, Action::Cast(from_hand));
+    settle(&mut g, &[]);
+    assert_eq!(
+        g.obj(from_hand).zone,
+        Zone::Graveyard,
+        "cast from hand: to the graveyard"
+    );
+}
