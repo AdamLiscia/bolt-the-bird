@@ -1389,6 +1389,14 @@ pub enum Decision {
         source: ObjId,
         zcc: u32,
     },
+    /// Crew N (CR 702.122a): tap any number of other untapped creatures with total power N or more.
+    /// `Pick` another creature to tap, `Yes` (offered once their total power is N or more) to crew
+    /// with `chosen`, or `No` to not crew. Asked when the first creature named alone isn't enough.
+    CrewTap {
+        source: ObjId,
+        n: usize,
+        chosen: Vec<ObjId>,
+    },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -1856,6 +1864,8 @@ pub struct Game {
     /// Deep-Cavern Bat: (source, its zone-change count, card) — a card exiled from a hand until the
     /// source leaves the battlefield, returned to its owner's hand when it does (CR 610.3).
     pub hand_links: Vec<(ObjId, u32, ObjId)>,
+    /// The other creatures a crew cost taps with its named one (from `Decision::CrewTap`).
+    crew_extra: Vec<ObjId>,
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -2144,6 +2154,7 @@ impl Game {
             combat_shield_tokens: Vec::new(),
             player_protected_until: [None; 2],
             plus_two_to_players: (0, 0),
+            crew_extra: Vec::new(),
             hand_links: Vec::new(),
         }
     }
@@ -9083,12 +9094,14 @@ impl Game {
                             .map(|c| Action::ActivateWith(id, n, c)),
                     );
                 } else if a.crew > 0 {
-                    // Crew: tap an untapped creature with enough power (summoning sickness doesn't matter).
-                    v.extend(
-                        self.creatures(p)
-                            .filter(|&c| c != id && !self.obj(c).tapped && self.power(c) >= a.crew as i32)
-                            .map(|c| Action::ActivateWith(id, n, c)),
-                    );
+                    // Crew N (CR 702.122a): any number of other untapped creatures with total power N
+                    // or more (summoning sickness doesn't matter). The one named first; more are
+                    // picked with `Decision::CrewTap` if it isn't enough alone.
+                    let crew: Vec<ObjId> = self.crew_candidates(p, id, &[]);
+                    let total: i32 = crew.iter().map(|&c| self.power(c).max(0)).sum();
+                    if total >= a.crew as i32 {
+                        v.extend(crew.into_iter().map(|c| Action::ActivateWith(id, n, c)));
+                    }
                 } else if a.sacrifice_two_artifacts_or_creatures {
                     let others: Vec<ObjId> = self
                         .permanents(p)
@@ -9364,6 +9377,9 @@ impl Game {
                 }
             } else if a.crew > 0 {
                 self.become_tapped(v); // crew taps, it doesn't sacrifice
+                for c in std::mem::take(&mut self.crew_extra) {
+                    self.become_tapped(c); // the others picked with Decision::CrewTap
+                }
             } else if a.sacrifice_two_others {
                 if self.obj(v).zone == Zone::Battlefield {
                     self.move_to(v, Zone::Graveyard);
@@ -10660,7 +10676,21 @@ impl Game {
             ),
             (Pending::Priority(p), Action::Activate(id, n)) => self.activate(p, id, n, None),
             (Pending::Priority(p), Action::ActivateWith(id, n, victim)) => {
-                self.activate(p, id, n, Some(victim))
+                let crew = self.activated_of(id, n).crew as i32;
+                if crew > 0 && self.power(victim).max(0) < crew {
+                    // Crew with more than one creature: pick the rest first (CR 702.122a).
+                    let chosen = vec![victim];
+                    self.ask(
+                        p,
+                        Decision::CrewTap {
+                            source: id,
+                            n,
+                            chosen,
+                        },
+                    );
+                } else {
+                    self.activate(p, id, n, Some(victim))
+                }
             }
             (Pending::ChooseTarget(_), Action::Target(target)) => self.choose_target(target),
             (Pending::ChooseTarget(_), Action::No) => self.finish_choosing(),
@@ -12512,6 +12542,13 @@ impl Game {
             .collect()
     }
 
+    /// Creatures `p` could tap to crew `source`: untapped, not `source`, not already `chosen`.
+    fn crew_candidates(&self, p: PlayerId, source: ObjId, chosen: &[ObjId]) -> Vec<ObjId> {
+        self.creatures(p)
+            .filter(|&c| c != source && !self.obj(c).tapped && !chosen.contains(&c))
+            .collect()
+    }
+
     /// The nontoken artifacts `p` controls that can be sacrificed (Rootcast Apprenticeship).
     fn nontoken_artifacts_to_sacrifice(&self, p: PlayerId) -> Vec<ObjId> {
         self.permanents(p)
@@ -12670,6 +12707,20 @@ impl Game {
             }
             Decision::ChooseEnterMode { .. } => vec![Action::Mode(0), Action::Mode(1)],
             Decision::Riot { .. } => vec![Action::Mode(0), Action::Mode(1)],
+            Decision::CrewTap { source, n, chosen } => {
+                let need = self.activated_of(*source, *n).crew as i32;
+                let have: i32 = chosen.iter().map(|&c| self.power(c).max(0)).sum();
+                let mut v: Vec<Action> = self
+                    .crew_candidates(p, *source, chosen)
+                    .into_iter()
+                    .map(Action::Pick)
+                    .collect();
+                if have >= need {
+                    v.push(Action::Yes);
+                }
+                v.push(Action::No);
+                v
+            }
             Decision::ChooseLandFace { .. } => vec![Action::Mode(0), Action::Mode(1)],
             Decision::ChooseCreatureType { options, .. } => {
                 (0..options.len() as u8).map(Action::Mode).collect()
@@ -13745,6 +13796,26 @@ impl Game {
                 self.give_priority(p);
             } else {
                 self.open_free_casts();
+            }
+            return;
+        }
+        if let Decision::CrewTap {
+            source,
+            n,
+            mut chosen,
+        } = d
+        {
+            match a {
+                Action::Pick(c) => {
+                    chosen.push(c);
+                    self.ask(p, Decision::CrewTap { source, n, chosen });
+                }
+                Action::Yes => {
+                    let first = chosen.remove(0);
+                    self.crew_extra = chosen;
+                    self.activate(p, source, n, Some(first));
+                }
+                _ => self.give_priority(p), // not crewed
             }
             return;
         }
