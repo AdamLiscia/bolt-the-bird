@@ -2640,3 +2640,78 @@ fn create_tokens_tapped_and_attacking_joins_the_attack() {
     attack_through(&mut g, &[lions]);
     assert_eq!(life(&g, 1), 40 - 2 - 2, "two attacking 1/1s");
 }
+
+// ---- batch 41: free opponent spells, an opponent's second draw, planeswalker deaths, a token per token ----
+
+#[test]
+fn opponent_casts_with_no_mana_spent_only_for_free_spells() {
+    let mut g = game_with(blood_with(vec![trigger(
+        When::OpponentCastsWithNoManaSpent,
+        None,
+        gain(1),
+    )]));
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    g.start_turn(4, 1);
+    to_main(&mut g);
+    let thopter = g.add_card(1, cid("Ornithopter"), Zone::Hand);
+    play(&mut g, thopter, false, &[], &[]);
+    assert_eq!(life(&g, 0), 41, "{{0}}: no mana spent");
+    let lions = g.add_card(1, cid("Savannah Lions"), Zone::Hand);
+    play(&mut g, lions, false, &[], &[]);
+    assert_eq!(life(&g, 0), 41, "mana spent");
+}
+
+#[test]
+fn opponent_draws_second_card_each_turn() {
+    let mut g = game_with(blood_with(vec![trigger(
+        When::OpponentDrawsSecond,
+        None,
+        gain(1),
+    )]));
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    g.start_turn(4, 1);
+    to_main(&mut g);
+    assert_eq!(life(&g, 0), 40, "one draw");
+    g.add_card(0, cid("Howling Mine"), Zone::Battlefield);
+    g.start_turn(6, 1);
+    to_main(&mut g);
+    assert_eq!(life(&g, 0), 41, "the Mine's card is their second");
+    g.start_turn(7, 0);
+    to_main(&mut g);
+    assert_eq!(life(&g, 0), 41, "your own draws don't count");
+}
+
+#[test]
+fn planeswalker_you_control_dies() {
+    let mut g = game_with(blood_with(vec![trigger(
+        When::PlaneswalkerYouControlDies,
+        None,
+        gain(1),
+    )]));
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    let jace = g.add_card(0, cid("Jace Beleren"), Zone::Battlefield);
+    g.objects[jace.0 as usize].loyalty = 3;
+    let lions = g.add_card(0, cid("Savannah Lions"), Zone::Battlefield);
+    kill(&mut g, lions);
+    assert_eq!(life(&g, 0), 40, "a creature");
+    kill(&mut g, jace);
+    assert_eq!(life(&g, 0), 41);
+}
+
+#[test]
+fn create_tokens_per_token_you_control_counts_them_first() {
+    let rabbit = token_def("Rabbit");
+    let mut g = game_with(blood_with(vec![trigger(
+        When::YouCastArtifact,
+        None,
+        vec![Effect::CreateTokensPerTokenYouControl { def: rabbit }],
+    )]));
+    g.add_card(0, cid("Exquisite Blood"), Zone::Battlefield);
+    let food = token_def("Food");
+    g.add_card(0, food, Zone::Battlefield);
+    g.add_card(0, food, Zone::Battlefield);
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Hand);
+    play(&mut g, ring, false, &[], &[]);
+    let rabbits = g.permanents(0).filter(|&x| g.def_of(x).name == "Rabbit").count();
+    assert_eq!(rabbits, 2);
+}

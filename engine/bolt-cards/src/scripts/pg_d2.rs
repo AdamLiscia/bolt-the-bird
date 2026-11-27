@@ -1928,6 +1928,85 @@ pub fn script(name: &str) -> Option<Script> {
                 );
             },
         ),
+        // ---- Core: triggers, batch 41 (idea decks: Sythis, Ratadrabik, Baylen; the Ring) ----
+        "Nazgûl" => s(
+            &[
+                "When this creature enters, the Ring tempts you.",
+                "Whenever the Ring tempts you, put a +1/+1 counter on each Wraith you control.",
+                "A deck can have up to nine cards named Nazgûl.",
+            ],
+            |d, _| {
+                // The deck-building line does nothing in a game.
+                on(d, When::Enters, vec![], vec![Effect::Subsystem(bolt_core::effect::SubsystemEffect::RingTempts)]);
+                on(d, When::RingTemptsYou, vec![], vec![Effect::CountersOnYourSubtype("Wraith")]);
+            },
+        ),
+        "Boromir, Warden of the Tower" => s(
+            &[
+                "Whenever an opponent casts a spell, if no mana was spent to cast it, counter that spell.",
+                "Sacrifice Boromir: Creatures you control gain indestructible until end of turn. The Ring tempts you.",
+            ],
+            |d, _| {
+                on(d, When::OpponentCastsWithNoManaSpent, vec![], vec![Effect::CounterExtra]);
+                let effects = vec![Effect::GrantAll { who: Who::You, keywords: Keywords::INDESTRUCTIBLE }, Effect::Subsystem(bolt_core::effect::SubsystemEffect::RingTempts)];
+                let n = activated(d, "", false, vec![], effects);
+                d.activated[n].sacrifice_self = true;
+            },
+        ),
+        "Gleaming Splendor" => s(
+            &[
+                "Whenever an opponent draws their second card each turn, you create a Treasure token.",
+                "{2}{W}: Two target players each draw a card.",
+            ],
+            |d, t| {
+                on(d, When::OpponentDrawsSecond, vec![], vec![Effect::CreateToken { who: Who::You, def: t.treasure, n: 1 }]);
+                // 1v1: two different target players are both players.
+                let both = vec![Effect::Draw { who: Who::You, n: 1 }, Effect::Draw { who: Who::EachOpponent, n: 1 }];
+                activated(d, "{2}{W}", false, vec![], both);
+            },
+        ),
+        "Cruel Celebrant" => s(
+            &["Whenever this creature or another creature or planeswalker you control dies, each opponent loses 1 life and you gain 1 life."],
+            |d, _| {
+                for when in [When::Dies, When::AnotherCreatureYouControlDies, When::PlaneswalkerYouControlDies] {
+                    on(d, when, vec![], vec![Effect::LoseLife { who: Who::EachOpponent, n: 1 }, Effect::GainLife { who: Who::You, n: 1 }]);
+                }
+            },
+        ),
+        "Lotho, Corrupt Shirriff" => s(
+            &["Whenever a player casts their second spell each turn, you lose 1 life and create a Treasure token."],
+            |d, t| {
+                let effects = vec![Effect::LoseLife { who: Who::You, n: 1 }, Effect::CreateToken { who: Who::You, def: t.treasure, n: 1 }];
+                on(d, When::PlayerCastsSecondSpell, vec![], effects);
+            },
+        ),
+        "Cadira, Caller of the Small" => s(
+            &["Whenever Cadira deals combat damage to a player, for each token you control, create a 1/1 white Rabbit creature token."],
+            |d, t| on(d, When::DealsCombatDamageToPlayer, vec![], vec![Effect::CreateTokensPerTokenYouControl { def: t.rabbit }]),
+        ),
+        "Knuckles the Echidna" => s(
+            &[
+                "Whenever one or more creatures you control deal combat damage to a player, create a Treasure token.",
+                "Treasure Hunter — At the beginning of your upkeep, if you control thirty or more artifacts, you win the game.",
+            ],
+            |d, t| {
+                on(d, When::YourCreaturesDealCombatDamageToPlayer, vec![], vec![Effect::CreateToken { who: Who::You, def: t.treasure, n: 1 }]);
+                let upkeep = When::Upkeep { your_turn_only: true };
+                conditional(d, upkeep, Condition::ControlArtifactsAtLeast(30), vec![], vec![Effect::WinTheGame]);
+            },
+        ),
+        "Rosie Cotton of South Lane" => s(
+            &[
+                "When Rosie Cotton enters, create a Food token.",
+                "Whenever you create a token, put a +1/+1 counter on target creature you control other than Rosie Cotton.",
+            ],
+            |d, t| {
+                on(d, When::Enters, vec![], vec![Effect::CreateToken { who: Who::You, def: t.food, n: 1 }]);
+                // Each token you create enters under your control.
+                let other = Filter { other: true, ..YOUR_CREATURE };
+                on(d, When::TokenYouControlEnters, vec![other], vec![Effect::Counters { slot: 0, n: 1 }]);
+            },
+        ),
         _ => None,
     }
 }
@@ -2224,4 +2303,13 @@ pub const PG_D2_SCRIPTED: &[&str] = &[
     "Thopter Spy Network",
     "Helm of the Ghastlord",
     "Lifeline",
+    // Core: triggers, batch 41
+    "Nazgûl",
+    "Boromir, Warden of the Tower",
+    "Gleaming Splendor",
+    "Cruel Celebrant",
+    "Lotho, Corrupt Shirriff",
+    "Cadira, Caller of the Small",
+    "Knuckles the Echidna",
+    "Rosie Cotton of South Lane",
 ];

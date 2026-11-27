@@ -5815,6 +5815,10 @@ impl Game {
                 }
             }
         }
+        if dies && self.types_of(id).planeswalker && !self.types_of(id).creature {
+            self.fire(last_controller, When::PlaneswalkerYouControlDies, Some(id));
+            // Cruel Celebrant
+        }
         if dies && self.types_of(id).creature {
             // "Whenever equipped creature dies": Equipment still attached until state-based actions.
             let gear: Vec<ObjId> = self
@@ -6689,6 +6693,7 @@ impl Game {
                 }
                 if self.draws_this_turn[p] == 2 {
                     self.fire(p, When::YouDrawSecond, None);
+                    self.fire(opponent(p), When::OpponentDrawsSecond, None);
                 }
             }
             None => {
@@ -12882,6 +12887,14 @@ impl Game {
             self.fire(p, When::YouCastOnOpponentsTurn, None);
         }
         self.fire(opponent(p), When::OpponentCasts, None);
+        if self.obj(card).mana_spent == 0 {
+            // Boromir: "if no mana was spent to cast it", and "that spell".
+            let before = self.triggered.len();
+            self.fire(opponent(p), When::OpponentCastsWithNoManaSpent, None);
+            for t in &mut self.triggered[before..] {
+                t.extra = Some(card);
+            }
+        }
         if noncreature {
             self.fire(opponent(p), When::OpponentCastsNoncreature, None);
             // Pollywog Prodigy: only for a spell with mana value less than its power.
@@ -26336,6 +26349,13 @@ impl Game {
                     if matches!(o.zone, Zone::Graveyard | Zone::Exile) && !self.is_token(c) {
                         self.delayed_returns.push((c, o.zcc, 0));
                     }
+                }
+            }
+            Effect::CreateTokensPerTokenYouControl { def } => {
+                let p = item.controller;
+                let n = self.permanents(p).filter(|&x| self.is_token(x)).count();
+                for _ in 0..n {
+                    self.create_token(p, def);
                 }
             }
             Effect::SolveCase => {

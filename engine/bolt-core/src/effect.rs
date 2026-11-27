@@ -3049,6 +3049,11 @@ pub enum Effect {
     /// Return the card in `slot` (in a graveyard or exile) to the battlefield under its owner's
     /// control at the beginning of the next end step (`Game::delayed_returns`; Lifeline).
     ReturnSlotAtNextEndStep(u8),
+    /// "For each token you control, create a `def` token" (Cadira, Caller of the Small), counted
+    /// as it resolves.
+    CreateTokensPerTokenYouControl {
+        def: usize,
+    },
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -4150,6 +4155,15 @@ pub enum When {
     /// "Whenever a creature dies" (Lifeline): any creature other than the source, with the card that
     /// died in slot 0 when the first target filter is `triggering`.
     AnotherCreatureDiesIt,
+    /// "Whenever an opponent casts a spell, if no mana was spent to cast it" (Boromir, Warden of
+    /// the Tower): checked as it's cast (`Object::mana_spent`), with that spell as the trigger's
+    /// `extra` (`Effect::CounterExtra`).
+    OpponentCastsWithNoManaSpent,
+    /// "Whenever an opponent draws their second card each turn" (Gleaming Splendor).
+    OpponentDrawsSecond,
+    /// "Whenever ... a planeswalker you control dies" (Cruel Celebrant): a noncreature planeswalker
+    /// put into a graveyard from the battlefield (a creature one is `CreatureYouControlDies`'s).
+    PlaneswalkerYouControlDies,
 }
 
 #[derive(Clone, Debug, PartialEq)]

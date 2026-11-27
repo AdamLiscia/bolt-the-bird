@@ -4201,3 +4201,148 @@ fn lifeline_returns_a_dead_creature_at_the_end_step_if_another_creature_is_out()
     drain(&mut g);
     assert_eq!(g.obj(lions).zone, Zone::Graveyard);
 }
+
+// ---- Core: triggers, batch 41 (idea decks: Sythis, Ratadrabik, Baylen; the Ring) ----
+
+#[test]
+fn nazgul_tempts_you_and_counters_each_wraith_when_the_ring_tempts_you() {
+    let mut g = table();
+    let first = put(&mut g, 0, "Nazgûl");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    let second = hand(&mut g, 0, "Nazgûl");
+    act(&mut g, Action::Cast(second));
+    drain(&mut g);
+    assert_eq!(g.obj(second).zone, Zone::Battlefield);
+    assert!(g.ring_bearer(0).is_some(), "the Ring tempted you");
+    assert_eq!(
+        (g.obj(first).counters, g.obj(second).counters),
+        (2, 2),
+        "each Nazgûl's trigger counters each Wraith"
+    );
+    assert_eq!(g.obj(lions).counters, 0, "not a Wraith");
+}
+
+#[test]
+fn boromir_counters_a_free_opponent_spell_and_sacrifices_for_indestructible() {
+    let mut g = table();
+    let boromir = put(&mut g, 0, "Boromir, Warden of the Tower");
+    // The opponent casts a free spell (Ornithopter, {0}) and a paid one, on their turn.
+    to_step(&mut g, 4, 1, Step::Main1);
+    let thopter = hand(&mut g, 1, "Ornithopter");
+    act(&mut g, Action::Cast(thopter));
+    drain(&mut g);
+    assert!(in_graveyard(&g, 1, thopter), "no mana spent: countered");
+    let lions = hand(&mut g, 1, "Savannah Lions");
+    act(&mut g, Action::Cast(lions));
+    drain(&mut g);
+    assert_eq!(g.obj(lions).zone, Zone::Battlefield, "mana spent");
+    // Back on your turn: sacrifice Boromir.
+    to_step(&mut g, 5, 0, Step::Main1);
+    let elves = put(&mut g, 0, "Llanowar Elves");
+    let n = g
+        .legal_actions()
+        .into_iter()
+        .find(|a| matches!(a, Action::Activate(x, _) if *x == boromir))
+        .expect("Boromir's ability");
+    act(&mut g, n);
+    drain(&mut g);
+    assert!(in_graveyard(&g, 0, boromir));
+    assert!(g.keywords(elves).has(Keywords::INDESTRUCTIBLE));
+    assert_eq!(g.ring_bearer(0), Some(elves), "the Ring tempts you");
+}
+
+#[test]
+fn gleaming_splendor_makes_a_treasure_on_the_opponents_second_draw_and_both_draw() {
+    let mut g = table();
+    put(&mut g, 0, "Gleaming Splendor");
+    let n = g
+        .legal_actions()
+        .into_iter()
+        .find(|a| matches!(a, Action::Activate(x, _) if g.def_of(*x).name == "Gleaming Splendor"))
+        .expect("its ability");
+    let (mine, theirs) = (g.players[0].hand.len(), g.players[1].hand.len());
+    act(&mut g, n);
+    drain(&mut g);
+    assert_eq!(
+        (g.players[0].hand.len(), g.players[1].hand.len()),
+        (mine + 1, theirs + 1)
+    );
+    assert!(tokens(&g, 0, "Treasure").is_empty(), "their first card this turn");
+    act(&mut g, n);
+    drain(&mut g);
+    assert_eq!(tokens(&g, 0, "Treasure").len(), 1, "their second card this turn");
+}
+
+#[test]
+fn cruel_celebrant_drains_when_it_or_your_creature_or_planeswalker_dies() {
+    let mut g = table();
+    let celebrant = put(&mut g, 0, "Cruel Celebrant");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    kill(&mut g, lions);
+    assert_eq!((g.players[0].life, g.players[1].life), (41, 39));
+    let walker = put(&mut g, 0, "Jace Beleren");
+    g.objects[walker.0 as usize].loyalty = 3;
+    kill(&mut g, walker);
+    assert_eq!((g.players[0].life, g.players[1].life), (42, 38), "a planeswalker");
+    kill(&mut g, celebrant);
+    assert_eq!((g.players[0].life, g.players[1].life), (43, 37), "itself");
+}
+
+#[test]
+fn lotho_pays_a_life_for_a_treasure_on_each_players_second_spell() {
+    let mut g = table();
+    put(&mut g, 0, "Lotho, Corrupt Shirriff");
+    for name in ["Savannah Lions", "Llanowar Elves", "Sol Ring"] {
+        let c = hand(&mut g, 0, name);
+        play(&mut g, c, false, &[], &[]);
+    }
+    assert_eq!(g.players[0].life, 39);
+    assert_eq!(tokens(&g, 0, "Treasure").len(), 1, "only the second");
+}
+
+#[test]
+fn cadira_makes_a_rabbit_for_each_token_you_control() {
+    let mut g = table();
+    let cadira = put(&mut g, 0, "Cadira, Caller of the Small");
+    let food = token_def(&g, "Food");
+    g.add_card(0, food, Zone::Battlefield);
+    g.add_card(0, food, Zone::Battlefield);
+    attack(&mut g, &[cadira]);
+    fight(&mut g);
+    assert_eq!(g.players[1].life, 37);
+    assert_eq!(tokens(&g, 0, "Rabbit").len(), 2, "two tokens: two Rabbits");
+}
+
+#[test]
+fn knuckles_makes_a_treasure_on_combat_damage_and_wins_with_thirty_artifacts() {
+    let mut g = table();
+    let knuckles = put(&mut g, 0, "Knuckles the Echidna");
+    attack(&mut g, &[knuckles]);
+    fight(&mut g);
+    assert_eq!(g.players[1].life, 36, "double strike");
+    assert_eq!(tokens(&g, 0, "Treasure").len(), 2, "once per combat damage step");
+    for _ in 0..28 {
+        put(&mut g, 0, "Sol Ring");
+    }
+    g.start_turn(7, 0);
+    while g.result.is_none() && g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(
+        g.result,
+        Some(bolt_core::Outcome::Winner(0)),
+        "thirty artifacts at upkeep"
+    );
+}
+
+#[test]
+fn rosie_cotton_makes_food_and_counters_another_creature_for_each_token() {
+    let mut g = table();
+    let lions = put(&mut g, 0, "Savannah Lions");
+    let rosie = hand(&mut g, 0, "Rosie Cotton of South Lane");
+    act(&mut g, Action::Cast(rosie));
+    drain(&mut g);
+    assert_eq!(tokens(&g, 0, "Food").len(), 1);
+    assert_eq!(g.obj(lions).counters, 1, "the Food was a token you created");
+    assert_eq!(g.obj(rosie).counters, 0, "other than Rosie");
+}

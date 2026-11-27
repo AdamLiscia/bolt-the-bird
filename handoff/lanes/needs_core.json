@@ -7520,7 +7520,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 41 (When::OpponentDrawsSecond; 1v1 'two target players' = both)"
   },
   {
    "card": "Soaring Lightbringer",
@@ -7547,7 +7547,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 41 (When::PlaneswalkerYouControlDies)"
   },
   {
    "card": "Lotho, Corrupt Shirriff",
@@ -7556,7 +7556,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 41 (existing When::PlayerCastsSecondSpell)"
   },
   {
    "card": "Cadira, Caller of the Small",
@@ -7565,7 +7565,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 41 (Effect::CreateTokensPerTokenYouControl; t.rabbit, uncolored row)"
   },
   {
    "card": "Cathars' Crusade",
@@ -7592,7 +7592,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 41 (existing pieces)"
   },
   {
    "card": "Ocelot Pride",
@@ -7610,7 +7610,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "done: d2 batch 41 (When::TokenYouControlEnters for 'whenever you create a token')"
   },
   {
    "card": "The Cabbage Merchant",
@@ -7790,7 +7790,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+   "status": "waiting on d3 (routed): 'is a black Zombie' replaces creature types; d2 has the trigger part drafted (nontoken creature to your graveyard from the battlefield, may pay {4}, return and attach)"
   },
   {
    "card": "Twilight Drover",
@@ -7808,7 +7808,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "done: d2 batch 40 (Effect::CreateTokensTappedAndAttacking; t.human)"
+   "status": "done: d2 batch 40 (Effect::CreateTokensTappedAndAttacking). Known limit (OK for the demo): t.human is an uncolored row, not white"
   },
   {
    "card": "Luminarch Aspirant",
@@ -7853,7 +7853,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "done: d2 batch 40 (When::YouCastArtifactOrEnchantment; t.faerie, no new token)"
+   "status": "done: d2 batch 40 (When::YouCastArtifactOrEnchantment). Known limit (OK for the demo): t.faerie is an uncolored row, not blue"
   },
   {
    "card": "Archon of Cruelty",
@@ -7898,7 +7898,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "done: d2 batch 40 (When::YourArtifactCreatureDealsCombatDamageToPlayer; t.thopter)"
+   "status": "done: d2 batch 40 (When::YourArtifactCreatureDealsCombatDamageToPlayer). Known limit (OK for the demo): t.thopter is colorless, not blue"
   },
   {
    "card": "Sword of Light and Shadow",
@@ -7934,7 +7934,7 @@
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2",
-   "status": "needs core (d3, searches with filters): SearchFor an enchantment card with mana value 3 or less; the attack trigger exists (When::Attacks + may)"
+   "status": "needs core (d3, routed by the coordinator): SearchFor an enchantment card with mana value 3 or less; the attack trigger exists (When::Attacks + may)"
   },
   {
    "card": "Crime Novelist",
@@ -8007,6 +8007,24 @@
    "theme": "triggers",
    "owner": "d2",
    "status": "claimed by d2 (idea_next11): draft only until the pool rows land"
+  },
+  {
+   "card": "Nazgûl",
+   "deck": "the Ring (Bolt's ruling: d2)",
+   "missing": "the Ring tempts you: counters on each Wraith (on d4's Ring subsystem)",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "done: d2 batch 41 (When::RingTemptsYou, SubsystemEffect::RingTempts)"
+  },
+  {
+   "card": "Boromir, Warden of the Tower",
+   "deck": "the Ring (Bolt's ruling: d2)",
+   "missing": "an opponent casts a spell with no mana spent: counter it; sacrifice: the Ring tempts you",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "done: d2 batch 41 (When::OpponentCastsWithNoManaSpent + Effect::CounterExtra)"
   }
  ]
 }
