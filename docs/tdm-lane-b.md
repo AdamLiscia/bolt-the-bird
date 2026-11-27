@@ -1050,10 +1050,15 @@ scripted here. Idea decks: Morningtide's Light (Neriv) with `Effect::ExileSlotRe
 and `Effect::PreventDamageToYouUntilYourNextTurn` (`Game::damage_to_you_prevented_until`, beside The
 One Ring's check in `deal_damage`). Claims recorded in needs_core.json.
 - Morningtide's Light: "any number of target creatures" is capped at twelve (a simplification).
-- Mirrormind Crown (Zurgo idea): `CardDef::first_tokens_copy_equipped`, `Game::mirrormind_crown` /
-  `mirrormind_used`: the first token creation each turn (an `Effect::CreateToken` of N, or one token
-  from any other maker) makes that many token copies of the equipped creature instead. Simplification:
-  the engine always takes the copies ("you may"; token creation can't pause to ask), and the copies
-  aren't doubled by token doublers.
+- Mirrormind Crown (Zurgo idea): `CardDef::first_tokens_copy_equipped`, `Game::mirrormind_used`.
+  When an `Effect::CreateToken` is about to make the Crown controller's first tokens this turn,
+  `Decision::MirrormindCopies` asks (Yes: that many token copies of the equipped creature, doubled
+  and tripled by Parallel Lives, Ojer Taq and the rest; No: the tokens). Either answer uses up the
+  turn's first time. Only `Effect::CreateToken` asks; every other token maker makes its real tokens
+  and doesn't use the Crown: token copies (`CopyToken` and the copy effects), Mobilize,
+  `CreateTokensAmount`/`Tapped`, per-count token effects (`CreateTokensPerLand`,
+  `CreateTokenPerCreatureDiedThisTurn` and the like), tokens from replacements (Peregrin, Xorn,
+  Academy Manufactor, Chatterfang's extras), tokens made inside decisions, costs and turn actions,
+  and the opponent's tokens.
 - Glen Elendra's Answer (Niv-Mizzet idea): `Effect::CounterOpponentsSpellsAndAbilitiesTokenEach`,
   token 104 (`faerie_ub`, a 1/1 blue and black Faerie with flying).

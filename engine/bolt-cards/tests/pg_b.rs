@@ -4212,23 +4212,33 @@ fn morningtides_light_flickers_creatures_tapped_and_shields_you() {
 }
 
 #[test]
-fn mirrormind_crown_makes_the_first_tokens_each_turn_copies_of_the_equipped_creature() {
+fn mirrormind_crown_asks_and_makes_the_first_tokens_each_turn_copies_doubled() {
+    let mut g = table();
+    let lions = put(&mut g, 0, "Savannah Lions");
+    let crown = put(&mut g, 0, "Mirrormind Crown");
+    put(&mut g, 0, "Parallel Lives");
+    let z = g.obj(lions).zcc;
+    g.objects[crown.0 as usize].attached_to = Some((lions, z));
+    let port = put(&mut g, 0, "Fountainport");
+    act(&mut g, Action::Activate(port, 1)); // a Fish: two Lions copies instead (Parallel Lives)
+    resolve_all(&mut g, &[Action::Yes]);
+    assert!(tokens(&g, 0, "Fish").is_empty());
+    assert_eq!(tokens(&g, 0, "Savannah Lions").len(), 2, "doubled");
+    let port2 = put(&mut g, 0, "Fountainport");
+    act(&mut g, Action::Activate(port2, 1)); // not the first time: no question
+    resolve_all(&mut g, &[]);
+    assert_eq!(tokens(&g, 0, "Fish").len(), 2, "two real Fish");
+    // Declining makes the tokens, and uses up the first time.
     let mut g = table();
     let lions = put(&mut g, 0, "Savannah Lions");
     let crown = put(&mut g, 0, "Mirrormind Crown");
     let z = g.obj(lions).zcc;
     g.objects[crown.0 as usize].attached_to = Some((lions, z));
     let port = put(&mut g, 0, "Fountainport");
-    act(&mut g, Action::Activate(port, 1)); // a Fish: a Lions copy instead
-    resolve_all(&mut g, &[]);
-    assert!(tokens(&g, 0, "Fish").is_empty());
-    assert_eq!(tokens(&g, 0, "Savannah Lions").len(), 1);
-    let before = tokens(&g, 0, "Savannah Lions").len();
-    let port2 = put(&mut g, 0, "Fountainport");
-    act(&mut g, Action::Activate(port2, 1));
-    resolve_all(&mut g, &[]);
-    assert_eq!(tokens(&g, 0, "Fish").len(), 1, "only the first time each turn");
-    assert_eq!(tokens(&g, 0, "Savannah Lions").len(), before);
+    act(&mut g, Action::Activate(port, 1));
+    resolve_all(&mut g, &[Action::No]);
+    assert_eq!(tokens(&g, 0, "Fish").len(), 1);
+    assert!(tokens(&g, 0, "Savannah Lions").is_empty());
 }
 
 #[test]

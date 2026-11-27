@@ -273,3 +273,9 @@ def test_karadors_graveyard_cast_is_named():
 def test_currency_converter_returns_an_exiled_card():
     dec = {"kind": "ExiledWithToGraveyard"}
     assert sv._decision_label(dec, "Pick", 0, "Forest") == "Put into its owner's graveyard: Forest"
+
+
+def test_mirrormind_crown_asks_copies_or_the_tokens():
+    dec = {"kind": "MirrormindCopies"}
+    assert label(dec, "Yes", 0) == "Make copies of the equipped creature instead"
+    assert label(dec, "No", 0) == "Make the tokens"
