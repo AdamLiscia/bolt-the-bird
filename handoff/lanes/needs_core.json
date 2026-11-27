@@ -3282,7 +3282,7 @@
   {
    "card": "Make Disappear",
    "deck": "Najeela, the Blade-Blossom",
-   "missing": "needs core: casualty",
+   "missing": "needs core: casualty [done by d1 batch 25: ExtraCost::Casualty, Effect::CopySourceSpellIfCasualty; scripted in pg_d1]",
    "lane": "d3",
    "theme": "mana",
    "owner": "d1"
@@ -3778,7 +3778,7 @@
   {
    "card": "Vraska, Betrayal's Sting",
    "deck": "Atraxa, Praetors' Voice",
-   "missing": "needs core: proliferate, compleated, a creature becoming a Treasure, and poison counters",
+   "missing": "needs core: proliferate, compleated, a creature becoming a Treasure, and poison counters [d1 batch 25: compleated is in (ManaExt::compleated); proliferate etc. are d3's]",
    "lane": "d3",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -3850,7 +3850,7 @@
   {
    "card": "Nissa, Ascended Animist",
    "deck": "Atraxa, Praetors' Voice",
-   "missing": "needs core: an X/X green Phyrexian Horror creature token (X its loyalty), compleated, and +1/+1 per Forest",
+   "missing": "needs core: an X/X green Phyrexian Horror creature token (X its loyalty), compleated, and +1/+1 per Forest [d1 batch 25: compleated is in (ManaExt::compleated); the card still needs its X/X Horror token and script]",
    "lane": "d3",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -5114,7 +5114,7 @@
   {
    "card": "Path of Ancestry",
    "deck": "Bloomburrow Commander (BLC)",
-   "missing": "BLC (lane B's routing, 2026-11-26)",
+   "missing": "BLC (lane B's routing, 2026-11-26) [done by d1 batch 25: ManaExt::scry_if_commander_type_creature; scripted in pg_d1]",
    "lane": "mac-b",
    "theme": "mana",
    "owner": "d1"
@@ -5138,7 +5138,7 @@
   {
    "card": "Rain of Riches",
    "deck": "Bloomburrow Commander (BLC)",
-   "missing": "BLC (lane B's routing, 2026-11-26)",
+   "missing": "BLC (lane B's routing, 2026-11-26) [done by d1 batch 25: Effect::StopUnlessFirstTreasureSpellThisTurn; scripted in pg_d1]",
    "lane": "mac-b",
    "theme": "mana",
    "owner": "d1"

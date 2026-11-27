@@ -143,6 +143,10 @@ pub enum ExtraCost {
     /// (Titan's Presence): cast with `Action::CastWith` naming it; it stays in your hand, and is the
     /// spell's `extra`.
     RevealColorlessCreature,
+    /// Casualty N (CR 702.153): "As you cast this spell, you may sacrifice a creature with power N
+    /// or greater." Cast with `Action::Cast` (none) or `Action::CastWith` naming it (it's the
+    /// spell's `extra`); `Effect::CopySourceSpellIfCasualty` makes the copy.
+    Casualty(u8),
 }
 
 /// "This spell costs {N} less to cast if ..." (CR 601.2f).
@@ -1283,6 +1287,12 @@ pub struct ManaExt {
     /// "Creatures with power less than this creature's power can't block creatures you control."
     /// (Champion of Lambholt)
     pub smaller_cant_block_yours: bool,
+    /// Compleated (CR 702.150): for each Phyrexian pip paid with life (its
+    /// `Action::CastAlternative`), it enters with two fewer loyalty counters.
+    pub compleated: bool,
+    /// Path of Ancestry: when its mana is spent on a creature spell that shares a creature type
+    /// with your commander, `When::ManaSpentOnCommanderTypeCreature` fires on it.
+    pub scry_if_commander_type_creature: bool,
 }
 
 /// "You may pay [mana], [life] and sacrifice or tap [creatures] rather than pay this spell's mana

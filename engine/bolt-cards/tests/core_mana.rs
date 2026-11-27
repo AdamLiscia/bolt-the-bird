@@ -2998,3 +2998,53 @@ mod affinity_for_artifacts {
         );
     }
 }
+
+/// Compleated: `ManaExt::compleated`, two fewer loyalty for each Phyrexian pip paid with life.
+mod compleated {
+    use bolt_cards::set;
+    use bolt_core::{Action, Game, Step, Zone};
+
+    fn cid(name: &str) -> usize {
+        set("CMD").unwrap().index_of(name).unwrap()
+    }
+
+    fn cast_nissa(alt: bool) -> i32 {
+        let mut defs = (*set("CMD").unwrap().defs).clone();
+        let nissa = cid("Nissa, Ascended Animist"); // {3}{G}{G}{G/P}{G/P}, loyalty 7
+        defs[nissa].mana_ext.compleated = true;
+        let plains = vec![cid("Plains"); 99];
+        let mut g = Game::new_commander(
+            std::sync::Arc::new(defs),
+            [&plains, &plains],
+            [cid("Bello, Bard of the Brambles"), cid("Ms. Bumbleflower")],
+            7,
+            0,
+        );
+        g.auto_pass = false;
+        for _ in 0..7 {
+            g.add_card(0, cid("Forest"), Zone::Battlefield);
+        }
+        g.start_turn(3, 0);
+        while g.step != Step::Main1 {
+            g.apply(Action::PassPriority).unwrap();
+        }
+        let n = g.add_card(0, nissa, Zone::Hand);
+        let a = if alt {
+            Action::CastAlternative(n)
+        } else {
+            Action::Cast(n)
+        };
+        g.apply(a).unwrap();
+        while !g.items.is_empty() {
+            g.apply(Action::PassPriority).unwrap();
+        }
+        assert_eq!(g.obj(n).zone, Zone::Battlefield);
+        g.obj(n).loyalty
+    }
+
+    #[test]
+    fn life_for_phyrexian_pips_means_fewer_loyalty_counters() {
+        assert_eq!(cast_nissa(false), 7, "all mana");
+        assert_eq!(cast_nissa(true), 3, "both {{G/P}} paid with life: four fewer");
+    }
+}

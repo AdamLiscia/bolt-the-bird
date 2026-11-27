@@ -1929,6 +1929,11 @@ pub struct Game {
     pub wu_discount_turn: [u32; 2],
     /// High Tide: (turn, how many resolved this turn): each Island adds that many more {U}.
     pub high_tide: (u32, u32),
+    /// Rain of Riches: (source, turn) for the first Treasure-paid spell each turn that got cascade.
+    pub treasure_spell_turn: Vec<(ObjId, u32)>,
+    /// Compleated permanent spells cast with life for their Phyrexian pips: (card, its zcc on the
+    /// battlefield, pips paid with life).
+    pub compleated_life: Vec<(ObjId, u32, u8)>,
 }
 
 /// `Action::CastFromGraveyardAs`'s second number for Karador, Ghost Chieftain's once-each-turn
@@ -2220,6 +2225,8 @@ impl Game {
             creature_color_mana: [([0; 5], 0, Step::PreGame); 2],
             wu_discount_turn: [0; 2],
             high_tide: (0, 0),
+            treasure_spell_turn: Vec::new(),
+            compleated_life: Vec::new(),
             monolith_used: Vec::new(),
             combat_shield_tokens: Vec::new(),
             player_protected_until: [None; 2],
@@ -5606,7 +5613,14 @@ impl Game {
                 );
             }
             if let Some(l) = def.loyalty {
-                let l = l * self.doubling(self.obj(id).controller);
+                // Compleated: two fewer for each Phyrexian pip paid with life.
+                let zcc = self.obj(id).zcc;
+                let fewer = self
+                    .compleated_life
+                    .iter()
+                    .find(|e| e.0 == id && e.1 == zcc)
+                    .map_or(0, |e| 2 * e.2 as i32);
+                let l = (l - fewer).max(0) * self.doubling(self.obj(id).controller);
                 self.obj_mut(id).loyalty = l; // CR 306.5b
                 let controller = self.obj(id).controller;
                 self.counters_placed(controller, l);
@@ -7364,6 +7378,9 @@ impl Game {
             Some(ExtraCost::SacrificeCreatureOfColor(k)) => creatures()
                 .filter(|&(_, m)| m.extra.is_some_and(|x| self.colors_of(x)[*k as usize]))
                 .collect(),
+            Some(ExtraCost::Casualty(n)) => std::iter::once((Action::Cast(c), CastMode::default()))
+                .chain(creatures().filter(|&(_, m)| m.extra.is_some_and(|x| self.power(x) >= *n as i32)))
+                .collect(),
             Some(ExtraCost::RevealColorlessCreature) => self.players[p]
                 .hand
                 .iter()
@@ -8145,6 +8162,7 @@ impl Game {
                         }
                         self.note_haste_mana(id, spell);
                         self.note_treasure_mana(id, spell);
+                        self.note_path_mana(id, spell);
                         let life_cost = self.def_of(id).mana_ext.mana_life_cost;
                         if life_cost > 0 && !self.obj(id).tapped {
                             self.lose_life(p, life_cost); // Mana Confluence
@@ -8253,6 +8271,7 @@ impl Game {
             }
             self.note_haste_mana(id, spell);
             self.note_treasure_mana(id, spell);
+            self.note_path_mana(id, spell);
             let tomb = self.def_of(id).mana_tap_damage;
             if tomb > 0 && !self.obj(id).tapped {
                 self.deal_damage(id, Target::Player(p), tomb as i32); // Ancient Tomb
@@ -10580,6 +10599,28 @@ impl Game {
         }
     }
 
+    /// Path of Ancestry: its mana paid for a creature spell sharing a creature type with its
+    /// controller's commander.
+    fn note_path_mana(&mut self, source: ObjId, spell: PayFor) {
+        if !self.def_of(source).mana_ext.scry_if_commander_type_creature {
+            return;
+        }
+        let PayFor::Spell(c) = spell else {
+            return;
+        };
+        if !self.def_of(c).types.creature {
+            return;
+        }
+        let p = self.obj(source).controller;
+        let shares = [self.commanders[p], self.partners[p]]
+            .into_iter()
+            .flatten()
+            .any(|cmdr| self.def_of(cmdr).subtypes.iter().any(|s| self.has_subtype(c, s)));
+        if shares {
+            self.fire_source(source, When::ManaSpentOnCommanderTypeCreature);
+        }
+    }
+
     /// Alchemist's Talent: whether `p`'s Treasures make two mana each.
     fn treasures_make_two(&self, p: PlayerId) -> bool {
         self.permanents(p).any(|x| {
@@ -11658,6 +11699,12 @@ impl Game {
             let pips: u8 = self.def_of(card).phyrexian.iter().sum();
             // Phyrexian pips paid with life, or Defiler of Vigor's optional additional cost.
             self.lose_life(p, if pips > 0 { 2 * pips as i32 } else { 2 });
+            if pips > 0 && self.def_of(card).mana_ext.compleated {
+                // Compleated: remembered for the permanent it becomes.
+                let zcc = self.obj(card).zcc + 1;
+                self.compleated_life.retain(|e| e.0 != card);
+                self.compleated_life.push((card, zcc, pips));
+            }
         }
         if self.types_of(card).is_permanent() && self.def_of(card).colors[4] {
             self.fire(p, When::YouCastGreenPermanent, None);
@@ -17571,18 +17618,24 @@ impl Game {
                     self.draw(item.controller);
                 }
             }
-            Effect::CopySourceSpell { .. } | Effect::CopySourceSpellPerReplicate => {
-                let n = match e {
-                    Effect::CopySourceSpell { storm: true } => item.amount.max(0) as u32,
-                    Effect::CopySourceSpellPerReplicate => self.times_kicked(src) as u32, // Pyromatics
-                    _ => 1,
-                };
+            Effect::CopySourceSpell { .. }
+            | Effect::CopySourceSpellPerReplicate
+            | Effect::CopySourceSpellIfCasualty => {
                 let snap = self
                     .cast_snapshots
                     .iter()
                     .rev()
                     .find(|s| s.source == src)
                     .cloned();
+                let n = match e {
+                    Effect::CopySourceSpell { storm: true } => item.amount.max(0) as u32,
+                    Effect::CopySourceSpellPerReplicate => self.times_kicked(src) as u32, // Pyromatics
+                    // Make Disappear: a creature was sacrificed for casualty.
+                    Effect::CopySourceSpellIfCasualty => {
+                        snap.as_ref().is_some_and(|s| s.extra.is_some()) as u32
+                    }
+                    _ => 1,
+                };
                 if let Some(snap) = snap {
                     for _ in 0..n {
                         let copy = StackItem {
@@ -21057,6 +21110,17 @@ impl Game {
                 };
                 if n > 0 {
                     self.lose_life(opponent(item.controller), n);
+                }
+            }
+            Effect::StopUnlessFirstTreasureSpellThisTurn => {
+                let turn = self.turn;
+                let ok = item.extra.is_some_and(|x| self.treasure_mana_spent(x))
+                    && !self.treasure_spell_turn.contains(&(src, turn));
+                if ok {
+                    self.treasure_spell_turn.retain(|t| t.1 == turn);
+                    self.treasure_spell_turn.push((src, turn));
+                } else {
+                    self.resolving.as_mut().expect("resolving").remaining.clear();
                 }
             }
             Effect::IncrementSelf => {

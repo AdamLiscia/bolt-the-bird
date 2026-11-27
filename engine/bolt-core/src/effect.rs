@@ -2698,6 +2698,12 @@ pub enum Effect {
     /// (scripted as `ManaExt::multikicker`, cast with `Action::CastX`; `Game::times_kicked`). The
     /// copies keep the spell's targets (as `CopySourceSpell`).
     CopySourceSpellPerReplicate,
+    /// Casualty: copy the source spell once if a creature was sacrificed as it was cast (its
+    /// snapshot's `extra`). The copy keeps the spell's targets (as `CopySourceSpell`).
+    CopySourceSpellIfCasualty,
+    /// Rain of Riches: stop unless the spell in `extra` was paid for with Treasure mana and is the
+    /// first such spell this turn for the source (`Game::treasure_spell_turn`).
+    StopUnlessFirstTreasureSpellThisTurn,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -3667,6 +3673,9 @@ pub enum When {
     /// "Whenever [this] attacks a player and isn't blocked" (Master of Cruelties), once blockers are
     /// declared (`Game::fire_unblocked_at_player`).
     AttacksAndIsntBlocked,
+    /// Path of Ancestry: its mana was spent on a creature spell that shares a creature type with
+    /// your commander (fired on the land by the payment).
+    ManaSpentOnCommanderTypeCreature,
 }
 
 #[derive(Clone, Debug, PartialEq)]

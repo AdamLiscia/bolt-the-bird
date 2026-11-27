@@ -1499,6 +1499,38 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::AnotherCreatureWithFlyingYouControlEnters, vec![], vec![Effect::PumpSelf { power: 1, toughness: 1 }]);
             },
         ),
+        // ---- idea decks ----
+        "Path of Ancestry" => s(
+            &[
+                "This land enters tapped.",
+                "{T}: Add one mana of any color in your commander's color identity. When that mana is spent to cast a creature spell that shares a creature type with your commander, scry 1.",
+            ],
+            |d, _| {
+                d.enters_tapped = true;
+                d.mana_commander_identity = true;
+                d.mana_ext.scry_if_commander_type_creature = true;
+                on(d, When::ManaSpentOnCommanderTypeCreature, vec![], vec![Effect::Scry { n: 1 }]);
+            },
+        ),
+        "Rain of Riches" => s(
+            &[
+                "When this enchantment enters, create two Treasure tokens.",
+                "The first spell you cast each turn that mana from a Treasure was spent to cast has cascade.",
+            ],
+            |d, t| {
+                on(d, When::Enters, vec![], vec![Effect::CreateToken { who: Who::You, def: t.treasure, n: 2 }]);
+                on(d, When::YouCast, vec![], vec![Effect::StopUnlessFirstTreasureSpellThisTurn, Effect::Cascade]);
+            },
+        ),
+        // ---- Najeela, the Blade-Blossom ----
+        "Make Disappear" => s(
+            &["Casualty 1", "Counter target spell unless its controller pays {2}."],
+            |d, _| {
+                d.extra_cost = Some(ExtraCost::Casualty(1));
+                on(d, When::YouCastThis, vec![], vec![Effect::CopySourceSpellIfCasualty]);
+                spell(d, vec![SPELL], vec![Effect::CounterUnlessPays(0, 2, 2)]);
+            },
+        ),
         _ => None,
     }
 }
@@ -1690,4 +1722,7 @@ pub const PG_D1_SCRIPTED: &[&str] = &[
     "Pyromatics",
     "Rith's Grove",
     "Momo, Friendly Flier",
+    "Path of Ancestry",
+    "Rain of Riches",
+    "Make Disappear",
 ];
