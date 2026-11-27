@@ -2036,6 +2036,31 @@ pub fn script(name: &str) -> Option<Script> {
                 d.activated[n].sorcery = true;
             },
         ),
+        "Flitterwing Nuisance" => s(
+            &[
+                "This creature enters with a -1/-1 counter on it.",
+                "{2}{U}, Remove a counter from this creature: Whenever a creature you control deals combat damage to a player or planeswalker this turn, draw a card.",
+            ],
+            |d, _| {
+                d.mana_ext.enters_with_minus_counters = 1;
+                // The draw goes on the stack only from the delayed entry (as Glimpse of Nature).
+                let k = d.triggers.len();
+                on(d, When::Never, vec![], vec![draw(1)]);
+                let when = When::YourCreatureDealsCombatDamageToPlayerOrPlaneswalkerThisTurn;
+                let n = activated(d, "{2}{U}", false, vec![], vec![Effect::DelayedThisTurn { when, trigger: k }]);
+                d.activated[n].remove_counters_self = 1;
+            },
+        ),
+        "Forbidden Orchard" => s(
+            &[
+                "{T}: Add one mana of any color.",
+                "Whenever you tap this land for mana, target opponent creates a 1/1 colorless Spirit creature token.",
+            ],
+            |d, t| {
+                d.mana = Some(ManaSource::of(&Color::ALL));
+                on(d, When::TappedForMana, vec![Filter::PLAYER.controlled_by(Controller::Opponent)], vec![Effect::CreateToken { who: Who::TargetPlayer(0), def: t.spirit_1, n: 1 }]);
+            },
+        ),
         // ---- Ral ----
         "Braid of Fire" => s(&["Cumulative upkeep—Add {R}."], |d, _| {
             on(d, When::Upkeep { your_turn_only: true }, vec![], vec![Effect::CumulativeUpkeepAddMana(Color::Red)]);
@@ -2298,4 +2323,6 @@ pub const PG_D1_SCRIPTED: &[&str] = &[
     "Comet Storm",
     "Changeling Wayfinder",
     "Reaping Willow",
+    "Flitterwing Nuisance",
+    "Forbidden Orchard",
 ];

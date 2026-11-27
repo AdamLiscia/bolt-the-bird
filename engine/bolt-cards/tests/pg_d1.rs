@@ -4179,3 +4179,56 @@ fn reaping_willow_spends_its_two_counters_to_reanimate_a_small_creature() {
         "no counters left"
     );
 }
+
+#[test]
+fn flitterwing_nuisance_draws_for_each_creature_that_connects_this_turn() {
+    let mut g = table();
+    let fw = hand(&mut g, 0, "Flitterwing Nuisance");
+    act(&mut g, Action::Cast(fw));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.power(fw), 1, "a -1/-1 counter");
+    let elves = [put(&mut g, 0, "Llanowar Elves"), put(&mut g, 0, "Llanowar Elves")];
+    for &e in &elves {
+        g.objects[e.0 as usize].since_turn = 0;
+    }
+    act(&mut g, Action::Activate(fw, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.power(fw), 2, "the counter is gone");
+    let cards = g.players[0].hand.len();
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    for &e in &elves {
+        act(&mut g, Action::Attack(e));
+    }
+    act(&mut g, Action::FinishAttacks);
+    while g.step != Step::Main2 {
+        let a = match g.pending {
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            Pending::ChooseTarget(_) | Pending::Decide(_) => g.legal_actions()[0],
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(
+        g.players[0].hand.len(),
+        cards + 2,
+        "one draw per creature that connected"
+    );
+}
+
+#[test]
+fn forbidden_orchard_gives_the_opponent_a_spirit_when_tapped() {
+    let mut g = game(&[]);
+    let orchard = put(&mut g, 0, "Forbidden Orchard");
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    act(&mut g, Action::Cast(bolt));
+    act(&mut g, Action::Target(Target::Player(1)));
+    settle(&mut g);
+    assert!(g.obj(orchard).tapped);
+    assert_eq!(g.players[1].life, 37);
+    assert_eq!(
+        g.creatures(1).filter(|&c| g.def_of(c).name == "Spirit").count(),
+        1
+    );
+}
