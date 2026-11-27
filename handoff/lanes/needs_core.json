@@ -1682,7 +1682,7 @@
   {
    "card": "Mikaeus, the Unhallowed",
    "deck": "The Gitrog, Ravenous Ride (RuricMo)",
-   "missing": "needs core: undying, intimidate, and a 'Human deals damage to you' trigger [d3 batch 20: the +1/+1 is Scope::OtherYourNonHumanCreatures; granting undying needs d1: a Keywords::UNDYING that statics can grant and the dies path honours, then the static gets keywords: UNDYING]",
+   "missing": "needs core: undying, intimidate, and a 'Human deals damage to you' trigger [d3 batch 20: the +1/+1 is Scope::OtherYourNonHumanCreatures; granting undying needs d1: a Keywords::UNDYING that statics can grant and the dies path honours, then the static gets keywords: UNDYING] [done by d3 batch 27: scripted (pg_d3), d2's SubtypeDealsDamageToYou(Human), Scope::OtherYourNonHumanCreatures with keywords UNDYING]",
    "lane": "d2",
    "theme": "keywords",
    "owner": "d1"
@@ -4370,7 +4370,7 @@
   {
    "card": "It That Heralds the End",
    "deck": "Zhulodok, Void Gorger (Adam)",
-   "missing": "cost reduction or alternative cost",
+   "missing": "cost reduction or alternative cost [d3 batch 27: Scope::OtherYourColorlessCreatures is in; with mana_ext.colorless_big_spell_discount = Some((7, 1)) every piece exists. Zhulodok is fenced: lane B scripts the card]",
    "lane": "mac-b",
    "theme": "mana",
    "owner": "d1"
@@ -5386,7 +5386,7 @@
   {
    "card": "Gourmand's Talent",
    "deck": "Bloomburrow Commander (BLC)",
-   "missing": "BLC (lane B's routing, 2026-11-26) [d3: next: during your turn artifacts you control are Foods with the Food ability (a type grant plus a granted activated ability), not started]",
+   "missing": "BLC (lane B's routing, 2026-11-26) [d3: next: during your turn artifacts you control are Foods with the Food ability (a type grant plus a granted activated ability), not started] [d3 batch 25: CardDef::your_artifacts_are_food_your_turn makes them Foods in has_subtype; the Food ability through subtype_you_control_has needs the merger: borrowed_activated grants only to creatures (noncreature artifacts need it, deduped against a real Food), and a granted Sacrifice-this ability loses its ability once the source is in the graveyard (activated_of on the stack item)] [d3 batch 27: still needs the merger: borrowed_activated grants subtype_you_control_has only to creatures, and the granted Sacrifice-this ability is lost once the source is in the graveyard]",
    "lane": "mac-b",
    "theme": "subsystems",
    "owner": "d4"
@@ -5826,7 +5826,7 @@
   {
    "card": "Fabled Passage",
    "deck": "Bruna, Light of Alabaster (DonSpider)",
-   "missing": "lane C's Bruna routing (2026-11-26)",
+   "missing": "lane C's Bruna routing (2026-11-26) [done by d3 batch 29: scripted (pg_d3), SearchTo::BattlefieldTappedUntapIfLands(4)]",
    "lane": "mac-c",
    "theme": "effects",
    "owner": "d3"
@@ -6402,7 +6402,7 @@
   {
    "card": "Gourmand's Talent",
    "deck": "d4 handback (BLC Talents, Sagas)",
-   "missing": "artifacts you control are Foods during your turn",
+   "missing": "artifacts you control are Foods during your turn [d3 batch 25: CardDef::your_artifacts_are_food_your_turn makes them Foods in has_subtype; the Food ability through subtype_you_control_has needs the merger: borrowed_activated grants only to creatures (noncreature artifacts need it, deduped against a real Food), and a granted Sacrifice-this ability loses its ability once the source is in the graveyard (activated_of on the stack item)] [d3 batch 27: still needs the merger: borrowed_activated grants subtype_you_control_has only to creatures, and the granted Sacrifice-this ability is lost once the source is in the graveyard]",
    "lane": "d4",
    "theme": "effects",
    "owner": "d3"
@@ -6418,7 +6418,7 @@
   {
    "card": "Mikaeus, the Unhallowed",
    "deck": "d1 handback",
-   "missing": "d1's piece is in (Keywords::UNDYING, granted or printed, honored as it dies; intimidate exists): d3's 'other non-Human creatures you control get +1/+1 and have undying' static (Scope::OtherYourNonHumanCreatures, keywords UNDYING) and d2's 'whenever a Human deals damage to you, destroy it' trigger",
+   "missing": "d1's piece is in (Keywords::UNDYING, granted or printed, honored as it dies; intimidate exists): d3's 'other non-Human creatures you control get +1/+1 and have undying' static (Scope::OtherYourNonHumanCreatures, keywords UNDYING) and d2's 'whenever a Human deals damage to you, destroy it' trigger [done by d3 batch 27: scripted (pg_d3), d2's SubtypeDealsDamageToYou(Human), Scope::OtherYourNonHumanCreatures with keywords UNDYING]",
    "lane": "d1",
    "theme": "effects",
    "owner": "d3"
@@ -6434,7 +6434,7 @@
   {
    "card": "Skyscribing",
    "deck": "d1 handback",
-   "missing": "d1's forecast is in (Activated::forecast): d3's 'each player draws X cards' (and 'each player draws a card' for the forecast)",
+   "missing": "d1's forecast is in (Activated::forecast): d3's 'each player draws X cards' (and 'each player draws a card' for the forecast) [done by d3 batch 27: scripted (pg_d3), Effect::EachPlayerDrawsX; forecast draws for you and each opponent]",
    "lane": "d1",
    "theme": "effects",
    "owner": "d3"
@@ -6466,7 +6466,7 @@
   {
    "card": "It That Heralds the End",
    "deck": "d1 handback",
-   "missing": "d1's discount is in (ManaExt::colorless_big_spell_discount = (7, 1)): d3's 'other colorless creatures you control get +1/+1' static",
+   "missing": "d1's discount is in (ManaExt::colorless_big_spell_discount = (7, 1)): d3's 'other colorless creatures you control get +1/+1' static [d3 batch 27: Scope::OtherYourColorlessCreatures is in; with mana_ext.colorless_big_spell_discount = Some((7, 1)) every piece exists. Zhulodok is fenced: lane B scripts the card]",
    "lane": "d1",
    "theme": "effects",
    "owner": "d3"
@@ -6554,7 +6554,7 @@
   {
    "card": "Gourmand's Talent",
    "deck": "d4 handback",
-   "missing": "level 1: during your turn, artifacts you control are Foods and have '{2}, {T}, Sacrifice this artifact: You gain 3 life' (d3 types and a granted ability); levels 2 and 3 are on existing pieces (first life gain each turn: Raccoon 3/3, counters on each creature)",
+   "missing": "level 1: during your turn, artifacts you control are Foods and have '{2}, {T}, Sacrifice this artifact: You gain 3 life' (d3 types and a granted ability); levels 2 and 3 are on existing pieces (first life gain each turn: Raccoon 3/3, counters on each creature) [d3 batch 27: still needs the merger: borrowed_activated grants subtype_you_control_has only to creatures, and the granted Sacrifice-this ability is lost once the source is in the graveyard]",
    "lane": "d4",
    "theme": "effects",
    "owner": "d3"

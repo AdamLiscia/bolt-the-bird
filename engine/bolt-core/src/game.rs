@@ -1914,6 +1914,13 @@ pub struct Game {
     /// Exiled cards returned tapped under their owner's control at the beginning of the next end
     /// step: (card, its zcc in exile) (Golden Argosy).
     pub delayed_returns_tapped: Vec<(ObjId, u32)>,
+    /// The turn each player may cast instant and sorcery spells from any graveyard in (The Great
+    /// Work's chapter III; see `Game::casts_from_any_graveyard`).
+    pub any_graveyard_spells_turn: [u32; 2],
+    /// Spells cast for their mana cost from a graveyard under The Great Work's chapter III (cards
+    /// with their own flashback, which also have the `CastFlashback` route): (spell, its zcc on the
+    /// stack). `leave_stack` exiles them.
+    pub any_graveyard_casts: Vec<(ObjId, u32)>,
     /// "Until your next turn, prevent all damage that would be dealt to you": the turn it ends, per
     /// player (Morningtide's Light).
     pub damage_to_you_prevented_until: [Option<u32>; 2],
@@ -2221,6 +2228,8 @@ impl Game {
             hand_links: Vec::new(),
             saddled: Vec::new(),
             karador_turn: [0; 2],
+            any_graveyard_spells_turn: [0; 2],
+            any_graveyard_casts: Vec::new(),
         }
     }
 
@@ -3101,6 +3110,9 @@ impl Game {
                             Scope::YourUntappedCreatures => mine && creature && !o.tapped,
                             Scope::OtherYourNonHumanCreatures => {
                                 mine && creature && src != id && !self.has_base_subtype(id, "Human")
+                            }
+                            Scope::OtherYourColorlessCreatures => {
+                                mine && creature && src != id && self.colors_of(id) == [false; 5]
                             }
                         };
                         let condition_ok = match s.condition {
@@ -6875,7 +6887,13 @@ impl Game {
                 || d.mana_ext.retrace
                 || ((self.obj(c).flashback_eot || self.obj(c).harmonize_eot)
                     && (d.types.instant || d.types.sorcery))
+                || self.casts_from_any_graveyard(p, c) // The Great Work: its own exile-instead cast
         });
+        // The Great Work: instants and sorceries in the other graveyard, cast the same way.
+        let any_graveyard = self.players[opponent(p)]
+            .graveyard
+            .iter()
+            .filter(move |&&c| self.casts_from_any_graveyard(p, c));
         let turn = self.turn;
         let from_exile = self.exile.iter().copied().filter(move |&c| {
             let o = self.obj(c);
@@ -6953,6 +6971,12 @@ impl Game {
             .chain(top.map(|c| (c, false)))
             .chain(command.map(|c| (c, false)))
             .chain(flashback.map(|&c| (c, true)))
+            .chain(any_graveyard.map(|&c| (c, true)))
+            .chain(
+                self.any_graveyard_mana_cost_casts(p)
+                    .into_iter()
+                    .map(|c| (c, false)),
+            )
             .chain(from_exile.map(|c| (c, false)))
             .chain(from_graveyard.map(|c| (c, false)))
             .chain(aftermath.map(|c| (c, false)))
@@ -11348,7 +11372,11 @@ impl Game {
             self.commander_casts[owner] = self.commander_casts[owner].saturating_add(1);
         }
         self.played_from_exile(p, card); // Prosper's Pact Boon
+        let any_graveyard = !mode.flashback && self.casts_from_any_graveyard(p, card); // The Great Work
         self.move_to(card, Zone::Stack);
+        if any_graveyard {
+            self.any_graveyard_casts.push((card, self.obj(card).zcc));
+        }
         self.obj_mut(card).citadel_cast = citadel;
         if mode.alt && self.def_of(card).mana_ext.evoke {
             // Evoked: remembered for the object it becomes on the battlefield.
@@ -12618,6 +12646,7 @@ impl Game {
 
     /// A spell leaves the stack: to the graveyard, or to exile if it was cast with flashback.
     fn leave_stack(&mut self, id: ObjId, flashback: bool) {
+        let flashback = flashback || self.take_any_graveyard_cast(id); // The Great Work
         self.move_to(id, if flashback { Zone::Exile } else { Zone::Graveyard });
     }
 
@@ -14832,6 +14861,16 @@ impl Game {
                         }
                     }
                     SearchTo::BattlefieldPlusCounter => self.enter_with_plus_counter(c),
+                    SearchTo::BattlefieldTappedUntapIfLands(n) => {
+                        self.move_to(c, Zone::Battlefield);
+                        if self.obj(c).zone == Zone::Battlefield {
+                            self.obj_mut(c).tapped = true;
+                            let lands = self.permanents(p).filter(|&x| self.types_of(x).land).count();
+                            if lands >= n as usize {
+                                self.obj_mut(c).tapped = false;
+                            }
+                        }
+                    }
                     SearchTo::ExileCastFreeThisTurn => {
                         self.move_to(c, Zone::Exile);
                         let turn = self.turn;
@@ -20379,6 +20418,13 @@ impl Game {
             Effect::DrawX => {
                 // A dredge decision may be pending: the rest follows its answer.
                 self.draws_with_dredge(vec![(item.controller, item.x as u32)], false);
+            }
+            Effect::EachPlayerDrawsX => {
+                for p in [item.controller, opponent(item.controller)] {
+                    for _ in 0..item.x {
+                        self.draw(p);
+                    }
+                }
             }
             Effect::AddManaAnyColor => {
                 self.players[item.controller]

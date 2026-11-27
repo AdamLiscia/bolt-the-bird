@@ -2677,6 +2677,8 @@ pub enum Effect {
     /// Exile each creature that crewed the source this turn; return them to the battlefield tapped
     /// under their owner's control at the beginning of the next end step (Golden Argosy).
     ExileCrewersReturnTappedAtEnd,
+    /// "Each player draws X cards." (Skyscribing), X the spell's X, you first.
+    EachPlayerDrawsX,
     /// Exile the creature in `slot`; return it to the battlefield tapped under its owner's control
     /// at the beginning of the next end step (Morningtide's Light).
     ExileSlotReturnTappedAtEnd(u8),
@@ -2784,6 +2786,9 @@ pub enum SearchTo {
     BattlefieldTappedUnder(u8),
     /// Onto the battlefield with an additional +1/+1 counter (Neoform).
     BattlefieldPlusCounter,
+    /// Onto the battlefield tapped; then, if you control `n` or more lands, untap it (Fabled
+    /// Passage: 4).
+    BattlefieldTappedUntapIfLands(u8),
 }
 
 /// What a static ability affects.
@@ -2836,6 +2841,8 @@ pub enum Scope {
     /// Other non-Human creatures you control, by printed creature types (Mikaeus, the
     /// Unhallowed); a changeling is a Human, so it's left out.
     OtherYourNonHumanCreatures,
+    /// Other colorless creatures you control (It That Heralds the End).
+    OtherYourColorlessCreatures,
 }
 
 /// What a scaled static ability counts.
@@ -2963,6 +2970,10 @@ pub enum EmblemKind {
     /// An emblem with a triggered ability: trigger number `trigger` of the card that made it
     /// (written with `When::Never`) happens whenever `when` fires for the emblem's owner.
     Triggered { when: When, trigger: usize },
+    /// "Whenever you cast a [color] spell, ...": trigger number `trigger` of the card that made it
+    /// (written with `When::Never`), for its owner's spells of `color` (a `Color` index; Chandra,
+    /// Dressed to Kill: red). The trigger's `extra` is that spell.
+    OnYourColorSpellCast { color: usize, trigger: usize },
 }
 
 /// Which looked-at card may be picked.
@@ -3739,4 +3750,12 @@ pub enum SubsystemEffect {
     /// "This creature deals damage equal to the total mana value of other permanents you control
     /// to each opponent." (Summon: Bahamut's chapter IV, Mega Flare)
     DamageEachOpponentTotalManaValueOfOthers,
+    /// "Until end of turn, you may cast instant and sorcery spells from any graveyard. If a spell cast
+    /// this way would be put into a graveyard, exile it instead." (The Great Work's chapter III):
+    /// sets `Game::any_graveyard_spells_turn`; such a cast is a flashback-style cast (`CastFlashback`,
+    /// its mana cost, exiled as it leaves the stack).
+    CastSpellsFromAnyGraveyardThisTurn,
+    /// "This [source] deals X damage to [the target in `slot`], where X is the amount of mana spent to
+    /// cast that spell." (Chandra, Dressed to Kill's emblem; that spell is the item's `extra`)
+    DamageManaSpentOnThatSpell(u8),
 }
