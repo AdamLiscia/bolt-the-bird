@@ -58,6 +58,7 @@ fn main() {
         max_candidates: cands as usize,
         max_actions: 5_000,
         max_objects: 2_000,
+        time_limit: None,
     };
     let defs = fdn();
     let mask = supported_mask();

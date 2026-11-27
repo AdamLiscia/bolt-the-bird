@@ -25,6 +25,17 @@ from bolt.play_encoding import collate, encode
 # The card set games are played in (BOLT_PLAY_SET, default FDN: the engine's original call).
 PLAY_SET = os.environ.get("BOLT_PLAY_SET", "FDN").upper()
 SET_KW = {} if PLAY_SET == "FDN" else {"set": PLAY_SET}
+# BOLT_PLAY_FORMAT=commander: 1v1 Commander (be.Game.commander, 40 life), each deck a (commanders, cards)
+# pair (bolt.cmd_decks); otherwise the 40-card game, each deck a list of card numbers.
+PLAY_FORMAT = os.environ.get("BOLT_PLAY_FORMAT", "limited").lower()
+
+
+def new_game(a, b, seed, first):
+    """The engine game for one job's decks, in PLAY_FORMAT."""
+    if PLAY_FORMAT == "commander":
+        return be.Game.commander(a[1], b[1], a[0], b[0], seed, first=first, set=PLAY_SET)
+    return be.Game(a, b, seed=seed, first=first, **SET_KW)
+
 
 MAX_TURNS = 200  # the engine's own limit (bolt-cards play.rs)
 # A player can loop inside one turn (activating an ability forever), where the turn limit never
@@ -48,7 +59,8 @@ def _forward(net, encs, chunk=256):
 
 def run_games(net, jobs, seats=("net", "rules"), sample=True, seed=0, smart=(1, 2), record=None,
               max_turns=MAX_TURNS, game_offset=0, max_moves=MAX_MOVES, label_with=None, opp_net=None):  # fmt: skip
-    """jobs: (deck_a, deck_b, seed, first). Returns {"results": [{"result", "turn"}], "steps": [...]}.
+    """jobs: (deck_a, deck_b, seed, first), a Commander deck being (commanders, cards). Returns
+    {"results": [{"result", "turn"}], "steps": [...]}.
 
     label_with=(rollouts, candidates): recorded network steps get the smart player's choice in that
     position as "action" (the label) and the network's own move as "played", which is what the game
@@ -56,7 +68,7 @@ def run_games(net, jobs, seats=("net", "rules"), sample=True, seed=0, smart=(1, 
     record = {i for i, s in enumerate(seats) if s == "net"} if record is None else set(record)
     # seat "opp": another network (a past checkpoint) samples its moves; it is never recorded
     gen = torch.Generator().manual_seed(seed)
-    games = [be.Game(a, b, seed=s, first=f, **SET_KW) for a, b, s, f in jobs]
+    games = [new_game(a, b, s, f) for a, b, s, f in jobs]
     moves = [0] * len(games)
     results: list = [None] * len(games)
     steps = []

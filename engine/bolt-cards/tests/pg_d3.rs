@@ -1393,6 +1393,8 @@ fn atraxa_proliferates_at_your_end_step() {
             break;
         }
     }
+    assert_eq!(g.pending, Pending::Decide(0), "proliferate: choose");
+    resolve_all(&mut g, &[Action::Pick(looter), Action::Yes]);
     assert_eq!(g.obj(looter).counters, 2);
 }
 
@@ -1406,7 +1408,7 @@ fn karns_bastion_proliferates() {
     act(&mut g, Action::Activate(t, 0));
     resolve_all(&mut g, &[]);
     act(&mut g, Action::Activate(b, 0));
-    resolve_all(&mut g, &[]);
+    resolve_all(&mut g, &[Action::Pick(looter), Action::Yes]);
     assert_eq!(g.obj(looter).counters, 2);
 }
 
@@ -2111,7 +2113,7 @@ fn inexorable_tide_proliferates_on_each_spell() {
     act(&mut g, Action::Activate(t, 0));
     resolve_all(&mut g, &[]);
     let ring = hand(&mut g, 0, "Sol Ring");
-    play(&mut g, ring, false, &[], &[]);
+    play(&mut g, ring, false, &[], &[Action::Pick(looter), Action::Yes]);
     assert_eq!(g.obj(looter).counters, 2);
 }
 
@@ -2123,7 +2125,13 @@ fn volt_charge_deals_3_and_proliferates() {
     act(&mut g, Action::Activate(t, 0));
     resolve_all(&mut g, &[]);
     let v = hand(&mut g, 0, "Volt Charge");
-    play(&mut g, v, false, &[Target::Player(1)], &[]);
+    play(
+        &mut g,
+        v,
+        false,
+        &[Target::Player(1)],
+        &[Action::Pick(looter), Action::Yes],
+    );
     assert_eq!(g.players[1].life, 37);
     assert_eq!(g.obj(looter).counters, 2);
 }
@@ -4122,4 +4130,77 @@ fn fabled_passage_untaps_the_land_with_four_lands() {
 fn fabled_passage_leaves_the_land_tapped_with_three_lands() {
     let (g, forest) = fabled_passage_with(&["Plains", "Plains"]);
     assert!(g.obj(forest).tapped, "only three lands: stays tapped");
+}
+
+fn green_sources(g: &Game, id: ObjId) -> bool {
+    g.mana_sources(0).into_iter().any(|(x, m)| x == id && m.colors[4])
+}
+
+#[test]
+fn malcolm_loots_and_casts_the_discarded_card_free_at_four_chorus_counters() {
+    let mut g = table();
+    let malcolm = put(&mut g, 0, "Malcolm, Alluring Scoundrel");
+    assert!(g.keywords(malcolm).has(Keywords::FLASH) && g.keywords(malcolm).has(Keywords::FLYING));
+    g.objects[malcolm.0 as usize].kind_counters = 3;
+    let elves = hand(&mut g, 0, "Llanowar Elves");
+    g.start_turn(5, 0);
+    attack_until_decision(&mut g, malcolm);
+    assert_eq!(g.obj(malcolm).kind_counters, 4, "a chorus counter");
+    assert_eq!(g.pending, Pending::Decide(0), "discard");
+    act(&mut g, Action::Pick(elves));
+    assert_eq!(g.obj(elves).zone, Zone::Graveyard);
+    assert!(
+        g.legal_actions().contains(&Action::Cast(elves)),
+        "may cast it free"
+    );
+    act(&mut g, Action::Cast(elves));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(elves).zone, Zone::Battlefield);
+}
+
+#[test]
+fn malcolm_below_four_chorus_counters_only_loots() {
+    let mut g = table();
+    let malcolm = put(&mut g, 0, "Malcolm, Alluring Scoundrel");
+    let elves = hand(&mut g, 0, "Llanowar Elves");
+    g.start_turn(5, 0);
+    attack_until_decision(&mut g, malcolm);
+    assert_eq!(g.obj(malcolm).kind_counters, 1);
+    act(&mut g, Action::Pick(elves));
+    assert_eq!(g.obj(elves).zone, Zone::Graveyard);
+    assert!(!g.legal_actions().contains(&Action::Cast(elves)));
+}
+
+#[test]
+fn brightcap_badger_makes_saprolings_that_tap_for_green() {
+    let mut g = table();
+    let badger = hand(&mut g, 0, "Brightcap Badger // Fungus Frolic");
+    act(&mut g, Action::CastOmen(badger));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(badger).zone, Zone::Exile, "on an adventure");
+    let saps = tokens(&g, 0, "Saproling");
+    assert_eq!(saps.len(), 2);
+    g.start_turn(5, 0); // no longer summoning sick
+    while g.step != Step::Main1 {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(!green_sources(&g, saps[0]), "no Badger yet");
+    play(&mut g, badger, false, &[], &[]);
+    assert_eq!(g.obj(badger).zone, Zone::Battlefield, "cast from exile");
+    assert!(green_sources(&g, saps[0]) && green_sources(&g, saps[1]));
+    assert!(!green_sources(&g, badger), "only Fungus and Saprolings");
+    while g.step != Step::End {
+        let a = match g.pending {
+            Pending::DeclareAttackers(_) => Action::FinishAttacks,
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        tokens(&g, 0, "Saproling").len(),
+        3,
+        "a Saproling at your end step"
+    );
 }
