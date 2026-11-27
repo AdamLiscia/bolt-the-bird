@@ -489,8 +489,10 @@ def run_parallel(net, jobs, workers=6, chunk=None, seed=0, retries=2, compact=Fa
                       f"{r['slow'].get('moves')} moves, permanents {r['slow'].get('permanents')}", flush=True)  # fmt: skip
                 log(rec)
             if r.get("panic"):
-                rec = {**_hang_record(parts[k][gi], seats, kw, k + gi), "why": "engine panic", **r["panic"]}
-                print(f"PANIC: game {k + gi} (seed {rec['seed']}) at move {rec['moves']}: {rec['message'][:120]}",
+                rec = {**_hang_record(parts[k][gi], seats, kw, k + gi), "why": "engine panic", **r["panic"],
+                       "dropped_steps": r.get("dropped_steps", 0)}  # fmt: skip
+                print(f"PANIC: game {k + gi} (seed {rec['seed']}) at move {rec['moves']}, {rec['dropped_steps']} "
+                      f"recorded decisions dropped: {rec['message'][:120]}",
                       flush=True)  # fmt: skip
                 log(rec)
     results = [r for k in keys for r in done[k]["results"]]
