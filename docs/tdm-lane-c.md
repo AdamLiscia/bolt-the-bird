@@ -1262,3 +1262,13 @@ Court of Grace (`t.spirit`, `t.angel_4`), Forth Eorlingas! (`t.human_knight_2_tr
 for**: a 2/2 red Human Knight with trample and haste). Tests in core_objects (90).
 Likely failure spots when built: the end-step draw count in the Court test (the trigger resolves at End), the
 Ghoul's attack on turn 6 for player 1, `CastX(forth, 2)` paying {2}{R}{W}.
+
+## Batch 24 (unbuilt): Mirrorform; Walk-In Closet held
+
+- `Effect::YourNonlandPermanentsBecomeCopyOf(slot)` (zones.rs `nonland_permanents_become_copy`, through the
+  existing `become_copy`, for good). Mirrorform's target is d3's `Filter::not_subtype = Some("Aura")` on any
+  permanent (no Filter change). Test in core_objects (91).
+- Walk-In Closet // Forgotten Cellar: **held.** The oracle data has only the first door ("You may play lands
+  from your graveyard.") and the Room reminder; Forgotten Cellar's text and cost aren't in it, and Rooms (two
+  doors, unlocking) aren't in the engine. Needs `fetch_oracle.py` to keep both doors (as d4's split fields do)
+  and a Room/unlock subsystem; claiming the card on its first door alone would leave out half of it.

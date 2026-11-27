@@ -2960,6 +2960,9 @@ pub enum Effect {
         monarch: usize,
         other: usize,
     },
+    /// "Each nonland permanent you control becomes a copy of" the permanent in `slot`, for good
+    /// (Mirrorform).
+    YourNonlandPermanentsBecomeCopyOf(u8),
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

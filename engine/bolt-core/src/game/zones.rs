@@ -1189,4 +1189,17 @@ impl Game {
             _ => {}
         }
     }
+
+    /// Mirrorform: each nonland permanent `p` controls becomes a copy of `t` (for good; `t` itself,
+    /// if it's one of them, is unchanged).
+    pub(super) fn nonland_permanents_become_copy(&mut self, p: PlayerId, t: ObjId) {
+        let def = self.obj(t).def;
+        let mine: Vec<ObjId> = self
+            .permanents(p)
+            .filter(|&x| x != t && !self.types_of(x).land)
+            .collect();
+        for id in mine {
+            self.become_copy(id, def);
+        }
+    }
 }

@@ -2156,3 +2156,22 @@ fn forth_eorlingas_makes_knights_and_the_monarch_on_combat_damage() {
     pass_to(&mut g, Step::Main2);
     assert_eq!(g.monarch.map(|(p, _)| p), Some(0));
 }
+
+#[test]
+fn mirrorform_turns_your_nonland_permanents_into_copies() {
+    let mut g = table();
+    let ghoul = put(&mut g, 0, "Hungry Ghoul");
+    let ring = put(&mut g, 0, "Sol Ring");
+    let elves = put(&mut g, 1, "Llanowar Elves");
+    let mirror = hand(&mut g, 0, "Mirrorform");
+    play(&mut g, mirror, false, &[obj(elves)], &[]);
+    assert_eq!(g.def_of(ghoul).name, "Llanowar Elves");
+    assert_eq!(g.def_of(ring).name, "Llanowar Elves");
+    assert!(
+        g.permanents(0)
+            .filter(|&x| g.types_of(x).land)
+            .all(|x| g.def_of(x).name != "Llanowar Elves"),
+        "lands stay"
+    );
+    assert_eq!(g.def_of(elves).name, "Llanowar Elves");
+}

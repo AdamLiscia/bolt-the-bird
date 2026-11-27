@@ -25961,6 +25961,11 @@ impl Game {
             Effect::HideawayAnother(n) => self.hideaway_another(src, item.controller, n),
             Effect::OpponentGainsControlOfSource => self.give_source_to_opponent(src, item.controller),
             Effect::BecomeMonarch => self.monarch = Some((item.controller, src)),
+            Effect::YourNonlandPermanentsBecomeCopyOf(slot) => {
+                if let Some(t) = Game::slot_object(item, legal, slot) {
+                    self.nonland_permanents_become_copy(item.controller, t);
+                }
+            }
             Effect::BecomeMonarchOnCombatDamageThisTurn => {
                 self.monarch_on_combat_damage[item.controller] = Some((self.turn, src))
             }

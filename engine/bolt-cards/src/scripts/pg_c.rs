@@ -2554,6 +2554,10 @@ pub fn script(name: &str) -> Option<Script> {
                 spell(d, vec![], vec![knights, Effect::BecomeMonarchOnCombatDamageThisTurn]);
             },
         ),
+        "Mirrorform" => s(&["Each nonland permanent you control becomes a copy of target non-Aura permanent."], |d, _| {
+            let non_aura = Filter { players: false, creatures: false, planeswalkers: false, any_permanent: true, not_subtype: Some("Aura"), controller: Controller::Any, ..Filter::ANY };
+            spell(d, vec![non_aura], vec![Effect::YourNonlandPermanentsBecomeCopyOf(0)]);
+        }),
         "Fortune Teller's Talent" => s(
             &[
                 "You may look at the top card of your library any time.",
@@ -2916,5 +2920,6 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Midgar, City of Mako // Reactor Raid",
     "Court of Grace",
     "Forth Eorlingas!",
+    "Mirrorform",
     // Not "Evercoat Ursine" (unclaimed: a hidden land must be playable as a land play).
 ];
