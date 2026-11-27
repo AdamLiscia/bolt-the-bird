@@ -44,6 +44,19 @@ impl CardSet {
         let supported = built.iter().map(|b| b.1).collect();
         let mut defs: Vec<CardDef> = built.into_iter().map(|b| b.0).collect();
         defs.extend(scripts::token_defs());
+        // Nesting Dragon's Egg: "When this token dies, create a 2/2 red Dragon ...". Wired here because a
+        // row in `token_defs` can't name another token (it doesn't know where the tokens start).
+        defs[tokens.dragon_egg].triggers.push(bolt_core::Trigger {
+            when: bolt_core::When::Dies,
+            ability: bolt_core::Ability::new(
+                vec![],
+                vec![bolt_core::Effect::CreateToken {
+                    who: bolt_core::Who::You,
+                    def: tokens.dragon_2_firebreathing,
+                    n: 1,
+                }],
+            ),
+        });
         CardSet {
             code,
             oracle,

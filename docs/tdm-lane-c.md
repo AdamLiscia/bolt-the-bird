@@ -1211,3 +1211,5 @@ once d2's 111-118, d3's 119 and 121 and d1's 122 are on tarkir, after 120 (Ashio
   name another token. Proposed (merger's file, lib.rs `CardSet::load`, after `defs.extend(scripts::token_defs())`):
   one line pushing `Trigger { when: When::Dies, ability: CreateToken { who: You, def: tokens.dragon_2_firebreathing,
   n: 1 } }` onto `defs[tokens.dragon_egg]`. Or `token_defs(&Tokens)` if the merger prefers.
+Merger approved option (a) (2026-11-27): the wiring is in lib.rs `CardSet::load` (commit after 2d87a69). Both
+commits need the token rows; if the build comes first, revert both and restore them once the tokens land.
