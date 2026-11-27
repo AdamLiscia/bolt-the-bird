@@ -989,3 +989,11 @@ counters the engine has). "Destroy all battles" is an empty mode: the engine has
 destroy; revisit when battles (Invasion of Ikoria) land. Test in core_objects (52).
 Built on 6343801 (tarkir 56ccd07 merged): Final Act passes. 2,173 Rust tests (core_objects 52, pg_c 212, play.rs 3
 ignored), pytest 166, clippy, fmt and ruff clean.
+
+## 2026-11-27: Agent of the Iron Throne, Summon: Bahamut, and the Bruna/Olivia routing
+
+- Agent of the Iron Throne and Summon: Bahamut: skipped. d4 batch 8 (`SubsystemExt::commanders_have_trigger`,
+  `SubsystemEffect::DamageEachOpponentTotalManaValueOfOthers`) isn't on origin/lane-d4 (still 855074f) or tarkir.
+- Bruna, Light-Paws, Sovereigns of Lost Alara, Olivia, Dragonhawk, Charming Scoundrel, Witch's Mark: all already
+  scripted in pg_c (batches 9-11) and built on tarkir; their needs_core entries are now marked done. The rest of
+  those two decks is in "Still waiting, by owner" under the script-only pass above.

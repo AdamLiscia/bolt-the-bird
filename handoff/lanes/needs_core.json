@@ -5954,7 +5954,7 @@
   {
    "card": "Bruna, Light of Alabaster",
    "deck": "Bruna, Light of Alabaster (DonSpider)",
-   "missing": "lane C's Bruna routing (2026-11-26)",
+   "missing": "lane C's Bruna routing (2026-11-26) [done by lane C: scripted in pg_c, built on tarkir]",
    "lane": "mac-c",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -5962,7 +5962,7 @@
   {
    "card": "Light-Paws, Emperor's Voice",
    "deck": "Bruna, Light of Alabaster (DonSpider)",
-   "missing": "lane C's Bruna routing (2026-11-26)",
+   "missing": "lane C's Bruna routing (2026-11-26) [done by lane C: scripted in pg_c, built on tarkir]",
    "lane": "mac-c",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -5970,7 +5970,7 @@
   {
    "card": "Sovereigns of Lost Alara",
    "deck": "Bruna, Light of Alabaster (DonSpider)",
-   "missing": "lane C's Bruna routing (2026-11-26)",
+   "missing": "lane C's Bruna routing (2026-11-26) [done by lane C: scripted in pg_c, built on tarkir]",
    "lane": "mac-c",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -6194,7 +6194,7 @@
   {
    "card": "Olivia, Crimson Bride",
    "deck": "Olivia, Crimson Bride (DonSpider)",
-   "missing": "lane C's routing (2026-11-26)",
+   "missing": "lane C's routing (2026-11-26) [done by lane C: scripted in pg_c, built on tarkir]",
    "lane": "mac-c",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -6202,7 +6202,7 @@
   {
    "card": "Dragonhawk, Fate's Tempest",
    "deck": "Olivia, Crimson Bride (DonSpider)",
-   "missing": "lane C's routing (2026-11-26)",
+   "missing": "lane C's routing (2026-11-26) [done by lane C: scripted in pg_c, built on tarkir]",
    "lane": "mac-c",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -6210,7 +6210,7 @@
   {
    "card": "Charming Scoundrel",
    "deck": "Olivia, Crimson Bride (DonSpider)",
-   "missing": "lane C's routing (2026-11-26)",
+   "missing": "lane C's routing (2026-11-26) [done by lane C: scripted in pg_c, built on tarkir]",
    "lane": "mac-c",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -6218,7 +6218,7 @@
   {
    "card": "Witch's Mark",
    "deck": "Olivia, Crimson Bride (DonSpider)",
-   "missing": "lane C's routing (2026-11-26)",
+   "missing": "lane C's routing (2026-11-26) [done by lane C: scripted in pg_c, built on tarkir]",
    "lane": "mac-c",
    "theme": "objects_zones",
    "owner": "mac-c"
