@@ -1401,6 +1401,22 @@ pub enum Decision {
     /// Palantír of Orthanc, asked of the targeted opponent: `Yes` has `player` draw a card; `No`
     /// has `player` mill `x` cards and you lose life equal to their total mana value.
     LetDrawOrMill { player: PlayerId, x: u8 },
+    /// Dredge (CR 702.52): before `player` draws (`left` draws to go, then the `more` players'
+    /// draws), `Pick` a card with dredge in their graveyard to return it to their hand and mill N
+    /// instead of drawing, or `No` to draw. `draw_step`: the turn's draw, so the draw step goes on
+    /// afterwards.
+    Dredge {
+        player: PlayerId,
+        left: u32,
+        more: Vec<(PlayerId, u32)>,
+        draw_step: bool,
+    },
+    /// Rona, Tolarian Obliterator: `Yes` puts the exiled land `card` onto the battlefield under
+    /// your control, `No` leaves it in exile.
+    MayPutExiledLandOntoBattlefield { card: ObjId },
+    /// Sheoldred // The True Scriptures: `Pick` a nontoken creature or planeswalker you control to
+    /// sacrifice (asked only when there is one).
+    SacrificeNontokenCreatureOrPlaneswalker,
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -8997,6 +9013,9 @@ impl Game {
                     || (a.not_your_turn_only && p == self.active)
                     || (a.needs_delirium && self.graveyard_card_types(p) < 4)
                     || (a.needs_threshold && self.players[p].graveyard.len() < 7)
+                    || (self.instants_sorceries_cast[p] < a.min_instants_sorceries_this_turn as u32)
+                    || (a.opponent_min_graveyard > 0
+                        && self.players[opponent(p)].graveyard.len() < a.opponent_min_graveyard as usize)
                     || (a.min_attackers_this_turn > 0
                         && !(p == self.active
                             && self.attacked_creatures_this_turn.len() >= a.min_attackers_this_turn as usize))
@@ -12704,6 +12723,57 @@ impl Game {
             .collect()
     }
 
+    /// Dredge (CR 702.52a): the cards in `p`'s graveyard that may replace a draw, with their dredge
+    /// number, offered only when `p`'s library has at least that many cards (The Necrobloom: land
+    /// cards, dredge 2).
+    fn dredge_options(&self, p: PlayerId) -> Vec<(ObjId, u8)> {
+        let Some(n) = self
+            .permanents(p)
+            .filter(|&x| !self.lost_abilities(x))
+            .find_map(|x| self.def_of(x).lands_in_graveyard_have_dredge)
+        else {
+            return Vec::new();
+        };
+        if self.players[p].library.len() < n as usize {
+            return Vec::new();
+        }
+        self.players[p]
+            .graveyard
+            .iter()
+            .copied()
+            .filter(|&c| self.def_of(c).types.land)
+            .map(|c| (c, n))
+            .collect()
+    }
+
+    /// Draws for the given players, offering dredge before each draw that could be dredged
+    /// (`Decision::Dredge`). Returns true if a decision is now pending (the caller stops; the
+    /// rest happens as it's answered).
+    fn draws_with_dredge(&mut self, mut draws: Vec<(PlayerId, u32)>, draw_step: bool) -> bool {
+        while !draws.is_empty() {
+            let (p, left) = draws.remove(0);
+            for k in 0..left {
+                if !self.dredge_options(p).is_empty() {
+                    let more = draws;
+                    self.ask(
+                        p,
+                        Decision::Dredge {
+                            player: p,
+                            left: left - k,
+                            more,
+                            draw_step,
+                        },
+                    );
+                    return true;
+                }
+                self.in_draw_step_draw = draw_step;
+                self.draw(p);
+                self.in_draw_step_draw = false;
+            }
+        }
+        false
+    }
+
     /// The nontoken artifacts `p` controls that can be sacrificed (Rootcast Apprenticeship).
     fn nontoken_artifacts_to_sacrifice(&self, p: PlayerId) -> Vec<ObjId> {
         self.permanents(p)
@@ -12862,6 +12932,15 @@ impl Game {
             }
             Decision::ChooseEnterMode { .. } => vec![Action::Mode(0), Action::Mode(1)],
             Decision::Riot { .. } => vec![Action::Mode(0), Action::Mode(1)],
+            Decision::Dredge { player, .. } => {
+                let mut v: Vec<Action> = self
+                    .dredge_options(*player)
+                    .into_iter()
+                    .map(|e| Action::Pick(e.0))
+                    .collect();
+                v.push(Action::No);
+                v
+            }
             Decision::CrewTap { source, n, chosen } => {
                 let a = self.activated_of(*source, *n);
                 let need = a.crew.max(a.saddle) as i32;
@@ -13826,6 +13905,12 @@ impl Game {
             Decision::DiscardThenIfInstantOrSorcery => hand.iter().copied().map(Action::Pick).collect(),
             Decision::PatronOfChaosSacrifice { first, .. } => self.patron_of_chaos_actions(p, *first),
             Decision::ExileFromHandUntilSourceLeaves { victim, .. } => self.hand_link_actions(*victim),
+            Decision::MayPutExiledLandOntoBattlefield { .. } => vec![Action::Yes, Action::No],
+            Decision::SacrificeNontokenCreatureOrPlaneswalker => self
+                .nontoken_creature_or_planeswalker_options(p)
+                .into_iter()
+                .map(Action::Pick)
+                .collect(),
             Decision::MoveAuraTo { aura } => self
                 .move_aura_options(*aura, p)
                 .into_iter()
@@ -13953,6 +14038,47 @@ impl Game {
                 self.give_priority(p);
             } else {
                 self.open_free_casts();
+            }
+            return;
+        }
+        if let Decision::Dredge {
+            player,
+            left,
+            more,
+            draw_step,
+        } = d
+        {
+            if let Action::Pick(c) = a {
+                // Return it to the hand and mill N instead of drawing (not a draw).
+                let n = self
+                    .dredge_options(player)
+                    .iter()
+                    .find(|e| e.0 == c)
+                    .map_or(0, |e| e.1);
+                self.move_to(c, Zone::Hand);
+                for _ in 0..n {
+                    if let Some(&top) = self.players[player].library.last() {
+                        self.move_to(top, Zone::Graveyard);
+                    }
+                }
+            } else {
+                self.in_draw_step_draw = draw_step;
+                self.draw(player);
+                self.in_draw_step_draw = false;
+            }
+            let mut draws = vec![(player, left - 1)];
+            draws.extend(more);
+            draws.retain(|e| e.1 > 0);
+            if self.draws_with_dredge(draws, draw_step) {
+                return;
+            }
+            if draw_step {
+                let active = self.active;
+                self.fire(active, When::EachDrawStep, None);
+                self.fire(opponent(active), When::EachDrawStep, None);
+                self.give_priority(active);
+            } else if self.resolving.is_some() {
+                self.continue_resolving();
             }
             return;
         }
@@ -15498,6 +15624,16 @@ impl Game {
             (Decision::ExileFromHandUntilSourceLeaves { source, zcc, .. }, a) => {
                 self.hand_link_decide(source, zcc, a)
             }
+            (Decision::SacrificeNontokenCreatureOrPlaneswalker, Action::Pick(c)) => {
+                self.move_to(c, Zone::Graveyard);
+                self.sacrificed(c, p);
+            }
+            (Decision::MayPutExiledLandOntoBattlefield { card }, a) => {
+                if a == Action::Yes && self.obj(card).zone == Zone::Exile {
+                    self.obj_mut(card).controller = p;
+                    self.move_to(card, Zone::Battlefield);
+                }
+            }
             (Decision::MoveAuraTo { aura }, Action::Pick(c)) => {
                 let zcc = self.obj(c).zcc;
                 self.obj_mut(aura).attached_to = Some((c, zcc));
@@ -16222,11 +16358,13 @@ impl Game {
                 }
             }
             Effect::Draw { who, n } => {
-                for p in self.players_for(item, legal, who) {
-                    for _ in 0..n {
-                        self.draw(p);
-                    }
-                }
+                let draws: Vec<(PlayerId, u32)> = self
+                    .players_for(item, legal, who)
+                    .into_iter()
+                    .map(|p| (p, n as u32))
+                    .collect();
+                // A dredge decision may be pending: the rest follows its answer.
+                self.draws_with_dredge(draws, false);
             }
             Effect::GainLife { who, n } => {
                 for p in self.players_for(item, legal, who) {
@@ -19057,9 +19195,8 @@ impl Game {
                     item.targets.get(slot as usize),
                     legal.get(slot as usize).copied().unwrap_or(false),
                 ) {
-                    for _ in 0..item.x {
-                        self.draw(q);
-                    }
+                    // A dredge decision may be pending: the rest follows its answer.
+                    self.draws_with_dredge(vec![(q, item.x as u32)], false);
                 }
             }
             Effect::MayCastFromHandFree { max_mv } => {
@@ -19846,6 +19983,18 @@ impl Game {
                     }
                 }
             }
+            Effect::CreateTokenBySevenLandNames { fewer, seven } => {
+                let p = item.controller;
+                let mut names: Vec<&str> = self
+                    .permanents(p)
+                    .filter(|&x| self.types_of(x).land)
+                    .map(|x| self.def_of(x).name.as_str())
+                    .collect();
+                names.sort_unstable();
+                names.dedup();
+                let def = if names.len() >= 7 { seven } else { fewer };
+                self.create_token(p, def);
+            }
             Effect::OpponentLifeBecomesOne => {
                 let q = opponent(item.controller);
                 let life = self.players[q].life;
@@ -20079,9 +20228,8 @@ impl Game {
                 }
             }
             Effect::DrawX => {
-                for _ in 0..item.x {
-                    self.draw(item.controller);
-                }
+                // A dredge decision may be pending: the rest follows its answer.
+                self.draws_with_dredge(vec![(item.controller, item.x as u32)], false);
             }
             Effect::AddManaAnyColor => {
                 self.players[item.controller]
@@ -20577,9 +20725,9 @@ impl Game {
                 }
             }
             Effect::DrawAmount => {
-                for _ in 0..item.amount {
-                    self.draw(item.controller);
-                }
+                let n = item.amount.max(0) as u32;
+                // A dredge decision may be pending: the rest follows its answer.
+                self.draws_with_dredge(vec![(item.controller, n)], false);
             }
             Effect::CreateTokensAmount { def } => {
                 for _ in 0..item.amount {
@@ -23846,6 +23994,17 @@ impl Game {
                     self.hand_link_ask(src, item.controller, q);
                 }
             }
+            Effect::OpponentSacrificesNontokenCreatureOrPlaneswalker => {
+                let q = opponent(item.controller);
+                if !self.nontoken_creature_or_planeswalker_options(q).is_empty() {
+                    self.ask(q, Decision::SacrificeNontokenCreatureOrPlaneswalker);
+                }
+            }
+            Effect::DamageSourceControllerExilesRandomFromHand => {
+                if let Some(source) = item.extra {
+                    self.exile_random_from_damager_hand(source, item.controller);
+                }
+            }
             Effect::DiscardThenIfInstantOrSorcery => {
                 let p = item.controller;
                 if self.players[p].hand.is_empty() {
@@ -24760,10 +24919,8 @@ impl Game {
             }
             Step::Draw => {
                 // CR 103.8a: the player who goes first skips their first draw.
-                if self.turn > 1 {
-                    self.in_draw_step_draw = true;
-                    self.draw(a);
-                    self.in_draw_step_draw = false;
+                if self.turn > 1 && self.draws_with_dredge(vec![(a, 1)], true) {
+                    return; // dredge? (the draw step goes on after the answer)
                 }
                 self.fire(a, When::EachDrawStep, None);
                 self.fire(opponent(a), When::EachDrawStep, None);
@@ -25887,6 +26044,7 @@ impl Game {
                     self.fire_source(id, When::DealtDamage);
                     for t in &mut self.triggered[before..] {
                         t.amount = amount;
+                        t.extra = t.extra.or(Some(source)); // borrowed from d2: the damage source (Rona)
                     }
                 }
             }

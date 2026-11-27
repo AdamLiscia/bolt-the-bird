@@ -372,6 +372,12 @@ pub struct Activated {
     /// `Decision::CrewTap` the rest). Scripted with `sorcery` and `victim_in_extra`;
     /// `Effect::BecomeSaddled` records the riders.
     pub saddle: u8,
+    /// "Activate only if you've cast N or more instant and/or sorcery spells this turn." (Urabrask:
+    /// 3), from `Game::instants_sorceries_cast`.
+    pub min_instants_sorceries_this_turn: u8,
+    /// "Activate only if an opponent has N or more cards in their graveyard." (Sheoldred // The
+    /// True Scriptures: 8)
+    pub opponent_min_graveyard: u8,
     /// "Remove a +1/+1 counter from this creature" in the cost (Walking Ballista).
     pub remove_plus_counter: bool,
 }
@@ -1068,6 +1074,8 @@ pub struct CardDef {
     /// Ojer Taq: "If one or more creature tokens would be created under your control, three times
     /// that many of those tokens are created instead." (`Game::creature_token_tripling`)
     pub triples_creature_tokens: bool,
+    /// The Necrobloom: "Land cards in your graveyard have dredge N." (2), see `Game::dredge_options`.
+    pub lands_in_graveyard_have_dredge: Option<u8>,
 }
 
 /// A card's pieces from the d4 subsystems (see [`CardDef::subsystems`]).
@@ -1621,6 +1629,7 @@ impl CardDef {
             overload_spell: None,
             others_of_chosen_type_enter_with_counter: false,
             triples_creature_tokens: false,
+            lands_in_graveyard_have_dredge: None,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -1913,6 +1922,7 @@ impl CardDef {
             overload_spell: None,
             others_of_chosen_type_enter_with_counter: false,
             triples_creature_tokens: false,
+            lands_in_graveyard_have_dredge: None,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -2205,6 +2215,7 @@ impl CardDef {
             overload_spell: None,
             others_of_chosen_type_enter_with_counter: false,
             triples_creature_tokens: false,
+            lands_in_graveyard_have_dredge: None,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,

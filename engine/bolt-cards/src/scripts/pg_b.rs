@@ -2279,6 +2279,17 @@ pub fn script(name: &str) -> Option<Script> {
                 d.mana_ext.colored_removes_kind_counter = true;
             },
         ),
+        "The Necrobloom" => s(
+            &[
+                "Landfall \u{2014} Whenever a land you control enters, create a 0/1 green Plant creature token. If you control seven or more lands with different names, create a 2/2 black Zombie creature token instead.",
+                "Land cards in your graveyard have dredge 2.",
+            ],
+            |d, t| {
+                let token = Effect::CreateTokenBySevenLandNames { fewer: t.plant, seven: t.zombie };
+                on(d, When::LandYouControlEnters, vec![], vec![token]);
+                d.lands_in_graveyard_have_dredge = Some(2);
+            },
+        ),
         _ => None,
     }
 }
@@ -2538,6 +2549,7 @@ pub const PG_B_SCRIPTED: &[&str] = &[
     "Master of Cruelties",
     "Overpowering Attack",
     "Tendo Ice Bridge",
+    "The Necrobloom",
     // Ghyrson Starn (Spr3adsh33t)
     "Basilisk Collar",
     "Gorgon's Head",

@@ -1018,3 +1018,23 @@ tapped" trigger would want one). The others are tapped with the named one in `pa
   unblocked-attack pieces), Overpowering Attack (d1's freerunning; Waves of Aggression's untap and
   additional combat and main phase), Tendo Ice Bridge (a charge counter as it enters, from an enters
   trigger; d1's `colored_removes_kind_counter`).
+
+### Dredge and The Necrobloom (2026-11-27)
+
+`Decision::Dredge { player, left, more, draw_step }` is asked before a draw starts, through
+`Game::draws_with_dredge`, whenever the player has a card with dredge in their graveyard and at
+least that many cards in their library (`Game::dredge_options`; The Necrobloom's
+`lands_in_graveyard_have_dredge`). `Pick` returns that card to the hand and mills N instead of
+drawing (not a draw: `draws_this_turn` and `drawn_this_turn` don't count it); `No` draws. Each draw
+of a multi-card draw is asked separately.
+
+Draws that offer dredge: the draw step's draw, `Effect::Draw`, `DrawX`, `DrawAmount`,
+`DrawXTarget`. Every other draw is automatic (no dredge offered), among them: the other `Draw*`
+effects (per creature, per power, if-conditions, `DrawThenPutBack`, `DrawUpToHandSize`,
+`DrawThreeMayCastOneFree` and the rest), draws inside decisions (Sylvan Library's two, Kwain's,
+loots and connive), Alhammarret's Archive's extra draw, draws from costs and mana abilities, and
+the draw in `Decision::MayDrawGainOne`.
+
+The Necrobloom: landfall `Effect::CreateTokenBySevenLandNames` (a 0/1 Plant, or a 2/2 Zombie with
+seven or more land names) and dredge 2 for its controller's land cards. Tokens 52 (Plant) and 20
+(Zombie) are now green and black, as every card that makes them says.
