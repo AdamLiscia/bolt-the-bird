@@ -1542,6 +1542,14 @@ pub enum Decision {
     /// Blight `n`: `Pick` a creature you control to put `n` -1/-1 counters on, or `No` (don't, and
     /// skip the rest of the effect).
     BlightCreature { n: u8 },
+    /// Herald of Leshrac's cumulative upkeep: `Pick` a land you don't control to gain control of
+    /// (`chosen` so far, `need` in all, one per age counter), or `No` (before the first pick, or
+    /// when too few lands) sacrifices `source`.
+    UpkeepGainLandsOrSacrifice {
+        source: ObjId,
+        chosen: Vec<ObjId>,
+        need: u8,
+    },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -4048,6 +4056,14 @@ impl Game {
         if d.pt_half_highest_opponent_life {
             let life = self.players[opponent(self.obj(id).controller)].life.max(0);
             b += (life + 1) / 2;
+        }
+        if d.mana_ext.pt_per_land_controlled_not_owned {
+            // Herald of Leshrac: lands you control but don't own.
+            let p = self.obj(id).controller;
+            b += self
+                .permanents(p)
+                .filter(|&x| self.types_of(x).land && self.obj(x).owner != p)
+                .count() as i32;
         }
         if d.pt_per_graveyard_creature {
             let p = self.obj(id).controller;
@@ -7631,11 +7647,8 @@ impl Game {
         // Cards an effect lets you cast from your graveyard this turn (Zul Ashur).
         let conduit_ok = self.spells_cast[p] == 0;
         let from_graveyard = self.players[p].graveyard.iter().copied().filter(move |&c| {
-            self.obj(c)
-                .playable
-                .is_some_and(|(q, until)| q == p && turn <= until)
-                || (conduit_ok && turn > 0 && self.obj(c).conduit_turn == turn)
-                || self.def_of(c).zones.cast_from_graveyard_or_exile // Squee, the Immortal
+            self.graveyard_cast_permitted(p, c, conduit_ok) || self.def_of(c).mana_ext.warp_from_graveyard
+            // Timeline Culler: its warp only
         });
         // Aftermath halves, cast from your graveyard (CR 702.127a).
         let aftermath = self.players[p]
@@ -7817,8 +7830,16 @@ impl Game {
                     }
                 }
             }
+            // Timeline Culler: from the graveyard only with its warp (unless something else allows it).
+            let warp_only = def.mana_ext.warp_from_graveyard
+                && !from_graveyard
+                && self.obj(c).zone == Zone::Graveyard
+                && !self.graveyard_cast_permitted(p, c, self.spells_cast[p] == 0);
             for (action, mode) in self.cast_modes(p, c, from_graveyard) {
                 if behold_flash && !mode.kicked {
+                    continue;
+                }
+                if warp_only && !matches!(action, Action::CastAlternative(_)) {
                     continue;
                 }
                 if per_mode && mode.mode.is_none() {
@@ -7937,6 +7958,23 @@ impl Game {
 
     /// The ways to cast `c`: plain, kicked, flashback, or paying an additional cost with each
     /// eligible creature or card.
+    /// Whether `p` may cast card `c` from their graveyard with its normal cost: an effect's
+    /// permission (Zul Ashur, `conduit_ok`), Squee, or Gravecrawler's "as long as you control a
+    /// Zombie".
+    fn graveyard_cast_permitted(&self, p: PlayerId, c: ObjId, conduit_ok: bool) -> bool {
+        let turn = self.turn;
+        self.obj(c)
+            .playable
+            .is_some_and(|(q, until)| q == p && turn <= until)
+            || (conduit_ok && turn > 0 && self.obj(c).conduit_turn == turn)
+            || self.def_of(c).zones.cast_from_graveyard_or_exile // Squee, the Immortal
+            || self
+                .def_of(c)
+                .mana_ext
+                .cast_from_graveyard_if_control
+                .is_some_and(|sub| self.permanents(p).any(|x| self.has_subtype(x, sub)))
+    }
+
     fn cast_modes(&self, p: PlayerId, c: ObjId, from_graveyard: bool) -> Vec<(Action, CastMode)> {
         let def = self.def_of(c);
         // CR 202.1b: no mana cost, so it's cast only without paying it (suspend).
@@ -8171,9 +8209,16 @@ impl Game {
                         },
                     ));
                 }
-                // Warp, morph: cast from hand for the alternative cost.
-                let in_hand_now = self.obj(c).zone == Zone::Hand;
-                if in_hand_now && def.alt_cost.is_none() && (def.warp.is_some() || def.morph.is_some()) {
+                // Warp, morph: cast from hand for the alternative cost (Timeline Culler: warp from
+                // the graveyard too, if its life can be paid).
+                let in_hand_now = self.obj(c).zone == Zone::Hand
+                    || (def.mana_ext.warp_from_graveyard && self.obj(c).zone == Zone::Graveyard);
+                let warp_life_ok = def.warp.is_none() || self.players[p].life >= def.mana_ext.warp_life;
+                if in_hand_now
+                    && warp_life_ok
+                    && def.alt_cost.is_none()
+                    && (def.warp.is_some() || def.morph.is_some())
+                {
                     v.push((
                         Action::CastAlternative(c),
                         CastMode {
@@ -12912,6 +12957,9 @@ impl Game {
                 self.compleated_life.push((card, zcc, pips));
             }
         }
+        if item.alt && self.def_of(card).warp.is_some() && self.def_of(card).mana_ext.warp_life > 0 {
+            self.lose_life(p, self.def_of(card).mana_ext.warp_life); // Timeline Culler's warp
+        }
         if self.types_of(card).is_permanent() && self.def_of(card).colors[4] {
             self.fire(p, When::YouCastGreenPermanent, None);
         }
@@ -14918,6 +14966,23 @@ impl Game {
             }
             Decision::ManaOfOneColor { .. } => (0..5).map(Action::Mode).collect(),
             Decision::UpkeepAddManaOrSacrifice { .. } => vec![Action::Yes, Action::No],
+            Decision::UpkeepGainLandsOrSacrifice { chosen, need, .. } => {
+                let lands: Vec<ObjId> = self
+                    .battlefield
+                    .iter()
+                    .copied()
+                    .filter(|&x| self.obj(x).controller != p && self.types_of(x).land && !chosen.contains(&x))
+                    .collect();
+                let mut v: Vec<Action> = if lands.len() + chosen.len() >= *need as usize {
+                    lands.into_iter().map(Action::Pick).collect()
+                } else {
+                    Vec::new() // too few lands: it can't be paid
+                };
+                if chosen.is_empty() {
+                    v.push(Action::No);
+                }
+                v
+            }
             Decision::ImprintInstant { .. } => {
                 let mut v: Vec<Action> = hand
                     .iter()
@@ -16857,6 +16922,34 @@ impl Game {
             (Decision::UpkeepAddManaOrSacrifice { color, n, .. }, Action::Yes) => {
                 for _ in 0..n {
                     self.players[p].pool.push(ManaSource::of(&[color]));
+                }
+            }
+            (
+                Decision::UpkeepGainLandsOrSacrifice {
+                    source,
+                    mut chosen,
+                    need,
+                },
+                Action::Pick(x),
+            ) => {
+                chosen.push(x);
+                if chosen.len() < need as usize {
+                    self.ask(p, Decision::UpkeepGainLandsOrSacrifice { source, chosen, need });
+                } else {
+                    let turn = self.turn;
+                    for l in chosen {
+                        if self.obj(l).zone == Zone::Battlefield {
+                            let o = self.obj_mut(l);
+                            o.controller = p; // for good
+                            o.since_turn = turn; // CR 302.6
+                        }
+                    }
+                }
+            }
+            (Decision::UpkeepGainLandsOrSacrifice { source, .. }, _) => {
+                if self.obj(source).zone == Zone::Battlefield && !self.cant_be_sacrificed(source) {
+                    self.move_to(source, Zone::Graveyard);
+                    self.sacrificed(source, p);
                 }
             }
             (Decision::UpkeepAddManaOrSacrifice { source, .. }, _) => {
@@ -26581,6 +26674,33 @@ impl Game {
                             n,
                         },
                     );
+                }
+            }
+            Effect::CumulativeUpkeepGainLand => {
+                if self.obj(src).zone == Zone::Battlefield {
+                    self.obj_mut(src).kind_counters += 1; // an age counter
+                    self.counters_placed(item.controller, 1);
+                    let need = self.obj(src).kind_counters.clamp(0, 255) as u8;
+                    self.ask(
+                        item.controller,
+                        Decision::UpkeepGainLandsOrSacrifice {
+                            source: src,
+                            chosen: Vec::new(),
+                            need,
+                        },
+                    );
+                }
+            }
+            Effect::OwnersRegainLandsYouControl => {
+                let me = item.controller;
+                let turn = self.turn;
+                for l in self.permanents(me).collect::<Vec<_>>() {
+                    let owner = self.obj(l).owner;
+                    if self.types_of(l).land && owner != me {
+                        let o = self.obj_mut(l);
+                        o.controller = owner;
+                        o.since_turn = turn;
+                    }
                 }
             }
             Effect::InstantSorceryDiscountUntilYourNextTurn(k) => {

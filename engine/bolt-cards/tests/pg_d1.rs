@@ -4475,3 +4475,106 @@ fn castle_garenbrig_makes_six_green_for_creature_spells_only() {
     assert_eq!(g.obj(elves).zone, Zone::Battlefield);
     assert_eq!(g.creature_ability_color_mana[0].0[4], 5);
 }
+
+#[test]
+fn gravecrawler_casts_from_the_graveyard_only_while_you_control_a_zombie() {
+    let mut g = table();
+    let gc = g.add_card(0, cid("Gravecrawler"), Zone::Graveyard);
+    assert!(!g.legal_actions().contains(&Action::Cast(gc)), "no Zombie");
+    let other = put(&mut g, 0, "Gravecrawler");
+    assert!(g.legal_actions().contains(&Action::Cast(gc)), "a Zombie");
+    act(&mut g, Action::Cast(gc));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(gc).zone, Zone::Battlefield);
+    assert!(g.def_of(other).cant_block);
+}
+
+#[test]
+fn timeline_culler_warps_from_the_graveyard_for_b_and_two_life() {
+    let mut g = table();
+    let tc = g.add_card(0, cid("Timeline Culler"), Zone::Graveyard);
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::CastAlternative(tc)), "its warp");
+    assert!(
+        !legal.contains(&Action::Cast(tc)),
+        "not its mana cost from the graveyard"
+    );
+    let life = g.players[0].life;
+    act(&mut g, Action::CastAlternative(tc));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(tc).zone, Zone::Battlefield);
+    assert_eq!(g.players[0].life, life - 2);
+    assert!(g.obj(tc).warped, "exiled at the next end step");
+    while g.step != Step::End {
+        let a = match g.pending {
+            Pending::DeclareAttackers(_) => Action::FinishAttacks,
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.obj(tc).zone, Zone::Exile);
+    // With 1 life, the warp can't be paid.
+    let mut g = table();
+    let tc = g.add_card(0, cid("Timeline Culler"), Zone::Graveyard);
+    g.players[0].life = 1;
+    assert!(!g.legal_actions().contains(&Action::CastAlternative(tc)));
+    // From the hand: either cost.
+    let h = hand(&mut g, 0, "Timeline Culler");
+    let legal = g.legal_actions();
+    assert!(!legal.contains(&Action::CastAlternative(h)), "1 life");
+    assert!(legal.contains(&Action::Cast(h)));
+}
+
+/// Through the opponent's turn to player 0's next upkeep decision.
+fn to_my_upkeep_decision(g: &mut Game) {
+    while !matches!(g.pending, Pending::Decide(_)) {
+        let a = match g.pending {
+            Pending::DeclareAttackers(_) => Action::FinishAttacks,
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ if !g.legal_actions().contains(&Action::PassPriority) => g.legal_actions()[0], // cleanup discard
+            _ => Action::PassPriority,
+        };
+        act(g, a);
+    }
+    assert_eq!((g.active, g.step), (0, Step::Upkeep));
+}
+
+#[test]
+fn herald_of_leshrac_takes_a_land_per_age_counter_and_gives_them_back_when_it_leaves() {
+    let mut g = table();
+    let h = put(&mut g, 0, "Herald of Leshrac");
+    assert!(g.keywords(h).has(Keywords::FLYING));
+    assert_eq!((g.power(h), g.toughness(h)), (2, 4));
+    to_my_upkeep_decision(&mut g);
+    let theirs: Vec<ObjId> = g.permanents(1).filter(|&x| g.types_of(x).land).collect();
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Pick(theirs[0])) && legal.contains(&Action::No));
+    let mine = g.permanents(0).find(|&x| g.types_of(x).land).expect("a land");
+    assert!(
+        !legal.contains(&Action::Pick(mine)),
+        "only a land you don't control"
+    );
+    act(&mut g, Action::Pick(theirs[0]));
+    assert_eq!(g.obj(theirs[0]).controller, 0, "for good");
+    assert_eq!(
+        (g.power(h), g.toughness(h)),
+        (3, 5),
+        "a land you control but don't own"
+    );
+    // It leaves: each land goes back to its owner.
+    g.move_card(h, Zone::Graveyard);
+    act(&mut g, Action::PassPriority); // the trigger goes on the stack
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(theirs[0]).controller, 1);
+}
+
+#[test]
+fn herald_of_leshrac_is_sacrificed_when_not_paid() {
+    let mut g = table();
+    let h = put(&mut g, 0, "Herald of Leshrac");
+    to_my_upkeep_decision(&mut g);
+    act(&mut g, Action::No);
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(h).zone, Zone::Graveyard);
+}

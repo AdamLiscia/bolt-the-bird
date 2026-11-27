@@ -2178,6 +2178,39 @@ pub fn script(name: &str) -> Option<Script> {
             let n = activated(d, "", false, vec![basic], vec![Effect::UntapTarget(0)]);
             d.activated[n].tap_named_creature = true;
         }),
+        "Gravecrawler" => s(
+            &[
+                "This creature can't block.",
+                "You may cast this card from your graveyard as long as you control a Zombie.",
+            ],
+            |d, _| {
+                d.cant_block = true;
+                d.mana_ext.cast_from_graveyard_if_control = Some("Zombie");
+            },
+        ),
+        "Timeline Culler" => s(
+            &[
+                "You may cast this card from your graveyard using its warp ability.",
+                "Warp—{B}, Pay 2 life.",
+            ],
+            |d, _| {
+                d.warp = ManaCost::parse("{B}");
+                d.mana_ext.warp_from_graveyard = true;
+                d.mana_ext.warp_life = 2;
+            },
+        ),
+        "Herald of Leshrac" => s(
+            &[
+                "Cumulative upkeep—Gain control of a land you don't control.",
+                "This creature gets +1/+1 for each land you control but don't own.",
+                "When this creature leaves the battlefield, each player gains control of each land they own that you control.",
+            ],
+            |d, _| {
+                on(d, When::Upkeep { your_turn_only: true }, vec![], vec![Effect::CumulativeUpkeepGainLand]);
+                d.mana_ext.pt_per_land_controlled_not_owned = true;
+                on(d, When::LeavesBattlefield, vec![], vec![Effect::OwnersRegainLandsYouControl]);
+            },
+        ),
         "Castle Garenbrig" => s(
             &[
                 "This land enters tapped unless you control a Forest.",
@@ -2467,4 +2500,7 @@ pub const PG_D1_SCRIPTED: &[&str] = &[
     "Flitterwing Nuisance",
     "Forbidden Orchard",
     "Three Tree City",
+    "Gravecrawler",
+    "Timeline Culler",
+    "Herald of Leshrac",
 ];

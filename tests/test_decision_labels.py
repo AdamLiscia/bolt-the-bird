@@ -423,3 +423,9 @@ def test_scuzzback_scrounger_blights_a_creature_or_declines():
     dec = {"kind": "BlightCreature", "n": 1}
     assert sv._decision_label(dec, "Pick", 0, "Llanowar Elves") == "Blight 1 (-1/-1 counters on): Llanowar Elves"
     assert label(dec, "No", 0) == "Don't blight"
+
+
+def test_herald_of_leshrac_gains_a_land_or_is_sacrificed():
+    dec = {"kind": "UpkeepGainLandsOrSacrifice", "source": [3, 1], "chosen": [], "need": 1}
+    assert sv._decision_label(dec, "Pick", 0, "Forest") == "Gain control of (cumulative upkeep): Forest"
+    assert label(dec, "No", 0) == "Sacrifice Thriving Heath"

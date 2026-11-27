@@ -1421,6 +1421,17 @@ pub struct ManaExt {
     /// Set with `mana` and `mana_per_kind_counter`: one mana per counter, each removing one, usable
     /// while tapped; a manual activation makes one mana.
     pub counter_mana_no_tap: bool,
+    /// "You may cast this card from your graveyard as long as you control a [subtype]."
+    /// (Gravecrawler: a Zombie): from there with its normal cost and timing.
+    pub cast_from_graveyard_if_control: Option<&'static str>,
+    /// "You may cast this card from your graveyard using its warp ability." (Timeline Culler): from
+    /// there only for its `CardDef::warp` cost (`Action::CastAlternative`).
+    pub warp_from_graveyard: bool,
+    /// The life its warp cost also asks for (Timeline Culler: "Warp—{B}, Pay 2 life."): payable
+    /// only with at least that much life (CR 119.4).
+    pub warp_life: i32,
+    /// "This creature gets +1/+1 for each land you control but don't own." (Herald of Leshrac)
+    pub pt_per_land_controlled_not_owned: bool,
 }
 
 /// "You may pay [mana], [life] and sacrifice or tap [creatures] rather than pay this spell's mana

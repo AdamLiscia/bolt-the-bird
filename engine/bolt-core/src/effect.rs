@@ -3055,6 +3055,13 @@ pub enum Effect {
     /// `Game::creature_ability_color_mana`, it pays as Somberwald Sage's mana does, for a creature
     /// spell or an ability whose source is a creature.
     AddCreatureSpellOrAbilityMana(u8, crate::Color),
+    /// "Cumulative upkeep—Gain control of a land you don't control." (Herald of Leshrac): an age
+    /// counter, then `Decision::UpkeepGainLandsOrSacrifice` picks one land you don't control per age
+    /// counter (for good), or `No` sacrifices the source.
+    CumulativeUpkeepGainLand,
+    /// "Each player gains control of each land they own that you control." (Herald of Leshrac,
+    /// leaving the battlefield): "you" is the item's controller.
+    OwnersRegainLandsYouControl,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
