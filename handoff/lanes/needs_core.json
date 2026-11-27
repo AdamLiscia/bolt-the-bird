@@ -162,10 +162,10 @@
   {
    "card": "Ygra, Eater of All",
    "deck": "Ygra, Eater of All",
-   "missing": "d2 batch 16: the Food-to-graveyard trigger is in (When::SubtypeToGraveyardFromBattlefield(\"Food\")). Still needs: ward\u2014sacrifice a Food (d1, costs); other creatures are Food artifacts with the Food ability (d3, types)",
+   "missing": "d2 batch 16: the Food-to-graveyard trigger is in (When::SubtypeToGraveyardFromBattlefield(\"Food\")). Still needs: ward\u2014sacrifice a Food (d1, costs); other creatures are Food artifacts with the Food ability (d3, types) [script: d2, 2026-11-27, on lane B's other_creatures_have + d1's ward + d3's Food types]",
    "lane": "d1",
    "theme": "effects",
-   "owner": "d3"
+   "owner": "d2"
   },
   {
    "card": "Camellia, the Seedmiser",
