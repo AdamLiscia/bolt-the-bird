@@ -2679,6 +2679,17 @@ pub enum Effect {
     ExileCrewersReturnTappedAtEnd,
     /// "Each player draws X cards." (Skyscribing), X the spell's X, you first.
     EachPlayerDrawsX,
+    /// Exile the creature in `slot`; return it to the battlefield tapped under its owner's control
+    /// at the beginning of the next end step (Morningtide's Light).
+    ExileSlotReturnTappedAtEnd(u8),
+    /// Until your next turn, prevent all damage that would be dealt to you (Morningtide's Light),
+    /// see `Game::damage_to_you_prevented_until`.
+    PreventDamageToYouUntilYourNextTurn,
+    /// Counter all spells and abilities your opponents control; create a `def` token for each one
+    /// countered this way (Glen Elendra's Answer: a 1/1 blue and black Faerie with flying).
+    CounterOpponentsSpellsAndAbilitiesTokenEach {
+        def: usize,
+    },
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

@@ -1424,6 +1424,9 @@ pub enum Decision {
         land: usize,
         nonland: usize,
     },
+    /// Mirrormind Crown: before `player`'s first tokens this turn (`n` of `def`), `Yes` makes that
+    /// many token copies of the equipped creature instead, `No` makes the tokens.
+    MirrormindCopies { player: PlayerId, def: usize, n: u8 },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -1918,6 +1921,11 @@ pub struct Game {
     /// with their own flashback, which also have the `CastFlashback` route): (spell, its zcc on the
     /// stack). `leave_stack` exiles them.
     pub any_graveyard_casts: Vec<(ObjId, u32)>,
+    /// "Until your next turn, prevent all damage that would be dealt to you": the turn it ends, per
+    /// player (Morningtide's Light).
+    pub damage_to_you_prevented_until: [Option<u32>; 2],
+    /// Mirrormind Crown: the turn each player's first token creation was replaced (once each turn).
+    pub mirrormind_used: [u32; 2],
 }
 
 /// `Action::CastFromGraveyardAs`'s second number for Karador, Ghost Chieftain's once-each-turn
@@ -2215,6 +2223,8 @@ impl Game {
             saddle_extra: Vec::new(),
             crewed: Vec::new(),
             delayed_returns_tapped: Vec::new(),
+            damage_to_you_prevented_until: [None; 2],
+            mirrormind_used: [0; 2],
             hand_links: Vec::new(),
             saddled: Vec::new(),
             karador_turn: [0; 2],
@@ -3465,6 +3475,9 @@ impl Game {
     fn token_copy_of(&mut self, p: PlayerId, of: ObjId) -> Option<ObjId> {
         if self.obj(of).zone != Zone::Battlefield {
             return None;
+        }
+        if self.mirrormind_crown_creature(p).is_some() {
+            self.mirrormind_used[p] = self.turn; // a token copy is a token creation too
         }
         let def = self.obj(of).def;
         let id = self.add_card(p, def, Zone::Hand);
@@ -12811,6 +12824,26 @@ impl Game {
         false
     }
 
+    /// Mirrormind Crown: the creature `p`'s Crown is attached to, if `p` hasn't made their first
+    /// tokens this turn yet (`Game::mirrormind_used`).
+    fn mirrormind_crown(&self, p: PlayerId) -> Option<ObjId> {
+        if self.token_replacing || self.mirrormind_used[p] == self.turn {
+            return None;
+        }
+        self.mirrormind_crown_creature(p)
+    }
+
+    /// The creature `p`'s Mirrormind Crown is attached to.
+    fn mirrormind_crown_creature(&self, p: PlayerId) -> Option<ObjId> {
+        self.permanents(p)
+            .filter(|&x| self.def_of(x).first_tokens_copy_equipped && !self.lost_abilities(x))
+            .find_map(|x| {
+                let (c, z) = self.obj(x).attached_to?;
+                let on = self.obj(c).zcc == z && self.obj(c).zone == Zone::Battlefield;
+                (on && self.types_of(c).creature).then_some(c)
+            })
+    }
+
     /// The nontoken artifacts `p` controls that can be sacrificed (Rootcast Apprenticeship).
     fn nontoken_artifacts_to_sacrifice(&self, p: PlayerId) -> Vec<ObjId> {
         self.permanents(p)
@@ -12969,6 +13002,7 @@ impl Game {
             }
             Decision::ChooseEnterMode { .. } => vec![Action::Mode(0), Action::Mode(1)],
             Decision::Riot { .. } => vec![Action::Mode(0), Action::Mode(1)],
+            Decision::MirrormindCopies { .. } => vec![Action::Yes, Action::No],
             Decision::Dredge { player, .. } => {
                 let mut v: Vec<Action> = self
                     .dredge_options(*player)
@@ -14078,6 +14112,31 @@ impl Game {
                 self.give_priority(p);
             } else {
                 self.open_free_casts();
+            }
+            return;
+        }
+        if let Decision::MirrormindCopies { player, def, n } = d {
+            self.mirrormind_used[player] = self.turn; // the first time this turn, either way
+            if let (Action::Yes, Some(c)) = (a, self.mirrormind_crown_creature(player)) {
+                // Copies of the equipped creature, doubled and tripled as the tokens would be.
+                let times = self.token_doubling(player) * self.creature_token_tripling(player, true);
+                let mut made = Vec::new();
+                for _ in 0..(n as i32 * times) {
+                    made.extend(self.token_copy_of(player, c));
+                }
+                self.last_created = made;
+            } else {
+                self.xorn_batch = Some(false);
+                let mut made = Vec::new();
+                for _ in 0..n {
+                    self.create_token(player, def);
+                    made.extend(self.last_created.iter().copied());
+                }
+                self.xorn_batch = None;
+                self.last_created = made;
+            }
+            if self.resolving.is_some() {
+                self.continue_resolving();
             }
             return;
         }
@@ -16511,7 +16570,13 @@ impl Game {
             Effect::CreateToken { who, def, n } => {
                 // Every token this effect makes is "just created" (for "They gain ..."), not only the last.
                 let mut made = Vec::new();
+                let mut crown_player = None;
                 for p in self.players_for(item, legal, who) {
+                    // Mirrormind Crown: asked ("you may") after the other players' tokens.
+                    if n > 0 && self.mirrormind_crown(p).is_some() {
+                        crown_player = Some(p);
+                        continue;
+                    }
                     self.xorn_batch = Some(false);
                     for _ in 0..n {
                         self.create_token(p, def);
@@ -16520,6 +16585,9 @@ impl Game {
                     self.xorn_batch = None;
                 }
                 self.last_created = made;
+                if let Some(p) = crown_player {
+                    self.ask(p, Decision::MirrormindCopies { player: p, def, n });
+                }
             }
             Effect::PumpSelf { power, toughness } => {
                 if self.obj(src).zone == Zone::Battlefield {
@@ -20063,6 +20131,40 @@ impl Game {
                 names.dedup();
                 let def = if names.len() >= 7 { seven } else { fewer };
                 self.create_token(p, def);
+            }
+            Effect::CounterOpponentsSpellsAndAbilitiesTokenEach { def } => {
+                let opp = opponent(item.controller);
+                let theirs: Vec<ObjId> = self
+                    .items
+                    .iter()
+                    .filter(|i| i.controller == opp && i.source != src)
+                    .map(|i| i.source)
+                    .collect();
+                let mut n = 0;
+                for s in theirs {
+                    let before = self.items.len();
+                    self.counter_from(s);
+                    if self.items.len() < before {
+                        n += 1;
+                    }
+                }
+                for _ in 0..n {
+                    self.create_token(item.controller, def);
+                }
+            }
+            Effect::ExileSlotReturnTappedAtEnd(slot) => {
+                if let Some(c) = Game::slot_object(item, legal, slot) {
+                    self.move_to(c, Zone::Exile);
+                    if self.obj(c).zone == Zone::Exile && !self.is_token(c) {
+                        let zcc = self.obj(c).zcc;
+                        self.delayed_returns_tapped.push((c, zcc));
+                    }
+                }
+            }
+            Effect::PreventDamageToYouUntilYourNextTurn => {
+                let p = item.controller;
+                let next = self.next_turn_of(p);
+                self.damage_to_you_prevented_until[p] = Some(next);
             }
             Effect::ExileCrewersReturnTappedAtEnd => {
                 let (sz, turn) = (self.obj(src).zcc, self.turn);
@@ -24280,6 +24382,10 @@ impl Game {
     }
 
     fn create_token(&mut self, p: PlayerId, def: usize) {
+        // Mirrormind Crown: any token creation uses up "the first time ... each turn", asked or not.
+        if self.mirrormind_crown_creature(p).is_some() {
+            self.mirrormind_used[p] = self.turn;
+        }
         // Fisher's Talent: "If you would create a Fish token, create a ... Shark ... instead."
         let def = self.class_token_replacement(p, def);
         self.last_created.clear();
@@ -25876,8 +25982,10 @@ impl Game {
                     .any(|x| self.def_of(x).your_combat_damage_cant_be_prevented && !self.lost_abilities(x)));
         // The One Ring (protection from everything) and Inkshield (combat damage, a token per point).
         if let (false, Target::Player(q), true) = (unpreventable, target, amount > 0) {
-            if self.player_protected_until[q].is_some_and(|until| self.turn < until) {
-                return;
+            if self.player_protected_until[q].is_some_and(|until| self.turn < until)
+                || self.damage_to_you_prevented_until[q].is_some_and(|until| self.turn < until)
+            {
+                return; // The One Ring, Morningtide's Light
             }
             let turn = self.turn;
             let shield = self
