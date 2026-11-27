@@ -2975,6 +2975,9 @@ pub enum Effect {
     /// "For each of them, create a tapped token that's a copy of it." (Kambal, Profiteering Mayor):
     /// the tokens of the resolving trigger's batch (d2's `Game::token_batch`) still on the battlefield.
     TappedTokenCopiesOfBatch,
+    /// "Then if you have the city's blessing, for each token you control that entered this turn,
+    /// create a token that's a copy of it." (Ocelot Pride; "entered this turn" is `since_turn`)
+    CopyTokensEnteredThisTurnIfBlessing,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

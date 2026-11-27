@@ -2597,6 +2597,17 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::OneOrMoreTokensYouControlEnter, vec![], drain);
             },
         ),
+        "Ocelot Pride" => s(
+            &[
+                "Ascend",
+                "At the beginning of your end step, if you gained life this turn, create a 1/1 white Cat creature token. Then if you have the city's blessing, for each token you control that entered this turn, create a token that's a copy of it.",
+            ],
+            |d, t| {
+                d.ascend = true;
+                let cat = Effect::CreateToken { who: Who::You, def: t.cat, n: 1 };
+                conditional(d, When::EndStep { your_turn_only: true }, Condition::YouGainedLifeThisTurn, vec![], vec![cat, Effect::CopyTokensEnteredThisTurnIfBlessing]);
+            },
+        ),
         "Fortune Teller's Talent" => s(
             &[
                 "You may look at the top card of your library any time.",
@@ -2964,5 +2975,6 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Druids' Repository",
     "Descendants' Path",
     "Kambal, Profiteering Mayor",
+    "Ocelot Pride",
     // Not "Evercoat Ursine" (unclaimed: a hidden land must be playable as a land play).
 ];

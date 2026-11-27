@@ -25991,6 +25991,9 @@ impl Game {
             Effect::BecomeMonarch => self.monarch = Some((item.controller, src)),
             Effect::VividRevealExileByColor => self.vivid_reveal(item.controller),
             Effect::RevealTopCastFreeIfSharesCreatureType => self.descendants_path(item.controller),
+            Effect::CopyTokensEnteredThisTurnIfBlessing => {
+                self.copy_tokens_entered_this_turn(item.controller)
+            }
             Effect::TappedTokenCopiesOfBatch => {
                 let batch = self.token_batch(item);
                 self.tapped_token_copies(item.controller, batch);

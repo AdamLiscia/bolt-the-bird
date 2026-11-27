@@ -2319,3 +2319,46 @@ fn kambal_copies_an_opponents_token_batch_tapped_once_a_turn_and_drains_for_its_
     play(&mut g, again, false, &[], &[]);
     assert_eq!(tokens(&g, 0, "Soldier").len(), 2, "only once each turn");
 }
+
+// ---- Ocelot Pride (batch 28) ----
+
+#[test]
+fn ocelot_pride_makes_a_cat_after_lifegain_and_with_the_blessing_copies_todays_tokens() {
+    let mut g = table_with(|defs| {
+        let soldier = defs
+            .iter()
+            .position(|d| d.token && d.name == "Soldier")
+            .expect("Soldier");
+        defs[cid("Inkshield")].spell = Some(bolt_core::Ability::new(
+            vec![],
+            vec![
+                bolt_core::Effect::GainLife {
+                    who: bolt_core::Who::You,
+                    n: 1,
+                },
+                bolt_core::Effect::CreateToken {
+                    who: bolt_core::Who::You,
+                    def: soldier,
+                    n: 1,
+                },
+            ],
+        ));
+    });
+    put(&mut g, 0, "Ocelot Pride");
+    let gain = hand(&mut g, 0, "Inkshield"); // standing in for gaining life and making a token
+    play(&mut g, gain, false, &[], &[]);
+    pass_to(&mut g, Step::End);
+    resolve_all(&mut g, &[]);
+    assert!(g.city_blessing[0], "ascend: ten or more permanents");
+    assert_eq!(tokens(&g, 0, "Cat").len(), 2, "the Cat, and a copy of it");
+    assert_eq!(tokens(&g, 0, "Soldier").len(), 2, "today's Soldier, copied");
+}
+
+#[test]
+fn ocelot_pride_does_nothing_without_lifegain() {
+    let mut g = table();
+    put(&mut g, 0, "Ocelot Pride");
+    pass_to(&mut g, Step::End);
+    resolve_all(&mut g, &[]);
+    assert!(tokens(&g, 0, "Cat").is_empty());
+}

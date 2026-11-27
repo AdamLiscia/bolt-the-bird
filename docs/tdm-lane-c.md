@@ -1322,3 +1322,15 @@ and `Game::token_batch` (lane-d2 cdc7082, **doesn't compile until it's on tarkir
 `Effect::TappedTokenCopiesOfBatch` (zones.rs `tapped_token_copies`: each batch token still there as that
 object, `token_copy_of` per `token_doubling`, tapped). The drain is the existing LoseLife/GainLife pair. Test in
 core_objects (96, on an edited Inkshield making two Soldiers for player 1). needs_core entry marked unblocked.
+
+## Batch 28 (unbuilt): Ocelot Pride; Decadent Dragon waits on its oracle
+
+- Ocelot Pride: `ascend`, then on `When::EndStep { your_turn_only: true }` behind
+  `Condition::YouGainedLifeThisTurn`: a Cat (`t.cat`, the engine's 1/1 Cat), then
+  `Effect::CopyTokensEnteredThisTurnIfBlessing` (zones.rs: with `city_blessing`, a `token_copy_of` per
+  `token_doubling` of each token you control whose `since_turn` is this turn, the new Cat included). Limit:
+  `since_turn` also moves on a control change, so a token gained this turn counts as having entered.
+  Tests in core_objects (98).
+- Decadent Dragon // Expensive Taste: the Omen/Adventure cast path exists, but the oracle data (idea_next11.json)
+  has only the creature face ("Flying, trample", the attack Treasure); the Expensive Taste half isn't in it yet.
+  It needs the pool push with its `omen` field, then a script with an "Omen: ..." line and `d.adventure = true`.

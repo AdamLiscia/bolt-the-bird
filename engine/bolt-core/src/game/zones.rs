@@ -1373,4 +1373,22 @@ impl Game {
             }
         }
     }
+
+    /// Ocelot Pride: with the city's blessing, a token copy of each token `p` controls that came onto
+    /// the battlefield this turn (`since_turn`; doubled like any token).
+    pub(super) fn copy_tokens_entered_this_turn(&mut self, p: PlayerId) {
+        if !self.city_blessing[p] {
+            return;
+        }
+        let turn = self.turn;
+        let today: Vec<ObjId> = self
+            .permanents(p)
+            .filter(|&x| self.is_token(x) && self.obj(x).since_turn == turn)
+            .collect();
+        for t in today {
+            for _ in 0..self.token_doubling(p) {
+                self.token_copy_of(p, t);
+            }
+        }
+    }
 }
