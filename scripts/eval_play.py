@@ -33,8 +33,10 @@ def score(results, seat):
 
 def match(net, me, opp, jobs, workers, smart=(1, 2)):
     """`me` against `opp`, `me` in each seat in turn. Returns the score list from `me`'s side."""
-    a = run_parallel(net, jobs, workers=workers, seats=(me, opp), sample=False, chunk=20, record=(), smart=smart)
-    b = run_parallel(net, jobs, workers=workers, seats=(opp, me), sample=False, chunk=20, record=(), smart=smart)
+    # Greedy play: results don't depend on the chunking, so split the games evenly over every worker (a fixed
+    # 20 a chunk left 2 of 8 workers busy on 36 slow Commander games, 2026-11-27).
+    a = run_parallel(net, jobs, workers=workers, seats=(me, opp), sample=False, record=(), smart=smart)
+    b = run_parallel(net, jobs, workers=workers, seats=(opp, me), sample=False, record=(), smart=smart)
     return score(a["results"], 0) + score(b["results"], 1)
 
 
