@@ -17534,8 +17534,12 @@ impl Game {
                     self.draw(item.controller);
                 }
             }
-            Effect::CopySourceSpell { storm } => {
-                let n = if storm { item.amount.max(0) as u32 } else { 1 };
+            Effect::CopySourceSpell { .. } | Effect::CopySourceSpellPerReplicate => {
+                let n = match e {
+                    Effect::CopySourceSpell { storm: true } => item.amount.max(0) as u32,
+                    Effect::CopySourceSpellPerReplicate => self.times_kicked(src) as u32, // Pyromatics
+                    _ => 1,
+                };
                 let snap = self
                     .cast_snapshots
                     .iter()

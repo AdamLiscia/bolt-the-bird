@@ -2684,6 +2684,10 @@ pub enum Effect {
     /// High Tide: until end of turn, each Island tapped for mana adds an additional {U}
     /// (`Game::high_tide`, counted per resolution).
     IslandsAddExtraBlueThisTurn,
+    /// Replicate (CR 702.56): copy the source spell once for each time its replicate cost was paid
+    /// (scripted as `ManaExt::multikicker`, cast with `Action::CastX`; `Game::times_kicked`). The
+    /// copies keep the spell's targets (as `CopySourceSpell`).
+    CopySourceSpellPerReplicate,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

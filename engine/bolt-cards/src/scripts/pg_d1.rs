@@ -1471,6 +1471,34 @@ pub fn script(name: &str) -> Option<Script> {
             &["Until end of turn, whenever a player taps an Island for mana, that player adds an additional {U}."],
             |d, _| spell(d, vec![], vec![Effect::IslandsAddExtraBlueThisTurn]),
         ),
+        // ---- Ghyrson Starn, Kelermorph ----
+        "Pyromatics" => s(&["Replicate {1}{R}", "Pyromatics deals 1 damage to any target."], |d, _| {
+            d.mana_ext.multikicker = ManaCost::parse("{1}{R}");
+            on(d, When::YouCastThis, vec![], vec![Effect::CopySourceSpellPerReplicate]);
+            spell(d, vec![Filter::ANY], vec![damage(1, Recipient::Target(0))]);
+        }),
+        // ---- Atla Palani, Nest Tender ----
+        "Rith's Grove" => s(
+            &[
+                "When this land enters, sacrifice it unless you return a non-Lair land you control to its owner's hand.",
+                "{T}: Add {R}, {G}, or {W}.",
+            ],
+            |d, _| {
+                on(d, When::Enters, vec![], vec![Effect::ReturnNonSubtypeLandOrSacrificeSelf("Lair")]);
+                d.mana = Some(ManaSource::of(&[Color::Red, Color::Green, Color::White]));
+            },
+        ),
+        // ---- Raffine, Scheming Seer ----
+        "Momo, Friendly Flier" => s(
+            &[
+                "The first non-Lemur creature spell with flying you cast during each of your turns costs {1} less to cast.",
+                "Whenever another creature you control with flying enters, Momo gets +1/+1 until end of turn.",
+            ],
+            |d, _| {
+                d.mana_ext.first_flier_discount_your_turn = 1;
+                on(d, When::AnotherCreatureWithFlyingYouControlEnters, vec![], vec![Effect::PumpSelf { power: 1, toughness: 1 }]);
+            },
+        ),
         _ => None,
     }
 }
@@ -1659,4 +1687,7 @@ pub const PG_D1_SCRIPTED: &[&str] = &[
     "Champion of Lambholt",
     "Will, Scion of Peace",
     "High Tide",
+    "Pyromatics",
+    "Rith's Grove",
+    "Momo, Friendly Flier",
 ];

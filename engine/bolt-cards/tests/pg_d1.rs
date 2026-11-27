@@ -3167,3 +3167,42 @@ fn high_tide_makes_islands_add_another_blue() {
     let n = g.mana_sources(0).iter().filter(|&&(x, _)| x == island).count();
     assert_eq!(n, 2, "its {{U}} and High Tide's");
 }
+
+#[test]
+fn pyromatics_is_copied_for_each_replicate_paid() {
+    let mut g = table();
+    let p = hand(&mut g, 0, "Pyromatics");
+    let life = g.players[1].life;
+    act(&mut g, Action::CastX(p, 2)); // replicated twice: three in all
+    act(&mut g, Action::Target(Target::Player(1)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].life, life - 3);
+}
+
+#[test]
+fn rith_s_grove_returns_a_land_or_is_sacrificed() {
+    let mut g = game(&["Forest"]);
+    let grove = hand(&mut g, 0, "Rith's Grove");
+    act(&mut g, Action::PlayLand(grove));
+    while !g.items.is_empty() || matches!(g.pending, Pending::ChooseTarget(_) | Pending::Decide(_)) {
+        let a = match g.pending {
+            Pending::ChooseTarget(_) | Pending::Decide(_) => g.legal_actions()[0],
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.obj(grove).zone, Zone::Battlefield, "the Forest went back");
+    assert!(g.permanents(0).all(|x| g.def_of(x).name != "Forest"));
+}
+
+#[test]
+fn momo_discounts_a_flier_and_grows_when_one_enters() {
+    let mut g = game(&["Plains", "Plains"]);
+    let momo = put(&mut g, 0, "Momo, Friendly Flier");
+    let hawk = hand(&mut g, 0, "Tempest Hawk"); // {2}{W}, flying: {1}{W}
+    assert!(g.legal_actions().contains(&Action::Cast(hawk)));
+    let p0 = g.power(momo);
+    act(&mut g, Action::Cast(hawk));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.power(momo), p0 + 1);
+}

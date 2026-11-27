@@ -650,7 +650,7 @@
   {
    "card": "Rith's Grove",
    "deck": "Atla Palani, Nest Tender",
-   "missing": "a karoo that must return a non-Lair land or is sacrificed",
+   "missing": "a karoo that must return a non-Lair land or is sacrificed [done by d1 batch 24: scripted in pg_d1]",
    "lane": "d1",
    "theme": "effects",
    "owner": "d1"
@@ -2722,7 +2722,7 @@
   {
    "card": "Momo, Friendly Flier",
    "deck": "Raffine, Scheming Seer",
-   "missing": "needs core: a discount on the first non-Lemur flying creature spell each turn",
+   "missing": "needs core: a discount on the first non-Lemur flying creature spell each turn [done by d1 batch 24: scripted in pg_d1]",
    "lane": "d2",
    "theme": "mana",
    "owner": "d1"
@@ -4994,7 +4994,7 @@
   {
    "card": "Pyromatics",
    "deck": "Ghyrson Starn, Kelermorph (Spr3adsh33)",
-   "missing": "replicate; class levels",
+   "missing": "replicate; class levels [done by d1 batch 24: replicate (multikicker + Effect::CopySourceSpellPerReplicate); scripted in pg_d1]",
    "lane": "mac-b",
    "theme": "mana",
    "owner": "d1"
