@@ -1066,7 +1066,7 @@
   {
    "card": "Jin-Gitaxias, Progress Tyrant",
    "deck": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
-   "missing": "copy artifact/instant/sorcery spells; counter opponents' (once each turn)",
+   "missing": "copy artifact/instant/sorcery spells; counter opponents' (once each turn) [done by d3 batch 36: scripted (pg_d3), Effect::CopyExtraSpell, Game::triggered_once_turn]",
    "lane": "d1",
    "theme": "effects",
    "owner": "d3"
@@ -6811,6 +6811,118 @@
    "card": "Crib Swap",
    "deck": "IDEA Zurgo, Thunder's Decree",
    "missing": "idea-deck claim (2026-11-27) [done by d3 batch 33: scripted (pg_d3)]",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Silence",
+   "deck": "IDEA Kenrith, the Returned King",
+   "missing": "idea-deck claim (2026-11-27) [done by d3 batch 36: scripted (pg_d3)]",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Drannith Magistrate",
+   "deck": "IDEA Kenrith, the Returned King",
+   "missing": "idea-deck claim (2026-11-27) [done by d3 batch 36: scripted (pg_d3)]",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Vizier of Remedies",
+   "deck": "IDEA Kenrith, the Returned King",
+   "missing": "idea-deck claim (2026-11-27) [done by d3 batch 36: scripted (pg_d3)]",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Mental Misstep",
+   "deck": "IDEA Kenrith, the Returned King",
+   "missing": "idea-deck claim (2026-11-27) [done by d3 batch 36: scripted (pg_d3)]",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Spell Pierce",
+   "deck": "IDEA Kenrith, the Returned King",
+   "missing": "idea-deck claim (2026-11-27) [done by d3 batch 36: scripted (pg_d3)]",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Dismember",
+   "deck": "IDEA Sephiroth, Fabled SOLDIER",
+   "missing": "idea-deck claim (2026-11-27) [done by d3 batch 36: scripted (pg_d3)]",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Opposition Agent",
+   "deck": "IDEA Sephiroth, Fabled SOLDIER",
+   "missing": "idea-deck claim (2026-11-27) [done by d3 batch 36: scripted (pg_d3); known gap: you don't control the opponent while they search]",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Ad Nauseam",
+   "deck": "IDEA Sephiroth, Fabled SOLDIER",
+   "missing": "idea-deck claim (2026-11-27), d3 next",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Ram Through",
+   "deck": "IDEA Tifa Lockhart",
+   "missing": "idea-deck claim (2026-11-27), d3 next",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Scale Up",
+   "deck": "IDEA Tifa Lockhart",
+   "missing": "idea-deck claim (2026-11-27), d3 next",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Roiling Regrowth",
+   "deck": "IDEA Hearthhull, the Worldseed; IDEA Tifa Lockhart",
+   "missing": "idea-deck claim (2026-11-27), d3 next",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Planar Engineering",
+   "deck": "IDEA Tifa Lockhart",
+   "missing": "idea-deck claim (2026-11-27), d3 next",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Entish Restoration",
+   "deck": "IDEA Tifa Lockhart",
+   "missing": "idea-deck claim (2026-11-27), d3 next",
+   "lane": "d3",
+   "theme": "effects and statics",
+   "owner": "d3"
+  },
+  {
+   "card": "Archdruid's Charm",
+   "deck": "IDEA Tifa Lockhart",
+   "missing": "idea-deck claim (2026-11-27), d3 next",
    "lane": "d3",
    "theme": "effects and statics",
    "owner": "d3"

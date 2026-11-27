@@ -1977,6 +1977,9 @@ pub struct Game {
     /// Creatures that entered the battlefield under each player's control: (turn, count)
     /// (Kinbinding, `Scale::PerCreatureEnteredUnderYourControlThisTurn`).
     pub creatures_entered: [(u32, u32); 2],
+    /// Triggered abilities that trigger only once each turn, kept per ability: (source, its zcc,
+    /// trigger number, the turn it last triggered) (Jin-Gitaxias, Progress Tyrant's two).
+    pub triggered_once_turn: Vec<(ObjId, u32, usize, u32)>,
 }
 
 /// `Action::CastFromGraveyardAs`'s second number for Karador, Ghost Chieftain's once-each-turn
@@ -2283,6 +2286,7 @@ impl Game {
             any_graveyard_casts: Vec::new(),
             type_protection_grants: Vec::new(),
             creatures_entered: [(0, 0); 2],
+            triggered_once_turn: Vec::new(),
         }
     }
 
@@ -4093,6 +4097,43 @@ impl Game {
         !self.counter_kinds_on(id).is_empty()
     }
 
+    /// How many of `n` -1/-1 counters are put on `id`: one fewer per Vizier of Remedies its
+    /// controller controls, if it's a creature.
+    fn minus_counters_for(&self, id: ObjId, n: i32) -> i32 {
+        if n <= 0 || !self.types_of(id).creature {
+            return n.max(0);
+        }
+        let viziers = self
+            .permanents(self.obj(id).controller)
+            .filter(|&x| self.def_of(x).your_minus_counters_minus_one && !self.lost_abilities(x))
+            .count() as i32;
+        (n - viziers).max(0)
+    }
+
+    /// Whether Drannith Magistrate stops `p` casting the card in `zone` (anywhere but a hand).
+    fn cast_zone_blocked(&self, p: PlayerId, zone: Zone) -> bool {
+        zone != Zone::Hand
+            && self
+                .permanents(opponent(p))
+                .any(|x| self.def_of(x).opponents_cast_only_from_hand && !self.lost_abilities(x))
+    }
+
+    /// Whether trigger `n` of `src` hasn't triggered yet this turn, recording it now ("This ability
+    /// triggers only once each turn"; `Game::triggered_once_turn`).
+    fn first_trigger_this_turn(&mut self, src: ObjId, n: usize) -> bool {
+        let (zcc, turn) = (self.obj(src).zcc, self.turn);
+        self.triggered_once_turn.retain(|e| e.3 == turn);
+        if self
+            .triggered_once_turn
+            .iter()
+            .any(|e| e.0 == src && e.1 == zcc && e.2 == n)
+        {
+            return false;
+        }
+        self.triggered_once_turn.push((src, zcc, n, turn));
+        true
+    }
+
     /// Cards in `p`'s hand with mana value at most `max`: creature cards (`creatures`) or permanent
     /// cards (Kinscaer Sentry, Kodama of the East Tree).
     fn hand_cards_mv_at_most(&self, p: PlayerId, max: u32, creatures: bool) -> Vec<ObjId> {
@@ -4166,9 +4207,13 @@ impl Game {
             }
             _ => {}
         }
+        if k == 1 {
+            let n = self.minus_counters_for(id, 1); // Vizier of Remedies
+            self.obj_mut(id).counters -= n;
+            return n;
+        }
         let o = self.obj_mut(id);
         match k {
-            1 => o.counters -= 1,
             2 => o.stun += 1,
             3 => o.incubation += 1,
             4 => o.soul += 1,
@@ -7519,6 +7564,21 @@ impl Game {
                 v.push(Action::CastFromGraveyard(c));
             }
         }
+        // Drannith Magistrate: no casting from anywhere but the hand.
+        v.retain(|a| match *a {
+            Action::Cast(c)
+            | Action::CastKicked(c)
+            | Action::CastWith(c, _)
+            | Action::CastFlashback(c)
+            | Action::CastModal(c, _)
+            | Action::CastAlternative(c)
+            | Action::CastX(c, _)
+            | Action::CastFromGraveyard(c)
+            | Action::CastFromGraveyardAs(c, _)
+            | Action::CastHarmonize(c, _)
+            | Action::CastOmen(c) => !self.cast_zone_blocked(p, self.obj(c).zone),
+            _ => true,
+        });
         v.extend(self.activations(p));
         v.extend(self.granted_activations(p));
         v.extend(self.loyalty_actions(p, sorcery_timing));
@@ -9956,7 +10016,8 @@ impl Game {
             }
         }
         if a.minus_counter_cost && self.obj(id).zone == Zone::Battlefield {
-            self.obj_mut(id).counters -= 1; // Devoted Druid: a -1/-1 counter
+            let n = self.minus_counters_for(id, 1);
+            self.obj_mut(id).counters -= n; // Devoted Druid: a -1/-1 counter
             let controller = self.obj(id).controller;
             self.counters_placed(controller, 1);
         }
@@ -12135,6 +12196,25 @@ impl Game {
         for t in &mut self.triggered[before..] {
             t.extra = t.extra.or(Some(card)); // "that spell" (Teval)
         }
+        let ty = self.types_of(card);
+        if ty.artifact || ty.instant || ty.sorcery {
+            // Jin-Gitaxias, Progress Tyrant: each of its two triggers once each turn.
+            let before = self.triggered.len();
+            self.fire(p, When::YouCastArtifactInstantOrSorceryOnceEachTurn, None);
+            self.fire(
+                opponent(p),
+                When::OpponentCastsArtifactInstantOrSorceryOnceEachTurn,
+                None,
+            );
+            for mut t in self.triggered.split_off(before) {
+                if let StackKind::Trigger(n) = t.kind {
+                    if self.first_trigger_this_turn(t.source, n) {
+                        t.extra = Some(card);
+                        self.triggered.push(t);
+                    }
+                }
+            }
+        }
         if self.spells_cast[p] == 2 {
             self.fire(opponent(p), When::OpponentCastsSecondSpell, None);
             self.fire(0, When::PlayerCastsSecondSpell, None);
@@ -12316,7 +12396,7 @@ impl Game {
         }
         for &c in &self.free_casts {
             let def = self.def_of(c);
-            if !free_zone(self.obj(c).zone) || def.types.land {
+            if !free_zone(self.obj(c).zone) || def.types.land || self.cast_zone_blocked(p, self.obj(c).zone) {
                 continue;
             }
             let castable = def.types.is_permanent() || def.spell.is_some() || !def.modes.is_empty();
@@ -15221,7 +15301,19 @@ impl Game {
                 }
             }
             (Decision::Search { what, to, left }, Action::Pick(c)) => {
+                let agent = self
+                    .permanents(opponent(p))
+                    .any(|x| self.def_of(x).opponents_searches_exiled_for_you && !self.lost_abilities(x));
+                let to = if agent { SearchTo::ExiledForOpponent } else { to };
                 match to {
+                    SearchTo::ExiledForOpponent => {
+                        self.move_to(c, Zone::Exile);
+                        if self.obj(c).zone == Zone::Exile {
+                            let o = self.obj_mut(c);
+                            o.playable = Some((opponent(p), u32::MAX));
+                            o.any_color_mana = true;
+                        }
+                    }
                     SearchTo::Hand => self.move_to(c, Zone::Hand),
                     SearchTo::Battlefield { tapped } => {
                         self.move_to(c, Zone::Battlefield);
@@ -19537,8 +19629,9 @@ impl Game {
             Effect::MinusCounter(slot) => {
                 if let Some(id) = Game::slot_object(item, legal, slot) {
                     if self.obj(id).zone == Zone::Battlefield {
-                        self.obj_mut(id).counters -= 1;
-                        self.counters_placed(item.controller, 1);
+                        let n = self.minus_counters_for(id, 1); // Vizier of Remedies
+                        self.obj_mut(id).counters -= n;
+                        self.counters_placed(item.controller, n);
                     }
                 }
             }
@@ -22875,7 +22968,8 @@ impl Game {
                         if undying {
                             self.add_counters(src, 1);
                         } else {
-                            self.obj_mut(src).counters -= 1;
+                            let n = self.minus_counters_for(src, 1); // Vizier of Remedies
+                            self.obj_mut(src).counters -= n;
                             let owner = self.obj(src).owner;
                             self.counters_placed(owner, 1);
                         }
@@ -23986,7 +24080,8 @@ impl Game {
                     let ids: Vec<ObjId> = self.creatures(p).collect();
                     let n = ids.len() as i32;
                     for id in ids {
-                        self.obj_mut(id).counters -= 1;
+                        let m = self.minus_counters_for(id, 1); // Vizier of Remedies
+                        self.obj_mut(id).counters -= m;
                     }
                     if n > 0 {
                         self.counters_placed(item.controller, n);
@@ -24659,6 +24754,29 @@ impl Game {
             Effect::RollD20ReanimateTotalManaValue => {
                 let x = self.roll_die(20);
                 self.reanimate_total_next(item.controller, x);
+            }
+            Effect::OpponentsCantCastThisTurn => {
+                let q = opponent(item.controller);
+                self.no_more_spells_turn[q] = self.turn;
+            }
+            Effect::CopyExtraSpell => {
+                let spell = item.extra.and_then(|c| {
+                    self.items
+                        .iter()
+                        .rev()
+                        .find(|i| i.kind == StackKind::Spell && i.source == c)
+                        .cloned()
+                });
+                if let Some(spell) = spell {
+                    let c = spell.source;
+                    // Onto the stack after this trigger resolves, choosing new targets.
+                    self.pending_copies.push(StackItem {
+                        kind: StackKind::SpellCopy,
+                        controller: item.controller,
+                        ..spell
+                    });
+                    self.copied_or_cast_instant_sorcery(item.controller, c);
+                }
             }
             Effect::EachPlayerSacrificesCreatureOrPlaneswalker => {
                 let a = self.active;
@@ -26851,6 +26969,7 @@ impl Game {
                 self.counters_placed(by, amount);
             }
             Target::Object(id) if infect && self.types_of(id).creature => {
+                let amount = self.minus_counters_for(id, amount); // Vizier of Remedies
                 self.obj_mut(id).counters -= amount; // CR 702.90c: -1/-1 counters
                 let by = self.obj(source).controller;
                 self.counters_placed(by, amount);

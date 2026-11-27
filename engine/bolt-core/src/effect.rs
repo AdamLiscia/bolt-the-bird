@@ -2766,6 +2766,11 @@ pub enum Effect {
     /// Each player, starting with the active player, sacrifices a creature or planeswalker of their
     /// choice (Demon's Disciple), as `Decision::EachSacrificesCreatureOrPlaneswalker`.
     EachPlayerSacrificesCreatureOrPlaneswalker,
+    /// Copy the spell in the trigger's `extra` (you control the copy, and may choose new targets;
+    /// a permanent spell's copy becomes a token) (Jin-Gitaxias, Progress Tyrant).
+    CopyExtraSpell,
+    /// "Your opponents can't cast spells this turn." (Silence), `Game::no_more_spells_turn`.
+    OpponentsCantCastThisTurn,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -2865,6 +2870,9 @@ pub enum SearchTo {
     /// Onto the battlefield tapped; then, if you control `n` or more lands, untap it (Fabled
     /// Passage: 4).
     BattlefieldTappedUntapIfLands(u8),
+    /// Opposition Agent: exiled instead, playable by the searcher's opponent for as long as it
+    /// stays exiled, with mana of any color.
+    ExiledForOpponent,
 }
 
 /// What a static ability affects.
@@ -3752,6 +3760,12 @@ pub enum When {
     /// "Whenever [this] attacks a player and isn't blocked" (Master of Cruelties), once blockers are
     /// declared (`Game::fire_unblocked_at_player`).
     AttacksAndIsntBlocked,
+    /// "Whenever you cast an artifact, instant, or sorcery spell, ... This ability triggers only
+    /// once each turn." (Jin-Gitaxias, Progress Tyrant); its `extra` is that spell.
+    YouCastArtifactInstantOrSorceryOnceEachTurn,
+    /// "Whenever an opponent casts an artifact, instant, or sorcery spell, ... This ability
+    /// triggers only once each turn." (Jin-Gitaxias, Progress Tyrant); its `extra` is that spell.
+    OpponentCastsArtifactInstantOrSorceryOnceEachTurn,
 }
 
 #[derive(Clone, Debug, PartialEq)]
