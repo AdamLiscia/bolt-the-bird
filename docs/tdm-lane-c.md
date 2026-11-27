@@ -982,3 +982,8 @@ Built on 2a71b71 (tarkir 47148af merged): one fix, the Aura state-based check in
 enchant filter allows artifacts on an artifact (`|| (ty.artifact && f.artifacts)`; Mechanized Production fell off
 its Sol Ring). Squee's two `priority_actions` lines approved by the merger. 2,145 Rust tests pass (core_objects 51,
 pg_c 212, play.rs 3 ignored), clippy, fmt, ruff and pytest clean.
+
+Final Act (unbuilt, approved by the merger): Farewell's way, 31 mode sets (bit i: mode i). New
+`Effect::{DestroyAllPlaneswalkers, EachOpponentLosesAllCounters}` (zones.rs; poison and energy are the player
+counters the engine has). "Destroy all battles" is an empty mode: the engine has no battles, so there is nothing to
+destroy; revisit when battles (Invasion of Ikoria) land. Test in core_objects (52).

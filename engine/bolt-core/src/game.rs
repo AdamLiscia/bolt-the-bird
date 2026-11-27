@@ -22506,6 +22506,8 @@ impl Game {
             Effect::CopyAttachedThenEightSameNameWins => {
                 self.copy_attached_then_eight_same_name_wins(src, item.controller)
             }
+            Effect::DestroyAllPlaneswalkers => self.destroy_all_planeswalkers(),
+            Effect::EachOpponentLosesAllCounters => self.opponent_loses_all_counters(item.controller),
             Effect::DiscardThenIfInstantOrSorcery => {
                 let p = item.controller;
                 if self.players[p].hand.is_empty() {

@@ -2553,6 +2553,11 @@ pub enum Effect {
     /// control eight or more artifacts with the same name as one another, you win the game
     /// (Mechanized Production).
     CopyAttachedThenEightSameNameWins,
+    /// Destroy all planeswalkers (Final Act).
+    DestroyAllPlaneswalkers,
+    /// Each opponent loses all counters (CR 122.1: a player's poison and energy counters) (Final
+    /// Act).
+    EachOpponentLosesAllCounters,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
