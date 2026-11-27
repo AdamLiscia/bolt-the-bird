@@ -133,6 +133,18 @@ def test_bruna_and_light_paws_attach_auras():
     assert sv._decision_label(kaalia, "Pick", 0, "Shivan Dragon") == "Put onto the battlefield attacking: Shivan Dragon"
 
 
+def test_rakdos_patron_of_chaos_sacrifice_two_or_they_draw():
+    dec = {"kind": "PatronOfChaosSacrifice"}
+    assert sv._decision_label(dec, "Pick", 0, "Sol Ring") == "Sacrifice (one of two): Sol Ring"
+    assert label(dec, "No", 0) == "Don't sacrifice (they draw two cards)"
+
+
+def test_deep_cavern_bat_exile_from_hand_until_it_leaves():
+    dec = {"kind": "ExileFromHandUntilSourceLeaves"}
+    assert sv._decision_label(dec, "Pick", 0, "Sol Ring") == "Exile until it leaves: Sol Ring"
+    assert label(dec, "No", 0) == "Exile nothing"
+
+
 def test_venturing_names_the_dungeon_or_room():
     dec = {"kind": "ChooseDungeon", "options": ["Lost Mine of Phandelver", "Dungeon of the Mad Mage"]}
     assert label(dec, "Mode", 1) == "Venture into Dungeon of the Mad Mage"

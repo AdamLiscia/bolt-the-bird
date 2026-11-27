@@ -1203,3 +1203,212 @@ fn final_act_does_each_chosen_mode_and_only_those() {
     assert_eq!((g.players[1].poison, g.players[1].energy), (0, 0));
     assert_eq!(g.players[0].poison, 1, "only opponents lose their counters");
 }
+
+/// Passes until player 0's end-step trigger asks for its target.
+fn to_end_step_target(g: &mut Game) {
+    while !(g.step == Step::End && matches!(g.pending, Pending::ChooseTarget(_))) {
+        let legal = g.legal_actions();
+        let a = [Action::PassPriority, Action::FinishAttacks, Action::FinishBlocks]
+            .into_iter()
+            .find(|a| legal.contains(a))
+            .expect("a pass");
+        act(g, a);
+    }
+}
+
+#[test]
+fn rakdos_patron_of_chaos_opponent_sacrifices_two_or_you_draw_two() {
+    let mut g = table();
+    put(&mut g, 0, "Rakdos, Patron of Chaos");
+    let a = put(&mut g, 1, "Sol Ring");
+    let b = put(&mut g, 1, "Mind Stone");
+    let ghoul = put(&mut g, 1, "Hungry Ghoul");
+    let hand0 = g.players[0].hand.len();
+    to_end_step_target(&mut g);
+    act(&mut g, Action::Target(Target::Player(1)));
+    // Lands aren't offered; the opponent picks two of the rest.
+    resolve_all(&mut g, &[Action::Pick(a), Action::Pick(b)]);
+    assert_eq!((g.obj(a).zone, g.obj(b).zone), (Zone::Graveyard, Zone::Graveyard));
+    assert_eq!(g.obj(ghoul).zone, Zone::Battlefield);
+    assert_eq!(g.players[0].hand.len(), hand0, "they sacrificed, so no cards");
+    to_main1(&mut g, 5, 0);
+    let ring = put(&mut g, 1, "Sol Ring");
+    let hand0 = g.players[0].hand.len();
+    to_end_step_target(&mut g);
+    act(&mut g, Action::Target(Target::Player(1)));
+    resolve_all(&mut g, &[Action::No]);
+    assert_eq!(g.obj(ring).zone, Zone::Battlefield);
+    assert_eq!(g.players[0].hand.len(), hand0 + 2, "they didn't, so you draw two");
+}
+
+#[test]
+fn hanweir_battlements_grants_haste_and_its_meld_finds_no_garrison() {
+    let mut g = table();
+    let b = put(&mut g, 0, "Hanweir Battlements");
+    let ghoul = put(&mut g, 0, "Hungry Ghoul");
+    act(&mut g, Action::Activate(b, 0));
+    resolve_all(&mut g, &[Action::Target(obj(ghoul))]);
+    assert!(g.keywords(ghoul).has(Keywords::HASTE));
+    assert!(g.obj(b).tapped);
+    // No Hanweir Garrison in the pool: the meld ability resolves and nothing is exiled.
+    let b2 = put(&mut g, 0, "Hanweir Battlements");
+    act(&mut g, Action::Activate(b2, 1));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(b2).zone, Zone::Battlefield);
+    assert_eq!(g.obj(ghoul).zone, Zone::Battlefield);
+}
+
+#[test]
+fn errant_and_giada_casts_fliers_and_flash_from_the_top_only() {
+    let mut g = table();
+    put(&mut g, 0, "Errant and Giada");
+    let drake = top(&mut g, "Gilded Drake");
+    assert!(
+        g.legal_actions().contains(&Action::Cast(drake)),
+        "a flier from the top"
+    );
+    let ghoul = top(&mut g, "Hungry Ghoul");
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(ghoul)),
+        "no flash or flying"
+    );
+}
+
+// ---- Elder Brain, Inkshield, The One Ring, Deep-Cavern Bat ----
+
+/// Passes (finishing attacks and blocks) until `step`.
+fn pass_to(g: &mut Game, step: Step) {
+    for _ in 0..200 {
+        if g.step == step && matches!(g.pending, Pending::Priority(_)) {
+            return;
+        }
+        let legal = g.legal_actions();
+        let a = [Action::PassPriority, Action::FinishAttacks, Action::FinishBlocks]
+            .into_iter()
+            .find(|a| legal.contains(a))
+            .expect("a pass");
+        act(g, a);
+    }
+    panic!("never reached {step:?}");
+}
+
+#[test]
+fn elder_brain_exiles_the_hand_they_draw_that_many_and_you_play_them_with_any_mana() {
+    let mut g = game(&["Plains", "Plains", "Plains"]);
+    let brain = put(&mut g, 0, "Elder Brain");
+    let elves = hand(&mut g, 1, "Llanowar Elves");
+    let mountain = hand(&mut g, 1, "Mountain");
+    g.start_turn(5, 0);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    let before: Vec<ObjId> = g.players[1].hand.clone();
+    act(&mut g, Action::Attack(brain));
+    act(&mut g, Action::FinishAttacks);
+    resolve_all(&mut g, &[]);
+    for &c in &before {
+        assert_eq!(g.obj(c).zone, Zone::Exile, "the whole hand is exiled");
+    }
+    assert_eq!(g.players[1].hand.len(), before.len(), "they draw that many");
+    assert!(g.players[1].hand.iter().all(|c| !before.contains(c)));
+    pass_to(&mut g, Step::Main2);
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::PlayLand(mountain)), "lands too");
+    assert!(legal.contains(&Action::Cast(elves)), "{{G}} paid with Plains");
+    act(&mut g, Action::Cast(elves));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(elves).zone, Zone::Battlefield);
+    assert_eq!(g.obj(elves).controller, 0);
+}
+
+#[test]
+fn inkshield_prevents_combat_damage_and_makes_an_inkling_per_point() {
+    let mut g = table();
+    let ghoul = put(&mut g, 1, "Hungry Ghoul");
+    let shield = hand(&mut g, 0, "Inkshield");
+    g.start_turn(4, 1);
+    while g.pending != Pending::DeclareAttackers(1) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(ghoul));
+    act(&mut g, Action::FinishAttacks);
+    while g.pending != Pending::Priority(0) {
+        let a = match g.pending {
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    act(&mut g, Action::Cast(shield));
+    while g.step != Step::Main2 {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.players[0].life, 40, "prevented");
+    let inklings = tokens(&g, 0, "Inkling");
+    assert_eq!(inklings.len(), g.power(ghoul) as usize, "one per point prevented");
+    assert!(g.keywords(inklings[0]).has(Keywords::FLYING));
+}
+
+#[test]
+fn the_one_ring_protects_if_cast_then_burdens_draw_and_drain() {
+    let mut g = table();
+    let ring = hand(&mut g, 0, "The One Ring");
+    play(&mut g, ring, false, &[], &[]);
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    act(&mut g, Action::Cast(bolt));
+    assert!(
+        !g.legal_actions().contains(&Action::Target(Target::Player(0))),
+        "protection from everything"
+    );
+    act(&mut g, Action::Target(Target::Player(1)));
+    resolve_all(&mut g, &[]);
+    let hand0 = g.players[0].hand.len();
+    act(&mut g, Action::Activate(ring, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(ring).kind_counters, 1);
+    assert_eq!(g.players[0].hand.len(), hand0 + 1, "one burden, one card");
+    to_main1(&mut g, 5, 0);
+    assert_eq!(g.players[0].life, 39, "1 life per burden counter at upkeep");
+    let hand0 = g.players[0].hand.len();
+    act(&mut g, Action::Activate(ring, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].hand.len(), hand0 + 2, "two burdens, two cards");
+    // Not cast: no protection.
+    let mut g = table();
+    put(&mut g, 0, "The One Ring");
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    act(&mut g, Action::Cast(bolt));
+    assert!(g.legal_actions().contains(&Action::Target(Target::Player(0))));
+}
+
+#[test]
+fn deep_cavern_bat_exiles_a_nonland_card_until_it_leaves() {
+    let mut g = table();
+    let ring = hand(&mut g, 1, "Sol Ring");
+    let land = hand(&mut g, 1, "Mountain");
+    let bat = hand(&mut g, 0, "Deep-Cavern Bat");
+    act(&mut g, Action::Cast(bat));
+    let legal_first = {
+        resolve_until_decision(&mut g);
+        g.legal_actions()
+    };
+    assert!(legal_first.contains(&Action::Pick(ring)));
+    assert!(!legal_first.contains(&Action::Pick(land)), "nonland only");
+    resolve_all(&mut g, &[Action::Pick(ring)]);
+    assert_eq!(g.obj(ring).zone, Zone::Exile);
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    play(&mut g, bolt, false, &[obj(bat)], &[]);
+    assert_eq!(g.obj(bat).zone, Zone::Graveyard);
+    assert!(g.players[1].hand.contains(&ring), "back to its owner's hand");
+}
+
+/// Passes and targets player 1 until a resolution decision comes up.
+fn resolve_until_decision(g: &mut Game) {
+    while !matches!(g.pending, Pending::Decide(_)) {
+        let a = match g.pending {
+            Pending::ChooseTarget(_) => Action::Target(Target::Player(1)),
+            _ => Action::PassPriority,
+        };
+        act(g, a);
+    }
+}

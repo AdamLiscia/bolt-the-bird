@@ -360,6 +360,10 @@ pub struct Activated {
     pub exile_creature_you_control: bool,
     /// "Activate only during combat." (Najeela, the Blade-Blossom)
     pub only_during_combat: bool,
+    /// "Sacrifice a [first] and a [second]" in the cost: two different permanents you control,
+    /// one with each subtype (Jarad, Golgari Lich Lord: a Swamp and a Forest); the engine picks,
+    /// keeping permanents that have both subtypes when it can.
+    pub sacrifice_two_subtypes: Option<[&'static str; 2]>,
 }
 
 /// A loyalty ability's cost of −X (CR 606.4, 107.3): `loyalty_abilities` uses this as the cost,
@@ -1229,6 +1233,9 @@ pub struct ManaExt {
     /// `CardDef::ward_sacrifice` counts only permanents with this subtype (Ygra, Eater of All:
     /// "Ward—Sacrifice a Food.", with `ward_sacrifice: 1`).
     pub ward_sacrifice_subtype: Option<&'static str>,
+    /// "This land enters tapped unless you control N or more other [subtype]." (Witch's Cottage:
+    /// ("Swamp", 3)).
+    pub enters_tapped_unless_other_subtype: Option<(&'static str, u8)>,
 }
 
 /// "You may pay [mana], [life] and sacrifice or tap [creatures] rather than pay this spell's mana
@@ -2215,6 +2222,9 @@ pub struct ZonesExt {
     /// "You may cast this card from your graveyard or from exile." (Squee, the Immortal): its owner
     /// may cast it from either zone, with its normal timing and cost.
     pub cast_from_graveyard_or_exile: bool,
+    /// "You may cast spells with flash or flying from the top of your library." (Errant and Giada):
+    /// printed flash or flying.
+    pub top_spells_flash_or_flying: bool,
 }
 
 #[cfg(test)]

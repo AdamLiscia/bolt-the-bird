@@ -1376,6 +1376,19 @@ pub enum Decision {
     /// Fabricate `n` (CR 702.123): `Yes` puts `n` +1/+1 counters on the source, `No` creates `n`
     /// 1/1 Servo tokens (definition `servo`).
     Fabricate { n: u8, servo: usize },
+    /// Rakdos, Patron of Chaos: `Pick` a nonland, nontoken permanent you control to sacrifice (the
+    /// first of two, then the second); before the first, `No` declines and `controller` draws two.
+    PatronOfChaosSacrifice {
+        controller: PlayerId,
+        first: Option<ObjId>,
+    },
+    /// Deep-Cavern Bat: `Pick` a nonland card in `victim`'s hand to exile until `source` (with
+    /// zone-change count `zcc`) leaves the battlefield, or `No`.
+    ExileFromHandUntilSourceLeaves {
+        victim: PlayerId,
+        source: ObjId,
+        zcc: u32,
+    },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -1840,6 +1853,9 @@ pub struct Game {
     /// Rankle and Torbran: (turn, how many) of "it deals that much damage plus 2" for damage to
     /// players this turn.
     pub plus_two_to_players: (u32, u32),
+    /// Deep-Cavern Bat: (source, its zone-change count, card) — a card exiled from a hand until the
+    /// source leaves the battlefield, returned to its owner's hand when it does (CR 610.3).
+    pub hand_links: Vec<(ObjId, u32, ObjId)>,
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -2128,6 +2144,7 @@ impl Game {
             combat_shield_tokens: Vec::new(),
             player_protected_until: [None; 2],
             plus_two_to_players: (0, 0),
+            hand_links: Vec::new(),
         }
     }
 
@@ -5772,6 +5789,10 @@ impl Game {
                 }
             }
         }
+        if from == Zone::Battlefield {
+            // Deep-Cavern Bat: cards exiled from a hand until this leaves go back to their owner's hand.
+            self.return_hand_links(id);
+        }
         if dies {
             // Granted "when this creature dies" triggers, from before it changed zones.
             let was = self.obj(id).zcc - 1;
@@ -6814,6 +6835,8 @@ impl Game {
                         || (s.top_spells_creatures && d.types.creature)
                         || (s.zones.top_spells_artifact_or_colorless
                             && (d.types.artifact || !d.colors.iter().any(|&k| k)))
+                        || (s.zones.top_spells_flash_or_flying
+                            && (d.keywords.has(Keywords::FLASH) || d.keywords.has(Keywords::FLYING)))
                 }
             })
         });
@@ -8910,6 +8933,11 @@ impl Game {
                     }
                     continue;
                 }
+                if a.sacrifice_two_subtypes
+                    .is_some_and(|subs| self.subtype_pair_to_sacrifice(p, subs).is_none())
+                {
+                    continue; // Jarad: "Sacrifice a Swamp and a Forest"
+                }
                 if a.sacrifice_nonland_n > 0
                     && self
                         .permanents(p)
@@ -9392,6 +9420,15 @@ impl Game {
             self.obj_mut(id).counters -= 1; // Devoted Druid: a -1/-1 counter
             let controller = self.obj(id).controller;
             self.counters_placed(controller, 1);
+        }
+        if let Some((v, w)) = a
+            .sacrifice_two_subtypes
+            .and_then(|subs| self.subtype_pair_to_sacrifice(p, subs))
+        {
+            for v in [v, w] {
+                self.move_to(v, Zone::Graveyard);
+                self.sacrificed(v, p);
+            }
         }
         if a.sacrifice_nonland_n > 0 {
             let mut victims: Vec<ObjId> = self
@@ -10298,6 +10335,12 @@ impl Game {
             .filter(|&x| x != id && self.types_of(x).land)
             .count();
         (e.enters_tapped_unless_other_lands > 0 && other_lands < e.enters_tapped_unless_other_lands as usize)
+            || e.enters_tapped_unless_other_subtype.is_some_and(|(sub, n)| {
+                self.permanents(p)
+                    .filter(|&x| x != id && self.has_subtype(x, sub))
+                    .count()
+                    < n as usize
+            })
             || (e.enters_tapped_unless_legendary_creature
                 && !self.creatures(p).any(|x| x != id && self.types_of(x).legendary))
     }
@@ -10998,6 +11041,31 @@ impl Game {
             && d.mana_ext
                 .ward_sacrifice_subtype
                 .is_none_or(|s| self.has_subtype(x, s))
+    }
+
+    /// Two different permanents `p` controls to sacrifice for "Sacrifice a [first] and a [second]"
+    /// (`Activated::sacrifice_two_subtypes`): one with each subtype, keeping those with both when
+    /// it can (a Swamp Forest stays if a basic Swamp and Forest can pay).
+    fn subtype_pair_to_sacrifice(&self, p: PlayerId, subs: [&str; 2]) -> Option<(ObjId, ObjId)> {
+        let with = |s: &str| -> Vec<ObjId> {
+            self.permanents(p)
+                .filter(|&x| self.has_subtype(x, s) && !self.cant_be_sacrificed(x))
+                .collect()
+        };
+        let (a, b) = (with(subs[0]), with(subs[1]));
+        let mut best = None;
+        for &x in &a {
+            for &y in &b {
+                if x == y {
+                    continue;
+                }
+                let duals = self.has_subtype(x, subs[1]) as u8 + self.has_subtype(y, subs[0]) as u8;
+                if best.is_none_or(|(d, _, _)| duals < d) {
+                    best = Some((duals, x, y));
+                }
+            }
+        }
+        best.map(|(_, x, y)| (x, y))
     }
 
     /// Foods `p` could sacrifice to forage (not `except`).
@@ -13541,6 +13609,8 @@ impl Game {
             }
             d @ Decision::AttachAura { .. } => self.attach_aura_actions(p, d),
             Decision::DiscardThenIfInstantOrSorcery => hand.iter().copied().map(Action::Pick).collect(),
+            Decision::PatronOfChaosSacrifice { first, .. } => self.patron_of_chaos_actions(p, *first),
+            Decision::ExileFromHandUntilSourceLeaves { victim, .. } => self.hand_link_actions(*victim),
             Decision::MoveAuraTo { aura } => self
                 .move_aura_options(*aura, p)
                 .into_iter()
@@ -15171,6 +15241,12 @@ impl Game {
                 if let Action::Pick(c) = a {
                     self.put_onto_battlefield_attacking(c, p);
                 }
+            }
+            (Decision::PatronOfChaosSacrifice { controller, first }, a) => {
+                self.patron_of_chaos_decide(p, controller, first, a)
+            }
+            (Decision::ExileFromHandUntilSourceLeaves { source, zcc, .. }, a) => {
+                self.hand_link_decide(source, zcc, a)
             }
             (Decision::MoveAuraTo { aura }, Action::Pick(c)) => {
                 let zcc = self.obj(c).zcc;
@@ -23369,6 +23445,30 @@ impl Game {
             }
             Effect::DestroyAllPlaneswalkers => self.destroy_all_planeswalkers(),
             Effect::EachOpponentLosesAllCounters => self.opponent_loses_all_counters(item.controller),
+            Effect::TargetOpponentMaySacrificeTwoOrYouDrawTwo(slot) => {
+                for q in self.players_for(item, legal, Who::TargetPlayer(slot)) {
+                    self.patron_of_chaos_ask(q, item.controller);
+                }
+            }
+            Effect::ExileDefendingHandDrawThatManyPlayable => {
+                self.exile_defending_hand_draw_that_many(src, item.controller)
+            }
+            Effect::YouLoseLifePerKindCounter => {
+                let n = self.obj(src).kind_counters.max(0);
+                if n > 0 {
+                    self.lose_life(item.controller, n);
+                }
+            }
+            Effect::YouDrawPerKindCounter => {
+                for _ in 0..self.obj(src).kind_counters.max(0) {
+                    self.draw(item.controller);
+                }
+            }
+            Effect::ExileFromHandUntilSourceLeaves(slot) => {
+                for q in self.players_for(item, legal, Who::TargetPlayer(slot)) {
+                    self.hand_link_ask(src, item.controller, q);
+                }
+            }
             Effect::DiscardThenIfInstantOrSorcery => {
                 let p = item.controller;
                 if self.players[p].hand.is_empty() {
