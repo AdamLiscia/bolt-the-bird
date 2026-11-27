@@ -2810,6 +2810,21 @@ pub enum Effect {
     CastFaceUpOpponentExiledFreeUpTo(u8),
     /// "Each opponent exiles the top `n` cards of their library." (Ashiok's Nightmare token: 2)
     EachOpponentExilesTop(u8),
+    /// Create `n` `def` tokens tapped (Alchemist's Talent: two tapped Treasures).
+    CreateTokensTapped {
+        def: usize,
+        n: u8,
+    },
+    /// The source deals damage equal to the mana value of the spell in the trigger's `extra` to each
+    /// opponent (Alchemist's Talent, level 3).
+    DamageEachOpponentCastSpellManaValue,
+    /// A second hideaway (Evercoat Ursine's "Hideaway 3, hideaway 3"): the source's current hideaway
+    /// card is kept in `Game::hideaway_more`, then Hideaway `n` again.
+    HideawayAnother(u8),
+    /// "you may play one of them without paying its mana cost" (Evercoat Ursine): a one-spell
+    /// free-cast window over the cards hidden away with the source. A land among them can't be
+    /// played this way (free-cast windows are spells only).
+    MayCastOneHideawayFree,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

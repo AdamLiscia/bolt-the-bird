@@ -1944,6 +1944,9 @@ pub struct Game {
     pub face_down_exiled: Vec<(ObjId, u32)>,
     /// The open free-cast window allows this many spells (0: no limit; Ashiok's −7: 3).
     pub free_casts_max: u8,
+    /// Hideaway cards beyond a source's `Object::hideaway`: (source, its zcc, card, the card's zcc
+    /// in exile) (Evercoat Ursine's second hideaway).
+    pub hideaway_more: Vec<(ObjId, u32, ObjId, u32)>,
     /// The other creatures a crew cost taps with its named one (from `Decision::CrewTap`).
     crew_extra: Vec<ObjId>,
     /// Saddled Mounts (CR 702.171b) and the creatures that saddled them: (mount, its zcc, rider,
@@ -2306,6 +2309,7 @@ impl Game {
             dream_counters: Vec::new(),
             face_down_exiled: Vec::new(),
             free_casts_max: 0,
+            hideaway_more: Vec::new(),
             saddled: Vec::new(),
             karador_turn: [0; 2],
             any_graveyard_spells_turn: [0; 2],
@@ -7210,6 +7214,9 @@ impl Game {
                 let s = self.def_of(x);
                 if s.citadel && (d.types.land || self.players[p].life >= d.cost.mana_value() as i32) {
                     return true; // Bolas's Citadel: it can pay the mana value in life
+                }
+                if self.top_cards_after_a_spell(p, x) {
+                    return true; // Fortune Teller's Talent, level 2: lands and spells
                 }
                 if d.types.land {
                     s.lands_from_top
@@ -24974,6 +24981,24 @@ impl Game {
             Effect::CastFaceUpOpponentExiledFreeUpTo(n) => {
                 self.open_free_casts_from_opponents_exile(item.controller, n)
             }
+            Effect::CreateTokensTapped { def, n } => {
+                for _ in 0..n {
+                    self.create_token(item.controller, def);
+                    for t in self.last_created.clone() {
+                        self.obj_mut(t).tapped = true;
+                    }
+                }
+            }
+            Effect::DamageEachOpponentCastSpellManaValue => {
+                if let Some(s) = item.extra {
+                    let mv = self.stack_mana_cost(s).with_x(self.obj(s).x).mana_value() as i32;
+                    if mv > 0 {
+                        self.deal_damage(src, Target::Player(opponent(item.controller)), mv);
+                    }
+                }
+            }
+            Effect::HideawayAnother(n) => self.hideaway_another(src, item.controller, n),
+            Effect::MayCastOneHideawayFree => self.open_hideaway_free_cast(src, item.controller),
             Effect::EachOpponentExilesTop(n) => {
                 let q = opponent(item.controller);
                 for _ in 0..n {

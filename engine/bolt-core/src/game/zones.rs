@@ -1073,4 +1073,65 @@ impl Game {
             .filter(|&&c| self.obj(c).zone != Zone::Exile)
             .count()
     }
+
+    /// Fortune Teller's Talent, level 2: whether `x` (a permanent `p` controls) lets `p` play the top
+    /// card of their library now: at its Class level, and once `p` has cast a spell this turn.
+    pub(super) fn top_cards_after_a_spell(&self, p: PlayerId, x: ObjId) -> bool {
+        let level = self.def_of(x).zones.top_cards_if_cast_spell_at_level;
+        level > 0 && self.class_level(x) >= level && self.spells_cast[p] > 0
+    }
+
+    /// Evercoat Ursine's second hideaway: keep the first card, then hide away again.
+    pub(super) fn hideaway_another(&mut self, src: ObjId, p: PlayerId, n: u8) {
+        if let Some(c) = self
+            .obj(src)
+            .hideaway
+            .filter(|&c| self.obj(c).zone == Zone::Exile)
+        {
+            let entry = (src, self.obj(src).zcc, c, self.obj(c).zcc);
+            self.hideaway_more.push(entry);
+        }
+        let cards: Vec<ObjId> = self.players[p]
+            .library
+            .iter()
+            .rev()
+            .take(n as usize)
+            .copied()
+            .collect();
+        if !cards.is_empty() {
+            self.ask(p, Decision::HideawayPick { source: src, cards });
+        }
+    }
+
+    /// Evercoat Ursine's combat damage trigger: `p` may cast one of the cards hidden away with `src`,
+    /// free.
+    pub(super) fn open_hideaway_free_cast(&mut self, src: ObjId, p: PlayerId) {
+        let zcc = self.obj(src).zcc;
+        let mut cards: Vec<ObjId> = self
+            .hideaway_more
+            .iter()
+            .filter(|&&(s, z, c, cz)| {
+                s == src && z == zcc && self.obj(c).zone == Zone::Exile && self.obj(c).zcc == cz
+            })
+            .map(|&(_, _, c, _)| c)
+            .collect();
+        if let Some(c) = self
+            .obj(src)
+            .hideaway
+            .filter(|&c| self.obj(c).zone == Zone::Exile)
+        {
+            if !cards.contains(&c) {
+                cards.push(c);
+            }
+        }
+        if cards.is_empty() {
+            return;
+        }
+        for c in cards {
+            self.obj_mut(c).cast_free = true;
+            self.free_casts.push(c);
+        }
+        self.free_casts_one = true;
+        self.free_caster = p;
+    }
 }

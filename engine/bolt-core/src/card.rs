@@ -2321,6 +2321,10 @@ pub struct ZonesExt {
     /// "You may cast spells with flash or flying from the top of your library." (Errant and Giada):
     /// printed flash or flying.
     pub top_spells_flash_or_flying: bool,
+    /// "As long as you've cast a spell this turn, you may play cards from the top of your library."
+    /// (Fortune Teller's Talent, level 2): while this permanent is at this Class level or higher (1:
+    /// always). 0: none.
+    pub top_cards_if_cast_spell_at_level: u8,
 }
 
 #[cfg(test)]

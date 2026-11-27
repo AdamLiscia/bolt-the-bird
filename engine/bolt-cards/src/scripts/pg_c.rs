@@ -2451,6 +2451,57 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::YourCreaturesDealCombatDamageToPlayer, vec![], vec![treasure, Effect::ExileTopOfOpponentFaceDownCastable]);
             },
         ),
+        "Alchemist's Talent" => s(
+            &[
+                "When this Class enters, create two tapped Treasure tokens.",
+                "{1}{R}: Level 2",
+                "Treasures you control have \"{T}, Sacrifice this artifact: Add two mana of any one color.\"",
+                "{4}{R}: Level 3",
+                "Whenever you cast a spell, if mana from a Treasure was spent to cast it, this Class deals damage equal to that spell's mana value to each opponent.",
+            ],
+            |d, t| {
+                on(d, When::Enters, vec![], vec![Effect::CreateTokensTapped { def: t.treasure, n: 2 }]);
+                for (level, cost) in [(2, "{1}{R}"), (3, "{4}{R}")] {
+                    let n = activated(d, cost, false, vec![], vec![Effect::ClassLevelUp(level)]);
+                    d.activated[n].sorcery = true;
+                    d.activated[n].level_up_to = level;
+                }
+                d.mana_ext.treasures_add_two_at_level = 2; // d1's two-mana Treasures
+                let mut burn = Ability::new(vec![], vec![Effect::StopUnlessTreasureManaSpentOnExtra, Effect::DamageEachOpponentCastSpellManaValue]);
+                burn.condition = Some(Condition::ClassLevelAtLeast(3));
+                d.triggers.push(Trigger { when: When::YouCast, ability: burn });
+            },
+        ),
+        "Fortune Teller's Talent" => s(
+            &[
+                "You may look at the top card of your library any time.",
+                "{3}{U}: Level 2",
+                "As long as you've cast a spell this turn, you may play cards from the top of your library.",
+                "{2}{U}: Level 3",
+                "Spells you cast from anywhere other than your hand cost {2} less to cast.",
+            ],
+            |d, _| {
+                // Looking at the top card is information only: no rules effect.
+                for (level, cost) in [(2, "{3}{U}"), (3, "{2}{U}")] {
+                    let n = activated(d, cost, false, vec![], vec![Effect::ClassLevelUp(level)]);
+                    d.activated[n].sorcery = true;
+                    d.activated[n].level_up_to = level;
+                }
+                d.zones.top_cards_if_cast_spell_at_level = 2;
+                d.mana_ext.not_from_hand_discount = Some((3, 2)); // d1's discount
+            },
+        ),
+        "Evercoat Ursine" => s(
+            &[
+                "Hideaway 3, hideaway 3",
+                "Whenever this creature deals combat damage to a player, if there are cards exiled with it, you may play one of them without paying its mana cost.",
+            ],
+            |d, _| {
+                on(d, When::Enters, vec![], vec![Effect::Hideaway(3), Effect::HideawayAnother(3)]);
+                // Limit: a free-cast window is spells only, so a hidden land can't be played this way.
+                on(d, When::DealsCombatDamageToPlayer, vec![], vec![Effect::MayCastOneHideawayFree]);
+            },
+        ),
         "Deep-Cavern Bat" => s(
             &["When this creature enters, look at target opponent's hand. You may exile a nonland card from it until this creature leaves the battlefield."],
             |d, _| {
@@ -2777,4 +2828,7 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Pippin, Guard of the Citadel",
     "Toxrill, the Corrosive",
     "Rev, Tithe Extractor",
+    "Alchemist's Talent",
+    "Fortune Teller's Talent",
+    "Evercoat Ursine",
 ];

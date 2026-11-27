@@ -1169,3 +1169,21 @@ Cards (1): Rev, Tithe Extractor ("that player" is the one opponent). Ashiok wait
 two for Rev, the −7 and the exile-two on an edited Inkshield).
 Likely failure spots when built: Rev's attack trigger target answer in `resolve_all`, the −7 window reopening
 after each cast (three `Cast` + `Target` in a row), Bolt from exile paid with the table's Mountains.
+
+## Batch 20 (unbuilt): Alchemist's Talent, Fortune Teller's Talent, Evercoat Ursine
+
+The Talents were handed back from d4 (retired); d4's Class pieces and d1's `treasures_add_two_at_level` and
+`not_from_hand_discount` were already on tarkir.
+Core (appended; arms before `EachOpponentExilesTop`, functions in game/zones.rs):
+- `Effect::CreateTokensTapped { def, n }` (two tapped Treasures), `Effect::DamageEachOpponentCastSpellManaValue`
+  (level 3, after `StopUnlessTreasureManaSpentOnExtra`, on `When::YouCast` behind `ClassLevelAtLeast(3)`).
+- `ZonesExt::top_cards_if_cast_spell_at_level` (Fortune Teller's level 2): one clause in `priority_actions`' `top`
+  filter (`top_cards_after_a_spell`), before the land/spell split, so lands and spells both. Lane C's
+  top-of-library play, as the merger routed it.
+- `Effect::{HideawayAnother(n), MayCastOneHideawayFree}` with `Game::hideaway_more` (Evercoat Ursine: the first
+  hideaway card is kept there, then the existing `Decision::HideawayPick` is asked again). **Limit:** the free
+  play is a one-spell free-cast window, spells only, so a hidden land can't be played this way.
+Tests in core_objects (81: Alchemist's two, Fortune Teller's, Ursine's).
+Likely failure spots when built: the Treasure-only Bolt (`game(&[])`, paid by the Treasure), the Ursine
+hideaway picks in `play`'s answers (second Bolt from the first three, then the first from the next three), the
+Class level set directly on `class_level`.

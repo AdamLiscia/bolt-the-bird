@@ -1846,3 +1846,102 @@ fn each_opponent_exiles_the_top_two_cards() {
     play(&mut g, c, false, &[], &[]);
     assert_eq!((g.obj(a).zone, g.obj(b).zone), (Zone::Exile, Zone::Exile));
 }
+
+// ---- Alchemist's Talent, Fortune Teller's Talent, Evercoat Ursine (batch 20) ----
+
+#[test]
+fn alchemists_talent_makes_tapped_treasures_then_burns_for_treasure_spells() {
+    let mut g = table();
+    let talent = hand(&mut g, 0, "Alchemist's Talent");
+    play(&mut g, talent, false, &[], &[]);
+    let treasures = tokens(&g, 0, "Treasure");
+    assert_eq!(treasures.len(), 2);
+    assert!(treasures.iter().all(|&t| g.obj(t).tapped), "tapped");
+    assert!(
+        g.legal_actions().contains(&Action::Activate(talent, 0)),
+        "level 2 as a sorcery"
+    );
+    // Level 3 on a board with only Treasures, so the Bolt is paid with Treasure mana.
+    let mut g = game(&[]);
+    let talent = put(&mut g, 0, "Alchemist's Talent");
+    g.objects[talent.0 as usize].class_level = 3;
+    let treasure = g
+        .defs
+        .iter()
+        .position(|d| d.token && d.name == "Treasure")
+        .expect("Treasure");
+    g.add_card(0, treasure, Zone::Battlefield);
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    play(&mut g, bolt, false, &[Target::Player(1)], &[]);
+    assert_eq!(g.players[1].life, 36, "3 from the Bolt, 1 for its mana value");
+}
+
+#[test]
+fn alchemists_talent_level_three_ignores_spells_without_treasure_mana() {
+    let mut g = table();
+    let talent = put(&mut g, 0, "Alchemist's Talent");
+    g.objects[talent.0 as usize].class_level = 3;
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    play(&mut g, bolt, false, &[Target::Player(1)], &[]);
+    assert_eq!(g.players[1].life, 37);
+}
+
+#[test]
+fn fortune_tellers_talent_level_two_plays_the_top_after_a_spell() {
+    let mut g = table();
+    let talent = put(&mut g, 0, "Fortune Teller's Talent");
+    let land = top(&mut g, "Mountain");
+    assert!(!g.legal_actions().contains(&Action::PlayLand(land)), "level 1");
+    g.objects[talent.0 as usize].class_level = 2;
+    assert!(
+        !g.legal_actions().contains(&Action::PlayLand(land)),
+        "no spell cast yet this turn"
+    );
+    let elves = hand(&mut g, 0, "Llanowar Elves");
+    play(&mut g, elves, false, &[], &[]);
+    assert!(g.legal_actions().contains(&Action::PlayLand(land)));
+    let bolt = top(&mut g, "Lightning Bolt");
+    assert!(g.legal_actions().contains(&Action::Cast(bolt)), "spells too");
+}
+
+#[test]
+fn evercoat_ursine_hides_two_away_and_casts_one_free_on_combat_damage() {
+    let mut g = table();
+    let first = top(&mut g, "Lightning Bolt");
+    for _ in 0..2 {
+        top(&mut g, "Plains");
+    }
+    let second = top(&mut g, "Lightning Bolt");
+    for _ in 0..2 {
+        top(&mut g, "Plains");
+    }
+    let bear = hand(&mut g, 0, "Evercoat Ursine");
+    play(
+        &mut g,
+        bear,
+        false,
+        &[],
+        &[Action::Pick(second), Action::Pick(first)],
+    );
+    assert_eq!(
+        (g.obj(first).zone, g.obj(second).zone),
+        (Zone::Exile, Zone::Exile)
+    );
+    g.start_turn(5, 0);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(bear));
+    act(&mut g, Action::FinishAttacks);
+    while !matches!(g.pending, Pending::FreeCast(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Cast(first)) && legal.contains(&Action::Cast(second)));
+    act(&mut g, Action::Cast(first));
+    act(&mut g, Action::Target(Target::Player(1)));
+    assert!(!matches!(g.pending, Pending::FreeCast(_)), "one of them");
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(first).zone, Zone::Graveyard);
+    assert_eq!(g.obj(second).zone, Zone::Exile);
+}
