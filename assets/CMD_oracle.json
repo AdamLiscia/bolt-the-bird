@@ -61042,5 +61042,3449 @@
   "loyalty": null,
   "produced_mana": null,
   "collector_number": "617"
+ },
+ {
+  "name": "Aether Spellbomb",
+  "mana_cost": "{1}",
+  "cmc": 1.0,
+  "type_line": "Artifact",
+  "oracle_text": "{U}, Sacrifice this artifact: Return target creature to its owner's hand.\n{1}, Sacrifice this artifact: Draw a card.",
+  "power": null,
+  "toughness": null,
+  "keywords": [],
+  "colors": [],
+  "rarity": "common",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "456"
+ },
+ {
+  "name": "Aluren",
+  "mana_cost": "{2}{G}{G}",
+  "cmc": 4.0,
+  "type_line": "Enchantment",
+  "oracle_text": "Any player may cast creature spells with mana value 3 or less without paying their mana costs and as though they had flash.",
+  "power": null,
+  "toughness": null,
+  "keywords": [],
+  "colors": [
+   "G"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "165"
+ },
+ {
+  "name": "Angelic Renewal",
+  "mana_cost": "{1}{W}",
+  "cmc": 2.0,
+  "type_line": "Enchantment",
+  "oracle_text": "Whenever a creature is put into your graveyard from the battlefield, you may sacrifice this enchantment. If you do, return that card to the battlefield.",
+  "power": null,
+  "toughness": null,
+  "keywords": [],
+  "colors": [
+   "W"
+  ],
+  "rarity": "common",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "10"
+ },
+ {
+  "name": "Archon of Cruelty",
+  "mana_cost": "{6}{B}{B}",
+  "cmc": 8.0,
+  "type_line": "Creature \u2014 Archon",
+  "oracle_text": "Flying\nWhenever this creature enters or attacks, target opponent sacrifices a creature or planeswalker of their choice, discards a card, and loses 3 life. You draw a card and gain 3 life.",
+  "power": "6",
+  "toughness": "6",
+  "keywords": [
+   "Flying"
+  ],
+  "colors": [
+   "B"
+  ],
+  "rarity": "mythic",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "47"
+ },
+ {
+  "name": "Archon of Emeria",
+  "mana_cost": "{2}{W}",
+  "cmc": 3.0,
+  "type_line": "Creature \u2014 Archon",
+  "oracle_text": "Flying\nEach player can't cast more than one spell each turn.\nNonbasic lands your opponents control enter tapped.",
+  "power": "2",
+  "toughness": "3",
+  "keywords": [
+   "Flying"
+  ],
+  "colors": [
+   "W"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "4"
+ },
+ {
+  "name": "Artifact Mutation",
+  "mana_cost": "{R}{G}",
+  "cmc": 2.0,
+  "type_line": "Instant",
+  "oracle_text": "Destroy target artifact. It can't be regenerated. Create X 1/1 green Saproling creature tokens, where X is that artifact's mana value.",
+  "power": null,
+  "toughness": null,
+  "keywords": [],
+  "colors": [
+   "G",
+   "R"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "326"
+ },
+ {
+  "name": "Autumn's Veil",
+  "mana_cost": "{G}",
+  "cmc": 1.0,
+  "type_line": "Instant",
+  "oracle_text": "Spells you control can't be countered by blue or black spells this turn, and creatures you control can't be the targets of blue or black spells this turn.",
+  "power": null,
+  "toughness": null,
+  "keywords": [],
+  "colors": [
+   "G"
+  ],
+  "rarity": "uncommon",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "164"
+ },
+ {
+  "name": "Aven Mindcensor",
+  "mana_cost": "{2}{W}",
+  "cmc": 3.0,
+  "type_line": "Creature \u2014 Bird Wizard",
+  "oracle_text": "Flash\nFlying\nIf an opponent would search a library, that player searches the top four cards of that library instead.",
+  "power": "2",
+  "toughness": "1",
+  "keywords": [
+   "Flying",
+   "Flash"
+  ],
+  "colors": [
+   "W"
+  ],
+  "rarity": "uncommon",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "688"
+ },
+ {
+  "name": "Ayara, First of Locthwain",
+  "mana_cost": "{B}{B}{B}",
+  "cmc": 3.0,
+  "type_line": "Legendary Creature \u2014 Elf Noble",
+  "oracle_text": "Whenever Ayara or another black creature you control enters, each opponent loses 1 life and you gain 1 life.\n{T}, Sacrifice another black creature: Draw a card.",
+  "power": "2",
+  "toughness": "3",
+  "keywords": [],
+  "colors": [
+   "B"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "75"
+ },
+ {
+  "name": "Back to Basics",
+  "mana_cost": "{2}{U}",
+  "cmc": 3.0,
+  "type_line": "Enchantment",
+  "oracle_text": "Nonbasic lands don't untap during their controllers' untap steps.",
+  "power": null,
+  "toughness": null,
+  "keywords": [],
+  "colors": [
+   "U"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "46"
+ },
+ {
+  "name": "Bartolom\u00e9 del Presidio",
+  "mana_cost": "{W}{B}",
+  "cmc": 2.0,
+  "type_line": "Legendary Creature \u2014 Vampire Knight",
+  "oracle_text": "Sacrifice another creature or artifact: Put a +1/+1 counter on Bartolom\u00e9 del Presidio.",
+  "power": "2",
+  "toughness": "1",
+  "keywords": [],
+  "colors": [
+   "B",
+   "W"
+  ],
+  "rarity": "uncommon",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "224"
+ },
+ {
+  "name": "Baylen, the Haymaker",
+  "mana_cost": "{R}{G}{W}",
+  "cmc": 3.0,
+  "type_line": "Legendary Creature \u2014 Rabbit Warrior",
+  "oracle_text": "Tap two untapped tokens you control: Add one mana of any color.\nTap three untapped tokens you control: Draw a card.\nTap four untapped tokens you control: Put three +1/+1 counters on Baylen. It gains trample until end of turn.",
+  "power": "4",
+  "toughness": "3",
+  "keywords": [],
+  "colors": [
+   "G",
+   "R",
+   "W"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": [
+   "B",
+   "G",
+   "R",
+   "U",
+   "W"
+  ],
+  "collector_number": "205"
+ },
+ {
+  "name": "Bedevil",
+  "mana_cost": "{B}{B}{R}",
+  "cmc": 3.0,
+  "type_line": "Instant",
+  "oracle_text": "Destroy target artifact, creature, or planeswalker.",
+  "power": null,
+  "toughness": null,
+  "keywords": [],
+  "colors": [
+   "B",
+   "R"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "182"
+ },
+ {
+  "name": "Bilbo's Gambit",
+  "mana_cost": "{1}{W}",
+  "cmc": 2.0,
+  "type_line": "Instant",
+  "oracle_text": "Gift a Treasure (You may promise an opponent a gift as you cast this spell. If you do, they create a Treasure token before its other effects. It's an artifact with \"{T}, Sacrifice this token: Add one mana of any color.\")\nReturn target spell to its owner's hand. If the gift was promised, players can't cast spells this turn.",
+  "power": null,
+  "toughness": null,
+  "keywords": [
+   "Gift",
+   "Treasure"
+  ],
+  "colors": [
+   "W"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": [
+   "B",
+   "G",
+   "R",
+   "U",
+   "W"
+  ],
+  "collector_number": "5"
+ },
+ {
+  "name": "Birgi, God of Storytelling // Harnfel, Horn of Bounty",
+  "mana_cost": "{2}{R}",
+  "cmc": 3.0,
+  "type_line": "Legendary Creature \u2014 God",
+  "oracle_text": "Whenever you cast a spell, add {R}. Until end of turn, you don't lose this mana as steps and phases end.\nCreatures you control can boast twice during each of your turns rather than once.",
+  "power": "3",
+  "toughness": "3",
+  "keywords": [],
+  "colors": [
+   "R"
+  ],
+  "rarity": "rare",
+  "layout": "modal_dfc",
+  "loyalty": null,
+  "produced_mana": [
+   "R"
+  ],
+  "collector_number": "123",
+  "back": {
+   "name": "Harnfel, Horn of Bounty",
+   "mana_cost": "{4}{R}",
+   "type_line": "Legendary Artifact",
+   "oracle_text": "Discard a card: Exile the top two cards of your library. You may play those cards this turn.",
+   "power": null,
+   "toughness": null,
+   "colors": [
+    "R"
+   ],
+   "loyalty": null
+  }
+ },
+ {
+  "name": "Black Mage's Rod",
+  "mana_cost": "{1}{B}",
+  "cmc": 2.0,
+  "type_line": "Artifact \u2014 Equipment",
+  "oracle_text": "Job select (When this Equipment enters, create a 1/1 colorless Hero creature token, then attach this to it.)\nEquipped creature gets +1/+0, has \"Whenever you cast a noncreature spell, this creature deals 1 damage to each opponent,\" and is a Wizard in addition to its other types.\nEquip {3}",
+  "power": null,
+  "toughness": null,
+  "keywords": [
+   "Job select",
+   "Equip"
+  ],
+  "colors": [
+   "B"
+  ],
+  "rarity": "common",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "90"
+ },
+ {
+  "name": "Black Market",
+  "mana_cost": "{3}{B}{B}",
+  "cmc": 5.0,
+  "type_line": "Enchantment",
+  "oracle_text": "Whenever a creature dies, put a charge counter on this enchantment.\nAt the beginning of your first main phase, add {B} for each charge counter on this enchantment.",
+  "power": null,
+  "toughness": null,
+  "keywords": [],
+  "colors": [
+   "B"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": [
+   "B"
+  ],
+  "collector_number": "739"
+ },
+ {
+  "name": "Bloodflow Connoisseur",
+  "mana_cost": "{2}{B}",
+  "cmc": 3.0,
+  "type_line": "Creature \u2014 Vampire",
+  "oracle_text": "Sacrifice a creature: Put a +1/+1 counter on this creature.",
+  "power": "1",
+  "toughness": "1",
+  "keywords": [],
+  "colors": [
+   "B"
+  ],
+  "rarity": "common",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "71"
+ },
+ {
+  "name": "Bonehoard Dracosaur",
+  "mana_cost": "{3}{R}{R}",
+  "cmc": 5.0,
+  "type_line": "Creature \u2014 Dinosaur Dragon",
+  "oracle_text": "Flying, first strike\nAt the beginning of your upkeep, exile the top two cards of your library. You may play them this turn. If you exiled a land card this way, create a 3/1 red Dinosaur creature token. If you exiled a nonland card this way, create a Treasure token.",
+  "power": "5",
+  "toughness": "5",
+  "keywords": [
+   "Flying",
+   "First strike",
+   "Treasure"
+  ],
+  "colors": [
+   "R"
+  ],
+  "rarity": "mythic",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "134"
+ },
+ {
+  "name": "Boromir, Warden of the Tower",
+  "mana_cost": "{2}{W}",
+  "cmc": 3.0,
+  "type_line": "Legendary Creature \u2014 Human Soldier",
+  "oracle_text": "Vigilance\nWhenever an opponent casts a spell, if no mana was spent to cast it, counter that spell.\nSacrifice Boromir: Creatures you control gain indestructible until end of turn. The Ring tempts you.",
+  "power": "3",
+  "toughness": "3",
+  "keywords": [
+   "Vigilance"
+  ],
+  "colors": [
+   "W"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "4"
+ },
+ {
+  "name": "Brainsurge",
+  "mana_cost": "{2}{U}",
+  "cmc": 3.0,
+  "type_line": "Instant",
+  "oracle_text": "Draw four cards, then put two cards from your hand on top of your library in any order.",
+  "power": null,
+  "toughness": null,
+  "keywords": [],
+  "colors": [
+   "U"
+  ],
+  "rarity": "uncommon",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "40"
+ },
+ {
+  "name": "Bruna, the Fading Light",
+  "mana_cost": "{5}{W}{W}",
+  "cmc": 7.0,
+  "type_line": "Legendary Creature \u2014 Angel Horror",
+  "oracle_text": "When you cast this spell, you may return target Angel or Human creature card from your graveyard to the battlefield.\nFlying, vigilance\n(Melds with Gisela, the Broken Blade.)",
+  "power": "5",
+  "toughness": "7",
+  "keywords": [
+   "Flying",
+   "Vigilance"
+  ],
+  "colors": [
+   "W"
+  ],
+  "rarity": "rare",
+  "layout": "meld",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "14"
+ },
+ {
+  "name": "Cadira, Caller of the Small",
+  "mana_cost": "{1}{G}{W}",
+  "cmc": 3.0,
+  "type_line": "Legendary Creature \u2014 Orc Ranger",
+  "oracle_text": "Trample\nWhenever Cadira deals combat damage to a player, for each token you control, create a 1/1 white Rabbit creature token.",
+  "power": "3",
+  "toughness": "3",
+  "keywords": [
+   "Trample"
+  ],
+  "colors": [
+   "G",
+   "W"
+  ],
+  "rarity": "uncommon",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "269"
+ },
+ {
+  "name": "Carpet of Flowers",
+  "mana_cost": "{G}",
+  "cmc": 1.0,
+  "type_line": "Enchantment",
+  "oracle_text": "At the beginning of each of your main phases, if you haven't added mana with this ability this turn, you may add X mana of any one color, where X is the number of Islands target opponent controls.",
+  "power": null,
+  "toughness": null,
+  "keywords": [],
+  "colors": [
+   "G"
+  ],
+  "rarity": "uncommon",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": [
+   "B",
+   "G",
+   "R",
+   "U",
+   "W"
+  ],
+  "collector_number": "240"
+ },
+ {
+  "name": "Champions from Beyond",
+  "mana_cost": "{X}{W}{W}",
+  "cmc": 2.0,
+  "type_line": "Enchantment",
+  "oracle_text": "When this enchantment enters, create X 1/1 colorless Hero creature tokens.\nLight Party \u2014 Whenever you attack with four or more creatures, scry 2, then draw a card.\nFull Party \u2014 Whenever you attack with eight or more creatures, those creatures get +4/+4 until end of turn.",
+  "power": null,
+  "toughness": null,
+  "keywords": [
+   "Full Party",
+   "Light Party",
+   "Scry"
+  ],
+  "colors": [
+   "W"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "11"
+ },
+ {
+  "name": "Charismatic Conqueror",
+  "mana_cost": "{1}{W}",
+  "cmc": 2.0,
+  "type_line": "Creature \u2014 Vampire Soldier",
+  "oracle_text": "Vigilance\nWhenever an artifact or creature an opponent controls enters untapped, they may tap that permanent. If they don't, you create a 1/1 white Vampire creature token with lifelink.",
+  "power": "2",
+  "toughness": "2",
+  "keywords": [
+   "Vigilance"
+  ],
+  "colors": [
+   "W"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "70"
+ },
+ {
+  "name": "Chrome Host Seedshark",
+  "mana_cost": "{2}{U}",
+  "cmc": 3.0,
+  "type_line": "Creature \u2014 Phyrexian Shark",
+  "oracle_text": "Flying\nWhenever you cast a noncreature spell, incubate X, where X is that spell's mana value. (Create an Incubator token with X +1/+1 counters on it and \"{2}: Transform this token.\" It transforms into a 0/0 Phyrexian artifact creature.)",
+  "power": "2",
+  "toughness": "4",
+  "keywords": [
+   "Flying",
+   "Incubate",
+   "Transform"
+  ],
+  "colors": [
+   "U"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "68"
+ },
+ {
+  "name": "Circle of Power",
+  "mana_cost": "{3}{B}",
+  "cmc": 4.0,
+  "type_line": "Sorcery",
+  "oracle_text": "You draw two cards and you lose 2 life. Create a 0/1 black Wizard creature token with \"Whenever you cast a noncreature spell, this token deals 1 damage to each opponent.\"\nWizards you control get +1/+0 and gain lifelink until end of turn.",
+  "power": null,
+  "toughness": null,
+  "keywords": [],
+  "colors": [
+   "B"
+  ],
+  "rarity": "uncommon",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "92"
+ },
+ {
+  "name": "Commune with Lava",
+  "mana_cost": "{X}{R}{R}",
+  "cmc": 2.0,
+  "type_line": "Instant",
+  "oracle_text": "Exile the top X cards of your library. Until the end of your next turn, you may play those cards.",
+  "power": null,
+  "toughness": null,
+  "keywords": [],
+  "colors": [
+   "R"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "118"
+ },
+ {
+  "name": "Containment Priest",
+  "mana_cost": "{1}{W}",
+  "cmc": 2.0,
+  "type_line": "Creature \u2014 Human Cleric",
+  "oracle_text": "Flash\nIf a nontoken creature would enter and it wasn't cast, exile it instead.",
+  "power": "2",
+  "toughness": "2",
+  "keywords": [
+   "Flash"
+  ],
+  "colors": [
+   "W"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "13"
+ },
+ {
+  "name": "Cornered by Black Mages",
+  "mana_cost": "{1}{B}{B}",
+  "cmc": 3.0,
+  "type_line": "Sorcery",
+  "oracle_text": "Target opponent sacrifices a creature of their choice.\nCreate a 0/1 black Wizard creature token with \"Whenever you cast a noncreature spell, this token deals 1 damage to each opponent.\"",
+  "power": null,
+  "toughness": null,
+  "keywords": [],
+  "colors": [
+   "B"
+  ],
+  "rarity": "common",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "93"
+ },
+ {
+  "name": "Court of Grace",
+  "mana_cost": "{2}{W}{W}",
+  "cmc": 4.0,
+  "type_line": "Enchantment",
+  "oracle_text": "When this enchantment enters, you become the monarch.\nAt the beginning of your upkeep, create a 1/1 white Spirit creature token with flying. If you're the monarch, create a 4/4 white Angel creature token with flying instead.",
+  "power": null,
+  "toughness": null,
+  "keywords": [],
+  "colors": [
+   "W"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "16"
+ },
+ {
+  "name": "Crime Novelist",
+  "mana_cost": "{2}{R}",
+  "cmc": 3.0,
+  "type_line": "Creature \u2014 Goblin Bard",
+  "oracle_text": "Whenever you sacrifice an artifact, put a +1/+1 counter on this creature and add {R}.",
+  "power": "1",
+  "toughness": "3",
+  "keywords": [],
+  "colors": [
+   "R"
+  ],
+  "rarity": "uncommon",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": [
+   "R"
+  ],
+  "collector_number": "121"
+ },
+ {
+  "name": "Cruel Celebrant",
+  "mana_cost": "{W}{B}",
+  "cmc": 2.0,
+  "type_line": "Creature \u2014 Vampire",
+  "oracle_text": "Whenever this creature or another creature or planeswalker you control dies, each opponent loses 1 life and you gain 1 life.",
+  "power": "1",
+  "toughness": "2",
+  "keywords": [],
+  "colors": [
+   "B",
+   "W"
+  ],
+  "rarity": "uncommon",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "267"
+ },
+ {
+  "name": "Cursed Totem",
+  "mana_cost": "{2}",
+  "cmc": 2.0,
+  "type_line": "Artifact",
+  "oracle_text": "Activated abilities of creatures can't be activated.",
+  "power": null,
+  "toughness": null,
+  "keywords": [],
+  "colors": [],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "295"
+ },
+ {
+  "name": "Dakkon Blackblade",
+  "mana_cost": "{2}{W}{U}{U}{B}",
+  "cmc": 6.0,
+  "type_line": "Legendary Creature \u2014 Human Warrior",
+  "oracle_text": "Dakkon Blackblade's power and toughness are each equal to the number of lands you control.",
+  "power": "*",
+  "toughness": "*",
+  "keywords": [],
+  "colors": [
+   "B",
+   "U",
+   "W"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "143"
+ },
+ {
+  "name": "Deafening Silence",
+  "mana_cost": "{W}",
+  "cmc": 1.0,
+  "type_line": "Enchantment",
+  "oracle_text": "Each player can't cast more than one noncreature spell each turn.",
+  "power": null,
+  "toughness": null,
+  "keywords": [],
+  "colors": [
+   "W"
+  ],
+  "rarity": "uncommon",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "10"
+ },
+ {
+  "name": "Decadent Dragon // Expensive Taste",
+  "mana_cost": "{2}{R}{R}",
+  "cmc": 4.0,
+  "type_line": "Creature \u2014 Dragon",
+  "oracle_text": "Flying, trample\nWhenever this creature attacks, create a Treasure token.",
+  "power": "4",
+  "toughness": "4",
+  "keywords": [
+   "Flying",
+   "Treasure",
+   "Trample"
+  ],
+  "colors": [
+   "R"
+  ],
+  "rarity": "rare",
+  "layout": "adventure",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "223",
+  "omen": {
+   "name": "Expensive Taste",
+   "mana_cost": "{2}{B}",
+   "type_line": "Instant \u2014 Adventure",
+   "oracle_text": "Exile the top two cards of target opponent's library face down. You may look at and play those cards for as long as they remain exiled."
+  }
+ },
+ {
+  "name": "Delay",
+  "mana_cost": "{1}{U}",
+  "cmc": 2.0,
+  "type_line": "Instant",
+  "oracle_text": "Counter target spell. If the spell is countered this way, exile it with three time counters on it instead of putting it into its owner's graveyard. If it doesn't have suspend, it gains suspend. (At the beginning of its owner's upkeep, they remove a time counter. When the last is removed, they may play it without paying its mana cost. If it's a creature, it has haste.)",
+  "power": null,
+  "toughness": null,
+  "keywords": [],
+  "colors": [
+   "U"
+  ],
+  "rarity": "uncommon",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "61"
+ },
+ {
+  "name": "Delayed Blast Fireball",
+  "mana_cost": "{1}{R}{R}",
+  "cmc": 3.0,
+  "type_line": "Instant",
+  "oracle_text": "Delayed Blast Fireball deals 2 damage to each opponent and each creature they control. If this spell was cast from exile, it deals 5 damage to each opponent and each creature they control instead.\nForetell {4}{R}{R} (During your turn, you may pay {2} and exile this card from your hand face down. Cast it on a later turn for its foretell cost.)",
+  "power": null,
+  "toughness": null,
+  "keywords": [
+   "Foretell"
+  ],
+  "colors": [
+   "R"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "676"
+ },
+ {
+  "name": "Dream Devourer",
+  "mana_cost": "{1}{B}",
+  "cmc": 2.0,
+  "type_line": "Creature \u2014 Demon Cleric",
+  "oracle_text": "Each nonland card in your hand without foretell has foretell. Its foretell cost is equal to its mana cost reduced by {2}. (During your turn, you may pay {2} and exile it from your hand face down. Cast it on a later turn for its foretell cost.)\nWhenever you foretell a card, this creature gets +2/+0 until end of turn.",
+  "power": "0",
+  "toughness": "3",
+  "keywords": [],
+  "colors": [
+   "B"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "90"
+ },
+ {
+  "name": "Dress Down",
+  "mana_cost": "{1}{U}",
+  "cmc": 2.0,
+  "type_line": "Enchantment",
+  "oracle_text": "Flash\nWhen this enchantment enters, draw a card.\nCreatures lose all abilities.\nAt the beginning of the end step, sacrifice this enchantment.",
+  "power": null,
+  "toughness": null,
+  "keywords": [
+   "Flash"
+  ],
+  "colors": [
+   "U"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "39"
+ },
+ {
+  "name": "Duskwatch Recruiter // Krallenhorde Howler",
+  "mana_cost": "{1}{G}",
+  "cmc": 2.0,
+  "type_line": "Creature \u2014 Human Warrior Werewolf",
+  "oracle_text": "{2}{G}: Look at the top three cards of your library. You may reveal a creature card from among them and put it into your hand. Put the rest on the bottom of your library in any order.\nAt the beginning of each upkeep, if no spells were cast last turn, transform this creature.",
+  "power": "2",
+  "toughness": "2",
+  "keywords": [
+   "Transform"
+  ],
+  "colors": [
+   "G"
+  ],
+  "rarity": "uncommon",
+  "layout": "transform",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "193",
+  "back": {
+   "name": "Krallenhorde Howler",
+   "mana_cost": "",
+   "type_line": "Creature \u2014 Werewolf",
+   "oracle_text": "Creature spells you cast cost {1} less to cast.\nAt the beginning of each upkeep, if a player cast two or more spells last turn, transform this creature.",
+   "power": "3",
+   "toughness": "3",
+   "colors": [
+    "G"
+   ],
+   "loyalty": null
+  }
+ },
+ {
+  "name": "Endurance",
+  "mana_cost": "{1}{G}{G}",
+  "cmc": 3.0,
+  "type_line": "Creature \u2014 Elemental Incarnation",
+  "oracle_text": "Flash\nReach\nWhen this creature enters, up to one target player puts all the cards from their graveyard on the bottom of their library in a random order.\nEvoke\u2014Exile a green card from your hand.",
+  "power": "3",
+  "toughness": "4",
+  "keywords": [
+   "Reach",
+   "Evoke",
+   "Flash"
+  ],
+  "colors": [
+   "G"
+  ],
+  "rarity": "mythic",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "51"
+ },
+ {
+  "name": "Enduring Renewal",
+  "mana_cost": "{2}{W}{W}",
+  "cmc": 4.0,
+  "type_line": "Enchantment",
+  "oracle_text": "Play with your hand revealed.\nIf you would draw a card, reveal the top card of your library instead. If it's a creature card, put it into your graveyard. Otherwise, draw a card.\nWhenever a creature is put into your graveyard from the battlefield, return it to your hand.",
+  "power": null,
+  "toughness": null,
+  "keywords": [],
+  "colors": [
+   "W"
+  ],
+  "rarity": "special",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "7"
+ },
+ {
+  "name": "Ethersworn Adjudicator",
+  "mana_cost": "{4}{U}",
+  "cmc": 5.0,
+  "type_line": "Artifact Creature \u2014 Vedalken Knight",
+  "oracle_text": "Flying\n{1}{W}{B}, {T}: Destroy target creature or enchantment.\n{2}{U}: Untap this creature.",
+  "power": "4",
+  "toughness": "4",
+  "keywords": [
+   "Flying"
+  ],
+  "colors": [
+   "U"
+  ],
+  "rarity": "mythic",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "222"
+ },
+ {
+  "name": "Fandaniel, Telophoroi Ascian",
+  "mana_cost": "{4}{B}",
+  "cmc": 5.0,
+  "type_line": "Legendary Creature \u2014 Elder Wizard",
+  "oracle_text": "Whenever you cast an instant or sorcery spell, surveil 1.\nAt the beginning of your end step, each opponent may sacrifice a nontoken creature of their choice. Each opponent who doesn't loses 2 life for each instant and sorcery card in your graveyard.",
+  "power": "4",
+  "toughness": "5",
+  "keywords": [
+   "Surveil"
+  ],
+  "colors": [
+   "B"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "46"
+ },
+ {
+  "name": "Farmer Cotton",
+  "mana_cost": "{X}{G}{W}",
+  "cmc": 2.0,
+  "type_line": "Legendary Creature \u2014 Halfling Peasant",
+  "oracle_text": "When this creature enters, create X 1/1 white Halfling creature tokens and X Food tokens. (They're artifacts with \"{2}, {T}, Sacrifice this token: You gain 3 life.\")",
+  "power": "1",
+  "toughness": "1",
+  "keywords": [
+   "Food"
+  ],
+  "colors": [
+   "G",
+   "W"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "55"
+ },
+ {
+  "name": "Fecundity",
+  "mana_cost": "{2}{G}",
+  "cmc": 3.0,
+  "type_line": "Enchantment",
+  "oracle_text": "Whenever a creature dies, that creature's controller may draw a card.",
+  "power": null,
+  "toughness": null,
+  "keywords": [],
+  "colors": [
+   "G"
+  ],
+  "rarity": "uncommon",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "165"
+ },
+ {
+  "name": "Fevered Suspicion",
+  "mana_cost": "{6}{B}{R}",
+  "cmc": 8.0,
+  "type_line": "Sorcery",
+  "oracle_text": "Each opponent exiles cards from the top of their library until they exile a nonland card. You may cast any number of spells from among those nonland cards without paying their mana costs.\nRebound (If you cast this spell from your hand, exile it as it resolves. At the beginning of your next upkeep, you may cast this card from exile without paying its mana cost.)",
+  "power": null,
+  "toughness": null,
+  "keywords": [
+   "Rebound"
+  ],
+  "colors": [
+   "B",
+   "R"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "47"
+ },
+ {
+  "name": "Fiend Hunter",
+  "mana_cost": "{1}{W}{W}",
+  "cmc": 3.0,
+  "type_line": "Creature \u2014 Human Cleric",
+  "oracle_text": "When this creature enters, you may exile another target creature.\nWhen this creature leaves the battlefield, return the exiled card to the battlefield under its owner's control.",
+  "power": "1",
+  "toughness": "3",
+  "keywords": [],
+  "colors": [
+   "W"
+  ],
+  "rarity": "uncommon",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "167"
+ },
+ {
+  "name": "Filigree Angel",
+  "mana_cost": "{5}{W}{W}{U}",
+  "cmc": 8.0,
+  "type_line": "Artifact Creature \u2014 Angel",
+  "oracle_text": "Flying\nWhen this creature enters, you gain 3 life for each artifact you control.",
+  "power": "4",
+  "toughness": "4",
+  "keywords": [
+   "Flying"
+  ],
+  "colors": [
+   "U",
+   "W"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "199"
+ },
+ {
+  "name": "Forth Eorlingas!",
+  "mana_cost": "{X}{R}{W}",
+  "cmc": 2.0,
+  "type_line": "Sorcery",
+  "oracle_text": "Create X 2/2 red Human Knight creature tokens with trample and haste.\nWhenever one or more creatures you control deal combat damage to one or more players this turn, you become the monarch.",
+  "power": null,
+  "toughness": null,
+  "keywords": [],
+  "colors": [
+   "R",
+   "W"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "56"
+ },
+ {
+  "name": "G'raha Tia, Scion Reborn",
+  "mana_cost": "{W}{U}{B}",
+  "cmc": 3.0,
+  "type_line": "Legendary Creature \u2014 Cat Wizard",
+  "oracle_text": "Lifelink\nThrow Wide the Gates \u2014 Whenever you cast a noncreature spell, you may pay X life, where X is that spell's mana value. If you do, create a 1/1 colorless Hero creature token and put X +1/+1 counters on it. Do this only once each turn.",
+  "power": "2",
+  "toughness": "3",
+  "keywords": [
+   "Lifelink",
+   "Throw Wide the Gates"
+  ],
+  "colors": [
+   "B",
+   "U",
+   "W"
+  ],
+  "rarity": "mythic",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "3"
+ },
+ {
+  "name": "Gaea's Cradle",
+  "mana_cost": "",
+  "cmc": 0.0,
+  "type_line": "Legendary Land",
+  "oracle_text": "{T}: Add {G} for each creature you control.",
+  "power": null,
+  "toughness": null,
+  "keywords": [],
+  "colors": [],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": [
+   "G"
+  ],
+  "collector_number": "321"
+ },
+ {
+  "name": "Gandalf the White",
+  "mana_cost": "{3}{W}{W}",
+  "cmc": 5.0,
+  "type_line": "Legendary Creature \u2014 Avatar Wizard",
+  "oracle_text": "Flash\nYou may cast legendary spells and artifact spells as though they had flash.\nIf a legendary permanent or an artifact entering or leaving the battlefield causes a triggered ability of a permanent you control to trigger, that ability triggers an additional time.",
+  "power": "4",
+  "toughness": "5",
+  "keywords": [
+   "Flash"
+  ],
+  "colors": [
+   "W"
+  ],
+  "rarity": "mythic",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "19"
+ },
+ {
+  "name": "Garruk, Primal Hunter",
+  "mana_cost": "{2}{G}{G}{G}",
+  "cmc": 5.0,
+  "type_line": "Legendary Planeswalker \u2014 Garruk",
+  "oracle_text": "+1: Create a 3/3 green Beast creature token.\n\u22123: Draw cards equal to the greatest power among creatures you control.\n\u22126: Create a 6/6 green Wurm creature token for each land you control.",
+  "power": null,
+  "toughness": null,
+  "keywords": [],
+  "colors": [
+   "G"
+  ],
+  "rarity": "mythic",
+  "layout": "normal",
+  "loyalty": "3",
+  "produced_mana": null,
+  "collector_number": "190"
+ },
+ {
+  "name": "Gauntlets of Light",
+  "mana_cost": "{2}{W}",
+  "cmc": 3.0,
+  "type_line": "Enchantment \u2014 Aura",
+  "oracle_text": "Enchant creature\nEnchanted creature gets +0/+2 and assigns combat damage equal to its toughness rather than its power.\nEnchanted creature has \"{2}{W}: Untap this creature.\"",
+  "power": null,
+  "toughness": null,
+  "keywords": [
+   "Enchant"
+  ],
+  "colors": [
+   "W"
+  ],
+  "rarity": "uncommon",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "17"
+ },
+ {
+  "name": "Gift of Immortality",
+  "mana_cost": "{2}{W}",
+  "cmc": 3.0,
+  "type_line": "Enchantment \u2014 Aura",
+  "oracle_text": "Enchant creature\nWhen enchanted creature dies, return that card to the battlefield under its owner's control. Return this card to the battlefield attached to that creature at the beginning of the next end step.",
+  "power": null,
+  "toughness": null,
+  "keywords": [
+   "Enchant"
+  ],
+  "colors": [
+   "W"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "134"
+ },
+ {
+  "name": "Gisela, the Broken Blade",
+  "mana_cost": "{2}{W}{W}",
+  "cmc": 4.0,
+  "type_line": "Legendary Creature \u2014 Angel Horror",
+  "oracle_text": "Flying, first strike, lifelink\nAt the beginning of your end step, if you both own and control Gisela and a creature named Bruna, the Fading Light, exile them, then meld them into Brisela, Voice of Nightmares.",
+  "power": "4",
+  "toughness": "3",
+  "keywords": [
+   "Flying",
+   "Lifelink",
+   "First strike",
+   "Meld"
+  ],
+  "colors": [
+   "W"
+  ],
+  "rarity": "mythic",
+  "layout": "meld",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "24"
+ },
+ {
+  "name": "Gleaming Splendor",
+  "mana_cost": "{1}{W}",
+  "cmc": 2.0,
+  "type_line": "Enchantment",
+  "oracle_text": "Whenever an opponent draws their second card each turn, you create a Treasure token.\n{2}{W}: Two target players each draw a card.",
+  "power": null,
+  "toughness": null,
+  "keywords": [
+   "Treasure"
+  ],
+  "colors": [
+   "W"
+  ],
+  "rarity": "mythic",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "15"
+ },
+ {
+  "name": "Gollum, Patient Plotter",
+  "mana_cost": "{1}{B}",
+  "cmc": 2.0,
+  "type_line": "Legendary Creature \u2014 Halfling Horror",
+  "oracle_text": "When Gollum leaves the battlefield, the Ring tempts you.\n{B}, Sacrifice a creature: Return this card from your graveyard to your hand. Activate only as a sorcery.",
+  "power": "3",
+  "toughness": "1",
+  "keywords": [],
+  "colors": [
+   "B"
+  ],
+  "rarity": "uncommon",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "84"
+ },
+ {
+  "name": "Grafdigger's Cage",
+  "mana_cost": "{1}",
+  "cmc": 1.0,
+  "type_line": "Artifact",
+  "oracle_text": "Creature cards in graveyards and libraries can't enter the battlefield.\nPlayers can't cast spells from graveyards or libraries.",
+  "power": null,
+  "toughness": null,
+  "keywords": [],
+  "colors": [],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "227"
+ },
+ {
+  "name": "Heritage Druid",
+  "mana_cost": "{G}",
+  "cmc": 1.0,
+  "type_line": "Creature \u2014 Elf Druid",
+  "oracle_text": "Tap three untapped Elves you control: Add {G}{G}{G}.",
+  "power": "1",
+  "toughness": "1",
+  "keywords": [],
+  "colors": [
+   "G"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": [
+   "G"
+  ],
+  "collector_number": "171"
+ },
+ {
+  "name": "Hermes, Overseer of Elpis",
+  "mana_cost": "{3}{U}",
+  "cmc": 4.0,
+  "type_line": "Legendary Creature \u2014 Elder Wizard",
+  "oracle_text": "Whenever you cast a noncreature spell, create a 1/1 blue Bird creature token with flying and vigilance.\nWhenever you attack with one or more Birds, scry 2.",
+  "power": "2",
+  "toughness": "4",
+  "keywords": [
+   "Scry"
+  ],
+  "colors": [
+   "U"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "36"
+ },
+ {
+  "name": "Hex Magic",
+  "mana_cost": "{2}{R}",
+  "cmc": 3.0,
+  "type_line": "Sorcery \u2014 Arcane",
+  "oracle_text": "Exile all the cards from your hand, then draw that many cards. Until the end of your next turn, you may play cards exiled this way.",
+  "power": null,
+  "toughness": null,
+  "keywords": [],
+  "colors": [
+   "R"
+  ],
+  "rarity": "uncommon",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "133"
+ },
+ {
+  "name": "Hurl Through Hell",
+  "mana_cost": "{2}{B}{R}",
+  "cmc": 4.0,
+  "type_line": "Instant",
+  "oracle_text": "Exile target creature. Until the end of your next turn, you may cast that card and you may spend mana as though it were mana of any color to cast that spell.",
+  "power": null,
+  "toughness": null,
+  "keywords": [],
+  "colors": [
+   "B",
+   "R"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "48"
+ },
+ {
+  "name": "Hushwood Verge",
+  "mana_cost": "",
+  "cmc": 0.0,
+  "type_line": "Land",
+  "oracle_text": "{T}: Add {G}.\n{T}: Add {W}. Activate only if you control a Forest or a Plains.",
+  "power": null,
+  "toughness": null,
+  "keywords": [],
+  "colors": [],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": [
+   "G",
+   "W"
+  ],
+  "collector_number": "261"
+ },
+ {
+  "name": "Ignite the Future",
+  "mana_cost": "{3}{R}",
+  "cmc": 4.0,
+  "type_line": "Sorcery",
+  "oracle_text": "Exile the top three cards of your library. Until the end of your next turn, you may play those cards. If this spell was cast from a graveyard, you may play cards this way without paying their mana costs.\nFlashback {7}{R} (You may cast this card from your graveyard for its flashback cost. Then exile it.)",
+  "power": null,
+  "toughness": null,
+  "keywords": [
+   "Flashback"
+  ],
+  "colors": [
+   "R"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "797"
+ },
+ {
+  "name": "Improvisation Capstone",
+  "mana_cost": "{5}{R}{R}",
+  "cmc": 7.0,
+  "type_line": "Sorcery \u2014 Lesson",
+  "oracle_text": "Exile cards from the top of your library until you exile cards with total mana value 4 or greater. You may cast any number of spells from among them without paying their mana costs.\nParadigm (Then exile this spell. After you first resolve a spell with this name, you may cast a copy of it from exile without paying its mana cost at the beginning of each of your first main phases.)",
+  "power": null,
+  "toughness": null,
+  "keywords": [
+   "Paradigm"
+  ],
+  "colors": [
+   "R"
+  ],
+  "rarity": "mythic",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "120"
+ },
+ {
+  "name": "Jinnie Fay, Jetmir's Second",
+  "mana_cost": "{R/G}{G}{G/W}",
+  "cmc": 3.0,
+  "type_line": "Legendary Creature \u2014 Elf Druid",
+  "oracle_text": "If you would create one or more tokens, you may instead create that many 2/2 green Cat creature tokens with haste or that many 3/1 green Dog creature tokens with vigilance.",
+  "power": "3",
+  "toughness": "3",
+  "keywords": [],
+  "colors": [
+   "G",
+   "R",
+   "W"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "195"
+ },
+ {
+  "name": "Jolene, the Plunder Queen",
+  "mana_cost": "{2}{R}{G}",
+  "cmc": 4.0,
+  "type_line": "Legendary Creature \u2014 Human Warrior",
+  "oracle_text": "Whenever a player attacks one or more of your opponents, that attacking player creates a Treasure token.\nIf you would create one or more Treasure tokens, instead create those tokens plus an additional Treasure token.\nSacrifice five Treasures: Put five +1/+1 counters on Jolene.",
+  "power": "2",
+  "toughness": "2",
+  "keywords": [
+   "Treasure"
+  ],
+  "colors": [
+   "G",
+   "R"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "73"
+ },
+ {
+  "name": "Joraga Treespeaker",
+  "mana_cost": "{G}",
+  "cmc": 1.0,
+  "type_line": "Creature \u2014 Elf Druid",
+  "oracle_text": "Level up {1}{G} ({1}{G}: Put a level counter on this. Level up only as a sorcery.)\nLEVEL 1-4\n1/2\n{T}: Add {G}{G}.\nLEVEL 5+\n1/4\nElves you control have \"{T}: Add {G}{G}.\"",
+  "power": "1",
+  "toughness": "1",
+  "keywords": [
+   "Level Up"
+  ],
+  "colors": [
+   "G"
+  ],
+  "rarity": "uncommon",
+  "layout": "leveler",
+  "loyalty": null,
+  "produced_mana": [
+   "G"
+  ],
+  "collector_number": "190"
+ },
+ {
+  "name": "Jubilant Skybonder",
+  "mana_cost": "{1}{W/U}{W/U}",
+  "cmc": 3.0,
+  "type_line": "Creature \u2014 Human Wizard",
+  "oracle_text": "Flying\nCreatures you control with flying have \"Spells your opponents cast that target this creature cost {2} more to cast.\"",
+  "power": "2",
+  "toughness": "2",
+  "keywords": [
+   "Flying"
+  ],
+  "colors": [
+   "U",
+   "W"
+  ],
+  "rarity": "uncommon",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "223"
+ },
+ {
+  "name": "Kambal, Consul of Allocation",
+  "mana_cost": "{1}{W}{B}",
+  "cmc": 3.0,
+  "type_line": "Legendary Creature \u2014 Human Advisor",
+  "oracle_text": "Whenever an opponent casts a noncreature spell, that player loses 2 life and you gain 2 life.",
+  "power": "2",
+  "toughness": "3",
+  "keywords": [],
+  "colors": [
+   "B",
+   "W"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "237"
+ },
+ {
+  "name": "Kambal, Profiteering Mayor",
+  "mana_cost": "{1}{W}{B}",
+  "cmc": 3.0,
+  "type_line": "Legendary Creature \u2014 Human Advisor",
+  "oracle_text": "Whenever one or more tokens your opponents control enter, for each of them, create a tapped token that's a copy of it. This ability triggers only once each turn.\nWhenever one or more tokens you control enter, each opponent loses 1 life and you gain 1 life.",
+  "power": "2",
+  "toughness": "4",
+  "keywords": [],
+  "colors": [
+   "B",
+   "W"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "211"
+ },
+ {
+  "name": "Karn Liberated",
+  "mana_cost": "{7}",
+  "cmc": 7.0,
+  "type_line": "Legendary Planeswalker \u2014 Karn",
+  "oracle_text": "+4: Target player exiles a card from their hand.\n\u22123: Exile target permanent.\n\u221214: Restart the game, leaving in exile all non-Aura permanent cards exiled with Karn. Then put those cards onto the battlefield under your control.",
+  "power": null,
+  "toughness": null,
+  "keywords": [],
+  "colors": [],
+  "rarity": "mythic",
+  "layout": "normal",
+  "loyalty": "6",
+  "produced_mana": null,
+  "collector_number": "1"
+ },
+ {
+  "name": "Kataki, War's Wage",
+  "mana_cost": "{1}{W}",
+  "cmc": 2.0,
+  "type_line": "Legendary Creature \u2014 Spirit",
+  "oracle_text": "All artifacts have \"At the beginning of your upkeep, sacrifice this artifact unless you pay {1}.\"",
+  "power": "2",
+  "toughness": "1",
+  "keywords": [],
+  "colors": [
+   "W"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "20"
+ },
+ {
+  "name": "Katilda, Dawnhart Martyr // Katilda's Rising Dawn",
+  "mana_cost": "{1}{W}{W}",
+  "cmc": 3.0,
+  "type_line": "Legendary Creature \u2014 Spirit Warlock",
+  "oracle_text": "Flying, lifelink, protection from Vampires\nKatilda's power and toughness are each equal to the number of permanents you control that are Spirits and/or enchantments.\nDisturb {3}{W}{W} (You may cast this card from your graveyard transformed for its disturb cost.)",
+  "power": "*",
+  "toughness": "*",
+  "keywords": [
+   "Flying",
+   "Lifelink",
+   "Transform",
+   "Protection",
+   "Enchant",
+   "Disturb"
+  ],
+  "colors": [
+   "W"
+  ],
+  "rarity": "rare",
+  "layout": "transform",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "21",
+  "back": {
+   "name": "Katilda's Rising Dawn",
+   "mana_cost": "",
+   "type_line": "Legendary Enchantment \u2014 Aura",
+   "oracle_text": "Enchant creature\nEnchanted creature has flying, lifelink, and protection from Vampires, and it gets +X/+X, where X is the number of permanents you control that are Spirits and/or enchantments.\nIf Katilda's Rising Dawn would be put into a graveyard from anywhere, exile it instead.",
+   "power": null,
+   "toughness": null,
+   "colors": [
+    "W"
+   ],
+   "loyalty": null
+  }
+ },
+ {
+  "name": "Kenrith's Transformation",
+  "mana_cost": "{1}{G}",
+  "cmc": 2.0,
+  "type_line": "Enchantment \u2014 Aura",
+  "oracle_text": "Enchant creature\nWhen this Aura enters, draw a card.\nEnchanted creature loses all abilities and is a green Elk creature with base power and toughness 3/3. (It loses all other card types and creature types.)",
+  "power": null,
+  "toughness": null,
+  "keywords": [
+   "Enchant"
+  ],
+  "colors": [
+   "G"
+  ],
+  "rarity": "uncommon",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "162"
+ },
+ {
+  "name": "Kher Keep",
+  "mana_cost": "",
+  "cmc": 0.0,
+  "type_line": "Legendary Land",
+  "oracle_text": "{T}: Add {C}.\n{1}{R}, {T}: Create a 0/1 red Kobold creature token named Kobolds of Kher Keep.",
+  "power": null,
+  "toughness": null,
+  "keywords": [],
+  "colors": [],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": [
+   "C"
+  ],
+  "collector_number": "75"
+ },
+ {
+  "name": "Kitchen Finks",
+  "mana_cost": "{1}{G/W}{G/W}",
+  "cmc": 3.0,
+  "type_line": "Creature \u2014 Ouphe",
+  "oracle_text": "When this creature enters, you gain 2 life.\nPersist (When this creature dies, if it had no -1/-1 counters on it, return it to the battlefield under its owner's control with a -1/-1 counter on it.)",
+  "power": "3",
+  "toughness": "2",
+  "keywords": [
+   "Persist"
+  ],
+  "colors": [
+   "G",
+   "W"
+  ],
+  "rarity": "uncommon",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "216"
+ },
+ {
+  "name": "Knuckles the Echidna",
+  "mana_cost": "{2}{R}{R}",
+  "cmc": 4.0,
+  "type_line": "Legendary Creature \u2014 Echidna Warrior",
+  "oracle_text": "Double strike, trample, haste\nWhenever one or more creatures you control deal combat damage to a player, create a Treasure token.\nTreasure Hunter \u2014 At the beginning of your upkeep, if you control thirty or more artifacts, you win the game.",
+  "power": "2",
+  "toughness": "4",
+  "keywords": [
+   "Treasure Hunter",
+   "Treasure",
+   "Haste",
+   "Trample",
+   "Double strike"
+  ],
+  "colors": [
+   "R"
+  ],
+  "rarity": "mythic",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "2082"
+ },
+ {
+  "name": "Laelia, the Blade Reforged",
+  "mana_cost": "{2}{R}",
+  "cmc": 3.0,
+  "type_line": "Legendary Creature \u2014 Spirit Warrior",
+  "oracle_text": "Haste\nWhenever Laelia attacks, exile the top card of your library. You may play that card this turn.\nWhenever one or more cards are put into exile from your library and/or your graveyard, put a +1/+1 counter on Laelia.",
+  "power": "2",
+  "toughness": "2",
+  "keywords": [
+   "Haste"
+  ],
+  "colors": [
+   "R"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "246"
+ },
+ {
+  "name": "Latchkey Faerie",
+  "mana_cost": "{3}{U}",
+  "cmc": 4.0,
+  "type_line": "Creature \u2014 Faerie Rogue",
+  "oracle_text": "Flying\nProwl {2}{U} (You may cast this for its prowl cost if you dealt combat damage to a player this turn with a Faerie or Rogue.)\nWhen this creature enters, if its prowl cost was paid, draw a card.",
+  "power": "3",
+  "toughness": "1",
+  "keywords": [
+   "Flying",
+   "Prowl"
+  ],
+  "colors": [
+   "U"
+  ],
+  "rarity": "common",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "28"
+ },
+ {
+  "name": "Leonin Arbiter",
+  "mana_cost": "{1}{W}",
+  "cmc": 2.0,
+  "type_line": "Creature \u2014 Cat Cleric",
+  "oracle_text": "Players can't search libraries. Any player may pay {2} for that player to ignore this effect until end of turn.",
+  "power": "2",
+  "toughness": "2",
+  "keywords": [],
+  "colors": [
+   "W"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "16"
+ },
+ {
+  "name": "Leonin Relic-Warder",
+  "mana_cost": "{W}{W}",
+  "cmc": 2.0,
+  "type_line": "Creature \u2014 Cat Cleric",
+  "oracle_text": "When this creature enters, you may exile target artifact or enchantment.\nWhen this creature leaves the battlefield, return the exiled card to the battlefield under its owner's control.",
+  "power": "2",
+  "toughness": "2",
+  "keywords": [],
+  "colors": [
+   "W"
+  ],
+  "rarity": "uncommon",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "65"
+ },
+ {
+  "name": "Leyline of the Void",
+  "mana_cost": "{2}{B}{B}",
+  "cmc": 4.0,
+  "type_line": "Enchantment",
+  "oracle_text": "If this card is in your opening hand, you may begin the game with it on the battlefield.\nIf a card would be put into an opponent's graveyard from anywhere, exile it instead.",
+  "power": null,
+  "toughness": null,
+  "keywords": [],
+  "colors": [
+   "B"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "106"
+ },
+ {
+  "name": "Liege of the Hollows",
+  "mana_cost": "{2}{G}{G}",
+  "cmc": 4.0,
+  "type_line": "Creature \u2014 Spirit",
+  "oracle_text": "When this creature dies, each player may pay any amount of mana. Then each player creates a number of 1/1 green Squirrel creature tokens equal to the amount of mana they paid this way.",
+  "power": "3",
+  "toughness": "4",
+  "keywords": [],
+  "colors": [
+   "G"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "131"
+ },
+ {
+  "name": "Life's Legacy",
+  "mana_cost": "{1}{G}",
+  "cmc": 2.0,
+  "type_line": "Sorcery",
+  "oracle_text": "As an additional cost to cast this spell, sacrifice a creature.\nDraw cards equal to the sacrificed creature's power.",
+  "power": null,
+  "toughness": null,
+  "keywords": [],
+  "colors": [
+   "G"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "300"
+ },
+ {
+  "name": "Lifecrafter's Bestiary",
+  "mana_cost": "{3}",
+  "cmc": 3.0,
+  "type_line": "Artifact",
+  "oracle_text": "At the beginning of your upkeep, scry 1.\nWhenever you cast a creature spell, you may pay {G}. If you do, draw a card.",
+  "power": null,
+  "toughness": null,
+  "keywords": [
+   "Scry"
+  ],
+  "colors": [],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "231"
+ },
+ {
+  "name": "Light Up the Stage",
+  "mana_cost": "{2}{R}",
+  "cmc": 3.0,
+  "type_line": "Sorcery",
+  "oracle_text": "Spectacle {R} (You may cast this spell for its spectacle cost rather than its mana cost if an opponent lost life this turn.)\nExile the top two cards of your library. Until the end of your next turn, you may play those cards.",
+  "power": null,
+  "toughness": null,
+  "keywords": [
+   "Spectacle"
+  ],
+  "colors": [
+   "R"
+  ],
+  "rarity": "uncommon",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "166"
+ },
+ {
+  "name": "Linvala, Keeper of Silence",
+  "mana_cost": "{2}{W}{W}",
+  "cmc": 4.0,
+  "type_line": "Legendary Creature \u2014 Angel",
+  "oracle_text": "Flying\nActivated abilities of creatures your opponents control can't be activated.",
+  "power": "3",
+  "toughness": "4",
+  "keywords": [
+   "Flying"
+  ],
+  "colors": [
+   "W"
+  ],
+  "rarity": "mythic",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "119"
+ },
+ {
+  "name": "Lotho, Corrupt Shirriff",
+  "mana_cost": "{W}{B}",
+  "cmc": 2.0,
+  "type_line": "Legendary Creature \u2014 Halfling Rogue",
+  "oracle_text": "Whenever a player casts their second spell each turn, you lose 1 life and create a Treasure token. (It's an artifact with \"{T}, Sacrifice this token: Add one mana of any color.\")",
+  "power": "2",
+  "toughness": "1",
+  "keywords": [
+   "Treasure"
+  ],
+  "colors": [
+   "B",
+   "W"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": [
+   "B",
+   "G",
+   "R",
+   "U",
+   "W"
+  ],
+  "collector_number": "213"
+ },
+ {
+  "name": "Luminarch Aspirant",
+  "mana_cost": "{1}{W}",
+  "cmc": 2.0,
+  "type_line": "Creature \u2014 Human Cleric",
+  "oracle_text": "At the beginning of combat on your turn, put a +1/+1 counter on target creature you control.",
+  "power": "1",
+  "toughness": "1",
+  "keywords": [],
+  "colors": [
+   "W"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "205"
+ },
+ {
+  "name": "Lyse Hext",
+  "mana_cost": "{1}{W}{U}",
+  "cmc": 3.0,
+  "type_line": "Legendary Creature \u2014 Human Rebel Monk",
+  "oracle_text": "Prowess (Whenever you cast a noncreature spell, this creature gets +1/+1 until end of turn.)\nNoncreature spells you cast cost {1} less to cast.\nAs long as you've cast two or more noncreature spells this turn, Lyse Hext has double strike.",
+  "power": "2",
+  "toughness": "2",
+  "keywords": [
+   "Prowess"
+  ],
+  "colors": [
+   "U",
+   "W"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "88"
+ },
+ {
+  "name": "Magister Sphinx",
+  "mana_cost": "{4}{W}{U}{B}",
+  "cmc": 7.0,
+  "type_line": "Artifact Creature \u2014 Sphinx",
+  "oracle_text": "Flying\nWhen this creature enters, target player's life total becomes 10.",
+  "power": "5",
+  "toughness": "5",
+  "keywords": [
+   "Flying"
+  ],
+  "colors": [
+   "B",
+   "U",
+   "W"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "247"
+ },
+ {
+  "name": "Mai, Scornful Striker",
+  "mana_cost": "{1}{B}",
+  "cmc": 2.0,
+  "type_line": "Legendary Creature \u2014 Human Noble Ally",
+  "oracle_text": "First strike\nWhenever a player casts a noncreature spell, they lose 2 life.",
+  "power": "2",
+  "toughness": "2",
+  "keywords": [
+   "First strike"
+  ],
+  "colors": [
+   "B"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "109"
+ },
+ {
+  "name": "Manglehorn",
+  "mana_cost": "{2}{G}",
+  "cmc": 3.0,
+  "type_line": "Creature \u2014 Beast",
+  "oracle_text": "When this creature enters, you may destroy target artifact.\nArtifacts your opponents control enter tapped.",
+  "power": "2",
+  "toughness": "2",
+  "keywords": [],
+  "colors": [
+   "G"
+  ],
+  "rarity": "uncommon",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "175"
+ },
+ {
+  "name": "March of Swirling Mist",
+  "mana_cost": "{X}{U}",
+  "cmc": 1.0,
+  "type_line": "Instant",
+  "oracle_text": "As an additional cost to cast this spell, you may exile any number of blue cards from your hand. This spell costs {2} less to cast for each card exiled this way.\nUp to X target creatures phase out. (While they're phased out, they're treated as though they don't exist. Each one phases in before its controller untaps during their next untap step.)",
+  "power": null,
+  "toughness": null,
+  "keywords": [],
+  "colors": [
+   "U"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "61"
+ },
+ {
+  "name": "Medomai the Ageless",
+  "mana_cost": "{4}{W}{U}",
+  "cmc": 6.0,
+  "type_line": "Legendary Creature \u2014 Sphinx",
+  "oracle_text": "Flying\nWhenever Medomai deals combat damage to a player, take an extra turn after this one.\nMedomai can't attack during extra turns.",
+  "power": "4",
+  "toughness": "4",
+  "keywords": [
+   "Flying"
+  ],
+  "colors": [
+   "U",
+   "W"
+  ],
+  "rarity": "mythic",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "196"
+ },
+ {
+  "name": "Melira, Sylvok Outcast",
+  "mana_cost": "{1}{G}",
+  "cmc": 2.0,
+  "type_line": "Legendary Creature \u2014 Human Scout",
+  "oracle_text": "You can't get poison counters.\nCreatures you control can't have -1/-1 counters put on them.\nCreatures your opponents control lose infect.",
+  "power": "2",
+  "toughness": "2",
+  "keywords": [],
+  "colors": [
+   "G"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "115"
+ },
+ {
+  "name": "Nasty End",
+  "mana_cost": "{1}{B}",
+  "cmc": 2.0,
+  "type_line": "Instant",
+  "oracle_text": "As an additional cost to cast this spell, sacrifice a creature.\nDraw two cards. If the sacrificed creature was legendary, draw three cards instead.",
+  "power": null,
+  "toughness": null,
+  "keywords": [],
+  "colors": [
+   "B"
+  ],
+  "rarity": "common",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "99"
+ },
+ {
+  "name": "Nazg\u00fbl",
+  "mana_cost": "{2}{B}",
+  "cmc": 3.0,
+  "type_line": "Creature \u2014 Wraith Knight",
+  "oracle_text": "Deathtouch\nWhen this creature enters, the Ring tempts you.\nWhenever the Ring tempts you, put a +1/+1 counter on each Wraith you control.\nA deck can have up to nine cards named Nazg\u00fbl.",
+  "power": "1",
+  "toughness": "2",
+  "keywords": [
+   "Deathtouch"
+  ],
+  "colors": [
+   "B"
+  ],
+  "rarity": "uncommon",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "100"
+ },
+ {
+  "name": "Nihil Spellbomb",
+  "mana_cost": "{1}",
+  "cmc": 1.0,
+  "type_line": "Artifact",
+  "oracle_text": "{T}, Sacrifice this artifact: Exile target player's graveyard.\nWhen this artifact is put into a graveyard from the battlefield, you may pay {B}. If you do, draw a card.",
+  "power": null,
+  "toughness": null,
+  "keywords": [],
+  "colors": [],
+  "rarity": "common",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "226"
+ },
+ {
+  "name": "Norn's Annex",
+  "mana_cost": "{3}{W/P}{W/P}",
+  "cmc": 5.0,
+  "type_line": "Artifact",
+  "oracle_text": "({W/P} can be paid with either {W} or 2 life.)\nCreatures can't attack you or planeswalkers you control unless their controller pays {W/P} for each of those creatures.",
+  "power": null,
+  "toughness": null,
+  "keywords": [],
+  "colors": [
+   "W"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "829"
+ },
+ {
+  "name": "Oakhame Adversary",
+  "mana_cost": "{3}{G}",
+  "cmc": 4.0,
+  "type_line": "Creature \u2014 Elf Warrior",
+  "oracle_text": "This spell costs {2} less to cast if an opponent controls a green permanent.\nDeathtouch\nWhenever this creature deals combat damage to a player, draw a card.",
+  "power": "2",
+  "toughness": "3",
+  "keywords": [
+   "Deathtouch"
+  ],
+  "colors": [
+   "G"
+  ],
+  "rarity": "uncommon",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "167"
+ },
+ {
+  "name": "Ocelot Pride",
+  "mana_cost": "{W}",
+  "cmc": 1.0,
+  "type_line": "Creature \u2014 Cat",
+  "oracle_text": "First strike, lifelink\nAscend (If you control ten or more permanents, you get the city's blessing for the rest of the game.)\nAt the beginning of your end step, if you gained life this turn, create a 1/1 white Cat creature token. Then if you have the city's blessing, for each token you control that entered this turn, create a token that's a copy of it.",
+  "power": "1",
+  "toughness": "1",
+  "keywords": [
+   "Lifelink",
+   "Ascend",
+   "First strike"
+  ],
+  "colors": [
+   "W"
+  ],
+  "rarity": "mythic",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "38"
+ },
+ {
+  "name": "Papalymo Totolymo",
+  "mana_cost": "{W}{B}",
+  "cmc": 2.0,
+  "type_line": "Legendary Creature \u2014 Dwarf Wizard",
+  "oracle_text": "Whenever you cast a noncreature spell, Papalymo Totolymo deals 1 damage to each opponent and you gain 1 life.\n{4}, {T}, Sacrifice Papalymo Totolymo: Each opponent who lost life this turn sacrifices a creature with the greatest power among creatures they control.",
+  "power": "1",
+  "toughness": "2",
+  "keywords": [],
+  "colors": [
+   "B",
+   "W"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "90"
+ },
+ {
+  "name": "Passionate Archaeologist",
+  "mana_cost": "{1}{R}",
+  "cmc": 2.0,
+  "type_line": "Legendary Enchantment \u2014 Background",
+  "oracle_text": "Commander creatures you own have \"Whenever you cast a spell from exile, this creature deals damage equal to that spell's mana value to target opponent.\"",
+  "power": null,
+  "toughness": null,
+  "keywords": [],
+  "colors": [
+   "R"
+  ],
+  "rarity": "mythic",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "656"
+ },
+ {
+  "name": "Platinum Angel",
+  "mana_cost": "{7}",
+  "cmc": 7.0,
+  "type_line": "Artifact Creature \u2014 Angel",
+  "oracle_text": "Flying\nYou can't lose the game and your opponents can't win the game.",
+  "power": "4",
+  "toughness": "4",
+  "keywords": [
+   "Flying"
+  ],
+  "colors": [],
+  "rarity": "mythic",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "214"
+ },
+ {
+  "name": "Ranger-Captain of Eos",
+  "mana_cost": "{1}{W}{W}",
+  "cmc": 3.0,
+  "type_line": "Creature \u2014 Human Soldier Ranger",
+  "oracle_text": "When this creature enters, you may search your library for a creature card with mana value 1 or less, reveal it, put it into your hand, then shuffle.\nSacrifice this creature: Your opponents can't cast noncreature spells this turn.",
+  "power": "3",
+  "toughness": "3",
+  "keywords": [],
+  "colors": [
+   "W"
+  ],
+  "rarity": "mythic",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "21"
+ },
+ {
+  "name": "Ratadrabik of Urborg",
+  "mana_cost": "{2}{W}{B}",
+  "cmc": 4.0,
+  "type_line": "Legendary Creature \u2014 Zombie Wizard",
+  "oracle_text": "Vigilance, ward {2}\nOther Zombies you control have vigilance.\nWhenever another legendary creature you control dies, create a token that's a copy of that creature, except it's not legendary and it's a 2/2 black Zombie in addition to its other colors and types.",
+  "power": "3",
+  "toughness": "3",
+  "keywords": [
+   "Vigilance",
+   "Ward"
+  ],
+  "colors": [
+   "B",
+   "W"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "213"
+ },
+ {
+  "name": "Read the Bones",
+  "mana_cost": "{2}{B}",
+  "cmc": 3.0,
+  "type_line": "Sorcery",
+  "oracle_text": "Scry 2, then draw two cards. You lose 2 life. (To scry 2, look at the top two cards of your library, then put any number of them on the bottom and the rest on top in any order.)",
+  "power": null,
+  "toughness": null,
+  "keywords": [
+   "Scry"
+  ],
+  "colors": [
+   "B"
+  ],
+  "rarity": "common",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "479"
+ },
+ {
+  "name": "Reckless Endeavor",
+  "mana_cost": "{5}{R}{R}",
+  "cmc": 7.0,
+  "type_line": "Sorcery",
+  "oracle_text": "Roll two d12 and choose one result. Reckless Endeavor deals damage equal to that result to each creature. Then create a number of Treasure tokens equal to the other result.",
+  "power": null,
+  "toughness": null,
+  "keywords": [
+   "Treasure"
+  ],
+  "colors": [
+   "R"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "33"
+ },
+ {
+  "name": "Reckless Impulse",
+  "mana_cost": "{1}{R}",
+  "cmc": 2.0,
+  "type_line": "Sorcery",
+  "oracle_text": "Exile the top two cards of your library. Until the end of your next turn, you may play those cards.",
+  "power": null,
+  "toughness": null,
+  "keywords": [],
+  "colors": [
+   "R"
+  ],
+  "rarity": "common",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "168"
+ },
+ {
+  "name": "Reconnaissance Mission",
+  "mana_cost": "{2}{U}{U}",
+  "cmc": 4.0,
+  "type_line": "Enchantment",
+  "oracle_text": "Whenever a creature you control deals combat damage to a player, you may draw a card.\nCycling {2} ({2}, Discard this card: Draw a card.)",
+  "power": null,
+  "toughness": null,
+  "keywords": [
+   "Cycling"
+  ],
+  "colors": [
+   "U"
+  ],
+  "rarity": "uncommon",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "153"
+ },
+ {
+  "name": "Regrowth",
+  "mana_cost": "{1}{G}",
+  "cmc": 2.0,
+  "type_line": "Sorcery",
+  "oracle_text": "Return target card from your graveyard to your hand.",
+  "power": null,
+  "toughness": null,
+  "keywords": [],
+  "colors": [
+   "G"
+  ],
+  "rarity": "uncommon",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "175"
+ },
+ {
+  "name": "Relic of Legends",
+  "mana_cost": "{3}",
+  "cmc": 3.0,
+  "type_line": "Artifact",
+  "oracle_text": "{T}: Add one mana of any color.\nTap an untapped legendary creature you control: Add one mana of any color.",
+  "power": null,
+  "toughness": null,
+  "keywords": [],
+  "colors": [],
+  "rarity": "uncommon",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": [
+   "B",
+   "G",
+   "R",
+   "U",
+   "W"
+  ],
+  "collector_number": "209"
+ },
+ {
+  "name": "Render Silent",
+  "mana_cost": "{W}{U}{U}",
+  "cmc": 3.0,
+  "type_line": "Instant",
+  "oracle_text": "Counter target spell. Its controller can't cast spells this turn.",
+  "power": null,
+  "toughness": null,
+  "keywords": [],
+  "colors": [
+   "U",
+   "W"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "96"
+ },
+ {
+  "name": "Rest in Peace",
+  "mana_cost": "{1}{W}",
+  "cmc": 2.0,
+  "type_line": "Enchantment",
+  "oracle_text": "When this enchantment enters, exile all graveyards.\nIf a card or token would be put into a graveyard from anywhere, exile it instead.",
+  "power": null,
+  "toughness": null,
+  "keywords": [],
+  "colors": [
+   "W"
+  ],
+  "rarity": "mythic",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "4"
+ },
+ {
+  "name": "Rocco, Cabaretti Caterer",
+  "mana_cost": "{X}{R}{G}{W}",
+  "cmc": 3.0,
+  "type_line": "Legendary Creature \u2014 Elf Druid",
+  "oracle_text": "When Rocco enters, if you cast it, you may search your library for a creature card with mana value X or less, put it onto the battlefield, then shuffle.",
+  "power": "3",
+  "toughness": "1",
+  "keywords": [],
+  "colors": [
+   "G",
+   "R",
+   "W"
+  ],
+  "rarity": "uncommon",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "218"
+ },
+ {
+  "name": "Rosie Cotton of South Lane",
+  "mana_cost": "{2}{W}",
+  "cmc": 3.0,
+  "type_line": "Legendary Creature \u2014 Halfling Peasant",
+  "oracle_text": "When Rosie Cotton enters, create a Food token. (It's an artifact with \"{2}, {T}, Sacrifice this token: You gain 3 life.\")\nWhenever you create a token, put a +1/+1 counter on target creature you control other than Rosie Cotton.",
+  "power": "1",
+  "toughness": "1",
+  "keywords": [
+   "Food"
+  ],
+  "colors": [
+   "W"
+  ],
+  "rarity": "uncommon",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "27"
+ },
+ {
+  "name": "Rule of Law",
+  "mana_cost": "{2}{W}",
+  "cmc": 3.0,
+  "type_line": "Enchantment",
+  "oracle_text": "Each player can't cast more than one spell each turn.",
+  "power": null,
+  "toughness": null,
+  "keywords": [],
+  "colors": [
+   "W"
+  ],
+  "rarity": "uncommon",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "35"
+ },
+ {
+  "name": "Samwise the Stouthearted",
+  "mana_cost": "{1}{W}",
+  "cmc": 2.0,
+  "type_line": "Legendary Creature \u2014 Halfling Peasant",
+  "oracle_text": "Flash\nWhen Samwise enters, choose up to one target permanent card in your graveyard that was put there from the battlefield this turn. Return it to your hand. Then the Ring tempts you.",
+  "power": "2",
+  "toughness": "1",
+  "keywords": [
+   "Flash"
+  ],
+  "colors": [
+   "W"
+  ],
+  "rarity": "uncommon",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "28"
+ },
+ {
+  "name": "Sanctum Prelate",
+  "mana_cost": "{1}{W}{W}",
+  "cmc": 3.0,
+  "type_line": "Creature \u2014 Human Cleric",
+  "oracle_text": "As this creature enters, choose a number.\nNoncreature spells with mana value equal to the chosen number can't be cast.",
+  "power": "2",
+  "toughness": "2",
+  "keywords": [],
+  "colors": [
+   "W"
+  ],
+  "rarity": "mythic",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "23"
+ },
+ {
+  "name": "Scion of Oona",
+  "mana_cost": "{2}{U}",
+  "cmc": 3.0,
+  "type_line": "Creature \u2014 Faerie Soldier",
+  "oracle_text": "Flash\nFlying\nOther Faerie creatures you control get +1/+1.\nOther Faeries you control have shroud. (They can't be the targets of spells or abilities.)",
+  "power": "1",
+  "toughness": "1",
+  "keywords": [
+   "Flying",
+   "Flash"
+  ],
+  "colors": [
+   "U"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "63"
+ },
+ {
+  "name": "Seal of Cleansing",
+  "mana_cost": "{1}{W}",
+  "cmc": 2.0,
+  "type_line": "Enchantment",
+  "oracle_text": "Sacrifice this enchantment: Destroy target artifact or enchantment.",
+  "power": null,
+  "toughness": null,
+  "keywords": [],
+  "colors": [
+   "W"
+  ],
+  "rarity": "common",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "80"
+ },
+ {
+  "name": "Season of the Burrow",
+  "mana_cost": "{3}{W}{W}",
+  "cmc": 5.0,
+  "type_line": "Sorcery",
+  "oracle_text": "Choose up to five {P} worth of modes. You may choose the same mode more than once.\n{P} \u2014 Create a 1/1 white Rabbit creature token.\n{P}{P} \u2014 Exile target nonland permanent. Its controller draws a card.\n{P}{P}{P} \u2014 Return target permanent card with mana value 3 or less from your graveyard to the battlefield with an indestructible counter on it.",
+  "power": null,
+  "toughness": null,
+  "keywords": [],
+  "colors": [
+   "W"
+  ],
+  "rarity": "mythic",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "29"
+ },
+ {
+  "name": "Secret Arcade // Dusty Parlor",
+  "mana_cost": "{4}{W}",
+  "cmc": 8.0,
+  "type_line": "Enchantment \u2014 Room",
+  "oracle_text": "Nonland permanents you control and permanent spells you control are enchantments in addition to their other types.\n(You may cast either half. That door unlocks on the battlefield. As a sorcery, you may pay the mana cost of a locked door to unlock it.)",
+  "power": null,
+  "toughness": null,
+  "keywords": [],
+  "colors": [
+   "W"
+  ],
+  "rarity": "rare",
+  "layout": "split",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "10",
+  "split": {
+   "name": "Dusty Parlor",
+   "mana_cost": "{2}{W}",
+   "type_line": "Enchantment \u2014 Room",
+   "oracle_text": "Whenever you cast an enchantment spell, put a number of +1/+1 counters equal to that spell's mana value on up to one target creature.\n(You may cast either half. That door unlocks on the battlefield. As a sorcery, you may pay the mana cost of a locked door to unlock it.)"
+  }
+ },
+ {
+  "name": "Sevinne's Reclamation",
+  "mana_cost": "{2}{W}",
+  "cmc": 3.0,
+  "type_line": "Sorcery",
+  "oracle_text": "Return target permanent card with mana value 3 or less from your graveyard to the battlefield. If this spell was cast from a graveyard, you may copy this spell and may choose a new target for the copy.\nFlashback {4}{W} (You may cast this card from your graveyard for its flashback cost. Then exile it.)",
+  "power": null,
+  "toughness": null,
+  "keywords": [
+   "Flashback"
+  ],
+  "colors": [
+   "W"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "170"
+ },
+ {
+  "name": "Slate of Ancestry",
+  "mana_cost": "{4}",
+  "cmc": 4.0,
+  "type_line": "Artifact",
+  "oracle_text": "{4}, {T}, Discard your hand: Draw a card for each creature you control.",
+  "power": null,
+  "toughness": null,
+  "keywords": [],
+  "colors": [],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "25"
+ },
+ {
+  "name": "Smaug, Wicked Worm",
+  "mana_cost": "{3}{B}{R}",
+  "cmc": 5.0,
+  "type_line": "Legendary Creature \u2014 Dragon",
+  "oracle_text": "Flying\nWhen Smaug enters, create X tapped Treasure tokens, where X is the number of artifacts your opponents control.\nWhenever you cast a spell, if mana from a Treasure was spent to cast it, you draw a card and lose 1 life.",
+  "power": "5",
+  "toughness": "5",
+  "keywords": [
+   "Flying",
+   "Treasure"
+  ],
+  "colors": [
+   "B",
+   "R"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "164"
+ },
+ {
+  "name": "Snapcaster Mage",
+  "mana_cost": "{1}{U}",
+  "cmc": 2.0,
+  "type_line": "Creature \u2014 Human Wizard",
+  "oracle_text": "Flash\nWhen this creature enters, target instant or sorcery card in your graveyard gains flashback until end of turn. The flashback cost is equal to its mana cost. (You may cast that card from your graveyard for its flashback cost. Then exile it.)",
+  "power": "2",
+  "toughness": "1",
+  "keywords": [
+   "Flash"
+  ],
+  "colors": [
+   "U"
+  ],
+  "rarity": "mythic",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "478"
+ },
+ {
+  "name": "Soaring Lightbringer",
+  "mana_cost": "{4}{W}",
+  "cmc": 5.0,
+  "type_line": "Enchantment Creature \u2014 Bird Glimmer",
+  "oracle_text": "Flying\nOther enchantment creatures you control have flying.\nWhenever you attack a player, create a 1/1 white Glimmer enchantment creature token that's tapped and attacking that player.",
+  "power": "4",
+  "toughness": "5",
+  "keywords": [
+   "Flying"
+  ],
+  "colors": [
+   "W"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "11"
+ },
+ {
+  "name": "Spark Double",
+  "mana_cost": "{3}{U}",
+  "cmc": 4.0,
+  "type_line": "Creature \u2014 Illusion",
+  "oracle_text": "You may have this creature enter as a copy of a creature or planeswalker you control, except it enters with an additional +1/+1 counter on it if it's a creature, it enters with an additional loyalty counter on it if it's a planeswalker, and it isn't legendary.",
+  "power": "0",
+  "toughness": "0",
+  "keywords": [],
+  "colors": [
+   "U"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "62"
+ },
+ {
+  "name": "Sphinx Summoner",
+  "mana_cost": "{3}{U}{B}",
+  "cmc": 5.0,
+  "type_line": "Artifact Creature \u2014 Sphinx",
+  "oracle_text": "Flying\nWhen this creature enters, you may search your library for an artifact creature card, reveal it, put it into your hand, then shuffle.",
+  "power": "3",
+  "toughness": "3",
+  "keywords": [
+   "Flying"
+  ],
+  "colors": [
+   "B",
+   "U"
+  ],
+  "rarity": "uncommon",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "220"
+ },
+ {
+  "name": "Springleaf Parade",
+  "mana_cost": "{X}{G}{G}",
+  "cmc": 2.0,
+  "type_line": "Enchantment",
+  "oracle_text": "When this enchantment enters, create X 1/1 colorless Shapeshifter creature tokens with changeling. (They're every creature type.)\nCreature tokens you control have \"{T}: Add one mana of any color.\"",
+  "power": null,
+  "toughness": null,
+  "keywords": [],
+  "colors": [
+   "G"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": [
+   "B",
+   "G",
+   "R",
+   "U",
+   "W"
+  ],
+  "collector_number": "19"
+ },
+ {
+  "name": "Starscape Cleric",
+  "mana_cost": "{1}{B}",
+  "cmc": 2.0,
+  "type_line": "Creature \u2014 Bat Cleric",
+  "oracle_text": "Offspring {2}{B} (You may pay an additional {2}{B} as you cast this spell. If you do, when this creature enters, create a 1/1 token copy of it.)\nFlying\nThis creature can't block.\nWhenever you gain life, each opponent loses 1 life.",
+  "power": "2",
+  "toughness": "1",
+  "keywords": [
+   "Flying",
+   "Offspring"
+  ],
+  "colors": [
+   "B"
+  ],
+  "rarity": "uncommon",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "116"
+ },
+ {
+  "name": "Sword of Light and Shadow",
+  "mana_cost": "{3}",
+  "cmc": 3.0,
+  "type_line": "Artifact \u2014 Equipment",
+  "oracle_text": "Equipped creature gets +2/+2 and has protection from white and from black.\nWhenever equipped creature deals combat damage to a player, you gain 3 life and you may return up to one target creature card from your graveyard to your hand.\nEquip {2}",
+  "power": null,
+  "toughness": null,
+  "keywords": [
+   "Equip"
+  ],
+  "colors": [],
+  "rarity": "mythic",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "502"
+ },
+ {
+  "name": "Tainted Field",
+  "mana_cost": "",
+  "cmc": 0.0,
+  "type_line": "Land",
+  "oracle_text": "{T}: Add {C}.\n{T}: Add {W} or {B}. Activate only if you control a Swamp.",
+  "power": null,
+  "toughness": null,
+  "keywords": [],
+  "colors": [],
+  "rarity": "uncommon",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": [
+   "B",
+   "C",
+   "W"
+  ],
+  "collector_number": "302"
+ },
+ {
+  "name": "Talion, the Kindly Lord",
+  "mana_cost": "{2}{U}{B}",
+  "cmc": 4.0,
+  "type_line": "Legendary Creature \u2014 Faerie Noble",
+  "oracle_text": "Flying\nAs Talion enters, choose a number between 1 and 10.\nWhenever an opponent casts a spell with mana value, power, or toughness equal to the chosen number, that player loses 2 life and you draw a card.",
+  "power": "3",
+  "toughness": "4",
+  "keywords": [
+   "Flying"
+  ],
+  "colors": [
+   "B",
+   "U"
+  ],
+  "rarity": "mythic",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "215"
+ },
+ {
+  "name": "Tana, the Bloodsower",
+  "mana_cost": "{2}{R}{G}",
+  "cmc": 4.0,
+  "type_line": "Legendary Creature \u2014 Elf Druid",
+  "oracle_text": "Trample\nWhenever Tana deals combat damage to a player, create that many 1/1 green Saproling creature tokens.\nPartner (You can have two commanders if both have partner.)",
+  "power": "2",
+  "toughness": "2",
+  "keywords": [
+   "Partner",
+   "Trample"
+  ],
+  "colors": [
+   "G",
+   "R"
+  ],
+  "rarity": "mythic",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "45"
+ },
+ {
+  "name": "Tender Wildguide",
+  "mana_cost": "{1}{G}",
+  "cmc": 2.0,
+  "type_line": "Creature \u2014 Possum Druid",
+  "oracle_text": "Offspring {2} (You may pay an additional {2} as you cast this spell. If you do, when this creature enters, create a 1/1 token copy of it.)\n{T}: Add one mana of any color.\n{T}: Put a +1/+1 counter on this creature.",
+  "power": "2",
+  "toughness": "2",
+  "keywords": [
+   "Offspring"
+  ],
+  "colors": [
+   "G"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": [
+   "B",
+   "G",
+   "R",
+   "U",
+   "W"
+  ],
+  "collector_number": "196"
+ },
+ {
+  "name": "Teysa Karlov",
+  "mana_cost": "{2}{W}{B}",
+  "cmc": 4.0,
+  "type_line": "Legendary Creature \u2014 Human Advisor",
+  "oracle_text": "If a creature dying causes a triggered ability of a permanent you control to trigger, that ability triggers an additional time.\nCreature tokens you control have vigilance and lifelink.",
+  "power": "2",
+  "toughness": "4",
+  "keywords": [],
+  "colors": [
+   "B",
+   "W"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "359"
+ },
+ {
+  "name": "Thalia, Guardian of Thraben",
+  "mana_cost": "{1}{W}",
+  "cmc": 2.0,
+  "type_line": "Legendary Creature \u2014 Human Soldier",
+  "oracle_text": "First strike\nNoncreature spells cost {1} more to cast.",
+  "power": "2",
+  "toughness": "1",
+  "keywords": [
+   "First strike"
+  ],
+  "colors": [
+   "W"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "38"
+ },
+ {
+  "name": "The Battle of Bywater",
+  "mana_cost": "{1}{W}{W}",
+  "cmc": 3.0,
+  "type_line": "Sorcery",
+  "oracle_text": "Destroy all creatures with power 3 or greater. Then create a Food token for each creature you control. (It's an artifact with \"{2}, {T}, Sacrifice this token: You gain 3 life.\")",
+  "power": null,
+  "toughness": null,
+  "keywords": [
+   "Food"
+  ],
+  "colors": [
+   "W"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "2"
+ },
+ {
+  "name": "The Cabbage Merchant",
+  "mana_cost": "{2}{G}",
+  "cmc": 3.0,
+  "type_line": "Legendary Creature \u2014 Human Citizen",
+  "oracle_text": "Whenever an opponent casts a noncreature spell, create a Food token. (It's an artifact with \"{2}, {T}, Sacrifice this token: You gain 3 life.\")\nWhenever a creature deals combat damage to you, sacrifice a Food token.\nTap two untapped Foods you control: Add one mana of any color.",
+  "power": "2",
+  "toughness": "2",
+  "keywords": [
+   "Food"
+  ],
+  "colors": [
+   "G"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": [
+   "B",
+   "G",
+   "R",
+   "U",
+   "W"
+  ],
+  "collector_number": "134"
+ },
+ {
+  "name": "The Celestus",
+  "mana_cost": "{3}",
+  "cmc": 3.0,
+  "type_line": "Legendary Artifact",
+  "oracle_text": "If it's neither day nor night, it becomes day as The Celestus enters.\n{T}: Add one mana of any color.\n{3}, {T}: If it's night, it becomes day. Otherwise, it becomes night. Activate only as a sorcery.\nWhenever day becomes night or night becomes day, you gain 1 life. You may draw a card. If you do, discard a card.",
+  "power": null,
+  "toughness": null,
+  "keywords": [],
+  "colors": [],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": [
+   "B",
+   "G",
+   "R",
+   "U",
+   "W"
+  ],
+  "collector_number": "252"
+ },
+ {
+  "name": "The Destined Black Mage",
+  "mana_cost": "{2}{B}",
+  "cmc": 3.0,
+  "type_line": "Legendary Creature \u2014 Human Wizard",
+  "oracle_text": "Deathtouch\n{B}, {T}: Another target creature you control gains deathtouch until end of turn.\nWhenever you cast a noncreature spell, The Destined Black Mage deals 1 damage to each opponent. If you have a full party, it deals 3 damage to each opponent instead.",
+  "power": "3",
+  "toughness": "2",
+  "keywords": [
+   "Deathtouch"
+  ],
+  "colors": [
+   "B"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "447"
+ },
+ {
+  "name": "Theater of Horrors",
+  "mana_cost": "{1}{B}{R}",
+  "cmc": 3.0,
+  "type_line": "Enchantment",
+  "oracle_text": "At the beginning of your upkeep, exile the top card of your library.\nDuring your turn, if an opponent lost life this turn, you may play lands and cast spells from among cards exiled with this enchantment.\n{3}{R}: This enchantment deals 1 damage to target opponent or planeswalker.",
+  "power": null,
+  "toughness": null,
+  "keywords": [],
+  "colors": [
+   "B",
+   "R"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "236"
+ },
+ {
+  "name": "Thopter Assembly",
+  "mana_cost": "{6}",
+  "cmc": 6.0,
+  "type_line": "Artifact Creature \u2014 Thopter",
+  "oracle_text": "Flying\nAt the beginning of your upkeep, if you control no Thopters other than this creature, return this creature to its owner's hand and create five 1/1 colorless Thopter artifact creature tokens with flying.",
+  "power": "5",
+  "toughness": "5",
+  "keywords": [
+   "Flying"
+  ],
+  "colors": [],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "386"
+ },
+ {
+  "name": "Tidehollow Strix",
+  "mana_cost": "{U}{B}",
+  "cmc": 2.0,
+  "type_line": "Artifact Creature \u2014 Bird",
+  "oracle_text": "Flying\nDeathtouch (Any amount of damage this deals to a creature is enough to destroy it.)",
+  "power": "2",
+  "toughness": "1",
+  "keywords": [
+   "Deathtouch",
+   "Flying"
+  ],
+  "colors": [
+   "B",
+   "U"
+  ],
+  "rarity": "common",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "222"
+ },
+ {
+  "name": "Tithe Taker",
+  "mana_cost": "{1}{W}",
+  "cmc": 2.0,
+  "type_line": "Creature \u2014 Human Soldier",
+  "oracle_text": "During your turn, spells your opponents cast cost {1} more to cast and abilities your opponents activate cost {1} more to activate unless they're mana abilities.\nAfterlife 1 (When this creature dies, create a 1/1 white and black Spirit creature token with flying.)",
+  "power": "2",
+  "toughness": "1",
+  "keywords": [
+   "Afterlife"
+  ],
+  "colors": [
+   "W"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "27"
+ },
+ {
+  "name": "Torpor Orb",
+  "mana_cost": "{2}",
+  "cmc": 2.0,
+  "type_line": "Artifact",
+  "oracle_text": "Creatures entering don't cause abilities to trigger.",
+  "power": null,
+  "toughness": null,
+  "keywords": [],
+  "colors": [],
+  "rarity": "mythic",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "27"
+ },
+ {
+  "name": "Transpose",
+  "mana_cost": "{2}{B}",
+  "cmc": 3.0,
+  "type_line": "Instant",
+  "oracle_text": "Draw a card, then discard a card. You lose 1 life. If this spell was cast from your hand, create a 0/1 black Wizard creature token with \"Whenever you cast a noncreature spell, this token deals 1 damage to each opponent.\"\nRebound (If you cast this spell from your hand, exile it as it resolves. At the beginning of your next upkeep, you may cast this card from exile without paying its mana cost.)",
+  "power": null,
+  "toughness": null,
+  "keywords": [
+   "Rebound"
+  ],
+  "colors": [
+   "B"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "52"
+ },
+ {
+  "name": "Twilight Drover",
+  "mana_cost": "{2}{W}",
+  "cmc": 3.0,
+  "type_line": "Creature \u2014 Spirit",
+  "oracle_text": "Whenever a creature token leaves the battlefield, put a +1/+1 counter on this creature.\n{2}{W}, Remove a +1/+1 counter from this creature: Create two 1/1 white Spirit creature tokens with flying.",
+  "power": "1",
+  "toughness": "1",
+  "keywords": [],
+  "colors": [
+   "W"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "136"
+ },
+ {
+  "name": "Tymna the Weaver",
+  "mana_cost": "{1}{W}{B}",
+  "cmc": 3.0,
+  "type_line": "Legendary Creature \u2014 Human Cleric",
+  "oracle_text": "Lifelink\nAt the beginning of each of your postcombat main phases, you may pay X life, where X is the number of opponents that were dealt combat damage this turn. If you do, draw X cards.\nPartner (You can have two commanders if both have partner.)",
+  "power": "2",
+  "toughness": "2",
+  "keywords": [
+   "Lifelink",
+   "Partner"
+  ],
+  "colors": [
+   "B",
+   "W"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "48"
+ },
+ {
+  "name": "Uncover the Moon-Letters",
+  "mana_cost": "{3}{U}",
+  "cmc": 4.0,
+  "type_line": "Enchantment",
+  "oracle_text": "Whenever you cast a noncreature spell, you may draw X cards, where X is the amount of mana spent to cast that spell. If you do, discard two cards.",
+  "power": null,
+  "toughness": null,
+  "keywords": [],
+  "colors": [
+   "U"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "57"
+ },
+ {
+  "name": "Urza's Ruinous Blast",
+  "mana_cost": "{4}{W}",
+  "cmc": 5.0,
+  "type_line": "Legendary Sorcery",
+  "oracle_text": "(You may cast a legendary sorcery only if you control a legendary creature or planeswalker.)\nExile all nonland permanents that aren't legendary.",
+  "power": null,
+  "toughness": null,
+  "keywords": [],
+  "colors": [
+   "W"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "842"
+ },
+ {
+  "name": "Valeria Richards, Precocious",
+  "mana_cost": "{3}{U}",
+  "cmc": 4.0,
+  "type_line": "Legendary Creature \u2014 Human Scientist Hero",
+  "oracle_text": "Noncreature spells you cast cost {1} less to cast.\nWhenever you cast your first noncreature spell each turn, draw a card.",
+  "power": "3",
+  "toughness": "3",
+  "keywords": [],
+  "colors": [
+   "U"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "38"
+ },
+ {
+  "name": "War of the Last Alliance",
+  "mana_cost": "{3}{W}",
+  "cmc": 4.0,
+  "type_line": "Enchantment \u2014 Saga",
+  "oracle_text": "(As this Saga enters and after your draw step, add a lore counter. Sacrifice after III.)\nI, II \u2014 Search your library for a legendary creature card, reveal it, put it into your hand, then shuffle.\nIII \u2014 Creatures you control gain double strike until end of turn. The Ring tempts you.",
+  "power": null,
+  "toughness": null,
+  "keywords": [],
+  "colors": [
+   "W"
+  ],
+  "rarity": "rare",
+  "layout": "saga",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "36"
+ },
+ {
+  "name": "Wear // Tear",
+  "mana_cost": "{1}{R}",
+  "cmc": 3.0,
+  "type_line": "Instant",
+  "oracle_text": "Destroy target artifact.\nFuse (You may cast one or both halves of this card from your hand.)",
+  "power": null,
+  "toughness": null,
+  "keywords": [
+   "Fuse"
+  ],
+  "colors": [
+   "R",
+   "W"
+  ],
+  "rarity": "uncommon",
+  "layout": "split",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "343",
+  "split": {
+   "name": "Tear",
+   "mana_cost": "{W}",
+   "type_line": "Instant",
+   "oracle_text": "Destroy target enchantment.\nFuse (You may cast one or both halves of this card from your hand.)"
+  }
+ },
+ {
+  "name": "Weftstalker Ardent",
+  "mana_cost": "{2}{R}",
+  "cmc": 3.0,
+  "type_line": "Creature \u2014 Drix Artificer",
+  "oracle_text": "Whenever another creature or artifact you control enters, this creature deals 1 damage to each opponent.\nWarp {R} (You may cast this card from your hand for its warp cost. Exile this creature at the beginning of the next end step, then you may cast it from exile on a later turn.)",
+  "power": "2",
+  "toughness": "3",
+  "keywords": [
+   "Warp"
+  ],
+  "colors": [
+   "R"
+  ],
+  "rarity": "uncommon",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "169"
+ },
+ {
+  "name": "Wild-Magic Sorcerer",
+  "mana_cost": "{3}{R}",
+  "cmc": 4.0,
+  "type_line": "Creature \u2014 Orc Shaman Sorcerer",
+  "oracle_text": "The first spell you cast from exile each turn has cascade. (When you cast your first spell from exile, exile cards from the top of your library until you exile a nonland card that costs less. You may cast it without paying its mana cost. Put the exiled cards on the bottom in a random order.)",
+  "power": "4",
+  "toughness": "3",
+  "keywords": [],
+  "colors": [
+   "R"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "816"
+ },
+ {
+  "name": "Wildfire Awakener",
+  "mana_cost": "{X}{1}{R}{W}",
+  "cmc": 3.0,
+  "type_line": "Creature \u2014 Human Wizard",
+  "oracle_text": "Convoke (Your creatures can help cast this spell. Each creature you tap while casting this spell pays for {1} or one mana of that creature's color.)\nWhen this creature enters, create X 1/1 red Elemental creature tokens with \"Whenever this token becomes tapped, it deals 1 damage to target player.\"",
+  "power": "3",
+  "toughness": "2",
+  "keywords": [
+   "Convoke"
+  ],
+  "colors": [
+   "R",
+   "W"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "44"
+ },
+ {
+  "name": "Wizard's Staff",
+  "mana_cost": "{1}{U}",
+  "cmc": 2.0,
+  "type_line": "Artifact \u2014 Equipment",
+  "oracle_text": "Equipped creature has prowess. (Whenever its controller casts a noncreature spell, that creature gets +1/+1 until end of turn.)\nIf a triggered ability of equipped creature triggers, that ability triggers an additional time.\nEquip Wizard {1}\nEquip {3}",
+  "power": null,
+  "toughness": null,
+  "keywords": [
+   "Equip"
+  ],
+  "colors": [
+   "U"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "59"
+ },
+ {
+  "name": "Woodfall Primus",
+  "mana_cost": "{5}{G}{G}{G}",
+  "cmc": 8.0,
+  "type_line": "Creature \u2014 Treefolk Shaman",
+  "oracle_text": "Trample\nWhen this creature enters, destroy target noncreature permanent.\nPersist (When this creature dies, if it had no -1/-1 counters on it, return it to the battlefield under its owner's control with a -1/-1 counter on it.)",
+  "power": "6",
+  "toughness": "6",
+  "keywords": [
+   "Persist",
+   "Trample"
+  ],
+  "colors": [
+   "G"
+  ],
+  "rarity": "rare",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "322"
+ },
+ {
+  "name": "Wrenn's Resolve",
+  "mana_cost": "{1}{R}",
+  "cmc": 2.0,
+  "type_line": "Sorcery",
+  "oracle_text": "Exile the top two cards of your library. Until the end of your next turn, you may play those cards.",
+  "power": null,
+  "toughness": null,
+  "keywords": [],
+  "colors": [
+   "R"
+  ],
+  "rarity": "common",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "173"
+ },
+ {
+  "name": "Y'shtola Rhul",
+  "mana_cost": "{4}{U}{U}",
+  "cmc": 6.0,
+  "type_line": "Legendary Creature \u2014 Cat Druid",
+  "oracle_text": "At the beginning of your end step, exile target creature you control, then return it to the battlefield under its owner's control. Then if it's the first end step of the turn, there is an additional end step after this step.",
+  "power": "3",
+  "toughness": "5",
+  "keywords": [],
+  "colors": [
+   "U"
+  ],
+  "rarity": "mythic",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "86"
+ },
+ {
+  "name": "Y'shtola, Night's Blessed",
+  "mana_cost": "{1}{W}{U}{B}",
+  "cmc": 4.0,
+  "type_line": "Legendary Creature \u2014 Cat Warlock",
+  "oracle_text": "Vigilance\nAt the beginning of each end step, if a player lost 4 or more life this turn, you draw a card.\nWhenever you cast a noncreature spell with mana value 3 or greater, Y'shtola deals 2 damage to each opponent and you gain 2 life.",
+  "power": "2",
+  "toughness": "4",
+  "keywords": [
+   "Vigilance"
+  ],
+  "colors": [
+   "B",
+   "U",
+   "W"
+  ],
+  "rarity": "mythic",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "7"
+ },
+ {
+  "name": "You Find Some Prisoners",
+  "mana_cost": "{1}{R}",
+  "cmc": 2.0,
+  "type_line": "Instant",
+  "oracle_text": "Choose one \u2014\n\u2022 Break Their Chains \u2014 Destroy target artifact.\n\u2022 Interrogate Them \u2014 Exile the top three cards of target opponent's library. Choose one of them. Until the end of your next turn, you may play that card, and you may spend mana as though it were mana of any color to cast it.",
+  "power": null,
+  "toughness": null,
+  "keywords": [],
+  "colors": [
+   "R"
+  ],
+  "rarity": "uncommon",
+  "layout": "normal",
+  "loyalty": null,
+  "produced_mana": null,
+  "collector_number": "169"
  }
 ]

@@ -404,6 +404,9 @@ pub struct Activated {
     /// `Action::ActivateWith` per artifact or creature you control (the player's pick), kept out of
     /// the mana payment.
     pub sacrifice_artifact_or_creature: bool,
+    /// Activated only while the card is in the command zone, by its owner (Derevi: "{1}{G}{W}{U}:
+    /// Put Derevi onto the battlefield from the command zone.").
+    pub from_command_zone: bool,
 }
 
 /// A loyalty ability's cost of −X (CR 606.4, 107.3): `loyalty_abilities` uses this as the cost,
@@ -1137,6 +1140,17 @@ pub struct CardDef {
     /// modeled: "You control your opponents while they're searching their libraries" (1v1, the
     /// searcher still chooses).
     pub opponents_searches_exiled_for_you: bool,
+    /// Loyalty abilities planeswalkers you control have (Ichormoon Gauntlet: "[0]: Proliferate" and
+    /// "[−12]: Take an extra turn after this one."), after their own (`Game::loyalty_ability`).
+    pub your_planeswalkers_have_loyalty: Vec<(i32, crate::effect::Ability)>,
+    /// Stridehangar Automaton: "If one or more artifact tokens would be created under your control,
+    /// those tokens plus an additional [Thopter] are created instead." (the token, once per event)
+    pub artifact_tokens_plus_one: Option<usize>,
+    /// Gemstone Caverns (CR 103.6): "If [this] is in your opening hand and you're not the starting
+    /// player, you may begin the game with [this] on the battlefield with a luck counter on it. If
+    /// you do, exile a card from your hand." Asked in `Game::pregame_actions`
+    /// (`Decision::GemstoneCaverns`); the luck counter is `Object::kind_counters`.
+    pub begins_game_with_luck_counter: bool,
     /// An Aura: "Enchanted creature is an [Insect] artifact creature ... and it loses all other
     /// ... card types" (Darksteel Mutation), in `Game::types_of`: its card types are artifact and
     /// creature only (supertypes stay). `enchanted_creature_type_becomes` and its static give the
@@ -1753,6 +1767,9 @@ impl CardDef {
             opponents_cast_only_from_hand: false,
             your_minus_counters_minus_one: false,
             opponents_searches_exiled_for_you: false,
+            your_planeswalkers_have_loyalty: Vec::new(),
+            artifact_tokens_plus_one: None,
+            begins_game_with_luck_counter: false,
             enchanted_becomes_artifact_creature: false,
             your_nontoken_creatures_are_forest_lands: false,
             protection_chosen_card_type: false,
@@ -2059,6 +2076,9 @@ impl CardDef {
             opponents_cast_only_from_hand: false,
             your_minus_counters_minus_one: false,
             opponents_searches_exiled_for_you: false,
+            your_planeswalkers_have_loyalty: Vec::new(),
+            artifact_tokens_plus_one: None,
+            begins_game_with_luck_counter: false,
             enchanted_becomes_artifact_creature: false,
             your_nontoken_creatures_are_forest_lands: false,
             protection_chosen_card_type: false,
@@ -2365,6 +2385,9 @@ impl CardDef {
             opponents_cast_only_from_hand: false,
             your_minus_counters_minus_one: false,
             opponents_searches_exiled_for_you: false,
+            your_planeswalkers_have_loyalty: Vec::new(),
+            artifact_tokens_plus_one: None,
+            begins_game_with_luck_counter: false,
             enchanted_becomes_artifact_creature: false,
             your_nontoken_creatures_are_forest_lands: false,
             protection_chosen_card_type: false,
