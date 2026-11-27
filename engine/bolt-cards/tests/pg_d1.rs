@@ -4588,3 +4588,114 @@ fn gemstone_caverns_taps_for_colorless_or_any_color_with_a_luck_counter() {
     g.objects[gc.0 as usize].kind_counters = 1; // a luck counter
     assert_eq!(makes(&g, gc), ([true; 5], false), "any color instead");
 }
+
+const RAL: &str = "Ral, Monsoon Mage // Ral, Leyline Prodigy";
+
+/// Taps every land of player 0's but `keep` Swamps.
+fn tap_all_but_swamps(g: &mut Game, keep: usize) {
+    let mut kept = 0;
+    for l in g.permanents(0).collect::<Vec<_>>() {
+        if g.types_of(l).land {
+            if g.def_of(l).name == "Swamp" && kept < keep {
+                kept += 1;
+            } else {
+                g.objects[l.0 as usize].tapped = true;
+            }
+        }
+    }
+}
+
+#[test]
+fn ral_monsoon_mage_discounts_and_flips_into_ral_leyline_prodigy() {
+    let mut g = table();
+    let ral = put(&mut g, 0, RAL);
+    tap_all_but_swamps(&mut g, 1);
+    let nw = hand(&mut g, 0, "Night's Whisper");
+    assert!(
+        g.legal_actions().contains(&Action::Cast(nw)),
+        "{{1}}{{B}} for {{B}}"
+    );
+    // Cast instants and sorceries until a flip is won (each lost flip deals Ral's 1 damage).
+    let mut transformed = false;
+    for _ in 0..30 {
+        for l in g.permanents(0).collect::<Vec<_>>() {
+            g.objects[l.0 as usize].tapped = false;
+        }
+        let nw = hand(&mut g, 0, "Night's Whisper");
+        let life = g.players[0].life;
+        act(&mut g, Action::Cast(nw));
+        let mut asked = false;
+        while !g.items.is_empty() || matches!(g.pending, Pending::Decide(_)) {
+            if matches!(g.pending, Pending::Decide(_)) {
+                asked = true;
+                act(&mut g, Action::Yes);
+            } else {
+                act(&mut g, Action::PassPriority);
+            }
+        }
+        if asked {
+            transformed = true;
+            break;
+        }
+        assert_eq!(
+            g.players[0].life,
+            life - 2 - 1,
+            "Night's Whisper's 2, the lost flip's 1"
+        );
+    }
+    assert!(transformed, "a won flip in 30");
+    let ral = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "Ral, Leyline Prodigy")
+        .unwrap_or(ral);
+    assert_eq!(g.def_of(ral).name, "Ral, Leyline Prodigy");
+    assert!(
+        g.obj(ral).loyalty > 2,
+        "an additional loyalty counter per instant and sorcery"
+    );
+}
+
+#[test]
+fn ral_leyline_prodigy_minus_two_divides_damage_and_draws_with_a_blue_permanent() {
+    let mut g = table();
+    let ral = put(&mut g, 0, RAL);
+    g.objects[ral.0 as usize].transformed = true;
+    g.objects[ral.0 as usize].loyalty = 8;
+    assert_eq!(g.def_of(ral).name, "Ral, Leyline Prodigy");
+    let hand_before = g.players[0].hand.len();
+    let life = g.players[1].life;
+    act(&mut g, Action::Loyalty(ral, 1));
+    act(&mut g, Action::Target(Target::Player(1)));
+    act(&mut g, Action::No);
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].life, life - 2, "both to one target");
+    assert_eq!(
+        g.players[0].hand.len(),
+        hand_before,
+        "Ral is his own blue permanent: no draw"
+    );
+}
+
+#[test]
+fn ral_leyline_prodigy_minus_eight_casts_exiled_instants_and_sorceries_free() {
+    let mut g = table();
+    let ral = put(&mut g, 0, RAL);
+    g.objects[ral.0 as usize].transformed = true;
+    g.objects[ral.0 as usize].loyalty = 8;
+    for _ in 0..8 {
+        g.add_card(0, cid("Night's Whisper"), Zone::Library);
+    }
+    act(&mut g, Action::Loyalty(ral, 2));
+    resolve_all(&mut g, &[]);
+    let exiled: Vec<ObjId> = g.exile.iter().copied().filter(|&c| g.obj(c).owner == 0).collect();
+    assert_eq!(exiled.len(), 8);
+    for l in g.permanents(0).collect::<Vec<_>>() {
+        if g.types_of(l).land {
+            g.objects[l.0 as usize].tapped = true;
+        }
+    }
+    assert!(
+        g.legal_actions().contains(&Action::Cast(exiled[0])),
+        "free, from exile, this turn"
+    );
+}

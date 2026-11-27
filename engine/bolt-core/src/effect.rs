@@ -3067,6 +3067,12 @@ pub enum Effect {
     /// "Each player gains control of each land they own that you control." (Herald of Leshrac,
     /// leaving the battlefield): "you" is the item's controller.
     OwnersRegainLandsYouControl,
+    /// "Exile the top `n` cards of your library. You may cast instant and sorcery spells from among
+    /// them this turn without paying their mana costs." (Ral, Leyline Prodigy's -8: 8)
+    ExileTopCastInstantsSorceriesFreeThisTurn(u8),
+    /// "Draw a card if you control a [color] permanent other than [the source]." (Ral, Leyline
+    /// Prodigy's -2: blue)
+    DrawIfControlAnotherOfColor(crate::Color),
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

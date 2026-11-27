@@ -27336,6 +27336,31 @@ impl Game {
                     self.ask(p, Decision::DiscardMayCastFree { free });
                 }
             }
+            Effect::ExileTopCastInstantsSorceriesFreeThisTurn(n) => {
+                let p = item.controller;
+                let turn = self.turn;
+                for _ in 0..n {
+                    if let Some(&c) = self.players[p].library.last() {
+                        self.move_to(c, Zone::Exile);
+                        let t = self.def_of(c).types;
+                        if self.obj(c).zone == Zone::Exile && (t.instant || t.sorcery) {
+                            let o = self.obj_mut(c);
+                            o.playable = Some((p, turn)); // this turn
+                            o.cast_free = true; // without paying its mana cost
+                        }
+                    }
+                }
+            }
+            Effect::DrawIfControlAnotherOfColor(color) => {
+                let p = item.controller;
+                let src = item.source;
+                if self
+                    .permanents(p)
+                    .any(|x| x != src && self.colors_of(x)[color as usize])
+                {
+                    self.draws_with_dredge(vec![(p, 1)], false);
+                }
+            }
             Effect::ExileTopCastColorThisTurn { n, color } => {
                 let p = item.controller;
                 let turn = self.turn;

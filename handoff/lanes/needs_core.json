@@ -7556,6 +7556,14 @@
    "lane": "d1",
    "theme": "mana",
    "owner": "d1"
+  },
+  {
+   "card": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+   "deck": "Ral (idea)",
+   "missing": "both faces: flip-coin transform; entering loyalty (lane B 99c53b6); +1 discount; -2 divided damage, draw if blue; -8 free instants and sorceries from exile [d1 batch 43: scripted]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
   }
  ]
 }

@@ -2222,6 +2222,40 @@ pub fn script(name: &str) -> Option<Script> {
                 d.mana_ext.any_color_with_kind_counter = true;
             },
         ),
+        "Ral, Monsoon Mage // Ral, Leyline Prodigy" => s(
+            &[
+                "Instant and sorcery spells you cast cost {1} less to cast.",
+                "Whenever you cast an instant or sorcery spell during your turn, flip a coin. If you lose the flip, Ral deals 1 damage to you. If you win the flip, you may exile Ral. If you do, return him to the battlefield transformed under his owner's control.",
+                "Back: Ral enters with an additional loyalty counter on him for each instant and sorcery spell you've cast this turn.",
+                "Back: +1: Until your next turn, instant and sorcery spells you cast cost {1} less to cast.",
+                "Back: −2: Ral deals 2 damage divided as you choose among one or two targets. Draw a card if you control a blue permanent other than Ral.",
+                "Back: −8: Exile the top eight cards of your library. You may cast instant and sorcery spells from among them this turn without paying their mana costs.",
+            ],
+            |d, _| {
+                d.mana_ext.instant_sorcery_discount = 1;
+                let mut flip = Ability::new(
+                    vec![],
+                    vec![
+                        Effect::Subsystem(bolt_core::SubsystemEffect::FlipCoinLoseDamageYouElseContinue(1)),
+                        Effect::MayContinue,
+                        Effect::ExileSelfReturn { transformed: true },
+                    ],
+                );
+                flip.condition = Some(Condition::YourTurn);
+                d.triggers.push(Trigger { when: When::YouCastInstantOrSorcery, ability: flip });
+                let b = d.back.as_mut().expect("Ral, Leyline Prodigy");
+                b.loyalty_plus_instants_sorceries_cast = true; // lane B's 99c53b6
+                loyalty(b, 1, Ability::new(vec![], vec![Effect::InstantSorceryDiscountUntilYourNextTurn(1)]));
+                let mut fire = Ability::new(
+                    vec![Filter::ANY, Filter::ANY],
+                    vec![Effect::DividedDamage, Effect::DrawIfControlAnotherOfColor(Color::Blue)],
+                );
+                fire.min_targets = Some(1);
+                fire.divide = 2;
+                loyalty(b, -2, fire);
+                loyalty(b, -8, Ability::new(vec![], vec![Effect::ExileTopCastInstantsSorceriesFreeThisTurn(8)]));
+            },
+        ),
         "Castle Garenbrig" => s(
             &[
                 "This land enters tapped unless you control a Forest.",
@@ -2515,4 +2549,5 @@ pub const PG_D1_SCRIPTED: &[&str] = &[
     "Timeline Culler",
     "Herald of Leshrac",
     "Gemstone Caverns",
+    "Ral, Monsoon Mage // Ral, Leyline Prodigy",
 ];
