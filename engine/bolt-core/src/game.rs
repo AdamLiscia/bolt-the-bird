@@ -2075,6 +2075,11 @@ pub struct Game {
     /// A mana ability resolving at once (CR 605.3a): who gets priority back when it's done, instead
     /// of the active player.
     pub mana_ability_then: Option<PlayerId>,
+    /// Triggered abilities of copies as they went on the stack: (source, its zcc then, trigger
+    /// number, the ability). A copy that leaves is its own card again (CR 707.2), but its trigger
+    /// still resolves as the copied card's (Phyrexian Metamorph as Agate Instigator, destroyed in
+    /// response).
+    pub trigger_snapshots: Vec<(ObjId, u32, usize, Ability)>,
 }
 
 /// `Action::CastFromGraveyardAs`'s second number for Karador, Ghost Chieftain's once-each-turn
@@ -2400,6 +2405,7 @@ impl Game {
             triggered_once_turn: Vec::new(),
             copy_next_instant_sorcery: Vec::new(),
             mana_ability_then: None,
+            trigger_snapshots: Vec::new(),
         }
     }
 
@@ -6920,6 +6926,18 @@ impl Game {
             // Vastwood Seer: two lands entered, and the first trigger transformed her) still
             // resolves as the face it triggered from.
             StackKind::Trigger(n) => {
+                // A copy's trigger: the copied card's, as it went on the stack.
+                let copied = self
+                    .trigger_snapshots
+                    .iter()
+                    .rev()
+                    .find(|e| e.0 == item.source && Some(e.1) == item.source_zcc && e.2 == n);
+                if let Some(e) = copied {
+                    return match item.mode {
+                        Some(m) => &e.3.modes[m as usize],
+                        None => &e.3,
+                    };
+                }
                 let trigger = def.triggers.get(n).unwrap_or_else(|| {
                     let printed = &self.defs[self.obj(item.source).def];
                     printed
@@ -7441,6 +7459,13 @@ impl Game {
     fn push_item(&mut self, mut item: StackItem) {
         if item.source_zcc.is_none() {
             item.source_zcc = Some(self.obj(item.source).zcc);
+        }
+        if let (StackKind::Trigger(n), Some(_)) = (item.kind, self.obj(item.source).printed_def) {
+            if let Some(t) = self.def_of(item.source).triggers.get(n) {
+                let (src, zcc, a) = (item.source, self.obj(item.source).zcc, t.ability.clone());
+                self.trigger_snapshots.retain(|e| !(e.0 == src && e.2 == n));
+                self.trigger_snapshots.push((src, zcc, n, a));
+            }
         }
         self.items.push(item);
     }

@@ -279,3 +279,28 @@ fn shifting_woodland_activated_twice_copies_both_in_turn() {
         "the first activation resolves last"
     );
 }
+
+/// Self-play, 2026-11-27: "a trigger of its source". Phyrexian Metamorph copying Agate Instigator
+/// left the battlefield (Reclamation Sage) with the copied "whenever another creature you control
+/// enters" trigger on the stack. Back to its own card, it had no such trigger; the trigger still
+/// resolves as the copied card's (CR 113.7a).
+#[test]
+fn a_copys_trigger_resolves_after_the_copy_leaves() {
+    let mut g = table();
+    let agate = g.add_card(0, cid("Agate Instigator"), Zone::Battlefield);
+    let meta = g.add_card(0, cid("Phyrexian Metamorph"), Zone::Hand);
+    act(&mut g, Action::Cast(meta));
+    resolve_all(&mut g, &[Action::Pick(agate)]);
+    assert_eq!(g.def_of(meta).name, "Agate Instigator", "Metamorph copied it");
+    let life = g.players[1].life;
+    let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Hand);
+    act(&mut g, Action::Cast(elves));
+    act(&mut g, Action::PassPriority);
+    act(&mut g, Action::PassPriority);
+    assert_eq!(g.obj(elves).zone, Zone::Battlefield);
+    assert_eq!(g.items.len(), 2, "both Instigators' triggers: {:?}", g.items);
+    g.move_card(meta, Zone::Graveyard); // destroyed in response
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.def_of(meta).name, "Phyrexian Metamorph");
+    assert_eq!(g.players[1].life, life - 2, "both triggers deal their 1");
+}
