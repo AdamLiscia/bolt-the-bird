@@ -2162,16 +2162,21 @@ pub struct Game {
     /// Why the engine ended the game itself, when it did: one of its loop caps tripped
     /// ([`WORK_BUDGET`], [`MAX_OBJECTS`], [`MAX_PERMANENTS`], [`SETTLE_PASSES`]); the result is a draw.
     pub end_reason: Option<&'static str>,
-    /// Roll back a cast whose mana turns out to be unpayable (the castability check and the payment
-    /// disagreeing) instead of panicking. On by default; the rollout pilot's imagined games turn it
-    /// off, since a panic there is caught and the snapshot each cast would slow them down.
+    /// Roll back a cast or an activated ability whose mana turns out to be unpayable (the legality
+    /// check and the payment disagreeing) instead of panicking. On by default; the rollout pilot's
+    /// imagined games turn it off, since a panic there is caught and the snapshot each cast or
+    /// activation would slow them down.
     pub cast_guard: bool,
-    /// The game as it was before the cast in progress, and the action that began it.
+    /// The game as it was before the cast or activation in progress, and the action that began it.
     cast_snapshot: Option<(Box<Game>, Action)>,
-    /// Set when a guarded cast couldn't be paid: what was being paid for, and the cost.
+    /// Set when a guarded payment failed: what was being paid for, and the cost.
     pay_failed: Option<String>,
-    /// Casts rolled back as unpayable, not offered again this step: (turn, step, action).
+    /// Casts and activations rolled back as unpayable, not offered again this step: (turn, step,
+    /// action).
     pub failed_casts: Vec<(u32, Step, Action)>,
+    /// For tests: the next guarded payment fails as if its mana couldn't be paid.
+    #[doc(hidden)]
+    pub fail_next_payment: bool,
 }
 
 /// `Action::CastFromGraveyardAs`'s second number for Karador, Ghost Chieftain's once-each-turn
@@ -2508,6 +2513,7 @@ impl Game {
             cast_snapshot: None,
             pay_failed: None,
             failed_casts: Vec::new(),
+            fail_next_payment: false,
         }
     }
 
@@ -9192,6 +9198,8 @@ impl Game {
         } else {
             mana::pay(cost, &all)
         };
+        let paid =
+            paid.filter(|_| !(self.cast_snapshot.is_some() && std::mem::take(&mut self.fail_next_payment)));
         let Some(mut paid) = paid else {
             let what = format!("{spell:?}, cost {cost:?}");
             if self.cast_guard && self.cast_snapshot.is_some() {
@@ -10610,12 +10618,18 @@ impl Game {
         }
         if self.is_mana_ability(id, n) {
             self.pay_activation(p, id, n, victim, 0);
+            if self.pay_failed.is_some() {
+                return; // unpayable: `apply` rolls it back
+            }
             self.resolve_mana_ability(p, item);
             return;
         }
         self.passes = 0;
         if self.activated_of(id, n).ability.targets.is_empty() {
             self.pay_activation(p, id, n, victim, 0);
+            if self.pay_failed.is_some() {
+                return; // unpayable: `apply` rolls it back
+            }
             self.push_item(item);
             self.give_priority(p);
         } else {
@@ -10641,6 +10655,9 @@ impl Game {
         };
         if self.is_mana_ability(id, n) {
             self.pay_activation(p, id, n, victim, x);
+            if self.pay_failed.is_some() {
+                return; // unpayable: `apply` rolls it back
+            }
             self.resolve_mana_ability(p, item);
             return;
         }
@@ -10648,6 +10665,9 @@ impl Game {
         let a = &self.activated_of(id, n).ability;
         if a.targets.is_empty() || (a.targets_exactly_x && x == 0) {
             self.pay_activation(p, id, n, victim, x);
+            if self.pay_failed.is_some() {
+                return; // unpayable: `apply` rolls it back
+            }
             self.push_item(item);
             self.give_priority(p);
         } else {
@@ -10737,6 +10757,9 @@ impl Game {
             }
         }
         self.pay_mana_for(p, &cost, exclude, PayFor::Ability(id));
+        if self.pay_failed.is_some() {
+            return; // unpayable: `apply` rolls the activation back
+        }
         if life > 0 && a.mana.x == 0 {
             self.lose_life(p, life);
         }
@@ -12065,8 +12088,8 @@ impl Game {
             return Err(RulesError::Illegal(action));
         }
         self.work = 0;
-        // A cast that turns out unpayable rolls back to here (`cast_guard`).
-        if self.cast_guard && Game::begins_cast(action) {
+        // A cast or activation that turns out unpayable rolls back to here (`cast_guard`).
+        if self.cast_guard && Game::begins_payment(action) {
             self.cast_snapshot = None;
             self.cast_snapshot = Some((Box::new(self.clone()), action));
         }
@@ -12603,18 +12626,21 @@ impl Game {
         if let Some(what) = self.pay_failed.take() {
             return Ok(self.roll_back_cast(&what));
         }
-        if !self.choosing.as_ref().is_some_and(|c| c.cast) {
-            self.cast_snapshot = None; // the cast is done (or none began)
+        if !self.choosing.as_ref().is_some_and(|c| c.cast || c.pay.is_some()) {
+            self.cast_snapshot = None; // the cast or activation is paid for (or none began)
         }
         self.settle();
         Ok(self.take_events())
     }
 
-    /// Whether `action` begins casting a spell.
-    fn begins_cast(action: Action) -> bool {
+    /// Whether `action` begins casting a spell or activating an ability (which pay mana).
+    fn begins_payment(action: Action) -> bool {
         matches!(
             action,
-            Action::Cast(_)
+            Action::Activate(..)
+                | Action::ActivateWith(..)
+                | Action::ActivateX { .. }
+                | Action::Cast(_)
                 | Action::CastAlternative(_)
                 | Action::CastFlashback(_)
                 | Action::CastFromGraveyard(_)
@@ -12628,11 +12654,16 @@ impl Game {
         )
     }
 
-    /// A guarded cast couldn't pay its mana: the game goes back to just before the cast (the card
-    /// where it was, nothing paid), logged once, and that cast isn't offered again this step.
+    /// A guarded cast or activation couldn't pay its mana: the game goes back to just before it (the
+    /// card where it was, nothing paid), logged once, and that action isn't offered again this step.
     fn roll_back_cast(&mut self, what: &str) -> Vec<Event> {
-        let (snap, action) = self.cast_snapshot.take().expect("a guarded cast has a snapshot");
-        eprintln!("bolt engine: {action:?} offered as castable but its mana can't be paid ({what}): cast rolled back");
+        let (snap, action) = self
+            .cast_snapshot
+            .take()
+            .expect("a guarded payment has a snapshot");
+        eprintln!(
+            "bolt engine: {action:?} offered as legal but its mana can't be paid ({what}): rolled back"
+        );
         *self = *snap;
         self.cast_snapshot = None;
         let (turn, step) = (self.turn, self.step);
@@ -13784,6 +13815,9 @@ impl Game {
                     }
                 }
                 self.pay_activation(c.item.controller, c.item.source, n, victim, c.item.x);
+                if self.pay_failed.is_some() {
+                    return; // unpayable: `apply` rolls it back
+                }
             }
             self.ward_check(&c.item);
             self.crime_check(&c.item);

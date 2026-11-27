@@ -464,3 +464,22 @@ fn an_unpayable_cast_rolls_back_instead_of_panicking() {
     );
     assert_eq!(g.obj(elves).zone, Zone::Battlefield);
 }
+
+/// The guard covers activated abilities too: Mind Stone's "{1}, {T}, Sacrifice: Draw a card" whose
+/// payment fails (forced with the test hook) rolls back, the Stone untapped on the battlefield,
+/// nothing drawn, and isn't offered again this step.
+#[test]
+fn an_unpayable_activation_rolls_back_instead_of_panicking() {
+    let mut g = table();
+    let stone = g.add_card(0, cid("Mind Stone"), Zone::Battlefield);
+    let draw = Action::Activate(stone, 0);
+    assert!(g.legal_actions().contains(&draw), "{:?}", g.legal_actions());
+    let hand = g.players[0].hand.len();
+    g.fail_next_payment = true;
+    act(&mut g, draw);
+    assert_eq!(g.obj(stone).zone, Zone::Battlefield);
+    assert!(!g.obj(stone).tapped && g.items.is_empty());
+    assert_eq!(g.players[0].hand.len(), hand);
+    assert_eq!(g.pending, Pending::Priority(0));
+    assert!(!g.legal_actions().contains(&draw), "not offered again this step");
+}
