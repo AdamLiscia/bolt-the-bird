@@ -1914,6 +1914,8 @@ pub struct Game {
     /// "Until your next turn, prevent all damage that would be dealt to you": the turn it ends, per
     /// player (Morningtide's Light).
     pub damage_to_you_prevented_until: [Option<u32>; 2],
+    /// Mirrormind Crown: the turn each player's first token creation was replaced (once each turn).
+    pub mirrormind_used: [u32; 2],
 }
 
 /// `Action::CastFromGraveyardAs`'s second number for Karador, Ghost Chieftain's once-each-turn
@@ -2212,6 +2214,7 @@ impl Game {
             crewed: Vec::new(),
             delayed_returns_tapped: Vec::new(),
             damage_to_you_prevented_until: [None; 2],
+            mirrormind_used: [0; 2],
             hand_links: Vec::new(),
             saddled: Vec::new(),
             karador_turn: [0; 2],
@@ -12786,6 +12789,28 @@ impl Game {
         false
     }
 
+    /// Mirrormind Crown: the creature an unused Crown of `p`'s is attached to, if this is `p`'s first
+    /// token creation this turn (marks the turn used).
+    fn mirrormind_crown(&mut self, p: PlayerId) -> Option<ObjId> {
+        if self.token_replacing || self.mirrormind_used[p] == self.turn {
+            return None;
+        }
+        let crowns: Vec<ObjId> = self
+            .permanents(p)
+            .filter(|&x| self.def_of(x).first_tokens_copy_equipped && !self.lost_abilities(x))
+            .collect();
+        for x in crowns {
+            if let Some((c, z)) = self.obj(x).attached_to {
+                if self.obj(c).zcc == z && self.obj(c).zone == Zone::Battlefield && self.types_of(c).creature
+                {
+                    self.mirrormind_used[p] = self.turn;
+                    return Some(c);
+                }
+            }
+        }
+        None
+    }
+
     /// The nontoken artifacts `p` controls that can be sacrificed (Rootcast Apprenticeship).
     fn nontoken_artifacts_to_sacrifice(&self, p: PlayerId) -> Vec<ObjId> {
         self.permanents(p)
@@ -16477,6 +16502,13 @@ impl Game {
                 // Every token this effect makes is "just created" (for "They gain ..."), not only the last.
                 let mut made = Vec::new();
                 for p in self.players_for(item, legal, who) {
+                    // Mirrormind Crown: that many copies of the equipped creature instead.
+                    if let Some(c) = self.mirrormind_crown(p) {
+                        for _ in 0..n {
+                            made.extend(self.token_copy_of(p, c));
+                        }
+                        continue;
+                    }
                     self.xorn_batch = Some(false);
                     for _ in 0..n {
                         self.create_token(p, def);
@@ -20028,6 +20060,26 @@ impl Game {
                 names.dedup();
                 let def = if names.len() >= 7 { seven } else { fewer };
                 self.create_token(p, def);
+            }
+            Effect::CounterOpponentsSpellsAndAbilitiesTokenEach { def } => {
+                let opp = opponent(item.controller);
+                let theirs: Vec<ObjId> = self
+                    .items
+                    .iter()
+                    .filter(|i| i.controller == opp && i.source != src)
+                    .map(|i| i.source)
+                    .collect();
+                let mut n = 0;
+                for s in theirs {
+                    let before = self.items.len();
+                    self.counter_from(s);
+                    if self.items.len() < before {
+                        n += 1;
+                    }
+                }
+                for _ in 0..n {
+                    self.create_token(item.controller, def);
+                }
             }
             Effect::ExileSlotReturnTappedAtEnd(slot) => {
                 if let Some(c) = Game::slot_object(item, legal, slot) {
@@ -24252,6 +24304,14 @@ impl Game {
     }
 
     fn create_token(&mut self, p: PlayerId, def: usize) {
+        // Mirrormind Crown, for token makers other than `Effect::CreateToken` (one token).
+        if let Some(c) = self.mirrormind_crown(p) {
+            self.last_created.clear();
+            if let Some(id) = self.token_copy_of(p, c) {
+                self.last_created.push(id);
+            }
+            return;
+        }
         // Fisher's Talent: "If you would create a Fish token, create a ... Shark ... instead."
         let def = self.class_token_replacement(p, def);
         self.last_created.clear();

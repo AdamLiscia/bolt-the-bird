@@ -2323,6 +2323,27 @@ pub fn script(name: &str) -> Option<Script> {
                 d.spell = Some(up_to(vec![CREATURE; UP_TO as usize], effects));
             },
         ),
+        "Mirrormind Crown" => s(
+            &[
+                "As long as this Equipment is attached to a creature, the first time you would create one or more tokens each turn, you may instead create that many tokens that are copies of equipped creature.",
+                "Equip {2}",
+            ],
+            |d, _| {
+                // The engine always takes the copies (token creation can't pause to ask).
+                d.first_tokens_copy_equipped = true;
+                equip(d, "{2}");
+            },
+        ),
+        "Glen Elendra's Answer" => s(
+            &[
+                "This spell can't be countered.",
+                "Counter all spells your opponents control and all abilities your opponents control. Create a 1/1 blue and black Faerie creature token with flying for each spell and ability countered this way.",
+            ],
+            |d, t| {
+                d.uncounterable = true;
+                spell(d, vec![], vec![Effect::CounterOpponentsSpellsAndAbilitiesTokenEach { def: t.faerie_ub }]);
+            },
+        ),
         _ => None,
     }
 }
@@ -2592,6 +2613,8 @@ pub const PG_B_SCRIPTED: &[&str] = &[
     "Taiga",
     "Tundra",
     "Morningtide's Light",
+    "Mirrormind Crown",
+    "Glen Elendra's Answer",
     // Ghyrson Starn (Spr3adsh33t)
     "Basilisk Collar",
     "Gorgon's Head",

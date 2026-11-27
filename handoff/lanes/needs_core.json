@@ -6734,6 +6734,22 @@
    "lane": "mac-b",
    "theme": "replace_filter",
    "owner": "mac-b"
+  },
+  {
+   "card": "Mirrormind Crown",
+   "deck": "Zurgo, Thunder's Decree (idea)",
+   "missing": "claimed by lane B 2026-11-27: scripted",
+   "lane": "mac-b",
+   "theme": "replace_filter",
+   "owner": "mac-b"
+  },
+  {
+   "card": "Glen Elendra's Answer",
+   "deck": "Niv-Mizzet, Visionary (idea)",
+   "missing": "claimed by lane B 2026-11-27: scripted",
+   "lane": "mac-b",
+   "theme": "replace_filter",
+   "owner": "mac-b"
   }
  ]
 }

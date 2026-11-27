@@ -1049,3 +1049,11 @@ except Najeela's seven original duals (Badlands, Bayou, Plateau, Savannah, Scrub
 scripted here. Idea decks: Morningtide's Light (Neriv) with `Effect::ExileSlotReturnTappedAtEnd`
 and `Effect::PreventDamageToYouUntilYourNextTurn` (`Game::damage_to_you_prevented_until`, beside The
 One Ring's check in `deal_damage`). Claims recorded in needs_core.json.
+- Morningtide's Light: "any number of target creatures" is capped at twelve (a simplification).
+- Mirrormind Crown (Zurgo idea): `CardDef::first_tokens_copy_equipped`, `Game::mirrormind_crown` /
+  `mirrormind_used`: the first token creation each turn (an `Effect::CreateToken` of N, or one token
+  from any other maker) makes that many token copies of the equipped creature instead. Simplification:
+  the engine always takes the copies ("you may"; token creation can't pause to ask), and the copies
+  aren't doubled by token doublers.
+- Glen Elendra's Answer (Niv-Mizzet idea): `Effect::CounterOpponentsSpellsAndAbilitiesTokenEach`,
+  token 104 (`faerie_ub`, a 1/1 blue and black Faerie with flying).

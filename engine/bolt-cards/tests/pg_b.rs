@@ -4210,3 +4210,42 @@ fn morningtides_light_flickers_creatures_tapped_and_shields_you() {
         "their owners' control"
     );
 }
+
+#[test]
+fn mirrormind_crown_makes_the_first_tokens_each_turn_copies_of_the_equipped_creature() {
+    let mut g = table();
+    let lions = put(&mut g, 0, "Savannah Lions");
+    let crown = put(&mut g, 0, "Mirrormind Crown");
+    let z = g.obj(lions).zcc;
+    g.objects[crown.0 as usize].attached_to = Some((lions, z));
+    let port = put(&mut g, 0, "Fountainport");
+    act(&mut g, Action::Activate(port, 1)); // a Fish: a Lions copy instead
+    resolve_all(&mut g, &[]);
+    assert!(tokens(&g, 0, "Fish").is_empty());
+    assert_eq!(tokens(&g, 0, "Savannah Lions").len(), 1);
+    let before = tokens(&g, 0, "Savannah Lions").len();
+    let port2 = put(&mut g, 0, "Fountainport");
+    act(&mut g, Action::Activate(port2, 1));
+    resolve_all(&mut g, &[]);
+    assert_eq!(tokens(&g, 0, "Fish").len(), 1, "only the first time each turn");
+    assert_eq!(tokens(&g, 0, "Savannah Lions").len(), before);
+}
+
+#[test]
+fn glen_elendras_answer_counters_their_spells_and_makes_faeries() {
+    let mut g = table();
+    let bolt = hand(&mut g, 1, "Lightning Bolt");
+    let answer = hand(&mut g, 0, "Glen Elendra's Answer");
+    act(&mut g, Action::PassPriority);
+    act(&mut g, Action::Cast(bolt));
+    act(&mut g, Action::Target(Target::Player(0)));
+    act(&mut g, Action::PassPriority); // back to player 0
+    act(&mut g, Action::Cast(answer));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].life, 40, "the Bolt was countered");
+    assert_eq!(g.obj(bolt).zone, Zone::Graveyard);
+    let faeries = tokens(&g, 0, "Faerie");
+    assert_eq!(faeries.len(), 1);
+    assert_eq!(g.colors_of(faeries[0]), [false, true, true, false, false]);
+    assert!(g.keywords(faeries[0]).has(Keywords::FLYING));
+}
