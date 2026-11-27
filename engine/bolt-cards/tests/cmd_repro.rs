@@ -320,7 +320,8 @@ fn the_rules_player_ends_a_chain_of_smog() {
     let mut steps = 0;
     while !g.items.is_empty() || !matches!(g.pending, Pending::Priority(_)) {
         let legal = g.legal_actions();
-        act(&mut g, baseline::choose(&g, &legal));
+        let a = baseline::choose(&g, &legal);
+        act(&mut g, a);
         steps += 1;
         assert!(steps < 200, "the chain never ended: {:?}", g.pending);
     }
@@ -410,7 +411,8 @@ fn scute_swarm_past_the_permanent_cap_ends_in_a_draw() {
     let mut steps = 0;
     while !g.is_over() && steps < 10_000 {
         let legal = g.legal_actions();
-        act(&mut g, baseline::choose(&g, &legal));
+        let a = baseline::choose(&g, &legal);
+        act(&mut g, a);
         steps += 1;
     }
     assert_eq!(g.result, Some(bolt_core::Outcome::Draw));
