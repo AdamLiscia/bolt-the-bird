@@ -3406,26 +3406,36 @@ fn nissa_makes_a_horror_as_big_as_her_loyalty() {
 }
 
 #[test]
-fn wash_away_counters_only_spells_not_cast_from_hand_unless_cleaved() {
+fn wash_away_targets_only_spells_not_cast_from_hand_unless_cleaved() {
+    // Uncleaved: a spell cast from hand isn't a legal target, so Wash Away can't be cast at all.
     let mut g = table();
     let bolt = hand(&mut g, 0, "Lightning Bolt");
     act(&mut g, Action::Cast(bolt));
     act(&mut g, Action::Target(Target::Player(1)));
     let wash = hand(&mut g, 0, "Wash Away");
-    act(&mut g, Action::Cast(wash));
-    act(&mut g, Action::Target(Target::Object(bolt)));
-    resolve_all(&mut g, &[]);
-    assert_eq!(g.players[1].life, 37, "cast from hand: not countered");
-
-    let mut g = table();
-    let bolt = hand(&mut g, 0, "Lightning Bolt");
-    act(&mut g, Action::Cast(bolt));
-    act(&mut g, Action::Target(Target::Player(1)));
-    let wash = hand(&mut g, 0, "Wash Away");
+    let legal = g.legal_actions();
+    assert!(!legal.contains(&Action::Cast(wash)), "uncleaved: no legal target");
+    assert!(
+        legal.contains(&Action::CastAlternative(wash)),
+        "cleaved: any spell"
+    );
+    // Cleaved: the spell cast from hand is a legal target, and it's countered.
     act(&mut g, Action::CastAlternative(wash));
     act(&mut g, Action::Target(Target::Object(bolt)));
     resolve_all(&mut g, &[]);
     assert_eq!(g.players[1].life, 40, "cleaved: countered");
+
+    // Uncleaved: a spell cast from the graveyard (flashback) is a legal target.
+    let mut g = table();
+    let think = g.add_card(0, cid("Think Twice"), Zone::Graveyard);
+    act(&mut g, Action::CastFlashback(think));
+    let wash = hand(&mut g, 0, "Wash Away");
+    assert!(g.legal_actions().contains(&Action::Cast(wash)));
+    act(&mut g, Action::Cast(wash));
+    act(&mut g, Action::Target(Target::Object(think)));
+    let cards = g.players[0].hand.len();
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].hand.len(), cards, "Think Twice countered: no draw");
 }
 
 #[test]

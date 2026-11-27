@@ -7051,6 +7051,10 @@ impl Game {
         {
             return false;
         }
+        // Wash Away: uncleaved, only a spell that wasn't cast from its owner's hand.
+        if f.spell_not_from_hand_unless_alt && !item.alt && self.obj(x).from_hand {
+            return false;
+        }
         if f.mana_value_is_x && self.def_of(x).cost.mana_value() != item.x as u32 {
             return false;
         }
@@ -7364,7 +7368,11 @@ impl Game {
             }
             // An X spell's targets can depend on X (Stolen by the Fae), and a kicked spell can have
             // its own targets (Tear Asunder): those are checked per way of casting below.
-            let per_mode = def.cost.x > 0 || def.kicked_spell.is_some() || def.overload_spell.is_some();
+            // Cleave (Wash Away) can widen its targets too.
+            let per_mode = def.cost.x > 0
+                || def.kicked_spell.is_some()
+                || def.overload_spell.is_some()
+                || def.mana_ext.cleave.is_some();
             if let Some(ability) = &def.spell {
                 if !per_mode && !self.trigger_can_target(&Game::casting(c, p), ability) {
                     continue; // CR 601.2c: a spell needs a legal choice for every target.
@@ -7395,6 +7403,7 @@ impl Game {
                     let item = StackItem {
                         x: mode.x,
                         kicked: mode.kicked,
+                        alt: mode.alt,
                         ..Game::casting(c, p)
                     };
                     if ability.is_some_and(|a| !self.trigger_can_target(&item, a)) {

@@ -147,6 +147,9 @@ pub struct Filter {
     /// Only permanents with one of these subtypes (Seasoned Dungeoneer: "Cleric, Rogue, Warrior, or
     /// Wizard"); empty: no restriction.
     pub subtypes_any: &'static [&'static str],
+    /// Spells not cast from their owner's hand only, unless this spell was cast for its alternative
+    /// cost (Wash Away uncleaved: "target spell that wasn't cast from its owner's hand").
+    pub spell_not_from_hand_unless_alt: bool,
 }
 
 impl Filter {
@@ -216,6 +219,7 @@ impl Filter {
         up_to_x: false,
         tapped_only: false,
         subtypes_any: &[],
+        spell_not_from_hand_unless_alt: false,
     };
 
     pub const CREATURE: Filter = Filter {

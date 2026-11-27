@@ -1594,10 +1594,10 @@ pub fn script(name: &str) -> Option<Script> {
         "Wash Away" => s(
             &["Cleave {1}{U}{U}", "Counter target spell [that wasn't cast from its owner's hand]."],
             |d, _| {
-                // Simplification: any spell can be targeted; uncleaved, one cast from its owner's
-                // hand isn't countered.
+                // Uncleaved, a spell cast from its owner's hand isn't a legal target.
                 d.mana_ext.cleave = ManaCost::parse("{1}{U}{U}");
-                spell(d, vec![SPELL], vec![Effect::CounterIfNotFromHandUnlessCleaved(0)]);
+                let target = Filter { spell_not_from_hand_unless_alt: true, ..SPELL };
+                spell(d, vec![target], vec![Effect::Counter(0)]);
             },
         ),
         // ---- idea decks: Tifa; Atla Palani ----
