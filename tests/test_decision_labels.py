@@ -268,3 +268,14 @@ def test_karadors_graveyard_cast_is_named():
     assert karador == "Cast Llanowar Elves from your graveyard (Karador)"
     muldrotha = sv._label("CastFromGraveyardAs", ["Llanowar Elves"], (1,), 0, (0, 1, -1))
     assert muldrotha == "Cast Llanowar Elves from your graveyard (option 2)"
+
+
+def test_the_gitrog_asks_for_a_rider_and_how_many_lands():
+    rider = {"kind": "SacrificeSaddler", "mount": [3, 1]}
+    assert sv._decision_label(rider, "Pick", 0, "Llanowar Elves") == "Sacrifice (it saddled the Mount): Llanowar Elves"
+    assert label(rider, "No", 0) == "Don't sacrifice"
+    count = {"kind": "GitrogLandCount", "max": 2}
+    assert label(count, "Amount", 0) == "Put no lands onto the battlefield"
+    assert label(count, "Amount", 2) == "Put 2 lands from your hand onto the battlefield tapped"
+    pick = {"kind": "GitrogLandPick", "left": 1}
+    assert sv._decision_label(pick, "Pick", 0, "Forest") == "Put onto the battlefield tapped: Forest"

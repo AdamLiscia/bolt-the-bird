@@ -2840,32 +2840,78 @@ fn sunbirds_invocation_reveals_the_spells_mana_value_and_casts_one_free() {
     assert_eq!(g.obj(signet).zone, Zone::Battlefield);
 }
 
-#[test]
-fn the_gitrog_is_saddled_then_sacrifices_its_rider_to_draw_and_drop_lands() {
-    let mut g = table();
-    let gitrog = put(&mut g, 0, "The Gitrog, Ravenous Ride");
-    let rider = put(&mut g, 0, "Llanowar Elves");
-    let tiny = put(&mut g, 0, "Ornithopter"); // power 0: can't saddle
-    assert!(!g.legal_actions().contains(&Action::ActivateWith(gitrog, 0, tiny)));
-    act(&mut g, Action::ActivateWith(gitrog, 0, rider));
-    resolve_all(&mut g, &[]);
-    assert!(g.obj(rider).tapped, "saddling taps it");
-    let forest = g.add_card(0, cid("Forest"), Zone::Hand);
-    let hand = g.players[0].hand.len();
-    let lands = g.permanents(0).filter(|&x| g.types_of(x).land).count();
-    // Combat: The Gitrog attacks and connects ("you may": the first answer, Yes).
-    attack_with(&mut g, &[gitrog]);
-    assert_eq!(g.obj(rider).zone, Zone::Graveyard, "the rider sacrificed");
-    let dropped: Vec<ObjId> = g
-        .permanents(0)
-        .filter(|&x| g.types_of(x).land && g.obj(x).tapped && (x == forest || g.def_of(x).name == "Plains"))
-        .collect();
-    assert!(!dropped.is_empty(), "a land from hand, tapped");
-    assert_eq!(g.players[0].hand.len(), hand, "drew one, put one down");
-    assert_eq!(g.permanents(0).filter(|&x| g.types_of(x).land).count(), lands + 1);
+/// The Gitrog saddled by two creatures, attacking and connecting: at the "you may" decision.
+fn gitrog_connects(g: &mut Game) -> (ObjId, ObjId, ObjId) {
+    let gitrog = put(g, 0, "The Gitrog, Ravenous Ride");
+    let small = put(g, 0, "Llanowar Elves"); // power 1
+    let big = put(g, 0, "Reclamation Sage"); // power 2
+    for r in [small, big] {
+        act(g, Action::ActivateWith(gitrog, 0, r));
+        resolve_all(g, &[]);
+        assert!(g.obj(r).tapped, "saddling taps it");
+    }
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(g, Action::PassPriority);
+    }
+    act(g, Action::Attack(gitrog));
+    act(g, Action::FinishAttacks);
+    for _ in 0..40 {
+        if matches!(g.pending, Pending::Decide(0)) {
+            break;
+        }
+        let a = match g.pending {
+            Pending::DeclareBlockers(_) => Action::FinishBlocks,
+            _ => Action::PassPriority,
+        };
+        act(g, a);
+    }
+    (gitrog, small, big)
 }
 
-// ---- Karador, Ghost Chieftain ----
+#[test]
+fn the_gitrog_may_sacrifice_a_chosen_rider_then_puts_up_to_x_lands() {
+    // Declined: nothing happens.
+    let mut g = table();
+    let (_, small, big) = gitrog_connects(&mut g);
+    let legal = g.legal_actions();
+    assert!(
+        legal.contains(&Action::Pick(small))
+            && legal.contains(&Action::Pick(big))
+            && legal.contains(&Action::No)
+    );
+    let hand = g.players[0].hand.len();
+    act(&mut g, Action::No);
+    assert_eq!(
+        (g.obj(small).zone, g.obj(big).zone),
+        (Zone::Battlefield, Zone::Battlefield)
+    );
+    assert_eq!(g.players[0].hand.len(), hand);
+
+    // The smaller rider chosen (not the most powerful): draw 1, then no lands put down.
+    let mut g = table();
+    let (_, small, big) = gitrog_connects(&mut g);
+    g.add_card(0, cid("Forest"), Zone::Hand);
+    let hand = g.players[0].hand.len();
+    act(&mut g, Action::Pick(small));
+    assert_eq!(g.obj(small).zone, Zone::Graveyard);
+    assert_eq!(g.obj(big).zone, Zone::Battlefield);
+    assert_eq!(g.players[0].hand.len(), hand + 1, "drew one");
+    assert!(g.legal_actions().contains(&Action::Amount(1)));
+    act(&mut g, Action::Amount(0));
+    assert_eq!(g.players[0].hand.len(), hand + 1, "chose fewer lands: none");
+
+    // The bigger one: draw 2, put one land of the two allowed.
+    let mut g = table();
+    let (_, _, big) = gitrog_connects(&mut g);
+    let forest = g.add_card(0, cid("Forest"), Zone::Hand);
+    g.add_card(0, cid("Forest"), Zone::Hand);
+    act(&mut g, Action::Pick(big));
+    act(&mut g, Action::Amount(1));
+    act(&mut g, Action::Pick(forest));
+    assert_eq!(g.obj(forest).zone, Zone::Battlefield);
+    assert!(g.obj(forest).tapped);
+    assert!(!matches!(g.pending, Pending::Decide(0)), "only one");
+}
 
 #[test]
 fn karador_costs_less_per_creature_card_and_casts_one_creature_from_the_graveyard_each_turn() {

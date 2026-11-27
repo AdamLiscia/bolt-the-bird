@@ -2638,9 +2638,10 @@ pub enum Effect {
     /// Saddle's effect: the source becomes saddled until end of turn by the creature in `extra`
     /// (`Game::saddled`).
     BecomeSaddled,
-    /// The Gitrog, Ravenous Ride: sacrifice a creature that saddled the source this turn (the
-    /// engine picks the most powerful); if you do, draw X cards, then put up to X land cards from
-    /// your hand onto the battlefield tapped (the engine puts as many as it can), X its power.
+    /// The Gitrog, Ravenous Ride: you may sacrifice a creature that saddled the source this turn
+    /// (`Decision::SacrificeSaddler`); if you do, draw X cards, then put up to X land cards from
+    /// your hand onto the battlefield tapped (`Decision::GitrogLandCount`, then
+    /// `Decision::GitrogLandPick`), X its power.
     SacrificeSaddlerDrawXLandsX,
     /// The defending player's life total becomes 1 (Master of Cruelties): they lose (or gain) the
     /// difference (CR 119.5).

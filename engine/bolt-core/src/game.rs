@@ -1417,6 +1417,15 @@ pub enum Decision {
     /// Sheoldred // The True Scriptures: `Pick` a nontoken creature or planeswalker you control to
     /// sacrifice (asked only when there is one).
     SacrificeNontokenCreatureOrPlaneswalker,
+    /// The Gitrog, Ravenous Ride: `Pick` a creature that saddled `mount` this turn to sacrifice, or
+    /// `No` ("you may").
+    SacrificeSaddler { mount: ObjId },
+    /// The Gitrog: `Amount(n)`, how many land cards (up to `max`) to put from your hand onto the
+    /// battlefield tapped.
+    GitrogLandCount { max: u8 },
+    /// The Gitrog: `Pick` a land card in your hand to put onto the battlefield tapped; `left` picks
+    /// including this one.
+    GitrogLandPick { left: u8 },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -11318,6 +11327,36 @@ impl Game {
         }
     }
 
+    /// The creatures that saddled `mount` this turn that `p` can still sacrifice (The Gitrog).
+    fn gitrog_riders(&self, p: PlayerId, mount: ObjId) -> Vec<ObjId> {
+        let (turn, mz) = (self.turn, self.obj(mount).zcc);
+        let mut v: Vec<ObjId> = self
+            .saddled
+            .iter()
+            .filter(|e| e.0 == mount && e.1 == mz && e.4 == turn)
+            .filter(|e| {
+                let o = self.obj(e.2);
+                o.zcc == e.3
+                    && o.zone == Zone::Battlefield
+                    && o.controller == p
+                    && !self.cant_be_sacrificed(e.2)
+            })
+            .map(|e| e.2)
+            .collect();
+        v.sort_unstable();
+        v.dedup();
+        v
+    }
+
+    fn hand_lands(&self, p: PlayerId) -> Vec<ObjId> {
+        self.players[p]
+            .hand
+            .iter()
+            .copied()
+            .filter(|&c| self.def_of(c).types.land)
+            .collect()
+    }
+
     /// Whether `x` can be sacrificed to pay the "Ward—Sacrifice ..." of `source`: nonland
     /// permanents only for Valgavoth (`ward_sacrifice_nonland`), permanents with a subtype only for
     /// Ygra (`ManaExt::ward_sacrifice_subtype`: Food).
@@ -13396,6 +13435,17 @@ impl Game {
             }
             Decision::ChooseKickCount { max, .. } => (0..=*max).map(Action::Amount).collect(),
             Decision::Fabricate { .. } => vec![Action::Yes, Action::No],
+            Decision::SacrificeSaddler { mount } => {
+                let mut v: Vec<Action> = self
+                    .gitrog_riders(p, *mount)
+                    .into_iter()
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
+            Decision::GitrogLandCount { max } => (0..=*max).map(Action::Amount).collect(),
+            Decision::GitrogLandPick { .. } => self.hand_lands(p).into_iter().map(Action::Pick).collect(),
             Decision::ExpropriateVote { .. } => vec![Action::Yes, Action::No],
             Decision::SacrificeNontokenArtifact => self
                 .nontoken_artifacts_to_sacrifice(p)
@@ -14752,6 +14802,31 @@ impl Game {
             }
             (Decision::ExileFromGraveyard { .. }, Action::No) => {
                 self.resolving.as_mut().expect("resolving").remaining.clear();
+            }
+            (Decision::SacrificeSaddler { .. }, Action::Pick(r)) => {
+                let x = self.power(r).max(0) as usize;
+                self.move_to(r, Zone::Graveyard);
+                self.sacrificed(r, p);
+                for _ in 0..x {
+                    self.draw(p);
+                }
+                let k = x.min(self.hand_lands(p).len()).min(u8::MAX as usize) as u8;
+                if k > 0 {
+                    self.ask(p, Decision::GitrogLandCount { max: k });
+                }
+            }
+            (Decision::SacrificeSaddler { .. }, _) => {} // declined
+            (Decision::GitrogLandCount { .. }, Action::Amount(n)) => {
+                if n > 0 {
+                    self.ask(p, Decision::GitrogLandPick { left: n });
+                }
+            }
+            (Decision::GitrogLandPick { left }, Action::Pick(l)) => {
+                self.move_to(l, Zone::Battlefield);
+                self.obj_mut(l).tapped = true;
+                if left > 1 && !self.hand_lands(p).is_empty() {
+                    self.ask(p, Decision::GitrogLandPick { left: left - 1 });
+                }
             }
             (Decision::Fabricate { n, servo }, choice) => {
                 let src = self.resolving.as_ref().map(|r| r.item.source);
@@ -22085,40 +22160,10 @@ impl Game {
                 }
             }
             Effect::SacrificeSaddlerDrawXLandsX => {
+                // The Gitrog: the player chooses the rider (or none), then how many lands.
                 let p = item.controller;
-                let (turn, mz) = (self.turn, self.obj(src).zcc);
-                let rider = self
-                    .saddled
-                    .iter()
-                    .filter(|e| e.0 == src && e.1 == mz && e.4 == turn)
-                    .map(|e| (e.2, e.3))
-                    .filter(|&(r, z)| {
-                        let o = self.obj(r);
-                        o.zcc == z
-                            && o.zone == Zone::Battlefield
-                            && o.controller == p
-                            && !self.cant_be_sacrificed(r)
-                    })
-                    .map(|(r, _)| r)
-                    .max_by_key(|&r| self.power(r));
-                if let Some(r) = rider {
-                    let x = self.power(r).max(0) as usize;
-                    self.move_to(r, Zone::Graveyard);
-                    self.sacrificed(r, p);
-                    for _ in 0..x {
-                        self.draw(p);
-                    }
-                    let lands: Vec<ObjId> = self.players[p]
-                        .hand
-                        .iter()
-                        .copied()
-                        .filter(|&c| self.def_of(c).types.land)
-                        .take(x)
-                        .collect();
-                    for l in lands {
-                        self.move_to(l, Zone::Battlefield);
-                        self.obj_mut(l).tapped = true;
-                    }
+                if !self.gitrog_riders(p, src).is_empty() {
+                    self.ask(p, Decision::SacrificeSaddler { mount: src });
                 }
             }
             Effect::YourCreaturesBasePtHandSize => {

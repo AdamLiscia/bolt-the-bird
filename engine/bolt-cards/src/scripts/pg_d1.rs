@@ -1351,7 +1351,7 @@ pub fn script(name: &str) -> Option<Script> {
                 "Saddle 1",
             ],
             |d, _| {
-                may(d, When::DealsCombatDamageToPlayer, vec![], vec![Effect::SacrificeSaddlerDrawXLandsX]);
+                on(d, When::DealsCombatDamageToPlayer, vec![], vec![Effect::SacrificeSaddlerDrawXLandsX]);
                 let n = activated(d, "", false, vec![], vec![Effect::BecomeSaddled]);
                 d.activated[n].saddle = 1;
                 d.activated[n].sorcery = true;
