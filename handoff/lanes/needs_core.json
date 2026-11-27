@@ -1706,7 +1706,7 @@
   {
    "card": "The Gitrog, Ravenous Ride",
    "deck": "The Gitrog, Ravenous Ride (RuricMo)",
-   "missing": "needs core: saddle and its 'creature that saddled it' trigger",
+   "missing": "needs core: saddle and its 'creature that saddled it' trigger [done by d1 batch 19: Activated::saddle, Effect::BecomeSaddled, Effect::SacrificeSaddlerDrawXLandsX; scripted in pg_d1]",
    "lane": "d2",
    "theme": "mana",
    "owner": "d1"

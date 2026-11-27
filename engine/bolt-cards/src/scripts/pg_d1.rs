@@ -1345,6 +1345,19 @@ pub fn script(name: &str) -> Option<Script> {
             &["Whenever you cast a spell from your hand, reveal the top X cards of your library, where X is that spell's mana value. You may cast a spell with mana value X or less from among cards revealed this way without paying its mana cost. Put the rest on the bottom of your library in a random order."],
             |d, _| on(d, When::YouCastSpellFromHand, vec![], vec![Effect::RevealTopMvMayCastOneFree]),
         ),
+        "The Gitrog, Ravenous Ride" => s(
+            &[
+                "Whenever The Gitrog deals combat damage to a player, you may sacrifice a creature that saddled it this turn. If you do, draw X cards, then put up to X land cards from your hand onto the battlefield tapped, where X is the sacrificed creature's power.",
+                "Saddle 1",
+            ],
+            |d, _| {
+                may(d, When::DealsCombatDamageToPlayer, vec![], vec![Effect::SacrificeSaddlerDrawXLandsX]);
+                let n = activated(d, "", false, vec![], vec![Effect::BecomeSaddled]);
+                d.activated[n].saddle = 1;
+                d.activated[n].sorcery = true;
+                d.activated[n].victim_in_extra = true;
+            },
+        ),
         _ => None,
     }
 }
@@ -1520,4 +1533,5 @@ pub const PG_D1_SCRIPTED: &[&str] = &[
     "Witch's Cottage",
     "Jarad, Golgari Lich Lord",
     "Sunbird's Invocation",
+    "The Gitrog, Ravenous Ride",
 ];

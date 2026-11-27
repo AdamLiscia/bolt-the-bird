@@ -2635,6 +2635,13 @@ pub enum Effect {
     /// free (`free_casts_one`); the rest go to the bottom in a random order. The revealed cards
     /// wait in exile, as cascade's do.
     RevealTopMvMayCastOneFree,
+    /// Saddle's effect: the source becomes saddled until end of turn by the creature in `extra`
+    /// (`Game::saddled`).
+    BecomeSaddled,
+    /// The Gitrog, Ravenous Ride: sacrifice a creature that saddled the source this turn (the
+    /// engine picks the most powerful); if you do, draw X cards, then put up to X land cards from
+    /// your hand onto the battlefield tapped (the engine puts as many as it can), X its power.
+    SacrificeSaddlerDrawXLandsX,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
