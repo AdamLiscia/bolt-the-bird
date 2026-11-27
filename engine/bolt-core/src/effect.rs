@@ -2526,6 +2526,36 @@ pub enum Effect {
     /// choose two cards in your hand drawn this turn (`Decision::SylvanPick`), and for each pay 4
     /// life or put it on top of your library (`Decision::SylvanPayOrTop`).
     SylvanLibrary,
+    /// Destroy all creatures; you create a tapped `def` token for each nontoken creature destroyed
+    /// this way (Blood Money: Treasure).
+    DestroyAllCreaturesTappedTokenPerNontoken {
+        def: usize,
+    },
+    /// The player in `slot` draws half the cards in their library and loses half their life, each
+    /// rounded up (Peer into the Abyss).
+    TargetPlayerDrawsHalfLibraryLosesHalfLife(u8),
+    /// Each player draws a card for each of the source's own kind of counter (Otherworld Atlas's
+    /// charge counters, `Object::kind_counters`).
+    EachPlayerDrawsPerKindCounter,
+    /// Search for a creature card with mana value exactly `plus` more than the sacrificed creature's
+    /// (the stack entry's `extra`) and put it onto the battlefield with an additional +1/+1 counter,
+    /// then shuffle (Neoform).
+    SearchCreatureBySacrificedMvPlusCounter {
+        plus: u8,
+    },
+    /// Exchange control of the source and the creature in `slot`; if you don't or can't (no target,
+    /// or either has left), sacrifice the source (Gilded Drake).
+    ExchangeControlWithSlotOrSacrifice(u8),
+    /// Put `n` +1/+1 counters on the creature the source (an Equipment or Aura) is attached to (Bone
+    /// Sabres).
+    CountersOnAttached(i32),
+    /// Create a token that's a copy of the artifact the source (an Aura) enchants; then, if you
+    /// control eight or more artifacts with the same name as one another, you win the game
+    /// (Mechanized Production).
+    CopyAttachedThenEightSameNameWins,
+    /// "You may pay {X}, where X is less than or equal to the amount of life you gained. If you do,
+    /// draw X cards." (Well of Lost Dreams): the trigger's amount caps X, as `Decision::PayXDrawX`.
+    MayPayXUpToAmountDrawX,
     /// Fabricate `n` (CR 702.123): `n` +1/+1 counters on the source, or `n` 1/1 Servo tokens (token
     /// definition `servo`), as `Decision::Fabricate`. Only Servos if the source has left the
     /// battlefield.
@@ -2635,6 +2665,8 @@ pub enum SearchTo {
     ExileCastFreeThisTurn,
     /// Onto the battlefield tapped under this player's control (Yavimaya Dryad).
     BattlefieldTappedUnder(u8),
+    /// Onto the battlefield with an additional +1/+1 counter (Neoform).
+    BattlefieldPlusCounter,
 }
 
 /// What a static ability affects.
@@ -2761,6 +2793,9 @@ pub enum StaticCondition {
     ClassLevelAtLeast(u8),
     /// Another Aura is attached to the creature the source is attached to (Face of Divinity).
     AttachedHasAnotherAura,
+    /// This color (WUBRG index) isn't in the source's controller's commander's color identity
+    /// (with a partner, either's); with no commander, no color is (Commander's Plate).
+    OutsideCommanderIdentity(u8),
 }
 
 /// A static ability that changes characteristics (CR 604, 613 layers 6 and 7c).
@@ -3461,6 +3496,22 @@ pub enum When {
     /// "Whenever you play a card from exile" (Prosper, Tome-Bound): a land played or a spell cast
     /// from exile, fired by `Game::played_from_exile` (game/zones.rs).
     YouPlayCardFromExile,
+    /// "Whenever a [subtype] you control attacks" (Utvara Hellkite: Dragon), this one included; slot
+    /// 0 (if `triggering`) is the attacker.
+    SubtypeYouControlAttacks(&'static str),
+    /// "Whenever a [subtype] is put into a graveyard from the battlefield" (Ygra, Eater of All: a
+    /// Food), anyone's, tokens included; slot 0 (if `triggering`) is that card. The subtype is
+    /// checked on the card in the graveyard.
+    SubtypeToGraveyardFromBattlefield(&'static str),
+    /// "When this [permanent] enters untapped" (Witch's Cottage): checked with the "enters tapped"
+    /// triggers, once its enter replacements have applied.
+    EntersUntapped,
+    /// "Whenever the Ring tempts you" (CR 701.54), fired once the Ring-bearer is chosen or asked
+    /// for.
+    RingTemptsYou,
+    /// "Whenever you choose a creature as your Ring-bearer" (Call of the Ring), the same one again
+    /// included (CR 701.54c); slot 0 (if `triggering`) is that creature.
+    YouChooseRingBearer,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -3532,4 +3583,12 @@ pub enum SubsystemEffect {
     /// The Ring's third ability: the blocker in the item's `extra` is sacrificed by its controller
     /// at end of combat, if it's still blocking.
     RingSacrificeBlocker,
+    /// "Create a token that's a copy of [the creature in `slot`], except it's 1/1. The token enters
+    /// tapped and attacking [that player]. Sacrifice it at the beginning of the next end step."
+    /// (Echoing Assault; that player is the one opponent in 1v1.)
+    AttackingOneOneCopy(u8),
+    /// "Equip commander" (Commander's Plate): attach the source to a commander creature its
+    /// controller controls. The ability is offered only while there is one
+    /// (`Game::lacks_chapter_activated`), so it takes no target slot.
+    AttachToYourCommander,
 }

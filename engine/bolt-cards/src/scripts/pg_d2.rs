@@ -1019,6 +1019,54 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::YouSacrificeSubtype("Clue"), vec![Filter::PLAYER], vec![Effect::Mill { who: Who::TargetPlayer(0), n: 3 }]);
             },
         ),
+        // ---- Core: triggers, batch 16 (a subtype you control attacks; pay X up to the life gained) ----
+        "Utvara Hellkite" => s(
+            &["Whenever a Dragon you control attacks, create a 6/6 red Dragon creature token with flying."],
+            |d, t| {
+                on(d, When::SubtypeYouControlAttacks("Dragon"), vec![], vec![Effect::CreateToken { who: Who::You, def: t.dragon_6_6, n: 1 }]);
+            },
+        ),
+        "Well of Lost Dreams" => s(
+            &["Whenever you gain life, you may pay {X}, where X is less than or equal to the amount of life you gained. If you do, draw X cards."],
+            |d, _| {
+                on(d, When::YouGainLife, vec![], vec![Effect::MayPayXUpToAmountDrawX]);
+            },
+        ),
+        "Hullbreaker Horror" => s(
+            &[
+                "This spell can't be countered.",
+                "Whenever you cast a spell, choose up to one —",
+                "• Return target spell you don't control to its owner's hand.",
+                "• Return target nonland permanent to its owner's hand.",
+            ],
+            |d, _| {
+                d.uncounterable = true;
+                // 1v1: a spell you don't control is the opponent's.
+                let their_spell = Filter { players: false, creatures: false, planeswalkers: false, spells: true, controller: Controller::Opponent, ..Filter::ANY };
+                let nonland = Filter { players: false, creatures: false, planeswalkers: false, nonland_permanents: true, ..Filter::ANY };
+                // "Up to one": the last mode is choosing none.
+                on_modal(
+                    d,
+                    When::YouCast,
+                    None,
+                    vec![
+                        Ability::new(vec![their_spell], vec![Effect::BounceSpellOrPermanent(0)]),
+                        Ability::new(vec![nonland], vec![Effect::BounceSpellOrPermanent(0)]),
+                        Ability::new(vec![], vec![]),
+                    ],
+                );
+            },
+        ),
+        "Call of the Ring" => s(
+            &[
+                "At the beginning of your upkeep, the Ring tempts you.",
+                "Whenever you choose a creature as your Ring-bearer, you may pay 2 life. If you do, draw a card.",
+            ],
+            |d, _| {
+                on(d, When::Upkeep { your_turn_only: true }, vec![], vec![Effect::Subsystem(bolt_core::effect::SubsystemEffect::RingTempts)]);
+                on(d, When::YouChooseRingBearer, vec![], vec![Effect::MayPayLife(2), draw(1)]);
+            },
+        ),
         _ => None,
     }
 }
@@ -1226,4 +1274,9 @@ pub const PG_D2_SCRIPTED: &[&str] = &[
     "Bitterbloom Bearer",
     "Queza, Augur of Agonies",
     "Vault of the Archangel",
+    // Core: triggers, batch 16
+    "Utvara Hellkite",
+    "Well of Lost Dreams",
+    "Hullbreaker Horror",
+    "Call of the Ring",
 ];

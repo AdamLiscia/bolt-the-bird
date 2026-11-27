@@ -2056,6 +2056,36 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::Never, vec![], vec![Effect::DamageExtrasControllerAmount]);
             },
         ),
+        "Sigarda, Host of Herons" => s(&["Spells and abilities your opponents control can't cause you to sacrifice permanents."], |d, _| {
+            d.opponents_cant_make_you_sacrifice = true;
+        }),
+        "Valgavoth, Terror Eater" => s(
+            &[
+                "Ward\u{2014}Sacrifice three nonland permanents.",
+                "If a card you didn't control would be put into an opponent's graveyard from anywhere, exile it instead.",
+                "During your turn, you may play cards exiled with Valgavoth. If you cast a spell this way, pay life equal to its mana value rather than pay its mana cost.",
+            ],
+            |d, _| {
+                d.ward_sacrifice = 3;
+                d.ward_sacrifice_nonland = true;
+                d.exiles_opponents_cards_to_play = true;
+            },
+        ),
+        "Teferi, Master of Time" => s(
+            &[
+                "You may activate loyalty abilities of Teferi on any player's turn any time you could cast an instant.",
+                "+1: Draw a card, then discard a card.",
+                "\u{2212}3: Target creature you don't control phases out.",
+                "\u{2212}10: Take two extra turns after this one.",
+            ],
+            |d, _| {
+                d.loyalty_at_instant_speed = true;
+                loyalty(d, 1, Ability::new(vec![], vec![draw(1), discard(1)]));
+                let theirs = CREATURE.controlled_by(Controller::Opponent);
+                loyalty(d, -3, Ability::new(vec![theirs], vec![Effect::PhaseOutSlot(0)]));
+                loyalty(d, -10, Ability::new(vec![], vec![Effect::ExtraTurn, Effect::ExtraTurn]));
+            },
+        ),
         _ => None,
     }
 }
@@ -2296,6 +2326,9 @@ pub const PG_B_SCRIPTED: &[&str] = &[
     "Nyxbloom Ancient",
     "Sylvan Library",
     "Deflecting Palm",
+    "Sigarda, Host of Herons",
+    "Valgavoth, Terror Eater",
+    "Teferi, Master of Time",
     // Ghyrson Starn (Spr3adsh33t)
     "Basilisk Collar",
     "Gorgon's Head",

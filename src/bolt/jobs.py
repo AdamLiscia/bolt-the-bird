@@ -73,15 +73,18 @@ def _write_atomic(path: Path, data: bytes) -> None:
 
 class Job:
     def __init__(self, run: str, every_s: float = 900, profile: str | None = None, client=None,
-                 local: Path | None = None, bucket: str = BUCKET):  # fmt: skip
+                 local: Path | None = None, bucket: str = BUCKET, handle_signals: bool = True):  # fmt: skip
         self.run, self.every_s, self.bucket = run, every_s, bucket
         self.prefix = f"farm/{run}"
         self.local = local or ROOT / "ckpt" / run
         self.s3 = client if client is not None else _client(profile or os.environ.get("AWS_PROFILE", "bolt-desktop"))
         self.last = time.time()
         self.stop_requested = False
-        with contextlib.suppress(ValueError):  # not the main thread: the caller handles signals
-            signal.signal(signal.SIGTERM, self._on_term)
+        # A job saves on SIGTERM. A process that only reads pointers (farm.py) passes handle_signals=False,
+        # or this would replace its own SIGTERM handler (farm.py ignored SIGTERM after its first pass).
+        if handle_signals:
+            with contextlib.suppress(ValueError):  # not the main thread: the caller handles signals
+                signal.signal(signal.SIGTERM, self._on_term)
 
     def _on_term(self, *_):
         self.stop_requested = True  # save at the next step boundary, then the caller exits

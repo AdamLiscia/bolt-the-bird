@@ -1006,6 +1006,24 @@ pub struct CardDef {
     /// Nyxbloom Ancient: "If you tap a permanent for mana, it produces three times as much of that
     /// mana instead." (in `untapped_sources`; abilities that add mana without tapping aren't).
     pub triples_mana_tapped: bool,
+    /// Gourmand's Talent: "During your turn, artifacts you control are Foods in addition to their
+    /// other types" (see `Game::has_subtype`; the Food ability is its `subtype_you_control_has`).
+    pub your_artifacts_are_food_your_turn: bool,
+    /// Ygra, Eater of All: "Other creatures are Food artifacts in addition to their other types"
+    /// (`Game::with_kormus_bell` and `Game::has_subtype`). Give the card a static too, so it's among
+    /// the static sources.
+    pub other_creatures_are_food_artifacts: bool,
+    /// Sigarda, Host of Herons: "Spells and abilities your opponents control can't cause you to
+    /// sacrifice permanents." (`Game::forced_sacrifice_blocked`, in `cant_be_sacrificed`).
+    pub opponents_cant_make_you_sacrifice: bool,
+    /// Valgavoth, Terror Eater: "If a card you didn't control would be put into an opponent's
+    /// graveyard from anywhere, exile it instead. During your turn, you may play cards exiled with
+    /// Valgavoth. If you cast a spell this way, pay life equal to its mana value rather than pay its
+    /// mana cost." (`move_to`, `Game::exiled_with`, `Game::valgavoth_exiled`).
+    pub exiles_opponents_cards_to_play: bool,
+    /// "You may activate loyalty abilities of [this] on any player's turn any time you could cast an
+    /// instant." (Teferi, Master of Time), in `Game::loyalty_actions`.
+    pub loyalty_at_instant_speed: bool,
 }
 
 /// A card's pieces from the d4 subsystems (see [`CardDef::subsystems`]).
@@ -1526,6 +1544,11 @@ impl CardDef {
             damage_to_a_player_other_loses: None,
             chosen_type_mana_uncounterable: false,
             triples_mana_tapped: false,
+            your_artifacts_are_food_your_turn: false,
+            other_creatures_are_food_artifacts: false,
+            opponents_cant_make_you_sacrifice: false,
+            exiles_opponents_cards_to_play: false,
+            loyalty_at_instant_speed: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -1804,6 +1827,11 @@ impl CardDef {
             damage_to_a_player_other_loses: None,
             chosen_type_mana_uncounterable: false,
             triples_mana_tapped: false,
+            your_artifacts_are_food_your_turn: false,
+            other_creatures_are_food_artifacts: false,
+            opponents_cant_make_you_sacrifice: false,
+            exiles_opponents_cards_to_play: false,
+            loyalty_at_instant_speed: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -2082,6 +2110,11 @@ impl CardDef {
             damage_to_a_player_other_loses: None,
             chosen_type_mana_uncounterable: false,
             triples_mana_tapped: false,
+            your_artifacts_are_food_your_turn: false,
+            other_creatures_are_food_artifacts: false,
+            opponents_cant_make_you_sacrifice: false,
+            exiles_opponents_cards_to_play: false,
+            loyalty_at_instant_speed: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -2122,6 +2155,9 @@ pub struct ZonesExt {
     /// "You may cast artifact spells and colorless spells from the top of your library." (Mystic
     /// Forge)
     pub top_spells_artifact_or_colorless: bool,
+    /// "You may cast this card from your graveyard or from exile." (Squee, the Immortal): its owner
+    /// may cast it from either zone, with its normal timing and cost.
+    pub cast_from_graveyard_or_exile: bool,
 }
 
 #[cfg(test)]
