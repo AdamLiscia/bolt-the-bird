@@ -3,6 +3,7 @@
 import json
 import time
 
+import pytest
 from fake_play_worker import worker
 
 from bolt.play_runner import run_parallel
@@ -197,3 +198,26 @@ def test_a_batch_with_an_errored_game_gives_a_finite_loss(monkeypatch):
     st = ppo_step(net, None, torch.optim.AdamW(net.parameters(), lr=1e-3), arr, idx, torch.as_tensor(adv),
                   ret=torch.as_tensor(ret))  # fmt: skip
     assert np.isfinite(st["loss"]) and st["bad_groups"] == 0 and st["bad_grad"] == 0
+
+
+@pytest.mark.parametrize("seats", [("net", "net"), ("net", "opp"), ("opp", "net")])
+def test_an_errored_game_drops_its_recorded_steps_in_every_seat_layout(monkeypatch, seats):
+    """2026-11-27: the farm's iteration-30 panic was an opp/net game (the past checkpoint in seat 0)."""
+    from test_play_commander import obs
+
+    import bolt.play_runner as pr
+    from bolt.play_encoding import encode as real_encode
+    from bolt.play_net import PlayNet
+
+    monkeypatch.setattr("bolt.play_encoding.card_table", lambda s: ())
+    monkeypatch.setattr(pr, "new_game", lambda a, b, s, f: PanickingGame() if s == 666 else CrawlingGame(False))
+    monkeypatch.setattr(pr, "encode", lambda o, who: real_encode(obs(), who))
+    net, opp = (PlayNet(n_cards=8, dim=16, layers=1, heads=2).eval() for _ in range(2))
+    record = tuple(i for i, s in enumerate(seats) if s == "net")
+    # progress on, as in the workers: its "longest game" line once shadowed the dropped-games set (2026-11-27)
+    out = pr.run_games(net, [("a", "b", 666, 0), ("a", "b", 1, 0)], seats=seats, record=record, opp_net=opp,
+                       game_s=0, progress=1)  # fmt: skip
+    assert [r["result"] for r in out["results"]] == ["error", "p0"]
+    assert out["results"][0]["dropped_steps"] == 3 * len(record), "the recorded seats' moves before the panic"
+    assert {st["game"] for st in out["steps"]} == {1}
+    assert {st["seat"] for st in out["steps"]} == set(record)
