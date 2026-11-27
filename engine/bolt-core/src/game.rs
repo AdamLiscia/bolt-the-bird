@@ -36,8 +36,22 @@ pub const HAND_SIZE: usize = 7;
 pub const MAX_HAND: usize = 7;
 /// The most work (zone changes and state-based-action passes) one action may do. Real actions
 /// stay far below it, even with a thousand permanents; reaching it means an engine loop that never
-/// ends, so the action panics rather than eat the machine's memory.
-pub const WORK_BUDGET: u64 = 1_000_000;
+/// ends, so the game ends in a draw (`Game::end_reason`) rather than spin and eat the machine's
+/// memory.
+pub const WORK_BUDGET: u64 = 200_000;
+
+/// The most objects a game may make. A real Commander game makes a few hundred; past this, tokens
+/// are multiplying without end (doublers feeding each other) and the game ends in a draw.
+pub const MAX_OBJECTS: usize = 10_000;
+
+/// The most permanents the battlefield may hold before the game is a draw ("board too large").
+/// Scute Swarm doubling itself on every land drop reached 549 permanents in self-play, each step
+/// slower than the last; a real Commander board stays well under it.
+pub const MAX_PERMANENTS: usize = 300;
+
+/// The most passes `settle` makes for players with nothing else to do before the game is a draw:
+/// turns that go by forever with no one able to act or lose.
+pub const SETTLE_PASSES: u32 = 10_000;
 
 /// Spells and abilities one turn may resolve before the game is a draw (CR 104.4b: a loop of
 /// mandatory actions with no way to stop). Real turns resolve a few dozen.
@@ -757,6 +771,21 @@ fn undying_ability() -> &'static Ability {
 }
 
 /// Offspring's triggered ability (CR 702.175a): a 1/1 token copy of the creature.
+/// An ability that does nothing: what a stack entry resolves as when no definition has the ability
+/// it names (a mismatch the engine should never make). It does nothing rather than panic.
+fn no_ability() -> &'static Ability {
+    static A: std::sync::OnceLock<Ability> = std::sync::OnceLock::new();
+    A.get_or_init(|| Ability::new(Vec::new(), Vec::new()))
+}
+
+/// Mode `m` of `a`, or nothing if it has no such mode.
+fn mode_of(a: &Ability, m: Option<u8>) -> &Ability {
+    match m {
+        Some(m) => a.modes.get(m as usize).unwrap_or_else(|| no_ability()),
+        None => a,
+    }
+}
+
 fn offspring_ability() -> &'static Ability {
     static A: std::sync::OnceLock<Ability> = std::sync::OnceLock::new();
     A.get_or_init(|| Ability::new(Vec::new(), vec![Effect::OffspringCopy]))
@@ -2130,6 +2159,9 @@ pub struct Game {
     /// The turn each player's permanents lose hexproof and indestructible until end of turn
     /// (Shadowspear's activation, on its controller's opponents); 0 for none.
     pub lose_hexproof_indestructible_turn: [u32; 2],
+    /// Why the engine ended the game itself, when it did: one of its loop caps tripped
+    /// ([`WORK_BUDGET`], [`MAX_OBJECTS`], [`MAX_PERMANENTS`], [`SETTLE_PASSES`]); the result is a draw.
+    pub end_reason: Option<&'static str>,
 }
 
 /// `Action::CastFromGraveyardAs`'s second number for Karador, Ghost Chieftain's once-each-turn
@@ -2461,6 +2493,7 @@ impl Game {
             clues_sacrificed: [(0, 0); 2],
             delayed_slot_dies: Vec::new(),
             lose_hexproof_indestructible_turn: [0; 2],
+            end_reason: None,
         }
     }
 
@@ -2605,6 +2638,9 @@ impl Game {
     /// battlefield have been there since before turn 1, so they can attack.
     pub fn add_card(&mut self, owner: PlayerId, def: usize, zone: Zone) -> ObjId {
         assert!(def < self.defs.len(), "no card definition {def}");
+        if self.objects.len() >= MAX_OBJECTS {
+            self.runaway("engine loop cap: over MAX_OBJECTS objects (tokens without end)");
+        }
         if zone == Zone::Battlefield && self.defs[def].statics.iter().any(|s| s.lose_abilities) {
             self.ability_loss_sources += 1;
         }
@@ -5381,11 +5417,24 @@ impl Game {
     /// Counts one unit of work toward [`WORK_BUDGET`].
     fn work(&mut self) {
         self.work += 1;
-        assert!(
-            self.work <= WORK_BUDGET,
-            "runaway action: over {WORK_BUDGET} zone changes or state-based-action passes \
-             (an engine loop that never ends)"
-        );
+        if self.work > WORK_BUDGET {
+            self.runaway("engine loop cap: an action did over WORK_BUDGET zone changes or passes");
+        }
+    }
+
+    /// One of the engine's loop caps tripped: the game ends in a draw now, logged once, instead of
+    /// spinning. Loops that keep going check `is_over` and stop.
+    fn runaway(&mut self, why: &'static str) {
+        if self.end_reason.is_none() {
+            eprintln!(
+                "bolt engine: {why} (turn {}, {} objects): the game is a draw",
+                self.turn,
+                self.objects.len()
+            );
+            self.end_reason = Some(why);
+            self.result = Some(Outcome::Draw);
+            self.pending = Pending::GameOver;
+        }
     }
 
     fn move_to(&mut self, id: ObjId, to: Zone) {
@@ -7071,15 +7120,15 @@ impl Game {
         let def = self.def_of(item.source);
         match item.kind {
             StackKind::Spell | StackKind::SpellCopy => match item.mode {
-                Some(OMEN_MODE) => &def.omen.as_ref().expect("an Omen").spell,
-                Some(m) => &def.modes[m as usize],
+                Some(OMEN_MODE) => def.omen.as_ref().map_or(no_ability(), |o| &o.spell),
+                Some(m) => def.modes.get(m as usize).unwrap_or_else(|| no_ability()),
                 None if item.kicked && def.kicked_spell.is_some() => {
-                    def.kicked_spell.as_ref().expect("kicked")
+                    def.kicked_spell.as_ref().unwrap_or_else(|| no_ability())
                 }
                 None if item.alt && def.overload_spell.is_some() => {
-                    def.overload_spell.as_ref().expect("overload") // CR 702.96b
+                    def.overload_spell.as_ref().unwrap_or_else(|| no_ability()) // CR 702.96b
                 }
-                None => def.spell.as_ref().expect("a spell with an ability"),
+                None => def.spell.as_ref().unwrap_or_else(|| no_ability()),
             },
             // A trigger whose source has turned to its other face since it triggered (Nissa,
             // Vastwood Seer: two lands entered, and the first trigger transformed her) still
@@ -7092,23 +7141,16 @@ impl Game {
                     .rev()
                     .find(|e| e.0 == item.source && Some(e.1) == item.source_zcc && e.2 == n);
                 if let Some(e) = copied {
-                    return match item.mode {
-                        Some(m) => &e.3.modes[m as usize],
-                        None => &e.3,
-                    };
+                    return mode_of(&e.3, item.mode);
                 }
-                let trigger = def.triggers.get(n).unwrap_or_else(|| {
-                    let printed = &self.defs[self.obj(item.source).def];
-                    printed
-                        .triggers
-                        .get(n)
-                        .or_else(|| printed.back.as_ref().and_then(|b| b.triggers.get(n)))
-                        .expect("a trigger of its source")
-                });
-                match item.mode {
-                    Some(m) => &trigger.ability.modes[m as usize],
-                    None => &trigger.ability,
-                }
+                let printed = &self.defs[self.obj(item.source).def];
+                let trigger = def
+                    .triggers
+                    .get(n)
+                    .or_else(|| printed.triggers.get(n))
+                    .or_else(|| printed.back.as_ref().and_then(|b| b.triggers.get(n)));
+                // No definition has it: it does nothing.
+                trigger.map_or(no_ability(), |t| mode_of(&t.ability, item.mode))
             }
             StackKind::Ward { .. }
             | StackKind::WardLife { .. }
@@ -7129,11 +7171,12 @@ impl Game {
                         .iter()
                         .rev()
                         .find(|e| e.0 == item.source && e.1 == n);
-                    &e.expect("a snapshot").2
+                    e.map_or(no_ability(), |e| &e.2)
                 }
                 None => {
                     let printed = &self.defs[self.obj(item.source).def];
-                    &printed.back.as_ref().expect("a back face").loyalty_abilities[n].1
+                    let back = printed.back.as_ref().and_then(|b| b.loyalty_abilities.get(n));
+                    back.map_or(no_ability(), |a| &a.1)
                 }
             },
             StackKind::Offspring => offspring_ability(),
@@ -27574,6 +27617,9 @@ impl Game {
         self.last_created.clear();
         let times = self.token_doubling(p) * self.creature_token_tripling(p, self.defs[def].types.creature);
         for _ in 0..times {
+            if self.is_over() {
+                break; // a loop cap ended the game
+            }
             let id = self.add_card(p, def, Zone::Battlefield);
             self.last_created.push(id);
             self.obj_mut(id).since_turn = self.turn;
@@ -27930,6 +27976,10 @@ impl Game {
     /// CR 603.3: triggered abilities go on the stack the next time a player would get priority,
     /// active player's first (APNAP, CR 101.4). Returns false if a target choice is now pending.
     fn put_triggers_on_stack(&mut self, then: PlayerId) -> bool {
+        if self.is_over() {
+            self.triggered.clear();
+            return true;
+        }
         self.flush_graveyard_leaves();
         let (scan_from, scan_to) = (
             self.triggered_scanned.min(self.triggered.len()),
@@ -28052,7 +28102,13 @@ impl Game {
         if !self.auto_pass {
             return;
         }
+        let mut passes = 0;
         while let Pending::Priority(p) = self.pending {
+            passes += 1;
+            if passes > SETTLE_PASSES {
+                self.runaway("engine loop cap: SETTLE_PASSES forced passes with no decision");
+                break;
+            }
             // Mana moves alone aren't a reason to stop: nothing to spend them on.
             let real = self
                 .legal_actions()
@@ -29679,6 +29735,12 @@ impl Game {
         }
         loop {
             self.work();
+            if self.battlefield.len() > MAX_PERMANENTS {
+                self.runaway("board too large: over MAX_PERMANENTS permanents");
+            }
+            if self.end_reason.is_some() {
+                return; // a loop cap ended the game
+            }
             // Ascend (CR 702.131b): ten or more permanents and an ascend permanent.
             for p in 0..2 {
                 if !self.city_blessing[p]
