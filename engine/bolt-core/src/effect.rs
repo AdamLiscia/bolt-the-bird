@@ -2667,6 +2667,13 @@ pub enum Effect {
     /// "Each opponent sacrifices a nontoken creature or planeswalker of their choice." (Sheoldred //
     /// The True Scriptures), as `Decision::SacrificeNontokenCreatureOrPlaneswalker`.
     OpponentSacrificesNontokenCreatureOrPlaneswalker,
+    /// Currency Converter: put a card exiled with the source (`Game::exiled_with`) into its
+    /// owner's graveyard (`Decision::ExiledWithToGraveyard`); create a `land` token if it's a land
+    /// card, a `nonland` token otherwise.
+    ExiledWithSourceToGraveyardToken {
+        land: usize,
+        nonland: usize,
+    },
     /// Exile each creature that crewed the source this turn; return them to the battlefield tapped
     /// under their owner's control at the beginning of the next end step (Golden Argosy).
     ExileCrewersReturnTappedAtEnd,
@@ -3718,4 +3725,7 @@ pub enum SubsystemEffect {
     /// controller controls. The ability is offered only while there is one
     /// (`Game::lacks_chapter_activated`), so it takes no target slot.
     AttachToYourCommander,
+    /// "This creature deals damage equal to the total mana value of other permanents you control
+    /// to each opponent." (Summon: Bahamut's chapter IV, Mega Flare)
+    DamageEachOpponentTotalManaValueOfOthers,
 }

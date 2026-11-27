@@ -2946,7 +2946,7 @@
   {
    "card": "Currency Converter",
    "deck": "Sefris of the Hidden Ways",
-   "missing": "needs core: exiling a discarded card linked to the source, and a 2/2 black Rogue creature token",
+   "missing": "needs core: exiling a discarded card linked to the source, and a 2/2 black Rogue creature token [done by d2 batch 24: token 108 rogue_2, Effect::ExiledWithSourceToGraveyardToken, Decision::ExiledWithToGraveyard, scripted in pg_d2]",
    "lane": "d3",
    "theme": "triggers",
    "owner": "d2"
@@ -3962,7 +3962,7 @@
   {
    "card": "Daring Sleuth // Bearer of Overwhelming Truths",
    "deck": "Lonis, Cryptozoologist",
-   "missing": "needs core: a 'whenever you sacrifice a Clue' trigger, and a Clue artifact token (investigate) for its back face",
+   "missing": "needs core: a 'whenever you sacrifice a Clue' trigger, and a Clue artifact token (investigate) for its back face [done by d2 batch 23: When::YouSacrificeSubtype(\"Clue\") and TransformSelf; Clue and investigate exist; scripted in pg_d2]",
    "lane": "d3",
    "theme": "triggers",
    "owner": "d2"
@@ -5376,14 +5376,6 @@
    "owner": "d4"
   },
   {
-   "card": "Fisher's Talent",
-   "deck": "Bloomburrow Commander (BLC)",
-   "missing": "BLC (lane B's routing, 2026-11-26) [d3 batch 23: the level 1 Fish is Effect::CreateTokenIfTopIsLandThenDraw { def } (always reveals a land); the Fish/Shark/Octopus tokens and replacements are lane B's, then the card can be scripted]",
-   "lane": "mac-b",
-   "theme": "subsystems",
-   "owner": "d4"
-  },
-  {
    "card": "Fortune Teller's Talent",
    "deck": "Bloomburrow Commander (BLC)",
    "missing": "BLC (lane B's routing, 2026-11-26)",
@@ -5474,7 +5466,7 @@
   {
    "card": "Panharmonicon",
    "deck": "Malik, Grim Manipulator (Spr3adsh33)",
-   "missing": "lane C's Malik routing (2026-11-26); multi-owner cards: see its report",
+   "missing": "lane C's Malik routing (2026-11-26); multi-owner cards: see its report [done by d2 batch 23: EntryDoubler::ArtifactOrCreature, scripted in pg_d2]",
    "lane": "mac-c",
    "theme": "triggers",
    "owner": "d2"
@@ -5658,7 +5650,7 @@
   {
    "card": "Agent of the Iron Throne",
    "deck": "Malik, Grim Manipulator (Spr3adsh33)",
-   "missing": "lane C's Malik routing (2026-11-26); multi-owner cards: see its report",
+   "missing": "lane C's Malik routing (2026-11-26); multi-owner cards: see its report [d4: SubsystemExt::commanders_have_trigger = Some(n) for trigger n on its own triggers (When::ThisOrAnotherCreatureOrArtifactYouControlDies, LoseLife EachOpponent 1) is in; lane C scripts it]",
    "lane": "mac-c",
    "theme": "subsystems",
    "owner": "d4"
@@ -6186,7 +6178,7 @@
   {
    "card": "Summon: Bahamut",
    "deck": "Olivia, Crimson Bride (DonSpider)",
-   "missing": "lane C's routing (2026-11-26)",
+   "missing": "lane C's routing (2026-11-26) [d4: SubsystemEffect::DamageEachOpponentTotalManaValueOfOthers (Mega Flare) is in; Saga creatures already get lore counters; lane C scripts it]",
    "lane": "mac-c",
    "theme": "subsystems",
    "owner": "d4"
@@ -6392,22 +6384,6 @@
    "owner": "d1"
   },
   {
-   "card": "Fisher's Talent (reveal-a-land Fish)",
-   "deck": "d4 handback (BLC Talents, Sagas)",
-   "missing": "reveal a land, create a Fish",
-   "lane": "d4",
-   "theme": "effects",
-   "owner": "d3"
-  },
-  {
-   "card": "Fisher's Talent (token replacements)",
-   "deck": "d4 handback (BLC Talents, Sagas)",
-   "missing": "Fish->Shark->Octopus token replacements and those tokens (numbers from the merger)",
-   "lane": "d4",
-   "theme": "replace_filter",
-   "owner": "mac-b"
-  },
-  {
    "card": "Fortune Teller's Talent (play from top)",
    "deck": "d4 handback (BLC Talents, Sagas)",
    "missing": "play cards from the top of your library",
@@ -6566,14 +6542,6 @@
    "lane": "d4",
    "theme": "mana",
    "owner": "d1"
-  },
-  {
-   "card": "Fisher's Talent",
-   "deck": "d4 handback",
-   "missing": "level 1: look at the top card, reveal it if it's a land for a 1/1 blue Fish token (d3); levels 2 and 3: token replacements Fish -> 3/3 blue Shark -> 8/8 blue Octopus (Mac B), and those tokens",
-   "lane": "d4",
-   "theme": "replace_filter",
-   "owner": "mac-b"
   },
   {
    "card": "Fortune Teller's Talent",
