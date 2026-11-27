@@ -10,6 +10,7 @@ import os
 import secrets
 import threading
 import time
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from importlib.metadata import version as pkg_version
 from typing import Any
@@ -27,6 +28,9 @@ from bolt.service_view import BACKS, SET, actions, back_image, state
 SETS = [SET]  # one set per process: BOLT_SET (default FDN); the Tarkir service runs on 8767 with TDM
 MAX_TURNS, MAX_MOVES = 200, 20_000
 IDLE_SECONDS = 6 * 3600
+# The smart pilot's time per decision in Commander, in ms: some 1v1 Commander positions took minutes to
+# search in full. Past it, the pilot plays the best move scored so far. FDN and TDM search in full.
+CMD_SMART_MS = 2500
 BASIC_NAMES = {"W": "Plains", "U": "Island", "B": "Swamp", "R": "Mountain", "G": "Forest"}
 
 
@@ -285,11 +289,45 @@ SEAT_FRAMES = 300  # boards kept per human seat for GET /frames
 # ---- the service ----------------------------------------------------------------------------------
 
 
+def smart(g, rollouts: int, candidates: int, seed: int) -> int:
+    """The smart pilot's move; Commander's search is capped at CMD_SMART_MS."""
+    if SET == "CMD":
+        return g.smart(rollouts, candidates, seed, ms=CMD_SMART_MS)
+    return g.smart(rollouts, candidates, seed)
+
+
+def bot_move(rec, kit: Kit, model_lock: threading.Lock) -> int:
+    """The bot seat's move (index into the legal actions). The engine releases Python's lock while the
+    smart pilot searches, so other games and requests carry on meanwhile."""
+    g, pilot = rec["game"], rec["pilot"]
+    seed = (rec["seed"] * 1_000_003 + rec["moves"]) % 2**64
+    if pilot == "rules":
+        return g.baseline()
+    if pilot == "smart":
+        return smart(g, 1, 2, seed)
+    if pilot == "smart_strong":
+        return smart(g, 4, 6, seed)
+    if g.observation(g.to_act())["pending"][0] == "ChooseTarget":
+        # The network can't see the spell it's targeting for (the engine's view shows it only after
+        # targets are chosen), so it aims pumps at the opponent's creatures 65% of the time. Until it's
+        # retrained with that input, the smart player chooses its targets (it never made that mistake).
+        return smart(g, 1, 2, seed)
+    from bolt.play_encoding import collate, encode
+
+    who = g.to_act()
+    with model_lock, torch.no_grad():
+        return int(kit.net(collate([encode(g.observation(who), who)]))[0][0].argmax())
+
+
 def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
     if not key:
         raise ValueError("a non-empty key is required (BOLT_KEY)")
     app = FastAPI(title="Bolt service", version="v1")
-    lock = threading.Lock()  # models and games are used one request at a time
+    # Locks: `lock` for the models and drafts (one request at a time); `games_lock` only for the games
+    # dict (create, delete, purge, look up); each game's own `rec["lock"]` while it's read or played, so a
+    # bot thinking in one game never holds up another game, /health or /deck/validate.
+    lock = threading.Lock()
+    games_lock = threading.Lock()
     games: dict[str, dict] = {}
     names = kit.info.names
     names_all = be.card_names() if SET == "FDN" else be.card_names(SET)  # the engine's objects, tokens included
@@ -543,30 +581,10 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
             raise ApiError(422, f"a deck needs 40 to 250 cards, got {len(out)}")
         return out
 
-    def purge():
+    def purge():  # under games_lock
         now = time.time()
         for gid in [g for g, r in games.items() if now - r["used"] > IDLE_SECONDS]:
             games.pop(gid, None)
-
-    def bot_move(rec) -> int:
-        g, pilot = rec["game"], rec["pilot"]
-        seed = (rec["seed"] * 1_000_003 + rec["moves"]) % 2**64
-        if pilot == "rules":
-            return g.baseline()
-        if pilot == "smart":
-            return g.smart(1, 2, seed)
-        if pilot == "smart_strong":
-            return g.smart(4, 6, seed)
-        if g.observation(g.to_act())["pending"][0] == "ChooseTarget":
-            # The network can't see the spell it's targeting for (the engine's view shows it only after
-            # targets are chosen), so it aims pumps at the opponent's creatures 65% of the time. Until it's
-            # retrained with that input, the smart player chooses its targets (it never made that mistake).
-            return g.smart(1, 2, seed)
-        from bolt.play_encoding import collate, encode
-
-        who = g.to_act()
-        with torch.no_grad():
-            return int(kit.net(collate([encode(g.observation(who), who)]))[0][0].argmax())
 
     public = {"Battlefield", "Graveyard", "Stack", "Exile", "Gone"}
     hidden_moves = {"Bottom": "Puts a card on the bottom", "Pick": "Chooses a card"}
@@ -660,7 +678,7 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
                     return
                 apply(rec, real[0], gid)
             else:
-                apply(rec, 0 if n == 1 else bot_move(rec), gid)
+                apply(rec, 0 if n == 1 else bot_move(rec, kit, lock), gid)
             snapshot(rec, gid, frames, seat)
 
     def finished(rec) -> dict | None:
@@ -681,12 +699,20 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
         return s
 
     def get(gid: str) -> dict:
-        purge()
-        if gid not in games:
-            raise ApiError(404, "no such game")
-        rec = games[gid]
-        rec["used"] = time.time()
-        return rec
+        with games_lock:
+            purge()
+            if gid not in games:
+                raise ApiError(404, "no such game")
+            rec = games[gid]
+            rec["used"] = time.time()
+            return rec
+
+    @contextmanager
+    def locked(gid: str):
+        """The game `gid`, held for this request alone."""
+        rec = get(gid)
+        with rec["lock"]:
+            yield rec
 
     def seat_of(rec, seat: int | None) -> int:
         seat = rec["human"] if seat is None else seat
@@ -724,11 +750,13 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
             a, b = deck_ids(body.deck_a), deck_ids(body.deck_b)
         seed = body.seed if body.seed is not None else secrets.randbelow(2**31)
         first = body.first if body.first in (0, 1) else seed % 2
-        with lock:
+        with games_lock:
             purge()
             if len(games) >= max_games:
                 raise ApiError(429, "too many games", limit=max_games)
-            gid = "g_" + secrets.token_hex(6)
+        gid = "g_" + secrets.token_hex(6)
+        game_lock = threading.Lock()
+        with game_lock:
             if commander:
                 game = be.Game.commander(a, b, ca, cb, seed, first=first, set=SET,
                                          starting_life=body.starting_life,
@@ -743,8 +771,12 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
                 game.set_manual_mana(s, True)
             rec = {"game": game, "human": humans[0], "humans": set(humans),
                    "pilot": body.pilot if len(humans) == 1 else None, "seed": seed, "version": 0, "moves": 0,
-                   "events": [], "engine_n": 0, "used": time.time(), "seat_frames": {s: [] for s in humans}}  # fmt: skip
-            games[gid] = rec
+                   "events": [], "engine_n": 0, "used": time.time(), "seat_frames": {s: [] for s in humans},
+                   "lock": game_lock}  # fmt: skip
+            with games_lock:
+                if len(games) >= max_games:  # another game was made meanwhile
+                    raise ApiError(429, "too many games", limit=max_games)
+                games[gid] = rec
             frames = [] if body.frames else None
             advance(rec, gid, frames, humans[0])
             out = {"game_id": gid, "human_seats": sorted(humans), "state": view(rec, gid)}
@@ -754,8 +786,7 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
 
     @router.get("/game/{gid}")
     def show(gid: str, seat: int | None = None, spectate: bool = False):
-        with lock:
-            rec = get(gid)
+        with locked(gid) as rec:
             if not spectate:
                 return view(rec, gid, seat_of(rec, seat))
             # Read-only view of any seat, the bot's included (a streamer showing Bolt's hand). The caller
@@ -770,8 +801,7 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
     @router.post("/game/{gid}/mana")
     def set_mana(gid: str, body: ManaBody):
         """Switch a human seat between Auto (the engine pays) and Manual (TapForMana moves)."""
-        with lock:
-            rec = get(gid)
+        with locked(gid) as rec:
             if body.seat not in rec["humans"]:
                 raise ApiError(409, "not a human seat in this game", state=view(rec, gid))
             rec["game"].set_manual_mana(body.seat, body.manual)
@@ -781,8 +811,7 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
 
     @router.post("/game/{gid}/act")
     def act(gid: str, body: ActBody):
-        with lock:
-            rec = get(gid)
+        with locked(gid) as rec:
             if body.seat not in rec["humans"]:  # e.g. the bot's seat: not yours to play (409, as for a wrong turn)
                 raise ApiError(409, "not a human seat in this game", state=view(rec, gid))
             seat = body.seat
@@ -803,16 +832,14 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
     @router.get("/game/{gid}/frames")
     def seat_frames(gid: str, seat: int | None = None, since: int = 0):
         """`seat`'s boards after `since` (a version), for a player who was waiting."""
-        with lock:
-            rec = get(gid)
+        with locked(gid) as rec:
             seat = seat_of(rec, seat)
             fr = [f for f in rec["seat_frames"][seat] if f["version"] > since]
             return {"frames": trim(fr), "version": rec["version"]}
 
     @router.get("/game/{gid}/version")
     def version(gid: str):
-        with lock:
-            rec = get(gid)
+        with locked(gid) as rec:
             v = view(rec, gid)
             return {"version": rec["version"], "to_act": v["to_act"], "over": v["over"]}
 
@@ -834,8 +861,7 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
 
     @router.post("/game/{gid}/concede")
     def concede(gid: str, body: ConcedeBody):
-        with lock:
-            rec = get(gid)
+        with locked(gid) as rec:
             seat = seat_of(rec, body.seat)
             if finished(rec) is None and not rec["game"].is_over():
                 rec["conceded"] = seat
@@ -846,18 +872,17 @@ def create_app(kit: Kit, key: str, max_games: int = 20) -> FastAPI:
 
     @router.get("/game/{gid}/log")
     def log(gid: str, since: int = 0, seat: int | None = None):
-        with lock:
-            rec = get(gid)
+        with locked(gid) as rec:
             seat = seat_of(rec, seat)
             ev = [seat_event(e, seat) for e in rec["events"][max(0, since) :]]
             return {"events": ev, "next": len(rec["events"])}
 
     @router.delete("/game/{gid}")
     def end(gid: str):
-        with lock:
-            get(gid)
+        get(gid)
+        with games_lock:
             games.pop(gid, None)
-            return {"ok": True}
+        return {"ok": True}
 
     # ---- drafting against bots, and whole bot tables ------------------------------------------
 

@@ -6342,10 +6342,23 @@ impl Game {
                 }
                 None => def.spell.as_ref().expect("a spell with an ability"),
             },
-            StackKind::Trigger(n) => match item.mode {
-                Some(m) => &def.triggers[n].ability.modes[m as usize],
-                None => &def.triggers[n].ability,
-            },
+            // A trigger whose source has turned to its other face since it triggered (Nissa,
+            // Vastwood Seer: two lands entered, and the first trigger transformed her) still
+            // resolves as the face it triggered from.
+            StackKind::Trigger(n) => {
+                let trigger = def.triggers.get(n).unwrap_or_else(|| {
+                    let printed = &self.defs[self.obj(item.source).def];
+                    printed
+                        .triggers
+                        .get(n)
+                        .or_else(|| printed.back.as_ref().and_then(|b| b.triggers.get(n)))
+                        .expect("a trigger of its source")
+                });
+                match item.mode {
+                    Some(m) => &trigger.ability.modes[m as usize],
+                    None => &trigger.ability,
+                }
+            }
             StackKind::Ward { .. }
             | StackKind::WardLife { .. }
             | StackKind::WardDiscard { .. }
@@ -6588,6 +6601,11 @@ impl Game {
                 return false;
             };
             let it = &self.items[n];
+            // A spell with no targets has none to change, and a permanent spell (Sol Ring) has no
+            // spell ability to look its targets up in.
+            if it.targets.is_empty() {
+                return false;
+            }
             let real = self
                 .ability_of(it)
                 .targets
