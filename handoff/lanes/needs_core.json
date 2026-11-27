@@ -7342,6 +7342,132 @@
    "lane": "d3",
    "theme": "effects and statics",
    "owner": "d3"
+  },
+  {
+   "card": "Kinbinding",
+   "deck": "Zurgo (idea)",
+   "missing": "+X/+X per creature entered this turn (d3 scale); a 1/1 G/W Kithkin token",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "done: d2 batch 33 (token 112, d3's Scale)"
+  },
+  {
+   "card": "Kenrith, the Returned King",
+   "deck": "Kenrith (idea)",
+   "missing": "five activated abilities; reanimate under its owner's control",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "done: d2 batch 34"
+  },
+  {
+   "card": "Imperial Seal",
+   "deck": "Kenrith (idea)",
+   "missing": "search any card to the top, lose 2 life",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "done: d2 batch 34"
+  },
+  {
+   "card": "Gamble",
+   "deck": "Kenrith (idea)",
+   "missing": "tutor, then discard at random (seeded RNG)",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "done: d2 batch 34"
+  },
+  {
+   "card": "Wheel of Fortune",
+   "deck": "Kenrith (idea)",
+   "missing": "each player discards their hand, then draws seven",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "done: d2 batch 34"
+  },
+  {
+   "card": "Summoner's Pact",
+   "deck": "Kenrith (idea)",
+   "missing": "green creature tutor; pay at next upkeep or lose",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "done: d2 batch 34"
+  },
+  {
+   "card": "Overprotect",
+   "deck": "Tifa (idea)",
+   "missing": "pump and grant",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "done: d2 batch 34"
+  },
+  {
+   "card": "Tamiyo's Safekeeping",
+   "deck": "Tifa (idea)",
+   "missing": "grant on a permanent you control, gain 2",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "done: d2 batch 34"
+  },
+  {
+   "card": "Tyvar's Stand",
+   "deck": "Tifa (idea)",
+   "missing": "+X/+X and grant",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "done: d2 batch 34"
+  },
+  {
+   "card": "Thassa's Oracle",
+   "deck": "Kenrith (idea)",
+   "missing": "enters: look at top X (devotion to blue), win if X >= library",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "done: d2 batch 35"
+  },
+  {
+   "card": "Springbloom Druid",
+   "deck": "Tifa (idea)",
+   "missing": "enters: may sacrifice a land; if you do, two basics tapped",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "done: d2 batch 35"
+  },
+  {
+   "card": "Demonic Consultation",
+   "deck": "Kenrith (idea)",
+   "missing": "name a card (a Decision), exile six, reveal until it",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "done: d2 batch 35"
+  },
+  {
+   "card": "Midgar, City of Mako // Reactor Raid",
+   "deck": "Sephiroth (idea)",
+   "missing": "Town land; back face",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "waiting (mac-c): a land with an Adventure; the cast-action list skips lands before the omen half (`if def.types.land { continue; }`), then the land played from exile. d2's Effect::MaySacrificeArtifactOrCreature (Decision::MaySacrificeArtifactOrCreature) is in for Reactor Raid's text."
+  },
+  {
+   "card": "Wishclaw Talisman",
+   "deck": "Sephiroth (idea)",
+   "missing": "wish counters; tutor; an opponent gains control",
+   "lane": "d2",
+   "theme": "triggers",
+   "owner": "d2",
+   "status": "waiting: 'enters with three wish counters' (a CardDef field for kind counters on entering; merger) and 'an opponent gains control of this artifact' (an effect)"
   }
  ]
 }
