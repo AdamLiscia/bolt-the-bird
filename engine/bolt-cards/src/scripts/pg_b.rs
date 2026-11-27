@@ -2404,7 +2404,6 @@ pub fn script(name: &str) -> Option<Script> {
         "Gluttonous Hellkite" => s(
             &[
                 "When you cast this spell, each player sacrifices X creatures. This creature enters with two +1/+1 counters on it for each creature sacrificed this way.",
-                "Flying, trample",
             ],
             |d, _| {
                 on(d, When::YouCastThis, vec![], vec![Effect::EachPlayerSacrificesXCreaturesCountersPer(2)]);
