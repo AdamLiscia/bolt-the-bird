@@ -2762,7 +2762,46 @@ impl Game {
                 ..Types::default()
             };
         }
+        if self.artifact_creature_aura(id) {
+            // Darksteel Mutation: "an Insect artifact creature ... loses all other card types".
+            t = Types {
+                artifact: true,
+                creature: true,
+                legendary: t.legendary,
+                basic: t.basic,
+                snow: t.snow,
+                ..Types::default()
+            };
+        }
         self.with_kormus_bell(id, t)
+    }
+
+    /// Whether an Aura with `enchanted_becomes_artifact_creature` (and its abilities) is attached to
+    /// `id` (Darksteel Mutation). Cheap when no ability-removing Aura is on the battlefield.
+    fn artifact_creature_aura(&self, id: ObjId) -> bool {
+        if self.ability_loss_sources == 0 {
+            return false;
+        }
+        let zcc = self.obj(id).zcc;
+        self.static_sources.iter().any(|&src| {
+            self.obj(src).attached_to == Some((id, zcc))
+                && self.def_of(src).enchanted_becomes_artifact_creature
+                && !self.lost_abilities(src)
+        })
+    }
+
+    /// Ashaya, Soul of the Wild: `id` is a nontoken permanent on the battlefield whose controller
+    /// controls a permanent with `your_nontoken_creatures_are_forest_lands` (a static source) with
+    /// its abilities. The caller checks that `id` is a creature.
+    fn nontoken_forest_land(&self, id: ObjId) -> bool {
+        let o = self.obj(id);
+        o.zone == Zone::Battlefield
+            && !self.is_token(id)
+            && self.static_sources.iter().any(|&x| {
+                self.def_of(x).your_nontoken_creatures_are_forest_lands
+                    && self.obj(x).controller == o.controller
+                    && !self.lost_abilities(x)
+            })
     }
 
     /// The type changes from resolved effects that apply to `id` now (`Object::type_changes`).
@@ -2869,6 +2908,9 @@ impl Game {
         }
         if t.creature && !t.legendary && self.ring_bearer_now(id) {
             t.legendary = true; // the Ring: "Your Ring-bearer is legendary"
+        }
+        if t.creature && !t.land && self.nontoken_forest_land(id) {
+            t.land = true; // Ashaya: "Forest lands in addition to their other types"
         }
         t
     }
@@ -3215,6 +3257,9 @@ impl Game {
         }
         if s == "Food" && self.artifact_food_on_your_turn(id) {
             return true; // Gourmand's Talent
+        }
+        if s == "Forest" && self.nontoken_forest_land(id) && self.types_of(id).creature {
+            return true; // Ashaya, Soul of the Wild
         }
         self.has_base_subtype(id, s)
             || self.statics_on(id).any(|st| st.subtype == Some(s))

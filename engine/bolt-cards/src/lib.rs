@@ -562,6 +562,8 @@ fn definition(o: &Oracle, tokens: &scripts::Tokens) -> (CardDef, bool) {
         opponents_cast_only_from_hand: false,
         your_minus_counters_minus_one: false,
         opponents_searches_exiled_for_you: false,
+        enchanted_becomes_artifact_creature: false,
+        your_nontoken_creatures_are_forest_lands: false,
     };
     def.color_identity = color_identity(o);
     def.phyrexian = phyrexian;

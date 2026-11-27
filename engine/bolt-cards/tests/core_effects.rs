@@ -3767,3 +3767,60 @@ fn sacrifice_x_lands_draws_after_and_x_extra_land_plays() {
     assert_eq!((lands - now, g.players[0].hand.len() - hand), (2, 2));
     assert_eq!(g.extra_lands_this_turn[0], 2);
 }
+
+/// A static that changes nothing by itself, for the `..` of a test static.
+fn plain_static(scope: Scope) -> Static {
+    Static {
+        scope,
+        your_turn_only: false,
+        condition: None,
+        subtype: None,
+        lose_abilities: false,
+        base_pt: None,
+        protection: [false; 5],
+        scale: None,
+        power: 0,
+        toughness: 0,
+        keywords: Keywords::NONE,
+        set_colors: None,
+        becomes_land: false,
+    }
+}
+
+#[test]
+fn an_aura_can_make_its_creature_an_artifact_creature_only() {
+    let mut aura = (*set("CMD").unwrap().defs)[cid("Noggle the Mind")].clone();
+    aura.name = "Test Mutation".into();
+    aura.enchanted_creature_type_becomes = None;
+    aura.enchanted_becomes_artifact_creature = true;
+    aura.statics = vec![Static {
+        lose_abilities: true,
+        ..plain_static(Scope::Attached)
+    }];
+    let (mut g, t) = game_with(vec![aura]);
+    let sythis = g.add_card(1, cid("Sythis, Harvest's Hand"), Zone::Battlefield);
+    let other = g.add_card(1, cid("Courser of Kruphix"), Zone::Battlefield);
+    cast_test(&mut g, t, &[obj(sythis)], &[]);
+    let ty = g.types_of(sythis);
+    assert!(ty.artifact && ty.creature && ty.legendary, "supertypes stay");
+    assert!(!ty.enchantment);
+    assert!(g.types_of(other).enchantment, "only the enchanted creature");
+}
+
+#[test]
+fn nontoken_creatures_you_control_can_be_forest_lands() {
+    let mut def = (*set("CMD").unwrap().defs)[cid("Savannah Lions")].clone();
+    def.name = "Test Ashaya".into();
+    def.your_nontoken_creatures_are_forest_lands = true;
+    def.statics = vec![plain_static(Scope::This)];
+    let (mut g, t) = game_with(vec![def]);
+    let src = g.add_card(0, t, Zone::Battlefield);
+    let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
+    let theirs = g.add_card(1, cid("Llanowar Elves"), Zone::Battlefield);
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Battlefield);
+    assert!(g.types_of(src).land && g.has_subtype(src, "Forest"), "itself too");
+    assert!(g.types_of(elves).land && g.has_subtype(elves, "Forest"));
+    assert!(g.has_subtype(elves, "Elf"), "in addition");
+    assert!(!g.types_of(theirs).land && !g.types_of(ring).land);
+    assert_eq!(count(&g, 0, |g, x| g.types_of(x).land), 27);
+}

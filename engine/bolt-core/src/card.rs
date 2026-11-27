@@ -1137,6 +1137,15 @@ pub struct CardDef {
     /// modeled: "You control your opponents while they're searching their libraries" (1v1, the
     /// searcher still chooses).
     pub opponents_searches_exiled_for_you: bool,
+    /// An Aura: "Enchanted creature is an [Insect] artifact creature ... and it loses all other
+    /// ... card types" (Darksteel Mutation), in `Game::types_of`: its card types are artifact and
+    /// creature only (supertypes stay). `enchanted_creature_type_becomes` and its static give the
+    /// rest.
+    pub enchanted_becomes_artifact_creature: bool,
+    /// "Nontoken creatures you control are Forest lands in addition to their other types." (Ashaya,
+    /// Soul of the Wild), in `Game::types_of` and `Game::has_subtype`; it needs a static (a static
+    /// source) so the check is cheap.
+    pub your_nontoken_creatures_are_forest_lands: bool,
 }
 
 /// A card's pieces from the d4 subsystems (see [`CardDef::subsystems`]).
@@ -1744,6 +1753,8 @@ impl CardDef {
             opponents_cast_only_from_hand: false,
             your_minus_counters_minus_one: false,
             opponents_searches_exiled_for_you: false,
+            enchanted_becomes_artifact_creature: false,
+            your_nontoken_creatures_are_forest_lands: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -2048,6 +2059,8 @@ impl CardDef {
             opponents_cast_only_from_hand: false,
             your_minus_counters_minus_one: false,
             opponents_searches_exiled_for_you: false,
+            enchanted_becomes_artifact_creature: false,
+            your_nontoken_creatures_are_forest_lands: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -2352,6 +2365,8 @@ impl CardDef {
             opponents_cast_only_from_hand: false,
             your_minus_counters_minus_one: false,
             opponents_searches_exiled_for_you: false,
+            enchanted_becomes_artifact_creature: false,
+            your_nontoken_creatures_are_forest_lands: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,

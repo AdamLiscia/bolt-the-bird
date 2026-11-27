@@ -5010,3 +5010,59 @@ fn blackblade_reforged_grows_per_land_and_equips_legends_cheaply() {
         "the {{3}} equip is for legendary creatures"
     );
 }
+
+#[test]
+fn darksteel_mutation_makes_an_indestructible_0_1_insect_artifact_creature() {
+    let mut g = table();
+    let courser = put(&mut g, 1, "Courser of Kruphix");
+    let lions = put(&mut g, 1, "Savannah Lions");
+    let m = hand(&mut g, 0, "Darksteel Mutation");
+    play(&mut g, m, false, &[obj(courser)], &[]);
+    assert_eq!(g.obj(m).zone, Zone::Battlefield);
+    let t = g.types_of(courser);
+    assert!(t.artifact && t.creature && !t.enchantment && !t.land);
+    assert_eq!((g.power(courser), g.toughness(courser)), (0, 1));
+    assert!(g.has_subtype(courser, "Insect") && !g.has_subtype(courser, "Centaur"));
+    assert!(g.keywords(courser).has(Keywords::INDESTRUCTIBLE));
+    let wrath = hand(&mut g, 0, "Wrath of God");
+    play(&mut g, wrath, false, &[], &[]);
+    assert_eq!(g.obj(courser).zone, Zone::Battlefield, "indestructible");
+    assert_eq!(g.obj(lions).zone, Zone::Graveyard);
+}
+
+#[test]
+fn ashaya_makes_your_nontoken_creatures_forest_lands_and_counts_them() {
+    let mut g = table();
+    let ashaya = put(&mut g, 0, "Ashaya, Soul of the Wild");
+    let elves = put(&mut g, 0, "Llanowar Elves");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    let theirs = put(&mut g, 1, "Savannah Lions");
+    // 25 lands, plus Ashaya, the Elves and the Lions.
+    assert_eq!((g.power(ashaya), g.toughness(ashaya)), (28, 28));
+    let t = g.types_of(lions);
+    assert!(t.land && t.creature);
+    assert!(g.has_subtype(lions, "Forest") && g.has_subtype(lions, "Cat"));
+    assert!(
+        !g.types_of(theirs).land && !g.has_subtype(theirs, "Forest"),
+        "yours only"
+    );
+    to_main1(&mut g, 5, 0);
+    assert_eq!(
+        colors(&g, lions),
+        [false, false, false, false, true],
+        "a Forest taps for green"
+    );
+    assert_eq!(colors(&g, elves), [false, false, false, false, true]);
+}
+
+#[test]
+fn lorans_escape_gives_hexproof_and_indestructible_then_scries() {
+    let mut g = table();
+    let ring = put(&mut g, 0, "Sol Ring");
+    let top = g.add_card(0, cid("Counterspell"), Zone::Library);
+    let e = hand(&mut g, 0, "Loran's Escape");
+    play(&mut g, e, false, &[obj(ring)], &[Action::Yes]); // the top card to the bottom
+    let k = g.keywords(ring);
+    assert!(k.has(Keywords::HEXPROOF) && k.has(Keywords::INDESTRUCTIBLE));
+    assert_eq!(g.players[0].library[0], top, "scried to the bottom");
+}

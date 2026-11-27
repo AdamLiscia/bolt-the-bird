@@ -2332,6 +2332,44 @@ pub fn script(name: &str) -> Option<Script> {
                 equip(d, "{7}");
             },
         ),
+        // Core theme d3, batch 41 (idea decks: Sythis, Toski, Ratadrabik)
+        "Darksteel Mutation" => s(
+            &[
+                "Enchant creature",
+                "Enchanted creature is an Insect artifact creature with base power and toughness 0/1 and has indestructible, and it loses all other abilities, card types, and creature types.",
+            ],
+            |d, _| {
+                d.aura = true;
+                d.spell = Some(Ability::new(vec![CREATURE], vec![]));
+                d.enchanted_creature_type_becomes = Some("Insect");
+                d.enchanted_becomes_artifact_creature = true;
+                d.statics.push(Static {
+                    scope: Scope::Attached,
+                    lose_abilities: true,
+                    base_pt: Some((0, 1)),
+                    keywords: Keywords::INDESTRUCTIBLE,
+                    ..neutral_static()
+                });
+            },
+        ),
+        "Ashaya, Soul of the Wild" => s(
+            &[
+                "Ashaya's power and toughness are each equal to the number of lands you control.",
+                "Nontoken creatures you control are Forest lands in addition to their other types.",
+            ],
+            |d, _| {
+                d.pt_lands = true;
+                d.your_nontoken_creatures_are_forest_lands = true;
+                // A Forest's "{T}: Add {G}" (CR 305.6), in the mana-source pass.
+                d.your_subtypes_tap_for_green = &["Forest"];
+                d.statics.push(neutral_static()); // so it's among the static sources
+            },
+        ),
+        "Loran's Escape" => s(&["Target artifact or creature gains hexproof and indestructible until end of turn. Scry 1."], |d, _| {
+            let f = Filter { artifacts: true, ..CREATURE };
+            let keywords = Keywords::HEXPROOF.with(Keywords::INDESTRUCTIBLE);
+            spell(d, vec![f], vec![Effect::Grant { slot: 0, keywords }, Effect::Scry { n: 1 }]);
+        }),
         _ => None,
     }
 }
@@ -2643,4 +2681,8 @@ pub const PG_D3_SCRIPTED: &[&str] = &[
     "Shadowspear",
     "Brain Freeze",
     "Blackblade Reforged",
+    // Core theme d3, batch 41
+    "Darksteel Mutation",
+    "Ashaya, Soul of the Wild",
+    "Loran's Escape",
 ];
