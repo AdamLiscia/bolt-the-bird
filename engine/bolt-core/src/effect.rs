@@ -2591,6 +2591,26 @@ pub enum Effect {
     /// the spell in `extra` (a cast trigger's spell) was paid for with Treasure mana
     /// (`Game::treasure_mana_spent`).
     StopUnlessTreasureManaSpentOnExtra,
+    /// Prevent all combat damage that would be dealt to you this turn; for each 1 damage prevented
+    /// this way, create a `def` token (Inkshield: a 2/1 Inkling), see `Game::combat_shield_tokens`.
+    PreventCombatDamageToYouMakingTokens {
+        def: usize,
+    },
+    /// You gain protection from everything until your next turn (The One Ring): damage to you is
+    /// prevented, and nothing can target you (`Game::player_protected_until`).
+    YouGainProtectionUntilYourNextTurn,
+    /// The controller of the creature in the item's `extra` creates a `def` token that's tapped and
+    /// attacking (Najeela's Warriors).
+    ExtrasControllerCreatesAttackingToken {
+        def: usize,
+    },
+    /// Put the creature card in `slot` from a graveyard onto the battlefield under your control
+    /// with a corpse counter (`Object::corpse_counter`: exiled if it would leave) (From the
+    /// Catacombs).
+    ReanimateWithCorpseCounter(u8),
+    /// "If a source would deal damage to a player or battle this turn, it deals that much damage
+    /// plus 2 instead." (Rankle and Torbran), see `Game::plus_two_to_players`.
+    DamageToPlayersPlusTwoThisTurn,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -2888,6 +2908,8 @@ pub enum Pick {
     CreatureManaValueAtMost(u32),
     /// A creature or planeswalker card (Takenuma, Abandoned Mire).
     CreatureOrPlaneswalker,
+    /// A noncreature, nonland card (Narset, Parter of Veils).
+    NoncreatureNonland,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -3541,6 +3563,9 @@ pub enum When {
     /// "At the beginning of your upkeep, if [this] is in the command zone" (Oloro, Ageless
     /// Ascetic): fired for the active player's cards in the command zone, not their permanents.
     YourUpkeepInCommandZone,
+    /// "Whenever a [subtype] attacks", any player's (Najeela: Warrior); the attacker is the item's
+    /// `extra`.
+    CreatureOfSubtypeAttacks(&'static str),
     /// With `Effect::DelayedThisTurn`: "until end of turn, whenever a player casts an instant or
     /// sorcery spell" (Bonus Round), controlled by that player, with the spell in `extra`.
     PlayerCastsInstantOrSorceryThisTurn,
