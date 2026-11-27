@@ -1470,6 +1470,14 @@ pub enum Decision {
     DiscardLandOrGraveyard { card: ObjId },
     /// Lion's Eye Diamond: `Mode` 0-4 (WUBRG), the color of the `n` mana it adds.
     ManaOfOneColor { source: ObjId, n: u8 },
+    /// Westvale Abbey's cost: `Pick` another creature to sacrifice (`chosen` so far, `need` in
+    /// all) for `source`'s ability `n`, or `No` to cancel.
+    SacrificeCreaturesForCost {
+        source: ObjId,
+        n: usize,
+        chosen: Vec<ObjId>,
+        need: u8,
+    },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -9419,6 +9427,9 @@ impl Game {
                     || (a.once_each_turn && self.obj(id).activated_turn == Some(self.turn))
                     || self.obj(id).kind_counters < a.remove_kind_counters
                     || (a.remove_plus_counters > 0 && self.obj(id).counters < a.remove_plus_counters as i32)
+                    || (a.sacrifice_n_creatures > 0
+                        && self.creatures(p).filter(|&c| !self.cant_be_sacrificed(c)).count()
+                            < a.sacrifice_n_creatures as usize)
                     || (a.remove_counters_from_others > 0
                         && self.others_with_counters(p, id).iter().map(|e| e.1).sum::<i32>()
                             < a.remove_counters_from_others as i32)
@@ -11475,7 +11486,20 @@ impl Game {
             ),
             (Pending::Priority(p), Action::Activate(id, n)) => {
                 let left = self.activated_of(id, n).remove_counters_from_others;
-                if left > 0 {
+                let need = self.activated_of(id, n).sacrifice_n_creatures;
+                if need > 0 {
+                    // Westvale Abbey: the creatures are chosen first.
+                    let chosen = Vec::new();
+                    self.ask(
+                        p,
+                        Decision::SacrificeCreaturesForCost {
+                            source: id,
+                            n,
+                            chosen,
+                            need,
+                        },
+                    );
+                } else if left > 0 {
                     // Tekuthal: the counters are chosen first.
                     self.ask(p, Decision::RemoveCountersFromOthers { source: id, n, left });
                 } else {
@@ -13710,6 +13734,15 @@ impl Game {
                 v.push(Action::No);
                 v
             }
+            Decision::SacrificeCreaturesForCost { chosen, .. } => {
+                let mut v: Vec<Action> = self
+                    .creatures(p)
+                    .filter(|&c| !self.cant_be_sacrificed(c) && !chosen.contains(&c))
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
             Decision::RemoveCountersFromOthers { source, .. } => {
                 let mut v: Vec<Action> = self
                     .others_with_counters(p, *source)
@@ -14948,6 +14981,40 @@ impl Game {
                 self.give_priority(active);
             } else if self.resolving.is_some() {
                 self.continue_resolving();
+            }
+            return;
+        }
+        if let Decision::SacrificeCreaturesForCost {
+            source,
+            n,
+            mut chosen,
+            need,
+        } = d
+        {
+            match a {
+                Action::Pick(x) => {
+                    chosen.push(x);
+                    if chosen.len() < need as usize {
+                        self.ask(
+                            p,
+                            Decision::SacrificeCreaturesForCost {
+                                source,
+                                n,
+                                chosen,
+                                need,
+                            },
+                        );
+                    } else {
+                        for c in chosen {
+                            if self.obj(c).zone == Zone::Battlefield {
+                                self.move_to(c, Zone::Graveyard);
+                                self.sacrificed(c, p);
+                            }
+                        }
+                        self.activate(p, source, n, None);
+                    }
+                }
+                _ => self.give_priority(p), // cancelled: nothing was sacrificed
             }
             return;
         }

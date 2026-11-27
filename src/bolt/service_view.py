@@ -220,6 +220,7 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         verb = verb or {"GitrogLandPick": "Put onto the battlefield tapped:"}.get(d)
         verb = verb or {"RemoveCountersFromOthers": "Remove a counter from"}.get(d)
         verb = verb or {"ImprintNonartifactNonland": "Exile (imprint):", "DiscardLandOrGraveyard": "Discard (it stays):"}.get(d)  # fmt: skip
+        verb = verb or {"SacrificeCreaturesForCost": "Sacrifice (for the cost):"}.get(d)
         if d == "IterationPick":
             verb = "Put into your hand:" if dec.get("to_hand") else "Put on the bottom:"
         verb = verb or {"ChooseRingBearer": "Choose as your Ring-bearer:"}.get(d)
@@ -254,7 +255,7 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         "PayWardLife": (f"Pay {dec.get('life', 0)} life for ward ({subject})", f"Don't pay ({subject} is countered)"),
         "PayOrCountered": (f"Pay {dec.get('cost', '')} ({subject} resolves)", f"Don't pay ({subject} is countered)"),
         "SplitPiles": (f"Put {subject} in pile A", f"Put {subject} in pile B"),
-        "ShockLand": (f"Pay 2 life: {subject} enters untapped", f"{subject} enters tapped"),
+        "ShockLand": (f"Pay {dec.get('life', 2)} life: {subject} enters untapped", f"{subject} enters tapped"),
         "CommanderToCommandZone": (f"Move {subject} to the command zone", f"Leave {subject} there"),
         "ChoosePile": ("Choose pile A", "Choose pile B"),
         "PayToStop": (f"Pay {dec.get('cost', '')}", "Don't pay"),
@@ -266,6 +267,7 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         "SacrificeSaddler": ("Sacrifice a creature that saddled it", "Don't sacrifice"),
         "RemoveCountersFromOthers": ("Remove a counter", "Don't activate it"),
         "ImprintNonartifactNonland": ("Exile a card", "Don't exile a card"),
+        "SacrificeCreaturesForCost": ("Sacrifice it", "Don't activate it"),
         "DiscardLandOrGraveyard": ("Discard a land", f"Don't discard ({subject or 'it'} goes to the graveyard)"),
         "SylvanPayOrTop": (f"Pay 4 life to keep {subject or 'it'}", f"Put {subject or 'it'} on top of your library"),
         "ExpropriateVote": ("Vote time (an extra turn)", "Vote money (a permanent)"),

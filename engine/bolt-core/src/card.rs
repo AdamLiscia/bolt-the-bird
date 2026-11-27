@@ -407,6 +407,10 @@ pub struct Activated {
     /// Activated from your hand, exiling this card as a cost (Elvish Spirit Guide: "Exile this
     /// card from your hand: Add {G}.").
     pub from_hand_exile: bool,
+    /// "Sacrifice N creatures" in the cost (Westvale Abbey: five): the player picks each one
+    /// (`Decision::SacrificeCreaturesForCost`) before the ability is activated; they're
+    /// sacrificed as it's activated, before its mana is paid.
+    pub sacrifice_n_creatures: u8,
 }
 
 /// A loyalty ability's cost of −X (CR 606.4, 107.3): `loyalty_abilities` uses this as the cost,

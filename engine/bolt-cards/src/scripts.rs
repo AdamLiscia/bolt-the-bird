@@ -467,6 +467,23 @@ pub fn token_defs() -> Vec<CardDef> {
             t.colors = [false, false, false, false, true];
             t
         },
+        token("Placeholder 111", "", 0, 0, Keywords::NONE), // 111: another lane's slot
+        token("Placeholder 112", "", 0, 0, Keywords::NONE), // 112: another lane's slot
+        token("Placeholder 113", "", 0, 0, Keywords::NONE), // 113: another lane's slot
+        token("Placeholder 114", "", 0, 0, Keywords::NONE), // 114: another lane's slot
+        token("Placeholder 115", "", 0, 0, Keywords::NONE), // 115: another lane's slot
+        token("Placeholder 116", "", 0, 0, Keywords::NONE), // 116: another lane's slot
+        token("Placeholder 117", "", 0, 0, Keywords::NONE), // 117: another lane's slot
+        token("Placeholder 118", "", 0, 0, Keywords::NONE), // 118: another lane's slot
+        token("Placeholder 119", "", 0, 0, Keywords::NONE), // 119: another lane's slot
+        token("Placeholder 120", "", 0, 0, Keywords::NONE), // 120: another lane's slot
+        token("Placeholder 121", "", 0, 0, Keywords::NONE), // 121: another lane's slot
+        {
+            // 122, lane d1: Westvale Abbey's "1/1 white and black Human Cleric creature token".
+            let mut t = token("Human Cleric", "Human Cleric", 1, 1, Keywords::NONE);
+            t.colors = [true, false, true, false, false];
+            t
+        },
     ]
 }
 
@@ -695,6 +712,30 @@ pub struct Tokens {
     pub slug: usize,
     /// 110: Nissa, Ascended Animist's X/X green Phyrexian Horror (0/0, P/T set from X).
     pub phyrexian_horror_x: usize,
+    /// 111: placeholder (another lane's slot).
+    pub placeholder_111: usize,
+    /// 112: placeholder (another lane's slot).
+    pub placeholder_112: usize,
+    /// 113: placeholder (another lane's slot).
+    pub placeholder_113: usize,
+    /// 114: placeholder (another lane's slot).
+    pub placeholder_114: usize,
+    /// 115: placeholder (another lane's slot).
+    pub placeholder_115: usize,
+    /// 116: placeholder (another lane's slot).
+    pub placeholder_116: usize,
+    /// 117: placeholder (another lane's slot).
+    pub placeholder_117: usize,
+    /// 118: placeholder (another lane's slot).
+    pub placeholder_118: usize,
+    /// 119: placeholder (another lane's slot).
+    pub placeholder_119: usize,
+    /// 120: placeholder (another lane's slot).
+    pub placeholder_120: usize,
+    /// 121: placeholder (another lane's slot).
+    pub placeholder_121: usize,
+    /// 122: Westvale Abbey's 1/1 white and black Human Cleric.
+    pub human_cleric: usize,
 }
 
 impl Tokens {
@@ -811,6 +852,18 @@ impl Tokens {
             rogue_2: base + 108,
             slug: base + 109,
             phyrexian_horror_x: base + 110,
+            placeholder_111: base + 111,
+            placeholder_112: base + 112,
+            placeholder_113: base + 113,
+            placeholder_114: base + 114,
+            placeholder_115: base + 115,
+            placeholder_116: base + 116,
+            placeholder_117: base + 117,
+            placeholder_118: base + 118,
+            placeholder_119: base + 119,
+            placeholder_120: base + 120,
+            placeholder_121: base + 121,
+            human_cleric: base + 122,
         }
     }
 }

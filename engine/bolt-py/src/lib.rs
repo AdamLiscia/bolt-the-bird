@@ -612,7 +612,16 @@ impl Game {
                     }
                     D::SacrificeAnother { source } => e.set_item("card", one(*source))?,
                     D::CommanderToCommandZone { card } => e.set_item("card", one(*card))?,
-                    D::ShockLand { card } => e.set_item("card", one(*card))?,
+                    D::ShockLand { card } => {
+                        e.set_item("card", one(*card))?;
+                        let life = g.def_of(*card).zones.shock_life; // 0: the usual 2
+                        e.set_item("life", if life > 0 { life } else { 2 })?;
+                    }
+                    D::DiscardLandOrGraveyard { card } => e.set_item("card", one(*card))?,
+                    D::ManaOfOneColor { n, .. } => e.set_item("n", *n)?,
+                    D::SacrificeCreaturesForCost { chosen, need, .. } => {
+                        e.set_item("left", *need as usize - chosen.len())?;
+                    }
                     D::SacrificeCreatures { left } => e.set_item("left", *left)?,
                     D::Search { what, .. } => e.set_item("what", format!("{what:?}"))?,
                     D::PutPicksOntoBattlefield { cards, left, .. } => {

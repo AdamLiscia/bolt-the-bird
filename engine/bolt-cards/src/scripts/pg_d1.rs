@@ -1907,6 +1907,21 @@ pub fn script(name: &str) -> Option<Script> {
                 d.activated[n].discard_hand = true;
             },
         ),
+        // ---- idea decks: Sephiroth ----
+        "Westvale Abbey // Ormendahl, Profane Prince" => s(
+            &[
+                "{T}: Add {C}.",
+                "{5}, {T}, Pay 1 life: Create a 1/1 white and black Human Cleric creature token.",
+                "{5}, {T}, Sacrifice five creatures: Transform this land, then untap it.",
+            ],
+            |d, t| {
+                d.mana = Some(ManaSource { colorless: true, ..ManaSource::default() });
+                let n = activated(d, "{5}", true, vec![], vec![Effect::CreateToken { who: Who::You, def: t.human_cleric, n: 1 }]);
+                d.activated[n].life = 1;
+                let n = activated(d, "{5}", true, vec![], vec![Effect::TransformSelf, Effect::UntapSelf]);
+                d.activated[n].sacrifice_n_creatures = 5;
+            },
+        ),
         // ---- Atla Palani ----
         "Instill Energy" => s(
             &[
@@ -2156,4 +2171,5 @@ pub const PG_D1_SCRIPTED: &[&str] = &[
     "Elvish Spirit Guide",
     "Lion's Eye Diamond",
     "Instill Energy",
+    "Westvale Abbey // Ormendahl, Profane Prince",
 ];

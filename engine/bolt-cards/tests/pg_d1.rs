@@ -3922,3 +3922,45 @@ fn instill_energy_lets_a_new_creature_attack_and_untaps_it_once() {
         "attacks as though it had haste"
     );
 }
+
+#[test]
+fn westvale_abbey_makes_clerics_and_flips_on_five_picked_sacrifices() {
+    let mut g = table();
+    let abbey = put(&mut g, 0, "Westvale Abbey // Ormendahl, Profane Prince");
+    act(&mut g, Action::Activate(abbey, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].life, 39);
+    assert_eq!(
+        g.creatures(0)
+            .filter(|&c| g.def_of(c).name == "Human Cleric")
+            .count(),
+        1
+    );
+
+    let mut g = table();
+    let abbey = put(&mut g, 0, "Westvale Abbey // Ormendahl, Profane Prince");
+    let elves: Vec<ObjId> = (0..6).map(|_| put(&mut g, 0, "Llanowar Elves")).collect();
+    act(&mut g, Action::Activate(abbey, 1));
+    assert!(matches!(g.pending, Pending::Decide(_)));
+    for &e in &elves[..5] {
+        act(&mut g, Action::Pick(e));
+    }
+    resolve_all(&mut g, &[]);
+    assert!(
+        elves[..5].iter().all(|&e| g.obj(e).zone == Zone::Graveyard),
+        "the five picked"
+    );
+    assert_eq!(g.obj(elves[5]).zone, Zone::Battlefield, "the sixth stays");
+    assert!(g.obj(abbey).transformed && !g.obj(abbey).tapped);
+    assert_eq!(g.power(abbey), 9);
+
+    let mut g = table();
+    let abbey = put(&mut g, 0, "Westvale Abbey // Ormendahl, Profane Prince");
+    for _ in 0..4 {
+        put(&mut g, 0, "Llanowar Elves");
+    }
+    assert!(
+        !g.legal_actions().contains(&Action::Activate(abbey, 1)),
+        "four creatures: can't"
+    );
+}

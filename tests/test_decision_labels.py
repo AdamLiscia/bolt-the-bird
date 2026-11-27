@@ -332,3 +332,21 @@ def test_the_moxen_and_lions_eye_diamond_ask_their_choices():
     assert label(mox, "No", 0) == "Don't discard (Thriving Heath goes to the graveyard)"
     led = {"kind": "ManaOfOneColor", "source": [3, 1], "n": 3}
     assert label(led, "Mode", 3) == "Add 3 red mana"
+
+
+def test_a_shock_land_names_its_life():
+    assert (
+        label({"kind": "ShockLand", "card": [3, 1], "life": 3}, "Yes", 0)
+        == "Pay 3 life: Thriving Heath enters untapped"
+    )
+    assert (
+        label({"kind": "ShockLand", "card": [3, 1], "life": 2}, "Yes", 0)
+        == "Pay 2 life: Thriving Heath enters untapped"
+    )
+    assert label({"kind": "ShockLand", "card": [3, 1]}, "No", 0) == "Thriving Heath enters tapped"
+
+
+def test_westvale_abbey_picks_each_creature_to_sacrifice():
+    dec = {"kind": "SacrificeCreaturesForCost", "left": 5}
+    assert sv._decision_label(dec, "Pick", 0, "Llanowar Elves") == "Sacrifice (for the cost): Llanowar Elves"
+    assert label(dec, "No", 0) == "Don't activate it"
