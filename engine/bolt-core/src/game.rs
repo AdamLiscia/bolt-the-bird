@@ -4315,7 +4315,9 @@ impl Game {
     /// An Aura on it says "Enchanted creature doesn't untap during its controller's untap step."
     /// (or "can't become untapped", Blossombind).
     fn enchanted_doesnt_untap(&self, id: ObjId) -> bool {
-        self.attached_aura_has(id, |d| d.enchanted_doesnt_untap || d.enchanted_cant_become_untapped)
+        self.attached_aura_has(id, |d| {
+            d.enchanted_doesnt_untap || d.enchanted_cant_become_untapped
+        })
     }
 
     /// Whether an Aura attached to `id` with its abilities has `what`.
@@ -8137,7 +8139,9 @@ impl Game {
             | Action::CastFromGraveyard(c)
             | Action::CastFromGraveyardAs(c, _)
             | Action::CastHarmonize(c, _)
-            | Action::CastOmen(c) => !self.cast_zone_blocked(p, self.obj(c).zone) && !self.legendary_sorcery_blocked(p, c),
+            | Action::CastOmen(c) => {
+                !self.cast_zone_blocked(p, self.obj(c).zone) && !self.legendary_sorcery_blocked(p, c)
+            }
             _ => true,
         });
         v.extend(self.activations(p));
