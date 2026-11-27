@@ -2522,6 +2522,12 @@ pub enum Effect {
     /// "You may pay {X}, where X is less than or equal to the amount of life you gained. If you do,
     /// draw X cards." (Well of Lost Dreams): the trigger's amount caps X, as `Decision::PayXDrawX`.
     MayPayXUpToAmountDrawX,
+    /// "You may put a land card from your hand onto the battlefield tapped. If you control
+    /// `enchantments` or more enchantments, instead you may put a creature or land card ..."
+    /// (Composer of Spring: 6), as `Decision::LandOrCreatureFromHandTapped`.
+    MayPutLandOrCreatureFromHandTapped {
+        enchantments: u8,
+    },
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -3447,7 +3453,7 @@ pub enum When {
     SubtypeYouControlAttacks(&'static str),
     /// "Whenever a [subtype] is put into a graveyard from the battlefield" (Ygra, Eater of All: a
     /// Food), anyone's, tokens included; slot 0 (if `triggering`) is that card. The subtype is
-    /// checked on the card in the graveyard.
+    /// checked as it last existed on the battlefield, statics included (Ygra's own Foods).
     SubtypeToGraveyardFromBattlefield(&'static str),
     /// "When this [permanent] enters untapped" (Witch's Cottage): checked with the "enters tapped"
     /// triggers, once its enter replacements have applied.

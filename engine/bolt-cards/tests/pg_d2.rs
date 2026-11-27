@@ -2350,3 +2350,33 @@ fn call_of_the_ring_tempts_at_upkeep_and_draws_for_two_life_on_choosing() {
     assert_eq!(g.players[0].life, 38);
     assert_eq!(g.players[0].hand.len(), before + 1);
 }
+
+#[test]
+fn composer_of_spring_puts_a_land_or_with_six_enchantments_a_creature_tapped() {
+    let mut g = table();
+    put(&mut g, 0, "Composer of Spring");
+    let forest = hand(&mut g, 0, "Forest");
+    let lions = hand(&mut g, 0, "Savannah Lions");
+    let blood = hand(&mut g, 0, "Exquisite Blood");
+    act(&mut g, Action::Cast(blood));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(has(&g, Action::Pick(forest)) && has(&g, Action::No));
+    assert!(!has(&g, Action::Pick(lions)), "one enchantment: a land only");
+    act(&mut g, Action::Pick(forest));
+    assert_eq!(g.obj(forest).zone, Zone::Battlefield);
+    assert!(g.obj(forest).tapped);
+    for _ in 0..4 {
+        put(&mut g, 0, "Exquisite Blood"); // five enchantments; the next one cast makes six
+    }
+    let blood2 = hand(&mut g, 0, "Exquisite Blood");
+    act(&mut g, Action::Cast(blood2));
+    while !matches!(g.pending, Pending::Decide(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(has(&g, Action::Pick(lions)), "six enchantments: a creature too");
+    act(&mut g, Action::Pick(lions));
+    assert_eq!(g.obj(lions).zone, Zone::Battlefield);
+    assert!(g.obj(lions).tapped);
+}

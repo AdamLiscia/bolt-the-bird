@@ -1067,6 +1067,13 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::YouChooseRingBearer, vec![], vec![Effect::MayPayLife(2), draw(1)]);
             },
         ),
+        // ---- Core: triggers, batch 17 (constellation's land or creature from hand) ----
+        "Composer of Spring" => s(
+            &["Constellation — Whenever an enchantment you control enters, you may put a land card from your hand onto the battlefield tapped. If you control six or more enchantments, instead you may put a creature or land card from your hand onto the battlefield tapped."],
+            |d, _| {
+                on(d, When::EnchantmentYouControlEnters, vec![], vec![Effect::MayPutLandOrCreatureFromHandTapped { enchantments: 6 }]);
+            },
+        ),
         _ => None,
     }
 }
@@ -1279,4 +1286,5 @@ pub const PG_D2_SCRIPTED: &[&str] = &[
     "Well of Lost Dreams",
     "Hullbreaker Horror",
     "Call of the Ring",
+    "Composer of Spring",
 ];

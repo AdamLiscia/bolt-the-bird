@@ -185,3 +185,8 @@ def test_well_of_lost_dreams_pays_x_to_draw_x():
     assert label(dec, "Amount", 3) == "Pay {3}: draw 3 cards"
     sourced = {**dec, "source": [5, 1]}
     assert label(sourced, "Amount", 2) == "Pay {2}: draw 2 cards (Thriving Heath)"
+
+
+def test_composer_of_spring_puts_a_land_or_creature_tapped():
+    dec = {"kind": "LandOrCreatureFromHandTapped", "creature": True}
+    assert sv._decision_label(dec, "Pick", 0, "Forest") == "Put onto the battlefield tapped: Forest"
