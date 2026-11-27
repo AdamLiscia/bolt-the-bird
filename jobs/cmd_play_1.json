@@ -19,7 +19,7 @@
     "--iters",
     "500",
     "--games",
-    "128",
+    "256",
     "--workers",
     "6",
     "--threads",
@@ -31,6 +31,10 @@
     "--batch",
     "1024",
     "--epochs",
-    "1"
+    "1",
+    "--eval-smart-ms",
+    "200",
+    "--stall-minutes",
+    "60"
   ]
 }
