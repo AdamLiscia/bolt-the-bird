@@ -16591,6 +16591,11 @@ impl Game {
             Effect::CountersSelf { n } => {
                 self.add_counters(src, n);
             }
+            Effect::AdaptSelf(n) => {
+                if self.obj(src).counters <= 0 {
+                    self.add_counters(src, n);
+                }
+            }
             Effect::PumpAll {
                 who,
                 power,

@@ -2402,7 +2402,7 @@
   {
    "card": "All Will Be One",
    "deck": "Korvold, Fae-Cursed King",
-   "missing": "needs core: damage whenever you put counters on a permanent or player",
+   "missing": "needs core: damage whenever you put counters on a permanent or player [done by d2 batch 25: When::YouPutCounters with Effect::DamageAmountToAny, scripted in pg_d2]",
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2"
@@ -2410,7 +2410,7 @@
   {
    "card": "Basking Broodscale",
    "deck": "Korvold, Fae-Cursed King",
-   "missing": "needs core: adapt, a per-event counters trigger, and a 0/1 colorless Eldrazi Spawn creature token",
+   "missing": "needs core: adapt, a per-event counters trigger, and a 0/1 colorless Eldrazi Spawn creature token [done by d2 batch 25: Effect::AdaptSelf, PlusCountersPutOnThis, scripted in pg_d2]",
    "lane": "d2",
    "theme": "triggers",
    "owner": "d2"

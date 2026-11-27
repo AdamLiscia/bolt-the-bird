@@ -2743,3 +2743,32 @@ fn currency_converter_exiles_discards_and_turns_them_into_treasure_or_rogues() {
     assert_eq!(g.obj(forest).zone, Zone::Graveyard);
     assert_eq!(tokens(&g, 0, "Treasure").len(), 1);
 }
+
+/// Resolves everything, targeting the opponent and answering yes.
+fn settle_yes_at_opponent(g: &mut Game) {
+    while !g.items.is_empty() || matches!(g.pending, Pending::ChooseTarget(_) | Pending::Decide(_)) {
+        let a = match g.pending {
+            Pending::ChooseTarget(_) => Action::Target(Target::Player(1)),
+            Pending::Decide(_) => Action::Yes,
+            _ => Action::PassPriority,
+        };
+        act(g, a);
+    }
+}
+
+#[test]
+fn basking_broodscale_adapts_once_and_all_will_be_one_burns_for_the_counters() {
+    let mut g = table();
+    put(&mut g, 0, "All Will Be One");
+    let lizard = put(&mut g, 0, "Basking Broodscale");
+    act(&mut g, Action::Activate(lizard, 0)); // adapt 1
+    settle_yes_at_opponent(&mut g);
+    assert_eq!(g.obj(lizard).counters, 1);
+    assert_eq!(tokens(&g, 0, "Eldrazi Spawn").len(), 1, "a counter was put on it");
+    assert_eq!(g.players[1].life, 39, "one counter: 1 damage");
+    act(&mut g, Action::Activate(lizard, 0)); // it has a counter: adapt does nothing
+    settle_yes_at_opponent(&mut g);
+    assert_eq!(g.obj(lizard).counters, 1);
+    assert_eq!(tokens(&g, 0, "Eldrazi Spawn").len(), 1);
+    assert_eq!(g.players[1].life, 39);
+}

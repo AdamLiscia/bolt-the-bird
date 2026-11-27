@@ -2674,6 +2674,9 @@ pub enum Effect {
         land: usize,
         nonland: usize,
     },
+    /// Adapt `n` (CR 701.46): if the source has no +1/+1 counters on it, put `n` on it (Basking
+    /// Broodscale).
+    AdaptSelf(i32),
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
