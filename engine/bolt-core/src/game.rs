@@ -755,6 +755,21 @@ fn undying_ability() -> &'static Ability {
 }
 
 /// Offspring's triggered ability (CR 702.175a): a 1/1 token copy of the creature.
+/// An ability that does nothing: what a stack entry resolves as when no definition has the ability
+/// it names (a mismatch the engine should never make). It does nothing rather than panic.
+fn no_ability() -> &'static Ability {
+    static A: std::sync::OnceLock<Ability> = std::sync::OnceLock::new();
+    A.get_or_init(|| Ability::new(Vec::new(), Vec::new()))
+}
+
+/// Mode `m` of `a`, or nothing if it has no such mode.
+fn mode_of(a: &Ability, m: Option<u8>) -> &Ability {
+    match m {
+        Some(m) => a.modes.get(m as usize).unwrap_or_else(|| no_ability()),
+        None => a,
+    }
+}
+
 fn offspring_ability() -> &'static Ability {
     static A: std::sync::OnceLock<Ability> = std::sync::OnceLock::new();
     A.get_or_init(|| Ability::new(Vec::new(), vec![Effect::OffspringCopy]))
@@ -6912,15 +6927,15 @@ impl Game {
         let def = self.def_of(item.source);
         match item.kind {
             StackKind::Spell | StackKind::SpellCopy => match item.mode {
-                Some(OMEN_MODE) => &def.omen.as_ref().expect("an Omen").spell,
-                Some(m) => &def.modes[m as usize],
+                Some(OMEN_MODE) => def.omen.as_ref().map_or(no_ability(), |o| &o.spell),
+                Some(m) => def.modes.get(m as usize).unwrap_or_else(|| no_ability()),
                 None if item.kicked && def.kicked_spell.is_some() => {
-                    def.kicked_spell.as_ref().expect("kicked")
+                    def.kicked_spell.as_ref().unwrap_or_else(|| no_ability())
                 }
                 None if item.alt && def.overload_spell.is_some() => {
-                    def.overload_spell.as_ref().expect("overload") // CR 702.96b
+                    def.overload_spell.as_ref().unwrap_or_else(|| no_ability()) // CR 702.96b
                 }
-                None => def.spell.as_ref().expect("a spell with an ability"),
+                None => def.spell.as_ref().unwrap_or_else(|| no_ability()),
             },
             // A trigger whose source has turned to its other face since it triggered (Nissa,
             // Vastwood Seer: two lands entered, and the first trigger transformed her) still
@@ -6933,23 +6948,16 @@ impl Game {
                     .rev()
                     .find(|e| e.0 == item.source && Some(e.1) == item.source_zcc && e.2 == n);
                 if let Some(e) = copied {
-                    return match item.mode {
-                        Some(m) => &e.3.modes[m as usize],
-                        None => &e.3,
-                    };
+                    return mode_of(&e.3, item.mode);
                 }
-                let trigger = def.triggers.get(n).unwrap_or_else(|| {
-                    let printed = &self.defs[self.obj(item.source).def];
-                    printed
-                        .triggers
-                        .get(n)
-                        .or_else(|| printed.back.as_ref().and_then(|b| b.triggers.get(n)))
-                        .expect("a trigger of its source")
-                });
-                match item.mode {
-                    Some(m) => &trigger.ability.modes[m as usize],
-                    None => &trigger.ability,
-                }
+                let printed = &self.defs[self.obj(item.source).def];
+                let trigger = def
+                    .triggers
+                    .get(n)
+                    .or_else(|| printed.triggers.get(n))
+                    .or_else(|| printed.back.as_ref().and_then(|b| b.triggers.get(n)));
+                // No definition has it: it does nothing.
+                trigger.map_or(no_ability(), |t| mode_of(&t.ability, item.mode))
             }
             StackKind::Ward { .. }
             | StackKind::WardLife { .. }
@@ -6970,11 +6978,12 @@ impl Game {
                         .iter()
                         .rev()
                         .find(|e| e.0 == item.source && e.1 == n);
-                    &e.expect("a snapshot").2
+                    e.map_or(no_ability(), |e| &e.2)
                 }
                 None => {
                     let printed = &self.defs[self.obj(item.source).def];
-                    &printed.back.as_ref().expect("a back face").loyalty_abilities[n].1
+                    let back = printed.back.as_ref().and_then(|b| b.loyalty_abilities.get(n));
+                    back.map_or(no_ability(), |a| &a.1)
                 }
             },
             StackKind::Offspring => offspring_ability(),

@@ -173,18 +173,17 @@ fn tatyova_vs_myrkul_seed_0_plays_out() {
     first_priority_playouts(3, 2, 0);
 }
 
-/// The search's safety net: a stack entry that panics when it resolves (a trigger its source doesn't
-/// have) makes every playout panic. The pilot scores those as losses and plays the baseline's move,
+/// The search's safety net: a stack entry that panics when it resolves (its source doesn't exist)
+/// makes every playout panic. The pilot scores those as losses and plays the baseline's move,
 /// and never panics out to its caller.
 #[test]
 fn a_panicking_playout_scores_as_a_loss() {
     let mut g = table();
-    let plains = g.add_card(0, cid("Plains"), Zone::Battlefield);
     g.add_card(0, cid("Opt"), Zone::Hand); // an instant: a move besides passing
     g.items.push(StackItem {
-        source: plains,
+        source: bolt_core::ObjId(1_000_000), // no such object: resolving it panics
         controller: 0,
-        kind: StackKind::Trigger(99),
+        kind: StackKind::Trigger(0),
         targets: Vec::new(),
         kicked: false,
         flashback: false,
@@ -328,4 +327,32 @@ fn the_rules_player_ends_a_chain_of_smog() {
     // Player 1 discards 2 and copies it at player 0 (1 card), who discards it and copies it at
     // player 1's last card; then neither has a card to lose and the chain stops.
     assert!(g.players[0].hand.is_empty() && g.players[1].hand.is_empty());
+}
+
+/// Desktop training, 2026-11-27: 7 "a trigger of its source" panics. A trigger no definition has (no
+/// snapshot, current definition, front or back face) now resolves as doing nothing.
+#[test]
+fn a_trigger_its_source_doesnt_have_does_nothing() {
+    let mut g = table();
+    let plains = g.add_card(0, cid("Plains"), Zone::Battlefield);
+    g.items.push(StackItem {
+        source: plains,
+        controller: 0,
+        kind: StackKind::Trigger(99),
+        targets: Vec::new(),
+        kicked: false,
+        flashback: false,
+        extra: None,
+        mode: Some(3),
+        amount: 0,
+        alt: false,
+        x: 0,
+        division: Vec::new(),
+        source_zcc: None,
+    });
+    let life = (g.players[0].life, g.players[1].life);
+    resolve_all(&mut g, &[]);
+    assert!(g.items.is_empty());
+    assert_eq!((g.players[0].life, g.players[1].life), life);
+    assert_eq!(g.obj(plains).zone, Zone::Battlefield);
 }
