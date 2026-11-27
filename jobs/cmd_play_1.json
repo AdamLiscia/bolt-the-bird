@@ -1,0 +1,40 @@
+{
+  "name": "cmd_play_1",
+  "threads": 6,
+  "seconds": 604800,
+  "mb": 8000,
+  "env": {
+    "BOLT_PLAY_SET": "CMD",
+    "BOLT_PLAY_FORMAT": "commander",
+    "BOLT_DECKS": "handoff/cmd/playable_decks.txt"
+  },
+  "cmd": [
+    ".venv/bin/python",
+    "scripts/train_ppo_play.py",
+    "--name",
+    "cmd_play_1",
+    "--init",
+    "checkpoints/play/cmd_init_from_tdm.pt",
+    "--self-play",
+    "--iters",
+    "500",
+    "--games",
+    "256",
+    "--workers",
+    "6",
+    "--threads",
+    "6",
+    "--eval-every",
+    "10",
+    "--eval-pairs",
+    "36",
+    "--batch",
+    "1024",
+    "--epochs",
+    "1",
+    "--eval-smart-ms",
+    "200",
+    "--stall-minutes",
+    "60"
+  ]
+}
