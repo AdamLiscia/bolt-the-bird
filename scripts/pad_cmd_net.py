@@ -31,10 +31,11 @@ sys.path.insert(0, str(ROOT / "src"))
 from bolt.play_net import PlayNet, load_checkpoint  # noqa: E402
 
 
-def pad_cards(old: PlayNet, old_names: list[str], names: list[str], noise: float = 0.05, seed: int = 0):
+def pad_cards(old: PlayNet, old_names: list[str], names: list[str], noise: float = 0.05, seed: int = 0,
+              set_name: str | None = None):  # fmt: skip
     """(a PlayNet over `names`, rows carried over by name). `noise` is relative to the trained rows' std."""
     trained = old.config["n_cards"]
-    config = {**old.config, "n_cards": len(names)}
+    config = {**old.config, "n_cards": len(names), "set_name": set_name, "card_names": list(names)}
     new = PlayNet(**config)
     state = {k: v.clone() for k, v in old.state_dict().items()}
     w_old = state["card.weight"]
@@ -69,7 +70,7 @@ def main():
     old_names, names = be.card_names(a.from_set), be.card_names(a.set)
     if old.config["n_cards"] != len(old_names):
         print(f"note: {a.src} has {old.config['n_cards']} card rows, {a.from_set} now has {len(old_names)}")
-    new, kept = pad_cards(old, old_names, names, a.noise, a.seed)
+    new, kept = pad_cards(old, old_names, names, a.noise, a.seed, set_name=a.set.upper())
     out = Path(a.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     tmp = out.with_suffix(".tmp")
