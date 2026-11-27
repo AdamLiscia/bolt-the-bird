@@ -2815,3 +2815,116 @@ fn the_ozolith_keeps_a_leaving_creatures_counters_and_moves_them_at_combat() {
     assert_eq!(g.obj(lions).counters, 1, "moved onto the Lions");
     assert_eq!(g.obj(oz).counters, 0);
 }
+
+#[test]
+fn enduring_tenacity_drains_on_life_gain_and_returns_as_an_enchantment() {
+    let mut g = table();
+    let snake = put(&mut g, 0, "Enduring Tenacity");
+    let food = g.add_card(0, token_def(&g, "Food"), Zone::Battlefield);
+    act(&mut g, Action::Activate(food, 0));
+    settle_yes_at_opponent(&mut g);
+    assert_eq!(g.players[1].life, 37, "that much life");
+    let d = hand(&mut g, 0, "Hero's Downfall");
+    play(&mut g, d, false, &[obj(snake)], &[]);
+    assert_eq!(g.obj(snake).zone, Zone::Battlefield, "back");
+    assert!(!g.types_of(snake).creature && g.types_of(snake).enchantment);
+}
+
+#[test]
+fn enduring_courage_pumps_and_hastes_each_other_creature_entering() {
+    let mut g = table();
+    put(&mut g, 0, "Enduring Courage");
+    let elves = hand(&mut g, 0, "Llanowar Elves");
+    play(&mut g, elves, false, &[], &[]);
+    assert_eq!(g.power(elves), 3);
+    assert!(g.keywords(elves).has(Keywords::HASTE));
+}
+
+#[test]
+fn field_of_the_dead_makes_zombies_at_seven_land_names() {
+    let mut g = table(); // five basic names
+    let field = put(&mut g, 0, "Field of the Dead"); // six
+    assert!(tokens(&g, 0, "Zombie").is_empty());
+    let tower = hand(&mut g, 0, "Command Tower");
+    act(&mut g, Action::PlayLand(tower)); // seven names
+    resolve_all(&mut g, &[]);
+    assert_eq!(tokens(&g, 0, "Zombie").len(), 1);
+    let _ = field;
+}
+
+#[test]
+fn mystic_sanctuary_untapped_puts_an_instant_on_top() {
+    let mut g = table(); // five Islands
+    let bolt = g.add_card(0, cid("Lightning Bolt"), Zone::Graveyard);
+    let sanctuary = hand(&mut g, 0, "Mystic Sanctuary");
+    act(&mut g, Action::PlayLand(sanctuary));
+    while !g.items.is_empty() || matches!(g.pending, Pending::ChooseTarget(_) | Pending::Decide(_)) {
+        let a = match g.pending {
+            Pending::ChooseTarget(_) => Action::Target(Target::Object(bolt)),
+            Pending::Decide(_) => Action::Yes,
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert!(!g.obj(sanctuary).tapped);
+    assert_eq!(g.players[0].library.last(), Some(&bolt), "on top");
+}
+
+#[test]
+fn bontu_attacks_only_after_a_creature_of_yours_died_and_drains_on_a_sacrifice() {
+    let mut g = table();
+    let bontu = put(&mut g, 0, "Bontu the Glorified");
+    put(&mut g, 0, "Savannah Lions");
+    let elves = put(&mut g, 0, "Llanowar Elves");
+    g.start_turn(5, 0);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert!(!has(&g, Action::Attack(bontu)), "nothing died");
+    let mut g = table();
+    let bontu = put(&mut g, 0, "Bontu the Glorified");
+    let lions = put(&mut g, 0, "Savannah Lions");
+    act(&mut g, Action::ActivateWith(bontu, 0, lions));
+    while !g.items.is_empty() || matches!(g.pending, Pending::ChooseTarget(_) | Pending::Decide(_)) {
+        let a = if matches!(g.pending, Pending::Decide(_) | Pending::ChooseTarget(_)) {
+            g.legal_actions()[0]
+        } else {
+            Action::PassPriority
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.obj(lions).zone, Zone::Graveyard);
+    assert_eq!((g.players[0].life, g.players[1].life), (41, 39));
+    while g.pending != Pending::DeclareAttackers(0) {
+        let a = match g.pending {
+            Pending::Decide(_) => g.legal_actions()[0],
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert!(
+        has(&g, Action::Attack(bontu)),
+        "a creature died under your control this turn"
+    );
+    let _ = elves;
+}
+
+#[test]
+fn mana_drain_counters_and_adds_colorless_at_your_next_main_phase() {
+    let mut g = table();
+    let angel = hand(&mut g, 0, "Serra Angel");
+    act(&mut g, Action::Cast(angel));
+    let drain = hand(&mut g, 0, "Mana Drain");
+    act(&mut g, Action::Cast(drain));
+    act(&mut g, Action::Target(Target::Object(angel)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(angel).zone, Zone::Graveyard, "countered");
+    while g.step != Step::Main2 {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(
+        g.players[0].pool.iter().filter(|m| m.colorless).count(),
+        5,
+        "its mana value in {{C}}"
+    );
+}

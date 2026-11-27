@@ -2728,6 +2728,9 @@ pub enum Effect {
     CountersSelfAmount,
     /// Move all +1/+1 counters from the source onto the creature in `slot` (The Ozolith).
     MoveAllCountersFromSourceTo(u8),
+    /// Mana Drain: counter the spell in `slot`; at the beginning of your next main phase, add {C}
+    /// equal to its mana value (`Game::next_main_colorless`).
+    CounterThenColorlessAtYourNextMain(u8),
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

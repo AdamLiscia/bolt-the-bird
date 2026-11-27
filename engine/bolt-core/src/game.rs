@@ -1949,6 +1949,12 @@ pub struct Game {
     /// Compleated permanent spells cast with life for their Phyrexian pips: (card, its zcc on the
     /// battlefield, pips paid with life).
     pub compleated_life: Vec<(ObjId, u32, u8)>,
+    /// Mana Drain: {C} to add at the beginning of a player's next main phase, as (player, amount,
+    /// the turn and step it was set up in, so a main phase it was cast in doesn't count).
+    pub next_main_colorless: Vec<(PlayerId, u32, u32, Step)>,
+    /// The spell being cast while `When::YouCast` fires (`fire` and `fire_subsystems` can read it:
+    /// "that spell"); `None` otherwise.
+    pub firing_spell: Option<ObjId>,
 }
 
 /// `Action::CastFromGraveyardAs`'s second number for Karador, Ghost Chieftain's once-each-turn
@@ -2258,6 +2264,8 @@ impl Game {
             karador_turn: [0; 2],
             any_graveyard_spells_turn: [0; 2],
             any_graveyard_casts: Vec::new(),
+            next_main_colorless: Vec::new(),
+            firing_spell: None,
         }
     }
 
@@ -10316,6 +10324,7 @@ impl Game {
                 && (!arbiter || declared.is_empty())
                 && !self.cant_attack_until.iter().any(|&(x, zcc, until)| x == id && zcc == o.zcc && self.turn < until)
                 && (!self.def_of(id).fights_only_with_blessing || self.city_blessing[o.controller])
+                && (!self.def_of(id).fights_only_if_creature_died || self.creature_died_under[o.controller])
                 // Promise of Loyalty: a creature with a vow counter can't attack the player it vowed to.
                 && !self.vowed_against(id, opponent(p))
                 // Sphere of Safety, Ghostly Prison: it can attack only if its controller can pay the tax
@@ -10358,6 +10367,8 @@ impl Game {
         if self.def_of(blocker).cant_block
             || (self.def_of(blocker).fights_only_with_blessing
                 && !self.city_blessing[self.obj(blocker).controller])
+            || (self.def_of(blocker).fights_only_if_creature_died
+                && !self.creature_died_under[self.obj(blocker).controller])
             || self.is_decayed(blocker)
             || self.keywords(blocker).has(Keywords::CANT_BLOCK)
             || self.keywords(attacker).has(Keywords::UNBLOCKABLE)
@@ -11983,7 +11994,10 @@ impl Game {
             t.extra = Some(card); // "that spell"
         }
         let before = self.triggered.len();
+        // The spell is known while the triggers fire (emblems and d4's subsystems read it).
+        self.firing_spell = Some(card);
         self.fire(p, When::YouCast, None);
+        self.firing_spell = None;
         for t in &mut self.triggered[before..] {
             t.extra = t.extra.or(Some(card)); // "that spell" (Teval)
         }
@@ -16973,6 +16987,14 @@ impl Game {
                     t => t,
                 };
                 self.ask(item.controller, Decision::Search { what, to, left: n });
+            }
+            Effect::CounterThenColorlessAtYourNextMain(n) => {
+                if let Some(id) = Game::slot_object(item, legal, n) {
+                    let mv = self.def_of(id).cost.mana_value();
+                    let (turn, step) = (self.turn, self.step);
+                    self.next_main_colorless.push((item.controller, mv, turn, step));
+                }
+                self.run_effect(item, legal, Effect::Counter(n));
             }
             Effect::Counter(n) => {
                 if let Some(id) = Game::slot_object(item, legal, n) {
@@ -25781,6 +25803,7 @@ impl Game {
                 self.give_priority(a);
             }
             Step::Main1 => {
+                self.next_main_mana(a);
                 // CR 714.3b: as your precombat main phase begins, a lore counter on each Saga you control.
                 for id in self.permanents(a).collect::<Vec<_>>() {
                     if self.is_saga(id) {
@@ -25791,7 +25814,25 @@ impl Game {
                 self.give_priority(a);
             }
             Step::Main2 => {
+                self.next_main_mana(a);
                 self.give_priority(a);
+            }
+        }
+    }
+
+    /// Mana Drain: as `a`'s main phase begins, the {C} set up before it (`next_main_colorless`).
+    fn next_main_mana(&mut self, a: PlayerId) {
+        let (turn, step) = (self.turn, self.step);
+        let (now, later): (Vec<_>, Vec<_>) = std::mem::take(&mut self.next_main_colorless)
+            .into_iter()
+            .partition(|&(p, _, t, st)| p == a && (t, st) != (turn, step));
+        self.next_main_colorless = later;
+        for (p, n, _, _) in now {
+            for _ in 0..n {
+                self.players[p].pool.push(ManaSource {
+                    colorless: true,
+                    ..ManaSource::default()
+                });
             }
         }
     }

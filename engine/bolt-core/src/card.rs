@@ -1090,6 +1090,9 @@ pub struct CardDef {
     /// would create one or more tokens each turn, you may instead create that many tokens that are
     /// copies of equipped creature." (`Game::mirrormind_crown`; the engine always takes the copies)
     pub first_tokens_copy_equipped: bool,
+    /// "[This] can't attack or block unless a creature died under your control this turn." (Bontu
+    /// the Glorified), from `Game::creature_died_under`.
+    pub fights_only_if_creature_died: bool,
 }
 
 /// A card's pieces from the d4 subsystems (see [`CardDef::subsystems`]).
@@ -1660,6 +1663,7 @@ impl CardDef {
             triples_creature_tokens: false,
             lands_in_graveyard_have_dredge: None,
             first_tokens_copy_equipped: false,
+            fights_only_if_creature_died: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -1954,6 +1958,7 @@ impl CardDef {
             triples_creature_tokens: false,
             lands_in_graveyard_have_dredge: None,
             first_tokens_copy_equipped: false,
+            fights_only_if_creature_died: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -2248,6 +2253,7 @@ impl CardDef {
             triples_creature_tokens: false,
             lands_in_graveyard_have_dredge: None,
             first_tokens_copy_equipped: false,
+            fights_only_if_creature_died: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
