@@ -157,7 +157,7 @@ def load_kit() -> Kit:
     c = torch.load(ck / "play" / "play_v3_ppo4_i170.pt", map_location="cpu", weights_only=False)
     from bolt.play_net import load_checkpoint
 
-    net = load_checkpoint(c)
+    net = load_checkpoint(c, set_name="FDN")  # FDN tokens added since it was trained get rows
     return Kit(info=info, bolt=load(DraftTransformer, "bot_ppo.pt"), human=load(DraftTransformer, "human_model.pt"),
                judge=load(DeckJudge, "judge_b.pt"), packs=np.load(ASSETS / "FDN_sample_packs.npy"), net=net.eval(),
                models={"drafter": "bot_ppo.pt", "human_drafter": "human_model.pt",
