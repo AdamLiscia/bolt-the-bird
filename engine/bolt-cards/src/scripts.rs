@@ -424,6 +424,28 @@ pub fn token_defs() -> Vec<CardDef> {
             t.colors = [true, false, false, false, false];
             t
         },
+        {
+            // 107, lane d2: Hallowed Haunting's "white Spirit Cleric creature token with 'This
+            // token's power and toughness are each equal to the number of Spirits you control.'"
+            let mut t = token("Spirit Cleric", "Spirit Cleric", 0, 0, Keywords::NONE);
+            t.colors = [true, false, false, false, false];
+            t.statics.push(Static {
+                scope: Scope::This,
+                your_turn_only: false,
+                condition: None,
+                subtype: None,
+                lose_abilities: false,
+                base_pt: None,
+                protection: [false; 5],
+                scale: Some(Scale::PerYouControlSubtype("Spirit")),
+                power: 1,
+                toughness: 1,
+                keywords: Keywords::NONE,
+                set_colors: None,
+                becomes_land: false,
+            });
+            t
+        },
     ]
 }
 
@@ -644,6 +666,8 @@ pub struct Tokens {
     pub placeholder_104: usize,
     pub inkling: usize,
     pub warrior_white: usize,
+    /// 107: d2's Hallowed Haunting Spirit Cleric, white, */* the Spirits you control.
+    pub spirit_cleric: usize,
 }
 
 impl Tokens {
@@ -756,6 +780,7 @@ impl Tokens {
             placeholder_104: base + 104,
             inkling: base + 105,
             warrior_white: base + 106,
+            spirit_cleric: base + 107,
         }
     }
 }

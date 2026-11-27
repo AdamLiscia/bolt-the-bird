@@ -3043,6 +3043,16 @@ impl Game {
                                     .count()
                                     >= n as usize
                             }
+                            Some(StaticCondition::ControlEnchantmentsAtLeast(n)) => {
+                                self.battlefield
+                                    .iter()
+                                    .filter(|&&x| {
+                                        self.obj(x).controller == so.controller
+                                            && self.def_of(x).types.enchantment
+                                    })
+                                    .count()
+                                    >= n as usize
+                            }
                             Some(StaticCondition::AttachedTapped(tapped)) => so
                                 .attached_to
                                 .is_some_and(|(x, z)| self.obj(x).zcc == z && self.obj(x).tapped == tapped),
@@ -4365,6 +4375,12 @@ impl Game {
     /// Aura's granted once-each-turn one (Well Rested).
     fn became_untapped(&mut self, id: ObjId) {
         self.fire_source(id, When::BecomesUntapped);
+        // "Whenever a permanent becomes untapped" (Mesmeric Orb), anyone's.
+        for q in 0..2 {
+            let before = self.triggered.len();
+            self.fire(q, When::PermanentBecomesUntapped, None);
+            self.fill_triggering(before, id);
+        }
         let zcc = self.obj(id).zcc;
         let turn = self.turn;
         let auras: Vec<ObjId> = self
