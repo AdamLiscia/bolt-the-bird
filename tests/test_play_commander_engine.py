@@ -101,3 +101,20 @@ def test_the_runner_plays_commander_games(monkeypatch):
     assert all(r["result"] in ("timeout", "p0", "p1", "draw") for r in out["results"])
     assert out["steps"] and {s["seat"] for s in out["steps"]} == {0, 1}
     assert all(len(s["enc"]["globals"]) == len(GLOBAL_NAMES) for s in out["steps"])
+
+
+def test_commander_games_are_capped(monkeypatch):
+    """A runaway Commander game must not hold up its worker: past CMD_MAX_MOVES it is a timeout."""
+    import bolt.play_runner as pr
+
+    monkeypatch.setattr(pr, "PLAY_FORMAT", "commander")
+    monkeypatch.setattr(pr, "PLAY_SET", "CMD")
+    monkeypatch.setattr(pr, "CMD_MAX_MOVES", 120)
+    monkeypatch.setenv("BOLT_PLAY_SET", "CMD")
+    d = read(DECKS)[:2]
+    out = pr.run_games(None, [(d[0], d[1], 3, 0)], seats=("rules", "rules"))
+    assert out["results"][0]["result"] == "timeout" and out["results"][0]["turn"] < 20
+    monkeypatch.setattr(pr, "CMD_MAX_MOVES", 6_000)
+    monkeypatch.setattr(pr, "CMD_MAX_TURNS", 3)
+    out = pr.run_games(None, [(d[0], d[1], 3, 0)], seats=("rules", "rules"))
+    assert out["results"][0] == {"result": "timeout", "turn": 4}

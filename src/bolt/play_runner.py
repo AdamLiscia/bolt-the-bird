@@ -14,6 +14,7 @@ that dies (the engine's rare memory corruption) has its share rerun in a fresh p
 import contextlib
 import multiprocessing as mp
 import os
+import time
 from concurrent.futures import ProcessPoolExecutor
 from concurrent.futures.process import BrokenProcessPool
 
@@ -41,6 +42,11 @@ MAX_TURNS = 200  # the engine's own limit (bolt-cards play.rs)
 # A player can loop inside one turn (activating an ability forever), where the turn limit never
 # triggers; normal games take a few hundred moves. Capped games count as timeouts.
 MAX_MOVES = 20_000
+# Commander: 100-card decks at 40 life run longer per move, and one runaway game holds up its whole worker
+# chunk (2026-11-27, the desktop's first cmd_play_1 iteration). Real 1v1 games end long before turn 80;
+# capped games count as timeouts (a draw).
+CMD_MAX_TURNS = 80
+CMD_MAX_MOVES = 6_000
 
 
 def _result(g) -> str:
@@ -58,7 +64,7 @@ def _forward(net, encs, chunk=256):
 
 
 def run_games(net, jobs, seats=("net", "rules"), sample=True, seed=0, smart=(1, 2), record=None,
-              max_turns=MAX_TURNS, game_offset=0, max_moves=MAX_MOVES, label_with=None, opp_net=None):  # fmt: skip
+              max_turns=None, game_offset=0, max_moves=None, label_with=None, opp_net=None, progress=0):  # fmt: skip
     """jobs: (deck_a, deck_b, seed, first), a Commander deck being (commanders, cards). Returns
     {"results": [{"result", "turn"}], "steps": [...]}. smart=(rollouts, candidates[, ms]): the smart seat's
     search, ms capping its time per move.
@@ -67,6 +73,11 @@ def run_games(net, jobs, seats=("net", "rules"), sample=True, seed=0, smart=(1, 
     position as "action" (the label) and the network's own move as "played", which is what the game
     follows (DAgger: the teacher labels the positions the student reaches)."""
     record = {i for i, s in enumerate(seats) if s == "net"} if record is None else set(record)
+    commander = PLAY_FORMAT == "commander"
+    if max_turns is None:
+        max_turns = CMD_MAX_TURNS if commander else MAX_TURNS
+    if max_moves is None:
+        max_moves = CMD_MAX_MOVES if commander else MAX_MOVES
     # seat "opp": another network (a past checkpoint) samples its moves; it is never recorded
     gen = torch.Generator().manual_seed(seed)
     games = [new_game(a, b, s, f) for a, b, s, f in jobs]
@@ -74,6 +85,7 @@ def run_games(net, jobs, seats=("net", "rules"), sample=True, seed=0, smart=(1, 
     results: list = [None] * len(games)
     steps = []
     live = list(range(len(games)))
+    t0 = time.time()
 
     def play(gi, i):
         games[gi].step(i)
@@ -147,7 +159,16 @@ def run_games(net, jobs, seats=("net", "rules"), sample=True, seed=0, smart=(1, 
                     if isinstance(e, (KeyboardInterrupt, SystemExit)):
                         raise
                     results[gi] = {"result": "error", "turn": games[gi].turn}
+        before = len(games) - len(live)
         live = [gi for gi in live if results[gi] is None]
+        done = len(games) - len(live)
+        if progress and (done // progress > before // progress or (done == len(games) and done != before)):
+            # a stalled game shows as a worker that stops reporting (2026-11-27, the desktop's cmd_play_1)
+            slow = max(live, key=lambda gi: moves[gi], default=None)
+            tail = (
+                f"; longest still playing: game {game_offset + slow}, {moves[slow]} moves" if slow is not None else ""
+            )
+            print(f"[worker {os.getpid()}] {done}/{len(games)} games done, {time.time() - t0:.0f}s{tail}", flush=True)
     return {"results": results, "steps": steps}
 
 
@@ -183,6 +204,7 @@ def _state(net):
 def _worker(args):
     torch.set_num_threads(1)
     net_state, jobs, kw = args
+    kw.setdefault("progress", 16)
     compact = kw.pop("compact", False)
     net = _load(net_state)
     if "opp_net" in kw:
