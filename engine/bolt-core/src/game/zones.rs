@@ -741,4 +741,25 @@ impl Game {
             self.pending = Pending::GameOver;
         }
     }
+
+    /// Final Act: destroy all planeswalkers.
+    pub(super) fn destroy_all_planeswalkers(&mut self) {
+        let all: Vec<ObjId> = self
+            .battlefield
+            .iter()
+            .copied()
+            .filter(|&c| self.types_of(c).planeswalker)
+            .collect();
+        for c in all {
+            self.destroy(c);
+        }
+    }
+
+    /// Final Act: each opponent of `p` (the one opponent) loses all counters: poison and energy,
+    /// the player counters the engine has.
+    pub(super) fn opponent_loses_all_counters(&mut self, p: PlayerId) {
+        let q = &mut self.players[opponent(p)];
+        q.poison = 0;
+        q.energy = 0;
+    }
 }

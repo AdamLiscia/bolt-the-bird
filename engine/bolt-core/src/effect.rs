@@ -2556,6 +2556,14 @@ pub enum Effect {
     /// "You may pay {X}, where X is less than or equal to the amount of life you gained. If you do,
     /// draw X cards." (Well of Lost Dreams): the trigger's amount caps X, as `Decision::PayXDrawX`.
     MayPayXUpToAmountDrawX,
+    /// Destroy all planeswalkers (Final Act).
+    DestroyAllPlaneswalkers,
+    /// Each opponent loses all counters (CR 122.1: a player's poison and energy counters) (Final
+    /// Act).
+    EachOpponentLosesAllCounters,
+    /// Exile the creature in `slot` if its power is at most the power of the card in the item's
+    /// `extra` (Titan's Presence: the revealed card).
+    ExileIfPowerAtMostExtra(u8),
     /// "You may put a land card from your hand onto the battlefield tapped. If you control
     /// `enchantments` or more enchantments, instead you may put a creature or land card ..."
     /// (Composer of Spring: 6), as `Decision::LandOrCreatureFromHandTapped`.
@@ -3013,6 +3021,9 @@ pub enum Condition {
     ColorlessSpentAtLeast(u32),
     /// Its controller created a token this turn (Bennie Bracks), from `Game::token_created_turn`.
     YouCreatedTokenThisTurn,
+    /// Its controller controls at least this many lands with different names (The Necrobloom, Field
+    /// of the Dead: seven).
+    ControlLandsWithDifferentNamesAtLeast(u8),
     /// Its controller has at least this much life more than their starting life total (Angel of
     /// Destiny: 15).
     LifeAtLeastStartingPlus(i32),

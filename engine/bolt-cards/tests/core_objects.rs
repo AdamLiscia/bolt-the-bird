@@ -1169,3 +1169,37 @@ fn copy_attached_mechanized_production_copies_each_upkeep_and_wins_at_eight() {
     upkeep_through(&mut g, 7);
     assert_eq!(g.result, Some(bolt_core::Outcome::Winner(0)), "eight Sol Rings");
 }
+
+#[test]
+fn final_act_does_each_chosen_mode_and_only_those() {
+    let mut g = table();
+    let w = hand(&mut g, 0, "Wrenn and Seven");
+    play(&mut g, w, false, &[], &[]);
+    let ghoul = put(&mut g, 1, "Hungry Ghoul");
+    let first = hand(&mut g, 0, "Final Act");
+    // Mode 0b00010: planeswalkers only.
+    act(&mut g, Action::CastModal(first, 0b00010 - 1));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(w).zone, Zone::Graveyard);
+    assert_eq!(g.obj(ghoul).zone, Zone::Battlefield, "creatures weren't chosen");
+    g.players[1].poison = 3;
+    g.players[1].energy = 2;
+    g.players[0].poison = 1;
+    let second = hand(&mut g, 0, "Final Act");
+    // All five: creatures, planeswalkers, battles, graveyards, counters.
+    act(&mut g, Action::CastModal(second, 0b11111 - 1));
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        g.obj(ghoul).zone,
+        Zone::Exile,
+        "destroyed, then its graveyard exiled"
+    );
+    assert_eq!((g.obj(w).zone, g.obj(first).zone), (Zone::Exile, Zone::Exile));
+    assert_eq!(
+        g.obj(second).zone,
+        Zone::Graveyard,
+        "on the stack as graveyards are exiled"
+    );
+    assert_eq!((g.players[1].poison, g.players[1].energy), (0, 0));
+    assert_eq!(g.players[0].poison, 1, "only opponents lose their counters");
+}

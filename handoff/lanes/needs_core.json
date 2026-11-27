@@ -6638,6 +6638,46 @@
    "lane": "d4",
    "theme": "triggers",
    "owner": "d2"
+  },
+  {
+   "card": "Bonus Round",
+   "deck": "Ghyrson Starn, Kelermorph",
+   "owner": "d2",
+   "missing": "a trigger copying each instant and sorcery you cast this turn (reuse the copy pieces) [added from the live validator, 2026-11-27]",
+   "lane": "d2",
+   "theme": "triggers"
+  },
+  {
+   "card": "Urabrask",
+   "deck": "Ghyrson Starn, Kelermorph",
+   "owner": "d2",
+   "missing": "an opponent-casts trigger and exile-and-play (reuse the exile-and-play pieces) [added from the live validator, 2026-11-27]",
+   "lane": "d2",
+   "theme": "triggers"
+  },
+  {
+   "card": "Pippin, Guard of the Citadel",
+   "deck": "Bruna, Light of Alabaster",
+   "owner": "d3",
+   "missing": "a protection-from-a-card-type grant [added from the live validator, 2026-11-27]",
+   "lane": "d3",
+   "theme": "effects and statics"
+  },
+  {
+   "card": "Chandra, Dressed to Kill",
+   "deck": "Ghyrson Starn, Kelermorph",
+   "owner": "d3",
+   "missing": "its loyalty effects (exile top, play it); d4: the emblem [added from the live validator, 2026-11-27]",
+   "lane": "d3",
+   "theme": "effects and statics"
+  },
+  {
+   "card": "Rankle and Torbran",
+   "deck": "Olivia, Crimson Bride",
+   "owner": "mac-b",
+   "missing": "the +2 damage replacement (lane B); its other parts lane C [added from the live validator, 2026-11-27]",
+   "lane": "mac-b",
+   "theme": "replacements"
   }
  ]
 }

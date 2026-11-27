@@ -1359,6 +1359,8 @@ pub enum Decision {
     /// "You may pay {X}, where X is at most `max`. If you do, draw X cards." (Well of Lost Dreams):
     /// `Amount(x)` pays {x} and draws x (offered for each x you can pay); `Amount(0)` declines.
     PayXDrawX { max: u8 },
+    /// Riot (CR 702.136): `Mode(0)` for a +1/+1 counter on `card`, `Mode(1)` for haste.
+    Riot { card: ObjId },
     /// Composer of Spring: `Pick` a land card in your hand (or, with `creature`, a creature or land
     /// card) to put onto the battlefield tapped, or `No`.
     LandOrCreatureFromHandTapped { creature: bool },
@@ -1798,6 +1800,15 @@ pub struct Game {
     pub creatures_died: (u32, u32),
     /// Cards drawn this turn: (card, its zcc in hand, turn) (Sylvan Library).
     pub drawn_this_turn: Vec<(ObjId, u32, u32)>,
+    /// Granted, borrowed and kept activated abilities as they were activated: (source, ability
+    /// number, the ability), so one whose source left (a Food sacrificed for its own granted
+    /// ability) still resolves (see `ability_of`).
+    pub activated_snapshots: Vec<(ObjId, usize, Activated)>,
+    /// Riot choices waiting for the next priority: nontoken creatures that entered under a player
+    /// with Rhythm of the Wild, as (creature, its zcc) (asked in `give_priority`, as shock lands are).
+    pub riot_pending: Vec<(ObjId, u32)>,
+    /// Who gets priority after a riot choice.
+    riot_then: PlayerId,
 }
 
 pub fn opponent(p: PlayerId) -> PlayerId {
@@ -2076,6 +2087,9 @@ impl Game {
             damage_shields_on: Vec::new(),
             creatures_died: (0, 0),
             drawn_this_turn: Vec::new(),
+            activated_snapshots: Vec::new(),
+            riot_pending: Vec::new(),
+            riot_then: 0,
         }
     }
 
@@ -2591,20 +2605,48 @@ impl Game {
         } else {
             Vec::new()
         };
-        let granted = granters.into_iter().flat_map(move |x| {
-            let d = self.def_of(x);
-            let from_lands = d.lands_you_control_have.iter().filter(move |_| land);
-            let from_subtype = d
-                .subtype_you_control_has
+        // Ygra: every other creature, whoever controls it.
+        let others: Vec<ObjId> = if creature {
+            self.battlefield
                 .iter()
-                .filter(move |(sub, _)| creature && self.has_subtype(id, sub))
-                .flat_map(|(_, v)| v.iter());
-            from_lands.chain(from_subtype)
-        });
+                .copied()
+                .filter(|&x| {
+                    x != id && !self.def_of(x).other_creatures_have.is_empty() && !self.lost_abilities(x)
+                })
+                .collect()
+        } else {
+            Vec::new()
+        };
+        let own = &self.def_of(id).activated;
+        let granted = granters
+            .into_iter()
+            .flat_map(move |x| {
+                let d = self.def_of(x);
+                let from_lands = d.lands_you_control_have.iter().filter(move |_| land);
+                // Any permanent of the subtype (Gourmand's Talent: noncreature artifacts that are Foods).
+                let from_subtype = d
+                    .subtype_you_control_has
+                    .iter()
+                    .filter(move |(sub, _)| on_battlefield && self.has_subtype(id, sub))
+                    .flat_map(|(_, v)| v.iter());
+                from_lands.chain(from_subtype)
+            })
+            .chain(
+                others
+                    .into_iter()
+                    .flat_map(move |x| self.def_of(x).other_creatures_have.iter()),
+            );
+        // The same ability twice (a real Food's own, or Ygra's and Gourmand's Talent's) is one.
+        let mut unique: Vec<&Activated> = Vec::new();
+        for a in granted {
+            if !own.contains(a) && !unique.contains(&a) {
+                unique.push(a);
+            }
+        }
         cards
             .into_iter()
             .flat_map(move |c| self.def_of(c).activated.iter())
-            .chain(granted)
+            .chain(unique)
     }
 
     /// Activated abilities its own card lends a copy that keeps them (`Activated::copy_only`).
@@ -3694,7 +3736,24 @@ impl Game {
 
     /// "Can't be countered": printed, or from an effect as it was cast.
     fn uncounterable(&self, id: ObjId) -> bool {
-        self.def_of(id).uncounterable || self.obj(id).cast_uncounterable
+        self.def_of(id).uncounterable || self.obj(id).cast_uncounterable || self.statically_uncounterable(id)
+    }
+
+    /// "[Creature / color] spells you control can't be countered." (Rhythm of the Wild, Surrak
+    /// Dragonclaw, Allosaurus Shepherd): from a permanent its controller controls.
+    fn statically_uncounterable(&self, id: ObjId) -> bool {
+        if self.obj(id).zone != Zone::Stack {
+            return false;
+        }
+        let (creature, colors) = (self.types_of(id).creature, self.colors_of(id));
+        self.permanents(self.obj(id).controller)
+            .filter(|&x| !self.lost_abilities(x))
+            .any(|x| {
+                let d = self.def_of(x);
+                (d.your_creature_spells_uncounterable && creature)
+                    || d.your_color_spells_uncounterable
+                        .is_some_and(|k| colors[k as usize])
+            })
     }
 
     /// Clarion Conqueror: activated abilities of this artifact, creature or planeswalker on the
@@ -5367,6 +5426,16 @@ impl Game {
                 let n = def.mana_ext.escape.map_or(0, |e| e.2);
                 self.add_counters(id, n);
             }
+            // Rhythm of the Wild: riot for a nontoken creature entering under its controller, however
+            // it enters; the choice is asked at the next priority (`give_priority`).
+            if def.types.creature
+                && !self.is_token(id)
+                && self
+                    .permanents(self.obj(id).controller)
+                    .any(|x| self.def_of(x).your_nontoken_creatures_have_riot && !self.lost_abilities(x))
+            {
+                self.riot_pending.push((id, zcc));
+            }
             // Communal Brewing: "that creature enters with X additional +1/+1 counters on it".
             let extra: i32 = self
                 .spell_enters_with_counters
@@ -6056,6 +6125,18 @@ impl Game {
                 }
             },
             StackKind::Offspring => offspring_ability(),
+            // Not one of its own: the ability as it was activated (its source may have left).
+            StackKind::Activated(n) if n >= def.activated.len() => {
+                match self
+                    .activated_snapshots
+                    .iter()
+                    .rev()
+                    .find(|e| e.0 == item.source && e.1 == n)
+                {
+                    Some(e) => &e.2.ability,
+                    None => &self.activated_of(item.source, n).ability,
+                }
+            }
             StackKind::Activated(n) => &self.activated_of(item.source, n).ability,
             StackKind::Room { .. } | StackKind::InitiativeVenture => self.subsystem_ability(item.kind),
             StackKind::SacrificeWhenTargeted { .. } => sacrifice_when_targeted_ability(),
@@ -7012,6 +7093,14 @@ impl Game {
                 .collect(),
             Some(ExtraCost::SacrificeCreatureOfColor(k)) => creatures()
                 .filter(|&(_, m)| m.extra.is_some_and(|x| self.colors_of(x)[*k as usize]))
+                .collect(),
+            Some(ExtraCost::RevealColorlessCreature) => self.players[p]
+                .hand
+                .iter()
+                .filter(|&&x| {
+                    x != c && self.def_of(x).types.creature && !self.def_of(x).colors.iter().any(|&k| k)
+                })
+                .map(|&x| (Action::CastWith(c, x), CastMode::with(x)))
                 .collect(),
             Some(ExtraCost::ForageOrPay(_)) => {
                 // Pay the mana, sacrifice a Food, or exile three graveyard cards (named by the
@@ -9013,6 +9102,10 @@ impl Game {
 
     fn pay_activation(&mut self, p: PlayerId, id: ObjId, n: usize, victim: Option<ObjId>, x: u8) {
         let a = self.activated_of(id, n).clone();
+        if n >= self.def_of(id).activated.len() {
+            self.activated_snapshots.retain(|e| !(e.0 == id && e.1 == n));
+            self.activated_snapshots.push((id, n, a.clone()));
+        }
         let uses_self = a.tap || a.sacrifice_self;
         // A sacrificed token (a Treasure) can't also pay the mana.
         let exclude = if uses_self {
@@ -10832,7 +10925,15 @@ impl Game {
                 self.move_to(m, Zone::Exile);
             }
         }
-        if let Some(x) = item.extra.filter(|_| energy_by.is_none() && !foraged) {
+        // Titan's Presence: the revealed card stays in your hand.
+        let revealed = matches!(
+            self.def_of(card).extra_cost,
+            Some(ExtraCost::RevealColorlessCreature)
+        );
+        if let Some(x) = item
+            .extra
+            .filter(|_| energy_by.is_none() && !foraged && !revealed)
+        {
             if harmonized.is_some() {
                 self.become_tapped(x); // harmonize taps the creature; it isn't sacrificed
             } else if self.def_of(card).pitch_not_your_turn.is_some() && !item.flashback {
@@ -12130,6 +12231,7 @@ impl Game {
                 (0..5).filter(|&c| Some(c) != not).map(Action::Mode).collect()
             }
             Decision::ChooseEnterMode { .. } => vec![Action::Mode(0), Action::Mode(1)],
+            Decision::Riot { .. } => vec![Action::Mode(0), Action::Mode(1)],
             Decision::ChooseLandFace { .. } => vec![Action::Mode(0), Action::Mode(1)],
             Decision::ChooseCreatureType { options, .. } => {
                 (0..options.len() as u8).map(Action::Mode).collect()
@@ -13236,6 +13338,16 @@ impl Game {
         if let (Decision::ChooseLandFace { card }, Action::Mode(m)) = (&d, a) {
             self.obj_mut(*card).transformed = m == 1;
             self.give_priority(p);
+            return;
+        }
+        if let (Decision::Riot { card }, Action::Mode(m)) = (&d, a) {
+            if m == 0 {
+                self.add_counters(*card, 1);
+            } else {
+                self.obj_mut(*card).suspend_haste = true; // haste, as Hall of the Bandit Lord gives
+            }
+            let then = self.riot_then;
+            self.give_priority(then);
             return;
         }
         if let (Decision::ChooseEnterMode { card }, Action::Mode(m)) = (&d, a) {
@@ -18981,6 +19093,13 @@ impl Game {
                     }
                 }
             }
+            Effect::ExileIfPowerAtMostExtra(slot) => {
+                if let (Some(c), Some(r)) = (Game::slot_object(item, legal, slot), item.extra) {
+                    if self.power(c) <= self.def_of(r).power {
+                        self.move_to(c, Zone::Exile);
+                    }
+                }
+            }
             Effect::DamageExtrasControllerAmount => {
                 if let (Some(s), true) = (item.extra, item.amount > 0) {
                     let them = self.obj(s).controller;
@@ -22808,6 +22927,8 @@ impl Game {
             Effect::CopyAttachedThenEightSameNameWins => {
                 self.copy_attached_then_eight_same_name_wins(src, item.controller)
             }
+            Effect::DestroyAllPlaneswalkers => self.destroy_all_planeswalkers(),
+            Effect::EachOpponentLosesAllCounters => self.opponent_loses_all_counters(item.controller),
             Effect::DiscardThenIfInstantOrSorcery => {
                 let p = item.controller;
                 if self.players[p].hand.is_empty() {
@@ -22850,6 +22971,16 @@ impl Game {
             }
             Some(Condition::Kicked) => self.obj(source).kicked,
             Some(Condition::YouCreatedTokenThisTurn) => self.token_created_turn[controller] == self.turn,
+            Some(Condition::ControlLandsWithDifferentNamesAtLeast(n)) => {
+                let mut names: Vec<&str> = self
+                    .permanents(controller)
+                    .filter(|&x| self.types_of(x).land)
+                    .map(|x| self.def_of(x).name.as_str())
+                    .collect();
+                names.sort_unstable();
+                names.dedup();
+                names.len() >= *n as usize
+            }
             Some(Condition::LifeAtLeastStartingPlus(n)) => {
                 self.players[controller].life >= self.starting_life + n
             }
@@ -23389,6 +23520,16 @@ impl Game {
                 if self.battlefield.iter().any(|&x| x != c && self.copy_option(c, x)) {
                     let owner = self.obj(c).controller;
                     self.ask(owner, Decision::EnterAsCopy { card: c });
+                    return;
+                }
+            }
+            // Riot (Rhythm of the Wild): the counter-or-haste choice, just after the creature entered.
+            while !self.riot_pending.is_empty() {
+                let (c, z) = self.riot_pending.remove(0);
+                if self.obj(c).zone == Zone::Battlefield && self.obj(c).zcc == z {
+                    self.riot_then = p;
+                    let owner = self.obj(c).controller;
+                    self.ask(owner, Decision::Riot { card: c });
                     return;
                 }
             }
