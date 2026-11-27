@@ -3360,3 +3360,93 @@ fn blood_pet_sacrifices_for_black_and_unexpected_assistance_convokes() {
         "convoked with four Elves and two Islands"
     );
 }
+
+// ---- Ral, Atraxa ----
+
+#[test]
+fn emry_has_affinity_mills_and_lets_you_cast_an_artifact_from_the_graveyard() {
+    let mut g = game(&["Island"]);
+    for _ in 0..2 {
+        put(&mut g, 0, "Ornithopter");
+    }
+    let emry = hand(&mut g, 0, "Emry, Lurker of the Loch"); // {2}{U}, two artifacts: {U}
+    let library = g.players[0].library.len();
+    act(&mut g, Action::Cast(emry));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(emry).zone, Zone::Battlefield);
+    assert_eq!(g.players[0].library.len(), library - 4, "milled four");
+    g.objects[emry.0 as usize].since_turn = 0;
+    let ring = g.add_card(0, cid("Sol Ring"), Zone::Graveyard);
+    act(&mut g, Action::Activate(emry, 0));
+    act(&mut g, Action::Target(Target::Object(ring)));
+    resolve_all(&mut g, &[]);
+    g.add_card(0, cid("Island"), Zone::Battlefield);
+    assert!(
+        g.legal_actions().contains(&Action::Cast(ring)),
+        "castable from the graveyard this turn"
+    );
+}
+
+#[test]
+fn nissa_makes_a_horror_as_big_as_her_loyalty() {
+    let mut g = table();
+    let nissa = put(&mut g, 0, "Nissa, Ascended Animist");
+    g.objects[nissa.0 as usize].loyalty = 7;
+    let plus = g
+        .legal_actions()
+        .into_iter()
+        .find(|a| matches!(a, Action::Loyalty(c, 0) if *c == nissa))
+        .expect("+1");
+    act(&mut g, plus);
+    resolve_all(&mut g, &[]);
+    let horrors = tokens(&g, 0, "Phyrexian Horror");
+    assert_eq!(horrors.len(), 1);
+    assert_eq!(g.power(horrors[0]), 8, "X is her loyalty after +1");
+    assert_eq!(g.toughness(horrors[0]), 8);
+}
+
+#[test]
+fn wash_away_counters_only_spells_not_cast_from_hand_unless_cleaved() {
+    let mut g = table();
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    act(&mut g, Action::Cast(bolt));
+    act(&mut g, Action::Target(Target::Player(1)));
+    let wash = hand(&mut g, 0, "Wash Away");
+    act(&mut g, Action::Cast(wash));
+    act(&mut g, Action::Target(Target::Object(bolt)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].life, 37, "cast from hand: not countered");
+
+    let mut g = table();
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    act(&mut g, Action::Cast(bolt));
+    act(&mut g, Action::Target(Target::Player(1)));
+    let wash = hand(&mut g, 0, "Wash Away");
+    act(&mut g, Action::CastAlternative(wash));
+    act(&mut g, Action::Target(Target::Object(bolt)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].life, 40, "cleaved: countered");
+}
+
+#[test]
+fn the_crossroads_lands_sacrifice_and_fetch_a_basic_tapped() {
+    let mut g = game(&[]);
+    g.add_card(0, cid("Forest"), Zone::Library);
+    let life = g.players[0].life;
+    let l = hand(&mut g, 0, "Riveteers Overlook");
+    act(&mut g, Action::PlayLand(l));
+    while !g.items.is_empty() || matches!(g.pending, Pending::ChooseTarget(_) | Pending::Decide(_)) {
+        let a = match g.pending {
+            Pending::ChooseTarget(_) | Pending::Decide(_) => g.legal_actions()[0],
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.obj(l).zone, Zone::Graveyard);
+    let forest = g
+        .permanents(0)
+        .find(|&x| g.def_of(x).name == "Forest")
+        .expect("a Forest");
+    assert!(g.obj(forest).tapped);
+    assert_eq!(g.players[0].life, life + 1);
+}

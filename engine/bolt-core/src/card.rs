@@ -1309,6 +1309,9 @@ pub struct ManaExt {
     /// Path of Ancestry: when its mana is spent on a creature spell that shares a creature type
     /// with your commander, `When::ManaSpentOnCommanderTypeCreature` fires on it.
     pub scry_if_commander_type_creature: bool,
+    /// Cleave (CR 702.148): cast for this cost with `Action::CastAlternative`; the spell's effect
+    /// reads the item's `alt` (Wash Away: {1}{U}{U}).
+    pub cleave: Option<ManaCost>,
 }
 
 /// "You may pay [mana], [life] and sacrifice or tap [creatures] rather than pay this spell's mana

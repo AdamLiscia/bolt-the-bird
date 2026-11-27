@@ -1561,6 +1561,82 @@ pub fn script(name: &str) -> Option<Script> {
             d.mana_ext.convoke = true;
             spell(d, vec![], vec![draw(3), discard(1)]);
         }),
+        // ---- Ral, Monsoon Mage ----
+        "Emry, Lurker of the Loch" => s(
+            &[
+                "Affinity for artifacts",
+                "When Emry enters, mill four cards.",
+                "{T}: Choose target artifact card in your graveyard. You may cast that card this turn.",
+            ],
+            |d, _| {
+                d.reduction = Some(Reduction::PerArtifactYouControl);
+                on(d, When::Enters, vec![], vec![Effect::Mill { who: Who::You, n: 4 }]);
+                let card = Filter { artifact_cards: true, ..graveyard_cards(false, Controller::You) };
+                activated(d, "", true, vec![card], vec![Effect::PlayableThisTurn(0)]);
+            },
+        ),
+        // ---- Atraxa, Praetors' Voice ----
+        "Nissa, Ascended Animist" => s(
+            &[
+                "Compleated",
+                "+1: Create an X/X green Phyrexian Horror creature token, where X is Nissa's loyalty.",
+                "\u{2212}1: Destroy target artifact or enchantment.",
+                "\u{2212}7: Until end of turn, creatures you control get +1/+1 for each Forest you control and gain trample.",
+            ],
+            |d, t| {
+                d.mana_ext.compleated = true;
+                loyalty(d, 1, Ability::new(vec![], vec![Effect::CreateTokenXxSourceLoyalty { def: t.phyrexian_horror_x }]));
+                loyalty(d, -1, Ability::new(vec![ARTIFACT_OR_ENCHANTMENT], vec![Effect::Destroy(0)]));
+                let pump = Effect::PumpYourCreaturesPerSubtype { sub: "Forest", keywords: Keywords::TRAMPLE };
+                loyalty(d, -7, Ability::new(vec![], vec![pump]));
+            },
+        ),
+        "Wash Away" => s(
+            &["Cleave {1}{U}{U}", "Counter target spell [that wasn't cast from its owner's hand]."],
+            |d, _| {
+                // Simplification: any spell can be targeted; uncleaved, one cast from its owner's
+                // hand isn't countered.
+                d.mana_ext.cleave = ManaCost::parse("{1}{U}{U}");
+                spell(d, vec![SPELL], vec![Effect::CounterIfNotFromHandUnlessCleaved(0)]);
+            },
+        ),
+        // ---- idea decks: Tifa; Atla Palani ----
+        "Brokers Hideout" => s(
+            &["When this land enters, sacrifice it. When you do, search your library for a basic Forest, Plains, or Island card, put it onto the battlefield tapped, then shuffle and you gain 1 life."],
+            |d, _| {
+                let what = SearchFor::LandTypes { types: land_types(&["Forest", "Plains", "Island"]), basic: true };
+                let effects = vec![
+                    Effect::SacrificeSource,
+                    search(what, SearchTo::Battlefield { tapped: true }),
+                    Effect::GainLife { who: Who::You, n: 1 },
+                ];
+                on(d, When::Enters, vec![], effects);
+            },
+        ),
+        "Riveteers Overlook" => s(
+            &["When this land enters, sacrifice it. When you do, search your library for a basic Swamp, Mountain, or Forest card, put it onto the battlefield tapped, then shuffle and you gain 1 life."],
+            |d, _| {
+                let what = SearchFor::LandTypes { types: land_types(&["Swamp", "Mountain", "Forest"]), basic: true };
+                let effects = vec![
+                    Effect::SacrificeSource,
+                    search(what, SearchTo::Battlefield { tapped: true }),
+                    Effect::GainLife { who: Who::You, n: 1 },
+                ];
+                on(d, When::Enters, vec![], effects);
+            },
+        ),
+        "Cabaretti Courtyard" => s(
+            &["When this land enters, sacrifice it. When you do, search your library for a basic Mountain, Forest, or Plains card, put it onto the battlefield tapped, then shuffle and you gain 1 life."],
+            |d, _| {
+                let what = SearchFor::LandTypes { types: land_types(&["Mountain", "Forest", "Plains"]), basic: true };
+                let effects = vec![
+                    Effect::SacrificeSource,
+                    search(what, SearchTo::Battlefield { tapped: true }),
+                    Effect::GainLife { who: Who::You, n: 1 },
+                ];
+                on(d, When::Enters, vec![], effects);
+            },
+        ),
         _ => None,
     }
 }
@@ -1764,4 +1840,10 @@ pub const PG_D1_SCRIPTED: &[&str] = &[
     "Culling the Weak",
     "Blood Pet",
     "Unexpected Assistance",
+    "Emry, Lurker of the Loch",
+    "Nissa, Ascended Animist",
+    "Wash Away",
+    "Brokers Hideout",
+    "Riveteers Overlook",
+    "Cabaretti Courtyard",
 ];

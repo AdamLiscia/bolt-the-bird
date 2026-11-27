@@ -7670,6 +7670,16 @@ impl Game {
                         },
                     ));
                 }
+                // Cleave: the bracketed words removed, for the cleave cost.
+                if def.mana_ext.cleave.is_some() && def.alt_cost.is_none() {
+                    v.push((
+                        Action::CastAlternative(c),
+                        CastMode {
+                            alt: true,
+                            ..CastMode::default()
+                        },
+                    ));
+                }
                 // Freerunning: after combat damage to a player from your Assassin or commander.
                 if def.mana_ext.freerunning.is_some() && def.alt_cost.is_none() && self.freerunning_ok(p) {
                     v.push((
@@ -7861,6 +7871,7 @@ impl Game {
                 },
                 None if def.warp.is_some() => def.warp.expect("warp"),
                 None if def.mana_ext.freerunning.is_some() => def.mana_ext.freerunning.expect("freerunning"),
+                None if def.mana_ext.cleave.is_some() => def.mana_ext.cleave.expect("cleave"),
                 None if self.monolith_alt(p, c) => ManaCost::default(), // Darksteel Monolith
                 None => {
                     // Defiler of Vigor: 2 life paid, {G} less.
@@ -11957,6 +11968,7 @@ impl Game {
             && self.def_of(card).warp.is_none()
             && self.def_of(card).morph.is_none()
             && self.def_of(card).mana_ext.freerunning.is_none()
+            && self.def_of(card).mana_ext.cleave.is_none()
         {
             let pips: u8 = self.def_of(card).phyrexian.iter().sum();
             // Phyrexian pips paid with life, or Defiler of Vigor's optional additional cost.
@@ -24686,6 +24698,35 @@ impl Game {
                 for c in self.creatures(item.controller).collect::<Vec<_>>() {
                     if c != src && self.has_subtype(c, sub) {
                         self.add_counters(c, 1);
+                    }
+                }
+            }
+            Effect::CreateTokenXxSourceLoyalty { def } => {
+                let x = self.obj(src).loyalty.max(0);
+                self.create_token(item.controller, def);
+                for t in self.last_created.clone() {
+                    self.obj_mut(t).copy_base_pt = Some((x, x));
+                }
+            }
+            Effect::PumpYourCreaturesPerSubtype { sub, keywords } => {
+                let p = item.controller;
+                let n = self.permanents(p).filter(|&x| self.has_subtype(x, sub)).count() as i32;
+                for id in self.creatures(p).collect::<Vec<_>>() {
+                    let zcc = self.obj(id).zcc;
+                    self.until_eot.push(Modifier {
+                        obj: id,
+                        zcc,
+                        power: n,
+                        toughness: n,
+                        keywords,
+                        dies: None,
+                    });
+                }
+            }
+            Effect::CounterIfNotFromHandUnlessCleaved(slot) => {
+                if let Some(x) = Game::slot_object(item, legal, slot) {
+                    if item.alt || !self.obj(x).from_hand {
+                        self.run_effect(item, legal, Effect::Counter(slot));
                     }
                 }
             }
