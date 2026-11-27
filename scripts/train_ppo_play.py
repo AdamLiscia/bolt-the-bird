@@ -145,6 +145,10 @@ def main():
     ck = ROOT / "checkpoints" / "play" / a.name
     ck.mkdir(parents=True, exist_ok=True)
     results = ROOT / "results" / f"ppo_play_{a.name}.json"
+    import bolt.play_runner as play_runner
+
+    if not play_runner.HANG_LOG:  # games whose engine call never returned: one JSON line each, for lane S
+        play_runner.HANG_LOG = str(ROOT / "results" / f"hangs_{a.name}.jsonl")
     net = load_net(ROOT / a.init)
     ref = load_net(ROOT / a.init).eval()
     for p in ref.parameters():
