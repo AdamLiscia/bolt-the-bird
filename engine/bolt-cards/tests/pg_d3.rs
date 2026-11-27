@@ -4358,3 +4358,87 @@ fn crib_swap_exiles_and_gives_its_controller_a_changeling() {
     assert_eq!((g.power(x), g.toughness(x)), (1, 1));
     assert!(g.has_subtype(x, "Goat") && g.colors_of(x) == [false; 5]);
 }
+
+#[test]
+fn kinscaer_sentry_puts_a_cheap_creature_in_attacking() {
+    let mut g = table();
+    let sentry = put(&mut g, 0, "Kinscaer Sentry");
+    let cheap = hand(&mut g, 0, "Llanowar Elves");
+    let big = hand(&mut g, 0, "Pippin, Guard of the Citadel");
+    g.start_turn(5, 0);
+    attack_until_decision(&mut g, sentry);
+    let legal = g.legal_actions();
+    assert!(
+        legal.contains(&Action::Pick(cheap)) && !legal.contains(&Action::Pick(big)),
+        "X is 1"
+    );
+    act(&mut g, Action::Pick(cheap));
+    assert_eq!(g.obj(cheap).zone, Zone::Battlefield);
+    assert!(g.obj(cheap).tapped);
+    assert!(
+        g.combat.as_ref().is_some_and(|c| c.attackers.contains(&cheap)),
+        "attacking"
+    );
+}
+
+#[test]
+fn alesha_returns_a_small_creature_attacking_if_you_pay() {
+    let mut g = table();
+    let alesha = put(&mut g, 0, "Alesha, Who Smiles at Death");
+    let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Graveyard);
+    g.start_turn(5, 0);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(alesha));
+    act(&mut g, Action::FinishAttacks);
+    while !matches!(g.pending, Pending::ChooseTarget(0) | Pending::Decide(0)) {
+        act(&mut g, Action::PassPriority);
+    }
+    resolve_all(&mut g, &[Action::Target(obj(elves)), Action::Yes]);
+    assert_eq!(g.obj(elves).zone, Zone::Battlefield);
+    assert!(g.combat.as_ref().is_some_and(|c| c.attackers.contains(&elves)));
+}
+
+#[test]
+fn ride_the_shoopuf_grows_creatures_and_becomes_a_beast() {
+    let mut g = table();
+    let ride = put(&mut g, 0, "Ride the Shoopuf");
+    let elves = put(&mut g, 0, "Llanowar Elves");
+    let forest = hand(&mut g, 0, "Forest");
+    act(&mut g, Action::PlayLand(forest));
+    resolve_all(&mut g, &[Action::Target(obj(elves))]);
+    assert_eq!(g.obj(elves).counters, 1, "landfall");
+    act(&mut g, Action::Activate(ride, 0));
+    resolve_all(&mut g, &[]);
+    assert!(g.types_of(ride).creature && g.types_of(ride).enchantment);
+    assert_eq!((g.power(ride), g.toughness(ride)), (7, 7));
+    assert!(g.has_subtype(ride, "Beast"));
+    g.start_turn(5, 0);
+    assert!(g.types_of(ride).creature, "for as long as it stays");
+}
+
+#[test]
+fn kodama_puts_a_cheaper_permanent_but_not_from_its_own_put() {
+    let mut g = table();
+    put(&mut g, 0, "Kodama of the East Tree");
+    let elves = hand(&mut g, 0, "Llanowar Elves");
+    let lions = hand(&mut g, 0, "Savannah Lions");
+    let pippin = hand(&mut g, 0, "Pippin, Guard of the Citadel");
+    act(&mut g, Action::Cast(elves));
+    for _ in 0..10 {
+        if g.pending == Pending::Decide(0) {
+            break;
+        }
+        act(&mut g, Action::PassPriority);
+    }
+    // Llanowar Elves (1) entered: a 1-drop may follow, not Pippin (2).
+    assert_eq!(g.pending, Pending::Decide(0));
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Pick(lions)) && !legal.contains(&Action::Pick(pippin)));
+    act(&mut g, Action::Pick(lions));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(lions).zone, Zone::Battlefield);
+    assert!(g.obj(lions).put_by_kodama);
+    assert_ne!(g.pending, Pending::Decide(0), "the Lions don't trigger it again");
+}

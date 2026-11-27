@@ -217,6 +217,9 @@ def _decision_label(dec: dict, kind: str, value: int, card_name: str) -> str | N
         verb = verb or {"AttachAura": "Attach"}.get(d)
         verb = verb or {"AuraEntersAttachedTo": "Attach the Aura to"}.get(d)
         verb = verb or {"DiscardThenIfInstantOrSorcery": "Discard"}.get(d)
+        verb = verb or {"CreatureFromHandAttackingMaxMv": "Put onto the battlefield attacking:"}.get(d)
+        verb = verb or {"PermanentFromHandMaxMv": "Put onto the battlefield:"}.get(d)
+        verb = verb or {"ExileCardFromHand": "Exile from your hand:"}.get(d)
         if d == "DiscardMayCastFree":
             verb = "Discard (you may cast it free)" if dec.get("free") else "Discard"
         verb = verb or {"MoveAuraTo": "Attach the Aura to"}.get(d)

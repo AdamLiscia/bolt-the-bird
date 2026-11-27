@@ -2739,6 +2739,27 @@ pub enum Effect {
         power: i32,
         toughness: i32,
     },
+    /// "You may put a creature card with mana value X or less from your hand onto the battlefield
+    /// tapped and attacking, where X is the number of attacking creatures you control." (Kinscaer
+    /// Sentry), as `Decision::CreatureFromHandAttackingMaxMv`.
+    CreatureFromHandAttackingMvAtMostAttackers,
+    /// Return the creature card in `slot` from your graveyard to the battlefield tapped and
+    /// attacking (Alesha, Who Smiles at Death).
+    ReturnSlotToBattlefieldAttacking(u8),
+    /// The source becomes a `power`/`toughness` creature with `subtypes` in addition to its other
+    /// types, for as long as it stays (Ride the Shoopuf: a 7/7 Beast).
+    SourceBecomesCreature {
+        power: i32,
+        toughness: i32,
+        subtypes: &'static [&'static str],
+    },
+    /// "You may put a permanent card with equal or lesser mana value from your hand onto the
+    /// battlefield" (Kodama of the East Tree): the entering permanent is the item's `extra`; nothing
+    /// if Kodama put it there (`Object::put_by_kodama`). As `Decision::PermanentFromHandMaxMv`.
+    MayPutPermanentFromHandMvAtMostExtra,
+    /// Return the nonland permanent in `slot` to its owner's hand, then that player exiles a card
+    /// from their hand (Ashiok, Nightmare Muse's -3), as `Decision::ExileCardFromHand`.
+    BounceThenOwnerExilesFromHand(u8),
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -2929,6 +2950,9 @@ pub enum Scale {
     /// Slime counters on the affected permanent itself (`Object::slime`; Toxrill, the Corrosive:
     /// "Creatures you don't control get -1/-1 for each slime counter on them").
     PerSlimeCounterOnIt,
+    /// Creatures that entered the battlefield under your control this turn (Kinbinding;
+    /// `Game::creatures_entered`).
+    PerCreatureEnteredUnderYourControlThisTurn,
 }
 
 /// A condition on a static ability ("as long as ...").

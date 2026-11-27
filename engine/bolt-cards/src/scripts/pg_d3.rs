@@ -2009,6 +2009,37 @@ pub fn script(name: &str) -> Option<Script> {
                 spell(d, vec![CREATURE], vec![Effect::Exile(0), token]);
             },
         ),
+        "Kinscaer Sentry" => s(
+            &["Whenever this creature attacks, you may put a creature card with mana value X or less from your hand onto the battlefield tapped and attacking, where X is the number of attacking creatures you control."],
+            |d, _| on(d, When::Attacks, vec![], vec![Effect::CreatureFromHandAttackingMvAtMostAttackers]),
+        ),
+        "Alesha, Who Smiles at Death" => s(
+            &["Whenever Alesha attacks, you may pay {W/B}{W/B}. If you do, return target creature card with power 2 or less from your graveyard to the battlefield tapped and attacking."],
+            |d, _| {
+                let card = Filter { creature_max_power: Some(2), ..graveyard_cards(true, Controller::You) };
+                let pay = Effect::MayPay(ManaCost::parse("{W/B}{W/B}").expect("hybrid"));
+                on(d, When::Attacks, vec![card], vec![pay, Effect::ReturnSlotToBattlefieldAttacking(0)]);
+            },
+        ),
+        "Ride the Shoopuf" => s(
+            &[
+                "Landfall — Whenever a land you control enters, put a +1/+1 counter on target creature you control.",
+                "{5}{G}{G}: This enchantment becomes a 7/7 Beast creature in addition to its other types.",
+            ],
+            |d, _| {
+                on(d, When::LandYouControlEnters, vec![YOUR_CREATURE], vec![Effect::Counters { slot: 0, n: 1 }]);
+                let beast = Effect::SourceBecomesCreature { power: 7, toughness: 7, subtypes: &["Beast"] };
+                activated(d, "{5}{G}{G}", false, vec![], vec![beast]);
+            },
+        ),
+        "Kodama of the East Tree" => s(
+            &[
+                "Whenever another permanent you control enters, if it wasn't put onto the battlefield with this ability, you may put a permanent card with equal or lesser mana value from your hand onto the battlefield.",
+                "Partner",
+            ],
+            // "Partner" is deck building only (CR 702.124).
+            |d, _| on(d, When::AnotherPermanentYouControlEnters, vec![], vec![Effect::MayPutPermanentFromHandMvAtMostExtra]),
+        ),
         "Skyscribing" => s(
             &[
                 "Each player draws X cards.",
@@ -2298,4 +2329,9 @@ pub const PG_D3_SCRIPTED: &[&str] = &[
     "Boulder Dash",
     "Goatnap",
     "Crib Swap",
+    // Core theme d3, batch 34
+    "Kinscaer Sentry",
+    "Alesha, Who Smiles at Death",
+    "Ride the Shoopuf",
+    "Kodama of the East Tree",
 ];

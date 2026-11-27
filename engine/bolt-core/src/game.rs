@@ -333,6 +333,9 @@ pub struct Object {
     /// The slime counters it had as it last left the battlefield (last known information, CR
     /// 603.10a: Toxrill's "a creature you don't control with a slime counter on it dies").
     pub last_slime: i32,
+    /// Put onto the battlefield by Kodama of the East Tree's ability (so its entering doesn't
+    /// trigger that ability again); cleared as it leaves.
+    pub put_by_kodama: bool,
 }
 
 /// One resolved effect's change to a permanent's characteristics (lane d3's type-changing store):
@@ -360,6 +363,8 @@ pub struct TypeChange {
     /// It's a Treasure artifact with "{T}, Sacrifice this artifact: Add one mana of any color" and
     /// no other card types (with `lose_abilities`): Vraska, Betrayal's Sting's -2.
     pub treasure_form: bool,
+    /// A creature in addition to its other types (layer 4; Ride the Shoopuf).
+    pub creature: bool,
 }
 
 /// Subtypes that aren't creature types, for "all creature types" (CR 205.3).
@@ -1454,6 +1459,15 @@ pub enum Decision {
     /// `Mode(k)`: put another counter of kind `k` (one of `kinds`, `Game::counter_kinds_on`' codes) on
     /// `target` (Ichormoon Gauntlet).
     ChooseCounterKind { target: ObjId, kinds: Vec<u8> },
+    /// `Pick` a creature card in your hand with mana value at most `max` to put onto the
+    /// battlefield tapped and attacking, or `No` (Kinscaer Sentry).
+    CreatureFromHandAttackingMaxMv { max: u32 },
+    /// `Pick` a permanent card in your hand with mana value at most `max` to put onto the
+    /// battlefield, or `No` (Kodama of the East Tree).
+    PermanentFromHandMaxMv { max: u32 },
+    /// `Pick` a card in your hand to exile (Ashiok, Nightmare Muse's -3: the bounced permanent's
+    /// owner).
+    ExileCardFromHand,
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -1957,6 +1971,9 @@ pub struct Game {
     /// card types as bits in `Decision::ChooseCardType`'s order, 1 << 0 artifact ... 1 << 6
     /// sorcery, the turn) (Pippin, Guard of the Citadel; Seasoned Dungeoneer: creatures).
     pub type_protection_grants: Vec<(ObjId, u32, u8, u32)>,
+    /// Creatures that entered the battlefield under each player's control: (turn, count)
+    /// (Kinbinding, `Scale::PerCreatureEnteredUnderYourControlThisTurn`).
+    pub creatures_entered: [(u32, u32); 2],
 }
 
 /// `Action::CastFromGraveyardAs`'s second number for Karador, Ghost Chieftain's once-each-turn
@@ -2262,6 +2279,7 @@ impl Game {
             any_graveyard_spells_turn: [0; 2],
             any_graveyard_casts: Vec::new(),
             type_protection_grants: Vec::new(),
+            creatures_entered: [(0, 0); 2],
         }
     }
 
@@ -2534,6 +2552,7 @@ impl Game {
             left_as_artifact: false,
             slime: 0,
             last_slime: 0,
+            put_by_kodama: false,
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -2635,6 +2654,9 @@ impl Game {
         }
         if self.type_changes(id).any(|c| c.artifact) {
             t.artifact = true; // Blinkmoth Nexus, Mishra's Factory
+        }
+        if self.type_changes(id).any(|c| c.creature) {
+            t.creature = true; // Ride the Shoopuf
         }
         if self.treasure_form(id) {
             // Vraska's -2: "loses all other card types" (supertypes stay, CR 205.1b).
@@ -3343,6 +3365,10 @@ impl Game {
                                 Some(self.players.iter().map(|pl| pl.graveyard.len()).sum())
                             }
                             Some(Scale::PerSlimeCounterOnIt) => Some(o.slime.max(0) as usize),
+                            Some(Scale::PerCreatureEnteredUnderYourControlThisTurn) => {
+                                let (turn, n) = self.creatures_entered[so.controller];
+                                Some(if turn == self.turn { n as usize } else { 0 })
+                            }
                             _ => None,
                         };
                         if let Some(n) = scaled {
@@ -4023,6 +4049,24 @@ impl Game {
     /// Whether proliferating `id` would add a counter: it has a numbered counter of some kind.
     pub fn proliferable(&self, id: ObjId) -> bool {
         !self.counter_kinds_on(id).is_empty()
+    }
+
+    /// Cards in `p`'s hand with mana value at most `max`: creature cards (`creatures`) or permanent
+    /// cards (Kinscaer Sentry, Kodama of the East Tree).
+    fn hand_cards_mv_at_most(&self, p: PlayerId, max: u32, creatures: bool) -> Vec<ObjId> {
+        self.players[p]
+            .hand
+            .iter()
+            .copied()
+            .filter(|&c| {
+                let d = self.def_of(c);
+                (if creatures {
+                    d.types.creature
+                } else {
+                    d.types.is_permanent()
+                }) && d.cost.mana_value() <= max
+            })
+            .collect()
     }
 
     /// Whether player `q` has a counter proliferate can add to (poison, energy).
@@ -5176,6 +5220,7 @@ impl Game {
             o.last_counters = (o.counters, o.stun, o.keyword_counters);
             o.last_slime = o.slime;
             o.slime = 0;
+            o.put_by_kodama = false;
             o.corpse_counter = false;
             o.stun = 0;
             o.skip_untap = false;
@@ -5765,7 +5810,19 @@ impl Game {
         }
         if to == Zone::Battlefield && from != Zone::Battlefield {
             let c = self.obj(id).controller;
+            if self.types_of(id).creature {
+                let turn = self.turn;
+                let e = &mut self.creatures_entered[c];
+                if e.0 != turn {
+                    *e = (turn, 0);
+                }
+                e.1 += 1; // Kinbinding
+            }
+            let entering = self.triggered.len();
             self.fire(c, When::AnotherPermanentYouControlEnters, Some(id));
+            for t in &mut self.triggered[entering..] {
+                t.extra = Some(id); // the entering permanent (Kodama of the East Tree)
+            }
             let before = self.triggered.len();
             if self.types_of(id).artifact {
                 self.fire(c, When::ArtifactYouControlEnters, None);
@@ -14226,6 +14283,25 @@ impl Game {
             Decision::DiscardThenIfInstantOrSorcery => hand.iter().copied().map(Action::Pick).collect(),
             Decision::DiscardMayCastFree { .. } => hand.iter().copied().map(Action::Pick).collect(),
             Decision::ChooseCounterKind { kinds, .. } => kinds.iter().map(|&k| Action::Mode(k)).collect(),
+            Decision::CreatureFromHandAttackingMaxMv { max } => {
+                let mut v: Vec<Action> = self
+                    .hand_cards_mv_at_most(p, *max, true)
+                    .into_iter()
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
+            Decision::PermanentFromHandMaxMv { max } => {
+                let mut v: Vec<Action> = self
+                    .hand_cards_mv_at_most(p, *max, false)
+                    .into_iter()
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
+            Decision::ExileCardFromHand => hand.iter().copied().map(Action::Pick).collect(),
             Decision::Proliferate { picked, players, .. } => {
                 let mut v: Vec<Action> = self
                     .battlefield
@@ -16060,6 +16136,21 @@ impl Game {
                     },
                 );
             }
+            (Decision::CreatureFromHandAttackingMaxMv { .. }, a) => {
+                if let Action::Pick(c) = a {
+                    self.put_onto_battlefield_attacking(c, p);
+                }
+            }
+            (Decision::PermanentFromHandMaxMv { .. }, a) => {
+                if let Action::Pick(c) = a {
+                    self.obj_mut(c).controller = p;
+                    self.move_to(c, Zone::Battlefield);
+                    if self.obj(c).zone == Zone::Battlefield {
+                        self.obj_mut(c).put_by_kodama = true;
+                    }
+                }
+            }
+            (Decision::ExileCardFromHand, Action::Pick(c)) => self.move_to(c, Zone::Exile),
             (Decision::ChooseCounterKind { target, .. }, Action::Mode(k)) => {
                 if self.obj(target).zone == Zone::Battlefield && self.add_counter_kind(target, k) > 0 {
                     self.counters_placed(p, 1);
@@ -23579,6 +23670,61 @@ impl Game {
                         ..TypeChange::default()
                     };
                     self.add_type_change(c, change);
+                }
+            }
+            Effect::CreatureFromHandAttackingMvAtMostAttackers => {
+                let p = item.controller;
+                let max = self.combat.as_ref().map_or(0, |c| {
+                    c.attackers
+                        .iter()
+                        .filter(|&&a| self.obj(a).controller == p)
+                        .count() as u32
+                });
+                if !self.hand_cards_mv_at_most(p, max, true).is_empty() {
+                    self.ask(p, Decision::CreatureFromHandAttackingMaxMv { max });
+                }
+            }
+            Effect::ReturnSlotToBattlefieldAttacking(slot) => {
+                if let Some(c) = Game::slot_object(item, legal, slot) {
+                    if self.obj(c).zone == Zone::Graveyard {
+                        self.put_onto_battlefield_attacking(c, item.controller);
+                    }
+                }
+            }
+            Effect::SourceBecomesCreature {
+                power,
+                toughness,
+                subtypes,
+            } => {
+                if self.obj(src).zone == Zone::Battlefield {
+                    let change = TypeChange {
+                        turn: u32::MAX,
+                        creature: true,
+                        base_pt: Some((power, toughness)),
+                        subtypes,
+                        ..TypeChange::default()
+                    };
+                    self.add_type_change(src, change);
+                }
+            }
+            Effect::MayPutPermanentFromHandMvAtMostExtra => {
+                let p = item.controller;
+                if let Some(e) = item.extra.filter(|&e| !self.obj(e).put_by_kodama) {
+                    let max = self.def_of(e).cost.mana_value();
+                    if !self.hand_cards_mv_at_most(p, max, false).is_empty() {
+                        self.ask(p, Decision::PermanentFromHandMaxMv { max });
+                    }
+                }
+            }
+            Effect::BounceThenOwnerExilesFromHand(slot) => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    if self.obj(id).zone == Zone::Battlefield {
+                        let owner = self.obj(id).owner;
+                        self.move_to(id, Zone::Hand);
+                        if !self.players[owner].hand.is_empty() {
+                            self.ask(owner, Decision::ExileCardFromHand);
+                        }
+                    }
                 }
             }
             Effect::PumpIfSubtype {

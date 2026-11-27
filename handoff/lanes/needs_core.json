@@ -3226,7 +3226,7 @@
   {
    "card": "Alesha, Who Smiles at Death",
    "deck": "Najeela, the Blade-Blossom",
-   "missing": "needs core: return a creature card tapped and attacking, after a may-pay hybrid cost",
+   "missing": "needs core: return a creature card tapped and attacking, after a may-pay hybrid cost [done by d3 batch 34: scripted (pg_d3), Effect::ReturnSlotToBattlefieldAttacking]",
    "lane": "d3",
    "theme": "triggers",
    "owner": "d2"
@@ -3794,7 +3794,7 @@
   {
    "card": "Ashiok, Nightmare Muse",
    "deck": "Atraxa, Praetors' Voice",
-   "missing": "needs core: a 2/3 blue and black Nightmare creature token with an attack/block trigger, and casting from exile",
+   "missing": "needs core: a 2/3 blue and black Nightmare creature token with an attack/block trigger, and casting from exile [d3 batch 34: the -3 is Effect::BounceThenOwnerExilesFromHand(slot) (Decision::ExileCardFromHand); still: the +1 Nightmare token (needs a token number) and the -7]",
    "lane": "d3",
    "theme": "triggers",
    "owner": "d2"
@@ -5162,7 +5162,7 @@
   {
    "card": "Kodama of the East Tree",
    "deck": "Bloomburrow Commander (BLC)",
-   "missing": "BLC (lane B's routing, 2026-11-26)",
+   "missing": "BLC (lane B's routing, 2026-11-26) [done by d3 batch 34: scripted (pg_d3), Effect::MayPutPermanentFromHandMvAtMostExtra (Object::put_by_kodama)]",
    "lane": "mac-b",
    "theme": "triggers",
    "owner": "d2"

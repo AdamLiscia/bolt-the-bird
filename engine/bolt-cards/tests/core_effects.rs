@@ -3421,3 +3421,44 @@ fn another_counter_of_the_chosen_kind() {
     resolve_all(&mut g, &[]);
     assert_eq!((g.obj(elves).counters, g.obj(elves).stun), (2, 2));
 }
+
+#[test]
+fn scale_per_creature_entered_under_your_control_this_turn() {
+    let mut kb = CardDef::creature("Test Kinbinding", "{0}", 0, 0, Keywords::NONE);
+    kb.types = Types {
+        enchantment: true,
+        ..Types::default()
+    };
+    kb.statics.push(Static {
+        scale: Some(Scale::PerCreatureEnteredUnderYourControlThisTurn),
+        ..static_of(Scope::YourCreatures, 1, 1, Keywords::NONE)
+    });
+    let (mut g, t) = game_with(vec![kb]);
+    g.add_card(0, t, Zone::Battlefield);
+    let a = g.add_card(0, cid("Llanowar Elves"), Zone::Hand);
+    let b = g.add_card(0, cid("Llanowar Elves"), Zone::Hand);
+    play(&mut g, a, false, &[], &[]);
+    assert_eq!(g.power(a), 2, "one entered");
+    play(&mut g, b, false, &[], &[]);
+    assert_eq!((g.power(a), g.power(b)), (3, 3), "two entered");
+    g.start_turn(5, 0);
+    assert_eq!(g.power(a), 1, "a new turn");
+}
+
+#[test]
+fn bounce_then_the_owner_exiles_a_card_from_hand() {
+    let (mut g, t) = game_with(vec![sorcery(
+        vec![Filter::CREATURE],
+        vec![Effect::BounceThenOwnerExilesFromHand(0)],
+    )]);
+    let theirs = g.add_card(1, cid("Llanowar Elves"), Zone::Battlefield);
+    let c = g.add_card(0, t, Zone::Hand);
+    act(&mut g, Action::Cast(c));
+    act(&mut g, Action::Target(obj(theirs)));
+    while !matches!(g.pending, Pending::Decide(1)) {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(g.obj(theirs).zone, Zone::Hand);
+    act(&mut g, Action::Pick(theirs));
+    assert_eq!(g.obj(theirs).zone, Zone::Exile, "its owner chose it");
+}
