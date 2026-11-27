@@ -1086,6 +1086,10 @@ pub struct CardDef {
     pub triples_creature_tokens: bool,
     /// The Necrobloom: "Land cards in your graveyard have dredge N." (2), see `Game::dredge_options`.
     pub lands_in_graveyard_have_dredge: Option<u8>,
+    /// Mirrormind Crown: "As long as this Equipment is attached to a creature, the first time you
+    /// would create one or more tokens each turn, you may instead create that many tokens that are
+    /// copies of equipped creature." (`Game::mirrormind_crown`; the engine always takes the copies)
+    pub first_tokens_copy_equipped: bool,
 }
 
 /// A card's pieces from the d4 subsystems (see [`CardDef::subsystems`]).
@@ -1658,6 +1662,7 @@ impl CardDef {
             others_of_chosen_type_enter_with_counter: false,
             triples_creature_tokens: false,
             lands_in_graveyard_have_dredge: None,
+            first_tokens_copy_equipped: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -1951,6 +1956,7 @@ impl CardDef {
             others_of_chosen_type_enter_with_counter: false,
             triples_creature_tokens: false,
             lands_in_graveyard_have_dredge: None,
+            first_tokens_copy_equipped: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,
@@ -2244,6 +2250,7 @@ impl CardDef {
             others_of_chosen_type_enter_with_counter: false,
             triples_creature_tokens: false,
             lands_in_graveyard_have_dredge: None,
+            first_tokens_copy_equipped: false,
             protection_chosen_card_type: false,
             skip_draw_step: false,
             creatures_untap_on_others_untap: false,

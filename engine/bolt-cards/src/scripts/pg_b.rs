@@ -2301,6 +2301,49 @@ pub fn script(name: &str) -> Option<Script> {
                 d.activated[n].crew = 1;
             },
         ),
+        "Badlands" => s(&[], |d, _| d.mana = Some(ManaSource::of(&[Color::Black, Color::Red]))),
+        "Bayou" => s(&[], |d, _| d.mana = Some(ManaSource::of(&[Color::Black, Color::Green]))),
+        "Plateau" => s(&[], |d, _| d.mana = Some(ManaSource::of(&[Color::Red, Color::White]))),
+        "Savannah" => s(&[], |d, _| d.mana = Some(ManaSource::of(&[Color::Green, Color::White]))),
+        "Scrubland" => s(&[], |d, _| d.mana = Some(ManaSource::of(&[Color::White, Color::Black]))),
+        "Taiga" => s(&[], |d, _| d.mana = Some(ManaSource::of(&[Color::Red, Color::Green]))),
+        "Tundra" => s(&[], |d, _| d.mana = Some(ManaSource::of(&[Color::White, Color::Blue]))),
+        "Morningtide's Light" => s(
+            &[
+                "Exile any number of target creatures. At the beginning of the next end step, return those cards to the battlefield tapped under their owners' control.",
+                "Until your next turn, prevent all damage that would be dealt to you.",
+                "Exile Morningtide's Light.",
+            ],
+            |d, _| {
+                // "Any number": up to twelve, one "target" word (different creatures).
+                const UP_TO: u8 = 12;
+                let mut effects: Vec<Effect> = (0..UP_TO).map(Effect::ExileSlotReturnTappedAtEnd).collect();
+                effects.push(Effect::PreventDamageToYouUntilYourNextTurn);
+                effects.push(Effect::ExileSourceSpell);
+                d.spell = Some(up_to(vec![CREATURE; UP_TO as usize], effects));
+            },
+        ),
+        "Mirrormind Crown" => s(
+            &[
+                "As long as this Equipment is attached to a creature, the first time you would create one or more tokens each turn, you may instead create that many tokens that are copies of equipped creature.",
+                "Equip {2}",
+            ],
+            |d, _| {
+                // The engine always takes the copies (token creation can't pause to ask).
+                d.first_tokens_copy_equipped = true;
+                equip(d, "{2}");
+            },
+        ),
+        "Glen Elendra's Answer" => s(
+            &[
+                "This spell can't be countered.",
+                "Counter all spells your opponents control and all abilities your opponents control. Create a 1/1 blue and black Faerie creature token with flying for each spell and ability countered this way.",
+            ],
+            |d, t| {
+                d.uncounterable = true;
+                spell(d, vec![], vec![Effect::CounterOpponentsSpellsAndAbilitiesTokenEach { def: t.faerie_ub }]);
+            },
+        ),
         _ => None,
     }
 }
@@ -2562,6 +2605,16 @@ pub const PG_B_SCRIPTED: &[&str] = &[
     "Tendo Ice Bridge",
     "The Necrobloom",
     "Golden Argosy",
+    "Badlands",
+    "Bayou",
+    "Plateau",
+    "Savannah",
+    "Scrubland",
+    "Taiga",
+    "Tundra",
+    "Morningtide's Light",
+    "Mirrormind Crown",
+    "Glen Elendra's Answer",
     // Ghyrson Starn (Spr3adsh33t)
     "Basilisk Collar",
     "Gorgon's Head",
