@@ -3722,4 +3722,7 @@ pub enum SubsystemEffect {
     /// controller controls. The ability is offered only while there is one
     /// (`Game::lacks_chapter_activated`), so it takes no target slot.
     AttachToYourCommander,
+    /// "This creature deals damage equal to the total mana value of other permanents you control
+    /// to each opponent." (Summon: Bahamut's chapter IV, Mega Flare)
+    DamageEachOpponentTotalManaValueOfOthers,
 }
