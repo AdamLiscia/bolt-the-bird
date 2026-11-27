@@ -1,5 +1,6 @@
 {
- "engine": "5180f2f",
+ "engine": "ab4fbce",
+ "note": "pending_on = lane branches on origin that already script the card (not merged yet)",
  "decks": [
   {
    "owner": "Adam",
@@ -101,27 +102,17 @@
    "owner": "DonSpider",
    "commander": "Zinnia, Valley's Voice",
    "list": "idea",
-   "missing": [
-    "Fortune Teller's Talent"
-   ]
-  },
-  {
-   "owner": "Spr3adsh33t",
-   "commander": "Lonis, Cryptozoologist",
-   "list": "31",
-   "missing": [
-    "Briarbridge Patrol",
-    "Urza, Lord High Artificer"
-   ]
+   "missing": []
   },
   {
    "owner": "RuricMo",
    "commander": "Korvold, Fae-Cursed King",
    "list": "31",
    "missing": [
-    "Blade of the Bloodchief",
-    "Nesting Dragon",
-    "The Earth Crystal"
+    {
+     "card": "The Earth Crystal",
+     "pending_on": []
+    }
    ]
   },
   {
@@ -129,21 +120,31 @@
    "commander": "Atraxa, Praetors' Voice",
    "list": "31",
    "missing": [
-    "Ashiok, Nightmare Muse",
-    "Ichormoon Gauntlet",
-    "Tekuthal, Inquiry Dominus",
-    "Vraska, Betrayal's Sting"
+    {
+     "card": "Ichormoon Gauntlet",
+     "pending_on": []
+    },
+    {
+     "card": "Tekuthal, Inquiry Dominus",
+     "pending_on": [
+      "lane-d1"
+     ]
+    }
    ]
   },
   {
-   "owner": "DonSpider",
-   "commander": "Raffine, Scheming Seer",
+   "owner": "Spr3adsh33t",
+   "commander": "Lonis, Cryptozoologist",
    "list": "31",
    "missing": [
-    "Flitterwing Nuisance",
-    "Glen Elendra Guardian",
-    "Mausoleum Wanderer",
-    "Skycat Sovereign"
+    {
+     "card": "Briarbridge Patrol",
+     "pending_on": []
+    },
+    {
+     "card": "Urza, Lord High Artificer",
+     "pending_on": []
+    }
    ]
   },
   {
@@ -151,10 +152,18 @@
    "commander": "Bello, Bard of the Brambles",
    "list": "idea",
    "missing": [
-    "Alchemist's Talent",
-    "Evercoat Ursine",
-    "Grothama, All-Devouring",
-    "Kodama of the East Tree"
+    {
+     "card": "Evercoat Ursine",
+     "pending_on": [
+      "tarkir-c"
+     ]
+    },
+    {
+     "card": "Grothama, All-Devouring",
+     "pending_on": [
+      "lane-d2"
+     ]
+    }
    ]
   },
   {
@@ -162,11 +171,20 @@
    "commander": "Najeela, the Blade-Blossom",
    "list": "31",
    "missing": [
-    "Alesha, Who Smiles at Death",
-    "Derevi, Empyrial Tactician",
-    "Druids' Repository",
-    "Shanna, Sisay's Legacy",
-    "Veil of Summer"
+    {
+     "card": "Derevi, Empyrial Tactician",
+     "pending_on": [
+      "tarkir-b"
+     ]
+    },
+    {
+     "card": "Druids' Repository",
+     "pending_on": []
+    },
+    {
+     "card": "Veil of Summer",
+     "pending_on": []
+    }
    ]
   },
   {
@@ -174,60 +192,20 @@
    "commander": "Ghyrson Starn, Kelermorph",
    "list": "31",
    "missing": [
-    "Case of the Ransacked Lab",
-    "Chandra, Dressed to Kill",
-    "Invasion of Arcavios // Invocation of the Founders",
-    "Ral, Storm Conduit",
-    "Sorcerer Class"
-   ]
-  },
-  {
-   "owner": "RuricMo",
-   "commander": "Atla Palani, Nest Tender",
-   "list": "31",
-   "missing": [
-    "Atla Palani, Nest Tender",
-    "Delney, Streetwise Lookout",
-    "Dinosaur Egg",
-    "Instill Energy",
-    "Irregular Cohort",
-    "Maskwood Nexus",
-    "Nesting Dragon",
-    "Palani's Hatcher",
-    "Spawning Pit"
-   ]
-  },
-  {
-   "owner": "Grande",
-   "commander": "Hearthhull, the Worldseed",
-   "list": "idea",
-   "missing": [
-    "Hearthhull, the Worldseed",
-    "Horizon Explorer",
-    "Iridescent Vinelasher",
-    "Mina and Denn, Wildborn",
-    "Nahiri's Lithoforming",
-    "Orcish Lumberjack",
-    "Roiling Regrowth",
-    "Terminate",
-    "Walk-In Closet // Forgotten Cellar"
-   ]
-  },
-  {
-   "owner": "Adam",
-   "commander": "Raggadragga, Goreguts Boss",
-   "list": "31",
-   "missing": [
-    "Allosaurus Shepherd",
-    "Comet Storm",
-    "Cradle Clearcutter",
-    "Finale of Devastation",
-    "Inkmoth Nexus",
-    "Invasion of Ikoria // Zilortha, Apex of Ikoria",
-    "Panglacial Wurm",
-    "Raggadragga, Goreguts Boss",
-    "Song of Totentanz",
-    "Turntimber Symbiosis // Turntimber, Serpentine Wood"
+    {
+     "card": "Case of the Ransacked Lab",
+     "pending_on": []
+    },
+    {
+     "card": "Invasion of Arcavios // Invocation of the Founders",
+     "pending_on": []
+    },
+    {
+     "card": "Ral, Storm Conduit",
+     "pending_on": [
+      "lane-d2"
+     ]
+    }
    ]
   },
   {
@@ -235,52 +213,80 @@
    "commander": "Neriv, Heart of the Storm",
    "list": "idea",
    "missing": [
-    "Adept Watershaper",
-    "Bogslither's Embrace",
-    "Changeling Wayfinder",
-    "Firdoch Core",
-    "Keep Out",
-    "Kinscaer Sentry",
-    "Lavaleaper",
-    "Purging Stormbrood // Absorb Essence",
-    "Reaping Willow",
-    "Riverguard's Reflexes"
+    {
+     "card": "Changeling Wayfinder",
+     "pending_on": [
+      "lane-d1"
+     ]
+    },
+    {
+     "card": "Purging Stormbrood // Absorb Essence",
+     "pending_on": []
+    },
+    {
+     "card": "Reaping Willow",
+     "pending_on": [
+      "lane-d1"
+     ]
+    }
    ]
   },
   {
-   "owner": "Time",
-   "commander": "Henrika Domnathi // Henrika, Infernal Seer",
+   "owner": "DonSpider",
+   "commander": "Raffine, Scheming Seer",
    "list": "31",
    "missing": [
-    "Bitterblossom",
-    "Blade of the Bloodchief",
-    "Crypt of Agadeem",
-    "Demon's Disciple",
-    "Emperor of Bones",
-    "Grim Hireling",
-    "Henrika Domnathi // Henrika, Infernal Seer",
-    "Liliana, Heretical Healer // Liliana, Defiant Necromancer",
-    "Rise of the Dread Marn",
-    "Underdark Rift",
-    "Warlock Class"
+    {
+     "card": "Flitterwing Nuisance",
+     "pending_on": []
+    },
+    {
+     "card": "Glen Elendra Guardian",
+     "pending_on": [
+      "lane-d1"
+     ]
+    },
+    {
+     "card": "Mausoleum Wanderer",
+     "pending_on": [
+      "lane-d3"
+     ]
+    },
+    {
+     "card": "Skycat Sovereign",
+     "pending_on": [
+      "lane-d3"
+     ]
+    }
    ]
   },
   {
-   "owner": "Time",
-   "commander": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
-   "list": "31",
+   "owner": "Grande",
+   "commander": "Hearthhull, the Worldseed",
+   "list": "idea",
    "missing": [
-    "Braid of Fire",
-    "Invasion of Arcavios // Invocation of the Founders",
-    "Jin-Gitaxias // The Great Synthesis",
-    "Jin-Gitaxias, Progress Tyrant",
-    "Nesting Grounds",
-    "Pink Horror",
-    "Ral, Monsoon Mage // Ral, Leyline Prodigy",
-    "Ral, Storm Conduit",
-    "Rings of Brighthearth",
-    "See Double",
-    "Whirlwind Denial"
+    {
+     "card": "Hearthhull, the Worldseed",
+     "pending_on": []
+    },
+    {
+     "card": "Horizon Explorer",
+     "pending_on": [
+      "lane-d2"
+     ]
+    },
+    {
+     "card": "Mina and Denn, Wildborn",
+     "pending_on": []
+    },
+    {
+     "card": "Nahiri's Lithoforming",
+     "pending_on": []
+    },
+    {
+     "card": "Walk-In Closet // Forgotten Cellar",
+     "pending_on": []
+    }
    ]
   },
   {
@@ -288,18 +294,75 @@
    "commander": "Niv-Mizzet, Visionary",
    "list": "idea",
    "missing": [
-    "Ashling, Rekindled // Ashling, Rimebound",
-    "Blossombind",
-    "Boulder Dash",
-    "Changeling Wayfinder",
-    "Disruptor of Currents",
-    "End-Blaze Epiphany",
-    "Goatnap",
-    "Mirrorform",
-    "Noggle the Mind",
-    "Sanar, Innovative First-Year",
-    "Sear",
-    "Wild Unraveling"
+    {
+     "card": "Ashling, Rekindled // Ashling, Rimebound",
+     "pending_on": []
+    },
+    {
+     "card": "Blossombind",
+     "pending_on": []
+    },
+    {
+     "card": "Changeling Wayfinder",
+     "pending_on": [
+      "lane-d1"
+     ]
+    },
+    {
+     "card": "End-Blaze Epiphany",
+     "pending_on": []
+    },
+    {
+     "card": "Mirrorform",
+     "pending_on": []
+    },
+    {
+     "card": "Sanar, Innovative First-Year",
+     "pending_on": []
+    }
+   ]
+  },
+  {
+   "owner": "RuricMo",
+   "commander": "Atla Palani, Nest Tender",
+   "list": "31",
+   "missing": [
+    {
+     "card": "Atla Palani, Nest Tender",
+     "pending_on": [
+      "lane-d2"
+     ]
+    },
+    {
+     "card": "Delney, Streetwise Lookout",
+     "pending_on": [
+      "lane-d2"
+     ]
+    },
+    {
+     "card": "Dinosaur Egg",
+     "pending_on": []
+    },
+    {
+     "card": "Instill Energy",
+     "pending_on": [
+      "lane-d1"
+     ]
+    },
+    {
+     "card": "Irregular Cohort",
+     "pending_on": []
+    },
+    {
+     "card": "Palani's Hatcher",
+     "pending_on": [
+      "lane-d2"
+     ]
+    },
+    {
+     "card": "Spawning Pit",
+     "pending_on": []
+    }
    ]
   },
   {
@@ -307,185 +370,193 @@
    "commander": "Zurgo, Thunder's Decree",
    "list": "idea",
    "missing": [
-    "Adept Watershaper",
-    "Bogslither's Embrace",
-    "Crib Swap",
-    "Feral Deathgorger // Dusk Sight",
-    "Kinbinding",
-    "Purging Stormbrood // Absorb Essence",
-    "Pyrrhic Strike",
-    "Riling Dawnbreaker // Signaling Roar",
-    "Scavenger Regent // Exude Toxin",
-    "Scuzzback Scrounger",
-    "Sear",
-    "Stormshriek Feral // Flush Out",
-    "Twinmaw Stormbrood // Charring Bite"
-   ]
-  },
-  {
-   "owner": "Spr3adsh33t",
-   "commander": "Malik, Grim Manipulator",
-   "list": "31",
-   "missing": [
-    "Agent of the Iron Throne",
-    "Demon's Disciple",
-    "Evin, Waterdeep Opportunist",
-    "Gisa's Favorite Shovel",
-    "Goldspan Dragon",
-    "Ingenious Artillerist",
-    "Kaya's Guile",
-    "Make an Example",
-    "Malik, Grim Manipulator",
-    "Mythos of Snapdax",
-    "Reckless Handling",
-    "Sheoldred's Edict",
-    "Soul Shatter",
-    "Thalisse, Reverent Medium",
-    "There and Back Again",
-    "Vona's Hunger"
-   ]
-  },
-  {
-   "owner": "DonSpider",
-   "commander": "Bruna, Light of Alabaster",
-   "list": "31",
-   "missing": [
-    "All That Glitters",
-    "Archaeomancer's Map",
-    "Auramancer's Guise",
-    "Celestial Mantle",
-    "Consuming Tide",
-    "Daybreak Coronet",
-    "Deep Gnome Terramancer",
-    "Ethereal Armor",
-    "Gifts Ungiven",
-    "Giver of Runes",
-    "Heliod, the Radiant Dawn // Heliod, the Warped Eclipse",
-    "Invasion of Theros // Ephara, Ever-Sheltering",
-    "Lavinia, Azorius Renegade",
-    "Open the Armory",
-    "Sage's Reverie",
-    "Single Combat",
-    "Super State",
-    "Unquestioned Authority"
-   ]
-  },
-  {
-   "owner": "DonSpider",
-   "commander": "Olivia, Crimson Bride",
-   "list": "31",
-   "missing": [
-    "Azra Oddsmaker",
-    "Bitter Triumph",
-    "Burning Inquiry",
-    "Burning-Rune Demon",
-    "Cathartic Reunion",
-    "Change of Fortune",
-    "Demand Answers",
-    "Dragon Mage",
-    "Exhume",
-    "Hoarding Broodlord",
-    "Living Death",
-    "Necropolis Regent",
-    "Neheb, the Eternal",
-    "Olivia's Attendants",
-    "Ozai, the Phoenix King",
-    "Rakdos Charm",
-    "Sazacap's Brew",
-    "Summon: Bahamut",
-    "Twilight Diviner",
-    "Twilight Prophet",
-    "Vile Mutilator"
-   ]
-  },
-  {
-   "owner": "RuricMo",
-   "commander": "Vaevictis Asmadi, the Dire",
-   "list": "31",
-   "missing": [
-    "Apocalypse",
-    "Atarka, World Render",
-    "Broodcaller Scourge",
-    "Crux of Fate",
-    "Descendants' Path",
-    "Dragon Broodmother",
-    "Gluttonous Hellkite",
-    "Goldspan Dragon",
-    "Haven of the Spirit Dragon",
-    "Karrthus, Tyrant of Jund",
-    "Kindred Summons",
-    "Klauth, Unrivaled Ancient",
-    "Lathliss, Dragon Queen",
-    "Nesting Dragon",
-    "Nogi, Draco-Zealot",
-    "Scourge of Valkas",
-    "Scourge of the Throne",
-    "Shadowspear",
-    "Three Tree City",
-    "Urza's Incubator",
-    "Vaevictis Asmadi, the Dire",
-    "Vanquisher's Banner"
+    {
+     "card": "Feral Deathgorger // Dusk Sight",
+     "pending_on": []
+    },
+    {
+     "card": "Kinbinding",
+     "pending_on": [
+      "lane-d2"
+     ]
+    },
+    {
+     "card": "Purging Stormbrood // Absorb Essence",
+     "pending_on": []
+    },
+    {
+     "card": "Riling Dawnbreaker // Signaling Roar",
+     "pending_on": []
+    },
+    {
+     "card": "Scavenger Regent // Exude Toxin",
+     "pending_on": []
+    },
+    {
+     "card": "Scuzzback Scrounger",
+     "pending_on": []
+    },
+    {
+     "card": "Stormshriek Feral // Flush Out",
+     "pending_on": []
+    },
+    {
+     "card": "Twinmaw Stormbrood // Charring Bite",
+     "pending_on": []
+    }
    ]
   },
   {
    "owner": "Adam",
-   "commander": "Zhulodok, Void Gorger",
+   "commander": "Raggadragga, Goreguts Boss",
    "list": "31",
    "missing": [
-    "Bonders' Enclave",
-    "Chimil, the Inner Sun",
-    "Cityscape Leveler",
-    "Conduit of Ruin",
-    "Echoes of Eternity",
-    "Emrakul, the Promised End",
-    "Emrakul, the World Anew",
-    "Flayer of Loyalties",
-    "Forsaken Monument",
-    "It That Heralds the End",
-    "Kaldra Compleat",
-    "Kozilek, the Great Distortion",
-    "Liberator, Urza's Battlethopter",
-    "Not of This World",
-    "Pathrazer of Ulamog",
-    "Planar Nexus",
-    "Scorched Ruins",
-    "Skittering Cicada",
-    "Ugin's Labyrinth",
-    "Urza's Incubator",
-    "Urza's Workshop",
-    "Wandering Archaic // Explore the Vastlands",
-    "Zhulodok, Void Gorger"
+    {
+     "card": "Allosaurus Shepherd",
+     "pending_on": []
+    },
+    {
+     "card": "Comet Storm",
+     "pending_on": [
+      "lane-d1"
+     ]
+    },
+    {
+     "card": "Cradle Clearcutter",
+     "pending_on": []
+    },
+    {
+     "card": "Finale of Devastation",
+     "pending_on": []
+    },
+    {
+     "card": "Inkmoth Nexus",
+     "pending_on": []
+    },
+    {
+     "card": "Invasion of Ikoria // Zilortha, Apex of Ikoria",
+     "pending_on": []
+    },
+    {
+     "card": "Panglacial Wurm",
+     "pending_on": []
+    },
+    {
+     "card": "Raggadragga, Goreguts Boss",
+     "pending_on": []
+    },
+    {
+     "card": "Song of Totentanz",
+     "pending_on": []
+    },
+    {
+     "card": "Turntimber Symbiosis // Turntimber, Serpentine Wood",
+     "pending_on": []
+    }
    ]
   },
   {
-   "owner": "Adam",
-   "commander": "Sephiroth, Fabled SOLDIER // Sephiroth, One-Winged Angel",
-   "list": "idea",
+   "owner": "Time",
+   "commander": "Henrika Domnathi // Henrika, Infernal Seer",
+   "list": "31",
    "missing": [
-    "Ad Nauseam",
-    "Bitterblossom",
-    "Cabal Ritual",
-    "Dismember",
-    "Flare of Malice",
-    "Forsaken Miner",
-    "Gravecrawler",
-    "Greedy Freebooter",
-    "Hoarding Broodlord",
-    "Jadar, Ghoulcaller of Nephalia",
-    "Midgar, City of Mako // Reactor Raid",
-    "Ophiomancer",
-    "Opposition Agent",
-    "Rev, Tithe Extractor",
-    "Saw in Half",
-    "Sephiroth, Fabled SOLDIER // Sephiroth, One-Winged Angel",
-    "Snuff Out",
-    "Spymaster's Vault",
-    "Stridehangar Automaton",
-    "The Black Gate",
-    "Timeline Culler",
-    "Volrath's Stronghold",
-    "Westvale Abbey // Ormendahl, Profane Prince",
-    "Wishclaw Talisman"
+    {
+     "card": "Bitterblossom",
+     "pending_on": [
+      "lane-d2"
+     ]
+    },
+    {
+     "card": "Crypt of Agadeem",
+     "pending_on": []
+    },
+    {
+     "card": "Demon's Disciple",
+     "pending_on": [
+      "tarkir-b"
+     ]
+    },
+    {
+     "card": "Emperor of Bones",
+     "pending_on": []
+    },
+    {
+     "card": "Grim Hireling",
+     "pending_on": []
+    },
+    {
+     "card": "Henrika Domnathi // Henrika, Infernal Seer",
+     "pending_on": []
+    },
+    {
+     "card": "Liliana, Heretical Healer // Liliana, Defiant Necromancer",
+     "pending_on": []
+    },
+    {
+     "card": "Rise of the Dread Marn",
+     "pending_on": []
+    },
+    {
+     "card": "Underdark Rift",
+     "pending_on": [
+      "lane-d3"
+     ]
+    },
+    {
+     "card": "Warlock Class",
+     "pending_on": []
+    }
+   ]
+  },
+  {
+   "owner": "Time",
+   "commander": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+   "list": "31",
+   "missing": [
+    {
+     "card": "Braid of Fire",
+     "pending_on": [
+      "lane-d1"
+     ]
+    },
+    {
+     "card": "Invasion of Arcavios // Invocation of the Founders",
+     "pending_on": []
+    },
+    {
+     "card": "Jin-Gitaxias // The Great Synthesis",
+     "pending_on": []
+    },
+    {
+     "card": "Nesting Grounds",
+     "pending_on": []
+    },
+    {
+     "card": "Pink Horror",
+     "pending_on": []
+    },
+    {
+     "card": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+     "pending_on": []
+    },
+    {
+     "card": "Ral, Storm Conduit",
+     "pending_on": [
+      "lane-d2"
+     ]
+    },
+    {
+     "card": "Rings of Brighthearth",
+     "pending_on": []
+    },
+    {
+     "card": "See Double",
+     "pending_on": []
+    },
+    {
+     "card": "Whirlwind Denial",
+     "pending_on": []
+    }
    ]
   },
   {
@@ -493,30 +564,311 @@
    "commander": "Tifa Lockhart",
    "list": "idea",
    "missing": [
-    "Archdruid's Charm",
-    "Blackblade Reforged",
-    "Bristly Bill, Spine Sower",
-    "Claim the Kingdom",
-    "Crop Rotation",
-    "Entish Restoration",
-    "Escape Tunnel",
-    "Invigorate",
-    "Mightform Harmonizer",
-    "Overprotect",
-    "Planar Engineering",
-    "Ram Through",
-    "Ride the Shoopuf",
-    "Roaring Earth",
-    "Roiling Regrowth",
-    "Scale Up",
-    "Scythecat Cub",
-    "Skyclave Pick-Axe",
-    "Springbloom Druid",
-    "Staff of Titania",
-    "Tamiyo's Safekeeping",
-    "Tifa Lockhart",
-    "Tifa's Limit Break",
-    "Tyvar's Stand"
+    {
+     "card": "Blackblade Reforged",
+     "pending_on": []
+    },
+    {
+     "card": "Bristly Bill, Spine Sower",
+     "pending_on": [
+      "lane-d2"
+     ]
+    },
+    {
+     "card": "Claim the Kingdom",
+     "pending_on": [
+      "lane-d2"
+     ]
+    },
+    {
+     "card": "Mightform Harmonizer",
+     "pending_on": [
+      "lane-d2"
+     ]
+    },
+    {
+     "card": "Overprotect",
+     "pending_on": [
+      "lane-d2"
+     ]
+    },
+    {
+     "card": "Scythecat Cub",
+     "pending_on": [
+      "lane-d2"
+     ]
+    },
+    {
+     "card": "Skyclave Pick-Axe",
+     "pending_on": [
+      "lane-d2"
+     ]
+    },
+    {
+     "card": "Springbloom Druid",
+     "pending_on": [
+      "lane-d2"
+     ]
+    },
+    {
+     "card": "Staff of Titania",
+     "pending_on": [
+      "lane-d2"
+     ]
+    },
+    {
+     "card": "Tamiyo's Safekeeping",
+     "pending_on": [
+      "lane-d2"
+     ]
+    },
+    {
+     "card": "Tifa Lockhart",
+     "pending_on": [
+      "lane-d2"
+     ]
+    },
+    {
+     "card": "Tyvar's Stand",
+     "pending_on": [
+      "lane-d2"
+     ]
+    }
+   ]
+  },
+  {
+   "owner": "Adam",
+   "commander": "Sephiroth, Fabled SOLDIER // Sephiroth, One-Winged Angel",
+   "list": "idea",
+   "missing": [
+    {
+     "card": "Bitterblossom",
+     "pending_on": [
+      "lane-d2"
+     ]
+    },
+    {
+     "card": "Flare of Malice",
+     "pending_on": []
+    },
+    {
+     "card": "Forsaken Miner",
+     "pending_on": [
+      "lane-d2"
+     ]
+    },
+    {
+     "card": "Gravecrawler",
+     "pending_on": []
+    },
+    {
+     "card": "Greedy Freebooter",
+     "pending_on": [
+      "lane-d2"
+     ]
+    },
+    {
+     "card": "Hoarding Broodlord",
+     "pending_on": []
+    },
+    {
+     "card": "Jadar, Ghoulcaller of Nephalia",
+     "pending_on": [
+      "lane-d2"
+     ]
+    },
+    {
+     "card": "Midgar, City of Mako // Reactor Raid",
+     "pending_on": []
+    },
+    {
+     "card": "Ophiomancer",
+     "pending_on": [
+      "lane-d2"
+     ]
+    },
+    {
+     "card": "Saw in Half",
+     "pending_on": []
+    },
+    {
+     "card": "Sephiroth, Fabled SOLDIER // Sephiroth, One-Winged Angel",
+     "pending_on": []
+    },
+    {
+     "card": "Stridehangar Automaton",
+     "pending_on": [
+      "tarkir-b"
+     ]
+    },
+    {
+     "card": "Timeline Culler",
+     "pending_on": []
+    },
+    {
+     "card": "Westvale Abbey // Ormendahl, Profane Prince",
+     "pending_on": []
+    },
+    {
+     "card": "Wishclaw Talisman",
+     "pending_on": []
+    }
+   ]
+  },
+  {
+   "owner": "Spr3adsh33t",
+   "commander": "Malik, Grim Manipulator",
+   "list": "31",
+   "missing": [
+    {
+     "card": "Agent of the Iron Throne",
+     "pending_on": []
+    },
+    {
+     "card": "Demon's Disciple",
+     "pending_on": [
+      "tarkir-b"
+     ]
+    },
+    {
+     "card": "Evin, Waterdeep Opportunist",
+     "pending_on": []
+    },
+    {
+     "card": "Gisa's Favorite Shovel",
+     "pending_on": []
+    },
+    {
+     "card": "Goldspan Dragon",
+     "pending_on": []
+    },
+    {
+     "card": "Ingenious Artillerist",
+     "pending_on": []
+    },
+    {
+     "card": "Kaya's Guile",
+     "pending_on": []
+    },
+    {
+     "card": "Make an Example",
+     "pending_on": []
+    },
+    {
+     "card": "Malik, Grim Manipulator",
+     "pending_on": []
+    },
+    {
+     "card": "Mythos of Snapdax",
+     "pending_on": []
+    },
+    {
+     "card": "Reckless Handling",
+     "pending_on": [
+      "tarkir-b"
+     ]
+    },
+    {
+     "card": "Sheoldred's Edict",
+     "pending_on": []
+    },
+    {
+     "card": "Soul Shatter",
+     "pending_on": []
+    },
+    {
+     "card": "Thalisse, Reverent Medium",
+     "pending_on": []
+    },
+    {
+     "card": "There and Back Again",
+     "pending_on": [
+      "tarkir-b"
+     ]
+    },
+    {
+     "card": "Vona's Hunger",
+     "pending_on": []
+    }
+   ]
+  },
+  {
+   "owner": "DonSpider",
+   "commander": "Bruna, Light of Alabaster",
+   "list": "31",
+   "missing": [
+    {
+     "card": "All That Glitters",
+     "pending_on": []
+    },
+    {
+     "card": "Archaeomancer's Map",
+     "pending_on": []
+    },
+    {
+     "card": "Auramancer's Guise",
+     "pending_on": []
+    },
+    {
+     "card": "Celestial Mantle",
+     "pending_on": []
+    },
+    {
+     "card": "Consuming Tide",
+     "pending_on": []
+    },
+    {
+     "card": "Daybreak Coronet",
+     "pending_on": []
+    },
+    {
+     "card": "Deep Gnome Terramancer",
+     "pending_on": []
+    },
+    {
+     "card": "Ethereal Armor",
+     "pending_on": []
+    },
+    {
+     "card": "Gifts Ungiven",
+     "pending_on": []
+    },
+    {
+     "card": "Giver of Runes",
+     "pending_on": []
+    },
+    {
+     "card": "Heliod, the Radiant Dawn // Heliod, the Warped Eclipse",
+     "pending_on": []
+    },
+    {
+     "card": "Invasion of Theros // Ephara, Ever-Sheltering",
+     "pending_on": []
+    },
+    {
+     "card": "Lavinia, Azorius Renegade",
+     "pending_on": []
+    },
+    {
+     "card": "Open the Armory",
+     "pending_on": []
+    },
+    {
+     "card": "Sage's Reverie",
+     "pending_on": []
+    },
+    {
+     "card": "Single Combat",
+     "pending_on": []
+    },
+    {
+     "card": "Super State",
+     "pending_on": []
+    },
+    {
+     "card": "Unquestioned Authority",
+     "pending_on": []
+    }
    ]
   },
   {
@@ -524,31 +876,401 @@
    "commander": "Kenrith, the Returned King",
    "list": "idea",
    "missing": [
-    "Brain Freeze",
-    "Chain of Vapor",
-    "Chrome Mox",
-    "Deathrite Shaman",
-    "Demonic Consultation",
-    "Drannith Magistrate",
-    "Elvish Spirit Guide",
-    "Forbidden Orchard",
-    "Gamble",
-    "Gemstone Caverns",
-    "Imperial Seal",
-    "Kenrith, the Returned King",
-    "Lion's Eye Diamond",
-    "Mental Misstep",
-    "Mox Diamond",
-    "Silence",
-    "Spell Pierce",
-    "Summoner's Pact",
-    "Thassa's Oracle",
-    "Underworld Breach",
-    "Utopia Sprawl",
-    "Veil of Summer",
-    "Vizier of Remedies",
-    "Wheel of Fortune",
-    "Wild Growth"
+    {
+     "card": "Brain Freeze",
+     "pending_on": []
+    },
+    {
+     "card": "Chain of Vapor",
+     "pending_on": []
+    },
+    {
+     "card": "Chrome Mox",
+     "pending_on": [
+      "lane-d1"
+     ]
+    },
+    {
+     "card": "Deathrite Shaman",
+     "pending_on": [
+      "lane-d1"
+     ]
+    },
+    {
+     "card": "Demonic Consultation",
+     "pending_on": [
+      "lane-d2"
+     ]
+    },
+    {
+     "card": "Elvish Spirit Guide",
+     "pending_on": [
+      "lane-d1"
+     ]
+    },
+    {
+     "card": "Forbidden Orchard",
+     "pending_on": []
+    },
+    {
+     "card": "Gamble",
+     "pending_on": [
+      "lane-d2"
+     ]
+    },
+    {
+     "card": "Gemstone Caverns",
+     "pending_on": []
+    },
+    {
+     "card": "Imperial Seal",
+     "pending_on": [
+      "lane-d2"
+     ]
+    },
+    {
+     "card": "Kenrith, the Returned King",
+     "pending_on": [
+      "lane-d2"
+     ]
+    },
+    {
+     "card": "Lion's Eye Diamond",
+     "pending_on": [
+      "lane-d1"
+     ]
+    },
+    {
+     "card": "Mox Diamond",
+     "pending_on": [
+      "lane-d1"
+     ]
+    },
+    {
+     "card": "Summoner's Pact",
+     "pending_on": [
+      "lane-d2"
+     ]
+    },
+    {
+     "card": "Thassa's Oracle",
+     "pending_on": [
+      "lane-d2"
+     ]
+    },
+    {
+     "card": "Underworld Breach",
+     "pending_on": []
+    },
+    {
+     "card": "Utopia Sprawl",
+     "pending_on": []
+    },
+    {
+     "card": "Veil of Summer",
+     "pending_on": []
+    },
+    {
+     "card": "Wheel of Fortune",
+     "pending_on": [
+      "lane-d2"
+     ]
+    },
+    {
+     "card": "Wild Growth",
+     "pending_on": []
+    }
+   ]
+  },
+  {
+   "owner": "DonSpider",
+   "commander": "Olivia, Crimson Bride",
+   "list": "31",
+   "missing": [
+    {
+     "card": "Azra Oddsmaker",
+     "pending_on": []
+    },
+    {
+     "card": "Bitter Triumph",
+     "pending_on": []
+    },
+    {
+     "card": "Burning Inquiry",
+     "pending_on": []
+    },
+    {
+     "card": "Burning-Rune Demon",
+     "pending_on": []
+    },
+    {
+     "card": "Cathartic Reunion",
+     "pending_on": []
+    },
+    {
+     "card": "Change of Fortune",
+     "pending_on": []
+    },
+    {
+     "card": "Demand Answers",
+     "pending_on": []
+    },
+    {
+     "card": "Dragon Mage",
+     "pending_on": []
+    },
+    {
+     "card": "Exhume",
+     "pending_on": []
+    },
+    {
+     "card": "Hoarding Broodlord",
+     "pending_on": []
+    },
+    {
+     "card": "Living Death",
+     "pending_on": []
+    },
+    {
+     "card": "Necropolis Regent",
+     "pending_on": []
+    },
+    {
+     "card": "Neheb, the Eternal",
+     "pending_on": []
+    },
+    {
+     "card": "Olivia's Attendants",
+     "pending_on": []
+    },
+    {
+     "card": "Ozai, the Phoenix King",
+     "pending_on": []
+    },
+    {
+     "card": "Rakdos Charm",
+     "pending_on": []
+    },
+    {
+     "card": "Sazacap's Brew",
+     "pending_on": []
+    },
+    {
+     "card": "Summon: Bahamut",
+     "pending_on": []
+    },
+    {
+     "card": "Twilight Diviner",
+     "pending_on": []
+    },
+    {
+     "card": "Twilight Prophet",
+     "pending_on": []
+    },
+    {
+     "card": "Vile Mutilator",
+     "pending_on": []
+    }
+   ]
+  },
+  {
+   "owner": "RuricMo",
+   "commander": "Vaevictis Asmadi, the Dire",
+   "list": "31",
+   "missing": [
+    {
+     "card": "Apocalypse",
+     "pending_on": [
+      "lane-d3"
+     ]
+    },
+    {
+     "card": "Atarka, World Render",
+     "pending_on": []
+    },
+    {
+     "card": "Broodcaller Scourge",
+     "pending_on": []
+    },
+    {
+     "card": "Crux of Fate",
+     "pending_on": [
+      "lane-d3"
+     ]
+    },
+    {
+     "card": "Descendants' Path",
+     "pending_on": []
+    },
+    {
+     "card": "Dragon Broodmother",
+     "pending_on": []
+    },
+    {
+     "card": "Gluttonous Hellkite",
+     "pending_on": []
+    },
+    {
+     "card": "Goldspan Dragon",
+     "pending_on": []
+    },
+    {
+     "card": "Haven of the Spirit Dragon",
+     "pending_on": []
+    },
+    {
+     "card": "Karrthus, Tyrant of Jund",
+     "pending_on": [
+      "lane-d3"
+     ]
+    },
+    {
+     "card": "Kindred Summons",
+     "pending_on": []
+    },
+    {
+     "card": "Klauth, Unrivaled Ancient",
+     "pending_on": []
+    },
+    {
+     "card": "Lathliss, Dragon Queen",
+     "pending_on": []
+    },
+    {
+     "card": "Nogi, Draco-Zealot",
+     "pending_on": []
+    },
+    {
+     "card": "Scourge of Valkas",
+     "pending_on": []
+    },
+    {
+     "card": "Scourge of the Throne",
+     "pending_on": []
+    },
+    {
+     "card": "Shadowspear",
+     "pending_on": []
+    },
+    {
+     "card": "Three Tree City",
+     "pending_on": []
+    },
+    {
+     "card": "Urza's Incubator",
+     "pending_on": []
+    },
+    {
+     "card": "Vaevictis Asmadi, the Dire",
+     "pending_on": [
+      "lane-d3"
+     ]
+    },
+    {
+     "card": "Vanquisher's Banner",
+     "pending_on": [
+      "lane-d2"
+     ]
+    }
+   ]
+  },
+  {
+   "owner": "Adam",
+   "commander": "Zhulodok, Void Gorger",
+   "list": "31",
+   "missing": [
+    {
+     "card": "Bonders' Enclave",
+     "pending_on": []
+    },
+    {
+     "card": "Chimil, the Inner Sun",
+     "pending_on": []
+    },
+    {
+     "card": "Cityscape Leveler",
+     "pending_on": []
+    },
+    {
+     "card": "Conduit of Ruin",
+     "pending_on": []
+    },
+    {
+     "card": "Echoes of Eternity",
+     "pending_on": []
+    },
+    {
+     "card": "Emrakul, the Promised End",
+     "pending_on": []
+    },
+    {
+     "card": "Emrakul, the World Anew",
+     "pending_on": []
+    },
+    {
+     "card": "Flayer of Loyalties",
+     "pending_on": []
+    },
+    {
+     "card": "Forsaken Monument",
+     "pending_on": []
+    },
+    {
+     "card": "It That Heralds the End",
+     "pending_on": []
+    },
+    {
+     "card": "Kaldra Compleat",
+     "pending_on": []
+    },
+    {
+     "card": "Kozilek, the Great Distortion",
+     "pending_on": []
+    },
+    {
+     "card": "Liberator, Urza's Battlethopter",
+     "pending_on": []
+    },
+    {
+     "card": "Not of This World",
+     "pending_on": []
+    },
+    {
+     "card": "Pathrazer of Ulamog",
+     "pending_on": []
+    },
+    {
+     "card": "Planar Nexus",
+     "pending_on": []
+    },
+    {
+     "card": "Scorched Ruins",
+     "pending_on": []
+    },
+    {
+     "card": "Skittering Cicada",
+     "pending_on": []
+    },
+    {
+     "card": "Ugin's Labyrinth",
+     "pending_on": []
+    },
+    {
+     "card": "Urza's Incubator",
+     "pending_on": []
+    },
+    {
+     "card": "Urza's Workshop",
+     "pending_on": []
+    },
+    {
+     "card": "Wandering Archaic // Explore the Vastlands",
+     "pending_on": []
+    },
+    {
+     "card": "Zhulodok, Void Gorger",
+     "pending_on": []
+    }
    ]
   }
  ]

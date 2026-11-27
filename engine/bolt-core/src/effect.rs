@@ -147,6 +147,9 @@ pub struct Filter {
     /// Only permanents with one of these subtypes (Seasoned Dungeoneer: "Cleric, Rogue, Warrior, or
     /// Wizard"); empty: no restriction.
     pub subtypes_any: &'static [&'static str],
+    /// Spells not cast from their owner's hand only, unless this spell was cast for its alternative
+    /// cost (Wash Away uncleaved: "target spell that wasn't cast from its owner's hand").
+    pub spell_not_from_hand_unless_alt: bool,
 }
 
 impl Filter {
@@ -216,6 +219,7 @@ impl Filter {
         up_to_x: false,
         tapped_only: false,
         subtypes_any: &[],
+        spell_not_from_hand_unless_alt: false,
     };
 
     pub const CREATURE: Filter = Filter {
@@ -2811,6 +2815,26 @@ pub enum Effect {
         slot: u8,
         n: i32,
     },
+    /// Sorcerer Class, level 3: the spell in `extra` deals damage to each opponent equal to the
+    /// number of instant and sorcery spells you've cast this turn (`Game::instants_sorceries_cast`).
+    ExtraDamagesEachOpponentInstantsSorceriesThisTurn,
+    /// Roaring Earth's channel: X +1/+1 counters (the item's X) on the land in `slot`, and it
+    /// becomes a 0/0 creature with `subtype` and haste for good (still a land), as `Awaken`.
+    AwakenX {
+        slot: u8,
+        subtype: &'static str,
+    },
+    /// The creature in `slot` can't be blocked this turn by creatures the chosen player controls,
+    /// the chosen player one with the most life or tied (The Black Gate). One opponent: only the
+    /// other player's creatures can block it, so it gains unblockable when that player has the
+    /// most life or is tied (a tie's choice is that player; the other choice does nothing).
+    GrantUnblockableIfBlockersMostLife(u8),
+    /// The creature in `slot` connives X, X the number of creatures that died this turn
+    /// (Spymaster's Vault), as `Decision::ConniveDiscard`.
+    ConniveDiedThisTurn(u8),
+    /// "Triple the power and toughness of" the creature in `slot` until end of turn (Tifa's Limit
+    /// Break): +2X/+2Y.
+    TriplePowerToughness(u8),
     /// "Choose a counter on target permanent. Put an additional counter of that kind on that
     /// permanent." (Ichormoon Gauntlet): the permanent in `slot`; with more than one kind,
     /// `Decision::ChooseCounterKind`.
@@ -2891,6 +2915,37 @@ pub enum Effect {
     /// creatures and planeswalkers they control." (Flare of Malice), as
     /// `Decision::SacrificeGreatestMv` among the tied.
     OpponentSacrificesGreatestMvCreatureOrPlaneswalker,
+    /// Rev, Tithe Extractor: exile the top card of the opponent's library face down
+    /// (`Game::face_down_exiled`); you may cast it for as long as it remains exiled (a land can't be
+    /// cast, so a land stays there).
+    ExileTopOfOpponentFaceDownCastable,
+    /// Ashiok, Nightmare Muse's −7: you may cast up to `n` spells from among face-up cards your
+    /// opponents own in exile without paying their mana costs (`Game::free_casts_max`).
+    CastFaceUpOpponentExiledFreeUpTo(u8),
+    /// "Each opponent exiles the top `n` cards of their library." (Ashiok's Nightmare token: 2)
+    EachOpponentExilesTop(u8),
+    /// Create `n` `def` tokens tapped (Alchemist's Talent: two tapped Treasures).
+    CreateTokensTapped {
+        def: usize,
+        n: u8,
+    },
+    /// The source deals damage equal to the mana value of the spell in the trigger's `extra` to each
+    /// opponent (Alchemist's Talent, level 3).
+    DamageEachOpponentCastSpellManaValue,
+    /// A second hideaway (Evercoat Ursine's "Hideaway 3, hideaway 3"): the source's current hideaway
+    /// card is kept in `Game::hideaway_more`, then Hideaway `n` again.
+    HideawayAnother(u8),
+    /// "you may play one of them without paying its mana cost" (Evercoat Ursine): a one-spell
+    /// free-cast window over the cards hidden away with the source. A land among them can't be
+    /// played this way (free-cast windows are spells only).
+    MayCastOneHideawayFree,
+    /// Put `n` +1/+1 counters on the equipped (or enchanted) creature, or `n_if` if it has
+    /// `subtype` (Blade of the Bloodchief: 1, two for a Vampire).
+    CountersOnAttachedBySubtype {
+        n: i32,
+        subtype: &'static str,
+        n_if: i32,
+    },
     /// "Counter target spell unless its controller pays {X}, where X is this creature's power"
     /// (Mausoleum Wanderer): the source's power, or its last-known power if it was sacrificed as
     /// the cost. Asked as `Decision::PayOrCountered`.

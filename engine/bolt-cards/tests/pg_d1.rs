@@ -3406,26 +3406,36 @@ fn nissa_makes_a_horror_as_big_as_her_loyalty() {
 }
 
 #[test]
-fn wash_away_counters_only_spells_not_cast_from_hand_unless_cleaved() {
+fn wash_away_targets_only_spells_not_cast_from_hand_unless_cleaved() {
+    // Uncleaved: a spell cast from hand isn't a legal target, so Wash Away can't be cast at all.
     let mut g = table();
     let bolt = hand(&mut g, 0, "Lightning Bolt");
     act(&mut g, Action::Cast(bolt));
     act(&mut g, Action::Target(Target::Player(1)));
     let wash = hand(&mut g, 0, "Wash Away");
-    act(&mut g, Action::Cast(wash));
-    act(&mut g, Action::Target(Target::Object(bolt)));
-    resolve_all(&mut g, &[]);
-    assert_eq!(g.players[1].life, 37, "cast from hand: not countered");
-
-    let mut g = table();
-    let bolt = hand(&mut g, 0, "Lightning Bolt");
-    act(&mut g, Action::Cast(bolt));
-    act(&mut g, Action::Target(Target::Player(1)));
-    let wash = hand(&mut g, 0, "Wash Away");
+    let legal = g.legal_actions();
+    assert!(!legal.contains(&Action::Cast(wash)), "uncleaved: no legal target");
+    assert!(
+        legal.contains(&Action::CastAlternative(wash)),
+        "cleaved: any spell"
+    );
+    // Cleaved: the spell cast from hand is a legal target, and it's countered.
     act(&mut g, Action::CastAlternative(wash));
     act(&mut g, Action::Target(Target::Object(bolt)));
     resolve_all(&mut g, &[]);
     assert_eq!(g.players[1].life, 40, "cleaved: countered");
+
+    // Uncleaved: a spell cast from the graveyard (flashback) is a legal target.
+    let mut g = table();
+    let think = g.add_card(0, cid("Think Twice"), Zone::Graveyard);
+    act(&mut g, Action::CastFlashback(think));
+    let wash = hand(&mut g, 0, "Wash Away");
+    assert!(g.legal_actions().contains(&Action::Cast(wash)));
+    act(&mut g, Action::Cast(wash));
+    act(&mut g, Action::Target(Target::Object(think)));
+    let cards = g.players[0].hand.len();
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].hand.len(), cards, "Think Twice countered: no draw");
 }
 
 #[test]
@@ -3449,4 +3459,351 @@ fn the_crossroads_lands_sacrifice_and_fetch_a_basic_tapped() {
         .expect("a Forest");
     assert!(g.obj(forest).tapped);
     assert_eq!(g.players[0].life, life + 1);
+}
+
+#[test]
+fn sorcerer_class_creatures_tap_for_instants_and_level_three_burns() {
+    let mut g = game(&[]);
+    let class = put(&mut g, 0, "Sorcerer Class");
+    let elves = put(&mut g, 0, "Llanowar Elves");
+    g.objects[elves.0 as usize].since_turn = 0;
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    let fyndhorn = hand(&mut g, 0, "Fyndhorn Elves");
+    assert!(!g.legal_actions().contains(&Action::Cast(bolt)), "level 1");
+    g.objects[class.0 as usize].class_level = 2;
+    let legal = g.legal_actions();
+    assert!(
+        legal.contains(&Action::Cast(bolt)),
+        "the Elves tap for {{R}}: {legal:?}"
+    );
+    assert!(
+        legal.contains(&Action::Cast(fyndhorn)),
+        "its own {{G}} still pays a creature"
+    );
+    g.objects[class.0 as usize].class_level = 3;
+    act(&mut g, Action::Cast(bolt));
+    act(&mut g, Action::Target(Target::Player(1)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        g.players[1].life,
+        40 - 3 - 1,
+        "the Bolt, then one instant or sorcery this turn"
+    );
+}
+
+// ---- idea decks: blight, Lavaleaper, Lumberjack ----
+
+#[test]
+fn blight_or_pay_puts_minus_counters_or_costs_mana() {
+    let mut g = table();
+    let elves = put(&mut g, 0, "Llanowar Elves");
+    let bear = put(&mut g, 1, "Fyndhorn Elves");
+    let e = hand(&mut g, 0, "Bogslither's Embrace");
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Cast(e)) && legal.contains(&Action::CastWith(e, elves)));
+    act(&mut g, Action::CastWith(e, elves));
+    act(&mut g, Action::Target(Target::Object(bear)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(bear).zone, Zone::Exile);
+    assert_eq!(
+        g.obj(elves).zone,
+        Zone::Graveyard,
+        "a 1/1 with a -1/-1 counter dies"
+    );
+}
+
+#[test]
+fn lavaleaper_basics_add_one_more_and_everything_has_haste() {
+    let mut g = game(&["Forest"]);
+    let forest = g.permanents(0).find(|&x| g.def_of(x).name == "Forest").unwrap();
+    assert_eq!(g.mana_sources(0).iter().filter(|&&(x, _)| x == forest).count(), 1);
+    put(&mut g, 1, "Lavaleaper");
+    assert_eq!(
+        g.mana_sources(0).iter().filter(|&&(x, _)| x == forest).count(),
+        2,
+        "any player's basics"
+    );
+    let elves = put(&mut g, 0, "Llanowar Elves");
+    assert!(g.keywords(elves).has(Keywords::HASTE));
+}
+
+#[test]
+fn orcish_lumberjack_sacrifices_a_forest_for_three() {
+    let mut g = game(&["Forest"]);
+    let lj = put(&mut g, 0, "Orcish Lumberjack");
+    g.objects[lj.0 as usize].since_turn = 0;
+    let forest = g.permanents(0).find(|&x| g.def_of(x).name == "Forest").unwrap();
+    act(&mut g, Action::ActivateWith(lj, 1, forest)); // {R}{R}{G}
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(forest).zone, Zone::Graveyard);
+    assert_eq!(g.players[0].pool.len(), 3);
+}
+
+#[test]
+fn disruptor_has_flash_and_vinelasher_offers_offspring() {
+    let g = table();
+    let d = g
+        .defs
+        .iter()
+        .position(|x| x.name == "Disruptor of Currents")
+        .unwrap();
+    assert!(g.defs[d].keywords.has(Keywords::FLASH) && g.defs[d].mana_ext.convoke);
+    let mut g = table();
+    let v = hand(&mut g, 0, "Iridescent Vinelasher");
+    assert!(
+        g.legal_actions().contains(&Action::CastKicked(v)),
+        "offspring {{2}}"
+    );
+    let core = put(&mut g, 0, "Firdoch Core");
+    act(&mut g, Action::Activate(core, 0));
+    resolve_all(&mut g, &[]);
+    assert!(g.types_of(core).creature, "a 4/4 until end of turn");
+    assert_eq!(g.power(core), 4);
+}
+
+#[test]
+fn roaring_earth_channels_from_hand_into_a_spirit_land() {
+    let mut g = table();
+    let re = hand(&mut g, 0, "Roaring Earth");
+    let forest = g.permanents(0).find(|&x| g.def_of(x).name == "Forest").unwrap();
+    let channel = g
+        .legal_actions()
+        .into_iter()
+        .find(|a| matches!(a, Action::ActivateX { id, x: 2, .. } if *id == re))
+        .expect("channel from hand with X = 2");
+    act(&mut g, channel);
+    act(&mut g, Action::Target(Target::Object(forest)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(re).zone, Zone::Graveyard, "discarded");
+    assert!(g.types_of(forest).creature && g.types_of(forest).land);
+    assert_eq!(g.power(forest), 2);
+}
+
+#[test]
+fn cabal_ritual_adds_five_with_threshold() {
+    for (cards, mana) in [(0, 3), (7, 5)] {
+        let mut g = game(&["Swamp", "Swamp"]); // {1}{B}
+        for _ in 0..cards {
+            g.add_card(0, cid("Plains"), Zone::Graveyard);
+        }
+        let r = hand(&mut g, 0, "Cabal Ritual");
+        act(&mut g, Action::Cast(r));
+        resolve_all(&mut g, &[]);
+        assert_eq!(g.players[0].pool.len(), mana, "{cards} cards in the graveyard");
+    }
+}
+
+#[test]
+fn crop_rotation_trades_a_land_and_volraths_stronghold_tops_a_creature() {
+    let mut g = game(&["Forest", "Swamp", "Swamp"]);
+    let forest = g.permanents(0).find(|&x| g.def_of(x).name == "Forest").unwrap();
+    let vs = g.add_card(0, cid("Volrath's Stronghold"), Zone::Library);
+    let cr = hand(&mut g, 0, "Crop Rotation");
+    act(&mut g, Action::CastWith(cr, forest));
+    while !g.items.is_empty() || matches!(g.pending, Pending::ChooseTarget(_) | Pending::Decide(_)) {
+        let a = match g.pending {
+            Pending::Decide(_) if g.legal_actions().contains(&Action::Pick(vs)) => Action::Pick(vs),
+            Pending::ChooseTarget(_) | Pending::Decide(_) => g.legal_actions()[0],
+            _ => Action::PassPriority,
+        };
+        act(&mut g, a);
+    }
+    assert_eq!(g.obj(forest).zone, Zone::Graveyard);
+    assert_eq!(g.obj(vs).zone, Zone::Battlefield);
+    let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Graveyard);
+    act(&mut g, Action::Activate(vs, 0));
+    act(&mut g, Action::Target(Target::Object(elves)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(*g.players[0].library.last().unwrap(), elves);
+}
+
+/// Answers every decision with its first option until the stack is empty.
+fn settle(g: &mut Game) {
+    while !g.items.is_empty() || matches!(g.pending, Pending::ChooseTarget(_) | Pending::Decide(_)) {
+        let a = match g.pending {
+            Pending::ChooseTarget(_) | Pending::Decide(_) => g.legal_actions()[0],
+            _ => Action::PassPriority,
+        };
+        act(g, a);
+    }
+}
+
+#[test]
+fn snuff_out_pays_4_life_with_a_swamp_and_kills_a_nonblack_creature() {
+    let mut g = table();
+    let elf = put(&mut g, 1, "Llanowar Elves");
+    let snuff = hand(&mut g, 0, "Snuff Out");
+    act(&mut g, Action::CastAlternative(snuff));
+    act(&mut g, Action::Target(Target::Object(elf)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].life, 36);
+    assert_eq!(g.obj(elf).zone, Zone::Graveyard);
+
+    let mut g = game(&["Forest", "Forest", "Forest", "Forest"]);
+    put(&mut g, 1, "Llanowar Elves");
+    let snuff = hand(&mut g, 0, "Snuff Out");
+    assert!(
+        !g.legal_actions().contains(&Action::CastAlternative(snuff)),
+        "no Swamp"
+    );
+}
+
+#[test]
+fn spymasters_vault_enters_tapped_without_a_swamp_and_connives_per_death() {
+    let mut g = game(&["Forest"]);
+    let v = hand(&mut g, 0, "Spymaster's Vault");
+    act(&mut g, Action::PlayLand(v));
+    assert!(g.obj(v).tapped, "no Swamp: tapped");
+
+    let mut g = table();
+    let elf = put(&mut g, 0, "Llanowar Elves");
+    let v = hand(&mut g, 0, "Spymaster's Vault");
+    act(&mut g, Action::PlayLand(v));
+    assert!(!g.obj(v).tapped, "a Swamp: untapped");
+    g.creatures_died = (g.turn, 2);
+    let cards = g.players[0].hand.len();
+    let yard = g.players[0].graveyard.len();
+    act(&mut g, Action::Activate(v, 0));
+    act(&mut g, Action::Target(Target::Object(elf)));
+    settle(&mut g);
+    assert_eq!(g.players[0].hand.len(), cards, "drew 2, discarded 2");
+    assert_eq!(g.players[0].graveyard.len(), yard + 2);
+}
+
+#[test]
+fn the_black_gate_asks_3_life_and_makes_a_creature_unblockable_at_tied_life() {
+    let mut g = table();
+    let elf = put(&mut g, 0, "Llanowar Elves");
+    let gate = hand(&mut g, 0, "The Black Gate");
+    act(&mut g, Action::PlayLand(gate));
+    assert!(matches!(g.pending, Pending::Decide(_)));
+    act(&mut g, Action::Yes);
+    assert_eq!(g.players[0].life, 37);
+    assert!(!g.obj(gate).tapped);
+    g.players[1].life = 37; // tied for the most life
+    act(&mut g, Action::Activate(gate, 0));
+    act(&mut g, Action::Target(Target::Object(elf)));
+    resolve_all(&mut g, &[]);
+    assert!(g.keywords(elf).has(Keywords::UNBLOCKABLE));
+
+    let mut g = table();
+    let elf = put(&mut g, 0, "Llanowar Elves");
+    let gate = hand(&mut g, 0, "The Black Gate");
+    act(&mut g, Action::PlayLand(gate));
+    act(&mut g, Action::No);
+    assert!(g.obj(gate).tapped, "declined: tapped");
+    g.objects[gate.0 as usize].tapped = false;
+    g.players[1].life = 20; // you have the most life: your own creatures are "that player's"
+    act(&mut g, Action::Activate(gate, 0));
+    act(&mut g, Action::Target(Target::Object(elf)));
+    resolve_all(&mut g, &[]);
+    assert!(!g.keywords(elf).has(Keywords::UNBLOCKABLE));
+}
+
+#[test]
+fn escape_tunnel_fetches_a_basic_or_makes_a_small_creature_unblockable() {
+    let mut g = table();
+    let elf = put(&mut g, 0, "Llanowar Elves");
+    let tunnel = put(&mut g, 0, "Escape Tunnel");
+    act(&mut g, Action::Activate(tunnel, 1));
+    act(&mut g, Action::Target(Target::Object(elf)));
+    resolve_all(&mut g, &[]);
+    assert!(g.keywords(elf).has(Keywords::UNBLOCKABLE));
+    assert_eq!(g.obj(tunnel).zone, Zone::Graveyard);
+
+    let mut g = table();
+    let tunnel = put(&mut g, 0, "Escape Tunnel");
+    let lands = g.permanents(0).filter(|&x| g.types_of(x).land).count();
+    act(&mut g, Action::Activate(tunnel, 0));
+    settle(&mut g);
+    assert_eq!(g.obj(tunnel).zone, Zone::Graveyard);
+    assert_eq!(
+        g.permanents(0).filter(|&x| g.types_of(x).land).count(),
+        lands,
+        "one for one"
+    );
+    assert!(
+        g.permanents(0)
+            .filter(|&x| g.types_of(x).land)
+            .any(|x| g.obj(x).tapped),
+        "fetched tapped"
+    );
+}
+
+#[test]
+fn invigorate_with_a_forest_gives_the_opponent_3_life_instead_of_mana() {
+    let mut g = game(&["Forest"]);
+    let elf = put(&mut g, 0, "Llanowar Elves");
+    let inv = hand(&mut g, 0, "Invigorate");
+    act(&mut g, Action::CastAlternative(inv));
+    act(&mut g, Action::Target(Target::Object(elf)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].life, 43);
+    assert_eq!(g.power(elf), 5);
+
+    let mut g = game(&["Island"]);
+    let inv = hand(&mut g, 0, "Invigorate");
+    put(&mut g, 0, "Llanowar Elves");
+    assert!(
+        !g.legal_actions().contains(&Action::CastAlternative(inv)),
+        "no Forest"
+    );
+}
+
+#[test]
+fn pyrrhic_strike_chooses_one_or_both_when_blighted() {
+    let mut g = table();
+    let ring = put(&mut g, 1, "Sol Ring");
+    let witness = put(&mut g, 1, "Eternal Witness");
+    let mine = put(&mut g, 0, "Eternal Witness");
+    let strike = hand(&mut g, 0, "Pyrrhic Strike");
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::CastModal(strike, 0)));
+    assert!(legal.contains(&Action::CastModal(strike, 1)));
+    assert!(
+        !legal.contains(&Action::CastModal(strike, 2)),
+        "both only when blighted"
+    );
+    act(&mut g, Action::CastWith(strike, mine));
+    act(&mut g, Action::Target(Target::Object(ring)));
+    act(&mut g, Action::Target(Target::Object(witness)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(ring).zone, Zone::Graveyard);
+    assert_eq!(g.obj(witness).zone, Zone::Graveyard);
+    assert_eq!(g.obj(mine).zone, Zone::Graveyard, "blighted 2: a 2/1 dies");
+
+    let mut g = table();
+    let ring = put(&mut g, 1, "Sol Ring");
+    let strike = hand(&mut g, 0, "Pyrrhic Strike");
+    act(&mut g, Action::CastModal(strike, 0));
+    act(&mut g, Action::Target(Target::Object(ring)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(ring).zone, Zone::Graveyard);
+}
+
+#[test]
+fn tifas_limit_break_pumps_doubles_or_triples_by_tier() {
+    for (mode, power) in [(0u8, 3), (1, 2), (2, 3)] {
+        let mut g = table();
+        let elf = put(&mut g, 0, "Llanowar Elves");
+        let tifa = hand(&mut g, 0, "Tifa's Limit Break");
+        act(&mut g, Action::CastModal(tifa, mode));
+        act(&mut g, Action::Target(Target::Object(elf)));
+        resolve_all(&mut g, &[]);
+        assert_eq!(g.power(elf), power, "mode {mode}");
+        if mode == 2 {
+            assert_eq!(g.toughness(elf), 3);
+        }
+    }
+    // Final Heaven costs {6}{G} more: {G}{6}{G} is 8 mana.
+    let mut g = game(&[
+        "Forest", "Forest", "Forest", "Forest", "Forest", "Forest", "Forest",
+    ]);
+    put(&mut g, 1, "Llanowar Elves"); // the target, not a mana source of ours
+    let tifa = hand(&mut g, 0, "Tifa's Limit Break");
+    assert!(g.legal_actions().contains(&Action::CastModal(tifa, 1)));
+    assert!(
+        !g.legal_actions().contains(&Action::CastModal(tifa, 2)),
+        "7 lands: no Final Heaven"
+    );
 }

@@ -1019,4 +1019,128 @@ impl Game {
         self.free_casts_one = true;
         self.free_caster = p;
     }
+
+    /// Rev, Tithe Extractor: the top card of `q`'s library exiled face down; `p` may cast it for as
+    /// long as it remains exiled (`playable` clears as it leaves exile). A land can't be cast.
+    pub(super) fn exile_top_face_down_castable(&mut self, p: PlayerId, q: PlayerId) {
+        let Some(&c) = self.players[q].library.last() else {
+            return;
+        };
+        self.move_to(c, Zone::Exile);
+        if self.obj(c).zone != Zone::Exile {
+            return;
+        }
+        let zcc = self.obj(c).zcc;
+        self.face_down_exiled.push((c, zcc));
+        if !self.def_of(c).types.land {
+            self.obj_mut(c).playable = Some((p, u32::MAX));
+        }
+    }
+
+    /// Whether the exiled card `c` is face down (`Object::face_down`, or Rev's `face_down_exiled`).
+    pub fn exiled_face_down(&self, c: ObjId) -> bool {
+        let o = self.obj(c);
+        o.face_down || self.face_down_exiled.contains(&(c, o.zcc))
+    }
+
+    /// Ashiok, Nightmare Muse's −7: a free-cast window for `p` over the face-up cards `p`'s opponents
+    /// own in exile, closing after `max` spells.
+    pub(super) fn open_free_casts_from_opponents_exile(&mut self, p: PlayerId, max: u8) {
+        self.face_down_exiled.retain(|&(c, zcc)| {
+            self.objects[c.0 as usize].zone == Zone::Exile && self.objects[c.0 as usize].zcc == zcc
+        });
+        let cards: Vec<ObjId> = self
+            .exile
+            .iter()
+            .copied()
+            .filter(|&c| self.obj(c).owner != p && !self.exiled_face_down(c))
+            .collect();
+        if cards.is_empty() {
+            return;
+        }
+        for c in cards {
+            self.obj_mut(c).cast_free = true;
+            self.free_casts.push(c);
+        }
+        self.free_casts_max = max;
+        self.free_caster = p;
+    }
+
+    /// How many cards of the open free-cast window have been cast (have left exile).
+    pub(super) fn free_casts_cast(&self) -> usize {
+        self.free_casts
+            .iter()
+            .filter(|&&c| self.obj(c).zone != Zone::Exile)
+            .count()
+    }
+
+    /// Fortune Teller's Talent, level 2: whether `x` (a permanent `p` controls) lets `p` play the top
+    /// card of their library now: at its Class level, and once `p` has cast a spell this turn.
+    pub(super) fn top_cards_after_a_spell(&self, p: PlayerId, x: ObjId) -> bool {
+        let level = self.def_of(x).zones.top_cards_if_cast_spell_at_level;
+        level > 0 && self.class_level(x) >= level && self.spells_cast[p] > 0
+    }
+
+    /// Evercoat Ursine's second hideaway: keep the first card, then hide away again.
+    pub(super) fn hideaway_another(&mut self, src: ObjId, p: PlayerId, n: u8) {
+        if let Some(c) = self
+            .obj(src)
+            .hideaway
+            .filter(|&c| self.obj(c).zone == Zone::Exile)
+        {
+            let entry = (src, self.obj(src).zcc, c, self.obj(c).zcc);
+            self.hideaway_more.push(entry);
+        }
+        let cards: Vec<ObjId> = self.players[p]
+            .library
+            .iter()
+            .rev()
+            .take(n as usize)
+            .copied()
+            .collect();
+        if !cards.is_empty() {
+            self.ask(p, Decision::HideawayPick { source: src, cards });
+        }
+    }
+
+    /// Evercoat Ursine's combat damage trigger: `p` may cast one of the cards hidden away with `src`,
+    /// free.
+    pub(super) fn open_hideaway_free_cast(&mut self, src: ObjId, p: PlayerId) {
+        let zcc = self.obj(src).zcc;
+        let mut cards: Vec<ObjId> = self
+            .hideaway_more
+            .iter()
+            .filter(|&&(s, z, c, cz)| {
+                s == src && z == zcc && self.obj(c).zone == Zone::Exile && self.obj(c).zcc == cz
+            })
+            .map(|&(_, _, c, _)| c)
+            .collect();
+        if let Some(c) = self
+            .obj(src)
+            .hideaway
+            .filter(|&c| self.obj(c).zone == Zone::Exile)
+        {
+            if !cards.contains(&c) {
+                cards.push(c);
+            }
+        }
+        if cards.is_empty() {
+            return;
+        }
+        for c in cards {
+            self.obj_mut(c).cast_free = true;
+            self.free_casts.push(c);
+        }
+        self.free_casts_one = true;
+        self.free_caster = p;
+    }
+
+    /// Blade of the Bloodchief: `n` +1/+1 counters on the creature `src` is attached to, `n_if` if it
+    /// has `subtype`.
+    pub(super) fn counters_on_attached_by_subtype(&mut self, src: ObjId, n: i32, subtype: &str, n_if: i32) {
+        if let Some(c) = self.attached_creature(src) {
+            let k = if self.has_subtype(c, subtype) { n_if } else { n };
+            self.add_counters(c, k);
+        }
+    }
 }
