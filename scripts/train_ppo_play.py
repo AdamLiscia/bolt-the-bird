@@ -13,6 +13,7 @@ rules-based and smart players on unseen decks (lines 512-1023), into results/ppo
 """
 
 import argparse
+import collections
 import json
 import os
 import random
@@ -29,7 +30,7 @@ sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from bolt.backup import upload_quietly  # noqa: E402
-from bolt.play_data import concat, within  # noqa: E402
+from bolt.play_data import concat, finite_rows, within  # noqa: E402
 from bolt.play_net import load_into, pad_optimizer  # noqa: E402
 from bolt.play_ppo import gae, league, ppo_step  # noqa: E402
 from bolt.play_runner import Stopped, run_parallel  # noqa: E402
@@ -85,6 +86,14 @@ def resume_into(net, opt, s, lr=None):
     if lr is not None:
         for group in opt.param_groups:
             group["lr"] = lr
+
+
+def pending_kind(globals_row) -> str:
+    """The pending decision's kind from an encoded globals row (its pending one-hot)."""
+    from bolt.play_encoding import GLOBAL_NAMES, PENDING
+
+    at = GLOBAL_NAMES.index(f"pending_{PENDING[0]}")
+    return PENDING[int(np.argmax(globals_row[at : at + len(PENDING)]))]
 
 
 def by_kind_row(kinds: dict) -> dict:
@@ -290,6 +299,15 @@ def main():
         # 213-559 permanents made the update grow 185 -> 344 s). Advantages were computed per game beforehand.
         keep = within(arr, a.max_objects)
         dropped_big = n_all - len(keep)
+        # Rows with anything non-finite are dropped too (2026-11-27: a non-finite loss ended iteration 30)
+        finite = finite_rows(arr)
+        dropped_nan = int((~finite[keep]).sum())
+        if dropped_nan:
+            bad = keep[~finite[keep]]
+            kinds_bad = collections.Counter(pending_kind(arr["globals"][i]) for i in bad)
+            print(f"NAN: {dropped_nan} decisions with non-finite inputs dropped; kinds {dict(kinds_bad)}, results "
+                  f"{dict(collections.Counter(int(arr['z'][i]) for i in bad))}", flush=True)  # fmt: skip
+            keep = keep[finite[keep]]
         n = len(keep)
         adv = arr["adv"]
         if n > 1:
@@ -314,13 +332,28 @@ def main():
         )
         kinds: dict = {}  # pending kind -> summed [decisions, entropy, normalized entropy, |ratio - 1|]
         prng = np.random.default_rng(it)
+        skipped = 0
+        nan_dir = ROOT / "results"
+
+        def dump_bad(rows, x, parts, it=it, arr=arr):
+            """A group whose loss wasn't finite: saved for a look, then left out of the step."""
+            path = ROOT / "results" / f"nan_{a.name}_{it}_{int(rows[0])}.pt"
+            torch.save({"rows": np.asarray(rows), "x": x, **parts,
+                        "z": arr["z"][rows], "kinds": [pending_kind(arr["globals"][i]) for i in rows]}, path)  # fmt: skip
+            print(f"NAN: a group of {len(rows)} decisions had a non-finite loss; skipped, saved to {path}", flush=True)
+
         for _ in range(a.epochs):
             perm = keep[prng.permutation(n)]
             for s in range(0, n - a.batch + 1, a.batch):
                 if stopping():
                     return stop_now()
                 idx = np.sort(perm[s : s + a.batch])
-                st = ppo_step(net, ref, opt, arr, idx, adv[idx], a.clip, kl_coef, a.value_coef, ret=ret[idx])
+                st = ppo_step(
+                    net, ref, opt, arr, idx, adv[idx], a.clip, kl_coef, a.value_coef, ret=ret[idx], on_bad=dump_bad
+                )
+                skipped += st["bad_groups"] + st["bad_grad"]
+                if skipped > 3:
+                    raise FloatingPointError(f"iteration {it}: {skipped} groups or steps non-finite; see {nan_dir}")
                 for key in sums:
                     sums[key] += st[key]
                 for kind, b in st["by_kind"].items():
@@ -334,7 +367,8 @@ def main():
             state["past"].append(f"iter_{it}.pt")
             if job:
                 job._put(f"{job.prefix}/past/iter_{it}.pt", (ck / f"iter_{it}.pt").read_bytes())
-        row = {"iter": it, "games": a.games, "decisions": n, "dropped_big": dropped_big, "kl_coef": round(kl_coef, 4), "errors": ends["error"],
+        row = {"iter": it, "games": a.games, "decisions": n, "dropped_big": dropped_big, "dropped_nan": dropped_nan,
+               "skipped_nan": skipped, "kl_coef": round(kl_coef, 4), "errors": ends["error"],
                "timeouts": ends["timeout"],
                **{f"won_{k}": round(float(np.mean(v)), 3) for k, v in won.items()},
                **{k: round(v / max(1, steps), 4) for k, v in sums.items()},

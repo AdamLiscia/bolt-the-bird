@@ -154,3 +154,16 @@ def test_panicked_games_reach_the_hang_log(tmp_path):
     (row,) = [json.loads(x) for x in log.read_text().splitlines()]
     assert row["why"] == "engine panic" and row["seed"] == 888 and row["first"] == 1 and row["deck_a"] == "x"
     assert row["message"] == "payable" and row["moves"] == 12 and row["last"] == [["Cast", "Sol Ring"]]
+
+
+def test_a_game_ended_by_an_engine_error_leaves_no_samples(monkeypatch):
+    """2026-11-27: iteration 30's one panicked game, then a non-finite loss: its partial trajectory has no real
+    outcome, so none of it reaches the update."""
+    import bolt.play_runner as pr
+
+    monkeypatch.setattr(pr, "new_game", lambda a, b, s, f: PanickingGame() if s == 666 else CrawlingGame(False))
+    monkeypatch.setattr(pr, "encode", lambda obs, who: {"act_kind": [0, 0]})
+    jobs = [("a", "b", 1, 0), ("a", "b", 666, 0)]
+    out = pr.run_games(None, jobs, seats=("rules", "rules"), record=(0, 1), game_s=0)
+    assert [r["result"] for r in out["results"]] == ["p0", "error"]
+    assert out["steps"] and {st["game"] for st in out["steps"]} == {0}

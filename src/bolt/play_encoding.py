@@ -79,6 +79,13 @@ GLOBAL_NAMES = (["turn", "my_turn"] + [f"step_{s}" for s in STEPS] + [f"pending_
                 + ["is_commander_game", "cmd_damage_taken", "cmd_damage_dealt", "my_cmd_tax", "opp_cmd_tax"])  # fmt: skip
 
 
+CAP = 100.0
+
+
+def _cap(v: float) -> float:
+    return CAP if v > CAP else -CAP if v < -CAP else v
+
+
 def _num(x) -> float:
     try:
         return float(x)
@@ -221,6 +228,11 @@ def encode(obs: dict, me: int, set_name: str | None = None) -> dict:
         nums = [v for s, v in enumerate(values) if cards[s] < 0 and v >= 0 and k != "TargetPlayer"]
         act_num.append([(nums[0] if nums else 0) / 10, (nums[1] if len(nums) > 1 else 0) / 10])
         act_player.append((1 if a == me else 2) if k == "TargetPlayer" else 0)
+    # Every number capped at +-CAP (a power of 1,000+ from doubling, a life total in the thousands): inputs stay in
+    # range for the network and for float16 storage, and acting and training see the same values.
+    feats = [[_cap(v) for v in f] for f in feats]
+    g = [_cap(v) for v in g]
+    act_num = [[_cap(v) for v in nums] for nums in act_num]
     return {
         "obj_id": obj_id, "card": card, "zone": zone, "feats": feats, "globals": g, "global_names": GLOBAL_NAMES,
         "act_kind": act_kind, "act_ptr": act_ptr, "act_card": act_card, "act_num": act_num, "act_player": act_player,

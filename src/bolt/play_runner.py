@@ -188,6 +188,7 @@ def run_games(net, jobs, seats=("net", "rules"), sample=True, seed=0, smart=(1, 
 
     def failed(gi, e) -> None:
         """An engine error ends game gi: its result says what it was doing, for the hang log."""
+        slow.add(gi)  # its samples go too: a game cut short by the engine has no real outcome
         results[gi] = {"result": "error", "turn": games[gi].turn,
                        "panic": {"message": str(e)[:300], "moves": moves[gi], "turn": games[gi].turn,
                                  "last": list(last[gi])}}  # fmt: skip
@@ -289,7 +290,7 @@ def run_games(net, jobs, seats=("net", "rules"), sample=True, seed=0, smart=(1, 
                 f"; longest still playing: game {game_offset + slow}, {moves[slow]} moves" if slow is not None else ""
             )
             print(f"[worker {os.getpid()}] {done}/{len(games)} games done, {time.time() - t0:.0f}s{tail}", flush=True)
-    if slow:  # games stopped for time leave no samples
+    if slow:  # games stopped for time, or ended by an engine error, leave no samples
         steps = [st for st in steps if st["game"] - game_offset not in slow]
     return {"results": results, "steps": steps}
 

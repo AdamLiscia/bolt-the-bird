@@ -59,12 +59,17 @@ def gae(arr: dict, lam: float = 0.95, gamma: float = 1.0):
 
 
 def ppo_step(net, ref_net, opt, arr, idx, adv, clip=0.2, kl_coef=0.02, value_coef=0.5, max_grad=1.0,
-             ret=None) -> dict:  # fmt: skip
+             ret=None, on_bad=None) -> dict:  # fmt: skip
     """One gradient step on the decisions at idx (advantages `adv`, aligned with idx). The value head
-    regresses to `ret` (aligned with idx) when given, otherwise to the game result."""
+    regresses to `ret` (aligned with idx) when given, otherwise to the game result.
+
+    A group whose loss isn't finite is left out of the step (on_bad(rows, x, parts) is called with it, to dump
+    it) and counted in stats["bad_groups"]; a non-finite gradient skips the whole step (stats["bad_grad"]).
+    2026-11-27: one non-finite group in iteration 30 ended cmd_play_1."""
     n = len(idx)
     pos = {int(i): k for k, i in enumerate(idx)}
     total = 0.0
+    bad_groups = 0
     stats = {"clipped": 0.0, "kl": 0.0, "value_mse": 0.0, "entropy": 0.0, "ratio_dev": 0.0, "value_mse_z": 0.0,
              "entropy_norm": 0.0, "log_legal": 0.0}  # fmt: skip
     by_kind: dict = {}  # pending kind -> [decisions, entropy sum, normalized entropy sum, |ratio - 1| sum]
@@ -85,6 +90,12 @@ def ppo_step(net, ref_net, opt, arr, idx, adv, clip=0.2, kl_coef=0.02, value_coe
             z = ret[[pos[int(i)] for i in g]]
         vl = torch.nn.functional.mse_loss(value, z)
         w = len(g) / n
+        if not (torch.isfinite(pl) and torch.isfinite(vl)):
+            bad_groups += 1
+            if on_bad is not None:
+                on_bad(g, x, {"policy_loss": float(pl), "value_loss": float(vl), "adv": a, "old_logp": old,
+                              "logits": logits.detach(), "value": value.detach(), "target": z})  # fmt: skip
+            continue
         total = total + w * (pl + value_coef * vl)
         stats["clipped"] += w * st["clipped"]
         stats["kl"] += w * st["kl"]
@@ -111,14 +122,19 @@ def ppo_step(net, ref_net, opt, arr, idx, adv, clip=0.2, kl_coef=0.02, value_coe
                 b[2] += float(norm[r])
                 b[3] += float(dev[r])
         stats["value_mse"] += w * vl.item()
-    if not torch.isfinite(total):
-        raise FloatingPointError("non-finite PPO loss")
+    stats["bad_groups"], stats["bad_grad"] = bad_groups, 0
+    stats["by_kind"] = by_kind
+    if not isinstance(total, torch.Tensor):  # every group was bad: nothing to step on
+        stats["loss"] = 0.0
+        return stats
     opt.zero_grad()
     total.backward()
     gn = torch.nn.utils.clip_grad_norm_(net.parameters(), max_grad)
     if not torch.isfinite(gn):
-        raise FloatingPointError("non-finite gradient")
+        opt.zero_grad()
+        stats["bad_grad"] = 1
+        stats["loss"] = float(total.detach())
+        return stats
     opt.step()
     stats["loss"] = float(total.detach())
-    stats["by_kind"] = by_kind
     return stats

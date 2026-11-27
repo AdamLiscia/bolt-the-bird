@@ -12,6 +12,13 @@ import torch
 
 from bolt.play_encoding import FEATS, GLOBAL_NAMES
 
+F16_MAX = 60000.0
+
+
+def f16(a: np.ndarray) -> np.ndarray:
+    """float16 storage, clipped so a huge number (a power doubled turn after turn) stays finite, not inf."""
+    return np.clip(a, -F16_MAX, F16_MAX).astype(np.float16)
+
 
 def to_arrays(steps: list[dict], results: list[dict]) -> dict:
     n_obj = [len(s["enc"]["card"]) for s in steps]
@@ -29,10 +36,10 @@ def to_arrays(steps: list[dict], results: list[dict]) -> dict:
     return {
         "obj_off": np.concatenate([[0], np.cumsum(n_obj)]).astype(np.int64),
         "act_off": np.concatenate([[0], np.cumsum(n_act)]).astype(np.int64),
-        "card": cat("card", np.int16), "zone": cat("zone", np.int8), "feats": cat("feats", np.float16, len(FEATS)),
+        "card": cat("card", np.int16), "zone": cat("zone", np.int8), "feats": f16(cat("feats", np.float32, len(FEATS))),
         "globals": np.asarray([s["enc"]["globals"] for s in steps], dtype=np.float32),
         "act_kind": cat("act_kind", np.int8), "act_ptr": cat("act_ptr", np.int16, 3),
-        "act_card": cat("act_card", np.int16, 3), "act_num": cat("act_num", np.float16, 2),
+        "act_card": cat("act_card", np.int16, 3), "act_num": f16(cat("act_num", np.float32, 2)),
         "act_player": cat("act_player", np.int8),
         "action": np.asarray([s["action"] for s in steps], dtype=np.int16),
         "seat": np.asarray([s["seat"] for s in steps], dtype=np.int8),
@@ -76,6 +83,22 @@ GROUP_ROWS = 64
 GROUP_BUDGET = GROUP_ROWS * (BIG_OBJECTS + BIG_MOVES)  # rows x (objects + moves) of padding a group may hold
 # and rows x objects^2: attention is quadratic in objects, so a 559-object board shares with at most 2 others
 GROUP_ATTENTION = GROUP_ROWS * BIG_OBJECTS**2
+
+
+def finite_rows(arr: dict) -> np.ndarray:
+    """Per decision: True when everything the update reads for it is finite (its objects' features, its moves'
+    numbers, its globals, and its logp, value, adv and ret where present)."""
+    n = len(arr["action"])
+    ok = np.ones(n, bool)
+    for k in ("logp", "value", "adv", "ret"):
+        if k in arr:
+            ok &= np.isfinite(arr[k].astype(np.float64))
+    ok &= np.isfinite(arr["globals"]).all(1)
+    for key, off in (("feats", "obj_off"), ("act_num", "act_off")):
+        bad = (~np.isfinite(arr[key].astype(np.float32))).any(1).astype(np.int64)
+        cs = np.concatenate([[0], np.cumsum(bad)])
+        ok &= (cs[arr[off][1:]] - cs[arr[off][:-1]]) == 0
+    return ok
 
 
 def within(arr: dict, max_objects: int) -> np.ndarray:
