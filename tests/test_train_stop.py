@@ -24,7 +24,9 @@ def fake_run_parallel(net, jobs, record=(0, 1), stop=None, **kw):
                 steps.append({"game": g, "seat": seat, "enc": encode(obs(), seat), "action": 1, "logp": -0.7,
                               "value": 0.0})  # fmt: skip
         results.append({"result": "p0", "turn": 3})
-    return {"results": results, "arrays": to_arrays(steps, results)}
+    arr = to_arrays(steps, results)
+    arr["logp"][0] = np.nan  # one decision with a non-finite input: dropped, not fatal
+    return {"results": results, "arrays": arr}
 
 
 @pytest.fixture
@@ -100,6 +102,7 @@ def test_every_iteration_row_reports_entropy_and_ratio_deviation(trainer, monkey
         assert r["entropy"] > 0 and r["ratio_dev"] >= 0 and r["value_mse_z"] >= 0, r
         assert 0 < r["entropy_norm"] <= 1.0001 and r["log_legal"] > 0, r
         assert r["by_kind"]["Priority"]["share"] == 1.0, r["by_kind"]
+        assert r["dropped_nan"] == 1 and r["skipped_nan"] == 0, r
 
 
 def test_a_changed_lr_applies_to_the_resumed_optimizer(monkeypatch):
