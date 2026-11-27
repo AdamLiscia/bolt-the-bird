@@ -4744,3 +4744,165 @@ fn vraska_betrayals_sting_draws_proliferates_and_makes_a_treasure() {
     assert!(g.treasure_form(theirs) && !g.types_of(theirs).creature);
     assert_eq!(g.obj(v).loyalty, 5);
 }
+
+// ---- d3 core, batch 38 (Raffine) ----
+
+#[test]
+fn mausoleum_wanderer_grows_with_spirits_and_counters_unless_they_pay_its_power() {
+    let mut g = table();
+    let w = put(&mut g, 0, "Mausoleum Wanderer");
+    let sailor = hand(&mut g, 0, "Spectral Sailor");
+    act(&mut g, Action::Cast(sailor));
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.power(w), g.toughness(w)), (2, 2), "another Spirit entered");
+    let creature = hand(&mut g, 0, "Savannah Lions");
+    act(&mut g, Action::Cast(creature));
+    assert!(
+        !g.legal_actions().contains(&Action::Activate(w, 0)),
+        "a creature spell isn't an instant or sorcery"
+    );
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.power(w), 2, "the Lions aren't a Spirit");
+    let life = g.players[0].life;
+    let nw = hand(&mut g, 0, "Night's Whisper");
+    act(&mut g, Action::Cast(nw));
+    act(&mut g, Action::Activate(w, 0));
+    act(&mut g, Action::Target(obj(nw)));
+    assert_eq!(g.obj(w).zone, Zone::Graveyard, "sacrificed as the cost");
+    resolve_all(&mut g, &[Action::No]);
+    assert_eq!(g.players[0].life, life, "didn't pay {{2}}: countered");
+}
+
+#[test]
+fn skycat_sovereign_grows_per_other_flier_you_control_and_makes_cat_birds() {
+    let mut g = table();
+    let cat = put(&mut g, 0, "Skycat Sovereign");
+    put(&mut g, 1, "Meloku the Clouded Mirror");
+    put(&mut g, 0, "Savannah Lions");
+    assert_eq!(
+        (g.power(cat), g.toughness(cat)),
+        (1, 1),
+        "not theirs, not a nonflier"
+    );
+    put(&mut g, 0, "Spectral Sailor");
+    assert_eq!((g.power(cat), g.toughness(cat)), (2, 2));
+    act(&mut g, Action::Activate(cat, 0));
+    resolve_all(&mut g, &[]);
+    let birds = tokens(&g, 0, "Cat Bird");
+    assert_eq!(birds.len(), 1);
+    let b = birds[0];
+    assert!(g.keywords(b).has(Keywords::FLYING));
+    assert_eq!(g.def_of(b).colors, [true, false, false, false, false]);
+    assert_eq!((g.power(b), g.toughness(b)), (1, 1));
+    assert!(g.has_subtype(b, "Cat") && g.has_subtype(b, "Bird"));
+    assert_eq!((g.power(cat), g.toughness(cat)), (3, 3), "the Cat Bird flies too");
+}
+
+#[test]
+fn underdark_rift_rolls_a_d10_and_tucks_the_target_beneath_that_many() {
+    let mut g = table();
+    let rift = put(&mut g, 0, "Underdark Rift");
+    let theirs = put(&mut g, 1, "Savannah Lions");
+    for _ in 0..12 {
+        g.add_card(1, cid("Forest"), Zone::Library);
+    }
+    act(&mut g, Action::Activate(rift, 0));
+    act(&mut g, Action::Target(obj(theirs)));
+    assert_eq!(g.obj(rift).zone, Zone::Exile, "exiled as the cost");
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(theirs).zone, Zone::Library);
+    let lib = &g.players[1].library;
+    let above = lib.len() - 1 - lib.iter().position(|&x| x == theirs).unwrap();
+    assert!(
+        (1..=10).contains(&above),
+        "beneath the top X, X from 1 to 10: {above}"
+    );
+}
+
+#[test]
+fn crux_of_fate_destroys_the_dragons_or_everything_else() {
+    for (mode, dragon_dies) in [(0, true), (1, false)] {
+        let mut g = table();
+        let dragon = put(&mut g, 1, "Shivan Dragon");
+        let lions = put(&mut g, 0, "Savannah Lions");
+        let crux = hand(&mut g, 0, "Crux of Fate");
+        act(&mut g, Action::CastModal(crux, mode));
+        resolve_all(&mut g, &[]);
+        let dead = |x| g.obj(x).zone == Zone::Graveyard;
+        assert_eq!(
+            (dead(dragon), dead(lions)),
+            (dragon_dies, !dragon_dies),
+            "mode {mode}"
+        );
+    }
+}
+
+#[test]
+fn apocalypse_exiles_all_permanents_and_you_discard_your_hand() {
+    let mut g = table();
+    let mine = put(&mut g, 0, "Sol Ring");
+    let theirs = put(&mut g, 1, "Savannah Lions");
+    let card = hand(&mut g, 0, "Savannah Lions");
+    let theirs_in_hand = hand(&mut g, 1, "Lightning Bolt");
+    let a = hand(&mut g, 0, "Apocalypse");
+    act(&mut g, Action::Cast(a));
+    resolve_all(&mut g, &[]);
+    assert_eq!((g.obj(mine).zone, g.obj(theirs).zone), (Zone::Exile, Zone::Exile));
+    assert!(
+        g.permanents(0).next().is_none() && g.permanents(1).next().is_none(),
+        "lands too"
+    );
+    assert_eq!(g.obj(card).zone, Zone::Graveyard, "you discard");
+    assert_eq!(g.obj(theirs_in_hand).zone, Zone::Hand, "only you");
+    assert!(g.players[0].hand.is_empty());
+}
+
+#[test]
+fn karrthus_takes_and_untaps_all_dragons_and_gives_them_haste() {
+    let mut g = table();
+    let theirs = put(&mut g, 1, "Shivan Dragon");
+    g.objects[theirs.0 as usize].tapped = true;
+    let mine = put(&mut g, 0, "Utvara Hellkite");
+    g.objects[mine.0 as usize].tapped = true;
+    let lions = put(&mut g, 1, "Savannah Lions");
+    let k = hand(&mut g, 0, "Karrthus, Tyrant of Jund");
+    act(&mut g, Action::Cast(k));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(theirs).controller, 0, "gained control");
+    assert_eq!(g.obj(lions).controller, 1, "not a Dragon");
+    assert!(!g.obj(theirs).tapped && !g.obj(mine).tapped, "untapped");
+    assert!(g.keywords(theirs).has(Keywords::HASTE) && g.keywords(mine).has(Keywords::HASTE));
+    assert!(!g.keywords(lions).has(Keywords::HASTE));
+}
+
+#[test]
+fn vaevictis_makes_each_player_sacrifice_a_target_and_flip_a_permanent_onto_the_battlefield() {
+    let mut g = table();
+    let v = put(&mut g, 0, "Vaevictis Asmadi, the Dire");
+    let ring = put(&mut g, 0, "Sol Ring");
+    let theirs = put(&mut g, 1, "Savannah Lions");
+    g.start_turn(5, 0);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    let my_top = g.add_card(0, cid("Savannah Lions"), Zone::Library);
+    let their_top = g.add_card(1, cid("Lightning Bolt"), Zone::Library);
+    act(&mut g, Action::Attack(v));
+    act(&mut g, Action::FinishAttacks);
+    act(&mut g, Action::Target(obj(ring)));
+    act(&mut g, Action::Target(obj(theirs)));
+    while !g.items.is_empty() {
+        act(&mut g, Action::PassPriority);
+    }
+    assert_eq!(
+        (g.obj(ring).zone, g.obj(theirs).zone),
+        (Zone::Graveyard, Zone::Graveyard)
+    );
+    assert_eq!(
+        g.obj(my_top).zone,
+        Zone::Battlefield,
+        "a permanent card: onto the battlefield"
+    );
+    assert_eq!(g.obj(my_top).controller, 0);
+    assert_eq!(g.obj(their_top).zone, Zone::Library, "an instant stays");
+}

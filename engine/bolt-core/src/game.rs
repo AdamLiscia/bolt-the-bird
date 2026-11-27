@@ -333,6 +333,9 @@ pub struct Object {
     /// The slime counters it had as it last left the battlefield (last known information, CR
     /// 603.10a: Toxrill's "a creature you don't control with a slime counter on it dies").
     pub last_slime: i32,
+    /// Damage dealt to it this turn by sources each player controlled: (the turn, per player)
+    /// (Grothama, All-Devouring).
+    pub damage_by: (u32, [i32; 2]),
     /// Put onto the battlefield by Kodama of the East Tree's ability (so its entering doesn't
     /// trigger that ability again); cleared as it leaves.
     pub put_by_kodama: bool,
@@ -1493,6 +1496,18 @@ pub enum Decision {
     /// `Pick` one of your creatures or planeswalkers tied for the greatest mana value to sacrifice
     /// (Flare of Malice).
     SacrificeGreatestMv,
+    /// `Pick` a permanent you control with subtype `sub` to sacrifice ("sacrifice an Egg":
+    /// Palani's Hatcher); the rest of the ability follows.
+    SacrificeOfSubtype { source: ObjId, sub: &'static str },
+    /// `Pick` a land you control to sacrifice, or `No` (the rest of the ability then doesn't
+    /// happen; Springbloom Druid).
+    MaySacrificeLand { source: ObjId },
+    /// `Pick` an artifact or creature you control to sacrifice, or `No` (the rest then doesn't
+    /// happen; Midgar's Reactor Raid).
+    MaySacrificeArtifactOrCreature { source: ObjId },
+    /// Choose a card name (Demonic Consultation): `Pick(c)` names the card `c` in your library (one
+    /// option per name), `No` names a card that isn't in your library.
+    NameCardInLibrary { source: ObjId },
     /// Gemstone Caverns, asked of the non-starting player before the first turn: with `exile`
     /// false, `Yes` begins the game with `card` on the battlefield with a luck counter, `No` keeps
     /// it in hand; with `exile` true, `Pick` the card in hand to exile.
@@ -1976,6 +1991,14 @@ pub struct Game {
     pub dream_marked: Vec<(ObjId, u32)>,
     /// Cards in exile with a dream counter on them (with their zone-change counts in exile).
     pub dream_counters: Vec<(ObjId, u32)>,
+    /// Cards exiled face down that are still objects in exile, with their zone-change counts (Rev,
+    /// Tithe Extractor), beside `Object::face_down`: kept apart so the card can still be cast.
+    pub face_down_exiled: Vec<(ObjId, u32)>,
+    /// The open free-cast window allows this many spells (0: no limit; Ashiok's −7: 3).
+    pub free_casts_max: u8,
+    /// Hideaway cards beyond a source's `Object::hideaway`: (source, its zcc, card, the card's zcc
+    /// in exile) (Evercoat Ursine's second hideaway).
+    pub hideaway_more: Vec<(ObjId, u32, ObjId, u32)>,
     /// The other creatures a crew cost taps with its named one (from `Decision::CrewTap`).
     crew_extra: Vec<ObjId>,
     /// Saddled Mounts (CR 702.171b) and the creatures that saddled them: (mount, its zcc, rider,
@@ -2034,6 +2057,9 @@ pub struct Game {
     /// Triggered abilities that trigger only once each turn, kept per ability: (source, its zcc,
     /// trigger number, the turn it last triggered) (Jin-Gitaxias, Progress Tyrant's two).
     pub triggered_once_turn: Vec<(ObjId, u32, usize, u32)>,
+    /// Ral, Storm Conduit's "when you next cast an instant or sorcery spell this turn": (source, its
+    /// trigger number, controller, the turn).
+    pub copy_next_instant_sorcery: Vec<(ObjId, usize, PlayerId, u32)>,
     /// Granted loyalty abilities as they were activated: (planeswalker, ability number, the
     /// ability), so one still resolves if its granter leaves (Ichormoon Gauntlet).
     pub loyalty_snapshots: Vec<(ObjId, usize, Ability)>,
@@ -2353,6 +2379,9 @@ impl Game {
             hand_at_end_combat: Vec::new(),
             dream_marked: Vec::new(),
             dream_counters: Vec::new(),
+            face_down_exiled: Vec::new(),
+            free_casts_max: 0,
+            hideaway_more: Vec::new(),
             saddled: Vec::new(),
             karador_turn: [0; 2],
             any_graveyard_spells_turn: [0; 2],
@@ -2362,6 +2391,7 @@ impl Game {
             firing_spell: None,
             creatures_entered: [(0, 0); 2],
             triggered_once_turn: Vec::new(),
+            copy_next_instant_sorcery: Vec::new(),
         }
     }
 
@@ -2634,6 +2664,7 @@ impl Game {
             left_as_artifact: false,
             slime: 0,
             last_slime: 0,
+            damage_by: (0, [0; 2]),
             put_by_kodama: false,
         });
         self.zone_list(owner, zone).push(id);
@@ -3490,6 +3521,18 @@ impl Game {
                                 let (turn, n) = self.creatures_entered[so.controller];
                                 Some(if turn == self.turn { n as usize } else { 0 })
                             }
+                            Some(Scale::PerOtherYourCreatureWithFlying) => Some(
+                                // Printed or granted until end of turn, as `PerOtherCreatureWithFlying`.
+                                self.creatures(so.controller)
+                                    .filter(|&x| {
+                                        x != src
+                                            && self
+                                                .modifiers(x)
+                                                .fold(self.def_of(x).keywords, |k, m| k.with(m.keywords))
+                                                .has(Keywords::FLYING)
+                                    })
+                                    .count(),
+                            ),
                             _ => None,
                         };
                         if let Some(n) = scaled {
@@ -4997,6 +5040,12 @@ impl Game {
     /// a player sacrifices" triggers.
     fn sacrificed(&mut self, id: ObjId, p: PlayerId) {
         self.fire(p, When::YouSacrifice, None);
+        if self.types_of(id).artifact {
+            self.fire(p, When::YouSacrificeArtifact, None);
+        }
+        if self.types_of(id).artifact || self.types_of(id).creature {
+            self.fire(p, When::YouSacrificeArtifactOrCreature, None);
+        }
         for q in 0..2 {
             self.fire(q, When::PlayerSacrificesAnother, Some(id));
         }
@@ -6249,6 +6298,7 @@ impl Game {
                 self.counters_placed(controller, n);
                 self.counter_put_on(id); // CR 122.6: entering with counters counts
                 self.fire_source(id, When::PlusCountersPutOnThis);
+                self.plus_counters_on_your_creature(id, n);
             }
             if let Some((n, cond)) = def.enters_counters {
                 let controller = self.obj(id).controller;
@@ -6268,6 +6318,7 @@ impl Game {
                     self.counters_placed(controller, n);
                     self.counter_put_on(id);
                     self.fire_source(id, When::PlusCountersPutOnThis);
+                    self.plus_counters_on_your_creature(id, n);
                 }
             }
             if def.types.land {
@@ -7503,6 +7554,9 @@ impl Game {
                 let s = self.def_of(x);
                 if s.citadel && (d.types.land || self.players[p].life >= d.cost.mana_value() as i32) {
                     return true; // Bolas's Citadel: it can pay the mana value in life
+                }
+                if self.top_cards_after_a_spell(p, x) {
+                    return true; // Fortune Teller's Talent, level 2: lands and spells
                 }
                 if d.types.land {
                     s.lands_from_top
@@ -8897,10 +8951,15 @@ impl Game {
             if life_cost > 0 && !self.obj(id).tapped {
                 self.lose_life(p, life_cost); // Mana Confluence: "Pay 1 life"
             }
+            // Forbidden Orchard: once for the tap, not for each mana it makes.
+            let first_unit = !self.obj(id).tapped;
             if !self.def_of(id).mana_ext.sac_mana_no_tap {
                 self.become_tapped(id);
             }
             self.land_tapped_for_mana(p, id);
+            if first_unit {
+                self.fire_source(id, When::TappedForMana);
+            }
             if self.def_of(id).mana_taps_creature {
                 if let Some(c) = self.relic_partner(p, exclude) {
                     self.become_tapped(c);
@@ -9079,6 +9138,10 @@ impl Game {
             self.become_tapped(id);
         }
         self.land_tapped_for_mana(p, id);
+        // Forbidden Orchard: a triggered ability, put on the stack as you keep priority.
+        let before = self.triggered.len();
+        self.fire_source(id, When::TappedForMana);
+        let tapped_trigger = self.triggered.len() > before;
         if self.def_of(id).mana_taps_creature {
             if let Some(partner) = self.relic_partner(p, None) {
                 self.become_tapped(partner);
@@ -9090,6 +9153,9 @@ impl Game {
             self.sacrificed(id, by);
         }
         self.pending = Pending::Priority(p);
+        if tapped_trigger {
+            self.give_priority(p);
+        }
     }
 
     fn can_pay(&self, p: PlayerId, cost: &ManaCost, exclude: Option<ObjId>) -> bool {
@@ -11833,6 +11899,31 @@ impl Game {
                         ..Game::casting(x, q)
                     });
                 }
+                // Grothama: "Other creatures have 'Whenever this creature attacks, ...'", controlled
+                // by the attacker's controller.
+                let granters: Vec<(ObjId, usize)> = self
+                    .battlefield
+                    .iter()
+                    .copied()
+                    .filter(|&x| x != c && !self.lost_abilities(x))
+                    .flat_map(|x| {
+                        self.def_of(x)
+                            .triggers
+                            .iter()
+                            .enumerate()
+                            .filter(|(_, tr)| tr.when == When::OtherCreatureAttacksGranted)
+                            .map(move |(n, _)| (x, n))
+                            .collect::<Vec<_>>()
+                    })
+                    .collect();
+                let attacker_controller = self.obj(c).controller;
+                for (x, n) in granters {
+                    self.triggered.push(StackItem {
+                        kind: StackKind::Trigger(n),
+                        extra: Some(c),
+                        ..Game::casting(x, attacker_controller)
+                    });
+                }
                 let turn = self.turn;
                 let (t, n) = self.obj(c).attacks_turn;
                 self.obj_mut(c).attacks_turn = (turn, if t == turn { n.saturating_add(1) } else { 1 });
@@ -12684,6 +12775,30 @@ impl Game {
             self.obj_mut(card).cast_uncounterable = true;
         }
         if self.types_of(card).creature {
+            // Vanquisher's Banner: "a creature spell of the chosen type".
+            for x in self.permanents(p).collect::<Vec<_>>() {
+                if self.lost_abilities(x) {
+                    continue;
+                }
+                let Some(chosen) = self.obj(x).chosen_type.clone() else {
+                    continue;
+                };
+                if !self.has_subtype(card, &chosen) {
+                    continue;
+                }
+                let whens: Vec<When> = self.def_of(x).triggers.iter().map(|tr| tr.when).collect();
+                for (n, w) in whens.into_iter().enumerate() {
+                    if w == When::YouCastCreatureOfChosenType {
+                        self.triggered.push(StackItem {
+                            kind: StackKind::Trigger(n),
+                            extra: Some(card),
+                            ..Game::casting(x, p)
+                        });
+                    }
+                }
+            }
+        }
+        if self.types_of(card).creature {
             let before = self.triggered.len();
             self.fire(p, When::YouCastCreature, None);
             let power = self.def_of(card).power;
@@ -12813,6 +12928,7 @@ impl Game {
             }
         }
         self.ward_check(&item);
+        self.crime_check(&item);
         let instant_or_sorcery = self.types_of(card).instant || self.types_of(card).sorcery;
         let casts_this = self
             .def_of(card)
@@ -12861,6 +12977,19 @@ impl Game {
             });
         }
         if instant_or_sorcery {
+            // Ral, Storm Conduit: "When you next cast an instant or sorcery spell this turn".
+            let turn = self.turn;
+            let (now, later): (Vec<_>, Vec<_>) = std::mem::take(&mut self.copy_next_instant_sorcery)
+                .into_iter()
+                .partition(|&(_, _, q, t)| q == p && t == turn);
+            self.copy_next_instant_sorcery = later;
+            for (source, n, controller, _) in now {
+                self.triggered.push(StackItem {
+                    kind: StackKind::Trigger(n),
+                    extra: Some(card),
+                    ..Game::casting(source, controller)
+                });
+            }
             // Bonus Round: "until end of turn, whenever a player casts an instant or sorcery
             // spell, that player copies it": controlled by the caster, the spell in `extra`.
             let turn = self.turn;
@@ -12981,6 +13110,9 @@ impl Game {
         if self.free_casts_one && self.free_casts.iter().any(|&c| !free_zone(self.obj(c).zone)) {
             return v; // one spell, already cast (Rishkar's Expertise)
         }
+        if self.free_casts_max > 0 && self.free_casts_cast() >= self.free_casts_max as usize {
+            return v; // "up to three spells" (Ashiok, Nightmare Muse), all cast
+        }
         for &c in &self.free_casts {
             let def = self.def_of(c);
             if !free_zone(self.obj(c).zone) || def.types.land || self.cast_zone_blocked(p, self.obj(c).zone) {
@@ -13019,6 +13151,7 @@ impl Game {
         let to_hand = std::mem::take(&mut self.free_casts_to_hand);
         let to_bottom = std::mem::take(&mut self.free_casts_to_bottom);
         self.free_casts_one = false;
+        self.free_casts_max = 0;
         for c in std::mem::take(&mut self.free_casts_rest_to_graveyard) {
             if self.obj(c).zone == Zone::Exile {
                 self.move_to(c, Zone::Graveyard); // Epic Experiment: those not cast
@@ -13083,6 +13216,7 @@ impl Game {
                 self.pay_activation(c.item.controller, c.item.source, n, victim, c.item.x);
             }
             self.ward_check(&c.item);
+            self.crime_check(&c.item);
             self.items.push(c.item);
             self.give_priority(c.then);
         }
@@ -13115,6 +13249,96 @@ impl Game {
                 self.obj(id).zcc == zcc
                     && self.slot_ok(item, f, Target::Object(id))
                     && self.target_ok(f, item.controller, Target::Object(id))
+            }
+        }
+    }
+
+    /// Demonic Consultation, after the name is chosen (`None`: a card not in the library): exile the
+    /// top six, then reveal until a card with that name, which goes to the hand; the other revealed
+    /// cards are exiled.
+    fn demonic_consultation(&mut self, p: PlayerId, name: Option<String>) {
+        for _ in 0..6 {
+            match self.players[p].library.last() {
+                Some(&c) => self.move_to(c, Zone::Exile),
+                None => break,
+            }
+        }
+        while let Some(&c) = self.players[p].library.last() {
+            if name.as_deref() == Some(self.def_of(c).name.as_str()) {
+                self.move_to(c, Zone::Hand);
+                break;
+            }
+            self.move_to(c, Zone::Exile);
+        }
+    }
+
+    /// "Whenever one or more +1/+1 counters are put on a creature you control" (Simic Ascendancy):
+    /// `n` were just put on `id`, by an effect or as it entered (CR 122.6).
+    fn plus_counters_on_your_creature(&mut self, id: ObjId, n: i32) {
+        if n <= 0 || !self.types_of(id).creature {
+            return;
+        }
+        let controller = self.obj(id).controller;
+        let before = self.triggered.len();
+        self.fire(controller, When::PlusCountersOnYourCreature, None);
+        for t in &mut self.triggered[before..] {
+            t.amount = n;
+        }
+    }
+
+    /// "When the Nth [kind] counter is put on this" (Claim the Kingdom): the source's
+    /// `When::KindCountersReachOnThis(k)` triggers whose N its kind counters just went past.
+    fn kind_counters_reached(&mut self, id: ObjId, before: i32) {
+        if self.lost_abilities(id) {
+            return;
+        }
+        let now = self.obj(id).kind_counters;
+        let controller = self.obj(id).controller;
+        let hits: Vec<usize> = self
+            .def_of(id)
+            .triggers
+            .iter()
+            .enumerate()
+            .filter(|(_, tr)| matches!(tr.when, When::KindCountersReachOnThis(k) if before < k && k <= now))
+            .map(|(n, _)| n)
+            .collect();
+        for n in hits {
+            self.triggered.push(StackItem {
+                kind: StackKind::Trigger(n),
+                ..Game::casting(id, controller)
+            });
+        }
+    }
+
+    /// CR 700.13: a spell or ability that targets an opponent, anything they control, or a card in
+    /// their graveyard is a crime its controller commits ("Whenever you commit a crime", once per
+    /// spell or ability), for their permanents and the cards in their graveyard (Forsaken Miner).
+    fn crime_check(&mut self, item: &StackItem) {
+        let p = item.controller;
+        let crime = item.targets.iter().any(|&t| match t {
+            Chosen::Player(q) => q != p,
+            Chosen::Object(id, _) => {
+                let o = self.obj(id);
+                match o.zone {
+                    Zone::Battlefield | Zone::Stack => o.controller != p,
+                    Zone::Graveyard => o.owner != p,
+                    _ => false,
+                }
+            }
+        });
+        if !crime {
+            return;
+        }
+        self.fire(p, When::YouCommitCrime, None);
+        for g in self.players[p].graveyard.clone() {
+            let whens: Vec<When> = self.def_of(g).triggers.iter().map(|tr| tr.when).collect();
+            for (n, w) in whens.into_iter().enumerate() {
+                if w == When::YouCommitCrime {
+                    self.triggered.push(StackItem {
+                        kind: StackKind::Trigger(n),
+                        ..Game::casting(g, p)
+                    });
+                }
             }
         }
     }
@@ -13696,6 +13920,7 @@ impl Game {
         let controller = self.obj(id).controller;
         self.counters_placed(controller, n);
         self.counter_put_on(id);
+        self.plus_counters_on_your_creature(id, n);
         if self.types_of(id).creature && !self.has_subtype(id, "Hydra") {
             let controller = self.obj(id).controller;
             self.fire(controller, When::CountersOnAnotherNonHydraYouControl, Some(id));
@@ -14620,6 +14845,45 @@ impl Game {
                 v.push(Action::No);
                 v
             }
+            Decision::MaySacrificeLand { .. } => {
+                let mut v: Vec<Action> = self
+                    .permanents(p)
+                    .filter(|&x| self.types_of(x).land && !self.cant_be_sacrificed(x))
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
+            Decision::MaySacrificeArtifactOrCreature { .. } => {
+                let mut v: Vec<Action> = self
+                    .permanents(p)
+                    .filter(|&x| {
+                        let ty = self.types_of(x);
+                        (ty.artifact || ty.creature) && !self.cant_be_sacrificed(x)
+                    })
+                    .map(Action::Pick)
+                    .collect();
+                v.push(Action::No);
+                v
+            }
+            Decision::NameCardInLibrary { .. } => {
+                let mut seen: Vec<&str> = Vec::new();
+                let mut v = Vec::new();
+                for &c in &self.players[p].library {
+                    let n = self.def_of(c).name.as_str();
+                    if !seen.contains(&n) {
+                        seen.push(n);
+                        v.push(Action::Pick(c));
+                    }
+                }
+                v.push(Action::No);
+                v
+            }
+            Decision::SacrificeOfSubtype { sub, .. } => self
+                .permanents(p)
+                .filter(|&x| self.has_subtype(x, sub) && !self.cant_be_sacrificed(x))
+                .map(Action::Pick)
+                .collect(),
             Decision::LookPick {
                 cards, pick, rest, ..
             } => {
@@ -15435,6 +15699,25 @@ impl Game {
             (Decision::SacrificeAnother { .. }, Action::Pick(c)) => {
                 self.move_to(c, Zone::Graveyard);
                 self.sacrificed(c, p);
+            }
+            (Decision::SacrificeOfSubtype { .. }, Action::Pick(c)) => {
+                self.move_to(c, Zone::Graveyard);
+                self.sacrificed(c, p);
+            }
+            (Decision::MaySacrificeLand { .. }, Action::Pick(c))
+            | (Decision::MaySacrificeArtifactOrCreature { .. }, Action::Pick(c)) => {
+                self.move_to(c, Zone::Graveyard);
+                self.sacrificed(c, p);
+            }
+            (Decision::MaySacrificeLand { .. }, _) | (Decision::MaySacrificeArtifactOrCreature { .. }, _) => {
+                self.resolving.as_mut().expect("resolving").remaining.clear();
+            }
+            (Decision::NameCardInLibrary { .. }, a) => {
+                let name = match a {
+                    Action::Pick(c) => Some(self.def_of(c).name.clone()),
+                    _ => None,
+                };
+                self.demonic_consultation(p, name);
             }
             (Decision::MayPay { cost }, Action::Yes) => self.pay_mana(p, &cost, None),
             (Decision::PayXDamage { source, target, .. }, Action::Amount(x)) => {
@@ -22219,6 +22502,200 @@ impl Game {
                     self.obj_mut(src).tapped = true;
                 }
             }
+            Effect::ReturnSelfFromGraveyard => {
+                if self.obj(src).zone == Zone::Graveyard {
+                    self.move_to(src, Zone::Battlefield);
+                }
+            }
+            Effect::ExtraFightsSource => {
+                if let Some(them) = item.extra {
+                    let both = [src, them]
+                        .iter()
+                        .all(|&x| self.obj(x).zone == Zone::Battlefield && self.types_of(x).creature);
+                    if both && them != src {
+                        let (a, b) = (self.power(them), self.power(src));
+                        if a > 0 {
+                            self.deal_damage(them, Target::Object(src), a);
+                        }
+                        if b > 0 {
+                            self.deal_damage(src, Target::Object(them), b);
+                        }
+                    }
+                }
+            }
+            Effect::EachPlayerDrawsDamageDealtToSourceThisTurn => {
+                let (turn, by) = self.obj(src).damage_by;
+                let you = item.controller;
+                for p in [you, opponent(you)] {
+                    let n = if turn == self.turn { by[p].max(0) } else { 0 };
+                    for _ in 0..n {
+                        self.draw(p);
+                    }
+                }
+            }
+            Effect::CopyNextInstantOrSorceryThisTurn(trigger) => {
+                let entry = (src, trigger, item.controller, self.turn);
+                self.copy_next_instant_sorcery.push(entry);
+            }
+            Effect::CounterOrDoubleOnSecondResolution(slot) => {
+                let turn = self.turn;
+                let o = self.obj_mut(src);
+                o.resolved_this_turn = if o.resolved_this_turn.0 == turn {
+                    (turn, o.resolved_this_turn.1 + 1)
+                } else {
+                    (turn, 1)
+                };
+                let second = o.resolved_this_turn.1 == 2;
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    let n = if second { self.obj(id).counters } else { 1 };
+                    if n > 0 {
+                        self.add_counters(id, n);
+                    }
+                }
+            }
+            Effect::RevealUntilCreatureOntoBattlefield => {
+                let p = item.controller;
+                let mut revealed = Vec::new();
+                let mut found = None;
+                while let Some(&c) = self.players[p].library.last() {
+                    self.players[p].library.pop();
+                    if self.types_of(c).creature {
+                        found = Some(c);
+                        break;
+                    }
+                    revealed.push(c);
+                }
+                if let Some(c) = found {
+                    self.players[p].library.push(c);
+                    self.move_to(c, Zone::Battlefield);
+                }
+                self.rng.shuffle(&mut revealed);
+                for c in revealed {
+                    self.players[p].library.insert(0, c);
+                }
+            }
+            Effect::LookTopDevotionToBlueWinIfAtLeastLibrary => {
+                let p = item.controller;
+                let x = self.devotion(p, [false, true, false, false, false]) as usize;
+                let size = self.players[p].library.len();
+                let cards: Vec<ObjId> = self.players[p].library.iter().rev().take(x).copied().collect();
+                if x >= size {
+                    self.run_effect(item, legal, Effect::WinTheGame);
+                }
+                if !cards.is_empty() && !self.is_over() {
+                    self.ask(
+                        p,
+                        Decision::LookPick {
+                            cards,
+                            pick: Pick::Any,
+                            to: LookTo::Top,
+                            rest: Some(LookRest::BottomRandom),
+                        },
+                    );
+                }
+            }
+            Effect::MaySacrificeLand => {
+                let p = item.controller;
+                if self
+                    .permanents(p)
+                    .any(|x| self.types_of(x).land && !self.cant_be_sacrificed(x))
+                {
+                    self.ask(p, Decision::MaySacrificeLand { source: src });
+                } else {
+                    self.resolving.as_mut().expect("resolving").remaining.clear();
+                }
+            }
+            Effect::MaySacrificeArtifactOrCreature => {
+                let p = item.controller;
+                let any = self.permanents(p).any(|x| {
+                    let ty = self.types_of(x);
+                    (ty.artifact || ty.creature) && !self.cant_be_sacrificed(x)
+                });
+                if any {
+                    self.ask(p, Decision::MaySacrificeArtifactOrCreature { source: src });
+                } else {
+                    self.resolving.as_mut().expect("resolving").remaining.clear();
+                }
+            }
+            Effect::DemonicConsultation => {
+                self.ask(item.controller, Decision::NameCardInLibrary { source: src });
+            }
+            Effect::ReanimateUnderOwner(slot) => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    if self.obj(id).zone == Zone::Graveyard {
+                        self.move_to(id, Zone::Battlefield);
+                        let owner = self.obj(id).owner;
+                        self.obj_mut(id).controller = owner;
+                    }
+                }
+            }
+            Effect::DiscardAtRandom { who, n } => {
+                for q in self.players_for(item, legal, who) {
+                    for _ in 0..n {
+                        let k = self.players[q].hand.len();
+                        if k == 0 {
+                            break;
+                        }
+                        let c = self.players[q].hand[self.rng.below(k)];
+                        self.move_to(c, Zone::Graveyard);
+                    }
+                }
+            }
+            Effect::EachPlayerDiscardsHandThenDraws(n) => {
+                let you = item.controller;
+                for q in [you, opponent(you)] {
+                    for c in self.players[q].hand.clone() {
+                        self.move_to(c, Zone::Graveyard);
+                    }
+                }
+                for q in [you, opponent(you)] {
+                    for _ in 0..n {
+                        self.draw(q);
+                    }
+                }
+            }
+            Effect::PumpXXAndGrant { slot, keywords } => {
+                let x = item.x as i32;
+                self.run_effect(
+                    item,
+                    legal,
+                    Effect::Pump {
+                        slot,
+                        power: x,
+                        toughness: x,
+                    },
+                );
+                self.run_effect(item, legal, Effect::Grant { slot, keywords });
+            }
+            Effect::KindCountersSelfAmount => {
+                if self.obj(src).zone == Zone::Battlefield && item.amount > 0 {
+                    let before = self.obj(src).kind_counters;
+                    self.obj_mut(src).kind_counters += item.amount;
+                    self.counters_placed(item.controller, item.amount);
+                    self.kind_counters_reached(src, before);
+                }
+            }
+            Effect::SacrificeYourSubtype(sub) => {
+                let p = item.controller;
+                if self
+                    .permanents(p)
+                    .any(|x| self.has_subtype(x, sub) && !self.cant_be_sacrificed(x))
+                {
+                    self.ask(p, Decision::SacrificeOfSubtype { source: src, sub });
+                }
+            }
+            Effect::StopUnlessNthResolutionThisTurn(n) => {
+                let turn = self.turn;
+                let o = self.obj_mut(src);
+                o.resolved_this_turn = if o.resolved_this_turn.0 == turn {
+                    (turn, o.resolved_this_turn.1 + 1)
+                } else {
+                    (turn, 1)
+                };
+                if o.resolved_this_turn.1 != n {
+                    self.resolving.as_mut().expect("resolving").remaining.clear();
+                }
+            }
             Effect::LookAtTop {
                 n,
                 pick,
@@ -23690,8 +24167,10 @@ impl Game {
             Effect::KindCounterSelf(n) => {
                 if self.obj(src).zone == Zone::Battlefield {
                     let n = n * self.doubling(self.obj(src).controller);
+                    let before = self.obj(src).kind_counters;
                     self.obj_mut(src).kind_counters += n;
                     self.counters_placed(item.controller, n);
+                    self.kind_counters_reached(src, before);
                 }
             }
             Effect::MaySacrificeToken => {
@@ -25754,6 +26233,97 @@ impl Game {
                 self.ask(item.controller, Decision::Search { what, to, left: n });
             }
             Effect::AdNauseam => self.ad_nauseam_step(item.controller),
+            Effect::DestroyAllCreaturesWithSubtype(sub) => {
+                let all: Vec<ObjId> = self
+                    .battlefield
+                    .iter()
+                    .copied()
+                    .filter(|&c| self.types_of(c).creature && self.has_subtype(c, sub))
+                    .collect();
+                for c in all {
+                    self.destroy(c);
+                }
+            }
+            Effect::ExileAllPermanents => {
+                for x in self.battlefield.clone() {
+                    if self.obj(x).zone == Zone::Battlefield {
+                        self.move_to(x, Zone::Exile);
+                    }
+                }
+            }
+            Effect::YouDiscardHand => {
+                let p = item.controller;
+                for c in self.players[p].hand.clone() {
+                    self.move_to(c, Zone::Graveyard);
+                }
+            }
+            Effect::GainControlAllSubtypeThenUntap(sub) => {
+                let me = item.controller;
+                let turn = self.turn;
+                let all: Vec<ObjId> = self
+                    .battlefield
+                    .iter()
+                    .copied()
+                    .filter(|&x| self.has_subtype(x, sub))
+                    .collect();
+                for &x in &all {
+                    if self.obj(x).controller != me {
+                        let o = self.obj_mut(x);
+                        o.controller = me;
+                        o.since_turn = turn; // CR 302.6
+                    }
+                }
+                for x in all {
+                    self.untap_by_effect(x);
+                }
+            }
+            Effect::SacrificeTargetsRevealTopPermanent(n) => {
+                let me = item.controller;
+                let mut who = Vec::new();
+                for slot in 0..n {
+                    if let Some(x) = Game::slot_object(item, legal, slot) {
+                        let p = self.obj(x).controller;
+                        if self.obj(x).zone == Zone::Battlefield && !self.cant_be_sacrificed_by(x, me) {
+                            self.move_to(x, Zone::Graveyard);
+                            self.sacrificed(x, p);
+                            if !who.contains(&p) {
+                                who.push(p);
+                            }
+                        }
+                    }
+                }
+                for p in who {
+                    if let Some(&top) = self.players[p].library.last() {
+                        if self.def_of(top).types.is_permanent() {
+                            self.move_to(top, Zone::Battlefield);
+                        }
+                    }
+                }
+            }
+            Effect::CounterUnlessPaysSourcePower(slot) => {
+                if let Some(id) = Game::slot_object(item, legal, slot) {
+                    let payer = self
+                        .items
+                        .iter()
+                        .rev()
+                        .find(|i| i.kind == StackKind::Spell && i.source == id)
+                        .map(|t| t.controller);
+                    if let Some(payer) = payer {
+                        if !self.uncounterable(id) {
+                            let power = if self.obj(src).zone == Zone::Battlefield {
+                                self.power(src)
+                            } else {
+                                self.obj(src).last_power
+                            };
+                            let cost = ManaCost {
+                                generic: power.clamp(0, 255) as u8,
+                                ..ManaCost::default()
+                            };
+                            self.ask(payer, Decision::PayOrCountered { cost, against: id });
+                        }
+                    }
+                }
+            }
             Effect::OpponentSacrificesGreatestMvCreatureOrPlaneswalker => {
                 let q = opponent(item.controller);
                 if !self.greatest_mv_sacrifice_options(q).is_empty() {
@@ -25991,6 +26561,41 @@ impl Game {
                 }
             }
             Effect::MayCastDreamCardFree => self.open_dream_free_cast(item.controller),
+            Effect::ExileTopOfOpponentFaceDownCastable => {
+                self.exile_top_face_down_castable(item.controller, opponent(item.controller))
+            }
+            Effect::CastFaceUpOpponentExiledFreeUpTo(n) => {
+                self.open_free_casts_from_opponents_exile(item.controller, n)
+            }
+            Effect::CreateTokensTapped { def, n } => {
+                for _ in 0..n {
+                    self.create_token(item.controller, def);
+                    for t in self.last_created.clone() {
+                        self.obj_mut(t).tapped = true;
+                    }
+                }
+            }
+            Effect::DamageEachOpponentCastSpellManaValue => {
+                if let Some(s) = item.extra {
+                    let mv = self.stack_mana_cost(s).with_x(self.obj(s).x).mana_value() as i32;
+                    if mv > 0 {
+                        self.deal_damage(src, Target::Player(opponent(item.controller)), mv);
+                    }
+                }
+            }
+            Effect::HideawayAnother(n) => self.hideaway_another(src, item.controller, n),
+            Effect::CountersOnAttachedBySubtype { n, subtype, n_if } => {
+                self.counters_on_attached_by_subtype(src, n, subtype, n_if)
+            }
+            Effect::MayCastOneHideawayFree => self.open_hideaway_free_cast(src, item.controller),
+            Effect::EachOpponentExilesTop(n) => {
+                let q = opponent(item.controller);
+                for _ in 0..n {
+                    if let Some(&c) = self.players[q].library.last() {
+                        self.move_to(c, Zone::Exile);
+                    }
+                }
+            }
             Effect::GainLifePerCreatureYouControl => {
                 let n = self.creatures(item.controller).count() as i32;
                 if n > 0 {
@@ -26187,6 +26792,13 @@ impl Game {
                 !self.battlefield.iter().any(|&c| self.types_of(c).creature)
             }
             Some(Condition::YouLostLifeThisTurn) => self.life_lost_this_turn[controller],
+            Some(Condition::ControlNoSubtype(sub)) => {
+                !self.permanents(controller).any(|x| self.has_subtype(x, sub))
+            }
+            Some(Condition::SourceKindCountersAtLeast(n)) => self.obj(source).kind_counters >= *n,
+            Some(Condition::ControlNoCreatureWithDecayed) => !self
+                .creatures(controller)
+                .any(|c| self.def_of(c).decayed || self.obj(c).decayed),
         }
     }
 
@@ -26614,6 +27226,9 @@ impl Game {
                 self.events.push(Event::Triggered { source: item.source });
             }
             if ability.targets.len() == item.targets.len() {
+                if !item.targets.is_empty() {
+                    self.crime_check(&item);
+                }
                 self.items.push(item);
             } else if self.trigger_can_target(&item, &ability) {
                 let who = item.controller;
@@ -26813,6 +27428,7 @@ impl Game {
         self.combats_after_main2 = 0;
         self.untap_attackers_at_combat = false;
         self.copy_next_spell.clear();
+        self.copy_next_instant_sorcery.clear();
         self.delayed_this_turn.clear();
         self.damage_shields.clear();
         self.graveyard_left_this_turn = [false; 2];
@@ -27527,6 +28143,27 @@ impl Game {
                 Target::Object(_) => 0,
             };
             self.deal_damage(source, target, amount);
+            // Flitterwing Nuisance's delayed "a creature you control deals combat damage to a player
+            // or planeswalker this turn".
+            let at_player_or_walker = match target {
+                Target::Player(_) => true,
+                Target::Object(w) => self.types_of(w).planeswalker,
+            };
+            if amount > 0 && at_player_or_walker {
+                let (by, turn) = (self.obj(source).controller, self.turn);
+                for (w, src, n, who, t) in self.delayed_this_turn.clone() {
+                    if w == When::YourCreatureDealsCombatDamageToPlayerOrPlaneswalkerThisTurn
+                        && who == by
+                        && t == turn
+                    {
+                        self.triggered.push(StackItem {
+                            kind: StackKind::Trigger(n),
+                            extra: Some(source),
+                            ..Game::casting(src, who)
+                        });
+                    }
+                }
+            }
             if let Target::Player(d) = target {
                 // CR 903.10a: combat damage from the opponent's commander.
                 if self.is_commander(source) && self.obj(source).owner != d {
@@ -28148,6 +28785,15 @@ impl Game {
                 self.obj_mut(id).loyalty -= amount; // CR 120.3c
             }
             Target::Object(id) => {
+                if amount > 0 {
+                    // Grothama: damage dealt to it this turn by each player's sources.
+                    let (by, turn) = (self.obj(source).controller, self.turn);
+                    let o = self.obj_mut(id);
+                    if o.damage_by.0 != turn {
+                        o.damage_by = (turn, [0; 2]);
+                    }
+                    o.damage_by.1[by] += amount;
+                }
                 let o = self.obj_mut(id);
                 o.damage += amount;
                 o.deathtouched |= k.has(Keywords::DEATHTOUCH);

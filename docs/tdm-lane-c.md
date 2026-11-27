@@ -1152,3 +1152,74 @@ Built cold, two test fixes: Aquitect's Defenses now passes through cleanup (star
 `until_eot` was never cleared), and Elspeth Tirel's test sets her loyalty to 4 first. 2,335 Rust tests pass
 (core_objects 73, 4 ignored: 3 play.rs, 1 rollout); every binary's count equals its `#[test]` count; clippy,
 fmt, ruff (check and format) clean; pytest 194 passed, 1 skipped.
+
+## Batch 19 (unbuilt): Rev, Tithe Extractor; Ashiok, Nightmare Muse's pieces
+
+Core (appended; arms after `MayCastDreamCardFree`, functions in game/zones.rs):
+- `Effect::ExileTopOfOpponentFaceDownCastable` (Rev): the opponent's top card to exile, recorded in the new
+  `Game::face_down_exiled` (not `Object::face_down`, which would make `def_of` a 2/2 with no cost); `playable =
+  Some((you, u32::MAX))` unless it's a land (a land can't be cast). `Game::exiled_face_down(c)` reads both.
+  Limit: the observation still shows the card's face; only the rules treat it as face down.
+- `Effect::CastFaceUpOpponentExiledFreeUpTo(n)` (Ashiok's −7) with `Game::free_casts_max`: **approved edits in
+  existing functions**, a guard in `free_cast_actions` (closes once `n` of the window's cards have left exile,
+  `free_casts_cast`) and the reset in `close_free_casts`.
+- `Effect::EachOpponentExilesTop(n)` (the Nightmare token's attack/block trigger, n = 2).
+Cards (1): Rev, Tithe Extractor ("that player" is the one opponent). Ashiok waits on d3's −3 and on token 120
+(appended after d2's 111-118 and d3's 119 once they're on tarkir; no placeholders). Tests in core_objects (77:
+two for Rev, the −7 and the exile-two on an edited Inkshield).
+Likely failure spots when built: Rev's attack trigger target answer in `resolve_all`, the −7 window reopening
+after each cast (three `Cast` + `Target` in a row), Bolt from exile paid with the table's Mountains.
+
+## Batch 20 (unbuilt): Alchemist's Talent, Fortune Teller's Talent, Evercoat Ursine
+
+The Talents were handed back from d4 (retired); d4's Class pieces and d1's `treasures_add_two_at_level` and
+`not_from_hand_discount` were already on tarkir.
+Core (appended; arms before `EachOpponentExilesTop`, functions in game/zones.rs):
+- `Effect::CreateTokensTapped { def, n }` (two tapped Treasures), `Effect::DamageEachOpponentCastSpellManaValue`
+  (level 3, after `StopUnlessTreasureManaSpentOnExtra`, on `When::YouCast` behind `ClassLevelAtLeast(3)`).
+- `ZonesExt::top_cards_if_cast_spell_at_level` (Fortune Teller's level 2): one clause in `priority_actions`' `top`
+  filter (`top_cards_after_a_spell`), before the land/spell split, so lands and spells both. Lane C's
+  top-of-library play, as the merger routed it.
+- `Effect::{HideawayAnother(n), MayCastOneHideawayFree}` with `Game::hideaway_more` (Evercoat Ursine: the first
+  hideaway card is kept there, then the existing `Decision::HideawayPick` is asked again). **Ursine is unclaimed**
+  (script kept with only its hideaway line in `lines`, so it is not supported or built, and off `PG_C_SCRIPTED`;
+  merger 2026-11-27; unlisting alone would still claim it, since support comes from the lines): "play one of them" includes a hidden land played as a
+  land play (CR 305.2), and the one-spell free-cast window is spells only. Needs: `free_cast_actions` offering
+  `PlayLand` while a land play remains, the `Pending::FreeCast` mapping letting `PlayLand` through to its own arm,
+  and that arm closing the window (`close_free_casts`) after the land enters.
+Tests in core_objects (81: Alchemist's two, Fortune Teller's, and Ursine's pieces on an edited Hungry Ghoul).
+Likely failure spots when built: the Treasure-only Bolt (`game(&[])`, paid by the Treasure), the Ursine
+hideaway picks in `play`'s answers (second Bolt from the first three, then the first from the next three), the
+Class level set directly on `class_level`.
+
+## Batch 21 (unbuilt): Blade of the Bloodchief (Korvold, from live_missing.json)
+
+Core (appended): `Effect::CountersOnAttachedBySubtype { n, subtype, n_if }` (zones.rs
+`counters_on_attached_by_subtype`), on `When::AnotherCreatureDies` (the Blade isn't a creature, so that's every
+creature). Card (1): Blade of the Bloodchief. Test in core_objects (82).
+Nesting Dragon (Korvold) waits on two token numbers: a 0/2 red Dragon Egg with defender and a dies trigger, and a
+2/2 red flying Dragon with "{R}: +1/+0".
+
+### Nesting Dragon (written, unbuilt; needs its two tokens)
+
+Scripted against `t.dragon_egg` (123) and `t.dragon_2_firebreathing` (124), test in core_objects (83). To append
+once d2's 111-118, d3's 119 and 121 and d1's 122 are on tarkir, after 120 (Ashiok's Nightmare):
+- 123: `red(token("Dragon Egg", "Dragon Egg", 0, 2, Keywords::DEFENDER))`.
+- 124: a 2/2 red Dragon, `red(token("Dragon", "Dragon", 2, 2, Keywords::FLYING))` with `activated(&mut t, "{R}",
+  false, vec![], vec![Effect::PumpSelf { power: 1, toughness: 0 }])`.
+- The Egg's "When this token dies, create [124]": `token_defs()` doesn't know the token base, so no token row can
+  name another token. Proposed (merger's file, lib.rs `CardSet::load`, after `defs.extend(scripts::token_defs())`):
+  one line pushing `Trigger { when: When::Dies, ability: CreateToken { who: You, def: tokens.dragon_2_firebreathing,
+  n: 1 } }` onto `defs[tokens.dragon_egg]`. Or `token_defs(&Tokens)` if the merger prefers.
+Merger approved option (a) (2026-11-27): the wiring is in lib.rs `CardSet::load` (commit after 2d87a69). Both
+commits need the token rows; if the build comes first, revert both and restore them once the tokens land.
+
+## Merge of tarkir 51b84e4; batches 19-21, Nesting Dragon and Ashiok built (2026-11-27)
+
+Merge f087200: one conflict, the end of `Effect` (tarkir's first, then lane C's). Tokens: tarkir's, with
+`placeholder_120` replaced by 120 `nightmare` (2/3 blue and black; attacks or blocks: `EachOpponentExilesTop(2)`),
+122 `placeholder_122` (d1's Human Cleric, not on tarkir yet), 123 `dragon_egg`, 124 `dragon_2_firebreathing`.
+Ashiok, Nightmare Muse scripted (+1 the Nightmare, −3 d3's `BounceThenOwnerExilesFromHand`, −7 lane C's window);
+test in core_objects (84). Built cold, no fixes needed: 2,412 Rust tests pass (core_objects 84, 4 ignored: 3
+play.rs, 1 rollout), every binary's count equals its `#[test]` count; clippy, fmt, ruff (check and format) clean;
+pytest 201 passed, 2 skipped.
