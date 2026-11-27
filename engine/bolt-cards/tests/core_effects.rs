@@ -3077,3 +3077,44 @@ fn other_creatures_are_food_artifacts_while_it_is_on_the_battlefield() {
     );
     assert!(!g.has_subtype(ring, "Food"), "creatures only");
 }
+
+// ---- batch 27 ----
+
+#[test]
+fn other_colorless_creatures_you_control_get_the_static() {
+    let mut herald = CardDef::creature("Test Herald", "{1}", 2, 2, Keywords::NONE);
+    herald.statics.push(static_of(
+        Scope::OtherYourColorlessCreatures,
+        1,
+        1,
+        Keywords::NONE,
+    ));
+    let (mut g, t) = game_with(vec![herald]);
+    let thopter = g.add_card(0, cid("Ornithopter"), Zone::Battlefield);
+    let elves = g.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
+    let theirs = g.add_card(1, cid("Ornithopter"), Zone::Battlefield);
+    let h = g.add_card(0, t, Zone::Battlefield);
+    assert_eq!(
+        (g.power(thopter), g.toughness(thopter)),
+        (1, 3),
+        "colorless and yours"
+    );
+    assert_eq!(g.power(elves), 1, "green");
+    assert_eq!(g.power(theirs), 0, "not yours");
+    assert_eq!(g.power(h), 2, "other");
+}
+
+#[test]
+fn each_player_draws_x() {
+    let (mut g, t) = game_with(vec![{
+        let mut d = sorcery(vec![], vec![Effect::EachPlayerDrawsX]);
+        d.cost = ManaCost::parse("{X}").unwrap();
+        d
+    }]);
+    let c = g.add_card(0, t, Zone::Hand);
+    let (h0, h1) = (g.players[0].hand.len(), g.players[1].hand.len());
+    act(&mut g, Action::CastX(c, 3));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[0].hand.len(), h0 - 1 + 3);
+    assert_eq!(g.players[1].hand.len(), h1 + 3);
+}

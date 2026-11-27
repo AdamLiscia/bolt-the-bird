@@ -1849,6 +1849,40 @@ pub fn script(name: &str) -> Option<Script> {
                 spell(d, vec![], vec![Effect::LookTakeTwoBottomAnyOrder(7)]);
             },
         ),
+        "Mikaeus, the Unhallowed" => s(
+            &[
+                "Whenever a Human deals damage to you, destroy it.",
+                "Other non-Human creatures you control get +1/+1 and have undying.",
+            ],
+            |d, _| {
+                d.keywords = d.keywords.with(Keywords::INTIMIDATE);
+                let it = Filter { triggering: true, ..CREATURE };
+                on(d, When::SubtypeDealsDamageToYou("Human"), vec![it], vec![Effect::Destroy(0)]);
+                d.statics.push(Static {
+                    scope: Scope::OtherYourNonHumanCreatures,
+                    power: 1,
+                    toughness: 1,
+                    keywords: Keywords::UNDYING,
+                    ..neutral_static()
+                });
+            },
+        ),
+        "Skyscribing" => s(
+            &[
+                "Each player draws X cards.",
+                "Forecast — {2}{U}, Reveal this card from your hand: Each player draws a card.",
+            ],
+            |d, _| {
+                spell(d, vec![], vec![Effect::EachPlayerDrawsX]);
+                let each = vec![
+                    Effect::Draw { who: Who::You, n: 1 },
+                    Effect::Draw { who: Who::EachOpponent, n: 1 },
+                ];
+                let n = activated(d, "{2}{U}", false, vec![], each);
+                d.activated[n].forecast = true;
+                d.activated[n].once_each_turn = true;
+            },
+        ),
         _ => None,
     }
 }
@@ -2102,4 +2136,7 @@ pub const PG_D3_SCRIPTED: &[&str] = &[
     "Organic Extinction",
     "Camellia, the Seedmiser",
     "Dig Through Time",
+    // Core theme d3, batch 27
+    "Mikaeus, the Unhallowed",
+    "Skyscribing",
 ];

@@ -2519,6 +2519,8 @@ pub enum Effect {
         slot: u8,
         keep_own: bool,
     },
+    /// "Each player draws X cards." (Skyscribing), X the spell's X, you first.
+    EachPlayerDrawsX,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -2665,6 +2667,8 @@ pub enum Scope {
     /// Other non-Human creatures you control, by printed creature types (Mikaeus, the
     /// Unhallowed); a changeling is a Human, so it's left out.
     OtherYourNonHumanCreatures,
+    /// Other colorless creatures you control (It That Heralds the End).
+    OtherYourColorlessCreatures,
 }
 
 /// What a scaled static ability counts.

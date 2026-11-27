@@ -2864,6 +2864,9 @@ impl Game {
                             Scope::OtherYourNonHumanCreatures => {
                                 mine && creature && src != id && !self.has_base_subtype(id, "Human")
                             }
+                            Scope::OtherYourColorlessCreatures => {
+                                mine && creature && src != id && self.colors_of(id) == [false; 5]
+                            }
                         };
                         let condition_ok = match s.condition {
                             None => true,
@@ -18794,6 +18797,13 @@ impl Game {
             Effect::DrawX => {
                 for _ in 0..item.x {
                     self.draw(item.controller);
+                }
+            }
+            Effect::EachPlayerDrawsX => {
+                for p in [item.controller, opponent(item.controller)] {
+                    for _ in 0..item.x {
+                        self.draw(p);
+                    }
                 }
             }
             Effect::AddManaAnyColor => {
