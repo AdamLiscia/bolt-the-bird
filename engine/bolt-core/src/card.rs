@@ -147,6 +147,10 @@ pub enum ExtraCost {
     /// or greater." Cast with `Action::Cast` (none) or `Action::CastWith` naming it (it's the
     /// spell's `extra`); `Effect::CopySourceSpellIfCasualty` makes the copy.
     Casualty(u8),
+    /// "As an additional cost to cast this spell, blight N or pay [mana]." (Bogslither's Embrace:
+    /// 1, {3}; Wild Unraveling: 2, {1}): `Action::Cast` pays the mana, `Action::CastWith` names a
+    /// creature you control to put N -1/-1 counters on (to blight N).
+    BlightOrPay(u8, ManaCost),
 }
 
 /// "This spell costs {N} less to cast if ..." (CR 601.2f).
@@ -390,6 +394,12 @@ pub struct Activated {
     pub remove_plus_counters: u8,
     /// The stack item's amount is the sacrificed creature's toughness (Miren, the Moaning Well).
     pub amount_from_victim_toughness: bool,
+    /// "Remove N counters from among other artifacts, creatures, and planeswalkers you control" in
+    /// the cost (Tekuthal, Inquiry Dominus: 3): the player picks each permanent
+    /// (`Decision::RemoveCountersFromOthers`) before the ability is activated. Demo rule for the
+    /// kind (until it's a Mode pick): the kind with the most counters on that permanent, never
+    /// loyalty (or lore) while another kind is present (`Game::remove_any_counter`).
+    pub remove_counters_from_others: u8,
 }
 
 /// A loyalty ability's cost of −X (CR 606.4, 107.3): `loyalty_abilities` uses this as the cost,
@@ -1312,6 +1322,14 @@ pub struct ManaExt {
     /// Cleave (CR 702.148): cast for this cost with `Action::CastAlternative`; the spell's effect
     /// reads the item's `alt` (Wash Away: {1}{U}{U}).
     pub cleave: Option<ManaCost>,
+    /// Sorcerer Class, level 2: "Creatures you control have '{T}: Add {U} or {R}. Spend this mana
+    /// only to cast an instant or sorcery spell or to gain a Class level.'" as (Class level
+    /// needed, colors): each untapped creature you control that could tap is a source of those
+    /// colors when paying for an instant or sorcery spell or a Class's level-up.
+    pub creatures_tap_for_instant_sorcery: Option<(u8, [bool; 5])>,
+    /// "Whenever a player taps a basic land for mana, that player adds one mana of any type that
+    /// land produced." (Lavaleaper): each basic land makes one more of its mana.
+    pub basic_lands_add_extra: bool,
 }
 
 /// "You may pay [mana], [life] and sacrifice or tap [creatures] rather than pay this spell's mana

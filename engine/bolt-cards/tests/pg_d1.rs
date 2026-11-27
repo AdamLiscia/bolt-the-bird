@@ -3450,3 +3450,103 @@ fn the_crossroads_lands_sacrifice_and_fetch_a_basic_tapped() {
     assert!(g.obj(forest).tapped);
     assert_eq!(g.players[0].life, life + 1);
 }
+
+#[test]
+fn sorcerer_class_creatures_tap_for_instants_and_level_three_burns() {
+    let mut g = game(&[]);
+    let class = put(&mut g, 0, "Sorcerer Class");
+    let elves = put(&mut g, 0, "Llanowar Elves");
+    g.objects[elves.0 as usize].since_turn = 0;
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    let fyndhorn = hand(&mut g, 0, "Fyndhorn Elves");
+    assert!(!g.legal_actions().contains(&Action::Cast(bolt)), "level 1");
+    g.objects[class.0 as usize].class_level = 2;
+    let legal = g.legal_actions();
+    assert!(
+        legal.contains(&Action::Cast(bolt)),
+        "the Elves tap for {{R}}: {legal:?}"
+    );
+    assert!(
+        legal.contains(&Action::Cast(fyndhorn)),
+        "its own {{G}} still pays a creature"
+    );
+    g.objects[class.0 as usize].class_level = 3;
+    act(&mut g, Action::Cast(bolt));
+    act(&mut g, Action::Target(Target::Player(1)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        g.players[1].life,
+        40 - 3 - 1,
+        "the Bolt, then one instant or sorcery this turn"
+    );
+}
+
+// ---- idea decks: blight, Lavaleaper, Lumberjack ----
+
+#[test]
+fn blight_or_pay_puts_minus_counters_or_costs_mana() {
+    let mut g = table();
+    let elves = put(&mut g, 0, "Llanowar Elves");
+    let bear = put(&mut g, 1, "Fyndhorn Elves");
+    let e = hand(&mut g, 0, "Bogslither's Embrace");
+    let legal = g.legal_actions();
+    assert!(legal.contains(&Action::Cast(e)) && legal.contains(&Action::CastWith(e, elves)));
+    act(&mut g, Action::CastWith(e, elves));
+    act(&mut g, Action::Target(Target::Object(bear)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(bear).zone, Zone::Exile);
+    assert_eq!(
+        g.obj(elves).zone,
+        Zone::Graveyard,
+        "a 1/1 with a -1/-1 counter dies"
+    );
+}
+
+#[test]
+fn lavaleaper_basics_add_one_more_and_everything_has_haste() {
+    let mut g = game(&["Forest"]);
+    let forest = g.permanents(0).find(|&x| g.def_of(x).name == "Forest").unwrap();
+    assert_eq!(g.mana_sources(0).iter().filter(|&&(x, _)| x == forest).count(), 1);
+    put(&mut g, 1, "Lavaleaper");
+    assert_eq!(
+        g.mana_sources(0).iter().filter(|&&(x, _)| x == forest).count(),
+        2,
+        "any player's basics"
+    );
+    let elves = put(&mut g, 0, "Llanowar Elves");
+    assert!(g.keywords(elves).has(Keywords::HASTE));
+}
+
+#[test]
+fn orcish_lumberjack_sacrifices_a_forest_for_three() {
+    let mut g = game(&["Forest"]);
+    let lj = put(&mut g, 0, "Orcish Lumberjack");
+    g.objects[lj.0 as usize].since_turn = 0;
+    let forest = g.permanents(0).find(|&x| g.def_of(x).name == "Forest").unwrap();
+    act(&mut g, Action::ActivateWith(lj, 1, forest)); // {R}{R}{G}
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(forest).zone, Zone::Graveyard);
+    assert_eq!(g.players[0].pool.len(), 3);
+}
+
+#[test]
+fn disruptor_has_flash_and_vinelasher_offers_offspring() {
+    let g = table();
+    let d = g
+        .defs
+        .iter()
+        .position(|x| x.name == "Disruptor of Currents")
+        .unwrap();
+    assert!(g.defs[d].keywords.has(Keywords::FLASH) && g.defs[d].mana_ext.convoke);
+    let mut g = table();
+    let v = hand(&mut g, 0, "Iridescent Vinelasher");
+    assert!(
+        g.legal_actions().contains(&Action::CastKicked(v)),
+        "offspring {{2}}"
+    );
+    let core = put(&mut g, 0, "Firdoch Core");
+    act(&mut g, Action::Activate(core, 0));
+    resolve_all(&mut g, &[]);
+    assert!(g.types_of(core).creature, "a 4/4 until end of turn");
+    assert_eq!(g.power(core), 4);
+}

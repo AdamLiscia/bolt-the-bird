@@ -2801,6 +2801,9 @@ pub enum Effect {
     /// "You may cast a spell from among cards you own in exile with dream counters on them without
     /// paying its mana cost." (Goliath Daydreamer): a one-spell free-cast window.
     MayCastDreamCardFree,
+    /// Sorcerer Class, level 3: the spell in `extra` deals damage to each opponent equal to the
+    /// number of instant and sorcery spells you've cast this turn (`Game::instants_sorceries_cast`).
+    ExtraDamagesEachOpponentInstantsSorceriesThisTurn,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

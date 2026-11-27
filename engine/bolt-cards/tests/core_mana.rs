@@ -3048,3 +3048,102 @@ mod compleated {
         assert_eq!(cast_nissa(true), 3, "both {{G/P}} paid with life: four fewer");
     }
 }
+/// "Remove three counters from among other artifacts, creatures, and planeswalkers you control"
+/// (Tekuthal): `Activated::remove_counters_from_others`, picked with
+/// `Decision::RemoveCountersFromOthers`.
+mod remove_counters_from_others {
+    use bolt_cards::set;
+    use bolt_core::{Ability, Action, Activated, Effect, Game, Pending, Step, Zone};
+
+    fn cid(name: &str) -> usize {
+        set("CMD").unwrap().index_of(name).unwrap()
+    }
+
+    #[test]
+    fn the_player_picks_three_counters_from_other_permanents() {
+        let mut defs = (*set("CMD").unwrap().defs).clone();
+        let hub = cid("Ornithopter");
+        defs[hub].activated.push(Activated {
+            remove_counters_from_others: 3,
+            ability: Ability::new(vec![], vec![Effect::CountersSelf { n: 1 }]),
+            ..Activated::default()
+        });
+        let plains = vec![cid("Plains"); 99];
+        let mut g = Game::new_commander(
+            std::sync::Arc::new(defs),
+            [&plains, &plains],
+            [cid("Bello, Bard of the Brambles"), cid("Ms. Bumbleflower")],
+            7,
+            0,
+        );
+        g.auto_pass = false;
+        g.start_turn(3, 0);
+        while g.step != Step::Main1 {
+            g.apply(Action::PassPriority).unwrap();
+        }
+        let h = g.add_card(0, hub, Zone::Battlefield);
+        let a = g.add_card(0, cid("Llanowar Elves"), Zone::Battlefield);
+        let b = g.add_card(0, cid("Fyndhorn Elves"), Zone::Battlefield);
+        g.objects[a.0 as usize].counters = 2;
+        assert!(
+            !g.legal_actions()
+                .iter()
+                .any(|x| matches!(x, Action::Activate(s, _) if *s == h)),
+            "two counters"
+        );
+        g.objects[b.0 as usize].counters = 1;
+        let n = g.def_of(h).activated.len() - 1;
+        g.apply(Action::Activate(h, n)).unwrap();
+        assert!(matches!(g.pending, Pending::Decide(0)));
+        let legal = g.legal_actions();
+        assert!(
+            legal.contains(&Action::Pick(a))
+                && legal.contains(&Action::Pick(b))
+                && !legal.contains(&Action::Pick(h))
+        );
+        g.apply(Action::Pick(b)).unwrap();
+        g.apply(Action::Pick(a)).unwrap();
+        g.apply(Action::Pick(a)).unwrap();
+        while !g.items.is_empty() {
+            g.apply(Action::PassPriority).unwrap();
+        }
+        assert_eq!((g.obj(a).counters, g.obj(b).counters), (0, 0));
+        assert_eq!(g.obj(h).counters, 1, "the ability resolved");
+    }
+
+    #[test]
+    fn the_kind_removed_is_the_most_numerous_and_never_loyalty_beside_another() {
+        let mut defs = (*set("CMD").unwrap().defs).clone();
+        let hub = cid("Ornithopter");
+        defs[hub].activated.push(Activated {
+            remove_counters_from_others: 1,
+            ability: Ability::new(vec![], vec![]),
+            ..Activated::default()
+        });
+        let plains = vec![cid("Plains"); 99];
+        let mut g = Game::new_commander(
+            std::sync::Arc::new(defs),
+            [&plains, &plains],
+            [cid("Bello, Bard of the Brambles"), cid("Ms. Bumbleflower")],
+            7,
+            0,
+        );
+        g.auto_pass = false;
+        g.start_turn(3, 0);
+        while g.step != Step::Main1 {
+            g.apply(Action::PassPriority).unwrap();
+        }
+        let h = g.add_card(0, hub, Zone::Battlefield);
+        let w = g.add_card(0, cid("Nissa, Ascended Animist"), Zone::Battlefield);
+        g.objects[w.0 as usize].loyalty = 1;
+        g.objects[w.0 as usize].counters = 2;
+        let n = g.def_of(h).activated.len() - 1;
+        g.apply(Action::Activate(h, n)).unwrap();
+        g.apply(Action::Pick(w)).unwrap();
+        assert_eq!(
+            (g.obj(w).loyalty, g.obj(w).counters),
+            (1, 1),
+            "a +1/+1 counter, not loyalty"
+        );
+    }
+}

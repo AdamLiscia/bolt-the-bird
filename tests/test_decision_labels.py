@@ -315,3 +315,9 @@ def test_proliferate_chooses_permanents_and_players():
     assert sv._decision_label(dec, "Pick", 0, "Llanowar Elves") == "Proliferate: Llanowar Elves"
     assert label(dec, "Mode", 1) == "Proliferate: player 2"
     assert label(dec, "Yes", 0) == "Done choosing (proliferate)"
+
+
+def test_tekuthal_picks_each_counter_to_remove():
+    dec = {"kind": "RemoveCountersFromOthers", "left": 3}
+    assert sv._decision_label(dec, "Pick", 0, "Sol Ring") == "Remove a counter from Sol Ring"
+    assert label(dec, "No", 0) == "Don't activate it"

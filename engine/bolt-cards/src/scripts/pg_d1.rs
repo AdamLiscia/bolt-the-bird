@@ -1637,6 +1637,93 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::Enters, vec![], effects);
             },
         ),
+        // ---- Ghyrson Starn, Kelermorph ----
+        "Sorcerer Class" => s(
+            &[
+                "When this Class enters, draw two cards, then discard two cards.",
+                "{U}{R}: Level 2",
+                "Creatures you control have \"{T}: Add {U} or {R}. Spend this mana only to cast an instant or sorcery spell or to gain a Class level.\"",
+                "{3}{U}{R}: Level 3",
+                "Whenever you cast an instant or sorcery spell, that spell deals damage to each opponent equal to the number of instant and sorcery spells you've cast this turn.",
+            ],
+            |d, _| {
+                on(d, When::Enters, vec![], vec![draw(2), discard(2)]);
+                let n = activated(d, "{U}{R}", false, vec![], vec![Effect::ClassLevelUp(2)]);
+                d.activated[n].sorcery = true;
+                d.activated[n].level_up_to = 2;
+                d.mana_ext.creatures_tap_for_instant_sorcery = Some((2, [false, true, false, true, false]));
+                let n = activated(d, "{3}{U}{R}", false, vec![], vec![Effect::ClassLevelUp(3)]);
+                d.activated[n].sorcery = true;
+                d.activated[n].level_up_to = 3;
+                let mut burn = Ability::new(vec![], vec![Effect::ExtraDamagesEachOpponentInstantsSorceriesThisTurn]);
+                burn.condition = Some(Condition::ClassLevelAtLeast(3));
+                d.triggers.push(Trigger { when: When::YouCastInstantOrSorceryCounted, ability: burn });
+            },
+        ),
+        // ---- idea decks: Neriv, Hearthhull, Niv-Mizzet ----
+        "Bogslither's Embrace" => s(
+            &["As an additional cost to cast this spell, blight 1 or pay {3}.", "Exile target creature."],
+            |d, _| {
+                d.extra_cost = Some(ExtraCost::BlightOrPay(1, ManaCost::parse("{3}").expect("cost")));
+                spell(d, vec![CREATURE], vec![Effect::Exile(0)]);
+            },
+        ),
+        "Wild Unraveling" => s(
+            &["As an additional cost to cast this spell, blight 2 or pay {1}.", "Counter target spell."],
+            |d, _| {
+                d.extra_cost = Some(ExtraCost::BlightOrPay(2, ManaCost::parse("{1}").expect("cost")));
+                spell(d, vec![SPELL], vec![Effect::Counter(0)]);
+            },
+        ),
+        "Firdoch Core" => s(
+            &["Changeling", "{T}: Add one mana of any color.", "{4}: This artifact becomes a 4/4 artifact creature until end of turn."],
+            |d, _| {
+                d.changeling = true;
+                d.mana = Some(ManaSource::of(&Color::ALL));
+                let animate = Effect::BecomeCreatureUntilEot { power: 4, toughness: 4, subtype: "", keywords: Keywords::NONE };
+                activated(d, "{4}", false, vec![], vec![animate]);
+            },
+        ),
+        "Lavaleaper" => s(
+            &["All creatures have haste.", "Whenever a player taps a basic land for mana, that player adds one mana of any type that land produced."],
+            |d, _| {
+                static_on(d, Scope::CreaturesWithFlying, false, Keywords::HASTE);
+                static_on(d, Scope::CreaturesWithoutFlying, false, Keywords::HASTE);
+                d.mana_ext.basic_lands_add_extra = true;
+            },
+        ),
+        "Iridescent Vinelasher" => s(
+            &["Offspring {2}", "Landfall — Whenever a land you control enters, this creature deals 1 damage to target opponent."],
+            |d, _| {
+                d.offspring = ManaCost::parse("{2}");
+                on(d, When::LandYouControlEnters, vec![Filter::PLAYER], vec![damage(1, Recipient::Target(0))]);
+            },
+        ),
+        "Orcish Lumberjack" => s(
+            &["{T}, Sacrifice a Forest: Add three mana in any combination of {R} and/or {G}."],
+            |d, _| {
+                // One ability per combination: {R}{R}{R}, {R}{R}{G}, {R}{G}{G}, {G}{G}{G}.
+                for reds in (0..=3u8).rev() {
+                    let mut effects = Vec::new();
+                    if reds > 0 {
+                        effects.push(Effect::AddMana { color: Color::Red, n: reds });
+                    }
+                    if reds < 3 {
+                        effects.push(Effect::AddMana { color: Color::Green, n: 3 - reds });
+                    }
+                    let n = activated(d, "", true, vec![], effects);
+                    d.activated[n].sacrifice_subtype = Some("Forest");
+                }
+            },
+        ),
+        "Disruptor of Currents" => s(
+            &["Convoke", "When this creature enters, return up to one other target nonland permanent to its owner's hand."],
+            |d, _| {
+                d.mana_ext.convoke = true;
+                let other = Filter { controller: Controller::Any, other: true, ..OPP_NONLAND };
+                d.triggers.push(Trigger { when: When::Enters, ability: up_to(vec![other], vec![Effect::Bounce(0)]) });
+            },
+        ),
         _ => None,
     }
 }
@@ -1846,4 +1933,12 @@ pub const PG_D1_SCRIPTED: &[&str] = &[
     "Brokers Hideout",
     "Riveteers Overlook",
     "Cabaretti Courtyard",
+    "Sorcerer Class",
+    "Bogslither's Embrace",
+    "Wild Unraveling",
+    "Firdoch Core",
+    "Lavaleaper",
+    "Iridescent Vinelasher",
+    "Orcish Lumberjack",
+    "Disruptor of Currents",
 ];

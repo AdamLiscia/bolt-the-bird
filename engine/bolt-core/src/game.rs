@@ -1460,6 +1460,9 @@ pub enum Decision {
         players: [bool; 2],
         rounds: u8,
     },
+    /// Tekuthal: `Pick` another artifact, creature or planeswalker you control to remove a counter
+    /// from (`left` including this one) for the cost of `source`'s ability `n`, or `No` to cancel.
+    RemoveCountersFromOthers { source: ObjId, n: usize, left: u8 },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -7650,6 +7653,12 @@ impl Game {
             Some(ExtraCost::SacrificeCreatureOfColor(k)) => creatures()
                 .filter(|&(_, m)| m.extra.is_some_and(|x| self.colors_of(x)[*k as usize]))
                 .collect(),
+            Some(ExtraCost::BlightOrPay(..)) => std::iter::once((Action::Cast(c), CastMode::default()))
+                .chain(
+                    self.creatures(p)
+                        .map(|x| (Action::CastWith(c, x), CastMode::with(x))),
+                )
+                .collect(),
             Some(ExtraCost::Casualty(n)) => std::iter::once((Action::Cast(c), CastMode::default()))
                 .chain(creatures().filter(|&(_, m)| m.extra.is_some_and(|x| self.power(x) >= *n as i32)))
                 .collect(),
@@ -7962,8 +7971,14 @@ impl Game {
             0
         };
         cost.generic = cost.generic.saturating_add(tax);
-        if let (Some(ExtraCost::SacrificeCreatureOrPay(m) | ExtraCost::ForageOrPay(m)), None) =
-            (&def.extra_cost, mode.extra)
+        if let (
+            Some(
+                ExtraCost::SacrificeCreatureOrPay(m)
+                | ExtraCost::ForageOrPay(m)
+                | ExtraCost::BlightOrPay(_, m),
+            ),
+            None,
+        ) = (&def.extra_cost, mode.extra)
         {
             cost = add_costs(&cost, m);
         }
@@ -8773,7 +8788,8 @@ impl Game {
         exclude: Option<ObjId>,
         spell: PayFor,
     ) -> Vec<(ObjId, ManaSource)> {
-        self.untapped_sources(p)
+        let mut v: Vec<(ObjId, ManaSource)> = self
+            .untapped_sources(p)
             .into_iter()
             .filter(|s| Some(s.0) != exclude)
             .filter(|s| {
@@ -8843,7 +8859,46 @@ impl Game {
             })
             .chain(self.convoke_sources(p, exclude, spell))
             .chain(self.eldrazi_temple_extra(p, exclude, spell))
-            .collect()
+            .collect();
+        // Sorcerer Class: your creatures tap for its colors, for instants, sorceries and Class levels.
+        let for_spells = match spell {
+            PayFor::Spell(c) => self.def_of(c).types.instant || self.def_of(c).types.sorcery,
+            PayFor::OmenSpell(_) => true,
+            PayFor::Ability(src) => self.def_of(src).activated.iter().any(|a| a.level_up_to > 0),
+            PayFor::Other => false,
+        };
+        if for_spells {
+            let colors = self
+                .permanents(p)
+                .filter(|&x| !self.lost_abilities(x))
+                .filter_map(|x| {
+                    let (level, colors) = self.def_of(x).mana_ext.creatures_tap_for_instant_sorcery?;
+                    (self.class_level(x) >= level).then_some(colors)
+                })
+                .reduce(|a, b| std::array::from_fn(|i| a[i] || b[i]));
+            if let Some(colors) = colors {
+                let m = ManaSource {
+                    colors,
+                    ..ManaSource::default()
+                };
+                for c in self.creatures(p).collect::<Vec<_>>() {
+                    if Some(c) == exclude || !self.can_tap(c) {
+                        continue;
+                    }
+                    if v.iter().any(|s| s.0 == c) {
+                        // A mana creature: the same tap makes either.
+                        for s in v.iter_mut().filter(|s| s.0 == c) {
+                            for (k, on) in colors.iter().enumerate() {
+                                s.1.colors[k] |= *on;
+                            }
+                        }
+                    } else {
+                        v.push((c, m));
+                    }
+                }
+            }
+        }
+        v
     }
 
     /// Eldrazi Temple: the rest of its "{C}{C}" for a colorless Eldrazi spell or an ability of a
@@ -9321,6 +9376,9 @@ impl Game {
                     || (a.once_each_turn && self.obj(id).activated_turn == Some(self.turn))
                     || self.obj(id).kind_counters < a.remove_kind_counters
                     || (a.remove_plus_counters > 0 && self.obj(id).counters < a.remove_plus_counters as i32)
+                    || (a.remove_counters_from_others > 0
+                        && self.others_with_counters(p, id).iter().map(|e| e.1).sum::<i32>()
+                            < a.remove_counters_from_others as i32)
                     || (a.tap_attached
                         && !self
                             .obj(id)
@@ -10147,6 +10205,11 @@ impl Game {
         } else {
             0
         };
+        let leapers = self
+            .battlefield
+            .iter()
+            .filter(|&&x| self.def_of(x).mana_ext.basic_lands_add_extra && !self.lost_abilities(x))
+            .count();
         for (id, m) in base {
             let life_cost = self.def_of(id).mana_ext.mana_life_cost;
             if life_cost > 0 && self.players[p].life < life_cost {
@@ -10159,6 +10222,9 @@ impl Game {
                 for &c in &creature_adders {
                     out.push((id, ManaSource::of(&[c]))); // Leyline of Abundance
                 }
+            }
+            if leapers > 0 && self.types_of(id).land && self.types_of(id).basic {
+                out.extend(std::iter::repeat_n((id, m), leapers)); // Lavaleaper
             }
             if tide > 0 && self.types_of(id).land && self.has_subtype(id, "Island") {
                 // High Tide: an additional {U} for each one this turn.
@@ -11304,7 +11370,15 @@ impl Game {
                     ..CastMode::default()
                 },
             ),
-            (Pending::Priority(p), Action::Activate(id, n)) => self.activate(p, id, n, None),
+            (Pending::Priority(p), Action::Activate(id, n)) => {
+                let left = self.activated_of(id, n).remove_counters_from_others;
+                if left > 0 {
+                    // Tekuthal: the counters are chosen first.
+                    self.ask(p, Decision::RemoveCountersFromOthers { source: id, n, left });
+                } else {
+                    self.activate(p, id, n, None)
+                }
+            }
             (Pending::Priority(p), Action::ActivateWith(id, n, victim)) => {
                 let a = self.activated_of(id, n);
                 let crew = a.crew.max(a.saddle) as i32; // saddle uses the same summed-power cost
@@ -11693,6 +11767,58 @@ impl Game {
         }
     }
 
+    /// Tekuthal: the other artifacts, creatures and planeswalkers `p` controls with counters, and how
+    /// many each has (+1/+1 or -1/-1, loyalty, its own kind, stun, revival).
+    fn others_with_counters(&self, p: PlayerId, source: ObjId) -> Vec<(ObjId, i32)> {
+        self.permanents(p)
+            .filter(|&x| x != source)
+            .filter(|&x| {
+                let t = self.types_of(x);
+                t.artifact || t.creature || t.planeswalker
+            })
+            .map(|x| {
+                let o = self.obj(x);
+                let loyalty = if self.types_of(x).planeswalker {
+                    o.loyalty.max(0)
+                } else {
+                    0
+                };
+                (
+                    x,
+                    o.counters.abs() + loyalty + o.kind_counters.max(0) + o.stun.max(0) + o.revival.max(0),
+                )
+            })
+            .filter(|e| e.1 > 0)
+            .collect()
+    }
+
+    /// Removes one counter from `x` (Tekuthal's cost; the player picked `x`). Demo rule until the
+    /// kind is a Mode pick: the kind with the most counters on it, but never loyalty while another
+    /// kind is present (ties: +1/+1 or -1/-1, its own kind, stun, revival).
+    fn remove_any_counter(&mut self, x: ObjId) {
+        let walker = self.types_of(x).planeswalker;
+        let o = self.obj(x);
+        let others = [
+            o.counters.abs(),
+            o.kind_counters.max(0),
+            o.stun.max(0),
+            o.revival.max(0),
+        ];
+        let loyalty = if walker { o.loyalty.max(0) } else { 0 };
+        let best = (0..4)
+            .max_by_key(|&k| (others[k], std::cmp::Reverse(k)))
+            .filter(|&k| others[k] > 0);
+        let o = self.obj_mut(x);
+        match best {
+            Some(0) => o.counters -= o.counters.signum(),
+            Some(1) => o.kind_counters -= 1,
+            Some(2) => o.stun -= 1,
+            Some(_) => o.revival -= 1,
+            None if loyalty > 0 => o.loyalty -= 1,
+            None => {}
+        }
+    }
+
     /// The creatures that saddled `mount` this turn that `p` can still sacrifice (The Gitrog).
     fn gitrog_riders(&self, p: PlayerId, mount: ObjId) -> Vec<ObjId> {
         let (turn, mz) = (self.turn, self.obj(mount).zcc);
@@ -12071,6 +12197,17 @@ impl Game {
             self.def_of(card).extra_cost,
             Some(ExtraCost::RevealColorlessCreature)
         );
+        // Blight N: N -1/-1 counters on the named creature instead of sacrificing it.
+        let blight = match self.def_of(card).extra_cost {
+            Some(ExtraCost::BlightOrPay(n, _)) if !item.flashback => Some(n),
+            _ => None,
+        };
+        if let (Some(n), Some(x)) = (blight, item.extra) {
+            if self.obj(x).zone == Zone::Battlefield {
+                self.obj_mut(x).counters -= n as i32;
+            }
+        }
+        let revealed = revealed || blight.is_some();
         if let Some(x) = item
             .extra
             .filter(|_| energy_by.is_none() && !foraged && !revealed)
@@ -13467,6 +13604,15 @@ impl Game {
                 v.push(Action::No);
                 v
             }
+            Decision::RemoveCountersFromOthers { source, .. } => {
+                let mut v: Vec<Action> = self
+                    .others_with_counters(p, *source)
+                    .into_iter()
+                    .map(|(x, _)| Action::Pick(x))
+                    .collect();
+                v.push(Action::No);
+                v
+            }
             Decision::CrewTap { source, n, chosen } => {
                 let a = self.activated_of(*source, *n);
                 let need = a.crew.max(a.saddle) as i32;
@@ -14672,6 +14818,28 @@ impl Game {
                 self.give_priority(active);
             } else if self.resolving.is_some() {
                 self.continue_resolving();
+            }
+            return;
+        }
+        if let Decision::RemoveCountersFromOthers { source, n, left } = d {
+            // Tekuthal's cost, before the ability is activated (as crew's taps).
+            match a {
+                Action::Pick(x) => {
+                    self.remove_any_counter(x);
+                    if left > 1 {
+                        self.ask(
+                            p,
+                            Decision::RemoveCountersFromOthers {
+                                source,
+                                n,
+                                left: left - 1,
+                            },
+                        );
+                    } else {
+                        self.activate(p, source, n, None);
+                    }
+                }
+                _ => self.give_priority(p), // cancelled
             }
             return;
         }
@@ -24731,6 +24899,13 @@ impl Game {
                     if c != src && self.has_subtype(c, sub) {
                         self.add_counters(c, 1);
                     }
+                }
+            }
+            Effect::ExtraDamagesEachOpponentInstantsSorceriesThisTurn => {
+                let p = item.controller;
+                let n = self.instants_sorceries_cast[p] as i32;
+                if let (Some(spell), true) = (item.extra, n > 0) {
+                    self.deal_damage(spell, Target::Player(opponent(p)), n);
                 }
             }
             Effect::CreateTokenXxSourceLoyalty { def } => {
