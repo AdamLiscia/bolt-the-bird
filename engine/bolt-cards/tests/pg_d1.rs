@@ -2230,10 +2230,17 @@ fn the_shire_enters_tapped_without_a_legend_and_taps_a_creature_for_food() {
         .permanents(0)
         .find(|&x| g.def_of(x).name == "Zirda, the Dawnwaker")
         .expect("Zirda");
-    act(&mut g, Action::Activate(s, 0));
+    assert!(
+        !g.legal_actions().contains(&Action::Activate(s, 0)),
+        "a creature is named"
+    );
+    act(&mut g, Action::ActivateWith(s, 0, z));
     resolve_all(&mut g, &[]);
     assert_eq!(tokens(&g, 0, "Food").len(), 1);
-    assert!(g.obj(s).tapped && g.obj(z).tapped, "the Shire and a creature");
+    assert!(
+        g.obj(s).tapped && g.obj(z).tapped,
+        "the Shire and the named creature"
+    );
 }
 
 // ---- d1 core, batch 9: improvise, multikicker, forage, restricted and conditional mana ----

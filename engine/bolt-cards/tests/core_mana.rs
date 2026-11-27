@@ -1905,7 +1905,7 @@ fn tap_an_untapped_creature_as_a_cost_not_its_mana() {
     let mut shire = CardDef::creature("Shrine", "{1}", 0, 4, Keywords::NONE);
     shire.activated.push(Activated {
         mana: ManaCost::parse("{B}").expect("cost"),
-        tap_untapped_creature: true,
+        tap_named_creature: true,
         ability: Ability::new(vec![], vec![Effect::Draw { who: Who::You, n: 1 }]),
         ..Activated::default()
     });
@@ -1918,10 +1918,28 @@ fn tap_an_untapped_creature_as_a_cost_not_its_mana() {
         !g.legal_actions().contains(&Action::Activate(s, 0)),
         "the Dork can't tap for {{B}} and for the cost"
     );
+    assert!(
+        !g.legal_actions().contains(&Action::ActivateWith(s, 0, d)),
+        "the Dork can't tap for {{B}} and for the cost"
+    );
     let bear = put(&mut g, 0, GREEN_BEAR);
-    act(&mut g, Action::Activate(s, 0));
+    let wolf = put(&mut g, 0, GREEN_BEAR);
+    let legal = g.legal_actions();
+    assert!(
+        legal.contains(&Action::ActivateWith(s, 0, bear))
+            && legal.contains(&Action::ActivateWith(s, 0, wolf))
+    );
+    assert!(
+        !legal.contains(&Action::ActivateWith(s, 0, d)),
+        "the Dork pays the {{B}}"
+    );
+    act(&mut g, Action::ActivateWith(s, 0, wolf));
     settle(&mut g);
-    assert!(g.obj(bear).tapped && g.obj(d).tapped);
+    assert!(
+        g.obj(wolf).tapped && g.obj(d).tapped,
+        "the creature the player named"
+    );
+    assert!(!g.obj(bear).tapped);
     assert!(!g.obj(s).tapped, "no {{T}}");
 }
 

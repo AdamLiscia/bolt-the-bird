@@ -1036,7 +1036,7 @@ pub fn script(name: &str) -> Option<Script> {
                 d.mana_ext.enters_tapped_unless_legendary_creature = true;
                 d.mana = Some(ManaSource::of(&[Color::Green]));
                 let n = activated(d, "{1}{G}", true, vec![], vec![Effect::CreateToken { who: Who::You, def: t.food, n: 1 }]);
-                d.activated[n].tap_untapped_creature = true;
+                d.activated[n].tap_named_creature = true;
             },
         ),
         // ---- d1 core, batch 9: improvise, multikicker, forage, restricted and conditional mana ----

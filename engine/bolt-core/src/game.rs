@@ -9801,15 +9801,6 @@ impl Game {
             .find(|&c| c != except && !self.obj(c).tapped && self.types_of(c).legendary)
     }
 
-    /// The untapped creature `p` taps for "Tap an untapped creature you control" (The Shire), as
-    /// the engine picks: one that isn't a mana source, then the least power.
-    fn untapped_creature_for_cost(&self, p: PlayerId, except: ObjId) -> Option<ObjId> {
-        let sources: Vec<ObjId> = self.untapped_sources(p).into_iter().map(|s| s.0).collect();
-        self.creatures(p)
-            .filter(|&c| c != except && !self.obj(c).tapped)
-            .min_by_key(|&c| (sources.contains(&c), self.power(c)))
-    }
-
     /// Whether a tapped permanent can pay a {Q} cost: the same summoning-sickness rule as {T}
     /// (CR 302.6).
     fn can_untap_for_cost(&self, id: ObjId) -> bool {
@@ -9970,18 +9961,6 @@ impl Game {
                     || (a.forage && !self.can_forage(p, id))
                     || (a.forecast && !(p == self.active && self.step == Step::Upkeep))
                     || (a.life_per_commander_color && self.players[p].life < self.commander_color_count(p))
-                    || (a.tap_untapped_creature
-                        && self.untapped_creature_for_cost(p, id).is_none_or(|c| {
-                            // That creature can't also tap for the mana.
-                            let mut g = self.clone();
-                            g.obj_mut(c).tapped = true;
-                            !g.can_pay_for(
-                                p,
-                                &Game::ability_discounted(a, ability_discount, a.mana),
-                                uses_self.then_some(id),
-                                PayFor::Ability(id),
-                            )
-                        }))
                     || !sorcery_ok
                     || (a.only_during_combat
                         && !matches!(
@@ -10204,10 +10183,19 @@ impl Game {
                             .map(|c| Action::ActivateWith(id, n, c)),
                     );
                 } else if a.tap_named_creature {
-                    // Earthcraft: any untapped creature you control, the player's pick.
+                    // Earthcraft, The Shire: any untapped creature you control, the player's pick,
+                    // as long as the mana can still be paid without it (it can't tap for both).
+                    let cost = Game::ability_discounted(a, ability_discount, a.mana);
                     v.extend(
                         self.creatures(p)
-                            .filter(|&c| !self.obj(c).tapped)
+                            .filter(|&c| c != id && !self.obj(c).tapped)
+                            .filter(|&c| {
+                                cost == ManaCost::default() || {
+                                    let mut g = self.clone();
+                                    g.obj_mut(c).tapped = true;
+                                    g.can_pay_for(p, &cost, uses_self.then_some(id), PayFor::Ability(id))
+                                }
+                            })
                             .map(|c| Action::ActivateWith(id, n, c)),
                     );
                 } else if let Some(sub) = a.return_own_subtype {
@@ -10534,11 +10522,10 @@ impl Game {
             cost = cheaper; // Phyrexian pips paid with life
         }
         let cost = Game::ability_discounted(&a, self.ability_discount(p), cost);
-        // The Shire: the creature tapped for the cost first, so it can't also tap for the mana.
-        if a.tap_untapped_creature {
-            if let Some(c) = self.untapped_creature_for_cost(p, id) {
-                self.become_tapped(c);
-            }
+        // Earthcraft, The Shire: the named creature tapped for the cost first, so it can't also tap
+        // for the mana.
+        if let Some(v) = victim.filter(|&v| a.tap_named_creature && self.obj(v).zone == Zone::Battlefield) {
+            self.become_tapped(v);
         }
         self.pay_mana_for(p, &cost, exclude, PayFor::Ability(id));
         if life > 0 && a.mana.x == 0 {
@@ -10603,9 +10590,7 @@ impl Game {
                     self.move_to(v, Zone::Graveyard); // discarded
                 }
             } else if a.tap_named_creature {
-                if self.obj(v).zone == Zone::Battlefield {
-                    self.become_tapped(v); // Earthcraft: the named creature
-                }
+                // Earthcraft, The Shire: tapped before the mana, above.
             } else if a.return_land || a.return_own_subtype.is_some() {
                 if self.obj(v).zone == Zone::Battlefield {
                     self.move_to(v, Zone::Hand); // Meloku: returned, after the mana

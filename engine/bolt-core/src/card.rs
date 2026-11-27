@@ -331,9 +331,6 @@ pub struct Activated {
     pub needs_threshold: bool,
     /// "Activate only if you attacked with N or more creatures this turn." (Minas Tirith: 2)
     pub min_attackers_this_turn: u8,
-    /// "Tap an untapped creature you control" in the cost (The Shire); the engine picks which (one
-    /// that isn't a mana source, then the least power).
-    pub tap_untapped_creature: bool,
     /// "Sacrifice X [subtype]s" in the cost (Chatterfang: Squirrels): `Action::ActivateX`, X up to
     /// how many you control; the engine picks which (tokens first, then the lowest mana value,
     /// the source last).
@@ -422,8 +419,9 @@ pub struct Activated {
     /// Wirewood Symbiote: an Elf): activated with `Action::ActivateWith`, that permanent the victim.
     pub return_own_subtype: Option<&'static str>,
     /// "Tap an untapped creature you control" in the cost, the player naming it: activated with
-    /// `Action::ActivateWith`, that creature the victim (Earthcraft). Summoning sickness doesn't
-    /// matter (it isn't the creature's own {T}).
+    /// `Action::ActivateWith`, that creature the victim (Earthcraft, The Shire). Summoning sickness
+    /// doesn't matter (it isn't the creature's own {T}); it's tapped before the mana is paid, so it
+    /// can't also tap for that mana.
     pub tap_named_creature: bool,
 }
 
