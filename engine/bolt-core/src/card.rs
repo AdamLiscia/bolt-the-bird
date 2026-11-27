@@ -415,6 +415,9 @@ pub struct Activated {
     /// 2): any kind; with more than one kind on it, `Game::remove_any_counter`'s demo rule picks (as
     /// Tekuthal's).
     pub remove_counters_self: u8,
+    /// "Return a [subtype] you control to its owner's hand" in the cost (Quirion Ranger: a Forest;
+    /// Wirewood Symbiote: an Elf): activated with `Action::ActivateWith`, that permanent the victim.
+    pub return_own_subtype: Option<&'static str>,
 }
 
 /// A loyalty ability's cost of −X (CR 606.4, 107.3): `loyalty_abilities` uses this as the cost,
@@ -1397,6 +1400,11 @@ pub struct ManaExt {
     /// With `enchanted_land_extra_any`: the additional mana is one of this color (WUBRG 0-4; Wild
     /// Growth: green), or 5 for the Aura's chosen color (Utopia Sprawl), instead of any color.
     pub enchanted_land_extra_color: Option<u8>,
+    /// Its mana ability has no {T}: its cost is "Remove a [kind] counter from this" (Druids'
+    /// Repository: "Remove a charge counter from this enchantment: Add one mana of any color.").
+    /// Set with `mana` and `mana_per_kind_counter`: one mana per counter, each removing one, usable
+    /// while tapped; a manual activation makes one mana.
+    pub counter_mana_no_tap: bool,
 }
 
 /// "You may pay [mana], [life] and sacrifice or tap [creatures] rather than pay this spell's mana

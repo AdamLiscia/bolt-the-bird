@@ -8860,7 +8860,10 @@ impl Game {
                         if life_cost > 0 && !self.obj(id).tapped {
                             self.lose_life(p, life_cost); // Mana Confluence
                         }
-                        if !self.def_of(id).mana_ext.sac_mana_no_tap {
+                        if self.def_of(id).mana_ext.counter_mana_no_tap {
+                            let o = self.obj_mut(id);
+                            o.kind_counters = (o.kind_counters - 1).max(0); // Druids' Repository
+                        } else if !self.def_of(id).mana_ext.sac_mana_no_tap {
                             self.become_tapped(id);
                         }
                         // (A Treasure making two mana is sacrificed once.)
@@ -8979,7 +8982,10 @@ impl Game {
             }
             // Forbidden Orchard: once for the tap, not for each mana it makes.
             let first_unit = !self.obj(id).tapped;
-            if !self.def_of(id).mana_ext.sac_mana_no_tap {
+            if self.def_of(id).mana_ext.counter_mana_no_tap {
+                let o = self.obj_mut(id);
+                o.kind_counters = (o.kind_counters - 1).max(0); // Druids' Repository
+            } else if !self.def_of(id).mana_ext.sac_mana_no_tap {
                 self.become_tapped(id);
             }
             self.land_tapped_for_mana(p, id);
@@ -9120,7 +9126,8 @@ impl Game {
             .map(|s| s.1)
             .collect();
         let vivid = self.def_of(id).vivid_mana;
-        for m in made {
+        let counter_mana = self.def_of(id).mana_ext.counter_mana_no_tap;
+        for m in made.into_iter().take(if counter_mana { 1 } else { usize::MAX }) {
             let one = if vivid {
                 m
             } else if c == 5 {
@@ -9160,7 +9167,10 @@ impl Game {
         if life_cost > 0 && !self.obj(id).tapped {
             self.lose_life(p, life_cost); // Mana Confluence: "Pay 1 life"
         }
-        if !self.def_of(id).mana_ext.sac_mana_no_tap {
+        if self.def_of(id).mana_ext.counter_mana_no_tap {
+            let o = self.obj_mut(id);
+            o.kind_counters = (o.kind_counters - 1).max(0); // Druids' Repository
+        } else if !self.def_of(id).mana_ext.sac_mana_no_tap {
             self.become_tapped(id);
         }
         self.land_tapped_for_mana(p, id);
@@ -10034,6 +10044,13 @@ impl Game {
                             .filter(|&c| self.def_of(c).types.land)
                             .map(|c| Action::ActivateWith(id, n, c)),
                     );
+                } else if let Some(sub) = a.return_own_subtype {
+                    // Quirion Ranger: a Forest you control (it may tap for the mana first).
+                    v.extend(
+                        self.permanents(p)
+                            .filter(|&c| self.has_subtype(c, sub))
+                            .map(|c| Action::ActivateWith(id, n, c)),
+                    );
                 } else if a.return_land {
                     // Meloku: any land you control (it may tap for the mana first).
                     v.extend(
@@ -10397,7 +10414,7 @@ impl Game {
                 if self.obj(v).zone == Zone::Hand {
                     self.move_to(v, Zone::Graveyard); // discarded
                 }
-            } else if a.return_land {
+            } else if a.return_land || a.return_own_subtype.is_some() {
                 if self.obj(v).zone == Zone::Battlefield {
                     self.move_to(v, Zone::Hand); // Meloku: returned, after the mana
                 }
@@ -10756,14 +10773,16 @@ impl Game {
                 n
             };
             // Nyxbloom Ancient: a permanent tapped for mana produces three times as much.
-            let n = if nyxblooms > 0 && !self.def_of(id).mana_ext.sac_mana_no_tap {
+            let untapping =
+                self.def_of(id).mana_ext.sac_mana_no_tap || self.def_of(id).mana_ext.counter_mana_no_tap;
+            let n = if nyxblooms > 0 && !untapping {
                 n * 3usize.pow(nyxblooms.min(6))
             } else {
                 n
             };
             out.extend(std::iter::repeat_n((id, m), n));
             // Kinnan: a nonland permanent tapped for mana adds one more of a type it produced.
-            if !self.types_of(id).land && !self.def_of(id).mana_ext.sac_mana_no_tap {
+            if !self.types_of(id).land && !untapping {
                 let kinnans = self
                     .permanents(p)
                     .filter(|&x| self.def_of(x).mana_ext.nonland_add_same && !self.lost_abilities(x))
@@ -10813,7 +10832,9 @@ impl Game {
             .any(|x| self.def_of(x).mana_ext.lands_tap_any_color && !self.lost_abilities(x));
         self.permanents(p)
             .filter(|&id| {
-                (self.can_tap(id) || self.def_of(id).mana_ext.sac_mana_no_tap && !self.lost_abilities(id))
+                (self.can_tap(id)
+                    || (self.def_of(id).mana_ext.sac_mana_no_tap || self.def_of(id).mana_ext.counter_mana_no_tap)
+                        && !self.lost_abilities(id))
                     && !self.activation_stopped(id)
                     && !self.abolished(p, id)
                     // Urza's Saga: no "{T}: Add {C}" before chapter I (Blood Moon's {R} still is).

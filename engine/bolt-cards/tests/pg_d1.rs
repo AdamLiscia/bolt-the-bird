@@ -4337,3 +4337,73 @@ fn shimmerwilds_growth_adds_the_chosen_color() {
         .iter()
         .any(|s| s.1.colors == [false, false, false, true, false]));
 }
+
+#[test]
+fn concordant_crossroads_gives_every_creature_haste() {
+    let mut g = table();
+    put(&mut g, 0, "Concordant Crossroads");
+    let mine = put(&mut g, 0, "Llanowar Elves");
+    let theirs = put(&mut g, 1, "Llanowar Elves");
+    assert!(g.keywords(mine).has(Keywords::HASTE));
+    assert!(g.keywords(theirs).has(Keywords::HASTE));
+}
+
+#[test]
+fn quirion_ranger_returns_a_forest_to_untap_a_creature_once_each_turn() {
+    let mut g = table();
+    let ranger = put(&mut g, 0, "Quirion Ranger");
+    let elf = put(&mut g, 0, "Llanowar Elves");
+    g.objects[elf.0 as usize].tapped = true;
+    let island = first_named(&g, 0, "Island");
+    let forest = first_named(&g, 0, "Forest");
+    assert!(
+        !g.legal_actions()
+            .contains(&Action::ActivateWith(ranger, 0, island)),
+        "a Forest only"
+    );
+    act(&mut g, Action::ActivateWith(ranger, 0, forest));
+    act(&mut g, Action::Target(obj(elf)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(forest).zone, Zone::Hand);
+    assert!(!g.obj(elf).tapped);
+    let other = first_named(&g, 0, "Forest");
+    assert!(
+        !g.legal_actions()
+            .contains(&Action::ActivateWith(ranger, 0, other)),
+        "once each turn"
+    );
+}
+
+#[test]
+fn wirewood_symbiote_returns_an_elf_and_scryb_ranger_has_protection_from_blue() {
+    let mut g = table();
+    let sym = put(&mut g, 0, "Wirewood Symbiote");
+    let elf = put(&mut g, 0, "Llanowar Elves");
+    let scryb = put(&mut g, 0, "Scryb Ranger");
+    g.objects[scryb.0 as usize].tapped = true;
+    act(&mut g, Action::ActivateWith(sym, 0, elf));
+    act(&mut g, Action::Target(obj(scryb)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(elf).zone, Zone::Hand);
+    assert!(!g.obj(scryb).tapped);
+    assert!(g.keywords(scryb).has(Keywords::FLYING));
+    assert!(g.keywords(scryb).has(Keywords::FLASH));
+}
+
+#[test]
+fn wolfwillow_haven_adds_green_and_sacrifices_for_a_wolf_on_your_turn() {
+    let mut g = table();
+    let island = first_named(&g, 0, "Island");
+    let haven = enchant_land(&mut g, "Wolfwillow Haven", island);
+    let made: Vec<_> = g.mana_sources(0).into_iter().filter(|s| s.0 == island).collect();
+    assert!(made
+        .iter()
+        .any(|s| s.1.colors == [false, false, false, false, true]));
+    act(&mut g, Action::Activate(haven, 0));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(haven).zone, Zone::Graveyard);
+    let w = tokens(&g, 0, "Wolf");
+    assert_eq!(w.len(), 1);
+    assert_eq!((g.power(w[0]), g.toughness(w[0])), (2, 2));
+    assert!(g.colors_of(w[0])[4], "green");
+}

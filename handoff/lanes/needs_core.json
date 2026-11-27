@@ -7488,7 +7488,39 @@
   {
    "card": "Shimmerwilds Growth",
    "deck": "Sythis, Harvest's Hand",
-   "missing": "chosen color; enchanted land adds that color [claimed by d1, idea_next11]",
+   "missing": "chosen color; enchanted land adds that color [claimed by d1, idea_next11] [d1 batch 37: scripted. Known limit (accepted for the demo): \"Enchanted land is the chosen color\" isn't applied, only the mana]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Concordant Crossroads",
+   "deck": "Toski, Bearer of Secrets",
+   "missing": "all creatures have haste (keywords) [claimed by d1, idea_next11]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Quirion Ranger",
+   "deck": "Toski, Bearer of Secrets",
+   "missing": "return a Forest you control as a cost; once each turn [claimed by d1, idea_next11]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Scryb Ranger",
+   "deck": "Toski, Bearer of Secrets",
+   "missing": "return a Forest you control as a cost; once each turn [claimed by d1, idea_next11]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Wirewood Symbiote",
+   "deck": "Toski, Bearer of Secrets",
+   "missing": "return an Elf you control as a cost; once each turn [claimed by d1, idea_next11]",
    "lane": "d1",
    "theme": "mana",
    "owner": "d1"

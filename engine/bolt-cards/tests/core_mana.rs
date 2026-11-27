@@ -3415,3 +3415,32 @@ mod instant_sorcery_discount_until_your_next_turn {
         assert_eq!(g.instant_sorcery_discount_until.len(), 1);
     }
 }
+
+#[test]
+fn remove_a_counter_for_one_mana_of_any_color_without_tapping() {
+    use batch3::*;
+    use batch9::*;
+    use bolt_core::ManaSource;
+    let mut repo = artifact("Repository");
+    repo.mana = Some(ManaSource::of(&bolt_core::Color::ALL));
+    repo.mana_ext.mana_per_kind_counter = true;
+    repo.mana_ext.counter_mana_no_tap = true;
+    let mut g = batch6_board(vec![repo], 0);
+    let r = put(&mut g, 0, 25);
+    assert!(g.mana_sources(0).iter().all(|s| s.0 != r), "no counters, no mana");
+    g.objects[r.0 as usize].kind_counters = 2;
+    g.objects[r.0 as usize].tapped = true; // no {T} in the cost
+    assert_eq!(g.mana_sources(0).iter().filter(|s| s.0 == r).count(), 2);
+    g.manual_mana[0] = true;
+    act(&mut g, Action::TapForMana(r, 4));
+    g.manual_mana[0] = false;
+    assert_eq!(g.players[0].pool.len(), 1, "one mana per activation");
+    assert_eq!(g.obj(r).kind_counters, 1);
+    // The other counter pays for a {G}{G} bear with the floating {G}.
+    let bear = g.add_card(0, GREEN_BEAR, Zone::Hand);
+    assert!(g.legal_actions().contains(&Action::Cast(bear)));
+    act(&mut g, Action::Cast(bear));
+    settle(&mut g);
+    assert_eq!(g.obj(bear).zone, Zone::Battlefield);
+    assert_eq!(g.obj(r).kind_counters, 0);
+}

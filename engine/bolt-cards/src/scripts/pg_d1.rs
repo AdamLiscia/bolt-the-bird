@@ -47,6 +47,14 @@ fn mana_aura(d: &mut CardDef) {
     d.mana_ext.enchanted_land_extra_any = true;
 }
 
+/// "Return a [subtype] you control to its owner's hand: Untap target creature. Activate only once
+/// each turn." (Quirion Ranger, Wirewood Symbiote)
+fn return_to_untap(d: &mut CardDef, sub: &'static str) {
+    let n = activated(d, "", false, vec![CREATURE], vec![Effect::UntapTarget(0)]);
+    d.activated[n].return_own_subtype = Some(sub);
+    d.activated[n].once_each_turn = true;
+}
+
 /// Extort (CR 702.101): "Whenever you cast a spell, you may pay {W/B}. If you do, each opponent
 /// loses 1 life and you gain that much life."
 fn extort(d: &mut CardDef) {
@@ -2119,6 +2127,45 @@ pub fn script(name: &str) -> Option<Script> {
                 d.mana_ext.enchanted_land_extra_color = Some(5);
             },
         ),
+        "Concordant Crossroads" => s(&["All creatures have haste."], |d, _| {
+            static_on(d, Scope::YourCreatures, false, Keywords::HASTE);
+            static_on(d, Scope::OpponentsCreatures, false, Keywords::HASTE);
+        }),
+        "Quirion Ranger" => s(
+            &["Return a Forest you control to its owner's hand: Untap target creature. Activate only once each turn."],
+            |d, _| return_to_untap(d, "Forest"),
+        ),
+        "Scryb Ranger" => s(
+            &[
+                "Flying, protection from blue",
+                "Return a Forest you control to its owner's hand: Untap target creature. Activate only once each turn.",
+            ],
+            |d, _| {
+                d.keywords = d.keywords.with(Keywords::FLASH).with(Keywords::FLYING);
+                static_on(d, Scope::This, false, Keywords::NONE);
+                d.statics.last_mut().expect("just added").protection = [false, true, false, false, false];
+                return_to_untap(d, "Forest");
+            },
+        ),
+        "Wirewood Symbiote" => s(
+            &["Return an Elf you control to its owner's hand: Untap target creature. Activate only once each turn."],
+            |d, _| return_to_untap(d, "Elf"),
+        ),
+        "Wolfwillow Haven" => s(
+            &[
+                "Enchant land",
+                "Whenever enchanted land is tapped for mana, its controller adds an additional {G}.",
+                "{4}{G}, Sacrifice this Aura: Create a 2/2 green Wolf creature token. Activate only during your turn.",
+            ],
+            |d, t| {
+                mana_aura(d);
+                d.mana_ext.enchanted_land_extra_color = Some(4);
+                let wolf = Effect::CreateToken { who: Who::You, def: t.wolf_green, n: 1 };
+                let n = activated(d, "{4}{G}", false, vec![], vec![wolf]);
+                d.activated[n].sacrifice_self = true;
+                d.activated[n].your_turn_only = true;
+            },
+        ),
         // ---- Ral ----
         "Braid of Fire" => s(&["Cumulative upkeep—Add {R}."], |d, _| {
             on(d, When::Upkeep { your_turn_only: true }, vec![], vec![Effect::CumulativeUpkeepAddMana(Color::Red)]);
@@ -2382,6 +2429,11 @@ pub const PG_D1_SCRIPTED: &[&str] = &[
     "Wild Growth",
     "Utopia Sprawl",
     "Shimmerwilds Growth",
+    "Concordant Crossroads",
+    "Quirion Ranger",
+    "Scryb Ranger",
+    "Wirewood Symbiote",
+    "Wolfwillow Haven",
     "Glen Elendra Guardian",
     "Comet Storm",
     "Changeling Wayfinder",
