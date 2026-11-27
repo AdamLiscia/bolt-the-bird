@@ -2681,6 +2681,13 @@ pub enum Effect {
     GainLifePerCreatureYouControl,
     /// "Destroy all other permanents except for lands and tokens." (Elspeth Tirel's −5)
     DestroyAllOtherPermanentsExceptLandsAndTokens,
+    /// "exile that card with a dream counter on it instead of putting it into your graveyard as it
+    /// resolves" (Goliath Daydreamer), for the spell in the trigger's `extra` if it was cast from
+    /// your hand (`Game::dream_marked`, `Game::dream_counters`).
+    DreamExileExtraIfCastFromHand,
+    /// "You may cast a spell from among cards you own in exile with dream counters on them without
+    /// paying its mana cost." (Goliath Daydreamer): a one-spell free-cast window.
+    MayCastDreamCardFree,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.
@@ -2998,6 +3005,9 @@ pub enum LookTo {
     BattlefieldTapped,
     /// Onto the battlefield with two +1/+1 counters.
     BattlefieldTwoCounters,
+    /// Onto the battlefield tapped and attacking; returned to its owner's hand at end of combat
+    /// (Arthur, Marigold Knight; `Game::hand_at_end_combat`).
+    BattlefieldAttackingReturnAtEndOfCombat,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

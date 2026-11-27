@@ -2375,6 +2375,28 @@ pub fn script(name: &str) -> Option<Script> {
                 attached(d, false, 1, 2, Keywords::NONE);
             },
         ),
+        "Arthur, Marigold Knight" => s(
+            &["Whenever Arthur and at least one other creature attack, look at the top six cards of your library. You may put a creature card from among them onto the battlefield tapped and attacking. Put the rest on the bottom of your library in a random order. Return that creature to its owner's hand at end of combat."],
+            |d, _| {
+                let look = Effect::LookAtTop {
+                    n: 6,
+                    pick: Pick::CreaturePowerAtMost(i32::MAX),
+                    chosen_to: LookTo::BattlefieldAttackingReturnAtEndOfCombat,
+                    rest_to: LookRest::BottomRandom,
+                };
+                on(d, When::Attacks, vec![], vec![Effect::GateAttackingAtLeast(2), look]);
+            },
+        ),
+        "Goliath Daydreamer" => s(
+            &[
+                "Whenever you cast an instant or sorcery spell from your hand, exile that card with a dream counter on it instead of putting it into your graveyard as it resolves.",
+                "Whenever this creature attacks, you may cast a spell from among cards you own in exile with dream counters on them without paying its mana cost.",
+            ],
+            |d, _| {
+                on(d, When::YouCastInstantOrSorceryCounted, vec![], vec![Effect::DreamExileExtraIfCastFromHand]);
+                on(d, When::Attacks, vec![], vec![Effect::MayCastDreamCardFree]);
+            },
+        ),
         "Deep-Cavern Bat" => s(
             &["When this creature enters, look at target opponent's hand. You may exile a nonland card from it until this creature leaves the battlefield."],
             |d, _| {
@@ -2696,4 +2718,6 @@ pub const PG_C_SCRIPTED: &[&str] = &[
     "Elspeth Tirel",
     "Ramunap Excavator",
     "Aquitect's Defenses",
+    "Arthur, Marigold Knight",
+    "Goliath Daydreamer",
 ];

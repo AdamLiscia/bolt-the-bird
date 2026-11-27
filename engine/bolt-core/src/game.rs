@@ -1891,6 +1891,14 @@ pub struct Game {
     /// Deep-Cavern Bat: (source, its zone-change count, card) — a card exiled from a hand until the
     /// source leaves the battlefield, returned to its owner's hand when it does (CR 610.3).
     pub hand_links: Vec<(ObjId, u32, ObjId)>,
+    /// Arthur, Marigold Knight: (creature, zone-change count) returned to its owner's hand at end
+    /// of combat.
+    pub hand_at_end_combat: Vec<(ObjId, u32)>,
+    /// Goliath Daydreamer: spells on the stack (with their zone-change counts) exiled with a dream
+    /// counter instead of going to the graveyard as they resolve.
+    pub dream_marked: Vec<(ObjId, u32)>,
+    /// Cards in exile with a dream counter on them (with their zone-change counts in exile).
+    pub dream_counters: Vec<(ObjId, u32)>,
     /// The other creatures a crew cost taps with its named one (from `Decision::CrewTap`).
     crew_extra: Vec<ObjId>,
     /// Saddled Mounts (CR 702.171b) and the creatures that saddled them: (mount, its zcc, rider,
@@ -2209,6 +2217,9 @@ impl Game {
             crewed: Vec::new(),
             delayed_returns_tapped: Vec::new(),
             hand_links: Vec::new(),
+            hand_at_end_combat: Vec::new(),
+            dream_marked: Vec::new(),
+            dream_counters: Vec::new(),
             saddled: Vec::new(),
             karador_turn: [0; 2],
         }
@@ -12483,7 +12494,7 @@ impl Game {
             } else if self.obj(source).zone == Zone::Stack {
                 if r.acts && r.item.kicked && self.def_of(source).buyback_sacrifice.is_some() {
                     self.move_to(source, Zone::Hand); // buyback
-                } else {
+                } else if !self.exile_with_dream_counter(source) {
                     self.leave_stack(source, r.item.flashback);
                 }
             }
@@ -14374,6 +14385,9 @@ impl Game {
                                 self.turn + 1
                             };
                             self.obj_mut(c).playable = Some((p, until));
+                        }
+                        LookTo::BattlefieldAttackingReturnAtEndOfCombat => {
+                            self.put_attacking_until_end_of_combat(c, p)
                         }
                         LookTo::Top => {
                             let lib = &mut self.players[p].library;
@@ -24041,6 +24055,16 @@ impl Game {
                     self.hand_link_ask(src, item.controller, q);
                 }
             }
+            Effect::DreamExileExtraIfCastFromHand => {
+                if let Some(c) = item.extra {
+                    let o = self.obj(c);
+                    if o.zone == Zone::Stack && o.from_hand {
+                        let zcc = o.zcc;
+                        self.dream_marked.push((c, zcc));
+                    }
+                }
+            }
+            Effect::MayCastDreamCardFree => self.open_dream_free_cast(item.controller),
             Effect::GainLifePerCreatureYouControl => {
                 let n = self.creatures(item.controller).count() as i32;
                 if n > 0 {
@@ -25014,7 +25038,8 @@ impl Game {
                 self.give_priority(a);
             }
             Step::EndCombat => {
-                // Decayed: "sacrifice it at end of combat".
+                self.return_hand_at_end_combat(); // Arthur, Marigold Knight
+                                                  // Decayed: "sacrifice it at end of combat".
                 let doomed: Vec<ObjId> = self
                     .battlefield
                     .iter()

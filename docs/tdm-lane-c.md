@@ -1101,3 +1101,22 @@ Left in the named decks, by blocker (lane C's theme, not done):
   non-Aura target filter, d3), Goliath Daydreamer (cast from exile with dream counters), Ashling's transform.
 Likely failure spots when built: Silundi's `Pick` answer, Elspeth's loyalty indexes (+2 is 0, −2 is 1, −5 is 2) and
 setting `loyalty` directly, City of Shadows paying Sol Ring with only its stored {C}.
+
+## Batch 18 (unbuilt): Arthur, Goliath Daydreamer; Ashling held
+
+Core (appended):
+- `LookTo::BattlefieldAttackingReturnAtEndOfCombat` (one arm in the `Decision::LookPick` answer) and
+  `Game::hand_at_end_combat`, emptied by `return_hand_at_end_combat` from one call at the top of the
+  `Step::EndCombat` block (next to decayed and Delina's exile). **Merger: that call is in turn structure.**
+- `Effect::{DreamExileExtraIfCastFromHand, MayCastDreamCardFree}` with `Game::{dream_marked, dream_counters}`.
+  The resolution site's `leave_stack` branch is now `else if !self.exile_with_dream_counter(source)`: a marked
+  spell is exiled with a dream counter instead (zone destination, lane C's). The attack trigger opens a one-spell
+  free-cast window (`free_casts_one`) over the dream cards the controller owns.
+Cards (2): Arthur, Marigold Knight (`GateAttackingAtLeast(2)` then `LookAtTop`), Goliath Daydreamer. Tests in
+core_objects (71). Shortcut: the dream cards not cast keep `cast_free` while they stay in exile; nothing else
+reads it outside a free-cast window.
+Held: Ashling, Rekindled // Ashling, Rimebound needs "whenever this transforms into [face]" (d2) and mana spendable
+only on spells with mana value 4 or greater (d1). Its transform (`MayPay` then `TransformSelf` on
+`When::FirstMainPhaseYourTurn`) exists. Recorded in needs_core.json.
+Likely failure spots when built: Arthur's `resolve_all` answer (the LookPick `Pick`), the `combat` check, and
+Goliath's free-cast window after the attack trigger (`Pending::FreeCast`).

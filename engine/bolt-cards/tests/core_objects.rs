@@ -1630,3 +1630,65 @@ fn aquitects_defenses_grants_hexproof_this_turn_and_plus_one_plus_two() {
     to_main1(&mut g, 5, 0);
     assert!(!g.keywords(ghoul).has(Keywords::HEXPROOF), "until end of turn");
 }
+
+#[test]
+fn arthur_puts_a_creature_from_the_top_six_in_attacking_and_returns_it_at_end_of_combat() {
+    let mut g = table();
+    let arthur = put(&mut g, 0, "Arthur, Marigold Knight");
+    let ghoul = put(&mut g, 0, "Hungry Ghoul");
+    g.start_turn(5, 0);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    let elves = top(&mut g, "Llanowar Elves");
+    act(&mut g, Action::Attack(arthur));
+    act(&mut g, Action::Attack(ghoul));
+    act(&mut g, Action::FinishAttacks);
+    resolve_all(&mut g, &[Action::Pick(elves)]);
+    assert_eq!(g.obj(elves).zone, Zone::Battlefield);
+    assert!(g.obj(elves).tapped);
+    assert!(
+        g.combat.as_ref().is_some_and(|c| c.attackers.contains(&elves)),
+        "attacking"
+    );
+    pass_to(&mut g, Step::Main2);
+    assert_eq!(g.obj(elves).zone, Zone::Hand, "back at end of combat");
+}
+
+#[test]
+fn arthur_alone_looks_at_nothing() {
+    let mut g = table();
+    let arthur = put(&mut g, 0, "Arthur, Marigold Knight");
+    g.start_turn(5, 0);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    top(&mut g, "Llanowar Elves");
+    act(&mut g, Action::Attack(arthur));
+    act(&mut g, Action::FinishAttacks);
+    resolve_all(&mut g, &[]);
+}
+
+#[test]
+fn goliath_daydreamer_dream_exiles_hand_spells_and_casts_one_free_on_attack() {
+    let mut g = table();
+    let goliath = put(&mut g, 0, "Goliath Daydreamer");
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    play(&mut g, bolt, false, &[Target::Player(1)], &[]);
+    assert_eq!(g.obj(bolt).zone, Zone::Exile, "exiled with a dream counter");
+    assert_eq!(g.players[1].life, 37);
+    g.start_turn(5, 0);
+    while g.pending != Pending::DeclareAttackers(0) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Attack(goliath));
+    act(&mut g, Action::FinishAttacks);
+    while !matches!(g.pending, Pending::FreeCast(_)) {
+        act(&mut g, Action::PassPriority);
+    }
+    act(&mut g, Action::Cast(bolt));
+    act(&mut g, Action::Target(Target::Player(1)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.players[1].life, 34, "cast free from exile");
+    assert_eq!(g.obj(bolt).zone, Zone::Graveyard, "not cast from hand this time");
+}

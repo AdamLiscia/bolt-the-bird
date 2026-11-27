@@ -5426,7 +5426,7 @@
   {
    "card": "Arthur, Marigold Knight",
    "deck": "Bloomburrow Commander (BLC)",
-   "missing": "BLC (lane B's routing, 2026-11-26)",
+   "missing": "BLC (lane B's routing, 2026-11-26) [lane C 2026-11-27: scripted in pg_c, batch 18 (unbuilt)]",
    "lane": "mac-b",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -6683,6 +6683,22 @@
    "card": "Aquitect's Defenses",
    "deck": "Niv-Mizzet, Visionary",
    "missing": "idea quick win: claimed by lane C 2026-11-27, scripted in pg_c, batch 17 (unbuilt)",
+   "lane": "mac-c",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Goliath Daydreamer",
+   "deck": "Niv-Mizzet, Visionary",
+   "missing": "idea quick win: claimed by lane C 2026-11-27, scripted in pg_c, batch 18 (unbuilt)",
+   "lane": "mac-c",
+   "theme": "objects_zones",
+   "owner": "mac-c"
+  },
+  {
+   "card": "Ashling, Rekindled // Ashling, Rimebound",
+   "deck": "Niv-Mizzet, Visionary",
+   "missing": "claimed by lane C 2026-11-27, not scripted: needs a 'whenever this transforms into [face]' trigger (d2) and mana spendable only on spells with mana value 4 or greater (d1); the transform itself (TransformSelf after MayPay at the first main phase) exists",
    "lane": "mac-c",
    "theme": "objects_zones",
    "owner": "mac-c"
