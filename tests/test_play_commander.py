@@ -176,3 +176,13 @@ def test_commander_deck_files_round_trip(tmp_path):
     assert cmd_decks.names(p) == ["A: Xenagos", ""]
     with pytest.raises(ValueError):
         cmd_decks.parse_line("1 2 3")
+
+
+def test_deck_exports_with_quantities_expand_to_one_name_per_copy():
+    pytest.importorskip("bolt_engine")
+    from make_cmd_decks import expand
+
+    assert expand(["A", "Forest", "Forest"]) == ["A", "Forest", "Forest"]
+    assert expand({"A": 1, "Forest": 3}) == ["A", "Forest", "Forest", "Forest"]
+    assert expand([["A", 1], ["Forest", 2]]) == ["A", "Forest", "Forest"]
+    assert expand([{"name": "Forest", "qty": 2}, {"name": "A"}]) == ["Forest", "Forest", "A"]
