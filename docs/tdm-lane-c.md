@@ -1213,3 +1213,13 @@ once d2's 111-118, d3's 119 and 121 and d1's 122 are on tarkir, after 120 (Ashio
   n: 1 } }` onto `defs[tokens.dragon_egg]`. Or `token_defs(&Tokens)` if the merger prefers.
 Merger approved option (a) (2026-11-27): the wiring is in lib.rs `CardSet::load` (commit after 2d87a69). Both
 commits need the token rows; if the build comes first, revert both and restore them once the tokens land.
+
+## Merge of tarkir 51b84e4; batches 19-21, Nesting Dragon and Ashiok built (2026-11-27)
+
+Merge f087200: one conflict, the end of `Effect` (tarkir's first, then lane C's). Tokens: tarkir's, with
+`placeholder_120` replaced by 120 `nightmare` (2/3 blue and black; attacks or blocks: `EachOpponentExilesTop(2)`),
+122 `placeholder_122` (d1's Human Cleric, not on tarkir yet), 123 `dragon_egg`, 124 `dragon_2_firebreathing`.
+Ashiok, Nightmare Muse scripted (+1 the Nightmare, −3 d3's `BounceThenOwnerExilesFromHand`, −7 lane C's window);
+test in core_objects (84). Built cold, no fixes needed: 2,412 Rust tests pass (core_objects 84, 4 ignored: 3
+play.rs, 1 rollout), every binary's count equals its `#[test]` count; clippy, fmt, ruff (check and format) clean;
+pytest 201 passed, 2 skipped.
