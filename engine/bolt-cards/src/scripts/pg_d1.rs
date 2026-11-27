@@ -1637,6 +1637,29 @@ pub fn script(name: &str) -> Option<Script> {
                 on(d, When::Enters, vec![], effects);
             },
         ),
+        // ---- Ghyrson Starn, Kelermorph ----
+        "Sorcerer Class" => s(
+            &[
+                "When this Class enters, draw two cards, then discard two cards.",
+                "{U}{R}: Level 2",
+                "Creatures you control have \"{T}: Add {U} or {R}. Spend this mana only to cast an instant or sorcery spell or to gain a Class level.\"",
+                "{3}{U}{R}: Level 3",
+                "Whenever you cast an instant or sorcery spell, that spell deals damage to each opponent equal to the number of instant and sorcery spells you've cast this turn.",
+            ],
+            |d, _| {
+                on(d, When::Enters, vec![], vec![draw(2), discard(2)]);
+                let n = activated(d, "{U}{R}", false, vec![], vec![Effect::ClassLevelUp(2)]);
+                d.activated[n].sorcery = true;
+                d.activated[n].level_up_to = 2;
+                d.mana_ext.creatures_tap_for_instant_sorcery = Some((2, [false, true, false, true, false]));
+                let n = activated(d, "{3}{U}{R}", false, vec![], vec![Effect::ClassLevelUp(3)]);
+                d.activated[n].sorcery = true;
+                d.activated[n].level_up_to = 3;
+                let mut burn = Ability::new(vec![], vec![Effect::ExtraDamagesEachOpponentInstantsSorceriesThisTurn]);
+                burn.condition = Some(Condition::ClassLevelAtLeast(3));
+                d.triggers.push(Trigger { when: When::YouCastInstantOrSorceryCounted, ability: burn });
+            },
+        ),
         _ => None,
     }
 }
@@ -1846,4 +1869,5 @@ pub const PG_D1_SCRIPTED: &[&str] = &[
     "Brokers Hideout",
     "Riveteers Overlook",
     "Cabaretti Courtyard",
+    "Sorcerer Class",
 ];

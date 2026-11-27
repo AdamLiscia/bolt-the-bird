@@ -390,6 +390,10 @@ pub struct Activated {
     pub remove_plus_counters: u8,
     /// The stack item's amount is the sacrificed creature's toughness (Miren, the Moaning Well).
     pub amount_from_victim_toughness: bool,
+    /// "Remove N counters from among other artifacts, creatures, and planeswalkers you control" in
+    /// the cost (Tekuthal, Inquiry Dominus: 3): the player picks each one
+    /// (`Decision::RemoveCountersFromOthers`) before the ability is activated.
+    pub remove_counters_from_others: u8,
 }
 
 /// A loyalty ability's cost of −X (CR 606.4, 107.3): `loyalty_abilities` uses this as the cost,
@@ -1300,6 +1304,11 @@ pub struct ManaExt {
     /// Cleave (CR 702.148): cast for this cost with `Action::CastAlternative`; the spell's effect
     /// reads the item's `alt` (Wash Away: {1}{U}{U}).
     pub cleave: Option<ManaCost>,
+    /// Sorcerer Class, level 2: "Creatures you control have '{T}: Add {U} or {R}. Spend this mana
+    /// only to cast an instant or sorcery spell or to gain a Class level.'" as (Class level
+    /// needed, colors): each untapped creature you control that could tap is a source of those
+    /// colors when paying for an instant or sorcery spell or a Class's level-up.
+    pub creatures_tap_for_instant_sorcery: Option<(u8, [bool; 5])>,
 }
 
 /// "You may pay [mana], [life] and sacrifice or tap [creatures] rather than pay this spell's mana

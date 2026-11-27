@@ -3786,7 +3786,7 @@
   {
    "card": "Tekuthal, Inquiry Dominus",
    "deck": "Atraxa, Praetors' Voice",
-   "missing": "needs core: proliferate twice, and removing counters from among your permanents as a cost",
+   "missing": "needs core: proliferate twice, and removing counters from among your permanents as a cost [d1 batch 28: its cost is in (Activated::remove_counters_from_others, Decision::RemoveCountersFromOthers); script waits on d3's proliferate_twice reaching tarkir]",
    "lane": "d3",
    "theme": "objects_zones",
    "owner": "mac-c"
@@ -5002,7 +5002,7 @@
   {
    "card": "Sorcerer Class",
    "deck": "Ghyrson Starn, Kelermorph (Spr3adsh33)",
-   "missing": "replicate; class levels",
+   "missing": "replicate; class levels [done by d1 batch 28: ManaExt::creatures_tap_for_instant_sorcery, Effect::ExtraDamagesEachOpponentInstantsSorceriesThisTurn; scripted in pg_d1]",
    "lane": "mac-b",
    "theme": "mana",
    "owner": "d1"

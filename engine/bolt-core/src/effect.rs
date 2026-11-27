@@ -2731,6 +2731,9 @@ pub enum Effect {
     /// Wash Away: counter the spell in `slot` if it wasn't cast from its owner's hand, or any
     /// spell if this was cast for its cleave cost (the item's `alt`).
     CounterIfNotFromHandUnlessCleaved(u8),
+    /// Sorcerer Class, level 3: the spell in `extra` deals damage to each opponent equal to the
+    /// number of instant and sorcery spells you've cast this turn (`Game::instants_sorceries_cast`).
+    ExtraDamagesEachOpponentInstantsSorceriesThisTurn,
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

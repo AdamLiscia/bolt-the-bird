@@ -290,3 +290,9 @@ def test_the_gitrog_asks_for_a_rider_and_how_many_lands():
     assert label(count, "Amount", 2) == "Put 2 lands from your hand onto the battlefield tapped"
     pick = {"kind": "GitrogLandPick", "left": 1}
     assert sv._decision_label(pick, "Pick", 0, "Forest") == "Put onto the battlefield tapped: Forest"
+
+
+def test_tekuthal_picks_each_counter_to_remove():
+    dec = {"kind": "RemoveCountersFromOthers", "left": 3}
+    assert sv._decision_label(dec, "Pick", 0, "Sol Ring") == "Remove a counter from Sol Ring"
+    assert label(dec, "No", 0) == "Don't activate it"

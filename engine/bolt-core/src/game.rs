@@ -1436,6 +1436,9 @@ pub enum Decision {
     /// The Gitrog: `Pick` a land card in your hand to put onto the battlefield tapped; `left` picks
     /// including this one.
     GitrogLandPick { left: u8 },
+    /// Tekuthal: `Pick` another artifact, creature or planeswalker you control to remove a counter
+    /// from (`left` including this one) for the cost of `source`'s ability `n`, or `No` to cancel.
+    RemoveCountersFromOthers { source: ObjId, n: usize, left: u8 },
 }
 
 /// Options for [`Game::new_commander_with`].
@@ -8538,7 +8541,8 @@ impl Game {
         exclude: Option<ObjId>,
         spell: PayFor,
     ) -> Vec<(ObjId, ManaSource)> {
-        self.untapped_sources(p)
+        let mut v: Vec<(ObjId, ManaSource)> = self
+            .untapped_sources(p)
             .into_iter()
             .filter(|s| Some(s.0) != exclude)
             .filter(|s| {
@@ -8608,7 +8612,46 @@ impl Game {
             })
             .chain(self.convoke_sources(p, exclude, spell))
             .chain(self.eldrazi_temple_extra(p, exclude, spell))
-            .collect()
+            .collect();
+        // Sorcerer Class: your creatures tap for its colors, for instants, sorceries and Class levels.
+        let for_spells = match spell {
+            PayFor::Spell(c) => self.def_of(c).types.instant || self.def_of(c).types.sorcery,
+            PayFor::OmenSpell(_) => true,
+            PayFor::Ability(src) => self.def_of(src).activated.iter().any(|a| a.level_up_to > 0),
+            PayFor::Other => false,
+        };
+        if for_spells {
+            let colors = self
+                .permanents(p)
+                .filter(|&x| !self.lost_abilities(x))
+                .filter_map(|x| {
+                    let (level, colors) = self.def_of(x).mana_ext.creatures_tap_for_instant_sorcery?;
+                    (self.class_level(x) >= level).then_some(colors)
+                })
+                .reduce(|a, b| std::array::from_fn(|i| a[i] || b[i]));
+            if let Some(colors) = colors {
+                let m = ManaSource {
+                    colors,
+                    ..ManaSource::default()
+                };
+                for c in self.creatures(p).collect::<Vec<_>>() {
+                    if Some(c) == exclude || !self.can_tap(c) {
+                        continue;
+                    }
+                    if v.iter().any(|s| s.0 == c) {
+                        // A mana creature: the same tap makes either.
+                        for s in v.iter_mut().filter(|s| s.0 == c) {
+                            for (k, on) in colors.iter().enumerate() {
+                                s.1.colors[k] |= *on;
+                            }
+                        }
+                    } else {
+                        v.push((c, m));
+                    }
+                }
+            }
+        }
+        v
     }
 
     /// Eldrazi Temple: the rest of its "{C}{C}" for a colorless Eldrazi spell or an ability of a
@@ -9086,6 +9129,9 @@ impl Game {
                     || (a.once_each_turn && self.obj(id).activated_turn == Some(self.turn))
                     || self.obj(id).kind_counters < a.remove_kind_counters
                     || (a.remove_plus_counters > 0 && self.obj(id).counters < a.remove_plus_counters as i32)
+                    || (a.remove_counters_from_others > 0
+                        && self.others_with_counters(p, id).iter().map(|e| e.1).sum::<i32>()
+                            < a.remove_counters_from_others as i32)
                     || (a.tap_attached
                         && !self
                             .obj(id)
@@ -11054,7 +11100,15 @@ impl Game {
                     ..CastMode::default()
                 },
             ),
-            (Pending::Priority(p), Action::Activate(id, n)) => self.activate(p, id, n, None),
+            (Pending::Priority(p), Action::Activate(id, n)) => {
+                let left = self.activated_of(id, n).remove_counters_from_others;
+                if left > 0 {
+                    // Tekuthal: the counters are chosen first.
+                    self.ask(p, Decision::RemoveCountersFromOthers { source: id, n, left });
+                } else {
+                    self.activate(p, id, n, None)
+                }
+            }
             (Pending::Priority(p), Action::ActivateWith(id, n, victim)) => {
                 let a = self.activated_of(id, n);
                 let crew = a.crew.max(a.saddle) as i32; // saddle uses the same summed-power cost
@@ -11440,6 +11494,49 @@ impl Game {
         });
         for x in cards.into_iter().take(n as usize) {
             self.move_to(x, Zone::Exile);
+        }
+    }
+
+    /// Tekuthal: the other artifacts, creatures and planeswalkers `p` controls with counters, and how
+    /// many each has (+1/+1 or -1/-1, loyalty, its own kind, stun, revival).
+    fn others_with_counters(&self, p: PlayerId, source: ObjId) -> Vec<(ObjId, i32)> {
+        self.permanents(p)
+            .filter(|&x| x != source)
+            .filter(|&x| {
+                let t = self.types_of(x);
+                t.artifact || t.creature || t.planeswalker
+            })
+            .map(|x| {
+                let o = self.obj(x);
+                let loyalty = if self.types_of(x).planeswalker {
+                    o.loyalty.max(0)
+                } else {
+                    0
+                };
+                (
+                    x,
+                    o.counters.abs() + loyalty + o.kind_counters.max(0) + o.stun.max(0) + o.revival.max(0),
+                )
+            })
+            .filter(|e| e.1 > 0)
+            .collect()
+    }
+
+    /// Removes one counter from `x`: +1/+1 (or -1/-1) first, then loyalty, its own kind, stun,
+    /// revival (simplification: the player picks the permanent, not the kind).
+    fn remove_any_counter(&mut self, x: ObjId) {
+        let walker = self.types_of(x).planeswalker;
+        let o = self.obj_mut(x);
+        if o.counters != 0 {
+            o.counters -= o.counters.signum();
+        } else if walker && o.loyalty > 0 {
+            o.loyalty -= 1;
+        } else if o.kind_counters > 0 {
+            o.kind_counters -= 1;
+        } else if o.stun > 0 {
+            o.stun -= 1;
+        } else if o.revival > 0 {
+            o.revival -= 1;
         }
     }
 
@@ -13214,6 +13311,15 @@ impl Game {
                 v.push(Action::No);
                 v
             }
+            Decision::RemoveCountersFromOthers { source, .. } => {
+                let mut v: Vec<Action> = self
+                    .others_with_counters(p, *source)
+                    .into_iter()
+                    .map(|(x, _)| Action::Pick(x))
+                    .collect();
+                v.push(Action::No);
+                v
+            }
             Decision::CrewTap { source, n, chosen } => {
                 let a = self.activated_of(*source, *n);
                 let need = a.crew.max(a.saddle) as i32;
@@ -14391,6 +14497,28 @@ impl Game {
                 self.give_priority(active);
             } else if self.resolving.is_some() {
                 self.continue_resolving();
+            }
+            return;
+        }
+        if let Decision::RemoveCountersFromOthers { source, n, left } = d {
+            // Tekuthal's cost, before the ability is activated (as crew's taps).
+            match a {
+                Action::Pick(x) => {
+                    self.remove_any_counter(x);
+                    if left > 1 {
+                        self.ask(
+                            p,
+                            Decision::RemoveCountersFromOthers {
+                                source,
+                                n,
+                                left: left - 1,
+                            },
+                        );
+                    } else {
+                        self.activate(p, source, n, None);
+                    }
+                }
+                _ => self.give_priority(p), // cancelled
             }
             return;
         }
@@ -24248,6 +24376,13 @@ impl Game {
                     if c != src && self.has_subtype(c, sub) {
                         self.add_counters(c, 1);
                     }
+                }
+            }
+            Effect::ExtraDamagesEachOpponentInstantsSorceriesThisTurn => {
+                let p = item.controller;
+                let n = self.instants_sorceries_cast[p] as i32;
+                if let (Some(spell), true) = (item.extra, n > 0) {
+                    self.deal_damage(spell, Target::Player(opponent(p)), n);
                 }
             }
             Effect::CreateTokenXxSourceLoyalty { def } => {

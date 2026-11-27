@@ -3450,3 +3450,33 @@ fn the_crossroads_lands_sacrifice_and_fetch_a_basic_tapped() {
     assert!(g.obj(forest).tapped);
     assert_eq!(g.players[0].life, life + 1);
 }
+
+#[test]
+fn sorcerer_class_creatures_tap_for_instants_and_level_three_burns() {
+    let mut g = game(&[]);
+    let class = put(&mut g, 0, "Sorcerer Class");
+    let elves = put(&mut g, 0, "Llanowar Elves");
+    g.objects[elves.0 as usize].since_turn = 0;
+    let bolt = hand(&mut g, 0, "Lightning Bolt");
+    let fyndhorn = hand(&mut g, 0, "Fyndhorn Elves");
+    assert!(!g.legal_actions().contains(&Action::Cast(bolt)), "level 1");
+    g.objects[class.0 as usize].class_level = 2;
+    let legal = g.legal_actions();
+    assert!(
+        legal.contains(&Action::Cast(bolt)),
+        "the Elves tap for {{R}}: {legal:?}"
+    );
+    assert!(
+        legal.contains(&Action::Cast(fyndhorn)),
+        "its own {{G}} still pays a creature"
+    );
+    g.objects[class.0 as usize].class_level = 3;
+    act(&mut g, Action::Cast(bolt));
+    act(&mut g, Action::Target(Target::Player(1)));
+    resolve_all(&mut g, &[]);
+    assert_eq!(
+        g.players[1].life,
+        40 - 3 - 1,
+        "the Bolt, then one instant or sorcery this turn"
+    );
+}
