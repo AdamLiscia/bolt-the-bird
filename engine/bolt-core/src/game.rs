@@ -10531,6 +10531,17 @@ impl Game {
         }
     }
 
+    /// Whether `x` can be sacrificed to pay the "Ward—Sacrifice ..." of `source`: nonland
+    /// permanents only for Valgavoth (`ward_sacrifice_nonland`), permanents with a subtype only for
+    /// Ygra (`ManaExt::ward_sacrifice_subtype`: Food).
+    fn ward_sacrifice_candidate(&self, source: ObjId, x: ObjId) -> bool {
+        let d = self.def_of(source);
+        !(self.cant_be_sacrificed(x) || (d.ward_sacrifice_nonland && self.types_of(x).land))
+            && d.mana_ext
+                .ward_sacrifice_subtype
+                .is_none_or(|s| self.has_subtype(x, s))
+    }
+
     /// Foods `p` could sacrifice to forage (not `except`).
     fn forage_foods(&self, p: PlayerId, except: ObjId) -> Vec<ObjId> {
         self.permanents(p)
@@ -11496,10 +11507,9 @@ impl Game {
                 .find(|i| i.source == against)
                 .map(|i| i.controller)
             {
-                let nonland = self.def_of(source).ward_sacrifice_nonland;
                 let have = self
                     .permanents(payer)
-                    .filter(|&x| !(self.cant_be_sacrificed(x) || (nonland && self.types_of(x).land)))
+                    .filter(|&x| self.ward_sacrifice_candidate(source, x))
                     .count();
                 if have < n as usize {
                     self.counter_from(against);
@@ -12247,14 +12257,14 @@ impl Game {
                 .map(Action::Pick)
                 .collect(),
             Decision::PayWardSacrifice { picked, .. } => {
-                // Valgavoth: nonland permanents only.
-                let nonland = self
-                    .resolving
-                    .as_ref()
-                    .is_some_and(|r| self.def_of(r.item.source).ward_sacrifice_nonland);
+                // Valgavoth: nonland permanents only; Ygra: Foods only.
+                let source = self.resolving.as_ref().map(|r| r.item.source);
                 let mut v: Vec<Action> = self
                     .permanents(p)
-                    .filter(|&x| !(self.cant_be_sacrificed(x) || (nonland && self.types_of(x).land)))
+                    .filter(|&x| match source {
+                        Some(s) => self.ward_sacrifice_candidate(s, x),
+                        None => !self.cant_be_sacrificed(x),
+                    })
                     .map(Action::Pick)
                     .collect();
                 if !picked {
