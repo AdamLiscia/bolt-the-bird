@@ -4407,3 +4407,64 @@ fn wolfwillow_haven_adds_green_and_sacrifices_for_a_wolf_on_your_turn() {
     assert_eq!((g.power(w[0]), g.toughness(w[0])), (2, 2));
     assert!(g.colors_of(w[0])[4], "green");
 }
+
+#[test]
+fn earthcraft_taps_the_named_creature_to_untap_a_basic_land() {
+    let mut g = table();
+    let ec = put(&mut g, 0, "Earthcraft");
+    let elf = put(&mut g, 0, "Llanowar Elves"); // summoning sick: still fine
+    let bear = put(&mut g, 0, "Eternal Witness");
+    let forest = first_named(&g, 0, "Forest");
+    g.objects[forest.0 as usize].tapped = true;
+    let legal = g.legal_actions();
+    assert!(
+        legal.contains(&Action::ActivateWith(ec, 0, elf))
+            && legal.contains(&Action::ActivateWith(ec, 0, bear))
+    );
+    act(&mut g, Action::ActivateWith(ec, 0, elf));
+    act(&mut g, Action::Target(obj(forest)));
+    resolve_all(&mut g, &[]);
+    assert!(g.obj(elf).tapped, "the creature the player named");
+    assert!(!g.obj(bear).tapped);
+    assert!(!g.obj(forest).tapped);
+}
+
+#[test]
+fn earthcraft_targets_only_basic_lands() {
+    let mut g = table();
+    let ec = put(&mut g, 0, "Earthcraft");
+    let elf = put(&mut g, 0, "Llanowar Elves");
+    let castle = put(&mut g, 0, "Castle Garenbrig");
+    act(&mut g, Action::ActivateWith(ec, 0, elf));
+    assert!(
+        !g.legal_actions().contains(&Action::Target(obj(castle))),
+        "not basic"
+    );
+}
+
+#[test]
+fn castle_garenbrig_makes_six_green_for_creature_spells_only() {
+    let mut g = table();
+    let castle = put(&mut g, 0, "Castle Garenbrig");
+    assert!(!g.obj(castle).tapped, "a Forest is in play");
+    act(&mut g, Action::Activate(castle, 0));
+    resolve_all(&mut g, &[]);
+    assert!(g.obj(castle).tapped);
+    assert_eq!(g.creature_ability_color_mana[0].0[4], 6);
+    // Tap out the rest, so only the six {G} are left.
+    for l in g.permanents(0).collect::<Vec<_>>() {
+        if g.types_of(l).land {
+            g.objects[l.0 as usize].tapped = true;
+        }
+    }
+    let nw = hand(&mut g, 0, "Night's Whisper");
+    assert!(
+        !g.legal_actions().contains(&Action::Cast(nw)),
+        "not for a noncreature spell"
+    );
+    let elves = hand(&mut g, 0, "Llanowar Elves");
+    act(&mut g, Action::Cast(elves));
+    resolve_all(&mut g, &[]);
+    assert_eq!(g.obj(elves).zone, Zone::Battlefield);
+    assert_eq!(g.creature_ability_color_mana[0].0[4], 5);
+}

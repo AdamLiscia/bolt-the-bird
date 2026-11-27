@@ -152,6 +152,8 @@ pub struct Filter {
     pub spell_not_from_hand_unless_alt: bool,
     /// Land cards or permanents only (Deathrite Shaman: "target land card from a graveyard").
     pub land_cards: bool,
+    /// Basic permanents only (Earthcraft: "target basic land").
+    pub basic_only: bool,
 }
 
 impl Filter {
@@ -223,6 +225,7 @@ impl Filter {
         subtypes_any: &[],
         spell_not_from_hand_unless_alt: false,
         land_cards: false,
+        basic_only: false,
     };
 
     pub const CREATURE: Filter = Filter {
@@ -3027,6 +3030,11 @@ pub enum Effect {
     /// "You may blight `n`. If you do, ..." (Scuzzback Scrounger): `Decision::BlightCreature` picks a
     /// creature you control for `n` -1/-1 counters, or `No` skips the rest (as does controlling none).
     MayBlightThen(u8),
+    /// "Add N mana of this color. Spend this mana only to cast creature spells or activate
+    /// abilities of creatures." (Castle Garenbrig: six {G}): held in
+    /// `Game::creature_ability_color_mana`, it pays as Somberwald Sage's mana does, for a creature
+    /// spell or an ability whose source is a creature.
+    AddCreatureSpellOrAbilityMana(u8, crate::Color),
 }
 
 /// What an [`Effect::AddManaPerCount`] counts.

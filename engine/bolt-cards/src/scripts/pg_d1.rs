@@ -2166,6 +2166,30 @@ pub fn script(name: &str) -> Option<Script> {
                 d.activated[n].your_turn_only = true;
             },
         ),
+        "Earthcraft" => s(&["Tap an untapped creature you control: Untap target basic land."], |d, _| {
+            let basic = Filter {
+                players: false,
+                creatures: false,
+                planeswalkers: false,
+                lands: true,
+                basic_only: true,
+                ..Filter::ANY
+            };
+            let n = activated(d, "", false, vec![basic], vec![Effect::UntapTarget(0)]);
+            d.activated[n].tap_named_creature = true;
+        }),
+        "Castle Garenbrig" => s(
+            &[
+                "This land enters tapped unless you control a Forest.",
+                "{T}: Add {G}.",
+                "{2}{G}{G}, {T}: Add six {G}. Spend this mana only to cast creature spells or activate abilities of creatures.",
+            ],
+            |d, _| {
+                d.mana_ext.enters_tapped_unless_other_subtype = Some(("Forest", 1));
+                d.mana = Some(ManaSource::of(&[Color::Green]));
+                activated(d, "{2}{G}{G}", true, vec![], vec![Effect::AddCreatureSpellOrAbilityMana(6, Color::Green)]);
+            },
+        ),
         // ---- Ral ----
         "Braid of Fire" => s(&["Cumulative upkeep—Add {R}."], |d, _| {
             on(d, When::Upkeep { your_turn_only: true }, vec![], vec![Effect::CumulativeUpkeepAddMana(Color::Red)]);
@@ -2434,6 +2458,8 @@ pub const PG_D1_SCRIPTED: &[&str] = &[
     "Scryb Ranger",
     "Wirewood Symbiote",
     "Wolfwillow Haven",
+    "Earthcraft",
+    "Castle Garenbrig",
     "Glen Elendra Guardian",
     "Comet Storm",
     "Changeling Wayfinder",

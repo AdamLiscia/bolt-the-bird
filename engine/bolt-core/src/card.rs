@@ -418,6 +418,10 @@ pub struct Activated {
     /// "Return a [subtype] you control to its owner's hand" in the cost (Quirion Ranger: a Forest;
     /// Wirewood Symbiote: an Elf): activated with `Action::ActivateWith`, that permanent the victim.
     pub return_own_subtype: Option<&'static str>,
+    /// "Tap an untapped creature you control" in the cost, the player naming it: activated with
+    /// `Action::ActivateWith`, that creature the victim (Earthcraft). Summoning sickness doesn't
+    /// matter (it isn't the creature's own {T}).
+    pub tap_named_creature: bool,
 }
 
 /// A loyalty ability's cost of −X (CR 606.4, 107.3): `loyalty_abilities` uses this as the cost,

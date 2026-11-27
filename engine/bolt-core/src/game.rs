@@ -2085,6 +2085,9 @@ pub struct Game {
     /// Ral, Leyline Prodigy's +1: (player, the first turn it no longer applies, {N} less) for
     /// that player's instant and sorcery spells, "until your next turn".
     pub instant_sorcery_discount_until: Vec<(PlayerId, u32, u8)>,
+    /// Castle Garenbrig's mana for creature spells and creatures' abilities, per player: per color,
+    /// with the turn and step it was made in (it empties as the step ends).
+    pub creature_ability_color_mana: [([u32; 5], u32, Step); 2],
 }
 
 /// `Action::CastFromGraveyardAs`'s second number for Karador, Ghost Chieftain's once-each-turn
@@ -2407,6 +2410,7 @@ impl Game {
             triggered_once_turn: Vec::new(),
             copy_next_instant_sorcery: Vec::new(),
             instant_sorcery_discount_until: Vec::new(),
+            creature_ability_color_mana: [([0; 5], 0, Step::PreGame); 2],
         }
     }
 
@@ -7073,6 +7077,7 @@ impl Game {
                 let kind_ok = kind_ok
                     && (!f.noncreature || !ty.creature)
                     && (!f.nonbasic || !ty.basic)
+                    && (!f.basic_only || ty.basic)
                     && (!f.nonlegendary || !ty.legendary)
                     && (!f.legendary_only || ty.legendary)
                     && (!f.tokens_only || self.is_token(id))
@@ -8814,8 +8819,17 @@ impl Game {
         if used > 0 {
             self.creature_spell_mana[p].0 -= used;
         }
+        // Somberwald Sage's mana first (a creature spell only), then Castle Garenbrig's.
+        let creature_spell = matches!(spell, PayFor::Spell(c) if self.def_of(c).types.creature);
+        let sage = self.creature_color_mana_now(p);
         for (k, n) in used_colors.into_iter().enumerate() {
-            self.creature_color_mana[p].0[k] -= n; // Somberwald Sage
+            let from_sage = if creature_spell { n.min(sage[k]) } else { 0 };
+            if from_sage > 0 {
+                self.creature_color_mana[p].0[k] -= from_sage; // Somberwald Sage
+            }
+            if n > from_sage {
+                self.creature_ability_color_mana[p].0[k] -= n - from_sage;
+            }
         }
         let cost = &after_chain;
         // K'rrik: {B} that mana can't pay are paid with 2 life each.
@@ -10044,6 +10058,13 @@ impl Game {
                             .filter(|&c| self.def_of(c).types.land)
                             .map(|c| Action::ActivateWith(id, n, c)),
                     );
+                } else if a.tap_named_creature {
+                    // Earthcraft: any untapped creature you control, the player's pick.
+                    v.extend(
+                        self.creatures(p)
+                            .filter(|&c| !self.obj(c).tapped)
+                            .map(|c| Action::ActivateWith(id, n, c)),
+                    );
                 } else if let Some(sub) = a.return_own_subtype {
                     // Quirion Ranger: a Forest you control (it may tap for the mana first).
                     v.extend(
@@ -10413,6 +10434,10 @@ impl Game {
             } else if a.discard_creature_card || a.discard_any_card || a.discard_land_card {
                 if self.obj(v).zone == Zone::Hand {
                     self.move_to(v, Zone::Graveyard); // discarded
+                }
+            } else if a.tap_named_creature {
+                if self.obj(v).zone == Zone::Battlefield {
+                    self.become_tapped(v); // Earthcraft: the named creature
                 }
             } else if a.return_land || a.return_own_subtype.is_some() {
                 if self.obj(v).zone == Zone::Battlefield {
@@ -11385,6 +11410,13 @@ impl Game {
         } else {
             [0; 5]
         };
+        // Castle Garenbrig: also for an ability of a creature.
+        let creature_ability = matches!(spell, PayFor::Ability(s) if self.types_of(s).creature);
+        if creature || creature_ability {
+            for (have, more) in col.iter_mut().zip(self.creature_ability_color_mana_now(p)) {
+                *have += more;
+            }
+        }
         let col_have = col;
         for (pips, have) in cost.colored.iter_mut().zip(col.iter_mut()) {
             let n = (*pips as u32).min(*have);
@@ -11425,6 +11457,16 @@ impl Game {
         }
         take(&mut cost.generic);
         (cost, have - left, used_colors)
+    }
+
+    /// Castle Garenbrig's mana for creature spells and creatures' abilities `p` has now, per color.
+    fn creature_ability_color_mana_now(&self, p: PlayerId) -> [u32; 5] {
+        let (n, turn, step) = self.creature_ability_color_mana[p];
+        if turn == self.turn && step == self.step {
+            n
+        } else {
+            [0; 5]
+        }
     }
 
     /// Somberwald Sage's creature-only mana `p` has now, per color.
@@ -18447,6 +18489,12 @@ impl Game {
                 } else {
                     self.fabricate_servos(item.controller, n, servo); // CR 702.123b
                 }
+            }
+            Effect::AddCreatureSpellOrAbilityMana(n, color) => {
+                let p = item.controller;
+                let mut now = self.creature_ability_color_mana_now(p);
+                now[color as usize] += n as u32;
+                self.creature_ability_color_mana[p] = (now, self.turn, self.step);
             }
             Effect::AddCreatureSpellMana(n, color) => {
                 let p = item.controller;

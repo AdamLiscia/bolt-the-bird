@@ -7524,6 +7524,22 @@
    "lane": "d1",
    "theme": "mana",
    "owner": "d1"
+  },
+  {
+   "card": "Earthcraft",
+   "deck": "Rocco, Cabaretti Caterer",
+   "missing": "tap a named untapped creature as a cost; target basic land [claimed by d1, idea_next11]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
+  },
+  {
+   "card": "Castle Garenbrig",
+   "deck": "Toski, Bearer of Secrets",
+   "missing": "six {G} only for creature spells or creatures' abilities [claimed by d1, idea_next11]",
+   "lane": "d1",
+   "theme": "mana",
+   "owner": "d1"
   }
  ]
 }
