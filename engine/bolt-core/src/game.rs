@@ -319,6 +319,10 @@ pub struct Object {
     /// Olivia, Crimson Bride: "When you don't control a legendary Vampire, exile this creature.",
     /// for the object with this zone-change count.
     pub exile_without_legendary_vampire: Option<u32>,
+    /// "You may spend mana as though it were mana of any color to cast [it]" (Elder Brain, on the
+    /// cards it exiles): its colored and hybrid pips are paid as generic (`Game::spell_cost`); {C}
+    /// still needs colorless mana. Kept while it's in exile or on the stack.
+    pub any_color_mana: bool,
 }
 
 /// One resolved effect's change to a permanent's characteristics (lane d3's type-changing store):
@@ -2364,6 +2368,7 @@ impl Game {
             land_copy_pending: false,
             citadel_cast: false,
             exile_without_legendary_vampire: None,
+            any_color_mana: false,
         });
         self.zone_list(owner, zone).push(id);
         id
@@ -4761,6 +4766,7 @@ impl Game {
         }
         if to != Zone::Exile && to != Zone::Stack {
             o.stash = false;
+            o.any_color_mana = false;
         }
         if from == Zone::Battlefield {
             o.bait = 0;
@@ -7619,6 +7625,16 @@ impl Game {
             cost.colored = [0; 5];
             cost.generic += cost.colorless;
             cost.colorless = 0;
+        }
+        if self.obj(c).any_color_mana {
+            // Elder Brain: "spend mana as though it were mana of any color": any mana pays its
+            // colored pips ({2/G} counts as one pip); {C} still needs colorless mana.
+            cost.generic += cost.colored.iter().sum::<u8>()
+                + cost.hybrid.iter().sum::<u8>()
+                + cost.twobrid.iter().sum::<u8>();
+            cost.colored = [0; 5];
+            cost.hybrid = [0; 10];
+            cost.twobrid = [0; 5];
         }
         cost
     }
